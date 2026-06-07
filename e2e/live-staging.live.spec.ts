@@ -1,4 +1,5 @@
 import { createHash, createHmac } from "node:crypto";
+import { writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { expect, test, type Page } from "@playwright/test";
 import type { CommunityFollowResponse, SessionExchangeResponse } from "@pirate/api-contracts";
@@ -17,9 +18,14 @@ import {
 
 const baseURL = process.env.E2E_BASE_URL ?? "https://staging.pirate.sc";
 const apiBaseURL = process.env.E2E_API_BASE_URL ?? resolveApiBaseURL(baseURL);
+const apiOrigin = new URL(apiBaseURL).origin;
 const liveSubject = process.env.E2E_LIVE_STAGING_SUBJECT ?? "seed-staging-mcp-smoke-staff";
 const seedCommunityLabel = process.env.E2E_LIVE_STAGING_COMMUNITY_LABEL ?? "MCP Guest Comment Smoke";
 const seedPostTitle = process.env.E2E_LIVE_STAGING_SEED_POST_TITLE ?? "MCP guest comment smoke target";
+const multipartGateVideoBytes = Number.parseInt(
+  process.env.E2E_MULTIPART_GATE_VIDEO_BYTES ?? String(70 * 1024 * 1024),
+  10,
+);
 const require = createRequire(import.meta.url);
 const agoraSdkPath = require.resolve("agora-rtc-sdk-ng");
 const liveSecretsPresent = Boolean(
@@ -309,6 +315,76 @@ async function completeSelfVerification(session: StoredSession): Promise<void> {
     headers: { authorization: `Bearer ${session.accessToken}` },
     method: "POST",
   });
+}
+
+async function writeGeneratedMultipartVideo(page: Page, sizeBytes: number, filePath: string): Promise<string> {
+  if (!Number.isSafeInteger(sizeBytes) || sizeBytes <= 0) {
+    throw new Error(`Invalid target video size ${sizeBytes}`);
+  }
+  const recorded = await page.evaluate(async () => {
+    if (!("MediaRecorder" in window)) {
+      throw new Error("MediaRecorder is not available in this browser");
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 320;
+    canvas.height = 180;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas 2D context unavailable");
+
+    let frame = 0;
+    const draw = () => {
+      context.fillStyle = frame % 2 === 0 ? "#17405f" : "#2f5f3d";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "#ffffff";
+      context.font = "20px sans-serif";
+      context.fillText(`Multipart upload E2E ${frame++}`, 20, 96);
+    };
+    draw();
+    const drawInterval = window.setInterval(draw, 100);
+    const stream = canvas.captureStream(10);
+    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+      ? "video/webm;codecs=vp8"
+      : "video/webm";
+    const chunks: BlobPart[] = [];
+    const recorder = new MediaRecorder(stream, { mimeType });
+
+    await new Promise<void>((resolve, reject) => {
+      recorder.addEventListener("dataavailable", (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      });
+      recorder.addEventListener("error", () => reject(new Error("Could not generate multipart upload video fixture.")), { once: true });
+      recorder.addEventListener("stop", () => resolve(), { once: true });
+      recorder.start();
+      window.setTimeout(() => recorder.stop(), 750);
+    });
+
+    window.clearInterval(drawInterval);
+    for (const track of stream.getTracks()) track.stop();
+
+    const recorded = new Blob(chunks, { type: "video/webm" });
+    return Array.from(new Uint8Array(await recorded.arrayBuffer()));
+  });
+  if (recorded.length <= 0 || recorded.length >= sizeBytes) {
+    throw new Error(`Generated fixture had unexpected size ${recorded.length}`);
+  }
+
+  const fileName = `multipart-gate-${sizeBytes}.webm`;
+  await writeFile(filePath, Buffer.concat([
+    Buffer.from(recorded),
+    Buffer.alloc(sizeBytes - recorded.length),
+  ]));
+  return fileName;
+}
+
+async function advanceComposerToPublish(page: Page): Promise<void> {
+  const publishButton = page.getByRole("button", { name: /^(publish|post)$/i });
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    if (await publishButton.isVisible().catch(() => false)) return;
+    await page.getByRole("button", { name: /^continue$/i }).click();
+    await page.waitForTimeout(500);
+  }
+  await expect(publishButton).toBeVisible({ timeout: 10_000 });
 }
 
 function expectConfiguredAgora(block: AgoraBlock, label: string): void {
@@ -889,6 +965,105 @@ test.describe("live staging integration", () => {
 
   test.skip(process.env.E2E_LIVE_STAGING !== "true", "Set E2E_LIVE_STAGING=true to run real staging mutations.");
   test.skip(!liveSecretsPresent, "Live staging JWT secrets are not available.");
+
+  test("uploads a public video through direct multipart in a real browser", async ({ page }, testInfo) => {
+    testInfo.setTimeout(15 * 60_000);
+
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const subject = `multipart-video-browser-${runId}`;
+    const session = await createLiveSession(subject, walletAddressForSubject(subject));
+    const community = await createFollowContractCommunity(runId, session);
+    const title = `Multipart video browser E2E ${runId}`;
+    const filebasePartRequests: URL[] = [];
+    const filebasePartStatuses: Array<{ partNumber: string | null; status: number }> = [];
+
+    page.on("request", (request) => {
+      if (request.method().toUpperCase() !== "PUT") return;
+      const url = new URL(request.url());
+      if (!url.hostname.endsWith("filebase.com")) return;
+      if (!url.searchParams.has("partNumber") || !url.searchParams.has("uploadId")) return;
+      filebasePartRequests.push(url);
+    });
+    page.on("response", (response) => {
+      const request = response.request();
+      if (request.method().toUpperCase() !== "PUT") return;
+      const url = new URL(response.url());
+      if (!url.hostname.endsWith("filebase.com")) return;
+      if (!url.searchParams.has("partNumber") || !url.searchParams.has("uploadId")) return;
+      filebasePartStatuses.push({
+        partNumber: url.searchParams.get("partNumber"),
+        status: response.status(),
+      });
+    });
+
+    await installStoredSession(page, session);
+    await page.goto(`/c/${pathSegment(community.routeSegment)}/submit`);
+    await expect(page.getByPlaceholder("Title*")).toBeVisible({ timeout: 30_000 });
+    await page.getByPlaceholder("Title*").fill(title);
+    const fixturePath = testInfo.outputPath(`multipart-gate-${multipartGateVideoBytes}.webm`);
+    await writeGeneratedMultipartVideo(page, multipartGateVideoBytes, fixturePath);
+    const fileChooserPromise = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: /^video$/i }).click();
+    await (await fileChooserPromise).setFiles(fixturePath);
+    await expect(page.locator("video").first()).toBeVisible({ timeout: 30_000 });
+
+    await advanceComposerToPublish(page);
+
+    const uploadIntentPromise = page.waitForResponse((response) => {
+      const request = response.request();
+      const url = new URL(response.url());
+      return request.method().toUpperCase() === "POST"
+        && url.origin === apiOrigin
+        && /\/communities\/[^/]+\/song-artifact-uploads$/u.test(url.pathname);
+    }, { timeout: 90_000 });
+    const completePromise = page.waitForResponse((response) => {
+      const request = response.request();
+      const url = new URL(response.url());
+      return request.method().toUpperCase() === "POST"
+        && url.origin === apiOrigin
+        && /\/communities\/[^/]+\/song-artifact-uploads\/[^/]+\/sessions\/[^/]+\/complete$/u.test(url.pathname);
+    }, { timeout: 12 * 60_000 });
+
+    await page.getByRole("button", { name: /^(publish|post)$/i }).click();
+
+    const uploadIntent = await uploadIntentPromise.then((response) => response.json() as Promise<{
+      id: string;
+      upload_session?: {
+        id: string;
+        part_size_bytes: number;
+        total_parts: number;
+        upload_id: string;
+      };
+    }>);
+    expect(uploadIntent.upload_session, "multipart upload session").toBeTruthy();
+    expect(uploadIntent.upload_session?.part_size_bytes).toBe(10 * 1024 * 1024);
+    expect(uploadIntent.upload_session?.total_parts).toBe(Math.ceil(multipartGateVideoBytes / (10 * 1024 * 1024)));
+
+    const completed = await completePromise.then((response) => response.json() as Promise<{
+      content_hash?: string | null;
+      ipfs_cid?: string | null;
+      status?: string | null;
+    }>);
+    expect(completed.status).toBe("uploaded");
+    expect(completed.content_hash).toMatch(/^0x[a-f0-9]{64}$/iu);
+    expect(completed.ipfs_cid, "multipart upload IPFS CID").toBeTruthy();
+
+    await expect(page).toHaveURL(/\/p\/[^/?#]+/u, { timeout: 60_000 });
+    await expect(page.locator("body")).toContainText(title, { timeout: 30_000 });
+    await expectNoBrowserError(page);
+
+    const expectedParts = uploadIntent.upload_session?.total_parts ?? 0;
+    expect(filebasePartRequests.length, "direct Filebase part PUT request count").toBe(expectedParts);
+    expect(filebasePartStatuses.length, "direct Filebase part PUT response count").toBe(expectedParts);
+    for (const requestUrl of filebasePartRequests) {
+      expect(requestUrl.searchParams.get("uploadId")).toBe(uploadIntent.upload_session?.upload_id);
+      expect(requestUrl.searchParams.get("X-Amz-Signature")).toMatch(/^[a-f0-9]{64}$/iu);
+      expect(requestUrl.searchParams.get("partNumber")).toMatch(/^\d+$/u);
+    }
+    for (const status of filebasePartStatuses) {
+      expect(status.status, `part ${status.partNumber} status`).toBe(200);
+    }
+  });
 
   test("follows a real staging community and persists after reload", async ({ page }, testInfo) => {
     testInfo.setTimeout(90_000);

@@ -49,7 +49,7 @@ export function VideoPlayer({
   className,
   onEnded,
 }: VideoPlayerProps) {
-  const aspectRatioStyle = getMediaAspectRatioStyle(aspectRatio);
+  const aspectRatioStyle = getMediaAspectRatioStyle(aspectRatio) as MediaPlayerProps["style"] | undefined;
   const objectFitClassName = getVideoPreviewObjectFitClassName(aspectRatio);
 
   return (

@@ -970,9 +970,8 @@ test.describe("live staging integration", () => {
     testInfo.setTimeout(15 * 60_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const subject = `multipart-video-browser-${runId}`;
-    const session = await createLiveSession(subject, walletAddressForSubject(subject));
-    const community = await createFollowContractCommunity(runId, session);
+    const session = await createLiveSession(liveSubject, walletAddressForSubject(liveSubject));
+    const community = await discoverSeedCommunity();
     const title = `Multipart video browser E2E ${runId}`;
     const filebasePartRequests: URL[] = [];
     const filebasePartStatuses: Array<{ partNumber: string | null; status: number }> = [];

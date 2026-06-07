@@ -351,6 +351,10 @@ export function usePost(
 
   const buildCommentRequestBody = React.useCallback(async (input: PostThreadReplyInput): Promise<CreateCommentRequest> => {
     const body: CreateCommentRequest = { body: input.body };
+    if (input.identityMode === "anonymous" && input.anonymousScope) {
+      body.identity_mode = "anonymous";
+      body.anonymous_scope = input.anonymousScope;
+    }
     if (input.attachment?.file) {
       const uploaded = await api.communities.uploadMedia({
         kind: "comment_image",

@@ -10,7 +10,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import { CommentCard } from "./comment-card";
-import type { PostThreadComment } from "./post-thread.types";
+import type { PostThreadComment, PostThreadReplyIdentity } from "./post-thread.types";
 
 const DEFAULT_MAX_COMMENT_DEPTH = 8;
 const CHILD_COMMENT_INDENT_CLASS_NAME = "ms-3 mt-2 sm:ms-5 md:ms-8";
@@ -98,6 +98,7 @@ interface CommentTreeNodeProps {
   maxDepth: number;
   nodeKey: string;
   onToggleCollapsed: (key: string) => void;
+  replyIdentity?: PostThreadReplyIdentity;
 }
 
 function CommentTreeNode({
@@ -107,6 +108,7 @@ function CommentTreeNode({
   maxDepth,
   nodeKey,
   onToggleCollapsed,
+  replyIdentity,
   onReplyRequest,
 }: CommentTreeNodeProps & { onReplyRequest?: (comment: PostThreadComment) => void }) {
   const { locale } = useUiLocale();
@@ -202,6 +204,7 @@ function CommentTreeNode({
           submitReplyLabel={comment.submitReplyLabel}
           onReplySubmit={comment.onReplySubmit}
           onReplyRequest={onReplyRequest ? () => onReplyRequest(comment) : undefined}
+          replyIdentity={replyIdentity}
           avatarClassName={depth > 0 ? MOBILE_NESTED_AVATAR_CLASS_NAME : undefined}
         />
 
@@ -218,6 +221,7 @@ function CommentTreeNode({
                   maxDepth={maxDepth}
                   nodeKey={childKey}
                   onToggleCollapsed={onToggleCollapsed}
+                  replyIdentity={replyIdentity}
                   onReplyRequest={onReplyRequest}
                 />
               );
@@ -250,6 +254,7 @@ export interface CommentTreeProps {
   className?: string;
   maxDepth?: number;
   onReplyRequest?: (comment: PostThreadComment) => void;
+  replyIdentity?: PostThreadReplyIdentity;
 }
 
 export function CommentTree({
@@ -257,6 +262,7 @@ export function CommentTree({
   className,
   maxDepth = DEFAULT_MAX_COMMENT_DEPTH,
   onReplyRequest,
+  replyIdentity,
 }: CommentTreeProps) {
   const initializedKeysRef = React.useRef<Set<string>>(new Set());
   const [collapsedIds, setCollapsedIds] = React.useState<Set<string>>(() => collectInitialCollapsedKeySet(comments));
@@ -308,6 +314,7 @@ export function CommentTree({
             maxDepth={maxDepth}
             nodeKey={nodeKey}
             onToggleCollapsed={handleToggleCollapsed}
+            replyIdentity={replyIdentity}
             onReplyRequest={onReplyRequest}
           />
         );

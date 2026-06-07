@@ -17,11 +17,14 @@ import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import type { CommunityAuthorRole } from "../post-card/post-card.types";
 import { CommentMediaGrid, ReplyAttachmentControl, revokeReplyAttachment } from "./comment-media";
+import { ReplyIdentitySelect } from "./reply-identity-select";
 import type {
   PostThreadCommentMedia,
   PostThreadAuthorMode,
   PostThreadReplyAttachment,
   PostThreadCommentStatus,
+  PostThreadIdentityMode,
+  PostThreadReplyIdentity,
   PostThreadSubmitResult,
 } from "./post-thread.types";
 
@@ -71,10 +74,13 @@ export interface CommentCardProps {
   submitReplyLabel?: string;
   onReplySubmit?: (input: {
     attachment?: PostThreadReplyAttachment | null;
+    anonymousScope?: PostThreadReplyIdentity["anonymousScope"];
     body: string;
     authorMode: PostThreadAuthorMode;
+    identityMode?: PostThreadIdentityMode;
   }) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
   onReplyRequest?: () => void;
+  replyIdentity?: PostThreadReplyIdentity;
   avatarClassName?: string;
   className?: string;
 }
@@ -107,6 +113,7 @@ export function CommentCard({
   submitReplyLabel,
   onReplySubmit,
   onReplyRequest,
+  replyIdentity,
   avatarClassName,
   className,
 }: CommentCardProps) {
@@ -116,6 +123,7 @@ export function CommentCard({
   const [replyOpen, setReplyOpen] = React.useState(false);
   const [replyBody, setReplyBody] = React.useState("");
   const [replyAttachment, setReplyAttachment] = React.useState<PostThreadReplyAttachment | null>(null);
+  const [replyIdentityMode, setReplyIdentityMode] = React.useState<PostThreadIdentityMode>("public");
   const [replyBusy, setReplyBusy] = React.useState(false);
   const replyContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -152,17 +160,24 @@ export function CommentCard({
     }
     try {
       setReplyBusy(true);
-      const result = await onReplySubmit({ attachment: replyAttachment, body: trimmed, authorMode: "human" });
+      const result = await onReplySubmit({
+        anonymousScope: replyIdentityMode === "anonymous" ? replyIdentity?.anonymousScope ?? null : null,
+        attachment: replyAttachment,
+        authorMode: "human",
+        body: trimmed,
+        identityMode: replyIdentityMode,
+      });
       if (result === "blocked") {
         return;
       }
       setReplyBody("");
       setReplyAttachment(null);
+      setReplyIdentityMode("public");
       setReplyOpen(false);
     } finally {
       setReplyBusy(false);
     }
-  }, [canSubmitReply, onReplySubmit, replyAttachment, replyBody]);
+  }, [canSubmitReply, onReplySubmit, replyAttachment, replyBody, replyIdentity?.anonymousScope, replyIdentityMode]);
 
   const handleReplyAttachmentChange = React.useCallback((attachment: PostThreadReplyAttachment | null) => {
     setReplyAttachment((current) => {
@@ -174,6 +189,7 @@ export function CommentCard({
   const closeReplyComposer = React.useCallback(() => {
     setReplyOpen(false);
     setReplyBody("");
+    setReplyIdentityMode("public");
     handleReplyAttachmentChange(null);
   }, [handleReplyAttachmentChange]);
 
@@ -294,17 +310,24 @@ export function CommentCard({
               disabled={replyBusy}
               onChange={handleReplyAttachmentChange}
             />
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={closeReplyComposer}
-              >
-                {cancelReplyLabel}
-              </Button>
-              <Button disabled={replyBusy || !canSubmitReply} size="sm" onClick={() => void handleReplySubmit()}>
-                {submitReplyLabel}
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <ReplyIdentitySelect
+                identity={replyIdentity}
+                onChange={setReplyIdentityMode}
+                value={replyIdentityMode}
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={closeReplyComposer}
+                >
+                  {cancelReplyLabel}
+                </Button>
+                <Button disabled={replyBusy || !canSubmitReply} size="sm" onClick={() => void handleReplySubmit()}>
+                  {submitReplyLabel}
+                </Button>
+              </div>
             </div>
           </div>
         ) : null}

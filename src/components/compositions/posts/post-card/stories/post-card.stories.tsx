@@ -18,6 +18,8 @@ const ineligibleShareActions: PostCardShareAction[] = [
   { key: "native-share", label: "Share...", icon: <ShareNetwork className="size-5" /> },
 ];
 
+const noop = () => undefined;
+
 const basePost: PostCardProps = {
   viewContext: "home",
   byline: {
@@ -124,9 +126,9 @@ export const SharePillCrosspostIneligible: Story = {
         type: "crosspost",
         source: {
           status: "available",
-          communityLabel: "c/music",
+          communityLabel: "music.pirate",
           communityHref: "#",
-          authorLabel: "u/ana",
+          authorLabel: "ana.pirate",
           authorHref: "#",
           postType: "text",
           title: "What makes a great opener for a live set?",
@@ -153,9 +155,9 @@ export const CrosspostAvailable: Story = {
         type: "crosspost",
         source: {
           status: "available",
-          communityLabel: "c/music",
+          communityLabel: "music.pirate",
           communityHref: "#",
-          authorLabel: "u/ana",
+          authorLabel: "ana.pirate",
           authorHref: "#",
           postType: "text",
           title: "What makes a great opener for a live set?",
@@ -183,9 +185,9 @@ export const CrosspostImageSource: Story = {
         type: "crosspost",
         source: {
           status: "available",
-          communityLabel: "c/music",
+          communityLabel: "music.pirate",
           communityHref: "#",
-          authorLabel: "u/ana",
+          authorLabel: "ana.pirate",
           authorHref: "#",
           postType: "image",
           thumbnailAlt: "Crowd pressed against the stage at a small venue",
@@ -215,9 +217,9 @@ export const CrosspostVideoSource: Story = {
         type: "crosspost",
         source: {
           status: "available",
-          communityLabel: "c/music",
+          communityLabel: "music.pirate",
           communityHref: "#",
-          authorLabel: "u/ana",
+          authorLabel: "ana.pirate",
           authorHref: "#",
           postType: "video",
           thumbnailAlt: "Performer lit by red stage lights",
@@ -247,9 +249,9 @@ export const CrosspostLinkSource: Story = {
         type: "crosspost",
         source: {
           status: "available",
-          communityLabel: "c/music",
+          communityLabel: "music.pirate",
           communityHref: "#",
-          authorLabel: "u/ana",
+          authorLabel: "ana.pirate",
           authorHref: "#",
           postType: "link",
           thumbnailAlt: "Venue entrance at night",
@@ -279,15 +281,31 @@ export const CrosspostSongSource: Story = {
         type: "crosspost",
         source: {
           status: "available",
-          communityLabel: "c/music",
+          communityLabel: "music.pirate",
           communityHref: "#",
-          authorLabel: "u/ana",
+          authorLabel: "ana.pirate",
           authorHref: "#",
           postType: "song",
           thumbnailAlt: "Album artwork with a night road",
           thumbnailSrc: "https://picsum.photos/seed/crosspost-source-song/320/320",
           title: "New demo: Rustavi night drive",
           postHref: "#",
+          mediaPreview: {
+            type: "song",
+            accessMode: "locked",
+            artworkSrc: "https://picsum.photos/seed/crosspost-source-song/320/320",
+            durationMs: 214000,
+            hasEntitlement: false,
+            listingMode: "listed",
+            listingStatus: "active",
+            onBuy: noop,
+            onPlay: noop,
+            onSeek: noop,
+            playbackState: "idle",
+            previewDurationMs: 30000,
+            priceLabel: "$4.00",
+            title: "New demo: Rustavi night drive",
+          },
         },
       }}
       engagement={{ score: 33, commentCount: 11 }}
@@ -311,7 +329,7 @@ export const CrosspostUnavailableSource: Story = {
         type: "crosspost",
         source: {
           status: "deleted",
-          communityLabel: "c/music",
+          communityLabel: "music.pirate",
         },
       }}
       engagement={{ score: 21, commentCount: 9 }}

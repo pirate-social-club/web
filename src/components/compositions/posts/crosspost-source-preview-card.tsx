@@ -4,6 +4,8 @@ import { ArrowSquareOut } from "@phosphor-icons/react";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import type { CrosspostSourcePreview } from "./post-card/post-card.types";
+import { SongPostContent } from "./post-card/post-card-song-content";
+import { VideoPostContent } from "./post-card/post-card-video-content";
 
 export type PostSourceSummaryKind = NonNullable<CrosspostSourcePreview["postType"]>;
 
@@ -126,6 +128,45 @@ export function CrosspostSourcePreviewCard({
   const sourceMeta = source.authorLabel
     ? `${source.communityLabel} · ${source.authorLabel}`
     : source.communityLabel;
+  const mediaPreview = isAvailable ? source.mediaPreview : undefined;
+
+  if (mediaPreview) {
+    const sourceLabel = `Crossposted from ${sourceMeta}`;
+    const sourceLabelClassName = "flex min-w-0 items-center gap-2 text-muted-foreground";
+    const sourceLink = linkEnabled && source.postHref ? (
+      <a
+        className={cn(
+          sourceLabelClassName,
+          "transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        )}
+        data-post-card-interactive="true"
+        href={source.postHref}
+      >
+        <ArrowSquareOut className="size-4 shrink-0" />
+        <Type as="span" variant="caption" className="truncate">
+          {sourceLabel}
+        </Type>
+      </a>
+    ) : (
+      <div className={sourceLabelClassName}>
+        <ArrowSquareOut className="size-4 shrink-0" />
+        <Type as="span" variant="caption" className="truncate">
+          {sourceLabel}
+        </Type>
+      </div>
+    );
+
+    return (
+      <div className={cn("w-full space-y-3.5 text-start", className)}>
+        {sourceLink}
+        {mediaPreview.type === "song" ? (
+          <SongPostContent content={mediaPreview} />
+        ) : (
+          <VideoPostContent content={mediaPreview} />
+        )}
+      </div>
+    );
+  }
 
   return (
     <PostSourceSummaryCard

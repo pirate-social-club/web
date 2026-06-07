@@ -266,6 +266,7 @@ export interface CrosspostSourcePreview {
   postHref?: string;
   thumbnailAlt?: string;
   thumbnailSrc?: string;
+  mediaPreview?: SongContentSpec | VideoContentSpec;
 }
 
 export type PostCardContent =

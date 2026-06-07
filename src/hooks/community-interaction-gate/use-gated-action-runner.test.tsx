@@ -9,6 +9,7 @@ import {
   altchaRequirement,
   createDeferred,
   gate,
+  gatesPanel,
   interactionCopy,
   uniqueHumanRequirement,
 } from "./test-fixtures.test";
@@ -94,6 +95,7 @@ function renderRunner({
     options?: { action?: { label: string; onClick: () => void } };
   }> = [];
   let pendingInteraction: PendingInteraction | null = null;
+  const altchaCompletions = new Map<string, () => Promise<void> | void>();
   const loadCommunityGateFn = loadCommunityGate ?? (async (communityId) => {
     calls.push(`load:${communityId}`);
     return gateData;
@@ -103,7 +105,12 @@ function renderRunner({
     const [modalState, setModalState] = React.useState<ModalState | null>(null);
     const run = useGatedActionRunner({
       altchaLoading: false,
-      buildAltchaBody: ({ action, scope }) => `altcha:${action}:${scope}`,
+      buildAltchaBody: ({ action, onVerified, scope }) => {
+        if (onVerified) {
+          altchaCompletions.set(`${action}:${scope}`, onVerified);
+        }
+        return `altcha:${action}:${scope}`;
+      },
       buildAuthUrl: (path) => `auth:${path}`,
       closeModal: () => {
         calls.push("close");
@@ -153,6 +160,7 @@ function renderRunner({
 
   return {
     calls,
+    altchaCompletions,
     errors,
     hook,
     infos,
@@ -253,8 +261,38 @@ describe("useGatedActionRunner", () => {
     expect(runner.pendingInteraction?.voteValue).toBe(1);
     expect(runner.hook.result.current.modalState?.title).toBe("Browser check required");
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:1:vote");
-    expect(runner.hook.result.current.modalState?.description).toBe("This runs locally and usually takes a few seconds.");
+    expect(runner.hook.result.current.modalState?.description).toBe(gatesPanel.powOnlyDescription);
+    expect(runner.hook.result.current.modalState?.primaryAction).toBeNull();
     expect(runner.hook.result.current.modalState?.secondaryAction).toBeUndefined();
+
+    await act(async () => {
+      await runner.altchaCompletions.get("post:post-1:1:vote")?.();
+    });
+    expect(runner.calls).toEqual(["load:community-1", "complete-action"]);
+  });
+
+  test("uses a vote-bound proof for verification-required PoW-only post votes", async () => {
+    const runner = renderRunner({
+      gateData: gate("verification_required", {
+        gate_evaluation: altchaGateEvaluation(),
+        missing_capabilities: ["altcha_pow"],
+      }, [altchaRequirement]),
+    });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: () => undefined,
+        postId: "post-1",
+        voteValue: 1,
+      });
+      expect(result).toBe("blocked");
+    });
+
+    expect(runner.pendingInteraction?.action).toBe("vote_post");
+    expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:1:vote");
+    expect(runner.hook.result.current.modalState?.primaryAction).toBeNull();
   });
 
   test("blocks Altcha-gated comment votes for a vote-bound proof", async () => {
@@ -488,10 +526,11 @@ describe("useGatedActionRunner", () => {
     expect(runner.pendingInteraction?.action).toBe("reply_post");
     expect(runner.hook.result.current.modalState?.title).toBe("Browser check required");
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:comment_create");
+    expect(runner.hook.result.current.modalState?.primaryAction).toBeNull();
     expect(runner.hook.result.current.modalState?.secondaryAction).toBeUndefined();
   });
 
-  test("builds the join Altcha modal for verification-required Altcha gates", async () => {
+  test("uses an action proof for verification-required PoW-only replies", async () => {
     const runner = renderRunner({
       gateData: gate("verification_required", {
         gate_evaluation: altchaGateEvaluation(),
@@ -511,8 +550,9 @@ describe("useGatedActionRunner", () => {
 
     expect(runner.pendingInteraction?.action).toBe("reply_post");
     expect(runner.hook.result.current.modalState?.title).toBe("Browser check required");
-    expect(runner.hook.result.current.modalState?.body).toBe("altcha:community:community-1:community_join");
-    expect(runner.hook.result.current.modalState?.description).toBe("This runs locally and usually takes a few seconds.");
+    expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:comment_create");
+    expect(runner.hook.result.current.modalState?.description).toBe(gatesPanel.powOnlyDescription);
+    expect(runner.hook.result.current.modalState?.primaryAction).toBeNull();
     expect(runner.hook.result.current.modalState?.secondaryAction).toBeUndefined();
   });
 

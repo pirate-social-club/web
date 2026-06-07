@@ -3,8 +3,12 @@ import * as React from "react";
 import type { MembershipGateSummary } from "@pirate/api-contracts";
 
 import { Button } from "@/components/primitives/button";
+import { Checkbox } from "@/components/primitives/checkbox";
+import { Spinner } from "@/components/primitives/spinner";
+import { Type } from "@/components/primitives/type";
+import { VotePill } from "@/components/primitives/vote-pill";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
-import { AltchaPowWidget } from "@/components/compositions/verification/altcha-pow-widget/altcha-pow-widget";
+import { cn } from "@/lib/utils";
 
 import {
   CommunityInteractionGateModal,
@@ -90,6 +94,133 @@ function RequestableToReplyStory() {
   );
 }
 
+function StorybookAltchaCheckbox({
+  onVerified,
+}: {
+  onVerified?: () => void | Promise<void>;
+}) {
+  const [state, setState] = React.useState<"idle" | "verifying" | "verified">("idle");
+  const stateRef = React.useRef(state);
+  const timerRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  React.useEffect(() => () => {
+    if (timerRef.current != null) {
+      window.clearTimeout(timerRef.current);
+    }
+  }, []);
+
+  const startVerification = React.useCallback(() => {
+    if (stateRef.current !== "idle") return;
+
+    stateRef.current = "verifying";
+    setState("verifying");
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null;
+      stateRef.current = "verified";
+      setState("verified");
+      if (onVerified) {
+        timerRef.current = window.setTimeout(() => {
+          timerRef.current = null;
+          void onVerified();
+        }, 450);
+      }
+    }, 3000);
+  }, [onVerified]);
+
+  const statusCopy = state === "verifying"
+    ? "Verifying..."
+    : state === "verified"
+      ? "Verified"
+      : "I'm not a robot";
+
+  return (
+    <div
+      className={cn(
+        "flex min-h-16 w-full items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3 text-left text-foreground shadow-sm transition-colors",
+        state === "idle" ? "cursor-pointer hover:bg-card/90" : "cursor-default",
+      )}
+      onClick={startVerification}
+    >
+      <span className="relative inline-flex size-5 shrink-0 items-center justify-center">
+        {state === "verifying" ? (
+          <Spinner
+            aria-label="Verifying"
+            className="size-5 text-muted-foreground"
+          />
+        ) : (
+          <Checkbox
+            aria-label="I'm not a robot"
+            checked={state === "verified"}
+            className="disabled:cursor-default disabled:opacity-100"
+            disabled={state !== "idle"}
+            onCheckedChange={(next) => {
+              if (next === true) startVerification();
+            }}
+          />
+        )}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-base font-medium">{statusCopy}</span>
+    </div>
+  );
+}
+
+function ProofOfWorkVoteFlowStory() {
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const [viewerVote, setViewerVote] = React.useState<"up" | "down" | null>(null);
+  const [score, setScore] = React.useState(18);
+  const [flowState, setFlowState] = React.useState<"idle" | "checking" | "voted">("idle");
+
+  const handleVote = React.useCallback((direction: "up" | "down" | null) => {
+    if (direction !== "up") return;
+    setFlowState("checking");
+    setModalOpen(true);
+  }, []);
+
+  const completeVote = React.useCallback(() => {
+    setModalOpen(false);
+    setViewerVote("up");
+    setScore(19);
+    setFlowState("voted");
+  }, []);
+
+  return (
+    <div className="mx-auto flex min-h-[620px] w-full max-w-xl flex-col items-center justify-center gap-5">
+      <div className="flex w-full items-center justify-between rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
+        <div className="min-w-0">
+          <Type as="p" className="text-foreground" variant="body">
+            Post in a PoW-only community
+          </Type>
+          <Type as="p" className="text-muted-foreground" variant="caption">
+            {flowState === "voted" ? "Vote submitted with proof." : "Click upvote to open the browser check."}
+          </Type>
+        </div>
+        <VotePill
+          onVote={handleVote}
+          score={score}
+          viewerVote={viewerVote}
+        />
+      </div>
+
+      <CommunityInteractionGateModal
+        body={(
+          <StorybookAltchaCheckbox onVerified={completeVote} />
+        )}
+        description="This runs locally and usually takes a few seconds."
+        icon="blocked"
+        onOpenChange={setModalOpen}
+        open={modalOpen}
+        requirements={proofOfWorkRequirements}
+        requirementStatuses={["unmet"]}
+        title="Browser check required"
+      />
+    </div>
+  );
+}
+
 export const JoinableToVote: Story = {
   name: "States / Joinable to vote",
   render: () => (
@@ -105,6 +236,11 @@ export const JoinableToVote: Story = {
       title="Join to Vote"
     />
   ),
+};
+
+export const ProofOfWorkVoteFlow: Story = {
+  name: "Flow / Proof of work vote",
+  render: () => <ProofOfWorkVoteFlowStory />,
 };
 
 export const RequestableToReply: Story = {
@@ -166,27 +302,17 @@ export const VerificationRequiredPassport: Story = {
 };
 
 export const ProofOfWorkRequired: Story = {
-  name: "States / Checking browser",
+  name: "States / Proof of work required",
   render: () => (
     <GateModalStory
       body={(
-        <AltchaPowWidget
-          action="community:local-transit"
-          challengeLoader={() => new Promise(() => {})}
-          onPayloadChange={() => {}}
-          scope="community_join"
-        />
+        <StorybookAltchaCheckbox />
       )}
       description="This runs locally and usually takes a few seconds."
       icon="blocked"
-      primaryAction={{
-        disabled: true,
-        label: "Continue",
-        onClick: () => {},
-      }}
       requirements={proofOfWorkRequirements}
       requirementStatuses={["unmet"]}
-      title="Checking browser"
+      title="Browser check required"
     />
   ),
 };

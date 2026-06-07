@@ -15,6 +15,10 @@ Object.defineProperty(navigator, "language", {
   configurable: true,
   value: "en-US",
 });
+Object.defineProperty(window, "location", {
+  configurable: true,
+  value: new URL("https://pirate.test/"),
+});
 
 const { mock } = await import("bun:test") as unknown as {
   mock: {

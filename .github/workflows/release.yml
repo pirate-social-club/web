@@ -52,6 +52,12 @@ jobs:
       - name: Audit community provision operator dependencies
         working-directory: api/services/community-provision-operator
         run: bun audit --audit-level=high
+      - name: Install song preview container dependencies
+        working-directory: api/services/song-preview-container
+        run: bun install --frozen-lockfile
+      - name: Audit song preview container dependencies
+        working-directory: api/services/song-preview-container
+        run: bun audit --audit-level=high
       - name: Install core dependencies
         working-directory: core
         run: npm ci
@@ -251,6 +257,12 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Audit community provision operator dependencies
         working-directory: api/services/community-provision-operator
+        run: bun audit --audit-level=high
+      - name: Install song preview container dependencies
+        working-directory: api/services/song-preview-container
+        run: bun install --frozen-lockfile
+      - name: Audit song preview container dependencies
+        working-directory: api/services/song-preview-container
         run: bun audit --audit-level=high
       - name: Install core dependencies
         working-directory: core

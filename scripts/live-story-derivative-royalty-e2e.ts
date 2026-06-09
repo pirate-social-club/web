@@ -104,7 +104,7 @@ const CDR_READ_GAS_MARGIN_WEI = parseEther("0.01");
 const DEFAULT_API_BASE_URL = "https://api-staging.pirate.sc";
 // Reuse a Story-proven staging community from a green E2E run. Creating a fresh
 // community per release consumes a Turso database and staging is capped.
-const DEFAULT_STORY_E2E_COMMUNITY_ID = "cmt_4d0d77c2ec07423e99a293238ba6b7a8";
+const DEFAULT_STORY_E2E_COMMUNITY_ID = "cmt_98abfdc5ebe24d379ab41b229fda6798";
 const DEFAULT_STORY_E2E_HOST_SUBJECT = "story-e2e-author-1780678999641-65820e";
 
 const artifact: AuditArtifact = {
@@ -373,6 +373,12 @@ async function createCommunity(apiBase: string, host: Session, runId: string): P
 
 function configuredCommunityId(): string {
   return (optionalEnv("PIRATE_STORY_E2E_COMMUNITY_ID") ?? DEFAULT_STORY_E2E_COMMUNITY_ID).replace(/^com_/u, "");
+}
+
+function isMissingCommunityError(error: unknown, communityId: string): boolean {
+  if (!(error instanceof Error)) return false;
+  return error.message.includes(`/communities/${encodeURIComponent(communityId)}/join failed with 404`)
+    && error.message.includes('"code":"not_found"');
 }
 
 async function joinCommunity(apiBase: string, communityId: string, host: Session, session: Session): Promise<void> {
@@ -1027,16 +1033,33 @@ async function main(): Promise<void> {
   const buyer = await createSession({ apiBase, privateKey: buyerPrivateKey, subject: `story-e2e-buyer-${runId}` });
 
   step(createFreshCommunity ? "create community" : "use seeded community");
-  const communityId = createFreshCommunity
+  let communityId = createFreshCommunity
     ? await createCommunity(apiBase, author, runId)
     : configuredCommunityId();
+  let communityHost = createFreshCommunity ? author : host;
+  let communityMode = createFreshCommunity ? "fresh" : "seeded";
   artifact.community = {
     id: `com_${communityId}`,
-    mode: createFreshCommunity ? "fresh" : "seeded",
+    mode: communityMode,
   };
-  await joinCommunity(apiBase, communityId, createFreshCommunity ? author : host, author);
-  await joinCommunity(apiBase, communityId, createFreshCommunity ? author : host, remixer);
-  await joinCommunity(apiBase, communityId, createFreshCommunity ? author : host, buyer);
+  try {
+    await joinCommunity(apiBase, communityId, communityHost, author);
+  } catch (error) {
+    if (createFreshCommunity || !isMissingCommunityError(error, communityId)) throw error;
+    const missingSeed = communityId;
+    step("seeded community missing; create fallback community", { missing_seed: `com_${missingSeed}` });
+    communityId = await createCommunity(apiBase, host, runId);
+    communityHost = host;
+    communityMode = "fallback";
+    artifact.community = {
+      id: `com_${communityId}`,
+      missing_seed: `com_${missingSeed}`,
+      mode: communityMode,
+    };
+    await joinCommunity(apiBase, communityId, communityHost, author);
+  }
+  await joinCommunity(apiBase, communityId, communityHost, remixer);
+  await joinCommunity(apiBase, communityId, communityHost, buyer);
 
   const originalBytes = makeSilentWavBytes();
   const derivativeBytes = makeSilentWavBytes();

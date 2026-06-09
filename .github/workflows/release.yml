@@ -157,6 +157,19 @@ jobs:
           INFISICAL_SECRET_PATH: /services/api
           SECRET_NAMES: PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY PIRATE_CHECKOUT_RPC_URL PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS STORY_RUNTIME_FUNDER_PRIVATE_KEY
         run: scripts/ci/fetch-infisical-secrets.sh
+      - name: Fetch staging song preview container health secret
+        working-directory: core
+        env:
+          INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_ENV: staging
+          INFISICAL_SECRET_PATH: /services/api
+          SECRET_NAMES: SONG_PREVIEW_SHARED_SECRET
+        run: scripts/ci/fetch-infisical-secrets.sh
+      - name: Verify staging song preview container health
+        timeout-minutes: 5
+        working-directory: web
+        run: scripts/check-song-preview-container.sh staging
       - name: Story derivative royalty E2E staging
         timeout-minutes: 30
         working-directory: web

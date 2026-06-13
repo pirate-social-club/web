@@ -2,10 +2,14 @@ import * as React from "react";
 import {
   Globe,
   MaskHappy,
+  Plus,
+  Trash,
   UsersThree,
+  Wallet,
 } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
+import { Button } from "@/components/primitives/button";
 import { Checkbox } from "@/components/primitives/checkbox";
 import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
@@ -15,7 +19,12 @@ import { cn } from "@/lib/utils";
 
 import { normalizePriceInput, normalizeRoyaltyInput } from "./post-composer-utils";
 import { RegionalPricingPreviewDialog } from "./regional-pricing-preview";
-import type { AssetLicensePresetId, AttachmentState, RegionalPricingPreview } from "./post-composer.types";
+import type {
+  AssetLicensePresetId,
+  AssetRoyaltySplitState,
+  AttachmentState,
+  RegionalPricingPreview,
+} from "./post-composer.types";
 
 export type PostComposerSettingsSectionsCopy = {
   postAsTitle: string;
@@ -55,6 +64,7 @@ export type PostComposerSettingsSectionsProps = {
   onPriceChange: (value: string, nextAccess?: "free" | "paid") => void;
   onPreviewStartSecondsChange?: (value: string) => void;
   onRegionalPricingChange?: (value: boolean) => void;
+  onRoyaltySplitChange?: (value: AssetRoyaltySplitState) => void;
   onRoyaltyPercentChange: (value: string) => void;
   onVinylReleaseUrlChange?: (value: string) => void;
   onVisibilityChange: (value: "public" | "community") => void;
@@ -65,10 +75,12 @@ export type PostComposerSettingsSectionsProps = {
   publicIdentityLabel?: string;
   publicIdentityInitials?: string;
   royaltyPercent: string;
+  royaltySplit?: AssetRoyaltySplitState;
   regionalPricingAvailable?: boolean;
   regionalPricingEnabled?: boolean;
   regionalPricingPreview?: RegionalPricingPreview | null;
   showLicenseFields?: boolean;
+  showRoyaltySplit?: boolean;
   showAnonymousIdentity?: boolean;
   visibility: "public" | "community";
   vinylReleaseUrl?: string;
@@ -182,6 +194,142 @@ function OptionRow({
   );
 }
 
+function RoyaltySplitEditor({
+  onChange,
+  value,
+}: {
+  onChange: (value: AssetRoyaltySplitState) => void;
+  value: AssetRoyaltySplitState;
+}) {
+  const totalSharePct = value.allocations.reduce((sum, allocation) => sum + allocation.sharePct, 0);
+  const creatorSharePct = value.allocations
+    .filter((allocation) => allocation.recipientKind === "creator")
+    .reduce((sum, allocation) => sum + allocation.sharePct, 0);
+  const updateAllocation = (
+    allocationId: string,
+    patch: Partial<AssetRoyaltySplitState["allocations"][number]>,
+  ) => {
+    onChange({
+      allocations: value.allocations.map((allocation) =>
+        allocation.id === allocationId ? { ...allocation, ...patch } : allocation
+      ),
+    });
+  };
+
+  return (
+    <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <Type as="div" variant="body-strong">Royalty split</Type>
+          <Type as="p" variant="body" className="text-muted-foreground">
+            Add a share to each wallet. Total must be 100%.
+          </Type>
+        </div>
+        <div className={cn(
+          "shrink-0 rounded-full px-3 py-1 font-semibold tabular-nums",
+          totalSharePct === 100
+            ? "bg-primary-subtle text-primary"
+            : "bg-destructive/10 text-destructive",
+        )}>
+          {totalSharePct}%
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {value.allocations.map((allocation, index) => {
+          const isCreator = allocation.recipientKind === "creator";
+          return (
+            <div
+              className="grid items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-background p-3 sm:grid-cols-[1fr_7rem_auto] sm:p-4"
+              key={allocation.id}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground">
+                  <Wallet className="size-5" />
+                </span>
+                {isCreator ? (
+                  <Type as="span" variant="body-strong" className="shrink-0 text-foreground">
+                    You
+                  </Type>
+                ) : null}
+                <Input
+                  aria-label={isCreator ? "Your wallet address" : `Recipient ${index + 1} wallet address`}
+                  className="h-11 min-w-0 flex-1 font-mono"
+                  onChange={(event) => updateAllocation(allocation.id, { walletAddress: event.target.value })}
+                  placeholder={isCreator ? "Your primary wallet" : "0x..."}
+                  value={allocation.walletAddress ?? ""}
+                />
+              </div>
+              <div className="grid grid-cols-[1fr_auto] items-center rounded-full border border-input bg-background pe-4 shadow-sm">
+                <Input
+                  aria-label={isCreator ? "Your royalty percentage" : `Recipient ${index + 1} royalty percentage`}
+                  className="h-11 rounded-none border-0 bg-transparent pe-2 text-end shadow-none focus-visible:ring-0"
+                  inputMode="numeric"
+                  max={100}
+                  min={0}
+                  onChange={(event) => updateAllocation(allocation.id, {
+                    sharePct: Math.min(100, Math.max(0, Number.parseInt(event.target.value, 10) || 0)),
+                  })}
+                  type="number"
+                  value={allocation.sharePct}
+                />
+                <span className="font-semibold text-muted-foreground">%</span>
+              </div>
+              {isCreator ? (
+                <span className="hidden sm:block sm:size-11" aria-hidden="true" />
+              ) : (
+                <Button
+                  aria-label={`Remove recipient ${index + 1}`}
+                  className="h-11 w-11 self-stretch sm:size-11 sm:self-center"
+                  onClick={() => onChange({
+                    allocations: value.allocations.filter((item) => item.id !== allocation.id),
+                  })}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <Trash className="size-5" />
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <Button
+        className="w-full"
+        leadingIcon={<Plus className="size-4" />}
+        onClick={() => onChange({
+          allocations: [
+            ...value.allocations,
+            {
+              id: `recipient-${value.allocations.length}-${Date.now()}`,
+              recipientKind: "collaborator",
+              sharePct: 0,
+            },
+          ],
+        })}
+        variant="outline"
+      >
+        Add wallet
+      </Button>
+
+      {creatorSharePct === 0 ? (
+        <Type as="p" variant="caption" className="text-destructive">
+          You need to receive at least some royalty.
+        </Type>
+      ) : totalSharePct !== 100 ? (
+        <Type as="p" variant="caption" className="text-destructive">
+          Royalty shares must total 100% before publishing.
+        </Type>
+      ) : (
+        <Type as="p" variant="caption" className="text-muted-foreground">
+          The split becomes fixed when the asset is registered on Story.
+        </Type>
+      )}
+    </div>
+  );
+}
+
 export function PostComposerSettingsSections({
   access,
   agentIdentityDescription = "Post from your agent identity",
@@ -198,6 +346,7 @@ export function PostComposerSettingsSections({
   onPriceChange,
   onPreviewStartSecondsChange,
   onRegionalPricingChange,
+  onRoyaltySplitChange,
   onRoyaltyPercentChange,
   onVinylReleaseUrlChange,
   onVisibilityChange,
@@ -211,7 +360,9 @@ export function PostComposerSettingsSections({
   regionalPricingEnabled = false,
   regionalPricingPreview,
   royaltyPercent,
+  royaltySplit,
   showLicenseFields,
+  showRoyaltySplit = false,
   showAnonymousIdentity = true,
   visibility,
   vinylReleaseUrl,
@@ -423,6 +574,9 @@ export function PostComposerSettingsSections({
                 </label>
               ) : null}
             </div>
+          ) : null}
+          {showRoyaltySplit && royaltySplit && onRoyaltySplitChange ? (
+            <RoyaltySplitEditor onChange={onRoyaltySplitChange} value={royaltySplit} />
           ) : null}
         </section>
       ) : null}

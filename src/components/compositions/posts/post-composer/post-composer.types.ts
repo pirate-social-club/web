@@ -199,6 +199,17 @@ export interface AssetLicenseState {
   commercialRevSharePct?: number;
 }
 
+export interface AssetRoyaltyAllocation {
+  id: string;
+  recipientKind: "creator" | "collaborator";
+  walletAddress?: string;
+  sharePct: number;
+}
+
+export interface AssetRoyaltySplitState {
+  allocations: AssetRoyaltyAllocation[];
+}
+
 export interface VideoComposerState {
   primaryVideoAspectRatio?: number;
   primaryVideoUpload?: File | null;
@@ -278,6 +289,7 @@ export interface PostComposerDraftState {
   songMode?: SongMode;
   song?: SongComposerState;
   license?: AssetLicenseState;
+  royaltySplit?: AssetRoyaltySplitState;
   derivativeStep?: DerivativeStepState;
   monetization?: MonetizationState;
   charityPartner?: CommunityCharityPartner | null;
@@ -299,6 +311,7 @@ export interface PostComposerDraftActions {
   onLinkPreviewChange?: (value: LinkPreviewState | undefined) => void;
   onSongChange?: (value: SongComposerState) => void;
   onLicenseChange?: (value: AssetLicenseState) => void;
+  onRoyaltySplitChange?: (value: AssetRoyaltySplitState) => void;
   onVideoChange?: (value: VideoComposerState) => void;
   onSongModeChange?: (value: SongMode) => void;
   onModeChange?: (value: ComposerTab) => void;
@@ -352,6 +365,7 @@ export interface PostComposerProps extends Partial<PostComposerDraftState>, Post
   onSelectCommunity?: (communityId: string) => void;
   availableTabs?: ComposerTab[];
   canCreateSongPost?: boolean;
+  currentUserWalletAddress?: string;
   draft?: PostComposerDraftState;
   actions?: PostComposerDraftActions;
   submit?: PostComposerSubmitState;

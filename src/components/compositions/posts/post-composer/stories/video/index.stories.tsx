@@ -3,6 +3,7 @@ import * as React from "react";
 
 import { PostComposer } from "../../post-composer";
 import type {
+  ComposerStep,
   ComposerReference,
   DerivativeStepState,
   VideoComposerState,
@@ -235,6 +236,7 @@ async function createSyntheticVideoFile({
 
 function FramePickerStory({
   caption,
+  composerStep,
   height,
   label,
   name,
@@ -242,6 +244,7 @@ function FramePickerStory({
   width,
 }: {
   caption: string;
+  composerStep?: ComposerStep;
   height: number;
   label: string;
   name: string;
@@ -279,6 +282,7 @@ function FramePickerStory({
   return (
     <PostComposer
       {...baseComposer}
+      composerStep={composerStep}
       mode="video"
       titleValue={title}
       titleCountLabel="18/300"
@@ -327,6 +331,54 @@ export const PaidUnlock: Story = {
         regionalPricingEnabled: true,
       }}
       regionalPricingPreview={regionalPricingPreview}
+      video={{
+        primaryVideoLabel: "full-backstage-cut.mp4",
+      }}
+    />
+  ),
+};
+
+export const RoyaltySplitMultiRecipient: Story = {
+  name: "Royalty Split / Multi-recipient",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="settings"
+      mode="video"
+      currentUserWalletAddress="0xA11ce00000000000000000000000000000000000"
+      titleValue="Full backstage cut"
+      titleCountLabel="18/300"
+      captionValue="Members can preview the post; buyers unlock the full video."
+      license={{
+        presetId: "commercial-use",
+      }}
+      monetization={{
+        visible: true,
+        priceUsd: "4.99",
+        regionalPricingAvailable: true,
+      }}
+      royaltySplit={{
+        allocations: [
+          {
+            id: "creator",
+            recipientKind: "creator",
+            walletAddress: "0xA11ce00000000000000000000000000000000000",
+            sharePct: 70,
+          },
+          {
+            id: "recipient-1",
+            recipientKind: "collaborator",
+            walletAddress: "0xEd17000000000000000000000000000000000000",
+            sharePct: 20,
+          },
+          {
+            id: "recipient-2",
+            recipientKind: "collaborator",
+            walletAddress: "0xBeef000000000000000000000000000000000000",
+            sharePct: 10,
+          },
+        ],
+      }}
       video={{
         primaryVideoLabel: "full-backstage-cut.mp4",
       }}
@@ -433,6 +485,21 @@ export const FramePickerVertical: Story = {
       label="9:16 cover frame"
       name="storybook-cover-frame-vertical-demo.webm"
       title="Vertical cover frame picker"
+      width={360}
+    />
+  ),
+};
+
+export const FramePickerVerticalPublish: Story = {
+  name: "Publish Preview / 9:16",
+  render: () => (
+    <FramePickerStory
+      caption="Vertical sample for checking the publish preview fit."
+      composerStep="publish"
+      height={640}
+      label="9:16 publish preview"
+      name="storybook-publish-preview-vertical-demo.webm"
+      title="Vertical publish preview"
       width={360}
     />
   ),

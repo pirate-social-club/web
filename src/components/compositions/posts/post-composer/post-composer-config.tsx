@@ -20,6 +20,7 @@ import type {
   LiveVisibility,
   AssetLicensePresetId,
   AssetLicenseState,
+  AssetRoyaltySplitState,
   SongComposerState,
   VideoComposerState,
 } from "./post-composer.types";
@@ -126,6 +127,21 @@ export function defaultAssetLicenseState(license?: AssetLicenseState): AssetLice
     commercialRevSharePct: presetId === "commercial-remix"
       ? license?.commercialRevSharePct ?? 10
       : undefined,
+  };
+}
+
+export function defaultAssetRoyaltySplitState(
+  royaltySplit?: AssetRoyaltySplitState,
+  currentUserWalletAddress?: string,
+): AssetRoyaltySplitState {
+  if (royaltySplit) return royaltySplit;
+  return {
+    allocations: [{
+      id: "creator",
+      recipientKind: "creator",
+      walletAddress: currentUserWalletAddress,
+      sharePct: 100,
+    }],
   };
 }
 

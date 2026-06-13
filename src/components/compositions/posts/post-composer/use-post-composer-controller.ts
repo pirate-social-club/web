@@ -21,11 +21,13 @@ import type {
   MonetizationState,
   PostComposerProps,
   AssetLicenseState,
+  AssetRoyaltySplitState,
   SongComposerState,
   VideoComposerState,
 } from "./post-composer.types";
 import {
   defaultAssetLicenseState,
+  defaultAssetRoyaltySplitState,
   defaultAudienceState,
   defaultCharityContributionState,
   defaultEventState,
@@ -57,6 +59,7 @@ export function usePostComposerController(props: PostComposerProps) {
     clubName,
     communityPickerEmptyLabel,
     communityPickerItems,
+    currentUserWalletAddress,
     onSearchEventPlaces,
     onSelectCommunity,
   } = props;
@@ -75,6 +78,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const songMode = draft?.songMode ?? props.songMode;
   const song = draft?.song ?? props.song;
   const license = draft?.license ?? props.license;
+  const royaltySplit = draft?.royaltySplit ?? props.royaltySplit;
   const video = draft?.video ?? props.video;
   const derivativeStep = draft?.derivativeStep ?? props.derivativeStep;
   const monetization = draft?.monetization ?? props.monetization;
@@ -94,6 +98,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const onLinkPreviewChange = actions?.onLinkPreviewChange ?? props.onLinkPreviewChange;
   const onSongChange = actions?.onSongChange ?? props.onSongChange;
   const onLicenseChange = actions?.onLicenseChange ?? props.onLicenseChange;
+  const onRoyaltySplitChange = actions?.onRoyaltySplitChange ?? props.onRoyaltySplitChange;
   const onVideoChange = actions?.onVideoChange ?? props.onVideoChange;
   const onSongModeChange = actions?.onSongModeChange ?? props.onSongModeChange;
   const onModeChange = actions?.onModeChange ?? props.onModeChange;
@@ -145,6 +150,9 @@ export function usePostComposerController(props: PostComposerProps) {
   const [uncontrolledLicenseState, setUncontrolledLicenseState] = React.useState<AssetLicenseState>(
     () => defaultAssetLicenseState(license),
   );
+  const [uncontrolledRoyaltySplitState, setUncontrolledRoyaltySplitState] = React.useState<AssetRoyaltySplitState>(
+    () => defaultAssetRoyaltySplitState(royaltySplit, currentUserWalletAddress),
+  );
   const [uncontrolledVideoState, setUncontrolledVideoState] = React.useState<VideoComposerState>(
     () => defaultVideoState(video),
   );
@@ -187,6 +195,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const activeImageUpload = imageUpload === undefined ? uncontrolledImageUpload : imageUpload;
   const songState = song ?? uncontrolledSongState;
   const licenseState = license ?? uncontrolledLicenseState;
+  const royaltySplitState = royaltySplit ?? uncontrolledRoyaltySplitState;
   const videoState = video ?? uncontrolledVideoState;
   const monetizationState = monetization ?? uncontrolledMonetizationState;
   const charityContributionState = charityContribution ?? uncontrolledCharityContribution;
@@ -234,6 +243,16 @@ export function usePostComposerController(props: PostComposerProps) {
     }
     onLicenseChange?.(next);
   }, [license, licenseState, onLicenseChange]);
+
+  const updateRoyaltySplitState = React.useCallback((
+    updater: (current: AssetRoyaltySplitState) => AssetRoyaltySplitState,
+  ) => {
+    const next = updater(royaltySplitState);
+    if (royaltySplit === undefined) {
+      setUncontrolledRoyaltySplitState(next);
+    }
+    onRoyaltySplitChange?.(next);
+  }, [onRoyaltySplitChange, royaltySplit, royaltySplitState]);
 
   const updateVideoState = React.useCallback((updater: (current: VideoComposerState) => VideoComposerState) => {
     const next = updater(videoState);
@@ -587,6 +606,10 @@ export function usePostComposerController(props: PostComposerProps) {
       shouldShowAssetLicense,
       state: licenseState,
       update: updateLicenseState,
+    },
+    royaltySplit: {
+      state: royaltySplitState,
+      update: updateRoyaltySplitState,
     },
     media: {
       activeImageUpload,

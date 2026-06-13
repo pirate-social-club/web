@@ -625,6 +625,59 @@ export const PaidUnlock: Story = {
   ),
 };
 
+export const RoyaltySplitMultiRecipient: Story = {
+  name: "Royalty Split / Multi-recipient",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="settings"
+      mode="song"
+      canCreateSongPost
+      currentUserWalletAddress="0xA11ce00000000000000000000000000000000000"
+      titleValue="Benefit single for the club drop"
+      titleCountLabel="36/300"
+      lyricsValue="Raise the room up / hold the line / send the chorus over..."
+      song={{
+        genre: "Hip-hop",
+        primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: benefitCoverFile,
+        coverLabel: "benefit-single-cover.png",
+        previewStartSeconds: "42",
+      }}
+      license={{
+        presetId: "commercial-use",
+      }}
+      monetization={{
+        visible: true,
+        priceUsd: "3.99",
+      }}
+      royaltySplit={{
+        allocations: [
+          {
+            id: "creator",
+            recipientKind: "creator",
+            walletAddress: "0xA11ce00000000000000000000000000000000000",
+            sharePct: 60,
+          },
+          {
+            id: "recipient-1",
+            recipientKind: "collaborator",
+            walletAddress: "0xB0b0000000000000000000000000000000000000",
+            sharePct: 25,
+          },
+          {
+            id: "recipient-2",
+            recipientKind: "collaborator",
+            walletAddress: "0xC0ffee00000000000000000000000000000000000",
+            sharePct: 15,
+          },
+        ],
+      }}
+    />
+  ),
+};
+
 export const PaidUnlockWithVinyl: Story = {
   name: "Paid Unlock / ElasticStage vinyl",
   render: () => (

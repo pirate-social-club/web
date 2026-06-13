@@ -135,6 +135,7 @@ export function PostComposerSettingsHub({
     isMobile,
     license,
     primary,
+    royaltySplit,
   } = controller;
   const attachment = attachmentFromTab(controller);
   const publicHandle = identity.identity?.publicHandle ?? "name.pirate";
@@ -210,6 +211,7 @@ export function PostComposerSettingsHub({
             commercialRevSharePct: value.trim() ? Number.parseInt(value, 10) : undefined,
           }))
         }
+        onRoyaltySplitChange={(next) => royaltySplit.update(() => next)}
         onVisibilityChange={(nextVisibility) =>
           audience.update((current) => ({
             ...current,
@@ -226,12 +228,17 @@ export function PostComposerSettingsHub({
         regionalPricingEnabled={commerce.monetizationState.regionalPricingEnabled}
         regionalPricingPreview={commerce.regionalPricingPreview}
         royaltyPercent={String(license.state.commercialRevSharePct ?? 10)}
+        royaltySplit={royaltySplit.state}
         showLicenseFields={
           attachment?.kind === "live"
             ? false
             : attachment?.kind === "video"
               ? commerce.monetizationState.visible
               : attachment?.kind === "song"
+        }
+        showRoyaltySplit={
+          attachment?.kind === "song"
+          || (attachment?.kind === "video" && commerce.monetizationState.visible)
         }
         showAnonymousIdentity={showAnonymousIdentity}
         visibility={visibilityFromController(controller)}

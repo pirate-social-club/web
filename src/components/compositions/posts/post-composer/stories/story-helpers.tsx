@@ -89,6 +89,7 @@ export const composerParameters = {
 export function InteractivePostComposer(props: PostComposerProps) {
   const [composerStep, setComposerStep] = React.useState(props.composerStep);
   const [license, setLicense] = React.useState(props.license);
+  const [royaltySplit, setRoyaltySplit] = React.useState(props.royaltySplit);
   const [derivativeStep, setDerivativeStep] = React.useState(props.derivativeStep);
   const [live, setLive] = React.useState(props.live);
   const [monetization, setMonetization] = React.useState(props.monetization);
@@ -101,11 +102,13 @@ export function InteractivePostComposer(props: PostComposerProps) {
       composerStep={composerStep}
       derivativeStep={derivativeStep}
       license={license}
+      royaltySplit={royaltySplit}
       live={live}
       monetization={monetization}
       onComposerStepChange={setComposerStep}
       onDerivativeStepChange={setDerivativeStep}
       onLicenseChange={(next) => setLicense(next)}
+      onRoyaltySplitChange={setRoyaltySplit}
       onLiveChange={setLive}
       onMonetizationChange={setMonetization}
       onSongChange={setSong}

@@ -253,6 +253,52 @@ export const LiveDuet: Story = {
   ),
 };
 
+export const LivePaidDuetRoyaltySplit: Story = {
+  name: "Live / Paid Duet / Royalty Split",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="details"
+      mode="live"
+      availableTabs={["text", "image", "video", "link", "song", "live"]}
+      titleValue="Late set with a guest"
+      titleCountLabel="20/300"
+      textBodyValue="A short late-night live set with a guest vocalist."
+      monetization={{
+        visible: true,
+        priceUsd: "5",
+        regionalPricingEnabled: false,
+      }}
+      live={{
+        roomKind: "duet",
+        accessMode: "paid",
+        visibility: "public",
+        scheduleForLater: true,
+        scheduleAt: "2026-06-20T22:00",
+        coverUpload: makeLiveCoverUpload("late-set-cover.svg"),
+        coverLabel: "late-set-cover.png",
+        guestUserId: "@guest-vocalist",
+        trackOptions: [
+          { id: "trk_01afterhours", title: "After Hours", subtitle: "DJ Solar" },
+        ],
+        setlistItems: [
+          {
+            declaredTrackId: "trk_01afterhours",
+            titleText: "After Hours",
+            artistText: "DJ Solar",
+            performanceKind: "original",
+          },
+        ],
+        setlistStatus: "ready",
+        performerAllocations: [
+          { userId: "u/host", role: "host", sharePct: 90 },
+          { userId: "u/guest-vocalist", role: "guest", sharePct: 10 },
+        ],
+      }}
+    />
+  ),
+};
+
 export const LivePaidPublishPreview: Story = {
   name: "Live / Paid Publish Preview",
   render: () => (

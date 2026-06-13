@@ -141,6 +141,7 @@ function CreatePostComposer({
         canCreateSongPost
         clubAvatarSrc={state.community.avatar_ref ?? undefined}
         clubName={`c/${state.community.display_name}`}
+        currentUserWalletAddress={state.session?.profile?.primary_wallet_address ?? undefined}
         communityPickerItems={communityPickerItems}
         composerStep={composerStep}
         onComposerStepChange={onComposerStepChange}

@@ -21,11 +21,13 @@ import type {
   MonetizationState,
   PostComposerProps,
   AssetLicenseState,
+  AssetRoyaltySplitState,
   SongComposerState,
   VideoComposerState,
 } from "./post-composer.types";
 import {
   defaultAssetLicenseState,
+  defaultAssetRoyaltySplitState,
   defaultAudienceState,
   defaultCharityContributionState,
   defaultEventState,
@@ -57,6 +59,7 @@ export function usePostComposerController(props: PostComposerProps) {
     clubName,
     communityPickerEmptyLabel,
     communityPickerItems,
+    currentUserWalletAddress,
     onSearchEventPlaces,
     onSelectCommunity,
   } = props;
@@ -75,6 +78,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const songMode = draft?.songMode ?? props.songMode;
   const song = draft?.song ?? props.song;
   const license = draft?.license ?? props.license;
+  const royaltySplit = draft?.royaltySplit ?? props.royaltySplit;
   const video = draft?.video ?? props.video;
   const derivativeStep = draft?.derivativeStep ?? props.derivativeStep;
   const monetization = draft?.monetization ?? props.monetization;
@@ -94,6 +98,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const onLinkPreviewChange = actions?.onLinkPreviewChange ?? props.onLinkPreviewChange;
   const onSongChange = actions?.onSongChange ?? props.onSongChange;
   const onLicenseChange = actions?.onLicenseChange ?? props.onLicenseChange;
+  const onRoyaltySplitChange = actions?.onRoyaltySplitChange ?? props.onRoyaltySplitChange;
   const onVideoChange = actions?.onVideoChange ?? props.onVideoChange;
   const onSongModeChange = actions?.onSongModeChange ?? props.onSongModeChange;
   const onModeChange = actions?.onModeChange ?? props.onModeChange;
@@ -145,6 +150,9 @@ export function usePostComposerController(props: PostComposerProps) {
   const [uncontrolledLicenseState, setUncontrolledLicenseState] = React.useState<AssetLicenseState>(
     () => defaultAssetLicenseState(license),
   );
+  const [uncontrolledRoyaltySplitState, setUncontrolledRoyaltySplitState] = React.useState<AssetRoyaltySplitState>(
+    () => defaultAssetRoyaltySplitState(royaltySplit, currentUserWalletAddress),
+  );
   const [uncontrolledVideoState, setUncontrolledVideoState] = React.useState<VideoComposerState>(
     () => defaultVideoState(video),
   );
@@ -187,6 +195,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const activeImageUpload = imageUpload === undefined ? uncontrolledImageUpload : imageUpload;
   const songState = song ?? uncontrolledSongState;
   const licenseState = license ?? uncontrolledLicenseState;
+  const royaltySplitState = royaltySplit ?? uncontrolledRoyaltySplitState;
   const videoState = video ?? uncontrolledVideoState;
   const monetizationState = monetization ?? uncontrolledMonetizationState;
   const charityContributionState = charityContribution ?? uncontrolledCharityContribution;
@@ -234,6 +243,16 @@ export function usePostComposerController(props: PostComposerProps) {
     }
     onLicenseChange?.(next);
   }, [license, licenseState, onLicenseChange]);
+
+  const updateRoyaltySplitState = React.useCallback((
+    updater: (current: AssetRoyaltySplitState) => AssetRoyaltySplitState,
+  ) => {
+    const next = updater(royaltySplitState);
+    if (royaltySplit === undefined) {
+      setUncontrolledRoyaltySplitState(next);
+    }
+    onRoyaltySplitChange?.(next);
+  }, [onRoyaltySplitChange, royaltySplit, royaltySplitState]);
 
   const updateVideoState = React.useCallback((updater: (current: VideoComposerState) => VideoComposerState) => {
     const next = updater(videoState);
@@ -323,13 +342,14 @@ export function usePostComposerController(props: PostComposerProps) {
   }, [setSongModeWithCallback, updateDerivativeState]);
 
   const activeVideoSourceMode = activeTab === "video" && derivativeState?.visible
+    && derivativeState.trigger === "uses_song"
     ? "uses_song" as const
     : "original" as const;
   const handleVideoSourceModeChange = React.useCallback((next: "original" | "uses_song") => {
     if (next === "uses_song") {
       updateDerivativeState((current) => ({
         visible: true,
-        required: current?.required ?? false,
+        required: true,
         trigger: "uses_song",
         requirementLabel: current?.requirementLabel,
         searchResults: current?.searchResults ?? [],
@@ -346,13 +366,20 @@ export function usePostComposerController(props: PostComposerProps) {
     });
   }, [updateDerivativeState]);
 
+  const derivativeRequiresRefs = Boolean(
+    derivativeState?.visible
+    && (
+      derivativeState.required
+      || (activeTab === "video" && derivativeState.trigger === "uses_song")
+    ),
+  );
   const derivativeMissingRefs = Boolean(
-    derivativeState?.visible && derivativeState.required && !(derivativeState.references?.length),
+    derivativeRequiresRefs && !(derivativeState?.references?.length),
   );
   const derivativeHasReferences = (derivativeState?.references?.length ?? 0) > 0;
   const derivativeMissingSourceTermsAcceptance = Boolean(
     derivativeState?.visible
-    && (derivativeState.required || derivativeHasReferences)
+    && (derivativeRequiresRefs || derivativeHasReferences)
     && derivativeHasReferences
     && derivativeState.sourceTermsAccepted !== true,
   );
@@ -577,6 +604,10 @@ export function usePostComposerController(props: PostComposerProps) {
       shouldShowAssetLicense,
       state: licenseState,
       update: updateLicenseState,
+    },
+    royaltySplit: {
+      state: royaltySplitState,
+      update: updateRoyaltySplitState,
     },
     media: {
       activeImageUpload,

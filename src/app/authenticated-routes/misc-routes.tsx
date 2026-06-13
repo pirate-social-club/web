@@ -18,6 +18,7 @@ import { toast } from "@/components/primitives/sonner";
 import { Type } from "@/components/primitives/type";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useApi } from "@/lib/api";
+import { useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useRecentCommunities } from "@/lib/owned-communities";
 import { forgetKnownCommunity } from "@/lib/known-communities-store";
@@ -65,6 +66,8 @@ export function CreatePostGlobalPage({
   const knownCommunities = useRecentCommunities();
   const [selectedCommunityId, setSelectedCommunityId] = React.useState<string | null>(null);
   const { actions, state } = useCreatePostDraftState();
+  const session = useSession();
+  const currentUserWalletAddress = session?.profile?.primary_wallet_address ?? undefined;
   const pickerItems: CommunityPickerItem[] = React.useMemo(
     () => knownCommunities.map((c) => ({
       communityId: c.communityId,
@@ -157,6 +160,7 @@ export function CreatePostGlobalPage({
             availableTabs={["text", "image", "video", "link", "song"]}
             canCreateSongPost
             clubName={copy.common.chooseCommunity}
+            currentUserWalletAddress={currentUserWalletAddress}
             communityPickerEmptyLabel={copy.common.noRecentCommunities}
             communityPickerItems={pickerItems}
             draft={composerDraft}
@@ -181,6 +185,7 @@ export function CreatePostGlobalPage({
         availableTabs={["text", "image", "video", "link", "song"]}
         canCreateSongPost
         clubName={copy.common.chooseCommunity}
+        currentUserWalletAddress={currentUserWalletAddress}
         communityPickerEmptyLabel={copy.common.noRecentCommunities}
         communityPickerItems={pickerItems}
         draft={composerDraft}

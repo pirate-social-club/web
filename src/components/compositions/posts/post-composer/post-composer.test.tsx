@@ -1468,7 +1468,7 @@ describe("PostComposer monetization", () => {
 
     expect(derivativeStep).toMatchObject({
       visible: true,
-      required: false,
+      required: true,
       trigger: "uses_song",
       searchResults: [],
       references: [],
@@ -1711,6 +1711,67 @@ describe("PostComposer monetization", () => {
     }
 
     (songModeTabs.props.onValueChange as ((value: string) => void) | undefined)?.("original");
+
+    expect(songMode).toBe("original");
+    expect(derivativeStep).toBeUndefined();
+  });
+
+  test("clears the remix search bar on remix→original when the parent starts uncontrolled", () => {
+    let derivativeStep: PostComposerProps["derivativeStep"];
+    let songMode: PostComposerProps["songMode"];
+    const findTabs = (tree: React.ReactNode, value: string) => findElement(
+      tree,
+      (element) => element.props.value === value && typeof element.props.onValueChange === "function",
+    );
+
+    const initialTree = renderComposer({
+      availableTabs: ["song"],
+      canCreateSongPost: true,
+      clubName: "Lane1",
+      composerStep: "details",
+      mode: "song",
+      onDerivativeStepChange: (next) => {
+        derivativeStep = next;
+      },
+      onSongModeChange: (next) => {
+        songMode = next;
+      },
+    });
+
+    const remixTabs = findTabs(initialTree, "original");
+    if (!remixTabs) {
+      throw new Error("Missing song mode tabs");
+    }
+    (remixTabs.props.onValueChange as ((value: string) => void) | undefined)?.("remix");
+
+    expect(songMode).toBe("remix");
+    expect(derivativeStep).toEqual(expect.objectContaining({
+      visible: true,
+      required: true,
+      trigger: "remix",
+    }));
+
+    const remixedTree = renderComposer({
+      availableTabs: ["song"],
+      canCreateSongPost: true,
+      clubName: "Lane1",
+      composerStep: "details",
+      derivativeStep,
+      mode: "song",
+      onDerivativeStepChange: (next) => {
+        derivativeStep = next;
+      },
+      onSongModeChange: (next) => {
+        songMode = next;
+      },
+      songMode: "remix",
+    });
+
+    const originalTabs = findTabs(remixedTree, "remix");
+    if (!originalTabs) {
+      throw new Error("Missing song mode tabs after switching to remix");
+    }
+    (originalTabs.props.onValueChange as ((value: string) => void) | undefined)?.("original");
 
     expect(songMode).toBe("original");
     expect(derivativeStep).toBeUndefined();

@@ -20,7 +20,9 @@ import type {
   ApiDerivativeSourceListResponse,
   ApiDerivativeSourceQueryKind,
   ApiDerivativeSourceScope,
+  ApiSongArtifactUploadCompleteRequest,
   ApiSongArtifactUploadContentRequest,
+  ApiSongArtifactUploadPartSignedUrlResponse,
   CommunityListCommentsOptions,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
@@ -203,6 +205,34 @@ export function createCommunityContentApi(request: ApiRequest) {
         },
       );
     },
+    getArtifactUploadPartSignedUrl: (
+      communityId: string,
+      songArtifactUploadId: string,
+      sessionId: string,
+      partNumber: number,
+    ): Promise<ApiSongArtifactUploadPartSignedUrlResponse> =>
+      request<ApiSongArtifactUploadPartSignedUrlResponse>(
+        `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(songArtifactUploadId)}/sessions/${encodeURIComponent(sessionId)}/parts/${encodeURIComponent(String(partNumber))}/signed-url`,
+      ),
+    completeArtifactUploadSession: (
+      communityId: string,
+      songArtifactUploadId: string,
+      sessionId: string,
+      body: ApiSongArtifactUploadCompleteRequest,
+    ): Promise<SongArtifactUpload> =>
+      request<SongArtifactUpload>(
+        `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(songArtifactUploadId)}/sessions/${encodeURIComponent(sessionId)}/complete`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    abortArtifactUploadSession: (
+      communityId: string,
+      songArtifactUploadId: string,
+      sessionId: string,
+    ): Promise<void> =>
+      request<void>(
+        `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(songArtifactUploadId)}/sessions/${encodeURIComponent(sessionId)}/abort`,
+        { method: "POST" },
+      ),
     createSongArtifactBundle: (
       communityId: string,
       body: CreateSongArtifactBundleRequest,

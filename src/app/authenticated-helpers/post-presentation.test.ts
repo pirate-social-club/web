@@ -160,6 +160,50 @@ function createSongPost(overrides: Partial<LocalizedPostResponse["post"]> = {}):
   } as unknown as LocalizedPostResponse;
 }
 
+function createVideoPost(overrides: Partial<LocalizedPostResponse["post"]> = {}): LocalizedPostResponse {
+  return {
+    post: {
+      access_mode: "public",
+      age_gate_policy: "none",
+      analysis_state: "allow",
+      anonymous_label: null,
+      anonymous_scope: null,
+      asset: null,
+      author_user: "usr_video",
+      authorship_mode: "human_direct",
+      body: null,
+      caption: "New video.",
+      community: "cmt_video",
+      content_safety_state: "safe",
+      created: unixTimestamp("2026-05-16T09:00:00.000Z"),
+      disclosed_qualifiers_json: null,
+      id: "pst_video",
+      identity_mode: "public",
+      media_refs: [],
+      object: "post",
+      post_type: "video",
+      source_language: "en",
+      status: "published",
+      title: "Portrait video",
+      visibility: "public",
+      ...overrides,
+    },
+    downvote_count: 0,
+    like_count: 0,
+    machine_translated: false,
+    resolved_locale: "en",
+    source_hash: "src_video",
+    thread_snapshot: null,
+    translated_body: null,
+    translated_caption: null,
+    translated_title: null,
+    translation_state: "same_language",
+    upvote_count: 0,
+    viewer_reaction_kinds: [],
+    viewer_vote: null,
+  } as unknown as LocalizedPostResponse;
+}
+
 function createSongAsset(overrides: Partial<Asset> = {}): Asset {
   return {
     access_mode: "public",
@@ -364,6 +408,25 @@ describe("post presentation links", () => {
     });
 
     expect(title.title).toBe("English fallback");
+  });
+});
+
+describe("post presentation videos", () => {
+  test("maps persisted portrait poster dimensions into card aspect ratio", () => {
+    const content = toCommunityPostContent(createVideoPost({
+      media_refs: [{
+        storage_ref: "https://media.test/video.mp4",
+        mime_type: "video/mp4",
+        size_bytes: 12,
+        poster_ref: "https://media.test/poster.jpg",
+        poster_width: 720,
+        poster_height: 1280,
+      }],
+    } as unknown as Partial<LocalizedPostResponse["post"]>));
+
+    expect(content.type).toBe("video");
+    if (content.type !== "video") return;
+    expect(content.aspectRatio).toBe(9 / 16);
   });
 });
 

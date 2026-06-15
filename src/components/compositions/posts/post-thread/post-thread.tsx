@@ -14,7 +14,8 @@ import { CommentTree } from "./comment-tree";
 import { ReplyAttachmentControl, revokeReplyAttachment } from "./comment-media";
 import { MobileReplyScreen } from "./mobile-reply-screen";
 import { ReplyContextCard } from "./reply-context-card";
-import type { CommentSort, PostThreadProps, PostThreadReplyAttachment, PostThreadReplyInput } from "./post-thread.types";
+import { ReplyIdentitySelect } from "./reply-identity-select";
+import type { CommentSort, PostThreadIdentityMode, PostThreadProps, PostThreadReplyAttachment, PostThreadReplyInput } from "./post-thread.types";
 import { Type } from "@/components/primitives/type";
 
 export function PostThread({
@@ -29,6 +30,7 @@ export function PostThread({
   rootReplyCancelLabel,
   rootReplySubmitLabel,
   onRootReplySubmit,
+  replyIdentity,
   commentSort,
   availableCommentSorts,
   onCommentSortChange,
@@ -41,6 +43,7 @@ export function PostThread({
   const [rootReplyOpen, setRootReplyOpen] = React.useState(false);
   const [rootReplyBody, setRootReplyBody] = React.useState("");
   const [rootReplyAttachment, setRootReplyAttachment] = React.useState<PostThreadReplyAttachment | null>(null);
+  const [rootReplyIdentityMode, setRootReplyIdentityMode] = React.useState<PostThreadIdentityMode>("public");
   const [rootReplyBusy, setRootReplyBusy] = React.useState(false);
   const rootReplyContainerRef = React.useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -55,6 +58,7 @@ export function PostThread({
   } | null>(null);
   const [mobileReplyBody, setMobileReplyBody] = React.useState("");
   const [mobileReplyAttachment, setMobileReplyAttachment] = React.useState<PostThreadReplyAttachment | null>(null);
+  const [mobileReplyIdentityMode, setMobileReplyIdentityMode] = React.useState<PostThreadIdentityMode>("public");
   const [mobileReplyBusy, setMobileReplyBusy] = React.useState(false);
 
   React.useEffect(() => {
@@ -85,17 +89,24 @@ export function PostThread({
     }
     try {
       setRootReplyBusy(true);
-      const result = await onRootReplySubmit({ attachment: rootReplyAttachment, body: trimmed, authorMode: "human" });
+      const result = await onRootReplySubmit({
+        anonymousScope: rootReplyIdentityMode === "anonymous" ? replyIdentity?.anonymousScope ?? null : null,
+        attachment: rootReplyAttachment,
+        authorMode: "human",
+        body: trimmed,
+        identityMode: rootReplyIdentityMode,
+      });
       if (result === "blocked") {
         return;
       }
       setRootReplyBody("");
       setRootReplyAttachment(null);
+      setRootReplyIdentityMode("public");
       setRootReplyOpen(false);
     } finally {
       setRootReplyBusy(false);
     }
-  }, [canSubmitRootReply, onRootReplySubmit, rootReplyAttachment, rootReplyBody]);
+  }, [canSubmitRootReply, onRootReplySubmit, replyIdentity?.anonymousScope, rootReplyAttachment, rootReplyBody, rootReplyIdentityMode]);
 
   const handleMobileReplySubmit = React.useCallback(async () => {
     const trimmed = mobileReplyBody.trim();
@@ -104,22 +115,30 @@ export function PostThread({
     }
     try {
       setMobileReplyBusy(true);
-      const result = await mobileReplyTarget.onSubmit({ attachment: mobileReplyAttachment, body: trimmed, authorMode: "human" });
+      const result = await mobileReplyTarget.onSubmit({
+        anonymousScope: mobileReplyIdentityMode === "anonymous" ? replyIdentity?.anonymousScope ?? null : null,
+        attachment: mobileReplyAttachment,
+        authorMode: "human",
+        body: trimmed,
+        identityMode: mobileReplyIdentityMode,
+      });
       if (result === "blocked") {
         return;
       }
       setMobileReplyBody("");
       setMobileReplyAttachment(null);
+      setMobileReplyIdentityMode("public");
       setMobileReplyTarget(null);
     } finally {
       setMobileReplyBusy(false);
     }
-  }, [canSubmitMobileReply, mobileReplyAttachment, mobileReplyBody, mobileReplyTarget]);
+  }, [canSubmitMobileReply, mobileReplyAttachment, mobileReplyBody, mobileReplyIdentityMode, mobileReplyTarget, replyIdentity?.anonymousScope]);
 
   const handleMobileReplyCancel = React.useCallback(() => {
     setMobileReplyTarget(null);
     setMobileReplyBody("");
     setMobileReplyAttachment(null);
+    setMobileReplyIdentityMode("public");
   }, []);
 
   const handleRootAttachmentChange = React.useCallback((attachment: PostThreadReplyAttachment | null) => {
@@ -147,6 +166,7 @@ export function PostThread({
     });
     setMobileReplyBody("");
     setMobileReplyAttachment(null);
+    setMobileReplyIdentityMode("public");
   }, []);
 
   const openMobileRootReply = React.useCallback(() => {
@@ -168,6 +188,7 @@ export function PostThread({
     });
     setMobileReplyBody("");
     setMobileReplyAttachment(null);
+    setMobileReplyIdentityMode("public");
   }, [onRootReplySubmit, post]);
 
   return (
@@ -225,25 +246,33 @@ export function PostThread({
               disabled={rootReplyBusy}
               onChange={handleRootAttachmentChange}
             />
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => {
-                  setRootReplyOpen(false);
-                  setRootReplyBody("");
-                  handleRootAttachmentChange(null);
-                }}
-              >
-                {rootReplyCancelLabel}
-              </Button>
-              <Button
-                disabled={rootReplyBusy || !canSubmitRootReply}
-                size="sm"
-                onClick={() => void handleRootReplySubmit()}
-              >
-                {rootReplySubmitLabel}
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <ReplyIdentitySelect
+                identity={replyIdentity}
+                onChange={setRootReplyIdentityMode}
+                value={rootReplyIdentityMode}
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setRootReplyOpen(false);
+                    setRootReplyBody("");
+                    setRootReplyIdentityMode("public");
+                    handleRootAttachmentChange(null);
+                  }}
+                >
+                  {rootReplyCancelLabel}
+                </Button>
+                <Button
+                  disabled={rootReplyBusy || !canSubmitRootReply}
+                  size="sm"
+                  onClick={() => void handleRootReplySubmit()}
+                >
+                  {rootReplySubmitLabel}
+                </Button>
+              </div>
             </div>
           </div>
         ) : null}
@@ -265,6 +294,7 @@ export function PostThread({
             className="px-4"
             comments={items}
             onReplyRequest={isMobile ? handleCommentReplyRequest : undefined}
+            replyIdentity={replyIdentity}
           />
         ) : (
           <Type as="div" variant="caption" className="px-4 py-5">{resolvedEmptyCommentsLabel}</Type>
@@ -283,6 +313,13 @@ export function PostThread({
                 body={mobileReplyTarget.body}
                 eyebrow={mobileReplyTarget.eyebrow}
                 metadata={mobileReplyTarget.metadata}
+              />
+            )}
+            identityControl={(
+              <ReplyIdentitySelect
+                identity={replyIdentity}
+                onChange={setMobileReplyIdentityMode}
+                value={mobileReplyIdentityMode}
               />
             )}
             onAttachmentChange={handleMobileAttachmentChange}

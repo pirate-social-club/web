@@ -15,6 +15,7 @@ import { resolveApiUrl } from "@/lib/api/base-url";
 import { getAccessToken } from "@/lib/api/session-store";
 import { buildStoryExplorerIpAssetUrl } from "@/lib/story/story-portal";
 import { toast } from "@/components/primitives/sonner";
+import { normalizeMediaAspectRatio } from "@/components/compositions/posts/video-preview-layout";
 
 type StoryRoyaltyAsset = NonNullable<SongPresentationOptions["asset"]>;
 type VinylReleaseCarrier = Pick<ApiCommunityListing | ApiCommunityPurchase, "vinyl_release_provider" | "vinyl_release_url">;
@@ -30,6 +31,8 @@ type DownloadableAudio = {
 };
 type SongPresentationWithDownloads = NonNullable<ApiPost["song_presentation"]> & {
   downloadable_audio?: DownloadableAudio[] | null;
+  instrumental_audio?: DownloadableAudio | null;
+  vocal_audio?: DownloadableAudio | null;
 };
 
 function stringField(input: unknown, key: string): string | undefined {
@@ -37,6 +40,19 @@ function stringField(input: unknown, key: string): string | undefined {
 
   const value = (input as Record<string, unknown>)[key];
   return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function numberField(input: unknown, key: string): number | undefined {
+  if (!input || typeof input !== "object") return undefined;
+
+  const value = (input as Record<string, unknown>)[key];
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function videoMediaAspectRatio(input: unknown): number | undefined {
+  const width = numberField(input, "width") ?? numberField(input, "poster_width");
+  const height = numberField(input, "height") ?? numberField(input, "poster_height");
+  return normalizeMediaAspectRatio(width ?? 0, height ?? 0);
 }
 
 function ipfsGatewayUrl(cid: string): string {
@@ -427,6 +443,7 @@ export function toVideoPostContent(
     onPlay: assetSourceDescriptor && songOptions?.playback
       ? () => void songOptions.playback?.loadAssetSource(assetSourceDescriptor)
       : undefined,
+    aspectRatio: videoMediaAspectRatio(primaryMedia),
     playbackState: assetSourceState?.playbackState ?? "idle",
     posterSrc: primaryMedia?.poster_ref ?? undefined,
     priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,

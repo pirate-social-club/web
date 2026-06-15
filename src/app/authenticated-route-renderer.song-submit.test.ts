@@ -374,6 +374,69 @@ describe("song submit payload helpers", () => {
     });
   });
 
+  test("requires a selected source song before publishing a derivative video", () => {
+    expect(resolveComposerSubmitState({
+      canSubmit: true,
+      composerMode: "video",
+      derivativeStep: {
+        visible: true,
+        required: false,
+        trigger: "uses_song",
+        references: [],
+      },
+      license: { presetId: "non-commercial" },
+      monetizationState: { visible: true },
+      paidSongPriceInvalid: false,
+      submitError: null,
+    })).toEqual({
+      canContinue: false,
+      canPost: false,
+      disabled: true,
+      submitError: "Attach a source song before publishing this video.",
+    });
+
+    expect(resolveComposerSubmitState({
+      canSubmit: true,
+      composerMode: "video",
+      derivativeStep: {
+        visible: true,
+        required: false,
+        trigger: "uses_song",
+        references: [{ id: "story:asset:ast_source_song", title: "Source song" }],
+      },
+      license: { presetId: "non-commercial" },
+      monetizationState: { visible: true },
+      paidSongPriceInvalid: false,
+      submitError: null,
+    })).toEqual({
+      canContinue: false,
+      canPost: false,
+      disabled: true,
+      submitError: "Accept the source song terms before publishing this video.",
+    });
+
+    expect(resolveComposerSubmitState({
+      canSubmit: true,
+      composerMode: "video",
+      derivativeStep: {
+        visible: true,
+        required: false,
+        trigger: "uses_song",
+        references: [{ id: "story:asset:ast_source_song", title: "Source song" }],
+        sourceTermsAccepted: true,
+      },
+      license: { presetId: "non-commercial" },
+      monetizationState: { visible: true },
+      paidSongPriceInvalid: false,
+      submitError: null,
+    })).toEqual({
+      canContinue: true,
+      canPost: true,
+      disabled: false,
+      submitError: null,
+    });
+  });
+
   test("requires ticket price for paid live rooms", () => {
     expect(resolveComposerSubmitState({
       canSubmit: true,

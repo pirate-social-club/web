@@ -632,11 +632,20 @@ export const AgeProofRequired: Story = {
   render: () => (
     <PostCard
       {...basePost}
-      title="Explicit version - uncut"
+      title="Explicit single with cover art"
       content={{
         ...baseSong,
-        contentSafetyState: "adult",
+        accessMode: "locked",
         ageGatePolicy: "18_plus",
+        ageGateViewerState: "proof_required",
+        artworkSrc: "https://picsum.photos/seed/pirate-explicit-song-cover/240/240",
+        contentSafetyState: "adult",
+        listingMode: "listed",
+        listingStatus: "active",
+        priceLabel: "$3.99",
+        title: "Midnight Waves (Explicit)",
+        onBuy: noop,
+        onVerifyAge: noop,
       }}
     />
   ),

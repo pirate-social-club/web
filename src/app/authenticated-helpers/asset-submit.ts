@@ -10,7 +10,7 @@ import type {
 import { usdToCents } from "@/lib/formatting/currency";
 
 type AssetDerivativeReference = NonNullable<DerivativeStepState["references"]>[number];
-export type AssetDerivativeInput = Pick<DerivativeStepState, "required" | "sourceTermsAccepted"> & {
+export type AssetDerivativeInput = Pick<DerivativeStepState, "required" | "sourceTermsAccepted"> & Partial<Pick<DerivativeStepState, "trigger" | "visible">> & {
   references?: AssetDerivativeReference[];
 };
 
@@ -20,6 +20,10 @@ function isResolvedDerivativeReference(reference: AssetDerivativeReference): boo
 
 export function resolvedDerivativeReferences(input: AssetDerivativeInput | undefined): AssetDerivativeReference[] {
   return input?.references?.filter(isResolvedDerivativeReference) ?? [];
+}
+
+function isVideoDerivativeSongMode(input: AssetDerivativeInput | undefined): boolean {
+  return input?.visible === true && input.trigger === "uses_song";
 }
 
 export function validateAssetLicense(license: AssetLicenseState | undefined, contentLabel: "song" | "video"): string | null {
@@ -132,7 +136,9 @@ export function resolveComposerSubmitState(input: {
       return "Accept the source license terms before publishing this remix.";
     }
 
-    if (input.composerMode === "video" && input.derivativeStep?.required && selectedSourceCount === 0) {
+    const videoRequiresSource = input.derivativeStep?.required || isVideoDerivativeSongMode(input.derivativeStep);
+
+    if (input.composerMode === "video" && videoRequiresSource && selectedSourceCount === 0) {
       return "Attach a source song before publishing this video.";
     }
 

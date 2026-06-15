@@ -141,6 +141,7 @@ export interface DerivativeStepState {
   query?: string;
   references?: ComposerReference[];
   searchResults?: ComposerReference[];
+  searchError?: string;
   searchLoading?: boolean;
   requirementLabel?: string;
   licenseSummary?: DerivativeLicenseSummary;

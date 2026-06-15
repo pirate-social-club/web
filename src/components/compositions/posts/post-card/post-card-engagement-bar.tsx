@@ -1,9 +1,9 @@
 import * as React from "react";
-import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Lock, ShareFat } from "@phosphor-icons/react";
 
 import { triggerNavigationTapHaptic, triggerShareSuccessHaptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
+import { ActionMenu } from "@/components/primitives/action-menu";
 import { VotePill } from "@/components/primitives/vote-pill";
 import { CommentPill } from "@/components/primitives/comment-pill";
 import type { PostCardEngagement, PostCardShareAction } from "./post-card.types";
@@ -38,6 +38,13 @@ function SharePillMenu({
     triggerShareSuccessHaptic();
     onFallbackShare();
   }, [onFallbackShare]);
+  const handleAction = React.useCallback((key: string) => {
+    const action = actions.find((item) => item.key === key);
+    if (!action || action.disabled) return;
+
+    triggerShareSuccessHaptic();
+    void action.onSelect?.();
+  }, [actions]);
 
   const button = (
     <button
@@ -56,48 +63,15 @@ function SharePillMenu({
   }
 
   return (
-    <DropdownMenuPrimitive.Root>
-      <DropdownMenuPrimitive.Trigger asChild>
-        {button}
-      </DropdownMenuPrimitive.Trigger>
-      <DropdownMenuPrimitive.Portal>
-        <DropdownMenuPrimitive.Content
-          align="start"
-          sideOffset={4}
-          className={cn(
-            "relative z-50 min-w-40 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-popover p-0 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out",
-            "data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1",
-          )}
-        >
-          {actions.map((item, index) => (
-            <React.Fragment key={item.key}>
-              {item.separatorBefore && index > 0 ? (
-                <DropdownMenuPrimitive.Separator className="-mx-1 my-1 h-px bg-border" />
-              ) : null}
-              <DropdownMenuPrimitive.Item
-                className={cn(
-                  "relative w-full cursor-pointer select-none rounded-none py-2.5 pe-3 ps-3 text-start text-base text-popover-foreground outline-none transition-colors hover:text-foreground focus:bg-muted focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                  item.icon ? "grid grid-cols-[1.25rem_1fr] items-center gap-2" : "block",
-                  item.destructive && "text-destructive focus:text-destructive",
-                )}
-                disabled={item.disabled}
-                onClick={() => {
-                  triggerShareSuccessHaptic();
-                  void item.onSelect?.();
-                }}
-              >
-                {item.icon ? (
-                  <span className="inline-flex size-5 items-center justify-center">
-                    {item.icon}
-                  </span>
-                ) : null}
-                <span>{item.label}</span>
-              </DropdownMenuPrimitive.Item>
-            </React.Fragment>
-          ))}
-        </DropdownMenuPrimitive.Content>
-      </DropdownMenuPrimitive.Portal>
-    </DropdownMenuPrimitive.Root>
+    <ActionMenu
+      align="start"
+      contentClassName="min-w-40"
+      items={actions}
+      label="Share"
+      onAction={handleAction}
+      title="Share"
+      trigger={button}
+    />
   );
 }
 

@@ -115,6 +115,8 @@ describe("video create-post submit helpers", () => {
       access_mode: undefined,
       commercial_rev_share_pct: undefined,
       license_preset: undefined,
+      rights_basis: undefined,
+      upstream_asset_refs: undefined,
       media_refs: [{
         storage_ref: "artifact_video",
         mime_type: "video/mp4",
@@ -164,6 +166,74 @@ describe("video create-post submit helpers", () => {
     expect(request.commercial_rev_share_pct).toBe(25);
   });
 
+  test("buildVideoPostRequest includes derivative song references", () => {
+    const request = buildVideoPostRequest({
+      baseRequest: createBaseRequest(),
+      caption: "Video using a song",
+      derivativeStep: {
+        visible: true,
+        trigger: "uses_song",
+        references: [
+          { id: "story:asset:ast_source_song", title: "Source song" },
+          { id: "story:asset:ast_source_song", title: "Source song duplicate" },
+        ],
+        sourceTermsAccepted: true,
+      },
+      monetized: true,
+      posterFrame: {
+        frameMs: 0,
+        height: 720,
+        width: 1280,
+      },
+      title: "Derivative video",
+      uploadedPoster: {
+        media_ref: "poster_media",
+        mime_type: "image/jpeg",
+        size_bytes: 123,
+      },
+      uploadedVideo: {
+        storage_ref: "artifact_video",
+        mime_type: "video/mp4",
+        size_bytes: 456,
+        content_hash: "hash_video",
+      },
+    });
+
+    expect(request.rights_basis).toBe("derivative");
+    expect(request.upstream_asset_refs).toEqual(["story:asset:ast_source_song"]);
+  });
+
+  test("buildVideoPostRequest rejects active derivative video mode without source refs", () => {
+    expect(() => buildVideoPostRequest({
+      baseRequest: createBaseRequest(),
+      caption: "Video using a song",
+      derivativeStep: {
+        visible: true,
+        trigger: "uses_song",
+        references: [],
+        sourceTermsAccepted: true,
+      },
+      monetized: true,
+      posterFrame: {
+        frameMs: 0,
+        height: 720,
+        width: 1280,
+      },
+      title: "Derivative video",
+      uploadedPoster: {
+        media_ref: "poster_media",
+        mime_type: "image/jpeg",
+        size_bytes: 123,
+      },
+      uploadedVideo: {
+        storage_ref: "artifact_video",
+        mime_type: "video/mp4",
+        size_bytes: 456,
+        content_hash: "hash_video",
+      },
+    })).toThrow("Attach a source song before publishing this video.");
+  });
+
   test("uploadVideoArtifact creates an artifact upload and uploads file content", async () => {
     const file = createVideoFile();
     const createArtifactUploadCalls: Array<{
@@ -210,6 +280,24 @@ describe("video create-post submit helpers", () => {
       byteLength: file.size,
       communityId: "com_test",
     }]);
+  });
+
+  test("uploadVideoArtifact rejects public videos above the product cap before upload", async () => {
+    const file = createVideoFile();
+    Object.defineProperty(file, "size", { value: (2 * 1024 * 1024 * 1024) + 1 });
+
+    await expect(uploadVideoArtifact({
+      communityId: "com_test",
+      createArtifactUpload: async () => {
+        throw new Error("createArtifactUpload should not be called");
+      },
+      uploadArtifactContent: async () => {
+        throw new Error("uploadArtifactContent should not be called");
+      },
+      videoState: {
+        primaryVideoUpload: file,
+      },
+    })).rejects.toThrow("Public videos are currently capped at 2 GB");
   });
 
   test("submitVideoPost uploads video and poster before creating the post", async () => {
@@ -309,6 +397,8 @@ describe("video create-post submit helpers", () => {
         access_mode: undefined,
         commercial_rev_share_pct: undefined,
         license_preset: undefined,
+        rights_basis: undefined,
+        upstream_asset_refs: undefined,
         media_refs: [{
           storage_ref: "artifact_video",
           mime_type: "video/mp4",
@@ -324,6 +414,56 @@ describe("video create-post submit helpers", () => {
       },
     }]);
     expect(createListingCalls).toEqual([]);
+  });
+
+  test("submitVideoPost sends selected derivative song refs", async () => {
+    const file = createVideoFile();
+    const createPostCalls: CreatePostRequest[] = [];
+
+    await submitVideoPost({
+      authorMode: "human",
+      baseRequest: createBaseRequest(),
+      caption: "",
+      communityId: "com_test",
+      createArtifactUpload: async () => createArtifact({ id: "sau_intent" }),
+      createListing: async () => createListing(),
+      createPost: async (_communityId, request) => {
+        createPostCalls.push(request);
+        return createPost();
+      },
+      derivativeStep: {
+        visible: true,
+        trigger: "uses_song",
+        references: [{ id: "story:asset:ast_source_song", title: "Source song" }],
+        sourceTermsAccepted: true,
+      },
+      extractPosterFrameFile: async () => ({
+        dataUrl: "data:image/jpeg;base64,cG9zdGVy",
+        file: createPosterFile(),
+        frameMs: 0,
+        height: 720,
+        width: 1280,
+      }),
+      monetized: false,
+      paidAssetPriceUsd: null,
+      pricingPolicyRegionalPricingEnabled: false,
+      regionalPricingEnabled: false,
+      signAgentAuthoredBody: async (_path, request) => request,
+      title: "Derivative video",
+      uploadArtifactContent: async () => createArtifact(),
+      uploadMedia: async () => ({
+        media_ref: "poster_media",
+        mime_type: "image/jpeg",
+        size_bytes: 123,
+      }),
+      videoState: {
+        primaryVideoUpload: file,
+      },
+    });
+
+    expect(createPostCalls).toHaveLength(1);
+    expect(createPostCalls[0]?.rights_basis).toBe("derivative");
+    expect(createPostCalls[0]?.upstream_asset_refs).toEqual(["story:asset:ast_source_song"]);
   });
 
   test("submitVideoPost creates a paid listing for monetized videos", async () => {
@@ -551,6 +691,8 @@ describe("video create-post submit helpers", () => {
       access_mode: undefined,
       commercial_rev_share_pct: undefined,
       license_preset: undefined,
+      rights_basis: undefined,
+      upstream_asset_refs: undefined,
       media_refs: [{
         storage_ref: "artifact_video",
         mime_type: "video/mp4",

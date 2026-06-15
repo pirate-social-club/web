@@ -3,6 +3,7 @@
 import * as React from "react";
 import type { CommunityFollowResponse } from "@pirate/api-contracts";
 
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { logger } from "@/lib/logger";
 
 type CommunityFollowMutation = (communityId: string) => Promise<CommunityFollowResponse>;
@@ -36,6 +37,11 @@ function normalizeCommunityId(communityId: string | null | undefined): string | 
   return communityId?.trim() || null;
 }
 
+function canonicalCommunityIdForComparison(communityId: string | null | undefined): string | null {
+  const normalized = normalizeCommunityId(communityId);
+  return normalized?.startsWith("cmt_") ? `com_${normalized}` : normalized;
+}
+
 function normalizeFollowerCount(followerCount: number | null | undefined): number | null {
   return typeof followerCount === "number" ? followerCount : null;
 }
@@ -48,6 +54,51 @@ function nextFollowerCount(
     return current;
   }
   return Math.max(0, current + (nextFollowing ? 1 : -1));
+}
+
+function resolveMutationCommunityId(input: {
+  action: "follow" | "unfollow";
+  resolvedCommunityId: string;
+  responseCommunityId: string | null | undefined;
+}): string {
+  const responseCommunityId = normalizeCommunityId(input.responseCommunityId);
+  if (!responseCommunityId) {
+    logger.warn("[community-follow] mutation response missing community id", {
+      action: input.action,
+      communityId: input.resolvedCommunityId,
+    });
+    trackAnalyticsEvent({
+      communityId: input.resolvedCommunityId,
+      eventName: "community_follow_contract_drift",
+      properties: {
+        action: input.action,
+        drift_kind: "missing_community",
+        expected_community_id: input.resolvedCommunityId,
+      },
+    });
+    return input.resolvedCommunityId;
+  }
+
+  const expected = canonicalCommunityIdForComparison(input.resolvedCommunityId);
+  const actual = canonicalCommunityIdForComparison(responseCommunityId);
+  if (actual !== expected) {
+    logger.warn("[community-follow] mutation response community mismatch", {
+      action: input.action,
+      expectedCommunityId: input.resolvedCommunityId,
+      responseCommunityId,
+    });
+    trackAnalyticsEvent({
+      communityId: input.resolvedCommunityId,
+      eventName: "community_follow_contract_drift",
+      properties: {
+        action: input.action,
+        drift_kind: "community_mismatch",
+        expected_community_id: input.resolvedCommunityId,
+        response_community_id: responseCommunityId,
+      },
+    });
+  }
+  return input.resolvedCommunityId;
 }
 
 export function useCommunityFollow({
@@ -148,16 +199,23 @@ export function useCommunityFollow({
     });
 
     try {
+      const action = nextFollowing ? "follow" : "unfollow";
       const result = nextFollowing
         ? await follow(resolvedCommunityId)
         : await unfollow(resolvedCommunityId);
+      const resultCommunityId = resolveMutationCommunityId({
+        action,
+        resolvedCommunityId,
+        responseCommunityId: result.community,
+      });
       logger.info("[community-follow] saved", {
-        communityId: result.community,
+        communityId: resultCommunityId,
         followerCount: result.follower_count,
         following: result.following,
+        responseCommunityId: result.community,
       });
       setState({
-        communityId: result.community,
+        communityId: resultCommunityId,
         followerCount: normalizeFollowerCount(result.follower_count),
         viewerFollowing: result.following,
       });

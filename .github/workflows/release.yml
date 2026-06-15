@@ -116,8 +116,84 @@ jobs:
           INFISICAL_SECRET_PATH: /services/api
           SECRET_NAMES: AUTH_UPSTREAM_JWT_SHARED_SECRET
         run: scripts/ci/fetch-infisical-secrets.sh
+      - name: Verify follow contract test exists
+        working-directory: web
+        env:
+          E2E_LIVE_STAGING: "true"
+        run: |
+          count=$(bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --list --grep "follows a real staging community and persists after reload" 2>&1 | grep -F -c "follows a real staging community and persists after reload")
+          test "$count" -eq 1 || { echo "Expected exactly 1 matching test, found $count"; exit 1; }
+      - name: Verify direct multipart browser upload test exists
+        working-directory: web
+        env:
+          E2E_LIVE_STAGING: "true"
+        run: |
+          count=$(bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --list --grep "uploads a public video through direct multipart in a real browser" 2>&1 | grep -F -c "uploads a public video through direct multipart in a real browser")
+          test "$count" -eq 1 || { echo "Expected exactly 1 matching test, found $count"; exit 1; }
+      - name: Verify staging community follow contract
+        working-directory: web
+        env:
+          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
+          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
+          E2E_API_BASE_URL: https://api-staging.pirate.sc
+          E2E_BASE_URL: https://staging.pirate.sc
+          E2E_LIVE_STAGING: "true"
+        run: bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --grep "follows a real staging community and persists after reload"
+      - name: Verify staging direct multipart browser upload
+        working-directory: web
+        env:
+          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
+          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
+          E2E_API_BASE_URL: https://api-staging.pirate.sc
+          E2E_BASE_URL: https://staging.pirate.sc
+          E2E_LIVE_STAGING: "true"
+        run: bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --grep "uploads a public video through direct multipart in a real browser"
+      - name: Fetch Story derivative royalty E2E secrets
+        working-directory: core
+        env:
+          INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_ENV: staging
+          INFISICAL_SECRET_PATH: /services/api
+          SECRET_NAMES: PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY PIRATE_CHECKOUT_RPC_URL PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS STORY_RUNTIME_FUNDER_PRIVATE_KEY
+        run: scripts/ci/fetch-infisical-secrets.sh
+      - name: Fetch staging song preview container health secret
+        working-directory: core
+        env:
+          INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_ENV: staging
+          INFISICAL_SECRET_PATH: /services/api
+          SECRET_NAMES: SONG_PREVIEW_SHARED_SECRET
+        run: scripts/ci/fetch-infisical-secrets.sh
+      - name: Verify staging song preview container health
+        timeout-minutes: 5
+        working-directory: web
+        run: scripts/check-song-preview-container.sh staging
+      - name: Story derivative royalty E2E staging
+        timeout-minutes: 30
+        working-directory: web
+        env:
+          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
+          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
+          E2E_API_BASE_URL: https://api-staging.pirate.sc
+          PIRATE_STORY_E2E_ARTIFACT_DIR: tmp/e2e-artifacts
+          # Preview generation is queued through the API scheduled job runner.
+          # Keep this long enough to span several staging cron cycles.
+          PIRATE_STORY_E2E_PREVIEW_TIMEOUT_MS: "420000"
+        run: bun run test:e2e:story-derivative-royalty
+      - name: Upload Story derivative royalty E2E artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-derivative-royalty-${{ github.run_id }}
+          path: web/tmp/e2e-artifacts/*.json
+          if-no-files-found: ignore
+      # This broader live-staging suite is intentionally soft; unrelated staging
+      # integrations should not block prod when the focused gates above pass.
       - name: Live browser integration staging
         continue-on-error: true
+        timeout-minutes: 5
         working-directory: web
         env:
           AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}

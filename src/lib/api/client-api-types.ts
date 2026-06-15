@@ -38,6 +38,19 @@ export type ApiSongArtifactUploadContentRequest = {
   content_base64: string;
 };
 
+export type ApiSongArtifactUploadPartSignedUrlResponse = {
+  url: string;
+  expires_at: string;
+  part_number: number;
+  part_size_bytes: number;
+};
+
+export type ApiSongArtifactUploadCompleteRequest = {
+  upload_id: string;
+  parts: Array<{ part_number: number; etag: string }>;
+  content_hash?: string | null;
+};
+
 export type ApiDerivativeSourceKind = "song" | "video";
 export type ApiDerivativeSourceQueryKind = ApiDerivativeSourceKind | "live";
 export type ApiDerivativeSourceScope = "community" | "global";

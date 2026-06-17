@@ -47,6 +47,7 @@
     "types:safe": "bun run locales:generate && node ./scripts/run-types-safely.mjs"
   },
   "dependencies": {
+    "@pirate/karaoke-runtime": "file:./packages/karaoke-runtime",
     "@base-ui/react": "^1.3.0",
     "@dicebear/collection": "^9.4.2",
     "@dicebear/core": "^9.4.2",

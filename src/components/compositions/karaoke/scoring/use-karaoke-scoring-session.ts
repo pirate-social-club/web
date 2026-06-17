@@ -25,8 +25,21 @@ import {
   type KaraokeScoringState,
 } from "./karaoke-scoring-controller";
 
-/** Vite bundles the worklet as a separate module via the import.meta.url pattern. */
-const WORKLET_MODULE_URL = new URL("../capture/karaoke-capture-processor.ts", import.meta.url);
+/**
+ * Resolves the worklet module URL. Vite statically recognizes this exact
+ * `new URL("<literal>", import.meta.url)` pattern and emits the worklet as a
+ * separate module asset.
+ *
+ * It is computed lazily (only when the capture engine is created, in the
+ * browser, behind a user gesture) rather than at module top-level: under rwsdk
+ * this `"use client"` module is also imported into the SSR worker bundle, where
+ * `import.meta.url` is empty — evaluating `new URL(..., "")` there throws
+ * `TypeError: Invalid URL string` and crashes server rendering of any page whose
+ * import graph reaches this module.
+ */
+function resolveWorkletModuleUrl(): URL {
+  return new URL("../capture/karaoke-capture-processor.ts", import.meta.url);
+}
 
 /** The authenticated `POST .../karaoke/sessions` call (api.posts.createKaraokeSession). */
 export type CreateKaraokeSessionApi = (
@@ -86,7 +99,7 @@ export function useKaraokeScoring(options: UseKaraokeScoringOptions): UseKaraoke
       communityId,
       createCaptureEngine: ({ onChunk, onError }) =>
         new KaraokeMicCapture({
-          deps: createBrowserMicCaptureDeps(WORKLET_MODULE_URL),
+          deps: createBrowserMicCaptureDeps(resolveWorkletModuleUrl()),
           onChunk,
           onError,
         }),

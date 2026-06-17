@@ -67,7 +67,12 @@ jobs:
           VITE_EFP_ENVIRONMENT: testnet
           VITE_PIRATE_APP_ENV: staging
           VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
-        run: scripts/deploy-staging.sh
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            scripts/deploy-staging.sh --allow-non-main -m "workflow_dispatch staging validation for ${{ github.ref_name }}"
+          else
+            scripts/deploy-staging.sh
+          fi
       - name: Verify staging/prod metadata
         working-directory: web
         env:

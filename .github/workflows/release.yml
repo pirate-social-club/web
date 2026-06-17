@@ -69,7 +69,7 @@ jobs:
           VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            scripts/deploy-staging.sh --allow-non-main -m "workflow_dispatch staging validation for ${{ github.ref_name }}"
+            scripts/deploy-staging.sh --allow-non-main --web-only -m "workflow_dispatch staging validation for ${{ github.ref_name }}"
           else
             scripts/deploy-staging.sh
           fi

@@ -40,6 +40,7 @@ OPTIONAL_API_STAGING_SECRETS=(
 
 ALLOW_NON_MAIN=0
 ALLOW_REASON=""
+WEB_ONLY=0
 
 usage() {
   cat <<'EOF'
@@ -50,6 +51,7 @@ Deploys web + api + community provision operator staging as one release unit.
 Options:
   --allow-non-main -m "reason"
                           Allow dirty/non-main staging deploy with auditable metadata suffix.
+  --web-only              Deploy only web staging workers; leave API/operator staging untouched.
   -m, --message "reason"  Required with --allow-non-main.
   -h, --help              Show this help.
 EOF
@@ -59,6 +61,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --allow-non-main)
       ALLOW_NON_MAIN=1
+      shift
+      ;;
+    --web-only)
+      WEB_ONLY=1
       shift
       ;;
     -m|--message)
@@ -246,13 +252,17 @@ require_command curl
 require_command git
 require_command node
 require_file "$WEB_WRANGLER"
-require_file "$API_WRANGLER"
-require_file "$OPERATOR_WRANGLER"
+if [[ "$WEB_ONLY" != "1" ]]; then
+  require_file "$API_WRANGLER"
+  require_file "$OPERATOR_WRANGLER"
+fi
 
 if [[ "$ALLOW_NON_MAIN" != "1" ]]; then
   require_clean_main "$WEB_DIR" "web"
-  require_clean_main "$API_DIR" "api"
-  require_clean_main "$OPERATOR_DIR" "community-provision-operator"
+  if [[ "$WEB_ONLY" != "1" ]]; then
+    require_clean_main "$API_DIR" "api"
+    require_clean_main "$OPERATOR_DIR" "community-provision-operator"
+  fi
 else
   SAFE_SUFFIX="$(printf '%s' "$ALLOW_REASON" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//' | cut -c1-40)"
   WEB_SHA="${WEB_SHA}-non-main-${SAFE_SUFFIX:-manual}"
@@ -265,8 +275,10 @@ else
   printf 'community-provision-operator status:\n%s\n' "$(repo_status "$OPERATOR_DIR")"
 fi
 
-log "check API staging secrets"
-check_api_staging_secrets
+if [[ "$WEB_ONLY" != "1" ]]; then
+  log "check API staging secrets"
+  check_api_staging_secrets
+fi
 
 log "staging build metadata"
 printf 'web: %s (%s)\n' "$WEB_SHA" "$WEB_REF"
@@ -297,28 +309,32 @@ log "deploy web public staging worker"
   --var "BUILD_GIT_REF:$WEB_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
 
-log "deploy community provision operator staging"
-(cd "$OPERATOR_DIR" && "$OPERATOR_WRANGLER" deploy \
-  --env staging \
-  --var "BUILD_GIT_SHA:$OPERATOR_SHA" \
-  --var "BUILD_GIT_REF:$OPERATOR_REF" \
-  --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
+if [[ "$WEB_ONLY" != "1" ]]; then
+  log "deploy community provision operator staging"
+  (cd "$OPERATOR_DIR" && "$OPERATOR_WRANGLER" deploy \
+    --env staging \
+    --var "BUILD_GIT_SHA:$OPERATOR_SHA" \
+    --var "BUILD_GIT_REF:$OPERATOR_REF" \
+    --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
 
-log "deploy api staging worker"
-(cd "$API_DIR" && "$API_WRANGLER" deploy \
-  --env staging \
-  --var "BUILD_GIT_SHA:$API_SHA" \
-  --var "BUILD_GIT_REF:$API_REF" \
-  --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" \
-  --define "__PIRATE_BUILD_GIT_SHA__:\"$API_SHA\"" \
-  --define "__PIRATE_BUILD_GIT_REF__:\"$API_REF\"" \
-  --define "__PIRATE_BUILD_TIMESTAMP__:\"$BUILD_TIMESTAMP\"")
+  log "deploy api staging worker"
+  (cd "$API_DIR" && "$API_WRANGLER" deploy \
+    --env staging \
+    --var "BUILD_GIT_SHA:$API_SHA" \
+    --var "BUILD_GIT_REF:$API_REF" \
+    --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" \
+    --define "__PIRATE_BUILD_GIT_SHA__:\"$API_SHA\"" \
+    --define "__PIRATE_BUILD_GIT_REF__:\"$API_REF\"" \
+    --define "__PIRATE_BUILD_TIMESTAMP__:\"$BUILD_TIMESTAMP\"")
+fi
 
 log "smoke checks"
 check_status "$WEB_ORIGIN/" "200"
-check_status "$API_ORIGIN/health" "200"
 check_json_field_with_retry "$WEB_ORIGIN/__version" "git_sha" "$WEB_SHA"
-check_json_field_with_retry "$API_ORIGIN/__version" "git_sha" "$API_SHA"
-check_json_field_with_retry "$API_ORIGIN/__version" "operator.git_sha" "$OPERATOR_SHA"
+if [[ "$WEB_ONLY" != "1" ]]; then
+  check_status "$API_ORIGIN/health" "200"
+  check_json_field_with_retry "$API_ORIGIN/__version" "git_sha" "$API_SHA"
+  check_json_field_with_retry "$API_ORIGIN/__version" "operator.git_sha" "$OPERATOR_SHA"
+fi
 
 log "staging deploy complete"

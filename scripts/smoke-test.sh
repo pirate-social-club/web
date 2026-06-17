@@ -4,6 +4,7 @@ set -euo pipefail
 TARGET="${1:-staging}"
 CREATE_COMMUNITY=0
 CONFIRM_PRODUCTION=0
+WEB_ONLY=0
 
 shift || true
 while [[ $# -gt 0 ]]; do
@@ -16,9 +17,13 @@ while [[ $# -gt 0 ]]; do
       CONFIRM_PRODUCTION=1
       shift
       ;;
+    --web-only)
+      WEB_ONLY=1
+      shift
+      ;;
     -h|--help)
       cat <<'EOF'
-Usage: scripts/smoke-test.sh <staging|prod> [--create-community] [--confirm-production]
+Usage: scripts/smoke-test.sh <staging|prod> [--create-community] [--confirm-production] [--web-only]
 
 Default smoke tests are unauthenticated and safe:
   - web /__version
@@ -26,6 +31,7 @@ Default smoke tests are unauthenticated and safe:
   - api /health
   - api CORS from the web origin
 
+--web-only skips all API checks (use when API staging was not redeployed).
 Authenticated community creation is opt-in and requires PIRATE_SMOKE_AUTH_TOKEN.
 Production creation additionally requires --confirm-production.
 EOF
@@ -60,9 +66,10 @@ if [[ "$CREATE_COMMUNITY" == "1" && "$TARGET_LABEL" == "production" && "$CONFIRM
   exit 2
 fi
 
-node - "$WEB_ORIGIN" "$API_ORIGIN" "$TARGET_LABEL" "$CREATE_COMMUNITY" <<'NODE'
-const [webOrigin, apiOrigin, targetLabel, createCommunityRaw] = process.argv.slice(2);
+node - "$WEB_ORIGIN" "$API_ORIGIN" "$TARGET_LABEL" "$CREATE_COMMUNITY" "$WEB_ONLY" <<'NODE'
+const [webOrigin, apiOrigin, targetLabel, createCommunityRaw, webOnlyRaw] = process.argv.slice(2);
 const createCommunity = createCommunityRaw === "1";
+const webOnly = webOnlyRaw === "1";
 const FETCH_TIMEOUT_MS = 15000;
 
 async function fetchWithTimeout(url, options = {}) {
@@ -105,21 +112,23 @@ const webVersion = await expectJson(`${webOrigin}/__version`);
 requireVersion("web", webVersion.body);
 console.log(`web version: ${webVersion.body.git_sha}`);
 
-const apiVersion = await expectJson(`${apiOrigin}/__version`);
-requireVersion("api", apiVersion.body);
-console.log(`api version: ${apiVersion.body.git_sha}`);
+if (!webOnly) {
+  const apiVersion = await expectJson(`${apiOrigin}/__version`);
+  requireVersion("api", apiVersion.body);
+  console.log(`api version: ${apiVersion.body.git_sha}`);
 
-await expectJson(`${apiOrigin}/health`);
-console.log("api health: ok");
+  await expectJson(`${apiOrigin}/health`);
+  console.log("api health: ok");
 
-const cors = await fetchWithTimeout(`${apiOrigin}/health`, {
-  headers: { origin: webOrigin, accept: "application/json" },
-});
-const allowedOrigin = cors.headers.get("access-control-allow-origin");
-if (allowedOrigin !== webOrigin) {
-  throw new Error(`CORS expected access-control-allow-origin=${webOrigin}, got ${allowedOrigin}`);
+  const cors = await fetchWithTimeout(`${apiOrigin}/health`, {
+    headers: { origin: webOrigin, accept: "application/json" },
+  });
+  const allowedOrigin = cors.headers.get("access-control-allow-origin");
+  if (allowedOrigin !== webOrigin) {
+    throw new Error(`CORS expected access-control-allow-origin=${webOrigin}, got ${allowedOrigin}`);
+  }
+  console.log("api CORS: ok");
 }
-console.log("api CORS: ok");
 
 if (createCommunity) {
   const token = process.env.PIRATE_SMOKE_AUTH_TOKEN?.trim();

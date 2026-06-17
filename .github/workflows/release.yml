@@ -86,7 +86,12 @@ jobs:
           fi
       - name: Smoke staging
         working-directory: web
-        run: scripts/smoke-test.sh staging
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            scripts/smoke-test.sh staging --web-only
+          else
+            scripts/smoke-test.sh staging
+          fi
       - name: Fetch staging control-plane migration secret
         continue-on-error: true
         working-directory: core

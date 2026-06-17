@@ -228,6 +228,10 @@ jobs:
   production:
     name: Deploy production
     needs: staging
+    # Only deploy production on a push to main. This keeps workflow_dispatch on
+    # any branch (e.g. release/* validation) staging-only, so a manual dispatch
+    # can never push an unmerged branch to production.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4

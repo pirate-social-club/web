@@ -23,7 +23,7 @@ function policyToSettings(policy: ApiCommunityKaraokePolicy): CommunityKaraokePo
 function communityToSettings(community: ApiCommunity | null): CommunityKaraokePolicySettings {
   return {
     ...createDefaultKaraokePolicySettings(),
-    karaokeEnabled: community?.karaoke_enabled === true,
+    karaokeEnabled: (community as (ApiCommunity & { karaoke_enabled?: boolean }) | null)?.karaoke_enabled === true,
   };
 }
 

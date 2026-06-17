@@ -17,6 +17,7 @@ import { useCommunityAgentPolicyState } from "./use-community-agent-policy-state
 import { useCommunityAssistantPolicyState } from "./use-community-assistant-policy-state";
 import { useCommunityCommerceState } from "./use-community-commerce-state";
 import { useCommunityContentPolicyState } from "./use-community-content-policy-state";
+import { useCommunityKaraokePolicyState } from "./use-community-karaoke-policy-state";
 import { useCommunityMachineAccessState } from "./use-community-machine-access-state";
 import { useCommunityProfileState } from "./use-community-profile-state";
 import { useCommunitySafetyState } from "./use-community-safety-state";
@@ -119,6 +120,7 @@ export function useCommunityModerationState(communityId: string) {
   const visualPolicy = useCommunityVisualPolicyState({ community, saveCommunity });
   const agents = useCommunityAgentPolicyState({ community, saveCommunity });
   const assistantPolicy = useCommunityAssistantPolicyState({ community });
+  const karaokePolicy = useCommunityKaraokePolicyState({ community, setCommunity });
   const machineAccess = useCommunityMachineAccessState({ community });
   const telegram = useCommunityTelegramState({ community });
   const handlePolicy = useCommunityHandlePolicyState({
@@ -141,6 +143,7 @@ export function useCommunityModerationState(communityId: string) {
     ...visualPolicy,
     ...agents,
     ...assistantPolicy,
+    ...karaokePolicy,
     ...machineAccess,
     ...telegram,
     ...profile,

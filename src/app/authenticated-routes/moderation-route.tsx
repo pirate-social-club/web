@@ -19,6 +19,7 @@ import { CommunityPricingEditorPage } from "@/components/compositions/community/
 import { CommunityRulesEditorPage } from "@/components/compositions/community/rules-editor/community-rules-editor-page";
 import { CommunityAgentPolicyPage } from "@/components/compositions/community/agent-policy/community-agent-policy";
 import { CommunityAssistantPolicyPage } from "@/components/compositions/community/assistant-policy/community-assistant-policy";
+import { CommunityKaraokePolicyPage } from "@/components/compositions/community/karaoke-policy/community-karaoke-policy";
 import { CommunityMachineAccessPage } from "@/components/compositions/community/machine-access/community-machine-access";
 import { CommunitySafetyPage } from "@/components/compositions/community/safety-page/community-safety-page";
 import { CommunityTelegramIntegrationPage } from "@/components/compositions/community/telegram-integration/community-telegram-integration";
@@ -839,6 +840,21 @@ export function CommunityModerationPage({
               submitState={state.assistantPolicySubmitState}
             />
           );
+    } else if (section === "karaoke") {
+      setMobileSaveAction({
+        disabled: state.savingKaraokePolicy || state.loadingKaraokePolicy || !state.karaokePolicyDirty,
+        loading: state.savingKaraokePolicy,
+        onSave: state.handleSaveKaraokePolicy,
+      });
+      content = (
+        <CommunityKaraokePolicyPage
+          onSave={state.handleSaveKaraokePolicy}
+          onSettingsChange={state.setKaraokePolicySettings}
+          saveDisabled={state.savingKaraokePolicy || state.loadingKaraokePolicy || !state.karaokePolicyDirty}
+          settings={state.karaokePolicySettings}
+          submitState={state.karaokePolicySubmitState}
+        />
+      );
     } else if (section === "machine-access") {
       setMobileSaveAction({
         disabled: state.savingMachineAccess || state.loadingMachineAccess || !state.machineAccessDirty,

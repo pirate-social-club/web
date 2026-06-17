@@ -17,6 +17,8 @@ import type {
   ApiCommunityAssistantPolicyUpdate,
   ApiCommunityAssistantTranscriptionResponse,
   ApiCommunityGatesUpdateRequest,
+  ApiCommunityKaraokePolicy,
+  ApiCommunityKaraokePolicyUpdate,
   ApiCommunityMachineAccessPolicy,
   ApiCommunityMachineAccessPolicyUpdate,
   ApiCommunityTelegramChatSettings,
@@ -92,6 +94,18 @@ export function createCommunitySettingsApi(request: ApiRequest) {
     ): Promise<ApiCommunityMachineAccessPolicy> =>
       request<ApiCommunityMachineAccessPolicy>(
         `/communities/${encodeURIComponent(communityId)}/machine-access-policy`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    getKaraokePolicy: (communityId: string): Promise<ApiCommunityKaraokePolicy> =>
+      request<ApiCommunityKaraokePolicy>(
+        `/communities/${encodeURIComponent(communityId)}/karaoke-policy`,
+      ),
+    updateKaraokePolicy: (
+      communityId: string,
+      body: ApiCommunityKaraokePolicyUpdate,
+    ): Promise<ApiCommunityKaraokePolicy> =>
+      request<ApiCommunityKaraokePolicy>(
+        `/communities/${encodeURIComponent(communityId)}/karaoke-policy`,
         { method: "POST", body: JSON.stringify(body) },
       ),
     getTelegramChatSettings: (communityId: string): Promise<ApiCommunityTelegramChatSettings> =>

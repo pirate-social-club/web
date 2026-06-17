@@ -563,6 +563,26 @@ export type ApiCommunityAssistantPolicyUpdate = Partial<{
   includeInSovereignExport: boolean;
 }>;
 
+export type ApiCommunityKaraokePolicy = {
+  community_id: string;
+  karaoke_enabled: boolean;
+  karaoke_scoring_enabled: boolean;
+  karaoke_stt_provider: "assistant" | "elevenlabs" | "mistral" | "none" | "openai";
+  karaoke_stt_model: string | null;
+  karaoke_voice_coach_enabled: boolean;
+  karaoke_audio_retention: "not_stored";
+  updated_at: string | null;
+};
+
+export type ApiCommunityKaraokePolicyUpdate = Partial<{
+  karaoke_enabled: boolean;
+  karaoke_scoring_enabled: boolean;
+  karaoke_stt_provider: "assistant" | "elevenlabs" | "mistral" | "none" | "openai";
+  karaoke_stt_model: string | null;
+  karaoke_voice_coach_enabled: boolean;
+  karaoke_audio_retention: "not_stored";
+}>;
+
 export type ApiCommunityAssistantCredentialProvider = "openrouter" | "elevenlabs";
 
 export type ApiCommunityAssistantCredentialResponse =

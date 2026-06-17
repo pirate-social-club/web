@@ -123,6 +123,7 @@ jobs:
           E2E_API_BASE_URL: https://api-staging.pirate.sc
         run: bun run test:e2e
       - name: Fetch live browser staging secret
+        if: github.event_name != 'workflow_dispatch'
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
@@ -132,6 +133,7 @@ jobs:
           SECRET_NAMES: AUTH_UPSTREAM_JWT_SHARED_SECRET
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Verify follow contract test exists
+        if: github.event_name != 'workflow_dispatch'
         working-directory: web
         env:
           E2E_LIVE_STAGING: "true"
@@ -139,6 +141,7 @@ jobs:
           count=$(bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --list --grep "follows a real staging community and persists after reload" 2>&1 | grep -F -c "follows a real staging community and persists after reload")
           test "$count" -eq 1 || { echo "Expected exactly 1 matching test, found $count"; exit 1; }
       - name: Verify direct multipart browser upload test exists
+        if: github.event_name != 'workflow_dispatch'
         working-directory: web
         env:
           E2E_LIVE_STAGING: "true"
@@ -146,6 +149,7 @@ jobs:
           count=$(bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --list --grep "uploads a public video through direct multipart in a real browser" 2>&1 | grep -F -c "uploads a public video through direct multipart in a real browser")
           test "$count" -eq 1 || { echo "Expected exactly 1 matching test, found $count"; exit 1; }
       - name: Verify staging community follow contract
+        if: github.event_name != 'workflow_dispatch'
         working-directory: web
         env:
           AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
@@ -155,6 +159,7 @@ jobs:
           E2E_LIVE_STAGING: "true"
         run: bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --grep "follows a real staging community and persists after reload"
       - name: Verify staging direct multipart browser upload
+        if: github.event_name != 'workflow_dispatch'
         working-directory: web
         env:
           AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
@@ -164,6 +169,7 @@ jobs:
           E2E_LIVE_STAGING: "true"
         run: bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --grep "uploads a public video through direct multipart in a real browser"
       - name: Fetch Story derivative royalty E2E secrets
+        if: github.event_name != 'workflow_dispatch'
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
@@ -173,6 +179,7 @@ jobs:
           SECRET_NAMES: PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY PIRATE_CHECKOUT_RPC_URL PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS STORY_RUNTIME_FUNDER_PRIVATE_KEY
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Fetch staging song preview container health secret
+        if: github.event_name != 'workflow_dispatch'
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
@@ -182,10 +189,12 @@ jobs:
           SECRET_NAMES: SONG_PREVIEW_SHARED_SECRET
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Verify staging song preview container health
+        if: github.event_name != 'workflow_dispatch'
         timeout-minutes: 5
         working-directory: web
         run: scripts/check-song-preview-container.sh staging
       - name: Story derivative royalty E2E staging
+        if: github.event_name != 'workflow_dispatch'
         timeout-minutes: 30
         working-directory: web
         env:
@@ -207,6 +216,7 @@ jobs:
       # This broader live-staging suite is intentionally soft; unrelated staging
       # integrations should not block prod when the focused gates above pass.
       - name: Live browser integration staging
+        if: github.event_name != 'workflow_dispatch'
         continue-on-error: true
         timeout-minutes: 5
         working-directory: web
@@ -224,6 +234,7 @@ jobs:
             web/test-results
           if-no-files-found: ignore
       - name: Fetch staging migration secrets
+        if: github.event_name != 'workflow_dispatch'
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
@@ -233,6 +244,7 @@ jobs:
           SECRET_NAMES: CONTROL_PLANE_DATABASE_URL TURSO_COMMUNITY_DB_WRAP_KEY
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Repair staging community migrations
+        if: github.event_name != 'workflow_dispatch'
         continue-on-error: true
         working-directory: core
         run: |

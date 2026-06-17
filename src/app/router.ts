@@ -56,6 +56,19 @@ let cachedHostname = "";
 let cachedRoute: AppRoute = HOME_ROUTE;
 let cachedImportedRootCommunityId: string | null = null;
 
+type NavigationGuard = (navigation: { currentHref: string; nextHref: string }) => boolean;
+const navigationGuards = new Set<NavigationGuard>();
+
+export function addNavigationGuard(guard: NavigationGuard): () => void {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+  navigationGuards.add(guard);
+  return () => {
+    navigationGuards.delete(guard);
+  };
+}
+
 export function isNativePublicIdentityRoute(route: AppRoute): boolean {
   return (
     (route.kind === "public-profile" || route.kind === "public-agent")

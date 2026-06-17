@@ -697,3 +697,14 @@ export type NotificationFeedOptions = {
   cursor?: string | null;
   limit?: number | null;
 };
+
+export type KaraokeSessionCreateApiResponse = {
+  id: string;
+  object: "karaoke_session";
+  attempt: string;
+  protocol_version: number;
+  websocket_url: string;
+  token_expires_at: number;
+  session_expires_at: number;
+  scoring_policy: unknown;
+};

@@ -26,19 +26,13 @@ import {
 } from "./karaoke-scoring-controller";
 
 /**
- * Resolves the worklet module URL. Vite statically recognizes this exact
- * `new URL("<literal>", import.meta.url)` pattern and emits the worklet as a
- * separate module asset.
- *
- * It is computed lazily (only when the capture engine is created, in the
- * browser, behind a user gesture) rather than at module top-level: under rwsdk
- * this `"use client"` module is also imported into the SSR worker bundle, where
- * `import.meta.url` is empty — evaluating `new URL(..., "")` there throws
- * `TypeError: Invalid URL string` and crashes server rendering of any page whose
- * import graph reaches this module.
+ * Resolves the production-safe AudioWorklet script. The source processor imports
+ * the tested DSP module, but AudioWorkletGlobalScope cannot load that module
+ * graph reliably from the production Vite/RWSDK bundle. `scripts/build-karaoke-
+ * worklet.mjs` pre-bundles it into this self-contained classic script.
  */
 function resolveWorkletModuleUrl(): URL {
-  return new URL("../capture/karaoke-capture-processor.ts", import.meta.url);
+  return new URL("/_lib/karaoke-capture-processor.js", window.location.origin);
 }
 
 /** The authenticated `POST .../karaoke/sessions` call (api.posts.createKaraokeSession). */

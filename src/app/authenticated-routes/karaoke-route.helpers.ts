@@ -43,8 +43,25 @@ export function toPlayableAudioUrl(value: unknown): string | undefined {
     return undefined;
   }
 
-  if (isHttpUrl(audioUrl) || audioUrl.startsWith("/")) {
+  if (audioUrl.startsWith("/")) {
     return resolveApiUrl(audioUrl);
+  }
+
+  if (isHttpUrl(audioUrl)) {
+    // Song-artifact content is served by the API, so it must be fetched from the
+    // API base this client is configured for. Rebase such absolute URLs onto the
+    // active API origin so a bundle that stored a different environment's absolute
+    // URL (e.g. staging) still loads — and stays CORS-clean — in dev and prod.
+    // External URLs (e.g. IPFS gateways) are left untouched.
+    try {
+      const parsed = new URL(audioUrl);
+      if (parsed.pathname.includes("/song-artifact-uploads/") && parsed.pathname.endsWith("/content")) {
+        return resolveApiUrl(`${parsed.pathname}${parsed.search}`);
+      }
+    } catch {
+      // Not a parseable URL — fall through and return as-is.
+    }
+    return audioUrl;
   }
 
   return undefined;

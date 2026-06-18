@@ -20,16 +20,19 @@ function scorePercent(score: number): string {
   return `${Math.round(Math.max(0, Math.min(1, score)) * 100)}`;
 }
 
-function micErrorMessage(code: string): string {
-  switch (code) {
+function micErrorMessage(error: { code: string; message?: string }): string {
+  switch (error.code) {
     case "permission_denied":
       return "Microphone access was blocked. Allow the mic and try again.";
     case "no_device":
       return "No microphone was found.";
     case "device_unavailable":
       return "The microphone became unavailable.";
+    case "worklet_unavailable":
+      // Not a hardware-mic problem — the audio-capture pipeline failed to initialize.
+      return `Audio capture failed to start${error.message ? `: ${error.message}` : ""}.`;
     default:
-      return "The microphone could not be started.";
+      return `The microphone could not be started${error.message ? `: ${error.message}` : ""}.`;
   }
 }
 
@@ -53,7 +56,7 @@ export function KaraokeScoringPanel({ canStart, className, onStart, state }: Kar
 
   if (state.status === "error") {
     const message = state.micError
-      ? micErrorMessage(state.micError.code)
+      ? micErrorMessage(state.micError)
       : state.error?.message ?? "Scoring stopped unexpectedly.";
     return (
       <div className={cn("flex flex-col items-center gap-3 text-center", className)}>

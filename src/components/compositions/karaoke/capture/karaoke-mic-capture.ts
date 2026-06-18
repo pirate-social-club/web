@@ -189,6 +189,12 @@ export class KaraokeMicCapture {
       });
     } catch (error) {
       await this.cleanupGraph();
+      // Surface the underlying cause: in production builds the AudioWorklet module
+      // can fail to load (e.g. emitted-asset import resolution), which is otherwise
+      // collapsed into a generic "mic could not be started" message.
+      if (typeof console !== "undefined") {
+        console.error("[karaoke-capture] audio graph / AudioWorklet setup failed", error);
+      }
       throw this.report(new KaraokeMicError("worklet_unavailable", stringifyError(error)));
     }
     this.phase = "started"; // inactive: no chunks until activate()

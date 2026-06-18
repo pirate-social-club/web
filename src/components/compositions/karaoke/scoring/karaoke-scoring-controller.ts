@@ -47,6 +47,7 @@ export type KaraokeScoringStatus =
   | "idle"
   | "requesting-mic"
   | "connecting"
+  | "reconnecting"
   | "active"
   | "finishing"
   | "ended"
@@ -121,14 +122,18 @@ function initialState(): KaraokeScoringState {
   };
 }
 
-/** Maps a transport phase to a coarse UI status (once-live stays "active" across reconnects). */
+/**
+ * Maps a transport phase to a coarse UI status. "active" ("Listening…") is only
+ * reported while the socket is actually live; once a live session drops, we show
+ * "reconnecting" rather than pretending we're still listening.
+ */
 function statusForPhase(phase: KaraokeClientPhase, hasBeenLive: boolean): KaraokeScoringStatus {
   switch (phase) {
     case "creating":
     case "connecting":
-      return hasBeenLive ? "active" : "connecting";
+      return hasBeenLive ? "reconnecting" : "connecting";
     case "reconnecting":
-      return "active";
+      return "reconnecting";
     case "live":
       return "active";
     case "expired":

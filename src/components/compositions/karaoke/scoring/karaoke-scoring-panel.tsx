@@ -67,12 +67,17 @@ export function KaraokeScoringPanel({ canStart, className, onStart, state }: Kar
     );
   }
 
-  if (state.status === "requesting-mic" || state.status === "connecting") {
+  if (state.status === "requesting-mic" || state.status === "connecting" || state.status === "reconnecting") {
+    const label = state.status === "requesting-mic"
+      ? "Requesting microphone…"
+      : state.status === "reconnecting"
+        ? "Reconnecting…"
+        : "Connecting…";
     return (
       <div className={cn("flex items-center justify-center gap-2 text-muted-foreground", className)}>
         <Microphone className="size-5 animate-pulse" weight="fill" />
         <Type as="p" variant="caption">
-          {state.status === "requesting-mic" ? "Requesting microphone…" : "Connecting…"}
+          {label}
         </Type>
       </div>
     );

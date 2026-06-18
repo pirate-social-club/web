@@ -346,12 +346,19 @@ export function KaraokeAudioSurface({
         title={title}
       />
       {scoring?.enabled && scoring.state ? (
-        <KaraokeScoringPanel
-          canStart={audioState === "ready"}
-          className="pointer-events-auto absolute inset-x-4 top-24 mx-auto max-w-md rounded-[var(--radius-xl)] border border-border-soft bg-card/95 p-4 shadow-lg backdrop-blur"
-          onStart={startScoring}
-          state={scoring.state}
-        />
+        <div
+          className={cn(
+            "pointer-events-auto absolute inset-x-0 bottom-0 z-20 border-t border-border-soft bg-card/95 px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-lg backdrop-blur transition-opacity",
+            audioState === "ready" ? undefined : "opacity-60",
+          )}
+        >
+          <KaraokeScoringPanel
+            canStart={audioState === "ready"}
+            className="mx-auto max-w-md"
+            onStart={startScoring}
+            state={scoring.state}
+          />
+        </div>
       ) : null}
       {audioState === "error" ? (
         <div className="absolute inset-x-4 bottom-24 rounded-[var(--radius-xl)] border border-border-soft bg-card p-4 shadow-lg sm:left-auto sm:max-w-sm">

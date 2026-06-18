@@ -85,6 +85,7 @@ interface Harness {
 function harness(overrides: Partial<{
   tokenTtlMs: number
   sessionTtlMs: number
+  socketConnectTimeoutMs: number
   suspendCapture: () => Promise<void>
   resumeCapture: (descriptor: KaraokeSessionDescriptor) => Promise<void>
   teardownCapture: () => void | Promise<void>
@@ -129,6 +130,7 @@ function harness(overrides: Partial<{
     captureTeardownTimeoutMs: overrides.captureTeardownTimeoutMs,
     resumeCapture: overrides.resumeCapture,
     setTimer: timers.setTimer,
+    socketConnectTimeoutMs: overrides.socketConnectTimeoutMs ?? Number.POSITIVE_INFINITY,
     suspendCapture: overrides.suspendCapture,
     teardownCapture: overrides.teardownCapture,
   })
@@ -147,6 +149,31 @@ describe("KaraokeSessionClient transport", () => {
     expect(h.client.getPhase()).toBe("live")
     const events = h.sockets[0]!.jsonSent()
     expect(events[0]).toMatchObject({ attemptId: "attempt-1", postId: "post-1", sequence: 1, sessionId: "session-1", type: "start" })
+  })
+
+  test("aborts instead of hanging forever when the socket never opens", async () => {
+    const h = harness({ socketConnectTimeoutMs: 250 })
+    await h.client.start({ postId: "post-1", startedAtAudioMs: 0 })
+    expect(h.client.getPhase()).toBe("connecting")
+
+    await h.timers.flush()
+
+    expect(h.client.getPhase()).toBe("aborted")
+    expect(h.errors).toContainEqual({ code: "karaoke_socket_connect_timeout", message: "Karaoke WebSocket did not open" })
+    expect(h.sockets[0]?.closed).toEqual({ code: 1000, reason: "karaoke_aborted" })
+  })
+
+  test("aborts with a socket error when the socket closes before opening", async () => {
+    const h = harness()
+    await h.client.start({ postId: "post-1", startedAtAudioMs: 0 })
+
+    h.sockets[0]!.remoteClose(1006, "")
+
+    expect(h.client.getPhase()).toBe("aborted")
+    expect(h.errors).toContainEqual({
+      code: "karaoke_socket_closed_before_open",
+      message: "Karaoke WebSocket closed before opening (1006)",
+    })
   })
 
   test("maps binary frame song-time bounds through the capture anchor (capture ≠ playback)", async () => {

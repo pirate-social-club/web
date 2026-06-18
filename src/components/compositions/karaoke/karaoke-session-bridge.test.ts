@@ -151,6 +151,7 @@ function harness(opts: {
     playbackClock: () => 0,
     postId: "post-1",
     setTimer: timers.setTimer,
+    socketConnectTimeoutMs: Number.POSITIVE_INFINITY,
     ...opts.override,
   });
 

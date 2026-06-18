@@ -227,6 +227,7 @@ export interface CreateKaraokeSessionClientOptions {
   now?: () => number;
   tokenRefreshLeadMs?: number;
   reconnectDelayMs?: number;
+  socketConnectTimeoutMs?: number;
   /** Timer seams (injectable for tests); default to setTimeout/clearTimeout. */
   setTimer?: (callback: () => void, ms: number) => unknown;
   clearTimer?: (handle: unknown) => void;
@@ -313,6 +314,7 @@ export function createKaraokeSessionClient(options: CreateKaraokeSessionClientOp
     reconnectDelayMs: options.reconnectDelayMs,
     resumeCapture: options.resumeCapture,
     setTimer: options.setTimer,
+    socketConnectTimeoutMs: options.socketConnectTimeoutMs,
     suspendCapture: options.suspendCapture,
     teardownCapture: options.teardownCapture,
     tokenRefreshLeadMs: options.tokenRefreshLeadMs,

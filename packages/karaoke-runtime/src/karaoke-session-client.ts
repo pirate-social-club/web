@@ -70,6 +70,8 @@ export interface KaraokeSessionClientOptions {
   tokenRefreshLeadMs?: number;
   /** Delay before a reconnect attempt after an unexpected close. */
   reconnectDelayMs?: number;
+  /** Max ms to wait for a WebSocket `open` event before treating connect as failed. */
+  socketConnectTimeoutMs?: number;
   sampleRate?: 16000;
   /**
    * Reconnect capture hooks (SPEC §6). When a live socket is lost (unexpected
@@ -108,6 +110,7 @@ export interface KaraokeCaptureAnchor {
 
 const DEFAULT_TOKEN_REFRESH_LEAD_MS = 10_000;
 const DEFAULT_RECONNECT_DELAY_MS = 500;
+const DEFAULT_SOCKET_CONNECT_TIMEOUT_MS = 10_000;
 const DEFAULT_CAPTURE_TEARDOWN_TIMEOUT_MS = 2_000;
 
 function isServerEvent(value: unknown): value is KaraokeServerEvent {
@@ -142,6 +145,7 @@ export class KaraokeSessionClient {
   private readonly clearTimer: (handle: unknown) => void;
   private readonly tokenRefreshLeadMs: number;
   private readonly reconnectDelayMs: number;
+  private readonly socketConnectTimeoutMs: number;
   private readonly sampleRate: 16000;
   private readonly captureTeardownTimeoutMs: number;
 
@@ -153,6 +157,7 @@ export class KaraokeSessionClient {
   private sequence = 0; // shared by client events + binary frames; persists across reconnects
   private chunkId = 0;
   private refreshTimer: unknown = null;
+  private socketConnectTimer: unknown = null;
   private reconnecting = false;
   private anchor: KaraokeCaptureAnchor | null = null;
   private lastCapturedAtMs: number | null = null; // monotonic guard within the current anchor epoch
@@ -172,6 +177,7 @@ export class KaraokeSessionClient {
     this.clearTimer = options.clearTimer ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
     this.tokenRefreshLeadMs = options.tokenRefreshLeadMs ?? DEFAULT_TOKEN_REFRESH_LEAD_MS;
     this.reconnectDelayMs = options.reconnectDelayMs ?? DEFAULT_RECONNECT_DELAY_MS;
+    this.socketConnectTimeoutMs = options.socketConnectTimeoutMs ?? DEFAULT_SOCKET_CONNECT_TIMEOUT_MS;
     this.sampleRate = options.sampleRate ?? 16000;
     this.captureTeardownTimeoutMs = options.captureTeardownTimeoutMs ?? DEFAULT_CAPTURE_TEARDOWN_TIMEOUT_MS;
   }
@@ -370,10 +376,28 @@ export class KaraokeSessionClient {
 
   private openSocket(sendStart: boolean): void {
     if (!this.descriptor) return;
-    const socket = this.options.connect(this.descriptor.websocketUrl);
+    let opened = false;
+    let socket: KaraokeClientSocket;
+    try {
+      socket = this.options.connect(this.descriptor.websocketUrl);
+    } catch (error) {
+      this.options.onError?.({ code: "karaoke_socket_open_failed", message: stringifyError(error) });
+      this.shutdown("aborted");
+      return;
+    }
     this.socket = socket;
+    this.clearSocketConnectTimer();
+    if (Number.isFinite(this.socketConnectTimeoutMs) && this.socketConnectTimeoutMs > 0) {
+      this.socketConnectTimer = this.setTimer(() => {
+        if (this.socket !== socket || opened || this.isTerminal()) return;
+        this.options.onError?.({ code: "karaoke_socket_connect_timeout", message: "Karaoke WebSocket did not open" });
+        this.shutdown("aborted");
+      }, this.socketConnectTimeoutMs);
+    }
     socket.addEventListener("open", () => {
       if (this.socket !== socket) return;
+      opened = true;
+      this.clearSocketConnectTimer();
       this.setPhase("live");
       this.reconnecting = false;
       // Send `start` only on the initial connection. On reconnect the server's
@@ -407,13 +431,28 @@ export class KaraokeSessionClient {
       }
       if (isServerEvent(parsed)) this.options.onServerEvent(parsed);
     });
-    socket.addEventListener("close", () => {
+    socket.addEventListener("close", (event) => {
       if (this.socket !== socket) return;
+      this.clearSocketConnectTimer();
+      if (!opened) {
+        this.options.onError?.({
+          code: "karaoke_socket_closed_before_open",
+          message: `Karaoke WebSocket closed before opening${event?.code ? ` (${event.code})` : ""}`,
+        });
+        this.shutdown("aborted");
+        return;
+      }
       this.socket = null;
       this.handleUnexpectedClose();
     });
     socket.addEventListener("error", () => {
       if (this.socket !== socket) return;
+      if (!opened) {
+        this.clearSocketConnectTimer();
+        this.options.onError?.({ code: "karaoke_socket_error", message: "Karaoke WebSocket failed before opening" });
+        this.shutdown("aborted");
+        return;
+      }
       this.options.onError?.({ code: "karaoke_socket_error", message: "WebSocket error" });
     });
   }
@@ -618,8 +657,16 @@ export class KaraokeSessionClient {
     }
   }
 
+  private clearSocketConnectTimer(): void {
+    if (this.socketConnectTimer !== null) {
+      this.clearTimer(this.socketConnectTimer);
+      this.socketConnectTimer = null;
+    }
+  }
+
   private shutdown(phase: "closed" | "aborted"): void {
     this.clearTokenRefresh();
+    this.clearSocketConnectTimer();
     this.clearCaptureAnchor();
     this.setPhase(phase);
     const socket = this.socket;

@@ -51,13 +51,19 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Audit API dependencies
         working-directory: api/services/api
-        run: bun audit --audit-level=high
+        # Same dev-only undici advisories as the web audit (wrangler/miniflare
+        # tooling, not in the deployed worker); patched versions blocked by the
+        # 7-day minimum-release-age policy. TEMPORARY — remove when undici ages in.
+        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq
       - name: Install community provision operator dependencies
         working-directory: api/services/community-provision-operator
         run: bun install --frozen-lockfile
       - name: Audit community provision operator dependencies
         working-directory: api/services/community-provision-operator
-        run: bun audit --audit-level=high
+        # Same dev-only undici advisories as the web audit (wrangler/miniflare
+        # tooling, not in the deployed worker); patched versions blocked by the
+        # 7-day minimum-release-age policy. TEMPORARY — remove when undici ages in.
+        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq
       - name: Install core dependencies
         working-directory: core
         run: npm ci
@@ -301,13 +307,19 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Audit API dependencies
         working-directory: api/services/api
-        run: bun audit --audit-level=high
+        # Same dev-only undici advisories as the web audit (wrangler/miniflare
+        # tooling, not in the deployed worker); patched versions blocked by the
+        # 7-day minimum-release-age policy. TEMPORARY — remove when undici ages in.
+        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq
       - name: Install community provision operator dependencies
         working-directory: api/services/community-provision-operator
         run: bun install --frozen-lockfile
       - name: Audit community provision operator dependencies
         working-directory: api/services/community-provision-operator
-        run: bun audit --audit-level=high
+        # Same dev-only undici advisories as the web audit (wrangler/miniflare
+        # tooling, not in the deployed worker); patched versions blocked by the
+        # 7-day minimum-release-age policy. TEMPORARY — remove when undici ages in.
+        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq
       - name: Install core dependencies
         working-directory: core
         run: npm ci

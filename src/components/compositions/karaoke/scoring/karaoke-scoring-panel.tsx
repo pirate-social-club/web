@@ -1,5 +1,4 @@
-import * as React from "react";
-import { Microphone, Waveform } from "@phosphor-icons/react";
+import { Microphone } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
@@ -36,16 +35,26 @@ function micErrorMessage(error: { code: string; message?: string }): string {
   }
 }
 
+/**
+ * Footer content for the scoring flow — pre/post-performance only:
+ *  - idle / requesting-mic / connecting → the Start CTA (with an in-button
+ *    spinner while the mic + socket come up, so the footer never resizes),
+ *  - error → an actionable retry,
+ *  - ended → the final score.
+ * During active / finishing / reconnecting it renders nothing: the header score
+ * and on-stage rating pops are the live feedback, and the footer stays empty
+ * (no layout shift mid-performance; transient status lives in the header).
+ */
 export function KaraokeScoringPanel({ canStart, className, onStart, state }: KaraokeScoringPanelProps) {
-  const latest = state.lineScores.find((line) => line.lineId === state.latestLineId) ?? null;
-
-  if (state.status === "idle") {
+  if (state.status === "idle" || state.status === "requesting-mic" || state.status === "connecting") {
+    const connecting = state.status !== "idle";
     return (
       <div className={cn("flex w-full flex-col items-center gap-4", className)}>
         <Button
           className="w-full"
-          disabled={!canStart}
+          disabled={!canStart || connecting}
           leadingIcon={<Microphone className="size-5" weight="fill" />}
+          loading={connecting}
           onClick={onStart}
           size="lg"
         >
@@ -60,36 +69,20 @@ export function KaraokeScoringPanel({ canStart, className, onStart, state }: Kar
       ? micErrorMessage(state.micError)
       : state.error?.message ?? "Scoring stopped unexpectedly.";
     return (
-      <div className={cn("flex flex-col items-center gap-2 text-center", className)}>
+      <div className={cn("flex w-full flex-col items-center gap-3 text-center", className)}>
         <Type as="p" className="text-destructive" variant="caption">
           {message}
         </Type>
-        <Button className="w-full" disabled={!canStart} onClick={onStart} size="sm" variant="secondary">
+        <Button className="w-full" disabled={!canStart} onClick={onStart} size="lg" variant="secondary">
           Try again
         </Button>
       </div>
     );
   }
 
-  if (state.status === "requesting-mic" || state.status === "connecting" || state.status === "reconnecting") {
-    const label = state.status === "requesting-mic"
-      ? "Requesting microphone…"
-      : state.status === "reconnecting"
-        ? "Reconnecting…"
-        : "Connecting…";
+  if (state.status === "ended" && state.summary) {
     return (
-      <div className={cn("flex items-center justify-center gap-2 text-muted-foreground", className)}>
-        <Microphone className="size-5 animate-pulse" weight="fill" />
-        <Type as="p" variant="caption">
-          {label}
-        </Type>
-      </div>
-    );
-  }
-
-  if ((state.status === "ended" || state.status === "finishing") && state.summary) {
-    return (
-      <div className={cn("flex flex-col items-center gap-1 text-center", className)}>
+      <div className={cn("flex w-full flex-col items-center gap-1 text-center", className)}>
         <Type as="p" className="text-muted-foreground" variant="caption">
           Final score
         </Type>
@@ -103,25 +96,6 @@ export function KaraokeScoringPanel({ canStart, className, onStart, state }: Kar
     );
   }
 
-  // active / finishing (awaiting summary)
-  return (
-    <div className={cn("flex flex-col items-center gap-2 text-center", className)} aria-live="polite">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Waveform className="size-5" weight="fill" />
-        <Type as="span" variant="caption">
-          {state.status === "finishing" ? "Scoring…" : "Listening…"}
-        </Type>
-      </div>
-      {latest ? (
-        <Type as="p" variant="body-strong">
-          Last line: {scorePercent(latest.score)}
-        </Type>
-      ) : null}
-      {state.partialTranscript ? (
-        <Type as="p" className="max-w-md truncate text-muted-foreground" dir="auto" variant="caption">
-          {state.partialTranscript}
-        </Type>
-      ) : null}
-    </div>
-  );
+  // active / finishing / reconnecting (or ended without a summary): empty footer.
+  return null;
 }

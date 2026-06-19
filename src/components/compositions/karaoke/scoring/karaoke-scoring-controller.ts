@@ -278,6 +278,12 @@ export function createKaraokeScoringController(
         setState({ status: "ended", summary: event.summary });
         return;
       case "session_error":
+        // Transient scoring hiccups (a line-boundary the server didn't expect, or
+        // a brief not-recording window) are NOT terminal — the stream keeps going.
+        // Don't flip to the error UI / "Try again"; just ignore them.
+        if (event.code === "line_identity_mismatch" || event.code === "session_not_recording") {
+          return;
+        }
         setState({ error: { code: event.code, message: `session error: ${event.code}` }, status: "error" });
         return;
       default:

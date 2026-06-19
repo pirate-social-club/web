@@ -10,6 +10,8 @@ import {
   type KaraokeLineRating,
   type KaraokeStageLine,
 } from "./karaoke-lyric-stage";
+import type { KaraokeScoringStatus } from "./scoring/karaoke-scoring-controller";
+import { Spinner } from "@/components/primitives/spinner";
 
 export interface KaraokePracticeCompleteSummary {
   durationMs: number;
@@ -30,9 +32,11 @@ export interface KaraokePracticeSurfaceProps {
   listening?: boolean;
   onComplete?: (summary: KaraokePracticeCompleteSummary) => void;
   onExit?: () => void;
-  /** Running score + combo, shown in the header while scoring is enabled. */
+  /** Running score + combo, shown centered in the header while performing. */
   runningScore?: number;
   combo?: number;
+  /** Scoring status — drives the top-right loading/connecting indicator. */
+  scoringStatus?: KaraokeScoringStatus | null;
   /** Optional per-line rating pop rendered on the lyric stage. */
   rating?: KaraokeLineRating | null;
   /** Sole footer content for the scoring flow (Start button, status, final
@@ -71,7 +75,6 @@ export function shouldIgnoreKaraokeShortcutTarget(target: EventTarget | null): b
 
 export function KaraokePracticeSurface({
   artworkSrc,
-  artistName,
   className,
   currentTimeMs,
   durationMs,
@@ -83,6 +86,7 @@ export function KaraokePracticeSurface({
   onExit,
   runningScore,
   combo,
+  scoringStatus,
   rating,
   footerContent,
   title,
@@ -96,6 +100,13 @@ export function KaraokePracticeSurface({
   const comboCount = Math.max(0, combo ?? 0);
   const firstLineStartMs = lines[0]?.startMs ?? Number.POSITIVE_INFINITY;
   const primed = !isPlaying && hasLines && clampedCurrentTimeMs <= firstLineStartMs;
+  // Score sits centered in the header once a performance is underway; the
+  // top-right carries only transient connect/reconnect status (never the score).
+  const performing = scoringStatus === "active" || scoringStatus === "finishing"
+    || scoringStatus === "reconnecting" || scoringStatus === "ended";
+  const showScore = scoringEnabled && performing;
+  const connecting = scoringStatus === "requesting-mic" || scoringStatus === "connecting";
+  const reconnecting = scoringStatus === "reconnecting";
 
   React.useEffect(() => {
     if (!isEnded) {
@@ -139,37 +150,34 @@ export function KaraokePracticeSurface({
         />
 
         <div className="flex flex-1 items-center justify-center">
-          {scoringEnabled ? (
+          {showScore ? (
             <div className="flex flex-col items-center leading-none">
-              <div className="flex items-center gap-2">
-                {listening ? (
-                  <span
-                    aria-hidden="true"
-                    className="size-2.5 animate-pulse rounded-full bg-destructive"
-                  />
-                ) : null}
-                <Type as="span" className="tabular-nums" variant="h3">
-                  {runningScore ?? 0}
-                </Type>
-              </div>
+              <Type as="span" className="tabular-nums" variant="h3">
+                {runningScore ?? 0}
+              </Type>
               {comboCount >= 2 ? (
                 <Type as="span" className="text-success" variant="caption">
                   Combo x{comboCount}
                 </Type>
               ) : null}
             </div>
-          ) : artworkSrc ? (
-            <img
-              alt=""
-              aria-hidden="true"
-              className="size-11 rounded-[var(--radius-lg)] object-cover"
-              src={artworkSrc}
-            />
           ) : null}
         </div>
 
-        {/* Balances the back button so the score sits truly centered. */}
-        <div aria-hidden="true" className="size-10 shrink-0" />
+        {/* Top-right: transient connect/reconnect status only — never the score.
+            min-w-10 balances the back button so the centered score stays centered. */}
+        <div className="flex h-10 min-w-10 shrink-0 items-center justify-end gap-1.5">
+          {connecting || reconnecting ? (
+            <>
+              <Spinner className="size-4" />
+              <Type as="span" className="hidden text-muted-foreground sm:inline" variant="caption">
+                {reconnecting ? "Reconnecting…" : "Connecting…"}
+              </Type>
+            </>
+          ) : listening ? (
+            <span aria-hidden="true" className="size-2.5 animate-pulse rounded-full bg-destructive" />
+          ) : null}
+        </div>
       </header>
 
       <div className="relative min-h-0 flex-1 overflow-hidden">

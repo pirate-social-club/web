@@ -354,7 +354,8 @@ export function KaraokeAudioSurface({
   const showScoringFooter = scoring?.enabled === true
     && scoringStatus !== null
     && scoringStatus !== "active"
-    && scoringStatus !== "finishing";
+    && scoringStatus !== "finishing"
+    && scoringStatus !== "reconnecting";
   const footerContent = showScoringFooter && scoring.state ? (
     <KaraokeScoringPanel
       canStart={audioState === "ready"}
@@ -382,6 +383,7 @@ export function KaraokeAudioSurface({
         footerContent={footerContent}
         rating={feedback.rating}
         runningScore={feedback.runningScore}
+        scoringStatus={scoringStatus}
         title={title}
       />
       {audioState === "error" ? (

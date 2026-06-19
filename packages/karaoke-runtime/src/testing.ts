@@ -38,15 +38,26 @@ export class FakeKaraokeStreamingSttAdapter implements KaraokeStreamingSttAdapte
   closeCount = 0;
   streamGeneration: string | null = null;
   private onMessage: ((message: KaraokeSttAdapterMessage) => Promise<void>) | null = null;
+  private onUnexpectedClose: (() => void) | null = null;
 
   async start(input: {
     attemptId: string;
     sessionId: string;
     onMessage: (message: KaraokeSttAdapterMessage) => Promise<void>;
+    onUnexpectedClose?: () => void;
   }): Promise<void> {
     this.startCount += 1;
     this.streamGeneration = `fake-gen-${this.startCount}`;
     this.onMessage = input.onMessage;
+    this.onUnexpectedClose = input.onUnexpectedClose ?? null;
+  }
+
+  /** Test hook: simulate the provider stream dropping unexpectedly. */
+  triggerUnexpectedClose(): void {
+    if (!this.onUnexpectedClose) {
+      throw new Error("Fake karaoke STT adapter is not started");
+    }
+    this.onUnexpectedClose();
   }
 
   async sendPcm16(frame: KaraokeClientBinaryFrame): Promise<void> {

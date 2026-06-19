@@ -38,6 +38,12 @@ export interface KaraokeStreamingSttAdapter {
     attemptId: string;
     sessionId: string;
     onMessage: (message: KaraokeSttAdapterMessage) => Promise<void>;
+    /**
+     * Fired when the provider stream drops unexpectedly (network close/error),
+     * NOT on intentional close() or terminal provider protocol errors. The host
+     * uses this to drive reconnect; absent on adapters that cannot detect it.
+     */
+    onUnexpectedClose?: () => void;
   }): Promise<void>;
   sendPcm16(frame: KaraokeClientBinaryFrame): Promise<void>;
   /**
@@ -74,6 +80,20 @@ export interface KaraokeSessionHostOptions {
 }
 
 const DEFAULT_COMMIT_ACK_TIMEOUT_MS = 2_000;
+
+// Reconnect policy for an unexpectedly-dropped provider stream. Bounded so a
+// permanently unreachable provider eventually aborts rather than looping.
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_BACKOFF_BASE_MS = 250;
+const RECONNECT_BACKOFF_CAP_MS = 2_000;
+// While reconnecting, inbound audio frames are buffered (not dropped) and
+// replayed onto the fresh stream. Bounded so a long outage can't grow memory
+// without limit; the oldest frames are dropped first (a small audio gap).
+const MAX_RECONNECT_BUFFER_FRAMES = 600;
+
+function reconnectBackoffMs(attempt: number): number {
+  return Math.min(RECONNECT_BACKOFF_BASE_MS * 2 ** (attempt - 1), RECONNECT_BACKOFF_CAP_MS);
+}
 
 function clientEventToSessionEvent(
   state: KaraokeSessionState,
@@ -123,6 +143,12 @@ export class KaraokeSessionHost {
   private commitChain: Promise<void> = Promise.resolve();
   private commitTimer: unknown = null;
   private pendingFinish: { audioTimeMs: number } | null = null;
+
+  // Reconnect state. While `reconnecting`, handleAudioFrame buffers frames into
+  // `reconnectBuffer` (bounded) instead of forwarding to the dead adapter; they
+  // are replayed onto the fresh stream once it is ready.
+  private reconnecting = false;
+  private reconnectBuffer: KaraokeClientBinaryFrame[] = [];
 
   private readonly now: () => number;
   private readonly setTimer: (callback: () => void, ms: number) => unknown;
@@ -223,7 +249,10 @@ export class KaraokeSessionHost {
     return await this.startStt(undefined);
   }
 
-  private async startStt(sequence: number | undefined): Promise<KaraokeTransportError | null> {
+  private async startStt(
+    sequence: number | undefined,
+    options: { abortOnFailure?: boolean } = {},
+  ): Promise<KaraokeTransportError | null> {
     if (this.sttStarted) return null;
     this.sttStarted = true;
     try {
@@ -233,6 +262,7 @@ export class KaraokeSessionHost {
           // Serialize message handling (incl. commit acks) on the commit chain.
           this.enqueueCommitTask(() => this.processAdapterMessage(message));
         },
+        onUnexpectedClose: () => this.onSttUnexpectedClose(),
         sessionId: this.state.sessionId,
       });
       return null;
@@ -240,6 +270,12 @@ export class KaraokeSessionHost {
       const code = (error as { code?: string } | null)?.code ?? "stt_adapter_start_failed";
       const message = error instanceof Error ? error.message : String(error);
       this.sttStarted = false;
+      if (options.abortOnFailure === false) {
+        // Reconnect path: the caller retries with backoff and aborts only after
+        // exhausting attempts, so a single failed re-open must not tear down the
+        // session here.
+        return { code: "session_aborted", message, sequence };
+      }
       await this.reduce({ code, type: "abort" });
       const transportError: KaraokeTransportError = {
         code: "session_aborted",
@@ -249,6 +285,76 @@ export class KaraokeSessionHost {
       await this.effectRunner.reportTransportError(transportError, this.state);
       return transportError;
     }
+  }
+
+  /**
+   * Invoked by the adapter when its provider stream drops unexpectedly (network
+   * close/error, never an intentional close). Schedules reconnect on the
+   * serialized commit chain so it composes with commit acks/timeouts; a
+   * re-entrant call while already reconnecting is ignored.
+   */
+  private onSttUnexpectedClose(): void {
+    if (this.reconnecting) return;
+    if (this.state.status !== "recording") return;
+    this.enqueueCommitTask(() => this.reconnectStt());
+  }
+
+  /**
+   * Re-open the provider stream after an unexpected drop. Bounded backoff; the
+   * dead stream's in-flight commit can never be acknowledged by the fresh stream
+   * (new generation), so it is finalized as provider_failed once the new stream
+   * is up. Audio buffered during the outage is replayed onto the new stream.
+   */
+  private async reconnectStt(): Promise<void> {
+    if (this.reconnecting) return;
+    if (this.state.status !== "recording") return;
+    this.reconnecting = true;
+    // sttStarted is still true for the dead stream; clear it so startStt re-runs.
+    this.sttStarted = false;
+    try {
+      for (let attempt = 1; attempt <= MAX_RECONNECT_ATTEMPTS; attempt += 1) {
+        await this.delay(reconnectBackoffMs(attempt));
+        // The session may have ended/aborted while we were backing off.
+        if (this.state.status !== "recording") return;
+        const error = await this.startStt(undefined, { abortOnFailure: false });
+        if (!error) {
+          // Fresh stream is up (new generation). Orphan the dead stream's pending
+          // commit, then replay any audio captured during the outage.
+          await this.invalidateOrphanedPendingCommit(this.sttAdapter.streamGeneration);
+          await this.flushReconnectBuffer();
+          return;
+        }
+      }
+      // Exhausted: the provider is unreachable — abort the session deterministically.
+      await this.reduce({ code: "stt_reconnect_failed", type: "abort" });
+      await this.effectRunner.reportTransportError(
+        { code: "session_aborted", message: "STT reconnect failed", sequence: undefined },
+        this.state,
+      );
+    } finally {
+      this.reconnecting = false;
+      // On success the buffer was drained; on give-up drop whatever remains.
+      this.reconnectBuffer = [];
+    }
+  }
+
+  /**
+   * Replay buffered frames onto the fresh stream. `reconnecting` stays true for
+   * the duration so frames arriving mid-flush keep ordering (they append and are
+   * picked up by the loop); the flag is cleared by reconnectStt's finally once
+   * the buffer has fully drained.
+   */
+  private async flushReconnectBuffer(): Promise<void> {
+    while (this.reconnectBuffer.length > 0) {
+      const frame = this.reconnectBuffer.shift()!;
+      await this.sttAdapter.sendPcm16(frame);
+    }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      this.setTimer(() => resolve(), ms);
+    });
   }
 
   async handleAudioFrame(frame: KaraokeClientBinaryFrame): Promise<KaraokeTransportError | null> {
@@ -274,6 +380,16 @@ export class KaraokeSessionHost {
     }
 
     this.lastClientSequence = frame.sequence;
+    if (this.reconnecting) {
+      // Provider stream is mid-reconnect — buffer instead of dropping; the frames
+      // are replayed onto the fresh stream by flushReconnectBuffer once it is up.
+      // Bounded: drop the oldest frame on overflow (a small leading audio gap).
+      this.reconnectBuffer.push(frame);
+      if (this.reconnectBuffer.length > MAX_RECONNECT_BUFFER_FRAMES) {
+        this.reconnectBuffer.shift();
+      }
+      return null;
+    }
     await this.sttAdapter.sendPcm16(frame);
     return null;
   }

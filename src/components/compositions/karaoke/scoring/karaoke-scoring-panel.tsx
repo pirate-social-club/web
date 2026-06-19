@@ -43,7 +43,7 @@ export function KaraokeScoringPanel({ canStart, className, onStart, state }: Kar
     return (
       <div className={cn("flex w-full flex-col items-center gap-4", className)}>
         <Button
-          className="w-full sm:w-auto sm:min-w-48"
+          className="w-full"
           disabled={!canStart}
           leadingIcon={<Microphone className="size-5" weight="fill" />}
           onClick={onStart}
@@ -64,7 +64,7 @@ export function KaraokeScoringPanel({ canStart, className, onStart, state }: Kar
         <Type as="p" className="text-destructive" variant="caption">
           {message}
         </Type>
-        <Button className="w-full sm:w-auto" disabled={!canStart} onClick={onStart} size="sm" variant="secondary">
+        <Button className="w-full" disabled={!canStart} onClick={onStart} size="sm" variant="secondary">
           Try again
         </Button>
       </div>

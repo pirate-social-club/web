@@ -418,7 +418,15 @@ export class KaraokeSessionClient {
         // the suspend transition has completed and THIS socket is still live (§6).
         void this.resumeCaptureAfterReconnect(socket);
       }
-      this.scheduleTokenRefresh();
+      // NOTE: no proactive token refresh. The server never re-checks the gateway
+      // token on an established socket (rejectExpiredSocket gates on session
+      // expiry, ~60min; the token is verified only at the WS handshake). The old
+      // proactive refresh closed the live socket every ~50s to "refresh" — but
+      // createSession only rotates an ALREADY-expired token (responseFromRecord),
+      // so it churned (close→reconnect→same token→re-fire) producing a ~13s
+      // grading outage every token lifetime. A genuine drop reconnects via
+      // handleUnexpectedClose→createSession, which rotates the (by-then expired)
+      // token. So the live socket needs no refresh; do nothing here.
     });
     socket.addEventListener("message", (messageEvent) => {
       if (this.socket !== socket) return;
@@ -484,27 +492,14 @@ export class KaraokeSessionClient {
     }, this.reconnectDelayMs);
   }
 
+  // Proactive token refresh is intentionally a no-op. Closing a healthy socket to
+  // "refresh" the gateway token caused a recurring ~13s grading outage (the
+  // server doesn't re-check the token on an established socket, and createSession
+  // only rotates an already-expired token, so the old path churned). Reconnection
+  // after a genuine drop refreshes the token via createSession. `tokenRefreshLeadMs`
+  // / `refreshTimer` are retained for API/behavioural compatibility but unused.
   private scheduleTokenRefresh(): void {
     this.clearTokenRefresh();
-    if (!this.descriptor) return;
-    const fireInMs = this.descriptor.tokenExpiresAt * 1000 - this.now() - this.tokenRefreshLeadMs;
-    this.refreshTimer = this.setTimer(() => {
-      if (this.phase !== "live") return;
-      // Proactively refresh the capability before the token expires: reconnect
-      // with a fresh token (same attempt). Closing the old socket here would also
-      // trigger reconnect, so go through the single reconnect path.
-      const stale = this.socket;
-      this.socket = null;
-      // The token-refresh path nulls the socket so its close listener no-ops; we
-      // must suspend capture here explicitly (handleUnexpectedClose won't run).
-      this.requestCaptureSuspension();
-      try {
-        stale?.close(1000, "karaoke_token_refresh");
-      } catch {
-        // best-effort
-      }
-      this.scheduleReconnect();
-    }, Math.max(0, fireInMs));
   }
 
   /** Appends a capture transition to the serialized chain so none ever overlap. */

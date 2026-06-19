@@ -117,7 +117,7 @@ describe("karaoke reducer watermark second gate", () => {
 
   test("grace finalization uses song-time; a paused clock does not finalize", () => {
     const grace = reduce(baseState({ recognizedWords: L1_WORDS, sttWatermarkMs: 0 }), {
-      audioTimeMs: 1700, // 700ms past l1.endMs >= 600 grace
+      audioTimeMs: 3100, // 2100ms past l1.endMs >= 2000ms grace
       playing: true,
       type: "playback_sync",
     })

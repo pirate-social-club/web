@@ -689,17 +689,21 @@ describe("KaraokeSessionClient transport", () => {
     expect(tornDown).toBe(true) // teardown proceeded despite the hung suspendCapture
   })
 
-  test("proactively refreshes the capability before token expiry", async () => {
-    const h = harness({ tokenTtlMs: 12_000 }) // refresh lead default 10s → fires ~2s in
+  test("does not proactively reconnect at the token-refresh point (live socket persists)", async () => {
+    // The server never re-checks the gateway token on an established socket
+    // (it gates on session expiry, not token expiry), so there is no proactive
+    // token-refresh reconnect — closing a healthy socket to refresh caused a
+    // recurring grading outage. Advancing past the old refresh point must NOT
+    // create a new session or socket; the live socket simply persists.
+    const h = harness({ tokenTtlMs: 12_000 })
     await h.client.start({ postId: "post-1" })
     h.sockets[0]!.open()
     expect(h.client.getPhase()).toBe("live")
 
-    await h.timers.flush() // fire the token-refresh timer → reconnect with a fresh token
-    expect(h.idempotencyKeys.length).toBeGreaterThanOrEqual(2)
-    expect(h.sockets.length).toBeGreaterThanOrEqual(2)
-    h.sockets[h.sockets.length - 1]!.open()
-    expect(h.client.getPhase()).toBe("live")
+    await h.timers.flush() // previously fired the token-refresh timer → reconnect; now a no-op
+    expect(h.idempotencyKeys).toHaveLength(1) // no re-creation
+    expect(h.sockets).toHaveLength(1) // no new socket
+    expect(h.client.getPhase()).toBe("live") // uninterrupted
   })
 
   test("a disconnect after session expiry ends the session without reconnecting", async () => {

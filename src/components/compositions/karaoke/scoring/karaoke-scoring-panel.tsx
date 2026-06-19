@@ -43,6 +43,7 @@ export function KaraokeScoringPanel({ canStart, className, onStart, state }: Kar
     return (
       <div className={cn("flex items-center justify-center", className)}>
         <Button
+          className="w-full sm:w-auto"
           disabled={!canStart}
           leadingIcon={<Microphone className="size-5" weight="fill" />}
           onClick={onStart}
@@ -59,11 +60,11 @@ export function KaraokeScoringPanel({ canStart, className, onStart, state }: Kar
       ? micErrorMessage(state.micError)
       : state.error?.message ?? "Scoring stopped unexpectedly.";
     return (
-      <div className={cn("flex flex-col items-center gap-3 text-center", className)}>
-        <Type as="p" className="text-muted-foreground" variant="caption">
+      <div className={cn("flex flex-col items-center gap-2 text-center", className)}>
+        <Type as="p" className="text-destructive" variant="caption">
           {message}
         </Type>
-        <Button disabled={!canStart} onClick={onStart} size="sm" variant="secondary">
+        <Button className="w-full sm:w-auto" disabled={!canStart} onClick={onStart} size="sm" variant="secondary">
           Try again
         </Button>
       </div>

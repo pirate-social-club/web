@@ -20,11 +20,28 @@ export interface KaraokeStageLine {
   tokens?: KaraokeStageToken[];
 }
 
+export type KaraokeRatingTone = "success" | "info" | "warning" | "destructive";
+
+/**
+ * Guitar-Hero-style transient rating for the most recently scored line.
+ * `key` changes whenever a new rating arrives so the stage can remount the
+ * pop element and replay its entrance animation.
+ */
+export interface KaraokeLineRating {
+  lineId: string;
+  key: string;
+  label: string;
+  points: number;
+  tone: KaraokeRatingTone;
+}
+
 export interface KaraokeLyricStageProps {
   lines: KaraokeStageLine[];
   currentTimeMs: number;
   className?: string;
   lineStepPx?: number;
+  /** Optional per-line rating pop rendered above the active (hit) line. */
+  rating?: KaraokeLineRating | null;
 }
 
 type LineMode = "active" | "cue" | "next";
@@ -193,6 +210,7 @@ export function KaraokeLyricStage({
   currentTimeMs,
   lines,
   lineStepPx,
+  rating,
 }: KaraokeLyricStageProps) {
   const { activeLine, cueLine, nextLine } = getKaraokeDisplayState(lines, currentTimeMs);
   const style: KaraokeStageStyle = lineStepPx ? { "--karaoke-line-gap": `${lineStepPx}px` } : {};
@@ -203,6 +221,17 @@ export function KaraokeLyricStage({
       className={cn("karaoke-lyric-stage", className)}
       style={style}
     >
+      {rating ? (
+        <div
+          key={rating.key}
+          className="karaoke-lyric-stage__rating"
+          data-rating-tone={rating.tone}
+        >
+          <span className="karaoke-lyric-stage__rating-label">{rating.label}</span>
+          <span className="karaoke-lyric-stage__rating-points">+{rating.points}</span>
+        </div>
+      ) : null}
+
       {activeLine ? (
         <div className="karaoke-lyric-stage__slot karaoke-lyric-stage__slot--active">
           <StageLine

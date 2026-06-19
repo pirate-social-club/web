@@ -12,7 +12,11 @@ import { Scrubber } from "@/components/primitives/scrubber";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
-import { KaraokeLyricStage, type KaraokeStageLine } from "./karaoke-lyric-stage";
+import {
+  KaraokeLyricStage,
+  type KaraokeLineRating,
+  type KaraokeStageLine,
+} from "./karaoke-lyric-stage";
 
 export interface KaraokePracticeCompleteSummary {
   durationMs: number;
@@ -36,6 +40,13 @@ export interface KaraokePracticeSurfaceProps {
   onPlay?: () => void;
   onReset?: () => void;
   onSeek?: (ms: number) => void;
+  /** Optional scoring panel rendered in an in-flow strip below the transport. */
+  scoringPanel?: React.ReactNode;
+  /** Running score + combo, shown in the header while scoring is enabled. */
+  runningScore?: number;
+  combo?: number;
+  /** Optional per-line rating pop rendered on the lyric stage. */
+  rating?: KaraokeLineRating | null;
   title: string;
 }
 
@@ -90,6 +101,10 @@ export function KaraokePracticeSurface({
   onPlay,
   onReset,
   onSeek,
+  scoringPanel,
+  runningScore,
+  combo,
+  rating,
   title,
 }: KaraokePracticeSurfaceProps) {
   const clampedCurrentTimeMs = Math.max(0, Math.min(durationMs, currentTimeMs));
@@ -98,6 +113,8 @@ export function KaraokePracticeSurface({
   const isEnded = durationMs > 0 && clampedCurrentTimeMs >= durationMs;
   const playbackDisabled = controlsDisabled || isLoading || !hasLines;
   const completedRef = React.useRef(false);
+  const scoringEnabled = scoringPanel != null;
+  const comboCount = Math.max(0, combo ?? 0);
 
   React.useEffect(() => {
     if (!isEnded) {
@@ -166,24 +183,24 @@ export function KaraokePracticeSurface({
     <section
       aria-keyshortcuts="Space ArrowLeft ArrowRight Home End"
       aria-label={title}
-      className={cn("flex min-h-screen w-full flex-col bg-background text-foreground", className)}
+      className={cn("flex h-dvh w-full flex-col overflow-hidden bg-background text-foreground", className)}
       onKeyDown={handleKeyDown}
       tabIndex={0}
     >
       <div aria-atomic="true" aria-live="polite" className="sr-only">
         {lineLabel}
       </div>
-      <header className="grid min-h-20 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border-soft px-4 py-3 sm:px-6">
+      <header className="flex items-center gap-3 border-b border-border-soft px-4 py-2.5 sm:px-6">
         <Button
           aria-label="Exit karaoke"
-          className="size-11 px-0"
+          className="size-10 px-0"
           leadingIcon={<CaretLeft className="size-5" weight="bold" />}
           onClick={onExit}
           size="icon"
           variant="ghost"
         />
 
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <Type as="h1" className="truncate" variant="h3">
             {title}
           </Type>
@@ -194,41 +211,68 @@ export function KaraokePracticeSurface({
           ) : null}
         </div>
 
-        {artworkSrc ? (
+        {scoringEnabled ? (
+          <div className="flex shrink-0 flex-col items-end leading-none">
+            <Type as="span" className="tabular-nums" variant="h3">
+              {runningScore ?? 0}
+            </Type>
+            {comboCount >= 2 ? (
+              <Type as="span" className="text-success" variant="caption">
+                Combo x{comboCount}
+              </Type>
+            ) : null}
+          </div>
+        ) : artworkSrc ? (
           <img
             alt=""
             aria-hidden="true"
-            className="size-12 rounded-[var(--radius-lg)] object-cover"
+            className="size-11 shrink-0 rounded-[var(--radius-lg)] object-cover"
             src={artworkSrc}
           />
-        ) : (
-          <div aria-hidden="true" className="size-12 rounded-[var(--radius-lg)] bg-muted" />
-        )}
+        ) : null}
       </header>
 
-      <div className="relative min-h-0 flex-1">
-        {isLoading ? (
-          <div className="grid size-full min-h-96 place-items-center px-4">
-            <Type as="p" className="text-muted-foreground" variant="body">
-              Loading karaoke
-            </Type>
-          </div>
-        ) : hasLines ? (
-          <KaraokeLyricStage
-            className="h-full min-h-96"
-            currentTimeMs={clampedCurrentTimeMs}
-            lines={lines}
-          />
-        ) : (
-          <div className="grid size-full min-h-96 place-items-center px-4">
-            <Type as="p" className="text-muted-foreground" variant="body">
-              No timed lyrics
-            </Type>
-          </div>
-        )}
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        {artworkSrc ? (
+          <>
+            <img
+              alt=""
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 size-full scale-110 object-cover opacity-20 blur-2xl"
+              src={artworkSrc}
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/70 to-background"
+            />
+          </>
+        ) : null}
+
+        <div className="relative z-10 size-full">
+          {isLoading ? (
+            <div className="grid size-full min-h-64 place-items-center px-4">
+              <Type as="p" className="text-muted-foreground" variant="body">
+                Loading karaoke
+              </Type>
+            </div>
+          ) : hasLines ? (
+            <KaraokeLyricStage
+              className="h-full min-h-64"
+              currentTimeMs={clampedCurrentTimeMs}
+              lines={lines}
+              rating={rating}
+            />
+          ) : (
+            <div className="grid size-full min-h-64 place-items-center px-4">
+              <Type as="p" className="text-muted-foreground" variant="body">
+                No timed lyrics
+              </Type>
+            </div>
+          )}
+        </div>
       </div>
 
-      <footer className="border-t border-border-soft px-4 py-4 sm:px-6">
+      <footer className="border-t border-border-soft px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 sm:px-6">
         <div className="mx-auto flex w-full max-w-5xl items-center gap-3">
           <MediaControlButton
             aria-label={isPlaying ? "Pause" : "Play"}
@@ -258,10 +302,15 @@ export function KaraokePracticeSurface({
             value={clampedCurrentTimeMs}
           />
 
-          <Type as="span" className="min-w-[9ch] shrink-0 whitespace-nowrap text-right" variant="caption">
+          <Type as="span" className="min-w-[9ch] shrink-0 whitespace-nowrap text-right tabular-nums" variant="caption">
             {formatTime(clampedCurrentTimeMs)} / {formatTime(durationMs)}
           </Type>
         </div>
+        {scoringPanel ? (
+          <div className="mx-auto mt-3 w-full max-w-5xl border-t border-border-soft pt-3">
+            {scoringPanel}
+          </div>
+        ) : null}
       </footer>
     </section>
   );

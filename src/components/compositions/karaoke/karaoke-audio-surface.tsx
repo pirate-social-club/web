@@ -9,6 +9,7 @@ import {
   KaraokePracticeSurface,
   type KaraokePracticeCompleteSummary,
 } from "./karaoke-practice-surface";
+import { deriveKaraokeFeedback } from "./karaoke-scoring-feedback";
 import { getLyricDurationMs } from "./karaoke-timing";
 import type { KaraokeStageLine } from "./karaoke-lyric-stage";
 import { KaraokeScoringPanel } from "./scoring/karaoke-scoring-panel";
@@ -73,6 +74,10 @@ export function KaraokeAudioSurface({
   // to call when scoring is disabled (they no-op).
   const scoringRef = React.useRef(scoring);
   scoringRef.current = scoring;
+  // True between "Score my singing" and the first `active` (mic-live) status.
+  // The instrumental is held until the mic is actually listening — see effect.
+  const pendingPlayRef = React.useRef(false);
+  const playAudioRef = React.useRef<() => void>(() => {});
   const [audioState, setAudioState] = React.useState<AudioState>("loading");
   const [audioDurationMs, setAudioDurationMs] = React.useState<number | undefined>(undefined);
   const [currentTimeMs, setCurrentTimeMs] = React.useState(initialTimeMs);
@@ -140,6 +145,7 @@ export function KaraokeAudioSurface({
       setAudioState(audio.error ? "error" : "ready");
     }
   }, [audioState, durationMs, stopFrame, syncFromAudio]);
+  playAudioRef.current = playAudio;
 
   const seekAudio = React.useCallback((nextTimeMs: number) => {
     const audio = audioRef.current;
@@ -173,14 +179,33 @@ export function KaraokeAudioSurface({
     onExit?.();
   }, [confirmExit, onExit, pauseAudio]);
 
-  // Begin (or retry) a scoring session from the current position, then play. The
-  // controller acquires the mic before the instrumental advances; the initial
-  // capture anchor is taken when the socket reaches `live`.
+  // Begin (or retry) a scoring session from the current position. The mic is
+  // acquired and the transport connected BEFORE playback starts — the
+  // instrumental only advances once the socket reaches `active` (live), so the
+  // user is never singing over music the server can't hear yet.
   const startScoring = React.useCallback(() => {
     const audio = audioRef.current;
+    pendingPlayRef.current = true;
     scoringRef.current?.controls.start(audio ? audio.currentTime * 1000 : 0);
-    void playAudio();
-  }, [playAudio]);
+  }, []);
+
+  // Hold playback until the mic is live. `pendingPlayRef` is set by
+  // `startScoring` and cleared the first time scoring goes `active` (or on
+  // terminal states so a stale flag never starts audio later).
+  const scoringStatus = scoring?.state?.status ?? null;
+  React.useEffect(() => {
+    if (scoringStatus !== "active") {
+      if (scoringStatus === "error" || scoringStatus === "idle") {
+        pendingPlayRef.current = false;
+      }
+      return;
+    }
+    if (!pendingPlayRef.current) return;
+    pendingPlayRef.current = false;
+    if (!isPlaying) {
+      void playAudioRef.current();
+    }
+  }, [scoringStatus, isPlaying]);
 
   React.useEffect(() => {
     const audio = audioRef.current;
@@ -321,8 +346,18 @@ export function KaraokeAudioSurface({
     };
   }, [artistName, artworkSrc, pauseAudio, playAudio, seekAudio, title]);
 
+  const feedback = React.useMemo(() => deriveKaraokeFeedback(scoring?.state ?? null), [scoring?.state]);
+  const scoringPanel = scoring?.enabled && scoring.state ? (
+    <KaraokeScoringPanel
+      canStart={audioState === "ready"}
+      className="w-full"
+      onStart={startScoring}
+      state={scoring.state}
+    />
+  ) : null;
+
   return (
-    <div className={cn("relative min-h-screen w-full flex-1", className)}>
+    <div className={cn("relative flex h-dvh w-full flex-col overflow-hidden", className)}>
       <audio crossOrigin="anonymous" preload="auto" ref={audioRef} />
       <KaraokePracticeSurface
         artistName={artistName}
@@ -343,25 +378,14 @@ export function KaraokeAudioSurface({
         onSeek={(nextTimeMs) => {
           seekAudio(nextTimeMs - timingOffsetMs);
         }}
+        combo={feedback.combo}
+        rating={feedback.rating}
+        runningScore={feedback.runningScore}
+        scoringPanel={scoringPanel}
         title={title}
       />
-      {scoring?.enabled && scoring.state ? (
-        <div
-          className={cn(
-            "pointer-events-auto absolute inset-x-0 bottom-0 z-20 border-t border-border-soft bg-card/95 px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-lg backdrop-blur transition-opacity",
-            audioState === "ready" ? undefined : "opacity-60",
-          )}
-        >
-          <KaraokeScoringPanel
-            canStart={audioState === "ready"}
-            className="mx-auto max-w-md"
-            onStart={startScoring}
-            state={scoring.state}
-          />
-        </div>
-      ) : null}
       {audioState === "error" ? (
-        <div className="absolute inset-x-4 bottom-24 rounded-[var(--radius-xl)] border border-border-soft bg-card p-4 shadow-lg sm:left-auto sm:max-w-sm">
+        <div className="absolute inset-x-4 top-20 rounded-[var(--radius-xl)] border border-border-soft bg-card p-4 shadow-lg sm:left-1/2 sm:max-w-sm sm:-translate-x-1/2">
           <Type as="p" variant="body-strong">
             Audio unavailable
           </Type>
@@ -371,7 +395,7 @@ export function KaraokeAudioSurface({
         </div>
       ) : null}
       {audioState !== "error" && showDriftWarning ? (
-        <div className="absolute inset-x-4 bottom-24 rounded-[var(--radius-xl)] border border-border-soft bg-card p-4 shadow-lg sm:left-auto sm:max-w-sm">
+        <div className="absolute inset-x-4 top-20 rounded-[var(--radius-xl)] border border-border-soft bg-card p-4 shadow-lg sm:left-1/2 sm:max-w-sm sm:-translate-x-1/2">
           <Type as="p" variant="body-strong">
             Lyrics may be out of sync
           </Type>

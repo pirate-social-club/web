@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 import { badMetadataRawKaraokeLines, realSongRawKaraokeLines } from "../fixtures/real-song";
 import { getLyricDurationMs } from "../karaoke-timing";
-import { KaraokeLyricStage, type KaraokeStageLine } from "../karaoke-lyric-stage";
+import { KaraokeLyricStage, type KaraokeLineRating, type KaraokeStageLine } from "../karaoke-lyric-stage";
 import { toKaraokeStageLines } from "../lyric-transform";
 import { useSyntheticKaraokeClock } from "../use-synthetic-karaoke-clock";
 
@@ -78,9 +78,10 @@ interface KaraokeStoryPlayerProps {
   className?: string;
   initialTimeMs?: number;
   lines: KaraokeStageLine[];
+  rating?: KaraokeLineRating | null;
 }
 
-function KaraokeStoryPlayer({ className, initialTimeMs = 0, lines }: KaraokeStoryPlayerProps) {
+function KaraokeStoryPlayer({ className, initialTimeMs = 0, lines, rating }: KaraokeStoryPlayerProps) {
   const durationMs = React.useMemo(() => getLyricDurationMs(lines), [lines]);
   const clock = useSyntheticKaraokeClock({ durationMs, initialTimeMs });
 
@@ -88,7 +89,7 @@ function KaraokeStoryPlayer({ className, initialTimeMs = 0, lines }: KaraokeStor
     <div className={cn("flex min-h-screen w-full items-center justify-center bg-background p-4 sm:p-8", className)}>
       <div className="flex w-full max-w-5xl flex-col gap-4">
         <div className="min-h-96 overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
-          <KaraokeLyricStage currentTimeMs={clock.currentTimeMs} lines={lines} />
+          <KaraokeLyricStage currentTimeMs={clock.currentTimeMs} lines={lines} rating={rating} />
         </div>
 
         <div className="flex items-center gap-3 rounded-[var(--radius-xl)] border border-border-soft bg-card p-4 shadow-sm">
@@ -163,5 +164,27 @@ export const CompactLineGap: Story = {
     currentTimeMs: 5200,
     lineStepPx: 56,
     lines: classicLines,
+  },
+};
+
+const ratingCycle: KaraokeLineRating[] = [
+  { lineId: "classic-1", key: "0", label: "Perfect", points: 95, tone: "success" },
+  { lineId: "classic-2", key: "1", label: "Great", points: 82, tone: "info" },
+  { lineId: "classic-3", key: "2", label: "Good", points: 58, tone: "warning" },
+  { lineId: "classic-4", key: "3", label: "Miss", points: 12, tone: "destructive" },
+];
+
+export const RatingPop: Story = {
+  render: function RatingPopRender() {
+    const [index, setIndex] = React.useState(0);
+
+    React.useEffect(() => {
+      const id = window.setInterval(() => {
+        setIndex((current) => (current + 1) % ratingCycle.length);
+      }, 2200);
+      return () => window.clearInterval(id);
+    }, []);
+
+    return <KaraokeStoryPlayer initialTimeMs={2400} lines={classicLines} rating={ratingCycle[index]} />;
   },
 };

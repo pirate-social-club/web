@@ -41,15 +41,15 @@ export function KaraokeScoringPanel({ canStart, className, onStart, state }: Kar
 
   if (state.status === "idle") {
     return (
-      <div className={cn("flex items-center justify-center", className)}>
+      <div className={cn("flex w-full flex-col items-center gap-4", className)}>
         <Button
-          className="w-full sm:w-auto"
+          className="w-full sm:w-auto sm:min-w-48"
           disabled={!canStart}
           leadingIcon={<Microphone className="size-5" weight="fill" />}
           onClick={onStart}
           size="lg"
         >
-          Score my singing
+          Start
         </Button>
       </div>
     );

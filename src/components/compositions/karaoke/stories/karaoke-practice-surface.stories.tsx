@@ -48,7 +48,11 @@ function SyntheticSurfacePlayer({
 }: SyntheticSurfacePlayerProps) {
   const durationMs = React.useMemo(() => getLyricDurationMs(lines), [lines]);
   const clock = useSyntheticKaraokeClock({ durationMs, initialTimeMs });
-  const scoringPanel = scoringStatus
+  const listening = scoringStatus === "active" || scoringStatus === "finishing";
+  // Mirror the real surface: footer hides during active performance so lyrics
+  // + rating pops + header score are the feedback.
+  const showFooter = scoringStatus && !listening;
+  const footerContent = showFooter
     ? (
       <KaraokeScoringPanel
         canStart
@@ -65,17 +69,14 @@ function SyntheticSurfacePlayer({
       combo={combo}
       currentTimeMs={clock.currentTimeMs}
       durationMs={durationMs}
+      footerContent={footerContent}
       isLoading={isLoading}
       isPlaying={clock.isPlaying}
       lines={lines}
+      listening={listening}
       onExit={() => undefined}
-      onPause={clock.pause}
-      onPlay={clock.play}
-      onReset={clock.reset}
-      onSeek={clock.seek}
       rating={rating}
       runningScore={runningScore}
-      scoringPanel={scoringPanel}
       title={title}
     />
   );

@@ -347,7 +347,15 @@ export function KaraokeAudioSurface({
   }, [artistName, artworkSrc, pauseAudio, playAudio, seekAudio, title]);
 
   const feedback = React.useMemo(() => deriveKaraokeFeedback(scoring?.state ?? null), [scoring?.state]);
-  const scoringPanel = scoring?.enabled && scoring.state ? (
+  const listening = scoringStatus === "active" || scoringStatus === "finishing";
+  // The scoring panel lives in the footer for every state EXCEPT active
+  // performance (lyrics + rating pops + header score are the feedback there).
+  // Finishing is brief (awaiting summary) — keep lyrics visible, header pulses.
+  const showScoringFooter = scoring?.enabled === true
+    && scoringStatus !== null
+    && scoringStatus !== "active"
+    && scoringStatus !== "finishing";
+  const footerContent = showScoringFooter && scoring.state ? (
     <KaraokeScoringPanel
       canStart={audioState === "ready"}
       className="w-full"
@@ -362,26 +370,18 @@ export function KaraokeAudioSurface({
       <KaraokePracticeSurface
         artistName={artistName}
         artworkSrc={artworkSrc}
-        controlsDisabled={audioState !== "ready"}
         currentTimeMs={displayTimeMs}
         durationMs={durationMs}
         isLoading={audioState === "loading"}
         isPlaying={isPlaying}
         lines={lines}
+        listening={listening}
         onComplete={onComplete}
         onExit={exitAudio}
-        onPause={pauseAudio}
-        onPlay={() => {
-          void playAudio();
-        }}
-        onReset={resetAudio}
-        onSeek={(nextTimeMs) => {
-          seekAudio(nextTimeMs - timingOffsetMs);
-        }}
         combo={feedback.combo}
+        footerContent={footerContent}
         rating={feedback.rating}
         runningScore={feedback.runningScore}
-        scoringPanel={scoringPanel}
         title={title}
       />
       {audioState === "error" ? (

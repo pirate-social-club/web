@@ -6,6 +6,8 @@ import { navigate } from "@/app/router";
 import { installDomGlobals } from "@/test/setup-dom";
 import { KaraokeAudioSurface } from "./karaoke-audio-surface";
 import type { KaraokeStageLine } from "./karaoke-lyric-stage";
+import type { KaraokeScoringState, KaraokeScoringStatus } from "./scoring/karaoke-scoring-controller";
+import type { KaraokeScoringControls, UseKaraokeScoringResult } from "./scoring/use-karaoke-scoring-session";
 
 installDomGlobals();
 class ResizeObserverStub {
@@ -121,17 +123,88 @@ afterEach(() => {
 });
 
 describe("KaraokeAudioSurface", () => {
-  async function startPlayback(view: ReturnType<typeof render>): Promise<HTMLAudioElement> {
+  function makeScoringState(status: KaraokeScoringStatus): KaraokeScoringState {
+    return {
+      error: null,
+      latestLineId: null,
+      lineScores: [],
+      micError: null,
+      partialTranscript: "",
+      phase: status === "active" ? "live" : "idle",
+      status,
+      summary: null,
+    };
+  }
+
+  function renderWithScoring(
+    props: Omit<React.ComponentProps<typeof KaraokeAudioSurface>, "scoring">,
+    onStart?: () => void,
+  ): { view: ReturnType<typeof render>; setStatus: (status: KaraokeScoringStatus) => void } {
+    const setStatusRef: { current: ((status: KaraokeScoringStatus) => void) | null } = { current: null };
+
+    function Harness() {
+      const [scoringState, setScoringState] = React.useState<KaraokeScoringState>(() => makeScoringState("idle"));
+      const controls = React.useMemo<KaraokeScoringControls>(
+        () => ({
+          abort: () => undefined,
+          noteFinish: () => undefined,
+          notePause: () => undefined,
+          notePlay: () => undefined,
+          noteSeek: () => undefined,
+          noteTime: () => undefined,
+          start: () => onStart?.(),
+          stop: () => undefined,
+        }),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [],
+      );
+      const scoring = React.useMemo<UseKaraokeScoringResult>(
+        () => ({ controls, enabled: true, state: scoringState }),
+        [controls, scoringState],
+      );
+
+      React.useEffect(() => {
+        setStatusRef.current = (status) => setScoringState(makeScoringState(status));
+        return () => { setStatusRef.current = null; };
+      }, []);
+
+      return <KaraokeAudioSurface {...props} scoring={scoring} />;
+    }
+
+    const view = render(<Harness />);
+    return { setStatus: (status) => setStatusRef.current?.(status), view };
+  }
+
+  async function startPlayback(
+    view: ReturnType<typeof render>,
+    setStatus: (status: KaraokeScoringStatus) => void,
+  ): Promise<HTMLAudioElement> {
     const audio = view.container.querySelector("audio");
     expect(audio).toBeTruthy();
-    (audio as HTMLAudioElement).play = () => Promise.resolve();
+    let played = false;
+    (audio as HTMLAudioElement).play = () => {
+      played = true;
+      return Promise.resolve();
+    };
     fireEvent.canPlay(audio as HTMLAudioElement);
-    await waitFor(() => expect(view.getByLabelText("Play")).toBeTruthy());
 
-    fireEvent.click(view.getByLabelText("Play"));
-    await waitFor(() => expect(view.getByLabelText("Pause")).toBeTruthy());
+    const startButton = await view.findByText("Start");
+    act(() => fireEvent.click(startButton));
+    act(() => setStatus("connecting"));
+    await waitFor(() => expect(view.getByText("Connecting…")).toBeTruthy());
+
+    act(() => setStatus("active"));
+    await waitFor(() => expect(played).toBe(true));
 
     return audio as HTMLAudioElement;
+  }
+
+  function pausePlayback(): void {
+    Object.defineProperty(document, "hidden", { configurable: true, value: true });
+    const visEvent = document.createEvent("Event");
+    visEvent.initEvent("visibilitychange", false, false);
+    fireEvent(document, visEvent);
+    Object.defineProperty(document, "hidden", { configurable: true, value: false });
   }
 
   test("exits without confirming while playback is idle", () => {
@@ -164,16 +237,16 @@ describe("KaraokeAudioSurface", () => {
       return false;
     };
 
-    const view = render(
-      <KaraokeAudioSurface
-        instrumentalAudioUrl="https://cdn.example.test/instrumental.mp3"
-        lines={lines}
-        onExit={() => exits.push("exit")}
-        title="Confirm Exit"
-      />,
+    const { view, setStatus } = renderWithScoring(
+      {
+        instrumentalAudioUrl: "https://cdn.example.test/instrumental.mp3",
+        lines: lines,
+        onExit: () => exits.push("exit"),
+        title: "Confirm Exit",
+      },
     );
 
-    await startPlayback(view);
+    await startPlayback(view, setStatus);
 
     fireEvent.click(view.getByLabelText("Exit karaoke"));
     expect(confirmCalls).toEqual(["Stop karaoke and leave this song?"]);
@@ -196,15 +269,15 @@ describe("KaraokeAudioSurface", () => {
       forwardCalls.push("forward");
     };
 
-    const view = render(
-      <KaraokeAudioSurface
-        instrumentalAudioUrl="https://cdn.example.test/instrumental.mp3"
-        lines={lines}
-        title="Browser Back"
-      />,
+    const { view, setStatus } = renderWithScoring(
+      {
+        instrumentalAudioUrl: "https://cdn.example.test/instrumental.mp3",
+        lines: lines,
+        title: "Browser Back",
+      },
     );
 
-    const audio = await startPlayback(view);
+    const audio = await startPlayback(view, setStatus);
     audio.pause = () => {
       pauseCalls.push("pause");
     };
@@ -240,17 +313,16 @@ describe("KaraokeAudioSurface", () => {
       return false;
     };
 
-    const view = render(
-      <KaraokeAudioSurface
-        instrumentalAudioUrl="https://cdn.example.test/instrumental.mp3"
-        lines={lines}
-        title="Paused Guard"
-      />,
+    const { view, setStatus } = renderWithScoring(
+      {
+        instrumentalAudioUrl: "https://cdn.example.test/instrumental.mp3",
+        lines: lines,
+        title: "Paused Guard",
+      },
     );
 
-    await startPlayback(view);
-    fireEvent.click(view.getByLabelText("Pause"));
-    await waitFor(() => expect(view.getByLabelText("Play")).toBeTruthy());
+    const audio = await startPlayback(view, setStatus);
+    pausePlayback();
 
     const beforeUnloadEvent = document.createEvent("Event");
     beforeUnloadEvent.initEvent("beforeunload", false, true);
@@ -276,15 +348,15 @@ describe("KaraokeAudioSurface", () => {
       return false;
     };
 
-    const view = render(
-      <KaraokeAudioSurface
-        instrumentalAudioUrl="https://cdn.example.test/instrumental.mp3"
-        lines={lines}
-        title="Unmount Guard"
-      />,
+    const { view, setStatus } = renderWithScoring(
+      {
+        instrumentalAudioUrl: "https://cdn.example.test/instrumental.mp3",
+        lines: lines,
+        title: "Unmount Guard",
+      },
     );
 
-    await startPlayback(view);
+    await startPlayback(view, setStatus);
     view.unmount();
 
     const beforeUnloadEvent = document.createEvent("Event");
@@ -312,15 +384,15 @@ describe("KaraokeAudioSurface", () => {
       return false;
     };
 
-    const view = render(
-      <KaraokeAudioSurface
-        instrumentalAudioUrl="https://cdn.example.test/instrumental.mp3"
-        lines={lines}
-        title="SPA Guard"
-      />,
+    const { view, setStatus } = renderWithScoring(
+      {
+        instrumentalAudioUrl: "https://cdn.example.test/instrumental.mp3",
+        lines: lines,
+        title: "SPA Guard",
+      },
     );
 
-    const audio = await startPlayback(view);
+    const audio = await startPlayback(view, setStatus);
     audio.pause = () => {
       pauseCalls.push("pause");
     };

@@ -42,6 +42,9 @@ export interface KaraokeLyricStageProps {
   lineStepPx?: number;
   /** Optional per-line rating pop rendered above the active (hit) line. */
   rating?: KaraokeLineRating | null;
+  /** True before playback starts — renders the first (cue) line at full
+   *  opacity so the singer sees what they're about to sing, not a dimmed cue. */
+  primed?: boolean;
 }
 
 type LineMode = "active" | "cue" | "next";
@@ -211,9 +214,14 @@ export function KaraokeLyricStage({
   lines,
   lineStepPx,
   rating,
+  primed = false,
 }: KaraokeLyricStageProps) {
   const { activeLine, cueLine, nextLine } = getKaraokeDisplayState(lines, currentTimeMs);
   const style: KaraokeStageStyle = lineStepPx ? { "--karaoke-line-gap": `${lineStepPx}px` } : {};
+  // Before start: the cue line is the first line, shown at full opacity
+  // (mode="active" at t<startMs renders all tokens "upcoming" — no fill, full
+  // foreground) so the singer sees what they're about to sing.
+  const cueMode = primed && !activeLine ? "active" : "cue";
 
   return (
     <div
@@ -249,7 +257,7 @@ export function KaraokeLyricStage({
             key={getKaraokeStageLineKey(cueLine)}
             currentTimeMs={currentTimeMs}
             line={cueLine}
-            mode="cue"
+            mode={cueMode}
           />
         </div>
       ) : null}

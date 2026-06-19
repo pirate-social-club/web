@@ -139,7 +139,7 @@ describe("KaraokeAudioSurface scoring playback gating", () => {
     };
 
     fireEvent.canPlay(audio);
-    const startButton = await view.findByText("Score my singing");
+    const startButton = await view.findByText("Start");
     expect(startButton.closest("button")?.disabled).toBe(false);
 
     fireEvent.click(startButton);
@@ -152,8 +152,7 @@ describe("KaraokeAudioSurface scoring playback gating", () => {
 
     // Mic goes live (Listening) — now the instrumental starts.
     act(() => setScoringStatus.current?.("active"));
-    await waitFor(() => expect(view.getByLabelText("Pause")).toBeTruthy());
-    expect(playCalls.length).toBe(1);
+    await waitFor(() => expect(playCalls.length).toBe(1));
   });
 
   test("does not play if the mic fails before going live", async () => {
@@ -171,7 +170,7 @@ describe("KaraokeAudioSurface scoring playback gating", () => {
     };
 
     fireEvent.canPlay(audio);
-    const startButton = await view.findByText("Score my singing");
+    const startButton = await view.findByText("Start");
     fireEvent.click(startButton);
 
     act(() => setScoringStatus.current?.("error"));

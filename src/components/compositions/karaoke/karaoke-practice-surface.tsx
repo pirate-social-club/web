@@ -1,14 +1,7 @@
 import * as React from "react";
-import {
-  ArrowCounterClockwise,
-  CaretLeft,
-  Pause,
-  Play,
-} from "@phosphor-icons/react";
+import { CaretLeft } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
-import { MediaControlButton } from "@/components/primitives/media-control-button";
-import { Scrubber } from "@/components/primitives/scrubber";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
@@ -28,34 +21,25 @@ export interface KaraokePracticeSurfaceProps {
   artworkSrc?: string;
   artistName?: string;
   className?: string;
-  controlsDisabled?: boolean;
   currentTimeMs: number;
   durationMs: number;
   isLoading?: boolean;
   isPlaying: boolean;
   lines: KaraokeStageLine[];
+  /** True while the mic is live and scoring is actively listening. */
+  listening?: boolean;
   onComplete?: (summary: KaraokePracticeCompleteSummary) => void;
   onExit?: () => void;
-  onPause?: () => void;
-  onPlay?: () => void;
-  onReset?: () => void;
-  onSeek?: (ms: number) => void;
-  /** Optional scoring panel rendered in an in-flow strip below the transport. */
-  scoringPanel?: React.ReactNode;
   /** Running score + combo, shown in the header while scoring is enabled. */
   runningScore?: number;
   combo?: number;
   /** Optional per-line rating pop rendered on the lyric stage. */
   rating?: KaraokeLineRating | null;
+  /** Sole footer content for the scoring flow (Start button, status, final
+   *  score). When provided, no transport controls are rendered — just this.
+   *  Pass null/omit during active performance to leave the footer empty. */
+  footerContent?: React.ReactNode;
   title: string;
-}
-
-function formatTime(ms: number) {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = String(totalSeconds % 60).padStart(2, "0");
-
-  return `${minutes}:${seconds}`;
 }
 
 function countCompletedLines(lines: KaraokeStageLine[], currentTimeMs: number) {
@@ -89,32 +73,29 @@ export function KaraokePracticeSurface({
   artworkSrc,
   artistName,
   className,
-  controlsDisabled = false,
   currentTimeMs,
   durationMs,
   isLoading = false,
   isPlaying,
   lines,
+  listening = false,
   onComplete,
   onExit,
-  onPause,
-  onPlay,
-  onReset,
-  onSeek,
-  scoringPanel,
   runningScore,
   combo,
   rating,
+  footerContent,
   title,
 }: KaraokePracticeSurfaceProps) {
   const clampedCurrentTimeMs = Math.max(0, Math.min(durationMs, currentTimeMs));
   const lineLabel = getCurrentLineLabel(lines, clampedCurrentTimeMs);
   const hasLines = lines.length > 0;
   const isEnded = durationMs > 0 && clampedCurrentTimeMs >= durationMs;
-  const playbackDisabled = controlsDisabled || isLoading || !hasLines;
   const completedRef = React.useRef(false);
-  const scoringEnabled = scoringPanel != null;
+  const scoringEnabled = footerContent != null || runningScore != null || combo != null;
   const comboCount = Math.max(0, combo ?? 0);
+  const firstLineStartMs = lines[0]?.startMs ?? Number.POSITIVE_INFINITY;
+  const primed = !isPlaying && hasLines && clampedCurrentTimeMs <= firstLineStartMs;
 
   React.useEffect(() => {
     if (!isEnded) {
@@ -139,53 +120,10 @@ export function KaraokePracticeSurface({
     });
   }, [clampedCurrentTimeMs, durationMs, isEnded, lines, onComplete]);
 
-  const handleTogglePlayback = () => {
-    if (isPlaying) {
-      onPause?.();
-      return;
-    }
-
-    onPlay?.();
-  };
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.defaultPrevented || shouldIgnoreKaraokeShortcutTarget(event.target)) {
-      return;
-    }
-
-    switch (event.key) {
-      case " ":
-        event.preventDefault();
-        handleTogglePlayback();
-        break;
-      case "ArrowLeft":
-        event.preventDefault();
-        onSeek?.(Math.max(0, clampedCurrentTimeMs - 5000));
-        break;
-      case "ArrowRight":
-        event.preventDefault();
-        onSeek?.(Math.min(durationMs, clampedCurrentTimeMs + 5000));
-        break;
-      case "Home":
-        event.preventDefault();
-        onSeek?.(0);
-        break;
-      case "End":
-        event.preventDefault();
-        onSeek?.(durationMs);
-        break;
-      default:
-        break;
-    }
-  };
-
   return (
     <section
-      aria-keyshortcuts="Space ArrowLeft ArrowRight Home End"
       aria-label={title}
       className={cn("flex h-dvh w-full flex-col overflow-hidden bg-background text-foreground", className)}
-      onKeyDown={handleKeyDown}
-      tabIndex={0}
     >
       <div aria-atomic="true" aria-live="polite" className="sr-only">
         {lineLabel}
@@ -200,36 +138,38 @@ export function KaraokePracticeSurface({
           variant="ghost"
         />
 
-        <div className="min-w-0 flex-1">
-          <Type as="h1" className="truncate" variant="h3">
-            {title}
-          </Type>
-          {artistName ? (
-            <Type as="p" className="truncate text-muted-foreground" variant="caption">
-              {artistName}
-            </Type>
+        <div className="flex flex-1 items-center justify-center">
+          {scoringEnabled ? (
+            <div className="flex flex-col items-center leading-none">
+              <div className="flex items-center gap-2">
+                {listening ? (
+                  <span
+                    aria-hidden="true"
+                    className="size-2.5 animate-pulse rounded-full bg-destructive"
+                  />
+                ) : null}
+                <Type as="span" className="tabular-nums" variant="h3">
+                  {runningScore ?? 0}
+                </Type>
+              </div>
+              {comboCount >= 2 ? (
+                <Type as="span" className="text-success" variant="caption">
+                  Combo x{comboCount}
+                </Type>
+              ) : null}
+            </div>
+          ) : artworkSrc ? (
+            <img
+              alt=""
+              aria-hidden="true"
+              className="size-11 rounded-[var(--radius-lg)] object-cover"
+              src={artworkSrc}
+            />
           ) : null}
         </div>
 
-        {scoringEnabled ? (
-          <div className="flex shrink-0 flex-col items-end leading-none">
-            <Type as="span" className="tabular-nums" variant="h3">
-              {runningScore ?? 0}
-            </Type>
-            {comboCount >= 2 ? (
-              <Type as="span" className="text-success" variant="caption">
-                Combo x{comboCount}
-              </Type>
-            ) : null}
-          </div>
-        ) : artworkSrc ? (
-          <img
-            alt=""
-            aria-hidden="true"
-            className="size-11 shrink-0 rounded-[var(--radius-lg)] object-cover"
-            src={artworkSrc}
-          />
-        ) : null}
+        {/* Balances the back button so the score sits truly centered. */}
+        <div aria-hidden="true" className="size-10 shrink-0" />
       </header>
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -260,6 +200,7 @@ export function KaraokePracticeSurface({
               className="h-full min-h-64"
               currentTimeMs={clampedCurrentTimeMs}
               lines={lines}
+              primed={primed}
               rating={rating}
             />
           ) : (
@@ -272,46 +213,13 @@ export function KaraokePracticeSurface({
         </div>
       </div>
 
-      <footer className="border-t border-border-soft px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 sm:px-6">
-        <div className="mx-auto flex w-full max-w-5xl items-center gap-3">
-          <MediaControlButton
-            aria-label={isPlaying ? "Pause" : "Play"}
-            disabled={playbackDisabled}
-            onClick={handleTogglePlayback}
-            size="md"
-          >
-            {isPlaying ? <Pause className="size-5" weight="fill" /> : <Play className="size-5" weight="fill" />}
-          </MediaControlButton>
-
-          <MediaControlButton
-            aria-label="Reset"
-            disabled={controlsDisabled || isLoading}
-            intent="subtle"
-            onClick={onReset}
-            size="md"
-          >
-            <ArrowCounterClockwise className="size-5" weight="bold" />
-          </MediaControlButton>
-
-          <Scrubber
-            ariaLabel="Karaoke playback position"
-            disabled={controlsDisabled || isLoading}
-            max={Math.max(1, durationMs)}
-            onChange={onSeek}
-            showThumb
-            value={clampedCurrentTimeMs}
-          />
-
-          <Type as="span" className="min-w-[9ch] shrink-0 whitespace-nowrap text-right tabular-nums" variant="caption">
-            {formatTime(clampedCurrentTimeMs)} / {formatTime(durationMs)}
-          </Type>
-        </div>
-        {scoringPanel ? (
-          <div className="mx-auto mt-3 w-full max-w-5xl border-t border-border-soft pt-3">
-            {scoringPanel}
+      {footerContent ? (
+        <footer className="border-t border-border-soft px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-4 sm:px-6">
+          <div className="mx-auto flex w-full flex-col items-center sm:max-w-sm">
+            {footerContent}
           </div>
-        ) : null}
-      </footer>
+        </footer>
+      ) : null}
     </section>
   );
 }

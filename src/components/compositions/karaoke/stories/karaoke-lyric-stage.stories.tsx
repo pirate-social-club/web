@@ -3,7 +3,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ArrowCounterClockwise, Pause, Play } from "@phosphor-icons/react";
 
 import { MediaControlButton } from "@/components/primitives/media-control-button";
-import { Scrubber } from "@/components/primitives/scrubber";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
@@ -84,6 +83,7 @@ interface KaraokeStoryPlayerProps {
 function KaraokeStoryPlayer({ className, initialTimeMs = 0, lines, rating }: KaraokeStoryPlayerProps) {
   const durationMs = React.useMemo(() => getLyricDurationMs(lines), [lines]);
   const clock = useSyntheticKaraokeClock({ durationMs, initialTimeMs });
+  const progressPct = durationMs > 0 ? Math.min(100, Math.max(0, (clock.currentTimeMs / durationMs) * 100)) : 0;
 
   return (
     <div className={cn("flex min-h-screen w-full items-center justify-center bg-background p-4 sm:p-8", className)}>
@@ -110,13 +110,12 @@ function KaraokeStoryPlayer({ className, initialTimeMs = 0, lines, rating }: Kar
             <ArrowCounterClockwise className="size-5" weight="bold" />
           </MediaControlButton>
 
-          <Scrubber
-            ariaLabel="Karaoke playback position"
-            max={durationMs}
-            onChange={clock.seek}
-            showThumb
-            value={clock.currentTimeMs}
-          />
+          <div aria-hidden="true" className="relative h-1.5 w-full overflow-hidden rounded-full bg-border">
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-primary transition-[width] duration-150"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
 
           <Type as="span" className="min-w-[9ch] shrink-0 whitespace-nowrap text-right" variant="caption">
             {formatTime(clock.currentTimeMs)} / {formatTime(durationMs)}

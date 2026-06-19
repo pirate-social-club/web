@@ -262,7 +262,16 @@ function finalizeLine(
 // this long after the playback clock passed its end, finalize it anyway so the
 // game never stalls. Measured in SONG time, so a pause freezes the grace clock —
 // a paused singer is not "timing out"; finalization resumes when playback does.
-export const KARAOKE_FINALIZE_GRACE_MS = 600;
+// Must exceed the client's playback_sync tick interval (DEFAULT 1000ms). A line
+// is only added to deferredLineIds (which drives request_stt_commit) while it is
+// due-but-not-grace-elapsed; if the grace window [endMs, endMs+grace] is shorter
+// than the tick interval it can fall entirely between two playback_sync ticks,
+// so the line is never seen while deferrable → no commit is ever requested → it
+// times out with no words (false miss). At 2000ms the window spans ~2 ticks, so
+// at least one tick always lands inside it: the line is deferred, a commit is
+// requested, and the ~240ms ack covers it well within the window. (Verified:
+// 600ms produced misses on lines whose windows fell between ticks.)
+export const KARAOKE_FINALIZE_GRACE_MS = 2_000;
 
 interface FinalizeDueResult {
   effects: KaraokeSessionEffect[];

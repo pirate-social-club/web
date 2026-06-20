@@ -96,7 +96,14 @@ export interface KaraokeSessionSummary {
 }
 
 const SIMILARITY_COVERAGE_THRESHOLD = 0.72;
+// Word-matching tolerance (which recognized word pairs with which expected word).
+// Deliberately wide so matching is robust to STT timing noise — do NOT tighten
+// this for scoring, or words stop pairing.
 const TIMING_SCORE_MAX_DELTA_MS = 750;
+// Line-timing *score* window — tighter than the matching tolerance so the timing
+// component differentiates good-vs-great singing (a leaderboard amplifies score
+// dynamic range; 750ms made timing nearly flat across competent singers).
+const TIMING_SCORE_WINDOW_MS = 400;
 const TIMING_ON_TIME_MS = 90;
 const TIMING_MIXED_SIGN_MS = 120;
 const LOW_CONFIDENCE_THRESHOLD = 0.5;
@@ -1061,7 +1068,7 @@ export function scoreKaraokeLineTiming(input: {
   return {
     matchedWordCount: deltas.length,
     meanAbsDeltaMs,
-    score: clamp01(1 - (meanAbsDeltaMs / TIMING_SCORE_MAX_DELTA_MS)),
+    score: clamp01(1 - (meanAbsDeltaMs / TIMING_SCORE_WINDOW_MS)),
     signedMeanDeltaMs,
     timingTrend: timingTrendFromDeltas(deltas),
   };
@@ -1081,8 +1088,11 @@ export function scoreKaraokeLine(input: {
   });
   const confidenceScore = input.bucket.confidenceMean;
   const weightedScores = [
-    { available: true, score: textScore.score, weight: 0.75 },
-    { available: timingScore !== null, score: timingScore?.score ?? 0, weight: 0.2 },
+    // Rebalanced to give timing real leverage (was 0.75/0.20/0.05): at 20% the
+    // timing signal couldn't separate good from great. Text still dominates;
+    // timing now meaningfully moves the score. (Pitch will claim weight here later.)
+    { available: true, score: textScore.score, weight: 0.6 },
+    { available: timingScore !== null, score: timingScore?.score ?? 0, weight: 0.35 },
     { available: confidenceScore !== null, score: confidenceScore ?? 0, weight: 0.05 },
   ];
   const availableWeight = weightedScores

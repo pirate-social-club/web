@@ -288,15 +288,16 @@ describe("createKaraokeSessionClient", () => {
     expect(events.map((e) => e.type)).toEqual(["line_score"]);
   });
 
-  test("reconnect reuses the idempotency key and keeps the same attempt across token refresh", async () => {
-    // token TTL ~60s, refresh lead 50s → the refresh timer fires ~10s in.
-    const h = harness({ override: { tokenRefreshLeadMs: 50_000 } });
+  test("reconnect reuses the idempotency key and keeps the same attempt", async () => {
+    const h = harness();
     await h.handle.start();
     h.sockets[0]!.open();
     await tick();
     expect(h.handle.getPhase()).toBe("live");
 
-    await h.timers.flush(); // fire token refresh → reconnect with a fresh token
+    h.sockets[0]!.close(1006); // genuine drop → reactive reconnect
+    await tick();
+    await h.timers.flush(); // fire the reconnect-delay timer → re-create with the same key
     h.sockets[h.sockets.length - 1]!.open();
     await tick();
 
@@ -317,11 +318,10 @@ describe("createKaraokeSessionClient", () => {
     expect(h.handle.getPhase()).toBe("aborted");
   });
 
-  test("identity drift on refresh is terminal", async () => {
+  test("identity drift on reconnect is terminal", async () => {
     const h = harness({
-      override: { tokenRefreshLeadMs: 50_000 },
       responses: (call) => apiResponse({
-        attempt: call === 1 ? "attempt-1" : "attempt-2", // drift on the refresh call
+        attempt: call === 1 ? "attempt-1" : "attempt-2", // drift on the reconnect call
         session_expires_at: Math.floor(BASE_NOW / 1000) + 3600,
         token_expires_at: Math.floor(BASE_NOW / 1000) + 60,
       }),
@@ -329,7 +329,9 @@ describe("createKaraokeSessionClient", () => {
     await h.handle.start();
     h.sockets[0]!.open();
     await tick();
-    await h.timers.flush(); // refresh → identity drift
+    h.sockets[0]!.close(1006); // drop → reconnect re-creates → identity drift
+    await tick();
+    await h.timers.flush();
     await tick();
     expect(h.errors.some((e) => e.code === "session_identity_changed")).toBe(true);
     expect(h.handle.getPhase()).toBe("aborted");
@@ -364,13 +366,14 @@ describe("createKaraokeSessionClient", () => {
         suspendCapture: async () => {
           order.push("suspend");
         },
-        tokenRefreshLeadMs: 50_000,
       },
     });
     await h.handle.start();
     h.sockets[0]!.open();
     await tick();
-    await h.timers.flush(); // token refresh → suspend then reconnect
+    h.sockets[0]!.close(1006); // genuine drop → suspend then reconnect
+    await tick();
+    await h.timers.flush();
     h.sockets[h.sockets.length - 1]!.open();
     await tick();
     expect(order).toEqual(["suspend", "resume"]);

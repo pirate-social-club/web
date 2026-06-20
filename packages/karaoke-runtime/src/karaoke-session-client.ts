@@ -108,7 +108,6 @@ export interface KaraokeCaptureAnchor {
   playbackRate: number;
 }
 
-const DEFAULT_TOKEN_REFRESH_LEAD_MS = 10_000;
 const DEFAULT_RECONNECT_DELAY_MS = 500;
 const DEFAULT_SOCKET_CONNECT_TIMEOUT_MS = 10_000;
 const DEFAULT_CAPTURE_TEARDOWN_TIMEOUT_MS = 2_000;
@@ -143,7 +142,6 @@ export class KaraokeSessionClient {
   private readonly now: () => number;
   private readonly setTimer: (callback: () => void, ms: number) => unknown;
   private readonly clearTimer: (handle: unknown) => void;
-  private readonly tokenRefreshLeadMs: number;
   private readonly reconnectDelayMs: number;
   private readonly socketConnectTimeoutMs: number;
   private readonly sampleRate: 16000;
@@ -175,7 +173,6 @@ export class KaraokeSessionClient {
     this.now = options.now ?? (() => Date.now());
     this.setTimer = options.setTimer ?? ((cb, ms) => setTimeout(cb, ms));
     this.clearTimer = options.clearTimer ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
-    this.tokenRefreshLeadMs = options.tokenRefreshLeadMs ?? DEFAULT_TOKEN_REFRESH_LEAD_MS;
     this.reconnectDelayMs = options.reconnectDelayMs ?? DEFAULT_RECONNECT_DELAY_MS;
     this.socketConnectTimeoutMs = options.socketConnectTimeoutMs ?? DEFAULT_SOCKET_CONNECT_TIMEOUT_MS;
     this.sampleRate = options.sampleRate ?? 16000;
@@ -490,16 +487,6 @@ export class KaraokeSessionClient {
       // attempt. Do not re-send start; do not replay PCM.
       void this.createAndConnect(false);
     }, this.reconnectDelayMs);
-  }
-
-  // Proactive token refresh is intentionally a no-op. Closing a healthy socket to
-  // "refresh" the gateway token caused a recurring ~13s grading outage (the
-  // server doesn't re-check the token on an established socket, and createSession
-  // only rotates an already-expired token, so the old path churned). Reconnection
-  // after a genuine drop refreshes the token via createSession. `tokenRefreshLeadMs`
-  // / `refreshTimer` are retained for API/behavioural compatibility but unused.
-  private scheduleTokenRefresh(): void {
-    this.clearTokenRefresh();
   }
 
   /** Appends a capture transition to the serialized chain so none ever overlap. */

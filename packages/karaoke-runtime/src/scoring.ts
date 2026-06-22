@@ -120,6 +120,9 @@ const CONFIDENCE_SCORE_WEIGHT = 0.05;
 // NOT bad singing, so it is estimated per-song and removed before judging timing.
 // Clamped so a genuinely-late performance can't fully excuse itself.
 const TIMING_OFFSET_CLAMP_MS = 250;
+// Lines below this text score are treated as bad evidence and excluded from the
+// offset estimate (their word matches — and thus deltas — are unreliable).
+const TIMING_OFFSET_MIN_TEXT_SCORE = 0.5;
 
 function clamp01(value: number): number {
   if (!Number.isFinite(value)) {
@@ -1157,9 +1160,20 @@ function median(values: readonly number[]): number {
 export function applyTimingOffsetCompensation(
   lineScores: readonly KaraokeLineScore[],
 ): { offsetMs: number; lineScores: KaraokeLineScore[] } {
+  // Estimate the offset only from well-measured lines — a mis-recognized or
+  // uncertain line's delta is noise and must not shift the whole song's
+  // calibration. (The offset is still APPLIED to every line; only the estimate
+  // is restricted to good evidence.)
   const signedDeltas = lineScores
-    .map((ls) => ls.timingScore?.signedMeanDeltaMs)
-    .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    .filter((ls) => (
+      !ls.uncertain
+      && ls.recognizedWords.length > 0
+      && ls.textScore.score >= TIMING_OFFSET_MIN_TEXT_SCORE
+      && ls.timingScore !== null
+      && ls.timingScore.matchedWordCount >= 2
+    ))
+    .map((ls) => ls.timingScore!.signedMeanDeltaMs)
+    .filter((v) => Number.isFinite(v));
   if (signedDeltas.length === 0) {
     return { lineScores: [...lineScores], offsetMs: 0 };
   }

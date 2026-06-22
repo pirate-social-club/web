@@ -76,4 +76,18 @@ describe("timing offset compensation", () => {
     expect(summary.finalScore).toBeGreaterThan(0.85);
     expect(summary.lyricsScore).toBeCloseTo(0.95, 1);
   });
+
+  test("mis-recognized lines do not skew the offset estimate", () => {
+    // 2 well-sung lines at +180, plus 3 garbage-text lines whose deltas would
+    // drag the raw median to -250. The garbage lines must be excluded so the
+    // estimate stays at the true +180.
+    const good = [0, 1].map((i) =>
+      line({ index: i, meanAbsDeltaMs: 180, signedMeanDeltaMs: 180, textScore: 0.95 }),
+    );
+    const garbage = [2, 3, 4].map((i) =>
+      line({ index: i, meanAbsDeltaMs: 250, signedMeanDeltaMs: -250, textScore: 0.2 }),
+    );
+    const { offsetMs } = applyTimingOffsetCompensation([...good, ...garbage]);
+    expect(offsetMs).toBe(180);
+  });
 });

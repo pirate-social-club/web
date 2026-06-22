@@ -1,7 +1,5 @@
 import type {
   BookingAllocation,
-  BookingPolicy,
-  BookingState,
   Cents,
   RefundResolution,
   ResolveRefundInput,

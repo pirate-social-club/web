@@ -103,12 +103,23 @@ const TIMING_SCORE_MAX_DELTA_MS = 750;
 // Line-timing *score* window — tighter than the matching tolerance so the timing
 // component differentiates good-vs-great singing (a leaderboard amplifies score
 // dynamic range; 750ms made timing nearly flat across competent singers).
-const TIMING_SCORE_WINDOW_MS = 400;
+const TIMING_SCORE_WINDOW_MS = 575;
 const TIMING_ON_TIME_MS = 90;
 const TIMING_MIXED_SIGN_MS = 120;
 const LOW_CONFIDENCE_THRESHOLD = 0.5;
 // Keeps unrelated words from jumping to a nearby overlapping line solely because the timing is close.
 const BUCKETIZER_TEXT_MISMATCH_PENALTY_MS = 250;
+// Per-line line-score weights. Text dominates; timing has real but secondary
+// leverage (pitch will claim weight here later). Timing only judges *consistency*
+// after the session's systematic offset is removed (see applyTimingOffsetCompensation).
+const TEXT_SCORE_WEIGHT = 0.65;
+const TIMING_SCORE_WEIGHT = 0.3;
+const CONFIDENCE_SCORE_WEIGHT = 0.05;
+// A whole performance carries a constant lead/lag — capture+STT+playback latency
+// plus the singer naturally sitting just off the beat. That systematic offset is
+// NOT bad singing, so it is estimated per-song and removed before judging timing.
+// Clamped so a genuinely-late performance can't fully excuse itself.
+const TIMING_OFFSET_CLAMP_MS = 250;
 
 function clamp01(value: number): number {
   if (!Number.isFinite(value)) {
@@ -1074,6 +1085,23 @@ export function scoreKaraokeLineTiming(input: {
   };
 }
 
+// Text dominates; timing/confidence contribute only when measured. Weights are
+// normalized by available weight so a missing component never zeros the line.
+function combineLineScore(input: {
+  textScore: number;
+  timingScore: number | null;
+  confidenceScore: number | null;
+}): number {
+  const parts = [
+    { available: true, score: input.textScore, weight: TEXT_SCORE_WEIGHT },
+    { available: input.timingScore !== null, score: input.timingScore ?? 0, weight: TIMING_SCORE_WEIGHT },
+    { available: input.confidenceScore !== null, score: input.confidenceScore ?? 0, weight: CONFIDENCE_SCORE_WEIGHT },
+  ];
+  const availableWeight = parts.filter((p) => p.available).reduce((sum, p) => sum + p.weight, 0);
+  const weighted = parts.filter((p) => p.available).reduce((sum, p) => sum + (p.score * p.weight), 0);
+  return availableWeight > 0 ? clamp01(weighted / availableWeight) : 0;
+}
+
 export function scoreKaraokeLine(input: {
   bucket: KaraokeLineBucket;
 }): KaraokeLineScore {
@@ -1087,20 +1115,6 @@ export function scoreKaraokeLine(input: {
     recognizedWords: input.bucket.recognizedWords,
   });
   const confidenceScore = input.bucket.confidenceMean;
-  const weightedScores = [
-    // Rebalanced to give timing real leverage (was 0.75/0.20/0.05): at 20% the
-    // timing signal couldn't separate good from great. Text still dominates;
-    // timing now meaningfully moves the score. (Pitch will claim weight here later.)
-    { available: true, score: textScore.score, weight: 0.6 },
-    { available: timingScore !== null, score: timingScore?.score ?? 0, weight: 0.35 },
-    { available: confidenceScore !== null, score: confidenceScore ?? 0, weight: 0.05 },
-  ];
-  const availableWeight = weightedScores
-    .filter((item) => item.available)
-    .reduce((sum, item) => sum + item.weight, 0);
-  const weightedScore = weightedScores
-    .filter((item) => item.available)
-    .reduce((sum, item) => sum + (item.score * item.weight), 0);
 
   return {
     confidenceScore,
@@ -1108,13 +1122,70 @@ export function scoreKaraokeLine(input: {
     lineId: input.bucket.lineId,
     lineIndex: input.bucket.lineIndex,
     recognizedWords: input.bucket.recognizedWords,
-    score: availableWeight > 0 ? clamp01(weightedScore / availableWeight) : 0,
+    score: combineLineScore({
+      confidenceScore,
+      textScore: textScore.score,
+      timingScore: timingScore?.score ?? null,
+    }),
     scoredLineIndex: input.bucket.scoredLineIndex,
     textScore,
     timingScore,
     transcript: input.bucket.transcript,
     uncertain: input.bucket.finalizedReason === "provider_failed",
   };
+}
+
+// Median helper (used for the robust session timing offset).
+function median(values: readonly number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+/**
+ * Removes the performance's systematic timing offset before judging timing.
+ *
+ * A whole song carries a constant lead/lag (capture+STT+playback latency, plus a
+ * singer naturally sitting just off the beat). Scoring raw `meanAbsDelta` treats
+ * that constant as bad singing and drags an otherwise-clean vocal down. We
+ * estimate the offset as the median of per-line signed deltas (robust to a few
+ * wild lines), clamp it, and re-score each line's timing against the *residual*
+ * deviation — keeping each line's internal spread (sloppiness) but forgiving the
+ * shared shift. Returns adjusted line scores (timing score + overall recomputed).
+ */
+export function applyTimingOffsetCompensation(
+  lineScores: readonly KaraokeLineScore[],
+): { offsetMs: number; lineScores: KaraokeLineScore[] } {
+  const signedDeltas = lineScores
+    .map((ls) => ls.timingScore?.signedMeanDeltaMs)
+    .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+  if (signedDeltas.length === 0) {
+    return { lineScores: [...lineScores], offsetMs: 0 };
+  }
+  const offsetMs = Math.max(-TIMING_OFFSET_CLAMP_MS, Math.min(TIMING_OFFSET_CLAMP_MS, median(signedDeltas)));
+
+  const adjusted = lineScores.map((ls) => {
+    const timing = ls.timingScore;
+    if (!timing) return ls;
+    // Within-line spread (sloppiness) is the part of meanAbs not explained by the
+    // line's own mean; that is preserved. The systematic component is replaced by
+    // the residual after removing the session offset.
+    const withinLineSpread = Math.max(0, timing.meanAbsDeltaMs - Math.abs(timing.signedMeanDeltaMs));
+    const compensatedMeanAbs = withinLineSpread + Math.abs(timing.signedMeanDeltaMs - offsetMs);
+    const compensatedTimingScore = clamp01(1 - (compensatedMeanAbs / TIMING_SCORE_WINDOW_MS));
+    const nextTiming: KaraokeTimingScore = { ...timing, score: compensatedTimingScore };
+    return {
+      ...ls,
+      score: combineLineScore({
+        confidenceScore: ls.confidenceScore,
+        textScore: ls.textScore.score,
+        timingScore: compensatedTimingScore,
+      }),
+      timingScore: nextTiming,
+    };
+  });
+  return { lineScores: adjusted, offsetMs };
 }
 
 function aggregateTimingTrend(lineScores: readonly KaraokeLineScore[]): KaraokeTimingTrend {
@@ -1145,7 +1216,11 @@ function uniqueMissedWords(lineScores: readonly KaraokeLineScore[]): string[] {
 export function aggregateKaraokeSession(input: {
   lineScores: readonly KaraokeLineScore[];
 }): KaraokeSessionSummary {
-  const lineScores = [...input.lineScores].sort((a, b) => a.scoredLineIndex - b.scoredLineIndex);
+  // Remove the performance's systematic timing offset before aggregating, so a
+  // consistent lead/lag (latency + sitting just off the beat) is not scored as
+  // bad singing. Live per-line scores stay raw; the final summary uses these.
+  const { lineScores: compensatedLineScores } = applyTimingOffsetCompensation(input.lineScores);
+  const lineScores = [...compensatedLineScores].sort((a, b) => a.scoredLineIndex - b.scoredLineIndex);
   // Uncertain (measurement-failed) lines never contribute to the performance
   // averages — an infrastructure failure must not read as poor singing.
   const measuredLineScores = lineScores.filter((lineScore) => !lineScore.uncertain);

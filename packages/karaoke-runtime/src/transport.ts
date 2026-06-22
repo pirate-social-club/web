@@ -49,7 +49,7 @@ export type KaraokeServerEvent = KaraokeTransportEnvelope & { eventId: string } 
   | { type: "stt_final"; text: string; words: KaraokeRecognizedWord[] }
   | { type: "line_score"; result: KaraokeLineScore }
   | { type: "summary"; summary: KaraokeSessionSummary }
-  | { type: "session_error"; code: string }
+  | { type: "session_error"; code: string; message?: string }
 );
 
 export type KaraokeTransportErrorCode =

@@ -284,7 +284,17 @@ export function createKaraokeScoringController(
         if (event.code === "line_identity_mismatch" || event.code === "session_not_recording") {
           return;
         }
-        setState({ error: { code: event.code, message: `session error: ${event.code}` }, status: "error" });
+        // Surface the provider/connect detail, not just the code. The server
+        // attaches the real cause (e.g. elevenlabs_stt_token_mint_failed_401) in
+        // `message`; the code alone (session_aborted) hides it.
+        console.error("[karaoke] session_error", { code: event.code, message: event.message });
+        setState({
+          error: {
+            code: event.code,
+            message: event.message ? `session error: ${event.code} — ${event.message}` : `session error: ${event.code}`,
+          },
+          status: "error",
+        });
         return;
       default:
         return;

@@ -338,7 +338,14 @@ export class KaraokeMicCapture {
   }
 
   private captureConstraints(): unknown {
-    return { audio: { autoGainControl: true, channelCount: 1, echoCancellation: true, noiseSuppression: true } };
+    // Karaoke scoring needs the raw sung vocal. The browser's voice-call DSP is
+    // hostile here: echoCancellation removes audio correlated with playback
+    // (the instrumental bleed AND the singer's own voice), noiseSuppression
+    // strips sustained tones (i.e. singing), and autoGainControl distorts
+    // dynamics — together they can hand the STT near-silence and grade every
+    // line a miss. Capture raw (headphones recommended to avoid instrumental
+    // bleed).
+    return { audio: { autoGainControl: false, channelCount: 1, echoCancellation: false, noiseSuppression: false } };
   }
 
   private report(error: KaraokeMicError): KaraokeMicError {

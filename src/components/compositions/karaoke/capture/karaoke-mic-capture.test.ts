@@ -147,6 +147,28 @@ describe("KaraokeMicCapture", () => {
     expect(h.node.port.postedOfType("activate")).toHaveLength(0);
   });
 
+  test("start() requests RAW mic constraints (no echo cancellation / noise suppression / AGC) so the sung vocal reaches the STT", async () => {
+    let captured: unknown = null;
+    const h = harness({
+      getUserMedia: async (constraints) => {
+        captured = constraints;
+        return new FakeStream();
+      },
+    });
+    await h.capture.start();
+    // Voice-call DSP suppresses singing over an instrumental (echoCancellation
+    // removes playback-correlated audio incl. the vocal; noiseSuppression strips
+    // sustained tones) — it must be off for karaoke scoring to receive real audio.
+    expect(captured).toEqual({
+      audio: {
+        autoGainControl: false,
+        channelCount: 1,
+        echoCancellation: false,
+        noiseSuppression: false,
+      },
+    });
+  });
+
   test("activate() bumps the epoch and forwards only current-epoch chunks", async () => {
     const h = harness();
     await h.capture.start();

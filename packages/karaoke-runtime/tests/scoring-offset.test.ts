@@ -13,7 +13,7 @@ function line(opts: {
 }): KaraokeLineScore {
   return {
     confidenceScore: 0.9,
-    finalizedReason: "stt_final",
+    finalizedReason: "asr_final",
     lineId: `line-${opts.index}`,
     lineIndex: opts.index,
     recognizedWords: [{ text: "x", startMs: 0, endMs: 100, confidence: 0.9, final: true }],

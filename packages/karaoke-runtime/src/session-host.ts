@@ -39,11 +39,18 @@ export interface KaraokeStreamingSttAdapter {
     sessionId: string;
     onMessage: (message: KaraokeSttAdapterMessage) => Promise<void>;
     /**
-     * Fired when the provider stream drops unexpectedly (network close/error),
-     * NOT on intentional close() or terminal provider protocol errors. The host
-     * uses this to drive reconnect; absent on adapters that cannot detect it.
+     * Fired when the provider stream drops unexpectedly (network close/error, or
+     * a transient provider error the adapter treats as a drop), NOT on intentional
+     * close() or a terminal provider error. The host uses this to drive reconnect.
      */
     onUnexpectedClose?: () => void;
+    /**
+     * Fired on a TERMINAL provider error (auth/quota/input/time-limit) that a
+     * reconnect cannot fix. The host aborts the session visibly so the user sees a
+     * real error rather than silent, un-scored lines. Absent on adapters that
+     * cannot distinguish terminal errors.
+     */
+    onTerminalError?: (code: string) => void;
   }): Promise<void>;
   sendPcm16(frame: KaraokeClientBinaryFrame): Promise<void>;
   /**
@@ -262,6 +269,7 @@ export class KaraokeSessionHost {
           // Serialize message handling (incl. commit acks) on the commit chain.
           this.enqueueCommitTask(() => this.processAdapterMessage(message));
         },
+        onTerminalError: (code) => this.onSttTerminalError(code),
         onUnexpectedClose: () => this.onSttUnexpectedClose(),
         sessionId: this.state.sessionId,
       });
@@ -297,6 +305,24 @@ export class KaraokeSessionHost {
     if (this.reconnecting) return;
     if (this.state.status !== "recording") return;
     this.enqueueCommitTask(() => this.reconnectStt());
+  }
+
+  /**
+   * Invoked by the adapter on a TERMINAL provider error (auth/quota/input/
+   * time-limit) — a reconnect cannot fix it, so abort the session visibly on the
+   * serialized commit chain. The client sees a real session_error rather than the
+   * song continuing with silently un-scored lines. Ignored if not recording.
+   */
+  private onSttTerminalError(code: string): void {
+    if (this.state.status !== "recording") return;
+    this.enqueueCommitTask(async () => {
+      if (this.state.status !== "recording") return;
+      await this.reduce({ code: `stt_${code}`, type: "abort" });
+      await this.effectRunner.reportTransportError(
+        { code: "session_aborted", message: `STT provider error: ${code}`, sequence: undefined },
+        this.state,
+      );
+    });
   }
 
   /**

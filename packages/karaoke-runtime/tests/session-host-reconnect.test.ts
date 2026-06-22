@@ -59,6 +59,7 @@ class ReconnectAdapter implements KaraokeStreamingSttAdapter {
   readonly frames: KaraokeClientBinaryFrame[] = []
   private onMessage: ((m: KaraokeSttAdapterMessage) => Promise<void>) | null = null
   private onUnexpectedClose: (() => void) | null = null
+  private onTerminalError: ((code: string) => void) | null = null
   private inFlight: { commitId: string; frontierMs: number } | null = null
   private commitSeq = 0
   private sttSeq = 0
@@ -74,6 +75,7 @@ class ReconnectAdapter implements KaraokeStreamingSttAdapter {
     sessionId: string
     onMessage: (m: KaraokeSttAdapterMessage) => Promise<void>
     onUnexpectedClose?: () => void
+    onTerminalError?: (code: string) => void
   }): Promise<void> {
     // First start() is the initial stream; subsequent ones are reconnect re-opens.
     if (this.startCount > 0 && this.failReopens > 0) {
@@ -84,6 +86,7 @@ class ReconnectAdapter implements KaraokeStreamingSttAdapter {
     this.streamGeneration = `gen-${this.startCount}`
     this.onMessage = input.onMessage
     this.onUnexpectedClose = input.onUnexpectedClose ?? null
+    this.onTerminalError = input.onTerminalError ?? null
     this.inFlight = null
   }
   async sendPcm16(frame: KaraokeClientBinaryFrame): Promise<void> {
@@ -111,6 +114,12 @@ class ReconnectAdapter implements KaraokeStreamingSttAdapter {
   triggerUnexpectedClose(): void {
     if (!this.onUnexpectedClose) throw new Error("adapter not started")
     this.onUnexpectedClose()
+  }
+
+  /** Simulate a terminal provider error (auth/quota/input/time-limit). */
+  triggerTerminalError(code: string): void {
+    if (!this.onTerminalError) throw new Error("adapter not started")
+    this.onTerminalError(code)
   }
 }
 
@@ -252,6 +261,23 @@ describe("KaraokeSessionHost reconnect", () => {
     adapter.triggerUnexpectedClose()
     await pumpReconnect(clock, host)
 
+    expect(host.snapshot().state.status).toBe("aborted")
+    expect(effectRunner.transportErrors.some((e) => e.code === "session_aborted")).toBe(true)
+  })
+
+  test("aborts the session visibly on a terminal provider error (no reconnect)", async () => {
+    const adapter = new ReconnectAdapter()
+    const clock = new FakeClock()
+    const { effectRunner, host } = setup(adapter, clock)
+
+    await host.handleClientEvent(client({ startedAtAudioMs: 0, type: "start" }))
+    expect(adapter.startCount).toBe(1)
+
+    adapter.triggerTerminalError("auth_error")
+    await flush()
+    await host.drainCommitChain()
+
+    expect(adapter.startCount).toBe(1) // terminal → did NOT reconnect
     expect(host.snapshot().state.status).toBe("aborted")
     expect(effectRunner.transportErrors.some((e) => e.code === "session_aborted")).toBe(true)
   })

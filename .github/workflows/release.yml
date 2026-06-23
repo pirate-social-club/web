@@ -39,13 +39,15 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Audit web dependencies
         working-directory: web
-        # TEMPORARY narrow exception: these two undici advisories are dev-only —
+        # TEMPORARY narrow exception: these undici advisories are dev-only —
         # miniflare/wrangler build tooling + scripts/live-paid-song-e2e.ts (undici
-        # Agent); undici is NOT in the deployed worker bundle. Both patched
-        # versions (undici 7.28.0 / 8.5.0) are currently blocked by the repo's
-        # 7-day minimum-release-age policy, so neither can be installed yet.
+        # Agent); undici is NOT in the deployed worker bundle. The vmh5/38rv pair
+        # plus the newer WebSocket-DoS (vxpw) and SOCKS5 routing (hm92) advisories
+        # all reach us only via @cloudflare/vite-plugin/wrangler → miniflare →
+        # undici. Patched undici (>= 8.5.0) is currently blocked by the repo's
+        # 7-day minimum-release-age policy, so it can't be installed yet.
         # Remove these --ignore flags once a patched undici ages past the window.
-        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq
+        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq --ignore=GHSA-vxpw-j846-p89q --ignore=GHSA-hm92-r4w5-c3mj
       - name: Install API dependencies
         working-directory: api/services/api
         run: bun install --frozen-lockfile
@@ -54,7 +56,7 @@ jobs:
         # Same dev-only undici advisories as the web audit (wrangler/miniflare
         # tooling, not in the deployed worker); patched versions blocked by the
         # 7-day minimum-release-age policy. TEMPORARY — remove when undici ages in.
-        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq
+        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq --ignore=GHSA-vxpw-j846-p89q --ignore=GHSA-hm92-r4w5-c3mj
       - name: Install community provision operator dependencies
         working-directory: api/services/community-provision-operator
         run: bun install --frozen-lockfile
@@ -63,7 +65,7 @@ jobs:
         # Same dev-only undici advisories as the web audit (wrangler/miniflare
         # tooling, not in the deployed worker); patched versions blocked by the
         # 7-day minimum-release-age policy. TEMPORARY — remove when undici ages in.
-        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq
+        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq --ignore=GHSA-vxpw-j846-p89q --ignore=GHSA-hm92-r4w5-c3mj
       - name: Install core dependencies
         working-directory: core
         run: npm ci
@@ -295,13 +297,15 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Audit web dependencies
         working-directory: web
-        # TEMPORARY narrow exception: these two undici advisories are dev-only —
+        # TEMPORARY narrow exception: these undici advisories are dev-only —
         # miniflare/wrangler build tooling + scripts/live-paid-song-e2e.ts (undici
-        # Agent); undici is NOT in the deployed worker bundle. Both patched
-        # versions (undici 7.28.0 / 8.5.0) are currently blocked by the repo's
-        # 7-day minimum-release-age policy, so neither can be installed yet.
+        # Agent); undici is NOT in the deployed worker bundle. The vmh5/38rv pair
+        # plus the newer WebSocket-DoS (vxpw) and SOCKS5 routing (hm92) advisories
+        # all reach us only via @cloudflare/vite-plugin/wrangler → miniflare →
+        # undici. Patched undici (>= 8.5.0) is currently blocked by the repo's
+        # 7-day minimum-release-age policy, so it can't be installed yet.
         # Remove these --ignore flags once a patched undici ages past the window.
-        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq
+        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq --ignore=GHSA-vxpw-j846-p89q --ignore=GHSA-hm92-r4w5-c3mj
       - name: Install API dependencies
         working-directory: api/services/api
         run: bun install --frozen-lockfile
@@ -310,7 +314,7 @@ jobs:
         # Same dev-only undici advisories as the web audit (wrangler/miniflare
         # tooling, not in the deployed worker); patched versions blocked by the
         # 7-day minimum-release-age policy. TEMPORARY — remove when undici ages in.
-        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq
+        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq --ignore=GHSA-vxpw-j846-p89q --ignore=GHSA-hm92-r4w5-c3mj
       - name: Install community provision operator dependencies
         working-directory: api/services/community-provision-operator
         run: bun install --frozen-lockfile
@@ -319,7 +323,7 @@ jobs:
         # Same dev-only undici advisories as the web audit (wrangler/miniflare
         # tooling, not in the deployed worker); patched versions blocked by the
         # 7-day minimum-release-age policy. TEMPORARY — remove when undici ages in.
-        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq
+        run: bun audit --audit-level=high --ignore=GHSA-vmh5-mc38-953g --ignore=GHSA-38rv-x7px-6hhq --ignore=GHSA-vxpw-j846-p89q --ignore=GHSA-hm92-r4w5-c3mj
       - name: Install core dependencies
         working-directory: core
         run: npm ci

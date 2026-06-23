@@ -417,4 +417,79 @@ describe("KaraokeAudioSurface", () => {
     expect(window.location.pathname).toBe("/popular");
     expect(pauseCalls).toEqual(["pause"]);
   });
+
+  test("retries a load-time failure before showing the unavailable state", () => {
+    let loadCalls = 0;
+    mediaElementPrototype.load = () => {
+      loadCalls += 1;
+    };
+    const originalSetTimeout = globalThis.setTimeout;
+    // Run the backoff timers synchronously so retries are driven deterministically.
+    globalThis.setTimeout = ((fn: () => void) => {
+      fn();
+      return 0;
+    }) as unknown as typeof setTimeout;
+
+    try {
+      const view = render(
+        <KaraokeAudioSurface
+          instrumentalAudioUrl="https://cdn.example.test/instrumental.mp3"
+          lines={lines}
+          title="Retry"
+        />,
+      );
+      const audio = view.container.querySelector("audio") as HTMLAudioElement;
+      expect(audio).toBeTruthy();
+      const loadsAfterMount = loadCalls;
+
+      // First load-time failure → retried, not yet surfaced as unavailable.
+      act(() => fireEvent.error(audio));
+      expect(view.queryByText("Audio unavailable")).toBeNull();
+      expect(loadCalls).toBe(loadsAfterMount + 1);
+
+      // Second failure → final retry, still not unavailable.
+      act(() => fireEvent.error(audio));
+      expect(view.queryByText("Audio unavailable")).toBeNull();
+      expect(loadCalls).toBe(loadsAfterMount + 2);
+
+      // Third failure → attempts exhausted, surface the permanent error and stop.
+      act(() => fireEvent.error(audio));
+      expect(view.getByText("Audio unavailable")).toBeTruthy();
+      expect(loadCalls).toBe(loadsAfterMount + 2);
+    } finally {
+      globalThis.setTimeout = originalSetTimeout;
+    }
+  });
+
+  test("stops retrying once the instrumental has loaded", () => {
+    let loadCalls = 0;
+    mediaElementPrototype.load = () => {
+      loadCalls += 1;
+    };
+    const originalSetTimeout = globalThis.setTimeout;
+    globalThis.setTimeout = ((fn: () => void) => {
+      fn();
+      return 0;
+    }) as unknown as typeof setTimeout;
+
+    try {
+      const view = render(
+        <KaraokeAudioSurface
+          instrumentalAudioUrl="https://cdn.example.test/instrumental.mp3"
+          lines={lines}
+          title="Loaded"
+        />,
+      );
+      const audio = view.container.querySelector("audio") as HTMLAudioElement;
+      act(() => fireEvent.canPlay(audio));
+      const loadsAfterReady = loadCalls;
+
+      // A post-load error is a mid-playback failure: surface it without retrying.
+      act(() => fireEvent.error(audio));
+      expect(view.getByText("Audio unavailable")).toBeTruthy();
+      expect(loadCalls).toBe(loadsAfterReady);
+    } finally {
+      globalThis.setTimeout = originalSetTimeout;
+    }
+  });
 });

@@ -69,7 +69,10 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
         try {
           return await api.posts.get(postId, { locale: contentLocale });
         } catch (error) {
-          if (!isApiAuthError(error)) throw error;
+          // Logged-in non-members get a 404 (not_found: Community not found) from the
+          // authenticated read. Karaoke is public view-only, so fall back to the public
+          // read on not-found as well as auth errors instead of surfacing the 404.
+          if (!isApiAuthError(error) && !isApiNotFoundError(error)) throw error;
         }
       }
 

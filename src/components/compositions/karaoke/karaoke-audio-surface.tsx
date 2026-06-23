@@ -17,6 +17,11 @@ import type { UseKaraokeScoringResult } from "./scoring/use-karaoke-scoring-sess
 
 type AudioState = "error" | "loading" | "ready";
 const exitConfirmationMessage = "Stop karaoke and leave this song?";
+// Total instrumental load attempts before surfacing the permanent error state
+// (1 initial + 2 retries). Covers transient artifact-proxy failures (e.g. a
+// 502 from the upstream object store) without looping forever.
+const MAX_LOAD_ATTEMPTS = 3;
+const LOAD_RETRY_BASE_DELAY_MS = 400;
 
 export interface KaraokeAudioSurfaceProps {
   artworkSrc?: string;
@@ -219,6 +224,14 @@ export function KaraokeAudioSurface({
       return undefined;
     }
 
+    // Retry only load-time failures (transient artifact-proxy 502s, dropped
+    // connections) with a short backoff. Once `canplay` fires we mark the
+    // instrumental loaded and stop retrying — a later error is a mid-playback
+    // problem, not a failed load, and retrying it would loop.
+    let loadAttempt = 0;
+    let hasLoaded = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
     const handleLoadedMetadata = () => {
       setAudioDurationMs(getAudioDurationMs(audio));
 
@@ -227,13 +240,34 @@ export function KaraokeAudioSurface({
       }
     };
     const handleCanPlay = () => {
+      hasLoaded = true;
+      // A retry scheduled by an earlier transient error is now moot — the
+      // instrumental loaded. Cancel it so it can't reset us back to "loading".
+      if (retryTimer !== null) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
       setAudioState("ready");
       setAudioDurationMs(getAudioDurationMs(audio));
     };
     const handleError = () => {
-      setAudioState("error");
       setIsPlaying(false);
       stopFrame();
+
+      if (!hasLoaded && loadAttempt < MAX_LOAD_ATTEMPTS - 1) {
+        loadAttempt += 1;
+        retryTimer = setTimeout(() => {
+          retryTimer = null;
+          // The instrumental may have loaded between scheduling and firing.
+          if (hasLoaded) return;
+          setAudioState("loading");
+          audio.src = instrumentalAudioUrl;
+          audio.load();
+        }, LOAD_RETRY_BASE_DELAY_MS * loadAttempt);
+        return;
+      }
+
+      setAudioState("error");
     };
     const handleEnded = () => {
       setCurrentTimeMs((getAudioDurationMs(audio) ?? fallbackDurationMs));
@@ -250,6 +284,9 @@ export function KaraokeAudioSurface({
     audio.load();
 
     return () => {
+      if (retryTimer !== null) {
+        clearTimeout(retryTimer);
+      }
       stopFrame();
       audio.pause();
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);

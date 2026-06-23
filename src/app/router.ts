@@ -443,6 +443,14 @@ export function navigate(path: string): void {
 
   if (currentHref === nextHref) return;
 
+  // Honor registered guards (e.g. "leave while karaoke is playing?"). A guard
+  // returning false vetoes the navigation.
+  for (const guard of navigationGuards) {
+    if (!guard({ currentHref, nextHref })) {
+      return;
+    }
+  }
+
   window.history.pushState({}, "", nextHref);
   if (nextPath !== currentPath) {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });

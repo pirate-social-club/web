@@ -94,6 +94,16 @@ export function createCommunitySettingsApi(request: ApiRequest) {
         `/communities/${encodeURIComponent(communityId)}/machine-access-policy`,
         { method: "POST", body: JSON.stringify(body) },
       ),
+    archiveCommunity: (communityId: string): Promise<{ community_id: string; status: string }> =>
+      request<{ community_id: string; status: string }>(
+        `/communities/${encodeURIComponent(communityId)}/archive`,
+        { method: "POST", body: "{}" },
+      ),
+    unarchiveCommunity: (communityId: string): Promise<{ community_id: string; status: string }> =>
+      request<{ community_id: string; status: string }>(
+        `/communities/${encodeURIComponent(communityId)}/unarchive`,
+        { method: "POST", body: "{}" },
+      ),
     getTelegramChatSettings: (communityId: string): Promise<ApiCommunityTelegramChatSettings> =>
       request<ApiCommunityTelegramChatSettings>(
         `/communities/${encodeURIComponent(communityId)}/telegram-chat`,

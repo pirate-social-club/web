@@ -20,5 +20,6 @@ export const COMMUNITY_MODERATION_SECTIONS = [
   "karaoke",
   "telegram",
   "machine-access",
+  "archive",
 ] as const;
 export type CommunityModerationSectionName = (typeof COMMUNITY_MODERATION_SECTIONS)[number];

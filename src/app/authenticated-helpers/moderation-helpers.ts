@@ -1,6 +1,6 @@
 "use client";
 
-import { At, ChatCircleDots, CurrencyDollar, Database, Eye, Gavel, Heart, ImageSquare, LinkSimple, Lock, MicrophoneStage, Queue, Robot, SealCheck, Shield, Tag, TelegramLogo, UserPlus } from "@phosphor-icons/react";
+import { Archive, At, ChatCircleDots, CurrencyDollar, Database, Eye, Gavel, Heart, ImageSquare, LinkSimple, Lock, MicrophoneStage, Queue, Robot, SealCheck, Shield, Tag, TelegramLogo, UserPlus } from "@phosphor-icons/react";
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 
@@ -70,6 +70,11 @@ export function buildCommunityModerationSections(
       { active: activeSection === "karaoke", icon: MicrophoneStage, label: copy.nav.karaoke ?? "Karaoke", onSelect: () => navigate(buildCommunityModerationPath(communityId, "karaoke", routeSlug)) },
       { active: activeSection === "telegram", icon: TelegramLogo, label: "Telegram", onSelect: () => navigate(buildCommunityModerationPath(communityId, "telegram", routeSlug)) },
       { active: activeSection === "machine-access", icon: Database, label: copy.nav.machineAccess, onSelect: () => navigate(buildCommunityModerationPath(communityId, "machine-access", routeSlug)) },
+    ],
+  }, {
+    label: copy.nav.dangerSection ?? "Danger zone",
+    items: [
+      { active: activeSection === "archive", icon: Archive, label: copy.nav.archive ?? "Archive", onSelect: () => navigate(buildCommunityModerationPath(communityId, "archive", routeSlug)) },
     ],
   }];
 }

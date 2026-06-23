@@ -37,6 +37,8 @@ jobs:
       - name: Install web dependencies
         working-directory: web
         run: bun install --frozen-lockfile
+      - name: Link web checkout for API karaoke runtime file dependency
+        run: ln -sfn web web-karaoke-rel
       - name: Audit web dependencies
         working-directory: web
         # TEMPORARY narrow exception: these undici advisories are dev-only —
@@ -295,6 +297,8 @@ jobs:
       - name: Install web dependencies
         working-directory: web
         run: bun install --frozen-lockfile
+      - name: Link web checkout for API karaoke runtime file dependency
+        run: ln -sfn web web-karaoke-rel
       - name: Audit web dependencies
         working-directory: web
         # TEMPORARY narrow exception: these undici advisories are dev-only —

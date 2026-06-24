@@ -56,6 +56,11 @@ export function createAuthApi(request: ApiRequest) {
 export function createUsersApi(request: ApiRequest) {
   return {
     getMe: (): Promise<User> => request<User>("/users/me"),
+    setIdentityWallet: (walletAttachmentId: string): Promise<User> =>
+      request<User>("/users/me/identity-wallet", {
+        method: "PUT",
+        body: JSON.stringify({ wallet_attachment_id: walletAttachmentId }),
+      }),
   };
 }
 

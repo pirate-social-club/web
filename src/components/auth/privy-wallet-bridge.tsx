@@ -17,6 +17,7 @@ function getWalletSnapshot(wallets: PirateConnectedEvmWallet[]): string {
   return JSON.stringify(
     wallets.map((wallet) => ({
       address: wallet.address,
+      connectorType: wallet.connectorType ?? null,
       id: wallet.id ?? null,
       walletClientType: wallet.walletClientType ?? null,
     })),

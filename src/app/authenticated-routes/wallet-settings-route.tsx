@@ -24,6 +24,7 @@ import type { WalletHubChainId, WalletHubChainSection } from "@/components/compo
 import { getPirateNetworkConfig } from "@/lib/network-config";
 import { useResettableTimeout } from "@/hooks/use-resettable-timeout";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
+import { findPirateEmbeddedEvmWallet } from "@/lib/auth/privy-wallet";
 import { useApi } from "@/lib/api";
 import { updateSessionIdentityWallet, useSession } from "@/lib/api/session-store";
 
@@ -290,6 +291,8 @@ export function CurrentUserWalletPage() {
     ?? walletAttachments.find((wallet) => wallet.wallet_address === profile?.primary_wallet_address)
     ?? null;
   const primaryAddress = profile?.primary_wallet_address ?? primaryWallet?.wallet_address ?? null;
+  const connectedEmbeddedWallet = findPirateEmbeddedEvmWallet(connectedWallets);
+  const temporaryReceiveAddress = primaryAddress ?? connectedEmbeddedWallet?.address ?? null;
   const primaryAttachmentId = primaryWallet?.wallet_attachment ?? null;
   const [identityWalletPending, setIdentityWalletPending] = React.useState(false);
 
@@ -306,14 +309,14 @@ export function CurrentUserWalletPage() {
       setIdentityWalletPending(false);
     }
   }, [api]);
-  const normalizedPrimaryAddress = primaryAddress && isAddress(primaryAddress)
-    ? getAddress(primaryAddress)
+  const normalizedWalletAddress = temporaryReceiveAddress && isAddress(temporaryReceiveAddress)
+    ? getAddress(temporaryReceiveAddress)
     : null;
-  const walletAddress = normalizedPrimaryAddress ?? primaryAddress;
+  const walletAddress = normalizedWalletAddress ?? temporaryReceiveAddress;
   const walletActionsPending = Boolean(session) && privyConfigured && !walletAddress && !walletsReady;
 
   React.useEffect(() => {
-    if (!normalizedPrimaryAddress) {
+    if (!normalizedWalletAddress) {
       setBalancesByTokenId({});
       setBalancesLoading(false);
       return;
@@ -347,7 +350,7 @@ export function CurrentUserWalletPage() {
       });
       const tokenKey = `${chain.evmChainId}:${token.id}`;
       if (token.kind === "native") {
-        const balance = await publicClient.getBalance({ address: normalizedPrimaryAddress });
+        const balance = await publicClient.getBalance({ address: normalizedWalletAddress });
         return [tokenKey, formatNativeBalance(balance)] as const;
       }
 
@@ -356,7 +359,7 @@ export function CurrentUserWalletPage() {
           abi: erc20Abi,
           address: token.address,
           functionName: "balanceOf",
-          args: [normalizedPrimaryAddress],
+          args: [normalizedWalletAddress],
         }),
         publicClient.readContract({
           abi: erc20Abi,
@@ -385,7 +388,7 @@ export function CurrentUserWalletPage() {
     return () => {
       cancelled = true;
     };
-  }, [balanceChains, normalizedPrimaryAddress]);
+  }, [balanceChains, normalizedWalletAddress]);
 
   React.useEffect(() => {
     if (priceIds.length === 0) {
@@ -468,7 +471,7 @@ export function CurrentUserWalletPage() {
           setRoyaltyClaimOpen(true);
         }}
         onReceive={walletAddress ? () => setWalletAction("receive") : undefined}
-        onSend={() => setWalletAction("send")}
+        onSend={primaryAttachmentId ? () => setWalletAction("send") : undefined}
         totalBalanceUsd={totalBalanceUsd}
         walletActionsPending={walletActionsPending}
         walletAddress={walletAddress}

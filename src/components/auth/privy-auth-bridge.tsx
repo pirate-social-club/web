@@ -31,6 +31,7 @@ import {
   PrivyRelayResponseError,
   sendPrivyRelayIntent,
 } from "@/lib/privy-relay-client";
+import { EmbeddedWalletSessionReconciler } from "./embedded-wallet-session-reconciler";
 
 const REFRESH_WINDOW_MS = 5 * 60 * 1000;
 const RETRY_COOLDOWN_MS = 30 * 1000;
@@ -40,6 +41,7 @@ const AUTH_BOOTSTRAP_POLL_MS = 50;
 
 export interface PrivyAuthBridgeProps {
   connectedWallets?: PirateConnectedEvmWallet[];
+  embeddedWalletReconcileDelaysMs?: readonly number[];
   onAuthenticatedChange?: (authenticated: boolean) => void;
   onBusyChange?: (busy: boolean) => void;
   onConnectReady?: (connect: (() => void) | null) => void;
@@ -70,6 +72,8 @@ function isPrivyRelayMigrationError(error: unknown): error is PrivyRelayResponse
 }
 
 export function PrivyAuthBridge({
+  connectedWallets = [],
+  embeddedWalletReconcileDelaysMs,
   onAuthenticatedChange,
   onBusyChange,
   onConnectReady,
@@ -275,6 +279,12 @@ export function PrivyAuthBridge({
       setBusy(false);
     }
   }, [api, getAccessToken, session]);
+  const reconcileEmbeddedWallet = React.useCallback(() => (
+    exchangePrivySession({
+      silent: true,
+      navigateOnFirstSession: false,
+    })
+  ), [exchangePrivySession]);
 
   React.useEffect(() => {
     setSessionClearCallback(async () => {
@@ -546,5 +556,14 @@ export function PrivyAuthBridge({
     };
   }, [authenticated, ready]);
 
-  return null;
+  return (
+    <EmbeddedWalletSessionReconciler
+      connectedWallets={connectedWallets}
+      delaysMs={embeddedWalletReconcileDelaysMs}
+      enabled={ready && authenticated && !sessionClearInProgress}
+      onReconcile={reconcileEmbeddedWallet}
+      paused={busy || exchangeRequested}
+      session={session}
+    />
+  );
 }

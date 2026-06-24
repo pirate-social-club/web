@@ -244,7 +244,7 @@ export function KaraokeSongTopSingersCard({
       href={leaderboardHref}
     >
       <Type as="span" variant="caption">View all</Type>
-      <ArrowsOut aria-hidden="true" className="size-3.5" weight="bold" />
+      <ArrowsOut aria-hidden="true" className="size-4" weight="bold" />
     </a>
   ) : onViewRankings ? (
     <button
@@ -254,14 +254,14 @@ export function KaraokeSongTopSingersCard({
       type="button"
     >
       <Type as="span" variant="caption">View all</Type>
-      <ArrowsOut aria-hidden="true" className="size-3.5" weight="bold" />
+      <ArrowsOut aria-hidden="true" className="size-4" weight="bold" />
     </button>
   ) : null;
 
   return (
     <section
       aria-label={`Top singers for ${song.title}`}
-      className={cn("overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-card", className)}
+      className={cn("w-full overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-card", className)}
     >
       <div className="flex items-center justify-between gap-3 border-b border-border-soft px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">

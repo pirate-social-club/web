@@ -103,7 +103,7 @@ export function KaraokeResultLeaderboard({
     : null;
 
   return (
-    <div className={cn("flex w-full flex-col gap-6", className)}>
+    <div className={cn("mx-auto flex w-full max-w-md flex-col gap-6", className)}>
       <div className="flex flex-col items-center gap-2 text-center">
         <KaraokeScoreSummary finalScore={finalScore} uncertainLineCount={uncertainLineCount} />
         <KaraokeRankSummary
@@ -117,8 +117,8 @@ export function KaraokeResultLeaderboard({
 
       {top.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <Type as="p" className="inline-flex items-center gap-1.5 px-1 text-muted-foreground" variant="overline">
-            <Trophy className="size-3.5" weight="fill" /> Top {top.length}
+          <Type as="p" className="inline-flex items-center gap-2 px-1 text-muted-foreground" variant="overline">
+            <Trophy className="size-5" weight="fill" /> Top {top.length}
           </Type>
           <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border-soft">
             {top.map((entry) => (
@@ -139,7 +139,7 @@ export function KaraokeResultLeaderboard({
         type="button"
       >
         <Type as="span" variant="caption">See full leaderboard</Type>
-        <CaretRight className="size-3.5" weight="bold" />
+        <CaretRight className="size-4" weight="bold" />
       </button>
     </div>
   );

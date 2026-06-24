@@ -33,7 +33,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: (args) => (
-    <div className="w-[400px]">
+    <div className="w-96">
       <KaraokeSongTopSingersCard
         {...args}
         leaderboard={songLeaderboard({
@@ -60,7 +60,7 @@ export const Default: Story = {
 
 export const YouOnPodium: Story = {
   render: (args) => (
-    <div className="w-[400px]">
+    <div className="w-96">
       <KaraokeSongTopSingersCard
         {...args}
         leaderboard={songLeaderboard({
@@ -78,7 +78,7 @@ export const YouOnPodium: Story = {
 
 export const Empty: Story = {
   render: (args) => (
-    <div className="w-[400px]">
+    <div className="w-96">
       <KaraokeSongTopSingersCard
         {...args}
         karaokeHref="/p/pst_song/karaoke"
@@ -94,7 +94,7 @@ export const Empty: Story = {
 
 export const Loading: Story = {
   render: (args) => (
-    <div className="w-[400px]">
+    <div className="w-96">
       <KaraokeSongTopSingersCard {...args} status="loading" leaderboard={null} />
     </div>
   ),
@@ -102,7 +102,7 @@ export const Loading: Story = {
 
 export const Error: Story = {
   render: (args) => (
-    <div className="w-[400px]">
+    <div className="w-96">
       <KaraokeSongTopSingersCard {...args} status="error" leaderboard={null} onRetry={noop} />
     </div>
   ),
@@ -110,7 +110,7 @@ export const Error: Story = {
 
 export const AnonymizedEntry: Story = {
   render: (args) => (
-    <div className="w-[400px]">
+    <div className="w-96">
       <KaraokeSongTopSingersCard
         {...args}
         leaderboard={songLeaderboard({

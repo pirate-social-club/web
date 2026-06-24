@@ -35,7 +35,7 @@ const noop = () => undefined;
 
 export const InTopFive: Story = {
   render: () => (
-    <div className="w-[420px]">
+    <div className="w-96">
       <KaraokeResultLeaderboard
         finalScore={0.86}
         leaderboard={songLeaderboard({
@@ -49,7 +49,7 @@ export const InTopFive: Story = {
 
 export const OutsideTop: Story = {
   render: () => (
-    <div className="w-[420px]">
+    <div className="w-96">
       <KaraokeResultLeaderboard
         finalScore={0.72}
         leaderboard={songLeaderboard({
@@ -70,7 +70,7 @@ export const OutsideTop: Story = {
 
 export const Unranked: Story = {
   render: () => (
-    <div className="w-[420px]">
+    <div className="w-96">
       <KaraokeResultLeaderboard
         finalScore={0.41}
         leaderboard={songLeaderboard({

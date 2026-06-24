@@ -3,8 +3,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { KaraokeSongTopSingersCard } from "../leaderboard/karaoke-song-top-singers-card";
 import { entry, songLeaderboard } from "../leaderboard/fixtures";
 
-function id(name: string, handle: string | null, seed: string) {
-  return { displayName: name, handle, avatarUrl: `https://picsum.photos/seed/${seed}/64/64`, visibility: "visible" as const };
+function id(handle: string | null, seed: string) {
+  return { displayName: handle, handle, avatarUrl: `https://picsum.photos/seed/${seed}/64/64`, visibility: "visible" as const };
 }
 
 const song = { title: "Midnight Waves", artistName: "The Castaways" };
@@ -38,11 +38,11 @@ export const Default: Story = {
         {...args}
         leaderboard={songLeaderboard({
           entries: [
-            entry(1, 9600, id("Maya", "maya.pirate", "maya"), { reachedAt: new Date(Date.now() - 1000 * 60 * 90).toISOString() }),
-            entry(2, 9400, id("Diego", "diego.eth", "diego"), { reachedAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString() }),
-            entry(3, 9300, id("Lin", "lin.pirate", "lin"), { reachedAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString() }),
-            entry(4, 8800, id("Sam", "sam.pirate", "sam")),
-            entry(5, 8600, id("Aria", "aria.eth", "aria")),
+            entry(1, 9600, id("maya.pirate", "maya"), { reachedAt: new Date(Date.now() - 1000 * 60 * 90).toISOString() }),
+            entry(2, 9400, id("diego.eth", "diego"), { reachedAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString() }),
+            entry(3, 9300, id("lin.pirate", "lin"), { reachedAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString() }),
+            entry(4, 8800, id("sam.pirate", "sam")),
+            entry(5, 8600, id("aria.eth", "aria")),
           ],
           currentUser: {
             eligible: true,
@@ -65,9 +65,9 @@ export const YouOnPodium: Story = {
         {...args}
         leaderboard={songLeaderboard({
           entries: [
-            entry(1, 9600, id("Maya", "maya.pirate", "maya")),
-            entry(2, 9400, id("Diego", "diego.eth", "diego")),
-            entry(3, 9300, id("You", "you.pirate", "you"), { isCurrentUser: true }),
+            entry(1, 9600, id("maya.pirate", "maya")),
+            entry(2, 9400, id("diego.eth", "diego")),
+            entry(3, 9300, id("you.pirate", "you"), { isCurrentUser: true }),
           ],
           currentUser: { eligible: true, rank: 3, bestScoreBps: 9300, percentileBps: 500 },
         })}
@@ -116,8 +116,8 @@ export const AnonymizedEntry: Story = {
         leaderboard={songLeaderboard({
           entries: [
             entry(1, 9600, { displayName: "Pirate singer", handle: null, avatarUrl: null, visibility: "anonymized" }),
-            entry(2, 9400, id("Diego", "diego.eth", "diego")),
-            entry(3, 9300, id("Lin", "lin.pirate", "lin")),
+            entry(2, 9400, id("diego.eth", "diego")),
+            entry(3, 9300, id("lin.pirate", "lin")),
           ],
           currentUser: { eligible: true, rank: 17, bestScoreBps: 7200, percentileBps: 2700 },
         })}

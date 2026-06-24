@@ -8,7 +8,7 @@ import type { KaraokeLeaderboardEntry, KaraokeSongLeaderboard, RankingScope } fr
 function id(displayName: string, handle: string | null, anonymized = false) {
   const full = !anonymized && handle ? (handle.includes(".") ? handle : `${handle}.pirate`) : null;
   return {
-    displayName,
+    displayName: full ?? displayName,
     handle: full,
     avatarUrl: anonymized ? null : `https://picsum.photos/seed/${handle ?? displayName}/64/64`,
     visibility: anonymized ? ("anonymized" as const) : ("visible" as const),

@@ -3,11 +3,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { KaraokeResultLeaderboard } from "../leaderboard/karaoke-result-leaderboard";
 import { entry, songLeaderboard } from "../leaderboard/fixtures";
 
-function id(name: string) {
+function id(handle: string) {
   return {
-    displayName: name,
-    handle: `${name.toLowerCase()}.pirate`,
-    avatarUrl: `https://picsum.photos/seed/${name}/64/64`,
+    displayName: handle,
+    handle,
+    avatarUrl: `https://picsum.photos/seed/${handle}/64/64`,
     visibility: "visible" as const,
   };
 }
@@ -54,11 +54,11 @@ export const OutsideTop: Story = {
         finalScore={0.72}
         leaderboard={songLeaderboard({
           entries: [
-            entry(1, 9600, id("maya")),
-            entry(2, 9400, id("diego")),
-            entry(3, 9300, id("lin")),
-            entry(4, 8800, id("sam")),
-            entry(5, 8600, id("aria")),
+            entry(1, 9600, id("maya.pirate")),
+            entry(2, 9400, id("diego.eth")),
+            entry(3, 9300, id("lin.pirate")),
+            entry(4, 8800, id("sam.pirate")),
+            entry(5, 8600, id("aria.eth")),
           ],
           currentUser: { eligible: true, rank: 17, bestScoreBps: 7200, percentileBps: 2700 },
         })}
@@ -74,7 +74,7 @@ export const Unranked: Story = {
       <KaraokeResultLeaderboard
         finalScore={0.41}
         leaderboard={songLeaderboard({
-          entries: [entry(1, 9600, id("maya")), entry(2, 9400, id("diego")), entry(3, 9300, id("lin"))],
+          entries: [entry(1, 9600, id("maya.pirate")), entry(2, 9400, id("diego.eth")), entry(3, 9300, id("lin.pirate"))],
           currentUser: { eligible: false, rank: null, bestScoreBps: null, percentileBps: null },
         })}
         onViewRankings={noop}

@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 
 import {
   bpsToPercent,
-  leaderboardHandleLabel,
   leaderboardProfileHref,
+  leaderboardSecondaryHandleLabel,
   type KaraokeLeaderboardEntry,
   type KaraokeSongLeaderboard,
   type PublicLeaderboardIdentity,
@@ -72,7 +72,7 @@ function entryName(entry: KaraokeLeaderboardEntry): string {
 
 function PodiumRow({ entry, totalRanked }: { entry: KaraokeLeaderboardEntry; totalRanked: number }) {
   const href = leaderboardProfileHref(entry.identity, entry.isCurrentUser);
-  const handleLabel = entry.isCurrentUser ? null : leaderboardHandleLabel(entry.identity);
+  const handleLabel = entry.isCurrentUser ? null : leaderboardSecondaryHandleLabel(entry.identity);
   const tier = rankTierLabel(entry.rank, totalRanked);
   const recency = relativeTime(entry.reachedAt);
   const isGold = entry.rank === 1;
@@ -138,7 +138,7 @@ function YourStandingRow({ entry, previousRank, gapToNextRankBps }: {
 }) {
   const rankUp = previousRank != null && previousRank > entry.rank ? previousRank - entry.rank : null;
   const href = leaderboardProfileHref(entry.identity, entry.isCurrentUser);
-  const handleLabel = entry.isCurrentUser ? null : leaderboardHandleLabel(entry.identity);
+  const handleLabel = entry.isCurrentUser ? null : leaderboardSecondaryHandleLabel(entry.identity);
   const nameClass = cn("truncate", entry.isCurrentUser && "font-semibold");
   const gapNudge = gapToNextRankBps != null && gapToNextRankBps > 0 && entry.rank > 1
     ? `+${bpsToPercent(gapToNextRankBps)} to overtake #${entry.rank - 1}`

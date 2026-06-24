@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 import { KaraokeRankSummary } from "./karaoke-rank-summary";
 import {
   bpsToPercent,
-  leaderboardHandleLabel,
   leaderboardProfileHref,
+  leaderboardSecondaryHandleLabel,
   type KaraokeLeaderboardEntry,
   type KaraokeSongLeaderboard,
   type RankingScope,
@@ -37,7 +37,7 @@ function displayName(entry: KaraokeLeaderboardEntry): string {
 function EntryRow({ entry }: { entry: KaraokeLeaderboardEntry }) {
   const showAvatar = entry.identity.visibility === "visible" && entry.identity.avatarUrl;
   const href = leaderboardProfileHref(entry.identity, entry.isCurrentUser);
-  const handleLabel = entry.isCurrentUser ? null : leaderboardHandleLabel(entry.identity);
+  const handleLabel = entry.isCurrentUser ? null : leaderboardSecondaryHandleLabel(entry.identity);
   const nameClass = cn("truncate", entry.isCurrentUser && "font-semibold");
   return (
     <div

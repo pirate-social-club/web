@@ -34,11 +34,11 @@ export function entry(
 }
 
 const TOP_ENTRIES: KaraokeLeaderboardEntry[] = [
-  entry(1, 9600, identity("Maya", "maya.pirate", "maya")),
-  entry(2, 9400, identity("Diego", "diego.eth", "diego")),
-  entry(3, 9300, identity("Lin", "lin.pirate", "lin")),
-  entry(4, 8800, identity("Sam", "sam.pirate", "sam")),
-  entry(5, 8600, identity("Aria", "aria.eth", "aria")),
+  entry(1, 9600, identity("maya.pirate", "maya.pirate", "maya")),
+  entry(2, 9400, identity("diego.eth", "diego.eth", "diego")),
+  entry(3, 9300, identity("lin.pirate", "lin.pirate", "lin")),
+  entry(4, 8800, identity("sam.pirate", "sam.pirate", "sam")),
+  entry(5, 8600, identity("aria.eth", "aria.eth", "aria")),
 ];
 
 export function songLeaderboard(overrides: Partial<KaraokeSongLeaderboard> = {}): KaraokeSongLeaderboard {

@@ -9,6 +9,7 @@ import { KaraokeScoreSummary } from "../scoring/karaoke-score-summary";
 import {
   bpsToPercent,
   leaderboardProfileHref,
+  leaderboardSecondaryHandleLabel,
   type KaraokeLeaderboardEntry,
   type KaraokeSongLeaderboard,
 } from "./karaoke-leaderboard.types";
@@ -31,37 +32,43 @@ function rowName(entry: KaraokeLeaderboardEntry): string {
 }
 
 /**
- * Compact single-line preview row — rank, name (truncates), score. No avatars;
- * the completion screen stays dense. Uses the same grid track as the full board's
- * EntryRow so the preview reads as a condensed version of the real surface.
+ * Compact preview row — rank, name (truncates, links to /u/<handle> for visible
+ * non-self entries), score. The handle renders as the bold name in the common case
+ * (displayName === handle); a separate handle subline appears only when the profile
+ * set a distinct display name. Uses the same grid track as the full board's EntryRow
+ * so the preview reads as a condensed version of the real surface.
  */
 function PreviewRow({ entry }: { entry: KaraokeLeaderboardEntry }) {
+  const href = leaderboardProfileHref(entry.identity, entry.isCurrentUser);
+  const subline = entry.isCurrentUser ? null : leaderboardSecondaryHandleLabel(entry.identity);
+  const nameClass = cn("truncate", entry.isCurrentUser && "font-semibold");
   return (
     <div
       className={cn(
-        "grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-border-soft px-4 py-2.5 last:border-b-0",
+        "grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-border-soft px-4 py-3 last:border-b-0",
         entry.isCurrentUser && "bg-muted/50",
       )}
     >
-      <Type as="span" className="tabular-nums text-muted-foreground" variant="caption">
+      <Type as="span" className="tabular-nums text-muted-foreground" variant="body">
         #{entry.rank}
       </Type>
       <div className="min-w-0 overflow-hidden">
-        {(() => {
-          const href = leaderboardProfileHref(entry.identity, entry.isCurrentUser);
-          const nameClass = cn("truncate", entry.isCurrentUser && "font-semibold");
-          return href ? (
-            <a className={cn(nameClass, "block hover:underline")} href={href}>
-              <Type as="span" variant="body">{rowName(entry)}</Type>
-            </a>
-          ) : (
-            <Type as="p" className={nameClass} variant="body">
-              {rowName(entry)}
-            </Type>
-          );
-        })()}
+        {href ? (
+          <a className={cn(nameClass, "block hover:underline")} href={href}>
+            <Type as="span" variant="body-strong">{rowName(entry)}</Type>
+          </a>
+        ) : (
+          <Type as="p" className={nameClass} variant="body-strong">
+            {rowName(entry)}
+          </Type>
+        )}
+        {subline ? (
+          <Type as="p" className="truncate text-muted-foreground" variant="caption">
+            {subline}
+          </Type>
+        ) : null}
       </div>
-      <Type as="span" className="tabular-nums" variant="body-strong">
+      <Type as="span" className="tabular-nums" variant="h4">
         {bpsToPercent(entry.scoreBps)}
       </Type>
     </div>
@@ -96,7 +103,7 @@ export function KaraokeResultLeaderboard({
     : null;
 
   return (
-    <div className={cn("flex w-full flex-col gap-5", className)}>
+    <div className={cn("flex w-full flex-col gap-6", className)}>
       <div className="flex flex-col items-center gap-2 text-center">
         <KaraokeScoreSummary finalScore={finalScore} uncertainLineCount={uncertainLineCount} />
         <KaraokeRankSummary

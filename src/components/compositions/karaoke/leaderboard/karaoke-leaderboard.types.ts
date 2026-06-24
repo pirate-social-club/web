@@ -102,9 +102,15 @@ export function leaderboardProfileHref(
   return buildPublicProfilePath(identity.handle);
 }
 
-/** Formatted handle label (".pirate" → "u/…", else bare), or null when not shown. */
-export function leaderboardHandleLabel(identity: PublicLeaderboardIdentity): string | null {
+/** Formatted handle subline — only when the profile set a separate display name
+ * (displayName !== handle). Returns null otherwise, so the common case (displayName
+ * === handle) renders a single bold name with no redundant second line.
+ */
+export function leaderboardSecondaryHandleLabel(identity: PublicLeaderboardIdentity): string | null {
   if (identity.visibility !== "visible" || !identity.handle) {
+    return null;
+  }
+  if (identity.displayName === identity.handle) {
     return null;
   }
   return formatProfileDisplayHandle(identity.handle);

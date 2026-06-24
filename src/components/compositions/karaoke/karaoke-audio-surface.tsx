@@ -423,7 +423,7 @@ export function KaraokeAudioSurface({
     && scoringStatus !== "active"
     && scoringStatus !== "finishing"
     && scoringStatus !== "reconnecting";
-  const footerContent = showScoringFooter && scoring.state ? (
+  const scoringPanel = showScoringFooter && scoring.state ? (
     <KaraokeScoringPanel
       canStart={audioState === "ready"}
       className="w-full"
@@ -431,14 +431,22 @@ export function KaraokeAudioSurface({
       onStart={startScoring}
       state={scoring.state}
     />
-  ) : showSignInCta ? (
-    <KaraokeSignInCta
-      busy={signInBusy}
-      className="w-full"
-      onSignIn={onRequestSignIn}
-      unavailable={signInUnavailable}
-    />
   ) : null;
+  // The end-of-take RESULT (final score + Sing again) belongs on the stage, not in
+  // the footer control bar. Pre-performance states (Start / connecting / error /
+  // sign-in) stay in the footer.
+  const isEndedResult = scoringStatus === "ended";
+  const centerContent = isEndedResult ? scoringPanel : null;
+  const footerContent = isEndedResult
+    ? null
+    : scoringPanel ?? (showSignInCta ? (
+      <KaraokeSignInCta
+        busy={signInBusy}
+        className="w-full"
+        onSignIn={onRequestSignIn}
+        unavailable={signInUnavailable}
+      />
+    ) : null);
 
   return (
     <div className={cn("relative flex h-dvh w-full flex-col overflow-hidden", className)}>
@@ -455,6 +463,7 @@ export function KaraokeAudioSurface({
         onComplete={onComplete}
         onExit={exitAudio}
         combo={feedback.combo}
+        centerContent={centerContent}
         footerContent={footerContent}
         rating={feedback.rating}
         runningScore={feedback.runningScore}

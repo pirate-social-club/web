@@ -51,8 +51,10 @@ function SyntheticSurfacePlayer({
   const listening = scoringStatus === "active" || scoringStatus === "finishing";
   // Mirror the real surface: footer hides during active performance so lyrics
   // + rating pops + header score are the feedback.
-  const showFooter = scoringStatus && !listening;
-  const footerContent = showFooter
+  const showPanel = scoringStatus && !listening;
+  // Mirror the real surface: the ended RESULT renders centered on the stage; the
+  // pre-performance Start/status panel renders in the footer.
+  const panel = showPanel
     ? (
       <KaraokeScoringPanel
         canStart
@@ -62,15 +64,17 @@ function SyntheticSurfacePlayer({
       />
     )
     : null;
+  const ended = scoringStatus === "ended";
 
   return (
     <KaraokePracticeSurface
       artistName="The Castaways"
       artworkSrc={artworkSrc}
+      centerContent={ended ? panel : null}
       combo={combo}
       currentTimeMs={clock.currentTimeMs}
       durationMs={durationMs}
-      footerContent={footerContent}
+      footerContent={ended ? null : panel}
       isLoading={isLoading}
       isPlaying={clock.isPlaying}
       lines={lines}

@@ -39,10 +39,14 @@ export interface KaraokePracticeSurfaceProps {
   scoringStatus?: KaraokeScoringStatus | null;
   /** Optional per-line rating pop rendered on the lyric stage. */
   rating?: KaraokeLineRating | null;
-  /** Sole footer content for the scoring flow (Start button, status, final
-   *  score). When provided, no transport controls are rendered — just this.
-   *  Pass null/omit during active performance to leave the footer empty. */
+  /** Footer content for the pre-performance scoring flow (Start button, connect
+   *  status). The end-of-take RESULT does not go here — see `centerContent`. Pass
+   *  null/omit during active performance to leave the footer empty. */
   footerContent?: React.ReactNode;
+  /** Rendered centered in the main stage area, replacing the lyric stage — used
+   *  for the end-of-take result (final score + Sing again), which belongs on the
+   *  stage, not in the footer control bar. */
+  centerContent?: React.ReactNode;
   title: string;
 }
 
@@ -89,6 +93,7 @@ export function KaraokePracticeSurface({
   scoringStatus,
   rating,
   footerContent,
+  centerContent,
   title,
 }: KaraokePracticeSurfaceProps) {
   const clampedCurrentTimeMs = Math.max(0, Math.min(durationMs, currentTimeMs));
@@ -96,14 +101,15 @@ export function KaraokePracticeSurface({
   const hasLines = lines.length > 0;
   const isEnded = durationMs > 0 && clampedCurrentTimeMs >= durationMs;
   const completedRef = React.useRef(false);
-  const scoringEnabled = footerContent != null || runningScore != null || combo != null;
+  const scoringEnabled = footerContent != null || centerContent != null || runningScore != null || combo != null;
   const comboCount = Math.max(0, combo ?? 0);
   const firstLineStartMs = lines[0]?.startMs ?? Number.POSITIVE_INFINITY;
   const primed = !isPlaying && hasLines && clampedCurrentTimeMs <= firstLineStartMs;
-  // Score sits centered in the header once a performance is underway; the
-  // top-right carries only transient connect/reconnect status (never the score).
+  // Live score sits centered in the header only while a performance is underway.
+  // On "ended" the final result takes over the stage (centerContent), so the
+  // header score clears to avoid showing two scores.
   const performing = scoringStatus === "active" || scoringStatus === "finishing"
-    || scoringStatus === "reconnecting" || scoringStatus === "ended";
+    || scoringStatus === "reconnecting";
   const showScore = scoringEnabled && performing;
   const connecting = scoringStatus === "requesting-mic" || scoringStatus === "connecting";
   const reconnecting = scoringStatus === "reconnecting";
@@ -197,7 +203,13 @@ export function KaraokePracticeSurface({
         ) : null}
 
         <div className="relative z-10 size-full">
-          {isLoading ? (
+          {centerContent ? (
+            <div className="grid size-full min-h-64 place-items-center px-4">
+              <div className="flex w-full flex-col items-center sm:max-w-sm">
+                {centerContent}
+              </div>
+            </div>
+          ) : isLoading ? (
             <div className="grid size-full min-h-64 place-items-center px-4">
               <Spinner className="size-8 text-muted-foreground" />
             </div>

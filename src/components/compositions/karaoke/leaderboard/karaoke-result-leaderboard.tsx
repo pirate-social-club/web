@@ -30,20 +30,27 @@ function rowName(entry: KaraokeLeaderboardEntry): string {
   return entry.isCurrentUser ? "You" : entry.identity.displayName;
 }
 
+/**
+ * Compact single-line preview row — rank, name (truncates), score. No avatars;
+ * the completion screen stays dense. Uses the same grid track as the full board's
+ * EntryRow so the preview reads as a condensed version of the real surface.
+ */
 function PreviewRow({ entry }: { entry: KaraokeLeaderboardEntry }) {
   return (
     <div
       className={cn(
-        "grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 px-3 py-1.5",
-        entry.isCurrentUser && "rounded-[var(--radius-md)] bg-muted/60",
+        "grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-border-soft px-4 py-2.5 last:border-b-0",
+        entry.isCurrentUser && "bg-muted/50",
       )}
     >
       <Type as="span" className="tabular-nums text-muted-foreground" variant="caption">
         #{entry.rank}
       </Type>
-      <Type as="span" className={cn("truncate", entry.isCurrentUser && "font-semibold")} variant="body">
-        {rowName(entry)}
-      </Type>
+      <div className="min-w-0 overflow-hidden">
+        <Type as="p" className={cn("truncate", entry.isCurrentUser && "font-semibold")} variant="body">
+          {rowName(entry)}
+        </Type>
+      </div>
       <Type as="span" className="tabular-nums" variant="body-strong">
         {bpsToPercent(entry.scoreBps)}
       </Type>
@@ -80,28 +87,29 @@ export function KaraokeResultLeaderboard({
     : null;
 
   return (
-    <div className={cn("flex w-full flex-col items-center gap-4", className)}>
-      <KaraokeScoreSummary finalScore={finalScore} uncertainLineCount={uncertainLineCount} />
-
-      <KaraokeRankSummary
-        eligible={currentUser.eligible}
-        percentile={currentUser.percentileBps}
-        rank={currentUser.rank}
-        scope={leaderboard.scope}
-        totalRanked={leaderboard.totalRanked}
-      />
+    <div className={cn("flex w-full flex-col gap-5", className)}>
+      <div className="flex flex-col items-center gap-2 text-center">
+        <KaraokeScoreSummary finalScore={finalScore} uncertainLineCount={uncertainLineCount} />
+        <KaraokeRankSummary
+          eligible={currentUser.eligible}
+          percentile={currentUser.percentileBps}
+          rank={currentUser.rank}
+          scope={leaderboard.scope}
+          totalRanked={leaderboard.totalRanked}
+        />
+      </div>
 
       {top.length > 0 ? (
-        <div className="w-full">
-          <Type as="p" className="mb-1 inline-flex items-center gap-1 px-3 text-muted-foreground" variant="overline">
+        <div className="flex flex-col gap-2">
+          <Type as="p" className="inline-flex items-center gap-1.5 px-1 text-muted-foreground" variant="overline">
             <Trophy className="size-3.5" weight="fill" /> Top {top.length}
           </Type>
-          <div className="rounded-[var(--radius-xl)] border border-border-soft p-1">
+          <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border-soft">
             {top.map((entry) => (
               <PreviewRow entry={entry} key={`${entry.rank}-${entry.identity.displayName}-${entry.isCurrentUser}`} />
             ))}
             {yourRow ? (
-              <div className="mt-1 border-t border-dashed border-border-soft pt-1">
+              <div className="border-t-2 border-dashed border-border-soft">
                 <PreviewRow entry={yourRow} />
               </div>
             ) : null}

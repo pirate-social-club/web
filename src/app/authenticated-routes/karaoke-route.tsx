@@ -8,6 +8,7 @@ import { KaraokeAudioSurface } from "@/components/compositions/karaoke/karaoke-a
 import { toKaraokeStageLines } from "@/components/compositions/karaoke/lyric-transform";
 import { toScorableKaraokeLines } from "@/components/compositions/karaoke/karaoke-stage-bridge";
 import { useKaraokeScoring } from "@/components/compositions/karaoke/scoring/use-karaoke-scoring-session";
+import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
@@ -58,6 +59,7 @@ function KaraokeRouteMessage({
 export function KaraokeRoutePage({ postId }: { postId: string }) {
   const api = useApi();
   const session = useSession();
+  const { busy: authBusy, configured: authConfigured, connect, loadError: authLoadError } = usePiratePrivyRuntime();
   const contentLocale = useRouteContentLocale();
   const [state, setState] = React.useState<KaraokeRouteState>({ phase: "loading" });
 
@@ -152,6 +154,12 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
     postId,
     scorableLines,
   });
+  // Logged-out visitors can view the karaoke surface (public read) but can't be
+  // scored. Rather than dead-end them, offer a "Sing" CTA in the scoring slot that
+  // opens auth; once a session exists, scoring takes over the same slot. Mirror
+  // scoringEnabled's preconditions (incl. communityId) so the CTA only promises
+  // scoring when sign-in will actually unlock the Start panel.
+  const needsAuth = Boolean(communityId && !session?.accessToken && scorableLines.length > 0);
 
   if (state.phase === "loading") {
     return (
@@ -175,7 +183,11 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
       instrumentalAudioUrl={state.payload.instrumentalAudioUrl}
       lines={stageLines}
       onExit={() => navigate(`/p/${encodeURIComponent(postId)}`)}
+      onRequestSignIn={connect ?? undefined}
       scoring={scoring}
+      showSignInCta={needsAuth}
+      signInBusy={authBusy}
+      signInUnavailable={!authConfigured || !connect || Boolean(authLoadError)}
       title={state.payload.title}
     />
   );

@@ -492,4 +492,36 @@ describe("KaraokeAudioSurface", () => {
       globalThis.setTimeout = originalSetTimeout;
     }
   });
+
+  test("renders a Sing CTA that triggers sign-in when logged out (no scoring)", () => {
+    const signInCalls: string[] = [];
+
+    const view = render(
+      <KaraokeAudioSurface
+        instrumentalAudioUrl="https://cdn.example.test/instrumental.mp3"
+        lines={lines}
+        onRequestSignIn={() => signInCalls.push("sign-in")}
+        showSignInCta
+        title="Logged Out"
+      />,
+    );
+
+    fireEvent.click(view.getByText("Sing"));
+    expect(signInCalls).toEqual(["sign-in"]);
+  });
+
+  test("shows an unavailable message instead of the Sing CTA when auth cannot load", () => {
+    const view = render(
+      <KaraokeAudioSurface
+        instrumentalAudioUrl="https://cdn.example.test/instrumental.mp3"
+        lines={lines}
+        showSignInCta
+        signInUnavailable
+        title="Auth Unavailable"
+      />,
+    );
+
+    expect(view.queryByText("Sing")).toBeNull();
+    expect(view.getByText("Sign-in is unavailable right now.")).toBeTruthy();
+  });
 });

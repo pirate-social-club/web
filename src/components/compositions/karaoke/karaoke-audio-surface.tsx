@@ -12,6 +12,7 @@ import {
 import { deriveKaraokeFeedback } from "./karaoke-scoring-feedback";
 import { getLyricDurationMs } from "./karaoke-timing";
 import type { KaraokeStageLine } from "./karaoke-lyric-stage";
+import { KaraokeSignInCta } from "./karaoke-signin-cta";
 import { KaraokeScoringPanel } from "./scoring/karaoke-scoring-panel";
 import type { UseKaraokeScoringResult } from "./scoring/use-karaoke-scoring-session";
 
@@ -34,6 +35,18 @@ export interface KaraokeAudioSurfaceProps {
   onComplete?: (summary: KaraokePracticeCompleteSummary) => void;
   onExit?: () => void;
   onTimingOffsetReset?: () => void;
+  /**
+   * Logged-out auth prompt. When true (and scoring is not enabled), the scoring-panel
+   * slot renders a "Sing" call-to-action instead of nothing, so the page is never a
+   * dead-end for unauthenticated visitors.
+   */
+  showSignInCta?: boolean;
+  /** Triggers the auth flow when the logged-out "Sing" CTA is clicked. */
+  onRequestSignIn?: () => void;
+  /** True while the auth flow is mounting/opening. */
+  signInBusy?: boolean;
+  /** True when auth cannot be offered (Privy not configured or failed to load). */
+  signInUnavailable?: boolean;
   /** Optional real-time scoring orchestration (Phase 5.3). Inert when omitted. */
   scoring?: UseKaraokeScoringResult;
   timingOffsetMs?: number;
@@ -65,8 +78,12 @@ export function KaraokeAudioSurface({
   lines,
   onComplete,
   onExit,
+  onRequestSignIn,
   onTimingOffsetReset,
   scoring,
+  showSignInCta = false,
+  signInBusy = false,
+  signInUnavailable = false,
   timingOffsetMs = 0,
   title,
 }: KaraokeAudioSurfaceProps) {
@@ -399,6 +416,13 @@ export function KaraokeAudioSurface({
       className="w-full"
       onStart={startScoring}
       state={scoring.state}
+    />
+  ) : showSignInCta ? (
+    <KaraokeSignInCta
+      busy={signInBusy}
+      className="w-full"
+      onSignIn={onRequestSignIn}
+      unavailable={signInUnavailable}
     />
   ) : null;
 

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 
 import type { LocalizedPostResponse, SongKaraokePayload } from "@pirate/api-contracts";
 
@@ -8,7 +8,37 @@ import { api } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
 import { __resetSessionStoreForTests, setSession } from "@/lib/api/session-store";
 import { installDomGlobals } from "@/test/setup-dom";
-import { KaraokeRoutePage } from "./karaoke-route";
+
+const { mock } = await import("bun:test") as unknown as {
+  mock: { module: (specifier: string, factory: () => unknown) => void };
+};
+
+// Inject a controllable Privy runtime so the logged-out "Sing" CTA has a real
+// connect() to call. Re-export the rest of the module untouched.
+const realPrivy = await import("@/components/auth/privy-provider");
+let connectCalls = 0;
+let privyRuntime = {
+  busy: false,
+  configured: true,
+  connect: () => {
+    connectCalls += 1;
+  },
+  connectedWallets: [],
+  loadError: null,
+  loaded: true,
+  privyAuthenticated: false,
+  privyReady: true,
+  reconnectEthereumWallet: null,
+  sendSponsoredIntent: null,
+  walletSyncMounted: false,
+  walletsReady: false,
+};
+mock.module("@/components/auth/privy-provider", () => ({
+  ...realPrivy,
+  usePiratePrivyRuntime: () => privyRuntime,
+}));
+
+const { KaraokeRoutePage } = await import("./karaoke-route");
 
 installDomGlobals();
 
@@ -114,6 +144,23 @@ const originalGetPostKaraoke = api.communities.getPostKaraoke;
 
 beforeEach(() => {
   __resetSessionStoreForTests();
+  connectCalls = 0;
+  privyRuntime = {
+    busy: false,
+    configured: true,
+    connect: () => {
+      connectCalls += 1;
+    },
+    connectedWallets: [],
+    loadError: null,
+    loaded: true,
+    privyAuthenticated: false,
+    privyReady: true,
+    reconnectEthereumWallet: null,
+    sendSponsoredIntent: null,
+    walletSyncMounted: false,
+    walletsReady: false,
+  };
   mediaElementPrototype.load = () => undefined;
   mediaElementPrototype.play = () => Promise.resolve();
   mediaElementPrototype.pause = () => undefined;
@@ -162,6 +209,41 @@ describe("KaraokeRoutePage", () => {
     // Reached the player, not the "Community not found"/blocked message.
     expect(view.queryByText("Open post")).toBeNull();
     expect(view.container.querySelector("audio")).toBeTruthy();
+  });
+
+  test("logged-out viewer gets a Sing CTA that opens auth instead of a dead-end", async () => {
+    const log: ApiCallLog = { authGet: [], publicGet: [], karaoke: [] };
+    installApiSpies(log, async () => {
+      throw new Error("authenticated read should not run for a logged-out viewer");
+    });
+
+    const view = render(<KaraokeRoutePage postId={POST_ID} />);
+
+    const singButton = await waitFor(() => view.getByText("Sing"));
+    fireEvent.click(singButton);
+    expect(connectCalls).toBe(1);
+  });
+
+  test("Sing CTA is replaced by the scoring Start panel once a session is established", async () => {
+    const log: ApiCallLog = { authGet: [], publicGet: [], karaoke: [] };
+    // Authenticated read succeeds post-sign-in so the route reaches a scorable,
+    // community-backed payload (the precondition for scoring to enable).
+    installApiSpies(log, async () => buildPost());
+
+    const view = render(<KaraokeRoutePage postId={POST_ID} />);
+
+    // Logged out: the Sing CTA stands in for the (disabled) scoring panel.
+    await waitFor(() => expect(view.getByText("Sing")).toBeTruthy());
+    expect(view.queryByText("Start")).toBeNull();
+
+    // Establishing a session flips needsAuth off and enables scoring.
+    act(() => {
+      signIn();
+    });
+
+    // The same footer slot now hosts the scoring Start panel; the CTA is gone.
+    await waitFor(() => expect(view.getByText("Start")).toBeTruthy());
+    expect(view.queryByText("Sing")).toBeNull();
   });
 
   test("logged-in non-member falls back from an authenticated 404 to the public read", async () => {

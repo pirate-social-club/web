@@ -1,3 +1,5 @@
+import { buildPublicProfilePath, formatProfileDisplayHandle } from "@/lib/profile-routing";
+
 // API-shaped view models for karaoke leaderboards.
 // Contract: core spec/karaoke-rankings §10. These mirror what the (not-yet-built)
 // leaderboard endpoints will return — the UI consumes these, never DB rows.
@@ -7,7 +9,9 @@
 export type RankingScope = "all_time" | "weekly";
 
 export interface PublicLeaderboardIdentity {
+  /** Bold primary label; equals the handle unless the profile set a separate display name. */
   displayName: string;
+  /** Full routing handle label, e.g. "maya.pirate" / "diego.eth" (NOT a bare nickname). */
   handle: string | null;
   avatarUrl: string | null;
   visibility: "visible" | "anonymized";
@@ -70,4 +74,26 @@ export interface CommunityKaraokeSongStanding {
 /** Basis points (0..10000) → display percent (0..100). */
 export function bpsToPercent(bps: number): number {
   return Math.round(Math.min(10000, Math.max(0, bps)) / 100);
+}
+
+/**
+ * Profile link for a leaderboard entry, or null when not linkable (the viewer's
+ * own "You" row, anonymized entries, or no handle). Routes to /u/<handle>.
+ */
+export function leaderboardProfileHref(
+  identity: PublicLeaderboardIdentity,
+  isCurrentUser: boolean,
+): string | null {
+  if (isCurrentUser || identity.visibility !== "visible" || !identity.handle) {
+    return null;
+  }
+  return buildPublicProfilePath(identity.handle);
+}
+
+/** Formatted handle label (".pirate" → "u/…", else bare), or null when not shown. */
+export function leaderboardHandleLabel(identity: PublicLeaderboardIdentity): string | null {
+  if (identity.visibility !== "visible" || !identity.handle) {
+    return null;
+  }
+  return formatProfileDisplayHandle(identity.handle);
 }

@@ -1,7 +1,6 @@
 import * as React from "react";
-import { ArrowsClockwise, Trophy } from "@phosphor-icons/react";
+import { CaretRight, Trophy } from "@phosphor-icons/react";
 
-import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +8,7 @@ import { KaraokeRankSummary } from "./karaoke-rank-summary";
 import { KaraokeScoreSummary } from "../scoring/karaoke-score-summary";
 import {
   bpsToPercent,
+  leaderboardProfileHref,
   type KaraokeLeaderboardEntry,
   type KaraokeSongLeaderboard,
 } from "./karaoke-leaderboard.types";
@@ -21,7 +21,7 @@ export interface KaraokeResultLeaderboardProps {
   leaderboard: KaraokeSongLeaderboard;
   /** How many top rows to preview. Default 5. */
   topCount?: number;
-  onSingAgain: () => void;
+  /** Opens the full board. Sing again is NOT here — it lives in the stage footer. */
   onViewRankings: () => void;
   className?: string;
 }
@@ -47,9 +47,19 @@ function PreviewRow({ entry }: { entry: KaraokeLeaderboardEntry }) {
         #{entry.rank}
       </Type>
       <div className="min-w-0 overflow-hidden">
-        <Type as="p" className={cn("truncate", entry.isCurrentUser && "font-semibold")} variant="body">
-          {rowName(entry)}
-        </Type>
+        {(() => {
+          const href = leaderboardProfileHref(entry.identity, entry.isCurrentUser);
+          const nameClass = cn("truncate", entry.isCurrentUser && "font-semibold");
+          return href ? (
+            <a className={cn(nameClass, "block hover:underline")} href={href}>
+              <Type as="span" variant="body">{rowName(entry)}</Type>
+            </a>
+          ) : (
+            <Type as="p" className={nameClass} variant="body">
+              {rowName(entry)}
+            </Type>
+          );
+        })()}
       </div>
       <Type as="span" className="tabular-nums" variant="body-strong">
         {bpsToPercent(entry.scoreBps)}
@@ -68,7 +78,6 @@ export function KaraokeResultLeaderboard({
   className,
   finalScore,
   leaderboard,
-  onSingAgain,
   onViewRankings,
   topCount = 5,
   uncertainLineCount = 0,
@@ -117,19 +126,14 @@ export function KaraokeResultLeaderboard({
         </div>
       ) : null}
 
-      <div className="flex w-full gap-2">
-        <Button
-          className="flex-1"
-          leadingIcon={<ArrowsClockwise className="size-5" weight="bold" />}
-          onClick={onSingAgain}
-          size="lg"
-        >
-          Sing again
-        </Button>
-        <Button className="flex-1" onClick={onViewRankings} size="lg" variant="secondary">
-          View rankings
-        </Button>
-      </div>
+      <button
+        className="inline-flex items-center gap-1 self-center text-muted-foreground transition-colors hover:text-foreground"
+        onClick={onViewRankings}
+        type="button"
+      >
+        <Type as="span" variant="caption">See full leaderboard</Type>
+        <CaretRight className="size-3.5" weight="bold" />
+      </button>
     </div>
   );
 }

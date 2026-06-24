@@ -4,7 +4,12 @@ import { KaraokeResultLeaderboard } from "../leaderboard/karaoke-result-leaderbo
 import { entry, songLeaderboard } from "../leaderboard/fixtures";
 
 function id(name: string) {
-  return { displayName: name, handle: name, avatarUrl: `https://picsum.photos/seed/${name}/64/64`, visibility: "visible" as const };
+  return {
+    displayName: name,
+    handle: `${name.toLowerCase()}.pirate`,
+    avatarUrl: `https://picsum.photos/seed/${name}/64/64`,
+    visibility: "visible" as const,
+  };
 }
 
 const meta = {
@@ -36,7 +41,6 @@ export const InTopFive: Story = {
         leaderboard={songLeaderboard({
           currentUser: { eligible: true, rank: 5, bestScoreBps: 8600, percentileBps: 800 },
         })}
-        onSingAgain={noop}
         onViewRankings={noop}
       />
     </div>
@@ -58,7 +62,6 @@ export const OutsideTop: Story = {
           ],
           currentUser: { eligible: true, rank: 17, bestScoreBps: 7200, percentileBps: 2700 },
         })}
-        onSingAgain={noop}
         onViewRankings={noop}
       />
     </div>
@@ -74,7 +77,6 @@ export const Unranked: Story = {
           entries: [entry(1, 9600, id("maya")), entry(2, 9400, id("diego")), entry(3, 9300, id("lin"))],
           currentUser: { eligible: false, rank: null, bestScoreBps: null, percentileBps: null },
         })}
-        onSingAgain={noop}
         onViewRankings={noop}
       />
     </div>

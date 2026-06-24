@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { KaraokeRankSummary } from "./karaoke-rank-summary";
 import {
   bpsToPercent,
+  leaderboardHandleLabel,
+  leaderboardProfileHref,
   type KaraokeLeaderboardEntry,
   type KaraokeSongLeaderboard,
   type RankingScope,
@@ -34,6 +36,9 @@ function displayName(entry: KaraokeLeaderboardEntry): string {
 
 function EntryRow({ entry }: { entry: KaraokeLeaderboardEntry }) {
   const showAvatar = entry.identity.visibility === "visible" && entry.identity.avatarUrl;
+  const href = leaderboardProfileHref(entry.identity, entry.isCurrentUser);
+  const handleLabel = entry.isCurrentUser ? null : leaderboardHandleLabel(entry.identity);
+  const nameClass = cn("truncate", entry.isCurrentUser && "font-semibold");
   return (
     <div
       className={cn(
@@ -53,12 +58,18 @@ function EntryRow({ entry }: { entry: KaraokeLeaderboardEntry }) {
           </div>
         )}
         <div className="min-w-0">
-          <Type as="p" className={cn("truncate", entry.isCurrentUser && "font-semibold")} variant="body">
-            {displayName(entry)}
-          </Type>
-          {entry.identity.visibility === "visible" && entry.identity.handle ? (
+          {href ? (
+            <a className={cn(nameClass, "block hover:underline")} href={href}>
+              <Type as="span" variant="body">{displayName(entry)}</Type>
+            </a>
+          ) : (
+            <Type as="p" className={nameClass} variant="body">
+              {displayName(entry)}
+            </Type>
+          )}
+          {handleLabel ? (
             <Type as="p" className="truncate text-muted-foreground" variant="caption">
-              @{entry.identity.handle}
+              {handleLabel}
             </Type>
           ) : null}
         </div>

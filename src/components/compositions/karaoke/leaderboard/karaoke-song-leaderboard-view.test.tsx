@@ -88,6 +88,14 @@ describe("KaraokeSongLeaderboardView", () => {
     expect(text).toContain("You");
   });
 
+  test("visible non-self entries link to /u/<handle>; the viewer's own row is not a link", () => {
+    const view = renderView({ leaderboard: songLeaderboard() });
+    // maya.pirate is a visible, non-current-user entry → linked to their profile.
+    expect(view.container.querySelector('a[href="/u/maya.pirate"]')).toBeTruthy();
+    // The current user renders "You" and is never a self-link.
+    expect(view.getByText("You").closest("a")).toBeNull();
+  });
+
   test("primary CTA reflects whether the viewer has sung", () => {
     expect(renderView({ hasSung: false }).getByText("Sing")).toBeTruthy();
     cleanup();

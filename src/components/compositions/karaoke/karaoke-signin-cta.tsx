@@ -39,11 +39,8 @@ export function KaraokeSignInCta({ busy = false, className, onSignIn, unavailabl
         onClick={onSignIn}
         size="lg"
       >
-        Sing
+        Log in to karaoke
       </Button>
-      <Type as="p" className="text-muted-foreground" variant="caption">
-        Sign in to sing along and get scored.
-      </Type>
     </div>
   );
 }

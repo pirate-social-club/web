@@ -506,7 +506,7 @@ describe("KaraokeAudioSurface", () => {
       />,
     );
 
-    fireEvent.click(view.getByText("Sing"));
+    fireEvent.click(view.getByText("Log in to karaoke"));
     expect(signInCalls).toEqual(["sign-in"]);
   });
 
@@ -521,7 +521,7 @@ describe("KaraokeAudioSurface", () => {
       />,
     );
 
-    expect(view.queryByText("Sing")).toBeNull();
+    expect(view.queryByText("Log in to karaoke")).toBeNull();
     expect(view.getByText("Sign-in is unavailable right now.")).toBeTruthy();
   });
 });

@@ -219,7 +219,7 @@ describe("KaraokeRoutePage", () => {
 
     const view = render(<KaraokeRoutePage postId={POST_ID} />);
 
-    const singButton = await waitFor(() => view.getByText("Sing"));
+    const singButton = await waitFor(() => view.getByText("Log in to karaoke"));
     fireEvent.click(singButton);
     expect(connectCalls).toBe(1);
   });
@@ -233,7 +233,7 @@ describe("KaraokeRoutePage", () => {
     const view = render(<KaraokeRoutePage postId={POST_ID} />);
 
     // Logged out: the Sing CTA stands in for the (disabled) scoring panel.
-    await waitFor(() => expect(view.getByText("Sing")).toBeTruthy());
+    await waitFor(() => expect(view.getByText("Log in to karaoke")).toBeTruthy());
     expect(view.queryByText("Start")).toBeNull();
 
     // Establishing a session flips needsAuth off and enables scoring.
@@ -243,7 +243,7 @@ describe("KaraokeRoutePage", () => {
 
     // The same footer slot now hosts the scoring Start panel; the CTA is gone.
     await waitFor(() => expect(view.getByText("Start")).toBeTruthy());
-    expect(view.queryByText("Sing")).toBeNull();
+    expect(view.queryByText("Log in to karaoke")).toBeNull();
   });
 
   test("logged-in non-member falls back from an authenticated 404 to the public read", async () => {

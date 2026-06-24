@@ -476,6 +476,7 @@ function validateStateShape(
         ? state.summary.missedWords.filter((m): m is string => typeof m === "string")
         : [],
       noRecognitionLineCount: isFiniteNumber(state.summary.noRecognitionLineCount) ? state.summary.noRecognitionLineCount : 0,
+      uncertainLineCount: isFiniteNumber(state.summary.uncertainLineCount) ? state.summary.uncertainLineCount : 0,
       phoneticUnavailableLineCount: isFiniteNumber(state.summary.phoneticUnavailableLineCount) ? state.summary.phoneticUnavailableLineCount : 0,
       scoredLineCount: isFiniteNumber(state.summary.scoredLineCount) ? state.summary.scoredLineCount : 0,
       strongestLines: Array.isArray(state.summary.strongestLines)

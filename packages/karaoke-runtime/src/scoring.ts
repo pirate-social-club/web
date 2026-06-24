@@ -87,6 +87,14 @@ export interface KaraokeSessionSummary {
   lineCount: number;
   scoredLineCount: number;
   noRecognitionLineCount: number;
+  /**
+   * Lines that could not be reliably measured (provider/stream failure), as
+   * opposed to lines simply sung poorly or left silent. These are excluded from
+   * the performance averages, so surfacing them as an infrastructure caveat is
+   * honest; do NOT conflate this with `noRecognitionLineCount` (which counts
+   * genuine silence/failed recognition too).
+   */
+  uncertainLineCount: number;
   phoneticUnavailableLineCount: number;
   lowConfidenceLineCount: number;
   timingTrend: KaraokeTimingTrend;
@@ -1267,6 +1275,7 @@ export function aggregateKaraokeSession(input: {
     lyricsScore: clamp01(lyricsScore),
     missedWords: uniqueMissedWords(lineScores),
     noRecognitionLineCount: lineScores.filter((lineScore) => lineScore.recognizedWords.length === 0).length,
+    uncertainLineCount: lineScores.filter((lineScore) => lineScore.uncertain).length,
     phoneticUnavailableLineCount: lineScores.filter((lineScore) => !lineScore.textScore.phoneticAvailable).length,
     scoredLineCount: scoredLineScores.length,
     strongestLines,

@@ -324,4 +324,24 @@ describe("karaoke-runtime serialization", () => {
     expect(restored.lastSttSequence).toBe(1);
     expect(restored.serverSequence).toBe(7);
   });
+
+  test("defaults a legacy snapshot with no uncertainLineCount to 0", () => {
+    let state: KaraokeSessionState = BASE_STATE;
+    for (const event of [
+      { type: "start" as const, audioTimeMs: 0 },
+      { type: "stt_final" as const, audioTimeMs: 1800, words: [word("old", 0, 450), word("guitar", 620, 1300)] },
+      { type: "finish" as const, audioTimeMs: 6000 },
+    ]) {
+      state = reduceKaraokeSession(state, event).state;
+    }
+    expect(state.summary).not.toBeNull();
+
+    const json = JSON.parse(JSON.stringify(serializeKaraokeSessionSnapshot(snapshotWith(state))));
+    // Snapshots written before the field existed simply won't carry it.
+    expect(json.state.summary.uncertainLineCount).toBeDefined();
+    delete json.state.summary.uncertainLineCount;
+
+    const restored = deserializeKaraokeSessionSnapshot(json);
+    expect(restored.state.summary?.uncertainLineCount).toBe(0);
+  });
 });

@@ -229,6 +229,7 @@ function ScoringStory({ status }: { status: KaraokeScoringState["status"] }) {
           lowConfidenceLineCount: 1,
           missedWords: ["Benz"],
           noRecognitionLineCount: 0,
+          uncertainLineCount: 0,
           phoneticUnavailableLineCount: 12,
           scoredLineCount: 11,
           strongestLines: [],

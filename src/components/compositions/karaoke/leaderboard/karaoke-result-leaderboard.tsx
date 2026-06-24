@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CaretRight, Trophy } from "@phosphor-icons/react";
+import { CaretRight } from "@phosphor-icons/react";
 
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
@@ -116,20 +116,15 @@ export function KaraokeResultLeaderboard({
       </div>
 
       {top.length > 0 ? (
-        <div className="flex flex-col gap-2">
-          <Type as="p" className="inline-flex items-center gap-2 px-1 text-muted-foreground" variant="overline">
-            <Trophy className="size-5" weight="fill" /> Top {top.length}
-          </Type>
-          <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border-soft">
-            {top.map((entry) => (
-              <PreviewRow entry={entry} key={`${entry.rank}-${entry.identity.displayName}-${entry.isCurrentUser}`} />
-            ))}
-            {yourRow ? (
-              <div className="border-t-2 border-dashed border-border-soft">
-                <PreviewRow entry={yourRow} />
-              </div>
-            ) : null}
-          </div>
+        <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border-soft">
+          {top.map((entry) => (
+            <PreviewRow entry={entry} key={`${entry.rank}-${entry.identity.displayName}-${entry.isCurrentUser}`} />
+          ))}
+          {yourRow ? (
+            <div className="border-t-2 border-dashed border-border-soft">
+              <PreviewRow entry={yourRow} />
+            </div>
+          ) : null}
         </div>
       ) : null}
 

@@ -25,7 +25,7 @@ describe("KaraokeResultLeaderboard", () => {
     const text = view.container.textContent ?? "";
     expect(text).toContain("Final score");
     expect(text).toContain("86");
-    expect(text).toContain("Top"); // "Top 5" heading + "Top 8%" rank line
+    expect(text).toContain("#1"); // the ranked list (no separate "Top N" header)
     expect(view.getByText("See full leaderboard")).toBeTruthy();
     // Sing again belongs in the stage footer, not this preview.
     expect(view.queryByText("Sing again")).toBeNull();

@@ -33,6 +33,18 @@ export interface KaraokeSongLeaderboardCurrentUser {
   bestScoreBps: number | null;
   /** Top-fraction in basis points (1800 = "Top 18%"). */
   percentileBps: number | null;
+  /**
+   * Optional. The viewer's rank before this take improved their best score, or
+   * null if they had no prior ranked score / the server doesn't compute it.
+   * Present → the result screen can show a rank-up flourish ("↑5 · now #12").
+   */
+  previousRank?: number | null;
+  /**
+   * Optional. Basis-point gap to the entry ranked one ahead (scoreAhead - yourBest),
+   * >= 0, or null when already #1 / not ranked / the server doesn't compute it.
+   * Present → the result + song-page cards can show a nudge ("+5 to break top 10").
+   */
+  gapToNextRankBps?: number | null;
 }
 
 export interface KaraokeSongLeaderboard {

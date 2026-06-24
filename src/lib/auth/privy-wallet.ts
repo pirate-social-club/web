@@ -4,6 +4,7 @@ const ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
 
 export interface PirateConnectedEvmWallet {
   address: `0x${string}`;
+  connectorType?: string | null;
   getEthereumProvider: () => Promise<unknown>;
   id?: string | null;
   switchChain: (targetChainId: number | string) => Promise<void>;
@@ -19,6 +20,7 @@ export function normalizePirateConnectedEvmWallet(
 
   const candidate = value as Partial<PirateConnectedEvmWallet> & {
     address?: unknown;
+    connectorType?: unknown;
     getEthereumProvider?: unknown;
     id?: unknown;
     switchChain?: unknown;
@@ -39,6 +41,9 @@ export function normalizePirateConnectedEvmWallet(
 
   return {
     address: candidate.address.trim().toLowerCase() as `0x${string}`,
+    connectorType: typeof candidate.connectorType === "string"
+      ? candidate.connectorType
+      : null,
     getEthereumProvider: candidate.getEthereumProvider,
     id: typeof candidate.id === "string" && candidate.id.trim()
       ? candidate.id.trim()
@@ -48,4 +53,17 @@ export function normalizePirateConnectedEvmWallet(
       ? candidate.walletClientType
       : null,
   };
+}
+
+export function isPirateEmbeddedEvmWallet(
+  wallet: PirateConnectedEvmWallet,
+): boolean {
+  return wallet.walletClientType === "privy"
+    && wallet.connectorType === "embedded";
+}
+
+export function findPirateEmbeddedEvmWallet(
+  wallets: PirateConnectedEvmWallet[],
+): PirateConnectedEvmWallet | null {
+  return wallets.find(isPirateEmbeddedEvmWallet) ?? null;
 }

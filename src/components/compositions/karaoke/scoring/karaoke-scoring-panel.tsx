@@ -17,9 +17,6 @@ export interface KaraokeScoringPanelProps {
   className?: string;
 }
 
-function scorePercent(score: number): string {
-  return `${Math.round(Math.max(0, Math.min(1, score)) * 100)}`;
-}
 
 function micErrorMessage(error: { code: string; message?: string }): string {
   switch (error.code) {
@@ -82,22 +79,11 @@ export function KaraokeScoringPanel({ canStart, className, onRestart, onStart, s
     );
   }
 
-  if (state.status === "ended" && state.summary) {
+  // Footer action only — the final score itself is shown centered on the stage
+  // via KaraokeScoreSummary, not here.
+  if (state.status === "ended") {
     return (
-      <div className={cn("flex w-full flex-col items-center gap-3 text-center", className)}>
-        <div className="flex flex-col items-center gap-1">
-          <Type as="p" className="text-muted-foreground" variant="caption">
-            Final score
-          </Type>
-          <Type as="p" variant="h1">
-            {scorePercent(state.summary.finalScore)}
-          </Type>
-          {state.summary.uncertainLineCount > 0 ? (
-            <Type as="p" className="text-muted-foreground" variant="caption">
-              Some lines couldn’t be measured.
-            </Type>
-          ) : null}
-        </div>
+      <div className={cn("flex w-full flex-col items-center gap-4", className)}>
         <Button
           className="w-full"
           disabled={!onRestart}

@@ -44,32 +44,21 @@ function endedState(summaryOverrides: Partial<KaraokeSessionSummary> = {}): Kara
 
 const noop = () => undefined;
 
-describe("KaraokeScoringPanel ended state (minimal)", () => {
-  test("shows the final score and a Sing again action, and NO 'X of Y lines scored'", () => {
+describe("KaraokeScoringPanel ended state (footer action only)", () => {
+  test("ended footer is the Sing again action — NOT the score (score lives on the stage)", () => {
     const restarts: string[] = [];
     const view = render(
       <KaraokeScoringPanel canStart onRestart={() => restarts.push("r")} onStart={noop} state={endedState()} />,
     );
 
-    expect(view.getByText("Final score")).toBeTruthy();
-    expect(view.getByText("86")).toBeTruthy();
+    // The footer carries only the action; the final score is rendered centered on
+    // the stage by KaraokeScoreSummary, not here.
+    expect(view.container.textContent).not.toContain("Final score");
+    expect(view.container.textContent).not.toContain("86");
     expect(view.container.textContent).not.toContain("lines scored");
 
     fireEvent.click(view.getByText("Sing again"));
     expect(restarts).toEqual(["r"]);
-  });
-
-  test("shows a neutral measurement caveat only when uncertainLineCount > 0", () => {
-    const withUncertain = render(
-      <KaraokeScoringPanel canStart onRestart={noop} onStart={noop} state={endedState({ uncertainLineCount: 2 })} />,
-    );
-    expect(withUncertain.container.textContent).toContain("couldn’t be measured");
-    cleanup();
-
-    const clean = render(
-      <KaraokeScoringPanel canStart onRestart={noop} onStart={noop} state={endedState({ uncertainLineCount: 0 })} />,
-    );
-    expect(clean.container.textContent).not.toContain("couldn’t be measured");
   });
 
   test("idle state still offers Start (start path unchanged)", () => {

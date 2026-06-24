@@ -5,6 +5,7 @@ import { badMetadataRawKaraokeLines, realSongRawKaraokeLines } from "../fixtures
 import { getLyricDurationMs } from "../karaoke-timing";
 import { KaraokePracticeSurface } from "../karaoke-practice-surface";
 import type { KaraokeLineRating, KaraokeStageLine } from "../karaoke-lyric-stage";
+import { KaraokeScoreSummary } from "../scoring/karaoke-score-summary";
 import { KaraokeScoringPanel } from "../scoring/karaoke-scoring-panel";
 import type { KaraokeScoringState } from "../scoring/karaoke-scoring-controller";
 import { toKaraokeStageLines } from "../lyric-transform";
@@ -70,11 +71,11 @@ function SyntheticSurfacePlayer({
     <KaraokePracticeSurface
       artistName="The Castaways"
       artworkSrc={artworkSrc}
-      centerContent={ended ? panel : null}
+      centerContent={ended ? <KaraokeScoreSummary finalScore={0.86} /> : null}
       combo={combo}
       currentTimeMs={clock.currentTimeMs}
       durationMs={durationMs}
-      footerContent={ended ? null : panel}
+      footerContent={panel}
       isLoading={isLoading}
       isPlaying={clock.isPlaying}
       lines={lines}

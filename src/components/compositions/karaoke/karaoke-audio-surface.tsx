@@ -13,6 +13,7 @@ import { deriveKaraokeFeedback } from "./karaoke-scoring-feedback";
 import { getLyricDurationMs } from "./karaoke-timing";
 import type { KaraokeStageLine } from "./karaoke-lyric-stage";
 import { KaraokeSignInCta } from "./karaoke-signin-cta";
+import { KaraokeScoreSummary } from "./scoring/karaoke-score-summary";
 import { KaraokeScoringPanel } from "./scoring/karaoke-scoring-panel";
 import type { UseKaraokeScoringResult } from "./scoring/use-karaoke-scoring-session";
 
@@ -432,21 +433,24 @@ export function KaraokeAudioSurface({
       state={scoring.state}
     />
   ) : null;
-  // The end-of-take RESULT (final score + Sing again) belongs on the stage, not in
-  // the footer control bar. Pre-performance states (Start / connecting / error /
-  // sign-in) stay in the footer.
-  const isEndedResult = scoringStatus === "ended";
-  const centerContent = isEndedResult ? scoringPanel : null;
-  const footerContent = isEndedResult
-    ? null
-    : scoringPanel ?? (showSignInCta ? (
-      <KaraokeSignInCta
-        busy={signInBusy}
-        className="w-full"
-        onSignIn={onRequestSignIn}
-        unavailable={signInUnavailable}
-      />
-    ) : null);
+  // Footer keeps the scoring controls in their usual place (Start / Try again /
+  // Sing again). On "ended" the final SCORE is shown centered on the stage; the
+  // "Sing again" action stays in the footer.
+  const endedSummary = scoringStatus === "ended" ? scoring?.state?.summary : null;
+  const centerContent = endedSummary ? (
+    <KaraokeScoreSummary
+      finalScore={endedSummary.finalScore}
+      uncertainLineCount={endedSummary.uncertainLineCount}
+    />
+  ) : null;
+  const footerContent = scoringPanel ?? (showSignInCta ? (
+    <KaraokeSignInCta
+      busy={signInBusy}
+      className="w-full"
+      onSignIn={onRequestSignIn}
+      unavailable={signInUnavailable}
+    />
+  ) : null);
 
   return (
     <div className={cn("relative flex h-dvh w-full flex-col overflow-hidden", className)}>

@@ -199,9 +199,7 @@ export function KaraokePracticeSurface({
         <div className="relative z-10 size-full">
           {isLoading ? (
             <div className="grid size-full min-h-64 place-items-center px-4">
-              <Type as="p" className="text-muted-foreground" variant="body">
-                Loading karaoke
-              </Type>
+              <Spinner className="size-8 text-muted-foreground" />
             </div>
           ) : hasLines ? (
             <KaraokeLyricStage

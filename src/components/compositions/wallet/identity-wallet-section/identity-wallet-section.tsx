@@ -43,14 +43,14 @@ export function IdentityWalletSection({
   return (
     <Card className="space-y-4 p-5">
       <div className="space-y-1">
-        <h2 className="text-sm font-semibold text-foreground">Identity wallet</h2>
-        <p className="text-xs text-muted-foreground">
+        <h2 className="text-base font-semibold text-foreground">Identity wallet</h2>
+        <p className="text-base text-muted-foreground">
           Used for your public wallet address, ENS identity, messaging, and creator ownership.
         </p>
       </div>
 
       {walletAttachments.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No identity wallet selected.</p>
+        <p className="text-base text-muted-foreground">No identity wallet selected.</p>
       ) : (
         <ul className="space-y-2">
           {walletAttachments.map((attachment) => {
@@ -60,11 +60,11 @@ export function IdentityWalletSection({
                 key={attachment.wallet_attachment}
                 className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
               >
-                <span className="font-mono text-sm text-foreground">
+                <span className="font-mono text-base text-foreground">
                   {shortAddress(attachment.wallet_address)}
                 </span>
                 {isPrimary ? (
-                  <span className="text-xs font-medium text-primary">Identity wallet</span>
+                  <span className="text-base font-medium text-primary">Identity wallet</span>
                 ) : (
                   <Button
                     disabled={pending}
@@ -83,21 +83,21 @@ export function IdentityWalletSection({
 
       {unverifiedConnected.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Connected, not added</p>
+          <p className="text-base font-medium text-muted-foreground">Connected, not added</p>
           <ul className="space-y-2">
             {unverifiedConnected.map((wallet) => (
               <li
                 key={wallet.address}
                 className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border px-3 py-2 opacity-70"
               >
-                <span className="font-mono text-sm text-muted-foreground">
+                <span className="font-mono text-base text-muted-foreground">
                   {shortAddress(wallet.address)}
                 </span>
-                <span className="text-xs text-muted-foreground">Connected</span>
+                <span className="text-base text-muted-foreground">Connected</span>
               </li>
             ))}
           </ul>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-base text-muted-foreground">
             Connected wallets must be added to your account before they can be your identity wallet.
           </p>
         </div>

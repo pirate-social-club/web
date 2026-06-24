@@ -185,6 +185,27 @@ export function updateSessionProfile(
   notifyAll();
 }
 
+// Optimistically reflect an explicit identity-wallet change (PUT /users/me/identity-wallet)
+// in the cached session: flip is_primary across attachments and update the derived
+// primary_wallet_address so the UI stays consistent without a full re-exchange.
+export function updateSessionIdentityWallet(walletAttachmentId: string): void {
+  const current = getStoredSession();
+  if (!current) return;
+  const target = current.walletAttachments.find(
+    (attachment) => attachment.wallet_attachment === walletAttachmentId,
+  );
+  if (!target) return;
+  current.walletAttachments = current.walletAttachments.map((attachment) => ({
+    ...attachment,
+    is_primary: attachment.wallet_attachment === walletAttachmentId,
+  }));
+  current.user = { ...current.user, primary_wallet_attachment: walletAttachmentId };
+  current.profile = { ...current.profile, primary_wallet_address: target.wallet_address };
+  cachedSession = current;
+  writeToStorage(current);
+  notifyAll();
+}
+
 export function clearSession(): void {
   sessionClearInProgress = true;
   cachedSession = null;

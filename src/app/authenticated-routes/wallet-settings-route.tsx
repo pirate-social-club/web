@@ -17,13 +17,15 @@ import { mainnet, optimism, optimismSepolia, sepolia } from "viem/chains";
 import { logger } from "@/lib/logger";
 import { fetchCachedPrices } from "@/lib/price-cache";
 import { WalletHub } from "@/components/compositions/wallet/wallet-hub/wallet-hub";
+import { IdentityWalletSection } from "@/components/compositions/wallet/identity-wallet-section/identity-wallet-section";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
+import { toast } from "@/components/primitives/sonner";
 import type { WalletHubChainId, WalletHubChainSection } from "@/components/compositions/wallet/wallet-hub/wallet-hub.types";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 import { useResettableTimeout } from "@/hooks/use-resettable-timeout";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { useApi } from "@/lib/api";
-import { useSession } from "@/lib/api/session-store";
+import { updateSessionIdentityWallet, useSession } from "@/lib/api/session-store";
 
 const LazyRoyaltyClaimModal = React.lazy(async () => {
   const mod = await import("@/components/compositions/wallet/royalty-claim-modal/royalty-claim-modal");
@@ -281,11 +283,29 @@ export function CurrentUserWalletPage() {
   const [walletAction, setWalletAction] = React.useState<"receive" | "send" | null>(null);
   const { schedule: scheduleClaimableRefresh } = useResettableTimeout();
 
+  // The identity wallet is the verified attachment marked primary. A merely-connected wallet is
+  // never shown here as the identity wallet; if there is no primary, the section renders an
+  // explicit "No identity wallet selected" empty state.
   const primaryWallet = walletAttachments.find((wallet) => wallet.is_primary)
     ?? walletAttachments.find((wallet) => wallet.wallet_address === profile?.primary_wallet_address)
-    ?? walletAttachments[0]
     ?? null;
-  const primaryAddress = profile?.primary_wallet_address ?? primaryWallet?.wallet_address ?? connectedWallets[0]?.address ?? null;
+  const primaryAddress = profile?.primary_wallet_address ?? primaryWallet?.wallet_address ?? null;
+  const primaryAttachmentId = primaryWallet?.wallet_attachment ?? null;
+  const [identityWalletPending, setIdentityWalletPending] = React.useState(false);
+
+  const handleSelectIdentityWallet = React.useCallback(async (walletAttachmentId: string) => {
+    setIdentityWalletPending(true);
+    try {
+      await api.users.setIdentityWallet(walletAttachmentId);
+      updateSessionIdentityWallet(walletAttachmentId);
+      toast.success("Identity wallet updated.");
+    } catch (error) {
+      logger.warn("[wallet] failed to set identity wallet", error);
+      toast.error("Could not update your identity wallet. Try again.");
+    } finally {
+      setIdentityWalletPending(false);
+    }
+  }, [api]);
   const normalizedPrimaryAddress = primaryAddress && isAddress(primaryAddress)
     ? getAddress(primaryAddress)
     : null;
@@ -452,6 +472,15 @@ export function CurrentUserWalletPage() {
         totalBalanceUsd={totalBalanceUsd}
         walletActionsPending={walletActionsPending}
         walletAddress={walletAddress}
+      />
+      <IdentityWalletSection
+        connectedWallets={connectedWallets}
+        onSelect={(walletAttachmentId) => {
+          void handleSelectIdentityWallet(walletAttachmentId);
+        }}
+        pending={identityWalletPending}
+        primaryAttachmentId={primaryAttachmentId}
+        walletAttachments={walletAttachments}
       />
       {walletAction === "receive" ? (
         <React.Suspense fallback={null}>

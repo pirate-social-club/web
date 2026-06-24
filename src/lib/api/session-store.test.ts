@@ -5,6 +5,7 @@ import {
   getAccessToken,
   getStoredSession,
   isSessionAccessTokenExpired,
+  updateSessionIdentityWallet,
   type StoredSession,
 } from "./session-store";
 
@@ -73,6 +74,49 @@ describe("session-store", () => {
       expect(getStoredSession()).toBeNull();
       expect(getAccessToken()).toBeNull();
       expect(storage.has("pirate_session")).toBe(false);
+    } finally {
+      cleanup();
+    }
+  });
+
+  function seedTwoWalletSession() {
+    const session: StoredSession = {
+      accessToken: makeToken(Math.floor(Date.now() / 1000) + 3600),
+      user: { primary_wallet_attachment: "wal_a" } as StoredSession["user"],
+      profile: { primary_wallet_address: "0xaaa" } as StoredSession["profile"],
+      onboarding: {} as StoredSession["onboarding"],
+      walletAttachments: [
+        { wallet_attachment: "wal_a", wallet_address: "0xaaa", is_primary: true, chain_namespace: "eip155:1" },
+        { wallet_attachment: "wal_b", wallet_address: "0xbbb", is_primary: false, chain_namespace: "eip155:1" },
+      ] as StoredSession["walletAttachments"],
+      storedAt: new Date().toISOString(),
+    };
+    installMockLocalStorage({ pirate_session: JSON.stringify(session) });
+  }
+
+  test("updateSessionIdentityWallet flips the primary flag and derived address", () => {
+    __resetSessionStoreForTests();
+    seedTwoWalletSession();
+    try {
+      updateSessionIdentityWallet("wal_b");
+      const updated = getStoredSession();
+      expect(updated?.walletAttachments.find((wallet) => wallet.is_primary)?.wallet_attachment).toBe("wal_b");
+      expect(updated?.walletAttachments.filter((wallet) => wallet.is_primary)).toHaveLength(1);
+      expect(updated?.profile.primary_wallet_address).toBe("0xbbb");
+      expect(updated?.user.primary_wallet_attachment).toBe("wal_b");
+    } finally {
+      cleanup();
+    }
+  });
+
+  test("updateSessionIdentityWallet ignores an unknown attachment id", () => {
+    __resetSessionStoreForTests();
+    seedTwoWalletSession();
+    try {
+      updateSessionIdentityWallet("wal_missing");
+      const updated = getStoredSession();
+      expect(updated?.walletAttachments.find((wallet) => wallet.is_primary)?.wallet_attachment).toBe("wal_a");
+      expect(updated?.profile.primary_wallet_address).toBe("0xaaa");
     } finally {
       cleanup();
     }

@@ -17,8 +17,14 @@ import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
 /**
+ * SHELVED — future design reference, NOT wired into the app and NOT shipped.
+ * Requires the gated `karaoke_attempt` persistence (core spec/karaoke-rankings)
+ * and richer per-attempt evidence than current scoring reliably provides. The
+ * production end-of-take UI is the minimal `KaraokeScoringPanel` "ended" state
+ * (final score + "Sing again"). Kept as the target design for when that data exists.
+ *
  * The dedicated post-performance results page. This is the screen the karaoke
- * surface transitions to once a scored attempt ends — it replaces the tiny
+ * surface would transition to once a scored attempt ends — replacing the tiny
  * "Final score" footer with rankings + language-learning feedback.
  *
  * It is purely presentational. `summary` + `lines` are produced by the scoring

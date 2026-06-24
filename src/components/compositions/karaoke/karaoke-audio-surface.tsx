@@ -211,6 +211,19 @@ export function KaraokeAudioSurface({
     scoringRef.current?.controls.start(audio ? audio.currentTime * 1000 : 0);
   }, []);
 
+  // "Sing again" after a take ends: reset the playhead to the start, then begin a
+  // fresh scoring take through the same orchestration as startScoring (no reload
+  // or navigation). Playback is still held until the mic goes live.
+  const restartScoring = React.useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.currentTime = initialTimeMs / 1000;
+    }
+    setCurrentTimeMs(initialTimeMs);
+    pendingPlayRef.current = true;
+    scoringRef.current?.controls.start(initialTimeMs);
+  }, [initialTimeMs]);
+
   // Hold playback until the mic is live. `pendingPlayRef` is set by
   // `startScoring` and cleared the first time scoring goes `active` (or on
   // terminal states so a stale flag never starts audio later).
@@ -414,6 +427,7 @@ export function KaraokeAudioSurface({
     <KaraokeScoringPanel
       canStart={audioState === "ready"}
       className="w-full"
+      onRestart={restartScoring}
       onStart={startScoring}
       state={scoring.state}
     />

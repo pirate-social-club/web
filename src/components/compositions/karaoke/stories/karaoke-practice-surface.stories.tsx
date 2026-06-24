@@ -56,6 +56,7 @@ function SyntheticSurfacePlayer({
     ? (
       <KaraokeScoringPanel
         canStart
+        onRestart={() => undefined}
         onStart={() => undefined}
         state={makeScoringState(scoringStatus)}
       />

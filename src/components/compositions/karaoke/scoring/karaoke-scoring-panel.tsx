@@ -10,6 +10,8 @@ export interface KaraokeScoringPanelProps {
   state: KaraokeScoringState;
   /** Begin (or retry) a scoring session — also starts playback in the surface. */
   onStart: () => void;
+  /** Restart a fresh take from the beginning after a performance ends. */
+  onRestart?: () => void;
   /** False while the instrumental is still loading (start is disabled). */
   canStart: boolean;
   className?: string;
@@ -45,7 +47,7 @@ function micErrorMessage(error: { code: string; message?: string }): string {
  * and on-stage rating pops are the live feedback, and the footer stays empty
  * (no layout shift mid-performance; transient status lives in the header).
  */
-export function KaraokeScoringPanel({ canStart, className, onStart, state }: KaraokeScoringPanelProps) {
+export function KaraokeScoringPanel({ canStart, className, onRestart, onStart, state }: KaraokeScoringPanelProps) {
   if (state.status === "idle" || state.status === "requesting-mic" || state.status === "connecting") {
     const connecting = state.status !== "idle";
     return (
@@ -82,16 +84,29 @@ export function KaraokeScoringPanel({ canStart, className, onStart, state }: Kar
 
   if (state.status === "ended" && state.summary) {
     return (
-      <div className={cn("flex w-full flex-col items-center gap-1 text-center", className)}>
-        <Type as="p" className="text-muted-foreground" variant="caption">
-          Final score
-        </Type>
-        <Type as="p" variant="h1">
-          {scorePercent(state.summary.finalScore)}
-        </Type>
-        <Type as="p" className="text-muted-foreground" variant="caption">
-          {state.summary.scoredLineCount} of {state.summary.lineCount} lines scored
-        </Type>
+      <div className={cn("flex w-full flex-col items-center gap-3 text-center", className)}>
+        <div className="flex flex-col items-center gap-1">
+          <Type as="p" className="text-muted-foreground" variant="caption">
+            Final score
+          </Type>
+          <Type as="p" variant="h1">
+            {scorePercent(state.summary.finalScore)}
+          </Type>
+          {state.summary.uncertainLineCount > 0 ? (
+            <Type as="p" className="text-muted-foreground" variant="caption">
+              Some lines couldn’t be measured.
+            </Type>
+          ) : null}
+        </div>
+        <Button
+          className="w-full"
+          disabled={!onRestart}
+          leadingIcon={<Microphone className="size-5" weight="fill" />}
+          onClick={onRestart}
+          size="lg"
+        >
+          Sing again
+        </Button>
       </div>
     );
   }

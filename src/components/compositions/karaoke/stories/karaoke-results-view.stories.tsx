@@ -76,10 +76,26 @@ const summary: KaraokeSessionSummary = {
   missedWords: ["Mercedes", "Benz", "overtaken", "blues"],
 };
 
+// SHELVED — conceptual future design, NOT production. This rich results screen
+// (rankings, attempt history, per-line/word feedback) is intentionally NOT wired
+// into the app: it depends on durable persistence that does not exist yet (see
+// core spec/karaoke-rankings) and on per-attempt evidence we don't reliably have.
+// The shipped end-of-take UI is the minimal KaraokeScoringPanel "ended" state
+// (final score + "Sing again"). Treat these stories as a design reference only.
 const meta = {
-  title: "Compositions/Karaoke/KaraokeResultsView",
+  title: "Concept (Backend-Dependent, NOT in production)/Karaoke Results (shelved)",
   component: KaraokeResultsView,
-  parameters: { layout: "fullscreen" },
+  parameters: {
+    layout: "fullscreen",
+    docs: {
+      description: {
+        component:
+          "SHELVED design reference — not shipped. Requires the gated karaoke_attempt persistence "
+          + "and richer evidence than current scoring provides. Production end-of-take UI = the "
+          + "minimal scoring-panel 'ended' state (final score + Sing again).",
+      },
+    },
+  },
 } satisfies Meta<typeof KaraokeResultsView>;
 
 export default meta;

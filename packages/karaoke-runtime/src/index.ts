@@ -1,6 +1,7 @@
 export {
   KARAOKE_LINE_WINDOW_LEAD_MS,
   KARAOKE_LINE_WINDOW_TRAIL_MS,
+  KARAOKE_SCORING_VERSION,
   aggregateKaraokeSession,
   bucketRecognizedWordsIntoLines,
   scoreKaraokeLine,

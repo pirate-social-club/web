@@ -1,6 +1,15 @@
 export const KARAOKE_LINE_WINDOW_LEAD_MS = 300;
 export const KARAOKE_LINE_WINDOW_TRAIL_MS = 800;
 
+/**
+ * Version of the explicitly-versioned scoring contract. Persisted attempts are only
+ * ranked against attempts scored by the same version (see the karaoke-rankings spec),
+ * so this MUST be bumped whenever a change to the scoring algorithm or weights would
+ * move scores. v1 = the first explicitly versioned contract — the number is a contract
+ * marker, NOT an encoding of the current weights.
+ */
+export const KARAOKE_SCORING_VERSION = 1;
+
 export type KaraokeTimingTrend = "early" | "late" | "mixed" | "on_time";
 
 export interface ScorableKaraokeWord {

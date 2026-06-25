@@ -4,6 +4,7 @@ import * as React from "react";
 import { useModalStatus, usePrivy } from "@privy-io/react-auth";
 import {
   useAuthorizationSignature,
+  useCreateWallet,
   useMigrateWallets,
 } from "@privy-io/react-auth";
 
@@ -32,6 +33,7 @@ import {
   sendPrivyRelayIntent,
 } from "@/lib/privy-relay-client";
 import { EmbeddedWalletSessionReconciler } from "./embedded-wallet-session-reconciler";
+import { EmbeddedWalletProvisioner } from "./embedded-wallet-provisioner";
 
 const REFRESH_WINDOW_MS = 5 * 60 * 1000;
 const RETRY_COOLDOWN_MS = 30 * 1000;
@@ -89,6 +91,7 @@ export function PrivyAuthBridge({
   const { ready, authenticated, connectWallet, login, linkWallet, getAccessToken, logout } = usePrivy();
   const { generateAuthorizationSignature } = useAuthorizationSignature();
   const { migrate } = useMigrateWallets();
+  const { createWallet } = useCreateWallet();
   const mountIdRef = React.useRef(Math.random().toString(36).slice(2, 8));
   const [busy, setBusy] = React.useState(false);
   const [exchangeRequested, setExchangeRequested] = React.useState(false);
@@ -285,6 +288,20 @@ export function PrivyAuthBridge({
       navigateOnFirstSession: false,
     })
   ), [exchangePrivySession]);
+  const provisionEmbeddedWallet = React.useCallback(async (): Promise<boolean> => {
+    try {
+      await createWallet();
+      return true;
+    } catch (error) {
+      // createWallet throws if the user already has an embedded wallet (benign race with
+      // createOnLogin) or on a transient failure; the guarded provisioner bounds retries.
+      logger.info("[auth-bridge] embedded wallet provisioning attempt failed", {
+        mountId: mountIdRef.current,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    }
+  }, [createWallet]);
 
   React.useEffect(() => {
     setSessionClearCallback(async () => {
@@ -557,13 +574,22 @@ export function PrivyAuthBridge({
   }, [authenticated, ready]);
 
   return (
-    <EmbeddedWalletSessionReconciler
-      connectedWallets={connectedWallets}
-      delaysMs={embeddedWalletReconcileDelaysMs}
-      enabled={ready && authenticated && !sessionClearInProgress}
-      onReconcile={reconcileEmbeddedWallet}
-      paused={busy || exchangeRequested}
-      session={session}
-    />
+    <>
+      <EmbeddedWalletProvisioner
+        connectedWallets={connectedWallets}
+        enabled={ready && authenticated && !sessionClearInProgress}
+        onProvision={provisionEmbeddedWallet}
+        paused={busy}
+        session={session}
+      />
+      <EmbeddedWalletSessionReconciler
+        connectedWallets={connectedWallets}
+        delaysMs={embeddedWalletReconcileDelaysMs}
+        enabled={ready && authenticated && !sessionClearInProgress}
+        onReconcile={reconcileEmbeddedWallet}
+        paused={busy || exchangeRequested}
+        session={session}
+      />
+    </>
   );
 }

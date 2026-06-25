@@ -26,6 +26,7 @@ import type {
   RedditVerificationState,
 } from "@/components/compositions/onboarding/reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import type { DomainsTabPhase } from "@/components/compositions/settings/settings-page/panels/settings-page-domains-tab";
+import { isFreeCleanupHandleQuote } from "./free-cleanup-handle";
 
 function mapRedditVerification(apiResult: ApiRedditVerification, usernameValue: string): RedditVerificationState {
   const stateMap: Record<string, RedditVerificationState["verificationState"]> = {
@@ -90,14 +91,11 @@ function isFreeCleanupPaidQuote(input: {
   label: string;
   quote: HandleUpgradeQuoteResponse | null;
 }): boolean {
-  const label = normalizeHandleLabel(input.label);
-  return Boolean(
-    input.cleanupRenameAvailable
-    && input.quote?.eligible
-    && input.quote.pricing_tier === "base"
-    && input.quote.tier === "standard"
-    && label.length >= 8,
-  );
+  return isFreeCleanupHandleQuote({
+    cleanupRenameAvailable: input.cleanupRenameAvailable,
+    label: input.label,
+    quote: input.quote,
+  });
 }
 
 type UseDomainsTabMessages = {
@@ -493,7 +491,11 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
       label: desiredLabel,
       quote: paidQuote,
     });
-    if (busy || !paidQuote?.quote || (!freeCleanupClaim && (paidQuote.price_cents ?? 0) <= 0)) return;
+    if (busy) return;
+    if (!freeCleanupClaim) {
+      if (!paidQuote?.quote) return;
+      if ((paidQuote.price_cents ?? 0) <= 0) return;
+    }
     setBusy(true);
     setError(null);
     let fundingTxRef: Hex | null = null;
@@ -511,7 +513,11 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
         setBuyNameValue(profile.global_handle.label.replace(/\.pirate$/iu, ""));
         return;
       }
-      if (!paidQuote.payment_instructions) {
+      const paidClaimQuote = paidQuote;
+      if (!paidClaimQuote?.quote) {
+        throw new Error("This paid claim is missing its quote.");
+      }
+      if (!paidClaimQuote.payment_instructions) {
         throw new Error("This paid quote is missing payment instructions.");
       }
       const settlementWalletAttachment = session?.user.primary_wallet_attachment;
@@ -526,12 +532,12 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
         throw new Error(messages.reconnectPrimaryWalletError);
       }
       const submittedFundingTxRef = await executeHandleUsdcCheckout({
-        paymentInstructions: paidQuote.payment_instructions,
+        paymentInstructions: paidClaimQuote.payment_instructions,
         wallet: fundingWallet,
       });
       fundingTxRef = submittedFundingTxRef;
       const handle = await api.profiles.claimPaidHandle({
-        quote: paidQuote.quote ?? "",
+        quote: paidClaimQuote.quote,
         settlement_wallet_attachment: settlementWalletAttachment,
         funding_tx_ref: submittedFundingTxRef,
       });

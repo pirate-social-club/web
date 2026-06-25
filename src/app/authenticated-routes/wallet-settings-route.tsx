@@ -334,7 +334,9 @@ export function CurrentUserWalletPage() {
     const timeoutId = window.setTimeout(() => setProvisionGraceElapsed(true), PROVISION_GRACE_MS);
     return () => window.clearTimeout(timeoutId);
   }, [needsWallet]);
-  const isPreparingWallet = needsWallet && !provisionGraceElapsed;
+  // Provisioning is invisible on the happy path: while a wallet is being created we show
+  // nothing special (the hub's own loading state covers the brief window). Only after a grace
+  // window with still no wallet do we surface explicit recovery affordances.
   const isWalletUnavailable = needsWallet && provisionGraceElapsed;
   const handleCreateEmbeddedWallet = React.useCallback(async () => {
     setManualProvisionPending(true);
@@ -497,14 +499,6 @@ export function CurrentUserWalletPage() {
 
   return (
     <StandardRoutePage size="rail">
-      {isPreparingWallet ? (
-        <Card className="p-5">
-          <p className="text-base font-medium text-foreground">Preparing your Pirate wallet…</p>
-          <p className="mt-1 text-base text-muted-foreground">
-            This only takes a moment. Your wallet powers your profile, messaging, and payments.
-          </p>
-        </Card>
-      ) : null}
       {isWalletUnavailable ? (
         <Card className="space-y-3 p-5">
           <div className="space-y-1">

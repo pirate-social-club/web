@@ -253,7 +253,7 @@ describe("KaraokeMicCapture", () => {
   });
 
   test("a worklet module failure reports worklet_unavailable and fully cleans up the graph", async () => {
-    const h = harness({ addWorkletModule: async () => { throw new Error("addModule failed"); } });
+    const h = harness({ addWorkletModule: () => { throw new Error("addModule failed"); } });
     let thrown: unknown;
     try {
       await h.capture.start();

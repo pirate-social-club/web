@@ -95,6 +95,8 @@ function songPost(overrides: {
 
 const calls: string[] = [];
 let sessionValue: { accessToken?: string } | null = { accessToken: "token" };
+const sessionListeners = new Set<() => void>();
+const notifySessionListeners = () => sessionListeners.forEach((fn) => fn());
 let postResult: LocalizedPostResponse = songPost();
 let postError: unknown = null;
 let publicPostResult: LocalizedPostResponse = songPost();
@@ -131,13 +133,24 @@ const fakeApi = {
 };
 
 mock.module("@/lib/api", () => ({
+  api: fakeApi,
   useApi: () => fakeApi,
 }));
 
 mock.module("@/lib/api/session-store", () => ({
+  __resetSessionStoreForTests: () => { sessionValue = null; notifySessionListeners(); },
   getAccessToken: () => sessionValue?.accessToken ?? null,
   getSessionAccessTokenExpiryMs: () => null,
-  useSession: () => sessionValue,
+  setSession: (response: { access_token?: string } | null) => {
+    sessionValue = response?.access_token ? { accessToken: response.access_token } : null;
+    notifySessionListeners();
+    return response;
+  },
+  useSession: () => React.useSyncExternalStore(
+    (listener: () => void) => { sessionListeners.add(listener); return () => { sessionListeners.delete(listener); }; },
+    () => sessionValue,
+    () => null,
+  ),
 }));
 
 mock.module("@/hooks/use-route-content-locale", () => ({

@@ -193,7 +193,7 @@ export class KaraokeMicCapture {
       // can fail to load (e.g. emitted-asset import resolution), which is otherwise
       // collapsed into a generic "mic could not be started" message.
       if (typeof console !== "undefined") {
-        console.error("[karaoke-capture] audio graph / AudioWorklet setup failed", error);
+        console.error(`[karaoke-capture] audio graph / AudioWorklet setup failed: ${error instanceof Error ? error.message : String(error)}`);
       }
       throw this.report(new KaraokeMicError("worklet_unavailable", stringifyError(error)));
     }

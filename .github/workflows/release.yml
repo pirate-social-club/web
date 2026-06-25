@@ -52,12 +52,27 @@ jobs:
       - name: Audit community provision operator dependencies
         working-directory: api/services/community-provision-operator
         run: bun audit --audit-level=high
+      - name: Install song preview container dependencies
+        working-directory: api/services/song-preview-container
+        run: bun install --frozen-lockfile
+      - name: Audit song preview container dependencies
+        working-directory: api/services/song-preview-container
+        run: bun audit --audit-level=high
       - name: Install core dependencies
         working-directory: core
         run: npm ci
       - name: Audit core dependencies
         working-directory: core
         run: npm audit --audit-level=high
+      - name: Fetch staging song preview deploy secrets
+        working-directory: core
+        env:
+          INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_ENV: staging
+          INFISICAL_SECRET_PATH: /services/api
+          SECRET_NAMES: SONG_PREVIEW_SHARED_SECRET CONTROL_PLANE_DATABASE_URL FILEBASE_S3_ACCESS_KEY FILEBASE_S3_SECRET_KEY
+        run: scripts/ci/fetch-infisical-secrets.sh
       - name: Deploy staging
         working-directory: web
         env:
@@ -265,12 +280,27 @@ jobs:
       - name: Audit community provision operator dependencies
         working-directory: api/services/community-provision-operator
         run: bun audit --audit-level=high
+      - name: Install song preview container dependencies
+        working-directory: api/services/song-preview-container
+        run: bun install --frozen-lockfile
+      - name: Audit song preview container dependencies
+        working-directory: api/services/song-preview-container
+        run: bun audit --audit-level=high
       - name: Install core dependencies
         working-directory: core
         run: npm ci
       - name: Audit core dependencies
         working-directory: core
         run: npm audit --audit-level=high
+      - name: Fetch production song preview deploy secrets
+        working-directory: core
+        env:
+          INFISICAL_IDENTITY_ID: ec0ad659-af1c-4009-a845-9e6092cc062b
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_ENV: prod
+          INFISICAL_SECRET_PATH: /services/api
+          SECRET_NAMES: SONG_PREVIEW_SHARED_SECRET CONTROL_PLANE_DATABASE_URL FILEBASE_S3_ACCESS_KEY FILEBASE_S3_SECRET_KEY
+        run: scripts/ci/fetch-infisical-secrets.sh
       - name: Fetch production control-plane migration secret
         continue-on-error: true
         working-directory: core

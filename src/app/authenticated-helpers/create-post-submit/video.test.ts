@@ -326,6 +326,133 @@ describe("video create-post submit helpers", () => {
     }]);
   });
 
+  test("uploadVideoArtifact uses direct multipart for large public videos", async () => {
+    const file = createVideoFile();
+    Object.defineProperty(file, "size", { value: 65 * 1024 * 1024 });
+    const originalFetch = globalThis.fetch;
+    const fetchedUrls: string[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      fetchedUrls.push(String(input));
+      expect(init?.method).toBe("PUT");
+      return new Response(null, {
+        status: 200,
+        headers: { ETag: "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"" },
+      });
+    }) as typeof fetch;
+
+    const createArtifactUploadCalls: CreateSongArtifactUploadRequest[] = [];
+    const signedPartNumbers: number[] = [];
+    const completeCalls: Array<{
+      body: {
+        upload_id: string;
+        parts: Array<{ part_number: number; etag: string }>;
+        content_hash?: string | null;
+      };
+      sessionId: string;
+    }> = [];
+    const progressDetails: Array<string | undefined> = [];
+
+    try {
+      const result = await uploadVideoArtifact({
+        abortArtifactUploadSession: async () => {
+          throw new Error("abort should not be called");
+        },
+        communityId: "com_test",
+        completeArtifactUploadSession: async (_communityId, _uploadId, sessionId, body) => {
+          completeCalls.push({ sessionId, body });
+          return createArtifact({ content_hash: body.content_hash ?? "hash_video" });
+        },
+        createArtifactUpload: async (_communityId, request) => {
+          createArtifactUploadCalls.push(request);
+          return createArtifact({
+            id: "sau_large",
+            status: "pending_upload",
+            upload_session: {
+              id: "saus_large",
+              status: "parts_uploading",
+              object_key: "song-artifacts/com_test/primary_video/sau_large.mp4",
+              upload_id: "filebase-upload-large",
+              part_size_bytes: 10 * 1024 * 1024,
+              total_parts: 7,
+              expires_at: "2026-06-05T13:00:00.000Z",
+              sign_part_url: "/parts/{part_number}/signed-url",
+              complete: "/complete",
+              abort: "/abort",
+            },
+          });
+        },
+        getArtifactUploadPartSignedUrl: async (_communityId, _uploadId, _sessionId, partNumber) => {
+          signedPartNumbers.push(partNumber);
+          return { url: `https://filebase.test/part-${partNumber}` };
+        },
+        reportProgress: (_key, detail) => progressDetails.push(detail),
+        uploadArtifactContent: async () => {
+          throw new Error("proxy upload should not be called");
+        },
+        videoState: {
+          primaryVideoUpload: file,
+        },
+      });
+
+      expect(result.content_hash).toMatch(/^0x[a-f0-9]{64}$/);
+      expect(createArtifactUploadCalls).toEqual([{
+        artifact_kind: "primary_video",
+        mime_type: "video/mp4",
+        filename: "video.mp4",
+        size_bytes: 65 * 1024 * 1024,
+        upload_mode: "direct_multipart",
+      }]);
+      expect(signedPartNumbers).toEqual([1, 2, 3, 4, 5, 6, 7]);
+      expect(fetchedUrls).toEqual([
+        "https://filebase.test/part-1",
+        "https://filebase.test/part-2",
+        "https://filebase.test/part-3",
+        "https://filebase.test/part-4",
+        "https://filebase.test/part-5",
+        "https://filebase.test/part-6",
+        "https://filebase.test/part-7",
+      ]);
+      expect(completeCalls).toEqual([{
+        sessionId: "saus_large",
+        body: {
+          upload_id: "filebase-upload-large",
+          parts: [
+            { part_number: 1, etag: "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"" },
+            { part_number: 2, etag: "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"" },
+            { part_number: 3, etag: "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"" },
+            { part_number: 4, etag: "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"" },
+            { part_number: 5, etag: "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"" },
+            { part_number: 6, etag: "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"" },
+            { part_number: 7, etag: "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"" },
+          ],
+          content_hash: result.content_hash,
+        },
+      }]);
+      expect(progressDetails.at(-1)).toBe("100%");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("uploadVideoArtifact rejects oversized paid videos before upload", async () => {
+    const file = createVideoFile();
+    Object.defineProperty(file, "size", { value: 51 * 1024 * 1024 });
+
+    await expect(uploadVideoArtifact({
+      communityId: "com_test",
+      createArtifactUpload: async () => {
+        throw new Error("createArtifactUpload should not be called");
+      },
+      monetized: true,
+      uploadArtifactContent: async () => {
+        throw new Error("uploadArtifactContent should not be called");
+      },
+      videoState: {
+        primaryVideoUpload: file,
+      },
+    })).rejects.toThrow("Paid videos are currently capped at 50 MB");
+  });
+
   test("uploadVideoArtifact rejects public videos above the product cap before upload", async () => {
     const file = createVideoFile();
     Object.defineProperty(file, "size", { value: (2 * 1024 * 1024 * 1024) + 1 });

@@ -30,6 +30,7 @@ const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { kind: "create-community", domain: "authenticated", testPaths: [{ pathname: "/communities/new" }], serverRouteExpected: true },
   { kind: "post", domain: "dual", testPaths: [{ pathname: "/p/pst_test" }], serverRouteExpected: true },
   { kind: "live-room", domain: "dual", testPaths: [{ pathname: "/p/pst_test/live" }], serverRouteExpected: true },
+  { kind: "post-karaoke", domain: "dual", testPaths: [{ pathname: "/p/pst_test/karaoke" }], serverRouteExpected: true },
   { kind: "crosspost", domain: "authenticated", testPaths: [{ pathname: "/p/pst_test/crosspost" }], serverRouteExpected: true },
   { kind: "inbox", domain: "authenticated", testPaths: [{ pathname: "/inbox" }], serverRouteExpected: true },
   { kind: "chat", domain: "authenticated", testPaths: [{ pathname: "/chat" }], serverRouteExpected: true },
@@ -67,6 +68,7 @@ const _KIND_COVERAGE: { [K in AppRoute["kind"]]: true } = {
   "create-community": true,
   post: true,
   "live-room": true,
+  "post-karaoke": true,
   crosspost: true,
   inbox: true,
   chat: true,
@@ -121,6 +123,7 @@ const EXPECTED_DOMAIN_KINDS: Record<RouteRenderingDomain, readonly AppRoute["kin
     "community",
     "post",
     "live-room",
+    "post-karaoke",
   ],
   telegram: [
     "telegram-mini-app",

@@ -453,6 +453,19 @@ export function toVideoPostContent(
   };
 }
 
+export type KaraokeCapability =
+  | { canKaraoke: true; status: "ready" }
+  | { canKaraoke: false; status: "processing" | "failed" };
+
+export function toKaraokeCapability(postResponse: ApiPost): KaraokeCapability | undefined {
+  if (!postResponse.community?.karaoke_enabled) return undefined;
+  const hasInstrumental = postResponse.song_presentation?.downloadable_audio?.some(
+    (a) => a.kind === "instrumental" && !!a.storage_ref,
+  );
+  if (!hasInstrumental) return undefined;
+  return { canKaraoke: true, status: "ready" };
+}
+
 export function toSongPostContent(
   postResponse: ApiPost,
   songOptions: SongPresentationOptions | undefined,
@@ -553,6 +566,9 @@ export function toSongPostContent(
     }) : undefined,
     stems: downloadableStems.length ? downloadableStems : undefined,
     entitledStems: downloadableStems.map((stem) => stem.kind),
+    karaokeHref: toKaraokeCapability(postResponse)?.canKaraoke
+      ? `/p/${encodeURIComponent(post.id)}/karaoke`
+      : undefined,
     onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,
     onPlay: playbackDescriptor && playback ? () => void playback.playTrack(playbackDescriptor) : undefined,
     onSeek: playbackDescriptor && playback ? (progressMs) => void playback.seekTrack(playbackDescriptor, progressMs) : undefined,

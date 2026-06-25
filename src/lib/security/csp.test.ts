@@ -39,6 +39,18 @@ describe("Content Security Policy", () => {
     expect(csp).toContain("frame-src");
   });
 
+  test("allows wss:// to the API hosts for the karaoke scoring WebSocket", () => {
+    const csp = buildContentSecurityPolicy("abc123");
+
+    // The karaoke scoring WebSocket connects to the API over wss://. An https://
+    // connect-src source does NOT authorize wss://, so these must be explicit
+    // (regression guard for the silent CSP block of live scoring).
+    expect(csp).toContain("wss://api.pirate.sc");
+    expect(csp).toContain("wss://api-staging.pirate.sc");
+    // The `.pirate` HNS host — boundary-matched so it isn't satisfied by `.pirate.sc`.
+    expectMatch(csp, /wss:\/\/api\.pirate(\s|$)/);
+  });
+
   test("places the nonce only in script-src", () => {
     const csp = buildContentSecurityPolicy("abc123");
 

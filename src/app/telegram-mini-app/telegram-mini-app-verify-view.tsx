@@ -189,6 +189,8 @@ function TelegramMiniAppStoryShell({
 
 export function TelegramMiniAppVerifyView({
   debugEvents,
+  linkExistingBusy = false,
+  onLinkExistingAccount,
   onOpenBoard,
   onOpenPendingLaunch,
   onRetry,
@@ -197,6 +199,8 @@ export function TelegramMiniAppVerifyView({
   ShellComponent = TelegramMiniAppStoryShell,
 }: {
   debugEvents?: Array<{ at: string; data?: Record<string, unknown>; label: string }>;
+  linkExistingBusy?: boolean;
+  onLinkExistingAccount?: () => void;
   onOpenBoard?: () => void;
   onOpenPendingLaunch?: () => void;
   onRetry?: () => void;
@@ -240,6 +244,16 @@ export function TelegramMiniAppVerifyView({
                 {pendingLaunch ? (
                   <Button onClick={onOpenPendingLaunch}>
                     {telegramVerifyLaunchButtonLabel(pendingLaunch.provider)}
+                  </Button>
+                ) : null}
+                {pendingLaunch?.provider === "self" ? (
+                  <Button
+                    className="h-auto min-h-11 whitespace-normal py-2 text-center"
+                    loading={linkExistingBusy}
+                    onClick={onLinkExistingAccount}
+                    variant="secondary"
+                  >
+                    Already verified on Pirate? Link Telegram to your existing account
                   </Button>
                 ) : null}
                 {canRetry ? (

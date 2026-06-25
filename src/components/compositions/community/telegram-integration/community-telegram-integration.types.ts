@@ -7,6 +7,10 @@ export type TelegramBotAdminStatus =
   | "insufficient_permissions"
   | "left_chat";
 
+export type TelegramWelcomeIntroLocale = "en" | "ar" | "zh" | "ka";
+
+export type TelegramWelcomeIntroSettings = Partial<Record<TelegramWelcomeIntroLocale, string>>;
+
 export interface TelegramLinkedChatSettings {
   status: "not_connected" | "connected";
   chatTitle: string | null;
@@ -26,6 +30,7 @@ export interface CommunityTelegramIntegrationSettings {
   };
   directoryVisible: boolean;
   linkedChat: TelegramLinkedChatSettings;
+  telegramWelcomeIntro: TelegramWelcomeIntroSettings;
 }
 
 export type CommunityTelegramIntegrationSubmitState =
@@ -56,6 +61,7 @@ export function createDefaultTelegramIntegrationSettings(): CommunityTelegramInt
       webhookStatus: null,
     },
     directoryVisible: true,
+    telegramWelcomeIntro: {},
     linkedChat: {
       status: "not_connected",
       chatTitle: null,

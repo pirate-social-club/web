@@ -61,6 +61,75 @@ type UseHomeFeedInput = {
   topTimeRange: string;
 };
 
+type HomeFeedResultSource = "authenticated" | "public";
+
+function hasOwnProperty(value: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function mergeViewerSpecificPostFields(
+  incomingEntry: ApiHomeFeedItem,
+  currentEntry: ApiHomeFeedItem,
+): ApiHomeFeedItem {
+  const currentPost = currentEntry.post;
+  const nextPost: ApiHomeFeedItem["post"] = {
+    ...incomingEntry.post,
+    viewer_reaction_kinds: currentPost.viewer_reaction_kinds,
+    viewer_vote: currentPost.viewer_vote,
+  };
+
+  if (hasOwnProperty(currentPost, "viewer_gate_state")) {
+    nextPost.viewer_gate_state = currentPost.viewer_gate_state;
+  }
+  if (hasOwnProperty(currentPost, "viewer_is_author")) {
+    nextPost.viewer_is_author = currentPost.viewer_is_author;
+  }
+  if (hasOwnProperty(currentPost, "age_gate_viewer_state")) {
+    nextPost.age_gate_viewer_state = currentPost.age_gate_viewer_state;
+  }
+  if (hasOwnProperty(currentPost, "community")) {
+    if (currentPost.community && incomingEntry.post.community) {
+      const nextCommunity = { ...incomingEntry.post.community };
+      if (hasOwnProperty(currentPost.community, "viewer_membership_status")) {
+        nextCommunity.viewer_membership_status = currentPost.community.viewer_membership_status;
+      }
+      if (hasOwnProperty(currentPost.community, "viewer_community_role")) {
+        nextCommunity.viewer_community_role = currentPost.community.viewer_community_role;
+      }
+      if (hasOwnProperty(currentPost.community, "viewer_following")) {
+        nextCommunity.viewer_following = currentPost.community.viewer_following;
+      }
+      nextPost.community = nextCommunity;
+    } else {
+      nextPost.community = currentPost.community;
+    }
+  }
+
+  return {
+    ...incomingEntry,
+    post: nextPost,
+  };
+}
+
+export function mergeHomeFeedEntriesForSource(input: {
+  current: ApiHomeFeedItem[];
+  hasSessionUser: boolean;
+  incoming: ApiHomeFeedItem[];
+  source: HomeFeedResultSource;
+}): ApiHomeFeedItem[] {
+  if (input.source === "authenticated" || !input.hasSessionUser) {
+    return input.incoming;
+  }
+
+  // Public feed responses are allowed to refresh post content, but they must not
+  // erase viewer-specific fields already learned from auth or optimistic actions.
+  const currentByPostId = new Map(input.current.map((entry) => [entry.post.post.id, entry]));
+  return input.incoming.map((entry) => {
+    const currentEntry = currentByPostId.get(entry.post.post.id);
+    return currentEntry ? mergeViewerSpecificPostFields(entry, currentEntry) : entry;
+  });
+}
+
 export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange }: UseHomeFeedInput) {
   const api = useApi();
   const queryClient = useQueryClient();
@@ -122,7 +191,10 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
       timeRange: activeSort === "top" ? topTimeRange : null,
     };
 
-    const applyFeedResult = (result: Awaited<ReturnType<typeof api.feed.home>>) => {
+    const applyFeedResult = (
+      result: Awaited<ReturnType<typeof api.feed.home>>,
+      options: { source: HomeFeedResultSource },
+    ) => {
         if (cancelled) return;
 
         const nextFeedEntries = result.items;
@@ -132,7 +204,12 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
           queryClient,
           sort: "best",
         });
-        setFeedEntries(nextFeedEntries);
+        setFeedEntries((current) => mergeHomeFeedEntriesForSource({
+          current,
+          hasSessionUser: Boolean(sessionUserId),
+          incoming: nextFeedEntries,
+          source: options.source,
+        }));
         setTopCommunities(result.top_communities);
         setLoading(false);
 
@@ -239,8 +316,8 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
         }
     };
 
-    const loadAuthenticatedFeed = () => api.feed.home(feedRequest)
-      .then(applyFeedResult)
+    const loadAuthenticatedFeed = () => api.feed.homeAuthenticated(feedRequest)
+      .then((result) => applyFeedResult(result, { source: "authenticated" }))
       .catch((nextError: unknown) => {
         if (cancelled) return;
         if ((nextError as { status?: number; code?: string }).status === 401 || (nextError as { code?: string }).code === "auth_error") {
@@ -251,16 +328,16 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
         setLoading(false);
       });
 
+    if (sessionUserId) {
+      void loadAuthenticatedFeed();
+    }
+
     void api.feed.publicHome(feedRequest)
       .then((result) => {
-        applyFeedResult(result);
-        if (sessionUserId) {
-          void loadAuthenticatedFeed();
-        }
+        applyFeedResult(result, { source: "public" });
       })
       .catch((nextError: unknown) => {
         if (sessionUserId) {
-          void loadAuthenticatedFeed();
           return;
         }
         if (cancelled) return;

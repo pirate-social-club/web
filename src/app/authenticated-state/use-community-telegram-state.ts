@@ -23,6 +23,7 @@ function telegramSettingsFromApi(
   bot?: ApiTelegramCommunityBot | null,
 ): CommunityTelegramIntegrationSettings {
   const defaults = createDefaultTelegramIntegrationSettings();
+  const telegramWelcomeIntro = response.telegram_welcome_intro ?? defaults.telegramWelcomeIntro;
   const botSettings = bot
     ? {
         status: bot.status,
@@ -37,12 +38,14 @@ function telegramSettingsFromApi(
     return {
       ...defaults,
       bot: botSettings,
+      telegramWelcomeIntro,
     };
   }
 
   return {
     bot: botSettings,
     directoryVisible: response.linked_chat.directory_visible,
+    telegramWelcomeIntro,
     linkedChat: {
       ...defaults.linkedChat,
       status: "connected",
@@ -57,9 +60,24 @@ function telegramSettingsFromApi(
 function telegramSettingsToUpdate(
   settings: CommunityTelegramIntegrationSettings,
 ): ApiCommunityTelegramChatSettingsUpdate {
+  const body: ApiCommunityTelegramChatSettingsUpdate = {
+    telegram_welcome_intro: settings.telegramWelcomeIntro,
+  };
+  if (settings.linkedChat.status === "connected") {
+    body.directory_visible = settings.directoryVisible;
+    body.link_mode = settings.linkedChat.linkMode;
+  }
+  return body;
+}
+
+function comparableTelegramWelcomeIntro(
+  settings: CommunityTelegramIntegrationSettings["telegramWelcomeIntro"],
+): Record<string, string> {
   return {
-    directory_visible: settings.directoryVisible,
-    link_mode: settings.linkedChat.linkMode,
+    en: settings.en ?? "",
+    ka: settings.ka ?? "",
+    ar: settings.ar ?? "",
+    zh: settings.zh ?? "",
   };
 }
 
@@ -67,6 +85,7 @@ function comparableTelegramSettings(settings: CommunityTelegramIntegrationSettin
   return JSON.stringify({
     directoryVisible: settings.directoryVisible,
     linkMode: settings.linkedChat.linkMode,
+    telegramWelcomeIntro: comparableTelegramWelcomeIntro(settings.telegramWelcomeIntro),
   });
 }
 
@@ -278,7 +297,7 @@ export function useCommunityTelegramState({
   }, [api.communities, applySettingsResponse, community]);
 
   const handleSaveTelegramChat = React.useCallback(() => {
-    if (!community || savingTelegram || telegramSettings.linkedChat.status !== "connected") {
+    if (!community || savingTelegram) {
       return;
     }
 

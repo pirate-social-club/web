@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type * as React from "react";
-import { act, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup as cleanupReact, fireEvent, render, waitFor } from "@testing-library/react";
 import type { CommunityPreview, HomeFeedItem, LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { installDomGlobals } from "@/test/setup-dom";
@@ -228,6 +228,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 
 beforeEach(() => {
+  cleanupReact();
   gateCalls.length = 0;
   prewarmCalls.length = 0;
   ageVerificationRequests.length = 0;
@@ -244,7 +245,7 @@ beforeEach(() => {
 describe("HomePage vote ALTCHA plumbing", () => {
   test("enables age verification on age-gated home feed song cards", async () => {
     const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      homeAuthenticated: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
       publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
     };
     const ageGatedSong = createFeedItem("post_pst_explicit_song");
@@ -260,7 +261,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       top_communities: [],
     };
 
-    feedApi.home = async () => feedResponse;
+    feedApi.homeAuthenticated = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
 
     const view = render(<HomePage initialSort="best" />, { wrapper });
@@ -284,7 +285,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       value: -1 | 1;
     }> = [];
     const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      homeAuthenticated: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
       publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
     };
     const postsApi = api.posts as unknown as {
@@ -299,7 +300,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       top_communities: [],
     };
 
-    feedApi.home = async () => feedResponse;
+    feedApi.homeAuthenticated = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
     postsApi.vote = async (postId, value, options) => {
       voteCalls.push({ options, postId, value });
@@ -334,7 +335,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
     });
     const voteCalls: string[] = [];
     const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      homeAuthenticated: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
       publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
     };
     const postsApi = api.posts as unknown as {
@@ -345,7 +346,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       top_communities: [],
     };
 
-    feedApi.home = async () => feedResponse;
+    feedApi.homeAuthenticated = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
     postsApi.vote = async (postId, value) => {
       voteCalls.push(`${postId}:${value}`);
@@ -372,7 +373,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_membership_status: "member",
     });
     const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      homeAuthenticated: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
       publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
     };
     const postsApi = api.posts as unknown as {
@@ -383,7 +384,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       top_communities: [],
     };
 
-    feedApi.home = async () => feedResponse;
+    feedApi.homeAuthenticated = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
     postsApi.vote = async (_postId, value) => ({ value });
 
@@ -404,7 +405,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_membership_status: "not_member",
     });
     const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      homeAuthenticated: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
       publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
     };
     const postsApi = api.posts as unknown as {
@@ -415,7 +416,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       top_communities: [],
     };
 
-    feedApi.home = async () => feedResponse;
+    feedApi.homeAuthenticated = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
     postsApi.vote = async (_postId, value) => ({ value });
 
@@ -436,7 +437,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_membership_status: "banned",
     });
     const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      homeAuthenticated: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
       publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
     };
     const postsApi = api.posts as unknown as {
@@ -448,7 +449,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       top_communities: [],
     };
 
-    feedApi.home = async () => feedResponse;
+    feedApi.homeAuthenticated = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
     postsApi.vote = async () => {
       voteCalled = true;

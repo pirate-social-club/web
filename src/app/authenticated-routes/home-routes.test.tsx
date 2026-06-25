@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type * as React from "react";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { installDomGlobals } from "@/test/setup-dom";
 
 import type { HomeFeedCommunitySummary, HomeFeedItem, LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { api } from "@/lib/api";
-import { __resetSessionStoreForTests } from "@/lib/api/session-store";
+import { __resetSessionStoreForTests, getStoredSession, setSession } from "@/lib/api/session-store";
 import { PirateQueryProvider } from "@/lib/query/query-client";
 import { useHomeFeed } from "./home-routes";
 
@@ -21,6 +21,7 @@ function createPostResponse(overrides: {
   postId?: string;
   postType?: LocalizedPostResponse["post"]["post_type"];
   authorUserId?: string | null;
+  viewerVote?: LocalizedPostResponse["viewer_vote"];
 } = {}): LocalizedPostResponse {
   const postId = overrides.postId ?? "pst_test";
   return {
@@ -70,7 +71,7 @@ function createPostResponse(overrides: {
     upvote_count: 1,
     downvote_count: 0,
     like_count: 0,
-    viewer_vote: null,
+    viewer_vote: overrides.viewerVote ?? null,
     viewer_reaction_kinds: [],
     resolved_locale: "en",
     translation_state: "same_language",
@@ -84,6 +85,7 @@ function createFeedItem(overrides: {
   postId?: string;
   postType?: LocalizedPostResponse["post"]["post_type"];
   authorUserId?: string | null;
+  viewerVote?: LocalizedPostResponse["viewer_vote"];
 } = {}): HomeFeedItem {
   return {
     community: {
@@ -118,6 +120,49 @@ function wrapper({ children }: { children: React.ReactNode }) {
   return <PirateQueryProvider>{children}</PirateQueryProvider>;
 }
 
+type TestHomeFeedResponse = {
+  items: HomeFeedItem[];
+  top_communities: HomeFeedCommunitySummary[];
+};
+
+type TestFeedApi = {
+  homeAuthenticated: (opts: unknown) => Promise<TestHomeFeedResponse>;
+  publicHome: (opts: unknown) => Promise<TestHomeFeedResponse>;
+};
+
+function createTestSession(userId = "usr_1") {
+  return {
+    accessToken: "token",
+    user: {
+      id: userId,
+      object: "user",
+      created: Date.parse("2026-04-24T00:00:00.000Z"),
+      verification_capabilities: {},
+      verification_state: "verified",
+    },
+    profile: null,
+    onboarding: { unique_human_verification_status: "verified" },
+    walletAttachments: [],
+    storedAt: new Date().toISOString(),
+  } as never;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+  return { promise, reject, resolve };
+}
+
+function pending<T>(): Promise<T> {
+  return new Promise<T>(() => {
+    // Intentionally left unresolved for tests that only exercise public refreshes.
+  });
+}
+
 describe("useHomeFeed", () => {
   test("renders feed entries before slower profile and commerce data resolves", async () => {
     __resetSessionStoreForTests();
@@ -125,10 +170,7 @@ describe("useHomeFeed", () => {
     resolveListings = null;
     resolvePurchases = null;
 
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const profilesApi = api.profiles as unknown as {
       getByUserId: (userId: string) => Promise<unknown>;
     };
@@ -141,7 +183,6 @@ describe("useHomeFeed", () => {
       items: [createFeedItem({ postId: "pst_1", authorUserId: "usr_1" })],
       top_communities: [createTopCommunity()],
     };
-    feedApi.home = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
     profilesApi.getByUserId = async () =>
       new Promise((resolve) => {
@@ -185,16 +226,190 @@ describe("useHomeFeed", () => {
     expect(result.current.authorProfiles["usr_1"]).toEqual({ user: "usr_1", display_name: "Test User" });
   });
 
+  test("applies authenticated viewer vote when public feed resolves first", async () => {
+    __resetSessionStoreForTests();
+
+    const feedApi = api.feed as unknown as TestFeedApi;
+    const publicFeed = deferred<TestHomeFeedResponse>();
+    const authenticatedFeed = deferred<TestHomeFeedResponse>();
+    feedApi.homeAuthenticated = async () => authenticatedFeed.promise;
+    feedApi.publicHome = async () => publicFeed.promise;
+
+    const { result } = renderHook(() =>
+      useHomeFeed({
+        activeSort: "best",
+        contentLocale: "en",
+        hydrated: true,
+        session: createTestSession(),
+        topTimeRange: "day",
+      }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      publicFeed.resolve({
+        items: [createFeedItem({ postId: "pst_vote", viewerVote: null })],
+        top_communities: [],
+      });
+    });
+    await waitFor(() => expect(result.current.feedEntries[0]?.post.viewer_vote).toBeNull());
+
+    await act(async () => {
+      authenticatedFeed.resolve({
+        items: [createFeedItem({ postId: "pst_vote", viewerVote: 1 })],
+        top_communities: [],
+      });
+    });
+
+    await waitFor(() => expect(result.current.feedEntries[0]?.post.viewer_vote).toBe(1));
+  });
+
+  test("preserves authenticated viewer vote when public feed resolves last", async () => {
+    __resetSessionStoreForTests();
+
+    const feedApi = api.feed as unknown as TestFeedApi;
+    const publicFeed = deferred<TestHomeFeedResponse>();
+    const authenticatedFeed = deferred<TestHomeFeedResponse>();
+    feedApi.homeAuthenticated = async () => authenticatedFeed.promise;
+    feedApi.publicHome = async () => publicFeed.promise;
+
+    const { result } = renderHook(() =>
+      useHomeFeed({
+        activeSort: "best",
+        contentLocale: "en",
+        hydrated: true,
+        session: createTestSession(),
+        topTimeRange: "day",
+      }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      authenticatedFeed.resolve({
+        items: [createFeedItem({ postId: "pst_vote", viewerVote: 1 })],
+        top_communities: [],
+      });
+    });
+    await waitFor(() => expect(result.current.feedEntries[0]?.post.viewer_vote).toBe(1));
+
+    await act(async () => {
+      publicFeed.resolve({
+        items: [createFeedItem({ postId: "pst_vote", viewerVote: null })],
+        top_communities: [],
+      });
+    });
+
+    await waitFor(() => expect(result.current.feedEntries[0]?.post.viewer_vote).toBe(1));
+  });
+
+  test("keeps an optimistic viewer vote when a later public refresh is anonymous", async () => {
+    __resetSessionStoreForTests();
+
+    const feedApi = api.feed as unknown as TestFeedApi;
+    const firstPublicFeed = deferred<TestHomeFeedResponse>();
+    const secondPublicFeed = deferred<TestHomeFeedResponse>();
+    let publicCalls = 0;
+    feedApi.homeAuthenticated = async () => pending<TestHomeFeedResponse>();
+    feedApi.publicHome = async () => {
+      publicCalls += 1;
+      return publicCalls === 1 ? firstPublicFeed.promise : secondPublicFeed.promise;
+    };
+
+    const { rerender, result } = renderHook(
+      ({ activeSort }: { activeSort: "best" | "new" }) =>
+        useHomeFeed({
+          activeSort,
+          contentLocale: "en",
+          hydrated: true,
+          session: createTestSession(),
+          topTimeRange: "day",
+        }),
+      { initialProps: { activeSort: "best" }, wrapper },
+    );
+
+    await act(async () => {
+      firstPublicFeed.resolve({
+        items: [createFeedItem({ postId: "pst_vote", viewerVote: null })],
+        top_communities: [],
+      });
+    });
+    await waitFor(() => expect(result.current.feedEntries[0]?.post.viewer_vote).toBeNull());
+
+    act(() => {
+      result.current.setFeedEntries((current) => current.map((entry) =>
+        entry.post.post.id === "pst_vote"
+          ? { ...entry, post: { ...entry.post, upvote_count: entry.post.upvote_count + 1, viewer_vote: 1 } }
+          : entry,
+      ));
+    });
+    await waitFor(() => expect(result.current.feedEntries[0]?.post.viewer_vote).toBe(1));
+
+    rerender({ activeSort: "new" });
+    await act(async () => {
+      secondPublicFeed.resolve({
+        items: [createFeedItem({ postId: "pst_vote", viewerVote: null })],
+        top_communities: [],
+      });
+    });
+
+    await waitFor(() => expect(result.current.feedEntries[0]?.post.viewer_vote).toBe(1));
+  });
+
+  test("clears a stale session when the strict authenticated feed rejects but still renders public feed", async () => {
+    __resetSessionStoreForTests();
+    const storedSession = setSession({
+      access_token: "stale-token",
+      user: {
+        id: "usr_1",
+        object: "user",
+        created: Date.parse("2026-04-24T00:00:00.000Z"),
+        verification_capabilities: {},
+        verification_state: "verified",
+      },
+      profile: null,
+      onboarding: { unique_human_verification_status: "verified" },
+      wallet_attachments: [],
+    } as Parameters<typeof setSession>[0]);
+
+    const feedApi = api.feed as unknown as TestFeedApi;
+    const publicFeed = deferred<TestHomeFeedResponse>();
+    feedApi.homeAuthenticated = async () => {
+      throw { code: "auth_error", status: 401 };
+    };
+    feedApi.publicHome = async () => publicFeed.promise;
+
+    const { result } = renderHook(() =>
+      useHomeFeed({
+        activeSort: "best",
+        contentLocale: "en",
+        hydrated: true,
+        session: storedSession,
+        topTimeRange: "day",
+      }),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(getStoredSession()).toBeNull());
+
+    await act(async () => {
+      publicFeed.resolve({
+        items: [createFeedItem({ postId: "pst_public", viewerVote: null })],
+        top_communities: [createTopCommunity()],
+      });
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.feedEntries[0]?.post.post.id).toBe("pst_public");
+    expect(result.current.feedEntries[0]?.post.viewer_vote).toBeNull();
+  });
+
   test("loads commerce data asynchronously for song posts", async () => {
     __resetSessionStoreForTests();
     resolveProfile = null;
     resolveListings = null;
     resolvePurchases = null;
 
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const profilesApi = api.profiles as unknown as {
       getByUserId: (userId: string) => Promise<unknown>;
     };
@@ -209,7 +424,7 @@ describe("useHomeFeed", () => {
       ],
       top_communities: [],
     };
-    feedApi.home = async () => feedResponse;
+    feedApi.homeAuthenticated = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
     profilesApi.getByUserId = async () => ({ user: "usr_1", display_name: "Test User" });
     communitiesApi.listListings = async () => ({
@@ -224,20 +439,7 @@ describe("useHomeFeed", () => {
         activeSort: "best",
         contentLocale: "en",
         hydrated: true,
-        session: {
-          accessToken: "token",
-          user: {
-            id: "usr_1",
-            object: "user",
-            created: Date.parse("2026-04-24T00:00:00.000Z"),
-            verification_capabilities: {},
-            verification_state: "verified",
-          },
-          profile: null,
-          onboarding: { unique_human_verification_status: "verified" },
-          walletAttachments: [],
-          storedAt: new Date().toISOString(),
-        } as never,
+        session: createTestSession(),
         topTimeRange: "day",
       }),
       { wrapper },
@@ -257,10 +459,7 @@ describe("useHomeFeed", () => {
     resolveListings = null;
     resolvePurchases = null;
 
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const profilesApi = api.profiles as unknown as {
       getByUserId: (userId: string) => Promise<unknown>;
     };
@@ -281,7 +480,7 @@ describe("useHomeFeed", () => {
       ],
       top_communities: [],
     };
-    feedApi.home = async () => feedResponse;
+    feedApi.homeAuthenticated = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
     profilesApi.getByUserId = async () => ({ user: "usr_1", display_name: "Test User" });
     communitiesApi.listListings = async () => ({
@@ -331,20 +530,7 @@ describe("useHomeFeed", () => {
         activeSort: "best",
         contentLocale: "en",
         hydrated: true,
-        session: {
-          accessToken: "token",
-          user: {
-            id: "usr_1",
-            object: "user",
-            created: Date.parse("2026-04-24T00:00:00.000Z"),
-            verification_capabilities: {},
-            verification_state: "verified",
-          },
-          profile: null,
-          onboarding: { unique_human_verification_status: "verified" },
-          walletAttachments: [],
-          storedAt: new Date().toISOString(),
-        } as never,
+        session: createTestSession(),
         topTimeRange: "day",
       }),
       { wrapper },
@@ -359,10 +545,7 @@ describe("useHomeFeed", () => {
   test("falls back to public live-room access when authenticated access fails", async () => {
     __resetSessionStoreForTests();
 
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const profilesApi = api.profiles as unknown as {
       getByUserId: (userId: string) => Promise<unknown>;
     };
@@ -388,7 +571,7 @@ describe("useHomeFeed", () => {
       ],
       top_communities: [],
     };
-    feedApi.home = async () => feedResponse;
+    feedApi.homeAuthenticated = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
     profilesApi.getByUserId = async () => ({ user: "usr_1", display_name: "Test User" });
     communitiesApi.listListings = async () => ({ items: [] });
@@ -441,20 +624,7 @@ describe("useHomeFeed", () => {
         activeSort: "best",
         contentLocale: "en",
         hydrated: true,
-        session: {
-          accessToken: "token",
-          user: {
-            id: "usr_2",
-            object: "user",
-            created: Date.parse("2026-04-24T00:00:00.000Z"),
-            verification_capabilities: {},
-            verification_state: "verified",
-          },
-          profile: null,
-          onboarding: { unique_human_verification_status: "verified" },
-          walletAttachments: [],
-          storedAt: new Date().toISOString(),
-        } as never,
+        session: createTestSession("usr_2"),
         topTimeRange: "day",
       }),
       { wrapper },

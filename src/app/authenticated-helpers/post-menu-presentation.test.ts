@@ -69,7 +69,7 @@ describe("buildPostMenu", () => {
   test("shows Story asset link when a portal href is available", () => {
     const menu = buildPostMenu({
       post: { status: "published" },
-      storyPortalHref: "https://aeneid.explorer.story.foundation/ipa/0xbB0a33bd07e7c813963b569f1202047a92b38d48",
+      storyPortalHref: "https://aeneid.portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48",
     });
 
     expect(menu.postMenuItems).toContainEqual(expect.objectContaining({
@@ -86,13 +86,13 @@ describe("buildPostMenu", () => {
         story_royalty_registration_status: "registered",
       },
       storyNetwork: "story-aeneid",
-    })).toBe("https://aeneid.explorer.story.foundation/ipa/0xbB0a33bd07e7c813963b569f1202047a92b38d48");
+    })).toBe("https://aeneid.portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48");
   });
 
   test("builds Aeneid Story IP Explorer links from upstream Story refs", () => {
     expect(resolvePostStoryPortalHref({
       storyNetwork: "story-aeneid",
       upstreamAssetRefs: ["story:ip:0x01C0D038e1BA42959b83A56e5A1c459594719297#licenseTermsId=1894"],
-    })).toBe("https://aeneid.explorer.story.foundation/ipa/0x01C0D038e1BA42959b83A56e5A1c459594719297");
+    })).toBe("https://aeneid.portal.story.foundation/asset/0x01C0D038e1BA42959b83A56e5A1c459594719297");
   });
 });

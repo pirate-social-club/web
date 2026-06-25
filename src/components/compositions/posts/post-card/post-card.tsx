@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { ArrowSquareOut, DownloadSimple, Lock, ShoppingCart } from "@phosphor-icons/react";
+import { ArrowSquareOut, Copy, Globe, Lock, ShoppingCart, Trash } from "@phosphor-icons/react";
 
 import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
 import { FormattedText } from "@/components/primitives/formatted-text";
+import { toast } from "@/components/primitives/sonner";
 import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -13,15 +14,47 @@ import { PostCardEventBlock } from "./post-card-event-block";
 import { PostCardHeader } from "./post-card-header";
 import { PostCardMedia } from "./post-card-media";
 import { PostCardEngagementBar } from "./post-card-engagement-bar";
-import { postCardCaptionTextColor, postCardReadableWidth, postCardTextWrap, postCardType } from "./post-card.styles";
+import { postCardReadableWidth, postCardTextWrap, postCardType } from "./post-card.styles";
 import type { DownloadPolicy, PostCardMenuItem, PostCardProps, StemAccessPolicy, StemKind, StemSpec } from "./post-card.types";
 
 type SongContent = Extract<PostCardProps["content"], { type: "song" }>;
 
 export interface DerivedSongMenuAction {
-  category: "metadata" | "download";
   item: PostCardMenuItem;
   onAction: () => void;
+}
+
+function menuItemGroup(item: PostCardMenuItem): "general" | "external" | "download" | "destructive" {
+  if (item.destructive) return "destructive";
+  if (item.key === "view-story" || item.key === "song-annotations:genius" || item.key.startsWith("song-ipfs:")) return "external";
+  if (item.key.startsWith("song-download:")) return "download";
+  return "general";
+}
+
+function withPostCardMenuDefaults(item: PostCardMenuItem): PostCardMenuItem {
+  if (item.key === "view-story" && !item.icon) {
+    return { ...item, icon: <ArrowSquareOut className="size-4" /> };
+  }
+  if (item.key === "delete" && !item.icon) {
+    return { ...item, icon: <Trash className="size-4" /> };
+  }
+  return item;
+}
+
+function appendMenuGroup(output: PostCardMenuItem[], items: PostCardMenuItem[]) {
+  if (items.length === 0) return;
+  items.forEach((item, index) => {
+    output.push({
+      ...item,
+      separatorBefore: index === 0 ? output.length > 0 : item.separatorBefore,
+    });
+  });
+}
+
+async function copyTextToClipboard(value: string, successMessage: string) {
+  if (typeof navigator === "undefined" || !navigator.clipboard) return;
+  await navigator.clipboard.writeText(value);
+  toast.success(successMessage);
 }
 
 type SongCommerce =
@@ -45,17 +78,17 @@ function getEffectiveDownloadPolicy(content: SongContent): DownloadPolicy {
 function stemKindLabel(kind: StemKind): string {
   switch (kind) {
     case "instrumental":
-      return "instrumental";
+      return "Instrumental";
     case "vocals":
-      return "vocals";
+      return "Vocals";
     case "drums":
-      return "drums";
+      return "Drums";
     case "bass":
-      return "bass";
+      return "Bass";
     case "other":
-      return "stem";
+      return "Stem";
     default:
-      return "stem";
+      return "Stem";
   }
 }
 
@@ -141,23 +174,25 @@ export function mergePostCardMenuItems(
   menuItems: PostCardMenuItem[] | undefined,
   derivedActions: DerivedSongMenuAction[],
 ): PostCardMenuItem[] {
-  const metadataItems = derivedActions
-    .filter((action) => action.category === "metadata")
-    .map((action) => action.item);
-  const downloadActions = derivedActions.filter((action) => action.category === "download");
-  const firstDownloadNeedsSeparator = downloadActions.length > 0
-    && (Boolean(menuItems?.length) || metadataItems.length > 0);
-  const downloadItems = downloadActions.map((action, index) => ({
-    ...action.item,
-    icon: action.item.icon ?? <DownloadSimple className="size-4" />,
-    separatorBefore: action.item.separatorBefore || (index === 0 && firstDownloadNeedsSeparator),
-  }));
+  const derivedMenuItems = derivedActions.map((action) => action.item);
+  const groupedItems = {
+    general: [] as PostCardMenuItem[],
+    external: [] as PostCardMenuItem[],
+    download: [] as PostCardMenuItem[],
+    destructive: [] as PostCardMenuItem[],
+  };
 
-  return [
-    ...(menuItems ?? []),
-    ...metadataItems,
-    ...downloadItems,
-  ];
+  for (const item of [...(menuItems ?? []), ...derivedMenuItems].map(withPostCardMenuDefaults)) {
+    groupedItems[menuItemGroup(item)].push(item);
+  }
+
+  const orderedItems: PostCardMenuItem[] = [];
+  appendMenuGroup(orderedItems, groupedItems.general);
+  appendMenuGroup(orderedItems, groupedItems.external);
+  appendMenuGroup(orderedItems, groupedItems.download);
+  appendMenuGroup(orderedItems, groupedItems.destructive);
+
+  return orderedItems;
 }
 
 export function deriveSongHeaderMenuActions(content: PostCardProps["content"]): DerivedSongMenuAction[] {
@@ -167,7 +202,6 @@ export function deriveSongHeaderMenuActions(content: PostCardProps["content"]): 
   if (content.annotationsUrl) {
     const url = content.annotationsUrl;
     actions.push({
-      category: "metadata",
       item: {
         key: "song-annotations:genius",
         label: "View on Genius",
@@ -179,41 +213,54 @@ export function deriveSongHeaderMenuActions(content: PostCardProps["content"]): 
 
   const proofs = content.storageProofs;
   if (proofs?.original && (content.accessMode === "public" || content.hasEntitlement)) {
-    const { gatewayUrl } = proofs.original;
+    const { cid, gatewayUrl } = proofs.original;
     actions.push({
-      category: "metadata",
       item: {
         key: "song-ipfs:view:original",
         label: "View on IPFS",
-        icon: <ArrowSquareOut className="size-4" />,
+        icon: <Globe className="size-4" />,
       },
       onAction: () => openExternalUrl(gatewayUrl),
+    });
+    actions.push({
+      item: {
+        key: "song-ipfs:copy:original",
+        label: "Copy IPFS CID",
+        icon: <Copy className="size-4" />,
+      },
+      onAction: () => void copyTextToClipboard(cid, "IPFS CID copied."),
     });
   }
 
   if (proofs?.preview && content.accessMode === "locked" && !content.hasEntitlement) {
     const { gatewayUrl } = proofs.preview;
     actions.push({
-      category: "metadata",
       item: {
         key: "song-ipfs:view:preview",
         label: "View on IPFS",
-        icon: <ArrowSquareOut className="size-4" />,
+        icon: <Globe className="size-4" />,
       },
       onAction: () => openExternalUrl(gatewayUrl),
     });
   }
 
   if (proofs?.encryptedOriginal) {
-    const { gatewayUrl } = proofs.encryptedOriginal;
+    const { cid, gatewayUrl } = proofs.encryptedOriginal;
     actions.push({
-      category: "metadata",
       item: {
         key: "song-ipfs:view:encrypted-original",
         label: "View encrypted file on IPFS",
-        icon: <ArrowSquareOut className="size-4" />,
+        icon: <Globe className="size-4" />,
       },
       onAction: () => openExternalUrl(gatewayUrl),
+    });
+    actions.push({
+      item: {
+        key: "song-ipfs:copy:encrypted-original",
+        label: "Copy encrypted CID",
+        icon: <Copy className="size-4" />,
+      },
+      onAction: () => void copyTextToClipboard(cid, "Encrypted IPFS CID copied."),
     });
   }
 
@@ -259,12 +306,35 @@ function SongCaptionBeforeMedia({ content }: { content: PostCardProps["content"]
 
   return (
     <FormattedText
-      className={cn(postCardType.caption, postCardReadableWidth, postCardCaptionTextColor, "-mt-1 mb-1 self-start text-start")}
+      className={cn(postCardType.caption, postCardReadableWidth, "text-muted-foreground -mt-1 mb-1 self-start text-start")}
       dir={content.captionDir ?? "auto"}
       lang={content.captionLang}
       value={content.caption}
     />
   );
+}
+
+function deriveVideoUnlock(
+  content: PostCardProps["content"],
+): PostCardProps["engagement"]["unlock"] {
+  if (content.type !== "video") return undefined;
+
+  const { accessMode, listingMode, listingStatus, hasEntitlement, priceLabel, regionalPriceLabel, onBuy, onUnlock } = content;
+
+  if (accessMode !== "locked" || hasEntitlement) return undefined;
+
+  const isListed = listingMode === "listed" && listingStatus === "active";
+  const effectivePrice = regionalPriceLabel ?? priceLabel;
+
+  if (isListed && effectivePrice && onBuy) {
+    return { label: effectivePrice, onBuy };
+  }
+
+  if (onUnlock) {
+    return { label: "Unlock", onBuy: onUnlock };
+  }
+
+  return undefined;
 }
 
 function normalizeUrlForComparison(url: string | undefined): string | null {
@@ -311,8 +381,7 @@ export function PostCard({
   const effectiveTitleHref = titleHref ?? postHref;
   const sourceLanguageLabel = formatSourceLanguage(sourceLanguage, locale);
   const canToggleOriginal = Boolean(
-    sourceLanguageLabel
-    && onToggleOriginal
+    onToggleOriginal
     && showOriginalLabel
     && showTranslationLabel,
   );
@@ -348,7 +417,8 @@ export function PostCard({
     )
   ) : null;
 
-  const unlock = content.type === "song" || content.type === "video" ? undefined : engagement.unlock;
+  const videoUnlock = deriveVideoUnlock(content);
+  const unlock = content.type === "song" ? undefined : engagement.unlock ?? videoUnlock;
   const songCommerce = deriveSongCommerce(content);
   const songHeaderMenuActions = deriveSongHeaderMenuActions(content);
   const effectiveMenuItems = mergePostCardMenuItems(menuItems, songHeaderMenuActions);
@@ -412,11 +482,16 @@ export function PostCard({
         {titleElement}
         {event ? <PostCardEventBlock event={event} showEventUrl={shouldShowEventUrl} /> : null}
         <SongCaptionBeforeMedia content={content} />
-        <PostCardMedia content={content} postHref={postHref} viewContext={viewContext} />
+        <PostCardMedia
+          content={content}
+          hasPostTitle={Boolean(title)}
+          postHref={postHref}
+          viewContext={viewContext}
+        />
         {canToggleOriginal ? (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-start">
             <Type as="span" variant="caption" className="text-muted-foreground">
-              {isViewingOriginal ? "Original text" : `Translated from ${sourceLanguageLabel}`}
+              {isViewingOriginal ? "Original text" : sourceLanguageLabel ? `Translated from ${sourceLanguageLabel}` : "Translated"}
             </Type>
             <Button
               className="h-auto px-2 py-1"

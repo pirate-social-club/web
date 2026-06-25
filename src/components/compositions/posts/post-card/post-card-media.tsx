@@ -13,7 +13,6 @@ import { OfficialOEmbed, OfficialYouTubeEmbed, PostEmbedPreview } from "./post-c
 import { LiveRoomPostContent } from "./post-card-live-room-content";
 import { SongPostContent } from "./post-card-song-content";
 import {
-  postCardBodyTextColor,
   postCardCaptionTextColor,
   postCardReadableWidth,
   postCardTextWrap,
@@ -218,6 +217,7 @@ function CrosspostPreviewCard({ content }: { content: CrosspostContent }) {
 export interface PostCardMediaProps {
   content: PostCardContent;
   className?: string;
+  hasPostTitle?: boolean;
   postHref?: string;
   viewContext?: PostCardViewContext;
 }
@@ -225,11 +225,13 @@ export interface PostCardMediaProps {
 function TextPostContent({
   className,
   content,
+  hasPostTitle,
   postHref,
   viewContext,
 }: {
   className?: string;
   content: TextContent;
+  hasPostTitle?: boolean;
   postHref?: string;
   viewContext?: PostCardViewContext;
 }) {
@@ -238,13 +240,15 @@ function TextPostContent({
   const [expanded, setExpanded] = React.useState(false);
   const shouldCollapse = shouldCollapseTextPreview(content, viewContext);
   const isCollapsed = shouldCollapse && !expanded;
+  const bodyType = hasPostTitle ? postCardType.commentary : postCardType.body;
+  const bodyTone = hasPostTitle ? "text-muted-foreground" : "text-foreground";
   const formattedText = (
     <FormattedText
       className={cn(
-        postCardType.body,
+        bodyType,
         postCardReadableWidth,
         "self-start text-start",
-        postCardBodyTextColor,
+        bodyTone,
         className,
       )}
       dir={content.bodyDir ?? "auto"}
@@ -289,12 +293,20 @@ function TextPostContent({
   );
 }
 
-export function PostCardMedia({ content, className, postHref, viewContext }: PostCardMediaProps) {
+export function PostCardMedia({ content, className, hasPostTitle, postHref, viewContext }: PostCardMediaProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
   switch (content.type) {
     case "text":
-      return <TextPostContent className={className} content={content} postHref={postHref} viewContext={viewContext} />;
+      return (
+        <TextPostContent
+          className={className}
+          content={content}
+          hasPostTitle={hasPostTitle}
+          postHref={postHref}
+          viewContext={viewContext}
+        />
+      );
     case "image": {
       const isAgeGated = content.ageGatePolicy === "18_plus" && content.contentSafetyState === "adult";
       const ageGateRequiresProof = isAgeGated && content.ageGateViewerState !== "verified_allowed";
@@ -332,7 +344,7 @@ export function PostCardMedia({ content, className, postHref, viewContext }: Pos
           </div>
           {!ageGateRequiresProof && content.caption && (
             <FormattedText
-              className={cn("mt-1.5 text-start", postCardCaptionTextColor, postCardType.caption)}
+              className={cn("mt-1.5 text-start text-muted-foreground", postCardType.caption)}
               dir={content.captionDir ?? "auto"}
               lang={content.captionLang}
               value={content.caption}
@@ -357,7 +369,7 @@ export function PostCardMedia({ content, className, postHref, viewContext }: Pos
         <div className={cn("w-full space-y-2 text-start", className)}>
           {content.body ? (
             <FormattedText
-              className={cn(postCardType.body, postCardReadableWidth, postCardBodyTextColor)}
+              className={cn(postCardType.commentary, postCardReadableWidth, "text-muted-foreground")}
               dir={content.bodyDir ?? "auto"}
               lang={content.bodyLang}
               value={content.body}
@@ -373,7 +385,7 @@ export function PostCardMedia({ content, className, postHref, viewContext }: Pos
         <div className={cn("w-full space-y-2 text-start", className)}>
           {content.body ? (
             <FormattedText
-              className={cn(postCardType.body, postCardReadableWidth, postCardBodyTextColor)}
+              className={cn(postCardType.commentary, postCardReadableWidth, "text-muted-foreground")}
               dir={content.bodyDir ?? "auto"}
               lang={content.bodyLang}
               value={content.body}

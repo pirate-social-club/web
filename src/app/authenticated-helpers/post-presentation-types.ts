@@ -21,7 +21,7 @@ export type SongPresentationOptions = {
   purchase?: ApiCommunityPurchase;
   playback?: SongPlaybackController;
   storyLicenseNotice?: Extract<PostCardProps["content"], { type: "song" }>["storyLicenseNotice"];
-  storyNetwork?: PirateStoryNetwork;
+  storyNetwork?: PirateStoryNetwork | null;
   onBuy?: () => void;
   onKaraoke?: () => void;
 };

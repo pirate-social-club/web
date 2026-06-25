@@ -2075,7 +2075,7 @@ describe("SearchReferencePicker", () => {
     const row = (list.props.children as (item: typeof source) => React.ReactNode)(source);
     const storyLink = findElement(
       row,
-      (element) => element.type === "a" && String(element.props.href).includes("explorer.story.foundation/ipa/"),
+      (element) => element.type === "a" && String(element.props.href).includes("portal.story.foundation/asset/"),
     );
     const storyStatus = findElement(
       row,
@@ -2100,7 +2100,7 @@ describe("SearchReferencePicker", () => {
     const storyLink = findElement(
       tree,
       (element) => element.type === "a" && element.props.children
-        && String(element.props.href).includes("explorer.story.foundation/ipa/0xbB0a33bd07e7c813963b569f1202047a92b38d48"),
+        && String(element.props.href).includes("portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48"),
     );
 
     expect(storyLink).not.toBeNull();

@@ -3,6 +3,7 @@ import type {
   AttachSessionResponse,
   BookingHold,
   BookingQuote,
+  BookingView,
   CancelBookingResponse,
   CompleteBookingResponse,
   ConfirmHoldRequest,
@@ -35,6 +36,13 @@ export function createCommunityBookingsApi(request: ApiRequest) {
       request<{ quote: BookingQuote }>(`/communities/${c(communityId)}/booking-holds/${c(holdId)}/quote`, { method: "POST" }),
     confirmBookingHold: (communityId: string, holdId: string, body: ConfirmHoldRequest): Promise<ConfirmHoldResponse> =>
       request<ConfirmHoldResponse>(`/communities/${c(communityId)}/booking-holds/${c(holdId)}/confirm`, { method: "POST", body: JSON.stringify(body) }),
+
+    getBooking: (communityId: string, bookingId: string): Promise<{ booking: BookingView }> =>
+      request<{ booking: BookingView }>(`/communities/${c(communityId)}/bookings/${c(bookingId)}`),
+    listBookings: (communityId: string, params: { role: "host" | "booker"; status?: string }): Promise<{ object: "list"; data: BookingView[]; has_more: boolean }> =>
+      request<{ object: "list"; data: BookingView[]; has_more: boolean }>(buildQueryPath(
+        `/communities/${c(communityId)}/bookings`, { role: params.role, status: params.status },
+      )),
 
     startBookingSession: (communityId: string, bookingId: string): Promise<StartSessionResponse> =>
       request<StartSessionResponse>(`/communities/${c(communityId)}/bookings/${c(bookingId)}/start`, { method: "POST" }),

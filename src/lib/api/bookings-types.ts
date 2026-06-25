@@ -163,6 +163,34 @@ export interface CancelBookingResponse { booking: BookingSnapshot; cancelled_by:
 export interface CompleteBookingResponse { booking: BookingSnapshot; already_settled: boolean }
 export interface NoShowBookingResponse { booking: BookingSnapshot; already_resolved: boolean }
 
+// Party-facing booking view (GET endpoints). Mirrors api booking-read-service.BookingView — omits
+// wallet snapshots + internal commerce refs.
+export interface BookingView {
+  object: "booking";
+  booking_id: string;
+  community_id: string;
+  host_user_id: string;
+  booker_user_id: string;
+  slot_start_utc: string;
+  slot_end_utc: string;
+  gross_cents: number;
+  platform_fee_cents: number;
+  host_payout_cents: number;
+  refund_cents: number | null;
+  status: BookingStatus;
+  funding_tx_ref: string | null;
+  payout_tx_ref: string | null;
+  refund_tx_ref: string | null;
+  live_room_id: string | null;
+  confirmed_at: string | null;
+  completed_at: string | null;
+  settled_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+  viewer_role: "host" | "booker";
+}
+
 export interface AgoraBlock {
   app_id: string;
   channel: string;

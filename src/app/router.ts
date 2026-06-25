@@ -28,6 +28,8 @@ export type AppRoute =
   | { kind: "community-moderation-index"; path: string; communityId: string }
   | { kind: "community-moderation"; path: string; communityId: string; section: CommunityModerationSectionName }
   | { kind: "community"; path: string; communityId: string; isImportedRoot?: boolean }
+  | { kind: "booking-public"; path: string; communityId: string; hostUserId: string }
+  | { kind: "booking-checkout"; path: string; communityId: string; hostUserId: string }
   | { kind: "create-community"; path: "/communities/new" }
   | { kind: "post"; path: string; postId: string }
   | { kind: "live-room"; path: string; postId: string }
@@ -281,6 +283,24 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
       kind: "create-post",
       path: normalized,
       communityId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  if (segments.length === 5 && segments[0] === "c" && segments[2] === "book" && segments[4] === "checkout") {
+    return {
+      kind: "booking-checkout",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+      hostUserId: decodeURIComponent(segments[3]),
+    };
+  }
+
+  if (segments.length === 4 && segments[0] === "c" && segments[2] === "book") {
+    return {
+      kind: "booking-public",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+      hostUserId: decodeURIComponent(segments[3]),
     };
   }
 

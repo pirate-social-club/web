@@ -30,8 +30,11 @@ type DownloadableAudio = {
   decentralized_storage?: unknown;
 };
 type SongPresentationWithDownloads = NonNullable<ApiPost["song_presentation"]> & {
+  alignment_status?: "pending" | "processing" | "completed" | "failed" | null;
   downloadable_audio?: DownloadableAudio[] | null;
   instrumental_audio?: DownloadableAudio | null;
+  timed_lyrics?: unknown;
+  timed_lyrics_ref?: string | null;
   vocal_audio?: DownloadableAudio | null;
 };
 
@@ -244,6 +247,57 @@ function normalizeDownloadableAudio(postResponse: ApiPost): Map<DownloadableAudi
   }
 
   return normalized;
+}
+
+function hasTimedLyrics(presentation: SongPresentationWithDownloads | null | undefined): boolean {
+  if (!presentation) return false;
+  if (presentation.timed_lyrics_ref?.trim()) return true;
+  if (Array.isArray(presentation.timed_lyrics)) return presentation.timed_lyrics.length > 0;
+  return Boolean(
+    presentation.timed_lyrics
+    && typeof presentation.timed_lyrics === "object"
+    && Object.keys(presentation.timed_lyrics).length > 0,
+  );
+}
+
+export function toKaraokeCapability(postResponse: ApiPost): SongContentSpec["karaoke"] {
+  if (postResponse.community?.karaoke_enabled !== true) {
+    return undefined;
+  }
+
+  const presentation = postResponse.song_presentation as SongPresentationWithDownloads | null | undefined;
+  const instrumental = normalizeDownloadableAudio(postResponse).get("instrumental");
+
+  if (!instrumental?.storage_ref) {
+    return undefined;
+  }
+
+  switch (presentation?.alignment_status) {
+    case "completed":
+      return hasTimedLyrics(presentation)
+        ? { canKaraoke: true, status: "ready" }
+        : { canKaraoke: false, status: "unavailable" };
+    case "pending":
+    case "processing":
+      return { canKaraoke: false, status: "processing" };
+    case "failed":
+      return { canKaraoke: false, status: "failed" };
+    default:
+      return undefined;
+  }
+}
+
+function toKaraokeStatusLabel(postResponse: ApiPost): string | undefined {
+  const presentation = postResponse.song_presentation as SongPresentationWithDownloads | null | undefined;
+  const capability = toKaraokeCapability(postResponse);
+
+  if (capability?.status !== "unavailable") {
+    return undefined;
+  }
+
+  return presentation?.timed_lyrics_ref?.trim()
+    ? "Lyrics not loadable yet"
+    : "Lyrics not available";
 }
 
 function formatStoryRegistrationFailure(error: string | null | undefined): string {
@@ -459,6 +513,7 @@ export function toSongPostContent(
   input: {
     captionDir?: "rtl";
     captionLang?: string;
+    onKaraoke?: () => void;
     onVerifyAge?: () => void;
     resolvedCaption?: string;
     title: string;
@@ -527,6 +582,7 @@ export function toSongPostContent(
   if (primaryProof && accessMode === "locked" && !hasEntitlement) {
     storageProofs.preview = primaryProof;
   }
+  const karaoke = toKaraokeCapability(postResponse);
   return {
     type: "song",
     accessMode,
@@ -542,6 +598,7 @@ export function toSongPostContent(
       ? "paused"
       : undefined,
     onBuy: songOptions?.onBuy,
+    onKaraoke: input.onKaraoke,
     downloadPolicy: downloadableOriginal ? "free_download" : undefined,
     onDownload: downloadableOriginal?.storage_ref ? () => void downloadAudioFile({
       filename: audioDownloadFilename({
@@ -573,6 +630,9 @@ export function toSongPostContent(
     artworkSrc: songPresentation?.cover_art_ref ?? undefined,
     durationMs: songPresentation?.duration_ms ?? playbackProgress?.durationMs ?? undefined,
     storageProofs: Object.keys(storageProofs).length > 0 ? storageProofs : undefined,
+    karaoke,
+    karaokeStatusLabel: toKaraokeStatusLabel(postResponse),
+    karaokeStatusVisible: Boolean(karaoke && songOptions?.currentUserId && post.author_user === songOptions.currentUserId),
     upstreamAttributions: toUpstreamAttributions(postResponse, songOptions),
   };
 }

@@ -42,6 +42,7 @@ function communityPreviewFromHomeFeedItem(item: HomeFeedItem): CommunityPreview 
     moderators: [],
     reference_links: null,
     membership_gate_summaries: [],
+    karaoke_enabled: false,
     rules: [],
     viewer_membership_status: null,
     viewer_following: null,

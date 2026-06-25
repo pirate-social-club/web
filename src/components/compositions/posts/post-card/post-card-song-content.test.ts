@@ -254,6 +254,154 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("Download");
   });
 
+  test("surfaces karaoke as an offer row when ready", () => {
+    const ui = deriveSongUI({
+      ...baseSong,
+      karaoke: { canKaraoke: true, status: "ready" },
+      onKaraoke: () => {},
+    });
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaoke: { canKaraoke: true, status: "ready" },
+          onKaraoke: () => {},
+        },
+      }),
+    );
+
+    expect(ui.showKaraoke).toBe(true);
+    expect(markup).toContain("Karaoke");
+    expect(markup).toContain("Sing");
+    expect(markup).toContain("Open karaoke");
+  });
+
+  test("does not surface karaoke without an action callback", () => {
+    const ui = deriveSongUI({
+      ...baseSong,
+      karaoke: { canKaraoke: true, status: "ready" },
+    });
+
+    expect(ui.showKaraoke).toBe(false);
+  });
+
+  test("does not surface karaoke when the capability is absent", () => {
+    const ui = deriveSongUI({
+      ...baseSong,
+      onKaraoke: () => {},
+    });
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          onKaraoke: () => {},
+        },
+      }),
+    );
+
+    expect(ui.showKaraoke).toBe(false);
+    expect(markup).not.toContain("Open karaoke");
+  });
+
+  test("surfaces owner-visible karaoke processing status without an action", () => {
+    const ui = deriveSongUI({
+      ...baseSong,
+      karaoke: { canKaraoke: false, status: "processing" },
+      karaokeStatusVisible: true,
+    });
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaoke: { canKaraoke: false, status: "processing" },
+          karaokeStatusVisible: true,
+        },
+      }),
+    );
+
+    expect(ui.showKaraoke).toBe(false);
+    expect(ui.showKaraokeStatus).toBe(true);
+    expect(markup).toContain("Karaoke");
+    expect(markup).toContain("Processing");
+    expect(markup).not.toContain("Sing");
+  });
+
+  test("hides karaoke processing status from non-owner viewers", () => {
+    const ui = deriveSongUI({
+      ...baseSong,
+      karaoke: { canKaraoke: false, status: "processing" },
+    });
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaoke: { canKaraoke: false, status: "processing" },
+        },
+      }),
+    );
+
+    expect(ui.showKaraokeStatus).toBe(false);
+    expect(markup).not.toContain("Processing");
+  });
+
+  test("surfaces owner-visible karaoke failed status", () => {
+    const ui = deriveSongUI({
+      ...baseSong,
+      karaoke: { canKaraoke: false, status: "failed" },
+      karaokeStatusVisible: true,
+    });
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaoke: { canKaraoke: false, status: "failed" },
+          karaokeStatusVisible: true,
+        },
+      }),
+    );
+
+    expect(ui.showKaraokeStatus).toBe(true);
+    expect(markup).toContain("Failed");
+    expect(markup).not.toContain("Sing");
+  });
+
+  test("surfaces owner-visible karaoke unavailable status", () => {
+    const ui = deriveSongUI({
+      ...baseSong,
+      karaoke: { canKaraoke: false, status: "unavailable" },
+      karaokeStatusVisible: true,
+    });
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaoke: { canKaraoke: false, status: "unavailable" },
+          karaokeStatusVisible: true,
+        },
+      }),
+    );
+
+    expect(ui.showKaraokeStatus).toBe(true);
+    expect(markup).toContain("Lyrics not available");
+    expect(markup).not.toContain("Sing");
+  });
+
+  test("uses custom owner-visible karaoke status copy", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaoke: { canKaraoke: false, status: "unavailable" },
+          karaokeStatusLabel: "Lyrics not loadable yet",
+          karaokeStatusVisible: true,
+        },
+      }),
+    );
+
+    expect(markup).toContain("Lyrics not loadable yet");
+    expect(markup).not.toContain("Lyrics not available");
+  });
+
   test("does not render completed Story registration status", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {

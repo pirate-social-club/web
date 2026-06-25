@@ -114,6 +114,9 @@ function createLinkPost(overrides: Partial<LocalizedPostResponse["post"]> = {}):
 
 function createSongPost(overrides: Partial<LocalizedPostResponse["post"]> = {}): LocalizedPostResponse {
   return {
+    community: {
+      karaoke_enabled: true,
+    },
     post: {
       access_mode: "public",
       age_gate_policy: "none",
@@ -593,6 +596,97 @@ describe("post presentation songs", () => {
       },
     ]);
     expect(content.entitledStems).toEqual(["instrumental", "vocals"]);
+  });
+
+  test("marks karaoke processing status visible for the song owner", () => {
+    const post = createSongPost();
+    post.song_presentation = {
+      instrumental_audio: {
+        storage_ref: "/public-communities/cmt_songs/song-artifact-uploads/sau_instrumental/content",
+      },
+      alignment_status: "processing",
+    } as NonNullable<LocalizedPostResponse["song_presentation"]>;
+
+    const content = toCommunityPostContent(post, { currentUserId: "usr_artist" });
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.karaoke).toEqual({ canKaraoke: false, status: "processing" });
+    expect(content.karaokeStatusVisible).toBe(true);
+  });
+
+  test("keeps karaoke processing status hidden for non-owner viewers", () => {
+    const post = createSongPost();
+    post.song_presentation = {
+      instrumental_audio: {
+        storage_ref: "/public-communities/cmt_songs/song-artifact-uploads/sau_instrumental/content",
+      },
+      alignment_status: "processing",
+    } as NonNullable<LocalizedPostResponse["song_presentation"]>;
+
+    const content = toCommunityPostContent(post, { currentUserId: "usr_listener" });
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.karaokeStatusVisible).toBe(false);
+  });
+
+  test("marks unavailable karaoke status visible for the song owner", () => {
+    const post = createSongPost();
+    post.song_presentation = {
+      instrumental_audio: {
+        storage_ref: "/public-communities/cmt_songs/song-artifact-uploads/sau_instrumental/content",
+      },
+      alignment_status: "completed",
+    } as NonNullable<LocalizedPostResponse["song_presentation"]>;
+
+    const content = toCommunityPostContent(post, { currentUserId: "usr_artist" });
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.karaoke).toEqual({ canKaraoke: false, status: "unavailable" });
+    expect(content.karaokeStatusLabel).toBe("Lyrics not available");
+    expect(content.karaokeStatusVisible).toBe(true);
+  });
+
+  test("marks ref-backed completed karaoke status ready for the song owner", () => {
+    const post = createSongPost();
+    post.song_presentation = {
+      instrumental_audio: {
+        storage_ref: "/public-communities/cmt_songs/song-artifact-uploads/sau_instrumental/content",
+      },
+      alignment_status: "completed",
+      timed_lyrics_ref: "r2://karaoke/pst_song.json",
+    } as NonNullable<LocalizedPostResponse["song_presentation"]>;
+
+    const content = toCommunityPostContent(post, { currentUserId: "usr_artist" });
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.karaoke).toEqual({ canKaraoke: true, status: "ready" });
+    expect(content.karaokeStatusLabel).toBeUndefined();
+    expect(content.karaokeStatusVisible).toBe(true);
+  });
+
+  test("hides karaoke capability and owner status when community karaoke is disabled", () => {
+    const post = createSongPost();
+    post.community = {
+      karaoke_enabled: false,
+    } as LocalizedPostResponse["community"];
+    post.song_presentation = {
+      instrumental_audio: {
+        storage_ref: "/public-communities/cmt_songs/song-artifact-uploads/sau_instrumental/content",
+      },
+      alignment_status: "completed",
+      timed_lyrics_ref: "r2://karaoke/pst_song.json",
+    } as NonNullable<LocalizedPostResponse["song_presentation"]>;
+
+    const content = toCommunityPostContent(post, { currentUserId: "usr_artist" });
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.karaoke).toBeUndefined();
+    expect(content.karaokeStatusVisible).toBe(false);
   });
 
   test("maps derivative source summaries into song card content", () => {

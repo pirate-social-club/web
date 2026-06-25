@@ -21,6 +21,7 @@ const ROUTE_KINDS_WITH_ENTITY_SEO = new Set([
   "crosspost",
   "live-room",
   "post",
+  "post-karaoke",
   "public-agent",
   "public-profile",
   "telegram-community",

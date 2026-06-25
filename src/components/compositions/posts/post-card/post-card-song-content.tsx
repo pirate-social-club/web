@@ -19,11 +19,12 @@ import { Scrubber } from "@/components/primitives/scrubber";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/primitives/tooltip";
 import { Type } from "@/components/primitives/type";
 import { Waveform } from "@/components/primitives/waveform";
-import { postCardType } from "./post-card.styles";
+import { postCardCaptionTextColor, postCardTextWrap, postCardType } from "./post-card.styles";
 import { StoryLicenseNoticeBadge, StoryRegistrationBadge } from "./post-card-story-registration";
 import type {
   DownloadPolicy,
   SongContentSpec,
+  SongKaraokeStatus,
   StemKind,
   StemSpec,
   UpstreamAttribution,
@@ -57,6 +58,8 @@ interface DerivedSongUI {
   showVinylLink: boolean;
   showBuy: boolean;
   showDownload: boolean;
+  showKaraoke: boolean;
+  showKaraokeStatus: boolean;
   effectiveDownloadPolicy: DownloadPolicy;
   primaryCommerceAction: "buy" | "unlock" | "verify_age" | null;
   
@@ -80,8 +83,11 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     vinylRelease,
     songMode,
     upstreamAttributions,
+    karaoke,
+    karaokeStatusVisible,
     onBuy,
     onDownload,
+    onKaraoke,
     onUnlock,
   } = content;
 
@@ -116,6 +122,15 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     effectiveDownloadPolicy === "free_download"
     || (effectiveDownloadPolicy === "purchased_download" && isOwned)
   );
+  const showKaraoke = karaoke?.canKaraoke === true && karaoke.status === "ready" && Boolean(onKaraoke) && !ageGateRequiresProof;
+  const showKaraokeStatus = karaokeStatusVisible === true
+    && !showKaraoke
+    && !ageGateRequiresProof
+    && (
+      karaoke?.status === "processing"
+      || karaoke?.status === "failed"
+      || karaoke?.status === "unavailable"
+    );
   
   // Attribution
   const showAttribution = !!(songMode === "remix" && upstreamAttributions && upstreamAttributions.length > 0);
@@ -159,6 +174,8 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     showVinylLink,
     showBuy,
     showDownload,
+    showKaraoke,
+    showKaraokeStatus,
     effectiveDownloadPolicy,
     primaryCommerceAction,
     showAttribution,
@@ -284,6 +301,19 @@ function stemIcon(stem: StemSpec) {
   }
 }
 
+function karaokeStatusLabel(status: SongKaraokeStatus): string {
+  switch (status) {
+    case "processing":
+      return "Processing";
+    case "failed":
+      return "Failed";
+    case "unavailable":
+      return "Lyrics not available";
+    case "ready":
+      return "Ready";
+  }
+}
+
 function resolveStemAccessPolicy(stem: StemSpec, songPolicy: DownloadPolicy) {
   if (stem.accessPolicy !== "inherit") {
     return stem.accessPolicy;
@@ -316,33 +346,20 @@ interface SongOfferRowProps {
   action: React.ReactNode;
   icon: React.ReactNode;
   label: string;
-  priceLabel?: string;
 }
 
-function SongOfferRow({ action, icon, label, priceLabel }: SongOfferRowProps) {
+function SongOfferRow({ action, icon, label }: SongOfferRowProps) {
   return (
-    <div
-      className={cn(
-        "grid min-h-16 items-center gap-x-3 gap-y-2 border-t border-border-soft px-4 py-3",
-        priceLabel
-          ? "grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_4rem_8.5rem]"
-          : "grid-cols-[auto_minmax(0,1fr)_auto]",
-      )}
-    >
+    <div className="grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-t border-border-soft px-4 py-3">
       <div className="grid size-8 shrink-0 place-items-center text-muted-foreground">
         {icon}
       </div>
       <div className="min-w-0">
-        <Type as="p" className="truncate font-semibold text-foreground" variant="body-strong">
+        <Type as="p" className={cn(postCardTextWrap, "font-semibold text-foreground")} variant="body-strong">
           {label}
         </Type>
       </div>
-      {priceLabel ? (
-        <Type as="p" className="text-end font-semibold text-foreground" variant="body-strong">
-          {priceLabel}
-        </Type>
-      ) : null}
-      <div className={cn("flex justify-end", priceLabel ? "col-span-3 sm:col-span-1" : undefined)}>
+      <div className="flex justify-end">
         {action}
       </div>
     </div>
@@ -372,19 +389,18 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
       <SongOfferRow
         action={(
           <Button
-            aria-label="Buy Digital MP3"
+            aria-label={effectivePrice ? `Buy MP3 for ${effectivePrice}` : "Buy MP3"}
             className="h-10 w-32 px-5"
             data-post-card-interactive="true"
             onClick={content.onBuy}
             size="sm"
           >
-            Buy
+            {effectivePrice ? `Buy ${effectivePrice}` : "Buy"}
           </Button>
         )}
         icon={<MusicNote className="size-5" />}
         key="digital-buy"
-        label="Digital MP3"
-        priceLabel={effectivePrice}
+        label="MP3"
       />,
     );
   } else if (isLocked && !isOwned && !isListedActive && content.onUnlock) {
@@ -470,6 +486,41 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
         icon={<VinylRecord className="size-5" />}
         key="vinyl"
         label="Vinyl"
+      />,
+    );
+  }
+
+  if (ui.showKaraoke && content.onKaraoke) {
+    rows.push(
+      <SongOfferRow
+        action={(
+          <Button
+            aria-label="Open karaoke"
+            className="h-10 w-32 px-5"
+            data-post-card-interactive="true"
+            onClick={content.onKaraoke}
+            size="sm"
+            variant="secondary"
+          >
+            Sing
+          </Button>
+        )}
+        icon={<MicrophoneStage className="size-5" />}
+        key="karaoke"
+        label="Karaoke"
+      />,
+    );
+  } else if (ui.showKaraokeStatus) {
+    rows.push(
+      <SongOfferRow
+        action={(
+          <Type as="span" className="text-muted-foreground" variant="caption">
+            {content.karaokeStatusLabel ?? karaokeStatusLabel(content.karaoke?.status ?? "unavailable")}
+          </Type>
+        )}
+        icon={<MicrophoneStage className="size-5" />}
+        key="karaoke-status"
+        label="Karaoke"
       />,
     );
   }
@@ -583,11 +634,20 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
           <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted sm:size-28">
             {ui.showAgeGatedArtwork ? (
               <>
-                <div
-                  aria-label={content.title}
-                  className="size-full bg-muted"
-                  role="img"
-                />
+                {content.artworkSrc ? (
+                  <img
+                    alt=""
+                    aria-hidden="true"
+                    className="size-full object-cover"
+                    src={content.artworkSrc}
+                  />
+                ) : (
+                  <div
+                    aria-label={content.title}
+                    className="size-full bg-muted"
+                    role="img"
+                  />
+                )}
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                   <FilledLockIcon className="size-7 text-white" weight="fill" />
                 </div>
@@ -615,19 +675,19 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
                 {content.title}
               </Type>
               {content.artist ? (
-                <Type as="p" className="mt-1 truncate text-muted-foreground" variant="caption">
+                <Type as="p" className={cn("mt-1 truncate", postCardCaptionTextColor)} variant="caption">
                   {content.artist}
                 </Type>
               ) : null}
               {derivativeSummary && derivativeHref ? (
                 <a
-                  className={cn("mt-1 block truncate text-muted-foreground transition-colors hover:text-foreground", postCardType.meta)}
+                  className={cn("mt-1 block truncate transition-colors hover:text-foreground", postCardCaptionTextColor, postCardType.meta)}
                   href={derivativeHref}
                 >
                   {derivativeSummary}
                 </a>
               ) : derivativeSummary ? (
-                <p className={cn("mt-1 truncate text-muted-foreground", postCardType.meta)}>
+                <p className={cn("mt-1 truncate", postCardCaptionTextColor, postCardType.meta)}>
                   {derivativeSummary}
                 </p>
               ) : null}

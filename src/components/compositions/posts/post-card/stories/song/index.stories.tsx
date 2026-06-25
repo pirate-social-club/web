@@ -570,6 +570,66 @@ export const CommerceHeaderMenuDownloadsStems: Story = {
   ),
 };
 
+export const KaraokeReady: Story = {
+  name: "Karaoke / Ready",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Karaoke-ready song"
+      content={{
+        ...baseSong,
+        karaoke: { canKaraoke: true, status: "ready" },
+        onKaraoke: noop,
+      }}
+    />
+  ),
+};
+
+export const KaraokeProcessing: Story = {
+  name: "Karaoke / Processing",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Karaoke still processing"
+      content={{
+        ...baseSong,
+        karaoke: { canKaraoke: false, status: "processing" },
+        karaokeStatusVisible: true,
+      }}
+    />
+  ),
+};
+
+export const KaraokeFailed: Story = {
+  name: "Karaoke / Failed",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Karaoke failed"
+      content={{
+        ...baseSong,
+        karaoke: { canKaraoke: false, status: "failed" },
+        karaokeStatusVisible: true,
+      }}
+    />
+  ),
+};
+
+export const KaraokeUnavailable: Story = {
+  name: "Karaoke / Unavailable",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Karaoke lyrics unavailable"
+      content={{
+        ...baseSong,
+        karaoke: { canKaraoke: false, status: "unavailable" },
+        karaokeStatusVisible: true,
+      }}
+    />
+  ),
+};
+
 // ============================================================================
 // LAYOUT
 // ============================================================================

@@ -1,5 +1,6 @@
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
+import { navigate } from "@/app/router";
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { buildCommunityPath } from "@/lib/community-routing";
 import type {
@@ -126,6 +127,7 @@ export function toCommunityPostContent(
       return toSongPostContent(postResponse, songOptions, {
         captionDir: translatedTextPresentation.dir,
         captionLang: translatedTextPresentation.lang,
+        onKaraoke: songOptions?.onKaraoke ?? (() => navigate(`/p/${encodeURIComponent(post.id)}/karaoke`)),
         onVerifyAge: opts?.onVerifyAge,
         resolvedCaption,
         title,

@@ -17,6 +17,7 @@ export const COMMUNITY_MODERATION_SECTIONS = [
   "visual-policy",
   "agents",
   "assistant",
+  "karaoke",
   "telegram",
   "machine-access",
 ] as const;

@@ -2,12 +2,113 @@
 
 import type {
   AssetLicenseState,
+  AssetRoyaltySplitState,
   ComposerTab,
   DerivativeStepState,
   MonetizationState,
   SongMode,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import { usdToCents } from "@/lib/formatting/currency";
+
+const ROYALTY_BEARING_PRESETS = new Set(["commercial-use", "commercial-remix"]);
+const EVM_ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
+
+export type RoyaltyAllocationRequest = {
+  recipient_kind: "creator" | "collaborator";
+  wallet_address: string;
+  share_bps: number;
+};
+
+// A "real" split has at least one collaborator. A creator-only split is
+// equivalent to the default single-owner asset and is not sent to the API.
+function hasCollaboratorAllocation(split: AssetRoyaltySplitState | undefined): boolean {
+  return !!split && split.allocations.some((allocation) => allocation.recipientKind === "collaborator");
+}
+
+// 2-decimal percent -> integer basis points (0.01% granularity). Only safe to
+// call after validateRoyaltySplit confirms each percent is bps-aligned.
+function sharePctToBps(pct: number): number {
+  return Math.round(pct * 100);
+}
+
+// True when pct lands on a whole basis point (0.01%) within fp tolerance.
+function isBpsAligned(pct: number): boolean {
+  return Math.abs(pct * 100 - Math.round(pct * 100)) < 1e-6;
+}
+
+/**
+ * Validates the royalty split. `undefined` means the feature is untouched
+ * (single-owner; no request sent) and passes. ANY supplied allocation state is
+ * validated fully so malformed creator-only states cannot slip through; the
+ * commercial-license requirement only applies once a collaborator is present
+ * (a creator-only split is omitted from the request).
+ */
+export function validateRoyaltySplit(input: {
+  split: AssetRoyaltySplitState | undefined;
+  license: AssetLicenseState | undefined;
+  contentLabel: "song" | "video";
+}): string | null {
+  const split = input.split;
+  if (!split) {
+    return null;
+  }
+  const allocations = split.allocations;
+  if (allocations.length === 0) {
+    return "Add your wallet to the royalty split.";
+  }
+  if (hasCollaboratorAllocation(split)
+    && (!input.license || !ROYALTY_BEARING_PRESETS.has(input.license.presetId ?? ""))) {
+    return `Royalty splits require a commercial license for this ${input.contentLabel}.`;
+  }
+  if (allocations.length > 10) {
+    return "A royalty split can have at most 10 recipients.";
+  }
+  if (allocations.filter((allocation) => allocation.recipientKind === "creator").length !== 1) {
+    return "A royalty split must have exactly one creator allocation.";
+  }
+  const seen = new Set<string>();
+  let totalBps = 0;
+  for (const allocation of allocations) {
+    if (!isBpsAligned(allocation.sharePct)) {
+      return "Royalty shares can be specified to 0.01% at most.";
+    }
+    const bps = sharePctToBps(allocation.sharePct);
+    if (bps <= 0 || bps > 10000) {
+      return "Each royalty share must be greater than 0%.";
+    }
+    totalBps += bps;
+    const wallet = (allocation.walletAddress ?? "").trim();
+    if (!EVM_ADDRESS_PATTERN.test(wallet)) {
+      return allocation.recipientKind === "creator"
+        ? "Your wallet is required for the royalty split."
+        : "Each collaborator needs a valid wallet address.";
+    }
+    const normalized = wallet.toLowerCase();
+    if (seen.has(normalized)) {
+      return "Royalty split wallets must be unique.";
+    }
+    seen.add(normalized);
+  }
+  if (totalBps !== 10000) {
+    return "Royalty shares must total 100%.";
+  }
+  return null;
+}
+
+export function buildRoyaltyAllocationsRequest(
+  split: AssetRoyaltySplitState | undefined,
+): RoyaltyAllocationRequest[] | undefined {
+  // Only a real split (with a collaborator) is sent; creator-only / untouched
+  // stays single-owner. Assumes validateRoyaltySplit already passed.
+  if (!hasCollaboratorAllocation(split)) {
+    return undefined;
+  }
+  return split!.allocations.map((allocation) => ({
+    recipient_kind: allocation.recipientKind,
+    wallet_address: (allocation.walletAddress ?? "").trim(),
+    share_bps: sharePctToBps(allocation.sharePct),
+  }));
+}
 
 type AssetDerivativeReference = NonNullable<DerivativeStepState["references"]>[number];
 export type AssetDerivativeInput = Pick<DerivativeStepState, "required" | "sourceTermsAccepted"> & Partial<Pick<DerivativeStepState, "trigger" | "visible">> & {
@@ -121,6 +222,7 @@ export function resolveComposerSubmitState(input: {
   license: AssetLicenseState | undefined;
   monetizationState: Pick<MonetizationState, "visible">;
   paidSongPriceInvalid: boolean;
+  royaltySplit?: AssetRoyaltySplitState;
   songMode?: SongMode;
   submitError: string | null;
 }) {
@@ -219,6 +321,22 @@ export function resolveComposerSubmitState(input: {
         canPost: false,
         disabled: true,
         submitError: licenseError,
+      };
+    }
+  }
+
+  if (input.composerMode === "song" || (input.composerMode === "video" && input.monetizationState.visible)) {
+    const splitError = validateRoyaltySplit({
+      split: input.royaltySplit,
+      license: input.license,
+      contentLabel: input.composerMode === "song" ? "song" : "video",
+    });
+    if (splitError) {
+      return {
+        canContinue,
+        canPost: false,
+        disabled: true,
+        submitError: splitError,
       };
     }
   }

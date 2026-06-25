@@ -2,6 +2,7 @@
 
 import type { CreatePostRequest } from "@pirate/api-contracts";
 
+import type { RoyaltyAllocationRequest } from "@/app/authenticated-helpers/asset-submit";
 import type {
   AnonymousIdentityScope,
   AuthorMode,
@@ -37,6 +38,10 @@ export type CreatePostEventRequest = {
 
 export type CreatePostRequestWithEvent = CreatePostRequest & {
   event?: CreatePostEventRequest | null;
+  // Local augmentation: the server (api PR #86) accepts + persists royalty_allocations,
+  // but @pirate/api-contracts has not been regenerated yet (deferred — api#85), so the
+  // generated CreatePostRequest lacks the field. Mirrors the api's src/types.ts approach.
+  royalty_allocations?: RoyaltyAllocationRequest[] | null;
 };
 
 export type SignAgentAuthoredBody = <T extends Record<string, unknown>>(

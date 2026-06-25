@@ -203,6 +203,50 @@ describe("video create-post submit helpers", () => {
     expect(request.upstream_asset_refs).toEqual(["story:asset:ast_source_song"]);
   });
 
+  test("buildVideoPostRequest includes royalty_allocations for monetized video with a valid split", () => {
+    const request = buildVideoPostRequest({
+      baseRequest: createBaseRequest(),
+      caption: "",
+      license: { presetId: "commercial-remix", commercialRevSharePct: 10 },
+      monetized: true,
+      posterFrame: { frameMs: 0, height: 720, width: 1280 },
+      royaltySplit: {
+        allocations: [
+          { id: "c", recipientKind: "creator", walletAddress: "0x1111111111111111111111111111111111111111", sharePct: 90 },
+          { id: "p", recipientKind: "collaborator", walletAddress: "0x2222222222222222222222222222222222222222", sharePct: 10 },
+        ],
+      },
+      title: "Royalty video",
+      uploadedPoster: { media_ref: "poster_media", mime_type: "image/jpeg", size_bytes: 123 },
+      uploadedVideo: { storage_ref: "artifact_video", mime_type: "video/mp4", size_bytes: 456, content_hash: "hash_video" },
+    });
+
+    expect(request.royalty_allocations).toEqual([
+      { recipient_kind: "creator", wallet_address: "0x1111111111111111111111111111111111111111", share_bps: 9000 },
+      { recipient_kind: "collaborator", wallet_address: "0x2222222222222222222222222222222222222222", share_bps: 1000 },
+    ]);
+  });
+
+  test("buildVideoPostRequest omits royalty_allocations for non-monetized video", () => {
+    const request = buildVideoPostRequest({
+      baseRequest: createBaseRequest(),
+      caption: "",
+      monetized: false,
+      posterFrame: { frameMs: 0, height: 720, width: 1280 },
+      royaltySplit: {
+        allocations: [
+          { id: "c", recipientKind: "creator", walletAddress: "0x1111111111111111111111111111111111111111", sharePct: 90 },
+          { id: "p", recipientKind: "collaborator", walletAddress: "0x2222222222222222222222222222222222222222", sharePct: 10 },
+        ],
+      },
+      title: "Non-monetized video",
+      uploadedPoster: { media_ref: "poster_media", mime_type: "image/jpeg", size_bytes: 123 },
+      uploadedVideo: { storage_ref: "artifact_video", mime_type: "video/mp4", size_bytes: 456, content_hash: "hash_video" },
+    });
+
+    expect(request.royalty_allocations).toBeUndefined();
+  });
+
   test("buildVideoPostRequest rejects active derivative video mode without source refs", () => {
     expect(() => buildVideoPostRequest({
       baseRequest: createBaseRequest(),

@@ -203,8 +203,47 @@ describe("useSongSubmit", () => {
     ]);
     expect(progressEvents).toEqual([
       "validating",
-      "generate_preview",
-      "generate_preview",
+      "publish_post",
+      "create_listing",
+    ]);
+  });
+
+  test("publishes a paid song without waiting for preview completion", async () => {
+    createdSongArtifactBundleResult = songBundle({
+      id: "sab_created",
+      previewStatus: "pending",
+    });
+    const pendingBundleIds: Array<string | null> = [];
+    const progressEvents: string[] = [];
+    const { result } = renderSubmitHook();
+
+    await act(async () => {
+      await result.current(submitInput({
+        monetizationState: {
+          priceUsd: "3.99",
+          regionalPricingEnabled: false,
+          visible: true,
+        },
+        paidSongPriceUsd: 3.99,
+        pricingPolicyRegionalPricingEnabled: true,
+        reportProgress: (key) => progressEvents.push(key),
+        setPendingSongBundleId: (bundleId) => pendingBundleIds.push(bundleId),
+      }));
+    });
+
+    expect(pendingBundleIds).toEqual(["sab_created"]);
+    expect(apiCalls).toEqual([
+      "createArtifactUpload",
+      "uploadArtifactContent",
+      "createSongArtifactBundle",
+      "createPost",
+      "createListing",
+    ]);
+    expect(progressEvents).toEqual([
+      "validating",
+      "upload_primary_audio",
+      "create_bundle",
+      "check_rights",
       "publish_post",
       "create_listing",
     ]);
@@ -249,8 +288,6 @@ describe("useSongSubmit", () => {
       "upload_primary_audio",
       "create_bundle",
       "check_rights",
-      "generate_preview",
-      "generate_preview",
       "publish_post",
       "create_listing",
     ]);

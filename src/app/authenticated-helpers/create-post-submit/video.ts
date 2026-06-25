@@ -10,12 +10,13 @@ import type {
 
 import type {
   AssetLicenseState,
+  AssetRoyaltySplitState,
   AuthorMode,
   DerivativeStepState,
   VideoComposerState,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import type { ExtractedVideoPosterFrame } from "@/components/compositions/posts/post-composer/video-poster-frame";
-import { buildAssetListingRequest } from "@/app/authenticated-helpers/asset-submit";
+import { buildAssetListingRequest, buildRoyaltyAllocationsRequest, validateRoyaltySplit } from "@/app/authenticated-helpers/asset-submit";
 import type { SubmitProgressReporter } from "./progress";
 
 import {
@@ -141,6 +142,7 @@ export function buildVideoPostRequest({
   license,
   monetized,
   posterFrame,
+  royaltySplit,
   title,
   uploadedPoster,
   uploadedVideo,
@@ -152,11 +154,18 @@ export function buildVideoPostRequest({
   license?: AssetLicenseState;
   monetized: boolean;
   posterFrame: Pick<ExtractedVideoPosterFrame, "frameMs" | "height" | "width">;
+  royaltySplit?: AssetRoyaltySplitState;
   title: string;
   uploadedPoster: UploadedPosterMedia;
   uploadedVideo: Pick<SongArtifactUpload, "content_hash" | "mime_type" | "size_bytes" | "storage_ref">;
 }): CreatePostRequestWithEvent {
   const upstreamAssetRefs = deriveVideoUpstreamAssetRefs(derivativeStep);
+  if (monetized) {
+    const splitError = validateRoyaltySplit({ split: royaltySplit, license, contentLabel: "video" });
+    if (splitError) {
+      throw new Error(splitError);
+    }
+  }
   return {
     ...baseRequest,
     event,
@@ -167,6 +176,7 @@ export function buildVideoPostRequest({
     commercial_rev_share_pct: monetized && license?.presetId === "commercial-remix"
       ? license.commercialRevSharePct
       : undefined,
+    royalty_allocations: monetized ? buildRoyaltyAllocationsRequest(royaltySplit) : undefined,
     license_preset: monetized ? license?.presetId : undefined,
     rights_basis: upstreamAssetRefs?.length ? "derivative" : undefined,
     upstream_asset_refs: upstreamAssetRefs,
@@ -360,14 +370,15 @@ export async function submitVideoPost({
   completeArtifactUploadSession,
   communityId,
   createArtifactUpload,
+  getArtifactUploadPartSignedUrl,
   createListing,
   createPost,
   derivativeStep,
   event,
   extractPosterFrameFile,
-  getArtifactUploadPartSignedUrl,
   license,
   monetized,
+  royaltySplit,
   paidAssetPriceUsd,
   posterFrameMaxWidth,
   pricingPolicyRegionalPricingEnabled,
@@ -389,14 +400,15 @@ export async function submitVideoPost({
   completeArtifactUploadSession?: CompleteArtifactUploadSession;
   communityId: string;
   createArtifactUpload: CreateArtifactUpload;
+  getArtifactUploadPartSignedUrl?: GetArtifactUploadPartSignedUrl;
   createListing: CreateListing;
   createPost: CreatePost;
   derivativeStep?: DerivativeStepState;
   event?: CreatePostEventRequest;
   extractPosterFrameFile: ExtractPosterFrameFile;
-  getArtifactUploadPartSignedUrl?: GetArtifactUploadPartSignedUrl;
   license?: AssetLicenseState;
   monetized: boolean;
+  royaltySplit?: AssetRoyaltySplitState;
   paidAssetPriceUsd: number | null;
   posterFrameMaxWidth?: number;
   pricingPolicyRegionalPricingEnabled: boolean;
@@ -443,6 +455,7 @@ export async function submitVideoPost({
     license,
     monetized,
     posterFrame,
+    royaltySplit,
     title,
     uploadedPoster,
     uploadedVideo,

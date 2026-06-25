@@ -378,6 +378,15 @@ export type ApiCommunityMachineAccessPolicy = {
 export type ApiCommunityMachineAccessPolicyUpdate = {
   included_surfaces?: Partial<ApiCommunityMachineAccessPolicy["included_surfaces"]>;
 };
+export type ApiCommunityKaraokePolicy = {
+  community_id: string;
+  karaoke_enabled: boolean;
+  updated_at: string | null;
+};
+
+export type ApiCommunityKaraokePolicyUpdate = {
+  karaoke_enabled: boolean;
+};
 
 export type ApiTelegramLinkedChatLinkMode = "invite_link" | "join_request";
 
@@ -696,4 +705,15 @@ export type HandleUpgradeQuoteResponse = {
 export type NotificationFeedOptions = {
   cursor?: string | null;
   limit?: number | null;
+};
+/** Raw HTTP body of `POST .../karaoke/sessions` (snake_case, server contract). */
+export type KaraokeSessionCreateApiResponse = {
+  id: string;
+  object: "karaoke_session";
+  attempt: string;
+  protocol_version: number;
+  websocket_url: string;
+  token_expires_at: number;
+  session_expires_at: number;
+  scoring_policy: unknown;
 };

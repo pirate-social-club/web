@@ -1,0 +1,84 @@
+.karaoke-lyric-stage {
+  --karaoke-line-gap: 5rem;
+  position: relative;
+  min-height: 24rem;
+  overflow: hidden;
+}
+
+.karaoke-lyric-stage__slot {
+  position: absolute;
+  left: 50%;
+  width: 100%;
+  max-inline-size: 56rem;
+  padding-inline: 1rem;
+  pointer-events: none;
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.karaoke-lyric-stage__slot--active,
+.karaoke-lyric-stage__slot--cue {
+  top: 54%;
+}
+
+.karaoke-lyric-stage__slot--next {
+  top: calc(54% + var(--karaoke-line-gap));
+}
+
+.karaoke-lyric-stage__line {
+  margin: 0 auto;
+  max-inline-size: 48rem;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.karaoke-lyric-stage__line--cue,
+.karaoke-lyric-stage__line--next {
+  color: var(--muted-foreground);
+}
+
+.karaoke-lyric-stage__line--next {
+  opacity: 0.82;
+}
+
+.karaoke-lyric-stage__token {
+  position: relative;
+  display: inline-block;
+  color: var(--foreground);
+  unicode-bidi: isolate;
+  white-space: pre-wrap;
+}
+
+.karaoke-lyric-stage__line[data-line-mode="active"] .karaoke-lyric-stage__token[data-token-state="complete"] {
+  color: var(--warning);
+}
+
+.karaoke-lyric-stage__line[data-line-mode="next"] .karaoke-lyric-stage__token {
+  color: var(--muted-foreground);
+}
+
+.karaoke-lyric-stage__token-fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--karaoke-token-fill, 0%);
+  overflow: hidden;
+  color: var(--warning);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .karaoke-lyric-stage {
+    --karaoke-line-gap: 4rem;
+    min-height: 20rem;
+  }
+
+  .karaoke-lyric-stage__slot {
+    padding-inline: 0.75rem;
+  }
+}

@@ -195,6 +195,10 @@ describe("KaraokeAudioSurface", () => {
 
     act(() => setStatus("active"));
     await waitFor(() => expect(played).toBe(true));
+    // Flush the setIsPlaying(true) state update and the useEffect that registers
+    // the beforeunload/popstate listeners — play() sets `played` synchronously
+    // before the async continuation, so waitFor may resolve before that effect runs.
+    await act(async () => {});
 
     return audio as HTMLAudioElement;
   }

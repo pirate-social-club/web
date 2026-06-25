@@ -126,10 +126,11 @@ export function runFakeKaraokeTransport(input: {
         words: sttEvent.words,
       });
       serverSequence += 1;
-      sessionEvent = {
-        type: sttEvent.type,
-        words: sttEvent.words,
-      };
+      // For stt_final, pass deliveredAtAudioMs as coverageMs so the reducer can
+      // advance the watermark without a full commit/ack cycle (test-harness only).
+      sessionEvent = sttEvent.type === "stt_final"
+        ? { type: "stt_final", words: sttEvent.words, coverageMs: sttEvent.deliveredAtAudioMs }
+        : { type: sttEvent.type, words: sttEvent.words };
     } else {
       const translated = toSessionEvent(state, inputEvent.event);
       if (!translated) {

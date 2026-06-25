@@ -486,13 +486,18 @@ export function reduceKaraokeSession(
           state: dueAcked.state,
         };
       }
-      // Uncorrelated current-stream final (no commit metadata): merge words only.
+      // Uncorrelated current-stream final (no commit metadata): merge words and
+      // optionally advance the watermark from coverageMs (e.g. deliveredAtAudioMs
+      // passed by the test harness to simulate coverage without a commit cycle).
       const merged: KaraokeSessionState = {
         ...state,
         recognizedWords: mergeRecognizedWords(
           state.recognizedWords,
           event.words.map((word) => ({ ...word, final: true })),
         ),
+        sttWatermarkMs: event.coverageMs != null
+          ? Math.max(state.sttWatermarkMs, event.coverageMs)
+          : state.sttWatermarkMs,
       };
       const due = finalizeDueLines(merged, merged.currentTimeMs, "asr_final");
       return {

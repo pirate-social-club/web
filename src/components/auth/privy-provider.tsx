@@ -207,7 +207,11 @@ export function PirateAuthProvider({
     loginMethods: ["wallet", "email", "google", "twitter", "passkey"],
     embeddedWallets: {
       ethereum: {
-        createOnLogin: "off",
+        // Email-first onboarding: every authenticated user should have a wallet-backed identity
+        // (profile/ENS/XMTP/creator/royalties/sponsored-tx) without needing an external wallet.
+        // Auto-create an embedded EVM wallet for users without one on login; already-authenticated
+        // wallet-less users are covered by EmbeddedWalletProvisioner.
+        createOnLogin: "users-without-wallets",
       },
       showWalletUIs: false,
     },

@@ -34,6 +34,10 @@ type UseMigrateWalletsResult = {
   migrate: () => Promise<void>;
 };
 
+type UseCreateWalletResult = {
+  createWallet: () => Promise<unknown>;
+};
+
 // TODO(auth, 2026-07-31): SSR compatibility shim owned by Web Auth.
 // Remove when Privy SSR-safe imports are isolated behind the app auth boundary.
 export function PrivyProvider({ children }: PrivyProviderProps) {
@@ -77,5 +81,11 @@ export function useIdentityToken(): UseIdentityTokenResult {
 export function useMigrateWallets(): UseMigrateWalletsResult {
   return {
     migrate: async () => {},
+  };
+}
+
+export function useCreateWallet(): UseCreateWalletResult {
+  return {
+    createWallet: async () => undefined,
   };
 }

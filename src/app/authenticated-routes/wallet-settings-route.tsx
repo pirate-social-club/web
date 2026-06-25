@@ -16,9 +16,12 @@ import { mainnet, optimism, optimismSepolia, sepolia } from "viem/chains";
 
 import { logger } from "@/lib/logger";
 import { fetchCachedPrices } from "@/lib/price-cache";
+import { useCreateWallet } from "@privy-io/react-auth";
 import { WalletHub } from "@/components/compositions/wallet/wallet-hub/wallet-hub";
 import { IdentityWalletSection } from "@/components/compositions/wallet/identity-wallet-section/identity-wallet-section";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
+import { Button } from "@/components/primitives/button";
+import { Card } from "@/components/primitives/card";
 import { toast } from "@/components/primitives/sonner";
 import type { WalletHubChainId, WalletHubChainSection } from "@/components/compositions/wallet/wallet-hub/wallet-hub.types";
 import { getPirateNetworkConfig } from "@/lib/network-config";
@@ -266,7 +269,7 @@ function buildWalletHubChainSections({
 export function CurrentUserWalletPage() {
   const api = useApi();
   const session = useSession();
-  const { configured: privyConfigured } = usePiratePrivyRuntime();
+  const { configured: privyConfigured, connect } = usePiratePrivyRuntime();
   const { connectedWallets, walletsReady } = usePiratePrivyWallets();
   const profile = session?.profile ?? null;
   const walletAttachments = session?.walletAttachments ?? [];
@@ -314,6 +317,37 @@ export function CurrentUserWalletPage() {
     : null;
   const walletAddress = normalizedWalletAddress ?? temporaryReceiveAddress;
   const walletActionsPending = Boolean(session) && privyConfigured && !walletAddress && !walletsReady;
+
+  // Embedded-wallet provisioning UX: while an authenticated user has no usable wallet, show a
+  // "Preparing…" state (the EmbeddedWalletProvisioner is creating one). Only after a grace
+  // window with still no wallet do we surface the explicit no-wallet recovery affordances.
+  const PROVISION_GRACE_MS = 12_000;
+  const needsWallet = Boolean(session) && privyConfigured && !walletAddress;
+  const [provisionGraceElapsed, setProvisionGraceElapsed] = React.useState(false);
+  const { createWallet: createEmbeddedWallet } = useCreateWallet();
+  const [manualProvisionPending, setManualProvisionPending] = React.useState(false);
+  React.useEffect(() => {
+    if (!needsWallet) {
+      setProvisionGraceElapsed(false);
+      return;
+    }
+    const timeoutId = window.setTimeout(() => setProvisionGraceElapsed(true), PROVISION_GRACE_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [needsWallet]);
+  const isPreparingWallet = needsWallet && !provisionGraceElapsed;
+  const isWalletUnavailable = needsWallet && provisionGraceElapsed;
+  const handleCreateEmbeddedWallet = React.useCallback(async () => {
+    setManualProvisionPending(true);
+    try {
+      await createEmbeddedWallet();
+      setProvisionGraceElapsed(false);
+    } catch (error) {
+      logger.warn("[wallet] manual embedded wallet creation failed", error);
+      toast.error("Could not create your wallet. Try again.");
+    } finally {
+      setManualProvisionPending(false);
+    }
+  }, [createEmbeddedWallet]);
 
   React.useEffect(() => {
     if (!normalizedWalletAddress) {
@@ -463,6 +497,42 @@ export function CurrentUserWalletPage() {
 
   return (
     <StandardRoutePage size="rail">
+      {isPreparingWallet ? (
+        <Card className="p-5">
+          <p className="text-base font-medium text-foreground">Preparing your Pirate wallet…</p>
+          <p className="mt-1 text-base text-muted-foreground">
+            This only takes a moment. Your wallet powers your profile, messaging, and payments.
+          </p>
+        </Card>
+      ) : null}
+      {isWalletUnavailable ? (
+        <Card className="space-y-3 p-5">
+          <div className="space-y-1">
+            <p className="text-base font-medium text-foreground">No wallet available</p>
+            <p className="text-base text-muted-foreground">
+              We couldn’t finish setting up your Pirate wallet. Create one now, or connect an
+              external wallet instead.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={manualProvisionPending}
+              onClick={() => { void handleCreateEmbeddedWallet(); }}
+              size="sm"
+            >
+              Create wallet
+            </Button>
+            <Button
+              disabled={!connect}
+              onClick={() => connect?.()}
+              size="sm"
+              variant="outline"
+            >
+              Connect external wallet
+            </Button>
+          </div>
+        </Card>
+      ) : null}
       <WalletHub
         chainSections={chainSections}
         claimLoading={claimLoading}

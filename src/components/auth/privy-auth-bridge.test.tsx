@@ -70,6 +70,7 @@ mock.module("@privy-io/react-auth", () => ({
   useAuthorizationSignature: () => ({
     generateAuthorizationSignature: async () => ({ signature: "signature" }),
   }),
+  useCreateWallet: () => ({ createWallet: async () => undefined }),
   useMigrateWallets: () => ({ migrate: async () => undefined }),
   useModalStatus: () => ({ isOpen: false }),
   usePrivy: () => ({

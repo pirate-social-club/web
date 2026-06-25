@@ -46,6 +46,11 @@ export function buildContentSecurityPolicy(nonce: string): string {
       "https://api.pirate",
       "https://api.pirate.sc",
       "https://api-staging.pirate.sc",
+      // Karaoke scoring uses a WebSocket to the same API hosts; wss:// must be
+      // listed explicitly (an https:// source does not authorize wss://).
+      "wss://api.pirate",
+      "wss://api.pirate.sc",
+      "wss://api-staging.pirate.sc",
       "https://assistant.pirate.sc",
       "https://assistant-staging.pirate.sc",
       "https://*.agora.io",

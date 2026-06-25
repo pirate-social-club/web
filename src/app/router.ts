@@ -28,6 +28,7 @@ export type AppRoute =
   | { kind: "community"; path: string; communityId: string; isImportedRoot?: boolean }
   | { kind: "create-community"; path: "/communities/new" }
   | { kind: "post"; path: string; postId: string }
+  | { kind: "post-karaoke"; path: string; postId: string }
   | { kind: "live-room"; path: string; postId: string }
   | { kind: "crosspost"; path: string; postId: string }
   | { kind: "inbox"; path: "/inbox" }
@@ -54,6 +55,19 @@ let cachedPathname = "/";
 let cachedHostname = "";
 let cachedRoute: AppRoute = HOME_ROUTE;
 let cachedImportedRootCommunityId: string | null = null;
+
+type NavigationGuard = (navigation: { currentHref: string; nextHref: string }) => boolean;
+const navigationGuards = new Set<NavigationGuard>();
+
+export function addNavigationGuard(guard: NavigationGuard): () => void {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+  navigationGuards.add(guard);
+  return () => {
+    navigationGuards.delete(guard);
+  };
+}
 
 export function isNativePublicIdentityRoute(route: AppRoute): boolean {
   return (
@@ -255,6 +269,14 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
     };
   }
 
+  if (segments.length === 3 && segments[0] === "p" && segments[2] === "karaoke") {
+    return {
+      kind: "post-karaoke",
+      path: normalized,
+      postId: decodeURIComponent(segments[1]),
+    };
+  }
+
   if (segments.length === 2 && segments[0] === "p") {
     return {
       kind: "post",
@@ -420,6 +442,14 @@ export function navigate(path: string): void {
   const currentHref = `${currentPath}${window.location.search}${window.location.hash}`;
 
   if (currentHref === nextHref) return;
+
+  // Honor registered guards (e.g. "leave while karaoke is playing?"). A guard
+  // returning false vetoes the navigation.
+  for (const guard of navigationGuards) {
+    if (!guard({ currentHref, nextHref })) {
+      return;
+    }
+  }
 
   window.history.pushState({}, "", nextHref);
   if (nextPath !== currentPath) {

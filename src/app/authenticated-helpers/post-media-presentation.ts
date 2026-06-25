@@ -553,6 +553,7 @@ export function toSongPostContent(
     }) : undefined,
     stems: downloadableStems.length ? downloadableStems : undefined,
     entitledStems: downloadableStems.map((stem) => stem.kind),
+    karaokeHref: `/p/${encodeURIComponent(post.id)}/karaoke`,
     onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,
     onPlay: playbackDescriptor && playback ? () => void playback.playTrack(playbackDescriptor) : undefined,
     onSeek: playbackDescriptor && playback ? (progressMs) => void playback.seekTrack(playbackDescriptor, progressMs) : undefined,

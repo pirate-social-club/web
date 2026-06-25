@@ -353,6 +353,30 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
   if (ui.ageGateRequiresProof) return null;
 
   const rows: React.ReactNode[] = [];
+
+  if (content.karaokeHref) {
+    rows.push(
+      <SongOfferRow
+        action={(
+          <Button
+            asChild
+            className="h-10 w-32 px-5"
+            data-post-card-interactive="true"
+            size="sm"
+          >
+            <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
+              <MicrophoneStage className="size-4" />
+              <span>Sing</span>
+            </a>
+          </Button>
+        )}
+        icon={<MicrophoneStage className="size-5" />}
+        key="karaoke"
+        label="Karaoke"
+      />,
+    );
+  }
+
   const isOwned = content.hasEntitlement === true;
   const isLocked = content.accessMode === "locked";
   const isListedActive = content.listingMode === "listed" && content.listingStatus === "active";

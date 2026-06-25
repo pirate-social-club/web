@@ -563,6 +563,26 @@ export type ApiCommunityAssistantPolicyUpdate = Partial<{
   includeInSovereignExport: boolean;
 }>;
 
+export type ApiCommunityKaraokePolicy = {
+  community_id: string;
+  karaoke_enabled: boolean;
+  karaoke_scoring_enabled: boolean;
+  karaoke_stt_provider: "assistant" | "elevenlabs" | "mistral" | "none" | "openai";
+  karaoke_stt_model: string | null;
+  karaoke_voice_coach_enabled: boolean;
+  karaoke_audio_retention: "not_stored";
+  updated_at: string | null;
+};
+
+export type ApiCommunityKaraokePolicyUpdate = Partial<{
+  karaoke_enabled: boolean;
+  karaoke_scoring_enabled: boolean;
+  karaoke_stt_provider: "assistant" | "elevenlabs" | "mistral" | "none" | "openai";
+  karaoke_stt_model: string | null;
+  karaoke_voice_coach_enabled: boolean;
+  karaoke_audio_retention: "not_stored";
+}>;
+
 export type ApiCommunityAssistantCredentialProvider = "openrouter" | "elevenlabs";
 
 export type ApiCommunityAssistantCredentialResponse =
@@ -696,4 +716,15 @@ export type HandleUpgradeQuoteResponse = {
 export type NotificationFeedOptions = {
   cursor?: string | null;
   limit?: number | null;
+};
+
+export type KaraokeSessionCreateApiResponse = {
+  id: string;
+  object: "karaoke_session";
+  attempt: string;
+  protocol_version: number;
+  websocket_url: string;
+  token_expires_at: number;
+  session_expires_at: number;
+  scoring_policy: unknown;
 };

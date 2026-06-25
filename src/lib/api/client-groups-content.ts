@@ -14,6 +14,7 @@ import type {
   SongArtifactBundle,
   SongArtifactBundleListResponse,
   SongArtifactUpload,
+  SongKaraokePayload,
 } from "@pirate/api-contracts";
 
 import type {
@@ -24,6 +25,7 @@ import type {
   ApiSongArtifactUploadContentRequest,
   ApiSongArtifactUploadPartSignedUrlResponse,
   CommunityListCommentsOptions,
+  KaraokeSessionCreateApiResponse,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
@@ -70,6 +72,16 @@ export function createPostsApi(request: ApiRequest) {
       request<LocalizedPostResponse>(
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/event-status`,
         { method: "POST", body: JSON.stringify({ status: "canceled" }) },
+      ),
+    createKaraokeSession: (
+      communityId: string,
+      postId: string,
+      idempotencyKey: string,
+      signal?: AbortSignal,
+    ): Promise<KaraokeSessionCreateApiResponse> =>
+      request<KaraokeSessionCreateApiResponse>(
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/karaoke/sessions`,
+        { method: "POST", headers: { "Idempotency-Key": idempotencyKey }, signal },
       ),
   };
 }
@@ -128,6 +140,17 @@ export function createCommentsApi(request: ApiRequest) {
 
 export function createCommunityContentApi(request: ApiRequest) {
   return {
+    getPostKaraoke: (
+      communityId: string,
+      postId: string,
+      opts?: { locale?: string | null },
+    ): Promise<SongKaraokePayload> =>
+      request<SongKaraokePayload>(
+        buildQueryPath(`/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/karaoke`, {
+          locale: opts?.locale,
+        }),
+        { tokenOptional: true },
+      ),
     createPost: (
       communityId: string,
       body: CreatePostRequest,

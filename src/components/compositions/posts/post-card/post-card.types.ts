@@ -193,6 +193,8 @@ export interface SongContentSpec {
   stems?: StemSpec[];
   entitledStems?: StemKind[];
   storageProofs?: SongStorageProofs;
+  // Link to the karaoke ("Sing") surface for this song, when available.
+  karaokeHref?: string;
 
   // Callbacks
   onPlay?: () => void;

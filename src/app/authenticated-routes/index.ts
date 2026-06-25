@@ -5,6 +5,7 @@ export { CreateCommunityPage } from "./create-community-route";
 export { CreatePostPage } from "./create-post-route";
 export { HomePage, YourCommunitiesPage } from "./home-routes";
 export { InboxPlaceholderPage } from "./inbox-route";
+export { KaraokeRoutePage } from "./karaoke-route";
 export { LiveRoomRoutePage } from "./live-room-route";
 export { CommunityModerationIndexPage, CommunityModerationPage } from "./moderation-route";
 export { CreatePostGlobalPage, NotFoundPage } from "./misc-routes";

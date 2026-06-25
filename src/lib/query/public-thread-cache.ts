@@ -22,6 +22,7 @@ function communityPreviewFromHomeFeedItem(item: HomeFeedItem): CommunityPreview 
   return {
     id: item.community.id,
     object: "community_preview",
+    karaoke_enabled: false,
     route_slug: item.community.route_slug ?? null,
     display_name: item.community.display_name,
     description: null,

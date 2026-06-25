@@ -72,6 +72,10 @@ const LazyLiveRoomRoutePage = lazyRouteModule(
   () => import("./authenticated-routes/live-room-route"),
   "LiveRoomRoutePage",
 );
+const LazyKaraokeRoutePage = lazyRouteModule(
+  () => import("./authenticated-routes/karaoke-route"),
+  "KaraokeRoutePage",
+);
 const LazyInboxPlaceholderPage = lazyRouteModule(
   () => import("./authenticated-routes/inbox-route"),
   "InboxPlaceholderPage",
@@ -79,6 +83,10 @@ const LazyInboxPlaceholderPage = lazyRouteModule(
 const LazyAdvertisePage = lazyRouteModule(
   () => import("./authenticated-routes/misc-routes"),
   "AdvertisePage",
+);
+const LazySearchPage = lazyRouteModule(
+  () => import("./authenticated-routes/search-route"),
+  "SearchPage",
 );
 const LazyChatPage = lazyRouteModule(
   () => import("./chat/chat-route"),
@@ -108,6 +116,10 @@ const LazyAuthorizeDevicePage = lazyRouteModule(
   () => import("./authenticated-routes/authorize-device-route"),
   "AuthorizeDevicePage",
 );
+const LazyTelegramLinkExistingRoutePage = lazyRouteModule(
+  () => import("./telegram-link-existing/telegram-link-existing-route"),
+  "TelegramLinkExistingRoutePage",
+);
 const LazyNotFoundPage = lazyRouteModule(
   () => import("./authenticated-routes/misc-routes"),
   "NotFoundPage",
@@ -134,6 +146,8 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <HomePage />;
     case "popular":
       return <HomePage initialSort="best" />;
+    case "search":
+      return <LazySearchPage />;
     case "your-communities":
       return <LazyYourCommunitiesPage />;
     case "create-post-global":
@@ -156,6 +170,8 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyPostPage postId={route.postId} />;
     case "live-room":
       return <LazyLiveRoomRoutePage postId={route.postId} />;
+    case "post-karaoke":
+      return <LazyKaraokeRoutePage postId={route.postId} />;
     case "crosspost":
       return <LazyCrosspostPage postId={route.postId} />;
     case "inbox":
@@ -182,6 +198,8 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyOnboardingPage />;
     case "authorize-device":
       return <LazyAuthorizeDevicePage />;
+    case "telegram-link-existing":
+      return <LazyTelegramLinkExistingRoutePage />;
     case "not-found":
       return <LazyNotFoundPage path={route.path} />;
     case "public-profile":

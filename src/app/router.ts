@@ -15,6 +15,7 @@ import { extractPublicProfileHost } from "@/lib/public-host";
 export type AppRoute =
   | { kind: "home"; path: "/" }
   | { kind: "popular"; path: "/popular" }
+  | { kind: "search"; path: "/search" }
   | { kind: "public-profile"; path: string; handleLabel: string; hostSuffix?: string | null }
   | { kind: "public-agent"; path: string; handleLabel: string; hostSuffix?: string | null }
   | { kind: "your-communities"; path: "/your-communities" }
@@ -29,6 +30,7 @@ export type AppRoute =
   | { kind: "create-community"; path: "/communities/new" }
   | { kind: "post"; path: string; postId: string }
   | { kind: "live-room"; path: string; postId: string }
+  | { kind: "post-karaoke"; path: string; postId: string }
   | { kind: "crosspost"; path: string; postId: string }
   | { kind: "inbox"; path: "/inbox" }
   | { kind: "chat"; path: "/chat" }
@@ -42,18 +44,56 @@ export type AppRoute =
   | { kind: "telegram-mini-app"; path: "/tg" }
   | { kind: "telegram-exchange"; path: "/tg/exchange" }
   | { kind: "telegram-self-return"; path: string; communityId?: string | null }
+  | { kind: "telegram-link-existing"; path: "/tg/link-existing" }
   | { kind: "telegram-join"; path: string; communityId: string }
   | { kind: "telegram-verify"; path: string; communityId: string }
   | { kind: "telegram-community"; path: string; communityId: string }
   | { kind: "telegram-post"; path: string; postId: string }
   | { kind: "not-found"; path: string };
 
-const NAVIGATION_EVENT = "pirate:navigate";
+export const NAVIGATION_EVENT = "pirate:navigate";
 const HOME_ROUTE: AppRoute = { kind: "home", path: "/" };
 let cachedPathname = "/";
 let cachedHostname = "";
 let cachedRoute: AppRoute = HOME_ROUTE;
 let cachedImportedRootCommunityId: string | null = null;
+
+type NavigationGuard = (navigation: { currentHref: string; nextHref: string }) => boolean;
+const navigationGuards = new Set<NavigationGuard>();
+
+/**
+ * Registers a synchronous guard for Pirate SPA navigations.
+ *
+ * Return true to allow navigation and false to block it. Guards run for
+ * navigate() and replaceRoute() only; async dialogs/promises are not supported.
+ * Browser back/forward, beforeunload, and normal anchor navigations need their
+ * own listeners. Same-href navigations bypass guards. The first false blocks
+ * the navigation and later guards do not run. Guard side effects happen
+ * immediately, so avoid multi-guard side effects unless they are safe when a
+ * later guard blocks. Call the returned cleanup from the same client-side effect
+ * that registered the guard.
+ */
+export function addNavigationGuard(guard: NavigationGuard): () => void {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  navigationGuards.add(guard);
+
+  return () => {
+    navigationGuards.delete(guard);
+  };
+}
+
+function canLeaveCurrentRoute(navigation: { currentHref: string; nextHref: string }): boolean {
+  for (const guard of Array.from(navigationGuards)) {
+    if (!guard(navigation)) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 export function isNativePublicIdentityRoute(route: AppRoute): boolean {
   return (
@@ -86,6 +126,10 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
 
   if (normalized === "/popular") {
     return { kind: "popular", path: "/popular" };
+  }
+
+  if (normalized === "/search") {
+    return { kind: "search", path: "/search" };
   }
 
   if (normalized === "/your-communities") {
@@ -142,6 +186,10 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
 
   if (normalized === "/tg/self-return") {
     return { kind: "telegram-self-return", path: "/tg/self-return" };
+  }
+
+  if (normalized === "/tg/link-existing") {
+    return { kind: "telegram-link-existing", path: "/tg/link-existing" };
   }
 
   if (normalized === "/submit") {
@@ -250,6 +298,14 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   if (segments.length === 3 && segments[0] === "p" && segments[2] === "live") {
     return {
       kind: "live-room",
+      path: normalized,
+      postId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  if (segments.length === 3 && segments[0] === "p" && segments[2] === "karaoke") {
+    return {
+      kind: "post-karaoke",
       path: normalized,
       postId: decodeURIComponent(segments[1]),
     };
@@ -420,6 +476,7 @@ export function navigate(path: string): void {
   const currentHref = `${currentPath}${window.location.search}${window.location.hash}`;
 
   if (currentHref === nextHref) return;
+  if (!canLeaveCurrentRoute({ currentHref, nextHref })) return;
 
   window.history.pushState({}, "", nextHref);
   if (nextPath !== currentPath) {
@@ -436,6 +493,7 @@ export function replaceRoute(path: string): void {
   const currentHref = `${currentPath}${window.location.search}${window.location.hash}`;
 
   if (currentHref === nextHref) return;
+  if (!canLeaveCurrentRoute({ currentHref, nextHref })) return;
 
   window.history.replaceState({}, "", nextHref);
   window.dispatchEvent(new Event(NAVIGATION_EVENT));

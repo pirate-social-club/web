@@ -116,6 +116,20 @@ describe("toHomeFeedItem", () => {
     expect(item.post.byline?.community?.label).toBe("c/alpha");
     expect(item.post.engagement?.commentCount).toBe(5);
     expect(item.post.engagement?.score).toBe(9);
+    expect(item.post.engagement?.viewerVote).toBe("up");
+  });
+
+  test("maps server viewer votes into post card engagement state", () => {
+    const upvoted = createEntry();
+    upvoted.post.viewer_vote = 1;
+    const downvoted = createEntry();
+    downvoted.post.viewer_vote = -1;
+    const unvoted = createEntry();
+    unvoted.post.viewer_vote = null;
+
+    expect(toHomeFeedItem(upvoted, {}).post.engagement?.viewerVote).toBe("up");
+    expect(toHomeFeedItem(downvoted, {}).post.engagement?.viewerVote).toBe("down");
+    expect(toHomeFeedItem(unvoted, {}).post.engagement?.viewerVote).toBeNull();
   });
 
   test("links home feed community bylines directly to canonical punycode routes", () => {

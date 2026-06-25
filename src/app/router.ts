@@ -49,7 +49,7 @@ export type AppRoute =
   | { kind: "telegram-post"; path: string; postId: string }
   | { kind: "not-found"; path: string };
 
-const NAVIGATION_EVENT = "pirate:navigate";
+export const NAVIGATION_EVENT = "pirate:navigate";
 const HOME_ROUTE: AppRoute = { kind: "home", path: "/" };
 let cachedPathname = "/";
 let cachedHostname = "";

@@ -1,0 +1,4 @@
+# Karaoke runtime is a shared contract consumed by `web` and `api`.
+# Contract changes (public exports, KaraokeSessionSummary, KARAOKE_SCORING_VERSION)
+# require owner review. See docs/repo/karaoke-runtime-package-publishing.md.
+/packages/karaoke-runtime/                    @technohippi3

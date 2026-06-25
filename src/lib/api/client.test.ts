@@ -16,6 +16,46 @@ function makeTestFile(name: string, type: string): File {
 }
 
 describe("ApiClient geo", () => {
+  test("searches Pirate globally without requiring a session token", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        object: "search_results",
+        query: "blackbeard",
+        suggestions: [],
+        data: [],
+        has_more: false,
+        next_cursor: null,
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.search.pirate({
+        query: "blackbeard",
+        limit: 8,
+        cursor: "cursor_1",
+        kinds: ["profile", "post"],
+      });
+
+      const capturedRequest = requireRequest(request);
+      const url = new URL(capturedRequest.url);
+      expect(url.pathname).toBe("/search");
+      expect(url.searchParams.get("q")).toBe("blackbeard");
+      expect(url.searchParams.get("limit")).toBe("8");
+      expect(url.searchParams.get("cursor")).toBe("cursor_1");
+      expect(url.searchParams.get("kinds")).toBe("profile,post");
+      expect(capturedRequest.headers.get("authorization")).toBeNull();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("sends authenticated place searches with country and bias params", async () => {
     let request: Request | null = null;
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -742,6 +782,38 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("loads the strict authenticated home feed without optional anonymous replay", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      return Response.json({
+        code: "auth_error",
+        message: "Authentication failed",
+        retryable: false,
+      }, { status: 401 });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "stale-session-token",
+      });
+      client.setRefreshAuthCallback(async () => false);
+
+      await expect(client.feed.homeAuthenticated({ locale: "en" })).rejects.toMatchObject({
+        code: "auth_error",
+        status: 401,
+      });
+
+      expect(requests).toHaveLength(1);
+      expect(requests[0]?.headers.get("authorization")).toBe("Bearer stale-session-token");
+      expect(requests[0]?.url).toBe("http://pirate.test/feed/home?locale=en");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("falls back to anonymous home feed when an optional token is rejected", async () => {
     const requests: Request[] = [];
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -1177,6 +1249,36 @@ describe("ApiClient media uploads", () => {
       expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/song-artifacts?q=Live&limit=10");
       expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
       expect(response.items[0]?.id).toBe("sab_song_bundle");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("requires an auth header for karaoke payload reads", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        object: "song_karaoke_payload",
+        title: "Karaoke",
+        instrumental_audio_url: "https://cdn.example.test/instrumental.mp3",
+        karaoke_lines: [],
+        raw_lines: [],
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.getPostKaraoke("cmt_test", "post_pst_test", { locale: "en" });
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("GET");
+      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/posts/post_pst_test/karaoke?locale=en");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
     } finally {
       globalThis.fetch = originalFetch;
     }

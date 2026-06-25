@@ -61,7 +61,7 @@ describe("PostCard", () => {
     expect(open).toHaveBeenCalledWith("https://genius.com/34172986", "_blank", "noopener,noreferrer");
   });
 
-  test("does not render locked video commerce in the engagement bar", () => {
+  test("renders locked video commerce as an unlock button in the engagement bar", () => {
     const video: VideoContentSpec = {
       type: "video",
       accessMode: "locked",
@@ -83,8 +83,7 @@ describe("PostCard", () => {
       />,
     );
 
-    expect(markup).not.toContain("$4.99");
-    expect(markup).not.toContain(">Buy<");
+    expect(markup).toContain("$4.99");
   });
 
   test("keeps song annotations in post options without duplicating visible download rows", () => {
@@ -120,9 +119,11 @@ describe("PostCard", () => {
       "Report",
       "View on Genius",
       "View on IPFS",
+      "Copy IPFS CID",
     ]);
     expect(mergedItems.map((item) => Boolean(item.separatorBefore))).toEqual([
       false,
+      true,
       true,
       false,
       false,

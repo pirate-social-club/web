@@ -145,4 +145,21 @@ describe("PostCardMedia", () => {
     expect(markup).toContain("sm:max-w-[72ch]");
     expect(markup).toContain("[word-break:break-all]");
   });
+
+  test("uses commentary typography when the post has a title", () => {
+    const markupWithTitle = renderToStaticMarkup(
+      <PostCardMedia
+        content={{ type: "text", body: "Some commentary text" }}
+        hasPostTitle
+      />,
+    );
+    const markupWithoutTitle = renderToStaticMarkup(
+      <PostCardMedia content={{ type: "text", body: "Some body text" }} />,
+    );
+
+    expect(markupWithTitle).toContain("text-[0.9375rem]");
+    expect(markupWithTitle).toContain("text-muted-foreground");
+    expect(markupWithoutTitle).not.toContain("text-[0.9375rem]");
+    expect(markupWithoutTitle).not.toContain("text-muted-foreground");
+  });
 });

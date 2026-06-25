@@ -157,7 +157,7 @@ function QueuePostPreview({
           {preview.title}
         </Type>
       ) : null}
-      <PostCardMedia content={content} />
+      <PostCardMedia content={content} hasPostTitle={Boolean(preview.title)} />
     </div>
   );
 }

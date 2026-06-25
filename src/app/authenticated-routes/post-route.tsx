@@ -13,10 +13,12 @@ import { CommunitySidebar } from "@/components/compositions/community/sidebar/co
 import { PostEventStoreLink } from "@/components/compositions/posts/post-event-store-link";
 import { PostThread } from "@/components/compositions/posts/post-thread/post-thread";
 import { LiveRoomViewerModal } from "@/components/compositions/posts/live-room-viewer/live-room-viewer-modal";
+import type { PostThreadReplyIdentity } from "@/components/compositions/posts/post-thread/post-thread.types";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { ResponsiveOptionSelect } from "@/components/compositions/system/responsive-option-select/responsive-option-select";
 import { IconButton } from "@/components/primitives/icon-button";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { buildAnonymousLabel } from "@/lib/anonymous-label";
 import { useApi } from "@/lib/api";
 import { resolveApiBaseUrl } from "@/lib/api/base-url";
 import { buildCommunityPath } from "@/lib/community-routing";
@@ -31,6 +33,7 @@ import { toThreadPostCard, shouldShowOriginalPost } from "@/app/authenticated-he
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { getErrorMessage } from "@/lib/error-utils";
+import { getProfileHandleLabel } from "@/lib/profile-routing";
 import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
 import { useSongCommerceState, useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
@@ -900,6 +903,26 @@ export function PostPage({
     { label: copy.common.newTab, value: "new" as const },
     { label: copy.common.topTab, value: "top" as const },
   ];
+  const publicReplyLabel = session?.profile ? getProfileHandleLabel(session.profile) : "Public";
+  const replyAnonymousScope: "community_stable" | "thread_stable" = community?.anonymous_identity_scope === "community_stable"
+    ? "community_stable"
+    : "thread_stable";
+  const replyAnonymousLabel = session?.user?.id && community?.id
+    ? buildAnonymousLabel({
+        communityId: community.id,
+        entityId: post.post.id,
+        scope: replyAnonymousScope,
+        userId: session.user.id,
+      })
+    : "Anonymous";
+  const replyIdentity: PostThreadReplyIdentity | undefined = session
+    ? {
+        allowAnonymousIdentity: community?.allow_anonymous_identity === true,
+        anonymousLabel: replyAnonymousLabel,
+        anonymousScope: replyAnonymousScope,
+        publicLabel: publicReplyLabel,
+      }
+    : undefined;
   const mobileCommentSortAction = (
     <ResponsiveOptionSelect
       ariaLabel="Sort comments"
@@ -977,6 +1000,7 @@ export function PostPage({
           onRootReplySubmit={createTopLevelComment}
           post={localizedPostCard}
           postOriginal={originalPostCard}
+          replyIdentity={replyIdentity}
           comments={comments}
           rootReplyActionLabel={copy.common.replyAction}
           rootReplyCancelLabel={copy.common.cancelReply}

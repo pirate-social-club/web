@@ -114,6 +114,9 @@ function createLinkPost(overrides: Partial<LocalizedPostResponse["post"]> = {}):
 
 function createSongPost(overrides: Partial<LocalizedPostResponse["post"]> = {}): LocalizedPostResponse {
   return {
+    community: {
+      karaoke_enabled: true,
+    },
     post: {
       access_mode: "public",
       age_gate_policy: "none",
@@ -149,6 +152,50 @@ function createSongPost(overrides: Partial<LocalizedPostResponse["post"]> = {}):
     resolved_locale: "en",
     song_presentation: null,
     source_hash: "src_song",
+    thread_snapshot: null,
+    translated_body: null,
+    translated_caption: null,
+    translated_title: null,
+    translation_state: "same_language",
+    upvote_count: 0,
+    viewer_reaction_kinds: [],
+    viewer_vote: null,
+  } as unknown as LocalizedPostResponse;
+}
+
+function createVideoPost(overrides: Partial<LocalizedPostResponse["post"]> = {}): LocalizedPostResponse {
+  return {
+    post: {
+      access_mode: "public",
+      age_gate_policy: "none",
+      analysis_state: "allow",
+      anonymous_label: null,
+      anonymous_scope: null,
+      asset: null,
+      author_user: "usr_video",
+      authorship_mode: "human_direct",
+      body: null,
+      caption: "New video.",
+      community: "cmt_video",
+      content_safety_state: "safe",
+      created: unixTimestamp("2026-05-16T09:00:00.000Z"),
+      disclosed_qualifiers_json: null,
+      id: "pst_video",
+      identity_mode: "public",
+      media_refs: [],
+      object: "post",
+      post_type: "video",
+      source_language: "en",
+      status: "published",
+      title: "Portrait video",
+      visibility: "public",
+      ...overrides,
+    },
+    downvote_count: 0,
+    like_count: 0,
+    machine_translated: false,
+    resolved_locale: "en",
+    source_hash: "src_video",
     thread_snapshot: null,
     translated_body: null,
     translated_caption: null,
@@ -367,6 +414,25 @@ describe("post presentation links", () => {
   });
 });
 
+describe("post presentation videos", () => {
+  test("maps persisted portrait poster dimensions into card aspect ratio", () => {
+    const content = toCommunityPostContent(createVideoPost({
+      media_refs: [{
+        storage_ref: "https://media.test/video.mp4",
+        mime_type: "video/mp4",
+        size_bytes: 12,
+        poster_ref: "https://media.test/poster.jpg",
+        poster_width: 720,
+        poster_height: 1280,
+      }],
+    } as unknown as Partial<LocalizedPostResponse["post"]>));
+
+    expect(content.type).toBe("video");
+    if (content.type !== "video") return;
+    expect(content.aspectRatio).toBe(9 / 16);
+  });
+});
+
 describe("post presentation songs", () => {
   test("maps song annotations URL into song card content", () => {
     const content = toCommunityPostContent(createSongPost());
@@ -530,6 +596,97 @@ describe("post presentation songs", () => {
       },
     ]);
     expect(content.entitledStems).toEqual(["instrumental", "vocals"]);
+  });
+
+  test("marks karaoke processing status visible for the song owner", () => {
+    const post = createSongPost();
+    post.song_presentation = {
+      instrumental_audio: {
+        storage_ref: "/public-communities/cmt_songs/song-artifact-uploads/sau_instrumental/content",
+      },
+      alignment_status: "processing",
+    } as NonNullable<LocalizedPostResponse["song_presentation"]>;
+
+    const content = toCommunityPostContent(post, { currentUserId: "usr_artist" });
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.karaoke).toEqual({ canKaraoke: false, status: "processing" });
+    expect(content.karaokeStatusVisible).toBe(true);
+  });
+
+  test("keeps karaoke processing status hidden for non-owner viewers", () => {
+    const post = createSongPost();
+    post.song_presentation = {
+      instrumental_audio: {
+        storage_ref: "/public-communities/cmt_songs/song-artifact-uploads/sau_instrumental/content",
+      },
+      alignment_status: "processing",
+    } as NonNullable<LocalizedPostResponse["song_presentation"]>;
+
+    const content = toCommunityPostContent(post, { currentUserId: "usr_listener" });
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.karaokeStatusVisible).toBe(false);
+  });
+
+  test("marks unavailable karaoke status visible for the song owner", () => {
+    const post = createSongPost();
+    post.song_presentation = {
+      instrumental_audio: {
+        storage_ref: "/public-communities/cmt_songs/song-artifact-uploads/sau_instrumental/content",
+      },
+      alignment_status: "completed",
+    } as NonNullable<LocalizedPostResponse["song_presentation"]>;
+
+    const content = toCommunityPostContent(post, { currentUserId: "usr_artist" });
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.karaoke).toEqual({ canKaraoke: false, status: "unavailable" });
+    expect(content.karaokeStatusLabel).toBe("Lyrics not available");
+    expect(content.karaokeStatusVisible).toBe(true);
+  });
+
+  test("marks ref-backed completed karaoke status ready for the song owner", () => {
+    const post = createSongPost();
+    post.song_presentation = {
+      instrumental_audio: {
+        storage_ref: "/public-communities/cmt_songs/song-artifact-uploads/sau_instrumental/content",
+      },
+      alignment_status: "completed",
+      timed_lyrics_ref: "r2://karaoke/pst_song.json",
+    } as NonNullable<LocalizedPostResponse["song_presentation"]>;
+
+    const content = toCommunityPostContent(post, { currentUserId: "usr_artist" });
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.karaoke).toEqual({ canKaraoke: true, status: "ready" });
+    expect(content.karaokeStatusLabel).toBeUndefined();
+    expect(content.karaokeStatusVisible).toBe(true);
+  });
+
+  test("hides karaoke capability and owner status when community karaoke is disabled", () => {
+    const post = createSongPost();
+    post.community = {
+      karaoke_enabled: false,
+    } as LocalizedPostResponse["community"];
+    post.song_presentation = {
+      instrumental_audio: {
+        storage_ref: "/public-communities/cmt_songs/song-artifact-uploads/sau_instrumental/content",
+      },
+      alignment_status: "completed",
+      timed_lyrics_ref: "r2://karaoke/pst_song.json",
+    } as NonNullable<LocalizedPostResponse["song_presentation"]>;
+
+    const content = toCommunityPostContent(post, { currentUserId: "usr_artist" });
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.karaoke).toBeUndefined();
+    expect(content.karaokeStatusVisible).toBe(false);
   });
 
   test("maps derivative source summaries into song card content", () => {

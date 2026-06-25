@@ -19,11 +19,16 @@ import "@vidstack/react/player/styles/default/layouts/video.css";
 import "./video-player.styles.css";
 
 import { cn } from "@/lib/utils";
+import {
+  getMediaAspectRatioStyle,
+  getVideoPreviewObjectFitClassName,
+} from "@/components/compositions/posts/video-preview-layout";
 
 export interface VideoPlayerProps {
   src: string;
   poster?: string;
   title?: string;
+  aspectRatio?: number;
   playsinline?: boolean;
   loop?: boolean;
   currentTime?: number;
@@ -36,6 +41,7 @@ export function VideoPlayer({
   src,
   poster,
   title,
+  aspectRatio,
   playsinline = true,
   loop = false,
   currentTime,
@@ -43,6 +49,9 @@ export function VideoPlayer({
   className,
   onEnded,
 }: VideoPlayerProps) {
+  const aspectRatioStyle = getMediaAspectRatioStyle(aspectRatio) as MediaPlayerProps["style"] | undefined;
+  const objectFitClassName = getVideoPreviewObjectFitClassName(aspectRatio);
+
   return (
     <MediaPlayer
       src={src}
@@ -53,8 +62,11 @@ export function VideoPlayer({
       loop={loop}
       currentTime={currentTime}
       onEnd={onEnded}
+      style={aspectRatioStyle}
+      data-video-object-fit={objectFitClassName === "object-contain" ? "contain" : "cover"}
       className={cn(
-        "vp-player relative aspect-video w-full overflow-hidden rounded-lg bg-black text-white",
+        "vp-player relative w-full overflow-hidden rounded-lg bg-black text-white",
+        !aspectRatioStyle && "aspect-video",
         className,
       )}
     >
@@ -62,7 +74,10 @@ export function VideoPlayer({
       <MediaProvider>
         {poster && (
           <Poster
-            className="vp-poster absolute inset-0 block h-full w-full object-cover opacity-0 transition-opacity data-[visible]:opacity-100"
+            className={cn(
+              "vp-poster absolute inset-0 block h-full w-full opacity-0 transition-opacity data-[visible]:opacity-100",
+              objectFitClassName,
+            )}
             src={poster}
             alt={title ?? ""}
           />

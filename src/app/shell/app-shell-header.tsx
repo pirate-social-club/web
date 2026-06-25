@@ -4,6 +4,7 @@ import * as React from "react";
 import type { AppRoute } from "@/app/router";
 import { navigate } from "@/app/router";
 import { AppHeader } from "@/components/compositions/app/app-shell-chrome/app-header";
+import { GlobalSearchBox } from "@/components/compositions/app/app-shell-chrome/global-search-box";
 import { MobileFooterNav } from "@/components/compositions/app/app-shell-chrome/mobile-footer-nav";
 import { IconButton } from "@/components/primitives/icon-button";
 import { toast } from "@/components/primitives/sonner";
@@ -18,16 +19,13 @@ import { activeMobileNav, resolveCreatePostPath, resolveMobileBackPath } from ".
 import { resolveSessionAvatarFallback, resolveSessionHeaderHandle } from "./session-avatar";
 import { useChatLauncher } from "./use-chat-launcher";
 
-function showSearchUnavailable(message: string) {
-  toast.info(message);
-}
-
 function showConnectUnavailable(message: string) {
   toast.info(message);
 }
 
 function routeUsesMobileFooter(route: AppRoute): boolean {
   return route.kind !== "post"
+    && route.kind !== "post-karaoke"
     && route.kind !== "create-post"
     && route.kind !== "create-post-global"
     && route.kind !== "create-community"
@@ -173,7 +171,15 @@ export function AppShellHeader({
       onNotificationsClick={() => navigate("/inbox")}
       onConnectClick={() => connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
       onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
-      onSearchClick={() => showSearchUnavailable(copy.appHeader.searchUnavailableToast)}
+      onSearchClick={() => navigate("/search")}
+      searchContent={(
+        <GlobalSearchBox
+          labels={{
+            placeholder: copy.appHeader.searchPlaceholder,
+            search: copy.appHeader.searchAriaLabel,
+          }}
+        />
+      )}
       onWalletClick={() => navigate("/wallet")}
       showCreateAction={clientReady && !!session}
       showChatAction={clientReady && !!session}

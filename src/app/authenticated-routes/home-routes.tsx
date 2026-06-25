@@ -10,7 +10,7 @@ import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
-import { clearSession, useSession } from "@/lib/api/session-store";
+import { clearSession, updateSessionUser, useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { getCurrentHomeFeedSort, HOME_FEED_SORT_CHANGE_EVENT, setCurrentHomeFeedSort, type HomeFeedSort } from "@/lib/home-feed-sort";
@@ -24,6 +24,7 @@ import { Spinner } from "@/components/primitives/spinner";
 import { YourCommunitiesPageView } from "@/components/compositions/community/your-communities-page/your-communities-page";
 import { Feed, type FeedSort, TopTimeRangeControl } from "@/components/compositions/posts/feed/feed";
 import { PopularCommunitiesRail, type PopularCommunityItem } from "@/components/compositions/community/popular-communities-rail/popular-communities-rail";
+import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Type } from "@/components/primitives/type";
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
@@ -45,6 +46,8 @@ import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-g
 import { selectPostVoteGateData } from "@/hooks/use-community-interaction-gate.helpers";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
+import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
+import { useSelfVerification } from "@/lib/verification/use-self-verification";
 
 function unixOrIsoMs(value: string | number): number {
   return typeof value === "number" ? value * 1000 : Date.parse(value);
@@ -57,6 +60,75 @@ type UseHomeFeedInput = {
   session: ReturnType<typeof useSession>;
   topTimeRange: string;
 };
+
+type HomeFeedResultSource = "authenticated" | "public";
+
+function hasOwnProperty(value: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function mergeViewerSpecificPostFields(
+  incomingEntry: ApiHomeFeedItem,
+  currentEntry: ApiHomeFeedItem,
+): ApiHomeFeedItem {
+  const currentPost = currentEntry.post;
+  const nextPost: ApiHomeFeedItem["post"] = {
+    ...incomingEntry.post,
+    viewer_reaction_kinds: currentPost.viewer_reaction_kinds,
+    viewer_vote: currentPost.viewer_vote,
+  };
+
+  if (hasOwnProperty(currentPost, "viewer_gate_state")) {
+    nextPost.viewer_gate_state = currentPost.viewer_gate_state;
+  }
+  if (hasOwnProperty(currentPost, "viewer_is_author")) {
+    nextPost.viewer_is_author = currentPost.viewer_is_author;
+  }
+  if (hasOwnProperty(currentPost, "age_gate_viewer_state")) {
+    nextPost.age_gate_viewer_state = currentPost.age_gate_viewer_state;
+  }
+  if (hasOwnProperty(currentPost, "community")) {
+    if (currentPost.community && incomingEntry.post.community) {
+      const nextCommunity = { ...incomingEntry.post.community };
+      if (hasOwnProperty(currentPost.community, "viewer_membership_status")) {
+        nextCommunity.viewer_membership_status = currentPost.community.viewer_membership_status;
+      }
+      if (hasOwnProperty(currentPost.community, "viewer_community_role")) {
+        nextCommunity.viewer_community_role = currentPost.community.viewer_community_role;
+      }
+      if (hasOwnProperty(currentPost.community, "viewer_following")) {
+        nextCommunity.viewer_following = currentPost.community.viewer_following;
+      }
+      nextPost.community = nextCommunity;
+    } else {
+      nextPost.community = currentPost.community;
+    }
+  }
+
+  return {
+    ...incomingEntry,
+    post: nextPost,
+  };
+}
+
+export function mergeHomeFeedEntriesForSource(input: {
+  current: ApiHomeFeedItem[];
+  hasSessionUser: boolean;
+  incoming: ApiHomeFeedItem[];
+  source: HomeFeedResultSource;
+}): ApiHomeFeedItem[] {
+  if (input.source === "authenticated" || !input.hasSessionUser) {
+    return input.incoming;
+  }
+
+  // Public feed responses are allowed to refresh post content, but they must not
+  // erase viewer-specific fields already learned from auth or optimistic actions.
+  const currentByPostId = new Map(input.current.map((entry) => [entry.post.post.id, entry]));
+  return input.incoming.map((entry) => {
+    const currentEntry = currentByPostId.get(entry.post.post.id);
+    return currentEntry ? mergeViewerSpecificPostFields(entry, currentEntry) : entry;
+  });
+}
 
 export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange }: UseHomeFeedInput) {
   const api = useApi();
@@ -119,7 +191,10 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
       timeRange: activeSort === "top" ? topTimeRange : null,
     };
 
-    const applyFeedResult = (result: Awaited<ReturnType<typeof api.feed.home>>) => {
+    const applyFeedResult = (
+      result: Awaited<ReturnType<typeof api.feed.home>>,
+      options: { source: HomeFeedResultSource },
+    ) => {
         if (cancelled) return;
 
         const nextFeedEntries = result.items;
@@ -129,7 +204,12 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
           queryClient,
           sort: "best",
         });
-        setFeedEntries(nextFeedEntries);
+        setFeedEntries((current) => mergeHomeFeedEntriesForSource({
+          current,
+          hasSessionUser: Boolean(sessionUserId),
+          incoming: nextFeedEntries,
+          source: options.source,
+        }));
         setTopCommunities(result.top_communities);
         setLoading(false);
 
@@ -236,8 +316,8 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
         }
     };
 
-    const loadAuthenticatedFeed = () => api.feed.home(feedRequest)
-      .then(applyFeedResult)
+    const loadAuthenticatedFeed = () => api.feed.homeAuthenticated(feedRequest)
+      .then((result) => applyFeedResult(result, { source: "authenticated" }))
       .catch((nextError: unknown) => {
         if (cancelled) return;
         if ((nextError as { status?: number; code?: string }).status === 401 || (nextError as { code?: string }).code === "auth_error") {
@@ -248,16 +328,16 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
         setLoading(false);
       });
 
+    if (sessionUserId) {
+      void loadAuthenticatedFeed();
+    }
+
     void api.feed.publicHome(feedRequest)
       .then((result) => {
-        applyFeedResult(result);
-        if (sessionUserId) {
-          void loadAuthenticatedFeed();
-        }
+        applyFeedResult(result, { source: "public" });
       })
       .catch((nextError: unknown) => {
         if (sessionUserId) {
-          void loadAuthenticatedFeed();
           return;
         }
         if (cancelled) return;
@@ -317,6 +397,35 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   } = useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
+  const authRuntime = usePiratePrivyRuntime();
+  const {
+    handleModalOpenChange: handleAgeSelfModalOpenChange,
+    handleSelfQrError: handleAgeSelfQrError,
+    handleSelfQrSuccess: handleAgeSelfQrSuccess,
+    selfError: ageSelfError,
+    selfModalOpen: ageSelfModalOpen,
+    selfPrompt: ageSelfPrompt,
+    startVerification: startAgeSelfVerification,
+  } = useSelfVerification({
+    completeErrorMessage: "Could not complete age verification.",
+    locale,
+    onVerified: async () => {
+      if (session) {
+        const refreshedUser = await api.users.getMe();
+        updateSessionUser(refreshedUser);
+      }
+      setFeedEntries((current) => current.map((entry) => ({
+        ...entry,
+        post: {
+          ...entry.post,
+          age_gate_viewer_state: "verified_allowed",
+        },
+      })));
+    },
+    startErrorMessage: "Could not start age verification.",
+    storageKey: "pirate_pending_self_age_gate:home",
+    verificationIntent: "community_join",
+  });
   const { gateModal, prewarmCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: contentLocale,
     routeKind: "home",
@@ -342,6 +451,39 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   React.useEffect(() => {
     setCurrentHomeFeedSort(activeSort);
   }, [activeSort]);
+
+  const requestAuth = React.useCallback((fallbackMessage: string) => {
+    if (!isCanonicalAuthOrigin()) {
+      const canonicalUrl = buildCanonicalAuthUrl("/");
+      toast.error(fallbackMessage, {
+        action: {
+          label: copy.publicProfile.openInPirate,
+          onClick: () => {
+            window.location.href = canonicalUrl;
+          },
+        },
+      });
+      return;
+    }
+
+    if (authRuntime.connect) {
+      authRuntime.connect();
+      return;
+    }
+
+    toast.error(authRuntime.loadError ?? fallbackMessage);
+  }, [authRuntime.connect, authRuntime.loadError, copy.publicProfile.openInPirate]);
+
+  const handleVerifyAge = React.useCallback(() => {
+    if (!session) {
+      requestAuth("Connect your wallet to verify your age and view 18+ content.");
+      return;
+    }
+    void startAgeSelfVerification({
+      requestedCapabilities: ["age_over_18"],
+      unavailableMessage: "Age verification is required to view 18+ content.",
+    });
+  }, [session, requestAuth, startAgeSelfVerification]);
 
   React.useEffect(() => {
     const handleSortChange = (event: Event) => {
@@ -460,6 +602,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         } : undefined,
         onCancelEvent: () => void cancelEvent(entry.post.post.id),
         onComment: () => navigate(`/p/${entry.post.post.id}`),
+        onVerifyAge: handleVerifyAge,
         onVote: (direction) => void voteOnPost(entry.post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,
         showTranslationLabel: copy.common.showTranslation,
@@ -491,6 +634,20 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   return (
     <>
       {gateModal}
+      {ageSelfPrompt ? (
+        <SelfVerificationModal
+          actionLabel={ageSelfPrompt.actionLabel}
+          description={ageSelfPrompt.description}
+          error={ageSelfError}
+          href={ageSelfPrompt.href}
+          onOpenChange={handleAgeSelfModalOpenChange}
+          onQrError={handleAgeSelfQrError}
+          onQrSuccess={handleAgeSelfQrSuccess}
+          open={ageSelfModalOpen}
+          selfApp={ageSelfPrompt.selfApp}
+          title={ageSelfPrompt.title}
+        />
+      ) : null}
       <StandardRoutePage size="rail" className="gap-6" frameClassName="md:pb-0">
         <Feed
           activeSort={activeSort}

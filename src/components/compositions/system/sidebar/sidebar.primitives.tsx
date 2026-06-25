@@ -50,6 +50,7 @@ export function SidebarRail({ className, ref, ...props }: React.ComponentProps<"
   return (
     <button
       ref={ref}
+      type="button"
       data-sidebar="rail"
       aria-label={copy.toggleSidebar}
       tabIndex={-1}

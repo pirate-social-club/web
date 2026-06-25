@@ -24,9 +24,17 @@ import type {
   AssistantVoiceMode,
   CommunityAssistantPolicyPageProps,
   CommunityAssistantPolicySettings,
+  TelegramPreviewPromptSuffixLocale,
 } from "./community-assistant-policy.types";
 
 const AVATAR_INPUT_ID = "community-assistant-avatar-upload";
+const TELEGRAM_PREVIEW_SUFFIX_MAX_CHARS = 500;
+const TELEGRAM_PREVIEW_SUFFIX_LOCALES: Array<{ code: TelegramPreviewPromptSuffixLocale; label: string }> = [
+  { code: "en", label: "English" },
+  { code: "ka", label: "Georgian" },
+  { code: "ar", label: "Arabic" },
+  { code: "zh", label: "Chinese" },
+];
 
 type Option<T extends string> = {
   label: string;
@@ -537,6 +545,16 @@ function TelegramSection({
   onChange: (partial: Partial<CommunityAssistantPolicySettings>) => void;
   settings: CommunityAssistantPolicySettings;
 }) {
+  function updatePromptSuffix(locale: TelegramPreviewPromptSuffixLocale, value: string) {
+    const nextSuffix = { ...settings.telegramPreviewPromptSuffix };
+    if (value.trim()) {
+      nextSuffix[locale] = value;
+    } else {
+      delete nextSuffix[locale];
+    }
+    onChange({ telegramPreviewPromptSuffix: nextSuffix });
+  }
+
   return (
     <Section
       className="border-t border-border-soft pt-6 md:pt-8"
@@ -567,6 +585,40 @@ function TelegramSection({
           suffix="messages"
           value={settings.telegramPreviewDailyCap}
         />
+        <div className="grid gap-4 border-b border-border-soft py-4 last:border-b-0">
+          <div className="space-y-1">
+            <div className="text-base font-medium leading-6">Preview guidance</div>
+            <p className="max-w-3xl text-base leading-6 text-muted-foreground">
+              Public-only guidance added to preview answers after Pirate's safety rules.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {TELEGRAM_PREVIEW_SUFFIX_LOCALES.map((locale) => {
+              const value = settings.telegramPreviewPromptSuffix[locale.code] ?? "";
+              return (
+                <label className="grid gap-2" key={locale.code}>
+                  <span className="flex items-center justify-between gap-3">
+                    <Type as="span" variant="caption">{locale.label}</Type>
+                    <Type as="span" variant="caption">
+                      {Array.from(value).length}/{TELEGRAM_PREVIEW_SUFFIX_MAX_CHARS}
+                    </Type>
+                  </span>
+                  <Textarea
+                    aria-label={`${locale.label} preview guidance`}
+                    className="min-h-28 rounded-md text-base leading-6"
+                    maxLength={TELEGRAM_PREVIEW_SUFFIX_MAX_CHARS}
+                    onChange={(event) => updatePromptSuffix(locale.code, event.target.value)}
+                    rows={3}
+                    value={value}
+                  />
+                </label>
+              );
+            })}
+          </div>
+          <p className="text-base leading-6 text-muted-foreground">
+            Plain text only. Links, HTML, and Markdown are rejected when saved.
+          </p>
+        </div>
       </div>
     </Section>
   );

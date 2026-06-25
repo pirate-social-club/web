@@ -111,6 +111,11 @@ type TelegramMiniAppAutoExchangeResponse = SessionExchangeResponse & {
   };
 };
 
+type TelegramLinkIntentCreateResponse = {
+  object?: string;
+  web_url?: string;
+};
+
 type TelegramMiniAppSessionExchangeState =
   | { kind: "checking" }
   | { kind: "error"; message: string }
@@ -686,6 +691,7 @@ export function TelegramMiniAppVerifyPage({
   const pendingScreenCommitRef = React.useRef<number | null>(null);
   const [debugEnabled] = React.useState(() => telegramVerifyDebugEnabled());
   const [debugEvents, setDebugEvents] = React.useState<TelegramVerifyDebugEvent[]>([]);
+  const [linkExistingBusy, setLinkExistingBusy] = React.useState(false);
   const refreshAfterReturnInFlightRef = React.useRef(false);
 
   const recordDebug = React.useCallback((label: string, data?: Record<string, unknown>) => {
@@ -1173,10 +1179,62 @@ export function TelegramMiniAppVerifyPage({
   const pendingLaunch = screen.kind === "ready"
     ? { href: screen.href, provider: screen.provider }
     : null;
+  const linkExistingAccount = React.useCallback(async () => {
+    if (linkExistingBusy) {
+      return;
+    }
+    const webApp = window.Telegram?.WebApp;
+    const initData = readTelegramMiniAppInitData({
+      hash: window.location.hash,
+      search: window.location.search,
+      webAppInitData: webApp?.initData,
+    });
+    if (!initData) {
+      applyFlowAction({
+        canRetry: false,
+        message: "Open this verification link from Telegram.",
+        type: "error",
+      });
+      recordDebug("link-existing:init-data-missing");
+      return;
+    }
+
+    const targetCommunityId = flowStateRef.current.exchangeCommunityId ?? communityId;
+    setLinkExistingBusy(true);
+    recordDebug("link-existing:create:start", { communityId: targetCommunityId });
+    try {
+      const response = await fetch(resolveApiUrl("/telegram/link-intents"), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ community_id: targetCommunityId, init_data: initData }),
+      });
+      const body = await response.json().catch(() => null) as (TelegramLinkIntentCreateResponse & { message?: string }) | null;
+      if (!response.ok) {
+        throw new Error(body?.message || "Could not create Telegram link.");
+      }
+      if (body?.object !== "telegram_link_intent" || !body.web_url) {
+        throw new Error("Telegram link response was invalid.");
+      }
+      recordDebug("link-existing:create:success");
+      openExternalHref(body.web_url, { preferBrowserWindow: false });
+    } catch (error) {
+      const message = getErrorMessage(error, "Could not create Telegram link.");
+      applyFlowAction({
+        canRetry: Boolean(flowStateRef.current.eligibility),
+        message,
+        type: "error",
+      });
+      recordDebug("link-existing:create:error", { message });
+    } finally {
+      setLinkExistingBusy(false);
+    }
+  }, [applyFlowAction, communityId, linkExistingBusy, recordDebug]);
 
   return (
     <TelegramMiniAppVerifyView
       debugEvents={debugEnabled ? debugEvents : undefined}
+      linkExistingBusy={linkExistingBusy}
+      onLinkExistingAccount={linkExistingAccount}
       onOpenBoard={() => navigate(`/tg/c/${encodeURIComponent(resolvedCommunityId)}`)}
       onOpenPendingLaunch={() => {
         if (!pendingLaunch) {

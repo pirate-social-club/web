@@ -98,10 +98,11 @@ export class Consumer {
 
   /**
    * DKG registrations can lag well behind the tip on testnets where rounds
-   * change infrequently. 200k blocks covers the observed ~116k gap on
-   * Story Aeneid with comfortable margin.
+   * change infrequently. Story Aeneid has shown CDR partials serviced by the
+   * previous DKG round after the next round's registrations were already
+   * present, with the needed registration keys ~285k blocks behind the tip.
    */
-  private static readonly DEFAULT_LOOKBACK_BLOCKS = 200_000n;
+  private static readonly DEFAULT_LOOKBACK_BLOCKS = 600_000n;
 
   /** DKG events are sparse — use large chunks to keep the scan fast. */
   private static readonly DKG_LOGS_BLOCK_CHUNK = 10_000n;

@@ -19,6 +19,7 @@ export type VinylReleaseProvider = "elasticstage";
 export type DownloadPolicy = "stream_only" | "free_download" | "purchased_download";
 export type StemKind = "instrumental" | "vocals" | "drums" | "bass" | "other";
 export type StemAccessPolicy = "inherit" | "free" | "purchasers_only" | "unavailable";
+export type SongKaraokeStatus = "unavailable" | "processing" | "ready" | "failed";
 
 export interface VinylReleaseSpec {
   available: boolean;
@@ -45,6 +46,11 @@ export interface SongStorageProofs {
   original?: SongStorageProof;
   preview?: SongStorageProof;
   encryptedOriginal?: SongStorageProof;
+}
+
+export interface SongKaraokeCapability {
+  canKaraoke: boolean;
+  status: SongKaraokeStatus;
 }
 
 // Playback axis - purely UI state
@@ -193,11 +199,15 @@ export interface SongContentSpec {
   stems?: StemSpec[];
   entitledStems?: StemKind[];
   storageProofs?: SongStorageProofs;
+  karaoke?: SongKaraokeCapability;
+  karaokeStatusLabel?: string;
+  karaokeStatusVisible?: boolean;
 
   // Callbacks
   onPlay?: () => void;
   onPause?: () => void;
   onSeek?: (ms: number) => void;
+  onKaraoke?: () => void;
   onUnlock?: () => void;
   onBuy?: () => void;
   onVerifyAge?: () => void;

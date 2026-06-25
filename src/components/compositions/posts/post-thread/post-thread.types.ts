@@ -1,6 +1,8 @@
 import type { CommunityAuthorRole, PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 
 export type PostThreadAuthorMode = "human" | "agent";
+export type PostThreadIdentityMode = "public" | "anonymous";
+export type PostThreadAnonymousScope = "community_stable" | "thread_stable";
 export type PostThreadSubmitResult = "blocked" | "submitted";
 export type CommentSort = "best" | "new" | "top";
 
@@ -22,8 +24,17 @@ export interface PostThreadReplyAttachment {
 
 export interface PostThreadReplyInput {
   attachment?: PostThreadReplyAttachment | null;
+  anonymousScope?: PostThreadAnonymousScope | null;
   authorMode: PostThreadAuthorMode;
   body: string;
+  identityMode?: PostThreadIdentityMode;
+}
+
+export interface PostThreadReplyIdentity {
+  allowAnonymousIdentity?: boolean;
+  anonymousLabel?: string;
+  anonymousScope?: PostThreadAnonymousScope | null;
+  publicLabel: string;
 }
 
 export interface PostThreadComment {
@@ -81,6 +92,7 @@ export interface PostThreadProps {
   rootReplyCancelLabel?: string;
   rootReplySubmitLabel?: string;
   onRootReplySubmit?: (input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
+  replyIdentity?: PostThreadReplyIdentity;
   commentSort?: CommentSort;
   availableCommentSorts?: { label: string; value: CommentSort }[];
   onCommentSortChange?: (sort: CommentSort) => void;

@@ -174,6 +174,7 @@ async function resolveRouteSeoMetadata(input: {
       input.route.kind === "post"
       || input.route.kind === "telegram-post"
       || input.route.kind === "live-room"
+      || input.route.kind === "post-karaoke"
       || input.route.kind === "crosspost"
     ) {
       const postResponse = await fetchPublicJson<PublicPostResponse>(
@@ -498,11 +499,13 @@ const app = defineApp<AppRequestInfo>([
     ),
     route("/", AppRoutePage),
     route("/popular", AppRoutePage),
+    route("/search", AppRoutePage),
     route("/advertise", AppRoutePage),
     route("/tg", AppRoutePage),
     route("/tg/exchange", AppRoutePage),
     route("/tg/self-return", AppRoutePage),
     route("/tg/self-return/:communityId", AppRoutePage),
+    route("/tg/link-existing", AppRoutePage),
     route("/tg/join/:communityId", ({ ctx, params, request }) =>
       telegramCommunityJoinRedirect({
         apiOrigin: getDiscoveryContext(ctx.effectiveUrl ?? request.url).apiOrigin,
@@ -524,6 +527,7 @@ const app = defineApp<AppRequestInfo>([
     route("/c/:communityId", AppRoutePage),
     route("/p/:postId/crosspost", AppRoutePage),
     route("/p/:postId/live", AppRoutePage),
+    route("/p/:postId/karaoke", AppRoutePage),
     route("/p/:postId", AppRoutePage),
     route("/inbox", AppRoutePage),
     route("/chat", AppRoutePage),

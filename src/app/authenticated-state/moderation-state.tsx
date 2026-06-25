@@ -23,6 +23,7 @@ import { useCommunitySafetyState } from "./use-community-safety-state";
 import { useCommunityTelegramState } from "./use-community-telegram-state";
 import { useCommunityVisualPolicyState } from "./use-community-visual-policy-state";
 import { useCommunityHandlePolicyState } from "./use-community-handle-policy-state";
+import { useCommunityKaraokePolicyState } from "./use-community-karaoke-policy-state";
 
 export function useCommunityModerationState(communityId: string) {
   const api = useApi();
@@ -120,6 +121,7 @@ export function useCommunityModerationState(communityId: string) {
   const agents = useCommunityAgentPolicyState({ community, saveCommunity });
   const assistantPolicy = useCommunityAssistantPolicyState({ community });
   const machineAccess = useCommunityMachineAccessState({ community });
+  const karaokePolicy = useCommunityKaraokePolicyState({ community, setCommunity });
   const telegram = useCommunityTelegramState({ community });
   const handlePolicy = useCommunityHandlePolicyState({
     communityId: community?.id ?? null,
@@ -142,6 +144,7 @@ export function useCommunityModerationState(communityId: string) {
     ...agents,
     ...assistantPolicy,
     ...machineAccess,
+    ...karaokePolicy,
     ...telegram,
     ...profile,
     ...contentPolicy,

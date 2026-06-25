@@ -104,11 +104,39 @@ function checkDocumentRwsdkImportsAreTypeOnly() {
   };
 }
 
+function checkNoDomainTestSubpathInProduction() {
+  // The @pirate/bookings-domain/test subpath bundles fixture builders for stories/tests.
+  // Production app code must import from the base entry "@pirate/bookings-domain" instead;
+  // only *.stories.tsx may use the /test subpath.
+  const offenders = [];
+
+  for (const filePath of walk(srcDir)) {
+    if (!filePath.endsWith(".ts") && !filePath.endsWith(".tsx")) continue;
+    if (filePath.endsWith(".stories.tsx") || filePath.endsWith(".stories.ts")) continue;
+
+    const code = fs.readFileSync(filePath, "utf8");
+    const imports = collectImportStatements(code);
+    for (const statement of imports) {
+      if (statement.source === "@pirate/bookings-domain/test") {
+        offenders.push(`${relative(filePath)} -> ${statement.source}`);
+        break;
+      }
+    }
+  }
+
+  return {
+    label: "bookings-domain/no-test-subpath-in-production",
+    passed: offenders.length === 0,
+    details: offenders,
+  };
+}
+
 const checks = [
   checkNoValueRwsdkImport("rwsdk/worker"),
   checkNoValueRwsdkImport("rwsdk/router"),
   checkPublicRouteIsolation(),
   checkDocumentRwsdkImportsAreTypeOnly(),
+  checkNoDomainTestSubpathInProduction(),
 ];
 
 const failures = checks.filter((check) => !check.passed);

@@ -22,7 +22,7 @@ Object.defineProperty(window, "getComputedStyle", {
   configurable: true,
   value: globalThis.getComputedStyle,
 });
-for (const key of ["Event", "HTMLInputElement", "Node"] as const) {
+for (const key of ["Event", "HTMLInputElement", "HTMLTextAreaElement", "Node"] as const) {
   Object.defineProperty(globalThis, key, {
     configurable: true,
     value: window[key],
@@ -59,6 +59,21 @@ describe("CommunityTelegramIntegrationPage", () => {
 
     expect(view.getByText(joinUrl)).not.toBeNull();
     expect(view.getByRole("img", { name: "Telegram join QR code" })).not.toBeNull();
+    view.unmount();
+  });
+
+  test("renders welcome intro fields before a chat is connected", () => {
+    const settings = createDefaultTelegramIntegrationSettings();
+    const view = render(
+      <CommunityTelegramIntegrationPage
+        settings={settings}
+        submitState={{ kind: "idle" }}
+      />,
+    );
+
+    expect(view.getByLabelText("English welcome intro")).not.toBeNull();
+    expect(view.getByLabelText("Georgian welcome intro")).not.toBeNull();
+    expect(view.queryByText("Join link")).toBeNull();
     view.unmount();
   });
 });

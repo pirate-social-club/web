@@ -34,8 +34,49 @@ export type ApiProfileMediaUploadResponse = {
 export type ApiWalletIdentityPublicName = WalletIdentityPublicName;
 export type ApiWalletIdentityResponse = WalletIdentityResponse;
 
+export type ApiSearchResultKind = "profile" | "agent" | "community" | "namespace" | "post";
+
+export type ApiSearchResult = {
+  object: "search_result";
+  id: string;
+  kind: ApiSearchResultKind;
+  title: string;
+  subtitle: string | null;
+  excerpt: string | null;
+  href: string;
+  image_ref: string | null;
+  resource: {
+    object: "profile" | "user_agent" | "community" | "namespace_verification" | "post";
+    id: string;
+  };
+  matched_fields: string[];
+  score_decimal: string;
+};
+
+export type ApiSearchResultsResponse = {
+  object: "search_results";
+  query: string;
+  suggestions: string[];
+  data: ApiSearchResult[];
+  has_more: boolean;
+  next_cursor: string | null;
+};
+
 export type ApiSongArtifactUploadContentRequest = {
   content_base64: string;
+};
+
+export type ApiSongArtifactUploadPartSignedUrlResponse = {
+  url: string;
+  expires_at: string;
+  part_number: number;
+  part_size_bytes: number;
+};
+
+export type ApiSongArtifactUploadCompleteRequest = {
+  upload_id: string;
+  parts: Array<{ part_number: number; etag: string }>;
+  content_hash?: string | null;
 };
 
 export type ApiDerivativeSourceKind = "song" | "video";
@@ -366,6 +407,16 @@ export type ApiCommunityMachineAccessPolicyUpdate = {
   included_surfaces?: Partial<ApiCommunityMachineAccessPolicy["included_surfaces"]>;
 };
 
+export type ApiCommunityKaraokePolicy = {
+  community_id: string;
+  karaoke_enabled: boolean;
+  updated_at: string | null;
+};
+
+export type ApiCommunityKaraokePolicyUpdate = {
+  karaoke_enabled: boolean;
+};
+
 export type ApiTelegramLinkedChatLinkMode = "invite_link" | "join_request";
 
 export type ApiTelegramBotAdminStatus =
@@ -413,12 +464,14 @@ export type ApiCommunityTelegramChatSettings = {
   id: string;
   object: "community_telegram_chat_settings";
   community: string;
+  telegram_welcome_intro: Partial<Record<"en" | "ar" | "zh" | "ka", string>>;
   linked_chat: ApiTelegramLinkedChat | null;
 };
 
 export type ApiCommunityTelegramChatSettingsUpdate = {
   link_mode?: ApiTelegramLinkedChatLinkMode;
   directory_visible?: boolean;
+  telegram_welcome_intro?: Partial<Record<"en" | "ar" | "zh" | "ka", string>> | null;
 };
 
 export type ApiAssistantContextMode = "live_sql" | "summary_cache" | "hybrid_vector";
@@ -487,6 +540,7 @@ export type ApiCommunityAssistantPolicy = {
   telegramPrivateAssistantEnabled: boolean;
   telegramPreviewEnabled: boolean;
   telegramPreviewDailyCap: number;
+  telegramPreviewPromptSuffix: Partial<Record<"en" | "ar" | "zh" | "ka", string>>;
   voiceMode: ApiAssistantVoiceMode;
   sttProvider: ApiAssistantSttProvider;
   sttModel: string;
@@ -542,6 +596,7 @@ export type ApiCommunityAssistantPolicyUpdate = Partial<{
   telegramPrivateAssistantEnabled: boolean;
   telegramPreviewEnabled: boolean;
   telegramPreviewDailyCap: number;
+  telegramPreviewPromptSuffix: Partial<Record<"en" | "ar" | "zh" | "ka", string>>;
   voiceMode: ApiAssistantVoiceMode;
   sttProvider: ApiAssistantSttProvider;
   sttModel: string;
@@ -683,4 +738,16 @@ export type HandleUpgradeQuoteResponse = {
 export type NotificationFeedOptions = {
   cursor?: string | null;
   limit?: number | null;
+};
+
+/** Raw HTTP body of `POST .../karaoke/sessions` (snake_case, server contract). */
+export type KaraokeSessionCreateApiResponse = {
+  id: string;
+  object: "karaoke_session";
+  attempt: string;
+  protocol_version: number;
+  websocket_url: string;
+  token_expires_at: number;
+  session_expires_at: number;
+  scoring_policy: unknown;
 };

@@ -61,6 +61,7 @@ export function getDiscoveryContext(input: URL | string): DiscoveryContext {
     || INDEXED_STATIC_PATHS.includes(pathname as (typeof INDEXED_STATIC_PATHS)[number])
     || route.kind === "community"
     || route.kind === "post"
+    || route.kind === "post-karaoke"
     || route.kind === "public-profile"
     || route.kind === "public-agent";
 

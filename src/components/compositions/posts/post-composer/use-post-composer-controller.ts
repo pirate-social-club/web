@@ -153,6 +153,19 @@ export function usePostComposerController(props: PostComposerProps) {
   const [uncontrolledRoyaltySplitState, setUncontrolledRoyaltySplitState] = React.useState<AssetRoyaltySplitState>(
     () => defaultAssetRoyaltySplitState(royaltySplit, currentUserWalletAddress),
   );
+  // The wallet prop may be empty on first mount and load shortly after. Keep the
+  // untouched creator default in sync with it, while preserving any user edit
+  // (a controlled split, or one that already has collaborators / extra rows).
+  React.useEffect(() => {
+    if (royaltySplit !== undefined) return;
+    setUncontrolledRoyaltySplitState((current) => {
+      if (current.allocations.length !== 1) return current;
+      const [creator] = current.allocations;
+      if (creator.recipientKind !== "creator") return current;
+      if ((creator.walletAddress ?? "") === (currentUserWalletAddress ?? "")) return current;
+      return { allocations: [{ ...creator, walletAddress: currentUserWalletAddress }] };
+    });
+  }, [currentUserWalletAddress, royaltySplit]);
   const [uncontrolledVideoState, setUncontrolledVideoState] = React.useState<VideoComposerState>(
     () => defaultVideoState(video),
   );
@@ -313,11 +326,9 @@ export function usePostComposerController(props: PostComposerProps) {
 
   const updateDerivativeState = React.useCallback((updater: (current: DerivativeStepState | undefined) => DerivativeStepState | undefined) => {
     const next = updater(derivativeStateRef.current);
-    if (derivativeStep === undefined) {
-      setUncontrolledDerivativeState(next);
-    }
+    setUncontrolledDerivativeState(next);
     onDerivativeStepChange?.(next);
-  }, [derivativeStep, onDerivativeStepChange]);
+  }, [onDerivativeStepChange]);
 
   const handleSongModeChange = React.useCallback((next: NonNullable<PostComposerProps["songMode"]>) => {
     setSongModeWithCallback(next);
@@ -329,6 +340,7 @@ export function usePostComposerController(props: PostComposerProps) {
           required: true,
           trigger: "remix",
           searchResults: current?.searchResults ?? [],
+          searchError: undefined,
           references: current?.references ?? [],
           sourceTermsAccepted: current?.sourceTermsAccepted === true,
         };
@@ -353,6 +365,7 @@ export function usePostComposerController(props: PostComposerProps) {
         trigger: "uses_song",
         requirementLabel: current?.requirementLabel,
         searchResults: current?.searchResults ?? [],
+        searchError: undefined,
         references: current?.references ?? [],
         licenseSummary: current?.licenseSummary,
         sourceTermsAccepted: current?.sourceTermsAccepted === true,

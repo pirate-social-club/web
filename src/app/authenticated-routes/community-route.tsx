@@ -675,6 +675,8 @@ export function CommunityPage({
       {!ownsCommunity && !viewerIsMember ? (
         <Button
           className={FOLLOW_BUTTON_CLASS_NAME}
+          data-state={viewerFollowing ? "following" : "follow"}
+          data-testid="community-follow-button"
           loading={followLoading}
           onClick={handleToggleFollow}
           variant={viewerFollowing ? "secondary" : "default"}

@@ -27,6 +27,26 @@ describe("buildAnonymousLabel", () => {
     ).toBe("anon_ivory-oar-90");
   });
 
+  test("matches server algorithm for thread_stable scope", () => {
+    expect(
+      buildAnonymousLabel({
+        communityId: "cmt_test123",
+        entityId: "pst_thread123",
+        scope: "thread_stable",
+        userId: "usr_user1",
+      }),
+    ).toBe("anon_fable-corsair-00");
+
+    expect(
+      buildAnonymousLabel({
+        communityId: "cmt_test123",
+        entityId: "pst_thread456",
+        scope: "thread_stable",
+        userId: "usr_user1",
+      }),
+    ).toBe("anon_onyx-lantern-79");
+  });
+
   test("is deterministic for the same inputs", () => {
     const first = buildAnonymousLabel({
       communityId: "cmt_test123",

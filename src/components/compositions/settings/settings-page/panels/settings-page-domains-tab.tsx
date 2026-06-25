@@ -22,6 +22,7 @@ import { Type } from "@/components/primitives/type";
 import { centsToUsd, formatUsdCompactLabel } from "@/lib/formatting/currency";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
+import { isFreeCleanupHandleQuote } from "@/app/authenticated-state/free-cleanup-handle";
 import { getLocaleMessages } from "@/locales";
 import type { RoutesMessages } from "@/locales";
 import type { HandleUpgradeQuoteResponse } from "@/lib/api/client-api-types";
@@ -477,13 +478,11 @@ function BuyNamePhase({
 }) {
   const displayValue = value.endsWith(".pirate") ? value.slice(0, -7) : value;
   const payable = Boolean(quote?.eligible && quote.quote && (quote.price_cents ?? 0) > 0);
-  const freeCleanupClaim = Boolean(
-    cleanupRenameAvailable
-    && quote?.eligible
-    && quote.pricing_tier === "base"
-    && quote.tier === "standard"
-    && displayValue.trim().length >= 8,
-  );
+  const freeCleanupClaim = isFreeCleanupHandleQuote({
+    cleanupRenameAvailable,
+    label: displayValue,
+    quote: quote ?? null,
+  });
   const priceLabel = formatUsdCompactLabel(centsToUsd(quote?.price_cents), localeTag) ?? "$0";
   const showChecking = checking && !quote && displayValue.trim().length > 0;
   const hasBack = Boolean(onBack);

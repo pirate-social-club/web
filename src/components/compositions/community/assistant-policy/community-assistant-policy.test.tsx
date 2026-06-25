@@ -450,6 +450,8 @@ describe("CommunityAssistantPolicyPage", () => {
       .find((input) => input.getAttribute("min") === "0");
     expect(previewCapInput).not.toBeNull();
     expect(previewCapInput?.getAttribute("max")).toBe("50");
+    expect(view.getByLabelText("English preview guidance")).not.toBeNull();
+    expect(view.getByLabelText("Georgian preview guidance")).not.toBeNull();
 
     editTextInput(previewCapInput!, "51");
     expect(view.getLatestSettings().telegramPreviewDailyCap).toBe(5);

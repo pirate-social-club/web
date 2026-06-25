@@ -11,6 +11,7 @@ import type {
   LocalizedPostResponse,
   Post,
   PostVoteResponse,
+  SongKaraokePayload,
   SongArtifactBundle,
   SongArtifactBundleListResponse,
   SongArtifactUpload,
@@ -20,8 +21,11 @@ import type {
   ApiDerivativeSourceListResponse,
   ApiDerivativeSourceQueryKind,
   ApiDerivativeSourceScope,
+  ApiSongArtifactUploadCompleteRequest,
   ApiSongArtifactUploadContentRequest,
+  ApiSongArtifactUploadPartSignedUrlResponse,
   CommunityListCommentsOptions,
+  KaraokeSessionCreateApiResponse,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
@@ -68,6 +72,16 @@ export function createPostsApi(request: ApiRequest) {
       request<LocalizedPostResponse>(
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/event-status`,
         { method: "POST", body: JSON.stringify({ status: "canceled" }) },
+      ),
+    createKaraokeSession: (
+      communityId: string,
+      postId: string,
+      idempotencyKey: string,
+      signal?: AbortSignal,
+    ): Promise<KaraokeSessionCreateApiResponse> =>
+      request<KaraokeSessionCreateApiResponse>(
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/karaoke/sessions`,
+        { method: "POST", headers: { "Idempotency-Key": idempotencyKey }, signal },
       ),
   };
 }
@@ -170,6 +184,16 @@ export function createCommunityContentApi(request: ApiRequest) {
         },
       ));
     },
+    getPostKaraoke: (
+      communityId: string,
+      postId: string,
+      opts?: { locale?: string | null },
+    ): Promise<SongKaraokePayload> =>
+      request<SongKaraokePayload>(
+        buildQueryPath(`/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/karaoke`, {
+          locale: opts?.locale,
+        }),
+      ),
     createComment: (
       communityId: string,
       postId: string,
@@ -203,6 +227,34 @@ export function createCommunityContentApi(request: ApiRequest) {
         },
       );
     },
+    getArtifactUploadPartSignedUrl: (
+      communityId: string,
+      songArtifactUploadId: string,
+      sessionId: string,
+      partNumber: number,
+    ): Promise<ApiSongArtifactUploadPartSignedUrlResponse> =>
+      request<ApiSongArtifactUploadPartSignedUrlResponse>(
+        `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(songArtifactUploadId)}/sessions/${encodeURIComponent(sessionId)}/parts/${encodeURIComponent(String(partNumber))}/signed-url`,
+      ),
+    completeArtifactUploadSession: (
+      communityId: string,
+      songArtifactUploadId: string,
+      sessionId: string,
+      body: ApiSongArtifactUploadCompleteRequest,
+    ): Promise<SongArtifactUpload> =>
+      request<SongArtifactUpload>(
+        `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(songArtifactUploadId)}/sessions/${encodeURIComponent(sessionId)}/complete`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    abortArtifactUploadSession: (
+      communityId: string,
+      songArtifactUploadId: string,
+      sessionId: string,
+    ): Promise<void> =>
+      request<void>(
+        `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(songArtifactUploadId)}/sessions/${encodeURIComponent(sessionId)}/abort`,
+        { method: "POST" },
+      ),
     createSongArtifactBundle: (
       communityId: string,
       body: CreateSongArtifactBundleRequest,

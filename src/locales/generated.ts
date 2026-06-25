@@ -1550,7 +1550,6 @@ export const GENERATED_LOCALE_CATALOGS = {
         "profileAriaLabel": "Open profile",
         "searchAriaLabel": "Search Pirate",
         "searchPlaceholder": "Search Pirate",
-        "searchUnavailableToast": "Search is not scaffolded yet.",
         "walletAriaLabel": "Wallet"
       },
       "appSidebar": {
@@ -3234,7 +3233,6 @@ export const GENERATED_LOCALE_CATALOGS = {
         "profileAriaLabel": "افتح الملف الشخصي",
         "searchAriaLabel": "ابحث في بايرت",
         "searchPlaceholder": "ابحث في بايرت",
-        "searchUnavailableToast": "البحث غير متاح بعد.",
         "walletAriaLabel": "المحفظة"
       },
       "appSidebar": {
@@ -4918,7 +4916,6 @@ export const GENERATED_LOCALE_CATALOGS = {
         "profileAriaLabel": "打开个人资料",
         "searchAriaLabel": "搜索 Pirate",
         "searchPlaceholder": "搜索 Pirate",
-        "searchUnavailableToast": "搜索功能暂未开放。",
         "walletAriaLabel": "钱包"
       },
       "appSidebar": {

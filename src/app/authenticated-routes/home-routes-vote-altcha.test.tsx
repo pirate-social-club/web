@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type * as React from "react";
-import { act, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup as cleanupReact, fireEvent, render, waitFor } from "@testing-library/react";
 import type { CommunityPreview, HomeFeedItem, LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { installDomGlobals } from "@/test/setup-dom";
@@ -28,6 +28,10 @@ const { mock } = await import("bun:test") as unknown as {
 
 const gateCalls: RunGatedCommunityActionParams[] = [];
 const prewarmCalls: Array<{ communityId: string; gateData: NonNullable<RunGatedCommunityActionParams["gateData"]> }> = [];
+const ageVerificationRequests: Array<{
+  requestedCapabilities?: string[];
+  unavailableMessage?: string;
+}> = [];
 
 mock.module("@/hooks/use-client-hydrated", () => ({
   useClientHydrated: () => true,
@@ -54,26 +58,70 @@ mock.module("@/app/authenticated-helpers/song-commerce", () => ({
   useSongPlayback: () => ({}),
 }));
 
+mock.module("@/lib/verification/use-self-verification", () => ({
+  useSelfVerification: () => ({
+    handleModalOpenChange: () => undefined,
+    handleSelfQrError: () => undefined,
+    handleSelfQrSuccess: () => undefined,
+    selfError: null,
+    selfModalOpen: false,
+    selfPrompt: null,
+    startVerification: async (options: {
+      requestedCapabilities?: string[];
+      unavailableMessage?: string;
+    }) => {
+      ageVerificationRequests.push(options);
+      return { href: null, openedModal: false, started: true };
+    },
+  }),
+}));
+
 mock.module("@/components/compositions/posts/feed/feed", () => ({
   Feed: ({
     items,
   }: {
     items: Array<{
       id: string;
-      post: { onVote?: (direction: "up" | "down" | null) => void };
+      post: {
+        content?: {
+          ageGatePolicy?: "none" | "18_plus";
+          ageGateViewerState?: "proof_required" | "verified_allowed";
+          onVerifyAge?: () => void;
+          type?: string;
+        };
+        onVote?: (direction: "up" | "down" | null) => void;
+      };
     }>;
   }) => (
     <div>
-      {items.map((item, index) => (
-        <button
-          data-testid={`home-vote-${index}`}
-          key={item.id}
-          onClick={() => item.post.onVote?.("up")}
-          type="button"
-        >
-          Vote
-        </button>
-      ))}
+      {items.map((item, index) => {
+        const content = item.post.content;
+        const verifyAge = content?.ageGatePolicy === "18_plus"
+          && content.ageGateViewerState !== "verified_allowed"
+          ? content.onVerifyAge
+          : undefined;
+        return (
+          <div key={item.id}>
+            <button
+              data-testid={`home-vote-${index}`}
+              onClick={() => item.post.onVote?.("up")}
+              type="button"
+            >
+              Vote
+            </button>
+            {content?.type === "song" && content.ageGatePolicy === "18_plus" ? (
+              <button
+                data-testid={`home-verify-age-${index}`}
+                disabled={!verifyAge}
+                onClick={() => verifyAge?.()}
+                type="button"
+              >
+                Verify Age
+              </button>
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   ),
   TopTimeRangeControl: () => null,
@@ -180,8 +228,10 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 
 beforeEach(() => {
+  cleanupReact();
   gateCalls.length = 0;
   prewarmCalls.length = 0;
+  ageVerificationRequests.length = 0;
   __resetSessionStoreForTests();
   setSession({
     access_token: "test-token",
@@ -193,6 +243,41 @@ beforeEach(() => {
 });
 
 describe("HomePage vote ALTCHA plumbing", () => {
+  test("enables age verification on age-gated home feed song cards", async () => {
+    const feedApi = api.feed as unknown as {
+      homeAuthenticated: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+    };
+    const ageGatedSong = createFeedItem("post_pst_explicit_song");
+    ageGatedSong.post.post.post_type = "song";
+    ageGatedSong.post.post.title = "Explicit song";
+    ageGatedSong.post.post.song_title = "Explicit song";
+    ageGatedSong.post.post.song_artifact_bundle = "sab_explicit_song";
+    ageGatedSong.post.post.age_gate_policy = "18_plus";
+    ageGatedSong.post.post.content_safety_state = "adult";
+    ageGatedSong.post.age_gate_viewer_state = "proof_required";
+    const feedResponse = {
+      items: [ageGatedSong],
+      top_communities: [],
+    };
+
+    feedApi.homeAuthenticated = async () => feedResponse;
+    feedApi.publicHome = async () => feedResponse;
+
+    const view = render(<HomePage initialSort="best" />, { wrapper });
+
+    await waitFor(() => expect(view.getByTestId("home-verify-age-0")).toBeTruthy());
+    expect((view.getByTestId("home-verify-age-0") as HTMLButtonElement).disabled).toBe(false);
+    await act(async () => {
+      fireEvent.click(view.getByTestId("home-verify-age-0"));
+    });
+
+    expect(ageVerificationRequests).toEqual([{
+      requestedCapabilities: ["age_over_18"],
+      unavailableMessage: "Age verification is required to view 18+ content.",
+    }]);
+  });
+
   test("passes vote value and solved proof through the inline home feed vote path", async () => {
     const voteCalls: Array<{
       options?: { altchaPayload?: string | null };
@@ -200,7 +285,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       value: -1 | 1;
     }> = [];
     const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      homeAuthenticated: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
       publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
     };
     const postsApi = api.posts as unknown as {
@@ -215,7 +300,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       top_communities: [],
     };
 
-    feedApi.home = async () => feedResponse;
+    feedApi.homeAuthenticated = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
     postsApi.vote = async (postId, value, options) => {
       voteCalls.push({ options, postId, value });
@@ -250,7 +335,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
     });
     const voteCalls: string[] = [];
     const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      homeAuthenticated: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
       publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
     };
     const postsApi = api.posts as unknown as {
@@ -261,7 +346,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       top_communities: [],
     };
 
-    feedApi.home = async () => feedResponse;
+    feedApi.homeAuthenticated = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
     postsApi.vote = async (postId, value) => {
       voteCalls.push(`${postId}:${value}`);
@@ -288,7 +373,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_membership_status: "member",
     });
     const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      homeAuthenticated: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
       publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
     };
     const postsApi = api.posts as unknown as {
@@ -299,7 +384,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       top_communities: [],
     };
 
-    feedApi.home = async () => feedResponse;
+    feedApi.homeAuthenticated = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
     postsApi.vote = async (_postId, value) => ({ value });
 
@@ -320,7 +405,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_membership_status: "not_member",
     });
     const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      homeAuthenticated: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
       publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
     };
     const postsApi = api.posts as unknown as {
@@ -331,7 +416,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       top_communities: [],
     };
 
-    feedApi.home = async () => feedResponse;
+    feedApi.homeAuthenticated = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
     postsApi.vote = async (_postId, value) => ({ value });
 
@@ -352,7 +437,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_membership_status: "banned",
     });
     const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      homeAuthenticated: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
       publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
     };
     const postsApi = api.posts as unknown as {
@@ -364,7 +449,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       top_communities: [],
     };
 
-    feedApi.home = async () => feedResponse;
+    feedApi.homeAuthenticated = async () => feedResponse;
     feedApi.publicHome = async () => feedResponse;
     postsApi.vote = async () => {
       voteCalled = true;

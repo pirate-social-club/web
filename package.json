@@ -30,10 +30,12 @@
     "test": "bun test",
     "test:assistant:light": "bun test src/lib/chat/community-assistant-chat-client.test.ts src/lib/chat/chat-conversation-state.test.ts src/components/compositions/chat/chat-route-views.test.tsx",
     "test:e2e": "playwright test",
+    "test:e2e:capture": "playwright test e2e/karaoke-capture-worklet.spec.ts --project=chromium",
     "test:e2e:assistant:ui": "playwright test e2e/community-assistant-chat-ui.spec.ts --project=chromium",
     "test:e2e:assistant:local": "playwright test e2e/community-assistant.local.spec.ts",
     "test:e2e:staging": "E2E_BASE_URL=https://staging.pirate.sc playwright test",
     "test:e2e:live-staging": "E2E_LIVE_STAGING=true E2E_BASE_URL=https://staging.pirate.sc E2E_API_BASE_URL=https://api-staging.pirate.sc playwright test --project=live-staging",
+    "test:e2e:story-derivative-royalty": "bun run scripts/live-story-derivative-royalty-e2e.ts",
     "boundary:audit": "node ./scripts/boundary-audit.mjs",
     "deadcode:audit": "knip --no-progress",
     "deps:audit": "knip --dependencies --no-progress",
@@ -52,6 +54,7 @@
     "@fontsource/anton": "^5.2.7",
     "@pirate/api-contracts": "file:../api/services/contracts",
     "@pirate/efp-shared": "file:../api/services/efp-shared",
+    "@pirate/karaoke-runtime": "file:./packages/karaoke-runtime",
     "@privy-io/react-auth": "^3.21.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-checkbox": "^1.3.3",
@@ -90,7 +93,8 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.35.0",
     "@cloudflare/workers-types": "4.20260307.1",
-    "@noble/curves": "^2.2.0",
+    "@noble/curves": "^1.9.1",
+    "@noble/hashes": "^1.8.0",
     "@phosphor-icons/react": "^2.1.7",
     "@playwright/test": "^1.60.0",
     "@storybook/react-vite": "10.4.1",
@@ -114,6 +118,7 @@
   },
   "overrides": {
     "axios": "^1.16.0",
+    "esbuild": "^0.28.1",
     "js-cookie": "^3.0.7",
     "tmp": "^0.2.6",
     "react-server-dom-webpack": "19.2.6"

@@ -10,6 +10,7 @@ import { defaultMonetizationState } from "./post-composer-config";
 import { PostComposerEventSection } from "./post-composer-event-section";
 import { LiveTabContent } from "./post-composer-live-tab";
 import { SearchReferencePicker, SelectedReferenceCard } from "./post-composer-references";
+import { PostComposerDerivativeSection } from "./post-composer-sections";
 import type { AssetLicenseState, ComposerEventState, MonetizationState, PostComposerProps } from "./post-composer.types";
 
 const { describe, expect, test } = BunTest;
@@ -1468,7 +1469,7 @@ describe("PostComposer monetization", () => {
 
     expect(derivativeStep).toMatchObject({
       visible: true,
-      required: false,
+      required: true,
       trigger: "uses_song",
       searchResults: [],
       references: [],
@@ -1715,6 +1716,67 @@ describe("PostComposer monetization", () => {
     expect(songMode).toBe("original");
     expect(derivativeStep).toBeUndefined();
   });
+
+  test("clears the remix search bar on remix→original when the parent starts uncontrolled", () => {
+    let derivativeStep: PostComposerProps["derivativeStep"];
+    let songMode: PostComposerProps["songMode"];
+    const findTabs = (tree: React.ReactNode, value: string) => findElement(
+      tree,
+      (element) => element.props.value === value && typeof element.props.onValueChange === "function",
+    );
+
+    const initialTree = renderComposer({
+      availableTabs: ["song"],
+      canCreateSongPost: true,
+      clubName: "Lane1",
+      composerStep: "details",
+      mode: "song",
+      onDerivativeStepChange: (next) => {
+        derivativeStep = next;
+      },
+      onSongModeChange: (next) => {
+        songMode = next;
+      },
+    });
+
+    const remixTabs = findTabs(initialTree, "original");
+    if (!remixTabs) {
+      throw new Error("Missing song mode tabs");
+    }
+    (remixTabs.props.onValueChange as ((value: string) => void) | undefined)?.("remix");
+
+    expect(songMode).toBe("remix");
+    expect(derivativeStep).toEqual(expect.objectContaining({
+      visible: true,
+      required: true,
+      trigger: "remix",
+    }));
+
+    const remixedTree = renderComposer({
+      availableTabs: ["song"],
+      canCreateSongPost: true,
+      clubName: "Lane1",
+      composerStep: "details",
+      derivativeStep,
+      mode: "song",
+      onDerivativeStepChange: (next) => {
+        derivativeStep = next;
+      },
+      onSongModeChange: (next) => {
+        songMode = next;
+      },
+      songMode: "remix",
+    });
+
+    const originalTabs = findTabs(remixedTree, "remix");
+    if (!originalTabs) {
+      throw new Error("Missing song mode tabs after switching to remix");
+    }
+    (originalTabs.props.onValueChange as ((value: string) => void) | undefined)?.("original");
+
+    expect(songMode).toBe("original");
+    expect(derivativeStep).toBeUndefined();
+  });
 });
 
 describe("PostComposer event details", () => {
@@ -1810,6 +1872,94 @@ describe("PostComposer event details", () => {
     });
 
     expect(eventState.startsAt).toBe("2026-06-12T20:30");
+  });
+});
+
+describe("PostComposerDerivativeSection", () => {
+  beforeEach(() => {
+    installHookStubs();
+  });
+
+  afterEach(() => {
+    restoreHookStubs();
+  });
+
+  const copy = {
+    derivative: {
+      acceptSourceTerms: "I accept the source terms.",
+      searchSourceTracks: "Search remix-eligible source tracks",
+    },
+    empty: {
+      noSourceTracks: "No source tracks",
+    },
+    placeholders: {
+      sourceTrackSearch: "Search songs",
+    },
+    sections: {
+      sourceTrack: "Source track",
+    },
+  };
+
+  test("shows derivative search errors instead of empty-result copy", () => {
+    const tree = PostComposerDerivativeSection({
+      copy,
+      derivativePickerKey: 0,
+      derivativeSearchResults: [],
+      derivativeState: {
+        visible: true,
+        trigger: "uses_song",
+        searchError: "Couldn’t load songs. Try again.",
+        searchLoading: false,
+      },
+      onAdvancePicker: () => undefined,
+      updateDerivativeState: () => undefined,
+    });
+    const picker = findElement(
+      tree,
+      (element) => element.type === SearchReferencePicker,
+    );
+
+    expect(picker?.props.emptyLabel).toBe("Couldn’t load songs. Try again.");
+    expect(picker?.props.loading).toBe(false);
+  });
+
+  test("clears derivative search errors when a new query starts", () => {
+    let nextState: PostComposerProps["derivativeStep"];
+    const tree = PostComposerDerivativeSection({
+      copy,
+      derivativePickerKey: 0,
+      derivativeSearchResults: [],
+      derivativeState: {
+        visible: true,
+        trigger: "uses_song",
+        searchError: "Couldn’t load songs. Try again.",
+        searchLoading: false,
+      },
+      onAdvancePicker: () => undefined,
+      updateDerivativeState: (updater) => {
+        nextState = updater({
+          visible: true,
+          trigger: "uses_song",
+          searchError: "Couldn’t load songs. Try again.",
+          searchLoading: false,
+        });
+      },
+    });
+    const picker = findElement(
+      tree,
+      (element) => element.type === SearchReferencePicker,
+    );
+
+    if (!picker || typeof picker.props.onQueryChange !== "function") {
+      throw new Error("Search picker not found");
+    }
+    (picker.props.onQueryChange as (query: string) => void)("Travel Guide");
+
+    expect(nextState).toMatchObject({
+      query: "Travel Guide",
+      searchLoading: true,
+    });
+    expect(nextState?.searchError).toBeUndefined();
   });
 });
 

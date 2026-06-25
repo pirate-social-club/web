@@ -570,6 +570,66 @@ export const CommerceHeaderMenuDownloadsStems: Story = {
   ),
 };
 
+export const KaraokeReady: Story = {
+  name: "Karaoke / Ready",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Karaoke-ready song"
+      content={{
+        ...baseSong,
+        karaoke: { canKaraoke: true, status: "ready" },
+        onKaraoke: noop,
+      }}
+    />
+  ),
+};
+
+export const KaraokeProcessing: Story = {
+  name: "Karaoke / Processing",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Karaoke still processing"
+      content={{
+        ...baseSong,
+        karaoke: { canKaraoke: false, status: "processing" },
+        karaokeStatusVisible: true,
+      }}
+    />
+  ),
+};
+
+export const KaraokeFailed: Story = {
+  name: "Karaoke / Failed",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Karaoke failed"
+      content={{
+        ...baseSong,
+        karaoke: { canKaraoke: false, status: "failed" },
+        karaokeStatusVisible: true,
+      }}
+    />
+  ),
+};
+
+export const KaraokeUnavailable: Story = {
+  name: "Karaoke / Unavailable",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Karaoke lyrics unavailable"
+      content={{
+        ...baseSong,
+        karaoke: { canKaraoke: false, status: "unavailable" },
+        karaokeStatusVisible: true,
+      }}
+    />
+  ),
+};
+
 // ============================================================================
 // LAYOUT
 // ============================================================================
@@ -632,11 +692,20 @@ export const AgeProofRequired: Story = {
   render: () => (
     <PostCard
       {...basePost}
-      title="Explicit version - uncut"
+      title="Explicit single with cover art"
       content={{
         ...baseSong,
-        contentSafetyState: "adult",
+        accessMode: "locked",
         ageGatePolicy: "18_plus",
+        ageGateViewerState: "proof_required",
+        artworkSrc: "https://picsum.photos/seed/pirate-explicit-song-cover/240/240",
+        contentSafetyState: "adult",
+        listingMode: "listed",
+        listingStatus: "active",
+        priceLabel: "$3.99",
+        title: "Midnight Waves (Explicit)",
+        onBuy: noop,
+        onVerifyAge: noop,
       }}
     />
   ),

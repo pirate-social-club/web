@@ -103,7 +103,7 @@ function AnalyticsRouteTracker({ route }: { route: AppRoute }) {
         eventName: "community_viewed",
         communityId: route.communityId,
       });
-    } else if (route.kind === "post") {
+    } else if (route.kind === "post" || route.kind === "post-karaoke") {
       trackAnalyticsEvent({
         eventName: "thread_viewed",
         postId: route.postId,
@@ -163,7 +163,7 @@ function NotificationShell({
     || route.kind === "chat-conversation"
     || route.kind === "chat-new"
     );
-  const isStandaloneViewerRoute = route.kind === "live-room";
+  const isStandaloneViewerRoute = route.kind === "live-room" || route.kind === "post-karaoke";
   const isChatRoute = route.kind === "chat"
     || route.kind === "chat-target"
     || route.kind === "chat-conversation"
@@ -284,10 +284,12 @@ export function PirateAppShell({
     || (!session && (
       route.kind === "home"
       || route.kind === "popular"
+      || route.kind === "search"
       || route.kind === "community"
       || route.kind === "wallet"
       || route.kind === "post"
       || route.kind === "live-room"
+      || route.kind === "post-karaoke"
     ));
   const primaryItems = buildPrimaryItems(copy.appSidebar);
 

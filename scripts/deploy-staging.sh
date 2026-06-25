@@ -21,15 +21,25 @@ if [[ -z "${OPERATOR_DIR:-}" ]]; then
     OPERATOR_DIR="$ROOT_DIR/../api/services/community-provision-operator"
   fi
 fi
+if [[ -z "${SONG_PREVIEW_CONTAINER_DIR:-}" ]]; then
+  if [[ -d "$ROOT_DIR/api/services/song-preview-container" ]]; then
+    SONG_PREVIEW_CONTAINER_DIR="$ROOT_DIR/api/services/song-preview-container"
+  else
+    SONG_PREVIEW_CONTAINER_DIR="$ROOT_DIR/../api/services/song-preview-container"
+  fi
+fi
 WEB_WRANGLER="$WEB_DIR/node_modules/.bin/wrangler"
 API_WRANGLER="$API_DIR/node_modules/.bin/wrangler"
 OPERATOR_WRANGLER="$OPERATOR_DIR/node_modules/.bin/wrangler"
+SONG_PREVIEW_CONTAINER_WRANGLER="$SONG_PREVIEW_CONTAINER_DIR/node_modules/.bin/wrangler"
 REQUIRED_API_STAGING_SECRETS=(
   OPENAI_API_KEY
   OPENROUTER_API_KEY
   PRIVY_APP_ID
   PRIVY_APP_SECRET
+  SONG_PREVIEW_SHARED_SECRET
   STORY_OPERATOR_PRIVATE_KEY
+  MUSIC_PURCHASE_STORY_SETTLEMENT_PRIVATE_KEY
   STORY_ROYALTY_SPG_NFT_CONTRACT
 )
 OPTIONAL_API_STAGING_SECRETS=(
@@ -239,6 +249,28 @@ if (missingOptional.length > 0) {
 NODE
 }
 
+put_worker_secret() {
+  local wrangler="$1"
+  local env_name="$2"
+  local secret_name="$3"
+  local secret_value="${!secret_name:-}"
+
+  if [[ -z "$secret_value" ]]; then
+    printf 'Missing required secret value in environment: %s\n' "$secret_name" >&2
+    exit 1
+  fi
+
+  printf '%s' "$secret_value" | "$wrangler" secret put "$secret_name" --env "$env_name"
+}
+
+sync_song_preview_staging_secrets() {
+  put_worker_secret "$API_WRANGLER" staging SONG_PREVIEW_SHARED_SECRET
+  put_worker_secret "$SONG_PREVIEW_CONTAINER_WRANGLER" staging SONG_PREVIEW_SHARED_SECRET
+  put_worker_secret "$SONG_PREVIEW_CONTAINER_WRANGLER" staging CONTROL_PLANE_DATABASE_URL
+  put_worker_secret "$SONG_PREVIEW_CONTAINER_WRANGLER" staging FILEBASE_S3_ACCESS_KEY
+  put_worker_secret "$SONG_PREVIEW_CONTAINER_WRANGLER" staging FILEBASE_S3_SECRET_KEY
+}
+
 require_command bun
 require_command curl
 require_command git
@@ -246,6 +278,7 @@ require_command node
 require_file "$WEB_WRANGLER"
 require_file "$API_WRANGLER"
 require_file "$OPERATOR_WRANGLER"
+require_file "$SONG_PREVIEW_CONTAINER_WRANGLER"
 
 if [[ "$ALLOW_NON_MAIN" != "1" ]]; then
   require_clean_main "$WEB_DIR" "web"
@@ -301,6 +334,13 @@ log "deploy community provision operator staging"
   --var "BUILD_GIT_SHA:$OPERATOR_SHA" \
   --var "BUILD_GIT_REF:$OPERATOR_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
+
+log "deploy song preview container staging"
+(cd "$SONG_PREVIEW_CONTAINER_DIR" && "$SONG_PREVIEW_CONTAINER_WRANGLER" deploy \
+  --env staging)
+
+log "sync song preview staging secrets"
+sync_song_preview_staging_secrets
 
 log "deploy api staging worker"
 (cd "$API_DIR" && "$API_WRANGLER" deploy \

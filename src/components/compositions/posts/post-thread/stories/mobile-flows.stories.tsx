@@ -9,8 +9,9 @@ import { ResponsiveOptionSelect } from "@/components/compositions/system/respons
 import { MobileReplyScreen } from "../mobile-reply-screen";
 import { MobileThreadScreen } from "../mobile-thread-screen";
 import { PostThread } from "../post-thread";
+import { ReplyIdentitySelect } from "../reply-identity-select";
 import { ReplyContextCard } from "../reply-context-card";
-import type { PostThreadComment } from "../post-thread.types";
+import type { PostThreadComment, PostThreadIdentityMode } from "../post-thread.types";
 
 const threadPost = {
   ...POSTS_BY_ID.pst_01_weekly_listening,
@@ -146,6 +147,7 @@ export const ThreadRead: Story = {
 export const ReplyToPost: Story = {
   render: function ReplyToPostStory() {
     const [body, setBody] = React.useState("");
+    const [identityMode, setIdentityMode] = React.useState<PostThreadIdentityMode>("public");
 
     return (
       <MobileReplyScreen
@@ -158,6 +160,18 @@ export const ReplyToPost: Story = {
             metadata="9d"
           />
         )}
+        identityControl={(
+          <ReplyIdentitySelect
+            identity={{
+              allowAnonymousIdentity: true,
+              anonymousLabel: "anon_signal-lantern-28",
+              anonymousScope: "community_stable",
+              publicLabel: "you.pirate",
+            }}
+            onChange={setIdentityMode}
+            value={identityMode}
+          />
+        )}
         onBodyChange={setBody}
         title="Reply"
       />
@@ -168,6 +182,7 @@ export const ReplyToPost: Story = {
 export const ReplyToComment: Story = {
   render: function ReplyToCommentStory() {
     const [body, setBody] = React.useState("");
+    const [identityMode, setIdentityMode] = React.useState<PostThreadIdentityMode>("public");
 
     return (
       <MobileReplyScreen
@@ -177,6 +192,18 @@ export const ReplyToComment: Story = {
             authorLabel="u/dialsanddrums"
             body="A focused reply route can pin the parent comment, lift the keyboard immediately, and avoid the footer fighting for space."
             metadata="15m"
+          />
+        )}
+        identityControl={(
+          <ReplyIdentitySelect
+            identity={{
+              allowAnonymousIdentity: true,
+              anonymousLabel: "anon_fable-corsair-00",
+              anonymousScope: "thread_stable",
+              publicLabel: "you.pirate",
+            }}
+            onChange={setIdentityMode}
+            value={identityMode}
           />
         )}
         onBodyChange={setBody}

@@ -201,10 +201,18 @@ function RoyaltySplitEditor({
   onChange: (value: AssetRoyaltySplitState) => void;
   value: AssetRoyaltySplitState;
 }) {
+  // Raw per-row percent input while editing, so intermediate values like "9."
+  // or "9.7" are preserved instead of being rounded on every keystroke.
+  const [percentDrafts, setPercentDrafts] = React.useState<Record<string, string>>({});
   const totalSharePct = value.allocations.reduce((sum, allocation) => sum + allocation.sharePct, 0);
   const creatorSharePct = value.allocations
     .filter((allocation) => allocation.recipientKind === "creator")
     .reduce((sum, allocation) => sum + allocation.sharePct, 0);
+  const normalizedWallets = value.allocations
+    .map((allocation) => (allocation.walletAddress ?? "").trim().toLowerCase())
+    .filter(Boolean);
+  const hasDuplicateWallets = new Set(normalizedWallets).size !== normalizedWallets.length;
+  const hasZeroShare = value.allocations.some((allocation) => allocation.sharePct <= 0);
   const updateAllocation = (
     allocationId: string,
     patch: Partial<AssetRoyaltySplitState["allocations"][number]>,
@@ -248,30 +256,57 @@ function RoyaltySplitEditor({
                   <Wallet className="size-5" />
                 </span>
                 {isCreator ? (
-                  <Type as="span" variant="body-strong" className="shrink-0 text-foreground">
-                    You
-                  </Type>
-                ) : null}
-                <Input
-                  aria-label={isCreator ? "Your wallet address" : `Recipient ${index + 1} wallet address`}
-                  className="h-11 min-w-0 flex-1 font-mono"
-                  onChange={(event) => updateAllocation(allocation.id, { walletAddress: event.target.value })}
-                  placeholder={isCreator ? "Your primary wallet" : "0x..."}
-                  value={allocation.walletAddress ?? ""}
-                />
+                  // Creator wallet is read-only: it must be your primary wallet,
+                  // and registration mints the IP + your share to it.
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <Type as="span" variant="body-strong" className="shrink-0 text-foreground">
+                      You
+                    </Type>
+                    <Type
+                      as="span"
+                      variant="body"
+                      className="min-w-0 flex-1 truncate font-mono text-muted-foreground"
+                      title={allocation.walletAddress ?? undefined}
+                    >
+                      {allocation.walletAddress?.trim() || "Your primary wallet"}
+                    </Type>
+                  </div>
+                ) : (
+                  <Input
+                    aria-label={`Recipient ${index + 1} wallet address`}
+                    className="h-11 min-w-0 flex-1 font-mono"
+                    onChange={(event) => updateAllocation(allocation.id, { walletAddress: event.target.value })}
+                    placeholder="0x..."
+                    value={allocation.walletAddress ?? ""}
+                  />
+                )}
               </div>
               <div className="grid grid-cols-[1fr_auto] items-center rounded-full border border-input bg-background pe-4 shadow-sm">
                 <Input
                   aria-label={isCreator ? "Your royalty percentage" : `Recipient ${index + 1} royalty percentage`}
                   className="h-11 rounded-none border-0 bg-transparent pe-2 text-end shadow-none focus-visible:ring-0"
-                  inputMode="numeric"
+                  inputMode="decimal"
                   max={100}
                   min={0}
-                  onChange={(event) => updateAllocation(allocation.id, {
-                    sharePct: Math.min(100, Math.max(0, Number.parseInt(event.target.value, 10) || 0)),
+                  step={0.01}
+                  onChange={(event) => {
+                    const raw = event.target.value;
+                    setPercentDrafts((prev) => ({ ...prev, [allocation.id]: raw }));
+                    const parsed = Number.parseFloat(raw);
+                    // Clamp to [0, 100] but do not round here; finer-than-bps
+                    // precision is rejected by validation before publishing.
+                    if (Number.isFinite(parsed)) {
+                      updateAllocation(allocation.id, { sharePct: Math.min(100, Math.max(0, parsed)) });
+                    }
+                  }}
+                  onBlur={() => setPercentDrafts((prev) => {
+                    if (!(allocation.id in prev)) return prev;
+                    const next = { ...prev };
+                    delete next[allocation.id];
+                    return next;
                   })}
                   type="number"
-                  value={allocation.sharePct}
+                  value={percentDrafts[allocation.id] ?? allocation.sharePct}
                 />
                 <span className="font-semibold text-muted-foreground">%</span>
               </div>
@@ -316,6 +351,14 @@ function RoyaltySplitEditor({
       {creatorSharePct === 0 ? (
         <Type as="p" variant="caption" className="text-destructive">
           You need to receive at least some royalty.
+        </Type>
+      ) : hasZeroShare ? (
+        <Type as="p" variant="caption" className="text-destructive">
+          Every recipient needs a share greater than 0%.
+        </Type>
+      ) : hasDuplicateWallets ? (
+        <Type as="p" variant="caption" className="text-destructive">
+          Each wallet can appear only once.
         </Type>
       ) : totalSharePct !== 100 ? (
         <Type as="p" variant="caption" className="text-destructive">

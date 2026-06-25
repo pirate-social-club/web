@@ -63,6 +63,13 @@ describe("public profile host routing", () => {
     expect(isNativePublicIdentityRoute(matchRoute("/a/night-signal.clawitzer", "pirate.sc"))).toBe(false);
   });
 
+  test("matches search route", () => {
+    expectJson(matchRoute("/search"), {
+      kind: "search",
+      path: "/search",
+    });
+  });
+
   test("matches public agent routes from clawitzer host routes", () => {
     expectJson(matchRoute("/", "night-signal.clawitzer"), {
       kind: "public-agent",
@@ -120,6 +127,12 @@ describe("public profile host routing", () => {
       communityId: "community-123",
       section: "assistant",
     });
+    expectJson(matchRoute("/c/community-123/mod/karaoke"), {
+      kind: "community-moderation",
+      path: "/c/community-123/mod/karaoke",
+      communityId: "community-123",
+      section: "karaoke",
+    });
     expectJson(matchRoute("/c/community-123/mod/telegram"), {
       kind: "community-moderation",
       path: "/c/community-123/mod/telegram",
@@ -144,6 +157,14 @@ describe("public profile host routing", () => {
     expectJson(matchRoute("/p/pst_cf89c73fe60641debd05c939252a870c/live"), {
       kind: "live-room",
       path: "/p/pst_cf89c73fe60641debd05c939252a870c/live",
+      postId: "pst_cf89c73fe60641debd05c939252a870c",
+    });
+  });
+
+  test("matches dedicated karaoke routes", () => {
+    expectJson(matchRoute("/p/pst_cf89c73fe60641debd05c939252a870c/karaoke"), {
+      kind: "post-karaoke",
+      path: "/p/pst_cf89c73fe60641debd05c939252a870c/karaoke",
       postId: "pst_cf89c73fe60641debd05c939252a870c",
     });
   });
@@ -205,6 +226,10 @@ describe("public profile host routing", () => {
     expectJson(matchRoute("/tg/self-return"), {
       kind: "telegram-self-return",
       path: "/tg/self-return",
+    });
+    expectJson(matchRoute("/tg/link-existing"), {
+      kind: "telegram-link-existing",
+      path: "/tg/link-existing",
     });
     expectJson(matchRoute("/tg/self-return/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c"), {
       kind: "telegram-self-return",

@@ -52,6 +52,14 @@
   overflow: hidden;
 }
 
+.vp-player[data-video-object-fit="contain"] video {
+  object-fit: contain;
+}
+
+.vp-player[data-video-object-fit="cover"] video {
+  object-fit: cover;
+}
+
 /* ---------------------------------------------------------------------------
  * Poster: no zoom animation, keep it simple
  * --------------------------------------------------------------------------- */

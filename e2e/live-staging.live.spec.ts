@@ -1,7 +1,8 @@
 import { createHash, createHmac } from "node:crypto";
+import { writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { expect, test, type Page } from "@playwright/test";
-import type { SessionExchangeResponse } from "@pirate/api-contracts";
+import type { CommunityFollowResponse, SessionExchangeResponse } from "@pirate/api-contracts";
 
 import {
   expectNoBrowserError,
@@ -17,9 +18,14 @@ import {
 
 const baseURL = process.env.E2E_BASE_URL ?? "https://staging.pirate.sc";
 const apiBaseURL = process.env.E2E_API_BASE_URL ?? resolveApiBaseURL(baseURL);
+const apiOrigin = new URL(apiBaseURL).origin;
 const liveSubject = process.env.E2E_LIVE_STAGING_SUBJECT ?? "seed-staging-mcp-smoke-staff";
 const seedCommunityLabel = process.env.E2E_LIVE_STAGING_COMMUNITY_LABEL ?? "MCP Guest Comment Smoke";
 const seedPostTitle = process.env.E2E_LIVE_STAGING_SEED_POST_TITLE ?? "MCP guest comment smoke target";
+const multipartGateVideoBytes = Number.parseInt(
+  process.env.E2E_MULTIPART_GATE_VIDEO_BYTES ?? String(70 * 1024 * 1024),
+  10,
+);
 const require = createRequire(import.meta.url);
 const agoraSdkPath = require.resolve("agora-rtc-sdk-ng");
 const liveSecretsPresent = Boolean(
@@ -27,6 +33,15 @@ const liveSecretsPresent = Boolean(
   && process.env.AUTH_UPSTREAM_JWT_ISSUER?.trim()
   && process.env.AUTH_UPSTREAM_JWT_SHARED_SECRET?.trim(),
 );
+
+// Contract-drift gate for community follow. This catches response shape regressions,
+// hook silent rollback, and persistence across reload; it is not a broad follow suite.
+// Run locally against staging:
+//   AUTH_UPSTREAM_JWT_AUDIENCE=... AUTH_UPSTREAM_JWT_ISSUER=... \
+//   AUTH_UPSTREAM_JWT_SHARED_SECRET=... E2E_BASE_URL=https://staging.pirate.sc \
+//   E2E_API_BASE_URL=https://api-staging.pirate.sc E2E_LIVE_STAGING=true \
+//   bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging \
+//     --grep "follows a real staging community"
 
 type LiveCommunity = {
   id: string;
@@ -42,6 +57,13 @@ type AgoraBlock = {
   token: string | null;
   token_expires_at: number | null;
   configured: boolean;
+};
+
+type CommunityPreview = {
+  follower_count: number | null;
+  id: string;
+  route_slug?: string | null;
+  viewer_following: boolean | null;
 };
 
 function requiredEnv(name: string): string {
@@ -68,6 +90,10 @@ function signHs256Jwt(payload: Record<string, unknown>, secret: string): string 
 
 function rawPublicId(value: string, prefix: string): string {
   return value.startsWith(`${prefix}_`) ? value.slice(prefix.length + 1) : value;
+}
+
+function toPublicCommunityId(value: string): string {
+  return value.startsWith("com_") ? value : `com_${value}`;
 }
 
 function rawPublicUserId(value: string): string {
@@ -291,6 +317,76 @@ async function completeSelfVerification(session: StoredSession): Promise<void> {
   });
 }
 
+async function writeGeneratedMultipartVideo(page: Page, sizeBytes: number, filePath: string): Promise<string> {
+  if (!Number.isSafeInteger(sizeBytes) || sizeBytes <= 0) {
+    throw new Error(`Invalid target video size ${sizeBytes}`);
+  }
+  const recorded = await page.evaluate(async () => {
+    if (!("MediaRecorder" in window)) {
+      throw new Error("MediaRecorder is not available in this browser");
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 320;
+    canvas.height = 180;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas 2D context unavailable");
+
+    let frame = 0;
+    const draw = () => {
+      context.fillStyle = frame % 2 === 0 ? "#17405f" : "#2f5f3d";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "#ffffff";
+      context.font = "20px sans-serif";
+      context.fillText(`Multipart upload E2E ${frame++}`, 20, 96);
+    };
+    draw();
+    const drawInterval = window.setInterval(draw, 100);
+    const stream = canvas.captureStream(10);
+    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+      ? "video/webm;codecs=vp8"
+      : "video/webm";
+    const chunks: BlobPart[] = [];
+    const recorder = new MediaRecorder(stream, { mimeType });
+
+    await new Promise<void>((resolve, reject) => {
+      recorder.addEventListener("dataavailable", (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      });
+      recorder.addEventListener("error", () => reject(new Error("Could not generate multipart upload video fixture.")), { once: true });
+      recorder.addEventListener("stop", () => resolve(), { once: true });
+      recorder.start();
+      window.setTimeout(() => recorder.stop(), 750);
+    });
+
+    window.clearInterval(drawInterval);
+    for (const track of stream.getTracks()) track.stop();
+
+    const recorded = new Blob(chunks, { type: "video/webm" });
+    return Array.from(new Uint8Array(await recorded.arrayBuffer()));
+  });
+  if (recorded.length <= 0 || recorded.length >= sizeBytes) {
+    throw new Error(`Generated fixture had unexpected size ${recorded.length}`);
+  }
+
+  const fileName = `multipart-gate-${sizeBytes}.webm`;
+  await writeFile(filePath, Buffer.concat([
+    Buffer.from(recorded),
+    Buffer.alloc(sizeBytes - recorded.length),
+  ]));
+  return fileName;
+}
+
+async function advanceComposerToPublish(page: Page): Promise<void> {
+  const publishButton = page.getByRole("button", { name: /^(publish|post)$/i });
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    if (await publishButton.isVisible().catch(() => false)) return;
+    await page.getByRole("button", { name: /^continue$/i }).click();
+    await page.waitForTimeout(500);
+  }
+  await expect(publishButton).toBeVisible({ timeout: 10_000 });
+}
+
 function expectConfiguredAgora(block: AgoraBlock, label: string): void {
   expect(block.configured, `${label} configured`).toBe(true);
   expect(block.app_id, `${label} app_id`).toBeTruthy();
@@ -345,6 +441,105 @@ async function createSmokeCommunity(runId: string, host: StoredSession): Promise
     await waitForJob(jobId, host.accessToken);
   }
   return rawPublicId(createdCommunity.community.id, "com");
+}
+
+async function createFollowContractCommunity(runId: string, host: StoredSession): Promise<LiveCommunity> {
+  const label = `e2e-follow-contract-${runId}`;
+  let createdCommunity: {
+    community: { display_name?: string | null; id: string; route_slug?: string | null };
+    job?: { id?: string; status?: string };
+  };
+  try {
+    createdCommunity = await requestJson<{
+      community: { display_name?: string | null; id: string; route_slug?: string | null };
+      job?: { id?: string; status?: string };
+    }>("/communities", {
+      body: JSON.stringify({
+        display_name: label,
+        handle_policy: { policy_template: "standard" },
+        membership_mode: "request",
+      }),
+      headers: { authorization: `Bearer ${host.accessToken}` },
+      method: "POST",
+    });
+    if (createdCommunity.job?.status && createdCommunity.job.status !== "succeeded") {
+      const jobId = firstString(createdCommunity.job.id);
+      if (!jobId) throw new Error("community creation job id is missing");
+      await waitForJob(jobId, host.accessToken);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (
+      !message.includes("maximum database count")
+      && !message.includes("community_provision_operator_failed")
+    ) {
+      throw error;
+    }
+    console.warn(`Falling back to seeded community for follow contract gate: ${message}`);
+    return discoverSeedCommunity();
+  }
+
+  const id = rawPublicId(createdCommunity.community.id, "com");
+  return {
+    id,
+    label: firstString(createdCommunity.community.display_name, label) ?? label,
+    routeSegment: firstString(createdCommunity.community.route_slug, createdCommunity.community.id, id) ?? id,
+  };
+}
+
+async function waitForCommunityPreview(
+  communityId: string,
+  headers: Record<string, string> = {},
+): Promise<CommunityPreview> {
+  const deadline = Date.now() + 30_000;
+  let lastStatus = 0;
+  let lastBody = "";
+
+  while (Date.now() < deadline) {
+    const response = await fetch(new URL(`/communities/${encodeURIComponent(communityId)}/preview`, apiBaseURL), {
+      headers: {
+        accept: "application/json",
+        ...headers,
+      },
+    });
+    lastStatus = response.status;
+    lastBody = await response.text();
+    if (response.status === 200) {
+      return (lastBody.trim() ? JSON.parse(lastBody) : null) as CommunityPreview;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+
+  throw new Error(`community preview did not become available; last status ${lastStatus}: ${lastBody}`);
+}
+
+async function createFollowSmokeCommunity(runId: string, host: StoredSession): Promise<LiveCommunity> {
+  const displayName = `Follow Contract Smoke ${runId}`;
+  const createdCommunity = await requestJson<{
+    community: { display_name?: string | null; id: string; route_slug?: string | null };
+    job?: { id?: string; status?: string };
+  }>("/communities", {
+    body: JSON.stringify({
+      display_name: displayName,
+      handle_policy: { policy_template: "standard" },
+      membership_mode: "request",
+    }),
+    headers: { authorization: `Bearer ${host.accessToken}` },
+    method: "POST",
+  });
+  if (createdCommunity.job?.status && createdCommunity.job.status !== "succeeded") {
+    const jobId = firstString(createdCommunity.job.id);
+    if (!jobId) throw new Error("community creation job id is missing");
+    await waitForJob(jobId, host.accessToken);
+  }
+
+  const id = rawPublicId(createdCommunity.community.id, "com");
+  const publicId = `com_${id}`;
+  return {
+    id,
+    label: firstString(createdCommunity.community.display_name, displayName) ?? displayName,
+    routeSegment: firstString(createdCommunity.community.route_slug, publicId) ?? publicId,
+  };
 }
 
 async function createGeorgiaPlaceSmokeCommunity(runId: string, host: StoredSession): Promise<LiveCommunity> {
@@ -795,8 +990,182 @@ async function discoverSeedCommunity(): Promise<LiveCommunity> {
 }
 
 test.describe("live staging integration", () => {
+  test.describe.configure({ mode: "serial" });
+
   test.skip(process.env.E2E_LIVE_STAGING !== "true", "Set E2E_LIVE_STAGING=true to run real staging mutations.");
   test.skip(!liveSecretsPresent, "Live staging JWT secrets are not available.");
+
+  test("uploads a public video through direct multipart in a real browser", async ({ page }, testInfo) => {
+    testInfo.setTimeout(15 * 60_000);
+
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const session = await createLiveSession(liveSubject, walletAddressForSubject(liveSubject));
+    const community = await discoverSeedCommunity();
+    const title = `Multipart video browser E2E ${runId}`;
+    const filebasePartRequests: URL[] = [];
+    const filebasePartStatuses: Array<{ partNumber: string | null; status: number }> = [];
+
+    page.on("request", (request) => {
+      if (request.method().toUpperCase() !== "PUT") return;
+      const url = new URL(request.url());
+      if (!url.hostname.endsWith("filebase.com")) return;
+      if (!url.searchParams.has("partNumber") || !url.searchParams.has("uploadId")) return;
+      filebasePartRequests.push(url);
+    });
+    page.on("response", (response) => {
+      const request = response.request();
+      if (request.method().toUpperCase() !== "PUT") return;
+      const url = new URL(response.url());
+      if (!url.hostname.endsWith("filebase.com")) return;
+      if (!url.searchParams.has("partNumber") || !url.searchParams.has("uploadId")) return;
+      filebasePartStatuses.push({
+        partNumber: url.searchParams.get("partNumber"),
+        status: response.status(),
+      });
+    });
+
+    await installStoredSession(page, session);
+    await page.goto(`/c/${pathSegment(community.routeSegment)}/submit`);
+    await expect(page.getByPlaceholder("Title*")).toBeVisible({ timeout: 30_000 });
+    await page.getByPlaceholder("Title*").fill(title);
+    const fixturePath = testInfo.outputPath(`multipart-gate-${multipartGateVideoBytes}.webm`);
+    await writeGeneratedMultipartVideo(page, multipartGateVideoBytes, fixturePath);
+    const fileChooserPromise = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: /^video$/i }).click();
+    await (await fileChooserPromise).setFiles(fixturePath);
+    await expect(page.locator("video").first()).toBeVisible({ timeout: 30_000 });
+
+    await advanceComposerToPublish(page);
+
+    const uploadIntentPromise = page.waitForResponse((response) => {
+      const request = response.request();
+      const url = new URL(response.url());
+      return request.method().toUpperCase() === "POST"
+        && url.origin === apiOrigin
+        && /\/communities\/[^/]+\/song-artifact-uploads$/u.test(url.pathname);
+    }, { timeout: 90_000 });
+    const completePromise = page.waitForResponse((response) => {
+      const request = response.request();
+      const url = new URL(response.url());
+      return request.method().toUpperCase() === "POST"
+        && url.origin === apiOrigin
+        && /\/communities\/[^/]+\/song-artifact-uploads\/[^/]+\/sessions\/[^/]+\/complete$/u.test(url.pathname);
+    }, { timeout: 12 * 60_000 });
+
+    await page.getByRole("button", { name: /^(publish|post)$/i }).click();
+
+    const uploadIntent = await uploadIntentPromise.then((response) => response.json() as Promise<{
+      id: string;
+      upload_session?: {
+        id: string;
+        part_size_bytes: number;
+        total_parts: number;
+        upload_id: string;
+      };
+    }>);
+    expect(uploadIntent.upload_session, "multipart upload session").toBeTruthy();
+    expect(uploadIntent.upload_session?.part_size_bytes).toBe(10 * 1024 * 1024);
+    expect(uploadIntent.upload_session?.total_parts).toBe(Math.ceil(multipartGateVideoBytes / (10 * 1024 * 1024)));
+
+    const completed = await completePromise.then((response) => response.json() as Promise<{
+      content_hash?: string | null;
+      ipfs_cid?: string | null;
+      status?: string | null;
+    }>);
+    expect(completed.status).toBe("uploaded");
+    expect(completed.content_hash).toMatch(/^0x[a-f0-9]{64}$/iu);
+    expect(completed.ipfs_cid, "multipart upload IPFS CID").toBeTruthy();
+
+    await expect(page).toHaveURL(/\/p\/[^/?#]+/u, { timeout: 60_000 });
+    await expect(page.locator("body")).toContainText(title, { timeout: 30_000 });
+    await expectNoBrowserError(page);
+
+    const expectedParts = uploadIntent.upload_session?.total_parts ?? 0;
+    expect(filebasePartRequests.length, "direct Filebase part PUT request count").toBe(expectedParts);
+    expect(filebasePartStatuses.length, "direct Filebase part PUT response count").toBe(expectedParts);
+    for (const requestUrl of filebasePartRequests) {
+      expect(requestUrl.searchParams.get("uploadId")).toBe(uploadIntent.upload_session?.upload_id);
+      expect(requestUrl.searchParams.get("X-Amz-Signature")).toMatch(/^[a-f0-9]{64}$/iu);
+      expect(requestUrl.searchParams.get("partNumber")).toMatch(/^\d+$/u);
+    }
+    for (const status of filebasePartStatuses) {
+      expect(status.status, `part ${status.partNumber} status`).toBe(200);
+    }
+  });
+
+  test("follows a real staging community and persists after reload", async ({ page }, testInfo) => {
+    testInfo.setTimeout(90_000);
+
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const ownerSubject = `follow-contract-owner-${runId}`;
+    const followerSubject = `follow-contract-follower-${runId}`;
+    const owner = await createLiveSession(ownerSubject, walletAddressForSubject(ownerSubject));
+    const follower = await createLiveSession(followerSubject, walletAddressForSubject(followerSubject));
+    const community = await createFollowContractCommunity(runId, owner);
+    const publicCommunityId = toPublicCommunityId(community.id);
+    const followerHeaders = { authorization: `Bearer ${follower.accessToken}` };
+
+    try {
+      await waitForCommunityPreview(publicCommunityId, followerHeaders);
+      await requestJson<CommunityFollowResponse>(`/communities/${encodeURIComponent(publicCommunityId)}/unfollow`, {
+        body: JSON.stringify({}),
+        headers: followerHeaders,
+        method: "POST",
+      }, [200, 404, 409]);
+
+      const previewBefore = await waitForCommunityPreview(publicCommunityId, followerHeaders);
+      expect(previewBefore.viewer_following).toBe(false);
+      const followerCountBefore = previewBefore.follower_count ?? 0;
+
+      await installStoredSession(page, follower);
+      await page.goto(`/c/${pathSegment(community.routeSegment)}`);
+      await expect(page.locator("body")).toContainText(community.label, { timeout: 30_000 });
+
+      const followButton = page.getByTestId("community-follow-button").first();
+      await expect(followButton).toBeVisible({ timeout: 30_000 });
+      await expect(followButton).toHaveAttribute("data-state", "follow");
+
+      const followResponsePromise = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return response.request().method() === "POST"
+          && url.pathname === `/communities/${publicCommunityId}/follow`;
+      });
+      await followButton.click();
+      const followResponse = await followResponsePromise;
+      expect(followResponse.status()).toBe(200);
+      const followBody = await followResponse.json() as CommunityFollowResponse & { community_id?: unknown };
+      expect(followBody).toEqual({
+        community: publicCommunityId,
+        follower_count: followerCountBefore + 1,
+        following: true,
+      });
+      expect("community_id" in followBody).toBe(false);
+      expect(followBody.community).toMatch(/^com_cmt_/u);
+
+      await expect(followButton).toHaveAttribute("data-state", "following");
+      const previewAfter = await waitForCommunityPreview(publicCommunityId, followerHeaders);
+      expect(previewAfter.viewer_following).toBe(true);
+      expect(previewAfter.follower_count).toBe(followerCountBefore + 1);
+
+      await page.reload();
+      await expect(page.locator("body")).toContainText(community.label, { timeout: 30_000 });
+      await expect(followButton).toHaveAttribute("data-state", "following");
+      const previewAfterReload = await waitForCommunityPreview(publicCommunityId, followerHeaders);
+      expect(previewAfterReload.viewer_following).toBe(true);
+      expect(previewAfterReload.follower_count).toBe(followerCountBefore + 1);
+      await expectNoBrowserError(page);
+    } finally {
+      await requestJson(
+        `/communities/${encodeURIComponent(publicCommunityId)}/unfollow`,
+        {
+          body: JSON.stringify({}),
+          headers: followerHeaders,
+          method: "POST",
+        },
+        [200, 404, 409],
+      ).catch(() => undefined);
+    }
+  });
 
   test("searches real Georgia event places through Geoapify", async ({ page }, testInfo) => {
     testInfo.setTimeout(90_000);
@@ -878,6 +1247,198 @@ test.describe("live staging integration", () => {
 
     await expect(page.locator("body")).toContainText(comment, { timeout: 30_000 });
     await expectNoBrowserError(page);
+  });
+
+  test("uploads a public video through direct multipart in a real browser", async ({ page }, testInfo) => {
+    testInfo.setTimeout(15 * 60_000);
+
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const subject = `multipart-video-browser-${runId}`;
+    const session = await createLiveSession(subject, walletAddressForSubject(subject));
+    const community = await createFollowSmokeCommunity(runId, session);
+    const title = `Multipart video browser E2E ${runId}`;
+    const filebasePartRequests: URL[] = [];
+    const filebasePartStatuses: Array<{ partNumber: string | null; status: number }> = [];
+
+    page.on("request", (request) => {
+      if (request.method().toUpperCase() !== "PUT") return;
+      const url = new URL(request.url());
+      if (!url.hostname.endsWith("filebase.com")) return;
+      if (!url.searchParams.has("partNumber") || !url.searchParams.has("uploadId")) return;
+      filebasePartRequests.push(url);
+    });
+    page.on("response", (response) => {
+      const request = response.request();
+      if (request.method().toUpperCase() !== "PUT") return;
+      const url = new URL(response.url());
+      if (!url.hostname.endsWith("filebase.com")) return;
+      if (!url.searchParams.has("partNumber") || !url.searchParams.has("uploadId")) return;
+      filebasePartStatuses.push({
+        partNumber: url.searchParams.get("partNumber"),
+        status: response.status(),
+      });
+    });
+
+    await installStoredSession(page, session);
+    await page.goto(`/c/${pathSegment(community.routeSegment)}/submit`);
+    await expect(page.getByPlaceholder("Title*")).toBeVisible({ timeout: 30_000 });
+    await page.getByPlaceholder("Title*").fill(title);
+    const fixturePath = testInfo.outputPath(`multipart-gate-${multipartGateVideoBytes}.webm`);
+    await writeGeneratedMultipartVideo(page, multipartGateVideoBytes, fixturePath);
+    const fileChooserPromise = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: /^video$/i }).click();
+    await (await fileChooserPromise).setFiles(fixturePath);
+    await expect(page.locator("video").first()).toBeVisible({ timeout: 30_000 });
+
+    await advanceComposerToPublish(page);
+
+    const uploadIntentPromise = page.waitForResponse((response) => {
+      const request = response.request();
+      const url = new URL(response.url());
+      return request.method().toUpperCase() === "POST"
+        && url.origin === apiOrigin
+        && /\/communities\/[^/]+\/song-artifact-uploads$/u.test(url.pathname);
+    }, { timeout: 90_000 });
+    const completePromise = page.waitForResponse((response) => {
+      const request = response.request();
+      const url = new URL(response.url());
+      return request.method().toUpperCase() === "POST"
+        && url.origin === apiOrigin
+        && /\/communities\/[^/]+\/song-artifact-uploads\/[^/]+\/sessions\/[^/]+\/complete$/u.test(url.pathname);
+    }, { timeout: 12 * 60_000 });
+
+    await page.getByRole("button", { name: /^(publish|post)$/i }).click();
+
+    const uploadIntent = await uploadIntentPromise.then((response) => response.json() as Promise<{
+      id: string;
+      upload_session?: {
+        id: string;
+        part_size_bytes: number;
+        total_parts: number;
+        upload_id: string;
+      };
+    }>);
+    expect(uploadIntent.upload_session, "multipart upload session").toBeTruthy();
+    expect(uploadIntent.upload_session?.part_size_bytes).toBe(10 * 1024 * 1024);
+    expect(uploadIntent.upload_session?.total_parts).toBe(Math.ceil(multipartGateVideoBytes / (10 * 1024 * 1024)));
+
+    const completed = await completePromise.then((response) => response.json() as Promise<{
+      content_hash?: string | null;
+      ipfs_cid?: string | null;
+      status?: string | null;
+    }>);
+    expect(completed.status).toBe("uploaded");
+    expect(completed.content_hash).toMatch(/^0x[a-f0-9]{64}$/iu);
+    expect(completed.ipfs_cid, "multipart upload IPFS CID").toBeTruthy();
+
+    await expect(page).toHaveURL(/\/p\/[^/?#]+/u, { timeout: 60_000 });
+    await expect(page.locator("body")).toContainText(title, { timeout: 30_000 });
+    await expectNoBrowserError(page);
+
+    const expectedParts = uploadIntent.upload_session?.total_parts ?? 0;
+    expect(filebasePartRequests.length, "direct Filebase part PUT request count").toBe(expectedParts);
+    expect(filebasePartStatuses.length, "direct Filebase part PUT response count").toBe(expectedParts);
+    for (const requestUrl of filebasePartRequests) {
+      expect(requestUrl.searchParams.get("uploadId")).toBe(uploadIntent.upload_session?.upload_id);
+      expect(requestUrl.searchParams.get("X-Amz-Signature")).toMatch(/^[a-f0-9]{64}$/iu);
+      expect(requestUrl.searchParams.get("partNumber")).toMatch(/^\d+$/u);
+    }
+    for (const status of filebasePartStatuses) {
+      expect(status.status, `part ${status.partNumber} status`).toBe(200);
+    }
+  });
+
+  test("follows a real staging community and persists after reload", async ({ page }, testInfo) => {
+    testInfo.setTimeout(90_000);
+
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const ownerSubject = `follow-contract-owner-${runId}`;
+    const followerSubject = `follow-contract-follower-${runId}`;
+    const owner = await createLiveSession(ownerSubject, walletAddressForSubject(ownerSubject));
+    const follower = await createLiveSession(followerSubject, walletAddressForSubject(followerSubject));
+    const community = await createFollowSmokeCommunity(runId, owner);
+    const publicCommunityId = `com_${community.id}`;
+    const authHeaders = { authorization: `Bearer ${follower.accessToken}` };
+
+    try {
+      const unfollowPrecondition = await requestJson<CommunityFollowResponse>(
+        `/communities/${encodeURIComponent(publicCommunityId)}/unfollow`,
+        {
+          body: JSON.stringify({}),
+          headers: authHeaders,
+          method: "POST",
+        },
+      );
+      expect(unfollowPrecondition.following).toBe(false);
+
+      const previewBefore = await requestJson<{
+        follower_count: number | null;
+        viewer_following: boolean | null;
+      }>(`/communities/${encodeURIComponent(publicCommunityId)}/preview`, {
+        headers: authHeaders,
+      });
+      expect(previewBefore.viewer_following).toBe(false);
+      const initialFollowerCount = previewBefore.follower_count ?? 0;
+
+      await installStoredSession(page, follower);
+      await page.goto(`/c/${pathSegment(community.routeSegment)}`);
+      await expect(page.locator("body")).toContainText(community.label, { timeout: 30_000 });
+
+      const followButton = page.getByRole("button", { name: /^follow$/i }).first();
+      await expect(followButton).toBeVisible({ timeout: 30_000 });
+      const followResponsePromise = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return response.request().method().toUpperCase() === "POST"
+          && url.pathname.startsWith("/communities/")
+          && url.pathname.endsWith("/follow");
+      });
+      await followButton.click();
+
+      const followResponse = await followResponsePromise;
+      expect(followResponse.status()).toBe(200);
+      const followBody = await followResponse.json() as CommunityFollowResponse & { community_id?: string };
+      expect(followBody).toEqual({
+        community: publicCommunityId,
+        following: true,
+        follower_count: initialFollowerCount + 1,
+      });
+      expect("community_id" in followBody).toBe(false);
+      expect(followBody.community).toMatch(/^com_cmt_/u);
+
+      await expect(page.getByRole("button", { name: /^following$/i }).first()).toBeVisible({ timeout: 30_000 });
+
+      const previewAfterFollow = await requestJson<{
+        follower_count: number | null;
+        viewer_following: boolean | null;
+      }>(`/communities/${encodeURIComponent(publicCommunityId)}/preview`, {
+        headers: authHeaders,
+      });
+      expect(previewAfterFollow.viewer_following).toBe(true);
+      expect(previewAfterFollow.follower_count).toBe(initialFollowerCount + 1);
+
+      await page.reload();
+      await expect(page.getByRole("button", { name: /^following$/i }).first()).toBeVisible({ timeout: 30_000 });
+
+      const previewAfterReload = await requestJson<{
+        follower_count: number | null;
+        viewer_following: boolean | null;
+      }>(`/communities/${encodeURIComponent(publicCommunityId)}/preview`, {
+        headers: authHeaders,
+      });
+      expect(previewAfterReload.viewer_following).toBe(true);
+      expect(previewAfterReload.follower_count).toBe(initialFollowerCount + 1);
+      await expectNoBrowserError(page);
+    } finally {
+      await requestJson(
+        `/communities/${encodeURIComponent(publicCommunityId)}/unfollow`,
+        {
+          body: JSON.stringify({}),
+          headers: authHeaders,
+          method: "POST",
+        },
+        [200, 404, 409],
+      ).catch(() => undefined);
+    }
   });
 
   test("publishes a real song only after Story registration", async ({}, testInfo) => {

@@ -12,7 +12,13 @@ import { getLocaleMessages } from "@/locales";
 import { OfficialOEmbed, OfficialYouTubeEmbed, PostEmbedPreview } from "./post-card-embed";
 import { LiveRoomPostContent } from "./post-card-live-room-content";
 import { SongPostContent } from "./post-card-song-content";
-import { postCardReadableWidth, postCardTextWrap, postCardType } from "./post-card.styles";
+import {
+  postCardBodyTextColor,
+  postCardCaptionTextColor,
+  postCardReadableWidth,
+  postCardTextWrap,
+  postCardType,
+} from "./post-card.styles";
 import type { PostCardContent, PostCardViewContext } from "./post-card.types";
 
 const LazyVideoPostContent = React.lazy(async () => {
@@ -237,7 +243,8 @@ function TextPostContent({
       className={cn(
         postCardType.body,
         postCardReadableWidth,
-        "self-start text-start text-foreground",
+        "self-start text-start",
+        postCardBodyTextColor,
         className,
       )}
       dir={content.bodyDir ?? "auto"}
@@ -325,7 +332,7 @@ export function PostCardMedia({ content, className, postHref, viewContext }: Pos
           </div>
           {!ageGateRequiresProof && content.caption && (
             <FormattedText
-              className={cn("mt-1.5 text-start text-muted-foreground", postCardType.caption)}
+              className={cn("mt-1.5 text-start", postCardCaptionTextColor, postCardType.caption)}
               dir={content.captionDir ?? "auto"}
               lang={content.captionLang}
               value={content.caption}
@@ -350,7 +357,7 @@ export function PostCardMedia({ content, className, postHref, viewContext }: Pos
         <div className={cn("w-full space-y-2 text-start", className)}>
           {content.body ? (
             <FormattedText
-              className={cn(postCardType.body, postCardReadableWidth, "text-foreground")}
+              className={cn(postCardType.body, postCardReadableWidth, postCardBodyTextColor)}
               dir={content.bodyDir ?? "auto"}
               lang={content.bodyLang}
               value={content.body}
@@ -366,7 +373,7 @@ export function PostCardMedia({ content, className, postHref, viewContext }: Pos
         <div className={cn("w-full space-y-2 text-start", className)}>
           {content.body ? (
             <FormattedText
-              className={cn(postCardType.body, postCardReadableWidth, "text-foreground")}
+              className={cn(postCardType.body, postCardReadableWidth, postCardBodyTextColor)}
               dir={content.bodyDir ?? "auto"}
               lang={content.bodyLang}
               value={content.body}

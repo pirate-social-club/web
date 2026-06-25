@@ -12,6 +12,8 @@ export type AssistantVoiceMode = "off" | "transcription_only" | "voice_replies" 
 export type AssistantSttProvider = "elevenlabs" | "mistral" | "openai" | "none";
 
 export type AssistantTtsProvider = "elevenlabs" | "none";
+export type TelegramPreviewPromptSuffixLocale = "en" | "ar" | "zh" | "ka";
+export type TelegramPreviewPromptSuffixSettings = Partial<Record<TelegramPreviewPromptSuffixLocale, string>>;
 
 export type AssistantRetentionMode = "per_user_private" | "community_visible_to_mods" | "ephemeral";
 
@@ -72,6 +74,7 @@ export type CommunityAssistantPolicySettings = {
   telegramPrivateAssistantEnabled: boolean;
   telegramPreviewEnabled: boolean;
   telegramPreviewDailyCap: number;
+  telegramPreviewPromptSuffix: TelegramPreviewPromptSuffixSettings;
   voiceMode: AssistantVoiceMode;
   sttProvider: AssistantSttProvider;
   sttModel: string;
@@ -162,6 +165,7 @@ export function createDefaultCommunityAssistantPolicySettings(): CommunityAssist
     telegramPrivateAssistantEnabled: false,
     telegramPreviewEnabled: true,
     telegramPreviewDailyCap: 5,
+    telegramPreviewPromptSuffix: {},
     voiceMode: "off",
     sttProvider: "elevenlabs",
     sttModel: "scribe_v2",

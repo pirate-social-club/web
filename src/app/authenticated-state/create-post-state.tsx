@@ -137,6 +137,7 @@ function simpleSubmitProgressSteps(input: {
   monetized?: boolean;
   hasMedia?: boolean;
 }): SubmitProgressStep[] {
+  const isTextLikePost = input.mode === "text" || input.mode === "link";
   const steps: SubmitProgressStep[] = [
     { key: "validating", phase: "validating", label: "Checking details" },
   ];
@@ -150,10 +151,19 @@ function simpleSubmitProgressSteps(input: {
   if (input.monetized) {
     steps.push({ key: "create_listing", phase: "creating_listing", label: "Creating listing" });
   }
-  steps.push(
-    { key: "publish_post", phase: "publishing_post", label: input.mode === "live" ? "Publishing live room" : "Publishing" },
-    { key: "done", phase: "done", label: input.mode === "live" ? "Live room published" : "Post published" },
-  );
+  steps.push({
+    key: "publish_post",
+    phase: "publishing_post",
+    label: input.mode === "live"
+      ? "Publishing live room"
+      : isTextLikePost
+        ? "Creating post"
+        : "Publishing",
+  });
+  if (isTextLikePost) {
+    steps.push({ key: "open_post", phase: "publishing_post", label: "Opening post" });
+  }
+  steps.push({ key: "done", phase: "done", label: input.mode === "live" ? "Live room published" : "Post published" });
   return steps;
 }
 
@@ -367,6 +377,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     license,
     lyrics,
     monetizationState,
+    royaltySplit,
     pendingSongBundleId,
     selectedQualifierIds,
     songMode,
@@ -394,6 +405,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setLicense,
     setLyrics,
     setMonetizationState,
+    setRoyaltySplit,
     setPendingSongBundleId,
     setSelectedQualifierIds,
     setSongMode,
@@ -554,7 +566,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     const fallbackTrigger = composerMode === "video" ? "uses_song" : "remix";
     const required = composerMode === "song";
     setDerivativeStep((current) => current
-      ? { ...current, searchLoading: true }
+      ? { ...current, searchError: undefined, searchLoading: true }
       : current);
     const timeout = setTimeout(() => {
       void withTimeout(
@@ -575,6 +587,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
               query: current?.query,
               requirementLabel: current?.requirementLabel,
               searchResults,
+              searchError: undefined,
               searchLoading: false,
               references: current?.references ?? [],
               licenseSummary: current?.licenseSummary,
@@ -585,12 +598,21 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         .catch((error: unknown) => {
           if (cancelled) return;
           setDerivativeStep((current) => current
-            ? { ...current, searchResults: [], searchLoading: false }
+            ? {
+                ...current,
+                searchError: composerMode === "video"
+                  ? "Couldn’t load songs. Try again."
+                  : "Couldn’t load source tracks. Try again.",
+                searchLoading: false,
+                searchResults: current.searchResults ?? [],
+              }
             : current);
           logger.warn("[create-post] could not load derivative song sources", {
             communityId,
             error,
+            kind: searchOptions.kind,
             query,
+            scope: searchOptions.scope,
           });
         });
     }, query ? 200 : 0);
@@ -790,7 +812,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const paidCommerceMode = ((composerMode === "song" || composerMode === "video") && monetizationState.visible) || paidLiveRoomMode;
   const paidAssetPriceUsd = paidCommerceMode ? parseUsdInput(monetizationState.priceUsd ?? monetizationState.priceLabel) : null;
   const paidAssetPriceInvalid = paidCommerceMode && paidAssetPriceUsd == null;
-  const submitState = resolveComposerSubmitState({ canSubmit, composerMode, derivativeStep, license, monetizationState, paidSongPriceInvalid: paidAssetPriceInvalid, songMode, submitError });
+  const submitState = resolveComposerSubmitState({ canSubmit, composerMode, derivativeStep, license, monetizationState, paidSongPriceInvalid: paidAssetPriceInvalid, royaltySplit, songMode, submitError });
   const warnIfStoryRegistrationIncomplete = React.useCallback(async (
     post: ApiCreatedPost | null,
     postType: "song" | "video",
@@ -945,6 +967,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           license,
           lyrics,
           monetizationState,
+          royaltySplit,
           paidSongPriceUsd: paidAssetPriceUsd,
           pendingSongBundleId,
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
@@ -1071,13 +1094,18 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           charityContributionPct: charityContribution.percentagePct,
           charityPartnerId: charityPartner?.partnerId ?? null,
           communityId,
+          abortArtifactUploadSession: api.communities.abortArtifactUploadSession,
+          completeArtifactUploadSession: api.communities.completeArtifactUploadSession,
           createArtifactUpload: api.communities.createArtifactUpload,
+          getArtifactUploadPartSignedUrl: api.communities.getArtifactUploadPartSignedUrl,
           createListing: api.communities.createListing,
           createPost: api.communities.createPost,
+          derivativeStep,
           event: eventRequest,
           extractPosterFrameFile: extractVideoPosterFrameFile,
           license,
           monetized: monetizationState.visible,
+          royaltySplit,
           paidAssetPriceUsd,
           posterFrameMaxWidth: MAX_VIDEO_POSTER_FRAME_WIDTH,
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
@@ -1162,6 +1190,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       if (!destinationPostId) {
         throw new Error("The post was created, but no destination post was returned.");
       }
+      reportProgress("open_post");
       reportProgress("done");
       if (liveRoomFreedomHref) {
         logger.info("[create-post] opening immediate live room in Freedom", {
@@ -1237,6 +1266,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     loading,
     lyrics,
     monetizationState,
+    royaltySplit,
     regionalPricingPreview,
     postAltchaAction: `community:${communityId}`,
     postAltchaPayload,
@@ -1269,6 +1299,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setLicense,
     setLyrics,
     setMonetizationState,
+    onRoyaltySplitChange: setRoyaltySplit,
     setPostAltchaPayload: (payload: string | null) => setPageState((current) =>
       current.postAltchaPayload === payload
         ? current

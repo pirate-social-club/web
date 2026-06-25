@@ -61,6 +61,7 @@ function createPolicy(overrides: Partial<ApiCommunityAssistantPolicy> = {}): Api
     telegramPrivateAssistantEnabled: defaults.telegramPrivateAssistantEnabled,
     telegramPreviewEnabled: defaults.telegramPreviewEnabled,
     telegramPreviewDailyCap: defaults.telegramPreviewDailyCap,
+    telegramPreviewPromptSuffix: defaults.telegramPreviewPromptSuffix,
     voiceMode: defaults.voiceMode,
     sttProvider: defaults.sttProvider,
     sttModel: defaults.sttModel,
@@ -314,9 +315,11 @@ describe("useCommunityAssistantPolicyState", () => {
       communityId: "community-1",
       body: { provider: "elevenlabs", api_key: "elevenlabs-secret-route-key-7xyz" },
     });
-    expect(result.current.assistantPolicySettings.elevenLabsKeyStatus).toMatchObject({
-      kind: "connected",
-      last4: "7xyz",
+    await waitFor(() => {
+      expect(result.current.assistantPolicySettings.elevenLabsKeyStatus).toMatchObject({
+        kind: "connected",
+        last4: "7xyz",
+      });
     });
     expect(result.current.assistantPolicyDirty).toBe(false);
 

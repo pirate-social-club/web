@@ -13,6 +13,7 @@ import {
   defaultVideoState,
 } from "@/components/compositions/posts/post-composer/post-composer-config";
 import type {
+  AssetRoyaltySplitState,
   AuthorMode,
   CharityContributionState,
   ComposerAudienceState,
@@ -46,6 +47,9 @@ export type CreatePostDraftState = {
   license: AssetLicenseState;
   lyrics: string;
   monetizationState: MonetizationState;
+  // undefined = untouched (composer shows the creator's 100% default and no
+  // royalty_allocations are sent). Becomes defined once the user edits the split.
+  royaltySplit: AssetRoyaltySplitState | undefined;
   pendingSongBundleId: string | null;
   selectedQualifierIds: string[];
   songMode: SongMode;
@@ -73,6 +77,7 @@ type DraftAction =
   | { type: "setLicense"; value: React.SetStateAction<AssetLicenseState> }
   | { type: "setLyrics"; value: React.SetStateAction<string> }
   | { type: "setMonetizationState"; value: React.SetStateAction<MonetizationState> }
+  | { type: "setRoyaltySplit"; value: React.SetStateAction<AssetRoyaltySplitState | undefined> }
   | { type: "setPendingSongBundleId"; value: React.SetStateAction<string | null> }
   | { type: "setSelectedQualifierIds"; value: React.SetStateAction<string[]> }
   | { type: "setSongMode"; value: React.SetStateAction<SongMode> }
@@ -100,6 +105,7 @@ type CreatePostDraftActions = {
   setLicense: React.Dispatch<React.SetStateAction<AssetLicenseState>>;
   setLyrics: React.Dispatch<React.SetStateAction<string>>;
   setMonetizationState: React.Dispatch<React.SetStateAction<MonetizationState>>;
+  setRoyaltySplit: React.Dispatch<React.SetStateAction<AssetRoyaltySplitState | undefined>>;
   setPendingSongBundleId: React.Dispatch<React.SetStateAction<string | null>>;
   setSelectedQualifierIds: React.Dispatch<React.SetStateAction<string[]>>;
   setSongMode: React.Dispatch<React.SetStateAction<SongMode>>;
@@ -132,6 +138,7 @@ function createInitialDraftState(): CreatePostDraftState {
     license: defaultAssetLicenseState(),
     lyrics: "",
     monetizationState: defaultMonetizationState(),
+    royaltySplit: undefined,
     pendingSongBundleId: null,
     selectedQualifierIds: [],
     songMode: "original",
@@ -178,6 +185,8 @@ function createPostDraftReducer(state: CreatePostDraftState, action: DraftAction
       return { ...state, lyrics: resolveSetState(state.lyrics, action.value) };
     case "setMonetizationState":
       return { ...state, monetizationState: resolveSetState(state.monetizationState, action.value) };
+    case "setRoyaltySplit":
+      return { ...state, royaltySplit: resolveSetState(state.royaltySplit, action.value) };
     case "setPendingSongBundleId":
       return { ...state, pendingSongBundleId: resolveSetState(state.pendingSongBundleId, action.value) };
     case "setSelectedQualifierIds":
@@ -224,6 +233,7 @@ export function useCreatePostDraftState(initial?: Partial<CreatePostDraftState>)
     setLicense: (value) => dispatch({ type: "setLicense", value }),
     setLyrics: (value) => dispatch({ type: "setLyrics", value }),
     setMonetizationState: (value) => dispatch({ type: "setMonetizationState", value }),
+    setRoyaltySplit: (value) => dispatch({ type: "setRoyaltySplit", value }),
     setPendingSongBundleId: (value) => dispatch({ type: "setPendingSongBundleId", value }),
     setSelectedQualifierIds: (value) => dispatch({ type: "setSelectedQualifierIds", value }),
     setSongMode: (value) => dispatch({ type: "setSongMode", value }),

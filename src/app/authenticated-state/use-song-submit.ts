@@ -13,6 +13,7 @@ import type {
   DerivativeStepState,
   MonetizationState,
   AssetLicenseState,
+  AssetRoyaltySplitState,
   SongComposerState,
   SongMode,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
@@ -22,8 +23,6 @@ import type { SubmitProgressReporter } from "@/app/authenticated-helpers/create-
 import { buildSongPostRequest } from "@/app/authenticated-helpers/song-submit";
 
 const SONG_PREVIEW_DURATION_MS = 30_000;
-const SONG_PREVIEW_POLL_INTERVAL_MS = 2_000;
-const SONG_PREVIEW_POLL_ATTEMPTS = 30;
 const SONG_SUBMIT_SLOW_STEP_MS = 10_000;
 const SONG_SUBMIT_STALLED_STEP_MS = 45_000;
 
@@ -56,6 +55,7 @@ type SongSubmitInput = {
   license: AssetLicenseState;
   lyrics: string;
   monetizationState: MonetizationState;
+  royaltySplit?: AssetRoyaltySplitState;
   paidSongPriceUsd: number | null;
   pendingSongBundleId: string | null;
   pricingPolicyRegionalPricingEnabled: boolean;
@@ -67,10 +67,6 @@ type SongSubmitInput = {
   songTitle: string;
   title: string;
 };
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
 
 async function withSongSubmitStep<T>(
   step: string,
@@ -188,51 +184,6 @@ export function useSongSubmit({
 }: UseSongSubmitInput) {
   const api = useApi();
 
-  const waitForSongPreview = React.useCallback(async (
-    bundle: ApiSongArtifactBundle,
-    reportProgress?: SubmitProgressReporter,
-  ): Promise<ApiSongArtifactBundle> => {
-    let current = bundle;
-    for (let attempt = 0; attempt <= SONG_PREVIEW_POLL_ATTEMPTS; attempt += 1) {
-      reportProgress?.("generate_preview", `Attempt ${attempt + 1} of ${SONG_PREVIEW_POLL_ATTEMPTS + 1}`);
-      logger.info("[song-submit] preview poll", {
-        attempt,
-        bundleId: current.id,
-        previewStatus: current.preview_status,
-        hasPreviewStorageRef: Boolean(current.preview_audio?.storage_ref),
-      });
-      if (current.preview_status === "completed" && current.preview_audio?.storage_ref) {
-        logger.info("[song-submit] preview ready", { bundleId: current.id, attempt });
-        return current;
-      }
-      if (current.preview_status === "failed") {
-        logger.warn("[song-submit] preview failed", {
-          bundleId: current.id,
-          previewError: current.preview_error,
-        });
-        throw new Error(current.preview_error || "Song preview generation failed.");
-      }
-      if (attempt === SONG_PREVIEW_POLL_ATTEMPTS) {
-        break;
-      }
-      await sleep(SONG_PREVIEW_POLL_INTERVAL_MS);
-      logger.info("[song-submit] refreshing preview status", {
-        bundleId: current.id,
-        nextAttempt: attempt + 1,
-      });
-      current = await withSongSubmitStep("refresh preview status", {
-        attempt: attempt + 1,
-        bundleId: current.id,
-      }, () => api.communities.getSongArtifactBundle(communityId, current.id));
-    }
-    logger.warn("[song-submit] preview polling timed out", {
-      attempts: SONG_PREVIEW_POLL_ATTEMPTS,
-      bundleId: current.id,
-      previewStatus: current.preview_status,
-    });
-    throw new Error("Song preview is still processing. Try again in a moment.");
-  }, [api.communities, communityId]);
-
   const uploadSongArtifact = React.useCallback(async (
     artifactKind: "primary_audio" | "cover_art" | "canvas_video" | "instrumental_audio" | "vocal_audio",
     file: File | null | undefined,
@@ -288,6 +239,7 @@ export function useSongSubmit({
     license,
     lyrics,
     monetizationState,
+    royaltySplit,
     paidSongPriceUsd,
     pendingSongBundleId,
     pricingPolicyRegionalPricingEnabled,
@@ -330,7 +282,6 @@ export function useSongSubmit({
     }
 
     let bundleId = pendingSongBundleId;
-    let bundleForPublish: ApiSongArtifactBundle | null = null;
     if (bundleId && isLockedSong) {
       const pendingBundleIdForRetry = bundleId;
       const existingBundle = await withSongSubmitStep("load pending song artifact bundle", {
@@ -343,8 +294,6 @@ export function useSongSubmit({
         });
         setPendingSongBundleId(null);
         bundleId = null;
-      } else {
-        bundleForPublish = existingBundle;
       }
     }
 
@@ -391,7 +340,6 @@ export function useSongSubmit({
         songTitle: songTitle.trim(),
       }, () => api.communities.createSongArtifactBundle(communityId, bundleRequest));
       bundleId = bundle.id;
-      bundleForPublish = bundle;
       setPendingSongBundleId(bundle.id);
       logger.info("[song-submit] song artifact bundle created", {
         analysisState: resolveBundleAnalysisState(bundle),
@@ -414,19 +362,6 @@ export function useSongSubmit({
       throw new Error("Song artifact bundle was not created.");
     }
 
-    if (isLockedSong) {
-      const previewBundleId = bundleId;
-      logger.info("[song-submit] waiting for locked song preview", { bundleId });
-      reportProgress?.("generate_preview");
-      bundleForPublish = await waitForSongPreview(
-        bundleForPublish ?? await withSongSubmitStep("load song artifact bundle before preview wait", {
-          bundleId: previewBundleId,
-        }, () => api.communities.getSongArtifactBundle(communityId, previewBundleId)),
-        reportProgress,
-      );
-      bundleId = bundleForPublish.id;
-    }
-
     const songRequest = buildSongPostRequest({
       bundleId,
       caption,
@@ -434,6 +369,7 @@ export function useSongSubmit({
       idempotencyKey: crypto.randomUUID(),
       license,
       paidSongPriceUsd,
+      royaltySplit,
       songMode,
       title,
       visibility: audience.visibility,
@@ -485,5 +421,5 @@ export function useSongSubmit({
 
     logger.info("[song-submit] completed", { postId: result.id });
     return result;
-  }, [api.communities, communityId, signAgentAuthoredBody, uploadSongArtifact, waitForSongPreview]);
+  }, [api.communities, communityId, signAgentAuthoredBody, uploadSongArtifact]);
 }

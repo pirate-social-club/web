@@ -27,6 +27,7 @@ import {
   createNotificationsApi,
   createRoyaltiesApi,
 } from "./client-groups-system";
+import { createSearchApi } from "./client-groups-search";
 import type {
   ApiRequest,
   ApiRequestInit,
@@ -99,6 +100,7 @@ export class ApiClient {
   readonly jobs = createJobsApi(this.request.bind(this));
   readonly notifications = createNotificationsApi(this.request.bind(this));
   readonly royalties = createRoyaltiesApi(this.request.bind(this));
+  readonly search = createSearchApi(this.request.bind(this));
 
   constructor(options?: { baseUrl?: string; getToken?: () => string | null }) {
     this.baseUrl = options?.baseUrl ?? DEFAULT_BASE_URL;

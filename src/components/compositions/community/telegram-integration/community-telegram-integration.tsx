@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/primitives/select";
 import { Switch } from "@/components/primitives/switch";
+import { Textarea } from "@/components/primitives/textarea";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import type {
@@ -24,7 +25,16 @@ import type {
   CommunityTelegramIntegrationSettings,
   TelegramBotAdminStatus,
   TelegramLinkedChatLinkMode,
+  TelegramWelcomeIntroLocale,
 } from "./community-telegram-integration.types";
+
+const WELCOME_INTRO_MAX_CHARS = 280;
+const WELCOME_INTRO_LOCALES: Array<{ code: TelegramWelcomeIntroLocale; label: string }> = [
+  { code: "en", label: "English" },
+  { code: "ka", label: "Georgian" },
+  { code: "ar", label: "Arabic" },
+  { code: "zh", label: "Chinese" },
+];
 
 function Section({
   children,
@@ -155,6 +165,23 @@ function TelegramJoinLinkPanel({ joinUrl }: { joinUrl: string }) {
   );
 }
 
+function updateWelcomeIntro(
+  settings: CommunityTelegramIntegrationSettings,
+  locale: TelegramWelcomeIntroLocale,
+  value: string,
+): CommunityTelegramIntegrationSettings {
+  const nextIntro = { ...settings.telegramWelcomeIntro };
+  if (value.trim()) {
+    nextIntro[locale] = value;
+  } else {
+    delete nextIntro[locale];
+  }
+  return {
+    ...settings,
+    telegramWelcomeIntro: nextIntro,
+  };
+}
+
 function updateSettings(
   settings: CommunityTelegramIntegrationSettings,
   patch: Partial<CommunityTelegramIntegrationSettings>,
@@ -244,6 +271,44 @@ export function CommunityTelegramIntegrationPage({
         </div>
       </Section>
 
+      <Section title="Welcome">
+        <div className="grid gap-4 rounded-md border border-border-soft bg-card p-5">
+          <div className="space-y-1">
+            <Type as="div" variant="body-strong">First message intro</Type>
+            <Type as="p" variant="caption">
+              This text appears above Pirate's status and action copy when someone starts the bot.
+            </Type>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {WELCOME_INTRO_LOCALES.map((locale) => {
+              const value = settings.telegramWelcomeIntro[locale.code] ?? "";
+              return (
+                <label className="grid gap-2" key={locale.code}>
+                  <span className="flex items-center justify-between gap-3">
+                    <Type as="span" variant="caption">{locale.label}</Type>
+                    <Type as="span" variant="caption">
+                      {Array.from(value).length}/{WELCOME_INTRO_MAX_CHARS}
+                    </Type>
+                  </span>
+                  <Textarea
+                    aria-label={`${locale.label} welcome intro`}
+                    maxLength={WELCOME_INTRO_MAX_CHARS}
+                    onChange={(event) => {
+                      onSettingsChange?.(updateWelcomeIntro(settings, locale.code, event.currentTarget.value));
+                    }}
+                    rows={3}
+                    value={value}
+                  />
+                </label>
+              );
+            })}
+          </div>
+          <FormNote>Plain text only. Links, HTML, and Markdown are rejected when saved.</FormNote>
+        </div>
+      </Section>
+
+      <FormNote>Preview answer behavior is configured in Assistant &gt; Telegram.</FormNote>
+
       {!connected ? null : (
         <>
           <section className="space-y-4">
@@ -279,18 +344,18 @@ export function CommunityTelegramIntegrationPage({
               onCheckedChange={(directoryVisible) => onSettingsChange?.(updateSettings(settings, { directoryVisible }))}
             />
           </Section>
-
-          {submitState.kind === "error" ? (
-            <FormNote tone="destructive">{submitState.message}</FormNote>
-          ) : null}
-
-          <CommunityModerationSaveFooter
-            disabled={saveDisabled}
-            loading={submitState.kind === "saving"}
-            onSave={onSave}
-          />
         </>
       )}
+
+      {submitState.kind === "error" ? (
+        <FormNote tone="destructive">{submitState.message}</FormNote>
+      ) : null}
+
+      <CommunityModerationSaveFooter
+        disabled={saveDisabled}
+        loading={submitState.kind === "saving"}
+        onSave={onSave}
+      />
     </section>
   );
 }

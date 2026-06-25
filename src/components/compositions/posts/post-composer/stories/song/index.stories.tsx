@@ -114,8 +114,10 @@ export const Original: Story = {
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
+      composerStep="details"
       mode="song"
       canCreateSongPost
+      songMode="original"
       titleValue="Midnight Waves"
       titleCountLabel="14/300"
       lyricsValue="Meet me in the red light / carry the chorus through the floor..."
@@ -165,6 +167,7 @@ export const LicenseNonCommercial: Story = {
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
+      composerStep="settings"
       mode="song"
       canCreateSongPost
       titleValue="Midnight Waves"
@@ -189,6 +192,7 @@ export const LicenseCommercialUse: Story = {
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
+      composerStep="settings"
       mode="song"
       canCreateSongPost
       titleValue="Midnight Waves"
@@ -213,6 +217,7 @@ export const LicenseCommercialRemix: Story = {
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
+      composerStep="settings"
       mode="song"
       canCreateSongPost
       titleValue="Midnight Waves"
@@ -238,6 +243,7 @@ export const RightsRemix: Story = {
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
+      composerStep="details"
       mode="song"
       canCreateSongPost
       titleValue="Midnight Waves (club mix)"
@@ -271,6 +277,7 @@ export const RemixSourceTermsBlocked: Story = {
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
+      composerStep="details"
       mode="song"
       canCreateSongPost
       titleValue="Midnight Waves (club mix)"
@@ -308,6 +315,7 @@ export const RemixSourceTermsAccepted: Story = {
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
+      composerStep="details"
       mode="song"
       canCreateSongPost
       titleValue="Midnight Waves (club mix)"
@@ -331,6 +339,34 @@ export const RemixSourceTermsAccepted: Story = {
         references: sourceReferences,
         licenseSummary: sourceLicenseSummary,
         sourceTermsAccepted: true,
+      }}
+      submit={{
+        disabled: false,
+        label: "Post",
+      }}
+    />
+  ),
+};
+
+export const RemixSwitchedBackToOriginal: Story = {
+  name: "Remix / Switched back to original",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="details"
+      mode="song"
+      canCreateSongPost
+      songMode="original"
+      titleValue="Midnight Waves (club mix)"
+      titleCountLabel="27/300"
+      lyricsValue="Meet me in the red light / carry the chorus through the floor..."
+      song={{
+        genre: "Electronic",
+        primaryLanguage: "English",
+        secondaryLanguage: "Spanish",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
+        coverLabel: "midnight-waves-cover.png",
       }}
       submit={{
         disabled: false,

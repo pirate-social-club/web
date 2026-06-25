@@ -49,8 +49,17 @@ export function installDomGlobals(html = DEFAULT_HTML) {
   Object.defineProperty(globalThis, "document", { configurable: true, value: document });
   Object.defineProperty(globalThis, "window", { configurable: true, value: window });
   Object.defineProperty(globalThis, "navigator", { configurable: true, value: window.navigator });
+  Object.defineProperty(globalThis, "Node", { configurable: true, value: window.Node });
   Object.defineProperty(globalThis, "Element", { configurable: true, value: window.Element });
   Object.defineProperty(globalThis, "HTMLElement", { configurable: true, value: window.HTMLElement });
+  Object.defineProperty(window.HTMLElement.prototype, "attachEvent", {
+    configurable: true,
+    value: () => undefined,
+  });
+  Object.defineProperty(window.HTMLElement.prototype, "detachEvent", {
+    configurable: true,
+    value: () => undefined,
+  });
   if (window.customElements) {
     Object.defineProperty(globalThis, "customElements", { configurable: true, value: window.customElements });
   }

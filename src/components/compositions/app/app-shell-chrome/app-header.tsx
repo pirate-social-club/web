@@ -7,6 +7,7 @@ import {
   Bell,
   ChatCircle,
   List,
+  MagnifyingGlass,
   Plus,
   Square,
   Wallet,
@@ -78,6 +79,7 @@ export interface AppHeaderProps {
   mobileLeadingContent?: React.ReactNode;
   mobileCenterContent?: React.ReactNode;
   mobileTrailingContent?: React.ReactNode;
+  searchContent?: React.ReactNode;
   onBackClick?: () => void;
   onConnectClick?: () => void;
   onCreateClick?: () => void;
@@ -115,6 +117,7 @@ export function AppHeader({
   mobileLeadingContent,
   mobileCenterContent,
   mobileTrailingContent,
+  searchContent,
   onBackClick,
   onConnectClick,
   onCreateClick,
@@ -123,6 +126,7 @@ export function AppHeader({
   onMenuClick,
   onNotificationsClick,
   onProfileClick,
+  onSearchClick,
   onWalletClick,
   showCreateAction = true,
   showChatAction = false,
@@ -146,6 +150,8 @@ export function AppHeader({
     notificationsAriaLabel = "Notifications",
     openNavigationAriaLabel = "Open navigation",
     profileAriaLabel = "Open profile",
+    searchAriaLabel = "Search",
+    searchPlaceholder = "Find anything",
     walletAriaLabel = "Wallet",
   } = labels ?? {};
   const detectedMobile = useIsMobile();
@@ -239,10 +245,31 @@ export function AppHeader({
       />
     </IconButton>
   ) : null;
+  const mobileSearchAction = onSearchClick ? (
+    <IconButton
+      aria-label={searchAriaLabel}
+      onClick={onSearchClick}
+      variant="ghost"
+      key="search"
+    >
+      <MagnifyingGlass className="size-6" weight="regular" />
+    </IconButton>
+  ) : null;
   const desktopActions = [createAction, notificationsAction, chatAction, walletAction, profileAction].filter(Boolean);
   const mobileActions = showMobileCreateAction
-    ? [createAction].filter(Boolean)
-    : [notificationsAction, walletAction, profileAction].filter(Boolean);
+    ? [mobileSearchAction, createAction].filter(Boolean)
+    : [mobileSearchAction, notificationsAction, walletAction, profileAction].filter(Boolean);
+  const desktopSearchContent = searchContent ?? (onSearchClick ? (
+    <button
+      aria-label={searchAriaLabel}
+      className="flex h-12 w-full items-center gap-2 rounded-full border border-border-soft bg-card px-4 text-start text-muted-foreground shadow-sm transition-colors hover:border-border hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      onClick={onSearchClick}
+      type="button"
+    >
+      <MagnifyingGlass className="size-5 shrink-0" weight="regular" />
+      <span className="truncate">{searchPlaceholder}</span>
+    </button>
+  ) : null);
   const brand = (
     <button
       aria-label={homeAriaLabel}
@@ -299,20 +326,39 @@ export function AppHeader({
 
   return (
     <header className={cn("sticky top-0 z-30 border-b border-border-soft bg-background/95 backdrop-blur-xl", forceMobile === undefined && "hidden md:block", className)}>
-      <div className="grid h-[var(--header-height)] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 lg:px-8">
-        <div className="min-w-0 text-start">
-          {hideBrand || hideDesktopBrand ? null : brand}
+      {desktopSearchContent ? (
+        <div className="grid h-[var(--header-height)] w-full grid-cols-[minmax(0,1fr)_minmax(20rem,28rem)_minmax(0,1fr)] items-center gap-4 px-5 lg:px-8">
+          <div className="min-w-0 text-start">
+            {hideBrand || hideDesktopBrand ? null : brand}
+          </div>
+          <div className="min-w-0">
+            {desktopSearchContent}
+          </div>
+          <div className="flex min-w-0 items-center justify-end gap-1.5">
+            {showConnectAction ? (
+              <Button className="h-12 px-5" onClick={onConnectClick}>
+                {connectLabel}
+              </Button>
+            ) : null}
+            {desktopActions}
+          </div>
         </div>
+      ) : (
+        <div className="grid h-[var(--header-height)] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 lg:px-8">
+          <div className="min-w-0 text-start">
+            {hideBrand || hideDesktopBrand ? null : brand}
+          </div>
 
-        <div className="flex min-w-0 items-center justify-end gap-1.5">
-          {showConnectAction ? (
-            <Button className="h-12 px-5" onClick={onConnectClick}>
-              {connectLabel}
-            </Button>
-          ) : null}
-          {desktopActions}
+          <div className="flex min-w-0 items-center justify-end gap-1.5">
+            {showConnectAction ? (
+              <Button className="h-12 px-5" onClick={onConnectClick}>
+                {connectLabel}
+              </Button>
+            ) : null}
+            {desktopActions}
+          </div>
         </div>
-      </div>
+      )}
     </header>
   );
 }

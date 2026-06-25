@@ -108,6 +108,10 @@ const LazyCurrentUserWalletPage = lazyRouteModule(
   () => import("./authenticated-routes/profile-settings-routes"),
   "CurrentUserWalletPage",
 );
+const LazyBookingHostSettingsPage = lazyRouteModule(
+  () => import("./authenticated-routes/booking-host-settings-route"),
+  "BookingHostSettingsPage",
+);
 const LazyOnboardingPage = lazyRouteModule(
   () => import("./authenticated-routes/onboarding-route"),
   "OnboardingPage",
@@ -190,6 +194,8 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyCurrentUserProfilePage />;
     case "wallet":
       return <LazyCurrentUserWalletPage />;
+    case "booking-host-settings":
+      return <LazyBookingHostSettingsPage />;
     case "settings-index":
       return <LazyCurrentUserSettingsIndexPage />;
     case "settings":

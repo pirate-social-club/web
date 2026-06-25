@@ -20,6 +20,7 @@ export type AppRoute =
   | { kind: "public-agent"; path: string; handleLabel: string; hostSuffix?: string | null }
   | { kind: "your-communities"; path: "/your-communities" }
   | { kind: "wallet"; path: "/wallet" }
+  | { kind: "booking-host-settings"; path: "/settings/bookings" }
   | { kind: "settings-index"; path: "/settings" }
   | { kind: "settings"; path: string; section: SettingsSection }
   | { kind: "create-post"; path: string; communityId: string }
@@ -200,6 +201,10 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
 
   if (segments.length === 2 && segments[0] === "settings" && segments[1] === "wallet") {
     return { kind: "wallet", path: "/wallet" };
+  }
+
+  if (segments.length === 2 && segments[0] === "settings" && segments[1] === "bookings") {
+    return { kind: "booking-host-settings", path: "/settings/bookings" };
   }
 
   if (segments.length === 3 && segments[0] === "tg" && segments[1] === "c") {

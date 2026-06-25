@@ -467,6 +467,12 @@ export function replaceRoute(path: string): void {
 
   if (currentHref === nextHref) return;
 
+  for (const guard of navigationGuards) {
+    if (!guard({ currentHref, nextHref })) {
+      return;
+    }
+  }
+
   window.history.replaceState({}, "", nextHref);
   window.dispatchEvent(new Event(NAVIGATION_EVENT));
 }

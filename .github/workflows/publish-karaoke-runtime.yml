@@ -29,6 +29,14 @@ jobs:
           fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
 
+      # Install the runtime package's own devDeps (notably @typescript/native-preview
+      # which provides `tsgo`) so the "type the published surface" step can run. The
+      # package is self-contained (no cross-repo file: deps), so this installs cleanly
+      # without needing the web root or an api sibling checkout.
+      - name: Install karaoke-runtime dev dependencies
+        working-directory: packages/karaoke-runtime
+        run: bun install
+
       - name: Resolve target version
         id: ver
         working-directory: packages/karaoke-runtime

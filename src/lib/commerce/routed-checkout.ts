@@ -254,6 +254,9 @@ export function resolveBookingCheckoutTransferInput(payment: {
 export async function executeUsdcTransfer(params: {
   transfer: UsdcTransferInput;
   wallet: PirateConnectedEvmWallet;
+  // Fires the instant the wallet returns the tx hash (submitted on-chain), BEFORE the receipt wait,
+  // so callers can durably persist the hash for crash-safe resume (never re-submitting).
+  onSubmitted?: (hash: Hex) => void;
 }): Promise<Hex> {
   const chainId = params.transfer.chainId;
   const chain = resolveCheckoutChain(chainId);
@@ -282,6 +285,9 @@ export async function executeUsdcTransfer(params: {
     chain,
     functionName: "transfer",
   });
+  // Submitted on-chain — surface the hash immediately so the caller can persist it before we block
+  // on the receipt (a reload here must resume confirmation, never re-submit a second transfer).
+  params.onSubmitted?.(hash);
   const receipt = await publicClient.waitForTransactionReceipt({
     hash,
     timeout: TX_WAIT_TIMEOUT_MS,

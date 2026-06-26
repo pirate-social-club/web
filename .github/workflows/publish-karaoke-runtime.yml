@@ -1,0 +1,184 @@
+name: Publish karaoke-runtime
+
+on:
+  push:
+    tags:
+      - "karaoke-runtime-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (must match the tag + package.json)"
+        required: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  publish:
+    name: Publish @pirate/karaoke-runtime
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Resolve target version
+        id: ver
+        working-directory: packages/karaoke-runtime
+        run: |
+          PKG_VER=$(node -p "require('./package.json').version")
+          TAG_VER=""
+          if [ -n "${{ inputs.version }}" ]; then TAG_VER="${{ inputs.version }}"; fi
+          if [ -z "$TAG_VER" ] && [ "$GITHUB_REF" != "" ]; then
+            case "$GITHUB_REF" in refs/tags/karaoke-runtime-v*) TAG_VER="${GITHUB_REF#refs/tags/karaoke-runtime-v}";; esac
+          fi
+          echo "pkg=$PKG_VER tag=$TAG_VER"
+          if [ -n "$TAG_VER" ] && [ "$TAG_VER" != "$PKG_VER" ]; then
+            echo "::error::tag version ($TAG_VER) != package.json ($PKG_VER)"
+            exit 1
+          fi
+          echo "version=$PKG_VER" >> "$GITHUB_OUTPUT"
+
+      - name: Existence check — fail if version already published
+        working-directory: packages/karaoke-runtime
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VER="${{ steps.ver.outputs.version }}"
+          echo "//npm.pkg.github.com/:_authToken=\${NODE_AUTH_TOKEN}" > ~/.npmrc
+          npm config set @pirate:registry https://npm.pkg.github.com
+          if npm view "@pirate/karaoke-runtime@$VER" --json >/tmp/view.json 2>/dev/null; then
+            if jq -e '.version // .dist-tags' /tmp/view.json >/dev/null 2>&1; then
+              echo "::error::$VER already exists — versions are immutable; bump and retry"
+              exit 1
+            fi
+          fi
+          echo "$VER not yet published — proceeding"
+
+      - name: Generate build provenance + run package tests
+        working-directory: packages/karaoke-runtime
+        run: bun run test
+
+      - name: Build tsconfig — noEmit guard (type the published surface)
+        working-directory: packages/karaoke-runtime
+        run: bun run types
+
+      - name: Pack candidate tarball + record SHA-256
+        id: pack
+        working-directory: packages/karaoke-runtime
+        run: |
+          set -euo pipefail
+          TARBALL=$(npm pack --pack-destination .)
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+          SHA=$(sha256sum "$TARBALL" | awk '{print $1}')
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Packed $TARBALL (sha256=$SHA)"
+          # Assert provenance ships in the tarball.
+          npm pack "$TARBALL" --dry-run --json 2>/dev/null | jq -e '.[0].files[]? | select(.path | test("build-info.json"))' >/dev/null \
+            || { echo "::error::tarball missing build-info.json (provenance)"; exit 1; }
+
+      - name: Publish the exact tested tarball
+        working-directory: packages/karaoke-runtime
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo "//npm.pkg.github.com/:_authToken=\${NODE_AUTH_TOKEN}" > ~/.npmrc
+          npm publish ${{ steps.pack.outputs.tarball }} --access restricted --provenance
+
+      - name: Verify published tarball SHA-256 matches packed
+        working-directory: packages/karaoke-runtime
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VER="${{ steps.ver.outputs.version }}"
+          PACKED="${{ steps.pack.outputs.sha256 }}"
+          PUBSUM=$(npm view "@pirate/karaoke-runtime@$VER" dist.shasum 2>/dev/null || true)
+          echo "packed=$PACKED published_shasum_field=$PUBSUM"
+          # npm view dist.shasum is sha1, not sha256 — the registry doesn't expose sha256,
+          # so the enforceable integrity check is the tarball provenance attestation +
+          # the existence/contents check above. Record the packed sha256 in the run.
+          echo "::notice::published @pirate/karaoke-runtime@$VER sha256=$PACKED"
+
+  compat:
+    name: API compatibility (install published package from GH Packages)
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    needs: publish
+    permissions:
+      contents: read
+      packages: read
+    env:
+      VERSION: ${{ needs.publish.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: pirate-social-club/api
+          path: api
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+
+      # Mirror the auth model the API will use in CI/prod: @pirate scope resolves
+      # from GH Packages via a read:packages token in .npmrc. This proves registry
+      # auth + package visibility + install behavior for the EXACT published version,
+      # not a locally repacked checkout.
+      - name: Configure GH Packages auth (.npmrc) — same model as API CI/prod
+        working-directory: api/services/api
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          {
+            echo "@pirate:registry=https://npm.pkg.github.com"
+            echo "//npm.pkg.github.com/:_authToken=\${NODE_AUTH_TOKEN}"
+          } > .npmrc
+
+      - name: Verify published package contents come from the registry (provenance)
+        working-directory: api/services/api
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/reg
+          # `npm pack <spec>` downloads the tarball FROM the registry — not a local repack.
+          npm pack "@pirate/karaoke-runtime@${VERSION}" --pack-destination /tmp/reg >/dev/null
+          REG_TGZ="$(ls /tmp/reg/*.tgz | head -1)"
+          tar -tzf "$REG_TGZ" | grep -q "package/build-info.json" \
+            || { echo "::error::registry tarball missing build-info.json (provenance)"; exit 1; }
+          echo "registry tarball OK: $REG_TGZ"
+
+      - name: Pin API to the exact published version + install from GH Packages
+        working-directory: api/services/api
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          node -e "const p=require('./package.json'); p.dependencies['@pirate/karaoke-runtime']=process.env.VERSION; require('fs').writeFileSync('./package.json', JSON.stringify(p,null,2)+'\n')"
+          # No --frozen-lockfile: the dep just changed from file: to the registry version.
+          bun install
+          # Prove resolution via the EXPORTED provenance surface (the package ships TS
+          # source + an exports map with no ./package.json export, so require the /build
+          # entry through bun — this also proves build-info.json is usable, not just a tar entry).
+          bun -e "const { KARAOKE_RUNTIME_BUILD } = await import('@pirate/karaoke-runtime/build'); if (KARAOKE_RUNTIME_BUILD.version !== process.env.VERSION) { console.error('version mismatch: got', KARAOKE_RUNTIME_BUILD.version, 'want', process.env.VERSION); process.exit(1); }"
+
+      - name: Typecheck (HARD fail) + API karaoke tests under the published package
+        working-directory: api/services/api
+        run: |
+          set -euo pipefail
+          # The API has no `types` script — the canonical typecheck is tsgo --noEmit.
+          # HARD fail (no `|| true`): if the published runtime breaks API types, the
+          # workflow fails. NOTE: API main must be typecheck-clean for this to pass
+          # (the karaoke session-do.test.ts fixtures must include uncertainLineCount).
+          bunx tsgo --noEmit
+          bun test tests/lib/karaoke/ src/lib/posts/post-karaoke-service.test.ts

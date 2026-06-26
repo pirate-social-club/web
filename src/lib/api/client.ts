@@ -251,8 +251,9 @@ export class ApiClient {
       let retryable = false;
 
       try {
-        const body: JsonErrorResponse & { details?: unknown } = await res.json();
+        const body: JsonErrorResponse & { details?: unknown; error?: string } = await res.json();
         if (body.code) code = body.code;
+        else if (typeof body.error === "string") code = body.error; // routes that return { error: reason }
         if (body.message) message = body.message;
         if (body.retryable) retryable = body.retryable;
         const parsedDetails =

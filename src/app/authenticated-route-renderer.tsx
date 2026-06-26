@@ -120,6 +120,10 @@ const LazyBookingCheckoutPage = lazyRouteModule(
   () => import("./authenticated-routes/booking-checkout-route"),
   "BookingCheckoutPage",
 );
+const LazyBookingManagementPage = lazyRouteModule(
+  () => import("./authenticated-routes/booking-management-route"),
+  "BookingManagementPage",
+);
 const LazyOnboardingPage = lazyRouteModule(
   () => import("./authenticated-routes/onboarding-route"),
   "OnboardingPage",
@@ -208,6 +212,8 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyBookingPublicPage communityId={route.communityId} hostUserId={route.hostUserId} />;
     case "booking-checkout":
       return <LazyBookingCheckoutPage communityId={route.communityId} hostUserId={route.hostUserId} />;
+    case "booking-management":
+      return <LazyBookingManagementPage communityId={route.communityId} role={route.role} />;
 
     case "settings-index":
       return <LazyCurrentUserSettingsIndexPage />;

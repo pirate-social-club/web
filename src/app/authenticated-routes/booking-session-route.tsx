@@ -30,7 +30,6 @@ export function BookingSessionPage({
   bookingId: string;
 }): React.ReactElement {
   const api = useApi();
-  const currentUser = useSession();
   const [phase, setPhase] = React.useState<SessionPhase>({ kind: "loading" });
 
   React.useEffect(() => {

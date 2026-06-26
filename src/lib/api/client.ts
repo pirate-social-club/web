@@ -14,6 +14,8 @@ import {
 } from "./client-groups-content";
 import { createCommunitiesApi } from "./client-groups-communities";
 import { createCommunityCommerceApi } from "./client-groups-community-commerce";
+import { createCommunityBookingsApi } from "./client-groups-community-bookings";
+import { createHostBookingsApi } from "./client-groups-host-bookings";
 import {
   createProfilesApi,
   createPublicAgentsApi,
@@ -87,7 +89,9 @@ export class ApiClient {
     ...createCommunitiesApi(this.request.bind(this)),
     ...createCommunityContentApi(this.request.bind(this)),
     ...createCommunityCommerceApi(this.request.bind(this)),
+    ...createCommunityBookingsApi(this.request.bind(this)),
   };
+  readonly hostBookings = createHostBookingsApi(this.request.bind(this));
   readonly posts = createPostsApi(this.request.bind(this));
   readonly comments = createCommentsApi(this.request.bind(this));
   readonly profiles = createProfilesApi(this.request.bind(this));
@@ -245,8 +249,9 @@ export class ApiClient {
       let retryable = false;
 
       try {
-        const body: JsonErrorResponse & { details?: unknown } = await res.json();
+        const body: JsonErrorResponse & { details?: unknown; error?: string } = await res.json();
         if (body.code) code = body.code;
+        else if (typeof body.error === "string") code = body.error; // routes that return { error: reason }
         if (body.message) message = body.message;
         if (body.retryable) retryable = body.retryable;
         const parsedDetails =

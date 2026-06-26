@@ -104,6 +104,26 @@ const LazyCurrentUserWalletPage = lazyRouteModule(
   () => import("./authenticated-routes/profile-settings-routes"),
   "CurrentUserWalletPage",
 );
+const LazyBookingHostSettingsPage = lazyRouteModule(
+  () => import("./authenticated-routes/booking-host-settings-route"),
+  "BookingHostSettingsPage",
+);
+const LazyBookingPublicPage = lazyRouteModule(
+  () => import("./authenticated-routes/booking-public-route"),
+  "BookingPublicPage",
+);
+const LazyBookingCheckoutPage = lazyRouteModule(
+  () => import("./authenticated-routes/booking-checkout-route"),
+  "BookingCheckoutPage",
+);
+const LazyBookingManagementPage = lazyRouteModule(
+  () => import("./authenticated-routes/booking-management-route"),
+  "BookingManagementPage",
+);
+const LazyBookingSessionPage = lazyRouteModule(
+  () => import("./authenticated-routes/booking-session-route"),
+  "BookingSessionPage",
+);
 const LazyOnboardingPage = lazyRouteModule(
   () => import("./authenticated-routes/onboarding-route"),
   "OnboardingPage",
@@ -180,6 +200,17 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyCurrentUserProfilePage />;
     case "wallet":
       return <LazyCurrentUserWalletPage />;
+    case "booking-host-settings":
+      return <LazyBookingHostSettingsPage />;
+    case "booking-public":
+      return <LazyBookingPublicPage communityId={route.communityId} hostUserId={route.hostUserId} />;
+    case "booking-checkout":
+      return <LazyBookingCheckoutPage communityId={route.communityId} hostUserId={route.hostUserId} />;
+    case "booking-management":
+      return <LazyBookingManagementPage communityId={route.communityId} role={route.role} />;
+    case "booking-session":
+      return <LazyBookingSessionPage communityId={route.communityId} bookingId={route.bookingId} />;
+
     case "settings-index":
       return <LazyCurrentUserSettingsIndexPage />;
     case "settings":

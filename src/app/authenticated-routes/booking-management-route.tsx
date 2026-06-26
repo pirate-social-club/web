@@ -156,7 +156,7 @@ function BookingCard({
         {joinable && (
           <Button
             size="sm"
-            onClick={() => navigate(`/c/${encodeURIComponent(booking.community_id)}/live/${encodeURIComponent(booking.live_room_id ?? booking.booking_id)}`)}
+            onClick={() => navigate(`/c/${encodeURIComponent(booking.community_id)}/bookings/${encodeURIComponent(booking.booking_id)}/session`)}
           >
             Join session
           </Button>

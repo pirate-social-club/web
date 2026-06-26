@@ -31,6 +31,7 @@ export type AppRoute =
   | { kind: "booking-public"; path: string; communityId: string; hostUserId: string }
   | { kind: "booking-checkout"; path: string; communityId: string; hostUserId: string }
   | { kind: "booking-management"; path: string; communityId: string; role: "host" | "booker" }
+  | { kind: "booking-session"; path: string; communityId: string; bookingId: string }
   | { kind: "create-community"; path: "/communities/new" }
   | { kind: "post"; path: string; postId: string }
   | { kind: "live-room"; path: string; postId: string }
@@ -284,6 +285,16 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
       kind: "create-post",
       path: normalized,
       communityId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  // /c/:communityId/bookings/:bookingId/session
+  if (segments.length === 5 && segments[0] === "c" && segments[2] === "bookings" && segments[4] === "session") {
+    return {
+      kind: "booking-session",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+      bookingId: decodeURIComponent(segments[3]),
     };
   }
 

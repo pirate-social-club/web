@@ -150,6 +150,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN || github.token }}
         run: |
           set -euo pipefail
+          mkdir -p /tmp/reg
           # `npm pack <spec>` downloads the tarball FROM the registry — not a local repack.
           npm pack "@pirate/karaoke-runtime@${VERSION}" --pack-destination /tmp/reg >/dev/null
           REG_TGZ="$(ls /tmp/reg/*.tgz | head -1)"
@@ -166,8 +167,10 @@ jobs:
           node -e "const p=require('./package.json'); p.dependencies['@pirate/karaoke-runtime']=process.env.VERSION; require('fs').writeFileSync('./package.json', JSON.stringify(p,null,2)+'\n')"
           # No --frozen-lockfile: the dep just changed from file: to the registry version.
           bun install
-          # Prove it resolved from the registry to the exact version.
-          test "$(node -p "require('@pirate/karaoke-runtime/package.json').version")" = "${VERSION}"
+          # Prove resolution via the EXPORTED provenance surface (the package ships TS
+          # source + an exports map with no ./package.json export, so require the /build
+          # entry through bun — this also proves build-info.json is usable, not just a tar entry).
+          bun -e "const { KARAOKE_RUNTIME_BUILD } = await import('@pirate/karaoke-runtime/build'); if (KARAOKE_RUNTIME_BUILD.version !== process.env.VERSION) { console.error('version mismatch: got', KARAOKE_RUNTIME_BUILD.version, 'want', process.env.VERSION); process.exit(1); }"
 
       - name: Typecheck (HARD fail) + API karaoke tests under the published package
         working-directory: api/services/api

@@ -233,6 +233,24 @@ export function resolveHandleCheckoutTransferInput(
   };
 }
 
+export function resolveBookingCheckoutTransferInput(payment: {
+  chain_id: number;
+  token_address: string;
+  recipient_address: string;
+  amount_atomic: string;
+}): UsdcTransferInput {
+  const tokenAddress = normalizeAddress(payment.token_address);
+  if (!tokenAddress) throw new Error("This booking quote has an invalid payment token.");
+  const recipientAddress = normalizeAddress(payment.recipient_address);
+  if (!recipientAddress) throw new Error("This booking quote is missing a valid payment destination.");
+  let amountAtomic: bigint;
+  try { amountAtomic = BigInt(payment.amount_atomic); } catch {
+    throw new Error("This booking quote has an invalid payment amount.");
+  }
+  if (amountAtomic <= 0n) throw new Error("This booking quote has a zero or negative payment amount.");
+  return { chainId: payment.chain_id, tokenAddress, recipientAddress, amountAtomic };
+}
+
 export async function executeUsdcTransfer(params: {
   transfer: UsdcTransferInput;
   wallet: PirateConnectedEvmWallet;

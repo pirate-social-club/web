@@ -20,6 +20,7 @@ export type AppRoute =
   | { kind: "public-agent"; path: string; handleLabel: string; hostSuffix?: string | null }
   | { kind: "your-communities"; path: "/your-communities" }
   | { kind: "wallet"; path: "/wallet" }
+  | { kind: "booking-host-settings"; path: "/settings/bookings" }
   | { kind: "settings-index"; path: "/settings" }
   | { kind: "settings"; path: string; section: SettingsSection }
   | { kind: "create-post"; path: string; communityId: string }
@@ -27,6 +28,10 @@ export type AppRoute =
   | { kind: "community-moderation-index"; path: string; communityId: string }
   | { kind: "community-moderation"; path: string; communityId: string; section: CommunityModerationSectionName }
   | { kind: "community"; path: string; communityId: string; isImportedRoot?: boolean }
+  | { kind: "booking-public"; path: string; communityId: string; hostUserId: string }
+  | { kind: "booking-checkout"; path: string; communityId: string; hostUserId: string }
+  | { kind: "booking-management"; path: string; communityId: string; role: "host" | "booker" }
+  | { kind: "booking-session"; path: string; communityId: string; bookingId: string }
   | { kind: "create-community"; path: "/communities/new" }
   | { kind: "post"; path: string; postId: string }
   | { kind: "live-room"; path: string; postId: string }
@@ -202,6 +207,10 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
     return { kind: "wallet", path: "/wallet" };
   }
 
+  if (segments.length === 2 && segments[0] === "settings" && segments[1] === "bookings") {
+    return { kind: "booking-host-settings", path: "/settings/bookings" };
+  }
+
   if (segments.length === 3 && segments[0] === "tg" && segments[1] === "c") {
     return {
       kind: "telegram-community",
@@ -276,6 +285,45 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
       kind: "create-post",
       path: normalized,
       communityId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  // /c/:communityId/bookings/:bookingId/session
+  if (segments.length === 5 && segments[0] === "c" && segments[2] === "bookings" && segments[4] === "session") {
+    return {
+      kind: "booking-session",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+      bookingId: decodeURIComponent(segments[3]),
+    };
+  }
+
+  if (segments.length === 3 && segments[0] === "c" && segments[2] === "bookings") {
+    const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    const role = searchParams.get("role") === "host" ? "host" : "booker";
+    return {
+      kind: "booking-management",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+      role,
+    };
+  }
+
+  if (segments.length === 5 && segments[0] === "c" && segments[2] === "book" && segments[4] === "checkout") {
+    return {
+      kind: "booking-checkout",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+      hostUserId: decodeURIComponent(segments[3]),
+    };
+  }
+
+  if (segments.length === 4 && segments[0] === "c" && segments[2] === "book") {
+    return {
+      kind: "booking-public",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+      hostUserId: decodeURIComponent(segments[3]),
     };
   }
 

@@ -9,7 +9,6 @@ import { Type } from "@/components/primitives/type";
 import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
 import type { AttachSessionResponse, BookingView } from "@/lib/api/bookings-types";
-import { useSession } from "@/lib/api/session-store";
 
 // Slice D will replace the placeholder surface below with a live Agora RTC component.
 // This route is responsible for:

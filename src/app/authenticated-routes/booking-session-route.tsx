@@ -21,9 +21,22 @@ import type { AttachSessionResponse, BookingView } from "@/lib/api/bookings-type
 type SessionPhase =
   | { kind: "loading" }
   | { kind: "error"; message: string }
+  | { kind: "not_available"; message: string }
   | { kind: "ready"; booking: BookingView; session: AttachSessionResponse };
 
 const HEARTBEAT_INTERVAL_MS = 15_000;
+const JOIN_LEAD_MS = 5 * 60_000;
+
+// The SAME join window the management page gates "Join session" on. The session route MUST enforce it
+// before start/attach: startBookingSession transitions confirmed → live (a payout-relevant lifecycle
+// change that then exposes complete/no-show), and the API does not yet enforce schedule bounds — so a
+// host hitting the URL directly must not be able to start/settle/no-show outside the scheduled window.
+function withinJoinWindow(booking: BookingView): boolean {
+  const now = Date.now();
+  const start = new Date(booking.slot_start_utc).getTime();
+  const end = new Date(booking.slot_end_utc).getTime();
+  return now >= start - JOIN_LEAD_MS && now < end;
+}
 
 export function BookingSessionPage({
   communityId,
@@ -66,6 +79,20 @@ export function BookingSessionPage({
 
         if (booking.status !== "confirmed" && booking.status !== "live") {
           setPhase({ kind: "error", message: `Session is not active (status: ${booking.status}).` });
+          return;
+        }
+
+        // GATE: never start/attach (and never expose settlement controls) outside the scheduled join
+        // window — this is the only protection around the payout-triggering live transition until the
+        // API enforces it. Mirrors the management page's "Join session" visibility rule.
+        if (!withinJoinWindow(booking)) {
+          const start = new Date(booking.slot_start_utc).getTime();
+          setPhase({
+            kind: "not_available",
+            message: Date.now() < start
+              ? "This session isn't available yet. You can join from 5 minutes before the scheduled start time."
+              : "This session's scheduled time has passed.",
+          });
           return;
         }
 
@@ -134,6 +161,13 @@ export function BookingSessionPage({
             >
               Back to bookings
             </Button>
+          </div>
+        )}
+
+        {phase.kind === "not_available" && (
+          <div className="space-y-4">
+            <Type variant="body" className="text-muted-foreground">{phase.message}</Type>
+            <Button variant="outline" onClick={toBookings}>Back to bookings</Button>
           </div>
         )}
 

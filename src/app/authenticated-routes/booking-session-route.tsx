@@ -22,6 +22,8 @@ type SessionPhase =
   | { kind: "error"; message: string }
   | { kind: "ready"; booking: BookingView; session: AttachSessionResponse };
 
+const HEARTBEAT_INTERVAL_MS = 15_000;
+
 export function BookingSessionPage({
   communityId,
   bookingId,
@@ -63,6 +65,30 @@ export function BookingSessionPage({
     })();
     return () => { cancelled = true; };
   }, [api, communityId, bookingId]);
+
+  // Presence heartbeat while attached to the live session. It is identity-bound to this session_id and
+  // MUST stop the moment the viewer leaves: on visibility loss (tab hidden), on navigation/unmount, and
+  // it never fires while hidden — so the server promptly sees an absent participant.
+  const readySessionId = phase.kind === "ready" ? phase.session.session_id : null;
+  React.useEffect(() => {
+    if (!readySessionId) return;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const beat = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      void api.communities
+        .heartbeatBookingSession(communityId, bookingId, { session_id: readySessionId })
+        .catch(() => { /* transient — the next tick retries; liveness is best-effort */ });
+    };
+    const start = () => { if (!timer) { beat(); timer = setInterval(beat, HEARTBEAT_INTERVAL_MS); } };
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+    const onVisibility = () => { if (document.visibilityState === "hidden") stop(); else start(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    if (typeof document === "undefined" || document.visibilityState !== "hidden") start();
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [readySessionId, api, communityId, bookingId]);
 
   return (
     <StandardRoutePage size="rail">

@@ -587,6 +587,61 @@ describe("video create-post submit helpers", () => {
     expect(createListingCalls).toEqual([]);
   });
 
+  test("submitVideoPost extracts the poster concurrently with the video upload", async () => {
+    const file = createVideoFile();
+    const posterFile = createPosterFile();
+    const calls: string[] = [];
+
+    await submitVideoPost({
+      authorMode: "human",
+      baseRequest: createBaseRequest(),
+      caption: "",
+      communityId: "com_test",
+      createArtifactUpload: async () => createArtifact({ id: "sau_intent" }),
+      createListing: async () => createListing(),
+      createPost: async () => createPost(),
+      extractPosterFrameFile: async () => {
+        calls.push("extractPosterFrameFile:start");
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        calls.push("extractPosterFrameFile:end");
+        return {
+          dataUrl: "data:image/jpeg;base64,cG9zdGVy",
+          file: posterFile,
+          frameMs: 0,
+          height: 720,
+          width: 1280,
+        };
+      },
+      monetized: false,
+      paidAssetPriceUsd: null,
+      pricingPolicyRegionalPricingEnabled: false,
+      regionalPricingEnabled: false,
+      signAgentAuthoredBody: async (_path, request) => request,
+      title: "Video post",
+      uploadArtifactContent: async () => {
+        calls.push("uploadArtifactContent:start");
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        calls.push("uploadArtifactContent:end");
+        return createArtifact();
+      },
+      uploadMedia: async () => ({
+        media_ref: "poster_media",
+        mime_type: "image/jpeg",
+        size_bytes: 123,
+      }),
+      videoState: {
+        primaryVideoUpload: file,
+      },
+    });
+
+    const videoStart = calls.indexOf("uploadArtifactContent:start");
+    const posterStart = calls.indexOf("extractPosterFrameFile:start");
+    const videoEnd = calls.indexOf("uploadArtifactContent:end");
+    const posterEnd = calls.indexOf("extractPosterFrameFile:end");
+    expect([videoStart, posterStart, videoEnd, posterEnd].every((index) => index >= 0)).toBe(true);
+    expect(Math.max(videoStart, posterStart)).toBeLessThan(Math.min(videoEnd, posterEnd));
+  });
+
   test("submitVideoPost sends selected derivative song refs", async () => {
     const file = createVideoFile();
     const createPostCalls: CreatePostRequest[] = [];

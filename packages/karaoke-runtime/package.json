@@ -1,7 +1,6 @@
 {
   "name": "@pirate/karaoke-runtime",
   "version": "0.1.0",
-  "private": true,
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "exports": {
@@ -9,14 +8,28 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./build": {
+      "types": "./src/provenance.ts",
+      "default": "./src/provenance.ts"
+    },
     "./test": {
       "types": "./src/test.ts",
       "default": "./src/test.ts"
     }
   },
+  "files": [
+    "src",
+    "build-info.json",
+    "SPEC.md"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "scripts": {
+    "build:provenance": "bun run scripts/build-provenance.ts",
+    "prepack": "bun run scripts/build-provenance.ts",
     "types": "tsgo --noEmit -p tsconfig.json",
-    "test": "bun test tests/",
+    "test": "bun run scripts/build-provenance.ts && bun test tests/",
     "lint:imports": "bun run scripts/check-forbidden-imports.ts"
   },
   "devDependencies": {

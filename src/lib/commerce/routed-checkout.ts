@@ -233,25 +233,22 @@ export function resolveHandleCheckoutTransferInput(
   };
 }
 
-export function resolveBookingCheckoutTransferInput(params: {
-  grossCents: number;
-  paymentDestinationAddress: string;
+export function resolveBookingCheckoutTransferInput(payment: {
+  chain_id: number;
+  token_address: string;
+  recipient_address: string;
+  amount_atomic: string;
 }): UsdcTransferInput {
-  const chainId = checkoutRouteChain.chainId;
-  const recipientAddress = normalizeAddress(params.paymentDestinationAddress);
-  if (!recipientAddress) {
-    throw new Error("This booking quote is missing its payment destination.");
+  const tokenAddress = normalizeAddress(payment.token_address);
+  if (!tokenAddress) throw new Error("This booking quote has an invalid payment token.");
+  const recipientAddress = normalizeAddress(payment.recipient_address);
+  if (!recipientAddress) throw new Error("This booking quote is missing a valid payment destination.");
+  let amountAtomic: bigint;
+  try { amountAtomic = BigInt(payment.amount_atomic); } catch {
+    throw new Error("This booking quote has an invalid payment amount.");
   }
-  if (!Number.isSafeInteger(params.grossCents) || params.grossCents <= 0) {
-    throw new Error("This booking quote has an invalid amount.");
-  }
-  return {
-    chainId,
-    tokenAddress: resolveUsdcTokenAddress(chainId),
-    recipientAddress,
-    // cents → USDC atomic (6 decimals): grossCents * 10_000
-    amountAtomic: BigInt(params.grossCents) * 10_000n,
-  };
+  if (amountAtomic <= 0n) throw new Error("This booking quote has a zero or negative payment amount.");
+  return { chainId: payment.chain_id, tokenAddress, recipientAddress, amountAtomic };
 }
 
 export async function executeUsdcTransfer(params: {

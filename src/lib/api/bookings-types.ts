@@ -110,6 +110,20 @@ export interface CreateHoldRequest {
   slot_start_utc: string;
   slot_end_utc: string;
 }
+export interface PaymentInstructions {
+  payment_intent_id: string;
+  version: number;
+  chain_id: number;
+  token_address: string;
+  token_decimals: number;
+  token_symbol: string;
+  recipient_address: string;
+  amount_atomic: string;
+  gross_cents: number;
+  quote_expires_at: string;
+  hold_expires_at: string;
+  wallet_attachment_required: boolean;
+}
 export interface BookingQuote {
   hold_id: string;
   gross_cents: number;
@@ -117,7 +131,7 @@ export interface BookingQuote {
   platform_fee_cents: number;
   host_payout_cents: number;
   expires_at_utc: string;
-  payment_destination_address: string;
+  payment: PaymentInstructions;
 }
 export interface ConfirmHoldRequest {
   funding_tx_ref: string;

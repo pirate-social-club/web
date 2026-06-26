@@ -143,10 +143,7 @@ export function BookingCheckoutPage({
 
     setPhase({ kind: "paying" });
     try {
-      const transfer = resolveBookingCheckoutTransferInput({
-        grossCents: quote.gross_cents,
-        paymentDestinationAddress: quote.payment_destination_address,
-      });
+      const transfer = resolveBookingCheckoutTransferInput(quote.payment);
       const txHash = await executeUsdcTransfer({ transfer, wallet });
       const { booking } = await api.communities.confirmBookingHold(communityId, hold.hold_id, {
         funding_tx_ref: txHash,

@@ -233,6 +233,27 @@ export function resolveHandleCheckoutTransferInput(
   };
 }
 
+export function resolveBookingCheckoutTransferInput(params: {
+  grossCents: number;
+  paymentDestinationAddress: string;
+}): UsdcTransferInput {
+  const chainId = checkoutRouteChain.chainId;
+  const recipientAddress = normalizeAddress(params.paymentDestinationAddress);
+  if (!recipientAddress) {
+    throw new Error("This booking quote is missing its payment destination.");
+  }
+  if (!Number.isSafeInteger(params.grossCents) || params.grossCents <= 0) {
+    throw new Error("This booking quote has an invalid amount.");
+  }
+  return {
+    chainId,
+    tokenAddress: resolveUsdcTokenAddress(chainId),
+    recipientAddress,
+    // cents → USDC atomic (6 decimals): grossCents * 10_000
+    amountAtomic: BigInt(params.grossCents) * 10_000n,
+  };
+}
+
 export async function executeUsdcTransfer(params: {
   transfer: UsdcTransferInput;
   wallet: PirateConnectedEvmWallet;

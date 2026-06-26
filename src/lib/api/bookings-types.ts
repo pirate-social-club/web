@@ -117,6 +117,7 @@ export interface BookingQuote {
   platform_fee_cents: number;
   host_payout_cents: number;
   expires_at_utc: string;
+  payment_destination_address: string;
 }
 export interface ConfirmHoldRequest {
   funding_tx_ref: string;

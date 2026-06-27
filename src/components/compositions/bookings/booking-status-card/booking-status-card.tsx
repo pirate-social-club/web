@@ -4,7 +4,7 @@ import { Button } from "@/components/primitives/button";
 import { Card, CardContent } from "@/components/primitives/card";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
-import type { BookingState, IanaTz, IsoInstant } from "@pirate/bookings-domain";
+import type { BookingState, IanaTz, IsoInstant } from "../view-models";
 
 import {
   formatBookingDate,

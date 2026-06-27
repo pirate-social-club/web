@@ -2,7 +2,7 @@ import * as React from "react";
 
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
-import type { IanaTz, ResolvedSlot } from "@pirate/bookings-domain";
+import type { IanaTz, ResolvedSlot } from "../view-models";
 
 import {
   formatCentsAsUsd,

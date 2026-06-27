@@ -1,4 +1,4 @@
-import type { Cents, IanaTz, IsoInstant } from "@pirate/bookings-domain";
+import type { Cents, IanaTz, IsoInstant } from "../view-models";
 
 export function formatCentsAsUsd(cents: Cents): string {
   const dollars = cents / 100;

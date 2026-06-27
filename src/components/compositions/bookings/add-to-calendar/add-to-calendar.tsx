@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
-import type { IanaTz, IsoInstant } from "@pirate/bookings-domain";
+import type { IanaTz, IsoInstant } from "../view-models";
 
 export interface AddToCalendarProps {
   bookingTitle: string;

@@ -3,7 +3,7 @@ import * as React from "react";
 import { Card, CardContent } from "@/components/primitives/card";
 import { Separator } from "@/components/primitives/separator";
 import { Type } from "@/components/primitives/type";
-import type { BookingQuotePreview, IanaTz } from "@pirate/bookings-domain";
+import type { BookingQuotePreview, IanaTz } from "../view-models";
 
 import {
   formatCentsAsUsd,

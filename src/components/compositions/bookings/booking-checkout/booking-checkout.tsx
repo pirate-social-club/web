@@ -4,7 +4,7 @@ import { Button } from "@/components/primitives/button";
 import { Card, CardContent } from "@/components/primitives/card";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
-import type { BookingQuotePreview, IanaTz } from "@pirate/bookings-domain";
+import type { BookingQuotePreview, IanaTz } from "../view-models";
 
 import { formatCentsAsUsd } from "../fixtures/bookings-format";
 

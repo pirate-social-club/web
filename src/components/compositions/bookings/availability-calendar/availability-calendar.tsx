@@ -3,7 +3,7 @@ import * as React from "react";
 import { Card, CardContent } from "@/components/primitives/card";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
-import type { IanaTz, IsoInstant, ResolvedSlot } from "@pirate/bookings-domain";
+import type { IanaTz, IsoInstant, ResolvedSlot } from "../view-models";
 
 import {
   formatCentsAsUsd,

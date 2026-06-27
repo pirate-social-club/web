@@ -7,8 +7,12 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to publish (must match the tag + package.json)"
+        description: "Version to publish, or (with compat_only) an existing published version to re-verify (e.g. 0.1.0)"
         required: true
+      compat_only:
+        description: "Skip publish (existence check / pack / publish); only verify the already-published version against the API"
+        type: boolean
+        default: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -17,6 +21,9 @@ jobs:
   publish:
     name: Publish @pirate-social-club/karaoke-runtime
     runs-on: blacksmith-4vcpu-ubuntu-2404
+    # Skipped on a compat-only dispatch: re-verifying an already-published version
+    # must not re-run the existence guard / pack / publish.
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.compat_only) }}
     outputs:
       version: ${{ steps.ver.outputs.version }}
     permissions:
@@ -138,16 +145,28 @@ jobs:
     name: API compatibility (install published package from GH Packages)
     runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: publish
+    # Run after a real publish (success) OR on a compat-only dispatch (publish skipped).
+    if: ${{ always() && (needs.publish.result == 'success' || needs.publish.result == 'skipped') }}
     permissions:
       contents: read
       packages: read
     env:
-      VERSION: ${{ needs.publish.outputs.version }}
+      # From the publish job on a normal run; from the dispatch input on compat-only.
+      VERSION: ${{ needs.publish.outputs.version || inputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           repository: pirate-social-club/api
           path: api
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      # The API has a cross-repo file: dep @pirate/bookings-domain ->
+      # file:../../../core/packages/bookings-domain, which resolves to <workspace>/core
+      # from api/services/api. (contracts/shared are in-repo; karaoke is pinned to the
+      # registry below, so no web checkout is needed.)
+      - uses: actions/checkout@v4
+        with:
+          repository: pirate-social-club/core
+          path: core
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/setup-node@v4
         with:

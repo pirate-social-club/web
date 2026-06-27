@@ -8,6 +8,7 @@ import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { toast } from "@/components/primitives/sonner";
 import { BookingVideoStage } from "@/components/compositions/bookings/booking-video-stage";
+import { useSessionControlAvailability } from "./booking-session-availability";
 import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
 import type { AttachSessionResponse, BookingView } from "@/lib/api/bookings-types";
@@ -37,15 +38,6 @@ function withinJoinWindow(booking: BookingView): boolean {
   const start = new Date(booking.slot_start_utc).getTime();
   const end = new Date(booking.slot_end_utc).getTime();
   return now >= start - JOIN_LEAD_MS && now < end;
-}
-const NO_SHOW_GRACE_MS = 10 * 60_000;
-// Mirror the server windows so we never present a control the API would reject:
-// complete is valid from the scheduled start; a no-show only after the grace period past it.
-function canCompleteNow(booking: BookingView): boolean {
-  return Date.now() >= new Date(booking.slot_start_utc).getTime();
-}
-function canReportNoShowNow(booking: BookingView): boolean {
-  return Date.now() >= new Date(booking.slot_start_utc).getTime() + NO_SHOW_GRACE_MS;
 }
 
 export function BookingSessionPage({
@@ -132,6 +124,8 @@ export function BookingSessionPage({
   // Presence heartbeat while attached to the live session. It is identity-bound to this session_id and
   // MUST stop the moment the viewer leaves: on visibility loss (tab hidden), on navigation/unmount, and
   // it never fires while hidden — so the server promptly sees an absent participant.
+  // Reactive control availability — re-renders exactly when slot_start / slot_start+grace pass.
+  const controlAvail = useSessionControlAvailability(phase.kind === "ready" ? phase.booking : null);
   const readySessionId = phase.kind === "ready" ? phase.session.session_id : null;
   React.useEffect(() => {
     if (!readySessionId) return;
@@ -200,8 +194,8 @@ export function BookingSessionPage({
             {/* End-of-session settlement controls — gated by role, live status, AND the same schedule
                 timing the server enforces (complete from start; no-show after the grace period). */}
             {phase.booking.status === "live" && (() => {
-              const showComplete = phase.booking.viewer_role === "host" && canCompleteNow(phase.booking);
-              const showNoShow = canReportNoShowNow(phase.booking);
+              const showComplete = phase.booking.viewer_role === "host" && controlAvail.canComplete;
+              const showNoShow = controlAvail.canReportNoShow;
               if (!showComplete && !showNoShow) {
                 return (
                   <Type variant="caption" className="text-muted-foreground">

@@ -37,6 +37,15 @@ function withinJoinWindow(booking: BookingView): boolean {
   const end = new Date(booking.slot_end_utc).getTime();
   return now >= start - JOIN_LEAD_MS && now < end;
 }
+const NO_SHOW_GRACE_MS = 10 * 60_000;
+// Mirror the server windows so we never present a control the API would reject:
+// complete is valid from the scheduled start; a no-show only after the grace period past it.
+function canCompleteNow(booking: BookingView): boolean {
+  return Date.now() >= new Date(booking.slot_start_utc).getTime();
+}
+function canReportNoShowNow(booking: BookingView): boolean {
+  return Date.now() >= new Date(booking.slot_start_utc).getTime() + NO_SHOW_GRACE_MS;
+}
 
 export function BookingSessionPage({
   communityId,
@@ -184,17 +193,31 @@ export function BookingSessionPage({
               </Type>
             </div>
 
-            {/* End-of-session settlement controls, gated by role + the booking being live. */}
-            {phase.booking.status === "live" && (
-              <div className="flex flex-wrap gap-2">
-                {phase.booking.viewer_role === "host" && (
-                  <Button onClick={() => void completeSession()} loading={acting}>End &amp; complete session</Button>
-                )}
-                <Button variant="outline" disabled={acting} onClick={() => void reportNoShow()}>
-                  {phase.booking.viewer_role === "host" ? "Report booker no-show" : "Report host no-show"}
-                </Button>
-              </div>
-            )}
+            {/* End-of-session settlement controls — gated by role, live status, AND the same schedule
+                timing the server enforces (complete from start; no-show after the grace period). */}
+            {phase.booking.status === "live" && (() => {
+              const showComplete = phase.booking.viewer_role === "host" && canCompleteNow(phase.booking);
+              const showNoShow = canReportNoShowNow(phase.booking);
+              if (!showComplete && !showNoShow) {
+                return (
+                  <Type variant="caption" className="text-muted-foreground">
+                    Session controls become available at the scheduled start time.
+                  </Type>
+                );
+              }
+              return (
+                <div className="flex flex-wrap gap-2">
+                  {showComplete && (
+                    <Button onClick={() => void completeSession()} loading={acting}>End &amp; complete session</Button>
+                  )}
+                  {showNoShow && (
+                    <Button variant="outline" disabled={acting} onClick={() => void reportNoShow()}>
+                      {phase.booking.viewer_role === "host" ? "Report booker no-show" : "Report host no-show"}
+                    </Button>
+                  )}
+                </div>
+              );
+            })()}
 
             <Button variant="outline" onClick={toBookings}>Back to bookings</Button>
           </div>

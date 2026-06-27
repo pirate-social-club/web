@@ -10,7 +10,7 @@ import {
   type KaraokeStreamingSttEvent,
   type KaraokeTransportEnvelope,
   KARAOKE_TRANSPORT_PROTOCOL_VERSION,
-} from "@pirate/karaoke-runtime";
+} from "@pirate-social-club/karaoke-runtime";
 
 export type FakeKaraokeTransportInput =
   | { source: "client"; event: KaraokeClientEvent }

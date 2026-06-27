@@ -9,7 +9,7 @@ const pkg = JSON.parse(
 ) as { version: string };
 
 /**
- * Contract test for the provenance entry (`@pirate/karaoke-runtime/build`) the API
+ * Contract test for the provenance entry (`@pirate-social-club/karaoke-runtime/build`) the API
  * relies on to surface `/__version` (karaoke-rankings spec §9a / packaging doc §6).
  * Requires `build-info.json`, which `scripts/build-provenance.ts` generates before
  * `bun test` and before `npm pack` (prepack).

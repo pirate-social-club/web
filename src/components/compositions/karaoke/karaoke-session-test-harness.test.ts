@@ -7,7 +7,7 @@ import {
   type KaraokeRecognizedWord,
   type KaraokeStreamingSttEvent,
   type ScorableKaraokeLine,
-} from "@pirate/karaoke-runtime";
+} from "@pirate-social-club/karaoke-runtime";
 
 import {
   runFakeKaraokeTransport,

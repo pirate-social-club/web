@@ -15,7 +15,7 @@ env:
 
 jobs:
   publish:
-    name: Publish @pirate/karaoke-runtime
+    name: Publish @pirate-social-club/karaoke-runtime
     runs-on: blacksmith-4vcpu-ubuntu-2404
     outputs:
       version: ${{ steps.ver.outputs.version }}
@@ -62,8 +62,8 @@ jobs:
           set -euo pipefail
           VER="${{ steps.ver.outputs.version }}"
           echo "//npm.pkg.github.com/:_authToken=\${NODE_AUTH_TOKEN}" > ~/.npmrc
-          npm config set @pirate:registry https://npm.pkg.github.com
-          if npm view "@pirate/karaoke-runtime@$VER" --json >/tmp/view.json 2>/dev/null; then
+          npm config set @pirate-social-club:registry https://npm.pkg.github.com
+          if npm view "@pirate-social-club/karaoke-runtime@$VER" --json >/tmp/view.json 2>/dev/null; then
             if jq -e '.version // .dist-tags' /tmp/view.json >/dev/null 2>&1; then
               echo "::error::$VER already exists — versions are immutable; bump and retry"
               exit 1
@@ -127,12 +127,12 @@ jobs:
           set -euo pipefail
           VER="${{ steps.ver.outputs.version }}"
           PACKED="${{ steps.pack.outputs.sha256 }}"
-          PUBSUM=$(npm view "@pirate/karaoke-runtime@$VER" dist.shasum 2>/dev/null || true)
+          PUBSUM=$(npm view "@pirate-social-club/karaoke-runtime@$VER" dist.shasum 2>/dev/null || true)
           echo "packed=$PACKED published_shasum_field=$PUBSUM"
           # npm view dist.shasum is sha1, not sha256 — the registry doesn't expose sha256,
           # so the enforceable integrity check is the tarball provenance attestation +
           # the existence/contents check above. Record the packed sha256 in the run.
-          echo "::notice::published @pirate/karaoke-runtime@$VER sha256=$PACKED"
+          echo "::notice::published @pirate-social-club/karaoke-runtime@$VER sha256=$PACKED"
 
   compat:
     name: API compatibility (install published package from GH Packages)
@@ -154,7 +154,7 @@ jobs:
           node-version: 24
       - uses: oven-sh/setup-bun@v2
 
-      # Mirror the auth model the API will use in CI/prod: @pirate scope resolves
+      # Mirror the auth model the API will use in CI/prod: @pirate-social-club scope resolves
       # from GH Packages via a read:packages token in .npmrc. This proves registry
       # auth + package visibility + install behavior for the EXACT published version,
       # not a locally repacked checkout.
@@ -165,7 +165,7 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo "@pirate:registry=https://npm.pkg.github.com"
+            echo "@pirate-social-club:registry=https://npm.pkg.github.com"
             echo "//npm.pkg.github.com/:_authToken=\${NODE_AUTH_TOKEN}"
           } > .npmrc
 
@@ -177,7 +177,7 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/reg
           # `npm pack <spec>` downloads the tarball FROM the registry — not a local repack.
-          npm pack "@pirate/karaoke-runtime@${VERSION}" --pack-destination /tmp/reg >/dev/null
+          npm pack "@pirate-social-club/karaoke-runtime@${VERSION}" --pack-destination /tmp/reg >/dev/null
           REG_TGZ="$(ls /tmp/reg/*.tgz | head -1)"
           # Capture-then-grep (here-string): `tar | grep -q` under pipefail false-fails
           # via grep -q SIGPIPEing tar. See the pack step for the full rationale.
@@ -192,13 +192,13 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN || github.token }}
         run: |
           set -euo pipefail
-          node -e "const p=require('./package.json'); p.dependencies['@pirate/karaoke-runtime']=process.env.VERSION; require('fs').writeFileSync('./package.json', JSON.stringify(p,null,2)+'\n')"
+          node -e "const p=require('./package.json'); p.dependencies['@pirate-social-club/karaoke-runtime']=process.env.VERSION; require('fs').writeFileSync('./package.json', JSON.stringify(p,null,2)+'\n')"
           # No --frozen-lockfile: the dep just changed from file: to the registry version.
           bun install
           # Prove resolution via the EXPORTED provenance surface (the package ships TS
           # source + an exports map with no ./package.json export, so require the /build
           # entry through bun — this also proves build-info.json is usable, not just a tar entry).
-          bun -e "const { KARAOKE_RUNTIME_BUILD } = await import('@pirate/karaoke-runtime/build'); if (KARAOKE_RUNTIME_BUILD.version !== process.env.VERSION) { console.error('version mismatch: got', KARAOKE_RUNTIME_BUILD.version, 'want', process.env.VERSION); process.exit(1); }"
+          bun -e "const { KARAOKE_RUNTIME_BUILD } = await import('@pirate-social-club/karaoke-runtime/build'); if (KARAOKE_RUNTIME_BUILD.version !== process.env.VERSION) { console.error('version mismatch: got', KARAOKE_RUNTIME_BUILD.version, 'want', process.env.VERSION); process.exit(1); }"
 
       - name: Typecheck (HARD fail) + API karaoke tests under the published package
         working-directory: api/services/api

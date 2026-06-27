@@ -1,8 +1,13 @@
 {
-  "name": "@pirate/karaoke-runtime",
+  "name": "@pirate-social-club/karaoke-runtime",
   "version": "0.1.0",
   "license": "AGPL-3.0-or-later",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pirate-social-club/web.git",
+    "directory": "packages/karaoke-runtime"
+  },
   "exports": {
     ".": {
       "types": "./src/index.ts",

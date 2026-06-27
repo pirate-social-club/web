@@ -9,9 +9,10 @@
         "@dicebear/collection": "^9.4.2",
         "@dicebear/core": "^9.4.2",
         "@fontsource/anton": "^5.2.7",
-        "@pirate/api-contracts": "file:../api/services/contracts",
-        "@pirate/efp-shared": "file:../api/services/efp-shared",
         "@pirate-social-club/karaoke-runtime": "file:./packages/karaoke-runtime",
+        "@pirate/api-contracts": "file:../api/services/contracts",
+        "@pirate/bookings-domain": "file:./packages/bookings-domain",
+        "@pirate/efp-shared": "file:../api/services/efp-shared",
         "@privy-io/react-auth": "^3.21.2",
         "@radix-ui/react-accordion": "^1.2.12",
         "@radix-ui/react-checkbox": "^1.3.3",
@@ -619,11 +620,13 @@
 
     "@phosphor-icons/webcomponents": ["@phosphor-icons/webcomponents@2.1.5", "", { "dependencies": { "lit": "^3" } }, "sha512-JcvQkZxvcX2jK+QCclm8+e8HXqtdFW9xV4/kk2aL9Y3dJA2oQVt+pzbv1orkumz3rfx4K9mn9fDoMr1He1yr7Q=="],
 
+    "@pirate-social-club/karaoke-runtime": ["@pirate-social-club/karaoke-runtime@file:packages/karaoke-runtime", { "devDependencies": { "@types/bun": "latest" } }],
+
     "@pirate/api-contracts": ["@pirate/api-contracts@file:../api/services/contracts", { "devDependencies": { "@types/node": "^24.5.2", "@typescript/native-preview": "^7.0.0-dev.20260421.2", "typescript": "^5.8.3" } }],
 
-    "@pirate/efp-shared": ["@pirate/efp-shared@file:../api/services/efp-shared", { "dependencies": { "viem": "^2.48.1" } }],
+    "@pirate/bookings-domain": ["@pirate/bookings-domain@file:packages/bookings-domain", { "devDependencies": { "@types/bun": "latest" } }],
 
-    "@pirate-social-club/karaoke-runtime": ["@pirate-social-club/karaoke-runtime@file:packages/karaoke-runtime", { "devDependencies": { "@types/bun": "latest" } }],
+    "@pirate/efp-shared": ["@pirate/efp-shared@file:../api/services/efp-shared", { "dependencies": { "viem": "^2.48.1" } }],
 
     "@playwright/test": ["@playwright/test@1.60.0", "", { "dependencies": { "playwright": "1.60.0" }, "bin": { "playwright": "cli.js" } }, "sha512-O71yZIbAh/PxDMNGns37GHBIfrVkEVyn+AXyIa5dOTfb4/xNvRWV+Vv/NMbNCtODB/pO7vLlF2OTmMVLhmr7Ag=="],
 

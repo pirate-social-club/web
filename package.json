@@ -52,6 +52,7 @@
     "@dicebear/core": "^9.4.2",
     "@fontsource/anton": "^5.2.7",
     "@pirate/api-contracts": "file:../api/services/contracts",
+    "@pirate/bookings-domain": "file:./packages/bookings-domain",
     "@pirate/efp-shared": "file:../api/services/efp-shared",
     "@pirate-social-club/karaoke-runtime": "file:./packages/karaoke-runtime",
     "@privy-io/react-auth": "^3.21.2",

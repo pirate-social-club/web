@@ -7,6 +7,7 @@ import { StandardRoutePage } from "@/components/compositions/app/page-shell";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { toast } from "@/components/primitives/sonner";
+import { BookingVideoStage } from "@/components/compositions/bookings/booking-video-stage";
 import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
 import type { AttachSessionResponse, BookingView } from "@/lib/api/bookings-types";
@@ -182,16 +183,19 @@ export function BookingSessionPage({
 
         {phase.kind === "ready" && (
           <div className="space-y-4">
-            {/* Agora RTC widget renders here in Slice D. */}
-            <div className="rounded-lg border border-border p-6 text-center space-y-2">
-              <Type variant="label">Session ready</Type>
-              <Type variant="caption" className="text-muted-foreground">
-                Video session ({phase.session.party}) · channel {phase.session.channel}
-              </Type>
-              <Type variant="caption" className="text-muted-foreground">
-                Live video will be available in an upcoming release.
-              </Type>
-            </div>
+            {phase.session.agora.app_id ? (
+              <BookingVideoStage agora={phase.session.agora} onLeave={toBookings} />
+            ) : (
+              <div className="rounded-lg border border-border p-6 text-center space-y-2">
+                <Type variant="label">Session ready</Type>
+                <Type variant="caption" className="text-muted-foreground">
+                  Video session ({phase.session.party}) · channel {phase.session.channel}
+                </Type>
+                <Type variant="caption" className="text-muted-foreground">
+                  Video is not configured for this environment.
+                </Type>
+              </div>
+            )}
 
             {/* End-of-session settlement controls — gated by role, live status, AND the same schedule
                 timing the server enforces (complete from start; no-show after the grace period). */}

@@ -219,6 +219,15 @@ jobs:
           # entry through bun — this also proves build-info.json is usable, not just a tar entry).
           bun -e "const { KARAOKE_RUNTIME_BUILD } = await import('@pirate-social-club/karaoke-runtime/build'); if (KARAOKE_RUNTIME_BUILD.version !== process.env.VERSION) { console.error('version mismatch: got', KARAOKE_RUNTIME_BUILD.version, 'want', process.env.VERSION); process.exit(1); }"
 
+      # The API typecheck pulls in @pirate/api-shared (file:../shared), whose source
+      # imports @neondatabase/serverless — a transitive dep that the services/api
+      # install does not provide. Install shared's own deps so tsgo can resolve them
+      # (mirrors api-ci.yml). Demonstrated required by the first compat-only run:
+      # ../shared/src/postgres-url.ts → "Cannot find module '@neondatabase/serverless'".
+      - name: Install services/shared dependencies
+        working-directory: api/services/shared
+        run: bun install --frozen-lockfile
+
       - name: Typecheck (HARD fail) + API karaoke tests under the published package
         working-directory: api/services/api
         run: |

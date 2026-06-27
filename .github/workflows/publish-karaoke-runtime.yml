@@ -98,8 +98,12 @@ jobs:
           SHA=$(sha256sum "$TARBALL" | awk '{print $1}')
           echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
           echo "Packed $TARBALL (sha256=$SHA)"
-          # Assert provenance ships in the tarball (inspect the tarball directly).
-          tar -tzf "$TARBALL" | grep -q "^package/build-info.json$" \
+          # Assert provenance ships in the tarball. Capture the listing first, then
+          # grep a here-string: `tar | grep -q` under `set -o pipefail` false-fails
+          # because grep -q exits on first match, SIGPIPEs tar (exit 141), and
+          # pipefail propagates that as a pipeline failure.
+          TAR_CONTENTS="$(tar -tzf "$TARBALL")"
+          grep -q "^package/build-info.json$" <<< "$TAR_CONTENTS" \
             || { echo "::error::tarball missing build-info.json (provenance)"; exit 1; }
 
       - name: Publish the exact tested tarball
@@ -175,7 +179,10 @@ jobs:
           # `npm pack <spec>` downloads the tarball FROM the registry — not a local repack.
           npm pack "@pirate/karaoke-runtime@${VERSION}" --pack-destination /tmp/reg >/dev/null
           REG_TGZ="$(ls /tmp/reg/*.tgz | head -1)"
-          tar -tzf "$REG_TGZ" | grep -q "package/build-info.json" \
+          # Capture-then-grep (here-string): `tar | grep -q` under pipefail false-fails
+          # via grep -q SIGPIPEing tar. See the pack step for the full rationale.
+          REG_CONTENTS="$(tar -tzf "$REG_TGZ")"
+          grep -q "package/build-info.json" <<< "$REG_CONTENTS" \
             || { echo "::error::registry tarball missing build-info.json (provenance)"; exit 1; }
           echo "registry tarball OK: $REG_TGZ"
 

@@ -5,7 +5,7 @@ import {
   KARAOKE_TRANSPORT_PROTOCOL_VERSION,
   type KaraokeClientSocket,
   type KaraokeServerEvent,
-} from "@pirate/karaoke-runtime";
+} from "@pirate-social-club/karaoke-runtime";
 
 import { ApiError } from "@/lib/api/client";
 import type { KaraokeSessionCreateApiResponse } from "@/lib/api/client-api-types";

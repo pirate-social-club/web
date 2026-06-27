@@ -7,7 +7,7 @@ import {
   type KaraokeLineIdentity,
   type KaraokeServerEvent,
   type KaraokeSessionDescriptor,
-} from "@pirate/karaoke-runtime";
+} from "@pirate-social-club/karaoke-runtime";
 
 import type { KaraokeSessionCreateApiResponse } from "@/lib/api/client-api-types";
 import { ApiError } from "@/lib/api/client";

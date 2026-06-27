@@ -2,7 +2,7 @@ import "@/test/setup-runtime";
 
 import { describe, expect, test } from "bun:test";
 
-import type { KaraokeLineScore } from "@pirate/karaoke-runtime";
+import type { KaraokeLineScore } from "@pirate-social-club/karaoke-runtime";
 
 import {
   COMBO_THRESHOLD,

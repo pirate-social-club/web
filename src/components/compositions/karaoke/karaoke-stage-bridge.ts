@@ -1,4 +1,4 @@
-import type { ScorableKaraokeLine, ScorableKaraokeWord } from "@pirate/karaoke-runtime";
+import type { ScorableKaraokeLine, ScorableKaraokeWord } from "@pirate-social-club/karaoke-runtime";
 
 import type { KaraokeStageLine, KaraokeStageToken } from "./karaoke-lyric-stage";
 

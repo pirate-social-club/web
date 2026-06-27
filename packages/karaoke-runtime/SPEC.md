@@ -1,6 +1,6 @@
 # Karaoke Runtime — Transport & State Specification
 
-Status: normative for `@pirate/karaoke-runtime`. Browser-specific microphone capture
+Status: normative for `@pirate-social-club/karaoke-runtime`. Browser-specific microphone capture
 is **non-normative** here — see `web/docs/karaoke-audio-capture.md`.
 
 This document is the source of truth for the karaoke scoring protocol, the session

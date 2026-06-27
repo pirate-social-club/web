@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, fireEvent, render } from "@testing-library/react";
-import type { KaraokeSessionSummary } from "@pirate/karaoke-runtime";
+import type { KaraokeSessionSummary } from "@pirate-social-club/karaoke-runtime";
 
 import { installDomGlobals } from "@/test/setup-dom";
 import type { KaraokeScoringState } from "./karaoke-scoring-controller";

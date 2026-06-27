@@ -6,7 +6,7 @@ import type {
   KaraokeServerEvent,
   KaraokeSessionSummary,
   ScorableKaraokeLine,
-} from "@pirate/karaoke-runtime";
+} from "@pirate-social-club/karaoke-runtime";
 
 import type {
   CreateKaraokeSessionClientOptions,

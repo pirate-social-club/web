@@ -13,7 +13,7 @@
  */
 
 import * as React from "react";
-import type { ScorableKaraokeLine } from "@pirate/karaoke-runtime";
+import type { ScorableKaraokeLine } from "@pirate-social-club/karaoke-runtime";
 
 import type { KaraokeSessionCreateApiResponse } from "@/lib/api/client-api-types";
 

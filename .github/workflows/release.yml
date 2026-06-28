@@ -40,6 +40,12 @@ jobs:
       - name: Audit web dependencies
         working-directory: web
         run: bun audit --audit-level=high
+      - name: Install shared dependencies
+        working-directory: api/services/shared
+        run: bun install --frozen-lockfile
+      - name: Audit shared dependencies
+        working-directory: api/services/shared
+        run: bun audit --audit-level=high
       - name: Install API dependencies
         working-directory: api/services/api
         run: bun install --frozen-lockfile
@@ -256,6 +262,12 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Audit web dependencies
         working-directory: web
+        run: bun audit --audit-level=high
+      - name: Install shared dependencies
+        working-directory: api/services/shared
+        run: bun install --frozen-lockfile
+      - name: Audit shared dependencies
+        working-directory: api/services/shared
         run: bun audit --audit-level=high
       - name: Install API dependencies
         working-directory: api/services/api

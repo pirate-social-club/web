@@ -267,6 +267,51 @@ export function resolveLocalizedLinkTitle(
   };
 }
 
+/**
+ * Resolve the post card's heading title with authored-first precedence.
+ *
+ * Precedence:
+ *   1. non-empty translated authored title (dir/lang from the translation)
+ *   2. non-empty original authored title (dir/lang from the source language)
+ *   3. localized article enrichment/og title — only for genuinely untitled
+ *      link posts (dir/lang from the resolved link locale)
+ *
+ * Translated and original titles are passed separately (not pre-coalesced) so
+ * an empty/whitespace translated title falls through to the original authored
+ * title rather than skipping straight to the article title. The article title
+ * still drives `content.previewTitle` inside the link preview — this only
+ * governs the heading. dir/lang always follow the winning source.
+ */
+export function resolvePostCardHeadingTitle(input: {
+  translatedTitle?: string | null;
+  originalTitle?: string | null;
+  translatedPresentation?: { dir?: "ltr" | "rtl"; lang?: string };
+  originalPresentation?: { dir?: "ltr" | "rtl"; lang?: string };
+  localizedLinkTitle: { dir?: "ltr" | "rtl"; lang?: string; title?: string };
+}): { dir?: "ltr" | "rtl"; lang?: string; title?: string } {
+  const translated = input.translatedTitle?.trim();
+  if (translated) {
+    return {
+      dir: input.translatedPresentation?.dir,
+      lang: input.translatedPresentation?.lang,
+      title: translated,
+    };
+  }
+  const original = input.originalTitle?.trim();
+  if (original) {
+    return {
+      dir: input.originalPresentation?.dir,
+      lang: input.originalPresentation?.lang,
+      title: original,
+    };
+  }
+  return {
+    dir: input.localizedLinkTitle.dir,
+    lang: input.localizedLinkTitle.lang,
+    title: input.localizedLinkTitle.title,
+  };
+}
+
 export function toLinkPostContent(
   postResponse: ApiPost,
   input: {

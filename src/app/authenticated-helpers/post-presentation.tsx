@@ -23,7 +23,7 @@ import {
   resolvePostQualifierLabels,
   toViewerVote,
 } from "@/app/authenticated-helpers/post-identity-presentation";
-import { resolveLocalizedLinkTitle } from "@/app/authenticated-helpers/post-link-presentation";
+import { resolveLocalizedLinkTitle, resolvePostCardHeadingTitle } from "@/app/authenticated-helpers/post-link-presentation";
 import type {
   PostPresentationOptions,
   SongPresentationOptions,
@@ -103,17 +103,22 @@ export function toCommunityFeedItem(
   const isRemoved = post.status === "removed";
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
   const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
+  const heading = resolvePostCardHeadingTitle({
+    translatedTitle: postResponse.translated_title,
+    originalTitle: post.title,
+    translatedPresentation: postResponse.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(postResponse.resolved_locale)
+      : undefined,
+    originalPresentation: resolveTranslatedTextPresentation(post.source_language),
+    localizedLinkTitle,
+  });
   const titleProps = buildPostCardTitleProps({
     content,
     suppressTitle: isDeleted || isRemoved,
-    title: localizedLinkTitle.title ?? postResponse.translated_title ?? post.title,
-    titleDir: localizedLinkTitle.dir ?? (postResponse.translation_state === "ready"
-      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
-      : undefined),
+    title: heading.title,
+    titleDir: heading.dir,
     titleHref: `/p/${post.id}`,
-    titleLang: localizedLinkTitle.lang ?? (postResponse.translation_state === "ready"
-      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
-      : undefined),
+    titleLang: heading.lang,
   });
 
   const localizedPost = withTranslationToggleProps({
@@ -216,18 +221,21 @@ export function toThreadPostCard(
   const isRemoved = post.status === "removed";
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
   const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
+  const heading = resolvePostCardHeadingTitle({
+    translatedTitle: opts?.preferOriginalText ? null : postResponse.translated_title,
+    originalTitle: post.title,
+    translatedPresentation: !opts?.preferOriginalText && postResponse.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(postResponse.resolved_locale)
+      : undefined,
+    originalPresentation: resolveTranslatedTextPresentation(post.source_language),
+    localizedLinkTitle,
+  });
   const titleProps = buildPostCardTitleProps({
     content,
     suppressTitle: isDeleted || isRemoved,
-    title: localizedLinkTitle.title ?? (opts?.preferOriginalText
-      ? post.title
-      : postResponse.translated_title ?? post.title),
-    titleDir: localizedLinkTitle.dir ?? (!opts?.preferOriginalText && postResponse.translation_state === "ready"
-      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
-      : undefined),
-    titleLang: localizedLinkTitle.lang ?? (!opts?.preferOriginalText && postResponse.translation_state === "ready"
-      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
-      : undefined),
+    title: heading.title,
+    titleDir: heading.dir,
+    titleLang: heading.lang,
   });
   const communityLabel = community?.id
     ? communityVerified

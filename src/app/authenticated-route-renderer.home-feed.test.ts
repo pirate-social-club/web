@@ -412,7 +412,7 @@ describe("toHomeFeedItem", () => {
     expect(item.post.content.summaryDir).toBe("rtl");
   });
 
-  test("uses viewer-locale link enrichment even when post translation is policy-blocked", () => {
+  test("keeps the authored heading but uses viewer-locale link enrichment for the preview when translation is policy-blocked", () => {
     const entry = createEntry();
     entry.post.post.post_type = "link";
     entry.post.post.source_language = "en";
@@ -452,8 +452,10 @@ describe("toHomeFeedItem", () => {
 
     const item = toHomeFeedItem(entry, {}, undefined, { viewerContentLocale: "ar" });
 
-    expect(item.post.title).toBe("الداخلية تحقق في اختلالات رخص البناء والتعمير بفاس");
-    expect(item.post.titleDir).toBe("rtl");
+    // Authored title remains the heading (English source -> no rtl); the localized
+    // Arabic article title moves to the link preview, not the heading.
+    expect(item.post.title).toBe("Morocco Probes Building Permit Failures in Fez After 22 Killed");
+    expect(item.post.titleDir).toBeUndefined();
     expect(item.post.content.type).toBe("link");
     if (item.post.content.type !== "link") throw new Error("expected link content");
     expect(item.post.content.previewTitle).toBe("الداخلية تحقق في اختلالات رخص البناء والتعمير بفاس");

@@ -267,6 +267,32 @@ export function resolveLocalizedLinkTitle(
   };
 }
 
+/**
+ * Resolve the post card's heading title with authored-first precedence.
+ *
+ * An explicitly authored post title (translated or original) must always win as
+ * the card heading; the article's enrichment/og title (`localizedLinkTitle`)
+ * only fills in for genuinely untitled link posts. The article title still
+ * drives `content.previewTitle` inside the link preview — this only governs the
+ * heading. dir/lang follow whichever title is shown.
+ */
+export function resolvePostCardHeadingTitle(input: {
+  authoredTitle?: string | null;
+  localizedLinkTitle: { dir?: "ltr" | "rtl"; lang?: string; title?: string };
+  translationDir?: "ltr" | "rtl";
+  translationLang?: string;
+}): { dir?: "ltr" | "rtl"; lang?: string; title?: string } {
+  const authored = input.authoredTitle?.trim();
+  if (authored) {
+    return { dir: input.translationDir, lang: input.translationLang, title: authored };
+  }
+  return {
+    dir: input.localizedLinkTitle.dir,
+    lang: input.localizedLinkTitle.lang,
+    title: input.localizedLinkTitle.title,
+  };
+}
+
 export function toLinkPostContent(
   postResponse: ApiPost,
   input: {

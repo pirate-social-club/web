@@ -6,6 +6,7 @@ import {
   toCommunityPostContent,
   toThreadPostCard,
 } from "@/app/authenticated-helpers/post-presentation";
+import { resolvePostCardHeadingTitle } from "@/app/authenticated-helpers/post-link-presentation";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 
 const originalDateNow = Date.now;
@@ -408,6 +409,74 @@ describe("post presentation links", () => {
     });
 
     expect(title.title).toBe("English fallback");
+  });
+
+  test("resolvePostCardHeadingTitle prefers an authored title over the article title", () => {
+    expect(
+      resolvePostCardHeadingTitle({
+        authoredTitle: "Yum",
+        localizedLinkTitle: { dir: "ltr", lang: "en", title: "Article Headline" },
+        translationDir: "rtl",
+        translationLang: "ar",
+      }),
+    ).toEqual({ dir: "rtl", lang: "ar", title: "Yum" });
+  });
+
+  test("resolvePostCardHeadingTitle falls back to the article title for untitled link posts", () => {
+    expect(
+      resolvePostCardHeadingTitle({
+        authoredTitle: "  ",
+        localizedLinkTitle: { dir: "ltr", lang: "en", title: "Article Headline" },
+      }),
+    ).toEqual({ dir: "ltr", lang: "en", title: "Article Headline" });
+  });
+
+  test("link card heading uses the authored title and keeps the article title as the preview", () => {
+    const post = createLinkPost({
+      title: "Yum",
+      link_og_title: "“Mmm…Tastes like genocide” Israel’s Ben & Jerry Promotes New Flavour",
+      link_enrichment: {
+        provider: "firecrawl",
+        status: "ready",
+        title: "“Mmm…Tastes like genocide” Israel’s Ben & Jerry Promotes New Flavour",
+      },
+    } as Partial<LocalizedPostResponse["post"]>);
+
+    const card = toThreadPostCard(post, {
+      id: "com_cmt_links",
+      display_name: "Links",
+      namespace_verification: null,
+      route_slug: null,
+    });
+
+    expect(card.title).toBe("Yum");
+    expect(card.content.type).toBe("link");
+    if (card.content.type === "link") {
+      expect(card.content.previewTitle).toBe(
+        "“Mmm…Tastes like genocide” Israel’s Ben & Jerry Promotes New Flavour",
+      );
+    }
+  });
+
+  test("link card heading falls back to the article title when the post has no authored title", () => {
+    const post = createLinkPost({
+      title: null,
+      link_og_title: "Article Headline",
+      link_enrichment: {
+        provider: "firecrawl",
+        status: "ready",
+        title: "Article Headline",
+      },
+    } as Partial<LocalizedPostResponse["post"]>);
+
+    const card = toThreadPostCard(post, {
+      id: "com_cmt_links",
+      display_name: "Links",
+      namespace_verification: null,
+      route_slug: null,
+    });
+
+    expect(card.title).toBe("Article Headline");
   });
 });
 

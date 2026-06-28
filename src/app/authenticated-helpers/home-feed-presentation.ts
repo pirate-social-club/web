@@ -20,7 +20,7 @@ import {
   resolvePostQualifierLabels,
   toViewerVote,
 } from "@/app/authenticated-helpers/post-identity-presentation";
-import { resolveLocalizedLinkTitle } from "@/app/authenticated-helpers/post-link-presentation";
+import { resolveLocalizedLinkTitle, resolvePostCardHeadingTitle } from "@/app/authenticated-helpers/post-link-presentation";
 import { buildPostMenu, resolvePostStoryPortalHref } from "@/app/authenticated-helpers/post-menu-presentation";
 import { toPostCardEvent } from "@/app/authenticated-helpers/post-event-presentation";
 import type {
@@ -89,16 +89,22 @@ export function toHomeFeedItem(
   });
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
   const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
+  const heading = resolvePostCardHeadingTitle({
+    authoredTitle: postResponse.translated_title ?? post.title,
+    localizedLinkTitle,
+    translationDir: postResponse.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
+      : undefined,
+    translationLang: postResponse.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
+      : undefined,
+  });
   const titleProps = buildPostCardTitleProps({
     content,
-    title: localizedLinkTitle.title ?? postResponse.translated_title ?? post.title,
-    titleDir: localizedLinkTitle.dir ?? (postResponse.translation_state === "ready"
-      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
-      : undefined),
+    title: heading.title,
+    titleDir: heading.dir,
     titleHref: `/p/${postId}`,
-    titleLang: localizedLinkTitle.lang ?? (postResponse.translation_state === "ready"
-      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
-      : undefined),
+    titleLang: heading.lang,
   });
 
   const localizedPost = withTranslationToggleProps({

@@ -90,14 +90,13 @@ export function toHomeFeedItem(
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
   const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
   const heading = resolvePostCardHeadingTitle({
-    authoredTitle: postResponse.translated_title ?? post.title,
+    translatedTitle: postResponse.translated_title,
+    originalTitle: post.title,
+    translatedPresentation: postResponse.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(postResponse.resolved_locale)
+      : undefined,
+    originalPresentation: resolveTranslatedTextPresentation(post.source_language),
     localizedLinkTitle,
-    translationDir: postResponse.translation_state === "ready"
-      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
-      : undefined,
-    translationLang: postResponse.translation_state === "ready"
-      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
-      : undefined,
   });
   const titleProps = buildPostCardTitleProps({
     content,

@@ -411,21 +411,49 @@ describe("post presentation links", () => {
     expect(title.title).toBe("English fallback");
   });
 
-  test("resolvePostCardHeadingTitle prefers an authored title over the article title", () => {
+  test("resolvePostCardHeadingTitle prefers the translated authored title with its presentation", () => {
     expect(
       resolvePostCardHeadingTitle({
-        authoredTitle: "Yum",
+        translatedTitle: "Translated heading",
+        originalTitle: "Original heading",
+        translatedPresentation: { dir: "rtl", lang: "ar" },
+        originalPresentation: {},
         localizedLinkTitle: { dir: "ltr", lang: "en", title: "Article Headline" },
-        translationDir: "rtl",
-        translationLang: "ar",
       }),
-    ).toEqual({ dir: "rtl", lang: "ar", title: "Yum" });
+    ).toEqual({ dir: "rtl", lang: "ar", title: "Translated heading" });
   });
 
-  test("resolvePostCardHeadingTitle falls back to the article title for untitled link posts", () => {
+  test("resolvePostCardHeadingTitle uses the original authored title (with source presentation) when there is no translation", () => {
     expect(
       resolvePostCardHeadingTitle({
-        authoredTitle: "  ",
+        translatedTitle: null,
+        originalTitle: "Original heading",
+        translatedPresentation: undefined,
+        originalPresentation: { dir: "rtl", lang: "ar" },
+        localizedLinkTitle: { dir: "ltr", lang: "en", title: "Article Headline" },
+      }),
+    ).toEqual({ dir: "rtl", lang: "ar", title: "Original heading" });
+  });
+
+  test("resolvePostCardHeadingTitle falls through an empty/whitespace translated title to the original", () => {
+    for (const translatedTitle of ["", "   ", null, undefined]) {
+      expect(
+        resolvePostCardHeadingTitle({
+          translatedTitle,
+          originalTitle: "Yum",
+          translatedPresentation: { dir: "rtl", lang: "ar" },
+          originalPresentation: {},
+          localizedLinkTitle: { dir: "ltr", lang: "en", title: "Article Headline" },
+        }),
+      ).toEqual({ dir: undefined, lang: undefined, title: "Yum" });
+    }
+  });
+
+  test("resolvePostCardHeadingTitle falls back to the article title only for genuinely untitled posts", () => {
+    expect(
+      resolvePostCardHeadingTitle({
+        translatedTitle: "  ",
+        originalTitle: "  ",
         localizedLinkTitle: { dir: "ltr", lang: "en", title: "Article Headline" },
       }),
     ).toEqual({ dir: "ltr", lang: "en", title: "Article Headline" });

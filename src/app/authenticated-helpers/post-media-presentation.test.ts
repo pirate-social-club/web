@@ -93,7 +93,24 @@ describe("toKaraokeCapability", () => {
 });
 
 describe("toStudyCapability", () => {
-  test("marks songs ready when inline timed lyrics are present", () => {
+  test("uses the server-derived study capability", () => {
+    expect(toStudyCapability({
+      ...songPostWithPresentation(null),
+      study_capability: {
+        status: "ready",
+        exercise_count: 12,
+        source_language: "en",
+        target_language: "es",
+      },
+    })).toEqual({
+      status: "ready",
+      exerciseCount: 12,
+      sourceLanguage: "en",
+      targetLanguage: "es",
+    });
+  });
+
+  test("does not infer study availability from timed lyrics", () => {
     expect(toStudyCapability(songPostWithPresentation({
       timed_lyrics: {
         raw_lines: [
@@ -104,12 +121,6 @@ describe("toStudyCapability", () => {
           },
         ],
       },
-    }))).toEqual({ status: "ready" });
-  });
-
-  test("does not mark ref-backed lyrics ready until the route can load the study pack", () => {
-    expect(toStudyCapability(songPostWithPresentation({
-      timed_lyrics_ref: "r2://karaoke/song.json",
     }))).toBeUndefined();
   });
 });

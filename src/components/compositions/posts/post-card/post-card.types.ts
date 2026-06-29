@@ -20,7 +20,7 @@ export type DownloadPolicy = "stream_only" | "free_download" | "purchased_downlo
 export type StemKind = "instrumental" | "vocals" | "drums" | "bass" | "other";
 export type StemAccessPolicy = "inherit" | "free" | "purchasers_only" | "unavailable";
 export type SongKaraokeStatus = "unavailable" | "processing" | "ready" | "failed";
-export type SongStudyStatus = "unavailable" | "processing" | "ready";
+export type SongStudyStatus = "unavailable" | "processing" | "ready" | "locked";
 
 export interface VinylReleaseSpec {
   available: boolean;

@@ -260,16 +260,6 @@ function hasTimedLyrics(presentation: SongPresentationWithDownloads | null | und
   );
 }
 
-function hasInlineTimedLyrics(presentation: SongPresentationWithDownloads | null | undefined): boolean {
-  if (!presentation) return false;
-  if (Array.isArray(presentation.timed_lyrics)) return presentation.timed_lyrics.length > 0;
-  return Boolean(
-    presentation.timed_lyrics
-    && typeof presentation.timed_lyrics === "object"
-    && Object.keys(presentation.timed_lyrics).length > 0,
-  );
-}
-
 export function toKaraokeCapability(postResponse: ApiPost): SongContentSpec["karaoke"] {
   if (postResponse.community?.karaoke_enabled !== true) {
     return undefined;
@@ -302,12 +292,17 @@ export function toStudyCapability(postResponse: ApiPost): SongContentSpec["study
     return undefined;
   }
 
-  const presentation = postResponse.song_presentation as SongPresentationWithDownloads | null | undefined;
-  if (!hasInlineTimedLyrics(presentation)) {
+  const capability = postResponse.study_capability;
+  if (!capability) {
     return undefined;
   }
 
-  return { status: "ready" };
+  return {
+    status: capability.status,
+    exerciseCount: capability.exercise_count ?? undefined,
+    sourceLanguage: capability.source_language ?? undefined,
+    targetLanguage: capability.target_language ?? undefined,
+  };
 }
 
 function toKaraokeStatusLabel(postResponse: ApiPost): string | undefined {

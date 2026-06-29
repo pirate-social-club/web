@@ -1185,7 +1185,7 @@ test.describe("live staging integration", () => {
         base_price_cents: 1234,
         default_slot_duration_seconds: 1800,
         display_headline: `Global booking smoke ${runId}`,
-        host_timezone: "UTC",
+        host_timezone: "Etc/UTC",
         payout_wallet_address: walletAddressForSubject(`booking-smoke-payout-${runId}`),
         platform_fee_bps: 500,
         topics: ["staging-smoke", "global-bookings"],
@@ -1217,11 +1217,11 @@ test.describe("live staging integration", () => {
     expect(published.is_published).toBe(true);
 
     const slots = await requestJson<{ host_timezone: string; slots: BookingSlot[]; viewer_timezone: string }>(
-      `/bookings/hosts/${encodeURIComponent(host.user.id)}/slots?from=${encodeURIComponent(slot.windowStartUtc)}&to=${encodeURIComponent(slot.windowEndUtc)}&tz=UTC`,
+      `/bookings/hosts/${encodeURIComponent(host.user.id)}/slots?from=${encodeURIComponent(slot.windowStartUtc)}&to=${encodeURIComponent(slot.windowEndUtc)}&tz=Etc%2FUTC`,
       { headers: bookerHeaders },
     );
-    expect(slots.host_timezone).toBe("UTC");
-    expect(slots.viewer_timezone).toBe("UTC");
+    expect(slots.host_timezone).toBe("Etc/UTC");
+    expect(slots.viewer_timezone).toBe("Etc/UTC");
     const resolvedSlot = slots.slots.find((candidate) => candidate.startUtc === slot.startUtc && candidate.endUtc === slot.endUtc);
     expect(resolvedSlot, "expected smoke slot in global availability").toBeTruthy();
     expect(resolvedSlot?.available).toBe(true);

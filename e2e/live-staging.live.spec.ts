@@ -469,50 +469,6 @@ async function createSmokeCommunity(runId: string, host: StoredSession): Promise
   return rawPublicId(createdCommunity.community.id, "com");
 }
 
-async function createFollowContractCommunity(runId: string, host: StoredSession): Promise<LiveCommunity> {
-  const label = `e2e-follow-contract-${runId}`;
-  let createdCommunity: {
-    community: { display_name?: string | null; id: string; route_slug?: string | null };
-    job?: { id?: string; status?: string };
-  };
-  try {
-    createdCommunity = await requestJson<{
-      community: { display_name?: string | null; id: string; route_slug?: string | null };
-      job?: { id?: string; status?: string };
-    }>("/communities", {
-      body: JSON.stringify({
-        display_name: label,
-        handle_policy: { policy_template: "standard" },
-        membership_mode: "request",
-      }),
-      headers: { authorization: `Bearer ${host.accessToken}` },
-      method: "POST",
-    });
-    if (createdCommunity.job?.status && createdCommunity.job.status !== "succeeded") {
-      const jobId = firstString(createdCommunity.job.id);
-      if (!jobId) throw new Error("community creation job id is missing");
-      await waitForJob(jobId, host.accessToken);
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (
-      !message.includes("maximum database count")
-      && !message.includes("community_provision_operator_failed")
-    ) {
-      throw error;
-    }
-    console.warn(`Falling back to seeded community for follow contract gate: ${message}`);
-    return discoverSeedCommunity();
-  }
-
-  const id = rawPublicId(createdCommunity.community.id, "com");
-  return {
-    id,
-    label: firstString(createdCommunity.community.display_name, label) ?? label,
-    routeSegment: firstString(createdCommunity.community.route_slug, createdCommunity.community.id, id) ?? id,
-  };
-}
-
 async function waitForCommunityPreview(
   communityId: string,
   headers: Record<string, string> = {},
@@ -1094,11 +1050,9 @@ test.describe("live staging integration", () => {
     testInfo.setTimeout(90_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const ownerSubject = `follow-contract-owner-${runId}`;
     const followerSubject = `follow-contract-follower-${runId}`;
-    const owner = await createLiveSession(ownerSubject, walletAddressForSubject(ownerSubject));
     const follower = await createLiveSession(followerSubject, walletAddressForSubject(followerSubject));
-    const community = await createFollowContractCommunity(runId, owner);
+    const community = await discoverSeedCommunity();
     const publicCommunityId = toPublicCommunityId(community.id);
     const followerHeaders = { authorization: `Bearer ${follower.accessToken}` };
 

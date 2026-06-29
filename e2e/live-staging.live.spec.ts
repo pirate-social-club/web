@@ -111,20 +111,46 @@ function walletAddressForSubject(subject: string): string {
   return `0x${createHash("sha256").update(subject).digest("hex").slice(0, 40)}`;
 }
 
-function nextBookingSmokeSlot(): { endUtc: string; startUtc: string; weekday: number; windowEndUtc: string; windowStartUtc: string } {
+function localSlotParts(date: Date, timeZone: string): { hour: string; minute: string; weekday: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    hour12: false,
+    minute: "2-digit",
+    timeZone,
+    weekday: "short",
+  }).formatToParts(date);
+  const value = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  const weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(value("weekday"));
+  if (weekday < 0) throw new Error(`Could not resolve local weekday for ${date.toISOString()} in ${timeZone}`);
+  return { hour: value("hour"), minute: value("minute"), weekday };
+}
+
+function nextBookingSmokeSlot(hostTimezone: string): {
+  endLocal: string;
+  endUtc: string;
+  startLocal: string;
+  startUtc: string;
+  weekday: number;
+  windowEndUtc: string;
+  windowStartUtc: string;
+} {
   const start = new Date();
   start.setUTCDate(start.getUTCDate() + 3);
-  start.setUTCHours(10, 0, 0, 0);
+  start.setUTCHours(14, 0, 0, 0);
   const end = new Date(start);
   end.setUTCMinutes(end.getUTCMinutes() + 30);
   const windowStart = new Date(start);
   windowStart.setUTCHours(0, 0, 0, 0);
   const windowEnd = new Date(start);
   windowEnd.setUTCHours(23, 59, 59, 999);
+  const startLocal = localSlotParts(start, hostTimezone);
+  const endLocal = localSlotParts(end, hostTimezone);
   return {
+    endLocal: `${endLocal.hour}:${endLocal.minute}`,
     endUtc: end.toISOString(),
+    startLocal: `${startLocal.hour}:${startLocal.minute}`,
     startUtc: start.toISOString(),
-    weekday: start.getUTCDay(),
+    weekday: startLocal.weekday,
     windowEndUtc: windowEnd.toISOString(),
     windowStartUtc: windowStart.toISOString(),
   };
@@ -1129,7 +1155,8 @@ test.describe("live staging integration", () => {
 
     const hostHeaders = { authorization: `Bearer ${host.accessToken}` };
     const bookerHeaders = { authorization: `Bearer ${booker.accessToken}` };
-    const slot = nextBookingSmokeSlot();
+    const hostTimezone = "America/New_York";
+    const slot = nextBookingSmokeSlot(hostTimezone);
 
     const profile = await requestJson<{
       base_price_cents: number;
@@ -1139,7 +1166,7 @@ test.describe("live staging integration", () => {
         base_price_cents: 1234,
         default_slot_duration_seconds: 1800,
         display_headline: `Global booking smoke ${runId}`,
-        host_timezone: "Etc/UTC",
+        host_timezone: hostTimezone,
         payout_wallet_address: walletAddressForSubject(`booking-smoke-payout-${runId}`),
         platform_fee_bps: 500,
         topics: ["staging-smoke", "global-bookings"],
@@ -1153,9 +1180,9 @@ test.describe("live staging integration", () => {
     const rule = await requestJson<{ by_weekday: number[]; slot_duration_seconds: number }>("/host-bookings/me/availability-rules", {
       body: JSON.stringify({
         by_weekday: [slot.weekday],
-        end_local: "11:00",
+        end_local: slot.endLocal,
         slot_duration_seconds: 1800,
-        start_local: "10:00",
+        start_local: slot.startLocal,
       }),
       headers: hostHeaders,
       method: "POST",
@@ -1171,11 +1198,11 @@ test.describe("live staging integration", () => {
     expect(published.is_published).toBe(true);
 
     const slots = await requestJson<{ host_timezone: string; slots: BookingSlot[]; viewer_timezone: string }>(
-      `/bookings/hosts/${encodeURIComponent(host.user.id)}/slots?from=${encodeURIComponent(slot.windowStartUtc)}&to=${encodeURIComponent(slot.windowEndUtc)}&tz=Etc%2FUTC`,
+      `/bookings/hosts/${encodeURIComponent(host.user.id)}/slots?from=${encodeURIComponent(slot.windowStartUtc)}&to=${encodeURIComponent(slot.windowEndUtc)}&tz=${encodeURIComponent(hostTimezone)}`,
       { headers: bookerHeaders },
     );
-    expect(slots.host_timezone).toBe("Etc/UTC");
-    expect(slots.viewer_timezone).toBe("Etc/UTC");
+    expect(slots.host_timezone).toBe(hostTimezone);
+    expect(slots.viewer_timezone).toBe(hostTimezone);
     const resolvedSlot = slots.slots.find((candidate) => candidate.startUtc === slot.startUtc && candidate.endUtc === slot.endUtc);
     expect(resolvedSlot, "expected smoke slot in global availability").toBeTruthy();
     expect(resolvedSlot?.available).toBe(true);

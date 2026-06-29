@@ -104,7 +104,7 @@ export function useSelfVerification(input: {
   }) => Promise<void> | void;
   startErrorMessage: string;
   storageKey: string;
-  verificationIntent: VerificationIntent;
+  verificationIntent: VerificationIntent | (() => VerificationIntent);
 }) {
   const api = useApi();
   const {
@@ -151,10 +151,14 @@ export function useSelfVerification(input: {
     setSelfError(null);
     setSelfDeeplinkCallbackBaseHref(null);
     try {
+      const resolvedVerificationIntent =
+        typeof verificationIntent === "function"
+          ? verificationIntent()
+          : verificationIntent;
       const result = await api.verification.startSession({
         provider: "self",
         requested_capabilities: nextRequestedCapabilities,
-        verification_intent: verificationIntent,
+        verification_intent: resolvedVerificationIntent,
         verification_requirements: nextVerificationRequirements,
       });
       const launch = result.launch?.self_app;

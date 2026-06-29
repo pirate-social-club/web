@@ -97,7 +97,10 @@ mock.module("@/lib/verification/use-self-verification", () => ({
 }));
 
 const { clearCommunityGateDataCache } = await import("./community-interaction-gate/use-community-gate-data");
-const { useCommunityInteractionGate } = await import("./use-community-interaction-gate");
+const {
+  useCommunityInteractionGate,
+  verificationIntentForInteraction,
+} = await import("./use-community-interaction-gate");
 
 beforeEach(() => {
   apiCalls.length = 0;
@@ -106,6 +109,41 @@ beforeEach(() => {
 });
 
 describe("useCommunityInteractionGate", () => {
+  test("resolves contribution verification intents from the pending interaction", () => {
+    const base = {
+      communityId: "community-1",
+      gate: {
+        eligibility: eligibility("verification_required", {
+          suggested_verification_intent: "post_create",
+        }, [uniqueHumanRequirement]),
+        preview: createPreview({
+          id: "community-1",
+          display_name: "Smoke Community",
+          membership_gate_summaries: [uniqueHumanRequirement],
+        }),
+      },
+      onAllowed: () => undefined,
+    } as const;
+
+    expect(verificationIntentForInteraction(null)).toBe("community_join");
+    expect(verificationIntentForInteraction({
+      ...base,
+      action: "reply_post",
+      postId: "post-1",
+    })).toBe("comment_create");
+    expect(verificationIntentForInteraction({
+      ...base,
+      action: "reply_comment",
+      commentId: "comment-1",
+    })).toBe("comment_create");
+    expect(verificationIntentForInteraction({
+      ...base,
+      action: "vote_post",
+      postId: "post-1",
+      voteValue: 1,
+    })).toBe("post_create");
+  });
+
   test("wires auth, gate loading, and default modal creation", async () => {
     const { result } = renderHook(() =>
       useCommunityInteractionGate({

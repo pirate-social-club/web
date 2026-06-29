@@ -10,8 +10,10 @@ import {
   type SongStudySayItBackExercise,
   type SongStudySurfaceState,
 } from "@/components/compositions/song-study/song-study-surface";
+import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
+import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { isApiAuthError } from "@/lib/api/client";
 import type { SongStudyExercise, SongStudyPayload } from "@/lib/api/client-api-types";
@@ -21,6 +23,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 
 type StudyRouteState =
   | { phase: "loading" }
+  | { phase: "auth_required" }
   | {
       correctCount: number;
       exerciseIndex: number;
@@ -141,9 +144,41 @@ function StudyRouteMessage({
   );
 }
 
+function StudyAuthRequiredMessage({ postId }: { postId: string }) {
+  const { busy, configured, connect, loadError } = usePiratePrivyRuntime();
+
+  return (
+    <div className="flex h-dvh min-h-screen w-full items-center justify-center bg-background px-6 text-foreground">
+      <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+        <Type as="h1" variant="h3">
+          Sign in to study
+        </Type>
+        <Type as="p" className="text-muted-foreground" variant="body">
+          Study requires a Pirate account.
+        </Type>
+        {configured && connect ? (
+          <Button loading={busy} onClick={connect}>
+            Sign in
+          </Button>
+        ) : null}
+        {loadError ? (
+          <Type as="p" className="text-muted-foreground" variant="caption">
+            Authentication is unavailable right now.
+          </Type>
+        ) : null}
+        <Button onClick={() => navigate(`/p/${encodeURIComponent(postId)}`)} variant="secondary">
+          Open post
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function StudyRoutePage({ postId }: { postId: string }) {
   const api = useApi();
   const session = useSession();
+  const hydrated = useClientHydrated();
+  const { configured, loaded } = usePiratePrivyRuntime();
   const contentLocale = useRouteContentLocale();
   const [state, setState] = React.useState<StudyRouteState>({ phase: "loading" });
   const recorderRef = React.useRef<MediaRecorder | null>(null);
@@ -166,17 +201,19 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     let canceled = false;
 
     async function loadPost(): Promise<LocalizedPostResponse> {
-      if (session?.accessToken) {
-        try {
-          return await api.posts.get(postId, { locale: contentLocale });
-        } catch (error) {
-          if (!isApiAuthError(error)) throw error;
-        }
-      }
-      return await api.publicPosts.get(postId, { locale: contentLocale });
+      return await api.posts.get(postId, { locale: contentLocale });
     }
 
     async function loadStudy() {
+      if (!hydrated) {
+        return;
+      }
+
+      if (!session?.accessToken) {
+        setState({ phase: "auth_required" });
+        return;
+      }
+
       setState({ phase: "loading" });
       try {
         const post = await loadPost();
@@ -243,6 +280,10 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         });
       } catch (error) {
         if (canceled) return;
+        if (isApiAuthError(error)) {
+          setState({ phase: "auth_required" });
+          return;
+        }
         setState({
           phase: "error",
           title: "Study",
@@ -256,7 +297,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     return () => {
       canceled = true;
     };
-  }, [api, contentLocale, postId, session?.accessToken]);
+  }, [api, contentLocale, hydrated, postId, session?.accessToken]);
 
   const handlePrimaryAction = React.useCallback(() => {
     if (state.phase === "locked") {
@@ -545,6 +586,20 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   const handleSecondaryAction = React.useCallback(() => {
     navigate(`/p/${encodeURIComponent(postId)}/karaoke`);
   }, [postId]);
+
+  if (!hydrated || (configured && !loaded)) {
+    return (
+      <div className="flex h-dvh min-h-screen w-full items-center justify-center bg-background px-6 text-center text-foreground">
+        <Type as="p" className="text-muted-foreground" variant="body">
+          Loading study
+        </Type>
+      </div>
+    );
+  }
+
+  if (!session?.accessToken || state.phase === "auth_required") {
+    return <StudyAuthRequiredMessage postId={postId} />;
+  }
 
   if (state.phase === "loading") {
     return (

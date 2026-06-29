@@ -503,7 +503,7 @@ async function createSongBundle(input: {
     token: input.session.accessToken,
     body: {
       lyrics: "Story royalty live e2e lyric",
-      preview_window: { start_ms: 0, duration_ms: 30_000 },
+      preview_window: { start_ms: 0, duration_ms: 1_000 },
       primary_audio: { song_artifact_upload: upload.id },
       title: input.title,
     },

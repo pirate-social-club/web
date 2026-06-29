@@ -66,6 +66,13 @@ type CommunityPreview = {
   viewer_following: boolean | null;
 };
 
+type BookingSlot = {
+  available: boolean;
+  endUtc: string;
+  priceCents: number;
+  startUtc: string;
+};
+
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required for live staging E2E`);
@@ -102,6 +109,25 @@ function rawPublicUserId(value: string): string {
 
 function walletAddressForSubject(subject: string): string {
   return `0x${createHash("sha256").update(subject).digest("hex").slice(0, 40)}`;
+}
+
+function nextBookingSmokeSlot(): { endUtc: string; startUtc: string; weekday: number; windowEndUtc: string; windowStartUtc: string } {
+  const start = new Date();
+  start.setUTCDate(start.getUTCDate() + 3);
+  start.setUTCHours(10, 0, 0, 0);
+  const end = new Date(start);
+  end.setUTCMinutes(end.getUTCMinutes() + 30);
+  const windowStart = new Date(start);
+  windowStart.setUTCHours(0, 0, 0, 0);
+  const windowEnd = new Date(start);
+  windowEnd.setUTCHours(23, 59, 59, 999);
+  return {
+    endUtc: end.toISOString(),
+    startUtc: start.toISOString(),
+    weekday: start.getUTCDay(),
+    windowEndUtc: windowEnd.toISOString(),
+    windowStartUtc: windowStart.toISOString(),
+  };
 }
 
 function mintUpstreamJwt(subject: string, walletAddressOverride?: string | null): string {
@@ -1136,6 +1162,125 @@ test.describe("live staging integration", () => {
         [200, 404, 409],
       ).catch(() => undefined);
     }
+  });
+
+  test("creates and quotes a global booking hold on staging", async () => {
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const hostSubject = `booking-smoke-host-${runId}`;
+    const bookerSubject = `booking-smoke-booker-${runId}`;
+    const host = await createLiveSession(hostSubject, walletAddressForSubject(hostSubject));
+    const booker = await createLiveSession(bookerSubject, walletAddressForSubject(bookerSubject));
+    await completeSelfVerification(host);
+    await completeSelfVerification(booker);
+
+    const hostHeaders = { authorization: `Bearer ${host.accessToken}` };
+    const bookerHeaders = { authorization: `Bearer ${booker.accessToken}` };
+    const slot = nextBookingSmokeSlot();
+
+    const profile = await requestJson<{
+      base_price_cents: number;
+      host: string;
+    }>("/host-bookings/me/profile", {
+      body: JSON.stringify({
+        base_price_cents: 1234,
+        default_slot_duration_seconds: 1800,
+        display_headline: `Global booking smoke ${runId}`,
+        host_timezone: "UTC",
+        payout_wallet_address: walletAddressForSubject(`booking-smoke-payout-${runId}`),
+        platform_fee_bps: 500,
+        topics: ["staging-smoke", "global-bookings"],
+      }),
+      headers: hostHeaders,
+      method: "POST",
+    });
+    expect(profile.host).toBe(host.user.id);
+    expect(profile.base_price_cents).toBe(1234);
+
+    const rule = await requestJson<{ by_weekday: number[]; slot_duration_seconds: number }>("/host-bookings/me/availability-rules", {
+      body: JSON.stringify({
+        by_weekday: [slot.weekday],
+        end_local: "11:00",
+        slot_duration_seconds: 1800,
+        start_local: "10:00",
+      }),
+      headers: hostHeaders,
+      method: "POST",
+    });
+    expect(rule.by_weekday).toEqual([slot.weekday]);
+    expect(rule.slot_duration_seconds).toBe(1800);
+
+    const published = await requestJson<{ is_published: boolean }>("/host-bookings/me/profile/publish", {
+      body: JSON.stringify({}),
+      headers: hostHeaders,
+      method: "POST",
+    });
+    expect(published.is_published).toBe(true);
+
+    const slots = await requestJson<{ host_timezone: string; slots: BookingSlot[]; viewer_timezone: string }>(
+      `/bookings/hosts/${encodeURIComponent(host.user.id)}/slots?from=${encodeURIComponent(slot.windowStartUtc)}&to=${encodeURIComponent(slot.windowEndUtc)}&tz=UTC`,
+      { headers: bookerHeaders },
+    );
+    expect(slots.host_timezone).toBe("UTC");
+    expect(slots.viewer_timezone).toBe("UTC");
+    const resolvedSlot = slots.slots.find((candidate) => candidate.startUtc === slot.startUtc && candidate.endUtc === slot.endUtc);
+    expect(resolvedSlot, "expected smoke slot in global availability").toBeTruthy();
+    expect(resolvedSlot?.available).toBe(true);
+    expect(resolvedSlot?.priceCents).toBe(1234);
+
+    const hold = await requestJson<{
+      hold: {
+        booker_user_id: string;
+        hold_id: string;
+        host_user_id: string;
+        price_cents: number;
+        source_community_id: string | null;
+        status: string;
+      };
+    }>(`/bookings/hosts/${encodeURIComponent(host.user.id)}/holds`, {
+      body: JSON.stringify({
+        slot_end_utc: slot.endUtc,
+        slot_start_utc: slot.startUtc,
+        source_community_id: null,
+      }),
+      headers: bookerHeaders,
+      method: "POST",
+    });
+    expect(hold.hold.host_user_id).toBe(host.user.id);
+    expect(hold.hold.booker_user_id).toBe(booker.user.id);
+    expect(hold.hold.source_community_id).toBeNull();
+    expect(hold.hold.price_cents).toBe(1234);
+    expect(hold.hold.status).toBe("active");
+
+    await requestJson(`/bookings/hosts/${encodeURIComponent(host.user.id)}/holds`, {
+      body: JSON.stringify({
+        slot_end_utc: slot.endUtc,
+        slot_start_utc: slot.startUtc,
+        source_community_id: null,
+      }),
+      headers: bookerHeaders,
+      method: "POST",
+    }, [409]);
+
+    const quote = await requestJson<{
+      quote: {
+        gross_cents: number;
+        hold_id: string;
+        host_payout_cents: number;
+        payment: { amount_atomic: string; payment_intent_id: string; recipient_address: string };
+        platform_fee_cents: number;
+      };
+    }>(`/bookings/holds/${encodeURIComponent(hold.hold.hold_id)}/quote`, {
+      body: JSON.stringify({}),
+      headers: bookerHeaders,
+      method: "POST",
+    });
+    expect(quote.quote.hold_id).toBe(hold.hold.hold_id);
+    expect(quote.quote.gross_cents).toBe(1234);
+    expect(quote.quote.platform_fee_cents).toBe(62);
+    expect(quote.quote.host_payout_cents).toBe(1172);
+    expect(quote.quote.payment.payment_intent_id).toBeTruthy();
+    expect(quote.quote.payment.amount_atomic).toBeTruthy();
+    expect(quote.quote.payment.recipient_address).toMatch(/^0x[0-9a-fA-F]{40}$/u);
   });
 
   test("searches real Georgia event places through Geoapify", async ({ page }, testInfo) => {

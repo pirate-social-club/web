@@ -147,6 +147,13 @@ jobs:
         run: |
           count=$(bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --list --grep "uploads a public video through direct multipart in a real browser" 2>&1 | grep -F -c "uploads a public video through direct multipart in a real browser")
           test "$count" -eq 1 || { echo "Expected exactly 1 matching test, found $count"; exit 1; }
+      - name: Verify global booking staging smoke test exists
+        working-directory: web
+        env:
+          E2E_LIVE_STAGING: "true"
+        run: |
+          count=$(bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --list --grep "creates and quotes a global booking hold on staging" 2>&1 | grep -F -c "creates and quotes a global booking hold on staging")
+          test "$count" -eq 1 || { echo "Expected exactly 1 matching test, found $count"; exit 1; }
       - name: Verify staging community follow contract
         working-directory: web
         env:
@@ -165,6 +172,15 @@ jobs:
           E2E_BASE_URL: https://staging.pirate.sc
           E2E_LIVE_STAGING: "true"
         run: bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --grep "uploads a public video through direct multipart in a real browser"
+      - name: Verify global booking staging smoke
+        working-directory: web
+        env:
+          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
+          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
+          E2E_API_BASE_URL: https://api-staging.pirate.sc
+          E2E_BASE_URL: https://staging.pirate.sc
+          E2E_LIVE_STAGING: "true"
+        run: bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --grep "creates and quotes a global booking hold on staging"
       - name: Fetch Story derivative royalty E2E secrets
         working-directory: core
         env:

@@ -220,7 +220,7 @@ describe("deriveSongUI", () => {
     expect(markup).not.toContain('href="https://genius.com/34172986"');
   });
 
-  test("surfaces free original downloads as offer rows without redundant free pricing", () => {
+  test("does not render free original downloads as offer rows (downloads live in the menu)", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
@@ -231,12 +231,13 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).toContain("Original");
-    expect(markup).not.toContain("Free");
-    expect(markup).toContain("Download");
+    // The capability is still derived, but the card surface stays clean — the
+    // download is exposed through the kebab menu (deriveSongHeaderMenuActions).
+    expect(deriveSongUI({ ...baseSong, downloadPolicy: "free_download", onDownload: () => {} }).showDownload).toBe(true);
+    expect(markup).not.toContain("Download");
   });
 
-  test("surfaces owned original downloads as offer rows", () => {
+  test("does not render owned original downloads as offer rows", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
@@ -250,8 +251,7 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).toContain("Original");
-    expect(markup).toContain("Download");
+    expect(markup).not.toContain("Download");
   });
 
   test("surfaces karaoke as an offer row when ready", () => {
@@ -273,6 +273,74 @@ describe("deriveSongUI", () => {
     expect(ui.showKaraoke).toBe(true);
     expect(markup).toContain("Karaoke");
     expect(markup).toContain("Sing");
+    expect(markup).toContain("Open karaoke");
+  });
+
+  test("surfaces study as an offer row when ready and accessible", () => {
+    const ui = deriveSongUI({
+      ...baseSong,
+      study: { status: "ready", exerciseCount: 12, sourceLanguage: "en", targetLanguage: "es" },
+      onStudy: () => {},
+    });
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          study: { status: "ready", exerciseCount: 12, sourceLanguage: "en", targetLanguage: "es" },
+          onStudy: () => {},
+        },
+      }),
+    );
+
+    expect(ui.showStudy).toBe(true);
+    expect(markup).toContain("Study");
+    expect(markup).toContain("Open study");
+  });
+
+  test("keeps study and karaoke off locked unowned songs so commerce keeps precedence", () => {
+    const content: SongContentSpec = {
+      ...baseSong,
+      accessMode: "locked",
+      listingMode: "listed",
+      listingStatus: "active",
+      priceLabel: "$3.99",
+      study: { status: "ready" },
+      karaoke: { canKaraoke: true, status: "ready" },
+      onBuy: () => {},
+      onStudy: () => {},
+      onKaraoke: () => {},
+    };
+    const ui = deriveSongUI(content);
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, { content }),
+    );
+
+    expect(ui.primaryCommerceAction).toBe("buy");
+    expect(ui.showStudy).toBe(false);
+    expect(ui.showKaraoke).toBe(false);
+    expect(markup).toContain("Buy $3.99");
+    expect(markup).not.toContain("Open study");
+    expect(markup).not.toContain("Open karaoke");
+  });
+
+  test("surfaces study and karaoke together once a locked song is owned", () => {
+    const content: SongContentSpec = {
+      ...baseSong,
+      accessMode: "locked",
+      hasEntitlement: true,
+      study: { status: "ready" },
+      karaoke: { canKaraoke: true, status: "ready" },
+      onStudy: () => {},
+      onKaraoke: () => {},
+    };
+    const ui = deriveSongUI(content);
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, { content }),
+    );
+
+    expect(ui.showStudy).toBe(true);
+    expect(ui.showKaraoke).toBe(true);
+    expect(markup).toContain("Open study");
     expect(markup).toContain("Open karaoke");
   });
 
@@ -324,6 +392,16 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("Karaoke");
     expect(markup).toContain("Processing");
     expect(markup).not.toContain("Sing");
+  });
+
+  test("uses shared activity diagnostics visibility for karaoke status rows", () => {
+    const ui = deriveSongUI({
+      ...baseSong,
+      activityDiagnosticsVisible: true,
+      karaoke: { canKaraoke: false, status: "processing" },
+    });
+
+    expect(ui.showKaraokeStatus).toBe(true);
   });
 
   test("hides karaoke processing status from non-owner viewers", () => {

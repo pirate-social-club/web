@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowSquareOut, Copy, Globe, Lock, ShoppingCart, Trash } from "@phosphor-icons/react";
+import { ArrowSquareOut, Copy, DownloadSimple, Globe, Lock, ShoppingCart, Trash } from "@phosphor-icons/react";
 
 import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
@@ -261,6 +261,41 @@ export function deriveSongHeaderMenuActions(content: PostCardProps["content"]): 
         icon: <Copy className="size-4" />,
       },
       onAction: () => void copyTextToClipboard(cid, "Encrypted IPFS CID copied."),
+    });
+  }
+
+  // Downloads live in the post options menu, not as equal-weight rows on the
+  // card surface. The card keeps only high-intent actions (buy/unlock/study/
+  // sing/vinyl); file management (original + stems) is dropdown-only.
+  const songPolicy = getEffectiveDownloadPolicy(content);
+  const isOwned = content.hasEntitlement === true;
+  const canDownloadOriginal = Boolean(
+    content.onDownload
+    && (songPolicy === "free_download" || (songPolicy === "purchased_download" && isOwned)),
+  );
+
+  if (canDownloadOriginal && content.onDownload) {
+    const onDownload = content.onDownload;
+    actions.push({
+      item: {
+        key: "song-download:original",
+        label: "Download original",
+        icon: <DownloadSimple className="size-4" />,
+      },
+      onAction: () => onDownload(),
+    });
+  }
+
+  for (const [index, stem] of (content.stems ?? []).entries()) {
+    if (!canDownloadStem(stem, content, songPolicy) || !stem.onDownload) continue;
+    const onDownload = stem.onDownload;
+    actions.push({
+      item: {
+        key: `song-download:stem:${index}:${stem.kind}`,
+        label: `Download ${stemLabel(stem)}`,
+        icon: <DownloadSimple className="size-4" />,
+      },
+      onAction: () => onDownload(),
     });
   }
 

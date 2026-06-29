@@ -21,6 +21,8 @@ type LiveRoomUiState =
   | { kind: "needs_verification"; cta: string; onClick?: () => void }
   | { kind: "tickets_unavailable" }
   | { kind: "replay_processing" }
+  | { kind: "replay_review_pending" }
+  | { kind: "replay_failed" }
   | { kind: "scheduled" }
   | { kind: "ended" }
   | { kind: "canceled" };
@@ -32,7 +34,10 @@ function priceLabel(content: LiveRoomContentSpec): string | null {
 function timeLabel(content: LiveRoomContentSpec): string | null {
   if (content.status === "live") return null;
   if (content.status === "canceled") return "Canceled";
-  if (content.status === "ended") return content.endedAtLabel ? `Ended ${content.endedAtLabel} ago` : "Ended";
+  if (content.status === "ended") {
+    if (!content.endedAtLabel) return "Ended";
+    return /\bago$/u.test(content.endedAtLabel) ? `Ended ${content.endedAtLabel}` : `Ended ${content.endedAtLabel} ago`;
+  }
   return content.startsAtLabel ? `Starts ${content.startsAtLabel}` : null;
 }
 
@@ -98,11 +103,24 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
   }
 
   if (content.status === "ended" || content.accessState === "ended") {
-    if (content.replayStatus === "ready") {
+    if (content.replayStatus === "published") {
+      if (content.accessMode === "paid" && !content.hasEntitlement) {
+        return {
+          kind: "needs_ticket",
+          cta: price ? `Buy ${price}` : "Buy",
+          onClick: content.onBuy,
+        };
+      }
       return { kind: "can_watch_replay", cta: "Watch replay", onClick: content.onWatch };
     }
     if (content.replayStatus === "processing") {
       return { kind: "replay_processing" };
+    }
+    if (content.replayStatus === "review_pending") {
+      return { kind: "replay_review_pending" };
+    }
+    if (content.replayStatus === "failed") {
+      return { kind: "replay_failed" };
     }
     return { kind: "ended" };
   }
@@ -170,10 +188,13 @@ function shouldShowCta(ui: LiveRoomUiState): ui is Extract<LiveRoomUiState, { ct
 function hasPostPageMeta(content: LiveRoomContentSpec, ui: LiveRoomUiState, time: string | null): boolean {
   return Boolean(
     time
+    || content.replayDurationLabel
     || content.attendeeCountLabel
     || ui.kind === "has_ticket"
     || ui.kind === "rsvped"
-    || ui.kind === "replay_processing",
+    || ui.kind === "replay_processing"
+    || ui.kind === "replay_review_pending"
+    || ui.kind === "replay_failed",
   );
 }
 
@@ -394,6 +415,12 @@ export function LiveRoomPostContent({
                 {content.attendeeCountLabel}
               </Type>
             ) : null}
+            {content.replayDurationLabel ? (
+              <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-muted-foreground">
+                <Play className="size-4" weight="bold" />
+                {content.replayDurationLabel} replay
+              </Type>
+            ) : null}
             {ui.kind === "has_ticket" ? (
               <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-success">
                 You&apos;re going
@@ -407,6 +434,16 @@ export function LiveRoomPostContent({
             {ui.kind === "replay_processing" ? (
               <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-muted-foreground">
                 Replay processing
+              </Type>
+            ) : null}
+            {ui.kind === "replay_review_pending" ? (
+              <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-warning/10 px-3 py-1 text-warning">
+                Replay under review
+              </Type>
+            ) : null}
+            {ui.kind === "replay_failed" ? (
+              <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-muted-foreground">
+                Replay unavailable
               </Type>
             ) : null}
           </div>
@@ -508,6 +545,12 @@ export function LiveRoomPostContent({
         {participantsLabel(content.participants) ? (
           <p className={cn("mt-0.5 text-muted-foreground", postCardType.meta)}>
             {participantsLabel(content.participants)}
+          </p>
+        ) : null}
+
+        {content.replayDurationLabel ? (
+          <p className={cn("mt-0.5 text-muted-foreground", postCardType.meta)}>
+            {content.replayDurationLabel} replay
           </p>
         ) : null}
 

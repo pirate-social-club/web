@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
-import { toKaraokeCapability } from "./post-media-presentation";
+import { toKaraokeCapability, toStudyCapability } from "./post-media-presentation";
 
 function songPostWithPresentation(
   songPresentation: Record<string, unknown>,
@@ -89,5 +89,27 @@ describe("toKaraokeCapability", () => {
         raw_lines: [{ end_ms: 1000, start_ms: 0, text: "No gate" }],
       },
     }, false))).toBeUndefined();
+  });
+});
+
+describe("toStudyCapability", () => {
+  test("marks songs ready when inline timed lyrics are present", () => {
+    expect(toStudyCapability(songPostWithPresentation({
+      timed_lyrics: {
+        raw_lines: [
+          {
+            end_ms: 1000,
+            start_ms: 0,
+            text: "Study this",
+          },
+        ],
+      },
+    }))).toEqual({ status: "ready" });
+  });
+
+  test("does not mark ref-backed lyrics ready until the route can load the study pack", () => {
+    expect(toStudyCapability(songPostWithPresentation({
+      timed_lyrics_ref: "r2://karaoke/song.json",
+    }))).toBeUndefined();
   });
 });

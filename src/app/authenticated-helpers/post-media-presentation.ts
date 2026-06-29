@@ -260,6 +260,16 @@ function hasTimedLyrics(presentation: SongPresentationWithDownloads | null | und
   );
 }
 
+function hasInlineTimedLyrics(presentation: SongPresentationWithDownloads | null | undefined): boolean {
+  if (!presentation) return false;
+  if (Array.isArray(presentation.timed_lyrics)) return presentation.timed_lyrics.length > 0;
+  return Boolean(
+    presentation.timed_lyrics
+    && typeof presentation.timed_lyrics === "object"
+    && Object.keys(presentation.timed_lyrics).length > 0,
+  );
+}
+
 export function toKaraokeCapability(postResponse: ApiPost): SongContentSpec["karaoke"] {
   if (postResponse.community?.karaoke_enabled !== true) {
     return undefined;
@@ -285,6 +295,19 @@ export function toKaraokeCapability(postResponse: ApiPost): SongContentSpec["kar
     default:
       return undefined;
   }
+}
+
+export function toStudyCapability(postResponse: ApiPost): SongContentSpec["study"] {
+  if (postResponse.post.post_type !== "song") {
+    return undefined;
+  }
+
+  const presentation = postResponse.song_presentation as SongPresentationWithDownloads | null | undefined;
+  if (!hasInlineTimedLyrics(presentation)) {
+    return undefined;
+  }
+
+  return { status: "ready" };
 }
 
 function toKaraokeStatusLabel(postResponse: ApiPost): string | undefined {
@@ -514,6 +537,7 @@ export function toSongPostContent(
     captionDir?: "rtl";
     captionLang?: string;
     onKaraoke?: () => void;
+    onStudy?: () => void;
     onVerifyAge?: () => void;
     resolvedCaption?: string;
     title: string;
@@ -583,6 +607,7 @@ export function toSongPostContent(
     storageProofs.preview = primaryProof;
   }
   const karaoke = toKaraokeCapability(postResponse);
+  const study = toStudyCapability(postResponse);
   return {
     type: "song",
     accessMode,
@@ -599,6 +624,7 @@ export function toSongPostContent(
       : undefined,
     onBuy: songOptions?.onBuy,
     onKaraoke: input.onKaraoke,
+    onStudy: study ? input.onStudy : undefined,
     downloadPolicy: downloadableOriginal ? "free_download" : undefined,
     onDownload: downloadableOriginal?.storage_ref ? () => void downloadAudioFile({
       filename: audioDownloadFilename({
@@ -633,6 +659,8 @@ export function toSongPostContent(
     karaoke,
     karaokeStatusLabel: toKaraokeStatusLabel(postResponse),
     karaokeStatusVisible: Boolean(karaoke && songOptions?.currentUserId && post.author_user === songOptions.currentUserId),
+    study,
+    activityDiagnosticsVisible: Boolean(songOptions?.currentUserId && post.author_user === songOptions.currentUserId),
     upstreamAttributions: toUpstreamAttributions(postResponse, songOptions),
   };
 }

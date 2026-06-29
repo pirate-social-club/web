@@ -86,10 +86,10 @@ describe("PostCard", () => {
     expect(markup).toContain("$4.99");
   });
 
-  test("keeps song annotations in post options without duplicating visible download rows", () => {
+  test("moves song downloads into the post options menu, grouped after external links", () => {
     const baseItems: PostCardMenuItem[] = [
       { key: "copy-link", label: "Copy link" },
-      { key: "report", label: "Report", separatorBefore: true },
+      { key: "report", label: "Report", destructive: true, separatorBefore: true },
     ];
     const song: SongContentSpec = {
       type: "song",
@@ -112,23 +112,52 @@ describe("PostCard", () => {
       title: "Midnight Waves",
     };
 
-    const mergedItems = mergePostCardMenuItems(baseItems, deriveSongHeaderMenuActions(song));
+    const actions = deriveSongHeaderMenuActions(song);
+    expect(actions.map((action) => action.item.key)).toEqual([
+      "song-annotations:genius",
+      "song-ipfs:view:original",
+      "song-ipfs:copy:original",
+      "song-download:original",
+      "song-download:stem:0:instrumental",
+      "song-download:stem:1:vocals",
+    ]);
 
+    const mergedItems = mergePostCardMenuItems(baseItems, actions);
+
+    // Downloads are file-management actions: they live in the kebab, grouped
+    // after the external links and before the destructive actions.
     expect(mergedItems.map((item) => item.label)).toEqual([
       "Copy link",
-      "Report",
       "View on Genius",
       "View on IPFS",
       "Copy IPFS CID",
+      "Download original",
+      "Download Instrumental",
+      "Download Vocals",
+      "Report",
     ]);
-    expect(mergedItems.map((item) => Boolean(item.separatorBefore))).toEqual([
-      false,
-      true,
-      true,
-      false,
-      false,
+    expect(
+      mergedItems.filter((item) => item.key.startsWith("song-download:")).map((item) => item.label),
+    ).toEqual([
+      "Download original",
+      "Download Instrumental",
+      "Download Vocals",
     ]);
-    expect(mergedItems.some((item) => item.key.startsWith("song-download:"))).toBe(false);
+  });
+
+  test("dispatches the original download handler from its menu action", () => {
+    const onDownload = mock(() => undefined);
+    const actions = deriveSongHeaderMenuActions({
+      type: "song",
+      accessMode: "public",
+      downloadPolicy: "free_download",
+      onDownload,
+      title: "Downloadable single",
+    });
+
+    actions.find((action) => action.item.key === "song-download:original")?.onAction();
+
+    expect(onDownload).toHaveBeenCalledTimes(1);
   });
 
   test("shows IPFS action for locked songs without entitlement", () => {
@@ -158,13 +187,13 @@ describe("PostCard", () => {
     expect(mergedItems[1]?.icon).toBeTruthy();
   });
 
-  test("renders song downloads as visible offer rows instead of header menu actions", () => {
+  test("keeps song downloads out of the card body, exposing them as menu actions", () => {
     const content: SongContentSpec = {
       type: "song",
       accessMode: "public",
       downloadPolicy: "free_download",
       onDownload: () => undefined,
-      title: "Downloadable single",
+      title: "Public single",
     };
     const markup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">
@@ -180,9 +209,11 @@ describe("PostCard", () => {
       </UiLocaleProvider>,
     );
 
-    expect(deriveSongHeaderMenuActions(content).map((action) => action.item.label)).not.toContain("Download original");
-    expect(markup).toContain("Original");
-    expect(markup).toContain("Download");
+    // The player surface no longer renders an inline download offer row.
+    expect(markup).not.toContain("Original");
+    expect(markup).not.toContain('aria-label="Download');
+    // Download is exposed as a header menu action instead.
+    expect(deriveSongHeaderMenuActions(content).map((action) => action.item.label)).toContain("Download original");
   });
 
   test("renders date-only event metadata compactly without fake midnight times", () => {
@@ -394,6 +425,104 @@ describe("PostCard", () => {
 
     expect(gatedMarkup).toContain("Verify access");
     expect(gatedMarkup).not.toContain("Watch live");
+  });
+
+  test("renders ended live-room replay states", () => {
+    const publishedMarkup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{ author: { kind: "user", label: "u/artist" }, timestampLabel: "1h" }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "ended",
+            endedAtLabel: "1h",
+            hasEntitlement: true,
+            liveRoomId: "lr_replay_published",
+            onWatch: () => undefined,
+            replayDurationLabel: "48 min",
+            replayStatus: "published",
+            status: "ended",
+            title: "Replay concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(publishedMarkup).toContain("Watch replay");
+    expect(publishedMarkup).toContain("Ended 1h ago");
+    expect(publishedMarkup).not.toContain("ago ago");
+    expect(publishedMarkup).toContain("48 min replay");
+
+    const paidLockedMarkup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{ author: { kind: "user", label: "u/artist" }, timestampLabel: "1h" }}
+          content={{
+            type: "live_room",
+            accessMode: "paid",
+            accessState: "ended",
+            endedAtLabel: "1h",
+            hasEntitlement: false,
+            liveRoomId: "lr_replay_paid",
+            priceLabel: "$12.00",
+            replayDurationLabel: "48 min",
+            replayStatus: "published",
+            status: "ended",
+            title: "Paid replay concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(paidLockedMarkup).toContain("Buy $12.00");
+    expect(paidLockedMarkup).not.toContain("Watch replay");
+
+    const reviewMarkup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{ author: { kind: "user", label: "u/artist" }, timestampLabel: "1h" }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "ended",
+            liveRoomId: "lr_replay_review",
+            replayStatus: "review_pending",
+            status: "ended",
+            title: "Review replay concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(reviewMarkup).toContain("Replay under review");
+
+    const failedMarkup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{ author: { kind: "user", label: "u/artist" }, timestampLabel: "1h" }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "ended",
+            liveRoomId: "lr_replay_failed",
+            replayStatus: "failed",
+            status: "ended",
+            title: "Failed replay concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(failedMarkup).toContain("Replay unavailable");
   });
 
   test("does not render age-gated live-room cover source before proof", () => {

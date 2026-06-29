@@ -20,6 +20,7 @@ export type DownloadPolicy = "stream_only" | "free_download" | "purchased_downlo
 export type StemKind = "instrumental" | "vocals" | "drums" | "bass" | "other";
 export type StemAccessPolicy = "inherit" | "free" | "purchasers_only" | "unavailable";
 export type SongKaraokeStatus = "unavailable" | "processing" | "ready" | "failed";
+export type SongStudyStatus = "unavailable" | "processing" | "ready";
 
 export interface VinylReleaseSpec {
   available: boolean;
@@ -51,6 +52,13 @@ export interface SongStorageProofs {
 export interface SongKaraokeCapability {
   canKaraoke: boolean;
   status: SongKaraokeStatus;
+}
+
+export interface SongStudyCapability {
+  status: SongStudyStatus;
+  exerciseCount?: number;
+  sourceLanguage?: string;
+  targetLanguage?: string;
 }
 
 // Playback axis - purely UI state
@@ -91,7 +99,7 @@ export type LiveRoomAccessState =
   | "missing_listing"
   | "ended";
 
-export type LiveRoomReplayStatus = "none" | "processing" | "ready" | "failed";
+export type LiveRoomReplayStatus = "none" | "processing" | "review_pending" | "published" | "failed";
 
 export type LiveRoomProducerRole = "host" | "guest" | null;
 export type LiveRoomRsvpState = "none" | "going";
@@ -115,6 +123,7 @@ export interface LiveRoomContentSpec {
   visibility?: LiveRoomVisibility;
   accessState?: LiveRoomAccessState;
   replayStatus?: LiveRoomReplayStatus;
+  replayDurationLabel?: string;
   startsAtLabel?: string;
   liveSinceLabel?: string;
   endedAtLabel?: string;
@@ -202,12 +211,15 @@ export interface SongContentSpec {
   karaoke?: SongKaraokeCapability;
   karaokeStatusLabel?: string;
   karaokeStatusVisible?: boolean;
+  study?: SongStudyCapability;
+  activityDiagnosticsVisible?: boolean;
 
   // Callbacks
   onPlay?: () => void;
   onPause?: () => void;
   onSeek?: (ms: number) => void;
   onKaraoke?: () => void;
+  onStudy?: () => void;
   onUnlock?: () => void;
   onBuy?: () => void;
   onVerifyAge?: () => void;

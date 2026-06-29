@@ -128,6 +128,7 @@ export function toCommunityPostContent(
         captionDir: translatedTextPresentation.dir,
         captionLang: translatedTextPresentation.lang,
         onKaraoke: songOptions?.onKaraoke ?? (() => navigate(`/p/${encodeURIComponent(post.id)}/karaoke`)),
+        onStudy: songOptions?.onStudy ?? (() => navigate(`/p/${encodeURIComponent(post.id)}/study`)),
         onVerifyAge: opts?.onVerifyAge,
         resolvedCaption,
         title,

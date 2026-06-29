@@ -1283,4 +1283,116 @@ describe("ApiClient media uploads", () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  test("requires an auth header for study payload reads", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        object: "song_study_payload",
+        post_id: "post_pst_test",
+        community_id: "com_cmt_test",
+        access: "processing",
+        title: "Study",
+        exercise_count: 0,
+        exercises: [],
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.getPostStudy("cmt_test", "post_pst_test", { targetLanguage: "es" });
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("GET");
+      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/posts/post_pst_test/study?target_language=es");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("posts study attempts with body idempotency", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        object: "song_study_attempt_result",
+        exercise_id: "ex_say_1",
+        outcome: "correct",
+        attempts_remaining: 1,
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.submitPostStudyAttempt("cmt_test", "post_pst_test", {
+        idempotency_key: "study-attempt-1",
+        exercise_id: "ex_say_1",
+        type: "say_it_back",
+        attempt_number: 1,
+        transcript: "I was lost in the midnight waves",
+      });
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("POST");
+      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/posts/post_pst_test/study/attempts");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+      expect(await capturedRequest.json()).toEqual({
+        idempotency_key: "study-attempt-1",
+        exercise_id: "ex_say_1",
+        type: "say_it_back",
+        attempt_number: 1,
+        transcript: "I was lost in the midnight waves",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("posts study transcription audio as form data", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        object: "song_study_transcription",
+        provider: "elevenlabs",
+        model: "scribe_v2",
+        text: "I was lost in the midnight waves",
+        confidence: null,
+        language_code: "en",
+        language_probability: null,
+        duration_seconds: 2,
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.transcribePostStudyAudio("cmt_test", "post_pst_test", {
+        file: new File([new Blob(["audio"], { type: "audio/webm" })], "study.webm", { type: "audio/webm" }),
+      });
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("POST");
+      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/posts/post_pst_test/study/transcriptions");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+      expect(capturedRequest.headers.get("content-type")).toContain("multipart/form-data");
+      const form = await capturedRequest.formData();
+      expect(form.get("file")).toBeInstanceOf(File);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

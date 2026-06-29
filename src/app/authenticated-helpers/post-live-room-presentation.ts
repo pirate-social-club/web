@@ -15,7 +15,13 @@ function formatLiveRoomTimestampLabel(value: number | null | undefined): string 
 }
 
 function normalizeReplayStatus(value: string | null | undefined): LiveRoomContentSpec["replayStatus"] {
-  if (value === "none" || value === "processing" || value === "ready" || value === "failed") return value;
+  if (
+    value === "none"
+    || value === "processing"
+    || value === "review_pending"
+    || value === "published"
+    || value === "failed"
+  ) return value;
   return "none";
 }
 

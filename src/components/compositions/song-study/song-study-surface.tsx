@@ -189,7 +189,7 @@ function Header({
 
 function StudyPill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-border-soft bg-muted px-3 py-1 text-sm font-semibold text-muted-foreground">
+    <span className="inline-flex items-center rounded-full border border-border-soft bg-muted px-3 py-1 text-base font-semibold text-muted-foreground">
       {children}
     </span>
   );

@@ -1,7 +1,5 @@
 "use client";
 
-import type { CreatePostRequest } from "@pirate/api-contracts";
-
 import type {
   AnonymousIdentityScope,
   AuthorMode,
@@ -13,15 +11,14 @@ import type {
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import { normalizeHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
 
-export type BasePostRequestFields = Pick<
-  CreatePostRequest,
-  | "anonymous_scope"
-  | "disclosed_qualifier_ids"
-  | "identity_mode"
-  | "idempotency_key"
-  | "translation_policy"
-  | "visibility"
->;
+export type BasePostRequestFields = {
+  anonymous_scope?: AnonymousIdentityScope | null;
+  disclosed_qualifier_ids?: string[] | null;
+  identity_mode: IdentityMode;
+  idempotency_key: string;
+  translation_policy: "none" | "machine_allowed" | "human_only" | "hybrid";
+  visibility: PostAudience;
+};
 
 export type CreatePostEventRequest = {
   starts_at: number;
@@ -35,9 +32,54 @@ export type CreatePostEventRequest = {
   place?: ComposerEventPlace | null;
 };
 
-export type CreatePostRequestWithEvent = CreatePostRequest & {
-  event?: CreatePostEventRequest | null;
+type CreatePostMediaDescriptor = {
+  content_hash?: string | null;
+  mime_type: string;
+  poster_frame_ms?: number | null;
+  poster_height?: number | null;
+  poster_mime_type?: string | null;
+  poster_ref?: string | null;
+  poster_size_bytes?: number | null;
+  poster_width?: number | null;
+  size_bytes?: number | null;
+  storage_ref: string;
 };
+
+type CreatePostSharedRequestFields = BasePostRequestFields & {
+  access_mode?: "public" | "locked" | null;
+  commercial_rev_share_pct?: number | null;
+  license_preset?: "non-commercial" | "commercial-use" | "commercial-remix" | null;
+  rights_basis?: "none" | "original" | "derivative" | "attribution_only" | null;
+  upstream_asset_refs?: string[] | null;
+};
+
+export type CreatePostRequestWithEvent = CreatePostSharedRequestFields & {
+  event?: CreatePostEventRequest | null;
+} & (
+  | {
+    body?: string | null;
+    post_type: "text";
+    title?: string | null;
+  }
+  | {
+    caption?: string | null;
+    media_refs: CreatePostMediaDescriptor[];
+    post_type: "image";
+    title?: string | null;
+  }
+  | {
+    caption?: string | null;
+    media_refs: CreatePostMediaDescriptor[];
+    post_type: "video";
+    title?: string | null;
+  }
+  | {
+    body?: string | null;
+    link_url: string;
+    post_type: "link";
+    title?: string | null;
+  }
+);
 
 export type SignAgentAuthoredBody = <T extends Record<string, unknown>>(
   path: string,

@@ -35,7 +35,7 @@ export function BookingPublicPage({ communityId, hostUserId }: { communityId: st
     try {
       const from = new Date().toISOString();
       const to = new Date(Date.now() + 14 * 86400_000).toISOString();
-      const res = await api.communities.listBookingSlots(communityId, hostUserId, { from, to, tz });
+      const res = await api.bookings.listBookingSlots(hostUserId, { from, to, tz });
       setData(res);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "This host is not currently bookable.");

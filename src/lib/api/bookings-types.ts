@@ -1,5 +1,5 @@
-// Local TS types for the booking domain (the API does not yet ship these in @pirate/api-contracts).
-// Shapes mirror services/api/src/routes/host-bookings.ts + communities-bookings.ts response builders.
+// Local TS types for the booking domain.
+// Shapes mirror the global /bookings and /host-bookings response builders.
 
 export interface BookingProfile {
   object: "booking_profile";
@@ -82,7 +82,7 @@ export interface DeletedResponse {
   deleted: true;
 }
 
-// --- Discovery + checkout (per-community) ---
+// --- Discovery + checkout (global; community is optional discovery context) ---
 export interface ResolvedSlot {
   startUtc: string;
   endUtc: string;
@@ -97,7 +97,7 @@ export interface SlotsResponse {
 
 export interface BookingHold {
   hold_id: string;
-  community_id: string;
+  source_community_id: string | null;
   host_user_id: string;
   booker_user_id: string;
   slot_start_utc: string;
@@ -109,6 +109,7 @@ export interface BookingHold {
 export interface CreateHoldRequest {
   slot_start_utc: string;
   slot_end_utc: string;
+  source_community_id?: string | null;
 }
 export interface PaymentInstructions {
   payment_intent_id: string;
@@ -144,7 +145,7 @@ export type BookingStatus =
 
 export interface Booking {
   booking_id: string;
-  community_id: string;
+  source_community_id: string | null;
   hold_id: string;
   host_user_id: string;
   booker_user_id: string;
@@ -183,7 +184,7 @@ export interface NoShowBookingResponse { booking: BookingSnapshot; already_resol
 export interface BookingView {
   object: "booking";
   booking_id: string;
-  community_id: string;
+  source_community_id: string | null;
   host_user_id: string;
   booker_user_id: string;
   slot_start_utc: string;

@@ -78,6 +78,79 @@ describe("ApiClient geo", () => {
   });
 });
 
+describe("ApiClient bookings", () => {
+  test("uses global booking endpoints with optional source community context", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+
+      if (request.url.endsWith("/slots?from=2026-07-01T10%3A00%3A00.000Z&to=2026-07-08T10%3A00%3A00.000Z&tz=UTC")) {
+        return Response.json({ host_timezone: "UTC", viewer_timezone: "UTC", slots: [] });
+      }
+      if (request.url.endsWith("/holds")) {
+        return Response.json({
+          hold: {
+            hold_id: "hold_1",
+            source_community_id: "com_1",
+            host_user_id: "host_1",
+            booker_user_id: "booker_1",
+            slot_start_utc: "2026-07-01T10:00:00.000Z",
+            slot_end_utc: "2026-07-01T10:30:00.000Z",
+            price_cents: 2500,
+            status: "active",
+            expires_at_utc: "2026-07-01T09:45:00.000Z",
+          },
+        });
+      }
+      if (request.url.endsWith("/quote")) {
+        return Response.json({ quote: { hold_id: "hold_1" } });
+      }
+      if (request.url.includes("/bookings?")) {
+        return Response.json({ object: "list", data: [], has_more: false });
+      }
+      return Response.json({ ok: true });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.bookings.listBookingSlots("host_1", {
+        from: "2026-07-01T10:00:00.000Z",
+        to: "2026-07-08T10:00:00.000Z",
+        tz: "UTC",
+      });
+      await client.bookings.createBookingHold("host_1", {
+        slot_start_utc: "2026-07-01T10:00:00.000Z",
+        slot_end_utc: "2026-07-01T10:30:00.000Z",
+        source_community_id: "com_1",
+      });
+      await client.bookings.quoteBookingHold("hold_1");
+      await client.bookings.listBookings({ role: "booker", source_community_id: "com_1" });
+      await client.bookings.attachBookingSession("bkg_1");
+
+      expect(new URL(requests[0]!.url).pathname).toBe("/bookings/hosts/host_1/slots");
+      expect(requests[1]!.url).toBe("http://pirate.test/bookings/hosts/host_1/holds");
+      expect(await requests[1]!.json()).toEqual({
+        slot_start_utc: "2026-07-01T10:00:00.000Z",
+        slot_end_utc: "2026-07-01T10:30:00.000Z",
+        source_community_id: "com_1",
+      });
+      expect(requests[2]!.url).toBe("http://pirate.test/bookings/holds/hold_1/quote");
+      const listUrl = new URL(requests[3]!.url);
+      expect(listUrl.pathname).toBe("/bookings");
+      expect(listUrl.searchParams.get("role")).toBe("booker");
+      expect(listUrl.searchParams.get("source_community_id")).toBe("com_1");
+      expect(requests[4]!.url).toBe("http://pirate.test/bookings/bkg_1/session/attach");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
 describe("ApiClient media uploads", () => {
   test("sends FormData without forcing a JSON content type", async () => {
     let request: Request | null = null;

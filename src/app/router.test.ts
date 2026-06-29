@@ -185,6 +185,47 @@ describe("public profile host routing", () => {
     });
   });
 
+  test("matches global booking routes and keeps community discovery URLs compatible", () => {
+    expectJson(matchRoute("/settings/bookings"), {
+      kind: "booking-host-settings",
+      path: "/settings/bookings",
+    });
+    expectJson(matchRoute("/bookings"), {
+      kind: "booking-management",
+      path: "/bookings",
+      sourceCommunityId: null,
+      role: "booker",
+    });
+    expectJson(matchRoute("/bookings/bkg_123/session"), {
+      kind: "booking-session",
+      path: "/bookings/bkg_123/session",
+      bookingId: "bkg_123",
+    });
+    expectJson(matchRoute("/c/com_123/bookings"), {
+      kind: "booking-management",
+      path: "/c/com_123/bookings",
+      sourceCommunityId: "com_123",
+      role: "booker",
+    });
+    expectJson(matchRoute("/c/com_123/bookings/bkg_123/session"), {
+      kind: "booking-session",
+      path: "/c/com_123/bookings/bkg_123/session",
+      bookingId: "bkg_123",
+    });
+    expectJson(matchRoute("/c/com_123/book/usr_456"), {
+      kind: "booking-public",
+      path: "/c/com_123/book/usr_456",
+      communityId: "com_123",
+      hostUserId: "usr_456",
+    });
+    expectJson(matchRoute("/c/com_123/book/usr_456/checkout"), {
+      kind: "booking-checkout",
+      path: "/c/com_123/book/usr_456/checkout",
+      communityId: "com_123",
+      hostUserId: "usr_456",
+    });
+  });
+
   test("matches post routes from path routes", () => {
     expectJson(matchRoute("/p/pst_cf89c73fe60641debd05c939252a870c"), {
       kind: "post",

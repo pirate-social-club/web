@@ -41,42 +41,40 @@ function withinJoinWindow(booking: BookingView): boolean {
 }
 
 export function BookingSessionPage({
-  communityId,
   bookingId,
 }: {
-  communityId: string;
   bookingId: string;
 }): React.ReactElement {
   const api = useApi();
   const [phase, setPhase] = React.useState<SessionPhase>({ kind: "loading" });
   const [acting, setActing] = React.useState(false);
 
-  const toBookings = React.useCallback(() => navigate(`/c/${encodeURIComponent(communityId)}/bookings`), [communityId]);
+  const toBookings = React.useCallback(() => navigate("/bookings"), []);
 
   // Settlement actions are idempotent server-side; on success we leave the session and let the bookings
   // list re-fetch authoritative state. Legal-state/role is enforced by the API (errors are surfaced).
   const completeSession = React.useCallback(async () => {
     setActing(true);
     try {
-      await api.communities.completeBooking(communityId, bookingId);
+      await api.bookings.completeBooking(bookingId);
       toast.success("Session completed — the host payout will settle.");
       toBookings();
     } catch (e) { toast.error(e instanceof ApiError ? e.message : "Could not complete the session."); setActing(false); }
-  }, [api, communityId, bookingId, toBookings]);
+  }, [api, bookingId, toBookings]);
   const reportNoShow = React.useCallback(async () => {
     setActing(true);
     try {
-      await api.communities.noShowBooking(communityId, bookingId);
+      await api.bookings.noShowBooking(bookingId);
       toast.success("No-show reported.");
       toBookings();
     } catch (e) { toast.error(e instanceof ApiError ? e.message : "Could not report a no-show."); setActing(false); }
-  }, [api, communityId, bookingId, toBookings]);
+  }, [api, bookingId, toBookings]);
 
   React.useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const { booking } = await api.communities.getBooking(communityId, bookingId);
+        const { booking } = await api.bookings.getBooking(bookingId);
         if (cancelled) return;
 
         if (booking.status !== "confirmed" && booking.status !== "live") {
@@ -102,12 +100,12 @@ export function BookingSessionPage({
         // transitions confirmed → live, so reflect it locally (gates the end-of-session controls).
         let active = booking;
         if (booking.viewer_role === "host") {
-          await api.communities.startBookingSession(communityId, bookingId);
+          await api.bookings.startBookingSession(bookingId);
           if (cancelled) return;
           active = { ...booking, status: "live" };
         }
 
-        const session = await api.communities.attachBookingSession(communityId, bookingId);
+        const session = await api.bookings.attachBookingSession(bookingId);
         if (cancelled) return;
         setPhase({ kind: "ready", booking: active, session });
       } catch (e) {
@@ -119,7 +117,7 @@ export function BookingSessionPage({
       }
     })();
     return () => { cancelled = true; };
-  }, [api, communityId, bookingId]);
+  }, [api, bookingId]);
 
   // Presence heartbeat while attached to the live session. It is identity-bound to this session_id and
   // MUST stop the moment the viewer leaves: on visibility loss (tab hidden), on navigation/unmount, and
@@ -132,8 +130,8 @@ export function BookingSessionPage({
     let timer: ReturnType<typeof setInterval> | null = null;
     const beat = () => {
       if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
-      void api.communities
-        .heartbeatBookingSession(communityId, bookingId, { session_id: readySessionId })
+      void api.bookings
+        .heartbeatBookingSession(bookingId, { session_id: readySessionId })
         .catch(() => { /* transient — the next tick retries; liveness is best-effort */ });
     };
     const start = () => { if (!timer) { beat(); timer = setInterval(beat, HEARTBEAT_INTERVAL_MS); } };
@@ -145,7 +143,7 @@ export function BookingSessionPage({
       stop();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [readySessionId, api, communityId, bookingId]);
+  }, [readySessionId, api, bookingId]);
 
   return (
     <StandardRoutePage size="rail">
@@ -161,7 +159,7 @@ export function BookingSessionPage({
             <Type variant="body" className="text-destructive">{phase.message}</Type>
             <Button
               variant="outline"
-              onClick={() => navigate(`/c/${encodeURIComponent(communityId)}/bookings`)}
+              onClick={toBookings}
             >
               Back to bookings
             </Button>

@@ -28,6 +28,13 @@ function formatDuration(startIso: string, endIso: string): string {
   return mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)}h${mins % 60 > 0 ? ` ${mins % 60}m` : ""}`;
 }
 function formatPrice(cents: number): string { return `${(cents / 100).toFixed(2)} USDC`; }
+function bookingsPath(role: "host" | "booker", sourceCommunityId?: string | null): string {
+  const params = new URLSearchParams({ role });
+  if (sourceCommunityId) {
+    params.set("source_community_id", sourceCommunityId);
+  }
+  return `/bookings?${params.toString()}`;
+}
 
 function isUpcoming(b: BookingView): boolean {
   return b.status === "confirmed" || b.status === "live";
@@ -63,7 +70,7 @@ function groupBookings(bookings: BookingView[]): {
 }
 
 function statusLabel(status: BookingStatus): string {
-  const labels: Record<BookingStatus, string> = {
+  const labels: Partial<Record<BookingStatus, string>> = {
     confirmed: "Confirmed",
     live: "In progress",
     completed: "Completed",
@@ -156,7 +163,7 @@ function BookingCard({
         {joinable && (
           <Button
             size="sm"
-            onClick={() => navigate(`/c/${encodeURIComponent(booking.community_id)}/bookings/${encodeURIComponent(booking.booking_id)}/session`)}
+            onClick={() => navigate(`/bookings/${encodeURIComponent(booking.booking_id)}/session`)}
           >
             Join session
           </Button>
@@ -185,10 +192,10 @@ function BookingCard({
 // --- page ---
 
 export function BookingManagementPage({
-  communityId,
+  sourceCommunityId,
   role,
 }: {
-  communityId: string;
+  sourceCommunityId?: string | null;
   role: "host" | "booker";
 }): React.ReactElement {
   const api = useApi();
@@ -202,21 +209,21 @@ export function BookingManagementPage({
     setLoading(true);
     setError(null);
     try {
-      const res = await api.communities.listBookings(communityId, { role });
+      const res = await api.bookings.listBookings({ role, source_community_id: sourceCommunityId });
       setBookings(res.data);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not load your bookings.");
     } finally {
       setLoading(false);
     }
-  }, [api, communityId, role]);
+  }, [api, sourceCommunityId, role]);
 
   React.useEffect(() => { void load(); }, [load]);
 
   const handleCancel = React.useCallback(async (bookingId: string) => {
     setCancellingId(bookingId);
     try {
-      await api.communities.cancelBooking(communityId, bookingId);
+      await api.bookings.cancelBooking(bookingId);
       toast.success("Booking cancelled.");
       await load();
     } catch (e) {
@@ -224,7 +231,7 @@ export function BookingManagementPage({
     } finally {
       setCancellingId(null);
     }
-  }, [api, communityId, load]);
+  }, [api, load]);
 
   const { upcoming, past, cancelled } = React.useMemo(
     () => groupBookings(bookings ?? []),
@@ -245,14 +252,14 @@ export function BookingManagementPage({
 
         {role === "host" && (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate(`/c/${encodeURIComponent(communityId)}/bookings?role=booker`)}>
+            <Button variant="outline" size="sm" onClick={() => navigate(bookingsPath("booker", sourceCommunityId))}>
               As booker
             </Button>
           </div>
         )}
         {role === "booker" && (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate(`/c/${encodeURIComponent(communityId)}/bookings?role=host`)}>
+            <Button variant="outline" size="sm" onClick={() => navigate(bookingsPath("host", sourceCommunityId))}>
               As host
             </Button>
           </div>

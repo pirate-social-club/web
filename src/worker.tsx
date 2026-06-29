@@ -518,6 +518,10 @@ const app = defineApp<AppRequestInfo>([
     route("/communities/new", AppRoutePage),
     route("/submit", AppRoutePage),
     route("/c/:communityId/submit", AppRoutePage),
+    route("/c/:communityId/bookings", AppRoutePage),
+    route("/c/:communityId/bookings/:bookingId/session", AppRoutePage),
+    route("/c/:communityId/book/:hostUserId", AppRoutePage),
+    route("/c/:communityId/book/:hostUserId/checkout", AppRoutePage),
     route("/c/:communityId/mod", AppRoutePage),
     ...COMMUNITY_MODERATION_SECTIONS.map((section) =>
       route(`/c/:communityId/mod/${section}`, AppRoutePage)
@@ -534,8 +538,11 @@ const app = defineApp<AppRequestInfo>([
     route("/chat/to/:target", AppRoutePage),
     route("/me", AppRoutePage),
     route("/wallet", AppRoutePage),
+    route("/bookings", AppRoutePage),
+    route("/bookings/:bookingId/session", AppRoutePage),
     route("/settings", AppRoutePage),
     route("/settings/wallet", AppRoutePage),
+    route("/settings/bookings", AppRoutePage),
     ...SETTINGS_SECTIONS.map((section) =>
       route(`/settings/${section}`, AppRoutePage)
     ),

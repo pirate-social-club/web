@@ -207,9 +207,9 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
     case "booking-checkout":
       return <LazyBookingCheckoutPage communityId={route.communityId} hostUserId={route.hostUserId} />;
     case "booking-management":
-      return <LazyBookingManagementPage communityId={route.communityId} role={route.role} />;
+      return <LazyBookingManagementPage sourceCommunityId={route.sourceCommunityId} role={route.role} />;
     case "booking-session":
-      return <LazyBookingSessionPage communityId={route.communityId} bookingId={route.bookingId} />;
+      return <LazyBookingSessionPage bookingId={route.bookingId} />;
 
     case "settings-index":
       return <LazyCurrentUserSettingsIndexPage />;

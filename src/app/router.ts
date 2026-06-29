@@ -29,8 +29,8 @@ export type AppRoute =
   | { kind: "community"; path: string; communityId: string; isImportedRoot?: boolean }
   | { kind: "booking-public"; path: string; communityId: string; hostUserId: string }
   | { kind: "booking-checkout"; path: string; communityId: string; hostUserId: string }
-  | { kind: "booking-management"; path: string; communityId: string; role: "host" | "booker" }
-  | { kind: "booking-session"; path: string; communityId: string; bookingId: string }
+  | { kind: "booking-management"; path: string; sourceCommunityId?: string | null; role: "host" | "booker" }
+  | { kind: "booking-session"; path: string; bookingId: string }
   | { kind: "create-community"; path: "/communities/new" }
   | { kind: "post"; path: string; postId: string }
   | { kind: "post-karaoke"; path: string; postId: string }
@@ -254,12 +254,31 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
     };
   }
 
-  // /c/:communityId/bookings/:bookingId/session
+  // Canonical global bookings routes. Communities are optional discovery context only.
+  if (segments.length === 3 && segments[0] === "bookings" && segments[2] === "session") {
+    return {
+      kind: "booking-session",
+      path: normalized,
+      bookingId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  if (segments.length === 1 && segments[0] === "bookings") {
+    const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    const role = searchParams.get("role") === "host" ? "host" : "booker";
+    return {
+      kind: "booking-management",
+      path: normalized,
+      sourceCommunityId: searchParams.get("source_community_id"),
+      role,
+    };
+  }
+
+  // Compatibility for old community-scoped URLs: parse them, but render global data.
   if (segments.length === 5 && segments[0] === "c" && segments[2] === "bookings" && segments[4] === "session") {
     return {
       kind: "booking-session",
       path: normalized,
-      communityId: decodeURIComponent(segments[1]),
       bookingId: decodeURIComponent(segments[3]),
     };
   }
@@ -270,7 +289,7 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
     return {
       kind: "booking-management",
       path: normalized,
-      communityId: decodeURIComponent(segments[1]),
+      sourceCommunityId: decodeURIComponent(segments[1]),
       role,
     };
   }

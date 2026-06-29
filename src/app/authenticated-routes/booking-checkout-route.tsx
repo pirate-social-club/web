@@ -124,7 +124,7 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
   const runConfirm = React.useCallback(async (holdId: string, txHash: string, walletAttachmentId: string) => {
     setPhase({ kind: "confirming", txHash });
     try {
-      const { booking } = await api.communities.confirmBookingHold(communityId, holdId, {
+      const { booking } = await api.bookings.confirmBookingHold(holdId, {
         funding_tx_ref: txHash, wallet_attachment_id: walletAttachmentId,
       });
       savePersisted(key, { bookingId: booking.booking_id });
@@ -148,7 +148,7 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
         : (e instanceof ApiError ? e.message : "Could not reach the server to confirm. Retry — you will not be charged again.");
       setPhase({ kind: "failed", message, canRetryConfirm: true, txHash, walletAttachmentId });
     }
-  }, [api, communityId, key]);
+  }, [api, key]);
 
   // Mount: resume from persisted state (confirm-only) or create a fresh hold + quote.
   React.useEffect(() => {
@@ -169,7 +169,7 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
       // Held but not paid → re-fetch the quote authoritatively (hold may have expired).
       if (saved?.holdId) {
         try {
-          const { quote } = await api.communities.quoteBookingHold(communityId, saved.holdId);
+          const { quote } = await api.bookings.quoteBookingHold(saved.holdId);
           if (cancelled) return;
           setPhase({ kind: "quoted", hold: { hold_id: saved.holdId, slot_start_utc: slotStart, slot_end_utc: slotEnd } as BookingHold, quote });
           return;
@@ -182,9 +182,13 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
       }
       // Fresh: create the hold + quote.
       try {
-        const { hold } = await api.communities.createBookingHold(communityId, hostUserId, { slot_start_utc: slotStart, slot_end_utc: slotEnd });
+        const { hold } = await api.bookings.createBookingHold(hostUserId, {
+          slot_start_utc: slotStart,
+          slot_end_utc: slotEnd,
+          source_community_id: communityId,
+        });
         if (cancelled) return;
-        const { quote } = await api.communities.quoteBookingHold(communityId, hold.hold_id);
+        const { quote } = await api.bookings.quoteBookingHold(hold.hold_id);
         if (cancelled) return;
         savePersisted(key, { holdId: hold.hold_id, paymentIntentId: quote.payment.payment_intent_id });
         setPhase({ kind: "quoted", hold, quote });
@@ -222,7 +226,7 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
     // payment instructions are taken fresh from the server).
     let fresh: BookingQuote;
     try {
-      fresh = (await api.communities.quoteBookingHold(communityId, hold.hold_id)).quote;
+      fresh = (await api.bookings.quoteBookingHold(hold.hold_id)).quote;
     } catch (e) {
       const code = e instanceof ApiError ? e.code : "";
       if (EXPIRED_CONFIRM_CODES.has(code)) { clearPersisted(key); setPhase({ kind: "expired" }); return; }
@@ -257,7 +261,7 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
       // confirmation with the submitted hash (it will classify reverted/mismatched payments).
       await runConfirm(hold.hold_id, submittedHash, walletAttachmentId);
     }
-  }, [api, communityId, connectedWallets, session, key, runConfirm]);
+  }, [api, connectedWallets, session, key, runConfirm]);
 
   return (
     <StandardRoutePage size="rail">
@@ -343,7 +347,7 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
           <div className="space-y-4">
             <Type variant="body">Booking confirmed. Your session is reserved and you will receive details shortly.</Type>
             <Type variant="caption" className="text-muted-foreground font-mono">{phase.bookingId}</Type>
-            <Button variant="outline" onClick={() => navigate(`/c/${encodeURIComponent(communityId)}/bookings`)}>View my bookings</Button>
+            <Button variant="outline" onClick={() => navigate("/bookings")}>View my bookings</Button>
           </div>
         )}
       </div>

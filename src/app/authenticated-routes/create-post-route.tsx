@@ -298,7 +298,7 @@ export function CreatePostPage({
     },
     startErrorMessage: verifyRequiredDescription,
     storageKey: "pirate_pending_self_create_post",
-    verificationIntent: "profile_verification",
+    verificationIntent: "post_create",
   });
 
   const {
@@ -310,7 +310,7 @@ export function CreatePostPage({
     verified:
       state.session?.user.verification_capabilities.unique_human.state ===
       "verified",
-    verificationIntent: "profile_verification",
+    verificationIntent: "post_create",
     onVerified: async () => {
       const refreshedUser = await api.users.getMe();
       updateSessionUser(refreshedUser);

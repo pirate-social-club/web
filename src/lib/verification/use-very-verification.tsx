@@ -20,6 +20,7 @@ import {
 } from "@/lib/verification/very-mobile-launch";
 
 type VeryVerificationState = "not_started" | "pending" | "verified";
+type VerificationIntentInput = VerificationIntent | (() => VerificationIntent);
 let veryWidgetModulePromise: Promise<{ createVeryWidget: typeof createVeryWidgetType }> | null = null;
 
 async function loadVeryWidgetModule() {
@@ -30,7 +31,7 @@ async function loadVeryWidgetModule() {
 export function useVeryVerification(input: {
   onVerified?: (status: OnboardingStatus) => Promise<void> | void;
   verified: boolean;
-  verificationIntent: VerificationIntent;
+  verificationIntent: VerificationIntentInput;
 }) {
   const api = useApi();
   const { onVerified, verificationIntent, verified } = input;
@@ -223,9 +224,13 @@ export function useVeryVerification(input: {
     setVerificationHref(null);
 
     try {
+      const resolvedVerificationIntent =
+        typeof verificationIntent === "function"
+          ? verificationIntent()
+          : verificationIntent;
       const result = await api.verification.startSession({
         provider: "very",
-        verification_intent: verificationIntent,
+        verification_intent: resolvedVerificationIntent,
       });
       setVerificationSessionId(result.id);
       const href = isMobileDeviceRuntime()

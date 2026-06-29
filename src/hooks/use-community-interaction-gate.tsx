@@ -14,6 +14,7 @@ import {
   useSession,
   type StoredSession,
 } from "@/lib/api/session-store";
+import type { VerificationIntent } from "@pirate/api-contracts";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
@@ -41,6 +42,20 @@ const LazySelfVerificationModal = React.lazy(async () => {
   const mod = await import("@/components/compositions/verification/self-verification-modal/self-verification-modal");
   return { default: mod.SelfVerificationModal };
 }) as typeof SelfVerificationModal;
+
+export function verificationIntentForInteraction(
+  interaction: PendingInteraction | null,
+): VerificationIntent {
+  switch (interaction?.action) {
+    case "reply_post":
+    case "reply_comment":
+      return "comment_create";
+    case "vote_post":
+    case "vote_comment":
+    default:
+      return interaction?.gate.eligibility.suggested_verification_intent ?? "community_join";
+  }
+}
 
 export function useCommunityInteractionGate({
   previewLocale,
@@ -191,7 +206,8 @@ export function useCommunityInteractionGate({
     verificationLoading: veryLoading,
   } = useVeryVerification({
     verified: false,
-    verificationIntent: "community_join",
+    verificationIntent: () =>
+      verificationIntentForInteraction(pendingInteractionRef.current),
     onVerified: completeVerificationJoin,
   });
 
@@ -210,7 +226,8 @@ export function useCommunityInteractionGate({
     onVerified: completeVerificationJoin,
     startErrorMessage: "Could not start self verification",
     storageKey: SELF_INTERACTION_GATE_STORAGE_KEY,
-    verificationIntent: "community_join",
+    verificationIntent: () =>
+      verificationIntentForInteraction(pendingInteractionRef.current),
   });
 
   React.useEffect(() => {

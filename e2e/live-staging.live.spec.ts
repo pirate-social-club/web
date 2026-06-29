@@ -1205,7 +1205,10 @@ test.describe("live staging integration", () => {
     );
     expect(slots.host_timezone).toBe(hostTimezone);
     expect(slots.viewer_timezone).toBe(hostTimezone);
-    const resolvedSlot = slots.slots.find((candidate) => candidate.startUtc === slot.startUtc && candidate.endUtc === slot.endUtc);
+    const resolvedSlot = slots.slots.find((candidate) =>
+      Date.parse(candidate.startUtc) === Date.parse(slot.startUtc)
+      && Date.parse(candidate.endUtc) === Date.parse(slot.endUtc)
+    );
     expect(resolvedSlot, "expected smoke slot in global availability").toBeTruthy();
     expect(resolvedSlot?.available).toBe(true);
     expect(resolvedSlot?.priceCents).toBe(1234);

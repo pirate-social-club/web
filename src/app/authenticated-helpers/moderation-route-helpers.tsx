@@ -42,6 +42,8 @@ export function getCommunityModerationTitle(
       return "Assistant";
     case "karaoke":
       return copy.nav.karaoke ?? "Karaoke";
+    case "study":
+      return copy.nav.study ?? "Study";
     case "telegram":
       return "Telegram";
     case "machine-access":

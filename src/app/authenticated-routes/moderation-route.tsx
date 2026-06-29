@@ -20,6 +20,7 @@ import { CommunityRulesEditorPage } from "@/components/compositions/community/ru
 import { CommunityAgentPolicyPage } from "@/components/compositions/community/agent-policy/community-agent-policy";
 import { CommunityAssistantPolicyPage } from "@/components/compositions/community/assistant-policy/community-assistant-policy";
 import { CommunityKaraokePolicyPage } from "@/components/compositions/community/karaoke-policy/community-karaoke-policy";
+import { CommunityStudyPolicyPage } from "@/components/compositions/community/study-policy/community-study-policy";
 import { CommunityArchivePage } from "@/components/compositions/community/archive-page/community-archive-page";
 import { CommunityMachineAccessPage } from "@/components/compositions/community/machine-access/community-machine-access";
 import { CommunitySafetyPage } from "@/components/compositions/community/safety-page/community-safety-page";
@@ -854,6 +855,21 @@ export function CommunityModerationPage({
           saveDisabled={state.savingKaraokePolicy || state.loadingKaraokePolicy || !state.karaokePolicyDirty}
           settings={state.karaokePolicySettings}
           submitState={state.karaokePolicySubmitState}
+        />
+      );
+    } else if (section === "study") {
+      setMobileSaveAction({
+        disabled: state.savingStudyPolicy || state.loadingStudyPolicy || !state.studyPolicyDirty,
+        loading: state.savingStudyPolicy,
+        onSave: state.handleSaveStudyPolicy,
+      });
+      content = (
+        <CommunityStudyPolicyPage
+          onSave={state.handleSaveStudyPolicy}
+          onSettingsChange={state.setStudyPolicySettings}
+          saveDisabled={state.savingStudyPolicy || state.loadingStudyPolicy || !state.studyPolicyDirty}
+          settings={state.studyPolicySettings}
+          submitState={state.studyPolicySubmitState}
         />
       );
     } else if (section === "machine-access") {

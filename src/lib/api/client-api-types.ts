@@ -583,6 +583,16 @@ export type ApiCommunityKaraokePolicyUpdate = Partial<{
   karaoke_audio_retention: "not_stored";
 }>;
 
+export type ApiCommunityStudyPolicy = {
+  community_id: string;
+  study_enabled: boolean;
+  updated_at: string | null;
+};
+
+export type ApiCommunityStudyPolicyUpdate = {
+  study_enabled: boolean;
+};
+
 export type ApiCommunityAssistantCredentialProvider = "openrouter" | "elevenlabs";
 
 export type ApiCommunityAssistantCredentialResponse =

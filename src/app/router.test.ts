@@ -120,6 +120,12 @@ describe("public profile host routing", () => {
       communityId: "community-123",
       section: "assistant",
     });
+    expectJson(matchRoute("/c/community-123/mod/study"), {
+      kind: "community-moderation",
+      path: "/c/community-123/mod/study",
+      communityId: "community-123",
+      section: "study",
+    });
     expectJson(matchRoute("/c/community-123/mod/telegram"), {
       kind: "community-moderation",
       path: "/c/community-123/mod/telegram",

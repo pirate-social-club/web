@@ -21,6 +21,8 @@ import type {
   ApiCommunityKaraokePolicyUpdate,
   ApiCommunityMachineAccessPolicy,
   ApiCommunityMachineAccessPolicyUpdate,
+  ApiCommunityStudyPolicy,
+  ApiCommunityStudyPolicyUpdate,
   ApiCommunityTelegramChatSettings,
   ApiCommunityTelegramChatSettingsUpdate,
   ApiTelegramCommunityBot,
@@ -106,6 +108,18 @@ export function createCommunitySettingsApi(request: ApiRequest) {
     ): Promise<ApiCommunityKaraokePolicy> =>
       request<ApiCommunityKaraokePolicy>(
         `/communities/${encodeURIComponent(communityId)}/karaoke-policy`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    getStudyPolicy: (communityId: string): Promise<ApiCommunityStudyPolicy> =>
+      request<ApiCommunityStudyPolicy>(
+        `/communities/${encodeURIComponent(communityId)}/study-policy`,
+      ),
+    updateStudyPolicy: (
+      communityId: string,
+      body: ApiCommunityStudyPolicyUpdate,
+    ): Promise<ApiCommunityStudyPolicy> =>
+      request<ApiCommunityStudyPolicy>(
+        `/communities/${encodeURIComponent(communityId)}/study-policy`,
         { method: "POST", body: JSON.stringify(body) },
       ),
     archiveCommunity: (communityId: string): Promise<{ community_id: string; status: string }> =>

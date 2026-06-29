@@ -18,6 +18,7 @@ export const COMMUNITY_MODERATION_SECTIONS = [
   "agents",
   "assistant",
   "karaoke",
+  "study",
   "telegram",
   "machine-access",
   "archive",

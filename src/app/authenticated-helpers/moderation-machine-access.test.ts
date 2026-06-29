@@ -78,6 +78,39 @@ describe("machine-access moderation wiring", () => {
     expect(getCommunityModerationTitle("telegram", mockCopy)).toBe("Telegram");
   });
 
+  test("study is in the section type and builds a path", () => {
+    const section: CommunityModerationSection = "study";
+    const path = buildCommunityModerationPath("gld_123", section);
+
+    expect(path).toBe("/c/gld_123/mod/study");
+  });
+
+  test("getCommunityModerationTitle returns the study label", () => {
+    expect(getCommunityModerationTitle("study", mockCopy)).toBe("Study");
+  });
+
+  test("buildCommunityModerationSections includes study in the Access group", () => {
+    const sections = buildCommunityModerationSections(null, "gld_123", mockCopy);
+    const accessSection = sections.find((s) => s.label === "Access");
+    const studyItem = accessSection?.items.find(
+      (item) => item.label === "Study",
+    );
+
+    expect(accessSection == null).toBe(false);
+    expect(studyItem == null).toBe(false);
+    expect(studyItem!.active).toBe(false);
+  });
+
+  test("study sidebar item is active when passed as activeSection", () => {
+    const sections = buildCommunityModerationSections("study", "gld_123", mockCopy);
+    const accessSection = sections.find((s) => s.label === "Access");
+    const studyItem = accessSection!.items.find(
+      (item) => item.label === "Study",
+    );
+
+    expect(studyItem!.active).toBe(true);
+  });
+
   test("buildCommunityModerationSections includes telegram in the Access group", () => {
     const sections = buildCommunityModerationSections(null, "gld_123", mockCopy);
     const accessSection = sections.find((s) => s.label === "Access");
@@ -133,9 +166,13 @@ describe("machine-access moderation wiring", () => {
 
     expect(labels).toContain("Agents");
     expect(labels).toContain("Assistant");
+    expect(labels).toContain("Karaoke");
+    expect(labels).toContain("Study");
     expect(labels).toContain("Telegram");
     expect(labels).toContain("Machine access");
-    expect(labels.indexOf("Assistant") < labels.indexOf("Telegram")).toBe(true);
+    expect(labels.indexOf("Assistant") < labels.indexOf("Karaoke")).toBe(true);
+    expect(labels.indexOf("Karaoke") < labels.indexOf("Study")).toBe(true);
+    expect(labels.indexOf("Study") < labels.indexOf("Telegram")).toBe(true);
     expect(labels.indexOf("Telegram") < labels.indexOf("Machine access")).toBe(true);
     expect(labels.indexOf("Agents") < labels.indexOf("Machine access")).toBe(true);
   });

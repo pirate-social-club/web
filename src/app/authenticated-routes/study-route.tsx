@@ -70,6 +70,7 @@ function toSayItBackExercise(exercise: Extract<SongStudyExercise, { type: "say_i
   return {
     id: exercise.id,
     lineNumber: exercise.line_index + 1,
+    maxAttempts: Math.max(1, exercise.max_attempts || 1),
     prompt,
     translation: exercise.translation_text ?? undefined,
     expected: exercise.reference_text || prompt,
@@ -80,6 +81,7 @@ function toMultipleChoiceExercise(exercise: Extract<SongStudyExercise, { type: "
   return {
     id: exercise.id,
     lineNumber: exercise.line_index + 1,
+    maxAttempts: Math.max(1, exercise.max_attempts || 1),
     options: exercise.options,
     prompt: exercise.prompt_text,
     question: exercise.question,
@@ -94,6 +96,7 @@ function exerciseSurface(exercise: SongStudyExercise): SongStudySurfaceState {
   return exercise.type === "translation_choice"
     ? {
         kind: "multiple_choice",
+        attemptNumber: 1,
         exercise: toMultipleChoiceExercise(exercise),
       }
     : {
@@ -321,6 +324,19 @@ export function StudyRoutePage({ postId }: { postId: string }) {
 
     if (state.surface.kind === "multiple_choice") {
       if (state.surface.result) {
+        if (state.surface.result === "wrong" && state.surface.canRetry) {
+          setState({
+            ...state,
+            surface: {
+              ...state.surface,
+              attemptNumber: state.surface.attemptNumber + 1,
+              canRetry: false,
+              result: undefined,
+              selectedOptionId: undefined,
+            },
+          });
+          return;
+        }
         const nextCorrectCount = state.correctCount + (state.surface.result === "correct" ? 1 : 0);
         const nextIndex = state.exerciseIndex + 1;
         const nextExercise = state.study.exercises[nextIndex] ?? null;
@@ -347,9 +363,9 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         },
       });
       void api.communities.submitPostStudyAttempt(state.post.post.community, state.post.post.id, {
-        attempt_number: 1,
+        attempt_number: state.surface.attemptNumber,
         exercise_id: exercise.id,
-        idempotency_key: makeAttemptIdempotencyKey(exercise.id, 1),
+        idempotency_key: makeAttemptIdempotencyKey(exercise.id, state.surface.attemptNumber),
         selected_option_id: selectedOptionId,
         type: "translation_choice",
       }).then((result) => {
@@ -365,6 +381,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                 ...current.surface.exercise,
                 correctOptionId: result.correct_option_id ?? current.surface.exercise.correctOptionId,
               },
+              canRetry: result.outcome !== "correct" && result.attempts_remaining > 0,
               result: result.outcome === "correct" ? "correct" : "wrong",
               submitting: false,
             },
@@ -481,12 +498,15 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                     return current;
                   }
                   const correct = result.outcome === "correct";
+                  const attemptsUsed = result.attempts_remaining <= 0;
                   return {
                     ...current,
                     surface: {
                       ...current.surface,
-                      attemptNumber: result.attempts_remaining > 0 ? current.surface.attemptNumber : 2,
+                      attemptNumber: current.surface.attemptNumber,
+                      feedback: result.feedback,
                       phase: correct ? "correct" : "wrong",
+                      revealReference: !correct && (attemptsUsed || result.outcome === "revealed"),
                       transcript,
                     },
                   };
@@ -531,13 +551,15 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     }
 
     if (state.surface.kind === "say_it_back" && state.surface.phase === "wrong") {
-      if (state.surface.attemptNumber === 1) {
+      if (state.surface.attemptNumber < state.surface.exercise.maxAttempts && !state.surface.revealReference) {
         setState({
           ...state,
           surface: {
             ...state.surface,
-            attemptNumber: 2,
+            attemptNumber: state.surface.attemptNumber + 1,
+            feedback: undefined,
             phase: "idle",
+            revealReference: false,
             transcript: undefined,
           },
         });

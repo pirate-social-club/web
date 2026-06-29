@@ -23,14 +23,22 @@ export interface SongStudyOption {
 export interface SongStudySayItBackExercise {
   id: string;
   lineNumber: number;
+  maxAttempts: number;
   prompt: string;
   translation?: string;
   expected: string;
 }
 
+export interface SongStudySayItBackFeedback {
+  extra?: string[];
+  matched?: string[];
+  missing?: string[];
+}
+
 export interface SongStudyMultipleChoiceExercise {
   id: string;
   lineNumber: number;
+  maxAttempts: number;
   prompt: string;
   question: string;
   options: SongStudyOption[];
@@ -52,13 +60,17 @@ export type SongStudySurfaceState =
   }
   | {
     kind: "say_it_back";
-    attemptNumber: 1 | 2;
+    attemptNumber: number;
     exercise: SongStudySayItBackExercise;
+    feedback?: SongStudySayItBackFeedback;
     phase: "idle" | "listening" | "checking" | "wrong" | "correct";
+    revealReference?: boolean;
     transcript?: string;
   }
   | {
     kind: "multiple_choice";
+    attemptNumber: number;
+    canRetry?: boolean;
     exercise: SongStudyMultipleChoiceExercise;
     result?: "correct" | "wrong";
     selectedOptionId?: string;
@@ -96,11 +108,12 @@ function primaryActionLabel(state: SongStudySurfaceState): string {
       return state.priceLabel ? `Buy ${state.priceLabel}` : "Buy";
     case "say_it_back":
       if (state.phase === "correct") return "Continue";
-      if (state.phase === "wrong") return state.attemptNumber === 1 ? "Record again" : "Continue";
+      if (state.phase === "wrong") return state.revealReference ? "Continue" : "Record again";
       if (state.phase === "checking") return "Checking…";
       return state.phase === "listening" ? "Stop recording" : "Record";
     case "multiple_choice":
       if (state.submitting) return "Checking…";
+      if (state.result === "wrong" && state.canRetry) return "Try again";
       return state.result ? "Continue" : "Check answer";
     case "complete":
       return "Back to song";
@@ -271,6 +284,8 @@ function LockedState({ state }: { state: Extract<SongStudySurfaceState, { kind: 
 function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kind: "say_it_back" }> }) {
   const isWrong = state.phase === "wrong";
   const isCorrect = state.phase === "correct";
+  const missing = state.feedback?.missing?.filter(Boolean) ?? [];
+  const extra = state.feedback?.extra?.filter(Boolean) ?? [];
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-4 py-10 sm:px-6">
@@ -326,6 +341,40 @@ function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kin
             </Type>
           </div>
         </div>
+        {isWrong && (missing.length > 0 || extra.length > 0 || state.revealReference) ? (
+          <div className="mt-4 space-y-3 border-t border-border-soft pt-4">
+            {missing.length > 0 ? (
+              <div>
+                <Type as="p" className="text-destructive" variant="caption">
+                  Missing
+                </Type>
+                <Type as="p" className="mt-1" dir="auto" variant="body-strong">
+                  {missing.join(" · ")}
+                </Type>
+              </div>
+            ) : null}
+            {extra.length > 0 ? (
+              <div>
+                <Type as="p" className="text-muted-foreground" variant="caption">
+                  Extra
+                </Type>
+                <Type as="p" className="mt-1" dir="auto" variant="body-strong">
+                  {extra.join(" · ")}
+                </Type>
+              </div>
+            ) : null}
+            {state.revealReference ? (
+              <div>
+                <Type as="p" className="text-muted-foreground" variant="caption">
+                  Reference
+                </Type>
+                <Type as="p" className="mt-1" dir="auto" variant="body-strong">
+                  {state.exercise.expected}
+                </Type>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

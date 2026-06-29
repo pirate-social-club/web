@@ -20,6 +20,7 @@ const baseProps = {
 const sayItBackExercise: SongStudySayItBackExercise = {
   id: "line-3-say-it-back",
   lineNumber: 3,
+  maxAttempts: 2,
   prompt: "Hold on till the morning light",
   translation: "Aguanta hasta la luz de la mañana",
   expected: "Hold on till the morning light",
@@ -28,6 +29,7 @@ const sayItBackExercise: SongStudySayItBackExercise = {
 const multipleChoiceExercise: SongStudyMultipleChoiceExercise = {
   id: "line-5-translation-choice",
   lineNumber: 5,
+  maxAttempts: 1,
   prompt: "We drift where the current goes",
   question: "Choose the best translation.",
   correctOptionId: "correct",
@@ -137,6 +139,10 @@ export const SayItBackWrongFirstAttempt: Story = {
         kind: "say_it_back",
         attemptNumber: 1,
         exercise: sayItBackExercise,
+        feedback: {
+          missing: ["till", "light"],
+          extra: ["to", "line"],
+        },
         phase: "wrong",
         transcript: "Hold on to the morning line",
       }}
@@ -153,7 +159,32 @@ export const SayItBackSecondAttempt: Story = {
         kind: "say_it_back",
         attemptNumber: 2,
         exercise: sayItBackExercise,
+        feedback: {
+          missing: ["till", "light"],
+          extra: ["to", "line"],
+        },
         phase: "idle",
+        transcript: "Hold on to the morning line",
+      }}
+    />
+  ),
+};
+
+export const SayItBackFinalWrongReveal: Story = {
+  name: "Study / Say it back — final wrong reveal",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      state={{
+        kind: "say_it_back",
+        attemptNumber: 2,
+        exercise: sayItBackExercise,
+        feedback: {
+          missing: ["till", "light"],
+          extra: ["to", "line"],
+        },
+        phase: "wrong",
+        revealReference: true,
         transcript: "Hold on to the morning line",
       }}
     />
@@ -183,6 +214,7 @@ export const MultipleChoiceUnanswered: Story = {
       {...baseProps}
       state={{
         kind: "multiple_choice",
+        attemptNumber: 1,
         exercise: multipleChoiceExercise,
       }}
     />
@@ -196,6 +228,7 @@ export const MultipleChoiceWrong: Story = {
       {...baseProps}
       state={{
         kind: "multiple_choice",
+        attemptNumber: 1,
         exercise: multipleChoiceExercise,
         result: "wrong",
         selectedOptionId: "distractor-3",
@@ -211,6 +244,7 @@ export const MultipleChoiceCorrect: Story = {
       {...baseProps}
       state={{
         kind: "multiple_choice",
+        attemptNumber: 1,
         exercise: multipleChoiceExercise,
         result: "correct",
         selectedOptionId: "correct",

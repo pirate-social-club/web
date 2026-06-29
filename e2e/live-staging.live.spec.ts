@@ -1153,6 +1153,8 @@ test.describe("live staging integration", () => {
     await completeSelfVerification(host);
     await completeSelfVerification(booker);
 
+    const hostUserId = rawPublicUserId(host.user.id);
+    const bookerUserId = rawPublicUserId(booker.user.id);
     const hostHeaders = { authorization: `Bearer ${host.accessToken}` };
     const bookerHeaders = { authorization: `Bearer ${booker.accessToken}` };
     const hostTimezone = "America/New_York";
@@ -1174,7 +1176,7 @@ test.describe("live staging integration", () => {
       headers: hostHeaders,
       method: "POST",
     });
-    expect(profile.host).toBe(host.user.id);
+    expect(profile.host).toBe(hostUserId);
     expect(profile.base_price_cents).toBe(1234);
 
     const rule = await requestJson<{ by_weekday: number[]; slot_duration_seconds: number }>("/host-bookings/me/availability-rules", {
@@ -1198,7 +1200,7 @@ test.describe("live staging integration", () => {
     expect(published.is_published).toBe(true);
 
     const slots = await requestJson<{ host_timezone: string; slots: BookingSlot[]; viewer_timezone: string }>(
-      `/bookings/hosts/${encodeURIComponent(host.user.id)}/slots?from=${encodeURIComponent(slot.windowStartUtc)}&to=${encodeURIComponent(slot.windowEndUtc)}&tz=${encodeURIComponent(hostTimezone)}`,
+      `/bookings/hosts/${encodeURIComponent(hostUserId)}/slots?from=${encodeURIComponent(slot.windowStartUtc)}&to=${encodeURIComponent(slot.windowEndUtc)}&tz=${encodeURIComponent(hostTimezone)}`,
       { headers: bookerHeaders },
     );
     expect(slots.host_timezone).toBe(hostTimezone);
@@ -1217,7 +1219,7 @@ test.describe("live staging integration", () => {
         source_community_id: string | null;
         status: string;
       };
-    }>(`/bookings/hosts/${encodeURIComponent(host.user.id)}/holds`, {
+    }>(`/bookings/hosts/${encodeURIComponent(hostUserId)}/holds`, {
       body: JSON.stringify({
         slot_end_utc: slot.endUtc,
         slot_start_utc: slot.startUtc,
@@ -1226,13 +1228,13 @@ test.describe("live staging integration", () => {
       headers: bookerHeaders,
       method: "POST",
     });
-    expect(hold.hold.host_user_id).toBe(host.user.id);
-    expect(hold.hold.booker_user_id).toBe(booker.user.id);
+    expect(hold.hold.host_user_id).toBe(hostUserId);
+    expect(hold.hold.booker_user_id).toBe(bookerUserId);
     expect(hold.hold.source_community_id).toBeNull();
     expect(hold.hold.price_cents).toBe(1234);
     expect(hold.hold.status).toBe("active");
 
-    await requestJson(`/bookings/hosts/${encodeURIComponent(host.user.id)}/holds`, {
+    await requestJson(`/bookings/hosts/${encodeURIComponent(hostUserId)}/holds`, {
       body: JSON.stringify({
         slot_end_utc: slot.endUtc,
         slot_start_utc: slot.startUtc,

@@ -751,3 +751,84 @@ export type KaraokeSessionCreateApiResponse = {
   session_expires_at: number;
   scoring_policy: unknown;
 };
+
+export type SongStudyExercise =
+  | {
+      id: string;
+      type: "say_it_back";
+      line_id: string;
+      line_index: number;
+      prompt_text: string;
+      reference_text: string;
+      translation_text?: string | null;
+      max_attempts: number;
+    }
+  | {
+      id: string;
+      type: "translation_choice";
+      line_id: string;
+      line_index: number;
+      prompt_text: string;
+      question: string;
+      options: Array<{ id: string; text: string }>;
+      max_attempts: number;
+    };
+
+export type SongStudyPayload = {
+  object: "song_study_payload";
+  post_id: string;
+  community_id: string;
+  access: "ready" | "locked" | "processing" | "unavailable";
+  title: string;
+  artist_name?: string | null;
+  artwork_src?: string | null;
+  source_language?: string | null;
+  target_language?: string | null;
+  exercise_count: number;
+  exercises: SongStudyExercise[];
+  study_pack_version?: number;
+  generated_at?: number;
+  locked_reason?: "purchase_required" | "membership_required" | "age_required";
+  unavailable_reason?: "not_song" | "no_lyrics" | "unsupported_language" | "generation_failed";
+};
+
+export type SongStudyAttemptRequest =
+  | {
+      idempotency_key: string;
+      exercise_id: string;
+      type: "say_it_back";
+      attempt_number: number;
+      transcript: string;
+    }
+  | {
+      idempotency_key: string;
+      exercise_id: string;
+      type: "translation_choice";
+      attempt_number: number;
+      selected_option_id: string;
+    };
+
+export type SongStudyAttemptResult = {
+  object: "song_study_attempt_result";
+  exercise_id: string;
+  outcome: "correct" | "incorrect" | "revealed";
+  attempts_remaining: number;
+  correct_option_id?: string;
+  feedback?: {
+    matched: string[];
+    missing: string[];
+    extra: string[];
+  };
+  next_review_hint?: "again" | "hard" | "good" | "easy";
+};
+
+export type SongStudyTranscriptionResponse = {
+  object: "song_study_transcription";
+  provider: "elevenlabs";
+  model: string;
+  text: string;
+  confidence: number | null;
+  language_code: string | null;
+  language_probability: number | null;
+  duration_seconds: number | null;
+};

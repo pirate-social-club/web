@@ -330,22 +330,24 @@ describe("post presentation live rooms", () => {
     expect(content.coverSrc).toBe("https://media.test/live-cover.jpg");
   });
 
-  test("normalizes replay status from the API room payload", () => {
+  test("normalizes spec replay statuses from the API room payload", () => {
     Date.now = () => Date.parse("2026-05-16T12:00:00.000Z");
 
-    const readyAccess = createLiveRoomAccess();
-    readyAccess.room.replay_status = "ready";
-    readyAccess.room.status = "ended";
-    readyAccess.access.allowed = false;
-    readyAccess.access.decision_reason = "ended";
+    for (const replayStatus of ["none", "processing", "review_pending", "published", "failed"]) {
+      const access = createLiveRoomAccess();
+      access.room.replay_status = replayStatus;
+      access.room.status = "ended";
+      access.access.allowed = false;
+      access.access.decision_reason = "ended";
 
-    const content = toCommunityPostContent(createAnchoredLivePost(), undefined, {
-      liveRoom: { access: readyAccess },
-    });
+      const content = toCommunityPostContent(createAnchoredLivePost(), undefined, {
+        liveRoom: { access },
+      });
 
-    expect(content.type).toBe("live_room");
-    if (content.type !== "live_room") return;
-    expect(content.replayStatus).toBe("ready");
+      expect(content.type).toBe("live_room");
+      if (content.type !== "live_room") return;
+      expect(content.replayStatus).toBe(replayStatus);
+    }
   });
 
   test("defaults replay status to none for unrecognized values", () => {

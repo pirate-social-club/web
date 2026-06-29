@@ -452,14 +452,34 @@ export const HostDetectionMissing: Story = {
   },
 };
 
-export const EndedReplayReady: Story = {
-  name: "Ended / Replay ready",
+export const EndedReplayPublished: Story = {
+  name: "Ended / Replay published",
   args: {
     liveRoom: {
       ...baseLiveRoom,
       accessState: "ended",
       endedAtLabel: "1h",
-      replayStatus: "ready",
+      replayDurationLabel: "48 min",
+      replayStatus: "published",
+      status: "ended",
+    },
+  },
+};
+
+export const EndedReplayPublishedPaidNeedsTicket: Story = {
+  name: "Ended / Replay published paid locked",
+  args: {
+    liveRoom: {
+      ...baseLiveRoom,
+      accessMode: "paid",
+      accessState: "ended",
+      endedAtLabel: "1h",
+      hasEntitlement: false,
+      listingMode: "listed",
+      listingStatus: "active",
+      priceLabel: "$12.00",
+      replayDurationLabel: "48 min",
+      replayStatus: "published",
       status: "ended",
     },
   },
@@ -472,7 +492,36 @@ export const EndedReplayProcessing: Story = {
       ...baseLiveRoom,
       accessState: "ended",
       endedAtLabel: "1h",
+      replayDurationLabel: "48 min",
       replayStatus: "processing",
+      status: "ended",
+    },
+  },
+};
+
+export const EndedReplayUnderReview: Story = {
+  name: "Ended / Replay under review",
+  args: {
+    liveRoom: {
+      ...baseLiveRoom,
+      accessState: "ended",
+      endedAtLabel: "1h",
+      replayDurationLabel: "48 min",
+      replayStatus: "review_pending",
+      status: "ended",
+    },
+  },
+};
+
+export const EndedReplayFailed: Story = {
+  name: "Ended / Replay failed",
+  args: {
+    liveRoom: {
+      ...baseLiveRoom,
+      accessState: "ended",
+      endedAtLabel: "1h",
+      replayDurationLabel: "48 min",
+      replayStatus: "failed",
       status: "ended",
     },
   },

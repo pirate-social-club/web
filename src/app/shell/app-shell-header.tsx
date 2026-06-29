@@ -26,6 +26,7 @@ function showConnectUnavailable(message: string) {
 function routeUsesMobileFooter(route: AppRoute): boolean {
   return route.kind !== "post"
     && route.kind !== "post-karaoke"
+    && route.kind !== "post-study"
     && route.kind !== "create-post"
     && route.kind !== "create-post-global"
     && route.kind !== "create-community"

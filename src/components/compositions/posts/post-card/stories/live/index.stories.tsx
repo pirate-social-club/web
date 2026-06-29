@@ -27,7 +27,7 @@ const baseLiveRoom: LiveRoomContentSpec = {
   liveRoomId: "lr_friday_night_set",
   title: "Friday Night Studio Set",
   description: "A live run through the new material with a short Q&A after the set.",
-  coverSrc: "https://picsum.photos/seed/pirate-live-room/960/600",
+  coverSrc: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=960&h=540&fit=crop&crop=entropy&q=80",
   roomKind: "solo",
   status: "scheduled",
   accessMode: "free",
@@ -89,8 +89,105 @@ export const Ended: Story = {
         ...baseLiveRoom,
         status: "ended",
         accessState: "ended",
-        endedAtLabel: "1h ago",
+        endedAtLabel: "1h",
       }}
+    />
+  ),
+};
+
+export const EndedReplayPublishedFree: Story = {
+  name: "Replay / Published free",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseLiveRoom,
+        accessMode: "free",
+        accessState: "ended",
+        endedAtLabel: "1h",
+        hasEntitlement: true,
+        onWatch: noop,
+        replayDurationLabel: "48 min",
+        replayStatus: "published",
+        status: "ended",
+      }}
+    />
+  ),
+};
+
+export const EndedReplayPublishedPaidNeedsTicket: Story = {
+  name: "Replay / Published paid locked",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseLiveRoom,
+        accessMode: "paid",
+        accessState: "ended",
+        endedAtLabel: "1h",
+        hasEntitlement: false,
+        listingMode: "listed",
+        listingStatus: "active",
+        onBuy: noop,
+        priceLabel: "$12.00",
+        replayDurationLabel: "48 min",
+        replayStatus: "published",
+        status: "ended",
+      }}
+    />
+  ),
+};
+
+export const EndedReplayProcessing: Story = {
+  name: "Replay / Processing",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseLiveRoom,
+        accessState: "ended",
+        endedAtLabel: "1h",
+        replayDurationLabel: "48 min",
+        replayStatus: "processing",
+        status: "ended",
+      }}
+      viewContext="post"
+    />
+  ),
+};
+
+export const EndedReplayUnderReview: Story = {
+  name: "Replay / Under review",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseLiveRoom,
+        accessState: "ended",
+        endedAtLabel: "1h",
+        replayDurationLabel: "48 min",
+        replayStatus: "review_pending",
+        status: "ended",
+      }}
+      viewContext="post"
+    />
+  ),
+};
+
+export const EndedReplayFailed: Story = {
+  name: "Replay / Failed",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseLiveRoom,
+        accessState: "ended",
+        endedAtLabel: "1h",
+        replayDurationLabel: "48 min",
+        replayStatus: "failed",
+        status: "ended",
+      }}
+      viewContext="post"
     />
   ),
 };

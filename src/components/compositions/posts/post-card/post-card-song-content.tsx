@@ -1,14 +1,12 @@
 import * as React from "react";
 import {
   ArrowSquareOut,
-  DownloadSimple,
+  GraduationCap,
   Lock as FilledLockIcon,
   MicrophoneStage,
   MusicNote,
   Pause as PauseIcon,
-  PianoKeys,
   Play as PlayIcon,
-  SlidersHorizontal,
   VinylRecord,
 } from "@phosphor-icons/react";
 import { Spinner } from "@/components/primitives/spinner";
@@ -25,8 +23,6 @@ import type {
   DownloadPolicy,
   SongContentSpec,
   SongKaraokeStatus,
-  StemKind,
-  StemSpec,
   UpstreamAttribution,
 } from "./post-card.types";
 
@@ -58,6 +54,7 @@ interface DerivedSongUI {
   showVinylLink: boolean;
   showBuy: boolean;
   showDownload: boolean;
+  showStudy: boolean;
   showKaraoke: boolean;
   showKaraokeStatus: boolean;
   effectiveDownloadPolicy: DownloadPolicy;
@@ -84,10 +81,13 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     songMode,
     upstreamAttributions,
     karaoke,
+    study,
+    activityDiagnosticsVisible,
     karaokeStatusVisible,
     onBuy,
     onDownload,
     onKaraoke,
+    onStudy,
     onUnlock,
   } = content;
 
@@ -102,6 +102,7 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
   const isListingActive = listingStatus === "active";
   const isListedActive = isListed && isListingActive;
   const isOwned = hasEntitlement === true;
+  const isContentAccessible = !isLocked || isOwned;
   const effectiveDownloadPolicy = getEffectiveDownloadPolicy(content);
   const hasVinylReleaseUrl = Boolean(vinylRelease?.url?.trim());
   
@@ -122,8 +123,14 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     effectiveDownloadPolicy === "free_download"
     || (effectiveDownloadPolicy === "purchased_download" && isOwned)
   );
-  const showKaraoke = karaoke?.canKaraoke === true && karaoke.status === "ready" && Boolean(onKaraoke) && !ageGateRequiresProof;
-  const showKaraokeStatus = karaokeStatusVisible === true
+  const showStudy = study?.status === "ready" && Boolean(onStudy) && isContentAccessible && !ageGateRequiresProof;
+  const showKaraoke = karaoke?.canKaraoke === true
+    && karaoke.status === "ready"
+    && Boolean(onKaraoke)
+    && isContentAccessible
+    && !ageGateRequiresProof;
+  const diagnosticsVisible = activityDiagnosticsVisible === true || karaokeStatusVisible === true;
+  const showKaraokeStatus = diagnosticsVisible
     && !showKaraoke
     && !ageGateRequiresProof
     && (
@@ -174,6 +181,7 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     showVinylLink,
     showBuy,
     showDownload,
+    showStudy,
     showKaraoke,
     showKaraokeStatus,
     effectiveDownloadPolicy,
@@ -269,38 +277,6 @@ function getPlaybackDurationMs(content: SongContentSpec, canShowPreview: boolean
   return defaultPreviewDurationMs;
 }
 
-function stemKindLabel(kind: StemKind): string {
-  switch (kind) {
-    case "instrumental":
-      return "Instrumental";
-    case "vocals":
-      return "Vocals";
-    case "drums":
-      return "Drums";
-    case "bass":
-      return "Bass";
-    case "other":
-      return "Stem";
-    default:
-      return "Stem";
-  }
-}
-
-function stemLabel(stem: StemSpec): string {
-  return stem.label ?? stemKindLabel(stem.kind);
-}
-
-function stemIcon(stem: StemSpec) {
-  switch (stem.kind) {
-    case "instrumental":
-      return <PianoKeys className="size-5" />;
-    case "vocals":
-      return <MicrophoneStage className="size-5" />;
-    default:
-      return <SlidersHorizontal className="size-5" />;
-  }
-}
-
 function karaokeStatusLabel(status: SongKaraokeStatus): string {
   switch (status) {
     case "processing":
@@ -312,34 +288,6 @@ function karaokeStatusLabel(status: SongKaraokeStatus): string {
     case "ready":
       return "Ready";
   }
-}
-
-function resolveStemAccessPolicy(stem: StemSpec, songPolicy: DownloadPolicy) {
-  if (stem.accessPolicy !== "inherit") {
-    return stem.accessPolicy;
-  }
-
-  if (songPolicy === "free_download") {
-    return "free";
-  }
-
-  if (songPolicy === "purchased_download") {
-    return "purchasers_only";
-  }
-
-  return "unavailable";
-}
-
-function canDownloadStem(stem: StemSpec, content: SongContentSpec, songPolicy: DownloadPolicy): boolean {
-  if (!stem.onDownload) return false;
-
-  const resolvedPolicy = resolveStemAccessPolicy(stem, songPolicy);
-  if (resolvedPolicy === "unavailable") return false;
-  if (resolvedPolicy === "free") return true;
-
-  return stem.accessPolicy === "inherit" && songPolicy === "purchased_download"
-    ? content.hasEntitlement === true || content.entitledStems?.includes(stem.kind) === true
-    : content.entitledStems?.includes(stem.kind) === true;
 }
 
 interface SongOfferRowProps {
@@ -374,16 +322,11 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
   const isLocked = content.accessMode === "locked";
   const isListedActive = content.listingMode === "listed" && content.listingStatus === "active";
   const effectivePrice = content.regionalPriceLabel ?? content.priceLabel;
-  const songPolicy = ui.effectiveDownloadPolicy;
   const vinylReleaseUrl = content.vinylRelease?.url?.trim();
-  const canDownloadOriginal = Boolean(
-    content.onDownload
-    && (
-      songPolicy === "free_download"
-      || (songPolicy === "purchased_download" && isOwned)
-    ),
-  );
 
+  // Card surface carries only high-intent actions (buy/unlock/study/sing/vinyl).
+  // Original + stem downloads are file management and live in the kebab menu
+  // (see deriveSongHeaderMenuActions in post-card.tsx).
   if (isLocked && !isOwned && isListedActive && content.onBuy) {
     rows.push(
       <SongOfferRow
@@ -422,70 +365,26 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
         label="Digital MP3"
       />,
     );
-  } else if (canDownloadOriginal && content.onDownload) {
-    rows.push(
-      <SongOfferRow
-        action={(
-          <Button
-            aria-label="Download Original"
-            className="size-10 px-0"
-            data-post-card-interactive="true"
-            leadingIcon={<DownloadSimple className="size-4" />}
-            onClick={content.onDownload}
-            size="sm"
-            variant="secondary"
-          />
-        )}
-        icon={<MusicNote className="size-5" />}
-        key="original-download"
-        label="Original"
-      />,
-    );
   }
 
-  for (const [index, stem] of (content.stems ?? []).entries()) {
-    if (!canDownloadStem(stem, content, songPolicy) || !stem.onDownload) continue;
-
+  if (ui.showStudy && content.onStudy) {
     rows.push(
       <SongOfferRow
         action={(
           <Button
-            aria-label={`Download ${stemLabel(stem)}`}
-            className="size-10 px-0"
-            data-post-card-interactive="true"
-            leadingIcon={<DownloadSimple className="size-4" />}
-            onClick={stem.onDownload}
-            size="sm"
-            variant="secondary"
-          />
-        )}
-        icon={stemIcon(stem)}
-        key={`stem-${index}-${stem.kind}`}
-        label={stemLabel(stem)}
-      />,
-    );
-  }
-
-  if (vinylReleaseUrl) {
-    rows.push(
-      <SongOfferRow
-        action={(
-          <Button
-            asChild
+            aria-label="Open study"
             className="h-10 w-32 px-5"
             data-post-card-interactive="true"
+            onClick={content.onStudy}
             size="sm"
             variant="secondary"
           >
-            <a aria-label="Buy vinyl on ElasticStage" href={vinylReleaseUrl} rel="noreferrer" target="_blank">
-              <span>Buy</span>
-              <ArrowSquareOut className="size-4" />
-            </a>
+            Study
           </Button>
         )}
-        icon={<VinylRecord className="size-5" />}
-        key="vinyl"
-        label="Vinyl"
+        icon={<GraduationCap className="size-5" />}
+        key="study"
+        label="Study"
       />,
     );
   }
@@ -521,6 +420,30 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
         icon={<MicrophoneStage className="size-5" />}
         key="karaoke-status"
         label="Karaoke"
+      />,
+    );
+  }
+
+  if (vinylReleaseUrl) {
+    rows.push(
+      <SongOfferRow
+        action={(
+          <Button
+            asChild
+            className="h-10 w-32 px-5"
+            data-post-card-interactive="true"
+            size="sm"
+            variant="secondary"
+          >
+            <a aria-label="Buy vinyl on ElasticStage" href={vinylReleaseUrl} rel="noreferrer" target="_blank">
+              <span>Buy</span>
+              <ArrowSquareOut className="size-4" />
+            </a>
+          </Button>
+        )}
+        icon={<VinylRecord className="size-5" />}
+        key="vinyl"
+        label="Vinyl"
       />,
     );
   }

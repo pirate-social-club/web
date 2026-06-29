@@ -224,7 +224,7 @@ export const PublicStreamOnly: Story = {
 };
 
 export const PublicFreeDownload: Story = {
-  name: "Access / Public free download menu",
+  name: "Access / Public free download",
   render: () => (
     <PostCard
       {...basePost}
@@ -345,7 +345,7 @@ export const FreeOriginalDownload: Story = {
       title="Original download"
       content={{
         ...baseSong,
-        caption: "Original file is available directly from the post.",
+        caption: "Original file is downloadable from the post options menu (kebab).",
         accessMode: "public",
         downloadPolicy: "free_download",
         onDownload: noop,
@@ -362,7 +362,7 @@ export const FreeOriginalInstrumentalDownload: Story = {
       title="Original and instrumental downloads"
       content={{
         ...baseSong,
-        caption: "Original file and instrumental are available directly from the post.",
+        caption: "Original file and instrumental are downloadable from the post options menu (kebab).",
         accessMode: "public",
         downloadPolicy: "free_download",
         onDownload: noop,
@@ -388,7 +388,7 @@ export const FreeOriginalVocalsDownload: Story = {
       title="Original and vocal downloads"
       content={{
         ...baseSong,
-        caption: "Original file and vocal stem are available directly from the post.",
+        caption: "Original file and vocal stem are downloadable from the post options menu (kebab).",
         accessMode: "public",
         downloadPolicy: "free_download",
         onDownload: noop,
@@ -415,7 +415,7 @@ export const FreeDownloadWithStems: Story = {
       title="Free download pack"
       content={{
         ...baseSong,
-        caption: "Grab the original, instrumental, and vocal stem directly from the post.",
+        caption: "Original, instrumental, and vocal stem are all downloadable from the post options menu (kebab).",
         accessMode: "public",
         downloadPolicy: "free_download",
         onDownload: noop,
@@ -539,8 +539,11 @@ export const StemsInstrumentalAndVocals: Story = {
   ),
 };
 
-export const CommerceHeaderMenuDownloadsStems: Story = {
-  name: "Commerce / Header menu / Downloads + stems",
+export const StemsOwnedAllEntitled: Story = {
+  // An owned track with the original + both stems entitled. All three downloads
+  // are exposed in the post options menu (kebab) via deriveSongHeaderMenuActions
+  // (song-download:original + song-download:stem:*), not as inline offer rows.
+  name: "Stems / Owned, original + all stems entitled",
   render: () => (
     <PostCard
       {...basePost}
@@ -571,6 +574,11 @@ export const CommerceHeaderMenuDownloadsStems: Story = {
 };
 
 export const KaraokeReady: Story = {
+  // Karaoke availability and downloadable assets are independent axes. This
+  // fixture deliberately includes downloadable assets (free original +
+  // instrumental) to demonstrate the common hierarchy: "Sing" on the card
+  // surface, downloads in the kebab. A stream-only karaoke track is also valid
+  // (Sing on-card, empty download group).
   name: "Karaoke / Ready",
   render: () => (
     <PostCard
@@ -578,6 +586,17 @@ export const KaraokeReady: Story = {
       title="Karaoke-ready song"
       content={{
         ...baseSong,
+        downloadPolicy: "free_download",
+        onDownload: noop,
+        stems: [
+          {
+            kind: "instrumental",
+            durationLabel: "3:47",
+            durationMs: 227000,
+            accessPolicy: "free",
+            onDownload: noop,
+          },
+        ],
         karaoke: { canKaraoke: true, status: "ready" },
         onKaraoke: noop,
       }}
@@ -585,8 +604,79 @@ export const KaraokeReady: Story = {
   ),
 };
 
+export const StudyReady: Story = {
+  name: "Study / Ready",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Study-ready song"
+      content={{
+        ...baseSong,
+        study: {
+          status: "ready",
+          exerciseCount: 14,
+          sourceLanguage: "en",
+          targetLanguage: "es",
+        },
+        onStudy: noop,
+      }}
+    />
+  ),
+};
+
+export const StudyAndKaraokeReady: Story = {
+  name: "Study / Ready + Karaoke",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Study and karaoke-ready song"
+      content={{
+        ...baseSong,
+        study: {
+          status: "ready",
+          exerciseCount: 14,
+          sourceLanguage: "en",
+          targetLanguage: "es",
+        },
+        onStudy: noop,
+        karaoke: { canKaraoke: true, status: "ready" },
+        onKaraoke: noop,
+      }}
+    />
+  ),
+};
+
+export const StudyLockedNotEntitled: Story = {
+  name: "Study / Locked not entitled",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Locked song with study available after purchase"
+      content={{
+        ...baseSong,
+        accessMode: "locked",
+        listingMode: "listed",
+        listingStatus: "active",
+        priceLabel: "$3.99",
+        study: {
+          status: "ready",
+          exerciseCount: 14,
+          sourceLanguage: "en",
+          targetLanguage: "es",
+        },
+        onStudy: noop,
+        karaoke: { canKaraoke: true, status: "ready" },
+        onKaraoke: noop,
+        onBuy: noop,
+      }}
+    />
+  ),
+};
+
 export const KaraokeProcessing: Story = {
-  name: "Karaoke / Processing",
+  // Status rows are owner-only diagnostics (karaokeStatusVisible is set only
+  // for the song author); normal viewers see nothing when karaoke isn't ready.
+  name: "Karaoke / Owner diagnostic — processing",
   render: () => (
     <PostCard
       {...basePost}
@@ -601,7 +691,8 @@ export const KaraokeProcessing: Story = {
 };
 
 export const KaraokeFailed: Story = {
-  name: "Karaoke / Failed",
+  // Owner-only diagnostic; not a state normal viewers ever see.
+  name: "Karaoke / Owner diagnostic — failed",
   render: () => (
     <PostCard
       {...basePost}
@@ -616,7 +707,8 @@ export const KaraokeFailed: Story = {
 };
 
 export const KaraokeUnavailable: Story = {
-  name: "Karaoke / Unavailable",
+  // Owner-only diagnostic; not a state normal viewers ever see.
+  name: "Karaoke / Owner diagnostic — unavailable",
   render: () => (
     <PostCard
       {...basePost}

@@ -169,6 +169,14 @@ describe("public profile host routing", () => {
     });
   });
 
+  test("matches dedicated study routes", () => {
+    expectJson(matchRoute("/p/pst_cf89c73fe60641debd05c939252a870c/study"), {
+      kind: "post-study",
+      path: "/p/pst_cf89c73fe60641debd05c939252a870c/study",
+      postId: "pst_cf89c73fe60641debd05c939252a870c",
+    });
+  });
+
   test("matches settings agent routes from path routes", () => {
     expectJson(matchRoute("/settings"), {
       kind: "settings-index",

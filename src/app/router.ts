@@ -36,6 +36,7 @@ export type AppRoute =
   | { kind: "post"; path: string; postId: string }
   | { kind: "live-room"; path: string; postId: string }
   | { kind: "post-karaoke"; path: string; postId: string }
+  | { kind: "post-study"; path: string; postId: string }
   | { kind: "crosspost"; path: string; postId: string }
   | { kind: "inbox"; path: "/inbox" }
   | { kind: "chat"; path: "/chat" }
@@ -354,6 +355,14 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   if (segments.length === 3 && segments[0] === "p" && segments[2] === "karaoke") {
     return {
       kind: "post-karaoke",
+      path: normalized,
+      postId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  if (segments.length === 3 && segments[0] === "p" && segments[2] === "study") {
+    return {
+      kind: "post-study",
       path: normalized,
       postId: decodeURIComponent(segments[1]),
     };

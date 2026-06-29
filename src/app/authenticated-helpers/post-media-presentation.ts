@@ -287,6 +287,24 @@ export function toKaraokeCapability(postResponse: ApiPost): SongContentSpec["kar
   }
 }
 
+export function toStudyCapability(postResponse: ApiPost): SongContentSpec["study"] {
+  if (postResponse.post.post_type !== "song") {
+    return undefined;
+  }
+
+  const capability = postResponse.study_capability;
+  if (!capability) {
+    return undefined;
+  }
+
+  return {
+    status: capability.status,
+    exerciseCount: capability.exercise_count ?? undefined,
+    sourceLanguage: capability.source_language ?? undefined,
+    targetLanguage: capability.target_language ?? undefined,
+  };
+}
+
 function toKaraokeStatusLabel(postResponse: ApiPost): string | undefined {
   const presentation = postResponse.song_presentation as SongPresentationWithDownloads | null | undefined;
   const capability = toKaraokeCapability(postResponse);
@@ -514,6 +532,7 @@ export function toSongPostContent(
     captionDir?: "rtl";
     captionLang?: string;
     onKaraoke?: () => void;
+    onStudy?: () => void;
     onVerifyAge?: () => void;
     resolvedCaption?: string;
     title: string;
@@ -583,6 +602,7 @@ export function toSongPostContent(
     storageProofs.preview = primaryProof;
   }
   const karaoke = toKaraokeCapability(postResponse);
+  const study = toStudyCapability(postResponse);
   return {
     type: "song",
     accessMode,
@@ -599,6 +619,7 @@ export function toSongPostContent(
       : undefined,
     onBuy: songOptions?.onBuy,
     onKaraoke: input.onKaraoke,
+    onStudy: study ? input.onStudy : undefined,
     downloadPolicy: downloadableOriginal ? "free_download" : undefined,
     onDownload: downloadableOriginal?.storage_ref ? () => void downloadAudioFile({
       filename: audioDownloadFilename({
@@ -633,6 +654,8 @@ export function toSongPostContent(
     karaoke,
     karaokeStatusLabel: toKaraokeStatusLabel(postResponse),
     karaokeStatusVisible: Boolean(karaoke && songOptions?.currentUserId && post.author_user === songOptions.currentUserId),
+    study,
+    activityDiagnosticsVisible: Boolean(songOptions?.currentUserId && post.author_user === songOptions.currentUserId),
     upstreamAttributions: toUpstreamAttributions(postResponse, songOptions),
   };
 }

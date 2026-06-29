@@ -1395,4 +1395,148 @@ describe("ApiClient media uploads", () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  test("requires an auth header for live-room replay draft reads", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        object: "live_room_replay_draft",
+        live_room: "liv_test",
+        recording_enabled: true,
+        replay_status: "review_pending",
+        status: "ready",
+        replay_asset: null,
+        recording: null,
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.getLiveRoomReplayDraft("cmt_test", "liv_test");
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("GET");
+      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/live-rooms/liv_test/replay-draft");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("publishes live-room replay drafts with the selected access mode", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        object: "live_room_replay_draft",
+        live_room: "liv_test",
+        recording_enabled: true,
+        replay_status: "published",
+        status: "published",
+        replay_asset: null,
+        recording: null,
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.publishLiveRoomReplayDraft("cmt_test", "liv_test", { access_mode: "included_with_ticket" });
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("POST");
+      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/live-rooms/liv_test/replay-draft/publish");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+      await expect(capturedRequest.json()).resolves.toEqual({ access_mode: "included_with_ticket" });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("can fetch live-room replay content as a raw response", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return new Response("encrypted replay", {
+        status: 200,
+        headers: { "content-type": "application/octet-stream" },
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      const response = await client.communities.getLiveRoomReplayContent("cmt_test", "liv_test");
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("GET");
+      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/live-rooms/liv_test/replay/content");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+      expect(response).toBeInstanceOf(Response);
+      await expect(response.text()).resolves.toBe("encrypted replay");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("can read public live-room replay access and content without an auth header", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      if (request.url.endsWith("/replay/content")) {
+        return new Response("public replay", {
+          status: 200,
+          headers: { "content-type": "video/mp4" },
+        });
+      }
+      return Response.json({
+        live_room: "liv_test",
+        replay_asset: "lra_test",
+        replay_listing: null,
+        replay_status: "published",
+        access_mode: "free",
+        locked_delivery_status: "none",
+        access_granted: true,
+        decision_reason: "free",
+        delivery_kind: "primary_content_ref",
+        delivery_ref: "/public-communities/cmt_test/live-rooms/liv_test/replay/content",
+        story_cdr_access: null,
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      const access = await client.publicCommunities.getLiveRoomReplayAccess("cmt_test", "liv_test");
+      const response = await client.publicCommunities.getLiveRoomReplayContent("cmt_test", "liv_test");
+
+      expect(requests[0]?.method).toBe("GET");
+      expect(requests[0]?.url).toBe("http://pirate.test/public-communities/cmt_test/live-rooms/liv_test/replay/access");
+      expect(requests[0]?.headers.has("authorization")).toBe(false);
+      expect(access.access_granted).toBe(true);
+      expect(access.delivery_kind).toBe("primary_content_ref");
+      expect(requests[1]?.method).toBe("GET");
+      expect(requests[1]?.url).toBe("http://pirate.test/public-communities/cmt_test/live-rooms/liv_test/replay/content");
+      expect(requests[1]?.headers.has("authorization")).toBe(false);
+      expect(response).toBeInstanceOf(Response);
+      await expect(response.text()).resolves.toBe("public replay");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

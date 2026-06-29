@@ -138,6 +138,7 @@ export function buildLiveRoomRequest(input: {
     cover_ref: input.coverRef ?? undefined,
     ...(storeUrl ? { store_url: storeUrl } : {}),
     ...(storeLabel ? { store_label: storeLabel } : {}),
+    recording_enabled: input.liveState.recordingEnabled === true,
     performer_allocations: performerAllocationsFromLiveState({
       guestUserId,
       hostUserId: input.hostUserId,

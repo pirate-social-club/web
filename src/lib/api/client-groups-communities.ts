@@ -10,10 +10,14 @@ import type {
   ApiCreateCommunityRequest,
   ApiLiveRoom,
   ApiLiveRoomAccessResponse,
+  ApiLiveRoomReplayAccessResponse,
+  ApiLiveRoomReplayDraft,
   ApiLiveRoomViewerAttachResponse,
   ApiLiveRoomViewerRenewRequest,
   ApiPublishLiveRoomRequest,
+  ApiPublishLiveRoomReplayDraftRequest,
   ApiPublishLiveRoomResponse,
+  ApiUpdateLiveRoomReplayDraftRequest,
   CommunityListPostsOptions,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
@@ -81,6 +85,37 @@ export function createCommunitiesApi(request: ApiRequest) {
     getLiveRoom: (communityId: string, liveRoomId: string): Promise<ApiLiveRoom> =>
       request<ApiLiveRoom>(
         `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}`,
+      ),
+    getLiveRoomReplayDraft: (communityId: string, liveRoomId: string): Promise<ApiLiveRoomReplayDraft> =>
+      request<ApiLiveRoomReplayDraft>(
+        `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/replay-draft`,
+      ),
+    updateLiveRoomReplayDraft: (
+      communityId: string,
+      liveRoomId: string,
+      body: ApiUpdateLiveRoomReplayDraftRequest,
+    ): Promise<ApiLiveRoomReplayDraft> =>
+      request<ApiLiveRoomReplayDraft>(
+        `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/replay-draft`,
+        { method: "PATCH", body: JSON.stringify(body) },
+      ),
+    publishLiveRoomReplayDraft: (
+      communityId: string,
+      liveRoomId: string,
+      body: ApiPublishLiveRoomReplayDraftRequest,
+    ): Promise<ApiLiveRoomReplayDraft> =>
+      request<ApiLiveRoomReplayDraft>(
+        `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/replay-draft/publish`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    getLiveRoomReplayAccess: (communityId: string, liveRoomId: string): Promise<ApiLiveRoomReplayAccessResponse> =>
+      request<ApiLiveRoomReplayAccessResponse>(
+        `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/replay/access`,
+      ),
+    getLiveRoomReplayContent: (communityId: string, liveRoomId: string): Promise<Response> =>
+      request<Response>(
+        `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/replay/content`,
+        { responseType: "response" },
       ),
     getLiveRoomAccess: (communityId: string, liveRoomId: string): Promise<ApiLiveRoomAccessResponse> =>
       request<ApiLiveRoomAccessResponse>(

@@ -1564,6 +1564,8 @@ describe("PostComposer monetization", () => {
           scheduleForLater: "Schedule for later",
           startTime: "Start time",
           startTimeNote: "Required for scheduled live events.",
+          recordThisLivestream: "Record this livestream",
+          recordThisLivestreamNote: "Creates a private replay draft after the stream ends.",
         },
         placeholders: {},
         upload: {

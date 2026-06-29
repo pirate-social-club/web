@@ -112,6 +112,7 @@ describe("live create-post submit helpers", () => {
       cover_ref: "media_cover",
       store_url: "https://psc-zim-shop.fourthwall.com/",
       store_label: "Event merch",
+      recording_enabled: false,
       performer_allocations: [
         { user: "usr_host", role: "host", share_bps: 6000 },
         { user: "usr_guest", role: "guest", share_bps: 4000 },
@@ -166,6 +167,25 @@ describe("live create-post submit helpers", () => {
     });
 
     expect(request.event_start_at).toBeNull();
+  });
+
+  test("buildLiveRoomRequest forwards recording_enabled when the host opts in", () => {
+    const request = buildLiveRoomRequest({
+      description: "",
+      hostUserId: "usr_host",
+      liveState: {
+        roomKind: "solo",
+        accessMode: "free",
+        visibility: "public",
+        recordingEnabled: true,
+        setlistStatus: "ready",
+        performerAllocations: [{ role: "host", userId: "", sharePct: 100 }],
+        setlistItems: [{ titleText: "Song", performanceKind: "original" }],
+      },
+      title: "Recorded room",
+    });
+
+    expect(request.recording_enabled).toBe(true);
   });
 
   test("resolveLiveRoomGuestUserId preserves Pirate user ids", async () => {
@@ -254,6 +274,7 @@ describe("live create-post submit helpers", () => {
         guest_user: null,
         event_start_at: null,
         cover_ref: "media_cover",
+        recording_enabled: false,
         performer_allocations: undefined,
         setlist: {
           status: "ready",
@@ -371,6 +392,7 @@ describe("live create-post submit helpers", () => {
           guest_user: null,
           event_start_at: null,
           cover_ref: undefined,
+          recording_enabled: false,
           performer_allocations: [{ user: "usr_host", role: "host", share_bps: 10000 }],
           setlist: {
             status: "ready",

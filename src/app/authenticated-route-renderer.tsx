@@ -72,6 +72,10 @@ const LazyLiveRoomRoutePage = lazyRouteModule(
   () => import("./authenticated-routes/live-room-route"),
   "LiveRoomRoutePage",
 );
+const LazyReplayDraftRoutePage = lazyRouteModule(
+  () => import("./authenticated-routes/replay-draft-route"),
+  "ReplayDraftRoutePage",
+);
 const LazyKaraokeRoutePage = lazyRouteModule(
   () => import("./authenticated-routes/karaoke-route"),
   "KaraokeRoutePage",
@@ -194,6 +198,8 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyPostPage postId={route.postId} />;
     case "live-room":
       return <LazyLiveRoomRoutePage postId={route.postId} />;
+    case "post-replay-draft":
+      return <LazyReplayDraftRoutePage postId={route.postId} />;
     case "post-karaoke":
       return <LazyKaraokeRoutePage postId={route.postId} />;
     case "post-study":

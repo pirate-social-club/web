@@ -30,8 +30,12 @@ type DownloadableAudio = {
   decentralized_storage?: unknown;
 };
 type SongPresentationWithDownloads = NonNullable<ApiPost["song_presentation"]> & {
+  alignment_status?: "pending" | "processing" | "completed" | "failed" | null;
   downloadable_audio?: DownloadableAudio[] | null;
+  has_timed_lyrics?: boolean | null;
   instrumental_audio?: DownloadableAudio | null;
+  timed_lyrics?: unknown;
+  timed_lyrics_ref?: string | null;
   vocal_audio?: DownloadableAudio | null;
 };
 
@@ -455,15 +459,37 @@ export function toVideoPostContent(
 
 export type KaraokeCapability =
   | { canKaraoke: true; status: "ready" }
-  | { canKaraoke: false; status: "processing" | "failed" };
+  | { canKaraoke: false; status: "processing" | "failed" | "unavailable" };
+
+function hasTimedLyrics(presentation: SongPresentationWithDownloads | null | undefined): boolean {
+  if (!presentation) return false;
+  if (presentation.has_timed_lyrics === true) return true;
+  if (presentation.timed_lyrics_ref?.trim()) return true;
+  if (Array.isArray(presentation.timed_lyrics)) return presentation.timed_lyrics.length > 0;
+  if (presentation.timed_lyrics && typeof presentation.timed_lyrics === "object") {
+    return Object.keys(presentation.timed_lyrics).length > 0;
+  }
+  return false;
+}
 
 export function toKaraokeCapability(postResponse: ApiPost): KaraokeCapability | undefined {
   if (!postResponse.community?.karaoke_enabled) return undefined;
-  const hasInstrumental = postResponse.song_presentation?.downloadable_audio?.some(
-    (a) => a.kind === "instrumental" && !!a.storage_ref,
-  );
+  const presentation = postResponse.song_presentation as SongPresentationWithDownloads | null | undefined;
+  const hasInstrumental = normalizeDownloadableAudio(postResponse).get("instrumental")?.storage_ref;
   if (!hasInstrumental) return undefined;
-  return { canKaraoke: true, status: "ready" };
+  switch (presentation?.alignment_status) {
+    case "completed":
+      return hasTimedLyrics(presentation)
+        ? { canKaraoke: true, status: "ready" }
+        : { canKaraoke: false, status: "unavailable" };
+    case "pending":
+    case "processing":
+      return { canKaraoke: false, status: "processing" };
+    case "failed":
+      return { canKaraoke: false, status: "failed" };
+    default:
+      return undefined;
+  }
 }
 
 export function toSongPostContent(
@@ -540,6 +566,7 @@ export function toSongPostContent(
   if (primaryProof && accessMode === "locked" && !hasEntitlement) {
     storageProofs.preview = primaryProof;
   }
+  const karaokeCapability = toKaraokeCapability(postResponse);
   return {
     type: "song",
     accessMode,
@@ -566,9 +593,10 @@ export function toSongPostContent(
     }) : undefined,
     stems: downloadableStems.length ? downloadableStems : undefined,
     entitledStems: downloadableStems.map((stem) => stem.kind),
-    karaokeHref: toKaraokeCapability(postResponse)?.canKaraoke
+    karaokeHref: karaokeCapability?.canKaraoke
       ? `/p/${encodeURIComponent(post.id)}/karaoke`
       : undefined,
+    onKaraoke: karaokeCapability?.canKaraoke ? songOptions?.onKaraoke : undefined,
     onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,
     onPlay: playbackDescriptor && playback ? () => void playback.playTrack(playbackDescriptor) : undefined,
     onSeek: playbackDescriptor && playback ? (progressMs) => void playback.seekTrack(playbackDescriptor, progressMs) : undefined,

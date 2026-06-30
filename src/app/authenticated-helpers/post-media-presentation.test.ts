@@ -5,9 +5,16 @@ import { toKaraokeCapability } from "./post-media-presentation";
 
 function songPost(opts: {
   instrumental?: boolean;
+  alignmentStatus?: "pending" | "processing" | "completed" | "failed" | null;
   communityKaraokeEnabled?: boolean;
+  hasTimedLyrics?: boolean | null;
 } = {}): ApiPost {
-  const { instrumental = true, communityKaraokeEnabled = true } = opts;
+  const {
+    instrumental = true,
+    alignmentStatus = "completed",
+    communityKaraokeEnabled = true,
+    hasTimedLyrics = true,
+  } = opts;
   return {
     community: {
       karaoke_enabled: communityKaraokeEnabled,
@@ -21,6 +28,8 @@ function songPost(opts: {
       title: "Test Song",
       cover_art_ref: null,
       duration_ms: null,
+      alignment_status: alignmentStatus,
+      has_timed_lyrics: hasTimedLyrics,
       downloadable_audio: instrumental
         ? [{ kind: "instrumental", storage_ref: "/instrumental.mp3", mime_type: "audio/mpeg" }]
         : [],
@@ -31,6 +40,27 @@ function songPost(opts: {
 describe("toKaraokeCapability", () => {
   test("marks a community-enabled song with an instrumental as ready", () => {
     expect(toKaraokeCapability(songPost())).toEqual({ canKaraoke: true, status: "ready" });
+  });
+
+  test("waits while karaoke alignment is still processing", () => {
+    expect(toKaraokeCapability(songPost({ alignmentStatus: "processing" }))).toEqual({
+      canKaraoke: false,
+      status: "processing",
+    });
+  });
+
+  test("marks failed karaoke alignment as failed", () => {
+    expect(toKaraokeCapability(songPost({ alignmentStatus: "failed" }))).toEqual({
+      canKaraoke: false,
+      status: "failed",
+    });
+  });
+
+  test("does not mark completed alignment ready without timed lyrics", () => {
+    expect(toKaraokeCapability(songPost({ hasTimedLyrics: false }))).toEqual({
+      canKaraoke: false,
+      status: "unavailable",
+    });
   });
 
   test("returns undefined when the community has not enabled karaoke", () => {
@@ -55,6 +85,8 @@ describe("toKaraokeCapability", () => {
       post: { post_type: "song", access_mode: "public", media_refs: [] },
       song_presentation: {
         title: null, cover_art_ref: null, duration_ms: null,
+        alignment_status: "completed",
+        has_timed_lyrics: true,
         downloadable_audio: [{ kind: "instrumental", storage_ref: "/i.mp3", mime_type: "audio/mpeg" }],
       },
     } as unknown as ApiPost;

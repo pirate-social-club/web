@@ -692,6 +692,36 @@ describe("post presentation songs", () => {
     expect(content.entitledStems).toEqual(["instrumental", "vocals"]);
   });
 
+  test("uses the thread community argument for karaoke capability", () => {
+    const post = createSongPost();
+    post.community = null;
+    post.song_presentation = {
+      title: "Canonical track title",
+      cover_art_ref: "https://media.test/cover.jpg",
+      duration_ms: 123456,
+      downloadable_audio: [{
+        kind: "instrumental",
+        storage_ref: "/public-communities/cmt_songs/song-artifact-uploads/sau_instrumental/content",
+        mime_type: "audio/mpeg",
+        duration_ms: 123456,
+      }],
+      alignment_status: "completed",
+      has_timed_lyrics: true,
+    } as NonNullable<LocalizedPostResponse["song_presentation"]>;
+
+    const card = toThreadPostCard(post, {
+      id: "com_cmt_songs",
+      display_name: "Songs",
+      karaoke_enabled: true,
+      namespace_verification: null,
+      route_slug: null,
+    });
+
+    expect(card.content.type).toBe("song");
+    if (card.content.type !== "song") return;
+    expect(card.content.karaokeHref).toBe("/p/pst_song/karaoke");
+  });
+
   test("maps derivative source summaries into song card content", () => {
     const post = createSongPost({
       rights_basis: "derivative",

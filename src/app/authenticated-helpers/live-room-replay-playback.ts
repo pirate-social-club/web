@@ -42,6 +42,21 @@ function mapDeniedReplayAccess(access: ApiLiveRoomReplayAccessResponse): LiveRoo
   return { kind: "not_available" };
 }
 
+function expectedReplayContentRef(communityId: string, liveRoomId: string): string {
+  return `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/replay/content`;
+}
+
+function hasValidStoryCdrReplayAccess(
+  access: ApiLiveRoomReplayAccessResponse,
+  communityId: string,
+  liveRoomId: string,
+): boolean {
+  return Boolean(
+    access.story_cdr_access
+      && access.story_cdr_access.ciphertext_ref === expectedReplayContentRef(communityId, liveRoomId),
+  );
+}
+
 export async function loadLiveRoomReplayPlayback(params: {
   accessToken: string | null;
   api: ReplayCommunitiesClient;
@@ -56,6 +71,9 @@ export async function loadLiveRoomReplayPlayback(params: {
   }
 
   if (access.delivery_kind === "primary_content_ref") {
+    if (access.story_cdr_access) {
+      return { kind: "not_available" };
+    }
     const response = await params.api.getLiveRoomReplayContent(params.communityId, params.liveRoomId);
     if (!response.ok) {
       throw new Error("Could not load this replay.");
@@ -66,7 +84,7 @@ export async function loadLiveRoomReplayPlayback(params: {
     };
   }
 
-  if (access.delivery_kind === "story_cdr_ref" && access.story_cdr_access) {
+  if (access.delivery_kind === "story_cdr_ref" && hasValidStoryCdrReplayAccess(access, params.communityId, params.liveRoomId)) {
     if (!params.wallet) {
       return { kind: "wallet_required" };
     }

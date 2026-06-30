@@ -5,6 +5,23 @@ import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 
 import { loadLiveRoomReplayPlayback } from "./live-room-replay-playback";
 
+const storyCdrAccess = {
+  access_aux_data_hex: "0x1234",
+  access_proof: { mode: "signed" },
+  access_ref: "liv_test",
+  access_scope: "asset.share",
+  cdr_contract_address: "0x0000000000000000000000000000000000000001",
+  chain_id: 1315,
+  cipher_algorithm: "AES-256-GCM",
+  cipher_iv_b64: "aXY=",
+  ciphertext_ref: "/communities/cmt_test/live-rooms/liv_test/replay/content",
+  mime_type: "video/mp4",
+  namespace: "pirate.test",
+  read_condition_address: "0x0000000000000000000000000000000000000002",
+  rpc_url: "https://story.test",
+  vault_uuid: 7,
+} satisfies NonNullable<ApiLiveRoomReplayAccessResponse["story_cdr_access"]>;
+
 function replayAccess(overrides: Partial<ApiLiveRoomReplayAccessResponse> = {}): ApiLiveRoomReplayAccessResponse {
   return {
     access_granted: true,
@@ -105,22 +122,7 @@ describe("loadLiveRoomReplayPlayback", () => {
       delivery_kind: "story_cdr_ref",
       delivery_ref: "story-cdr:replay",
       locked_delivery_status: "ready",
-      story_cdr_access: {
-        access_aux_data_hex: "0x1234",
-        access_proof: {},
-        access_ref: "liv_test",
-        access_scope: "asset.share",
-        cdr_contract_address: "0x0000000000000000000000000000000000000001",
-        chain_id: 1315,
-        cipher_algorithm: "AES-256-GCM",
-        cipher_iv_b64: "aXY=",
-        ciphertext_ref: "/communities/cmt_test/live-rooms/liv_test/replay/content",
-        mime_type: "video/mp4",
-        namespace: "pirate.test",
-        read_condition_address: "0x0000000000000000000000000000000000000002",
-        rpc_url: "https://story.test",
-        vault_uuid: 7,
-      },
+      story_cdr_access: storyCdrAccess,
     }));
 
     const result = await loadLiveRoomReplayPlayback({
@@ -146,22 +148,7 @@ describe("loadLiveRoomReplayPlayback", () => {
       delivery_kind: "story_cdr_ref",
       delivery_ref: "story-cdr:replay",
       locked_delivery_status: "ready",
-      story_cdr_access: {
-        access_aux_data_hex: "0x1234",
-        access_proof: { mode: "signed" },
-        access_ref: "liv_test",
-        access_scope: "asset.share",
-        cdr_contract_address: "0x0000000000000000000000000000000000000001",
-        chain_id: 1315,
-        cipher_algorithm: "AES-256-GCM",
-        cipher_iv_b64: "aXY=",
-        ciphertext_ref: "/communities/cmt_test/live-rooms/liv_test/replay/content",
-        mime_type: "video/mp4",
-        namespace: "pirate.test",
-        read_condition_address: "0x0000000000000000000000000000000000000002",
-        rpc_url: "https://story.test",
-        vault_uuid: 7,
-      },
+      story_cdr_access: storyCdrAccess,
     }));
 
     const result = await loadLiveRoomReplayPlayback({
@@ -179,6 +166,52 @@ describe("loadLiveRoomReplayPlayback", () => {
     expect(call?.access.access_scope).toBe("asset.share");
     expect(call?.accessToken).toBe("token");
     expect(call?.wallet).toBe(wallet);
+    expect(api.getLiveRoomReplayContent).not.toHaveBeenCalled();
+  });
+
+  test("fails closed when primary replay delivery includes a Story CDR package", async () => {
+    const api = createReplayApi(replayAccess({
+      delivery_kind: "primary_content_ref",
+      story_cdr_access: storyCdrAccess,
+    }));
+
+    const result = await loadLiveRoomReplayPlayback({
+      accessToken: "token",
+      api,
+      communityId: "cmt_test",
+      liveRoomId: "liv_test",
+    });
+
+    expect(result).toEqual({ kind: "not_available" });
+    expect(api.getLiveRoomReplayContent).not.toHaveBeenCalled();
+  });
+
+  test("fails closed when Story CDR ciphertext points at a different replay", async () => {
+    const readStoryCdrAsset = mock(async () => new Blob(["locked"], { type: "video/mp4" }));
+    const wallet = { address: "0x0000000000000000000000000000000000000003" } as PirateConnectedEvmWallet;
+    const api = createReplayApi(replayAccess({
+      access_mode: "paid",
+      decision_reason: "purchase_entitlement",
+      delivery_kind: "story_cdr_ref",
+      delivery_ref: "story-cdr:replay",
+      locked_delivery_status: "ready",
+      story_cdr_access: {
+        ...storyCdrAccess,
+        ciphertext_ref: "/communities/cmt_other/live-rooms/liv_other/replay/content",
+      },
+    }));
+
+    const result = await loadLiveRoomReplayPlayback({
+      accessToken: "token",
+      api,
+      communityId: "cmt_test",
+      liveRoomId: "liv_test",
+      readStoryCdrAsset,
+      wallet,
+    });
+
+    expect(result).toEqual({ kind: "not_available" });
+    expect(readStoryCdrAsset).not.toHaveBeenCalled();
     expect(api.getLiveRoomReplayContent).not.toHaveBeenCalled();
   });
 });

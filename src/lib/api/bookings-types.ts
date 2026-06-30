@@ -56,6 +56,7 @@ export interface CreateAvailabilityRuleRequest {
   effective_from_utc?: string;
   effective_until_utc?: string;
 }
+export type UpdateAvailabilityRuleRequest = Partial<CreateAvailabilityRuleRequest>;
 
 export interface AvailabilityException {
   object: "availability_exception";
@@ -70,6 +71,29 @@ export interface CreateAvailabilityExceptionRequest {
   start_utc: string;
   end_utc: string;
 }
+export type UpdateAvailabilityExceptionRequest = Partial<CreateAvailabilityExceptionRequest>;
+
+export interface PriceRule {
+  object: "price_rule";
+  id: string;
+  match_weekday: number[] | null;
+  match_local_start: string | null;
+  match_local_end: string | null;
+  match_duration_seconds: number | null;
+  price_cents: number;
+  priority: number;
+  created: number;
+  updated: number;
+}
+export interface CreatePriceRuleRequest {
+  match_weekday?: number[] | null;
+  match_local_start?: string | null;
+  match_local_end?: string | null;
+  match_duration_seconds?: number | null;
+  price_cents: number;
+  priority?: number;
+}
+export type UpdatePriceRuleRequest = Partial<CreatePriceRuleRequest>;
 
 export interface BookingListResponse<T> {
   object: "list";

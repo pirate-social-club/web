@@ -354,6 +354,8 @@ export function ProfileTab({
           </div>
         </SettingsSection>
       ) : null}
+
+      {profile.bookingSection}
     </div>
   );
 }

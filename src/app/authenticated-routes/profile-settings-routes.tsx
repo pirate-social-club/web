@@ -32,6 +32,8 @@ import {
 } from "@/app/authenticated-helpers/profile-settings-mapping";
 import { useDomainsTab } from "@/app/authenticated-state/use-domains-tab";
 import { useSettingsOwnedAgents } from "@/app/authenticated-state/use-settings-owned-agents";
+import { useBookingHostSettings } from "@/app/authenticated-state/use-booking-host-settings";
+import { ProfileBookingsSection } from "@/components/compositions/bookings/profile-bookings-section/profile-bookings-section";
 
 export { CurrentUserWalletPage } from "./wallet-settings-route";
 export { CurrentUserSettingsIndexPage } from "./settings-index-route";
@@ -87,6 +89,7 @@ function getSettingsSectionTitle(
 export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab }) {
   const { copy } = useRouteMessages();
   const api = useApi();
+  const { loading: bookingLoading, sectionProps: bookingSectionProps } = useBookingHostSettings();
   const session = useSession();
   const profile = session?.profile ?? null;
   const isMobile = useIsMobile();
@@ -400,6 +403,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         submitState: preferencesSubmitState,
       }}
       profile={{
+        bookingSection: bookingLoading ? null : <ProfileBookingsSection {...bookingSectionProps} />,
         avatarSeed: profile.id,
         avatarSrc: avatarRemoved ? undefined : profile.avatar_ref ?? undefined,
         avatarSource: avatarRemoved ? "none" : profile.avatar_source ?? null,

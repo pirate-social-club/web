@@ -192,13 +192,17 @@ export function toCommunityFeedItem(
 export function toThreadPostCard(
   postResponse: ApiPost,
   community:
-    | Pick<ApiCommunity, "id" | "display_name" | "namespace_verification" | "route_slug">
-    | Pick<ApiCommunityPreview, "id" | "display_name" | "namespace_verification" | "route_slug">
+    | Pick<ApiCommunity, "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
+    | Pick<ApiCommunityPreview, "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
     | null,
   authorProfile?: ApiProfile,
   songOptions?: SongPresentationOptions,
   opts?: PostPresentationOptions,
 ): PostCardProps {
+  const postResponseWithCommunity = {
+    ...postResponse,
+    community: postResponse.community ?? community,
+  } as ApiPost;
   const { post } = postResponse;
   const communityVerified = Boolean(community?.namespace_verification);
   const storyPortalHref = resolvePostStoryPortalHref({
@@ -220,7 +224,7 @@ export function toThreadPostCard(
   const isDeleted = post.status === "deleted";
   const isRemoved = post.status === "removed";
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
-  const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
+  const content = toCommunityPostContent(postResponseWithCommunity, songOptions, { ...opts, embedMode: "official" });
   const heading = resolvePostCardHeadingTitle({
     translatedTitle: opts?.preferOriginalText ? null : postResponse.translated_title,
     originalTitle: post.title,

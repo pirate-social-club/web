@@ -13,12 +13,9 @@ import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
 import type { AttachSessionResponse, BookingView } from "@/lib/api/bookings-types";
 
-// Slice D will replace the placeholder surface below with a live Agora RTC component.
-// This route is responsible for:
-//   1. Fetching the booking to confirm viewer_role and live_room_id.
-//   2. Calling startBookingSession (host) or attachBookingSession (booker) to obtain
-//      Agora credentials (app_id, channel, uid, token).
-//   3. Displaying those credentials for manual join or future Agora widget.
+// This route gates session access to the scheduled join window, attaches the viewer
+// to the booking session, renders the Agora RTC stage, and keeps attendance fresh
+// with periodic heartbeats while the route is open.
 
 type SessionPhase =
   | { kind: "loading" }

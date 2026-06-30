@@ -149,6 +149,78 @@ describe("ApiClient bookings", () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  test("uses host booking endpoints for exceptions and price rules", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      if (request.url.endsWith("/availability-exceptions")) {
+        return request.method === "GET"
+          ? Response.json({ object: "list", data: [], has_more: false })
+          : Response.json({ object: "availability_exception", id: "bae_1", kind: "block", start: 1, end: 2, created: 1 });
+      }
+      if (request.url.endsWith("/price-rules")) {
+        return request.method === "GET"
+          ? Response.json({ object: "list", data: [], has_more: false })
+          : Response.json({ object: "price_rule", id: "bprl_1", price_cents: 7500, priority: 1 });
+      }
+      return Response.json({ id: "deleted", object: "deleted", deleted: true });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.hostBookings.listAvailabilityExceptions();
+      await client.hostBookings.createAvailabilityException({
+        kind: "block",
+        start_utc: "2026-07-04T00:00:00.000Z",
+        end_utc: "2026-07-04T01:00:00.000Z",
+      });
+      await client.hostBookings.updateAvailabilityException("bae_1", { kind: "open" });
+      await client.hostBookings.deleteAvailabilityException("bae_1");
+      await client.hostBookings.listPriceRules();
+      await client.hostBookings.createPriceRule({
+        match_weekday: [1, 2, 3],
+        match_local_start: "09:00",
+        match_local_end: "12:00",
+        price_cents: 7500,
+        priority: 1,
+      });
+      await client.hostBookings.updatePriceRule("bprl_1", { price_cents: 8000 });
+      await client.hostBookings.deletePriceRule("bprl_1");
+
+      expect(requests.map((request) => `${request.method} ${request.url}`)).toEqual([
+        "GET http://pirate.test/host-bookings/me/availability-exceptions",
+        "POST http://pirate.test/host-bookings/me/availability-exceptions",
+        "POST http://pirate.test/host-bookings/me/availability-exceptions/bae_1",
+        "DELETE http://pirate.test/host-bookings/me/availability-exceptions/bae_1",
+        "GET http://pirate.test/host-bookings/me/price-rules",
+        "POST http://pirate.test/host-bookings/me/price-rules",
+        "POST http://pirate.test/host-bookings/me/price-rules/bprl_1",
+        "DELETE http://pirate.test/host-bookings/me/price-rules/bprl_1",
+      ]);
+      expect(await requests[1]!.json()).toEqual({
+        kind: "block",
+        start_utc: "2026-07-04T00:00:00.000Z",
+        end_utc: "2026-07-04T01:00:00.000Z",
+      });
+      expect(await requests[2]!.json()).toEqual({ kind: "open" });
+      expect(await requests[5]!.json()).toEqual({
+        match_weekday: [1, 2, 3],
+        match_local_start: "09:00",
+        match_local_end: "12:00",
+        price_cents: 7500,
+        priority: 1,
+      });
+      expect(await requests[6]!.json()).toEqual({ price_cents: 8000 });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
 
 describe("ApiClient media uploads", () => {

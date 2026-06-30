@@ -46,7 +46,7 @@ type CreatePostMediaDescriptor = {
 };
 
 type CreatePostSharedRequestFields = BasePostRequestFields & {
-  access_mode?: "public" | "locked" | null;
+  access_mode?: "public" | "locked";
   commercial_rev_share_pct?: number | null;
   license_preset?: "non-commercial" | "commercial-use" | "commercial-remix" | null;
   rights_basis?: "none" | "original" | "derivative" | "attribution_only" | null;
@@ -57,9 +57,9 @@ export type CreatePostRequestWithEvent = CreatePostSharedRequestFields & {
   event?: CreatePostEventRequest | null;
 } & (
   | {
-    body?: string | null;
+    body?: string;
     post_type: "text";
-    title?: string | null;
+    title?: string;
   }
   | {
     caption?: string | null;

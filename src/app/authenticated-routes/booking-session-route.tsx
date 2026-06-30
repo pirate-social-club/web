@@ -39,8 +39,10 @@ function withinJoinWindow(booking: BookingView): boolean {
 
 export function BookingSessionPage({
   bookingId,
+  VideoStage = BookingVideoStage,
 }: {
   bookingId: string;
+  VideoStage?: typeof BookingVideoStage;
 }): React.ReactElement {
   const api = useApi();
   const [phase, setPhase] = React.useState<SessionPhase>({ kind: "loading" });
@@ -173,7 +175,7 @@ export function BookingSessionPage({
         {phase.kind === "ready" && (
           <div className="space-y-4">
             {phase.session.agora.app_id ? (
-              <BookingVideoStage agora={phase.session.agora} onLeave={toBookings} />
+              <VideoStage agora={phase.session.agora} onLeave={toBookings} />
             ) : (
               <div className="rounded-lg border border-border p-6 text-center space-y-2">
                 <Type variant="label">Session ready</Type>

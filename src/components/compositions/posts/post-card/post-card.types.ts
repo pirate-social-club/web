@@ -195,6 +195,7 @@ export interface SongContentSpec {
   storageProofs?: SongStorageProofs;
   // Link to the karaoke ("Sing") surface for this song, when available.
   karaokeHref?: string;
+  onKaraoke?: () => void;
 
   // Callbacks
   onPlay?: () => void;

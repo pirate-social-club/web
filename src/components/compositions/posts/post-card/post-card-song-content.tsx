@@ -354,22 +354,35 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
 
   const rows: React.ReactNode[] = [];
 
-  if (content.karaokeHref) {
+  if (content.karaokeHref || content.onKaraoke) {
+    const karaokeAction = content.onKaraoke ? (
+      <Button
+        aria-label="Sing this song with karaoke"
+        className="h-10 w-32 px-5"
+        data-post-card-interactive="true"
+        onClick={content.onKaraoke}
+        size="sm"
+      >
+        <MicrophoneStage className="size-4" />
+        <span>Sing</span>
+      </Button>
+    ) : (
+      <Button
+        asChild
+        className="h-10 w-32 px-5"
+        data-post-card-interactive="true"
+        size="sm"
+      >
+        <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
+          <MicrophoneStage className="size-4" />
+          <span>Sing</span>
+        </a>
+      </Button>
+    );
+
     rows.push(
       <SongOfferRow
-        action={(
-          <Button
-            asChild
-            className="h-10 w-32 px-5"
-            data-post-card-interactive="true"
-            size="sm"
-          >
-            <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
-              <MicrophoneStage className="size-4" />
-              <span>Sing</span>
-            </a>
-          </Button>
-        )}
+        action={karaokeAction}
         icon={<MicrophoneStage className="size-5" />}
         key="karaoke"
         label="Karaoke"

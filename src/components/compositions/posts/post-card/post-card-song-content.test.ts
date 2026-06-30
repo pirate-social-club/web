@@ -236,6 +236,34 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("Download");
   });
 
+  test("renders karaoke as an action callback when provided", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          onKaraoke: () => {},
+        },
+      }),
+    );
+
+    expect(markup).toContain("Karaoke");
+    expect(markup).toContain("Sing");
+    expect(markup).not.toContain('href="/p/');
+  });
+
+  test("keeps karaoke href rendering as a fallback", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaokeHref: "/p/post_123/karaoke",
+        },
+      }),
+    );
+
+    expect(markup).toContain('href="/p/post_123/karaoke"');
+  });
+
   test("surfaces owned original downloads as offer rows", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {

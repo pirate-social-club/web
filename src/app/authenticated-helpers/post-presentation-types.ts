@@ -23,6 +23,7 @@ export type SongPresentationOptions = {
   storyLicenseNotice?: Extract<PostCardProps["content"], { type: "song" }>["storyLicenseNotice"];
   storyNetwork?: PirateStoryNetwork;
   onBuy?: () => void;
+  onKaraoke?: () => void;
 };
 
 export type LiveRoomPresentationOptions = {

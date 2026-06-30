@@ -1,5 +1,5 @@
 import { createHash, createHmac } from "node:crypto";
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { expect, test, type Page } from "@playwright/test";
 import type { CommunityFollowResponse, SessionExchangeResponse } from "@pirate/api-contracts";
@@ -71,6 +71,14 @@ type BookingSlot = {
   endUtc: string;
   priceCents: number;
   startUtc: string;
+};
+
+type BookingAgoraEvidence = {
+  booking_id: string;
+  booker_agora: AgoraBlock;
+  host_agora: AgoraBlock;
+  live_room_id: string | null;
+  run_id: string;
 };
 
 function requiredEnv(name: string): string {
@@ -445,6 +453,22 @@ function expectConfiguredAgora(block: AgoraBlock, label: string): void {
   expect(block.token, `${label} token`).toContain("007");
   expect(Number.isInteger(block.uid), `${label} uid`).toBe(true);
   expect(block.channel, `${label} channel`).toMatch(/^pirate-live-/u);
+}
+
+function expectConfiguredBookingAgora(block: AgoraBlock, label: string, bookingId: string): void {
+  expect(block.configured, `${label} configured`).toBe(true);
+  expect(block.app_id, `${label} app_id`).toBeTruthy();
+  expect(block.token, `${label} token`).toContain("007");
+  expect(Number.isInteger(block.uid), `${label} uid`).toBe(true);
+  expect(block.channel, `${label} channel`).toBe(`pirate-booking-${bookingId}`);
+}
+
+async function readBookingAgoraEvidence(path: string): Promise<BookingAgoraEvidence> {
+  const parsed = JSON.parse(await readFile(path, "utf8")) as Partial<BookingAgoraEvidence>;
+  if (!parsed.booking_id || !parsed.host_agora || !parsed.booker_agora) {
+    throw new Error(`Booking Agora evidence file is missing required fields: ${path}`);
+  }
+  return parsed as BookingAgoraEvidence;
 }
 
 function walletAttachmentId(session: StoredSession): string {
@@ -1623,6 +1647,26 @@ test.describe("live staging integration", () => {
         [200, 409],
       ).catch(() => undefined);
     }
+  });
+
+  test("publishes and subscribes to a real Agora paid-booking channel", async ({ page }, testInfo) => {
+    testInfo.setTimeout(120_000);
+    const evidencePath = process.env.E2E_BOOKING_AGORA_EVIDENCE_FILE?.trim();
+    test.skip(!evidencePath, "Set E2E_BOOKING_AGORA_EVIDENCE_FILE to the smoke:paid-booking --agora-evidence-file output.");
+
+    const evidence = await readBookingAgoraEvidence(evidencePath);
+    expectConfiguredBookingAgora(evidence.host_agora, "booking host attach", evidence.booking_id);
+    expectConfiguredBookingAgora(evidence.booker_agora, "booking booker attach", evidence.booking_id);
+    expect(evidence.booker_agora.channel).toBe(evidence.host_agora.channel);
+
+    const media = await runAgoraMediaCheck(page, evidence.host_agora, evidence.booker_agora);
+    expect(media.publisherConnection).toBe("CONNECTED");
+    expect(media.subscriberConnection).toBe("CONNECTED");
+    expect(media.remoteUsers).toContain(evidence.host_agora.uid);
+    expect(media.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({ mediaType: "audio", type: "subscribed", uid: evidence.host_agora.uid }),
+      expect.objectContaining({ mediaType: "video", type: "subscribed", uid: evidence.host_agora.uid }),
+    ]));
   });
 
   test("shows paid ticket UI and unlocks browser watching after settlement", async ({ context, page }, testInfo) => {

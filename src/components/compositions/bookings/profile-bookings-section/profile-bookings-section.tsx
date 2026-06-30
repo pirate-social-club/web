@@ -129,9 +129,9 @@ function SectionCard({ children }: { children: React.ReactNode }) {
 function ListRow({ children, onRemove, removeLabel }: { children: React.ReactNode; onRemove?: () => void; removeLabel: string }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
-      <Type variant="body">{children}</Type>
+      <Type variant="body" className="min-w-0 break-words">{children}</Type>
       {onRemove ? (
-        <Button variant="ghost" size="sm" onClick={onRemove} type="button">{removeLabel}</Button>
+        <Button variant="ghost" size="sm" onClick={onRemove} type="button" className="shrink-0">{removeLabel}</Button>
       ) : null}
     </div>
   );
@@ -179,7 +179,7 @@ export function ProfileBookingsSection({
   const [exceptionStart, setExceptionStart] = React.useState("");
   const [exceptionEnd, setExceptionEnd] = React.useState("");
 
-  const selectClass = "w-full rounded-lg border border-border bg-background p-2";
+  const selectClass = "w-full min-w-0 rounded-lg border border-border bg-background p-2";
 
   return (
     <div className={cn("space-y-8", className)}>
@@ -255,9 +255,9 @@ export function ProfileBookingsSection({
               }
             />
             <div className="flex items-center gap-2">
-              <Input type="time" value={ruleStart} onChange={(e) => setRuleStart(e.target.value)} aria-label={copy.weeklyAvailabilityTitle} />
-              <Type variant="caption">{copy.rangeSeparator}</Type>
-              <Input type="time" value={ruleEnd} onChange={(e) => setRuleEnd(e.target.value)} aria-label={copy.weeklyAvailabilityTitle} />
+              <Input type="time" value={ruleStart} onChange={(e) => setRuleStart(e.target.value)} aria-label={copy.weeklyAvailabilityTitle} className="min-w-0 flex-1" />
+              <Type variant="caption" className="shrink-0">{copy.rangeSeparator}</Type>
+              <Input type="time" value={ruleEnd} onChange={(e) => setRuleEnd(e.target.value)} aria-label={copy.weeklyAvailabilityTitle} className="min-w-0 flex-1" />
             </div>
             <Button
               variant="outline"
@@ -298,10 +298,10 @@ export function ProfileBookingsSection({
               }
             />
             <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr_1fr] sm:items-center">
-              <Input type="time" value={priceStart} onChange={(e) => setPriceStart(e.target.value)} aria-label={copy.variablePricingTitle} />
-              <Type variant="caption">{copy.rangeSeparator}</Type>
-              <Input type="time" value={priceEnd} onChange={(e) => setPriceEnd(e.target.value)} aria-label={copy.variablePricingTitle} />
-              <Input type="number" step="0.01" min="0.01" value={priceRuleUsd} onChange={(e) => setPriceRuleUsd(e.target.value)} aria-label={copy.basePriceLabel} />
+              <Input type="time" value={priceStart} onChange={(e) => setPriceStart(e.target.value)} aria-label={copy.variablePricingTitle} className="min-w-0" />
+              <Type variant="caption" className="shrink-0">{copy.rangeSeparator}</Type>
+              <Input type="time" value={priceEnd} onChange={(e) => setPriceEnd(e.target.value)} aria-label={copy.variablePricingTitle} className="min-w-0" />
+              <Input type="number" step="0.01" min="0.01" value={priceRuleUsd} onChange={(e) => setPriceRuleUsd(e.target.value)} aria-label={copy.basePriceLabel} className="min-w-0" />
             </div>
             <Button
               variant="outline"
@@ -332,8 +332,8 @@ export function ProfileBookingsSection({
           )}
           <div className="space-y-3 rounded-lg border border-dashed border-border p-3">
             <div className="grid gap-2 sm:grid-cols-[1fr_1fr_8rem]">
-              <Input type="datetime-local" value={exceptionStart} onChange={(e) => setExceptionStart(e.target.value)} aria-label={copy.exceptionsTitle} />
-              <Input type="datetime-local" value={exceptionEnd} onChange={(e) => setExceptionEnd(e.target.value)} aria-label={copy.exceptionsTitle} />
+              <Input type="datetime-local" value={exceptionStart} onChange={(e) => setExceptionStart(e.target.value)} aria-label={copy.exceptionsTitle} className="min-w-0" />
+              <Input type="datetime-local" value={exceptionEnd} onChange={(e) => setExceptionEnd(e.target.value)} aria-label={copy.exceptionsTitle} className="min-w-0" />
               <select className={selectClass} value={exceptionKind} onChange={(e) => setExceptionKind(e.target.value as "block" | "open")} aria-label={copy.exceptionsTitle}>
                 <option value="block">{copy.exceptionBlock}</option>
                 <option value="open">{copy.exceptionOpen}</option>

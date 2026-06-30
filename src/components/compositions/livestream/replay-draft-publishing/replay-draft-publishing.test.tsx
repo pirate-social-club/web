@@ -36,6 +36,8 @@ describe("ReplayDraftPublishing", () => {
     expect(markup).toContain("0x1f2a4b8c9d0e1234567890abcdef1234567890ab");
     expect(markup).toContain("Add wallet");
     expect(markup).toContain("Publish replay");
+    expect(markup).not.toContain("Preview replay");
+    expect(markup).not.toContain("Choose image");
     expect(markup).not.toContain("Filebase");
     expect(markup).not.toContain("Story CDR");
     expect(markup).not.toContain("Mara Vale");

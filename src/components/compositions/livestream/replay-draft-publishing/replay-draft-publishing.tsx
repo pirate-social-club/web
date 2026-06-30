@@ -1,7 +1,5 @@
 "use client";
 
-import { Play } from "@phosphor-icons/react";
-
 import { Button } from "@/components/primitives/button";
 import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
@@ -151,7 +149,6 @@ export function ReplayDraftPublishing({
   title,
 }: ReplayDraftPublishingProps) {
   const display = statusDisplay[status];
-  const previewReady = status === "ready" || status === "review_pending" || status === "published";
   const totalSharePct = royaltySplit.allocations.reduce((sum, a) => sum + a.sharePct, 0);
   const splitValid = totalSharePct === 100;
   const availableAccessPolicies = supportedAccessPolicies && supportedAccessPolicies.length > 0
@@ -191,15 +188,6 @@ export function ReplayDraftPublishing({
                   <Type variant="caption" className="text-white/80">{durationLabel}</Type>
                 ) : null}
               </div>
-              <Button
-                aria-label={previewReady ? "Preview replay" : "Replay preview unavailable"}
-                className="bg-white text-black hover:bg-white/90"
-                disabled={!previewReady}
-                size="icon"
-                variant="secondary"
-              >
-                <Play className="size-5" weight="fill" />
-              </Button>
             </div>
           </div>
         </section>
@@ -211,11 +199,6 @@ export function ReplayDraftPublishing({
             readOnly={!editable}
             value={title}
           />
-        </section>
-
-        <section className="space-y-3">
-          <FormFieldLabel label="Thumbnail" />
-          <Button className="w-full justify-start" disabled={!editable} variant="outline">Choose image</Button>
         </section>
 
         <section className="space-y-3">

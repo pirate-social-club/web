@@ -24,8 +24,6 @@ const BASE_VALUES: ProfileBookingsValues = {
   timezone: "Europe/Vienna",
   durationSeconds: 1800,
   priceUsd: "50.00",
-  payoutWallet: "",
-  headline: "",
 };
 
 function renderToDoc(overrides: Partial<ProfileBookingsSectionProps> = {}): Document {
@@ -36,6 +34,7 @@ function renderToDoc(overrides: Partial<ProfileBookingsSectionProps> = {}): Docu
     priceRules: [],
     exceptions: [],
     isPublished: false,
+    payoutReady: true,
     timezoneOptions: ["UTC", "Europe/Vienna"],
     ...overrides,
   };
@@ -50,29 +49,35 @@ function publishButton(doc: Document): HTMLButtonElement | undefined {
 }
 
 describe("ProfileBookingsSection", () => {
-  test("publish is blocked when there is no payout wallet and not yet published", () => {
-    const doc = renderToDoc({ values: { ...BASE_VALUES, payoutWallet: "" }, isPublished: false });
+  test("publish is blocked when the app wallet is not ready", () => {
+    const doc = renderToDoc({ payoutReady: false, isPublished: false });
     const button = publishButton(doc);
     expect(button).toBeDefined();
     expect(button!.hasAttribute("disabled")).toBe(true);
-    expect(doc.body.textContent).toContain("Add a payout wallet and save before publishing.");
+    expect(doc.body.textContent).toContain("Set up your app wallet to receive payouts.");
   });
 
-  test("publish is enabled once a payout wallet is present", () => {
-    const doc = renderToDoc({ values: { ...BASE_VALUES, payoutWallet: "0xbBA0240" }, isPublished: false });
+  test("publish is enabled when the app wallet is ready", () => {
+    const doc = renderToDoc({ payoutReady: true, isPublished: false });
     expect(publishButton(doc)!.hasAttribute("disabled")).toBe(false);
+  });
+
+  test("no headline or payout-wallet field is rendered", () => {
+    const text = renderToDoc().body.textContent ?? "";
+    expect(text).not.toContain("Headline");
+    expect(text).not.toContain("Payout wallet");
+    expect(text).toContain("Earnings settle to your app wallet.");
   });
 
   test("renders existing weekly availability rules", () => {
     const doc = renderToDoc({
-      values: { ...BASE_VALUES, payoutWallet: "0xbBA0240" },
       rules: [{ object: "availability_rule", id: "bar_1", by_weekday: [1, 2, 3, 4, 5], start_local: "09:00", end_local: "17:00", slot_duration_seconds: 1800, effective_from: null, effective_until: null, created: 0, updated: 0 }],
     });
     expect(doc.body.textContent).toContain("09:00–17:00");
   });
 
   test("shows the live publish copy when already published", () => {
-    const doc = renderToDoc({ values: { ...BASE_VALUES, payoutWallet: "0xbBA0240" }, isPublished: true });
+    const doc = renderToDoc({ isPublished: true });
     expect(doc.body.textContent).toContain("Your bookings are live");
     expect(publishButton(doc)).toBeUndefined(); // button reads "Unpublish" when live
   });

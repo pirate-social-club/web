@@ -40,8 +40,6 @@ export interface ProfileBookingsValues {
   timezone: string;
   durationSeconds: number;
   priceUsd: string;
-  payoutWallet: string;
-  headline: string;
 }
 
 export interface AvailabilityRuleInput {
@@ -76,11 +74,10 @@ export interface ProfileBookingsSectionProps {
   publishing?: boolean;
   /** Disable the price-rule/availability adders + save while persistence is in flight. */
   busy?: boolean;
+  /** Whether the user's app wallet is available to receive payouts (gates publish). */
+  payoutReady: boolean;
 
   timezoneOptions: string[];
-  /** Address of the user's connected wallet, offered as a one-tap fill for the payout field. */
-  connectedWalletAddress?: string | null;
-  onUseConnectedWallet?: () => void;
 
   /** Inline error for the base-price field (container-validated). */
   basePriceError?: string | null;
@@ -150,9 +147,8 @@ export function ProfileBookingsSection({
   saving,
   publishing,
   busy,
+  payoutReady,
   timezoneOptions,
-  connectedWalletAddress,
-  onUseConnectedWallet,
   basePriceError,
   onSaveProfile,
   onTogglePublish,
@@ -166,8 +162,7 @@ export function ProfileBookingsSection({
 }: ProfileBookingsSectionProps) {
   const isMobile = useIsMobile();
   const { locale } = useUiLocale();
-  const settings = getLocaleMessages(locale, "routes").settings;
-  const copy = settings.booking;
+  const copy = getLocaleMessages(locale, "routes").settings.booking;
   const removeLabel = copy.remove;
 
   // Ephemeral add-form state belongs to the composition (UI scratch, not persisted).
@@ -184,12 +179,7 @@ export function ProfileBookingsSection({
   const [exceptionStart, setExceptionStart] = React.useState("");
   const [exceptionEnd, setExceptionEnd] = React.useState("");
 
-  const canPublish = values.payoutWallet.trim().length > 0;
   const selectClass = "w-full rounded-lg border border-border bg-background p-2";
-  const showUseConnected = Boolean(
-    connectedWalletAddress &&
-      connectedWalletAddress.toLowerCase() !== values.payoutWallet.trim().toLowerCase(),
-  );
 
   return (
     <div className={cn("space-y-8", className)}>
@@ -235,33 +225,9 @@ export function ProfileBookingsSection({
             />
             {basePriceError ? <FormNote tone="destructive">{basePriceError}</FormNote> : null}
           </div>
-          <div className="space-y-2">
-            <label className="text-base font-medium text-foreground" htmlFor="booking-headline">{copy.headlineLabel}</label>
-            <Input
-              id="booking-headline"
-              value={values.headline}
-              onChange={(e) => onValuesChange({ headline: e.target.value })}
-              placeholder={copy.headlinePlaceholder}
-            />
-          </div>
 
-          <div className="space-y-2 border-t border-border pt-5">
-            <label className="text-base font-medium text-foreground" htmlFor="booking-payout">{copy.payoutWalletLabel}</label>
-            <div className="text-base text-muted-foreground">{copy.payoutWalletNote}</div>
-            <Input
-              id="booking-payout"
-              value={values.payoutWallet}
-              onChange={(e) => onValuesChange({ payoutWallet: e.target.value })}
-              placeholder="0x…"
-            />
-            {showUseConnected ? (
-              <Button variant="ghost" size="sm" type="button" onClick={onUseConnectedWallet}>
-                {copy.useConnectedWallet.replace("{wallet}", `${connectedWalletAddress!.slice(0, 6)}…${connectedWalletAddress!.slice(-4)}`)}
-              </Button>
-            ) : null}
-          </div>
-
-          <div className={cn("flex items-center justify-end gap-3 border-t border-border pt-5", isMobile && "border-t-0 pt-1")}>
+          <div className="flex items-center justify-between gap-3 border-t border-border pt-5">
+            <Type variant="caption" className="text-muted-foreground">{copy.payoutNote}</Type>
             <Button type="button" onClick={onSaveProfile} loading={saving} disabled={saving}>{copy.saveSettings}</Button>
           </div>
         </SectionCard>
@@ -394,7 +360,7 @@ export function ProfileBookingsSection({
       {/* Publish */}
       <SettingsSection title={isPublished ? copy.publishTitleLive : copy.publishTitleIdle}>
         <SectionCard>
-          {!canPublish ? (
+          {!payoutReady ? (
             <Type variant="caption" className="text-muted-foreground">{copy.publishBlockedNote}</Type>
           ) : (
             <Type variant="caption" className="text-muted-foreground">
@@ -407,7 +373,7 @@ export function ProfileBookingsSection({
               type="button"
               onClick={onTogglePublish}
               loading={publishing}
-              disabled={publishing || (!isPublished && !canPublish)}
+              disabled={publishing || (!isPublished && !payoutReady)}
             >
               {isPublished ? copy.unpublish : copy.publish}
             </Button>

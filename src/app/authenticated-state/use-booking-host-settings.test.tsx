@@ -18,7 +18,7 @@ let ruleStore: AvailabilityRule[] = [];
 let exceptionStore: AvailabilityException[] = [];
 let priceRuleStore: PriceRule[] = [];
 let profileResponse: BookingProfileResponse = { object: "booking_profile", exists: false, host: "usr_self" };
-let publishedFlag = false;
+let appWalletAddress: string | null = "0xAppWallet0000000000000000000000000000beef";
 
 function rule(id: string): AvailabilityRule {
   return { object: "availability_rule", id, by_weekday: [1], start_local: "09:00", end_local: "17:00", slot_duration_seconds: 1800, effective_from: null, effective_until: null, created: 0, updated: 0 };
@@ -34,8 +34,8 @@ const fakeApi = {
     listAvailabilityExceptions: async () => ({ data: exceptionStore }),
     listPriceRules: async () => ({ data: priceRuleStore }),
     updateBookingProfile: async (body: unknown) => { calls.push("updateBookingProfile"); updateArgs.push(body); return profileResponse; },
-    publishBookingProfile: async () => { calls.push("publishBookingProfile"); publishedFlag = true; return { object: "booking_profile", host: "usr_self", is_published: true } as unknown as BookingProfileResponse; },
-    unpublishBookingProfile: async () => { calls.push("unpublishBookingProfile"); publishedFlag = false; return { object: "booking_profile", host: "usr_self", is_published: false } as unknown as BookingProfileResponse; },
+    publishBookingProfile: async () => { calls.push("publishBookingProfile"); return { object: "booking_profile", host: "usr_self", is_published: true } as unknown as BookingProfileResponse; },
+    unpublishBookingProfile: async () => { calls.push("unpublishBookingProfile"); return { object: "booking_profile", host: "usr_self", is_published: false } as unknown as BookingProfileResponse; },
     createAvailabilityRule: async (body: unknown) => { calls.push("createAvailabilityRule"); createRuleArgs.push(body); ruleStore = [...ruleStore, rule("bar_new")]; return rule("bar_new"); },
     deleteAvailabilityRule: async (id: string) => { calls.push("deleteAvailabilityRule"); ruleStore = ruleStore.filter((r) => r.id !== id); },
     createAvailabilityException: async () => { calls.push("createAvailabilityException"); },
@@ -47,7 +47,7 @@ const fakeApi = {
 
 mock.module("@/lib/api", () => ({ useApi: () => fakeApi }));
 mock.module("@/lib/api/client", () => ({ ApiError: FakeApiError }));
-mock.module("@/components/auth/privy-provider", () => ({ usePiratePrivyWallets: () => ({ connectedWallets: [] }) }));
+mock.module("@/lib/api/session-store", () => ({ useSession: () => ({ profile: { primary_wallet_address: appWalletAddress } }) }));
 mock.module("@/components/primitives/sonner", () => ({ toast: { success: () => {}, error: () => {} } }));
 
 const { useBookingHostSettings } = await import("./use-booking-host-settings");
@@ -67,21 +67,28 @@ describe("useBookingHostSettings", () => {
     exceptionStore = [];
     priceRuleStore = [];
     profileResponse = { object: "booking_profile", exists: false, host: "usr_self" };
-    publishedFlag = false;
+    appWalletAddress = "0xAppWallet0000000000000000000000000000beef";
   });
 
-  test("empty profile is not published and has no payout wallet (publish stays blocked in UI)", async () => {
+  test("payoutReady reflects the app wallet (no separate payout field)", async () => {
     const { result } = await mountLoaded();
-    expect(result.current.sectionProps.isPublished).toBe(false);
-    expect(result.current.sectionProps.values.payoutWallet).toBe("");
+    expect(result.current.sectionProps.payoutReady).toBe(true);
+    // @ts-expect-error — payoutWallet is no longer part of the values shape
+    expect(result.current.sectionProps.values.payoutWallet).toBeUndefined();
   });
 
-  test("save profile calls hostBookings.updateBookingProfile with mapped fields", async () => {
+  test("publish is gated when there is no app wallet", async () => {
+    appWalletAddress = null;
     const { result } = await mountLoaded();
-    act(() => result.current.sectionProps.onValuesChange({ priceUsd: "50.00", payoutWallet: "0xabc", timezone: "Europe/Vienna" }));
+    expect(result.current.sectionProps.payoutReady).toBe(false);
+  });
+
+  test("save profile persists the app wallet as the payout destination", async () => {
+    const { result } = await mountLoaded();
+    act(() => result.current.sectionProps.onValuesChange({ priceUsd: "50.00", timezone: "Europe/Vienna" }));
     await act(async () => { await result.current.sectionProps.onSaveProfile?.(); });
     expect(calls).toContain("updateBookingProfile");
-    expect(updateArgs[0]).toMatchObject({ base_price_cents: 5000, payout_wallet_address: "0xabc", host_timezone: "Europe/Vienna" });
+    expect(updateArgs[0]).toMatchObject({ base_price_cents: 5000, host_timezone: "Europe/Vienna", payout_wallet_address: appWalletAddress });
   });
 
   test("invalid base price blocks save and sets an inline error", async () => {
@@ -104,10 +111,12 @@ describe("useBookingHostSettings", () => {
     expect(result.current.sectionProps.rules).toHaveLength(0);
   });
 
-  test("publish then unpublish flips state and calls the right endpoints", async () => {
+  test("publish persists the profile first, then publishes; unpublish flips back", async () => {
     const { result } = await mountLoaded();
     await act(async () => { await result.current.sectionProps.onTogglePublish?.(); });
+    expect(calls).toContain("updateBookingProfile"); // persisted before publish (no save-order footgun)
     expect(calls).toContain("publishBookingProfile");
+    expect(calls.indexOf("updateBookingProfile")).toBeLessThan(calls.indexOf("publishBookingProfile"));
     expect(result.current.sectionProps.isPublished).toBe(true);
 
     await act(async () => { await result.current.sectionProps.onTogglePublish?.(); });

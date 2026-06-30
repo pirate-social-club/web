@@ -38,9 +38,8 @@ function InteractiveProfileBookings(
         priceRules={priceRules}
         exceptions={exceptions}
         isPublished={isPublished}
+        payoutReady={overrides.payoutReady ?? true}
         timezoneOptions={overrides.timezoneOptions ?? ["UTC", "America/New_York", "Europe/Vienna", "Asia/Tokyo"]}
-        connectedWalletAddress={overrides.connectedWalletAddress ?? "0x1111222233334444555566667777888899990000"}
-        onUseConnectedWallet={() => setValues((prev) => ({ ...prev, payoutWallet: "0x1111222233334444555566667777888899990000" }))}
         onAddRule={(d) => setRules((prev) => [...prev, {
           object: "availability_rule", id: nextId("bar"), by_weekday: d.byWeekday,
           start_local: d.startLocal, end_local: d.endLocal, slot_duration_seconds: values.durationSeconds,
@@ -79,16 +78,12 @@ const EMPTY_VALUES: ProfileBookingsValues = {
   timezone: "Europe/Vienna",
   durationSeconds: 1800,
   priceUsd: "0.00",
-  payoutWallet: "",
-  headline: "",
 };
 
 const CONFIGURED_VALUES: ProfileBookingsValues = {
   timezone: "Europe/Vienna",
   durationSeconds: 1800,
   priceUsd: "50.00",
-  payoutWallet: "0xbBA024600cba5F375AfdCeC401f7dcCB3D515829",
-  headline: "1:1 portfolio review",
 };
 
 const WEEKLY_RULES: AvailabilityRule[] = [
@@ -104,17 +99,18 @@ const EXCEPTIONS: AvailabilityException[] = [
   { object: "availability_exception", id: "bae_1", kind: "block", start: 1_790_000_000, end: 1_790_086_400, created: 0 },
 ];
 
-/** Brand new — user has never set up bookings; can't publish until a payout wallet is added. */
+/** Brand new — never set up bookings. App wallet is ready, so publish is allowed once a slot exists. */
 export const NotConfigured: Story = {
   render: () => <InteractiveProfileBookings initialValues={EMPTY_VALUES} />,
 };
 
-/** Fields filled but no payout wallet yet → publish stays blocked with guidance. */
-export const NeedsPayoutWallet: Story = {
+/** Edge: the user has no app wallet yet → publish is blocked with guidance. */
+export const NoAppWallet: Story = {
   render: () => (
     <InteractiveProfileBookings
-      initialValues={{ ...CONFIGURED_VALUES, payoutWallet: "" }}
+      initialValues={CONFIGURED_VALUES}
       rules={WEEKLY_RULES}
+      payoutReady={false}
     />
   ),
 };

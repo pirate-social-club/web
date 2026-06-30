@@ -2,10 +2,10 @@
 
 import * as React from "react";
 
-import { usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
+import { useSession } from "@/lib/api/session-store";
 import type {
   AvailabilityException,
   AvailabilityRule,
@@ -63,10 +63,15 @@ export interface UseBookingHostSettingsResult {
  * Container logic for the host's paid-booking setup, extracted from the standalone
  * /settings/bookings route so it can be mounted inside edit profile AND the compat route.
  * Owns load + persistence + validation; ProfileBookingsSection stays controlled + app-free.
+ *
+ * Payouts settle to the user's in-app wallet (`profile.primary_wallet_address`); there is no
+ * separate payout-wallet field. Publish is gated on that wallet existing.
  */
 export function useBookingHostSettings(): UseBookingHostSettingsResult {
   const api = useApi();
-  const { connectedWallets } = usePiratePrivyWallets();
+  const session = useSession();
+  const payoutWallet = session?.profile?.primary_wallet_address ?? null;
+  const payoutReady = Boolean(payoutWallet && payoutWallet.trim().length > 0);
 
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
@@ -79,8 +84,6 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
     timezone: browserTimezone(),
     durationSeconds: 1800,
     priceUsd: "0.00",
-    payoutWallet: "",
-    headline: "",
   });
 
   const [rules, setRules] = React.useState<AvailabilityRule[]>([]);
@@ -88,7 +91,6 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
   const [priceRules, setPriceRules] = React.useState<PriceRule[]>([]);
 
   const tzOptions = React.useMemo(() => timezoneOptions(), []);
-  const connectedWalletAddress = connectedWallets[0]?.address ?? null;
 
   const onValuesChange = React.useCallback((patch: Partial<ProfileBookingsValues>) => {
     setValues((prev) => ({ ...prev, ...patch }));
@@ -116,8 +118,6 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
             timezone: profile.host_timezone || browserTimezone(),
             durationSeconds: profile.default_slot_duration_seconds || 1800,
             priceUsd: centsToUsd(profile.base_price_cents || 0),
-            payoutWallet: profile.payout_wallet_address ?? "",
-            headline: profile.display_headline ?? "",
           });
           setIsPublished(profile.is_published);
         }
@@ -133,43 +133,54 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
     };
   }, [api, reloadAvailability]);
 
-  const onSaveProfile = React.useCallback(async () => {
+  // Persist profile fields + the app-wallet payout destination. Returns false on validation failure.
+  const persistProfile = React.useCallback(async (): Promise<boolean> => {
     if (!isValidMoneyInput(values.priceUsd)) {
       setBasePriceError("Enter a valid base price");
-      return;
+      return false;
     }
     setBasePriceError(null);
+    await api.hostBookings.updateBookingProfile({
+      host_timezone: values.timezone,
+      default_slot_duration_seconds: values.durationSeconds,
+      base_price_cents: usdToCents(values.priceUsd),
+      payout_wallet_address: payoutWallet,
+    });
+    return true;
+  }, [api, values, payoutWallet]);
+
+  const onSaveProfile = React.useCallback(async () => {
     setSaving(true);
     try {
-      await api.hostBookings.updateBookingProfile({
-        host_timezone: values.timezone,
-        default_slot_duration_seconds: values.durationSeconds,
-        base_price_cents: usdToCents(values.priceUsd),
-        payout_wallet_address: values.payoutWallet.trim() || null,
-        display_headline: values.headline.trim() || null,
-      });
-      toast.success("Booking settings saved");
+      if (await persistProfile()) toast.success("Booking settings saved");
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Save failed");
     } finally {
       setSaving(false);
     }
-  }, [api, values]);
+  }, [persistProfile]);
 
   const onTogglePublish = React.useCallback(async () => {
     setPublishing(true);
     try {
-      const res = isPublished
-        ? await api.hostBookings.unpublishBookingProfile()
-        : await api.hostBookings.publishBookingProfile();
-      if (isProfile(res)) setIsPublished(res.is_published);
-      toast.success(isPublished ? "Bookings unpublished" : "Bookings published — you're now bookable");
+      if (!isPublished) {
+        // Ensure the profile (incl. the app-wallet payout destination) is persisted before publish,
+        // so publish never 409s on an unsaved/absent profile regardless of save order.
+        if (!await persistProfile()) return;
+        const res = await api.hostBookings.publishBookingProfile();
+        if (isProfile(res)) setIsPublished(res.is_published);
+        toast.success("Bookings published — you're now bookable");
+      } else {
+        const res = await api.hostBookings.unpublishBookingProfile();
+        if (isProfile(res)) setIsPublished(res.is_published);
+        toast.success("Bookings unpublished");
+      }
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Publish failed");
     } finally {
       setPublishing(false);
     }
-  }, [api, isPublished]);
+  }, [api, isPublished, persistProfile]);
 
   const onAddRule = React.useCallback(async (draft: AvailabilityRuleInput) => {
     if (draft.byWeekday.length === 0) {
@@ -276,10 +287,6 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
     }
   }, [api, reloadAvailability]);
 
-  const onUseConnectedWallet = React.useCallback(() => {
-    if (connectedWalletAddress) setValues((prev) => ({ ...prev, payoutWallet: connectedWalletAddress }));
-  }, [connectedWalletAddress]);
-
   const sectionProps: BookingHostSectionProps = {
     values,
     onValuesChange,
@@ -290,9 +297,8 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
     saving,
     publishing,
     busy: mutating,
+    payoutReady,
     timezoneOptions: tzOptions,
-    connectedWalletAddress,
-    onUseConnectedWallet,
     basePriceError,
     onSaveProfile,
     onTogglePublish,

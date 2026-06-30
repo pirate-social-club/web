@@ -1520,23 +1520,13 @@ test.describe("live staging integration", () => {
     testInfo.setTimeout(120_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const host = await createLiveSession(`agora-live-room-smoke-host-${runId}`);
     const viewer = await createLiveSession(`agora-live-room-smoke-viewer-${runId}`);
-    await completeSelfVerification(host);
     await completeSelfVerification(viewer);
 
-    const createdCommunity = await requestJson<{ community: { id: string }; job?: { status?: string } }>("/communities", {
-      body: JSON.stringify({
-        display_name: `Agora Live Room Smoke ${runId}`,
-        handle_policy: { policy_template: "standard" },
-        membership_mode: "request",
-      }),
-      headers: { authorization: `Bearer ${host.accessToken}` },
-      method: "POST",
-    });
-    expect(createdCommunity.job?.status).toBe("succeeded");
-    const publicCommunityId = createdCommunity.community.id;
-    const communityId = rawPublicId(publicCommunityId, "com");
+    const community = await discoverSeedCommunity();
+    const ownerHeaders = seedOwnerAdminHeaders(community);
+    test.skip(!ownerHeaders, "Seed community owner admin headers are required for Agora live-room smoke.");
+    const communityId = rawPublicId(community.id, "com");
 
     const joined = await requestJson<{ status: "joined" | "requested" }>(`/communities/${encodeURIComponent(communityId)}/join`, {
       body: JSON.stringify({}),
@@ -1546,13 +1536,13 @@ test.describe("live staging integration", () => {
     if (joined.status !== "joined") {
       const requests = await requestJson<{ items: Array<{ applicant_user: string; id: string }> }>(
         `/communities/${encodeURIComponent(communityId)}/membership-requests?limit=20`,
-        { headers: { authorization: `Bearer ${host.accessToken}` } },
+        { headers: ownerHeaders },
       );
       const viewerRequest = requests.items.find((item) => item.applicant_user === viewer.user.id) ?? requests.items[0];
       expect(viewerRequest, "viewer membership request").toBeTruthy();
       await requestJson(`/communities/${encodeURIComponent(communityId)}/membership-requests/${encodeURIComponent(viewerRequest.id)}/approve`, {
         body: JSON.stringify({}),
-        headers: { authorization: `Bearer ${host.accessToken}` },
+        headers: ownerHeaders,
         method: "POST",
       });
     }
@@ -1561,7 +1551,7 @@ test.describe("live staging integration", () => {
       body: JSON.stringify({
         access_mode: "free",
         performer_allocations: [
-          { role: "host", share_bps: 10000, user: host.user.id },
+          { role: "host", share_bps: 10000, user: `usr_${community.ownerUserId}` },
         ],
         room_kind: "solo",
         setlist: {
@@ -1578,7 +1568,7 @@ test.describe("live staging integration", () => {
         title: `Agora Transport Smoke ${runId}`,
         visibility: "public",
       }),
-      headers: { authorization: `Bearer ${host.accessToken}` },
+      headers: ownerHeaders,
       method: "POST",
     });
 
@@ -1587,7 +1577,7 @@ test.describe("live staging integration", () => {
         `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoom.id)}/host_attach`,
         {
           body: JSON.stringify({}),
-          headers: { authorization: `Bearer ${host.accessToken}` },
+          headers: ownerHeaders,
           method: "POST",
         },
       );
@@ -1627,7 +1617,7 @@ test.describe("live staging integration", () => {
         `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoom.id)}/end`,
         {
           body: JSON.stringify({}),
-          headers: { authorization: `Bearer ${host.accessToken}` },
+          headers: ownerHeaders,
           method: "POST",
         },
         [200, 409],

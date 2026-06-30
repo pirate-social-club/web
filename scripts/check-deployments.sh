@@ -166,6 +166,16 @@ function nestedField(body, path) {
   }, body);
 }
 
+function shasMatch(expected, actual) {
+  if (!expected || !actual) return false;
+  const expectedText = String(expected);
+  const actualText = String(actual);
+  if (expectedText === actualText) return true;
+  if (!/^[0-9a-f]+$/i.test(expectedText) || !/^[0-9a-f]+$/i.test(actualText)) return false;
+  if (Math.min(expectedText.length, actualText.length) < 7) return false;
+  return expectedText.startsWith(actualText) || actualText.startsWith(expectedText);
+}
+
 function buildRows(results) {
   return results.map((result) => ({
   target: result.target.id,
@@ -200,17 +210,17 @@ function collectFailures(results) {
     if (!gitSha) failures.push(`${id}: git_sha is missing`);
     if (!gitRef) failures.push(`${id}: git_ref is missing`);
     if (!buildTimestamp) failures.push(`${id}: build_timestamp is missing`);
-    if (expectedSha && gitSha !== expectedSha) failures.push(`${id}: expected git_sha=${expectedSha}, got ${text(gitSha)}`);
-    if (expectedWebSha && result.target.service === "web" && gitSha !== expectedWebSha) {
+    if (expectedSha && !shasMatch(expectedSha, gitSha)) failures.push(`${id}: expected git_sha=${expectedSha}, got ${text(gitSha)}`);
+    if (expectedWebSha && result.target.service === "web" && !shasMatch(expectedWebSha, gitSha)) {
       failures.push(`${id}: expected web git_sha=${expectedWebSha}, got ${text(gitSha)}`);
     }
-    if (expectedApiSha && result.target.service === "api" && gitSha !== expectedApiSha) {
+    if (expectedApiSha && result.target.service === "api" && !shasMatch(expectedApiSha, gitSha)) {
       failures.push(`${id}: expected api git_sha=${expectedApiSha}, got ${text(gitSha)}`);
     }
     if (result.target.service === "api" && !operatorSha) {
       failures.push(`${id}: operator.git_sha is missing`);
     }
-    if (expectedOperatorSha && result.target.service === "api" && operatorSha !== expectedOperatorSha) {
+    if (expectedOperatorSha && result.target.service === "api" && !shasMatch(expectedOperatorSha, operatorSha)) {
       failures.push(`${id}: expected operator git_sha=${expectedOperatorSha}, got ${text(operatorSha)}`);
     }
   }

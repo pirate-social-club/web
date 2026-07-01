@@ -48,6 +48,9 @@ export function CommunityStudyPolicyPage({
           <FormNote>
             Songs without study-ready lyrics or generated exercises stay hidden automatically.
           </FormNote>
+          <FormNote>
+            Say-it-back transcription requires an ElevenLabs key configured under Assistant.
+          </FormNote>
         </div>
         <Switch
           aria-label="Enable Study"

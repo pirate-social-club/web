@@ -48,6 +48,9 @@ export function CommunityKaraokePolicyPage({
           <FormNote>
             Songs without uploaded lyrics, completed forced alignment, or instrumental audio stay hidden automatically.
           </FormNote>
+          <FormNote>
+            Voice scoring and transcription require an ElevenLabs key configured under Assistant.
+          </FormNote>
         </div>
         <Switch
           aria-label="Enable karaoke"

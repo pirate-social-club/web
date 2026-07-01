@@ -99,6 +99,13 @@ function FlowDemo({ scenario, intervalMs }: { scenario: Scenario; intervalMs: nu
     return () => window.clearInterval(id);
   }, [scenario, intervalMs]);
 
+  // When "done" fires, the real app navigates to the new post — it does NOT sit on
+  // a "Post published" button. Represent that here: swap the composer for a mock
+  // post page + URL so the demo reflects production, then the loop restarts.
+  if (progress?.phase === "done") {
+    return <NavigatedToPost postId="pst_ab12cd34" />;
+  }
+
   return (
     <PostComposer
       {...baseComposer}
@@ -107,10 +114,32 @@ function FlowDemo({ scenario, intervalMs }: { scenario: Scenario; intervalMs: nu
         ...baseComposer.submit,
         canPost: true,
         label: "Post",
-        loading: progress ? progress.phase !== "done" : false,
+        // done is handled by the early return above, so any progress here is in-flight.
+        loading: progress != null,
         progress,
       }}
     />
+  );
+}
+
+// Stand-in for the post route the composer navigates to after publishing. Storybook
+// has no router, so this makes the "then it just shows the post + updates the URL"
+// behaviour visible instead of leaving a misleading "Post published" button on screen.
+function NavigatedToPost({ postId }: { postId: string }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 rounded-full border border-border-soft bg-muted/40 px-4 py-2 font-mono text-sm text-muted-foreground">
+        <span className="opacity-60">🔒</span>
+        <span>pirate.social/p/{postId}</span>
+      </div>
+      <div className="rounded-2xl border border-border-soft p-5">
+        <p className="text-sm text-muted-foreground">
+          Published — the composer navigated to the new post. In the app you now see the
+          post page; there is no separate “Post published” screen. (Storybook has no
+          router, so this demo loops back to the start.)
+        </p>
+      </div>
+    </div>
   );
 }
 

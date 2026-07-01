@@ -1,7 +1,12 @@
 "use client";
 
 import * as React from "react";
-import type { Post as ApiCreatedPost, SongArtifactBundle as ApiSongArtifactBundle } from "@pirate/api-contracts";
+import type {
+  CreateSongArtifactUploadRequest,
+  Post as ApiCreatedPost,
+  SongArtifactBundle as ApiSongArtifactBundle,
+  SongArtifactUpload,
+} from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
 import { logger } from "@/lib/logger";
@@ -30,6 +35,11 @@ const SONG_PREVIEW_POLL_INTERVAL_MS = 2_000;
 const SONG_PREVIEW_POLL_ATTEMPTS = 30;
 const SONG_SUBMIT_SLOW_STEP_MS = 10_000;
 const SONG_SUBMIT_STALLED_STEP_MS = 45_000;
+const SONG_ARTIFACT_API_TIMEOUT_MS = 30_000;
+const SONG_ARTIFACT_PROXY_UPLOAD_TIMEOUT_MS = 45_000;
+const SONG_ARTIFACT_PART_UPLOAD_TIMEOUT_MS = 60_000;
+const SONG_ARTIFACT_MULTIPART_COMPLETE_TIMEOUT_MS = 120_000;
+const SONG_ARTIFACT_MULTIPART_CONCURRENCY = 3;
 
 type RawAcrCustomFile = {
   acrid?: unknown;
@@ -71,6 +81,10 @@ type SongSubmitInput = {
   songTitle: string;
   title: string;
 };
+
+type SongArtifactSubmitKind = "primary_audio" | "cover_art" | "canvas_video" | "instrumental_audio" | "vocal_audio";
+
+class PermanentSongArtifactPartUploadError extends Error {}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -118,6 +132,146 @@ async function withSongSubmitStep<T>(
   } finally {
     window.clearTimeout(slowTimer);
     window.clearTimeout(stalledTimer);
+  }
+}
+
+async function sha256File(file: File): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  const callerSignal = init.signal;
+  const handleCallerAbort = callerSignal ? () => controller.abort() : null;
+  if (callerSignal) {
+    if (callerSignal.aborted) {
+      controller.abort();
+    } else if (handleCallerAbort) {
+      callerSignal.addEventListener("abort", handleCallerAbort, { once: true });
+    }
+  }
+  return fetch(input, {
+    ...init,
+    signal: controller.signal,
+  }).finally(() => {
+    window.clearTimeout(timeout);
+    if (callerSignal && handleCallerAbort) {
+      callerSignal.removeEventListener("abort", handleCallerAbort);
+    }
+  });
+}
+
+function usesDirectMultipart(kind: SongArtifactSubmitKind): boolean {
+  return kind !== "cover_art";
+}
+
+async function uploadSongArtifactMultipart(input: {
+  api: ReturnType<typeof useApi>;
+  artifactKind: SongArtifactSubmitKind;
+  communityId: string;
+  contentHashPromise: Promise<string>;
+  file: File;
+  intent: SongArtifactUpload;
+}): Promise<SongArtifactUpload> {
+  const session = input.intent.upload_session;
+  if (!session) {
+    throw new Error("Song artifact upload did not return a multipart session.");
+  }
+  const uploadSession = session;
+  const parts: Array<{ part_number: number; etag: string }> = [];
+  let nextPartNumber = 1;
+
+  async function uploadPart(partNumber: number): Promise<void> {
+    const start = (partNumber - 1) * uploadSession.part_size_bytes;
+    const end = Math.min(input.file.size, start + uploadSession.part_size_bytes);
+    const body = input.file.slice(start, end, input.file.type || "application/octet-stream");
+    const retryDelays = [250, 1000, 4000];
+    let lastError: unknown = null;
+
+    for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
+      try {
+        const signed = await input.api.communities.getArtifactUploadPartSignedUrl(
+          input.communityId,
+          input.intent.id,
+          uploadSession.id,
+          partNumber,
+          { timeoutMs: SONG_ARTIFACT_API_TIMEOUT_MS },
+        );
+        const response = await fetchWithTimeout(signed.url, {
+          method: "PUT",
+          body,
+          headers: input.file.type ? { "Content-Type": input.file.type } : undefined,
+        }, SONG_ARTIFACT_PART_UPLOAD_TIMEOUT_MS);
+        if (!response.ok) {
+          const message = `${input.artifactKind} part ${partNumber} upload failed with ${response.status}`;
+          if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+            throw new PermanentSongArtifactPartUploadError(message);
+          }
+          throw new Error(message);
+        }
+        const etag = response.headers.get("ETag")?.trim();
+        if (!etag) {
+          throw new Error(`${input.artifactKind} part ${partNumber} upload did not return an ETag.`);
+        }
+        parts.push({ part_number: partNumber, etag });
+        return;
+      } catch (error) {
+        if (error instanceof PermanentSongArtifactPartUploadError) {
+          throw error;
+        }
+        lastError = error;
+        if (attempt < retryDelays.length - 1) {
+          await sleep(retryDelays[attempt]);
+        }
+      }
+    }
+
+    throw lastError instanceof Error
+      ? lastError
+      : new Error(`${input.artifactKind} part ${partNumber} upload failed.`);
+  }
+
+  async function worker(): Promise<void> {
+    while (nextPartNumber <= uploadSession.total_parts) {
+      const partNumber = nextPartNumber;
+      nextPartNumber += 1;
+      await uploadPart(partNumber);
+    }
+  }
+
+  try {
+    const workerCount = Math.min(SONG_ARTIFACT_MULTIPART_CONCURRENCY, uploadSession.total_parts);
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
+    const contentHash = await input.contentHashPromise;
+    return await input.api.communities.completeArtifactUploadSession(
+      input.communityId,
+      input.intent.id,
+      uploadSession.id,
+      {
+        upload_id: uploadSession.upload_id,
+        content_hash: `0x${contentHash}`,
+        parts: [...parts].sort((a, b) => a.part_number - b.part_number),
+      },
+      { timeoutMs: SONG_ARTIFACT_MULTIPART_COMPLETE_TIMEOUT_MS },
+    );
+  } catch (error) {
+    await input.api.communities.abortArtifactUploadSession(
+      input.communityId,
+      input.intent.id,
+      uploadSession.id,
+      { timeoutMs: SONG_ARTIFACT_API_TIMEOUT_MS },
+    ).catch((abortError) => {
+      logger.warn("[song-submit] multipart artifact abort failed", {
+        abortError,
+        artifactKind: input.artifactKind,
+        intentId: input.intent.id,
+      });
+    });
+    throw error;
   }
 }
 
@@ -238,7 +392,7 @@ export function useSongSubmit({
   }, [api.communities, communityId]);
 
   const uploadSongArtifact = React.useCallback(async (
-    artifactKind: "primary_audio" | "cover_art" | "canvas_video" | "instrumental_audio" | "vocal_audio",
+    artifactKind: SongArtifactSubmitKind,
     file: File | null | undefined,
     onProgress?: (fraction: number) => void,
   ) => {
@@ -249,20 +403,45 @@ export function useSongSubmit({
       mimeType: file.type,
       sizeBytes: file.size,
     });
-    const intent = await withSongSubmitStep("create artifact upload intent", {
-      artifactKind,
-      filename: file.name,
-      sizeBytes: file.size,
-    }, () => api.communities.createArtifactUpload(communityId, {
+    const request: CreateSongArtifactUploadRequest = {
       artifact_kind: artifactKind,
       mime_type: file.type,
       filename: file.name,
       size_bytes: file.size,
-    }));
+      ...(usesDirectMultipart(artifactKind) ? { upload_mode: "direct_multipart" as const } : {}),
+    };
+    const contentHashPromise = usesDirectMultipart(artifactKind) ? sha256File(file) : null;
+    const intent = await withSongSubmitStep("create artifact upload intent", {
+      artifactKind,
+      filename: file.name,
+      sizeBytes: file.size,
+      uploadMode: request.upload_mode ?? "proxy",
+    }, () => api.communities.createArtifactUpload(communityId, request, { timeoutMs: SONG_ARTIFACT_API_TIMEOUT_MS }));
     logger.info("[song-submit] artifact upload intent created", {
       artifactKind,
       intentId: intent.id,
     });
+    if (contentHashPromise) {
+      const uploaded = await withSongSubmitStep("upload artifact multipart content", {
+        artifactKind,
+        filename: file.name,
+        intentId: intent.id,
+        sizeBytes: file.size,
+      }, () => uploadSongArtifactMultipart({
+        api,
+        artifactKind,
+        communityId,
+        contentHashPromise,
+        file,
+        intent,
+      }));
+      logger.info("[song-submit] artifact multipart content uploaded", {
+        artifactKind,
+        uploadId: uploaded.id,
+        storageRef: uploaded.storage_ref,
+      });
+      return uploaded;
+    }
     const fileContent = await withSongSubmitStep("read artifact file", {
       artifactKind,
       filename: file.name,
@@ -273,7 +452,10 @@ export function useSongSubmit({
       filename: file.name,
       intentId: intent.id,
       sizeBytes: file.size,
-    }, () => api.communities.uploadArtifactContent(communityId, intent.id, fileContent, onProgress));
+    }, () => api.communities.uploadArtifactContent(communityId, intent.id, fileContent, {
+      onProgress,
+      timeoutMs: SONG_ARTIFACT_PROXY_UPLOAD_TIMEOUT_MS,
+    }));
     logger.info("[song-submit] artifact content uploaded", {
       artifactKind,
       uploadId: uploaded.id,

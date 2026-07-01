@@ -36,6 +36,7 @@ const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { kind: "post", domain: "dual", testPaths: [{ pathname: "/p/pst_test" }], serverRouteExpected: true },
   { kind: "live-room", domain: "dual", testPaths: [{ pathname: "/p/pst_test/live" }], serverRouteExpected: true },
   { kind: "post-karaoke", domain: "dual", testPaths: [{ pathname: "/p/pst_test/karaoke" }], serverRouteExpected: true },
+  { kind: "post-study", domain: "authenticated", testPaths: [{ pathname: "/p/pst_test/study" }], serverRouteExpected: true },
   { kind: "crosspost", domain: "authenticated", testPaths: [{ pathname: "/p/pst_test/crosspost" }], serverRouteExpected: true },
   { kind: "inbox", domain: "authenticated", testPaths: [{ pathname: "/inbox" }], serverRouteExpected: true },
   { kind: "chat", domain: "authenticated", testPaths: [{ pathname: "/chat" }], serverRouteExpected: true },
@@ -79,6 +80,7 @@ const _KIND_COVERAGE: { [K in AppRoute["kind"]]: true } = {
   post: true,
   "live-room": true,
   "post-karaoke": true,
+  "post-study": true,
   crosspost: true,
   inbox: true,
   chat: true,
@@ -129,6 +131,7 @@ const EXPECTED_DOMAIN_KINDS: Record<RouteRenderingDomain, readonly AppRoute["kin
     "onboarding",
     "authorize-device",
     "not-found",
+    "post-study",
   ],
   public: [
     "public-profile",

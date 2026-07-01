@@ -175,6 +175,7 @@ async function resolveRouteSeoMetadata(input: {
       || input.route.kind === "telegram-post"
       || input.route.kind === "live-room"
       || input.route.kind === "post-karaoke"
+      || input.route.kind === "post-study"
       || input.route.kind === "crosspost"
     ) {
       const postResponse = await fetchPublicJson<PublicPostResponse>(
@@ -522,6 +523,8 @@ const app = defineApp<AppRequestInfo>([
     route("/c/:communityId/bookings/:bookingId/session", AppRoutePage),
     route("/c/:communityId/book/:hostUserId", AppRoutePage),
     route("/c/:communityId/book/:hostUserId/checkout", AppRoutePage),
+    route("/book/:hostUserId", AppRoutePage),
+    route("/book/:hostUserId/checkout", AppRoutePage),
     route("/c/:communityId/mod", AppRoutePage),
     ...COMMUNITY_MODERATION_SECTIONS.map((section) =>
       route(`/c/:communityId/mod/${section}`, AppRoutePage)
@@ -530,6 +533,7 @@ const app = defineApp<AppRequestInfo>([
     route("/p/:postId/crosspost", AppRoutePage),
     route("/p/:postId/live", AppRoutePage),
     route("/p/:postId/karaoke", AppRoutePage),
+    route("/p/:postId/study", AppRoutePage),
     route("/p/:postId", AppRoutePage),
     route("/inbox", AppRoutePage),
     route("/chat", AppRoutePage),

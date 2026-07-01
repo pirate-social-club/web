@@ -335,4 +335,32 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("Public track");
     expect(markup).toContain("Verify Age");
   });
+
+  test("renders the Study CTA when the server marks study ready", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          study: { status: "ready" },
+          onStudy: () => {},
+        },
+      }),
+    );
+
+    expect(markup).toContain("Open study");
+  });
+
+  test("hides the Study CTA when study is not ready", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          study: { status: "processing" },
+          onStudy: () => {},
+        },
+      }),
+    );
+
+    expect(markup).not.toContain("Open study");
+  });
 });

@@ -820,7 +820,15 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verificationTitle": "Verification",
         "walletTitle": "Wallet",
         "setUpBookings": "Set up bookings",
-        "manageBookings": "Manage bookings"
+        "manageBookings": "Manage bookings",
+        "bookTab": "Calendar",
+        "bookPriceLabel": "{price} USDC per session",
+        "bookNoAvailability": "No available times right now — check back soon.",
+        "bookOwnerLiveNote": "Your bookings are live. Anyone with your profile link can book an available slot.",
+        "bookOwnerSetupNote": "Set up your paid 1:1 bookings to let people book time with you.",
+        "editSchedule": "Edit schedule",
+        "ownerAvailabilityTitle": "Your availability",
+        "ownerSetupPrompt": "Set up your schedule to let people book time with you."
       },
       "publicProfile": {
         "aboutTab": "About",
@@ -1044,7 +1052,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "savePublicHandles": "Save public handles",
         "booking": {
           "sectionTitle": "Paid 1:1 bookings",
-          "intro": "Let people book paid 1:1 video sessions with you. Set your availability and price, then publish to become bookable from your profile link.",
+          "intro": "Let people book paid 1:1 video sessions with you. Set your availability and price, then turn on Bookable to become bookable from your profile link.",
           "timezoneLabel": "Timezone",
           "durationLabel": "Session length",
           "durationMinutes": "{count} minutes",
@@ -1075,7 +1083,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "publish": "Publish bookings",
           "navLabel": "Bookings",
           "navDescription": "Set your paid 1:1 schedule, pricing, and availability.",
-          "remove": "Remove"
+          "remove": "Remove",
+          "bookableLabel": "Bookable",
+          "bookableOnHint": "People can book you. Turn off to pause without losing your schedule.",
+          "bookableOffHint": "You're not bookable yet — turn on when you're ready.",
+          "autosaveNote": "Changes save automatically.",
+          "savingNote": "Saving…"
         }
       },
       "notFound": {
@@ -2541,7 +2554,15 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verificationTitle": "التحقق",
         "walletTitle": "المحفظة",
         "setUpBookings": "Set up bookings",
-        "manageBookings": "Manage bookings"
+        "manageBookings": "Manage bookings",
+        "bookTab": "Calendar",
+        "bookPriceLabel": "{price} USDC per session",
+        "bookNoAvailability": "No available times right now — check back soon.",
+        "bookOwnerLiveNote": "Your bookings are live. Anyone with your profile link can book an available slot.",
+        "bookOwnerSetupNote": "Set up your paid 1:1 bookings to let people book time with you.",
+        "editSchedule": "Edit schedule",
+        "ownerAvailabilityTitle": "Your availability",
+        "ownerSetupPrompt": "Set up your schedule to let people book time with you."
       },
       "publicProfile": {
         "aboutTab": "حول",
@@ -2765,7 +2786,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "savePublicHandles": "احفظ المعرّفات العامة",
         "booking": {
           "sectionTitle": "Paid 1:1 bookings",
-          "intro": "Let people book paid 1:1 video sessions with you. Set your availability and price, then publish to become bookable from your profile link.",
+          "intro": "Let people book paid 1:1 video sessions with you. Set your availability and price, then turn on Bookable to become bookable from your profile link.",
           "timezoneLabel": "Timezone",
           "durationLabel": "Session length",
           "durationMinutes": "{count} minutes",
@@ -2796,7 +2817,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "publish": "Publish bookings",
           "navLabel": "Bookings",
           "navDescription": "Set your paid 1:1 schedule, pricing, and availability.",
-          "remove": "Remove"
+          "remove": "Remove",
+          "bookableLabel": "Bookable",
+          "bookableOnHint": "People can book you. Turn off to pause without losing your schedule.",
+          "bookableOffHint": "You're not bookable yet — turn on when you're ready.",
+          "autosaveNote": "Changes save automatically.",
+          "savingNote": "Saving…"
         }
       },
       "notFound": {
@@ -4262,7 +4288,15 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verificationTitle": "验证",
         "walletTitle": "钱包",
         "setUpBookings": "Set up bookings",
-        "manageBookings": "Manage bookings"
+        "manageBookings": "Manage bookings",
+        "bookTab": "Calendar",
+        "bookPriceLabel": "{price} USDC per session",
+        "bookNoAvailability": "No available times right now — check back soon.",
+        "bookOwnerLiveNote": "Your bookings are live. Anyone with your profile link can book an available slot.",
+        "bookOwnerSetupNote": "Set up your paid 1:1 bookings to let people book time with you.",
+        "editSchedule": "Edit schedule",
+        "ownerAvailabilityTitle": "Your availability",
+        "ownerSetupPrompt": "Set up your schedule to let people book time with you."
       },
       "publicProfile": {
         "aboutTab": "关于",
@@ -4486,7 +4520,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "savePublicHandles": "保存公开用户名",
         "booking": {
           "sectionTitle": "Paid 1:1 bookings",
-          "intro": "Let people book paid 1:1 video sessions with you. Set your availability and price, then publish to become bookable from your profile link.",
+          "intro": "Let people book paid 1:1 video sessions with you. Set your availability and price, then turn on Bookable to become bookable from your profile link.",
           "timezoneLabel": "Timezone",
           "durationLabel": "Session length",
           "durationMinutes": "{count} minutes",
@@ -4517,7 +4551,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "publish": "Publish bookings",
           "navLabel": "Bookings",
           "navDescription": "Set your paid 1:1 schedule, pricing, and availability.",
-          "remove": "Remove"
+          "remove": "Remove",
+          "bookableLabel": "Bookable",
+          "bookableOnHint": "People can book you. Turn off to pause without losing your schedule.",
+          "bookableOffHint": "You're not bookable yet — turn on when you're ready.",
+          "autosaveNote": "Changes save automatically.",
+          "savingNote": "Saving…"
         }
       },
       "notFound": {

@@ -15,6 +15,9 @@ import { buildPublicProfilePath } from "@/lib/profile-routing";
 import { useChatLauncher } from "./shell/use-chat-launcher";
 import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profiles/profile-page/profile-page";
 import { apiProfileToProps } from "./authenticated-helpers/profile-settings-mapping";
+import { useOwnBookingCta } from "@/app/authenticated-state/use-own-booking-cta";
+import { ProfileBookTabPanel } from "./authenticated-routes/profile-book-tab-panel";
+import { navigate } from "@/app/router";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
 
 const loggedUnavailableProfileActions = new Set<string>();
@@ -81,6 +84,7 @@ export function PublicProfileRoutePage({
   const { error, loading, resolution } = usePublicProfile(handleLabel);
   const ownProfile = Boolean(session?.profile.id && resolution?.profile.id === session.profile.id);
   const followState = useProfileFollowState(resolution?.profile.primary_wallet_address ?? null, ownProfile);
+  const bookingCtaState = useOwnBookingCta(ownProfile);
 
   React.useEffect(() => {
     if (!resolution) {
@@ -182,6 +186,14 @@ export function PublicProfileRoutePage({
   }
 
   const messageTarget = !ownProfile ? resolution.profile.primary_wallet_address : null;
+  const isBookable = Boolean((resolution.profile as { is_bookable?: boolean }).is_bookable);
+  const bookPanel = ownProfile
+    ? (bookingCtaState
+        ? <ProfileBookTabPanel hostUserId={resolution.profile.id} owner={{ configured: bookingCtaState === "manage", onEdit: () => navigate("/settings/bookings") }} />
+        : undefined)
+    : (isBookable
+        ? <ProfileBookTabPanel hostUserId={resolution.profile.id} />
+        : undefined);
 
   return (
     <ProfilePageComposition
@@ -192,6 +204,7 @@ export function PublicProfileRoutePage({
       onMessageProfile={messageTarget
         ? () => chatLauncher.openTarget(messageTarget)
         : undefined}
+      bookPanel={bookPanel}
     />
   );
 }

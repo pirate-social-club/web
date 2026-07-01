@@ -98,6 +98,9 @@ export function apiProfileToProps(
       bannerSrc,
       meta: [],
       viewerContext: ownProfile ? ("self" as const) : ("public" as const),
+      // Optional on the contract (read-on-serve on the public-profile path); cast keeps this
+      // resilient to a stale local @pirate/api-contracts until the api PR's regen is present.
+      isBookable: Boolean((profile as { is_bookable?: boolean }).is_bookable),
       viewerFollows: followState.isFollowing,
       canMessage: !ownProfile,
       followBusy: followState.followBusy,

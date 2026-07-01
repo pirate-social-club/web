@@ -34,6 +34,7 @@ import { useDomainsTab } from "@/app/authenticated-state/use-domains-tab";
 import { useSettingsOwnedAgents } from "@/app/authenticated-state/use-settings-owned-agents";
 import { useBookingHostSettings } from "@/app/authenticated-state/use-booking-host-settings";
 import { useOwnBookingCta } from "@/app/authenticated-state/use-own-booking-cta";
+import { ProfileBookTabPanel } from "@/app/authenticated-routes/profile-book-tab-panel";
 import { ProfileBookingsSection } from "@/components/compositions/bookings/profile-bookings-section/profile-bookings-section";
 
 export { CurrentUserWalletPage } from "./wallet-settings-route";
@@ -83,6 +84,12 @@ export function CurrentUserProfilePage() {
         navigate(isMobile ? "/settings" : buildSettingsPath("profile"));
       }}
       onBookingCta={() => navigate("/settings/bookings")}
+      bookPanel={bookingCtaState ? (
+        <ProfileBookTabPanel
+          hostUserId={profile.id}
+          owner={{ configured: bookingCtaState === "manage", onEdit: () => navigate("/settings/bookings") }}
+        />
+      ) : undefined}
     />
   );
 }

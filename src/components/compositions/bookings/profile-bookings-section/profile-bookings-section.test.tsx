@@ -33,7 +33,7 @@ function renderToDoc(overrides: Partial<ProfileBookingsSectionProps> = {}): Docu
     rules: [],
     priceRules: [],
     exceptions: [],
-    isPublished: false,
+    bookable: false,
     payoutReady: true,
     timezoneOptions: ["UTC", "Europe/Vienna"],
     ...overrides,
@@ -42,24 +42,28 @@ function renderToDoc(overrides: Partial<ProfileBookingsSectionProps> = {}): Docu
   return createTestDom(`<!DOCTYPE html><html><body>${html}</body></html>`).document as unknown as Document;
 }
 
-function publishButton(doc: Document): HTMLButtonElement | undefined {
-  return Array.from(doc.querySelectorAll("button")).find((b) =>
-    /publish bookings/i.test(b.textContent ?? ""),
-  ) as HTMLButtonElement | undefined;
+function bookableSwitch(doc: Document): Element | null {
+  return doc.querySelector('[aria-label="Bookable"]');
 }
 
 describe("ProfileBookingsSection", () => {
-  test("publish is blocked when the app wallet is not ready", () => {
-    const doc = renderToDoc({ payoutReady: false, isPublished: false });
-    const button = publishButton(doc);
-    expect(button).toBeDefined();
-    expect(button!.hasAttribute("disabled")).toBe(true);
+  test("Bookable toggle is disabled when the app wallet is not ready", () => {
+    const doc = renderToDoc({ payoutReady: false, bookable: false });
+    const sw = bookableSwitch(doc);
+    expect(sw).not.toBeNull();
+    expect(sw!.hasAttribute("disabled")).toBe(true);
     expect(doc.body.textContent).toContain("Set up your app wallet to receive payouts.");
   });
 
-  test("publish is enabled when the app wallet is ready", () => {
-    const doc = renderToDoc({ payoutReady: true, isPublished: false });
-    expect(publishButton(doc)!.hasAttribute("disabled")).toBe(false);
+  test("Bookable toggle is enabled when the app wallet is ready", () => {
+    const doc = renderToDoc({ payoutReady: true, bookable: false });
+    expect(bookableSwitch(doc)!.hasAttribute("disabled")).toBe(false);
+  });
+
+  test("no Save button — changes auto-save", () => {
+    const text = renderToDoc().body.textContent ?? "";
+    expect(text).not.toContain("Save booking settings");
+    expect(text).toContain("Changes save automatically.");
   });
 
   test("no headline or payout-wallet field is rendered", () => {
@@ -75,9 +79,8 @@ describe("ProfileBookingsSection", () => {
     expect(doc.body.textContent).toContain("09:00–17:00");
   });
 
-  test("shows the live publish copy when already published", () => {
-    const doc = renderToDoc({ isPublished: true });
-    expect(doc.body.textContent).toContain("Your bookings are live");
-    expect(publishButton(doc)).toBeUndefined(); // button reads "Unpublish" when live
+  test("shows the on-hint when bookable", () => {
+    const doc = renderToDoc({ bookable: true });
+    expect(doc.body.textContent).toContain("People can book you");
   });
 });

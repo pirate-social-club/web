@@ -154,6 +154,14 @@ describe("public profile host routing", () => {
     });
   });
 
+  test("matches dedicated study routes", () => {
+    expectJson(matchRoute("/p/pst_cf89c73fe60641debd05c939252a870c/study"), {
+      kind: "post-study",
+      path: "/p/pst_cf89c73fe60641debd05c939252a870c/study",
+      postId: "pst_cf89c73fe60641debd05c939252a870c",
+    });
+  });
+
   test("matches settings agent routes from path routes", () => {
     expectJson(matchRoute("/settings"), {
       kind: "settings-index",
@@ -228,6 +236,19 @@ describe("public profile host routing", () => {
       kind: "booking-checkout",
       path: "/c/com_123/book/usr_456/checkout",
       communityId: "com_123",
+      hostUserId: "usr_456",
+    });
+    // Canonical global booking routes (no community context → communityId null).
+    expectJson(matchRoute("/book/usr_456"), {
+      kind: "booking-public",
+      path: "/book/usr_456",
+      communityId: null,
+      hostUserId: "usr_456",
+    });
+    expectJson(matchRoute("/book/usr_456/checkout"), {
+      kind: "booking-checkout",
+      path: "/book/usr_456/checkout",
+      communityId: null,
       hostUserId: "usr_456",
     });
   });

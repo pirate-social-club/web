@@ -28,8 +28,8 @@ interface PersistedCheckout {
   txHash?: string;
   bookingId?: string;
 }
-function persistKey(communityId: string, hostUserId: string, slotStart: string): string {
-  return `${PERSIST_PREFIX}:${communityId}:${hostUserId}:${slotStart}`;
+function persistKey(communityId: string | null, hostUserId: string, slotStart: string): string {
+  return `${PERSIST_PREFIX}:${communityId ?? "global"}:${hostUserId}:${slotStart}`;
 }
 function loadPersisted(key: string): PersistedCheckout | null {
   try {
@@ -103,7 +103,7 @@ function useCountdown(expiresAtUtc: string | null): number {
   return secs;
 }
 
-export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: string; hostUserId: string }): React.ReactElement {
+export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: string | null; hostUserId: string }): React.ReactElement {
   const api = useApi();
   const session = useSession();
   const { connectedWallets } = usePiratePrivyWallets({ enabled: true });
@@ -117,7 +117,9 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
   const key = persistKey(communityId, hostUserId, slotStart);
 
   const backToAvailability = React.useCallback(() => {
-    navigate(`/c/${encodeURIComponent(communityId)}/book/${encodeURIComponent(hostUserId)}`);
+    navigate(communityId
+      ? `/c/${encodeURIComponent(communityId)}/book/${encodeURIComponent(hostUserId)}`
+      : `/book/${encodeURIComponent(hostUserId)}`);
   }, [communityId, hostUserId]);
 
   // Run API confirmation for an ALREADY-submitted transaction. Pure resume — never submits a transfer.
@@ -185,7 +187,7 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
         const { hold } = await api.bookings.createBookingHold(hostUserId, {
           slot_start_utc: slotStart,
           slot_end_utc: slotEnd,
-          source_community_id: communityId,
+          source_community_id: communityId ?? null,
         });
         if (cancelled) return;
         const { quote } = await api.bookings.quoteBookingHold(hold.hold_id);

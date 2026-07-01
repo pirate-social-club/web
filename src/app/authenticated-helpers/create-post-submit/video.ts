@@ -50,6 +50,7 @@ type UploadArtifactContent = (
   communityId: string,
   artifactUploadId: string,
   body: ArrayBuffer,
+  onProgress?: (fraction: number) => void,
 ) => Promise<SongArtifactUpload>;
 
 type GetArtifactUploadPartSignedUrl = (
@@ -221,7 +222,12 @@ export async function uploadVideoArtifact({
       filename: file.name,
       size_bytes: file.size,
     });
-    return await uploadArtifactContent(communityId, intent.id, await file.arrayBuffer());
+    return await uploadArtifactContent(
+      communityId,
+      intent.id,
+      await file.arrayBuffer(),
+      (fraction) => reportProgress?.("upload_video", `${Math.round(fraction * 100)}%`),
+    );
   }
   if (!getArtifactUploadPartSignedUrl || !completeArtifactUploadSession || !abortArtifactUploadSession) {
     throw new Error("Large video upload support is not configured.");

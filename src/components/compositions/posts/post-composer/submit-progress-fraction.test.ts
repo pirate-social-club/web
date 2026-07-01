@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { createSubmitProgressReporter } from "@/app/authenticated-helpers/create-post-submit/progress";
 import {
   simpleSubmitProgressSteps,
+  songSubmitProgressSteps,
   videoSubmitProgressSteps,
 } from "@/app/authenticated-helpers/create-post-submit/progress-steps";
 
@@ -101,6 +102,32 @@ describe("submitProgressFraction — pipeline monotonicity", () => {
     ]);
 
     expect(isNonDecreasing(fractions)).toBe(false);
+  });
+});
+
+describe("submitProgressFraction — byte-wired song flow is monotonic", () => {
+  test("primary audio + aggregated extra-artifact byte reports never decrease", () => {
+    // Mirrors use-song-submit: seed each upload step at "0%", then emit byte reports
+    // (primary audio sequential, extra artifacts aggregated) before the next step.
+    const fractions = replayFractions(
+      songSubmitProgressSteps({ hasPendingBundle: false, hasExtraArtifacts: true, isLocked: false }),
+      [
+        ["validating"],
+        ["upload_primary_audio", "0%"],
+        ["upload_primary_audio", "45%"],
+        ["upload_primary_audio", "100%"],
+        ["upload_artifacts", "0%"],
+        ["upload_artifacts", "30%"],
+        ["upload_artifacts", "100%"],
+        ["create_bundle"],
+        ["check_rights"],
+        ["publish_post"],
+        ["check_registration"],
+        ["done"],
+      ],
+    );
+    expect(isNonDecreasing(fractions)).toBe(true);
+    expect(fractions.at(-1)).toBe(1);
   });
 });
 

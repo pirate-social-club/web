@@ -670,7 +670,9 @@
     "shareProfile": "分享资料",
     "title": "个人资料",
     "verificationTitle": "验证",
-    "walletTitle": "钱包"
+    "walletTitle": "钱包",
+    "setUpBookings": "Set up bookings",
+    "manageBookings": "Manage bookings"
   },
   "publicProfile": {
     "aboutTab": "关于",

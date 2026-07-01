@@ -55,6 +55,7 @@ export function ProfilePage({
   defaultTab = "overview",
   onEditProfile,
   onMessageProfile,
+  onBookingCta,
   overviewItems = EMPTY_PROFILE_OVERVIEW_ITEMS,
   posts = EMPTY_PROFILE_POSTS,
   profile,
@@ -78,6 +79,7 @@ export function ProfilePage({
             localeTag={localeTag}
             onEditProfile={onEditProfile}
             onMessageProfile={onMessageProfile}
+            onBookingCta={onBookingCta}
             profile={profile}
             stats={rightRail.stats}
           />

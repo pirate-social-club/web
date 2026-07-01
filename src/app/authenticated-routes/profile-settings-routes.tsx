@@ -33,6 +33,7 @@ import {
 import { useDomainsTab } from "@/app/authenticated-state/use-domains-tab";
 import { useSettingsOwnedAgents } from "@/app/authenticated-state/use-settings-owned-agents";
 import { useBookingHostSettings } from "@/app/authenticated-state/use-booking-host-settings";
+import { useOwnBookingCta } from "@/app/authenticated-state/use-own-booking-cta";
 import { ProfileBookingsSection } from "@/components/compositions/bookings/profile-bookings-section/profile-bookings-section";
 
 export { CurrentUserWalletPage } from "./wallet-settings-route";
@@ -50,6 +51,7 @@ export function CurrentUserProfilePage() {
   const isMobile = useIsMobile();
   const pageTitle = copy.profile.title;
   logger.info("[profile-page] render", { hasProfile: !!profile, hasSession: !!session });
+  const bookingCtaState = useOwnBookingCta(Boolean(session));
   const followState = useProfileFollowState(profile?.primary_wallet_address ?? null, true);
   const handleFlow = useGlobalHandleFlow({
     currentHandleLabel: profile?.global_handle?.label ?? "",
@@ -62,16 +64,25 @@ export function CurrentUserProfilePage() {
     return <AuthRequiredRouteState description={copy.routeStatus.profile.auth} hideTitleOnMobile title={pageTitle} />;
   }
 
+  const baseProps = apiProfileToProps(profile, true, {
+    followersLabel: copy.profile.followersLabel,
+    followingLabel: copy.profile.followingLabel,
+  }, followState, localeTag);
+  const bookingCtaLabel = bookingCtaState === "manage"
+    ? copy.profile.manageBookings
+    : bookingCtaState === "setup"
+      ? copy.profile.setUpBookings
+      : undefined;
+
   return (
     <ProfilePageComposition
-      {...apiProfileToProps(profile, true, {
-        followersLabel: copy.profile.followersLabel,
-        followingLabel: copy.profile.followingLabel,
-      }, followState, localeTag)}
+      {...baseProps}
+      profile={{ ...baseProps.profile, bookingCtaLabel }}
       onEditProfile={() => {
         handleFlow.clearDraft();
         navigate(isMobile ? "/settings" : buildSettingsPath("profile"));
       }}
+      onBookingCta={() => navigate("/settings/bookings")}
     />
   );
 }

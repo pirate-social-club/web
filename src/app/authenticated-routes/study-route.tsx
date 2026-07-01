@@ -12,6 +12,7 @@ import {
 } from "@/components/compositions/song-study/song-study-surface";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { Button } from "@/components/primitives/button";
+import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
@@ -611,10 +612,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
 
   if (!hydrated || (configured && !loaded)) {
     return (
-      <div className="flex h-dvh min-h-screen w-full items-center justify-center bg-background px-6 text-center text-foreground">
-        <Type as="p" className="text-muted-foreground" variant="body">
-          Loading study
-        </Type>
+      <div className="flex h-dvh min-h-screen w-full items-center justify-center bg-background text-foreground">
+        <Spinner className="size-8 text-muted-foreground" />
       </div>
     );
   }
@@ -625,10 +624,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
 
   if (state.phase === "loading") {
     return (
-      <div className="flex h-dvh min-h-screen w-full items-center justify-center bg-background px-6 text-center text-foreground">
-        <Type as="p" className="text-muted-foreground" variant="body">
-          Loading study
-        </Type>
+      <div className="flex h-dvh min-h-screen w-full items-center justify-center bg-background text-foreground">
+        <Spinner className="size-8 text-muted-foreground" />
       </div>
     );
   }

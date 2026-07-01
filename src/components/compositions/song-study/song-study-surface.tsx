@@ -498,7 +498,7 @@ export function SongStudySurface({
   title,
 }: SongStudySurfaceProps) {
   return (
-    <section className={cn("flex min-h-screen w-full flex-col bg-background text-foreground", className)}>
+    <section className={cn("flex h-dvh w-full flex-col overflow-y-auto bg-background text-foreground", className)}>
       <Header artistName={artistName} artworkSrc={artworkSrc} onExit={onExit} title={title} />
       <Body onOptionSelect={onOptionSelect} state={state} />
       <ActivityFooter

@@ -31,12 +31,20 @@ export function createCommunitiesApi(request: ApiRequest) {
         body: JSON.stringify(body),
       }),
     uploadMedia: (
-      input: { kind: "avatar" | "banner" | "post_image" | "comment_image"; file: File },
+      input: {
+        kind: "avatar" | "banner" | "post_image" | "comment_image";
+        file: File;
+        onProgress?: (fraction: number) => void;
+      },
     ): Promise<ApiCommunityMediaUploadResponse> => {
       const body = new FormData();
       body.set("kind", input.kind);
       body.set("file", input.file);
-      return request<ApiCommunityMediaUploadResponse>("/community-media", { method: "POST", body });
+      return request<ApiCommunityMediaUploadResponse>("/community-media", {
+        method: "POST",
+        body,
+        onUploadProgress: input.onProgress,
+      });
     },
     get: (communityId: string, opts?: { locale?: string | null }): Promise<Community> => {
       return request<Community>(buildQueryPath(

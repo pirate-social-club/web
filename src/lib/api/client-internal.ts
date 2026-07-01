@@ -12,6 +12,9 @@ export type ApiRequestInit = RequestInit & {
   replayedAfterRefresh?: boolean;
   replayedWithoutOptionalToken?: boolean;
   responseType?: "json" | "response";
+  // When set, the request is sent via XMLHttpRequest so upload byte-progress can be
+  // reported (fetch cannot). Called with a 0–1 fraction as bytes are sent.
+  onUploadProgress?: (fraction: number) => void;
 };
 
 export type ApiRequest = <T>(path: string, init?: ApiRequestInit) => Promise<T>;

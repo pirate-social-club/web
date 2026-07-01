@@ -38,7 +38,7 @@ function submitting(progress: SubmitProgress) {
 // --- Activity mode: no counter, indeterminate bar ---------------------------
 
 export const ImageUploadingActivity: Story = {
-  name: "Activity / Image uploading",
+  name: "Activity / Image uploading (real bytes)",
   render: () => (
     <PostComposer
       {...baseComposer}
@@ -46,6 +46,9 @@ export const ImageUploadingActivity: Story = {
       submit={submitting({
         phase: "uploading_media",
         label: "Uploading image",
+        // Image upload now reports real byte-progress over XHR, so the bar fills
+        // to this fraction rather than sweeping indeterminately.
+        detail: "45%",
         currentIndex: 2,
         totalSteps: 3,
         display: "activity",

@@ -18,18 +18,26 @@ import {
 } from "./post-composer-utils";
 import type { PostComposerController } from "./use-post-composer-controller";
 
-// Fraction (0–1) to fill the progress bar for multi-step flows, or null when the
-// flow can't be measured (single-slow-step activity flows over `fetch`, which has
-// no byte-progress) — in that case the bar animates indeterminately instead.
-// A byte-percentage detail (e.g. video upload "63%") interpolates within the
-// current step so the longest stage advances smoothly rather than jumping.
+// Parse a "63%" detail into a 0–1 fraction, or null when there's no byte-progress.
+function parseDetailFraction(detail: string | undefined): number | null {
+  const match = detail?.match(/^(\d+(?:\.\d+)?)%$/);
+  if (!match) return null;
+  return Math.min(Math.max(Number(match[1]) / 100, 0), 1);
+}
+
+// Fraction (0–1) to fill the progress bar, or null to animate indeterminately.
+// - Multi-step flows (song/video): fill by completed steps, interpolating a byte-%
+//   within the current step so the longest stage advances smoothly.
+// - Single-step flows (image): the upload now reports real bytes via XHR, so fill
+//   directly by that %. Before/after the upload there's no measurable work, so the
+//   bar animates indeterminately (null) — honest rather than a fake fill.
 function submitProgressFraction(progress: SubmitProgress): number | null {
-  if (progress.display !== "pipeline") return null;
+  const within = parseDetailFraction(progress.detail);
+  if (progress.display !== "pipeline") return within;
+
   const total = Math.max(progress.totalSteps, 1);
   const reached = Math.min(Math.max(progress.currentIndex, 0), total);
-  const pctMatch = progress.detail?.match(/^(\d+(?:\.\d+)?)%$/);
-  if (pctMatch) {
-    const within = Math.min(Math.max(Number(pctMatch[1]) / 100, 0), 1);
+  if (within != null) {
     return ((reached - 1) + within) / total;
   }
   return reached / total;

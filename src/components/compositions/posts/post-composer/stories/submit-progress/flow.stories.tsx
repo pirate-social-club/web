@@ -63,8 +63,9 @@ type Frame = { key: string; detail?: string };
 function framesForSteps(steps: SubmitProgressStep[]): Frame[] {
   const frames: Frame[] = [];
   for (const step of steps) {
-    if (step.phase === "uploading_media" && step.key !== "prepare_media") {
-      // Video upload/poster steps report real percentages; play a short sweep.
+    // Byte-uploading steps report real percentages (image via XHR, video via
+    // multipart) — play a short sweep so the bar fills instead of flashing.
+    if (step.phase === "uploading_media") {
       for (const pct of ["18%", "52%", "86%"]) {
         frames.push({ key: step.key, detail: pct });
       }

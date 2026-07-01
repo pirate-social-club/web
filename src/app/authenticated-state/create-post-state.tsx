@@ -963,7 +963,6 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           });
         }
       } else if (composerMode === "image") {
-        reportProgress("prepare_media");
         logger.info("[create-post] creating image post", {
           filename: imageUpload?.name,
           sizeBytes: imageUpload?.size,
@@ -983,6 +982,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           createPost: api.communities.createPost,
           event: eventRequest,
           file: imageUpload,
+          reportProgress,
           signAgentAuthoredBody,
           title,
           uploadMedia: api.communities.uploadMedia,

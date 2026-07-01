@@ -3,6 +3,7 @@ import {
   ArrowSquareOut,
   DownloadSimple,
   Lock as FilledLockIcon,
+  GraduationCap,
   MicrophoneStage,
   MusicNote,
   Pause as PauseIcon,
@@ -386,6 +387,28 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
         icon={<MicrophoneStage className="size-5" />}
         key="karaoke"
         label="Karaoke"
+      />,
+    );
+  }
+
+  if (content.study?.status === "ready" && content.onStudy) {
+    rows.push(
+      <SongOfferRow
+        action={
+          <Button
+            aria-label="Open study"
+            className="h-10 w-32 px-5"
+            data-post-card-interactive="true"
+            onClick={content.onStudy}
+            size="sm"
+          >
+            <GraduationCap className="size-4" />
+            <span>Study</span>
+          </Button>
+        }
+        icon={<GraduationCap className="size-5" />}
+        key="study"
+        label="Study"
       />,
     );
   }

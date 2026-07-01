@@ -10,5 +10,6 @@ export { LiveRoomRoutePage } from "./live-room-route";
 export { CommunityModerationIndexPage, CommunityModerationPage } from "./moderation-route";
 export { CreatePostGlobalPage, NotFoundPage } from "./misc-routes";
 export { OnboardingPage } from "./onboarding-route";
+export { StudyRoutePage } from "./study-route";
 export { PostPage } from "./post-route";
 export { CurrentUserProfilePage, CurrentUserSettingsPage } from "./profile-settings-routes";

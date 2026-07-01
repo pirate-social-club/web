@@ -149,6 +149,14 @@ export interface LiveRoomContentSpec {
 }
 
 // Spec-aligned song content (from specs/domain/post.md, asset.md, marketplace.md)
+export type SongStudyStatus = "unavailable" | "processing" | "ready" | "locked";
+export interface SongStudyCapability {
+  status: SongStudyStatus;
+  exerciseCount?: number;
+  sourceLanguage?: string;
+  targetLanguage?: string;
+}
+
 export interface SongContentSpec {
   type: "song";
   // Core metadata
@@ -196,6 +204,10 @@ export interface SongContentSpec {
   // Link to the karaoke ("Sing") surface for this song, when available.
   karaokeHref?: string;
   onKaraoke?: () => void;
+
+  // The study ("Study") capability + surface for this song, when available.
+  study?: SongStudyCapability;
+  onStudy?: () => void;
 
   // Callbacks
   onPlay?: () => void;

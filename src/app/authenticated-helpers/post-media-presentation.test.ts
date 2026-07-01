@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
-import { toKaraokeCapability } from "./post-media-presentation";
+import { toKaraokeCapability, toStudyCapability } from "./post-media-presentation";
 
 function songPost(opts: {
   instrumental?: boolean;
@@ -91,5 +91,39 @@ describe("toKaraokeCapability", () => {
       },
     } as unknown as ApiPost;
     expect(toKaraokeCapability(post)).toBeUndefined();
+  });
+});
+
+describe("toStudyCapability", () => {
+  test("uses the server-derived study capability", () => {
+    expect(toStudyCapability({
+      ...songPost(),
+      study_capability: {
+        status: "ready",
+        exercise_count: 12,
+        source_language: "en",
+        target_language: "es",
+      },
+    } as unknown as ApiPost)).toEqual({
+      status: "ready",
+      exerciseCount: 12,
+      sourceLanguage: "en",
+      targetLanguage: "es",
+    });
+  });
+
+  test("returns undefined when the server omits a study capability", () => {
+    expect(toStudyCapability(songPost())).toBeUndefined();
+  });
+
+  test("does not infer study availability from timed lyrics alone", () => {
+    expect(toStudyCapability(songPost({ hasTimedLyrics: true }))).toBeUndefined();
+  });
+
+  test("returns undefined for non-song posts", () => {
+    expect(toStudyCapability({
+      post: { post_type: "video", access_mode: "public", media_refs: [] },
+      study_capability: { status: "ready" },
+    } as unknown as ApiPost)).toBeUndefined();
   });
 });

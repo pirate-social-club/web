@@ -492,6 +492,24 @@ export function toKaraokeCapability(postResponse: ApiPost): KaraokeCapability | 
   }
 }
 
+export function toStudyCapability(postResponse: ApiPost): SongContentSpec["study"] {
+  if (postResponse.post.post_type !== "song") {
+    return undefined;
+  }
+
+  const capability = postResponse.study_capability;
+  if (!capability) {
+    return undefined;
+  }
+
+  return {
+    status: capability.status,
+    exerciseCount: capability.exercise_count ?? undefined,
+    sourceLanguage: capability.source_language ?? undefined,
+    targetLanguage: capability.target_language ?? undefined,
+  };
+}
+
 export function toSongPostContent(
   postResponse: ApiPost,
   songOptions: SongPresentationOptions | undefined,
@@ -567,6 +585,7 @@ export function toSongPostContent(
     storageProofs.preview = primaryProof;
   }
   const karaokeCapability = toKaraokeCapability(postResponse);
+  const study = toStudyCapability(postResponse);
   return {
     type: "song",
     accessMode,
@@ -597,6 +616,8 @@ export function toSongPostContent(
       ? `/p/${encodeURIComponent(post.id)}/karaoke`
       : undefined,
     onKaraoke: karaokeCapability?.canKaraoke ? songOptions?.onKaraoke : undefined,
+    study,
+    onStudy: study ? songOptions?.onStudy : undefined,
     onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,
     onPlay: playbackDescriptor && playback ? () => void playback.playTrack(playbackDescriptor) : undefined,
     onSeek: playbackDescriptor && playback ? (progressMs) => void playback.seekTrack(playbackDescriptor, progressMs) : undefined,

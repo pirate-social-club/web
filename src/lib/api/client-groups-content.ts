@@ -26,6 +26,10 @@ import type {
   ApiSongArtifactUploadPartSignedUrlResponse,
   CommunityListCommentsOptions,
   KaraokeSessionCreateApiResponse,
+  SongStudyAttemptRequest,
+  SongStudyAttemptResult,
+  SongStudyPayload,
+  SongStudyTranscriptionResponse,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
@@ -151,6 +155,37 @@ export function createCommunityContentApi(request: ApiRequest) {
         }),
         { tokenOptional: true },
       ),
+    getPostStudy: (
+      communityId: string,
+      postId: string,
+      opts?: { targetLanguage?: string | null },
+    ): Promise<SongStudyPayload> =>
+      request<SongStudyPayload>(
+        buildQueryPath(`/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/study`, {
+          target_language: opts?.targetLanguage,
+        }),
+      ),
+    submitPostStudyAttempt: (
+      communityId: string,
+      postId: string,
+      body: SongStudyAttemptRequest,
+    ): Promise<SongStudyAttemptResult> =>
+      request<SongStudyAttemptResult>(
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/study/attempts`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    transcribePostStudyAudio: (
+      communityId: string,
+      postId: string,
+      input: { file: File },
+    ): Promise<SongStudyTranscriptionResponse> => {
+      const body = new FormData();
+      body.set("file", input.file);
+      return request<SongStudyTranscriptionResponse>(
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/study/transcriptions`,
+        { method: "POST", body },
+      );
+    },
     createPost: (
       communityId: string,
       body: CreatePostRequest,

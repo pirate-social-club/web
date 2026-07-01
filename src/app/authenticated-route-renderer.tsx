@@ -76,6 +76,10 @@ const LazyKaraokeRoutePage = lazyRouteModule(
   () => import("./authenticated-routes/karaoke-route"),
   "KaraokeRoutePage",
 );
+const LazyStudyRoutePage = lazyRouteModule(
+  () => import("./authenticated-routes/study-route"),
+  "StudyRoutePage",
+);
 const LazyInboxPlaceholderPage = lazyRouteModule(
   () => import("./authenticated-routes/inbox-route"),
   "InboxPlaceholderPage",
@@ -180,6 +184,8 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyPostPage postId={route.postId} />;
     case "post-karaoke":
       return <LazyKaraokeRoutePage postId={route.postId} />;
+    case "post-study":
+      return <LazyStudyRoutePage postId={route.postId} />;
     case "live-room":
       return <LazyLiveRoomRoutePage postId={route.postId} />;
     case "crosspost":

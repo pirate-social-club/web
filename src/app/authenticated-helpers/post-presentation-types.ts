@@ -24,6 +24,7 @@ export type SongPresentationOptions = {
   storyNetwork?: PirateStoryNetwork;
   onBuy?: () => void;
   onKaraoke?: () => void;
+  onStudy?: () => void;
 };
 
 export type LiveRoomPresentationOptions = {

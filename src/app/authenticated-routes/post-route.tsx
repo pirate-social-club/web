@@ -475,6 +475,13 @@ export function PostPage({
     }
     navigate(`/p/${encodeURIComponent(postId)}/karaoke`);
   }, [hasSession, postId, requestAuth]);
+  const handleOpenStudy = React.useCallback(() => {
+    if (!hasSession) {
+      requestAuth("Connect your wallet to study this song.");
+      return;
+    }
+    navigate(`/p/${encodeURIComponent(postId)}/study`);
+  }, [hasSession, postId, requestAuth]);
 
   const attachLiveRoomViewer = React.useCallback(async (options?: { openModal?: boolean }) => {
     if (!community?.id || !activeLiveRoomId) return;
@@ -805,6 +812,7 @@ export function PostPage({
         post.post.post_type === "video" ? "video" : "song",
       ) : undefined,
       onKaraoke: post.post.post_type === "song" ? handleOpenKaraoke : undefined,
+      onStudy: post.post.post_type === "song" ? handleOpenStudy : undefined,
       playback: songPlayback,
       purchase: threadPurchase,
       storyLicenseNotice: storyLicenseReuseNotice ?? undefined,

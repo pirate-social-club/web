@@ -1071,6 +1071,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "publishReadyNote": "You're ready — publish to let people book you.",
           "unpublish": "Unpublish",
           "publish": "Publish bookings",
+          "navLabel": "Bookings",
+          "navDescription": "Set your paid 1:1 schedule, pricing, and availability.",
           "remove": "Remove"
         }
       },
@@ -2788,6 +2790,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "publishReadyNote": "You're ready — publish to let people book you.",
           "unpublish": "Unpublish",
           "publish": "Publish bookings",
+          "navLabel": "Bookings",
+          "navDescription": "Set your paid 1:1 schedule, pricing, and availability.",
           "remove": "Remove"
         }
       },
@@ -4505,6 +4509,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "publishReadyNote": "You're ready — publish to let people book you.",
           "unpublish": "Unpublish",
           "publish": "Publish bookings",
+          "navLabel": "Bookings",
+          "navDescription": "Set your paid 1:1 schedule, pricing, and availability.",
           "remove": "Remove"
         }
       },

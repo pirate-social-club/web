@@ -670,7 +670,9 @@
     "shareProfile": "Share profile",
     "title": "Profile",
     "verificationTitle": "Verification",
-    "walletTitle": "Wallet"
+    "walletTitle": "Wallet",
+    "setUpBookings": "Set up bookings",
+    "manageBookings": "Manage bookings"
   },
   "publicProfile": {
     "aboutTab": "About",

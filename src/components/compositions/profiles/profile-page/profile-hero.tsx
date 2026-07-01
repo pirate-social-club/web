@@ -17,10 +17,12 @@ function formatStatValue(value: string | number, localeTag: string) {
 function ProfileHeroActions({
   onEditProfile,
   onMessageProfile,
+  onBookingCta,
   profile,
 }: {
   onEditProfile?: () => void;
   onMessageProfile?: () => void;
+  onBookingCta?: () => void;
   profile: ProfileData;
 }) {
   const { locale } = useUiLocale();
@@ -28,8 +30,11 @@ function ProfileHeroActions({
 
   if (profile.viewerContext === "self") {
     return (
-      <div>
+      <div className="flex flex-wrap gap-2">
         <Button className="flex-1 sm:flex-none" onClick={onEditProfile}>{copy.editProfile}</Button>
+        {profile.bookingCtaLabel && onBookingCta ? (
+          <Button variant="secondary" className="flex-1 sm:flex-none" onClick={onBookingCta}>{profile.bookingCtaLabel}</Button>
+        ) : null}
       </div>
     );
   }
@@ -61,12 +66,14 @@ export function ProfileHero({
   localeTag,
   onEditProfile,
   onMessageProfile,
+  onBookingCta,
   profile,
   stats = EMPTY_PROFILE_STATS,
 }: {
   localeTag?: string;
   onEditProfile?: () => void;
   onMessageProfile?: () => void;
+  onBookingCta?: () => void;
   profile: ProfileData;
   stats?: ProfileSidebarStat[];
 }) {
@@ -103,7 +110,7 @@ export function ProfileHero({
 
   return (
     <IdentityHero
-      actions={<ProfileHeroActions onEditProfile={onEditProfile} onMessageProfile={onMessageProfile} profile={profile} />}
+      actions={<ProfileHeroActions onEditProfile={onEditProfile} onMessageProfile={onMessageProfile} onBookingCta={onBookingCta} profile={profile} />}
       avatarBadgeCountryCode={profile.nationalityBadgeCountryCode}
       avatarBadgeLabel={profile.nationalityBadgeLabel}
       avatarFallback={profile.displayName}

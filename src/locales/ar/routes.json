@@ -670,7 +670,9 @@
     "shareProfile": "شارك الملف الشخصي",
     "title": "الملف الشخصي",
     "verificationTitle": "التحقق",
-    "walletTitle": "المحفظة"
+    "walletTitle": "المحفظة",
+    "setUpBookings": "Set up bookings",
+    "manageBookings": "Manage bookings"
   },
   "publicProfile": {
     "aboutTab": "حول",

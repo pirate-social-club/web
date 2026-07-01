@@ -818,7 +818,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "shareProfile": "Share profile",
         "title": "Profile",
         "verificationTitle": "Verification",
-        "walletTitle": "Wallet"
+        "walletTitle": "Wallet",
+        "setUpBookings": "Set up bookings",
+        "manageBookings": "Manage bookings"
       },
       "publicProfile": {
         "aboutTab": "About",
@@ -2537,7 +2539,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "shareProfile": "شارك الملف الشخصي",
         "title": "الملف الشخصي",
         "verificationTitle": "التحقق",
-        "walletTitle": "المحفظة"
+        "walletTitle": "المحفظة",
+        "setUpBookings": "Set up bookings",
+        "manageBookings": "Manage bookings"
       },
       "publicProfile": {
         "aboutTab": "حول",
@@ -4256,7 +4260,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "shareProfile": "分享资料",
         "title": "个人资料",
         "verificationTitle": "验证",
-        "walletTitle": "钱包"
+        "walletTitle": "钱包",
+        "setUpBookings": "Set up bookings",
+        "manageBookings": "Manage bookings"
       },
       "publicProfile": {
         "aboutTab": "关于",

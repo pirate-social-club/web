@@ -69,6 +69,8 @@ export interface ProfileData {
   bannerSrc?: string;
   meta?: ProfileHeaderMetaItem[];
   viewerContext: "self" | "public";
+  /** Label for the self-only booking CTA (e.g. "Set up bookings" / "Manage bookings"); omit to hide. */
+  bookingCtaLabel?: string;
   viewerFollows?: boolean;
   canMessage?: boolean;
   followBusy?: boolean;
@@ -94,4 +96,6 @@ export interface ProfilePageProps {
   className?: string;
   onEditProfile?: () => void;
   onMessageProfile?: () => void;
+  /** Invoked by the self-only booking CTA (navigates to /settings/bookings). */
+  onBookingCta?: () => void;
 }

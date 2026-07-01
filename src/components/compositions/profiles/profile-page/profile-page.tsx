@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Article, ChatCircle, SquaresFour, Wallet } from "@phosphor-icons/react";
+import { Article, CalendarCheck, ChatCircle, SquaresFour, Wallet } from "@phosphor-icons/react";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ContentRailShell } from "@/components/compositions/app/content-rail-shell/content-rail-shell";
@@ -16,7 +16,7 @@ import { CommentsPanel, OverviewPanel, PostsPanel, WalletPanel } from "./profile
 import { ProfileHero } from "./profile-hero";
 import { ProfileRightRail } from "./profile-right-rail";
 
-const VALID_TABS: ProfilePageTab[] = ["overview", "posts", "comments", "wallet"];
+const VALID_TABS: ProfilePageTab[] = ["overview", "posts", "comments", "wallet", "book"];
 const EMPTY_PROFILE_COMMENTS: ProfileCommentItem[] = [];
 const EMPTY_PROFILE_OVERVIEW_ITEMS: ProfileActivityItem[] = [];
 const EMPTY_PROFILE_POSTS: ProfilePostItem[] = [];
@@ -56,6 +56,7 @@ export function ProfilePage({
   onEditProfile,
   onMessageProfile,
   onBookingCta,
+  bookPanel,
   overviewItems = EMPTY_PROFILE_OVERVIEW_ITEMS,
   posts = EMPTY_PROFILE_POSTS,
   profile,
@@ -66,7 +67,8 @@ export function ProfilePage({
   const copy = getLocaleMessages(locale, "routes").profile;
   const localeTag = resolveLocaleLanguageTag(locale);
   const hasWalletTab = Boolean(rightRail.walletAddress || rightRail.walletAssets?.length || rightRail.walletChainSections?.length);
-  const tabColumns = isMobile ? (hasWalletTab ? 4 : 3) : undefined;
+  const hasBookTab = Boolean(bookPanel);
+  const tabColumns = isMobile ? 3 + (hasWalletTab ? 1 : 0) + (hasBookTab ? 1 : 0) : undefined;
   const mobileTabIconClassName = "size-5";
   const [activeTab, setActiveTab] = useHashTab(defaultTab);
 
@@ -126,6 +128,16 @@ export function ProfilePage({
                 ) : copy.walletTitle}
               </FlatTabsTrigger>
             ) : null}
+            {hasBookTab ? (
+              <FlatTabsTrigger className={!isMobile ? "min-w-fit px-5" : "px-0"} title={copy.bookTab} value="book">
+                {isMobile ? (
+                  <>
+                    <CalendarCheck aria-hidden="true" className={mobileTabIconClassName} />
+                    <span className="sr-only">{copy.bookTab}</span>
+                  </>
+                ) : copy.bookTab}
+              </FlatTabsTrigger>
+            ) : null}
           </FlatTabsList>
 
           <TabsContent className="mt-0" value="overview">
@@ -144,6 +156,11 @@ export function ProfilePage({
                 walletAssets={rightRail.walletAssets}
                 walletChainSections={rightRail.walletChainSections}
               />
+            </TabsContent>
+          ) : null}
+          {hasBookTab ? (
+            <TabsContent className="mt-0" value="book">
+              {bookPanel}
             </TabsContent>
           ) : null}
         </Tabs>

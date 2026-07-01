@@ -820,7 +820,12 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verificationTitle": "Verification",
         "walletTitle": "Wallet",
         "setUpBookings": "Set up bookings",
-        "manageBookings": "Manage bookings"
+        "manageBookings": "Manage bookings",
+        "bookTab": "Book",
+        "bookPriceLabel": "{price} USDC per session",
+        "bookNoAvailability": "No available times right now — check back soon.",
+        "bookOwnerLiveNote": "Your bookings are live. Anyone with your profile link can book an available slot.",
+        "bookOwnerSetupNote": "Set up your paid 1:1 bookings to let people book time with you."
       },
       "publicProfile": {
         "aboutTab": "About",
@@ -2541,7 +2546,12 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verificationTitle": "التحقق",
         "walletTitle": "المحفظة",
         "setUpBookings": "Set up bookings",
-        "manageBookings": "Manage bookings"
+        "manageBookings": "Manage bookings",
+        "bookTab": "Book",
+        "bookPriceLabel": "{price} USDC per session",
+        "bookNoAvailability": "No available times right now — check back soon.",
+        "bookOwnerLiveNote": "Your bookings are live. Anyone with your profile link can book an available slot.",
+        "bookOwnerSetupNote": "Set up your paid 1:1 bookings to let people book time with you."
       },
       "publicProfile": {
         "aboutTab": "حول",
@@ -4262,7 +4272,12 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verificationTitle": "验证",
         "walletTitle": "钱包",
         "setUpBookings": "Set up bookings",
-        "manageBookings": "Manage bookings"
+        "manageBookings": "Manage bookings",
+        "bookTab": "Book",
+        "bookPriceLabel": "{price} USDC per session",
+        "bookNoAvailability": "No available times right now — check back soon.",
+        "bookOwnerLiveNote": "Your bookings are live. Anyone with your profile link can book an available slot.",
+        "bookOwnerSetupNote": "Set up your paid 1:1 bookings to let people book time with you."
       },
       "publicProfile": {
         "aboutTab": "关于",

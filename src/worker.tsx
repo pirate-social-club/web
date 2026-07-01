@@ -522,6 +522,8 @@ const app = defineApp<AppRequestInfo>([
     route("/c/:communityId/bookings/:bookingId/session", AppRoutePage),
     route("/c/:communityId/book/:hostUserId", AppRoutePage),
     route("/c/:communityId/book/:hostUserId/checkout", AppRoutePage),
+    route("/book/:hostUserId", AppRoutePage),
+    route("/book/:hostUserId/checkout", AppRoutePage),
     route("/c/:communityId/mod", AppRoutePage),
     ...COMMUNITY_MODERATION_SECTIONS.map((section) =>
       route(`/c/:communityId/mod/${section}`, AppRoutePage)

@@ -387,6 +387,8 @@
       "scheduleForLater": "稍后安排",
       "startTime": "开始时间",
       "startTimeNote": "定时直播活动必填。",
+      "recordThisLivestream": "Record this livestream",
+      "recordThisLivestreamNote": "Creates a private replay draft after the stream ends.",
       "eventCover": "活动封面",
       "eventCoverUpload": "上传活动封面",
       "eventCoverHelp": "上传 16:9 活动封面。动态、预览和活动页面都会宽幅显示。",

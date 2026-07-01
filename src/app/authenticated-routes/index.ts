@@ -12,4 +12,5 @@ export { CreatePostGlobalPage, NotFoundPage } from "./misc-routes";
 export { OnboardingPage } from "./onboarding-route";
 export { StudyRoutePage } from "./study-route";
 export { PostPage } from "./post-route";
+export { ReplayDraftRoutePage } from "./replay-draft-route";
 export { CurrentUserProfilePage, CurrentUserSettingsPage } from "./profile-settings-routes";

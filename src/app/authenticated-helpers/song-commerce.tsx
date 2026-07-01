@@ -26,8 +26,10 @@ async function loadStoryCdrBrowser() {
 export type SongCommerceState = {
   listingsByAssetId: Record<string, ApiCommunityListing | undefined>;
   listingsByLiveRoomId: Record<string, ApiCommunityListing | undefined>;
+  listingsByReplayAssetId: Record<string, ApiCommunityListing | undefined>;
   purchasesByAssetId: Record<string, ApiCommunityPurchase | undefined>;
   purchasesByLiveRoomId: Record<string, ApiCommunityPurchase | undefined>;
+  purchasesByReplayAssetId: Record<string, ApiCommunityPurchase | undefined>;
 };
 
 export type SongPlaybackDescriptor = {
@@ -70,15 +72,19 @@ export function useSongCommerceState(communityId: string, enabled: boolean) {
   const api = useApi();
   const [listingsByAssetId, setListingsByAssetId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
   const [listingsByLiveRoomId, setListingsByLiveRoomId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
+  const [listingsByReplayAssetId, setListingsByReplayAssetId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
   const [purchasesByAssetId, setPurchasesByAssetId] = React.useState<Record<string, ApiCommunityPurchase | undefined>>({});
   const [purchasesByLiveRoomId, setPurchasesByLiveRoomId] = React.useState<Record<string, ApiCommunityPurchase | undefined>>({});
+  const [purchasesByReplayAssetId, setPurchasesByReplayAssetId] = React.useState<Record<string, ApiCommunityPurchase | undefined>>({});
 
   const refresh = React.useCallback(async () => {
     if (!enabled) {
       setListingsByAssetId({});
       setListingsByLiveRoomId({});
+      setListingsByReplayAssetId({});
       setPurchasesByAssetId({});
       setPurchasesByLiveRoomId({});
+      setPurchasesByReplayAssetId({});
       return;
     }
 
@@ -104,6 +110,14 @@ export function useSongCommerceState(communityId: string, enabled: boolean) {
           return result;
         }, []),
       ));
+      setListingsByReplayAssetId(Object.fromEntries(
+        listingsResult.items.reduce<Array<readonly [string, typeof listingsResult.items[number]]>>((result, listing) => {
+          if (typeof listing.replay_asset === "string" && listing.replay_asset.length > 0) {
+            result.push([listing.replay_asset, listing] as const);
+          }
+          return result;
+        }, []),
+      ));
       setPurchasesByAssetId(Object.fromEntries(
         purchasesResult.items.reduce<Array<readonly [string, typeof purchasesResult.items[number]]>>((result, purchase) => {
           if (typeof purchase.asset === "string" && purchase.asset.length > 0) {
@@ -120,6 +134,14 @@ export function useSongCommerceState(communityId: string, enabled: boolean) {
           return result;
         }, []),
       ));
+      setPurchasesByReplayAssetId(Object.fromEntries(
+        purchasesResult.items.reduce<Array<readonly [string, typeof purchasesResult.items[number]]>>((result, purchase) => {
+          if (typeof purchase.replay_asset === "string" && purchase.replay_asset.length > 0) {
+            result.push([purchase.replay_asset, purchase] as const);
+          }
+          return result;
+        }, []),
+      ));
     } catch (error) {
       logger.warn("[song-commerce] failed to refresh commerce state", {
         communityId,
@@ -127,8 +149,10 @@ export function useSongCommerceState(communityId: string, enabled: boolean) {
       });
       setListingsByAssetId({});
       setListingsByLiveRoomId({});
+      setListingsByReplayAssetId({});
       setPurchasesByAssetId({});
       setPurchasesByLiveRoomId({});
+      setPurchasesByReplayAssetId({});
     }
   }, [api, communityId, enabled]);
 
@@ -139,8 +163,10 @@ export function useSongCommerceState(communityId: string, enabled: boolean) {
   return {
     listingsByAssetId,
     listingsByLiveRoomId,
+    listingsByReplayAssetId,
     purchasesByAssetId,
     purchasesByLiveRoomId,
+    purchasesByReplayAssetId,
     refresh,
   };
 }

@@ -154,6 +154,22 @@ describe("public profile host routing", () => {
     });
   });
 
+  test("matches dedicated replay draft routes", () => {
+    expectJson(matchRoute("/p/pst_cf89c73fe60641debd05c939252a870c/replay"), {
+      kind: "post-replay-draft",
+      path: "/p/pst_cf89c73fe60641debd05c939252a870c/replay",
+      postId: "pst_cf89c73fe60641debd05c939252a870c",
+    });
+  });
+
+  test("matches dedicated karaoke routes", () => {
+    expectJson(matchRoute("/p/pst_cf89c73fe60641debd05c939252a870c/karaoke"), {
+      kind: "post-karaoke",
+      path: "/p/pst_cf89c73fe60641debd05c939252a870c/karaoke",
+      postId: "pst_cf89c73fe60641debd05c939252a870c",
+    });
+  });
+
   test("matches dedicated study routes", () => {
     expectJson(matchRoute("/p/pst_cf89c73fe60641debd05c939252a870c/study"), {
       kind: "post-study",

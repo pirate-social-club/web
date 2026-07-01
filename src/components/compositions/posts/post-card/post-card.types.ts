@@ -85,7 +85,7 @@ export type LiveRoomAccessState =
   | "missing_listing"
   | "ended";
 
-export type LiveRoomReplayStatus = "none" | "processing" | "ready" | "failed";
+export type LiveRoomReplayStatus = "none" | "processing" | "review_pending" | "published" | "failed";
 
 export type LiveRoomProducerRole = "host" | "guest" | null;
 export type LiveRoomRsvpState = "none" | "going";
@@ -109,6 +109,7 @@ export interface LiveRoomContentSpec {
   visibility?: LiveRoomVisibility;
   accessState?: LiveRoomAccessState;
   replayStatus?: LiveRoomReplayStatus;
+  replayDurationLabel?: string;
   startsAtLabel?: string;
   liveSinceLabel?: string;
   endedAtLabel?: string;
@@ -144,6 +145,7 @@ export interface LiveRoomContentSpec {
   onRsvp?: () => void;
   onWatch?: () => void;
   onBuy?: () => void;
+  onReviewReplay?: () => void;
   onViewerRenew?: (uid: number) => Promise<ApiLiveRoomViewerAttachResponse | null>;
   onVerifyAge?: () => void;
 }

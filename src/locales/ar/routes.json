@@ -387,6 +387,8 @@
       "scheduleForLater": "جدولة لوقت لاحق",
       "startTime": "وقت البدء",
       "startTimeNote": "مطلوب للأحداث المباشرة المجدولة.",
+      "recordThisLivestream": "Record this livestream",
+      "recordThisLivestreamNote": "Creates a private replay draft after the stream ends.",
       "eventCover": "غلاف الحدث",
       "eventCoverUpload": "ارفع غلاف الحدث",
       "eventCoverHelp": "ارفع غلاف حدث بنسبة 16:9. تعرضه الخلاصة والمعاينة وصفحة الحدث عريضًا.",

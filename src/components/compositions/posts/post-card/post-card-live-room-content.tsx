@@ -21,6 +21,8 @@ type LiveRoomUiState =
   | { kind: "needs_verification"; cta: string; onClick?: () => void }
   | { kind: "tickets_unavailable" }
   | { kind: "replay_processing" }
+  | { kind: "replay_review_pending" }
+  | { kind: "replay_failed" }
   | { kind: "scheduled" }
   | { kind: "ended" }
   | { kind: "canceled" };
@@ -32,8 +34,16 @@ function priceLabel(content: LiveRoomContentSpec): string | null {
 function timeLabel(content: LiveRoomContentSpec): string | null {
   if (content.status === "live") return null;
   if (content.status === "canceled") return "Canceled";
-  if (content.status === "ended") return content.endedAtLabel ? `Ended ${content.endedAtLabel} ago` : "Ended";
+  if (content.status === "ended") {
+    if (!content.endedAtLabel) return "Ended";
+    return /\bago$/u.test(content.endedAtLabel) ? `Ended ${content.endedAtLabel}` : `Ended ${content.endedAtLabel} ago`;
+  }
   return content.startsAtLabel ? `Starts ${content.startsAtLabel}` : null;
+}
+
+function hasReplaySurface(content: LiveRoomContentSpec): boolean {
+  return content.status === "ended"
+    && Boolean(content.replayStatus && content.replayStatus !== "none");
 }
 
 function participantsLabel(participants: LiveRoomParticipant[] | undefined): string | null {
@@ -98,11 +108,24 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
   }
 
   if (content.status === "ended" || content.accessState === "ended") {
-    if (content.replayStatus === "ready") {
+    if (content.replayStatus === "published") {
+      if (content.accessMode === "paid" && !content.hasEntitlement) {
+        return {
+          kind: "needs_ticket",
+          cta: price ? `Buy ${price}` : "Buy",
+          onClick: content.onBuy,
+        };
+      }
       return { kind: "can_watch_replay", cta: "Watch replay", onClick: content.onWatch };
     }
     if (content.replayStatus === "processing") {
       return { kind: "replay_processing" };
+    }
+    if (content.replayStatus === "review_pending") {
+      return { kind: "replay_review_pending" };
+    }
+    if (content.replayStatus === "failed") {
+      return { kind: "replay_failed" };
     }
     return { kind: "ended" };
   }
@@ -170,10 +193,13 @@ function shouldShowCta(ui: LiveRoomUiState): ui is Extract<LiveRoomUiState, { ct
 function hasPostPageMeta(content: LiveRoomContentSpec, ui: LiveRoomUiState, time: string | null): boolean {
   return Boolean(
     time
+    || content.replayDurationLabel
     || content.attendeeCountLabel
     || ui.kind === "has_ticket"
     || ui.kind === "rsvped"
-    || ui.kind === "replay_processing",
+    || ui.kind === "replay_processing"
+    || ui.kind === "replay_review_pending"
+    || ui.kind === "replay_failed",
   );
 }
 
@@ -288,6 +314,12 @@ function ProducerControls({
           </a>
         </Button>
       ) : null}
+      {content.status === "ended" && content.replayStatus === "review_pending" && content.onReviewReplay ? (
+        <Button className={buttonClassName} onClick={content.onReviewReplay} size="sm" variant="secondary">
+          <Play className="size-4" weight="bold" />
+          Review recording
+        </Button>
+      ) : null}
       {!showBroadcast && !content.freedomDetected ? (
         <Button asChild className={buttonClassName} size="sm" variant="outline">
           <a href={resolveResourceHref("source-freedom-browser") ?? "#"} rel="noreferrer" target="_blank">
@@ -316,6 +348,8 @@ export function LiveRoomPostContent({
   const inPostPage = viewContext === "post";
   const eventHref = inPostPage ? undefined : content.concertHref;
   const time = timeLabel(content);
+  const replaySurface = hasReplaySurface(content);
+  const feedMeta = [time, content.replayDurationLabel].filter(Boolean).join(" · ");
   const postPageTime = inPostPage && content.status === "live" ? null : time;
   const timeIsLive = content.status === "live";
   const inlineViewerAttach = inPostPage
@@ -394,6 +428,12 @@ export function LiveRoomPostContent({
                 {content.attendeeCountLabel}
               </Type>
             ) : null}
+            {content.replayDurationLabel ? (
+              <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-muted-foreground">
+                <Play className="size-4" weight="bold" />
+                {content.replayDurationLabel}
+              </Type>
+            ) : null}
             {ui.kind === "has_ticket" ? (
               <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-success">
                 You&apos;re going
@@ -409,10 +449,20 @@ export function LiveRoomPostContent({
                 Replay processing
               </Type>
             ) : null}
+            {ui.kind === "replay_review_pending" ? (
+              <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-warning/10 px-3 py-1 text-warning">
+                Replay under review
+              </Type>
+            ) : null}
+            {ui.kind === "replay_failed" ? (
+              <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-muted-foreground">
+                Replay unavailable
+              </Type>
+            ) : null}
           </div>
         ) : null}
 
-        {content.description ? (
+        {content.description && !replaySurface ? (
           <Type as="p" variant="body" className="max-w-[72ch] leading-7 text-muted-foreground">
             {content.description}
           </Type>
@@ -493,7 +543,7 @@ export function LiveRoomPostContent({
           )}
         </div>
 
-        {time ? (
+        {feedMeta ? (
           <p
             className={cn(
               "mt-0.5 font-medium",
@@ -501,7 +551,7 @@ export function LiveRoomPostContent({
               timeIsLive ? "text-destructive" : "text-foreground/90",
             )}
           >
-            {time}
+            {feedMeta}
           </p>
         ) : null}
 
@@ -511,7 +561,7 @@ export function LiveRoomPostContent({
           </p>
         ) : null}
 
-        {content.description ? (
+        {content.description && !replaySurface ? (
           <p className={cn("mt-0.5 text-muted-foreground", postCardType.meta)}>
             {content.description}
           </p>

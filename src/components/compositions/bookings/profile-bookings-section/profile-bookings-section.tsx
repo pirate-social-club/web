@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
+import { Switch } from "@/components/primitives/switch";
 import { Card } from "@/components/primitives/card";
 import { Checkbox } from "@/components/primitives/checkbox";
 import { FormNote } from "@/components/primitives/form-layout";
@@ -69,12 +70,15 @@ export interface ProfileBookingsSectionProps {
   priceRules: PriceRule[];
   exceptions: AvailabilityException[];
 
-  isPublished: boolean;
+  /** Whether the host is currently bookable (the single on/off toggle; replaces publish). */
+  bookable: boolean;
+  /** Auto-save in flight. */
   saving?: boolean;
-  publishing?: boolean;
-  /** Disable the price-rule/availability adders + save while persistence is in flight. */
+  /** Bookable toggle in flight. */
+  toggling?: boolean;
+  /** Disable the price-rule/availability adders while persistence is in flight. */
   busy?: boolean;
-  /** Whether the user's app wallet is available to receive payouts (gates publish). */
+  /** Whether the user's app wallet is available to receive payouts (gates the Bookable toggle). */
   payoutReady: boolean;
 
   timezoneOptions: string[];
@@ -82,8 +86,7 @@ export interface ProfileBookingsSectionProps {
   /** Inline error for the base-price field (container-validated). */
   basePriceError?: string | null;
 
-  onSaveProfile?: () => void;
-  onTogglePublish?: () => void;
+  onToggleBookable?: () => void;
 
   onAddRule?: (draft: AvailabilityRuleInput) => void;
   onDeleteRule?: (ruleId: string) => void;
@@ -143,15 +146,14 @@ export function ProfileBookingsSection({
   rules,
   priceRules,
   exceptions,
-  isPublished,
+  bookable,
   saving,
-  publishing,
+  toggling,
   busy,
   payoutReady,
   timezoneOptions,
   basePriceError,
-  onSaveProfile,
-  onTogglePublish,
+  onToggleBookable,
   onAddRule,
   onDeleteRule,
   onAddPriceRule,
@@ -227,8 +229,25 @@ export function ProfileBookingsSection({
             {basePriceError ? <FormNote tone="destructive">{basePriceError}</FormNote> : null}
           </div>
 
-          <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
-            <Button type="button" onClick={onSaveProfile} loading={saving} disabled={saving}>{copy.saveSettings}</Button>
+          <div className="flex items-center justify-between gap-3 border-t border-border pt-5">
+            <Type variant="caption" className="text-muted-foreground">{copy.autosaveNote}</Type>
+            {saving ? <Type variant="caption" className="shrink-0 text-muted-foreground">{copy.savingNote}</Type> : null}
+          </div>
+
+          {/* Bookable toggle — the single on/off switch (replaces publish). */}
+          <div className="flex items-center justify-between gap-4 border-t border-border pt-5">
+            <div className="min-w-0 space-y-1">
+              <Type as="div" variant="label">{copy.bookableLabel}</Type>
+              <Type as="p" variant="caption" className="text-muted-foreground">
+                {!payoutReady ? copy.publishBlockedNote : bookable ? copy.bookableOnHint : copy.bookableOffHint}
+              </Type>
+            </div>
+            <Switch
+              checked={bookable}
+              disabled={toggling || !payoutReady}
+              onCheckedChange={() => onToggleBookable?.()}
+              aria-label={copy.bookableLabel}
+            />
           </div>
         </SectionCard>
       </SettingsSection>
@@ -355,30 +374,6 @@ export function ProfileBookingsSection({
       {/* Cancellation policy (display-only; enforced server-side) */}
       <SettingsSection title={copy.cancellationTitle}>
         <Type variant="caption" className="text-muted-foreground">{copy.cancellationCopy}</Type>
-      </SettingsSection>
-
-      {/* Publish */}
-      <SettingsSection title={isPublished ? copy.publishTitleLive : copy.publishTitleIdle}>
-        <SectionCard>
-          {!payoutReady ? (
-            <Type variant="caption" className="text-muted-foreground">{copy.publishBlockedNote}</Type>
-          ) : (
-            <Type variant="caption" className="text-muted-foreground">
-              {isPublished ? copy.publishLiveNote : copy.publishReadyNote}
-            </Type>
-          )}
-          <div className="flex items-center justify-end">
-            <Button
-              variant={isPublished ? "outline" : "default"}
-              type="button"
-              onClick={onTogglePublish}
-              loading={publishing}
-              disabled={publishing || (!isPublished && !payoutReady)}
-            >
-              {isPublished ? copy.unpublish : copy.publish}
-            </Button>
-          </div>
-        </SectionCard>
       </SettingsSection>
     </div>
   );

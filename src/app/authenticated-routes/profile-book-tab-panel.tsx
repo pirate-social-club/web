@@ -16,16 +16,25 @@ function viewerTimezone(): string {
 }
 
 /**
- * Connected viewer content for the profile Book tab: fetches the host's global availability and
- * routes a slot tap into the canonical global checkout (`/book/:host/checkout`). Rendered only when
- * profile.is_bookable (gated by the container). No money moves here — checkout owns pay-in.
+ * Connected content for the profile Calendar tab. Fetches the host's global availability and
+ * renders it. For a **viewer**, a slot tap routes into the canonical global checkout
+ * (`/book/:host/checkout`). For the **owner**, the same calendar renders read-only with an
+ * "Edit schedule" action. No money moves here — checkout owns pay-in.
  */
-export function ProfileViewerBookPanel({ hostUserId }: { hostUserId: string }): React.ReactElement {
+export function ProfileBookTabPanel({
+  hostUserId,
+  owner,
+}: {
+  hostUserId: string;
+  owner?: { configured: boolean; onEdit: () => void };
+}): React.ReactElement {
   const api = useApi();
   const tz = React.useMemo(viewerTimezone, []);
   const [slots, setSlots] = React.useState<ResolvedSlot[]>([]);
 
+  const needsSlots = !owner || owner.configured;
   React.useEffect(() => {
+    if (!needsSlots) return;
     let active = true;
     void (async () => {
       try {
@@ -40,28 +49,37 @@ export function ProfileViewerBookPanel({ hostUserId }: { hostUserId: string }): 
     return () => {
       active = false;
     };
-  }, [api, hostUserId, tz]);
+  }, [api, hostUserId, tz, needsSlots]);
 
   const cheapest = slots.reduce(
     (min, s) => (s.available && s.priceCents < min ? s.priceCents : min),
     Number.POSITIVE_INFINITY,
   );
+  const basePriceCents = Number.isFinite(cheapest) ? cheapest : 0;
 
-  const onSelectSlot = React.useCallback(
-    (slot: ResolvedSlot) => {
-      const q = new URLSearchParams({ start: slot.startUtc, end: slot.endUtc, price: String(slot.priceCents) });
-      navigate(`/book/${encodeURIComponent(hostUserId)}/checkout?${q.toString()}`);
-    },
-    [hostUserId],
-  );
+  if (owner) {
+    return (
+      <ProfileBookPanel
+        mode="owner"
+        configured={owner.configured}
+        basePriceCents={basePriceCents}
+        slots={slots}
+        viewerTimezone={tz as IanaTz}
+        onEdit={owner.onEdit}
+      />
+    );
+  }
 
   return (
     <ProfileBookPanel
       mode="viewer"
-      basePriceCents={Number.isFinite(cheapest) ? cheapest : 0}
+      basePriceCents={basePriceCents}
       slots={slots}
       viewerTimezone={tz as IanaTz}
-      onSelectSlot={onSelectSlot}
+      onSelectSlot={(slot) => {
+        const q = new URLSearchParams({ start: slot.startUtc, end: slot.endUtc, price: String(slot.priceCents) });
+        navigate(`/book/${encodeURIComponent(hostUserId)}/checkout?${q.toString()}`);
+      }}
     />
   );
 }

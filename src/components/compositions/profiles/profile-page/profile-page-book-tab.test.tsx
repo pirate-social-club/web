@@ -38,12 +38,12 @@ function render(props: Partial<ProfilePageProps>): string {
 describe("ProfilePage Book tab visibility", () => {
   test("no Book tab when bookPanel is absent (non-bookable / no panel)", () => {
     const t = render({});
-    expect(t).not.toContain("Book"); // no Book trigger among Overview/Posts/Comments
+    expect(t).not.toContain("Calendar"); // no Book trigger among Overview/Posts/Comments
   });
 
   test("Book tab trigger appears when a bookPanel is provided", () => {
     const t = render({ bookPanel: <div>BOOKPANEL_MARKER</div> });
-    expect(t).toContain("Book"); // desktop tab label present
+    expect(t).toContain("Calendar"); // desktop tab label
   });
 
   test("book panel content mounts when the Book tab is active", () => {

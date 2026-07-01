@@ -77,24 +77,23 @@ describe("useBookingHostSettings", () => {
     expect(result.current.sectionProps.values.payoutWallet).toBeUndefined();
   });
 
-  test("publish is gated when there is no app wallet", async () => {
+  test("bookable is gated when there is no app wallet", async () => {
     appWalletAddress = null;
     const { result } = await mountLoaded();
     expect(result.current.sectionProps.payoutReady).toBe(false);
   });
 
-  test("save profile persists the app wallet as the payout destination", async () => {
+  test("editing a field auto-saves (debounced), persisting the app wallet as payout", async () => {
     const { result } = await mountLoaded();
     act(() => result.current.sectionProps.onValuesChange({ priceUsd: "50.00", timezone: "Europe/Vienna" }));
-    await act(async () => { await result.current.sectionProps.onSaveProfile?.(); });
-    expect(calls).toContain("updateBookingProfile");
-    expect(updateArgs[0]).toMatchObject({ base_price_cents: 5000, host_timezone: "Europe/Vienna", payout_wallet_address: appWalletAddress });
+    await waitFor(() => expect(calls).toContain("updateBookingProfile"), { timeout: 2500 });
+    expect(updateArgs[updateArgs.length - 1]).toMatchObject({ base_price_cents: 5000, host_timezone: "Europe/Vienna", payout_wallet_address: appWalletAddress });
   });
 
-  test("invalid base price blocks save and sets an inline error", async () => {
+  test("invalid base price does not auto-save and surfaces an inline error", async () => {
     const { result } = await mountLoaded();
     act(() => result.current.sectionProps.onValuesChange({ priceUsd: "not-a-number" }));
-    await act(async () => { await result.current.sectionProps.onSaveProfile?.(); });
+    await new Promise((r) => setTimeout(r, 1000)); // let the debounce fire
     expect(calls).not.toContain("updateBookingProfile");
     expect(result.current.sectionProps.basePriceError).toBeTruthy();
   });
@@ -111,16 +110,16 @@ describe("useBookingHostSettings", () => {
     expect(result.current.sectionProps.rules).toHaveLength(0);
   });
 
-  test("publish persists the profile first, then publishes; unpublish flips back", async () => {
+  test("toggling Bookable persists then publishes; toggling again unpublishes", async () => {
     const { result } = await mountLoaded();
-    await act(async () => { await result.current.sectionProps.onTogglePublish?.(); });
+    await act(async () => { await result.current.sectionProps.onToggleBookable?.(); });
     expect(calls).toContain("updateBookingProfile"); // persisted before publish (no save-order footgun)
     expect(calls).toContain("publishBookingProfile");
     expect(calls.indexOf("updateBookingProfile")).toBeLessThan(calls.indexOf("publishBookingProfile"));
-    expect(result.current.sectionProps.isPublished).toBe(true);
+    expect(result.current.sectionProps.bookable).toBe(true);
 
-    await act(async () => { await result.current.sectionProps.onTogglePublish?.(); });
+    await act(async () => { await result.current.sectionProps.onToggleBookable?.(); });
     expect(calls).toContain("unpublishBookingProfile");
-    expect(result.current.sectionProps.isPublished).toBe(false);
+    expect(result.current.sectionProps.bookable).toBe(false);
   });
 });

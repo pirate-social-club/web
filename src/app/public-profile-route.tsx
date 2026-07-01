@@ -14,10 +14,9 @@ import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
 import { useChatLauncher } from "./shell/use-chat-launcher";
 import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profiles/profile-page/profile-page";
-import { ProfileBookPanel } from "@/components/compositions/bookings/profile-book-panel/profile-book-panel";
 import { apiProfileToProps } from "./authenticated-helpers/profile-settings-mapping";
 import { useOwnBookingCta } from "@/app/authenticated-state/use-own-booking-cta";
-import { ProfileViewerBookPanel } from "./authenticated-routes/profile-viewer-book-panel";
+import { ProfileBookTabPanel } from "./authenticated-routes/profile-book-tab-panel";
 import { navigate } from "@/app/router";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
 
@@ -190,10 +189,10 @@ export function PublicProfileRoutePage({
   const isBookable = Boolean((resolution.profile as { is_bookable?: boolean }).is_bookable);
   const bookPanel = ownProfile
     ? (bookingCtaState
-        ? <ProfileBookPanel mode="owner" published={bookingCtaState === "manage"} onManage={() => navigate("/settings/bookings")} />
+        ? <ProfileBookTabPanel hostUserId={resolution.profile.id} owner={{ configured: bookingCtaState === "manage", onEdit: () => navigate("/settings/bookings") }} />
         : undefined)
     : (isBookable
-        ? <ProfileViewerBookPanel hostUserId={resolution.profile.id} />
+        ? <ProfileBookTabPanel hostUserId={resolution.profile.id} />
         : undefined);
 
   return (

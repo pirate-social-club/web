@@ -149,16 +149,23 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
     return true;
   }, [api, values, payoutWallet]);
 
-  const onSaveProfile = React.useCallback(async () => {
-    setSaving(true);
-    try {
-      if (await persistProfile()) toast.success("Booking settings saved");
-    } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : "Save failed");
-    } finally {
-      setSaving(false);
+  // Auto-save (debounced) whenever a profile field changes — no explicit Save step. Skips the
+  // initial load; silent on success (only surfaces errors) so it doesn't spam toasts.
+  const autosaveReady = React.useRef(false);
+  React.useEffect(() => {
+    if (loading) return;
+    if (!autosaveReady.current) {
+      autosaveReady.current = true;
+      return;
     }
-  }, [persistProfile]);
+    const timer = setTimeout(() => {
+      setSaving(true);
+      void persistProfile()
+        .catch((error) => toast.error(error instanceof ApiError ? error.message : "Could not save"))
+        .finally(() => setSaving(false));
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [loading, values.timezone, values.durationSeconds, values.priceUsd, persistProfile]);
 
   const onTogglePublish = React.useCallback(async () => {
     setPublishing(true);
@@ -293,15 +300,14 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
     rules,
     priceRules,
     exceptions,
-    isPublished,
+    bookable: isPublished,
     saving,
-    publishing,
+    toggling: publishing,
     busy: mutating,
     payoutReady,
     timezoneOptions: tzOptions,
     basePriceError,
-    onSaveProfile,
-    onTogglePublish,
+    onToggleBookable: onTogglePublish,
     onAddRule,
     onDeleteRule,
     onAddPriceRule,

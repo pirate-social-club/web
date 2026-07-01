@@ -2,7 +2,6 @@
 
 import * as React from "react";
 
-import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { ProfileBookPanel } from "@/components/compositions/bookings/profile-book-panel/profile-book-panel";
 import type { IanaTz, ResolvedSlot } from "@/components/compositions/bookings/view-models";
@@ -13,6 +12,11 @@ function viewerTimezone(): string {
   } catch {
     return "UTC";
   }
+}
+
+function checkoutPathForSlot(hostUserId: string, slot: ResolvedSlot): string {
+  const q = new URLSearchParams({ start: slot.startUtc, end: slot.endUtc, price: String(slot.priceCents) });
+  return `/book/${encodeURIComponent(hostUserId)}/checkout?${q.toString()}`;
 }
 
 /**
@@ -76,15 +80,8 @@ export function ProfileBookTabPanel({
       basePriceCents={basePriceCents}
       slots={slots}
       viewerTimezone={tz as IanaTz}
-      onSelectSlot={(slot) => {
-        const q = new URLSearchParams({ start: slot.startUtc, end: slot.endUtc, price: String(slot.priceCents) });
-        const checkoutPath = `/book/${encodeURIComponent(hostUserId)}/checkout?${q.toString()}`;
-        if (typeof window !== "undefined") {
-          window.location.href = checkoutPath;
-          return;
-        }
-        navigate(checkoutPath);
-      }}
+      getSlotHref={(slot) => checkoutPathForSlot(hostUserId, slot)}
+      onSelectSlot={() => undefined}
     />
   );
 }

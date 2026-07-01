@@ -22,6 +22,10 @@ function text(props: ProfileBookPanelProps): string {
   return (createTestDom(`<!DOCTYPE html><html><body>${html}</body></html>`).document.body.textContent ?? "");
 }
 
+function html(props: ProfileBookPanelProps): string {
+  return renderToStaticMarkup(<ProfileBookPanel {...props} />);
+}
+
 const SLOTS: ResolvedSlot[] = [
   { startUtc: "2026-09-21T09:00:00.000Z" as ResolvedSlot["startUtc"], endUtc: "2026-09-21T09:30:00.000Z" as ResolvedSlot["endUtc"], priceCents: 5000 as ResolvedSlot["priceCents"], available: true },
 ];
@@ -44,6 +48,19 @@ describe("ProfileBookPanel", () => {
     const t = text({ mode: "viewer", basePriceCents: 5000, slots: SLOTS, viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} });
     expect(t).toContain("50.00 USDC per session");
     expect(t).not.toContain("No available times");
+  });
+
+  test("viewer slots render checkout links when an href builder is supplied", () => {
+    const markup = html({
+      mode: "viewer",
+      basePriceCents: 5000,
+      slots: SLOTS,
+      viewerTimezone: "Europe/Vienna" as never,
+      getSlotHref: () => "/book/usr_host/checkout?start=2026-09-21T09%3A00%3A00.000Z",
+      onSelectSlot: () => {},
+    });
+
+    expect(markup).toContain("href=\"/book/usr_host/checkout?start=2026-09-21T09%3A00%3A00.000Z\"");
   });
 
   test("viewer with no slots → empty-state copy", () => {

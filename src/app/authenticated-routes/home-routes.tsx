@@ -78,6 +78,11 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
   const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
   const [error, setError] = React.useState<unknown>(null);
   const [loading, setLoading] = React.useState(true);
+  // Identity of the feed currently rendered (sort / content locale / time
+  // range). Enrichment maps are only cleared when this changes; auth/session
+  // refreshes reuse the same feed identity so their enriched UI (avatars, buy
+  // buttons, live-room seats) is preserved and replaced in place, not blanked.
+  const feedIdentityRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     if (!hydrated) return undefined;
@@ -108,19 +113,27 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
 
     setLoading(true);
     setError(null);
-    setTopCommunities([]);
-    setAuthorProfiles({});
-    setListingsByAssetId({});
-    setListingsByLiveRoomId({});
-    setPurchasesByAssetId({});
-    setPurchasesByLiveRoomId({});
-    setLiveRoomAccessById({});
 
     const feedRequest = {
       locale: contentLocale,
       sort: activeSort,
       timeRange: activeSort === "top" ? topTimeRange : null,
     };
+
+    // Only wipe enrichment when the feed identity actually changed. On an
+    // auth/session-triggered refresh the visible feed is the same, so keep the
+    // existing enrichment visible until fresh data replaces it in place.
+    const feedIdentityKey = `${feedRequest.sort}|${feedRequest.locale ?? ""}|${feedRequest.timeRange ?? ""}`;
+    if (feedIdentityRef.current !== feedIdentityKey) {
+      feedIdentityRef.current = feedIdentityKey;
+      setTopCommunities([]);
+      setAuthorProfiles({});
+      setListingsByAssetId({});
+      setListingsByLiveRoomId({});
+      setPurchasesByAssetId({});
+      setPurchasesByLiveRoomId({});
+      setLiveRoomAccessById({});
+    }
 
     const applyFeedResult = (result: Awaited<ReturnType<typeof api.feed.home>>) => {
         if (cancelled) return;

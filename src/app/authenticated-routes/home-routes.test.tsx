@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type * as React from "react";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { installDomGlobals } from "@/test/setup-dom";
 
 import type { HomeFeedCommunitySummary, HomeFeedItem, LocalizedPostResponse } from "@pirate/api-contracts";
@@ -464,5 +464,83 @@ describe("useHomeFeed", () => {
     await waitFor(() => expect(result.current.liveRoomAccessById.lr_live?.room.cover_ref).toBe("https://media.test/live-cover.jpg"));
     expect(authenticatedAccessCalls).toBeGreaterThan(0);
     expect(publicAccessCalls).toBeGreaterThan(0);
+  });
+
+  test("preserves enriched feed state across an auth-triggered refresh instead of blanking it", async () => {
+    __resetSessionStoreForTests();
+    resolveProfile = null;
+    resolveListings = null;
+    resolvePurchases = null;
+
+    const feedApi = api.feed as unknown as {
+      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
+      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
+    };
+    const profilesApi = api.profiles as unknown as {
+      getByUserId: (userId: string) => Promise<unknown>;
+    };
+
+    const feedResponse = {
+      items: [createFeedItem({ postId: "pst_1", authorUserId: "usr_1" })],
+      top_communities: [createTopCommunity()],
+    };
+
+    // The first (logged-out) public feed paints and enriches. Any later
+    // refresh stays pending so no fresh data can repopulate the enrichment,
+    // isolating the synchronous-reset behavior under test.
+    let publicHomeCalls = 0;
+    feedApi.publicHome = async () => {
+      publicHomeCalls += 1;
+      if (publicHomeCalls === 1) return feedResponse;
+      return new Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>(() => undefined);
+    };
+    feedApi.home = () => new Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>(() => undefined);
+    profilesApi.getByUserId = async () => ({ user: "usr_1", display_name: "Test User" });
+
+    const liveSession = {
+      accessToken: "token",
+      user: {
+        id: "usr_viewer",
+        object: "user",
+        created: Date.parse("2026-04-24T00:00:00.000Z"),
+        verification_capabilities: {},
+        verification_state: "verified",
+      },
+      profile: null,
+      onboarding: { unique_human_verification_status: "verified" },
+      walletAttachments: [],
+      storedAt: new Date().toISOString(),
+    } as never;
+
+    const { result, rerender } = renderHook(
+      ({ session }: { session: never }) =>
+        useHomeFeed({
+          activeSort: "best",
+          contentLocale: "en",
+          hydrated: true,
+          session,
+          topTimeRange: "day",
+        }),
+      { wrapper, initialProps: { session: null as never } },
+    );
+
+    // Public paint enriches author profiles (the logged-out hard-refresh frame).
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.authorProfiles.usr_1 != null).toBe(true));
+    expect(result.current.feedEntries.length).toBe(1);
+    expect(result.current.topCommunities.length).toBe(1);
+
+    // Session appears a beat later; the refresh it triggers stays pending.
+    act(() => {
+      rerender({ session: liveSession });
+    });
+
+    // Same feed identity, so the enriched, already-rendered state must remain
+    // visible during the pending refresh rather than flickering to empty.
+    expect(publicHomeCalls).toBeGreaterThan(1);
+    expect(result.current.feedEntries.length).toBe(1);
+    expect(result.current.feedEntries[0]?.post.post.id).toBe("pst_1");
+    expect(result.current.topCommunities.length).toBe(1);
+    expect(result.current.authorProfiles.usr_1).toEqual({ user: "usr_1", display_name: "Test User" });
   });
 });

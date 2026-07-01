@@ -6,11 +6,26 @@ import { StandardRoutePage } from "@/components/compositions/app/page-shell";
 import { Type } from "@/components/primitives/type";
 import { ProfileBookingsSection } from "@/components/compositions/bookings/profile-bookings-section/profile-bookings-section";
 import { useBookingHostSettings } from "@/app/authenticated-state/use-booking-host-settings";
+import { AuthRequiredRouteState } from "@/app/authenticated-helpers/route-shell";
+import { useRouteMessages } from "@/hooks/use-route-messages";
+import { useSession } from "@/lib/api/session-store";
 
 // Compatibility route. The canonical home for host booking setup is now Settings → Profile
 // (edit profile). This route renders the SAME section + container hook so existing links,
 // bookmarks, and docs that point at /settings/bookings keep working identically.
 export function BookingHostSettingsPage(): React.ReactElement {
+  const { copy } = useRouteMessages();
+  const session = useSession();
+  const profile = session?.profile ?? null;
+
+  if (!profile) {
+    return <AuthRequiredRouteState description={copy.routeStatus.settings.auth} title="Booking settings" />;
+  }
+
+  return <BookingHostSettingsContent />;
+}
+
+function BookingHostSettingsContent(): React.ReactElement {
   const { loading, sectionProps } = useBookingHostSettings();
 
   return (

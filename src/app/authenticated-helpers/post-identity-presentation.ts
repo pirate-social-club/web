@@ -76,16 +76,20 @@ export function resolvePublicAuthorFallback(
 }
 
 export function resolvePostAuthorLabel(
-  post: Pick<ApiPost["post"], "agent_display_name_snapshot" | "anonymous_label" | "author_user" | "authorship_mode" | "identity_mode">,
+  post: Pick<ApiPost["post"], "agent_display_name_snapshot" | "anonymous_label" | "author_public_handle" | "author_user" | "authorship_mode" | "identity_mode">,
   authorProfile?: Pick<ApiProfile, "display_name" | "global_handle" | "primary_public_handle"> | null,
 ): string {
   if (post.identity_mode === "anonymous") {
     return post.anonymous_label ?? "anon";
   }
 
-  return post.authorship_mode === "user_agent" && post.agent_display_name_snapshot
-    ? post.agent_display_name_snapshot
-    : resolvePublicAuthorFallback(post.author_user, authorProfile);
+  if (post.authorship_mode === "user_agent" && post.agent_display_name_snapshot) {
+    return post.agent_display_name_snapshot;
+  }
+
+  // Prefer the server-resolved public handle so the byline is correct on first
+  // paint; fall back to the separately-fetched profile (then a truncated id).
+  return post.author_public_handle ?? resolvePublicAuthorFallback(post.author_user, authorProfile);
 }
 
 export function resolvePostAuthorAvatarSeed(
@@ -121,14 +125,16 @@ export function resolveAgentAuthor(
 }
 
 export function resolveCommentAuthorLabel(
-  comment: Pick<ApiCommentListItem["comment"], "anonymous_label" | "author_user" | "identity_mode">,
+  comment: Pick<ApiCommentListItem["comment"], "anonymous_label" | "author_public_handle" | "author_user" | "identity_mode">,
   authorProfile?: Pick<ApiProfile, "display_name" | "global_handle" | "primary_public_handle"> | null,
 ): string {
   if (comment.identity_mode === "anonymous") {
     return comment.anonymous_label ?? "anon";
   }
 
-  return resolvePublicAuthorFallback(comment.author_user, authorProfile);
+  // Prefer the server-resolved public handle so the byline is correct on first
+  // paint; fall back to the separately-fetched profile (then a truncated id).
+  return comment.author_public_handle ?? resolvePublicAuthorFallback(comment.author_user, authorProfile);
 }
 
 export function resolveCommentAuthorAvatarSeed(

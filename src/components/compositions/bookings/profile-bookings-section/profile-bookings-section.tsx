@@ -179,7 +179,8 @@ export function ProfileBookingsSection({
   const [exceptionStart, setExceptionStart] = React.useState("");
   const [exceptionEnd, setExceptionEnd] = React.useState("");
 
-  const selectClass = "w-full min-w-0 rounded-lg border border-border bg-background p-2";
+  // Match the Input primitive (rounded-full pill, border-input) so selects and text fields align.
+  const selectClass = "flex h-10 w-full min-w-0 items-center rounded-full border border-input bg-background px-4 text-base shadow-sm outline-none focus-visible:border-border focus-visible:ring-1 focus-visible:ring-border-soft";
 
   return (
     <div className={cn("space-y-8", className)}>
@@ -226,8 +227,7 @@ export function ProfileBookingsSection({
             {basePriceError ? <FormNote tone="destructive">{basePriceError}</FormNote> : null}
           </div>
 
-          <div className="flex items-center justify-between gap-3 border-t border-border pt-5">
-            <Type variant="caption" className="text-muted-foreground">{copy.payoutNote}</Type>
+          <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
             <Button type="button" onClick={onSaveProfile} loading={saving} disabled={saving}>{copy.saveSettings}</Button>
           </div>
         </SectionCard>

@@ -66,7 +66,6 @@ describe("ProfileBookingsSection", () => {
     const text = renderToDoc().body.textContent ?? "";
     expect(text).not.toContain("Headline");
     expect(text).not.toContain("Payout wallet");
-    expect(text).toContain("Earnings settle to your app wallet.");
   });
 
   test("renders existing weekly availability rules", () => {

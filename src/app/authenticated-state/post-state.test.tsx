@@ -276,6 +276,95 @@ describe("usePost", () => {
     expect(result.current.community?.display_name).toBe("Preview Community");
   });
 
+  test("keeps the rendered public thread visible while login upgrades to the authenticated fetch", async () => {
+    __resetSessionStoreForTests();
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+
+    const publicPosts = api.publicPosts as unknown as {
+      getThread: (postId: string, opts?: unknown) => Promise<{
+        post: LocalizedPostResponse;
+        community: CommunityPreview;
+        comments: { items: CommentListItem[] };
+      }>;
+    };
+    publicPosts.getThread = async () => ({
+      post: createPostResponse(),
+      community: createPreview(),
+      comments: { items: [] },
+    });
+
+    // The authenticated post fetch stays pending so we can observe the window
+    // where the app has a session but the authenticated data has not arrived.
+    let resolveAuthedPost: ((response: LocalizedPostResponse) => void) | null = null;
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    posts.get = () => new Promise<LocalizedPostResponse>((resolve) => {
+      resolveAuthedPost = resolve;
+    });
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: []; next_cursor: null }>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+    communities.preview = async () => createPreview();
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    agents.list = async () => ({ items: [] });
+
+    const { result, rerender } = renderHook(
+      ({ hasSession }: { hasSession: boolean }) => usePost("pst_test", "es", hasSession, labels),
+      {
+        wrapper: wrapperWithClient(queryClient),
+        initialProps: { hasSession: false },
+      },
+    );
+
+    // Public read paints the thread first (the pre-login hard-refresh frame).
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.post?.post.id).toBe("pst_test");
+    expect(result.current.community?.display_name).toBe("Preview Community");
+
+    // Session hydrates a beat later; authenticated post fetch is still pending.
+    act(() => {
+      installLiveSession();
+    });
+    rerender({ hasSession: true });
+
+    await waitFor(() => expect(resolveAuthedPost).not.toBeNull());
+
+    // The already-rendered title/poster must NOT flicker back to a skeleton.
+    expect(result.current.loading).toBe(false);
+    expect(result.current.post?.post.id).toBe("pst_test");
+    expect(result.current.post?.post.title).toBe("Post title");
+    expect(result.current.post?.post.body).toBe("Post body");
+    expect(result.current.post?.post.anonymous_label).toBe("anon");
+    expect(result.current.community?.display_name).toBe("Preview Community");
+
+    // Authenticated data resolves and refreshes the post normally.
+    const authedResponse = createPostResponse();
+    const resolveNow = resolveAuthedPost as unknown as (response: LocalizedPostResponse) => void;
+    act(() => {
+      resolveNow({
+        ...authedResponse,
+        post: {
+          ...authedResponse.post,
+          title: "Post title (authenticated)",
+        } as LocalizedPostResponse["post"],
+      });
+    });
+
+    await waitFor(() => expect(result.current.post?.post.title).toBe("Post title (authenticated)"));
+    expect(result.current.loading).toBe(false);
+    expect(result.current.post?.post.id).toBe("pst_test");
+  });
+
   test("loads authenticated post sidebar data through localized community preview", async () => {
     __resetSessionStoreForTests();
     const calls = {

@@ -248,6 +248,12 @@ export function usePost(
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const loadedCommentSortKeyRef = React.useRef<string | null>(null);
   const loadedTargetCommentRef = React.useRef<string | null>(null);
+  // Tracks the postId whose data currently populates `post` state so the
+  // authenticated load effect can tell an auth-state upgrade / session
+  // revalidation (same post already visible) apart from real navigation to a
+  // different post. Updated only where post data is actually applied, not from
+  // the `postId` prop directly, which would race ahead of the data on nav.
+  const visiblePostIdRef = React.useRef<string | null>(null);
   const { gateModal, prewarmCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: locale,
     routeKind: "post",
@@ -295,6 +301,7 @@ export function usePost(
 
   const applyPublicThreadQueryData = React.useCallback((data: PublicThreadQueryData, sort: "best" | "new" | "top") => {
     const nextPost = normalizePostResponse(data.post);
+    visiblePostIdRef.current = postId;
     setPost(nextPost);
     setCommunity(data.community);
     setCommentNodes(data.comments);
@@ -311,7 +318,7 @@ export function usePost(
     if (!data.partial) {
       loadedCommentSortKeyRef.current = `${nextPost.post.community}:public:${sort}`;
     }
-  }, []);
+  }, [postId]);
 
   const loadTopLevelComments = React.useCallback(async (
     communityId: string,
@@ -326,7 +333,7 @@ export function usePost(
     );
 
     return { authorProfilesByUserId: nextAuthorProfilesByUserId, commentNodes: nextCommentNodes };
-  }, [api, locale, postId, session]);
+  }, [api, locale, postId, session?.profile, session?.user?.id]);
 
   const mergeCommentContext = React.useCallback(async (context: CommentContext) => {
     const contextItems = [...context.ancestors, context.comment, ...context.replies];
@@ -701,21 +708,34 @@ export function usePost(
       return () => { cancelled = true; };
     }
 
-    setLoading(true);
     setError(null);
-    setPost(null);
-    setCommunity(null);
-    setAuthorProfile(null);
-    setCommentNodes([]);
-    setAuthorProfilesByUserId({});
-    setThreadPartial(false);
-    setReadMode(hasSession ? "authenticated" : "public");
+    setReadMode("authenticated");
 
-    const cachedPublicThread = queryClient.getQueryData<PublicThreadQueryData>(
-      postKeys.publicThread({ postId, locale, sort: "best" }),
+    // Seed from any cached public thread so the already-rendered title/author
+    // stays put while the authenticated fetch refreshes in the background.
+    // Prefer the current sort's cache, then fall back to "best" (feed seeds).
+    const cachedForSort = queryClient.getQueryData<PublicThreadQueryData>(
+      postKeys.publicThread({ postId, locale, sort: commentSort }),
     );
+    const cachedPublicThread = cachedForSort
+      ?? queryClient.getQueryData<PublicThreadQueryData>(
+        postKeys.publicThread({ postId, locale, sort: "best" }),
+      );
+
     if (cachedPublicThread) {
-      applyPublicThreadQueryData(cachedPublicThread, "best");
+      applyPublicThreadQueryData(cachedPublicThread, cachedForSort ? commentSort : "best");
+    } else if (visiblePostIdRef.current !== postId) {
+      // Genuine navigation to a different post with nothing usable on screen:
+      // reset to the loading skeleton. When the same post is already visible
+      // (auth-state upgrade / session revalidation) we keep it and refresh in
+      // the background so the title/poster never flickers back to a skeleton.
+      setLoading(true);
+      setPost(null);
+      setCommunity(null);
+      setAuthorProfile(null);
+      setCommentNodes([]);
+      setAuthorProfilesByUserId({});
+      setThreadPartial(false);
     }
 
     const loadPost = async (): Promise<{ post: ApiPost; readMode: PostReadMode; publicThread?: Awaited<ReturnType<typeof api.publicPosts.getThread>> }> => {
@@ -740,6 +760,7 @@ export function usePost(
     void loadPost()
       .then(({ post: p, readMode: nextReadMode, publicThread }) => {
         if (cancelled) return;
+        visiblePostIdRef.current = postId;
         setPost(p);
         setReadMode(nextReadMode);
         setThreadPartial(true);
@@ -834,7 +855,7 @@ export function usePost(
       });
 
     return () => { cancelled = true; };
-  }, [api, applyPublicThreadQueryData, hasSession, loadTopLevelComments, locale, postId, queryClient, session]);
+  }, [api, applyPublicThreadQueryData, commentSort, hasSession, loadTopLevelComments, locale, postId, queryClient, session?.accessToken, session?.profile, session?.user?.id]);
 
   React.useEffect(() => {
     if (!hasSession || !post || loading || threadPartial) return;

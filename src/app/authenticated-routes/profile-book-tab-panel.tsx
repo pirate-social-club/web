@@ -78,7 +78,12 @@ export function ProfileBookTabPanel({
       viewerTimezone={tz as IanaTz}
       onSelectSlot={(slot) => {
         const q = new URLSearchParams({ start: slot.startUtc, end: slot.endUtc, price: String(slot.priceCents) });
-        navigate(`/book/${encodeURIComponent(hostUserId)}/checkout?${q.toString()}`);
+        const checkoutPath = `/book/${encodeURIComponent(hostUserId)}/checkout?${q.toString()}`;
+        if (typeof window !== "undefined") {
+          window.location.href = checkoutPath;
+          return;
+        }
+        navigate(checkoutPath);
       }}
     />
   );

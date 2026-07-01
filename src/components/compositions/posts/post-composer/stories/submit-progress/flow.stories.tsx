@@ -134,12 +134,12 @@ function FlowDemo({ scenario, intervalMs }: { scenario: Scenario; intervalMs: nu
 function NavigatedToPost({ postId }: { postId: string }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 rounded-full border border-border-soft bg-muted/40 px-4 py-2 font-mono text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 rounded-full border border-border-soft bg-muted/40 px-4 py-2 font-mono text-base text-muted-foreground">
         <span className="opacity-60">🔒</span>
         <span>pirate.social/p/{postId}</span>
       </div>
       <div className="rounded-2xl border border-border-soft p-5">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           Published — the composer navigated to the new post. In the app you now see the
           post page; there is no separate “Post published” screen. (Storybook has no
           router, so this demo loops back to the start.)

@@ -230,6 +230,19 @@ describe("public profile host routing", () => {
       communityId: "com_123",
       hostUserId: "usr_456",
     });
+    // Canonical global booking routes (no community context → communityId null).
+    expectJson(matchRoute("/book/usr_456"), {
+      kind: "booking-public",
+      path: "/book/usr_456",
+      communityId: null,
+      hostUserId: "usr_456",
+    });
+    expectJson(matchRoute("/book/usr_456/checkout"), {
+      kind: "booking-checkout",
+      path: "/book/usr_456/checkout",
+      communityId: null,
+      hostUserId: "usr_456",
+    });
   });
 
   test("matches post routes from path routes", () => {

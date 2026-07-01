@@ -27,8 +27,8 @@ export type AppRoute =
   | { kind: "community-moderation-index"; path: string; communityId: string }
   | { kind: "community-moderation"; path: string; communityId: string; section: CommunityModerationSectionName }
   | { kind: "community"; path: string; communityId: string; isImportedRoot?: boolean }
-  | { kind: "booking-public"; path: string; communityId: string; hostUserId: string }
-  | { kind: "booking-checkout"; path: string; communityId: string; hostUserId: string }
+  | { kind: "booking-public"; path: string; communityId: string | null; hostUserId: string }
+  | { kind: "booking-checkout"; path: string; communityId: string | null; hostUserId: string }
   | { kind: "booking-management"; path: string; sourceCommunityId?: string | null; role: "host" | "booker" }
   | { kind: "booking-session"; path: string; bookingId: string }
   | { kind: "create-community"; path: "/communities/new" }
@@ -309,6 +309,25 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
       path: normalized,
       communityId: decodeURIComponent(segments[1]),
       hostUserId: decodeURIComponent(segments[3]),
+    };
+  }
+
+  // Canonical global booking routes (bookings are global; community is optional discovery context).
+  if (segments.length === 3 && segments[0] === "book" && segments[2] === "checkout") {
+    return {
+      kind: "booking-checkout",
+      path: normalized,
+      communityId: null,
+      hostUserId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  if (segments.length === 2 && segments[0] === "book") {
+    return {
+      kind: "booking-public",
+      path: normalized,
+      communityId: null,
+      hostUserId: decodeURIComponent(segments[1]),
     };
   }
 

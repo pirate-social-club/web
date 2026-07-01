@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
+
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import type { WalletHubChainId, WalletHubChainSection } from "@/components/compositions/wallet/wallet-hub/wallet-hub.types";
 
-export type ProfilePageTab = "overview" | "posts" | "comments" | "wallet";
+export type ProfilePageTab = "overview" | "posts" | "comments" | "wallet" | "book";
 
 export interface ProfileHeaderMetaItem {
   label: string;
@@ -71,6 +73,8 @@ export interface ProfileData {
   viewerContext: "self" | "public";
   /** Label for the self-only booking CTA (e.g. "Set up bookings" / "Manage bookings"); omit to hide. */
   bookingCtaLabel?: string;
+  /** Whether this host is publicly bookable (published + has availability). Drives the Book tab for viewers. */
+  isBookable?: boolean;
   viewerFollows?: boolean;
   canMessage?: boolean;
   followBusy?: boolean;
@@ -98,4 +102,6 @@ export interface ProfilePageProps {
   onMessageProfile?: () => void;
   /** Invoked by the self-only booking CTA (navigates to /settings/bookings). */
   onBookingCta?: () => void;
+  /** Book-tab panel, built by the container (owner preview/manage or viewer availability + checkout). When provided, the Book tab shows. */
+  bookPanel?: ReactNode;
 }

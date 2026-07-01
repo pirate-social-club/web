@@ -22,7 +22,7 @@ function timeLabel(iso: string, tz: string): string {
 }
 function priceLabel(cents: number): string { return `${(cents / 100).toFixed(2)} USDC`; }
 
-export function BookingPublicPage({ communityId, hostUserId }: { communityId: string; hostUserId: string }): React.ReactElement {
+export function BookingPublicPage({ communityId, hostUserId }: { communityId: string | null; hostUserId: string }): React.ReactElement {
   const api = useApi();
   const tz = React.useMemo(viewerTimezone, []);
   const [data, setData] = React.useState<SlotsResponse | null>(null);
@@ -55,7 +55,10 @@ export function BookingPublicPage({ communityId, hostUserId }: { communityId: st
   const onPickSlot = React.useCallback((slot: ResolvedSlot) => {
     // Hand off to checkout, which re-validates availability and creates the hold authoritatively.
     const q = new URLSearchParams({ start: slot.startUtc, end: slot.endUtc, price: String(slot.priceCents) });
-    navigate(`/c/${encodeURIComponent(communityId)}/book/${encodeURIComponent(hostUserId)}/checkout?${q.toString()}`);
+    const base = communityId
+      ? `/c/${encodeURIComponent(communityId)}/book/${encodeURIComponent(hostUserId)}`
+      : `/book/${encodeURIComponent(hostUserId)}`;
+    navigate(`${base}/checkout?${q.toString()}`);
   }, [communityId, hostUserId]);
 
   const grouped = React.useMemo(() => {

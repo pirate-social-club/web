@@ -297,7 +297,7 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("Open study");
   });
 
-  test("keeps study and karaoke off locked unowned songs so commerce keeps precedence", () => {
+  test("keeps study and karaoke visible on locked unowned songs so the routes can trigger auth", () => {
     const content: SongContentSpec = {
       ...baseSong,
       accessMode: "locked",
@@ -316,11 +316,11 @@ describe("deriveSongUI", () => {
     );
 
     expect(ui.primaryCommerceAction).toBe("buy");
-    expect(ui.showStudy).toBe(false);
-    expect(ui.showKaraoke).toBe(false);
+    expect(ui.showStudy).toBe(true);
+    expect(ui.showKaraoke).toBe(true);
     expect(markup).toContain("Buy $3.99");
-    expect(markup).not.toContain("Open study");
-    expect(markup).not.toContain("Open karaoke");
+    expect(markup).toContain("Open study");
+    expect(markup).toContain("Open karaoke");
   });
 
   test("surfaces study and karaoke together once a locked song is owned", () => {

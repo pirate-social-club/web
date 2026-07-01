@@ -123,11 +123,10 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     effectiveDownloadPolicy === "free_download"
     || (effectiveDownloadPolicy === "purchased_download" && isOwned)
   );
-  const showStudy = study?.status === "ready" && Boolean(onStudy) && isContentAccessible && !ageGateRequiresProof;
+  const showStudy = study?.status === "ready" && Boolean(onStudy) && !ageGateRequiresProof;
   const showKaraoke = karaoke?.canKaraoke === true
     && karaoke.status === "ready"
     && Boolean(onKaraoke)
-    && isContentAccessible
     && !ageGateRequiresProof;
   const diagnosticsVisible = activityDiagnosticsVisible === true || karaokeStatusVisible === true;
   const showKaraokeStatus = diagnosticsVisible

@@ -1,16 +1,10 @@
+import type { CommentListItem as ApiCommentListItem } from "@pirate/api-contracts";
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { buildPublicProfilePathForProfile, getProfileHandleLabel } from "@/lib/profile-routing";
-
-type CommentIdentityFields = {
-  anonymous_label: string | null;
-  author_public_handle?: string | null;
-  author_user: string | null;
-  identity_mode: "public" | "anonymous";
-};
 
 export function formatQualifierLabel(qualifierTemplateId: string): string {
   const trimmed = qualifierTemplateId.trim();
@@ -131,7 +125,7 @@ export function resolveAgentAuthor(
 }
 
 export function resolveCommentAuthorLabel(
-  comment: CommentIdentityFields,
+  comment: Pick<ApiCommentListItem["comment"], "anonymous_label" | "author_public_handle" | "author_user" | "identity_mode">,
   authorProfile?: Pick<ApiProfile, "display_name" | "global_handle" | "primary_public_handle"> | null,
 ): string {
   if (comment.identity_mode === "anonymous") {
@@ -144,7 +138,7 @@ export function resolveCommentAuthorLabel(
 }
 
 export function resolveCommentAuthorAvatarSeed(
-  comment: CommentIdentityFields,
+  comment: Pick<ApiCommentListItem["comment"], "anonymous_label" | "author_user" | "identity_mode">,
   authorProfile?: Pick<ApiProfile, "id"> | null,
 ): string | undefined {
   if (comment.identity_mode === "anonymous") {
@@ -180,7 +174,7 @@ export function getPostCommentCount(postResponse: ApiPost): number {
   return postResponse.comment_count ?? postResponse.thread_snapshot?.comment_count ?? 0;
 }
 
-export function toCommentViewerVote(value: -1 | 1 | null): "up" | "down" | null {
+export function toCommentViewerVote(value: ApiCommentListItem["viewer_vote"]): "up" | "down" | null {
   if (value === 1) return "up";
   if (value === -1) return "down";
   return null;

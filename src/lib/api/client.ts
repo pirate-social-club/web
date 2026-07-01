@@ -190,7 +190,6 @@ export class ApiClient {
       replayedWithoutOptionalToken: _replayedWithoutOptionalToken,
       responseType = "json",
       onUploadProgress,
-      timeoutMs,
       ...fetchInit
     } = init ?? {};
     const body = fetchInit.body;
@@ -230,36 +229,18 @@ export class ApiClient {
     logger.debug("[api-client] request", { method, path, tokenOptional, tokenRequired });
 
     let res: Response;
-    const requestTimeoutMs = typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : null;
-    const timeoutController = requestTimeoutMs ? new AbortController() : null;
-    const callerSignal = fetchInit.signal;
-    const handleCallerAbort = callerSignal && timeoutController
-      ? () => timeoutController.abort()
-      : null;
-    let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null;
-    if (timeoutController) {
-      timeoutId = globalThis.setTimeout(() => timeoutController.abort(), requestTimeoutMs ?? undefined);
-      if (callerSignal) {
-        if (callerSignal.aborted) {
-          timeoutController.abort();
-        } else if (handleCallerAbort) {
-          callerSignal.addEventListener("abort", handleCallerAbort, { once: true });
-        }
-      }
-    }
     try {
       // Progress-reporting uploads go through XHR (fetch can't report upload
       // bytes); the returned Response feeds the same auth/error path below.
       res = onUploadProgress && typeof XMLHttpRequest !== "undefined"
         ? await xhrUploadFetch(
           `${this.baseUrl}${path}`,
-          { method, headers, body: fetchInit.body, signal: timeoutController?.signal ?? callerSignal ?? undefined },
+          { method, headers, body: fetchInit.body },
           onUploadProgress,
         )
         : await fetch(`${this.baseUrl}${path}`, {
           ...fetchInit,
           headers,
-          signal: timeoutController?.signal ?? callerSignal,
         });
     } catch (error) {
       logger.debug("[api-client] network request failed", {
@@ -268,13 +249,6 @@ export class ApiClient {
         message: error instanceof Error ? error.message : String(error),
       });
       throw error;
-    } finally {
-      if (timeoutId) {
-        globalThis.clearTimeout(timeoutId);
-      }
-      if (callerSignal && handleCallerAbort) {
-        callerSignal.removeEventListener("abort", handleCallerAbort);
-      }
     }
 
     logger.debug("[api-client] response", { method, path, status: res.status, ok: res.ok });

@@ -18,20 +18,11 @@ function parseHeaders(raw: string): Headers {
 
 export function xhrUploadFetch(
   url: string,
-  init: { method?: string; headers: Headers; body: BodyInit | null | undefined; signal?: AbortSignal },
+  init: { method?: string; headers: Headers; body: BodyInit | null | undefined },
   onUploadProgress: UploadProgressCallback,
 ): Promise<Response> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    const abortFromSignal = () => xhr.abort();
-    if (init.signal?.aborted) {
-      reject(new DOMException("The upload was aborted", "AbortError"));
-      return;
-    }
-    init.signal?.addEventListener("abort", abortFromSignal, { once: true });
-    const cleanup = () => {
-      init.signal?.removeEventListener("abort", abortFromSignal);
-    };
     xhr.open(init.method ?? "POST", url, true);
 
     const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
@@ -49,7 +40,6 @@ export function xhrUploadFetch(
       }
     };
     xhr.onload = () => {
-      cleanup();
       // status 0 means the request never completed at the HTTP layer; surface it as
       // a network error rather than constructing an invalid Response.
       if (xhr.status === 0) {
@@ -64,18 +54,9 @@ export function xhrUploadFetch(
         }),
       );
     };
-    xhr.onerror = () => {
-      cleanup();
-      reject(new TypeError("Network request failed"));
-    };
-    xhr.ontimeout = () => {
-      cleanup();
-      reject(new TypeError("Network request timed out"));
-    };
-    xhr.onabort = () => {
-      cleanup();
-      reject(new DOMException("The upload was aborted", "AbortError"));
-    };
+    xhr.onerror = () => reject(new TypeError("Network request failed"));
+    xhr.ontimeout = () => reject(new TypeError("Network request timed out"));
+    xhr.onabort = () => reject(new DOMException("The upload was aborted", "AbortError"));
 
     xhr.send((init.body ?? null) as XMLHttpRequestBodyInit | null);
   });

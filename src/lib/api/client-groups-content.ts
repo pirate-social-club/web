@@ -243,28 +243,25 @@ export function createCommunityContentApi(request: ApiRequest) {
     createArtifactUpload: (
       communityId: string,
       body: CreateSongArtifactUploadRequest,
-      options?: { timeoutMs?: number | null },
     ): Promise<SongArtifactUpload> =>
       request<SongArtifactUpload>(
         `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads`,
-        { method: "POST", body: JSON.stringify(body), timeoutMs: options?.timeoutMs },
+        { method: "POST", body: JSON.stringify(body) },
       ),
     uploadArtifactContent: (
       communityId: string,
       songArtifactUploadId: string,
       body: ArrayBuffer | ApiSongArtifactUploadContentRequest,
-      options?: ((fraction: number) => void) | { onProgress?: (fraction: number) => void; timeoutMs?: number | null },
+      onProgress?: (fraction: number) => void,
     ): Promise<SongArtifactUpload> => {
       const isBinary = body instanceof ArrayBuffer;
-      const uploadOptions = typeof options === "function" ? { onProgress: options } : options;
       return request<SongArtifactUpload>(
         `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(songArtifactUploadId)}/content`,
         {
           method: "PUT",
           body: isBinary ? body : JSON.stringify(body),
           headers: isBinary ? { "Content-Type": "application/octet-stream" } : undefined,
-          onUploadProgress: isBinary ? uploadOptions?.onProgress : undefined,
-          timeoutMs: uploadOptions?.timeoutMs,
+          onUploadProgress: isBinary ? onProgress : undefined,
         },
       );
     },
@@ -273,32 +270,28 @@ export function createCommunityContentApi(request: ApiRequest) {
       songArtifactUploadId: string,
       sessionId: string,
       partNumber: number,
-      options?: { timeoutMs?: number | null },
     ): Promise<ApiSongArtifactUploadPartSignedUrlResponse> =>
       request<ApiSongArtifactUploadPartSignedUrlResponse>(
         `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(songArtifactUploadId)}/sessions/${encodeURIComponent(sessionId)}/parts/${encodeURIComponent(String(partNumber))}/signed-url`,
-        { timeoutMs: options?.timeoutMs },
       ),
     completeArtifactUploadSession: (
       communityId: string,
       songArtifactUploadId: string,
       sessionId: string,
       body: ApiSongArtifactUploadCompleteRequest,
-      options?: { timeoutMs?: number | null },
     ): Promise<SongArtifactUpload> =>
       request<SongArtifactUpload>(
         `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(songArtifactUploadId)}/sessions/${encodeURIComponent(sessionId)}/complete`,
-        { method: "POST", body: JSON.stringify(body), timeoutMs: options?.timeoutMs },
+        { method: "POST", body: JSON.stringify(body) },
       ),
     abortArtifactUploadSession: (
       communityId: string,
       songArtifactUploadId: string,
       sessionId: string,
-      options?: { timeoutMs?: number | null },
     ): Promise<void> =>
       request<void>(
         `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(songArtifactUploadId)}/sessions/${encodeURIComponent(sessionId)}/abort`,
-        { method: "POST", timeoutMs: options?.timeoutMs },
+        { method: "POST" },
       ),
     createSongArtifactBundle: (
       communityId: string,

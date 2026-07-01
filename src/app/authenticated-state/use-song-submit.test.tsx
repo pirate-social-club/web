@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 
 import { installDomGlobals } from "@/test/setup-dom";
 
@@ -12,7 +12,6 @@ const { mock } = await import("bun:test") as unknown as {
 };
 
 const apiCalls: string[] = [];
-const originalFetch = globalThis.fetch;
 let createdSongArtifactBundleResult = songBundle({
   id: "sab_created",
   previewStatus: "completed",
@@ -24,19 +23,8 @@ let readSongArtifactBundleResult = songBundle({
 
 const fakeApi = {
   communities: {
-    createArtifactUpload: async (_communityId: string, body: { upload_mode?: string }) => {
+    createArtifactUpload: async () => {
       apiCalls.push("createArtifactUpload");
-      if (body.upload_mode === "direct_multipart") {
-        return {
-          id: "sau_primary",
-          upload_session: {
-            id: "saus_primary",
-            upload_id: "filebase-upload-1",
-            part_size_bytes: 10,
-            total_parts: 1,
-          },
-        };
-      }
       return {
         id: "sau_primary",
       };
@@ -50,28 +38,6 @@ const fakeApi = {
         size_bytes: 4,
         storage_ref: "filebase://songs/audio.mp3",
       };
-    },
-    getArtifactUploadPartSignedUrl: async () => {
-      apiCalls.push("getArtifactUploadPartSignedUrl");
-      return {
-        expires_at: "2026-07-01T00:00:00.000Z",
-        part_number: 1,
-        part_size_bytes: 10,
-        url: "https://filebase.test/upload-part",
-      };
-    },
-    completeArtifactUploadSession: async () => {
-      apiCalls.push("completeArtifactUploadSession");
-      return {
-        id: "sau_primary",
-        content_hash: "hash_audio",
-        mime_type: "audio/mpeg",
-        size_bytes: 4,
-        storage_ref: "filebase://songs/audio.mp3",
-      };
-    },
-    abortArtifactUploadSession: async () => {
-      apiCalls.push("abortArtifactUploadSession");
     },
     createSongArtifactBundle: async () => {
       apiCalls.push("createSongArtifactBundle");
@@ -170,10 +136,6 @@ function renderSubmitHook() {
 
 beforeEach(() => {
   apiCalls.length = 0;
-  globalThis.fetch = async () => new Response(null, {
-    status: 200,
-    headers: { ETag: "\"part-etag\"" },
-  });
   createdSongArtifactBundleResult = songBundle({
     id: "sab_created",
     previewStatus: "completed",
@@ -182,10 +144,6 @@ beforeEach(() => {
     id: "sab_existing",
     previewStatus: "completed",
   });
-});
-
-afterEach(() => {
-  globalThis.fetch = originalFetch;
 });
 
 describe("useSongSubmit", () => {
@@ -204,8 +162,7 @@ describe("useSongSubmit", () => {
     expect(pendingBundleIds).toEqual(["sab_created"]);
     expect(apiCalls).toEqual([
       "createArtifactUpload",
-      "getArtifactUploadPartSignedUrl",
-      "completeArtifactUploadSession",
+      "uploadArtifactContent",
       "createSongArtifactBundle",
       "createPost",
     ]);
@@ -282,8 +239,7 @@ describe("useSongSubmit", () => {
     expect(apiCalls).toEqual([
       "getSongArtifactBundle",
       "createArtifactUpload",
-      "getArtifactUploadPartSignedUrl",
-      "completeArtifactUploadSession",
+      "uploadArtifactContent",
       "createSongArtifactBundle",
       "createPost",
       "createListing",

@@ -224,35 +224,6 @@ describe("ApiClient bookings", () => {
 });
 
 describe("ApiClient media uploads", () => {
-  test("aborts API requests when a timeout is provided", async () => {
-    let observedAbort = false;
-    globalThis.fetch = async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-      return await new Promise<Response>((_resolve, reject) => {
-        init?.signal?.addEventListener("abort", () => {
-          observedAbort = true;
-          reject(new DOMException("The operation was aborted.", "AbortError"));
-        }, { once: true });
-      });
-    };
-
-    try {
-      const client = new ApiClient({
-        baseUrl: "http://pirate.test",
-        getToken: () => "session-token",
-      });
-
-      await expect(client.communities.createArtifactUpload("com_test", {
-        artifact_kind: "primary_audio",
-        mime_type: "audio/mpeg",
-        filename: "song.mp3",
-        size_bytes: 4,
-      }, { timeoutMs: 1 })).rejects.toThrow("The operation was aborted.");
-      expect(observedAbort).toBe(true);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-
   test("sends FormData without forcing a JSON content type", async () => {
     let request: Request | null = null;
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

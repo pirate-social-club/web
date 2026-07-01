@@ -18,6 +18,32 @@ import {
 } from "./post-composer-utils";
 import type { PostComposerController } from "./use-post-composer-controller";
 
+// Thin indeterminate strip pinned to the container's top border. Rendered as a
+// separate element (not inside the fixed-height button) so it never causes layout
+// shift or overflow. Only shown for activity-mode flows that are actively working
+// and have no meaningful step counter to convey progress.
+function SubmitActivityBar({
+  progress,
+  loading,
+}: {
+  progress: SubmitProgress | null | undefined;
+  loading: boolean;
+}) {
+  const active = Boolean(loading)
+    && progress?.display === "activity"
+    && progress.phase !== "done";
+  if (!active) return null;
+
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden"
+    >
+      <div className="absolute inset-y-0 animate-submit-progress-indeterminate rounded-full bg-primary" />
+    </div>
+  );
+}
+
 function submitButtonContent(
   progress: SubmitProgress | null | undefined,
   fallback: string,
@@ -30,11 +56,18 @@ function submitButtonContent(
     ? progress.label
     : `${progress.label}...`;
 
+  // Trailing indicator: live detail ("63%") wins when a step reports it. Otherwise
+  // show the step counter only for pipeline flows — in activity flows "2/4" reads as
+  // "stalled", so we let the button spinner + activity bar convey progress instead.
+  const trailing = progress.phase === "done"
+    ? null
+    : (progress.detail ?? (progress.display === "pipeline" ? `${currentIndex}/${totalSteps}` : null));
+
   return (
     <>
       <span className="min-w-0 truncate">{label}</span>
-      {progress.phase !== "done" ? (
-        <span className="shrink-0 tabular-nums opacity-80">{currentIndex}/{totalSteps}</span>
+      {trailing !== null ? (
+        <span className="shrink-0 tabular-nums opacity-80">{trailing}</span>
       ) : null}
     </>
   );
@@ -143,7 +176,8 @@ export function PostComposerDesktopFooter({
   const publishLabel = tabs.activeTab === "live" ? submit.label : copy.actions.publish;
 
   return (
-    <CardFooter className="justify-between gap-3 border-t border-border-soft p-5">
+    <CardFooter className="relative justify-between gap-3 border-t border-border-soft p-5">
+      <SubmitActivityBar loading={submit.loading} progress={submit.progress} />
       {step.isPublishStep ? (
         <Button
           key="back"
@@ -222,6 +256,7 @@ export function PostComposerMobileSubmitBar({
 
     bar = (
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
+        <SubmitActivityBar loading={submit.loading} progress={submit.progress} />
         <div className="space-y-3 px-4">
           {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
           <div>

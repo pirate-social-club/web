@@ -13,6 +13,7 @@ import type {
   LiveSetlistItemKind,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import { buildLiveRoomListingRequest } from "@/app/authenticated-helpers/asset-submit";
+import type { SubmitProgressReporter } from "./progress";
 
 type UploadedLiveCoverMedia = {
   media_ref: string;
@@ -167,6 +168,7 @@ export async function submitLiveRoom({
   pricingPolicyRegionalPricingEnabled,
   publishLiveRoom,
   regionalPricingEnabled,
+  reportProgress,
   resolveProfileByHandle,
   title,
   uploadMedia,
@@ -180,6 +182,7 @@ export async function submitLiveRoom({
   pricingPolicyRegionalPricingEnabled: boolean;
   publishLiveRoom: PublishLiveRoom;
   regionalPricingEnabled: boolean;
+  reportProgress?: SubmitProgressReporter;
   resolveProfileByHandle?: ResolvePublicProfileByHandle;
   title: string;
   uploadMedia: UploadLiveCoverMedia;
@@ -197,6 +200,9 @@ export async function submitLiveRoom({
 
   let coverRef: string | null = null;
   if (liveState.coverUpload) {
+    // Report the media step right before the actual upload, not before the call —
+    // otherwise the button jumps to "Publishing" while the cover is still uploading.
+    reportProgress?.("prepare_media");
     const uploadedCover = await uploadMedia({
       kind: "post_image",
       file: liveState.coverUpload,
@@ -214,9 +220,11 @@ export async function submitLiveRoom({
   });
 
   if (liveState.accessMode !== "paid") {
+    reportProgress?.("publish_post");
     return await createLiveRoom(communityId, roomRequest);
   }
 
+  reportProgress?.("create_listing");
   const listingRequest = buildLiveRoomListingRequest({
     liveRoomId: null,
     paidLiveRoomPriceUsd,
@@ -227,6 +235,7 @@ export async function submitLiveRoom({
     throw new Error("Build a paid listing payload before publishing this live room.");
   }
 
+  reportProgress?.("publish_post");
   const published = await publishLiveRoom(communityId, {
     room: roomRequest,
     listing: listingRequest,

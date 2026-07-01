@@ -348,12 +348,21 @@ export type SubmitProgressPhase =
   | "checking_registration"
   | "done";
 
+// How the submit progress should be presented:
+// - "pipeline": a multi-stage flow with several genuinely-slow steps (song, video)
+//   where the "N/M" step counter is meaningful.
+// - "activity": a flow dominated by a single slow step (image/text/link, and song
+//   posts that reuse a pre-uploaded bundle) where "N/M" reads as "stalled at 2/4"
+//   and an indeterminate activity indicator is clearer.
+export type SubmitProgressDisplay = "pipeline" | "activity";
+
 export type SubmitProgress = {
   phase: SubmitProgressPhase;
   label: string;
   detail?: string;
   currentIndex: number;
   totalSteps: number;
+  display: SubmitProgressDisplay;
 };
 
 export interface PostComposerProps extends Partial<PostComposerDraftState>, PostComposerDraftActions {

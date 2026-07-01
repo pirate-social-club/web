@@ -980,9 +980,6 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           scheduleForLater: liveState.scheduleForLater === true,
           setlistItems: liveState.setlistItems.length,
         });
-        if (liveState.coverUpload) reportProgress("prepare_media");
-        if (paidLiveRoomMode) reportProgress("create_listing");
-        reportProgress("publish_post");
         const liveRoom = await submitLiveRoom({
           communityId,
           createLiveRoom: api.communities.createLiveRoom,
@@ -993,6 +990,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
           publishLiveRoom: api.communities.publishLiveRoom,
           regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
+          reportProgress,
           resolveProfileByHandle: api.publicProfiles.getByHandle,
           title,
           uploadMedia: api.communities.uploadMedia,

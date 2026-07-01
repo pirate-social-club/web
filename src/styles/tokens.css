@@ -222,3 +222,31 @@
 .animate-mascot-run {
   animation: mascot-run 4s steps(25) infinite;
 }
+
+/* Indeterminate activity bar for single-slow-step submit flows (image/text/link,
+   song posts reusing a pre-uploaded bundle) where a step counter would read as
+   "stalled". A segment sweeps across the track to signal ongoing work. */
+@keyframes submit-progress-indeterminate {
+  0% {
+    left: -35%;
+    right: 100%;
+  }
+  60%,
+  100% {
+    left: 100%;
+    right: -35%;
+  }
+}
+
+.animate-submit-progress-indeterminate {
+  animation: submit-progress-indeterminate 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-submit-progress-indeterminate {
+    animation: none;
+    left: 0;
+    right: 0;
+    opacity: 0.6;
+  }
+}

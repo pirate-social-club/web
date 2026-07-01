@@ -5,6 +5,8 @@ import { Chip } from "@/components/primitives/chip";
 import { FormNote, FormSectionHeading } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
+import { Switch } from "@/components/primitives/switch";
+import { Type } from "@/components/primitives/type";
 import { UploadField, FieldLabel } from "./post-composer-fields";
 import { SetlistItemRow, dedupeReferences, buildManualReference } from "./post-composer-references";
 import type { ComposerReference, LiveComposerState } from "./post-composer.types";
@@ -254,6 +256,18 @@ export function LiveTabContent({
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
+        <div className="space-y-1">
+          <Type as="div" variant="body-strong">{copy.live.recordThisLivestream}</Type>
+          <Type as="p" variant="caption">{copy.live.recordThisLivestreamNote}</Type>
+        </div>
+        <Switch
+          aria-label={copy.live.recordThisLivestream}
+          checked={live.recordingEnabled === true}
+          onCheckedChange={(checked) => onLiveChange({ ...live, recordingEnabled: checked })}
+        />
       </div>
 
       {live.roomKind === "duet" ? (

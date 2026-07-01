@@ -10,6 +10,7 @@ import type {
 import type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
 export type ApiCreateCommunityRequest = CreateCommunityRequest;
+export type ApiCreateCommunityListingRequest = CreateCommunityListingRequest;
 
 export type ApiCommunityMediaUploadResponse = {
   kind: "avatar" | "banner" | "post_image" | "comment_image";
@@ -208,6 +209,9 @@ export type ApiLiveRoomSetlistStatus = "draft" | "ready" | "locked";
 export type ApiLiveRoomRightsBasis = "original" | "licensed" | "cover" | "public_domain" | "unknown";
 export type ApiLiveRoomRightsStatus = "pending" | "ready" | "blocked";
 export type ApiLiveRoomGuestInviteStatus = "pending" | "accepted" | "revoked";
+export type ApiLiveRoomReplayDraftStatus = "not_recorded" | "processing" | "ready" | "review_pending" | "published" | "failed";
+export type ApiLiveRoomReplayAssetAccessMode = "free" | "included_with_ticket" | "paid";
+export type ApiLiveRoomReplayAssetPublicationStatus = "draft" | "published" | "failed";
 
 export type ApiCreateLiveRoomRequest = {
   title?: string | null;
@@ -220,6 +224,7 @@ export type ApiCreateLiveRoomRequest = {
   cover_ref?: string | null;
   store_url?: string | null;
   store_label?: string | null;
+  recording_enabled?: boolean | null;
   performer_allocations?: Array<{
     user?: string | null;
     role?: "host" | "guest" | null;
@@ -266,7 +271,10 @@ export type ApiLiveRoom = {
   ended_at: number | null;
   canceled_at: number | null;
   broadcast_ref: string | null;
+  recording_enabled: boolean;
   replay_status: string;
+  replay_asset_id?: string | null;
+  replay_listing_id?: string | null;
   performer_allocations: Array<{
     id: string;
     object: "live_room_performer_allocation";
@@ -298,6 +306,103 @@ export type ApiLiveRoom = {
 export type ApiPublishLiveRoomResponse = {
   room: ApiLiveRoom;
   listing: CommunityListing;
+};
+
+export type ApiLiveRoomReplayDraft = {
+  object: "live_room_replay_draft";
+  live_room: string;
+  recording_enabled: boolean;
+  replay_status: string;
+  status: ApiLiveRoomReplayDraftStatus;
+  replay_asset: null | {
+    id: string;
+    object: "live_room_replay_asset";
+    publication_status: ApiLiveRoomReplayAssetPublicationStatus | string;
+    title: string;
+    caption: string | null;
+    duration_ms: number | null;
+    preview_ref: string | null;
+    access_mode: ApiLiveRoomReplayAssetAccessMode | string;
+    locked_delivery_status: "none" | "requested" | "ready" | "failed" | string;
+    published_at: string | null;
+    allocations: Array<{
+      id: string;
+      participant_user: string | null;
+      external_party_ref: string | null;
+      role: string;
+      share_bps: number;
+      rights_basis: string;
+      approval_status: "pending" | "approved" | "rejected" | string;
+    }>;
+  };
+  recording: null | {
+    id: string;
+    provider: "agora" | string;
+    status: string;
+    failure_reason: string | null;
+    raw_artifact: null | {
+      provider: "filebase";
+      ipfs_cid: string;
+      mime_type: string;
+      size_bytes: number;
+    };
+  };
+};
+
+export type ApiPublishLiveRoomReplayDraftRequest = {
+  access_mode?: ApiLiveRoomReplayAssetAccessMode;
+  listing?: CreateCommunityListingRequest | null;
+};
+
+export type ApiLiveRoomReplayAccessResponse = {
+  live_room: string;
+  replay_asset: string | null;
+  replay_listing: CommunityListing | null;
+  replay_status: string;
+  access_mode: ApiLiveRoomReplayAssetAccessMode | null;
+  locked_delivery_status: "none" | "requested" | "ready" | "failed" | string | null;
+  access_granted: boolean;
+  decision_reason:
+    | "free"
+    | "creator"
+    | "moderator"
+    | "purchase_entitlement"
+    | "purchase_required"
+    | "delivery_pending"
+    | "not_published"
+    | "not_available"
+    | string;
+  delivery_kind: "primary_content_ref" | "story_cdr_ref" | string | null;
+  delivery_ref: string | null;
+  story_cdr_access: null | {
+    chain_id: number;
+    rpc_url: string;
+    cdr_contract_address: string;
+    read_condition_address: string;
+    ciphertext_ref: string;
+    cipher_algorithm: string;
+    cipher_iv_b64: string;
+    mime_type: string;
+    vault_uuid: number;
+    namespace: string;
+    access_scope: "asset.owner" | "asset.share" | string;
+    access_ref: string;
+    access_aux_data_hex?: string;
+    access_proof: Record<string, unknown>;
+  };
+};
+
+export type ApiUpdateLiveRoomReplayDraftRequest = {
+  title?: string | null;
+  caption?: string | null;
+  preview_ref?: string | null;
+  access_mode?: ApiLiveRoomReplayAssetAccessMode | null;
+  allocations?: Array<{
+    participant_user?: string | null;
+    external_party_ref?: string | null;
+    role?: string | null;
+    share_bps?: number | null;
+  }> | null;
 };
 
 export type ApiLiveRoomAccessDecisionReason =

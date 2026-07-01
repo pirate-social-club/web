@@ -454,7 +454,8 @@ describe("PostCard", () => {
     expect(publishedMarkup).toContain("Watch replay");
     expect(publishedMarkup).toContain("Ended 1h ago");
     expect(publishedMarkup).not.toContain("ago ago");
-    expect(publishedMarkup).toContain("48 min replay");
+    expect(publishedMarkup).toContain("48 min");
+    expect(publishedMarkup).not.toContain("48 min replay");
 
     const paidLockedMarkup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">

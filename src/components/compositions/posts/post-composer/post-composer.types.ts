@@ -106,6 +106,7 @@ export interface LiveComposerState {
   storeLabel?: string;
   coverUpload?: File | null;
   coverLabel?: string;
+  recordingEnabled?: boolean;
   trackOptions?: ComposerReference[];
   setlistItems: LiveSetlistItemInput[];
   setlistStatus: "draft" | "ready" | "locked";

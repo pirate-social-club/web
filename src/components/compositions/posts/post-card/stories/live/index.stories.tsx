@@ -26,8 +26,6 @@ const baseLiveRoom: LiveRoomContentSpec = {
   type: "live_room",
   liveRoomId: "lr_friday_night_set",
   title: "Friday Night Studio Set",
-  description: "A live run through the new material with a short Q&A after the set.",
-  coverSrc: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=960&h=540&fit=crop&crop=entropy&q=80",
   roomKind: "solo",
   status: "scheduled",
   accessMode: "free",

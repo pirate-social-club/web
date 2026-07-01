@@ -97,6 +97,7 @@ export function toLiveRoomPostContent(
       : undefined,
     onAcceptGuestInvite: input.liveRoom?.onAcceptGuestInvite,
     onBuy: input.liveRoom?.onBuy,
+    onReviewReplay: input.liveRoom?.onReviewReplay,
     onVerifyAge: input.onVerifyAge,
     onViewerRenew: input.liveRoom?.onViewerRenew,
     onWatch: input.liveRoom?.onWatch,

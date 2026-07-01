@@ -209,6 +209,7 @@ export function defaultLiveComposerState(live?: LiveComposerState): LiveComposer
     storeLabel: live?.storeLabel,
     coverUpload: live?.coverUpload ?? null,
     coverLabel: live?.coverLabel,
+    recordingEnabled: live?.recordingEnabled ?? false,
     trackOptions: live?.trackOptions,
     setlistItems: live?.setlistItems ?? [],
     setlistStatus: live?.setlistStatus ?? "draft",

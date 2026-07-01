@@ -174,6 +174,7 @@ async function resolveRouteSeoMetadata(input: {
       input.route.kind === "post"
       || input.route.kind === "telegram-post"
       || input.route.kind === "live-room"
+      || input.route.kind === "post-replay-draft"
       || input.route.kind === "post-karaoke"
       || input.route.kind === "post-study"
       || input.route.kind === "crosspost"
@@ -528,6 +529,7 @@ const app = defineApp<AppRequestInfo>([
     route("/c/:communityId", AppRoutePage),
     route("/p/:postId/crosspost", AppRoutePage),
     route("/p/:postId/live", AppRoutePage),
+    route("/p/:postId/replay", AppRoutePage),
     route("/p/:postId/karaoke", AppRoutePage),
     route("/p/:postId/study", AppRoutePage),
     route("/p/:postId", AppRoutePage),

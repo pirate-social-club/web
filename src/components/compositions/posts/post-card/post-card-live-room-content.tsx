@@ -41,6 +41,11 @@ function timeLabel(content: LiveRoomContentSpec): string | null {
   return content.startsAtLabel ? `Starts ${content.startsAtLabel}` : null;
 }
 
+function hasReplaySurface(content: LiveRoomContentSpec): boolean {
+  return content.status === "ended"
+    && Boolean(content.replayStatus && content.replayStatus !== "none");
+}
+
 function participantsLabel(participants: LiveRoomParticipant[] | undefined): string | null {
   if (!participants || participants.length === 0) return null;
   const guests = participants.filter((p) => p.role === "guest");
@@ -309,6 +314,12 @@ function ProducerControls({
           </a>
         </Button>
       ) : null}
+      {content.status === "ended" && content.replayStatus === "review_pending" && content.onReviewReplay ? (
+        <Button className={buttonClassName} onClick={content.onReviewReplay} size="sm" variant="secondary">
+          <Play className="size-4" weight="bold" />
+          Review recording
+        </Button>
+      ) : null}
       {!showBroadcast && !content.freedomDetected ? (
         <Button asChild className={buttonClassName} size="sm" variant="outline">
           <a href={resolveResourceHref("source-freedom-browser") ?? "#"} rel="noreferrer" target="_blank">
@@ -337,6 +348,8 @@ export function LiveRoomPostContent({
   const inPostPage = viewContext === "post";
   const eventHref = inPostPage ? undefined : content.concertHref;
   const time = timeLabel(content);
+  const replaySurface = hasReplaySurface(content);
+  const feedMeta = [time, content.replayDurationLabel].filter(Boolean).join(" · ");
   const postPageTime = inPostPage && content.status === "live" ? null : time;
   const timeIsLive = content.status === "live";
   const inlineViewerAttach = inPostPage
@@ -418,7 +431,7 @@ export function LiveRoomPostContent({
             {content.replayDurationLabel ? (
               <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-muted-foreground">
                 <Play className="size-4" weight="bold" />
-                {content.replayDurationLabel} replay
+                {content.replayDurationLabel}
               </Type>
             ) : null}
             {ui.kind === "has_ticket" ? (
@@ -449,7 +462,7 @@ export function LiveRoomPostContent({
           </div>
         ) : null}
 
-        {content.description ? (
+        {content.description && !replaySurface ? (
           <Type as="p" variant="body" className="max-w-[72ch] leading-7 text-muted-foreground">
             {content.description}
           </Type>
@@ -530,7 +543,7 @@ export function LiveRoomPostContent({
           )}
         </div>
 
-        {time ? (
+        {feedMeta ? (
           <p
             className={cn(
               "mt-0.5 font-medium",
@@ -538,7 +551,7 @@ export function LiveRoomPostContent({
               timeIsLive ? "text-destructive" : "text-foreground/90",
             )}
           >
-            {time}
+            {feedMeta}
           </p>
         ) : null}
 
@@ -548,13 +561,7 @@ export function LiveRoomPostContent({
           </p>
         ) : null}
 
-        {content.replayDurationLabel ? (
-          <p className={cn("mt-0.5 text-muted-foreground", postCardType.meta)}>
-            {content.replayDurationLabel} replay
-          </p>
-        ) : null}
-
-        {content.description ? (
+        {content.description && !replaySurface ? (
           <p className={cn("mt-0.5 text-muted-foreground", postCardType.meta)}>
             {content.description}
           </p>

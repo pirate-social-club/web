@@ -159,6 +159,7 @@ export interface LiveRoomContentSpec {
   onRsvp?: () => void;
   onWatch?: () => void;
   onBuy?: () => void;
+  onReviewReplay?: () => void;
   onViewerRenew?: (uid: number) => Promise<ApiLiveRoomViewerAttachResponse | null>;
   onVerifyAge?: () => void;
 }

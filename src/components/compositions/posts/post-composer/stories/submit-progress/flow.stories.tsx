@@ -85,21 +85,13 @@ function FlowDemo({ scenario, intervalMs }: { scenario: Scenario; intervalMs: nu
     const report = createSubmitProgressReporter(steps, setProgress);
 
     let index = 0;
-    let holdDone = 0;
     const tick = () => {
       const frame = frames[index];
       report(frame.key, frame.detail);
-      const isLast = index >= frames.length - 1;
-      if (isLast) {
-        // Hold on "Post published" for a couple ticks, then restart the loop.
-        holdDone += 1;
-        if (holdDone >= 2) {
-          index = 0;
-          holdDone = 0;
-        }
-      } else {
-        index += 1;
-      }
+      // In the real app, "done" is immediately followed by navigation to the new
+      // post — it is not a state the user dwells in. Mirror that: as soon as the
+      // terminal frame shows, loop back to the start instead of holding on it.
+      index = index >= frames.length - 1 ? 0 : index + 1;
     };
 
     tick();

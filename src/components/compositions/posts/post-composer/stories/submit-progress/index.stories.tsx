@@ -47,7 +47,7 @@ export const ImageUploadingActivity: Story = {
         phase: "uploading_media",
         label: "Uploading image",
         currentIndex: 2,
-        totalSteps: 4,
+        totalSteps: 3,
         display: "activity",
       })}
     />
@@ -64,7 +64,7 @@ export const TextPublishingActivity: Story = {
         phase: "publishing_post",
         label: "Publishing",
         currentIndex: 2,
-        totalSteps: 3,
+        totalSteps: 2,
         display: "activity",
       })}
     />
@@ -83,7 +83,7 @@ export const SongPendingBundleActivity: Story = {
         phase: "checking_registration",
         label: "Checking registration",
         currentIndex: 3,
-        totalSteps: 4,
+        totalSteps: 3,
         display: "activity",
       })}
     />
@@ -93,7 +93,7 @@ export const SongPendingBundleActivity: Story = {
 // --- Pipeline mode: meaningful counter, live detail -------------------------
 
 export const SongPipelineCounter: Story = {
-  name: "Pipeline / Song analyzing (5/9)",
+  name: "Pipeline / Song analyzing (5/8)",
   render: () => (
     <PostComposer
       {...baseComposer}
@@ -102,7 +102,7 @@ export const SongPipelineCounter: Story = {
         phase: "processing_media",
         label: "Analyzing song",
         currentIndex: 5,
-        totalSteps: 9,
+        totalSteps: 8,
         display: "pipeline",
       })}
     />
@@ -122,7 +122,7 @@ export const VideoUploadingWithPercent: Story = {
         label: "Uploading video",
         detail: "63%",
         currentIndex: 2,
-        totalSteps: 7,
+        totalSteps: 6,
         display: "pipeline",
       })}
     />
@@ -138,8 +138,8 @@ export const DonePublished: Story = {
       submit={submitting({
         phase: "done",
         label: "Post published",
-        currentIndex: 4,
-        totalSteps: 4,
+        currentIndex: 3,
+        totalSteps: 3,
         display: "activity",
       })}
     />

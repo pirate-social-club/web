@@ -45,22 +45,33 @@ export function createSubmitProgressReporter(
   steps: SubmitProgressStep[],
   emit: (progress: SubmitProgress) => void,
 ): SubmitProgressReporter {
-  const indexes = new Map<string, number>();
-  steps.forEach((step, index) => {
-    indexes.set(step.key, index);
-  });
+  // "done" is a terminal completion signal (it stops the button spinner right
+  // before the composer navigates to the new post), not a unit of work. Exclude
+  // it from the counter so the last real step rests at "N/N" instead of the count
+  // being inflated by a step the user never actually waits through.
+  const byKey = new Map<string, SubmitProgressStep>();
+  const countedIndex = new Map<string, number>();
+  let counted = 0;
+  for (const step of steps) {
+    byKey.set(step.key, step);
+    if (step.phase !== "done") {
+      counted += 1;
+      countedIndex.set(step.key, counted);
+    }
+  }
+  const totalSteps = counted;
   const display = resolveSubmitProgressDisplay(steps);
 
   return (key, detail) => {
-    const index = indexes.get(key);
-    if (index === undefined) return;
-    const step = steps[index];
+    const step = byKey.get(key);
+    if (step === undefined) return;
     emit({
       phase: step.phase,
       label: step.label,
       detail,
-      currentIndex: index + 1,
-      totalSteps: steps.length,
+      // done reports as complete (N/N); real steps report their counted position.
+      currentIndex: step.phase === "done" ? totalSteps : (countedIndex.get(key) ?? totalSteps),
+      totalSteps,
       display,
     });
   };

@@ -62,9 +62,9 @@ export const TextPublishingActivity: Story = {
       composerStep="publish"
       submit={submitting({
         phase: "publishing_post",
-        label: "Creating post",
+        label: "Publishing",
         currentIndex: 2,
-        totalSteps: 4,
+        totalSteps: 3,
         display: "activity",
       })}
     />

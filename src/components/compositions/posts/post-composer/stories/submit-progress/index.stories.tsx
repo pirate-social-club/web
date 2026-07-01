@@ -5,13 +5,12 @@ import type { SubmitProgress } from "../../post-composer.types";
 import { PostComposer } from "../../post-composer";
 import { baseComposer, composerDecorator, composerParameters } from "../story-helpers";
 
-// Focused stories for the publish-button submit progress presentation. The button
-// reads `submit.progress` + `submit.loading`, so these variants exercise the two
-// presentation modes without running a real submit:
-//   - activity: single dominant slow step (image/text/link, song reusing a bundle).
-//     No "N/M" counter; a thin indeterminate bar sweeps the footer's top border.
-//   - pipeline: several genuinely-slow stages (fresh song, video). "N/M" counter
-//     is meaningful; live `detail` (e.g. "63%") replaces the counter when present.
+// Focused snapshot stories for the submit progress bar + constant "Posting…" label.
+// The button reads `submit.progress` + `submit.loading`; the top-border bar fills a
+// monotonic 0→1 fraction (submitProgressFraction). These variants pin single frames:
+//   - activity: single-upload flows (image/live cover) fill directly by upload byte-%.
+//   - pipeline: multi-step flows (song/video) fill by step, with byte-% interpolated
+//     within the current step. See the "▶ Flow (interactive)" story to watch it move.
 
 const meta = {
   title: "Compositions/Posts/PostComposer/Composer/SubmitProgress",
@@ -35,7 +34,7 @@ function submitting(progress: SubmitProgress) {
   };
 }
 
-// --- Activity mode: no counter, indeterminate bar ---------------------------
+// --- Activity mode: bar fills directly by upload byte-% ---------------------
 
 export const ImageUploadingActivity: Story = {
   name: "Activity / Image uploading (real bytes)",

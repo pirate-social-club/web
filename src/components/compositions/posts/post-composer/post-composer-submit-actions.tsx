@@ -11,42 +11,13 @@ import { logger } from "@/lib/logger";
 import type { SubmitProgress } from "./post-composer.types";
 
 import { anonymousEligibleTabs } from "./post-composer-config";
+import { submitProgressFraction } from "./submit-progress-fraction";
 import {
   canAdvanceComposerWriteStep,
   getNextComposerStep,
   getPreviousComposerStep,
 } from "./post-composer-utils";
 import type { PostComposerController } from "./use-post-composer-controller";
-
-// Parse a "63%" detail into a 0–1 fraction, or null when there's no byte-progress.
-function parseDetailFraction(detail: string | undefined): number | null {
-  const match = detail?.match(/^(\d+(?:\.\d+)?)%$/);
-  if (!match) return null;
-  return Math.min(Math.max(Number(match[1]) / 100, 0), 1);
-}
-
-// A single monotonic 0→1 fill for the whole submit — the bar only ever moves left
-// to right, once. Never indeterminate.
-// - Multi-step flows (song/video): fill by completed steps, interpolating a byte-%
-//   within the current step.
-// - Single-upload flows (image/live cover): the upload is the entire wait, so fill
-//   directly by its real byte-% — 0 before it starts, 1 once it's past.
-function submitProgressFraction(progress: SubmitProgress): number {
-  const within = parseDetailFraction(progress.detail);
-
-  if (progress.display === "pipeline") {
-    const total = Math.max(progress.totalSteps, 1);
-    const reached = Math.min(Math.max(progress.currentIndex, 0), total);
-    return within != null ? ((reached - 1) + within) / total : reached / total;
-  }
-
-  // activity: the bar tracks the one dominant upload directly.
-  if (progress.phase === "uploading_media" || progress.phase === "preparing_media") {
-    return within ?? 0;
-  }
-  if (progress.phase === "validating") return 0;
-  return 1; // past the upload (publishing / listing / registration)
-}
 
 // Progress strip pinned to the container's top border. Rendered as a separate
 // element (not inside the fixed-height button) so it never causes layout shift.

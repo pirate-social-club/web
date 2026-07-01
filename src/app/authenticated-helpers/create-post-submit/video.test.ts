@@ -355,7 +355,7 @@ describe("video create-post submit helpers", () => {
       title: "Video post",
       uploadArtifactContent: async () => createArtifact(),
       uploadMedia: async (input) => {
-        expect(input).toEqual({ kind: "post_image", file: posterFile });
+        expect({ kind: input.kind, file: input.file }).toEqual({ kind: "post_image", file: posterFile });
         return {
           media_ref: "poster_media",
           mime_type: "image/jpeg",

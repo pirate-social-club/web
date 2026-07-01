@@ -83,7 +83,7 @@ type UploadedPosterMedia = {
 };
 
 type UploadPosterMedia = (
-  input: { kind: "post_image"; file: File },
+  input: { kind: "post_image"; file: File; onProgress?: (fraction: number) => void },
 ) => Promise<UploadedPosterMedia>;
 
 type ExtractPosterFrameFile = (
@@ -410,8 +410,11 @@ export async function submitVideoPost({
 }): Promise<ApiCreatedPost> {
   reportProgress?.("validating");
   const file = requirePrimaryVideoFile(videoState);
-  reportProgress?.("upload_video");
-  reportProgress?.("extract_poster");
+  // Seed upload_video at the start of its band (0%) so the first real byte report
+  // can't precede it. extract_poster is reported AFTER the parallel work below,
+  // never up-front — otherwise it would advance the bar past upload_video and the
+  // upload's byte reports would then snap it backward.
+  reportProgress?.("upload_video", "0%");
   const [uploadedVideo, posterFrame] = await Promise.all([
     uploadVideoArtifact({
       abortArtifactUploadSession,
@@ -430,10 +433,14 @@ export async function submitVideoPost({
       { maxWidth: posterFrameMaxWidth },
     ),
   ]);
-  reportProgress?.("upload_poster");
+  reportProgress?.("extract_poster");
+  reportProgress?.("upload_poster", "0%");
   const uploadedPoster = await uploadMedia({
     kind: "post_image",
     file: posterFrame.file,
+    onProgress: (fraction) => {
+      reportProgress?.("upload_poster", `${Math.round(fraction * 100)}%`);
+    },
   });
   const request = buildVideoPostRequest({
     baseRequest,

@@ -60,12 +60,18 @@ function stepsForScenario(scenario: Scenario): SubmitProgressStep[] {
 // only video actually reports).
 type Frame = { key: string; detail?: string };
 
+// Only steps that actually report byte-progress in production play a "%" fill:
+// image/video/poster uploads (uploading_media) and the live cover (prepare_media,
+// which is XHR-wired). extract_poster shares the preparing_media phase but is frame
+// extraction — it reports no bytes, so the demo must not fake a fill for it.
+function stepReportsBytes(step: SubmitProgressStep): boolean {
+  return step.phase === "uploading_media" || step.key === "prepare_media";
+}
+
 function framesForSteps(steps: SubmitProgressStep[]): Frame[] {
   const frames: Frame[] = [];
   for (const step of steps) {
-    // Byte-uploading steps report real percentages (image/live cover via XHR,
-    // video via multipart) — play a short fill so the bar advances smoothly.
-    if (step.phase === "uploading_media" || step.phase === "preparing_media") {
+    if (stepReportsBytes(step)) {
       for (const pct of ["18%", "52%", "86%", "100%"]) {
         frames.push({ key: step.key, detail: pct });
       }

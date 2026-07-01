@@ -25,27 +25,31 @@ function parseDetailFraction(detail: string | undefined): number | null {
   return Math.min(Math.max(Number(match[1]) / 100, 0), 1);
 }
 
-// Fraction (0–1) to fill the progress bar, or null to animate indeterminately.
+// A single monotonic 0→1 fill for the whole submit — the bar only ever moves left
+// to right, once. Never indeterminate.
 // - Multi-step flows (song/video): fill by completed steps, interpolating a byte-%
-//   within the current step so the longest stage advances smoothly.
-// - Single-step flows (image): the upload now reports real bytes via XHR, so fill
-//   directly by that %. Before/after the upload there's no measurable work, so the
-//   bar animates indeterminately (null) — honest rather than a fake fill.
-function submitProgressFraction(progress: SubmitProgress): number | null {
+//   within the current step.
+// - Single-upload flows (image/live cover): the upload is the entire wait, so fill
+//   directly by its real byte-% — 0 before it starts, 1 once it's past.
+function submitProgressFraction(progress: SubmitProgress): number {
   const within = parseDetailFraction(progress.detail);
-  if (progress.display !== "pipeline") return within;
 
-  const total = Math.max(progress.totalSteps, 1);
-  const reached = Math.min(Math.max(progress.currentIndex, 0), total);
-  if (within != null) {
-    return ((reached - 1) + within) / total;
+  if (progress.display === "pipeline") {
+    const total = Math.max(progress.totalSteps, 1);
+    const reached = Math.min(Math.max(progress.currentIndex, 0), total);
+    return within != null ? ((reached - 1) + within) / total : reached / total;
   }
-  return reached / total;
+
+  // activity: the bar tracks the one dominant upload directly.
+  if (progress.phase === "uploading_media" || progress.phase === "preparing_media") {
+    return within ?? 0;
+  }
+  if (progress.phase === "validating") return 0;
+  return 1; // past the upload (publishing / listing / registration)
 }
 
 // Progress strip pinned to the container's top border. Rendered as a separate
 // element (not inside the fixed-height button) so it never causes layout shift.
-// Determinate fill for multi-step flows; indeterminate sweep when unmeasurable.
 function SubmitProgressBar({
   progress,
   loading,
@@ -61,14 +65,10 @@ function SubmitProgressBar({
       aria-hidden
       className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden"
     >
-      {fraction == null ? (
-        <div className="absolute inset-y-0 animate-submit-progress-indeterminate rounded-full bg-primary" />
-      ) : (
-        <div
-          className="absolute inset-y-0 left-0 rounded-full bg-primary transition-[width] duration-500 ease-out"
-          style={{ width: `${Math.round(fraction * 100)}%` }}
-        />
-      )}
+      <div
+        className="absolute inset-y-0 left-0 rounded-full bg-primary transition-[width] duration-300 ease-out"
+        style={{ width: `${Math.round(fraction * 100)}%` }}
+      />
     </div>
   );
 }

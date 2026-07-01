@@ -20,7 +20,7 @@ type UploadedLiveCoverMedia = {
 };
 
 type UploadLiveCoverMedia = (
-  input: { kind: "post_image"; file: File },
+  input: { kind: "post_image"; file: File; onProgress?: (fraction: number) => void },
 ) => Promise<UploadedLiveCoverMedia>;
 
 type CreateLiveRoom = (
@@ -206,6 +206,9 @@ export async function submitLiveRoom({
     const uploadedCover = await uploadMedia({
       kind: "post_image",
       file: liveState.coverUpload,
+      onProgress: (fraction) => {
+        reportProgress?.("prepare_media", `${Math.round(fraction * 100)}%`);
+      },
     });
     coverRef = uploadedCover.media_ref;
   }

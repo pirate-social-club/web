@@ -236,7 +236,7 @@ describe("live create-post submit helpers", () => {
       regionalPricingEnabled: false,
       title: "Free room",
       uploadMedia: async (input) => {
-        uploadMediaCalls.push(input);
+        uploadMediaCalls.push({ kind: input.kind, file: input.file });
         return { media_ref: "media_cover" };
       },
     });

@@ -63,13 +63,12 @@ type Frame = { key: string; detail?: string };
 function framesForSteps(steps: SubmitProgressStep[]): Frame[] {
   const frames: Frame[] = [];
   for (const step of steps) {
-    // Byte-uploading steps report real percentages (image via XHR, video via
-    // multipart) — play a short sweep so the bar fills instead of flashing.
-    if (step.phase === "uploading_media") {
-      for (const pct of ["18%", "52%", "86%"]) {
+    // Byte-uploading steps report real percentages (image/live cover via XHR,
+    // video via multipart) — play a short fill so the bar advances smoothly.
+    if (step.phase === "uploading_media" || step.phase === "preparing_media") {
+      for (const pct of ["18%", "52%", "86%", "100%"]) {
         frames.push({ key: step.key, detail: pct });
       }
-      frames.push({ key: step.key });
     } else {
       frames.push({ key: step.key });
     }

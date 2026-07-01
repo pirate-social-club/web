@@ -17,6 +17,7 @@ export interface AvailabilityCalendarProps {
   slots: ResolvedSlot[];
   viewerTimezone: IanaTz;
   selectedStartUtc?: IsoInstant;
+  getSlotHref?: (slot: ResolvedSlot) => string;
   onSelectSlot?: (slot: ResolvedSlot) => void;
   className?: string;
 }
@@ -60,6 +61,7 @@ export function AvailabilityCalendar({
   slots,
   viewerTimezone,
   selectedStartUtc,
+  getSlotHref,
   onSelectSlot,
   className,
 }: AvailabilityCalendarProps) {
@@ -94,21 +96,16 @@ export function AvailabilityCalendar({
                 const displayTime = isAmbiguous
                   ? `${timeLabel} ${formatTzAbbrev(slot.startUtc, viewerTimezone)}`
                   : timeLabel;
-                return (
-                  <button
-                    key={slot.startUtc}
-                    className={cn(
-                      "flex flex-col items-start gap-1 rounded-[var(--radius-md)] border p-3 text-left transition-colors",
-                      slot.available
-                        ? isSelected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border-soft bg-card hover:bg-card/85"
-                        : "border-border-soft bg-surface-skeleton opacity-50",
-                    )}
-                    disabled={!slot.available}
-                    onClick={() => onSelectSlot?.(slot)}
-                    type="button"
-                  >
+                const slotClassName = cn(
+                  "flex flex-col items-start gap-1 rounded-[var(--radius-md)] border p-3 text-left transition-colors",
+                  slot.available
+                    ? isSelected
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border-soft bg-card hover:bg-card/85"
+                    : "border-border-soft bg-surface-skeleton opacity-50",
+                );
+                const content = (
+                  <>
                     <Type
                       variant="body-strong"
                       className={cn(isSelected && "text-primary-foreground")}
@@ -127,6 +124,27 @@ export function AvailabilityCalendar({
                     >
                       {formatCentsAsUsd(slot.priceCents)}
                     </Type>
+                  </>
+                );
+                const href = slot.available ? getSlotHref?.(slot) : undefined;
+                return href ? (
+                  <a
+                    key={slot.startUtc}
+                    className={slotClassName}
+                    href={href}
+                    onClick={() => onSelectSlot?.(slot)}
+                  >
+                    {content}
+                  </a>
+                ) : (
+                  <button
+                    key={slot.startUtc}
+                    className={slotClassName}
+                    disabled={!slot.available}
+                    onClick={() => onSelectSlot?.(slot)}
+                    type="button"
+                  >
+                    {content}
                   </button>
                 );
               })}

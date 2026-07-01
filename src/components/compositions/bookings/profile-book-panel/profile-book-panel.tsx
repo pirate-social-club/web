@@ -21,6 +21,7 @@ export interface ProfileBookPanelViewerProps {
   basePriceCents: number;
   slots: ResolvedSlot[];
   viewerTimezone: IanaTz;
+  getSlotHref?: (slot: ResolvedSlot) => string;
   onSelectSlot: (slot: ResolvedSlot) => void;
   className?: string;
 }
@@ -83,6 +84,7 @@ export function ProfileBookPanel(props: ProfileBookPanelProps) {
         <AvailabilityCalendar
           slots={props.slots}
           viewerTimezone={props.viewerTimezone}
+          getSlotHref={props.getSlotHref}
           onSelectSlot={props.onSelectSlot}
         />
       )}

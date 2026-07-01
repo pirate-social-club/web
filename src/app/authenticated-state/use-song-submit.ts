@@ -21,6 +21,10 @@ import { buildAssetListingRequest, resolvedDerivativeReferences } from "@/app/au
 import type { SubmitProgressReporter } from "@/app/authenticated-helpers/create-post-submit/progress";
 import { buildSongPostRequest } from "@/app/authenticated-helpers/song-submit";
 
+// Song artifacts that upload in parallel after the primary audio (byte-progress
+// for these is aggregated into a single "upload_artifacts" report).
+type ExtraSongArtifactKind = "cover_art" | "canvas_video" | "instrumental_audio" | "vocal_audio";
+
 const SONG_PREVIEW_DURATION_MS = 30_000;
 const SONG_PREVIEW_POLL_INTERVAL_MS = 2_000;
 const SONG_PREVIEW_POLL_ATTEMPTS = 30;
@@ -236,6 +240,7 @@ export function useSongSubmit({
   const uploadSongArtifact = React.useCallback(async (
     artifactKind: "primary_audio" | "cover_art" | "canvas_video" | "instrumental_audio" | "vocal_audio",
     file: File | null | undefined,
+    onProgress?: (fraction: number) => void,
   ) => {
     if (!file) return null;
     logger.info("[song-submit] creating artifact upload", {
@@ -268,7 +273,7 @@ export function useSongSubmit({
       filename: file.name,
       intentId: intent.id,
       sizeBytes: file.size,
-    }, () => api.communities.uploadArtifactContent(communityId, intent.id, fileContent));
+    }, () => api.communities.uploadArtifactContent(communityId, intent.id, fileContent, onProgress));
     logger.info("[song-submit] artifact content uploaded", {
       artifactKind,
       uploadId: uploaded.id,
@@ -350,17 +355,45 @@ export function useSongSubmit({
 
     if (!bundleId) {
       logger.info("[song-submit] uploading song artifacts");
-      reportProgress?.("upload_primary_audio");
-      const primaryAudio = await uploadSongArtifact("primary_audio", songState.primaryAudioUpload);
+      // Seed at "0%" (start of band) before uploading so the first real byte report
+      // can't snap the bar backward — see the same pattern in video.ts.
+      reportProgress?.("upload_primary_audio", "0%");
+      const primaryAudio = await uploadSongArtifact(
+        "primary_audio",
+        songState.primaryAudioUpload,
+        (fraction) => reportProgress?.("upload_primary_audio", `${Math.round(fraction * 100)}%`),
+      );
       if (!primaryAudio) throw new Error("Primary audio is required");
-      if (songState.coverUpload || songState.canvasVideoUpload || songState.instrumentalAudioUpload || songState.vocalAudioUpload) {
-        reportProgress?.("upload_artifacts");
+
+      // The extra artifacts upload in parallel, so report a single aggregate byte-%
+      // across them (weighted by size) rather than four fighting reporters.
+      const extraArtifactFiles: Record<ExtraSongArtifactKind, File | null | undefined> = {
+        cover_art: songState.coverUpload,
+        canvas_video: songState.canvasVideoUpload,
+        instrumental_audio: songState.instrumentalAudioUpload,
+        vocal_audio: songState.vocalAudioUpload,
+      };
+      const extraArtifactTotalBytes = Object.values(extraArtifactFiles)
+        .reduce((sum, artifactFile) => sum + (artifactFile?.size ?? 0), 0);
+      const uploadedExtraBytes: Record<ExtraSongArtifactKind, number> = {
+        cover_art: 0,
+        canvas_video: 0,
+        instrumental_audio: 0,
+        vocal_audio: 0,
+      };
+      const reportExtraArtifactProgress = (kind: ExtraSongArtifactKind, fraction: number) => {
+        uploadedExtraBytes[kind] = fraction * (extraArtifactFiles[kind]?.size ?? 0);
+        const uploaded = Object.values(uploadedExtraBytes).reduce((sum, bytes) => sum + bytes, 0);
+        reportProgress?.("upload_artifacts", `${Math.round((uploaded / Math.max(extraArtifactTotalBytes, 1)) * 100)}%`);
+      };
+      if (extraArtifactTotalBytes > 0) {
+        reportProgress?.("upload_artifacts", "0%");
       }
       const [coverArt, canvasVideo, instrumentalAudio, vocalAudio] = await Promise.all([
-        uploadSongArtifact("cover_art", songState.coverUpload),
-        uploadSongArtifact("canvas_video", songState.canvasVideoUpload),
-        uploadSongArtifact("instrumental_audio", songState.instrumentalAudioUpload),
-        uploadSongArtifact("vocal_audio", songState.vocalAudioUpload),
+        uploadSongArtifact("cover_art", extraArtifactFiles.cover_art, (f) => reportExtraArtifactProgress("cover_art", f)),
+        uploadSongArtifact("canvas_video", extraArtifactFiles.canvas_video, (f) => reportExtraArtifactProgress("canvas_video", f)),
+        uploadSongArtifact("instrumental_audio", extraArtifactFiles.instrumental_audio, (f) => reportExtraArtifactProgress("instrumental_audio", f)),
+        uploadSongArtifact("vocal_audio", extraArtifactFiles.vocal_audio, (f) => reportExtraArtifactProgress("vocal_audio", f)),
       ]);
       logger.info("[song-submit] creating song artifact bundle", {
         hasCanvasVideo: Boolean(canvasVideo),

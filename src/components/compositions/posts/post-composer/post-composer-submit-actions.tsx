@@ -11,6 +11,7 @@ import { logger } from "@/lib/logger";
 import type { SubmitProgress } from "./post-composer.types";
 
 import { anonymousEligibleTabs } from "./post-composer-config";
+import { submitProgressFraction } from "./submit-progress-fraction";
 import {
   canAdvanceComposerWriteStep,
   getNextComposerStep,
@@ -18,26 +19,42 @@ import {
 } from "./post-composer-utils";
 import type { PostComposerController } from "./use-post-composer-controller";
 
+// Progress strip pinned to the container's top border. Rendered as a separate
+// element (not inside the fixed-height button) so it never causes layout shift.
+function SubmitProgressBar({
+  progress,
+  loading,
+}: {
+  progress: SubmitProgress | null | undefined;
+  loading: boolean;
+}) {
+  if (!loading || !progress || progress.phase === "done") return null;
+  const fraction = submitProgressFraction(progress);
+
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden"
+    >
+      <div
+        className="absolute inset-y-0 left-0 rounded-full bg-primary transition-[width] duration-300 ease-out"
+        style={{ width: `${Math.round(fraction * 100)}%` }}
+      />
+    </div>
+  );
+}
+
+// A single constant label carries the button through the whole submit — users don't
+// care which internal stage is running ("checking rights" vs "checking
+// registration"); the progress bar conveys movement. A constant label also keeps
+// the button width stable instead of resizing between stages.
 function submitButtonContent(
   progress: SubmitProgress | null | undefined,
   fallback: string,
 ): React.ReactNode {
   if (!progress) return fallback;
-
-  const totalSteps = Math.max(progress.totalSteps, 1);
-  const currentIndex = Math.min(Math.max(progress.currentIndex, 0), totalSteps);
-  const label = progress.phase === "done"
-    ? progress.label
-    : `${progress.label}...`;
-
-  return (
-    <>
-      <span className="min-w-0 truncate">{label}</span>
-      {progress.phase !== "done" ? (
-        <span className="shrink-0 tabular-nums opacity-80">{currentIndex}/{totalSteps}</span>
-      ) : null}
-    </>
-  );
+  if (progress.phase === "done") return progress.label;
+  return "Posting...";
 }
 
 export function shouldShowIdentity(controller: PostComposerController) {
@@ -143,7 +160,8 @@ export function PostComposerDesktopFooter({
   const publishLabel = tabs.activeTab === "live" ? submit.label : copy.actions.publish;
 
   return (
-    <CardFooter className="justify-between gap-3 border-t border-border-soft p-5">
+    <CardFooter className="relative justify-between gap-3 border-t border-border-soft p-5">
+      <SubmitProgressBar loading={submit.loading} progress={submit.progress} />
       {step.isPublishStep ? (
         <Button
           key="back"
@@ -157,6 +175,7 @@ export function PostComposerDesktopFooter({
       <div className="flex min-w-0 flex-1 items-center justify-end gap-3 lg:ms-auto">
         {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
         <Button
+          className="min-w-40 justify-center"
           disabled={submit.disabled || submit.progress?.phase === "done"}
           key="publish"
           loading={submit.loading && submit.progress?.phase !== "done"}
@@ -222,6 +241,7 @@ export function PostComposerMobileSubmitBar({
 
     bar = (
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
+        <SubmitProgressBar loading={submit.loading} progress={submit.progress} />
         <div className="space-y-3 px-4">
           {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
           <div>

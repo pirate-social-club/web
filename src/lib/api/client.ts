@@ -35,6 +35,7 @@ import type {
   JsonErrorResponse,
   RefreshAuthCallback,
 } from "./client-internal";
+import { xhrUploadFetch } from "./client-xhr-upload";
 import { getAnalyticsIdentity } from "../analytics-identity";
 import { getErrorMessage } from "../error-utils";
 import { logger } from "../logger";
@@ -188,6 +189,7 @@ export class ApiClient {
       replayedAfterRefresh: _replayedAfterRefresh,
       replayedWithoutOptionalToken: _replayedWithoutOptionalToken,
       responseType = "json",
+      onUploadProgress,
       ...fetchInit
     } = init ?? {};
     const body = fetchInit.body;
@@ -228,10 +230,18 @@ export class ApiClient {
 
     let res: Response;
     try {
-      res = await fetch(`${this.baseUrl}${path}`, {
-        ...fetchInit,
-        headers,
-      });
+      // Progress-reporting uploads go through XHR (fetch can't report upload
+      // bytes); the returned Response feeds the same auth/error path below.
+      res = onUploadProgress && typeof XMLHttpRequest !== "undefined"
+        ? await xhrUploadFetch(
+          `${this.baseUrl}${path}`,
+          { method, headers, body: fetchInit.body },
+          onUploadProgress,
+        )
+        : await fetch(`${this.baseUrl}${path}`, {
+          ...fetchInit,
+          headers,
+        });
     } catch (error) {
       logger.debug("[api-client] network request failed", {
         method,

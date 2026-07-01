@@ -45,8 +45,12 @@ import { submitTextPost } from "@/app/authenticated-helpers/create-post-submit/t
 import { submitVideoPost } from "@/app/authenticated-helpers/create-post-submit/video";
 import {
   createSubmitProgressReporter,
-  type SubmitProgressStep,
 } from "@/app/authenticated-helpers/create-post-submit/progress";
+import {
+  simpleSubmitProgressSteps,
+  songSubmitProgressSteps,
+  videoSubmitProgressSteps,
+} from "@/app/authenticated-helpers/create-post-submit/progress-steps";
 import { useSongSubmit } from "./use-song-submit";
 import { buildAnonymousLabel } from "@/lib/anonymous-label";
 import {
@@ -80,81 +84,6 @@ function hasSongExtraArtifact(songState: Pick<CreatePostDraftState["songState"],
     || songState.instrumentalAudioUpload
     || songState.vocalAudioUpload
   );
-}
-
-function songSubmitProgressSteps(input: {
-  hasPendingBundle: boolean;
-  hasExtraArtifacts: boolean;
-  isLocked: boolean;
-}): SubmitProgressStep[] {
-  const steps: SubmitProgressStep[] = [
-    { key: "validating", phase: "validating", label: "Checking details" },
-  ];
-  if (!input.hasPendingBundle) {
-    steps.push({ key: "upload_primary_audio", phase: "uploading_media", label: "Uploading audio" });
-    if (input.hasExtraArtifacts) {
-      steps.push({ key: "upload_artifacts", phase: "uploading_media", label: "Uploading files" });
-    }
-    steps.push(
-      { key: "create_bundle", phase: "processing_media", label: "Analyzing song" },
-      { key: "check_rights", phase: "checking_rights", label: "Checking rights" },
-    );
-  }
-  if (input.isLocked) {
-    steps.push({ key: "generate_preview", phase: "processing_media", label: "Generating preview" });
-  }
-  steps.push({ key: "publish_post", phase: "publishing_post", label: "Publishing" });
-  if (input.isLocked) {
-    steps.push({ key: "create_listing", phase: "creating_listing", label: "Creating listing" });
-  }
-  steps.push(
-    { key: "check_registration", phase: "checking_registration", label: "Checking registration" },
-    { key: "done", phase: "done", label: "Post published" },
-  );
-  return steps;
-}
-
-function videoSubmitProgressSteps(input: { monetized: boolean }): SubmitProgressStep[] {
-  const steps: SubmitProgressStep[] = [
-    { key: "validating", phase: "validating", label: "Checking details" },
-    { key: "upload_video", phase: "uploading_media", label: "Uploading video" },
-    { key: "extract_poster", phase: "preparing_media", label: "Preparing poster" },
-    { key: "upload_poster", phase: "uploading_media", label: "Uploading poster" },
-    { key: "publish_post", phase: "publishing_post", label: "Publishing" },
-  ];
-  if (input.monetized) {
-    steps.push({ key: "create_listing", phase: "creating_listing", label: "Creating listing" });
-  }
-  steps.push(
-    { key: "check_registration", phase: "checking_registration", label: "Checking registration" },
-    { key: "done", phase: "done", label: "Post published" },
-  );
-  return steps;
-}
-
-function simpleSubmitProgressSteps(input: {
-  mode: "text" | "image" | "link" | "live";
-  monetized?: boolean;
-  hasMedia?: boolean;
-}): SubmitProgressStep[] {
-  const steps: SubmitProgressStep[] = [
-    { key: "validating", phase: "validating", label: "Checking details" },
-  ];
-  if (input.hasMedia) {
-    steps.push({
-      key: "prepare_media",
-      phase: input.mode === "image" ? "uploading_media" : "preparing_media",
-      label: input.mode === "live" ? "Preparing media" : "Uploading image",
-    });
-  }
-  if (input.monetized) {
-    steps.push({ key: "create_listing", phase: "creating_listing", label: "Creating listing" });
-  }
-  steps.push(
-    { key: "publish_post", phase: "publishing_post", label: input.mode === "live" ? "Publishing live room" : "Publishing" },
-    { key: "done", phase: "done", label: input.mode === "live" ? "Live room published" : "Post published" },
-  );
-  return steps;
 }
 
 function viewerHasCommunityPostingRole(
@@ -980,9 +909,6 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           scheduleForLater: liveState.scheduleForLater === true,
           setlistItems: liveState.setlistItems.length,
         });
-        if (liveState.coverUpload) reportProgress("prepare_media");
-        if (paidLiveRoomMode) reportProgress("create_listing");
-        reportProgress("publish_post");
         const liveRoom = await submitLiveRoom({
           communityId,
           createLiveRoom: api.communities.createLiveRoom,
@@ -993,6 +919,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
           publishLiveRoom: api.communities.publishLiveRoom,
           regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
+          reportProgress,
           resolveProfileByHandle: api.publicProfiles.getByHandle,
           title,
           uploadMedia: api.communities.uploadMedia,
@@ -1036,7 +963,6 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           });
         }
       } else if (composerMode === "image") {
-        reportProgress("prepare_media");
         logger.info("[create-post] creating image post", {
           filename: imageUpload?.name,
           sizeBytes: imageUpload?.size,
@@ -1056,6 +982,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           createPost: api.communities.createPost,
           event: eventRequest,
           file: imageUpload,
+          reportProgress,
           signAgentAuthoredBody,
           title,
           uploadMedia: api.communities.uploadMedia,

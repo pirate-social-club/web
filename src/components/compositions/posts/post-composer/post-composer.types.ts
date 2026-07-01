@@ -348,12 +348,21 @@ export type SubmitProgressPhase =
   | "checking_registration"
   | "done";
 
+// How the submit progress bar computes its 0→1 fill (see submitProgressFraction):
+// - "pipeline": a multi-stage flow (song, video) — fill by completed steps, with a
+//   byte-% interpolated within the current step.
+// - "activity": a flow dominated by a single upload (image/text/link, live cover,
+//   and song posts that reuse a pre-uploaded bundle) — fill directly by the upload's
+//   byte-%. Either way the button label is a constant "Posting…".
+export type SubmitProgressDisplay = "pipeline" | "activity";
+
 export type SubmitProgress = {
   phase: SubmitProgressPhase;
   label: string;
   detail?: string;
   currentIndex: number;
   totalSteps: number;
+  display: SubmitProgressDisplay;
 };
 
 export interface PostComposerProps extends Partial<PostComposerDraftState>, PostComposerDraftActions {

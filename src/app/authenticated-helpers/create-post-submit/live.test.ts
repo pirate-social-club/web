@@ -236,7 +236,7 @@ describe("live create-post submit helpers", () => {
       regionalPricingEnabled: false,
       title: "Free room",
       uploadMedia: async (input) => {
-        uploadMediaCalls.push(input);
+        uploadMediaCalls.push({ kind: input.kind, file: input.file });
         return { media_ref: "media_cover" };
       },
     });
@@ -269,6 +269,95 @@ describe("live create-post submit helpers", () => {
       },
     }]);
     expect(publishLiveRoomCalls).toEqual([]);
+  });
+
+  test("submitLiveRoom reports prepare_media before the cover upload and publish_post before create (free room)", async () => {
+    // A single interleaved timeline proves the media step is reported at the real
+    // upload, not fired up-front before the slow work begins.
+    const timeline: string[] = [];
+
+    await submitLiveRoom({
+      communityId: "com_test",
+      createLiveRoom: async () => {
+        timeline.push("create");
+        return createLiveRoom({ anchor_post: "pst_free_anchor" });
+      },
+      description: "Room body",
+      hostUserId: "usr_host",
+      liveState: {
+        roomKind: "solo",
+        accessMode: "free",
+        visibility: "public",
+        coverUpload: createCoverFile(),
+        setlistStatus: "ready",
+        performerAllocations: [{ role: "host", userId: "", sharePct: 100 }],
+        setlistItems: [{ titleText: "Song", performanceKind: "original" }],
+      },
+      paidLiveRoomPriceUsd: null,
+      pricingPolicyRegionalPricingEnabled: false,
+      publishLiveRoom: async () => {
+        timeline.push("publish");
+        return { room: createLiveRoom(), listing: {} as ApiPublishLiveRoomResponse["listing"] };
+      },
+      regionalPricingEnabled: false,
+      reportProgress: (key) => timeline.push(`progress:${key}`),
+      title: "Free room",
+      uploadMedia: async () => {
+        timeline.push("upload");
+        return { media_ref: "media_cover" };
+      },
+    });
+
+    expect(timeline).toEqual([
+      "progress:prepare_media",
+      "upload",
+      "progress:publish_post",
+      "create",
+    ]);
+  });
+
+  test("submitLiveRoom reports create_listing then publish_post around the paid publish call", async () => {
+    const timeline: string[] = [];
+
+    await submitLiveRoom({
+      communityId: "com_test",
+      createLiveRoom: async () => {
+        timeline.push("create");
+        return createLiveRoom();
+      },
+      description: "Room body",
+      hostUserId: "usr_host",
+      liveState: {
+        roomKind: "solo",
+        accessMode: "paid",
+        visibility: "public",
+        coverUpload: createCoverFile(),
+        setlistStatus: "ready",
+        performerAllocations: [{ role: "host", userId: "", sharePct: 100 }],
+        setlistItems: [{ titleText: "Song", performanceKind: "original" }],
+      },
+      paidLiveRoomPriceUsd: 5,
+      pricingPolicyRegionalPricingEnabled: false,
+      publishLiveRoom: async () => {
+        timeline.push("publish");
+        return { room: createLiveRoom(), listing: {} as ApiPublishLiveRoomResponse["listing"] };
+      },
+      regionalPricingEnabled: false,
+      reportProgress: (key) => timeline.push(`progress:${key}`),
+      title: "Paid room",
+      uploadMedia: async () => {
+        timeline.push("upload");
+        return { media_ref: "media_cover" };
+      },
+    });
+
+    expect(timeline).toEqual([
+      "progress:prepare_media",
+      "upload",
+      "progress:create_listing",
+      "progress:publish_post",
+      "publish",
+    ]);
   });
 
   test("submitLiveRoom resolves duet cohost handles before publishing", async () => {

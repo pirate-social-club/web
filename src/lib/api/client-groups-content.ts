@@ -252,6 +252,7 @@ export function createCommunityContentApi(request: ApiRequest) {
       communityId: string,
       songArtifactUploadId: string,
       body: ArrayBuffer | ApiSongArtifactUploadContentRequest,
+      onProgress?: (fraction: number) => void,
     ): Promise<SongArtifactUpload> => {
       const isBinary = body instanceof ArrayBuffer;
       return request<SongArtifactUpload>(
@@ -260,6 +261,7 @@ export function createCommunityContentApi(request: ApiRequest) {
           method: "PUT",
           body: isBinary ? body : JSON.stringify(body),
           headers: isBinary ? { "Content-Type": "application/octet-stream" } : undefined,
+          onUploadProgress: isBinary ? onProgress : undefined,
         },
       );
     },

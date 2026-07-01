@@ -96,6 +96,7 @@ const demoAudioFile = new File([new Uint8Array([1, 2, 3, 4])], "demo-song.mp3", 
 function progress(input: {
   currentIndex: number;
   detail?: string;
+  display?: SubmitProgress["display"];
   label: string;
   phase: SubmitProgress["phase"];
   totalSteps?: number;
@@ -103,6 +104,7 @@ function progress(input: {
   return {
     currentIndex: input.currentIndex,
     detail: input.detail,
+    display: input.display ?? "pipeline",
     label: input.label,
     phase: input.phase,
     totalSteps: input.totalSteps ?? 9,

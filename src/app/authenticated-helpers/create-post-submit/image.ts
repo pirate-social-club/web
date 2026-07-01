@@ -11,6 +11,7 @@ import {
   type CreatePostRequestWithEvent,
   type SignAgentAuthoredBody,
 } from "./base";
+import type { SubmitProgressReporter } from "./progress";
 
 type AltchaRequestOptions = {
   altchaPayload?: string | null;
@@ -29,7 +30,7 @@ type UploadedImageMedia = {
 };
 
 type UploadImageMedia = (
-  input: { kind: "post_image"; file: File },
+  input: { kind: "post_image"; file: File; onProgress?: (fraction: number) => void },
 ) => Promise<UploadedImageMedia>;
 
 export function buildImagePostRequest({
@@ -68,6 +69,7 @@ export async function submitImagePost({
   createPost,
   event,
   file,
+  reportProgress,
   signAgentAuthoredBody,
   title,
   uploadMedia,
@@ -80,6 +82,7 @@ export async function submitImagePost({
   createPost: CreatePost;
   event?: CreatePostEventRequest;
   file: File | null;
+  reportProgress?: SubmitProgressReporter;
   signAgentAuthoredBody: SignAgentAuthoredBody;
   title: string;
   uploadMedia: UploadImageMedia;
@@ -88,9 +91,13 @@ export async function submitImagePost({
     throw new Error("Choose an image before creating this post.");
   }
 
+  reportProgress?.("prepare_media");
   const uploadedImage = await uploadMedia({
     kind: "post_image",
     file,
+    onProgress: (fraction) => {
+      reportProgress?.("prepare_media", `${Math.round(fraction * 100)}%`);
+    },
   });
   const request = buildImagePostRequest({
     baseRequest,

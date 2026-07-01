@@ -105,7 +105,7 @@ describe("image create-post submit helpers", () => {
       signAgentAuthoredBody: async (_path, request) => request,
       title: "Image post",
       uploadMedia: async (input) => {
-        uploadMediaCalls.push(input);
+        uploadMediaCalls.push({ kind: input.kind, file: input.file });
         return {
           media_ref: "media_uploaded",
           mime_type: "image/png",
@@ -136,6 +136,34 @@ describe("image create-post submit helpers", () => {
         }],
       },
     }]);
+  });
+
+  test("submitImagePost reports upload byte-progress as a percentage on prepare_media", async () => {
+    const file = createFile();
+    const progressEvents: Array<{ key: string; detail?: string }> = [];
+
+    await submitImagePost({
+      authorMode: "human",
+      baseRequest: createBaseRequest(),
+      caption: "Alt text",
+      communityId: "com_test",
+      createPost: async () => createPost({ id: "pst_uploaded_image" }),
+      file,
+      reportProgress: (key, detail) => progressEvents.push({ key, detail }),
+      signAgentAuthoredBody: async (_path, request) => request,
+      title: "Image post",
+      uploadMedia: async (input) => {
+        input.onProgress?.(0.5);
+        input.onProgress?.(1);
+        return { media_ref: "media_uploaded", mime_type: "image/png", size_bytes: file.size };
+      },
+    });
+
+    expect(progressEvents).toEqual([
+      { key: "prepare_media", detail: undefined },
+      { key: "prepare_media", detail: "50%" },
+      { key: "prepare_media", detail: "100%" },
+    ]);
   });
 
   test("submitImagePost rejects missing files before uploading", async () => {

@@ -27,33 +27,48 @@ export interface ProfileBookPanelViewerProps {
 
 export interface ProfileBookPanelOwnerProps {
   mode: "owner";
-  /** true → live (Manage), false → not configured (Set up). */
-  published: boolean;
-  onManage: () => void;
+  /** Whether the host has a set-up schedule (bookable-configured). false → setup prompt. */
+  configured: boolean;
+  basePriceCents: number;
+  slots: ResolvedSlot[];
+  viewerTimezone: IanaTz;
+  onEdit: () => void;
   className?: string;
 }
 
 export type ProfileBookPanelProps = ProfileBookPanelViewerProps | ProfileBookPanelOwnerProps;
 
 /**
- * Content of the profile "Book" tab. Presentational + controlled; the container supplies the
- * host's resolved slots (viewer) or the owner's publish state. No data fetching, no money — a
- * slot tap calls onSelectSlot, which the container routes into the existing checkout flow.
+ * Content of the profile "Calendar" tab. Presentational + controlled; the container supplies the
+ * host's resolved slots. Owner sees their real availability (read-only) + an Edit-schedule action;
+ * viewer sees availability + price and a slot tap → checkout. No data fetching, no money here.
  */
 export function ProfileBookPanel(props: ProfileBookPanelProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").profile;
 
   if (props.mode === "owner") {
+    if (!props.configured) {
+      return (
+        <Card className={cn("space-y-4 border-border bg-card p-5 shadow-none", props.className)}>
+          <Type as="p" variant="body" className="text-muted-foreground">{copy.ownerSetupPrompt}</Type>
+          <Button type="button" onClick={props.onEdit}>{copy.setUpBookings}</Button>
+        </Card>
+      );
+    }
     return (
-      <Card className={cn("space-y-4 border-border bg-card p-5 shadow-none", props.className)}>
-        <Type as="p" variant="body" className="text-muted-foreground">
-          {props.published ? copy.bookOwnerLiveNote : copy.bookOwnerSetupNote}
-        </Type>
-        <Button type="button" onClick={props.onManage}>
-          {props.published ? copy.manageBookings : copy.setUpBookings}
-        </Button>
-      </Card>
+      <div className={cn("space-y-4", props.className)}>
+        <div className="flex items-center justify-between gap-3">
+          <Type as="p" variant="body-strong">{copy.ownerAvailabilityTitle}</Type>
+          <Button variant="outline" size="sm" type="button" onClick={props.onEdit}>{copy.editSchedule}</Button>
+        </div>
+        {props.slots.length === 0 ? (
+          <Type as="p" variant="caption" className="text-muted-foreground">{copy.bookNoAvailability}</Type>
+        ) : (
+          // Read-only for the owner (no slot tap).
+          <AvailabilityCalendar slots={props.slots} viewerTimezone={props.viewerTimezone} />
+        )}
+      </div>
     );
   }
 

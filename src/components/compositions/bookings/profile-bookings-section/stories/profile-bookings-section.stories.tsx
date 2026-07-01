@@ -23,7 +23,7 @@ function InteractiveProfileBookings(
   const [rules, setRules] = React.useState<AvailabilityRule[]>(overrides.rules ?? []);
   const [priceRules, setPriceRules] = React.useState<PriceRule[]>(overrides.priceRules ?? []);
   const [exceptions, setExceptions] = React.useState<AvailabilityException[]>(overrides.exceptions ?? []);
-  const [isPublished, setIsPublished] = React.useState(overrides.isPublished ?? false);
+  const [bookable, setBookable] = React.useState(overrides.bookable ?? false);
 
   let seq = React.useRef(100).current;
   const nextId = (prefix: string) => `${prefix}_${(seq += 1)}`;
@@ -37,7 +37,7 @@ function InteractiveProfileBookings(
         rules={rules}
         priceRules={priceRules}
         exceptions={exceptions}
-        isPublished={isPublished}
+        bookable={bookable}
         payoutReady={overrides.payoutReady ?? true}
         timezoneOptions={overrides.timezoneOptions ?? ["UTC", "America/New_York", "Europe/Vienna", "Asia/Tokyo"]}
         onAddRule={(d) => setRules((prev) => [...prev, {
@@ -58,8 +58,7 @@ function InteractiveProfileBookings(
           end: Math.floor(new Date(d.endLocal).getTime() / 1000) || 0, created: 0,
         }])}
         onDeleteException={(id) => setExceptions((prev) => prev.filter((e) => e.id !== id))}
-        onSaveProfile={() => {}}
-        onTogglePublish={() => setIsPublished((p) => !p)}
+        onToggleBookable={() => setBookable((p) => !p)}
       />
     </div>
   );
@@ -123,7 +122,7 @@ export const PublishedWithAvailability: Story = {
       rules={WEEKLY_RULES}
       priceRules={PRICE_RULES}
       exceptions={EXCEPTIONS}
-      isPublished
+      bookable
     />
   ),
 };
@@ -135,7 +134,7 @@ export const Mobile: Story = {
       initialValues={CONFIGURED_VALUES}
       rules={WEEKLY_RULES}
       priceRules={PRICE_RULES}
-      isPublished
+      bookable
     />
   ),
 };

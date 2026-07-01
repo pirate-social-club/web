@@ -27,17 +27,17 @@ const SLOTS: ResolvedSlot[] = [
 ];
 
 describe("ProfileBookPanel", () => {
-  test("owner published → Manage bookings + live note", () => {
-    const t = text({ mode: "owner", published: true, onManage: () => {} });
-    expect(t).toContain("Manage bookings");
-    expect(t).toContain("Your bookings are live");
-    expect(t).not.toContain("Set up bookings");
+  test("owner configured → availability heading + Edit schedule (not the setup prompt)", () => {
+    const t = text({ mode: "owner", configured: true, basePriceCents: 5000, slots: SLOTS, viewerTimezone: "Europe/Vienna" as never, onEdit: () => {} });
+    expect(t).toContain("Your availability");
+    expect(t).toContain("Edit schedule");
+    expect(t).not.toContain("Set up your schedule");
   });
 
-  test("owner not published → Set up bookings + setup note", () => {
-    const t = text({ mode: "owner", published: false, onManage: () => {} });
+  test("owner not configured → setup prompt + Set up bookings", () => {
+    const t = text({ mode: "owner", configured: false, basePriceCents: 0, slots: [], viewerTimezone: "Europe/Vienna" as never, onEdit: () => {} });
     expect(t).toContain("Set up bookings");
-    expect(t).not.toContain("Manage bookings");
+    expect(t).not.toContain("Your availability");
   });
 
   test("viewer with slots → price + availability rendered", () => {

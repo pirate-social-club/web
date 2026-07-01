@@ -18,12 +18,12 @@ const SLOTS: ResolvedSlot[] = [
   { startUtc: "2026-09-22T14:00:00.000Z", endUtc: "2026-09-22T14:30:00.000Z", priceCents: 7500, available: true },
 ] as ResolvedSlot[];
 
-export const OwnerSetup: Story = {
-  args: { mode: "owner", published: false, onManage: () => {} },
+export const OwnerNotConfigured: Story = {
+  args: { mode: "owner", configured: false, basePriceCents: 0, slots: [], viewerTimezone: "Europe/Vienna" as never, onEdit: () => {} },
 };
 
-export const OwnerPublished: Story = {
-  args: { mode: "owner", published: true, onManage: () => {} },
+export const OwnerConfigured: Story = {
+  args: { mode: "owner", configured: true, basePriceCents: 5000, slots: SLOTS, viewerTimezone: "Europe/Vienna" as never, onEdit: () => {} },
 };
 
 export const ViewerWithAvailability: Story = {

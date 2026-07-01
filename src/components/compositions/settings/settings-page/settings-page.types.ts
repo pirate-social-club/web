@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { UseGlobalHandleFlowReturn } from "@/hooks/use-global-handle-flow";
 import type {
   OwnedAgent,
@@ -73,6 +75,8 @@ export interface SettingsPageProps {
     onPrimaryHandleChange?: (handleId: string | null) => void;
     onSave?: () => void;
     onPublicHandlesSave?: () => void;
+    /** Host paid-booking setup, rendered at the bottom of the profile tab. Built by the container. */
+    bookingSection?: ReactNode;
   };
   preferences: {
     ageStatusLabel?: string;

@@ -27,6 +27,11 @@ export function CurrentUserSettingsIndexPage() {
       onSelect: () => navigate(buildSettingsPath("profile")),
     },
     {
+      label: copy.settings.booking.navLabel,
+      description: copy.settings.booking.navDescription,
+      onSelect: () => navigate("/settings/bookings"),
+    },
+    {
       label: copy.settings.domainsTab,
       onSelect: () => navigate(buildSettingsPath("domains")),
     },

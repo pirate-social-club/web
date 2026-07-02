@@ -954,7 +954,17 @@ async function hydrateRoutableLiveCommunityOwner(community: LiveCommunity): Prom
   };
 }
 
-async function discoverSeedCommunity(): Promise<LiveCommunity> {
+async function seedCommunityCandidates(): Promise<LiveCommunity[]> {
+  const candidates: LiveCommunity[] = [];
+  const seen = new Set<string>();
+  const pushHydrated = async (community: LiveCommunity): Promise<void> => {
+    const key = community.id.trim();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    const hydrated = await hydrateRoutableLiveCommunityOwner(community);
+    if (hydrated) candidates.push(hydrated);
+  };
+
   try {
     const feed = await requestJson<any>("/feed/home/public?sort=best&locale=en");
     const feedItems = Array.isArray(feed?.items) ? feed.items : [];
@@ -968,8 +978,7 @@ async function discoverSeedCommunity(): Promise<LiveCommunity> {
         || community.label.toLowerCase() === seedCommunityLabel.toLowerCase()
         || community.routeSegment.toLowerCase().includes(seedCommunityLabel.replace(/^@/u, "").toLowerCase())
       ) {
-        const hydrated = await hydrateRoutableLiveCommunityOwner(community);
-        if (hydrated) return hydrated;
+        await pushHydrated(community);
       }
     }
   } catch {
@@ -990,12 +999,36 @@ async function discoverSeedCommunity(): Promise<LiveCommunity> {
       const routeSegment = firstString(item?.route_slug, item?.routeSlug, id);
       const label = firstString(item?.display_name, item?.name, routeSegment);
       if (!id || !routeSegment || !label) continue;
-      const hydrated = await hydrateRoutableLiveCommunityOwner({ id, label, routeSegment });
-      if (hydrated) return hydrated;
+      await pushHydrated({ id, label, routeSegment });
     }
   }
 
+  return candidates;
+}
+
+async function discoverSeedCommunity(): Promise<LiveCommunity> {
+  const [community] = await seedCommunityCandidates();
+  if (community) return community;
+
   throw new Error(`Could not discover seeded staging community ${seedCommunityLabel}`);
+}
+
+async function discoverWritableSeedCommunity(session: StoredSession): Promise<LiveCommunity | null> {
+  for (const community of await seedCommunityCandidates()) {
+    const detail = await requestJson<any>(
+      `/communities/${encodeURIComponent(community.id)}`,
+      { headers: { authorization: `Bearer ${session.accessToken}` } },
+    ).catch(() => null);
+    if (!detail) continue;
+    return {
+      id: firstString(detail?.id, community.id) ?? community.id,
+      label: firstString(detail?.display_name, community.label) ?? community.label,
+      ownerUserId: community.ownerUserId ?? null,
+      routeSegment: firstString(detail?.route_slug, community.routeSegment, detail?.id, community.id) ?? community.routeSegment,
+    };
+  }
+
+  return null;
 }
 
 test.describe("live staging integration", () => {
@@ -1009,7 +1042,11 @@ test.describe("live staging integration", () => {
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
     const session = await createLiveSession(liveSubject, walletAddressForSubject(liveSubject));
-    const community = await discoverSeedCommunity();
+    const community = await discoverWritableSeedCommunity(session);
+    if (!community) {
+      test.skip(true, "No authenticated writable staging seed community is available for direct multipart upload.");
+      return;
+    }
     const title = `Multipart video browser E2E ${runId}`;
     const filebasePartRequests: URL[] = [];
     const filebasePartStatuses: Array<{ partNumber: string | null; status: number }> = [];

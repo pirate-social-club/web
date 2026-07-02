@@ -1,7 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Response } from "@playwright/test";
 import type { CommunityFollowResponse, SessionExchangeResponse } from "@pirate/api-contracts";
 
 import {
@@ -942,8 +942,9 @@ function communityFromFeedItem(item: any): LiveCommunity | null {
   return { id, label, routeSegment };
 }
 
-async function hydrateLiveCommunityOwner(community: LiveCommunity): Promise<LiveCommunity> {
+async function hydrateRoutableLiveCommunityOwner(community: LiveCommunity): Promise<LiveCommunity | null> {
   const detail = await requestJson<any>(`/public-communities/${encodeURIComponent(community.id)}`).catch(() => null);
+  if (!detail) return null;
   const ownerUser = firstString(detail?.owner?.user);
   return {
     id: firstString(detail?.id, community.id) ?? community.id,
@@ -967,26 +968,31 @@ async function discoverSeedCommunity(): Promise<LiveCommunity> {
         || community.label.toLowerCase() === seedCommunityLabel.toLowerCase()
         || community.routeSegment.toLowerCase().includes(seedCommunityLabel.replace(/^@/u, "").toLowerCase())
       ) {
-        return await hydrateLiveCommunityOwner(community);
+        const hydrated = await hydrateRoutableLiveCommunityOwner(community);
+        if (hydrated) return hydrated;
       }
     }
   } catch {
     // Fall through to search; live staging feed can be blocked by unrelated data migrations.
   }
 
-  const search = await requestJson<any>(`/public-communities?query=${encodeURIComponent(seedCommunityLabel)}&limit=10`);
-  const searchItems = Array.isArray(search?.items)
-    ? search.items
-    : Array.isArray(search?.results)
-      ? search.results
-      : Array.isArray(search?.communities)
-        ? search.communities
-        : [];
-  for (const item of searchItems) {
-    const id = firstString(item?.id, item?.community_id, item?.community);
-    const routeSegment = firstString(item?.route_slug, item?.routeSlug, id);
-    const label = firstString(item?.display_name, item?.name, routeSegment);
-    if (id && routeSegment && label) return await hydrateLiveCommunityOwner({ id, label, routeSegment });
+  for (const query of [seedCommunityLabel, "smoke"]) {
+    const search = await requestJson<any>(`/public-communities?query=${encodeURIComponent(query)}&limit=10`);
+    const searchItems = Array.isArray(search?.items)
+      ? search.items
+      : Array.isArray(search?.results)
+        ? search.results
+        : Array.isArray(search?.communities)
+          ? search.communities
+          : [];
+    for (const item of searchItems) {
+      const id = firstString(item?.id, item?.community_id, item?.community);
+      const routeSegment = firstString(item?.route_slug, item?.routeSlug, id);
+      const label = firstString(item?.display_name, item?.name, routeSegment);
+      if (!id || !routeSegment || !label) continue;
+      const hydrated = await hydrateRoutableLiveCommunityOwner({ id, label, routeSegment });
+      if (hydrated) return hydrated;
+    }
   }
 
   throw new Error(`Could not discover seeded staging community ${seedCommunityLabel}`);
@@ -1126,13 +1132,22 @@ test.describe("live staging integration", () => {
       await expect(followButton).toBeVisible({ timeout: 30_000 });
       await expect(followButton).toHaveAttribute("data-state", "follow");
 
-      const followResponsePromise = page.waitForResponse((response) => {
-        const url = new URL(response.url());
-        return response.request().method() === "POST"
-          && url.pathname === `/communities/${publicCommunityId}/follow`;
-      });
-      await followButton.click();
-      const followResponse = await followResponsePromise;
+      let followResponse: Response | null = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const followResponsePromise = page.waitForResponse((response) => {
+          const url = new URL(response.url());
+          return response.request().method() === "POST"
+            && url.pathname === `/communities/${publicCommunityId}/follow`;
+        });
+        await followButton.click();
+        followResponse = await followResponsePromise;
+        if (followResponse.status() !== 500) break;
+        const body = await followResponse.text().catch(() => "");
+        if (!body.includes("D1 DB storage operation exceeded timeout")) break;
+        await expect(followButton).toHaveAttribute("data-state", "follow", { timeout: 10_000 });
+        await page.waitForTimeout(2_000);
+      }
+      if (!followResponse) throw new Error("follow response was not captured");
       expect(followResponse.status()).toBe(200);
       const followBody = await followResponse.json() as CommunityFollowResponse & { community_id?: unknown };
       expect(followBody).toEqual({

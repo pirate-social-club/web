@@ -16,6 +16,7 @@ import type {
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import type { ExtractedVideoPosterFrame } from "@/components/compositions/posts/post-composer/video-poster-frame";
 import { buildAssetListingRequest } from "@/app/authenticated-helpers/asset-submit";
+import { sha256File } from "./file-hash";
 import type { SubmitProgressReporter } from "./progress";
 import { uploadMultipartSongArtifact } from "./multipart-song-artifact-upload";
 
@@ -99,13 +100,6 @@ const LOCKED_PRIMARY_VIDEO_MAX_BYTES = 50 * 1024 * 1024;
 const PUBLIC_PRIMARY_VIDEO_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 const MULTIPART_UPLOAD_CONCURRENCY = 3;
 const VIDEO_ARTIFACT_PART_UPLOAD_TIMEOUT_MS = 60_000;
-
-async function sha256File(file: File): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 function requirePrimaryVideoFile(videoState: VideoComposerState): File {
   const file = videoState.primaryVideoUpload;

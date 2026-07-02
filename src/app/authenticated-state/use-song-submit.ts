@@ -24,6 +24,7 @@ import type {
 
 import { buildAssetListingRequest, resolvedDerivativeReferences } from "@/app/authenticated-helpers/asset-submit";
 import type { SubmitProgressReporter } from "@/app/authenticated-helpers/create-post-submit/progress";
+import { sha256File } from "@/app/authenticated-helpers/create-post-submit/file-hash";
 import { buildSongPostRequest } from "@/app/authenticated-helpers/song-submit";
 import { uploadMultipartSongArtifact } from "@/app/authenticated-helpers/create-post-submit/multipart-song-artifact-upload";
 
@@ -132,13 +133,6 @@ async function withSongSubmitStep<T>(
     window.clearTimeout(slowTimer);
     window.clearTimeout(stalledTimer);
   }
-}
-
-async function sha256File(file: File): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 function usesDirectMultipart(kind: SongArtifactSubmitKind): boolean {

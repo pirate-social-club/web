@@ -25,6 +25,7 @@ import type {
 import { buildAssetListingRequest, resolvedDerivativeReferences } from "@/app/authenticated-helpers/asset-submit";
 import type { SubmitProgressReporter } from "@/app/authenticated-helpers/create-post-submit/progress";
 import { buildSongPostRequest } from "@/app/authenticated-helpers/song-submit";
+import { uploadMultipartSongArtifact } from "@/app/authenticated-helpers/create-post-submit/multipart-song-artifact-upload";
 
 // Song artifacts that upload in parallel after the primary audio (byte-progress
 // for these is aggregated into a single "upload_artifacts" report).
@@ -84,8 +85,6 @@ type SongSubmitInput = {
 
 type SongArtifactSubmitKind = "primary_audio" | "cover_art" | "canvas_video" | "instrumental_audio" | "vocal_audio";
 
-class PermanentSongArtifactPartUploadError extends Error {}
-
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -142,137 +141,8 @@ async function sha256File(file: File): Promise<string> {
     .join("");
 }
 
-function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs: number): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
-  const callerSignal = init.signal;
-  const handleCallerAbort = callerSignal ? () => controller.abort() : null;
-  if (callerSignal) {
-    if (callerSignal.aborted) {
-      controller.abort();
-    } else if (handleCallerAbort) {
-      callerSignal.addEventListener("abort", handleCallerAbort, { once: true });
-    }
-  }
-  return fetch(input, {
-    ...init,
-    signal: controller.signal,
-  }).finally(() => {
-    window.clearTimeout(timeout);
-    if (callerSignal && handleCallerAbort) {
-      callerSignal.removeEventListener("abort", handleCallerAbort);
-    }
-  });
-}
-
 function usesDirectMultipart(kind: SongArtifactSubmitKind): boolean {
   return kind !== "cover_art";
-}
-
-async function uploadSongArtifactMultipart(input: {
-  api: ReturnType<typeof useApi>;
-  artifactKind: SongArtifactSubmitKind;
-  communityId: string;
-  contentHashPromise: Promise<string>;
-  file: File;
-  intent: SongArtifactUpload;
-}): Promise<SongArtifactUpload> {
-  const session = input.intent.upload_session;
-  if (!session) {
-    throw new Error("Song artifact upload did not return a multipart session.");
-  }
-  const uploadSession = session;
-  const parts: Array<{ part_number: number; etag: string }> = [];
-  let nextPartNumber = 1;
-
-  async function uploadPart(partNumber: number): Promise<void> {
-    const start = (partNumber - 1) * uploadSession.part_size_bytes;
-    const end = Math.min(input.file.size, start + uploadSession.part_size_bytes);
-    const body = input.file.slice(start, end, input.file.type || "application/octet-stream");
-    const retryDelays = [250, 1000, 4000];
-    let lastError: unknown = null;
-
-    for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
-      try {
-        const signed = await input.api.communities.getArtifactUploadPartSignedUrl(
-          input.communityId,
-          input.intent.id,
-          uploadSession.id,
-          partNumber,
-          { timeoutMs: SONG_ARTIFACT_API_TIMEOUT_MS },
-        );
-        const response = await fetchWithTimeout(signed.url, {
-          method: "PUT",
-          body,
-          headers: input.file.type ? { "Content-Type": input.file.type } : undefined,
-        }, SONG_ARTIFACT_PART_UPLOAD_TIMEOUT_MS);
-        if (!response.ok) {
-          const message = `${input.artifactKind} part ${partNumber} upload failed with ${response.status}`;
-          if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-            throw new PermanentSongArtifactPartUploadError(message);
-          }
-          throw new Error(message);
-        }
-        const etag = response.headers.get("ETag")?.trim();
-        if (!etag) {
-          throw new Error(`${input.artifactKind} part ${partNumber} upload did not return an ETag.`);
-        }
-        parts.push({ part_number: partNumber, etag });
-        return;
-      } catch (error) {
-        if (error instanceof PermanentSongArtifactPartUploadError) {
-          throw error;
-        }
-        lastError = error;
-        if (attempt < retryDelays.length - 1) {
-          await sleep(retryDelays[attempt]);
-        }
-      }
-    }
-
-    throw lastError instanceof Error
-      ? lastError
-      : new Error(`${input.artifactKind} part ${partNumber} upload failed.`);
-  }
-
-  async function worker(): Promise<void> {
-    while (nextPartNumber <= uploadSession.total_parts) {
-      const partNumber = nextPartNumber;
-      nextPartNumber += 1;
-      await uploadPart(partNumber);
-    }
-  }
-
-  try {
-    const workerCount = Math.min(SONG_ARTIFACT_MULTIPART_CONCURRENCY, uploadSession.total_parts);
-    await Promise.all(Array.from({ length: workerCount }, () => worker()));
-    const contentHash = await input.contentHashPromise;
-    return await input.api.communities.completeArtifactUploadSession(
-      input.communityId,
-      input.intent.id,
-      uploadSession.id,
-      {
-        upload_id: uploadSession.upload_id,
-        content_hash: `0x${contentHash}`,
-        parts: [...parts].sort((a, b) => a.part_number - b.part_number),
-      },
-      { timeoutMs: SONG_ARTIFACT_MULTIPART_COMPLETE_TIMEOUT_MS },
-    );
-  } catch (error) {
-    await input.api.communities.abortArtifactUploadSession(
-      input.communityId,
-      input.intent.id,
-      uploadSession.id,
-      { timeoutMs: SONG_ARTIFACT_API_TIMEOUT_MS },
-    ).catch((abortError) => {
-      logger.warn("[song-submit] multipart artifact abort failed", {
-        abortError,
-        artifactKind: input.artifactKind,
-        intentId: input.intent.id,
-      });
-    });
-    throw error;
-  }
 }
 
 function parsePreviewStartMs(value: string | undefined): number | null {
@@ -427,13 +297,41 @@ export function useSongSubmit({
         filename: file.name,
         intentId: intent.id,
         sizeBytes: file.size,
-      }, () => uploadSongArtifactMultipart({
-        api,
-        artifactKind,
-        communityId,
+      }, () => uploadMultipartSongArtifact({
+        abortSession: (artifactUploadId, sessionId) => api.communities.abortArtifactUploadSession(
+          communityId,
+          artifactUploadId,
+          sessionId,
+          { timeoutMs: SONG_ARTIFACT_API_TIMEOUT_MS },
+        ),
+        artifactLabel: artifactKind,
+        completeSession: (artifactUploadId, sessionId, body) => api.communities.completeArtifactUploadSession(
+          communityId,
+          artifactUploadId,
+          sessionId,
+          body,
+          { timeoutMs: SONG_ARTIFACT_MULTIPART_COMPLETE_TIMEOUT_MS },
+        ),
+        concurrency: SONG_ARTIFACT_MULTIPART_CONCURRENCY,
         contentHashPromise,
         file,
+        getPartSignedUrl: (artifactUploadId, sessionId, partNumber) => api.communities.getArtifactUploadPartSignedUrl(
+          communityId,
+          artifactUploadId,
+          sessionId,
+          partNumber,
+          { timeoutMs: SONG_ARTIFACT_API_TIMEOUT_MS },
+        ),
         intent,
+        onAbortError: (abortError) => {
+          logger.warn("[song-submit] multipart artifact abort failed", {
+            abortError,
+            artifactKind,
+            intentId: intent.id,
+          });
+        },
+        onProgress,
+        partUploadTimeoutMs: SONG_ARTIFACT_PART_UPLOAD_TIMEOUT_MS,
       }));
       logger.info("[song-submit] artifact multipart content uploaded", {
         artifactKind,

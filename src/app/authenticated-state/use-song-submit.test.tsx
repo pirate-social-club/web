@@ -13,6 +13,7 @@ const { mock } = await import("bun:test") as unknown as {
 
 const apiCalls: string[] = [];
 const originalFetch = globalThis.fetch;
+const OriginalXMLHttpRequest = globalThis.XMLHttpRequest;
 let createdSongArtifactBundleResult = songBundle({
   id: "sab_created",
   previewStatus: "completed",
@@ -168,12 +169,54 @@ function renderSubmitHook() {
   );
 }
 
+class FakeXMLHttpRequest {
+  static uploads: Array<{ method: string; url: string; body: BodyInit | null }> = [];
+
+  method = "";
+  status = 200;
+  statusText = "OK";
+  timeout = 0;
+  upload = {
+    onprogress: null as ((event: ProgressEvent) => void) | null,
+  };
+  url = "";
+
+  onabort: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  onload: (() => void) | null = null;
+  ontimeout: (() => void) | null = null;
+
+  getResponseHeader(name: string): string | null {
+    return name.toLowerCase() === "etag" ? "\"part-etag\"" : null;
+  }
+
+  open(method: string, url: string): void {
+    this.method = method;
+    this.url = url;
+  }
+
+  setRequestHeader(): void {}
+
+  send(body: BodyInit | null): void {
+    FakeXMLHttpRequest.uploads.push({ method: this.method, url: this.url, body });
+    const size = body instanceof Blob ? body.size : 0;
+    this.upload.onprogress?.({
+      lengthComputable: true,
+      loaded: size,
+      total: size,
+    } as ProgressEvent);
+    queueMicrotask(() => this.onload?.());
+  }
+}
+
 beforeEach(() => {
   apiCalls.length = 0;
+  FakeXMLHttpRequest.uploads.length = 0;
   globalThis.fetch = async () => new Response(null, {
     status: 200,
     headers: { ETag: "\"part-etag\"" },
   });
+  globalThis.XMLHttpRequest = FakeXMLHttpRequest as unknown as typeof XMLHttpRequest;
   createdSongArtifactBundleResult = songBundle({
     id: "sab_created",
     previewStatus: "completed",
@@ -186,6 +229,7 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
+  globalThis.XMLHttpRequest = OriginalXMLHttpRequest;
 });
 
 describe("useSongSubmit", () => {
@@ -211,6 +255,7 @@ describe("useSongSubmit", () => {
     ]);
     expect(progressEvents).toEqual([
       "validating",
+      "upload_primary_audio",
       "upload_primary_audio",
       "create_bundle",
       "check_rights",
@@ -290,6 +335,7 @@ describe("useSongSubmit", () => {
     ]);
     expect(progressEvents).toEqual([
       "validating",
+      "upload_primary_audio",
       "upload_primary_audio",
       "create_bundle",
       "check_rights",

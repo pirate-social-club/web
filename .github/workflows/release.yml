@@ -78,7 +78,6 @@ jobs:
         working-directory: web
         run: scripts/smoke-test.sh staging
       - name: Fetch staging control-plane migration secret
-        continue-on-error: true
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
@@ -94,8 +93,9 @@ jobs:
             echo "::notice::Skipping staging control-plane migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable."
             exit 0
           fi
+          export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
           bun scripts/control-plane/apply-postgres-migrations.ts \
-            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL \
+            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/control-plane/migrations \
             --label control-plane
       - name: Apply staging bookings migrations
@@ -105,8 +105,9 @@ jobs:
             echo "::notice::Skipping staging bookings migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable."
             exit 0
           fi
+          export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
           bun scripts/control-plane/apply-postgres-migrations.ts \
-            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL \
+            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/bookings/migrations \
             --label bookings
       - name: Install Playwright browser
@@ -307,7 +308,6 @@ jobs:
         working-directory: core
         run: npm audit --audit-level=high
       - name: Fetch production control-plane migration secret
-        continue-on-error: true
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: ec0ad659-af1c-4009-a845-9e6092cc062b
@@ -323,8 +323,9 @@ jobs:
             echo "::notice::Skipping production control-plane migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable."
             exit 0
           fi
+          export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
           bun scripts/control-plane/apply-postgres-migrations.ts \
-            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL \
+            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/control-plane/migrations \
             --label control-plane
       - name: Apply production bookings migrations
@@ -334,8 +335,9 @@ jobs:
             echo "::notice::Skipping production bookings migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable."
             exit 0
           fi
+          export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
           bun scripts/control-plane/apply-postgres-migrations.ts \
-            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL \
+            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/bookings/migrations \
             --label bookings
       - name: Deploy production

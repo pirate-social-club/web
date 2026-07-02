@@ -78,6 +78,7 @@ jobs:
         working-directory: web
         run: scripts/smoke-test.sh staging
       - name: Fetch staging control-plane migration secret
+        continue-on-error: true
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
@@ -308,6 +309,7 @@ jobs:
         working-directory: core
         run: npm audit --audit-level=high
       - name: Fetch production control-plane migration secret
+        continue-on-error: true
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: ec0ad659-af1c-4009-a845-9e6092cc062b

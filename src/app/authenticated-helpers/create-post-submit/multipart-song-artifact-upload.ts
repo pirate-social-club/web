@@ -7,6 +7,8 @@ const DEFAULT_PART_RETRY_DELAYS_MS = [250, 1000, 4000] as const;
 
 class PermanentMultipartPartUploadError extends Error {}
 
+type RetryableMultipartPartUploadError = Error & { retryAfterMs?: number | null };
+
 export type MultipartArtifactProgressReporter = (fraction: number) => void;
 
 export type MultipartArtifactUploadInput = {
@@ -50,7 +52,7 @@ function uploadBlobWithProgress(input: {
   onProgress?: (loadedBytes: number) => void;
   timeoutMs: number;
   url: string;
-}): Promise<{ etag: string | null; status: number; statusText: string }> {
+}): Promise<{ etag: string | null; retryAfterMs: number | null; status: number; statusText: string }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open(input.method, input.url);
@@ -67,6 +69,7 @@ function uploadBlobWithProgress(input: {
       input.onProgress?.(input.body.size);
       resolve({
         etag: xhr.getResponseHeader("ETag"),
+        retryAfterMs: parseRetryAfterMs(xhr.getResponseHeader("Retry-After")),
         status: xhr.status,
         statusText: xhr.statusText,
       });
@@ -76,6 +79,32 @@ function uploadBlobWithProgress(input: {
     xhr.onabort = () => reject(new Error("Multipart part upload was aborted"));
     xhr.send(input.body);
   });
+}
+
+function parseRetryAfterMs(value: string | null): number | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+
+  const seconds = Number(trimmed);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.round(seconds * 1000);
+  }
+
+  const retryAt = Date.parse(trimmed);
+  if (!Number.isFinite(retryAt)) {
+    return null;
+  }
+  return Math.max(0, retryAt - Date.now());
+}
+
+function getRetryAfterMs(error: unknown): number | null {
+  if (!(error instanceof Error)) {
+    return null;
+  }
+  const retryAfterMs = (error as RetryableMultipartPartUploadError).retryAfterMs;
+  return typeof retryAfterMs === "number" && Number.isFinite(retryAfterMs) && retryAfterMs >= 0
+    ? retryAfterMs
+    : null;
 }
 
 export async function uploadMultipartSongArtifact(input: MultipartArtifactUploadInput): Promise<SongArtifactUpload> {
@@ -122,7 +151,7 @@ export async function uploadMultipartSongArtifact(input: MultipartArtifactUpload
           if (response.status >= 400 && response.status < 500 && response.status !== 429) {
             throw new PermanentMultipartPartUploadError(message);
           }
-          throw new Error(message);
+          throw Object.assign(new Error(message), { retryAfterMs: response.retryAfterMs });
         }
         const etag = response.etag?.trim();
         if (!etag) {
@@ -137,7 +166,7 @@ export async function uploadMultipartSongArtifact(input: MultipartArtifactUpload
         }
         lastError = error;
         if (attempt < retryDelays.length - 1) {
-          await sleep(retryDelays[attempt]);
+          await sleep(getRetryAfterMs(error) ?? retryDelays[attempt]);
         }
       }
     }

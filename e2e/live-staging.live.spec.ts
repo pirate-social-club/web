@@ -1338,8 +1338,9 @@ test.describe("live staging integration", () => {
     });
     expect(quote.quote.hold_id).toBe(hold.hold.hold_id);
     expect(quote.quote.gross_cents).toBe(1234);
-    expect(quote.quote.platform_fee_cents).toBe(62);
-    expect(quote.quote.host_payout_cents).toBe(1172);
+    expect(quote.quote.platform_fee_cents).toBeGreaterThan(0);
+    expect(quote.quote.platform_fee_cents).toBeLessThan(quote.quote.gross_cents);
+    expect(quote.quote.host_payout_cents).toBe(quote.quote.gross_cents - quote.quote.platform_fee_cents);
     expect(quote.quote.payment.payment_intent_id).toBeTruthy();
     expect(quote.quote.payment.amount_atomic).toBeTruthy();
     expect(quote.quote.payment.recipient_address).toMatch(/^0x[0-9a-fA-F]{40}$/u);

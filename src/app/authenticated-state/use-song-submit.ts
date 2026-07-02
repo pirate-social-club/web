@@ -165,6 +165,41 @@ function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs
   });
 }
 
+function uploadBlobWithProgress(input: {
+  body: Blob;
+  headers?: Record<string, string>;
+  method: "PUT";
+  onProgress?: (loadedBytes: number) => void;
+  timeoutMs: number;
+  url: string;
+}): Promise<{ etag: string | null; status: number; statusText: string }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(input.method, input.url);
+    xhr.timeout = input.timeoutMs;
+    for (const [name, value] of Object.entries(input.headers ?? {})) {
+      xhr.setRequestHeader(name, value);
+    }
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        input.onProgress?.(event.loaded);
+      }
+    };
+    xhr.onload = () => {
+      input.onProgress?.(input.body.size);
+      resolve({
+        etag: xhr.getResponseHeader("ETag"),
+        status: xhr.status,
+        statusText: xhr.statusText,
+      });
+    };
+    xhr.onerror = () => reject(new Error("Multipart part upload failed"));
+    xhr.ontimeout = () => reject(new Error("Multipart part upload timed out"));
+    xhr.onabort = () => reject(new Error("Multipart part upload was aborted"));
+    xhr.send(input.body);
+  });
+}
+
 function usesDirectMultipart(kind: SongArtifactSubmitKind): boolean {
   return kind !== "cover_art";
 }
@@ -176,6 +211,7 @@ async function uploadSongArtifactMultipart(input: {
   contentHashPromise: Promise<string>;
   file: File;
   intent: SongArtifactUpload;
+  onProgress?: (fraction: number) => void;
 }): Promise<SongArtifactUpload> {
   const session = input.intent.upload_session;
   if (!session) {
@@ -183,7 +219,18 @@ async function uploadSongArtifactMultipart(input: {
   }
   const uploadSession = session;
   const parts: Array<{ part_number: number; etag: string }> = [];
+  const uploadedPartBytes = new Map<number, number>();
   let nextPartNumber = 1;
+
+  function reportPartProgress(partNumber: number, loadedBytes: number): void {
+    const boundedLoadedBytes = Math.min(loadedBytes, input.file.size);
+    if (uploadedPartBytes.get(partNumber) === boundedLoadedBytes) {
+      return;
+    }
+    uploadedPartBytes.set(partNumber, boundedLoadedBytes);
+    const uploadedBytes = [...uploadedPartBytes.values()].reduce((sum, bytes) => sum + bytes, 0);
+    input.onProgress?.(Math.min(1, uploadedBytes / Math.max(input.file.size, 1)));
+  }
 
   async function uploadPart(partNumber: number): Promise<void> {
     const start = (partNumber - 1) * uploadSession.part_size_bytes;
@@ -201,22 +248,26 @@ async function uploadSongArtifactMultipart(input: {
           partNumber,
           { timeoutMs: SONG_ARTIFACT_API_TIMEOUT_MS },
         );
-        const response = await fetchWithTimeout(signed.url, {
+        const response = await uploadBlobWithProgress({
+          url: signed.url,
           method: "PUT",
           body,
           headers: input.file.type ? { "Content-Type": input.file.type } : undefined,
-        }, SONG_ARTIFACT_PART_UPLOAD_TIMEOUT_MS);
-        if (!response.ok) {
+          onProgress: (loadedBytes) => reportPartProgress(partNumber, loadedBytes),
+          timeoutMs: SONG_ARTIFACT_PART_UPLOAD_TIMEOUT_MS,
+        });
+        if (response.status < 200 || response.status >= 300) {
           const message = `${input.artifactKind} part ${partNumber} upload failed with ${response.status}`;
           if (response.status >= 400 && response.status < 500 && response.status !== 429) {
             throw new PermanentSongArtifactPartUploadError(message);
           }
           throw new Error(message);
         }
-        const etag = response.headers.get("ETag")?.trim();
+        const etag = response.etag?.trim();
         if (!etag) {
           throw new Error(`${input.artifactKind} part ${partNumber} upload did not return an ETag.`);
         }
+        reportPartProgress(partNumber, body.size);
         parts.push({ part_number: partNumber, etag });
         return;
       } catch (error) {
@@ -434,6 +485,7 @@ export function useSongSubmit({
         contentHashPromise,
         file,
         intent,
+        onProgress,
       }));
       logger.info("[song-submit] artifact multipart content uploaded", {
         artifactKind,

@@ -302,6 +302,7 @@ describe("video create-post submit helpers", () => {
 
   test("uploadVideoArtifact uses direct multipart for large public videos and retries 429 part uploads", async () => {
     const originalXHR = globalThis.XMLHttpRequest;
+    const originalSetTimeout = globalThis.setTimeout;
     const file = createVideoFile();
     Object.defineProperty(file, "size", { value: 70 * 1024 * 1024 });
     const createArtifactUploadCalls: CreateSongArtifactUploadRequest[] = [];
@@ -314,10 +315,12 @@ describe("video create-post submit helpers", () => {
     const abortCalls: string[] = [];
     const progressEvents: string[] = [];
     const xhrStatuses = [429, 200, 200];
+    const retryDelays: number[] = [];
 
     class FakeXHR {
       status = 200;
       statusText = "OK";
+      private responseStatus = 200;
       timeout = 0;
       upload = {
         onprogress: null as ((event: ProgressEvent) => void) | null,
@@ -329,7 +332,13 @@ describe("video create-post submit helpers", () => {
       ontimeout: (() => void) | null = null;
 
       getResponseHeader(name: string): string | null {
-        return name.toLowerCase() === "etag" ? "\"part-etag\"" : null;
+        if (name.toLowerCase() === "etag") {
+          return this.responseStatus === 429 ? null : "\"part-etag\"";
+        }
+        if (name.toLowerCase() === "retry-after" && this.responseStatus === 429) {
+          return "2";
+        }
+        return null;
       }
 
       open(): void {}
@@ -337,7 +346,8 @@ describe("video create-post submit helpers", () => {
       setRequestHeader(): void {}
 
       send(body: BodyInit | null): void {
-        this.status = xhrStatuses.shift() ?? 200;
+        this.responseStatus = xhrStatuses.shift() ?? 200;
+        this.status = this.responseStatus;
         const size = body instanceof Blob ? body.size : 0;
         this.upload.onprogress?.({
           lengthComputable: true,
@@ -349,6 +359,15 @@ describe("video create-post submit helpers", () => {
     }
 
     globalThis.XMLHttpRequest = FakeXHR as unknown as typeof XMLHttpRequest;
+    globalThis.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
+      retryDelays.push(timeout ?? 0);
+      queueMicrotask(() => {
+        if (typeof handler === "function") {
+          handler(...args);
+        }
+      });
+      return 0;
+    }) as typeof setTimeout;
     try {
       const result = await uploadVideoArtifact({
         abortArtifactUploadSession: async (_communityId, artifactUploadId) => {
@@ -410,9 +429,11 @@ describe("video create-post submit helpers", () => {
         { part_number: 2, etag: "\"part-etag\"" },
       ]);
       expect(abortCalls).toEqual([]);
+      expect(retryDelays).toContain(2000);
       expect(progressEvents.some((event) => event.startsWith("upload_video:"))).toBe(true);
     } finally {
       globalThis.XMLHttpRequest = originalXHR;
+      globalThis.setTimeout = originalSetTimeout;
     }
   });
 

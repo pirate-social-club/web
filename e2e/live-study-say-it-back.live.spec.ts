@@ -51,6 +51,12 @@ type SongStudyAttemptResult = {
   outcome: "correct" | "incorrect" | "revealed";
 };
 
+type SynthesizedAudio = {
+  bytes: ArrayBuffer;
+  fileName: string;
+  mimeType: string;
+};
+
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required for live say-it-back E2E`);
@@ -129,6 +135,22 @@ async function createLiveSession(): Promise<{ accessToken: string }> {
   return { accessToken: session.accessToken };
 }
 
+async function requestBytes(path: string, init: RequestInit = {}, okStatuses = [200]): Promise<Response> {
+  const response = await fetch(new URL(path, apiBaseURL), {
+    ...init,
+    headers: {
+      accept: "*/*",
+      ...(init.body && !(init.body instanceof FormData) ? { "content-type": "application/json" } : {}),
+      ...init.headers,
+    },
+  });
+  if (!okStatuses.includes(response.status)) {
+    const text = await response.text();
+    throw new Error(`${init.method ?? "GET"} ${path} failed with ${response.status}: ${text}`);
+  }
+  return response;
+}
+
 function audioMimeType(filePath: string): string {
   switch (extname(filePath).toLowerCase()) {
     case ".m4a":
@@ -148,6 +170,58 @@ function audioMimeType(filePath: string): string {
   }
 }
 
+function synthesizedAudioExtension(contentType: string): string {
+  if (contentType.includes("mpeg") || contentType.includes("mp3")) return "mp3";
+  if (contentType.includes("wav")) return "wav";
+  if (contentType.includes("ogg")) return "ogg";
+  if (contentType.includes("webm")) return "webm";
+  return "mp3";
+}
+
+function toExactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
+async function loadAudioForExercise(input: {
+  authHeaders: Record<string, string>;
+  communityId: string;
+  exercise: Extract<SongStudyExercise, { type: "say_it_back" }>;
+}): Promise<SynthesizedAudio> {
+  const audioPath = optionalEnv("E2E_STUDY_SAY_IT_BACK_AUDIO_PATH");
+  if (audioPath) {
+    return {
+      bytes: toExactArrayBuffer(await readFile(audioPath)),
+      fileName: basename(audioPath),
+      mimeType: audioMimeType(audioPath),
+    };
+  }
+
+  if (process.env.E2E_STUDY_SAY_IT_BACK_SYNTHESIZE_AUDIO !== "true") {
+    throw new Error(
+      "E2E_STUDY_SAY_IT_BACK_AUDIO_PATH is required unless E2E_STUDY_SAY_IT_BACK_SYNTHESIZE_AUDIO=true",
+    );
+  }
+
+  const response = await requestBytes(
+    `/communities/${encodeURIComponent(input.communityId)}/assistant/speech`,
+    {
+      body: JSON.stringify({ text: input.exercise.prompt_text }),
+      headers: input.authHeaders,
+      method: "POST",
+    },
+  );
+  const contentType = response.headers.get("content-type") ?? "audio/mpeg";
+  const bytes = await response.arrayBuffer();
+  expect(bytes.byteLength, "assistant TTS should return non-empty audio").toBeGreaterThan(0);
+  return {
+    bytes,
+    fileName: `study-say-it-back.${synthesizedAudioExtension(contentType)}`,
+    mimeType: contentType,
+  };
+}
+
 test.describe("live Study say-it-back", () => {
   test("transcribes real audio and grades a say-it-back attempt", async () => {
     test.skip(
@@ -157,7 +231,6 @@ test.describe("live Study say-it-back", () => {
 
     const communityId = requiredEnv("E2E_STUDY_SAY_IT_BACK_COMMUNITY_ID");
     const postId = requiredEnv("E2E_STUDY_SAY_IT_BACK_POST_ID");
-    const audioPath = requiredEnv("E2E_STUDY_SAY_IT_BACK_AUDIO_PATH");
     const targetLanguage = optionalEnv("E2E_STUDY_SAY_IT_BACK_TARGET_LANGUAGE") ?? "es";
     const expectedOutcome = optionalEnv("E2E_STUDY_SAY_IT_BACK_EXPECT_OUTCOME") ?? "correct";
     const expectedTranscriptIncludes = optionalEnv("E2E_STUDY_SAY_IT_BACK_EXPECT_TRANSCRIPT_INCLUDES");
@@ -176,9 +249,9 @@ test.describe("live Study say-it-back", () => {
     );
     expect(exercise, "Study payload must include a say-it-back exercise; check study_enabled and active ElevenLabs credential").toBeTruthy();
 
-    const audio = await readFile(audioPath);
+    const audio = await loadAudioForExercise({ authHeaders, communityId, exercise });
     const form = new FormData();
-    form.set("file", new File([audio], basename(audioPath), { type: audioMimeType(audioPath) }));
+    form.set("file", new File([audio.bytes], audio.fileName, { type: audio.mimeType }));
     const transcription = await requestJson<SongStudyTranscriptionResponse>(
       `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/study/transcriptions`,
       {

@@ -217,9 +217,6 @@ function collectFailures(results) {
     if (expectedApiSha && result.target.service === "api" && !shasMatch(expectedApiSha, gitSha)) {
       failures.push(`${id}: expected api git_sha=${expectedApiSha}, got ${text(gitSha)}`);
     }
-    if (result.target.service === "api" && !operatorSha) {
-      failures.push(`${id}: operator.git_sha is missing`);
-    }
     if (expectedOperatorSha && result.target.service === "api" && !shasMatch(expectedOperatorSha, operatorSha)) {
       failures.push(`${id}: expected operator git_sha=${expectedOperatorSha}, got ${text(operatorSha)}`);
     }

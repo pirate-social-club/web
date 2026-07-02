@@ -116,6 +116,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   const pageTitle = copy.settings.title;
   const sectionTitle = getSettingsSectionTitle(activeTab, copy);
   const syncedPrimaryWalletRef = React.useRef<string | null>(null);
+  const profileFormResetProfileIdRef = React.useRef<string | null>(null);
   const hasSession = Boolean(session);
   const hasProfile = Boolean(profile);
   const [displayName, setDisplayName] = React.useState("");
@@ -236,20 +237,33 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   React.useEffect(() => {
     if (!profile) return;
     const nextPreferredLocale = profile.preferred_locale;
-    setDisplayName(profile.display_name ?? "");
-    setBio(profile.bio ?? "");
+    const sameProfile = profileFormResetProfileIdRef.current === profile.id;
+    const hasUnsavedProfileChanges = sameProfile && (
+      displayName.trim() !== (profile.display_name ?? "").trim()
+      || bio !== (profile.bio ?? "")
+      || avatarFile !== null
+      || coverFile !== null
+      || (avatarRemoved && profile.avatar_ref != null)
+      || (coverRemoved && profile.cover_ref != null)
+    );
+    profileFormResetProfileIdRef.current = profile.id;
+
+    if (!hasUnsavedProfileChanges) {
+      setDisplayName(profile.display_name ?? "");
+      setBio(profile.bio ?? "");
+      setAvatarFile(null);
+      setCoverFile(null);
+      setAvatarRemoved(false);
+      setCoverRemoved(false);
+      setDisplayNameError(undefined);
+      setProfileSubmitState({ kind: "idle" });
+    }
     setPreferredLocale(isUiLocaleCode(nextPreferredLocale ?? "") ? nextPreferredLocale as UiLocaleCode : locale);
     setNationalityBadgeEnabled(Boolean(profile.display_verified_nationality_badge));
     setSelectedPrimaryHandleId(profile.primary_public_handle?.linked_handle ?? null);
-    setAvatarFile(null);
-    setCoverFile(null);
-    setAvatarRemoved(false);
-    setCoverRemoved(false);
-    setDisplayNameError(undefined);
-    setProfileSubmitState({ kind: "idle" });
     setPublicHandlesSubmitState({ kind: "idle" });
     setPreferencesSubmitState({ kind: "idle" });
-  }, [locale, profile]);
+  }, [avatarFile, avatarRemoved, bio, coverFile, coverRemoved, displayName, locale, profile]);
 
   React.useEffect(() => {
     if (!profile || activeTab !== "profile") return;

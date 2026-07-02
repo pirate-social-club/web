@@ -300,6 +300,122 @@ describe("video create-post submit helpers", () => {
     })).rejects.toThrow("Public videos are currently capped at 2 GB");
   });
 
+  test("uploadVideoArtifact uses direct multipart for large public videos and retries 429 part uploads", async () => {
+    const originalXHR = globalThis.XMLHttpRequest;
+    const file = createVideoFile();
+    Object.defineProperty(file, "size", { value: 70 * 1024 * 1024 });
+    const createArtifactUploadCalls: CreateSongArtifactUploadRequest[] = [];
+    const signedUrlCalls: Array<{ artifactUploadId: string; partNumber: number; sessionId: string }> = [];
+    const completedBodies: Array<{
+      content_hash?: string | null;
+      parts: Array<{ part_number: number; etag: string }>;
+      upload_id: string;
+    }> = [];
+    const abortCalls: string[] = [];
+    const progressEvents: string[] = [];
+    const xhrStatuses = [429, 200, 200];
+
+    class FakeXHR {
+      status = 200;
+      statusText = "OK";
+      timeout = 0;
+      upload = {
+        onprogress: null as ((event: ProgressEvent) => void) | null,
+      };
+
+      onabort: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      onload: (() => void) | null = null;
+      ontimeout: (() => void) | null = null;
+
+      getResponseHeader(name: string): string | null {
+        return name.toLowerCase() === "etag" ? "\"part-etag\"" : null;
+      }
+
+      open(): void {}
+
+      setRequestHeader(): void {}
+
+      send(body: BodyInit | null): void {
+        this.status = xhrStatuses.shift() ?? 200;
+        const size = body instanceof Blob ? body.size : 0;
+        this.upload.onprogress?.({
+          lengthComputable: true,
+          loaded: size,
+          total: size,
+        } as ProgressEvent);
+        queueMicrotask(() => this.onload?.());
+      }
+    }
+
+    globalThis.XMLHttpRequest = FakeXHR as unknown as typeof XMLHttpRequest;
+    try {
+      const result = await uploadVideoArtifact({
+        abortArtifactUploadSession: async (_communityId, artifactUploadId) => {
+          abortCalls.push(artifactUploadId);
+        },
+        communityId: "com_test",
+        completeArtifactUploadSession: async (_communityId, _artifactUploadId, _sessionId, body) => {
+          completedBodies.push(body);
+          return createArtifact({ storage_ref: "artifact_video_multipart" });
+        },
+        createArtifactUpload: async (_communityId, request) => {
+          createArtifactUploadCalls.push(request);
+          return createArtifact({
+            id: "sau_large_video",
+            status: "pending_upload",
+            upload_session: {
+              abort: "abort",
+              complete: "complete",
+              expires_at: "2026-07-02T00:00:00.000Z",
+              id: "saus_large_video",
+              part_size_bytes: 10,
+              sign_part_url: "sign",
+              total_parts: 2,
+              upload_id: "filebase-upload-large-video",
+            },
+          });
+        },
+        getArtifactUploadPartSignedUrl: async (_communityId, artifactUploadId, sessionId, partNumber) => {
+          signedUrlCalls.push({ artifactUploadId, sessionId, partNumber });
+          return { url: `https://filebase.test/large-video/part-${partNumber}/${signedUrlCalls.length}` };
+        },
+        reportProgress: (key, detail) => progressEvents.push(`${key}:${detail ?? ""}`),
+        uploadArtifactContent: async () => {
+          throw new Error("proxy upload should not be called for large public video");
+        },
+        videoState: {
+          primaryVideoUpload: file,
+        },
+      });
+
+      expect(result.storage_ref).toBe("artifact_video_multipart");
+      expect(createArtifactUploadCalls).toEqual([{
+        artifact_kind: "primary_video",
+        mime_type: "video/mp4",
+        filename: "video.mp4",
+        size_bytes: file.size,
+        upload_mode: "direct_multipart",
+      }]);
+      expect(signedUrlCalls).toEqual([
+        { artifactUploadId: "sau_large_video", sessionId: "saus_large_video", partNumber: 1 },
+        { artifactUploadId: "sau_large_video", sessionId: "saus_large_video", partNumber: 2 },
+        { artifactUploadId: "sau_large_video", sessionId: "saus_large_video", partNumber: 1 },
+      ]);
+      expect(completedBodies).toHaveLength(1);
+      expect(completedBodies[0]?.upload_id).toBe("filebase-upload-large-video");
+      expect(completedBodies[0]?.content_hash).toMatch(/^0x[0-9a-f]{64}$/);
+      expect(completedBodies[0]?.parts).toEqual([
+        { part_number: 1, etag: "\"part-etag\"" },
+        { part_number: 2, etag: "\"part-etag\"" },
+      ]);
+      expect(abortCalls).toEqual([]);
+      expect(progressEvents.some((event) => event.startsWith("upload_video:"))).toBe(true);
+    } finally {
+      globalThis.XMLHttpRequest = originalXHR;
+    }
+  });
+
   test("submitVideoPost uploads video and poster before creating the post", async () => {
     const file = createVideoFile();
     const posterFile = createPosterFile();

@@ -17,6 +17,7 @@ import type {
 import type { ExtractedVideoPosterFrame } from "@/components/compositions/posts/post-composer/video-poster-frame";
 import { buildAssetListingRequest } from "@/app/authenticated-helpers/asset-submit";
 import type { SubmitProgressReporter } from "./progress";
+import { uploadMultipartSongArtifact } from "./multipart-song-artifact-upload";
 
 import {
   signIfAgent,
@@ -97,12 +98,7 @@ const PROXY_PRIMARY_VIDEO_MAX_BYTES = 64 * 1024 * 1024;
 const LOCKED_PRIMARY_VIDEO_MAX_BYTES = 50 * 1024 * 1024;
 const PUBLIC_PRIMARY_VIDEO_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 const MULTIPART_UPLOAD_CONCURRENCY = 3;
-
-class PermanentPartUploadError extends Error {}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const VIDEO_ARTIFACT_PART_UPLOAD_TIMEOUT_MS = 60_000;
 
 async function sha256File(file: File): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
@@ -240,119 +236,35 @@ export async function uploadVideoArtifact({
     size_bytes: file.size,
     upload_mode: "direct_multipart",
   });
-  return await uploadVideoArtifactMultipart({
-    abortArtifactUploadSession,
-    communityId,
-    completeArtifactUploadSession,
+  return await uploadMultipartSongArtifact({
+    abortSession: (artifactUploadId, sessionId) => abortArtifactUploadSession(
+      communityId,
+      artifactUploadId,
+      sessionId,
+    ),
+    artifactLabel: "Video",
+    completeSession: (artifactUploadId, sessionId, body) => completeArtifactUploadSession(
+      communityId,
+      artifactUploadId,
+      sessionId,
+      body,
+    ),
+    concurrency: MULTIPART_UPLOAD_CONCURRENCY,
     contentHashPromise,
     file,
-    getArtifactUploadPartSignedUrl,
+    getPartSignedUrl: (artifactUploadId, sessionId, partNumber) => getArtifactUploadPartSignedUrl(
+      communityId,
+      artifactUploadId,
+      sessionId,
+      partNumber,
+    ),
     intent,
-    reportProgress,
-  });
-}
-
-async function uploadVideoArtifactMultipart({
-  abortArtifactUploadSession,
-  communityId,
-  completeArtifactUploadSession,
-  contentHashPromise,
-  file,
-  getArtifactUploadPartSignedUrl,
-  intent,
-  reportProgress,
-}: {
-  abortArtifactUploadSession: AbortArtifactUploadSession;
-  communityId: string;
-  completeArtifactUploadSession: CompleteArtifactUploadSession;
-  contentHashPromise: Promise<string>;
-  file: File;
-  getArtifactUploadPartSignedUrl: GetArtifactUploadPartSignedUrl;
-  intent: SongArtifactUpload;
-  reportProgress?: SubmitProgressReporter;
-}): Promise<SongArtifactUpload> {
-  const session = intent.upload_session;
-  if (!session) {
-    throw new Error("Large video upload did not return a multipart session.");
-  }
-  const uploadSession = session;
-  const parts: Array<{ part_number: number; etag: string }> = [];
-  let nextPartNumber = 1;
-  let uploadedBytes = 0;
-
-  async function uploadPart(partNumber: number): Promise<void> {
-    const start = (partNumber - 1) * uploadSession.part_size_bytes;
-    const end = Math.min(file.size, start + uploadSession.part_size_bytes);
-    const body = file.slice(start, end, file.type || "application/octet-stream");
-    // Keep failed-part retries short; permanent 4xx errors surface immediately.
-    const retryDelays = [250, 1000, 4000];
-    let lastError: unknown = null;
-    for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
-      try {
-        const signed = await getArtifactUploadPartSignedUrl(communityId, intent.id, uploadSession.id, partNumber);
-        const response = await fetch(signed.url, {
-          method: "PUT",
-          body,
-          headers: file.type ? { "Content-Type": file.type } : undefined,
-        });
-        if (!response.ok) {
-          const message = `Video part ${partNumber} upload failed with ${response.status}`;
-          if (response.status >= 400 && response.status < 500) {
-            throw new PermanentPartUploadError(message);
-          }
-          throw new Error(message);
-        }
-        const etag = response.headers.get("ETag")?.trim();
-        if (!etag) {
-          throw new Error(`Video part ${partNumber} upload did not return an ETag.`);
-        }
-        parts.push({ part_number: partNumber, etag });
-        uploadedBytes += end - start;
-        reportProgress?.("upload_video", `${Math.min(100, Math.round((uploadedBytes / file.size) * 100))}%`);
-        return;
-      } catch (error) {
-        if (error instanceof PermanentPartUploadError) {
-          throw error;
-        }
-        lastError = error;
-        if (attempt < retryDelays.length - 1) {
-          await delay(retryDelays[attempt]);
-        }
-      }
-    }
-    throw lastError instanceof Error
-      ? lastError
-      : new Error(`Video part ${partNumber} upload failed.`);
-  }
-
-  async function uploadWorker(): Promise<void> {
-    while (nextPartNumber <= uploadSession.total_parts) {
-      const partNumber = nextPartNumber;
-      nextPartNumber += 1;
-      await uploadPart(partNumber);
-    }
-  }
-
-  try {
-    const workers = Array.from(
-      { length: Math.min(MULTIPART_UPLOAD_CONCURRENCY, uploadSession.total_parts) },
-      () => uploadWorker(),
-    );
-    await Promise.all(workers);
-    const contentHash = `0x${await contentHashPromise}`;
-    return await completeArtifactUploadSession(communityId, intent.id, uploadSession.id, {
-      upload_id: uploadSession.upload_id,
-      parts: parts.sort((a, b) => a.part_number - b.part_number),
-      content_hash: contentHash,
-    });
-  } catch (error) {
-    try {
-      await abortArtifactUploadSession(communityId, intent.id, uploadSession.id);
-    } catch {
+    onAbortError: () => {
       // The API reaper is the cleanup backstop for abandoned multipart sessions.
-    }
-    throw error;
-  }
+    },
+    onProgress: (fraction) => reportProgress?.("upload_video", `${Math.round(fraction * 100)}%`),
+    partUploadTimeoutMs: VIDEO_ARTIFACT_PART_UPLOAD_TIMEOUT_MS,
+  });
 }
 
 export async function submitVideoPost({

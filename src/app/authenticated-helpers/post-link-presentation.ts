@@ -2,6 +2,7 @@ import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import type { PostPresentationOptions } from "@/app/authenticated-helpers/post-presentation-types";
+import { normalizeHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
 import {
   normalizeContentLocale,
   resolveTranslatedTextPresentation,
@@ -447,7 +448,9 @@ export function toLinkPostContent(
     body: input.resolvedBody || undefined,
     bodyDir: input.bodyDir,
     bodyLang: input.bodyLang,
-    href: post.link_url ?? "#",
+    // Render-boundary allowlist: never bind a non-http(s) scheme (e.g. javascript:)
+    // to an <a href>. Defense-in-depth alongside the API's create-time scheme check.
+    href: (post.link_url ? normalizeHttpUrl(post.link_url) : null) ?? "#",
     linkLabel: post.link_url ?? undefined,
     sourceLabel: formatLinkSourceLabel(post.link_url, post.link_enrichment),
     publishedLabel: extractPublishedLabel(post.link_enrichment),

@@ -52,12 +52,6 @@ jobs:
       - name: Audit API dependencies
         working-directory: api/services/api
         run: bun audit --audit-level=high
-      - name: Install community provision operator dependencies
-        working-directory: api/services/community-provision-operator
-        run: bun install --frozen-lockfile
-      - name: Audit community provision operator dependencies
-        working-directory: api/services/community-provision-operator
-        run: bun audit --audit-level=high
       - name: Install core dependencies
         working-directory: core
         run: npm ci
@@ -305,12 +299,6 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Audit API dependencies
         working-directory: api/services/api
-        run: bun audit --audit-level=high
-      - name: Install community provision operator dependencies
-        working-directory: api/services/community-provision-operator
-        run: bun install --frozen-lockfile
-      - name: Audit community provision operator dependencies
-        working-directory: api/services/community-provision-operator
         run: bun audit --audit-level=high
       - name: Install core dependencies
         working-directory: core

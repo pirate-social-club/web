@@ -14,16 +14,8 @@ if [[ -z "${API_DIR:-}" ]]; then
     API_DIR="$ROOT_DIR/../api/services/api"
   fi
 fi
-if [[ -z "${OPERATOR_DIR:-}" ]]; then
-  if [[ -d "$ROOT_DIR/api/services/community-provision-operator" ]]; then
-    OPERATOR_DIR="$ROOT_DIR/api/services/community-provision-operator"
-  else
-    OPERATOR_DIR="$ROOT_DIR/../api/services/community-provision-operator"
-  fi
-fi
 WEB_WRANGLER="$WEB_DIR/node_modules/.bin/wrangler"
 API_WRANGLER="$API_DIR/node_modules/.bin/wrangler"
-OPERATOR_WRANGLER="$OPERATOR_DIR/node_modules/.bin/wrangler"
 REQUIRED_API_STAGING_SECRETS=(
   OPENAI_API_KEY
   OPENROUTER_API_KEY
@@ -45,7 +37,7 @@ usage() {
   cat <<'EOF'
 Usage: scripts/deploy-staging.sh [options]
 
-Deploys web + api + community provision operator staging as one release unit.
+Deploys web + api staging as one release unit.
 
 Options:
   --allow-non-main -m "reason"
@@ -117,8 +109,6 @@ WEB_SHA="$(repo_sha "$WEB_DIR")"
 WEB_REF="$(repo_ref "$WEB_DIR")"
 API_SHA="$(repo_sha "$API_DIR")"
 API_REF="$(repo_ref "$API_DIR")"
-OPERATOR_SHA="$(repo_sha "$OPERATOR_DIR")"
-OPERATOR_REF="$(repo_ref "$OPERATOR_DIR")"
 BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 WEB_ORIGIN="${WEB_ORIGIN:-https://staging.pirate.sc}"
@@ -247,22 +237,18 @@ require_command git
 require_command node
 require_file "$WEB_WRANGLER"
 require_file "$API_WRANGLER"
-require_file "$OPERATOR_WRANGLER"
 
 if [[ "$ALLOW_NON_MAIN" != "1" ]]; then
   require_clean_main "$WEB_DIR" "web"
   require_clean_main "$API_DIR" "api"
-  require_clean_main "$OPERATOR_DIR" "community-provision-operator"
 else
   SAFE_SUFFIX="$(printf '%s' "$ALLOW_REASON" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//' | cut -c1-40)"
   WEB_SHA="${WEB_SHA}-non-main-${SAFE_SUFFIX:-manual}"
   API_SHA="${API_SHA}-non-main-${SAFE_SUFFIX:-manual}"
-  OPERATOR_SHA="${OPERATOR_SHA}-non-main-${SAFE_SUFFIX:-manual}"
   log "non-main staging deploy"
   printf 'reason: %s\n' "$ALLOW_REASON"
   printf 'web status:\n%s\n' "$(repo_status "$WEB_DIR")"
   printf 'api status:\n%s\n' "$(repo_status "$API_DIR")"
-  printf 'community-provision-operator status:\n%s\n' "$(repo_status "$OPERATOR_DIR")"
 fi
 
 log "check API staging secrets"
@@ -271,7 +257,6 @@ check_api_staging_secrets
 log "staging build metadata"
 printf 'web: %s (%s)\n' "$WEB_SHA" "$WEB_REF"
 printf 'api: %s (%s)\n' "$API_SHA" "$API_REF"
-printf 'community-provision-operator: %s (%s)\n' "$OPERATOR_SHA" "$OPERATOR_REF"
 printf 'timestamp: %s\n' "$BUILD_TIMESTAMP"
 
 log "build web staging bundle"
@@ -297,13 +282,6 @@ log "deploy web public staging worker"
   --var "BUILD_GIT_REF:$WEB_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
 
-log "deploy community provision operator staging"
-(cd "$OPERATOR_DIR" && "$OPERATOR_WRANGLER" deploy \
-  --env staging \
-  --var "BUILD_GIT_SHA:$OPERATOR_SHA" \
-  --var "BUILD_GIT_REF:$OPERATOR_REF" \
-  --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
-
 log "deploy api staging worker"
 (cd "$API_DIR" && "$API_WRANGLER" deploy \
   --env staging \
@@ -319,6 +297,5 @@ check_status "$WEB_ORIGIN/" "200"
 check_status "$API_ORIGIN/health" "200"
 check_json_field_with_retry "$WEB_ORIGIN/__version" "git_sha" "$WEB_SHA"
 check_json_field_with_retry "$API_ORIGIN/__version" "git_sha" "$API_SHA"
-check_json_field_with_retry "$API_ORIGIN/__version" "operator.git_sha" "$OPERATOR_SHA"
 
 log "staging deploy complete"

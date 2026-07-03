@@ -93,14 +93,18 @@ function formatCountdown(secs: number): string {
   return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
 }
 function useCountdown(expiresAtUtc: string | null): number {
-  const [secs, setSecs] = React.useState(() => (expiresAtUtc ? secondsUntil(expiresAtUtc) : 0));
+  // Derive the remaining seconds synchronously from the target on every render; the interval only forces
+  // a re-render each second. Deriving (rather than holding it in state seeded at mount) is what prevents
+  // the expiry race: when the checkout enters the quoted phase, expiresAtUtc goes null -> a real
+  // timestamp, and the countdown reflects the fresh quote IMMEDIATELY instead of a stale 0 that would
+  // make the "quoted && countdown === 0" guard fire and flip the screen to "expired" before paying.
+  const [, tick] = React.useReducer((n: number) => n + 1, 0);
   React.useEffect(() => {
     if (!expiresAtUtc) return;
-    setSecs(secondsUntil(expiresAtUtc));
-    const id = setInterval(() => setSecs(secondsUntil(expiresAtUtc)), 1000);
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [expiresAtUtc]);
-  return secs;
+  return expiresAtUtc ? secondsUntil(expiresAtUtc) : 0;
 }
 
 export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: string | null; hostUserId: string }): React.ReactElement {

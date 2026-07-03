@@ -191,7 +191,11 @@ export async function installPaidBookingApiMocks(page: Page, state: PaidBookingM
     return route.fulfill(json({ quote: bookingQuote("hold_e2e", state) }));
   });
 
-  // Safety net: never let a real confirm (money move) escape the mock during a smoke.
-  await page.route(/\/bookings\/holds\/[^/]+\/confirm(\?.*)?$/u, (route) =>
-    route.fulfill(json({ error: "confirm is disabled in mocked smoke" }, 409)));
+  // Safety net: never let a real confirm (money move) escape the mock during a smoke. Record it FIRST so
+  // the "without charging" assertion (state.captured has no /confirm) can actually fail if the app ever
+  // hits confirm — otherwise the check is dead.
+  await page.route(/\/bookings\/holds\/[^/]+\/confirm(\?.*)?$/u, async (route) => {
+    await record(state, route);
+    return route.fulfill(json({ error: "confirm is disabled in mocked smoke" }, 409));
+  });
 }

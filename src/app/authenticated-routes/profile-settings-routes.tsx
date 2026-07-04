@@ -35,6 +35,7 @@ import { useSettingsOwnedAgents } from "@/app/authenticated-state/use-settings-o
 import { useBookingHostSettings } from "@/app/authenticated-state/use-booking-host-settings";
 import { useOwnBookingCta } from "@/app/authenticated-state/use-own-booking-cta";
 import { ProfileBookTabPanel } from "@/app/authenticated-routes/profile-book-tab-panel";
+import { useHostAvailability } from "@/hooks/use-host-availability";
 import { ProfileBookingsSection } from "@/components/compositions/bookings/profile-bookings-section/profile-bookings-section";
 
 export { CurrentUserWalletPage } from "./wallet-settings-route";
@@ -60,6 +61,8 @@ export function CurrentUserProfilePage() {
       toast.success(copy.profile.handleUpdated);
     },
   });
+  // Preload own availability so the Book tab renders slots immediately (owner with a live schedule).
+  const { slots: bookingSlots, loading: bookingLoading } = useHostAvailability(profile?.id ?? null, bookingCtaState === "manage");
 
   if (!profile) {
     return <AuthRequiredRouteState description={copy.routeStatus.profile.auth} hideTitleOnMobile title={pageTitle} />;
@@ -88,6 +91,8 @@ export function CurrentUserProfilePage() {
         <ProfileBookTabPanel
           hostUserId={profile.id}
           owner={{ configured: bookingCtaState === "manage", onEdit: () => navigate("/settings/bookings") }}
+          slots={bookingSlots}
+          loading={bookingLoading}
         />
       ) : undefined}
     />

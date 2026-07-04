@@ -6,12 +6,10 @@ import { navigate } from "@/app/router";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
-import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
 import { useSession } from "@/lib/api/session-store";
-import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
-import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
+import { useRequestAuth } from "@/hooks/use-request-auth";
 import type { ResolvedSlot, SlotsResponse } from "@/lib/api/bookings-types";
 
 function viewerTimezone(): string {
@@ -28,7 +26,7 @@ function priceLabel(cents: number): string { return `${(cents / 100).toFixed(2)}
 export function BookingPublicPage({ communityId, hostUserId }: { communityId: string | null; hostUserId: string }): React.ReactElement {
   const api = useApi();
   const session = useSession();
-  const authRuntime = usePiratePrivyRuntime();
+  const requestAuth = useRequestAuth();
   const tz = React.useMemo(viewerTimezone, []);
   const [data, setData] = React.useState<SlotsResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -58,18 +56,7 @@ export function BookingPublicPage({ communityId, hostUserId }: { communityId: st
   }, [load]);
 
   // Booking creates a hold + quote against authenticated APIs, so a logged-out tap must prompt sign-in
-  // (Privy) rather than route to a checkout that would 401 into "Authentication failed". Same auth-prompt
-  // pattern the post/live-ticket flows use.
-  const requestAuth = React.useCallback((message: string) => {
-    if (!isCanonicalAuthOrigin()) {
-      const canonicalUrl = buildCanonicalAuthUrl();
-      toast.error(message, { action: { label: "Open in Pirate", onClick: () => { window.location.href = canonicalUrl; } } });
-      return;
-    }
-    if (authRuntime.connect) { authRuntime.connect(); return; }
-    toast.error(authRuntime.loadError ?? message);
-  }, [authRuntime.connect, authRuntime.loadError]);
-
+  // (Privy modal) rather than route to a checkout that would 401 into "Authentication failed".
   const onPickSlot = React.useCallback((slot: ResolvedSlot) => {
     if (!session?.accessToken) {
       requestAuth("Sign in to book a session.");

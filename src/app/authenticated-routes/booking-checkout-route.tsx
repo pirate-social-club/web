@@ -4,15 +4,14 @@ import * as React from "react";
 
 import { navigate } from "@/app/router";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
-import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
+import { usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
-import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
 import type { BookingHold, BookingQuote } from "@/lib/api/bookings-types";
 import { useSession } from "@/lib/api/session-store";
-import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
+import { useRequestAuth } from "@/hooks/use-request-auth";
 import {
   executeUsdcTransfer,
   findConnectedFundingWallet,
@@ -112,7 +111,7 @@ function useCountdown(expiresAtUtc: string | null): number {
 export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: string | null; hostUserId: string }): React.ReactElement {
   const api = useApi();
   const session = useSession();
-  const authRuntime = usePiratePrivyRuntime();
+  const requestAuth = useRequestAuth();
   const isAuthed = Boolean(session?.accessToken);
   const { connectedWallets } = usePiratePrivyWallets({ enabled: true });
   const tz = React.useMemo(viewerTz, []);
@@ -130,15 +129,16 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
       : `/book/${encodeURIComponent(hostUserId)}`);
   }, [communityId, hostUserId]);
 
-  const requestAuth = React.useCallback((message: string) => {
-    if (!isCanonicalAuthOrigin()) {
-      const canonicalUrl = buildCanonicalAuthUrl();
-      toast.error(message, { action: { label: "Open in Pirate", onClick: () => { window.location.href = canonicalUrl; } } });
-      return;
-    }
-    if (authRuntime.connect) { authRuntime.connect(); return; }
-    toast.error(authRuntime.loadError ?? message);
-  }, [authRuntime.connect, authRuntime.loadError]);
+  // Modal-first: a logged-out arrival (e.g. a deep-linked checkout URL) auto-opens the Privy sign-in
+  // modal once, so the primary path is the same modal the rest of the app uses. The "Sign in to
+  // continue" screen below is only the quiet fallback if the modal can't open or the user dismisses it.
+  const autoPrompted = React.useRef(false);
+  React.useEffect(() => {
+    if (isAuthed) { autoPrompted.current = false; return; }
+    if (autoPrompted.current) return;
+    autoPrompted.current = true;
+    requestAuth("Sign in to book this session.");
+  }, [isAuthed, requestAuth]);
 
   // Run API confirmation for an ALREADY-submitted transaction. Pure resume — never submits a transfer.
   const runConfirm = React.useCallback(async (holdId: string, txHash: string, walletAttachmentId: string) => {

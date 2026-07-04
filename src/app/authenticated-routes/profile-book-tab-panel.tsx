@@ -2,7 +2,8 @@
 
 import * as React from "react";
 
-import { useApi } from "@/lib/api";
+import { useSession } from "@/lib/api/session-store";
+import { useRequestAuth } from "@/hooks/use-request-auth";
 import { ProfileBookPanel } from "@/components/compositions/bookings/profile-book-panel/profile-book-panel";
 import type { IanaTz, ResolvedSlot } from "@/components/compositions/bookings/view-models";
 
@@ -20,55 +21,41 @@ function checkoutPathForSlot(hostUserId: string, slot: ResolvedSlot): string {
 }
 
 /**
- * Connected content for the profile Calendar tab. Fetches the host's global availability and
- * renders it. For a **viewer**, a slot tap routes into the canonical global checkout
- * (`/book/:host/checkout`). For the **owner**, the same calendar renders read-only with an
- * "Edit schedule" action. No money moves here — checkout owns pay-in.
+ * Presentational content for the profile Book tab. Availability is PRELOADED by the profile container
+ * (see useHostAvailability) and passed in as slots/loading, so this tab renders immediately without its
+ * own fetch. For a **viewer**, a slot tap follows the checkout href when signed in, or is intercepted
+ * into the Privy sign-in modal when logged out (never a bare navigation to a would-be 401 checkout).
+ * For the **owner**, the same calendar renders read-only with an "Edit schedule" action.
  */
 export function ProfileBookTabPanel({
   hostUserId,
   owner,
+  slots,
+  loading,
 }: {
   hostUserId: string;
   owner?: { configured: boolean; onEdit: () => void };
+  slots: ResolvedSlot[];
+  loading: boolean;
 }): React.ReactElement {
-  const api = useApi();
   const tz = React.useMemo(viewerTimezone, []);
-  const [slots, setSlots] = React.useState<ResolvedSlot[]>([]);
-  const [loading, setLoading] = React.useState(true);
-
-  const needsSlots = !owner || owner.configured;
-  React.useEffect(() => {
-    if (!needsSlots) {
-      setLoading(false);
-      return;
-    }
-    let active = true;
-    // Clear stale slots and show a loading state so we never flash "no availability" before the fetch.
-    setLoading(true);
-    setSlots([]);
-    void (async () => {
-      try {
-        const from = new Date().toISOString();
-        const to = new Date(Date.now() + 14 * 86_400_000).toISOString();
-        const res = await api.bookings.listBookingSlots(hostUserId, { from, to, tz });
-        if (active) setSlots(res.slots as ResolvedSlot[]);
-      } catch {
-        if (active) setSlots([]);
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [api, hostUserId, tz, needsSlots]);
+  const session = useSession();
+  const requestAuth = useRequestAuth();
 
   const cheapest = slots.reduce(
     (min, s) => (s.available && s.priceCents < min ? s.priceCents : min),
     Number.POSITIVE_INFINITY,
   );
   const basePriceCents = Number.isFinite(cheapest) ? cheapest : 0;
+
+  // Logged-out tap → open the sign-in modal instead of following the anchor to a checkout that would
+  // 401. Signed-in taps fall through to the href (checkout).
+  const onSelectSlot = React.useCallback((_slot: ResolvedSlot, event?: React.MouseEvent) => {
+    if (!session?.accessToken) {
+      event?.preventDefault();
+      requestAuth("Sign in to book a session.");
+    }
+  }, [session?.accessToken, requestAuth]);
 
   if (owner) {
     return (
@@ -92,7 +79,7 @@ export function ProfileBookTabPanel({
       loading={loading}
       viewerTimezone={tz as IanaTz}
       getSlotHref={(slot) => checkoutPathForSlot(hostUserId, slot)}
-      onSelectSlot={() => undefined}
+      onSelectSlot={onSelectSlot}
     />
   );
 }

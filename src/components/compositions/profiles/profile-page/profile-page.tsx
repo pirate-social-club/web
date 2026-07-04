@@ -16,7 +16,14 @@ import { CommentsPanel, OverviewPanel, PostsPanel, WalletPanel } from "./profile
 import { ProfileHero } from "./profile-hero";
 import { ProfileRightRail } from "./profile-right-rail";
 
-const VALID_TABS: ProfilePageTab[] = ["overview", "posts", "comments", "wallet", "book"];
+const VALID_TABS: ProfilePageTab[] = ["overview", "posts", "comments", "wallet", "calendar"];
+
+// Legacy alias: profiles shipped with a "#book" anchor before the tab was named Calendar; keep those
+// shared links working by mapping "#book" onto the Calendar tab.
+function normalizeTabHash(rawHash: string): ProfilePageTab | null {
+  const hash = rawHash === "book" ? "calendar" : rawHash;
+  return VALID_TABS.includes(hash as ProfilePageTab) ? (hash as ProfilePageTab) : null;
+}
 const EMPTY_PROFILE_COMMENTS: ProfileCommentItem[] = [];
 const EMPTY_PROFILE_OVERVIEW_ITEMS: ProfileActivityItem[] = [];
 const EMPTY_PROFILE_POSTS: ProfilePostItem[] = [];
@@ -24,15 +31,14 @@ const EMPTY_PROFILE_POSTS: ProfilePostItem[] = [];
 function useHashTab(defaultTab: ProfilePageTab): [ProfilePageTab, (tab: ProfilePageTab) => void] {
   const [tab, setTab] = React.useState<ProfilePageTab>(() => {
     if (typeof window === "undefined") return defaultTab;
-    const hash = window.location.hash.replace(/^#/, "");
-    return VALID_TABS.includes(hash as ProfilePageTab) ? (hash as ProfilePageTab) : defaultTab;
+    return normalizeTabHash(window.location.hash.replace(/^#/, "")) ?? defaultTab;
   });
 
   React.useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace(/^#/, "");
-      if (VALID_TABS.includes(hash as ProfilePageTab)) {
-        setTab(hash as ProfilePageTab);
+      const next = normalizeTabHash(window.location.hash.replace(/^#/, ""));
+      if (next) {
+        setTab(next);
       }
     };
     window.addEventListener("hashchange", handleHashChange);
@@ -129,7 +135,7 @@ export function ProfilePage({
               </FlatTabsTrigger>
             ) : null}
             {hasBookTab ? (
-              <FlatTabsTrigger className={!isMobile ? "min-w-fit px-5" : "px-0"} title={copy.bookTab} value="book">
+              <FlatTabsTrigger className={!isMobile ? "min-w-fit px-5" : "px-0"} title={copy.bookTab} value="calendar">
                 {isMobile ? (
                   <>
                     <CalendarCheck aria-hidden="true" className={mobileTabIconClassName} />
@@ -159,7 +165,7 @@ export function ProfilePage({
             </TabsContent>
           ) : null}
           {hasBookTab ? (
-            <TabsContent className="mt-0" value="book">
+            <TabsContent className="mt-0" value="calendar">
               {bookPanel}
             </TabsContent>
           ) : null}

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import type { WalletHubChainId, WalletHubChainSection } from "@/components/compositions/wallet/wallet-hub/wallet-hub.types";
 
-export type ProfilePageTab = "overview" | "posts" | "comments" | "wallet" | "book";
+export type ProfilePageTab = "overview" | "posts" | "comments" | "wallet" | "calendar";
 
 export interface ProfileHeaderMetaItem {
   label: string;

@@ -20,8 +20,13 @@ mock.module("@/components/auth/privy-provider", () => ({
 mock.module("@/lib/auth-origin", () => ({ isCanonicalAuthOrigin: () => true, buildCanonicalAuthUrl: () => "https://pirate.sc/" }));
 mock.module("@/components/primitives/sonner", () => ({ toast: { error: () => {} } }));
 mock.module("@/app/router", () => ({ navigate }));
+const PageShellStub = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
 mock.module("@/components/compositions/app/page-shell", () => ({
-  StandardRoutePage: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  StandardRoutePage: PageShellStub,
+  StandaloneMobilePage: PageShellStub,
+  ChatRoutePage: PageShellStub,
+  PublicRoutePage: PageShellStub,
+  FullBleedMobileListSection: PageShellStub,
 }));
 
 const { BookingPublicPage } = await import("./booking-public-route");

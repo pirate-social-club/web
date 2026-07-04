@@ -29,8 +29,13 @@ mock.module("@/lib/auth-origin", () => ({
 }));
 mock.module("@/components/primitives/sonner", () => ({ toast: { error: () => {} } }));
 mock.module("@/app/router", () => ({ navigate: () => {} }));
+const PageShellStub = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
 mock.module("@/components/compositions/app/page-shell", () => ({
-  StandardRoutePage: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  StandardRoutePage: PageShellStub,
+  StandaloneMobilePage: PageShellStub,
+  ChatRoutePage: PageShellStub,
+  PublicRoutePage: PageShellStub,
+  FullBleedMobileListSection: PageShellStub,
 }));
 // Pay-time only; stub so importing the route never pulls the on-chain transfer stack into the test.
 mock.module("@/lib/commerce/routed-checkout", () => ({

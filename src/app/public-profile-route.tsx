@@ -87,7 +87,7 @@ export function PublicProfileRoutePage({
   const followState = useProfileFollowState(resolution?.profile.primary_wallet_address ?? null, ownProfile);
   const bookingCtaState = useOwnBookingCta(ownProfile);
 
-  // Preload availability at the container so the Book tab (or a direct #book deep-link) renders slots
+  // Preload availability at the container so the Book tab (or a direct #calendar deep-link) renders slots
   // immediately instead of fetching only once the tab content mounts. Enabled for bookable viewers and
   // owners with a live schedule; null host (still loading) is a no-op.
   const isBookable = Boolean((resolution?.profile as { is_bookable?: boolean } | undefined)?.is_bookable);

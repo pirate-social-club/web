@@ -46,8 +46,21 @@ describe("ProfilePage Book tab visibility", () => {
     expect(t).toContain("Calendar"); // desktop tab label
   });
 
-  test("book panel content mounts when the Book tab is active", () => {
-    const t = render({ defaultTab: "book", bookPanel: <div>BOOKPANEL_MARKER</div> });
+  test("book panel content mounts when the Calendar tab is active", () => {
+    const t = render({ defaultTab: "calendar", bookPanel: <div>BOOKPANEL_MARKER</div> });
     expect(t).toContain("BOOKPANEL_MARKER");
+  });
+
+  test("legacy #book anchor still opens the Calendar tab", () => {
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { hash: "#book", href: "https://pirate.sc/u/ada#book", search: "", pathname: "/u/ada" },
+    });
+    const t = render({ bookPanel: <div>BOOKPANEL_MARKER</div> });
+    expect(t).toContain("BOOKPANEL_MARKER");
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { hash: "", href: "https://pirate.sc/", search: "", pathname: "/" },
+    });
   });
 });

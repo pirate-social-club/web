@@ -12,6 +12,7 @@ import { ContentRailShell } from "@/components/compositions/app/content-rail-she
 import { CommunitySidebar } from "@/components/compositions/community/sidebar/community-sidebar";
 import { PostEventStoreLink } from "@/components/compositions/posts/post-event-store-link";
 import { PostThread } from "@/components/compositions/posts/post-thread/post-thread";
+import { LiveRoomReplayPlayerModal } from "@/components/compositions/posts/live-room-viewer/live-room-replay-player-modal";
 import { LiveRoomViewerModal } from "@/components/compositions/posts/live-room-viewer/live-room-viewer-modal";
 import type { PostThreadReplyIdentity } from "@/components/compositions/posts/post-thread/post-thread.types";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
@@ -37,10 +38,11 @@ import { getProfileHandleLabel } from "@/lib/profile-routing";
 import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
 import { useSongCommerceState, useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
+import { loadLiveRoomReplayPlayback } from "@/app/authenticated-helpers/live-room-replay-playback";
 import { takeStoryLicenseReuseNotice, type StoryLicenseReuseNotice } from "@/app/authenticated-helpers/story-license-reuse-notice";
 import { usePost } from "@/app/authenticated-state/post-state";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
-import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
+import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import { toast } from "@/components/primitives/sonner";
 import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
@@ -175,16 +177,42 @@ export function PostPage({
   const [liveRoomAccess, setLiveRoomAccess] = React.useState<ApiLiveRoomAccessResponse | null>(null);
   const [liveViewerSession, setLiveViewerSession] = React.useState<ApiLiveRoomViewerAttachResponse | null>(null);
   const [liveViewerOpen, setLiveViewerOpen] = React.useState(false);
+  const [replayPlayer, setReplayPlayer] = React.useState<{
+    mimeType: string | null;
+    sourceUrl: string;
+    title: string;
+  } | null>(null);
+  const [replayPlayerOpen, setReplayPlayerOpen] = React.useState(false);
   const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
   const [storyLicenseReuseNotice, setStoryLicenseReuseNotice] = React.useState<StoryLicenseReuseNotice | null>(null);
   const autoWatchAttemptedRef = React.useRef(false);
   const inlineLiveViewerAttemptedRef = React.useRef<string | null>(null);
   const liveViewerAttachInFlightRef = React.useRef(false);
   const liveRoomGuestInviteAcceptInFlightRef = React.useRef(false);
+  const replayObjectUrlsRef = React.useRef<Set<string>>(new Set());
 
   React.useEffect(() => {
     setStoryLicenseReuseNotice(takeStoryLicenseReuseNotice(postId));
   }, [postId]);
+  React.useEffect(() => () => {
+    for (const url of replayObjectUrlsRef.current) {
+      URL.revokeObjectURL(url);
+    }
+    replayObjectUrlsRef.current.clear();
+  }, []);
+
+  const handleReplayPlayerOpenChange = React.useCallback((open: boolean) => {
+    setReplayPlayerOpen(open);
+    if (open) return;
+
+    setReplayPlayer((current) => {
+      if (current) {
+        URL.revokeObjectURL(current.sourceUrl);
+        replayObjectUrlsRef.current.delete(current.sourceUrl);
+      }
+      return null;
+    });
+  }, []);
   const autoWatchLiveRoom = React.useMemo(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("watch_live_room") === "1";
@@ -212,6 +240,9 @@ export function PostPage({
     verificationIntent: "community_join",
   });
   const authRuntime = usePiratePrivyRuntime();
+  const { connectedWallets } = usePiratePrivyWallets({
+    enabled: Boolean(session?.accessToken && activeLiveRoomId),
+  });
 
   const requestAuth = React.useCallback((fallbackMessage: string) => {
     if (!isCanonicalAuthOrigin()) {
@@ -422,6 +453,7 @@ export function PostPage({
   const {
     listingsByAssetId,
     listingsByLiveRoomId,
+    listingsByReplayAssetId,
     purchasesByAssetId,
     purchasesByLiveRoomId,
     refresh: refreshSongCommerce,
@@ -465,6 +497,23 @@ export function PostPage({
       titleText,
     });
   }, [buySong, requestAuth, session?.accessToken]);
+  const handleBuyReplay = React.useCallback(async (
+    listing: ApiCommunityListing,
+    titleText: string,
+    nextCommunityId: string,
+  ) => {
+    if (!session?.accessToken) {
+      requestAuth("Connect your wallet to buy this replay.");
+      return;
+    }
+    await buySong({
+      assetLabel: "replay",
+      communityId: nextCommunityId,
+      listing,
+      successMessage: ({ settlement, titleText: nextTitle }) => `${nextTitle} replay purchased for $${(settlement.purchase_price_cents / 100).toFixed(2)}.`,
+      titleText,
+    });
+  }, [buySong, requestAuth, session?.accessToken]);
   const handlePromptLiveTicketAuth = React.useCallback(() => {
     requestAuth("Connect your wallet to buy a ticket for this live room.");
   }, [requestAuth]);
@@ -482,6 +531,85 @@ export function PostPage({
     }
     navigate(`/p/${encodeURIComponent(postId)}/study`);
   }, [hasSession, postId, requestAuth]);
+
+  const openReplayBlob = React.useCallback((blob: Blob, title: string) => {
+    if (typeof window === "undefined") return;
+    const objectUrl = URL.createObjectURL(blob);
+    replayObjectUrlsRef.current.add(objectUrl);
+    setReplayPlayer((current) => {
+      if (current) {
+        URL.revokeObjectURL(current.sourceUrl);
+        replayObjectUrlsRef.current.delete(current.sourceUrl);
+      }
+      return {
+        mimeType: blob.type || null,
+        sourceUrl: objectUrl,
+        title,
+      };
+    });
+    setReplayPlayerOpen(true);
+  }, []);
+
+  const handleWatchReplay = React.useCallback(async () => {
+    if (!community?.id || !activeLiveRoomId) return;
+
+    try {
+      const playback = await loadLiveRoomReplayPlayback({
+        accessToken: session?.accessToken ?? null,
+        api: session?.accessToken ? api.communities : api.publicCommunities,
+        communityId: community.id,
+        liveRoomId: activeLiveRoomId,
+        wallet: connectedWallets[0] ?? null,
+      });
+
+      if (playback.kind === "purchase_required") {
+        const listing = playback.replayListing
+          ?? (playback.replayAsset ? listingsByReplayAssetId[playback.replayAsset] : undefined);
+        if (listing) {
+          await handleBuyReplay(listing, liveRoomAccess?.room.title ?? post?.post.title ?? "Replay", community.id);
+        } else {
+          toast.error("Purchase setup is incomplete for this replay.");
+        }
+        return;
+      }
+      if (playback.kind === "delivery_pending") {
+        toast.error("This replay is still being prepared.");
+        return;
+      }
+      if (playback.kind === "not_published") {
+        toast.error("This replay has not been published yet.");
+        return;
+      }
+      if (playback.kind === "wallet_required") {
+        authRuntime.reconnectEthereumWallet?.();
+        authRuntime.connect?.();
+        toast.error("Connect a wallet to unlock this replay.");
+        return;
+      }
+      if (playback.kind !== "ready") {
+        toast.error("This replay is not available.");
+        return;
+      }
+      const replayTitle = liveRoomAccess?.room.title ?? post?.post.title ?? "Replay";
+      openReplayBlob(playback.blob, replayTitle);
+    } catch (watchError) {
+      toast.error(getErrorMessage(watchError, "Could not watch this replay."));
+    }
+  }, [
+    activeLiveRoomId,
+    api.communities,
+    api.publicCommunities,
+    authRuntime,
+    community?.id,
+    connectedWallets,
+    handleBuyReplay,
+    listingsByReplayAssetId,
+    liveRoomAccess?.room.title,
+    openReplayBlob,
+    post?.post.title,
+    requestAuth,
+    session?.accessToken,
+  ]);
 
   const attachLiveRoomViewer = React.useCallback(async (options?: { openModal?: boolean }) => {
     if (!community?.id || !activeLiveRoomId) return;
@@ -569,8 +697,13 @@ export function PostPage({
   ]);
 
   const handleWatchLiveRoom = React.useCallback(async () => {
+    const access = liveRoomAccess ?? await refreshLiveRoomAccess();
+    if (access?.room.status === "ended" && access.room.replay_status === "published") {
+      await handleWatchReplay();
+      return;
+    }
     await attachLiveRoomViewer({ openModal: true });
-  }, [attachLiveRoomViewer]);
+  }, [attachLiveRoomViewer, handleWatchReplay, liveRoomAccess, refreshLiveRoomAccess]);
 
   const handleAcceptLiveRoomGuestInvite = React.useCallback(async () => {
     if (!community?.id || !activeLiveRoomId) return;
@@ -860,6 +993,9 @@ export function PostPage({
         liveRoomAccess?.room.title ?? post.post.title ?? "Live room",
         community.id,
       ) : unauthenticatedLiveTicketRequired ? handlePromptLiveTicketAuth : undefined,
+      onReviewReplay: viewerIsLiveRoomHost
+        ? () => navigate(`/p/${encodeURIComponent(postId)}/replay`)
+        : undefined,
       onWatch: () => void handleWatchLiveRoom(),
       onViewerRenew: handleRenewLiveRoomViewer,
       participants: buildLiveRoomParticipants({
@@ -971,6 +1107,13 @@ export function PostPage({
         />
       ) : null}
       {purchaseModal}
+      <LiveRoomReplayPlayerModal
+        mimeType={replayPlayer?.mimeType}
+        onOpenChange={handleReplayPlayerOpenChange}
+        open={replayPlayerOpen}
+        sourceUrl={replayPlayer?.sourceUrl ?? null}
+        title={replayPlayer?.title ?? liveRoomAccess?.room.title ?? post.post.title ?? "Replay"}
+      />
       <LiveRoomViewerModal
         attachResponse={liveViewerSession}
         onOpenChange={setLiveViewerOpen}

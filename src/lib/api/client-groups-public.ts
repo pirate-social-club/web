@@ -10,6 +10,7 @@ import type {
 
 import type {
   ApiLiveRoomAccessResponse,
+  ApiLiveRoomReplayAccessResponse,
   ApiLiveRoomViewerAttachResponse,
   ApiLiveRoomViewerRenewRequest,
   ApiProfileMediaUploadResponse,
@@ -174,6 +175,16 @@ export function createPublicCommunitiesApi(request: ApiRequest) {
       publicGet<ApiLiveRoomAccessResponse>(
         request,
         `/public-communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/access`,
+      ),
+    getLiveRoomReplayAccess: (communityId: string, liveRoomId: string): Promise<ApiLiveRoomReplayAccessResponse> =>
+      publicGet<ApiLiveRoomReplayAccessResponse>(
+        request,
+        `/public-communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/replay/access`,
+      ),
+    getLiveRoomReplayContent: (communityId: string, liveRoomId: string): Promise<Response> =>
+      request<Response>(
+        `/public-communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/replay/content`,
+        { responseType: "response", tokenRequired: false },
       ),
     viewerAttachLiveRoom: (communityId: string, liveRoomId: string): Promise<ApiLiveRoomViewerAttachResponse> =>
       request<ApiLiveRoomViewerAttachResponse>(

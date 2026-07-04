@@ -395,6 +395,105 @@ describe("PostCard", () => {
     expect(gatedMarkup).not.toContain("Watch live");
   });
 
+  test("renders ended live-room replay states", () => {
+    const publishedMarkup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{ author: { kind: "user", label: "u/artist" }, timestampLabel: "1h" }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "ended",
+            endedAtLabel: "1h",
+            hasEntitlement: true,
+            liveRoomId: "lr_replay_published",
+            onWatch: () => undefined,
+            replayDurationLabel: "48 min",
+            replayStatus: "published",
+            status: "ended",
+            title: "Replay concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(publishedMarkup).toContain("Watch replay");
+    expect(publishedMarkup).toContain("Ended 1h ago");
+    expect(publishedMarkup).not.toContain("ago ago");
+    expect(publishedMarkup).toContain("48 min");
+    expect(publishedMarkup).not.toContain("48 min replay");
+
+    const paidLockedMarkup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{ author: { kind: "user", label: "u/artist" }, timestampLabel: "1h" }}
+          content={{
+            type: "live_room",
+            accessMode: "paid",
+            accessState: "ended",
+            endedAtLabel: "1h",
+            hasEntitlement: false,
+            liveRoomId: "lr_replay_paid",
+            priceLabel: "$12.00",
+            replayDurationLabel: "48 min",
+            replayStatus: "published",
+            status: "ended",
+            title: "Paid replay concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(paidLockedMarkup).toContain("Buy $12.00");
+    expect(paidLockedMarkup).not.toContain("Watch replay");
+
+    const reviewMarkup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{ author: { kind: "user", label: "u/artist" }, timestampLabel: "1h" }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "ended",
+            liveRoomId: "lr_replay_review",
+            replayStatus: "review_pending",
+            status: "ended",
+            title: "Review replay concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(reviewMarkup).toContain("Replay under review");
+
+    const failedMarkup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{ author: { kind: "user", label: "u/artist" }, timestampLabel: "1h" }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "ended",
+            liveRoomId: "lr_replay_failed",
+            replayStatus: "failed",
+            status: "ended",
+            title: "Failed replay concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(failedMarkup).toContain("Replay unavailable");
+  });
+
   test("does not render age-gated live-room cover source before proof", () => {
     const markup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">

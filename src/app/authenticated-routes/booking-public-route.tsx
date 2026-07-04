@@ -9,6 +9,9 @@ import { Type } from "@/components/primitives/type";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
+import { useSession } from "@/lib/api/session-store";
+import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
+import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import type { ResolvedSlot, SlotsResponse } from "@/lib/api/bookings-types";
 
 function viewerTimezone(): string {
@@ -24,6 +27,8 @@ function priceLabel(cents: number): string { return `${(cents / 100).toFixed(2)}
 
 export function BookingPublicPage({ communityId, hostUserId }: { communityId: string | null; hostUserId: string }): React.ReactElement {
   const api = useApi();
+  const session = useSession();
+  const authRuntime = usePiratePrivyRuntime();
   const tz = React.useMemo(viewerTimezone, []);
   const [data, setData] = React.useState<SlotsResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -52,14 +57,31 @@ export function BookingPublicPage({ communityId, hostUserId }: { communityId: st
     return () => window.removeEventListener("focus", onFocus);
   }, [load]);
 
+  // Booking creates a hold + quote against authenticated APIs, so a logged-out tap must prompt sign-in
+  // (Privy) rather than route to a checkout that would 401 into "Authentication failed". Same auth-prompt
+  // pattern the post/live-ticket flows use.
+  const requestAuth = React.useCallback((message: string) => {
+    if (!isCanonicalAuthOrigin()) {
+      const canonicalUrl = buildCanonicalAuthUrl();
+      toast.error(message, { action: { label: "Open in Pirate", onClick: () => { window.location.href = canonicalUrl; } } });
+      return;
+    }
+    if (authRuntime.connect) { authRuntime.connect(); return; }
+    toast.error(authRuntime.loadError ?? message);
+  }, [authRuntime.connect, authRuntime.loadError]);
+
   const onPickSlot = React.useCallback((slot: ResolvedSlot) => {
+    if (!session?.accessToken) {
+      requestAuth("Sign in to book a session.");
+      return;
+    }
     // Hand off to checkout, which re-validates availability and creates the hold authoritatively.
     const q = new URLSearchParams({ start: slot.startUtc, end: slot.endUtc, price: String(slot.priceCents) });
     const base = communityId
       ? `/c/${encodeURIComponent(communityId)}/book/${encodeURIComponent(hostUserId)}`
       : `/book/${encodeURIComponent(hostUserId)}`;
     navigate(`${base}/checkout?${q.toString()}`);
-  }, [communityId, hostUserId]);
+  }, [communityId, hostUserId, session?.accessToken, requestAuth]);
 
   const grouped = React.useMemo(() => {
     const map = new Map<string, ResolvedSlot[]>();

@@ -14,12 +14,20 @@ let fakeApi: {
     confirmBookingHold: ReturnType<typeof mock>;
   };
 };
+// Controllable per-test: an authed session (default) or null (logged out).
+let fakeSession: unknown = null;
 
 mock.module("@/lib/api", () => ({ useApi: () => fakeApi }));
-mock.module("@/lib/api/session-store", () => ({
-  useSession: () => ({ user: { primary_wallet_attachment: "wa_1" }, profile: { primary_wallet_address: "0x1" } }),
+mock.module("@/lib/api/session-store", () => ({ useSession: () => fakeSession }));
+mock.module("@/components/auth/privy-provider", () => ({
+  usePiratePrivyWallets: () => ({ connectedWallets: [] }),
+  usePiratePrivyRuntime: () => ({ connect: () => {}, loadError: null }),
 }));
-mock.module("@/components/auth/privy-provider", () => ({ usePiratePrivyWallets: () => ({ connectedWallets: [] }) }));
+mock.module("@/lib/auth-origin", () => ({
+  isCanonicalAuthOrigin: () => true,
+  buildCanonicalAuthUrl: () => "https://pirate.sc/",
+}));
+mock.module("@/components/primitives/sonner", () => ({ toast: { error: () => {} } }));
 mock.module("@/app/router", () => ({ navigate: () => {} }));
 mock.module("@/components/compositions/app/page-shell", () => ({
   StandardRoutePage: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -81,6 +89,7 @@ beforeEach(() => {
     configurable: true,
     value: { search: "?start=2099-01-05T10:00:00.000Z&end=2099-01-05T10:30:00.000Z" },
   });
+  fakeSession = { accessToken: "tok", user: { primary_wallet_attachment: "wa_1" }, profile: { primary_wallet_address: "0x1" } };
   fakeApi = {
     bookings: {
       createBookingHold: mock(async () => ({ hold: hold() })),
@@ -104,5 +113,17 @@ describe("BookingCheckoutPage", () => {
     });
     expect(document.body.textContent).toContain("50.00 USDC");
     expect((document.body.textContent ?? "").includes("expired")).toBe(false);
+  });
+
+  // Logged out: must show a sign-in prompt and NEVER hit the authenticated hold API (which would 401
+  // into "Authentication failed").
+  test("prompts sign-in and creates no hold when logged out", async () => {
+    fakeSession = null;
+    render(<BookingCheckoutPage communityId={null} hostUserId="usr_host" />);
+    await waitFor(() => {
+      expect(document.body.textContent).toContain("Sign in to book this session.");
+    });
+    expect((document.body.textContent ?? "").includes("Authentication failed")).toBe(false);
+    expect(fakeApi.bookings.createBookingHold).not.toHaveBeenCalled();
   });
 });

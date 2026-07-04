@@ -823,7 +823,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "walletTitle": "Wallet",
         "setUpBookings": "Set up bookings",
         "manageBookings": "Manage bookings",
-        "bookTab": "Calendar",
+        "bookTab": "Book",
         "bookPriceLabel": "{price} USDC per session",
         "bookNoAvailability": "No available times right now — check back soon.",
         "bookOwnerLiveNote": "Your bookings are live. Anyone with your profile link can book an available slot.",

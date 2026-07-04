@@ -4,13 +4,15 @@ import * as React from "react";
 
 import { navigate } from "@/app/router";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
-import { usePiratePrivyWallets } from "@/components/auth/privy-provider";
+import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
+import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
 import type { BookingHold, BookingQuote } from "@/lib/api/bookings-types";
 import { useSession } from "@/lib/api/session-store";
+import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import {
   executeUsdcTransfer,
   findConnectedFundingWallet,
@@ -110,6 +112,8 @@ function useCountdown(expiresAtUtc: string | null): number {
 export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: string | null; hostUserId: string }): React.ReactElement {
   const api = useApi();
   const session = useSession();
+  const authRuntime = usePiratePrivyRuntime();
+  const isAuthed = Boolean(session?.accessToken);
   const { connectedWallets } = usePiratePrivyWallets({ enabled: true });
   const tz = React.useMemo(viewerTz, []);
   const [phase, setPhase] = React.useState<Phase>({ kind: "holding" });
@@ -125,6 +129,16 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
       ? `/c/${encodeURIComponent(communityId)}/book/${encodeURIComponent(hostUserId)}`
       : `/book/${encodeURIComponent(hostUserId)}`);
   }, [communityId, hostUserId]);
+
+  const requestAuth = React.useCallback((message: string) => {
+    if (!isCanonicalAuthOrigin()) {
+      const canonicalUrl = buildCanonicalAuthUrl();
+      toast.error(message, { action: { label: "Open in Pirate", onClick: () => { window.location.href = canonicalUrl; } } });
+      return;
+    }
+    if (authRuntime.connect) { authRuntime.connect(); return; }
+    toast.error(authRuntime.loadError ?? message);
+  }, [authRuntime.connect, authRuntime.loadError]);
 
   // Run API confirmation for an ALREADY-submitted transaction. Pure resume — never submits a transfer.
   const runConfirm = React.useCallback(async (holdId: string, txHash: string, walletAttachmentId: string) => {
@@ -158,6 +172,9 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
 
   // Mount: resume from persisted state (confirm-only) or create a fresh hold + quote.
   React.useEffect(() => {
+    // Never touch the authenticated hold/quote APIs while logged out — the render shows a sign-in state
+    // instead. Once the user signs in (session.accessToken appears), isAuthed flips and this re-runs.
+    if (!isAuthed) return;
     if (!slotStart || !slotEnd) {
       setPhase({ kind: "failed", message: "No slot selected. Please go back and pick a time." });
       return;
@@ -205,7 +222,7 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
       }
     })();
     return () => { cancelled = true; };
-  }, [api, communityId, hostUserId, slotStart, slotEnd, key, runConfirm]);
+  }, [api, communityId, hostUserId, slotStart, slotEnd, key, runConfirm, isAuthed]);
 
   const expiresAt = phase.kind === "quoted" ? phase.quote.expires_at_utc : null;
   const countdown = useCountdown(expiresAt);
@@ -268,6 +285,25 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
       await runConfirm(hold.hold_id, submittedHash, walletAttachmentId);
     }
   }, [api, connectedWallets, session, key, runConfirm]);
+
+  // Logged out: prompt sign-in instead of firing authenticated hold/quote (which would 401 into
+  // "Authentication failed"). After sign-in, session.accessToken appears → the mount effect proceeds.
+  if (!isAuthed) {
+    return (
+      <StandardRoutePage size="rail">
+        <div className="mx-auto max-w-2xl space-y-6 p-6">
+          <Type as="h1" variant="h2">Confirm booking</Type>
+          <div className="space-y-4">
+            <Type variant="body">Sign in to book this session.</Type>
+            <div className="flex gap-2">
+              <Button onClick={() => requestAuth("Sign in to book a session.")}>Sign in</Button>
+              <Button variant="outline" onClick={backToAvailability}>Back to availability</Button>
+            </div>
+          </div>
+        </div>
+      </StandardRoutePage>
+    );
+  }
 
   return (
     <StandardRoutePage size="rail">

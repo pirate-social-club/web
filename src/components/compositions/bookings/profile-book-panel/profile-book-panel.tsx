@@ -24,7 +24,7 @@ export interface ProfileBookPanelViewerProps {
   loading?: boolean;
   viewerTimezone: IanaTz;
   getSlotHref?: (slot: ResolvedSlot) => string;
-  onSelectSlot: (slot: ResolvedSlot) => void;
+  onSelectSlot: (slot: ResolvedSlot, event?: React.MouseEvent) => void;
   className?: string;
 }
 

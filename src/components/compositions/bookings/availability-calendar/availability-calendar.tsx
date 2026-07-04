@@ -18,7 +18,7 @@ export interface AvailabilityCalendarProps {
   viewerTimezone: IanaTz;
   selectedStartUtc?: IsoInstant;
   getSlotHref?: (slot: ResolvedSlot) => string;
-  onSelectSlot?: (slot: ResolvedSlot) => void;
+  onSelectSlot?: (slot: ResolvedSlot, event?: React.MouseEvent) => void;
   className?: string;
 }
 
@@ -132,7 +132,9 @@ export function AvailabilityCalendar({
                     key={slot.startUtc}
                     className={slotClassName}
                     href={href}
-                    onClick={() => onSelectSlot?.(slot)}
+                    // Pass the event so callers can preventDefault (e.g. gate a logged-out tap into the
+                    // sign-in modal instead of following the link to checkout).
+                    onClick={(event) => onSelectSlot?.(slot, event)}
                   >
                     {content}
                   </a>
@@ -141,7 +143,7 @@ export function AvailabilityCalendar({
                     key={slot.startUtc}
                     className={slotClassName}
                     disabled={!slot.available}
-                    onClick={() => onSelectSlot?.(slot)}
+                    onClick={(event) => onSelectSlot?.(slot, event)}
                     type="button"
                   >
                     {content}

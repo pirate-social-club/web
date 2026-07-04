@@ -17,6 +17,7 @@ import { ProfilePage as ProfilePageComposition } from "@/components/compositions
 import { apiProfileToProps } from "./authenticated-helpers/profile-settings-mapping";
 import { useOwnBookingCta } from "@/app/authenticated-state/use-own-booking-cta";
 import { ProfileBookTabPanel } from "./authenticated-routes/profile-book-tab-panel";
+import { useHostAvailability } from "@/hooks/use-host-availability";
 import { navigate } from "@/app/router";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
 
@@ -85,6 +86,13 @@ export function PublicProfileRoutePage({
   const ownProfile = Boolean(session?.profile.id && resolution?.profile.id === session.profile.id);
   const followState = useProfileFollowState(resolution?.profile.primary_wallet_address ?? null, ownProfile);
   const bookingCtaState = useOwnBookingCta(ownProfile);
+
+  // Preload availability at the container so the Book tab (or a direct #book deep-link) renders slots
+  // immediately instead of fetching only once the tab content mounts. Enabled for bookable viewers and
+  // owners with a live schedule; null host (still loading) is a no-op.
+  const isBookable = Boolean((resolution?.profile as { is_bookable?: boolean } | undefined)?.is_bookable);
+  const availabilityEnabled = ownProfile ? bookingCtaState === "manage" : isBookable;
+  const { slots: bookingSlots, loading: bookingLoading } = useHostAvailability(resolution?.profile.id ?? null, availabilityEnabled);
 
   React.useEffect(() => {
     if (!resolution) {
@@ -186,13 +194,12 @@ export function PublicProfileRoutePage({
   }
 
   const messageTarget = !ownProfile ? resolution.profile.primary_wallet_address : null;
-  const isBookable = Boolean((resolution.profile as { is_bookable?: boolean }).is_bookable);
   const bookPanel = ownProfile
     ? (bookingCtaState
-        ? <ProfileBookTabPanel hostUserId={resolution.profile.id} owner={{ configured: bookingCtaState === "manage", onEdit: () => navigate("/settings/bookings") }} />
+        ? <ProfileBookTabPanel hostUserId={resolution.profile.id} owner={{ configured: bookingCtaState === "manage", onEdit: () => navigate("/settings/bookings") }} slots={bookingSlots} loading={bookingLoading} />
         : undefined)
     : (isBookable
-        ? <ProfileBookTabPanel hostUserId={resolution.profile.id} />
+        ? <ProfileBookTabPanel hostUserId={resolution.profile.id} slots={bookingSlots} loading={bookingLoading} />
         : undefined);
 
   return (

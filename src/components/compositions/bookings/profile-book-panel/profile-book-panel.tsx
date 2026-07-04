@@ -20,6 +20,8 @@ export interface ProfileBookPanelViewerProps {
   mode: "viewer";
   basePriceCents: number;
   slots: ResolvedSlot[];
+  /** Availability is still loading — show a loading hint instead of the empty state. */
+  loading?: boolean;
   viewerTimezone: IanaTz;
   getSlotHref?: (slot: ResolvedSlot) => string;
   onSelectSlot: (slot: ResolvedSlot) => void;
@@ -32,6 +34,8 @@ export interface ProfileBookPanelOwnerProps {
   configured: boolean;
   basePriceCents: number;
   slots: ResolvedSlot[];
+  /** Availability is still loading — show a loading hint instead of the empty state. */
+  loading?: boolean;
   viewerTimezone: IanaTz;
   onEdit: () => void;
   className?: string;
@@ -63,7 +67,9 @@ export function ProfileBookPanel(props: ProfileBookPanelProps) {
           <Type as="p" variant="body-strong">{copy.ownerAvailabilityTitle}</Type>
           <Button variant="outline" size="sm" type="button" onClick={props.onEdit}>{copy.editSchedule}</Button>
         </div>
-        {props.slots.length === 0 ? (
+        {props.loading ? (
+          <Type as="p" variant="caption" className="text-muted-foreground">Loading availability…</Type>
+        ) : props.slots.length === 0 ? (
           <Type as="p" variant="caption" className="text-muted-foreground">{copy.bookNoAvailability}</Type>
         ) : (
           // Read-only for the owner (no slot tap).
@@ -78,7 +84,9 @@ export function ProfileBookPanel(props: ProfileBookPanelProps) {
       <Type as="p" variant="body-strong">
         {copy.bookPriceLabel.replace("{price}", formatUsd(props.basePriceCents))}
       </Type>
-      {props.slots.length === 0 ? (
+      {props.loading ? (
+        <Type as="p" variant="caption" className="text-muted-foreground">Loading availability…</Type>
+      ) : props.slots.length === 0 ? (
         <Type as="p" variant="caption" className="text-muted-foreground">{copy.bookNoAvailability}</Type>
       ) : (
         <AvailabilityCalendar

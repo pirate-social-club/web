@@ -67,4 +67,17 @@ describe("ProfileBookPanel", () => {
     const t = text({ mode: "viewer", basePriceCents: 5000, slots: [], viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} });
     expect(t).toContain("No available times right now");
   });
+
+  // Prevents the flash: while availability is loading, show a loading hint, never the empty state.
+  test("viewer loading → loading hint, not empty state", () => {
+    const t = text({ mode: "viewer", loading: true, basePriceCents: 5000, slots: [], viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} });
+    expect(t).toContain("Loading availability…");
+    expect(t).not.toContain("No available times");
+  });
+
+  test("owner configured + loading → loading hint, not empty state", () => {
+    const t = text({ mode: "owner", configured: true, loading: true, basePriceCents: 5000, slots: [], viewerTimezone: "Europe/Vienna" as never, onEdit: () => {} });
+    expect(t).toContain("Loading availability…");
+    expect(t).not.toContain("No available times");
+  });
 });

@@ -35,11 +35,18 @@ export function ProfileBookTabPanel({
   const api = useApi();
   const tz = React.useMemo(viewerTimezone, []);
   const [slots, setSlots] = React.useState<ResolvedSlot[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
   const needsSlots = !owner || owner.configured;
   React.useEffect(() => {
-    if (!needsSlots) return;
+    if (!needsSlots) {
+      setLoading(false);
+      return;
+    }
     let active = true;
+    // Clear stale slots and show a loading state so we never flash "no availability" before the fetch.
+    setLoading(true);
+    setSlots([]);
     void (async () => {
       try {
         const from = new Date().toISOString();
@@ -48,6 +55,8 @@ export function ProfileBookTabPanel({
         if (active) setSlots(res.slots as ResolvedSlot[]);
       } catch {
         if (active) setSlots([]);
+      } finally {
+        if (active) setLoading(false);
       }
     })();
     return () => {
@@ -68,6 +77,7 @@ export function ProfileBookTabPanel({
         configured={owner.configured}
         basePriceCents={basePriceCents}
         slots={slots}
+        loading={loading}
         viewerTimezone={tz as IanaTz}
         onEdit={owner.onEdit}
       />
@@ -79,6 +89,7 @@ export function ProfileBookTabPanel({
       mode="viewer"
       basePriceCents={basePriceCents}
       slots={slots}
+      loading={loading}
       viewerTimezone={tz as IanaTz}
       getSlotHref={(slot) => checkoutPathForSlot(hostUserId, slot)}
       onSelectSlot={() => undefined}

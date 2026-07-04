@@ -79,8 +79,9 @@ export function AvailabilityCalendar({
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
-      <div className="flex items-center justify-between">
-        <Type variant="label">Times in {formatTzLabel(viewerTimezone)}</Type>
+      <div className="flex items-center justify-between gap-3">
+        <Type variant="label">Available times</Type>
+        <Type variant="caption" className="text-muted-foreground">{formatTzLabel(viewerTimezone)} time</Type>
       </div>
       <div className="flex flex-col gap-4">
         {dayGroups.map((day) => (

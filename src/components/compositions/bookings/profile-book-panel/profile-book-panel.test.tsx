@@ -44,9 +44,10 @@ describe("ProfileBookPanel", () => {
     expect(t).not.toContain("Your availability");
   });
 
-  test("viewer with slots → price + availability rendered", () => {
+  test("viewer with slots → availability calendar rendered (no redundant price header)", () => {
     const t = text({ mode: "viewer", basePriceCents: 5000, slots: SLOTS, viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} });
-    expect(t).toContain("50.00 USDC per session");
+    expect(t).toContain("Available times"); // calendar header
+    expect(t).not.toContain("per session"); // the redundant "{price} USDC per session" header is gone
     expect(t).not.toContain("No available times");
   });
 

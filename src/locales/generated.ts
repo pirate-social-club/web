@@ -4295,7 +4295,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "walletTitle": "钱包",
         "setUpBookings": "设置预约",
         "manageBookings": "管理预约",
-        "bookTab": "日历",
+        "bookTab": "预约",
         "bookPriceLabel": "每场 {price} USDC",
         "bookNoAvailability": "目前没有可预约时间 — 请稍后再查看。",
         "bookOwnerLiveNote": "你的预约已上线。拥有你个人资料链接的任何人都可以预约可用时段。",

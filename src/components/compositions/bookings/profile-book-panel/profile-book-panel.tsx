@@ -12,10 +12,6 @@ import { cn } from "@/lib/utils";
 import { AvailabilityCalendar } from "@/components/compositions/bookings/availability-calendar/availability-calendar";
 import type { IanaTz, ResolvedSlot } from "@/components/compositions/bookings/view-models";
 
-function formatUsd(cents: number): string {
-  return (Math.max(0, Math.round(cents)) / 100).toFixed(2);
-}
-
 export interface ProfileBookPanelViewerProps {
   mode: "viewer";
   basePriceCents: number;
@@ -81,9 +77,6 @@ export function ProfileBookPanel(props: ProfileBookPanelProps) {
 
   return (
     <div className={cn("space-y-4", props.className)}>
-      <Type as="p" variant="body-strong">
-        {copy.bookPriceLabel.replace("{price}", formatUsd(props.basePriceCents))}
-      </Type>
       {props.loading ? (
         <Type as="p" variant="caption" className="text-muted-foreground">Loading availability…</Type>
       ) : props.slots.length === 0 ? (

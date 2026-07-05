@@ -76,6 +76,7 @@ let publicPostError: unknown = null;
 let studyResult: SongStudyPayload = readyStudyPayload();
 let studyError: unknown = null;
 let privyConnectCalls = 0;
+let submitPostStudyAttemptError: unknown = null;
 let submitPostStudyAttemptResult = {
   attempts_remaining: 0,
   correct_option_id: "option_correct",
@@ -106,6 +107,7 @@ fakeApi.communities.getPostStudy = async () => {
 };
 fakeApi.communities.submitPostStudyAttempt = async (_communityId, _postId, body) => {
   calls.push(`communities.submitPostStudyAttempt:${body.type}:${body.type === "translation_choice" ? body.selected_option_id : ""}`);
+  if (submitPostStudyAttemptError) throw submitPostStudyAttemptError;
   return submitPostStudyAttemptResult;
 };
 
@@ -168,6 +170,7 @@ beforeEach(() => {
   studyResult = readyStudyPayload();
   studyError = null;
   privyConnectCalls = 0;
+  submitPostStudyAttemptError = null;
   submitPostStudyAttemptResult = {
     attempts_remaining: 0,
     correct_option_id: "option_correct",
@@ -273,5 +276,36 @@ describe("StudyRoutePage", () => {
 
     await waitFor(() => expect(calls).toContain("communities.submitPostStudyAttempt:translation_choice:option_correct"));
     await waitFor(() => expect(view.getByText("Continue")).toBeTruthy());
+  });
+
+  test("keeps the multiple choice exercise visible when attempt recording fails", async () => {
+    submitPostStudyAttemptError = new ApiError("server_error", "recording failed", 500);
+    studyResult = readyStudyPayload({
+      exercise_count: 1,
+      exercises: [
+        {
+          id: "ex_choice",
+          line_id: "line_1",
+          line_index: 0,
+          max_attempts: 1,
+          options: [
+            { id: "option_wrong", text: "Good night" },
+            { id: "option_correct", text: "Hello world" },
+          ],
+          prompt_text: "Hola mundo",
+          question: "Choose the translation",
+          type: "translation_choice",
+        },
+      ],
+    });
+
+    const view = render(<StudyRoutePage postId="pst_song" />);
+
+    await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
+    fireEvent.click(view.getByText("Hello world").closest("button")!);
+
+    await waitFor(() => expect(view.getByText("recording failed")).toBeTruthy());
+    expect(view.getByText("Choose the translation")).toBeTruthy();
+    expect(view.queryByText("Could not submit this study attempt.")).toBeNull();
   });
 });

@@ -59,16 +59,6 @@ function lockedSurface(_study: SongStudyPayload): SongStudySurfaceState {
   };
 }
 
-function startSurface(study: SongStudyPayload): SongStudySurfaceState {
-  return {
-    kind: "start",
-    exerciseCount: Math.max(1, study.exercise_count),
-    progressLabel: "New study pack",
-    sourceLanguageLabel: study.source_language || "Original lyrics",
-    targetLanguageLabel: study.target_language || "Practice",
-  };
-}
-
 function toSayItBackExercise(exercise: Extract<SongStudyExercise, { type: "say_it_back" }>): SongStudySayItBackExercise {
   const prompt = exercise.prompt_text || exercise.reference_text || "Listen to the line and say it back.";
   return {
@@ -303,7 +293,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           phase: "ready",
           post,
           study,
-          surface: startSurface(study),
+          surface: exerciseSurface(study.exercises[0]!),
         });
       } catch (error) {
         if (canceled) return;

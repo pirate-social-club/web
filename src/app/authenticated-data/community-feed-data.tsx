@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import type { FeedSort } from "@/components/compositions/posts/feed/feed";
 
@@ -13,6 +14,28 @@ type CommunityFeedLoader = (input: {
   sort: FeedSort;
 }) => Promise<{ items: ApiPost[] }>;
 
+export function communityFeedPostsQueryKey(communityId: string, locale: string, sort: FeedSort) {
+  return ["community-feed-posts", communityId, locale, sort] as const;
+}
+
+export function upsertCommunityFeedPostCache(input: {
+  queryClient: QueryClient;
+  communityId: string;
+  locale: string;
+  post: ApiPost;
+}): void {
+  const sorts: FeedSort[] = ["best", "new", "top"];
+  for (const sort of sorts) {
+    input.queryClient.setQueryData<ApiPost[]>(
+      communityFeedPostsQueryKey(input.communityId, input.locale, sort),
+      (current = []) => [
+        input.post,
+        ...current.filter((item) => item.post.id !== input.post.post.id),
+      ],
+    );
+  }
+}
+
 export function useCommunityFeedPosts(input: {
   communityId: string;
   locale: string;
@@ -20,56 +43,38 @@ export function useCommunityFeedPosts(input: {
   loadPosts: CommunityFeedLoader;
 }) {
   const { communityId, locale, sort, loadPosts } = input;
-  const feedKey = `${communityId}:${locale}`;
-  const [rawPosts, setRawPosts] = React.useState<ApiPost[]>([]);
-  const [error, setError] = React.useState<unknown>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [refreshing, setRefreshing] = React.useState(false);
-  const loadedFeedKeysRef = React.useRef<Set<string>>(new Set());
+  const queryClient = useQueryClient();
+  const queryKey = React.useMemo(
+    () => communityFeedPostsQueryKey(communityId, locale, sort),
+    [communityId, locale, sort],
+  );
 
-  React.useEffect(() => {
-    setRawPosts([]);
-    setError(null);
-    setLoading(true);
-    setRefreshing(false);
-  }, [feedKey]);
+  const query = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const response = await loadPosts({ communityId, locale, sort });
+      return response.items;
+    },
+  });
 
-  React.useEffect(() => {
-    let cancelled = false;
-    const isInitialLoad = !loadedFeedKeysRef.current.has(feedKey);
-    setError(null);
-    setLoading(isInitialLoad);
-    setRefreshing(!isInitialLoad);
-
-    void loadPosts({ communityId, locale, sort })
-      .then((response) => {
-        if (cancelled) return;
-        setRawPosts(response.items);
-        loadedFeedKeysRef.current.add(feedKey);
-      })
-      .catch((nextError: unknown) => {
-        if (cancelled) return;
-        setError(nextError);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoading(false);
-        setRefreshing(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [communityId, feedKey, loadPosts, locale, sort]);
+  const rawPosts = query.data ?? [];
 
   const posts = React.useMemo(() => sortCommunityFeedPosts(rawPosts, sort), [rawPosts, sort]);
+  const setPosts = React.useCallback((update: React.SetStateAction<ApiPost[]>) => {
+    queryClient.setQueryData<ApiPost[]>(queryKey, (current = []) => (
+      typeof update === "function"
+        ? (update as (value: ApiPost[]) => ApiPost[])(current)
+        : update
+    ));
+  }, [queryClient, queryKey]);
 
   return {
-    error,
-    loading,
+    error: query.error,
+    loading: query.isPending,
     posts,
     rawPosts,
-    refreshing,
-    setPosts: setRawPosts,
+    refetchPosts: query.refetch,
+    refreshing: query.isFetching && !query.isPending,
+    setPosts,
   };
 }

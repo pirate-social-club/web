@@ -12,8 +12,11 @@ const { mock } = await import("bun:test") as unknown as {
 };
 
 const apiCalls: string[] = [];
+const createPostBodies: unknown[] = [];
+const songArtifactBundleBodies: unknown[] = [];
 const originalFetch = globalThis.fetch;
 const OriginalXMLHttpRequest = globalThis.XMLHttpRequest;
+const originalAsyncSongPublishFlag = import.meta.env.VITE_ASYNC_SONG_PUBLISH_ENABLED;
 let createdSongArtifactBundleResult = songBundle({
   id: "sab_created",
   previewStatus: "completed",
@@ -74,20 +77,22 @@ const fakeApi = {
     abortArtifactUploadSession: async () => {
       apiCalls.push("abortArtifactUploadSession");
     },
-    createSongArtifactBundle: async () => {
+    createSongArtifactBundle: async (_communityId: string, body: unknown) => {
       apiCalls.push("createSongArtifactBundle");
+      songArtifactBundleBodies.push(body);
       return createdSongArtifactBundleResult;
     },
     getSongArtifactBundle: async () => {
       apiCalls.push("getSongArtifactBundle");
       return readSongArtifactBundleResult;
     },
-    createPost: async () => {
+    createPost: async (_communityId: string, body: unknown) => {
       apiCalls.push("createPost");
+      createPostBodies.push(body);
       return {
         asset: "ast_song",
         id: "pst_song",
-        status: "published",
+        status: "processing",
       };
     },
     createListing: async () => {
@@ -211,6 +216,8 @@ class FakeXMLHttpRequest {
 
 beforeEach(() => {
   apiCalls.length = 0;
+  createPostBodies.length = 0;
+  songArtifactBundleBodies.length = 0;
   FakeXMLHttpRequest.uploads.length = 0;
   globalThis.fetch = async () => new Response(null, {
     status: 200,
@@ -230,10 +237,15 @@ beforeEach(() => {
 afterEach(() => {
   globalThis.fetch = originalFetch;
   globalThis.XMLHttpRequest = OriginalXMLHttpRequest;
+  if (originalAsyncSongPublishFlag == null) {
+    delete import.meta.env.VITE_ASYNC_SONG_PUBLISH_ENABLED;
+  } else {
+    import.meta.env.VITE_ASYNC_SONG_PUBLISH_ENABLED = originalAsyncSongPublishFlag;
+  }
 });
 
 describe("useSongSubmit", () => {
-  test("persists a newly created song bundle for retry", async () => {
+  test("persists a newly created song bundle until async post create succeeds", async () => {
     const pendingBundleIds: Array<string | null> = [];
     const progressEvents: string[] = [];
     const { result } = renderSubmitHook();
@@ -245,7 +257,7 @@ describe("useSongSubmit", () => {
       }));
     });
 
-    expect(pendingBundleIds).toEqual(["sab_created"]);
+    expect(pendingBundleIds).toEqual(["sab_created", null]);
     expect(apiCalls).toEqual([
       "createArtifactUpload",
       "getArtifactUploadPartSignedUrl",
@@ -253,12 +265,16 @@ describe("useSongSubmit", () => {
       "createSongArtifactBundle",
       "createPost",
     ]);
+    expect(songArtifactBundleBodies).toHaveLength(1);
+    expect((songArtifactBundleBodies[0] as { analysis_mode?: unknown }).analysis_mode).toBe("deferred");
+    expect(createPostBodies).toHaveLength(1);
+    expect((createPostBodies[0] as { publish_mode?: unknown }).publish_mode).toBe("async");
+    expect((createPostBodies[0] as { listing_draft?: unknown }).listing_draft).toBeUndefined();
     expect(progressEvents).toEqual([
       "validating",
       "upload_primary_audio",
       "upload_primary_audio",
       "create_bundle",
-      "check_rights",
       "publish_post",
     ]);
   });
@@ -283,22 +299,60 @@ describe("useSongSubmit", () => {
       }));
     });
 
-    expect(pendingBundleIds).toEqual([]);
+    expect(pendingBundleIds).toEqual([null]);
     expect(apiCalls).toEqual([
       "getSongArtifactBundle",
       "createPost",
-      "createListing",
     ]);
+    expect(createPostBodies).toHaveLength(1);
+    expect((createPostBodies[0] as {
+      listing_draft?: { asset?: unknown; price_cents?: unknown };
+      publish_mode?: unknown;
+    }).publish_mode).toBe("async");
+    expect((createPostBodies[0] as {
+      listing_draft?: { asset?: unknown; price_cents?: unknown };
+    }).listing_draft).toMatchObject({ price_cents: 399 });
+    expect((createPostBodies[0] as {
+      listing_draft?: { asset?: unknown };
+    }).listing_draft?.asset).toBeUndefined();
     expect(progressEvents).toEqual([
       "validating",
-      "generate_preview",
-      "generate_preview",
       "publish_post",
-      "create_listing",
     ]);
   });
 
-  test("rebuilds a locked song bundle after the legacy preview worker failure", async () => {
+  test("can roll back to sync publish while still sending server-side listing draft", async () => {
+    import.meta.env.VITE_ASYNC_SONG_PUBLISH_ENABLED = "false";
+    const { result } = renderSubmitHook();
+
+    await act(async () => {
+      await result.current(submitInput({
+        monetizationState: {
+          priceUsd: "3.99",
+          regionalPricingEnabled: false,
+          visible: true,
+        },
+        paidSongPriceUsd: 3.99,
+        pricingPolicyRegionalPricingEnabled: true,
+      }));
+    });
+
+    expect(songArtifactBundleBodies).toHaveLength(1);
+    expect((songArtifactBundleBodies[0] as { analysis_mode?: unknown }).analysis_mode).toBeUndefined();
+    expect(createPostBodies).toHaveLength(1);
+    expect((createPostBodies[0] as {
+      listing_draft?: { asset?: unknown; price_cents?: unknown };
+      publish_mode?: unknown;
+    }).publish_mode).toBeUndefined();
+    expect((createPostBodies[0] as {
+      listing_draft?: { asset?: unknown; price_cents?: unknown };
+    }).listing_draft).toMatchObject({ price_cents: 399 });
+    expect((createPostBodies[0] as {
+      listing_draft?: { asset?: unknown };
+    }).listing_draft?.asset).toBeUndefined();
+  });
+
+  test("reuses a locked song bundle after a legacy preview worker failure", async () => {
     readSongArtifactBundleResult = songBundle({
       id: "sab_existing",
       previewStatus: "failed",
@@ -323,26 +377,14 @@ describe("useSongSubmit", () => {
       }));
     });
 
-    expect(pendingBundleIds).toEqual([null, "sab_created"]);
+    expect(pendingBundleIds).toEqual([null]);
     expect(apiCalls).toEqual([
       "getSongArtifactBundle",
-      "createArtifactUpload",
-      "getArtifactUploadPartSignedUrl",
-      "completeArtifactUploadSession",
-      "createSongArtifactBundle",
       "createPost",
-      "createListing",
     ]);
     expect(progressEvents).toEqual([
       "validating",
-      "upload_primary_audio",
-      "upload_primary_audio",
-      "create_bundle",
-      "check_rights",
-      "generate_preview",
-      "generate_preview",
       "publish_post",
-      "create_listing",
     ]);
   });
 });

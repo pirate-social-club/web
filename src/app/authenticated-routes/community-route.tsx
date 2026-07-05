@@ -13,6 +13,7 @@ import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { getErrorMessage } from "@/lib/error-utils";
+import { logger } from "@/lib/logger";
 import {
   buildCommunityPath,
   formatCommunityRouteLabel,
@@ -138,6 +139,7 @@ export function CommunityPage({
     loading,
     posts,
     refetchEligibility,
+    refetchPosts,
     setPosts,
   } = useCommunityPageData(communityId, contentLocale, activeSort);
   const ownsCommunity =
@@ -170,6 +172,42 @@ export function CommunityPage({
     () => ({ ...authorProfiles, ...liveRoomParticipantProfiles }),
     [authorProfiles, liveRoomParticipantProfiles],
   );
+  const processingPostIds = React.useMemo(
+    () => posts
+      .filter((postResponse) => postResponse.post.status === "processing")
+      .map((postResponse) => postResponse.post.id),
+    [posts],
+  );
+
+  React.useEffect(() => {
+    if (processingPostIds.length === 0) return undefined;
+    let cancelled = false;
+    const refreshProcessingPosts = async () => {
+      const refreshed = await Promise.all(processingPostIds.map(async (postId) => {
+        try {
+          return await api.posts.get(postId, { locale: contentLocale });
+        } catch (error) {
+          logger.warn("[community-route] processing post refresh failed", {
+            error,
+            postId,
+          });
+          return null;
+        }
+      }));
+      if (cancelled) return;
+      const byId = new Map(refreshed.filter((item) => item != null).map((item) => [item.post.id, item]));
+      if (byId.size === 0) return;
+      setPosts((current) => current.map((postResponse) => byId.get(postResponse.post.id) ?? postResponse));
+    };
+    const intervalId = window.setInterval(() => {
+      void refreshProcessingPosts();
+    }, 4_000);
+    void refreshProcessingPosts();
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [api.posts, contentLocale, processingPostIds, setPosts]);
 
   React.useEffect(() => {
     let attempts = 0;
@@ -515,6 +553,35 @@ export function CommunityPage({
       toast.error(getErrorMessage(nextError, "Could not cancel this event."));
     }
   }, [api.posts, communityId, posts, setPosts]);
+  const retryPublish = React.useCallback(async (postId: string) => {
+    const previousPosts = posts;
+    const targetPost = posts.find((postResponse) => postResponse.post.id === postId);
+    setPosts((current) => current.map((postResponse) => (
+      postResponse.post.id === postId
+        ? {
+            ...postResponse,
+            post: {
+              ...postResponse.post,
+              status: "processing",
+              publish_failure_code: null,
+              publish_failure_message: null,
+              publish_failure_retryable: null,
+              publish_failed_at: null,
+            },
+          }
+        : postResponse
+    )));
+    try {
+      const updated = await api.communities.retryPostPublish(targetPost?.post.community ?? communityId, postId);
+      setPosts((current) => current.map((postResponse) => (
+        postResponse.post.id === postId ? { ...postResponse, post: updated } : postResponse
+      )));
+      void refetchPosts();
+    } catch (nextError) {
+      setPosts(previousPosts);
+      toast.error(getErrorMessage(nextError, "Could not retry publish."));
+    }
+  }, [api.communities, communityId, posts, refetchPosts, setPosts]);
   const rememberedCommunityId = community?.id ?? preview?.id;
   const rememberedCommunityRouteSlug = community?.route_slug ?? preview?.route_slug;
   const rememberedCommunityTitle = community?.display_name ?? preview?.display_name;
@@ -653,6 +720,7 @@ export function CommunityPage({
         onComment: () => navigate(`/p/${post.post.id}`),
         onCancelEvent: () => void cancelEvent(post.post.id),
         onRemove: () => void removePost(post.post.id),
+        onRetryPublish: () => void retryPublish(post.post.id),
         canModeratePost: canModeratePosts,
         onVote: (direction) => void voteOnPost(post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,

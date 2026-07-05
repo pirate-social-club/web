@@ -20,21 +20,11 @@ export function songSubmitProgressSteps(input: {
       steps.push({ key: "upload_artifacts", phase: "uploading_media", label: "Uploading files" });
     }
     steps.push(
-      { key: "create_bundle", phase: "processing_media", label: "Analyzing song" },
-      { key: "check_rights", phase: "checking_rights", label: "Checking rights" },
+      { key: "create_bundle", phase: "processing_media", label: "Preparing song" },
     );
   }
-  if (input.isLocked) {
-    steps.push({ key: "generate_preview", phase: "processing_media", label: "Generating preview" });
-  }
   steps.push({ key: "publish_post", phase: "publishing_post", label: "Publishing" });
-  if (input.isLocked) {
-    steps.push({ key: "create_listing", phase: "creating_listing", label: "Creating listing" });
-  }
-  steps.push(
-    { key: "check_registration", phase: "checking_registration", label: "Checking registration" },
-    { key: "done", phase: "done", label: "Post published" },
-  );
+  steps.push({ key: "done", phase: "done", label: input.isLocked ? "Post processing" : "Post published" });
   return steps;
 }
 

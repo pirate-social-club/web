@@ -68,17 +68,42 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
     communityId: string;
     locale: string;
     sort: FeedSort;
-  }) => api.communities.listPosts(nextCommunityId, {
-    limit: "100",
-    locale,
-    sort,
-  }), [api]);
+  }) => {
+    const feedPromise = api.communities.listPosts(nextCommunityId, {
+      limit: "100",
+      locale,
+      sort,
+    });
+    if (!session?.accessToken) {
+      return feedPromise;
+    }
+    const [feed, pending] = await Promise.all([
+      feedPromise,
+      api.communities.listPendingPosts(nextCommunityId, { locale })
+        .catch((error: unknown) => {
+          logger.warn("[community-route] pending posts load failed", {
+            communityId: nextCommunityId,
+            error,
+          });
+          return { items: [], next_cursor: null };
+        }),
+    ]);
+    const seen = new Set<string>();
+    const items = [...pending.items, ...feed.items].filter((item) => {
+      const id = item.post.id;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+    return { ...feed, items };
+  }, [api, session?.accessToken]);
 
   const {
     error: postsError,
     loading: postsLoading,
     posts,
     rawPosts,
+    refetchPosts,
     setPosts,
   } = useCommunityFeedPosts({
     communityId,
@@ -188,6 +213,7 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
     error: metadataError ?? postsError,
     loading: metadataLoading || postsLoading,
     posts,
+    refetchPosts,
     replaceCommunity,
     setPosts,
     refetchEligibility,

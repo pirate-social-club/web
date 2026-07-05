@@ -286,6 +286,7 @@ export function PostCard({
   authorNationalityBadgeLabel,
   byline,
   qualifierLabels,
+  statusNotice,
   title,
   titleDir,
   titleLang,
@@ -408,6 +409,36 @@ export function PostCard({
           saved={engagement.saved}
           viewContext={viewContext}
         />
+        {statusNotice ? (
+          <div
+            className={cn(
+              "rounded-md border px-3 py-2 text-start",
+              statusNotice.tone === "destructive"
+                ? "border-destructive/30 bg-destructive/10 text-destructive"
+                : "border-border bg-muted/50 text-muted-foreground",
+            )}
+          >
+            <Type as="p" variant="label" className="text-current">
+              {statusNotice.label}
+            </Type>
+            {statusNotice.message ? (
+              <Type as="p" variant="caption" className="mt-0.5 text-current/80">
+                {statusNotice.message}
+              </Type>
+            ) : null}
+            {statusNotice.action ? (
+              <Button
+                className="mt-2 h-8 px-3"
+                data-post-card-interactive="true"
+                onClick={statusNotice.action.onClick}
+                size="sm"
+                variant={statusNotice.tone === "destructive" ? "outline" : "secondary"}
+              >
+                {statusNotice.action.label}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
 
         {titleElement}
         {event ? <PostCardEventBlock event={event} showEventUrl={shouldShowEventUrl} /> : null}

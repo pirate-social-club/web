@@ -1,3 +1,5 @@
+import { captureLoggedError, recordLogBreadcrumb } from "./sentry";
+
 type LogMethod = "debug" | "error" | "info" | "warn";
 
 const logsEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_CLIENT_LOGS === "true";
@@ -14,6 +16,12 @@ function runtimeLogsEnabled(): boolean {
 }
 
 function writeLog(method: LogMethod, args: unknown[]) {
+  const level = method === "warn" ? "warning" : method;
+  recordLogBreadcrumb(level, args);
+  if (method === "error") {
+    captureLoggedError(args);
+  }
+
   if (!logsEnabled && !runtimeLogsEnabled() && method !== "error" && method !== "warn") {
     return;
   }

@@ -87,6 +87,30 @@ describe("PostCard", () => {
     expect(markup).not.toContain(">Buy<");
   });
 
+  test("renders publish status notice with retry action", () => {
+    const markup = renderToStaticMarkup(
+      <PostCard
+        byline={{ author: { kind: "user", label: "u/artist" }, timestampLabel: "now" }}
+        content={{ type: "text", body: "Processing copy" }}
+        engagement={{ commentCount: 0, score: 0 }}
+        statusNotice={{
+          tone: "destructive",
+          label: "Publish failed",
+          message: "Story royalty registration is temporarily unavailable.",
+          action: {
+            label: "Try again",
+            onClick: () => undefined,
+          },
+        }}
+        title="Queued song"
+      />,
+    );
+
+    expect(markup).toContain("Publish failed");
+    expect(markup).toContain("Story royalty registration is temporarily unavailable.");
+    expect(markup).toContain("Try again");
+  });
+
   test("keeps song annotations in post options without duplicating visible download rows", () => {
     const baseItems: PostCardMenuItem[] = [
       { key: "copy-link", label: "Copy link" },

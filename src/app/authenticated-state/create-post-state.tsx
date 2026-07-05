@@ -5,6 +5,8 @@ import type { Asset as ApiAsset, Community as ApiCommunity, CommunityPreview as 
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { Post as ApiCreatedPost } from "@pirate/api-contracts";
+import type { LocalizedPostResponse as ApiLocalizedPostResponse } from "@pirate/api-contracts";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
@@ -53,11 +55,14 @@ import {
 } from "@/app/authenticated-helpers/create-post-submit/progress-steps";
 import { useSongSubmit } from "./use-song-submit";
 import { buildAnonymousLabel } from "@/lib/anonymous-label";
+import { buildCommunityPath } from "@/lib/community-routing";
 import {
   getPricingCountryAssignmentDrafts,
   getPricingTierDrafts,
 } from "@/app/authenticated-helpers/moderation-helpers";
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
+import { upsertCommunityFeedPostCache } from "@/app/authenticated-data/community-feed-data";
+import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 
 export function isPublicAudienceAllowed(community: ApiCommunity | ApiCommunityPreview | null): boolean {
   if (!community) {
@@ -120,6 +125,30 @@ export function derivativeSourceToComposerReference(
     upstreamRoyaltyPct: source.commercial_rev_share_pct,
     parentIpId: source.story_ip,
     licenseTermsId: source.story_license_terms,
+  };
+}
+
+function createdPostToLocalizedFeedItem(input: {
+  post: ApiCreatedPost;
+  community: ApiCommunityPreview | null;
+  contentLocale: string;
+  currentUserId?: string | null;
+}): ApiLocalizedPostResponse {
+  return {
+    post: input.post,
+    community: input.community,
+    thread_snapshot: null,
+    upvote_count: 0,
+    downvote_count: 0,
+    like_count: 0,
+    comment_count: 0,
+    viewer_vote: null,
+    viewer_is_author: Boolean(input.currentUserId && input.post.author_user === input.currentUserId),
+    viewer_reaction_kinds: [],
+    resolved_locale: input.contentLocale,
+    translation_state: "same_language",
+    machine_translated: false,
+    source_hash: input.post.source_language_source_hash ?? input.post.id,
   };
 }
 
@@ -260,8 +289,10 @@ async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<Ava
 
 export function useCreatePostState(communityId: string, initialDraft?: Partial<CreatePostDraftState>) {
   const api = useApi();
+  const queryClient = useQueryClient();
   const session = useSession();
   const { locale } = useUiLocale();
+  const contentLocale = useRouteContentLocale();
   const copy = getLocaleMessages(locale, "routes").createPost;
   const [pageState, setPageState] = React.useState({
     community: null as ApiCommunityPreview | null,
@@ -1082,7 +1113,24 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         postId: publishedPostId ?? result?.id,
         postType: publishedPostType,
       });
-      if (publishedPostType === "song" || publishedPostType === "video") {
+      const destinationPostId = publishedPostId ?? result?.id;
+      if (publishedPostType === "song" && result?.status === "processing") {
+        upsertCommunityFeedPostCache({
+          queryClient,
+          communityId: community.id,
+          locale: contentLocale,
+          post: createdPostToLocalizedFeedItem({
+            post: result,
+            community,
+            contentLocale,
+            currentUserId: session?.user.id,
+          }),
+        });
+        reportProgress("done");
+        navigate(buildCommunityPath(community.id, community.route_slug));
+        return;
+      }
+      if ((publishedPostType === "song" || publishedPostType === "video") && result?.status === "published") {
         reportProgress("check_registration");
         const asset = await warnIfStoryRegistrationIncomplete(result, publishedPostType);
         if (result?.id && publishedPostType === "song") {
@@ -1099,7 +1147,6 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         setSubmitError("Post is pending moderator review and is not visible yet.");
         return;
       }
-      const destinationPostId = publishedPostId ?? result?.id;
       if (!destinationPostId) {
         throw new Error("The post was created, but no destination post was returned.");
       }
@@ -1139,9 +1186,9 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       setPageState((current) => ({ ...current, submitting: false }));
     }
   }, [
-    api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, derivativeStep, eligibility?.status, event, hasCommunityPostingRole,
+    api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, contentLocale, derivativeStep, eligibility?.status, event, hasCommunityPostingRole,
     identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, paidLiveRoomMode, pendingSongBundleId, postAltchaPayload, postAltchaRequestOptions, postAltchaRequired, pricingPolicy?.regional_pricing_enabled,
-    selectedQualifierIds, session?.user.id, setPendingSongBundleId, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
+    queryClient, selectedQualifierIds, session?.user.id, setPendingSongBundleId, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     videoState,
     warnIfStoryRegistrationIncomplete,
   ]);

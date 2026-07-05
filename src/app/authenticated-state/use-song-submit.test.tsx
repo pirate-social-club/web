@@ -16,6 +16,7 @@ const createPostBodies: unknown[] = [];
 const songArtifactBundleBodies: unknown[] = [];
 const originalFetch = globalThis.fetch;
 const OriginalXMLHttpRequest = globalThis.XMLHttpRequest;
+const originalAsyncSongPublishFlag = import.meta.env.VITE_ASYNC_SONG_PUBLISH_ENABLED;
 let createdSongArtifactBundleResult = songBundle({
   id: "sab_created",
   previewStatus: "completed",
@@ -236,6 +237,11 @@ beforeEach(() => {
 afterEach(() => {
   globalThis.fetch = originalFetch;
   globalThis.XMLHttpRequest = OriginalXMLHttpRequest;
+  if (originalAsyncSongPublishFlag == null) {
+    delete import.meta.env.VITE_ASYNC_SONG_PUBLISH_ENABLED;
+  } else {
+    import.meta.env.VITE_ASYNC_SONG_PUBLISH_ENABLED = originalAsyncSongPublishFlag;
+  }
 });
 
 describe("useSongSubmit", () => {
@@ -313,6 +319,37 @@ describe("useSongSubmit", () => {
       "validating",
       "publish_post",
     ]);
+  });
+
+  test("can roll back to sync publish while still sending server-side listing draft", async () => {
+    import.meta.env.VITE_ASYNC_SONG_PUBLISH_ENABLED = "false";
+    const { result } = renderSubmitHook();
+
+    await act(async () => {
+      await result.current(submitInput({
+        monetizationState: {
+          priceUsd: "3.99",
+          regionalPricingEnabled: false,
+          visible: true,
+        },
+        paidSongPriceUsd: 3.99,
+        pricingPolicyRegionalPricingEnabled: true,
+      }));
+    });
+
+    expect(songArtifactBundleBodies).toHaveLength(1);
+    expect((songArtifactBundleBodies[0] as { analysis_mode?: unknown }).analysis_mode).toBeUndefined();
+    expect(createPostBodies).toHaveLength(1);
+    expect((createPostBodies[0] as {
+      listing_draft?: { asset?: unknown; price_cents?: unknown };
+      publish_mode?: unknown;
+    }).publish_mode).toBeUndefined();
+    expect((createPostBodies[0] as {
+      listing_draft?: { asset?: unknown; price_cents?: unknown };
+    }).listing_draft).toMatchObject({ price_cents: 399 });
+    expect((createPostBodies[0] as {
+      listing_draft?: { asset?: unknown };
+    }).listing_draft?.asset).toBeUndefined();
   });
 
   test("reuses a locked song bundle after a legacy preview worker failure", async () => {

@@ -41,6 +41,10 @@ const SONG_ARTIFACT_PART_UPLOAD_TIMEOUT_MS = 60_000;
 const SONG_ARTIFACT_MULTIPART_COMPLETE_TIMEOUT_MS = 120_000;
 const SONG_ARTIFACT_MULTIPART_CONCURRENCY = 3;
 
+function isAsyncSongPublishEnabled(): boolean {
+  return import.meta.env.VITE_ASYNC_SONG_PUBLISH_ENABLED !== "false";
+}
+
 type RawAcrCustomFile = {
   acrid?: unknown;
   title?: unknown;
@@ -352,6 +356,7 @@ export function useSongSubmit({
       throw new Error("Revenue share is only available for commercial remix licenses.");
     }
 
+    const publishMode = isAsyncSongPublishEnabled() ? "async" : "sync";
     let bundleId = pendingSongBundleId;
     if (bundleId) {
       const pendingBundleIdForRetry = bundleId;
@@ -420,7 +425,7 @@ export function useSongSubmit({
       reportProgress?.("create_bundle");
       const bundleRequest = {
         primary_audio: { song_artifact_upload: primaryAudio.id },
-        analysis_mode: "deferred" as const,
+        ...(publishMode === "async" ? { analysis_mode: "deferred" as const } : {}),
         title: songTitle.trim(),
         lyrics: lyrics.trim(),
         genius_annotations_url: songState.geniusAnnotationsUrl?.trim() || null,
@@ -482,7 +487,7 @@ export function useSongSubmit({
     });
     const asyncSongRequest = {
       ...songRequest,
-      publish_mode: "async" as const,
+      ...(publishMode === "async" ? { publish_mode: "async" as const } : {}),
       ...(listingDraft ? { listing_draft: listingDraft } : {}),
     };
     logger.info("[song-submit] creating song post", {
@@ -490,7 +495,7 @@ export function useSongSubmit({
       hasDerivativeRefs: Boolean(asyncSongRequest.upstream_asset_refs?.length),
       isLockedSong,
       mode: songMode,
-      publishMode: "async",
+      publishMode,
     });
     reportProgress?.("publish_post");
     const signedSongRequest = authorMode === "agent"

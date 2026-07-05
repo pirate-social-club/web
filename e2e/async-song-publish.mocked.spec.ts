@@ -18,6 +18,7 @@ type AsyncSongMockState = {
   bundleBodies: CapturedBody[];
   createPostBodies: CapturedBody[];
   createListingCalls: number;
+  postPollCalls: number;
   postPollResult: "failed" | "published";
   postStatus: "processing" | "failed" | "published";
   retryCalls: number;
@@ -124,10 +125,29 @@ function validatingBundle() {
 }
 
 async function installAsyncSongPublishMocks(page: Page, state: AsyncSongMockState) {
+  await page.route(/\/communities\/e2e(?:\/preview)?(?:\?.*)?$/u, async (route) => {
+    const request = route.request();
+    if (request.method().toUpperCase() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill(jsonResponse({
+      ...mockCommunityPreview,
+      object: request.url().endsWith("/preview") ? "community_preview" : "community",
+      created_by_user: "usr_owner",
+      gate_rules: [],
+      governance_mode: "centralized",
+    }));
+  });
+
   await page.route(/https:\/\/e2e-upload\.invalid\/part-1$/u, async (route) => {
     await route.fulfill({
       body: "",
-      headers: { ETag: "etag-e2e-part-1" },
+      headers: {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "etag, ETag",
+        etag: "etag-e2e-part-1",
+      },
       status: 200,
     });
   });
@@ -163,16 +183,24 @@ async function installAsyncSongPublishMocks(page: Page, state: AsyncSongMockStat
     await route.fulfill(jsonResponse(validatingBundle(), 201));
   });
 
-  await page.route(/\/communities\/cmt_e2e\/posts\/pending(\?.*)?$/u, async (route) => {
+  await page.route(/\/communities\/(?:cmt_e2e|e2e)\/posts\/pending(\?.*)?$/u, async (route) => {
     await route.fulfill(jsonResponse({
       items: state.postStatus === "published" ? [] : [createLocalizedSongPost(state.postStatus)],
       next_cursor: null,
     }));
   });
 
-  await page.route(/\/communities\/cmt_e2e\/posts$/u, async (route) => {
+  await page.route(/\/communities\/(?:cmt_e2e|e2e)\/posts(\?.*)?$/u, async (route) => {
     const request = route.request();
-    if (request.method().toUpperCase() !== "POST") {
+    const method = request.method().toUpperCase();
+    if (method === "GET") {
+      await route.fulfill(jsonResponse({
+        items: state.postStatus === "published" ? [createLocalizedSongPost("published")] : [],
+        next_cursor: null,
+      }));
+      return;
+    }
+    if (method !== "POST") {
       await route.fallback();
       return;
     }
@@ -183,7 +211,10 @@ async function installAsyncSongPublishMocks(page: Page, state: AsyncSongMockStat
 
   await page.route(/\/posts\/pst_e2e_created(\?.*)?$/u, async (route) => {
     if (state.postStatus === "processing") {
-      state.postStatus = state.postPollResult;
+      if (state.postPollCalls > 0) {
+        state.postStatus = state.postPollResult;
+      }
+      state.postPollCalls += 1;
     }
     await route.fulfill(jsonResponse(createLocalizedSongPost(state.postStatus)));
   });
@@ -222,6 +253,7 @@ test.describe("async song publish with mocked API", () => {
       bundleBodies: [],
       createListingCalls: 0,
       createPostBodies: [],
+      postPollCalls: 0,
       postPollResult: "failed",
       postStatus: "processing",
       retryCalls: 0,
@@ -240,18 +272,18 @@ test.describe("async song publish with mocked API", () => {
     await page.getByLabel(/lyrics/i).fill("Async publish lyrics");
     await page.getByRole("button", { name: /^continue$/i }).click();
 
-    await page.getByRole("checkbox", { name: /paid unlock/i }).check();
-    await page.getByLabel(/^price$/i).fill("4.99");
+    await page.getByRole("checkbox", { name: /pay to access/i }).check();
+    await page.getByRole("textbox", { name: /^price/i }).fill("4.99");
     await page.getByRole("button", { name: /^continue$/i }).click();
     await page.getByRole("button", { name: /^publish$/i }).click();
 
-    await expect(page).toHaveURL(new RegExp(`/c/${mockCommunityId}$`, "u"));
+    await expect(page).toHaveURL(new RegExp(`/c/${mockCommunityPreview.route_slug}$`, "u"));
     await expect(page.getByText("Your post is processing and is only visible to you.")).toBeVisible({ timeout: 30_000 });
 
     await expect(page.getByText("Matched audio requires derivative rights and a reference")).toBeVisible({ timeout: 30_000 });
     await page.getByRole("button", { name: /^try again$/i }).click();
     await expect(page.getByText("Publish failed")).toHaveCount(0);
-    await expect(page.getByText("Async E2E Song")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Async E2E Song", exact: true })).toBeVisible();
 
     expect(state.bundleBodies[0]?.analysis_mode).toBe("deferred");
     expect(state.createPostBodies[0]?.publish_mode).toBe("async");
@@ -270,6 +302,7 @@ test.describe("async song publish with mocked API", () => {
       bundleBodies: [],
       createListingCalls: 0,
       createPostBodies: [],
+      postPollCalls: 0,
       postPollResult: "published",
       postStatus: "processing",
       retryCalls: 0,
@@ -288,15 +321,16 @@ test.describe("async song publish with mocked API", () => {
     await page.getByLabel(/lyrics/i).fill("Async publish lyrics");
     await page.getByRole("button", { name: /^continue$/i }).click();
 
-    await page.getByRole("checkbox", { name: /paid unlock/i }).check();
-    await page.getByLabel(/^price$/i).fill("4.99");
+    await page.getByRole("checkbox", { name: /pay to access/i }).check();
+    await page.getByRole("textbox", { name: /^price/i }).fill("4.99");
     await page.getByRole("button", { name: /^continue$/i }).click();
     await page.getByRole("button", { name: /^publish$/i }).click();
 
-    await expect(page).toHaveURL(new RegExp(`/c/${mockCommunityId}$`, "u"));
+    await expect(page).toHaveURL(new RegExp(`/c/${mockCommunityPreview.route_slug}$`, "u"));
     await expect(page.getByText("Your post is processing and is only visible to you.")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Your post is processing and is only visible to you.")).toHaveCount(0, { timeout: 30_000 });
     await expect(page.getByText("Publish failed")).toHaveCount(0);
-    await expect(page.getByText("Async E2E Song")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("link", { name: "Async E2E Song", exact: true })).toBeVisible({ timeout: 30_000 });
 
     expect(state.bundleBodies[0]?.analysis_mode).toBe("deferred");
     expect(state.createPostBodies[0]?.publish_mode).toBe("async");

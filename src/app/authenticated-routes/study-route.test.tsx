@@ -231,6 +231,18 @@ describe("StudyRoutePage", () => {
     expect(calls).toEqual(["posts.get", "communities.getPostStudy"]);
   });
 
+  test("shows a caught-up message when a ready study pack has no remaining exercises", async () => {
+    studyResult = readyStudyPayload({
+      exercise_count: 0,
+      exercises: [],
+    });
+
+    const view = render(<StudyRoutePage postId="pst_song" />);
+
+    await waitFor(() => expect(view.getByText("You're caught up for this song.")).toBeTruthy());
+    expect(calls).toEqual(["posts.get", "communities.getPostStudy"]);
+  });
+
   test("submits a multiple choice attempt when an answer is selected", async () => {
     studyResult = readyStudyPayload({
       exercise_count: 1,

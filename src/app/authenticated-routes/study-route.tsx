@@ -282,7 +282,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           setState({
             phase: "blocked",
             title: pageTitle(post, study),
-            message: "Study has no exercises yet.",
+            message: "You're caught up for this song.",
           });
           return;
         }

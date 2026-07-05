@@ -74,6 +74,7 @@ export type SongStudySurfaceState =
     exercise: SongStudyMultipleChoiceExercise;
     result?: "correct" | "wrong";
     selectedOptionId?: string;
+    submitError?: string;
     submitting?: boolean;
   }
   | {
@@ -437,6 +438,12 @@ function MultipleChoiceState({
           );
         })}
       </div>
+
+      {state.submitError ? (
+        <Type as="p" className="text-destructive" role="alert" variant="caption">
+          {state.submitError}
+        </Type>
+      ) : null}
     </div>
   );
 }

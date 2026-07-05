@@ -343,6 +343,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         surface: {
           ...current.surface,
           selectedOptionId,
+          submitError: undefined,
           submitting: true,
         },
       };
@@ -377,10 +378,19 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       });
     }).catch((error) => {
       pendingMultipleChoiceAttemptRef.current = null;
-      setState({
-        phase: "error",
-        title: pageTitle(readyState.post, readyState.study),
-        message: getErrorMessage(error, "Could not submit this study attempt."),
+      setState((current) => {
+        if (current.phase !== "ready" || current.surface.kind !== "multiple_choice" || current.surface.exercise.id !== exercise.id) {
+          return current;
+        }
+        return {
+          ...current,
+          surface: {
+            ...current.surface,
+            selectedOptionId: undefined,
+            submitError: getErrorMessage(error, "Could not record this answer. Try again."),
+            submitting: false,
+          },
+        };
       });
     });
   }, [api]);

@@ -1375,6 +1375,106 @@ export const Loading: Story = {
   ),
 };
 
+export const ProcessingPost: Story = {
+  name: "State: Processing Publish",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        ...basePost.byline,
+        timestampLabel: "now",
+      }}
+      content={{
+        type: "song",
+        accessMode: "locked",
+        artist: "u/kevin.tameimpala",
+        listingMode: "not_listed",
+        playbackState: "idle",
+        title: "Borderline rough mix",
+      }}
+      engagement={{ score: 0, commentCount: 0 }}
+      menuItems={undefined}
+      shareActions={undefined}
+      statusNotice={{
+        tone: "neutral",
+        label: "Publishing",
+        message: "Your post is processing and is only visible to you.",
+      }}
+      title="Borderline rough mix"
+      titleHref={undefined}
+      postHref={undefined}
+    />
+  ),
+};
+
+export const FailedRetryablePost: Story = {
+  name: "State: Publish Failed / Retryable",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        ...basePost.byline,
+        timestampLabel: "2m",
+      }}
+      content={{
+        type: "song",
+        accessMode: "locked",
+        artist: "u/kevin.tameimpala",
+        listingMode: "not_listed",
+        playbackState: "idle",
+        title: "Borderline rough mix",
+      }}
+      engagement={{ score: 0, commentCount: 0 }}
+      menuItems={undefined}
+      shareActions={undefined}
+      statusNotice={{
+        tone: "destructive",
+        label: "Publish failed",
+        message: "Story royalty registration is temporarily unavailable.",
+        action: {
+          label: "Try again",
+          onClick: noop,
+        },
+      }}
+      title="Borderline rough mix"
+      titleHref={undefined}
+      postHref={undefined}
+    />
+  ),
+};
+
+export const FailedTerminalPost: Story = {
+  name: "State: Publish Failed / Terminal",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        ...basePost.byline,
+        timestampLabel: "4m",
+      }}
+      content={{
+        type: "song",
+        accessMode: "public",
+        artist: "u/kevin.tameimpala",
+        listingMode: "not_listed",
+        playbackState: "idle",
+        title: "Borderline rough mix",
+      }}
+      engagement={{ score: 0, commentCount: 0 }}
+      menuItems={undefined}
+      shareActions={undefined}
+      statusNotice={{
+        tone: "destructive",
+        label: "Publish failed",
+        message: "Matched audio requires derivative rights and a reference.",
+      }}
+      title="Borderline rough mix"
+      titleHref={undefined}
+      postHref={undefined}
+    />
+  ),
+};
+
 export const DeletedPost: Story = {
   name: "State: Deleted",
   render: () => (

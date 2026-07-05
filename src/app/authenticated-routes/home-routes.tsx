@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
 import type { CommunityPurchase as ApiCommunityPurchase } from "@pirate/api-contracts";
 import type { HomeFeedCommunitySummary as ApiHomeFeedCommunitySummary } from "@pirate/api-contracts";
@@ -61,14 +61,50 @@ type UseHomeFeedInput = {
   topTimeRange: string;
 };
 
+type HomeFeedQueryPayload = {
+  feedEntries: ApiHomeFeedItem[];
+  topCommunities: ApiHomeFeedCommunitySummary[];
+};
+
 export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange }: UseHomeFeedInput) {
   const api = useApi();
   const queryClient = useQueryClient();
   const sessionProfile = session?.profile;
   const sessionAccessToken = session?.accessToken;
   const sessionUserId = session?.user.id;
-  const [feedEntries, setFeedEntries] = React.useState<ApiHomeFeedItem[]>([]);
-  const [topCommunities, setTopCommunities] = React.useState<ApiHomeFeedCommunitySummary[]>([]);
+  const feedRequest = React.useMemo(() => ({
+    locale: contentLocale,
+    sort: activeSort,
+    timeRange: activeSort === "top" ? topTimeRange : null,
+  }), [activeSort, contentLocale, topTimeRange]);
+  const feedIdentityKey = `${feedRequest.sort}|${feedRequest.locale ?? ""}|${feedRequest.timeRange ?? ""}`;
+  const homeFeedQueryKey = React.useMemo(
+    () => ["home-feed", feedRequest.locale, feedRequest.sort, feedRequest.timeRange] as const,
+    [feedRequest.locale, feedRequest.sort, feedRequest.timeRange],
+  );
+  const homeFeedQuery = useQuery<HomeFeedQueryPayload>({
+    queryKey: homeFeedQueryKey,
+    queryFn: async () => ({ feedEntries: [], topCommunities: [] }),
+    enabled: false,
+    initialData: { feedEntries: [], topCommunities: [] },
+  });
+  const feedEntries = homeFeedQuery.data.feedEntries;
+  const topCommunities = homeFeedQuery.data.topCommunities;
+  const setHomeFeedPayload = React.useCallback((update: React.SetStateAction<HomeFeedQueryPayload>) => {
+    queryClient.setQueryData<HomeFeedQueryPayload>(homeFeedQueryKey, (current = { feedEntries: [], topCommunities: [] }) => (
+      typeof update === "function"
+        ? (update as (value: HomeFeedQueryPayload) => HomeFeedQueryPayload)(current)
+        : update
+    ));
+  }, [homeFeedQueryKey, queryClient]);
+  const setFeedEntries = React.useCallback((update: React.SetStateAction<ApiHomeFeedItem[]>) => {
+    setHomeFeedPayload((current) => ({
+      ...current,
+      feedEntries: typeof update === "function"
+        ? (update as (value: ApiHomeFeedItem[]) => ApiHomeFeedItem[])(current.feedEntries)
+        : update,
+    }));
+  }, [setHomeFeedPayload]);
   const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | null>>({});
   const [listingsByAssetId, setListingsByAssetId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
   const [listingsByLiveRoomId, setListingsByLiveRoomId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
@@ -114,19 +150,11 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     setLoading(true);
     setError(null);
 
-    const feedRequest = {
-      locale: contentLocale,
-      sort: activeSort,
-      timeRange: activeSort === "top" ? topTimeRange : null,
-    };
-
     // Only wipe enrichment when the feed identity actually changed. On an
     // auth/session-triggered refresh the visible feed is the same, so keep the
     // existing enrichment visible until fresh data replaces it in place.
-    const feedIdentityKey = `${feedRequest.sort}|${feedRequest.locale ?? ""}|${feedRequest.timeRange ?? ""}`;
     if (feedIdentityRef.current !== feedIdentityKey) {
       feedIdentityRef.current = feedIdentityKey;
-      setTopCommunities([]);
       setAuthorProfiles({});
       setListingsByAssetId({});
       setListingsByLiveRoomId({});
@@ -145,8 +173,10 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
           queryClient,
           sort: "best",
         });
-        setFeedEntries(nextFeedEntries);
-        setTopCommunities(result.top_communities);
+        setHomeFeedPayload({
+          feedEntries: nextFeedEntries,
+          topCommunities: result.top_communities,
+        });
         setLoading(false);
 
         void loadProfilesByUserId(
@@ -284,7 +314,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     return () => {
       cancelled = true;
     };
-  }, [activeSort, api, contentLocale, hydrated, queryClient, sessionAccessToken, sessionProfile, sessionUserId, topTimeRange]);
+  }, [api, contentLocale, feedIdentityKey, feedRequest, hydrated, queryClient, sessionAccessToken, sessionProfile, sessionUserId, setHomeFeedPayload]);
 
   return {
     feedEntries,

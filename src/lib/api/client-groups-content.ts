@@ -196,6 +196,23 @@ export function createCommunityContentApi(request: ApiRequest) {
         body: JSON.stringify(body),
         headers: altchaHeaders(options),
       }),
+    listPendingPosts: (
+      communityId: string,
+      opts?: { locale?: string | null },
+    ): Promise<{ items: LocalizedPostResponse[]; next_cursor: string | null }> =>
+      request<{ items: LocalizedPostResponse[]; next_cursor: string | null }>(
+        buildQueryPath(`/communities/${encodeURIComponent(communityId)}/posts/pending`, {
+          locale: opts?.locale,
+        }),
+      ),
+    retryPostPublish: (
+      communityId: string,
+      postId: string,
+    ): Promise<Post> =>
+      request<Post>(
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/publish-retry`,
+        { method: "POST" },
+      ),
     listEvents: (
       communityId: string,
       opts?: {

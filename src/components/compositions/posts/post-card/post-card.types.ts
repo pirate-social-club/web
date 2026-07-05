@@ -472,6 +472,15 @@ export interface PostCardProps {
   authorNationalityBadgeCountry?: string | null;
   authorNationalityBadgeLabel?: string;
   qualifierLabels?: string[];
+  statusNotice?: {
+    tone: "neutral" | "destructive";
+    label: string;
+    message?: string | null;
+    action?: {
+      label: string;
+      onClick: () => void;
+    };
+  };
   title?: string;
   titleDir?: "ltr" | "rtl" | "auto";
   titleLang?: string;

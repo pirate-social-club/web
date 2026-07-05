@@ -101,6 +101,28 @@ export function toCommunityFeedItem(
   });
   const isDeleted = post.status === "deleted";
   const isRemoved = post.status === "removed";
+  const isPublished = post.status === "published";
+  const isProcessing = post.status === "processing";
+  const isFailed = post.status === "failed";
+  const statusNotice = isProcessing
+    ? {
+        tone: "neutral" as const,
+        label: "Publishing",
+        message: "Your post is processing and is only visible to you.",
+      }
+    : isFailed
+      ? {
+          tone: "destructive" as const,
+          label: "Publish failed",
+          message: post.publish_failure_message ?? "This post could not be published.",
+          action: post.publish_failure_retryable && opts?.onRetryPublish
+            ? {
+                label: "Try again",
+                onClick: opts.onRetryPublish,
+              }
+            : undefined,
+        }
+      : undefined;
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
   const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
   const heading = resolvePostCardHeadingTitle({
@@ -148,19 +170,20 @@ export function toCommunityFeedItem(
       authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country
         ? buildNationalityBadgeLabel(authorProfile.nationality_badge_country)
         : undefined,
-      onComment: opts?.onComment,
+      statusNotice,
+      onComment: isPublished ? opts?.onComment : undefined,
       menuItems: hasPostMenu ? postMenuItems : undefined,
-      shareActions: buildPostShareActions(post),
+      shareActions: isPublished ? buildPostShareActions(post) : undefined,
       onMenuAction: hasPostMenu ? (key) => {
         if (key === "view-story" && storyPortalHref) openExternalUrl(storyPortalHref);
         if (key === "delete") opts?.onDelete?.();
         if (key === "remove") opts?.onRemove?.();
         if (key === "cancel-event") opts?.onCancelEvent?.();
       } : undefined,
-      onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
-      postHref: `/p/${post.id}`,
+      onVote: isPublished ? opts?.onVote : undefined,
+      postHref: isPublished ? `/p/${post.id}` : undefined,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
-      ...titleProps,
+      ...(isPublished ? titleProps : { ...titleProps, titleHref: undefined }),
       viewContext: "community",
     },
     postResponse,

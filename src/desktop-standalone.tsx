@@ -2,8 +2,11 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 
 import { PirateApp } from "@/app";
+import { initSentry } from "@/lib/sentry";
 import { UiLocaleProvider } from "@/lib/ui-locale";
 import "@/styles/tokens.css";
+
+initSentry();
 
 const rootElement = document.getElementById("root");
 

@@ -3,9 +3,11 @@ import { initClient, initClientNavigation } from "rwsdk/client";
 import { registerWebMcpTools } from "@/lib/webmcp";
 import { registerServiceWorker } from "@/lib/pwa/register-service-worker";
 import { logger } from "@/lib/logger";
+import { initSentry } from "@/lib/sentry";
 
 const { handleResponse, onHydrated } = initClientNavigation();
 
+initSentry();
 registerWebMcpTools();
 registerServiceWorker();
 

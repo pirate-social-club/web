@@ -18,6 +18,7 @@ type AsyncSongMockState = {
   bundleBodies: CapturedBody[];
   createPostBodies: CapturedBody[];
   createListingCalls: number;
+  postPollResult: "failed" | "published";
   postStatus: "processing" | "failed" | "published";
   retryCalls: number;
 };
@@ -182,7 +183,7 @@ async function installAsyncSongPublishMocks(page: Page, state: AsyncSongMockStat
 
   await page.route(/\/posts\/pst_e2e_created(\?.*)?$/u, async (route) => {
     if (state.postStatus === "processing") {
-      state.postStatus = "failed";
+      state.postStatus = state.postPollResult;
     }
     await route.fulfill(jsonResponse(createLocalizedSongPost(state.postStatus)));
   });
@@ -221,6 +222,7 @@ test.describe("async song publish with mocked API", () => {
       bundleBodies: [],
       createListingCalls: 0,
       createPostBodies: [],
+      postPollResult: "failed",
       postStatus: "processing",
       retryCalls: 0,
     };
@@ -260,6 +262,51 @@ test.describe("async song publish with mocked API", () => {
     expect((state.createPostBodies[0]?.listing_draft as { asset?: unknown } | undefined)?.asset).toBeUndefined();
     expect(state.createListingCalls).toBe(0);
     expect(state.retryCalls).toBe(1);
+    await expectNoBrowserError(page);
+  });
+
+  test("submits a paid song asynchronously and flips from processing to published", async ({ page }) => {
+    const state: AsyncSongMockState = {
+      bundleBodies: [],
+      createListingCalls: 0,
+      createPostBodies: [],
+      postPollResult: "published",
+      postStatus: "processing",
+      retryCalls: 0,
+    };
+    await installFixture(page, state);
+
+    await page.goto(`/c/${mockCommunityId}/submit`);
+    await page.locator('input[type="file"][accept="audio/*"]').setInputFiles({
+      name: "async-e2e.mp3",
+      mimeType: "audio/mpeg",
+      buffer: Buffer.from("e2e-audio"),
+    });
+    await page.getByPlaceholder("Title*").fill("Async E2E Song");
+    await page.getByRole("button", { name: /^continue$/i }).click();
+
+    await page.getByLabel(/lyrics/i).fill("Async publish lyrics");
+    await page.getByRole("button", { name: /^continue$/i }).click();
+
+    await page.getByRole("checkbox", { name: /paid unlock/i }).check();
+    await page.getByLabel(/^price$/i).fill("4.99");
+    await page.getByRole("button", { name: /^continue$/i }).click();
+    await page.getByRole("button", { name: /^publish$/i }).click();
+
+    await expect(page).toHaveURL(new RegExp(`/c/${mockCommunityId}$`, "u"));
+    await expect(page.getByText("Your post is processing and is only visible to you.")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Publish failed")).toHaveCount(0);
+    await expect(page.getByText("Async E2E Song")).toBeVisible({ timeout: 30_000 });
+
+    expect(state.bundleBodies[0]?.analysis_mode).toBe("deferred");
+    expect(state.createPostBodies[0]?.publish_mode).toBe("async");
+    expect(state.createPostBodies[0]?.listing_draft).toMatchObject({
+      price_cents: 499,
+      status: "active",
+    });
+    expect((state.createPostBodies[0]?.listing_draft as { asset?: unknown } | undefined)?.asset).toBeUndefined();
+    expect(state.createListingCalls).toBe(0);
+    expect(state.retryCalls).toBe(0);
     await expectNoBrowserError(page);
   });
 });

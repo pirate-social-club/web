@@ -428,7 +428,7 @@ export function PostCard({
             ) : null}
             {statusNotice.action ? (
               <Button
-                className="mt-2 h-8 px-3 text-sm"
+                className="mt-2 h-8 px-3"
                 data-post-card-interactive="true"
                 onClick={statusNotice.action.onClick}
                 size="sm"

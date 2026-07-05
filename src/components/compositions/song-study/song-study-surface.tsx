@@ -27,6 +27,7 @@ export interface SongStudySayItBackExercise {
   prompt: string;
   translation?: string;
   expected: string;
+  reviewSessionId?: string;
 }
 
 export interface SongStudySayItBackFeedback {
@@ -43,6 +44,7 @@ export interface SongStudyMultipleChoiceExercise {
   question: string;
   options: SongStudyOption[];
   correctOptionId: string;
+  reviewSessionId?: string;
 }
 
 export type SongStudySurfaceState =

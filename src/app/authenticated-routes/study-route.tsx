@@ -68,6 +68,7 @@ function toSayItBackExercise(exercise: Extract<SongStudyExercise, { type: "say_i
     prompt,
     translation: exercise.translation_text ?? undefined,
     expected: exercise.reference_text || prompt,
+    reviewSessionId: exercise.review_session_id,
   };
 }
 
@@ -83,6 +84,7 @@ function toMultipleChoiceExercise(exercise: Extract<SongStudyExercise, { type: "
     // surface needs the field for reveal styling; keep it empty until the
     // attempt response discloses it.
     correctOptionId: "",
+    reviewSessionId: exercise.review_session_id,
   };
 }
 
@@ -110,9 +112,20 @@ function completeSurface(input: { correctCount: number; totalCount: number }): S
   };
 }
 
-function makeAttemptIdempotencyKey(exerciseId: string, attemptNumber: number): string {
+function makeAttemptIdempotencyKey(exerciseId: string, attemptNumber: number, reviewSessionId?: string): string {
   const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  return `study:${exerciseId}:${attemptNumber}:${random}`;
+  return `study:${exerciseId}:${reviewSessionId ?? "learn"}:${attemptNumber}:${random}`;
+}
+
+function caughtUpMessage(study: SongStudyPayload): string {
+  const nextDueAt = study.session?.next_due_at;
+  if (!nextDueAt) return "You're caught up for this song.";
+  const date = new Date(nextDueAt * 1000);
+  if (Number.isNaN(date.getTime())) return "You're caught up for this song.";
+  return `You're caught up for this song. Next review ${date.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  })}.`;
 }
 
 function playStudyFeedbackSound(outcome: "correct" | "incorrect") {
@@ -282,7 +295,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           setState({
             phase: "blocked",
             title: pageTitle(post, study),
-            message: "You're caught up for this song.",
+            message: caughtUpMessage(study),
           });
           return;
         }
@@ -322,7 +335,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     selectedOptionId: string,
   ) => {
     if (surface.result || surface.submitting) return;
-    const pendingKey = `${surface.exercise.id}:${surface.attemptNumber}`;
+    const pendingKey = `${surface.exercise.id}:${surface.exercise.reviewSessionId ?? "learn"}:${surface.attemptNumber}`;
     if (pendingMultipleChoiceAttemptRef.current === pendingKey) return;
     pendingMultipleChoiceAttemptRef.current = pendingKey;
 
@@ -351,7 +364,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     void api.communities.submitPostStudyAttempt(readyState.post.post.community, readyState.post.post.id, {
       attempt_number: surface.attemptNumber,
       exercise_id: exercise.id,
-      idempotency_key: makeAttemptIdempotencyKey(exercise.id, surface.attemptNumber),
+      idempotency_key: makeAttemptIdempotencyKey(exercise.id, surface.attemptNumber, exercise.reviewSessionId),
+      ...(exercise.reviewSessionId ? { review_session_id: exercise.reviewSessionId } : {}),
       selected_option_id: selectedOptionId,
       type: "translation_choice",
     }).then((result) => {
@@ -531,7 +545,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
             }).then((transcription) => api.communities.submitPostStudyAttempt(state.post.post.community, state.post.post.id, {
                 attempt_number: sayItBackSurface.attemptNumber,
                 exercise_id: exercise.id,
-                idempotency_key: makeAttemptIdempotencyKey(exercise.id, sayItBackSurface.attemptNumber),
+                idempotency_key: makeAttemptIdempotencyKey(exercise.id, sayItBackSurface.attemptNumber, exercise.reviewSessionId),
+                ...(exercise.reviewSessionId ? { review_session_id: exercise.reviewSessionId } : {}),
                 transcript: transcription.text,
                 type: "say_it_back",
               }).then((result) => ({ result, transcript: transcription.text })))

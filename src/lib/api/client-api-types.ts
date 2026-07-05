@@ -852,6 +852,7 @@ export type SongStudyExercise =
       line_index: number;
       prompt_text: string;
       reference_text: string;
+      review_session_id?: string;
       translation_text?: string | null;
       max_attempts: number;
     }
@@ -864,6 +865,7 @@ export type SongStudyExercise =
       question: string;
       options: Array<{ id: string; text: string }>;
       max_attempts: number;
+      review_session_id?: string;
     };
 
 export type SongStudyPayload = {
@@ -878,10 +880,18 @@ export type SongStudyPayload = {
   target_language?: string | null;
   exercise_count: number;
   exercises: SongStudyExercise[];
+  session?: SongStudySessionSummary;
   study_pack_version?: number;
   generated_at?: number;
   locked_reason?: "purchase_required" | "membership_required" | "age_required";
   unavailable_reason?: "not_song" | "no_lyrics" | "unsupported_language" | "generation_failed";
+};
+
+export type SongStudySessionSummary = {
+  due_count: number;
+  served_count: number;
+  total_units: number;
+  next_due_at?: number;
 };
 
 export type SongStudyAttemptRequest =
@@ -890,6 +900,7 @@ export type SongStudyAttemptRequest =
       exercise_id: string;
       type: "say_it_back";
       attempt_number: number;
+      review_session_id?: string;
       transcript: string;
     }
   | {
@@ -897,6 +908,7 @@ export type SongStudyAttemptRequest =
       exercise_id: string;
       type: "translation_choice";
       attempt_number: number;
+      review_session_id?: string;
       selected_option_id: string;
     };
 

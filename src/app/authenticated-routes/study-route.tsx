@@ -16,7 +16,7 @@ import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
-import { isApiAuthError } from "@/lib/api/client";
+import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import type { SongStudyExercise, SongStudyPayload } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
@@ -36,6 +36,9 @@ type StudyRouteState =
   | { phase: "locked"; post: LocalizedPostResponse; study: SongStudyPayload; surface: SongStudySurfaceState }
   | { phase: "blocked"; message: string; title: string }
   | { phase: "error"; message: string; title: string };
+
+type ReadyStudyRouteState = Extract<StudyRouteState, { phase: "ready" }>;
+type MultipleChoiceSurfaceState = Extract<SongStudySurfaceState, { kind: "multiple_choice" }>;
 
 function pageTitle(post: LocalizedPostResponse | null, study?: SongStudyPayload | null): string {
   return study?.title?.trim()
@@ -122,6 +125,15 @@ function makeAttemptIdempotencyKey(exerciseId: string, attemptNumber: number): s
   return `study:${exerciseId}:${attemptNumber}:${random}`;
 }
 
+function playStudyFeedbackSound(outcome: "correct" | "incorrect") {
+  if (typeof Audio === "undefined") return;
+  const audio = new Audio(`/sounds/study/${outcome}.mp3`);
+  audio.volume = 0.7;
+  void audio.play().catch(() => {
+    // Non-critical feedback. Browsers may block playback if user activation has expired.
+  });
+}
+
 function StudyRouteMessage({
   message,
   postId,
@@ -188,6 +200,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   const recorderRef = React.useRef<MediaRecorder | null>(null);
   const recordingChunksRef = React.useRef<BlobPart[]>([]);
   const recordingStreamRef = React.useRef<MediaStream | null>(null);
+  const pendingMultipleChoiceAttemptRef = React.useRef<string | null>(null);
 
   const stopRecordingStream = React.useCallback(() => {
     recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -205,7 +218,17 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     let canceled = false;
 
     async function loadPost(): Promise<LocalizedPostResponse> {
-      return await api.posts.get(postId, { locale: contentLocale });
+      try {
+        return await api.posts.get(postId, { locale: contentLocale });
+      } catch (error) {
+        // Logged-in non-members of request-mode communities get a 404
+        // (not_found: "Community not found") from the authenticated read even
+        // for public posts. The study payload endpoint serves publicly readable
+        // posts to signed-in non-members, so fall back to the public read
+        // instead of surfacing the 404.
+        if (!isApiNotFoundError(error)) throw error;
+        return await api.publicPosts.get(postId, { locale: contentLocale });
+      }
     }
 
     async function loadStudy() {
@@ -303,6 +326,75 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     };
   }, [api, contentLocale, hydrated, postId, session?.accessToken]);
 
+  const submitMultipleChoiceAttempt = React.useCallback((
+    readyState: ReadyStudyRouteState,
+    surface: MultipleChoiceSurfaceState,
+    selectedOptionId: string,
+  ) => {
+    if (surface.result || surface.submitting) return;
+    const pendingKey = `${surface.exercise.id}:${surface.attemptNumber}`;
+    if (pendingMultipleChoiceAttemptRef.current === pendingKey) return;
+    pendingMultipleChoiceAttemptRef.current = pendingKey;
+
+    const exercise = surface.exercise;
+    setState((current) => {
+      if (
+        current.phase !== "ready"
+        || current.surface.kind !== "multiple_choice"
+        || current.surface.exercise.id !== exercise.id
+        || current.surface.result
+        || current.surface.submitting
+      ) {
+        pendingMultipleChoiceAttemptRef.current = null;
+        return current;
+      }
+      return {
+        ...current,
+        surface: {
+          ...current.surface,
+          selectedOptionId,
+          submitting: true,
+        },
+      };
+    });
+
+    void api.communities.submitPostStudyAttempt(readyState.post.post.community, readyState.post.post.id, {
+      attempt_number: surface.attemptNumber,
+      exercise_id: exercise.id,
+      idempotency_key: makeAttemptIdempotencyKey(exercise.id, surface.attemptNumber),
+      selected_option_id: selectedOptionId,
+      type: "translation_choice",
+    }).then((result) => {
+      pendingMultipleChoiceAttemptRef.current = null;
+      playStudyFeedbackSound(result.outcome === "correct" ? "correct" : "incorrect");
+      setState((current) => {
+        if (current.phase !== "ready" || current.surface.kind !== "multiple_choice" || current.surface.exercise.id !== exercise.id) {
+          return current;
+        }
+        return {
+          ...current,
+          surface: {
+            ...current.surface,
+            exercise: {
+              ...current.surface.exercise,
+              correctOptionId: result.correct_option_id ?? current.surface.exercise.correctOptionId,
+            },
+            canRetry: result.outcome !== "correct" && result.attempts_remaining > 0,
+            result: result.outcome === "correct" ? "correct" : "wrong",
+            submitting: false,
+          },
+        };
+      });
+    }).catch((error) => {
+      pendingMultipleChoiceAttemptRef.current = null;
+      setState({
+        phase: "error",
+        title: pageTitle(readyState.post, readyState.study),
+        message: getErrorMessage(error, "Could not submit this study attempt."),
+      });
+    });
+  }, [api]);
+
   const handlePrimaryAction = React.useCallback(() => {
     if (state.phase === "locked") {
       navigate(`/p/${encodeURIComponent(postId)}`);
@@ -352,49 +444,9 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         return;
       }
 
-      const selectedOptionId = state.surface.selectedOptionId;
-      if (!selectedOptionId || state.surface.submitting) return;
-
-      const exercise = state.surface.exercise;
-      setState({
-        ...state,
-        surface: {
-          ...state.surface,
-          submitting: true,
-        },
-      });
-      void api.communities.submitPostStudyAttempt(state.post.post.community, state.post.post.id, {
-        attempt_number: state.surface.attemptNumber,
-        exercise_id: exercise.id,
-        idempotency_key: makeAttemptIdempotencyKey(exercise.id, state.surface.attemptNumber),
-        selected_option_id: selectedOptionId,
-        type: "translation_choice",
-      }).then((result) => {
-        setState((current) => {
-          if (current.phase !== "ready" || current.surface.kind !== "multiple_choice" || current.surface.exercise.id !== exercise.id) {
-            return current;
-          }
-          return {
-            ...current,
-            surface: {
-              ...current.surface,
-              exercise: {
-                ...current.surface.exercise,
-                correctOptionId: result.correct_option_id ?? current.surface.exercise.correctOptionId,
-              },
-              canRetry: result.outcome !== "correct" && result.attempts_remaining > 0,
-              result: result.outcome === "correct" ? "correct" : "wrong",
-              submitting: false,
-            },
-          };
-        });
-      }).catch((error) => {
-        setState({
-          phase: "error",
-          title: pageTitle(state.post, state.study),
-          message: getErrorMessage(error, "Could not submit this study attempt."),
-        });
-      });
+      if (state.surface.selectedOptionId) {
+        submitMultipleChoiceAttempt(state, state.surface, state.surface.selectedOptionId);
+      }
       return;
     }
 
@@ -589,22 +641,14 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           : completeSurface({ correctCount: nextCorrectCount, totalCount: state.study.exercises.length }),
       });
     }
-  }, [api, postId, state, stopRecordingStream]);
+  }, [postId, state, stopRecordingStream, submitMultipleChoiceAttempt]);
 
   const handleOptionSelect = React.useCallback((optionId: string) => {
-    setState((current) => {
-      if (current.phase !== "ready" || current.surface.kind !== "multiple_choice" || current.surface.result) {
-        return current;
-      }
-      return {
-        ...current,
-        surface: {
-          ...current.surface,
-          selectedOptionId: optionId,
-        },
-      };
-    });
-  }, []);
+    if (state.phase !== "ready" || state.surface.kind !== "multiple_choice" || state.surface.result || state.surface.submitting) {
+      return;
+    }
+    submitMultipleChoiceAttempt(state, state.surface, optionId);
+  }, [state, submitMultipleChoiceAttempt]);
 
   const handleSecondaryAction = React.useCallback(() => {
     navigate(`/p/${encodeURIComponent(postId)}/karaoke`);

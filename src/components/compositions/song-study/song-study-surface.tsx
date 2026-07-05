@@ -100,7 +100,7 @@ function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function primaryActionLabel(state: SongStudySurfaceState): string {
+function primaryActionLabel(state: SongStudySurfaceState): string | undefined {
   switch (state.kind) {
     case "start":
       return "Study";
@@ -114,14 +114,14 @@ function primaryActionLabel(state: SongStudySurfaceState): string {
     case "multiple_choice":
       if (state.submitting) return "Checking…";
       if (state.result === "wrong" && state.canRetry) return "Try again";
-      return state.result ? "Continue" : "Check answer";
+      return state.result ? "Continue" : undefined;
     case "complete":
       return "Back to song";
   }
 }
 
 function primaryActionDisabled(state: SongStudySurfaceState): boolean {
-  if (state.kind === "multiple_choice") return Boolean(state.submitting) || (!state.result && !state.selectedOptionId);
+  if (state.kind === "multiple_choice") return Boolean(state.submitting);
   if (state.kind === "say_it_back") return state.phase === "checking";
   return false;
 }
@@ -134,11 +134,13 @@ function ActivityFooter({
   onSecondaryAction,
 }: {
   primaryDisabled?: boolean;
-  primaryLabel: string;
+  primaryLabel?: string;
   secondaryLabel?: string;
   onPrimaryAction?: () => void;
   onSecondaryAction?: () => void;
 }) {
+  if (!primaryLabel && !secondaryLabel) return null;
+
   return (
     <footer className="sticky bottom-0 z-10 border-t border-border-soft bg-background/95 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 backdrop-blur-xl sm:px-6">
       <div className={cn("mx-auto grid w-full max-w-3xl gap-3", secondaryLabel && "sm:grid-cols-2")}>
@@ -147,9 +149,11 @@ function ActivityFooter({
             {secondaryLabel}
           </Button>
         ) : null}
-        <Button className="w-full" disabled={primaryDisabled} onClick={onPrimaryAction} size="lg">
-          {primaryLabel}
-        </Button>
+        {primaryLabel ? (
+          <Button className="w-full" disabled={primaryDisabled} onClick={onPrimaryAction} size="lg">
+            {primaryLabel}
+          </Button>
+        ) : null}
       </div>
     </footer>
   );
@@ -409,7 +413,7 @@ function MultipleChoiceState({
             <button
               className={cn(
                 "flex min-h-16 items-center justify-between gap-4 rounded-[var(--radius-xl)] border border-border-soft bg-card px-4 py-3 text-left transition-colors hover:bg-muted/50",
-                selected && !state.result && "border-primary bg-primary/10",
+                selected && !state.result && "border-foreground/30 bg-muted/70",
                 revealCorrect && "border-success/40 bg-success/10",
                 revealWrong && "border-destructive/40 bg-destructive/10",
               )}
@@ -427,7 +431,7 @@ function MultipleChoiceState({
               ) : revealWrong ? (
                 <XCircle className="size-6 shrink-0 text-destructive" weight="fill" />
               ) : (
-                <span className={cn("size-5 shrink-0 rounded-full border", selected ? "border-primary bg-primary" : "border-border")} />
+                <span className={cn("size-5 shrink-0 rounded-full border", selected ? "border-foreground bg-foreground" : "border-border")} />
               )}
             </button>
           );

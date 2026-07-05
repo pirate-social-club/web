@@ -1,6 +1,6 @@
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { installDomGlobals } from "@/test/setup-dom";
@@ -76,6 +76,13 @@ let publicPostError: unknown = null;
 let studyResult: SongStudyPayload = readyStudyPayload();
 let studyError: unknown = null;
 let privyConnectCalls = 0;
+let submitPostStudyAttemptResult = {
+  attempts_remaining: 0,
+  correct_option_id: "option_correct",
+  exercise_id: "ex_choice",
+  object: "song_study_attempt_result",
+  outcome: "correct",
+} as const;
 
 const fakeApi = new ApiClient({
   baseUrl: "https://api.test",
@@ -96,6 +103,10 @@ fakeApi.communities.getPostStudy = async () => {
   calls.push("communities.getPostStudy");
   if (studyError) throw studyError;
   return studyResult;
+};
+fakeApi.communities.submitPostStudyAttempt = async (_communityId, _postId, body) => {
+  calls.push(`communities.submitPostStudyAttempt:${body.type}:${body.type === "translation_choice" ? body.selected_option_id : ""}`);
+  return submitPostStudyAttemptResult;
 };
 
 mock.module("@/lib/api", () => ({
@@ -157,6 +168,13 @@ beforeEach(() => {
   studyResult = readyStudyPayload();
   studyError = null;
   privyConnectCalls = 0;
+  submitPostStudyAttemptResult = {
+    attempts_remaining: 0,
+    correct_option_id: "option_correct",
+    exercise_id: "ex_choice",
+    object: "song_study_attempt_result",
+    outcome: "correct",
+  };
 });
 
 afterEach(() => {
@@ -184,11 +202,65 @@ describe("StudyRoutePage", () => {
     expect(calls).toEqual(["posts.get"]);
   });
 
+  test("falls back to the public post read when the authenticated read 404s for non-members", async () => {
+    postError = new ApiError("not_found", "Community not found", 404);
+
+    const view = render(<StudyRoutePage postId="pst_song" />);
+
+    await waitFor(() => expect(view.getByText("Learn this song line by line")).toBeTruthy());
+    expect(view.queryByText("Community not found")).toBeNull();
+    expect(calls).toEqual(["posts.get", "publicPosts.get", "communities.getPostStudy"]);
+  });
+
+  test("surfaces the public read error when both reads fail", async () => {
+    postError = new ApiError("not_found", "Community not found", 404);
+    publicPostError = new ApiError("not_found", "Post not found", 404);
+
+    const view = render(<StudyRoutePage postId="pst_song" />);
+
+    await waitFor(() => expect(view.getByText("Post not found")).toBeTruthy());
+    expect(calls).toEqual(["posts.get", "publicPosts.get"]);
+  });
+
   test("loads the server-authoritative study pack for authenticated users", async () => {
     const view = render(<StudyRoutePage postId="pst_song" />);
 
     await waitFor(() => expect(view.getByText("Learn this song line by line")).toBeTruthy());
     expect(view.getByText("1 exercises")).toBeTruthy();
     expect(calls).toEqual(["posts.get", "communities.getPostStudy"]);
+  });
+
+  test("submits a multiple choice attempt when an answer is selected", async () => {
+    studyResult = readyStudyPayload({
+      exercise_count: 1,
+      exercises: [
+        {
+          id: "ex_choice",
+          line_id: "line_1",
+          line_index: 0,
+          max_attempts: 1,
+          options: [
+            { id: "option_wrong", text: "Good night" },
+            { id: "option_correct", text: "Hello world" },
+          ],
+          prompt_text: "Hola mundo",
+          question: "Choose the translation",
+          type: "translation_choice",
+        },
+      ],
+    });
+
+    const view = render(<StudyRoutePage postId="pst_song" />);
+
+    await waitFor(() => expect(view.getByText("Learn this song line by line")).toBeTruthy());
+    fireEvent.click(view.getByText("Study").closest("button")!);
+
+    await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
+    expect(view.queryByText("Check answer")).toBeNull();
+
+    fireEvent.click(view.getByText("Hello world").closest("button")!);
+
+    await waitFor(() => expect(calls).toContain("communities.submitPostStudyAttempt:translation_choice:option_correct"));
+    await waitFor(() => expect(view.getByText("Continue")).toBeTruthy());
   });
 });

@@ -2,6 +2,7 @@
 
 import type {
   PostAudience,
+  AuthorAgeGatePolicy,
   AssetLicenseState,
   AssetRoyaltySplitState,
   SongMode,
@@ -18,6 +19,7 @@ export function buildSongPostRequest(input: {
   caption?: string;
   derivativeStep: AssetDerivativeInput | undefined;
   idempotencyKey: string;
+  ageGatePolicy?: AuthorAgeGatePolicy;
   license: AssetLicenseState | undefined;
   paidSongPriceUsd: number | null;
   royaltySplit?: AssetRoyaltySplitState;
@@ -38,6 +40,7 @@ export function buildSongPostRequest(input: {
       : undefined,
     identity_mode: "public" as const,
     idempotency_key: input.idempotencyKey,
+    age_gate_policy: input.ageGatePolicy === "18_plus" ? "18_plus" as const : undefined,
     license_preset: input.license?.presetId,
     post_type: "song" as const,
     rights_basis: input.songMode === "original" ? "original" as const : "derivative" as const,

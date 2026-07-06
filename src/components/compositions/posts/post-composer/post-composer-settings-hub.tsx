@@ -84,6 +84,8 @@ function settingsCopy(controller: PostComposerController) {
     visibilityTitle: "Who can see this?",
     publicVisibilityLabel: copy.audience.public,
     communityVisibilityLabel: copy.audience.community,
+    ageGateTitle: "18+ content",
+    ageGateDescription: "Require age verification",
     paidUnlockTitle,
     priceLabel,
     pricePlaceholder: copy.placeholders.unlockPrice,
@@ -159,7 +161,9 @@ export function PostComposerSettingsHub({
         attachment={attachment}
         copy={settingsCopy(controller)}
         identity={identityFromController(controller)}
+        ageGatePolicy={audience.ageGatePolicy}
         license={license.state.presetId}
+        onAgeGatePolicyChange={audience.setAgeGatePolicy}
         onAgentIdentitySelect={() => identity.setAuthorMode("agent")}
         onIdentityChange={(nextIdentity) => {
           identity.setAuthorMode("human");

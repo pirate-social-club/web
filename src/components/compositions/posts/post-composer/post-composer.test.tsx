@@ -11,7 +11,7 @@ import { PostComposerEventSection } from "./post-composer-event-section";
 import { LiveTabContent } from "./post-composer-live-tab";
 import { SearchReferencePicker, SelectedReferenceCard } from "./post-composer-references";
 import { PostComposerDerivativeSection } from "./post-composer-sections";
-import type { AssetLicenseState, ComposerEventState, MonetizationState, PostComposerProps } from "./post-composer.types";
+import type { AssetLicenseState, AuthorAgeGatePolicy, ComposerEventState, MonetizationState, PostComposerProps } from "./post-composer.types";
 
 const { describe, expect, test } = BunTest;
 const { afterEach, beforeEach } = BunTest as unknown as {
@@ -204,6 +204,7 @@ describe("PostComposer monetization", () => {
       tree,
       (element) =>
         element.props.checked === false
+        && element.props["aria-label"] === "Pay to access"
         && typeof element.props.onCheckedChange === "function",
     );
     if (!paidAccessCheckbox) {
@@ -266,6 +267,7 @@ describe("PostComposer monetization", () => {
       tree,
       (element) =>
         element.props.checked === true
+        && element.props["aria-label"] === "Pay to access"
         && typeof element.props.onCheckedChange === "function",
     );
     if (!updatedPaidAccessCheckbox) {
@@ -316,6 +318,7 @@ describe("PostComposer monetization", () => {
       tree,
       (element) =>
         element.props.checked === false
+        && element.props["aria-label"] === "Use community regional pricing"
         && typeof element.props.id === "string"
         && typeof element.props.onCheckedChange === "function",
     );
@@ -622,8 +625,10 @@ describe("PostComposer monetization", () => {
     };
     let identityMode: NonNullable<PostComposerProps["identity"]>["identityMode"] = "public";
     let audience: PostComposerProps["audience"] = { visibility: "public" };
+    let ageGatePolicy: AuthorAgeGatePolicy = "none";
 
     const tree = renderComposer({
+      ageGatePolicy,
       availableTabs: ["video"],
       audience,
       clubName: "Lane1",
@@ -639,6 +644,9 @@ describe("PostComposer monetization", () => {
       monetization,
       onAudienceChange: (next) => {
         audience = next;
+      },
+      onAgeGatePolicyChange: (next) => {
+        ageGatePolicy = next;
       },
       onIdentityModeChange: (next) => {
         identityMode = next;
@@ -663,12 +671,20 @@ describe("PostComposer monetization", () => {
       tree,
       (element) => element.props.title === "Commercial derivatives" && typeof element.props.onClick === "function",
     );
+    const ageGateCheckbox = findElement(
+      tree,
+      (element) =>
+        element.props.checked === false
+        && element.props["aria-label"] === "18+ content"
+        && typeof element.props.onCheckedChange === "function"
+    );
 
-    if (!communityOption || !priceInput || !commercialRemix) {
+    if (!communityOption || !priceInput || !commercialRemix || !ageGateCheckbox) {
       throw new Error("Missing inline settings option");
     }
 
     (communityOption.props.onClick as (() => void) | undefined)?.();
+    (ageGateCheckbox.props.onCheckedChange as ((checked: boolean) => void) | undefined)?.(true);
     (priceInput.props.onChange as ((event: { target: { value: string } }) => void) | undefined)?.({
       target: { value: "6.66" },
     });
@@ -678,6 +694,7 @@ describe("PostComposer monetization", () => {
       tree,
       (element) => element.props.title === "anon_amber-anchor-00" && typeof element.props.onClick === "function",
     )).toBeNull();
+    expect(ageGatePolicy).toBe("18_plus");
     expect(identityMode).toBe("public");
     expect(audience.visibility).toBe("members_only");
     expect(monetization.visible).toBe(true);
@@ -728,6 +745,7 @@ describe("PostComposer monetization", () => {
       tree,
       (element) =>
         element.props.checked === true
+        && element.props["aria-label"] !== "18+ content"
         && typeof element.props.onCheckedChange === "function"
         && typeof element.props.id === "string"
         && element.props.id === "test-id",

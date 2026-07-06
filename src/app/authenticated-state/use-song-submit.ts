@@ -12,6 +12,7 @@ import { useApi } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import type {
   AuthorMode,
+  AuthorAgeGatePolicy,
   CharityContributionState,
   CommunityCharityPartner,
   ComposerAudienceState,
@@ -67,6 +68,7 @@ type UseSongSubmitInput = {
 type SongSubmitInput = {
   altchaPayload?: string | null;
   audience: ComposerAudienceState;
+  ageGatePolicy: AuthorAgeGatePolicy;
   authorMode: AuthorMode;
   caption?: string;
   charityContribution: CharityContributionState;
@@ -309,6 +311,7 @@ export function useSongSubmit({
   return React.useCallback(async ({
     altchaPayload,
     audience,
+    ageGatePolicy,
     authorMode,
     caption,
     charityContribution,
@@ -481,6 +484,7 @@ export function useSongSubmit({
       bundleId,
       caption,
       derivativeStep,
+      ageGatePolicy,
       idempotencyKey: crypto.randomUUID(),
       license,
       paidSongPriceUsd,

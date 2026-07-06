@@ -15,6 +15,7 @@ import {
 } from "@/components/compositions/posts/post-composer/post-composer-config";
 import type {
   AuthorMode,
+  AuthorAgeGatePolicy,
   CharityContributionState,
   ComposerAudienceState,
   ComposerEventState,
@@ -32,6 +33,7 @@ import type {
 
 export type CreatePostDraftState = {
   audience: ComposerAudienceState;
+  ageGatePolicy: AuthorAgeGatePolicy;
   authorMode: AuthorMode;
   body: string;
   caption: string;
@@ -60,6 +62,7 @@ export type CreatePostDraftState = {
 
 type DraftAction =
   | { type: "setAudience"; value: React.SetStateAction<ComposerAudienceState> }
+  | { type: "setAgeGatePolicy"; value: React.SetStateAction<AuthorAgeGatePolicy> }
   | { type: "setAuthorMode"; value: React.SetStateAction<AuthorMode> }
   | { type: "setBody"; value: React.SetStateAction<string> }
   | { type: "setCaption"; value: React.SetStateAction<string> }
@@ -88,6 +91,7 @@ type DraftAction =
 type CreatePostDraftActions = {
   resetCharityContribution: () => void;
   setAudience: React.Dispatch<React.SetStateAction<ComposerAudienceState>>;
+  setAgeGatePolicy: React.Dispatch<React.SetStateAction<AuthorAgeGatePolicy>>;
   setAuthorMode: React.Dispatch<React.SetStateAction<AuthorMode>>;
   setBody: React.Dispatch<React.SetStateAction<string>>;
   setCaption: React.Dispatch<React.SetStateAction<string>>;
@@ -121,6 +125,7 @@ function resolveSetState<T>(current: T, value: React.SetStateAction<T>): T {
 function createInitialDraftState(): CreatePostDraftState {
   return {
     audience: defaultAudienceState(),
+    ageGatePolicy: "none",
     authorMode: "human",
     body: "",
     caption: "",
@@ -152,6 +157,8 @@ function createPostDraftReducer(state: CreatePostDraftState, action: DraftAction
   switch (action.type) {
     case "setAudience":
       return { ...state, audience: resolveSetState(state.audience, action.value) };
+    case "setAgeGatePolicy":
+      return { ...state, ageGatePolicy: resolveSetState(state.ageGatePolicy, action.value) };
     case "setAuthorMode":
       return { ...state, authorMode: resolveSetState(state.authorMode, action.value) };
     case "setBody":
@@ -216,6 +223,7 @@ export function useCreatePostDraftState(initial?: Partial<CreatePostDraftState>)
   const actions = React.useMemo<CreatePostDraftActions>(() => ({
     resetCharityContribution: () => dispatch({ type: "setCharityContribution", value: defaultCharityContributionState() }),
     setAudience: (value) => dispatch({ type: "setAudience", value }),
+    setAgeGatePolicy: (value) => dispatch({ type: "setAgeGatePolicy", value }),
     setAuthorMode: (value) => dispatch({ type: "setAuthorMode", value }),
     setBody: (value) => dispatch({ type: "setBody", value }),
     setCaption: (value) => dispatch({ type: "setCaption", value }),

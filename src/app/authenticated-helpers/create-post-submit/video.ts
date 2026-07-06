@@ -157,7 +157,7 @@ export function buildVideoPostRequest({
     post_type: "video",
     title: title.trim(),
     caption: caption.trim() || undefined,
-    access_mode: monetized ? "locked" : undefined,
+    access_mode: monetized ? "locked" : "public",
     commercial_rev_share_pct: monetized && license?.presetId === "commercial-remix"
       ? license.commercialRevSharePct
       : undefined,

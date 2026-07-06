@@ -4,6 +4,7 @@ import {
   type DocumentProofProvider,
   type IdentityGateDraft,
 } from "@/components/compositions/community/create-composer/create-community-composer.types";
+import { areStableJsonValuesEqual } from "@/lib/gate-policy-utils";
 
 export type SerializedGatePolicy = GatePolicy;
 
@@ -191,5 +192,5 @@ function acceptedProvidersField(
 }
 
 function gateDraftsEqual(left: IdentityGateDraft[], right: IdentityGateDraft[]): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+  return areStableJsonValuesEqual(left, right);
 }

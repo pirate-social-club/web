@@ -20,7 +20,11 @@ export function areGatePoliciesEqual(
   left: GatePolicy | null | undefined,
   right: GatePolicy | null | undefined,
 ): boolean {
-  return JSON.stringify(normalizePolicyValue(left ?? null)) === JSON.stringify(normalizePolicyValue(right ?? null));
+  return areStableJsonValuesEqual(left ?? null, right ?? null);
+}
+
+export function areStableJsonValuesEqual(left: unknown, right: unknown): boolean {
+  return JSON.stringify(normalizePolicyValue(left)) === JSON.stringify(normalizePolicyValue(right));
 }
 
 export function isGatePolicyProjectionLossy(

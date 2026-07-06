@@ -17,7 +17,11 @@ import {
   type PreserveGatePolicyInput,
 } from "@/app/authenticated-helpers/community-gate-rule-serialization";
 import { getCommunityGateDrafts } from "@/app/authenticated-helpers/moderation-helpers";
-import { getGatePolicyMatchMode, isGatePolicyProjectionLossy } from "@/lib/gate-policy-utils";
+import {
+  areStableJsonValuesEqual,
+  getGatePolicyMatchMode,
+  isGatePolicyProjectionLossy,
+} from "@/lib/gate-policy-utils";
 
 export function useCommunityAccessState({
   community,
@@ -139,5 +143,5 @@ export function useCommunityAccessState({
 }
 
 function gateDraftsEqual(left: IdentityGateDraft[], right: IdentityGateDraft[]): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+  return areStableJsonValuesEqual(left, right);
 }

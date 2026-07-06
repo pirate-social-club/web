@@ -579,6 +579,49 @@ describe("useCommunityAccessState", () => {
     expect(calls.updateGates[0]?.body.allow_anonymous_identity).toBe(true);
   });
 
+  test("preserves loaded gate policies when equivalent drafts use different key order", async () => {
+    const calls = installCommunityApiMocks();
+    const save = createSaveCommunityMock();
+    const originalPolicy = {
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { type: "altcha_pow" } },
+          {
+            op: "or",
+            children: [
+              { op: "gate", gate: { type: "nationality", provider: "self", allowed: ["US"] } },
+              { op: "gate", gate: { type: "wallet_score", provider: "passport", minimum_score: 20 } },
+            ],
+          },
+        ],
+      },
+    } satisfies NonNullable<ApiCommunity["gate_policy"]>;
+    const { result } = renderAccessHook({
+      community: createCommunity({ gate_policy: originalPolicy }),
+      saveCommunity: save.saveCommunity,
+    });
+
+    await waitFor(() => expect(result.current.gateDrafts).toHaveLength(2));
+
+    act(() => {
+      result.current.setGateDrafts([
+        { requiredValues: ["US"], provider: "self", gateType: "nationality" },
+        { minimumScore: 20, provider: "passport", gateType: "wallet_score" },
+      ]);
+    });
+
+    expect(result.current.advancedGatePolicyReplacementRequired).toBe(false);
+
+    act(() => {
+      result.current.handleSaveGates();
+    });
+
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+    expect(calls.updateGates[0]?.body.gate_policy).toBe(originalPolicy);
+  });
+
   test("blocks advanced policy replacement until explicitly confirmed", async () => {
     const calls = installCommunityApiMocks();
     const save = createSaveCommunityMock();

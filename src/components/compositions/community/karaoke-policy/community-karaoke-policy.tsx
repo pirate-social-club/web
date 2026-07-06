@@ -3,6 +3,7 @@
 import { MicrophoneStage } from "@phosphor-icons/react";
 
 import { CommunityModerationSaveFooter } from "@/components/compositions/community/moderation-shell/community-moderation-save-footer";
+import { ProviderKeyStatusLine } from "@/components/compositions/community/provider-keys/provider-key-field";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Switch } from "@/components/primitives/switch";
 import { Type } from "@/components/primitives/type";
@@ -24,6 +25,7 @@ function updateEnabled(
 
 export function CommunityKaraokePolicyPage({
   className,
+  elevenLabsKeyStatus = { kind: "missing" },
   onSave,
   onSettingsChange,
   saveDisabled,
@@ -49,8 +51,9 @@ export function CommunityKaraokePolicyPage({
             Songs without uploaded lyrics, completed forced alignment, or instrumental audio stay hidden automatically.
           </FormNote>
           <FormNote>
-            Voice scoring and transcription require an ElevenLabs key configured under Assistant.
+            Karaoke needs the community ElevenLabs integration for voice scoring and transcription.
           </FormNote>
+          <ProviderKeyStatusLine align="start" keyStatus={elevenLabsKeyStatus} manageHref="../integrations" />
         </div>
         <Switch
           aria-label="Enable karaoke"
@@ -58,24 +61,6 @@ export function CommunityKaraokePolicyPage({
           onCheckedChange={(karaokeEnabled) => onSettingsChange?.(updateEnabled(settings, karaokeEnabled))}
         />
       </div>
-
-      <section className="space-y-4 border-t border-border-soft pt-6 md:pt-8">
-        <Type as="h2" variant="h2">Song requirements</Type>
-        <div className="grid gap-3 md:grid-cols-3">
-          {[
-            "Instrumental audio",
-            "Completed alignment",
-            "Timed lyrics",
-          ].map((label) => (
-            <div
-              className="rounded-md border border-border-soft bg-background px-4 py-3"
-              key={label}
-            >
-              <Type as="p" variant="body">{label}</Type>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {settings.updatedAt ? (
         <FormNote>Last updated {new Date(settings.updatedAt).toLocaleString()}.</FormNote>

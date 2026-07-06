@@ -1,3 +1,5 @@
+import type { AssistantProviderKeyStatus } from "../assistant-policy/community-assistant-policy.types";
+
 export interface CommunityStudyPolicySettings {
   studyEnabled: boolean;
   updatedAt: string | null;
@@ -13,6 +15,7 @@ export interface CommunityStudyPolicyPageProps {
   settings: CommunityStudyPolicySettings;
   submitState: CommunityStudyPolicySubmitState;
   className?: string;
+  elevenLabsKeyStatus?: AssistantProviderKeyStatus;
   onSave?: () => void;
   onSettingsChange?: (settings: CommunityStudyPolicySettings) => void;
   saveDisabled?: boolean;

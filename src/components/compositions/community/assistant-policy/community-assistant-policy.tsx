@@ -5,6 +5,7 @@ import * as React from "react";
 import { CommunityModerationSaveFooter } from "@/components/compositions/community/moderation-shell/community-moderation-save-footer";
 import { Button } from "@/components/primitives/button";
 import { Checkbox } from "@/components/primitives/checkbox";
+import { FieldRow, ProviderKeyStatusLine } from "@/components/compositions/community/provider-keys/provider-key-field";
 import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
 import {
@@ -20,7 +21,6 @@ import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import type {
   AssistantContextMode,
-  AssistantProviderKeyStatus,
   AssistantVoiceMode,
   CommunityAssistantPolicyPageProps,
   CommunityAssistantPolicySettings,
@@ -83,26 +83,6 @@ function Section({
       </div>
       {children}
     </section>
-  );
-}
-
-function FieldRow({
-  children,
-  description,
-  label,
-}: {
-  children: React.ReactNode;
-  description?: string;
-  label: string;
-}) {
-  return (
-    <div className="grid gap-3 border-b border-border-soft py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] md:items-center">
-      <div className="space-y-1">
-        <div className="text-base font-medium leading-6">{label}</div>
-        {description ? <p className="text-base leading-6 text-muted-foreground">{description}</p> : null}
-      </div>
-      <div className="min-w-0">{children}</div>
-    </div>
   );
 }
 
@@ -180,81 +160,6 @@ function getModelOptions(settings: CommunityAssistantPolicySettings): AssistantM
     });
   }
   return [...byId.values()];
-}
-
-function ProviderKeyField({
-  connectedPrefix,
-  description,
-  invalidPrefix,
-  keyStatus,
-  label,
-  saveLabel,
-  saveNewLabel,
-  onKeyRevoke,
-  onKeySave,
-  placeholder,
-}: {
-  connectedPrefix: string;
-  description: string;
-  invalidPrefix: string;
-  keyStatus: AssistantProviderKeyStatus;
-  label: string;
-  saveLabel: string;
-  saveNewLabel: string;
-  onKeyRevoke: () => void;
-  onKeySave: (apiKey: string) => void;
-  placeholder: string;
-}) {
-  const [apiKeyDraft, setApiKeyDraft] = React.useState("");
-  const connected = keyStatus.kind === "connected";
-  const invalid = keyStatus.kind === "invalid";
-  const canSaveKey = apiKeyDraft.trim().length > 0;
-
-  return (
-    <FieldRow
-      description={invalid ? keyStatus.message : description}
-      label={label}
-    >
-      <div className="space-y-2">
-        {connected || invalid ? (
-          <div className={cn(
-            "text-base leading-6",
-            connected ? "text-foreground" : "text-destructive",
-          )}>
-            {connected
-              ? `Current key: ${connectedPrefix}${keyStatus.last4}`
-              : `Invalid key: ${invalidPrefix}${keyStatus.last4}`}
-          </div>
-        ) : null}
-        <Input
-          autoComplete="off"
-          className="h-11 rounded-md font-mono text-base"
-          onChange={(event) => setApiKeyDraft(event.target.value)}
-          placeholder={connected || invalid ? "Paste a new key to rotate" : placeholder}
-          type="password"
-          value={apiKeyDraft}
-        />
-        <div className="flex flex-wrap gap-2">
-          <Button
-            disabled={!canSaveKey}
-            onClick={() => {
-              onKeySave(apiKeyDraft);
-              setApiKeyDraft("");
-            }}
-            size="sm"
-            variant="outline"
-          >
-            {connected || invalid ? saveNewLabel : saveLabel}
-          </Button>
-          {connected || invalid ? (
-            <Button onClick={onKeyRevoke} size="sm" variant="ghost">
-              Revoke
-            </Button>
-          ) : null}
-        </div>
-      </div>
-    </FieldRow>
-  );
 }
 
 function ModelSearchInput({
@@ -348,13 +253,9 @@ function ModelSearchInput({
 }
 
 function ModelBillingSection({
-  onKeyRevoke,
-  onKeySave,
   onModelChange,
   settings,
 }: {
-  onKeyRevoke: () => void;
-  onKeySave: (apiKey: string) => void;
   onModelChange: (modelId: string) => void;
   settings: CommunityAssistantPolicySettings;
 }) {
@@ -368,22 +269,15 @@ function ModelBillingSection({
       title="Model and billing"
     >
       <div className="border-y border-border-soft">
-        <ProviderKeyField
-          connectedPrefix="sk-or-..."
-          description="Paste this community's OpenRouter API key. Pirate stores it encrypted and never shows it again."
-          invalidPrefix="sk-or-..."
-          keyStatus={keyStatus}
-          label="OpenRouter key"
-          onKeyRevoke={onKeyRevoke}
-          onKeySave={onKeySave}
-          placeholder="sk-or-..."
-          saveLabel="Save OpenRouter key"
-          saveNewLabel="Save new OpenRouter key"
-        />
+        <FieldRow description="Assistant model responses use the community OpenRouter integration." label="OpenRouter key">
+          <ProviderKeyStatusLine keyStatus={keyStatus} manageHref="../integrations" />
+        </FieldRow>
         <FieldRow description="Search the live OpenRouter model list for this community's key." label="Model">
           <ModelSearchInput connected={connected} onModelChange={onModelChange} settings={settings} />
           {!connected ? (
-            <p className="mt-2 text-base leading-6 text-muted-foreground">Save an OpenRouter key to choose a model.</p>
+            <p className="mt-2 text-base leading-6 text-muted-foreground">
+              Connect OpenRouter in Integrations to choose a model.
+            </p>
           ) : null}
         </FieldRow>
       </div>
@@ -437,13 +331,9 @@ function NumberRow({
 
 function VoiceSection({
   onChange,
-  onKeyRevoke,
-  onKeySave,
   settings,
 }: {
   onChange: (partial: Partial<CommunityAssistantPolicySettings>) => void;
-  onKeyRevoke: () => void;
-  onKeySave: (apiKey: string) => void;
   settings: CommunityAssistantPolicySettings;
 }) {
   const voiceEnabled = settings.voiceMode !== "off";
@@ -475,22 +365,13 @@ function VoiceSection({
       title="Voice"
     >
       <div className="border-y border-border-soft">
-        <ProviderKeyField
-          connectedPrefix="..."
-          description="Paste this community's ElevenLabs API key. Pirate stores it encrypted and uses it for Scribe and TTS."
-          invalidPrefix="..."
-          keyStatus={settings.elevenLabsKeyStatus}
-          label="ElevenLabs key"
-          onKeyRevoke={onKeyRevoke}
-          onKeySave={onKeySave}
-          placeholder="ElevenLabs API key"
-          saveLabel="Save ElevenLabs key"
-          saveNewLabel="Save new ElevenLabs key"
-        />
+        <FieldRow description="Assistant voice uses the community ElevenLabs integration." label="ElevenLabs key">
+          <ProviderKeyStatusLine keyStatus={settings.elevenLabsKeyStatus} manageHref="../integrations" />
+        </FieldRow>
         <SelectRow
           description={elevenLabsConnected
             ? "Transcription only accepts spoken input and replies with text. Voice replies can speak assistant responses where supported."
-            : "Save an ElevenLabs key before enabling transcription or voice replies."}
+            : "Connect ElevenLabs in Integrations before enabling transcription or voice replies."}
           label="Voice mode"
           onValueChange={updateVoiceMode}
           options={voiceModeOptions}
@@ -653,10 +534,6 @@ function StarterPromptRow({
 export function CommunityAssistantPolicyPage({
   className,
   onAvatarFileSelect,
-  onElevenLabsKeyRevoke,
-  onElevenLabsKeySave,
-  onOpenRouterKeyRevoke,
-  onOpenRouterKeySave,
   onSave,
   onSettingsChange,
   saveDisabled = false,
@@ -692,43 +569,6 @@ export function CommunityAssistantPolicyPage({
       starterPrompts: settings.starterPrompts.filter((_, itemIndex) => itemIndex !== index),
     });
   }
-
-  function saveOpenRouterKey(apiKey: string) {
-    const trimmed = apiKey.trim();
-    if (!trimmed) return;
-    update({
-      openRouterKeyStatus: {
-        kind: "connected",
-        connectedAt: new Date().toISOString(),
-        last4: trimmed.slice(-4),
-      },
-    });
-  }
-
-  function revokeKey() {
-    update({ openRouterKeyStatus: { kind: "missing" } });
-  }
-
-  function saveElevenLabsKey(apiKey: string) {
-    const trimmed = apiKey.trim();
-    if (!trimmed) return;
-    update({
-      elevenLabsKeyStatus: {
-        kind: "connected",
-        connectedAt: new Date().toISOString(),
-        last4: trimmed.slice(-4),
-      },
-    });
-  }
-
-  function revokeElevenLabsKey() {
-    update({ elevenLabsKeyStatus: { kind: "missing" } });
-  }
-
-  const handleOpenRouterKeySave = onOpenRouterKeySave ?? saveOpenRouterKey;
-  const handleOpenRouterKeyRevoke = onOpenRouterKeyRevoke ?? revokeKey;
-  const handleElevenLabsKeySave = onElevenLabsKeySave ?? saveElevenLabsKey;
-  const handleElevenLabsKeyRevoke = onElevenLabsKeyRevoke ?? revokeElevenLabsKey;
 
   return (
     <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", className)}>
@@ -822,24 +662,12 @@ export function CommunityAssistantPolicyPage({
       </Section>
 
       <ModelBillingSection
-        onKeyRevoke={() => {
-          void handleOpenRouterKeyRevoke();
-        }}
-        onKeySave={(apiKey) => {
-          void handleOpenRouterKeySave(apiKey);
-        }}
         onModelChange={(selectedModelId) => update({ selectedModelId })}
         settings={settings}
       />
 
       <VoiceSection
         onChange={update}
-        onKeyRevoke={() => {
-          void handleElevenLabsKeyRevoke();
-        }}
-        onKeySave={(apiKey) => {
-          void handleElevenLabsKeySave(apiKey);
-        }}
         settings={settings}
       />
 

@@ -39,6 +39,14 @@ describe("machine-access moderation wiring", () => {
     expect(getCommunityModerationTitle("assistant", mockCopy)).toBe("Assistant");
   });
 
+  test("integrations is in the section type and builds a path", () => {
+    const section: CommunityModerationSection = "integrations";
+    const path = buildCommunityModerationPath("gld_123", section);
+
+    expect(path).toBe("/c/gld_123/mod/integrations");
+    expect(getCommunityModerationTitle("integrations", mockCopy)).toBe("Integrations");
+  });
+
   test("rights is in the moderation section and builds a path", () => {
     const section: CommunityModerationSection = "rights";
     const path = buildCommunityModerationPath("gld_123", section);
@@ -63,8 +71,12 @@ describe("machine-access moderation wiring", () => {
     const assistantItem = accessSection?.items.find(
       (item) => item.label === "Assistant",
     );
+    const integrationsItem = accessSection?.items.find(
+      (item) => item.label === "Integrations",
+    );
 
     expect(accessSection == null).toBe(false);
+    expect(integrationsItem == null).toBe(false);
     expect(assistantItem == null).toBe(false);
     expect(assistantItem!.active).toBe(false);
   });

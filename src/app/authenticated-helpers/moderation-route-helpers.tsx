@@ -40,6 +40,8 @@ export function getCommunityModerationTitle(
       return copy.nav.visualPolicy ?? "Visual policy";
     case "agents":
       return copy.nav.agents;
+    case "integrations":
+      return "Integrations";
     case "assistant":
       return "Assistant";
     case "karaoke":

@@ -83,10 +83,6 @@ export type CommunityAssistantPolicySettings = {
 export type CommunityAssistantPolicyPageProps = {
   className?: string;
   onAvatarFileSelect?: (file: File | null) => void;
-  onElevenLabsKeyRevoke?: () => void | Promise<void>;
-  onElevenLabsKeySave?: (apiKey: string) => void | Promise<void>;
-  onOpenRouterKeyRevoke?: () => void | Promise<void>;
-  onOpenRouterKeySave?: (apiKey: string) => void | Promise<void>;
   onSave?: () => void;
   onSettingsChange?: (settings: CommunityAssistantPolicySettings) => void;
   saveDisabled?: boolean;

@@ -170,9 +170,8 @@ export function getProofOfWorkGateRequirements(
   return proofOfWorkGates.length > 0 ? proofOfWorkGates : [{ gate_type: "altcha_pow" }];
 }
 
-// Proof-of-work is an action-time check, never a join-surface gate.
 export function isJoinSurfaceGate(gate: Pick<MembershipGateSummary, "gate_type">): boolean {
-  return gate.gate_type !== "altcha_pow";
+  return true;
 }
 
 export function hasActionTimeCheck(gates: Array<Pick<MembershipGateSummary, "gate_type">> | null | undefined): boolean {

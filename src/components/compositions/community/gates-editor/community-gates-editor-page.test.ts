@@ -53,23 +53,26 @@ describe("CommunityGatesEditorPage gate draft helpers", () => {
     ]);
   });
 
-  test("preserves proof-of-work exclusivity in all mode", () => {
+  test("keeps proof-of-work and palm scan together in all mode", () => {
     const powGate: IdentityGateDraft = { gateType: "altcha_pow" };
     const palmScanGate: IdentityGateDraft = { gateType: "unique_human", provider: "very" };
 
     expect(upsertGateDraftForMatchMode([powGate], palmScanGate, "all")).toEqual([
+      powGate,
       palmScanGate,
     ]);
     expect(upsertGateDraftForMatchMode([palmScanGate], powGate, "all")).toEqual([
+      palmScanGate,
       powGate,
     ]);
   });
 
-  test("normalizes proof-of-work fallback away when switching back to all mode", () => {
+  test("keeps proof-of-work selected when switching back to all mode", () => {
     const powGate: IdentityGateDraft = { gateType: "altcha_pow" };
     const palmScanGate: IdentityGateDraft = { gateType: "unique_human", provider: "very" };
 
     expect(normalizeGateDraftsForMatchMode([powGate, palmScanGate], "all")).toEqual([
+      powGate,
       palmScanGate,
     ]);
     expect(normalizeGateDraftsForMatchMode([powGate, palmScanGate], "any")).toEqual([

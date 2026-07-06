@@ -149,14 +149,6 @@ export function courtyardInventoryDraftMatchesGroup(
     && draft.assetFilter.condition === candidate.assetFilter.condition;
 }
 
-const POW_EXCLUSIVE_GATE_TYPES: IdentityGateDraft["gateType"][] = [
-  "unique_human",
-  "nationality",
-  "minimum_age",
-  "wallet_score",
-  "gender",
-];
-
 type DocumentGateDraft = Extract<IdentityGateDraft, { gateType: "nationality" | "minimum_age" | "gender" }>;
 
 const DOCUMENT_PROOF_PROVIDER_OPTIONS: Array<{ value: DocumentProofProvider; label: string }> = [
@@ -230,15 +222,7 @@ export function normalizeGateDraftsForMatchMode(
   drafts: IdentityGateDraft[],
   gateMatchMode: "all" | "any",
 ): IdentityGateDraft[] {
-  if (gateMatchMode === "any") {
-    return drafts;
-  }
-  const hasPow = drafts.some((draft) => draft.gateType === "altcha_pow");
-  const hasPowExclusiveGate = drafts.some((draft) => POW_EXCLUSIVE_GATE_TYPES.includes(draft.gateType));
-  if (!hasPow || !hasPowExclusiveGate) {
-    return drafts;
-  }
-  return drafts.filter((draft) => draft.gateType !== "altcha_pow");
+  return drafts;
 }
 
 export function upsertGateDraftForMatchMode(
@@ -256,17 +240,8 @@ export function upsertGateDraftForMatchMode(
       preserved,
     ];
   }
-  if (nextDraft.gateType === "altcha_pow") {
-    return [
-      ...drafts.filter((draft) => !POW_EXCLUSIVE_GATE_TYPES.includes(draft.gateType) && draft.gateType !== "altcha_pow"),
-      preserved,
-    ];
-  }
-  const withoutConflicts = POW_EXCLUSIVE_GATE_TYPES.includes(nextDraft.gateType)
-    ? drafts.filter((draft) => draft.gateType !== "altcha_pow")
-    : drafts;
   return [
-    ...withoutConflicts.filter((draft) => draft.gateType !== nextDraft.gateType),
+    ...drafts.filter((draft) => draft.gateType !== nextDraft.gateType),
     preserved,
   ];
 }
@@ -398,7 +373,7 @@ export function CommunityGatesEditorPage({
     && minimumAgeGate.minimumAge <= 125;
   const showGateMatchModeControl =
     effectiveMembershipMode === "gated"
-    && (onGateMatchModeChange != null || gateMatchMode === "any");
+    && (gateDrafts.length > 1 || onGateMatchModeChange != null || gateMatchMode === "any");
   const uniqueHumanGateTitle = uniqueHumanGate?.provider === "self"
     ? "Private ID proof (Self.xyz)"
     : mc.uniqueHumanTitle;
@@ -449,8 +424,6 @@ export function CommunityGatesEditorPage({
                   onMembershipModeChange?.(mode);
                   if (mode === "request") {
                     onGateDraftsChange?.([]);
-                  } else if (gateDrafts.length === 0) {
-                    onGateDraftsChange?.([{ gateType: "altcha_pow" }]);
                   }
                 }}
               />
@@ -473,7 +446,7 @@ export function CommunityGatesEditorPage({
                         />
                         <OptionCard
                           className={gateMatchMode === "any" ? "border-border bg-muted/30" : undefined}
-                          description="Members can pass any one selected gate."
+                          description="Members can pass any one selected gate, including proof-of-work if it is selected."
                           selected={gateMatchMode === "any"}
                           title="Allow any one"
                           onClick={() => onGateMatchModeChange?.("any")}

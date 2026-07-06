@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { JoinEligibility } from "@pirate/api-contracts";
 
 import {
+  isJoinSurfaceGate,
   getJoinCtaLabel,
   isJoinCtaActionable,
 } from "./identity-gates";
@@ -34,5 +35,9 @@ describe("identity gate join CTA helpers", () => {
 
     expect(isJoinCtaActionable(eligibility)).toBe(true);
     expect(getJoinCtaLabel(eligibility, { locale: "en" })).toBe("Connect wallet");
+  });
+
+  test("proof-of-work requirements are visible before the action modal", () => {
+    expect(isJoinSurfaceGate({ gate_type: "altcha_pow" })).toBe(true);
   });
 });

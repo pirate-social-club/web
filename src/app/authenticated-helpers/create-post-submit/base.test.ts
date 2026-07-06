@@ -16,6 +16,7 @@ describe("create post submit base helpers", () => {
     })).toEqual({
       anonymous_scope: undefined,
       disclosed_qualifier_ids: undefined,
+      age_gate_policy: undefined,
       identity_mode: "public",
       idempotency_key: "idem_test",
       translation_policy: "machine_allowed",
@@ -33,11 +34,21 @@ describe("create post submit base helpers", () => {
     })).toEqual({
       anonymous_scope: "community_stable",
       disclosed_qualifier_ids: ["qual_one", "qual_two"],
+      age_gate_policy: undefined,
       identity_mode: "anonymous",
       idempotency_key: "idem_test",
       translation_policy: "machine_allowed",
       visibility: "public",
     });
+  });
+
+  test("buildBasePostRequest includes author-declared 18+ content policy", () => {
+    expect(buildBasePostRequest({
+      ageGatePolicy: "18_plus",
+      idempotencyKey: "idem_adult",
+      identityMode: "public",
+      visibility: "public",
+    }).age_gate_policy).toBe("18_plus");
   });
 
   test("resolveCreatePostIdentity preserves allowed anonymous identity", () => {

@@ -49,6 +49,7 @@ export type LiveAccessMode = "free" | "gated" | "paid";
 export type LiveVisibility = "public" | "unlisted";
 
 export type PostAudience = "public" | "members_only";
+export type AuthorAgeGatePolicy = "none" | "18_plus";
 
 export type LiveSetlistItemKind = "original" | "cover" | "remix" | "dj_playback" | "unknown";
 
@@ -296,6 +297,7 @@ export interface PostComposerDraftState {
   charityPartner?: CommunityCharityPartner | null;
   charityContribution?: CharityContributionState;
   audience?: ComposerAudienceState;
+  ageGatePolicy?: AuthorAgeGatePolicy;
   identity?: ComposerIdentityState;
   live?: LiveComposerState;
   event?: ComposerEventState;
@@ -320,6 +322,7 @@ export interface PostComposerDraftActions {
   onMonetizationChange?: (value: MonetizationState) => void;
   onCharityContributionChange?: (value: CharityContributionState) => void;
   onAudienceChange?: (value: ComposerAudienceState) => void;
+  onAgeGatePolicyChange?: (value: AuthorAgeGatePolicy) => void;
   onAuthorModeChange?: (value: AuthorMode) => void;
   onIdentityModeChange?: (value: IdentityMode) => void;
   onSelectedQualifierIdsChange?: (value: string[]) => void;

@@ -105,6 +105,7 @@ describe("video create-post submit helpers", () => {
     })).toEqual({
       anonymous_scope: "community_stable",
       disclosed_qualifier_ids: ["qual_video"],
+      age_gate_policy: undefined,
       identity_mode: "anonymous",
       idempotency_key: "idem_video",
       translation_policy: "machine_allowed",
@@ -131,6 +132,38 @@ describe("video create-post submit helpers", () => {
         poster_frame_ms: 1200,
       }],
     });
+  });
+
+  test("buildVideoPostRequest carries author-declared 18+ content policy", () => {
+    const request = buildVideoPostRequest({
+      baseRequest: buildBasePostRequest({
+        ageGatePolicy: "18_plus",
+        idempotencyKey: "idem_video_adult",
+        identityMode: "public",
+        visibility: "public",
+      }),
+      caption: "Video caption",
+      monetized: false,
+      posterFrame: {
+        frameMs: 1200,
+        height: 720,
+        width: 1280,
+      },
+      title: "Video title",
+      uploadedPoster: {
+        media_ref: "poster_media",
+        mime_type: "image/jpeg",
+        size_bytes: 123,
+      },
+      uploadedVideo: {
+        storage_ref: "artifact_video",
+        mime_type: "video/mp4",
+        size_bytes: 456,
+        content_hash: "hash_video",
+      },
+    });
+
+    expect(request.age_gate_policy).toBe("18_plus");
   });
 
   test("buildVideoPostRequest includes paid license fields", () => {

@@ -8,6 +8,7 @@ import { getLocaleMessages } from "@/locales";
 
 import type {
   AuthorMode,
+  AuthorAgeGatePolicy,
   CharityContributionState,
   ComposerAudienceState,
   ComposerEventState,
@@ -86,6 +87,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const charityPartner = draft?.charityPartner ?? props.charityPartner;
   const charityContribution = draft?.charityContribution ?? props.charityContribution;
   const audience = draft?.audience ?? props.audience;
+  const ageGatePolicy = draft?.ageGatePolicy ?? props.ageGatePolicy;
   const identity = draft?.identity ?? props.identity;
   const live = draft?.live ?? props.live;
   const event = draft?.event ?? props.event;
@@ -106,6 +108,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const onMonetizationChange = actions?.onMonetizationChange ?? props.onMonetizationChange;
   const onCharityContributionChange = actions?.onCharityContributionChange ?? props.onCharityContributionChange;
   const onAudienceChange = actions?.onAudienceChange ?? props.onAudienceChange;
+  const onAgeGatePolicyChange = actions?.onAgeGatePolicyChange ?? props.onAgeGatePolicyChange;
   const onAuthorModeChange = actions?.onAuthorModeChange ?? props.onAuthorModeChange;
   const onIdentityModeChange = actions?.onIdentityModeChange ?? props.onIdentityModeChange;
   const onSelectedQualifierIdsChange = actions?.onSelectedQualifierIdsChange ?? props.onSelectedQualifierIdsChange;
@@ -190,6 +193,9 @@ export function usePostComposerController(props: PostComposerProps) {
   const [uncontrolledAudienceState, setUncontrolledAudienceState] = React.useState<ComposerAudienceState>(
     () => defaultAudienceState(audience),
   );
+  const [uncontrolledAgeGatePolicy, setUncontrolledAgeGatePolicy] = React.useState<AuthorAgeGatePolicy>(
+    ageGatePolicy ?? "none",
+  );
   const [uncontrolledDerivativeState, setUncontrolledDerivativeState] = React.useState<DerivativeStepState | undefined>(
     derivativeStep,
   );
@@ -213,6 +219,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const monetizationState = monetization ?? uncontrolledMonetizationState;
   const charityContributionState = charityContribution ?? uncontrolledCharityContribution;
   const audienceState = audience ?? uncontrolledAudienceState;
+  const ageGatePolicyState = ageGatePolicy ?? uncontrolledAgeGatePolicy;
   const derivativeState = derivativeStep ?? uncontrolledDerivativeState;
   const songStateRef = React.useRef(songState);
   const derivativeStateRef = React.useRef(derivativeState);
@@ -431,6 +438,13 @@ export function usePostComposerController(props: PostComposerProps) {
     onAudienceChange?.(next);
   }, [audience, audienceState, onAudienceChange]);
 
+  const setAgeGatePolicyWithCallback = React.useCallback((next: AuthorAgeGatePolicy) => {
+    if (ageGatePolicy === undefined) {
+      setUncontrolledAgeGatePolicy(next);
+    }
+    onAgeGatePolicyChange?.(next);
+  }, [ageGatePolicy, onAgeGatePolicyChange]);
+
   const setLiveStateWithCallback = React.useCallback((next: LiveComposerState) => {
     setLiveState(next);
     onLiveChange?.(next);
@@ -562,6 +576,8 @@ export function usePostComposerController(props: PostComposerProps) {
 
   return {
     audience: {
+      ageGatePolicy: ageGatePolicyState,
+      setAgeGatePolicy: setAgeGatePolicyWithCallback,
       state: audienceState,
       update: updateAudienceState,
     },

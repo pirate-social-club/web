@@ -23,6 +23,7 @@ import type {
   AssetLicensePresetId,
   AssetRoyaltySplitState,
   AttachmentState,
+  AuthorAgeGatePolicy,
   RegionalPricingPreview,
 } from "./post-composer.types";
 
@@ -33,6 +34,8 @@ export type PostComposerSettingsSectionsCopy = {
   visibilityTitle: string;
   publicVisibilityLabel: string;
   communityVisibilityLabel: string;
+  ageGateTitle: string;
+  ageGateDescription: string;
   paidUnlockTitle: string;
   priceLabel: string;
   pricePlaceholder: string;
@@ -58,7 +61,9 @@ export type PostComposerSettingsSectionsProps = {
   agentIdentitySelected?: boolean;
   anonymousIdentityLabel?: string;
   identity: "pseudonym" | "anonymous";
+  ageGatePolicy: AuthorAgeGatePolicy;
   license: AssetLicensePresetId;
+  onAgeGatePolicyChange: (value: AuthorAgeGatePolicy) => void;
   onIdentityChange: (value: "pseudonym" | "anonymous") => void;
   onLicenseChange: (value: AssetLicensePresetId) => void;
   onPriceChange: (value: string, nextAccess?: "free" | "paid") => void;
@@ -94,6 +99,8 @@ const defaultCopy: PostComposerSettingsSectionsCopy = {
   visibilityTitle: "Who can see this?",
   publicVisibilityLabel: "Public",
   communityVisibilityLabel: "Community",
+  ageGateTitle: "18+ content",
+  ageGateDescription: "Require age verification",
   paidUnlockTitle: "Paid unlock",
   priceLabel: "Price",
   pricePlaceholder: "0",
@@ -340,7 +347,9 @@ export function PostComposerSettingsSections({
   copy: copyOverrides,
   anonymousIdentityLabel = "Pseudonym",
   identity,
+  ageGatePolicy,
   license,
+  onAgeGatePolicyChange,
   onIdentityChange,
   onLicenseChange,
   onPriceChange,
@@ -390,6 +399,7 @@ export function PostComposerSettingsSections({
   };
   const canPreviewRegionalPricing = Boolean(regionalPricingPreview?.tiers.length);
   const paidAccessId = React.useId();
+  const ageGateId = React.useId();
   const regionalPricingId = React.useId();
 
   return (
@@ -450,12 +460,28 @@ export function PostComposerSettingsSections({
         />
       </section>
 
+      <section className="space-y-3">
+        <div className="flex min-h-14 items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3.5">
+          <Checkbox
+            aria-label={copy.ageGateTitle}
+            checked={ageGatePolicy === "18_plus"}
+            id={ageGateId}
+            onCheckedChange={(next) => onAgeGatePolicyChange(next === true ? "18_plus" : "none")}
+          />
+          <Label className="flex-1 text-base leading-6" htmlFor={ageGateId}>
+            <span className="block font-medium text-foreground">{copy.ageGateTitle}</span>
+            <span className="block text-muted-foreground">{copy.ageGateDescription}</span>
+          </Label>
+        </div>
+      </section>
+
       {showAccess ? (
         <section className="space-y-3">
           <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
             {isLiveAttachment ? null : (
               <div className="flex min-h-14 items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3.5">
                 <Checkbox
+                  aria-label={copy.paidUnlockTitle}
                   checked={access === "paid"}
                   id={paidAccessId}
                   onCheckedChange={(next) => onPriceChange(price, next === true ? "paid" : "free")}
@@ -520,6 +546,7 @@ export function PostComposerSettingsSections({
               <div className="space-y-2">
                 <div className="flex min-h-14 items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3.5">
                   <Checkbox
+                    aria-label={copy.regionalPricingLabel}
                     checked={regionalPricingEnabled}
                     id={regionalPricingId}
                     onCheckedChange={(next) => onRegionalPricingChange(next === true)}

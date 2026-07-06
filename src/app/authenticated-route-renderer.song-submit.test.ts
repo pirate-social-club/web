@@ -83,6 +83,7 @@ describe("song submit payload helpers", () => {
 
     expect(postRequest).toEqual({
       access_mode: "public",
+      age_gate_policy: undefined,
       caption: "Listen through the second chorus.",
       identity_mode: "public",
       idempotency_key: "key-free",
@@ -99,6 +100,22 @@ describe("song submit payload helpers", () => {
       visibility: "public",
     });
     expect(listingRequest).toBeNull();
+  });
+
+  test("builds a song post with author-declared 18+ content policy", () => {
+    const postRequest = buildSongPostRequest({
+      ageGatePolicy: "18_plus",
+      bundleId: "sab_adult",
+      derivativeStep: undefined,
+      idempotencyKey: "key-adult",
+      license: { presetId: "commercial-use" },
+      paidSongPriceUsd: null,
+      songMode: "original",
+      title: "Adult song",
+      visibility: "public",
+    });
+
+    expect(postRequest.age_gate_policy).toBe("18_plus");
   });
 
   test("builds a paid original song post and regional-pricing listing", () => {

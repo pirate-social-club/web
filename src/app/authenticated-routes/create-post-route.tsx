@@ -151,6 +151,7 @@ function CreatePostComposer({
         }}
         draft={{
           audience: state.audience,
+          ageGatePolicy: state.ageGatePolicy,
           captionValue: state.caption,
           charityContribution: state.charityContribution,
           charityPartner: state.charityPartner,
@@ -196,6 +197,7 @@ function CreatePostComposer({
         }}
         actions={{
           onAudienceChange: state.setAudience,
+          onAgeGatePolicyChange: state.setAgeGatePolicy,
           onAuthorModeChange: state.setAuthorMode,
           onCaptionValueChange: state.setCaption,
           onCharityContributionChange: state.setCharityContribution,

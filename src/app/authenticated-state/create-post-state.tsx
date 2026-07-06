@@ -311,6 +311,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const { actions: draftActions, state: draft } = useCreatePostDraftState(initialDraft);
   const {
     audience,
+    ageGatePolicy,
     authorMode,
     body,
     caption,
@@ -339,6 +340,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const {
     resetCharityContribution,
     setAudience,
+    setAgeGatePolicy,
     setAuthorMode,
     setBody,
     setCaption,
@@ -919,6 +921,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         const songResult = await submitSongPost({
           altchaPayload: postAltchaPayload,
           audience,
+          ageGatePolicy,
           authorMode,
           caption: body,
           charityContribution,
@@ -1017,6 +1020,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           baseRequest: buildBasePostRequest({
             anonymousScope,
             disclosedQualifierIds,
+            ageGatePolicy,
             idempotencyKey: crypto.randomUUID(),
             identityMode: resolvedIdentityMode,
             visibility: audience.visibility,
@@ -1044,6 +1048,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           baseRequest: buildBasePostRequest({
             anonymousScope,
             disclosedQualifierIds,
+            ageGatePolicy,
             idempotencyKey: crypto.randomUUID(),
             identityMode: resolvedIdentityMode,
             visibility: audience.visibility,
@@ -1088,6 +1093,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           baseRequest: buildBasePostRequest({
             anonymousScope,
             disclosedQualifierIds,
+            ageGatePolicy,
             idempotencyKey: crypto.randomUUID(),
             identityMode: resolvedIdentityMode,
             visibility: audience.visibility,
@@ -1109,6 +1115,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           baseRequest: buildBasePostRequest({
             anonymousScope,
             disclosedQualifierIds,
+            ageGatePolicy,
             idempotencyKey: crypto.randomUUID(),
             identityMode: resolvedIdentityMode,
             visibility: audience.visibility,
@@ -1200,7 +1207,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       setPageState((current) => ({ ...current, submitting: false }));
     }
   }, [
-    api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, contentLocale, derivativeStep, eligibility?.status, event, hasCommunityPostingRole,
+    api, audience, ageGatePolicy, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, contentLocale, derivativeStep, eligibility?.status, event, hasCommunityPostingRole,
     identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, paidLiveRoomMode, pendingSongBundleId, postAltchaPayload, postAltchaRequestOptions, postAltchaRequired, pricingPolicy?.regional_pricing_enabled, royaltySplit,
     queryClient, selectedQualifierIds, session?.user.id, setPendingSongBundleId, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     videoState,
@@ -1214,6 +1221,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
 
   return {
     availableIdentityQualifiers,
+    ageGatePolicy,
     body,
     caption,
     charityContribution,
@@ -1257,6 +1265,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     submitting,
     title,
     setBody,
+    setAgeGatePolicy,
     setAudience,
     setCaption,
     setCharityContribution,

@@ -6,6 +6,7 @@ import type {
   ComposerEventPlace,
   ComposerEventState,
   ComposerTab,
+  AuthorAgeGatePolicy,
   IdentityMode,
   PostAudience,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
@@ -16,6 +17,7 @@ export type BasePostRequestFields = {
   disclosed_qualifier_ids?: string[] | null;
   identity_mode: IdentityMode;
   idempotency_key: string;
+  age_gate_policy?: AuthorAgeGatePolicy | null;
   translation_policy: "none" | "machine_allowed" | "human_only" | "hybrid";
   visibility: PostAudience;
 };
@@ -284,12 +286,14 @@ export function resolveCreatePostIdentity({
 export function buildBasePostRequest({
   anonymousScope,
   disclosedQualifierIds,
+  ageGatePolicy,
   idempotencyKey,
   identityMode,
   visibility,
 }: {
   anonymousScope?: AnonymousIdentityScope;
   disclosedQualifierIds?: string[];
+  ageGatePolicy?: AuthorAgeGatePolicy;
   idempotencyKey: string;
   identityMode: IdentityMode;
   visibility: PostAudience;
@@ -297,6 +301,7 @@ export function buildBasePostRequest({
   return {
     anonymous_scope: anonymousScope,
     disclosed_qualifier_ids: disclosedQualifierIds,
+    age_gate_policy: ageGatePolicy === "18_plus" ? "18_plus" : undefined,
     identity_mode: identityMode,
     idempotency_key: idempotencyKey,
     translation_policy: "machine_allowed",

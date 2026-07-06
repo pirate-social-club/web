@@ -10,8 +10,9 @@ import type { CommunitySidebarGateItem, CommunitySidebarRoleHolder, CommunitySid
 import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
-import { getRequiredActionCapabilities, hasActionTimeCheck, isJoinSurfaceGate } from "@/lib/identity-gates";
+import { hasActionTimeCheck, isJoinSurfaceGate } from "@/lib/identity-gates";
 import { flattenGatePolicyAtoms, getGatePolicyMatchMode } from "@/lib/gate-policy-utils";
+import { deriveGateStatuses } from "@/lib/community-gate-statuses";
 
 type SidebarGateSummary = Pick<
   ApiMembershipGateSummary,
@@ -204,45 +205,17 @@ function resolveGateProvider(gate: SidebarGateSummary): CommunitySidebarGateItem
   return null;
 }
 
-function gateTypeToCapability(gateType: string): string | null {
-  switch (gateType) {
-    case "unique_human": return "unique_human";
-    case "age_over_18": return "age_over_18";
-    case "minimum_age": return "minimum_age";
-    case "nationality": return "nationality";
-    case "gender": return "gender";
-    case "wallet_score": return "wallet_score";
-    case "altcha_pow": return "altcha_pow";
-    case "erc721_holding": return "erc721_holding";
-    case "erc721_inventory_match": return "erc721_inventory_match";
-    default: return null;
-  }
-}
-
 function applyGateStatuses(
   items: CommunitySidebarGateItem[],
   eligibility: ApiJoinEligibility | null | undefined,
+  gateMatchMode?: "all" | "any" | null,
 ): CommunitySidebarGateItem[] {
-  if (!eligibility) {
-    return items.map(item => ({ ...item, status: "unknown" }));
-  }
-
-  const status = eligibility.status;
-
-  if (status === "joinable" || status === "already_joined" || status === "requestable" || status === "pending_request") {
-    return items.map(item => ({ ...item, status: "met" }));
-  }
-
-  if (status === "verification_required" || status === "gate_failed") {
-    const requiredCapabilities = getRequiredActionCapabilities(eligibility);
-    return items.map(item => {
-      const capability = gateTypeToCapability(item.gateType);
-      const isMissing = capability && requiredCapabilities.some(c => c === capability);
-      return { ...item, status: isMissing ? "unmet" : "met" };
-    });
-  }
-
-  return items.map(item => ({ ...item, status: "unknown" }));
+  const statuses = deriveGateStatuses({
+    eligibility,
+    gateMatchMode,
+    requirements: items.map((item) => ({ gate_type: item.gateType as ApiMembershipGateSummary["gate_type"] })),
+  });
+  return items.map((item, index) => ({ ...item, status: statuses[index] ?? "unknown" }));
 }
 
 export function buildCommunitySidebarGateItems(input: {
@@ -250,6 +223,7 @@ export function buildCommunitySidebarGateItems(input: {
   gateSummaries?: SidebarGateSummary[] | null;
   locale?: string | null;
   eligibility?: ApiJoinEligibility | null;
+  gateMatchMode?: "all" | "any" | null;
 }): CommunitySidebarGateItem[] {
   const items: CommunitySidebarGateItem[] = [];
   const seenLabels = new Set<string>();
@@ -292,7 +266,7 @@ export function buildCommunitySidebarGateItems(input: {
     }
   }
 
-  return applyGateStatuses(items, input.eligibility);
+  return applyGateStatuses(items, input.eligibility, input.gateMatchMode);
 }
 
 export function getCommunityGateSummaries(
@@ -351,6 +325,7 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
       gateSummaries,
       locale,
       eligibility,
+      gateMatchMode: getGatePolicyMatchMode(community.gate_policy),
     }),
     hasActionTimeCheck: hasActionTimeCheck(gateSummaries),
     requirementsMode: getGatePolicyMatchMode(community.gate_policy),
@@ -462,6 +437,7 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
       gateSummaries: preview.membership_gate_summaries,
       locale,
       eligibility,
+      gateMatchMode: preview.gate_match_mode ?? null,
     }),
     hasActionTimeCheck: hasActionTimeCheck(preview.membership_gate_summaries),
     requirementsMode: preview.gate_match_mode ?? undefined,

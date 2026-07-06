@@ -49,6 +49,8 @@ export function CreateCommunityComposer(props: CreateCommunityComposerProps) {
               allowAnonymousIdentity={controller.access.activeAllowAnonymousIdentity}
               anonymousIdentityScope={controller.access.activeAnonymousScope}
               creatorVerificationState={controller.access.creatorAgeOver18Verified ? { ageOver18Verified: true } : { ageOver18Verified: false }}
+              courtyardInventoryGroups={props.courtyardInventoryGroups}
+              courtyardInventoryLoading={props.courtyardInventoryLoading}
               defaultAgeGatePolicy={controller.access.activeDefaultAgeGatePolicy}
               gateDrafts={controller.access.gateDrafts}
               gateMatchMode={controller.access.gateMatchMode}

@@ -6,6 +6,7 @@ import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contract
 
 import { useApi } from "@/lib/api";
 import { type ApiError } from "@/lib/api/client";
+import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import {
   getGateFailureMessage,
   getPassportPromptCapabilities,
@@ -66,6 +67,7 @@ const SELF_CAPABILITIES = ["unique_human", "age_over_18", "minimum_age", "nation
 type SelfCapability = typeof SELF_CAPABILITIES[number];
 const ZKPASSPORT_CAPABILITIES = ["minimum_age", "nationality", "gender"] as const;
 type ZkPassportCapability = typeof ZKPASSPORT_CAPABILITIES[number];
+const WALLET_GATE_UNMET_MESSAGE = "That wallet still does not hold the required NFT. Connect the wallet that holds it, then try again.";
 
 function isSelfCapability(value: string): value is SelfCapability {
   return (SELF_CAPABILITIES as readonly string[]).includes(value);
@@ -91,11 +93,39 @@ export function useCommunityJoinVerification({
 }: UseCommunityJoinVerificationInput) {
   const api = useApi();
 	  const [joinLoading, setJoinLoading] = React.useState(false);
-	  const [joinError, setJoinError] = React.useState<string | null>(null);
+  const [joinError, setJoinError] = React.useState<string | null>(null);
 	  const [joinRequested, setJoinRequested] = React.useState(false);
 	  const [passportLoading, setPassportLoading] = React.useState(false);
   const [altchaPayload, setAltchaPayload] = React.useState<string | null>(null);
   const altchaRequired = eligibility ? hasAltchaProofAction(eligibility) : false;
+  const walletGateRequired = eligibility?.status === "verification_required" && hasOnlyWalletGateRequirements(eligibility);
+  const privyRuntime = usePiratePrivyRuntime();
+  const { connectedWallets, walletsReady } = usePiratePrivyWallets({ enabled: walletGateRequired });
+  const walletSnapshot = React.useMemo(
+    () => connectedWallets.map((wallet) => wallet.address.toLowerCase()).sort().join(","),
+    [connectedWallets],
+  );
+  const [walletGateVerificationPending, setWalletGateVerificationPending] = React.useState(false);
+  const walletGateStartSnapshotRef = React.useRef<string | null>(null);
+
+  const joinIfEligible = React.useCallback(async (
+    updatedEligibility: ApiJoinEligibility,
+  ): Promise<JoinAttemptResult> => {
+    if (!autoJoinAfterVerification) {
+      return "blocked";
+    }
+    if (updatedEligibility.status === "joinable") {
+      const joinResult = await api.communities.join(communityId);
+      if (joinResult.status === "requested") setJoinRequested(true);
+      if (joinResult.status === "joined") onJoined?.();
+      await refetchEligibility();
+      return joinResult.status === "requested" ? "requested" : "joined";
+    }
+    if (updatedEligibility.status === "gate_failed") {
+      setJoinError(getGateFailureMessage(updatedEligibility, { locale }) ?? "You still do not meet this community's requirements.");
+    }
+    return "blocked";
+  }, [api, autoJoinAfterVerification, communityId, locale, onJoined, refetchEligibility]);
 
   const {
     startVerification: startVeryVerification,
@@ -107,15 +137,7 @@ export function useCommunityJoinVerification({
     verificationIntent: "community_join",
     onVerified: async () => {
       const updatedEligibility = await refetchEligibility();
-      if (!autoJoinAfterVerification) {
-        return;
-      }
-      if (updatedEligibility.status === "joinable") {
-        const joinResult = await api.communities.join(communityId);
-        if (joinResult.status === "requested") setJoinRequested(true);
-        if (joinResult.status === "joined") onJoined?.();
-        await refetchEligibility();
-      }
+      await joinIfEligible(updatedEligibility);
     },
   });
 
@@ -133,21 +155,7 @@ export function useCommunityJoinVerification({
     locale,
     onVerified: async () => {
       const updatedEligibility = await refetchEligibility();
-      if (!autoJoinAfterVerification) {
-        return;
-      }
-      if (updatedEligibility.status === "joinable") {
-        const joinResult = await api.communities.join(communityId);
-        if (joinResult.status === "requested") {
-          setJoinRequested(true);
-        }
-        if (joinResult.status === "joined") {
-          onJoined?.();
-        }
-        await refetchEligibility();
-      } else if (updatedEligibility.status === "gate_failed") {
-        setJoinError("Verification succeeded but you still do not meet this community's requirements.");
-      }
+      await joinIfEligible(updatedEligibility);
     },
     startErrorMessage: "Could not start self verification",
     storageKey: `pirate_pending_self_join_session:${communityId}`,
@@ -163,21 +171,7 @@ export function useCommunityJoinVerification({
     verificationIntent: "community_join",
     onVerified: async () => {
       const updatedEligibility = await refetchEligibility();
-      if (!autoJoinAfterVerification) {
-        return;
-      }
-      if (updatedEligibility.status === "joinable") {
-        const joinResult = await api.communities.join(communityId);
-        if (joinResult.status === "requested") {
-          setJoinRequested(true);
-        }
-        if (joinResult.status === "joined") {
-          onJoined?.();
-        }
-        await refetchEligibility();
-      } else if (updatedEligibility.status === "gate_failed") {
-        setJoinError("Verification succeeded but you still do not meet this community's requirements.");
-      }
+      await joinIfEligible(updatedEligibility);
     },
   });
 
@@ -300,6 +294,51 @@ export function useCommunityJoinVerification({
 	    }
 	  }, [api, communityId, locale, onJoined, refetchEligibility]);
 
+  React.useEffect(() => {
+    if (!walletGateVerificationPending || !walletsReady) {
+      return;
+    }
+    if (walletGateStartSnapshotRef.current === walletSnapshot) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const updatedEligibility = await refetchEligibility();
+        const joinResult = await joinIfEligible(updatedEligibility);
+        if (joinResult === "blocked" && updatedEligibility.status === "verification_required" && hasOnlyWalletGateRequirements(updatedEligibility)) {
+          setJoinError(WALLET_GATE_UNMET_MESSAGE);
+          toast.error(WALLET_GATE_UNMET_MESSAGE);
+        }
+      } catch (error: unknown) {
+        const apiError = error as ApiError;
+        const message = apiError?.message ?? "Could not refresh wallet gate eligibility.";
+        setJoinError(message);
+        toast.error(message);
+      } finally {
+        setWalletGateVerificationPending(false);
+      }
+    })();
+  }, [
+    joinIfEligible,
+    refetchEligibility,
+    walletGateVerificationPending,
+    walletSnapshot,
+    walletsReady,
+  ]);
+
+  React.useEffect(() => {
+    if (!walletGateVerificationPending || typeof window === "undefined") {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      if (walletGateStartSnapshotRef.current === walletSnapshot) {
+        setWalletGateVerificationPending(false);
+      }
+    }, 60_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [walletGateVerificationPending, walletSnapshot]);
+
   const handleJoin = React.useCallback(async (options: JoinAttemptOptions = {}): Promise<JoinAttemptResult> => {
     const resolvedAltchaPayload = options.altchaPayload ?? altchaPayload;
     setJoinLoading(true);
@@ -312,11 +351,22 @@ export function useCommunityJoinVerification({
     if (eligibility?.status === "verification_required") {
       setJoinLoading(false);
       if (hasOnlyWalletGateRequirements(eligibility)) {
-        setJoinError(getGateFailureMessage({
-          failure_reason: eligibility.membership_gate_summaries.some((gate) => gate.gate_type === "erc721_inventory_match")
-            ? "erc721_inventory_match_required"
-            : "erc721_holding_required",
-        }, { locale }));
+        if (!privyRuntime.configured || !privyRuntime.connect) {
+          setJoinError("Connect the wallet that holds the required NFT from wallet settings, then try again.");
+          return "blocked";
+        }
+        walletGateStartSnapshotRef.current = walletSnapshot;
+        setWalletGateVerificationPending(true);
+        try {
+          privyRuntime.connect();
+        } catch (error: unknown) {
+          setWalletGateVerificationPending(false);
+          const apiError = error as ApiError;
+          const message = apiError?.message ?? "Could not open wallet connection.";
+          setJoinError(message);
+          toast.error(message);
+          return "failed";
+        }
         return "blocked";
       }
       if (altchaRequired) {
@@ -408,7 +458,7 @@ export function useCommunityJoinVerification({
     } finally {
       setJoinLoading(false);
     }
-	  }, [altchaPayload, altchaRequired, api, communityId, eligibility, locale, onJoined, refetchEligibility, refreshPassportAndJoin, startSelfVerification, startVeryVerification, startZkPassportVerification]);
+	  }, [altchaPayload, altchaRequired, api, communityId, eligibility, locale, onJoined, privyRuntime, refetchEligibility, refreshPassportAndJoin, startSelfVerification, startVeryVerification, startZkPassportVerification, walletSnapshot]);
 
   return {
     handleJoin,

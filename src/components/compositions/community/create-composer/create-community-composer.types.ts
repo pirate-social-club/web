@@ -28,7 +28,7 @@ export type IdentityGateDraft =
   }
   | {
     gateType: "unique_human";
-    provider: "very";
+    provider: "self" | "very";
     gateRuleId?: string;
   }
   | {
@@ -66,7 +66,7 @@ export type IdentityGateDraft =
   }
   | {
     gateType: "erc721_inventory_match";
-    chainNamespace: "eip155:137";
+    chainNamespace: "eip155:1" | "eip155:137";
     contractAddress: string;
     inventoryProvider: "courtyard";
     minQuantity: number;

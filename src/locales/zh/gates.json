@@ -31,6 +31,7 @@
     "requestable": "申请加入",
     "pendingRequest": "申请已提交",
     "verificationRequired": "验证后加入",
+    "walletRequired": "连接钱包",
     "alreadyJoined": "已加入",
     "banned": "不可用",
     "gateFailed": "不符合条件"

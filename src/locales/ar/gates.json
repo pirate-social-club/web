@@ -31,6 +31,7 @@
     "requestable": "اطلب الانضمام",
     "pendingRequest": "تم إرسال الطلب",
     "verificationRequired": "تحقق للانضمام",
+    "walletRequired": "اربط المحفظة",
     "alreadyJoined": "تم الانضمام",
     "banned": "غير متاح",
     "gateFailed": "غير مؤهل"

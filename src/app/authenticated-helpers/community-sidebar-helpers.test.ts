@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
+import type { JoinEligibility } from "@pirate/api-contracts";
 
-import { buildCommunityPreviewSidebar, buildCommunitySidebarRequirements, getCommunityActionLabel } from "@/app/authenticated-helpers/community-sidebar-helpers";
+import {
+  buildCommunityPreviewSidebar,
+  buildCommunitySidebarGateItems,
+  buildCommunitySidebarRequirements,
+  getCommunityActionLabel,
+} from "@/app/authenticated-helpers/community-sidebar-helpers";
 
 describe("buildCommunitySidebarRequirements", () => {
   test("localizes nationality requirements for Arabic", () => {
@@ -54,6 +60,30 @@ describe("buildCommunitySidebarRequirements", () => {
         { gate_type: "altcha_pow" },
       ],
     })).toEqual(["Palm scan"]);
+  });
+});
+
+describe("buildCommunitySidebarGateItems", () => {
+  test("uses eligibility to mark all-mode satisfied gates met", () => {
+    expect(buildCommunitySidebarGateItems({
+      gateMatchMode: "all",
+      eligibility: { status: "joinable" } as JoinEligibility,
+      gateSummaries: [
+        { gate_type: "unique_human", accepted_providers: ["very"] },
+        { gate_type: "wallet_score", minimum_score: 20 },
+      ],
+    }).map((gate) => gate.status)).toEqual(["met", "met"]);
+  });
+
+  test("keeps any-mode satisfied alternatives muted", () => {
+    expect(buildCommunitySidebarGateItems({
+      gateMatchMode: "any",
+      eligibility: { status: "joinable" } as JoinEligibility,
+      gateSummaries: [
+        { gate_type: "unique_human", accepted_providers: ["very"] },
+        { gate_type: "wallet_score", minimum_score: 20 },
+      ],
+    }).map((gate) => gate.status)).toEqual(["unknown", "unknown"]);
   });
 });
 

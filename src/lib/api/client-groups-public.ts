@@ -20,6 +20,7 @@ import type {
   ProfileUpdateInput,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
+import type { CourtyardWalletInventoryGroup } from "@/lib/courtyard-inventory-gates";
 
 type PublicQueryParams = Record<string, string | number | boolean | null | undefined>;
 
@@ -27,6 +28,13 @@ export type PublicPostThreadResponse = {
   post: LocalizedPostResponse;
   community: CommunityPreview;
   comments: CommentListResponse;
+};
+
+type ApiCourtyardWalletInventoryGroup = Omit<CourtyardWalletInventoryGroup, "chainNamespace" | "contractAddress" | "displayLabel" | "displayDetail"> & {
+  chain_namespace: "eip155:1" | "eip155:137";
+  contract_address: string;
+  display_label: string;
+  display_detail?: string;
 };
 
 export type PublicCommunitySearchResponse = {
@@ -60,6 +68,25 @@ function publicGet<T>(
 export function createProfilesApi(request: ApiRequest) {
   return {
     getMe: (): Promise<Profile> => request<Profile>("/profiles/me"),
+    getCourtyardInventory: async (): Promise<{
+      groups: CourtyardWalletInventoryGroup[];
+      unavailable: boolean;
+    }> => {
+      const response = await request<{
+        groups: ApiCourtyardWalletInventoryGroup[];
+        unavailable: boolean;
+      }>("/profiles/me/courtyard-inventory");
+      return {
+        unavailable: response.unavailable,
+        groups: response.groups.map((group) => ({
+          ...group,
+          chainNamespace: group.chain_namespace,
+          contractAddress: group.contract_address,
+          displayLabel: group.display_label,
+          displayDetail: group.display_detail,
+        })),
+      };
+    },
     getByUserId: (userId: string): Promise<Profile> =>
       request<Profile>(`/profiles/${encodeURIComponent(userId)}`, { tokenRequired: false }),
     updateMe: (input: ProfileUpdateInput): Promise<Profile> =>

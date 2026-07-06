@@ -170,9 +170,8 @@ export function getProofOfWorkGateRequirements(
   return proofOfWorkGates.length > 0 ? proofOfWorkGates : [{ gate_type: "altcha_pow" }];
 }
 
-// Proof-of-work is an action-time check, never a join-surface gate.
 export function isJoinSurfaceGate(gate: Pick<MembershipGateSummary, "gate_type">): boolean {
-  return gate.gate_type !== "altcha_pow";
+  return true;
 }
 
 export function hasActionTimeCheck(gates: Array<Pick<MembershipGateSummary, "gate_type">> | null | undefined): boolean {
@@ -249,7 +248,7 @@ export function getJoinCtaLabel(
   const locale = resolveGateLocale(options?.locale);
   const copy = getLocaleMessages(locale, "gates").joinCta;
   if (eligibility.status === "verification_required" && hasOnlyWalletGateRequirements(eligibility)) {
-    return copy.gateFailed;
+    return copy.walletRequired;
   }
   switch (eligibility.status) {
     case "joinable":
@@ -270,9 +269,6 @@ export function getJoinCtaLabel(
 }
 
 export function isJoinCtaActionable(eligibility: JoinEligibility): boolean {
-  if (eligibility.status === "verification_required" && hasOnlyWalletGateRequirements(eligibility)) {
-    return false;
-  }
   return eligibility.status === "joinable"
     || eligibility.status === "requestable"
     || eligibility.status === "verification_required";

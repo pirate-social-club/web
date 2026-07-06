@@ -908,7 +908,7 @@ export function CommunityPage({
           routeLabel={routeLabel}
           routeVerified={Boolean(community?.namespace_verification)}
           sidebar={{
-            ...(community ? buildCommunitySidebar(community, locale) : buildCommunityPreviewSidebar(preview, locale)),
+            ...(community ? buildCommunitySidebar(community, locale, eligibility) : buildCommunityPreviewSidebar(preview, locale, eligibility)),
             followerCount,
             memberCount: preview.member_count ?? null,
             owner: previewSidebar.owner,

@@ -7,6 +7,12 @@ import {
 
 export type SerializedGatePolicy = GatePolicy;
 
+export type PreserveGatePolicyInput = {
+  gateDrafts: IdentityGateDraft[];
+  mode: "all" | "any";
+  policy: GatePolicy | null | undefined;
+};
+
 export function serializeIdentityGateDrafts(
   gateDrafts: IdentityGateDraft[],
   options?: { mode?: "all" | "any"; includeGateRuleIds?: boolean },
@@ -28,6 +34,25 @@ export function serializeIdentityGateDrafts(
       children: expressions,
     },
   };
+}
+
+export function serializeIdentityGateDraftsForSave(
+  gateDrafts: IdentityGateDraft[],
+  options: {
+    mode?: "all" | "any";
+    preserve?: PreserveGatePolicyInput | null;
+  } = {},
+): SerializedGatePolicy | null {
+  if (
+    options.preserve?.policy
+    && options.preserve.mode === (options.mode ?? "all")
+    && gateDraftsEqual(options.preserve.gateDrafts, gateDrafts)
+  ) {
+    // Keep this object immutable; unchanged advanced policies are sent back verbatim.
+    return options.preserve.policy;
+  }
+
+  return serializeIdentityGateDrafts(gateDrafts, { mode: options.mode });
 }
 
 function draftToExpression(draft: IdentityGateDraft): GateExpression | null {
@@ -113,4 +138,8 @@ function acceptedProvidersField(
 ): { accepted_providers?: DocumentProofProvider[] } {
   const selected = DEFAULT_DOCUMENT_PROOF_PROVIDERS.filter((provider) => providers?.includes(provider));
   return selected.length > 0 ? { accepted_providers: selected } : {};
+}
+
+function gateDraftsEqual(left: IdentityGateDraft[], right: IdentityGateDraft[]): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }

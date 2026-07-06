@@ -13,6 +13,7 @@ import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 import type { CreateCommunityComposerProps } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import { CreateCommunityComposer } from "@/components/compositions/community/create-composer/create-community-composer";
+import type { CourtyardWalletInventoryGroup } from "@/lib/courtyard-inventory-gates";
 import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { PageContainer } from "@/components/primitives/layout-shell";
@@ -38,7 +39,44 @@ export function CreateCommunityPage() {
         ageOver18Verified: session.user.verification_capabilities.age_over_18.state === "verified",
       }
     : { ageOver18Verified: false };
+  const [courtyardInventoryGroups, setCourtyardInventoryGroups] =
+    React.useState<CourtyardWalletInventoryGroup[] | null | undefined>(undefined);
+  const [courtyardInventoryLoading, setCourtyardInventoryLoading] = React.useState(false);
   const pendingCreateInputRef = React.useRef<CreateCommunityInput | null>(null);
+
+  React.useEffect(() => {
+    if (!session) {
+      setCourtyardInventoryGroups(undefined);
+      setCourtyardInventoryLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setCourtyardInventoryGroups(null);
+    setCourtyardInventoryLoading(true);
+    void api.profiles.getCourtyardInventory()
+      .then((result) => {
+        if (cancelled) return;
+        setCourtyardInventoryGroups(result.groups);
+        if (result.unavailable) {
+          logger.warn("[create-community] Courtyard inventory unavailable");
+        }
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        logger.warn("[create-community] failed to load Courtyard inventory", error);
+        setCourtyardInventoryGroups([]);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCourtyardInventoryLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api.profiles, session]);
   const createCommunityFromInput = React.useCallback(async (input: CreateCommunityInput) => {
     const avatarRef = input.avatarFile ? (await api.communities.uploadMedia({ kind: "avatar", file: input.avatarFile })).media_ref : input.avatarRef;
     const bannerRef = input.bannerFile ? (await api.communities.uploadMedia({ kind: "banner", file: input.bannerFile })).media_ref : input.bannerRef;
@@ -180,6 +218,8 @@ export function CreateCommunityPage() {
         <section className="flex min-w-0 flex-1 flex-col px-4 pb-24 pt-[calc(env(safe-area-inset-top)+5rem)]">
           <CreateCommunityComposer
             creatorVerificationState={creatorVerificationState}
+            courtyardInventoryGroups={courtyardInventoryGroups}
+            courtyardInventoryLoading={courtyardInventoryLoading}
             deferCreatorVerification
             onCreate={handleCreate}
           />
@@ -195,6 +235,8 @@ export function CreateCommunityPage() {
         <PageContainer size="rail">
           <CreateCommunityComposer
             creatorVerificationState={creatorVerificationState}
+            courtyardInventoryGroups={courtyardInventoryGroups}
+            courtyardInventoryLoading={courtyardInventoryLoading}
             deferCreatorVerification
             onCreate={handleCreate}
           />

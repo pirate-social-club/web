@@ -3,10 +3,13 @@ import { isAddress } from "viem";
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 
 export const COURTYARD_POLYGON_REGISTRY = "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD";
+export const COURTYARD_MAINNET_REGISTRY = "0xd4ac3CE8e1E14CD60666D49AC34Ff2d2937cF6FA";
 export const COURTYARD_CATALOG_AUTHORING_ENABLED = false;
 
 export type CourtyardWalletInventoryGroup = {
   category: "trading_card" | "watch";
+  chainNamespace?: "eip155:1" | "eip155:137";
+  contractAddress?: string;
   franchise?: string;
   subject?: string;
   brand?: string;
@@ -42,7 +45,7 @@ export function createDefaultCourtyardInventoryDraft(
 
 export function isValidCourtyardInventoryDraft(draft: CourtyardInventoryDraft): boolean {
   if (
-    draft.chainNamespace !== "eip155:137"
+    (draft.chainNamespace !== "eip155:1" && draft.chainNamespace !== "eip155:137")
     || draft.inventoryProvider !== "courtyard"
     || !isAddress(draft.contractAddress.trim())
     || !Number.isInteger(draft.minQuantity)
@@ -68,6 +71,34 @@ export function isValidCourtyardInventoryDraft(draft: CourtyardInventoryDraft): 
     || draft.assetFilter.reference?.trim()
     || draft.assetFilter.condition?.trim(),
   );
+}
+
+export function createCourtyardInventoryDraftFromGroup(
+  group: CourtyardWalletInventoryGroup,
+): CourtyardInventoryDraft {
+  const chainNamespace = group.chainNamespace ?? "eip155:137";
+  return createDefaultCourtyardInventoryDraft({
+    chainNamespace,
+    contractAddress: group.contractAddress ?? (
+      chainNamespace === "eip155:1"
+        ? COURTYARD_MAINNET_REGISTRY
+        : COURTYARD_POLYGON_REGISTRY
+    ),
+    minQuantity: Math.min(Math.max(group.count, 1), 100),
+    assetFilter: {
+      category: group.category,
+      franchise: group.franchise,
+      subject: group.subject,
+      brand: group.brand,
+      model: group.model,
+      reference: group.reference,
+      set: group.set,
+      year: group.year,
+      grader: group.grader,
+      grade: group.grade,
+      condition: group.condition,
+    },
+  });
 }
 
 export function describeCourtyardInventoryDraft(draft: CourtyardInventoryDraft): string {

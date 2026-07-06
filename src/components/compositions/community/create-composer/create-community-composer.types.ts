@@ -24,6 +24,7 @@ export const DEFAULT_DOCUMENT_PROOF_PROVIDERS: DocumentProofProvider[] = ["self"
 export type IdentityGateDraft =
   | {
     gateType: "altcha_pow";
+    fallbackFor?: "unique_human";
     gateRuleId?: string;
   }
   | {

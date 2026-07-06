@@ -160,9 +160,43 @@ describe("useCommunityAccessState", () => {
 
     expect(result.current.gateDrafts).toEqual([
       { gateType: "unique_human", provider: "very" },
-      { gateType: "altcha_pow" },
+      { gateType: "altcha_pow", fallbackFor: "unique_human" },
     ]);
     expect(result.current.gateMatchMode).toBe("any");
+  });
+
+  test("loads nested palm-scan proof-of-work fallback without treating it as advanced", async () => {
+    installCommunityApiMocks();
+    const { result } = renderAccessHook({
+      community: createCommunity({
+        gate_policy: {
+          version: 1,
+          expression: {
+            op: "and",
+            children: [
+              {
+                op: "or",
+                children: [
+                  { op: "gate", gate: { type: "unique_human", provider: "very" } },
+                  { op: "gate", gate: { type: "altcha_pow" } },
+                ],
+              },
+              { op: "gate", gate: { type: "wallet_score", provider: "passport", minimum_score: 10 } },
+            ],
+          },
+        },
+      }),
+    });
+
+    await waitFor(() => expect(result.current.gateDrafts).toHaveLength(3));
+
+    expect(result.current.gateDrafts).toEqual([
+      { gateType: "unique_human", provider: "very" },
+      { gateType: "altcha_pow", fallbackFor: "unique_human" },
+      { gateType: "wallet_score", provider: "passport", minimumScore: 10 },
+    ]);
+    expect(result.current.gateMatchMode).toBe("all");
+    expect(result.current.hasAdvancedGatePolicy).toBe(false);
   });
 
   test("drops legacy proof-of-work fallback when AND identity gates are present", async () => {
@@ -447,6 +481,54 @@ describe("useCommunityAccessState", () => {
           {
             op: "gate",
             gate: { type: "unique_human", provider: "very" },
+          },
+        ],
+      },
+    });
+  });
+
+  test("serializes palm-scan proof-of-work fallback without changing top-level gate mode", async () => {
+    const calls = installCommunityApiMocks();
+    const save = createSaveCommunityMock();
+    const { result } = renderAccessHook({ saveCommunity: save.saveCommunity });
+
+    await waitFor(() => expect(result.current.membershipMode).toBe("gated"));
+
+    act(() => {
+      result.current.setGateMatchMode("all");
+      result.current.setGateDrafts([
+        { gateType: "unique_human", provider: "very" },
+        { gateType: "altcha_pow", fallbackFor: "unique_human" },
+        { gateType: "wallet_score", provider: "passport", minimumScore: 10 },
+      ]);
+    });
+    act(() => {
+      result.current.handleSaveGates();
+    });
+
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+
+    expect(calls.updateGates[0]?.body.gate_policy).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          {
+            op: "or",
+            children: [
+              {
+                op: "gate",
+                gate: { type: "unique_human", provider: "very" },
+              },
+              {
+                op: "gate",
+                gate: { type: "altcha_pow" },
+              },
+            ],
+          },
+          {
+            op: "gate",
+            gate: { type: "wallet_score", provider: "passport", minimum_score: 10 },
           },
         ],
       },

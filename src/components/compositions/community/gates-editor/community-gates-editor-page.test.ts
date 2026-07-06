@@ -68,6 +68,16 @@ describe("CommunityGatesEditorPage gate draft helpers", () => {
     ]);
   });
 
+  test("preserves proof-of-work fallback intent when upserting the fallback gate", () => {
+    const palmScanGate: IdentityGateDraft = { gateType: "unique_human", provider: "very" };
+    const powFallbackGate: IdentityGateDraft = { gateType: "altcha_pow", fallbackFor: "unique_human" };
+
+    expect(upsertGateDraftForMatchMode([palmScanGate], powFallbackGate, "all")).toEqual([
+      palmScanGate,
+      powFallbackGate,
+    ]);
+  });
+
   test("keeps proof-of-work selected when switching back to all mode", () => {
     const powGate: IdentityGateDraft = { gateType: "altcha_pow" };
     const palmScanGate: IdentityGateDraft = { gateType: "unique_human", provider: "very" };

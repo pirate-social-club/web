@@ -1,7 +1,7 @@
 "use client";
 
 import { Archive, At, ChatCircleDots, CurrencyDollar, Database, Eye, Gavel, GraduationCap, Heart, ImageSquare, LinkSimple, Lock, MicrophoneStage, MusicNotes, Queue, Robot, SealCheck, Shield, Tag, TelegramLogo, UserPlus } from "@phosphor-icons/react";
-import type { Community as ApiCommunity } from "@pirate/api-contracts";
+import type { Community as ApiCommunity, GateExpression, GatePolicy } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
@@ -221,8 +221,9 @@ function extractCourtyardInventoryDraft(config: unknown): Omit<Extract<IdentityG
 }
 
 export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDraft[] {
+  const hasPalmScanPowFallback = hasPalmScanPowFallbackPolicy(community.gate_policy ?? null);
   const drafts = flattenGatePolicyAtoms(community.gate_policy ?? null).reduce<IdentityGateDraft[]>((result, atom) => {
-    const draft = getCommunityGateDraft(atom);
+    const draft = getCommunityGateDraft(atom, { hasPalmScanPowFallback });
     if (draft != null) {
       result.push(draft);
     }
@@ -239,13 +240,50 @@ export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDra
     || draft.gateType === "gender"
   );
   return hasStrongerIdentityGate
-    ? drafts.filter((draft) => draft.gateType !== "altcha_pow")
+    ? drafts.filter((draft) => draft.gateType !== "altcha_pow" || draft.fallbackFor === "unique_human")
     : drafts;
 }
 
-function getCommunityGateDraft(atom: ReturnType<typeof flattenGatePolicyAtoms>[number]): IdentityGateDraft | null {
+type RecursiveGateExpression = Omit<GateExpression, "children"> & {
+  children?: RecursiveGateExpression[];
+};
+
+function hasPalmScanPowFallbackPolicy(policy: GatePolicy | null): boolean {
+  if (!policy) {
+    return false;
+  }
+  return expressionHasPalmScanPowFallback(policy.expression as RecursiveGateExpression);
+}
+
+function expressionHasPalmScanPowFallback(expression: RecursiveGateExpression): boolean {
+  if (expression.op !== "and" && expression.op !== "or") {
+    return false;
+  }
+
+  const children = expression.children ?? [];
+  if (expression.op === "or" && children.length === 2) {
+    const gates = children
+      .filter((child) => child.op === "gate")
+      .map((child) => child.gate);
+    const hasPalmScanGate = gates.some((gate) => gate?.type === "unique_human" && gate.provider === "very");
+    const hasPowGate = gates.some((gate) => gate?.type === "altcha_pow");
+    if (hasPalmScanGate && hasPowGate) {
+      return true;
+    }
+  }
+
+  return children.some(expressionHasPalmScanPowFallback);
+}
+
+function getCommunityGateDraft(
+  atom: ReturnType<typeof flattenGatePolicyAtoms>[number],
+  options: { hasPalmScanPowFallback: boolean },
+): IdentityGateDraft | null {
   if (atom.type === "altcha_pow") {
-    return { gateType: "altcha_pow" };
+    return {
+      gateType: "altcha_pow",
+      ...(options.hasPalmScanPowFallback ? { fallbackFor: "unique_human" as const } : {}),
+    };
   }
 
   if (atom.type === "unique_human" && (atom.provider === "self" || atom.provider === "very")) {

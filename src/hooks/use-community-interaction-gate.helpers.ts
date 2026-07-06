@@ -90,6 +90,10 @@ export type BuildBlockedModalStateArgs = {
     gate: CommunityGateData;
     provider: "self" | "very" | "passport";
   }) => Promise<{ started: boolean }>;
+  startWalletConnection?: (input: {
+    gate: CommunityGateData;
+  }) => Promise<{ started: boolean }>;
+  walletConnectionLoading?: boolean;
 };
 
 export type PendingInteraction = {
@@ -509,6 +513,14 @@ function getJoinableDescription(
   return fallback;
 }
 
+function isNftGateFailure(gate: CommunityGateData): boolean {
+  return gate.eligibility.status === "gate_failed"
+    && (
+      gate.eligibility.failure_reason === "erc721_holding_required"
+      || gate.eligibility.failure_reason === "erc721_inventory_match_required"
+    );
+}
+
 export function createDefaultBlockedModalState({
   action,
   closeModal,
@@ -517,6 +529,8 @@ export function createDefaultBlockedModalState({
   openCommunity,
   defaultVerificationLoadingProvider,
   startDefaultVerification,
+  startWalletConnection,
+  walletConnectionLoading,
 }: BuildBlockedModalStateArgs): ModalState {
   const isVoteAction = action === "vote_post" || action === "vote_comment";
   const resolvedLocale: UiLocaleCode =
@@ -657,6 +671,17 @@ export function createDefaultBlockedModalState({
             : gate.preview.membership_gate_summaries,
         ),
         icon: "blocked",
+        ...(isNftGateFailure(gate) && startWalletConnection
+          ? {
+              primaryAction: {
+                label: "Connect wallet",
+                loading: walletConnectionLoading,
+                onClick: async () => {
+                  await startWalletConnection({ gate });
+                },
+              },
+            }
+          : {}),
         title: isVoteAction
           ? interactionCopy.cantVoteHereTitle
           : interactionCopy.cantReplyHereTitle,

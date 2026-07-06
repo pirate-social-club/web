@@ -293,6 +293,8 @@ export function useGatedActionRunner({
   showError,
   showInfo,
   startDefaultVerification,
+  startWalletConnection,
+  walletConnectionLoading,
 }: {
   altchaLoading: boolean;
   buildAltchaBody: (input: {
@@ -322,6 +324,8 @@ export function useGatedActionRunner({
   showError?: (message: string) => void;
   showInfo?: (message: string, options?: ToastInfoOptions) => void;
   startDefaultVerification: NonNullable<BuildBlockedModalStateArgs["startDefaultVerification"]>;
+  startWalletConnection?: NonNullable<BuildBlockedModalStateArgs["startWalletConnection"]>;
+  walletConnectionLoading?: boolean;
 }) {
   return React.useCallback(async ({
     action,
@@ -545,6 +549,8 @@ export function useGatedActionRunner({
           openCommunity: openCommunityAction,
           defaultVerificationLoadingProvider,
           startDefaultVerification,
+          startWalletConnection,
+          walletConnectionLoading,
         }))
       : customModalState;
     logger.info("[interaction-gate] blocked", {
@@ -581,5 +587,7 @@ export function useGatedActionRunner({
     showError,
     showInfo,
     startDefaultVerification,
+    startWalletConnection,
+    walletConnectionLoading,
   ]);
 }

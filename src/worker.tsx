@@ -177,6 +177,7 @@ async function resolveRouteSeoMetadata(input: {
       || input.route.kind === "post-replay-draft"
       || input.route.kind === "post-karaoke"
       || input.route.kind === "post-study"
+      || input.route.kind === "post-streaks"
       || input.route.kind === "crosspost"
     ) {
       const postResponse = await fetchPublicJson<PublicPostResponse>(
@@ -536,6 +537,7 @@ const app = defineApp<AppRequestInfo>([
     route("/p/:postId/replay", AppRoutePage),
     route("/p/:postId/karaoke", AppRoutePage),
     route("/p/:postId/study", AppRoutePage),
+    route("/p/:postId/streaks", AppRoutePage),
     route("/p/:postId", AppRoutePage),
     route("/inbox", AppRoutePage),
     route("/chat", AppRoutePage),

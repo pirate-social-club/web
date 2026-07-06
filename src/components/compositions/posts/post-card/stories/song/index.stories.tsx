@@ -703,3 +703,43 @@ export const RemixMultipleAttributions: Story = {
 
 // Note: songMode = "original" is the default and has no distinct visual
 // treatment in feed cards.
+
+// ============================================================================
+// LEARNING ACTIONS — Study / Karaoke / Streaks entry points
+// ============================================================================
+
+// Post-page view: all three learning actions wired with handlers. Streaks is a
+// secondary action beneath the primary Sing / Study "doing" actions.
+export const LearningActionsPostPage: Story = {
+  name: "Learning / Post page (Sing · Study · Streaks)",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseSong,
+        onKaraoke: noop,
+        study: { status: "ready", exerciseCount: 12 },
+        onStudy: noop,
+        onStreaks: noop,
+      }}
+    />
+  ),
+};
+
+// Feed view: no per-card handlers are wired in the feed, so entry points that
+// want to appear there use an href (like Karaoke). Study is handler-gated and
+// stays hidden in feed; Streaks uses streaksHref so it shows alongside Sing.
+export const LearningActionsFeed: Story = {
+  name: "Learning / Feed (Sing · Streaks via href)",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseSong,
+        karaokeHref: "#",
+        study: { status: "ready", exerciseCount: 12 },
+        streaksHref: "#",
+      }}
+    />
+  ),
+};

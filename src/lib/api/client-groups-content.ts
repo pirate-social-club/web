@@ -15,6 +15,7 @@ import type {
   SongArtifactBundleListResponse,
   SongArtifactUpload,
   SongKaraokePayload,
+  SongStreakLeaderboard,
 } from "@pirate/api-contracts";
 
 import type {
@@ -154,6 +155,17 @@ export function createCommunityContentApi(request: ApiRequest) {
           locale: opts?.locale,
         }),
         { tokenOptional: true },
+      ),
+    getPostStreakLeaderboard: (
+      communityId: string,
+      postId: string,
+      opts?: { limit?: number | null },
+    ): Promise<SongStreakLeaderboard> =>
+      request<SongStreakLeaderboard>(
+        buildQueryPath(
+          `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/streaks/leaderboard`,
+          { limit: opts?.limit },
+        ),
       ),
     getPostStudy: (
       communityId: string,

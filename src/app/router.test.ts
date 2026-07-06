@@ -178,6 +178,14 @@ describe("public profile host routing", () => {
     });
   });
 
+  test("matches dedicated streak leaderboard routes", () => {
+    expectJson(matchRoute("/p/pst_cf89c73fe60641debd05c939252a870c/streaks"), {
+      kind: "post-streaks",
+      path: "/p/pst_cf89c73fe60641debd05c939252a870c/streaks",
+      postId: "pst_cf89c73fe60641debd05c939252a870c",
+    });
+  });
+
   test("matches settings agent routes from path routes", () => {
     expectJson(matchRoute("/settings"), {
       kind: "settings-index",

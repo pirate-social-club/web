@@ -3,11 +3,9 @@ import {
   BookOpen,
   CaretLeft,
   CheckCircle,
-  GraduationCap,
   Microphone,
   SpeakerHigh,
   Trophy,
-  Translate,
   XCircle,
 } from "@phosphor-icons/react";
 
@@ -47,14 +45,6 @@ export interface SongStudyMultipleChoiceExercise {
 
 export type SongStudySurfaceState =
   | {
-    kind: "start";
-    exerciseCount: number;
-    hasKaraoke?: boolean;
-    progressLabel?: string;
-    sourceLanguageLabel: string;
-    targetLanguageLabel: string;
-  }
-  | {
     kind: "locked";
     priceLabel?: string;
   }
@@ -91,7 +81,6 @@ export interface SongStudySurfaceProps {
   onExit?: () => void;
   onOptionSelect?: (optionId: string) => void;
   onPrimaryAction?: () => void;
-  onSecondaryAction?: () => void;
   state: SongStudySurfaceState;
   title: string;
 }
@@ -102,8 +91,6 @@ function clampPercent(value: number) {
 
 function primaryActionLabel(state: SongStudySurfaceState): string | undefined {
   switch (state.kind) {
-    case "start":
-      return "Study";
     case "locked":
       return state.priceLabel ? `Buy ${state.priceLabel}` : "Buy";
     case "say_it_back":
@@ -129,31 +116,20 @@ function primaryActionDisabled(state: SongStudySurfaceState): boolean {
 function ActivityFooter({
   primaryDisabled,
   primaryLabel,
-  secondaryLabel,
   onPrimaryAction,
-  onSecondaryAction,
 }: {
   primaryDisabled?: boolean;
   primaryLabel?: string;
-  secondaryLabel?: string;
   onPrimaryAction?: () => void;
-  onSecondaryAction?: () => void;
 }) {
-  if (!primaryLabel && !secondaryLabel) return null;
+  if (!primaryLabel) return null;
 
   return (
     <footer className="sticky bottom-0 z-10 border-t border-border-soft bg-background/95 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 backdrop-blur-xl sm:px-6">
-      <div className={cn("mx-auto grid w-full max-w-3xl gap-3", secondaryLabel && "sm:grid-cols-2")}>
-        {secondaryLabel ? (
-          <Button className="w-full" onClick={onSecondaryAction} size="lg" variant="secondary">
-            {secondaryLabel}
-          </Button>
-        ) : null}
-        {primaryLabel ? (
-          <Button className="w-full" disabled={primaryDisabled} onClick={onPrimaryAction} size="lg">
-            {primaryLabel}
-          </Button>
-        ) : null}
+      <div className="mx-auto grid w-full max-w-3xl gap-3">
+        <Button className="w-full" disabled={primaryDisabled} onClick={onPrimaryAction} size="lg">
+          {primaryLabel}
+        </Button>
       </div>
     </footer>
   );
@@ -201,64 +177,6 @@ function Header({
         <div aria-hidden="true" className="hidden size-12 rounded-[var(--radius-lg)] bg-muted sm:block" />
       )}
     </header>
-  );
-}
-
-function StudyPill({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center rounded-full border border-border-soft bg-muted px-3 py-1 text-base font-semibold text-muted-foreground">
-      {children}
-    </span>
-  );
-}
-
-function StartState({ state }: { state: Extract<SongStudySurfaceState, { kind: "start" }> }) {
-  return (
-    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-8 px-4 py-10 sm:px-6">
-      <div className="space-y-4 text-center">
-        <div className="mx-auto grid size-16 place-items-center rounded-full bg-primary/10 text-primary">
-          <GraduationCap className="size-9" weight="duotone" />
-        </div>
-        <div>
-          <Type as="h2" variant="h2">
-            Learn this song line by line
-          </Type>
-          <Type as="p" className="mx-auto mt-2 max-w-xl text-muted-foreground" variant="body">
-            Practice listening, recall, and translation with short exercises generated from the lyrics.
-          </Type>
-        </div>
-        <div className="flex flex-wrap justify-center gap-2">
-          <StudyPill>{state.exerciseCount} exercises</StudyPill>
-          <StudyPill>{state.sourceLanguageLabel} → {state.targetLanguageLabel}</StudyPill>
-          {state.progressLabel ? <StudyPill>{state.progressLabel}</StudyPill> : null}
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5">
-          <div className="mb-3 grid size-10 place-items-center rounded-full bg-secondary text-secondary-foreground">
-            <Microphone className="size-5" weight="fill" />
-          </div>
-          <Type as="h3" variant="body-strong">
-            Say it back
-          </Type>
-          <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
-            Hear a lyric, repeat it, then get a second attempt when the transcript misses.
-          </Type>
-        </div>
-        <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5">
-          <div className="mb-3 grid size-10 place-items-center rounded-full bg-secondary text-secondary-foreground">
-            <Translate className="size-5" weight="fill" />
-          </div>
-          <Type as="h3" variant="body-strong">
-            Translation choice
-          </Type>
-          <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
-            Pick the right meaning from shuffled server-generated distractors.
-          </Type>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -477,8 +395,6 @@ function Body({
   state: SongStudySurfaceState;
 }) {
   switch (state.kind) {
-    case "start":
-      return <StartState state={state} />;
     case "locked":
       return <LockedState state={state} />;
     case "say_it_back":
@@ -497,7 +413,6 @@ export function SongStudySurface({
   onExit,
   onOptionSelect,
   onPrimaryAction,
-  onSecondaryAction,
   state,
   title,
 }: SongStudySurfaceProps) {
@@ -508,9 +423,7 @@ export function SongStudySurface({
       <ActivityFooter
         primaryDisabled={primaryActionDisabled(state)}
         primaryLabel={primaryActionLabel(state)}
-        secondaryLabel={state.kind === "start" && state.hasKaraoke ? "Karaoke" : undefined}
         onPrimaryAction={onPrimaryAction}
-        onSecondaryAction={onSecondaryAction}
       />
     </section>
   );

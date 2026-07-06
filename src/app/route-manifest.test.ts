@@ -38,6 +38,7 @@ const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { kind: "post-replay-draft", domain: "authenticated", testPaths: [{ pathname: "/p/pst_test/replay" }], serverRouteExpected: true },
   { kind: "post-karaoke", domain: "dual", testPaths: [{ pathname: "/p/pst_test/karaoke" }], serverRouteExpected: true },
   { kind: "post-study", domain: "authenticated", testPaths: [{ pathname: "/p/pst_test/study" }], serverRouteExpected: true },
+  { kind: "post-streaks", domain: "authenticated", testPaths: [{ pathname: "/p/pst_test/streaks" }], serverRouteExpected: true },
   { kind: "crosspost", domain: "authenticated", testPaths: [{ pathname: "/p/pst_test/crosspost" }], serverRouteExpected: true },
   { kind: "inbox", domain: "authenticated", testPaths: [{ pathname: "/inbox" }], serverRouteExpected: true },
   { kind: "chat", domain: "authenticated", testPaths: [{ pathname: "/chat" }], serverRouteExpected: true },
@@ -83,6 +84,7 @@ const _KIND_COVERAGE: { [K in AppRoute["kind"]]: true } = {
   "post-replay-draft": true,
   "post-karaoke": true,
   "post-study": true,
+  "post-streaks": true,
   crosspost: true,
   inbox: true,
   chat: true,
@@ -135,6 +137,7 @@ const EXPECTED_DOMAIN_KINDS: Record<RouteRenderingDomain, readonly AppRoute["kin
     "authorize-device",
     "not-found",
     "post-study",
+    "post-streaks",
   ],
   public: [
     "public-profile",

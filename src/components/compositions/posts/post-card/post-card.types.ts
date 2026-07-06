@@ -1,4 +1,5 @@
 import type { ActionMenuItem } from "@/components/primitives/action-menu";
+import type { SongStreakSummary } from "@/components/compositions/song-study/song-streak-preview";
 import type { ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
 import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
@@ -210,6 +211,13 @@ export interface SongContentSpec {
   // The study ("Study") capability + surface for this song, when available.
   study?: SongStudyCapability;
   onStudy?: () => void;
+
+  // Streak leaderboard for this song. `streakSummary` renders the inline streak
+  // section (top holder + viewer standing) inside the card above the vote bar;
+  // `onStreaks` opens the full leaderboard from the section's subtle top-right link.
+  streaksHref?: string;
+  streakSummary?: SongStreakSummary;
+  onStreaks?: () => void;
 
   // Callbacks
   onPlay?: () => void;

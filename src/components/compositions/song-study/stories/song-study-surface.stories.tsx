@@ -13,7 +13,6 @@ const baseProps = {
   artworkSrc,
   onExit: () => undefined,
   onPrimaryAction: () => undefined,
-  onSecondaryAction: () => undefined,
   title: "Midnight Waves",
 };
 
@@ -53,41 +52,8 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const StartStudyOnly: Story = {
-  name: "Study / Start — study only",
-  render: () => (
-    <SongStudySurface
-      {...baseProps}
-      state={{
-        kind: "start",
-        exerciseCount: 14,
-        progressLabel: "2 due today",
-        sourceLanguageLabel: "English",
-        targetLanguageLabel: "Spanish",
-      }}
-    />
-  ),
-};
-
-export const StartStudyKaraoke: Story = {
-  name: "Study / Start — study + karaoke",
-  render: () => (
-    <SongStudySurface
-      {...baseProps}
-      state={{
-        kind: "start",
-        exerciseCount: 14,
-        hasKaraoke: true,
-        progressLabel: "New study pack",
-        sourceLanguageLabel: "English",
-        targetLanguageLabel: "Spanish",
-      }}
-    />
-  ),
-};
-
-export const StartLockedNotEntitled: Story = {
-  name: "Study / Start — locked not entitled",
+export const LockedNotEntitled: Story = {
+  name: "Study / Locked — not entitled",
   render: () => (
     <SongStudySurface
       {...baseProps}

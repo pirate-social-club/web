@@ -510,6 +510,19 @@ export function toStudyCapability(postResponse: ApiPost): SongContentSpec["study
   };
 }
 
+function toStreakSummary(postResponse: ApiPost): SongContentSpec["streakSummary"] {
+  const summary = postResponse.streak_summary;
+  if (!summary) {
+    return undefined;
+  }
+
+  return {
+    entries: summary.entries,
+    totalActiveStreaks: summary.total_active_streaks,
+    viewer: summary.viewer,
+  };
+}
+
 export function toSongPostContent(
   postResponse: ApiPost,
   songOptions: SongPresentationOptions | undefined,
@@ -586,6 +599,7 @@ export function toSongPostContent(
   }
   const karaokeCapability = toKaraokeCapability(postResponse);
   const study = toStudyCapability(postResponse);
+  const streakSummary = toStreakSummary(postResponse);
   return {
     type: "song",
     accessMode,
@@ -618,6 +632,15 @@ export function toSongPostContent(
     onKaraoke: karaokeCapability?.canKaraoke ? songOptions?.onKaraoke : undefined,
     study,
     onStudy: study ? songOptions?.onStudy : undefined,
+    // Opens the full streak leaderboard from the inline streak section. The
+    // section renders only when the API payload includes a streak summary.
+    streaksHref: study?.status === "ready" || karaokeCapability?.canKaraoke
+      ? `/p/${encodeURIComponent(post.id)}/streaks`
+      : undefined,
+    streakSummary,
+    onStreaks: study?.status === "ready" || karaokeCapability?.canKaraoke
+      ? songOptions?.onStreaks
+      : undefined,
     onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,
     onPlay: playbackDescriptor && playback ? () => void playback.playTrack(playbackDescriptor) : undefined,
     onSeek: playbackDescriptor && playback ? (progressMs) => void playback.seekTrack(playbackDescriptor, progressMs) : undefined,

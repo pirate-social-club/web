@@ -47,6 +47,7 @@ import {
 } from "@/app/authenticated-helpers/moderation-helpers";
 import { buildLiveRoomParticipants } from "@/app/authenticated-helpers/post-live-room-participants";
 import { toCommunityFeedItem } from "@/app/authenticated-helpers/post-presentation";
+import { processingPostPollDelayMs, shouldContinueProcessingPostPolling } from "@/app/authenticated-helpers/processing-post-polling";
 import { useCommunityMembershipActions } from "@/hooks/use-community-membership-actions";
 import { useCommunityVoteAction } from "@/hooks/use-community-vote-action";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
@@ -178,12 +179,16 @@ export function CommunityPage({
       .map((postResponse) => postResponse.post.id),
     [posts],
   );
+  const processingPostIdsKey = React.useMemo(() => processingPostIds.join("\n"), [processingPostIds]);
 
   React.useEffect(() => {
-    if (processingPostIds.length === 0) return undefined;
+    if (!processingPostIdsKey) return undefined;
+    const postIds = processingPostIdsKey.split("\n");
+    const startedAt = Date.now();
     let cancelled = false;
+    let timeoutId: number | null = null;
     const refreshProcessingPosts = async () => {
-      const refreshed = await Promise.all(processingPostIds.map(async (postId) => {
+      const refreshed = await Promise.all(postIds.map(async (postId) => {
         try {
           return await api.posts.get(postId, { locale: contentLocale });
         } catch (error) {
@@ -199,15 +204,32 @@ export function CommunityPage({
       if (byId.size === 0) return;
       setPosts((current) => current.map((postResponse) => byId.get(postResponse.post.id) ?? postResponse));
     };
-    const intervalId = window.setInterval(() => {
-      void refreshProcessingPosts();
-    }, 4_000);
-    void refreshProcessingPosts();
+    const scheduleNext = () => {
+      if (cancelled) return;
+      const elapsedMs = Date.now() - startedAt;
+      if (!shouldContinueProcessingPostPolling(elapsedMs)) {
+        logger.warn("[community-route] stopped processing post polling after timeout", {
+          elapsedMs,
+          postIds,
+        });
+        return;
+      }
+      timeoutId = window.setTimeout(() => {
+        void tick();
+      }, processingPostPollDelayMs(elapsedMs));
+    };
+    const tick = async () => {
+      await refreshProcessingPosts();
+      scheduleNext();
+    };
+    void tick();
     return () => {
       cancelled = true;
-      window.clearInterval(intervalId);
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
     };
-  }, [api.posts, contentLocale, processingPostIds, setPosts]);
+  }, [api.posts, contentLocale, processingPostIdsKey, setPosts]);
 
   React.useEffect(() => {
     let attempts = 0;

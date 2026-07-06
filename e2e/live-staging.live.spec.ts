@@ -66,6 +66,18 @@ type CommunityPreview = {
   viewer_following: boolean | null;
 };
 
+type LiveLocalizedPost = {
+  post: {
+    asset?: string | null;
+    id: string;
+    publish_failure_code?: string | null;
+    publish_failure_message?: string | null;
+    publish_failure_retryable?: boolean | null;
+    status: string;
+    title?: string | null;
+  };
+};
+
 type BookingSlot = {
   available: boolean;
   endUtc: string;
@@ -325,6 +337,169 @@ async function waitForSongPreview(input: {
   }
 
   throw new Error(`song preview did not complete; last status ${lastStatus}${lastError ? ` (${lastError})` : ""}`);
+}
+
+async function createAsyncSongSmokePost(input: {
+  accessMode: "public" | "locked";
+  authHeaders: Record<string, string>;
+  communityId: string;
+  listingPriceCents?: number;
+  runId: string;
+  titlePrefix: string;
+}): Promise<{ postId: string; priceCents: number | null; title: string }> {
+  const title = `${input.titlePrefix} ${input.runId}`;
+  const audio = createSineWaveWav();
+
+  const upload = await requestJson<{
+    id: string;
+    upload_session?: {
+      id: string;
+      part_size_bytes: number;
+      total_parts: number;
+      upload_id: string;
+    } | null;
+  }>(`/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads`, {
+    body: JSON.stringify({
+      artifact_kind: "primary_audio",
+      filename: `${input.titlePrefix.toLowerCase().replace(/\s+/gu, "-")}-${input.runId}.wav`,
+      mime_type: "audio/wav",
+      size_bytes: audio.byteLength,
+      upload_mode: "direct_multipart",
+    }),
+    headers: input.authHeaders,
+    method: "POST",
+  });
+  expect(upload.id, "song artifact upload id").toMatch(/^sau_/u);
+  expect(upload.upload_session, "song artifact upload session").toBeTruthy();
+  expect(upload.upload_session?.total_parts).toBe(1);
+
+  const signedPart = await requestJson<{ part_number: number; url: string }>(
+    `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/sessions/${encodeURIComponent(upload.upload_session?.id ?? "")}/parts/1/signed-url`,
+    { headers: input.authHeaders },
+  );
+  expect(signedPart.part_number).toBe(1);
+
+  const audioBuffer = Buffer.from(audio);
+  const partResponse = await fetch(signedPart.url, {
+    body: audioBuffer,
+    headers: { "content-type": "audio/wav" },
+    method: "PUT",
+  });
+  if (!partResponse.ok) {
+    throw new Error(`PUT signed song artifact part failed with ${partResponse.status}: ${await partResponse.text()}`);
+  }
+  const etag = partResponse.headers.get("etag");
+  expect(etag, "multipart part ETag").toBeTruthy();
+
+  const completedUpload = await requestJson<{ content_hash?: string | null; id: string; status: string }>(
+    `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/sessions/${encodeURIComponent(upload.upload_session?.id ?? "")}/complete`,
+    {
+      body: JSON.stringify({
+        content_hash: `0x${createHash("sha256").update(audioBuffer).digest("hex")}`,
+        parts: [{ etag, part_number: 1 }],
+        upload_id: upload.upload_session?.upload_id,
+      }),
+      headers: input.authHeaders,
+      method: "POST",
+    },
+  );
+  expect(completedUpload.status).toBe("uploaded");
+
+  const bundle = await requestJson<{ id: string; preview_status?: string | null }>(
+    `/communities/${encodeURIComponent(input.communityId)}/song-artifacts`,
+    {
+      body: JSON.stringify({
+        analysis_mode: "deferred",
+        canvas_video: null,
+        cover_art: null,
+        genius_annotations_url: null,
+        instrumental_audio: null,
+        lyrics: `E2E async staging smoke lyrics for ${title}`,
+        preview_window: input.accessMode === "locked"
+          ? {
+              duration_ms: 1_000,
+              start_ms: 0,
+            }
+          : null,
+        primary_audio: { song_artifact_upload: upload.id },
+        title,
+        vocal_audio: null,
+      }),
+      headers: input.authHeaders,
+      method: "POST",
+    },
+  );
+  expect(bundle.id, "song artifact bundle id").toMatch(/^sab_/u);
+
+  const post = await requestJson<{ asset?: string | null; id: string; status: string }>(
+    `/communities/${encodeURIComponent(input.communityId)}/posts`,
+    {
+      body: JSON.stringify({
+        access_mode: input.accessMode,
+        commercial_rev_share_pct: 10,
+        identity_mode: "public",
+        idempotency_key: `async-song-smoke-${input.accessMode}-${input.runId}`,
+        license_preset: "commercial-remix",
+        ...(input.accessMode === "locked"
+          ? {
+              listing_draft: {
+                donation_partner: null,
+                donation_share_bps: null,
+                price_cents: input.listingPriceCents ?? 199,
+                regional_pricing_enabled: false,
+                status: "active",
+              },
+            }
+          : {}),
+        post_type: "song",
+        publish_mode: "async",
+        rights_basis: "original",
+        song_artifact_bundle: bundle.id,
+        song_mode: "original",
+        title,
+        translation_policy: "machine_allowed",
+        visibility: "public",
+      }),
+      headers: input.authHeaders,
+      method: "POST",
+    },
+  );
+  expect(post.id, "async song post id").toMatch(/^post_/u);
+  expect(post.status, "async create response status").toBe("processing");
+  expect(post.asset, "async create response asset").toBeFalsy();
+
+  return {
+    postId: post.id,
+    priceCents: input.accessMode === "locked" ? input.listingPriceCents ?? 199 : null,
+    title,
+  };
+}
+
+async function waitForAsyncSongPublished(input: {
+  authHeaders: Record<string, string>;
+  postId: string;
+  timeoutMs?: number;
+}): Promise<LiveLocalizedPost> {
+  const deadline = Date.now() + (input.timeoutMs ?? 420_000);
+  let lastStatus = "unknown";
+
+  while (Date.now() < deadline) {
+    const result = await requestJson<LiveLocalizedPost>(
+      `/posts/${encodeURIComponent(input.postId)}`,
+      { headers: input.authHeaders },
+    );
+    lastStatus = result.post.status;
+    if (result.post.status === "published" && result.post.asset) return result;
+    if (result.post.status === "failed") {
+      throw new Error(
+        `async song publish failed for ${input.postId}: ${result.post.publish_failure_code ?? "unknown"}`
+        + `${result.post.publish_failure_message ? ` (${result.post.publish_failure_message})` : ""}`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 4_000));
+  }
+
+  throw new Error(`async song publish did not complete for ${input.postId}; last status ${lastStatus}`);
 }
 
 async function createLiveSession(subject = liveSubject, walletAddress?: string | null): Promise<StoredSession> {
@@ -1513,6 +1688,76 @@ test.describe("live staging integration", () => {
 
     const publicPost = await requestJson<{ post?: { title?: string | null } }>(`/public-posts/${encodeURIComponent(post.id)}`);
     expect(publicPost.post?.title).toBe(title);
+  });
+
+  test("publishes real free and paid songs asynchronously on staging", async ({ page }, testInfo) => {
+    testInfo.setTimeout(540_000);
+
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const session = await createLiveSession(liveSubject, walletAddressForSubject(liveSubject));
+    await completeSelfVerification(session);
+    const writableCommunity = await discoverWritableSeedCommunity(session);
+    const community = writableCommunity ?? await discoverSeedCommunity();
+    const communityId = community.id;
+    const authHeaders = writableCommunity
+      ? { authorization: `Bearer ${session.accessToken}` }
+      : seedOwnerAdminHeaders(community);
+    if (!authHeaders) {
+      test.skip(true, "No authenticated writable or admin-owned staging seed community is available for async song publish smoke.");
+      return;
+    }
+
+    const freeSong = await createAsyncSongSmokePost({
+      accessMode: "public",
+      authHeaders,
+      communityId,
+      runId,
+      titlePrefix: "Async free song smoke",
+    });
+    const paidSong = await createAsyncSongSmokePost({
+      accessMode: "locked",
+      authHeaders,
+      communityId,
+      listingPriceCents: 199,
+      runId,
+      titlePrefix: "Async paid song smoke",
+    });
+
+    const pending = await requestJson<{ items: LiveLocalizedPost[] }>(
+      `/communities/${encodeURIComponent(communityId)}/posts/pending?limit=10`,
+      { headers: authHeaders },
+    );
+    expect(pending.items.some((item) => item.post.id === paidSong.postId && item.post.status === "processing")).toBe(true);
+
+    if (writableCommunity) {
+      await installStoredSession(page, session);
+      await page.goto(`/c/${pathSegment(community.routeSegment)}`);
+      await expect(page.locator("body")).toContainText(paidSong.title, { timeout: 30_000 });
+      await expect(page.getByText("Your post is processing and is only visible to you.")).toBeVisible({ timeout: 30_000 });
+      await expectNoBrowserError(page);
+    }
+
+    const [publishedFree, publishedPaid] = await Promise.all([
+      waitForAsyncSongPublished({ authHeaders, postId: freeSong.postId }),
+      waitForAsyncSongPublished({ authHeaders, postId: paidSong.postId }),
+    ]);
+    expect(publishedFree.post.title).toBe(freeSong.title);
+    expect(publishedPaid.post.title).toBe(paidSong.title);
+    expect(publishedFree.post.asset, "free song asset").toBeTruthy();
+    expect(publishedPaid.post.asset, "paid song asset").toBeTruthy();
+
+    const publicFree = await requestJson<{ post?: { title?: string | null } }>(`/public-posts/${encodeURIComponent(freeSong.postId)}`);
+    const publicPaid = await requestJson<{ post?: { title?: string | null } }>(`/public-posts/${encodeURIComponent(paidSong.postId)}`);
+    expect(publicFree.post?.title).toBe(freeSong.title);
+    expect(publicPaid.post?.title).toBe(paidSong.title);
+
+    const listings = await requestJson<{
+      items: Array<{ asset?: string | null; id: string; price_cents: number; status?: string | null }>;
+    }>(`/communities/${encodeURIComponent(communityId)}/listings`, { headers: authHeaders });
+    const paidListing = listings.items.find((listing) => listing.asset === publishedPaid.post.asset);
+    expect(paidListing, "paid song listing").toBeTruthy();
+    expect(paidListing?.price_cents).toBe(paidSong.priceCents);
+    expect(paidListing?.status).toBe("active");
   });
 
   test("generates a fetchable ffmpeg preview for a locked paid song upload", async ({}, testInfo) => {

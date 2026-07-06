@@ -33,6 +33,12 @@ const walletScoreRequirement: MembershipGateSummary = {
   minimum_score: 20,
 };
 
+const nftRequirement: MembershipGateSummary = {
+  chain_namespace: "eip155:1",
+  contract_address: "0x1111111111111111111111111111111111111111",
+  gate_type: "erc721_holding",
+};
+
 const verifiedVeryUser = {
   verification_capabilities: {
     age_over_18: { state: "unverified" },
@@ -79,6 +85,8 @@ function renderRunner({
   refreshSessionUser,
   sessionAccessToken = "token",
   sessionUser = null,
+  startWalletConnection,
+  walletConnectionLoading = false,
 }: {
   connect?: (() => void) | null;
   gateData?: CommunityGateData;
@@ -87,6 +95,8 @@ function renderRunner({
   refreshSessionUser?: (() => Promise<Pick<User, "verification_capabilities"> | null>) | null;
   sessionAccessToken?: string | null;
   sessionUser?: Pick<User, "verification_capabilities"> | null;
+  startWalletConnection?: () => Promise<{ started: boolean }>;
+  walletConnectionLoading?: boolean;
 } = {}) {
   const calls: string[] = [];
   const errors: string[] = [];
@@ -154,6 +164,8 @@ function renderRunner({
         calls.push(`verify:${provider}`);
         return { started: true };
       },
+      startWalletConnection,
+      walletConnectionLoading,
     });
     return { modalState, run };
   });
@@ -642,6 +654,38 @@ describe("useGatedActionRunner", () => {
 
     expect(runner.pendingInteraction?.action).toBe("reply_post");
     expect(runner.hook.result.current.modalState?.icon).toBe("blocked");
+  });
+
+  test("offers wallet connection for failed NFT gates", async () => {
+    const runner = renderRunner({
+      gateData: gate("gate_failed", {
+        failure_reason: "erc721_holding_required",
+      }, [nftRequirement]),
+      startWalletConnection: async () => {
+        runner.calls.push("connect-wallet");
+        return { started: true };
+      },
+    });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "reply_post",
+        communityId: "community-1",
+        onAllowed: () => undefined,
+        postId: "post-1",
+      });
+      expect(result).toBe("blocked");
+    });
+
+    expect(runner.pendingInteraction?.action).toBe("reply_post");
+    expect(runner.hook.result.current.modalState?.icon).toBe("blocked");
+    expect(runner.hook.result.current.modalState?.primaryAction?.label).toBe("Connect wallet");
+
+    await act(async () => {
+      await runner.hook.result.current.modalState?.primaryAction?.onClick?.();
+    });
+
+    expect(runner.calls).toEqual(["load:community-1", "connect-wallet"]);
   });
 
   test("routes banned gates through the default blocked modal", async () => {

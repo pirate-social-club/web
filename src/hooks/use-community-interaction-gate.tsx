@@ -68,8 +68,9 @@ export function useCommunityInteractionGate({
 }) {
   const api = useApi();
   const session = useSession();
-  const { connect } = usePiratePrivyRuntime();
+  const { connect, reconnectEthereumWallet } = usePiratePrivyRuntime();
   const [modalState, setModalState] = React.useState<ModalState | null>(null);
+  const [walletConnectionLoading, setWalletConnectionLoading] = React.useState(false);
   const sessionKey = session?.user.id ?? null;
   const pendingInteractionRef = React.useRef<PendingInteraction | null>(null);
   const interactionCopy = React.useMemo(
@@ -260,6 +261,22 @@ export function useCommunityInteractionGate({
     startVeryVerification,
     updateCachedGate,
   });
+  const startWalletConnection = React.useCallback(async () => {
+    const openWalletConnection = reconnectEthereumWallet ?? connect;
+    if (!openWalletConnection) {
+      toast.error("Could not open wallet connection.");
+      return { started: false };
+    }
+
+    setWalletConnectionLoading(true);
+    try {
+      openWalletConnection();
+      toast.info("Connect the wallet that holds the required NFT, then try again.");
+      return { started: true };
+    } finally {
+      setWalletConnectionLoading(false);
+    }
+  }, [connect, reconnectEthereumWallet]);
 
   const refreshSessionUser = React.useCallback(async () => {
     let refreshedUser: StoredSession["user"] | null = null;
@@ -300,6 +317,8 @@ export function useCommunityInteractionGate({
       pendingInteractionRef.current = pendingInteraction;
     },
     startDefaultVerification,
+    startWalletConnection,
+    walletConnectionLoading,
   });
 
   const interactionModal = modalState ? (

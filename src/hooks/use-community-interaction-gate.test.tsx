@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { act, renderHook } from "@testing-library/react";
+import type * as React from "react";
+import type { MembershipGateSummary } from "@pirate/api-contracts";
 
 import { installDomGlobals } from "@/test/setup-dom";
 import {
@@ -18,6 +20,9 @@ const { mock } = await import("bun:test") as unknown as {
 
 const apiCalls: string[] = [];
 let connectCalls = 0;
+let reconnectEthereumWalletCalls = 0;
+let nextEligibility = eligibility("joinable", {}, [uniqueHumanRequirement]);
+let nextPreviewRequirements: MembershipGateSummary[] = [uniqueHumanRequirement];
 const fakeSession = {
   accessToken: "token",
   user: { id: "usr_smoke" },
@@ -27,11 +32,17 @@ const fakeSession = {
   storedAt: "2026-05-16T00:00:00.000Z",
 };
 
+const nftRequirement: MembershipGateSummary = {
+  chain_namespace: "eip155:1",
+  contract_address: "0x1111111111111111111111111111111111111111",
+  gate_type: "erc721_holding",
+};
+
 const fakeApi = {
   communities: {
     getJoinEligibility: async (communityId: string) => {
       apiCalls.push(`eligibility:${communityId}`);
-      return eligibility("joinable", {}, [uniqueHumanRequirement]);
+      return nextEligibility;
     },
     join: async (communityId: string) => {
       apiCalls.push(`join:${communityId}`);
@@ -42,7 +53,7 @@ const fakeApi = {
       return createPreview({
         id: communityId,
         display_name: "Smoke Community",
-        membership_gate_summaries: [uniqueHumanRequirement],
+        membership_gate_summaries: nextPreviewRequirements,
       });
     },
   },
@@ -71,6 +82,9 @@ mock.module("@/components/auth/privy-provider", () => ({
   usePiratePrivyRuntime: () => ({
     connect: () => {
       connectCalls += 1;
+    },
+    reconnectEthereumWallet: () => {
+      reconnectEthereumWalletCalls += 1;
     },
   }),
 }));
@@ -105,6 +119,9 @@ const {
 beforeEach(() => {
   apiCalls.length = 0;
   connectCalls = 0;
+  reconnectEthereumWalletCalls = 0;
+  nextEligibility = eligibility("joinable", {}, [uniqueHumanRequirement]);
+  nextPreviewRequirements = [uniqueHumanRequirement];
   clearCommunityGateDataCache();
 });
 
@@ -171,6 +188,47 @@ describe("useCommunityInteractionGate", () => {
       "eligibility:community-1",
     ]);
     expect(result.current.gateModal).not.toBeNull();
+    expect(connectCalls).toBe(0);
+  });
+
+  test("uses wallet reconnect for failed NFT gates", async () => {
+    nextPreviewRequirements = [nftRequirement];
+    nextEligibility = eligibility("gate_failed", {
+      failure_reason: "erc721_holding_required",
+    }, [nftRequirement]);
+
+    const { result } = renderHook(() =>
+      useCommunityInteractionGate({
+        previewLocale: "en",
+        routeKind: "post",
+        uiLocale: "en",
+      })
+    );
+
+    await act(async () => {
+      await result.current.runGatedCommunityAction({
+        action: "reply_post",
+        communityId: "community-1",
+        onAllowed: () => undefined,
+        postId: "post-1",
+      });
+    });
+
+    const fragment = result.current.gateModal as React.ReactElement<{
+      children: React.ReactElement<{
+        primaryAction?: { label: string; onClick?: () => Promise<void> | void };
+      }>;
+    }>;
+    const modal = Array.isArray(fragment.props.children)
+      ? fragment.props.children[0]
+      : fragment.props.children;
+    expect(modal.props.primaryAction?.label).toBe("Connect wallet");
+
+    await act(async () => {
+      await modal.props.primaryAction?.onClick?.();
+    });
+
+    expect(reconnectEthereumWalletCalls).toBe(1);
     expect(connectCalls).toBe(0);
   });
 });

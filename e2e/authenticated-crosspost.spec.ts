@@ -316,7 +316,7 @@ test.describe("authenticated crosspost flow with mocked API", () => {
     await expect(submitButton).toBeEnabled();
     await submitButton.click();
 
-    const dialog = page.getByRole("dialog", { name: /browser check required/i });
+    const dialog = page.getByRole("dialog", { name: /browser anti-bot check required/i });
     await expect(dialog).toBeVisible();
 
     const widget = page.locator("altcha-widget");

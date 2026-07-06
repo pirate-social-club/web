@@ -1733,7 +1733,7 @@ test.describe("live staging integration", () => {
       await installStoredSession(page, session);
       await page.goto(`/c/${pathSegment(community.routeSegment)}`);
       await expect(page.locator("body")).toContainText(paidSong.title, { timeout: 30_000 });
-      await expect(page.getByText("Your post is processing and is only visible to you.")).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByText("Visible only to you until checks complete.")).toBeVisible({ timeout: 30_000 });
       await expectNoBrowserError(page);
     }
 

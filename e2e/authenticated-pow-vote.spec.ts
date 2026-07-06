@@ -161,7 +161,7 @@ test.describe("proof-of-work vote gate", () => {
     expect(captures.voteRequests).toHaveLength(0);
     await expect(score).toHaveText("8");
 
-    const dialog = page.getByRole("dialog", { name: /browser check required/i });
+    const dialog = page.getByRole("dialog", { name: /browser anti-bot check required/i });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("button", { name: /^continue$/i })).toHaveCount(0);
     await expect(dialog.getByRole("button", { name: /^(submit|post|publish)$/i })).toHaveCount(0);

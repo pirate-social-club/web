@@ -13,6 +13,7 @@ import { CommunityMembershipRequestsPage } from "@/components/compositions/commu
 import { CommunityModerationIndexPage as CommunityModerationIndexPageView } from "@/components/compositions/community/moderation-index-page/community-moderation-index-page";
 import { CommunityModerationQueuePage, type ModerationQueueCaseItem } from "@/components/compositions/community/moderation-queue-page/community-moderation-queue-page";
 import { CommunityModerationShell } from "@/components/compositions/community/moderation-shell/community-moderation-shell";
+import { CommunityRightsReviewQueuePage, type RightsReviewQueueItem } from "@/components/compositions/community/rights-review-queue-page/community-rights-review-queue-page";
 import { CommunityProfileEditorPage } from "@/components/compositions/community/profile-editor/community-profile-editor-page";
 import { CommunityNamespaceVerificationPage } from "@/components/compositions/community/namespace-verification-page/community-namespace-verification-page";
 import { CommunityPricingEditorPage } from "@/components/compositions/community/pricing-editor/community-pricing-editor-page";
@@ -33,7 +34,7 @@ import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
-import type { ModerationCaseDetail } from "@/lib/api/client-groups-community-moderation";
+import type { MediaAnalysisResult, ModerationCaseDetail, ModerationCasePostPreview, RightsReviewCaseListItem } from "@/lib/api/client-groups-community-moderation";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
 import { normalizeCountryCode } from "@/lib/countries";
 import { isValidCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
@@ -175,6 +176,66 @@ function extractVisualPolicySummary(detail: ModerationCaseDetail | null): NonNul
     }
   }
   return undefined;
+}
+
+function firstMediaImageSrc(post: ModerationCasePostPreview | null | undefined): string | undefined {
+  if (!post?.media_refs_json) return undefined;
+  try {
+    const mediaRefs = JSON.parse(post.media_refs_json) as Array<{ storage_ref?: string; poster_ref?: string }>;
+    return mediaRefs?.[0]?.storage_ref || mediaRefs?.[0]?.poster_ref || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function moderationPostPreview(post: ModerationCasePostPreview | null | undefined): RightsReviewQueueItem["postPreview"] | ModerationQueueCaseItem["postPreview"] | undefined {
+  if (!post) return undefined;
+  return {
+    title: post.title ?? undefined,
+    body: post.body ?? post.caption ?? undefined,
+    imageSrc: firstMediaImageSrc(post),
+    authorLabel: post.author_handle ?? undefined,
+    authorHref: post.author_handle ? buildPublicProfilePath(post.author_handle) : undefined,
+  };
+}
+
+function textFromRecord(record: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function extractRightsMatches(analysis: MediaAnalysisResult | null): RightsReviewQueueItem["matches"] {
+  const customMatches = Array.isArray(analysis?.acrcloud_custom_match) ? analysis.acrcloud_custom_match : [];
+  const musicMatches = Array.isArray(analysis?.acrcloud_music_match) ? analysis.acrcloud_music_match : [];
+  return [...customMatches, ...musicMatches].reduce<RightsReviewQueueItem["matches"]>((matches, item) => {
+    if (!isRecord(item)) return matches;
+    const title = textFromRecord(item, ["title", "file_name", "name"]) ?? "Catalog match";
+    const artist = textFromRecord(item, ["artists", "artist", "album"]);
+    const acrid = textFromRecord(item, ["acr_id", "acrid", "external_id"]);
+    matches.push({
+      title,
+      subtitle: artist ?? acrid ?? undefined,
+    });
+    return matches;
+  }, []);
+}
+
+function mapRightsReviewCase(item: RightsReviewCaseListItem): RightsReviewQueueItem {
+  return {
+    caseId: item.rights_review_case_id,
+    status: item.status,
+    triggerSource: item.trigger_source,
+    policyReasonCode: item.analysis?.policy_reason_code ?? null,
+    policyReason: item.analysis?.policy_reason ?? null,
+    createdAt: item.created_at,
+    postPreview: moderationPostPreview(item.post),
+    matches: extractRightsMatches(item.analysis),
+  };
 }
 
 function useIsModerationMobileLayout() {
@@ -331,6 +392,9 @@ export function CommunityModerationPage({
   const [moderationCases, setModerationCases] = React.useState<Parameters<typeof CommunityModerationQueuePage>[0]["cases"]>([]);
   const [moderationCasesLoading, setModerationCasesLoading] = React.useState(false);
   const [processingModerationCaseId, setProcessingModerationCaseId] = React.useState<string | null>(null);
+  const [rightsReviewCases, setRightsReviewCases] = React.useState<RightsReviewQueueItem[]>([]);
+  const [rightsReviewCasesLoading, setRightsReviewCasesLoading] = React.useState(false);
+  const [processingRightsReviewCaseId, setProcessingRightsReviewCaseId] = React.useState<string | null>(null);
   const pricingLocalCountryCodes = React.useMemo(
     () => getNationalityGateCountryCodes(state.gateDrafts),
     [state.gateDrafts],
@@ -414,18 +478,6 @@ export function CommunityModerationPage({
           MODERATION_DETAIL_READ_CONCURRENCY,
           async (item): Promise<ModerationQueueCaseItem> => {
             const post = item.post;
-            let imageSrc: string | undefined;
-            if (post?.media_refs_json) {
-              try {
-                const mediaRefs = JSON.parse(post.media_refs_json) as Array<{ storage_ref?: string; poster_ref?: string }>;
-                const firstImage = mediaRefs?.[0]?.storage_ref || mediaRefs?.[0]?.poster_ref;
-                if (firstImage) {
-                  imageSrc = firstImage;
-                }
-              } catch {
-                // ignore parse errors
-              }
-            }
 
             const detail = item.status === "open"
               ? await api.communities.getModerationCaseDetail(communityId, item.moderation_case_id).catch(() => null)
@@ -438,15 +490,7 @@ export function CommunityModerationPage({
               openedBy: item.opened_by,
               status: item.status,
               createdAt: item.created_at,
-              postPreview: post
-                ? {
-                    title: post.title ?? undefined,
-                    body: post.body ?? post.caption ?? undefined,
-                    imageSrc: imageSrc ?? undefined,
-                    authorLabel: post.author_handle ?? undefined,
-                    authorHref: post.author_handle ? buildPublicProfilePath(post.author_handle) : undefined,
-                  }
-                : undefined,
+              postPreview: moderationPostPreview(post),
               visualPolicySummary: extractVisualPolicySummary(detail),
             };
           },
@@ -462,6 +506,27 @@ export function CommunityModerationPage({
       })
       .finally(() => {
         if (!cancelled) setModerationCasesLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [api, communityId, hasBlockedState, section]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    if (section !== "rights" || hasBlockedState) {
+      return () => { cancelled = true; };
+    }
+
+    setRightsReviewCasesLoading(true);
+    void api.communities.listRightsReviewCases(communityId, { status: "active", limit: 50 })
+      .then((result) => {
+        if (!cancelled) setRightsReviewCases(result.items.map(mapRightsReviewCase));
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Could not load rights queue.");
+      })
+      .finally(() => {
+        if (!cancelled) setRightsReviewCasesLoading(false);
       });
 
     return () => { cancelled = true; };
@@ -508,6 +573,38 @@ export function CommunityModerationPage({
     }
   }, [api, communityId]);
 
+  const handleRightsReviewAction = React.useCallback(async (
+    caseId: string,
+    actionType: "clear_with_upstream_refs" | "needs_more_evidence" | "block",
+  ) => {
+    setProcessingRightsReviewCaseId(caseId);
+    try {
+      const result = await api.communities.applyRightsReviewCaseAction(communityId, caseId, { action_type: actionType });
+      if (result.case.status === "resolved" || result.case.status === "blocked") {
+        setRightsReviewCases((current) => current.filter((c) => c.caseId !== caseId));
+      } else {
+        setRightsReviewCases((current) => current.map((item) => (
+          item.caseId === caseId
+            ? { ...item, status: result.case.status, policyReason: result.analysis?.policy_reason ?? item.policyReason }
+            : item
+        )));
+      }
+    } catch (error) {
+      if (
+        error instanceof ApiError &&
+        error.status === 400 &&
+        error.message === "Rights review case is already closed"
+      ) {
+        setRightsReviewCases((current) => current.filter((c) => c.caseId !== caseId));
+        toast.info("This rights review case was already closed.");
+        return;
+      }
+      toast.error("Could not apply rights review action.");
+    } finally {
+      setProcessingRightsReviewCaseId(null);
+    }
+  }, [api, communityId]);
+
   if (!hydrated) {
     return <div className="min-h-screen w-full bg-background" />;
   }
@@ -521,6 +618,17 @@ export function CommunityModerationPage({
           onApprove={(caseId) => void handleModerationAction(caseId, "restore")}
           onDeny={(caseId) => void handleModerationAction(caseId, "remove")}
           processingCaseId={processingModerationCaseId}
+        />
+      );
+    } else if (section === "rights") {
+      content = (
+        <CommunityRightsReviewQueuePage
+          cases={rightsReviewCases}
+          loading={rightsReviewCasesLoading}
+          onBlock={(caseId) => void handleRightsReviewAction(caseId, "block")}
+          onClear={(caseId) => void handleRightsReviewAction(caseId, "clear_with_upstream_refs")}
+          onNeedsSource={(caseId) => void handleRightsReviewAction(caseId, "needs_more_evidence")}
+          processingCaseId={processingRightsReviewCaseId}
         />
       );
     } else if (section === "profile") {

@@ -16,6 +16,8 @@ export function getCommunityModerationTitle(
   switch (section) {
     case "queue":
       return copy.nav.queue ?? "Queue";
+    case "rights":
+      return copy.nav.rights ?? "Rights";
     case "profile":
       return copy.nav.profile;
     case "rules":

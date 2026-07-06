@@ -1,6 +1,6 @@
 import { buildCommunityPath } from "@/lib/community-routing";
 
-export type CommunityModerationSection = "queue" | "profile" | "rules" | "links" | "labels" | "donations" | "pricing" | "requests" | "gates" | "safety" | "visual-policy" | "agents" | "assistant" | "telegram" | "machine-access" | "namespace" | "handles" | "karaoke" | "study" | "archive";
+export type CommunityModerationSection = "queue" | "rights" | "profile" | "rules" | "links" | "labels" | "donations" | "pricing" | "requests" | "gates" | "safety" | "visual-policy" | "agents" | "assistant" | "telegram" | "machine-access" | "namespace" | "handles" | "karaoke" | "study" | "archive";
 
 export const DEFAULT_COMMUNITY_MODERATION_SECTION: CommunityModerationSection = "queue";
 

@@ -20,6 +20,7 @@ const mockCopy = {
     agents: "Agents",
     machineAccess: "Machine access",
     namespace: "Namespace verification",
+    rights: "Rights",
     communitySection: "Community",
     accessSection: "Access",
     verificationSection: "Verification",
@@ -36,6 +37,24 @@ describe("machine-access moderation wiring", () => {
 
   test("getCommunityModerationTitle returns the assistant label", () => {
     expect(getCommunityModerationTitle("assistant", mockCopy)).toBe("Assistant");
+  });
+
+  test("rights is in the moderation section and builds a path", () => {
+    const section: CommunityModerationSection = "rights";
+    const path = buildCommunityModerationPath("gld_123", section);
+
+    expect(path).toBe("/c/gld_123/mod/rights");
+    expect(getCommunityModerationTitle("rights", mockCopy)).toBe("Rights");
+  });
+
+  test("buildCommunityModerationSections includes rights in the Moderation group", () => {
+    const sections = buildCommunityModerationSections("rights", "gld_123", mockCopy);
+    const moderationSection = sections.find((s) => s.label === "Moderation");
+    const rightsItem = moderationSection?.items.find((item) => item.label === "Rights");
+
+    expect(moderationSection == null).toBe(false);
+    expect(rightsItem == null).toBe(false);
+    expect(rightsItem!.active).toBe(true);
   });
 
   test("buildCommunityModerationSections includes assistant in the Access group", () => {

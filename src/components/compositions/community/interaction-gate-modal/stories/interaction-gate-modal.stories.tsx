@@ -215,7 +215,7 @@ function ProofOfWorkVoteFlowStory() {
         open={modalOpen}
         requirements={proofOfWorkRequirements}
         requirementStatuses={["unmet"]}
-        title="Browser check required"
+        title="Browser anti-bot check required"
       />
     </div>
   );
@@ -302,7 +302,7 @@ export const VerificationRequiredPassport: Story = {
 };
 
 export const ProofOfWorkRequired: Story = {
-  name: "States / Proof of work required",
+  name: "States / Browser anti-bot check required",
   render: () => (
     <GateModalStory
       body={(
@@ -312,7 +312,7 @@ export const ProofOfWorkRequired: Story = {
       icon="blocked"
       requirements={proofOfWorkRequirements}
       requirementStatuses={["unmet"]}
-      title="Browser check required"
+      title="Browser anti-bot check required"
     />
   ),
 };

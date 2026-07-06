@@ -25,7 +25,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "withScore": "Passport Score {minimumScore}+",
           "withoutScore": "Passport Score"
         },
-        "altchaPow": "Proof-of-work check",
+        "altchaPow": "Browser anti-bot check",
         "erc721Holding": {
           "withLabel": "Ethereum NFT from {label}",
           "withoutLabel": "Ethereum NFT"
@@ -92,9 +92,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "passportPromptTitle": "Higher Score Required",
         "passportPromptDescription": "Are you human? Improve your wallet score and try again.",
         "passportPromptActionLabel": "Visit Passport.xyz",
-        "powOnlyTitle": "Browser check required",
-        "powOnlyDescription": "Complete a quick proof-of-work check to continue.",
-        "powSkipNote": "Verified users can skip this check."
+        "powOnlyTitle": "Browser anti-bot check required",
+        "powOnlyDescription": "Complete a quick browser anti-bot check to continue.",
+        "powSkipNote": "A verified identity or wallet gate can skip this check when one is offered."
       },
       "modal": {
         "anyTitle": "Choose a way to continue",
@@ -121,7 +121,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "participationTitle": "Participation",
         "participationMayNote": "A quick browser check may be required for some actions.",
         "participationRequireNote": "A quick browser check is required for some actions.",
-        "participationSkipNote": "Verified users can skip this check.",
+        "participationSkipNote": "A verified identity or wallet gate can skip this check when one is offered.",
         "anyModeSubtext": "Complete one of the following",
         "allModeSubtext": "Complete all of the following"
       },
@@ -132,7 +132,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "gender": "document sex marker",
         "uniqueHuman": "unique human status",
         "walletScore": "Passport score",
-        "altchaPow": "proof-of-work status"
+        "altchaPow": "browser check status"
       },
       "gateFailure": {
         "nationalityMismatch": "Your verified ID does not match this community's requirement.",
@@ -779,7 +779,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "membershipRequestLabel": "Approval required",
           "membershipRequestDetail": "People request access and moderators approve them before they can join.",
           "membershipGatedLabel": "Automatic after passing gates",
-          "membershipGatedDetail": "People can join immediately after passing at least one wallet, identity, or ownership gate.",
+          "membershipGatedDetail": "People can join immediately after passing the selected access gate.",
           "anonymousCommunityStableLabel": "Community-stable",
           "anonymousCommunityStableDetail": "One persistent anonymous label per user across the entire community. Best for moderation continuity.",
           "anonymousThreadStableLabel": "Thread-stable",
@@ -1212,9 +1212,9 @@ export const GENERATED_LOCALE_CATALOGS = {
           "biometricGateChecksTitle": "Identity gates",
           "walletGateChecksTitle": "Wallet gates",
           "uniqueHumanTitle": "Palm scan (Very)",
-          "uniqueHumanPowFallbackLabel": "Allow proof-of-work fallback",
-          "uniqueHumanPowFallbackDetail": "Members can join by completing either the palm scan or the proof-of-work check.",
-          "altchaPowTitle": "Proof-of-work check",
+          "uniqueHumanPowFallbackLabel": "Allow browser check instead of palm scan",
+          "uniqueHumanPowFallbackDetail": "Members can join by completing either the palm scan or a quick browser anti-bot check.",
+          "altchaPowTitle": "Browser anti-bot check",
           "nationalityDescription": "Require nationality verification through Self.",
           "nationalityTitle": "Nationality verification (Self.xyz)",
           "allowedNationalityLabel": "Allowed nationalities",
@@ -1328,7 +1328,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "postingScopeLabel": "Posting scope",
           "guestCommentsLabel": "Guest comments",
           "guestCommentsDisallow": "Do not allow guest comments",
-          "guestCommentsAltchaRequired": "Allow guest comments with proof-of-work",
+          "guestCommentsAltchaRequired": "Allow guest comments with a browser anti-bot check",
           "ownershipProvidersTitle": "Ownership providers",
           "dailyCapsTitle": "Daily caps",
           "agentPostsPerDayLabel": "Agent posts per day",

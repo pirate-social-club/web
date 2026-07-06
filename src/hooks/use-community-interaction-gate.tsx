@@ -110,7 +110,7 @@ export function useCommunityInteractionGate({
     sessionKey,
   });
   const handleMissingAltchaPayload = React.useCallback(() => {
-    toast.error("Complete the proof-of-work check first.");
+    toast.error("Complete the browser anti-bot check first.");
   }, []);
   const {
     altchaLoading,
@@ -177,7 +177,7 @@ export function useCommunityInteractionGate({
         }),
         primaryAction: current.primaryAction ? { ...current.primaryAction, loading: false } : current.primaryAction,
       } : current);
-      toast.error(getErrorMessage(error, "Proof-of-work check failed."));
+      toast.error(getErrorMessage(error, "Browser anti-bot check failed."));
     });
   }, [api.communities, buildAltchaBody, closeModal, completeAltchaJoinWithPayload, gatesPanel, interactionCopy, invalidateCommunityGate, updateCachedGate]);
 
@@ -197,7 +197,7 @@ export function useCommunityInteractionGate({
         pendingInteraction,
       });
     }, (error) => {
-      toast.error(getErrorMessage(error, "Proof-of-work check failed."));
+      toast.error(getErrorMessage(error, "Browser anti-bot check failed."));
     });
   }, [closeModal, completeAltchaActionWithPayload]);
 

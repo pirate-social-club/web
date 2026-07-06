@@ -452,7 +452,7 @@ export function CommunityGatesEditorPage({
                         />
                         <OptionCard
                           className={gateMatchMode === "any" ? "border-border bg-muted/30" : undefined}
-                          description="Members can pass any one selected gate, including proof-of-work if it is selected."
+                          description="Members can pass any one selected gate, including the browser anti-bot check if it is selected."
                           selected={gateMatchMode === "any"}
                           title="Allow any one"
                           onClick={() => onGateMatchModeChange?.("any")}

@@ -83,7 +83,7 @@ export function AltchaPowWidget({
       })
       .catch((nextError: unknown) => {
         if (!cancelled) {
-          setError(getErrorMessage(nextError, "Could not start proof-of-work check."));
+          setError(getErrorMessage(nextError, "Could not start browser anti-bot check."));
         }
       })
       .finally(() => {

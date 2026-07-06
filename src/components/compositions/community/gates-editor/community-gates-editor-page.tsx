@@ -119,7 +119,7 @@ export function AdvancedGatePolicyBanner({
             id="replace-advanced-gate-policy"
             onCheckedChange={(checked) => onReplaceConfirmedChange?.(checked === true)}
           />
-          <Label className="text-sm leading-5" htmlFor="replace-advanced-gate-policy">
+          <Label className="leading-5" htmlFor="replace-advanced-gate-policy">
             Replace the saved advanced policy with the gate settings shown here
           </Label>
         </div>

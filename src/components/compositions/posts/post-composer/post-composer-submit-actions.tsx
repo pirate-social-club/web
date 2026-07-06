@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/primitives/button";
 import { CardFooter } from "@/components/primitives/card";
 import { FormNote } from "@/components/primitives/form-layout";
+import { Type } from "@/components/primitives/type";
 import { logger } from "@/lib/logger";
 import type { SubmitProgress } from "./post-composer.types";
 
@@ -19,8 +20,10 @@ import {
 } from "./post-composer-utils";
 import type { PostComposerController } from "./use-post-composer-controller";
 
-// Progress strip pinned to the container's top border. Rendered as a separate
-// element (not inside the fixed-height button) so it never causes layout shift.
+// Inline progress row shown next to the publish button while a submit runs: a
+// rounded neutral track that fills by submitProgressFraction, plus a tabular
+// percent readout. It occupies the footer's spare flex space, so the button
+// itself never moves.
 function SubmitProgressBar({
   progress,
   loading,
@@ -29,17 +32,26 @@ function SubmitProgressBar({
   loading: boolean;
 }) {
   if (!loading || !progress || progress.phase === "done") return null;
-  const fraction = submitProgressFraction(progress);
+  const percent = Math.round(submitProgressFraction(progress) * 100);
 
   return (
     <div
-      aria-hidden
-      className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-muted/60"
+      aria-label={progress.label}
+      aria-valuemax={100}
+      aria-valuemin={0}
+      aria-valuenow={percent}
+      className="flex min-w-0 flex-1 items-center gap-2"
+      role="progressbar"
     >
-      <div
-        className="absolute inset-y-0 left-0 rounded-full bg-foreground/35 transition-[width] duration-300 ease-out"
-        style={{ width: `${Math.round(fraction * 100)}%` }}
-      />
+      <div className="h-1.5 min-w-16 flex-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-foreground/60 transition-[width] duration-300 ease-out"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      <Type variant="caption" className="shrink-0 tabular-nums">
+        {percent}%
+      </Type>
     </div>
   );
 }
@@ -160,8 +172,7 @@ export function PostComposerDesktopFooter({
   const publishLabel = tabs.activeTab === "live" ? submit.label : copy.actions.publish;
 
   return (
-    <CardFooter className="relative justify-between gap-3 border-t border-border-soft p-5">
-      <SubmitProgressBar loading={submit.loading} progress={submit.progress} />
+    <CardFooter className="justify-between gap-3 border-t border-border-soft p-5">
       {step.isPublishStep ? (
         <Button
           key="back"
@@ -173,6 +184,7 @@ export function PostComposerDesktopFooter({
         </Button>
       ) : <span />}
       <div className="flex min-w-0 flex-1 items-center justify-end gap-3 lg:ms-auto">
+        <SubmitProgressBar loading={submit.loading} progress={submit.progress} />
         {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
         <Button
           className="min-w-40 justify-center"
@@ -241,8 +253,8 @@ export function PostComposerMobileSubmitBar({
 
     bar = (
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
-        <SubmitProgressBar loading={submit.loading} progress={submit.progress} />
         <div className="space-y-3 px-4">
+          <SubmitProgressBar loading={submit.loading} progress={submit.progress} />
           {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
           <div>
             <Button

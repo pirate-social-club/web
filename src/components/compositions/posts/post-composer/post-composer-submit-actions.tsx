@@ -36,7 +36,7 @@ function SubmitProgressRing({
 
   return (
     <span aria-hidden className="inline-flex">
-      <svg aria-hidden className="size-4 -rotate-90" fill="none" viewBox="0 0 24 24">
+      <svg aria-hidden className="size-5 -rotate-90" fill="none" viewBox="0 0 24 24">
         <circle cx="12" cy="12" opacity="0.25" r={radius} stroke="currentColor" strokeWidth="3" />
         <circle
           className="transition-[stroke-dashoffset] duration-300 ease-out"

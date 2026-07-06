@@ -4,7 +4,6 @@ import type { IdentityGateDraft } from "@/components/compositions/community/crea
 
 export const COURTYARD_POLYGON_REGISTRY = "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD";
 export const COURTYARD_MAINNET_REGISTRY = "0xd4ac3CE8e1E14CD60666D49AC34Ff2d2937cF6FA";
-export const COURTYARD_CATALOG_AUTHORING_ENABLED = false;
 
 export type CourtyardWalletInventoryGroup = {
   category: "trading_card" | "watch";

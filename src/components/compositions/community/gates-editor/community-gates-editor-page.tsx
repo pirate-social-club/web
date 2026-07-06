@@ -28,9 +28,7 @@ import {
 } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import { isCountryCode } from "@/lib/countries";
 import {
-  COURTYARD_CATALOG_AUTHORING_ENABLED,
   createCourtyardInventoryDraftFromGroup,
-  createDefaultCourtyardInventoryDraft,
 } from "@/lib/courtyard-inventory-gates";
 import { cn } from "@/lib/utils";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -152,7 +150,7 @@ export function courtyardInventoryDraftMatchesGroup(
 export function canAuthorCourtyardInventoryGate(
   groups: CourtyardWalletInventoryGroup[] | null | undefined,
 ): boolean {
-  return COURTYARD_CATALOG_AUTHORING_ENABLED || Boolean(groups?.length);
+  return Boolean(groups?.length);
 }
 
 type DocumentGateDraft = Extract<IdentityGateDraft, { gateType: "nationality" | "minimum_age" | "gender" }>;
@@ -719,17 +717,19 @@ export function CommunityGatesEditorPage({
                     checked={Boolean(courtyardInventoryGate)}
                     disabled={!courtyardInventoryAuthoringAvailable && !courtyardInventoryGate}
                     title={mc.courtyardTitle}
-                    onCheckedChange={(checked) => onGateDraftsChange?.(
-                      checked
-                        ? upsertGateDraftForMatchMode(
-                          gateDrafts,
-                          courtyardInventoryGroups?.[0]
-                            ? createCourtyardInventoryDraftFromGroup(courtyardInventoryGroups[0])
-                            : createDefaultCourtyardInventoryDraft(),
-                          gateMatchMode,
-                        )
-                        : removeGateDraft(gateDrafts, "erc721_inventory_match"),
-                    )}
+                    onCheckedChange={(checked) => {
+                      if (!checked) {
+                        onGateDraftsChange?.(removeGateDraft(gateDrafts, "erc721_inventory_match"));
+                        return;
+                      }
+                      const firstGroup = courtyardInventoryGroups?.[0];
+                      if (!firstGroup) return;
+                      onGateDraftsChange?.(upsertGateDraftForMatchMode(
+                        gateDrafts,
+                        createCourtyardInventoryDraftFromGroup(firstGroup),
+                        gateMatchMode,
+                      ));
+                    }}
                   />
 
                   {courtyardInventoryAuthoringAvailable && courtyardInventoryGate ? (
@@ -759,7 +759,7 @@ export function CommunityGatesEditorPage({
                         <FormNote tone="warning">{mc.courtyardInventorySelectPrompt}</FormNote>
                       ) : null}
                     </div>
-                  ) : !COURTYARD_CATALOG_AUTHORING_ENABLED && courtyardInventoryGate ? (
+                  ) : courtyardInventoryGate ? (
                     <FormNote tone="warning">{mc.courtyardCatalogUnavailable}</FormNote>
                   ) : null}
                 </div>

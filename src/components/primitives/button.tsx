@@ -54,6 +54,8 @@ export interface ButtonProps
   leadingIcon?: React.ReactNode;
   trailingIcon?: React.ReactNode;
   loading?: boolean;
+  /** Replaces the default indeterminate Spinner while `loading` (e.g. a determinate progress ring). */
+  loadingIndicator?: React.ReactNode;
 }
 
 function Button({
@@ -64,6 +66,7 @@ function Button({
   disabled,
   leadingIcon,
   loading = false,
+  loadingIndicator,
   ref,
   size,
   trailingIcon,
@@ -86,10 +89,10 @@ function Button({
       {asChild ? children : (
         <>
           {iconOnlyLoading ? (
-            <Spinner className="size-5" />
+            loadingIndicator ?? <Spinner className="size-5" />
           ) : (
             <>
-              {loading ? <Spinner className="size-4" /> : leadingIcon}
+              {loading ? (loadingIndicator ?? <Spinner className="size-4" />) : leadingIcon}
               {children ? <span className="inline-flex items-center gap-2">{children}</span> : null}
               {!loading ? trailingIcon : null}
             </>

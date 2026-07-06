@@ -448,7 +448,7 @@ export function PostCard({
               "rounded-md border px-3 py-2 text-start",
               statusNotice.tone === "destructive"
                 ? "border-destructive/30 bg-destructive/10 text-destructive"
-                : "border-border bg-muted/50 text-muted-foreground",
+                : "border-border/70 bg-muted/35 text-muted-foreground",
             )}
           >
             <Type as="p" variant="label" className="text-current">

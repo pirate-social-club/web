@@ -34,10 +34,10 @@ function SubmitProgressBar({
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden"
+      className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-muted/60"
     >
       <div
-        className="absolute inset-y-0 left-0 rounded-full bg-primary transition-[width] duration-300 ease-out"
+        className="absolute inset-y-0 left-0 rounded-full bg-foreground/35 transition-[width] duration-300 ease-out"
         style={{ width: `${Math.round(fraction * 100)}%` }}
       />
     </div>

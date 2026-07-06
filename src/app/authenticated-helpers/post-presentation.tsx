@@ -107,8 +107,8 @@ export function toCommunityFeedItem(
   const statusNotice = isProcessing
     ? {
         tone: "neutral" as const,
-        label: "Publishing",
-        message: "Your post is processing and is only visible to you.",
+        label: "Finishing publish",
+        message: "Visible only to you until checks complete.",
       }
     : isFailed
       ? {

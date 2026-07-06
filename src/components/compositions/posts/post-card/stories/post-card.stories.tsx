@@ -1397,8 +1397,8 @@ export const ProcessingPost: Story = {
       shareActions={undefined}
       statusNotice={{
         tone: "neutral",
-        label: "Publishing",
-        message: "Your post is processing and is only visible to you.",
+        label: "Finishing publish",
+        message: "Visible only to you until checks complete.",
       }}
       title="Borderline rough mix"
       titleHref={undefined}

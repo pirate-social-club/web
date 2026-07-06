@@ -18,6 +18,7 @@ import type {
   DerivativeStepState,
   MonetizationState,
   AssetLicenseState,
+  AssetRoyaltySplitState,
   SongComposerState,
   SongMode,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
@@ -78,6 +79,7 @@ type SongSubmitInput = {
   pendingSongBundleId: string | null;
   pricingPolicyRegionalPricingEnabled: boolean;
   reportProgress?: SubmitProgressReporter;
+  royaltySplit?: AssetRoyaltySplitState;
   setPendingSongBundleId: (bundleId: string | null) => void;
   setSubmitError: (error: string | null) => void;
   songMode: SongMode;
@@ -319,6 +321,7 @@ export function useSongSubmit({
     pendingSongBundleId,
     pricingPolicyRegionalPricingEnabled,
     reportProgress,
+    royaltySplit,
     setPendingSongBundleId,
     setSubmitError,
     songMode,
@@ -481,6 +484,7 @@ export function useSongSubmit({
       idempotencyKey: crypto.randomUUID(),
       license,
       paidSongPriceUsd,
+      royaltySplit,
       songMode,
       title,
       visibility: audience.visibility,

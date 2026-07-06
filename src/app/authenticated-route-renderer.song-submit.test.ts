@@ -90,6 +90,7 @@ describe("song submit payload helpers", () => {
       commercial_rev_share_pct: undefined,
       post_type: "song",
       rights_basis: "original",
+      royalty_allocations: undefined,
       song_artifact_bundle: "sab_free",
       song_mode: "original",
       title: "Free song",
@@ -135,6 +136,77 @@ describe("song submit payload helpers", () => {
       donation_share_bps: 1000,
       status: "active",
     });
+  });
+
+  test("sends collaborator royalty allocations for paid songs", () => {
+    const postRequest = buildSongPostRequest({
+      bundleId: "sab_split",
+      derivativeStep: undefined,
+      idempotencyKey: "key-split",
+      license: { presetId: "commercial-use" },
+      paidSongPriceUsd: 4.99,
+      royaltySplit: {
+        allocations: [
+          {
+            id: "creator",
+            recipientKind: "creator",
+            walletAddress: "0x1111111111111111111111111111111111111111",
+            sharePct: 70,
+          },
+          {
+            id: "collaborator",
+            recipientKind: "collaborator",
+            walletAddress: "0x2222222222222222222222222222222222222222",
+            sharePct: 30,
+          },
+        ],
+      },
+      songMode: "original",
+      title: "Paid split song",
+      visibility: "members_only",
+    });
+
+    expect(postRequest.royalty_allocations).toEqual([
+      {
+        recipient_kind: "creator",
+        wallet_address: "0x1111111111111111111111111111111111111111",
+        share_bps: 7000,
+      },
+      {
+        recipient_kind: "collaborator",
+        wallet_address: "0x2222222222222222222222222222222222222222",
+        share_bps: 3000,
+      },
+    ]);
+  });
+
+  test("rejects collaborator royalty allocations without a commercial song license", () => {
+    expect(captureErrorMessage(() => buildSongPostRequest({
+      bundleId: "sab_split",
+      derivativeStep: undefined,
+      idempotencyKey: "key-split",
+      license: { presetId: "non-commercial" },
+      paidSongPriceUsd: null,
+      royaltySplit: {
+        allocations: [
+          {
+            id: "creator",
+            recipientKind: "creator",
+            walletAddress: "0x1111111111111111111111111111111111111111",
+            sharePct: 70,
+          },
+          {
+            id: "collaborator",
+            recipientKind: "collaborator",
+            walletAddress: "0x2222222222222222222222222222222222222222",
+            sharePct: 30,
+          },
+        ],
+      },
+      songMode: "original",
+      title: "Invalid split song",
+      visibility: "public",
+    }))).toBe("Collaborator royalty splits require a commercial license for this song.");
   });
 
   test("adds ElasticStage vinyl release metadata to paid song listings", () => {

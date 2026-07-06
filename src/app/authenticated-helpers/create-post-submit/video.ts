@@ -10,12 +10,13 @@ import type {
 
 import type {
   AssetLicenseState,
+  AssetRoyaltySplitState,
   AuthorMode,
   DerivativeStepState,
   VideoComposerState,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import type { ExtractedVideoPosterFrame } from "@/components/compositions/posts/post-composer/video-poster-frame";
-import { buildAssetListingRequest } from "@/app/authenticated-helpers/asset-submit";
+import { buildAssetListingRequest, buildRoyaltyAllocationRequests } from "@/app/authenticated-helpers/asset-submit";
 import { sha256File } from "./file-hash";
 import type { SubmitProgressReporter } from "./progress";
 import { uploadMultipartSongArtifact } from "./multipart-song-artifact-upload";
@@ -132,6 +133,7 @@ export function buildVideoPostRequest({
   license,
   monetized,
   posterFrame,
+  royaltySplit,
   title,
   uploadedPoster,
   uploadedVideo,
@@ -143,6 +145,7 @@ export function buildVideoPostRequest({
   license?: AssetLicenseState;
   monetized: boolean;
   posterFrame: Pick<ExtractedVideoPosterFrame, "frameMs" | "height" | "width">;
+  royaltySplit?: AssetRoyaltySplitState;
   title: string;
   uploadedPoster: UploadedPosterMedia;
   uploadedVideo: Pick<SongArtifactUpload, "content_hash" | "mime_type" | "size_bytes" | "storage_ref">;
@@ -159,6 +162,12 @@ export function buildVideoPostRequest({
       ? license.commercialRevSharePct
       : undefined,
     license_preset: monetized ? license?.presetId : undefined,
+    royalty_allocations: monetized
+      ? buildRoyaltyAllocationRequests(royaltySplit, {
+          contentLabel: "video",
+          license,
+        })
+      : undefined,
     rights_basis: upstreamAssetRefs?.length ? "derivative" : undefined,
     upstream_asset_refs: upstreamAssetRefs,
     media_refs: [{
@@ -285,6 +294,7 @@ export async function submitVideoPost({
   pricingPolicyRegionalPricingEnabled,
   reportProgress,
   regionalPricingEnabled,
+  royaltySplit,
   signAgentAuthoredBody,
   title,
   uploadArtifactContent,
@@ -314,6 +324,7 @@ export async function submitVideoPost({
   pricingPolicyRegionalPricingEnabled: boolean;
   reportProgress?: SubmitProgressReporter;
   regionalPricingEnabled: boolean;
+  royaltySplit?: AssetRoyaltySplitState;
   signAgentAuthoredBody: SignAgentAuthoredBody;
   title: string;
   uploadArtifactContent: UploadArtifactContent;
@@ -362,6 +373,7 @@ export async function submitVideoPost({
     license,
     monetized,
     posterFrame,
+    royaltySplit,
     title,
     uploadedPoster,
     uploadedVideo,

@@ -50,6 +50,11 @@ type CreatePostSharedRequestFields = BasePostRequestFields & {
   commercial_rev_share_pct?: number | null;
   license_preset?: "non-commercial" | "commercial-use" | "commercial-remix" | null;
   rights_basis?: "none" | "original" | "derivative" | "attribution_only" | null;
+  royalty_allocations?: Array<{
+    recipient_kind: "creator" | "collaborator";
+    wallet_address: string;
+    share_bps: number;
+  }> | null;
   upstream_asset_refs?: string[] | null;
 };
 

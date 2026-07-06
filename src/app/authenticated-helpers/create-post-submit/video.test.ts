@@ -115,6 +115,7 @@ describe("video create-post submit helpers", () => {
       access_mode: undefined,
       commercial_rev_share_pct: undefined,
       license_preset: undefined,
+      royalty_allocations: undefined,
       rights_basis: undefined,
       upstream_asset_refs: undefined,
       media_refs: [{
@@ -164,6 +165,63 @@ describe("video create-post submit helpers", () => {
     expect(request.caption).toBeUndefined();
     expect(request.license_preset).toBe("commercial-remix");
     expect(request.commercial_rev_share_pct).toBe(25);
+  });
+
+  test("buildVideoPostRequest includes paid royalty allocations", () => {
+    const request = buildVideoPostRequest({
+      baseRequest: createBaseRequest(),
+      caption: "Video split",
+      license: {
+        presetId: "commercial-use",
+      },
+      monetized: true,
+      posterFrame: {
+        frameMs: 0,
+        height: 720,
+        width: 1280,
+      },
+      royaltySplit: {
+        allocations: [
+          {
+            id: "creator",
+            recipientKind: "creator",
+            walletAddress: "0x3333333333333333333333333333333333333333",
+            sharePct: 80,
+          },
+          {
+            id: "collaborator",
+            recipientKind: "collaborator",
+            walletAddress: "0x4444444444444444444444444444444444444444",
+            sharePct: 20,
+          },
+        ],
+      },
+      title: "Split video",
+      uploadedPoster: {
+        media_ref: "poster_media",
+        mime_type: "image/jpeg",
+        size_bytes: 123,
+      },
+      uploadedVideo: {
+        storage_ref: "artifact_video",
+        mime_type: "video/mp4",
+        size_bytes: 456,
+        content_hash: "hash_video",
+      },
+    });
+
+    expect(request.royalty_allocations).toEqual([
+      {
+        recipient_kind: "creator",
+        wallet_address: "0x3333333333333333333333333333333333333333",
+        share_bps: 8000,
+      },
+      {
+        recipient_kind: "collaborator",
+        wallet_address: "0x4444444444444444444444444444444444444444",
+        share_bps: 2000,
+      },
+    ]);
   });
 
   test("buildVideoPostRequest includes derivative song references", () => {

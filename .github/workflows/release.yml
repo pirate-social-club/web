@@ -67,6 +67,7 @@ jobs:
           VITE_EFP_ENVIRONMENT: testnet
           VITE_PIRATE_APP_ENV: staging
           VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
         run: scripts/deploy-staging.sh
       - name: Verify staging/prod metadata
         working-directory: web
@@ -356,4 +357,5 @@ jobs:
           VITE_ASYNC_SONG_PUBLISH_ENABLED: ${{ vars.VITE_ASYNC_SONG_PUBLISH_ENABLED || 'false' }}
           VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
           VITE_PRIVY_CLIENT_ID: ${{ vars.VITE_PRIVY_CLIENT_ID }}
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
         run: scripts/deploy-production.sh --confirm-production --skip-tests

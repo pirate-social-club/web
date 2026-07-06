@@ -282,7 +282,7 @@ test.describe("async song publish with mocked API", () => {
     await page.getByRole("button", { name: /^publish$/i }).click();
 
     await expect(page).toHaveURL(new RegExp(`/c/${mockCommunityPreview.route_slug}$`, "u"));
-    await expect(page.getByText("Your post is processing and is only visible to you.")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Visible only to you until checks complete.")).toBeVisible({ timeout: 30_000 });
 
     await expect(page.getByText("Matched audio requires derivative rights and a reference")).toBeVisible({ timeout: 30_000 });
     await page.getByRole("button", { name: /^try again$/i }).click();
@@ -331,8 +331,8 @@ test.describe("async song publish with mocked API", () => {
     await page.getByRole("button", { name: /^publish$/i }).click();
 
     await expect(page).toHaveURL(new RegExp(`/c/${mockCommunityPreview.route_slug}$`, "u"));
-    await expect(page.getByText("Your post is processing and is only visible to you.")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText("Your post is processing and is only visible to you.")).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.getByText("Visible only to you until checks complete.")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Visible only to you until checks complete.")).toHaveCount(0, { timeout: 30_000 });
     await expect(page.getByText("Publish failed")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Async E2E Song", exact: true })).toBeVisible({ timeout: 30_000 });
 

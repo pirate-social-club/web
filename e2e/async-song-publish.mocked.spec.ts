@@ -11,6 +11,8 @@ import { expectNoBrowserError } from "./fixtures/e2e-helpers";
 
 const uploadId = "sau_e2e_primary";
 const bundleId = "sab_e2e_async";
+const e2eBaseUrl = process.env.E2E_BASE_URL ?? "http://localhost:5173";
+const uploadPartUrl = new URL("/__e2e/multipart/song-part-1", e2eBaseUrl).toString();
 
 type CapturedBody = Record<string, unknown>;
 
@@ -140,10 +142,12 @@ async function installAsyncSongPublishMocks(page: Page, state: AsyncSongMockStat
     }));
   });
 
-  await page.route(/https:\/\/e2e-upload\.invalid\/part-1$/u, async (route) => {
+  await page.route(uploadPartUrl, async (route) => {
     await route.fulfill({
       body: "",
       headers: {
+        "access-control-allow-headers": "*",
+        "access-control-allow-methods": "PUT, OPTIONS",
         "access-control-allow-origin": "*",
         "access-control-expose-headers": "etag, ETag",
         etag: "etag-e2e-part-1",
@@ -163,7 +167,7 @@ async function installAsyncSongPublishMocks(page: Page, state: AsyncSongMockStat
       return;
     }
     if (method === "GET" && path.endsWith("/parts/1/signed-url")) {
-      await route.fulfill(jsonResponse({ url: "https://e2e-upload.invalid/part-1" }));
+      await route.fulfill(jsonResponse({ url: uploadPartUrl }));
       return;
     }
     if (method === "POST" && path.endsWith("/complete")) {

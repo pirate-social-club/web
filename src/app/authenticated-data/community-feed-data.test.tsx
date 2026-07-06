@@ -65,6 +65,29 @@ function createPostResponse(id: string, created: number): LocalizedPostResponse 
 }
 
 describe("useCommunityFeedPosts", () => {
+  test("keeps empty pending feed arrays stable across rerenders", () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const loadPosts = () => new Promise<{ items: LocalizedPostResponse[] }>(() => {});
+
+    const { result, rerender } = renderHook(() => useCommunityFeedPosts({
+      communityId: "cmt_test",
+      locale: "en",
+      sort: "best",
+      loadPosts,
+    }), { wrapper: wrapperWithClient(queryClient) });
+
+    const firstRawPosts = result.current.rawPosts;
+    const firstPosts = result.current.posts;
+
+    rerender();
+
+    expect(result.current.loading).toBe(true);
+    expect(result.current.rawPosts).toBe(firstRawPosts);
+    expect(result.current.posts).toBe(firstPosts);
+  });
+
   test("upserts a pending post across community feed sort caches", () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },

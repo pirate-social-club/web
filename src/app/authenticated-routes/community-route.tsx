@@ -389,8 +389,8 @@ export function CommunityPage({
     }, []);
 
     if (liveRoomRefs.length === 0) {
-      setLiveRoomAccessById({});
-      setLiveRoomParticipantProfiles({});
+      setLiveRoomAccessById((current) => Object.keys(current).length === 0 ? current : {});
+      setLiveRoomParticipantProfiles((current) => Object.keys(current).length === 0 ? current : {});
       return () => { cancelled = true; };
     }
 

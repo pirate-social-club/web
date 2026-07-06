@@ -383,20 +383,20 @@ export function CommunityGatesEditorPage({
   const uniqueHumanGateTitle = uniqueHumanGate?.provider === "self"
     ? "Private ID proof (Self.xyz)"
     : mc.uniqueHumanTitle;
-  const palmScanPowFallbackEnabled = Boolean(uniqueHumanGate?.provider === "very" && altchaPowGate && gateMatchMode === "any");
+  const palmScanPowFallbackEnabled = Boolean(
+    uniqueHumanGate?.provider === "very"
+    && altchaPowGate?.fallbackFor === "unique_human",
+  );
   const handlePalmScanPowFallbackChange = React.useCallback((checked: boolean) => {
     if (checked) {
-      onGateMatchModeChange?.("any");
       onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
         gateType: "altcha_pow",
-      }, "any"));
+        fallbackFor: "unique_human",
+      }, gateMatchMode));
       return;
     }
-    if (shouldResetMatchModeAfterRemovingPowFallback(gateDrafts, gateMatchMode)) {
-      onGateMatchModeChange?.("all");
-    }
     onGateDraftsChange?.(removeGateDraft(gateDrafts, "altcha_pow"));
-  }, [gateDrafts, gateMatchMode, onGateDraftsChange, onGateMatchModeChange]);
+  }, [gateDrafts, gateMatchMode, onGateDraftsChange]);
 
   return (
     <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", className)}>
@@ -486,9 +486,6 @@ export function CommunityGatesEditorPage({
                     checked={Boolean(uniqueHumanGate)}
                     title={uniqueHumanGateTitle}
                     onCheckedChange={(checked) => {
-                      if (!checked && palmScanPowFallbackEnabled) {
-                        onGateMatchModeChange?.("all");
-                      }
                       onGateDraftsChange?.(
                         checked
                           ? upsertGateDraftForMatchMode(gateDrafts, {

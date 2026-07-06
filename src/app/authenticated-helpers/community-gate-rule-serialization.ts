@@ -17,6 +17,11 @@ export function serializeIdentityGateDrafts(
   gateDrafts: IdentityGateDraft[],
   options?: { mode?: "all" | "any"; includeGateRuleIds?: boolean },
 ): SerializedGatePolicy | null {
+  const palmFallbackPolicy = serializePalmScanPowFallbackPolicy(gateDrafts, options);
+  if (palmFallbackPolicy) {
+    return palmFallbackPolicy;
+  }
+
   const expressions = gateDrafts.reduce<GateExpression[]>((result, draft) => {
     const expression = draftToExpression(draft);
     if (expression != null) {
@@ -53,6 +58,51 @@ export function serializeIdentityGateDraftsForSave(
   }
 
   return serializeIdentityGateDrafts(gateDrafts, { mode: options.mode });
+}
+
+function serializePalmScanPowFallbackPolicy(
+  gateDrafts: IdentityGateDraft[],
+  options?: { mode?: "all" | "any" },
+): SerializedGatePolicy | null {
+  if (options?.mode === "any") {
+    return null;
+  }
+
+  const palmScanGate = gateDrafts.find((draft) => draft.gateType === "unique_human" && draft.provider === "very");
+  const powFallbackGate = gateDrafts.find((draft) =>
+    draft.gateType === "altcha_pow" && draft.fallbackFor === "unique_human"
+  );
+  if (!palmScanGate || !powFallbackGate) {
+    return null;
+  }
+
+  const fallbackChildren = [draftToExpression(palmScanGate), draftToExpression(powFallbackGate)]
+    .filter((expression): expression is GateExpression => expression != null);
+  if (fallbackChildren.length !== 2) {
+    return null;
+  }
+
+  const children: GateExpression[] = [{
+    op: "or",
+    children: fallbackChildren,
+  }];
+  for (const draft of gateDrafts) {
+    if (draft === palmScanGate || draft === powFallbackGate) {
+      continue;
+    }
+    const expression = draftToExpression(draft);
+    if (expression != null) {
+      children.push(expression);
+    }
+  }
+
+  return {
+    version: 1,
+    expression: {
+      op: "and",
+      children,
+    },
+  };
 }
 
 function draftToExpression(draft: IdentityGateDraft): GateExpression | null {

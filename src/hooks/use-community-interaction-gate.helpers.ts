@@ -14,11 +14,11 @@ import {
   getGateFailureMessage,
   getPassportPromptCapabilities,
   hasAltchaProofAction,
-  getMissingCapabilitiesFromGateEvaluation,
   getVerificationCapabilitiesForProvider,
   getVerificationPromptCopy,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
+import { deriveGateStatuses } from "@/lib/community-gate-statuses";
 import { interpolateMessage } from "@/lib/route-messages";
 import { getLocaleMessages } from "@/locales";
 import { type UiLocaleCode } from "@/lib/ui-locale-core";
@@ -332,29 +332,6 @@ function getRequestableDescription(
   return `Request to join ${gate.preview.display_name} before you ${taskLabel}.`;
 }
 
-function gateMatchesMissingCapability(
-  gate: CommunityGateData["preview"]["membership_gate_summaries"][number],
-  eligibility: JoinEligibility,
-): boolean {
-  const missing = getMissingCapabilitiesFromGateEvaluation(eligibility);
-
-  switch (gate.gate_type) {
-    case "age_over_18":
-    case "minimum_age":
-      return missing.includes("age_over_18") || missing.includes("minimum_age");
-    case "nationality":
-      return missing.includes("nationality");
-    case "gender":
-      return missing.includes("gender");
-    case "unique_human":
-      return missing.includes("unique_human");
-    case "wallet_score":
-      return missing.includes("wallet_score");
-    default:
-      return false;
-  }
-}
-
 type RequiredActionNode = Omit<NonNullable<NonNullable<JoinEligibility["gate_evaluation"]>["required_action_set"]>["items"][number], "items"> & {
   items?: RequiredActionNode[];
 };
@@ -452,28 +429,11 @@ function getGroupRequirementStatuses(
   gate: CommunityGateData,
   group: CommunityGateRequirementGroup,
 ): CommunityGateRequirementStatus[] {
-  switch (gate.eligibility.status) {
-    case "already_joined":
-    case "joinable":
-    case "requestable":
-      return group.requirements.map(() => group.mode === "any" ? "unknown" : "met");
-    case "gate_failed":
-      if (group.mode === "any" && !gate.eligibility.gate_evaluation) {
-        return group.requirements.map(() => "unknown");
-      }
-      return group.requirements.map(() => "unmet");
-    case "verification_required":
-      if (group.mode === "any") {
-        return group.requirements.map(() => "unknown");
-      }
-      return group.requirements.map((requirement) =>
-        gateMatchesMissingCapability(requirement, gate.eligibility)
-          ? "unmet"
-          : "met",
-      );
-    default:
-      return group.requirements.map(() => "unknown");
-  }
+  return deriveGateStatuses({
+    eligibility: gate.eligibility,
+    gateMatchMode: group.mode,
+    requirements: group.requirements,
+  });
 }
 
 function withGroupRequirementStatuses(
@@ -512,28 +472,11 @@ export function getRequirementStatuses(
   gate: CommunityGateData,
   requirements = gate.preview.membership_gate_summaries,
 ): CommunityGateRequirementStatus[] {
-  switch (gate.eligibility.status) {
-    case "already_joined":
-    case "joinable":
-    case "requestable":
-      if (gate.gateMatchMode === "any") {
-        return requirements.map(() => "unknown");
-      }
-      return requirements.map(() => "met");
-    case "gate_failed":
-      if (gate.gateMatchMode === "any" && !gate.eligibility.gate_evaluation) {
-        return requirements.map(() => "unknown");
-      }
-      return requirements.map(() => "unmet");
-    case "verification_required":
-      return requirements.map((requirement) =>
-        gateMatchesMissingCapability(requirement, gate.eligibility)
-          ? gate.gateMatchMode === "any" ? "unknown" : "unmet"
-          : "met",
-      );
-    default:
-      return requirements.map(() => "unknown");
-  }
+  return deriveGateStatuses({
+    eligibility: gate.eligibility,
+    gateMatchMode: gate.gateMatchMode,
+    requirements,
+  });
 }
 
 export function getRequirementDisplayState(

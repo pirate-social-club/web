@@ -249,7 +249,7 @@ export function getJoinCtaLabel(
   const locale = resolveGateLocale(options?.locale);
   const copy = getLocaleMessages(locale, "gates").joinCta;
   if (eligibility.status === "verification_required" && hasOnlyWalletGateRequirements(eligibility)) {
-    return copy.gateFailed;
+    return copy.walletRequired;
   }
   switch (eligibility.status) {
     case "joinable":
@@ -270,9 +270,6 @@ export function getJoinCtaLabel(
 }
 
 export function isJoinCtaActionable(eligibility: JoinEligibility): boolean {
-  if (eligibility.status === "verification_required" && hasOnlyWalletGateRequirements(eligibility)) {
-    return false;
-  }
   return eligibility.status === "joinable"
     || eligibility.status === "requestable"
     || eligibility.status === "verification_required";

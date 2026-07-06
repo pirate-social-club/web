@@ -31,6 +31,7 @@
     "requestable": "Request to Join",
     "pendingRequest": "Request submitted",
     "verificationRequired": "Verify to Join",
+    "walletRequired": "Connect wallet",
     "alreadyJoined": "Joined",
     "banned": "Unavailable",
     "gateFailed": "Not eligible"

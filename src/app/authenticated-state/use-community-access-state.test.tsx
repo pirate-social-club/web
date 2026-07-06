@@ -453,6 +453,230 @@ describe("useCommunityAccessState", () => {
     });
   });
 
+  test("preserves unchanged nested gate policies on settings save", async () => {
+    const calls = installCommunityApiMocks();
+    const save = createSaveCommunityMock();
+    const originalPolicy = {
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { type: "altcha_pow" } },
+          {
+            op: "or",
+            children: [
+              { op: "gate", gate: { type: "nationality", provider: "self", allowed: ["US"] } },
+              { op: "gate", gate: { type: "wallet_score", provider: "passport", minimum_score: 20 } },
+            ],
+          },
+        ],
+      },
+    } satisfies NonNullable<ApiCommunity["gate_policy"]>;
+    const { result } = renderAccessHook({
+      community: createCommunity({
+        gate_policy: originalPolicy,
+      }),
+      saveCommunity: save.saveCommunity,
+    });
+
+    await waitFor(() => expect(result.current.gateDrafts).toHaveLength(2));
+
+    expect(result.current.hasAdvancedGatePolicy).toBe(true);
+    expect(result.current.advancedGatePolicyReplacementRequired).toBe(false);
+
+    act(() => {
+      result.current.setAllowAnonymousIdentity(true);
+    });
+    act(() => {
+      result.current.handleSaveGates();
+    });
+
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+
+    expect(calls.updateGates[0]?.body.gate_policy).toBe(originalPolicy);
+    expect(calls.updateGates[0]?.body.allow_anonymous_identity).toBe(true);
+  });
+
+  test("blocks advanced policy replacement until explicitly confirmed", async () => {
+    const calls = installCommunityApiMocks();
+    const save = createSaveCommunityMock();
+    const originalPolicy = {
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { type: "altcha_pow" } },
+          {
+            op: "or",
+            children: [
+              { op: "gate", gate: { type: "nationality", provider: "self", allowed: ["US"] } },
+              { op: "gate", gate: { type: "wallet_score", provider: "passport", minimum_score: 20 } },
+            ],
+          },
+        ],
+      },
+    } satisfies NonNullable<ApiCommunity["gate_policy"]>;
+    const { result } = renderAccessHook({
+      community: createCommunity({ gate_policy: originalPolicy }),
+      saveCommunity: save.saveCommunity,
+    });
+
+    await waitFor(() => expect(result.current.gateDrafts).toHaveLength(2));
+
+    act(() => {
+      result.current.setGateDrafts([
+        { gateType: "nationality", provider: "self", requiredValues: ["US", "CA"] },
+        { gateType: "wallet_score", provider: "passport", minimumScore: 20 },
+      ]);
+    });
+
+    expect(result.current.advancedGatePolicyReplacementRequired).toBe(true);
+
+    act(() => {
+      result.current.handleSaveGates();
+    });
+
+    expect(calls.updateGates).toHaveLength(0);
+
+    act(() => {
+      result.current.setReplaceAdvancedGatePolicy(true);
+    });
+    act(() => {
+      result.current.handleSaveGates();
+    });
+
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+    expect(calls.updateGates[0]?.body.gate_policy).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { type: "nationality", provider: "self", allowed: ["US", "CA"] } },
+          { op: "gate", gate: { type: "wallet_score", provider: "passport", minimum_score: 20 } },
+        ],
+      },
+    });
+  });
+
+  test("round-trips Self unique-human and mainnet Courtyard inventory policies as editable gates", async () => {
+    const calls = installCommunityApiMocks();
+    const save = createSaveCommunityMock();
+    const originalPolicy = {
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { type: "unique_human", provider: "self" } },
+          {
+            op: "gate",
+            gate: {
+              type: "erc721_inventory_match",
+              provider: "courtyard",
+              chain_namespace: "eip155:1",
+              contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+              min_quantity: 1,
+              match: { category: "watch", brand: "Rolex" },
+            },
+          },
+        ],
+      },
+    } satisfies NonNullable<ApiCommunity["gate_policy"]>;
+    const { result } = renderAccessHook({
+      community: createCommunity({
+        gate_policy: originalPolicy,
+      }),
+      saveCommunity: save.saveCommunity,
+    });
+
+    await waitFor(() => expect(result.current.gateDrafts).toHaveLength(2));
+
+    expect(result.current.gateDrafts).toEqual([
+      { gateType: "unique_human", provider: "self" },
+      {
+        gateType: "erc721_inventory_match",
+        chainNamespace: "eip155:1",
+        contractAddress: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+        inventoryProvider: "courtyard",
+        minQuantity: 1,
+        assetFilter: {
+          category: "watch",
+          brand: "Rolex",
+          condition: undefined,
+          franchise: undefined,
+          grade: undefined,
+          grader: undefined,
+          model: undefined,
+          reference: undefined,
+          set: undefined,
+          subject: undefined,
+          year: undefined,
+        },
+      },
+    ]);
+    expect(result.current.hasAdvancedGatePolicy).toBe(false);
+    expect(result.current.advancedGatePolicyReplacementRequired).toBe(false);
+
+    act(() => {
+      result.current.setDefaultAgeGatePolicy("none");
+    });
+    act(() => {
+      result.current.handleSaveGates();
+    });
+
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+
+    expect(calls.updateGates[0]?.body.gate_policy).toBe(originalPolicy);
+    expect(calls.updateGates[0]?.body.default_age_gate_policy).toBe("none");
+  });
+
+  test("preserves advanced policy after request-to-gated membership mode flip restores the visible draft", async () => {
+    const calls = installCommunityApiMocks();
+    const save = createSaveCommunityMock();
+    const originalPolicy = {
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { type: "altcha_pow" } },
+          {
+            op: "or",
+            children: [
+              { op: "gate", gate: { type: "nationality", provider: "self", allowed: ["US"] } },
+              { op: "gate", gate: { type: "wallet_score", provider: "passport", minimum_score: 20 } },
+            ],
+          },
+        ],
+      },
+    } satisfies NonNullable<ApiCommunity["gate_policy"]>;
+    const { result } = renderAccessHook({
+      community: createCommunity({ gate_policy: originalPolicy }),
+      saveCommunity: save.saveCommunity,
+    });
+
+    await waitFor(() => expect(result.current.gateDrafts).toHaveLength(2));
+
+    act(() => {
+      result.current.setMembershipMode("request");
+      result.current.setGateDrafts([]);
+    });
+    act(() => {
+      result.current.setMembershipMode("gated");
+      result.current.setGateDrafts([
+        { gateType: "nationality", provider: "self", requiredValues: ["US"] },
+        { gateType: "wallet_score", provider: "passport", minimumScore: 20 },
+      ]);
+    });
+
+    expect(result.current.advancedGatePolicyReplacementRequired).toBe(false);
+
+    act(() => {
+      result.current.handleSaveGates();
+    });
+
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+    expect(calls.updateGates[0]?.body.gate_policy).toBe(originalPolicy);
+  });
+
   test("serializes proof-of-work gate policy when selected", async () => {
     const calls = installCommunityApiMocks();
     const save = createSaveCommunityMock();

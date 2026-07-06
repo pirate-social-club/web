@@ -822,6 +822,7 @@ export function CommunityModerationPage({
     } else if (section === "gates") {
       setMobileSaveAction({
         disabled: state.savingGates
+          || (state.advancedGatePolicyReplacementRequired && !state.replaceAdvancedGatePolicy)
           || (state.membershipMode === "gated" && state.gateDrafts.length === 0 && state.preservedGateRuleCount === 0)
           || state.gateDrafts.some((draft) => (
             draft.gateType === "erc721_holding" && !isAddress(draft.contractAddress.trim())
@@ -833,11 +834,13 @@ export function CommunityModerationPage({
       });
       content = (
         <CommunityGatesEditorPage
+          advancedGatePolicyReplacementRequired={state.advancedGatePolicyReplacementRequired}
           allowAnonymousIdentity={state.allowAnonymousIdentity}
           anonymousIdentityScope={state.anonymousIdentityScope}
           defaultAgeGatePolicy={state.defaultAgeGatePolicy}
           gateDrafts={state.gateDrafts}
           gateMatchMode={state.gateMatchMode}
+          hasAdvancedGatePolicy={state.hasAdvancedGatePolicy}
           membershipMode={state.membershipMode}
           onAllowAnonymousIdentityChange={state.setAllowAnonymousIdentity}
           onAnonymousIdentityScopeChange={state.setAnonymousIdentityScope}
@@ -846,9 +849,12 @@ export function CommunityModerationPage({
           onGateDraftsChange={state.setGateDrafts}
           onGateMatchModeChange={state.setGateMatchMode}
           onMembershipModeChange={state.setMembershipMode}
+          onReplaceAdvancedGatePolicyChange={state.setReplaceAdvancedGatePolicy}
           onSave={state.handleSaveGates}
+          replaceAdvancedGatePolicy={state.replaceAdvancedGatePolicy}
           saveDisabled={
             state.savingGates
+            || (state.advancedGatePolicyReplacementRequired && !state.replaceAdvancedGatePolicy)
             || (state.membershipMode === "gated" && state.gateDrafts.length === 0 && state.preservedGateRuleCount === 0)
             || state.gateDrafts.some((draft) => (
               draft.gateType === "erc721_holding" && !isAddress(draft.contractAddress.trim())

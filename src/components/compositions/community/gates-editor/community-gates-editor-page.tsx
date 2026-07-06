@@ -21,6 +21,7 @@ import {
   type CommunityDefaultAgeGatePolicy,
   type CommunityMembershipMode,
   type CommunityReadAccessMode,
+  type CourtyardWalletInventoryGroup,
   type CreatorVerificationState,
   type DocumentProofProvider,
   type IdentityGateDraft,
@@ -28,6 +29,7 @@ import {
 import { isCountryCode } from "@/lib/countries";
 import {
   COURTYARD_CATALOG_AUTHORING_ENABLED,
+  createCourtyardInventoryDraftFromGroup,
   createDefaultCourtyardInventoryDraft,
 } from "@/lib/courtyard-inventory-gates";
 import { cn } from "@/lib/utils";
@@ -35,6 +37,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { NumericStepper } from "@/components/compositions/community/create-composer/create-community-composer.sections";
 import { Type } from "@/components/primitives/type";
+import { ActionBanner } from "@/components/primitives/action-banner";
 
 
 
@@ -90,6 +93,60 @@ function CheckboxRow({
       </Label>
     </div>
   );
+}
+
+export function AdvancedGatePolicyBanner({
+  replacementRequired,
+  replaceConfirmed,
+  onReplaceConfirmedChange,
+}: {
+  replacementRequired: boolean;
+  replaceConfirmed: boolean;
+  onReplaceConfirmedChange?: (checked: boolean) => void;
+}) {
+  return (
+    <div className="rounded-[var(--radius-lg)] border border-warning/40 bg-warning/10 p-4">
+      <ActionBanner
+        title="Advanced gate policy"
+        subtitle={replacementRequired
+          ? "The visible gate settings no longer match the saved policy. Confirm replacement to save this simpler policy."
+          : "This community uses a gate policy this editor cannot fully show. It will be preserved unless you replace it."}
+      />
+      {replacementRequired ? (
+        <div className="mt-3 flex items-center gap-3">
+          <Checkbox
+            checked={replaceConfirmed}
+            id="replace-advanced-gate-policy"
+            onCheckedChange={(checked) => onReplaceConfirmedChange?.(checked === true)}
+          />
+          <Label className="text-sm leading-5" htmlFor="replace-advanced-gate-policy">
+            Replace the saved advanced policy with the gate settings shown here
+          </Label>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function courtyardInventoryDraftMatchesGroup(
+  draft: Extract<IdentityGateDraft, { gateType: "erc721_inventory_match" }> | undefined,
+  group: CourtyardWalletInventoryGroup,
+): boolean {
+  if (!draft) return false;
+  const candidate = createCourtyardInventoryDraftFromGroup(group);
+  return draft.chainNamespace === candidate.chainNamespace
+    && draft.contractAddress.toLowerCase() === candidate.contractAddress.toLowerCase()
+    && draft.assetFilter.category === candidate.assetFilter.category
+    && draft.assetFilter.franchise === candidate.assetFilter.franchise
+    && draft.assetFilter.subject === candidate.assetFilter.subject
+    && draft.assetFilter.brand === candidate.assetFilter.brand
+    && draft.assetFilter.model === candidate.assetFilter.model
+    && draft.assetFilter.reference === candidate.assetFilter.reference
+    && draft.assetFilter.set === candidate.assetFilter.set
+    && draft.assetFilter.year === candidate.assetFilter.year
+    && draft.assetFilter.grader === candidate.assetFilter.grader
+    && draft.assetFilter.grade === candidate.assetFilter.grade
+    && draft.assetFilter.condition === candidate.assetFilter.condition;
 }
 
 const POW_EXCLUSIVE_GATE_TYPES: IdentityGateDraft["gateType"][] = [
@@ -232,15 +289,19 @@ function shouldResetMatchModeAfterRemovingPowFallback(
 }
 
 export interface CommunityGatesEditorPageProps {
+  advancedGatePolicyReplacementRequired?: boolean;
   allowAnonymousIdentity: boolean;
   anonymousIdentityScope: AnonymousIdentityScope;
   anonymousScopeChangeWarning?: string;
   readAccessMode?: CommunityReadAccessMode;
   className?: string;
   creatorVerificationState?: CreatorVerificationState;
+  courtyardInventoryGroups?: CourtyardWalletInventoryGroup[] | null;
+  courtyardInventoryLoading?: boolean;
   defaultAgeGatePolicy: CommunityDefaultAgeGatePolicy;
   gateDrafts: IdentityGateDraft[];
   gateMatchMode?: "all" | "any";
+  hasAdvancedGatePolicy?: boolean;
   membershipMode: CommunityMembershipMode;
   onAllowAnonymousIdentityChange?: (value: boolean) => void;
   onAnonymousIdentityScopeChange?: (value: AnonymousIdentityScope) => void;
@@ -250,7 +311,9 @@ export interface CommunityGatesEditorPageProps {
   onGateMatchModeChange?: (value: "all" | "any") => void;
   onMembershipModeChange?: (value: CommunityMembershipMode) => void;
   onReadAccessModeChange?: (value: CommunityReadAccessMode) => void;
+  onReplaceAdvancedGatePolicyChange?: (value: boolean) => void;
   onSave?: () => void;
+  replaceAdvancedGatePolicy?: boolean;
   saveDisabled?: boolean;
   showReadAccessSection?: boolean;
   showSaveAction?: boolean;
@@ -259,14 +322,18 @@ export interface CommunityGatesEditorPageProps {
 }
 
 export function CommunityGatesEditorPage({
+  advancedGatePolicyReplacementRequired = false,
   allowAnonymousIdentity,
   anonymousIdentityScope,
   anonymousScopeChangeWarning: anonymousScopeChangeWarningProp,
   className,
   creatorVerificationState,
+  courtyardInventoryGroups,
+  courtyardInventoryLoading = false,
   defaultAgeGatePolicy,
   gateDrafts,
   gateMatchMode = "all",
+  hasAdvancedGatePolicy = false,
   membershipMode,
   readAccessMode = "public",
   onAllowAnonymousIdentityChange,
@@ -277,7 +344,9 @@ export function CommunityGatesEditorPage({
   onGateMatchModeChange,
   onMembershipModeChange,
   onReadAccessModeChange,
+  onReplaceAdvancedGatePolicyChange,
   onSave,
+  replaceAdvancedGatePolicy = false,
   saveDisabled = false,
   showReadAccessSection = true,
   showSaveAction = true,
@@ -316,6 +385,10 @@ export function CommunityGatesEditorPage({
   const altchaPowGate = gateDrafts.find((draft) => draft.gateType === "altcha_pow");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const courtyardInventoryGate = gateDrafts.find((draft) => draft.gateType === "erc721_inventory_match");
+  const courtyardInventoryAuthoringAvailable = COURTYARD_CATALOG_AUTHORING_ENABLED || courtyardInventoryGroups != null;
+  const selectedCourtyardInventoryGroup = courtyardInventoryGroups?.find((group) =>
+    courtyardInventoryDraftMatchesGroup(courtyardInventoryGate, group)
+  ) ?? null;
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? true;
   const hasAdultMinimumAgeGate =
     effectiveMembershipMode === "gated"
@@ -326,7 +399,10 @@ export function CommunityGatesEditorPage({
   const showGateMatchModeControl =
     effectiveMembershipMode === "gated"
     && (onGateMatchModeChange != null || gateMatchMode === "any");
-  const palmScanPowFallbackEnabled = Boolean(uniqueHumanGate && altchaPowGate && gateMatchMode === "any");
+  const uniqueHumanGateTitle = uniqueHumanGate?.provider === "self"
+    ? "Private ID proof (Self.xyz)"
+    : mc.uniqueHumanTitle;
+  const palmScanPowFallbackEnabled = Boolean(uniqueHumanGate?.provider === "very" && altchaPowGate && gateMatchMode === "any");
   const handlePalmScanPowFallbackChange = React.useCallback((checked: boolean) => {
     if (checked) {
       onGateMatchModeChange?.("any");
@@ -351,6 +427,14 @@ export function CommunityGatesEditorPage({
             </div>
           </div>
         </div>
+      ) : null}
+
+      {hasAdvancedGatePolicy ? (
+        <AdvancedGatePolicyBanner
+          replacementRequired={advancedGatePolicyReplacementRequired}
+          replaceConfirmed={replaceAdvancedGatePolicy}
+          onReplaceConfirmedChange={onReplaceAdvancedGatePolicyChange}
+        />
       ) : null}
 
       <Section title={mc.membershipTitle}>
@@ -421,7 +505,7 @@ export function CommunityGatesEditorPage({
                   <CheckboxCard
                     className={uniqueHumanGate ? "border-border bg-muted/30" : undefined}
                     checked={Boolean(uniqueHumanGate)}
-                    title={mc.uniqueHumanTitle}
+                    title={uniqueHumanGateTitle}
                     onCheckedChange={(checked) => {
                       if (!checked && palmScanPowFallbackEnabled) {
                         onGateMatchModeChange?.("all");
@@ -437,7 +521,7 @@ export function CommunityGatesEditorPage({
                     }}
                   />
 
-                  {uniqueHumanGate ? (
+                  {uniqueHumanGate?.provider === "very" ? (
                     <div className="ps-4">
                       <OptionCard
                         className={palmScanPowFallbackEnabled ? "border-border bg-muted/30" : undefined}
@@ -657,16 +741,49 @@ export function CommunityGatesEditorPage({
                   <CheckboxCard
                     className={courtyardInventoryGate ? "border-border bg-muted/30" : undefined}
                     checked={Boolean(courtyardInventoryGate)}
-                    disabled={!COURTYARD_CATALOG_AUTHORING_ENABLED && !courtyardInventoryGate}
+                    disabled={!courtyardInventoryAuthoringAvailable && !courtyardInventoryGate}
                     title={mc.courtyardTitle}
                     onCheckedChange={(checked) => onGateDraftsChange?.(
                       checked
-                        ? upsertGateDraftForMatchMode(gateDrafts, createDefaultCourtyardInventoryDraft(), gateMatchMode)
+                        ? upsertGateDraftForMatchMode(
+                          gateDrafts,
+                          courtyardInventoryGroups?.[0]
+                            ? createCourtyardInventoryDraftFromGroup(courtyardInventoryGroups[0])
+                            : createDefaultCourtyardInventoryDraft(),
+                          gateMatchMode,
+                        )
                         : removeGateDraft(gateDrafts, "erc721_inventory_match"),
                     )}
                   />
 
-                  {!COURTYARD_CATALOG_AUTHORING_ENABLED && courtyardInventoryGate ? (
+                  {courtyardInventoryAuthoringAvailable && courtyardInventoryGate ? (
+                    <div className="space-y-3 ps-4">
+                      {courtyardInventoryLoading ? (
+                        <FormNote>{mc.courtyardInventoryLoading}</FormNote>
+                      ) : courtyardInventoryGroups && courtyardInventoryGroups.length > 0 ? (
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {courtyardInventoryGroups.map((group) => (
+                            <OptionCard
+                              description={group.displayDetail ?? `${group.count} in wallet`}
+                              key={`${group.chainNamespace ?? "eip155:137"}:${group.contractAddress ?? "courtyard"}:${group.displayLabel}`}
+                              selected={courtyardInventoryDraftMatchesGroup(courtyardInventoryGate, group)}
+                              title={group.displayLabel}
+                              onClick={() => onGateDraftsChange?.(upsertGateDraftForMatchMode(
+                                gateDrafts,
+                                createCourtyardInventoryDraftFromGroup(group),
+                                gateMatchMode,
+                              ))}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <FormNote>{mc.courtyardInventoryEmpty}</FormNote>
+                      )}
+                      {!selectedCourtyardInventoryGroup ? (
+                        <FormNote tone="warning">{mc.courtyardInventorySelectPrompt}</FormNote>
+                      ) : null}
+                    </div>
+                  ) : !COURTYARD_CATALOG_AUTHORING_ENABLED && courtyardInventoryGate ? (
                     <FormNote tone="warning">{mc.courtyardCatalogUnavailable}</FormNote>
                   ) : null}
                 </div>

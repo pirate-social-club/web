@@ -248,8 +248,8 @@ function getCommunityGateDraft(atom: ReturnType<typeof flattenGatePolicyAtoms>[n
     return { gateType: "altcha_pow" };
   }
 
-  if (atom.type === "unique_human" && atom.provider === "very") {
-    return { gateType: "unique_human", provider: "very" };
+  if (atom.type === "unique_human" && (atom.provider === "self" || atom.provider === "very")) {
+    return { gateType: "unique_human", provider: atom.provider };
   }
 
   if (atom.type === "erc721_holding" && atom.chain_namespace === "eip155:1" && atom.contract_address) {
@@ -262,7 +262,7 @@ function getCommunityGateDraft(atom: ReturnType<typeof flattenGatePolicyAtoms>[n
 
   if (
     atom.type === "erc721_inventory_match"
-    && atom.chain_namespace === "eip155:137"
+    && (atom.chain_namespace === "eip155:1" || atom.chain_namespace === "eip155:137")
     && atom.contract_address
     && Number.isInteger(atom.min_quantity)
   ) {
@@ -270,6 +270,7 @@ function getCommunityGateDraft(atom: ReturnType<typeof flattenGatePolicyAtoms>[n
     const category = typeof match.category === "string" ? match.category : null;
     if (category !== "trading_card" && category !== "watch") return null;
     return createDefaultCourtyardInventoryDraft({
+      chainNamespace: atom.chain_namespace,
       contractAddress: atom.contract_address,
       minQuantity: atom.min_quantity,
       assetFilter: {

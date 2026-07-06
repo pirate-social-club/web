@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import type { GatePolicy } from "@pirate/api-contracts";
 
-import { serializeIdentityGateDrafts } from "@/app/authenticated-helpers/community-gate-rule-serialization";
+import {
+  serializeIdentityGateDrafts,
+  serializeIdentityGateDraftsForSave,
+} from "@/app/authenticated-helpers/community-gate-rule-serialization";
 
 describe("serializeIdentityGateDrafts", () => {
   test("serializes verified-human drafts with the selected provider", () => {
@@ -14,6 +18,22 @@ describe("serializeIdentityGateDrafts", () => {
         children: [{
           op: "gate",
           gate: { type: "unique_human", provider: "very" },
+        }],
+      },
+    });
+  });
+
+  test("serializes Self unique-human drafts with the selected provider", () => {
+    expect(serializeIdentityGateDrafts([{
+      gateType: "unique_human",
+      provider: "self",
+    }])).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [{
+          op: "gate",
+          gate: { type: "unique_human", provider: "self" },
         }],
       },
     });
@@ -64,6 +84,39 @@ describe("serializeIdentityGateDrafts", () => {
               brand: "Rolex",
               model: "Submariner",
               reference: "124060",
+            },
+          },
+        }],
+      },
+    });
+  });
+
+  test("serializes mainnet Courtyard inventory drafts as gate policy", () => {
+    expect(serializeIdentityGateDrafts([{
+      gateType: "erc721_inventory_match",
+      chainNamespace: "eip155:1",
+      contractAddress: " 0xd4ac3CE8e1E14CD60666D49AC34Ff2d2937cF6FA ",
+      inventoryProvider: "courtyard",
+      minQuantity: 2,
+      assetFilter: {
+        category: "watch",
+        brand: "Rolex",
+      },
+    }])).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [{
+          op: "gate",
+          gate: {
+            type: "erc721_inventory_match",
+            provider: "courtyard",
+            chain_namespace: "eip155:1",
+            contract_address: "0xd4ac3CE8e1E14CD60666D49AC34Ff2d2937cF6FA",
+            min_quantity: 2,
+            match: {
+              category: "watch",
+              brand: "Rolex",
             },
           },
         }],
@@ -185,6 +238,94 @@ describe("serializeIdentityGateDrafts", () => {
         children: [
           { op: "gate", gate: { type: "altcha_pow" } },
           { op: "gate", gate: { type: "unique_human", provider: "very" } },
+        ],
+      },
+    });
+  });
+
+  test("preserves an unchanged nested policy instead of flattening it", () => {
+    const originalPolicy: GatePolicy = {
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { type: "altcha_pow" } },
+          {
+            op: "or",
+            children: [
+              { op: "gate", gate: { type: "nationality", provider: "self", allowed: ["US"] } },
+              { op: "gate", gate: { type: "wallet_score", provider: "passport", minimum_score: 20 } },
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(serializeIdentityGateDraftsForSave(
+      [
+        { gateType: "altcha_pow" },
+        { gateType: "nationality", provider: "self", requiredValues: ["US"] },
+        { gateType: "wallet_score", provider: "passport", minimumScore: 20 },
+      ],
+      {
+        mode: "all",
+        preserve: {
+          gateDrafts: [
+            { gateType: "altcha_pow" },
+            { gateType: "nationality", provider: "self", requiredValues: ["US"] },
+            { gateType: "wallet_score", provider: "passport", minimumScore: 20 },
+          ],
+          mode: "all",
+          policy: originalPolicy,
+        },
+      },
+    )).toBe(originalPolicy);
+  });
+
+  test("serializes the flat editor state once gate drafts change", () => {
+    const originalPolicy: GatePolicy = {
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { type: "altcha_pow" } },
+          {
+            op: "or",
+            children: [
+              { op: "gate", gate: { type: "nationality", provider: "self", allowed: ["US"] } },
+              { op: "gate", gate: { type: "wallet_score", provider: "passport", minimum_score: 20 } },
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(serializeIdentityGateDraftsForSave(
+      [
+        { gateType: "altcha_pow" },
+        { gateType: "nationality", provider: "self", requiredValues: ["US", "CA"] },
+        { gateType: "wallet_score", provider: "passport", minimumScore: 20 },
+      ],
+      {
+        mode: "all",
+        preserve: {
+          gateDrafts: [
+            { gateType: "altcha_pow" },
+            { gateType: "nationality", provider: "self", requiredValues: ["US"] },
+            { gateType: "wallet_score", provider: "passport", minimumScore: 20 },
+          ],
+          mode: "all",
+          policy: originalPolicy,
+        },
+      },
+    )).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { type: "altcha_pow" } },
+          { op: "gate", gate: { type: "nationality", provider: "self", allowed: ["US", "CA"] } },
+          { op: "gate", gate: { type: "wallet_score", provider: "passport", minimum_score: 20 } },
         ],
       },
     });

@@ -144,14 +144,24 @@ describe("PostCard", () => {
       "Report",
       "View on Genius",
       "View on IPFS",
+      "Download original",
+      "Download instrumental",
+      "Download vocals",
     ]);
     expect(mergedItems.map((item) => Boolean(item.separatorBefore))).toEqual([
       false,
       true,
       false,
       false,
+      true,
+      false,
+      false,
     ]);
-    expect(mergedItems.some((item) => item.key.startsWith("song-download:"))).toBe(false);
+    expect(mergedItems.filter((item) => item.key.startsWith("song-download:")).map((item) => item.key)).toEqual([
+      "song-download:original",
+      "song-download:stem:instrumental:0",
+      "song-download:stem:vocals:1",
+    ]);
   });
 
   test("shows IPFS action for locked songs without entitlement", () => {
@@ -181,7 +191,7 @@ describe("PostCard", () => {
     expect(mergedItems[1]?.icon).toBeTruthy();
   });
 
-  test("renders song downloads as visible offer rows instead of header menu actions", () => {
+  test("moves song downloads into the header menu instead of visible offer rows", () => {
     const content: SongContentSpec = {
       type: "song",
       accessMode: "public",
@@ -203,9 +213,9 @@ describe("PostCard", () => {
       </UiLocaleProvider>,
     );
 
-    expect(deriveSongHeaderMenuActions(content).map((action) => action.item.label)).not.toContain("Download original");
-    expect(markup).toContain("Original");
-    expect(markup).toContain("Download");
+    expect(deriveSongHeaderMenuActions(content).map((action) => action.item.label)).toContain("Download original");
+    expect(markup).not.toContain("Original");
+    expect(markup).not.toContain("Download Original");
   });
 
   test("renders date-only event metadata compactly without fake midnight times", () => {

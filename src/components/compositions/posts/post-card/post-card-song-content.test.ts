@@ -221,7 +221,7 @@ describe("deriveSongUI", () => {
     expect(markup).not.toContain('href="https://genius.com/34172986"');
   });
 
-  test("surfaces free original downloads as offer rows without redundant free pricing", () => {
+  test("keeps free original downloads out of the compact song body", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
@@ -232,9 +232,9 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).toContain("Original");
+    expect(markup).not.toContain("Original");
     expect(markup).not.toContain("Free");
-    expect(markup).toContain("Download");
+    expect(markup).not.toContain("Download");
   });
 
   test("renders karaoke as an action callback when provided", () => {
@@ -264,7 +264,7 @@ describe("deriveSongUI", () => {
     expect(markup).toContain('href="/p/post_123/karaoke"');
   });
 
-  test("surfaces owned original downloads as offer rows", () => {
+  test("keeps owned original downloads out of the compact song body", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
@@ -278,8 +278,8 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).toContain("Original");
-    expect(markup).toContain("Download");
+    expect(markup).not.toContain("Original");
+    expect(markup).not.toContain("Download");
   });
 
   test("does not render completed Story registration status", () => {

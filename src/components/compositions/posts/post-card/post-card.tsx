@@ -217,6 +217,39 @@ export function deriveSongHeaderMenuActions(content: PostCardProps["content"]): 
     });
   }
 
+  const songPolicy = getEffectiveDownloadPolicy(content);
+  const canDownloadOriginal = Boolean(
+    content.onDownload
+    && (
+      songPolicy === "free_download"
+      || (songPolicy === "purchased_download" && content.hasEntitlement === true)
+    ),
+  );
+
+  if (canDownloadOriginal && content.onDownload) {
+    actions.push({
+      category: "download",
+      item: {
+        key: "song-download:original",
+        label: "Download original",
+      },
+      onAction: content.onDownload,
+    });
+  }
+
+  for (const [index, stem] of (content.stems ?? []).entries()) {
+    if (!canDownloadStem(stem, content, songPolicy) || !stem.onDownload) continue;
+
+    actions.push({
+      category: "download",
+      item: {
+        key: `song-download:stem:${stem.kind}:${index}`,
+        label: `Download ${stemLabel(stem)}`,
+      },
+      onAction: stem.onDownload,
+    });
+  }
+
   return actions;
 }
 

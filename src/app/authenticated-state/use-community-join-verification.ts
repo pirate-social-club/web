@@ -67,6 +67,7 @@ const SELF_CAPABILITIES = ["unique_human", "age_over_18", "minimum_age", "nation
 type SelfCapability = typeof SELF_CAPABILITIES[number];
 const ZKPASSPORT_CAPABILITIES = ["minimum_age", "nationality", "gender"] as const;
 type ZkPassportCapability = typeof ZKPASSPORT_CAPABILITIES[number];
+const WALLET_GATE_UNMET_MESSAGE = "That wallet still does not hold the required NFT. Connect the wallet that holds it, then try again.";
 
 function isSelfCapability(value: string): value is SelfCapability {
   return (SELF_CAPABILITIES as readonly string[]).includes(value);
@@ -304,7 +305,11 @@ export function useCommunityJoinVerification({
     void (async () => {
       try {
         const updatedEligibility = await refetchEligibility();
-        await joinIfEligible(updatedEligibility);
+        const joinResult = await joinIfEligible(updatedEligibility);
+        if (joinResult === "blocked" && updatedEligibility.status === "verification_required" && hasOnlyWalletGateRequirements(updatedEligibility)) {
+          setJoinError(WALLET_GATE_UNMET_MESSAGE);
+          toast.error(WALLET_GATE_UNMET_MESSAGE);
+        }
       } catch (error: unknown) {
         const apiError = error as ApiError;
         const message = apiError?.message ?? "Could not refresh wallet gate eligibility.";
@@ -321,6 +326,18 @@ export function useCommunityJoinVerification({
     walletSnapshot,
     walletsReady,
   ]);
+
+  React.useEffect(() => {
+    if (!walletGateVerificationPending || typeof window === "undefined") {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      if (walletGateStartSnapshotRef.current === walletSnapshot) {
+        setWalletGateVerificationPending(false);
+      }
+    }, 60_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [walletGateVerificationPending, walletSnapshot]);
 
   const handleJoin = React.useCallback(async (options: JoinAttemptOptions = {}): Promise<JoinAttemptResult> => {
     const resolvedAltchaPayload = options.altchaPayload ?? altchaPayload;
@@ -340,7 +357,16 @@ export function useCommunityJoinVerification({
         }
         walletGateStartSnapshotRef.current = walletSnapshot;
         setWalletGateVerificationPending(true);
-        privyRuntime.connect();
+        try {
+          privyRuntime.connect();
+        } catch (error: unknown) {
+          setWalletGateVerificationPending(false);
+          const apiError = error as ApiError;
+          const message = apiError?.message ?? "Could not open wallet connection.";
+          setJoinError(message);
+          toast.error(message);
+          return "failed";
+        }
         return "blocked";
       }
       if (altchaRequired) {

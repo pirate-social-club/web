@@ -13,6 +13,7 @@ const { mock } = await import("bun:test") as unknown as {
 };
 
 const apiCalls: string[] = [];
+const toastErrors: string[] = [];
 let connectCalls = 0;
 let connectedWallets: Array<{ address: string }> = [];
 let walletsReady = true;
@@ -56,7 +57,9 @@ mock.module("@/components/auth/privy-provider", () => ({
 
 mock.module("@/components/primitives/sonner", () => ({
   toast: {
-    error: () => undefined,
+    error: (message: string) => {
+      toastErrors.push(message);
+    },
   },
 }));
 
@@ -125,6 +128,7 @@ function walletEligibility(): JoinEligibility {
 
 beforeEach(() => {
   apiCalls.length = 0;
+  toastErrors.length = 0;
   connectCalls = 0;
   connectedWallets = [];
   walletsReady = true;
@@ -191,5 +195,34 @@ describe("useCommunityJoinVerification", () => {
 
     expect(connectCalls).toBe(0);
     expect(result.current.joinError).toBe("Connect the wallet that holds the required NFT from wallet settings, then try again.");
+  });
+
+  test("reports when the connected wallet still does not satisfy the NFT gate", async () => {
+    const refetched: string[] = [];
+    const { result, rerender } = renderHook(() =>
+      useCommunityJoinVerification({
+        communityId: "com_nft",
+        eligibility: walletEligibility(),
+        locale: "en",
+        refetchEligibility: async () => {
+          refetched.push("eligibility");
+          return walletEligibility();
+        },
+      })
+    );
+
+    await act(async () => {
+      const joinResult = await result.current.handleJoin();
+      expect(joinResult).toBe("blocked");
+    });
+
+    connectedWallets = [{ address: "0xabc0000000000000000000000000000000000000" }];
+    rerender();
+
+    await waitFor(() => {
+      expect(refetched).toEqual(["eligibility"]);
+      expect(result.current.joinError).toBe("That wallet still does not hold the required NFT. Connect the wallet that holds it, then try again.");
+      expect(toastErrors).toEqual(["That wallet still does not hold the required NFT. Connect the wallet that holds it, then try again."]);
+    });
   });
 });

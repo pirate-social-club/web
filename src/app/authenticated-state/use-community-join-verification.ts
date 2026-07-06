@@ -371,7 +371,7 @@ export function useCommunityJoinVerification({
       }
       if (altchaRequired) {
         if (!resolvedAltchaPayload) {
-          setJoinError("Complete the proof-of-work check first.");
+          setJoinError("Complete the browser anti-bot check first.");
           return "blocked";
         }
         try {
@@ -389,7 +389,7 @@ export function useCommunityJoinVerification({
         } catch (error: unknown) {
           const apiError = error as ApiError;
           setAltchaPayload(null);
-          setJoinError(apiError?.message ?? "Proof-of-work check failed.");
+          setJoinError(apiError?.message ?? "Browser anti-bot check failed.");
           return "failed";
         } finally {
           setJoinLoading(false);

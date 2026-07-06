@@ -75,14 +75,14 @@ function AutoVerifiedProofOfWorkModalStory(args: React.ComponentProps<typeof Com
 }
 
 export const BrowserCheckRequired: Story = {
-  name: "States / Browser check required",
+  name: "States / Browser anti-bot check required",
   render: (args) => {
     return <ProofOfWorkModalStory {...args} />;
   },
 };
 
 export const FallbackAccepted: Story = {
-  name: "States / Fallback accepted",
+  name: "States / Alternate browser check",
   args: {
     requirements: [
       { accepted_providers: ["very"], gate_type: "unique_human" },
@@ -121,7 +121,7 @@ export const Error: Story = {
   name: "States / Error",
   args: {
     challengeLoader: async () => {
-      throw new Error("Could not start proof-of-work check.");
+      throw new Error("Could not start browser anti-bot check.");
     },
   },
   render: (args) => {
@@ -136,7 +136,7 @@ export const RetryThenRunning: Story = {
     const challengeLoader = async () => {
       attempts += 1;
       if (attempts === 1) {
-        throw new Error("Could not start proof-of-work check.");
+        throw new Error("Could not start browser anti-bot check.");
       }
       return readyChallenge;
     };

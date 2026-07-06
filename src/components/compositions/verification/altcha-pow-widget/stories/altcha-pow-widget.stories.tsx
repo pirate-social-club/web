@@ -47,7 +47,7 @@ export const Ready: Story = {
 export const Error: Story = {
   args: {
     challengeLoader: async () => {
-      throw new Error("Could not start proof-of-work check.");
+      throw new Error("Could not start browser anti-bot check.");
     },
   },
 };

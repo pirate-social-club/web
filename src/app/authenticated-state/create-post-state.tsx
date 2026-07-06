@@ -852,7 +852,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setSubmitError(null);
 
     if (postAltchaRequired && !postAltchaPayload) {
-      setSubmitError("Complete the proof-of-work check first.");
+      setSubmitError("Complete the browser anti-bot check first.");
       return;
     }
 

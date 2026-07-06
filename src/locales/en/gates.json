@@ -18,7 +18,7 @@
       "withScore": "Passport Score {minimumScore}+",
       "withoutScore": "Passport Score"
     },
-    "altchaPow": "Proof-of-work check",
+    "altchaPow": "Browser anti-bot check",
     "erc721Holding": {
       "withLabel": "Ethereum NFT from {label}",
       "withoutLabel": "Ethereum NFT"
@@ -85,9 +85,9 @@
     "passportPromptTitle": "Higher Score Required",
     "passportPromptDescription": "Are you human? Improve your wallet score and try again.",
     "passportPromptActionLabel": "Visit Passport.xyz",
-    "powOnlyTitle": "Browser check required",
-    "powOnlyDescription": "Complete a quick proof-of-work check to continue.",
-    "powSkipNote": "Verified users can skip this check."
+    "powOnlyTitle": "Browser anti-bot check required",
+    "powOnlyDescription": "Complete a quick browser anti-bot check to continue.",
+    "powSkipNote": "A verified identity or wallet gate can skip this check when one is offered."
   },
   "modal": {
     "anyTitle": "Choose a way to continue",
@@ -114,7 +114,7 @@
     "participationTitle": "Participation",
     "participationMayNote": "A quick browser check may be required for some actions.",
     "participationRequireNote": "A quick browser check is required for some actions.",
-    "participationSkipNote": "Verified users can skip this check.",
+    "participationSkipNote": "A verified identity or wallet gate can skip this check when one is offered.",
     "anyModeSubtext": "Complete one of the following",
     "allModeSubtext": "Complete all of the following"
   },
@@ -125,7 +125,7 @@
     "gender": "document sex marker",
     "uniqueHuman": "unique human status",
     "walletScore": "Passport score",
-    "altchaPow": "proof-of-work status"
+    "altchaPow": "browser check status"
   },
   "gateFailure": {
     "nationalityMismatch": "Your verified ID does not match this community's requirement.",

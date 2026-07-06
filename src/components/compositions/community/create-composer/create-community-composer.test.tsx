@@ -196,7 +196,7 @@ describe("CreateCommunityComposer", () => {
     );
     const defaultPowGate = findElement(
       emptyGateTree,
-      (element) => element.props.title === "Proof-of-work check" && element.props.checked === true,
+      (element) => element.props.title === "Browser anti-bot check" && element.props.checked === true,
     );
     const validNext = findElement(
       validGateTree,
@@ -325,7 +325,7 @@ describe("CreateCommunityComposer", () => {
     );
     const fallbackOption = findElement(
       accessTree,
-      (element) => element.props.title === "Allow proof-of-work fallback",
+      (element) => element.props.title === "Allow browser check instead of palm scan",
     );
     const next = findElement(
       accessTree,
@@ -364,7 +364,7 @@ describe("CreateCommunityComposer", () => {
 
     const summary = findElement(
       tree,
-      (element) => element.props.children === "Proof-of-work check or Palm scan",
+      (element) => element.props.children === "Browser anti-bot check or Palm scan",
     );
 
     expect(summary === null).toBe(false);

@@ -7,7 +7,6 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/primitives/button";
 import { CardFooter } from "@/components/primitives/card";
 import { FormNote } from "@/components/primitives/form-layout";
-import { Type } from "@/components/primitives/type";
 import { logger } from "@/lib/logger";
 import type { SubmitProgress } from "./post-composer.types";
 
@@ -20,40 +19,53 @@ import {
 } from "./post-composer-utils";
 import type { PostComposerController } from "./use-post-composer-controller";
 
-// Inline progress row shown next to the publish button while a submit runs: a
-// rounded neutral track that fills by submitProgressFraction, plus a tabular
-// percent readout. It occupies the footer's spare flex space, so the button
-// itself never moves.
-function SubmitProgressBar({
+// Determinate progress ring rendered inside the publish button in place of the
+// indeterminate Spinner while a submit runs. Same geometry as Spinner (24
+// viewBox, r=9, stroke 3) so the swap is visually seamless; the arc sweeps from
+// 12 o'clock by submitProgressFraction. A small floor keeps it from looking
+// empty at the start.
+function SubmitProgressRing({
   progress,
-  loading,
 }: {
-  progress: SubmitProgress | null | undefined;
-  loading: boolean;
+  progress: SubmitProgress;
 }) {
-  if (!loading || !progress || progress.phase === "done") return null;
-  const percent = Math.round(submitProgressFraction(progress) * 100);
+  const fraction = Math.max(0.04, Math.min(1, submitProgressFraction(progress)));
+  const radius = 9;
+  const circumference = 2 * Math.PI * radius;
+  const percent = Math.round(fraction * 100);
 
   return (
-    <div
+    <span
       aria-label={progress.label}
       aria-valuemax={100}
       aria-valuemin={0}
       aria-valuenow={percent}
-      className="flex min-w-0 flex-1 items-center gap-2"
+      className="inline-flex"
       role="progressbar"
     >
-      <div className="h-1.5 min-w-16 flex-1 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-foreground/60 transition-[width] duration-300 ease-out"
-          style={{ width: `${percent}%` }}
+      <svg aria-hidden className="size-4 -rotate-90" fill="none" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" opacity="0.25" r={radius} stroke="currentColor" strokeWidth="3" />
+        <circle
+          className="transition-[stroke-dashoffset] duration-300 ease-out"
+          cx="12"
+          cy="12"
+          r={radius}
+          stroke="currentColor"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - fraction)}
+          strokeLinecap="round"
+          strokeWidth="3"
         />
-      </div>
-      <Type variant="caption" className="shrink-0 tabular-nums">
-        {percent}%
-      </Type>
-    </div>
+      </svg>
+    </span>
   );
+}
+
+function submitLoadingIndicator(
+  progress: SubmitProgress | null | undefined,
+): React.ReactNode {
+  if (!progress || progress.phase === "done") return undefined;
+  return <SubmitProgressRing progress={progress} />;
 }
 
 // A single constant label carries the button through the whole submit — users don't
@@ -184,13 +196,13 @@ export function PostComposerDesktopFooter({
         </Button>
       ) : <span />}
       <div className="flex min-w-0 flex-1 items-center justify-end gap-3 lg:ms-auto">
-        <SubmitProgressBar loading={submit.loading} progress={submit.progress} />
         {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
         <Button
           className="min-w-40 justify-center"
           disabled={submit.disabled || submit.progress?.phase === "done"}
           key="publish"
           loading={submit.loading && submit.progress?.phase !== "done"}
+          loadingIndicator={submitLoadingIndicator(submit.progress)}
           onClick={() => {
             logger.info("[post-composer] desktop publish button clicked", {
               activeTab: tabs.activeTab,
@@ -254,13 +266,13 @@ export function PostComposerMobileSubmitBar({
     bar = (
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
         <div className="space-y-3 px-4">
-          <SubmitProgressBar loading={submit.loading} progress={submit.progress} />
           {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
           <div>
             <Button
               className="w-full"
               disabled={submit.disabled || submit.progress?.phase === "done"}
               loading={submit.loading && submit.progress?.phase !== "done"}
+              loadingIndicator={submitLoadingIndicator(submit.progress)}
               onClick={() => {
                 logger.info("[post-composer] mobile publish button clicked", {
                   activeTab: tabs.activeTab,

@@ -111,10 +111,11 @@ export const SongPipelineCounter: Story = {
   ),
 };
 
-// Video multipart upload already emits a byte-percentage `detail`; it should show
-// in place of the counter.
+// Video multipart upload emits a byte-percentage `detail` (63% here) that
+// interpolates progress WITHIN the upload step; the ring sweeps the OVERALL
+// pipeline fraction, so it reads lower than the step's own byte-%.
 export const VideoUploadingWithPercent: Story = {
-  name: "Pipeline / Video uploading (63%)",
+  name: "Pipeline / Video uploading (mid-flight)",
   render: () => (
     <PostComposer
       {...baseComposer}

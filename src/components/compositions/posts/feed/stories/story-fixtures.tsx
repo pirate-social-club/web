@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { COMMUNITY_RECORDS, HOME_POSTS, YOUR_COMMUNITIES_POSTS } from "@/app/mocks";
 import { PillButton } from "@/components/primitives/pill-button";
+import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import type { FeedItem, FeedSortOption } from "../feed";
 import { Type } from "@/components/primitives/type";
 import { Avatar } from "@/components/primitives/avatar";
@@ -152,4 +153,75 @@ export const translatedMixItems: FeedItem[] = [
     },
   },
   homeFeedItems[2],
+];
+
+const noop = () => {};
+
+function publishStateSongPost(
+  post: PostCardProps,
+  overrides: Pick<PostCardProps, "byline" | "statusNotice" | "title">,
+): PostCardProps {
+  return {
+    ...post,
+    ...overrides,
+    content: {
+      type: "song",
+      accessMode: "locked",
+      artist: post.byline.displayName,
+      listingMode: "not_listed",
+      playbackState: "idle",
+      title: overrides.title ?? "Midnight demo",
+    },
+    engagement: { score: 0, commentCount: 0 },
+    menuItems: undefined,
+    onComment: undefined,
+    onShare: undefined,
+    onVote: undefined,
+    postHref: undefined,
+    shareActions: undefined,
+    titleHref: undefined,
+  };
+}
+
+export const mixedPublishStateFeedItems: FeedItem[] = [
+  {
+    ...homeFeedItems[0],
+    id: "post_publish_processing_story",
+    post: publishStateSongPost(homeFeedItems[0].post, {
+      byline: {
+        ...homeFeedItems[0].post.byline,
+        timestampLabel: "now",
+      },
+      statusNotice: {
+        tone: "neutral",
+        label: "Finishing publish",
+        message: "Visible only to you until checks complete.",
+      },
+      title: "Midnight demo",
+    }),
+  },
+  {
+    ...homeFeedItems[1],
+    id: "post_publish_failed_story",
+    post: publishStateSongPost(homeFeedItems[1].post, {
+      byline: {
+        ...homeFeedItems[1].post.byline,
+        timestampLabel: "2m",
+      },
+      statusNotice: {
+        tone: "destructive",
+        label: "Publish failed",
+        message: "Story royalty registration is temporarily unavailable.",
+        action: {
+          label: "Try again",
+          onClick: noop,
+        },
+      },
+      title: "Late night stem bounce",
+    }),
+  },
+  ...homeFeedItems.slice(0, 3).map((item, index) => ({
+    ...item,
+    id: `post_publish_published_story_${index + 1}`,
+  })),
 ];

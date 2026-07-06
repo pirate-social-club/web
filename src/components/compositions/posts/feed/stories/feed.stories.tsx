@@ -12,6 +12,7 @@ import {
   longTextHomeFeedItems,
   longTextCommunityFeedItems,
   sortOptions,
+  mixedPublishStateFeedItems,
   tameImpalaCommunity,
   tameImpalaFeedItems,
   translatedMixItems,
@@ -267,6 +268,35 @@ export const MixedTranslatedAndOriginal: Story = {
           ) : undefined
         }
         items={translatedMixItems}
+        onSortChange={setActiveSort}
+      />
+    );
+  },
+};
+
+export const MixedPublishStates: Story = {
+  name: "Community / Mixed Publish States",
+  args: {},
+  render: function StoryRender() {
+    const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("new");
+    const [topRange, setTopRange] = React.useState("day");
+
+    return (
+      <Feed
+        activeSort={activeSort}
+        aside={<StoryRail items={communityRailItems} title="Community" />}
+        availableSorts={sortOptions}
+        controls={
+          <>
+            {activeSort === "top" ? (
+              <TopTimeRangeControl onValueChange={setTopRange} value={topRange} />
+            ) : null}
+            <CommunityFlairControls />
+          </>
+        }
+        items={mixedPublishStateFeedItems}
+        fullBleedMobile
+        listClassName="border-t-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
         onSortChange={setActiveSort}
       />
     );

@@ -5,7 +5,7 @@ import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { installDomGlobals } from "@/test/setup-dom";
 import { ApiClient, ApiError } from "@/lib/api/client";
-import type { SongStudyPayload } from "@/lib/api/client-api-types";
+import type { SongStudyAttemptRequest, SongStudyPayload } from "@/lib/api/client-api-types";
 
 installDomGlobals();
 Object.defineProperty(window, "location", {
@@ -68,6 +68,7 @@ function readyStudyPayload(overrides: Partial<SongStudyPayload> = {}): SongStudy
 }
 
 const calls: string[] = [];
+const submittedStudyAttempts: SongStudyAttemptRequest[] = [];
 let sessionValue: { accessToken: string } | null = { accessToken: "token" };
 let postResult: LocalizedPostResponse = songPost();
 let postError: unknown = null;
@@ -106,6 +107,7 @@ fakeApi.communities.getPostStudy = async () => {
   return studyResult;
 };
 fakeApi.communities.submitPostStudyAttempt = async (_communityId, _postId, body) => {
+  submittedStudyAttempts.push(body);
   calls.push(`communities.submitPostStudyAttempt:${body.type}:${body.type === "translation_choice" ? body.selected_option_id : ""}`);
   if (submitPostStudyAttemptError) throw submitPostStudyAttemptError;
   return submitPostStudyAttemptResult;
@@ -162,6 +164,7 @@ const { StudyRoutePage } = await import("./study-route");
 
 beforeEach(() => {
   calls.length = 0;
+  submittedStudyAttempts.length = 0;
   sessionValue = { accessToken: "token" };
   postResult = songPost();
   postError = null;
@@ -275,6 +278,7 @@ describe("StudyRoutePage", () => {
     fireEvent.click(view.getByText("Hello world").closest("button")!);
 
     await waitFor(() => expect(calls).toContain("communities.submitPostStudyAttempt:translation_choice:option_correct"));
+    expect(submittedStudyAttempts.at(-1)).toMatchObject({ target_language: "en" });
     await waitFor(() => expect(view.getByText("Continue")).toBeTruthy());
   });
 

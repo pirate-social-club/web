@@ -282,11 +282,14 @@ test.describe("async song publish with mocked API", () => {
     await page.getByRole("button", { name: /^publish$/i }).click();
 
     await expect(page).toHaveURL(new RegExp(`/c/${mockCommunityPreview.route_slug}$`, "u"));
-    await expect(page.getByText("Visible only to you until checks complete.")).toBeVisible({ timeout: 30_000 });
+    const failedFlowPost = page.locator("article").filter({ hasText: "Async E2E Song" }).first();
+    await expect(failedFlowPost.getByTestId("post-status-notice")).toHaveAttribute("data-status-notice-tone", "neutral", {
+      timeout: 30_000,
+    });
 
     await expect(page.getByText("Matched audio requires derivative rights and a reference")).toBeVisible({ timeout: 30_000 });
     await page.getByRole("button", { name: /^try again$/i }).click();
-    await expect(page.getByText("Publish failed")).toHaveCount(0);
+    await expect(failedFlowPost.getByTestId("post-status-notice")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Async E2E Song", exact: true })).toBeVisible();
 
     expect(state.bundleBodies[0]?.analysis_mode).toBe("deferred");
@@ -331,9 +334,11 @@ test.describe("async song publish with mocked API", () => {
     await page.getByRole("button", { name: /^publish$/i }).click();
 
     await expect(page).toHaveURL(new RegExp(`/c/${mockCommunityPreview.route_slug}$`, "u"));
-    await expect(page.getByText("Visible only to you until checks complete.")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText("Visible only to you until checks complete.")).toHaveCount(0, { timeout: 30_000 });
-    await expect(page.getByText("Publish failed")).toHaveCount(0);
+    const publishedFlowPost = page.locator("article").filter({ hasText: "Async E2E Song" }).first();
+    await expect(publishedFlowPost.getByTestId("post-status-notice")).toHaveAttribute("data-status-notice-tone", "neutral", {
+      timeout: 30_000,
+    });
+    await expect(publishedFlowPost.getByTestId("post-status-notice")).toHaveCount(0, { timeout: 30_000 });
     await expect(page.getByRole("link", { name: "Async E2E Song", exact: true })).toBeVisible({ timeout: 30_000 });
 
     expect(state.bundleBodies[0]?.analysis_mode).toBe("deferred");

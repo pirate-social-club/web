@@ -107,6 +107,8 @@ describe("PostCard", () => {
     );
 
     expect(markup).toContain("Publish failed");
+    expect(markup).toContain('data-testid="post-status-notice"');
+    expect(markup).toContain('data-status-notice-tone="destructive"');
     expect(markup).toContain("Story royalty registration is temporarily unavailable.");
     expect(markup).toContain("Try again");
   });

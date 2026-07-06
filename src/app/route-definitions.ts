@@ -3,6 +3,7 @@ export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 export const COMMUNITY_MODERATION_SECTIONS = [
   "queue",
+  "rights",
   "profile",
   "rules",
   "links",

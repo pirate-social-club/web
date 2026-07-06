@@ -8,6 +8,7 @@ import { Flag, House, Plus } from "@phosphor-icons/react";
 import { Feed } from "@/components/compositions/posts/feed/feed";
 import { AppHeader } from "@/components/compositions/app/app-shell-chrome/app-header";
 import { CommunityAgentPolicyPage } from "@/components/compositions/community/agent-policy/community-agent-policy";
+import { CommunityRightsReviewQueuePage } from "@/components/compositions/community/rights-review-queue-page/community-rights-review-queue-page";
 import { NotificationInboxPage } from "@/components/compositions/notifications/inbox-page/notification-inbox-page";
 import { DomainsTab } from "@/components/compositions/settings/settings-page/panels/settings-page-domains-tab";
 import { AppSidebar } from "@/components/compositions/app/app-sidebar/app-sidebar";
@@ -325,6 +326,30 @@ describe("composition smoke tests", () => {
     expect(markup).toContain("Safety");
     expect(markup).toContain("Visual moderation pass");
     expect(markup).toContain("Threatening language");
+  });
+
+  test("renders the rights review queue page", () => {
+    const markup = render(
+      <CommunityRightsReviewQueuePage
+        cases={[{
+          caseId: "rrc_test",
+          createdAt: "2026-07-06T12:00:00.000Z",
+          matches: [{ title: "Catalog Song", subtitle: "ACR custom bucket" }],
+          policyReason: "Catalog song matched without a declared source",
+          policyReasonCode: "undeclared_catalog_match",
+          postPreview: {
+            body: "A video using a matched soundtrack.",
+            title: "Soundtrack clip",
+          },
+          status: "open",
+          triggerSource: "acrcloud_match",
+        }]}
+      />,
+    );
+
+    expect(markup).toContain("Rights");
+    expect(markup).toContain("Catalog Song");
+    expect(markup).toContain("Require source");
   });
 
   test("renders the moderation agents page", () => {

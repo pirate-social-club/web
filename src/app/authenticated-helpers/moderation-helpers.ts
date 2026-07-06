@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, At, ChatCircleDots, CurrencyDollar, Database, Eye, Gavel, GraduationCap, Heart, ImageSquare, LinkSimple, Lock, MicrophoneStage, Queue, Robot, SealCheck, Shield, Tag, TelegramLogo, UserPlus } from "@phosphor-icons/react";
+import { Archive, At, ChatCircleDots, CurrencyDollar, Database, Eye, Gavel, GraduationCap, Heart, ImageSquare, LinkSimple, Lock, MicrophoneStage, MusicNotes, Queue, Robot, SealCheck, Shield, Tag, TelegramLogo, UserPlus } from "@phosphor-icons/react";
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 
@@ -45,6 +45,7 @@ export function buildCommunityModerationSections(
     label: copy.nav.moderationSection ?? "Moderation",
     items: [
       { active: activeSection === "queue", icon: Queue, label: copy.nav.queue ?? "Queue", onSelect: () => navigate(buildCommunityModerationPath(communityId, "queue", routeSlug)) },
+      { active: activeSection === "rights", icon: MusicNotes, label: copy.nav.rights ?? "Rights", onSelect: () => navigate(buildCommunityModerationPath(communityId, "rights", routeSlug)) },
     ],
   }, {
     label: copy.nav.communitySection,

@@ -267,7 +267,7 @@ export function CommunityRightsReviewQueuePage({
                         size="sm"
                         variant="outline"
                       >
-                        Require source
+                        Request evidence
                       </Button>
                       <Button
                         className="h-9"

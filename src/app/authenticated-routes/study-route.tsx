@@ -354,6 +354,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       exercise_id: exercise.id,
       idempotency_key: makeAttemptIdempotencyKey(exercise.id, surface.attemptNumber),
       selected_option_id: selectedOptionId,
+      target_language: readyState.study.target_language ?? undefined,
       type: "translation_choice",
     }).then((result) => {
       pendingMultipleChoiceAttemptRef.current = null;
@@ -530,6 +531,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                 attempt_number: sayItBackSurface.attemptNumber,
                 exercise_id: exercise.id,
                 idempotency_key: makeAttemptIdempotencyKey(exercise.id, sayItBackSurface.attemptNumber),
+                target_language: state.study.target_language ?? undefined,
                 transcript: transcription.text,
                 type: "say_it_back",
               }).then((result) => ({ result, transcript: transcription.text })))

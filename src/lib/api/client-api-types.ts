@@ -890,6 +890,7 @@ export type SongStudyAttemptRequest =
       exercise_id: string;
       type: "say_it_back";
       attempt_number: number;
+      target_language?: string | null;
       transcript: string;
     }
   | {
@@ -897,6 +898,7 @@ export type SongStudyAttemptRequest =
       exercise_id: string;
       type: "translation_choice";
       attempt_number: number;
+      target_language?: string | null;
       selected_option_id: string;
     };
 

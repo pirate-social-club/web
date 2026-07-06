@@ -15,6 +15,7 @@ import {
 import { Spinner } from "@/components/primitives/spinner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
+import { SongStreakPreview, type SongStreakSummary } from "@/components/compositions/song-study/song-streak-preview";
 import { MediaControlButton } from "@/components/primitives/media-control-button";
 import { Scrubber } from "@/components/primitives/scrubber";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/primitives/tooltip";
@@ -353,65 +354,52 @@ function SongOfferRow({ action, icon, label, priceLabel }: SongOfferRowProps) {
 function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedSongUI }) {
   if (ui.ageGateRequiresProof) return null;
 
-  const rows: React.ReactNode[] = [];
-
-  if (content.karaokeHref || content.onKaraoke) {
-    const karaokeAction = content.onKaraoke ? (
-      <Button
-        aria-label="Sing this song with karaoke"
-        className="h-10 w-32 px-5"
-        data-post-card-interactive="true"
-        onClick={content.onKaraoke}
-        size="sm"
-      >
-        <MicrophoneStage className="size-4" />
-        <span>Sing</span>
-      </Button>
-    ) : (
-      <Button
-        asChild
-        className="h-10 w-32 px-5"
-        data-post-card-interactive="true"
-        size="sm"
-      >
-        <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
-          <MicrophoneStage className="size-4" />
-          <span>Sing</span>
-        </a>
-      </Button>
-    );
-
-    rows.push(
-      <SongOfferRow
-        action={karaokeAction}
-        icon={<MicrophoneStage className="size-5" />}
-        key="karaoke"
-        label="Karaoke"
-      />,
-    );
-  }
+  // Learn + Karaoke are the two primary CTAs — a side-by-side pair (or one
+  // full-width button when only one is available), not stacked label rows. Sing
+  // is the primary (right); Study is the secondary (left).
+  const primaryActions: React.ReactNode[] = [];
 
   if (content.study?.status === "ready" && content.onStudy) {
-    rows.push(
-      <SongOfferRow
-        action={
-          <Button
-            aria-label="Open study"
-            className="h-10 w-32 px-5"
-            data-post-card-interactive="true"
-            onClick={content.onStudy}
-            size="sm"
-          >
-            <GraduationCap className="size-4" />
-            <span>Study</span>
-          </Button>
-        }
-        icon={<GraduationCap className="size-5" />}
+    primaryActions.push(
+      <Button
+        className="w-full"
+        data-post-card-interactive="true"
         key="study"
-        label="Study"
-      />,
+        leadingIcon={<GraduationCap className="size-4" weight="fill" />}
+        onClick={content.onStudy}
+        size="lg"
+        variant="secondary"
+      >
+        Study
+      </Button>,
     );
   }
+
+  if (content.karaokeHref || content.onKaraoke) {
+    primaryActions.push(
+      content.onKaraoke ? (
+        <Button
+          className="w-full"
+          data-post-card-interactive="true"
+          key="karaoke"
+          leadingIcon={<MicrophoneStage className="size-4" weight="fill" />}
+          onClick={content.onKaraoke}
+          size="lg"
+        >
+          Sing
+        </Button>
+      ) : (
+        <Button asChild className="w-full" data-post-card-interactive="true" key="karaoke" size="lg">
+          <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
+            <MicrophoneStage className="size-4" weight="fill" />
+            <span>Sing</span>
+          </a>
+        </Button>
+      ),
+    );
+  }
+
+  const rows: React.ReactNode[] = [];
 
   const isOwned = content.hasEntitlement === true;
   const isLocked = content.accessMode === "locked";
@@ -534,10 +522,20 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
     );
   }
 
-  if (rows.length === 0) return null;
+  if (primaryActions.length === 0 && rows.length === 0) return null;
 
   return (
     <div>
+      {primaryActions.length > 0 ? (
+        <div
+          className={cn(
+            "border-t border-border-soft px-4 py-3",
+            primaryActions.length > 1 ? "grid grid-cols-2 gap-3" : "grid grid-cols-1",
+          )}
+        >
+          {primaryActions}
+        </div>
+      ) : null}
       {rows}
     </div>
   );
@@ -643,11 +641,20 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
           <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted sm:size-28">
             {ui.showAgeGatedArtwork ? (
               <>
-                <div
-                  aria-label={content.title}
-                  className="size-full bg-muted"
-                  role="img"
-                />
+                {content.artworkSrc ? (
+                  <img
+                    alt=""
+                    aria-hidden="true"
+                    className="size-full object-cover"
+                    src={content.artworkSrc}
+                  />
+                ) : (
+                  <div
+                    aria-label={content.title}
+                    className="size-full bg-muted"
+                    role="img"
+                  />
+                )}
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                   <FilledLockIcon className="size-7 text-white" weight="fill" />
                 </div>
@@ -726,6 +733,11 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
           ) : null}
         </div>
 
+        {content.streakSummary ? (
+          <div className="border-t border-border-soft px-4 py-2.5">
+            <SongStreakPreview href={content.streaksHref} onViewLeaderboard={content.onStreaks} summary={content.streakSummary} />
+          </div>
+        ) : null}
         <SongOfferRows content={content} ui={ui} />
       </div>
 

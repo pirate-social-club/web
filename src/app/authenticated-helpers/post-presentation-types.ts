@@ -25,6 +25,7 @@ export type SongPresentationOptions = {
   onBuy?: () => void;
   onKaraoke?: () => void;
   onStudy?: () => void;
+  onStreaks?: () => void;
 };
 
 export type LiveRoomPresentationOptions = {

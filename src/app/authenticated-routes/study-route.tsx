@@ -403,18 +403,6 @@ export function StudyRoutePage({ postId }: { postId: string }) {
 
     if (state.phase !== "ready") return;
 
-    if (state.surface.kind === "start") {
-      const exercise = state.study.exercises[0] ?? null;
-      if (!exercise) return;
-      setState({
-        ...state,
-        correctCount: 0,
-        exerciseIndex: 0,
-        surface: exerciseSurface(exercise),
-      });
-      return;
-    }
-
     if (state.surface.kind === "multiple_choice") {
       if (state.surface.result) {
         if (state.surface.result === "wrong" && state.surface.canRetry) {
@@ -650,10 +638,6 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     submitMultipleChoiceAttempt(state, state.surface, optionId);
   }, [state, submitMultipleChoiceAttempt]);
 
-  const handleSecondaryAction = React.useCallback(() => {
-    navigate(`/p/${encodeURIComponent(postId)}/karaoke`);
-  }, [postId]);
-
   if (!hydrated || (configured && !loaded)) {
     return (
       <div className="flex h-dvh min-h-screen w-full items-center justify-center bg-background text-foreground">
@@ -686,7 +670,6 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       onExit={() => navigate(`/p/${encodeURIComponent(postId)}`)}
       onOptionSelect={handleOptionSelect}
       onPrimaryAction={handlePrimaryAction}
-      onSecondaryAction={handleSecondaryAction}
       state={state.surface}
       title={pageTitle(state.post, state.study)}
     />

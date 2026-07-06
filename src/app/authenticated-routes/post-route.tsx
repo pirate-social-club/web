@@ -532,6 +532,14 @@ export function PostPage({
     navigate(`/p/${encodeURIComponent(postId)}/study`);
   }, [hasSession, postId, requestAuth]);
 
+  const handleOpenStreaks = React.useCallback(() => {
+    if (!hasSession) {
+      requestAuth("Connect your wallet to see this song's streak leaderboard.");
+      return;
+    }
+    navigate(`/p/${encodeURIComponent(postId)}/streaks`);
+  }, [hasSession, postId, requestAuth]);
+
   const openReplayBlob = React.useCallback((blob: Blob, title: string) => {
     if (typeof window === "undefined") return;
     const objectUrl = URL.createObjectURL(blob);
@@ -946,6 +954,7 @@ export function PostPage({
       ) : undefined,
       onKaraoke: post.post.post_type === "song" ? handleOpenKaraoke : undefined,
       onStudy: post.post.post_type === "song" ? handleOpenStudy : undefined,
+      onStreaks: post.post.post_type === "song" ? handleOpenStreaks : undefined,
       playback: songPlayback,
       purchase: threadPurchase,
       storyLicenseNotice: storyLicenseReuseNotice ?? undefined,

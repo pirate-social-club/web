@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
-import { toKaraokeCapability, toStudyCapability } from "./post-media-presentation";
+import { toKaraokeCapability, toSongPostContent, toStudyCapability } from "./post-media-presentation";
 
 function songPost(opts: {
   instrumental?: boolean;
@@ -21,7 +21,9 @@ function songPost(opts: {
     },
     post: {
       access_mode: "public",
+      id: "post_song",
       media_refs: [],
+      post_id: "post_song",
       post_type: "song",
     },
     song_presentation: {
@@ -125,5 +127,76 @@ describe("toStudyCapability", () => {
       post: { post_type: "video", access_mode: "public", media_refs: [] },
       study_capability: { status: "ready" },
     } as unknown as ApiPost)).toBeUndefined();
+  });
+});
+
+describe("toSongPostContent", () => {
+  test("maps the API streak summary onto the song card content", () => {
+    const content = toSongPostContent({
+      ...songPost(),
+      streak_summary: {
+        entries: [{
+          rank: 1,
+          identity: {
+            display_name: "lena.pirate",
+            handle: "lena.pirate",
+            user_id: "usr_lena",
+          },
+          current_streak: 21,
+          best_streak: 23,
+          total_qualified_days: 26,
+          streak_started_date: "2026-06-15",
+          last_qualified_date: "2026-07-05",
+          is_viewer: false,
+        }],
+        total_active_streaks: 5,
+        viewer: {
+          alive: true,
+          current_streak: 14,
+          best_streak: 14,
+          total_qualified_days: 14,
+          qualified_today: false,
+          study_attempts_today: 6,
+          study_target_today: 10,
+          karaoke_passed_today: false,
+        },
+      },
+      study_capability: {
+        status: "ready",
+        exercise_count: 12,
+        source_language: "en",
+        target_language: "es",
+      },
+    } as unknown as ApiPost, undefined, { title: "Test Song" });
+
+    expect(content.type).toBe("song");
+    expect(content.streaksHref).toBe("/p/post_song/streaks");
+    expect(content.streakSummary).toEqual({
+      entries: [{
+        rank: 1,
+        identity: {
+          display_name: "lena.pirate",
+          handle: "lena.pirate",
+          user_id: "usr_lena",
+        },
+        current_streak: 21,
+        best_streak: 23,
+        total_qualified_days: 26,
+        streak_started_date: "2026-06-15",
+        last_qualified_date: "2026-07-05",
+        is_viewer: false,
+      }],
+      totalActiveStreaks: 5,
+      viewer: {
+        alive: true,
+        current_streak: 14,
+        best_streak: 14,
+        total_qualified_days: 14,
+        qualified_today: false,
+        study_attempts_today: 6,
+        study_target_today: 10,
+        karaoke_passed_today: false,
+      },
+    });
   });
 });

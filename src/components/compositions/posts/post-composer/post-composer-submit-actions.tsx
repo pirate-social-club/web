@@ -29,20 +29,13 @@ function SubmitProgressRing({
 }: {
   progress: SubmitProgress;
 }) {
-  const fraction = Math.max(0.04, Math.min(1, submitProgressFraction(progress)));
+  const fraction = submitProgressFraction(progress);
+  const visualFraction = Math.max(0.04, Math.min(1, fraction));
   const radius = 9;
   const circumference = 2 * Math.PI * radius;
-  const percent = Math.round(fraction * 100);
 
   return (
-    <span
-      aria-label={progress.label}
-      aria-valuemax={100}
-      aria-valuemin={0}
-      aria-valuenow={percent}
-      className="inline-flex"
-      role="progressbar"
-    >
+    <span aria-hidden className="inline-flex">
       <svg aria-hidden className="size-4 -rotate-90" fill="none" viewBox="0 0 24 24">
         <circle cx="12" cy="12" opacity="0.25" r={radius} stroke="currentColor" strokeWidth="3" />
         <circle
@@ -52,7 +45,7 @@ function SubmitProgressRing({
           r={radius}
           stroke="currentColor"
           strokeDasharray={circumference}
-          strokeDashoffset={circumference * (1 - fraction)}
+          strokeDashoffset={circumference * (1 - visualFraction)}
           strokeLinecap="round"
           strokeWidth="3"
         />
@@ -66,6 +59,26 @@ function submitLoadingIndicator(
 ): React.ReactNode {
   if (!progress || progress.phase === "done") return undefined;
   return <SubmitProgressRing progress={progress} />;
+}
+
+function SubmitProgressStatus({
+  progress,
+}: {
+  progress: SubmitProgress | null | undefined;
+}) {
+  if (!progress || progress.phase === "done") return null;
+  const percent = Math.round(submitProgressFraction(progress) * 100);
+
+  return (
+    <span
+      aria-label={progress.label}
+      aria-valuemax={100}
+      aria-valuemin={0}
+      aria-valuenow={percent}
+      className="sr-only"
+      role="progressbar"
+    />
+  );
 }
 
 // A single constant label carries the button through the whole submit — users don't
@@ -197,6 +210,7 @@ export function PostComposerDesktopFooter({
       ) : <span />}
       <div className="flex min-w-0 flex-1 items-center justify-end gap-3 lg:ms-auto">
         {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
+        <SubmitProgressStatus progress={submit.progress} />
         <Button
           className="min-w-40 justify-center"
           disabled={submit.disabled || submit.progress?.phase === "done"}
@@ -268,6 +282,7 @@ export function PostComposerMobileSubmitBar({
         <div className="space-y-3 px-4">
           {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
           <div>
+            <SubmitProgressStatus progress={submit.progress} />
             <Button
               className="w-full"
               disabled={submit.disabled || submit.progress?.phase === "done"}

@@ -349,7 +349,7 @@ describe("composition smoke tests", () => {
 
     expect(markup).toContain("Rights");
     expect(markup).toContain("Catalog Song");
-    expect(markup).toContain("Require source");
+    expect(markup).toContain("Request evidence");
   });
 
   test("renders the moderation agents page", () => {

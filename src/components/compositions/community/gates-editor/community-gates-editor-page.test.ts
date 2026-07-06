@@ -4,6 +4,7 @@ import * as React from "react";
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import {
   AdvancedGatePolicyBanner,
+  canAuthorCourtyardInventoryGate,
   courtyardInventoryDraftMatchesGroup,
   normalizeDocumentProofProviders,
   normalizeGateDraftsForMatchMode,
@@ -138,5 +139,17 @@ describe("CommunityGatesEditorPage gate draft helpers", () => {
       ...draft,
       assetFilter: { ...draft.assetFilter, subject: "pikachu" },
     }, group)).toBe(false);
+  });
+
+  test("enables Courtyard authoring only when inventory groups are available", () => {
+    expect(canAuthorCourtyardInventoryGate(undefined)).toBe(false);
+    expect(canAuthorCourtyardInventoryGate(null)).toBe(false);
+    expect(canAuthorCourtyardInventoryGate([])).toBe(false);
+    expect(canAuthorCourtyardInventoryGate([{
+      category: "watch",
+      brand: "rolex",
+      displayLabel: "Rolex",
+      count: 1,
+    }])).toBe(true);
   });
 });

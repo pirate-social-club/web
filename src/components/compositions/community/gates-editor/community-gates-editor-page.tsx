@@ -149,6 +149,12 @@ export function courtyardInventoryDraftMatchesGroup(
     && draft.assetFilter.condition === candidate.assetFilter.condition;
 }
 
+export function canAuthorCourtyardInventoryGate(
+  groups: CourtyardWalletInventoryGroup[] | null | undefined,
+): boolean {
+  return COURTYARD_CATALOG_AUTHORING_ENABLED || Boolean(groups?.length);
+}
+
 type DocumentGateDraft = Extract<IdentityGateDraft, { gateType: "nationality" | "minimum_age" | "gender" }>;
 
 const DOCUMENT_PROOF_PROVIDER_OPTIONS: Array<{ value: DocumentProofProvider; label: string }> = [
@@ -360,7 +366,7 @@ export function CommunityGatesEditorPage({
   const altchaPowGate = gateDrafts.find((draft) => draft.gateType === "altcha_pow");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const courtyardInventoryGate = gateDrafts.find((draft) => draft.gateType === "erc721_inventory_match");
-  const courtyardInventoryAuthoringAvailable = COURTYARD_CATALOG_AUTHORING_ENABLED || courtyardInventoryGroups != null;
+  const courtyardInventoryAuthoringAvailable = canAuthorCourtyardInventoryGate(courtyardInventoryGroups);
   const selectedCourtyardInventoryGroup = courtyardInventoryGroups?.find((group) =>
     courtyardInventoryDraftMatchesGroup(courtyardInventoryGate, group)
   ) ?? null;

@@ -37,6 +37,7 @@ import { ApiError } from "@/lib/api/client";
 import type { MediaAnalysisResult, ModerationCaseDetail, ModerationCasePostPreview, RightsReviewCaseListItem } from "@/lib/api/client-groups-community-moderation";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
 import { normalizeCountryCode } from "@/lib/countries";
+import type { CourtyardWalletInventoryGroup } from "@/lib/courtyard-inventory-gates";
 import { isValidCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
@@ -52,6 +53,7 @@ import { useCommunityModerationState } from "@/app/authenticated-state/moderatio
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
+import { logger } from "@/lib/logger";
 
 function formatModerationCommunityLabel(community: { id: string; route_slug?: string | null; display_name: string }): string {
   return formatCommunityRouteLabel(community.id, community.route_slug ?? community.display_name);
@@ -395,6 +397,9 @@ export function CommunityModerationPage({
   const [rightsReviewCases, setRightsReviewCases] = React.useState<RightsReviewQueueItem[]>([]);
   const [rightsReviewCasesLoading, setRightsReviewCasesLoading] = React.useState(false);
   const [processingRightsReviewCaseId, setProcessingRightsReviewCaseId] = React.useState<string | null>(null);
+  const [courtyardInventoryGroups, setCourtyardInventoryGroups] =
+    React.useState<CourtyardWalletInventoryGroup[] | null | undefined>(undefined);
+  const [courtyardInventoryLoading, setCourtyardInventoryLoading] = React.useState(false);
   const pricingLocalCountryCodes = React.useMemo(
     () => getNationalityGateCountryCodes(state.gateDrafts),
     [state.gateDrafts],
@@ -418,6 +423,40 @@ export function CommunityModerationPage({
     accessRequiredTitle: copy.routeStatus.moderation.accessRequiredTitle,
   });
   const hasBlockedState = Boolean(blocked);
+
+  React.useEffect(() => {
+    if (section !== "gates" || !state.session) {
+      setCourtyardInventoryGroups(undefined);
+      setCourtyardInventoryLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setCourtyardInventoryGroups(null);
+    setCourtyardInventoryLoading(true);
+    void api.profiles.getCourtyardInventory()
+      .then((result) => {
+        if (cancelled) return;
+        setCourtyardInventoryGroups(result.groups);
+        if (result.unavailable) {
+          logger.warn("[community-moderation] Courtyard inventory unavailable");
+        }
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        logger.warn("[community-moderation] failed to load Courtyard inventory", error);
+        setCourtyardInventoryGroups([]);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCourtyardInventoryLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api.profiles, section, state.session]);
 
   let content = blocked;
   let mobileTrailingAction: React.ReactNode | undefined;
@@ -838,6 +877,8 @@ export function CommunityModerationPage({
           allowAnonymousIdentity={state.allowAnonymousIdentity}
           anonymousIdentityScope={state.anonymousIdentityScope}
           defaultAgeGatePolicy={state.defaultAgeGatePolicy}
+          courtyardInventoryGroups={courtyardInventoryGroups}
+          courtyardInventoryLoading={courtyardInventoryLoading}
           gateDrafts={state.gateDrafts}
           gateMatchMode={state.gateMatchMode}
           hasAdvancedGatePolicy={state.hasAdvancedGatePolicy}

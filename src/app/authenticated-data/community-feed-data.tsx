@@ -14,6 +14,8 @@ type CommunityFeedLoader = (input: {
   sort: FeedSort;
 }) => Promise<{ items: ApiPost[] }>;
 
+const EMPTY_POSTS: ApiPost[] = [];
+
 export function communityFeedPostsQueryKey(communityId: string, locale: string, sort: FeedSort) {
   return ["community-feed-posts", communityId, locale, sort] as const;
 }
@@ -57,7 +59,7 @@ export function useCommunityFeedPosts(input: {
     },
   });
 
-  const rawPosts = query.data ?? [];
+  const rawPosts = query.data ?? EMPTY_POSTS;
 
   const posts = React.useMemo(() => sortCommunityFeedPosts(rawPosts, sort), [rawPosts, sort]);
   const setPosts = React.useCallback((update: React.SetStateAction<ApiPost[]>) => {

@@ -26,7 +26,6 @@ import type {
   CreateCommunityComposerProps,
   IdentityGateDraft,
 } from "./create-community-composer.types";
-import { DEFAULT_GATED_GATE_DRAFTS } from "./create-community-composer.types";
 
 const DEFAULT_MEMBERSHIP_MODE: CommunityMembershipMode = "gated";
 
@@ -139,9 +138,7 @@ export function useCreateCommunityComposerController({
     React.useState<CommunityDatabaseRegion>(databaseRegion);
   const [activeDescription, setActiveDescription] = React.useState(description ?? "");
   const [activeGateDrafts, setActiveGateDrafts] = React.useState<IdentityGateDraft[]>(
-    initialMembershipMode === "gated" && gateDrafts.length === 0
-      ? DEFAULT_GATED_GATE_DRAFTS
-      : gateDrafts,
+    gateDrafts,
   );
   const [activeGateMatchMode, setActiveGateMatchMode] = React.useState<CommunityGateMatchMode>(gateMatchMode);
   const [submitting, setSubmitting] = React.useState(false);

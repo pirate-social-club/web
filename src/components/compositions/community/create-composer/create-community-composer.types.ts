@@ -87,8 +87,6 @@ export type IdentityGateDraft =
     gateRuleId?: string;
   };
 
-export const DEFAULT_GATED_GATE_DRAFTS: IdentityGateDraft[] = [{ gateType: "altcha_pow" }];
-
 export const DATABASE_REGION_OPTIONS: CommunityDatabaseRegion[] = [
   "aws-us-east-1",
   "aws-us-east-2",

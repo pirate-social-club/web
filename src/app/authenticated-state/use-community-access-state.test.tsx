@@ -104,7 +104,7 @@ describe("useCommunityAccessState", () => {
     expect(result.current.gateDrafts[0]?.gateType).toBe("nationality");
   });
 
-  test("defaults gated communities without gates to proof-of-work", async () => {
+  test("keeps gated communities without gates empty until explicitly configured", async () => {
     installCommunityApiMocks();
     const { result } = renderAccessHook({
       community: createCommunity({
@@ -114,7 +114,7 @@ describe("useCommunityAccessState", () => {
 
     await waitFor(() => expect(result.current.membershipMode).toBe("gated"));
 
-    expect(result.current.gateDrafts).toEqual([{ gateType: "altcha_pow" }]);
+    expect(result.current.gateDrafts).toEqual([]);
   });
 
   test("initializes any match mode from an OR gate policy", async () => {

@@ -165,7 +165,7 @@ describe("CreateCommunityComposer", () => {
     expect(warning === null).toBe(false);
   });
 
-  test("defaults gated membership to proof-of-work when no gate is provided", () => {
+  test("requires an explicit gate for gated membership", () => {
     const emptyGateTree = renderComposer({
       creatorVerificationState: {
         ageOver18Verified: true,
@@ -194,7 +194,7 @@ describe("CreateCommunityComposer", () => {
       emptyGateTree,
       (element) => element.props.children === "Next" && "disabled" in element.props,
     );
-    const defaultPowGate = findElement(
+    const defaultBrowserCheckGate = findElement(
       emptyGateTree,
       (element) => element.props.title === "Browser anti-bot check" && element.props.checked === true,
     );
@@ -203,8 +203,8 @@ describe("CreateCommunityComposer", () => {
       (element) => element.props.children === "Next" && "disabled" in element.props,
     );
 
-    expect(emptyNext?.props.disabled).toBe(false);
-    expect(defaultPowGate === null).toBe(false);
+    expect(emptyNext?.props.disabled).toBe(true);
+    expect(defaultBrowserCheckGate === null).toBe(true);
     expect(validNext?.props.disabled).toBe(false);
   });
 

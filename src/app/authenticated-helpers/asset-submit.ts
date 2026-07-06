@@ -2,6 +2,7 @@
 
 import type {
   AssetLicenseState,
+  AssetRoyaltySplitState,
   ComposerTab,
   DerivativeStepState,
   MonetizationState,
@@ -57,6 +58,87 @@ export function validateAssetLicense(license: AssetLicenseState | undefined, con
   }
 
   return null;
+}
+
+const EVM_ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
+
+function isDefaultCreatorSplit(royaltySplit: AssetRoyaltySplitState): boolean {
+  if (royaltySplit.allocations.length !== 1) return false;
+  const [allocation] = royaltySplit.allocations;
+  return allocation.recipientKind === "creator" && allocation.sharePct === 100;
+}
+
+function isRoyaltyBearingLicense(license: AssetLicenseState | undefined): boolean {
+  return license?.presetId === "commercial-use" || license?.presetId === "commercial-remix";
+}
+
+export function buildRoyaltyAllocationRequests(
+  royaltySplit: AssetRoyaltySplitState | undefined,
+  input: {
+    contentLabel: "song" | "video";
+    license: AssetLicenseState | undefined;
+  },
+): Array<{ recipient_kind: "creator" | "collaborator"; wallet_address: string; share_bps: number }> | undefined {
+  if (!royaltySplit || isDefaultCreatorSplit(royaltySplit)) {
+    return undefined;
+  }
+  if (!Array.isArray(royaltySplit.allocations) || royaltySplit.allocations.length === 0) {
+    throw new Error("Royalty split must include at least one recipient.");
+  }
+  if (royaltySplit.allocations.length > 10) {
+    throw new Error("Royalty split supports at most 10 recipients.");
+  }
+
+  let creatorCount = 0;
+  let totalShareBps = 0;
+  let hasCollaborator = false;
+  const seenWallets = new Set<string>();
+  const allocations = royaltySplit.allocations.map((allocation) => {
+    if (allocation.recipientKind === "creator") {
+      creatorCount += 1;
+    } else {
+      hasCollaborator = true;
+    }
+
+    const walletAddress = allocation.walletAddress?.trim() ?? "";
+    if (!EVM_ADDRESS_PATTERN.test(walletAddress)) {
+      throw new Error("Enter a valid wallet address for every royalty recipient.");
+    }
+    const normalizedWallet = walletAddress.toLowerCase();
+    if (seenWallets.has(normalizedWallet)) {
+      throw new Error("Each royalty recipient wallet must be unique.");
+    }
+    seenWallets.add(normalizedWallet);
+
+    const shareBps = Math.round(allocation.sharePct * 100);
+    if (
+      !Number.isFinite(allocation.sharePct)
+      || Math.abs(allocation.sharePct * 100 - shareBps) > 1e-6
+      || shareBps <= 0
+      || shareBps > 10000
+    ) {
+      throw new Error("Royalty shares must be greater than 0% and use at most two decimal places.");
+    }
+    totalShareBps += shareBps;
+
+    return {
+      recipient_kind: allocation.recipientKind,
+      wallet_address: walletAddress,
+      share_bps: shareBps,
+    };
+  });
+
+  if (creatorCount !== 1) {
+    throw new Error("Royalty split must include exactly one creator recipient.");
+  }
+  if (totalShareBps !== 10000) {
+    throw new Error("Royalty shares must total 100% before publishing.");
+  }
+  if (hasCollaborator && !isRoyaltyBearingLicense(input.license)) {
+    throw new Error(`Collaborator royalty splits require a commercial license for this ${input.contentLabel}.`);
+  }
+
+  return allocations;
 }
 
 export function buildAssetListingRequest(input: {

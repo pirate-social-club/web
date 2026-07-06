@@ -3,10 +3,12 @@
 import type {
   PostAudience,
   AssetLicenseState,
+  AssetRoyaltySplitState,
   SongMode,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import {
   type AssetDerivativeInput,
+  buildRoyaltyAllocationRequests,
   resolvedDerivativeReferences,
   validateAssetLicense,
 } from "@/app/authenticated-helpers/asset-submit";
@@ -18,6 +20,7 @@ export function buildSongPostRequest(input: {
   idempotencyKey: string;
   license: AssetLicenseState | undefined;
   paidSongPriceUsd: number | null;
+  royaltySplit?: AssetRoyaltySplitState;
   songMode: SongMode;
   title: string;
   visibility: PostAudience;
@@ -38,6 +41,10 @@ export function buildSongPostRequest(input: {
     license_preset: input.license?.presetId,
     post_type: "song" as const,
     rights_basis: input.songMode === "original" ? "original" as const : "derivative" as const,
+    royalty_allocations: buildRoyaltyAllocationRequests(input.royaltySplit, {
+      contentLabel: "song",
+      license: input.license,
+    }),
     song_artifact_bundle: input.bundleId,
     song_mode: input.songMode,
     title: input.title.trim(),

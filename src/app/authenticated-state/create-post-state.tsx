@@ -328,6 +328,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     lyrics,
     monetizationState,
     pendingSongBundleId,
+    royaltySplit,
     selectedQualifierIds,
     songMode,
     songState,
@@ -355,6 +356,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setLyrics,
     setMonetizationState,
     setPendingSongBundleId,
+    setRoyaltySplit,
     setSelectedQualifierIds,
     setSongMode,
     setSongState,
@@ -363,6 +365,16 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setVideoState,
   } = draftActions;
   const { community, communityOwnerUserId, eligibility, pricingPolicy, loadError, availableAgent, submitting, postAltchaPayload, postAltchaResetKey, submitFailure, submitProgress, loading } = pageState;
+  React.useEffect(() => {
+    const currentUserWalletAddress = session?.profile?.primary_wallet_address ?? undefined;
+    setRoyaltySplit((current) => {
+      if (current.allocations.length !== 1) return current;
+      const [creator] = current.allocations;
+      if (creator.recipientKind !== "creator") return current;
+      if ((creator.walletAddress ?? "") === (currentUserWalletAddress ?? "")) return current;
+      return { allocations: [{ ...creator, walletAddress: currentUserWalletAddress }] };
+    });
+  }, [session?.profile?.primary_wallet_address, setRoyaltySplit]);
 
   const refetchEligibility = React.useCallback(async () => {
     const nextEligibility = await api.communities.getJoinEligibility(communityId);
@@ -919,6 +931,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           pendingSongBundleId,
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
           reportProgress,
+          royaltySplit,
           setPendingSongBundleId,
           setSubmitError,
           songMode,
@@ -1055,6 +1068,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
           reportProgress,
           regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
+          royaltySplit,
           signAgentAuthoredBody,
           title,
           uploadArtifactContent: api.communities.uploadArtifactContent,
@@ -1187,7 +1201,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     }
   }, [
     api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, contentLocale, derivativeStep, eligibility?.status, event, hasCommunityPostingRole,
-    identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, paidLiveRoomMode, pendingSongBundleId, postAltchaPayload, postAltchaRequestOptions, postAltchaRequired, pricingPolicy?.regional_pricing_enabled,
+    identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, paidLiveRoomMode, pendingSongBundleId, postAltchaPayload, postAltchaRequestOptions, postAltchaRequired, pricingPolicy?.regional_pricing_enabled, royaltySplit,
     queryClient, selectedQualifierIds, session?.user.id, setPendingSongBundleId, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     videoState,
     warnIfStoryRegistrationIncomplete,
@@ -1225,6 +1239,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     loading,
     lyrics,
     monetizationState,
+    royaltySplit,
     regionalPricingPreview,
     postAltchaAction: `community:${communityId}`,
     postAltchaPayload,
@@ -1257,6 +1272,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setLicense,
     setLyrics,
     setMonetizationState,
+    setRoyaltySplit,
     setPostAltchaPayload: (payload: string | null) => setPageState((current) =>
       current.postAltchaPayload === payload
         ? current

@@ -20,6 +20,7 @@ import { CommunityPricingEditorPage } from "@/components/compositions/community/
 import { CommunityRulesEditorPage } from "@/components/compositions/community/rules-editor/community-rules-editor-page";
 import { CommunityAgentPolicyPage } from "@/components/compositions/community/agent-policy/community-agent-policy";
 import { CommunityAssistantPolicyPage } from "@/components/compositions/community/assistant-policy/community-assistant-policy";
+import { CommunityIntegrationsPage } from "@/components/compositions/community/integrations/community-integrations";
 import { CommunityKaraokePolicyPage } from "@/components/compositions/community/karaoke-policy/community-karaoke-policy";
 import { CommunityStudyPolicyPage } from "@/components/compositions/community/study-policy/community-study-policy";
 import { CommunityArchivePage } from "@/components/compositions/community/archive-page/community-archive-page";
@@ -962,7 +963,6 @@ export function CommunityModerationPage({
       if (!state.loadingAssistantPolicy && !state.assistantPolicyLoadError) {
         setMobileSaveAction({
           disabled: state.savingAssistantPolicy
-            || state.savingAssistantCredential
             || !state.assistantPolicyDirty,
           loading: state.assistantPolicySubmitState.kind === "saving",
           onSave: state.handleSaveAssistantPolicy,
@@ -982,19 +982,36 @@ export function CommunityModerationPage({
           : (
             <CommunityAssistantPolicyPage
               onAvatarFileSelect={state.setAssistantAvatarFile}
-              onElevenLabsKeyRevoke={state.handleRevokeAssistantElevenLabsKey}
-              onElevenLabsKeySave={state.handleSaveAssistantElevenLabsKey}
-              onOpenRouterKeyRevoke={state.handleRevokeAssistantOpenRouterKey}
-              onOpenRouterKeySave={state.handleSaveAssistantOpenRouterKey}
               onSave={state.handleSaveAssistantPolicy}
               onSettingsChange={state.setAssistantPolicySettings}
               saveDisabled={
                 state.savingAssistantPolicy
-                || state.savingAssistantCredential
                 || !state.assistantPolicyDirty
               }
               settings={state.assistantPolicySettings}
               submitState={state.assistantPolicySubmitState}
+            />
+          );
+    } else if (section === "integrations") {
+      content = state.loadingAssistantPolicy
+        ? (
+          <FullPageSpinner />
+        )
+        : state.assistantPolicyLoadError
+          ? (
+            <RouteLoadFailureState
+              description={state.assistantPolicyLoadError}
+              title="Integrations"
+            />
+          )
+          : (
+            <CommunityIntegrationsPage
+              onElevenLabsKeyRevoke={state.handleRevokeAssistantElevenLabsKey}
+              onElevenLabsKeySave={state.handleSaveAssistantElevenLabsKey}
+              onOpenRouterKeyRevoke={state.handleRevokeAssistantOpenRouterKey}
+              onOpenRouterKeySave={state.handleSaveAssistantOpenRouterKey}
+              savingCredential={state.savingAssistantCredential}
+              settings={state.assistantPolicySettings}
             />
           );
     } else if (section === "karaoke") {
@@ -1005,6 +1022,7 @@ export function CommunityModerationPage({
       });
       content = (
         <CommunityKaraokePolicyPage
+          elevenLabsKeyStatus={state.assistantPolicySettings.elevenLabsKeyStatus}
           onSave={state.handleSaveKaraokePolicy}
           onSettingsChange={state.setKaraokePolicySettings}
           saveDisabled={state.savingKaraokePolicy || state.loadingKaraokePolicy || !state.karaokePolicyDirty}
@@ -1020,6 +1038,7 @@ export function CommunityModerationPage({
       });
       content = (
         <CommunityStudyPolicyPage
+          elevenLabsKeyStatus={state.assistantPolicySettings.elevenLabsKeyStatus}
           onSave={state.handleSaveStudyPolicy}
           onSettingsChange={state.setStudyPolicySettings}
           saveDisabled={state.savingStudyPolicy || state.loadingStudyPolicy || !state.studyPolicyDirty}

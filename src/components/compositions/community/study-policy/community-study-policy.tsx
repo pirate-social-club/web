@@ -3,6 +3,7 @@
 import { GraduationCap } from "@phosphor-icons/react";
 
 import { CommunityModerationSaveFooter } from "@/components/compositions/community/moderation-shell/community-moderation-save-footer";
+import { ProviderKeyStatusLine } from "@/components/compositions/community/provider-keys/provider-key-field";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Switch } from "@/components/primitives/switch";
 import { Type } from "@/components/primitives/type";
@@ -24,6 +25,7 @@ function updateEnabled(
 
 export function CommunityStudyPolicyPage({
   className,
+  elevenLabsKeyStatus = { kind: "missing" },
   onSave,
   onSettingsChange,
   saveDisabled,
@@ -49,8 +51,9 @@ export function CommunityStudyPolicyPage({
             Songs without study-ready lyrics or generated exercises stay hidden automatically.
           </FormNote>
           <FormNote>
-            Say-it-back transcription requires an ElevenLabs key configured under Assistant.
+            Translation exercises work without ElevenLabs. Say-it-back uses the community ElevenLabs integration.
           </FormNote>
+          <ProviderKeyStatusLine align="start" keyStatus={elevenLabsKeyStatus} manageHref="../integrations" />
         </div>
         <Switch
           aria-label="Enable Study"
@@ -58,24 +61,6 @@ export function CommunityStudyPolicyPage({
           onCheckedChange={(studyEnabled) => onSettingsChange?.(updateEnabled(settings, studyEnabled))}
         />
       </div>
-
-      <section className="space-y-4 border-t border-border-soft pt-6 md:pt-8">
-        <Type as="h2" variant="h2">Song requirements</Type>
-        <div className="grid gap-3 md:grid-cols-3">
-          {[
-            "Song post",
-            "Prepared lyrics",
-            "Generated exercises",
-          ].map((label) => (
-            <div
-              className="rounded-md border border-border-soft bg-background px-4 py-3"
-              key={label}
-            >
-              <Type as="p" variant="body">{label}</Type>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {settings.updatedAt ? (
         <FormNote>Last updated {new Date(settings.updatedAt).toLocaleString()}.</FormNote>

@@ -47,16 +47,12 @@ afterEach(() => {
 
 type RenderOptions = {
   initialSettings?: CommunityAssistantPolicySettings;
-  onElevenLabsKeyRevoke?: () => void | Promise<void>;
-  onElevenLabsKeySave?: (apiKey: string) => void | Promise<void>;
   saveDisabled?: boolean;
   submitState?: CommunityAssistantSubmitState;
 };
 
 function renderPolicy({
   initialSettings = createDefaultCommunityAssistantPolicySettings(),
-  onElevenLabsKeyRevoke,
-  onElevenLabsKeySave,
   saveDisabled = false,
   submitState = { kind: "idle" },
 }: RenderOptions = {}) {
@@ -71,8 +67,6 @@ function renderPolicy({
 
     return (
       <CommunityAssistantPolicyPage
-        onElevenLabsKeyRevoke={onElevenLabsKeyRevoke}
-        onElevenLabsKeySave={onElevenLabsKeySave}
         onSave={onSave}
         onSettingsChange={(next) => {
           onSettingsChange(next);
@@ -129,21 +123,6 @@ function editTextInput(element: HTMLElement, value: string) {
 }
 
 describe("CommunityAssistantPolicyPage", () => {
-  test("renders an OpenRouter password input with the expected placeholder", () => {
-    const view = renderPolicy({
-      initialSettings: {
-        ...createDefaultCommunityAssistantPolicySettings(),
-        openRouterKeyStatus: { kind: "missing" },
-      },
-    });
-
-    const input = view.getByPlaceholderText("sk-or-...");
-
-    expect(input).toBeInstanceOf(HTMLInputElement);
-    expect((input as HTMLInputElement).type).toBe("password");
-    view.unmount();
-  });
-
   test("disables the model picker when the OpenRouter key is missing", () => {
     const view = renderPolicy({
       initialSettings: {
@@ -153,98 +132,31 @@ describe("CommunityAssistantPolicyPage", () => {
     });
 
     expect(isDisabled(modelSelect(view))).toBe(true);
-    expect(view.getByText("Save an OpenRouter key to choose a model.")).not.toBeNull();
+    expect(view.getByText("Connect OpenRouter in Integrations to choose a model.")).not.toBeNull();
+    expect(view.getAllByText("Manage in Integrations").length).toBe(2);
     view.unmount();
   });
 
-  test("saving a key masks the last four characters and enables model selection", async () => {
+  test("shows connected provider status without key editing fields", () => {
     const view = renderPolicy({
       initialSettings: {
         ...createDefaultCommunityAssistantPolicySettings(),
-        openRouterKeyStatus: { kind: "missing" },
-      },
-    });
-
-    editTextInput(view.getByPlaceholderText("sk-or-..."), "sk-or-123456789abc");
-    fireEvent.click(view.getByRole("button", { name: "Save OpenRouter key" }));
-
-    await waitFor(() => {
-      expect(view.getByText("Current key: sk-or-...9abc")).not.toBeNull();
-      expect(isDisabled(modelSelect(view))).toBe(false);
-    });
-    expect(view.getLatestSettings().openRouterKeyStatus).toMatchObject({
-      kind: "connected",
-      last4: "9abc",
-    });
-    view.unmount();
-  });
-
-  test("saving an ElevenLabs key masks the last four characters", async () => {
-    const view = renderPolicy({
-      initialSettings: {
-        ...createDefaultCommunityAssistantPolicySettings(),
-        elevenLabsKeyStatus: { kind: "missing" },
-      },
-    });
-
-    editTextInput(view.getByPlaceholderText("ElevenLabs API key"), "elevenlabs-secret-route-key-7xyz");
-    fireEvent.click(view.getByRole("button", { name: "Save ElevenLabs key" }));
-
-    await waitFor(() => {
-      expect(view.getByText("Current key: ...7xyz")).not.toBeNull();
-    });
-    expect(view.getLatestSettings().elevenLabsKeyStatus).toMatchObject({
-      kind: "connected",
-      last4: "7xyz",
-    });
-    view.unmount();
-  });
-
-  test("saving an ElevenLabs key calls the external credential handler", async () => {
-    const onElevenLabsKeySave = mock(() => Promise.resolve());
-    const view = renderPolicy({
-      initialSettings: {
-        ...createDefaultCommunityAssistantPolicySettings(),
-        elevenLabsKeyStatus: { kind: "missing" },
-      },
-      onElevenLabsKeySave,
-    });
-
-    editTextInput(view.getByPlaceholderText("ElevenLabs API key"), "elevenlabs-secret-route-key-7xyz");
-    fireEvent.click(view.getByRole("button", { name: "Save ElevenLabs key" }));
-
-    await waitFor(() => {
-      expect(onElevenLabsKeySave).toHaveBeenCalledWith("elevenlabs-secret-route-key-7xyz");
-    });
-    expect(view.queryByText("Current key: ...7xyz")).toBeNull();
-    expect(view.getLatestSettings().elevenLabsKeyStatus).toEqual({ kind: "missing" });
-    view.unmount();
-  });
-
-  test("revoking an ElevenLabs key calls the external credential handler", async () => {
-    const onElevenLabsKeyRevoke = mock(() => Promise.resolve());
-    const view = renderPolicy({
-      initialSettings: {
-        ...createDefaultCommunityAssistantPolicySettings(),
+        openRouterKeyStatus: {
+          connectedAt: "2026-05-22T00:00:00.000Z",
+          kind: "connected",
+          last4: "9f3a",
+        },
         elevenLabsKeyStatus: {
           connectedAt: "2026-05-22T00:00:00.000Z",
           kind: "connected",
           last4: "7xyz",
         },
       },
-      onElevenLabsKeyRevoke,
     });
 
-    fireEvent.click(view.getByRole("button", { name: "Revoke" }));
-
-    await waitFor(() => {
-      expect(onElevenLabsKeyRevoke).toHaveBeenCalled();
-    });
-    expect(view.getByText("Current key: ...7xyz")).not.toBeNull();
-    expect(view.getLatestSettings().elevenLabsKeyStatus).toMatchObject({
-      kind: "connected",
-      last4: "7xyz",
-    });
+    expect(view.getAllByText("Connected").length).toBeGreaterThanOrEqual(2);
+    expect(view.queryByPlaceholderText("sk-or-...")).toBeNull();
+    expect(view.queryByPlaceholderText("ElevenLabs API key")).toBeNull();
     view.unmount();
   });
 
@@ -293,28 +205,6 @@ describe("CommunityAssistantPolicyPage", () => {
     view.unmount();
   });
 
-  test("revoking a key clears key state and disables model selection", async () => {
-    const view = renderPolicy({
-      initialSettings: {
-        ...createDefaultCommunityAssistantPolicySettings(),
-        openRouterKeyStatus: {
-          connectedAt: "2026-05-22T00:00:00.000Z",
-          kind: "connected",
-          last4: "9f3a",
-        },
-      },
-    });
-
-    fireEvent.click(view.getByRole("button", { name: "Revoke" }));
-
-    await waitFor(() => {
-      expect(view.queryByText("Current key: sk-or-...9f3a")).toBeNull();
-      expect(isDisabled(modelSelect(view))).toBe(true);
-    });
-    expect(view.getLatestSettings().openRouterKeyStatus).toEqual({ kind: "missing" });
-    view.unmount();
-  });
-
   test("shows invalid OpenRouter key state", () => {
     const view = renderPolicy({
       initialSettings: {
@@ -327,10 +217,10 @@ describe("CommunityAssistantPolicyPage", () => {
       },
     });
 
-    const invalidText = view.getByText("Invalid key: sk-or-...9f3a");
+    const invalidText = view.getByText("Invalid key");
 
     expect(invalidText.className).toContain("text-destructive");
-    expect(view.getByText("OpenRouter rejected this key.")).not.toBeNull();
+    expect(view.queryByText("OpenRouter rejected this key.")).toBeNull();
     view.unmount();
   });
 

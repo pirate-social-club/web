@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, At, ChatCircleDots, CurrencyDollar, Database, Eye, Gavel, GraduationCap, Heart, ImageSquare, LinkSimple, Lock, MicrophoneStage, MusicNotes, Queue, Robot, SealCheck, Shield, Tag, TelegramLogo, UserPlus } from "@phosphor-icons/react";
+import { Archive, At, ChatCircleDots, CurrencyDollar, Database, Eye, Gavel, GraduationCap, Heart, ImageSquare, LinkSimple, Lock, MicrophoneStage, MusicNotes, Plugs, Queue, Robot, SealCheck, Shield, Tag, TelegramLogo, UserPlus } from "@phosphor-icons/react";
 import type { Community as ApiCommunity, GateExpression, GatePolicy } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 
@@ -67,6 +67,7 @@ export function buildCommunityModerationSections(
       { active: activeSection === "safety", icon: Shield, label: copy.nav.safety, onSelect: () => navigate(buildCommunityModerationPath(communityId, "safety", routeSlug)) },
       { active: activeSection === "visual-policy", icon: Eye, label: copy.nav.visualPolicy ?? "Visual policy", onSelect: () => navigate(buildCommunityModerationPath(communityId, "visual-policy", routeSlug)) },
       { active: activeSection === "agents", icon: Robot, label: copy.nav.agents, onSelect: () => navigate(buildCommunityModerationPath(communityId, "agents", routeSlug)) },
+      { active: activeSection === "integrations", icon: Plugs, label: "Integrations", onSelect: () => navigate(buildCommunityModerationPath(communityId, "integrations", routeSlug)) },
       { active: activeSection === "assistant", icon: ChatCircleDots, label: "Assistant", onSelect: () => navigate(buildCommunityModerationPath(communityId, "assistant", routeSlug)) },
       { active: activeSection === "karaoke", icon: MicrophoneStage, label: copy.nav.karaoke ?? "Karaoke", onSelect: () => navigate(buildCommunityModerationPath(communityId, "karaoke", routeSlug)) },
       { active: activeSection === "study", icon: GraduationCap, label: copy.nav.study ?? "Study", onSelect: () => navigate(buildCommunityModerationPath(communityId, "study", routeSlug)) },

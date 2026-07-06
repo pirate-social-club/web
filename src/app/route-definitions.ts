@@ -17,6 +17,7 @@ export const COMMUNITY_MODERATION_SECTIONS = [
   "safety",
   "visual-policy",
   "agents",
+  "integrations",
   "assistant",
   "karaoke",
   "study",

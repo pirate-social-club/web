@@ -450,6 +450,8 @@ export function PostCard({
                 ? "border-destructive/30 bg-destructive/10 text-destructive"
                 : "border-border/70 bg-muted/35 text-muted-foreground",
             )}
+            data-status-notice-tone={statusNotice.tone}
+            data-testid="post-status-notice"
           >
             <Type as="p" variant="label" className="text-current">
               {statusNotice.label}

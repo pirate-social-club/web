@@ -283,8 +283,10 @@ export function CommunityPage({
     selfPrompt,
     startSelfVerification,
     startVeryVerification,
+    startZkPassportVerification,
     setAltchaPayload,
     veryLoading,
+    zkPassportLoading,
   } = useCommunityJoinVerification({
     communityId,
     eligibility,
@@ -479,6 +481,7 @@ export function CommunityPage({
         joinLoading,
         veryLoading,
         selfLoading,
+        zkPassportLoading,
         onJoin: async () => {
           await handleJoin();
         },
@@ -497,6 +500,15 @@ export function CommunityPage({
             href: result.href,
           };
         },
+        onStartZkPassportVerification: async (gate) => {
+          const result = await startZkPassportVerification({
+            showToastOnError: true,
+            missingCapabilities: getMissingCapabilitiesFromGateEvaluation(gate.eligibility),
+            membershipGateSummaries:
+              gate.eligibility.membership_gate_summaries,
+          });
+          return { started: result.started };
+        },
         onRequestable: () => handleJoinRequestModalOpenChange(true),
         invalidateCommunityGate,
       }),
@@ -505,9 +517,11 @@ export function CommunityPage({
       joinLoading,
       veryLoading,
       selfLoading,
+      zkPassportLoading,
       handleJoin,
       startVeryVerification,
       startSelfVerification,
+      startZkPassportVerification,
       handleJoinRequestModalOpenChange,
       invalidateCommunityGate,
     ],

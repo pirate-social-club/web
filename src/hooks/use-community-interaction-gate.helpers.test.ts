@@ -8,6 +8,7 @@ import {
 } from "./community-interaction-gate/test-fixtures.test";
 import {
   createCommunityBlockedModalStateFactory,
+  createDefaultBlockedModalState,
   getRequirementGroups,
   getRequirementStatuses,
   selectPostVoteGateData,
@@ -208,6 +209,54 @@ describe("createCommunityBlockedModalStateFactory", () => {
 
     await modal?.primaryAction?.onClick?.();
     expect(startedSelfForCommunityId).toBe("community-1");
+  });
+
+  test("routes zkpassport verification to the zkpassport starter, not self", async () => {
+    const started: string[] = [];
+    const modal = createCommunityBlockedModalStateFactory({
+      interactionCopy,
+      selfLoading: false,
+      veryLoading: false,
+      zkPassportLoading: true,
+      onStartSelfVerification: async () => {
+        started.push("self");
+        return { started: true };
+      },
+      onStartZkPassportVerification: async (gateData) => {
+        started.push(`zkpassport:${gateData.preview.id}`);
+        return { started: true };
+      },
+    })(args(gate("verification_required", {
+      missing_capabilities: ["nationality"],
+      suggested_verification_provider: "zkpassport",
+    }, [{ gate_type: "nationality", accepted_providers: ["zkpassport"] }])));
+
+    expect(modal?.primaryAction?.loading).toBe(true);
+    await modal?.primaryAction?.onClick?.();
+    expect(started).toEqual(["zkpassport:community-1"]);
+  });
+});
+
+describe("createDefaultBlockedModalState", () => {
+  test("passes the real zkpassport provider to startDefaultVerification", async () => {
+    const startedProviders: string[] = [];
+    const gateData = gate("verification_required", {
+      missing_capabilities: ["nationality"],
+      suggested_verification_provider: "zkpassport",
+    }, [{ gate_type: "nationality", accepted_providers: ["zkpassport"] }]);
+
+    const modal = createDefaultBlockedModalState({
+      ...args(gateData),
+      defaultVerificationLoadingProvider: "zkpassport",
+      startDefaultVerification: async ({ provider }) => {
+        startedProviders.push(provider);
+        return { started: true };
+      },
+    });
+
+    expect(modal?.primaryAction?.loading).toBe(true);
+    await modal?.primaryAction?.onClick?.();
+    expect(startedProviders).toEqual(["zkpassport"]);
   });
 });
 

@@ -35,6 +35,12 @@ type SelfVerificationStartInput = {
   skipModal?: boolean;
 };
 
+type ZkPassportVerificationStartInput = {
+  requestedCapabilities: RequestedVerificationCapability[];
+  unavailableMessage: string;
+  verificationRequirements?: VerificationRequirement[] | null;
+};
+
 function renderDefaultVerificationActions({
   getJoinEligibility,
   joinCommunity,
@@ -42,6 +48,7 @@ function renderDefaultVerificationActions({
   refreshPassportWalletScore,
   startSelfVerificationFlow,
   startVeryVerification,
+  startZkPassportVerificationFlow,
 }: {
   getJoinEligibility?: (communityId: string) => Promise<JoinEligibility>;
   joinCommunity?: (communityId: string) => Promise<{ status: string }>;
@@ -54,10 +61,16 @@ function renderDefaultVerificationActions({
     started: boolean;
   }>;
   startVeryVerification?: () => Promise<{ started: boolean }>;
+  startZkPassportVerificationFlow?: (input: ZkPassportVerificationStartInput) => Promise<{
+    error?: string;
+    href?: string | null;
+    started: boolean;
+  }>;
 } = {}) {
   const calls: string[] = [];
   const errors: string[] = [];
   const selfCalls: SelfVerificationStartInput[] = [];
+  const zkPassportCalls: ZkPassportVerificationStartInput[] = [];
   let currentPendingInteraction = pendingInteraction;
   const getJoinEligibilityFn = getJoinEligibility ?? (async (communityId) => {
     calls.push(`eligibility:${communityId}`);
@@ -77,6 +90,10 @@ function renderDefaultVerificationActions({
   });
   const startVeryVerificationFn = startVeryVerification ?? (async () => {
     calls.push("very");
+    return { started: false };
+  });
+  const startZkPassportVerificationFlowFn = startZkPassportVerificationFlow ?? (async (input) => {
+    zkPassportCalls.push(input);
     return { started: false };
   });
 
@@ -111,6 +128,7 @@ function renderDefaultVerificationActions({
       },
       startSelfVerificationFlow: startSelfVerificationFlowFn,
       startVeryVerification: startVeryVerificationFn,
+      startZkPassportVerificationFlow: startZkPassportVerificationFlowFn,
       updateCachedGate: (communityId, nextGate) => {
         calls.push(`cache:${communityId}:${nextGate.eligibility.status}`);
       },
@@ -126,6 +144,7 @@ function renderDefaultVerificationActions({
       return currentPendingInteraction;
     },
     selfCalls,
+    zkPassportCalls,
   };
 }
 
@@ -289,5 +308,55 @@ describe("useDefaultVerificationActions", () => {
       skipModal: true,
     }]);
     expect(actions.calls).toEqual(["close", "href:self://verify"]);
+  });
+
+  test("starts ZKPassport verification instead of a passport score refresh", async () => {
+    const actions = renderDefaultVerificationActions({
+      startZkPassportVerificationFlow: async (input) => {
+        actions.zkPassportCalls.push(input);
+        return { href: "https://zkpassport.id/r", started: true };
+      },
+    });
+    const zkPassportGate = gate("verification_required", {
+      membership_gate_summaries: [{ gate_type: "nationality", accepted_providers: ["zkpassport"] }],
+      missing_capabilities: ["nationality"],
+    }, [{ gate_type: "nationality", accepted_providers: ["zkpassport"] }]);
+
+    await act(async () => {
+      const result = await actions.hook.result.current.startDefaultVerification({
+        gate: zkPassportGate,
+        provider: "zkpassport",
+      });
+      expect(result).toEqual({ started: true });
+    });
+
+    expect(actions.zkPassportCalls).toEqual([{
+      requestedCapabilities: ["nationality"],
+      unavailableMessage: "This community is missing the ZKPassport verification details needed to continue.",
+      verificationRequirements: [],
+    }]);
+    expect(actions.calls).toEqual(["close"]);
+    expect(actions.errors).toEqual([]);
+  });
+
+  test("reports missing ZKPassport verification details without starting a session", async () => {
+    const emptyGate = gate("verification_required", {
+      membership_gate_summaries: [],
+      missing_capabilities: [],
+    }, []);
+    const actions = renderDefaultVerificationActions();
+
+    await act(async () => {
+      const result = await actions.hook.result.current.startDefaultVerification({
+        gate: emptyGate,
+        provider: "zkpassport",
+      });
+      expect(result).toEqual({ started: false });
+    });
+
+    expect(actions.errors).toEqual([
+      "This community is missing the ZKPassport verification details needed to continue.",
+    ]);
+    expect(actions.zkPassportCalls).toEqual([]);
   });
 });

@@ -86,7 +86,7 @@ export function useZkPassportVerification(input: {
     requestedCapabilities: VerificationSession["requested_capabilities"];
     session: VerificationSession;
   }) => Promise<void> | void;
-  verificationIntent: VerificationIntent;
+  verificationIntent: VerificationIntent | (() => VerificationIntent);
 }) {
   const api = useApi();
   const { onVerified, verificationIntent } = input;
@@ -188,7 +188,9 @@ export function useZkPassportVerification(input: {
         provider: "zkpassport",
         provider_mode: "web_sdk",
         requested_capabilities: requestedCapabilities,
-        verification_intent: verificationIntent,
+        verification_intent: typeof verificationIntent === "function"
+          ? verificationIntent()
+          : verificationIntent,
         verification_requirements: verificationRequirements,
       });
       const request = await buildZkPassportRequest(session);

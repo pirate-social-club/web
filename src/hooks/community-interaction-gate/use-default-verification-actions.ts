@@ -45,12 +45,24 @@ type StartSelfVerificationFlow = (options: {
   started: boolean;
 }>;
 
+type StartZkPassportVerificationFlow = (options: {
+  requestedCapabilities: RequestedVerificationCapability[];
+  unavailableMessage: string;
+  verificationRequirements?: VerificationRequirement[] | null;
+}) => Promise<{
+  error?: string;
+  href?: string | null;
+  started: boolean;
+}>;
+
 type RefreshPassportWalletScore = (
   input: RefreshPassportWalletScoreRequest,
 ) => Promise<RefreshPassportWalletScoreResponse>;
 
 const SELF_VERIFICATION_UNAVAILABLE_MESSAGE =
   "This community is missing the Self verification details needed to continue.";
+const ZKPASSPORT_VERIFICATION_UNAVAILABLE_MESSAGE =
+  "This community is missing the ZKPassport verification details needed to continue.";
 
 export function useDefaultVerificationActions({
   clearPendingInteraction,
@@ -68,6 +80,7 @@ export function useDefaultVerificationActions({
   showError,
   startSelfVerificationFlow,
   startVeryVerification,
+  startZkPassportVerificationFlow,
   updateCachedGate,
 }: {
   clearPendingInteraction: () => void;
@@ -85,6 +98,7 @@ export function useDefaultVerificationActions({
   showError: (message: string) => void;
   startSelfVerificationFlow: StartSelfVerificationFlow;
   startVeryVerification: () => StartVerificationResult;
+  startZkPassportVerificationFlow: StartZkPassportVerificationFlow;
   updateCachedGate: (communityId: string, gate: CommunityGateData) => void;
 }) {
   const [passportLoading, setPassportLoading] = React.useState(false);
@@ -101,7 +115,7 @@ export function useDefaultVerificationActions({
     provider,
   }: {
     gate: CommunityGateData;
-    provider: "self" | "very";
+    provider: "self" | "very" | "zkpassport";
   }): StartVerificationResult => {
     if (provider === "very") {
       const result = await startVeryVerification();
@@ -109,6 +123,30 @@ export function useDefaultVerificationActions({
         closeModal();
       }
       return result;
+    }
+
+    if (provider === "zkpassport") {
+      const requestedCapabilities = getVerificationCapabilitiesForProvider(gate.eligibility, "zkpassport");
+      const verificationRequirements = getVerificationRequirementsForGates(
+        gate.eligibility.membership_gate_summaries,
+      );
+      if (requestedCapabilities.length === 0 && verificationRequirements.length === 0) {
+        showError(ZKPASSPORT_VERIFICATION_UNAVAILABLE_MESSAGE);
+        return { started: false };
+      }
+
+      const result = await startZkPassportVerificationFlow({
+        requestedCapabilities,
+        unavailableMessage: ZKPASSPORT_VERIFICATION_UNAVAILABLE_MESSAGE,
+        verificationRequirements,
+      });
+      if (!result.started && result.error) {
+        showError(result.error);
+      }
+      if (result.started) {
+        closeModal();
+      }
+      return { started: result.started };
     }
 
     const requestedCapabilities = getVerificationCapabilitiesForProvider(gate.eligibility, "self");
@@ -147,6 +185,7 @@ export function useDefaultVerificationActions({
     showError,
     startSelfVerificationFlow,
     startVeryVerification,
+    startZkPassportVerificationFlow,
   ]);
 
   const startDefaultVerification = React.useCallback(async ({

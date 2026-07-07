@@ -33,7 +33,7 @@ type JoinCompletionContext = {
 type JoinCompletionInput = {
   clearPendingInteraction: () => void;
   closeModal: () => void;
-  defaultVerificationLoadingProvider?: "self" | "very" | "passport" | null;
+  defaultVerificationLoadingProvider?: "self" | "very" | "passport" | "zkpassport" | null;
   fallbackAction?: InteractionAction;
   gate?: CommunityGateData;
   gatesPanel: InteractionGatePanelCopy;

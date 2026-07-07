@@ -282,6 +282,77 @@ describe("StudyRoutePage", () => {
     await waitFor(() => expect(view.getByText("Continue")).toBeTruthy());
   });
 
+  test("unlocks feedback audio on answer selection before the attempt response", async () => {
+    let resumeCalls = 0;
+    const originalAudioContext = window.AudioContext;
+    const originalFetch = globalThis.fetch;
+    class FakeAudioContext {
+      destination = {};
+      state = "suspended";
+      createBufferSource() {
+        return {
+          buffer: null,
+          connect: () => ({ connect: () => undefined }),
+          start: () => undefined,
+        };
+      }
+      createGain() {
+        return {
+          connect: () => undefined,
+          gain: { value: 1 },
+        };
+      }
+      decodeAudioData = async () => ({}) as AudioBuffer;
+      resume = async () => {
+        resumeCalls += 1;
+        this.state = "running";
+      };
+    }
+    Object.defineProperty(window, "AudioContext", {
+      configurable: true,
+      value: FakeAudioContext,
+    });
+    globalThis.fetch = (async () => ({
+      arrayBuffer: async () => new ArrayBuffer(1),
+      ok: true,
+    })) as typeof fetch;
+
+    try {
+      studyResult = readyStudyPayload({
+        exercise_count: 1,
+        exercises: [
+          {
+            id: "ex_choice",
+            line_id: "line_1",
+            line_index: 0,
+            max_attempts: 1,
+            options: [
+              { id: "option_wrong", text: "Good night" },
+              { id: "option_correct", text: "Hello world" },
+            ],
+            prompt_text: "Hola mundo",
+            question: "Choose the translation",
+            type: "translation_choice",
+          },
+        ],
+      });
+
+      const view = render(<StudyRoutePage postId="pst_song" />);
+
+      await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
+      fireEvent.click(view.getByText("Hello world").closest("button")!);
+
+      expect(resumeCalls).toBe(1);
+      await waitFor(() => expect(calls).toContain("communities.submitPostStudyAttempt:translation_choice:option_correct"));
+    } finally {
+      Object.defineProperty(window, "AudioContext", {
+        configurable: true,
+        value: originalAudioContext,
+      });
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("renders server-owned streak progress on completion", async () => {
     submitPostStudyAttemptResult = {
       attempts_remaining: 0,

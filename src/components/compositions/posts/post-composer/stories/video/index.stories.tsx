@@ -6,6 +6,7 @@ import type {
   ComposerStep,
   ComposerReference,
   DerivativeStepState,
+  SubmitProgress,
   VideoComposerState,
 } from "../../post-composer.types";
 import { baseComposer, composerDecorator, composerParameters, InteractivePostComposer } from "../story-helpers";
@@ -87,6 +88,23 @@ function videoUsesSongStep(overrides: Partial<DerivativeStepState> = {}): Deriva
     references: [],
     sourceTermsAccepted: false,
     ...overrides,
+  };
+}
+
+function progress(input: {
+  currentIndex: number;
+  detail?: string;
+  label: string;
+  phase: SubmitProgress["phase"];
+  totalSteps?: number;
+}): SubmitProgress {
+  return {
+    currentIndex: input.currentIndex,
+    detail: input.detail,
+    display: "pipeline",
+    label: input.label,
+    phase: input.phase,
+    totalSteps: input.totalSteps ?? 7,
   };
 }
 
@@ -338,6 +356,87 @@ export const PaidUnlock: Story = {
   ),
 };
 
+export const UploadFailed: Story = {
+  name: "Publish Step / Upload Failed",
+  render: () => (
+    <PostComposer
+      {...baseComposer}
+      composerStep="publish"
+      mode="video"
+      titleValue="Encore fan edit"
+      titleCountLabel="15/300"
+      captionValue="Posting the cut from the encore."
+      submit={{
+        disabled: false,
+        error: "Video upload failed. Check the file and try again.",
+        label: "Post",
+        loading: false,
+        onSubmit: () => undefined,
+      }}
+      video={{
+        primaryVideoLabel: "encore-fan-edit.mp4",
+      }}
+    />
+  ),
+};
+
+export const SubmittingMultipartUpload: Story = {
+  name: "Publish Step / Submitting / Multipart Upload",
+  render: () => (
+    <PostComposer
+      {...baseComposer}
+      composerStep="publish"
+      mode="video"
+      titleValue="Full warehouse set"
+      titleCountLabel="18/300"
+      captionValue="Large public video uploading through multipart direct upload."
+      submit={{
+        disabled: true,
+        label: "Posting...",
+        loading: true,
+        onSubmit: () => undefined,
+        progress: progress({
+          currentIndex: 2,
+          detail: "63%",
+          label: "Uploading video",
+          phase: "uploading_media",
+        }),
+      }}
+      video={{
+        primaryVideoLabel: "full-warehouse-set-1.4gb.mp4",
+      }}
+    />
+  ),
+};
+
+export const ProcessingAnalysisPending: Story = {
+  name: "Publish Step / Processing Analysis Pending",
+  render: () => (
+    <PostComposer
+      {...baseComposer}
+      composerStep="publish"
+      mode="video"
+      titleValue="Backstage cut"
+      titleCountLabel="13/300"
+      captionValue="Audio and poster checks are still processing."
+      submit={{
+        disabled: true,
+        label: "Posting...",
+        loading: true,
+        onSubmit: () => undefined,
+        progress: progress({
+          currentIndex: 5,
+          label: "Checking soundtrack",
+          phase: "processing_media",
+        }),
+      }}
+      video={{
+        primaryVideoLabel: "backstage-cut.mp4",
+      }}
+    />
+  ),
+};
+
 export const RoyaltySplitMultiRecipient: Story = {
   name: "Royalty Split / Multi-recipient",
   render: () => (
@@ -381,6 +480,24 @@ export const RoyaltySplitMultiRecipient: Story = {
       }}
       video={{
         primaryVideoLabel: "full-backstage-cut.mp4",
+      }}
+    />
+  ),
+};
+
+export const ExplicitContentSetting: Story = {
+  name: "Content Warning / 18+",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      ageGatePolicy="18_plus"
+      composerStep="settings"
+      mode="video"
+      titleValue="Late-night studio cut"
+      titleCountLabel="21/300"
+      captionValue="Author has marked this video as requiring age verification."
+      video={{
+        primaryVideoLabel: "late-night-studio-cut.mp4",
       }}
     />
   ),

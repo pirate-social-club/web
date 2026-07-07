@@ -41,6 +41,9 @@ function blockedMessage(access: ApiLiveRoomAccessResponse): string {
   if (access.access.decision_reason === "membership_required") {
     return "Community access is required for this live room.";
   }
+  if (access.access.decision_reason === "gate_unsatisfied") {
+    return "Access is required for this live room.";
+  }
   return "This live room is not available.";
 }
 

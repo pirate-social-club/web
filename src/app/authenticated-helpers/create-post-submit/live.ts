@@ -64,6 +64,43 @@ function liveSetlistSourceAssetRef(declaredTrackId: string | undefined): string 
   return value?.startsWith("story:asset:") ? value : undefined;
 }
 
+function publicAssetIdFromReferenceId(referenceId: string | undefined): string | null {
+  const value = referenceId?.trim();
+  if (!value) return null;
+  if (value.startsWith("story:asset:")) {
+    const assetRef = value.slice("story:asset:".length);
+    return assetRef.startsWith("asset_") ? assetRef : `asset_${assetRef}`;
+  }
+  if (value.startsWith("asset_")) return value;
+  return null;
+}
+
+function buildLiveRoomAudienceGate(liveState: LiveComposerState): ApiCreateLiveRoomRequest["audience_gate"] {
+  if (liveState.accessMode !== "gated") return undefined;
+  const targetRefs = Array.from(new Set((liveState.audienceGateTargetRefs ?? [])
+    .map((targetRef) => publicAssetIdFromReferenceId(targetRef) ?? targetRef.trim())
+    .filter((targetRef) => targetRef.startsWith("asset_"))));
+  if (liveState.audienceGateMode === "purchase_entitlement" && targetRefs.length > 0) {
+    return {
+      version: 1,
+      match: "any",
+      segments: [{
+        type: "purchase_entitlement",
+        entitlement_kind: "asset_access",
+        target_refs: targetRefs,
+      }],
+    };
+  }
+  if (liveState.audienceGateMode === "purchase_entitlement") {
+    throw new Error("Select at least one catalog song for buyer access.");
+  }
+  return {
+    version: 1,
+    match: "any",
+    segments: [{ type: "community_members" }],
+  };
+}
+
 function isPirateUserId(value: string): boolean {
   return value.startsWith("usr_");
 }
@@ -128,6 +165,7 @@ export function buildLiveRoomRequest(input: {
     : null;
   const storeUrl = input.liveState.storeUrl?.trim();
   const storeLabel = input.liveState.storeLabel?.trim();
+  const audienceGate = buildLiveRoomAudienceGate(input.liveState);
   return {
     title: input.title.trim(),
     description: input.description.trim() || undefined,
@@ -139,6 +177,7 @@ export function buildLiveRoomRequest(input: {
     cover_ref: input.coverRef ?? undefined,
     ...(storeUrl ? { store_url: storeUrl } : {}),
     ...(storeLabel ? { store_label: storeLabel } : {}),
+    ...(audienceGate ? { audience_gate: audienceGate } : {}),
     recording_enabled: input.liveState.recordingEnabled === true,
     performer_allocations: performerAllocationsFromLiveState({
       guestUserId,

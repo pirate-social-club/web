@@ -21,6 +21,7 @@ function createLiveRoom(overrides: Partial<ApiLiveRoom> = {}): ApiLiveRoom {
     status: "scheduled",
     access_mode: "free",
     visibility: "public",
+    audience_gate: null,
     title: "Live room",
     description: null,
     cover_ref: null,
@@ -186,6 +187,78 @@ describe("live create-post submit helpers", () => {
     });
 
     expect(request.recording_enabled).toBe(true);
+  });
+
+  test("buildLiveRoomRequest writes an explicit community-members gate for gated rooms by default", () => {
+    const request = buildLiveRoomRequest({
+      description: "",
+      hostUserId: "usr_host",
+      liveState: {
+        roomKind: "solo",
+        accessMode: "gated",
+        visibility: "public",
+        setlistStatus: "ready",
+        performerAllocations: [{ role: "host", userId: "", sharePct: 100 }],
+        setlistItems: [{ titleText: "Song", performanceKind: "original" }],
+      },
+      title: "Gated room",
+    });
+
+    expect(request.audience_gate).toEqual({
+      version: 1,
+      match: "any",
+      segments: [{ type: "community_members" }],
+    });
+  });
+
+  test("buildLiveRoomRequest writes selected asset buyer gates", () => {
+    const request = buildLiveRoomRequest({
+      description: "",
+      hostUserId: "usr_host",
+      liveState: {
+        roomKind: "solo",
+        accessMode: "gated",
+        audienceGateMode: "purchase_entitlement",
+        audienceGateTargetRefs: ["story:asset:ast_source", "asset_ast_catalog", "asset_ast_catalog"],
+        visibility: "public",
+        setlistStatus: "ready",
+        performerAllocations: [{ role: "host", userId: "", sharePct: 100 }],
+        setlistItems: [{
+          declaredTrackId: "story:asset:ast_source",
+          titleText: "Source Song",
+          performanceKind: "original",
+        }],
+      },
+      title: "Buyer room",
+    });
+
+    expect(request.audience_gate).toEqual({
+      version: 1,
+      match: "any",
+      segments: [{
+        type: "purchase_entitlement",
+        entitlement_kind: "asset_access",
+        target_refs: ["asset_ast_source", "asset_ast_catalog"],
+      }],
+    });
+  });
+
+  test("buildLiveRoomRequest rejects buyer gates with no valid selected assets", () => {
+    expect(() => buildLiveRoomRequest({
+      description: "",
+      hostUserId: "usr_host",
+      liveState: {
+        roomKind: "solo",
+        accessMode: "gated",
+        audienceGateMode: "purchase_entitlement",
+        audienceGateTargetRefs: ["trk_fallback", "sab_bundle"],
+        visibility: "public",
+        setlistStatus: "ready",
+        performerAllocations: [{ role: "host", userId: "", sharePct: 100 }],
+        setlistItems: [{ titleText: "Song", performanceKind: "original" }],
+      },
+      title: "Buyer room",
+    })).toThrow("Select at least one catalog song for buyer access.");
   });
 
   test("resolveLiveRoomGuestUserId preserves Pirate user ids", async () => {

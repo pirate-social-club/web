@@ -14,6 +14,8 @@ type LiveRoomUiState =
   | { kind: "can_watch"; cta: string; onClick?: () => void }
   | { kind: "can_watch_replay"; cta: string; onClick?: () => void }
   | { kind: "needs_access"; cta: string; onClick?: () => void }
+  | { kind: "needs_owned_song"; cta: string; onClick: () => void }
+  | { kind: "owned_song_unavailable" }
   | { kind: "needs_ticket"; cta: string; onClick?: () => void }
   | { kind: "has_ticket" }
   | { kind: "can_rsvp"; cta: string; onClick?: () => void }
@@ -143,6 +145,16 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
   }
 
   if (content.accessState === "gate_required") {
+    if (content.onGatePurchase) {
+      return {
+        kind: "needs_owned_song",
+        cta: content.gatePurchaseLabel ? `Buy song to watch · ${content.gatePurchaseLabel}` : "Buy song to watch",
+        onClick: content.onGatePurchase,
+      };
+    }
+    if (content.gateOwnershipRequired) {
+      return { kind: "owned_song_unavailable" };
+    }
     return {
       kind: "needs_access",
       cta: "Verify access",
@@ -199,7 +211,8 @@ function hasPostPageMeta(content: LiveRoomContentSpec, ui: LiveRoomUiState, time
     || ui.kind === "rsvped"
     || ui.kind === "replay_processing"
     || ui.kind === "replay_review_pending"
-    || ui.kind === "replay_failed",
+    || ui.kind === "replay_failed"
+    || ui.kind === "owned_song_unavailable",
   );
 }
 
@@ -459,6 +472,11 @@ export function LiveRoomPostContent({
                 Replay unavailable
               </Type>
             ) : null}
+            {ui.kind === "owned_song_unavailable" ? (
+              <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-muted-foreground">
+                For song owners · Not currently for sale
+              </Type>
+            ) : null}
           </div>
         ) : null}
 
@@ -581,6 +599,10 @@ export function LiveRoomPostContent({
         >
           {!ui.onClick && content.concertHref ? <a href={content.concertHref}>{ui.cta}</a> : ui.cta}
         </Button>
+      ) : ui.kind === "owned_song_unavailable" ? (
+        <p className={cn("text-muted-foreground", postCardType.meta)}>
+          For song owners · Not currently for sale
+        </p>
       ) : null}
 
       {content.agentPurchaseUrl ? (

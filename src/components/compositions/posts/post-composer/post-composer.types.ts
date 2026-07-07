@@ -46,6 +46,8 @@ export type LiveRoomKind = "solo" | "duet";
 
 export type LiveAccessMode = "free" | "gated" | "paid";
 
+export type LiveAudienceGateMode = "community_members" | "purchase_entitlement";
+
 export type LiveVisibility = "public" | "unlisted";
 
 export type PostAudience = "public" | "members_only";
@@ -98,6 +100,8 @@ export interface LiveSetlistItemInput {
 export interface LiveComposerState {
   roomKind: LiveRoomKind;
   accessMode: LiveAccessMode;
+  audienceGateMode?: LiveAudienceGateMode;
+  audienceGateTargetRefs?: string[];
   visibility: LiveVisibility;
   scheduleForLater?: boolean;
   scheduleAt?: string;

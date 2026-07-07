@@ -194,6 +194,7 @@ describe("StudyRoutePage", () => {
     const view = render(<StudyRoutePage postId="pst_song" />);
 
     await waitFor(() => expect(view.getByText("Sign in to study")).toBeTruthy());
+    expect(view.queryByText("Study requires a Pirate account.")).toBeNull();
     expect(view.queryByText("Public Study Song")).toBeNull();
     expect(calls).toEqual([]);
   });

@@ -4,6 +4,7 @@ import * as React from "react";
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import {
   AdvancedGatePolicyBanner,
+  GATE_REQUIREMENT_SECTION_TITLES,
   canAuthorCourtyardInventoryGate,
   courtyardInventoryDraftMatchesGroup,
   documentProofProviderChoiceFromProviders,
@@ -42,6 +43,15 @@ function treeIncludesText(node: React.ReactNode, text: string): boolean {
 }
 
 describe("CommunityGatesEditorPage gate draft helpers", () => {
+  test("names the normal gate editor requirement groups explicitly", () => {
+    expect(GATE_REQUIREMENT_SECTION_TITLES).toEqual({
+      documentAttributes: "Document attributes",
+      humanity: "Humanity",
+      reputation: "Reputation",
+      tokenHoldings: "Token holdings",
+    });
+  });
+
   test("keeps proof-of-work and palm scan together in any mode", () => {
     const powGate: IdentityGateDraft = { gateType: "altcha_pow" };
     const palmScanGate: IdentityGateDraft = { gateType: "unique_human", provider: "very" };

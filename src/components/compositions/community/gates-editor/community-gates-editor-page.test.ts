@@ -4,10 +4,13 @@ import * as React from "react";
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import {
   AdvancedGatePolicyBanner,
+  GATE_REQUIREMENT_SECTION_ORDER,
+  GATE_REQUIREMENT_SECTION_TITLES,
   canAuthorCourtyardInventoryGate,
   courtyardInventoryDraftMatchesGroup,
   documentProofProviderChoiceFromProviders,
   documentProofProvidersFromChoice,
+  getGateEditorGroupedAuthoringState,
   normalizeDocumentProofProviders,
   normalizeGateDraftsForMatchMode,
   upsertGateDraftForMatchMode,
@@ -41,6 +44,21 @@ function treeIncludesText(node: React.ReactNode, text: string): boolean {
 }
 
 describe("CommunityGatesEditorPage gate draft helpers", () => {
+  test("names the normal gate editor requirement groups explicitly", () => {
+    expect(GATE_REQUIREMENT_SECTION_ORDER).toEqual([
+      "humanity",
+      "documentAttributes",
+      "tokenHoldings",
+      "reputation",
+    ]);
+    expect(GATE_REQUIREMENT_SECTION_TITLES).toEqual({
+      documentAttributes: "Document attributes",
+      humanity: "Humanity",
+      reputation: "Reputation",
+      tokenHoldings: "Token holdings",
+    });
+  });
+
   test("keeps proof-of-work and palm scan together in any mode", () => {
     const powGate: IdentityGateDraft = { gateType: "altcha_pow" };
     const palmScanGate: IdentityGateDraft = { gateType: "unique_human", provider: "very" };
@@ -113,6 +131,54 @@ describe("CommunityGatesEditorPage gate draft helpers", () => {
     expect(documentProofProviderChoiceFromProviders(["self"])).toBe("self");
     expect(documentProofProviderChoiceFromProviders(["zkpassport"])).toBe("zkpassport");
     expect(documentProofProviderChoiceFromProviders(["zkpassport", "self"])).toBe("both");
+  });
+
+  test("derives normal grouped authoring copy without promoting browser anti-bot as a peer gate", () => {
+    const state = getGateEditorGroupedAuthoringState([
+      { gateType: "unique_human", provider: "very" },
+      { gateType: "nationality", provider: "self", requiredValues: ["US"] },
+    ], "any");
+
+    expect(state.projection.normalAuthoringSupported).toBe(false);
+    expect(state.projection.advancedReasons).toEqual(["cross_group_or"]);
+    expect(state.showMatchModeControl).toBe(true);
+    expect(state.allowAnyDescription).toBe(
+      "Members can pass any one selected advanced access path. Review the saved policy before replacing it.",
+    );
+    expect(state.allowAnyDescription).not.toContain("browser anti-bot");
+  });
+
+  test("hides the global match-mode control for normal grouped all-mode authoring", () => {
+    const state = getGateEditorGroupedAuthoringState([
+      { gateType: "unique_human", provider: "very" },
+      { gateType: "nationality", provider: "self", requiredValues: ["US"] },
+    ], "all");
+
+    expect(state.projection.normalAuthoringSupported).toBe(true);
+    expect(state.showMatchModeControl).toBe(false);
+    expect(state.showStandaloneAntiBotControl).toBe(false);
+    expect(state.allowAnyDescription).toBe("Members can pass any one selected access path.");
+  });
+
+  test("keeps simple standalone anti-bot copy generic without showing top-level OR controls", () => {
+    const state = getGateEditorGroupedAuthoringState([
+      { gateType: "altcha_pow" },
+    ], "all");
+
+    expect(state.projection.normalAuthoringSupported).toBe(true);
+    expect(state.showMatchModeControl).toBe(false);
+    expect(state.showStandaloneAntiBotControl).toBe(true);
+    expect(state.allowAnyDescription).toBe("Members can pass any one selected access path.");
+  });
+
+  test("does not expose the local anti-bot fallback as a standalone peer control", () => {
+    const state = getGateEditorGroupedAuthoringState([
+      { gateType: "unique_human", provider: "very" },
+      { gateType: "altcha_pow", fallbackFor: "unique_human" },
+    ], "all");
+
+    expect(state.projection.normalAuthoringSupported).toBe(true);
+    expect(state.showStandaloneAntiBotControl).toBe(false);
   });
 
   test("renders advanced policy replacement consent when replacement is required", () => {

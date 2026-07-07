@@ -37,6 +37,10 @@ import { getLocaleMessages } from "@/locales";
 import { NumericStepper } from "@/components/compositions/community/create-composer/create-community-composer.sections";
 import { Type } from "@/components/primitives/type";
 import { ActionBanner } from "@/components/primitives/action-banner";
+import {
+  buildGateRequirementGroupsProjection,
+  type GateRequirementGroupsProjection,
+} from "./gate-requirement-groups";
 
 
 
@@ -164,6 +168,20 @@ const DOCUMENT_PROOF_PROVIDER_CHOICES: Array<{ value: DocumentProofProviderChoic
   { value: "both", label: "Self.xyz or ZKPassport" },
 ];
 
+export const GATE_REQUIREMENT_SECTION_TITLES = {
+  documentAttributes: "Document attributes",
+  humanity: "Humanity",
+  reputation: "Reputation",
+  tokenHoldings: "Token holdings",
+} as const;
+
+export const GATE_REQUIREMENT_SECTION_ORDER = [
+  "humanity",
+  "documentAttributes",
+  "tokenHoldings",
+  "reputation",
+] as const;
+
 function getInitialDocumentProofProviders(): DocumentProofProvider[] {
   return [...DEFAULT_DOCUMENT_PROOF_PROVIDERS];
 }
@@ -274,6 +292,28 @@ function shouldResetMatchModeAfterRemovingPowFallback(
   return removeGateDraft(drafts, "altcha_pow").length <= 1;
 }
 
+export type GateEditorGroupedAuthoringState = {
+  allowAnyDescription: string;
+  projection: GateRequirementGroupsProjection;
+  showMatchModeControl: boolean;
+  showStandaloneAntiBotControl: boolean;
+};
+
+export function getGateEditorGroupedAuthoringState(
+  gateDrafts: readonly IdentityGateDraft[],
+  gateMatchMode: "all" | "any",
+): GateEditorGroupedAuthoringState {
+  const projection = buildGateRequirementGroupsProjection(gateDrafts, gateMatchMode);
+  return {
+    allowAnyDescription: projection.normalAuthoringSupported
+      ? "Members can pass any one selected access path."
+      : "Members can pass any one selected advanced access path. Review the saved policy before replacing it.",
+    projection,
+    showMatchModeControl: gateMatchMode === "any",
+    showStandaloneAntiBotControl: projection.groups.some((group) => group.kind === "standalone_antibot"),
+  };
+}
+
 export interface CommunityGatesEditorPageProps {
   advancedGatePolicyReplacementRequired?: boolean;
   allowAnonymousIdentity: boolean;
@@ -382,9 +422,13 @@ export function CommunityGatesEditorPage({
     && Number.isInteger(minimumAgeGate.minimumAge)
     && minimumAgeGate.minimumAge >= 18
     && minimumAgeGate.minimumAge <= 125;
+  const groupedAuthoringState = React.useMemo(
+    () => getGateEditorGroupedAuthoringState(gateDrafts, gateMatchMode),
+    [gateDrafts, gateMatchMode],
+  );
   const showGateMatchModeControl =
     effectiveMembershipMode === "gated"
-    && (gateDrafts.length > 1 || onGateMatchModeChange != null || gateMatchMode === "any");
+    && groupedAuthoringState.showMatchModeControl;
   const uniqueHumanGateTitle = uniqueHumanGate?.provider === "self"
     ? "Private ID proof (Self.xyz)"
     : mc.uniqueHumanTitle;
@@ -457,7 +501,7 @@ export function CommunityGatesEditorPage({
                         />
                         <OptionCard
                           className={gateMatchMode === "any" ? "border-border bg-muted/30" : undefined}
-                          description="Members can pass any one selected gate, including the browser anti-bot check if it is selected."
+                          description={groupedAuthoringState.allowAnyDescription}
                           selected={gateMatchMode === "any"}
                           title="Allow any one"
                           onClick={() => onGateMatchModeChange?.("any")}
@@ -466,25 +510,27 @@ export function CommunityGatesEditorPage({
                     </div>
                   ) : null}
 
-                  <FormSectionHeading title={mc.biometricGateChecksTitle} />
+                  <FormSectionHeading title={GATE_REQUIREMENT_SECTION_TITLES.humanity} />
 
-                  <CheckboxCard
-                    className={altchaPowGate ? "border-border bg-muted/30" : undefined}
-                    checked={Boolean(altchaPowGate)}
-                    title={mc.altchaPowTitle}
-                    onCheckedChange={(checked) => {
-                      if (!checked && shouldResetMatchModeAfterRemovingPowFallback(gateDrafts, gateMatchMode)) {
-                        onGateMatchModeChange?.("all");
-                      }
-                      onGateDraftsChange?.(
-                        checked
-                          ? upsertGateDraftForMatchMode(gateDrafts, {
-                            gateType: "altcha_pow",
-                          }, gateMatchMode)
-                          : removeGateDraft(gateDrafts, "altcha_pow"),
-                      );
-                    }}
-                  />
+                  {groupedAuthoringState.showStandaloneAntiBotControl ? (
+                    <CheckboxCard
+                      className={altchaPowGate ? "border-border bg-muted/30" : undefined}
+                      checked={Boolean(altchaPowGate)}
+                      title={mc.altchaPowTitle}
+                      onCheckedChange={(checked) => {
+                        if (!checked && shouldResetMatchModeAfterRemovingPowFallback(gateDrafts, gateMatchMode)) {
+                          onGateMatchModeChange?.("all");
+                        }
+                        onGateDraftsChange?.(
+                          checked
+                            ? upsertGateDraftForMatchMode(gateDrafts, {
+                              gateType: "altcha_pow",
+                            }, gateMatchMode)
+                            : removeGateDraft(gateDrafts, "altcha_pow"),
+                        );
+                      }}
+                    />
+                  ) : null}
 
                   <CheckboxCard
                     className={uniqueHumanGate ? "border-border bg-muted/30" : undefined}
@@ -513,6 +559,8 @@ export function CommunityGatesEditorPage({
                       />
                     </div>
                   ) : null}
+
+                  <FormSectionHeading title={GATE_REQUIREMENT_SECTION_TITLES.documentAttributes} />
 
                   <CheckboxCard
                     className={nationalityGate ? "border-border bg-muted/30" : undefined}
@@ -648,42 +696,7 @@ export function CommunityGatesEditorPage({
                     </div>
                   ) : null}
 
-                  <FormSectionHeading title={mc.walletGateChecksTitle} />
-
-                  <CheckboxCard
-                    className={walletScoreGate ? "border-border bg-muted/30" : undefined}
-                    checked={Boolean(walletScoreGate)}
-                    title={mc.walletScoreTitle}
-                    onCheckedChange={(checked) => onGateDraftsChange?.(
-                      checked
-                        ? upsertGateDraftForMatchMode(gateDrafts, {
-                          gateType: "wallet_score",
-                          provider: "passport",
-                          minimumScore: 20,
-                        }, gateMatchMode)
-                        : removeGateDraft(gateDrafts, "wallet_score"),
-                    )}
-                  />
-
-                  {walletScoreGate ? (
-                    <div className="space-y-2 ps-4">
-                      <FormFieldLabel label={mc.walletScoreLabel} />
-                      <NumericStepper
-                        max={100}
-                        min={0}
-                        value={walletScoreGate.minimumScore}
-                        onChange={(next) => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
-                          gateType: "wallet_score",
-                          provider: "passport",
-                          minimumScore: next,
-                          gateRuleId: walletScoreGate.gateRuleId,
-                        }, gateMatchMode))}
-                      />
-                      {(!Number.isFinite(walletScoreGate.minimumScore) || walletScoreGate.minimumScore < 0 || walletScoreGate.minimumScore > 100) ? (
-                        <FormNote tone="warning">{mc.walletScoreInvalid}</FormNote>
-                      ) : null}
-                    </div>
-                  ) : null}
+                  <FormSectionHeading title={GATE_REQUIREMENT_SECTION_TITLES.tokenHoldings} />
 
                   <CheckboxCard
                     className={erc721Gate ? "border-border bg-muted/30" : undefined}
@@ -768,6 +781,43 @@ export function CommunityGatesEditorPage({
                     </div>
                   ) : courtyardInventoryGate ? (
                     <FormNote tone="warning">{mc.courtyardCatalogUnavailable}</FormNote>
+                  ) : null}
+
+                  <FormSectionHeading title={GATE_REQUIREMENT_SECTION_TITLES.reputation} />
+
+                  <CheckboxCard
+                    className={walletScoreGate ? "border-border bg-muted/30" : undefined}
+                    checked={Boolean(walletScoreGate)}
+                    title={mc.walletScoreTitle}
+                    onCheckedChange={(checked) => onGateDraftsChange?.(
+                      checked
+                        ? upsertGateDraftForMatchMode(gateDrafts, {
+                          gateType: "wallet_score",
+                          provider: "passport",
+                          minimumScore: 20,
+                        }, gateMatchMode)
+                        : removeGateDraft(gateDrafts, "wallet_score"),
+                    )}
+                  />
+
+                  {walletScoreGate ? (
+                    <div className="space-y-2 ps-4">
+                      <FormFieldLabel label={mc.walletScoreLabel} />
+                      <NumericStepper
+                        max={100}
+                        min={0}
+                        value={walletScoreGate.minimumScore}
+                        onChange={(next) => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
+                          gateType: "wallet_score",
+                          provider: "passport",
+                          minimumScore: next,
+                          gateRuleId: walletScoreGate.gateRuleId,
+                        }, gateMatchMode))}
+                      />
+                      {(!Number.isFinite(walletScoreGate.minimumScore) || walletScoreGate.minimumScore < 0 || walletScoreGate.minimumScore > 100) ? (
+                        <FormNote tone="warning">{mc.walletScoreInvalid}</FormNote>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
               ) : null}

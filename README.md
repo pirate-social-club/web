@@ -30,6 +30,15 @@ The Playwright suite lives in [`e2e/`](./e2e). The default project is determinis
 
 `bun run test:e2e:live-staging` is the Tier 3 staging integration check. It exchanges a real staging JWT session, opens the deployed browser app, creates a real post, and adds a real comment in the seeded staging smoke community. CI reads its JWT values from GitHub Actions secrets; `AUTH_UPSTREAM_JWT_SHARED_SECRET` should be copied from Infisical staging `/services/api` whenever that secret is rotated.
 
+`bun run test:zkpassport:staging` is the ZKPassport staging smoke harness. Run it with staging `/services/api` secrets injected, for example:
+
+```bash
+rtk env infisical run --project-config-dir ../core --env staging --path /services/api -- \
+  bun run test:zkpassport:staging
+```
+
+Set `ZKPASSPORT_SMOKE_START_ONLY=1` to prove staging auth exchange, ZKPassport session creation, launch payload construction, and SDK request URL generation without waiting for a proof. Full completion still requires the printed URL to be opened by the ZKPassport app or a ZKR/dev proof source. Opening that URL in a normal desktop browser only shows the ZKPassport download page and does not emit SDK proof/result callbacks.
+
 Do not start `rtk bun run dev`, `rtk bun run storybook`, or worker dev servers from an agent session unless the user explicitly asks for that exact server. If visual verification is needed, use an already-running server.
 
 ## Source Layout

@@ -86,24 +86,29 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
       setState({ phase: "loading" });
 
       try {
-        const post = await loadPost();
+        const postPromise = loadPost();
+        const karaokePromise = api.publicPosts.getKaraoke(postId, { locale: contentLocale })
+          .then(
+            (payload) => ({ ok: true as const, payload }),
+            (error: unknown) => ({ error, ok: false as const }),
+          );
+        const post = await postPromise;
         if (canceled) return;
 
         const communityId = post.post.community;
         let payload: NormalizedKaraokePayload | null = null;
         let payloadProblem: string | null = null;
 
-        if (communityId) {
-          try {
-            const apiPayload = await api.communities.getPostKaraoke(communityId, postId, { locale: contentLocale });
-            payload = normalizeApiKaraokePayload(apiPayload, post);
-            if (!payload) {
-              payloadProblem = "Karaoke data was returned but did not include usable timed lyrics and instrumental audio.";
-            }
-          } catch (error) {
-            if (!isApiNotFoundError(error) && !isApiAuthError(error)) {
-              throw error;
-            }
+        const karaokeResult = await karaokePromise;
+        if (karaokeResult.ok) {
+          payload = normalizeApiKaraokePayload(karaokeResult.payload, post);
+          if (!payload) {
+            payloadProblem = "Karaoke data was returned but did not include usable timed lyrics and instrumental audio.";
+          }
+        } else {
+          const error = karaokeResult.error;
+          if (!isApiNotFoundError(error) && !isApiAuthError(error)) {
+            throw error;
           }
         }
 

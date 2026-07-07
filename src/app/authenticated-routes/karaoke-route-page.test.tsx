@@ -109,11 +109,7 @@ const fakeApi = {
   communities: {
     getPostKaraoke: async () => {
       calls.push("communities.getPostKaraoke");
-      if (karaokeDeferred) {
-        return await karaokeDeferred.promise;
-      }
-      if (karaokeError) throw karaokeError;
-      return karaokeResult;
+      throw new Error("community-scoped karaoke payload should not load on the post karaoke route");
     },
   },
   posts: {
@@ -128,6 +124,14 @@ const fakeApi = {
       calls.push("publicPosts.get");
       if (publicPostError) throw publicPostError;
       return publicPostResult;
+    },
+    getKaraoke: async () => {
+      calls.push("publicPosts.getKaraoke");
+      if (karaokeDeferred) {
+        return await karaokeDeferred.promise;
+      }
+      if (karaokeError) throw karaokeError;
+      return karaokeResult;
     },
   },
 };
@@ -201,7 +205,7 @@ describe("KaraokeRoutePage", () => {
     await waitFor(() => {
       expect((view.container.querySelector("audio") as HTMLAudioElement | null)?.src).toBe("https://cdn.example.test/api-instrumental.mp3");
     });
-    expect(calls).toEqual(["posts.get", "communities.getPostKaraoke"]);
+    expect(calls).toEqual(["posts.get", "publicPosts.getKaraoke"]);
   });
 
   test("uses the dedicated karaoke payload for ref-only post metadata", async () => {
@@ -236,7 +240,7 @@ describe("KaraokeRoutePage", () => {
     await waitFor(() => {
       expect((view.container.querySelector("audio") as HTMLAudioElement | null)?.src).toBe("https://cdn.example.test/ref-api-instrumental.mp3");
     });
-    expect(calls).toEqual(["posts.get", "communities.getPostKaraoke"]);
+    expect(calls).toEqual(["posts.get", "publicPosts.getKaraoke"]);
   });
 
   test("falls back to post metadata when the dedicated payload is missing", async () => {
@@ -310,7 +314,8 @@ describe("KaraokeRoutePage", () => {
     await waitFor(() => expect(view.container.querySelector('[aria-label="Public Karaoke"]')).toBeTruthy());
     expect(view.container.querySelector('[aria-label="Public Karaoke"]')).toBeTruthy();
     expect(calls[0]).toBe("posts.get");
-    expect(calls[1]).toBe("publicPosts.get");
+    expect(calls).toContain("publicPosts.get");
+    expect(calls).toContain("publicPosts.getKaraoke");
   });
 
   test("does not finish rendering after unmounting during payload load", async () => {
@@ -318,7 +323,7 @@ describe("KaraokeRoutePage", () => {
 
     const view = render(<KaraokeRoutePage postId="pst_song" />);
 
-    await waitFor(() => expect(calls).toEqual(["posts.get", "communities.getPostKaraoke"]));
+    await waitFor(() => expect(calls).toEqual(["posts.get", "publicPosts.getKaraoke"]));
     view.unmount();
     karaokeDeferred.resolve({
       instrumental_audio_url: "https://cdn.example.test/late.mp3",

@@ -130,16 +130,22 @@ function installApiSpies(log: ApiCallLog, authGetBehavior: (postId: string) => P
     log.publicGet.push(id);
     return buildPost();
   };
-  (api.communities as unknown as {
-    getPostKaraoke: (communityId: string, postId: string, opts?: unknown) => Promise<SongKaraokePayload>;
-  }).getPostKaraoke = async (_communityId, postId) => {
+  (api.publicPosts as unknown as {
+    getKaraoke: (postId: string, opts?: unknown) => Promise<SongKaraokePayload>;
+  }).getKaraoke = async (postId) => {
     log.karaoke.push(postId);
     return buildKaraoke();
+  };
+  (api.communities as unknown as {
+    getPostKaraoke: (communityId: string, postId: string, opts?: unknown) => Promise<SongKaraokePayload>;
+  }).getPostKaraoke = async () => {
+    throw new Error("community-scoped karaoke payload should not load on the post karaoke route");
   };
 }
 
 const originalPostsGet = api.posts.get;
 const originalPublicPostsGet = api.publicPosts.get;
+const originalPublicPostsGetKaraoke = api.publicPosts.getKaraoke;
 const originalGetPostKaraoke = api.communities.getPostKaraoke;
 
 beforeEach(() => {
@@ -174,6 +180,7 @@ afterEach(() => {
   __resetSessionStoreForTests();
   api.posts.get = originalPostsGet;
   api.publicPosts.get = originalPublicPostsGet;
+  api.publicPosts.getKaraoke = originalPublicPostsGetKaraoke;
   api.communities.getPostKaraoke = originalGetPostKaraoke;
   mediaElementPrototype.load = originalLoad;
   mediaElementPrototype.play = originalPlay;

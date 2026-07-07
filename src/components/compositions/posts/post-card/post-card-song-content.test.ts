@@ -264,6 +264,36 @@ describe("deriveSongUI", () => {
     expect(markup).toContain('href="/p/post_123/karaoke"');
   });
 
+  test("reserves the study action slot while study capability is unknown", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaokeHref: "/p/post_123/karaoke",
+        },
+      }),
+    );
+
+    expect(markup).toContain("grid-cols-2");
+    expect(markup).toContain("invisible");
+    expect(markup).toContain("Sing");
+  });
+
+  test("keeps karaoke full-width when study is known unavailable", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaokeHref: "/p/post_123/karaoke",
+          study: { status: "unavailable" },
+        },
+      }),
+    );
+
+    expect(markup).toContain("grid-cols-1");
+    expect(markup).not.toContain("invisible");
+  });
+
   test("keeps owned original downloads out of the compact song body", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {

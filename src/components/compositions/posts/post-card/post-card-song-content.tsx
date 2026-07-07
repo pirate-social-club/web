@@ -289,13 +289,13 @@ function SongOfferRow({ action, icon, label, priceLabel }: SongOfferRowProps) {
 function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedSongUI }) {
   if (ui.ageGateRequiresProof) return null;
 
-  // Learn + Karaoke are the two primary CTAs — a side-by-side pair (or one
-  // full-width button when only one is available), not stacked label rows. Sing
-  // is the primary (right); Study is the secondary (left).
-  const primaryActions: React.ReactNode[] = [];
+  // Learn + Karaoke are the two primary CTAs. When a post is hydrated from a
+  // partial feed payload, study can be unknown for one render; reserve its slot
+  // so Sing does not jump from full-width to half-width once study arrives.
+  let studyAction: React.ReactNode | null = null;
 
   if (content.study?.status === "ready" && content.onStudy) {
-    primaryActions.push(
+    studyAction = (
       <Button
         className="w-full"
         data-post-card-interactive="true"
@@ -306,32 +306,43 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
         variant="secondary"
       >
         Study
-      </Button>,
+      </Button>
     );
   }
 
+  let karaokeAction: React.ReactNode | null = null;
   if (content.karaokeHref || content.onKaraoke) {
-    primaryActions.push(
-      content.onKaraoke ? (
-        <Button
-          className="w-full"
-          data-post-card-interactive="true"
-          key="karaoke"
-          leadingIcon={<MicrophoneStage className="size-4" weight="fill" />}
-          onClick={content.onKaraoke}
-          size="lg"
-        >
-          Sing
-        </Button>
-      ) : (
-        <Button asChild className="w-full" data-post-card-interactive="true" key="karaoke" size="lg">
-          <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
-            <MicrophoneStage className="size-4" weight="fill" />
-            <span>Sing</span>
-          </a>
-        </Button>
-      ),
+    karaokeAction = content.onKaraoke ? (
+      <Button
+        className="w-full"
+        data-post-card-interactive="true"
+        key="karaoke"
+        leadingIcon={<MicrophoneStage className="size-4" weight="fill" />}
+        onClick={content.onKaraoke}
+        size="lg"
+      >
+        Sing
+      </Button>
+    ) : (
+      <Button asChild className="w-full" data-post-card-interactive="true" key="karaoke" size="lg">
+        <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
+          <MicrophoneStage className="size-4" weight="fill" />
+          <span>Sing</span>
+        </a>
+      </Button>
     );
+  }
+  const reserveStudySlot = karaokeAction !== null && content.study === undefined;
+  const primaryActions: React.ReactNode[] = [];
+
+  if (studyAction || reserveStudySlot) {
+    primaryActions.push(
+      studyAction ?? <div aria-hidden="true" className="invisible min-h-11" key="study-placeholder" />,
+    );
+  }
+
+  if (karaokeAction) {
+    primaryActions.push(karaokeAction);
   }
 
   const rows: React.ReactNode[] = [];

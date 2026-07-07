@@ -5,6 +5,15 @@ import {
   type SongStudyMultipleChoiceExercise,
   type SongStudySayItBackExercise,
 } from "../song-study-surface";
+import {
+  boardEntries,
+  makeEntry,
+  summary,
+  viewerDead,
+  viewerNotRanked,
+  viewerRankedBehind,
+  viewerRankedLockedIn,
+} from "./streak-fixtures";
 
 const artworkSrc = "https://picsum.photos/seed/pirate-study/160/160";
 
@@ -12,7 +21,9 @@ const baseProps = {
   artistName: "The Castaways",
   artworkSrc,
   onExit: () => undefined,
+  onKaraoke: () => undefined,
   onPrimaryAction: () => undefined,
+  onStudyAgain: () => undefined,
   title: "Midnight Waves",
 };
 
@@ -220,16 +231,32 @@ export const MultipleChoiceCorrect: Story = {
 };
 
 export const Complete: Story = {
-  name: "Study / Complete",
+  name: "Study / Complete — leaderboard",
   render: () => (
     <SongStudySurface
       {...baseProps}
       state={{
         kind: "complete",
-        correctCount: 11,
+        correctCount: 3,
         nextReviewLabel: "tomorrow",
-        scorePercent: 86,
-        totalCount: 14,
+        scorePercent: 100,
+        streak: {
+          currentStreak: 15,
+          qualifiedToday: true,
+          studyAttemptsToday: 10,
+          studyCorrectCount: 10,
+          studyTargetCount: 10,
+        },
+        streakSummary: summary(
+          boardEntries.map((entry, index) =>
+            index === 2
+              ? { ...entry, is_viewer: true, current_streak: 14 }
+              : entry,
+          ),
+          { ...viewerRankedLockedIn, current_streak: 14 },
+          boardEntries.length,
+        ),
+        totalCount: 3,
       }}
     />
   ),
@@ -248,6 +275,7 @@ export const CompleteStreakQualified: Story = {
         streak: {
           currentStreak: 4,
           qualifiedToday: true,
+          studyAttemptsToday: 3,
           studyCorrectCount: 3,
           studyTargetCount: 3,
         },
@@ -270,10 +298,149 @@ export const CompleteStreakProgress: Story = {
         streak: {
           currentStreak: 2,
           qualifiedToday: false,
+          studyAttemptsToday: 7,
           studyCorrectCount: 7,
           studyTargetCount: 10,
         },
         totalCount: 10,
+      }}
+    />
+  ),
+};
+
+export const CompleteWithLeadersViewerRanked: Story = {
+  name: "Study / Complete — leaders, viewer ranked",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      state={{
+        kind: "complete",
+        correctCount: 3,
+        nextReviewLabel: "tomorrow",
+        scorePercent: 100,
+        streak: {
+          currentStreak: 14,
+          qualifiedToday: true,
+          studyAttemptsToday: 10,
+          studyCorrectCount: 10,
+          studyTargetCount: 10,
+        },
+        streakSummary: summary(
+          boardEntries.map((entry, index) =>
+            index === 2 ? { ...entry, is_viewer: true } : entry,
+          ),
+          viewerRankedLockedIn,
+          boardEntries.length,
+        ),
+        totalCount: 3,
+      }}
+    />
+  ),
+};
+
+export const CompleteWithLeadersViewerBehind: Story = {
+  name: "Study / Complete — leaders, viewer behind",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      state={{
+        kind: "complete",
+        correctCount: 6,
+        nextReviewLabel: "in 6 hr",
+        scorePercent: 60,
+        streak: {
+          currentStreak: 14,
+          qualifiedToday: false,
+          studyAttemptsToday: 6,
+          studyCorrectCount: 6,
+          studyTargetCount: 10,
+        },
+        streakSummary: summary(boardEntries, viewerRankedBehind, boardEntries.length),
+        totalCount: 10,
+      }}
+    />
+  ),
+};
+
+export const CompleteWithLeadersViewerNotRanked: Story = {
+  name: "Study / Complete — leaders, viewer not ranked",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      state={{
+        kind: "complete",
+        correctCount: 1,
+        nextReviewLabel: "soon",
+        scorePercent: 33,
+        streak: {
+          currentStreak: 1,
+          qualifiedToday: true,
+          studyAttemptsToday: 3,
+          studyCorrectCount: 1,
+          studyTargetCount: 3,
+        },
+        streakSummary: summary(
+          [makeEntry(1, { userId: "usr_lena", handle: "lena.pirate", currentStreak: 21 })],
+          viewerNotRanked,
+          5,
+        ),
+        totalCount: 3,
+      }}
+    />
+  ),
+};
+
+export const CompleteEmptyBoardViewerLapsed: Story = {
+  name: "Study / Complete — empty board, viewer lapsed",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      state={{
+        kind: "complete",
+        correctCount: 2,
+        nextReviewLabel: "in 2 hr",
+        scorePercent: 50,
+        streak: {
+          currentStreak: 0,
+          qualifiedToday: false,
+          studyAttemptsToday: 2,
+          studyCorrectCount: 2,
+          studyTargetCount: 4,
+        },
+        streakSummary: summary([], viewerDead, 0),
+        totalCount: 4,
+      }}
+    />
+  ),
+};
+
+export const CompleteStaleViewerRowPatched: Story = {
+  name: "Study / Complete — stale viewer row patched",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      state={{
+        kind: "complete",
+        correctCount: 3,
+        nextReviewLabel: "tomorrow",
+        scorePercent: 100,
+        streak: {
+          currentStreak: 15,
+          qualifiedToday: true,
+          studyAttemptsToday: 10,
+          studyCorrectCount: 10,
+          studyTargetCount: 10,
+        },
+        streakSummary: summary(
+          boardEntries.map((entry, index) =>
+            index === 2
+              ? { ...entry, is_viewer: true, current_streak: 14 }
+              : entry,
+          ),
+          { ...viewerRankedLockedIn, current_streak: 14 },
+          boardEntries.length,
+        ),
+        totalCount: 3,
       }}
     />
   ),

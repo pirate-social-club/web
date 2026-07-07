@@ -228,9 +228,7 @@ function LockedState({ state }: { state: Extract<SongStudySurfaceState, { kind: 
 function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kind: "say_it_back" }> }) {
   const isWrong = state.phase === "wrong";
   const isCorrect = state.phase === "correct";
-  const missing = state.feedback?.missing?.filter(Boolean) ?? [];
-  const extra = state.feedback?.extra?.filter(Boolean) ?? [];
-  const showStatus = state.phase === "listening" || isWrong || isCorrect;
+  const showStatus = isWrong || isCorrect;
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-4 py-10 sm:px-6">
@@ -242,18 +240,12 @@ function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kin
         <Type as="p" className="text-balance text-3xl font-bold leading-tight sm:text-5xl" dir="auto">
           {state.exercise.prompt}
         </Type>
-        {state.exercise.translation ? (
-          <Type as="p" className="mt-4 text-muted-foreground" dir="auto" variant="body">
-            {state.exercise.translation}
-          </Type>
-        ) : null}
       </div>
 
       {showStatus ? (
         <div
           className={cn(
             "rounded-[var(--radius-xl)] border p-4",
-            state.phase === "listening" && "border-primary/30 bg-primary/10",
             isWrong && "border-destructive/30 bg-destructive/10",
             isCorrect && "border-success/30 bg-success/10",
           )}
@@ -266,51 +258,13 @@ function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kin
             ) : (
               <Microphone className="size-6 animate-pulse text-primary" weight="fill" />
             )}
-            <div className="min-w-0">
-              <Type as="p" variant="body-strong">
-                {isCorrect ? "Correct" : isWrong ? "Not quite" : "Recording"}
-              </Type>
-              {state.transcript ? (
-                <Type as="p" className="truncate text-muted-foreground" dir="auto" variant="caption">
-                  Heard: {state.transcript}
-                </Type>
-              ) : null}
-            </div>
+            <Type as="p" className="min-w-0 truncate text-muted-foreground" dir="auto" variant="body-strong">
+              <span className={cn(isCorrect && "text-success", isWrong && "text-destructive")}>
+                {isCorrect ? "Correct." : "Incorrect."}
+              </span>
+              {state.transcript ? ` You said, "${state.transcript}"` : null}
+            </Type>
           </div>
-          {isWrong && (missing.length > 0 || extra.length > 0 || state.revealReference) ? (
-            <div className="mt-4 space-y-3 border-t border-border-soft pt-4">
-              {missing.length > 0 ? (
-                <div>
-                  <Type as="p" className="text-destructive" variant="caption">
-                    Missing
-                  </Type>
-                  <Type as="p" className="mt-1" dir="auto" variant="body-strong">
-                    {missing.join(" · ")}
-                  </Type>
-                </div>
-              ) : null}
-              {extra.length > 0 ? (
-                <div>
-                  <Type as="p" className="text-muted-foreground" variant="caption">
-                    Extra
-                  </Type>
-                  <Type as="p" className="mt-1" dir="auto" variant="body-strong">
-                    {extra.join(" · ")}
-                  </Type>
-                </div>
-              ) : null}
-              {state.revealReference ? (
-                <div>
-                  <Type as="p" className="text-muted-foreground" variant="caption">
-                    Reference
-                  </Type>
-                  <Type as="p" className="mt-1" dir="auto" variant="body-strong">
-                    {state.exercise.expected}
-                  </Type>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
         </div>
       ) : null}
     </div>

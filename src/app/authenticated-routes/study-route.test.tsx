@@ -214,7 +214,8 @@ describe("StudyRoutePage", () => {
 
     const view = render(<StudyRoutePage postId="pst_song" />);
 
-    await waitFor(() => expect(view.getByText("Hello world")).toBeTruthy());
+    await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
+    expect(view.queryByText("Hello world")).toBeNull();
     expect(view.queryByText("Learn this song line by line")).toBeNull();
     expect(view.queryByText("Community not found")).toBeNull();
     expect(calls).toEqual(["posts.get", "publicPosts.get", "communities.getPostStudy"]);
@@ -233,7 +234,8 @@ describe("StudyRoutePage", () => {
   test("loads the server-authoritative study pack for authenticated users", async () => {
     const view = render(<StudyRoutePage postId="pst_song" />);
 
-    await waitFor(() => expect(view.getByText("Hello world")).toBeTruthy());
+    await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
+    expect(view.queryByText("Hello world")).toBeNull();
     expect(view.queryByText("Learn this song line by line")).toBeNull();
     expect(calls).toEqual(["posts.get", "communities.getPostStudy"]);
   });

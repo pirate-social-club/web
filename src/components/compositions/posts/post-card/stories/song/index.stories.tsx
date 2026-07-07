@@ -717,6 +717,7 @@ export const LearningActionsPostPage: Story = {
       {...basePost}
       content={{
         ...baseSong,
+        karaoke: { status: "ready" },
         onKaraoke: noop,
         study: { status: "ready", exerciseCount: 12 },
         onStudy: noop,
@@ -736,9 +737,71 @@ export const LearningActionsFeed: Story = {
       {...basePost}
       content={{
         ...baseSong,
+        karaoke: { status: "ready" },
         karaokeHref: "#",
         study: { status: "ready", exerciseCount: 12 },
         streaksHref: "#",
+      }}
+    />
+  ),
+};
+
+export const LearningActionsPublishing: Story = {
+  name: "Learning / Publishing (Study · Sing preparing)",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseSong,
+        karaoke: { status: "processing" },
+        study: { status: "processing" },
+      }}
+    />
+  ),
+};
+
+export const LearningActionsStudyReadySingFailed: Story = {
+  name: "Learning / Study ready · Sing failed (public)",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseSong,
+        karaoke: { status: "failed" },
+        study: { status: "ready", exerciseCount: 14 },
+        onStudy: noop,
+      }}
+    />
+  ),
+};
+
+export const LearningActionsStudyReadySingFailedManager: Story = {
+  name: "Learning / Study ready · Sing failed (manager)",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseSong,
+        karaoke: { status: "failed" },
+        study: { status: "ready", exerciseCount: 14 },
+        viewerCanManage: true,
+        onStudy: noop,
+      }}
+    />
+  ),
+};
+
+export const LearningActionsBothReady: Story = {
+  name: "Learning / Study ready · Sing ready",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseSong,
+        karaoke: { status: "ready" },
+        onKaraoke: noop,
+        study: { status: "ready", exerciseCount: 14 },
+        onStudy: noop,
       }}
     />
   ),

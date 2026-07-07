@@ -130,6 +130,8 @@ export interface LiveRoomContentSpec {
   listingStatus?: ListingStatus;
   priceLabel?: string;
   regionalPriceLabel?: string;
+  gatePurchaseLabel?: string;
+  gateOwnershipRequired?: boolean;
   hasEntitlement?: boolean;
   ageGatePolicy?: AgeGatePolicy;
   contentSafetyState?: ContentSafetyState;
@@ -146,6 +148,7 @@ export interface LiveRoomContentSpec {
   onRsvp?: () => void;
   onWatch?: () => void;
   onBuy?: () => void;
+  onGatePurchase?: () => void;
   onReviewReplay?: () => void;
   onViewerRenew?: (uid: number) => Promise<ApiLiveRoomViewerAttachResponse | null>;
   onVerifyAge?: () => void;
@@ -158,6 +161,11 @@ export interface SongStudyCapability {
   exerciseCount?: number;
   sourceLanguage?: string;
   targetLanguage?: string;
+}
+
+export type SongKaraokeStatus = "unavailable" | "processing" | "ready" | "failed";
+export interface SongKaraokeCapability {
+  status: SongKaraokeStatus;
 }
 
 export interface SongContentSpec {
@@ -180,6 +188,7 @@ export interface SongContentSpec {
 
   // Domain axis - from specs/domain/asset.md and post.md
   accessMode: AccessMode;
+  viewerCanManage?: boolean;
   publicationState?: PublicationState;
   songMode?: SongMode;
   rightsBasis?: RightsBasis;
@@ -205,6 +214,7 @@ export interface SongContentSpec {
   entitledStems?: StemKind[];
   storageProofs?: SongStorageProofs;
   // Link to the karaoke ("Sing") surface for this song, when available.
+  karaoke?: SongKaraokeCapability;
   karaokeHref?: string;
   onKaraoke?: () => void;
 

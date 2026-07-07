@@ -330,6 +330,15 @@ function buildPreviewPost(
     songStems: songDownloads?.stems,
     songTitle: controller.song.state.title,
     songPlayback,
+    songFeaturePreview: attachment?.kind === "song"
+      ? {
+          karaoke: controller.fields.lyricsValue.trim()
+            && (controller.song.state.instrumentalAudioUpload || controller.song.state.instrumentalAudioLabel)
+            ? { status: "processing" }
+            : undefined,
+          study: controller.fields.lyricsValue.trim() ? { status: "processing" } : undefined,
+        }
+      : undefined,
     title: fields.titleValue,
     videoPosterSrc: videoPosterPreviewUrl,
   });

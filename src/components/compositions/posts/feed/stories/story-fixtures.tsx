@@ -194,18 +194,25 @@ export const mixedPublishStateFeedItems: FeedItem[] = [
   {
     ...homeFeedItems[0],
     id: "post_publish_processing_story",
-    post: publishStateSongPost(homeFeedItems[0].post, {
-      byline: {
-        ...homeFeedItems[0].post.byline,
-        timestampLabel: "now",
+    post: {
+      ...publishStateSongPost(homeFeedItems[0].post, {
+        byline: {
+          ...homeFeedItems[0].post.byline,
+          timestampLabel: "now",
+        },
+        title: "Midnight demo",
+      }),
+      content: {
+        type: "song",
+        accessMode: "locked",
+        artist: bylineArtistLabel(homeFeedItems[0].post),
+        karaoke: { status: "processing" },
+        listingMode: "not_listed",
+        playbackState: "idle",
+        study: { status: "processing" },
+        title: "Midnight demo",
       },
-      statusNotice: {
-        tone: "neutral",
-        label: "Finishing publish",
-        message: "Visible only to you until checks complete.",
-      },
-      title: "Midnight demo",
-    }),
+    },
   },
   {
     ...homeFeedItems[1],

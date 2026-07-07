@@ -1388,18 +1388,15 @@ export const ProcessingPost: Story = {
         type: "song",
         accessMode: "locked",
         artist: "u/kevin.tameimpala",
+        karaoke: { status: "processing" },
         listingMode: "not_listed",
         playbackState: "idle",
+        study: { status: "processing" },
         title: "Borderline rough mix",
       }}
       engagement={{ score: 0, commentCount: 0 }}
       menuItems={undefined}
       shareActions={undefined}
-      statusNotice={{
-        tone: "neutral",
-        label: "Finishing publish",
-        message: "Visible only to you until checks complete.",
-      }}
       title="Borderline rough mix"
       titleHref={undefined}
       postHref={undefined}

@@ -289,48 +289,173 @@ function SongOfferRow({ action, icon, label, priceLabel }: SongOfferRowProps) {
 function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedSongUI }) {
   if (ui.ageGateRequiresProof) return null;
 
+  const isOwned = content.hasEntitlement === true;
+  const isLocked = content.accessMode === "locked";
+  const isListedActive = content.listingMode === "listed" && content.listingStatus === "active";
+  const effectivePrice = content.regionalPriceLabel ?? content.priceLabel;
+  const vinylReleaseUrl = content.vinylRelease?.url?.trim();
+  const rows: React.ReactNode[] = [];
+
+  if (isLocked && !isOwned && isListedActive && content.onBuy) {
+    rows.push(
+      <div className="border-t border-border-soft px-4 py-3" key="digital-buy">
+        <Button
+          aria-label={effectivePrice ? `Buy Digital MP3 for ${effectivePrice}` : "Buy Digital MP3"}
+          className="w-full"
+          data-post-card-interactive="true"
+          onClick={content.onBuy}
+          size="lg"
+        >
+          {effectivePrice ? `Buy ${effectivePrice}` : "Buy"}
+        </Button>
+      </div>,
+    );
+  } else if (isLocked && !isOwned && !isListedActive && content.onUnlock) {
+    rows.push(
+      <div className="border-t border-border-soft px-4 py-3" key="digital-unlock">
+        <Button
+          aria-label="Unlock Digital MP3"
+          className="w-full"
+          data-post-card-interactive="true"
+          onClick={content.onUnlock}
+          size="lg"
+        >
+          Unlock
+        </Button>
+      </div>,
+    );
+  }
+
   // Learn + Karaoke are the two primary CTAs. When a post is hydrated from a
   // partial feed payload, study can be unknown for one render; reserve its slot
   // so Sing does not jump from full-width to half-width once study arrives.
   let studyAction: React.ReactNode | null = null;
+  let studyFailureReason: string | null = null;
 
-  if (content.study?.status === "ready" && content.onStudy) {
-    studyAction = (
-      <Button
-        className="w-full"
-        data-post-card-interactive="true"
-        key="study"
-        leadingIcon={<GraduationCap className="size-4" weight="fill" />}
-        onClick={content.onStudy}
-        size="lg"
-        variant="secondary"
-      >
-        Study
-      </Button>
-    );
+  if (!isLocked || isOwned) {
+    switch (content.study?.status) {
+      case "ready":
+        if (content.onStudy) {
+          studyAction = (
+            <Button
+              className="w-full"
+              data-post-card-interactive="true"
+              key="study"
+              leadingIcon={<GraduationCap className="size-4" weight="fill" />}
+              onClick={content.onStudy}
+              size="lg"
+              variant="secondary"
+            >
+              Study
+            </Button>
+          );
+        }
+        break;
+      case "processing":
+        studyAction = (
+          <Button className="w-full" disabled key="study" loading size="lg" variant="secondary">
+            Study
+          </Button>
+        );
+        break;
+      case "locked":
+        studyAction = (
+          <Button
+            className="w-full"
+            disabled
+            key="study"
+            leadingIcon={<GraduationCap className="size-4" weight="fill" />}
+            size="lg"
+            variant="secondary"
+          >
+            Study
+          </Button>
+        );
+        if (content.viewerCanManage) {
+          studyFailureReason = "Study is locked for this song.";
+        }
+        break;
+      default:
+        break;
+    }
   }
 
   let karaokeAction: React.ReactNode | null = null;
-  if (content.karaokeHref || content.onKaraoke) {
-    karaokeAction = content.onKaraoke ? (
-      <Button
-        className="w-full"
-        data-post-card-interactive="true"
-        key="karaoke"
-        leadingIcon={<MicrophoneStage className="size-4" weight="fill" />}
-        onClick={content.onKaraoke}
-        size="lg"
-      >
-        Sing
-      </Button>
-    ) : (
-      <Button asChild className="w-full" data-post-card-interactive="true" key="karaoke" size="lg">
-        <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
-          <MicrophoneStage className="size-4" weight="fill" />
-          <span>Sing</span>
-        </a>
-      </Button>
-    );
+  let karaokeFailureReason: string | null = null;
+  if (!isLocked || isOwned) {
+    switch (content.karaoke?.status) {
+      case "ready":
+        if (content.karaokeHref || content.onKaraoke) {
+          karaokeAction = content.onKaraoke ? (
+            <Button
+              className="w-full"
+              data-post-card-interactive="true"
+              key="karaoke"
+              leadingIcon={<MicrophoneStage className="size-4" weight="fill" />}
+              onClick={content.onKaraoke}
+              size="lg"
+            >
+              Sing
+            </Button>
+          ) : (
+            <Button asChild className="w-full" data-post-card-interactive="true" key="karaoke" size="lg">
+              <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
+                <MicrophoneStage className="size-4" weight="fill" />
+                <span>Sing</span>
+              </a>
+            </Button>
+          );
+        }
+        break;
+      case "processing":
+        karaokeAction = (
+          <Button className="w-full" disabled key="karaoke" loading size="lg">
+            Sing
+          </Button>
+        );
+        break;
+      case "failed":
+        karaokeAction = (
+          <Button
+            aria-label="Sing"
+            className="w-full"
+            disabled
+            key="karaoke"
+            leadingIcon={<MicrophoneStage className="size-4" weight="fill" />}
+            size="lg"
+            variant="secondary"
+          >
+            Sing
+          </Button>
+        );
+        if (content.viewerCanManage) {
+          karaokeFailureReason = "Timed lyrics could not be prepared for karaoke.";
+        }
+        break;
+      default:
+        if (content.karaokeHref || content.onKaraoke) {
+          karaokeAction = content.onKaraoke ? (
+            <Button
+              className="w-full"
+              data-post-card-interactive="true"
+              key="karaoke"
+              leadingIcon={<MicrophoneStage className="size-4" weight="fill" />}
+              onClick={content.onKaraoke}
+              size="lg"
+            >
+              Sing
+            </Button>
+          ) : (
+            <Button asChild className="w-full" data-post-card-interactive="true" key="karaoke" size="lg">
+              <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
+                <MicrophoneStage className="size-4" weight="fill" />
+                <span>Sing</span>
+              </a>
+            </Button>
+          );
+        }
+        break;
+    }
   }
   const reserveStudySlot = karaokeAction !== null && content.study === undefined;
   const primaryActions: React.ReactNode[] = [];
@@ -345,54 +470,9 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
     primaryActions.push(karaokeAction);
   }
 
-  const rows: React.ReactNode[] = [];
-
-  const isOwned = content.hasEntitlement === true;
-  const isLocked = content.accessMode === "locked";
-  const isListedActive = content.listingMode === "listed" && content.listingStatus === "active";
-  const effectivePrice = content.regionalPriceLabel ?? content.priceLabel;
-  const vinylReleaseUrl = content.vinylRelease?.url?.trim();
-
-  if (isLocked && !isOwned && isListedActive && content.onBuy) {
-    rows.push(
-      <SongOfferRow
-        action={(
-          <Button
-            aria-label="Buy Digital MP3"
-            className="h-10 w-32 px-5"
-            data-post-card-interactive="true"
-            onClick={content.onBuy}
-            size="sm"
-          >
-            Buy
-          </Button>
-        )}
-        icon={<MusicNote className="size-5" />}
-        key="digital-buy"
-        label="Digital MP3"
-        priceLabel={effectivePrice}
-      />,
-    );
-  } else if (isLocked && !isOwned && !isListedActive && content.onUnlock) {
-    rows.push(
-      <SongOfferRow
-        action={(
-          <Button
-            aria-label="Unlock Digital MP3"
-            className="h-10 w-32 px-5"
-            data-post-card-interactive="true"
-            onClick={content.onUnlock}
-            size="sm"
-          >
-            Unlock
-          </Button>
-        )}
-        icon={<MusicNote className="size-5" />}
-        key="digital-unlock"
-        label="Digital MP3"
-      />,
-    );
-  }
+  const failureReason = studyFailureReason && karaokeFailureReason
+    ? "Study and karaoke could not be prepared."
+    : studyFailureReason ?? karaokeFailureReason;
 
   if (vinylReleaseUrl) {
     rows.push(
@@ -430,6 +510,15 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
           )}
         >
           {primaryActions}
+          {failureReason ? (
+            <Type
+              as="p"
+              className="col-span-full text-center text-muted-foreground"
+              variant="caption"
+            >
+              {failureReason}
+            </Type>
+          ) : null}
         </div>
       ) : null}
       {rows}

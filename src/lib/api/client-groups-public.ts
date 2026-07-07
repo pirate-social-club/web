@@ -6,6 +6,7 @@ import type {
   Profile,
   PublicAgentResolution,
   PublicProfileResolution,
+  SongKaraokePayload,
 } from "@pirate/api-contracts";
 
 import type {
@@ -255,6 +256,16 @@ export function createPublicPostsApi(request: ApiRequest) {
           locale: opts?.locale,
           sort: opts?.sort,
         },
+      );
+    },
+    getKaraoke: (
+      postId: string,
+      opts?: { locale?: string | null },
+    ): Promise<SongKaraokePayload> => {
+      return publicGet<SongKaraokePayload>(
+        request,
+        `/public-posts/${encodeURIComponent(postId)}/karaoke`,
+        { locale: opts?.locale },
       );
     },
   };

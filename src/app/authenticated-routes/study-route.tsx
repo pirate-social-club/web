@@ -275,9 +275,6 @@ function StudyAuthRequiredMessage({ postId }: { postId: string }) {
         <Type as="h1" variant="h3">
           Sign in to study
         </Type>
-        <Type as="p" className="text-muted-foreground" variant="body">
-          Study requires a Pirate account.
-        </Type>
         {configured && connect ? (
           <Button loading={busy} onClick={connect}>
             Sign in

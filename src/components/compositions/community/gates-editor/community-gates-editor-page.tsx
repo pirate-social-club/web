@@ -281,6 +281,7 @@ function shouldResetMatchModeAfterRemovingPowFallback(
 export type GateEditorGroupedAuthoringState = {
   allowAnyDescription: string;
   projection: GateRequirementGroupsProjection;
+  showMatchModeControl: boolean;
 };
 
 export function getGateEditorGroupedAuthoringState(
@@ -293,6 +294,7 @@ export function getGateEditorGroupedAuthoringState(
       ? "Members can pass any one selected access path."
       : "Members can pass any one selected advanced access path. Review the saved policy before replacing it.",
     projection,
+    showMatchModeControl: gateMatchMode === "any",
   };
 }
 
@@ -404,13 +406,13 @@ export function CommunityGatesEditorPage({
     && Number.isInteger(minimumAgeGate.minimumAge)
     && minimumAgeGate.minimumAge >= 18
     && minimumAgeGate.minimumAge <= 125;
-  const showGateMatchModeControl =
-    effectiveMembershipMode === "gated"
-    && (gateDrafts.length > 1 || onGateMatchModeChange != null || gateMatchMode === "any");
   const groupedAuthoringState = React.useMemo(
     () => getGateEditorGroupedAuthoringState(gateDrafts, gateMatchMode),
     [gateDrafts, gateMatchMode],
   );
+  const showGateMatchModeControl =
+    effectiveMembershipMode === "gated"
+    && groupedAuthoringState.showMatchModeControl;
   const uniqueHumanGateTitle = uniqueHumanGate?.provider === "self"
     ? "Private ID proof (Self.xyz)"
     : mc.uniqueHumanTitle;

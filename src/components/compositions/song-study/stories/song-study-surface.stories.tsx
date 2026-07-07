@@ -234,3 +234,47 @@ export const Complete: Story = {
     />
   ),
 };
+
+export const CompleteStreakQualified: Story = {
+  name: "Study / Complete — streak qualified",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      state={{
+        kind: "complete",
+        correctCount: 3,
+        nextReviewLabel: "tomorrow",
+        scorePercent: 100,
+        streak: {
+          currentStreak: 4,
+          qualifiedToday: true,
+          studyCorrectCount: 3,
+          studyTargetCount: 3,
+        },
+        totalCount: 3,
+      }}
+    />
+  ),
+};
+
+export const CompleteStreakProgress: Story = {
+  name: "Study / Complete — streak progress",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      state={{
+        kind: "complete",
+        correctCount: 7,
+        nextReviewLabel: "in 4 hr",
+        scorePercent: 70,
+        streak: {
+          currentStreak: 2,
+          qualifiedToday: false,
+          studyCorrectCount: 7,
+          studyTargetCount: 10,
+        },
+        totalCount: 10,
+      }}
+    />
+  ),
+};

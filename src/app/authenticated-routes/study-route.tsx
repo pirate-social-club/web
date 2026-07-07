@@ -17,7 +17,7 @@ import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
-import type { SongStudyExercise, SongStudyPayload } from "@/lib/api/client-api-types";
+import type { SongStudyAttemptResult, SongStudyExercise, SongStudyPayload } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -28,6 +28,7 @@ type StudyRouteState =
   | {
       correctCount: number;
       exerciseIndex: number;
+      lastAttemptResult?: SongStudyAttemptResult;
       phase: "ready";
       post: LocalizedPostResponse;
       study: SongStudyPayload;
@@ -101,11 +102,43 @@ function exerciseSurface(exercise: SongStudyExercise): SongStudySurfaceState {
       };
 }
 
-function completeSurface(input: { correctCount: number; totalCount: number }): SongStudySurfaceState {
+function formatNextReviewLabel(nextDueAt?: number): string | undefined {
+  if (!nextDueAt) return undefined;
+  const dueMs = nextDueAt * 1000;
+  const deltaMs = dueMs - Date.now();
+  if (!Number.isFinite(deltaMs)) return undefined;
+  if (deltaMs <= 60_000) return "soon";
+  const minutes = Math.round(deltaMs / 60_000);
+  if (minutes < 60) return `in ${minutes} min`;
+  const hours = Math.round(deltaMs / 3_600_000);
+  if (hours < 24) return `in ${hours} hr`;
+  const days = Math.round(deltaMs / 86_400_000);
+  if (days === 1) return "tomorrow";
+  if (days < 7) return `in ${days} days`;
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(dueMs));
+}
+
+function completeSurface(input: {
+  correctCount: number;
+  lastAttemptResult?: SongStudyAttemptResult;
+  totalCount: number;
+}): SongStudySurfaceState {
+  const progress = input.lastAttemptResult?.study_progress;
   return {
     kind: "complete",
     correctCount: input.correctCount,
+    nextReviewLabel: formatNextReviewLabel(progress?.next_due_at),
     scorePercent: input.totalCount > 0 ? (input.correctCount / input.totalCount) * 100 : 0,
+    ...(progress
+      ? {
+          streak: {
+            currentStreak: progress.current_streak,
+            qualifiedToday: progress.qualified_today,
+            studyCorrectCount: progress.study_correct_count,
+            studyTargetCount: progress.study_target_count,
+          },
+        }
+      : {}),
     totalCount: input.totalCount,
   };
 }
@@ -365,6 +398,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         }
         return {
           ...current,
+          lastAttemptResult: result,
           surface: {
             ...current.surface,
             exercise: {
@@ -428,7 +462,11 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           exerciseIndex: nextIndex,
           surface: nextExercise
             ? exerciseSurface(nextExercise)
-            : completeSurface({ correctCount: nextCorrectCount, totalCount: state.study.exercises.length }),
+            : completeSurface({
+                correctCount: nextCorrectCount,
+                lastAttemptResult: state.lastAttemptResult,
+                totalCount: state.study.exercises.length,
+              }),
         });
         return;
       }
@@ -544,6 +582,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                   const attemptsUsed = result.attempts_remaining <= 0;
                   return {
                     ...current,
+                    lastAttemptResult: result,
                     surface: {
                       ...current.surface,
                       attemptNumber: current.surface.attemptNumber,
@@ -613,7 +652,11 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         exerciseIndex: state.exerciseIndex + 1,
         surface: state.study.exercises[state.exerciseIndex + 1]
           ? exerciseSurface(state.study.exercises[state.exerciseIndex + 1]!)
-          : completeSurface({ correctCount: state.correctCount, totalCount: state.study.exercises.length }),
+          : completeSurface({
+              correctCount: state.correctCount,
+              lastAttemptResult: state.lastAttemptResult,
+              totalCount: state.study.exercises.length,
+            }),
       });
       return;
     }
@@ -628,7 +671,11 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         exerciseIndex: nextIndex,
         surface: nextExercise
           ? exerciseSurface(nextExercise)
-          : completeSurface({ correctCount: nextCorrectCount, totalCount: state.study.exercises.length }),
+          : completeSurface({
+              correctCount: nextCorrectCount,
+              lastAttemptResult: state.lastAttemptResult,
+              totalCount: state.study.exercises.length,
+            }),
       });
     }
   }, [postId, state, stopRecordingStream, submitMultipleChoiceAttempt]);

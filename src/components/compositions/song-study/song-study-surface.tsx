@@ -3,6 +3,7 @@ import {
   BookOpen,
   CaretLeft,
   CheckCircle,
+  Fire,
   Microphone,
   SpeakerHigh,
   Trophy,
@@ -72,6 +73,12 @@ export type SongStudySurfaceState =
     correctCount: number;
     nextReviewLabel?: string;
     scorePercent: number;
+    streak?: {
+      currentStreak: number;
+      qualifiedToday: boolean;
+      studyCorrectCount: number;
+      studyTargetCount: number;
+    };
     totalCount: number;
   };
 
@@ -368,22 +375,41 @@ function MultipleChoiceState({
 
 function CompleteState({ state }: { state: Extract<SongStudySurfaceState, { kind: "complete" }> }) {
   const score = clampPercent(state.scorePercent);
+  const streak = state.streak;
+  const streakProgress = streak
+    ? `${Math.min(streak.studyCorrectCount, streak.studyTargetCount)} of ${streak.studyTargetCount}`
+    : null;
 
   return (
     <div className="mx-auto grid w-full max-w-md flex-1 place-items-center px-4 py-10 text-center sm:px-6">
       <div>
-        <div className="mx-auto mb-4 grid size-20 place-items-center rounded-full bg-primary/10 text-primary">
-          <Trophy className="size-11" weight="duotone" />
+        <div className={cn(
+          "mx-auto mb-4 grid size-20 place-items-center rounded-full",
+          streak?.qualifiedToday ? "bg-warning/10 text-warning" : "bg-primary/10 text-primary",
+        )}>
+          {streak?.qualifiedToday
+            ? <Fire className="size-11" weight="duotone" />
+            : <Trophy className="size-11" weight="duotone" />}
         </div>
         <Type as="p" className="text-muted-foreground" variant="caption">
-          Session complete
+          {streak?.qualifiedToday ? "Streak extended" : "Session complete"}
         </Type>
         <Type as="h2" className="mt-1" variant="h1">
-          {score}%
+          {streak?.qualifiedToday ? `${streak.currentStreak} day${streak.currentStreak === 1 ? "" : "s"}` : `${score}%`}
         </Type>
         <Type as="p" className="mt-2 text-muted-foreground" variant="body">
           {state.correctCount} of {state.totalCount} exercises correct.
         </Type>
+        {streak && !streak.qualifiedToday ? (
+          <Type as="p" className="mt-4 text-muted-foreground" variant="caption">
+            {streakProgress} correct toward today's streak.
+          </Type>
+        ) : null}
+        {streak?.qualifiedToday && streakProgress ? (
+          <Type as="p" className="mt-4 text-muted-foreground" variant="caption">
+            Today's streak target met: {streakProgress} correct.
+          </Type>
+        ) : null}
         {state.nextReviewLabel ? (
           <Type as="p" className="mt-4 text-muted-foreground" variant="caption">
             Next review: {state.nextReviewLabel}

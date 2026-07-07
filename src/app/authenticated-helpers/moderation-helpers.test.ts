@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Community as ApiCommunity, GatePolicy } from "@pirate/api-contracts";
+import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 
 import {
   buildCommunityModerationEntryPath,
@@ -29,7 +30,103 @@ function projectAndSaveUnchanged(policy: GatePolicy): GatePolicy | null {
   });
 }
 
+function expectLoadSaveFidelity(input: {
+  expectedDrafts: IdentityGateDraft[];
+  lossy: boolean;
+  policy: GatePolicy;
+}) {
+  const drafts = getCommunityGateDrafts(communityWithGatePolicy(input.policy));
+  const mode = getGatePolicyMatchMode(input.policy);
+  expect(drafts).toEqual(input.expectedDrafts);
+  expect(isGatePolicyProjectionLossy(
+    input.policy,
+    serializeIdentityGateDrafts(drafts, { mode }),
+  )).toBe(input.lossy);
+  expect(projectAndSaveUnchanged(input.policy)).toBe(input.policy);
+}
+
 describe("gate policy moderation fidelity", () => {
+  test("loads and saves every normal gate atom without changing the policy", () => {
+    const policy: GatePolicy = {
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { type: "unique_human", provider: "self" } },
+          { op: "gate", gate: { type: "nationality", provider: "self", accepted_providers: ["self", "zkpassport"], allowed: ["US", "CA"] } },
+          { op: "gate", gate: { type: "minimum_age", provider: "self", accepted_providers: ["zkpassport"], minimum_age: 30 } },
+          { op: "gate", gate: { type: "gender", provider: "self", accepted_providers: ["self"], allowed: ["F"] } },
+          { op: "gate", gate: { type: "wallet_score", provider: "passport", minimum_score: 20 } },
+          { op: "gate", gate: { type: "erc721_holding", chain_namespace: "eip155:1", contract_address: "0x1111111111111111111111111111111111111111" } },
+          {
+            op: "gate",
+            gate: {
+              type: "erc721_inventory_match",
+              provider: "courtyard",
+              chain_namespace: "eip155:137",
+              contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+              min_quantity: 2,
+              match: {
+                category: "trading_card",
+                franchise: "Pokemon",
+                subject: "Pikachu",
+                set: "Base",
+                grade: "10",
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    expectLoadSaveFidelity({
+      policy,
+      lossy: false,
+      expectedDrafts: [
+        { gateType: "unique_human", provider: "self" },
+        { gateType: "nationality", provider: "self", acceptedProviders: ["self", "zkpassport"], requiredValues: ["US", "CA"] },
+        { gateType: "minimum_age", provider: "self", acceptedProviders: ["zkpassport"], minimumAge: 30 },
+        { gateType: "gender", provider: "self", acceptedProviders: ["self"], requiredValue: "F" },
+        { gateType: "wallet_score", provider: "passport", minimumScore: 20 },
+        { gateType: "erc721_holding", chainNamespace: "eip155:1", contractAddress: "0x1111111111111111111111111111111111111111" },
+        {
+          gateType: "erc721_inventory_match",
+          chainNamespace: "eip155:137",
+          contractAddress: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+          inventoryProvider: "courtyard",
+          minQuantity: 2,
+          assetFilter: {
+            category: "trading_card",
+            franchise: "Pokemon",
+            subject: "Pikachu",
+            set: "Base",
+            grade: "10",
+          },
+        },
+      ],
+    });
+  });
+
+  test("loads and saves standalone anti-bot when it is the whole policy", () => {
+    const policy: GatePolicy = {
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { type: "altcha_pow" } },
+        ],
+      },
+    };
+
+    expectLoadSaveFidelity({
+      policy,
+      lossy: false,
+      expectedDrafts: [
+        { gateType: "altcha_pow" },
+      ],
+    });
+  });
+
   test("preserves standalone anti-bot when loading a lossy all-mode document policy", () => {
     const policy: GatePolicy = {
       version: 1,
@@ -82,6 +179,34 @@ describe("gate policy moderation fidelity", () => {
       serializeIdentityGateDrafts(drafts, { mode: getGatePolicyMatchMode(policy) }),
     )).toBe(false);
     expect(projectAndSaveUnchanged(policy)).toBe(policy);
+  });
+
+  test.each([
+    ["Self-only", ["self"] as const],
+    ["ZKPassport-only", ["zkpassport"] as const],
+    ["Self or ZKPassport", ["self", "zkpassport"] as const],
+  ])("loads and saves %s document provider choices", (_label, providers) => {
+    const policy: GatePolicy = {
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { type: "nationality", provider: "self", accepted_providers: [...providers], allowed: ["US"] } },
+          { op: "gate", gate: { type: "minimum_age", provider: "self", accepted_providers: [...providers], minimum_age: 21 } },
+          { op: "gate", gate: { type: "gender", provider: "self", accepted_providers: [...providers], allowed: ["M"] } },
+        ],
+      },
+    };
+
+    expectLoadSaveFidelity({
+      policy,
+      lossy: false,
+      expectedDrafts: [
+        { gateType: "nationality", provider: "self", acceptedProviders: [...providers], requiredValues: ["US"] },
+        { gateType: "minimum_age", provider: "self", acceptedProviders: [...providers], minimumAge: 21 },
+        { gateType: "gender", provider: "self", acceptedProviders: [...providers], requiredValue: "M" },
+      ],
+    });
   });
 
   test("does not backfill ZKPassport when loading legacy document gates without accepted providers", () => {

@@ -200,6 +200,10 @@ export function firstMediaImageSrc(post: ModerationCasePostPreview | null | unde
   }
 }
 
+export function rightsReviewClearActionForEvidenceRefs(evidenceRefs?: string[]): "clear" | "clear_with_upstream_refs" {
+  return evidenceRefs?.length ? "clear_with_upstream_refs" : "clear";
+}
+
 function moderationPostPreview(post: ModerationCasePostPreview | null | undefined): RightsReviewQueueItem["postPreview"] | ModerationQueueCaseItem["postPreview"] | undefined {
   if (!post) return undefined;
   return {
@@ -643,7 +647,7 @@ export function CommunityModerationPage({
 
   const handleRightsReviewAction = React.useCallback(async (
     caseId: string,
-    actionType: "clear_with_upstream_refs" | "needs_more_evidence" | "block",
+    actionType: "clear" | "clear_with_upstream_refs" | "needs_more_evidence" | "block",
     evidenceRefs?: string[],
   ) => {
     setProcessingRightsReviewCaseId(caseId);
@@ -698,7 +702,10 @@ export function CommunityModerationPage({
           cases={rightsReviewCases}
           loading={rightsReviewCasesLoading}
           onBlock={(caseId) => void handleRightsReviewAction(caseId, "block")}
-          onClear={(caseId, evidenceRefs) => void handleRightsReviewAction(caseId, "clear_with_upstream_refs", evidenceRefs)}
+          onClear={(caseId, evidenceRefs) => {
+            const actionType = rightsReviewClearActionForEvidenceRefs(evidenceRefs);
+            void handleRightsReviewAction(caseId, actionType, evidenceRefs);
+          }}
           onNeedsSource={(caseId) => void handleRightsReviewAction(caseId, "needs_more_evidence")}
           processingCaseId={processingRightsReviewCaseId}
         />

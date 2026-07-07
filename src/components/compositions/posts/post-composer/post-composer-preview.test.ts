@@ -295,6 +295,30 @@ describe("buildPostComposerPreviewContent", () => {
     expect(content.type === "song" ? content.entitledStems : undefined).toBeUndefined();
   });
 
+  test("adds optimistic study and karaoke states to song publish previews", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "paid",
+      attachment: {
+        kind: "song",
+        label: "track.wav",
+        previewUrl: "blob:https://app.test/song",
+      },
+      body: "",
+      price: "4.99",
+      songFeaturePreview: {
+        karaoke: { status: "processing" },
+        study: { status: "processing" },
+      },
+      title: "Track",
+    });
+
+    expect(content).toMatchObject({
+      type: "song",
+      karaoke: { status: "processing" },
+      study: { status: "processing" },
+    });
+  });
+
   test("uses canonical song title instead of upload label for the publish preview", () => {
     const content = buildPostComposerPreviewContent({
       access: "free",

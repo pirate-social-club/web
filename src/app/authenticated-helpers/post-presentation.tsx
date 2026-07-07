@@ -104,11 +104,11 @@ export function toCommunityFeedItem(
   const isPublished = post.status === "published";
   const isProcessing = post.status === "processing";
   const isFailed = post.status === "failed";
-  const statusNotice = isProcessing
+  const statusNotice = isProcessing && post.post_type !== "song"
     ? {
         tone: "neutral" as const,
-        label: "Finishing publish",
-        message: "Visible only to you until checks complete.",
+        label: "Preparing song features",
+        message: "Visible only to you while we finish rights, lyrics, and audio checks.",
       }
     : isFailed
       ? {

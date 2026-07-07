@@ -532,6 +532,7 @@ export function toSongPostContent(
     onVerifyAge?: () => void;
     resolvedCaption?: string;
     title: string;
+    viewerCanManage?: boolean;
   },
 ): PostCardProps["content"] {
   const { post } = postResponse;
@@ -603,6 +604,7 @@ export function toSongPostContent(
   return {
     type: "song",
     accessMode,
+    viewerCanManage: input.viewerCanManage,
     ageGatePolicy: post.age_gate_policy,
     ageGateViewerState: postResponse.age_gate_viewer_state ?? undefined,
     analysisState: post.analysis_state,
@@ -626,6 +628,7 @@ export function toSongPostContent(
     }) : undefined,
     stems: downloadableStems.length ? downloadableStems : undefined,
     entitledStems: downloadableStems.map((stem) => stem.kind),
+    karaoke: karaokeCapability ? { status: karaokeCapability.status } : undefined,
     karaokeHref: karaokeCapability?.canKaraoke
       ? `/p/${encodeURIComponent(post.id)}/karaoke`
       : undefined,

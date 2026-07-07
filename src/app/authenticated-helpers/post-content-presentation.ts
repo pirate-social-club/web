@@ -18,7 +18,7 @@ import { resolveTranslatedTextPresentation } from "@/app/authenticated-helpers/p
 export function toCommunityPostContent(
   postResponse: ApiPost,
   songOptions?: SongPresentationOptions,
-  opts?: Pick<PostPresentationOptions, "onVerifyAge" | "preferOriginalText" | "viewerContentLocale"> & {
+  opts?: Pick<PostPresentationOptions, "canModeratePost" | "onVerifyAge" | "preferOriginalText" | "viewerContentLocale"> & {
     embedMode?: "preview" | "official";
     liveRoom?: LiveRoomPresentationOptions;
   },
@@ -129,6 +129,7 @@ export function toCommunityPostContent(
         onVerifyAge: opts?.onVerifyAge,
         resolvedCaption,
         title,
+        viewerCanManage: opts?.canModeratePost,
       });
     case "text":
     default:

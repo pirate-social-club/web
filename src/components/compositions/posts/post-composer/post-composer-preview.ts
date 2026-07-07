@@ -12,6 +12,11 @@ type SongPreviewStem = {
   onDownload?: () => void;
 };
 
+type SongFeaturePreview = {
+  karaoke?: Extract<PostCardContent, { type: "song" }>["karaoke"];
+  study?: Extract<PostCardContent, { type: "song" }>["study"];
+};
+
 function formatLiveStartsAtLabel(scheduleAt: string | undefined): string | undefined {
   const value = scheduleAt?.trim();
   if (!value) return undefined;
@@ -36,6 +41,7 @@ export function buildPostComposerPreviewContent({
   videoDetails,
   videoPosterSrc,
   songPlayback,
+  songFeaturePreview,
   songStems,
   onSongBuy,
   onSongDownload,
@@ -66,6 +72,7 @@ export function buildPostComposerPreviewContent({
     progressMs?: number;
     state: PlaybackState;
   };
+  songFeaturePreview?: SongFeaturePreview;
   songStems?: SongPreviewStem[];
   onSongBuy?: () => void;
   onSongDownload?: () => void;
@@ -181,6 +188,8 @@ export function buildPostComposerPreviewContent({
       listingStatus: access === "paid" ? "active" : undefined,
       priceLabel: access === "paid" ? priceLabel : undefined,
       hasEntitlement: access === "free",
+      karaoke: songFeaturePreview?.karaoke,
+      study: songFeaturePreview?.study,
       downloadPolicy: onSongDownload
         ? access === "paid" ? "purchased_download" : "free_download"
         : undefined,

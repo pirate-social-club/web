@@ -92,6 +92,7 @@ function svgCoverFile(name: string, label: string): File {
 const midnightCoverFile = svgCoverFile("midnight-waves-cover.svg", "Midnight Waves");
 const benefitCoverFile = svgCoverFile("benefit-single-cover.svg", "Benefit Single");
 const demoAudioFile = new File([new Uint8Array([1, 2, 3, 4])], "demo-song.mp3", { type: "audio/mpeg" });
+const demoInstrumentalFile = new File([new Uint8Array([4, 3, 2, 1])], "demo-instrumental.mp3", { type: "audio/mpeg" });
 
 function progress(input: {
   currentIndex: number;
@@ -497,6 +498,7 @@ export const SubmittingGeneratingPreview: Story = {
         genre: "R&B",
         primaryLanguage: "English",
         primaryAudioUpload: demoAudioFile,
+        instrumentalAudioUpload: demoInstrumentalFile,
         coverUpload: benefitCoverFile,
         coverLabel: "benefit-single-cover.png",
         previewStartSeconds: "42",

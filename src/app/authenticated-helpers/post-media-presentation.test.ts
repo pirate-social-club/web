@@ -147,6 +147,20 @@ describe("toSongPostContent", () => {
     expect(unavailable.onStudy).toBeUndefined();
   });
 
+  test("carries karaoke readiness into song card content", () => {
+    const ready = toSongPostContent(songPost() as unknown as ApiPost, undefined, {
+      title: "Test Song",
+      viewerCanManage: true,
+    });
+    const failed = toSongPostContent(songPost({ alignmentStatus: "failed" }) as unknown as ApiPost, undefined, { title: "Test Song" });
+
+    expect(ready.karaoke).toEqual({ status: "ready" });
+    expect(ready.karaokeHref).toBe("/p/post_song/karaoke");
+    expect(ready.viewerCanManage).toBe(true);
+    expect(failed.karaoke).toEqual({ status: "failed" });
+    expect(failed.karaokeHref).toBeUndefined();
+  });
+
   test("maps the API streak summary onto the song card content", () => {
     const content = toSongPostContent({
       ...songPost(),

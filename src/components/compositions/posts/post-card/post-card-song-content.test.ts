@@ -93,11 +93,31 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).toContain("MP3");
-    expect(markup).toContain("Buy");
+    expect(markup).toContain("Buy $3.99");
     expect(markup).toContain("$3.99");
     expect(markup).toContain("Vinyl");
     expect(markup).toContain("https://elasticstage.com/kevin-tameimpala/releases/midnight-waves");
+  });
+
+  test("prioritizes buy before learning actions for locked unowned songs", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          accessMode: "locked",
+          karaoke: { status: "processing" },
+          listingMode: "listed",
+          listingStatus: "active",
+          onBuy: () => {},
+          priceLabel: "$3.99",
+          study: { status: "processing" },
+        },
+      }),
+    );
+
+    expect(markup).toContain("Buy $3.99");
+    expect(markup).not.toContain("Study");
+    expect(markup).not.toContain("Sing");
   });
 
   test("requires age proof until the viewer is verified allowed", () => {
@@ -242,6 +262,7 @@ describe("deriveSongUI", () => {
       React.createElement(SongPostContent, {
         content: {
           ...baseSong,
+          karaoke: { status: "ready" },
           onKaraoke: () => {},
         },
       }),
@@ -256,6 +277,7 @@ describe("deriveSongUI", () => {
       React.createElement(SongPostContent, {
         content: {
           ...baseSong,
+          karaoke: { status: "ready" },
           karaokeHref: "/p/post_123/karaoke",
         },
       }),
@@ -269,6 +291,7 @@ describe("deriveSongUI", () => {
       React.createElement(SongPostContent, {
         content: {
           ...baseSong,
+          karaoke: { status: "ready" },
           karaokeHref: "/p/post_123/karaoke",
         },
       }),
@@ -284,6 +307,7 @@ describe("deriveSongUI", () => {
       React.createElement(SongPostContent, {
         content: {
           ...baseSong,
+          karaoke: { status: "ready" },
           karaokeHref: "/p/post_123/karaoke",
           study: { status: "unavailable" },
         },
@@ -380,7 +404,7 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("Study");
   });
 
-  test("hides the Study CTA when study is not ready", () => {
+  test("renders the Study CTA as preparing when study is processing", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
@@ -391,6 +415,61 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).not.toContain("Open study");
+    expect(markup).toContain("Study");
+    expect(markup).not.toContain("Preparing Study");
+    expect(markup).toContain("disabled");
+  });
+
+  test("renders the Sing CTA as preparing when karaoke is processing", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaoke: { status: "processing" },
+        },
+      }),
+    );
+
+    expect(markup).toContain("Sing");
+    expect(markup).not.toContain("Preparing Sing");
+    expect(markup).toContain("disabled");
+  });
+
+  test("renders failed karaoke as a disabled Sing state without public failure detail", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaoke: { status: "failed" },
+          study: { status: "ready" },
+          onStudy: () => {},
+        },
+      }),
+    );
+
+    expect(markup).toContain("Study");
+    expect(markup).toContain("Sing");
+    expect(markup).not.toContain("Sing unavailable");
+    expect(markup).not.toContain("Timed lyrics could not be prepared");
+    expect(markup).toContain("disabled");
+  });
+
+  test("shows failed karaoke detail to viewers who can manage the post", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaoke: { status: "failed" },
+          study: { status: "ready" },
+          viewerCanManage: true,
+          onStudy: () => {},
+        },
+      }),
+    );
+
+    expect(markup).toContain("Study");
+    expect(markup).toContain("Sing");
+    expect(markup).toContain("Timed lyrics could not be prepared for karaoke.");
+    expect(markup).toContain("disabled");
   });
 });

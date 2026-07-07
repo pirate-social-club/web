@@ -6,9 +6,10 @@ import {
   AdvancedGatePolicyBanner,
   canAuthorCourtyardInventoryGate,
   courtyardInventoryDraftMatchesGroup,
+  documentProofProviderChoiceFromProviders,
+  documentProofProvidersFromChoice,
   normalizeDocumentProofProviders,
   normalizeGateDraftsForMatchMode,
-  toggleDocumentProofProvider,
   upsertGateDraftForMatchMode,
 } from "./community-gates-editor-page";
 
@@ -99,11 +100,19 @@ describe("CommunityGatesEditorPage gate draft helpers", () => {
     expect(normalizeDocumentProofProviders(["zkpassport", "self"])).toEqual(["self", "zkpassport"]);
   });
 
-  test("toggles document proof providers without allowing an empty provider set", () => {
-    expect(toggleDocumentProofProvider(["self"], "self", false)).toEqual(["self"]);
-    expect(toggleDocumentProofProvider(["self"], "zkpassport", true)).toEqual(["self", "zkpassport"]);
-    expect(toggleDocumentProofProvider(["self", "zkpassport"], "self", false)).toEqual(["zkpassport"]);
-    expect(toggleDocumentProofProvider(["zkpassport"], "self", true)).toEqual(["self", "zkpassport"]);
+  test("maps document proof provider choices to explicit saved provider sets", () => {
+    expect(documentProofProvidersFromChoice("self")).toEqual(["self"]);
+    expect(documentProofProvidersFromChoice("zkpassport")).toEqual(["zkpassport"]);
+    expect(documentProofProvidersFromChoice("both")).toEqual(["self", "zkpassport"]);
+    expect(documentProofProvidersFromChoice("unknown")).toEqual(["self"]);
+  });
+
+  test("maps saved document proof providers to the editor choice", () => {
+    expect(documentProofProviderChoiceFromProviders(undefined)).toBe("self");
+    expect(documentProofProviderChoiceFromProviders([])).toBe("self");
+    expect(documentProofProviderChoiceFromProviders(["self"])).toBe("self");
+    expect(documentProofProviderChoiceFromProviders(["zkpassport"])).toBe("zkpassport");
+    expect(documentProofProviderChoiceFromProviders(["zkpassport", "self"])).toBe("both");
   });
 
   test("renders advanced policy replacement consent when replacement is required", () => {

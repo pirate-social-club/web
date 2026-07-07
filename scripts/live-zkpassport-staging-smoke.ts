@@ -12,8 +12,7 @@ import type {
 // to /verification-sessions/:id/complete.
 //
 // Required auth: either PIRATE_ACCESS_TOKEN/ZKPASSPORT_SMOKE_ACCESS_TOKEN, or
-// AUTH_UPSTREAM_JWT_AUDIENCE + AUTH_UPSTREAM_JWT_ISSUER +
-// AUTH_UPSTREAM_JWT_SHARED_SECRET for staging_test_jwt exchange.
+// STAGING_TEST_JWT_SHARED_SECRET for staging_test_jwt exchange.
 //
 // This still requires an external proof source to open the printed URL
 // (ZKPassport/ZKR/dev proof source). The script does not fabricate proofs.
@@ -40,6 +39,8 @@ const DEFAULT_API_BASE_URL = "https://api-staging.pirate.sc";
 const DEFAULT_SUBJECT = "zkpassport-staging-smoke";
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 const DOCUMENT_CAPABILITIES = new Set(["minimum_age", "nationality", "gender"]);
+const STAGING_TEST_JWT_AUDIENCE = "pirate-api-staging-test";
+const STAGING_TEST_JWT_ISSUER = "pirate-staging-test-issuer";
 
 function env(name: string): string | undefined {
   const value = process.env[name]?.trim();
@@ -140,13 +141,13 @@ function mintStagingJwt(subject: string): string {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const walletAddress = env("E2E_LIVE_STAGING_WALLET_ADDRESS") ?? walletAddressForSubject(subject);
   return signHs256Jwt({
-    aud: requiredEnv("AUTH_UPSTREAM_JWT_AUDIENCE"),
+    aud: STAGING_TEST_JWT_AUDIENCE,
     exp: nowSeconds + 15 * 60,
     iat: nowSeconds,
-    iss: requiredEnv("AUTH_UPSTREAM_JWT_ISSUER"),
+    iss: STAGING_TEST_JWT_ISSUER,
     sub: subject,
     wallet_address: walletAddress,
-  }, requiredEnv("AUTH_UPSTREAM_JWT_SHARED_SECRET"));
+  }, requiredEnv("STAGING_TEST_JWT_SHARED_SECRET"));
 }
 
 async function resolveAccessToken(config: SmokeConfig): Promise<string> {
@@ -316,6 +317,7 @@ async function main() {
 
   if (config.startOnly) {
     console.log("[zkpassport] start-only mode complete; proof/result callbacks were not awaited.");
+    process.exit(0);
     return;
   }
 

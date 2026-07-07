@@ -168,6 +168,13 @@ const DOCUMENT_PROOF_PROVIDER_CHOICES: Array<{ value: DocumentProofProviderChoic
   { value: "both", label: "Self.xyz or ZKPassport" },
 ];
 
+export const GATE_REQUIREMENT_SECTION_TITLES = {
+  documentAttributes: "Document attributes",
+  humanity: "Humanity",
+  reputation: "Reputation",
+  tokenHoldings: "Token holdings",
+} as const;
+
 function getInitialDocumentProofProviders(): DocumentProofProvider[] {
   return [...DEFAULT_DOCUMENT_PROOF_PROVIDERS];
 }
@@ -496,7 +503,7 @@ export function CommunityGatesEditorPage({
                     </div>
                   ) : null}
 
-                  <FormSectionHeading title={mc.biometricGateChecksTitle} />
+                  <FormSectionHeading title={GATE_REQUIREMENT_SECTION_TITLES.humanity} />
 
                   {groupedAuthoringState.showStandaloneAntiBotControl ? (
                     <CheckboxCard
@@ -545,6 +552,8 @@ export function CommunityGatesEditorPage({
                       />
                     </div>
                   ) : null}
+
+                  <FormSectionHeading title={GATE_REQUIREMENT_SECTION_TITLES.documentAttributes} />
 
                   <CheckboxCard
                     className={nationalityGate ? "border-border bg-muted/30" : undefined}
@@ -680,7 +689,7 @@ export function CommunityGatesEditorPage({
                     </div>
                   ) : null}
 
-                  <FormSectionHeading title={mc.walletGateChecksTitle} />
+                  <FormSectionHeading title={GATE_REQUIREMENT_SECTION_TITLES.reputation} />
 
                   <CheckboxCard
                     className={walletScoreGate ? "border-border bg-muted/30" : undefined}
@@ -716,6 +725,8 @@ export function CommunityGatesEditorPage({
                       ) : null}
                     </div>
                   ) : null}
+
+                  <FormSectionHeading title={GATE_REQUIREMENT_SECTION_TITLES.tokenHoldings} />
 
                   <CheckboxCard
                     className={erc721Gate ? "border-border bg-muted/30" : undefined}

@@ -36,6 +36,7 @@ import { forgetKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
+import { useZkPassportVerification } from "@/lib/verification/use-zkpassport-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { PublicRouteMessageState } from "./public-route-states";
@@ -293,12 +294,29 @@ export function PublicCommunityRoutePage({
     storageKey: `pirate_pending_self_join_session:${communityId}`,
     verificationIntent: "community_join",
   });
+  const {
+    startVerification: startZkPassportVerificationFlow,
+    verificationError: zkPassportError,
+    verificationLoading: zkPassportLoading,
+  } = useZkPassportVerification({
+    onVerified: () => {
+      invalidateCommunityGate(communityId);
+      toast.success(copy.publicCommunity.verificationCompleted);
+    },
+    verificationIntent: "community_join",
+  });
 
   React.useEffect(() => {
     if (veryError) {
       toast.error(veryError);
     }
   }, [veryError]);
+
+  React.useEffect(() => {
+    if (zkPassportError) {
+      toast.error(zkPassportError);
+    }
+  }, [zkPassportError]);
 
   React.useEffect(() => {
     if (isApiNotFoundError(error)) {
@@ -509,6 +527,35 @@ export function PublicCommunityRoutePage({
             href: result.href,
           };
         },
+        zkPassportLoading,
+        onStartZkPassportVerification: async (gate) => {
+          const requestedCapabilities = getVerificationCapabilitiesForProvider(
+            gate.eligibility,
+            "zkpassport",
+          );
+          const verificationRequirements = getVerificationRequirementsForGates(
+            gate.eligibility.membership_gate_summaries,
+          );
+          const unavailableMessage =
+            "This community is missing the ZKPassport verification details needed to continue.";
+          if (
+            requestedCapabilities.length === 0 &&
+            verificationRequirements.length === 0
+          ) {
+            toast.error(unavailableMessage);
+            return { started: false };
+          }
+
+          const result = await startZkPassportVerificationFlow({
+            requestedCapabilities,
+            unavailableMessage,
+            verificationRequirements,
+          });
+          if (!result.started && result.error) {
+            toast.error(result.error);
+          }
+          return { started: result.started };
+        },
         invalidateCommunityGate,
         includeVerificationCloseAction: true,
       }),
@@ -516,8 +563,10 @@ export function PublicCommunityRoutePage({
       interactionCopy,
       veryLoading,
       selfLoading,
+      zkPassportLoading,
       startVeryVerification,
       startSelfVerificationFlow,
+      startZkPassportVerificationFlow,
       copy.publicCommunity.verificationMissingSelf,
       invalidateCommunityGate,
     ],

@@ -85,10 +85,10 @@ export type BuildBlockedModalStateArgs = {
   invalidateCommunityGate: (communityId: string) => void;
   interactionCopy: InteractionGateCopy;
   openCommunity: () => void;
-  defaultVerificationLoadingProvider?: "self" | "very" | "passport" | null;
+  defaultVerificationLoadingProvider?: "self" | "very" | "passport" | "zkpassport" | null;
   startDefaultVerification?: (input: {
     gate: CommunityGateData;
-    provider: "self" | "very" | "passport";
+    provider: "self" | "very" | "passport" | "zkpassport";
   }) => Promise<{ started: boolean }>;
   startWalletConnection?: (input: {
     gate: CommunityGateData;
@@ -581,10 +581,10 @@ export function createDefaultBlockedModalState({
         icon: verificationIcon,
         primaryAction: {
           label: verificationPrompt.actionLabel || interactionCopy.taskVerify,
-            loading: defaultVerificationLoadingProvider === verificationIcon,
+          loading: defaultVerificationLoadingProvider === provider,
           onClick: async () => {
             if (startDefaultVerification) {
-              await startDefaultVerification({ gate, provider: verificationIcon });
+              await startDefaultVerification({ gate, provider });
               return;
             }
             closeModal();
@@ -721,12 +721,16 @@ export function createCommunityBlockedModalStateFactory(options: {
   joinLoading?: boolean;
   veryLoading: boolean;
   selfLoading: boolean;
+  zkPassportLoading?: boolean;
   onJoin?: (gate: CommunityGateData) => Promise<void>;
   onStartVeryVerification?: () => Promise<{ started: boolean }>;
   onStartSelfVerification?: (gate: CommunityGateData) => Promise<{
     started: boolean;
     openedModal?: boolean;
     href?: string | null;
+  }>;
+  onStartZkPassportVerification?: (gate: CommunityGateData) => Promise<{
+    started: boolean;
   }>;
   onRequestable?: (gate: CommunityGateData) => void;
   invalidateCommunityGate?: (communityId: string) => void;
@@ -767,11 +771,19 @@ export function createCommunityBlockedModalStateFactory(options: {
               ? options.veryLoading
               : provider === "self"
                 ? options.selfLoading
-                : false,
+                : provider === "zkpassport"
+                  ? options.zkPassportLoading ?? false
+                  : false,
           onClick: async () => {
             if (provider === "very") {
               if (!options.onStartVeryVerification) return;
               const result = await options.onStartVeryVerification();
+              if (result.started) {
+                closeModal();
+              }
+            } else if (provider === "zkpassport") {
+              if (!options.onStartZkPassportVerification) return;
+              const result = await options.onStartZkPassportVerification(gate);
               if (result.started) {
                 closeModal();
               }

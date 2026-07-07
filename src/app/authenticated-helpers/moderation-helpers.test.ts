@@ -1,12 +1,109 @@
 import { describe, expect, test } from "bun:test";
+import type { Community as ApiCommunity, GatePolicy } from "@pirate/api-contracts";
 
 import {
   buildCommunityModerationEntryPath,
   buildCommunityModerationPath,
+  getCommunityGateDrafts,
   buildStarterPricingPolicyDraft,
   validatePricingPolicyDraft,
 } from "@/app/authenticated-helpers/moderation-helpers";
+import { serializeIdentityGateDrafts, serializeIdentityGateDraftsForSave } from "@/app/authenticated-helpers/community-gate-rule-serialization";
 import { COUNTRIES } from "@/lib/countries";
+import { getGatePolicyMatchMode, isGatePolicyProjectionLossy } from "@/lib/gate-policy-utils";
+
+function communityWithGatePolicy(policy: GatePolicy): ApiCommunity {
+  return { gate_policy: policy } as ApiCommunity;
+}
+
+function projectAndSaveUnchanged(policy: GatePolicy): GatePolicy | null {
+  const drafts = getCommunityGateDrafts(communityWithGatePolicy(policy));
+  const mode = getGatePolicyMatchMode(policy);
+  return serializeIdentityGateDraftsForSave(drafts, {
+    mode,
+    preserve: {
+      gateDrafts: drafts,
+      mode,
+      policy,
+    },
+  });
+}
+
+describe("gate policy moderation fidelity", () => {
+  test("preserves standalone anti-bot when loading a lossy all-mode document policy", () => {
+    const policy: GatePolicy = {
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { type: "altcha_pow" } },
+          { op: "gate", gate: { type: "nationality", provider: "self", allowed: ["US"] } },
+        ],
+      },
+    };
+
+    const drafts = getCommunityGateDrafts(communityWithGatePolicy(policy));
+    expect(drafts).toEqual([
+      { gateType: "nationality", provider: "self", requiredValues: ["US"] },
+    ]);
+    expect(isGatePolicyProjectionLossy(
+      policy,
+      serializeIdentityGateDrafts(drafts, { mode: getGatePolicyMatchMode(policy) }),
+    )).toBe(true);
+    expect(projectAndSaveUnchanged(policy)).toBe(policy);
+  });
+
+  test("round-trips the palm-scan anti-bot fallback as a normal local OR", () => {
+    const policy: GatePolicy = {
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          {
+            op: "or",
+            children: [
+              { op: "gate", gate: { type: "unique_human", provider: "very" } },
+              { op: "gate", gate: { type: "altcha_pow" } },
+            ],
+          },
+          { op: "gate", gate: { type: "minimum_age", provider: "self", minimum_age: 21 } },
+        ],
+      },
+    };
+
+    const drafts = getCommunityGateDrafts(communityWithGatePolicy(policy));
+    expect(drafts).toEqual([
+      { gateType: "unique_human", provider: "very" },
+      { gateType: "altcha_pow", fallbackFor: "unique_human" },
+      { gateType: "minimum_age", provider: "self", minimumAge: 21 },
+    ]);
+    expect(isGatePolicyProjectionLossy(
+      policy,
+      serializeIdentityGateDrafts(drafts, { mode: getGatePolicyMatchMode(policy) }),
+    )).toBe(false);
+    expect(projectAndSaveUnchanged(policy)).toBe(policy);
+  });
+
+  test("does not backfill ZKPassport when loading legacy document gates without accepted providers", () => {
+    const policy: GatePolicy = {
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { type: "nationality", provider: "self", allowed: ["US"] } },
+          { op: "gate", gate: { type: "minimum_age", provider: "self", minimum_age: 30 } },
+        ],
+      },
+    };
+
+    const drafts = getCommunityGateDrafts(communityWithGatePolicy(policy));
+    expect(drafts).toEqual([
+      { gateType: "nationality", provider: "self", acceptedProviders: undefined, requiredValues: ["US"] },
+      { gateType: "minimum_age", provider: "self", acceptedProviders: undefined, minimumAge: 30 },
+    ]);
+    expect(projectAndSaveUnchanged(policy)).toBe(policy);
+  });
+});
 
 describe("pricing policy moderation helpers", () => {
   test("uses the moderation index as the mobile web entry point", () => {

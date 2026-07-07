@@ -4,7 +4,7 @@ import type {
   LocalizedPostResponse as ApiPost,
 } from "@pirate/api-contracts";
 
-import type { PostCardProps, SongContentSpec, SongStorageProof, StoryRegistrationStatus, UpstreamAttribution } from "@/components/compositions/posts/post-card/post-card.types";
+import type { PostCardProps, SongContentSpec, SongFeatureCapabilityReason, SongStorageProof, StoryRegistrationStatus, UpstreamAttribution } from "@/components/compositions/posts/post-card/post-card.types";
 import type {
   AssetSourceDescriptor,
   SongPlaybackDescriptor,
@@ -37,6 +37,22 @@ type SongPresentationWithDownloads = NonNullable<ApiPost["song_presentation"]> &
   timed_lyrics?: unknown;
   timed_lyrics_ref?: string | null;
   vocal_audio?: DownloadableAudio | null;
+};
+type ApiCapabilityReason = {
+  code?: string | null;
+  kind?: string | null;
+  owner_action?: string | null;
+};
+type ApiKaraokeCapability = {
+  status?: "ready" | "locked" | "processing" | "failed" | "unavailable" | null;
+  reasons?: ApiCapabilityReason[] | null;
+};
+type ApiStudyCapabilityWithReasons = NonNullable<ApiPost["study_capability"]> & {
+  reasons?: ApiCapabilityReason[] | null;
+};
+type ApiPostWithFeatureCapabilities = ApiPost & {
+  karaoke_capability?: ApiKaraokeCapability | null;
+  study_capability?: ApiStudyCapabilityWithReasons | null;
 };
 
 function stringField(input: unknown, key: string): string | undefined {
@@ -458,8 +474,17 @@ export function toVideoPostContent(
 }
 
 export type KaraokeCapability =
-  | { canKaraoke: true; status: "ready" }
-  | { canKaraoke: false; status: "processing" | "failed" | "unavailable" };
+  | { canKaraoke: true; reason?: SongFeatureCapabilityReason; status: "ready" }
+  | { canKaraoke: false; reason?: SongFeatureCapabilityReason; status: "processing" | "failed" | "unavailable" };
+
+function toCapabilityReason(reason: ApiCapabilityReason | null | undefined): SongFeatureCapabilityReason | undefined {
+  if (!reason?.code || !reason.kind || !reason.owner_action) return undefined;
+  return {
+    code: reason.code as SongFeatureCapabilityReason["code"],
+    kind: reason.kind as SongFeatureCapabilityReason["kind"],
+    ownerAction: reason.owner_action as SongFeatureCapabilityReason["ownerAction"],
+  };
+}
 
 function hasTimedLyrics(presentation: SongPresentationWithDownloads | null | undefined): boolean {
   if (!presentation) return false;
@@ -474,6 +499,20 @@ function hasTimedLyrics(presentation: SongPresentationWithDownloads | null | und
 
 export function toKaraokeCapability(postResponse: ApiPost): KaraokeCapability | undefined {
   if (!postResponse.community?.karaoke_enabled) return undefined;
+  const serverCapability = (postResponse as ApiPostWithFeatureCapabilities).karaoke_capability;
+  if (serverCapability?.status) {
+    const reason = toCapabilityReason(serverCapability.reasons?.[0]);
+    switch (serverCapability.status) {
+      case "ready":
+        return { canKaraoke: true, reason, status: "ready" };
+      case "processing":
+      case "failed":
+      case "unavailable":
+        return { canKaraoke: false, reason, status: serverCapability.status };
+      case "locked":
+        return undefined;
+    }
+  }
   const presentation = postResponse.song_presentation as SongPresentationWithDownloads | null | undefined;
   const hasInstrumental = normalizeDownloadableAudio(postResponse).get("instrumental")?.storage_ref;
   if (!hasInstrumental) return undefined;
@@ -505,6 +544,7 @@ export function toStudyCapability(postResponse: ApiPost): SongContentSpec["study
   return {
     status: capability.status,
     exerciseCount: capability.exercise_count ?? undefined,
+    reason: toCapabilityReason((capability as ApiStudyCapabilityWithReasons).reasons?.[0]),
     sourceLanguage: capability.source_language ?? undefined,
     targetLanguage: capability.target_language ?? undefined,
   };
@@ -628,7 +668,7 @@ export function toSongPostContent(
     }) : undefined,
     stems: downloadableStems.length ? downloadableStems : undefined,
     entitledStems: downloadableStems.map((stem) => stem.kind),
-    karaoke: karaokeCapability ? { status: karaokeCapability.status } : undefined,
+    karaoke: karaokeCapability ? { reason: karaokeCapability.reason, status: karaokeCapability.status } : undefined,
     karaokeHref: karaokeCapability?.canKaraoke
       ? `/p/${encodeURIComponent(post.id)}/karaoke`
       : undefined,

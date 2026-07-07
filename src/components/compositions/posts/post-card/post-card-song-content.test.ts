@@ -459,7 +459,10 @@ describe("deriveSongUI", () => {
       React.createElement(SongPostContent, {
         content: {
           ...baseSong,
-          karaoke: { status: "failed" },
+          karaoke: {
+            status: "failed",
+            reason: { code: "provider_key_invalid", kind: "config", ownerAction: "manage_integrations" },
+          },
           study: { status: "ready" },
           viewerCanManage: true,
           onStudy: () => {},
@@ -469,7 +472,7 @@ describe("deriveSongUI", () => {
 
     expect(markup).toContain("Study");
     expect(markup).toContain("Sing");
-    expect(markup).toContain("Sing setup failed. Check the lyrics and stems, then retry publishing.");
+    expect(markup).toContain("The ElevenLabs key did not work. Check it in Integrations.");
     expect(markup).toContain("disabled");
   });
 });

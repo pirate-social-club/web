@@ -24,6 +24,7 @@ import { StoryLicenseNoticeBadge, StoryRegistrationBadge } from "./post-card-sto
 import type {
   DownloadPolicy,
   SongContentSpec,
+  SongFeatureCapabilityReason,
   UpstreamAttribution,
 } from "./post-card.types";
 
@@ -32,6 +33,42 @@ const defaultPreviewDurationMs = 30000;
 export interface SongPostContentProps {
   content: SongContentSpec;
   className?: string;
+}
+
+function featureFailureCopy(feature: "study" | "sing", reason: SongFeatureCapabilityReason | undefined): string | null {
+  if (!reason) return null;
+  const label = feature === "study" ? "Study" : "Sing";
+  switch (reason.code) {
+    case "provider_key_missing":
+      return `${label} needs an ElevenLabs key. Add it in Integrations.`;
+    case "provider_key_invalid":
+      return `The ElevenLabs key did not work. Check it in Integrations.`;
+    case "provider_rate_limited":
+      return `ElevenLabs is rate-limiting this community. Try again in a minute.`;
+    case "provider_unavailable":
+      return `ElevenLabs was unavailable. Retry publishing in a minute.`;
+    case "provider_timeout":
+      return `ElevenLabs timed out. Retry publishing.`;
+    case "provider_invalid_response":
+      return `ElevenLabs returned an unreadable response. Retry publishing.`;
+    case "lyrics_missing":
+      return `${label} needs lyrics. Add lyrics and retry.`;
+    case "lyrics_too_short":
+      return `${label} needs more lyrics. Add a longer lyric set.`;
+    case "instrumental_missing":
+      return `Sing needs an instrumental track. Upload stems and retry.`;
+    case "timed_lyrics_missing":
+    case "alignment_failed":
+      return `Timed lyrics could not be prepared. Check the lyrics and audio, then retry.`;
+    case "exercise_generation_failed":
+      return `Study exercises could not be generated. Retry publishing.`;
+    case "karaoke_disabled":
+      return `Karaoke is disabled for this community.`;
+    case "locked":
+      return `${label} is locked until the song is purchased.`;
+    default:
+      return null;
+  }
 }
 
 // Derived UI state from domain model — all visual state is centralized here
@@ -373,7 +410,8 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
           </Button>
         );
         if (content.viewerCanManage) {
-          studyFailureReason = "Study is locked. Check the song access settings.";
+          studyFailureReason = featureFailureCopy("study", content.study.reason)
+            ?? "Study is locked. Check the song access settings.";
         }
         break;
       default:
@@ -430,7 +468,8 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
           </Button>
         );
         if (content.viewerCanManage) {
-          karaokeFailureReason = "Sing setup failed. Check the lyrics and stems, then retry publishing.";
+          karaokeFailureReason = featureFailureCopy("sing", content.karaoke.reason)
+            ?? "Sing setup failed. Check the lyrics and stems, then retry publishing.";
         }
         break;
       default:

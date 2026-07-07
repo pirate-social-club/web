@@ -58,6 +58,20 @@ describe("toKaraokeCapability", () => {
     });
   });
 
+  test("uses server karaoke capability and first reason when present", () => {
+    expect(toKaraokeCapability({
+      ...songPost({ alignmentStatus: "completed" }),
+      karaoke_capability: {
+        status: "failed",
+        reasons: [{ code: "provider_key_invalid", kind: "config", owner_action: "manage_integrations" }],
+      },
+    } as unknown as ApiPost)).toEqual({
+      canKaraoke: false,
+      reason: { code: "provider_key_invalid", kind: "config", ownerAction: "manage_integrations" },
+      status: "failed",
+    });
+  });
+
   test("does not mark completed alignment ready without timed lyrics", () => {
     expect(toKaraokeCapability(songPost({ hasTimedLyrics: false }))).toEqual({
       canKaraoke: false,
@@ -103,12 +117,14 @@ describe("toStudyCapability", () => {
       study_capability: {
         status: "ready",
         exercise_count: 12,
+        reasons: [{ code: "provider_key_missing", kind: "config", owner_action: "manage_integrations" }],
         source_language: "en",
         target_language: "es",
       },
     } as unknown as ApiPost)).toEqual({
       status: "ready",
       exerciseCount: 12,
+      reason: { code: "provider_key_missing", kind: "config", ownerAction: "manage_integrations" },
       sourceLanguage: "en",
       targetLanguage: "es",
     });

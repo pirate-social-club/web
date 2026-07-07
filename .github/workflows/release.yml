@@ -39,7 +39,9 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Audit web dependencies
         working-directory: web
-        run: bun audit --audit-level=high
+        # rwsdk currently depends on decompress@4.2.1; no patched decompress release
+        # exists yet. Keep the audit strict while ignoring only that upstream advisory.
+        run: bun audit --audit-level=high --ignore GHSA-mp2f-45pm-3cg9
       - name: Install shared dependencies
         working-directory: api/services/shared
         run: bun install --frozen-lockfile
@@ -293,7 +295,9 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Audit web dependencies
         working-directory: web
-        run: bun audit --audit-level=high
+        # rwsdk currently depends on decompress@4.2.1; no patched decompress release
+        # exists yet. Keep the audit strict while ignoring only that upstream advisory.
+        run: bun audit --audit-level=high --ignore GHSA-mp2f-45pm-3cg9
       - name: Install shared dependencies
         working-directory: api/services/shared
         run: bun install --frozen-lockfile

@@ -139,6 +139,7 @@ describe("CommunityGatesEditorPage gate draft helpers", () => {
 
     expect(state.projection.normalAuthoringSupported).toBe(true);
     expect(state.showMatchModeControl).toBe(false);
+    expect(state.showStandaloneAntiBotControl).toBe(false);
     expect(state.allowAnyDescription).toBe("Members can pass any one selected access path.");
   });
 
@@ -149,7 +150,18 @@ describe("CommunityGatesEditorPage gate draft helpers", () => {
 
     expect(state.projection.normalAuthoringSupported).toBe(true);
     expect(state.showMatchModeControl).toBe(false);
+    expect(state.showStandaloneAntiBotControl).toBe(true);
     expect(state.allowAnyDescription).toBe("Members can pass any one selected access path.");
+  });
+
+  test("does not expose the local anti-bot fallback as a standalone peer control", () => {
+    const state = getGateEditorGroupedAuthoringState([
+      { gateType: "unique_human", provider: "very" },
+      { gateType: "altcha_pow", fallbackFor: "unique_human" },
+    ], "all");
+
+    expect(state.projection.normalAuthoringSupported).toBe(true);
+    expect(state.showStandaloneAntiBotControl).toBe(false);
   });
 
   test("renders advanced policy replacement consent when replacement is required", () => {

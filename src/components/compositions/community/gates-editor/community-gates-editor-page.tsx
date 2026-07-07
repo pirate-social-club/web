@@ -282,6 +282,7 @@ export type GateEditorGroupedAuthoringState = {
   allowAnyDescription: string;
   projection: GateRequirementGroupsProjection;
   showMatchModeControl: boolean;
+  showStandaloneAntiBotControl: boolean;
 };
 
 export function getGateEditorGroupedAuthoringState(
@@ -295,6 +296,7 @@ export function getGateEditorGroupedAuthoringState(
       : "Members can pass any one selected advanced access path. Review the saved policy before replacing it.",
     projection,
     showMatchModeControl: gateMatchMode === "any",
+    showStandaloneAntiBotControl: projection.groups.some((group) => group.kind === "standalone_antibot"),
   };
 }
 
@@ -496,23 +498,25 @@ export function CommunityGatesEditorPage({
 
                   <FormSectionHeading title={mc.biometricGateChecksTitle} />
 
-                  <CheckboxCard
-                    className={altchaPowGate ? "border-border bg-muted/30" : undefined}
-                    checked={Boolean(altchaPowGate)}
-                    title={mc.altchaPowTitle}
-                    onCheckedChange={(checked) => {
-                      if (!checked && shouldResetMatchModeAfterRemovingPowFallback(gateDrafts, gateMatchMode)) {
-                        onGateMatchModeChange?.("all");
-                      }
-                      onGateDraftsChange?.(
-                        checked
-                          ? upsertGateDraftForMatchMode(gateDrafts, {
-                            gateType: "altcha_pow",
-                          }, gateMatchMode)
-                          : removeGateDraft(gateDrafts, "altcha_pow"),
-                      );
-                    }}
-                  />
+                  {groupedAuthoringState.showStandaloneAntiBotControl ? (
+                    <CheckboxCard
+                      className={altchaPowGate ? "border-border bg-muted/30" : undefined}
+                      checked={Boolean(altchaPowGate)}
+                      title={mc.altchaPowTitle}
+                      onCheckedChange={(checked) => {
+                        if (!checked && shouldResetMatchModeAfterRemovingPowFallback(gateDrafts, gateMatchMode)) {
+                          onGateMatchModeChange?.("all");
+                        }
+                        onGateDraftsChange?.(
+                          checked
+                            ? upsertGateDraftForMatchMode(gateDrafts, {
+                              gateType: "altcha_pow",
+                            }, gateMatchMode)
+                            : removeGateDraft(gateDrafts, "altcha_pow"),
+                        );
+                      }}
+                    />
+                  ) : null}
 
                   <CheckboxCard
                     className={uniqueHumanGate ? "border-border bg-muted/30" : undefined}

@@ -157,6 +157,13 @@ export const translatedMixItems: FeedItem[] = [
 
 const noop = () => {};
 
+function bylineArtistLabel(post: PostCardProps): string {
+  return post.byline.author?.label
+    ?? post.byline.community?.label
+    ?? post.byline.agentAuthor?.label
+    ?? "Midnight demo";
+}
+
 function publishStateSongPost(
   post: PostCardProps,
   overrides: Pick<PostCardProps, "byline" | "statusNotice" | "title">,
@@ -167,7 +174,7 @@ function publishStateSongPost(
     content: {
       type: "song",
       accessMode: "locked",
-      artist: post.byline.author?.label ?? post.byline.community?.label ?? "Unknown artist",
+      artist: bylineArtistLabel(post),
       listingMode: "not_listed",
       playbackState: "idle",
       title: overrides.title ?? "Midnight demo",

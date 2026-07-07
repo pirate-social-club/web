@@ -156,15 +156,39 @@ export interface LiveRoomContentSpec {
 
 // Spec-aligned song content (from specs/domain/post.md, asset.md, marketplace.md)
 export type SongStudyStatus = "unavailable" | "processing" | "ready" | "locked";
+export type SongFeatureCapabilityReasonCode =
+  | "lyrics_missing"
+  | "lyrics_too_short"
+  | "exercise_generation_failed"
+  | "provider_key_missing"
+  | "provider_key_invalid"
+  | "provider_rate_limited"
+  | "provider_unavailable"
+  | "provider_timeout"
+  | "provider_invalid_response"
+  | "instrumental_missing"
+  | "timed_lyrics_missing"
+  | "alignment_failed"
+  | "karaoke_disabled"
+  | "locked";
+
+export interface SongFeatureCapabilityReason {
+  code: SongFeatureCapabilityReasonCode;
+  kind: "config" | "content" | "processing_failure" | "entitlement" | "unavailable";
+  ownerAction: "none" | "manage_integrations" | "retry" | "edit_song" | "upload_instrumental" | "enable_karaoke" | "buy";
+}
+
 export interface SongStudyCapability {
   status: SongStudyStatus;
   exerciseCount?: number;
+  reason?: SongFeatureCapabilityReason;
   sourceLanguage?: string;
   targetLanguage?: string;
 }
 
 export type SongKaraokeStatus = "unavailable" | "processing" | "ready" | "failed";
 export interface SongKaraokeCapability {
+  reason?: SongFeatureCapabilityReason;
   status: SongKaraokeStatus;
 }
 

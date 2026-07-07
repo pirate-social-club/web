@@ -450,7 +450,7 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("Study");
     expect(markup).toContain("Sing");
     expect(markup).not.toContain("Sing unavailable");
-    expect(markup).not.toContain("Timed lyrics could not be prepared");
+    expect(markup).not.toContain("Sing setup failed");
     expect(markup).toContain("disabled");
   });
 
@@ -469,7 +469,7 @@ describe("deriveSongUI", () => {
 
     expect(markup).toContain("Study");
     expect(markup).toContain("Sing");
-    expect(markup).toContain("Timed lyrics could not be prepared for karaoke.");
+    expect(markup).toContain("Sing setup failed. Check the lyrics and stems, then retry publishing.");
     expect(markup).toContain("disabled");
   });
 });

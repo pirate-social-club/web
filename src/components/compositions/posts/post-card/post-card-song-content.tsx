@@ -8,6 +8,7 @@ import {
   Pause as PauseIcon,
   Play as PlayIcon,
   VinylRecord,
+  WarningCircle,
 } from "@phosphor-icons/react";
 import { Spinner } from "@/components/primitives/spinner";
 import { cn } from "@/lib/utils";
@@ -372,7 +373,7 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
           </Button>
         );
         if (content.viewerCanManage) {
-          studyFailureReason = "Study is locked for this song.";
+          studyFailureReason = "Study is locked. Check the song access settings.";
         }
         break;
       default:
@@ -429,7 +430,7 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
           </Button>
         );
         if (content.viewerCanManage) {
-          karaokeFailureReason = "Timed lyrics could not be prepared for karaoke.";
+          karaokeFailureReason = "Sing setup failed. Check the lyrics and stems, then retry publishing.";
         }
         break;
       default:
@@ -471,7 +472,7 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
   }
 
   const failureReason = studyFailureReason && karaokeFailureReason
-    ? "Study and karaoke could not be prepared."
+    ? "Study and Sing setup failed. Check the song setup, then retry publishing."
     : studyFailureReason ?? karaokeFailureReason;
 
   if (vinylReleaseUrl) {
@@ -511,13 +512,12 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
         >
           {primaryActions}
           {failureReason ? (
-            <Type
-              as="p"
-              className="col-span-full text-center text-muted-foreground"
-              variant="caption"
-            >
-              {failureReason}
-            </Type>
+            <div className="col-span-full flex items-start gap-2 rounded-md border border-warning/20 bg-warning/5 px-3 py-2 text-warning">
+              <WarningCircle className="mt-0.5 size-4 shrink-0" weight="fill" />
+              <Type as="p" className="text-warning/95" variant="caption">
+                {failureReason}
+              </Type>
+            </div>
           ) : null}
         </div>
       ) : null}

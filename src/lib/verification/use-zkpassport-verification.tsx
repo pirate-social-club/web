@@ -41,12 +41,6 @@ function requiredMinimumAge(requirements: readonly VerificationRequirement[]): n
   return ages.length > 0 ? Math.max(...ages) : null;
 }
 
-function isTelegramMiniAppRuntime(): boolean {
-  return typeof window !== "undefined" && Boolean((window as Window & {
-    Telegram?: { WebApp?: unknown };
-  }).Telegram?.WebApp);
-}
-
 async function buildZkPassportRequest(session: VerificationSession): Promise<ZkPassportRequestResult> {
   const launch = session.launch?.zkpassport;
   if (!launch) {
@@ -195,10 +189,8 @@ export function useZkPassportVerification(input: {
       });
       const request = await buildZkPassportRequest(session);
       setVerificationHref(request.url);
-      if (isTelegramMiniAppRuntime()) {
-        pendingExternalSessionRef.current = session;
-        setPendingExternalSessionId(session.id);
-      }
+      pendingExternalSessionRef.current = session;
+      setPendingExternalSessionId(session.id);
 
       const proofs: unknown[] = [];
       request.onProofGenerated((proof) => {
@@ -261,6 +253,7 @@ export function useZkPassportVerification(input: {
 
   return {
     checkPendingVerification: checkPendingExternalVerification,
+    clearPendingVerification: clearPendingExternalSession,
     startVerification,
     verificationError,
     verificationHref,

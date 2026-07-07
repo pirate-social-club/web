@@ -107,6 +107,7 @@ export function useCommunityJoinVerification({
   );
   const [walletGateVerificationPending, setWalletGateVerificationPending] = React.useState(false);
   const walletGateStartSnapshotRef = React.useRef<string | null>(null);
+  const [zkPassportModalOpen, setZkPassportModalOpen] = React.useState(false);
 
   const joinIfEligible = React.useCallback(async (
     updatedEligibility: ApiJoinEligibility,
@@ -163,6 +164,7 @@ export function useCommunityJoinVerification({
   });
 
   const {
+    checkPendingVerification: checkZkPassportPendingVerification,
     startVerification: startZkPassportVerificationFlow,
     verificationError: zkPassportError,
     verificationHref: zkPassportHref,
@@ -170,6 +172,7 @@ export function useCommunityJoinVerification({
   } = useZkPassportVerification({
     verificationIntent: "community_join",
     onVerified: async () => {
+      setZkPassportModalOpen(false);
       const updatedEligibility = await refetchEligibility();
       await joinIfEligible(updatedEligibility);
     },
@@ -213,7 +216,7 @@ export function useCommunityJoinVerification({
   }, [eligibility, startSelfVerificationFlow]);
 
   const startZkPassportVerification = React.useCallback(async ({
-    deferOpen = false,
+    deferOpen = !isTelegramMiniAppRuntime(),
     showToastOnError = false,
     missingCapabilities,
     membershipGateSummaries,
@@ -242,6 +245,9 @@ export function useCommunityJoinVerification({
     });
     if (!result.started && showToastOnError && result.error) {
       toast.error(result.error);
+    }
+    if (result.started && result.href && deferOpen) {
+      setZkPassportModalOpen(true);
     }
     return result;
   }, [eligibility, startZkPassportVerificationFlow]);
@@ -468,8 +474,10 @@ export function useCommunityJoinVerification({
     altchaScope: "community_join" as const,
     setAltchaPayload,
     handleSelfModalOpenChange: handleModalOpenChange,
+    handleZkPassportModalOpenChange: setZkPassportModalOpen,
     handleSelfQrError,
     handleSelfQrSuccess,
+    checkZkPassportPendingVerification,
     joinError,
 	    joinLoading,
 	    joinRequested,
@@ -487,5 +495,6 @@ export function useCommunityJoinVerification({
     zkPassportError,
     zkPassportHref,
     zkPassportLoading,
+    zkPassportModalOpen,
   };
 }

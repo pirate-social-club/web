@@ -15,6 +15,7 @@ import { CommunityPageShell } from "@/components/compositions/community/page-she
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
+import { ZkPassportVerificationModal } from "@/components/compositions/verification/zkpassport-verification-modal/zkpassport-verification-modal";
 import { CommunityProofOfWorkModal } from "@/components/compositions/community/proof-of-work-modal/community-proof-of-work-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
@@ -294,12 +295,16 @@ export function PublicCommunityRoutePage({
     storageKey: `pirate_pending_self_join_session:${communityId}`,
     verificationIntent: "community_join",
   });
+  const [zkPassportModalOpen, setZkPassportModalOpen] = React.useState(false);
   const {
     startVerification: startZkPassportVerificationFlow,
+    checkPendingVerification: checkZkPassportPendingVerification,
     verificationError: zkPassportError,
+    verificationHref: zkPassportHref,
     verificationLoading: zkPassportLoading,
   } = useZkPassportVerification({
     onVerified: () => {
+      setZkPassportModalOpen(false);
       invalidateCommunityGate(communityId);
       toast.success(copy.publicCommunity.verificationCompleted);
     },
@@ -424,8 +429,10 @@ export function PublicCommunityRoutePage({
     altchaPayload,
     altchaRequired,
     altchaScope,
+    checkZkPassportPendingVerification: checkJoinZkPassportPendingVerification,
     handleJoin,
     handleSelfModalOpenChange: handleJoinSelfModalOpenChange,
+    handleZkPassportModalOpenChange: handleJoinZkPassportModalOpenChange,
     handleSelfQrError: handleJoinSelfQrError,
     handleSelfQrSuccess: handleJoinSelfQrSuccess,
 	    joinError,
@@ -437,6 +444,10 @@ export function PublicCommunityRoutePage({
     selfPrompt: joinSelfPrompt,
     setAltchaPayload,
     veryLoading: joinVeryLoading,
+    zkPassportError: joinZkPassportError,
+    zkPassportHref: joinZkPassportHref,
+    zkPassportLoading: joinZkPassportLoading,
+    zkPassportModalOpen: joinZkPassportModalOpen,
   } = useCommunityJoinVerification({
     communityId: preview?.id ?? communityId,
     eligibility,
@@ -547,12 +558,16 @@ export function PublicCommunityRoutePage({
           }
 
           const result = await startZkPassportVerificationFlow({
+            deferOpen: true,
             requestedCapabilities,
             unavailableMessage,
             verificationRequirements,
           });
           if (!result.started && result.error) {
             toast.error(result.error);
+          }
+          if (result.started && result.href) {
+            setZkPassportModalOpen(true);
           }
           return { started: result.started };
         },
@@ -567,6 +582,7 @@ export function PublicCommunityRoutePage({
       startVeryVerification,
       startSelfVerificationFlow,
       startZkPassportVerificationFlow,
+      setZkPassportModalOpen,
       copy.publicCommunity.verificationMissingSelf,
       invalidateCommunityGate,
     ],
@@ -660,7 +676,7 @@ export function PublicCommunityRoutePage({
       {!viewerIsMember && !membershipLoading ? (
         <Button
           disabled={joinActionDisabled}
-          loading={joinLoading || joinVeryLoading || joinSelfLoading || passportLoading || (!session && authRuntime.busy)}
+          loading={joinLoading || joinVeryLoading || joinSelfLoading || joinZkPassportLoading || passportLoading || (!session && authRuntime.busy)}
           onClick={() => void handlePrimaryJoinAction()}
           variant="secondary"
         >
@@ -751,6 +767,28 @@ export function PublicCommunityRoutePage({
           title={joinSelfPrompt.title}
         />
       ) : null}
+      <ZkPassportVerificationModal
+        actionLabel="Open ZKPassport"
+        checkLoading={zkPassportLoading}
+        description="Verify with ZKPassport to continue."
+        error={zkPassportError}
+        href={zkPassportHref}
+        onCheckPending={checkZkPassportPendingVerification}
+        onOpenChange={setZkPassportModalOpen}
+        open={zkPassportModalOpen}
+        title="Verify with ZKPassport"
+      />
+      <ZkPassportVerificationModal
+        actionLabel="Open ZKPassport"
+        checkLoading={joinZkPassportLoading}
+        description="Verify with ZKPassport to continue."
+        error={joinZkPassportError}
+        href={joinZkPassportHref}
+        onCheckPending={checkJoinZkPassportPendingVerification}
+        onOpenChange={handleJoinZkPassportModalOpenChange}
+        open={joinZkPassportModalOpen}
+        title="Verify with ZKPassport"
+      />
       <section className="flex min-w-0 flex-1 flex-col gap-6">
         <CommunityPageShell
         activeSort={activeSort}

@@ -167,7 +167,7 @@ function publishStateSongPost(
     content: {
       type: "song",
       accessMode: "locked",
-      artist: post.byline.displayName,
+      artist: post.byline.author?.label ?? post.byline.community?.label ?? "Unknown artist",
       listingMode: "not_listed",
       playbackState: "idle",
       title: overrides.title ?? "Midnight demo",

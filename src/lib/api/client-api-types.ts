@@ -914,6 +914,14 @@ export type SongStudyAttemptResult = {
     extra: string[];
   };
   next_review_hint?: "again" | "hard" | "good" | "easy";
+  study_progress?: {
+    study_attempt_count: number;
+    study_correct_count: number;
+    study_target_count: number;
+    qualified_today: boolean;
+    current_streak: number;
+    next_due_at?: number;
+  };
 };
 
 export type SongStudyTranscriptionResponse = {

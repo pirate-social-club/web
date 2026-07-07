@@ -5,7 +5,7 @@ import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { installDomGlobals } from "@/test/setup-dom";
 import { ApiClient, ApiError } from "@/lib/api/client";
-import type { SongStudyAttemptRequest, SongStudyPayload } from "@/lib/api/client-api-types";
+import type { SongStudyAttemptRequest, SongStudyAttemptResult, SongStudyPayload } from "@/lib/api/client-api-types";
 
 installDomGlobals();
 Object.defineProperty(window, "location", {
@@ -78,13 +78,13 @@ let studyResult: SongStudyPayload = readyStudyPayload();
 let studyError: unknown = null;
 let privyConnectCalls = 0;
 let submitPostStudyAttemptError: unknown = null;
-let submitPostStudyAttemptResult = {
+let submitPostStudyAttemptResult: SongStudyAttemptResult = {
   attempts_remaining: 0,
   correct_option_id: "option_correct",
   exercise_id: "ex_choice",
   object: "song_study_attempt_result",
   outcome: "correct",
-} as const;
+};
 
 const fakeApi = new ApiClient({
   baseUrl: "https://api.test",
@@ -280,6 +280,55 @@ describe("StudyRoutePage", () => {
     await waitFor(() => expect(calls).toContain("communities.submitPostStudyAttempt:translation_choice:option_correct"));
     expect(submittedStudyAttempts.at(-1)).toMatchObject({ target_language: "en" });
     await waitFor(() => expect(view.getByText("Continue")).toBeTruthy());
+  });
+
+  test("renders server-owned streak progress on completion", async () => {
+    submitPostStudyAttemptResult = {
+      attempts_remaining: 0,
+      correct_option_id: "option_correct",
+      exercise_id: "ex_choice",
+      next_review_hint: "good",
+      object: "song_study_attempt_result",
+      outcome: "correct",
+      study_progress: {
+        current_streak: 4,
+        next_due_at: Math.floor(Date.now() / 1000) + 86_400,
+        qualified_today: true,
+        study_attempt_count: 3,
+        study_correct_count: 3,
+        study_target_count: 3,
+      },
+    };
+    studyResult = readyStudyPayload({
+      exercise_count: 1,
+      exercises: [
+        {
+          id: "ex_choice",
+          line_id: "line_1",
+          line_index: 0,
+          max_attempts: 1,
+          options: [
+            { id: "option_wrong", text: "Good night" },
+            { id: "option_correct", text: "Hello world" },
+          ],
+          prompt_text: "Hola mundo",
+          question: "Choose the translation",
+          type: "translation_choice",
+        },
+      ],
+    });
+
+    const view = render(<StudyRoutePage postId="pst_song" />);
+
+    await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
+    fireEvent.click(view.getByText("Hello world").closest("button")!);
+    await waitFor(() => expect(view.getByText("Continue")).toBeTruthy());
+    fireEvent.click(view.getByText("Continue").closest("button")!);
+
+    await waitFor(() => expect(view.getByText("Streak extended")).toBeTruthy());
+    expect(view.getByText("4 days")).toBeTruthy();
+    expect(view.getByText("Today's streak target met: 3 of 3 correct.")).toBeTruthy();
+    expect(view.getByText(/Next review:/)).toBeTruthy();
   });
 
   test("keeps the multiple choice exercise visible when attempt recording fails", async () => {

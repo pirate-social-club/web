@@ -181,11 +181,20 @@ function extractVisualPolicySummary(detail: ModerationCaseDetail | null): NonNul
   return undefined;
 }
 
-function firstMediaImageSrc(post: ModerationCasePostPreview | null | undefined): string | undefined {
+export function firstMediaImageSrc(post: ModerationCasePostPreview | null | undefined): string | undefined {
   if (!post?.media_refs_json) return undefined;
   try {
-    const mediaRefs = JSON.parse(post.media_refs_json) as Array<{ storage_ref?: string; poster_ref?: string }>;
-    return mediaRefs?.[0]?.storage_ref || mediaRefs?.[0]?.poster_ref || undefined;
+    const mediaRefs = JSON.parse(post.media_refs_json) as Array<{
+      mime_type?: string | null;
+      poster_ref?: string | null;
+      storage_ref?: string | null;
+    }>;
+    const media = mediaRefs?.[0];
+    if (!media) return undefined;
+    if (media.mime_type?.startsWith("video/")) {
+      return media.poster_ref || undefined;
+    }
+    return media.storage_ref || media.poster_ref || undefined;
   } catch {
     return undefined;
   }

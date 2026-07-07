@@ -307,7 +307,7 @@ export function useGatedActionRunner({
   completeAltchaAction: () => Promise<void>;
   completeAltchaJoin: () => Promise<void>;
   connect?: (() => void) | null;
-  defaultVerificationLoadingProvider: "self" | "very" | "passport" | null;
+  defaultVerificationLoadingProvider: "self" | "very" | "passport" | "zkpassport" | null;
   interactionCopy: GatedActionRunnerCopy;
   invalidateCommunityGate: (communityId: string) => void;
   loadCommunityGate: (communityId: string) => Promise<CommunityGateData>;

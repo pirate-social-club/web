@@ -19,6 +19,7 @@ import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
+import { useZkPassportVerification } from "@/lib/verification/use-zkpassport-verification";
 import { getLocaleMessages } from "@/locales";
 import {
   completeAltchaAction as completeAltchaActionFlow,
@@ -231,11 +232,27 @@ export function useCommunityInteractionGate({
       verificationIntentForInteraction(pendingInteractionRef.current),
   });
 
+  const {
+    startVerification: startZkPassportVerificationFlow,
+    verificationError: zkPassportError,
+    verificationLoading: zkPassportLoading,
+  } = useZkPassportVerification({
+    onVerified: completeVerificationJoin,
+    verificationIntent: () =>
+      verificationIntentForInteraction(pendingInteractionRef.current),
+  });
+
   React.useEffect(() => {
     if (veryError) {
       toast.error(veryError);
     }
   }, [veryError]);
+
+  React.useEffect(() => {
+    if (zkPassportError) {
+      toast.error(zkPassportError);
+    }
+  }, [zkPassportError]);
 
   const {
     passportLoading,
@@ -259,6 +276,7 @@ export function useCommunityInteractionGate({
     },
     startSelfVerificationFlow,
     startVeryVerification,
+    startZkPassportVerificationFlow,
     updateCachedGate,
   });
   const startWalletConnection = React.useCallback(async () => {
@@ -300,11 +318,13 @@ export function useCommunityInteractionGate({
     connect,
     defaultVerificationLoadingProvider: passportLoading
       ? "passport"
-      : veryLoading
-        ? "very"
-        : selfLoading
-          ? "self"
-          : null,
+      : zkPassportLoading
+        ? "zkpassport"
+        : veryLoading
+          ? "very"
+          : selfLoading
+            ? "self"
+            : null,
     interactionCopy,
     invalidateCommunityGate,
     loadCommunityGate,

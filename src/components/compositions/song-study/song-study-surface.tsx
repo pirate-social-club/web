@@ -6,11 +6,13 @@ import {
   Fire,
   Microphone,
   SpeakerHigh,
+  Stop,
   Trophy,
   XCircle,
 } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
+import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
@@ -103,9 +105,9 @@ function primaryActionLabel(state: SongStudySurfaceState): string | undefined {
       return state.priceLabel ? `Buy ${state.priceLabel}` : "Buy";
     case "say_it_back":
       if (state.phase === "correct") return "Continue";
-      if (state.phase === "wrong") return state.revealReference ? "Continue" : "Record again";
+      if (state.phase === "wrong") return state.revealReference ? "Continue" : "Record";
       if (state.phase === "checking") return "Checking…";
-      return state.phase === "listening" ? "Stop recording" : "Record";
+      return state.phase === "listening" ? "Stop" : "Record";
     case "multiple_choice":
       if (state.submitting) return "Checking…";
       if (state.result === "wrong" && state.canRetry) return "Try again";
@@ -113,6 +115,16 @@ function primaryActionLabel(state: SongStudySurfaceState): string | undefined {
     case "complete":
       return "Back to song";
   }
+}
+
+function primaryActionIcon(state: SongStudySurfaceState): React.ReactNode {
+  if (state.kind !== "say_it_back") return undefined;
+  if (state.phase === "checking") return <Spinner className="size-5" />;
+  if (state.phase === "listening") return <Stop className="size-5" weight="fill" />;
+  if (state.phase === "idle" || (state.phase === "wrong" && !state.revealReference)) {
+    return <Microphone className="size-5" weight="fill" />;
+  }
+  return undefined;
 }
 
 function primaryActionDisabled(state: SongStudySurfaceState): boolean {
@@ -123,10 +135,12 @@ function primaryActionDisabled(state: SongStudySurfaceState): boolean {
 
 function ActivityFooter({
   primaryDisabled,
+  primaryIcon,
   primaryLabel,
   onPrimaryAction,
 }: {
   primaryDisabled?: boolean;
+  primaryIcon?: React.ReactNode;
   primaryLabel?: string;
   onPrimaryAction?: () => void;
 }) {
@@ -135,7 +149,7 @@ function ActivityFooter({
   return (
     <footer className="sticky bottom-0 z-10 border-t border-border-soft bg-background/95 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 backdrop-blur-xl sm:px-6">
       <div className="mx-auto grid w-full max-w-3xl gap-3">
-        <Button className="w-full" disabled={primaryDisabled} onClick={onPrimaryAction} size="lg">
+        <Button className="w-full" disabled={primaryDisabled} leadingIcon={primaryIcon} onClick={onPrimaryAction} size="lg">
           {primaryLabel}
         </Button>
       </div>
@@ -216,6 +230,7 @@ function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kin
   const isCorrect = state.phase === "correct";
   const missing = state.feedback?.missing?.filter(Boolean) ?? [];
   const extra = state.feedback?.extra?.filter(Boolean) ?? [];
+  const showStatus = state.phase === "listening" || isWrong || isCorrect;
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-4 py-10 sm:px-6">
@@ -234,78 +249,70 @@ function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kin
         ) : null}
       </div>
 
-      <div
-        className={cn(
-          "rounded-[var(--radius-xl)] border p-4",
-          state.phase === "listening" && "border-primary/30 bg-primary/10",
-          state.phase === "checking" && "border-primary/30 bg-primary/10",
-          isWrong && "border-destructive/30 bg-destructive/10",
-          isCorrect && "border-success/30 bg-success/10",
-          state.phase === "idle" && "border-border-soft bg-muted/40",
-        )}
-      >
-        <div className="flex items-center gap-3">
-          {isCorrect ? (
-            <CheckCircle className="size-6 text-success" weight="fill" />
-          ) : isWrong ? (
-            <XCircle className="size-6 text-destructive" weight="fill" />
-          ) : state.phase === "checking" ? (
-            <Microphone className="size-6 animate-pulse text-primary" weight="fill" />
-          ) : (
-            <Microphone className={cn("size-6", state.phase === "listening" && "animate-pulse text-primary")} weight="fill" />
+      {showStatus ? (
+        <div
+          className={cn(
+            "rounded-[var(--radius-xl)] border p-4",
+            state.phase === "listening" && "border-primary/30 bg-primary/10",
+            isWrong && "border-destructive/30 bg-destructive/10",
+            isCorrect && "border-success/30 bg-success/10",
           )}
-          <div className="min-w-0">
-            <Type as="p" variant="body-strong">
-              {isCorrect
-                ? "Correct"
-                : isWrong
-                  ? "Not quite"
-                  : state.phase === "checking"
-                    ? "Checking your line"
-                    : state.phase === "listening"
-                      ? "Listening…"
-                      : "Ready"}
-            </Type>
-            <Type as="p" className="truncate text-muted-foreground" dir="auto" variant="caption">
-              {state.transcript ? `Heard: ${state.transcript}` : "Your transcript will appear here."}
-            </Type>
+        >
+          <div className="flex items-center gap-3">
+            {isCorrect ? (
+              <CheckCircle className="size-6 text-success" weight="fill" />
+            ) : isWrong ? (
+              <XCircle className="size-6 text-destructive" weight="fill" />
+            ) : (
+              <Microphone className="size-6 animate-pulse text-primary" weight="fill" />
+            )}
+            <div className="min-w-0">
+              <Type as="p" variant="body-strong">
+                {isCorrect ? "Correct" : isWrong ? "Not quite" : "Recording"}
+              </Type>
+              {state.transcript ? (
+                <Type as="p" className="truncate text-muted-foreground" dir="auto" variant="caption">
+                  Heard: {state.transcript}
+                </Type>
+              ) : null}
+            </div>
           </div>
+          {isWrong && (missing.length > 0 || extra.length > 0 || state.revealReference) ? (
+            <div className="mt-4 space-y-3 border-t border-border-soft pt-4">
+              {missing.length > 0 ? (
+                <div>
+                  <Type as="p" className="text-destructive" variant="caption">
+                    Missing
+                  </Type>
+                  <Type as="p" className="mt-1" dir="auto" variant="body-strong">
+                    {missing.join(" · ")}
+                  </Type>
+                </div>
+              ) : null}
+              {extra.length > 0 ? (
+                <div>
+                  <Type as="p" className="text-muted-foreground" variant="caption">
+                    Extra
+                  </Type>
+                  <Type as="p" className="mt-1" dir="auto" variant="body-strong">
+                    {extra.join(" · ")}
+                  </Type>
+                </div>
+              ) : null}
+              {state.revealReference ? (
+                <div>
+                  <Type as="p" className="text-muted-foreground" variant="caption">
+                    Reference
+                  </Type>
+                  <Type as="p" className="mt-1" dir="auto" variant="body-strong">
+                    {state.exercise.expected}
+                  </Type>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-        {isWrong && (missing.length > 0 || extra.length > 0 || state.revealReference) ? (
-          <div className="mt-4 space-y-3 border-t border-border-soft pt-4">
-            {missing.length > 0 ? (
-              <div>
-                <Type as="p" className="text-destructive" variant="caption">
-                  Missing
-                </Type>
-                <Type as="p" className="mt-1" dir="auto" variant="body-strong">
-                  {missing.join(" · ")}
-                </Type>
-              </div>
-            ) : null}
-            {extra.length > 0 ? (
-              <div>
-                <Type as="p" className="text-muted-foreground" variant="caption">
-                  Extra
-                </Type>
-                <Type as="p" className="mt-1" dir="auto" variant="body-strong">
-                  {extra.join(" · ")}
-                </Type>
-              </div>
-            ) : null}
-            {state.revealReference ? (
-              <div>
-                <Type as="p" className="text-muted-foreground" variant="caption">
-                  Reference
-                </Type>
-                <Type as="p" className="mt-1" dir="auto" variant="body-strong">
-                  {state.exercise.expected}
-                </Type>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      ) : null}
     </div>
   );
 }
@@ -455,6 +462,7 @@ export function SongStudySurface({
       <Body onOptionSelect={onOptionSelect} state={state} />
       <ActivityFooter
         primaryDisabled={primaryActionDisabled(state)}
+        primaryIcon={primaryActionIcon(state)}
         primaryLabel={primaryActionLabel(state)}
         onPrimaryAction={onPrimaryAction}
       />

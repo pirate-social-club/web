@@ -10,7 +10,6 @@ import {
   type SongStudySayItBackExercise,
   type SongStudySurfaceState,
 } from "@/components/compositions/song-study/song-study-surface";
-import type { SongStreakSummary } from "@/components/compositions/song-study/song-streak-preview";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { Button } from "@/components/primitives/button";
 import { Spinner } from "@/components/primitives/spinner";
@@ -22,7 +21,6 @@ import type { SongStudyAttemptResult, SongStudyExercise, SongStudyPayload } from
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
-import { toKaraokeCapability, toStreakSummary } from "@/app/authenticated-helpers/post-media-presentation";
 
 type StudyRouteState =
   | { phase: "loading" }
@@ -42,6 +40,17 @@ type StudyRouteState =
 
 type ReadyStudyRouteState = Extract<StudyRouteState, { phase: "ready" }>;
 type MultipleChoiceSurfaceState = Extract<SongStudySurfaceState, { kind: "multiple_choice" }>;
+type StudyFeedbackOutcome = "correct" | "incorrect";
+
+const STUDY_FEEDBACK_OUTCOMES: readonly StudyFeedbackOutcome[] = ["correct", "incorrect"];
+
+type StudyFeedbackAudioState = {
+  buffers: Partial<Record<StudyFeedbackOutcome, AudioBuffer>>;
+  context: AudioContext;
+  loading: Partial<Record<StudyFeedbackOutcome, Promise<AudioBuffer>>>;
+};
+
+let studyFeedbackAudio: StudyFeedbackAudioState | null = null;
 
 function pageTitle(post: LocalizedPostResponse | null, study?: SongStudyPayload | null): string {
   return study?.title?.trim()
@@ -123,7 +132,6 @@ function formatNextReviewLabel(nextDueAt?: number): string | undefined {
 function completeSurface(input: {
   correctCount: number;
   lastAttemptResult?: SongStudyAttemptResult;
-  streakSummary?: SongStreakSummary;
   totalCount: number;
 }): SongStudySurfaceState {
   const progress = input.lastAttemptResult?.study_progress;
@@ -137,13 +145,11 @@ function completeSurface(input: {
           streak: {
             currentStreak: progress.current_streak,
             qualifiedToday: progress.qualified_today,
-            studyAttemptsToday: progress.study_attempt_count,
             studyCorrectCount: progress.study_correct_count,
             studyTargetCount: progress.study_target_count,
           },
         }
       : {}),
-    ...(input.streakSummary ? { streakSummary: input.streakSummary } : {}),
     totalCount: input.totalCount,
   };
 }
@@ -153,12 +159,84 @@ function makeAttemptIdempotencyKey(exerciseId: string, attemptNumber: number): s
   return `study:${exerciseId}:${attemptNumber}:${random}`;
 }
 
-function playStudyFeedbackSound(outcome: "correct" | "incorrect") {
+function getStudyFeedbackAudioContext(): StudyFeedbackAudioState | null {
+  if (typeof window === "undefined") return null;
+  const AudioContextConstructor = window.AudioContext
+    ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextConstructor) return null;
+  studyFeedbackAudio ??= {
+    buffers: {},
+    context: new AudioContextConstructor(),
+    loading: {},
+  };
+  return studyFeedbackAudio;
+}
+
+function loadStudyFeedbackBuffer(outcome: StudyFeedbackOutcome): Promise<AudioBuffer> | null {
+  const state = getStudyFeedbackAudioContext();
+  if (!state) return null;
+  if (state.buffers[outcome]) return Promise.resolve(state.buffers[outcome]);
+  state.loading[outcome] ??= fetch(`/sounds/study/${outcome}.mp3`)
+    .then((response) => {
+      if (!response.ok) throw new Error(`Could not load study feedback sound: ${outcome}`);
+      return response.arrayBuffer();
+    })
+    .then((audioData) => state.context.decodeAudioData(audioData))
+    .then((buffer) => {
+      state.buffers[outcome] = buffer;
+      return buffer;
+    });
+  return state.loading[outcome] ?? null;
+}
+
+function preloadStudyFeedbackSounds() {
+  for (const outcome of STUDY_FEEDBACK_OUTCOMES) {
+    void loadStudyFeedbackBuffer(outcome)?.catch(() => {
+      // Feedback audio is non-critical.
+    });
+  }
+}
+
+function unlockStudyFeedbackAudio() {
+  const state = getStudyFeedbackAudioContext();
+  if (!state) return;
+  preloadStudyFeedbackSounds();
+  if (state.context.state === "suspended") {
+    void state.context.resume().catch(() => {
+      // Browsers require a user gesture; this is called from answer selection.
+    });
+  }
+}
+
+function playStudyFeedbackBuffer(outcome: StudyFeedbackOutcome): boolean {
+  const state = studyFeedbackAudio;
+  const buffer = state?.buffers[outcome];
+  if (!state || !buffer) return false;
+  const source = state.context.createBufferSource();
+  const gain = state.context.createGain();
+  gain.gain.value = 0.7;
+  source.buffer = buffer;
+  source.connect(gain).connect(state.context.destination);
+  source.start();
+  return true;
+}
+
+function playStudyFeedbackSound(outcome: StudyFeedbackOutcome) {
+  if (playStudyFeedbackBuffer(outcome)) return;
+  void loadStudyFeedbackBuffer(outcome)?.then(() => {
+    if (playStudyFeedbackBuffer(outcome)) return;
+    playStudyFeedbackSoundElement(outcome);
+  }).catch(() => {
+    playStudyFeedbackSoundElement(outcome);
+  });
+}
+
+function playStudyFeedbackSoundElement(outcome: StudyFeedbackOutcome) {
   if (typeof Audio === "undefined") return;
   const audio = new Audio(`/sounds/study/${outcome}.mp3`);
   audio.volume = 0.7;
   void audio.play().catch(() => {
-    // Non-critical feedback. Browsers may block playback if user activation has expired.
+    // Non-critical feedback. Browsers may still block playback in strict modes.
   });
 }
 
@@ -330,6 +408,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           study,
           surface: exerciseSurface(study.exercises[0]!),
         });
+        preloadStudyFeedbackSounds();
       } catch (error) {
         if (canceled) return;
         if (isApiAuthError(error)) {
@@ -357,6 +436,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     selectedOptionId: string,
   ) => {
     if (surface.result || surface.submitting) return;
+    unlockStudyFeedbackAudio();
     const pendingKey = `${surface.exercise.id}:${surface.attemptNumber}`;
     if (pendingMultipleChoiceAttemptRef.current === pendingKey) return;
     pendingMultipleChoiceAttemptRef.current = pendingKey;
@@ -467,7 +547,6 @@ export function StudyRoutePage({ postId }: { postId: string }) {
             : completeSurface({
                 correctCount: nextCorrectCount,
                 lastAttemptResult: state.lastAttemptResult,
-                streakSummary: toStreakSummary(state.post),
                 totalCount: state.study.exercises.length,
               }),
         });
@@ -481,6 +560,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     }
 
     if (state.surface.kind === "say_it_back" && state.surface.phase === "idle") {
+      unlockStudyFeedbackAudio();
       const sayItBackSurface = state.surface;
       if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
         setState({
@@ -577,6 +657,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                 type: "say_it_back",
               }).then((result) => ({ result, transcript: transcription.text })))
               .then(({ result, transcript }) => {
+                playStudyFeedbackSound(result.outcome === "correct" ? "correct" : "incorrect");
                 setState((current) => {
                   if (current.phase !== "ready" || current.surface.kind !== "say_it_back" || current.surface.exercise.id !== exercise.id) {
                     return current;
@@ -658,7 +739,6 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           : completeSurface({
               correctCount: state.correctCount,
               lastAttemptResult: state.lastAttemptResult,
-              streakSummary: toStreakSummary(state.post),
               totalCount: state.study.exercises.length,
             }),
       });
@@ -678,7 +758,6 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           : completeSurface({
               correctCount: nextCorrectCount,
               lastAttemptResult: state.lastAttemptResult,
-              streakSummary: toStreakSummary(state.post),
               totalCount: state.study.exercises.length,
             }),
       });
@@ -691,20 +770,6 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     }
     submitMultipleChoiceAttempt(state, state.surface, optionId);
   }, [state, submitMultipleChoiceAttempt]);
-
-  const handleStudyAgain = React.useCallback(() => {
-    if (state.phase !== "ready" || state.study.exercises.length === 0) {
-      return;
-    }
-
-    setState({
-      ...state,
-      correctCount: 0,
-      exerciseIndex: 0,
-      lastAttemptResult: undefined,
-      surface: exerciseSurface(state.study.exercises[0]!),
-    });
-  }, [state]);
 
   if (!hydrated || (configured && !loaded)) {
     return (
@@ -736,10 +801,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       artworkSrc={pageArtwork(state.post, state.study)}
       className="h-dvh"
       onExit={() => navigate(`/p/${encodeURIComponent(postId)}`)}
-      onKaraoke={toKaraokeCapability(state.post)?.canKaraoke ? () => navigate(`/p/${encodeURIComponent(postId)}/karaoke`) : undefined}
       onOptionSelect={handleOptionSelect}
       onPrimaryAction={handlePrimaryAction}
-      onStudyAgain={handleStudyAgain}
       state={state.surface}
       title={pageTitle(state.post, state.study)}
     />

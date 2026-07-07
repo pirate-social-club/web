@@ -214,7 +214,7 @@ describe("StudyRoutePage", () => {
 
     const view = render(<StudyRoutePage postId="pst_song" />);
 
-    await waitFor(() => expect(view.getByText("Your transcript will appear here.")).toBeTruthy());
+    await waitFor(() => expect(view.getByText("Hello world")).toBeTruthy());
     expect(view.queryByText("Learn this song line by line")).toBeNull();
     expect(view.queryByText("Community not found")).toBeNull();
     expect(calls).toEqual(["posts.get", "publicPosts.get", "communities.getPostStudy"]);
@@ -233,7 +233,7 @@ describe("StudyRoutePage", () => {
   test("loads the server-authoritative study pack for authenticated users", async () => {
     const view = render(<StudyRoutePage postId="pst_song" />);
 
-    await waitFor(() => expect(view.getByText("Your transcript will appear here.")).toBeTruthy());
+    await waitFor(() => expect(view.getByText("Hello world")).toBeTruthy());
     expect(view.queryByText("Learn this song line by line")).toBeNull();
     expect(calls).toEqual(["posts.get", "communities.getPostStudy"]);
   });
@@ -283,6 +283,77 @@ describe("StudyRoutePage", () => {
     await waitFor(() => expect(view.getByText("Continue")).toBeTruthy());
   });
 
+  test("unlocks feedback audio on answer selection before the attempt response", async () => {
+    let resumeCalls = 0;
+    const originalAudioContext = window.AudioContext;
+    const originalFetch = globalThis.fetch;
+    class FakeAudioContext {
+      destination = {};
+      state = "suspended";
+      createBufferSource() {
+        return {
+          buffer: null,
+          connect: () => ({ connect: () => undefined }),
+          start: () => undefined,
+        };
+      }
+      createGain() {
+        return {
+          connect: () => undefined,
+          gain: { value: 1 },
+        };
+      }
+      decodeAudioData = async () => ({}) as AudioBuffer;
+      resume = async () => {
+        resumeCalls += 1;
+        this.state = "running";
+      };
+    }
+    Object.defineProperty(window, "AudioContext", {
+      configurable: true,
+      value: FakeAudioContext,
+    });
+    globalThis.fetch = (async () => ({
+      arrayBuffer: async () => new ArrayBuffer(1),
+      ok: true,
+    })) as typeof fetch;
+
+    try {
+      studyResult = readyStudyPayload({
+        exercise_count: 1,
+        exercises: [
+          {
+            id: "ex_choice",
+            line_id: "line_1",
+            line_index: 0,
+            max_attempts: 1,
+            options: [
+              { id: "option_wrong", text: "Good night" },
+              { id: "option_correct", text: "Hello world" },
+            ],
+            prompt_text: "Hola mundo",
+            question: "Choose the translation",
+            type: "translation_choice",
+          },
+        ],
+      });
+
+      const view = render(<StudyRoutePage postId="pst_song" />);
+
+      await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
+      fireEvent.click(view.getByText("Hello world").closest("button")!);
+
+      expect(resumeCalls).toBe(1);
+      await waitFor(() => expect(calls).toContain("communities.submitPostStudyAttempt:translation_choice:option_correct"));
+    } finally {
+      Object.defineProperty(window, "AudioContext", {
+        configurable: true,
+        value: originalAudioContext,
+      });
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("renders server-owned streak progress on completion", async () => {
     submitPostStudyAttemptResult = {
       attempts_remaining: 0,
@@ -326,11 +397,10 @@ describe("StudyRoutePage", () => {
     await waitFor(() => expect(view.getByText("Continue")).toBeTruthy());
     fireEvent.click(view.getByText("Continue").closest("button")!);
 
-    await waitFor(() => expect(view.getByText("Your streak")).toBeTruthy());
-    expect(view.getByText("4")).toBeTruthy();
-    expect(view.getByText("1/1")).toBeTruthy();
-    expect(view.getByText("Correct")).toBeTruthy();
-    expect(view.getByText("Study again")).toBeTruthy();
+    await waitFor(() => expect(view.getByText("Streak extended")).toBeTruthy());
+    expect(view.getByText("4 days")).toBeTruthy();
+    expect(view.getByText("Today's streak target met: 3 of 3 correct.")).toBeTruthy();
+    expect(view.getByText(/Next review:/)).toBeTruthy();
   });
 
   test("keeps the multiple choice exercise visible when attempt recording fails", async () => {

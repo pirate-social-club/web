@@ -390,5 +390,5 @@ async function main() {
 
 main().catch((error: unknown) => {
   console.error(error instanceof Error ? error.stack || error.message : error);
-  process.exitCode = 1;
+  process.exit(1);
 });

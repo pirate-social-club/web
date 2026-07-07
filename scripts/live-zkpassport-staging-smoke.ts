@@ -35,9 +35,18 @@ type SmokeConfig = {
   apiBaseURL: string;
   capabilities: Array<Extract<RequestedVerificationCapability, "minimum_age" | "nationality" | "gender">>;
   minimumAge: number;
+  printQr: boolean;
   startOnly: boolean;
   subject: string;
   timeoutMs: number;
+};
+
+type QrCodeModule = {
+  toString: (
+    text: string,
+    options: { type: "terminal"; small?: boolean },
+    callback: (error: Error | null | undefined, output: string) => void,
+  ) => void;
 };
 
 const DEFAULT_API_BASE_URL = "https://api-staging.pirate.sc";
@@ -114,10 +123,25 @@ function buildConfig(): SmokeConfig {
     apiBaseURL: env("E2E_API_BASE_URL") ?? env("PIRATE_API_BASE_URL") ?? DEFAULT_API_BASE_URL,
     capabilities: parseCapabilities(env("ZKPASSPORT_SMOKE_CAPABILITIES")),
     minimumAge: parsePositiveInteger("ZKPASSPORT_SMOKE_MINIMUM_AGE", 18),
+    printQr: parseBooleanEnv("ZKPASSPORT_SMOKE_PRINT_QR"),
     startOnly: parseBooleanEnv("ZKPASSPORT_SMOKE_START_ONLY"),
     subject: env("ZKPASSPORT_SMOKE_SUBJECT") ?? env("E2E_LIVE_STAGING_SUBJECT") ?? DEFAULT_SUBJECT,
     timeoutMs: parsePositiveInteger("ZKPASSPORT_SMOKE_TIMEOUT_MS", DEFAULT_TIMEOUT_MS),
   };
+}
+
+async function printTerminalQr(value: string): Promise<void> {
+  const qrCode = await import("qrcode") as unknown as QrCodeModule;
+  const output = await new Promise<string>((resolve, reject) => {
+    qrCode.toString(value, { small: true, type: "terminal" }, (error, rendered) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(rendered);
+    });
+  });
+  console.log(output);
 }
 
 async function requestJson<T>(
@@ -319,6 +343,10 @@ async function main() {
   console.log(`[zkpassport] session: ${session.id}`);
   console.log("[zkpassport] open this URL with ZKPassport/ZKR to complete the proof:");
   console.log(request.url);
+  if (config.printQr) {
+    console.log("[zkpassport] scan this QR with the ZKPassport mobile app:");
+    await printTerminalQr(request.url);
+  }
 
   if (config.startOnly) {
     console.log("[zkpassport] start-only mode complete; proof/result callbacks were not awaited.");

@@ -37,6 +37,10 @@ import { getLocaleMessages } from "@/locales";
 import { NumericStepper } from "@/components/compositions/community/create-composer/create-community-composer.sections";
 import { Type } from "@/components/primitives/type";
 import { ActionBanner } from "@/components/primitives/action-banner";
+import {
+  buildGateRequirementGroupsProjection,
+  type GateRequirementGroupsProjection,
+} from "./gate-requirement-groups";
 
 
 
@@ -274,6 +278,24 @@ function shouldResetMatchModeAfterRemovingPowFallback(
   return removeGateDraft(drafts, "altcha_pow").length <= 1;
 }
 
+export type GateEditorGroupedAuthoringState = {
+  allowAnyDescription: string;
+  projection: GateRequirementGroupsProjection;
+};
+
+export function getGateEditorGroupedAuthoringState(
+  gateDrafts: readonly IdentityGateDraft[],
+  gateMatchMode: "all" | "any",
+): GateEditorGroupedAuthoringState {
+  const projection = buildGateRequirementGroupsProjection(gateDrafts, gateMatchMode);
+  return {
+    allowAnyDescription: projection.normalAuthoringSupported
+      ? "Members can pass any one selected access path."
+      : "Members can pass any one selected advanced access path. Review the saved policy before replacing it.",
+    projection,
+  };
+}
+
 export interface CommunityGatesEditorPageProps {
   advancedGatePolicyReplacementRequired?: boolean;
   allowAnonymousIdentity: boolean;
@@ -385,6 +407,10 @@ export function CommunityGatesEditorPage({
   const showGateMatchModeControl =
     effectiveMembershipMode === "gated"
     && (gateDrafts.length > 1 || onGateMatchModeChange != null || gateMatchMode === "any");
+  const groupedAuthoringState = React.useMemo(
+    () => getGateEditorGroupedAuthoringState(gateDrafts, gateMatchMode),
+    [gateDrafts, gateMatchMode],
+  );
   const uniqueHumanGateTitle = uniqueHumanGate?.provider === "self"
     ? "Private ID proof (Self.xyz)"
     : mc.uniqueHumanTitle;
@@ -457,7 +483,7 @@ export function CommunityGatesEditorPage({
                         />
                         <OptionCard
                           className={gateMatchMode === "any" ? "border-border bg-muted/30" : undefined}
-                          description="Members can pass any one selected gate, including the browser anti-bot check if it is selected."
+                          description={groupedAuthoringState.allowAnyDescription}
                           selected={gateMatchMode === "any"}
                           title="Allow any one"
                           onClick={() => onGateMatchModeChange?.("any")}

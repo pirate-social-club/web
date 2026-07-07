@@ -8,6 +8,7 @@ import {
   courtyardInventoryDraftMatchesGroup,
   documentProofProviderChoiceFromProviders,
   documentProofProvidersFromChoice,
+  getGateEditorGroupedAuthoringState,
   normalizeDocumentProofProviders,
   normalizeGateDraftsForMatchMode,
   upsertGateDraftForMatchMode,
@@ -113,6 +114,29 @@ describe("CommunityGatesEditorPage gate draft helpers", () => {
     expect(documentProofProviderChoiceFromProviders(["self"])).toBe("self");
     expect(documentProofProviderChoiceFromProviders(["zkpassport"])).toBe("zkpassport");
     expect(documentProofProviderChoiceFromProviders(["zkpassport", "self"])).toBe("both");
+  });
+
+  test("derives normal grouped authoring copy without promoting browser anti-bot as a peer gate", () => {
+    const state = getGateEditorGroupedAuthoringState([
+      { gateType: "unique_human", provider: "very" },
+      { gateType: "nationality", provider: "self", requiredValues: ["US"] },
+    ], "any");
+
+    expect(state.projection.normalAuthoringSupported).toBe(false);
+    expect(state.projection.advancedReasons).toEqual(["cross_group_or"]);
+    expect(state.allowAnyDescription).toBe(
+      "Members can pass any one selected advanced access path. Review the saved policy before replacing it.",
+    );
+    expect(state.allowAnyDescription).not.toContain("browser anti-bot");
+  });
+
+  test("keeps simple standalone anti-bot copy generic", () => {
+    const state = getGateEditorGroupedAuthoringState([
+      { gateType: "altcha_pow" },
+    ], "all");
+
+    expect(state.projection.normalAuthoringSupported).toBe(true);
+    expect(state.allowAnyDescription).toBe("Members can pass any one selected access path.");
   });
 
   test("renders advanced policy replacement consent when replacement is required", () => {

@@ -41,6 +41,8 @@ Set `ZKPASSPORT_SMOKE_START_ONLY=1` to prove staging auth exchange, ZKPassport s
 
 Set `ZKPASSPORT_SMOKE_PRINT_QR=1` to also print a terminal QR code for the request URL. This is the preferred handoff to the mobile app.
 
+Set `ZKPASSPORT_SMOKE_QR_FILE=/tmp/zkpassport-smoke.png` to write the request QR code as a PNG file that can be opened or shared while the harness waits for mobile-app completion.
+
 For dev-mode proofs, follow the official ZKPassport dev-mode docs to enable mock IDs in the mobile app: https://docs.zkpassport.id/getting-started/dev-mode. Those docs state that all mock passport proofs use unique identifier `1`; the smoke script therefore defaults to a stable subject so repeated runs bind to the same staging user instead of accidentally testing cross-user nullifier conflicts.
 
 Do not start `rtk bun run dev`, `rtk bun run storybook`, or worker dev servers from an agent session unless the user explicitly asks for that exact server. If visual verification is needed, use an already-running server.

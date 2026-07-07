@@ -35,6 +35,7 @@ type SmokeConfig = {
   apiBaseURL: string;
   capabilities: Array<Extract<RequestedVerificationCapability, "minimum_age" | "nationality" | "gender">>;
   minimumAge: number;
+  qrFile: string | null;
   printQr: boolean;
   startOnly: boolean;
   subject: string;
@@ -47,6 +48,11 @@ type QrCodeModule = {
     options: { type: "terminal"; small?: boolean },
     callback: (error: Error | null | undefined, output: string) => void,
   ) => void;
+  toFile: (
+    path: string,
+    text: string,
+    options: { errorCorrectionLevel?: "L" | "M" | "Q" | "H"; margin?: number; scale?: number },
+  ) => Promise<void>;
 };
 
 const DEFAULT_API_BASE_URL = "https://api-staging.pirate.sc";
@@ -123,6 +129,7 @@ function buildConfig(): SmokeConfig {
     apiBaseURL: env("E2E_API_BASE_URL") ?? env("PIRATE_API_BASE_URL") ?? DEFAULT_API_BASE_URL,
     capabilities: parseCapabilities(env("ZKPASSPORT_SMOKE_CAPABILITIES")),
     minimumAge: parsePositiveInteger("ZKPASSPORT_SMOKE_MINIMUM_AGE", 18),
+    qrFile: env("ZKPASSPORT_SMOKE_QR_FILE") ?? null,
     printQr: parseBooleanEnv("ZKPASSPORT_SMOKE_PRINT_QR"),
     startOnly: parseBooleanEnv("ZKPASSPORT_SMOKE_START_ONLY"),
     subject: env("ZKPASSPORT_SMOKE_SUBJECT") ?? env("E2E_LIVE_STAGING_SUBJECT") ?? DEFAULT_SUBJECT,
@@ -130,8 +137,12 @@ function buildConfig(): SmokeConfig {
   };
 }
 
+async function loadQrCode(): Promise<QrCodeModule> {
+  return await import("qrcode") as unknown as QrCodeModule;
+}
+
 async function printTerminalQr(value: string): Promise<void> {
-  const qrCode = await import("qrcode") as unknown as QrCodeModule;
+  const qrCode = await loadQrCode();
   const output = await new Promise<string>((resolve, reject) => {
     qrCode.toString(value, { small: true, type: "terminal" }, (error, rendered) => {
       if (error) {
@@ -142,6 +153,11 @@ async function printTerminalQr(value: string): Promise<void> {
     });
   });
   console.log(output);
+}
+
+async function writeQrFile(filePath: string, value: string): Promise<void> {
+  const qrCode = await loadQrCode();
+  await qrCode.toFile(filePath, value, { errorCorrectionLevel: "M", margin: 2, scale: 8 });
 }
 
 async function requestJson<T>(
@@ -346,6 +362,10 @@ async function main() {
   if (config.printQr) {
     console.log("[zkpassport] scan this QR with the ZKPassport mobile app:");
     await printTerminalQr(request.url);
+  }
+  if (config.qrFile) {
+    await writeQrFile(config.qrFile, request.url);
+    console.log(`[zkpassport] QR file: ${config.qrFile}`);
   }
 
   if (config.startOnly) {

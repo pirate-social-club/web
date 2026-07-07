@@ -16,7 +16,6 @@ if [[ -z "${API_DIR:-}" ]]; then
 fi
 WEB_WRANGLER="$WEB_DIR/node_modules/.bin/wrangler"
 API_WRANGLER="$API_DIR/node_modules/.bin/wrangler"
-API_PRODUCTION_WORKER_NAME="${API_PRODUCTION_WORKER_NAME:-api-core}"
 REQUIRED_API_PRODUCTION_SECRETS=(
   OPENAI_API_KEY
   OPENROUTER_API_KEY
@@ -145,7 +144,7 @@ require_clean_main() {
 
 check_api_production_secrets() {
   local secrets_json
-  secrets_json="$(cd "$API_DIR" && "$API_WRANGLER" secret list --name "$API_PRODUCTION_WORKER_NAME" --env production --format json)"
+  secrets_json="$(cd "$API_DIR" && "$API_WRANGLER" secret list --env production --format json)"
 
   node - "$secrets_json" "${REQUIRED_API_PRODUCTION_SECRETS[*]}" <<'NODE'
 const [rawSecrets = "[]", requiredRaw = ""] = process.argv.slice(2);

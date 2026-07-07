@@ -510,7 +510,7 @@ export function toStudyCapability(postResponse: ApiPost): SongContentSpec["study
   };
 }
 
-function toStreakSummary(postResponse: ApiPost): SongContentSpec["streakSummary"] {
+export function toStreakSummary(postResponse: ApiPost): SongContentSpec["streakSummary"] {
   const summary = postResponse.streak_summary;
   if (!summary) {
     return undefined;
@@ -631,7 +631,7 @@ export function toSongPostContent(
       : undefined,
     onKaraoke: karaokeCapability?.canKaraoke ? songOptions?.onKaraoke : undefined,
     study,
-    onStudy: study ? songOptions?.onStudy : undefined,
+    onStudy: study?.status === "ready" ? songOptions?.onStudy : undefined,
     // Opens the full streak leaderboard from the inline streak section. The
     // section renders only when the API payload includes a streak summary.
     streaksHref: study?.status === "ready" || karaokeCapability?.canKaraoke

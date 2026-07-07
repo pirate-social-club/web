@@ -131,6 +131,22 @@ describe("toStudyCapability", () => {
 });
 
 describe("toSongPostContent", () => {
+  test("wires onStudy only when study is ready", () => {
+    const onStudy = () => {};
+    const ready = toSongPostContent({
+      ...songPost(),
+      study_capability: { status: "ready" },
+    } as unknown as ApiPost, { onStudy }, { title: "Test Song" });
+    const unavailable = toSongPostContent({
+      ...songPost(),
+      study_capability: { status: "unavailable" },
+    } as unknown as ApiPost, { onStudy }, { title: "Test Song" });
+
+    expect(ready.onStudy).toBe(onStudy);
+    expect(unavailable.study?.status).toBe("unavailable");
+    expect(unavailable.onStudy).toBeUndefined();
+  });
+
   test("maps the API streak summary onto the song card content", () => {
     const content = toSongPostContent({
       ...songPost(),

@@ -10,6 +10,7 @@ import {
   type SongStudySayItBackExercise,
   type SongStudySurfaceState,
 } from "@/components/compositions/song-study/song-study-surface";
+import type { SongStreakSummary } from "@/components/compositions/song-study/song-streak-preview";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { Button } from "@/components/primitives/button";
 import { Spinner } from "@/components/primitives/spinner";
@@ -21,6 +22,7 @@ import type { SongStudyAttemptResult, SongStudyExercise, SongStudyPayload } from
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
+import { toKaraokeCapability, toStreakSummary } from "@/app/authenticated-helpers/post-media-presentation";
 
 type StudyRouteState =
   | { phase: "loading" }
@@ -121,6 +123,7 @@ function formatNextReviewLabel(nextDueAt?: number): string | undefined {
 function completeSurface(input: {
   correctCount: number;
   lastAttemptResult?: SongStudyAttemptResult;
+  streakSummary?: SongStreakSummary;
   totalCount: number;
 }): SongStudySurfaceState {
   const progress = input.lastAttemptResult?.study_progress;
@@ -134,11 +137,13 @@ function completeSurface(input: {
           streak: {
             currentStreak: progress.current_streak,
             qualifiedToday: progress.qualified_today,
+            studyAttemptsToday: progress.study_attempt_count,
             studyCorrectCount: progress.study_correct_count,
             studyTargetCount: progress.study_target_count,
           },
         }
       : {}),
+    ...(input.streakSummary ? { streakSummary: input.streakSummary } : {}),
     totalCount: input.totalCount,
   };
 }
@@ -191,9 +196,6 @@ function StudyAuthRequiredMessage({ postId }: { postId: string }) {
       <div className="flex max-w-sm flex-col items-center gap-4 text-center">
         <Type as="h1" variant="h3">
           Sign in to study
-        </Type>
-        <Type as="p" className="text-muted-foreground" variant="body">
-          Study requires a Pirate account.
         </Type>
         {configured && connect ? (
           <Button loading={busy} onClick={connect}>
@@ -465,6 +467,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
             : completeSurface({
                 correctCount: nextCorrectCount,
                 lastAttemptResult: state.lastAttemptResult,
+                streakSummary: toStreakSummary(state.post),
                 totalCount: state.study.exercises.length,
               }),
         });
@@ -655,6 +658,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           : completeSurface({
               correctCount: state.correctCount,
               lastAttemptResult: state.lastAttemptResult,
+              streakSummary: toStreakSummary(state.post),
               totalCount: state.study.exercises.length,
             }),
       });
@@ -674,6 +678,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           : completeSurface({
               correctCount: nextCorrectCount,
               lastAttemptResult: state.lastAttemptResult,
+              streakSummary: toStreakSummary(state.post),
               totalCount: state.study.exercises.length,
             }),
       });
@@ -686,6 +691,20 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     }
     submitMultipleChoiceAttempt(state, state.surface, optionId);
   }, [state, submitMultipleChoiceAttempt]);
+
+  const handleStudyAgain = React.useCallback(() => {
+    if (state.phase !== "ready" || state.study.exercises.length === 0) {
+      return;
+    }
+
+    setState({
+      ...state,
+      correctCount: 0,
+      exerciseIndex: 0,
+      lastAttemptResult: undefined,
+      surface: exerciseSurface(state.study.exercises[0]!),
+    });
+  }, [state]);
 
   if (!hydrated || (configured && !loaded)) {
     return (
@@ -717,8 +736,10 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       artworkSrc={pageArtwork(state.post, state.study)}
       className="h-dvh"
       onExit={() => navigate(`/p/${encodeURIComponent(postId)}`)}
+      onKaraoke={toKaraokeCapability(state.post)?.canKaraoke ? () => navigate(`/p/${encodeURIComponent(postId)}/karaoke`) : undefined}
       onOptionSelect={handleOptionSelect}
       onPrimaryAction={handlePrimaryAction}
+      onStudyAgain={handleStudyAgain}
       state={state.surface}
       title={pageTitle(state.post, state.study)}
     />

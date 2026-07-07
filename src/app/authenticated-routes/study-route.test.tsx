@@ -194,6 +194,7 @@ describe("StudyRoutePage", () => {
     const view = render(<StudyRoutePage postId="pst_song" />);
 
     await waitFor(() => expect(view.getByText("Sign in to study")).toBeTruthy());
+    expect(view.queryByText("Study requires a Pirate account.")).toBeNull();
     expect(view.queryByText("Public Study Song")).toBeNull();
     expect(calls).toEqual([]);
   });
@@ -325,10 +326,11 @@ describe("StudyRoutePage", () => {
     await waitFor(() => expect(view.getByText("Continue")).toBeTruthy());
     fireEvent.click(view.getByText("Continue").closest("button")!);
 
-    await waitFor(() => expect(view.getByText("Streak extended")).toBeTruthy());
-    expect(view.getByText("4 days")).toBeTruthy();
-    expect(view.getByText("Today's streak target met: 3 of 3 correct.")).toBeTruthy();
-    expect(view.getByText(/Next review:/)).toBeTruthy();
+    await waitFor(() => expect(view.getByText("Your streak")).toBeTruthy());
+    expect(view.getByText("4")).toBeTruthy();
+    expect(view.getByText("1/1")).toBeTruthy();
+    expect(view.getByText("Correct")).toBeTruthy();
+    expect(view.getByText("Study again")).toBeTruthy();
   });
 
   test("keeps the multiple choice exercise visible when attempt recording fails", async () => {

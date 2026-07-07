@@ -4,7 +4,6 @@ import {
   CheckCircle,
   Fire,
   GraduationCap,
-  Medal,
   Microphone,
   SpeakerHigh,
   Stop,
@@ -13,6 +12,7 @@ import {
   XCircle,
 } from "@phosphor-icons/react";
 
+import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
@@ -407,22 +407,105 @@ function patchViewerEntry(
   );
 }
 
-function ViewerLeaderboardRow({
+function usePrefersReducedMotion(): boolean {
+  const [reducedMotion, setReducedMotion] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReducedMotion(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  return reducedMotion;
+}
+
+function previousStreakFromSummary(
+  streak: { currentStreak: number } | undefined,
+  summary: SongStreakSummary | undefined,
+): number | undefined {
+  if (!streak) return undefined;
+  const previous = summary?.viewer?.current_streak ?? streak.currentStreak - 1;
+  return Math.max(0, Math.min(previous, streak.currentStreak));
+}
+
+function StreakSlotNumber({
   currentStreak,
+  previousStreak,
 }: {
   currentStreak: number;
+  previousStreak: number;
 }) {
+  const startDelayMs = 450;
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const shouldAnimate = currentStreak > previousStreak && !prefersReducedMotion;
+  const [advanced, setAdvanced] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!shouldAnimate) {
+      setAdvanced(false);
+      return;
+    }
+
+    setAdvanced(false);
+    const timeout = window.setTimeout(() => setAdvanced(true), startDelayMs);
+    return () => window.clearTimeout(timeout);
+  }, [currentStreak, previousStreak, shouldAnimate]);
+
+  if (!shouldAnimate) {
+    return (
+      <Type
+        aria-label={`${currentStreak} day streak`}
+        as="h2"
+        className="mt-1 text-7xl font-bold leading-none tabular-nums sm:text-8xl"
+      >
+        {currentStreak}
+      </Type>
+    );
+  }
+
   return (
-    <div className="flex items-center gap-4 rounded-[var(--radius-2xl)] border border-primary/40 bg-primary/10 px-5 py-4">
-      <span className="grid size-10 place-items-center text-primary">
-        <Medal className="size-8" weight="fill" />
+    <h2
+      aria-label={`${currentStreak} day streak`}
+      className="relative mt-1 h-[0.92em] overflow-hidden text-7xl font-bold leading-none tabular-nums sm:text-8xl"
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-x-0 top-0 block transition-[transform,opacity] duration-[1200ms] ease-out",
+          advanced ? "translate-y-full opacity-0" : "translate-y-0 opacity-100",
+        )}
+      >
+        {previousStreak}
       </span>
       <span
         aria-hidden="true"
-        className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/20 text-lg font-semibold text-primary"
+        className={cn(
+          "absolute inset-x-0 top-0 block transition-[transform,opacity] duration-[1200ms] ease-out",
+          advanced ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0",
+        )}
       >
-        YOU
+        {currentStreak}
       </span>
+    </h2>
+  );
+}
+
+function ViewerLeaderboardRow({
+  currentStreak,
+  rank,
+}: {
+  currentStreak: number;
+  rank?: number;
+}) {
+  return (
+    <div className="flex items-center gap-4 rounded-[var(--radius-2xl)] border border-primary/40 bg-primary/10 px-5 py-4">
+      <span className="grid size-10 place-items-center text-xl font-semibold tabular-nums text-muted-foreground">
+        {rank ? `#${rank}` : "You"}
+      </span>
+      <Avatar fallback="You" fallbackSeed="song-study-viewer" size="sm" />
       <Type as="p" className="min-w-0 flex-1 truncate text-lg" variant="body-strong">
         You
       </Type>
@@ -458,11 +541,13 @@ function CompleteState({ state }: { state: Extract<SongStudySurfaceState, { kind
   const streak = state.streak;
 
   const summary = state.streakSummary;
+  const previousStreak = previousStreakFromSummary(streak, summary);
   const summaryEntries = summary && streak
     ? patchViewerEntry(summary.entries, streak)
     : summary?.entries ?? [];
   const viewerVisible = summaryEntries.slice(0, 3).some((entry) => entry.is_viewer);
   const showViewerRow = Boolean(streak && summary?.viewer && !viewerVisible);
+  const viewerPreviewRank = summaryEntries.slice(0, 3).length + 1;
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-8 px-4 py-10 sm:px-6">
@@ -478,9 +563,13 @@ function CompleteState({ state }: { state: Extract<SongStudySurfaceState, { kind
         <Type as="p" className="text-lg font-semibold text-muted-foreground" variant="body">
           {streak?.qualifiedToday ? "Your streak" : "Session complete"}
         </Type>
-        <Type as="h2" className="mt-1 text-7xl font-bold leading-none sm:text-8xl">
-          {streak?.qualifiedToday ? streak.currentStreak : `${score}%`}
-        </Type>
+        {streak?.qualifiedToday && previousStreak !== undefined ? (
+          <StreakSlotNumber currentStreak={streak.currentStreak} previousStreak={previousStreak} />
+        ) : (
+          <Type as="h2" className="mt-1 text-7xl font-bold leading-none sm:text-8xl">
+            {`${score}%`}
+          </Type>
+        )}
       </div>
 
       <div className="w-full">
@@ -497,7 +586,7 @@ function CompleteState({ state }: { state: Extract<SongStudySurfaceState, { kind
             />
           ) : null}
           {showViewerRow && streak ? (
-            <ViewerLeaderboardRow currentStreak={streak.currentStreak} />
+            <ViewerLeaderboardRow currentStreak={streak.currentStreak} rank={viewerPreviewRank} />
           ) : null}
         </div>
       ) : null}

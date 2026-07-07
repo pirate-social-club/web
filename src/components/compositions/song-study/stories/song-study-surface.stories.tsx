@@ -279,6 +279,15 @@ export const CompleteStreakQualified: Story = {
           studyCorrectCount: 3,
           studyTargetCount: 3,
         },
+        streakSummary: summary(
+          [
+            makeEntry(1, { userId: "usr_lena", handle: "lena.pirate", currentStreak: 21 }),
+            makeEntry(2, { userId: "usr_theo", handle: "theo.eth", currentStreak: 18 }),
+            makeEntry(3, { userId: "usr_priya", handle: "priya.pirate", currentStreak: 14 }),
+          ],
+          { ...viewerNotRanked, current_streak: 3, best_streak: 3, qualified_today: false },
+          12,
+        ),
         totalCount: 3,
       }}
     />

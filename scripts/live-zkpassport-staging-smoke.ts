@@ -18,6 +18,9 @@ import type {
 // the ZKPassport app, or a ZKR/dev proof source. Opening the URL in a
 // normal desktop browser only shows the ZKPassport download page and does not
 // emit SDK proof/result callbacks. The script does not fabricate proofs.
+// ZKPassport's dev-mode mock IDs are loaded in the mobile app; official docs
+// state that mock passport proofs all use unique identifier 1, so keep the
+// default subject unless intentionally testing nullifier reuse/conflict.
 // Set ZKPASSPORT_SMOKE_START_ONLY=1 to stop after creating the request URL.
 
 type ZkPassportRequestResult = {

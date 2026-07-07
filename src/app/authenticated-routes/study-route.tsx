@@ -40,6 +40,17 @@ type StudyRouteState =
 
 type ReadyStudyRouteState = Extract<StudyRouteState, { phase: "ready" }>;
 type MultipleChoiceSurfaceState = Extract<SongStudySurfaceState, { kind: "multiple_choice" }>;
+type StudyFeedbackOutcome = "correct" | "incorrect";
+
+const STUDY_FEEDBACK_OUTCOMES: readonly StudyFeedbackOutcome[] = ["correct", "incorrect"];
+
+type StudyFeedbackAudioState = {
+  buffers: Partial<Record<StudyFeedbackOutcome, AudioBuffer>>;
+  context: AudioContext;
+  loading: Partial<Record<StudyFeedbackOutcome, Promise<AudioBuffer>>>;
+};
+
+let studyFeedbackAudio: StudyFeedbackAudioState | null = null;
 
 function pageTitle(post: LocalizedPostResponse | null, study?: SongStudyPayload | null): string {
   return study?.title?.trim()
@@ -148,12 +159,84 @@ function makeAttemptIdempotencyKey(exerciseId: string, attemptNumber: number): s
   return `study:${exerciseId}:${attemptNumber}:${random}`;
 }
 
-function playStudyFeedbackSound(outcome: "correct" | "incorrect") {
+function getStudyFeedbackAudioContext(): StudyFeedbackAudioState | null {
+  if (typeof window === "undefined") return null;
+  const AudioContextConstructor = window.AudioContext
+    ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextConstructor) return null;
+  studyFeedbackAudio ??= {
+    buffers: {},
+    context: new AudioContextConstructor(),
+    loading: {},
+  };
+  return studyFeedbackAudio;
+}
+
+function loadStudyFeedbackBuffer(outcome: StudyFeedbackOutcome): Promise<AudioBuffer> | null {
+  const state = getStudyFeedbackAudioContext();
+  if (!state) return null;
+  if (state.buffers[outcome]) return Promise.resolve(state.buffers[outcome]);
+  state.loading[outcome] ??= fetch(`/sounds/study/${outcome}.mp3`)
+    .then((response) => {
+      if (!response.ok) throw new Error(`Could not load study feedback sound: ${outcome}`);
+      return response.arrayBuffer();
+    })
+    .then((audioData) => state.context.decodeAudioData(audioData))
+    .then((buffer) => {
+      state.buffers[outcome] = buffer;
+      return buffer;
+    });
+  return state.loading[outcome] ?? null;
+}
+
+function preloadStudyFeedbackSounds() {
+  for (const outcome of STUDY_FEEDBACK_OUTCOMES) {
+    void loadStudyFeedbackBuffer(outcome)?.catch(() => {
+      // Feedback audio is non-critical.
+    });
+  }
+}
+
+function unlockStudyFeedbackAudio() {
+  const state = getStudyFeedbackAudioContext();
+  if (!state) return;
+  preloadStudyFeedbackSounds();
+  if (state.context.state === "suspended") {
+    void state.context.resume().catch(() => {
+      // Browsers require a user gesture; this is called from answer selection.
+    });
+  }
+}
+
+function playStudyFeedbackBuffer(outcome: StudyFeedbackOutcome): boolean {
+  const state = studyFeedbackAudio;
+  const buffer = state?.buffers[outcome];
+  if (!state || !buffer) return false;
+  const source = state.context.createBufferSource();
+  const gain = state.context.createGain();
+  gain.gain.value = 0.7;
+  source.buffer = buffer;
+  source.connect(gain).connect(state.context.destination);
+  source.start();
+  return true;
+}
+
+function playStudyFeedbackSound(outcome: StudyFeedbackOutcome) {
+  if (playStudyFeedbackBuffer(outcome)) return;
+  void loadStudyFeedbackBuffer(outcome)?.then(() => {
+    if (playStudyFeedbackBuffer(outcome)) return;
+    playStudyFeedbackSoundElement(outcome);
+  }).catch(() => {
+    playStudyFeedbackSoundElement(outcome);
+  });
+}
+
+function playStudyFeedbackSoundElement(outcome: StudyFeedbackOutcome) {
   if (typeof Audio === "undefined") return;
   const audio = new Audio(`/sounds/study/${outcome}.mp3`);
   audio.volume = 0.7;
   void audio.play().catch(() => {
-    // Non-critical feedback. Browsers may block playback if user activation has expired.
+    // Non-critical feedback. Browsers may still block playback in strict modes.
   });
 }
 
@@ -328,6 +411,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           study,
           surface: exerciseSurface(study.exercises[0]!),
         });
+        preloadStudyFeedbackSounds();
       } catch (error) {
         if (canceled) return;
         if (isApiAuthError(error)) {
@@ -355,6 +439,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     selectedOptionId: string,
   ) => {
     if (surface.result || surface.submitting) return;
+    unlockStudyFeedbackAudio();
     const pendingKey = `${surface.exercise.id}:${surface.attemptNumber}`;
     if (pendingMultipleChoiceAttemptRef.current === pendingKey) return;
     pendingMultipleChoiceAttemptRef.current = pendingKey;

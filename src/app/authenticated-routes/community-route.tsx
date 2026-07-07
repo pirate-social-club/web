@@ -24,6 +24,7 @@ import { CommunityJoinRequestModal } from "@/components/compositions/community/j
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
 import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
+import { ZkPassportVerificationModal } from "@/components/compositions/verification/zkpassport-verification-modal/zkpassport-verification-modal";
 import { CommunityProofOfWorkModal } from "@/components/compositions/community/proof-of-work-modal/community-proof-of-work-modal";
 import { Button } from "@/components/primitives/button";
 import { IconButton } from "@/components/primitives/icon-button";
@@ -269,8 +270,10 @@ export function CommunityPage({
     altchaPayload,
     altchaRequired,
     altchaScope,
+    checkZkPassportPendingVerification,
     handleJoin,
     handleSelfModalOpenChange,
+    handleZkPassportModalOpenChange,
     handleSelfQrError,
     handleSelfQrSuccess,
     joinError,
@@ -286,7 +289,10 @@ export function CommunityPage({
     startZkPassportVerification,
     setAltchaPayload,
     veryLoading,
+    zkPassportError,
+    zkPassportHref,
     zkPassportLoading,
+    zkPassportModalOpen,
   } = useCommunityJoinVerification({
     communityId,
     eligibility,
@@ -798,7 +804,7 @@ export function CommunityPage({
       {!ownsCommunity && !canModerateCommunity && !viewerIsMember ? (
         <Button
           disabled={joinActionDisabled}
-          loading={joinLoading || veryLoading || selfLoading || passportLoading}
+          loading={joinLoading || veryLoading || selfLoading || zkPassportLoading || passportLoading}
           onClick={handlePrimaryJoinAction}
           variant="secondary"
         >
@@ -895,6 +901,17 @@ export function CommunityPage({
           title={selfPrompt.title}
         />
       ) : null}
+      <ZkPassportVerificationModal
+        actionLabel="Open ZKPassport"
+        checkLoading={zkPassportLoading}
+        description="Verify with ZKPassport to continue."
+        error={zkPassportError}
+        href={zkPassportHref}
+        onCheckPending={checkZkPassportPendingVerification}
+        onOpenChange={handleZkPassportModalOpenChange}
+        open={zkPassportModalOpen}
+        title="Verify with ZKPassport"
+      />
       {ageSelfPrompt ? (
         <SelfVerificationModal
           actionLabel={ageSelfPrompt.actionLabel}

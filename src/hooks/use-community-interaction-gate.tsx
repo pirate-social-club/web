@@ -5,6 +5,7 @@ import * as React from "react";
 import { navigate } from "@/app/router";
 import { CommunityInteractionGateModal } from "@/components/compositions/community/interaction-gate-modal/community-interaction-gate-modal";
 import type { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
+import type { ZkPassportVerificationModal } from "@/components/compositions/verification/zkpassport-verification-modal/zkpassport-verification-modal";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -44,6 +45,11 @@ const LazySelfVerificationModal = React.lazy(async () => {
   return { default: mod.SelfVerificationModal };
 }) as typeof SelfVerificationModal;
 
+const LazyZkPassportVerificationModal = React.lazy(async () => {
+  const mod = await import("@/components/compositions/verification/zkpassport-verification-modal/zkpassport-verification-modal");
+  return { default: mod.ZkPassportVerificationModal };
+}) as typeof ZkPassportVerificationModal;
+
 export function verificationIntentForInteraction(
   interaction: PendingInteraction | null,
 ): VerificationIntent {
@@ -71,6 +77,7 @@ export function useCommunityInteractionGate({
   const session = useSession();
   const { connect, reconnectEthereumWallet } = usePiratePrivyRuntime();
   const [modalState, setModalState] = React.useState<ModalState | null>(null);
+  const [zkPassportModalOpen, setZkPassportModalOpen] = React.useState(false);
   const [walletConnectionLoading, setWalletConnectionLoading] = React.useState(false);
   const sessionKey = session?.user.id ?? null;
   const pendingInteractionRef = React.useRef<PendingInteraction | null>(null);
@@ -233,14 +240,32 @@ export function useCommunityInteractionGate({
   });
 
   const {
+    checkPendingVerification: checkZkPassportPendingVerification,
     startVerification: startZkPassportVerificationFlow,
     verificationError: zkPassportError,
+    verificationHref: zkPassportHref,
     verificationLoading: zkPassportLoading,
   } = useZkPassportVerification({
-    onVerified: completeVerificationJoin,
+    onVerified: async () => {
+      setZkPassportModalOpen(false);
+      await completeVerificationJoin();
+    },
     verificationIntent: () =>
       verificationIntentForInteraction(pendingInteractionRef.current),
   });
+
+  const startZkPassportVerificationWithModal = React.useCallback(async (
+    options: Parameters<typeof startZkPassportVerificationFlow>[0],
+  ) => {
+    const result = await startZkPassportVerificationFlow({
+      ...options,
+      deferOpen: true,
+    });
+    if (result.started && result.href) {
+      setZkPassportModalOpen(true);
+    }
+    return result;
+  }, [startZkPassportVerificationFlow]);
 
   React.useEffect(() => {
     if (veryError) {
@@ -276,7 +301,7 @@ export function useCommunityInteractionGate({
     },
     startSelfVerificationFlow,
     startVeryVerification,
-    startZkPassportVerificationFlow,
+    startZkPassportVerificationFlow: startZkPassportVerificationWithModal,
     updateCachedGate,
   });
   const startWalletConnection = React.useCallback(async () => {
@@ -379,10 +404,27 @@ export function useCommunityInteractionGate({
     </React.Suspense>
   ) : null;
 
-  const gateModal = interactionModal || selfVerificationModal ? (
+  const zkPassportVerificationModal = zkPassportModalOpen ? (
+    <React.Suspense fallback={null}>
+      <LazyZkPassportVerificationModal
+        actionLabel="Open ZKPassport"
+        checkLoading={zkPassportLoading}
+        description="Verify with ZKPassport to continue."
+        error={zkPassportError}
+        href={zkPassportHref}
+        onCheckPending={checkZkPassportPendingVerification}
+        onOpenChange={setZkPassportModalOpen}
+        open={zkPassportModalOpen}
+        title="Verify with ZKPassport"
+      />
+    </React.Suspense>
+  ) : null;
+
+  const gateModal = interactionModal || selfVerificationModal || zkPassportVerificationModal ? (
     <>
       {interactionModal}
       {selfVerificationModal}
+      {zkPassportVerificationModal}
     </>
   ) : null;
 

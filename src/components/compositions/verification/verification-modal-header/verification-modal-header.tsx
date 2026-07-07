@@ -1,11 +1,11 @@
 "use client";
 
 import type { Icon } from "@phosphor-icons/react";
-import { CheckCircle, Clock, Gauge, HandPalm, IdentificationCard, UserPlus, WarningCircle } from "@phosphor-icons/react";
+import { CheckCircle, Clock, Fingerprint, Gauge, HandPalm, IdentificationCard, UserPlus, WarningCircle } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
 
-export type VerificationModalIconKind = "blocked" | "join" | "passport" | "pending" | "ready" | "self" | "very";
+export type VerificationModalIconKind = "blocked" | "join" | "passport" | "pending" | "ready" | "self" | "very" | "zkpassport";
 
 const iconByKind: Record<VerificationModalIconKind, Icon> = {
   blocked: WarningCircle,
@@ -15,6 +15,7 @@ const iconByKind: Record<VerificationModalIconKind, Icon> = {
   ready: CheckCircle,
   self: IdentificationCard,
   very: HandPalm,
+  zkpassport: Fingerprint,
 };
 
 export function VerificationIconBadge({

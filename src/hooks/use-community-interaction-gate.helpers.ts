@@ -758,11 +758,9 @@ export function createCommunityBlockedModalStateFactory(options: {
         getVerificationCapabilitiesForProvider(gate.eligibility, provider),
         { locale: options.interactionCopy.locale },
       );
-      const verificationIcon = provider === "zkpassport" ? "passport" : provider;
-
       return {
         description: verificationPrompt.description,
-        icon: verificationIcon,
+        icon: provider,
         primaryAction: {
           label:
             verificationPrompt.actionLabel || options.interactionCopy.taskVerify,

@@ -30,6 +30,7 @@ export interface RightsReviewQueueItem {
   matches: Array<{
     title: string;
     subtitle?: string;
+    sourceEvidenceRef?: string;
   }>;
 }
 
@@ -37,7 +38,7 @@ export interface CommunityRightsReviewQueuePageProps {
   className?: string;
   loading?: boolean;
   cases: RightsReviewQueueItem[];
-  onClear?: (caseId: string) => void;
+  onClear?: (caseId: string, evidenceRefs?: string[]) => void;
   onNeedsSource?: (caseId: string) => void;
   onBlock?: (caseId: string) => void;
   processingCaseId?: string | null;
@@ -182,6 +183,11 @@ export function CommunityRightsReviewQueuePage({
           <div>
             {cases.map((caseItem, index) => {
               const processing = processingCaseId === caseItem.caseId;
+              const evidenceRefs = Array.from(new Set(
+                caseItem.matches
+                  .map((match) => match.sourceEvidenceRef)
+                  .filter((ref): ref is string => Boolean(ref)),
+              ));
               return (
                 <div key={caseItem.caseId}>
                   {index > 0 ? <Separator /> : null}
@@ -253,7 +259,7 @@ export function CommunityRightsReviewQueuePage({
                         disabled={processing}
                         leadingIcon={<Check className="size-4" />}
                         loading={processing}
-                        onClick={() => onClear?.(caseItem.caseId)}
+                        onClick={() => onClear?.(caseItem.caseId, evidenceRefs.length ? evidenceRefs : undefined)}
                         size="sm"
                         variant="default"
                       >

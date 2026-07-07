@@ -221,20 +221,39 @@ function textFromRecord(record: Record<string, unknown>, keys: string[]): string
   return null;
 }
 
+function sourceEvidenceRefFromAcrCustomMatch(item: Record<string, unknown>): string | undefined {
+  const userDefined = isRecord(item.user_defined) ? item.user_defined : item;
+  const communityId = textFromRecord(userDefined, ["community_id", "community"]);
+  const bundleId = textFromRecord(userDefined, ["song_artifact_bundle_id", "song_artifact_bundle"]);
+  return communityId && bundleId ? `song-bundle:${communityId}:${bundleId}` : undefined;
+}
+
 function extractRightsMatches(analysis: MediaAnalysisResult | null): RightsReviewQueueItem["matches"] {
   const customMatches = Array.isArray(analysis?.acrcloud_custom_match) ? analysis.acrcloud_custom_match : [];
   const musicMatches = Array.isArray(analysis?.acrcloud_music_match) ? analysis.acrcloud_music_match : [];
-  return [...customMatches, ...musicMatches].reduce<RightsReviewQueueItem["matches"]>((matches, item) => {
-    if (!isRecord(item)) return matches;
+  const matches = customMatches.reduce<RightsReviewQueueItem["matches"]>((items, item) => {
+    if (!isRecord(item)) return items;
     const title = textFromRecord(item, ["title", "file_name", "name"]) ?? "Catalog match";
     const artist = textFromRecord(item, ["artists", "artist", "album"]);
     const acrid = textFromRecord(item, ["acr_id", "acrid", "external_id"]);
-    matches.push({
+    items.push({
+      title,
+      subtitle: artist ?? acrid ?? undefined,
+      sourceEvidenceRef: sourceEvidenceRefFromAcrCustomMatch(item),
+    });
+    return items;
+  }, []);
+  return musicMatches.reduce<RightsReviewQueueItem["matches"]>((items, item) => {
+    if (!isRecord(item)) return items;
+    const title = textFromRecord(item, ["title", "file_name", "name"]) ?? "Catalog match";
+    const artist = textFromRecord(item, ["artists", "artist", "album"]);
+    const acrid = textFromRecord(item, ["acr_id", "acrid", "external_id"]);
+    items.push({
       title,
       subtitle: artist ?? acrid ?? undefined,
     });
-    return matches;
-  }, []);
+    return items;
+  }, matches);
 }
 
 function mapRightsReviewCase(item: RightsReviewCaseListItem): RightsReviewQueueItem {
@@ -625,10 +644,14 @@ export function CommunityModerationPage({
   const handleRightsReviewAction = React.useCallback(async (
     caseId: string,
     actionType: "clear_with_upstream_refs" | "needs_more_evidence" | "block",
+    evidenceRefs?: string[],
   ) => {
     setProcessingRightsReviewCaseId(caseId);
     try {
-      const result = await api.communities.applyRightsReviewCaseAction(communityId, caseId, { action_type: actionType });
+      const result = await api.communities.applyRightsReviewCaseAction(communityId, caseId, {
+        action_type: actionType,
+        evidence_refs: evidenceRefs?.length ? evidenceRefs : undefined,
+      });
       if (result.case.status === "resolved" || result.case.status === "blocked") {
         setRightsReviewCases((current) => current.filter((c) => c.caseId !== caseId));
       } else {
@@ -675,7 +698,7 @@ export function CommunityModerationPage({
           cases={rightsReviewCases}
           loading={rightsReviewCasesLoading}
           onBlock={(caseId) => void handleRightsReviewAction(caseId, "block")}
-          onClear={(caseId) => void handleRightsReviewAction(caseId, "clear_with_upstream_refs")}
+          onClear={(caseId, evidenceRefs) => void handleRightsReviewAction(caseId, "clear_with_upstream_refs", evidenceRefs)}
           onNeedsSource={(caseId) => void handleRightsReviewAction(caseId, "needs_more_evidence")}
           processingCaseId={processingRightsReviewCaseId}
         />

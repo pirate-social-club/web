@@ -175,6 +175,13 @@ export const GATE_REQUIREMENT_SECTION_TITLES = {
   tokenHoldings: "Token holdings",
 } as const;
 
+export const GATE_REQUIREMENT_SECTION_ORDER = [
+  "humanity",
+  "documentAttributes",
+  "tokenHoldings",
+  "reputation",
+] as const;
+
 function getInitialDocumentProofProviders(): DocumentProofProvider[] {
   return [...DEFAULT_DOCUMENT_PROOF_PROVIDERS];
 }
@@ -689,43 +696,6 @@ export function CommunityGatesEditorPage({
                     </div>
                   ) : null}
 
-                  <FormSectionHeading title={GATE_REQUIREMENT_SECTION_TITLES.reputation} />
-
-                  <CheckboxCard
-                    className={walletScoreGate ? "border-border bg-muted/30" : undefined}
-                    checked={Boolean(walletScoreGate)}
-                    title={mc.walletScoreTitle}
-                    onCheckedChange={(checked) => onGateDraftsChange?.(
-                      checked
-                        ? upsertGateDraftForMatchMode(gateDrafts, {
-                          gateType: "wallet_score",
-                          provider: "passport",
-                          minimumScore: 20,
-                        }, gateMatchMode)
-                        : removeGateDraft(gateDrafts, "wallet_score"),
-                    )}
-                  />
-
-                  {walletScoreGate ? (
-                    <div className="space-y-2 ps-4">
-                      <FormFieldLabel label={mc.walletScoreLabel} />
-                      <NumericStepper
-                        max={100}
-                        min={0}
-                        value={walletScoreGate.minimumScore}
-                        onChange={(next) => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
-                          gateType: "wallet_score",
-                          provider: "passport",
-                          minimumScore: next,
-                          gateRuleId: walletScoreGate.gateRuleId,
-                        }, gateMatchMode))}
-                      />
-                      {(!Number.isFinite(walletScoreGate.minimumScore) || walletScoreGate.minimumScore < 0 || walletScoreGate.minimumScore > 100) ? (
-                        <FormNote tone="warning">{mc.walletScoreInvalid}</FormNote>
-                      ) : null}
-                    </div>
-                  ) : null}
-
                   <FormSectionHeading title={GATE_REQUIREMENT_SECTION_TITLES.tokenHoldings} />
 
                   <CheckboxCard
@@ -811,6 +781,43 @@ export function CommunityGatesEditorPage({
                     </div>
                   ) : courtyardInventoryGate ? (
                     <FormNote tone="warning">{mc.courtyardCatalogUnavailable}</FormNote>
+                  ) : null}
+
+                  <FormSectionHeading title={GATE_REQUIREMENT_SECTION_TITLES.reputation} />
+
+                  <CheckboxCard
+                    className={walletScoreGate ? "border-border bg-muted/30" : undefined}
+                    checked={Boolean(walletScoreGate)}
+                    title={mc.walletScoreTitle}
+                    onCheckedChange={(checked) => onGateDraftsChange?.(
+                      checked
+                        ? upsertGateDraftForMatchMode(gateDrafts, {
+                          gateType: "wallet_score",
+                          provider: "passport",
+                          minimumScore: 20,
+                        }, gateMatchMode)
+                        : removeGateDraft(gateDrafts, "wallet_score"),
+                    )}
+                  />
+
+                  {walletScoreGate ? (
+                    <div className="space-y-2 ps-4">
+                      <FormFieldLabel label={mc.walletScoreLabel} />
+                      <NumericStepper
+                        max={100}
+                        min={0}
+                        value={walletScoreGate.minimumScore}
+                        onChange={(next) => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
+                          gateType: "wallet_score",
+                          provider: "passport",
+                          minimumScore: next,
+                          gateRuleId: walletScoreGate.gateRuleId,
+                        }, gateMatchMode))}
+                      />
+                      {(!Number.isFinite(walletScoreGate.minimumScore) || walletScoreGate.minimumScore < 0 || walletScoreGate.minimumScore > 100) ? (
+                        <FormNote tone="warning">{mc.walletScoreInvalid}</FormNote>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
               ) : null}

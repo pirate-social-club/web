@@ -4,6 +4,7 @@ import * as React from "react";
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import {
   AdvancedGatePolicyBanner,
+  GATE_REQUIREMENT_SECTION_ORDER,
   GATE_REQUIREMENT_SECTION_TITLES,
   canAuthorCourtyardInventoryGate,
   courtyardInventoryDraftMatchesGroup,
@@ -44,6 +45,12 @@ function treeIncludesText(node: React.ReactNode, text: string): boolean {
 
 describe("CommunityGatesEditorPage gate draft helpers", () => {
   test("names the normal gate editor requirement groups explicitly", () => {
+    expect(GATE_REQUIREMENT_SECTION_ORDER).toEqual([
+      "humanity",
+      "documentAttributes",
+      "tokenHoldings",
+      "reputation",
+    ]);
     expect(GATE_REQUIREMENT_SECTION_TITLES).toEqual({
       documentAttributes: "Document attributes",
       humanity: "Humanity",

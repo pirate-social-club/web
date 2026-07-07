@@ -17,6 +17,7 @@ import type {
 //
 // This still requires an external proof source to open the printed URL
 // (ZKPassport/ZKR/dev proof source). The script does not fabricate proofs.
+// Set ZKPASSPORT_SMOKE_START_ONLY=1 to stop after creating the request URL.
 
 type ZkPassportRequestResult = {
   url: string;
@@ -30,6 +31,7 @@ type SmokeConfig = {
   apiBaseURL: string;
   capabilities: Array<Extract<RequestedVerificationCapability, "minimum_age" | "nationality" | "gender">>;
   minimumAge: number;
+  startOnly: boolean;
   subject: string;
   timeoutMs: number;
 };
@@ -96,11 +98,17 @@ function parsePositiveInteger(name: string, fallback: number): number {
   return parsed;
 }
 
+function parseBooleanEnv(name: string): boolean {
+  const value = env(name)?.toLowerCase();
+  return value === "1" || value === "true" || value === "yes";
+}
+
 function buildConfig(): SmokeConfig {
   return {
     apiBaseURL: env("E2E_API_BASE_URL") ?? env("PIRATE_API_BASE_URL") ?? DEFAULT_API_BASE_URL,
     capabilities: parseCapabilities(env("ZKPASSPORT_SMOKE_CAPABILITIES")),
     minimumAge: parsePositiveInteger("ZKPASSPORT_SMOKE_MINIMUM_AGE", 18),
+    startOnly: parseBooleanEnv("ZKPASSPORT_SMOKE_START_ONLY"),
     subject: env("ZKPASSPORT_SMOKE_SUBJECT") ?? env("E2E_LIVE_STAGING_SUBJECT") ?? DEFAULT_SUBJECT,
     timeoutMs: parsePositiveInteger("ZKPASSPORT_SMOKE_TIMEOUT_MS", DEFAULT_TIMEOUT_MS),
   };
@@ -294,6 +302,9 @@ async function main() {
   console.log(`[zkpassport] api: ${config.apiBaseURL}`);
   console.log(`[zkpassport] subject: ${config.subject}`);
   console.log(`[zkpassport] capabilities: ${config.capabilities.join(", ")}`);
+  if (config.startOnly) {
+    console.log("[zkpassport] start-only: true");
+  }
 
   const accessToken = await resolveAccessToken(config);
   const session = await startZkPassportSession(config, accessToken);
@@ -302,6 +313,11 @@ async function main() {
   console.log(`[zkpassport] session: ${session.id}`);
   console.log("[zkpassport] open this URL with ZKPassport/ZKR to complete the proof:");
   console.log(request.url);
+
+  if (config.startOnly) {
+    console.log("[zkpassport] start-only mode complete; proof/result callbacks were not awaited.");
+    return;
+  }
 
   const completedSession = await waitForResult({
     accessToken,

@@ -14,8 +14,10 @@ import type {
 // Required auth: either PIRATE_ACCESS_TOKEN/ZKPASSPORT_SMOKE_ACCESS_TOKEN, or
 // STAGING_TEST_JWT_SHARED_SECRET for staging_test_jwt exchange.
 //
-// This still requires an external proof source to open the printed URL
-// (ZKPassport/ZKR/dev proof source). The script does not fabricate proofs.
+// This still requires an external proof source to open the printed URL:
+// the ZKPassport app, or a ZKR/dev proof source. Opening the URL in a
+// normal desktop browser only shows the ZKPassport download page and does not
+// emit SDK proof/result callbacks. The script does not fabricate proofs.
 // Set ZKPASSPORT_SMOKE_START_ONLY=1 to stop after creating the request URL.
 
 type ZkPassportRequestResult = {

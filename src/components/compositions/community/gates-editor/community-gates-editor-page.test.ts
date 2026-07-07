@@ -124,18 +124,31 @@ describe("CommunityGatesEditorPage gate draft helpers", () => {
 
     expect(state.projection.normalAuthoringSupported).toBe(false);
     expect(state.projection.advancedReasons).toEqual(["cross_group_or"]);
+    expect(state.showMatchModeControl).toBe(true);
     expect(state.allowAnyDescription).toBe(
       "Members can pass any one selected advanced access path. Review the saved policy before replacing it.",
     );
     expect(state.allowAnyDescription).not.toContain("browser anti-bot");
   });
 
-  test("keeps simple standalone anti-bot copy generic", () => {
+  test("hides the global match-mode control for normal grouped all-mode authoring", () => {
+    const state = getGateEditorGroupedAuthoringState([
+      { gateType: "unique_human", provider: "very" },
+      { gateType: "nationality", provider: "self", requiredValues: ["US"] },
+    ], "all");
+
+    expect(state.projection.normalAuthoringSupported).toBe(true);
+    expect(state.showMatchModeControl).toBe(false);
+    expect(state.allowAnyDescription).toBe("Members can pass any one selected access path.");
+  });
+
+  test("keeps simple standalone anti-bot copy generic without showing top-level OR controls", () => {
     const state = getGateEditorGroupedAuthoringState([
       { gateType: "altcha_pow" },
     ], "all");
 
     expect(state.projection.normalAuthoringSupported).toBe(true);
+    expect(state.showMatchModeControl).toBe(false);
     expect(state.allowAnyDescription).toBe("Members can pass any one selected access path.");
   });
 

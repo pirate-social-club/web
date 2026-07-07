@@ -563,6 +563,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     }
 
     if (state.surface.kind === "say_it_back" && state.surface.phase === "idle") {
+      unlockStudyFeedbackAudio();
       const sayItBackSurface = state.surface;
       if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
         setState({
@@ -659,6 +660,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                 type: "say_it_back",
               }).then((result) => ({ result, transcript: transcription.text })))
               .then(({ result, transcript }) => {
+                playStudyFeedbackSound(result.outcome === "correct" ? "correct" : "incorrect");
                 setState((current) => {
                   if (current.phase !== "ready" || current.surface.kind !== "say_it_back" || current.surface.exercise.id !== exercise.id) {
                     return current;

@@ -5,6 +5,7 @@ import { isAddress } from "viem";
 
 import { CommunityModerationSaveFooter } from "@/components/compositions/community/moderation-shell/community-moderation-save-footer";
 import { Checkbox } from "@/components/primitives/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/primitives/radio-group";
 import {
   FormFieldLabel,
   FormNote,
@@ -155,9 +156,12 @@ export function canAuthorCourtyardInventoryGate(
 
 type DocumentGateDraft = Extract<IdentityGateDraft, { gateType: "nationality" | "minimum_age" | "gender" }>;
 
-const DOCUMENT_PROOF_PROVIDER_OPTIONS: Array<{ value: DocumentProofProvider; label: string }> = [
-  { value: "self", label: "Self.xyz" },
-  { value: "zkpassport", label: "ZKPassport" },
+type DocumentProofProviderChoice = "self" | "zkpassport" | "both";
+
+const DOCUMENT_PROOF_PROVIDER_CHOICES: Array<{ value: DocumentProofProviderChoice; label: string }> = [
+  { value: "self", label: "Self.xyz only" },
+  { value: "zkpassport", label: "ZKPassport only" },
+  { value: "both", label: "Self.xyz or ZKPassport" },
 ];
 
 function getInitialDocumentProofProviders(): DocumentProofProvider[] {
@@ -175,19 +179,26 @@ function getDocumentProofProviders(draft: DocumentGateDraft | null | undefined):
   return normalizeDocumentProofProviders(draft?.acceptedProviders);
 }
 
-export function toggleDocumentProofProvider(
-  providers: readonly DocumentProofProvider[],
-  provider: DocumentProofProvider,
-  checked: boolean,
+export function documentProofProviderChoiceFromProviders(
+  providers: readonly DocumentProofProvider[] | null | undefined,
+): DocumentProofProviderChoice {
+  const selected = normalizeDocumentProofProviders(providers);
+  if (selected.length === 1) {
+    return selected[0];
+  }
+  return "both";
+}
+
+export function documentProofProvidersFromChoice(
+  choice: string,
 ): DocumentProofProvider[] {
-  const current = normalizeDocumentProofProviders(providers);
-  if (checked) {
-    return DEFAULT_DOCUMENT_PROOF_PROVIDERS.filter((candidate) => candidate === provider || current.includes(candidate));
+  if (choice === "zkpassport") {
+    return ["zkpassport"];
   }
-  if (!current.includes(provider) || current.length === 1) {
-    return current;
+  if (choice === "both") {
+    return [...DEFAULT_DOCUMENT_PROOF_PROVIDERS];
   }
-  return current.filter((candidate) => candidate !== provider);
+  return ["self"];
 }
 
 function DocumentProofProviderRows({
@@ -198,26 +209,22 @@ function DocumentProofProviderRows({
   onChange: (providers: DocumentProofProvider[]) => void;
 }) {
   const providers = getDocumentProofProviders(draft);
-  const idPrefix = `community-${draft.gateType.replaceAll("_", "-")}-proof-provider`;
+  const choice = documentProofProviderChoiceFromProviders(providers);
 
   return (
     <div className="space-y-2">
       <FormFieldLabel label="Accepted proof apps" />
-      <div className="space-y-2">
-        {DOCUMENT_PROOF_PROVIDER_OPTIONS.map((option) => {
-          const checked = providers.includes(option.value);
-          return (
-            <CheckboxRow
-              key={option.value}
-              checked={checked}
-              disabled={checked && providers.length === 1}
-              id={`${idPrefix}-${option.value}`}
-              label={option.label}
-              onCheckedChange={(next) => onChange(toggleDocumentProofProvider(providers, option.value, next))}
-            />
-          );
-        })}
-      </div>
+      <RadioGroup
+        className="grid-cols-1 sm:grid-cols-3"
+        value={choice}
+        onValueChange={(next) => onChange(documentProofProvidersFromChoice(next))}
+      >
+        {DOCUMENT_PROOF_PROVIDER_CHOICES.map((option) => (
+          <RadioGroupItem key={option.value} value={option.value}>
+            {option.label}
+          </RadioGroupItem>
+        ))}
+      </RadioGroup>
     </div>
   );
 }

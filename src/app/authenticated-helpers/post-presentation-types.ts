@@ -42,6 +42,7 @@ export type LiveRoomPresentationOptions = {
   viewerAttachResponse?: ApiLiveRoomViewerAttachResponse | null;
   onAcceptGuestInvite?: () => void;
   onBuy?: () => void;
+  onGatePurchase?: () => void;
   onReviewReplay?: () => void;
   onWatch?: () => void;
   onViewerRenew?: (uid: number) => Promise<ApiLiveRoomViewerAttachResponse | null>;

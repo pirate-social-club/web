@@ -39,6 +39,17 @@ function useObjectUrl(file: File | null | undefined) {
   return objectUrl;
 }
 
+function publicAssetIdFromReferenceId(referenceId: string | undefined): string | null {
+  const value = referenceId?.trim();
+  if (!value) return null;
+  if (value.startsWith("story:asset:")) {
+    const assetRef = value.slice("story:asset:".length);
+    return assetRef.startsWith("asset_") ? assetRef : `asset_${assetRef}`;
+  }
+  if (value.startsWith("asset_")) return value;
+  return null;
+}
+
 export function LiveTabContent({
   copy,
   live,
@@ -83,6 +94,16 @@ export function LiveTabContent({
       ]),
     [live.setlistItems, live.trackOptions],
   );
+  const gateAssetOptions = React.useMemo(() => {
+    const seen = new Set<string>();
+    return trackOptions.flatMap((reference) => {
+      const assetId = publicAssetIdFromReferenceId(reference.id);
+      if (!assetId || seen.has(assetId)) return [];
+      seen.add(assetId);
+      return [{ id: assetId, label: reference.title, subtitle: reference.subtitle }];
+    });
+  }, [trackOptions]);
+  const selectedGateTargets = new Set(live.audienceGateTargetRefs ?? []);
   const handleSetlistItemUpdate = (
     index: number,
     field: "titleText" | "artistText",
@@ -232,7 +253,11 @@ export function LiveTabContent({
               <Chip
                 key={opt.value}
                 variant={live.accessMode === opt.value ? "selected" : "default"}
-                onClick={() => onLiveChange({ ...live, accessMode: opt.value })}
+                onClick={() => onLiveChange({
+                  ...live,
+                  accessMode: opt.value,
+                  audienceGateMode: opt.value === "gated" ? live.audienceGateMode ?? "community_members" : live.audienceGateMode,
+                })}
               >
                 {opt.label}
               </Chip>
@@ -257,6 +282,54 @@ export function LiveTabContent({
           </div>
         </div>
       </div>
+
+      {live.accessMode === "gated" ? (
+        <div className="space-y-3">
+          <FieldLabel label={copy.live.audienceGate ?? "Audience gate"} />
+          <div className="flex flex-wrap gap-2">
+            {([
+              { value: "community_members" as const, label: copy.live.audienceGateCommunityMembers ?? "Community members" },
+              { value: "purchase_entitlement" as const, label: copy.live.audienceGatePurchaseEntitlement ?? "Buyers of selected songs" },
+            ]).map((opt) => (
+              <Chip
+                key={opt.value}
+                variant={(live.audienceGateMode ?? "community_members") === opt.value ? "selected" : "default"}
+                onClick={() => onLiveChange({ ...live, audienceGateMode: opt.value })}
+              >
+                {opt.label}
+              </Chip>
+            ))}
+          </div>
+          {(live.audienceGateMode ?? "community_members") === "purchase_entitlement" ? (
+            <div className="space-y-2">
+              {gateAssetOptions.length > 0 ? gateAssetOptions.map((option) => (
+                <label key={option.id} className="flex items-start gap-2 rounded-md border border-border px-3 py-2">
+                  <Checkbox
+                    checked={selectedGateTargets.has(option.id)}
+                    onCheckedChange={(checked) => {
+                      const current = new Set(live.audienceGateTargetRefs ?? []);
+                      if (checked === true) {
+                        current.add(option.id);
+                      } else {
+                        current.delete(option.id);
+                      }
+                      onLiveChange({ ...live, audienceGateTargetRefs: [...current] });
+                    }}
+                  />
+                  <span className="min-w-0">
+                    <Type as="span" variant="body" className="block truncate">{option.label}</Type>
+                    {option.subtitle ? (
+                      <Type as="span" variant="caption" className="block truncate text-muted-foreground">{option.subtitle}</Type>
+                    ) : null}
+                  </span>
+                </label>
+              )) : (
+                <FormNote>{copy.live.audienceGatePurchaseEntitlementEmpty ?? "Select catalog songs in the setlist before using buyer access."}</FormNote>
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
         <div className="space-y-1">

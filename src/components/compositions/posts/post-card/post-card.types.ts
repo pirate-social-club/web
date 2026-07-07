@@ -130,6 +130,8 @@ export interface LiveRoomContentSpec {
   listingStatus?: ListingStatus;
   priceLabel?: string;
   regionalPriceLabel?: string;
+  gatePurchaseLabel?: string;
+  gateOwnershipRequired?: boolean;
   hasEntitlement?: boolean;
   ageGatePolicy?: AgeGatePolicy;
   contentSafetyState?: ContentSafetyState;
@@ -146,6 +148,7 @@ export interface LiveRoomContentSpec {
   onRsvp?: () => void;
   onWatch?: () => void;
   onBuy?: () => void;
+  onGatePurchase?: () => void;
   onReviewReplay?: () => void;
   onViewerRenew?: (uid: number) => Promise<ApiLiveRoomViewerAttachResponse | null>;
   onVerifyAge?: () => void;

@@ -185,6 +185,20 @@ export type ApiLiveRoomReplayDraftStatus = "not_recorded" | "processing" | "read
 export type ApiLiveRoomReplayAssetAccessMode = "free" | "included_with_ticket" | "paid";
 export type ApiLiveRoomReplayAssetPublicationStatus = "draft" | "published" | "failed";
 
+export type ApiLiveRoomAudienceGateSegment =
+  | { type: "community_members" }
+  | {
+    type: "purchase_entitlement";
+    entitlement_kind: "asset_access";
+    target_refs: string[];
+  };
+
+export type ApiLiveRoomAudienceGate = {
+  version: 1;
+  segments: ApiLiveRoomAudienceGateSegment[];
+  match: "any";
+};
+
 export type ApiCreateLiveRoomRequest = {
   title?: string | null;
   description?: string | null;
@@ -196,6 +210,7 @@ export type ApiCreateLiveRoomRequest = {
   cover_ref?: string | null;
   store_url?: string | null;
   store_label?: string | null;
+  audience_gate?: ApiLiveRoomAudienceGate | null;
   recording_enabled?: boolean | null;
   performer_allocations?: Array<{
     user?: string | null;
@@ -233,6 +248,7 @@ export type ApiLiveRoom = {
   status: ApiLiveRoomStatus;
   access_mode: ApiLiveRoomAccessMode;
   visibility: ApiLiveRoomVisibility;
+  audience_gate: ApiLiveRoomAudienceGate | null;
   title: string;
   description: string | null;
   cover_ref: string | null;
@@ -384,7 +400,25 @@ export type ApiLiveRoomAccessDecisionReason =
   | "unlisted"
   | "membership_required"
   | "purchase_required"
+  | "gate_unsatisfied"
   | "allowed";
+
+export type ApiLiveRoomGateAccessPayload = {
+  failed_segments: Array<
+    | { type: "community_members" }
+    | {
+      type: "purchase_entitlement";
+      entitlement_kind: "asset_access";
+      required_target_refs: string[];
+      purchasable_listings?: Array<{
+        listing: string;
+        asset: string;
+        price_cents: number;
+        status: string;
+      }>;
+    }
+  >;
+} | null;
 
 export type ApiLiveRoomAccessResponse = {
   room: ApiLiveRoom;
@@ -396,6 +430,7 @@ export type ApiLiveRoomAccessResponse = {
     listing: string | null;
     purchase_entitlement: string | null;
     guest_invite_status: ApiLiveRoomGuestInviteStatus | null;
+    gate: ApiLiveRoomGateAccessPayload;
   };
 };
 

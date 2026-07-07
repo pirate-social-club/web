@@ -200,6 +200,8 @@ export function defaultLiveComposerState(live?: LiveComposerState): LiveComposer
   return {
     roomKind: live?.roomKind ?? "solo",
     accessMode: live?.accessMode ?? "free",
+    audienceGateMode: live?.audienceGateMode ?? "community_members",
+    audienceGateTargetRefs: live?.audienceGateTargetRefs ?? [],
     visibility: live?.visibility ?? "public",
     scheduleForLater: live?.scheduleForLater ?? Boolean(live?.scheduleAt?.trim()),
     scheduleAt: live?.scheduleAt,

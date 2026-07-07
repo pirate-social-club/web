@@ -328,11 +328,11 @@ describe("post presentation live rooms", () => {
     expect(content.coverSrc).toBe("https://media.test/live-cover.jpg");
   });
 
-  test("normalizes replay status from the API room payload", () => {
+  test("normalizes published replay status from the API room payload", () => {
     Date.now = () => Date.parse("2026-05-16T12:00:00.000Z");
 
     const readyAccess = createLiveRoomAccess();
-    readyAccess.room.replay_status = "ready";
+    readyAccess.room.replay_status = "published";
     readyAccess.room.status = "ended";
     readyAccess.access.allowed = false;
     readyAccess.access.decision_reason = "ended";
@@ -343,7 +343,7 @@ describe("post presentation live rooms", () => {
 
     expect(content.type).toBe("live_room");
     if (content.type !== "live_room") return;
-    expect(content.replayStatus).toBe("ready");
+    expect(content.replayStatus).toBe("published");
   });
 
   test("defaults replay status to none for unrecognized values", () => {
@@ -375,6 +375,63 @@ describe("post presentation live rooms", () => {
     if (content.type !== "live_room") return;
     expect(content.accessMode).toBe("gated");
     expect(content.accessState).toBe("gate_required");
+  });
+
+  test("maps purchase-entitlement gate listings into a song purchase CTA", () => {
+    const gatedAccess = createLiveRoomAccess();
+    gatedAccess.access.access_mode = "gated";
+    gatedAccess.access.decision_reason = "gate_unsatisfied";
+    gatedAccess.access.gate = {
+      failed_segments: [{
+        type: "purchase_entitlement",
+        entitlement_kind: "asset_access",
+        required_target_refs: ["asset_ast_song"],
+        purchasable_listings: [{
+          listing: "lst_song",
+          asset: "asset_ast_song",
+          price_cents: 750,
+          status: "active",
+        }],
+      }],
+    };
+    gatedAccess.room.access_mode = "gated";
+
+    const onGatePurchase = () => undefined;
+    const content = toCommunityPostContent(createAnchoredLivePost(), undefined, {
+      liveRoom: { access: gatedAccess, localeTag: "en-US", onGatePurchase },
+    });
+
+    expect(content.type).toBe("live_room");
+    if (content.type !== "live_room") return;
+    expect(content.accessState).toBe("gate_required");
+    expect(content.gateOwnershipRequired).toBe(true);
+    expect(content.gatePurchaseLabel).toBe("$7.50");
+    expect(content.onGatePurchase).toBe(onGatePurchase);
+  });
+
+  test("maps purchase-entitlement gates without listings to ownership-only UI", () => {
+    const gatedAccess = createLiveRoomAccess();
+    gatedAccess.access.access_mode = "gated";
+    gatedAccess.access.decision_reason = "gate_unsatisfied";
+    gatedAccess.access.gate = {
+      failed_segments: [{
+        type: "purchase_entitlement",
+        entitlement_kind: "asset_access",
+        required_target_refs: ["asset_ast_song"],
+      }],
+    };
+    gatedAccess.room.access_mode = "gated";
+
+    const content = toCommunityPostContent(createAnchoredLivePost(), undefined, {
+      liveRoom: { access: gatedAccess, onGatePurchase: () => undefined },
+    });
+
+    expect(content.type).toBe("live_room");
+    if (content.type !== "live_room") return;
+    expect(content.accessState).toBe("gate_required");
+    expect(content.gateOwnershipRequired).toBe(true);
+    expect(content.gatePurchaseLabel).toBeUndefined();
+    expect(content.onGatePurchase).toBeUndefined();
   });
 });
 

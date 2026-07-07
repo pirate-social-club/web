@@ -40,6 +40,10 @@ function renderableImageRef(value: string | null | undefined): string | undefine
   return undefined;
 }
 
+function firstPurchaseGateSegment(gate: NonNullable<NonNullable<LiveRoomPresentationOptions["access"]>["access"]["gate"]>) {
+  return gate.failed_segments.find((segment) => segment.type === "purchase_entitlement");
+}
+
 export function toLiveRoomPostContent(
   postResponse: ApiPost,
   input: {
@@ -56,7 +60,7 @@ export function toLiveRoomPostContent(
   const publicStatus = post.anchor_live_room_status ?? undefined;
   const accessState: LiveRoomContentSpec["accessState"] = liveAccess?.decision_reason === "purchase_required"
     ? liveAccess.listing ? "purchase_required" : "missing_listing"
-    : liveAccess?.decision_reason === "membership_required"
+    : liveAccess?.decision_reason === "membership_required" || liveAccess?.decision_reason === "gate_unsatisfied"
       ? "gate_required"
       : liveAccess?.decision_reason === "ended" || liveAccess?.decision_reason === "canceled"
         ? "ended"
@@ -67,6 +71,8 @@ export function toLiveRoomPostContent(
             : undefined;
   const listing = input.liveRoom?.listing;
   const purchase = input.liveRoom?.purchase;
+  const purchaseGateSegment = liveAccess?.gate ? firstPurchaseGateSegment(liveAccess.gate) : undefined;
+  const gatePurchaseListing = purchaseGateSegment?.purchasable_listings?.[0];
   const accessMode = liveRoom?.access_mode ?? liveAccess?.access_mode ?? (listing ? "paid" : "free");
   const viewerOwnsPost = Boolean(input.liveRoom?.currentUserId && post.author_user === input.liveRoom.currentUserId);
   const coverSrc = renderableImageRef(liveRoom?.cover_ref)
@@ -85,6 +91,10 @@ export function toLiveRoomPostContent(
     endedAtLabel: formatLiveRoomTimestampLabel(liveRoom?.ended_at),
     freedomDetected: input.liveRoom?.freedomDetected,
     freedomHref: input.liveRoom?.freedomHref,
+    gateOwnershipRequired: Boolean(purchaseGateSegment),
+    gatePurchaseLabel: gatePurchaseListing
+      ? formatUsdLabel(centsToUsd(gatePurchaseListing.price_cents), input.liveRoom?.localeTag)
+      : undefined,
     guestInviteStatus: input.liveRoom?.guestInviteStatus ?? null,
     hasEntitlement: accessMode !== "paid" || liveAccess?.allowed === true || Boolean(purchase) || viewerOwnsPost,
     liveRoomId: post.anchor_live_room ?? "",
@@ -97,6 +107,7 @@ export function toLiveRoomPostContent(
       : undefined,
     onAcceptGuestInvite: input.liveRoom?.onAcceptGuestInvite,
     onBuy: input.liveRoom?.onBuy,
+    onGatePurchase: gatePurchaseListing ? input.liveRoom?.onGatePurchase : undefined,
     onReviewReplay: input.liveRoom?.onReviewReplay,
     onVerifyAge: input.onVerifyAge,
     onViewerRenew: input.liveRoom?.onViewerRenew,

@@ -431,6 +431,55 @@ describe("PostCard", () => {
     expect(gatedMarkup).not.toContain("Watch live");
   });
 
+  test("renders buyer-gated live-room song purchase and unavailable ownership states", () => {
+    const buyMarkup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{ author: { kind: "user", label: "u/artist" }, timestampLabel: "1h" }}
+          content={{
+            type: "live_room",
+            accessMode: "gated",
+            accessState: "gate_required",
+            gateOwnershipRequired: true,
+            gatePurchaseLabel: "$7.50",
+            liveRoomId: "lr_buyer_gated",
+            onGatePurchase: () => undefined,
+            status: "live",
+            title: "Catalog buyers concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(buyMarkup).toContain("Buy song to watch");
+    expect(buyMarkup).toContain("$7.50");
+    expect(buyMarkup).not.toContain("Verify access");
+
+    const unavailableMarkup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{ author: { kind: "user", label: "u/artist" }, timestampLabel: "1h" }}
+          content={{
+            type: "live_room",
+            accessMode: "gated",
+            accessState: "gate_required",
+            gateOwnershipRequired: true,
+            liveRoomId: "lr_buyer_gated_unlisted",
+            status: "live",
+            title: "Owners concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(unavailableMarkup).toContain("For song owners");
+    expect(unavailableMarkup).toContain("Not currently for sale");
+    expect(unavailableMarkup).not.toContain("Buy song to watch");
+    expect(unavailableMarkup).not.toContain("Verify access");
+  });
+
   test("renders ended live-room replay states", () => {
     const publishedMarkup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">

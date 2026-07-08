@@ -71,7 +71,8 @@ export function CurrentUserProfilePage() {
   logger.info("[profile-page] render", { hasProfile: !!profile, hasSession: !!session });
   const bookingCtaState = useOwnBookingCta(Boolean(session));
   const followState = useProfileFollowState(profile?.primary_wallet_address ?? null, true);
-  const activity = useCurrentUserProfileActivity(localeTag, Boolean(profile), activityTab);
+  const profileHandleLabel = profile?.primary_public_handle?.label ?? profile?.global_handle?.label ?? null;
+  const activity = useCurrentUserProfileActivity(profileHandleLabel, localeTag, Boolean(profile), activityTab);
   const handleFlow = useGlobalHandleFlow({
     currentHandleLabel: profile?.global_handle?.label ?? "",
     onRenamed: async () => {

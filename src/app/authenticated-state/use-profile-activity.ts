@@ -94,18 +94,29 @@ function useProfileActivity(
 }
 
 export function useCurrentUserProfileActivity(
+  handleLabel: string | null | undefined,
   locale: string | null | undefined,
   enabled: boolean,
   activeTab: ProfileActivityTab,
 ) {
   const api = useApi();
-  const loadTab = React.useCallback((tab: ProfileActivityTab) => api.profiles.getActivity({
-    limit: PROFILE_ACTIVITY_PAGE_LIMIT,
-    locale,
-    tab,
-  }), [api, locale]);
+  const key = handleLabel?.trim() || null;
+  const loadTab = React.useCallback((tab: ProfileActivityTab) => {
+    if (key) {
+      return api.publicProfiles.getActivity(key, {
+        limit: PROFILE_ACTIVITY_PAGE_LIMIT,
+        locale,
+        tab,
+      });
+    }
+    return api.profiles.getActivity({
+      limit: PROFILE_ACTIVITY_PAGE_LIMIT,
+      locale,
+      tab,
+    });
+  }, [api, key, locale]);
 
-  return useProfileActivity(enabled ? `me:${locale ?? ""}` : null, activeTab, loadTab);
+  return useProfileActivity(enabled ? `me:${key ?? "auth"}:${locale ?? ""}` : null, activeTab, loadTab);
 }
 
 export function usePublicProfileActivity(

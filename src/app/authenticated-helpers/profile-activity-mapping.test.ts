@@ -12,10 +12,17 @@ const community = {
   id: "cmt_test",
   object: "community_preview",
   display_name: "Test Builders",
+  owner: {
+    avatar_ref: "https://example.test/avatar.png",
+    display_name: "Swift Fox",
+    handle: "swift-fox-7721.pirate",
+    role: "owner",
+    user: "usr_swift",
+  },
   route_slug: "test-builders",
 } as CommunityPreview;
 
-function makePost(): LocalizedPostResponse {
+function makePost(overrides: Partial<LocalizedPostResponse["post"]> = {}): LocalizedPostResponse {
   return {
     comment_count: 2,
     community,
@@ -38,6 +45,7 @@ function makePost(): LocalizedPostResponse {
       status: "published",
       title: "Profile activity post",
       visibility: "public",
+      ...overrides,
     },
     resolved_locale: "en",
     source_hash: "post-hash",
@@ -50,7 +58,7 @@ function makePost(): LocalizedPostResponse {
   } as LocalizedPostResponse;
 }
 
-function makeComment(): CommentListItem {
+function makeComment(overrides: Partial<CommentListItem["comment"]> = {}): CommentListItem {
   return {
     comment: {
       anonymous_label: null,
@@ -78,6 +86,7 @@ function makeComment(): CommentListItem {
       swarm_body_ref: null,
       thread_root_post: "pst_profile",
       upvote_count: 4,
+      ...overrides,
     },
     id: "cli_profile",
     machine_translated: false,
@@ -125,5 +134,34 @@ describe("mapProfileActivityProps", () => {
     expect(props.comments[0]?.authorHref).toBe("/u/swift-fox-7721.pirate");
     expect(props.comments[0]?.postHref).toBe("/p/pst_profile");
     expect(props.overviewItems).toHaveLength(1);
+  });
+
+  test("falls back to matching community owner handle when activity payload omits public author handles", () => {
+    const post = makePost({ author_public_handle: null });
+    const comment = makeComment({ author_public_handle: null });
+    const activity: Pick<ProfileActivityResponse, "comments" | "overview_items" | "posts"> = {
+      comments: [{
+        comment,
+        community,
+        created: comment.comment.created,
+        kind: "comment",
+        thread_root_post: post,
+      }],
+      overview_items: [],
+      posts: [{
+        community,
+        created: post.post.created,
+        kind: "post",
+        post,
+      }],
+    };
+
+    const props = mapProfileActivityProps(activity);
+
+    expect(props.posts[0]?.post.byline?.author?.label).toBe("swift-fox-7721.pirate");
+    expect(props.posts[0]?.post.byline?.author?.href).toBe("/u/swift-fox-7721.pirate");
+    expect(props.posts[0]?.post.byline?.author?.avatarSrc).toBe("https://example.test/avatar.png");
+    expect(props.comments[0]?.authorLabel).toBe("swift-fox-7721.pirate");
+    expect(props.comments[0]?.authorHref).toBe("/u/swift-fox-7721.pirate");
   });
 });

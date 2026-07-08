@@ -125,11 +125,11 @@ function CommentRow({
       {comment.postTitle ? (
         <div className="mt-3">
           {comment.postHref ? (
-            <a className="text-base font-medium text-primary hover:underline" href={comment.postHref}>
+            <a className="text-base font-medium text-foreground hover:underline" href={comment.postHref}>
               {comment.postTitle}
             </a>
           ) : (
-            <div className="text-base font-medium text-primary">{comment.postTitle}</div>
+            <div className="text-base font-medium text-foreground">{comment.postTitle}</div>
           )}
         </div>
       ) : null}

@@ -12,6 +12,9 @@ let fakeApi: {
   profiles: {
     getActivity: ReturnType<typeof mock>;
   };
+  publicProfiles: {
+    getActivity: ReturnType<typeof mock>;
+  };
 };
 
 let fakeSession: unknown = null;
@@ -223,6 +226,9 @@ beforeEach(() => {
     profiles: {
       getActivity: mock(async ({ tab }: { tab: "overview" | "posts" | "comments" }) => activityResponse(tab)),
     },
+    publicProfiles: {
+      getActivity: mock(async (_handle: string, { tab }: { tab: "overview" | "posts" | "comments" }) => activityResponse(tab)),
+    },
   };
 });
 
@@ -237,12 +243,16 @@ describe("CurrentUserProfilePage", () => {
     await waitFor(() => expect(view.getByTestId("posts-count").textContent).toBe("1"));
     expect(lastProfilePageProps?.defaultTab).toBe("posts");
     expect(lastProfilePageProps?.posts?.[0]?.post.title).toBe("Profile route post");
-    expect(fakeApi.profiles.getActivity).toHaveBeenCalledTimes(1);
-    expect(fakeApi.profiles.getActivity).toHaveBeenCalledWith(expect.objectContaining({ tab: "posts" }));
+    expect(fakeApi.profiles.getActivity).not.toHaveBeenCalled();
+    expect(fakeApi.publicProfiles.getActivity).toHaveBeenCalledTimes(1);
+    expect(fakeApi.publicProfiles.getActivity).toHaveBeenCalledWith(
+      "swift-fox-7721.pirate",
+      expect.objectContaining({ tab: "posts" }),
+    );
   });
 
   test("passes an activity error into ProfilePage when loading fails", async () => {
-    fakeApi.profiles.getActivity = mock(async () => {
+    fakeApi.publicProfiles.getActivity = mock(async () => {
       throw new Error("activity unavailable");
     });
 

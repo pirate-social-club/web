@@ -40,13 +40,63 @@ function communityHref(community: CommunityPreview): string {
   return buildCommunityPath(communityId(community), community.route_slug ?? undefined);
 }
 
+type CommunityOwnerIdentity = {
+  avatar_ref?: string | null;
+  handle?: string | null;
+  user?: string | null;
+};
+
+function communityOwner(community: CommunityPreview): CommunityOwnerIdentity | null {
+  return (community as CommunityPreview & { owner?: CommunityOwnerIdentity | null }).owner ?? null;
+}
+
+function matchingCommunityOwnerHandle(
+  community: CommunityPreview,
+  authorUserId: string | null | undefined,
+): string | null {
+  const owner = communityOwner(community);
+  if (!owner?.handle || !owner.user || !authorUserId || owner.user !== authorUserId) {
+    return null;
+  }
+  return owner.handle;
+}
+
+function matchingCommunityOwnerAvatarSrc(
+  community: CommunityPreview,
+  authorUserId: string | null | undefined,
+): string | undefined {
+  const owner = communityOwner(community);
+  if (!owner?.avatar_ref || !owner.user || !authorUserId || owner.user !== authorUserId) {
+    return undefined;
+  }
+  return owner.avatar_ref;
+}
+
+function publicAuthorHandle(item: CommentListItem, community: CommunityPreview): string | null {
+  if (item.comment.identity_mode !== "public") {
+    return null;
+  }
+  return item.comment.author_public_handle
+    ?? matchingCommunityOwnerHandle(community, item.comment.author_user)
+    ?? null;
+}
+
 function publicAuthorHref(item: CommentListItem): string | undefined {
   const handle = item.comment.identity_mode === "public" ? item.comment.author_public_handle : null;
   return handle ? buildPublicProfilePath(handle) : undefined;
 }
 
-function postAuthorHref(post: LocalizedPostResponse): string | undefined {
-  const handle = post.post.identity_mode === "public" ? post.post.author_public_handle : null;
+function postAuthorHandle(post: LocalizedPostResponse, community: CommunityPreview): string | null {
+  if (post.post.identity_mode !== "public") {
+    return null;
+  }
+  return post.post.author_public_handle
+    ?? matchingCommunityOwnerHandle(community, post.post.author_user)
+    ?? null;
+}
+
+function postAuthorHref(post: LocalizedPostResponse, community: CommunityPreview): string | undefined {
+  const handle = postAuthorHandle(post, community);
   return handle ? buildPublicProfilePath(handle) : undefined;
 }
 
@@ -64,7 +114,9 @@ export function mapProfileActivityPost(item: ProfileActivityPostPage): ProfilePo
     community: item.community,
     post: item.post,
   } as unknown as HomeFeedItem, {});
-  const authorHref = postAuthorHref(item.post);
+  const authorHandle = postAuthorHandle(item.post, item.community);
+  const authorHref = postAuthorHref(item.post, item.community);
+  const ownerAvatarSrc = matchingCommunityOwnerAvatarSrc(item.community, item.post.post.author_user);
   return {
     postId: item.post.post.id,
     post: {
@@ -73,7 +125,12 @@ export function mapProfileActivityPost(item: ProfileActivityPostPage): ProfilePo
         ? {
             ...feedItem.post.byline,
             author: feedItem.post.byline.author
-              ? { ...feedItem.post.byline.author, href: authorHref }
+              ? {
+                  ...feedItem.post.byline.author,
+                  avatarSrc: feedItem.post.byline.author.avatarSrc ?? ownerAvatarSrc,
+                  href: authorHref,
+                  label: authorHandle ?? feedItem.post.byline.author.label,
+                }
               : feedItem.post.byline.author,
           }
         : feedItem.post.byline,
@@ -86,9 +143,10 @@ export function mapProfileActivityComment(item: ProfileActivityCommentPage): Pro
   const comment = item.comment.comment;
   const rootPostId = item.thread_root_post.post.id;
   const body = item.comment.translated_body ?? comment.body ?? "";
+  const authorHandle = publicAuthorHandle(item.comment, item.community);
   return {
-    authorHref: publicAuthorHref(item.comment),
-    authorLabel: resolveCommentAuthorLabel(comment, null),
+    authorHref: authorHandle ? buildPublicProfilePath(authorHandle) : publicAuthorHref(item.comment),
+    authorLabel: authorHandle ?? resolveCommentAuthorLabel(comment, null),
     body,
     bodyDir: item.comment.translation_state === "ready" && item.comment.resolved_locale.toLowerCase().startsWith("ar")
       ? "rtl"

@@ -38,12 +38,14 @@ function formatScore(score: number): string {
 }
 
 function displayName(entry: KaraokeLeaderboardEntry): string {
+  if (entry.identity.visibility === "anonymized") return "Former member";
   if (entry.identity.handle) return entry.identity.handle;
   if (entry.identity.display_name) return entry.identity.display_name;
   return "Anonymous singer";
 }
 
 function initials(entry: KaraokeLeaderboardEntry): string {
+  if (entry.identity.visibility === "anonymized") return "FM";
   const source = entry.identity.display_name || entry.identity.handle || "?";
   const parts = source.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";

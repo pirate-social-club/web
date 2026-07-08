@@ -89,6 +89,28 @@ export const ViewerRanked: Story = {
   },
 };
 
+export const FormerMember: Story = {
+  args: {
+    artistName: "Maya Voss",
+    artworkSrc: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=400&q=80",
+    state: {
+      kind: "ready",
+      leaderboard: {
+        ...leaderboard,
+        entries: leaderboard.entries.map((entry) =>
+          entry.rank === 2
+            ? {
+              ...entry,
+              identity: { avatar_ref: null, display_name: null, handle: null, visibility: "anonymized" },
+            }
+            : entry
+        ),
+      },
+    },
+    title: "Midnight Echo",
+  },
+};
+
 export const Empty: Story = {
   args: {
     artistName: "Maya Voss",

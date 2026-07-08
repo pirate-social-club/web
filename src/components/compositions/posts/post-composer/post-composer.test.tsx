@@ -395,7 +395,7 @@ describe("PostComposer monetization", () => {
     expect(findElement(tree, (element) => element.props.title === "Paid unlock")).toBeNull();
     expect(findElement(tree, (element) => element.props.children === "I have the rights to monetize this post.")).toBeNull();
     expect(findElement(tree, (element) => element.props.placeholder === "0")).toBeNull();
-    expect(findElement(tree, (element) => element.props.title === "Non-commercial only")).toBeNull();
+    expect(findElement(tree, (element) => element.props.title === "Non-commercial remixing")).toBeNull();
   });
 
   test("renders asset license controls for paid video", () => {
@@ -410,10 +410,10 @@ describe("PostComposer monetization", () => {
     });
 
     expect(
-      findElement(tree, (element) => element.props.title === "Non-commercial only") === null,
+      findElement(tree, (element) => element.props.title === "Non-commercial remixing") === null,
     ).toBe(false);
     expect(
-      findElement(tree, (element) => element.props.description === "Others can monetize and publish derivative videos using your work.") === null,
+      findElement(tree, (element) => element.props.description === "Others can monetize and publish derivative videos with attribution.") === null,
     ).toBe(false);
   });
 
@@ -428,7 +428,7 @@ describe("PostComposer monetization", () => {
       } as MonetizationState),
     });
 
-    expect(findElement(tree, (element) => element.props.title === "Non-commercial only")).toBeNull();
+    expect(findElement(tree, (element) => element.props.title === "Non-commercial remixing")).toBeNull();
   });
 
   test("renders video commercial derivative revenue share", () => {
@@ -513,10 +513,10 @@ describe("PostComposer monetization", () => {
     });
 
     expect(
-      findElement(originalSongTree, (element) => element.props.title === "Non-commercial only") === null,
+      findElement(originalSongTree, (element) => element.props.title === "Non-commercial remixing") === null,
     ).toBe(false);
     expect(
-      findElement(remixSongTree, (element) => element.props.title === "Non-commercial only"),
+      findElement(remixSongTree, (element) => element.props.title === "Non-commercial remixing"),
     ).not.toBeNull();
     expect(
       findElement(remixSongTree, (element) => element.props.children === "New remix terms"),

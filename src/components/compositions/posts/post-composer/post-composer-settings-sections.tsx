@@ -111,14 +111,14 @@ const defaultCopy: PostComposerSettingsSectionsCopy = {
   regionalPricingLabel: "Use community regional pricing",
   licenseLabel: "License",
   licenseLabels: {
-    "non-commercial": "No reuse",
+    "non-commercial": "Non-commercial remixing",
     "commercial-use": "Commercial use",
     "commercial-remix": "Commercial remix",
   },
   licenseDescriptions: {
-    "non-commercial": "Buyers can watch, not reuse.",
-    "commercial-use": "Reuse allowed.",
-    "commercial-remix": "Reuse plus royalty.",
+    "non-commercial": "Others can publish non-commercial remixes with attribution; commercial releases are prohibited.",
+    "commercial-use": "Others can monetize the original with attribution; derivatives are prohibited.",
+    "commercial-remix": "Others can monetize and publish derivatives with attribution.",
   },
   royaltyLabel: "Royalty",
   royaltyPlaceholder: "15",

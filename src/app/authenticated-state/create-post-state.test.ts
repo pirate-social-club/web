@@ -35,7 +35,7 @@ describe("create post derivative source search", () => {
     });
   });
 
-  test("uses direct Story parent refs for remix source search results", () => {
+  test("uses local asset refs for remix source search results", () => {
     const source: ApiDerivativeSource = {
       id: "asset_ast_source_song",
       object: "derivative_source",
@@ -51,8 +51,6 @@ describe("create post derivative source search", () => {
       creator_user: "usr_artist",
     };
 
-    expect(derivativeSourceToComposerReference(source, { preferDirectStoryRef: true }).id)
-      .toBe("story:ip:0x1111111111111111111111111111111111111111#licenseTermsId=17");
     expect(derivativeSourceToComposerReference(source).id).toBe("story:asset:asset_ast_source_song");
   });
 

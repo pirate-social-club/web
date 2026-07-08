@@ -115,10 +115,9 @@ export function songArtifactBundleToComposerReference(bundle: ApiSongArtifactBun
 
 export function derivativeSourceToComposerReference(
   source: ApiDerivativeSource,
-  options: { preferDirectStoryRef?: boolean } = {},
 ): ComposerReference {
   return {
-    id: options.preferDirectStoryRef && source.source_ref ? source.source_ref : `story:asset:${source.asset}`,
+    id: `story:asset:${source.asset}`,
     title: source.title,
     subtitle: source.creator_handle ?? source.creator_display_name ?? undefined,
     licensePreset: source.license_preset,
@@ -538,9 +537,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       )
         .then((result) => {
           if (cancelled) return;
-          const searchResults = result.items.map((source) => derivativeSourceToComposerReference(source, {
-            preferDirectStoryRef: true,
-          }));
+          const searchResults = result.items.map((source) => derivativeSourceToComposerReference(source));
           setDerivativeStep((current) => {
             return {
               visible: true,

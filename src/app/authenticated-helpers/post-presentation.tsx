@@ -11,6 +11,7 @@ import { buildPostCardTitleProps } from "@/components/compositions/posts/post-ca
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { buildNationalityBadgeLabel } from "@/components/compositions/posts/post-card/post-card-nationality";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
+import { resolveCommunityAvatarSrc } from "@/lib/default-community-media";
 import { buildPublicProfilePathForProfile } from "@/lib/profile-routing";
 import { formatRelativeTimestamp } from "@/lib/formatting/time";
 import { toCommunityPostContent } from "@/app/authenticated-helpers/post-content-presentation";
@@ -215,19 +216,20 @@ export function toCommunityFeedItem(
 export function toThreadPostCard(
   postResponse: ApiPost,
   community:
-    | Pick<ApiCommunity, "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
-    | Pick<ApiCommunityPreview, "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
+    | Pick<ApiCommunity, "avatar_ref" | "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
+    | Pick<ApiCommunityPreview, "avatar_ref" | "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
     | null,
   authorProfile?: ApiProfile,
   songOptions?: SongPresentationOptions,
   opts?: PostPresentationOptions,
 ): PostCardProps {
+  const effectiveCommunity = postResponse.community ?? community;
   const postResponseWithCommunity = {
     ...postResponse,
-    community: postResponse.community ?? community,
+    community: effectiveCommunity,
   } as ApiPost;
   const { post } = postResponse;
-  const communityVerified = Boolean(community?.namespace_verification);
+  const communityVerified = Boolean(effectiveCommunity?.namespace_verification);
   const storyPortalHref = resolvePostStoryPortalHref({
     asset: postResponse.asset_story ?? (post as typeof post & { asset_story?: NonNullable<ApiPost["asset_story"]> | null }).asset_story,
     fallbackAsset: songOptions?.asset,
@@ -264,10 +266,10 @@ export function toThreadPostCard(
     titleDir: heading.dir,
     titleLang: heading.lang,
   });
-  const communityLabel = community?.id
+  const communityLabel = effectiveCommunity?.id
     ? communityVerified
-      ? formatCommunityRouteLabel(community.id, community.route_slug)
-      : community.display_name?.trim() || formatCommunityRouteLabel(community.id, community.route_slug)
+      ? formatCommunityRouteLabel(effectiveCommunity.id, effectiveCommunity.route_slug)
+      : effectiveCommunity.display_name?.trim() || formatCommunityRouteLabel(effectiveCommunity.id, effectiveCommunity.route_slug)
     : undefined;
 
   return withTranslationToggleProps({
@@ -282,11 +284,16 @@ export function toThreadPostCard(
           : undefined,
       },
       agentAuthor: resolveAgentAuthor(post, authorProfile),
-      community: community?.id
+      community: effectiveCommunity?.id
         ? {
           kind: "community",
-          label: communityLabel ?? community.id,
-          href: buildCommunityPath(community.id, community.route_slug),
+          avatarSrc: resolveCommunityAvatarSrc({
+            avatarSrc: effectiveCommunity.avatar_ref,
+            communityId: effectiveCommunity.id,
+            displayName: effectiveCommunity.display_name,
+          }),
+          label: communityLabel ?? effectiveCommunity.id,
+          href: buildCommunityPath(effectiveCommunity.id, effectiveCommunity.route_slug),
           verificationStatus: communityVerified ? undefined : "unverified",
         }
         : undefined,

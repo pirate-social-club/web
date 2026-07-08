@@ -762,6 +762,7 @@ export function usePost(
         if (cancelled) return;
         visiblePostIdRef.current = postId;
         setPost(p);
+        setCommunity(p.community ?? null);
         setReadMode(nextReadMode);
         setThreadPartial(true);
         setLoading(false);

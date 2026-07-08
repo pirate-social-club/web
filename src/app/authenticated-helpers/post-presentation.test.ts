@@ -528,6 +528,7 @@ describe("post presentation links", () => {
     } as Partial<LocalizedPostResponse["post"]>);
 
     const card = toThreadPostCard(post, {
+      avatar_ref: null,
       id: "com_cmt_links",
       display_name: "Links",
       namespace_verification: null,
@@ -555,6 +556,7 @@ describe("post presentation links", () => {
     } as Partial<LocalizedPostResponse["post"]>);
 
     const card = toThreadPostCard(post, {
+      avatar_ref: null,
       id: "com_cmt_links",
       display_name: "Links",
       namespace_verification: null,
@@ -562,6 +564,47 @@ describe("post presentation links", () => {
     });
 
     expect(card.title).toBe("Article Headline");
+  });
+
+  test("thread post byline carries the community avatar", () => {
+    const post = createLinkPost({ title: "Community avatar check" });
+    const card = toThreadPostCard(post, {
+      avatar_ref: "https://media.test/christian-avatar.jpg",
+      id: "com_cmt_christian",
+      display_name: "Christian",
+      namespace_verification: "nv_christian",
+      route_slug: "@christian",
+    });
+
+    expect(card.identityPresentation).toBe("community_with_author");
+    expect(card.byline.community).toEqual(expect.objectContaining({
+      avatarSrc: "https://media.test/christian-avatar.jpg",
+      href: "/c/@christian",
+      label: "c/@christian",
+    }));
+  });
+
+  test("thread post byline uses embedded community before route community state loads", () => {
+    const post = {
+      ...createLinkPost({ title: "Embedded community check" }),
+      community: {
+        avatar_ref: "https://media.test/embedded-community.jpg",
+        display_name: "Christian",
+        id: "com_cmt_christian",
+        karaoke_enabled: false,
+        namespace_verification: "nv_christian",
+        route_slug: "@christian",
+      },
+    } as LocalizedPostResponse;
+
+    const card = toThreadPostCard(post, null);
+
+    expect(card.identityPresentation).toBe("community_with_author");
+    expect(card.byline.community).toEqual(expect.objectContaining({
+      avatarSrc: "https://media.test/embedded-community.jpg",
+      href: "/c/@christian",
+      label: "c/@christian",
+    }));
   });
 });
 
@@ -767,6 +810,7 @@ describe("post presentation songs", () => {
     } as NonNullable<LocalizedPostResponse["song_presentation"]>;
 
     const card = toThreadPostCard(post, {
+      avatar_ref: null,
       id: "com_cmt_songs",
       display_name: "Songs",
       karaoke_enabled: true,
@@ -880,6 +924,7 @@ describe("post presentation songs", () => {
     };
 
     const card = toThreadPostCard(post, {
+      avatar_ref: null,
       id: "com_cmt_songs",
       display_name: "Songs",
       namespace_verification: null,

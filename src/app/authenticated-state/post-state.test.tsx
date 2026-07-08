@@ -439,6 +439,46 @@ describe("usePost", () => {
     await waitFor(() => expect(result.current.community?.display_name).toBe("Preview Community"));
   });
 
+  test("seeds community from the authenticated post response before slower preview resolves", async () => {
+    __resetSessionStoreForTests();
+    let resolvePreview: ((preview: CommunityPreview) => void) | null = null;
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: []; next_cursor: null }>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => ({
+      ...createPostResponse(),
+      community: createPreview({
+        avatar_ref: "https://media.test/embedded-community.jpg",
+        display_name: "Embedded Community",
+      }),
+    });
+    communities.preview = () => new Promise<CommunityPreview>((resolve) => {
+      resolvePreview = resolve;
+    });
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    agents.list = async () => ({ items: [] });
+
+    const { result } = renderHook(() => usePost("pst_test", "es", true, labels), { wrapper });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.post?.post.id).toBe("pst_test");
+    expect(result.current.community?.display_name).toBe("Embedded Community");
+    expect(result.current.community?.avatar_ref).toBe("https://media.test/embedded-community.jpg");
+
+    const resolveLoadedPreview = resolvePreview as unknown as (preview: CommunityPreview) => void;
+    resolveLoadedPreview(createPreview({ display_name: "Preview Community" }));
+    await waitFor(() => expect(result.current.community?.display_name).toBe("Preview Community"));
+  });
+
   test("hydrates a notification target comment from the route query", async () => {
     __resetSessionStoreForTests();
     installLiveSession();

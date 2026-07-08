@@ -11,7 +11,6 @@ import { anonymousEligibleTabs } from "./post-composer-config";
 export function shouldForcePublicIdentityForTab({
   activeTab,
   identityMode,
-  monetizationVisible,
 }: {
   activeTab: ComposerTab;
   identityMode: IdentityMode;
@@ -19,10 +18,7 @@ export function shouldForcePublicIdentityForTab({
 }) {
   return (
     identityMode === "anonymous"
-    && (
-      !anonymousEligibleTabs.includes(activeTab)
-      || (activeTab === "video" && monetizationVisible)
-    )
+    && !anonymousEligibleTabs.includes(activeTab)
   );
 }
 

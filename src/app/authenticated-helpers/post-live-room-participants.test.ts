@@ -93,6 +93,33 @@ describe("buildLiveRoomParticipants", () => {
     });
   });
 
+  test("uses the anchor post pseudonym for an anonymous host", () => {
+    expect(buildLiveRoomParticipants({
+      authorProfile: profile("public-host.pirate", "host.jpg"),
+      liveRoom: {
+        host_user: "usr_host",
+        guest_user: "usr_guest",
+      },
+      postAnonymousLabel: "anon_clear-river-12",
+      postAuthorUserId: "usr_host",
+      postIdentityMode: "anonymous",
+      profilesByUserId: {
+        usr_guest: profile("guest.pirate", "guest.jpg"),
+      },
+    })).toEqual([
+      {
+        role: "host",
+        label: "anon_clear-river-12",
+      },
+      {
+        role: "guest",
+        label: "guest.pirate",
+        href: "/u/guest.pirate",
+        avatarSrc: "guest.jpg",
+      },
+    ]);
+  });
+
   test("appends additional allocated performers without duplicating host or guest", () => {
     expect(buildLiveRoomParticipants({
       liveRoom: {

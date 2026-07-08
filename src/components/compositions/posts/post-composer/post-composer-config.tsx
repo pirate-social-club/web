@@ -54,7 +54,7 @@ export const attachmentActions: Array<{
 ];
 
 export const defaultTabs: ComposerTab[] = ["text", "image", "video", "link", "song", "live"];
-export const anonymousEligibleTabs: ComposerTab[] = ["text", "image", "video", "link"];
+export const anonymousEligibleTabs: ComposerTab[] = ["text", "image", "video", "link", "song", "live"];
 
 export const roomKindOptions: { value: LiveRoomKind; label: string }[] = [
   { value: "solo", label: "Solo" },

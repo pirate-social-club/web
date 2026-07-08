@@ -202,6 +202,9 @@ export type ApiLiveRoomAudienceGate = {
 export type ApiCreateLiveRoomRequest = {
   title?: string | null;
   description?: string | null;
+  identity_mode?: "public" | "anonymous" | null;
+  anonymous_scope?: "community_stable" | "thread_stable" | "post_ephemeral" | null;
+  disclosed_qualifier_ids?: string[] | null;
   room_kind?: ApiLiveRoomKind | null;
   access_mode?: ApiLiveRoomAccessMode | null;
   visibility?: ApiLiveRoomVisibility | null;

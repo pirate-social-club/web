@@ -11,6 +11,7 @@ import type {
 import { useApi } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import type {
+  AnonymousIdentityScope,
   AuthorMode,
   AuthorAgeGatePolicy,
   CharityContributionState,
@@ -25,6 +26,7 @@ import type {
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 
 import { buildAssetListingRequest, resolvedDerivativeReferences } from "@/app/authenticated-helpers/asset-submit";
+import { buildBasePostRequest } from "@/app/authenticated-helpers/create-post-submit/base";
 import type { SubmitProgressReporter } from "@/app/authenticated-helpers/create-post-submit/progress";
 import { sha256File } from "@/app/authenticated-helpers/create-post-submit/file-hash";
 import { buildSongPostRequest } from "@/app/authenticated-helpers/song-submit";
@@ -67,6 +69,7 @@ type UseSongSubmitInput = {
 
 type SongSubmitInput = {
   altchaPayload?: string | null;
+  anonymousScope?: AnonymousIdentityScope;
   audience: ComposerAudienceState;
   ageGatePolicy: AuthorAgeGatePolicy;
   authorMode: AuthorMode;
@@ -74,6 +77,8 @@ type SongSubmitInput = {
   charityContribution: CharityContributionState;
   charityPartner: CommunityCharityPartner | null;
   derivativeStep: DerivativeStepState | undefined;
+  disclosedQualifierIds?: string[];
+  identityMode: "public" | "anonymous";
   license: AssetLicenseState;
   lyrics: string;
   monetizationState: MonetizationState;
@@ -310,6 +315,7 @@ export function useSongSubmit({
 
   return React.useCallback(async ({
     altchaPayload,
+    anonymousScope,
     audience,
     ageGatePolicy,
     authorMode,
@@ -317,6 +323,8 @@ export function useSongSubmit({
     charityContribution,
     charityPartner,
     derivativeStep,
+    disclosedQualifierIds,
+    identityMode,
     license,
     lyrics,
     monetizationState,
@@ -481,17 +489,22 @@ export function useSongSubmit({
       return draft;
     })();
     const songRequest = buildSongPostRequest({
+      baseRequest: buildBasePostRequest({
+        anonymousScope,
+        disclosedQualifierIds,
+        ageGatePolicy,
+        idempotencyKey: crypto.randomUUID(),
+        identityMode,
+        visibility: audience.visibility,
+      }),
       bundleId,
       caption,
       derivativeStep,
-      ageGatePolicy,
-      idempotencyKey: crypto.randomUUID(),
       license,
       paidSongPriceUsd,
       royaltySplit,
       songMode,
       title,
-      visibility: audience.visibility,
     });
     const asyncSongRequest = {
       ...songRequest,

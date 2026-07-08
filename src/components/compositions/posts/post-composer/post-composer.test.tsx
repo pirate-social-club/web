@@ -592,7 +592,8 @@ describe("PostComposer monetization", () => {
     expect(identityMode).toBe("anonymous");
   });
 
-  test("hides anonymous identity in settings for song posts", () => {
+  test("renders anonymous identity in settings for song posts", () => {
+    let identityMode: NonNullable<PostComposerProps["identity"]>["identityMode"] = "public";
     const tree = renderComposer({
       availableTabs: ["song"],
       canCreateSongPost: true,
@@ -601,19 +602,29 @@ describe("PostComposer monetization", () => {
       identity: {
         allowAnonymousIdentity: true,
         anonymousLabel: "anon_amber-anchor-00",
-        identityMode: "public",
+        identityMode,
         publicHandle: "saint-pablo.pirate",
       },
       mode: "song",
       monetization: defaultMonetizationState({
         visible: true,
       } as MonetizationState),
+      onIdentityModeChange: (next) => {
+        identityMode = next;
+      },
     });
 
-    expect(findElement(
+    const anonymousOption = findElement(
       tree,
       (element) => element.props.title === "anon_amber-anchor-00" && typeof element.props.onClick === "function",
-    )).toBeNull();
+    );
+    if (!anonymousOption) {
+      throw new Error("Missing anonymous settings option for song posts");
+    }
+
+    (anonymousOption.props.onClick as (() => void) | undefined)?.();
+
+    expect(identityMode).toBe("anonymous");
   });
 
   test("renders inline settings controls and updates controlled settings state", () => {
@@ -693,7 +704,7 @@ describe("PostComposer monetization", () => {
     expect(findElement(
       tree,
       (element) => element.props.title === "anon_amber-anchor-00" && typeof element.props.onClick === "function",
-    )).toBeNull();
+    )).not.toBeNull();
     expect(ageGatePolicy).toBe("18_plus");
     expect(identityMode).toBe("public");
     expect(audience.visibility).toBe("members_only");

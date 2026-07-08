@@ -18,13 +18,23 @@ type LiveRoomParticipantSource = {
   }>;
 };
 
+type PostIdentityMode = "public" | "anonymous";
+
 function participantFromUser(
   role: LiveRoomParticipant["role"],
   userId: string | null | undefined,
   profile: ProfileSummary | null | undefined,
+  anonymousLabel?: string | null,
 ): LiveRoomParticipant | null {
   const normalizedUserId = userId?.trim();
   if (!normalizedUserId) return null;
+
+  if (anonymousLabel) {
+    return {
+      role,
+      label: anonymousLabel,
+    };
+  }
 
   return {
     role,
@@ -37,12 +47,16 @@ function participantFromUser(
 export function buildLiveRoomParticipants({
   authorProfile,
   liveRoom,
+  postAnonymousLabel,
   postAuthorUserId,
+  postIdentityMode,
   profilesByUserId,
 }: {
   authorProfile?: ProfileSummary | null;
   liveRoom?: LiveRoomParticipantSource | null;
+  postAnonymousLabel?: string | null;
   postAuthorUserId?: string | null;
+  postIdentityMode?: PostIdentityMode | null;
   profilesByUserId: Record<string, ProfileSummary | null | undefined>;
 }): LiveRoomParticipant[] | undefined {
   if (!liveRoom?.guest_user) return undefined;
@@ -58,7 +72,16 @@ export function buildLiveRoomParticipants({
   function addParticipant(role: LiveRoomParticipant["role"], userId: string | null | undefined) {
     const normalizedUserId = userId?.trim();
     if (!normalizedUserId || seenUserIds.has(normalizedUserId)) return;
-    const participant = participantFromUser(role, normalizedUserId, profileForUser(normalizedUserId));
+    const isAnonymousHost = role === "host"
+      && postIdentityMode === "anonymous"
+      && normalizedUserId === postAuthorUserId?.trim()
+      && Boolean(postAnonymousLabel?.trim());
+    const participant = participantFromUser(
+      role,
+      normalizedUserId,
+      profileForUser(normalizedUserId),
+      isAnonymousHost ? postAnonymousLabel?.trim() : null,
+    );
     if (!participant) return;
     participants.push(participant);
     seenUserIds.add(normalizedUserId);

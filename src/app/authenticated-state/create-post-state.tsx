@@ -37,7 +37,7 @@ import { formatQualifierLabel } from "@/app/authenticated-helpers/post-identity-
 import { parseUsdInput } from "@/lib/formatting/currency";
 import { getFreedomBrowserDetectionSnapshot, prefersNativeRadicleLinks } from "@/lib/resource-links";
 import { resolveComposerSubmitState } from "@/app/authenticated-helpers/asset-submit";
-import { buildBasePostRequest, buildCreatePostEventRequest } from "@/app/authenticated-helpers/create-post-submit/base";
+import { buildBasePostRequest, buildCreatePostEventRequest, resolveCreatePostIdentity } from "@/app/authenticated-helpers/create-post-submit/base";
 import { buildStoryRegistrationCreationWarning } from "@/app/authenticated-helpers/story-registration-warning";
 import { buildStoryLicenseReuseNotice, rememberStoryLicenseReuseNotice } from "@/app/authenticated-helpers/story-license-reuse-notice";
 import { submitImagePost } from "@/app/authenticated-helpers/create-post-submit/image";
@@ -735,10 +735,6 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, [community?.allow_anonymous_identity]);
 
   React.useEffect(() => {
-    if (composerMode === "song" || composerMode === "live" || (composerMode === "video" && monetizationState.visible)) setIdentityMode("public");
-  }, [composerMode, monetizationState.visible]);
-
-  React.useEffect(() => {
     if (!availableAgent && authorMode === "agent") {
       setAuthorMode("human");
     }
@@ -899,15 +895,18 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       let publishedPostId: string | null = null;
       let publishedPostType = composerMode;
       let liveRoomFreedomHref: string | null = null;
-      const resolvedIdentityMode = authorMode === "agent"
-        || composerMode === "song"
-        || composerMode === "live"
-        || (composerMode === "video" && monetizationState.visible)
-        || !community.allow_anonymous_identity
-        ? "public"
-        : identityMode;
-      const anonymousScope = resolvedIdentityMode === "anonymous" ? (community.anonymous_identity_scope ?? "community_stable") : undefined;
-      const disclosedQualifierIds = resolvedIdentityMode === "anonymous" && selectedQualifierIds.length > 0 ? selectedQualifierIds : undefined;
+      const {
+        anonymousScope,
+        disclosedQualifierIds,
+        identityMode: resolvedIdentityMode,
+      } = resolveCreatePostIdentity({
+        allowAnonymousIdentity: community.allow_anonymous_identity === true,
+        anonymousIdentityScope: community.anonymous_identity_scope,
+        authorMode,
+        composerMode,
+        requestedIdentityMode: identityMode,
+        selectedQualifierIds,
+      });
       const eventRequest = composerMode === "song" || composerMode === "live"
         ? undefined
         : buildCreatePostEventRequest(event);
@@ -930,6 +929,9 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           license,
           lyrics,
           monetizationState,
+          anonymousScope,
+          disclosedQualifierIds,
+          identityMode: resolvedIdentityMode,
           paidSongPriceUsd: paidAssetPriceUsd,
           pendingSongBundleId,
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
@@ -961,6 +963,9 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           createLiveRoom: api.communities.createLiveRoom,
           description: body,
           hostUserId: session?.user.id,
+          anonymousScope,
+          disclosedQualifierIds,
+          identityMode: resolvedIdentityMode,
           liveState,
           paidLiveRoomPriceUsd: paidAssetPriceUsd,
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,

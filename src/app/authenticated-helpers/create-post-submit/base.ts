@@ -251,8 +251,6 @@ export function resolveCreatePostIdentity({
   allowAnonymousIdentity,
   anonymousIdentityScope,
   authorMode,
-  composerMode,
-  monetizedVideo,
   requestedIdentityMode,
   selectedQualifierIds,
 }: {
@@ -260,15 +258,10 @@ export function resolveCreatePostIdentity({
   anonymousIdentityScope?: AnonymousIdentityScope | null;
   authorMode: AuthorMode;
   composerMode: ComposerTab;
-  monetizedVideo?: boolean;
   requestedIdentityMode: IdentityMode;
   selectedQualifierIds: string[];
 }): ResolvedCreatePostIdentity {
-  const identityMode = authorMode === "agent"
-    || composerMode === "song"
-    || composerMode === "live"
-    || (composerMode === "video" && monetizedVideo)
-    || !allowAnonymousIdentity
+  const identityMode = authorMode === "agent" || !allowAnonymousIdentity
     ? "public"
     : requestedIdentityMode;
 

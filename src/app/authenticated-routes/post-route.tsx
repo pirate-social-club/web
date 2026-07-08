@@ -1010,7 +1010,9 @@ export function PostPage({
       participants: buildLiveRoomParticipants({
         authorProfile,
         liveRoom,
+        postAnonymousLabel: post.post.anonymous_label,
         postAuthorUserId: post.post.author_user,
+        postIdentityMode: post.post.identity_mode,
         profilesByUserId: authorProfilesByUserId,
       }),
       producerRole: viewerIsLiveRoomHost

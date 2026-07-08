@@ -65,6 +65,7 @@ describe("live create-post submit helpers", () => {
       coverRef: "media_cover",
       description: " Live description ",
       hostUserId: "usr_host",
+      identityMode: "public",
       liveState: {
         roomKind: "duet",
         accessMode: "paid",
@@ -105,6 +106,9 @@ describe("live create-post submit helpers", () => {
     expect(request).toEqual({
       title: "Live title",
       description: "Live description",
+      anonymous_scope: undefined,
+      disclosed_qualifier_ids: undefined,
+      identity_mode: "public",
       room_kind: "duet",
       access_mode: "paid",
       visibility: "unlisted",
@@ -150,10 +154,36 @@ describe("live create-post submit helpers", () => {
     });
   });
 
+  test("buildLiveRoomRequest forwards anonymous identity fields", () => {
+    const request = buildLiveRoomRequest({
+      anonymousScope: "community_stable",
+      description: "",
+      disclosedQualifierIds: ["qual_unique_human"],
+      hostUserId: "usr_host",
+      identityMode: "anonymous",
+      liveState: {
+        roomKind: "solo",
+        accessMode: "free",
+        visibility: "public",
+        setlistStatus: "ready",
+        performerAllocations: [{ role: "host", userId: "", sharePct: 100 }],
+        setlistItems: [{ titleText: "Song", performanceKind: "original" }],
+      },
+      title: "Anonymous live",
+    });
+
+    expect(request).toMatchObject({
+      anonymous_scope: "community_stable",
+      disclosed_qualifier_ids: ["qual_unique_human"],
+      identity_mode: "anonymous",
+    });
+  });
+
   test("buildLiveRoomRequest ignores stale schedule values for immediate rooms", () => {
     const request = buildLiveRoomRequest({
       description: "",
       hostUserId: "usr_host",
+      identityMode: "public",
       liveState: {
         roomKind: "solo",
         accessMode: "free",
@@ -174,6 +204,7 @@ describe("live create-post submit helpers", () => {
     const request = buildLiveRoomRequest({
       description: "",
       hostUserId: "usr_host",
+      identityMode: "public",
       liveState: {
         roomKind: "solo",
         accessMode: "free",
@@ -193,6 +224,7 @@ describe("live create-post submit helpers", () => {
     const request = buildLiveRoomRequest({
       description: "",
       hostUserId: "usr_host",
+      identityMode: "public",
       liveState: {
         roomKind: "solo",
         accessMode: "gated",
@@ -215,6 +247,7 @@ describe("live create-post submit helpers", () => {
     const request = buildLiveRoomRequest({
       description: "",
       hostUserId: "usr_host",
+      identityMode: "public",
       liveState: {
         roomKind: "solo",
         accessMode: "gated",
@@ -247,6 +280,7 @@ describe("live create-post submit helpers", () => {
     expect(() => buildLiveRoomRequest({
       description: "",
       hostUserId: "usr_host",
+      identityMode: "public",
       liveState: {
         roomKind: "solo",
         accessMode: "gated",
@@ -308,6 +342,7 @@ describe("live create-post submit helpers", () => {
       },
       description: "Room body",
       hostUserId: "usr_host",
+      identityMode: "public",
       liveState: {
         roomKind: "solo",
         accessMode: "free",
@@ -340,7 +375,10 @@ describe("live create-post submit helpers", () => {
       communityId: "com_test",
       request: {
         title: "Free room",
+        anonymous_scope: undefined,
         description: "Room body",
+        disclosed_qualifier_ids: undefined,
+        identity_mode: "public",
         room_kind: "solo",
         access_mode: "free",
         visibility: "public",
@@ -378,6 +416,7 @@ describe("live create-post submit helpers", () => {
       },
       description: "Room body",
       hostUserId: "usr_host",
+      identityMode: "public",
       liveState: {
         roomKind: "solo",
         accessMode: "free",
@@ -421,6 +460,7 @@ describe("live create-post submit helpers", () => {
       },
       description: "Room body",
       hostUserId: "usr_host",
+      identityMode: "public",
       liveState: {
         roomKind: "solo",
         accessMode: "paid",
@@ -466,6 +506,7 @@ describe("live create-post submit helpers", () => {
       createLiveRoom: async () => createLiveRoom(),
       description: "",
       hostUserId: "usr_host",
+      identityMode: "public",
       liveState: {
         roomKind: "duet",
         accessMode: "paid",
@@ -519,6 +560,7 @@ describe("live create-post submit helpers", () => {
       },
       description: "",
       hostUserId: "usr_host",
+      identityMode: "public",
       liveState: {
         roomKind: "solo",
         accessMode: "paid",
@@ -547,7 +589,10 @@ describe("live create-post submit helpers", () => {
       request: {
         room: {
           title: "Paid room",
+          anonymous_scope: undefined,
           description: undefined,
+          disclosed_qualifier_ids: undefined,
+          identity_mode: "public",
           room_kind: "solo",
           access_mode: "paid",
           visibility: "public",
@@ -589,6 +634,7 @@ describe("live create-post submit helpers", () => {
       },
       description: "",
       hostUserId: null,
+      identityMode: "public",
       liveState: {
         roomKind: "solo",
         accessMode: "free",
@@ -626,6 +672,7 @@ describe("live create-post submit helpers", () => {
       createLiveRoom: async () => createLiveRoom(),
       description: "",
       hostUserId: "usr_host",
+      identityMode: "public",
       liveState: {
         roomKind: "solo",
         accessMode: "paid",

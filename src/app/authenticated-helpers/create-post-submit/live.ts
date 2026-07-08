@@ -9,6 +9,8 @@ import type {
   ApiPublishLiveRoomResponse,
 } from "@/lib/api/client-api-types";
 import type {
+  AnonymousIdentityScope,
+  IdentityMode,
   LiveComposerState,
   LiveSetlistItemKind,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
@@ -152,13 +154,17 @@ function performerAllocationsFromLiveState(input: {
 }
 
 export function buildLiveRoomRequest(input: {
+  anonymousScope?: AnonymousIdentityScope;
   coverRef?: string | null;
   description: string;
+  disclosedQualifierIds?: string[];
   hostUserId: string;
+  identityMode?: IdentityMode;
   liveState: LiveComposerState;
   resolvedGuestUserId?: string | null;
   title: string;
 }): ApiCreateLiveRoomRequest {
+  const identityMode = input.identityMode ?? "public";
   const rawGuestUserId = input.liveState.guestUserId?.trim() || null;
   const guestUserId = input.liveState.roomKind === "duet"
     ? input.resolvedGuestUserId ?? rawGuestUserId
@@ -168,7 +174,10 @@ export function buildLiveRoomRequest(input: {
   const audienceGate = buildLiveRoomAudienceGate(input.liveState);
   return {
     title: input.title.trim(),
+    anonymous_scope: identityMode === "anonymous" ? input.anonymousScope : undefined,
     description: input.description.trim() || undefined,
+    disclosed_qualifier_ids: identityMode === "anonymous" ? input.disclosedQualifierIds : undefined,
+    identity_mode: identityMode,
     room_kind: input.liveState.roomKind,
     access_mode: input.liveState.accessMode,
     visibility: input.liveState.visibility,
@@ -199,10 +208,13 @@ export function buildLiveRoomRequest(input: {
 }
 
 export async function submitLiveRoom({
+  anonymousScope,
   communityId,
   createLiveRoom,
   description,
+  disclosedQualifierIds,
   hostUserId,
+  identityMode,
   liveState,
   paidLiveRoomPriceUsd,
   pricingPolicyRegionalPricingEnabled,
@@ -213,10 +225,13 @@ export async function submitLiveRoom({
   title,
   uploadMedia,
 }: {
+  anonymousScope?: AnonymousIdentityScope;
   communityId: string;
   createLiveRoom: CreateLiveRoom;
   description: string;
+  disclosedQualifierIds?: string[];
   hostUserId: string | null | undefined;
+  identityMode: IdentityMode;
   liveState: LiveComposerState;
   paidLiveRoomPriceUsd: number | null;
   pricingPolicyRegionalPricingEnabled: boolean;
@@ -254,9 +269,12 @@ export async function submitLiveRoom({
   }
 
   const roomRequest = buildLiveRoomRequest({
+    anonymousScope,
     coverRef,
     description,
+    disclosedQualifierIds,
     hostUserId,
+    identityMode,
     liveState,
     resolvedGuestUserId,
     title,

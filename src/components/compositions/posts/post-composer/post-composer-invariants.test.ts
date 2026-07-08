@@ -23,17 +23,22 @@ function liveState(overrides: Partial<LiveComposerState> = {}): LiveComposerStat
 }
 
 describe("post composer invariants", () => {
-  test("forces public identity for anonymous tabs that become ineligible", () => {
+  test("allows anonymous identity on asset and live tabs", () => {
     expect(shouldForcePublicIdentityForTab({
       activeTab: "song",
       identityMode: "anonymous",
       monetizationVisible: false,
-    })).toBe(true);
+    })).toBe(false);
     expect(shouldForcePublicIdentityForTab({
       activeTab: "video",
       identityMode: "anonymous",
       monetizationVisible: true,
-    })).toBe(true);
+    })).toBe(false);
+    expect(shouldForcePublicIdentityForTab({
+      activeTab: "live",
+      identityMode: "anonymous",
+      monetizationVisible: false,
+    })).toBe(false);
     expect(shouldForcePublicIdentityForTab({
       activeTab: "image",
       identityMode: "anonymous",

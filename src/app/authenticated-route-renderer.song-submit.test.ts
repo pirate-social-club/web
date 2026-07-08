@@ -21,6 +21,26 @@ function captureErrorMessage(fn: () => unknown): string | null {
   }
 }
 
+function baseRequest(
+  idempotencyKey: string,
+  overrides: {
+    age_gate_policy?: "18_plus";
+    identity_mode?: "public" | "anonymous";
+    visibility?: "public" | "members_only";
+  } = {},
+) {
+  return {
+    anonymous_scope: undefined,
+    disclosed_qualifier_ids: undefined,
+    age_gate_policy: undefined,
+    identity_mode: "public" as const,
+    idempotency_key: idempotencyKey,
+    translation_policy: "machine_allowed" as const,
+    visibility: "public" as const,
+    ...overrides,
+  };
+}
+
 describe("song submit payload helpers", () => {
   test("counts unique raw ACR source matches for logging", () => {
     const count = countUniqueRawAcrMatches({
@@ -65,12 +85,11 @@ describe("song submit payload helpers", () => {
       bundleId: "sab_free",
       caption: "  Listen through the second chorus.  ",
       derivativeStep: undefined,
-      idempotencyKey: "key-free",
+      baseRequest: baseRequest("key-free"),
       license: { presetId: "non-commercial" },
       paidSongPriceUsd: null,
       songMode: "original",
       title: "  Free song  ",
-      visibility: "public",
     });
     const listingRequest = buildAssetListingRequest({
       assetId: "ast_free",
@@ -84,7 +103,9 @@ describe("song submit payload helpers", () => {
     expect(postRequest).toEqual({
       access_mode: "public",
       age_gate_policy: undefined,
+      anonymous_scope: undefined,
       caption: "Listen through the second chorus.",
+      disclosed_qualifier_ids: undefined,
       identity_mode: "public",
       idempotency_key: "key-free",
       license_preset: "non-commercial",
@@ -104,15 +125,13 @@ describe("song submit payload helpers", () => {
 
   test("builds a song post with author-declared 18+ content policy", () => {
     const postRequest = buildSongPostRequest({
-      ageGatePolicy: "18_plus",
       bundleId: "sab_adult",
       derivativeStep: undefined,
-      idempotencyKey: "key-adult",
+      baseRequest: baseRequest("key-adult", { age_gate_policy: "18_plus" }),
       license: { presetId: "commercial-use" },
       paidSongPriceUsd: null,
       songMode: "original",
       title: "Adult song",
-      visibility: "public",
     });
 
     expect(postRequest.age_gate_policy).toBe("18_plus");
@@ -122,12 +141,11 @@ describe("song submit payload helpers", () => {
     const postRequest = buildSongPostRequest({
       bundleId: "sab_paid",
       derivativeStep: undefined,
-      idempotencyKey: "key-paid",
+      baseRequest: baseRequest("key-paid", { visibility: "members_only" }),
       license: { presetId: "commercial-use" },
       paidSongPriceUsd: 4.99,
       songMode: "original",
       title: "Paid song",
-      visibility: "members_only",
     });
     const listingRequest = buildAssetListingRequest({
       assetId: "ast_paid",
@@ -159,7 +177,7 @@ describe("song submit payload helpers", () => {
     const postRequest = buildSongPostRequest({
       bundleId: "sab_split",
       derivativeStep: undefined,
-      idempotencyKey: "key-split",
+      baseRequest: baseRequest("key-split"),
       license: { presetId: "commercial-use" },
       paidSongPriceUsd: 4.99,
       royaltySplit: {
@@ -180,7 +198,6 @@ describe("song submit payload helpers", () => {
       },
       songMode: "original",
       title: "Paid split song",
-      visibility: "members_only",
     });
 
     expect(postRequest.royalty_allocations).toEqual([
@@ -201,7 +218,7 @@ describe("song submit payload helpers", () => {
     expect(captureErrorMessage(() => buildSongPostRequest({
       bundleId: "sab_split",
       derivativeStep: undefined,
-      idempotencyKey: "key-split",
+      baseRequest: baseRequest("key-split"),
       license: { presetId: "non-commercial" },
       paidSongPriceUsd: null,
       royaltySplit: {
@@ -222,7 +239,6 @@ describe("song submit payload helpers", () => {
       },
       songMode: "original",
       title: "Invalid split song",
-      visibility: "public",
     }))).toBe("Collaborator royalty splits require a commercial license for this song.");
   });
 
@@ -285,12 +301,11 @@ describe("song submit payload helpers", () => {
           { id: "ast_upstream_2", title: "Signal Drift" },
         ],
       },
-      idempotencyKey: "key-remix",
+      baseRequest: baseRequest("key-remix"),
       license: { presetId: "commercial-remix", commercialRevSharePct: 15 },
       paidSongPriceUsd: 1,
       songMode: "remix",
       title: "Paid remix",
-      visibility: "public",
     });
     const listingRequest = buildAssetListingRequest({
       assetId: "ast_remix",
@@ -303,12 +318,17 @@ describe("song submit payload helpers", () => {
 
     expect(postRequest).toEqual({
       access_mode: "locked",
+      age_gate_policy: undefined,
+      anonymous_scope: undefined,
+      caption: undefined,
+      disclosed_qualifier_ids: undefined,
       identity_mode: "public",
       idempotency_key: "key-remix",
       license_preset: "commercial-remix",
       commercial_rev_share_pct: 15,
       post_type: "song",
       rights_basis: "derivative",
+      royalty_allocations: undefined,
       song_artifact_bundle: "sab_remix",
       song_mode: "remix",
       title: "Paid remix",
@@ -330,12 +350,11 @@ describe("song submit payload helpers", () => {
     const nonCommercialRequest = buildSongPostRequest({
       bundleId: "sab_nc",
       derivativeStep: undefined,
-      idempotencyKey: "key-nc",
+      baseRequest: baseRequest("key-nc"),
       license: { presetId: "non-commercial" },
       paidSongPriceUsd: null,
       songMode: "original",
       title: "NC",
-      visibility: "public",
     });
     expect(nonCommercialRequest.license_preset).toBe("non-commercial");
     expect(nonCommercialRequest.commercial_rev_share_pct).toBe(undefined);
@@ -343,12 +362,11 @@ describe("song submit payload helpers", () => {
     const commercialUseRequest = buildSongPostRequest({
       bundleId: "sab_cu",
       derivativeStep: undefined,
-      idempotencyKey: "key-cu",
+      baseRequest: baseRequest("key-cu"),
       license: { presetId: "commercial-use" },
       paidSongPriceUsd: null,
       songMode: "original",
       title: "CU",
-      visibility: "public",
     });
     expect(commercialUseRequest.license_preset).toBe("commercial-use");
     expect(commercialUseRequest.commercial_rev_share_pct).toBe(undefined);
@@ -356,12 +374,11 @@ describe("song submit payload helpers", () => {
     const commercialRemixRequest = buildSongPostRequest({
       bundleId: "sab_cr",
       derivativeStep: undefined,
-      idempotencyKey: "key-cr",
+      baseRequest: baseRequest("key-cr"),
       license: { presetId: "commercial-remix", commercialRevSharePct: 10 },
       paidSongPriceUsd: null,
       songMode: "original",
       title: "CR",
-      visibility: "public",
     });
     expect(commercialRemixRequest.license_preset).toBe("commercial-remix");
     expect(commercialRemixRequest.commercial_rev_share_pct).toBe(10);
@@ -371,45 +388,41 @@ describe("song submit payload helpers", () => {
     expect(captureErrorMessage(() => buildSongPostRequest({
       bundleId: "sab_missing",
       derivativeStep: undefined,
-      idempotencyKey: "key-missing",
+      baseRequest: baseRequest("key-missing"),
       license: undefined,
       paidSongPriceUsd: null,
       songMode: "original",
       title: "Missing",
-      visibility: "public",
     }))).toBe("Choose license terms before publishing this song.");
 
     expect(captureErrorMessage(() => buildSongPostRequest({
       bundleId: "sab_missing_rev",
       derivativeStep: undefined,
-      idempotencyKey: "key-missing-rev",
+      baseRequest: baseRequest("key-missing-rev"),
       license: { presetId: "commercial-remix" },
       paidSongPriceUsd: null,
       songMode: "original",
       title: "Missing rev",
-      visibility: "public",
     }))).toBe("Choose a valid remix revenue share before publishing this song.");
 
     expect(captureErrorMessage(() => buildSongPostRequest({
       bundleId: "sab_bad_rev",
       derivativeStep: undefined,
-      idempotencyKey: "key-bad-rev",
+      baseRequest: baseRequest("key-bad-rev"),
       license: { presetId: "commercial-remix", commercialRevSharePct: 10.5 },
       paidSongPriceUsd: null,
       songMode: "original",
       title: "Bad rev",
-      visibility: "public",
     }))).toBe("Choose a valid remix revenue share before publishing this song.");
 
     expect(captureErrorMessage(() => buildSongPostRequest({
       bundleId: "sab_extra_rev",
       derivativeStep: undefined,
-      idempotencyKey: "key-extra-rev",
+      baseRequest: baseRequest("key-extra-rev"),
       license: { presetId: "commercial-use", commercialRevSharePct: 10 },
       paidSongPriceUsd: null,
       songMode: "original",
       title: "Extra rev",
-      visibility: "public",
     }))).toBe("Revenue share is only available for commercial remix licenses.");
   });
 
@@ -576,12 +589,11 @@ describe("song submit payload helpers", () => {
         ],
         sourceTermsAccepted: true,
       },
-      idempotencyKey: "key-remix",
+      baseRequest: baseRequest("key-remix"),
       license: { presetId: "non-commercial" },
       paidSongPriceUsd: null,
       songMode: "remix",
       title: "Remix",
-      visibility: "public",
     }).upstream_asset_refs).toEqual(["ast_resolved_source"]);
   });
 
@@ -593,12 +605,11 @@ describe("song submit payload helpers", () => {
         references: [{ id: "ast_source", title: "Source" }],
         sourceTermsAccepted: true,
       },
-      idempotencyKey: "key-remix-missing",
+      baseRequest: baseRequest("key-remix-missing"),
       license: undefined,
       paidSongPriceUsd: null,
       songMode: "remix",
       title: "Missing remix license",
-      visibility: "public",
     }))).toBe("Choose license terms before publishing this song.");
 
     const request = buildSongPostRequest({
@@ -608,12 +619,11 @@ describe("song submit payload helpers", () => {
         references: [{ id: "ast_source", title: "Source" }],
         sourceTermsAccepted: true,
       },
-      idempotencyKey: "key-remix-license",
+      baseRequest: baseRequest("key-remix-license"),
       license: { presetId: "commercial-remix", commercialRevSharePct: 20 },
       paidSongPriceUsd: null,
       songMode: "remix",
       title: "Licensed remix",
-      visibility: "public",
     });
 
     expect(request.license_preset).toBe("commercial-remix");

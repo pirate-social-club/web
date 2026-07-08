@@ -515,7 +515,9 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     const liveRoomAccess = liveRoomId ? liveRoomAccessById[liveRoomId] : undefined;
     const liveRoomParticipants = buildLiveRoomParticipants({
       liveRoom: liveRoomAccess?.room,
+      postAnonymousLabel: entry.post.post.anonymous_label,
       postAuthorUserId: entry.post.post.author_user,
+      postIdentityMode: entry.post.post.identity_mode,
       profilesByUserId: authorProfiles,
     });
     const liveRoomGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;

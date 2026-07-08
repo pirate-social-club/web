@@ -687,7 +687,9 @@ export function CommunityPage({
     const liveRoomListing = liveRoomId ? listingsByLiveRoomId[liveRoomId] : undefined;
     const liveRoomParticipants = buildLiveRoomParticipants({
       liveRoom: liveRoomAccess?.room,
+      postAnonymousLabel: post.post.anonymous_label,
       postAuthorUserId: post.post.author_user,
+      postIdentityMode: post.post.identity_mode,
       profilesByUserId: liveRoomProfilesByUserId,
     });
     const liveRoomGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;

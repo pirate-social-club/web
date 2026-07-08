@@ -66,6 +66,22 @@ describe("create post submit base helpers", () => {
     });
   });
 
+  test("resolveCreatePostIdentity allows anonymous identity for song, live, and paid video", () => {
+    for (const composerMode of ["song", "live", "video"] as const) {
+      expect(resolveCreatePostIdentity({
+        allowAnonymousIdentity: true,
+        anonymousIdentityScope: "community_stable",
+        authorMode: "human",
+        composerMode,
+        requestedIdentityMode: "anonymous",
+        selectedQualifierIds: [],
+      })).toMatchObject({
+        anonymousScope: "community_stable",
+        identityMode: "anonymous",
+      });
+    }
+  });
+
   test("resolveCreatePostIdentity forces public identity for agent authorship", () => {
     expect(resolveCreatePostIdentity({
       allowAnonymousIdentity: true,

@@ -886,6 +886,71 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("loads authenticated profile activity with tab and locale params", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        comments: [],
+        next_cursor: null,
+        overview_items: [],
+        posts: [],
+        tab: "posts",
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.profiles.getActivity({ limit: 25, locale: "en-US", tab: "posts" });
+      const capturedRequest = requireRequest(request);
+      const url = new URL(capturedRequest.url);
+      expect(capturedRequest.method).toBe("GET");
+      expect(url.pathname).toBe("/profiles/me/activity");
+      expect(url.searchParams.get("limit")).toBe("25");
+      expect(url.searchParams.get("locale")).toBe("en-US");
+      expect(url.searchParams.get("tab")).toBe("posts");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("loads public profile activity without auth headers", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        comments: [],
+        next_cursor: null,
+        overview_items: [],
+        posts: [],
+        tab: "comments",
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.publicProfiles.getActivity("captain.pirate", { limit: 10, tab: "comments" });
+      const capturedRequest = requireRequest(request);
+      const url = new URL(capturedRequest.url);
+      expect(capturedRequest.method).toBe("GET");
+      expect(url.pathname).toBe("/public-profiles/captain.pirate/activity");
+      expect(url.searchParams.get("limit")).toBe("10");
+      expect(url.searchParams.get("tab")).toBe("comments");
+      expect(capturedRequest.headers.get("authorization")).toBe(null);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("loads the authenticated home feed with sort and locale params", async () => {
     let request: Request | null = null;
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

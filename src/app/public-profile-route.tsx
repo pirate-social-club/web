@@ -16,6 +16,7 @@ import { useChatLauncher } from "./shell/use-chat-launcher";
 import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profiles/profile-page/profile-page";
 import { apiProfileToProps } from "./authenticated-helpers/profile-settings-mapping";
 import { useOwnBookingCta } from "@/app/authenticated-state/use-own-booking-cta";
+import { usePublicProfileActivity } from "@/app/authenticated-state/use-profile-activity";
 import { ProfileBookTabPanel } from "./authenticated-routes/profile-book-tab-panel";
 import { useHostAvailability } from "@/hooks/use-host-availability";
 import { navigate } from "@/app/router";
@@ -86,6 +87,7 @@ export function PublicProfileRoutePage({
   const ownProfile = Boolean(session?.profile.id && resolution?.profile.id === session.profile.id);
   const followState = useProfileFollowState(resolution?.profile.primary_wallet_address ?? null, ownProfile);
   const bookingCtaState = useOwnBookingCta(ownProfile);
+  const activity = usePublicProfileActivity(resolution?.resolved_handle_label ?? null, localeTag);
 
   // Preload availability at the container so the Book tab (or a direct #book deep-link) renders slots
   // immediately instead of fetching only once the tab content mounts. Enabled for bookable viewers and
@@ -208,6 +210,9 @@ export function PublicProfileRoutePage({
         followersLabel: profileCopy.followersLabel,
         followingLabel: profileCopy.followingLabel,
       }, followState, localeTag)}
+      comments={activity.comments}
+      overviewItems={activity.overviewItems}
+      posts={activity.posts}
       onMessageProfile={messageTarget
         ? () => chatLauncher.openTarget(messageTarget)
         : undefined}

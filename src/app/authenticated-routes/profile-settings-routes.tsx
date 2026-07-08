@@ -34,6 +34,7 @@ import { useDomainsTab } from "@/app/authenticated-state/use-domains-tab";
 import { useSettingsOwnedAgents } from "@/app/authenticated-state/use-settings-owned-agents";
 import { useBookingHostSettings } from "@/app/authenticated-state/use-booking-host-settings";
 import { useOwnBookingCta } from "@/app/authenticated-state/use-own-booking-cta";
+import { useCurrentUserProfileActivity } from "@/app/authenticated-state/use-profile-activity";
 import { ProfileBookTabPanel } from "@/app/authenticated-routes/profile-book-tab-panel";
 import { useHostAvailability } from "@/hooks/use-host-availability";
 import { ProfileBookingsSection } from "@/components/compositions/bookings/profile-bookings-section/profile-bookings-section";
@@ -55,6 +56,7 @@ export function CurrentUserProfilePage() {
   logger.info("[profile-page] render", { hasProfile: !!profile, hasSession: !!session });
   const bookingCtaState = useOwnBookingCta(Boolean(session));
   const followState = useProfileFollowState(profile?.primary_wallet_address ?? null, true);
+  const activity = useCurrentUserProfileActivity(localeTag, Boolean(profile));
   const handleFlow = useGlobalHandleFlow({
     currentHandleLabel: profile?.global_handle?.label ?? "",
     onRenamed: async () => {
@@ -81,6 +83,9 @@ export function CurrentUserProfilePage() {
   return (
     <ProfilePageComposition
       {...baseProps}
+      comments={activity.comments}
+      overviewItems={activity.overviewItems}
+      posts={activity.posts}
       profile={{ ...baseProps.profile, bookingCtaLabel }}
       onEditProfile={() => {
         handleFlow.clearDraft();

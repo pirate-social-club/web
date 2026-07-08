@@ -3,6 +3,7 @@ import type {
   CommunityPreview,
   GlobalHandle,
   LocalizedPostResponse,
+  ProfileActivityResponse,
   Profile,
   PublicAgentResolution,
   PublicProfileResolution,
@@ -69,6 +70,18 @@ function publicGet<T>(
 export function createProfilesApi(request: ApiRequest) {
   return {
     getMe: (): Promise<Profile> => request<Profile>("/profiles/me"),
+    getActivity: (options?: {
+      cursor?: string | null;
+      limit?: number;
+      locale?: string | null;
+      tab?: "overview" | "posts" | "comments";
+    }): Promise<ProfileActivityResponse> =>
+      request<ProfileActivityResponse>(buildQueryPath("/profiles/me/activity", {
+        cursor: options?.cursor ?? null,
+        limit: options?.limit,
+        locale: options?.locale ?? null,
+        tab: options?.tab,
+      })),
     getCourtyardInventory: async (): Promise<{
       groups: CourtyardWalletInventoryGroup[];
       unavailable: boolean;
@@ -154,6 +167,21 @@ export function createPublicProfilesApi(request: ApiRequest) {
   return {
     getByHandle: (handleLabel: string): Promise<PublicProfileResolution> =>
       publicGet<PublicProfileResolution>(request, `/public-profiles/${encodeURIComponent(handleLabel)}`),
+    getActivity: (
+      handleLabel: string,
+      options?: {
+        cursor?: string | null;
+        limit?: number;
+        locale?: string | null;
+        tab?: "overview" | "posts" | "comments";
+      },
+    ): Promise<ProfileActivityResponse> =>
+      publicGet<ProfileActivityResponse>(request, `/public-profiles/${encodeURIComponent(handleLabel)}/activity`, {
+        cursor: options?.cursor ?? null,
+        limit: options?.limit,
+        locale: options?.locale ?? null,
+        tab: options?.tab,
+      }),
     getByWalletAddress: (walletAddress: string): Promise<PublicProfileResolution> =>
       publicGet<PublicProfileResolution>(request, `/public-profiles/by-wallet/${encodeURIComponent(walletAddress)}`),
   };

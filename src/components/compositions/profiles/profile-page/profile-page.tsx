@@ -50,9 +50,11 @@ function useHashTab(defaultTab: ProfilePageTab): [ProfilePageTab, (tab: ProfileP
 }
 
 export function ProfilePage({
+  activityError,
   className,
   comments = EMPTY_PROFILE_COMMENTS,
   defaultTab = "overview",
+  onActivityTabChange,
   onEditProfile,
   onMessageProfile,
   onBookingCta,
@@ -71,6 +73,12 @@ export function ProfilePage({
   const tabColumns = isMobile ? 3 + (hasWalletTab ? 1 : 0) + (hasBookTab ? 1 : 0) : undefined;
   const mobileTabIconClassName = "size-5";
   const [activeTab, setActiveTab] = useHashTab(defaultTab);
+
+  React.useEffect(() => {
+    if (activeTab === "overview" || activeTab === "posts" || activeTab === "comments") {
+      onActivityTabChange?.(activeTab);
+    }
+  }, [activeTab, onActivityTabChange]);
 
   return (
     <div className={cn("w-full bg-background text-foreground", className)}>
@@ -141,13 +149,13 @@ export function ProfilePage({
           </FlatTabsList>
 
           <TabsContent className="mt-0" value="overview">
-            <OverviewPanel items={overviewItems} />
+            <OverviewPanel error={activityError} items={overviewItems} />
           </TabsContent>
           <TabsContent className="mt-0" value="posts">
-            <PostsPanel posts={posts} />
+            <PostsPanel error={activityError} posts={posts} />
           </TabsContent>
           <TabsContent className="mt-0" value="comments">
-            <CommentsPanel comments={comments} />
+            <CommentsPanel comments={comments} error={activityError} />
           </TabsContent>
           {hasWalletTab ? (
             <TabsContent className="mt-0" value="wallet">

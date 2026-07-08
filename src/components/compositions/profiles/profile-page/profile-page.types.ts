@@ -96,8 +96,10 @@ export interface ProfilePageProps {
   overviewItems?: ProfileActivityItem[];
   posts?: ProfilePostItem[];
   comments?: ProfileCommentItem[];
+  activityError?: string | null;
   defaultTab?: ProfilePageTab;
   className?: string;
+  onActivityTabChange?: (tab: Extract<ProfilePageTab, "overview" | "posts" | "comments">) => void;
   onEditProfile?: () => void;
   onMessageProfile?: () => void;
   /** Invoked by the self-only booking CTA (navigates to /settings/bookings). */

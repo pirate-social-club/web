@@ -75,4 +75,12 @@ describe("apiProfileToProps", () => {
       { label: "Following", value: 0 },
     ]);
   });
+
+  test("does not provide placeholder activity arrays", () => {
+    const props = apiProfileToProps(createProfile(), false, labels, followState, "en-US");
+
+    expect("overviewItems" in props).toBe(false);
+    expect("posts" in props).toBe(false);
+    expect("comments" in props).toBe(false);
+  });
 });

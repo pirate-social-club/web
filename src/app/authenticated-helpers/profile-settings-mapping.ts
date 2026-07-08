@@ -116,9 +116,6 @@ export function apiProfileToProps(
       description: profile.bio ?? undefined,
       walletAddress: profile.primary_wallet_address ?? undefined,
     },
-    overviewItems: [],
-    posts: [],
-    comments: [],
   };
 }
 

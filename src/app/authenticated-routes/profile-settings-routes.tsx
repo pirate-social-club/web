@@ -53,10 +53,15 @@ export function CurrentUserProfilePage() {
   const profile = session?.profile ?? null;
   const isMobile = useIsMobile();
   const pageTitle = copy.profile.title;
+  const [activityTab, setActivityTab] = React.useState<"overview" | "posts" | "comments">(() => {
+    if (typeof window === "undefined") return "overview";
+    const hash = window.location.hash.replace(/^#/, "");
+    return hash === "posts" || hash === "comments" ? hash : "overview";
+  });
   logger.info("[profile-page] render", { hasProfile: !!profile, hasSession: !!session });
   const bookingCtaState = useOwnBookingCta(Boolean(session));
   const followState = useProfileFollowState(profile?.primary_wallet_address ?? null, true);
-  const activity = useCurrentUserProfileActivity(localeTag, Boolean(profile));
+  const activity = useCurrentUserProfileActivity(localeTag, Boolean(profile), activityTab);
   const handleFlow = useGlobalHandleFlow({
     currentHandleLabel: profile?.global_handle?.label ?? "",
     onRenamed: async () => {
@@ -84,6 +89,8 @@ export function CurrentUserProfilePage() {
     <ProfilePageComposition
       {...baseProps}
       comments={activity.comments}
+      activityError={activity.error}
+      onActivityTabChange={setActivityTab}
       overviewItems={activity.overviewItems}
       posts={activity.posts}
       profile={{ ...baseProps.profile, bookingCtaLabel }}

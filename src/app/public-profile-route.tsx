@@ -82,12 +82,17 @@ export function PublicProfileRoutePage({
   const copy = getLocaleMessages(locale, "routes");
   const publicCopy = copy.publicProfile;
   const profileCopy = copy.profile;
+  const [activityTab, setActivityTab] = React.useState<"overview" | "posts" | "comments">(() => {
+    if (typeof window === "undefined") return "overview";
+    const hash = window.location.hash.replace(/^#/, "");
+    return hash === "posts" || hash === "comments" ? hash : "overview";
+  });
   const session = useSession();
   const { error, loading, resolution } = usePublicProfile(handleLabel);
   const ownProfile = Boolean(session?.profile.id && resolution?.profile.id === session.profile.id);
   const followState = useProfileFollowState(resolution?.profile.primary_wallet_address ?? null, ownProfile);
   const bookingCtaState = useOwnBookingCta(ownProfile);
-  const activity = usePublicProfileActivity(resolution?.resolved_handle_label ?? null, localeTag);
+  const activity = usePublicProfileActivity(resolution?.resolved_handle_label ?? null, localeTag, activityTab);
 
   // Preload availability at the container so the Book tab (or a direct #book deep-link) renders slots
   // immediately instead of fetching only once the tab content mounts. Enabled for bookable viewers and
@@ -210,7 +215,9 @@ export function PublicProfileRoutePage({
         followersLabel: profileCopy.followersLabel,
         followingLabel: profileCopy.followingLabel,
       }, followState, localeTag)}
+      activityError={activity.error}
       comments={activity.comments}
+      onActivityTabChange={setActivityTab}
       overviewItems={activity.overviewItems}
       posts={activity.posts}
       onMessageProfile={messageTarget

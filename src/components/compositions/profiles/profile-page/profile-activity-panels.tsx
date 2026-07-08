@@ -197,25 +197,31 @@ function ActivityRows({
 }
 
 export function OverviewPanel({
+  error,
   items,
   onNavigate,
 }: {
+  error?: string | null;
   items: ProfileActivityItem[];
   onNavigate?: (href: string) => void;
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").profile;
+  if (error) return <FeedEmptyState copy={error} />;
   if (items.length === 0) return <FeedEmptyState copy={copy.emptyState} />;
   return <ActivityRows items={items} onNavigate={onNavigate} />;
 }
 
 export function PostsPanel({
+  error,
   posts,
 }: {
+  error?: string | null;
   posts: NonNullable<ProfilePageProps["posts"]>;
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").profile;
+  if (error) return <FeedEmptyState copy={error} />;
   if (posts.length === 0) return <FeedEmptyState copy={copy.emptyState} />;
 
   return (
@@ -231,14 +237,20 @@ export function PostsPanel({
 
 export function CommentsPanel({
   comments,
+  error,
   onNavigate,
 }: {
   comments: NonNullable<ProfilePageProps["comments"]>;
+  error?: string | null;
   onNavigate?: (href: string) => void;
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").profile;
   const isMobile = useIsMobile();
+
+  if (error) {
+    return <FeedEmptyState copy={error} />;
+  }
 
   if (comments.length === 0) {
     return (

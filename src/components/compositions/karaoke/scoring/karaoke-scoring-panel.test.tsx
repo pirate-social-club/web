@@ -44,18 +44,28 @@ function endedState(summaryOverrides: Partial<KaraokeSessionSummary> = {}): Kara
 
 const noop = () => undefined;
 
-describe("KaraokeScoringPanel ended state (footer action only)", () => {
-  test("ended footer is the Sing again action — NOT the score (score lives on the stage)", () => {
+describe("KaraokeScoringPanel ended state", () => {
+  test("ended footer offers scores and Sing again — NOT the score (score lives on the stage)", () => {
     const restarts: string[] = [];
+    const scores: string[] = [];
     const view = render(
-      <KaraokeScoringPanel canStart onRestart={() => restarts.push("r")} onStart={noop} state={endedState()} />,
+      <KaraokeScoringPanel
+        canStart
+        onRestart={() => restarts.push("r")}
+        onStart={noop}
+        onViewScores={() => scores.push("s")}
+        state={endedState()}
+      />,
     );
 
-    // The footer carries only the action; the final score is rendered centered on
+    // The footer carries navigation/actions; the final score is rendered centered on
     // the stage by KaraokeScoreSummary, not here.
     expect(view.container.textContent).not.toContain("Final score");
     expect(view.container.textContent).not.toContain("86");
     expect(view.container.textContent).not.toContain("lines scored");
+
+    fireEvent.click(view.getByText("Scores"));
+    expect(scores).toEqual(["s"]);
 
     fireEvent.click(view.getByText("Sing again"));
     expect(restarts).toEqual(["r"]);

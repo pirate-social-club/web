@@ -536,6 +536,7 @@ const app = defineApp<AppRequestInfo>([
     route("/p/:postId/live", AppRoutePage),
     route("/p/:postId/replay", AppRoutePage),
     route("/p/:postId/karaoke", AppRoutePage),
+    route("/p/:postId/karaoke/leaderboard", AppRoutePage),
     route("/p/:postId/study", AppRoutePage),
     route("/p/:postId/streaks", AppRoutePage),
     route("/p/:postId", AppRoutePage),

@@ -57,7 +57,7 @@ function readyStudyPayload(overrides: Partial<SongStudyPayload> = {}): SongStudy
         type: "say_it_back",
       },
     ],
-    generated_at: "2026-06-29T00:00:00.000Z",
+    generated_at: 1_782_672_000,
     object: "song_study_payload",
     source_language: "es",
     study_pack_version: 1,
@@ -250,6 +250,32 @@ describe("StudyRoutePage", () => {
 
     await waitFor(() => expect(view.getByText("You're caught up for this song.")).toBeTruthy());
     expect(calls).toEqual(["posts.get", "communities.getPostStudy"]);
+  });
+
+  test("shows the next recovery time and can refresh a caught-up study pack", async () => {
+    const nextDueAt = Math.floor(Date.now() / 1000) + 600;
+    studyResult = readyStudyPayload({
+      exercise_count: 0,
+      exercises: [],
+      session: {
+        due_count: 0,
+        next_due_at: nextDueAt,
+        served_count: 0,
+        total_units: 1,
+      },
+    });
+
+    const view = render(<StudyRoutePage postId="pst_song" />);
+
+    await waitFor(() => expect(view.getByText("You're caught up for this song. Review again in 10 min to keep going.")).toBeTruthy());
+    expect(view.getByText("Check again")).toBeTruthy();
+    expect(calls).toEqual(["posts.get", "communities.getPostStudy"]);
+
+    studyResult = readyStudyPayload();
+    fireEvent.click(view.getByText("Check again").closest("button")!);
+
+    await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
+    expect(calls).toEqual(["posts.get", "communities.getPostStudy", "posts.get", "communities.getPostStudy"]);
   });
 
   test("submits a multiple choice attempt when an answer is selected", async () => {

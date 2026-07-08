@@ -37,7 +37,7 @@ type StudyRouteState =
       surface: SongStudySurfaceState;
     }
   | { phase: "locked"; post: LocalizedPostResponse; study: SongStudyPayload; surface: SongStudySurfaceState }
-  | { phase: "blocked"; message: string; title: string }
+  | { actionLabel?: string; message: string; phase: "blocked"; title: string }
   | { phase: "error"; message: string; title: string };
 
 type ReadyStudyRouteState = Extract<StudyRouteState, { phase: "ready" }>;
@@ -129,6 +129,12 @@ function formatNextReviewLabel(nextDueAt?: number): string | undefined {
   if (days === 1) return "tomorrow";
   if (days < 7) return `in ${days} days`;
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(dueMs));
+}
+
+function caughtUpMessage(study: SongStudyPayload): string {
+  const nextReviewLabel = formatNextReviewLabel(study.session?.next_due_at);
+  if (!nextReviewLabel) return "You're caught up for this song.";
+  return `You're caught up for this song. Review again ${nextReviewLabel} to keep going.`;
 }
 
 function completeSurface(input: {
@@ -246,11 +252,15 @@ function playStudyFeedbackSoundElement(outcome: StudyFeedbackOutcome) {
 }
 
 function StudyRouteMessage({
+  actionLabel,
+  onAction,
   message,
   postId,
   title,
 }: {
+  actionLabel?: string;
   message: string;
+  onAction?: () => void;
   postId: string;
   title: string;
 }) {
@@ -263,6 +273,11 @@ function StudyRouteMessage({
         <Type as="p" className="text-muted-foreground" variant="body">
           {message}
         </Type>
+        {actionLabel && onAction ? (
+          <Button onClick={onAction}>
+            {actionLabel}
+          </Button>
+        ) : null}
         <Button onClick={() => navigate(`/p/${encodeURIComponent(postId)}`)} variant="secondary">
           Open post
         </Button>
@@ -305,6 +320,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   const { configured, loaded } = usePiratePrivyRuntime();
   const contentLocale = useRouteContentLocale();
   const [state, setState] = React.useState<StudyRouteState>({ phase: "loading" });
+  const [reloadKey, setReloadKey] = React.useState(0);
   const recorderRef = React.useRef<MediaRecorder | null>(null);
   const recordingChunksRef = React.useRef<BlobPart[]>([]);
   const recordingStreamRef = React.useRef<MediaStream | null>(null);
@@ -397,10 +413,12 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         }
 
         if (study.exercises.length === 0) {
+          const hasNextDue = Boolean(study.session?.next_due_at);
           setState({
+            actionLabel: hasNextDue ? "Check again" : undefined,
             phase: "blocked",
             title: pageTitle(post, study),
-            message: "You're caught up for this song.",
+            message: caughtUpMessage(study),
           });
           return;
         }
@@ -433,7 +451,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     return () => {
       canceled = true;
     };
-  }, [api, contentLocale, hydrated, postId, session?.accessToken]);
+  }, [api, contentLocale, hydrated, postId, reloadKey, session?.accessToken]);
 
   const submitMultipleChoiceAttempt = React.useCallback((
     readyState: ReadyStudyRouteState,
@@ -800,7 +818,15 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   }
 
   if (state.phase === "blocked" || state.phase === "error") {
-    return <StudyRouteMessage message={state.message} postId={postId} title={state.title} />;
+    return (
+      <StudyRouteMessage
+        actionLabel={state.phase === "blocked" ? state.actionLabel : undefined}
+        message={state.message}
+        onAction={state.phase === "blocked" && state.actionLabel ? () => setReloadKey((value) => value + 1) : undefined}
+        postId={postId}
+        title={state.title}
+      />
+    );
   }
 
   return (

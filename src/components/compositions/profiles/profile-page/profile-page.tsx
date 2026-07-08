@@ -22,22 +22,23 @@ const EMPTY_PROFILE_OVERVIEW_ITEMS: ProfileActivityItem[] = [];
 const EMPTY_PROFILE_POSTS: ProfilePostItem[] = [];
 
 function useHashTab(defaultTab: ProfilePageTab): [ProfilePageTab, (tab: ProfilePageTab) => void] {
-  const [tab, setTab] = React.useState<ProfilePageTab>(() => {
+  const readHashTab = React.useCallback((): ProfilePageTab => {
     if (typeof window === "undefined") return defaultTab;
     const hash = window.location.hash.replace(/^#/, "");
     return VALID_TABS.includes(hash as ProfilePageTab) ? (hash as ProfilePageTab) : defaultTab;
+  }, [defaultTab]);
+  const [tab, setTab] = React.useState<ProfilePageTab>(() => {
+    return readHashTab();
   });
 
   React.useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace(/^#/, "");
-      if (VALID_TABS.includes(hash as ProfilePageTab)) {
-        setTab(hash as ProfilePageTab);
-      }
+      setTab(readHashTab());
     };
+    handleHashChange();
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
-  }, []);
+  }, [readHashTab]);
 
   const setHashTab = React.useCallback((nextTab: ProfilePageTab) => {
     setTab(nextTab);

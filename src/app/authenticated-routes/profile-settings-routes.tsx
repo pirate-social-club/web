@@ -42,6 +42,14 @@ import { ProfileBookingsSection } from "@/components/compositions/bookings/profi
 export { CurrentUserWalletPage } from "./wallet-settings-route";
 export { CurrentUserSettingsIndexPage } from "./settings-index-route";
 
+type ProfileActivityTab = "overview" | "posts" | "comments";
+
+function readActivityHashTab(): ProfileActivityTab {
+  if (typeof window === "undefined") return "overview";
+  const hash = window.location.hash.replace(/^#/, "");
+  return hash === "posts" || hash === "comments" ? hash : "overview";
+}
+
 function metadataString(metadata: Record<string, unknown> | null | undefined, key: string): string | null {
   const value = metadata?.[key];
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -53,11 +61,13 @@ export function CurrentUserProfilePage() {
   const profile = session?.profile ?? null;
   const isMobile = useIsMobile();
   const pageTitle = copy.profile.title;
-  const [activityTab, setActivityTab] = React.useState<"overview" | "posts" | "comments">(() => {
-    if (typeof window === "undefined") return "overview";
-    const hash = window.location.hash.replace(/^#/, "");
-    return hash === "posts" || hash === "comments" ? hash : "overview";
-  });
+  const [activityTab, setActivityTab] = React.useState<ProfileActivityTab>(() => readActivityHashTab());
+  React.useEffect(() => {
+    const handleHashChange = () => setActivityTab(readActivityHashTab());
+    handleHashChange();
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
   logger.info("[profile-page] render", { hasProfile: !!profile, hasSession: !!session });
   const bookingCtaState = useOwnBookingCta(Boolean(session));
   const followState = useProfileFollowState(profile?.primary_wallet_address ?? null, true);
@@ -90,6 +100,7 @@ export function CurrentUserProfilePage() {
       {...baseProps}
       comments={activity.comments}
       activityError={activity.error}
+      defaultTab={activityTab}
       onActivityTabChange={setActivityTab}
       overviewItems={activity.overviewItems}
       posts={activity.posts}

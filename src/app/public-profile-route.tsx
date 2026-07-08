@@ -23,6 +23,13 @@ import { navigate } from "@/app/router";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
 
 const loggedUnavailableProfileActions = new Set<string>();
+type ProfileActivityTab = "overview" | "posts" | "comments";
+
+function readActivityHashTab(): ProfileActivityTab {
+  if (typeof window === "undefined") return "overview";
+  const hash = window.location.hash.replace(/^#/, "");
+  return hash === "posts" || hash === "comments" ? hash : "overview";
+}
 
 function usePublicProfile(handleLabel: string) {
   const api = useApi();
@@ -82,11 +89,13 @@ export function PublicProfileRoutePage({
   const copy = getLocaleMessages(locale, "routes");
   const publicCopy = copy.publicProfile;
   const profileCopy = copy.profile;
-  const [activityTab, setActivityTab] = React.useState<"overview" | "posts" | "comments">(() => {
-    if (typeof window === "undefined") return "overview";
-    const hash = window.location.hash.replace(/^#/, "");
-    return hash === "posts" || hash === "comments" ? hash : "overview";
-  });
+  const [activityTab, setActivityTab] = React.useState<ProfileActivityTab>(() => readActivityHashTab());
+  React.useEffect(() => {
+    const handleHashChange = () => setActivityTab(readActivityHashTab());
+    handleHashChange();
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
   const session = useSession();
   const { error, loading, resolution } = usePublicProfile(handleLabel);
   const ownProfile = Boolean(session?.profile.id && resolution?.profile.id === session.profile.id);
@@ -217,6 +226,7 @@ export function PublicProfileRoutePage({
       }, followState, localeTag)}
       activityError={activity.error}
       comments={activity.comments}
+      defaultTab={activityTab}
       onActivityTabChange={setActivityTab}
       overviewItems={activity.overviewItems}
       posts={activity.posts}

@@ -235,6 +235,7 @@ describe("CurrentUserProfilePage", () => {
     const view = render(<CurrentUserProfilePage />);
 
     await waitFor(() => expect(view.getByTestId("posts-count").textContent).toBe("1"));
+    expect(lastProfilePageProps?.defaultTab).toBe("posts");
     expect(lastProfilePageProps?.posts?.[0]?.post.title).toBe("Profile route post");
     expect(fakeApi.profiles.getActivity).toHaveBeenCalledTimes(1);
     expect(fakeApi.profiles.getActivity).toHaveBeenCalledWith(expect.objectContaining({ tab: "posts" }));

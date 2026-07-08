@@ -182,6 +182,14 @@ describe("public profile host routing", () => {
     });
   });
 
+  test("matches dedicated karaoke leaderboard routes", () => {
+    expectJson(matchRoute("/p/pst_cf89c73fe60641debd05c939252a870c/karaoke/leaderboard"), {
+      kind: "post-karaoke-leaderboard",
+      path: "/p/pst_cf89c73fe60641debd05c939252a870c/karaoke/leaderboard",
+      postId: "pst_cf89c73fe60641debd05c939252a870c",
+    });
+  });
+
   test("matches dedicated study routes", () => {
     expectJson(matchRoute("/p/pst_cf89c73fe60641debd05c939252a870c/study"), {
       kind: "post-study",

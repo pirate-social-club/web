@@ -26,6 +26,7 @@ import type {
   ApiSongArtifactUploadContentRequest,
   ApiSongArtifactUploadPartSignedUrlResponse,
   CommunityListCommentsOptions,
+  KaraokeSongLeaderboard,
   KaraokeSessionCreateApiResponse,
   SongStudyAttemptRequest,
   SongStudyAttemptResult,
@@ -164,6 +165,17 @@ export function createCommunityContentApi(request: ApiRequest) {
       request<SongStreakLeaderboard>(
         buildQueryPath(
           `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/streaks/leaderboard`,
+          { limit: opts?.limit },
+        ),
+      ),
+    getPostKaraokeLeaderboard: (
+      communityId: string,
+      postId: string,
+      opts?: { limit?: number | null },
+    ): Promise<KaraokeSongLeaderboard> =>
+      request<KaraokeSongLeaderboard>(
+        buildQueryPath(
+          `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/karaoke/leaderboard`,
           { limit: opts?.limit },
         ),
       ),

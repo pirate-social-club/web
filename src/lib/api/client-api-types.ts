@@ -969,3 +969,39 @@ export type SongStudyTranscriptionResponse = {
   language_probability: number | null;
   duration_seconds: number | null;
 };
+
+export type KaraokeLeaderboardIdentity = {
+  visibility: "visible" | "anonymized";
+  display_name: string | null;
+  handle: string | null;
+  avatar_ref: string | null;
+};
+
+export type KaraokeLeaderboardEntry = {
+  rank: number;
+  top_percent: number;
+  score: number;
+  reached_at: string;
+  identity: KaraokeLeaderboardIdentity;
+  is_viewer: boolean;
+};
+
+export type KaraokeSongLeaderboard = {
+  object: "karaoke_song_leaderboard";
+  post_id: string;
+  community_id: string;
+  scope: "all_time";
+  period_start?: string | null;
+  period_end?: string | null;
+  karaoke_revision_id: string;
+  scoring_version: number;
+  scoring_provider: string;
+  scoring_model: string;
+  total_ranked: number;
+  entries: KaraokeLeaderboardEntry[];
+  viewer_rank: number | null;
+  viewer_top_percent: number | null;
+  viewer_best_score: number | null;
+  viewer_best_reached_at: string | null;
+  viewer_eligible_attempt_count: number;
+};

@@ -188,6 +188,7 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
       lines={stageLines}
       onExit={() => navigate(`/p/${encodeURIComponent(postId)}`)}
       onRequestSignIn={connect ?? undefined}
+      onViewScores={() => navigate(`/p/${encodeURIComponent(postId)}/karaoke/leaderboard`)}
       scoring={scoring}
       showSignInCta={needsAuth}
       signInBusy={authBusy}

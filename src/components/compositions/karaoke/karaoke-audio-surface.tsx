@@ -35,6 +35,7 @@ export interface KaraokeAudioSurfaceProps {
   lines: KaraokeStageLine[];
   onComplete?: (summary: KaraokePracticeCompleteSummary) => void;
   onExit?: () => void;
+  onViewScores?: () => void;
   onTimingOffsetReset?: () => void;
   /**
    * Logged-out auth prompt. When true (and scoring is not enabled), the scoring-panel
@@ -81,6 +82,7 @@ export function KaraokeAudioSurface({
   onExit,
   onRequestSignIn,
   onTimingOffsetReset,
+  onViewScores,
   scoring,
   showSignInCta = false,
   signInBusy = false,
@@ -430,6 +432,7 @@ export function KaraokeAudioSurface({
       className="w-full"
       onRestart={restartScoring}
       onStart={startScoring}
+      onViewScores={onViewScores}
       state={scoring.state}
     />
   ) : null;

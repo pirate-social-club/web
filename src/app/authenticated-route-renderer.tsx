@@ -80,6 +80,10 @@ const LazyKaraokeRoutePage = lazyRouteModule(
   () => import("./authenticated-routes/karaoke-route"),
   "KaraokeRoutePage",
 );
+const LazyKaraokeLeaderboardRoutePage = lazyRouteModule(
+  () => import("./authenticated-routes/karaoke-leaderboard-route"),
+  "KaraokeLeaderboardRoutePage",
+);
 const LazyStudyRoutePage = lazyRouteModule(
   () => import("./authenticated-routes/study-route"),
   "StudyRoutePage",
@@ -194,6 +198,8 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyReplayDraftRoutePage postId={route.postId} />;
     case "post-karaoke":
       return <LazyKaraokeRoutePage postId={route.postId} />;
+    case "post-karaoke-leaderboard":
+      return <LazyKaraokeLeaderboardRoutePage postId={route.postId} />;
     case "post-study":
       return <LazyStudyRoutePage postId={route.postId} />;
     case "post-streaks":

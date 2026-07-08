@@ -163,7 +163,7 @@ function NotificationShell({
     || route.kind === "chat-conversation"
     || route.kind === "chat-new"
     );
-  const isStandaloneViewerRoute = route.kind === "live-room" || route.kind === "post-karaoke" || route.kind === "post-study" || route.kind === "post-streaks";
+  const isStandaloneViewerRoute = route.kind === "live-room" || route.kind === "post-karaoke" || route.kind === "post-karaoke-leaderboard" || route.kind === "post-study" || route.kind === "post-streaks";
   const isChatRoute = route.kind === "chat"
     || route.kind === "chat-target"
     || route.kind === "chat-conversation"

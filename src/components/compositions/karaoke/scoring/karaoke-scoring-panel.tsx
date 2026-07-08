@@ -12,6 +12,8 @@ export interface KaraokeScoringPanelProps {
   onStart: () => void;
   /** Restart a fresh take from the beginning after a performance ends. */
   onRestart?: () => void;
+  /** Open this song's karaoke score board after a performance ends. */
+  onViewScores?: () => void;
   /** False while the instrumental is still loading (start is disabled). */
   canStart: boolean;
   className?: string;
@@ -44,7 +46,7 @@ function micErrorMessage(error: { code: string; message?: string }): string {
  * and on-stage rating pops are the live feedback, and the footer stays empty
  * (no layout shift mid-performance; transient status lives in the header).
  */
-export function KaraokeScoringPanel({ canStart, className, onRestart, onStart, state }: KaraokeScoringPanelProps) {
+export function KaraokeScoringPanel({ canStart, className, onRestart, onStart, onViewScores, state }: KaraokeScoringPanelProps) {
   if (state.status === "idle" || state.status === "requesting-mic" || state.status === "connecting") {
     const connecting = state.status !== "idle";
     return (
@@ -83,7 +85,16 @@ export function KaraokeScoringPanel({ canStart, className, onRestart, onStart, s
   // via KaraokeScoreSummary, not here.
   if (state.status === "ended") {
     return (
-      <div className={cn("flex w-full flex-col items-center gap-4", className)}>
+      <div className={cn("grid w-full grid-cols-2 gap-3", className)}>
+        <Button
+          className="w-full"
+          disabled={!onViewScores}
+          onClick={onViewScores}
+          size="lg"
+          variant="secondary"
+        >
+          Scores
+        </Button>
         <Button
           className="w-full"
           disabled={!onRestart}

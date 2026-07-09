@@ -6,6 +6,17 @@ import { Plus, Trash, X } from "@phosphor-icons/react";
 
 import { NationalityMultiPicker } from "@/components/compositions/community/create-composer/nationality-picker";
 import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+} from "@/components/primitives/combobox";
+import {
   captchaAloneAdmits,
   GATE_POLICY_MAX_ATOMS,
   GATE_POLICY_MAX_DEPTH,
@@ -30,8 +41,14 @@ import { interpolateMessage } from "@/lib/route-messages";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import { getLocaleMessages } from "@/locales";
+import type {
+  AssetSourceDescriptor,
+  CollectionCapabilitySource,
+  FacetValueSuggestion,
+} from "./collection-capability-source";
 
 export type GateTreeBuilderProps = {
+  capabilitySource?: CollectionCapabilitySource;
   className?: string;
   devPreview?: boolean;
   onChange: (value: GateBuilderGroupDraft) => void;
@@ -49,7 +66,7 @@ type RuleKind =
 
 const DEFAULT_CONTRACT = "0x0000000000000000000000000000000000000000";
 
-export function GateTreeBuilder({ className, devPreview = false, onChange, value }: GateTreeBuilderProps) {
+export function GateTreeBuilder({ capabilitySource, className, devPreview = false, onChange, value }: GateTreeBuilderProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "gates").treeBuilder;
   const policy = serializeGateBuilderTreeDraft(value);
@@ -92,7 +109,7 @@ export function GateTreeBuilder({ className, devPreview = false, onChange, value
         </div>
       ) : null}
 
-      <GateGroupEditor addGroupDisabled={addGroupDisabled} addRuleDisabled={addRuleDisabled} copy={copy} group={value} isRoot onChange={onChange} />
+      <GateGroupEditor addGroupDisabled={addGroupDisabled} addRuleDisabled={addRuleDisabled} capabilitySource={capabilitySource} copy={copy} group={value} isRoot onChange={onChange} />
 
       <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
         <div className="mb-2 text-base font-semibold uppercase tracking-wide text-muted-foreground">{copy.whoCanJoinTitle}</div>
@@ -137,6 +154,7 @@ export function GateTreeBuilder({ className, devPreview = false, onChange, value
 function GateGroupEditor({
   addGroupDisabled,
   addRuleDisabled,
+  capabilitySource,
   copy,
   group,
   isRoot = false,
@@ -145,6 +163,7 @@ function GateGroupEditor({
 }: {
   addGroupDisabled: boolean;
   addRuleDisabled: boolean;
+  capabilitySource?: CollectionCapabilitySource;
   copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
   group: GateBuilderGroupDraft;
   isRoot?: boolean;
@@ -188,6 +207,7 @@ function GateGroupEditor({
           <GateGroupEditor
             addGroupDisabled={addGroupDisabled}
             addRuleDisabled={addRuleDisabled}
+            capabilitySource={capabilitySource}
             copy={copy}
             group={child}
             key={index}
@@ -196,6 +216,7 @@ function GateGroupEditor({
           />
         ) : (
           <GateRuleRow
+            capabilitySource={capabilitySource}
             copy={copy}
             key={index}
             onChange={(updated) => updateChild(index, updated)}
@@ -208,7 +229,8 @@ function GateGroupEditor({
   );
 }
 
-function GateRuleRow({ copy, onChange, onRemove, rule }: {
+function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
+  capabilitySource?: CollectionCapabilitySource;
   copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
   onChange: (value: GateBuilderRuleDraft) => void;
   onRemove: () => void;
@@ -218,7 +240,7 @@ function GateRuleRow({ copy, onChange, onRemove, rule }: {
   const operator = operatorLabel(copy, rule.gate);
   const hasOperator = operator != null;
 
-  if (isCourtyardInventoryMatchGate(rule.gate)) {
+  if (isCourtyardInventoryMatchGate(rule.gate) && !capabilitySource) {
     return (
       <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-border-soft bg-background p-2">
         <div className="min-w-56 flex-1">
@@ -267,7 +289,7 @@ function GateRuleRow({ copy, onChange, onRemove, rule }: {
     )}>
       <RuleKindSelect copy={copy} value={kind} onChange={(nextKind) => onChange({ ...rule, gate: defaultGateForKind(nextKind) })} />
       {operator ? <span className="rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">{operator}</span> : null}
-      <RuleValueEditor copy={copy} gate={rule.gate} onChange={(gate) => onChange({ ...rule, gate })} />
+      <RuleValueEditor capabilitySource={capabilitySource} copy={copy} gate={rule.gate} onChange={(gate) => onChange({ ...rule, gate })} />
       <Button aria-label={copy.actions.removeRequirement} size="icon" variant="ghost" onClick={onRemove}>
         <X size={18} />
       </Button>
@@ -275,7 +297,8 @@ function GateRuleRow({ copy, onChange, onRemove, rule }: {
   );
 }
 
-function RuleValueEditor({ copy, gate, onChange }: {
+function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
+  capabilitySource?: CollectionCapabilitySource;
   copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
   gate: GateAtom;
   onChange: (gate: GateAtom) => void;
@@ -303,11 +326,13 @@ function RuleValueEditor({ copy, gate, onChange }: {
         />
       );
     case "erc721_holding":
+    case "erc721_inventory_match":
       return (
-        <Input
-          aria-label={copy.inputs.nftContractAddress}
-          onChange={(event) => onChange({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: event.currentTarget.value })}
-          value={gate.contract_address ?? ""}
+        <NftHoldingEditor
+          capabilitySource={capabilitySource}
+          copy={copy}
+          gate={gate}
+          onChange={onChange}
         />
       );
     case "minimum_age":
@@ -333,6 +358,287 @@ function RuleValueEditor({ copy, gate, onChange }: {
     default:
       return <span className="px-3 text-base text-muted-foreground">{copy.unsupportedAtom}</span>;
   }
+}
+
+function NftHoldingEditor({
+  capabilitySource,
+  copy,
+  gate,
+  onChange,
+}: {
+  capabilitySource?: CollectionCapabilitySource;
+  copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
+  gate: GateAtom;
+  onChange: (gate: GateAtom) => void;
+}) {
+  const [sources, setSources] = React.useState<AssetSourceDescriptor[]>([]);
+  const [matchCount, setMatchCount] = React.useState<number | null>(null);
+  const [pendingFacetKeys, setPendingFacetKeys] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    if (!capabilitySource) {
+      setSources([]);
+      return;
+    }
+    let cancelled = false;
+    void capabilitySource.listTrustedSources().then((trustedSources) => {
+      if (!cancelled) {
+        setSources(trustedSources);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [capabilitySource]);
+
+  const selectedSource = sources.find((source) =>
+    source.chainNamespace === getGateChainNamespace(gate)
+    && source.contractAddress.toLowerCase() === getGateContractAddress(gate).toLowerCase()
+  );
+  const match = isInventoryMatchGate(gate) ? normalizeStringMatch(gate.match) : {};
+  const traitKeys = selectedSource?.traitFiltersSupported
+    ? Array.from(new Set([
+      ...Object.keys(match).filter((key) => !(key in (selectedSource.fixedMatch ?? {}))),
+      ...pendingFacetKeys,
+    ]))
+    : [];
+
+  React.useEffect(() => {
+    if (!capabilitySource || !selectedSource || !selectedSource.traitFiltersSupported || traitKeys.length === 0) {
+      setMatchCount(null);
+      return;
+    }
+    let cancelled = false;
+    void capabilitySource.estimateMatchCount(selectedSource.id, match).then((count) => {
+      if (!cancelled) {
+        setMatchCount(count);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [capabilitySource, match, selectedSource, traitKeys.length]);
+
+  if (!capabilitySource) {
+    return (
+      <Input
+        aria-label={copy.inputs.nftContractAddress}
+        onChange={(event) => onChange({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: event.currentTarget.value })}
+        value={getGateContractAddress(gate)}
+      />
+    );
+  }
+
+  const selectSource = (sourceId: string) => {
+    const source = sources.find((candidate) => candidate.id === sourceId);
+    if (!source) return;
+    onChange({
+      type: "erc721_holding",
+      chain_namespace: source.chainNamespace,
+      contract_address: source.contractAddress,
+    });
+  };
+
+  const pasteAddress = (contractAddress: string) => {
+    onChange({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: contractAddress });
+  };
+
+  const updateFacet = (facetKey: string, value: string) => {
+    if (!selectedSource?.inventoryProvider) return;
+    setPendingFacetKeys((current) => current.filter((key) => key !== facetKey));
+    onChange({
+      type: "erc721_inventory_match",
+      provider: selectedSource.inventoryProvider,
+      chain_namespace: selectedSource.chainNamespace,
+      contract_address: selectedSource.contractAddress,
+      min_quantity: isInventoryMatchGate(gate) ? gate.min_quantity ?? 1 : 1,
+      match: { ...selectedSource.fixedMatch, ...match, [facetKey]: value },
+    } as GateAtom);
+  };
+
+  const removeFacet = (facetKey: string) => {
+    if (!selectedSource) return;
+    setPendingFacetKeys((current) => current.filter((key) => key !== facetKey));
+    const nextMatch = { ...match };
+    delete nextMatch[facetKey];
+    for (const fixedKey of Object.keys(selectedSource.fixedMatch ?? {})) {
+      nextMatch[fixedKey] = selectedSource.fixedMatch![fixedKey]!;
+    }
+    const editableKeys = Object.keys(nextMatch).filter((key) => !(key in (selectedSource.fixedMatch ?? {})));
+    if (editableKeys.length === 0) {
+      onChange({
+        type: "erc721_holding",
+        chain_namespace: selectedSource.chainNamespace,
+        contract_address: selectedSource.contractAddress,
+      });
+      return;
+    }
+    onChange({
+      type: "erc721_inventory_match",
+      provider: selectedSource.inventoryProvider ?? "courtyard",
+      chain_namespace: selectedSource.chainNamespace,
+      contract_address: selectedSource.contractAddress,
+      min_quantity: isInventoryMatchGate(gate) ? gate.min_quantity ?? 1 : 1,
+      match: nextMatch,
+    } as GateAtom);
+  };
+
+  const addableFacetKeys = selectedSource?.traitFiltersSupported
+    ? selectedSource.facetKeys.filter((key) => !(key in match) && !(key in (selectedSource.fixedMatch ?? {})) && !pendingFacetKeys.includes(key))
+    : [];
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="grid gap-2 md:grid-cols-[minmax(180px,1fr)_minmax(180px,1fr)]">
+        <Select value={selectedSource?.id ?? "__address"} onValueChange={selectSource}>
+          <SelectTrigger aria-label="NFT source"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__address">Paste contract address</SelectItem>
+            {sources.map((source) => (
+              <SelectItem key={source.id} value={source.id}>{source.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {selectedSource ? (
+          <div className="rounded-[var(--radius-md)] border border-border-soft bg-muted/30 px-4 py-3 text-base text-muted-foreground">
+            {shortAddress(selectedSource.contractAddress)}
+          </div>
+        ) : (
+          <Input
+            aria-label={copy.inputs.nftContractAddress}
+            onChange={(event) => pasteAddress(event.currentTarget.value)}
+            value={getGateContractAddress(gate)}
+          />
+        )}
+      </div>
+
+      {selectedSource?.provenanceLabel ? (
+        <div className="text-base text-muted-foreground">{selectedSource.provenanceLabel}</div>
+      ) : null}
+
+      {selectedSource?.traitFiltersSupported ? (
+        <div className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-border-soft bg-muted/20 p-2">
+          {traitKeys.map((facetKey) => (
+            <div className="grid gap-2 md:grid-cols-[minmax(160px,0.8fr)_auto_minmax(220px,1.4fr)_auto] md:items-center" key={facetKey}>
+              <Select value={facetKey} onValueChange={(nextKey) => {
+                const existingValue = match[facetKey] ?? "";
+                removeFacet(facetKey);
+                updateFacet(nextKey, existingValue);
+              }}>
+                <SelectTrigger aria-label="Attribute"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {selectedSource.facetKeys.filter((key) => key === facetKey || (!(key in match) && !(key in (selectedSource.fixedMatch ?? {})))).map((key) => (
+                    <SelectItem key={key} value={key}>{formatFacetKey(key)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">is one of</span>
+              <FacetValuePicker
+                capabilitySource={capabilitySource}
+                facetKey={facetKey}
+                maxValues={selectedSource.maxValuesPerFacet}
+                onChange={(value) => updateFacet(facetKey, value)}
+                source={selectedSource}
+                value={match[facetKey] ? [{ value: match[facetKey]! }] : []}
+              />
+              <Button aria-label="Remove attribute filter" size="icon" variant="ghost" onClick={() => removeFacet(facetKey)}>
+                <X size={18} />
+              </Button>
+            </div>
+          ))}
+          {addableFacetKeys.length > 0 ? (
+            <Button
+              className="self-start"
+              size="sm"
+              variant="outline"
+              leadingIcon={<Plus size={16} />}
+              onClick={() => setPendingFacetKeys((current) => [...current, addableFacetKeys[0]!])}
+            >
+              Add attribute filter
+            </Button>
+          ) : null}
+          {matchCount != null ? (
+            <div className="text-base text-muted-foreground">Approximately {matchCount.toLocaleString("en-US")} match.</div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function FacetValuePicker({
+  capabilitySource,
+  facetKey,
+  maxValues,
+  onChange,
+  source,
+  value,
+}: {
+  capabilitySource: CollectionCapabilitySource;
+  facetKey: string;
+  maxValues: number;
+  onChange: (value: string) => void;
+  source: AssetSourceDescriptor;
+  value: FacetValueSuggestion[];
+}) {
+  const [options, setOptions] = React.useState<FacetValueSuggestion[]>([]);
+  React.useEffect(() => {
+    let cancelled = false;
+    void capabilitySource.searchFacetValues(source.id, facetKey, "").then((suggestions) => {
+      if (!cancelled) {
+        setOptions(suggestions);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [capabilitySource, facetKey, source.id]);
+
+  return (
+    <Combobox<FacetValueSuggestion, true>
+      multiple
+      autoHighlight
+      items={options}
+      itemToStringLabel={(option) => option.value}
+      itemToStringValue={(option) => option.value}
+      onValueChange={(nextValue) => {
+        const selected = nextValue.slice(-Math.max(1, maxValues))[0];
+        onChange(selected?.value ?? "");
+      }}
+      value={value.filter((option) => option.value.length > 0)}
+    >
+      <ComboboxChips className="rounded-[var(--radius-lg)]">
+        <ComboboxValue>
+          {(selectedOptions) => (
+            <>
+              {selectedOptions.map((option: FacetValueSuggestion) => (
+                <ComboboxChip key={option.value}>{option.value}</ComboboxChip>
+              ))}
+              <ComboboxChipsInput
+                aria-label={`Search ${formatFacetKey(facetKey)}`}
+                placeholder={`Search ${formatFacetKey(facetKey).toLowerCase()}`}
+              />
+            </>
+          )}
+        </ComboboxValue>
+      </ComboboxChips>
+      <ComboboxContent>
+        <ComboboxEmpty>No values found.</ComboboxEmpty>
+        <ComboboxList className="py-0">
+          {(option) => (
+            <ComboboxItem key={option.value} value={option}>
+              <div className="flex w-full items-center justify-between gap-4">
+                <span className="text-base font-medium">{option.value}</span>
+                {option.approximateCount != null ? (
+                  <span className="text-base text-muted-foreground">{option.approximateCount.toLocaleString("en-US")} matches</span>
+                ) : null}
+              </div>
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  );
 }
 
 function OpSelect({ copy, onChange, value }: {
@@ -396,6 +702,8 @@ function defaultGateForKind(kind: RuleKind): GateAtom {
 
 function getRuleKind(gate: GateAtom): RuleKind {
   switch (gate.type) {
+    case "erc721_inventory_match":
+      return "erc721_holding";
     case "altcha_pow":
     case "erc721_holding":
     case "minimum_age":
@@ -417,6 +725,7 @@ function operatorLabel(copy: ReturnType<typeof getLocaleMessages<"gates">>["tree
     case "wallet_score":
       return copy.operators.atLeast;
     case "erc721_holding":
+    case "erc721_inventory_match":
       return copy.operators.holdsOneFrom;
     case "nationality":
       return copy.operators.isOneOf;
@@ -491,6 +800,40 @@ function isCourtyardInventoryMatchGate(gate: GateAtom): gate is GateAtom & {
   provider?: string;
 } {
   return gate.type === "erc721_inventory_match";
+}
+
+function isInventoryMatchGate(gate: GateAtom): gate is GateAtom & {
+  chain_namespace?: string;
+  contract_address?: string;
+  match?: Record<string, unknown>;
+  min_quantity?: number;
+  provider?: string;
+} {
+  return gate.type === "erc721_inventory_match";
+}
+
+function getGateChainNamespace(gate: GateAtom): string {
+  if ("chain_namespace" in gate && typeof gate.chain_namespace === "string") {
+    return gate.chain_namespace;
+  }
+  return "eip155:1";
+}
+
+function getGateContractAddress(gate: GateAtom): string {
+  if ("contract_address" in gate && typeof gate.contract_address === "string") {
+    return gate.contract_address;
+  }
+  return "";
+}
+
+function normalizeStringMatch(match: Record<string, unknown> | undefined): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(match ?? {})
+      .flatMap(([key, value]) => {
+        const stringValue = stringifyFacetValue(value);
+        return stringValue == null || stringValue.trim().length === 0 ? [] : [[key, stringValue]];
+      }),
+  );
 }
 
 function courtyardInventorySummary(gate: GateAtom & { match?: Record<string, unknown>; min_quantity?: number }): string {

@@ -36,6 +36,15 @@ export interface WalletHubActivityItem {
   timestamp?: string;
 }
 
+export interface WalletHubRewardsSummary {
+  actionDisabled?: boolean;
+  actionLabel: string;
+  amountLabel: string;
+  onAction?: () => void;
+  pending?: boolean;
+  supportingLabel?: string;
+}
+
 export interface WalletHubProps {
   variant?: "route" | "embedded";
   title?: string;
@@ -51,6 +60,7 @@ export interface WalletHubProps {
   onReceive?: () => void;
   onSend?: () => void;
   onViewActivity?: () => void;
+  rewardsSummary?: WalletHubRewardsSummary;
   chainSections: WalletHubChainSection[];
   recentActivity?: WalletHubActivityItem[];
 }

@@ -27,6 +27,7 @@ import {
 import {
   createJobsApi,
   createNotificationsApi,
+  createRewardsApi,
   createRoyaltiesApi,
 } from "./client-groups-system";
 import type {
@@ -103,6 +104,7 @@ export class ApiClient {
   readonly publicComments = createPublicCommentsApi(this.request.bind(this));
   readonly jobs = createJobsApi(this.request.bind(this));
   readonly notifications = createNotificationsApi(this.request.bind(this));
+  readonly rewards = createRewardsApi(this.request.bind(this));
   readonly royalties = createRoyaltiesApi(this.request.bind(this));
 
   constructor(options?: { baseUrl?: string; getToken?: () => string | null }) {

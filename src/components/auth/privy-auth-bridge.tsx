@@ -50,6 +50,7 @@ export interface PrivyAuthBridgeProps {
   onModalClosed?: () => void;
   onReadyChange?: (ready: boolean) => void;
   onReconnectEthereumWalletReady?: (connect: (() => void) | null) => void;
+  onPrivyAccessTokenGetterChange?: (getter: (() => Promise<string | null>) | null) => void;
   onSponsoredIntentSenderChange?: (sender: PirateSponsoredIntentSender | null) => void;
 }
 
@@ -82,6 +83,7 @@ export function PrivyAuthBridge({
   onModalClosed,
   onReadyChange,
   onReconnectEthereumWalletReady,
+  onPrivyAccessTokenGetterChange,
   onSponsoredIntentSenderChange,
 }: PrivyAuthBridgeProps) {
   const api = useApi();
@@ -554,6 +556,14 @@ export function PrivyAuthBridge({
       onSponsoredIntentSenderChange?.(null);
     };
   }, [authenticated, onSponsoredIntentSenderChange, stableSendSponsoredIntent]);
+
+  React.useEffect(() => {
+    onPrivyAccessTokenGetterChange?.(ready && authenticated ? getAccessToken : null);
+
+    return () => {
+      onPrivyAccessTokenGetterChange?.(null);
+    };
+  }, [authenticated, getAccessToken, onPrivyAccessTokenGetterChange, ready]);
 
   React.useEffect(() => {
     if (retryCountRef.current < MAX_RETRY_COUNT || !ready || !authenticated) {

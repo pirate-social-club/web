@@ -34,6 +34,8 @@ type SelfPrompt = {
   title: string;
 };
 
+type VerificationIntentInput = VerificationIntent | null | (() => VerificationIntent | null);
+
 const SELF_REQUESTED_CAPABILITIES = new Set([
   "unique_human",
   "age_over_18",
@@ -104,7 +106,7 @@ export function useSelfVerification(input: {
   }) => Promise<void> | void;
   startErrorMessage: string;
   storageKey: string;
-  verificationIntent: VerificationIntent | (() => VerificationIntent);
+  verificationIntent: VerificationIntentInput;
 }) {
   const api = useApi();
   const {

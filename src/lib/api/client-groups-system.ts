@@ -14,6 +14,7 @@ import type {
 } from "@pirate/api-contracts";
 
 import type { NotificationFeedOptions } from "./client-api-types";
+import type { ApiRewardCashoutRequest, ApiRewardCashoutResponse, ApiRewardsSummaryResponse } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
 export function createJobsApi(request: ApiRequest) {
@@ -68,6 +69,18 @@ export function createRoyaltiesApi(request: ApiRequest) {
       ),
     recordClaim: (input: RoyaltyClaimRecordRequest): Promise<RoyaltyClaimRecord> =>
       request<RoyaltyClaimRecord>("/royalties/claims", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+  };
+}
+
+export function createRewardsApi(request: ApiRequest) {
+  return {
+    getSummary: (): Promise<ApiRewardsSummaryResponse> =>
+      request<ApiRewardsSummaryResponse>("/me/rewards"),
+    cashOut: (input: ApiRewardCashoutRequest): Promise<ApiRewardCashoutResponse> =>
+      request<ApiRewardCashoutResponse>("/me/rewards/cashouts", {
         method: "POST",
         body: JSON.stringify(input),
       }),

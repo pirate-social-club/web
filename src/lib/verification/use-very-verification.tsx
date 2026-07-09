@@ -20,7 +20,7 @@ import {
 } from "@/lib/verification/very-mobile-launch";
 
 type VeryVerificationState = "not_started" | "pending" | "verified";
-type VerificationIntentInput = VerificationIntent | (() => VerificationIntent);
+type VerificationIntentInput = VerificationIntent | null | (() => VerificationIntent | null);
 let veryWidgetModulePromise: Promise<{ createVeryWidget: typeof createVeryWidgetType }> | null = null;
 
 async function loadVeryWidgetModule() {

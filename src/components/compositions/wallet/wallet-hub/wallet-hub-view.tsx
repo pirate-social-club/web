@@ -7,7 +7,7 @@ import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import { FullBleedMobileListSection } from "@/components/compositions/app/page-shell";
 import { Type } from "@/components/primitives/type";
-import type { WalletHubActivityItem, WalletHubChainSection } from "./wallet-hub.types";
+import type { WalletHubActivityItem, WalletHubChainSection, WalletHubRewardsSummary } from "./wallet-hub.types";
 import {
   buildWalletAssetRows,
   type WalletHubAssetRow,
@@ -102,8 +102,38 @@ function RoyaltiesCard({
       <Type as="div" variant="h1" className="mt-0.5 text-4xl font-semibold leading-tight">
         ${formattedAmount}
       </Type>
-      <Button className="mt-5 h-14 w-full" onClick={onClaim} loading={claimLoading} disabled={!hasClaimable}>
+      <Button className="mt-4 h-12 w-full" onClick={onClaim} loading={claimLoading} disabled={!hasClaimable}>
         Claim
+      </Button>
+    </Card>
+  );
+}
+
+function RewardsSummaryCard({
+  rewardsSummary,
+}: {
+  rewardsSummary: WalletHubRewardsSummary;
+}) {
+  return (
+    <Card className="flex flex-col justify-center rounded-2xl border-border bg-card p-5 shadow-none md:p-6">
+      <Type as="div" variant="body" className="text-muted-foreground">
+        Rewards
+      </Type>
+      <Type as="div" variant="h1" className="mt-0.5 text-4xl font-semibold leading-tight">
+        {rewardsSummary.amountLabel}
+      </Type>
+      {rewardsSummary.supportingLabel ? (
+        <Type as="div" variant="caption" className="mt-1 text-muted-foreground">
+          {rewardsSummary.supportingLabel}
+        </Type>
+      ) : null}
+      <Button
+        className="mt-4 h-12 w-full"
+        disabled={rewardsSummary.actionDisabled}
+        loading={rewardsSummary.pending}
+        onClick={rewardsSummary.onAction}
+      >
+        {rewardsSummary.actionLabel}
       </Button>
     </Card>
   );
@@ -122,6 +152,7 @@ export function DesktopWalletHub({
   onReceive,
   onSend,
   onViewActivity,
+  rewardsSummary,
   totalBalanceUsd,
   title,
   variant = "route",
@@ -136,6 +167,7 @@ export function DesktopWalletHub({
   onReceive?: () => void;
   onSend?: () => void;
   onViewActivity?: () => void;
+  rewardsSummary?: WalletHubRewardsSummary;
   totalBalanceUsd?: string | null;
   title?: string;
   variant?: "route" | "embedded";
@@ -153,17 +185,17 @@ export function DesktopWalletHub({
   const balanceBlock = (
     <>
       <Type as="div" variant="body" className="text-muted-foreground">
-        Total balance
+        Balance
       </Type>
       <Type as="div" variant="h1" className="mt-0.5 text-4xl font-semibold leading-tight">
         {totalBalanceUsd ?? "$0.00"}
       </Type>
       {showWalletActions ? (
-        <div className="mt-5 flex gap-3">
-          <Button variant="outline" className="h-14 flex-1 text-base" onClick={onSend} disabled={sendDisabled || !onSend}>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button variant="outline" className="h-12 text-base" onClick={onSend} disabled={sendDisabled || !onSend}>
             Send
           </Button>
-          <Button variant="outline" className="h-14 flex-1 text-base" onClick={onReceive} disabled={receiveDisabled || !onReceive}>
+          <Button variant="outline" className="h-12 text-base" onClick={onReceive} disabled={receiveDisabled || !onReceive}>
             Receive
           </Button>
         </div>
@@ -210,17 +242,32 @@ export function DesktopWalletHub({
         ) : null}
       </div>
 
-      <div className="mb-4 grid grid-cols-[2fr_1fr] gap-4">
-        <Card className="flex flex-col justify-center rounded-2xl border-border bg-card p-5 shadow-none md:p-6">
-          {balanceBlock}
-        </Card>
-
-        <RoyaltiesCard
-          claimLoading={claimLoading}
-          claimableWipWei={claimableWipWei}
-          onClaim={onClaim}
-        />
-      </div>
+      {rewardsSummary ? (
+        <div className="mb-4 space-y-4">
+          <Card className="flex flex-col justify-center rounded-2xl border-border bg-card p-5 shadow-none md:p-6">
+            {balanceBlock}
+          </Card>
+          <div className="grid grid-cols-2 gap-4">
+            <RoyaltiesCard
+              claimLoading={claimLoading}
+              claimableWipWei={claimableWipWei}
+              onClaim={onClaim}
+            />
+            <RewardsSummaryCard rewardsSummary={rewardsSummary} />
+          </div>
+        </div>
+      ) : (
+        <div className="mb-4 grid grid-cols-[2fr_1fr] gap-4">
+          <Card className="flex flex-col justify-center rounded-2xl border-border bg-card p-5 shadow-none md:p-6">
+            {balanceBlock}
+          </Card>
+          <RoyaltiesCard
+            claimLoading={claimLoading}
+            claimableWipWei={claimableWipWei}
+            onClaim={onClaim}
+          />
+        </div>
+      )}
 
       <Card className="rounded-2xl border-border bg-card px-5 py-4 shadow-none">
         {onViewActivity ? (
@@ -247,6 +294,7 @@ export function MobileWalletHub({
   onClaim,
   onReceive,
   onSend,
+  rewardsSummary,
   totalBalanceUsd,
   variant = "route",
   walletAddress,
@@ -259,6 +307,7 @@ export function MobileWalletHub({
   onClaim?: () => void;
   onReceive?: () => void;
   onSend?: () => void;
+  rewardsSummary?: WalletHubRewardsSummary;
   totalBalanceUsd?: string | null;
   variant?: "route" | "embedded";
   walletAddress?: string | null;
@@ -274,7 +323,7 @@ export function MobileWalletHub({
   const balanceSummary = (
     <>
       <Type as="div" variant="body" className="text-muted-foreground">
-        Total balance
+        Balance
       </Type>
       <Type as="div" variant="h2" className="mt-0.5 text-4xl font-semibold leading-tight">
         {totalBalanceUsd ?? "$0.00"}
@@ -311,6 +360,29 @@ export function MobileWalletHub({
                 Claim
               </Button>
             </div>
+            {rewardsSummary ? (
+              <div className="border-t border-border py-4">
+                  <Type as="div" variant="body" className="text-muted-foreground">
+                  Rewards
+                </Type>
+                <Type as="div" variant="h1" className="mt-0.5 text-4xl font-semibold leading-tight">
+                  {rewardsSummary.amountLabel}
+                </Type>
+                {rewardsSummary.supportingLabel ? (
+                  <Type as="div" variant="caption" className="mt-1 text-muted-foreground">
+                    {rewardsSummary.supportingLabel}
+                  </Type>
+                ) : null}
+                <Button
+                  className="mt-4 h-14 w-full"
+                  disabled={rewardsSummary.actionDisabled}
+                  loading={rewardsSummary.pending}
+                  onClick={rewardsSummary.onAction}
+                >
+                  {rewardsSummary.actionLabel}
+                </Button>
+              </div>
+            ) : null}
           </>
         ) : (
           <div className="py-4">

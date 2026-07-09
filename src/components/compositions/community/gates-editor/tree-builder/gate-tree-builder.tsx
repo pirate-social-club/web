@@ -284,13 +284,13 @@ function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
   if (kind === "erc721_holding") {
     return (
       <div className="rounded-[var(--radius-md)] border border-border-soft bg-background p-2">
-        <div className="grid gap-2 md:grid-cols-[minmax(220px,0.8fr)_max-content_minmax(420px,1.8fr)_auto] md:items-start">
+        <div className="grid gap-2 md:grid-cols-[minmax(220px,0.8fr)_minmax(520px,1.8fr)_auto] md:items-start">
           <RuleKindSelect copy={copy} value={kind} onChange={(nextKind) => onChange({ ...rule, gate: defaultGateForKind(nextKind) })} />
-          <span className="whitespace-nowrap rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">{operator}</span>
           <NftHoldingEditor
             capabilitySource={capabilitySource}
             copy={copy}
             gate={rule.gate}
+            operator={operator ?? copy.operators.holdsOneFrom}
             onChange={(gate) => onChange({ ...rule, gate })}
           />
           <Button aria-label={copy.actions.removeRequirement} size="icon" variant="ghost" onClick={onRemove}>
@@ -387,11 +387,13 @@ function NftHoldingEditor({
   capabilitySource,
   copy,
   gate,
+  operator,
   onChange,
 }: {
   capabilitySource?: CollectionCapabilitySource;
   copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
   gate: GateAtom;
+  operator: string;
   onChange: (gate: GateAtom) => void;
 }) {
   const [sources, setSources] = React.useState<AssetSourceDescriptor[]>([]);
@@ -444,11 +446,16 @@ function NftHoldingEditor({
 
   if (!capabilitySource) {
     return (
-      <Input
-        aria-label={copy.inputs.nftContractAddress}
-        onChange={(event) => onChange({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: event.currentTarget.value })}
-        value={getGateContractAddress(gate)}
-      />
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+        <span className="whitespace-nowrap rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">
+          {operator}
+        </span>
+        <Input
+          aria-label={copy.inputs.nftContractAddress}
+          onChange={(event) => onChange({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: event.currentTarget.value })}
+          value={getGateContractAddress(gate)}
+        />
+      </div>
     );
   }
 
@@ -509,10 +516,38 @@ function NftHoldingEditor({
   const addableFacetKeys = selectedSource?.traitFiltersSupported
     ? selectedSource.facetKeys.filter((key) => !(key in match) && !(key in (selectedSource.fixedMatch ?? {})) && !pendingFacetKeys.includes(key))
     : [];
+  const currentQuantity = isInventoryMatchGate(gate) ? gate.min_quantity ?? 1 : 1;
+  const quantitySupported = selectedSource?.minQuantitySupported === true && isInventoryMatchGate(gate);
+  const updateQuantity = (quantity: number) => {
+    if (!selectedSource?.inventoryProvider || !isInventoryMatchGate(gate)) return;
+    onChange({
+      ...gate,
+      min_quantity: Math.min(100, Math.max(1, quantity)),
+    } as GateAtom);
+  };
 
   return (
     <div className="flex flex-col gap-2">
-      <div>
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="whitespace-nowrap rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">
+            holds ≥
+          </span>
+          <Input
+            aria-label={copy.inputs.minimumNftQuantity}
+            className="w-20"
+            disabled={!quantitySupported}
+            max={100}
+            min={1}
+            onChange={(event) => updateQuantity(Number.parseInt(event.currentTarget.value || "1", 10))}
+            title={quantitySupported ? undefined : copy.nftQuantityLocked}
+            type="number"
+            value={currentQuantity}
+          />
+          <span className="whitespace-nowrap rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">
+            from
+          </span>
+        </div>
         <Combobox<AssetSourceDescriptor, true>
           multiple
           autoHighlight
@@ -590,7 +625,7 @@ function NftHoldingEditor({
                 </Select>
               </div>
               <span className="inline-flex h-11 items-center self-start whitespace-nowrap rounded-full border border-border-soft px-3 text-base text-muted-foreground lg:shrink-0">
-                is one of
+                {selectedSource.maxValuesPerFacet > 1 ? copy.operators.isOneOf : copy.operators.is}
               </span>
               <div className="min-w-0 flex-1">
                 <FacetValuePicker
@@ -625,6 +660,9 @@ function NftHoldingEditor({
           ) : null}
           {matchCount != null ? (
             <div className="text-base text-muted-foreground">Approximately {matchCount.toLocaleString("en-US")} match.</div>
+          ) : null}
+          {selectedSource.maxValuesPerFacet === 1 ? (
+            <div className="text-base text-muted-foreground">{copy.singleFacetValueHint}</div>
           ) : null}
         </div>
       ) : null}
@@ -682,7 +720,8 @@ function FacetValuePicker({
               ))}
               <ComboboxChipsInput
                 aria-label={`Search ${formatFacetKey(facetKey)}`}
-                placeholder={`Search ${formatFacetKey(facetKey).toLowerCase()}`}
+                className={selectedOptions.length > 0 ? "min-w-10 flex-none" : undefined}
+                placeholder={selectedOptions.length > 0 ? "" : `Search ${formatFacetKey(facetKey).toLowerCase()}`}
               />
             </>
           )}

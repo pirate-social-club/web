@@ -37,6 +37,22 @@ const bayc = {
     contract_address: "0xBC4CA0EDA7647A8AB7C2061C2E118A18A936F13D",
   },
 } as const;
+const charizard = {
+  kind: "rule",
+  gate: {
+    type: "erc721_inventory_match",
+    provider: "courtyard",
+    chain_namespace: "eip155:137",
+    contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+    min_quantity: 1,
+    match: {
+      category: "trading_card",
+      franchise: "Pokemon",
+      subject: "Charizard",
+      grade: "PSA 9",
+    },
+  },
+} as const;
 
 export const HumansOnly: Story = {
   render: () => <InteractiveStory initialValue={{ kind: "group", op: "or", children: [humanSelf, humanVery] }} />,
@@ -52,6 +68,10 @@ export const HumanWithFallbacks: Story = {
 
 export const NftClub: Story = {
   render: () => <InteractiveStory initialValue={{ kind: "group", op: "and", children: [bayc] }} />,
+};
+
+export const CourtyardCharizard: Story = {
+  render: () => <InteractiveStory initialValue={{ kind: "group", op: "and", children: [charizard] }} />,
 };
 
 export const NationalityRule: Story = {

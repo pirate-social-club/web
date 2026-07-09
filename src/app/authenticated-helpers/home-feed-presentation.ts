@@ -1,3 +1,4 @@
+import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contracts";
 import type { HomeFeedItem as ApiHomeFeedItem } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
@@ -35,6 +36,10 @@ import {
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
 
 export type HomeFeedEntry = ApiHomeFeedItem;
+type HomeFeedPresentationEntry = {
+  community: ApiHomeFeedItem["community"] | ApiCommunityPreview;
+  post: ApiPost;
+};
 
 function formatCommunityLabel(displayName: string): string {
   const normalized = displayName.trim().replace(/^c\//iu, "");
@@ -50,7 +55,7 @@ function openExternalUrl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-export function resolveHomeFeedCommunityId(community: HomeFeedEntry["community"]): string {
+export function resolveHomeFeedCommunityId(community: HomeFeedPresentationEntry["community"]): string {
   const rawCommunityId =
     (community as typeof community & { community?: string }).community
     ?? (community as typeof community & { community_id?: string }).community_id
@@ -60,7 +65,7 @@ export function resolveHomeFeedCommunityId(community: HomeFeedEntry["community"]
 }
 
 export function toHomeFeedItem(
-  entry: HomeFeedEntry,
+  entry: HomeFeedPresentationEntry,
   authorProfiles: Record<string, ApiProfile | null>,
   songOptions?: SongPresentationOptions,
   opts?: PostPresentationOptions,

@@ -1,7 +1,6 @@
 import type {
   CommentListItem,
   CommunityPreview,
-  HomeFeedItem,
   LocalizedPostResponse,
   Profile,
   ProfileActivityCommentPage,
@@ -28,6 +27,11 @@ import { buildPublicProfilePath } from "@/lib/profile-routing";
 export const PROFILE_ACTIVITY_PAGE_LIMIT = 25;
 
 type AuthorProfilesByUserId = Record<string, Profile | null>;
+
+type ProfileActivityHomeFeedEntry = {
+  community: ProfileActivityPostPage["community"];
+  post: ProfileActivityPostPage["post"];
+};
 
 function communityId(community: CommunityPreview): string {
   return (community as CommunityPreview & { community?: string; community_id?: string }).community
@@ -81,10 +85,11 @@ export function mapProfileActivityPost(
   item: ProfileActivityPostPage,
   authorProfiles: AuthorProfilesByUserId = {},
 ): ProfilePostItem {
-  const feedItem = toHomeFeedItem({
+  const entry: ProfileActivityHomeFeedEntry = {
     community: item.community,
     post: item.post,
-  } as unknown as HomeFeedItem, authorProfiles);
+  };
+  const feedItem = toHomeFeedItem(entry, authorProfiles);
   const authorHandle = postAuthorHandle(item.post);
   const authorHref = postAuthorHref(item.post);
   return {

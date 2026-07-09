@@ -25,7 +25,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/primitives/select";
+import { interpolateMessage } from "@/lib/route-messages";
+import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
+import { getLocaleMessages } from "@/locales";
 
 export type GateTreeBuilderProps = {
   className?: string;
@@ -46,49 +49,62 @@ type RuleKind =
 const DEFAULT_CONTRACT = "0x0000000000000000000000000000000000000000";
 
 export function GateTreeBuilder({ className, devPreview = false, onChange, value }: GateTreeBuilderProps) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "gates").treeBuilder;
   const policy = serializeGateBuilderTreeDraft(value);
   const budget = getGateBuilderBudget(value);
   const personaResults = simulateGateBuilderPersonas(policy);
   const captchaOnly = captchaAloneAdmits(policy);
+  const shouldShowComplexityWarning = budget.atoms >= Math.ceil(GATE_POLICY_MAX_ATOMS * 0.8)
+    || budget.depth >= Math.ceil(GATE_POLICY_MAX_DEPTH * 0.8);
+  const addRuleDisabled = budget.atoms >= GATE_POLICY_MAX_ATOMS;
+  const addGroupDisabled = budget.depth >= GATE_POLICY_MAX_DEPTH;
 
   return (
     <section className={cn("mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 text-foreground md:p-6", className)}>
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-semibold tracking-normal">Join access</h1>
+        <h1 className="text-3xl font-semibold tracking-normal">{copy.title}</h1>
         <p className="max-w-3xl text-base text-muted-foreground">
-          Compose eligibility with nested AND/OR groups. Rules serialize to the same expression model the backend evaluates.
+          {copy.description}
         </p>
       </div>
 
       <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <div className="text-base font-semibold uppercase tracking-wide text-muted-foreground">Live summary</div>
-          <div className="text-base text-muted-foreground">
-            Atoms {budget.atoms}/{GATE_POLICY_MAX_ATOMS} · Depth {budget.depth}/{GATE_POLICY_MAX_DEPTH}
-          </div>
-        </div>
-        <p className="text-base leading-7">{policy ? describePolicy(policy) : "No join requirements yet."}</p>
+        <div className="mb-2 text-base font-semibold uppercase tracking-wide text-muted-foreground">{copy.liveSummaryTitle}</div>
+        <p className="text-base leading-7">{policy ? describePolicy(policy) : copy.emptySummary}</p>
       </div>
 
-      {captchaOnly ? (
+      {shouldShowComplexityWarning ? (
         <div className="rounded-[var(--radius-lg)] border border-warning/40 bg-warning/10 p-3 text-base text-warning">
-          Anyone who completes only the browser anti-bot check can join. Use this only when the goal is spam friction, not human verification.
+          {addRuleDisabled || addGroupDisabled
+            ? copy.limitReached
+            : interpolateMessage(copy.complexityWarning, {
+              limit: String(GATE_POLICY_MAX_ATOMS),
+              used: String(budget.atoms),
+            })}
         </div>
       ) : null}
 
-      <GateGroupEditor group={value} isRoot onChange={onChange} policy={policy} />
+      {captchaOnly ? (
+        <div className="rounded-[var(--radius-lg)] border border-warning/40 bg-warning/10 p-3 text-base text-warning">
+          {copy.strongBrowserChallengeWarning}
+        </div>
+      ) : null}
+
+      <GateGroupEditor addGroupDisabled={addGroupDisabled} addRuleDisabled={addRuleDisabled} copy={copy} group={value} isRoot onChange={onChange} />
 
       <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
-        <div className="mb-3 text-base font-semibold uppercase tracking-wide text-muted-foreground">Who gets in</div>
+        <div className="mb-2 text-base font-semibold uppercase tracking-wide text-muted-foreground">{copy.whoCanJoinTitle}</div>
+        <p className="mb-3 text-base text-muted-foreground">{copy.whoCanJoinCaption}</p>
         <div className="grid gap-2 md:grid-cols-2">
           {personaResults.map((persona) => (
             <div
               className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-border-soft bg-background px-3 py-2"
               key={persona.id}
             >
-              <span className="text-base">{persona.label}</span>
+              <span className="text-base">{personaLabel(copy, persona.id)}</span>
               <span className={cn("text-base font-semibold", persona.joins ? "text-success" : "text-muted-foreground")}>
-                {persona.joins ? "joins" : "blocked"}
+                {persona.joins ? copy.canJoin : copy.cantJoin}
               </span>
             </div>
           ))}
@@ -98,8 +114,16 @@ export function GateTreeBuilder({ className, devPreview = false, onChange, value
       {devPreview ? (
         <details className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
           <summary className="cursor-pointer text-base font-semibold uppercase tracking-wide text-muted-foreground">
-            expression_json preview
+            {copy.expressionPreviewTitle}
           </summary>
+          <div className="mt-3 text-base text-muted-foreground">
+            {interpolateMessage(copy.expressionPreviewBudget, {
+              atoms: String(budget.atoms),
+              depth: String(budget.depth),
+              maxAtoms: String(GATE_POLICY_MAX_ATOMS),
+              maxDepth: String(GATE_POLICY_MAX_DEPTH),
+            })}
+          </div>
           <pre className="mt-3 max-h-96 overflow-auto rounded-[var(--radius-md)] bg-background p-3 text-base leading-6 text-muted-foreground">
             {JSON.stringify(policy, null, 2)}
           </pre>
@@ -110,22 +134,22 @@ export function GateTreeBuilder({ className, devPreview = false, onChange, value
 }
 
 function GateGroupEditor({
+  addGroupDisabled,
+  addRuleDisabled,
+  copy,
   group,
   isRoot = false,
   onChange,
   onRemove,
-  policy,
 }: {
+  addGroupDisabled: boolean;
+  addRuleDisabled: boolean;
+  copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
   group: GateBuilderGroupDraft;
   isRoot?: boolean;
   onChange: (value: GateBuilderGroupDraft) => void;
   onRemove?: () => void;
-  policy: GatePolicy | null;
 }) {
-  const containsLocalAntiBotFallback = group.op === "or"
-    && group.children.some((child) => child.kind === "rule" && child.gate.type === "altcha_pow")
-    && !captchaAloneAdmits(policy);
-
   const updateChild = (index: number, child: GateBuilderDraftNode) => {
     onChange({ ...group, children: group.children.map((existing, childIndex) => childIndex === index ? child : existing) });
   };
@@ -139,15 +163,15 @@ function GateGroupEditor({
       !isRoot && "bg-muted/20",
     )}>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <OpSelect value={group.op} onChange={(op) => onChange({ ...group, op })} />
-        <Button size="sm" variant="secondary" leadingIcon={<Plus size={16} />} onClick={() => onChange({ ...group, children: [...group.children, defaultRule()] })}>
-          Rule
+        <OpSelect copy={copy} value={group.op} onChange={(op) => onChange({ ...group, op })} />
+        <Button disabled={addRuleDisabled} size="sm" title={addRuleDisabled ? copy.limitReached : undefined} variant="secondary" leadingIcon={<Plus size={16} />} onClick={() => onChange({ ...group, children: [...group.children, defaultRule()] })}>
+          {copy.actions.rule}
         </Button>
-        <Button size="sm" variant="outline" leadingIcon={<Plus size={16} />} onClick={() => onChange({ ...group, children: [...group.children, { kind: "group", op: "and", children: [defaultRule()] }] })}>
-          Group
+        <Button disabled={addGroupDisabled} size="sm" title={addGroupDisabled ? copy.limitReached : undefined} variant="outline" leadingIcon={<Plus size={16} />} onClick={() => onChange({ ...group, children: [...group.children, { kind: "group", op: "and", children: [defaultRule()] }] })}>
+          {copy.actions.group}
         </Button>
         {!isRoot && onRemove ? (
-          <Button aria-label="Remove group" className="ms-auto" size="icon" variant="ghost" onClick={onRemove}>
+          <Button aria-label={copy.actions.removeGroup} className="ms-auto" size="icon" variant="ghost" onClick={onRemove}>
             <Trash size={18} />
           </Button>
         ) : null}
@@ -156,19 +180,22 @@ function GateGroupEditor({
       <div className="flex flex-col gap-2">
         {group.children.length === 0 ? (
           <div className="rounded-[var(--radius-md)] border border-dashed border-border-soft p-6 text-center text-base text-muted-foreground">
-            Add a rule or nested group.
+            {copy.emptyGroup}
           </div>
         ) : null}
         {group.children.map((child, index) => child.kind === "group" ? (
           <GateGroupEditor
+            addGroupDisabled={addGroupDisabled}
+            addRuleDisabled={addRuleDisabled}
+            copy={copy}
             group={child}
             key={index}
             onChange={(updated) => updateChild(index, updated)}
             onRemove={() => removeChild(index)}
-            policy={policy}
           />
         ) : (
           <GateRuleRow
+            copy={copy}
             key={index}
             onChange={(updated) => updateChild(index, updated)}
             onRemove={() => removeChild(index)}
@@ -176,31 +203,29 @@ function GateGroupEditor({
           />
         ))}
       </div>
-
-      {containsLocalAntiBotFallback ? (
-        <div className="mt-3 text-base text-warning">
-          Browser anti-bot is the easiest path through this OR group, but requirements outside this group still apply.
-        </div>
-      ) : null}
     </div>
   );
 }
 
-function GateRuleRow({ onChange, onRemove, rule }: {
+function GateRuleRow({ copy, onChange, onRemove, rule }: {
+  copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
   onChange: (value: GateBuilderRuleDraft) => void;
   onRemove: () => void;
   rule: GateBuilderRuleDraft;
 }) {
   const kind = getRuleKind(rule.gate);
+  const operator = operatorLabel(copy, rule.gate);
 
   if (kind === "unknown") {
     return (
       <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border-soft bg-background p-2">
         <div className="min-w-0 flex-1">
-          <div className="text-base font-medium">Unrecognized requirement</div>
-          <div className="truncate text-base text-muted-foreground">Preserved as {JSON.stringify(rule.gate)}</div>
+          <div className="text-base font-medium">{copy.unknownRequirementTitle}</div>
+          <div className="truncate text-base text-muted-foreground">
+            {interpolateMessage(copy.unknownRequirementDescription, { gate: JSON.stringify(rule.gate) })}
+          </div>
         </div>
-        <Button aria-label="Remove requirement" size="icon" variant="ghost" onClick={onRemove}>
+        <Button aria-label={copy.actions.removeRequirement} size="icon" variant="ghost" onClick={onRemove}>
           <X size={18} />
         </Button>
       </div>
@@ -209,32 +234,37 @@ function GateRuleRow({ onChange, onRemove, rule }: {
 
   return (
     <div className="grid gap-2 rounded-[var(--radius-md)] border border-border-soft bg-background p-2 md:grid-cols-[minmax(220px,1.2fr)_auto_minmax(180px,1fr)_auto] md:items-center">
-      <RuleKindSelect value={kind} onChange={(nextKind) => onChange({ ...rule, gate: defaultGateForKind(nextKind) })} />
-      <span className="rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">{operatorLabel(rule.gate)}</span>
-      <RuleValueEditor gate={rule.gate} onChange={(gate) => onChange({ ...rule, gate })} />
-      <Button aria-label="Remove requirement" size="icon" variant="ghost" onClick={onRemove}>
+      <RuleKindSelect copy={copy} value={kind} onChange={(nextKind) => onChange({ ...rule, gate: defaultGateForKind(nextKind) })} />
+      {operator ? <span className="rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">{operator}</span> : null}
+      <RuleValueEditor copy={copy} gate={rule.gate} hasOperator={operator != null} onChange={(gate) => onChange({ ...rule, gate })} />
+      <Button aria-label={copy.actions.removeRequirement} size="icon" variant="ghost" onClick={onRemove}>
         <X size={18} />
       </Button>
     </div>
   );
 }
 
-function RuleValueEditor({ gate, onChange }: { gate: GateAtom; onChange: (gate: GateAtom) => void }) {
+function RuleValueEditor({ copy, gate, hasOperator, onChange }: {
+  copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
+  gate: GateAtom;
+  hasOperator: boolean;
+  onChange: (gate: GateAtom) => void;
+}) {
   switch (gate.type) {
     case "unique_human":
       return (
         <Select value={gate.provider === "very" ? "very" : "self"} onValueChange={(provider) => onChange({ type: "unique_human", provider: provider as "self" | "very" })}>
-          <SelectTrigger aria-label="Human verification provider"><SelectValue /></SelectTrigger>
+          <SelectTrigger aria-label={copy.inputs.humanVerificationProvider}><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="self">Self.xyz</SelectItem>
-            <SelectItem value="very">Very palm scan</SelectItem>
+            <SelectItem value="self">{copy.providers.self}</SelectItem>
+            <SelectItem value="very">{copy.providers.very}</SelectItem>
           </SelectContent>
         </Select>
       );
     case "wallet_score":
       return (
         <Input
-          aria-label="Minimum Passport score"
+          aria-label={copy.inputs.minimumPassportScore}
           min={0}
           max={100}
           onChange={(event) => onChange({ type: "wallet_score", provider: "passport", minimum_score: Number.parseInt(event.currentTarget.value || "0", 10) })}
@@ -245,7 +275,7 @@ function RuleValueEditor({ gate, onChange }: { gate: GateAtom; onChange: (gate: 
     case "erc721_holding":
       return (
         <Input
-          aria-label="NFT contract address"
+          aria-label={copy.inputs.nftContractAddress}
           onChange={(event) => onChange({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: event.currentTarget.value })}
           value={gate.contract_address ?? ""}
         />
@@ -253,7 +283,7 @@ function RuleValueEditor({ gate, onChange }: { gate: GateAtom; onChange: (gate: 
     case "minimum_age":
       return (
         <Input
-          aria-label="Minimum age"
+          aria-label={copy.inputs.minimumAge}
           min={18}
           max={125}
           onChange={(event) => onChange({ type: "minimum_age", provider: "self", minimum_age: Number.parseInt(event.currentTarget.value || "18", 10), accepted_providers: gate.accepted_providers })}
@@ -264,23 +294,27 @@ function RuleValueEditor({ gate, onChange }: { gate: GateAtom; onChange: (gate: 
     case "nationality":
       return (
         <Input
-          aria-label="Allowed nationalities"
+          aria-label={copy.inputs.allowedNationalities}
           onChange={(event) => onChange({ type: "nationality", provider: "self", allowed: event.currentTarget.value.split(",").map((value) => value.trim()).filter(Boolean), accepted_providers: gate.accepted_providers })}
           placeholder="US, CA"
           value={(gate.allowed ?? []).join(", ")}
         />
       );
     case "altcha_pow":
-      return <span className="px-3 text-base text-muted-foreground">No configuration</span>;
+      return <span className={cn("text-base text-muted-foreground", hasOperator ? "px-3" : "md:col-span-2")}>{copy.browserChallengeDescription}</span>;
     default:
-      return <span className="px-3 text-base text-muted-foreground">Unsupported atom</span>;
+      return <span className="px-3 text-base text-muted-foreground">{copy.unsupportedAtom}</span>;
   }
 }
 
-function OpSelect({ onChange, value }: { onChange: (value: GateBuilderGroupOp) => void; value: GateBuilderGroupOp }) {
+function OpSelect({ copy, onChange, value }: {
+  copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
+  onChange: (value: GateBuilderGroupOp) => void;
+  value: GateBuilderGroupOp;
+}) {
   return (
     <Select value={value} onValueChange={(nextValue) => onChange(nextValue as GateBuilderGroupOp)}>
-      <SelectTrigger aria-label="Group match mode" className="w-28"><SelectValue /></SelectTrigger>
+      <SelectTrigger aria-label={copy.inputs.groupMatchMode} className="w-28"><SelectValue /></SelectTrigger>
       <SelectContent>
         <SelectItem value="and">AND</SelectItem>
         <SelectItem value="or">OR</SelectItem>
@@ -289,17 +323,21 @@ function OpSelect({ onChange, value }: { onChange: (value: GateBuilderGroupOp) =
   );
 }
 
-function RuleKindSelect({ onChange, value }: { onChange: (value: RuleKind) => void; value: RuleKind }) {
+function RuleKindSelect({ copy, onChange, value }: {
+  copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
+  onChange: (value: RuleKind) => void;
+  value: RuleKind;
+}) {
   return (
     <Select value={value} onValueChange={(nextValue) => onChange(nextValue as RuleKind)}>
-      <SelectTrigger aria-label="Requirement type"><SelectValue /></SelectTrigger>
+      <SelectTrigger aria-label={copy.inputs.requirementType}><SelectValue /></SelectTrigger>
       <SelectContent>
-        <SelectItem value="unique_human">Human verification</SelectItem>
-        <SelectItem value="altcha_pow">Browser anti-bot</SelectItem>
-        <SelectItem value="wallet_score">Passport score</SelectItem>
-        <SelectItem value="erc721_holding">NFT holding</SelectItem>
-        <SelectItem value="nationality">Nationality</SelectItem>
-        <SelectItem value="minimum_age">Minimum age</SelectItem>
+        <SelectItem value="unique_human">{copy.requirementTypes.humanVerification}</SelectItem>
+        <SelectItem value="altcha_pow">{copy.requirementTypes.browserChallenge}</SelectItem>
+        <SelectItem value="wallet_score">{copy.requirementTypes.passportScore}</SelectItem>
+        <SelectItem value="erc721_holding">{copy.requirementTypes.nftHolding}</SelectItem>
+        <SelectItem value="nationality">{copy.requirementTypes.nationality}</SelectItem>
+        <SelectItem value="minimum_age">{copy.requirementTypes.minimumAge}</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -342,22 +380,39 @@ function getRuleKind(gate: GateAtom): RuleKind {
   }
 }
 
-function operatorLabel(gate: GateAtom): string {
+function operatorLabel(copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"], gate: GateAtom): string | null {
   switch (gate.type) {
     case "unique_human":
-      return "proven by";
+      return copy.operators.provenBy;
     case "altcha_pow":
-      return "solved at join";
+      return null;
     case "wallet_score":
-      return "at least";
+      return copy.operators.atLeast;
     case "erc721_holding":
-      return "holds >= 1 from";
+      return copy.operators.holdsOneFrom;
     case "nationality":
-      return "is one of";
+      return copy.operators.isOneOf;
     case "minimum_age":
-      return "at least";
+      return copy.operators.atLeast;
     default:
-      return "matches";
+      return copy.operators.matches;
+  }
+}
+
+function personaLabel(copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"], id: string): string {
+  switch (id) {
+    case "bot_captcha":
+      return copy.personas.botCaptcha;
+    case "self_human":
+      return copy.personas.selfHuman;
+    case "very_human":
+      return copy.personas.veryHuman;
+    case "passport_score_20":
+      return copy.personas.passportScore20;
+    case "nft_holder":
+      return copy.personas.nftHolder;
+    default:
+      return id;
   }
 }
 
@@ -382,7 +437,7 @@ function describeGate(gate: GateAtom): string {
     case "unique_human":
       return gate.provider === "very" ? "prove human with Very palm scan" : "prove human with Self.xyz";
     case "altcha_pow":
-      return "complete browser anti-bot";
+      return "complete browser challenge";
     case "wallet_score":
       return `have Passport score at least ${gate.minimum_score ?? 0}`;
     case "erc721_holding":

@@ -134,6 +134,67 @@ export const GENERATED_LOCALE_CATALOGS = {
         "walletScore": "Passport score",
         "altchaPow": "browser check status"
       },
+      "treeBuilder": {
+        "title": "Join access",
+        "description": "Compose eligibility with nested AND/OR groups. Rules serialize to the same expression model the backend evaluates.",
+        "liveSummaryTitle": "Live summary",
+        "emptySummary": "No join requirements yet.",
+        "complexityWarning": "This rule is getting complex — {used} of {limit} conditions used.",
+        "limitReached": "Remove a condition or group to add more.",
+        "strongBrowserChallengeWarning": "Anyone can join by completing just a quick browser challenge — no identity, score, or holdings needed. Good for stopping spam; not a member check.",
+        "whoCanJoinTitle": "Who can join",
+        "whoCanJoinCaption": "Each profile holds exactly one kind of proof. A profile can join only if the whole rule passes.",
+        "canJoin": "✓ Can join",
+        "cantJoin": "✗ Can't join",
+        "personas": {
+          "botCaptcha": "A bot with no proofs that completes the browser challenge",
+          "selfHuman": "Verified human (Self.xyz)",
+          "veryHuman": "Verified human (Very palm scan)",
+          "passportScore20": "Wallet with Passport score 20",
+          "nftHolder": "Holder of the required NFT"
+        },
+        "actions": {
+          "rule": "Rule",
+          "group": "Group",
+          "removeRequirement": "Remove requirement",
+          "removeGroup": "Remove group"
+        },
+        "emptyGroup": "Add a rule or nested group.",
+        "expressionPreviewTitle": "expression_json preview",
+        "expressionPreviewBudget": "Conditions {atoms}/{maxAtoms} · Depth {depth}/{maxDepth}",
+        "unknownRequirementTitle": "Unrecognized requirement",
+        "unknownRequirementDescription": "Preserved as {gate}",
+        "requirementTypes": {
+          "humanVerification": "Human verification",
+          "browserChallenge": "Browser challenge",
+          "passportScore": "Passport score",
+          "nftHolding": "NFT holding",
+          "nationality": "Nationality",
+          "minimumAge": "Minimum age"
+        },
+        "providers": {
+          "self": "Self.xyz",
+          "very": "Very palm scan"
+        },
+        "operators": {
+          "provenBy": "proven by",
+          "atLeast": "at least",
+          "holdsOneFrom": "holds ≥ 1 from",
+          "isOneOf": "is one of",
+          "matches": "matches"
+        },
+        "browserChallengeDescription": "A quick automatic check in the member's browser. It slows down spam — a determined bot can still pass it.",
+        "unsupportedAtom": "Unsupported atom",
+        "inputs": {
+          "groupMatchMode": "Group match mode",
+          "requirementType": "Requirement type",
+          "humanVerificationProvider": "Human verification provider",
+          "minimumPassportScore": "Minimum Passport score",
+          "nftContractAddress": "NFT contract address",
+          "minimumAge": "Minimum age",
+          "allowedNationalities": "Allowed nationalities"
+        }
+      },
       "gateFailure": {
         "nationalityMismatch": "Your verified ID does not match this community's requirement.",
         "genderMismatch": "Your ID check does not match this community's rule.",
@@ -1985,6 +2046,67 @@ export const GENERATED_LOCALE_CATALOGS = {
         "walletScore": "درجة Passport",
         "altchaPow": "حالة إثبات العمل"
       },
+      "treeBuilder": {
+        "title": "Join access",
+        "description": "Compose eligibility with nested AND/OR groups. Rules serialize to the same expression model the backend evaluates.",
+        "liveSummaryTitle": "Live summary",
+        "emptySummary": "No join requirements yet.",
+        "complexityWarning": "This rule is getting complex — {used} of {limit} conditions used.",
+        "limitReached": "Remove a condition or group to add more.",
+        "strongBrowserChallengeWarning": "Anyone can join by completing just a quick browser challenge — no identity, score, or holdings needed. Good for stopping spam; not a member check.",
+        "whoCanJoinTitle": "Who can join",
+        "whoCanJoinCaption": "Each profile holds exactly one kind of proof. A profile can join only if the whole rule passes.",
+        "canJoin": "✓ Can join",
+        "cantJoin": "✗ Can't join",
+        "personas": {
+          "botCaptcha": "A bot with no proofs that completes the browser challenge",
+          "selfHuman": "Verified human (Self.xyz)",
+          "veryHuman": "Verified human (Very palm scan)",
+          "passportScore20": "Wallet with Passport score 20",
+          "nftHolder": "Holder of the required NFT"
+        },
+        "actions": {
+          "rule": "Rule",
+          "group": "Group",
+          "removeRequirement": "Remove requirement",
+          "removeGroup": "Remove group"
+        },
+        "emptyGroup": "Add a rule or nested group.",
+        "expressionPreviewTitle": "expression_json preview",
+        "expressionPreviewBudget": "Conditions {atoms}/{maxAtoms} · Depth {depth}/{maxDepth}",
+        "unknownRequirementTitle": "Unrecognized requirement",
+        "unknownRequirementDescription": "Preserved as {gate}",
+        "requirementTypes": {
+          "humanVerification": "Human verification",
+          "browserChallenge": "Browser challenge",
+          "passportScore": "Passport score",
+          "nftHolding": "NFT holding",
+          "nationality": "Nationality",
+          "minimumAge": "Minimum age"
+        },
+        "providers": {
+          "self": "Self.xyz",
+          "very": "Very palm scan"
+        },
+        "operators": {
+          "provenBy": "proven by",
+          "atLeast": "at least",
+          "holdsOneFrom": "holds ≥ 1 from",
+          "isOneOf": "is one of",
+          "matches": "matches"
+        },
+        "browserChallengeDescription": "A quick automatic check in the member's browser. It slows down spam — a determined bot can still pass it.",
+        "unsupportedAtom": "Unsupported atom",
+        "inputs": {
+          "groupMatchMode": "Group match mode",
+          "requirementType": "Requirement type",
+          "humanVerificationProvider": "Human verification provider",
+          "minimumPassportScore": "Minimum Passport score",
+          "nftContractAddress": "NFT contract address",
+          "minimumAge": "Minimum age",
+          "allowedNationalities": "Allowed nationalities"
+        }
+      },
       "gateFailure": {
         "nationalityMismatch": "لا يطابق فحص هويتك متطلبات هذا المجتمع.",
         "genderMismatch": "فحص هويتك لا يطابق قاعدة هذا المجتمع.",
@@ -3835,6 +3957,67 @@ export const GENERATED_LOCALE_CATALOGS = {
         "uniqueHuman": "真人状态",
         "walletScore": "Passport 分数",
         "altchaPow": "工作量证明状态"
+      },
+      "treeBuilder": {
+        "title": "Join access",
+        "description": "Compose eligibility with nested AND/OR groups. Rules serialize to the same expression model the backend evaluates.",
+        "liveSummaryTitle": "Live summary",
+        "emptySummary": "No join requirements yet.",
+        "complexityWarning": "This rule is getting complex — {used} of {limit} conditions used.",
+        "limitReached": "Remove a condition or group to add more.",
+        "strongBrowserChallengeWarning": "Anyone can join by completing just a quick browser challenge — no identity, score, or holdings needed. Good for stopping spam; not a member check.",
+        "whoCanJoinTitle": "Who can join",
+        "whoCanJoinCaption": "Each profile holds exactly one kind of proof. A profile can join only if the whole rule passes.",
+        "canJoin": "✓ Can join",
+        "cantJoin": "✗ Can't join",
+        "personas": {
+          "botCaptcha": "A bot with no proofs that completes the browser challenge",
+          "selfHuman": "Verified human (Self.xyz)",
+          "veryHuman": "Verified human (Very palm scan)",
+          "passportScore20": "Wallet with Passport score 20",
+          "nftHolder": "Holder of the required NFT"
+        },
+        "actions": {
+          "rule": "Rule",
+          "group": "Group",
+          "removeRequirement": "Remove requirement",
+          "removeGroup": "Remove group"
+        },
+        "emptyGroup": "Add a rule or nested group.",
+        "expressionPreviewTitle": "expression_json preview",
+        "expressionPreviewBudget": "Conditions {atoms}/{maxAtoms} · Depth {depth}/{maxDepth}",
+        "unknownRequirementTitle": "Unrecognized requirement",
+        "unknownRequirementDescription": "Preserved as {gate}",
+        "requirementTypes": {
+          "humanVerification": "Human verification",
+          "browserChallenge": "Browser challenge",
+          "passportScore": "Passport score",
+          "nftHolding": "NFT holding",
+          "nationality": "Nationality",
+          "minimumAge": "Minimum age"
+        },
+        "providers": {
+          "self": "Self.xyz",
+          "very": "Very palm scan"
+        },
+        "operators": {
+          "provenBy": "proven by",
+          "atLeast": "at least",
+          "holdsOneFrom": "holds ≥ 1 from",
+          "isOneOf": "is one of",
+          "matches": "matches"
+        },
+        "browserChallengeDescription": "A quick automatic check in the member's browser. It slows down spam — a determined bot can still pass it.",
+        "unsupportedAtom": "Unsupported atom",
+        "inputs": {
+          "groupMatchMode": "Group match mode",
+          "requirementType": "Requirement type",
+          "humanVerificationProvider": "Human verification provider",
+          "minimumPassportScore": "Minimum Passport score",
+          "nftContractAddress": "NFT contract address",
+          "minimumAge": "Minimum age",
+          "allowedNationalities": "Allowed nationalities"
+        }
       },
       "gateFailure": {
         "nationalityMismatch": "你的身份验证结果不符合该社区要求。",

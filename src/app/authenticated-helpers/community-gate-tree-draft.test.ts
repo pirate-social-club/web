@@ -416,12 +416,12 @@ describe("gate builder budget and semantic evaluation", () => {
       ],
     });
 
-    expect(simulateGateBuilderPersonas(policy)).toEqual([
-      { id: "bot_captcha", joins: false, label: "Bot that solves browser anti-bot" },
-      { id: "self_human", joins: false, label: "Self.xyz verified human" },
-      { id: "very_human", joins: false, label: "Very palm scan verified human" },
-      { id: "passport_score_20", joins: false, label: "Passport score 20 wallet" },
-      { id: "nft_holder", joins: false, label: "NFT holder" },
+    expect(simulateGateBuilderPersonas(policy).map(({ id, joins }) => ({ id, joins }))).toEqual([
+      { id: "bot_captcha", joins: false },
+      { id: "self_human", joins: false },
+      { id: "very_human", joins: false },
+      { id: "passport_score_20", joins: false },
+      { id: "nft_holder", joins: false },
     ]);
   });
 
@@ -432,9 +432,9 @@ describe("gate builder budget and semantic evaluation", () => {
       children: [veryHuman, score20],
     });
 
-    expect(simulateGateBuilderPersonas(policy).filter((persona) => persona.joins)).toEqual([
-      { id: "very_human", joins: true, label: "Very palm scan verified human" },
-      { id: "passport_score_20", joins: true, label: "Passport score 20 wallet" },
+    expect(simulateGateBuilderPersonas(policy).filter((persona) => persona.joins).map(({ id, joins }) => ({ id, joins }))).toEqual([
+      { id: "very_human", joins: true },
+      { id: "passport_score_20", joins: true },
     ]);
   });
 });

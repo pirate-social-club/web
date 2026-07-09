@@ -127,22 +127,22 @@ export function simulateGateBuilderPersonas(
 export const DEFAULT_GATE_BUILDER_PERSONAS: GateBuilderPersona[] = [
   {
     id: "bot_captcha",
-    label: "Bot that solves browser anti-bot",
+    label: "A bot with no proofs that completes the browser challenge",
     satisfies: (gate) => gate.type === "altcha_pow",
   },
   {
     id: "self_human",
-    label: "Self.xyz verified human",
+    label: "Verified human (Self.xyz)",
     satisfies: (gate) => gate.type === "unique_human" && gate.provider === "self",
   },
   {
     id: "very_human",
-    label: "Very palm scan verified human",
+    label: "Verified human (Very palm scan)",
     satisfies: (gate) => gate.type === "unique_human" && gate.provider === "very",
   },
   {
     id: "passport_score_20",
-    label: "Passport score 20 wallet",
+    label: "Wallet with Passport score 20",
     satisfies: (gate) =>
       gate.type === "wallet_score"
       && gate.provider === "passport"
@@ -151,7 +151,7 @@ export const DEFAULT_GATE_BUILDER_PERSONAS: GateBuilderPersona[] = [
   },
   {
     id: "nft_holder",
-    label: "NFT holder",
+    label: "Holder of the required NFT",
     satisfies: (gate) => gate.type === "erc721_holding" || gate.type === "erc721_inventory_match",
   },
 ];

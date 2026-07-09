@@ -32,6 +32,8 @@ function displayPct(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/u, "");
 }
 
+const percentInputClassName = "h-11 rounded-none border-0 bg-transparent px-0 text-end tabular-nums shadow-none focus-visible:ring-0";
+
 export function RoyaltySplitEditor({
   charityContribution,
   charityPartner,
@@ -154,10 +156,10 @@ export function RoyaltySplitEditor({
                 </Type>
               </div>
             </div>
-            <div className="grid grid-cols-[1fr_auto] items-center rounded-full border border-input bg-background pe-4 shadow-sm">
+            <div className="grid h-11 grid-cols-[minmax(0,1fr)_1.25rem] items-center rounded-full border border-input bg-background px-4 shadow-sm">
               <Input
                 aria-label="Charity percentage"
-                className="h-11 rounded-none border-0 bg-transparent pe-2 text-end shadow-none focus-visible:ring-0"
+                className={percentInputClassName}
                 inputMode="numeric"
                 max={50}
                 min={0}
@@ -168,7 +170,7 @@ export function RoyaltySplitEditor({
                 type="text"
                 value={charityPct === 0 ? "" : String(charityPct)}
               />
-              <span className="font-semibold text-muted-foreground">%</span>
+              <span className="text-end font-semibold text-muted-foreground">%</span>
             </div>
             <Button
               aria-label="Remove charity donation"
@@ -218,17 +220,17 @@ export function RoyaltySplitEditor({
                   />
                 )}
               </div>
-              <div className="grid grid-cols-[1fr_auto] items-center rounded-full border border-input bg-background pe-4 shadow-sm">
+              <div className="grid h-11 grid-cols-[minmax(0,1fr)_1.25rem] items-center rounded-full border border-input bg-background px-4 shadow-sm">
                 <Input
                   aria-label={isCreator ? "Your royalty percentage" : `Recipient ${index + 1} royalty percentage`}
-                  className="h-11 rounded-none border-0 bg-transparent pe-2 text-end shadow-none focus-visible:ring-0"
+                  className={percentInputClassName}
                   disabled={singleCreatorOnly}
                   inputMode="decimal"
                   max={100}
                   min={0}
                   step={0.01}
                   onChange={(event) => {
-                    const raw = event.target.value;
+                    const raw = event.target.value.replace(/[^0-9.]/gu, "");
                     setPercentDrafts((prev) => ({ ...prev, [allocation.id]: raw }));
                     const parsed = Number.parseFloat(raw);
                     // Clamp to [0, 100] but do not round here; finer-than-bps
@@ -243,10 +245,10 @@ export function RoyaltySplitEditor({
                     delete next[allocation.id];
                     return next;
                   })}
-                  type="number"
+                  type="text"
                   value={percentDrafts[allocation.id] ?? allocation.sharePct}
                 />
-                <span className="font-semibold text-muted-foreground">%</span>
+                <span className="text-end font-semibold text-muted-foreground">%</span>
               </div>
               {isCreator ? (
                 <span className="hidden sm:block sm:size-11" aria-hidden="true" />

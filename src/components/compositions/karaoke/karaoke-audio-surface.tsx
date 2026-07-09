@@ -443,6 +443,10 @@ export function KaraokeAudioSurface({
   const centerContent = endedSummary ? (
     <KaraokeScoreSummary
       finalScore={endedSummary.finalScore}
+      lyricsScore={endedSummary.lyricsScore ?? undefined}
+      lineCount={endedSummary.lineCount ?? undefined}
+      scoredLineCount={endedSummary.scoredLineCount ?? undefined}
+      timingScore={endedSummary.timingScore ?? undefined}
       uncertainLineCount={endedSummary.uncertainLineCount}
     />
   ) : null;

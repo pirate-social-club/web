@@ -1,20 +1,25 @@
 import * as React from "react";
 import {
   BookOpen,
-  CaretLeft,
   CheckCircle,
   Fire,
+  GraduationCap,
   Microphone,
   SpeakerHigh,
   Stop,
   Trophy,
+  X,
   XCircle,
 } from "@phosphor-icons/react";
 
+import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
+
+import { SongStreakEntryList } from "./song-streak-parts";
+import type { SongStreakSummary } from "./song-streak-preview";
 
 export interface SongStudyOption {
   id: string;
@@ -78,9 +83,11 @@ export type SongStudySurfaceState =
     streak?: {
       currentStreak: number;
       qualifiedToday: boolean;
+      studyAttemptsToday: number;
       studyCorrectCount: number;
       studyTargetCount: number;
     };
+    streakSummary?: SongStreakSummary;
     totalCount: number;
   };
 
@@ -89,8 +96,10 @@ export interface SongStudySurfaceProps {
   artworkSrc?: string;
   className?: string;
   onExit?: () => void;
+  onKaraoke?: () => void;
   onOptionSelect?: (optionId: string) => void;
   onPrimaryAction?: () => void;
+  onStudyAgain?: () => void;
   state: SongStudySurfaceState;
   title: string;
 }
@@ -113,7 +122,7 @@ function primaryActionLabel(state: SongStudySurfaceState): string | undefined {
       if (state.result === "wrong" && state.canRetry) return "Try again";
       return state.result ? "Continue" : undefined;
     case "complete":
-      return "Back to song";
+      return undefined;
   }
 }
 
@@ -137,21 +146,38 @@ function ActivityFooter({
   primaryDisabled,
   primaryIcon,
   primaryLabel,
+  secondaryIcon,
+  secondaryLabel,
   onPrimaryAction,
+  onSecondaryAction,
 }: {
   primaryDisabled?: boolean;
   primaryIcon?: React.ReactNode;
   primaryLabel?: string;
+  secondaryIcon?: React.ReactNode;
+  secondaryLabel?: string;
   onPrimaryAction?: () => void;
+  onSecondaryAction?: () => void;
 }) {
   if (!primaryLabel) return null;
 
   return (
     <footer className="sticky bottom-0 z-10 border-t border-border-soft bg-background/95 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 backdrop-blur-xl sm:px-6">
-      <div className="mx-auto grid w-full max-w-3xl gap-3">
+      <div className={cn("mx-auto grid w-full max-w-3xl gap-3", secondaryLabel && "sm:grid-cols-2")}>
         <Button className="w-full" disabled={primaryDisabled} leadingIcon={primaryIcon} onClick={onPrimaryAction} size="lg">
           {primaryLabel}
         </Button>
+        {secondaryLabel ? (
+          <Button
+            className="w-full"
+            leadingIcon={secondaryIcon}
+            onClick={onSecondaryAction}
+            size="lg"
+            variant="secondary"
+          >
+            {secondaryLabel}
+          </Button>
+        ) : null}
       </div>
     </footer>
   );
@@ -159,21 +185,19 @@ function ActivityFooter({
 
 function Header({
   artistName,
-  artworkSrc,
   onExit,
   title,
 }: {
   artistName?: string;
-  artworkSrc?: string;
   onExit?: () => void;
   title: string;
 }) {
   return (
-    <header className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-border-soft px-4 py-2 sm:min-h-20 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-6 sm:py-3">
+    <header className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-border-soft px-4 py-2 sm:min-h-20 sm:px-6 sm:py-3">
       <Button
         aria-label="Exit study"
         className="size-10 px-0 sm:size-11"
-        leadingIcon={<CaretLeft className="size-5" weight="bold" />}
+        leadingIcon={<X className="size-5" weight="bold" />}
         onClick={onExit}
         size="icon"
         variant="ghost"
@@ -188,16 +212,6 @@ function Header({
           </Type>
         ) : null}
       </div>
-      {artworkSrc ? (
-        <img
-          alt=""
-          aria-hidden="true"
-          className="hidden size-12 rounded-[var(--radius-lg)] object-cover sm:block"
-          src={artworkSrc}
-        />
-      ) : (
-        <div aria-hidden="true" className="hidden size-12 rounded-[var(--radius-lg)] bg-muted sm:block" />
-      )}
     </header>
   );
 }
@@ -334,49 +348,208 @@ function MultipleChoiceState({
   );
 }
 
+// Patch the viewer's leaderboard row with the just-earned streak so the top-3
+// count never contradicts the celebration card. Rank/order stay load-time stale
+// by design; only the visible fire count is refreshed.
+function patchViewerEntry(
+  entries: SongStreakSummary["entries"],
+  streak: { currentStreak: number },
+): SongStreakSummary["entries"] {
+  return entries.map((entry) =>
+    entry.is_viewer
+      ? {
+          ...entry,
+          current_streak: streak.currentStreak,
+          best_streak: Math.max(entry.best_streak, streak.currentStreak),
+        }
+      : entry,
+  );
+}
+
+function usePrefersReducedMotion(): boolean {
+  const [reducedMotion, setReducedMotion] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReducedMotion(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  return reducedMotion;
+}
+
+function previousStreakFromSummary(
+  streak: { currentStreak: number } | undefined,
+  summary: SongStreakSummary | undefined,
+): number | undefined {
+  if (!streak) return undefined;
+  const previous = summary?.viewer?.current_streak ?? streak.currentStreak - 1;
+  return Math.max(0, Math.min(previous, streak.currentStreak));
+}
+
+function StreakSlotNumber({
+  currentStreak,
+  previousStreak,
+}: {
+  currentStreak: number;
+  previousStreak: number;
+}) {
+  const startDelayMs = 450;
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const shouldAnimate = currentStreak > previousStreak && !prefersReducedMotion;
+  const [advanced, setAdvanced] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!shouldAnimate) {
+      setAdvanced(false);
+      return;
+    }
+
+    setAdvanced(false);
+    const timeout = window.setTimeout(() => setAdvanced(true), startDelayMs);
+    return () => window.clearTimeout(timeout);
+  }, [currentStreak, previousStreak, shouldAnimate]);
+
+  if (!shouldAnimate) {
+    return (
+      <Type
+        aria-label={`${currentStreak} day streak`}
+        as="h2"
+        className="mt-1 text-7xl font-bold leading-none tabular-nums sm:text-8xl"
+      >
+        {currentStreak}
+      </Type>
+    );
+  }
+
+  return (
+    <h2
+      aria-label={`${currentStreak} day streak`}
+      className="relative mt-1 h-[0.92em] overflow-hidden text-7xl font-bold leading-none tabular-nums sm:text-8xl"
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-x-0 top-0 block transition-[transform,opacity] duration-[1200ms] ease-out",
+          advanced ? "translate-y-full opacity-0" : "translate-y-0 opacity-100",
+        )}
+      >
+        {previousStreak}
+      </span>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-x-0 top-0 block transition-[transform,opacity] duration-[1200ms] ease-out",
+          advanced ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0",
+        )}
+      >
+        {currentStreak}
+      </span>
+    </h2>
+  );
+}
+
+function ViewerLeaderboardRow({
+  currentStreak,
+  rank,
+}: {
+  currentStreak: number;
+  rank?: number;
+}) {
+  return (
+    <div className="flex items-center gap-4 rounded-[var(--radius-2xl)] border border-primary/40 bg-primary/10 px-5 py-4">
+      <span className="grid size-10 place-items-center text-xl font-semibold tabular-nums text-muted-foreground">
+        {rank ? `#${rank}` : "You"}
+      </span>
+      <Avatar fallback="You" fallbackSeed="song-study-viewer" size="sm" />
+      <Type as="p" className="min-w-0 flex-1 truncate text-lg" variant="body-strong">
+        You
+      </Type>
+      <span className="inline-flex min-w-20 items-center justify-end gap-1.5 text-2xl font-semibold tabular-nums text-primary">
+        {currentStreak}
+        <Fire className="size-8" weight="fill" />
+      </span>
+    </div>
+  );
+}
+
+function PerformanceStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[var(--radius-xl)] bg-muted px-4 py-3 text-center">
+      <Type as="p" className="text-xl font-semibold tabular-nums" variant="body-strong">
+        {value}
+      </Type>
+      <Type as="p" className="text-muted-foreground" variant="caption">
+        {label}
+      </Type>
+    </div>
+  );
+}
+
 function CompleteState({ state }: { state: Extract<SongStudySurfaceState, { kind: "complete" }> }) {
   const score = clampPercent(state.scorePercent);
   const streak = state.streak;
-  const streakProgress = streak
-    ? `${Math.min(streak.studyCorrectCount, streak.studyTargetCount)} of ${streak.studyTargetCount}`
-    : null;
+
+  const summary = state.streakSummary;
+  const previousStreak = previousStreakFromSummary(streak, summary);
+  const summaryEntries = summary && streak
+    ? patchViewerEntry(summary.entries, streak)
+    : summary?.entries ?? [];
+  const viewerVisible = summaryEntries.slice(0, 3).some((entry) => entry.is_viewer);
+  const showViewerRow = Boolean(streak && summary?.viewer && !viewerVisible);
+  const viewerPreviewRank = summaryEntries.slice(0, 3).length + 1;
 
   return (
-    <div className="mx-auto grid w-full max-w-md flex-1 place-items-center px-4 py-10 text-center sm:px-6">
-      <div>
+    <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-8 px-4 py-10 sm:px-6">
+      <div className="text-center">
         <div className={cn(
-          "mx-auto mb-4 grid size-20 place-items-center rounded-full",
+          "mx-auto mb-5 grid size-24 place-items-center rounded-full",
           streak?.qualifiedToday ? "bg-warning/10 text-warning" : "bg-primary/10 text-primary",
         )}>
           {streak?.qualifiedToday
-            ? <Fire className="size-11" weight="duotone" />
-            : <Trophy className="size-11" weight="duotone" />}
+            ? <Fire className="size-14" weight="duotone" />
+            : <Trophy className="size-14" weight="duotone" />}
         </div>
-        <Type as="p" className="text-muted-foreground" variant="caption">
-          {streak?.qualifiedToday ? "Streak extended" : "Session complete"}
+        <Type as="p" className="text-lg font-semibold text-muted-foreground" variant="body">
+          {streak?.qualifiedToday ? "Your streak" : "Session complete"}
         </Type>
-        <Type as="h2" className="mt-1" variant="h1">
-          {streak?.qualifiedToday ? `${streak.currentStreak} day${streak.currentStreak === 1 ? "" : "s"}` : `${score}%`}
-        </Type>
-        <Type as="p" className="mt-2 text-muted-foreground" variant="body">
-          {state.correctCount} of {state.totalCount} exercises correct.
-        </Type>
-        {streak && !streak.qualifiedToday ? (
-          <Type as="p" className="mt-4 text-muted-foreground" variant="caption">
-            {streakProgress} correct toward today's streak.
+        {streak?.qualifiedToday && previousStreak !== undefined ? (
+          <StreakSlotNumber currentStreak={streak.currentStreak} previousStreak={previousStreak} />
+        ) : (
+          <Type as="h2" className="mt-1 text-7xl font-bold leading-none sm:text-8xl">
+            {`${score}%`}
           </Type>
-        ) : null}
-        {streak?.qualifiedToday && streakProgress ? (
-          <Type as="p" className="mt-4 text-muted-foreground" variant="caption">
-            Today's streak target met: {streakProgress} correct.
-          </Type>
-        ) : null}
-        {state.nextReviewLabel ? (
-          <Type as="p" className="mt-4 text-muted-foreground" variant="caption">
-            Next review: {state.nextReviewLabel}
-          </Type>
-        ) : null}
+        )}
       </div>
+
+      <div className="w-full">
+        <PerformanceStat label="Correct" value={`${state.correctCount}/${state.totalCount}`} />
+      </div>
+
+      {summaryEntries.length > 0 || showViewerRow ? (
+        <div className="w-full space-y-3">
+          {summaryEntries.length > 0 ? (
+            <SongStreakEntryList
+              className="space-y-3 [&_li>span:first-child]:!size-10 [&_li>span:first-child_svg]:!size-8 [&_li>span:last-child]:!min-w-20 [&_li>span:last-child]:!text-2xl [&_li>span:last-child_svg]:!size-8 [&_li]:!gap-4 [&_li]:!rounded-[var(--radius-2xl)] [&_li]:!px-5 [&_li]:!py-4 [&_li_p]:!text-lg"
+              entries={summaryEntries}
+              limit={3}
+            />
+          ) : null}
+          {showViewerRow && streak ? (
+            <ViewerLeaderboardRow currentStreak={streak.currentStreak} rank={viewerPreviewRank} />
+          ) : null}
+        </div>
+      ) : null}
+
     </div>
   );
 }
@@ -402,23 +575,45 @@ function Body({
 
 export function SongStudySurface({
   artistName,
-  artworkSrc,
   className,
   onExit,
+  onKaraoke,
   onOptionSelect,
   onPrimaryAction,
+  onStudyAgain,
   state,
   title,
 }: SongStudySurfaceProps) {
+  const complete = state.kind === "complete";
+  const primaryLabel = complete
+    ? onStudyAgain
+      ? "Study again"
+      : onKaraoke
+        ? "Karaoke"
+        : undefined
+    : primaryActionLabel(state);
+  const primaryAction = complete ? onStudyAgain ?? onKaraoke : onPrimaryAction;
+  const primaryIcon = complete
+    ? onStudyAgain
+      ? <GraduationCap className="size-5" weight="fill" />
+      : onKaraoke
+        ? <Microphone className="size-5" weight="fill" />
+        : undefined
+    : primaryActionIcon(state);
+  const secondaryLabel = complete && onStudyAgain && onKaraoke ? "Karaoke" : undefined;
+
   return (
     <section className={cn("flex h-dvh w-full flex-col overflow-y-auto bg-background text-foreground", className)}>
-      <Header artistName={artistName} artworkSrc={artworkSrc} onExit={onExit} title={title} />
+      <Header artistName={artistName} onExit={onExit} title={title} />
       <Body onOptionSelect={onOptionSelect} state={state} />
       <ActivityFooter
         primaryDisabled={primaryActionDisabled(state)}
-        primaryIcon={primaryActionIcon(state)}
-        primaryLabel={primaryActionLabel(state)}
-        onPrimaryAction={onPrimaryAction}
+        primaryIcon={primaryIcon}
+        primaryLabel={primaryLabel}
+        secondaryIcon={<Microphone className="size-5" weight="fill" />}
+        secondaryLabel={secondaryLabel}
+        onPrimaryAction={primaryAction}
+        onSecondaryAction={onKaraoke}
       />
     </section>
   );

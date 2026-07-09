@@ -166,7 +166,7 @@ export const DetailsWithGeniusAnnotations: Story = {
 };
 
 export const LicenseNonCommercial: Story = {
-  name: "License / Non-commercial",
+  name: "License / Non-commercial remixing",
   render: () => (
     <InteractivePostComposer
       {...baseComposer}

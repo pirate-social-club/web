@@ -10,12 +10,14 @@ import {
   type SongStudySayItBackExercise,
   type SongStudySurfaceState,
 } from "@/components/compositions/song-study/song-study-surface";
+import type { SongStreakSummary } from "@/components/compositions/song-study/song-streak-preview";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { Button } from "@/components/primitives/button";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
+import { toStreakSummary } from "@/app/authenticated-helpers/post-media-presentation";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import type { SongStudyAttemptResult, SongStudyExercise, SongStudyPayload } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
@@ -138,6 +140,7 @@ function caughtUpMessage(study: SongStudyPayload): string {
 function completeSurface(input: {
   correctCount: number;
   lastAttemptResult?: SongStudyAttemptResult;
+  streakSummary?: SongStreakSummary;
   totalCount: number;
 }): SongStudySurfaceState {
   const progress = input.lastAttemptResult?.study_progress;
@@ -151,11 +154,13 @@ function completeSurface(input: {
           streak: {
             currentStreak: progress.current_streak,
             qualifiedToday: progress.qualified_today,
+            studyAttemptsToday: progress.study_attempt_count,
             studyCorrectCount: progress.study_correct_count,
             studyTargetCount: progress.study_target_count,
           },
         }
       : {}),
+    streakSummary: input.streakSummary,
     totalCount: input.totalCount,
   };
 }
@@ -565,6 +570,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
             : completeSurface({
                 correctCount: nextCorrectCount,
                 lastAttemptResult: state.lastAttemptResult,
+                streakSummary: toStreakSummary(state.post),
                 totalCount: state.study.exercises.length,
               }),
         });
@@ -757,6 +763,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           : completeSurface({
               correctCount: state.correctCount,
               lastAttemptResult: state.lastAttemptResult,
+              streakSummary: toStreakSummary(state.post),
               totalCount: state.study.exercises.length,
             }),
       });
@@ -776,6 +783,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           : completeSurface({
               correctCount: nextCorrectCount,
               lastAttemptResult: state.lastAttemptResult,
+              streakSummary: toStreakSummary(state.post),
               totalCount: state.study.exercises.length,
             }),
       });

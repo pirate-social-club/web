@@ -504,7 +504,7 @@ export const ExplicitContentSetting: Story = {
 };
 
 export const PaidUnlockLicenseNonCommercial: Story = {
-  name: "Paid Unlock / License / Non-commercial",
+  name: "Paid Unlock / License / Non-commercial remixing",
   render: () => (
     <InteractivePostComposer
       {...baseComposer}

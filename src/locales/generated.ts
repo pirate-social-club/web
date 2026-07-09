@@ -424,25 +424,25 @@ export const GENERATED_LOCALE_CATALOGS = {
         },
         "assetLicense": {
           "song": {
-            "non-commercial": "Non-commercial only",
-            "non-commercialDescription": "Listeners can use the song privately, but not for commercial releases.",
+            "non-commercial": "Non-commercial remixing",
+            "non-commercialDescription": "Others can publish non-commercial remixes with attribution; commercial releases are prohibited.",
             "commercial-use": "Commercial use",
-            "commercial-useDescription": "Others can monetize with the original song, but cannot release remixes.",
+            "commercial-useDescription": "Others can monetize with the original song with attribution; remixes are prohibited.",
             "commercial-remix": "Commercial remix",
-            "commercial-remixDescription": "Others can monetize and publish remixes of your song.",
+            "commercial-remixDescription": "Others can monetize and publish remixes with attribution.",
             "revenueShare": "Revenue share",
-            "revenueShareDescription": "Choose the share derivative remix revenue owes back to this original track.",
+            "revenueShareDescription": "Choose the share of commercial license revenue owed back to this original track.",
             "revenueShareRange": "0% to 100%"
           },
           "video": {
-            "non-commercial": "Non-commercial only",
-            "non-commercialDescription": "Viewers can use the video privately, but not for commercial releases.",
+            "non-commercial": "Non-commercial remixing",
+            "non-commercialDescription": "Others can publish non-commercial derivatives with attribution; commercial releases are prohibited.",
             "commercial-use": "Commercial use",
-            "commercial-useDescription": "Others can monetize with the original video, but cannot publish derivative videos.",
+            "commercial-useDescription": "Others can monetize with the original video with attribution; derivatives are prohibited.",
             "commercial-remix": "Commercial derivatives",
-            "commercial-remixDescription": "Others can monetize and publish derivative videos using your work.",
+            "commercial-remixDescription": "Others can monetize and publish derivative videos with attribution.",
             "revenueShare": "Revenue share",
-            "revenueShareDescription": "Set the share of derivative video revenue paid back to this original video.",
+            "revenueShareDescription": "Set the share of commercial license revenue paid back to this original video.",
             "revenueShareRange": "0% to 100%"
           }
         },

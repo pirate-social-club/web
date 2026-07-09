@@ -218,6 +218,30 @@ function GateRuleRow({ copy, onChange, onRemove, rule }: {
   const operator = operatorLabel(copy, rule.gate);
   const hasOperator = operator != null;
 
+  if (isCourtyardInventoryMatchGate(rule.gate)) {
+    return (
+      <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-border-soft bg-background p-2">
+        <div className="min-w-56 flex-1">
+          <div className="text-base font-medium">Courtyard collectible</div>
+          <div className="text-base text-muted-foreground">{courtyardInventorySummary(rule.gate)}</div>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+          {courtyardInventoryFacetChips(rule.gate).map((chip) => (
+            <span
+              className="rounded-full border border-border-soft bg-muted/40 px-3 py-1 text-base text-foreground"
+              key={chip}
+            >
+              {chip}
+            </span>
+          ))}
+        </div>
+        <Button aria-label={copy.actions.removeRequirement} className="ms-auto" size="icon" variant="ghost" onClick={onRemove}>
+          <X size={18} />
+        </Button>
+      </div>
+    );
+  }
+
   if (kind === "unknown") {
     return (
       <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border-soft bg-background p-2">
@@ -450,6 +474,8 @@ function describeGate(gate: GateAtom): string {
       return `prove nationality ${gate.allowed?.length ? gate.allowed.join("/") : "(choose countries)"}`;
     case "minimum_age":
       return `prove age at least ${gate.minimum_age ?? 18}`;
+    case "erc721_inventory_match":
+      return `hold ${courtyardInventorySummary(gate)}`;
     default:
       return "satisfy an unrecognized requirement";
   }
@@ -457,4 +483,51 @@ function describeGate(gate: GateAtom): string {
 
 function shortAddress(value: string): string {
   return value.length > 12 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value || "(contract)";
+}
+
+function isCourtyardInventoryMatchGate(gate: GateAtom): gate is GateAtom & {
+  match?: Record<string, unknown>;
+  min_quantity?: number;
+  provider?: string;
+} {
+  return gate.type === "erc721_inventory_match";
+}
+
+function courtyardInventorySummary(gate: GateAtom & { match?: Record<string, unknown>; min_quantity?: number }): string {
+  const match = gate.match ?? {};
+  const subject = stringifyFacetValue(match.subject);
+  const model = stringifyFacetValue(match.model);
+  const brand = stringifyFacetValue(match.brand);
+  const fallback = stringifyFacetValue(match.category) ?? "collectible";
+  const brandModel = [brand, model].filter(Boolean).join(" ");
+  const assetName = subject ?? (brandModel || fallback);
+  const quantity = gate.min_quantity && gate.min_quantity > 1 ? `${gate.min_quantity}x ` : "";
+  return `${quantity}${assetName}`;
+}
+
+function courtyardInventoryFacetChips(gate: GateAtom & { match?: Record<string, unknown> }): string[] {
+  return Object.entries(gate.match ?? {})
+    .filter(([, value]) => value != null && String(value).trim().length > 0)
+    .map(([key, value]) => `${formatFacetKey(key)}: ${stringifyFacetValue(value) ?? String(value)}`);
+}
+
+function formatFacetKey(key: string): string {
+  return key
+    .split(/[_-]/u)
+    .filter(Boolean)
+    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+function stringifyFacetValue(value: unknown): string | null {
+  if (Array.isArray(value)) {
+    return value.map(stringifyFacetValue).filter((part): part is string => part != null).join(", ") || null;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return null;
 }

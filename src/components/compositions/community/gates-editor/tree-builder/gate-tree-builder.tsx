@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/primitives/select";
+import { Chip } from "@/components/primitives/chip";
 import { interpolateMessage } from "@/lib/route-messages";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -280,6 +281,26 @@ function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
     );
   }
 
+  if (kind === "erc721_holding") {
+    return (
+      <div className="rounded-[var(--radius-md)] border border-border-soft bg-background p-2">
+        <div className="grid gap-2 md:grid-cols-[minmax(220px,1.2fr)_auto_minmax(260px,2fr)_auto] md:items-center">
+          <RuleKindSelect copy={copy} value={kind} onChange={(nextKind) => onChange({ ...rule, gate: defaultGateForKind(nextKind) })} />
+          <span className="rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">{operator}</span>
+          <NftHoldingEditor
+            capabilitySource={capabilitySource}
+            copy={copy}
+            gate={rule.gate}
+            onChange={(gate) => onChange({ ...rule, gate })}
+          />
+          <Button aria-label={copy.actions.removeRequirement} size="icon" variant="ghost" onClick={onRemove}>
+            <X size={18} />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={cn(
       "grid gap-2 rounded-[var(--radius-md)] border border-border-soft bg-background p-2 md:items-center",
@@ -306,13 +327,22 @@ function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
   switch (gate.type) {
     case "unique_human":
       return (
-        <Select value={gate.provider === "very" ? "very" : "self"} onValueChange={(provider) => onChange({ type: "unique_human", provider: provider as "self" | "very" })}>
-          <SelectTrigger aria-label={copy.inputs.humanVerificationProvider}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="self">{copy.providers.self}</SelectItem>
-            <SelectItem value="very">{copy.providers.very}</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap gap-2" aria-label={copy.inputs.humanVerificationProvider}>
+          <Chip
+            aria-pressed={gate.provider === "self"}
+            variant={gate.provider === "self" ? "active" : "outline"}
+            onClick={() => onChange({ type: "unique_human", provider: "self" })}
+          >
+            {copy.providers.self}
+          </Chip>
+          <Chip
+            aria-pressed={gate.provider === "very"}
+            variant={gate.provider === "very" ? "active" : "outline"}
+            onClick={() => onChange({ type: "unique_human", provider: "very" })}
+          >
+            {copy.providers.very}
+          </Chip>
+        </div>
       );
     case "wallet_score":
       return (
@@ -327,14 +357,7 @@ function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
       );
     case "erc721_holding":
     case "erc721_inventory_match":
-      return (
-        <NftHoldingEditor
-          capabilitySource={capabilitySource}
-          copy={copy}
-          gate={gate}
-          onChange={onChange}
-        />
-      );
+      return null;
     case "minimum_age":
       return (
         <Input
@@ -489,35 +512,63 @@ function NftHoldingEditor({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="grid gap-2 md:grid-cols-[minmax(180px,1fr)_minmax(180px,1fr)]">
-        <Select value={selectedSource?.id ?? "__address"} onValueChange={selectSource}>
-          <SelectTrigger aria-label="NFT source"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__address">Paste contract address</SelectItem>
-            {sources.map((source) => (
-              <SelectItem key={source.id} value={source.id}>{source.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {selectedSource ? (
-          <div className="rounded-[var(--radius-md)] border border-border-soft bg-muted/30 px-4 py-3 text-base text-muted-foreground">
-            {shortAddress(selectedSource.contractAddress)}
-          </div>
-        ) : (
+      <div>
+        <Combobox<AssetSourceDescriptor, true>
+          multiple
+          autoHighlight
+          items={sources}
+          itemToStringLabel={(source) => source.label}
+          itemToStringValue={(source) => source.label}
+          onValueChange={(nextSources) => {
+            const source = nextSources.slice(-1)[0];
+            if (source) {
+              selectSource(source.id);
+            } else {
+              pasteAddress(DEFAULT_CONTRACT);
+            }
+          }}
+          value={selectedSource ? [selectedSource] : []}
+        >
+          <ComboboxChips className="rounded-full">
+            <ComboboxValue>
+              {(selectedSources) => (
+                <>
+                  {selectedSources.map((source: AssetSourceDescriptor) => (
+                    <ComboboxChip key={source.id}>{source.label}</ComboboxChip>
+                  ))}
+                  <ComboboxChipsInput aria-label="Search collections or paste address" placeholder="Search collections or paste address" />
+                </>
+              )}
+            </ComboboxValue>
+          </ComboboxChips>
+          <ComboboxContent>
+            <ComboboxEmpty>No trusted source found. Paste a contract address below.</ComboboxEmpty>
+            <ComboboxList>
+              {(source) => (
+                <ComboboxItem key={source.id} value={source}>
+                  <div className="flex flex-col">
+                    <span className="text-base font-medium">{source.label}</span>
+                    <span className="text-base text-muted-foreground">
+                      {source.traitFiltersSupported ? "Attribute filters available" : "Collection-level gate"}
+                    </span>
+                  </div>
+                </ComboboxItem>
+              )}
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
+        {!selectedSource ? (
           <Input
+            className="mt-2"
             aria-label={copy.inputs.nftContractAddress}
             onChange={(event) => pasteAddress(event.currentTarget.value)}
             value={getGateContractAddress(gate)}
           />
-        )}
+        ) : null}
       </div>
 
-      {selectedSource?.provenanceLabel ? (
-        <div className="text-base text-muted-foreground">{selectedSource.provenanceLabel}</div>
-      ) : null}
-
       {selectedSource?.traitFiltersSupported ? (
-        <div className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-border-soft bg-muted/20 p-2">
+        <div className="ms-0 flex flex-col gap-2 rounded-[var(--radius-md)] border border-border-soft bg-muted/20 p-2 md:ms-4">
           {traitKeys.map((facetKey) => (
             <div className="grid gap-2 md:grid-cols-[minmax(160px,0.8fr)_auto_minmax(220px,1.4fr)_auto] md:items-center" key={facetKey}>
               <Select value={facetKey} onValueChange={(nextKey) => {
@@ -547,15 +598,20 @@ function NftHoldingEditor({
             </div>
           ))}
           {addableFacetKeys.length > 0 ? (
-            <Button
-              className="self-start"
-              size="sm"
-              variant="outline"
-              leadingIcon={<Plus size={16} />}
-              onClick={() => setPendingFacetKeys((current) => [...current, addableFacetKeys[0]!])}
-            >
-              Add attribute filter
-            </Button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button
+                className="self-start"
+                size="sm"
+                variant="outline"
+                leadingIcon={<Plus size={16} />}
+                onClick={() => setPendingFacetKeys((current) => [...current, addableFacetKeys[0]!])}
+              >
+                Add attribute filter
+              </Button>
+              {selectedSource.provenanceLabel ? (
+                <div className="text-base text-muted-foreground">{selectedSource.provenanceLabel}</div>
+              ) : null}
+            </div>
           ) : null}
           {matchCount != null ? (
             <div className="text-base text-muted-foreground">Approximately {matchCount.toLocaleString("en-US")} match.</div>

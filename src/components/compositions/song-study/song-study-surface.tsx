@@ -79,6 +79,7 @@ export type SongStudySurfaceState =
     kind: "complete";
     correctCount: number;
     nextReviewLabel?: string;
+    reward?: SongStudyRewardSlot;
     scorePercent: number;
     streak?: {
       currentStreak: number;
@@ -91,10 +92,17 @@ export type SongStudySurfaceState =
     totalCount: number;
   };
 
+export interface SongStudyRewardSlot {
+  kind: "earned" | "pending" | "cap-reached" | "exhausted";
+  amountLabel?: string;
+  detailLabel?: string;
+}
+
 export interface SongStudySurfaceProps {
   artistName?: string;
   artworkSrc?: string;
   className?: string;
+  headerAccessory?: React.ReactNode;
   onExit?: () => void;
   onKaraoke?: () => void;
   onOptionSelect?: (optionId: string) => void;
@@ -184,16 +192,18 @@ function ActivityFooter({
 }
 
 function Header({
+  accessory,
   artistName,
   onExit,
   title,
 }: {
+  accessory?: React.ReactNode;
   artistName?: string;
   onExit?: () => void;
   title: string;
 }) {
   return (
-    <header className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-border-soft px-4 py-2 sm:min-h-20 sm:px-6 sm:py-3">
+    <header className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border-soft px-4 py-2 sm:min-h-20 sm:px-6 sm:py-3">
       <Button
         aria-label="Exit study"
         className="size-10 px-0 sm:size-11"
@@ -212,6 +222,7 @@ function Header({
           </Type>
         ) : null}
       </div>
+      {accessory ? <div className="flex min-w-0 max-w-[50%] justify-end">{accessory}</div> : null}
     </header>
   );
 }
@@ -495,9 +506,43 @@ function PerformanceStat({
   );
 }
 
+const REWARD_STAT_LABEL = {
+  earned: "Bonus earned",
+  pending: "Reward pending",
+  "cap-reached": "Daily cap reached",
+  exhausted: "Campaign budget used",
+} satisfies Record<SongStudyRewardSlot["kind"], string>;
+
+function RewardStat({ reward }: { reward: SongStudyRewardSlot }) {
+  return (
+    <div className="w-full rounded-[var(--radius-xl)] bg-muted px-4 py-3 text-center">
+      <Type
+        as="p"
+        className={cn(
+          "text-xl font-semibold tabular-nums",
+          reward.kind === "earned" && "text-success",
+          reward.kind === "pending" && "text-muted-foreground",
+        )}
+        variant="body-strong"
+      >
+        {reward.amountLabel ?? "—"}
+      </Type>
+      <Type as="p" className="text-muted-foreground" variant="caption">
+        {REWARD_STAT_LABEL[reward.kind]}
+      </Type>
+      {reward.detailLabel ? (
+        <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
+          {reward.detailLabel}
+        </Type>
+      ) : null}
+    </div>
+  );
+}
+
 function CompleteState({ state }: { state: Extract<SongStudySurfaceState, { kind: "complete" }> }) {
   const score = clampPercent(state.scorePercent);
   const streak = state.streak;
+  const reward = state.reward;
 
   const summary = state.streakSummary;
   const previousStreak = previousStreakFromSummary(streak, summary);
@@ -531,9 +576,13 @@ function CompleteState({ state }: { state: Extract<SongStudySurfaceState, { kind
         )}
       </div>
 
-      <div className="w-full">
-        <PerformanceStat label="Correct" value={`${state.correctCount}/${state.totalCount}`} />
-      </div>
+      {reward ? <RewardStat reward={reward} /> : null}
+
+      {!reward ? (
+        <div className="grid w-full gap-3">
+          <PerformanceStat label="Correct" value={`${state.correctCount}/${state.totalCount}`} />
+        </div>
+      ) : null}
 
       {summaryEntries.length > 0 || showViewerRow ? (
         <div className="w-full space-y-3">
@@ -576,6 +625,7 @@ function Body({
 export function SongStudySurface({
   artistName,
   className,
+  headerAccessory,
   onExit,
   onKaraoke,
   onOptionSelect,
@@ -604,7 +654,7 @@ export function SongStudySurface({
 
   return (
     <section className={cn("flex h-dvh w-full flex-col overflow-y-auto bg-background text-foreground", className)}>
-      <Header artistName={artistName} onExit={onExit} title={title} />
+      <Header accessory={headerAccessory} artistName={artistName} onExit={onExit} title={title} />
       <Body onOptionSelect={onOptionSelect} state={state} />
       <ActivityFooter
         primaryDisabled={primaryActionDisabled(state)}

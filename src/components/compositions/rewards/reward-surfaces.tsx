@@ -135,7 +135,7 @@ export function SongRewardBadge({ amountLabel, className }: SongRewardBadgeProps
       className={className}
       icon={<CurrencyDollar aria-hidden="true" className="size-4 text-primary" weight="bold" />}
     >
-      Earn {amountLabel}/day
+      Practice reward: {amountLabel}
     </InlinePill>
   );
 }

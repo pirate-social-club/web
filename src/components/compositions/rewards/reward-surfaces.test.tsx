@@ -39,7 +39,7 @@ describe("reward surfaces", () => {
       </div>,
     );
 
-    expect(view.getByText("Earn $0.10/day")).toBeTruthy();
+    expect(view.getByText("Practice reward: $0.10")).toBeTruthy();
     expect(view.getAllByText("$0.10 reward pending").length).toBe(2);
     expect(view.getByText("Today's karaoke pass qualified. Reward credit updates after confirmation.")).toBeTruthy();
   });

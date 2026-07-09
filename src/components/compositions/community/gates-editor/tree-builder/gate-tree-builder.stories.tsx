@@ -166,7 +166,8 @@ const mockSources: AssetSourceDescriptor[] = [
     standard: "erc721",
     traitFiltersSupported: true,
     facetKeys: ["category", "franchise", "subject", "grade"],
-    fixedMatch: { category: "trading_card", franchise: "Pokemon" },
+    facetLabels: { franchise: "Franchise", subject: "Name", grade: "Grade" },
+    fixedMatch: { category: "trading_card" },
     inventoryProvider: "courtyard",
     maxValuesPerFacet: 1,
     minQuantitySupported: true,
@@ -180,6 +181,7 @@ const mockSources: AssetSourceDescriptor[] = [
     standard: "erc721",
     traitFiltersSupported: true,
     facetKeys: ["category", "brand", "model", "reference"],
+    facetLabels: { brand: "Brand", model: "Model", reference: "Reference" },
     fixedMatch: { category: "watch" },
     inventoryProvider: "courtyard",
     maxValuesPerFacet: 1,
@@ -200,6 +202,14 @@ const mockSources: AssetSourceDescriptor[] = [
 
 const mockFacetValues: Record<string, Record<string, FacetValueSuggestion[]>> = {
   "courtyard-graded-cards": {
+    franchise: [
+      { value: "Pokemon", approximateCount: 8700 },
+      { value: "Yu-Gi-Oh!", approximateCount: 2400 },
+      { value: "Magic: The Gathering", approximateCount: 1800 },
+      { value: "Basketball", approximateCount: 1300 },
+      { value: "Baseball", approximateCount: 980 },
+      { value: "Football", approximateCount: 760 },
+    ],
     subject: [
       { value: "Blastoise", approximateCount: 283 },
       { value: "Bulbasaur", approximateCount: 351 },
@@ -237,10 +247,10 @@ const mockFacetValues: Record<string, Record<string, FacetValueSuggestion[]>> = 
 
 const mockCapabilitySource: CollectionCapabilitySource = {
   async estimateMatchCount(sourceId, match) {
-    if (sourceId === "courtyard-graded-cards" && match.subject === "Charizard" && match.grade === "PSA 9") {
+    if (sourceId === "courtyard-graded-cards" && match.franchise === "Pokemon" && match.subject === "Charizard" && match.grade === "PSA 9") {
       return 412;
     }
-    return Object.entries(match).filter(([key]) => key !== "category" && key !== "franchise").length > 0 ? 96 : null;
+    return Object.entries(match).filter(([key]) => key !== "category").length > 0 ? 96 : null;
   },
   async listTrustedSources() {
     return mockSources;

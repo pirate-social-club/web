@@ -21,6 +21,7 @@ export function buildSongPostRequest(input: {
   license: AssetLicenseState | undefined;
   paidSongPriceUsd: number | null;
   royaltySplit?: AssetRoyaltySplitState;
+  charityContributionPct?: number | null;
   songMode: SongMode;
   title: string;
 }) {
@@ -40,6 +41,7 @@ export function buildSongPostRequest(input: {
     post_type: "song" as const,
     rights_basis: input.songMode === "original" ? "original" as const : "derivative" as const,
     royalty_allocations: buildRoyaltyAllocationRequests(input.royaltySplit, {
+      charityContributionPct: input.charityContributionPct,
       contentLabel: "song",
       license: input.license,
     }),

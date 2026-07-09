@@ -23,8 +23,6 @@ import {
   dedupeReferences,
 } from "./post-composer-references";
 import type {
-  CharityContributionState,
-  CommunityCharityPartner,
   ComposerAudienceState,
   ComposerReference,
   DerivativeStepState,
@@ -40,7 +38,6 @@ type DerivativeStateUpdater = (
 type MonetizationStateUpdater = (updater: (current: MonetizationState) => MonetizationState) => void;
 type LicenseStateUpdater = (updater: (current: AssetLicenseState) => AssetLicenseState) => void;
 type AudienceStateUpdater = (updater: (current: ComposerAudienceState) => ComposerAudienceState) => void;
-type CharityContributionUpdater = (updater: (current: CharityContributionState) => CharityContributionState) => void;
 
 type DerivativeSectionLabels = {
   acceptTermsLabel?: string;
@@ -551,67 +548,6 @@ export function PostComposerCommerceAccessSection({
           </div>
         </div>
       ) : null}
-    </section>
-  );
-}
-
-export function PostComposerCharitySection({
-  charityPartner,
-  charityContribution,
-  copy,
-  updateCharityContribution,
-}: {
-  charityPartner: CommunityCharityPartner;
-  charityContribution: CharityContributionState;
-  copy: { fields: Record<string, string> };
-  updateCharityContribution: CharityContributionUpdater;
-}) {
-  const isMobile = useIsMobile();
-  const handlePercentageChange = React.useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const raw = event.target.value.replace(/[^0-9]/g, "");
-      const parsed = raw === "" ? 0 : Math.min(100, Number.parseInt(raw, 10));
-      updateCharityContribution((current) => ({
-        ...current,
-        percentagePct: parsed,
-      }));
-    },
-    [updateCharityContribution],
-  );
-
-  return (
-    <section className={cn("space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4", isMobile && "rounded-none border-0 bg-transparent p-0")}>
-      <FormSectionHeading title={copy.fields.charity} />
-      <div className={cn("flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-background p-4", isMobile && "rounded-none border-0 bg-transparent p-0")}>
-        <div className="flex min-w-0 items-center gap-3">
-          <Avatar
-            className="border-border-soft bg-card"
-            fallback={buildAvatarFallback(charityPartner.displayName)}
-            size="md"
-            src={charityPartner.imageUrl?.trim() || undefined}
-          />
-          <div className="min-w-0">
-            <div className="text-base font-semibold text-foreground">
-              {charityPartner.displayName}
-            </div>
-            <div className="text-base text-muted-foreground">
-              Share of sale proceeds
-            </div>
-          </div>
-        </div>
-        <div className="inline-flex items-center gap-2">
-          <input
-            className="h-12 w-16 rounded-[var(--radius-md)] border border-border-soft bg-card px-3 text-base font-semibold tabular-nums text-foreground outline-none transition-colors focus:border-primary"
-            inputMode="numeric"
-            maxLength={3}
-            min={0}
-            onChange={handlePercentageChange}
-            type="text"
-            value={charityContribution.percentagePct === 0 ? "" : String(charityContribution.percentagePct)}
-          />
-          <span className="text-base text-muted-foreground">%</span>
-        </div>
-      </div>
     </section>
   );
 }

@@ -23,11 +23,11 @@ function captureErrorMessage(fn: () => unknown): string | null {
 
 function baseRequest(
   idempotencyKey: string,
-  overrides: {
+  overrides: Partial<ReturnType<typeof buildSongPostRequest> & {
     age_gate_policy?: "18_plus";
-    identity_mode?: "public" | "anonymous";
-    visibility?: "public" | "members_only";
-  } = {},
+    identity_mode: "public" | "anonymous";
+    visibility: "public" | "members_only";
+  }> = {},
 ) {
   return {
     anonymous_scope: undefined,
@@ -212,6 +212,97 @@ describe("song submit payload helpers", () => {
         share_bps: 3000,
       },
     ]);
+  });
+
+  test("normalizes sale-proceeds wallet shares when a charity share is present", () => {
+    const postRequest = buildSongPostRequest({
+      bundleId: "sab_charity_split",
+      derivativeStep: undefined,
+      baseRequest: baseRequest("key-charity-split"),
+      license: { presetId: "commercial-use" },
+      paidSongPriceUsd: 4.99,
+      charityContributionPct: 10,
+      royaltySplit: {
+        allocations: [
+          {
+            id: "creator",
+            recipientKind: "creator",
+            walletAddress: "0x1111111111111111111111111111111111111111",
+            sharePct: 63,
+          },
+          {
+            id: "collaborator",
+            recipientKind: "collaborator",
+            walletAddress: "0x2222222222222222222222222222222222222222",
+            sharePct: 27,
+          },
+        ],
+      },
+      songMode: "original",
+      title: "Paid benefit split song",
+    });
+
+    expect(postRequest.royalty_allocations).toEqual([
+      {
+        recipient_kind: "creator",
+        wallet_address: "0x1111111111111111111111111111111111111111",
+        share_bps: 7000,
+      },
+      {
+        recipient_kind: "collaborator",
+        wallet_address: "0x2222222222222222222222222222222222222222",
+        share_bps: 3000,
+      },
+    ]);
+  });
+
+  test("rejects sale-proceeds shares that do not leave room for charity", () => {
+    expect(captureErrorMessage(() => buildSongPostRequest({
+      bundleId: "sab_bad_charity_split",
+      derivativeStep: undefined,
+      baseRequest: baseRequest("key-bad-charity-split"),
+      license: { presetId: "commercial-use" },
+      paidSongPriceUsd: 4.99,
+      charityContributionPct: 10,
+      royaltySplit: {
+        allocations: [
+          {
+            id: "creator",
+            recipientKind: "creator",
+            walletAddress: "0x1111111111111111111111111111111111111111",
+            sharePct: 70,
+          },
+          {
+            id: "collaborator",
+            recipientKind: "collaborator",
+            walletAddress: "0x2222222222222222222222222222222222222222",
+            sharePct: 30,
+          },
+        ],
+      },
+      songMode: "original",
+      title: "Bad benefit split song",
+    }))).toBe("Sale proceeds must total 100% before publishing.");
+  });
+
+  test("ignores charity shares above the backend cap", () => {
+    const listingRequest = buildAssetListingRequest({
+      assetId: "ast_over_cap",
+      paidSongPriceUsd: 4.99,
+      pricingPolicyRegionalPricingEnabled: false,
+      regionalPricingEnabled: false,
+      charityContributionPct: 51,
+      charityPartnerId: "don_charity_water",
+    });
+
+    expect(listingRequest).toEqual({
+      asset: "ast_over_cap",
+      price_cents: 499,
+      regional_pricing_enabled: false,
+      donation_partner: null,
+      donation_share_bps: null,
+      status: "active",
+    });
   });
 
   test("rejects collaborator royalty allocations without a commercial song license", () => {

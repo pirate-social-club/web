@@ -11,6 +11,7 @@ import { PostComposerEventSection } from "./post-composer-event-section";
 import { LiveTabContent } from "./post-composer-live-tab";
 import { SearchReferencePicker, SelectedReferenceCard } from "./post-composer-references";
 import { PostComposerDerivativeSection } from "./post-composer-sections";
+import { RoyaltySplitEditor } from "./royalty-split-editor";
 import type { AssetLicenseState, AuthorAgeGatePolicy, ComposerEventState, MonetizationState, PostComposerProps } from "./post-composer.types";
 
 const { describe, expect, test } = BunTest;
@@ -276,6 +277,93 @@ describe("PostComposer monetization", () => {
     (updatedPaidAccessCheckbox.props.onCheckedChange as ((checked: boolean) => void) | undefined)?.(false);
     expect(monetization.visible).toBe(false);
     expect(monetization.vinylReleaseUrl).toBe("https://elasticstage.com/saint-pablo/releases/free-single");
+  });
+
+  test("keeps charity and wallets in one sale-proceeds split without stale dollar hints or zero-share errors", () => {
+    let nextSplit: Parameters<typeof RoyaltySplitEditor>[0]["value"] | null = null;
+    let nextCharity: Parameters<typeof RoyaltySplitEditor>[0]["charityContribution"] | null = null;
+    const tree = RoyaltySplitEditor({
+      charityContribution: { percentagePct: 10 },
+      charityPartner: {
+        partnerId: "endaoment:mock-charity-water",
+        displayName: "charity: water",
+      },
+      onChange: (value) => {
+        nextSplit = value;
+      },
+      onCharityContributionChange: (updater) => {
+        nextCharity = updater({ percentagePct: 10 });
+      },
+      value: {
+        allocations: [{
+          id: "creator",
+          recipientKind: "creator",
+          walletAddress: "0x1111111111111111111111111111111111111111",
+          sharePct: 90,
+        }],
+      },
+    });
+
+    expect(findElement(tree, (element) => element.props.children === "Charity · $0.40")).toBeNull();
+    expect(findElement(tree, (element) => element.props.children === "Your primary wallet")).toBeNull();
+    expect(findElement(tree, (element) => element.props.children === "Every recipient needs a share greater than 0%.")).toBeNull();
+
+    const removeCharity = findElement(
+      tree,
+      (element) => element.props["aria-label"] === "Remove charity donation" && typeof element.props.onClick === "function",
+    );
+    if (!removeCharity) {
+      throw new Error("Missing remove charity button");
+    }
+    (removeCharity.props.onClick as (() => void) | undefined)?.();
+    expect(nextCharity?.percentagePct).toBe(0);
+    expect(nextSplit?.allocations.map((allocation) => allocation.sharePct)).toEqual([100]);
+
+    const addWallet = findElement(
+      tree,
+      (element) => element.props.children === "Add wallet" && typeof element.props.onClick === "function",
+    );
+    if (!addWallet) {
+      throw new Error("Missing add wallet button");
+    }
+    (addWallet.props.onClick as (() => void) | undefined)?.();
+
+    expect(nextSplit?.allocations.map((allocation) => allocation.sharePct)).toEqual([45, 45]);
+
+    nextCharity = null;
+    nextSplit = null;
+    const removedCharityTree = RoyaltySplitEditor({
+      charityContribution: { percentagePct: 0 },
+      charityPartner: {
+        partnerId: "endaoment:mock-charity-water",
+        displayName: "charity: water",
+      },
+      onChange: (value) => {
+        nextSplit = value;
+      },
+      onCharityContributionChange: (updater) => {
+        nextCharity = updater({ percentagePct: 0 });
+      },
+      value: {
+        allocations: [{
+          id: "creator",
+          recipientKind: "creator",
+          walletAddress: "0x1111111111111111111111111111111111111111",
+          sharePct: 100,
+        }],
+      },
+    });
+    expect(findElement(removedCharityTree, (element) => element.props.children === "Charity")).toBeNull();
+    const addCharity = findElement(
+      removedCharityTree,
+      (element) => element.props.children === "Add charity" && typeof element.props.onClick === "function",
+    );
+    if (!addCharity) {
+      throw new Error("Missing add charity button");
+    }
+    (addCharity.props.onClick as (() => void) | undefined)?.();
+    expect(nextCharity?.percentagePct).toBe(10);
+    expect(nextSplit?.allocations.map((allocation) => allocation.sharePct)).toEqual([90]);
   });
 
   test("hides regional pricing controls when the community policy does not support them", () => {

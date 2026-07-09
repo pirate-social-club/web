@@ -4,7 +4,6 @@ import { CardContent } from "@/components/primitives/card";
 import { cn } from "@/lib/utils";
 
 import { PostComposerSettingsSections } from "./post-composer-settings-sections";
-import { PostComposerCharitySection } from "./post-composer-sections";
 import { shouldForcePublicIdentityForTab } from "./post-composer-invariants";
 import type { AssetLicensePresetId, AttachmentState } from "./post-composer.types";
 import type { PostComposerController } from "./use-post-composer-controller";
@@ -216,6 +215,7 @@ export function PostComposerSettingsHub({
           }))
         }
         onRoyaltySplitChange={(next) => royaltySplit.update(() => next)}
+        onCharityContributionChange={charity.update}
         onVisibilityChange={(nextVisibility) =>
           audience.update((current) => ({
             ...current,
@@ -231,6 +231,13 @@ export function PostComposerSettingsHub({
         regionalPricingAvailable={commerce.monetizationState.regionalPricingAvailable}
         regionalPricingEnabled={commerce.monetizationState.regionalPricingEnabled}
         regionalPricingPreview={commerce.regionalPricingPreview}
+        charityContribution={charity.state}
+        charityPartner={
+          (attachment?.kind === "song" || attachment?.kind === "video")
+          && commerce.monetizationState.visible
+            ? charity.partner
+            : null
+        }
         royaltyPercent={String(license.state.commercialRevSharePct ?? 10)}
         royaltySplit={royaltySplit.state}
         showLicenseFields={
@@ -248,17 +255,6 @@ export function PostComposerSettingsHub({
         visibility={visibilityFromController(controller)}
         vinylReleaseUrl={commerce.monetizationState.vinylReleaseUrl ?? ""}
       />
-
-      {(attachment?.kind === "song" || attachment?.kind === "video")
-      && commerce.monetizationState.visible
-      && charity.partner ? (
-        <PostComposerCharitySection
-          charityContribution={charity.state}
-          charityPartner={charity.partner}
-          copy={controller.copy}
-          updateCharityContribution={charity.update}
-        />
-      ) : null}
     </CardContent>
   );
 }

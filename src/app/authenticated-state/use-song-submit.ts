@@ -503,6 +503,7 @@ export function useSongSubmit({
       license,
       paidSongPriceUsd,
       royaltySplit,
+      charityContributionPct: charityContribution.percentagePct,
       songMode,
       title,
     });

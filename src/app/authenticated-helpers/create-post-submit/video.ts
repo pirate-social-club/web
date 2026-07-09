@@ -134,6 +134,7 @@ export function buildVideoPostRequest({
   monetized,
   posterFrame,
   royaltySplit,
+  charityContributionPct,
   title,
   uploadedPoster,
   uploadedVideo,
@@ -146,6 +147,7 @@ export function buildVideoPostRequest({
   monetized: boolean;
   posterFrame: Pick<ExtractedVideoPosterFrame, "frameMs" | "height" | "width">;
   royaltySplit?: AssetRoyaltySplitState;
+  charityContributionPct?: number | null;
   title: string;
   uploadedPoster: UploadedPosterMedia;
   uploadedVideo: Pick<SongArtifactUpload, "content_hash" | "mime_type" | "size_bytes" | "storage_ref">;
@@ -164,6 +166,7 @@ export function buildVideoPostRequest({
     license_preset: monetized ? license?.presetId : undefined,
     royalty_allocations: monetized
       ? buildRoyaltyAllocationRequests(royaltySplit, {
+          charityContributionPct,
           contentLabel: "video",
           license,
         })
@@ -374,6 +377,7 @@ export async function submitVideoPost({
     monetized,
     posterFrame,
     royaltySplit,
+    charityContributionPct,
     title,
     uploadedPoster,
     uploadedVideo,

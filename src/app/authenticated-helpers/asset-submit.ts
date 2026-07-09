@@ -68,6 +68,12 @@ function isDefaultCreatorSplit(royaltySplit: AssetRoyaltySplitState): boolean {
   return allocation.recipientKind === "creator" && allocation.sharePct === 100;
 }
 
+function donationShareBpsFromPct(value: number | null | undefined): number {
+  return Number.isInteger(value) && (value ?? 0) > 0 && (value ?? 0) <= 50
+    ? (value ?? 0) * 100
+    : 0;
+}
+
 function isRoyaltyBearingLicense(license: AssetLicenseState | undefined): boolean {
   return license?.presetId === "commercial-use" || license?.presetId === "commercial-remix";
 }
@@ -75,11 +81,13 @@ function isRoyaltyBearingLicense(license: AssetLicenseState | undefined): boolea
 export function buildRoyaltyAllocationRequests(
   royaltySplit: AssetRoyaltySplitState | undefined,
   input: {
+    charityContributionPct?: number | null;
     contentLabel: "song" | "video";
     license: AssetLicenseState | undefined;
   },
 ): Array<{ recipient_kind: "creator" | "collaborator"; wallet_address: string; share_bps: number }> | undefined {
-  if (!royaltySplit || isDefaultCreatorSplit(royaltySplit)) {
+  const donationShareBps = donationShareBpsFromPct(input.charityContributionPct);
+  if (!royaltySplit || (donationShareBps === 0 && isDefaultCreatorSplit(royaltySplit))) {
     return undefined;
   }
   if (!Array.isArray(royaltySplit.allocations) || royaltySplit.allocations.length === 0) {
@@ -90,10 +98,11 @@ export function buildRoyaltyAllocationRequests(
   }
 
   let creatorCount = 0;
-  let totalShareBps = 0;
+  let totalSaleShareBps = 0;
   let hasCollaborator = false;
   const seenWallets = new Set<string>();
-  const allocations = royaltySplit.allocations.map((allocation) => {
+  const remainingWalletBps = 10000 - donationShareBps;
+  const saleProceedAllocations = royaltySplit.allocations.map((allocation) => {
     if (allocation.recipientKind === "creator") {
       creatorCount += 1;
     } else {
@@ -115,30 +124,44 @@ export function buildRoyaltyAllocationRequests(
       !Number.isFinite(allocation.sharePct)
       || Math.abs(allocation.sharePct * 100 - shareBps) > 1e-6
       || shareBps <= 0
-      || shareBps > 10000
+      || shareBps > remainingWalletBps
     ) {
       throw new Error("Royalty shares must be greater than 0% and use at most two decimal places.");
     }
-    totalShareBps += shareBps;
+    totalSaleShareBps += shareBps;
 
     return {
       recipient_kind: allocation.recipientKind,
       wallet_address: walletAddress,
-      share_bps: shareBps,
+      sale_share_bps: shareBps,
     };
   });
 
   if (creatorCount !== 1) {
     throw new Error("Royalty split must include exactly one creator recipient.");
   }
-  if (totalShareBps !== 10000) {
-    throw new Error("Royalty shares must total 100% before publishing.");
+  if (totalSaleShareBps !== remainingWalletBps) {
+    throw new Error(donationShareBps > 0
+      ? "Sale proceeds must total 100% before publishing."
+      : "Royalty shares must total 100% before publishing.");
   }
   if (hasCollaborator && !isRoyaltyBearingLicense(input.license)) {
     throw new Error(`Collaborator royalty splits require a commercial license for this ${input.contentLabel}.`);
   }
 
-  return allocations;
+  let allocatedWalletBps = 0;
+  return saleProceedAllocations.map((allocation, index) => {
+    const isLast = index === saleProceedAllocations.length - 1;
+    const shareBps = isLast
+      ? 10000 - allocatedWalletBps
+      : Math.round((allocation.sale_share_bps / remainingWalletBps) * 10000);
+    allocatedWalletBps += shareBps;
+    return {
+      recipient_kind: allocation.recipient_kind,
+      wallet_address: allocation.wallet_address,
+      share_bps: shareBps,
+    };
+  });
 }
 
 export function buildAssetListingRequest(input: {
@@ -154,11 +177,7 @@ export function buildAssetListingRequest(input: {
     return null;
   }
 
-  const donationSharePct = Number.isInteger(input.charityContributionPct)
-    && (input.charityContributionPct ?? 0) > 0
-    && (input.charityContributionPct ?? 0) <= 100
-    ? input.charityContributionPct ?? null
-    : null;
+  const donationShareBps = donationShareBpsFromPct(input.charityContributionPct);
 
   const vinylReleaseUrl = input.vinylReleaseUrl?.trim() || null;
 
@@ -166,8 +185,8 @@ export function buildAssetListingRequest(input: {
     asset: input.assetId,
     price_cents: usdToCents(input.paidSongPriceUsd) ?? 0,
     regional_pricing_enabled: input.pricingPolicyRegionalPricingEnabled && input.regionalPricingEnabled,
-    donation_partner: donationSharePct && input.charityPartnerId ? input.charityPartnerId : null,
-    donation_share_bps: donationSharePct == null ? null : donationSharePct * 100,
+    donation_partner: donationShareBps > 0 && input.charityPartnerId ? input.charityPartnerId : null,
+    donation_share_bps: donationShareBps === 0 ? null : donationShareBps,
     ...(vinylReleaseUrl
       ? {
           vinyl_release_provider: "elasticstage" as const,

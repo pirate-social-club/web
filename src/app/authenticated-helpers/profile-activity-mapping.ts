@@ -42,23 +42,11 @@ function communityHref(community: CommunityPreview): string {
 
 type CommunityOwnerIdentity = {
   avatar_ref?: string | null;
-  handle?: string | null;
   user?: string | null;
 };
 
 function communityOwner(community: CommunityPreview): CommunityOwnerIdentity | null {
   return (community as CommunityPreview & { owner?: CommunityOwnerIdentity | null }).owner ?? null;
-}
-
-function matchingCommunityOwnerHandle(
-  community: CommunityPreview,
-  authorUserId: string | null | undefined,
-): string | null {
-  const owner = communityOwner(community);
-  if (!owner?.handle || !owner.user || !authorUserId || owner.user !== authorUserId) {
-    return null;
-  }
-  return owner.handle;
 }
 
 function matchingCommunityOwnerAvatarSrc(
@@ -72,13 +60,11 @@ function matchingCommunityOwnerAvatarSrc(
   return owner.avatar_ref;
 }
 
-function publicAuthorHandle(item: CommentListItem, community: CommunityPreview): string | null {
+function publicAuthorHandle(item: CommentListItem): string | null {
   if (item.comment.identity_mode !== "public") {
     return null;
   }
-  return item.comment.author_public_handle
-    ?? matchingCommunityOwnerHandle(community, item.comment.author_user)
-    ?? null;
+  return item.comment.author_public_handle ?? null;
 }
 
 function publicAuthorHref(item: CommentListItem): string | undefined {
@@ -86,17 +72,15 @@ function publicAuthorHref(item: CommentListItem): string | undefined {
   return handle ? buildPublicProfilePath(handle) : undefined;
 }
 
-function postAuthorHandle(post: LocalizedPostResponse, community: CommunityPreview): string | null {
+function postAuthorHandle(post: LocalizedPostResponse): string | null {
   if (post.post.identity_mode !== "public") {
     return null;
   }
-  return post.post.author_public_handle
-    ?? matchingCommunityOwnerHandle(community, post.post.author_user)
-    ?? null;
+  return post.post.author_public_handle ?? null;
 }
 
-function postAuthorHref(post: LocalizedPostResponse, community: CommunityPreview): string | undefined {
-  const handle = postAuthorHandle(post, community);
+function postAuthorHref(post: LocalizedPostResponse): string | undefined {
+  const handle = postAuthorHandle(post);
   return handle ? buildPublicProfilePath(handle) : undefined;
 }
 
@@ -114,8 +98,8 @@ export function mapProfileActivityPost(item: ProfileActivityPostPage): ProfilePo
     community: item.community,
     post: item.post,
   } as unknown as HomeFeedItem, {});
-  const authorHandle = postAuthorHandle(item.post, item.community);
-  const authorHref = postAuthorHref(item.post, item.community);
+  const authorHandle = postAuthorHandle(item.post);
+  const authorHref = postAuthorHref(item.post);
   const ownerAvatarSrc = matchingCommunityOwnerAvatarSrc(item.community, item.post.post.author_user);
   return {
     postId: item.post.post.id,
@@ -143,7 +127,7 @@ export function mapProfileActivityComment(item: ProfileActivityCommentPage): Pro
   const comment = item.comment.comment;
   const rootPostId = item.thread_root_post.post.id;
   const body = item.comment.translated_body ?? comment.body ?? "";
-  const authorHandle = publicAuthorHandle(item.comment, item.community);
+  const authorHandle = publicAuthorHandle(item.comment);
   return {
     authorHref: authorHandle ? buildPublicProfilePath(authorHandle) : publicAuthorHref(item.comment),
     authorLabel: authorHandle ?? resolveCommentAuthorLabel(comment, null),

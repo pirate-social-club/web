@@ -136,7 +136,7 @@ describe("mapProfileActivityProps", () => {
     expect(props.overviewItems).toHaveLength(1);
   });
 
-  test("falls back to matching community owner handle when activity payload omits public author handles", () => {
+  test("does not infer missing author handles from the community owner", () => {
     const post = makePost({ author_public_handle: null });
     const comment = makeComment({ author_public_handle: null });
     const activity: Pick<ProfileActivityResponse, "comments" | "overview_items" | "posts"> = {
@@ -158,10 +158,10 @@ describe("mapProfileActivityProps", () => {
 
     const props = mapProfileActivityProps(activity);
 
-    expect(props.posts[0]?.post.byline?.author?.label).toBe("swift-fox-7721.pirate");
-    expect(props.posts[0]?.post.byline?.author?.href).toBe("/u/swift-fox-7721.pirate");
+    expect(props.posts[0]?.post.byline?.author?.label).toBe("usr_swif");
+    expect(props.posts[0]?.post.byline?.author?.href).toBeUndefined();
     expect(props.posts[0]?.post.byline?.author?.avatarSrc).toBe("https://example.test/avatar.png");
-    expect(props.comments[0]?.authorLabel).toBe("swift-fox-7721.pirate");
-    expect(props.comments[0]?.authorHref).toBe("/u/swift-fox-7721.pirate");
+    expect(props.comments[0]?.authorLabel).toBe("usr_swif");
+    expect(props.comments[0]?.authorHref).toBeUndefined();
   });
 });

@@ -84,5 +84,7 @@ export function createRewardsApi(request: ApiRequest) {
         method: "POST",
         body: JSON.stringify(input),
       }),
+    getCashout: (cashoutId: string): Promise<ApiRewardCashoutResponse> =>
+      request<ApiRewardCashoutResponse>(`/me/rewards/cashouts/${encodeURIComponent(cashoutId)}`),
   };
 }

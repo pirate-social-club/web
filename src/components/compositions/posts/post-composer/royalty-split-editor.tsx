@@ -14,10 +14,9 @@ import type {
   CharityContributionState,
   CommunityCharityPartner,
 } from "./post-composer.types";
+import { defaultCharityContributionPct } from "./post-composer-config";
 
 export type { AssetRoyaltySplitState } from "./post-composer.types";
-
-const defaultCharityContributionPct = 10;
 
 function buildAvatarFallback(label: string): string {
   const trimmed = label.trim();
@@ -49,7 +48,6 @@ export function RoyaltySplitEditor({
   // Raw per-row percent input while editing, so intermediate values like "9."
   // or "9.7" are preserved instead of being rounded on every keystroke.
   const [percentDrafts, setPercentDrafts] = React.useState<Record<string, string>>({});
-  const hasAppliedDefaultCharity = React.useRef(false);
   const rawCharityPct = charityContribution?.percentagePct ?? 0;
   const charityPct = charityPartner ? Math.min(50, Math.max(0, rawCharityPct)) : 0;
   const singleCreatorOnly = value.allocations.length === 1 && value.allocations[0]?.recipientKind === "creator";
@@ -107,13 +105,6 @@ export function RoyaltySplitEditor({
       percentagePct: charityPct,
     }));
   }, [charityPartner, charityPct, onCharityContributionChange, rawCharityPct]);
-  React.useEffect(() => {
-    if (!charityPartner || rawCharityPct > 0 || hasAppliedDefaultCharity.current) return;
-    hasAppliedDefaultCharity.current = true;
-    updateCharityPct(defaultCharityContributionPct);
-    // updateCharityPct already captures the current solo-wallet state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [charityPartner, rawCharityPct]);
 
   return (
     <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">

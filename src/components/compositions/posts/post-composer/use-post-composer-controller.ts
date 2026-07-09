@@ -31,6 +31,7 @@ import {
   defaultAssetRoyaltySplitState,
   defaultAudienceState,
   defaultCharityContributionState,
+  defaultCharityContributionPct,
   defaultEventState,
   defaultLiveComposerState,
   defaultMonetizationState,
@@ -423,12 +424,29 @@ export function usePostComposerController(props: PostComposerProps) {
   }, [monetization, monetizationState, onMonetizationChange]);
 
   const updateCharityContributionState = React.useCallback((updater: (current: CharityContributionState) => CharityContributionState) => {
-    const next = updater(charityContributionState);
+    const next = {
+      ...updater(charityContributionState),
+      userConfigured: true,
+    };
     if (charityContribution === undefined) {
       setUncontrolledCharityContribution(next);
     }
     onCharityContributionChange?.(next);
   }, [charityContribution, charityContributionState, onCharityContributionChange]);
+
+  React.useEffect(() => {
+    if (!charityPartner || charityContributionState.userConfigured || charityContributionState.percentagePct > 0) {
+      return;
+    }
+    const next = {
+      ...charityContributionState,
+      percentagePct: defaultCharityContributionPct,
+    };
+    if (charityContribution === undefined) {
+      setUncontrolledCharityContribution(next);
+    }
+    onCharityContributionChange?.(next);
+  }, [charityContribution, charityContributionState, charityPartner, onCharityContributionChange]);
 
   const updateAudienceState = React.useCallback((updater: (current: ComposerAudienceState) => ComposerAudienceState) => {
     const next = updater(audienceState);

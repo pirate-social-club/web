@@ -25,6 +25,10 @@ const humanSelf = { kind: "rule", gate: { type: "unique_human", provider: "self"
 const humanVery = { kind: "rule", gate: { type: "unique_human", provider: "very" } } as const;
 const antiBot = { kind: "rule", gate: { type: "altcha_pow" } } as const;
 const score20 = { kind: "rule", gate: { type: "wallet_score", provider: "passport", minimum_score: 20 } } as const;
+const nationality = {
+  kind: "rule",
+  gate: { type: "nationality", provider: "self", accepted_providers: ["self", "zkpassport"], allowed: ["US", "CA"] },
+} as const;
 const bayc = {
   kind: "rule",
   gate: {
@@ -48,6 +52,10 @@ export const HumanWithFallbacks: Story = {
 
 export const NftClub: Story = {
   render: () => <InteractiveStory initialValue={{ kind: "group", op: "and", children: [bayc] }} />,
+};
+
+export const NationalityRule: Story = {
+  render: () => <InteractiveStory initialValue={{ kind: "group", op: "and", children: [nationality] }} />,
 };
 
 export const HumanAndAntiBotOrScore: Story = {

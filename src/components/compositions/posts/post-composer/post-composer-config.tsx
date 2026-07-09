@@ -176,9 +176,12 @@ export function defaultAudienceState(audience?: ComposerAudienceState): Composer
   };
 }
 
+export const defaultCharityContributionPct = 10;
+
 export function defaultCharityContributionState(contribution?: CharityContributionState): CharityContributionState {
   return {
     percentagePct: contribution?.percentagePct ?? 0,
+    userConfigured: contribution?.userConfigured,
   };
 }
 

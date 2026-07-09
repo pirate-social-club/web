@@ -247,6 +247,7 @@ export interface RegionalPricingPreview {
 
 export interface CharityContributionState {
   percentagePct: number;
+  userConfigured?: boolean;
 }
 
 export interface CommunityCharityPartner {

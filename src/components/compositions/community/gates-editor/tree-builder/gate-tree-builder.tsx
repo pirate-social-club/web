@@ -4,6 +4,7 @@ import * as React from "react";
 import type { GateAtom, GateExpression, GatePolicy } from "@pirate/api-contracts";
 import { Plus, Trash, X } from "@phosphor-icons/react";
 
+import { NationalityMultiPicker } from "@/components/compositions/community/create-composer/nationality-picker";
 import {
   captchaAloneAdmits,
   GATE_POLICY_MAX_ATOMS,
@@ -215,6 +216,7 @@ function GateRuleRow({ copy, onChange, onRemove, rule }: {
 }) {
   const kind = getRuleKind(rule.gate);
   const operator = operatorLabel(copy, rule.gate);
+  const hasOperator = operator != null;
 
   if (kind === "unknown") {
     return (
@@ -233,10 +235,15 @@ function GateRuleRow({ copy, onChange, onRemove, rule }: {
   }
 
   return (
-    <div className="grid gap-2 rounded-[var(--radius-md)] border border-border-soft bg-background p-2 md:grid-cols-[minmax(220px,1.2fr)_auto_minmax(180px,1fr)_auto] md:items-center">
+    <div className={cn(
+      "grid gap-2 rounded-[var(--radius-md)] border border-border-soft bg-background p-2 md:items-center",
+      hasOperator
+        ? "md:grid-cols-[minmax(220px,1.2fr)_auto_minmax(180px,1fr)_auto]"
+        : "md:grid-cols-[minmax(220px,1.2fr)_minmax(180px,1fr)_auto]",
+    )}>
       <RuleKindSelect copy={copy} value={kind} onChange={(nextKind) => onChange({ ...rule, gate: defaultGateForKind(nextKind) })} />
       {operator ? <span className="rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">{operator}</span> : null}
-      <RuleValueEditor copy={copy} gate={rule.gate} hasOperator={operator != null} onChange={(gate) => onChange({ ...rule, gate })} />
+      <RuleValueEditor copy={copy} gate={rule.gate} onChange={(gate) => onChange({ ...rule, gate })} />
       <Button aria-label={copy.actions.removeRequirement} size="icon" variant="ghost" onClick={onRemove}>
         <X size={18} />
       </Button>
@@ -244,10 +251,9 @@ function GateRuleRow({ copy, onChange, onRemove, rule }: {
   );
 }
 
-function RuleValueEditor({ copy, gate, hasOperator, onChange }: {
+function RuleValueEditor({ copy, gate, onChange }: {
   copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
   gate: GateAtom;
-  hasOperator: boolean;
   onChange: (gate: GateAtom) => void;
 }) {
   switch (gate.type) {
@@ -293,15 +299,13 @@ function RuleValueEditor({ copy, gate, hasOperator, onChange }: {
       );
     case "nationality":
       return (
-        <Input
-          aria-label={copy.inputs.allowedNationalities}
-          onChange={(event) => onChange({ type: "nationality", provider: "self", allowed: event.currentTarget.value.split(",").map((value) => value.trim()).filter(Boolean), accepted_providers: gate.accepted_providers })}
-          placeholder="US, CA"
-          value={(gate.allowed ?? []).join(", ")}
+        <NationalityMultiPicker
+          onChange={(allowed) => onChange({ type: "nationality", provider: "self", allowed, accepted_providers: gate.accepted_providers })}
+          values={gate.allowed ?? []}
         />
       );
     case "altcha_pow":
-      return <span className={cn("text-base text-muted-foreground", hasOperator ? "px-3" : "md:col-span-2")}>{copy.browserChallengeDescription}</span>;
+      return <span aria-hidden="true" className="hidden md:block" />;
     default:
       return <span className="px-3 text-base text-muted-foreground">{copy.unsupportedAtom}</span>;
   }

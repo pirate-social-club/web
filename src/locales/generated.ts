@@ -183,7 +183,6 @@ export const GENERATED_LOCALE_CATALOGS = {
           "isOneOf": "is one of",
           "matches": "matches"
         },
-        "browserChallengeDescription": "A quick automatic check in the member's browser. It slows down spam — a determined bot can still pass it.",
         "unsupportedAtom": "Unsupported atom",
         "inputs": {
           "groupMatchMode": "Group match mode",
@@ -1991,7 +1990,6 @@ export const GENERATED_LOCALE_CATALOGS = {
           "isOneOf": "is one of",
           "matches": "matches"
         },
-        "browserChallengeDescription": "A quick automatic check in the member's browser. It slows down spam — a determined bot can still pass it.",
         "unsupportedAtom": "Unsupported atom",
         "inputs": {
           "groupMatchMode": "Group match mode",
@@ -3799,7 +3797,6 @@ export const GENERATED_LOCALE_CATALOGS = {
           "isOneOf": "is one of",
           "matches": "matches"
         },
-        "browserChallengeDescription": "A quick automatic check in the member's browser. It slows down spam — a determined bot can still pass it.",
         "unsupportedAtom": "Unsupported atom",
         "inputs": {
           "groupMatchMode": "Group match mode",

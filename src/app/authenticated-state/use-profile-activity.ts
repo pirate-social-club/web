@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
-import type { ProfileActivityResponse } from "@pirate/api-contracts";
+import type { Profile, ProfileActivityResponse } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
+import { useSession } from "@/lib/api/session-store";
 import { logger } from "@/lib/logger";
+import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import type { ProfilePageProps } from "@/components/compositions/profiles/profile-page/profile-page.types";
 import {
   mapProfileActivityProps,
@@ -20,6 +22,7 @@ const EMPTY_ACTIVITY_PROPS: Pick<ProfilePageProps, "comments" | "overviewItems" 
 };
 
 type LoadedActivity = Pick<ProfileActivityResponse, "comments" | "overview_items" | "posts">;
+type AuthorProfilesByUserId = Record<string, Profile | null>;
 
 function emptyLoadedActivity(): LoadedActivity {
   return { comments: [], overview_items: [], posts: [] };
@@ -35,20 +38,52 @@ function mergeActivityResponse(current: LoadedActivity, response: ProfileActivit
   return { ...current, overview_items: response.overview_items };
 }
 
+function addPublicAuthorUserId(userIds: Set<string>, identityMode: string | null | undefined, userId: string | null | undefined) {
+  if (identityMode === "public" && userId) {
+    userIds.add(userId);
+  }
+}
+
+function collectActivityAuthorUserIds(activity: LoadedActivity): string[] {
+  const userIds = new Set<string>();
+
+  for (const item of activity.posts) {
+    addPublicAuthorUserId(userIds, item.post.post.identity_mode, item.post.post.author_user);
+  }
+
+  for (const item of activity.comments) {
+    addPublicAuthorUserId(userIds, item.comment.comment.identity_mode, item.comment.comment.author_user);
+  }
+
+  for (const item of activity.overview_items) {
+    if (item.kind === "post") {
+      addPublicAuthorUserId(userIds, item.post.post.identity_mode, item.post.post.author_user);
+    } else {
+      addPublicAuthorUserId(userIds, item.comment.comment.identity_mode, item.comment.comment.author_user);
+    }
+  }
+
+  return [...userIds];
+}
+
 function useProfileActivity(
   key: string | null,
   activeTab: ProfileActivityTab,
   loadTab: (tab: ProfileActivityTab) => Promise<ProfileActivityResponse>,
 ) {
+  const api = useApi();
+  const session = useSession();
   const [activityProps, setActivityProps] = React.useState(EMPTY_ACTIVITY_PROPS);
   const [error, setError] = React.useState<string | null>(null);
   const loadedTabsRef = React.useRef(new Set<ProfileActivityTab>());
   const activityRef = React.useRef<LoadedActivity>(emptyLoadedActivity());
+  const authorProfilesRef = React.useRef<AuthorProfilesByUserId>({});
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
     loadedTabsRef.current = new Set();
     activityRef.current = emptyLoadedActivity();
+    authorProfilesRef.current = {};
     setActivityProps(EMPTY_ACTIVITY_PROPS);
     setError(null);
   }, [key]);
@@ -70,11 +105,23 @@ function useProfileActivity(
     setError(null);
 
     loadTab(activeTab)
-      .then((response) => {
+      .then(async (response) => {
         if (cancelled) return;
         loadedTabsRef.current.add(activeTab);
         activityRef.current = mergeActivityResponse(activityRef.current, response);
-        setActivityProps(mapProfileActivityProps(activityRef.current));
+        const fallbackProfiles = session?.profile && session.user?.id
+          ? { [session.user.id]: session.profile }
+          : {};
+        authorProfilesRef.current = await loadProfilesByUserId(
+          api,
+          collectActivityAuthorUserIds(activityRef.current),
+          {
+            ...authorProfilesRef.current,
+            ...fallbackProfiles,
+          },
+        );
+        if (cancelled) return;
+        setActivityProps(mapProfileActivityProps(activityRef.current, authorProfilesRef.current));
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -88,7 +135,7 @@ function useProfileActivity(
     return () => {
       cancelled = true;
     };
-  }, [activeTab, key, loadTab]);
+  }, [activeTab, api, key, loadTab, session?.profile, session?.user?.id]);
 
   return { ...activityProps, error, loading };
 }

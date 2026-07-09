@@ -113,6 +113,8 @@ function CommentRow({
       <CommentCard
         authorLabel={comment.authorLabel}
         authorHref={comment.authorHref}
+        authorAvatarSeed={comment.authorAvatarSeed}
+        authorAvatarSrc={comment.authorAvatarSrc}
         metadataLabel={comment.communityLabel}
         scoreLabel={comment.scoreLabel}
         timestampLabel={comment.timestampLabel}

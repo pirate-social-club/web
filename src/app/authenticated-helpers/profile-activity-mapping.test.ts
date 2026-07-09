@@ -3,6 +3,7 @@ import type {
   CommentListItem,
   CommunityPreview,
   LocalizedPostResponse,
+  Profile,
   ProfileActivityResponse,
 } from "@pirate/api-contracts";
 
@@ -21,6 +22,16 @@ const community = {
   },
   route_slug: "test-builders",
 } as CommunityPreview;
+
+const authorProfile = {
+  avatar_ref: "https://example.test/profile-avatar.png",
+  display_name: "Swift Fox",
+  global_handle: { label: "swift-fox-7721.pirate" },
+  id: "prf_swift",
+  object: "profile",
+  primary_public_handle: { label: "swift-fox-7721.pirate" },
+  user: "usr_swift",
+} as Profile;
 
 function makePost(overrides: Partial<LocalizedPostResponse["post"]> = {}): LocalizedPostResponse {
   return {
@@ -124,19 +135,21 @@ describe("mapProfileActivityProps", () => {
       }],
     };
 
-    const props = mapProfileActivityProps(activity);
+    const props = mapProfileActivityProps(activity, { usr_swift: authorProfile });
 
     expect(props.posts).toHaveLength(1);
     expect(props.posts[0]?.post.title).toBe("Profile activity post");
     expect(props.posts[0]?.post.byline?.author?.href).toBe("/u/swift-fox-7721.pirate");
+    expect(props.posts[0]?.post.byline?.author?.avatarSrc).toBe("https://example.test/profile-avatar.png");
     expect(props.comments).toHaveLength(1);
     expect(props.comments[0]?.body).toBe("Profile activity comment");
     expect(props.comments[0]?.authorHref).toBe("/u/swift-fox-7721.pirate");
+    expect(props.comments[0]?.authorAvatarSrc).toBe("https://example.test/profile-avatar.png");
     expect(props.comments[0]?.postHref).toBe("/p/pst_profile");
     expect(props.overviewItems).toHaveLength(1);
   });
 
-  test("does not infer missing author handles from the community owner", () => {
+  test("does not infer missing author handles or avatars from the community owner", () => {
     const post = makePost({ author_public_handle: null });
     const comment = makeComment({ author_public_handle: null });
     const activity: Pick<ProfileActivityResponse, "comments" | "overview_items" | "posts"> = {
@@ -160,8 +173,36 @@ describe("mapProfileActivityProps", () => {
 
     expect(props.posts[0]?.post.byline?.author?.label).toBe("usr_swif");
     expect(props.posts[0]?.post.byline?.author?.href).toBeUndefined();
-    expect(props.posts[0]?.post.byline?.author?.avatarSrc).toBe("https://example.test/avatar.png");
+    expect(props.posts[0]?.post.byline?.author?.avatarSrc).toBeUndefined();
     expect(props.comments[0]?.authorLabel).toBe("usr_swif");
     expect(props.comments[0]?.authorHref).toBeUndefined();
+    expect(props.comments[0]?.authorAvatarSrc).toBeUndefined();
+  });
+
+  test("uses profile avatars without falling back to the community owner avatar", () => {
+    const post = makePost();
+    const comment = makeComment();
+    const activity: Pick<ProfileActivityResponse, "comments" | "overview_items" | "posts"> = {
+      comments: [{
+        comment,
+        community,
+        created: comment.comment.created,
+        kind: "comment",
+        thread_root_post: post,
+      }],
+      overview_items: [],
+      posts: [{
+        community,
+        created: post.post.created,
+        kind: "post",
+        post,
+      }],
+    };
+
+    const props = mapProfileActivityProps(activity, { usr_swift: authorProfile });
+
+    expect(props.posts[0]?.post.byline?.author?.avatarSrc).toBe("https://example.test/profile-avatar.png");
+    expect(props.posts[0]?.post.byline?.author?.avatarSrc).not.toBe("https://example.test/avatar.png");
+    expect(props.comments[0]?.authorAvatarSrc).toBe("https://example.test/profile-avatar.png");
   });
 });

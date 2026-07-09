@@ -416,11 +416,8 @@ function NftHoldingEditor({
     };
   }, [capabilitySource]);
 
-  const selectedSource = sources.find((source) =>
-    source.chainNamespace === getGateChainNamespace(gate)
-    && source.contractAddress.toLowerCase() === getGateContractAddress(gate).toLowerCase()
-  );
   const match = isInventoryMatchGate(gate) ? normalizeStringMatch(gate.match) : {};
+  const selectedSource = sources.find((source) => sourceMatchesGate(source, gate, match));
   const traitKeys = selectedSource?.traitFiltersSupported
     ? Array.from(new Set([
       ...Object.keys(match).filter((key) => !(key in (selectedSource.fixedMatch ?? {}))),
@@ -462,6 +459,17 @@ function NftHoldingEditor({
   const selectSource = (sourceId: string) => {
     const source = sources.find((candidate) => candidate.id === sourceId);
     if (!source) return;
+    if (source.inventoryProvider) {
+      onChange({
+        type: "erc721_inventory_match",
+        provider: source.inventoryProvider,
+        chain_namespace: source.chainNamespace,
+        contract_address: source.contractAddress,
+        min_quantity: 1,
+        match: { ...source.fixedMatch },
+      } as GateAtom);
+      return;
+    }
     onChange({
       type: "erc721_holding",
       chain_namespace: source.chainNamespace,
@@ -496,6 +504,17 @@ function NftHoldingEditor({
     }
     const editableKeys = Object.keys(nextMatch).filter((key) => !(key in (selectedSource.fixedMatch ?? {})));
     if (editableKeys.length === 0) {
+      if (selectedSource.inventoryProvider) {
+        onChange({
+          type: "erc721_inventory_match",
+          provider: selectedSource.inventoryProvider,
+          chain_namespace: selectedSource.chainNamespace,
+          contract_address: selectedSource.contractAddress,
+          min_quantity: isInventoryMatchGate(gate) ? gate.min_quantity ?? 1 : 1,
+          match: { ...selectedSource.fixedMatch },
+        } as GateAtom);
+        return;
+      }
       onChange({
         type: "erc721_holding",
         chain_namespace: selectedSource.chainNamespace,
@@ -585,12 +604,7 @@ function NftHoldingEditor({
             <ComboboxList>
               {(source) => (
                 <ComboboxItem key={source.id} value={source}>
-                  <div className="flex flex-col">
-                    <span className="text-base font-medium">{source.label}</span>
-                    <span className="text-base text-muted-foreground">
-                      {source.traitFiltersSupported ? "Attribute filters available" : "Collection-level gate"}
-                    </span>
-                  </div>
+                  <span className="text-base font-medium">{source.label}</span>
                 </ComboboxItem>
               )}
             </ComboboxList>
@@ -619,7 +633,7 @@ function NftHoldingEditor({
                   <SelectTrigger aria-label="Attribute" className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {selectedSource.facetKeys.filter((key) => key === facetKey || (!(key in match) && !(key in (selectedSource.fixedMatch ?? {})))).map((key) => (
-                      <SelectItem key={key} value={key}>{formatFacetKey(key)}</SelectItem>
+                      <SelectItem key={key} value={key}>{formatSourceFacetKey(selectedSource, key)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -631,6 +645,7 @@ function NftHoldingEditor({
                 <FacetValuePicker
                   capabilitySource={capabilitySource}
                   facetKey={facetKey}
+                  facetLabel={formatSourceFacetKey(selectedSource, facetKey)}
                   maxValues={selectedSource.maxValuesPerFacet}
                   onChange={(value) => updateFacet(facetKey, value)}
                   source={selectedSource}
@@ -673,6 +688,7 @@ function NftHoldingEditor({
 function FacetValuePicker({
   capabilitySource,
   facetKey,
+  facetLabel,
   maxValues,
   onChange,
   source,
@@ -680,6 +696,7 @@ function FacetValuePicker({
 }: {
   capabilitySource: CollectionCapabilitySource;
   facetKey: string;
+  facetLabel: string;
   maxValues: number;
   onChange: (value: string) => void;
   source: AssetSourceDescriptor;
@@ -719,9 +736,9 @@ function FacetValuePicker({
                 <ComboboxChip key={option.value}>{option.value}</ComboboxChip>
               ))}
               <ComboboxChipsInput
-                aria-label={`Search ${formatFacetKey(facetKey)}`}
+                aria-label={`Search ${facetLabel}`}
                 className={selectedOptions.length > 0 ? "min-w-10 flex-none" : undefined}
-                placeholder={selectedOptions.length > 0 ? "" : `Search ${formatFacetKey(facetKey).toLowerCase()}`}
+                placeholder={selectedOptions.length > 0 ? "" : `Search ${facetLabel.toLowerCase()}`}
               />
             </>
           )}
@@ -744,6 +761,26 @@ function FacetValuePicker({
       </ComboboxContent>
     </Combobox>
   );
+}
+
+function sourceMatchesGate(source: AssetSourceDescriptor, gate: GateAtom, match: Record<string, string>) {
+  if (
+    source.chainNamespace !== getGateChainNamespace(gate)
+    || source.contractAddress.toLowerCase() !== getGateContractAddress(gate).toLowerCase()
+  ) {
+    return false;
+  }
+  if (!source.inventoryProvider) {
+    return !isInventoryMatchGate(gate);
+  }
+  if (!isInventoryMatchGate(gate)) {
+    return false;
+  }
+  return Object.entries(source.fixedMatch ?? {}).every(([key, value]) => match[key] === value);
+}
+
+function formatSourceFacetKey(source: AssetSourceDescriptor, key: string) {
+  return source.facetLabels?.[key] ?? formatFacetKey(key);
 }
 
 function OpSelect({ copy, onChange, value }: {

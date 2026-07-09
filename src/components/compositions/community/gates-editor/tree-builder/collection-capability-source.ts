@@ -6,6 +6,7 @@ export type AssetSourceDescriptor = {
   standard: "erc721" | "erc1155";
   traitFiltersSupported: boolean;
   facetKeys: string[];
+  facetLabels?: Record<string, string>;
   maxValuesPerFacet: number;
   provenanceLabel?: string;
   inventoryProvider?: "courtyard";

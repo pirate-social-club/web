@@ -63,6 +63,7 @@ Object.defineProperty(globalThis, "sessionStorage", {
 let fakeApi: {
   rewards: {
     cashOut: ReturnType<typeof mock>;
+    getCashout: ReturnType<typeof mock>;
     getSummary: ReturnType<typeof mock>;
   };
   royalties: {
@@ -150,6 +151,7 @@ mock.module("@/components/compositions/system/modal/modal", () => ({
 const { CurrentUserWalletPage } = await import("./wallet-settings-route");
 
 beforeEach(() => {
+  window.sessionStorage.clear();
   import.meta.env.VITE_REWARDS_ENABLED = "true";
   fakeSession = {
     profile: {
@@ -166,6 +168,17 @@ beforeEach(() => {
   fakeApi = {
     rewards: {
       cashOut: mock(async () => ({
+        payout: {
+          id: "rpe_test",
+          amount_cents: 120,
+          recipient_address: "0x1000000000000000000000000000000000000001",
+          status: "confirmed",
+          settlement_ref: "0xrewardtx",
+          failure_reason: null,
+        },
+        balance_cents: 0,
+      })),
+      getCashout: mock(async () => ({
         payout: {
           id: "rpe_test",
           amount_cents: 120,
@@ -269,6 +282,64 @@ describe("CurrentUserWalletPage rewards", () => {
     await waitFor(() => {
       expect(fakeApi.rewards.getSummary.mock.calls.length).toBeGreaterThanOrEqual(2);
     });
+  });
+
+  test("reuses the same cashout idempotency key after an ambiguous request failure", async () => {
+    fakeApi.rewards.cashOut
+      .mockImplementationOnce(async () => { throw new Error("connection lost"); })
+      .mockImplementationOnce(async () => ({
+        payout: {
+          id: "rpe_retry",
+          amount_cents: 120,
+          recipient_address: "0x1000000000000000000000000000000000000001",
+          status: "confirmed" as const,
+          settlement_ref: "0xrewardtx",
+          failure_reason: null,
+        },
+        balance_cents: 0,
+      }));
+    const view = render(<CurrentUserWalletPage />);
+    await waitFor(() => expect(view.getByText("Claim")).toBeTruthy());
+
+    fireEvent.click(view.getByText("Claim"));
+    fireEvent.click(view.getByText("Continue"));
+    fireEvent.click(view.getByText("Confirm claim"));
+    await waitFor(() => expect(view.getByText("Transfer failed")).toBeTruthy());
+    fireEvent.click(view.getByText("Close"));
+
+    fireEvent.click(view.getByText("Claim"));
+    fireEvent.click(view.getByText("Continue"));
+    fireEvent.click(view.getByText("Confirm claim"));
+    await waitFor(() => expect(fakeApi.rewards.cashOut.mock.calls).toHaveLength(2));
+
+    expect(fakeApi.rewards.cashOut.mock.calls[0]?.[0].idempotency_key)
+      .toBe(fakeApi.rewards.cashOut.mock.calls[1]?.[0].idempotency_key);
+  });
+
+  test("renders the server failure reason instead of treating a failed payout as pending", async () => {
+    fakeApi.rewards.cashOut = mock(async () => ({
+      payout: {
+        id: "rpe_failed",
+        amount_cents: 120,
+        recipient_address: "0x1000000000000000000000000000000000000001",
+        status: "failed" as const,
+        settlement_ref: null,
+        failure_reason: "Transfer replaced before confirmation.",
+      },
+      balance_cents: 120,
+    }));
+    const view = render(<CurrentUserWalletPage />);
+    await waitFor(() => expect(view.getByText("Claim")).toBeTruthy());
+
+    fireEvent.click(view.getByText("Claim"));
+    fireEvent.click(view.getByText("Continue"));
+    fireEvent.click(view.getByText("Confirm claim"));
+
+    await waitFor(() => {
+      expect(view.getByText("Transfer failed")).toBeTruthy();
+      expect(view.getByText("Transfer replaced before confirmation.")).toBeTruthy();
+    });
+    expect(view.queryByText("Pending")).toBeNull();
   });
 
   test("opens the rewards verification provider sheet when claim needs verification", async () => {

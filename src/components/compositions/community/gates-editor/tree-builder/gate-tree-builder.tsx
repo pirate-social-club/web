@@ -284,9 +284,9 @@ function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
   if (kind === "erc721_holding") {
     return (
       <div className="rounded-[var(--radius-md)] border border-border-soft bg-background p-2">
-        <div className="grid gap-2 md:grid-cols-[minmax(220px,1.2fr)_auto_minmax(260px,2fr)_auto] md:items-center">
+        <div className="grid gap-2 md:grid-cols-[minmax(220px,0.8fr)_max-content_minmax(420px,1.8fr)_auto] md:items-start">
           <RuleKindSelect copy={copy} value={kind} onChange={(nextKind) => onChange({ ...rule, gate: defaultGateForKind(nextKind) })} />
-          <span className="rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">{operator}</span>
+          <span className="whitespace-nowrap rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">{operator}</span>
           <NftHoldingEditor
             capabilitySource={capabilitySource}
             copy={copy}
@@ -536,7 +536,11 @@ function NftHoldingEditor({
                   {selectedSources.map((source: AssetSourceDescriptor) => (
                     <ComboboxChip key={source.id}>{source.label}</ComboboxChip>
                   ))}
-                  <ComboboxChipsInput aria-label="Search collections or paste address" placeholder="Search collections or paste address" />
+                  <ComboboxChipsInput
+                    aria-label="Search collections or paste address"
+                    className={selectedSources.length > 0 ? "min-w-10 flex-none" : undefined}
+                    placeholder={selectedSources.length > 0 ? "" : "Search collections or paste address"}
+                  />
                 </>
               )}
             </ComboboxValue>
@@ -568,30 +572,36 @@ function NftHoldingEditor({
       </div>
 
       {selectedSource?.traitFiltersSupported ? (
-        <div className="ms-0 flex flex-col gap-2 rounded-[var(--radius-md)] border border-border-soft bg-muted/20 p-2 md:ms-4">
+        <div className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-border-soft bg-muted/20 p-2">
           {traitKeys.map((facetKey) => (
-            <div className="grid gap-2 md:grid-cols-[minmax(160px,0.8fr)_auto_minmax(220px,1.4fr)_auto] md:items-center" key={facetKey}>
-              <Select value={facetKey} onValueChange={(nextKey) => {
-                const existingValue = match[facetKey] ?? "";
-                removeFacet(facetKey);
-                updateFacet(nextKey, existingValue);
-              }}>
-                <SelectTrigger aria-label="Attribute"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {selectedSource.facetKeys.filter((key) => key === facetKey || (!(key in match) && !(key in (selectedSource.fixedMatch ?? {})))).map((key) => (
-                    <SelectItem key={key} value={key}>{formatFacetKey(key)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <span className="rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">is one of</span>
-              <FacetValuePicker
-                capabilitySource={capabilitySource}
-                facetKey={facetKey}
-                maxValues={selectedSource.maxValuesPerFacet}
-                onChange={(value) => updateFacet(facetKey, value)}
-                source={selectedSource}
-                value={match[facetKey] ? [{ value: match[facetKey]! }] : []}
-              />
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center" key={facetKey}>
+              <div className="lg:w-40 lg:shrink-0">
+                <Select value={facetKey} onValueChange={(nextKey) => {
+                  const existingValue = match[facetKey] ?? "";
+                  removeFacet(facetKey);
+                  updateFacet(nextKey, existingValue);
+                }}>
+                  <SelectTrigger aria-label="Attribute" className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {selectedSource.facetKeys.filter((key) => key === facetKey || (!(key in match) && !(key in (selectedSource.fixedMatch ?? {})))).map((key) => (
+                      <SelectItem key={key} value={key}>{formatFacetKey(key)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <span className="inline-flex h-11 items-center self-start whitespace-nowrap rounded-full border border-border-soft px-3 text-base text-muted-foreground lg:shrink-0">
+                is one of
+              </span>
+              <div className="min-w-0 flex-1">
+                <FacetValuePicker
+                  capabilitySource={capabilitySource}
+                  facetKey={facetKey}
+                  maxValues={selectedSource.maxValuesPerFacet}
+                  onChange={(value) => updateFacet(facetKey, value)}
+                  source={selectedSource}
+                  value={match[facetKey] ? [{ value: match[facetKey]! }] : []}
+                />
+              </div>
               <Button aria-label="Remove attribute filter" size="icon" variant="ghost" onClick={() => removeFacet(facetKey)}>
                 <X size={18} />
               </Button>

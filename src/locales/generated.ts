@@ -180,9 +180,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "provenBy": "proven by",
           "atLeast": "at least",
           "holdsOneFrom": "holds ≥ 1 from",
+          "is": "is",
           "isOneOf": "is one of",
           "matches": "matches"
         },
+        "nftQuantityLocked": "This NFT check only supports a quantity of 1 today.",
+        "singleFacetValueHint": "One value per attribute for now. To allow another value, add another NFT rule inside an OR group.",
         "unsupportedAtom": "Unsupported atom",
         "inputs": {
           "groupMatchMode": "Group match mode",
@@ -190,6 +193,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "humanVerificationProvider": "Human verification provider",
           "minimumPassportScore": "Minimum Passport score",
           "nftContractAddress": "NFT contract address",
+          "minimumNftQuantity": "Minimum NFT quantity",
           "minimumAge": "Minimum age",
           "allowedNationalities": "Allowed nationalities"
         }
@@ -1987,9 +1991,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "provenBy": "proven by",
           "atLeast": "at least",
           "holdsOneFrom": "holds ≥ 1 from",
+          "is": "is",
           "isOneOf": "is one of",
           "matches": "matches"
         },
+        "nftQuantityLocked": "This NFT check only supports a quantity of 1 today.",
+        "singleFacetValueHint": "One value per attribute for now. To allow another value, add another NFT rule inside an OR group.",
         "unsupportedAtom": "Unsupported atom",
         "inputs": {
           "groupMatchMode": "Group match mode",
@@ -1997,6 +2004,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "humanVerificationProvider": "Human verification provider",
           "minimumPassportScore": "Minimum Passport score",
           "nftContractAddress": "NFT contract address",
+          "minimumNftQuantity": "Minimum NFT quantity",
           "minimumAge": "Minimum age",
           "allowedNationalities": "Allowed nationalities"
         }
@@ -3794,9 +3802,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "provenBy": "proven by",
           "atLeast": "at least",
           "holdsOneFrom": "holds ≥ 1 from",
+          "is": "is",
           "isOneOf": "is one of",
           "matches": "matches"
         },
+        "nftQuantityLocked": "This NFT check only supports a quantity of 1 today.",
+        "singleFacetValueHint": "One value per attribute for now. To allow another value, add another NFT rule inside an OR group.",
         "unsupportedAtom": "Unsupported atom",
         "inputs": {
           "groupMatchMode": "Group match mode",
@@ -3804,6 +3815,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "humanVerificationProvider": "Human verification provider",
           "minimumPassportScore": "Minimum Passport score",
           "nftContractAddress": "NFT contract address",
+          "minimumNftQuantity": "Minimum NFT quantity",
           "minimumAge": "Minimum age",
           "allowedNationalities": "Allowed nationalities"
         }

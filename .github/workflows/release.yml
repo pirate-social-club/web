@@ -10,8 +10,66 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  release-inputs:
+    name: Verify release inputs
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      api_sha: ${{ steps.api_ref.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: web
+      - name: Read pinned API commit
+        id: api_ref
+        working-directory: web
+        shell: bash
+        run: |
+          api_sha="$(< .github/release-refs/api.sha)"
+          if [[ ! "$api_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::.github/release-refs/api.sha must contain one full lowercase commit SHA"
+            exit 1
+          fi
+          echo "sha=$api_sha" >> "$GITHUB_OUTPUT"
+      - name: Require successful API CI for pinned commit
+        uses: actions/github-script@v8
+        env:
+          API_SHA: ${{ steps.api_ref.outputs.sha }}
+        with:
+          github-token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          script: |
+            const apiSha = process.env.API_SHA;
+            const { data } = await github.rest.actions.listWorkflowRuns({
+              owner: "pirate-social-club",
+              repo: "api",
+              workflow_id: "api-ci.yml",
+              head_sha: apiSha,
+              status: "completed",
+              per_page: 100,
+            });
+            const successfulRun = data.workflow_runs.find((run) =>
+              run.head_sha === apiSha &&
+              run.head_branch === "main" &&
+              run.event === "push" &&
+              run.conclusion === "success"
+            );
+            if (!successfulRun) {
+              core.setFailed(
+                `Pinned API commit ${apiSha} has no successful completed api-ci main push run.`
+              );
+              return;
+            }
+            core.notice(`Pinned API commit passed api-ci: ${successfulRun.html_url}`);
+            await core.summary
+              .addHeading("Pinned API release")
+              .addLink(apiSha, successfulRun.html_url)
+              .write();
+
   staging:
     name: Deploy staging
+    needs: release-inputs
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
@@ -23,6 +81,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: pirate-social-club/api
+          ref: ${{ needs.release-inputs.outputs.api_sha }}
           path: api
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/checkout@v4
@@ -63,6 +122,7 @@ jobs:
       - name: Deploy staging
         working-directory: web
         env:
+          API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           VITE_BASE_NETWORK: base-sepolia
@@ -264,7 +324,7 @@ jobs:
 
   production:
     name: Deploy production
-    needs: staging
+    needs: [release-inputs, staging]
     # Only deploy production on a push to main. This keeps workflow_dispatch on
     # any branch (e.g. release/* validation) staging-only, so a manual dispatch
     # can never push an unmerged branch to production.
@@ -280,6 +340,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: pirate-social-club/api
+          ref: ${{ needs.release-inputs.outputs.api_sha }}
           path: api
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/checkout@v4
@@ -354,6 +415,7 @@ jobs:
       - name: Deploy production
         working-directory: web
         env:
+          API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           VITE_BASE_NETWORK: ${{ vars.VITE_BASE_NETWORK }}

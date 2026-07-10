@@ -13,8 +13,10 @@ async function installRewardFixture(page: Page, overrides: Partial<RewardMockSta
 }
 
 async function openAndConfirmCashout(page: Page): Promise<void> {
-  await expect(page.getByRole("button", { name: "Claim" })).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: "Claim" }).click();
+  const claim = page.getByRole("button", { name: "Claim" }).filter({ visible: true });
+  await expect(claim).toBeVisible({ timeout: 30_000 });
+  await expect(claim).toBeEnabled();
+  await claim.click();
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Confirm claim" }).click();
 }
@@ -24,8 +26,8 @@ test.describe("reward cashouts (mocked API)", () => {
     const state = await installRewardFixture(page);
     await page.goto("/wallet");
 
-    await expect(page.getByText("Rewards")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText("$1.20").first()).toBeVisible();
+    await expect(page.getByText("Rewards").filter({ visible: true })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("$1.20").filter({ visible: true }).first()).toBeVisible();
     await openAndConfirmCashout(page);
 
     await expect(page.getByText("Claim complete")).toBeVisible();

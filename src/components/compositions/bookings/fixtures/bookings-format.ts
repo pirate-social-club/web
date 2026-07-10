@@ -10,6 +10,10 @@ export function formatCentsAsUsd(cents: Cents): string {
   }).format(dollars);
 }
 
+export function formatCentsAsUsdc(cents: Cents): string {
+  return `${(cents / 100).toFixed(2)} USDC`;
+}
+
 export function formatSlotTime(startUtc: IsoInstant, viewerTz: IanaTz): string {
   return new Intl.DateTimeFormat("en", {
     timeZone: viewerTz,

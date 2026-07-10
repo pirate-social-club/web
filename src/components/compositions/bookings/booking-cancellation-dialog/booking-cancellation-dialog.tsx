@@ -17,7 +17,7 @@ import { Separator } from "@/components/primitives/separator";
 import { Type } from "@/components/primitives/type";
 import type { BookingCancellationPreview } from "@/lib/api/bookings-types";
 
-import { formatCentsAsUsd } from "../fixtures/bookings-format";
+import { formatCentsAsUsdc } from "../fixtures/bookings-format";
 
 export type BookingCancellationDialogState = "ready" | "submitting" | "terms-changed" | "error";
 
@@ -54,7 +54,7 @@ export function BookingCancellationDialog({
   const refundMessage = preview.cancelled_by === "host"
     ? `${counterpartyName} receives a full refund.`
     : preview.refund_cents > 0
-      ? `You receive ${formatCentsAsUsd(preview.refund_cents)} back.`
+      ? `You receive ${formatCentsAsUsdc(preview.refund_cents)} back.`
       : "This cancellation is not refundable.";
 
   return (
@@ -67,7 +67,7 @@ export function BookingCancellationDialog({
 
         <div className="flex flex-col gap-4">
           {state === "terms-changed" ? (
-            <div className="rounded-[var(--radius-lg)] border border-warning/40 bg-warning/10 p-4">
+            <div className="flex flex-col gap-1 rounded-[var(--radius-lg)] border border-warning/40 bg-warning/10 p-4">
               <Type className="text-warning" variant="body-strong">Refund terms changed</Type>
               <Type className="text-warning" variant="caption">Review the updated amount before cancelling.</Type>
             </div>
@@ -76,13 +76,13 @@ export function BookingCancellationDialog({
           <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft p-4">
             <div className="flex items-center justify-between gap-4">
               <Type variant="body">Session total</Type>
-              <Type variant="body-strong">{formatCentsAsUsd(preview.gross_cents)}</Type>
+              <Type variant="body-strong">{formatCentsAsUsdc(preview.gross_cents)}</Type>
             </div>
             <Separator />
             <div className="flex items-center justify-between gap-4">
               <Type variant="body-strong">Refund</Type>
               <Type className={preview.refund_cents === 0 ? "text-warning" : "text-success"} variant="body-strong">
-                {formatCentsAsUsd(preview.refund_cents)}
+                {formatCentsAsUsdc(preview.refund_cents)}
               </Type>
             </div>
             <Type variant="caption">{refundMessage}</Type>
@@ -92,7 +92,7 @@ export function BookingCancellationDialog({
             <label className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-lg)] border border-warning/40 bg-warning/10 p-4">
               <Checkbox
                 checked={acknowledged}
-                className="mt-0.5"
+                className="mt-0.5 data-[state=checked]:border-warning data-[state=checked]:bg-warning data-[state=checked]:text-warning-foreground"
                 onCheckedChange={(checked) => setAcknowledged(checked === true)}
               />
               <Type className="text-warning" variant="body-strong">

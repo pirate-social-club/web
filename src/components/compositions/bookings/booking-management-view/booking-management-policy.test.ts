@@ -63,4 +63,12 @@ describe("booking management policy", () => {
     expect(grouped.past.map((item) => item.booking_id)).toEqual(["no-show"]);
     expect(grouped.cancelled.map((item) => item.booking_id)).toEqual(["cancelled"]);
   });
+
+  test("does not present expired or pre-payment cancellations as upcoming", () => {
+    const expired = booking({ booking_id: "expired", status: "expired_hold" });
+    const cancelledBeforePayment = booking({ booking_id: "before-payment", status: "cancelled_before_payment" });
+    const grouped = groupBookingsForManagement([expired, cancelledBeforePayment]);
+    expect(grouped.upcoming).toEqual([]);
+    expect(grouped.cancelled.map((item) => item.booking_id)).toEqual(["expired", "before-payment"]);
+  });
 });

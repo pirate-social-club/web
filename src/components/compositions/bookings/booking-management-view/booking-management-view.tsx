@@ -75,14 +75,19 @@ function BookingManagementCard({
   return (
     <Card>
       <CardContent className="flex flex-col gap-4 p-5">
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           <Avatar fallback={item.counterpartyName} src={item.counterpartyAvatarUrl ?? undefined} />
-          <div className="min-w-0 flex-1">
-            <Type variant="body-strong">{item.counterpartyName}</Type>
-            <Type variant="body">{item.timeLabel}</Type>
-            <Type variant="caption">{item.durationLabel} · {item.timezoneLabel}</Type>
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <div className="flex items-start justify-between gap-3">
+              <Type className="min-w-0" variant="body-strong">{item.counterpartyName}</Type>
+              <Type className="shrink-0" variant="body-strong">{item.amountLabel}</Type>
+            </div>
+            <Type as="p" variant="body">{item.timeLabel}</Type>
+            <Type as="p" variant="caption">
+              {item.durationLabel}
+              {item.timezoneLabel ? <span className="whitespace-nowrap"> · {item.timezoneLabel}</span> : null}
+            </Type>
           </div>
-          <Type variant="body-strong">{item.amountLabel}</Type>
         </div>
 
         <div className="flex flex-col gap-1 border-t border-border-soft pt-4">
@@ -111,7 +116,7 @@ function BookingManagementCard({
               </IconButton>
             ) : null}
             {item.canCancel ? (
-              <Button className="text-destructive" onClick={() => onCancel?.(item)} variant="ghost">Cancel</Button>
+              <Button onClick={() => onCancel?.(item)} variant="outline">Cancel booking</Button>
             ) : null}
           </div>
         ) : null}
@@ -173,7 +178,7 @@ export function BookingManagementView({
       {state === "signed-out" ? (
         <Card>
           <CardContent className="flex flex-col items-start gap-4 p-6">
-            <div>
+            <div className="flex flex-col gap-1">
               <Type variant="body-strong">Sign in to view your bookings</Type>
               <Type variant="caption">Your upcoming and past sessions appear here.</Type>
             </div>
@@ -185,7 +190,7 @@ export function BookingManagementView({
       {state === "error" ? (
         <Card>
           <CardContent className="flex flex-col items-start gap-4 p-6">
-            <div>
+            <div className="flex flex-col gap-1">
               <Type className="text-destructive" variant="body-strong">Bookings could not be loaded</Type>
               <Type variant="caption">{errorMessage ?? "Try again in a moment."}</Type>
             </div>
@@ -196,7 +201,7 @@ export function BookingManagementView({
 
       {state === "empty" ? (
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="flex flex-col gap-1 p-6">
             <Type variant="body-strong">No bookings yet</Type>
             <Type variant="caption">
               {role === "booker" ? "Booked sessions will appear here." : "Sessions booked with you will appear here."}

@@ -21,6 +21,7 @@ export function nextBookingJoinBoundary(bookings: BookingView[], nowMs: number):
 
 export function bookingManagementSection(booking: BookingView): BookingManagementSection {
   if (booking.settlement_status === "disputed" || booking.status === "disputed") return "review";
+  if (booking.status === "expired_hold" || booking.status === "cancelled_before_payment") return "cancelled";
   if (booking.outcome === "cancelled_by_host" || booking.outcome === "cancelled_by_booker") return "cancelled";
   if (booking.outcome || booking.settlement_status === "settled" || booking.settlement_status === "refunded") return "past";
   return "upcoming";

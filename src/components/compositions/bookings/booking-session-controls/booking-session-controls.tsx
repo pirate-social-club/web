@@ -26,7 +26,7 @@ function AttendanceNotice({ health }: { health: AttendanceReportingHealth }) {
   if (health === "healthy") return null;
   return (
     <div className={cn(
-      "rounded-[var(--radius-lg)] border p-4",
+      "flex flex-col gap-1 rounded-[var(--radius-lg)] border p-4",
       health === "degraded"
         ? "border-destructive/40 bg-destructive/10"
         : "border-warning/40 bg-warning/10",
@@ -59,7 +59,7 @@ export function BookingSessionControls({
 
       {state === "in-session" ? (
         <div className="flex items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
-          <div className="min-w-0">
+          <div className="flex min-w-0 flex-col gap-1">
             <Type variant="body-strong">Session with {counterpartyName}</Type>
             <Type variant="caption">Payment actions unlock after the scheduled session ends.</Type>
           </div>
@@ -71,7 +71,7 @@ export function BookingSessionControls({
 
       {state === "ready-to-settle" ? (
         <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
-          <div>
+          <div className="flex flex-col gap-1">
             <Type variant="body-strong">Scheduled session ended</Type>
             <Type variant="caption">Attendance records determine the payout or refund.</Type>
           </div>
@@ -89,7 +89,7 @@ export function BookingSessionControls({
       {state === "settling" ? (
         <div className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
           <Spinner className="size-5" />
-          <div>
+          <div className="flex flex-col gap-1">
             <Type variant="body-strong">Checking attendance</Type>
             <Type variant="caption">Keep this page open while the outcome is confirmed.</Type>
           </div>
@@ -97,7 +97,7 @@ export function BookingSessionControls({
       ) : null}
 
       {state === "settled" ? (
-        <div className="rounded-[var(--radius-lg)] border border-success/40 bg-success/10 p-4">
+        <div className="flex flex-col gap-1 rounded-[var(--radius-lg)] border border-success/40 bg-success/10 p-4">
           <Type className="text-success" variant="body-strong">Session outcome confirmed</Type>
           <Type className="text-success" variant="caption">The final payment status is available in your bookings.</Type>
         </div>

@@ -7,6 +7,7 @@ import { Button } from "@/components/primitives/button";
 import {
   CashoutSheet,
   SongRewardBadge,
+  SongRewardOffer,
   StreakRewardEarned,
   VerifyHumanSheet,
   WalletRewardsCard,
@@ -99,6 +100,45 @@ export const SongRewardBadgeDefault: Story = {
       <div>
         <SongRewardBadge amountLabel={rewardAmounts.daily} />
       </div>
+    </SurfaceFrame>
+  ),
+};
+
+export const SongRewardOfferEither: Story = {
+  name: "SongRewardOffer / Study or karaoke",
+  render: () => (
+    <SurfaceFrame>
+      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" />
+    </SurfaceFrame>
+  ),
+};
+
+export const SongRewardOfferStudy: Story = {
+  name: "SongRewardOffer / Study only",
+  render: () => (
+    <SurfaceFrame>
+      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="study" />
+    </SurfaceFrame>
+  ),
+};
+
+export const SongRewardOfferKaraoke: Story = {
+  name: "SongRewardOffer / Karaoke only",
+  render: () => (
+    <SurfaceFrame>
+      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="karaoke" />
+    </SurfaceFrame>
+  ),
+};
+
+export const SongRewardOfferMobile: Story = {
+  name: "SongRewardOffer / Mobile",
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <SurfaceFrame>
+      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" />
     </SurfaceFrame>
   ),
 };

@@ -11,6 +11,7 @@ import { fiveChainSections, sharedWalletAddress } from "@/components/composition
 
 import {
   CashoutSheet,
+  SongRewardOffer,
   StreakRewardEarned,
   VerifyHumanSheet,
   type CashoutSheetState,
@@ -136,6 +137,7 @@ export const StudyCompletionRewardPending: Story = {
           onKaraoke={() => undefined}
           onPrimaryAction={() => undefined}
           onStudyAgain={() => undefined}
+          rewardSlot={<SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" />}
           state={{
             correctCount: 3,
             kind: "complete",

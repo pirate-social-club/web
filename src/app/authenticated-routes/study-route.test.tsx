@@ -6,7 +6,7 @@ import type { LocalizedPostResponse } from "@pirate/api-contracts";
 import { installDomGlobals } from "@/test/setup-dom";
 import { ApiClient, ApiError } from "@/lib/api/client";
 import type {
-  ApiRewardCampaign,
+  ApiPublicRewardOffer,
   SongStudyAttemptRequest,
   SongStudyAttemptResult,
   SongStudyPayload,
@@ -81,7 +81,7 @@ let publicPostResult: LocalizedPostResponse = songPost({ title: "Public Study So
 let publicPostError: unknown = null;
 let studyResult: SongStudyPayload = readyStudyPayload();
 let studyError: unknown = null;
-let rewardCampaignResult: ApiRewardCampaign | null = null;
+let rewardCampaignResult: ApiPublicRewardOffer | null = null;
 let privyConnectCalls = 0;
 let submitPostStudyAttemptError: unknown = null;
 let submitPostStudyAttemptResult: SongStudyAttemptResult = {
@@ -253,19 +253,8 @@ describe("StudyRoutePage", () => {
 
   test("shows an exact uniform reward offer for the active song campaign", async () => {
     rewardCampaignResult = {
-      id: "rcp_study",
-      object: "reward_campaign",
-      community: "cmt_study",
-      post: "pst_song",
-      status: "active",
       eligible_activity: "either",
       daily_reward_cents: 40,
-      budget_cents: 10_000,
-      funded_cents: 10_000,
-      reserved_cents: 0,
-      credited_cents: 0,
-      remaining_cents: 10_000,
-      starts_at: 1_783_468_800,
       ends_at: 1_786_060_799,
     };
 

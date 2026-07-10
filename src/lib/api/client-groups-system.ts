@@ -15,7 +15,7 @@ import type {
 
 import type { NotificationFeedOptions } from "./client-api-types";
 import type {
-  ApiRewardCampaign,
+  ApiPublicRewardOffer,
   ApiRewardCashoutRequest,
   ApiRewardCashoutResponse,
   ApiRewardsSummaryResponse,
@@ -82,8 +82,8 @@ export function createRoyaltiesApi(request: ApiRequest) {
 
 export function createRewardsApi(request: ApiRequest) {
   return {
-    getActiveCampaignForSong: (communityId: string, postId: string): Promise<ApiRewardCampaign> =>
-      request<ApiRewardCampaign>(
+    getActiveCampaignForSong: (communityId: string, postId: string): Promise<ApiPublicRewardOffer> =>
+      request<ApiPublicRewardOffer>(
         buildQueryPath("/public/reward_campaigns", {
           community_id: communityId,
           post_id: postId,

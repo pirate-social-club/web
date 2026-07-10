@@ -49,20 +49,9 @@ export type ApiWalletIdentityResponse = WalletIdentityResponse;
 
 export type ApiRewardVerificationState = "unverified" | "verified" | "conflict";
 
-export type ApiRewardCampaign = {
-  id: string;
-  object: "reward_campaign";
-  community: string;
-  post: string;
-  status: "active";
+export type ApiPublicRewardOffer = {
   eligible_activity: "study" | "karaoke" | "either";
   daily_reward_cents: number;
-  budget_cents: number;
-  funded_cents: number;
-  reserved_cents: number;
-  credited_cents: number;
-  remaining_cents: number;
-  starts_at: number;
   ends_at: number;
 };
 

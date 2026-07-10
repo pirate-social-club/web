@@ -21,7 +21,7 @@ import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { toStreakSummary } from "@/app/authenticated-helpers/post-media-presentation";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import type {
-  ApiRewardCampaign,
+  ApiPublicRewardOffer,
   SongStudyAttemptResult,
   SongStudyExercise,
   SongStudyPayload,
@@ -39,14 +39,14 @@ type StudyRouteState =
       lastAttemptResult?: SongStudyAttemptResult;
       phase: "ready";
       post: LocalizedPostResponse;
-      rewardCampaign: ApiRewardCampaign | null;
+      rewardOffer: ApiPublicRewardOffer | null;
       study: SongStudyPayload;
       surface: SongStudySurfaceState;
     }
   | {
       phase: "locked";
       post: LocalizedPostResponse;
-      rewardCampaign: ApiRewardCampaign | null;
+      rewardOffer: ApiPublicRewardOffer | null;
       study: SongStudyPayload;
       surface: SongStudySurfaceState;
     }
@@ -396,7 +396,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           return;
         }
 
-        const [study, rewardCampaign] = await Promise.all([
+        const [study, rewardOffer] = await Promise.all([
           api.communities.getPostStudy(post.post.community, post.post.id, {
             targetLanguage: contentLocale,
           }),
@@ -408,7 +408,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           setState({
             phase: "locked",
             post,
-            rewardCampaign,
+            rewardOffer,
             study,
             surface: lockedSurface(study),
           });
@@ -449,7 +449,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           exerciseIndex: 0,
           phase: "ready",
           post,
-          rewardCampaign,
+          rewardOffer,
           study,
           surface: exerciseSurface(study.exercises[0]!),
         });
@@ -859,10 +859,10 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       onExit={() => navigate(`/p/${encodeURIComponent(postId)}`)}
       onOptionSelect={handleOptionSelect}
       onPrimaryAction={handlePrimaryAction}
-      rewardSlot={state.rewardCampaign && state.rewardCampaign.eligible_activity !== "karaoke" ? (
+      rewardSlot={state.rewardOffer && state.rewardOffer.eligible_activity !== "karaoke" ? (
         <SongRewardOffer
-          amountLabel={rewardAmountLabel(state.rewardCampaign.daily_reward_cents)}
-          eligibleActivity={state.rewardCampaign.eligible_activity}
+          amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents)}
+          eligibleActivity={state.rewardOffer.eligible_activity}
         />
       ) : undefined}
       state={state.surface}

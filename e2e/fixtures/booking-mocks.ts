@@ -231,7 +231,10 @@ export async function installPaidBookingApiMocks(page: Page, state: PaidBookingM
     }));
   });
 
-  await page.route(/\/bookings(\?.*)?$/u, (route) => route.fulfill(json({
-    object: "list", data: state.managementBookingCancelled ? [] : [managementBooking(state)], has_more: false,
-  })));
+  await page.route(/\/bookings(\?.*)?$/u, (route) => {
+    if (route.request().resourceType() === "document") return route.fallback();
+    return route.fulfill(json({
+      object: "list", data: state.managementBookingCancelled ? [] : [managementBooking(state)], has_more: false,
+    }));
+  });
 }

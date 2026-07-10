@@ -286,6 +286,21 @@ describe("deriveSongUI", () => {
     expect(markup).toContain('href="/p/post_123/karaoke"');
   });
 
+  test("renders the Study href when no action callback is provided", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          study: { status: "ready" },
+          studyHref: "/p/post_123/study",
+        },
+      }),
+    );
+
+    expect(markup).toContain('href="/p/post_123/study"');
+    expect(markup).toContain("Study");
+  });
+
   test("reserves the study action slot while study capability is unknown", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {

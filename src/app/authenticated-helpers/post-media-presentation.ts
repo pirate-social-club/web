@@ -674,6 +674,9 @@ export function toSongPostContent(
       : undefined,
     onKaraoke: karaokeCapability?.canKaraoke ? songOptions?.onKaraoke : undefined,
     study,
+    studyHref: study?.status === "ready"
+      ? `/p/${encodeURIComponent(post.id)}/study`
+      : undefined,
     onStudy: study?.status === "ready" ? songOptions?.onStudy : undefined,
     // Opens the full streak leaderboard from the inline streak section. The
     // section renders only when the API payload includes a streak summary.

@@ -34,7 +34,16 @@ describe("booking host settings validation", () => {
   test("formats and parses datetime-local values", () => {
     expect(epochSecondsToLocalInput(Date.UTC(2026, 0, 2, 3, 4) / 1000)).toMatch(/2026-01-0?2T/);
     expect(localInputToIsoUtc("2026-01-02T03:04")).toContain("2026-01-02T");
-    expect(localInputToIsoUtc("not-a-date")).toBe("not-a-date");
+    expect(localInputToIsoUtc("not-a-date")).toBeNull();
+  });
+
+  test("interprets exceptions in the configured host timezone, not the device timezone", () => {
+    expect(localInputToIsoUtc("2026-01-02T03:04", "America/New_York")).toBe("2026-01-02T08:04:00.000Z");
+    expect(localInputToIsoUtc("2026-01-02T03:04", "Asia/Tbilisi")).toBe("2026-01-01T23:04:00.000Z");
+  });
+
+  test("rejects nonexistent local wall times during a DST jump", () => {
+    expect(localInputToIsoUtc("2026-03-08T02:30", "America/New_York")).toBeNull();
   });
 
   test("builds default one-hour exception windows", () => {

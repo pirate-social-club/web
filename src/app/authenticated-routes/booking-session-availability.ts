@@ -2,19 +2,18 @@ import * as React from "react";
 
 import type { BookingView } from "@/lib/api/bookings-types";
 
-export const NO_SHOW_GRACE_MS = 10 * 60_000;
-
 export interface SessionControlAvailability {
   canComplete: boolean;
   canReportNoShow: boolean;
 }
 
-// Pure boundary logic mirroring the server windows: complete is valid from the scheduled start; a
-// no-show only after the grace period past it.
+// Party-triggered settlement is attendance-derived and the server accepts it only after the entire
+// scheduled window closes. Both legacy controls therefore share the slot-end boundary.
 export function sessionControlAvailability(booking: BookingView | null, nowMs: number): SessionControlAvailability {
   if (!booking) return { canComplete: false, canReportNoShow: false };
-  const start = new Date(booking.slot_start_utc).getTime();
-  return { canComplete: nowMs >= start, canReportNoShow: nowMs >= start + NO_SHOW_GRACE_MS };
+  const end = new Date(booking.slot_end_utc).getTime();
+  const available = nowMs >= end;
+  return { canComplete: available, canReportNoShow: available };
 }
 
 /**
@@ -27,9 +26,8 @@ export function useSessionControlAvailability(booking: BookingView | null): Sess
   const [nowMs, setNowMs] = React.useState(() => Date.now());
   React.useEffect(() => {
     if (!booking) return;
-    const start = new Date(booking.slot_start_utc).getTime();
-    const next = [start, start + NO_SHOW_GRACE_MS].filter((b) => b > nowMs).sort((a, b) => a - b)[0];
-    if (next === undefined) return; // both boundaries already passed — no further re-render needed
+    const next = new Date(booking.slot_end_utc).getTime();
+    if (next <= nowMs) return;
     const id = setTimeout(() => setNowMs(Date.now()), Math.max(0, next - Date.now()) + 200);
     return () => clearTimeout(id);
   }, [booking, nowMs]);

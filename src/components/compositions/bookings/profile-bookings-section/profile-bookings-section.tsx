@@ -31,10 +31,18 @@ function formatUsd(cents: number): string {
   return (Math.max(0, Math.round(cents)) / 100).toFixed(2);
 }
 
-function formatLocalStamp(epochSeconds: number): string {
-  const d = new Date(epochSeconds * 1000);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+function formatLocalStamp(epochSeconds: number, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(epochSeconds * 1000));
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day} ${value.hour}:${value.minute}`;
 }
 
 export interface ProfileBookingsValues {
@@ -344,7 +352,7 @@ export function ProfileBookingsSection({
             <div className="space-y-2">
               {exceptions.map((exception) => (
                 <ListRow key={exception.id} removeLabel={removeLabel} onRemove={onDeleteException ? () => onDeleteException(exception.id) : undefined}>
-                  {exception.kind === "block" ? copy.exceptionBlock : copy.exceptionOpen} · {formatLocalStamp(exception.start)}–{formatLocalStamp(exception.end)}
+                  {exception.kind === "block" ? copy.exceptionBlock : copy.exceptionOpen} · {formatLocalStamp(exception.start, values.timezone)}–{formatLocalStamp(exception.end, values.timezone)}
                 </ListRow>
               ))}
             </div>

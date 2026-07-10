@@ -269,12 +269,18 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
       toast.error("Exception end time must be after start time");
       return;
     }
+    const startUtc = localInputToIsoUtc(draft.startLocal, values.timezone);
+    const endUtc = localInputToIsoUtc(draft.endLocal, values.timezone);
+    if (!startUtc || !endUtc || Date.parse(startUtc) >= Date.parse(endUtc)) {
+      toast.error("Choose valid times in your teaching timezone (daylight-saving gaps are unavailable)");
+      return;
+    }
     setMutating(true);
     try {
       await api.hostBookings.createAvailabilityException({
         kind: draft.kind,
-        start_utc: localInputToIsoUtc(draft.startLocal),
-        end_utc: localInputToIsoUtc(draft.endLocal),
+        start_utc: startUtc,
+        end_utc: endUtc,
       });
       await reloadAvailability();
       toast.success("Exception added");
@@ -283,7 +289,7 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
     } finally {
       setMutating(false);
     }
-  }, [api, reloadAvailability]);
+  }, [api, reloadAvailability, values.timezone]);
 
   const onDeleteException = React.useCallback(async (exceptionId: string) => {
     try {

@@ -4,12 +4,22 @@ import * as React from "react";
 
 import { navigate } from "@/app/router";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
+import { AuthRequiredRouteState } from "@/app/authenticated-helpers/route-shell";
 import { Button } from "@/components/primitives/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/primitives/dialog";
 import { Type } from "@/components/primitives/type";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
-import type { BookingView, BookingStatus } from "@/lib/api/bookings-types";
+import { useSession } from "@/lib/api/session-store";
+import type { BookingCancellationPreview, BookingView, BookingStatus } from "@/lib/api/bookings-types";
 
 // --- helpers ---
 
@@ -42,34 +52,49 @@ function isUpcoming(b: BookingView): boolean {
 function isCancellable(b: BookingView): boolean {
   return b.status === "confirmed";
 }
-function isJoinable(b: BookingView): boolean {
-  if (b.status !== "confirmed") return false;
-  const now = Date.now();
+export function isJoinable(b: BookingView, now: number): boolean {
+  if (b.status !== "confirmed" && b.status !== "live") return false;
   const start = new Date(b.slot_start_utc).getTime();
   const end = new Date(b.slot_end_utc).getTime();
   return now >= start - 5 * 60_000 && now < end;
 }
-function groupBookings(bookings: BookingView[]): {
+export function groupBookings(bookings: BookingView[]): {
   upcoming: BookingView[];
   past: BookingView[];
   cancelled: BookingView[];
+  review: BookingView[];
 } {
   const upcoming: BookingView[] = [];
   const past: BookingView[] = [];
   const cancelled: BookingView[] = [];
+  const review: BookingView[] = [];
   for (const b of bookings) {
-    if (["cancelled_by_host", "cancelled_by_booker", "cancelled_before_payment", "expired_hold", "refunded", "no_show_host", "no_show_booker", "disputed"].includes(b.status)) {
+    if (b.status === "disputed" || b.settlement_status === "disputed") {
+      review.push(b);
+    } else if (b.outcome === "cancelled_by_host" || b.outcome === "cancelled_by_booker" || ["cancelled_by_host", "cancelled_by_booker", "cancelled_before_payment", "expired_hold"].includes(b.status)) {
       cancelled.push(b);
-    } else if (["completed", "settled"].includes(b.status)) {
+    } else if (b.outcome != null || ["completed", "settled", "refunded", "no_show_host", "no_show_booker"].includes(b.status)) {
       past.push(b);
     } else {
       upcoming.push(b);
     }
   }
-  return { upcoming, past, cancelled };
+  return { upcoming, past, cancelled, review };
 }
 
-function statusLabel(status: BookingStatus): string {
+function statusLabel(booking: BookingView): string {
+  const outcomeLabels = {
+    completed: "Completed",
+    no_show_host: "Host no-show",
+    no_show_booker: "Booker no-show",
+    cancelled_by_host: "Cancelled by host",
+    cancelled_by_booker: "Cancelled by booker",
+  } as const;
+  if (booking.outcome) {
+    const label = outcomeLabels[booking.outcome];
+    return booking.settlement_status === "settling" ? `${label} · settling` : label;
+  }
+  const status = booking.status;
   const labels: Partial<Record<BookingStatus, string>> = {
     confirmed: "Confirmed",
     live: "In progress",
@@ -82,6 +107,21 @@ function statusLabel(status: BookingStatus): string {
     cancelled_by_booker: "Cancelled",
   };
   return labels[status] ?? status;
+}
+
+function useBookingJoinClock(bookings: BookingView[]): number {
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const boundaries = bookings.flatMap((booking) => {
+      if (booking.status !== "confirmed" && booking.status !== "live") return [];
+      return [new Date(booking.slot_start_utc).getTime() - 5 * 60_000, new Date(booking.slot_end_utc).getTime()];
+    }).filter((boundary) => boundary > now);
+    if (boundaries.length === 0) return;
+    const next = Math.min(...boundaries);
+    const timer = setTimeout(() => setNow(Date.now()), Math.max(0, next - Date.now()) + 100);
+    return () => clearTimeout(timer);
+  }, [bookings, now]);
+  return now;
 }
 
 // Generates a .ics file and triggers a download.
@@ -119,13 +159,17 @@ function BookingCard({
   tz,
   onCancel,
   cancelling,
+  previewing,
+  now,
 }: {
   booking: BookingView;
   tz: string;
-  onCancel: (bookingId: string) => void;
+  onCancel: (booking: BookingView) => void;
   cancelling: boolean;
+  previewing: boolean;
+  now: number;
 }): React.ReactElement {
-  const joinable = isJoinable(booking);
+  const joinable = isJoinable(booking, now);
   const cancellable = isCancellable(booking);
   const showCalendar = ["confirmed", "live", "completed", "settled"].includes(booking.status);
 
@@ -139,7 +183,7 @@ function BookingCard({
           </Type>
         </div>
         <Type variant="caption" className="text-muted-foreground shrink-0">
-          {statusLabel(booking.status)}
+          {statusLabel(booking)}
         </Type>
       </div>
 
@@ -179,9 +223,10 @@ function BookingCard({
             variant="ghost"
             className="text-destructive"
             loading={cancelling}
-            onClick={() => onCancel(booking.booking_id)}
+            disabled={previewing}
+            onClick={() => onCancel(booking)}
           >
-            Cancel
+            {previewing ? "Checking terms…" : "Cancel"}
           </Button>
         )}
       </div>
@@ -198,12 +243,28 @@ export function BookingManagementPage({
   sourceCommunityId?: string | null;
   role: "host" | "booker";
 }): React.ReactElement {
+  const session = useSession();
+  if (!session?.accessToken) {
+    return <AuthRequiredRouteState title="My bookings" description="Sign in to view and manage your bookings." />;
+  }
+  return <BookingManagementContent sourceCommunityId={sourceCommunityId} role={role} />;
+}
+
+function BookingManagementContent({
+  sourceCommunityId,
+  role,
+}: {
+  sourceCommunityId?: string | null;
+  role: "host" | "booker";
+}): React.ReactElement {
   const api = useApi();
   const tz = React.useMemo(viewerTz, []);
   const [bookings, setBookings] = React.useState<BookingView[] | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [cancellingId, setCancellingId] = React.useState<string | null>(null);
+  const [previewingId, setPreviewingId] = React.useState<string | null>(null);
+  const [cancellation, setCancellation] = React.useState<{ booking: BookingView; preview: BookingCancellationPreview } | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -220,23 +281,46 @@ export function BookingManagementPage({
 
   React.useEffect(() => { void load(); }, [load]);
 
-  const handleCancel = React.useCallback(async (bookingId: string) => {
-    setCancellingId(bookingId);
+  const requestCancellation = React.useCallback(async (booking: BookingView) => {
+    setPreviewingId(booking.booking_id);
     try {
-      await api.bookings.cancelBooking(bookingId);
+      const preview = await api.bookings.getBookingCancellationPreview(booking.booking_id);
+      setCancellation({ booking, preview });
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not check cancellation terms.");
+    } finally {
+      setPreviewingId(null);
+    }
+  }, [api]);
+
+  const handleCancel = React.useCallback(async () => {
+    if (!cancellation) return;
+    setCancellingId(cancellation.booking.booking_id);
+    try {
+      await api.bookings.cancelBooking(cancellation.booking.booking_id, cancellation.preview.refund_cents);
       toast.success("Booking cancelled.");
+      setCancellation(null);
       await load();
     } catch (e) {
+      if (e instanceof ApiError && e.code === "cancellation_terms_changed") {
+        try {
+          const preview = await api.bookings.getBookingCancellationPreview(cancellation.booking.booking_id);
+          setCancellation({ booking: cancellation.booking, preview });
+          toast.error("Cancellation terms changed. Review the updated amounts.");
+          return;
+        } catch { /* surface the original error below */ }
+      }
       toast.error(e instanceof ApiError ? e.message : "Could not cancel booking.");
     } finally {
       setCancellingId(null);
     }
-  }, [api, load]);
+  }, [api, cancellation, load]);
 
-  const { upcoming, past, cancelled } = React.useMemo(
+  const { upcoming, past, cancelled, review } = React.useMemo(
     () => groupBookings(bookings ?? []),
     [bookings],
   );
+  const joinNow = useBookingJoinClock(bookings ?? []);
 
   return (
     <StandardRoutePage size="rail">
@@ -282,8 +366,10 @@ export function BookingManagementPage({
                     key={b.booking_id}
                     booking={b}
                     tz={tz}
-                    onCancel={(id) => void handleCancel(id)}
+                    onCancel={(booking) => void requestCancellation(booking)}
                     cancelling={cancellingId === b.booking_id}
+                    previewing={previewingId === b.booking_id}
+                    now={joinNow}
                   />
                 ))}
               </div>
@@ -297,8 +383,10 @@ export function BookingManagementPage({
                     key={b.booking_id}
                     booking={b}
                     tz={tz}
-                    onCancel={(id) => void handleCancel(id)}
+                    onCancel={(booking) => void requestCancellation(booking)}
                     cancelling={cancellingId === b.booking_id}
+                    previewing={previewingId === b.booking_id}
+                    now={joinNow}
                   />
                 ))}
               </div>
@@ -312,14 +400,33 @@ export function BookingManagementPage({
                     key={b.booking_id}
                     booking={b}
                     tz={tz}
-                    onCancel={(id) => void handleCancel(id)}
+                    onCancel={(booking) => void requestCancellation(booking)}
                     cancelling={cancellingId === b.booking_id}
+                    previewing={previewingId === b.booking_id}
+                    now={joinNow}
                   />
                 ))}
               </div>
             )}
 
-            {upcoming.length === 0 && past.length === 0 && cancelled.length === 0 && (
+            {review.length > 0 && (
+              <div className="space-y-3">
+                <Type variant="label">Under review</Type>
+                {review.map((b) => (
+                  <BookingCard
+                    key={b.booking_id}
+                    booking={b}
+                    tz={tz}
+                    onCancel={(booking) => void requestCancellation(booking)}
+                    cancelling={cancellingId === b.booking_id}
+                    previewing={previewingId === b.booking_id}
+                    now={joinNow}
+                  />
+                ))}
+              </div>
+            )}
+
+            {upcoming.length === 0 && past.length === 0 && cancelled.length === 0 && review.length === 0 && (
               <Type variant="body" className="text-muted-foreground">
                 No bookings yet.
               </Type>
@@ -327,6 +434,32 @@ export function BookingManagementPage({
           </>
         )}
       </div>
+      <Dialog open={cancellation != null} onOpenChange={(open) => { if (!open && !cancellingId) setCancellation(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel this booking?</DialogTitle>
+            <DialogDescription>
+              Review the financial result before confirming. Cancellation cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {cancellation ? (
+            <div className="space-y-3">
+              <div className="flex justify-between gap-4"><Type variant="body">Paid</Type><Type variant="body-strong">{formatPrice(cancellation.preview.gross_cents)}</Type></div>
+              <div className="flex justify-between gap-4"><Type variant="body">Booker refund</Type><Type variant="body-strong">{formatPrice(cancellation.preview.refund_cents)}</Type></div>
+              <div className="flex justify-between gap-4"><Type variant="body">Host receives</Type><Type variant="body-strong">{formatPrice(cancellation.preview.host_payout_cents)}</Type></div>
+              {cancellation.preview.policy_cutoff_at ? (
+                <Type variant="caption" className="text-muted-foreground">
+                  Full refunds apply until {formatDateTime(cancellation.preview.policy_cutoff_at, tz)}.
+                </Type>
+              ) : null}
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" disabled={Boolean(cancellingId)} onClick={() => setCancellation(null)}>Keep booking</Button>
+            <Button variant="destructive" loading={Boolean(cancellingId)} onClick={() => void handleCancel()}>Confirm cancellation</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </StandardRoutePage>
   );
 }

@@ -934,7 +934,7 @@
       "exceptionOpen": "开放",
       "addException": "添加",
       "cancellationTitle": "取消政策",
-      "cancellationCopy": "预约者在预约后 24 小时内取消可获得全额退款；之后取消不予退款。如果你（主持人）取消或未出席，预约者将获得全额退款。",
+      "cancellationCopy": "预约者在课程开始至少 24 小时前取消可获得全额退款。课程开始前 24 小时内取消不予退款。如果你（主持人）取消或未出席，预约者将获得全额退款。",
       "publishTitleLive": "你的预约已上线",
       "publishTitleIdle": "发布你的预约",
       "publishBlockedNote": "设置你的应用钱包以接收款项。",

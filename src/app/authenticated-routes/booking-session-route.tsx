@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { navigate } from "@/app/router";
+import { AuthRequiredRouteState } from "@/app/authenticated-helpers/route-shell";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
@@ -11,6 +12,7 @@ import { BookingVideoStage } from "@/components/compositions/bookings/booking-vi
 import { useSessionControlAvailability } from "./booking-session-availability";
 import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
+import { useSession } from "@/lib/api/session-store";
 import type { AttachSessionResponse, BookingView } from "@/lib/api/bookings-types";
 
 // This route gates session access to the scheduled join window, attaches the viewer
@@ -44,6 +46,20 @@ export function BookingSessionPage({
   bookingId: string;
   VideoStage?: typeof BookingVideoStage;
 }): React.ReactElement {
+  const viewer = useSession();
+  if (!viewer?.accessToken) {
+    return <AuthRequiredRouteState title="Session" description="Sign in to join this booking session." />;
+  }
+  return <BookingSessionContent bookingId={bookingId} VideoStage={VideoStage} />;
+}
+
+function BookingSessionContent({
+  bookingId,
+  VideoStage,
+}: {
+  bookingId: string;
+  VideoStage: typeof BookingVideoStage;
+}): React.ReactElement {
   const api = useApi();
   const [phase, setPhase] = React.useState<SessionPhase>({ kind: "loading" });
   const [acting, setActing] = React.useState(false);
@@ -59,14 +75,6 @@ export function BookingSessionPage({
       toast.success("Session completed — the host payout will settle.");
       toBookings();
     } catch (e) { toast.error(e instanceof ApiError ? e.message : "Could not complete the session."); setActing(false); }
-  }, [api, bookingId, toBookings]);
-  const reportNoShow = React.useCallback(async () => {
-    setActing(true);
-    try {
-      await api.bookings.noShowBooking(bookingId);
-      toast.success("No-show reported.");
-      toBookings();
-    } catch (e) { toast.error(e instanceof ApiError ? e.message : "Could not report a no-show."); setActing(false); }
   }, [api, bookingId, toBookings]);
 
   React.useEffect(() => {
@@ -188,28 +196,19 @@ export function BookingSessionPage({
               </div>
             )}
 
-            {/* End-of-session settlement controls — gated by role, live status, AND the same schedule
-                timing the server enforces (complete from start; no-show after the grace period). */}
+            {/* Attendance determines the outcome; neither party chooses completed vs no-show. The
+                server accepts resolution only after the full scheduled window has closed. */}
             {phase.booking.status === "live" && (() => {
-              const showComplete = phase.booking.viewer_role === "host" && controlAvail.canComplete;
-              const showNoShow = controlAvail.canReportNoShow;
-              if (!showComplete && !showNoShow) {
+              if (!controlAvail.canComplete) {
                 return (
                   <Type variant="caption" className="text-muted-foreground">
-                    Session controls become available at the scheduled start time.
+                    Attendance and settlement can be resolved after the scheduled end time.
                   </Type>
                 );
               }
               return (
                 <div className="flex flex-wrap gap-2">
-                  {showComplete && (
-                    <Button onClick={() => void completeSession()} loading={acting}>End &amp; complete session</Button>
-                  )}
-                  {showNoShow && (
-                    <Button variant="outline" disabled={acting} onClick={() => void reportNoShow()}>
-                      {phase.booking.viewer_role === "host" ? "Report booker no-show" : "Report host no-show"}
-                    </Button>
-                  )}
+                  <Button onClick={() => void completeSession()} loading={acting}>Resolve session outcome</Button>
                 </div>
               );
             })()}

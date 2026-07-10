@@ -22,6 +22,27 @@ mock.module("@/lib/api", () => ({
   useApi: () => fakeApi,
 }));
 
+mock.module("@/lib/api/session-store", () => ({
+  __resetSessionStoreForTests: () => undefined,
+  clearSession: () => undefined,
+  getAccessToken: () => "test-token",
+  getSessionAccessTokenExpiryMs: () => null,
+  getStoredSession: () => ({ accessToken: "test-token" }),
+  isSessionAccessTokenExpired: () => false,
+  isSessionAccessTokenExpiringSoon: () => false,
+  isSessionClearInProgress: () => false,
+  revalidateSession: async () => null,
+  setSession: (session: unknown) => session,
+  setSessionClearCallback: () => undefined,
+  subscribeToSession: () => () => undefined,
+  updateSessionIdentityWallet: () => undefined,
+  updateSessionOnboarding: () => undefined,
+  updateSessionProfile: () => undefined,
+  updateSessionUser: () => undefined,
+  useSession: () => ({ accessToken: "test-token" }),
+  useSessionClearInProgress: () => false,
+}));
+
 mock.module("@/app/router", () => ({
   navigate: (path: string) => {
     navigations.push(path);

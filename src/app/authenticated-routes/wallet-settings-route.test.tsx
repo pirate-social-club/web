@@ -151,7 +151,7 @@ mock.module("@/components/compositions/system/modal/modal", () => ({
 const { CurrentUserWalletPage } = await import("./wallet-settings-route");
 
 beforeEach(() => {
-  window.sessionStorage.clear();
+  window.localStorage.clear();
   import.meta.env.VITE_REWARDS_ENABLED = "true";
   fakeSession = {
     profile: {
@@ -171,7 +171,7 @@ beforeEach(() => {
         payout: {
           id: "rpe_test",
           amount_cents: 120,
-          recipient_address: "0x1000000000000000000000000000000000000001",
+          recipient_address: "0x9000000000000000000000000000000000000009",
           status: "confirmed",
           settlement_ref: "0xrewardtx",
           failure_reason: null,
@@ -198,6 +198,7 @@ beforeEach(() => {
           min_cents: 100,
           verification_state: "verified",
         },
+        latest_in_flight_cashout: null,
       })),
     },
     royalties: {
@@ -231,6 +232,35 @@ describe("CurrentUserWalletPage rewards", () => {
       expect(view.getByText("Rewards")).toBeTruthy();
       expect(view.getAllByText("$1.20").length).toBeGreaterThan(0);
     });
+  });
+
+  test("recovers a submitted cashout from the rewards summary after a lost POST response", async () => {
+    fakeApi.rewards.getSummary.mockImplementationOnce(async () => ({
+      balance_cents: 20,
+      today_earned_cents: 30,
+      recent_events: [],
+      cashout: {
+        eligible: false,
+        min_cents: 100,
+        verification_state: "verified" as const,
+      },
+      latest_in_flight_cashout: {
+        id: "rpe_recovered",
+        amount_cents: 100,
+        recipient_address: "0x8000000000000000000000000000000000000008",
+        status: "submitted" as const,
+        settlement_ref: "0xrecovering",
+        failure_reason: null,
+      },
+    }));
+
+    render(<CurrentUserWalletPage />);
+
+    await waitFor(() => {
+      expect(fakeApi.rewards.getCashout).toHaveBeenCalledWith("rpe_recovered");
+      expect(fakeApi.rewards.getSummary.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+    expect(window.localStorage.getItem("pirate_rewards_cashout_attempt")).toBeNull();
   });
 
   test("reward claim posts the available balance and refreshes rewards", async () => {
@@ -278,6 +308,7 @@ describe("CurrentUserWalletPage rewards", () => {
     });
     await waitFor(() => {
       expect(view.getByText("Claim complete")).toBeTruthy();
+      expect(view.getByText("$1.20 USDC was sent to 0x9000...0009.")).toBeTruthy();
     });
     await waitFor(() => {
       expect(fakeApi.rewards.getSummary.mock.calls.length).toBeGreaterThanOrEqual(2);
@@ -352,6 +383,7 @@ describe("CurrentUserWalletPage rewards", () => {
         min_cents: 100,
         verification_state: "unverified",
       },
+      latest_in_flight_cashout: null,
     }));
     const view = render(<CurrentUserWalletPage />);
 

@@ -75,6 +75,7 @@ const EMPTY_REWARDS_SUMMARY: ApiRewardsSummaryResponse = {
     min_cents: 100,
     verification_state: "unverified",
   },
+  latest_in_flight_cashout: null,
 };
 
 const REWARDS_ZKPASSPORT_REQUIREMENTS = [
@@ -92,7 +93,7 @@ type RewardsCashoutAttempt = {
 function loadRewardsCashoutAttempt(): RewardsCashoutAttempt | null {
   if (typeof window === "undefined") return null;
   try {
-    const parsed = JSON.parse(window.sessionStorage.getItem(REWARDS_CASHOUT_ATTEMPT_KEY) ?? "null") as Partial<RewardsCashoutAttempt> | null;
+    const parsed = JSON.parse(window.localStorage.getItem(REWARDS_CASHOUT_ATTEMPT_KEY) ?? "null") as Partial<RewardsCashoutAttempt> | null;
     if (!parsed || !Number.isSafeInteger(parsed.amountCents) || Number(parsed.amountCents) <= 0 || typeof parsed.idempotencyKey !== "string") return null;
     return {
       amountCents: Number(parsed.amountCents),
@@ -106,8 +107,8 @@ function loadRewardsCashoutAttempt(): RewardsCashoutAttempt | null {
 
 function storeRewardsCashoutAttempt(attempt: RewardsCashoutAttempt | null): void {
   if (typeof window === "undefined") return;
-  if (attempt) window.sessionStorage.setItem(REWARDS_CASHOUT_ATTEMPT_KEY, JSON.stringify(attempt));
-  else window.sessionStorage.removeItem(REWARDS_CASHOUT_ATTEMPT_KEY);
+  if (attempt) window.localStorage.setItem(REWARDS_CASHOUT_ATTEMPT_KEY, JSON.stringify(attempt));
+  else window.localStorage.removeItem(REWARDS_CASHOUT_ATTEMPT_KEY);
 }
 
 type WalletBalanceChain = {
@@ -433,8 +434,10 @@ export function CurrentUserWalletPage() {
   const [rewardsCashoutState, setRewardsCashoutState] = React.useState<CashoutSheetState>("amount-entry");
   const [rewardsCashoutAmountLabel, setRewardsCashoutAmountLabel] = React.useState("$0.00");
   const [rewardsCashoutTxHash, setRewardsCashoutTxHash] = React.useState<string | null>(null);
+  const [rewardsCashoutRecipientAddress, setRewardsCashoutRecipientAddress] = React.useState<string | null>(null);
   const [rewardsCashoutErrorMessage, setRewardsCashoutErrorMessage] = React.useState<string | null>(null);
   const [rewardsCashoutAttempt, setRewardsCashoutAttempt] = React.useState<RewardsCashoutAttempt | null>(loadRewardsCashoutAttempt);
+  const [rewardsCashoutPollGeneration, setRewardsCashoutPollGeneration] = React.useState(0);
   const [rewardsVerifyOpen, setRewardsVerifyOpen] = React.useState(false);
   const [rewardsVerifyState, setRewardsVerifyState] = React.useState<VerifyHumanSheetState>("provider-selection");
   const [zkPassportModalOpen, setZkPassportModalOpen] = React.useState(false);
@@ -630,7 +633,23 @@ export function CurrentUserWalletPage() {
     try {
       setRewardsLoading(true);
       setRewardsError(false);
-      setRewardsSummary(await api.rewards.getSummary());
+      const summary = await api.rewards.getSummary();
+      setRewardsSummary(summary);
+      if (summary.latest_in_flight_cashout) {
+        const payout = summary.latest_in_flight_cashout;
+        setRewardsCashoutRecipientAddress(payout.recipient_address);
+        setRewardsCashoutAttempt((current) => {
+          if (current?.cashoutId === payout.id) return current;
+          const recovered = {
+            amountCents: payout.amount_cents,
+            cashoutId: payout.id,
+            idempotencyKey: `recovered:${payout.id}`,
+          };
+          storeRewardsCashoutAttempt(recovered);
+          return recovered;
+        });
+        setRewardsCashoutState("pending");
+      }
     } catch (error) {
       logger.debug("[wallet] failed to load rewards", error);
       setRewardsError(true);
@@ -729,14 +748,16 @@ export function CurrentUserWalletPage() {
     if (!rewardsSummary.cashout.eligible || rewardsSummary.balance_cents <= 0) return;
     setRewardsCashoutAmountLabel(formatUsdCents(rewardsSummary.balance_cents));
     setRewardsCashoutTxHash(null);
+    setRewardsCashoutRecipientAddress(walletAddress);
     setRewardsCashoutErrorMessage(null);
     setRewardsCashoutState("amount-entry");
     setRewardsCashoutOpen(true);
-  }, [rewardsSummary.balance_cents, rewardsSummary.cashout.eligible]);
+  }, [rewardsSummary.balance_cents, rewardsSummary.cashout.eligible, walletAddress]);
 
   const applyCashoutResult = React.useCallback((result: ApiRewardCashoutResponse) => {
     setRewardsCashoutAmountLabel(formatUsdCents(result.payout.amount_cents));
     setRewardsCashoutTxHash(result.payout.settlement_ref);
+    setRewardsCashoutRecipientAddress(result.payout.recipient_address);
     if (result.payout.status === "failed") {
       setRewardsCashoutState("failure");
       setRewardsCashoutErrorMessage(result.payout.failure_reason || "The reward transfer failed. Your reward balance is available to try again.");
@@ -758,6 +779,7 @@ export function CurrentUserWalletPage() {
       return attempt;
     });
     setRewardsCashoutState("pending");
+    setRewardsCashoutErrorMessage(null);
   }, []);
 
   const handleRewardsCashout = React.useCallback(async () => {
@@ -839,29 +861,36 @@ export function CurrentUserWalletPage() {
     const cashoutId = rewardsCashoutAttempt?.cashoutId;
     if (!cashoutId || rewardsCashoutState !== "pending") return;
     let cancelled = false;
-    let polling = false;
+    let timeout: number | undefined;
+    const delays = [0, 2_000, 4_000, 8_000, 15_000, 30_000, 60_000] as const;
+    let attempt = 0;
     const poll = async () => {
-      if (polling) return;
-      polling = true;
       try {
         const result = await api.rewards.getCashout(cashoutId);
         if (!cancelled) {
           applyCashoutResult(result);
           if (result.payout.status !== "submitted") await refreshRewardsSummary();
+          else if (attempt < delays.length) {
+            timeout = window.setTimeout(() => { void poll(); }, delays[attempt++]);
+          } else {
+            setRewardsCashoutErrorMessage("This transfer is still processing. Check its status again when you are ready.");
+          }
         }
       } catch (error) {
         logger.debug("[wallet] failed to refresh reward cashout", error);
-      } finally {
-        polling = false;
+        if (!cancelled && attempt < delays.length) {
+          timeout = window.setTimeout(() => { void poll(); }, delays[attempt++]);
+        } else if (!cancelled) {
+          setRewardsCashoutErrorMessage("Status refresh paused after repeated failures. Check again when you are ready.");
+        }
       }
     };
-    void poll();
-    const interval = window.setInterval(() => { void poll(); }, 2_000);
+    timeout = window.setTimeout(() => { void poll(); }, delays[attempt++]);
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      if (timeout !== undefined) window.clearTimeout(timeout);
     };
-  }, [api, applyCashoutResult, refreshRewardsSummary, rewardsCashoutAttempt?.cashoutId, rewardsCashoutState]);
+  }, [api, applyCashoutResult, refreshRewardsSummary, rewardsCashoutAttempt?.cashoutId, rewardsCashoutPollGeneration, rewardsCashoutState]);
 
   React.useEffect(() => {
     if (!session) {
@@ -979,8 +1008,12 @@ export function CurrentUserWalletPage() {
               setRewardsCashoutState("amount-entry");
             }
           }}
+          onRefresh={() => {
+            setRewardsCashoutErrorMessage(null);
+            setRewardsCashoutPollGeneration((generation) => generation + 1);
+          }}
           open={rewardsCashoutOpen}
-          recipientLabel={shortAddress(walletAddress)}
+          recipientLabel={shortAddress(rewardsCashoutRecipientAddress ?? walletAddress)}
           state={rewardsCashoutState}
           txHashLabel={rewardsCashoutTxHash ?? undefined}
         />

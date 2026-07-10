@@ -104,6 +104,7 @@ export interface CashoutSheetProps {
   onAmountChange?: (value: string) => void;
   onConfirm?: () => void;
   onOpenChange?: (open: boolean) => void;
+  onRefresh?: () => void;
   open: boolean;
   recipientLabel: string;
   state: CashoutSheetState;
@@ -441,6 +442,7 @@ export function CashoutSheet({
   onAmountChange,
   onConfirm,
   onOpenChange,
+  onRefresh,
   open,
   recipientLabel,
   state,
@@ -555,8 +557,8 @@ export function CashoutSheet({
             </Button>
           ) : null}
           {state === "pending" ? (
-            <Button className="h-12 w-full" disabled>
-              Pending
+            <Button className="h-12 w-full" onClick={onRefresh} variant="outline">
+              Check status
             </Button>
           ) : null}
           {state === "success" || state === "failure" ? (

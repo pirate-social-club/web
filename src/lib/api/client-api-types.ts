@@ -74,6 +74,7 @@ export type ApiRewardsSummaryResponse = {
     min_cents: number;
     verification_state: ApiRewardVerificationState;
   };
+  latest_in_flight_cashout: ApiRewardCashoutResponse["payout"] | null;
 };
 
 export type ApiRewardCashoutRequest = {

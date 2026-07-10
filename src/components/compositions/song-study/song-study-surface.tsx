@@ -100,6 +100,7 @@ export interface SongStudySurfaceProps {
   onOptionSelect?: (optionId: string) => void;
   onPrimaryAction?: () => void;
   onStudyAgain?: () => void;
+  rewardSlot?: React.ReactNode;
   state: SongStudySurfaceState;
   title: string;
 }
@@ -581,6 +582,7 @@ export function SongStudySurface({
   onOptionSelect,
   onPrimaryAction,
   onStudyAgain,
+  rewardSlot,
   state,
   title,
 }: SongStudySurfaceProps) {
@@ -605,6 +607,11 @@ export function SongStudySurface({
   return (
     <section className={cn("flex h-dvh w-full flex-col overflow-y-auto bg-background text-foreground", className)}>
       <Header artistName={artistName} onExit={onExit} title={title} />
+      {rewardSlot ? (
+        <div className="mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6">
+          {rewardSlot}
+        </div>
+      ) : null}
       <Body onOptionSelect={onOptionSelect} state={state} />
       <ActivityFooter
         primaryDisabled={primaryActionDisabled(state)}

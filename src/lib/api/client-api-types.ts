@@ -49,6 +49,23 @@ export type ApiWalletIdentityResponse = WalletIdentityResponse;
 
 export type ApiRewardVerificationState = "unverified" | "verified" | "conflict";
 
+export type ApiRewardCampaign = {
+  id: string;
+  object: "reward_campaign";
+  community: string;
+  post: string;
+  status: "active";
+  eligible_activity: "study" | "karaoke" | "either";
+  daily_reward_cents: number;
+  budget_cents: number;
+  funded_cents: number;
+  reserved_cents: number;
+  credited_cents: number;
+  remaining_cents: number;
+  starts_at: number;
+  ends_at: number;
+};
+
 export type ApiRewardEventKind =
   | "study_streak_day"
   | "study_streak_milestone_7"

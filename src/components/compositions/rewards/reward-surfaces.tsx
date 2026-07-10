@@ -64,6 +64,12 @@ export interface SongRewardBadgeProps {
   className?: string;
 }
 
+export interface SongRewardOfferProps {
+  amountLabel: string;
+  className?: string;
+  eligibleActivity: "study" | "karaoke" | "either";
+}
+
 export interface StreakRewardEarnedProps {
   activityKind?: "karaoke" | "study";
   amountLabel: string;
@@ -138,6 +144,39 @@ export function SongRewardBadge({ amountLabel, className }: SongRewardBadgeProps
     >
       Earn {amountLabel}/day
     </InlinePill>
+  );
+}
+
+export function SongRewardOffer({
+  amountLabel,
+  className,
+  eligibleActivity,
+}: SongRewardOfferProps) {
+  const qualificationLabel = {
+    study: "Complete today's study set",
+    karaoke: "Complete a karaoke pass",
+    either: "Complete a study set or karaoke pass",
+  }[eligibleActivity];
+
+  return (
+    <Card className={cn("border-primary/30 bg-primary-subtle p-4 shadow-none", className)}>
+      <div className="flex items-center gap-3">
+        <div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+          <Gift aria-hidden="true" className="size-5" weight="fill" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <Type as="div" className="text-muted-foreground" variant="overline">
+            Practice reward
+          </Type>
+          <Type as="div" variant="h3">
+            Earn {amountLabel}
+          </Type>
+          <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
+            {qualificationLabel} · once per UTC day
+          </Type>
+        </div>
+      </div>
+    </Card>
   );
 }
 

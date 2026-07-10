@@ -13,7 +13,7 @@ async function installRewardFixture(page: Page, overrides: Partial<RewardMockSta
 }
 
 async function openAndConfirmCashout(page: Page): Promise<void> {
-  const claim = page.getByRole("button", { name: "Claim" }).filter({ visible: true });
+  const claim = page.getByRole("button", { name: "Claim" }).filter({ visible: true }).last();
   await expect(claim).toBeVisible({ timeout: 30_000 });
   await expect(claim).toBeEnabled();
   await claim.click();

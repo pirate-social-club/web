@@ -165,7 +165,19 @@ export interface ConfirmHoldRequest {
 
 export type BookingStatus =
   | "confirmed" | "live" | "completed" | "settled" | "refunded"
-  | "no_show_host" | "no_show_booker" | "cancelled_by_host" | "cancelled_by_booker";
+  | "no_show_host" | "no_show_booker" | "cancelled_by_host" | "cancelled_by_booker"
+  | "cancelled_before_payment" | "expired_hold" | "disputed";
+
+export type BookingOutcome =
+  | "completed" | "no_show_host" | "no_show_booker"
+  | "cancelled_by_host" | "cancelled_by_booker";
+export type BookingSettlementStatus = "pending" | "live" | "settling" | "settled" | "refunded" | "disputed";
+
+export interface BookingCounterparty {
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
 
 export interface Booking {
   booking_id: string;
@@ -194,6 +206,7 @@ export interface ConfirmHoldResponse { booking: Booking; already_confirmed: bool
 export interface BookingSnapshot {
   booking_id: string;
   status: BookingStatus;
+  outcome: BookingOutcome | null;
   refund_cents: number;
   refund_tx_ref: string | null;
   payout_tx_ref: string | null;
@@ -218,6 +231,9 @@ export interface BookingView {
   host_payout_cents: number;
   refund_cents: number | null;
   status: BookingStatus;
+  outcome: BookingOutcome | null;
+  settlement_status: BookingSettlementStatus;
+  counterparty: BookingCounterparty;
   funding_tx_ref: string | null;
   payout_tx_ref: string | null;
   refund_tx_ref: string | null;
@@ -245,3 +261,15 @@ export interface AttachSessionResponse {
   agora: AgoraBlock;
 }
 export interface HeartbeatRequest { session_id: string }
+
+export interface BookingCancellationPreview {
+  object: "booking_cancellation_preview";
+  booking_id: string;
+  cancelled_by: "host" | "booker";
+  gross_cents: number;
+  refund_cents: number;
+  host_payout_cents: number;
+  platform_fee_cents: number;
+  previewed_at: string;
+  policy_cutoff_at: string | null;
+}

@@ -1083,7 +1083,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "exceptionOpen": "Open",
           "addException": "Add",
           "cancellationTitle": "Cancellation policy",
-          "cancellationCopy": "Bookers who cancel within 24 hours of booking receive a full refund; later cancellations are non-refundable. If you (the host) cancel or no-show, the booker is fully refunded.",
+          "cancellationCopy": "Bookers receive a full refund when they cancel at least 24 hours before the session starts. Cancellations made less than 24 hours before the session are non-refundable. If you (the host) cancel or do not attend, the booker receives a full refund.",
           "publishTitleLive": "Your bookings are live",
           "publishTitleIdle": "Publish your bookings",
           "publishBlockedNote": "Set up your app wallet to receive payouts.",

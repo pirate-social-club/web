@@ -47,6 +47,58 @@ export type ApiProfileMediaUploadResponse = {
 export type ApiWalletIdentityPublicName = WalletIdentityPublicName;
 export type ApiWalletIdentityResponse = WalletIdentityResponse;
 
+export type ApiRewardVerificationState = "unverified" | "verified" | "conflict";
+
+export type ApiRewardEventKind =
+  | "study_streak_day"
+  | "study_streak_milestone_7"
+  | "study_streak_milestone_30";
+
+export type ApiRewardEventSummary = {
+  id: string;
+  user_id: string;
+  community_id: string;
+  post_id: string;
+  activity_date: string;
+  reward_kind: ApiRewardEventKind;
+  amount_cents: number;
+  created_at: number;
+};
+
+export type ApiRewardsSummaryResponse = {
+  balance_cents: number;
+  today_earned_cents: number;
+  recent_events: ApiRewardEventSummary[];
+  cashout: {
+    eligible: boolean;
+    min_cents: number;
+    verification_state: ApiRewardVerificationState;
+  };
+  latest_in_flight_cashout: ApiRewardCashoutResponse["payout"] | null;
+};
+
+export type ApiRewardCashoutRequest = {
+  amount_cents: number;
+  idempotency_key: string;
+  wallet_proof?: {
+    type: "privy_access_token";
+    privy_access_token: string;
+    wallet_address?: string | null;
+  } | null;
+};
+
+export type ApiRewardCashoutResponse = {
+  payout: {
+    id: string;
+    amount_cents: number;
+    recipient_address: string;
+    status: "submitted" | "confirmed" | "failed";
+    settlement_ref: string | null;
+    failure_reason: string | null;
+  };
+  balance_cents: number;
+};
+
 export type ApiSongArtifactUploadContentRequest = {
   content_base64: string;
 };

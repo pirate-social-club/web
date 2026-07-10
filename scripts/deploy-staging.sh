@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/scripts/lib/release-source.sh"
 if [[ -d "$ROOT_DIR/web" && -f "$ROOT_DIR/web/package.json" ]]; then
   WEB_DIR="$ROOT_DIR/web"
 else
@@ -77,33 +78,6 @@ if [[ "$ALLOW_NON_MAIN" == "1" && -z "$ALLOW_REASON" ]]; then
   printf '--allow-non-main requires -m "reason"\n' >&2
   exit 2
 fi
-
-repo_status() {
-  git -C "$1" status --short
-}
-
-repo_ref() {
-  git -C "$1" rev-parse --abbrev-ref HEAD
-}
-
-repo_sha() {
-  git -C "$1" rev-parse --short HEAD
-}
-
-require_clean_main() {
-  local dir="$1"
-  local name="$2"
-  local branch
-  branch="$(repo_ref "$dir")"
-  if [[ "$branch" != "main" ]]; then
-    printf '%s must be on main for staging deploys, got %s\n' "$name" "$branch" >&2
-    exit 1
-  fi
-  if [[ -n "$(repo_status "$dir")" ]]; then
-    printf '%s worktree is dirty:\n%s\n' "$name" "$(repo_status "$dir")" >&2
-    exit 1
-  fi
-}
 
 WEB_SHA="$(repo_sha "$WEB_DIR")"
 WEB_REF="$(repo_ref "$WEB_DIR")"
@@ -239,8 +213,11 @@ require_file "$WEB_WRANGLER"
 require_file "$API_WRANGLER"
 
 if [[ "$ALLOW_NON_MAIN" != "1" ]]; then
-  require_clean_main "$WEB_DIR" "web"
-  require_clean_main "$API_DIR" "api"
+  require_clean_release_source "$WEB_DIR" "web"
+  require_clean_release_source "$API_DIR" "api" "${API_RELEASE_SHA:-}"
+  if [[ -n "${API_RELEASE_SHA:-}" ]]; then
+    API_REF="pinned/$API_RELEASE_SHA"
+  fi
 else
   SAFE_SUFFIX="$(printf '%s' "$ALLOW_REASON" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//' | cut -c1-40)"
   WEB_SHA="${WEB_SHA}-non-main-${SAFE_SUFFIX:-manual}"

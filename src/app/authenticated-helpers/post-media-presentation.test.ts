@@ -159,7 +159,9 @@ describe("toSongPostContent", () => {
     } as unknown as ApiPost, { onStudy }, { title: "Test Song" });
 
     expect(ready.onStudy).toBe(onStudy);
+    expect(ready.studyHref).toBe("/p/post_song/study");
     expect(unavailable.study?.status).toBe("unavailable");
+    expect(unavailable.studyHref).toBeUndefined();
     expect(unavailable.onStudy).toBeUndefined();
   });
 

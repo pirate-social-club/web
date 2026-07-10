@@ -610,7 +610,7 @@ describe("toCommunityFeedItem", () => {
   test("keeps community thread counts and comment actions on feed cards", () => {
     const onComment = () => undefined;
 
-    const item = toCommunityFeedItem(createEntry().post, {}, undefined, { onComment });
+    const item = toCommunityFeedItem(createEntry().post, null, {}, undefined, { onComment });
 
     expect(item.post.engagement?.commentCount).toBe(5);
     expect(item.post.onComment).toBe(onComment);
@@ -623,7 +623,7 @@ describe("toCommunityFeedItem", () => {
       entry.post.thread_snapshot.comment_count = 0;
     }
 
-    const item = toCommunityFeedItem(entry.post, {});
+    const item = toCommunityFeedItem(entry.post, null, {});
 
     expect(item.post.engagement?.commentCount).toBe(1);
   });
@@ -634,13 +634,36 @@ describe("toCommunityFeedItem", () => {
     entry.post.post.anchor_live_room_status = "scheduled";
     entry.post.post.title = "Test event";
 
-    const item = toCommunityFeedItem(entry.post, {});
+    const item = toCommunityFeedItem(entry.post, null, {});
 
     expect(item.post.content.type).toBe("live_room");
     if (item.post.content.type !== "live_room") throw new Error("expected live room content");
     expect(item.post.content.title).toBe("Test event");
     expect(item.post.title).toBeUndefined();
     expect(item.post.titleHref).toBeUndefined();
+  });
+
+  test("hydrates ready Study and Sing hrefs from the feed community", () => {
+    const entry = createEntry();
+    entry.post.post.post_type = "song";
+    entry.post.post.access_mode = "public";
+    entry.post.community = null;
+    entry.post.study_capability = { status: "ready" };
+    entry.post.karaoke_capability = { status: "ready" };
+
+    const item = toCommunityFeedItem(entry.post, {
+      avatar_ref: null,
+      display_name: "Alpha Crew",
+      id: "cmt_alpha",
+      karaoke_enabled: true,
+      namespace_verification: null,
+      route_slug: "alpha",
+    }, {});
+
+    expect(item.post.content.type).toBe("song");
+    if (item.post.content.type !== "song") throw new Error("expected song content");
+    expect(item.post.content.studyHref).toBe("/p/pst_alpha/study");
+    expect(item.post.content.karaokeHref).toBe("/p/pst_alpha/karaoke");
   });
 });
 

@@ -373,8 +373,8 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
   if (!isLocked || isOwned) {
     switch (content.study?.status) {
       case "ready":
-        if (content.onStudy) {
-          studyAction = (
+        if (content.onStudy || content.studyHref) {
+          studyAction = content.onStudy ? (
             <Button
               className="w-full"
               data-post-card-interactive="true"
@@ -385,6 +385,13 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
               variant="secondary"
             >
               Study
+            </Button>
+          ) : (
+            <Button asChild className="w-full" data-post-card-interactive="true" key="study" size="lg" variant="secondary">
+              <a aria-label="Study this song line by line" href={content.studyHref}>
+                <GraduationCap className="size-4" weight="fill" />
+                <span>Study</span>
+              </a>
             </Button>
           );
         }

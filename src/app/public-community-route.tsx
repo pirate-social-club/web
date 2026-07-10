@@ -811,6 +811,7 @@ export function PublicCommunityRoutePage({
         headerAction={headerAction}
         items={posts.map((post) => toCommunityFeedItem(
           post,
+          preview,
           authorProfiles,
           post.post.post_type === "song" || post.post.post_type === "video"
             ? {

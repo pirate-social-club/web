@@ -717,6 +717,7 @@ export function CommunityPage({
     };
     return toCommunityFeedItem(
       post,
+      community ?? preview,
       liveRoomProfilesByUserId,
       post.post.post_type === "song" || post.post.post_type === "video"
         ? {

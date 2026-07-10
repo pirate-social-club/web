@@ -1,52 +1,51 @@
 {
-  "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": [
-    ".storybook/main.ts",
-    ".storybook/preview.ts",
-    "vite.config.ts",
-    "vite.desktop.config.ts",
-    "src/worker.tsx",
-    "src/worker-public.ts",
-    "src/client.tsx",
-    "src/desktop-standalone.tsx",
-    "src/worker-seo.test.tsx",
-    "e2e/**/*.spec.ts",
-    "scripts/**/*.{mjs,ts}"
-  ],
-  "project": [
-    ".storybook/**/*.{ts,tsx}",
-    "e2e/**/*.{ts,tsx}",
-    "scripts/**/*.{mjs,ts}",
-    "src/**/*.{ts,tsx,js,jsx}"
-  ],
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   "ignore": [
-    "dist/**",
-    "storybook-static/**",
     "src/lib/auth/privy-react-auth.ssr.tsx",
     "src/lib/dotenv-browser-shim.ts",
     "src/lib/rwsdk-router.client.ts",
     "src/lib/rwsdk-worker.client.ts",
-    "src/locales/generated.ts",
-    "src/vendor/**",
-    "worker-configuration.d.ts"
+    "src/vendor/**"
   ],
   "ignoreBinaries": [
-    "rw-scripts",
     "scripts/community/repair-community-migration-ledger.ts",
     "scripts/control-plane/apply-postgres-migrations.ts",
     "scripts/deploy-production.sh",
     "scripts/deploy-public.sh",
-    "scripts/deploy-staging.sh",
-    "wrangler2"
+    "scripts/deploy-staging.sh"
   ],
   "ignoreDependencies": [
     "@fontsource/anton",
-    "@cloudflare/workers-types",
-    "@types/node",
-    "@types/react",
-    "@types/react-dom",
     "tailwindcss",
-    "tw-animate-css",
-    "typescript"
-  ]
+    "tw-animate-css"
+  ],
+  "workspaces": {
+    ".": {
+      "entry": [
+        "vite.config.ts",
+        "vite.desktop.config.ts",
+        "src/worker-public.ts",
+        "src/client.tsx",
+        "src/desktop-standalone.tsx",
+        "src/components/compositions/karaoke/capture/karaoke-capture-processor.ts",
+        "e2e/**/*.spec.ts",
+        "scripts/**/*.{mjs,ts}"
+      ],
+      "project": [
+        ".storybook/**/*.{ts,tsx}",
+        "e2e/**/*.{ts,tsx}",
+        "scripts/**/*.{mjs,ts}",
+        "src/**/*.{ts,tsx,js,jsx}"
+      ],
+      "vite": false
+    },
+    "packages/bookings-domain": {
+      "entry": ["src/index.ts", "src/test.ts", "scripts/**/*.ts"],
+      "project": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"]
+    },
+    "packages/karaoke-runtime": {
+      "entry": ["src/index.ts", "src/provenance.ts", "src/test.ts", "scripts/**/*.ts"],
+      "project": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"]
+    }
+  }
 }

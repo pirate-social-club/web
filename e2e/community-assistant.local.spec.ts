@@ -263,8 +263,6 @@ async function startLocalAssistantStack(): Promise<LocalAssistantStack> {
         PIRATE_API_PUBLIC_ORIGIN: apiOrigin,
         PIRATE_DEV_USE_REMOTE_CONTROL_PLANE: "true",
         PORT: String(apiPort),
-        TURSO_COMMUNITY_DB_WRAP_KEY: "0".repeat(64),
-        TURSO_COMMUNITY_DB_WRAP_KEY_VERSION: "2",
       },
       name: "api",
     }));

@@ -41,10 +41,34 @@ function isTrustedForwarder(request: Request, env: HnsForwardedOriginEnv): boole
   return !!connectingIp && parseTrustedIps(env).has(connectingIp);
 }
 
-export function authenticateHnsForwarderRequest(
+async function secretsMatch(provided: string, expected: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const [providedHash, expectedHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(provided)),
+    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
+  ]);
+  const workerSubtle = crypto.subtle as SubtleCrypto & {
+    timingSafeEqual?: (first: ArrayBuffer, second: ArrayBuffer) => boolean;
+  };
+  if (typeof workerSubtle.timingSafeEqual === "function") {
+    return workerSubtle.timingSafeEqual(providedHash, expectedHash);
+  }
+
+  // Bun's Web Crypto implementation does not expose the Workers extension used
+  // above, so keep local tests on the same fixed-length, non-short-circuit path.
+  const providedBytes = new Uint8Array(providedHash);
+  const expectedBytes = new Uint8Array(expectedHash);
+  let mismatch = 0;
+  for (let index = 0; index < providedBytes.length; index += 1) {
+    mismatch |= providedBytes[index]! ^ expectedBytes[index]!;
+  }
+  return mismatch === 0;
+}
+
+export async function authenticateHnsForwarderRequest(
   request: Request,
   env: HnsForwardedOriginEnv = {},
-): Request {
+): Promise<Request> {
   const headers = new Headers(request.headers);
   const token = env.HNS_FORWARDER_AUTH_TOKEN?.trim();
   const forwardedToken = headers.get(FORWARDER_TOKEN_HEADER)?.trim();
@@ -52,7 +76,7 @@ export function authenticateHnsForwarderRequest(
   headers.delete(TRUSTED_FORWARDER_HEADER);
   headers.delete(FORWARDER_TOKEN_HEADER);
 
-  if (token && forwardedToken && forwardedToken === token) {
+  if (token && forwardedToken && await secretsMatch(forwardedToken, token)) {
     headers.set(TRUSTED_FORWARDER_HEADER, "1");
   }
 

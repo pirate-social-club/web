@@ -271,7 +271,7 @@ function finalizeLine(
 // at least one tick always lands inside it: the line is deferred, a commit is
 // requested, and the ~240ms ack covers it well within the window. (Verified:
 // 600ms produced misses on lines whose windows fell between ticks.)
-export const KARAOKE_FINALIZE_GRACE_MS = 2_000;
+const KARAOKE_FINALIZE_GRACE_MS = 2_000;
 
 interface FinalizeDueResult {
   effects: KaraokeSessionEffect[];

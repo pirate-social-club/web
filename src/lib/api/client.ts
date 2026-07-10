@@ -196,10 +196,14 @@ export class ApiClient {
       ...fetchInit
     } = init ?? {};
     const body = fetchInit.body;
+    const method = init?.method ?? "GET";
     const usesFormData = typeof FormData !== "undefined" && body instanceof FormData;
     const hasBody = body !== undefined && body !== null;
     const headers = new Headers(usesFormData || !hasBody ? undefined : { "Content-Type": "application/json" });
-    if (typeof window !== "undefined") {
+    // Identity headers are not CORS-safelisted, so sending them on a public GET
+    // forces a preflight. Writes already preflight (JSON content-type), so they
+    // keep both headers: the API reads them for server-side event attribution.
+    if (typeof window !== "undefined" && method !== "GET" && method !== "HEAD") {
       const identity = getAnalyticsIdentity();
       headers.set("x-pirate-anonymous-id", identity.anonymousId);
       headers.set("x-pirate-session-id", identity.sessionId);
@@ -228,7 +232,6 @@ export class ApiClient {
       headers.set(key, value);
     }
 
-    const method = init?.method ?? "GET";
     logger.debug("[api-client] request", { method, path, tokenOptional, tokenRequired });
 
     let res: Response;

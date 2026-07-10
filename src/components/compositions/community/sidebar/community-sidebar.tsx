@@ -91,6 +91,7 @@ function CommunitySidebarSections({
   requirements,
   requirementsMode,
   gates,
+  gateExpressionLabel,
   hasActionTimeCheck,
   referenceLinks,
   rules,
@@ -109,6 +110,7 @@ function CommunitySidebarSections({
   | "requirements"
   | "requirementsMode"
   | "gates"
+  | "gateExpressionLabel"
   | "hasActionTimeCheck"
   | "referenceLinks"
   | "rules"
@@ -215,7 +217,11 @@ function CommunitySidebarSections({
               {gateTitle}
             </AccordionTrigger>
             <AccordionContent className="pb-0">
-              <CommunitySidebarGates items={gates} mode={requirementsMode} />
+              <CommunitySidebarGates
+                expressionLabel={gateExpressionLabel}
+                items={gates}
+                mode={requirementsMode}
+              />
             </AccordionContent>
           </AccordionItem>
         )}
@@ -291,6 +297,7 @@ export function CommunitySidebarDetails({
   requirements,
   requirementsMode,
   gates,
+  gateExpressionLabel,
   hasActionTimeCheck,
   referenceLinks,
   rules,
@@ -309,6 +316,7 @@ export function CommunitySidebarDetails({
   | "requirements"
   | "requirementsMode"
   | "gates"
+  | "gateExpressionLabel"
   | "hasActionTimeCheck"
   | "referenceLinks"
   | "rules"
@@ -330,6 +338,7 @@ export function CommunitySidebarDetails({
           requirements={requirements}
           requirementsMode={requirementsMode}
           gates={gates}
+          gateExpressionLabel={gateExpressionLabel}
           hasActionTimeCheck={hasActionTimeCheck}
           rules={rules}
           store={store}
@@ -355,6 +364,7 @@ export function CommunitySidebar({
   requirements,
   requirementsMode,
   gates,
+  gateExpressionLabel,
   hasActionTimeCheck,
   referenceLinks,
   rules,
@@ -392,6 +402,7 @@ export function CommunitySidebar({
         requirements={requirements}
         requirementsMode={requirementsMode}
         gates={gates}
+        gateExpressionLabel={gateExpressionLabel}
         hasActionTimeCheck={hasActionTimeCheck}
         rules={rules}
         store={store}

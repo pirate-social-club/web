@@ -4,6 +4,7 @@ import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { MembershipGateSummary as ApiMembershipGateSummary } from "@pirate/api-contracts";
+import type { MembershipGateExpressionSummary as ApiMembershipGateExpressionSummary } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import type { CommunitySidebarGateItem, CommunitySidebarRoleHolder, CommunitySidebarRule } from "@/components/compositions/community/sidebar/community-sidebar.types";
@@ -157,6 +158,58 @@ function formatSidebarRequirement(input: {
     default:
       return null;
   }
+}
+
+function formatGateExpressionLabel(
+  expression: ApiMembershipGateExpressionSummary | null | undefined,
+  locale: string | null | undefined,
+): string | null {
+  if (!expression) return null;
+  const operators = new Set<"and" | "or">();
+  const collectOperators = (node: ApiMembershipGateExpressionSummary): void => {
+    if (node.op === "gate") return;
+    operators.add(node.op);
+    node.children.forEach(collectOperators);
+  };
+  collectOperators(expression);
+  if (operators.size < 2) return null;
+
+  const listLocale = locale === "pseudo" ? "en" : locale || "en";
+
+  const visit = (
+    node: ApiMembershipGateExpressionSummary,
+    parentOp?: "and" | "or",
+  ): string | null => {
+    if (node.op === "gate") {
+      return formatSidebarRequirement({
+        acceptedProviders: node.gate.accepted_providers,
+        assetCategory: node.gate.asset_category,
+        assetFilterLabel: node.gate.asset_filter_label,
+        contractAddress: node.gate.contract_address,
+        gateType: node.gate.gate_type,
+        minQuantity: node.gate.min_quantity,
+        minimumScore: node.gate.minimum_score,
+        requiredMinimumAge: node.gate.required_minimum_age,
+        requiredValue: node.gate.required_value,
+        requiredValues: node.gate.required_values,
+        locale,
+      });
+    }
+
+    const parts = node.children.flatMap((child) => {
+      const label = visit(child, node.op);
+      return label ? [label] : [];
+    });
+    if (parts.length === 0) return null;
+    if (parts.length === 1) return parts[0];
+    const label = new Intl.ListFormat(listLocale, {
+      style: "long",
+      type: node.op === "or" ? "disjunction" : "conjunction",
+    }).format(parts);
+    return parentOp && parentOp !== node.op ? `(${label})` : label;
+  };
+
+  return visit(expression);
 }
 
 export function buildCommunitySidebarRequirements(input: {
@@ -439,6 +492,7 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
       eligibility,
       gateMatchMode: preview.gate_match_mode ?? null,
     }),
+    gateExpressionLabel: formatGateExpressionLabel(preview.membership_gate_expression, locale),
     hasActionTimeCheck: hasActionTimeCheck(preview.membership_gate_summaries),
     requirementsMode: preview.gate_match_mode ?? undefined,
     referenceLinks: preview.reference_links?.map((link) => ({

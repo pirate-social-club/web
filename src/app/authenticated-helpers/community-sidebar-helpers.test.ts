@@ -53,13 +53,13 @@ describe("buildCommunitySidebarRequirements", () => {
     })).toEqual(["Ethereum NFT from 0x1111...1111"]);
   });
 
-  test("omits proof-of-work from join requirement labels", () => {
+  test("includes proof-of-work in visible policy labels", () => {
     expect(buildCommunitySidebarRequirements({
       gateSummaries: [
         { gate_type: "unique_human", accepted_providers: ["very"] },
         { gate_type: "altcha_pow" },
       ],
-    })).toEqual(["Palm scan"]);
+    })).toEqual(["Palm scan", "Proof of work"]);
   });
 });
 
@@ -176,6 +176,19 @@ describe("buildCommunityPreviewSidebar", () => {
         { gate_type: "unique_human", accepted_providers: ["very"] },
         { gate_type: "altcha_pow" },
       ],
+      membership_gate_expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { gate_type: "unique_human", accepted_providers: ["self"] } },
+          {
+            op: "or",
+            children: [
+              { op: "gate", gate: { gate_type: "unique_human", accepted_providers: ["very"] } },
+              { op: "gate", gate: { gate_type: "altcha_pow" } },
+            ],
+          },
+        ],
+      },
       gate_match_mode: "any",
       rules: [],
       viewer_membership_status: "not_member",
@@ -184,6 +197,7 @@ describe("buildCommunityPreviewSidebar", () => {
     });
 
     expect(sidebar.requirementsMode).toBe("any");
+    expect(sidebar.gateExpressionLabel).toBe("Private ID proof and (Palm scan or Proof of work)");
     expect(sidebar.hasActionTimeCheck).toBe(true);
   });
 });

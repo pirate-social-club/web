@@ -213,11 +213,6 @@ export interface CreateKaraokeSessionClientOptions {
   communityId: string;
   /** Public post id (the server route decodes it). */
   postId: string;
-  /**
-   * LEGACY ONLY: song-time clock for the deprecated delivery-time audio path.
-   * The default audio path uses the explicit capture anchor (SPEC §4).
-   */
-  playbackClock?: () => number;
   onServerEvent: (event: KaraokeServerEvent) => void;
   onPhaseChange?: (phase: KaraokeClientPhase) => void;
   onError?: (error: KaraokeBridgeError) => void;
@@ -310,7 +305,6 @@ export function createKaraokeSessionClient(options: CreateKaraokeSessionClientOp
     clearTimer: options.clearTimer,
     onPhaseChange: options.onPhaseChange,
     onServerEvent: options.onServerEvent,
-    playbackClock: options.playbackClock,
     reconnectDelayMs: options.reconnectDelayMs,
     resumeCapture: options.resumeCapture,
     setTimer: options.setTimer,

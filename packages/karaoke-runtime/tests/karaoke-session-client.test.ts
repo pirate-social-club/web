@@ -78,7 +78,6 @@ interface Harness {
   phases: string[]
   errors: { code: string; message: string }[]
   timers: FakeTimers
-  songMs: { value: number }
   descriptorFor: (call: number) => KaraokeSessionDescriptor
 }
 
@@ -97,7 +96,6 @@ function harness(overrides: Partial<{
   const serverEvents: KaraokeServerEvent[] = []
   const phases: string[] = []
   const errors: { code: string; message: string }[] = []
-  const songMs = { value: 0 }
   const tokenTtlMs = overrides.tokenTtlMs ?? 60_000
   const sessionTtlMs = overrides.sessionTtlMs ?? 3_600_000
 
@@ -126,7 +124,6 @@ function harness(overrides: Partial<{
     onError: (error) => errors.push(error),
     onPhaseChange: (phase) => phases.push(phase),
     onServerEvent: (event) => serverEvents.push(event),
-    playbackClock: () => songMs.value,
     captureTeardownTimeoutMs: overrides.captureTeardownTimeoutMs,
     resumeCapture: overrides.resumeCapture,
     setTimer: timers.setTimer,
@@ -135,7 +132,7 @@ function harness(overrides: Partial<{
     teardownCapture: overrides.teardownCapture,
   })
 
-  return { client, descriptorFor, errors, idempotencyKeys, phases, serverEvents, sockets, songMs, timers }
+  return { client, descriptorFor, errors, idempotencyKeys, phases, serverEvents, sockets, timers }
 }
 
 describe("KaraokeSessionClient transport", () => {

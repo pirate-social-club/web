@@ -2,7 +2,7 @@ import { buildCommunityPath } from "@/lib/community-routing";
 
 export type CommunityModerationSection = "queue" | "rights" | "profile" | "rules" | "links" | "labels" | "donations" | "pricing" | "requests" | "gates" | "safety" | "visual-policy" | "agents" | "integrations" | "assistant" | "telegram" | "machine-access" | "namespace" | "handles" | "karaoke" | "study" | "archive";
 
-export const DEFAULT_COMMUNITY_MODERATION_SECTION: CommunityModerationSection = "queue";
+const DEFAULT_COMMUNITY_MODERATION_SECTION: CommunityModerationSection = "queue";
 
 export function buildCommunityModerationIndexPath(
   communityId: string,
@@ -19,7 +19,7 @@ export function buildCommunityModerationPath(
   return `${buildCommunityPath(communityId, routeSlug)}/mod/${section}`;
 }
 
-export function buildDefaultCommunityModerationPath(
+function buildDefaultCommunityModerationPath(
   communityId: string,
   routeSlug?: string | null,
 ): string {

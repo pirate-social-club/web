@@ -53,12 +53,6 @@ export interface KaraokeSessionClientOptions {
   createSession: (input: { idempotencyKey: string }) => Promise<KaraokeSessionDescriptor>;
   /** Opens a socket to the descriptor's websocketUrl. */
   connect: (url: string) => KaraokeClientSocket;
-  /**
-   * LEGACY ONLY (SPEC §4.5): current SONG-time position (ms). Used solely by the
-   * deprecated `pushAudioAtPlaybackClock` delivery-time path, which is biased
-   * late. The default `pushAudio` uses the explicit capture anchor instead.
-   */
-  playbackClock?: () => number;
   onServerEvent: (event: KaraokeServerEvent) => void;
   onPhaseChange?: (phase: KaraokeClientPhase) => void;
   onError?: (error: { code: string; message: string }) => void;
@@ -242,21 +236,6 @@ export class KaraokeSessionClient {
     const songStartMs = Math.max(0, songEndMs - durationMs * anchor.playbackRate);
     this.lastCapturedAtMs = capturedAtMs;
     this.sendBinary(pcm16, Math.round(songStartMs), Math.round(songEndMs));
-  }
-
-  /**
-   * @deprecated Legacy delivery-time stamping (SPEC §4.5): stamps song-time
-   * bounds from `playbackClock()` at push time. Biased late; use the anchor API.
-   * No-op unless `playbackClock` was provided.
-   */
-  pushAudioAtPlaybackClock(pcm16: ArrayBuffer): void {
-    if (this.phase !== "live" || !this.socket || !this.descriptor) return;
-    const playbackClock = this.options.playbackClock;
-    if (!playbackClock) return;
-    const durationMs = (pcm16.byteLength / 2 / this.sampleRate) * 1000;
-    const songEndMs = Math.max(0, Math.round(playbackClock()));
-    const songStartMs = Math.max(0, Math.round(songEndMs - durationMs));
-    this.sendBinary(pcm16, songStartMs, songEndMs);
   }
 
   private sendBinary(pcm16: ArrayBuffer, songStartMs: number, songEndMs: number): void {

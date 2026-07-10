@@ -154,14 +154,11 @@ await capture.activate();              // resume emission (resume/seek-while-pla
   takes **no** epoch — epoch validation lives entirely in the capture layer, not
   split across both.
 
-### 4.5 Unanchored audio & legacy fallback
+### 4.5 Unanchored audio
 
 - Once an anchor exists, `pushAudio` **requires** `capturedAtMs` and uses the
   anchor mapping. Audio pushed while unanchored (no/cleared anchor) is **dropped**
   — anchored timing is mandatory for scored sessions, never silently skipped.
-- A delivery-time fallback (`songEnd = playbackClock()` at push time) is biased
-  late and is permitted **only** behind an explicit, separate legacy/compat path
-  (not the default `pushAudio`).
 
 ## 5. Session state machine (server runtime) — summary
 
@@ -170,7 +167,7 @@ Authoritative behavior lives in `session.ts` (reducer) + `session-host.ts`
 
 - **Two-gate finalization.** A lyric line finalizes only when the playback clock
   has passed `line.endMs` **and** the STT watermark has reached it, OR a
-  `KARAOKE_FINALIZE_GRACE_MS` (600 ms, song time — frozen while paused) window
+  `KARAOKE_FINALIZE_GRACE_MS` (2,000 ms, song time — frozen while paused) window
   elapses. Playback alone never finalizes.
 - **STT watermark** advances only on a committed final that exactly matches the
   pending commit (`commitId` + `streamGeneration`); it advances to the

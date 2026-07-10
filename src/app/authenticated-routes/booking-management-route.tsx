@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { navigate } from "@/app/router";
-import { formatBookingTimeRange, toBookingManagementItem } from "@/app/authenticated-helpers/booking-management-view-model";
+import { bookingCounterpartyLabel, formatBookingTimeRange, toBookingManagementItem } from "@/app/authenticated-helpers/booking-management-view-model";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
 import { BookingCancellationDialog, type BookingCancellationDialogState } from "@/components/compositions/bookings/booking-cancellation-dialog/booking-cancellation-dialog";
 import { BookingManagementView, type BookingManagementItem } from "@/components/compositions/bookings/booking-management-view/booking-management-view";
@@ -147,7 +147,7 @@ export function BookingManagementPage({ sourceCommunityId, role }: {
       {cancelBooking && preview ? (
         <BookingCancellationDialog
           copy={messages.dialog}
-          counterpartyName={cancelBooking.counterparty.public_handle || cancelBooking.counterparty.display_name || cancelBooking.counterparty.user_id}
+          counterpartyName={bookingCounterpartyLabel(cancelBooking)}
           errorMessage={dialogError}
           onConfirm={(amount) => void confirmCancellation(amount)}
           onOpenChange={(open) => { if (!open && dialogState !== "submitting") { setCancelBooking(null); setPreview(null); } }}

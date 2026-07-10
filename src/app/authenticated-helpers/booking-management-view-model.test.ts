@@ -20,6 +20,11 @@ describe("booking management view model", () => {
     expect(bookingCounterpartyLabel({ ...booking, counterparty: { ...booking.counterparty, public_handle: null, display_name: null } })).toBe("usr_coun…3456");
   });
 
+  test("falls back safely when a legacy booking omits counterparty enrichment", () => {
+    expect(bookingCounterpartyLabel({ ...booking, counterparty: undefined, viewer_role: "booker" })).toBe("host");
+    expect(bookingCounterpartyLabel({ ...booking, counterparty: undefined, viewer_role: "host" })).toBe("booker");
+  });
+
   test("formats the approved compact range in the viewer timezone", () => {
     expect(formatBookingTimeRange(booking.slot_start_utc, booking.slot_end_utc, "en-US", "Asia/Tbilisi"))
       .toBe("4:00 PM–4:30 PM, July 5");

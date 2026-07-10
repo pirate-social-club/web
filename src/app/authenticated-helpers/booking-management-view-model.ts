@@ -34,9 +34,10 @@ function shortUserId(userId: string): string {
 }
 
 export function bookingCounterpartyLabel(booking: BookingView): string {
-  return booking.counterparty.public_handle?.trim()
-    || booking.counterparty.display_name?.trim()
-    || shortUserId(booking.counterparty.user_id);
+  const fallbackUserId = booking.viewer_role === "host" ? booking.booker_user_id : booking.host_user_id;
+  return booking.counterparty?.public_handle?.trim()
+    || booking.counterparty?.display_name?.trim()
+    || shortUserId(booking.counterparty?.user_id || fallbackUserId);
 }
 
 export function formatBookingTimeRange(startIso: string, endIso: string, locale: string, timeZone: string): string {
@@ -104,9 +105,9 @@ export function toBookingManagementItem(
   const joinable = isBookingJoinable(booking, options.nowMs);
   return {
     id: booking.booking_id,
-    counterpartyName: booking.counterparty.display_name?.trim() || bookingCounterpartyLabel(booking),
+    counterpartyName: booking.counterparty?.display_name?.trim() || bookingCounterpartyLabel(booking),
     counterpartyHandle: bookingCounterpartyLabel(booking),
-    counterpartyAvatarUrl: booking.counterparty.avatar_ref,
+    counterpartyAvatarUrl: booking.counterparty?.avatar_ref,
     sessionTimeLabel: formatBookingTimeRange(booking.slot_start_utc, booking.slot_end_utc, options.locale, options.timeZone),
     amountLabel: `${(booking.gross_cents / 100).toFixed(2)} USDC`,
     statusLabel: status.label,

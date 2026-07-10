@@ -234,7 +234,7 @@ export interface BookingView {
   status: BookingStatus;
   outcome: BookingOutcome | null;
   settlement_status: BookingSettlementStatus;
-  counterparty: BookingCounterparty;
+  counterparty?: BookingCounterparty;
   funding_tx_ref: string | null;
   payout_tx_ref: string | null;
   refund_tx_ref: string | null;

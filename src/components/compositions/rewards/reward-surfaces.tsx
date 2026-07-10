@@ -123,7 +123,7 @@ function InlinePill({
   return (
     <div className={cn("inline-flex min-h-9 items-center gap-2 rounded-full border border-border-soft bg-card px-3 text-foreground shadow-sm", className)}>
       {icon}
-      <Type as="span" className="text-sm font-semibold leading-none" variant="caption">
+      <Type as="span" className="leading-none" variant="body-strong">
         {children}
       </Type>
     </div>
@@ -161,7 +161,7 @@ export function StreakRewardEarned({
       body: "You already qualified this song today. Come back tomorrow to keep the streak paying.",
     },
     "daily-cap-reached": {
-      icon: <WarningCircle aria-hidden="true" className="size-5 text-amber-600" weight="fill" />,
+      icon: <WarningCircle aria-hidden="true" className="size-5 text-warning" weight="fill" />,
       title: "Daily reward cap reached",
       body: "Your streak still counts, but today's reward budget is already used.",
     },
@@ -406,7 +406,7 @@ export function VerifyHumanSheet({
           <div className="mt-6 flex items-start gap-3 rounded-lg border border-border-soft p-4">
             {state === "success" ? <CheckCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" weight="fill" /> : null}
             {state === "failure" ? <WarningCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-destructive" weight="fill" /> : null}
-            {state === "conflict" ? <WarningCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-amber-600" weight="fill" /> : null}
+            {state === "conflict" ? <WarningCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-warning" weight="fill" /> : null}
             <div>
               <Type as="div" variant="body-strong">
                 {state === "success" ? "Verification complete" : null}

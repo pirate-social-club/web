@@ -29,6 +29,11 @@ type SidebarGateSummary = Pick<
   | "required_values"
 >;
 
+type RecursiveGateExpression = {
+  op: "and" | "or" | "gate";
+  children?: RecursiveGateExpression[];
+};
+
 function normalizeCommunityMembershipMode(mode: ApiCommunity["membership_mode"] | ApiCommunityPreview["membership_mode"]): "request" | "gated" {
   return mode === "request" ? "request" : "gated";
 }
@@ -212,6 +217,29 @@ function formatGateExpressionLabel(
   return visit(expression);
 }
 
+function buildGateExpressionSummary(
+  policy: ApiCommunity["gate_policy"],
+  gateSummaries: SidebarGateSummary[],
+): ApiMembershipGateExpressionSummary | null {
+  if (!policy) return null;
+  let gateIndex = 0;
+
+  const visit = (expression: RecursiveGateExpression): ApiMembershipGateExpressionSummary | null => {
+    if (expression.op === "gate") {
+      const gate = gateSummaries[gateIndex++];
+      return gate ? { op: "gate", gate } : null;
+    }
+
+    const children = (expression.children ?? []).flatMap((child) => {
+      const summary = visit(child);
+      return summary ? [summary] : [];
+    });
+    return children.length > 0 ? { op: expression.op, children } : null;
+  };
+
+  return visit(policy.expression as RecursiveGateExpression);
+}
+
 export function buildCommunitySidebarRequirements(input: {
   defaultAgeGatePolicy?: CommunityDefaultAgeGatePolicy | null;
   gateSummaries?: SidebarGateSummary[] | null;
@@ -343,6 +371,7 @@ export function getCommunityGateSummaries(
 
 export function buildCommunitySidebar(community: ApiCommunity, locale?: string | null, eligibility?: ApiJoinEligibility | null) {
   const gateSummaries = getCommunityGateSummaries(community);
+  const gateExpression = buildGateExpressionSummary(community.gate_policy, gateSummaries);
   const charityHref = community.donation_partner?.provider_partner_ref
     ? `https://app.endaoment.org/orgs/${community.donation_partner.provider_partner_ref}`
     : undefined;
@@ -380,6 +409,7 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
       eligibility,
       gateMatchMode: getGatePolicyMatchMode(community.gate_policy),
     }),
+    gateExpressionLabel: formatGateExpressionLabel(gateExpression, locale),
     hasActionTimeCheck: hasActionTimeCheck(gateSummaries),
     requirementsMode: getGatePolicyMatchMode(community.gate_policy),
     referenceLinks: community.reference_links?.map((link) => ({

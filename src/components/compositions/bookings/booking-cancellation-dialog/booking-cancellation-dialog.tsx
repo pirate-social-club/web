@@ -92,7 +92,7 @@ export function BookingCancellationDialog({
             <label className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-lg)] border border-warning/40 bg-warning/10 p-4">
               <Checkbox
                 checked={acknowledged}
-                className="mt-0.5 data-[state=checked]:border-warning data-[state=checked]:bg-warning data-[state=checked]:text-warning-foreground"
+                className="mt-0.5 border-warning focus-visible:ring-warning focus-visible:ring-offset-warning/10 data-[state=checked]:border-warning data-[state=checked]:bg-warning data-[state=checked]:text-warning-foreground"
                 onCheckedChange={(checked) => setAcknowledged(checked === true)}
               />
               <Type className="text-warning" variant="body-strong">

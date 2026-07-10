@@ -4,7 +4,9 @@ Baseline: `origin/main` at `e8a6cbe7`, audited from the clean `audit/web-securit
 
 ## Verified baseline after fixes
 
-- `bun run types:safe`: passes against API contracts from current API main (`f3592eba`), rather than the stale `api/` salvage checkout.
+- At the original audit baseline, `bun run types:safe` passed against API contracts
+  from then-current API main (`f3592eba`), rather than the stale `api/` salvage
+  checkout.
 - `bun run ui:audit`: passes.
 - Focused security, public Worker, karaoke, bookings-timezone, and cache tests pass.
 - Knip covers the root app plus `packages/bookings-domain` and `packages/karaoke-runtime`.
@@ -13,6 +15,13 @@ Baseline: `origin/main` at `e8a6cbe7`, audited from the clean `audit/web-securit
 - No Neon or Turso identifiers remain. The remaining `libsql_busy` worklist text describes generic local SQLite behavior, and the bookings-domain `@libsql` regex is an intentional forbidden-import guard.
 
 The local file dependency `@pirate/api-contracts: file:../api/services/contracts` is a reproducibility hazard: a clean Web worktree can typecheck against whichever branch happens to be checked out in the separate `api/` directory. The first run failed against the stale salvage branch and passed after installing the current-main contract file. CI should install contracts from a pinned commit/artifact or a coordinated workspace checkout.
+
+Rebase verification on Web main `fa63ed20` passed 71 focused tests across the
+eight touched unit-test files, `bun run ui:audit`, and the Knip audit. The current
+`bun run types:safe` invocation reports four inherited cross-repository contract
+errors in `use-song-submit.ts` and `community-sidebar-helpers.ts`; #196 has no diff
+in either file. This is the same local `file:` dependency hazard described above,
+not a regression introduced by this pass.
 
 ## Fixed in this pass
 

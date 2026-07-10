@@ -5,11 +5,13 @@ import {
   defaultExceptionEnd,
   defaultExceptionStart,
   epochSecondsToLocalInput,
+  epochSecondsToZonedLocalInput,
   isDateTimeRange,
   isTimeRange,
   isValidMoneyInput,
   isValidPositiveMoneyInput,
   localInputToIsoUtc,
+  zonedLocalInputToIsoUtc,
   usdToCents,
 } from "@/app/authenticated-helpers/booking-host-settings-validation";
 
@@ -35,6 +37,15 @@ describe("booking host settings validation", () => {
     expect(epochSecondsToLocalInput(Date.UTC(2026, 0, 2, 3, 4) / 1000)).toMatch(/2026-01-0?2T/);
     expect(localInputToIsoUtc("2026-01-02T03:04")).toContain("2026-01-02T");
     expect(localInputToIsoUtc("not-a-date")).toBe("not-a-date");
+  });
+
+  test("interprets exceptions in the configured host timezone", () => {
+    expect(zonedLocalInputToIsoUtc("2026-07-10T09:00", "America/New_York")).toBe("2026-07-10T13:00:00.000Z");
+    expect(epochSecondsToZonedLocalInput(Date.parse("2026-07-10T13:00:00.000Z") / 1000, "America/New_York")).toBe("2026-07-10T09:00");
+  });
+
+  test("rejects nonexistent DST wall-clock times", () => {
+    expect(zonedLocalInputToIsoUtc("2026-03-08T02:30", "America/New_York")).toBeNull();
   });
 
   test("builds default one-hour exception windows", () => {

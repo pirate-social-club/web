@@ -31,6 +31,77 @@ export function localInputToIsoUtc(value: string): string {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : value;
 }
 
+interface LocalDateTimeParts {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+}
+
+function parseLocalInput(value: string): LocalDateTimeParts | null {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/u);
+  if (!match) return null;
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+    hour: Number(match[4]),
+    minute: Number(match[5]),
+  };
+}
+
+function partsAt(instantMs: number, timeZone: string): LocalDateTimeParts {
+  const values = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(instantMs)).map((part) => [part.type, part.value]));
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+    hour: Number(values.hour),
+    minute: Number(values.minute),
+  };
+}
+
+function partsAsUtc(parts: LocalDateTimeParts): number {
+  return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute);
+}
+
+function sameParts(left: LocalDateTimeParts, right: LocalDateTimeParts): boolean {
+  return left.year === right.year && left.month === right.month && left.day === right.day
+    && left.hour === right.hour && left.minute === right.minute;
+}
+
+export function zonedLocalInputToIsoUtc(value: string, timeZone: string): string | null {
+  const desired = parseLocalInput(value);
+  if (!desired) return null;
+  try {
+    const wallClockAsUtc = partsAsUtc(desired);
+    let candidate = wallClockAsUtc - (partsAsUtc(partsAt(wallClockAsUtc, timeZone)) - wallClockAsUtc);
+    candidate -= partsAsUtc(partsAt(candidate, timeZone)) - wallClockAsUtc;
+    return sameParts(partsAt(candidate, timeZone), desired) ? new Date(candidate).toISOString() : null;
+  } catch {
+    return null;
+  }
+}
+
+export function epochSecondsToZonedLocalInput(seconds: number, timeZone: string): string | null {
+  try {
+    const parts = partsAt(seconds * 1000, timeZone);
+    const pad = (value: number) => String(value).padStart(2, "0");
+    return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}T${pad(parts.hour)}:${pad(parts.minute)}`;
+  } catch {
+    return null;
+  }
+}
+
 export function defaultExceptionStart(nowMs = Date.now()): string {
   const date = new Date(nowMs + 24 * 60 * 60 * 1000);
   date.setMinutes(0, 0, 0);

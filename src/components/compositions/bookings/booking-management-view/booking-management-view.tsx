@@ -44,7 +44,26 @@ export interface BookingManagementViewProps {
   onRetry?: () => void;
   onSignIn?: () => void;
   className?: string;
+  copy?: Partial<BookingManagementViewCopy>;
 }
+
+export interface BookingManagementViewCopy {
+  title: string; roleLabel: string; asBooker: string; asHost: string;
+  upcoming: string; review: string; past: string; cancelled: string;
+  join: string; rejoin: string; addToCalendar: string; cancel: string;
+  loading: string; signedOutTitle: string; signedOutDetail: string; signIn: string;
+  errorTitle: string; errorDetail: string; retry: string;
+  emptyTitle: string; emptyBookerDetail: string; emptyHostDetail: string;
+}
+
+export const defaultBookingManagementViewCopy: BookingManagementViewCopy = {
+  title: "Bookings", roleLabel: "Booking role", asBooker: "As booker", asHost: "As host",
+  upcoming: "Upcoming", review: "Needs review", past: "Past", cancelled: "Cancelled",
+  join: "Join session", rejoin: "Rejoin session", addToCalendar: "Add to calendar", cancel: "Cancel booking",
+  loading: "Loading bookings", signedOutTitle: "Sign in to view your bookings", signedOutDetail: "Your upcoming and past sessions appear here.", signIn: "Sign in",
+  errorTitle: "Bookings could not be loaded", errorDetail: "Try again in a moment.", retry: "Try again",
+  emptyTitle: "No bookings yet", emptyBookerDetail: "Booked sessions will appear here.", emptyHostDetail: "Sessions booked with you will appear here.",
+};
 
 const toneClass: Record<BookingManagementTone, string> = {
   default: "text-foreground",
@@ -53,23 +72,18 @@ const toneClass: Record<BookingManagementTone, string> = {
   muted: "text-muted-foreground",
 };
 
-const sectionLabels: Record<BookingManagementSection, string> = {
-  upcoming: "Upcoming",
-  review: "Needs review",
-  past: "Past",
-  cancelled: "Cancelled",
-};
-
 function BookingManagementCard({
   item,
   onAddToCalendar,
   onCancel,
   onJoin,
+  copy,
 }: {
   item: BookingManagementItem;
   onAddToCalendar?: (item: BookingManagementItem) => void;
   onCancel?: (item: BookingManagementItem) => void;
   onJoin?: (item: BookingManagementItem) => void;
+  copy: BookingManagementViewCopy;
 }) {
   return (
     <Card>
@@ -99,21 +113,21 @@ function BookingManagementCard({
           <div className="flex flex-wrap items-center gap-2">
             {item.joinState === "available" || item.joinState === "live" ? (
               <Button className="flex-1" onClick={() => onJoin?.(item)}>
-                {item.joinState === "live" ? "Rejoin session" : "Join session"}
+                {item.joinState === "live" ? copy.rejoin : copy.join}
               </Button>
             ) : null}
             {item.canAddToCalendar ? (
               <IconButton
-                aria-label="Add to calendar"
+                aria-label={copy.addToCalendar}
                 onClick={() => onAddToCalendar?.(item)}
-                title="Add to calendar"
+                title={copy.addToCalendar}
                 variant="outline"
               >
                 <CalendarPlus aria-hidden="true" className="size-5" />
               </IconButton>
             ) : null}
             {item.canCancel ? (
-              <Button onClick={() => onCancel?.(item)} variant="outline">Cancel booking</Button>
+              <Button onClick={() => onCancel?.(item)} variant="outline">{copy.cancel}</Button>
             ) : null}
           </div>
         ) : null}
@@ -122,9 +136,9 @@ function BookingManagementCard({
   );
 }
 
-function LoadingState() {
+function LoadingState({ label }: { label: string }) {
   return (
-    <div className="flex flex-col gap-3" aria-label="Loading bookings">
+    <div className="flex flex-col gap-3" aria-label={label}>
       {[0, 1].map((key) => (
         <Card key={key}>
           <CardContent className="flex gap-3 p-5">
@@ -153,7 +167,12 @@ export function BookingManagementView({
   onSignIn,
   role,
   state,
+  copy: copyOverrides,
 }: BookingManagementViewProps) {
+  const copy = { ...defaultBookingManagementViewCopy, ...copyOverrides };
+  const sectionLabels: Record<BookingManagementSection, string> = {
+    upcoming: copy.upcoming, review: copy.review, past: copy.past, cancelled: copy.cancelled,
+  };
   const sections = (["upcoming", "review", "past", "cancelled"] as const)
     .map((section) => ({ section, items: items.filter((item) => item.section === section) }))
     .filter((entry) => entry.items.length > 0);
@@ -161,25 +180,25 @@ export function BookingManagementView({
   return (
     <div className={cn("mx-auto flex w-full max-w-2xl flex-col gap-6", className)}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <Type as="h1" variant="h2">Bookings</Type>
+        <Type as="h1" variant="h2">{copy.title}</Type>
         <Tabs onValueChange={(value) => onRoleChange?.(value as "host" | "booker")} value={role}>
-          <TabsList aria-label="Booking role">
-            <TabsTrigger value="booker">As booker</TabsTrigger>
-            <TabsTrigger value="host">As host</TabsTrigger>
+          <TabsList aria-label={copy.roleLabel}>
+            <TabsTrigger value="booker">{copy.asBooker}</TabsTrigger>
+            <TabsTrigger value="host">{copy.asHost}</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
-      {state === "loading" ? <LoadingState /> : null}
+      {state === "loading" ? <LoadingState label={copy.loading} /> : null}
 
       {state === "signed-out" ? (
         <Card>
           <CardContent className="flex flex-col items-start gap-4 p-6">
             <div className="flex flex-col gap-1">
-              <Type variant="body-strong">Sign in to view your bookings</Type>
-              <Type variant="caption">Your upcoming and past sessions appear here.</Type>
+              <Type variant="body-strong">{copy.signedOutTitle}</Type>
+              <Type variant="caption">{copy.signedOutDetail}</Type>
             </div>
-            <Button onClick={onSignIn}>Sign in</Button>
+            <Button onClick={onSignIn}>{copy.signIn}</Button>
           </CardContent>
         </Card>
       ) : null}
@@ -188,10 +207,10 @@ export function BookingManagementView({
         <Card>
           <CardContent className="flex flex-col items-start gap-4 p-6">
             <div className="flex flex-col gap-1">
-              <Type className="text-destructive" variant="body-strong">Bookings could not be loaded</Type>
-              <Type variant="caption">{errorMessage ?? "Try again in a moment."}</Type>
+              <Type className="text-destructive" variant="body-strong">{copy.errorTitle}</Type>
+              <Type variant="caption">{errorMessage ?? copy.errorDetail}</Type>
             </div>
-            <Button onClick={onRetry} variant="outline">Try again</Button>
+            <Button onClick={onRetry} variant="outline">{copy.retry}</Button>
           </CardContent>
         </Card>
       ) : null}
@@ -199,9 +218,9 @@ export function BookingManagementView({
       {state === "empty" ? (
         <Card>
           <CardContent className="flex flex-col gap-1 p-6">
-            <Type variant="body-strong">No bookings yet</Type>
+            <Type variant="body-strong">{copy.emptyTitle}</Type>
             <Type variant="caption">
-              {role === "booker" ? "Booked sessions will appear here." : "Sessions booked with you will appear here."}
+              {role === "booker" ? copy.emptyBookerDetail : copy.emptyHostDetail}
             </Type>
           </CardContent>
         </Card>
@@ -217,6 +236,7 @@ export function BookingManagementView({
               onAddToCalendar={onAddToCalendar}
               onCancel={onCancel}
               onJoin={onJoin}
+              copy={copy}
             />
           ))}
         </section>

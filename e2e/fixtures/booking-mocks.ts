@@ -33,6 +33,7 @@ export interface PaidBookingMockState {
   hostTimezone: string;
   // Recorded mutating calls, for assertions.
   captured: CapturedRequest[];
+  managementBookingCancelled: boolean;
 }
 
 export function createPaidBookingMockState(overrides: Partial<PaidBookingMockState> = {}): PaidBookingMockState {
@@ -44,6 +45,7 @@ export function createPaidBookingMockState(overrides: Partial<PaidBookingMockSta
     slotDurationSeconds: 1800,
     hostTimezone: "UTC",
     captured: [],
+    managementBookingCancelled: false,
     ...overrides,
   };
 }
@@ -128,6 +130,20 @@ function bookingQuote(holdId: string, state: PaidBookingMockState) {
   };
 }
 
+function managementBooking(state: PaidBookingMockState) {
+  return {
+    object: "booking", booking_id: "booking_management_e2e", source_community_id: null,
+    host_user_id: "usr_tutor_e2e", booker_user_id: mockProfile.id,
+    slot_start_utc: "2099-01-05T10:00:00.000Z", slot_end_utc: "2099-01-05T10:30:00.000Z",
+    gross_cents: state.basePriceCents, platform_fee_cents: 500, host_payout_cents: state.basePriceCents - 500,
+    refund_cents: null, status: "confirmed", outcome: null, settlement_status: "pending",
+    counterparty: { user_id: "usr_tutor_e2e", public_handle: "tutor.pirate", display_name: "Tutor", avatar_ref: null },
+    funding_tx_ref: "0xmock", payout_tx_ref: null, refund_tx_ref: null, live_room_id: null,
+    confirmed_at: "2026-07-10T00:00:00.000Z", completed_at: null, settled_at: null, cancelled_at: null,
+    created_at: "2026-07-10T00:00:00.000Z", updated_at: "2026-07-10T00:00:00.000Z", viewer_role: "booker",
+  };
+}
+
 async function record(state: PaidBookingMockState, route: Route): Promise<void> {
   const req = route.request();
   let body: unknown = null;
@@ -198,4 +214,24 @@ export async function installPaidBookingApiMocks(page: Page, state: PaidBookingM
     await record(state, route);
     return route.fulfill(json({ error: "confirm is disabled in mocked smoke" }, 409));
   });
+
+  await page.route(/\/bookings\/booking_management_e2e\/cancellation-preview(\?.*)?$/u, (route) =>
+    route.fulfill(json({
+      object: "booking_cancellation_preview", booking_id: "booking_management_e2e", cancelled_by: "booker",
+      gross_cents: state.basePriceCents, refund_cents: state.basePriceCents, host_payout_cents: 0,
+      platform_fee_cents: 0, previewed_at: new Date().toISOString(), policy_cutoff_at: "2099-01-04T10:00:00.000Z",
+    })));
+
+  await page.route(/\/bookings\/booking_management_e2e\/cancel(\?.*)?$/u, async (route) => {
+    await record(state, route);
+    state.managementBookingCancelled = true;
+    return route.fulfill(json({
+      booking: { booking_id: "booking_management_e2e", status: "cancelled_by_booker", outcome: "cancelled_by_booker", refund_cents: state.basePriceCents, refund_tx_ref: null, payout_tx_ref: null },
+      cancelled_by: "booker", already_cancelled: false,
+    }));
+  });
+
+  await page.route(/\/bookings(\?.*)?$/u, (route) => route.fulfill(json({
+    object: "list", data: state.managementBookingCancelled ? [] : [managementBooking(state)], has_more: false,
+  })));
 }

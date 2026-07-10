@@ -31,6 +31,25 @@ export interface BookingCancellationDialogProps {
   state?: BookingCancellationDialogState;
   errorMessage?: string;
   onConfirm: (expectedRefundCents: number) => void;
+  copy?: Partial<BookingCancellationDialogCopy>;
+}
+
+export interface BookingCancellationDialogCopy {
+  title: string; sessionWith: string; termsChanged: string; termsChangedDetail: string;
+  sessionTotal: string; refund: string; fullRefund: string; refundBack: string; noRefund: string;
+  acknowledgement: string; cutoffEnded: string; genericError: string; keepBooking: string; confirm: string;
+}
+
+export const defaultBookingCancellationDialogCopy: BookingCancellationDialogCopy = {
+  title: "Cancel booking?", sessionWith: "{time} with {name}", termsChanged: "Refund terms changed",
+  termsChangedDetail: "Review the updated amount before cancelling.", sessionTotal: "Session total", refund: "Refund",
+  fullRefund: "{name} receives a full refund.", refundBack: "You receive {amount} back.", noRefund: "This cancellation is not refundable.",
+  acknowledgement: "I understand I will not receive a refund.", cutoffEnded: "The free-cancellation window ended {time}.",
+  genericError: "The booking could not be cancelled. Try again.", keepBooking: "Keep booking", confirm: "Confirm cancellation",
+};
+
+function fill(template: string, values: Record<string, string>): string {
+  return template.replace(/\{(\w+)\}/gu, (_match, key: string) => values[key] ?? `{${key}}`);
 }
 
 export function BookingCancellationDialog({
@@ -43,7 +62,9 @@ export function BookingCancellationDialog({
   preview,
   sessionTimeLabel,
   state = "ready",
+  copy: copyOverrides,
 }: BookingCancellationDialogProps) {
+  const copy = { ...defaultBookingCancellationDialogCopy, ...copyOverrides };
   const requiresAcknowledgement = preview.cancelled_by === "booker" && preview.refund_cents === 0;
   const [acknowledged, setAcknowledged] = React.useState(false);
 
@@ -52,35 +73,35 @@ export function BookingCancellationDialog({
   }, [open, preview.previewed_at, preview.refund_cents]);
 
   const refundMessage = preview.cancelled_by === "host"
-    ? `${counterpartyName} receives a full refund.`
+    ? fill(copy.fullRefund, { name: counterpartyName })
     : preview.refund_cents > 0
-      ? `You receive ${formatCentsAsUsdc(preview.refund_cents)} back.`
-      : "This cancellation is not refundable.";
+      ? fill(copy.refundBack, { amount: formatCentsAsUsdc(preview.refund_cents) })
+      : copy.noRefund;
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Cancel booking?</DialogTitle>
-          <DialogDescription>{sessionTimeLabel} with {counterpartyName}</DialogDescription>
+          <DialogTitle>{copy.title}</DialogTitle>
+          <DialogDescription>{fill(copy.sessionWith, { time: sessionTimeLabel, name: counterpartyName })}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
           {state === "terms-changed" ? (
             <div className="flex flex-col gap-1 rounded-[var(--radius-lg)] border border-warning/40 bg-warning/10 p-4">
-              <Type className="text-warning" variant="body-strong">Refund terms changed</Type>
-              <Type className="text-warning" variant="caption">Review the updated amount before cancelling.</Type>
+              <Type className="text-warning" variant="body-strong">{copy.termsChanged}</Type>
+              <Type className="text-warning" variant="caption">{copy.termsChangedDetail}</Type>
             </div>
           ) : null}
 
           <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft p-4">
             <div className="flex items-center justify-between gap-4">
-              <Type variant="body">Session total</Type>
+              <Type variant="body">{copy.sessionTotal}</Type>
               <Type variant="body-strong">{formatCentsAsUsdc(preview.gross_cents)}</Type>
             </div>
             <Separator />
             <div className="flex items-center justify-between gap-4">
-              <Type variant="body-strong">Refund</Type>
+              <Type variant="body-strong">{copy.refund}</Type>
               <Type className={preview.refund_cents === 0 ? "text-warning" : "text-success"} variant="body-strong">
                 {formatCentsAsUsdc(preview.refund_cents)}
               </Type>
@@ -96,25 +117,25 @@ export function BookingCancellationDialog({
                 onCheckedChange={(checked) => setAcknowledged(checked === true)}
               />
               <Type className="text-warning" variant="body-strong">
-                I understand I will not receive a refund.
+                {copy.acknowledgement}
               </Type>
             </label>
           ) : null}
 
           {preview.policy_cutoff_at && requiresAcknowledgement ? (
             <Type variant="caption">
-              The free-cancellation window ended {policyCutoffLabel ?? "before this session"}.
+              {fill(copy.cutoffEnded, { time: policyCutoffLabel ?? sessionTimeLabel })}
             </Type>
           ) : null}
 
           {state === "error" ? (
-            <FormNote tone="destructive">{errorMessage ?? "The booking could not be cancelled. Try again."}</FormNote>
+            <FormNote tone="destructive">{errorMessage ?? copy.genericError}</FormNote>
           ) : null}
         </div>
 
         <DialogFooter>
           <Button disabled={state === "submitting"} onClick={() => onOpenChange(false)} variant="outline">
-            Keep booking
+            {copy.keepBooking}
           </Button>
           <Button
             disabled={requiresAcknowledgement && !acknowledged}
@@ -122,7 +143,7 @@ export function BookingCancellationDialog({
             onClick={() => onConfirm(preview.refund_cents)}
             variant="destructive"
           >
-            Confirm cancellation
+            {copy.confirm}
           </Button>
         </DialogFooter>
       </DialogContent>

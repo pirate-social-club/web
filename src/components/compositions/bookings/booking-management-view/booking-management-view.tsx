@@ -18,10 +18,9 @@ export type BookingManagementTone = "default" | "success" | "warning" | "muted";
 export interface BookingManagementItem {
   id: string;
   counterpartyName: string;
+  counterpartyHandle: string;
   counterpartyAvatarUrl?: string | null;
-  timeLabel: string;
-  durationLabel: string;
-  timezoneLabel: string;
+  sessionTimeLabel: string;
   amountLabel: string;
   statusLabel: string;
   statusDetail: string;
@@ -79,14 +78,12 @@ function BookingManagementCard({
           <Avatar fallback={item.counterpartyName} src={item.counterpartyAvatarUrl ?? undefined} />
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <div className="flex items-start justify-between gap-3">
-              <Type className="min-w-0" variant="body-strong">{item.counterpartyName}</Type>
+              <Type className="min-w-0 truncate" title={item.counterpartyHandle} variant="body-strong">
+                {item.counterpartyHandle}
+              </Type>
               <Type className="shrink-0" variant="body-strong">{item.amountLabel}</Type>
             </div>
-            <Type as="p" variant="body">{item.timeLabel}</Type>
-            <Type as="p" variant="caption">
-              {item.durationLabel}
-              {item.timezoneLabel ? <span className="whitespace-nowrap"> · {item.timezoneLabel}</span> : null}
-            </Type>
+            <Type as="p" variant="caption">{item.sessionTimeLabel}</Type>
           </div>
         </div>
 

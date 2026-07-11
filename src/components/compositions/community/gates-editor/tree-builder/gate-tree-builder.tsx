@@ -21,6 +21,7 @@ import {
   GATE_POLICY_MAX_ATOMS,
   GATE_POLICY_MAX_DEPTH,
   getGateBuilderBudget,
+  isGateBuilderDraftWithinLimits,
   serializeGateBuilderTreeDraft,
   simulateGateBuilderPersonas,
   type GateBuilderDraftNode,
@@ -47,6 +48,7 @@ import type {
   CollectionCapabilitySource,
   FacetValueSuggestion,
 } from "./collection-capability-source";
+import { replaceEditableFacet } from "./collection-capability-source";
 
 export type GateTreeBuilderProps = {
   capabilitySource?: CollectionCapabilitySource;
@@ -77,7 +79,12 @@ export function GateTreeBuilder({ capabilitySource, className, devPreview = fals
   const shouldShowComplexityWarning = budget.atoms >= Math.ceil(GATE_POLICY_MAX_ATOMS * 0.8)
     || budget.depth >= Math.ceil(GATE_POLICY_MAX_DEPTH * 0.8);
   const addRuleDisabled = budget.atoms >= GATE_POLICY_MAX_ATOMS;
-  const addGroupDisabled = budget.depth >= GATE_POLICY_MAX_DEPTH;
+  const addGroupDisabled = addRuleDisabled || budget.depth >= GATE_POLICY_MAX_DEPTH;
+  const applyValidChange = (nextValue: GateBuilderGroupDraft) => {
+    if (isGateBuilderDraftWithinLimits(nextValue)) {
+      onChange(nextValue);
+    }
+  };
 
   return (
     <section className={cn("mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 text-foreground md:p-6", className)}>
@@ -110,7 +117,7 @@ export function GateTreeBuilder({ capabilitySource, className, devPreview = fals
         </div>
       ) : null}
 
-      <GateGroupEditor addGroupDisabled={addGroupDisabled} addRuleDisabled={addRuleDisabled} capabilitySource={capabilitySource} copy={copy} group={value} isRoot onChange={onChange} />
+      <GateGroupEditor addGroupDisabled={addGroupDisabled} addRuleDisabled={addRuleDisabled} capabilitySource={capabilitySource} copy={copy} group={value} isRoot onChange={applyValidChange} />
 
       <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
         <div className="mb-2 text-base font-semibold uppercase tracking-wide text-muted-foreground">{copy.whoCanJoinTitle}</div>
@@ -532,6 +539,20 @@ function NftHoldingEditor({
     } as GateAtom);
   };
 
+  const replaceFacet = (facetKey: string, nextKey: string) => {
+    if (!selectedSource?.inventoryProvider || facetKey === nextKey) return;
+    const nextMatch = replaceEditableFacet(match, selectedSource.fixedMatch, facetKey, nextKey);
+    setPendingFacetKeys((current) => current.filter((key) => key !== facetKey && key !== nextKey));
+    onChange({
+      type: "erc721_inventory_match",
+      provider: selectedSource.inventoryProvider,
+      chain_namespace: selectedSource.chainNamespace,
+      contract_address: selectedSource.contractAddress,
+      min_quantity: isInventoryMatchGate(gate) ? gate.min_quantity ?? 1 : 1,
+      match: nextMatch,
+    } as GateAtom);
+  };
+
   const addableFacetKeys = selectedSource?.traitFiltersSupported
     ? selectedSource.facetKeys.filter((key) => !(key in match) && !(key in (selectedSource.fixedMatch ?? {})) && !pendingFacetKeys.includes(key))
     : [];
@@ -625,11 +646,7 @@ function NftHoldingEditor({
           {traitKeys.map((facetKey) => (
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center" key={facetKey}>
               <div className="lg:w-40 lg:shrink-0">
-                <Select value={facetKey} onValueChange={(nextKey) => {
-                  const existingValue = match[facetKey] ?? "";
-                  removeFacet(facetKey);
-                  updateFacet(nextKey, existingValue);
-                }}>
+                <Select value={facetKey} onValueChange={(nextKey) => replaceFacet(facetKey, nextKey)}>
                   <SelectTrigger aria-label="Attribute" className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {selectedSource.facetKeys.filter((key) => key === facetKey || (!(key in match) && !(key in (selectedSource.fixedMatch ?? {})))).map((key) => (

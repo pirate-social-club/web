@@ -25,3 +25,16 @@ export interface CollectionCapabilitySource {
   searchFacetValues(sourceId: string, facetKey: string, query: string): Promise<FacetValueSuggestion[]>;
   estimateMatchCount(sourceId: string, match: Record<string, string>): Promise<number | null>;
 }
+
+export function replaceEditableFacet(
+  match: Record<string, string>,
+  fixedMatch: Record<string, string> | undefined,
+  facetKey: string,
+  nextKey: string,
+): Record<string, string> {
+  const nextMatch = { ...fixedMatch, ...match };
+  const existingValue = nextMatch[facetKey] ?? "";
+  delete nextMatch[facetKey];
+  nextMatch[nextKey] = existingValue;
+  return nextMatch;
+}

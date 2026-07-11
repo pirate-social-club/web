@@ -1261,6 +1261,34 @@ describe("PostComposer monetization", () => {
     expect(submitButton.props.disabled).toBe(false);
   });
 
+  test("restores the publish label when a submit fails with stale progress", () => {
+    const tree = renderComposer({
+      availableTabs: ["video"],
+      clubName: "Lane1",
+      composerStep: "publish",
+      mode: "video",
+      submitError: "primary_video must be uploaded with direct_multipart",
+      submitLoading: false,
+      submitProgress: {
+        currentIndex: 1,
+        display: "pipeline",
+        label: "Uploading video",
+        phase: "uploading_media",
+        totalSteps: 4,
+      },
+    });
+
+    const submitButton = findElement(
+      tree,
+      (element) => element.props.children === "Publish" && "disabled" in element.props,
+    );
+    if (!submitButton) {
+      throw new Error("Missing submit button");
+    }
+
+    expect(submitButton.props.disabled).toBe(false);
+  });
+
   test("constrains the desktop publish preview shell to the post card width", () => {
     const tree = renderComposer({
       availableTabs: ["song"],

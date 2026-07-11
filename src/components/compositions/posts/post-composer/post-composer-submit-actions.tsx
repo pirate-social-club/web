@@ -228,7 +228,7 @@ export function PostComposerDesktopFooter({
           }}
           size="lg"
         >
-          {submitButtonContent(submit.progress, publishLabel)}
+          {submitButtonContent(submit.loading ? submit.progress : null, publishLabel)}
         </Button>
       </div>
     </CardFooter>
@@ -299,7 +299,7 @@ export function PostComposerMobileSubmitBar({
               }}
               size="lg"
             >
-              {submitButtonContent(submit.progress, publishLabel)}
+              {submitButtonContent(submit.loading ? submit.progress : null, publishLabel)}
             </Button>
           </div>
         </div>

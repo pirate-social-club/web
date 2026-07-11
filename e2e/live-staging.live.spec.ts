@@ -33,6 +33,7 @@ const liveSecretsPresent = Boolean(
   && process.env.AUTH_UPSTREAM_JWT_ISSUER?.trim()
   && process.env.AUTH_UPSTREAM_JWT_SHARED_SECRET?.trim(),
 );
+const requiredReleaseGate = process.env.E2E_REQUIRED_RELEASE_GATE === "true";
 
 // Contract-drift gate for community follow. This catches response shape regressions,
 // hook silent rollback, and persistence across reload; it is not a broad follow suite.
@@ -1219,7 +1220,11 @@ test.describe("live staging integration", () => {
     const session = await createLiveSession(liveSubject, walletAddressForSubject(liveSubject));
     const community = await discoverWritableSeedCommunity(session);
     if (!community) {
-      test.skip(true, "No authenticated writable staging seed community is available for direct multipart upload.");
+      const message = "No authenticated writable staging seed community is available for direct multipart upload.";
+      if (requiredReleaseGate) {
+        throw new Error(`Required release gate cannot run: ${message}`);
+      }
+      test.skip(true, message);
       return;
     }
     const title = `Multipart video browser E2E ${runId}`;

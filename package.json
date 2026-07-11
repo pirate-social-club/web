@@ -31,6 +31,7 @@
     "test": "bun test",
     "test:assistant:light": "bun test src/lib/chat/community-assistant-chat-client.test.ts src/lib/chat/chat-conversation-state.test.ts src/components/compositions/chat/chat-route-views.test.tsx",
     "test:e2e": "playwright test",
+    "test:e2e:required-gate": "node scripts/run-required-playwright-gate.mjs",
     "test:e2e:assistant:ui": "playwright test e2e/community-assistant-chat-ui.spec.ts --project=chromium",
     "test:e2e:assistant:local": "playwright test e2e/community-assistant.local.spec.ts",
     "test:e2e:staging": "E2E_BASE_URL=https://staging.pirate.sc playwright test",

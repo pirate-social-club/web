@@ -23,7 +23,10 @@ const liveSubject = process.env.E2E_LIVE_STAGING_SUBJECT ?? "seed-staging-mcp-sm
 const seedCommunityLabel = process.env.E2E_LIVE_STAGING_COMMUNITY_LABEL ?? "MCP Guest Comment Smoke";
 const seedPostTitle = process.env.E2E_LIVE_STAGING_SEED_POST_TITLE ?? "MCP guest comment smoke target";
 const multipartGateVideoBytes = Number.parseInt(
-  process.env.E2E_MULTIPART_GATE_VIDEO_BYTES ?? String(70 * 1024 * 1024),
+  // Keep the default below the retired 64 MiB proxy threshold. This makes the
+  // release gate catch clients that accidentally send ordinary videos through
+  // the legacy proxy upload path instead of direct multipart.
+  process.env.E2E_MULTIPART_GATE_VIDEO_BYTES ?? String(1 * 1024 * 1024),
   10,
 );
 const multipartGateSubject = process.env.E2E_MULTIPART_GATE_SUBJECT?.trim() || liveSubject;

@@ -930,7 +930,7 @@ export function CommunityModerationPage({
           gateDrafts={state.gateDrafts}
           gateMatchMode={state.gateMatchMode}
           gateTreeDraft={state.gateTreeDraft}
-          hasAdvancedGatePolicy={!useGateTreeBuilder && state.hasAdvancedGatePolicy}
+          hasAdvancedGatePolicy={useGateTreeBuilder ? state.hasUnsupportedGateExpression : state.hasAdvancedGatePolicy}
           membershipMode={state.membershipMode}
           onAllowAnonymousIdentityChange={state.setAllowAnonymousIdentity}
           onAnonymousIdentityScopeChange={state.setAnonymousIdentityScope}

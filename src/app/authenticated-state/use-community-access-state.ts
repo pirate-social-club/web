@@ -9,6 +9,7 @@ import type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy } from "@/li
 
 import { submitCommunitySave, type SaveCommunityAction } from "@/app/authenticated-helpers/community-moderation-save";
 import {
+  gatePolicyHasUnsupportedExpressionNodes,
   gateTreeDraftMatchesPolicy,
   parseGatePolicyToTreeDraft,
   serializeGateBuilderTreeDraft,
@@ -45,8 +46,10 @@ export function useCommunityAccessState({
   const [gateTreeDraft, setGateTreeDraft] = React.useState<GateBuilderGroupDraft>(() => parseGatePolicyToTreeDraft(null));
   const [savingGates, setSavingGates] = React.useState(false);
   const [hasAdvancedGatePolicy, setHasAdvancedGatePolicy] = React.useState(false);
+  const [hasUnsupportedGateExpression, setHasUnsupportedGateExpression] = React.useState(false);
   const [replaceAdvancedGatePolicy, setReplaceAdvancedGatePolicy] = React.useState(false);
   const loadedGatePolicyRef = React.useRef<PreserveGatePolicyInput | null>(null);
+  const loadedGateTreeDraftRef = React.useRef<GateBuilderGroupDraft>(parseGatePolicyToTreeDraft(null));
   React.useEffect(() => {
     if (!community) {
       return;
@@ -62,7 +65,10 @@ export function useCommunityAccessState({
     setAnonymousIdentityScope(community.anonymous_identity_scope ?? "community_stable");
     setGateDrafts(nextVisibleGateDrafts);
     setGateMatchMode(nextGateMatchMode);
-    setGateTreeDraft(parseGatePolicyToTreeDraft(community.gate_policy));
+    const nextGateTreeDraft = parseGatePolicyToTreeDraft(community.gate_policy);
+    setGateTreeDraft(nextGateTreeDraft);
+    loadedGateTreeDraftRef.current = nextGateTreeDraft;
+    setHasUnsupportedGateExpression(gatePolicyHasUnsupportedExpressionNodes(community.gate_policy));
     setReplaceAdvancedGatePolicy(false);
     loadedGatePolicyRef.current = community.gate_policy
       ? {
@@ -88,9 +94,10 @@ export function useCommunityAccessState({
   }, [gateDrafts, gateMatchMode, membershipMode]);
 
   const advancedGatePolicyReplacementRequired = !useGateTreeBuilder
-    && hasAdvancedGatePolicy
-    && membershipMode === "gated"
-    && !gatePolicyProjectionUnchanged;
+    ? hasAdvancedGatePolicy && membershipMode === "gated" && !gatePolicyProjectionUnchanged
+    : hasUnsupportedGateExpression
+      && membershipMode === "gated"
+      && !areStableJsonValuesEqual(loadedGateTreeDraftRef.current, gateTreeDraft);
 
   const handleSaveGates = React.useCallback(() => {
     if (!community) return;
@@ -104,7 +111,8 @@ export function useCommunityAccessState({
     const effectiveDefaultAgeGatePolicy = hasAdultMinimumAgeGate ? "18_plus" : defaultAgeGatePolicy;
     const gatePolicy = membershipMode === "gated"
       ? useGateTreeBuilder
-        ? gateTreeDraftMatchesPolicy(loadedGatePolicyRef.current?.policy, gateTreeDraft)
+        ? areStableJsonValuesEqual(loadedGateTreeDraftRef.current, gateTreeDraft)
+          || gateTreeDraftMatchesPolicy(loadedGatePolicyRef.current?.policy, gateTreeDraft)
           ? loadedGatePolicyRef.current?.policy ?? null
           : serializeGateBuilderTreeDraft(gateTreeDraft)
         : serializeIdentityGateDraftsForSave(gateDrafts, {
@@ -138,6 +146,7 @@ export function useCommunityAccessState({
     gateMatchMode,
     gateTreeDraft,
     hasAdvancedGatePolicy,
+    hasUnsupportedGateExpression,
     handleSaveGates,
     membershipMode,
     preservedGateRuleCount: 0,

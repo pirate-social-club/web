@@ -3,6 +3,7 @@ import type { GatePolicy } from "@pirate/api-contracts";
 
 import {
   captchaAloneAdmits,
+  gatePolicyHasUnsupportedExpressionNodes,
   gateTreeDraftMatchesPolicy,
   getGateBuilderBudget,
   isGateBuilderDraftWithinLimits,
@@ -364,8 +365,8 @@ describe("parseGatePolicyToTreeDraft", () => {
     expect(gateTreeDraftMatchesPolicy(loadedPolicy, draft)).toBe(true);
   });
 
-  test("ignores malformed or future op nodes instead of throwing", () => {
-    const draft = parseGatePolicyToTreeDraft({
+  test("parses supported children while reporting malformed or future op nodes", () => {
+    const policy = {
       version: 1,
       expression: {
         op: "and",
@@ -375,12 +376,27 @@ describe("parseGatePolicyToTreeDraft", () => {
           { op: "or" },
         ],
       } as unknown as GatePolicy["expression"],
-    });
+    };
+    const draft = parseGatePolicyToTreeDraft(policy);
 
+    expect(gatePolicyHasUnsupportedExpressionNodes(policy)).toBe(true);
     expect(serializeGateBuilderTreeDraft(draft)).toEqual({
       version: 1,
       expression: { op: "gate", gate: { type: "altcha_pow" } },
     });
+  });
+
+  test("does not classify safe canonicalization shapes as unsupported", () => {
+    expect(gatePolicyHasUnsupportedExpressionNodes({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [{
+          op: "and",
+          children: [{ op: "gate", gate: { type: "altcha_pow" } }],
+        }],
+      },
+    })).toBe(false);
   });
 });
 

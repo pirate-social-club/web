@@ -142,6 +142,46 @@ describe("useCommunityAccessState", () => {
     });
   });
 
+  test("preserves unknown atoms when a flagged tree policy is edited", async () => {
+    const calls = installCommunityApiMocks();
+    const futureGate = { type: "future_reputation_gate", threshold: 7 };
+    const { result } = renderAccessHook({
+      community: createCommunity({
+        gate_policy: {
+          version: 1,
+          expression: {
+            op: "and",
+            children: [
+              { op: "gate", gate: futureGate },
+              { op: "gate", gate: { type: "unique_human", provider: "self" } },
+            ],
+          },
+        } as ApiCommunity["gate_policy"],
+      }),
+      useGateTreeBuilder: true,
+    });
+
+    await waitFor(() => expect(result.current.gateTreeDraft.children).toHaveLength(2));
+    act(() => result.current.setGateTreeDraft({
+      ...result.current.gateTreeDraft,
+      op: "or",
+    }));
+    await waitFor(() => expect(result.current.gateTreeDraft.op).toBe("or"));
+    act(() => result.current.handleSaveGates());
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+
+    expect(calls.updateGates[0]?.body.gate_policy).toEqual({
+      version: 1,
+      expression: {
+        op: "or",
+        children: [
+          { op: "gate", gate: futureGate },
+          { op: "gate", gate: { type: "unique_human", provider: "self" } },
+        ],
+      },
+    });
+  });
+
   test("initializes access draft state from the community record", async () => {
     installCommunityApiMocks();
     const { result } = renderAccessHook();

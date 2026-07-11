@@ -1414,7 +1414,9 @@ test.describe("live staging integration", () => {
     }
   });
 
-  test("creates and quotes a global booking hold on staging", async () => {
+  test("creates and quotes a global booking hold on staging", async ({}, testInfo) => {
+    testInfo.setTimeout(120_000);
+
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
     const hostSubject = `booking-smoke-host-${runId}`;
     const bookerSubject = `booking-smoke-booker-${runId}`;

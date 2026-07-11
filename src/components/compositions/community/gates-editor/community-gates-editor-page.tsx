@@ -16,6 +16,8 @@ import { Label } from "@/components/primitives/label";
 import { CheckboxCard } from "@/components/primitives/checkbox-card";
 import { OptionCard } from "@/components/primitives/option-card";
 import { NationalityMultiPicker } from "@/components/compositions/community/create-composer/nationality-picker";
+import { GateTreeBuilder } from "@/components/compositions/community/gates-editor/tree-builder/gate-tree-builder";
+import type { GateBuilderGroupDraft } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import {
   DEFAULT_DOCUMENT_PROOF_PROVIDERS,
   type AnonymousIdentityScope,
@@ -327,6 +329,7 @@ export interface CommunityGatesEditorPageProps {
   defaultAgeGatePolicy: CommunityDefaultAgeGatePolicy;
   gateDrafts: IdentityGateDraft[];
   gateMatchMode?: "all" | "any";
+  gateTreeDraft?: GateBuilderGroupDraft;
   hasAdvancedGatePolicy?: boolean;
   membershipMode: CommunityMembershipMode;
   onAllowAnonymousIdentityChange?: (value: boolean) => void;
@@ -335,6 +338,7 @@ export interface CommunityGatesEditorPageProps {
   onDefaultAgeGatePolicyChange?: (value: CommunityDefaultAgeGatePolicy) => void;
   onGateDraftsChange?: (value: IdentityGateDraft[]) => void;
   onGateMatchModeChange?: (value: "all" | "any") => void;
+  onGateTreeDraftChange?: (value: GateBuilderGroupDraft) => void;
   onMembershipModeChange?: (value: CommunityMembershipMode) => void;
   onReadAccessModeChange?: (value: CommunityReadAccessMode) => void;
   onReplaceAdvancedGatePolicyChange?: (value: boolean) => void;
@@ -345,6 +349,7 @@ export interface CommunityGatesEditorPageProps {
   showSaveAction?: boolean;
   showExperimentalZkPassportProviders?: boolean;
   showTitle?: boolean;
+  useGateTreeBuilder?: boolean;
 }
 
 export function CommunityGatesEditorPage({
@@ -359,6 +364,7 @@ export function CommunityGatesEditorPage({
   defaultAgeGatePolicy,
   gateDrafts,
   gateMatchMode = "all",
+  gateTreeDraft,
   hasAdvancedGatePolicy = false,
   membershipMode,
   readAccessMode = "public",
@@ -368,6 +374,7 @@ export function CommunityGatesEditorPage({
   onDefaultAgeGatePolicyChange,
   onGateDraftsChange,
   onGateMatchModeChange,
+  onGateTreeDraftChange,
   onMembershipModeChange,
   onReadAccessModeChange,
   onReplaceAdvancedGatePolicyChange,
@@ -378,6 +385,7 @@ export function CommunityGatesEditorPage({
   showSaveAction = true,
   showExperimentalZkPassportProviders = true,
   showTitle = true,
+  useGateTreeBuilder = false,
 }: CommunityGatesEditorPageProps) {
   const { locale } = useUiLocale();
   const copy = React.useMemo(() => getLocaleMessages(locale, "routes"), [locale]);
@@ -484,6 +492,14 @@ export function CommunityGatesEditorPage({
               />
 
               {mode === "gated" && effectiveMembershipMode === "gated" ? (
+                useGateTreeBuilder && gateTreeDraft && onGateTreeDraftChange ? (
+                  <GateTreeBuilder
+                    className="max-w-none p-0"
+                    onChange={onGateTreeDraftChange}
+                    showHeader={false}
+                    value={gateTreeDraft}
+                  />
+                ) : (
                 <div className="space-y-3 pt-2">
                   {showGateMatchModeControl ? (
                     <div className="space-y-3">
@@ -820,6 +836,7 @@ export function CommunityGatesEditorPage({
                     </div>
                   ) : null}
                 </div>
+                )
               ) : null}
             </div>
           ))}

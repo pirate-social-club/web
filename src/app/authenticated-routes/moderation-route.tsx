@@ -45,6 +45,10 @@ import { buildPublicProfilePath } from "@/lib/profile-routing";
 
 import { CommunityModerationGuard, getCommunityModerationTitle } from "@/app/authenticated-helpers/moderation-route-helpers";
 import {
+  isGateBuilderDraftWithinLimits,
+  serializeGateBuilderTreeDraft,
+} from "@/app/authenticated-helpers/community-gate-tree-draft";
+import {
   buildCommunityModerationIndexPath,
   buildCommunityModerationPath,
   buildCommunityModerationSections,
@@ -899,15 +903,19 @@ export function CommunityModerationPage({
         />
       );
     } else if (section === "gates") {
-      setMobileSaveAction({
-        disabled: state.savingGates
-          || (state.advancedGatePolicyReplacementRequired && !state.replaceAdvancedGatePolicy)
-          || (state.membershipMode === "gated" && state.gateDrafts.length === 0 && state.preservedGateRuleCount === 0)
+      const useGateTreeBuilder = import.meta.env.VITE_GATE_TREE_BUILDER_ENABLED === "true";
+      const gateConfigurationInvalid = state.membershipMode === "gated" && (useGateTreeBuilder
+        ? serializeGateBuilderTreeDraft(state.gateTreeDraft) == null || !isGateBuilderDraftWithinLimits(state.gateTreeDraft)
+        : state.gateDrafts.length === 0 && state.preservedGateRuleCount === 0
           || state.gateDrafts.some((draft) => (
             draft.gateType === "erc721_holding" && !isAddress(draft.contractAddress.trim())
             || draft.gateType === "erc721_inventory_match" && !isValidCourtyardInventoryDraft(draft)
             || draft.gateType === "wallet_score" && (!Number.isFinite(draft.minimumScore) || draft.minimumScore < 0 || draft.minimumScore > 100)
-          )),
+          )));
+      setMobileSaveAction({
+        disabled: state.savingGates
+          || (state.advancedGatePolicyReplacementRequired && !state.replaceAdvancedGatePolicy)
+          || gateConfigurationInvalid,
         loading: state.savingGates,
         onSave: state.handleSaveGates,
       });
@@ -921,7 +929,8 @@ export function CommunityModerationPage({
           courtyardInventoryLoading={courtyardInventoryLoading}
           gateDrafts={state.gateDrafts}
           gateMatchMode={state.gateMatchMode}
-          hasAdvancedGatePolicy={state.hasAdvancedGatePolicy}
+          gateTreeDraft={state.gateTreeDraft}
+          hasAdvancedGatePolicy={!useGateTreeBuilder && state.hasAdvancedGatePolicy}
           membershipMode={state.membershipMode}
           onAllowAnonymousIdentityChange={state.setAllowAnonymousIdentity}
           onAnonymousIdentityScopeChange={state.setAnonymousIdentityScope}
@@ -929,6 +938,7 @@ export function CommunityModerationPage({
           onDefaultAgeGatePolicyChange={state.setDefaultAgeGatePolicy}
           onGateDraftsChange={state.setGateDrafts}
           onGateMatchModeChange={state.setGateMatchMode}
+          onGateTreeDraftChange={state.setGateTreeDraft}
           onMembershipModeChange={state.setMembershipMode}
           onReplaceAdvancedGatePolicyChange={state.setReplaceAdvancedGatePolicy}
           onSave={state.handleSaveGates}
@@ -936,14 +946,10 @@ export function CommunityModerationPage({
           saveDisabled={
             state.savingGates
             || (state.advancedGatePolicyReplacementRequired && !state.replaceAdvancedGatePolicy)
-            || (state.membershipMode === "gated" && state.gateDrafts.length === 0 && state.preservedGateRuleCount === 0)
-            || state.gateDrafts.some((draft) => (
-              draft.gateType === "erc721_holding" && !isAddress(draft.contractAddress.trim())
-              || draft.gateType === "erc721_inventory_match" && !isValidCourtyardInventoryDraft(draft)
-              || draft.gateType === "wallet_score" && (!Number.isFinite(draft.minimumScore) || draft.minimumScore < 0 || draft.minimumScore > 100)
-            ))
+            || gateConfigurationInvalid
           }
           showSaveAction
+          useGateTreeBuilder={useGateTreeBuilder}
         />
       );
     } else if (section === "safety") {

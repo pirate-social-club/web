@@ -82,14 +82,66 @@ function createSaveCommunityMock() {
 function renderAccessHook({
   community = createCommunity(),
   saveCommunity = createSaveCommunityMock().saveCommunity,
+  useGateTreeBuilder = false,
 }: {
   community?: ApiCommunity | null;
   saveCommunity?: SaveCommunityAction;
+  useGateTreeBuilder?: boolean;
 } = {}) {
-  return renderHook(() => useCommunityAccessState({ community, saveCommunity }));
+  return renderHook(() => useCommunityAccessState({ community, saveCommunity, useGateTreeBuilder }));
 }
 
 describe("useCommunityAccessState", () => {
+  test("preserves a non-canonical policy verbatim on a flagged tree-builder no-op save", async () => {
+    const calls = installCommunityApiMocks();
+    const originalPolicy = {
+      version: 1 as const,
+      expression: {
+        op: "and" as const,
+        children: [{ op: "gate" as const, gate: { type: "altcha_pow" as const } }],
+      },
+    };
+    const { result } = renderAccessHook({
+      community: createCommunity({ gate_policy: originalPolicy }),
+      useGateTreeBuilder: true,
+    });
+
+    await waitFor(() => expect(result.current.gateTreeDraft.children).toHaveLength(1));
+    act(() => result.current.handleSaveGates());
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+
+    expect(calls.updateGates[0]?.body.gate_policy).toBe(originalPolicy);
+  });
+
+  test("serializes recursive tree edits on the flagged save path", async () => {
+    const calls = installCommunityApiMocks();
+    const { result } = renderAccessHook({ useGateTreeBuilder: true });
+
+    await waitFor(() => expect(result.current.gateTreeDraft.children).toHaveLength(1));
+    act(() => result.current.setGateTreeDraft({
+      kind: "group",
+      op: "or",
+      children: [
+        { kind: "rule", gate: { type: "unique_human", provider: "self" } },
+        { kind: "rule", gate: { type: "altcha_pow" } },
+      ],
+    }));
+    await waitFor(() => expect(result.current.gateTreeDraft.op).toBe("or"));
+    act(() => result.current.handleSaveGates());
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+
+    expect(calls.updateGates[0]?.body.gate_policy).toEqual({
+      version: 1,
+      expression: {
+        op: "or",
+        children: [
+          { op: "gate", gate: { type: "unique_human", provider: "self" } },
+          { op: "gate", gate: { type: "altcha_pow" } },
+        ],
+      },
+    });
+  });
+
   test("initializes access draft state from the community record", async () => {
     installCommunityApiMocks();
     const { result } = renderAccessHook();

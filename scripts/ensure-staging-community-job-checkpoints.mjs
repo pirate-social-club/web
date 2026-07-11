@@ -3,14 +3,16 @@ import { spawnSync } from "node:child_process";
 const database = process.env.E2E_MULTIPART_GATE_D1_DATABASE;
 const config = process.env.E2E_MULTIPART_GATE_D1_CONFIG;
 const migration = process.env.E2E_MULTIPART_GATE_D1_MIGRATION;
-if (!database || !config || !migration) throw new Error("Multipart fixture D1 migration configuration is incomplete");
+if (!database || !migration) throw new Error("Multipart fixture D1 migration configuration is incomplete");
 
 function execute(...args) {
-  const result = spawnSync("bunx", ["wrangler", "d1", "execute", database, "--remote", "--config", config, "--json", ...args], {
+  const configArgs = config ? ["--config", config] : [];
+  const result = spawnSync("bunx", ["wrangler", "d1", "execute", database, "--remote", ...configArgs, "--json", ...args], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
   if (result.status !== 0) {
+    process.stderr.write(result.stdout);
     process.stderr.write(result.stderr);
     throw new Error(`wrangler D1 execution failed with exit ${result.status}`);
   }

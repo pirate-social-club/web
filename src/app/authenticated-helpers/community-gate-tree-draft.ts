@@ -3,6 +3,7 @@ import { areGatePoliciesEqual } from "@/lib/gate-policy-utils";
 
 export const GATE_POLICY_MAX_ATOMS = 20;
 export const GATE_POLICY_MAX_DEPTH = 4;
+export const PASSPORT_SCORE_FLOOR = 20;
 
 export type GateBuilderGroupOp = "and" | "or";
 
@@ -88,6 +89,13 @@ export function getGateBuilderBudget(root: GateBuilderGroupDraft): GateBuilderBu
 export function isGateBuilderDraftWithinLimits(root: GateBuilderGroupDraft): boolean {
   const budget = getGateBuilderBudget(root);
   return budget.atoms <= GATE_POLICY_MAX_ATOMS && budget.depth <= GATE_POLICY_MAX_DEPTH;
+}
+
+export function normalizePassportMinimumScore(value: number): number {
+  if (!Number.isFinite(value)) {
+    return PASSPORT_SCORE_FLOOR;
+  }
+  return Math.min(100, Math.max(PASSPORT_SCORE_FLOOR, Math.trunc(value)));
 }
 
 export function gateTreeDraftMatchesPolicy(

@@ -252,6 +252,15 @@ jobs:
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/bookings/migrations \
             --label bookings
+      - name: Apply multipart fixture D1 migration
+        working-directory: web
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          E2E_MULTIPART_GATE_D1_DATABASE: community-d1-pool-0032-staging
+          E2E_MULTIPART_GATE_D1_CONFIG: ../api/services/community-d1-shard/wrangler.jsonc
+          E2E_MULTIPART_GATE_D1_MIGRATION: ../core/db/community-template/migrations/1124_community_job_checkpoints.sql
+        run: node scripts/ensure-staging-community-job-checkpoints.mjs
       - name: Install Playwright browser
         working-directory: web
         run: bunx playwright install --with-deps chromium

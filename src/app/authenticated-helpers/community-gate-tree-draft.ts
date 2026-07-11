@@ -85,6 +85,11 @@ export function getGateBuilderBudget(root: GateBuilderGroupDraft): GateBuilderBu
   return getExpressionBudget(expression as RecursiveGateExpression);
 }
 
+export function isGateBuilderDraftWithinLimits(root: GateBuilderGroupDraft): boolean {
+  const budget = getGateBuilderBudget(root);
+  return budget.atoms <= GATE_POLICY_MAX_ATOMS && budget.depth <= GATE_POLICY_MAX_DEPTH;
+}
+
 export function gateTreeDraftMatchesPolicy(
   loadedPolicy: GatePolicy | null | undefined,
   currentDraft: GateBuilderGroupDraft,

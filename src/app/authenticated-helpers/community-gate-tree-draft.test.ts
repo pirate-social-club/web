@@ -5,6 +5,7 @@ import {
   captchaAloneAdmits,
   gateTreeDraftMatchesPolicy,
   getGateBuilderBudget,
+  isGateBuilderDraftWithinLimits,
   parseGatePolicyToTreeDraft,
   serializeGateBuilderTreeDraft,
   simulateGateBuilderPersonas,
@@ -206,6 +207,61 @@ describe("serializeGateBuilderTreeDraft", () => {
         ],
       },
     });
+  });
+});
+
+describe("isGateBuilderDraftWithinLimits", () => {
+  test("rejects a group insertion that would create atom 21", () => {
+    const children = Array.from({ length: 20 }, () => antiBot);
+    const atLimit: GateBuilderGroupDraft = { kind: "group", op: "and", children };
+    const withGroup: GateBuilderGroupDraft = {
+      ...atLimit,
+      children: [
+        ...children,
+        { kind: "group", op: "and", children: [antiBot] },
+      ],
+    };
+
+    expect(isGateBuilderDraftWithinLimits(atLimit)).toBe(true);
+    expect(isGateBuilderDraftWithinLimits(withGroup)).toBe(false);
+  });
+
+  test("rejects operator changes that produce depth beyond four", () => {
+    const atLimit: GateBuilderGroupDraft = {
+      kind: "group",
+      op: "and",
+      children: [{
+        kind: "group",
+        op: "or",
+        children: [{
+          kind: "group",
+          op: "and",
+          children: [antiBot, selfHuman],
+        }, veryHuman],
+      }, score20],
+    };
+    const tooDeep: GateBuilderGroupDraft = {
+      kind: "group",
+      op: "and",
+      children: [{
+        kind: "group",
+        op: "or",
+        children: [{
+          kind: "group",
+          op: "and",
+          children: [{
+            kind: "group",
+            op: "or",
+            children: [antiBot, selfHuman],
+          }, veryHuman],
+        }, score20],
+      }, bayc],
+    };
+
+    expect(getGateBuilderBudget(atLimit).depth).toBe(4);
+    expect(isGateBuilderDraftWithinLimits(atLimit)).toBe(true);
+    expect(getGateBuilderBudget(tooDeep).depth).toBe(5);
+    expect(isGateBuilderDraftWithinLimits(tooDeep)).toBe(false);
   });
 });
 

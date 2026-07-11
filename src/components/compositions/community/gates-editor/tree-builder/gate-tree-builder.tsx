@@ -57,6 +57,7 @@ export type GateTreeBuilderProps = {
   className?: string;
   devPreview?: boolean;
   onChange: (value: GateBuilderGroupDraft) => void;
+  showHeader?: boolean;
   value: GateBuilderGroupDraft;
 };
 
@@ -72,7 +73,7 @@ type RuleKind =
 
 const DEFAULT_CONTRACT = "0x0000000000000000000000000000000000000000";
 
-export function GateTreeBuilder({ capabilitySource, className, devPreview = false, onChange, value }: GateTreeBuilderProps) {
+export function GateTreeBuilder({ capabilitySource, className, devPreview = false, onChange, showHeader = true, value }: GateTreeBuilderProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "gates").treeBuilder;
   const policy = serializeGateBuilderTreeDraft(value);
@@ -91,12 +92,12 @@ export function GateTreeBuilder({ capabilitySource, className, devPreview = fals
 
   return (
     <section className={cn("mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 text-foreground md:p-6", className)}>
-      <div className="flex flex-col gap-1">
+      {showHeader ? <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-semibold tracking-normal">{copy.title}</h1>
         <p className="max-w-3xl text-base text-muted-foreground">
           {copy.description}
         </p>
-      </div>
+      </div> : null}
 
       <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
         <div className="mb-2 text-base font-semibold uppercase tracking-wide text-muted-foreground">{copy.liveSummaryTitle}</div>

@@ -71,7 +71,12 @@ jobs:
           VITE_PIRATE_APP_ENV: staging
           VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
           VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
-        run: scripts/deploy-staging.sh
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            scripts/deploy-staging.sh
+          else
+            scripts/deploy-staging.sh --allow-non-main -m "GitHub Actions staging validation for ${GITHUB_REF_NAME} (${GITHUB_RUN_ID})"
+          fi
       - name: Verify staging/prod metadata
         working-directory: web
         env:

@@ -121,4 +121,27 @@ test.describe("paid bookings UI (mocked API)", () => {
     await expect(page.getByText(/hold expired/iu)).toHaveCount(0);
     await expectNoBrowserError(page);
   });
+
+  test("management renders the approved counterparty card", async ({ page }) => {
+    await installBookingFixture(page);
+    await page.goto("/bookings?role=booker");
+    await expect(page.getByRole("heading", { name: "Bookings" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("tutor.pirate")).toBeVisible();
+    await expect(page.getByText("50.00 USDC")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Cancel booking" })).toBeVisible();
+    await expectNoBrowserError(page);
+  });
+
+  test("cancellation previews terms and sends the acknowledged refund amount", async ({ page }) => {
+    const state = await installBookingFixture(page);
+    await page.goto("/bookings?role=booker");
+    await page.getByRole("button", { name: "Cancel booking" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(page.getByText("50.00 USDC").first()).toBeVisible();
+    await page.getByRole("button", { name: "Confirm cancellation" }).click();
+    await expect.poll(() => state.managementBookingCancelled).toBe(true);
+    const cancel = state.captured.find((request) => request.path.endsWith("/booking_management_e2e/cancel"));
+    expect(cancel?.body).toEqual({ expected_refund_cents: 5000 });
+    await expectNoBrowserError(page);
+  });
 });

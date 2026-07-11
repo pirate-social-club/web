@@ -1348,6 +1348,52 @@
     "verifyWalletTitle": "Verify wallet",
     "yesterday": "Yesterday"
   },
+  "bookingManagement": {
+    "view": {
+      "title": "Bookings", "roleLabel": "Booking role", "asBooker": "As booker", "asHost": "As host",
+      "upcoming": "Upcoming", "review": "Needs review", "past": "Past", "cancelled": "Cancelled",
+      "join": "Join session", "rejoin": "Rejoin session", "addToCalendar": "Add to calendar", "cancel": "Cancel booking",
+      "loading": "Loading bookings", "signedOutTitle": "Sign in to view your bookings", "signedOutDetail": "Your upcoming and past sessions appear here.", "signIn": "Sign in",
+      "errorTitle": "Bookings could not be loaded", "errorDetail": "Try again in a moment.", "retry": "Try again",
+      "emptyTitle": "No bookings yet", "emptyBookerDetail": "Booked sessions will appear here.", "emptyHostDetail": "Sessions booked with you will appear here."
+    },
+    "status": {
+      "confirmed": "Confirmed", "confirmedDetail": "Your session is booked.", "live": "In progress", "liveDetail": "The session has started.",
+      "joinOpens": "Join opens 5 minutes before the session.", "review": "Attendance under review", "reviewDetail": "No payment will move until the outcome is confirmed.",
+      "completed": "Completed", "completedHostDetail": "Your payout completed.", "completedBookerDetail": "Host payout completed.",
+      "hostMissed": "Host missed the session", "hostMissedDetail": "Your full refund completed.",
+      "bookerMissed": "Booker missed the session", "bookerMissedDetail": "The host payout completed under the attendance policy.",
+      "cancelledByHost": "Cancelled by host", "cancelledByHostDetail": "Your full refund completed.",
+      "cancelledRefunded": "Cancelled — refunded", "cancelledNoRefund": "Cancelled — no refund",
+      "cancelledRefundedDetail": "Your full refund completed.", "cancelledNoRefundDetail": "The free-cancellation window had ended.",
+      "cancelledBeforePayment": "Cancelled", "cancelledBeforePaymentDetail": "No payment was collected.",
+      "paymentComplete": "Payment complete", "legacyOutcomeUnknown": "The original session outcome is unavailable."
+    },
+    "dialog": {
+      "title": "Cancel booking?", "sessionWith": "{time} with {name}", "termsChanged": "Refund terms changed", "termsChangedDetail": "Review the updated amount before cancelling.",
+      "sessionTotal": "Session total", "refund": "Refund", "fullRefund": "{name} receives a full refund.", "refundBack": "You receive {amount} back.", "noRefund": "This cancellation is not refundable.",
+      "acknowledgement": "I understand I will not receive a refund.", "cutoffEnded": "The free-cancellation window ended {time}.",
+      "genericError": "The booking could not be cancelled. Try again.", "keepBooking": "Keep booking", "confirm": "Confirm cancellation"
+    },
+    "session": {
+      "attendanceInterrupted": "Attendance reporting interrupted", "attendanceRetrying": "Reconnecting attendance reporting",
+      "degradedDetail": "Stay in the session while we retry. Your video call can continue.", "retryingDetail": "Your presence is being retried automatically.",
+      "sessionWith": "Session with {name}", "paymentUnlocks": "Payment actions unlock after the scheduled session ends.", "leave": "Leave session",
+      "sessionEnded": "Scheduled session ended", "attendanceDetermines": "Attendance records determine the payout or refund.",
+      "finish": "Finish session", "report": "Report attendance issue", "checking": "Checking attendance",
+      "checkingDetail": "Keep this page open while the outcome is confirmed.", "confirmed": "Session outcome confirmed",
+      "confirmedDetail": "The final payment status is available in your bookings."
+    },
+    "route": {
+      "loadError": "Could not load your bookings.", "cancelledToast": "Booking cancelled.", "cancelError": "Could not cancel booking.",
+      "previewError": "Could not check the cancellation terms.", "sessionTitle": "Session", "connecting": "Connecting…",
+      "back": "Back to bookings", "notActive": "This session is not active.", "notYet": "This session isn't available yet. You can join from 5 minutes before the scheduled start time.",
+      "passed": "This session's scheduled time has passed.", "joinError": "Could not join session.",
+      "completedToast": "Session completed — the host payout will settle.", "completeError": "Could not complete the session.",
+      "reportedToast": "Attendance issue reported.", "reportError": "Could not report an attendance issue.",
+      "videoUnavailableTitle": "Session ready", "videoUnavailable": "Video is not configured for this environment."
+    }
+  },
   "routeStatus": {
     "chat": {
       "auth": "Sign in to use messages.",

@@ -290,15 +290,18 @@ export class ApiClient {
       let retryable = false;
 
       try {
-        const body: JsonErrorResponse & { details?: unknown; error?: string } = await res.json();
+        const body: JsonErrorResponse & { details?: unknown; error?: string; preview?: unknown } = await res.json();
         if (body.code) code = body.code;
         else if (typeof body.error === "string") code = body.error; // routes that return { error: reason }
         if (body.message) message = body.message;
         if (body.retryable) retryable = body.retryable;
-        const parsedDetails =
+        let parsedDetails =
           body.details && typeof body.details === "object"
             ? (body.details as Record<string, unknown>)
             : null;
+        if ("preview" in body && body.preview && typeof body.preview === "object") {
+          parsedDetails = { ...(parsedDetails ?? {}), preview: body.preview };
+        }
 
         if (
           tokenRequired &&

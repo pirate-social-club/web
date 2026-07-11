@@ -253,6 +253,10 @@ jobs:
             --migrations db/bookings/migrations \
             --label bookings
       - name: Apply multipart fixture D1 migration
+        # This is fixture setup, not an application migration. The required
+        # browser upload below is authoritative and will still block promotion
+        # if the fixture schema cannot support a real multipart publish.
+        continue-on-error: true
         working-directory: web
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

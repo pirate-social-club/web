@@ -22,6 +22,8 @@ import {
   GATE_POLICY_MAX_DEPTH,
   getGateBuilderBudget,
   isGateBuilderDraftWithinLimits,
+  normalizePassportMinimumScore,
+  PASSPORT_SCORE_FLOOR,
   serializeGateBuilderTreeDraft,
   simulateGateBuilderPersonas,
   type GateBuilderDraftNode,
@@ -61,6 +63,7 @@ export type GateTreeBuilderProps = {
 type RuleKind =
   | "altcha_pow"
   | "erc721_holding"
+  | "gender"
   | "minimum_age"
   | "nationality"
   | "unique_human"
@@ -355,12 +358,34 @@ function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
       return (
         <Input
           aria-label={copy.inputs.minimumPassportScore}
-          min={0}
+          min={PASSPORT_SCORE_FLOOR}
           max={100}
-          onChange={(event) => onChange({ type: "wallet_score", provider: "passport", minimum_score: Number.parseInt(event.currentTarget.value || "0", 10) })}
+          onChange={(event) => onChange({
+            type: "wallet_score",
+            provider: "passport",
+            minimum_score: normalizePassportMinimumScore(Number.parseInt(event.currentTarget.value || String(PASSPORT_SCORE_FLOOR), 10)),
+          })}
           type="number"
-          value={gate.minimum_score ?? 20}
+          value={normalizePassportMinimumScore(gate.minimum_score ?? PASSPORT_SCORE_FLOOR)}
         />
+      );
+    case "gender":
+      return (
+        <Select
+          value={gate.allowed?.[0] ?? "F"}
+          onValueChange={(value) => onChange({
+            type: "gender",
+            provider: "self",
+            accepted_providers: ["self", "zkpassport"],
+            allowed: [value],
+          })}
+        >
+          <SelectTrigger aria-label={copy.inputs.documentSexMarker}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="F">F</SelectItem>
+            <SelectItem value="M">M</SelectItem>
+          </SelectContent>
+        </Select>
       );
     case "erc721_holding":
     case "erc721_inventory_match":
@@ -404,7 +429,6 @@ function NftHoldingEditor({
   onChange: (gate: GateAtom) => void;
 }) {
   const [sources, setSources] = React.useState<AssetSourceDescriptor[]>([]);
-  const [matchCount, setMatchCount] = React.useState<number | null>(null);
   const [pendingFacetKeys, setPendingFacetKeys] = React.useState<string[]>([]);
 
   React.useEffect(() => {
@@ -431,22 +455,6 @@ function NftHoldingEditor({
       ...pendingFacetKeys,
     ]))
     : [];
-
-  React.useEffect(() => {
-    if (!capabilitySource || !selectedSource || !selectedSource.traitFiltersSupported || traitKeys.length === 0) {
-      setMatchCount(null);
-      return;
-    }
-    let cancelled = false;
-    void capabilitySource.estimateMatchCount(selectedSource.id, match).then((count) => {
-      if (!cancelled) {
-        setMatchCount(count);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [capabilitySource, match, selectedSource, traitKeys.length]);
 
   if (!capabilitySource) {
     return (
@@ -690,12 +698,6 @@ function NftHoldingEditor({
               ) : null}
             </div>
           ) : null}
-          {matchCount != null ? (
-            <div className="text-base text-muted-foreground">Approximately {matchCount.toLocaleString("en-US")} match.</div>
-          ) : null}
-          {selectedSource.maxValuesPerFacet === 1 ? (
-            <div className="text-base text-muted-foreground">{copy.singleFacetValueHint}</div>
-          ) : null}
         </div>
       ) : null}
     </div>
@@ -829,6 +831,7 @@ function RuleKindSelect({ copy, onChange, value }: {
         <SelectItem value="altcha_pow">{copy.requirementTypes.browserChallenge}</SelectItem>
         <SelectItem value="wallet_score">{copy.requirementTypes.passportScore}</SelectItem>
         <SelectItem value="erc721_holding">{copy.requirementTypes.nftHolding}</SelectItem>
+        <SelectItem value="gender">{copy.requirementTypes.documentSexMarker}</SelectItem>
         <SelectItem value="nationality">{copy.requirementTypes.nationality}</SelectItem>
         <SelectItem value="minimum_age">{copy.requirementTypes.minimumAge}</SelectItem>
       </SelectContent>
@@ -848,6 +851,8 @@ function defaultGateForKind(kind: RuleKind): GateAtom {
       return { type: "erc721_holding", chain_namespace: "eip155:1", contract_address: DEFAULT_CONTRACT };
     case "minimum_age":
       return { type: "minimum_age", provider: "self", minimum_age: 18 };
+    case "gender":
+      return { type: "gender", provider: "self", accepted_providers: ["self", "zkpassport"], allowed: ["F"] };
     case "nationality":
       return { type: "nationality", provider: "self", accepted_providers: ["self", "zkpassport"], allowed: [] };
     case "wallet_score":
@@ -865,6 +870,7 @@ function getRuleKind(gate: GateAtom): RuleKind {
       return "erc721_holding";
     case "altcha_pow":
     case "erc721_holding":
+    case "gender":
     case "minimum_age":
     case "nationality":
     case "unique_human":
@@ -888,6 +894,8 @@ function operatorLabel(copy: ReturnType<typeof getLocaleMessages<"gates">>["tree
       return copy.operators.holdsOneFrom;
     case "nationality":
       return copy.operators.isOneOf;
+    case "gender":
+      return copy.operators.is;
     case "minimum_age":
       return copy.operators.atLeast;
     default:
@@ -940,6 +948,8 @@ function describeGate(gate: GateAtom): string {
       return `hold an NFT from ${shortAddress(gate.contract_address ?? "")}`;
     case "nationality":
       return `prove nationality ${gate.allowed?.length ? gate.allowed.join("/") : "(choose countries)"}`;
+    case "gender":
+      return `match document sex marker ${gate.allowed?.[0] ?? "(choose marker)"}`;
     case "minimum_age":
       return `prove age at least ${gate.minimum_age ?? 18}`;
     case "erc721_inventory_match":

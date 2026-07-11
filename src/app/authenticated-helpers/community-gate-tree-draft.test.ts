@@ -6,6 +6,7 @@ import {
   gateTreeDraftMatchesPolicy,
   getGateBuilderBudget,
   isGateBuilderDraftWithinLimits,
+  normalizePassportMinimumScore,
   parseGatePolicyToTreeDraft,
   serializeGateBuilderTreeDraft,
   simulateGateBuilderPersonas,
@@ -262,6 +263,15 @@ describe("isGateBuilderDraftWithinLimits", () => {
     expect(isGateBuilderDraftWithinLimits(atLimit)).toBe(true);
     expect(getGateBuilderBudget(tooDeep).depth).toBe(5);
     expect(isGateBuilderDraftWithinLimits(tooDeep)).toBe(false);
+  });
+});
+
+describe("normalizePassportMinimumScore", () => {
+  test("does not expose a non-binding score below Passport's passing floor", () => {
+    expect(normalizePassportMinimumScore(5)).toBe(20);
+    expect(normalizePassportMinimumScore(20)).toBe(20);
+    expect(normalizePassportMinimumScore(42)).toBe(42);
+    expect(normalizePassportMinimumScore(101)).toBe(100);
   });
 });
 

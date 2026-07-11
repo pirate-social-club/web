@@ -169,6 +169,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "browserChallenge": "Browser challenge",
           "passportScore": "Passport score",
           "nftHolding": "NFT holding",
+          "documentSexMarker": "Document sex marker",
           "nationality": "Nationality",
           "minimumAge": "Minimum age"
         },
@@ -185,7 +186,6 @@ export const GENERATED_LOCALE_CATALOGS = {
           "matches": "matches"
         },
         "nftQuantityLocked": "This NFT check only supports a quantity of 1 today.",
-        "singleFacetValueHint": "One value per attribute for now. To allow another value, add another NFT rule inside an OR group.",
         "unsupportedAtom": "Unsupported atom",
         "inputs": {
           "groupMatchMode": "Group match mode",
@@ -195,6 +195,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "nftContractAddress": "NFT contract address",
           "minimumNftQuantity": "Minimum NFT quantity",
           "minimumAge": "Minimum age",
+          "documentSexMarker": "Document sex marker",
           "allowedNationalities": "Allowed nationalities"
         }
       },
@@ -1980,6 +1981,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "browserChallenge": "Browser challenge",
           "passportScore": "Passport score",
           "nftHolding": "NFT holding",
+          "documentSexMarker": "Document sex marker",
           "nationality": "Nationality",
           "minimumAge": "Minimum age"
         },
@@ -1996,7 +1998,6 @@ export const GENERATED_LOCALE_CATALOGS = {
           "matches": "matches"
         },
         "nftQuantityLocked": "This NFT check only supports a quantity of 1 today.",
-        "singleFacetValueHint": "One value per attribute for now. To allow another value, add another NFT rule inside an OR group.",
         "unsupportedAtom": "Unsupported atom",
         "inputs": {
           "groupMatchMode": "Group match mode",
@@ -2006,6 +2007,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "nftContractAddress": "NFT contract address",
           "minimumNftQuantity": "Minimum NFT quantity",
           "minimumAge": "Minimum age",
+          "documentSexMarker": "Document sex marker",
           "allowedNationalities": "Allowed nationalities"
         }
       },
@@ -3791,6 +3793,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "browserChallenge": "Browser challenge",
           "passportScore": "Passport score",
           "nftHolding": "NFT holding",
+          "documentSexMarker": "Document sex marker",
           "nationality": "Nationality",
           "minimumAge": "Minimum age"
         },
@@ -3807,7 +3810,6 @@ export const GENERATED_LOCALE_CATALOGS = {
           "matches": "matches"
         },
         "nftQuantityLocked": "This NFT check only supports a quantity of 1 today.",
-        "singleFacetValueHint": "One value per attribute for now. To allow another value, add another NFT rule inside an OR group.",
         "unsupportedAtom": "Unsupported atom",
         "inputs": {
           "groupMatchMode": "Group match mode",
@@ -3817,6 +3819,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "nftContractAddress": "NFT contract address",
           "minimumNftQuantity": "Minimum NFT quantity",
           "minimumAge": "Minimum age",
+          "documentSexMarker": "Document sex marker",
           "allowedNationalities": "Allowed nationalities"
         }
       },

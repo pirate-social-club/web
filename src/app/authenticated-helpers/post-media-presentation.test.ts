@@ -40,19 +40,28 @@ function songPost(opts: {
 }
 
 describe("toKaraokeCapability", () => {
-  test("marks a community-enabled song with an instrumental as ready", () => {
-    expect(toKaraokeCapability(songPost())).toEqual({ canKaraoke: true, status: "ready" });
+  test("maps the server karaoke capability", () => {
+    expect(toKaraokeCapability({
+      ...songPost(),
+      karaoke_capability: { status: "ready" },
+    } as unknown as ApiPost)).toEqual({ canKaraoke: true, status: "ready" });
   });
 
-  test("waits while karaoke alignment is still processing", () => {
-    expect(toKaraokeCapability(songPost({ alignmentStatus: "processing" }))).toEqual({
+  test("maps a processing server capability", () => {
+    expect(toKaraokeCapability({
+      ...songPost(),
+      karaoke_capability: { status: "processing" },
+    } as unknown as ApiPost)).toEqual({
       canKaraoke: false,
       status: "processing",
     });
   });
 
-  test("marks failed karaoke alignment as failed", () => {
-    expect(toKaraokeCapability(songPost({ alignmentStatus: "failed" }))).toEqual({
+  test("maps a failed server capability", () => {
+    expect(toKaraokeCapability({
+      ...songPost(),
+      karaoke_capability: { status: "failed" },
+    } as unknown as ApiPost)).toEqual({
       canKaraoke: false,
       status: "failed",
     });
@@ -72,41 +81,19 @@ describe("toKaraokeCapability", () => {
     });
   });
 
-  test("does not mark completed alignment ready without timed lyrics", () => {
-    expect(toKaraokeCapability(songPost({ hasTimedLyrics: false }))).toEqual({
-      canKaraoke: false,
-      status: "unavailable",
+  test("uses a server karaoke capability when feed payload omits nested community context", () => {
+    expect(toKaraokeCapability({
+      ...songPost(),
+      community: null,
+      karaoke_capability: { status: "ready" },
+    } as unknown as ApiPost)).toEqual({
+      canKaraoke: true,
+      status: "ready",
     });
   });
 
-  test("returns undefined when the community has not enabled karaoke", () => {
-    expect(toKaraokeCapability(songPost({ communityKaraokeEnabled: false }))).toBeUndefined();
-  });
-
-  test("returns undefined when no instrumental audio is present", () => {
-    expect(toKaraokeCapability(songPost({ instrumental: false }))).toBeUndefined();
-  });
-
-  test("returns undefined when song_presentation is absent", () => {
-    const post: ApiPost = {
-      community: { karaoke_enabled: true },
-      post: { post_type: "song", access_mode: "public", media_refs: [] },
-      song_presentation: null,
-    } as unknown as ApiPost;
-    expect(toKaraokeCapability(post)).toBeUndefined();
-  });
-
-  test("returns undefined when community is absent", () => {
-    const post: ApiPost = {
-      post: { post_type: "song", access_mode: "public", media_refs: [] },
-      song_presentation: {
-        title: null, cover_art_ref: null, duration_ms: null,
-        alignment_status: "completed",
-        has_timed_lyrics: true,
-        downloadable_audio: [{ kind: "instrumental", storage_ref: "/i.mp3", mime_type: "audio/mpeg" }],
-      },
-    } as unknown as ApiPost;
-    expect(toKaraokeCapability(post)).toBeUndefined();
+  test("returns undefined when the server omits the capability", () => {
+    expect(toKaraokeCapability(songPost())).toBeUndefined();
   });
 });
 
@@ -164,11 +151,17 @@ describe("toSongPostContent", () => {
   });
 
   test("carries karaoke readiness into song card content", () => {
-    const ready = toSongPostContent(songPost() as unknown as ApiPost, undefined, {
+    const ready = toSongPostContent({
+      ...songPost(),
+      karaoke_capability: { status: "ready" },
+    } as unknown as ApiPost, undefined, {
       title: "Test Song",
       viewerCanManage: true,
     });
-    const failed = toSongPostContent(songPost({ alignmentStatus: "failed" }) as unknown as ApiPost, undefined, { title: "Test Song" });
+    const failed = toSongPostContent({
+      ...songPost(),
+      karaoke_capability: { status: "failed" },
+    } as unknown as ApiPost, undefined, { title: "Test Song" });
 
     expect(ready.karaoke).toEqual({ status: "ready" });
     expect(ready.karaokeHref).toBe("/p/post_song/karaoke");

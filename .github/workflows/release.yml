@@ -252,21 +252,6 @@ jobs:
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/bookings/migrations \
             --label bookings
-      - name: Fetch staging community migration secrets
-        working-directory: core
-        env:
-          INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
-          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
-          INFISICAL_ENV: staging
-          INFISICAL_SECRET_PATH: /services/api
-          SECRET_NAMES: CONTROL_PLANE_DATABASE_URL TURSO_COMMUNITY_DB_WRAP_KEY
-        run: scripts/ci/fetch-infisical-secrets.sh
-      - name: Apply staging community migrations
-        working-directory: core
-        run: |
-          test -n "$CONTROL_PLANE_DATABASE_URL"
-          test -n "$TURSO_COMMUNITY_DB_WRAP_KEY"
-          bun scripts/community/repair-community-migration-ledger.ts --execute
       - name: Install Playwright browser
         working-directory: web
         run: bunx playwright install --with-deps chromium

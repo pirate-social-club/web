@@ -117,7 +117,11 @@ export function useCommunityModerationState(communityId: string) {
   const commerce = useCommunityCommerceState({ community, saveCommunity });
   const contentPolicy = useCommunityContentPolicyState({ community, saveCommunity });
   const profile = useCommunityProfileState({ community, setCommunity });
-  const access = useCommunityAccessState({ community, saveCommunity });
+  const access = useCommunityAccessState({
+    community,
+    saveCommunity,
+    useGateTreeBuilder: import.meta.env.VITE_GATE_TREE_BUILDER_ENABLED === "true",
+  });
   const safety = useCommunitySafetyState({ community, saveCommunity });
   const visualPolicy = useCommunityVisualPolicyState({ community, saveCommunity });
   const agents = useCommunityAgentPolicyState({ community, saveCommunity });

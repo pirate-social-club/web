@@ -106,6 +106,13 @@ export function gateTreeDraftMatchesPolicy(
   return areGatePoliciesEqual(canonicalLoadedPolicy, serializeGateBuilderTreeDraft(currentDraft));
 }
 
+export function gatePolicyHasUnsupportedExpressionNodes(policy: GatePolicy | null | undefined): boolean {
+  if (!policy?.expression) {
+    return false;
+  }
+  return expressionHasUnsupportedNodes(policy.expression as RecursiveGateExpression | Record<string, unknown>);
+}
+
 export function evaluateGateExpression(
   expression: GateExpression,
   satisfies: (gate: GateAtom) => boolean,
@@ -188,6 +195,21 @@ function expressionToDraftNode(expression: RecursiveGateExpression | Record<stri
     op: expression.op,
     children: draftChildren,
   };
+}
+
+function expressionHasUnsupportedNodes(expression: RecursiveGateExpression | Record<string, unknown>): boolean {
+  if (expression.op === "gate") {
+    return !isGateAtomLike(expression.gate);
+  }
+  if (expression.op !== "and" && expression.op !== "or") {
+    return true;
+  }
+  if (!Array.isArray(expression.children) || expression.children.length === 0) {
+    return true;
+  }
+  return expression.children.some((child) => (
+    !child || typeof child !== "object" || expressionHasUnsupportedNodes(child as Record<string, unknown>)
+  ));
 }
 
 function draftNodeToExpression(node: GateBuilderDraftNode): GateExpression | null {

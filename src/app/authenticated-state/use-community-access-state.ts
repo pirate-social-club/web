@@ -9,6 +9,13 @@ import type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy } from "@/li
 
 import { submitCommunitySave, type SaveCommunityAction } from "@/app/authenticated-helpers/community-moderation-save";
 import {
+  gatePolicyHasUnsupportedExpressionNodes,
+  gateTreeDraftMatchesPolicy,
+  parseGatePolicyToTreeDraft,
+  serializeGateBuilderTreeDraft,
+  type GateBuilderGroupDraft,
+} from "@/app/authenticated-helpers/community-gate-tree-draft";
+import {
   serializeIdentityGateDrafts,
   serializeIdentityGateDraftsForSave,
   type PreserveGatePolicyInput,
@@ -23,9 +30,11 @@ import {
 export function useCommunityAccessState({
   community,
   saveCommunity,
+  useGateTreeBuilder = false,
 }: {
   community: ApiCommunity | null;
   saveCommunity: SaveCommunityAction;
+  useGateTreeBuilder?: boolean;
 }) {
   const api = useApi();
   const [membershipMode, setMembershipMode] = React.useState<"request" | "gated">("gated");
@@ -34,10 +43,13 @@ export function useCommunityAccessState({
   const [anonymousIdentityScope, setAnonymousIdentityScope] = React.useState<AnonymousIdentityScope>("community_stable");
   const [gateDrafts, setGateDrafts] = React.useState<IdentityGateDraft[]>([]);
   const [gateMatchMode, setGateMatchMode] = React.useState<"all" | "any">("all");
+  const [gateTreeDraft, setGateTreeDraft] = React.useState<GateBuilderGroupDraft>(() => parseGatePolicyToTreeDraft(null));
   const [savingGates, setSavingGates] = React.useState(false);
   const [hasAdvancedGatePolicy, setHasAdvancedGatePolicy] = React.useState(false);
+  const [hasUnsupportedGateExpression, setHasUnsupportedGateExpression] = React.useState(false);
   const [replaceAdvancedGatePolicy, setReplaceAdvancedGatePolicy] = React.useState(false);
   const loadedGatePolicyRef = React.useRef<PreserveGatePolicyInput | null>(null);
+  const loadedGateTreeDraftRef = React.useRef<GateBuilderGroupDraft>(parseGatePolicyToTreeDraft(null));
   React.useEffect(() => {
     if (!community) {
       return;
@@ -53,6 +65,10 @@ export function useCommunityAccessState({
     setAnonymousIdentityScope(community.anonymous_identity_scope ?? "community_stable");
     setGateDrafts(nextVisibleGateDrafts);
     setGateMatchMode(nextGateMatchMode);
+    const nextGateTreeDraft = parseGatePolicyToTreeDraft(community.gate_policy);
+    setGateTreeDraft(nextGateTreeDraft);
+    loadedGateTreeDraftRef.current = nextGateTreeDraft;
+    setHasUnsupportedGateExpression(gatePolicyHasUnsupportedExpressionNodes(community.gate_policy));
     setReplaceAdvancedGatePolicy(false);
     loadedGatePolicyRef.current = community.gate_policy
       ? {
@@ -77,9 +93,11 @@ export function useCommunityAccessState({
       && gateDraftsEqual(loadedGatePolicy.gateDrafts, gateDrafts);
   }, [gateDrafts, gateMatchMode, membershipMode]);
 
-  const advancedGatePolicyReplacementRequired = hasAdvancedGatePolicy
-    && membershipMode === "gated"
-    && !gatePolicyProjectionUnchanged;
+  const advancedGatePolicyReplacementRequired = !useGateTreeBuilder
+    ? hasAdvancedGatePolicy && membershipMode === "gated" && !gatePolicyProjectionUnchanged
+    : hasUnsupportedGateExpression
+      && membershipMode === "gated"
+      && !areStableJsonValuesEqual(loadedGateTreeDraftRef.current, gateTreeDraft);
 
   const handleSaveGates = React.useCallback(() => {
     if (!community) return;
@@ -92,7 +110,12 @@ export function useCommunityAccessState({
     );
     const effectiveDefaultAgeGatePolicy = hasAdultMinimumAgeGate ? "18_plus" : defaultAgeGatePolicy;
     const gatePolicy = membershipMode === "gated"
-      ? serializeIdentityGateDraftsForSave(gateDrafts, {
+      ? useGateTreeBuilder
+        ? areStableJsonValuesEqual(loadedGateTreeDraftRef.current, gateTreeDraft)
+          || gateTreeDraftMatchesPolicy(loadedGatePolicyRef.current?.policy, gateTreeDraft)
+          ? loadedGatePolicyRef.current?.policy ?? null
+          : serializeGateBuilderTreeDraft(gateTreeDraft)
+        : serializeIdentityGateDraftsForSave(gateDrafts, {
           mode: gateMatchMode,
           preserve: loadedGatePolicyRef.current,
         })
@@ -112,7 +135,7 @@ export function useCommunityAccessState({
       savingSetter: setSavingGates,
       successMessage: "Access settings saved.",
     });
-  }, [advancedGatePolicyReplacementRequired, allowAnonymousIdentity, anonymousIdentityScope, api.communities, community, defaultAgeGatePolicy, gateDrafts, gateMatchMode, membershipMode, replaceAdvancedGatePolicy, saveCommunity, savingGates]);
+  }, [advancedGatePolicyReplacementRequired, allowAnonymousIdentity, anonymousIdentityScope, api.communities, community, defaultAgeGatePolicy, gateDrafts, gateMatchMode, gateTreeDraft, membershipMode, replaceAdvancedGatePolicy, saveCommunity, savingGates, useGateTreeBuilder]);
 
   return {
     advancedGatePolicyReplacementRequired,
@@ -121,7 +144,9 @@ export function useCommunityAccessState({
     defaultAgeGatePolicy,
     gateDrafts,
     gateMatchMode,
+    gateTreeDraft,
     hasAdvancedGatePolicy,
+    hasUnsupportedGateExpression,
     handleSaveGates,
     membershipMode,
     preservedGateRuleCount: 0,
@@ -132,6 +157,7 @@ export function useCommunityAccessState({
     setDefaultAgeGatePolicy,
     setGateDrafts,
     setGateMatchMode,
+    setGateTreeDraft,
     setMembershipMode,
     setReplaceAdvancedGatePolicy,
   };

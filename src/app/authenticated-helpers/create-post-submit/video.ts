@@ -96,7 +96,6 @@ type ExtractPosterFrameFile = (
   options?: { maxWidth?: number },
 ) => Promise<ExtractedVideoPosterFrame & { file: File }>;
 
-const PROXY_PRIMARY_VIDEO_MAX_BYTES = 64 * 1024 * 1024;
 const LOCKED_PRIMARY_VIDEO_MAX_BYTES = 50 * 1024 * 1024;
 const PUBLIC_PRIMARY_VIDEO_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 const MULTIPART_UPLOAD_CONCURRENCY = 3;
@@ -196,7 +195,6 @@ export async function uploadVideoArtifact({
   getArtifactUploadPartSignedUrl,
   monetized = false,
   reportProgress,
-  uploadArtifactContent,
   videoState,
 }: {
   abortArtifactUploadSession?: AbortArtifactUploadSession;
@@ -216,23 +214,8 @@ export async function uploadVideoArtifact({
   if (!monetized && file.size > PUBLIC_PRIMARY_VIDEO_MAX_BYTES) {
     throw new Error("Public videos are currently capped at 2 GB.");
   }
-  const useMultipart = !monetized && file.size > PROXY_PRIMARY_VIDEO_MAX_BYTES;
-  if (!useMultipart) {
-    const intent = await createArtifactUpload(communityId, {
-      artifact_kind: "primary_video",
-      mime_type: file.type,
-      filename: file.name,
-      size_bytes: file.size,
-    });
-    return await uploadArtifactContent(
-      communityId,
-      intent.id,
-      await file.arrayBuffer(),
-      (fraction) => reportProgress?.("upload_video", `${Math.round(fraction * 100)}%`),
-    );
-  }
   if (!getArtifactUploadPartSignedUrl || !completeArtifactUploadSession || !abortArtifactUploadSession) {
-    throw new Error("Large video upload support is not configured.");
+    throw new Error("Video upload support is not configured.");
   }
   const contentHashPromise = sha256File(file);
   const intent = await createArtifactUpload(communityId, {

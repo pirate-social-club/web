@@ -48,6 +48,30 @@ function createArtifact(overrides: Partial<SongArtifactUpload> = {}): SongArtifa
   };
 }
 
+function multipartVideoUploadStubs() {
+  return {
+    abortArtifactUploadSession: async () => {},
+    completeArtifactUploadSession: async () => createArtifact(),
+    createArtifactUpload: async () => createArtifact({
+      id: "sau_intent",
+      status: "pending_upload",
+      upload_session: {
+        abort: "abort",
+        complete: "complete",
+        expires_at: "2026-07-02T00:00:00.000Z",
+        id: "saus_video",
+        part_size_bytes: 10 * 1024 * 1024,
+        sign_part_url: "sign",
+        total_parts: 0,
+        upload_id: "filebase-upload-video",
+      },
+    }),
+    getArtifactUploadPartSignedUrl: async () => {
+      throw new Error("zero-part test upload should not request a signed URL");
+    },
+  };
+}
+
 function createPost(overrides: Partial<ApiCreatedPost> = {}): ApiCreatedPost {
   return {
     id: "pst_video",
@@ -325,52 +349,21 @@ describe("video create-post submit helpers", () => {
     })).toThrow("Attach a source song before publishing this video.");
   });
 
-  test("uploadVideoArtifact creates an artifact upload and uploads file content", async () => {
+  test("uploadVideoArtifact does not fall back to a proxy upload for small public videos", async () => {
     const file = createVideoFile();
-    const createArtifactUploadCalls: Array<{
-      communityId: string;
-      request: CreateSongArtifactUploadRequest;
-    }> = [];
-    const uploadArtifactContentCalls: Array<{
-      artifactUploadId: string;
-      byteLength: number;
-      communityId: string;
-    }> = [];
 
-    const result = await uploadVideoArtifact({
+    await expect(uploadVideoArtifact({
       communityId: "com_test",
-      createArtifactUpload: async (communityId, request) => {
-        createArtifactUploadCalls.push({ communityId, request });
-        return createArtifact({ id: "sau_intent", status: "pending_upload" });
+      createArtifactUpload: async () => {
+        throw new Error("createArtifactUpload should not be called without multipart support");
       },
-      uploadArtifactContent: async (communityId, artifactUploadId, body) => {
-        uploadArtifactContentCalls.push({
-          artifactUploadId,
-          byteLength: body.byteLength,
-          communityId,
-        });
-        return createArtifact();
+      uploadArtifactContent: async () => {
+        throw new Error("proxy upload should not be called for primary_video");
       },
       videoState: {
         primaryVideoUpload: file,
       },
-    });
-
-    expect(result.storage_ref).toBe("artifact_video");
-    expect(createArtifactUploadCalls).toEqual([{
-      communityId: "com_test",
-      request: {
-        artifact_kind: "primary_video",
-        mime_type: "video/mp4",
-        filename: "video.mp4",
-        size_bytes: file.size,
-      },
-    }]);
-    expect(uploadArtifactContentCalls).toEqual([{
-      artifactUploadId: "sau_intent",
-      byteLength: file.size,
-      communityId: "com_test",
-    }]);
+    })).rejects.toThrow("Video upload support is not configured");
   });
 
   test("uploadVideoArtifact rejects public videos above the product cap before upload", async () => {
@@ -391,11 +384,10 @@ describe("video create-post submit helpers", () => {
     })).rejects.toThrow("Public videos are currently capped at 2 GB");
   });
 
-  test("uploadVideoArtifact uses direct multipart for large public videos and retries 429 part uploads", async () => {
+  test("uploadVideoArtifact uses direct multipart for small public videos and retries 429 part uploads", async () => {
     const originalXHR = globalThis.XMLHttpRequest;
     const originalSetTimeout = globalThis.setTimeout;
     const file = createVideoFile();
-    Object.defineProperty(file, "size", { value: 70 * 1024 * 1024 });
     const createArtifactUploadCalls: CreateSongArtifactUploadRequest[] = [];
     const signedUrlCalls: Array<{ artifactUploadId: string; partNumber: number; sessionId: string }> = [];
     const completedBodies: Array<{
@@ -550,7 +542,7 @@ describe("video create-post submit helpers", () => {
       baseRequest: createBaseRequest(),
       caption: "Video caption",
       communityId: "com_test",
-      createArtifactUpload: async () => createArtifact({ id: "sau_intent" }),
+      ...multipartVideoUploadStubs(),
       createListing: async (_communityId, request) => {
         createListingCalls.push(request);
         return createListing();
@@ -655,7 +647,7 @@ describe("video create-post submit helpers", () => {
       baseRequest: createBaseRequest(),
       caption: "",
       communityId: "com_test",
-      createArtifactUpload: async () => createArtifact({ id: "sau_intent" }),
+      ...multipartVideoUploadStubs(),
       createListing: async () => createListing(),
       createPost: async (_communityId, request) => {
         createPostCalls.push(request);
@@ -711,7 +703,7 @@ describe("video create-post submit helpers", () => {
       charityContributionPct: 10,
       charityPartnerId: "charity_test",
       communityId: "com_test",
-      createArtifactUpload: async () => createArtifact({ id: "sau_intent" }),
+      ...multipartVideoUploadStubs(),
       createListing: async (communityId, request) => {
         createListingCalls.push({ communityId, request });
         return createListing();
@@ -828,7 +820,7 @@ describe("video create-post submit helpers", () => {
       baseRequest: createBaseRequest(),
       caption: "",
       communityId: "com_test",
-      createArtifactUpload: async () => createArtifact({ id: "sau_intent" }),
+      ...multipartVideoUploadStubs(),
       createListing: async (_communityId, request) => {
         createListingCalls.push(request);
         return createListing();
@@ -870,7 +862,7 @@ describe("video create-post submit helpers", () => {
       baseRequest: createBaseRequest(),
       caption: "",
       communityId: "com_test",
-      createArtifactUpload: async () => createArtifact({ id: "sau_intent" }),
+      ...multipartVideoUploadStubs(),
       createListing: async () => createListing(),
       createPost: async (_communityId, request) => {
         createPostRequests.push(request);

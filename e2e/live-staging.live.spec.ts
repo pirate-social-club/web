@@ -26,6 +26,8 @@ const multipartGateVideoBytes = Number.parseInt(
   process.env.E2E_MULTIPART_GATE_VIDEO_BYTES ?? String(70 * 1024 * 1024),
   10,
 );
+const multipartGateSubject = process.env.E2E_MULTIPART_GATE_SUBJECT?.trim() || liveSubject;
+const multipartGateCommunityId = process.env.E2E_MULTIPART_GATE_COMMUNITY_ID?.trim() || null;
 const require = createRequire(import.meta.url);
 const agoraSdkPath = require.resolve("agora-rtc-sdk-ng");
 const liveSecretsPresent = Boolean(
@@ -1189,8 +1191,15 @@ async function discoverSeedCommunity(): Promise<LiveCommunity> {
   throw new Error(`Could not discover seeded staging community ${seedCommunityLabel}`);
 }
 
-async function discoverWritableSeedCommunity(session: StoredSession): Promise<LiveCommunity | null> {
-  for (const community of await seedCommunityCandidates()) {
+async function discoverWritableSeedCommunity(
+  session: StoredSession,
+  preferredCommunityId?: string | null,
+): Promise<LiveCommunity | null> {
+  const candidates = preferredCommunityId
+    ? [{ id: preferredCommunityId, label: preferredCommunityId, routeSegment: preferredCommunityId }]
+    : await seedCommunityCandidates();
+
+  for (const community of candidates) {
     const detail = await requestJson<any>(
       `/communities/${encodeURIComponent(community.id)}`,
       { headers: { authorization: `Bearer ${session.accessToken}` } },
@@ -1217,10 +1226,15 @@ test.describe("live staging integration", () => {
     testInfo.setTimeout(15 * 60_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const session = await createLiveSession(liveSubject, walletAddressForSubject(liveSubject));
-    const community = await discoverWritableSeedCommunity(session);
+    const session = await createLiveSession(
+      multipartGateSubject,
+      walletAddressForSubject(multipartGateSubject),
+    );
+    const community = await discoverWritableSeedCommunity(session, multipartGateCommunityId);
     if (!community) {
-      const message = "No authenticated writable staging seed community is available for direct multipart upload.";
+      const message =
+        "No authenticated writable staging seed community is available for direct multipart upload"
+        + ` (subject=${multipartGateSubject}, community=${multipartGateCommunityId ?? "auto-discovery"}).`;
       if (requiredReleaseGate) {
         throw new Error(`Required release gate cannot run: ${message}`);
       }

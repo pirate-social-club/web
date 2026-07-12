@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { GateAtom, GateExpression, GatePolicy } from "@pirate/api-contracts";
+import type { GateAtom, GateExpression } from "@pirate/api-contracts";
 import { Plus, Trash, X } from "@phosphor-icons/react";
 
 import { NationalityMultiPicker } from "@/components/compositions/community/create-composer/nationality-picker";
@@ -18,18 +18,22 @@ import {
 } from "@/components/primitives/combobox";
 import {
   captchaAloneAdmits,
+  collectGateBuilderAtoms,
+  createGateProfileDraft,
+  evaluateGateProfile,
   GATE_POLICY_MAX_ATOMS,
   GATE_POLICY_MAX_DEPTH,
+  gateAtomKey,
   getGateBuilderBudget,
   isGateBuilderDraftWithinLimits,
   normalizePassportMinimumScore,
   PASSPORT_SCORE_FLOOR,
   serializeGateBuilderTreeDraft,
-  simulateGateBuilderPersonas,
   type GateBuilderDraftNode,
   type GateBuilderGroupDraft,
   type GateBuilderGroupOp,
   type GateBuilderRuleDraft,
+  type GateProfileDraft,
 } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import { Button } from "@/components/primitives/button";
 import { Input } from "@/components/primitives/input";
@@ -41,6 +45,7 @@ import {
   SelectValue,
 } from "@/components/primitives/select";
 import { Chip } from "@/components/primitives/chip";
+import { validateGateAtom } from "@/lib/gate-atom-validation";
 import { interpolateMessage } from "@/lib/route-messages";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -55,11 +60,12 @@ import { replaceEditableFacet } from "./collection-capability-source";
 export type GateTreeBuilderProps = {
   capabilitySource?: CollectionCapabilitySource;
   className?: string;
-  devPreview?: boolean;
   onChange: (value: GateBuilderGroupDraft) => void;
   showHeader?: boolean;
   value: GateBuilderGroupDraft;
 };
+
+type TreeBuilderCopy = ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
 
 type RuleKind =
   | "altcha_pow"
@@ -73,12 +79,37 @@ type RuleKind =
 
 const DEFAULT_CONTRACT = "0x0000000000000000000000000000000000000000";
 
-export function GateTreeBuilder({ capabilitySource, className, devPreview = false, onChange, showHeader = true, value }: GateTreeBuilderProps) {
+/**
+ * Shared sizing so every control on a rule line lands on the same 44px (h-11) baseline
+ * and the requirement-type select forms one column across rules of different kinds.
+ */
+const RULE_KIND_COL = "w-full md:w-56 md:shrink-0";
+const FACET_KEY_COL = "w-full md:w-44 md:shrink-0";
+const RULE_LINE = "flex flex-col gap-2 md:flex-row md:items-center";
+const RULE_CARD = "rounded-[var(--radius-md)] border border-border-soft bg-background p-2";
+/** Chip box matches Input/Select: 44px tall, pill radius. py-1 + 34px chip = 44. */
+const CHIPS_BOX = "min-h-11 rounded-full py-1";
+const CHIPS_CHIP = "py-1";
+/**
+ * Base ComboboxChipsInput is `min-w-32 flex-1`. Overriding with `flex-none` made the input
+ * keep its intrinsic ~230px width, so a chip + input overflowed and wrapped to a second line.
+ * Keeping flex-1 (basis 0) and only shrinking the min-width lets it collapse instead of wrap.
+ */
+const CHIPS_INPUT_WITH_VALUE = "min-w-10";
+
+function RuleToken({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex h-11 shrink-0 items-center whitespace-nowrap rounded-full border border-border-soft px-4 text-base text-muted-foreground">
+      {children}
+    </span>
+  );
+}
+
+export function GateTreeBuilder({ capabilitySource, className, onChange, showHeader = true, value }: GateTreeBuilderProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "gates").treeBuilder;
   const policy = serializeGateBuilderTreeDraft(value);
   const budget = getGateBuilderBudget(value);
-  const personaResults = simulateGateBuilderPersonas(policy);
   const captchaOnly = captchaAloneAdmits(policy);
   const shouldShowComplexityWarning = budget.atoms >= Math.ceil(GATE_POLICY_MAX_ATOMS * 0.8)
     || budget.depth >= Math.ceil(GATE_POLICY_MAX_DEPTH * 0.8);
@@ -92,16 +123,17 @@ export function GateTreeBuilder({ capabilitySource, className, devPreview = fals
 
   return (
     <section className={cn("mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 text-foreground md:p-6", className)}>
-      {showHeader ? <div className="flex flex-col gap-1">
+      {showHeader ? (
         <h1 className="text-3xl font-semibold tracking-normal">{copy.title}</h1>
-        <p className="max-w-3xl text-base text-muted-foreground">
-          {copy.description}
-        </p>
-      </div> : null}
+      ) : null}
 
       <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
         <div className="mb-2 text-base font-semibold uppercase tracking-wide text-muted-foreground">{copy.liveSummaryTitle}</div>
-        <p className="text-base leading-7">{policy ? describePolicy(policy) : copy.emptySummary}</p>
+        {policy ? (
+          <GateSummaryTree copy={copy} expression={policy.expression as GateExpression} isRoot />
+        ) : (
+          <p className="text-base leading-7 text-muted-foreground">{copy.emptySummary}</p>
+        )}
       </div>
 
       {shouldShowComplexityWarning ? (
@@ -123,44 +155,266 @@ export function GateTreeBuilder({ capabilitySource, className, devPreview = fals
 
       <GateGroupEditor addGroupDisabled={addGroupDisabled} addRuleDisabled={addRuleDisabled} capabilitySource={capabilitySource} copy={copy} group={value} isRoot onChange={applyValidChange} />
 
-      <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
-        <div className="mb-2 text-base font-semibold uppercase tracking-wide text-muted-foreground">{copy.whoCanJoinTitle}</div>
-        <p className="mb-3 text-base text-muted-foreground">{copy.whoCanJoinCaption}</p>
-        <div className="grid gap-2 md:grid-cols-2">
-          {personaResults.map((persona) => (
-            <div
-              className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-border-soft bg-background px-3 py-2"
-              key={persona.id}
-            >
-              <span className="text-base">{personaLabel(copy, persona.id)}</span>
-              <span className={cn("text-base font-semibold", persona.joins ? "text-success" : "text-muted-foreground")}>
-                {persona.joins ? copy.canJoin : copy.cantJoin}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {devPreview ? (
-        <details className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
-          <summary className="cursor-pointer text-base font-semibold uppercase tracking-wide text-muted-foreground">
-            {copy.expressionPreviewTitle}
-          </summary>
-          <div className="mt-3 text-base text-muted-foreground">
-            {interpolateMessage(copy.expressionPreviewBudget, {
-              atoms: String(budget.atoms),
-              depth: String(budget.depth),
-              maxAtoms: String(GATE_POLICY_MAX_ATOMS),
-              maxDepth: String(GATE_POLICY_MAX_DEPTH),
-            })}
-          </div>
-          <pre className="mt-3 max-h-96 overflow-auto rounded-[var(--radius-md)] bg-background p-3 text-base leading-6 text-muted-foreground">
-            {JSON.stringify(policy, null, 2)}
-          </pre>
-        </details>
-      ) : null}
+      <GateProfileSimulator copy={copy} value={value} />
     </section>
   );
+}
+
+/**
+ * Renders the expression as an indented ALL-of / ANY-of checklist.
+ *
+ * A flat sentence ("a and (b or c or d)") collapses the tree into parentheses and stops being
+ * readable past one level of nesting.
+ */
+function GateSummaryTree({ copy, expression, isRoot = false }: {
+  copy: TreeBuilderCopy;
+  expression: GateExpression;
+  isRoot?: boolean;
+}) {
+  const node = expression as { children?: GateExpression[]; gate?: GateAtom; op: string };
+
+  if (node.op === "gate" && node.gate) {
+    return <span className="text-base leading-7">{describeGate(node.gate)}</span>;
+  }
+
+  const children = node.children ?? [];
+  const groupLabel = node.op === "or" ? copy.summaryAnyOf : copy.summaryAllOf;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-baseline gap-2 text-base">
+        {isRoot ? <span className="text-muted-foreground">{copy.summaryIntro}</span> : null}
+        <span className="font-semibold uppercase tracking-wide text-foreground">{groupLabel}</span>
+      </div>
+      <ul className="flex list-none flex-col gap-1 border-s border-border-soft ps-4">
+        {children.map((child, index) => (
+          <li className="text-base leading-7" key={index}>
+            <GateSummaryTree copy={copy} expression={child} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * "Who gets in?" — the admin assembles a member and sees whether the rules admit them.
+ *
+ * Controls are derived from the atoms actually in the tree and evaluated with the same expression
+ * evaluation the policy uses, so no requirement goes untested and a member can hold several proofs
+ * at once. This is what the fixed single-capability persona matrix could not express.
+ */
+function GateProfileSimulator({ copy, value }: {
+  copy: TreeBuilderCopy;
+  value: GateBuilderGroupDraft;
+}) {
+  const [profile, setProfile] = React.useState<GateProfileDraft>(createGateProfileDraft);
+  const atoms = collectGateBuilderAtoms(value);
+  const { atoms: atomResults, joins } = evaluateGateProfile(value, profile);
+  const patch = (next: Partial<GateProfileDraft>) => setProfile((current) => ({ ...current, ...next }));
+
+  const humanProviders = uniqueValues(atoms.flatMap((gate) => gate.type === "unique_human" ? [gate.provider ?? "self"] : []));
+  const nationalityAtoms = atoms.filter((gate) => gate.type === "nationality");
+  const nationalities = uniqueValues(nationalityAtoms.flatMap((gate) => [...(gate.allowed ?? [])]));
+  const genders = uniqueValues(atoms.flatMap((gate) => gate.type === "gender" ? [...(gate.allowed ?? [])] : []));
+  const assetGates = atoms.filter((gate) => gate.type === "erc721_holding" || gate.type === "erc721_inventory_match");
+  const hasAltcha = atoms.some((gate) => gate.type === "altcha_pow");
+  const hasAge = atoms.some((gate) => gate.type === "minimum_age");
+  const hasScore = atoms.some((gate) => gate.type === "wallet_score");
+  // An "any verified nationality" rule still needs a way to say the person has one.
+  const nationalityOptions = nationalityAtoms.length > 0 && nationalities.length === 0
+    ? [copy.profileAnyNationality]
+    : nationalities;
+
+  const toggleProvider = (provider: string) => patch({
+    humanProviders: profile.humanProviders.includes(provider)
+      ? profile.humanProviders.filter((held) => held !== provider)
+      : [...profile.humanProviders, provider],
+  });
+  const toggleAsset = (key: string) => patch({
+    assets: profile.assets.includes(key)
+      ? profile.assets.filter((held) => held !== key)
+      : [...profile.assets, key],
+  });
+
+  return (
+    <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="text-base font-semibold uppercase tracking-wide text-muted-foreground">{copy.tryProfileTitle}</div>
+        <Button size="sm" variant="ghost" onClick={() => setProfile(createGateProfileDraft())}>
+          {copy.tryProfileReset}
+        </Button>
+      </div>
+
+      {atoms.length === 0 ? (
+        <p className="text-base text-muted-foreground">{copy.tryProfileNoRules}</p>
+      ) : (
+        <>
+          <p className="mb-3 text-base text-muted-foreground">{copy.tryProfileCaption}</p>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {humanProviders.map((provider) => (
+              <Chip
+                aria-pressed={profile.humanProviders.includes(provider)}
+                className="h-11 px-4"
+                key={provider}
+                variant={profile.humanProviders.includes(provider) ? "active" : "outline"}
+                onClick={() => toggleProvider(provider)}
+              >
+                {interpolateMessage(copy.profileHumanProvider, { provider: providerLabel(copy, provider) })}
+              </Chip>
+            ))}
+
+            {hasAltcha ? (
+              <Chip
+                aria-pressed={profile.altcha}
+                className="h-11 px-4"
+                variant={profile.altcha ? "active" : "outline"}
+                onClick={() => patch({ altcha: !profile.altcha })}
+              >
+                {copy.profileAltcha}
+              </Chip>
+            ) : null}
+
+            {assetGates.map((gate) => {
+              const key = gateAtomKey(gate);
+              return (
+                <Chip
+                  aria-pressed={profile.assets.includes(key)}
+                  className="h-11 px-4"
+                  key={key}
+                  variant={profile.assets.includes(key) ? "active" : "outline"}
+                  onClick={() => toggleAsset(key)}
+                >
+                  {interpolateMessage(copy.profileHoldsAsset, { asset: describeAsset(gate) })}
+                </Chip>
+              );
+            })}
+
+            {hasAge ? (
+              <label className="inline-flex h-11 items-center gap-2 rounded-full border border-border-soft px-4 text-base text-muted-foreground">
+                {copy.profileAge}
+                <Input
+                  aria-label={copy.profileAge}
+                  className="h-8 w-20 px-2"
+                  max={125}
+                  min={0}
+                  onChange={(event) => patch({ age: parseOptionalNumber(event.currentTarget.value) })}
+                  type="number"
+                  value={profile.age ?? ""}
+                />
+              </label>
+            ) : null}
+
+            {hasScore ? (
+              <label className="inline-flex h-11 items-center gap-2 rounded-full border border-border-soft px-4 text-base text-muted-foreground">
+                {copy.profilePassportScore}
+                <Input
+                  aria-label={copy.profilePassportScore}
+                  className="h-8 w-20 px-2"
+                  max={100}
+                  min={0}
+                  onChange={(event) => patch({ passportScore: parseOptionalNumber(event.currentTarget.value) })}
+                  type="number"
+                  value={profile.passportScore ?? ""}
+                />
+              </label>
+            ) : null}
+
+            {nationalityOptions.length > 0 ? (
+              <ProfileChoice
+                label={copy.profileNationality}
+                noneLabel={copy.profileNone}
+                options={nationalityOptions}
+                value={profile.nationality}
+                onChange={(nationality) => patch({ nationality })}
+              />
+            ) : null}
+
+            {genders.length > 0 ? (
+              <ProfileChoice
+                label={copy.profileGender}
+                noneLabel={copy.profileNone}
+                options={genders}
+                value={profile.gender}
+                onChange={(gender) => patch({ gender })}
+              />
+            ) : null}
+          </div>
+
+          <div className={cn(
+            "mt-4 flex min-h-11 items-center gap-2 rounded-[var(--radius-md)] border px-3 py-2 text-base font-semibold",
+            joins ? "border-success/40 bg-success/10 text-success" : "border-border-soft bg-background text-muted-foreground",
+          )}>
+            {joins ? copy.tryProfileVerdictPass : copy.tryProfileVerdictFail}
+          </div>
+
+          <div className="mt-3 text-base font-semibold uppercase tracking-wide text-muted-foreground">
+            {copy.tryProfileRequirements}
+          </div>
+          <ul className="mt-2 flex list-none flex-col gap-1">
+            {atomResults.map((atom) => (
+              <li className="flex items-baseline gap-2 text-base" key={atom.key}>
+                <span className={cn("shrink-0 font-semibold", atom.met ? "text-success" : "text-muted-foreground")}>
+                  {atom.met ? "✓" : "✗"}
+                </span>
+                <span className={atom.met ? "text-foreground" : "text-muted-foreground"}>{describeGate(atom.gate)}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ProfileChoice({ label, noneLabel, onChange, options, value }: {
+  label: string;
+  noneLabel: string;
+  onChange: (value: string | null) => void;
+  options: string[];
+  value: string | null;
+}) {
+  const NONE = "__none__";
+  return (
+    <label className="inline-flex h-11 items-center gap-2 rounded-full border border-border-soft px-4 text-base text-muted-foreground">
+      {label}
+      <Select value={value ?? NONE} onValueChange={(next) => onChange(next === NONE ? null : next)}>
+        <SelectTrigger aria-label={label} className="h-8 w-32 px-3"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NONE}>{noneLabel}</SelectItem>
+          {options.map((option) => (
+            <SelectItem key={option} value={option}>{option}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </label>
+  );
+}
+
+function uniqueValues(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+function parseOptionalNumber(raw: string): number | null {
+  if (raw.trim().length === 0) {
+    return null;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function providerLabel(copy: TreeBuilderCopy, provider: string): string {
+  if (provider === "self") return copy.providers.self;
+  if (provider === "very") return copy.providers.very;
+  return provider;
+}
+
+function describeAsset(gate: GateAtom): string {
+  if (gate.type === "erc721_inventory_match") {
+    return courtyardInventorySummary(gate);
+  }
+  return shortAddress(getGateContractAddress(gate));
 }
 
 function GateGroupEditor({
@@ -196,10 +450,10 @@ function GateGroupEditor({
     )}>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <OpSelect copy={copy} value={group.op} onChange={(op) => onChange({ ...group, op })} />
-        <Button disabled={addRuleDisabled} size="sm" title={addRuleDisabled ? copy.limitReached : undefined} variant="secondary" leadingIcon={<Plus size={16} />} onClick={() => onChange({ ...group, children: [...group.children, defaultRule()] })}>
+        <Button disabled={addRuleDisabled} title={addRuleDisabled ? copy.limitReached : undefined} variant="secondary" leadingIcon={<Plus size={16} />} onClick={() => onChange({ ...group, children: [...group.children, defaultRule()] })}>
           {copy.actions.rule}
         </Button>
-        <Button disabled={addGroupDisabled} size="sm" title={addGroupDisabled ? copy.limitReached : undefined} variant="outline" leadingIcon={<Plus size={16} />} onClick={() => onChange({ ...group, children: [...group.children, { kind: "group", op: "and", children: [defaultRule()] }] })}>
+        <Button disabled={addGroupDisabled} title={addGroupDisabled ? copy.limitReached : undefined} variant="outline" leadingIcon={<Plus size={16} />} onClick={() => onChange({ ...group, children: [...group.children, { kind: "group", op: "and", children: [defaultRule()] }] })}>
           {copy.actions.group}
         </Button>
         {!isRoot && onRemove ? (
@@ -251,80 +505,97 @@ function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
   const kind = getRuleKind(rule.gate);
   const operator = operatorLabel(copy, rule.gate);
   const hasOperator = operator != null;
+  // Computed before the read-only branches: any rule that blocks saving must say why, including
+  // a Courtyard rule rendered read-only because no capability source is wired.
+  const ruleError = validateGateAtom(rule.gate);
+  const errorLine = ruleError ? (
+    <p className="text-base text-destructive" role="alert">{ruleError}</p>
+  ) : null;
+  const invalidCard = ruleError ? "border-destructive/50" : undefined;
 
   if (isCourtyardInventoryMatchGate(rule.gate) && !capabilitySource) {
     return (
-      <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-border-soft bg-background p-2">
-        <div className="min-w-56 flex-1">
-          <div className="text-base font-medium">Courtyard collectible</div>
-          <div className="text-base text-muted-foreground">{courtyardInventorySummary(rule.gate)}</div>
+      <div className={cn(RULE_CARD, "flex flex-col gap-1", invalidCard)}>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className={cn(RULE_KIND_COL, "min-w-0")}>
+            <div className="text-base font-medium">Courtyard collectible</div>
+            <div className="truncate text-base text-muted-foreground">{courtyardInventorySummary(rule.gate)}</div>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+            {courtyardInventoryFacetChips(rule.gate).map((chip) => (
+              <span
+                className="inline-flex h-8 items-center rounded-full border border-border-soft bg-muted/40 px-3 text-base text-foreground"
+                key={chip}
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+          <Button aria-label={copy.actions.removeRequirement} className="ms-auto shrink-0" size="icon" variant="ghost" onClick={onRemove}>
+            <X size={18} />
+          </Button>
         </div>
-        <div className="flex min-w-0 flex-1 flex-wrap gap-2">
-          {courtyardInventoryFacetChips(rule.gate).map((chip) => (
-            <span
-              className="rounded-full border border-border-soft bg-muted/40 px-3 py-1 text-base text-foreground"
-              key={chip}
-            >
-              {chip}
-            </span>
-          ))}
-        </div>
-        <Button aria-label={copy.actions.removeRequirement} className="ms-auto" size="icon" variant="ghost" onClick={onRemove}>
-          <X size={18} />
-        </Button>
+        {errorLine}
       </div>
     );
   }
 
   if (kind === "unknown") {
+    /**
+     * "Unknown" means unknown to this build, not invalid: the API may be ahead of the client.
+     * These are preserved and passed back untouched, so they stay read-only but savable.
+     */
     return (
-      <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border-soft bg-background p-2">
+      <div className={cn(RULE_CARD, "flex items-center gap-2 px-3")}>
         <div className="min-w-0 flex-1">
           <div className="text-base font-medium">{copy.unknownRequirementTitle}</div>
           <div className="truncate text-base text-muted-foreground">
             {interpolateMessage(copy.unknownRequirementDescription, { gate: JSON.stringify(rule.gate) })}
           </div>
         </div>
-        <Button aria-label={copy.actions.removeRequirement} size="icon" variant="ghost" onClick={onRemove}>
+        <Button aria-label={copy.actions.removeRequirement} className="shrink-0" size="icon" variant="ghost" onClick={onRemove}>
           <X size={18} />
         </Button>
       </div>
     );
   }
 
+  const removeButton = (
+    <Button aria-label={copy.actions.removeRequirement} className="ms-auto shrink-0 md:ms-0" size="icon" variant="ghost" onClick={onRemove}>
+      <X size={18} />
+    </Button>
+  );
+
   if (kind === "erc721_holding") {
     return (
-      <div className="rounded-[var(--radius-md)] border border-border-soft bg-background p-2">
-        <div className="grid gap-2 md:grid-cols-[minmax(220px,0.8fr)_minmax(520px,1.8fr)_auto] md:items-start">
-          <RuleKindSelect copy={copy} value={kind} onChange={(nextKind) => onChange({ ...rule, gate: defaultGateForKind(nextKind) })} />
-          <NftHoldingEditor
-            capabilitySource={capabilitySource}
-            copy={copy}
-            gate={rule.gate}
-            operator={operator ?? copy.operators.holdsOneFrom}
-            onChange={(gate) => onChange({ ...rule, gate })}
-          />
-          <Button aria-label={copy.actions.removeRequirement} size="icon" variant="ghost" onClick={onRemove}>
-            <X size={18} />
-          </Button>
-        </div>
+      <div className={cn(RULE_CARD, "flex flex-col gap-1", invalidCard)}>
+        <NftHoldingEditor
+          actions={removeButton}
+          capabilitySource={capabilitySource}
+          copy={copy}
+          gate={rule.gate}
+          kindSelect={<RuleKindSelect copy={copy} value={kind} onChange={(nextKind) => onChange({ ...rule, gate: defaultGateForKind(nextKind) })} />}
+          operator={operator ?? copy.operators.holdsOneFrom}
+          onChange={(gate) => onChange({ ...rule, gate })}
+        />
+        {errorLine}
       </div>
     );
   }
 
   return (
-    <div className={cn(
-      "grid gap-2 rounded-[var(--radius-md)] border border-border-soft bg-background p-2 md:items-center",
-      hasOperator
-        ? "md:grid-cols-[minmax(220px,1.2fr)_auto_minmax(180px,1fr)_auto]"
-        : "md:grid-cols-[minmax(220px,1.2fr)_minmax(180px,1fr)_auto]",
-    )}>
-      <RuleKindSelect copy={copy} value={kind} onChange={(nextKind) => onChange({ ...rule, gate: defaultGateForKind(nextKind) })} />
-      {operator ? <span className="rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">{operator}</span> : null}
-      <RuleValueEditor capabilitySource={capabilitySource} copy={copy} gate={rule.gate} onChange={(gate) => onChange({ ...rule, gate })} />
-      <Button aria-label={copy.actions.removeRequirement} size="icon" variant="ghost" onClick={onRemove}>
-        <X size={18} />
-      </Button>
+    <div className={cn(RULE_CARD, "flex flex-col gap-1", invalidCard)}>
+      <div className={cn(RULE_LINE, "gap-2")}>
+        <div className={RULE_KIND_COL}>
+          <RuleKindSelect copy={copy} value={kind} onChange={(nextKind) => onChange({ ...rule, gate: defaultGateForKind(nextKind) })} />
+        </div>
+        {hasOperator ? <RuleToken>{operator}</RuleToken> : null}
+        <div className="min-w-0 flex-1">
+          <RuleValueEditor capabilitySource={capabilitySource} copy={copy} gate={rule.gate} onChange={(gate) => onChange({ ...rule, gate })} />
+        </div>
+        {removeButton}
+      </div>
+      {errorLine}
     </div>
   );
 }
@@ -341,6 +612,7 @@ function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
         <div className="flex flex-wrap gap-2" aria-label={copy.inputs.humanVerificationProvider}>
           <Chip
             aria-pressed={gate.provider === "self"}
+            className="h-11 px-4"
             variant={gate.provider === "self" ? "active" : "outline"}
             onClick={() => onChange({ type: "unique_human", provider: "self" })}
           >
@@ -348,6 +620,7 @@ function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
           </Chip>
           <Chip
             aria-pressed={gate.provider === "very"}
+            className="h-11 px-4"
             variant={gate.provider === "very" ? "active" : "outline"}
             onClick={() => onChange({ type: "unique_human", provider: "very" })}
           >
@@ -359,6 +632,7 @@ function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
       return (
         <Input
           aria-label={copy.inputs.minimumPassportScore}
+          className="max-w-40"
           min={PASSPORT_SCORE_FLOOR}
           max={100}
           onChange={(event) => onChange({
@@ -381,7 +655,7 @@ function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
             allowed: [value],
           })}
         >
-          <SelectTrigger aria-label={copy.inputs.documentSexMarker}><SelectValue /></SelectTrigger>
+          <SelectTrigger aria-label={copy.inputs.documentSexMarker} className="max-w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="F">F</SelectItem>
             <SelectItem value="M">M</SelectItem>
@@ -395,6 +669,7 @@ function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
       return (
         <Input
           aria-label={copy.inputs.minimumAge}
+          className="max-w-40"
           min={18}
           max={125}
           onChange={(event) => onChange({ type: "minimum_age", provider: "self", minimum_age: Number.parseInt(event.currentTarget.value || "18", 10), accepted_providers: gate.accepted_providers })}
@@ -417,15 +692,19 @@ function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
 }
 
 function NftHoldingEditor({
+  actions,
   capabilitySource,
   copy,
   gate,
+  kindSelect,
   operator,
   onChange,
 }: {
+  actions: React.ReactNode;
   capabilitySource?: CollectionCapabilitySource;
   copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
   gate: GateAtom;
+  kindSelect: React.ReactNode;
   operator: string;
   onChange: (gate: GateAtom) => void;
 }) {
@@ -459,15 +738,17 @@ function NftHoldingEditor({
 
   if (!capabilitySource) {
     return (
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <span className="whitespace-nowrap rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">
-          {operator}
-        </span>
-        <Input
-          aria-label={copy.inputs.nftContractAddress}
-          onChange={(event) => onChange({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: event.currentTarget.value })}
-          value={getGateContractAddress(gate)}
-        />
+      <div className={cn(RULE_LINE, "gap-2")}>
+        <div className={RULE_KIND_COL}>{kindSelect}</div>
+        <RuleToken>{operator}</RuleToken>
+        <div className="min-w-0 flex-1">
+          <Input
+            aria-label={copy.inputs.nftContractAddress}
+            onChange={(event) => onChange({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: event.currentTarget.value })}
+            value={getGateContractAddress(gate)}
+          />
+        </div>
+        {actions}
       </div>
     );
   }
@@ -577,84 +858,82 @@ function NftHoldingEditor({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="whitespace-nowrap rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">
-            holds ≥
-          </span>
-          <Input
-            aria-label={copy.inputs.minimumNftQuantity}
-            className="w-20"
-            disabled={!quantitySupported}
-            max={100}
-            min={1}
-            onChange={(event) => updateQuantity(Number.parseInt(event.currentTarget.value || "1", 10))}
-            title={quantitySupported ? undefined : copy.nftQuantityLocked}
-            type="number"
-            value={currentQuantity}
-          />
-          <span className="whitespace-nowrap rounded-full border border-border-soft px-3 py-2 text-base text-muted-foreground">
-            from
-          </span>
+      <div className={cn(RULE_LINE, "gap-2")}>
+        <div className={RULE_KIND_COL}>{kindSelect}</div>
+        <RuleToken>{copy.operators.holds}</RuleToken>
+        <Input
+          aria-label={copy.inputs.minimumNftQuantity}
+          className="w-20 shrink-0"
+          disabled={!quantitySupported}
+          max={100}
+          min={1}
+          onChange={(event) => updateQuantity(Number.parseInt(event.currentTarget.value || "1", 10))}
+          title={quantitySupported ? undefined : copy.nftQuantityLocked}
+          type="number"
+          value={currentQuantity}
+        />
+        <RuleToken>{copy.operators.from}</RuleToken>
+        <div className="min-w-0 flex-1">
+          <Combobox<AssetSourceDescriptor, true>
+            multiple
+            autoHighlight
+            items={sources}
+            itemToStringLabel={(source) => source.label}
+            itemToStringValue={(source) => source.label}
+            onValueChange={(nextSources) => {
+              const source = nextSources.slice(-1)[0];
+              if (source) {
+                selectSource(source.id);
+              } else {
+                pasteAddress(DEFAULT_CONTRACT);
+              }
+            }}
+            value={selectedSource ? [selectedSource] : []}
+          >
+            <ComboboxChips className={CHIPS_BOX}>
+              <ComboboxValue>
+                {(selectedSources) => (
+                  <>
+                    {selectedSources.map((source: AssetSourceDescriptor) => (
+                      <ComboboxChip className={CHIPS_CHIP} key={source.id}>{source.label}</ComboboxChip>
+                    ))}
+                    <ComboboxChipsInput
+                      aria-label="Search collections or paste address"
+                      className={selectedSources.length > 0 ? CHIPS_INPUT_WITH_VALUE : undefined}
+                      placeholder={selectedSources.length > 0 ? "" : "Search collections or paste address"}
+                    />
+                  </>
+                )}
+              </ComboboxValue>
+            </ComboboxChips>
+            <ComboboxContent>
+              <ComboboxEmpty>No trusted source found. Paste a contract address below.</ComboboxEmpty>
+              <ComboboxList>
+                {(source) => (
+                  <ComboboxItem key={source.id} value={source}>
+                    <span className="text-base font-medium">{source.label}</span>
+                  </ComboboxItem>
+                )}
+              </ComboboxList>
+            </ComboboxContent>
+          </Combobox>
         </div>
-        <Combobox<AssetSourceDescriptor, true>
-          multiple
-          autoHighlight
-          items={sources}
-          itemToStringLabel={(source) => source.label}
-          itemToStringValue={(source) => source.label}
-          onValueChange={(nextSources) => {
-            const source = nextSources.slice(-1)[0];
-            if (source) {
-              selectSource(source.id);
-            } else {
-              pasteAddress(DEFAULT_CONTRACT);
-            }
-          }}
-          value={selectedSource ? [selectedSource] : []}
-        >
-          <ComboboxChips className="rounded-full">
-            <ComboboxValue>
-              {(selectedSources) => (
-                <>
-                  {selectedSources.map((source: AssetSourceDescriptor) => (
-                    <ComboboxChip key={source.id}>{source.label}</ComboboxChip>
-                  ))}
-                  <ComboboxChipsInput
-                    aria-label="Search collections or paste address"
-                    className={selectedSources.length > 0 ? "min-w-10 flex-none" : undefined}
-                    placeholder={selectedSources.length > 0 ? "" : "Search collections or paste address"}
-                  />
-                </>
-              )}
-            </ComboboxValue>
-          </ComboboxChips>
-          <ComboboxContent>
-            <ComboboxEmpty>No trusted source found. Paste a contract address below.</ComboboxEmpty>
-            <ComboboxList>
-              {(source) => (
-                <ComboboxItem key={source.id} value={source}>
-                  <span className="text-base font-medium">{source.label}</span>
-                </ComboboxItem>
-              )}
-            </ComboboxList>
-          </ComboboxContent>
-        </Combobox>
-        {!selectedSource ? (
-          <Input
-            className="mt-2"
-            aria-label={copy.inputs.nftContractAddress}
-            onChange={(event) => pasteAddress(event.currentTarget.value)}
-            value={getGateContractAddress(gate)}
-          />
-        ) : null}
+        {actions}
       </div>
+
+      {!selectedSource ? (
+        <Input
+          aria-label={copy.inputs.nftContractAddress}
+          onChange={(event) => pasteAddress(event.currentTarget.value)}
+          value={getGateContractAddress(gate)}
+        />
+      ) : null}
 
       {selectedSource?.traitFiltersSupported ? (
         <div className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-border-soft bg-muted/20 p-2">
           {traitKeys.map((facetKey) => (
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-center" key={facetKey}>
-              <div className="lg:w-40 lg:shrink-0">
+            <div className={cn(RULE_LINE, "gap-2")} key={facetKey}>
+              <div className={FACET_KEY_COL}>
                 <Select value={facetKey} onValueChange={(nextKey) => replaceFacet(facetKey, nextKey)}>
                   <SelectTrigger aria-label="Attribute" className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -664,9 +943,9 @@ function NftHoldingEditor({
                   </SelectContent>
                 </Select>
               </div>
-              <span className="inline-flex h-11 items-center self-start whitespace-nowrap rounded-full border border-border-soft px-3 text-base text-muted-foreground lg:shrink-0">
+              <RuleToken>
                 {selectedSource.maxValuesPerFacet > 1 ? copy.operators.isOneOf : copy.operators.is}
-              </span>
+              </RuleToken>
               <div className="min-w-0 flex-1">
                 <FacetValuePicker
                   capabilitySource={capabilitySource}
@@ -678,24 +957,26 @@ function NftHoldingEditor({
                   value={match[facetKey] ? [{ value: match[facetKey]! }] : []}
                 />
               </div>
-              <Button aria-label="Remove attribute filter" size="icon" variant="ghost" onClick={() => removeFacet(facetKey)}>
+              <Button aria-label="Remove attribute filter" className="ms-auto shrink-0 md:ms-0" size="icon" variant="ghost" onClick={() => removeFacet(facetKey)}>
                 <X size={18} />
               </Button>
             </div>
           ))}
-          {addableFacetKeys.length > 0 ? (
+          {addableFacetKeys.length > 0 || selectedSource.provenanceLabel ? (
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <Button
-                className="self-start"
-                size="sm"
-                variant="outline"
-                leadingIcon={<Plus size={16} />}
-                onClick={() => setPendingFacetKeys((current) => [...current, addableFacetKeys[0]!])}
-              >
-                Add attribute filter
-              </Button>
+              {addableFacetKeys.length > 0 ? (
+                <Button
+                  className="self-start"
+                  size="sm"
+                  variant="outline"
+                  leadingIcon={<Plus size={16} />}
+                  onClick={() => setPendingFacetKeys((current) => [...current, addableFacetKeys[0]!])}
+                >
+                  Add attribute filter
+                </Button>
+              ) : null}
               {selectedSource.provenanceLabel ? (
-                <div className="text-base text-muted-foreground">{selectedSource.provenanceLabel}</div>
+                <div className="ms-auto text-base text-muted-foreground">{selectedSource.provenanceLabel}</div>
               ) : null}
             </div>
           ) : null}
@@ -748,16 +1029,16 @@ function FacetValuePicker({
       }}
       value={value.filter((option) => option.value.length > 0)}
     >
-      <ComboboxChips className="rounded-[var(--radius-lg)]">
+      <ComboboxChips className={CHIPS_BOX}>
         <ComboboxValue>
           {(selectedOptions) => (
             <>
               {selectedOptions.map((option: FacetValueSuggestion) => (
-                <ComboboxChip key={option.value}>{option.value}</ComboboxChip>
+                <ComboboxChip className={CHIPS_CHIP} key={option.value}>{option.value}</ComboboxChip>
               ))}
               <ComboboxChipsInput
                 aria-label={`Search ${facetLabel}`}
-                className={selectedOptions.length > 0 ? "min-w-10 flex-none" : undefined}
+                className={selectedOptions.length > 0 ? CHIPS_INPUT_WITH_VALUE : undefined}
                 placeholder={selectedOptions.length > 0 ? "" : `Search ${facetLabel.toLowerCase()}`}
               />
             </>
@@ -904,39 +1185,6 @@ function operatorLabel(copy: ReturnType<typeof getLocaleMessages<"gates">>["tree
   }
 }
 
-function personaLabel(copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"], id: string): string {
-  switch (id) {
-    case "bot_captcha":
-      return copy.personas.botCaptcha;
-    case "self_human":
-      return copy.personas.selfHuman;
-    case "very_human":
-      return copy.personas.veryHuman;
-    case "passport_score_20":
-      return copy.personas.passportScore20;
-    case "nft_holder":
-      return copy.personas.nftHolder;
-    default:
-      return id;
-  }
-}
-
-function describePolicy(policy: GatePolicy): string {
-  return describeExpression(policy.expression as GateExpression);
-}
-
-function describeExpression(expression: GateExpression): string {
-  if (expression.op === "gate" && expression.gate) {
-    return describeGate(expression.gate);
-  }
-  const joiner = expression.op === "or" ? " or " : " and ";
-  const children = (expression.children ?? []) as GateExpression[];
-  return children.map((child) => {
-    const text = describeExpression(child);
-    return child.op === "gate" ? text : `(${text})`;
-  }).join(joiner);
-}
-
 function describeGate(gate: GateAtom): string {
   switch (gate.type) {
     case "unique_human":
@@ -948,7 +1196,9 @@ function describeGate(gate: GateAtom): string {
     case "erc721_holding":
       return `hold an NFT from ${shortAddress(gate.contract_address ?? "")}`;
     case "nationality":
-      return `prove nationality ${gate.allowed?.length ? gate.allowed.join("/") : "(choose countries)"}`;
+      return gate.allowed?.length
+        ? `prove nationality ${gate.allowed.join("/")}`
+        : "prove any verified nationality";
     case "gender":
       return `match document sex marker ${gate.allowed?.[0] ?? "(choose marker)"}`;
     case "minimum_age":

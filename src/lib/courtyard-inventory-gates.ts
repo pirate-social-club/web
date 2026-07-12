@@ -1,9 +1,17 @@
-import { isAddress } from "viem";
 
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
+import {
+  COURTYARD_MAINNET_REGISTRY,
+  COURTYARD_POLYGON_REGISTRY,
+  isAllowedCourtyardRegistry,
+  validateInventoryAssetMatch,
+} from "@/lib/gate-inventory-validation";
 
-export const COURTYARD_POLYGON_REGISTRY = "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD";
-export const COURTYARD_MAINNET_REGISTRY = "0xd4ac3CE8e1E14CD60666D49AC34Ff2d2937cF6FA";
+export {
+  COURTYARD_MAINNET_REGISTRY,
+  COURTYARD_POLYGON_REGISTRY,
+  isAllowedCourtyardRegistry,
+} from "@/lib/gate-inventory-validation";
 
 export type CourtyardWalletInventoryGroup = {
   category: "trading_card" | "watch";
@@ -42,11 +50,18 @@ export function createDefaultCourtyardInventoryDraft(
   };
 }
 
+/**
+ * Validates a legacy inventory draft through the same shared rules the tree builder uses.
+ *
+ * This previously accepted any one of six card fields (so a grade-only filter passed) and any one
+ * of four watch fields (so a reference-only filter passed), and skipped the registry allowlist —
+ * all of which the API rejects, so those drafts saved from the client and failed server-side.
+ */
 export function isValidCourtyardInventoryDraft(draft: CourtyardInventoryDraft): boolean {
   if (
     (draft.chainNamespace !== "eip155:1" && draft.chainNamespace !== "eip155:137")
     || draft.inventoryProvider !== "courtyard"
-    || !isAddress(draft.contractAddress.trim())
+    || !isAllowedCourtyardRegistry(draft.chainNamespace, draft.contractAddress)
     || !Number.isInteger(draft.minQuantity)
     || draft.minQuantity < 1
     || draft.minQuantity > 100
@@ -54,22 +69,18 @@ export function isValidCourtyardInventoryDraft(draft: CourtyardInventoryDraft): 
     return false;
   }
 
-  if (draft.assetFilter.category === "trading_card") {
-    return Boolean(
-      draft.assetFilter.franchise?.trim()
-      || draft.assetFilter.subject?.trim()
-      || draft.assetFilter.set?.trim()
-      || draft.assetFilter.year?.trim()
-      || draft.assetFilter.grader?.trim()
-      || draft.assetFilter.grade?.trim(),
-    );
+  return validateInventoryAssetMatch(toInventoryMatch(draft)) == null;
+}
+
+/** Drops empty fields so the shared validator sees the same shape the API receives. */
+function toInventoryMatch(draft: CourtyardInventoryDraft): Record<string, string> {
+  const match: Record<string, string> = { category: draft.assetFilter.category };
+  for (const [key, value] of Object.entries(draft.assetFilter)) {
+    if (key !== "category" && typeof value === "string" && value.trim().length > 0) {
+      match[key] = value;
+    }
   }
-  return Boolean(
-    draft.assetFilter.brand?.trim()
-    || draft.assetFilter.model?.trim()
-    || draft.assetFilter.reference?.trim()
-    || draft.assetFilter.condition?.trim(),
-  );
+  return match;
 }
 
 export function createCourtyardInventoryDraftFromGroup(

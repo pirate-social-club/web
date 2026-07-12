@@ -130,7 +130,31 @@ describe("GateTreeBuilder rule validation", () => {
       children: [{ kind: "rule", gate: { type: "nft_trait_snapshot_match" } }],
     } as unknown as GateBuilderGroupDraft;
 
-    expect(renderBuilder(unknown).queryByRole("alert")).toBeNull();
+    const view = renderBuilder(unknown);
+    expect(view.queryByRole("alert")).toBeNull();
+    expect(view.getByText(/Cannot determine/)).not.toBeNull();
+  });
+
+  test("renders a numeric holding quantity in the profile preview", () => {
+    const holdingTwo = {
+      kind: "group",
+      op: "and",
+      children: [{
+        kind: "rule",
+        gate: {
+          type: "erc721_holding",
+          chain_namespace: "eip155:1",
+          contract_address: "0xBC4CA0EDA7647A8AB7C2061C2E118A18A936F13D",
+          min_count: 2,
+        },
+      }],
+    } as unknown as GateBuilderGroupDraft;
+    const view = renderBuilder(holdingTwo);
+    const quantity = view.getByRole("spinbutton", { name: /Quantity held/ });
+    expect(quantity.getAttribute("min")).toBe("0");
+    expect(quantity.getAttribute("type")).toBe("number");
+    expect(view.getByText("This person CANNOT join")).not.toBeNull();
+    expect(view.getAllByText(/hold at least 2 NFTs/)).toHaveLength(2);
   });
 
   test("shows an inline error on an out-of-range age", () => {
@@ -143,4 +167,3 @@ describe("GateTreeBuilder rule validation", () => {
     expect(renderBuilder(badAge).getByRole("alert").textContent).toContain("18 to 125");
   });
 });
-

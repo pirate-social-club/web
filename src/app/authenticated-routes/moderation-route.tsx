@@ -44,10 +44,7 @@ import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-r
 import { buildPublicProfilePath } from "@/lib/profile-routing";
 
 import { CommunityModerationGuard, getCommunityModerationTitle } from "@/app/authenticated-helpers/moderation-route-helpers";
-import {
-  isGateBuilderDraftWithinLimits,
-  serializeGateBuilderTreeDraft,
-} from "@/app/authenticated-helpers/community-gate-tree-draft";
+import { isGateBuilderDraftSavable } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import {
   buildCommunityModerationIndexPath,
   buildCommunityModerationPath,
@@ -905,7 +902,7 @@ export function CommunityModerationPage({
     } else if (section === "gates") {
       const useGateTreeBuilder = import.meta.env.VITE_GATE_TREE_BUILDER_ENABLED === "true";
       const gateConfigurationInvalid = state.membershipMode === "gated" && (useGateTreeBuilder
-        ? serializeGateBuilderTreeDraft(state.gateTreeDraft) == null || !isGateBuilderDraftWithinLimits(state.gateTreeDraft)
+        ? !isGateBuilderDraftSavable(state.gateTreeDraft)
         : state.gateDrafts.length === 0 && state.preservedGateRuleCount === 0
           || state.gateDrafts.some((draft) => (
             draft.gateType === "erc721_holding" && !isAddress(draft.contractAddress.trim())

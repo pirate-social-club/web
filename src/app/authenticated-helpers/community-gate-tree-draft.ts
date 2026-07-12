@@ -1,5 +1,6 @@
 import type { GateAtom, GateExpression, GatePolicy } from "@pirate/api-contracts";
 import { areGatePoliciesEqual } from "@/lib/gate-policy-utils";
+import { isValidGateAtom } from "@/lib/gate-atom-validation";
 
 export const GATE_POLICY_MAX_ATOMS = 20;
 export const GATE_POLICY_MAX_DEPTH = 4;
@@ -25,16 +26,38 @@ export type GateBuilderBudget = {
   depth: number;
 };
 
-export type GateBuilderPersonaResult = {
-  id: string;
-  joins: boolean;
-  label: string;
+/**
+ * A hypothetical member the admin assembles, to answer "who gets in?".
+ *
+ * Per the gate-builder spec the simulation derives profiles from the policy's own atoms and reuses
+ * policy evaluation. The earlier fixed list of single-capability personas could not represent a
+ * member holding two kinds of proof, so any AND across proof kinds — and any nationality, age or
+ * gender rule, for which no persona existed at all — reported "can't join" for every persona.
+ *
+ * Values here are real (an age, a country, a score) rather than "satisfies rule N" flags, so the
+ * profile stays coherent: a 21-year-old necessarily passes an "18+" rule as well as a "21+" one.
+ */
+export type GateProfileDraft = {
+  age: number | null;
+  altcha: boolean;
+  /** Keys (see gateAtomKey) of the NFT/inventory rules this person holds an asset for. */
+  assets: string[];
+  gender: string | null;
+  /** A person may hold more than one humanity proof. */
+  humanProviders: string[];
+  nationality: string | null;
+  passportScore: number | null;
 };
 
-export type GateBuilderPersona = {
-  id: string;
-  label: string;
-  satisfies: (gate: GateAtom) => boolean;
+export type GateProfileAtomResult = {
+  gate: GateAtom;
+  key: string;
+  met: boolean;
+};
+
+export type GateProfileEvaluation = {
+  atoms: GateProfileAtomResult[];
+  joins: boolean;
 };
 
 type RecursiveGateExpression =
@@ -91,6 +114,27 @@ export function isGateBuilderDraftWithinLimits(root: GateBuilderGroupDraft): boo
   return budget.atoms <= GATE_POLICY_MAX_ATOMS && budget.depth <= GATE_POLICY_MAX_DEPTH;
 }
 
+/** Every rule in the tree passes the client mirror of the API's atom validation. */
+export function gateBuilderDraftAtomsAreValid(root: GateBuilderGroupDraft): boolean {
+  const isValidNode = (node: GateBuilderDraftNode): boolean => node.kind === "rule"
+    ? isValidGateAtom(node.gate)
+    : node.children.every(isValidNode);
+
+  return isValidNode(root);
+}
+
+/**
+ * The save guard for the tree editor.
+ *
+ * Limits alone are not enough: the API also validates every atom, so a draft can be within the
+ * atom/depth budget and still be rejected (e.g. a card filter with no franchise or subject).
+ */
+export function isGateBuilderDraftSavable(root: GateBuilderGroupDraft): boolean {
+  return serializeGateBuilderTreeDraft(root) != null
+    && isGateBuilderDraftWithinLimits(root)
+    && gateBuilderDraftAtomsAreValid(root);
+}
+
 export function normalizePassportMinimumScore(value: number): number {
   if (!Number.isFinite(value)) {
     return PASSPORT_SCORE_FLOOR;
@@ -133,48 +177,142 @@ export function captchaAloneAdmits(policy: GatePolicy | null | undefined): boole
   return Boolean(policy && evaluateGateExpression(policy.expression, (gate) => gate.type === "altcha_pow"));
 }
 
-export function simulateGateBuilderPersonas(
-  policy: GatePolicy | null | undefined,
-  personas: readonly GateBuilderPersona[] = DEFAULT_GATE_BUILDER_PERSONAS,
-): GateBuilderPersonaResult[] {
-  return personas.map((persona) => ({
-    id: persona.id,
-    joins: Boolean(policy && evaluateGateExpression(policy.expression, persona.satisfies)),
-    label: persona.label,
-  }));
+export function createGateProfileDraft(): GateProfileDraft {
+  return {
+    age: null,
+    altcha: false,
+    assets: [],
+    gender: null,
+    humanProviders: [],
+    nationality: null,
+    passportScore: null,
+  };
 }
 
-export const DEFAULT_GATE_BUILDER_PERSONAS: GateBuilderPersona[] = [
-  {
-    id: "bot_captcha",
-    label: "A bot with no proofs that completes the browser challenge",
-    satisfies: (gate) => gate.type === "altcha_pow",
-  },
-  {
-    id: "self_human",
-    label: "Verified human (Self.xyz)",
-    satisfies: (gate) => gate.type === "unique_human" && gate.provider === "self",
-  },
-  {
-    id: "very_human",
-    label: "Verified human (Very palm scan)",
-    satisfies: (gate) => gate.type === "unique_human" && gate.provider === "very",
-  },
-  {
-    id: "passport_score_20",
-    label: "Wallet with Passport score 20",
-    satisfies: (gate) =>
-      gate.type === "wallet_score"
-      && gate.provider === "passport"
-      && typeof gate.minimum_score === "number"
-      && gate.minimum_score <= 20,
-  },
-  {
-    id: "nft_holder",
-    label: "Holder of the required NFT",
-    satisfies: (gate) => gate.type === "erc721_holding" || gate.type === "erc721_inventory_match",
-  },
-];
+/** Stable identity for an atom, so the simulation can offer one control per distinct requirement. */
+export function gateAtomKey(gate: GateAtom): string {
+  switch (gate.type) {
+    case "altcha_pow":
+      return "altcha_pow";
+    case "unique_human":
+      return `unique_human:${gate.provider ?? "any"}`;
+    case "wallet_score":
+      return `wallet_score:${gate.provider ?? "passport"}:${gate.minimum_score ?? 0}`;
+    case "minimum_age":
+      return `minimum_age:${gate.minimum_age ?? 18}`;
+    case "nationality":
+      return `nationality:${sortedAllowed(gate.allowed)}`;
+    case "gender":
+      return `gender:${sortedAllowed(gate.allowed)}`;
+    case "erc721_holding":
+    case "erc721_inventory_match":
+      return [
+        gate.type,
+        atomChainNamespace(gate),
+        atomContractAddress(gate).toLowerCase(),
+        stableMatchKey(gate),
+      ].join(":");
+    default:
+      return `unknown:${JSON.stringify(gate)}`;
+  }
+}
+
+/** Every distinct atom in the tree, in tree order — the requirements a profile is tested against. */
+export function collectGateBuilderAtoms(root: GateBuilderGroupDraft): GateAtom[] {
+  const seen = new Set<string>();
+  const atoms: GateAtom[] = [];
+
+  const walk = (node: GateBuilderDraftNode) => {
+    if (node.kind === "rule") {
+      const key = gateAtomKey(node.gate);
+      if (!seen.has(key)) {
+        seen.add(key);
+        atoms.push(node.gate);
+      }
+      return;
+    }
+    node.children.forEach(walk);
+  };
+
+  walk(root);
+  return atoms;
+}
+
+export function profileSatisfiesGate(profile: GateProfileDraft, gate: GateAtom): boolean {
+  switch (gate.type) {
+    case "altcha_pow":
+      return profile.altcha;
+    case "unique_human":
+      return gate.provider
+        ? profile.humanProviders.includes(gate.provider)
+        : profile.humanProviders.length > 0;
+    case "wallet_score":
+      return profile.passportScore != null && profile.passportScore >= (gate.minimum_score ?? 0);
+    case "minimum_age":
+      return profile.age != null && profile.age >= (gate.minimum_age ?? 18);
+    case "nationality":
+      // An empty allowed list means "any verified nationality", matching API evaluation.
+      return profile.nationality != null
+        && ((gate.allowed ?? []).length === 0 || (gate.allowed ?? []).includes(profile.nationality));
+    case "gender":
+      return profile.gender != null && (gate.allowed ?? []).includes(profile.gender);
+    case "erc721_holding":
+    case "erc721_inventory_match":
+      return profile.assets.includes(gateAtomKey(gate));
+    default:
+      // An atom this build cannot interpret must never be silently treated as satisfied.
+      return false;
+  }
+}
+
+/**
+ * Evaluates a profile against the whole tree, reusing the same expression evaluation the policy
+ * uses. A draft with no rules serializes to a null policy: an open community, so everyone joins.
+ */
+export function evaluateGateProfile(
+  root: GateBuilderGroupDraft,
+  profile: GateProfileDraft,
+): GateProfileEvaluation {
+  const policy = serializeGateBuilderTreeDraft(root);
+  const atoms = collectGateBuilderAtoms(root).map((gate) => ({
+    gate,
+    key: gateAtomKey(gate),
+    met: profileSatisfiesGate(profile, gate),
+  }));
+
+  return {
+    atoms,
+    joins: policy
+      ? evaluateGateExpression(policy.expression, (gate) => profileSatisfiesGate(profile, gate))
+      : true,
+  };
+}
+
+function sortedAllowed(allowed: readonly string[] | undefined): string {
+  return [...(allowed ?? [])].sort().join(",");
+}
+
+function atomChainNamespace(gate: GateAtom): string {
+  return "chain_namespace" in gate && typeof gate.chain_namespace === "string"
+    ? gate.chain_namespace
+    : "eip155:1";
+}
+
+function atomContractAddress(gate: GateAtom): string {
+  return "contract_address" in gate && typeof gate.contract_address === "string"
+    ? gate.contract_address
+    : "";
+}
+
+function stableMatchKey(gate: GateAtom): string {
+  const match = "match" in gate && gate.match && typeof gate.match === "object"
+    ? gate.match as Record<string, unknown>
+    : {};
+  return Object.keys(match)
+    .sort()
+    .map((key) => `${key}=${String(match[key])}`)
+    .join("|");
+}
 
 function expressionToDraftNode(expression: RecursiveGateExpression | Record<string, unknown>): GateBuilderDraftNode | null {
   if (expression.op === "gate") {

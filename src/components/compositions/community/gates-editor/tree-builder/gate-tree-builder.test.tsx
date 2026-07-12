@@ -66,7 +66,7 @@ describe("GateTreeBuilder", () => {
 
     fireEvent.click(view.getByRole("button", { name: "Rule" }));
     expect(view.getLatestValue().children).toEqual([humanRule]);
-    expect(view.getByText("prove human with Self.xyz")).not.toBeNull();
+    expect(view.getByRole("combobox", { name: "Requirement type" })).not.toBeNull();
 
     fireEvent.click(view.getByRole("button", { name: "Remove requirement" }));
     expect(view.getLatestValue().children).toEqual([]);
@@ -83,5 +83,87 @@ describe("GateTreeBuilder", () => {
     expect(addGroup.hasAttribute("disabled")).toBe(true);
     fireEvent.click(addGroup);
     expect(view.getLatestValue().children).toHaveLength(20);
+  });
+});
+
+describe("GateTreeBuilder rule validation", () => {
+  const courtyardRule = (match: Record<string, unknown>) => ({
+    kind: "group",
+    op: "and",
+    children: [{
+      kind: "rule",
+      gate: {
+        type: "erc721_inventory_match",
+        provider: "courtyard",
+        chain_namespace: "eip155:137",
+        contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+        min_quantity: 1,
+        match,
+      },
+    }],
+  }) as unknown as GateBuilderGroupDraft;
+
+  test("shows an inline error on an incomplete Courtyard rule rendered read-only", () => {
+    // No capability source is wired in the real app, so this rule takes the read-only branch.
+    // It must still explain why it blocks saving, rather than failing silently.
+    const view = renderBuilder(courtyardRule({ category: "trading_card" }));
+
+    expect(view.getByRole("alert").textContent).toContain("Add at least one attribute filter");
+  });
+
+  test("shows the card-specific error on a grade-only rule", () => {
+    const view = renderBuilder(courtyardRule({ category: "trading_card", grade: "PSA 9" }));
+
+    expect(view.getByRole("alert").textContent).toContain("Franchise or Name");
+  });
+
+  test("shows no error on a complete Courtyard rule", () => {
+    const view = renderBuilder(courtyardRule({ category: "trading_card", franchise: "Pokemon" }));
+
+    expect(view.queryByRole("alert")).toBeNull();
+  });
+
+  test("does not flag a preserved unknown atom", () => {
+    const unknown = {
+      kind: "group",
+      op: "and",
+      children: [{ kind: "rule", gate: { type: "nft_trait_snapshot_match" } }],
+    } as unknown as GateBuilderGroupDraft;
+
+    const view = renderBuilder(unknown);
+    expect(view.queryByRole("alert")).toBeNull();
+    expect(view.getByText(/Cannot determine/)).not.toBeNull();
+  });
+
+  test("renders a numeric holding quantity in the profile preview", () => {
+    const holdingTwo = {
+      kind: "group",
+      op: "and",
+      children: [{
+        kind: "rule",
+        gate: {
+          type: "erc721_holding",
+          chain_namespace: "eip155:1",
+          contract_address: "0xBC4CA0EDA7647A8AB7C2061C2E118A18A936F13D",
+          min_count: 2,
+        },
+      }],
+    } as unknown as GateBuilderGroupDraft;
+    const view = renderBuilder(holdingTwo);
+    const quantity = view.getByRole("spinbutton", { name: /Quantity held/ });
+    expect(quantity.getAttribute("min")).toBe("0");
+    expect(quantity.getAttribute("type")).toBe("number");
+    expect(view.getByText("This person CANNOT join")).not.toBeNull();
+    expect(view.getAllByText(/hold at least 2 NFTs/)).toHaveLength(2);
+  });
+
+  test("shows an inline error on an out-of-range age", () => {
+    const badAge = {
+      kind: "group",
+      op: "and",
+      children: [{ kind: "rule", gate: { type: "minimum_age", provider: "self", minimum_age: 5 } }],
+    } as unknown as GateBuilderGroupDraft;
+
+    expect(renderBuilder(badAge).getByRole("alert").textContent).toContain("18 to 125");
   });
 });

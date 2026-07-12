@@ -21,6 +21,8 @@ import {
   collectGateBuilderAtoms,
   createGateProfileDraft,
   evaluateGateProfile,
+  gateAssetKey,
+  gateAssetMinimum,
   GATE_POLICY_MAX_ATOMS,
   GATE_POLICY_MAX_DEPTH,
   gateAtomKey,
@@ -217,7 +219,7 @@ function GateProfileSimulator({ copy, value }: {
   const nationalityAtoms = atoms.filter((gate) => gate.type === "nationality");
   const nationalities = uniqueValues(nationalityAtoms.flatMap((gate) => [...(gate.allowed ?? [])]));
   const genders = uniqueValues(atoms.flatMap((gate) => gate.type === "gender" ? [...(gate.allowed ?? [])] : []));
-  const assetGates = atoms.filter((gate) => gate.type === "erc721_holding" || gate.type === "erc721_inventory_match");
+  const assetGates = uniqueAssets(atoms.filter((gate) => gate.type === "erc721_holding" || gate.type === "erc721_inventory_match"));
   const hasAltcha = atoms.some((gate) => gate.type === "altcha_pow");
   const hasAge = atoms.some((gate) => gate.type === "minimum_age");
   const hasScore = atoms.some((gate) => gate.type === "wallet_score");
@@ -231,10 +233,8 @@ function GateProfileSimulator({ copy, value }: {
       ? profile.humanProviders.filter((held) => held !== provider)
       : [...profile.humanProviders, provider],
   });
-  const toggleAsset = (key: string) => patch({
-    assets: profile.assets.includes(key)
-      ? profile.assets.filter((held) => held !== key)
-      : [...profile.assets, key],
+  const updateAssetQuantity = (key: string, quantity: number | null) => patch({
+    assetQuantities: { ...profile.assetQuantities, [key]: Math.max(0, quantity ?? 0) },
   });
 
   return (
@@ -277,17 +277,20 @@ function GateProfileSimulator({ copy, value }: {
             ) : null}
 
             {assetGates.map((gate) => {
-              const key = gateAtomKey(gate);
+              const key = gateAssetKey(gate);
               return (
-                <Chip
-                  aria-pressed={profile.assets.includes(key)}
-                  className="h-11 px-4"
-                  key={key}
-                  variant={profile.assets.includes(key) ? "active" : "outline"}
-                  onClick={() => toggleAsset(key)}
-                >
+                <label className="inline-flex h-11 items-center gap-2 rounded-full border border-border-soft px-4 text-base text-muted-foreground" key={key}>
                   {interpolateMessage(copy.profileHoldsAsset, { asset: describeAsset(gate) })}
-                </Chip>
+                  <Input
+                    aria-label={interpolateMessage(copy.profileAssetQuantity, { asset: describeAsset(gate) })}
+                    className="h-8 w-20 px-2"
+                    max={100}
+                    min={0}
+                    onChange={(event) => updateAssetQuantity(key, parseOptionalNumber(event.currentTarget.value))}
+                    type="number"
+                    value={profile.assetQuantities[key] ?? 0}
+                  />
+                </label>
               );
             })}
 
@@ -344,9 +347,17 @@ function GateProfileSimulator({ copy, value }: {
 
           <div className={cn(
             "mt-4 flex min-h-11 items-center gap-2 rounded-[var(--radius-md)] border px-3 py-2 text-base font-semibold",
-            joins ? "border-success/40 bg-success/10 text-success" : "border-border-soft bg-background text-muted-foreground",
+            joins === true
+              ? "border-success/40 bg-success/10 text-success"
+              : joins == null
+                ? "border-warning/40 bg-warning/10 text-warning"
+                : "border-border-soft bg-background text-muted-foreground",
           )}>
-            {joins ? copy.tryProfileVerdictPass : copy.tryProfileVerdictFail}
+            {joins === true
+              ? copy.tryProfileVerdictPass
+              : joins == null
+                ? copy.tryProfileVerdictUnknown
+                : copy.tryProfileVerdictFail}
           </div>
 
           <div className="mt-3 text-base font-semibold uppercase tracking-wide text-muted-foreground">
@@ -355,10 +366,10 @@ function GateProfileSimulator({ copy, value }: {
           <ul className="mt-2 flex list-none flex-col gap-1">
             {atomResults.map((atom) => (
               <li className="flex items-baseline gap-2 text-base" key={atom.key}>
-                <span className={cn("shrink-0 font-semibold", atom.met ? "text-success" : "text-muted-foreground")}>
-                  {atom.met ? "✓" : "✗"}
+                <span className={cn("shrink-0 font-semibold", atom.met === true ? "text-success" : atom.met == null ? "text-warning" : "text-muted-foreground")}>
+                  {atom.met === true ? "✓" : atom.met == null ? "?" : "✗"}
                 </span>
-                <span className={atom.met ? "text-foreground" : "text-muted-foreground"}>{describeGate(atom.gate)}</span>
+                <span className={atom.met === true ? "text-foreground" : "text-muted-foreground"}>{describeGate(atom.gate)}</span>
               </li>
             ))}
           </ul>
@@ -394,6 +405,16 @@ function ProfileChoice({ label, noneLabel, onChange, options, value }: {
 
 function uniqueValues(values: string[]): string[] {
   return [...new Set(values)];
+}
+
+function uniqueAssets(gates: GateAtom[]): GateAtom[] {
+  const seen = new Set<string>();
+  return gates.filter((gate) => {
+    const key = gateAssetKey(gate);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function parseOptionalNumber(raw: string): number | null {
@@ -1194,7 +1215,7 @@ function describeGate(gate: GateAtom): string {
     case "wallet_score":
       return `have Passport score at least ${gate.minimum_score ?? 0}`;
     case "erc721_holding":
-      return `hold an NFT from ${shortAddress(gate.contract_address ?? "")}`;
+      return `hold at least ${gateAssetMinimum(gate)} NFT${gateAssetMinimum(gate) === 1 ? "" : "s"} from ${shortAddress(gate.contract_address ?? "")}`;
     case "nationality":
       return gate.allowed?.length
         ? `prove nationality ${gate.allowed.join("/")}`

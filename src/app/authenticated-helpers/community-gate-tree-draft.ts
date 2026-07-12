@@ -40,8 +40,8 @@ export type GateBuilderBudget = {
 export type GateProfileDraft = {
   age: number | null;
   altcha: boolean;
-  /** Keys (see gateAtomKey) of the NFT/inventory rules this person holds an asset for. */
-  assets: string[];
+  /** Quantities held per collection/predicate (see gateAssetKey). */
+  assetQuantities: Record<string, number>;
   gender: string | null;
   /** A person may hold more than one humanity proof. */
   humanProviders: string[];
@@ -52,12 +52,15 @@ export type GateProfileDraft = {
 export type GateProfileAtomResult = {
   gate: GateAtom;
   key: string;
-  met: boolean;
+  met: GateProfileTruth;
 };
+
+/** null means the preview cannot decide because an unrecognized atom is pivotal. */
+export type GateProfileTruth = boolean | null;
 
 export type GateProfileEvaluation = {
   atoms: GateProfileAtomResult[];
-  joins: boolean;
+  joins: GateProfileTruth;
 };
 
 type RecursiveGateExpression =
@@ -181,7 +184,7 @@ export function createGateProfileDraft(): GateProfileDraft {
   return {
     age: null,
     altcha: false,
-    assets: [],
+    assetQuantities: {},
     gender: null,
     humanProviders: [],
     nationality: null,
@@ -189,7 +192,31 @@ export function createGateProfileDraft(): GateProfileDraft {
   };
 }
 
-/** Stable identity for an atom, so the simulation can offer one control per distinct requirement. */
+/** Stable identity for one asset balance shared by every threshold over that collection/predicate. */
+export function gateAssetKey(gate: GateAtom): string {
+  if (gate.type !== "erc721_holding" && gate.type !== "erc721_inventory_match") {
+    return "";
+  }
+  return [
+    gate.type,
+    atomChainNamespace(gate),
+    atomContractAddress(gate).toLowerCase(),
+    stableMatchKey(gate),
+  ].join(":");
+}
+
+export function gateAssetMinimum(gate: GateAtom): number {
+  if (gate.type === "erc721_inventory_match") {
+    return gate.min_quantity ?? 1;
+  }
+  if (gate.type === "erc721_holding") {
+    const minCount = (gate as GateAtom & { min_count?: unknown }).min_count;
+    return typeof minCount === "number" ? minCount : 1;
+  }
+  return 0;
+}
+
+/** Stable per-requirement identity. Thresholds remain distinct while sharing one asset balance. */
 export function gateAtomKey(gate: GateAtom): string {
   switch (gate.type) {
     case "altcha_pow":
@@ -205,13 +232,9 @@ export function gateAtomKey(gate: GateAtom): string {
     case "gender":
       return `gender:${sortedAllowed(gate.allowed)}`;
     case "erc721_holding":
+      return `${gateAssetKey(gate)}:minimum=${gateAssetMinimum(gate)}`;
     case "erc721_inventory_match":
-      return [
-        gate.type,
-        atomChainNamespace(gate),
-        atomContractAddress(gate).toLowerCase(),
-        stableMatchKey(gate),
-      ].join(":");
+      return `${gateAssetKey(gate)}:minimum=${gateAssetMinimum(gate)}`;
     default:
       return `unknown:${JSON.stringify(gate)}`;
   }
@@ -238,7 +261,7 @@ export function collectGateBuilderAtoms(root: GateBuilderGroupDraft): GateAtom[]
   return atoms;
 }
 
-export function profileSatisfiesGate(profile: GateProfileDraft, gate: GateAtom): boolean {
+export function profileSatisfiesGate(profile: GateProfileDraft, gate: GateAtom): GateProfileTruth {
   switch (gate.type) {
     case "altcha_pow":
       return profile.altcha;
@@ -257,12 +280,34 @@ export function profileSatisfiesGate(profile: GateProfileDraft, gate: GateAtom):
     case "gender":
       return profile.gender != null && (gate.allowed ?? []).includes(profile.gender);
     case "erc721_holding":
+      return (profile.assetQuantities[gateAssetKey(gate)] ?? 0) >= gateAssetMinimum(gate);
     case "erc721_inventory_match":
-      return profile.assets.includes(gateAtomKey(gate));
+      return (profile.assetQuantities[gateAssetKey(gate)] ?? 0) >= gateAssetMinimum(gate);
     default:
-      // An atom this build cannot interpret must never be silently treated as satisfied.
-      return false;
+      // The client cannot claim either outcome for a requirement it cannot interpret.
+      return null;
   }
+}
+
+/** Kleene evaluation: unknown only propagates when it can change the final result. */
+export function evaluateGateExpressionPreview(
+  expression: GateExpression,
+  satisfies: (gate: GateAtom) => GateProfileTruth,
+): GateProfileTruth {
+  const recursive = expression as RecursiveGateExpression;
+  if (recursive.op === "gate") {
+    return satisfies(recursive.gate);
+  }
+
+  const results = recursive.children.map((child) => (
+    evaluateGateExpressionPreview(child as GateExpression, satisfies)
+  ));
+  if (recursive.op === "and") {
+    if (results.includes(false)) return false;
+    return results.includes(null) ? null : true;
+  }
+  if (results.includes(true)) return true;
+  return results.includes(null) ? null : false;
 }
 
 /**
@@ -283,7 +328,7 @@ export function evaluateGateProfile(
   return {
     atoms,
     joins: policy
-      ? evaluateGateExpression(policy.expression, (gate) => profileSatisfiesGate(profile, gate))
+      ? evaluateGateExpressionPreview(policy.expression, (gate) => profileSatisfiesGate(profile, gate))
       : true,
   };
 }
@@ -308,10 +353,11 @@ function stableMatchKey(gate: GateAtom): string {
   const match = "match" in gate && gate.match && typeof gate.match === "object"
     ? gate.match as Record<string, unknown>
     : {};
-  return Object.keys(match)
-    .sort()
-    .map((key) => `${key}=${String(match[key])}`)
-    .join("|");
+  return JSON.stringify(Object.fromEntries(
+    Object.keys(match)
+      .sort()
+      .map((key) => [key, match[key]]),
+  ));
 }
 
 function expressionToDraftNode(expression: RecursiveGateExpression | Record<string, unknown>): GateBuilderDraftNode | null {

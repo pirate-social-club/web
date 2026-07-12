@@ -6,6 +6,8 @@ import {
   collectGateBuilderAtoms,
   createGateProfileDraft,
   evaluateGateProfile,
+  gateAssetKey,
+  gateAtomKey,
   gateBuilderDraftAtomsAreValid,
   gatePolicyHasUnsupportedExpressionNodes,
   isGateBuilderDraftSavable,
@@ -624,7 +626,7 @@ describe("evaluateGateProfile (atom-derived 'who gets in')", () => {
     }).joins).toBe(true);
   });
 
-  test("thresholds stay coherent and unknown atoms are never auto-satisfied", () => {
+  test("numeric thresholds stay coherent", () => {
     const age18: GateBuilderGroupDraft = {
       kind: "group",
       op: "and",
@@ -633,12 +635,86 @@ describe("evaluateGateProfile (atom-derived 'who gets in')", () => {
     expect(evaluateGateProfile(age18, { ...createGateProfileDraft(), age: 21 }).joins).toBe(true);
     expect(evaluateGateProfile(age18, { ...createGateProfileDraft(), age: 17 }).joins).toBe(false);
 
-    const unknown = {
+  });
+
+  test("uses one coherent asset quantity across distinct holding thresholds", () => {
+    const holding = (minCount: number) => ({
+      type: "erc721_holding",
+      chain_namespace: "eip155:1",
+      contract_address: "0xBC4CA0EDA7647A8AB7C2061C2E118A18A936F13D",
+      min_count: minCount,
+    }) as const;
+    const one = holding(1);
+    const two = holding(2);
+    const draft = {
       kind: "group",
       op: "and",
-      children: [{ kind: "rule", gate: { type: "nft_trait_snapshot_match" } }],
+      children: [{ kind: "rule", gate: one }, { kind: "rule", gate: two }],
+    } as GateBuilderGroupDraft;
+    const assetKey = gateAssetKey(one);
+
+    expect(gateAtomKey(one)).not.toBe(gateAtomKey(two));
+    expect(gateAssetKey(one)).toBe(gateAssetKey(two));
+    expect(evaluateGateProfile(draft, {
+      ...createGateProfileDraft(), assetQuantities: { [assetKey]: 1 },
+    })).toMatchObject({ joins: false, atoms: [{ met: true }, { met: false }] });
+    expect(evaluateGateProfile(draft, {
+      ...createGateProfileDraft(), assetQuantities: { [assetKey]: 2 },
+    })).toMatchObject({ joins: true, atoms: [{ met: true }, { met: true }] });
+  });
+
+  test("evaluates Courtyard min_quantity from the matching predicate balance", () => {
+    const gate = {
+      type: "erc721_inventory_match",
+      provider: "courtyard",
+      chain_namespace: "eip155:137",
+      contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+      min_quantity: 2,
+      match: { category: "trading_card", franchise: "Pokemon" },
+    } as const;
+    const draft = {
+      kind: "group", op: "and", children: [{ kind: "rule", gate }],
+    } as GateBuilderGroupDraft;
+    const assetKey = gateAssetKey(gate);
+
+    expect(evaluateGateProfile(draft, {
+      ...createGateProfileDraft(), assetQuantities: { [assetKey]: 1 },
+    }).joins).toBe(false);
+    expect(evaluateGateProfile(draft, {
+      ...createGateProfileDraft(), assetQuantities: { [assetKey]: 2 },
+    }).joins).toBe(true);
+  });
+
+  test("preserves array shape in inventory predicate identity", () => {
+    const base = {
+      type: "erc721_inventory_match",
+      provider: "courtyard",
+      chain_namespace: "eip155:137",
+      contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+      min_quantity: 1,
+    } as const;
+    const arrayMatch = { ...base, match: { category: "trading_card", franchise: "Pokemon", subject: ["Charizard", "Gengar"] } };
+    const stringMatch = { ...base, match: { category: "trading_card", franchise: "Pokemon", subject: "Charizard,Gengar" } };
+
+    expect(gateAssetKey(arrayMatch)).not.toBe(gateAssetKey(stringMatch));
+  });
+
+  test("only propagates an unknown atom when it is pivotal", () => {
+    const unknown = { kind: "rule", gate: { type: "nft_trait_snapshot_match" } } as const;
+    const andDraft = {
+      kind: "group", op: "and", children: [unknown, selfHuman],
     } as unknown as GateBuilderGroupDraft;
-    expect(evaluateGateProfile(unknown, createGateProfileDraft()).joins).toBe(false);
+    const orDraft = {
+      kind: "group", op: "or", children: [unknown, selfHuman],
+    } as unknown as GateBuilderGroupDraft;
+    const noHuman = createGateProfileDraft();
+    const hasHuman = { ...createGateProfileDraft(), humanProviders: ["self"] };
+
+    expect(evaluateGateProfile(andDraft, noHuman).joins).toBe(false);
+    expect(evaluateGateProfile(andDraft, hasHuman).joins).toBeNull();
+    expect(evaluateGateProfile(orDraft, noHuman).joins).toBeNull();
+    expect(evaluateGateProfile(orDraft, hasHuman).joins).toBe(true);
+    expect(evaluateGateProfile(andDraft, hasHuman).atoms[0]?.met).toBeNull();
   });
 
   test("per-atom results report which requirements were met", () => {
@@ -655,4 +731,3 @@ describe("evaluateGateProfile (atom-derived 'who gets in')", () => {
     expect(collectGateBuilderAtoms({ kind: "group", op: "or", children: [veryHuman, veryHuman, score20] })).toHaveLength(2);
   });
 });
-

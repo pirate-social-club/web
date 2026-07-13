@@ -1,4 +1,3 @@
-const DEFAULT_TRUSTED_HNS_FORWARDER_IPS = ["173.199.93.117"];
 const HNS_APP_HOSTS = new Set(["app.pirate"]);
 const TRUSTED_FORWARDER_HEADER = "x-pirate-hns-trusted-forwarder";
 const FORWARDER_TOKEN_HEADER = "x-pirate-hns-forwarder-token";
@@ -29,16 +28,11 @@ function parseTrustedIps(env: HnsForwardedOriginEnv): Set<string> {
       return ip ? [ip] : [];
     });
 
-  return new Set(configured && configured.length > 0 ? configured : DEFAULT_TRUSTED_HNS_FORWARDER_IPS);
+  return new Set(configured ?? []);
 }
 
-function isTrustedForwarder(request: Request, env: HnsForwardedOriginEnv): boolean {
-  if (request.headers.get(TRUSTED_FORWARDER_HEADER) === "1") {
-    return true;
-  }
-
-  const connectingIp = request.headers.get("cf-connecting-ip")?.trim();
-  return !!connectingIp && parseTrustedIps(env).has(connectingIp);
+function isTrustedForwarder(request: Request): boolean {
+  return request.headers.get(TRUSTED_FORWARDER_HEADER) === "1";
 }
 
 async function secretsMatch(provided: string, expected: string): Promise<boolean> {
@@ -65,6 +59,13 @@ async function secretsMatch(provided: string, expected: string): Promise<boolean
   return mismatch === 0;
 }
 
+/**
+ * Single ingress authenticator for HNS gateway forwarding. Must run once, first,
+ * on every entrypoint; downstream helpers trust only the internal marker this
+ * sets. Trust requires BOTH a configured token match (timing-safe) and a
+ * configured source-IP match — an unset token or unset trusted-IP list fails
+ * closed. There is intentionally no built-in IP fallback.
+ */
 export async function authenticateHnsForwarderRequest(
   request: Request,
   env: HnsForwardedOriginEnv = {},
@@ -76,7 +77,11 @@ export async function authenticateHnsForwarderRequest(
   headers.delete(TRUSTED_FORWARDER_HEADER);
   headers.delete(FORWARDER_TOKEN_HEADER);
 
-  if (token && forwardedToken && await secretsMatch(forwardedToken, token)) {
+  const connectingIp = request.headers.get("cf-connecting-ip")?.trim();
+  const sourceTrusted = !!connectingIp && parseTrustedIps(env).has(connectingIp);
+  const tokenTrusted = !!token && !!forwardedToken && await secretsMatch(forwardedToken, token);
+
+  if (sourceTrusted && tokenTrusted) {
     headers.set(TRUSTED_FORWARDER_HEADER, "1");
   }
 
@@ -92,7 +97,7 @@ function isTrustedForwardedHnsHost(hostname: string): boolean {
     .test(hostname);
 }
 
-export function resolveEffectiveRequestUrl(request: Request, env: HnsForwardedOriginEnv = {}): string {
+export function resolveEffectiveRequestUrl(request: Request): string {
   const url = new URL(request.url);
   const pirateHnsHost = normalizeHost(request.headers.get("x-pirate-hns-host"));
   const fallbackForwardedHost = normalizeHost(request.headers.get("x-forwarded-host"));
@@ -102,7 +107,7 @@ export function resolveEffectiveRequestUrl(request: Request, env: HnsForwardedOr
     ? isTrustedForwardedHnsHost(pirateHnsHost)
     : !!fallbackForwardedHost && HNS_APP_HOSTS.has(fallbackForwardedHost);
 
-  if (!forwardedHost || !hostAllowed || !isTrustedForwarder(request, env)) {
+  if (!forwardedHost || !hostAllowed || !isTrustedForwarder(request)) {
     return url.toString();
   }
 
@@ -112,14 +117,11 @@ export function resolveEffectiveRequestUrl(request: Request, env: HnsForwardedOr
   return url.toString();
 }
 
-export function resolveForwardedCommunityRouteSegment(
-  request: Request,
-  env: HnsForwardedOriginEnv = {},
-): string | null {
+export function resolveForwardedCommunityRouteSegment(request: Request): string | null {
   const routeSegment = request.headers.get("x-pirate-hns-community-id")
     ?? request.headers.get("x-pirate-hns-community-route");
   const normalized = routeSegment?.split(",")[0]?.trim() ?? "";
-  if (!normalized || !isTrustedForwarder(request, env)) {
+  if (!normalized || !isTrustedForwarder(request)) {
     return null;
   }
 

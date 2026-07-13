@@ -137,8 +137,7 @@ describe("deriveSongUI", () => {
     );
 
     expect(markup).toContain('href="/songs/dark-dividend"');
-    expect(markup).toContain(">Dark Dividend remix</a>");
-    expect(markup).not.toContain("Remix of Dark Dividend");
+    expect(markup).toContain(">Remix of Dark Dividend</a>");
   });
 
   test("requires age proof until the viewer is verified allowed", () => {

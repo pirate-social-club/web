@@ -241,13 +241,13 @@ function getDerivativeSummary(upstreamAttributions?: UpstreamAttribution[]): str
   if (upstreamAttributions.length === 1) {
     const source = upstreamAttributions[0];
     if (source.relationshipType === "remix_of") {
-      return `${source.title} remix`;
+      return `Remix of ${source.title}`;
     }
     return `${relationshipLabel(source)} ${sourceTitle(source)}`;
   }
 
   if (upstreamAttributions[0].relationshipType === "remix_of") {
-    return `${upstreamAttributions[0].title} remix +${upstreamAttributions.length - 1}`;
+    return `Remix of ${upstreamAttributions[0].title} +${upstreamAttributions.length - 1}`;
   }
 
   return `${relationshipLabel(upstreamAttributions[0])} ${sourceTitle(upstreamAttributions[0])} +${upstreamAttributions.length - 1}`;
@@ -340,7 +340,7 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
 
   if (isLocked && !isOwned && isListedActive && content.onBuy) {
     rows.push(
-      <div className="mt-3 border-t border-border-soft pt-3" key="digital-buy">
+      <div className="mt-3" key="digital-buy">
         <Button
           aria-label={effectivePrice ? `Buy Digital MP3 for ${effectivePrice}` : "Buy Digital MP3"}
           className="w-full"
@@ -354,7 +354,7 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
     );
   } else if (isLocked && !isOwned && !isListedActive && content.onUnlock) {
     rows.push(
-      <div className="mt-3 border-t border-border-soft pt-3" key="digital-unlock">
+      <div className="mt-3" key="digital-unlock">
         <Button
           aria-label="Unlock Digital MP3"
           className="w-full"
@@ -704,7 +704,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
                 <Type as="span" className="max-w-full truncate font-semibold text-foreground sm:text-lg" variant="body-strong">
                   {content.title}
                 </Type>
-                {derivativeSummary ? <span aria-hidden="true" className="text-base leading-6 text-muted-foreground sm:text-lg">•</span> : null}
+                {derivativeSummary ? <span aria-hidden="true" className="text-base leading-6 text-muted-foreground sm:text-lg">–</span> : null}
                 {derivativeSummary && derivativeHref ? (
                   <a
                     className="max-w-full truncate text-base font-medium leading-6 text-muted-foreground transition-colors hover:text-foreground hover:underline sm:text-lg"

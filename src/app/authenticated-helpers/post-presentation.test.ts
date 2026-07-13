@@ -792,9 +792,10 @@ describe("post presentation songs", () => {
     expect(content.entitledStems).toEqual(["instrumental", "vocals"]);
   });
 
-  test("uses the thread community argument for karaoke capability", () => {
+  test("uses the server karaoke capability when the nested community is absent", () => {
     const post = createSongPost();
     post.community = null;
+    post.karaoke_capability = { status: "ready" };
     post.song_presentation = {
       title: "Canonical track title",
       cover_art_ref: "https://media.test/cover.jpg",

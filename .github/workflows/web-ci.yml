@@ -51,6 +51,10 @@ jobs:
         working-directory: api/services/efp-shared
         run: bun install --frozen-lockfile
 
+      - name: Generate karaoke runtime build provenance
+        working-directory: web/packages/karaoke-runtime
+        run: bun run build:provenance
+
       - name: Run unit and component tests
         shell: bash
         env:

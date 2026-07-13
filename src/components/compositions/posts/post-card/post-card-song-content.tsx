@@ -552,7 +552,7 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
       {primaryActions.length > 0 ? (
         <div
           className={cn(
-            "border-t border-border-soft px-4 py-3",
+            "px-4 py-3",
             primaryActions.length > 1 ? "grid grid-cols-2 gap-3" : "grid grid-cols-1",
           )}
         >

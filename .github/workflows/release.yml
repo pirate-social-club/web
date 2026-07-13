@@ -27,7 +27,7 @@ jobs:
       api_sha: ${{ steps.api_ref.outputs.sha }}
       core_sha: ${{ steps.core_ref.outputs.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           path: web
       - name: Read pinned API commit
@@ -53,7 +53,7 @@ jobs:
           fi
           echo "sha=$core_sha" >> "$GITHUB_OUTPUT"
       - name: Require compatible green API/Core pair
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         env:
           API_SHA: ${{ steps.api_ref.outputs.sha }}
           CORE_SHA: ${{ steps.core_ref.outputs.sha }}
@@ -149,16 +149,16 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           path: web
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/api
           ref: ${{ needs.release-inputs.outputs.api_sha }}
           path: api
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/core
           ref: ${{ needs.release-inputs.outputs.core_sha }}
@@ -173,10 +173,10 @@ jobs:
           source scripts/lib/release-source.sh
           require_clean_release_source "$GITHUB_WORKSPACE/core" "core" "$CORE_RELEASE_SHA"
           echo "Using pinned Core commit $CORE_RELEASE_SHA"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
       - name: Install web dependencies
         working-directory: web
         run: bun install --frozen-lockfile
@@ -363,10 +363,7 @@ jobs:
         working-directory: web
         run: scripts/check-song-preview-container.sh staging
       - name: Story derivative royalty E2E staging
-        # This validates the external song-preview/Story path. Keep artifacts
-        # for diagnosis, but do not block unrelated production releases after
-        # the focused deploy, migration, browser-smoke, and multipart gates pass.
-        continue-on-error: true
+        # This validates the external song-preview/Story path before production.
         timeout-minutes: 30
         working-directory: web
         env:
@@ -380,31 +377,30 @@ jobs:
         run: bun run test:e2e:story-derivative-royalty
       - name: Upload Story derivative royalty E2E artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: story-derivative-royalty-${{ github.run_id }}
           path: web/tmp/e2e-artifacts/*.json
           if-no-files-found: ignore
-      # This broader live-staging suite is intentionally soft; unrelated staging
-      # integrations should not block prod when the focused gates above pass.
+          retention-days: 14
       - name: Live browser integration staging
         id: live_browser
-        continue-on-error: true
-        timeout-minutes: 5
+        timeout-minutes: 30
         working-directory: web
         env:
           AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
           AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
-        run: timeout 300s bun run test:e2e:live-staging
+        run: bun run test:e2e:live-staging
       - name: Upload Playwright report
-        if: ${{ failure() || steps.live_browser.outcome == 'failure' }}
-        uses: actions/upload-artifact@v4
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             web/playwright-report
             web/test-results
           if-no-files-found: ignore
+          retention-days: 14
   production:
     name: Deploy production
     needs: [release-inputs, staging]
@@ -418,16 +414,16 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           path: web
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/api
           ref: ${{ needs.release-inputs.outputs.api_sha }}
           path: api
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/core
           ref: ${{ needs.release-inputs.outputs.core_sha }}
@@ -442,10 +438,10 @@ jobs:
           source scripts/lib/release-source.sh
           require_clean_release_source "$GITHUB_WORKSPACE/core" "core" "$CORE_RELEASE_SHA"
           echo "Using pinned Core commit $CORE_RELEASE_SHA"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
       - name: Install web dependencies
         working-directory: web
         run: bun install --frozen-lockfile

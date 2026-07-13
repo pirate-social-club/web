@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { CommunityFollowResponse } from "@pirate/api-contracts";
 
 import { installDomGlobals } from "@/test/setup-dom";
@@ -164,8 +164,10 @@ describe("useCommunityFollow", () => {
         await result.current.handleToggleFollow();
       });
 
-      expect(result.current.followLoading).toBe(false);
-      expect(result.current.viewerFollowing).toBe(true);
+      await waitFor(() => {
+        expect(result.current.followLoading).toBe(false);
+        expect(result.current.viewerFollowing).toBe(true);
+      });
       expect(result.current.followerCount).toBe(11);
       expect(warnSpy).toHaveBeenCalledWith(
         "[community-follow] mutation response missing community id",
@@ -216,8 +218,10 @@ describe("useCommunityFollow", () => {
         await result.current.handleToggleFollow();
       });
 
-      expect(result.current.followLoading).toBe(false);
-      expect(result.current.viewerFollowing).toBe(true);
+      await waitFor(() => {
+        expect(result.current.followLoading).toBe(false);
+        expect(result.current.viewerFollowing).toBe(true);
+      });
       expect(result.current.followerCount).toBe(11);
       expect(warnSpy).toHaveBeenCalledWith(
         "[community-follow] mutation response community mismatch",

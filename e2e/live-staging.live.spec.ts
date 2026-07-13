@@ -1598,7 +1598,9 @@ test.describe("live staging integration", () => {
   });
 
   test("creates a real post and comment with a real staging session", async ({ page }) => {
-    const session = await createLiveSession();
+    let session = await createLiveSession();
+    await completeSelfVerification(session);
+    session = await createLiveSession();
     const community = await discoverSeedCommunity();
     await installStoredSession(page, session);
 

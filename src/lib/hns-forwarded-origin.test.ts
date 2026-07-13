@@ -154,6 +154,29 @@ describe("HNS forwarded origin resolution", () => {
     }))).toBe("https://v.xn--pokmon-dva/c/crew?sort=top");
   });
 
+  test("uses consensus-valid underscore HNS roots", async () => {
+    expect(resolveEffectiveRequestUrl(await forwarded({
+      "x-pirate-hns-host": "app.tame_impala",
+    }))).toBe("https://app.tame_impala/c/crew?sort=top");
+  });
+
+  test("allows underscores only inside the HNS root label", async () => {
+    for (const hostname of [
+      "bad_subdomain.tame_impala",
+      "app._leading",
+      "app.trailing_",
+      "app.-leading",
+      "app.trailing-",
+      `app.${"a".repeat(64)}`,
+      "app.localhost",
+      "127.0.0.1",
+    ]) {
+      expect(resolveEffectiveRequestUrl(await forwarded({
+        "x-pirate-hns-host": hostname,
+      }))).toBe("https://pirate.sc/c/crew?sort=top");
+    }
+  });
+
   test("ignores invalid forwarded hostnames", async () => {
     expect(resolveEffectiveRequestUrl(await forwarded({
       "x-pirate-hns-host": "bad host",

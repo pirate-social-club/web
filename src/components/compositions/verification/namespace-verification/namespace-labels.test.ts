@@ -19,13 +19,13 @@ describe("namespace label canonicalization", () => {
   });
 
   test("keeps HNS routes unprefixed", () => {
-    const result = canonicalizeNamespaceRootLabel("hns", "Example");
+    const result = canonicalizeNamespaceRootLabel("hns", "Pirate");
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.rootLabel).toBe("example");
-    expect(result.namespaceKey).toBe("example");
-    expect(result.routePath).toBe("/c/example");
+    expect(result.rootLabel).toBe("pirate");
+    expect(result.namespaceKey).toBe("pirate");
+    expect(result.routePath).toBe("/c/pirate");
   });
 
   test("allows underscores in HNS root labels", () => {
@@ -36,6 +36,27 @@ describe("namespace label canonicalization", () => {
     expect(result.rootLabel).toBe("tame_impala");
     expect(result.namespaceKey).toBe("tame_impala");
     expect(result.routePath).toBe("/c/tame_impala");
+  });
+
+  test("matches the hsd covenant grammar for HNS roots", () => {
+    for (const label of ["a--b", "a".repeat(63)]) {
+      expect(canonicalizeNamespaceRootLabel("hns", label).ok).toBe(true);
+    }
+
+    for (const label of [
+      "_leading",
+      "trailing_",
+      "-leading",
+      "trailing-",
+      "a".repeat(64),
+      "example",
+      "invalid",
+      "local",
+      "localhost",
+      "test",
+    ]) {
+      expect(canonicalizeNamespaceRootLabel("hns", label).ok).toBe(false);
+    }
   });
 
   test("rejects underscores in Spaces root labels", () => {

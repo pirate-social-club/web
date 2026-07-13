@@ -1,6 +1,9 @@
 const HNS_APP_HOSTS = new Set(["app.pirate"]);
+const HNS_ROOT_LABEL_BLACKLIST = new Set(["example", "invalid", "local", "localhost", "test"]);
 const TRUSTED_FORWARDER_HEADER = "x-pirate-hns-trusted-forwarder";
 const FORWARDER_TOKEN_HEADER = "x-pirate-hns-forwarder-token";
+const DNS_HOST_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
+const HNS_ROOT_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9_-]{0,61}[a-z0-9])?$/u;
 
 export type HnsForwardedOriginEnv = {
   HNS_FORWARDER_TRUSTED_IPS?: string;
@@ -93,8 +96,24 @@ function isTrustedForwardedHnsHost(hostname: string): boolean {
     return true;
   }
 
-  return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/u
-    .test(hostname);
+  const labels = hostname.split(".");
+  if (
+    labels.length === 4
+    && labels.every((label) => /^\d{1,3}$/u.test(label) && Number(label) <= 255)
+  ) {
+    return false;
+  }
+
+  const rootLabel = labels.at(-1);
+  if (
+    !rootLabel
+    || !HNS_ROOT_LABEL_PATTERN.test(rootLabel)
+    || HNS_ROOT_LABEL_BLACKLIST.has(rootLabel)
+  ) {
+    return false;
+  }
+
+  return labels.slice(0, -1).every((label) => DNS_HOST_LABEL_PATTERN.test(label));
 }
 
 export function resolveEffectiveRequestUrl(request: Request): string {

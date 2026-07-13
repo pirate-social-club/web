@@ -42,8 +42,15 @@ function MusicCommercePitch() {
               priceLabel: "$.33",
               rightsBasis: "derivative",
               songMode: "remix",
-              title: "Shadow Treasury (Dark Arts Dividend Remix)",
+              title: "Shadow Treasury",
               type: "song",
+              upstreamAttributions: [{
+                artist: "morgana.swmg",
+                assetId: "ast_dark_dividend",
+                href: "#dark-dividend",
+                relationshipType: "remix_of",
+                title: "Dark Dividend",
+              }],
             }}
             engagement={{ commentCount: 2, score: 6, viewerVote: "up" }}
             identityPresentation="author_primary"

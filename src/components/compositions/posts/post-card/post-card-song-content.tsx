@@ -240,7 +240,14 @@ function getDerivativeSummary(upstreamAttributions?: UpstreamAttribution[]): str
 
   if (upstreamAttributions.length === 1) {
     const source = upstreamAttributions[0];
+    if (source.relationshipType === "remix_of") {
+      return `${source.title} remix`;
+    }
     return `${relationshipLabel(source)} ${sourceTitle(source)}`;
+  }
+
+  if (upstreamAttributions[0].relationshipType === "remix_of") {
+    return `${upstreamAttributions[0].title} remix +${upstreamAttributions.length - 1}`;
   }
 
   return `${relationshipLabel(upstreamAttributions[0])} ${sourceTitle(upstreamAttributions[0])} +${upstreamAttributions.length - 1}`;
@@ -693,25 +700,28 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
 
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <div className="min-w-0">
-              <Type as="p" className="truncate font-semibold leading-tight text-foreground sm:text-lg" variant="body-strong">
-                {content.title}
-              </Type>
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0 leading-tight">
+                <Type as="span" className="max-w-full truncate font-semibold text-foreground sm:text-lg" variant="body-strong">
+                  {content.title}
+                </Type>
+                {derivativeSummary ? <span aria-hidden="true" className="text-muted-foreground">•</span> : null}
+                {derivativeSummary && derivativeHref ? (
+                  <a
+                    className={cn("max-w-full truncate font-medium text-muted-foreground underline decoration-muted-foreground/50 underline-offset-2 transition-colors hover:text-foreground", postCardType.meta)}
+                    href={derivativeHref}
+                  >
+                    {derivativeSummary}
+                  </a>
+                ) : derivativeSummary ? (
+                  <span className={cn("max-w-full truncate text-muted-foreground", postCardType.meta)}>
+                    {derivativeSummary}
+                  </span>
+                ) : null}
+              </div>
               {content.artist ? (
                 <Type as="p" className="mt-1 truncate text-muted-foreground" variant="caption">
                   {content.artist}
                 </Type>
-              ) : null}
-              {derivativeSummary && derivativeHref ? (
-                <a
-                  className={cn("mt-1 block truncate text-muted-foreground transition-colors hover:text-foreground", postCardType.meta)}
-                  href={derivativeHref}
-                >
-                  {derivativeSummary}
-                </a>
-              ) : derivativeSummary ? (
-                <p className={cn("mt-1 truncate text-muted-foreground", postCardType.meta)}>
-                  {derivativeSummary}
-                </p>
               ) : null}
             </div>
 

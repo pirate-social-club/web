@@ -15,6 +15,9 @@ type UpdateCommunityBody = {
   description: string | null;
   avatar_ref: string | null;
   banner_ref: string | null;
+  country_code: string | null;
+  store_label: string | null;
+  store_url: string | null;
 };
 
 function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
@@ -143,6 +146,9 @@ describe("useCommunityProfileState", () => {
         description: null,
         avatar_ref: null,
         banner_ref: "banner-1",
+        country_code: null,
+        store_label: null,
+        store_url: null,
       },
     }]);
     expect(updatedCommunities[0]?.display_name).toBe("Updated Community");

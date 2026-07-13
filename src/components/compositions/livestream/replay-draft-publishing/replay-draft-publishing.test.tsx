@@ -32,7 +32,7 @@ describe("ReplayDraftPublishing", () => {
 
     expect(markup).toContain("Review and publish recording");
     expect(markup).toContain("Draft ready");
-    expect(markup).toContain("Royalty split");
+    expect(markup).toContain("Sale proceeds");
     expect(markup).toContain("0x1f2a4b8c9d0e1234567890abcdef1234567890ab");
     expect(markup).toContain("Add wallet");
     expect(markup).toContain("Publish replay");

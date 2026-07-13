@@ -344,7 +344,7 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
           onClick={content.onBuy}
           size="lg"
         >
-          {effectivePrice ? `Buy ${effectivePrice}` : "Buy"}
+          {effectivePrice ? `Buy for ${effectivePrice}` : "Buy"}
         </Button>
       </div>,
     );
@@ -369,6 +369,9 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
   // so Sing does not jump from full-width to half-width once study arrives.
   let studyAction: React.ReactNode | null = null;
   let studyFailureReason: string | null = null;
+  const studyActionLabel = content.study?.rewardLabel
+    ? `Study · Earn ${content.study.rewardLabel}`
+    : "Study";
 
   if (!isLocked || isOwned) {
     switch (content.study?.status) {
@@ -384,13 +387,13 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
               size="lg"
               variant="secondary"
             >
-              Study
+              {studyActionLabel}
             </Button>
           ) : (
             <Button asChild className="w-full" data-post-card-interactive="true" key="study" size="lg" variant="secondary">
               <a aria-label="Study this song line by line" href={content.studyHref}>
                 <GraduationCap className="size-4" weight="fill" />
-                <span>Study</span>
+                <span>{studyActionLabel}</span>
               </a>
             </Button>
           );
@@ -428,6 +431,9 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
 
   let karaokeAction: React.ReactNode | null = null;
   let karaokeFailureReason: string | null = null;
+  const karaokeActionLabel = content.karaoke?.rewardLabel
+    ? `Sing · Earn ${content.karaoke.rewardLabel}`
+    : "Sing";
   if (!isLocked || isOwned) {
     switch (content.karaoke?.status) {
       case "ready":
@@ -441,13 +447,13 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
               onClick={content.onKaraoke}
               size="lg"
             >
-              Sing
+              {karaokeActionLabel}
             </Button>
           ) : (
             <Button asChild className="w-full" data-post-card-interactive="true" key="karaoke" size="lg">
               <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
                 <MicrophoneStage className="size-4" weight="fill" />
-                <span>Sing</span>
+                <span>{karaokeActionLabel}</span>
               </a>
             </Button>
           );

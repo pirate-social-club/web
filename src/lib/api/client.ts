@@ -45,20 +45,22 @@ export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
   readonly retryable: boolean;
+  readonly retryableExplicit: boolean;
   readonly details: Record<string, unknown> | null;
 
   constructor(
     code: string,
     message: string,
     status: number,
-    retryable = false,
+    retryable?: boolean,
     details: Record<string, unknown> | null = null,
   ) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = status;
-    this.retryable = retryable;
+    this.retryable = retryable ?? false;
+    this.retryableExplicit = retryable !== undefined;
     this.details = details;
   }
 }
@@ -287,14 +289,14 @@ export class ApiClient {
     if (!res.ok) {
       let code = "internal_error";
       let message = `Request failed with status ${res.status}`;
-      let retryable = false;
+      let retryable: boolean | undefined;
 
       try {
         const body: JsonErrorResponse & { details?: unknown; error?: string; preview?: unknown } = await res.json();
         if (body.code) code = body.code;
         else if (typeof body.error === "string") code = body.error; // routes that return { error: reason }
         if (body.message) message = body.message;
-        if (body.retryable) retryable = body.retryable;
+        if (typeof body.retryable === "boolean") retryable = body.retryable;
         let parsedDetails =
           body.details && typeof body.details === "object"
             ? (body.details as Record<string, unknown>)

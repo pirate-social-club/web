@@ -47,10 +47,12 @@ class FakeSocket {
 
 class FakeTimers {
   now = 1_000_000
+  readonly scheduledMs: number[] = []
   private timers: { id: number; cb: () => void }[] = []
   private id = 0
-  setTimer = (cb: () => void): unknown => {
+  setTimer = (cb: () => void, ms: number): unknown => {
     this.id += 1
+    this.scheduledMs.push(ms)
     this.timers.push({ cb, id: this.id })
     return this.id
   }
@@ -89,6 +91,9 @@ function harness(overrides: Partial<{
   resumeCapture: (descriptor: KaraokeSessionDescriptor) => Promise<void>
   teardownCapture: () => void | Promise<void>
   captureTeardownTimeoutMs: number
+  createSession: (input: { idempotencyKey: string }) => Promise<KaraokeSessionDescriptor>
+  maxReconnectAttempts: number
+  maxReconnectDelayMs: number
 }> = {}): Harness {
   const timers = new FakeTimers()
   const sockets: FakeSocket[] = []
@@ -117,6 +122,7 @@ function harness(overrides: Partial<{
     },
     createSession: async ({ idempotencyKey }) => {
       idempotencyKeys.push(idempotencyKey)
+      if (overrides.createSession) return await overrides.createSession({ idempotencyKey })
       return descriptorFor(idempotencyKeys.length)
     },
     generateIdempotencyKey: () => "stable-key",
@@ -125,6 +131,8 @@ function harness(overrides: Partial<{
     onPhaseChange: (phase) => phases.push(phase),
     onServerEvent: (event) => serverEvents.push(event),
     captureTeardownTimeoutMs: overrides.captureTeardownTimeoutMs,
+    maxReconnectAttempts: overrides.maxReconnectAttempts,
+    maxReconnectDelayMs: overrides.maxReconnectDelayMs,
     resumeCapture: overrides.resumeCapture,
     setTimer: timers.setTimer,
     socketConnectTimeoutMs: overrides.socketConnectTimeoutMs ?? Number.POSITIVE_INFINITY,
@@ -280,6 +288,91 @@ describe("KaraokeSessionClient transport", () => {
     h.client.pushAudio(new Uint8Array(320).buffer, 3000)
     const frame = decodeKaraokeBinaryFrame(h.sockets[1]!.binarySent()[0]!, { attemptId: "attempt-1", sessionId: "session-1" })
     expect(frame.frame?.sequence).toBe(3) // continues after seq 2 from the first stream
+  })
+
+  test("treats server expiry close code 4001 as terminal without reconnecting", async () => {
+    const h = harness()
+    await h.client.start({ postId: "post-1" })
+    h.sockets[0]!.open()
+
+    h.sockets[0]!.remoteClose(4001, "Karaoke session expired")
+    await tick()
+
+    expect(h.client.getPhase()).toBe("expired")
+    expect(h.idempotencyKeys).toEqual(["stable-key"])
+  })
+
+  test("treats server configuration close code 4002 as terminal without reconnecting", async () => {
+    const h = harness()
+    await h.client.start({ postId: "post-1" })
+    h.sockets[0]!.open()
+
+    h.sockets[0]!.remoteClose(4002, "Karaoke scoring unavailable")
+    await tick()
+
+    expect(h.client.getPhase()).toBe("aborted")
+    expect(h.idempotencyKeys).toEqual(["stable-key"])
+    expect(h.errors).toContainEqual({
+      code: "karaoke_stt_unconfigured",
+      message: "Karaoke scoring is not configured for this community",
+    })
+  })
+
+  test("keeps a reconnect guarded while session creation is in flight", async () => {
+    let createCall = 0
+    let rejectReconnect: ((error: Error) => void) | undefined
+    const descriptor: KaraokeSessionDescriptor = {
+      attempt: "attempt-1",
+      id: "session-1",
+      protocolVersion: PV,
+      sessionExpiresAt: 4_600,
+      tokenExpiresAt: 1_060,
+      websocketUrl: "wss://gw.test/session-1/websocket?token=token",
+    }
+    const h = harness({
+      createSession: async () => {
+        createCall += 1
+        if (createCall === 1) return descriptor
+        return await new Promise<KaraokeSessionDescriptor>((_resolve, reject) => {
+          rejectReconnect = reject
+        })
+      },
+    })
+    await h.client.start({ postId: "post-1" })
+    h.sockets[0]!.open()
+    h.sockets[0]!.remoteClose(1006)
+    await h.timers.flush()
+
+    expect(createCall).toBe(2)
+    expect(h.timers.scheduledMs).toEqual([250])
+
+    // Exercise the scheduling invariant directly while creation is pending:
+    // the cleared timer handle is not enough to guard this window.
+    ;(h.client as unknown as { scheduleReconnect(): void }).scheduleReconnect()
+    expect(h.timers.scheduledMs).toEqual([250])
+
+    rejectReconnect?.(new Error("transient create failure"))
+    await tick()
+    expect(h.timers.scheduledMs).toEqual([250, 500])
+  })
+
+  test("bounds failed creation reconnects with capped exponential backoff", async () => {
+    const h = harness({
+      createSession: async () => { throw new Error("runtime unavailable") },
+      maxReconnectAttempts: 5,
+      maxReconnectDelayMs: 2_000,
+    })
+
+    await h.client.start({ postId: "post-1" })
+    await h.timers.flush()
+
+    expect(h.idempotencyKeys).toHaveLength(6) // initial request + five retries
+    expect(h.timers.scheduledMs.slice(0, 5)).toEqual([250, 500, 1_000, 2_000, 2_000])
+    expect(h.errors.at(-1)).toEqual({
+      code: "karaoke_reconnect_exhausted",
+      message: "Karaoke connection failed after 5 reconnect attempts",
+    })
+    expect(h.client.getPhase()).toBe("aborted")
   })
 
   test("reconnect awaits suspendCapture then resumeCapture in order (SPEC §6)", async () => {

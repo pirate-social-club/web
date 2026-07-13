@@ -1,8 +1,29 @@
 import { describe, expect, test } from "bun:test";
 
-import { ApiClient } from "./client";
+import { ApiClient, ApiError } from "./client";
 
 const originalFetch = globalThis.fetch;
+
+test("preserves an explicit retryable false from an API error response", async () => {
+  globalThis.fetch = async () => Response.json({
+    code: "karaoke_stt_unconfigured",
+    message: "Karaoke scoring provider is not configured",
+    retryable: false,
+  }, { status: 503 });
+
+  try {
+    const client = new ApiClient({ baseUrl: "http://pirate.test", getToken: () => null });
+    await client.publicPosts.getKaraoke("pst_test").then(
+      () => { throw new Error("Expected request to fail"); },
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ApiError);
+        expect(error).toMatchObject({ retryable: false, retryableExplicit: true, status: 503 });
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 function requireRequest(request: Request | null): Request {
   if (!request) {

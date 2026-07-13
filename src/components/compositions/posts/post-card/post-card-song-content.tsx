@@ -704,16 +704,16 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
                 <Type as="span" className="max-w-full truncate font-semibold text-foreground sm:text-lg" variant="body-strong">
                   {content.title}
                 </Type>
-                {derivativeSummary ? <span aria-hidden="true" className="text-muted-foreground">•</span> : null}
+                {derivativeSummary ? <span aria-hidden="true" className="text-base leading-6 text-muted-foreground sm:text-lg">•</span> : null}
                 {derivativeSummary && derivativeHref ? (
                   <a
-                    className={cn("max-w-full truncate font-medium text-muted-foreground transition-colors hover:text-foreground hover:underline", postCardType.meta)}
+                    className="max-w-full truncate text-base font-medium leading-6 text-muted-foreground transition-colors hover:text-foreground hover:underline sm:text-lg"
                     href={derivativeHref}
                   >
                     {derivativeSummary}
                   </a>
                 ) : derivativeSummary ? (
-                  <span className={cn("max-w-full truncate text-muted-foreground", postCardType.meta)}>
+                  <span className="max-w-full truncate text-base leading-6 text-muted-foreground sm:text-lg">
                     {derivativeSummary}
                   </span>
                 ) : null}

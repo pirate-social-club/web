@@ -707,7 +707,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
                 {derivativeSummary ? <span aria-hidden="true" className="text-muted-foreground">•</span> : null}
                 {derivativeSummary && derivativeHref ? (
                   <a
-                    className={cn("max-w-full truncate font-medium text-muted-foreground underline decoration-muted-foreground/50 underline-offset-2 transition-colors hover:text-foreground", postCardType.meta)}
+                    className={cn("max-w-full truncate font-medium text-muted-foreground transition-colors hover:text-foreground hover:underline", postCardType.meta)}
                     href={derivativeHref}
                   >
                     {derivativeSummary}

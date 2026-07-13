@@ -253,14 +253,12 @@ jobs:
             --migrations db/bookings/migrations \
             --label bookings
       - name: Apply multipart fixture D1 migration
-        # This is fixture setup, not an application migration. The required
-        # browser upload below is authoritative and will still block promotion
-        # if the fixture schema cannot support a real multipart publish.
-        continue-on-error: true
+        # Keep D1 access isolated from the broader Worker deployment token.
+        # Fixture migration failures must block promotion to production.
         working-directory: web
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
           E2E_MULTIPART_GATE_D1_DATABASE: community-d1-pool-0032-staging
           E2E_MULTIPART_GATE_D1_MIGRATION: ../core/db/community-template/migrations/1124_community_job_checkpoints.sql
         run: node scripts/ensure-staging-community-job-checkpoints.mjs

@@ -171,7 +171,6 @@ const mockSources: AssetSourceDescriptor[] = [
     inventoryProvider: "courtyard",
     maxValuesPerFacet: 1,
     minQuantitySupported: true,
-    provenanceLabel: "Traits verified via Courtyard",
   },
   {
     id: "courtyard-watches",
@@ -186,7 +185,6 @@ const mockSources: AssetSourceDescriptor[] = [
     inventoryProvider: "courtyard",
     maxValuesPerFacet: 1,
     minQuantitySupported: true,
-    provenanceLabel: "Traits verified via Courtyard",
   },
   {
     id: "bayc",

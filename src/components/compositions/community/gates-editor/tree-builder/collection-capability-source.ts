@@ -9,8 +9,6 @@ export type AssetSourceDescriptor = {
   facetLabels?: Record<string, string>;
   maxValuesPerFacet: number;
   inventoryProvider?: "courtyard";
-  /** Small provenance copy, e.g. "Traits verified via Courtyard" (gate-builder spec). */
-  provenanceLabel?: string;
   fixedMatch?: Record<string, string>;
   minQuantitySupported?: boolean;
 };

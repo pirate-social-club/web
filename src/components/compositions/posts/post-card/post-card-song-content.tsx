@@ -2,8 +2,6 @@ import * as React from "react";
 import {
   ArrowSquareOut,
   Lock as FilledLockIcon,
-  GraduationCap,
-  MicrophoneStage,
   MusicNote,
   Pause as PauseIcon,
   Play as PlayIcon,
@@ -18,7 +16,6 @@ import { MediaControlButton } from "@/components/primitives/media-control-button
 import { Scrubber } from "@/components/primitives/scrubber";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/primitives/tooltip";
 import { Type } from "@/components/primitives/type";
-import { Waveform } from "@/components/primitives/waveform";
 import { postCardType } from "./post-card.styles";
 import { StoryLicenseNoticeBadge, StoryRegistrationBadge } from "./post-card-story-registration";
 import type {
@@ -298,7 +295,7 @@ function SongOfferRow({ action, icon, label, priceLabel }: SongOfferRowProps) {
   return (
     <div
       className={cn(
-        "grid min-h-16 items-center gap-x-3 gap-y-2 border-t border-border-soft px-4 py-3",
+        "mt-3 grid min-h-16 items-center gap-x-3 gap-y-2 border-t border-border-soft pt-3",
         priceLabel
           ? "grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_4rem_8.5rem]"
           : "grid-cols-[auto_minmax(0,1fr)_auto]",
@@ -336,7 +333,7 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
 
   if (isLocked && !isOwned && isListedActive && content.onBuy) {
     rows.push(
-      <div className="border-t border-border-soft px-4 py-3" key="digital-buy">
+      <div className="mt-3 border-t border-border-soft pt-3" key="digital-buy">
         <Button
           aria-label={effectivePrice ? `Buy Digital MP3 for ${effectivePrice}` : "Buy Digital MP3"}
           className="w-full"
@@ -344,13 +341,13 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
           onClick={content.onBuy}
           size="lg"
         >
-          {effectivePrice ? `Buy ${effectivePrice}` : "Buy"}
+          {effectivePrice ? `Buy for ${effectivePrice}` : "Buy"}
         </Button>
       </div>,
     );
   } else if (isLocked && !isOwned && !isListedActive && content.onUnlock) {
     rows.push(
-      <div className="border-t border-border-soft px-4 py-3" key="digital-unlock">
+      <div className="mt-3 border-t border-border-soft pt-3" key="digital-unlock">
         <Button
           aria-label="Unlock Digital MP3"
           className="w-full"
@@ -369,6 +366,9 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
   // so Sing does not jump from full-width to half-width once study arrives.
   let studyAction: React.ReactNode | null = null;
   let studyFailureReason: string | null = null;
+  const studyActionLabel = content.study?.rewardLabel
+    ? `Study · Earn ${content.study.rewardLabel}`
+    : "Study";
 
   if (!isLocked || isOwned) {
     switch (content.study?.status) {
@@ -379,18 +379,16 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
               className="w-full"
               data-post-card-interactive="true"
               key="study"
-              leadingIcon={<GraduationCap className="size-4" weight="fill" />}
               onClick={content.onStudy}
               size="lg"
               variant="secondary"
             >
-              Study
+              {studyActionLabel}
             </Button>
           ) : (
             <Button asChild className="w-full" data-post-card-interactive="true" key="study" size="lg" variant="secondary">
               <a aria-label="Study this song line by line" href={content.studyHref}>
-                <GraduationCap className="size-4" weight="fill" />
-                <span>Study</span>
+                <span>{studyActionLabel}</span>
               </a>
             </Button>
           );
@@ -409,7 +407,6 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
             className="w-full"
             disabled
             key="study"
-            leadingIcon={<GraduationCap className="size-4" weight="fill" />}
             size="lg"
             variant="secondary"
           >
@@ -428,6 +425,9 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
 
   let karaokeAction: React.ReactNode | null = null;
   let karaokeFailureReason: string | null = null;
+  const karaokeActionLabel = content.karaoke?.rewardLabel
+    ? `Karaoke · Earn ${content.karaoke.rewardLabel}`
+    : "Sing";
   if (!isLocked || isOwned) {
     switch (content.karaoke?.status) {
       case "ready":
@@ -437,17 +437,15 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
               className="w-full"
               data-post-card-interactive="true"
               key="karaoke"
-              leadingIcon={<MicrophoneStage className="size-4" weight="fill" />}
               onClick={content.onKaraoke}
               size="lg"
             >
-              Sing
+              {karaokeActionLabel}
             </Button>
           ) : (
             <Button asChild className="w-full" data-post-card-interactive="true" key="karaoke" size="lg">
               <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
-                <MicrophoneStage className="size-4" weight="fill" />
-                <span>Sing</span>
+                <span>{karaokeActionLabel}</span>
               </a>
             </Button>
           );
@@ -467,7 +465,6 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
             className="w-full"
             disabled
             key="karaoke"
-            leadingIcon={<MicrophoneStage className="size-4" weight="fill" />}
             size="lg"
             variant="secondary"
           >
@@ -486,7 +483,6 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
               className="w-full"
               data-post-card-interactive="true"
               key="karaoke"
-              leadingIcon={<MicrophoneStage className="size-4" weight="fill" />}
               onClick={content.onKaraoke}
               size="lg"
             >
@@ -495,7 +491,6 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
           ) : (
             <Button asChild className="w-full" data-post-card-interactive="true" key="karaoke" size="lg">
               <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
-                <MicrophoneStage className="size-4" weight="fill" />
                 <span>Sing</span>
               </a>
             </Button>
@@ -552,8 +547,9 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
       {primaryActions.length > 0 ? (
         <div
           className={cn(
-            "px-4 py-3",
-            primaryActions.length > 1 ? "grid grid-cols-2 gap-3" : "grid grid-cols-1",
+            "mt-3",
+            !content.streakSummary && "border-t border-border-soft pt-3",
+            primaryActions.length > 1 ? "grid grid-cols-1 gap-3 sm:grid-cols-2" : "grid grid-cols-1",
           )}
         >
           {primaryActions}
@@ -584,28 +580,28 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
   } = content;
 
   const previewSeconds = Math.max(1, Math.round((ui.previewMaxMs ?? defaultPreviewDurationMs) / 1000));
-  const controlButtonClassName = "size-10 border-transparent shadow-lg";
-  const controlIconClassName = "size-5";
+  const controlButtonClassName = "relative border-transparent bg-transparent shadow-none before:absolute before:inset-0 before:rounded-full before:bg-primary before:shadow-sm hover:bg-transparent hover:before:bg-primary/90";
+  const controlIconClassName = "relative z-10 size-5";
 
   // Determine control button - the player owns listening only; commerce lives in the post footer.
   const getControlButton = () => {
     switch (ui.primaryAction) {
       case "pause":
         return (
-          <MediaControlButton aria-label="Pause" className={controlButtonClassName} onClick={onPause} size="md">
+          <MediaControlButton aria-label="Pause" className={controlButtonClassName} onClick={onPause} size="lg">
             <PauseIcon className={controlIconClassName} weight="fill" />
           </MediaControlButton>
         );
       case "play":
         return (
-          <MediaControlButton aria-label="Play" className={controlButtonClassName} onClick={() => onPlay?.()} size="md">
+          <MediaControlButton aria-label="Play" className={controlButtonClassName} onClick={() => onPlay?.()} size="lg">
             <PlayIcon className={controlIconClassName} weight="fill" />
           </MediaControlButton>
         );
       case "buffering":
         return (
-          <MediaControlButton aria-label="Loading" className={controlButtonClassName} size="md" disabled>
-            <Spinner className="size-6" />
+          <MediaControlButton aria-label="Loading" className={controlButtonClassName} size="lg" disabled>
+            <Spinner className="relative z-10 size-5" />
           </MediaControlButton>
         );
       case "preview":
@@ -613,7 +609,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <MediaControlButton aria-label="Play preview" className={controlButtonClassName} onClick={() => onPlay?.()} size="md">
+                <MediaControlButton aria-label="Play preview" className={controlButtonClassName} onClick={() => onPlay?.()} size="lg">
                   <PlayIcon className={controlIconClassName} weight="fill" />
                 </MediaControlButton>
               </TooltipTrigger>
@@ -625,7 +621,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
         return null;
       default:
         return (
-          <MediaControlButton aria-label="Play" className={controlButtonClassName} onClick={() => onPlay?.()} size="md">
+          <MediaControlButton aria-label="Play" className={controlButtonClassName} onClick={() => onPlay?.()} size="lg">
             <PlayIcon className={controlIconClassName} weight="fill" />
           </MediaControlButton>
         );
@@ -638,16 +634,9 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
   const scrubberDurationMs = playbackDurationMs && playbackDurationMs > 0 ? playbackDurationMs : 100;
   const scrubberProgressMs = clampProgressMs(progressMs, playbackDurationMs);
   const canSeek = Boolean(onSeek && playbackDurationMs && playbackDurationMs > 0 && !ui.ageGateRequiresProof);
-  const waveformProgressFraction = scrubberDurationMs > 0 ? scrubberProgressMs / scrubberDurationMs : 0;
   const durationDisplayLabel = playbackDurationMs && playbackDurationMs > 0
     ? formatTime(playbackDurationMs)
     : content.durationLabel ?? "--:--";
-  const waveformSeed = [
-    content.title,
-    content.artist ?? "",
-    content.artworkSrc ?? "",
-    String(content.durationMs ?? content.durationLabel ?? ""),
-  ].join(":");
   const playButton = ui.primaryAction !== "locked" ? getControlButton() : null;
   const verifyAgeButton = ui.ageGateRequiresProof ? (
     <Button
@@ -662,14 +651,14 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
 
   return (
     <div className={cn("flex flex-col gap-2 text-start", className)}>
-      <div className="overflow-hidden rounded-lg border border-border-soft bg-card">
+      <div>
         <div
           className={cn(
-            "grid items-center gap-3 p-3",
+            "grid items-center gap-3 py-1",
             verifyAgeButton ? "grid-cols-[auto_minmax(0,1fr)_auto]" : "grid-cols-[auto_minmax(0,1fr)]",
           )}
         >
-          <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted sm:size-28">
+          <div className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted sm:size-24">
             {ui.showAgeGatedArtwork ? (
               <>
                 {content.artworkSrc ? (
@@ -700,11 +689,6 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
             ) : (
               <MusicNote className="size-7 text-muted-foreground" />
             )}
-            {playButton ? (
-              <div className="absolute inset-0 z-10 grid place-items-center bg-black/20">
-                {playButton}
-              </div>
-            ) : null}
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -732,13 +716,13 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
             </div>
 
             {!ui.ageGateRequiresProof ? (
-              <div className="flex flex-col gap-1.5">
-                <Waveform
-                  height={28}
-                  progressFraction={waveformProgressFraction}
-                  seed={waveformSeed}
-                />
-                <div className="flex flex-col gap-1">
+              <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[2.75rem_auto] gap-x-3">
+                {playButton ? (
+                  <div className="row-start-1 flex shrink-0 items-center">
+                    {playButton}
+                  </div>
+                ) : null}
+                <div className="col-start-2 row-start-1 flex min-w-0 items-center">
                   <Scrubber
                     ariaLabel="Track position"
                     className={!canSeek ? "opacity-100" : undefined}
@@ -748,10 +732,10 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
                     showThumb
                     value={scrubberProgressMs}
                   />
-                  <div className={cn("flex items-center justify-between tabular-nums text-muted-foreground", postCardType.meta)}>
-                    <span>{formatTime(scrubberProgressMs)}</span>
-                    <span>{durationDisplayLabel}</span>
-                  </div>
+                </div>
+                <div className={cn("col-start-2 row-start-2 flex items-center justify-between tabular-nums text-muted-foreground", postCardType.meta)}>
+                  <span>{formatTime(scrubberProgressMs)}</span>
+                  <span>{durationDisplayLabel}</span>
                 </div>
               </div>
             ) : null}
@@ -765,7 +749,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
         </div>
 
         {content.streakSummary ? (
-          <div className="border-t border-border-soft px-4 py-2.5">
+          <div className="mt-2">
             <SongStreakPreview href={content.streaksHref} onViewLeaderboard={content.onStreaks} summary={content.streakSummary} />
           </div>
         ) : null}

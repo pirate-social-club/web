@@ -216,7 +216,7 @@ function CommunitySidebarSections({
             <AccordionTrigger className={SECTION_LABEL}>
               {gateTitle}
             </AccordionTrigger>
-            <AccordionContent className="pb-0">
+            <AccordionContent className="pb-0 [&>div]:pb-0">
               <CommunitySidebarGates
                 expressionLabel={gateExpressionLabel}
                 items={gates}
@@ -231,7 +231,7 @@ function CommunitySidebarSections({
             <AccordionTrigger className={SECTION_LABEL}>
               {gateTitle}
             </AccordionTrigger>
-            <AccordionContent className="pb-0">
+            <AccordionContent className="pb-0 [&>div]:pb-0">
               <CommunitySidebarRequirements
                 items={activeRequirements}
                 mode={requirementsMode}

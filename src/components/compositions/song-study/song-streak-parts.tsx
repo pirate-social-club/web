@@ -5,6 +5,7 @@ import type {
   SongStreakViewerStanding,
 } from "@pirate/api-contracts";
 
+import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
@@ -54,7 +55,7 @@ function StreakBadge({ days, className }: { days: number; className?: string }) 
 
 function StreakRankMarker({ rank }: { rank: number }) {
   if (rank <= 3) {
-    const tone = rank === 1 ? "text-warning" : rank === 2 ? "text-muted-foreground" : "text-primary";
+    const tone = rank === 1 ? "text-yellow-400" : rank === 2 ? "text-muted-foreground" : "text-primary";
     const Icon = rank === 1 ? Crown : Medal;
     return (
       <span className={cn("grid size-8 place-items-center", tone)}>
@@ -70,6 +71,18 @@ function StreakRankMarker({ rank }: { rank: number }) {
 }
 
 function StreakAvatar({ identity }: { identity: LeaderboardIdentity }) {
+  if (identity.avatar_ref) {
+    return (
+      <Avatar
+        className="size-10"
+        fallback={streakDisplayName(identity)}
+        fallbackSeed={identity.user_id}
+        size="sm"
+        src={identity.avatar_ref}
+      />
+    );
+  }
+
   const hue = avatarHue(identity.user_id);
   return (
     <span

@@ -1620,8 +1620,6 @@ test.describe("live staging integration", () => {
     await page.getByRole("button", { name: /^continue$/i }).click();
     await page.getByRole("button", { name: /^continue$/i }).click();
     await page.getByRole("button", { name: /^(publish|post)$/i }).click();
-    await expect(page.getByRole("heading", { name: "Post preview" })).toBeVisible();
-    await page.getByRole("button", { name: /^(publish|post)$/i }).click();
 
     await expect(page).toHaveURL(/\/p\/[^/?#]+/u, { timeout: 30_000 });
     await expect(page.locator("body")).toContainText(title, { timeout: 30_000 });

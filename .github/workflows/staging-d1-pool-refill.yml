@@ -42,7 +42,7 @@ jobs:
         working-directory: services/community-d1-shard
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
         run: |
           bun run scripts/allocate-d1-pool.ts \
             --start '${{ inputs.start_index }}' \
@@ -54,7 +54,7 @@ jobs:
         working-directory: services/community-d1-shard
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
         run: bunx wrangler d1 list --json > d1-list.json
       - name: Upload generated binding entries
         if: always()

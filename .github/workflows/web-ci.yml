@@ -52,20 +52,36 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run unit and component tests
+        shell: bash
+        env:
+          TEST_SHARD: ${{ matrix.shard }}
+          TEST_SHARD_COUNT: 4
         run: |
-          mkdir -p test-results
-          bun test src packages \
-            --shard=${{ matrix.shard }}/4 \
-            --max-concurrency=4 \
-            --timeout=15000 \
-            --reporter=junit \
-            --reporter-outfile=test-results/web-unit-${{ matrix.shard }}.xml
+          set -uo pipefail
 
-      - name: Upload test report
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: web-unit-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: web/test-results/web-unit-${{ matrix.shard }}.xml
-          if-no-files-found: ignore
-          retention-days: 7
+          mapfile -t test_files < <(
+            find src packages -type f \
+              \( -name '*.test.ts' -o -name '*.test.tsx' -o -name '*.spec.ts' -o -name '*.spec.tsx' \) \
+              -print | sort
+          )
+
+          failures=0
+          selected=0
+          for index in "${!test_files[@]}"; do
+            if (( index % TEST_SHARD_COUNT != TEST_SHARD - 1 )); then
+              continue
+            fi
+
+            test_file="${test_files[$index]}"
+            selected=$((selected + 1))
+            echo "::group::${test_file}"
+            if ! bun test "${test_file}" --timeout=15000; then
+              failures=$((failures + 1))
+            fi
+            echo "::endgroup::"
+          done
+
+          echo "Shard ${TEST_SHARD}/${TEST_SHARD_COUNT}: ${selected} files, ${failures} failed"
+          if (( failures > 0 )); then
+            exit 1
+          fi

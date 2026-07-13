@@ -51,6 +51,14 @@ export function installDomGlobals(html = DEFAULT_HTML) {
   Object.defineProperty(globalThis, "navigator", { configurable: true, value: window.navigator });
   Object.defineProperty(globalThis, "Element", { configurable: true, value: window.Element });
   Object.defineProperty(globalThis, "HTMLElement", { configurable: true, value: window.HTMLElement });
+  Object.defineProperty(window, "location", {
+    configurable: true,
+    value: {
+      hostname: "localhost",
+      pathname: "/",
+      search: "",
+    },
+  });
   Object.defineProperty(window, "getComputedStyle", {
     configurable: true,
     value: () => ({

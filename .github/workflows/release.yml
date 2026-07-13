@@ -459,6 +459,15 @@ jobs:
           INFISICAL_SECRET_PATH: /services/api
           SECRET_NAMES: AUTH_UPSTREAM_JWT_SHARED_SECRET PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY PIRATE_CHECKOUT_RPC_URL PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS STORY_RUNTIME_FUNDER_PRIVATE_KEY
         run: scripts/ci/fetch-infisical-secrets.sh
+      - name: Fetch Story commerce control-plane secret
+        working-directory: core
+        env:
+          INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_ENV: staging
+          INFISICAL_SECRET_PATH: /services/control-plane
+          SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
+        run: scripts/ci/fetch-infisical-secrets.sh
       - name: Story derivative royalty E2E staging
         timeout-minutes: 30
         working-directory: web

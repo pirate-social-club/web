@@ -284,8 +284,8 @@ jobs:
   # Blocking gate. Everything here exercises infrastructure we own: the app boots,
   # auth works, a community follow round-trips, a booking hold quotes, one
   # controlled upload completes, and the song-preview container is healthy.
-  # Third-party chains and the broad journey suite are deliberately NOT here —
-  # they run as canaries alongside production.
+  # The broad journey suite is deliberately NOT here. Story commerce has its own
+  # blocking gate below so an external outage cannot hide a deterministic defect.
   release-gate:
     name: Release gate
     needs: [release-inputs, staging]
@@ -415,11 +415,76 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # Deterministic commerce failures remain release-blocking. This runs in
+  # parallel with the owned-infrastructure gate, so it adds only its own critical
+  # path latency while retaining the projection + verification + settlement proof.
+  commerce-gate:
+    name: Story commerce gate
+    needs: [release-inputs, staging]
+    if: github.event_name != 'pull_request'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: web
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/api
+          ref: ${{ needs.release-inputs.outputs.api_sha }}
+          path: api
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/core
+          ref: ${{ needs.release-inputs.outputs.core_sha }}
+          path: core
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Install web dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile
+      - name: Fetch Story commerce staging secrets
+        working-directory: core
+        env:
+          INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_ENV: staging
+          INFISICAL_SECRET_PATH: /services/api
+          SECRET_NAMES: AUTH_UPSTREAM_JWT_SHARED_SECRET PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY PIRATE_CHECKOUT_RPC_URL PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS STORY_RUNTIME_FUNDER_PRIVATE_KEY
+        run: scripts/ci/fetch-infisical-secrets.sh
+      - name: Story derivative royalty E2E staging
+        timeout-minutes: 30
+        working-directory: web
+        env:
+          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
+          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
+          E2E_API_BASE_URL: https://api-staging.pirate.sc
+          PIRATE_STORY_E2E_ARTIFACT_DIR: tmp/e2e-artifacts
+          # Preview generation is queued through the API scheduled job runner.
+          # Keep this long enough to span several staging cron cycles.
+          PIRATE_STORY_E2E_PREVIEW_TIMEOUT_MS: "420000"
+        run: bun run test:e2e:story-derivative-royalty
+      - name: Upload Story commerce artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: story-derivative-royalty-${{ github.run_id }}-${{ github.run_attempt }}
+          path: web/tmp/e2e-artifacts/*.json
+          if-no-files-found: ignore
+          retention-days: 14
+
   # Guard against an older run overwriting a newer production deployment. Checked
-  # as late as possible — after the gate, immediately before deploying.
+  # as late as possible — after both gates, immediately before deploying.
   production-freshness:
     name: Check release freshness
-    needs: release-gate
+    needs: [release-gate, commerce-gate]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: blacksmith-2vcpu-ubuntu-2404
     permissions:
@@ -451,7 +516,7 @@ jobs:
 
   production:
     name: Deploy production
-    needs: [release-inputs, release-gate, production-freshness]
+    needs: [release-inputs, release-gate, commerce-gate, production-freshness]
     # Only deploy production on a push to main. This keeps workflow_dispatch on
     # any branch (e.g. release/* validation) staging-only, so a manual dispatch
     # can never push an unmerged branch to production.
@@ -565,12 +630,11 @@ jobs:
           VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
         run: scripts/deploy-production.sh --confirm-production --skip-tests
 
-  # Non-blocking canaries. These drive third-party systems (Story/Aeneid
-  # settlement) and the broad live journey suite. They run in parallel with the
-  # release gate and production, so a testnet outage or one flaky journey can
-  # never stall a deploy. Failures surface as a tracking issue, not a red release.
+  # Non-blocking broad journey canary. Deterministic Story commerce validation is
+  # release-blocking above; this suite remains an alerted signal for wider UI and
+  # third-party journeys without making every journey a production prerequisite.
   canaries:
-    name: Live canaries (non-blocking)
+    name: Live browser canary (non-blocking)
     needs: [release-inputs, staging]
     if: github.event_name != 'pull_request'
     continue-on-error: true
@@ -580,7 +644,6 @@ jobs:
       contents: read
       id-token: write
     outputs:
-      story: ${{ steps.story.outcome }}
       live_browser: ${{ steps.live_browser.outcome }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -620,28 +683,6 @@ jobs:
           INFISICAL_SECRET_PATH: /services/api
           SECRET_NAMES: AUTH_UPSTREAM_JWT_SHARED_SECRET PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY PIRATE_CHECKOUT_RPC_URL PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS STORY_RUNTIME_FUNDER_PRIVATE_KEY
         run: scripts/ci/fetch-infisical-secrets.sh
-      - name: Story derivative royalty canary
-        id: story
-        continue-on-error: true
-        timeout-minutes: 30
-        working-directory: web
-        env:
-          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
-          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
-          E2E_API_BASE_URL: https://api-staging.pirate.sc
-          PIRATE_STORY_E2E_ARTIFACT_DIR: tmp/e2e-artifacts
-          # Preview generation is queued through the API scheduled job runner.
-          # Keep this long enough to span several staging cron cycles.
-          PIRATE_STORY_E2E_PREVIEW_TIMEOUT_MS: "420000"
-        run: bun run test:e2e:story-derivative-royalty
-      - name: Upload Story canary artifact
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: story-derivative-royalty-${{ github.run_id }}
-          path: web/tmp/e2e-artifacts/*.json
-          if-no-files-found: ignore
-          retention-days: 14
       - name: Live browser journey canary
         id: live_browser
         continue-on-error: true
@@ -665,7 +706,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          STORY_OUTCOME: ${{ steps.story.outcome }}
           LIVE_BROWSER_OUTCOME: ${{ steps.live_browser.outcome }}
         run: |
           {
@@ -673,7 +713,6 @@ jobs:
             echo ""
             echo "| Canary | Outcome |"
             echo "| --- | --- |"
-            echo "| Story derivative royalty | ${STORY_OUTCOME} |"
             echo "| Live browser journeys | ${LIVE_BROWSER_OUTCOME} |"
             echo ""
             echo "Canaries do not block production. Failures are tracked in the canary issue."
@@ -695,22 +734,19 @@ jobs:
       - name: Open or update the canary tracking issue
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         env:
-          STORY_OUTCOME: ${{ needs.canaries.outputs.story }}
           LIVE_BROWSER_OUTCOME: ${{ needs.canaries.outputs.live_browser }}
         with:
           script: |
             const label = "canary-failure";
-            const story = process.env.STORY_OUTCOME || "";
             const liveBrowser = process.env.LIVE_BROWSER_OUTCOME || "";
-            // The canary job died before either step reported. Stay silent rather
+            // The canary job died before the step reported. Stay silent rather
             // than raise a canary alarm for what is really a job-infrastructure fault.
-            if (!story && !liveBrowser) {
+            if (!liveBrowser) {
               core.warning("Canary job reported no step outcomes; skipping canary issue update.");
               return;
             }
             const describe = (outcome) => outcome || "did not complete";
             const failed = [
-              story !== "success" ? `Story derivative royalty: **${describe(story)}**` : null,
               liveBrowser !== "success" ? `Live browser journeys: **${describe(liveBrowser)}**` : null,
             ].filter(Boolean);
 

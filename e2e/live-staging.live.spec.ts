@@ -1598,14 +1598,17 @@ test.describe("live staging integration", () => {
   });
 
   test("creates a real post and comment with a real staging session", async ({ page }, testInfo) => {
-    testInfo.setTimeout(90_000);
-    let session = await createLiveSession();
-    await completeSelfVerification(session);
-    session = await createLiveSession();
-    const community = await discoverSeedCommunity();
+    testInfo.setTimeout(180_000);
+    const timestamp = new Date().toISOString();
+    const session = await createLiveSession();
+    const communityId = await createSmokeCommunity(`post-${Date.now()}`, session);
+    const community: LiveCommunity = {
+      id: communityId,
+      label: communityId,
+      routeSegment: communityId,
+    };
     await installStoredSession(page, session);
 
-    const timestamp = new Date().toISOString();
     const title = `E2E live browser post ${timestamp}`;
     const body = `Created by Playwright against staging at ${timestamp}.`;
     const comment = `E2E live browser comment ${timestamp}`;

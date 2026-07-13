@@ -668,6 +668,29 @@ async function waitForAssetReady(input: {
   throw new Error(`${input.label} asset readiness timed out: ${JSON.stringify(last)}`);
 }
 
+async function waitForRoyaltyAllocationVerification<T>(operation: () => Promise<T>): Promise<T> {
+  const timeoutMs = Number(optionalEnv("PIRATE_STORY_E2E_ALLOCATION_TIMEOUT_MS") ?? "420000");
+  const intervalMs = Number(optionalEnv("PIRATE_STORY_E2E_ALLOCATION_INTERVAL_MS") ?? "5000");
+  const startedAt = Date.now();
+  let lastError: Error | null = null;
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      return await operation();
+    } catch (error) {
+      const normalized = error instanceof Error ? error : new Error(String(error));
+      if (!normalized.message.includes("Asset royalty allocation is not verified")) {
+        throw normalized;
+      }
+      lastError = normalized;
+      step("royalty allocation verification pending", {
+        elapsed_ms: Date.now() - startedAt,
+      });
+      await sleep(intervalMs);
+    }
+  }
+  throw new Error(`royalty allocation verification timed out: ${lastError?.message ?? "unknown error"}`);
+}
+
 function createChain(chainId: number, rpcUrl: string, label: string) {
   return defineChain({
     id: chainId,
@@ -1209,7 +1232,7 @@ async function main(): Promise<void> {
     },
   });
   const checkoutChainId = Number(optionalEnv("PIRATE_CHECKOUT_SOURCE_CHAIN_ID") ?? "84532");
-  const quote = await api<{
+  const quote = await waitForRoyaltyAllocationVerification(() => api<{
     allocation_snapshot: Array<Record<string, unknown>>;
     destination_settlement_amount_atomic?: string | null;
     final_price_cents: number;
@@ -1238,7 +1261,7 @@ async function main(): Promise<void> {
         display_name: checkoutChainName(checkoutChainId),
       },
     },
-  });
+  }));
   if (quote.settlement_mode !== "royalty_native_story_payment") {
     throw new Error(`quote did not use royalty-native settlement: ${JSON.stringify(quote)}`);
   }

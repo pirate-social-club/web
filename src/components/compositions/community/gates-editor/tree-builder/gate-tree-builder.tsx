@@ -18,14 +18,9 @@ import {
 } from "@/components/primitives/combobox";
 import {
   captchaAloneAdmits,
-  collectGateBuilderAtoms,
-  createGateProfileDraft,
-  evaluateGateProfile,
-  gateAssetKey,
   gateAssetMinimum,
   GATE_POLICY_MAX_ATOMS,
   GATE_POLICY_MAX_DEPTH,
-  gateAtomKey,
   getGateBuilderBudget,
   isGateBuilderDraftWithinLimits,
   normalizePassportMinimumScore,
@@ -35,7 +30,6 @@ import {
   type GateBuilderGroupDraft,
   type GateBuilderGroupOp,
   type GateBuilderRuleDraft,
-  type GateProfileDraft,
 } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import { Button } from "@/components/primitives/button";
 import { Input } from "@/components/primitives/input";
@@ -157,7 +151,6 @@ export function GateTreeBuilder({ capabilitySource, className, onChange, showHea
 
       <GateGroupEditor addGroupDisabled={addGroupDisabled} addRuleDisabled={addRuleDisabled} capabilitySource={capabilitySource} copy={copy} group={value} isRoot onChange={applyValidChange} />
 
-      <GateProfileSimulator copy={copy} value={value} />
     </section>
   );
 }
@@ -197,245 +190,6 @@ function GateSummaryTree({ copy, expression, isRoot = false }: {
       </ul>
     </div>
   );
-}
-
-/**
- * "Who gets in?" — the admin assembles a member and sees whether the rules admit them.
- *
- * Controls are derived from the atoms actually in the tree and evaluated with the same expression
- * evaluation the policy uses, so no requirement goes untested and a member can hold several proofs
- * at once. This is what the fixed single-capability persona matrix could not express.
- */
-function GateProfileSimulator({ copy, value }: {
-  copy: TreeBuilderCopy;
-  value: GateBuilderGroupDraft;
-}) {
-  const [profile, setProfile] = React.useState<GateProfileDraft>(createGateProfileDraft);
-  const atoms = collectGateBuilderAtoms(value);
-  const { atoms: atomResults, joins } = evaluateGateProfile(value, profile);
-  const patch = (next: Partial<GateProfileDraft>) => setProfile((current) => ({ ...current, ...next }));
-
-  const humanProviders = uniqueValues(atoms.flatMap((gate) => gate.type === "unique_human" ? [gate.provider ?? "self"] : []));
-  const nationalityAtoms = atoms.filter((gate) => gate.type === "nationality");
-  const nationalities = uniqueValues(nationalityAtoms.flatMap((gate) => [...(gate.allowed ?? [])]));
-  const genders = uniqueValues(atoms.flatMap((gate) => gate.type === "gender" ? [...(gate.allowed ?? [])] : []));
-  const assetGates = uniqueAssets(atoms.filter((gate) => gate.type === "erc721_holding" || gate.type === "erc721_inventory_match"));
-  const hasAltcha = atoms.some((gate) => gate.type === "altcha_pow");
-  const hasAge = atoms.some((gate) => gate.type === "minimum_age");
-  const hasScore = atoms.some((gate) => gate.type === "wallet_score");
-  // An "any verified nationality" rule still needs a way to say the person has one.
-  const nationalityOptions = nationalityAtoms.length > 0 && nationalities.length === 0
-    ? [copy.profileAnyNationality]
-    : nationalities;
-
-  const toggleProvider = (provider: string) => patch({
-    humanProviders: profile.humanProviders.includes(provider)
-      ? profile.humanProviders.filter((held) => held !== provider)
-      : [...profile.humanProviders, provider],
-  });
-  const updateAssetQuantity = (key: string, quantity: number | null) => patch({
-    assetQuantities: { ...profile.assetQuantities, [key]: Math.max(0, quantity ?? 0) },
-  });
-
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="text-base font-semibold uppercase tracking-wide text-muted-foreground">{copy.tryProfileTitle}</div>
-        <Button size="sm" variant="ghost" onClick={() => setProfile(createGateProfileDraft())}>
-          {copy.tryProfileReset}
-        </Button>
-      </div>
-
-      {atoms.length === 0 ? (
-        <p className="text-base text-muted-foreground">{copy.tryProfileNoRules}</p>
-      ) : (
-        <>
-          <p className="mb-3 text-base text-muted-foreground">{copy.tryProfileCaption}</p>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {humanProviders.map((provider) => (
-              <Chip
-                aria-pressed={profile.humanProviders.includes(provider)}
-                className="h-11 px-4"
-                key={provider}
-                variant={profile.humanProviders.includes(provider) ? "active" : "outline"}
-                onClick={() => toggleProvider(provider)}
-              >
-                {interpolateMessage(copy.profileHumanProvider, { provider: providerLabel(copy, provider) })}
-              </Chip>
-            ))}
-
-            {hasAltcha ? (
-              <Chip
-                aria-pressed={profile.altcha}
-                className="h-11 px-4"
-                variant={profile.altcha ? "active" : "outline"}
-                onClick={() => patch({ altcha: !profile.altcha })}
-              >
-                {copy.profileAltcha}
-              </Chip>
-            ) : null}
-
-            {assetGates.map((gate) => {
-              const key = gateAssetKey(gate);
-              return (
-                <label className="inline-flex h-11 items-center gap-2 rounded-full border border-border-soft px-4 text-base text-muted-foreground" key={key}>
-                  {interpolateMessage(copy.profileHoldsAsset, { asset: describeAsset(gate) })}
-                  <Input
-                    aria-label={interpolateMessage(copy.profileAssetQuantity, { asset: describeAsset(gate) })}
-                    className="h-8 w-20 px-2"
-                    max={100}
-                    min={0}
-                    onChange={(event) => updateAssetQuantity(key, parseOptionalNumber(event.currentTarget.value))}
-                    type="number"
-                    value={profile.assetQuantities[key] ?? 0}
-                  />
-                </label>
-              );
-            })}
-
-            {hasAge ? (
-              <label className="inline-flex h-11 items-center gap-2 rounded-full border border-border-soft px-4 text-base text-muted-foreground">
-                {copy.profileAge}
-                <Input
-                  aria-label={copy.profileAge}
-                  className="h-8 w-20 px-2"
-                  max={125}
-                  min={0}
-                  onChange={(event) => patch({ age: parseOptionalNumber(event.currentTarget.value) })}
-                  type="number"
-                  value={profile.age ?? ""}
-                />
-              </label>
-            ) : null}
-
-            {hasScore ? (
-              <label className="inline-flex h-11 items-center gap-2 rounded-full border border-border-soft px-4 text-base text-muted-foreground">
-                {copy.profilePassportScore}
-                <Input
-                  aria-label={copy.profilePassportScore}
-                  className="h-8 w-20 px-2"
-                  max={100}
-                  min={0}
-                  onChange={(event) => patch({ passportScore: parseOptionalNumber(event.currentTarget.value) })}
-                  type="number"
-                  value={profile.passportScore ?? ""}
-                />
-              </label>
-            ) : null}
-
-            {nationalityOptions.length > 0 ? (
-              <ProfileChoice
-                label={copy.profileNationality}
-                noneLabel={copy.profileNone}
-                options={nationalityOptions}
-                value={profile.nationality}
-                onChange={(nationality) => patch({ nationality })}
-              />
-            ) : null}
-
-            {genders.length > 0 ? (
-              <ProfileChoice
-                label={copy.profileGender}
-                noneLabel={copy.profileNone}
-                options={genders}
-                value={profile.gender}
-                onChange={(gender) => patch({ gender })}
-              />
-            ) : null}
-          </div>
-
-          <div className={cn(
-            "mt-4 flex min-h-11 items-center gap-2 rounded-[var(--radius-md)] border px-3 py-2 text-base font-semibold",
-            joins === true
-              ? "border-success/40 bg-success/10 text-success"
-              : joins == null
-                ? "border-warning/40 bg-warning/10 text-warning"
-                : "border-border-soft bg-background text-muted-foreground",
-          )}>
-            {joins === true
-              ? copy.tryProfileVerdictPass
-              : joins == null
-                ? copy.tryProfileVerdictUnknown
-                : copy.tryProfileVerdictFail}
-          </div>
-
-          <div className="mt-3 text-base font-semibold uppercase tracking-wide text-muted-foreground">
-            {copy.tryProfileRequirements}
-          </div>
-          <ul className="mt-2 flex list-none flex-col gap-1">
-            {atomResults.map((atom) => (
-              <li className="flex items-baseline gap-2 text-base" key={atom.key}>
-                <span className={cn("shrink-0 font-semibold", atom.met === true ? "text-success" : atom.met == null ? "text-warning" : "text-muted-foreground")}>
-                  {atom.met === true ? "✓" : atom.met == null ? "?" : "✗"}
-                </span>
-                <span className={atom.met === true ? "text-foreground" : "text-muted-foreground"}>{describeGate(atom.gate)}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </div>
-  );
-}
-
-function ProfileChoice({ label, noneLabel, onChange, options, value }: {
-  label: string;
-  noneLabel: string;
-  onChange: (value: string | null) => void;
-  options: string[];
-  value: string | null;
-}) {
-  const NONE = "__none__";
-  return (
-    <label className="inline-flex h-11 items-center gap-2 rounded-full border border-border-soft px-4 text-base text-muted-foreground">
-      {label}
-      <Select value={value ?? NONE} onValueChange={(next) => onChange(next === NONE ? null : next)}>
-        <SelectTrigger aria-label={label} className="h-8 w-32 px-3"><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value={NONE}>{noneLabel}</SelectItem>
-          {options.map((option) => (
-            <SelectItem key={option} value={option}>{option}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </label>
-  );
-}
-
-function uniqueValues(values: string[]): string[] {
-  return [...new Set(values)];
-}
-
-function uniqueAssets(gates: GateAtom[]): GateAtom[] {
-  const seen = new Set<string>();
-  return gates.filter((gate) => {
-    const key = gateAssetKey(gate);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function parseOptionalNumber(raw: string): number | null {
-  if (raw.trim().length === 0) {
-    return null;
-  }
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function providerLabel(copy: TreeBuilderCopy, provider: string): string {
-  if (provider === "self") return copy.providers.self;
-  if (provider === "very") return copy.providers.very;
-  return provider;
-}
-
-function describeAsset(gate: GateAtom): string {
-  if (gate.type === "erc721_inventory_match") {
-    return courtyardInventorySummary(gate);
-  }
-  return shortAddress(getGateContractAddress(gate));
 }
 
 function GateGroupEditor({
@@ -983,23 +737,16 @@ function NftHoldingEditor({
               </Button>
             </div>
           ))}
-          {addableFacetKeys.length > 0 || selectedSource.provenanceLabel ? (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              {addableFacetKeys.length > 0 ? (
-                <Button
-                  className="self-start"
-                  size="sm"
-                  variant="outline"
-                  leadingIcon={<Plus size={16} />}
-                  onClick={() => setPendingFacetKeys((current) => [...current, addableFacetKeys[0]!])}
-                >
-                  Add attribute filter
-                </Button>
-              ) : null}
-              {selectedSource.provenanceLabel ? (
-                <div className="ms-auto text-base text-muted-foreground">{selectedSource.provenanceLabel}</div>
-              ) : null}
-            </div>
+          {addableFacetKeys.length > 0 ? (
+            <Button
+              className="self-start"
+              size="sm"
+              variant="outline"
+              leadingIcon={<Plus size={16} />}
+              onClick={() => setPendingFacetKeys((current) => [...current, addableFacetKeys[0]!])}
+            >
+              Add attribute filter
+            </Button>
           ) : null}
         </div>
       ) : null}

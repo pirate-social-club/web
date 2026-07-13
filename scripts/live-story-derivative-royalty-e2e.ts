@@ -1,6 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { SQL } from "bun";
 
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import {
@@ -70,6 +71,16 @@ type SettlementEffect = {
   attempt_count: number;
 };
 
+type RoyaltyProjectionRow = {
+  allocation_status: string;
+  distribution_status: string;
+  failure_reason: string | null;
+  recipient_kind: string;
+  source_updated_at: string;
+  story_ip_id: string;
+  wallet_address_normalized: string;
+};
+
 type AuditArtifact = {
   status: "running" | "passed" | "failed";
   started_at: string;
@@ -79,6 +90,7 @@ type AuditArtifact = {
   community: Record<string, unknown>;
   original: Record<string, unknown>;
   derivative: Record<string, unknown>;
+  royalty_projection: Record<string, unknown>;
   listing: Record<string, unknown>;
   quote: Record<string, unknown>;
   purchase: Record<string, unknown>;
@@ -116,6 +128,7 @@ const artifact: AuditArtifact = {
   community: {},
   original: {},
   derivative: {},
+  royalty_projection: {},
   listing: {},
   quote: {},
   purchase: {},
@@ -134,6 +147,7 @@ function usage(): string {
     "  AUTH_UPSTREAM_JWT_AUDIENCE",
     "  AUTH_UPSTREAM_JWT_ISSUER",
     "  AUTH_UPSTREAM_JWT_SHARED_SECRET",
+    "  CONTROL_PLANE_MIGRATOR_DATABASE_URL",
     "  PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY or PIRATE_STORY_E2E_BUYER_PRIVATE_KEY",
     "  PIRATE_CHECKOUT_RPC_URL",
     "  PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS",
@@ -668,27 +682,88 @@ async function waitForAssetReady(input: {
   throw new Error(`${input.label} asset readiness timed out: ${JSON.stringify(last)}`);
 }
 
-async function waitForRoyaltyAllocationVerification<T>(operation: () => Promise<T>): Promise<T> {
+function controlPlaneDatabaseUrl(): string {
+  const url = new URL(requiredEnv("CONTROL_PLANE_MIGRATOR_DATABASE_URL"));
+  // Bun's Postgres client does not consume libpq's local certificate path option.
+  url.searchParams.delete("sslrootcert");
+  return url.toString();
+}
+
+function internalId(value: string, externalPrefix: string): string {
+  return value.startsWith(externalPrefix) ? value.slice(externalPrefix.length) : value;
+}
+
+async function waitForScheduledRoyaltyAllocationVerification(input: {
+  assetId: string;
+  communityId: string;
+}): Promise<RoyaltyProjectionRow[]> {
   const timeoutMs = Number(optionalEnv("PIRATE_STORY_E2E_ALLOCATION_TIMEOUT_MS") ?? "420000");
   const intervalMs = Number(optionalEnv("PIRATE_STORY_E2E_ALLOCATION_INTERVAL_MS") ?? "5000");
   const startedAt = Date.now();
-  let lastError: Error | null = null;
-  while (Date.now() - startedAt < timeoutMs) {
-    try {
-      return await operation();
-    } catch (error) {
-      const normalized = error instanceof Error ? error : new Error(String(error));
-      if (!normalized.message.includes("Asset royalty allocation is not verified")) {
-        throw normalized;
-      }
-      lastError = normalized;
-      step("royalty allocation verification pending", {
+  const communityId = internalId(input.communityId, "com_");
+  const assetId = internalId(input.assetId, "asset_");
+  const sql = new SQL({
+    url: controlPlaneDatabaseUrl(),
+    max: 1,
+    connectionTimeout: 10,
+  } as Record<string, unknown>);
+  let lastRows: RoyaltyProjectionRow[] = [];
+  try {
+    while (Date.now() - startedAt < timeoutMs) {
+      const rows = await sql`
+        SELECT
+          allocation_status,
+          distribution_status,
+          failure_reason,
+          recipient_kind,
+          source_updated_at,
+          story_ip_id,
+          wallet_address_normalized
+        FROM story_royalty_allocation_projections
+        WHERE community_id = ${communityId}
+          AND asset_id = ${assetId}
+        ORDER BY recipient_kind, wallet_address_normalized
+      ` as RoyaltyProjectionRow[];
+      lastRows = rows;
+      artifact.royalty_projection = {
+        asset_id: assetId,
+        community_id: communityId,
         elapsed_ms: Date.now() - startedAt,
+        rows,
+      };
+      step("royalty allocation projection status", {
+        elapsed_ms: Date.now() - startedAt,
+        row_count: rows.length,
+        statuses: rows.map((row) => ({
+          allocation_status: row.allocation_status,
+          distribution_status: row.distribution_status,
+          recipient_kind: row.recipient_kind,
+        })),
       });
+      const terminalFailure = rows.find((row) =>
+        row.distribution_status === "failed" || row.allocation_status.endsWith("_failed")
+      );
+      if (terminalFailure) {
+        throw new Error(`royalty allocation projection failed: ${JSON.stringify(rows)}`);
+      }
+      if (
+        rows.length > 0
+        && rows.every((row) =>
+          row.allocation_status === "verified" && row.distribution_status === "verified"
+        )
+      ) {
+        return rows;
+      }
       await sleep(intervalMs);
     }
+  } finally {
+    await sql.close();
   }
-  throw new Error(`royalty allocation verification timed out: ${lastError?.message ?? "unknown error"}`);
+  throw new Error(`scheduled royalty allocation verification timed out: ${JSON.stringify({
+    asset_id: assetId,
+    community_id: communityId,
+    rows: lastRows,
+  })}`);
 }
 
 function createChain(chainId: number, rpcUrl: string, label: string) {
@@ -1216,6 +1291,15 @@ async function main(): Promise<void> {
     story_royalty_registration_status: derivativeAsset.story_royalty_registration_status ?? null,
   };
 
+  // This must happen before the first quote request. A quote-time fallback may
+  // improve buyer latency, but it must never be able to satisfy the scheduler
+  // discovery invariant exercised by this release gate.
+  step("wait for scheduled royalty allocation projection verification");
+  await waitForScheduledRoyaltyAllocationVerification({
+    assetId: derivativePost.asset,
+    communityId,
+  });
+
   step("create listing and purchase quote");
   const listing = await api<{ id: string; price_cents: number; status: string }>({
     apiBase,
@@ -1232,7 +1316,7 @@ async function main(): Promise<void> {
     },
   });
   const checkoutChainId = Number(optionalEnv("PIRATE_CHECKOUT_SOURCE_CHAIN_ID") ?? "84532");
-  const quote = await waitForRoyaltyAllocationVerification(() => api<{
+  const quote = await api<{
     allocation_snapshot: Array<Record<string, unknown>>;
     destination_settlement_amount_atomic?: string | null;
     final_price_cents: number;
@@ -1261,7 +1345,7 @@ async function main(): Promise<void> {
         display_name: checkoutChainName(checkoutChainId),
       },
     },
-  }));
+  });
   if (quote.settlement_mode !== "royalty_native_story_payment") {
     throw new Error(`quote did not use royalty-native settlement: ${JSON.stringify(quote)}`);
   }

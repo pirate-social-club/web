@@ -1,16 +1,14 @@
 import {
+  buildPublicHtmlHeaders,
   renderPublicAgentPage,
   renderPublicProfileErrorPage,
   renderPublicProfilePage,
 } from "./worker-public-html";
 import { resolveLocaleLanguageTag, resolveRequestLocale } from "./lib/ui-locale-core";
 import { getLocaleMessages } from "./locales";
-import {
-  X_FRAME_OPTIONS_DENY,
-  X_FRAME_OPTIONS_HEADER,
-} from "./lib/security-headers";
 import { buildVersionResponse } from "./lib/build-version";
 import { extractPublicProfileHost } from "./lib/public-host";
+import { getPublicIdentityHandleLabel } from "./lib/public-identity";
 import type {
   Env,
   PublicAgentResolution,
@@ -20,12 +18,7 @@ import type {
 type PublicProfileRequestTarget =
   { kind: "host"; handleLabel: string; hostSuffix: string; identityKind: "profile" | "agent" };
 
-function getPublicIdentityHandleLabel(input: {
-  global_handle: { label: string };
-  primary_public_handle?: { label: string } | null;
-}): string {
-  return input.primary_public_handle?.label ?? input.global_handle.label;
-}
+const PUBLIC_LOOKUP_TIMEOUT_MS = 5_000;
 
 function extractPublicProfileRequestTarget(url: URL): PublicProfileRequestTarget | null {
   const hostTarget = extractPublicProfileHost(url.hostname);
@@ -96,6 +89,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     {
       headers: { accept: "application/json" },
       redirect: "manual",
+      signal: AbortSignal.timeout(PUBLIC_LOOKUP_TIMEOUT_MS),
     },
   );
 
@@ -159,16 +153,28 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   });
 
   return new Response(html, {
-    headers: {
-      "cache-control": "public, max-age=60, s-maxage=300",
-      "content-type": "text/html; charset=utf-8",
-      [X_FRAME_OPTIONS_HEADER]: X_FRAME_OPTIONS_DENY,
-    },
+    headers: buildPublicHtmlHeaders("public, max-age=60, s-maxage=300"),
   });
 }
 
 export default {
-  fetch(request: Request, env: Env) {
-    return handleRequest(request, env);
+  async fetch(request: Request, env: Env) {
+    try {
+      return await handleRequest(request, env);
+    } catch (error) {
+      const locale = resolveRequestLocale(request.headers.get("accept-language"));
+      const copy = getLocaleMessages(locale, "routes").publicProfile;
+      console.error(JSON.stringify({
+        message: "public profile rendering failed",
+        error: error instanceof Error ? error.message : String(error),
+        host: new URL(request.url).hostname,
+      }));
+      return renderPublicProfileErrorPage(
+        copy.errorTitle,
+        copy.errorDescription,
+        502,
+        resolveLocaleLanguageTag(locale),
+      );
+    }
   },
 };

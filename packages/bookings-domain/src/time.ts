@@ -40,7 +40,7 @@ export function getLocalParts(utcMs: number, tz: IanaTz): LocalDateParts {
   };
 }
 
-export function getOffsetMs(utcMs: number, tz: IanaTz): number {
+function getOffsetMs(utcMs: number, tz: IanaTz): number {
   const parts = getLocalParts(utcMs, tz);
   const localAsUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
   return localAsUtc - utcMs;

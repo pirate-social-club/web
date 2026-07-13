@@ -76,13 +76,24 @@ function openExternalUrl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
+type PostPresentationCommunity =
+  | Pick<ApiCommunity, "avatar_ref" | "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
+  | Pick<ApiCommunityPreview, "avatar_ref" | "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
+  | null;
+
 export function toCommunityFeedItem(
   postResponse: ApiPost,
+  community: PostPresentationCommunity,
   authorProfiles: Record<string, ApiProfile | null>,
   songOptions?: SongPresentationOptions,
   opts?: PostPresentationOptions,
 ): FeedItem {
   const { post } = postResponse;
+  const effectiveCommunity = postResponse.community ?? community;
+  const postResponseWithCommunity = {
+    ...postResponse,
+    community: effectiveCommunity,
+  } as ApiPost;
   const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
   const storyPortalHref = resolvePostStoryPortalHref({
     asset: postResponse.asset_story ?? (post as typeof post & { asset_story?: NonNullable<ApiPost["asset_story"]> | null }).asset_story,
@@ -125,7 +136,7 @@ export function toCommunityFeedItem(
         }
       : undefined;
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
-  const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
+  const content = toCommunityPostContent(postResponseWithCommunity, songOptions, { ...opts, embedMode: "official" });
   const heading = resolvePostCardHeadingTitle({
     translatedTitle: postResponse.translated_title,
     originalTitle: post.title,
@@ -192,7 +203,7 @@ export function toCommunityFeedItem(
   );
   const originalPost = canShowOriginalToggle(postResponse, opts)
     ? (() => {
-      const originalContent = toCommunityPostContent(postResponse, songOptions, { ...opts, preferOriginalText: true });
+      const originalContent = toCommunityPostContent(postResponseWithCommunity, songOptions, { ...opts, preferOriginalText: true });
       const originalTitleProps = buildPostCardTitleProps({
         content: originalContent,
         title: post.title,
@@ -215,10 +226,7 @@ export function toCommunityFeedItem(
 
 export function toThreadPostCard(
   postResponse: ApiPost,
-  community:
-    | Pick<ApiCommunity, "avatar_ref" | "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
-    | Pick<ApiCommunityPreview, "avatar_ref" | "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
-    | null,
+  community: PostPresentationCommunity,
   authorProfile?: ApiProfile,
   songOptions?: SongPresentationOptions,
   opts?: PostPresentationOptions,

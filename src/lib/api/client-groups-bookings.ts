@@ -1,6 +1,7 @@
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 import type {
   AttachSessionResponse,
+  BookingCancellationPreview,
   BookingHold,
   BookingQuote,
   BookingView,
@@ -51,8 +52,15 @@ export function createBookingsApi(request: ApiRequest) {
     heartbeatBookingSession: (bookingId: string, body: HeartbeatRequest): Promise<{ ok: true }> =>
       request<{ ok: true }>(`/bookings/${c(bookingId)}/session/heartbeat`, { method: "POST", body: JSON.stringify(body) }),
 
-    cancelBooking: (bookingId: string): Promise<CancelBookingResponse> =>
-      request<CancelBookingResponse>(`/bookings/${c(bookingId)}/cancel`, { method: "POST" }),
+    getBookingCancellationPreview: (bookingId: string): Promise<BookingCancellationPreview> =>
+      request<BookingCancellationPreview>(`/bookings/${c(bookingId)}/cancellation-preview`),
+    cancelBooking: (bookingId: string, expectedRefundCents?: number): Promise<CancelBookingResponse> =>
+      request<CancelBookingResponse>(`/bookings/${c(bookingId)}/cancel`, {
+        method: "POST",
+        ...(expectedRefundCents === undefined
+          ? {}
+          : { body: JSON.stringify({ expected_refund_cents: expectedRefundCents }) }),
+      }),
     completeBooking: (bookingId: string): Promise<CompleteBookingResponse> =>
       request<CompleteBookingResponse>(`/bookings/${c(bookingId)}/complete`, { method: "POST" }),
     noShowBooking: (bookingId: string): Promise<NoShowBookingResponse> =>

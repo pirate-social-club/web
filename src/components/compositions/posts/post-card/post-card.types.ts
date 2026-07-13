@@ -244,6 +244,7 @@ export interface SongContentSpec {
 
   // The study ("Study") capability + surface for this song, when available.
   study?: SongStudyCapability;
+  studyHref?: string;
   onStudy?: () => void;
 
   // Streak leaderboard for this song. `streakSummary` renders the inline streak

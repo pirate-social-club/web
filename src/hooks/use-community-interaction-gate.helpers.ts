@@ -21,6 +21,7 @@ import {
 import { deriveGateStatuses } from "@/lib/community-gate-statuses";
 import { interpolateMessage } from "@/lib/route-messages";
 import { getLocaleMessages } from "@/locales";
+import { openExternalHref } from "@/lib/open-external-href";
 import { type UiLocaleCode } from "@/lib/ui-locale-core";
 
 export type RouteKind = "community" | "home" | "post" | "public-community";
@@ -791,7 +792,7 @@ export function createCommunityBlockedModalStateFactory(options: {
               if (result.started) {
                 closeModal();
                 if (!result.openedModal && result.href) {
-                  window.location.href = result.href;
+                  openExternalHref(result.href);
                 }
               }
             }

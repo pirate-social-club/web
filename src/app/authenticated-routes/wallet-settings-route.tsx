@@ -18,18 +18,30 @@ import { logger } from "@/lib/logger";
 import { fetchCachedPrices } from "@/lib/price-cache";
 import { useCreateWallet } from "@privy-io/react-auth";
 import { WalletHub } from "@/components/compositions/wallet/wallet-hub/wallet-hub";
+import {
+  CashoutSheet,
+  VerifyHumanSheet,
+  type CashoutSheetState,
+  type VerifyHumanSheetState,
+} from "@/components/compositions/rewards/reward-surfaces";
 import { IdentityWalletSection } from "@/components/compositions/wallet/identity-wallet-section/identity-wallet-section";
+import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
+import { ZkPassportVerificationModal } from "@/components/compositions/verification/zkpassport-verification-modal/zkpassport-verification-modal";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
 import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import { toast } from "@/components/primitives/sonner";
-import type { WalletHubChainId, WalletHubChainSection } from "@/components/compositions/wallet/wallet-hub/wallet-hub.types";
+import type { WalletHubChainId, WalletHubChainSection, WalletHubRewardsSummary } from "@/components/compositions/wallet/wallet-hub/wallet-hub.types";
+import type { ApiRewardCashoutResponse, ApiRewardsSummaryResponse } from "@/lib/api/client-api-types";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 import { useResettableTimeout } from "@/hooks/use-resettable-timeout";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { findPirateEmbeddedEvmWallet } from "@/lib/auth/privy-wallet";
 import { useApi } from "@/lib/api";
 import { updateSessionIdentityWallet, useSession } from "@/lib/api/session-store";
+import { useSelfVerification } from "@/lib/verification/use-self-verification";
+import { useVeryVerification } from "@/lib/verification/use-very-verification";
+import { useZkPassportVerification } from "@/lib/verification/use-zkpassport-verification";
 
 const LazyRoyaltyClaimModal = React.lazy(async () => {
   const mod = await import("@/components/compositions/wallet/royalty-claim-modal/royalty-claim-modal");
@@ -53,6 +65,51 @@ const EMPTY_CLAIMABLE: ClaimableRoyaltiesResponse = {
   total_claimable_wip_wei: "0",
   checked_at: 0,
 };
+
+const EMPTY_REWARDS_SUMMARY: ApiRewardsSummaryResponse = {
+  balance_cents: 0,
+  today_earned_cents: 0,
+  recent_events: [],
+  cashout: {
+    eligible: false,
+    min_cents: 100,
+    verification_state: "unverified",
+  },
+  latest_in_flight_cashout: null,
+};
+
+const REWARDS_ZKPASSPORT_REQUIREMENTS = [
+  { proof_type: "minimum_age" as const, minimum_age: 18 },
+];
+
+const REWARDS_CASHOUT_ATTEMPT_KEY = "pirate_rewards_cashout_attempt";
+
+type RewardsCashoutAttempt = {
+  amountCents: number;
+  cashoutId?: string;
+  idempotencyKey: string;
+};
+
+function loadRewardsCashoutAttempt(): RewardsCashoutAttempt | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(REWARDS_CASHOUT_ATTEMPT_KEY) ?? "null") as Partial<RewardsCashoutAttempt> | null;
+    if (!parsed || !Number.isSafeInteger(parsed.amountCents) || Number(parsed.amountCents) <= 0 || typeof parsed.idempotencyKey !== "string") return null;
+    return {
+      amountCents: Number(parsed.amountCents),
+      cashoutId: typeof parsed.cashoutId === "string" ? parsed.cashoutId : undefined,
+      idempotencyKey: parsed.idempotencyKey,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function storeRewardsCashoutAttempt(attempt: RewardsCashoutAttempt | null): void {
+  if (typeof window === "undefined") return;
+  if (attempt) window.localStorage.setItem(REWARDS_CASHOUT_ATTEMPT_KEY, JSON.stringify(attempt));
+  else window.localStorage.removeItem(REWARDS_CASHOUT_ATTEMPT_KEY);
+}
 
 type WalletBalanceChain = {
   chainId: WalletHubChainId;
@@ -235,6 +292,92 @@ function formatNativeBalance(balance: bigint, decimals = 18): string {
   return trimmedFraction ? `${whole}.${trimmedFraction}` : whole;
 }
 
+function formatUsdCents(cents: number): string {
+  return walletSettingsUsdFormatter.format(cents / 100);
+}
+
+function parseUsdCentsInput(value: string): number | null {
+  const normalized = value.trim().replace(/[$,\s]/gu, "");
+  if (!/^\d+(?:\.\d{0,2})?$/u.test(normalized)) return null;
+  const [whole, fraction = ""] = normalized.split(".");
+  const cents = Number.parseInt(whole, 10) * 100 + Number.parseInt(fraction.padEnd(2, "0").slice(0, 2), 10);
+  return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
+}
+
+function shortAddress(address: string | null): string {
+  if (!address) return "Base wallet";
+  if (address.length <= 14) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function baseTxUrl(txHash: string | null): string | undefined {
+  if (!txHash) return undefined;
+  const explorerUrl = getPirateNetworkConfig().base.explorerUrl.replace(/\/$/u, "");
+  return `${explorerUrl}/tx/${txHash}`;
+}
+
+function isIdentityConflictError(message: string | null): boolean {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return normalized.includes("already linked") || normalized.includes("different account");
+}
+
+function walletRewardsSummary(input: {
+  loading: boolean;
+  onMoveToWallet: () => void;
+  onRetry: () => void;
+  onVerify: () => void;
+  rewards: ApiRewardsSummaryResponse;
+  rewardsCashoutPending: boolean;
+  rewardsError: boolean;
+}): WalletHubRewardsSummary {
+  const amountLabel = input.loading && input.rewards.balance_cents <= 0
+    ? "..."
+    : formatUsdCents(input.rewards.balance_cents);
+  if (input.rewardsError) {
+    return {
+      actionLabel: "Retry",
+      amountLabel,
+      onAction: input.onRetry,
+      supportingLabel: "Could not load.",
+    };
+  }
+  if (input.rewardsCashoutPending) {
+    return {
+      actionDisabled: true,
+      actionLabel: "Pending",
+      amountLabel,
+      pending: true,
+    };
+  }
+  if (input.rewards.cashout.eligible) {
+    return {
+      actionLabel: "Claim",
+      amountLabel,
+      onAction: input.onMoveToWallet,
+    };
+  }
+  if (
+    input.rewards.balance_cents >= input.rewards.cashout.min_cents
+    && input.rewards.cashout.verification_state !== "verified"
+  ) {
+    return {
+      actionLabel: "Verify",
+      amountLabel,
+      onAction: input.onVerify,
+      supportingLabel: "Verify once to transfer.",
+    };
+  }
+  return {
+    actionDisabled: true,
+    actionLabel: "Claim",
+    amountLabel,
+    supportingLabel: input.rewards.balance_cents > 0 || input.rewards.today_earned_cents > 0
+      ? `${formatUsdCents(input.rewards.cashout.min_cents)} minimum`
+      : "Earn by practicing.",
+  };
+}
+
 function buildWalletHubChainSections({
   balancesByTokenId,
   chains,
@@ -269,7 +412,7 @@ function buildWalletHubChainSections({
 export function CurrentUserWalletPage() {
   const api = useApi();
   const session = useSession();
-  const { configured: privyConfigured, connect } = usePiratePrivyRuntime();
+  const { configured: privyConfigured, connect, getPrivyAccessToken } = usePiratePrivyRuntime();
   const { connectedWallets, walletsReady } = usePiratePrivyWallets();
   const profile = session?.profile ?? null;
   const walletAttachments = session?.walletAttachments ?? [];
@@ -283,6 +426,21 @@ export function CurrentUserWalletPage() {
   const [pricesById, setPricesById] = React.useState<Record<string, number>>({});
   const [claimableRoyalties, setClaimableRoyalties] = React.useState<ClaimableRoyaltiesResponse>(EMPTY_CLAIMABLE);
   const [claimLoading, setClaimLoading] = React.useState(false);
+  const [rewardsSummary, setRewardsSummary] = React.useState<ApiRewardsSummaryResponse>(EMPTY_REWARDS_SUMMARY);
+  const [rewardsLoading, setRewardsLoading] = React.useState(false);
+  const [rewardsError, setRewardsError] = React.useState(false);
+  const [rewardsCashoutPending, setRewardsCashoutPending] = React.useState(false);
+  const [rewardsCashoutOpen, setRewardsCashoutOpen] = React.useState(false);
+  const [rewardsCashoutState, setRewardsCashoutState] = React.useState<CashoutSheetState>("amount-entry");
+  const [rewardsCashoutAmountLabel, setRewardsCashoutAmountLabel] = React.useState("$0.00");
+  const [rewardsCashoutTxHash, setRewardsCashoutTxHash] = React.useState<string | null>(null);
+  const [rewardsCashoutRecipientAddress, setRewardsCashoutRecipientAddress] = React.useState<string | null>(null);
+  const [rewardsCashoutErrorMessage, setRewardsCashoutErrorMessage] = React.useState<string | null>(null);
+  const [rewardsCashoutAttempt, setRewardsCashoutAttempt] = React.useState<RewardsCashoutAttempt | null>(loadRewardsCashoutAttempt);
+  const [rewardsCashoutPollGeneration, setRewardsCashoutPollGeneration] = React.useState(0);
+  const [rewardsVerifyOpen, setRewardsVerifyOpen] = React.useState(false);
+  const [rewardsVerifyState, setRewardsVerifyState] = React.useState<VerifyHumanSheetState>("provider-selection");
+  const [zkPassportModalOpen, setZkPassportModalOpen] = React.useState(false);
   const [royaltyClaimOpen, setRoyaltyClaimOpen] = React.useState(false);
   const [walletAction, setWalletAction] = React.useState<"receive" | "send" | null>(null);
   const { schedule: scheduleClaimableRefresh } = useResettableTimeout();
@@ -298,6 +456,7 @@ export function CurrentUserWalletPage() {
   const temporaryReceiveAddress = primaryAddress ?? connectedEmbeddedWallet?.address ?? null;
   const primaryAttachmentId = primaryWallet?.wallet_attachment ?? null;
   const [identityWalletPending, setIdentityWalletPending] = React.useState(false);
+  const rewardsEnabled = import.meta.env.VITE_REWARDS_ENABLED === "true";
 
   const handleSelectIdentityWallet = React.useCallback(async (walletAttachmentId: string) => {
     setIdentityWalletPending(true);
@@ -464,16 +623,290 @@ export function CurrentUserWalletPage() {
     }
   }, [api]);
 
+  const refreshRewardsSummary = React.useCallback(async () => {
+    if (!rewardsEnabled) {
+      setRewardsSummary(EMPTY_REWARDS_SUMMARY);
+      setRewardsLoading(false);
+      setRewardsError(false);
+      return;
+    }
+    try {
+      setRewardsLoading(true);
+      setRewardsError(false);
+      const summary = await api.rewards.getSummary();
+      setRewardsSummary(summary);
+      if (summary.latest_in_flight_cashout) {
+        const payout = summary.latest_in_flight_cashout;
+        setRewardsCashoutRecipientAddress(payout.recipient_address);
+        setRewardsCashoutAttempt((current) => {
+          if (current?.cashoutId === payout.id) return current;
+          const recovered = {
+            amountCents: payout.amount_cents,
+            cashoutId: payout.id,
+            idempotencyKey: `recovered:${payout.id}`,
+          };
+          storeRewardsCashoutAttempt(recovered);
+          return recovered;
+        });
+        setRewardsCashoutState("pending");
+      }
+    } catch (error) {
+      logger.debug("[wallet] failed to load rewards", error);
+      setRewardsError(true);
+    } finally {
+      setRewardsLoading(false);
+    }
+  }, [api, rewardsEnabled]);
+
+  const handleRewardsVerified = React.useCallback(async () => {
+    setRewardsVerifyState("success");
+    setRewardsVerifyOpen(true);
+    setZkPassportModalOpen(false);
+    toast.success("Rewards verification complete.");
+    await refreshRewardsSummary();
+  }, [refreshRewardsSummary]);
+
+  const {
+    handleModalOpenChange: handleSelfModalOpenChange,
+    handleSelfQrError,
+    handleSelfQrSuccess,
+    selfError,
+    selfLoading,
+    selfModalOpen,
+    selfPrompt,
+    startVerification: startSelfRewardsVerification,
+  } = useSelfVerification({
+    completeErrorMessage: "Rewards verification failed",
+    locale: "en",
+    onVerified: handleRewardsVerified,
+    startErrorMessage: "Could not start Self verification",
+    storageKey: "pirate_pending_self_rewards_cashout",
+    verificationIntent: null,
+  });
+
+  const {
+    startVerification: startVeryRewardsVerification,
+    verificationError: veryRewardsError,
+    verificationLoading: veryRewardsLoading,
+  } = useVeryVerification({
+    onVerified: handleRewardsVerified,
+    verified: rewardsSummary.cashout.verification_state === "verified",
+    verificationIntent: null,
+  });
+
+  const {
+    checkPendingVerification: checkZkPassportRewardsVerification,
+    startVerification: startZkPassportRewardsVerification,
+    verificationError: zkPassportRewardsError,
+    verificationHref: zkPassportRewardsHref,
+    verificationLoading: zkPassportRewardsLoading,
+  } = useZkPassportVerification({
+    onVerified: handleRewardsVerified,
+    verificationIntent: null,
+  });
+
+  React.useEffect(() => {
+    const message = selfError || veryRewardsError || zkPassportRewardsError;
+    if (!message) return;
+    setRewardsVerifyState(isIdentityConflictError(message) ? "conflict" : "failure");
+    setRewardsVerifyOpen(true);
+  }, [selfError, veryRewardsError, zkPassportRewardsError]);
+
+  const handleRewardsVerifyProvider = React.useCallback(async (provider: "self" | "very" | "zkpassport") => {
+    setRewardsVerifyState("pending");
+    if (provider === "self") {
+      const result = await startSelfRewardsVerification({
+        requestedCapabilities: ["unique_human"],
+        unavailableMessage: "Self verification is unavailable for rewards.",
+      });
+      if (result.started) {
+        setRewardsVerifyOpen(false);
+      }
+      return;
+    }
+    if (provider === "very") {
+      const result = await startVeryRewardsVerification();
+      if (!result.started) {
+        setRewardsVerifyState("failure");
+      }
+      return;
+    }
+
+    const result = await startZkPassportRewardsVerification({
+      deferOpen: true,
+      requestedCapabilities: ["minimum_age"],
+      unavailableMessage: "ZKPassport verification is unavailable for rewards.",
+      verificationRequirements: REWARDS_ZKPASSPORT_REQUIREMENTS,
+    });
+    if (result.started) {
+      setRewardsVerifyOpen(false);
+      setZkPassportModalOpen(true);
+    }
+  }, [startSelfRewardsVerification, startVeryRewardsVerification, startZkPassportRewardsVerification]);
+
+  const openRewardsCashout = React.useCallback(() => {
+    if (!rewardsSummary.cashout.eligible || rewardsSummary.balance_cents <= 0) return;
+    setRewardsCashoutAmountLabel(formatUsdCents(rewardsSummary.balance_cents));
+    setRewardsCashoutTxHash(null);
+    setRewardsCashoutRecipientAddress(walletAddress);
+    setRewardsCashoutErrorMessage(null);
+    setRewardsCashoutState("amount-entry");
+    setRewardsCashoutOpen(true);
+  }, [rewardsSummary.balance_cents, rewardsSummary.cashout.eligible, walletAddress]);
+
+  const applyCashoutResult = React.useCallback((result: ApiRewardCashoutResponse) => {
+    setRewardsCashoutAmountLabel(formatUsdCents(result.payout.amount_cents));
+    setRewardsCashoutTxHash(result.payout.settlement_ref);
+    setRewardsCashoutRecipientAddress(result.payout.recipient_address);
+    if (result.payout.status === "failed") {
+      setRewardsCashoutState("failure");
+      setRewardsCashoutErrorMessage(result.payout.failure_reason || "The reward transfer failed. Your reward balance is available to try again.");
+      setRewardsCashoutAttempt(null);
+      storeRewardsCashoutAttempt(null);
+      return;
+    }
+    if (result.payout.status === "confirmed") {
+      setRewardsCashoutState("success");
+      setRewardsCashoutAttempt(null);
+      storeRewardsCashoutAttempt(null);
+      return;
+    }
+    setRewardsCashoutAttempt((current) => {
+      const attempt = current
+        ? { ...current, amountCents: result.payout.amount_cents, cashoutId: result.payout.id }
+        : { amountCents: result.payout.amount_cents, cashoutId: result.payout.id, idempotencyKey: `recovered:${result.payout.id}` };
+      storeRewardsCashoutAttempt(attempt);
+      return attempt;
+    });
+    setRewardsCashoutState("pending");
+    setRewardsCashoutErrorMessage(null);
+  }, []);
+
+  const handleRewardsCashout = React.useCallback(async () => {
+    if (!rewardsSummary.cashout.eligible || rewardsCashoutPending) return;
+    const amountCents = parseUsdCentsInput(rewardsCashoutAmountLabel);
+    if (!amountCents || amountCents < rewardsSummary.cashout.min_cents || amountCents > rewardsSummary.balance_cents) {
+      toast.error("Enter an amount within your available reward credits.");
+      return;
+    }
+    if (rewardsCashoutState === "amount-entry") {
+      const attempt = rewardsCashoutAttempt?.amountCents === amountCents
+        ? rewardsCashoutAttempt
+        : { amountCents, idempotencyKey: `wallet-rewards:${Date.now()}:${crypto.randomUUID()}` };
+      setRewardsCashoutAttempt(attempt);
+      storeRewardsCashoutAttempt(attempt);
+      setRewardsCashoutState("confirm");
+      return;
+    }
+    if (rewardsCashoutState !== "confirm") return;
+
+    setRewardsCashoutPending(true);
+    setRewardsCashoutState("pending");
+    setRewardsError(false);
+    setRewardsCashoutErrorMessage(null);
+    try {
+      const attempt = rewardsCashoutAttempt?.amountCents === amountCents
+        ? rewardsCashoutAttempt
+        : { amountCents, idempotencyKey: `wallet-rewards:${Date.now()}:${crypto.randomUUID()}` };
+      setRewardsCashoutAttempt(attempt);
+      storeRewardsCashoutAttempt(attempt);
+      const privyAccessToken = walletAddress && getPrivyAccessToken
+        ? await getPrivyAccessToken()
+        : null;
+      const result = await api.rewards.cashOut({
+        amount_cents: amountCents,
+        idempotency_key: attempt.idempotencyKey,
+        wallet_proof: privyAccessToken
+          ? {
+              type: "privy_access_token",
+              privy_access_token: privyAccessToken,
+              wallet_address: walletAddress,
+            }
+          : null,
+      });
+      applyCashoutResult(result);
+      if (result.payout.status === "failed") toast.error(result.payout.failure_reason || "Reward claim failed.");
+      else toast.success(result.payout.status === "confirmed" ? "Reward claim complete." : "Reward claim submitted.");
+      await refreshRewardsSummary();
+    } catch (error) {
+      logger.debug("[wallet] rewards cashout failed", error);
+      setRewardsCashoutState("failure");
+      setRewardsCashoutErrorMessage("The reward claim could not be submitted. Try again in a moment.");
+      toast.error("Reward claim failed. Try again in a moment.");
+    } finally {
+      setRewardsCashoutPending(false);
+    }
+  }, [
+    api,
+    applyCashoutResult,
+    refreshRewardsSummary,
+    rewardsCashoutAmountLabel,
+    rewardsCashoutAttempt,
+    rewardsCashoutPending,
+    rewardsCashoutState,
+    rewardsSummary.balance_cents,
+    rewardsSummary.cashout.eligible,
+    rewardsSummary.cashout.min_cents,
+    getPrivyAccessToken,
+    walletAddress,
+  ]);
+
+  React.useEffect(() => {
+    if (rewardsCashoutAttempt?.cashoutId && rewardsCashoutState === "amount-entry") {
+      setRewardsCashoutState("pending");
+    }
+  }, [rewardsCashoutAttempt?.cashoutId, rewardsCashoutState]);
+
+  React.useEffect(() => {
+    const cashoutId = rewardsCashoutAttempt?.cashoutId;
+    if (!cashoutId || rewardsCashoutState !== "pending") return;
+    let cancelled = false;
+    let timeout: number | undefined;
+    const delays = [0, 2_000, 4_000, 8_000, 15_000, 30_000, 60_000] as const;
+    let attempt = 0;
+    const poll = async () => {
+      try {
+        const result = await api.rewards.getCashout(cashoutId);
+        if (!cancelled) {
+          applyCashoutResult(result);
+          if (result.payout.status !== "submitted") await refreshRewardsSummary();
+          else if (attempt < delays.length) {
+            timeout = window.setTimeout(() => { void poll(); }, delays[attempt++]);
+          } else {
+            setRewardsCashoutErrorMessage("This transfer is still processing. Check its status again when you are ready.");
+          }
+        }
+      } catch (error) {
+        logger.debug("[wallet] failed to refresh reward cashout", error);
+        if (!cancelled && attempt < delays.length) {
+          timeout = window.setTimeout(() => { void poll(); }, delays[attempt++]);
+        } else if (!cancelled) {
+          setRewardsCashoutErrorMessage("Status refresh paused after repeated failures. Check again when you are ready.");
+        }
+      }
+    };
+    timeout = window.setTimeout(() => { void poll(); }, delays[attempt++]);
+    return () => {
+      cancelled = true;
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
+  }, [api, applyCashoutResult, refreshRewardsSummary, rewardsCashoutAttempt?.cashoutId, rewardsCashoutPollGeneration, rewardsCashoutState]);
+
   React.useEffect(() => {
     if (!session) {
       setClaimableRoyalties(EMPTY_CLAIMABLE);
       setClaimLoading(false);
+      setRewardsSummary(EMPTY_REWARDS_SUMMARY);
+      setRewardsLoading(false);
+      setRewardsError(false);
       setRoyaltyClaimOpen(false);
+      setRewardsCashoutOpen(false);
       setWalletAction(null);
       return;
     }
     void refreshClaimableRoyalties();
-  }, [refreshClaimableRoyalties, session]);
+    void refreshRewardsSummary();
+  }, [refreshClaimableRoyalties, refreshRewardsSummary, session]);
 
   const chainSections = React.useMemo(() => buildWalletHubChainSections({
     balancesByTokenId,
@@ -496,6 +929,23 @@ export function CurrentUserWalletPage() {
     }
     return walletSettingsUsdFormatter.format(total);
   }, [chainSections]);
+
+  const rewardsHubSummary = rewardsEnabled
+    ? walletRewardsSummary({
+      loading: rewardsLoading,
+      onMoveToWallet: openRewardsCashout,
+      onRetry: () => {
+        void refreshRewardsSummary();
+      },
+      onVerify: () => {
+        setRewardsVerifyState("provider-selection");
+        setRewardsVerifyOpen(true);
+      },
+      rewards: rewardsSummary,
+      rewardsCashoutPending: rewardsCashoutPending || rewardsCashoutState === "pending",
+      rewardsError,
+    })
+    : undefined;
 
   return (
     <StandardRoutePage size="rail">
@@ -536,10 +986,77 @@ export function CurrentUserWalletPage() {
         }}
         onReceive={walletAddress ? () => setWalletAction("receive") : undefined}
         onSend={primaryAttachmentId ? () => setWalletAction("send") : undefined}
+        rewardsSummary={rewardsHubSummary}
         totalBalanceUsd={totalBalanceUsd}
         walletActionsPending={walletActionsPending}
         walletAddress={walletAddress}
       />
+      {rewardsEnabled ? (
+        <CashoutSheet
+          amountLabel={rewardsCashoutAmountLabel}
+          availableLabel={formatUsdCents(rewardsSummary.balance_cents)}
+          basescanUrl={baseTxUrl(rewardsCashoutTxHash)}
+          errorMessage={rewardsCashoutErrorMessage ?? undefined}
+          minimumCashoutLabel={formatUsdCents(rewardsSummary.cashout.min_cents)}
+          onAmountChange={setRewardsCashoutAmountLabel}
+          onConfirm={() => {
+            void handleRewardsCashout();
+          }}
+          onOpenChange={(open) => {
+            setRewardsCashoutOpen(open);
+            if (!open && rewardsCashoutState !== "pending") {
+              setRewardsCashoutState("amount-entry");
+            }
+          }}
+          onRefresh={() => {
+            setRewardsCashoutErrorMessage(null);
+            setRewardsCashoutPollGeneration((generation) => generation + 1);
+          }}
+          open={rewardsCashoutOpen}
+          recipientLabel={shortAddress(rewardsCashoutRecipientAddress ?? walletAddress)}
+          state={rewardsCashoutState}
+          txHashLabel={rewardsCashoutTxHash ?? undefined}
+        />
+      ) : null}
+      {rewardsEnabled ? (
+        <VerifyHumanSheet
+          onOpenChange={setRewardsVerifyOpen}
+          onSelectProvider={(provider) => {
+            void handleRewardsVerifyProvider(provider);
+          }}
+          open={rewardsVerifyOpen}
+          state={(selfLoading || veryRewardsLoading || zkPassportRewardsLoading) && rewardsVerifyState !== "failure" && rewardsVerifyState !== "conflict"
+            ? "pending"
+            : rewardsVerifyState}
+        />
+      ) : null}
+      {selfPrompt ? (
+        <SelfVerificationModal
+          actionLabel={selfPrompt.actionLabel}
+          description={selfPrompt.description}
+          error={selfError}
+          href={selfPrompt.href}
+          onOpenChange={handleSelfModalOpenChange}
+          onQrError={handleSelfQrError}
+          onQrSuccess={handleSelfQrSuccess}
+          open={selfModalOpen}
+          selfApp={selfPrompt.selfApp}
+          title={selfPrompt.title}
+        />
+      ) : null}
+      {zkPassportRewardsHref ? (
+        <ZkPassportVerificationModal
+          actionLabel="Open ZKPassport"
+          checkLoading={zkPassportRewardsLoading}
+          description="Complete an 18+ passport proof for reward claims. Pirate receives only the proof result and a reusable nullifier."
+          error={zkPassportRewardsError}
+          href={zkPassportRewardsHref}
+          onCheckPending={() => checkZkPassportRewardsVerification()}
+          onOpenChange={setZkPassportModalOpen}
+          open={zkPassportModalOpen}
+          title="Verify with ZKPassport"
+        />
+      ) : null}
       <IdentityWalletSection
         connectedWallets={connectedWallets}
         onSelect={(walletAttachmentId) => {

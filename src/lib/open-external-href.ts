@@ -11,6 +11,18 @@ export function openExternalHref(href: string, options: {
     return;
   }
 
+  try {
+    const baseHref = typeof window.location?.href === "string"
+      ? window.location.href
+      : "https://pirate.sc/";
+    const url = new URL(href, baseHref);
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      return;
+    }
+  } catch {
+    return;
+  }
+
   if (options.preferBrowserWindow && typeof window.open === "function") {
     const opened = window.open(href, "_blank", "noopener,noreferrer");
     if (opened) {

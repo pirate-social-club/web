@@ -1,12 +1,49 @@
 import { describe, expect, test } from "bun:test";
-import type { JoinEligibility } from "@pirate/api-contracts";
+import type { Community, JoinEligibility } from "@pirate/api-contracts";
 
 import {
   buildCommunityPreviewSidebar,
+  buildCommunitySidebar,
   buildCommunitySidebarGateItems,
   buildCommunitySidebarRequirements,
   getCommunityActionLabel,
 } from "@/app/authenticated-helpers/community-sidebar-helpers";
+
+describe("buildCommunitySidebar", () => {
+  test("preserves mixed operators from the authenticated gate policy", () => {
+    const sidebar = buildCommunitySidebar({
+      id: "cmt_authenticated",
+      object: "community",
+      display_name: "Authenticated Club",
+      membership_mode: "gated",
+      default_age_gate_policy: "none",
+      gate_policy: {
+        version: 1,
+        expression: {
+          op: "and",
+          children: [
+            { op: "gate", gate: { type: "unique_human", provider: "self" } },
+            {
+              op: "or",
+              children: [
+                { op: "gate", gate: { type: "unique_human", provider: "very" } },
+                { op: "gate", gate: { type: "altcha_pow" } },
+              ],
+            },
+          ],
+        },
+      },
+      donation_policy_mode: "none",
+      donation_partner: null,
+      reference_links: [],
+      rules: [],
+      created: Date.parse("2026-07-10T00:00:00.000Z"),
+    } as Community);
+
+    expect(sidebar.requirementsMode).toBe("all");
+    expect(sidebar.gateExpressionLabel).toBe("Private ID proof and (Palm scan or Proof of work)");
+  });
+});
 
 describe("buildCommunitySidebarRequirements", () => {
   test("localizes nationality requirements for Arabic", () => {
@@ -53,13 +90,13 @@ describe("buildCommunitySidebarRequirements", () => {
     })).toEqual(["Ethereum NFT from 0x1111...1111"]);
   });
 
-  test("omits proof-of-work from join requirement labels", () => {
+  test("includes proof-of-work in visible policy labels", () => {
     expect(buildCommunitySidebarRequirements({
       gateSummaries: [
         { gate_type: "unique_human", accepted_providers: ["very"] },
         { gate_type: "altcha_pow" },
       ],
-    })).toEqual(["Palm scan"]);
+    })).toEqual(["Palm scan", "Proof of work"]);
   });
 });
 
@@ -176,6 +213,19 @@ describe("buildCommunityPreviewSidebar", () => {
         { gate_type: "unique_human", accepted_providers: ["very"] },
         { gate_type: "altcha_pow" },
       ],
+      membership_gate_expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { gate_type: "unique_human", accepted_providers: ["self"] } },
+          {
+            op: "or",
+            children: [
+              { op: "gate", gate: { gate_type: "unique_human", accepted_providers: ["very"] } },
+              { op: "gate", gate: { gate_type: "altcha_pow" } },
+            ],
+          },
+        ],
+      },
       gate_match_mode: "any",
       rules: [],
       viewer_membership_status: "not_member",
@@ -184,6 +234,7 @@ describe("buildCommunityPreviewSidebar", () => {
     });
 
     expect(sidebar.requirementsMode).toBe("any");
+    expect(sidebar.gateExpressionLabel).toBe("Private ID proof and (Palm scan or Proof of work)");
     expect(sidebar.hasActionTimeCheck).toBe(true);
   });
 });

@@ -27,6 +27,7 @@ import {
 import {
   createJobsApi,
   createNotificationsApi,
+  createRewardsApi,
   createRoyaltiesApi,
 } from "./client-groups-system";
 import type {
@@ -103,6 +104,7 @@ export class ApiClient {
   readonly publicComments = createPublicCommentsApi(this.request.bind(this));
   readonly jobs = createJobsApi(this.request.bind(this));
   readonly notifications = createNotificationsApi(this.request.bind(this));
+  readonly rewards = createRewardsApi(this.request.bind(this));
   readonly royalties = createRoyaltiesApi(this.request.bind(this));
 
   constructor(options?: { baseUrl?: string; getToken?: () => string | null }) {
@@ -194,10 +196,14 @@ export class ApiClient {
       ...fetchInit
     } = init ?? {};
     const body = fetchInit.body;
+    const method = init?.method ?? "GET";
     const usesFormData = typeof FormData !== "undefined" && body instanceof FormData;
     const hasBody = body !== undefined && body !== null;
     const headers = new Headers(usesFormData || !hasBody ? undefined : { "Content-Type": "application/json" });
-    if (typeof window !== "undefined") {
+    // Identity headers are not CORS-safelisted, so sending them on a public GET
+    // forces a preflight. Writes already preflight (JSON content-type), so they
+    // keep both headers: the API reads them for server-side event attribution.
+    if (typeof window !== "undefined" && method !== "GET" && method !== "HEAD") {
       const identity = getAnalyticsIdentity();
       headers.set("x-pirate-anonymous-id", identity.anonymousId);
       headers.set("x-pirate-session-id", identity.sessionId);
@@ -226,7 +232,6 @@ export class ApiClient {
       headers.set(key, value);
     }
 
-    const method = init?.method ?? "GET";
     logger.debug("[api-client] request", { method, path, tokenOptional, tokenRequired });
 
     let res: Response;
@@ -285,15 +290,18 @@ export class ApiClient {
       let retryable = false;
 
       try {
-        const body: JsonErrorResponse & { details?: unknown; error?: string } = await res.json();
+        const body: JsonErrorResponse & { details?: unknown; error?: string; preview?: unknown } = await res.json();
         if (body.code) code = body.code;
         else if (typeof body.error === "string") code = body.error; // routes that return { error: reason }
         if (body.message) message = body.message;
         if (body.retryable) retryable = body.retryable;
-        const parsedDetails =
+        let parsedDetails =
           body.details && typeof body.details === "object"
             ? (body.details as Record<string, unknown>)
             : null;
+        if ("preview" in body && body.preview && typeof body.preview === "object") {
+          parsedDetails = { ...(parsedDetails ?? {}), preview: body.preview };
+        }
 
         if (
           tokenRequired &&

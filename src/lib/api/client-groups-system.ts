@@ -14,6 +14,12 @@ import type {
 } from "@pirate/api-contracts";
 
 import type { NotificationFeedOptions } from "./client-api-types";
+import type {
+  ApiPublicRewardOffer,
+  ApiRewardCashoutRequest,
+  ApiRewardCashoutResponse,
+  ApiRewardsSummaryResponse,
+} from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
 export function createJobsApi(request: ApiRequest) {
@@ -71,5 +77,27 @@ export function createRoyaltiesApi(request: ApiRequest) {
         method: "POST",
         body: JSON.stringify(input),
       }),
+  };
+}
+
+export function createRewardsApi(request: ApiRequest) {
+  return {
+    getActiveCampaignForSong: (communityId: string, postId: string): Promise<ApiPublicRewardOffer> =>
+      request<ApiPublicRewardOffer>(
+        buildQueryPath("/public/reward_campaigns", {
+          community_id: communityId,
+          post_id: postId,
+        }),
+        { tokenRequired: false },
+      ),
+    getSummary: (): Promise<ApiRewardsSummaryResponse> =>
+      request<ApiRewardsSummaryResponse>("/me/rewards"),
+    cashOut: (input: ApiRewardCashoutRequest): Promise<ApiRewardCashoutResponse> =>
+      request<ApiRewardCashoutResponse>("/me/rewards/cashouts", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    getCashout: (cashoutId: string): Promise<ApiRewardCashoutResponse> =>
+      request<ApiRewardCashoutResponse>(`/me/rewards/cashouts/${encodeURIComponent(cashoutId)}`),
   };
 }

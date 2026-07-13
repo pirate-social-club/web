@@ -8,7 +8,17 @@ import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { toast } from "@/components/primitives/sonner";
 import { BookingVideoStage } from "@/components/compositions/bookings/booking-video-stage";
+import { BookingSessionControls, type AttendanceReportingHealth } from "@/components/compositions/bookings/booking-session-controls/booking-session-controls";
 import { useSessionControlAvailability } from "./booking-session-availability";
+import {
+  BOOKING_HEARTBEAT_INTERVAL_MS,
+  bookingHeartbeatFailed,
+  bookingHeartbeatHealth,
+  bookingHeartbeatSucceeded,
+  initialBookingHeartbeatState,
+} from "@/app/authenticated-helpers/booking-heartbeat-health";
+import { bookingCounterpartyLabel } from "@/app/authenticated-helpers/booking-management-view-model";
+import { useRouteMessages } from "@/hooks/use-route-messages";
 import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
 import type { AttachSessionResponse, BookingView } from "@/lib/api/bookings-types";
@@ -23,7 +33,6 @@ type SessionPhase =
   | { kind: "not_available"; message: string }
   | { kind: "ready"; booking: BookingView; session: AttachSessionResponse };
 
-const HEARTBEAT_INTERVAL_MS = 15_000;
 const JOIN_LEAD_MS = 5 * 60_000;
 
 // The SAME join window the management page gates "Join session" on. The session route MUST enforce it
@@ -45,8 +54,11 @@ export function BookingSessionPage({
   VideoStage?: typeof BookingVideoStage;
 }): React.ReactElement {
   const api = useApi();
+  const { copy } = useRouteMessages();
+  const messages = copy.bookingManagement;
   const [phase, setPhase] = React.useState<SessionPhase>({ kind: "loading" });
   const [acting, setActing] = React.useState(false);
+  const [attendanceHealth, setAttendanceHealth] = React.useState<AttendanceReportingHealth>("healthy");
 
   const toBookings = React.useCallback(() => navigate("/bookings"), []);
 
@@ -56,18 +68,18 @@ export function BookingSessionPage({
     setActing(true);
     try {
       await api.bookings.completeBooking(bookingId);
-      toast.success("Session completed — the host payout will settle.");
+      toast.success(messages.route.completedToast);
       toBookings();
-    } catch (e) { toast.error(e instanceof ApiError ? e.message : "Could not complete the session."); setActing(false); }
-  }, [api, bookingId, toBookings]);
+    } catch (e) { toast.error(e instanceof ApiError ? e.message : messages.route.completeError); setActing(false); }
+  }, [api, bookingId, messages.route.completeError, messages.route.completedToast, toBookings]);
   const reportNoShow = React.useCallback(async () => {
     setActing(true);
     try {
       await api.bookings.noShowBooking(bookingId);
-      toast.success("No-show reported.");
+      toast.success(messages.route.reportedToast);
       toBookings();
-    } catch (e) { toast.error(e instanceof ApiError ? e.message : "Could not report a no-show."); setActing(false); }
-  }, [api, bookingId, toBookings]);
+    } catch (e) { toast.error(e instanceof ApiError ? e.message : messages.route.reportError); setActing(false); }
+  }, [api, bookingId, messages.route.reportError, messages.route.reportedToast, toBookings]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -77,7 +89,7 @@ export function BookingSessionPage({
         if (cancelled) return;
 
         if (booking.status !== "confirmed" && booking.status !== "live") {
-          setPhase({ kind: "error", message: `Session is not active (status: ${booking.status}).` });
+          setPhase({ kind: "error", message: messages.route.notActive });
           return;
         }
 
@@ -89,8 +101,8 @@ export function BookingSessionPage({
           setPhase({
             kind: "not_available",
             message: Date.now() < start
-              ? "This session isn't available yet. You can join from 5 minutes before the scheduled start time."
-              : "This session's scheduled time has passed.",
+              ? messages.route.notYet
+              : messages.route.passed,
           });
           return;
         }
@@ -111,12 +123,12 @@ export function BookingSessionPage({
         if (cancelled) return;
         setPhase({
           kind: "error",
-          message: e instanceof ApiError ? e.message : "Could not join session.",
+          message: e instanceof ApiError ? e.message : messages.route.joinError,
         });
       }
     })();
     return () => { cancelled = true; };
-  }, [api, bookingId]);
+  }, [api, bookingId, messages.route.joinError, messages.route.notActive, messages.route.notYet, messages.route.passed]);
 
   // Presence heartbeat while attached to the live session. It is identity-bound to this session_id and
   // MUST stop the moment the viewer leaves: on visibility loss (tab hidden), on navigation/unmount, and
@@ -127,18 +139,25 @@ export function BookingSessionPage({
   React.useEffect(() => {
     if (!readySessionId) return;
     let timer: ReturnType<typeof setInterval> | null = null;
-    const beat = () => {
+    let active = true;
+    let heartbeatState = initialBookingHeartbeatState(Date.now());
+    const beat = async () => {
       if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
-      void api.bookings
-        .heartbeatBookingSession(bookingId, { session_id: readySessionId })
-        .catch(() => { /* transient — the next tick retries; liveness is best-effort */ });
+      try {
+        await api.bookings.heartbeatBookingSession(bookingId, { session_id: readySessionId });
+        heartbeatState = bookingHeartbeatSucceeded(heartbeatState, Date.now());
+      } catch {
+        heartbeatState = bookingHeartbeatFailed(heartbeatState);
+      }
+      if (active) setAttendanceHealth(bookingHeartbeatHealth(heartbeatState, Date.now()));
     };
-    const start = () => { if (!timer) { beat(); timer = setInterval(beat, HEARTBEAT_INTERVAL_MS); } };
+    const start = () => { if (!timer) { void beat(); timer = setInterval(() => void beat(), BOOKING_HEARTBEAT_INTERVAL_MS); } };
     const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
     const onVisibility = () => { if (document.visibilityState === "hidden") stop(); else start(); };
     document.addEventListener("visibilitychange", onVisibility);
     if (typeof document === "undefined" || document.visibilityState !== "hidden") start();
     return () => {
+      active = false;
       stop();
       document.removeEventListener("visibilitychange", onVisibility);
     };
@@ -147,10 +166,10 @@ export function BookingSessionPage({
   return (
     <StandardRoutePage size="rail">
       <div className="mx-auto max-w-2xl space-y-6 p-6">
-        <Type as="h1" variant="h2">Session</Type>
+        <Type as="h1" variant="h2">{messages.route.sessionTitle}</Type>
 
         {phase.kind === "loading" && (
-          <Type variant="body" className="text-muted-foreground">Connecting…</Type>
+          <Type variant="body" className="text-muted-foreground">{messages.route.connecting}</Type>
         )}
 
         {phase.kind === "error" && (
@@ -160,7 +179,7 @@ export function BookingSessionPage({
               variant="outline"
               onClick={toBookings}
             >
-              Back to bookings
+              {messages.route.back}
             </Button>
           </div>
         )}
@@ -168,7 +187,7 @@ export function BookingSessionPage({
         {phase.kind === "not_available" && (
           <div className="space-y-4">
             <Type variant="body" className="text-muted-foreground">{phase.message}</Type>
-            <Button variant="outline" onClick={toBookings}>Back to bookings</Button>
+            <Button variant="outline" onClick={toBookings}>{messages.route.back}</Button>
           </div>
         )}
 
@@ -178,43 +197,26 @@ export function BookingSessionPage({
               <VideoStage agora={phase.session.agora} onLeave={toBookings} />
             ) : (
               <div className="rounded-lg border border-border p-6 text-center space-y-2">
-                <Type variant="label">Session ready</Type>
+                <Type variant="label">{messages.route.videoUnavailableTitle}</Type>
                 <Type variant="caption" className="text-muted-foreground">
                   Video session ({phase.session.party}) · channel {phase.session.channel}
                 </Type>
                 <Type variant="caption" className="text-muted-foreground">
-                  Video is not configured for this environment.
+                  {messages.route.videoUnavailable}
                 </Type>
               </div>
             )}
 
-            {/* End-of-session settlement controls — gated by role, live status, AND the same schedule
-                timing the server enforces (complete from start; no-show after the grace period). */}
-            {phase.booking.status === "live" && (() => {
-              const showComplete = phase.booking.viewer_role === "host" && controlAvail.canComplete;
-              const showNoShow = controlAvail.canReportNoShow;
-              if (!showComplete && !showNoShow) {
-                return (
-                  <Type variant="caption" className="text-muted-foreground">
-                    Session controls become available at the scheduled start time.
-                  </Type>
-                );
-              }
-              return (
-                <div className="flex flex-wrap gap-2">
-                  {showComplete && (
-                    <Button onClick={() => void completeSession()} loading={acting}>End &amp; complete session</Button>
-                  )}
-                  {showNoShow && (
-                    <Button variant="outline" disabled={acting} onClick={() => void reportNoShow()}>
-                      {phase.booking.viewer_role === "host" ? "Report booker no-show" : "Report host no-show"}
-                    </Button>
-                  )}
-                </div>
-              );
-            })()}
-
-            <Button variant="outline" onClick={toBookings}>Back to bookings</Button>
+            <BookingSessionControls
+              attendanceHealth={attendanceHealth}
+              copy={messages.session}
+              counterpartyName={bookingCounterpartyLabel(phase.booking)}
+              onComplete={() => void completeSession()}
+              onLeave={toBookings}
+              onReviewAttendance={() => void reportNoShow()}
+              state={acting ? "settling" : controlAvail.canComplete && controlAvail.canReportNoShow ? "ready-to-settle" : "in-session"}
+              viewerRole={phase.booking.viewer_role}
+            />
           </div>
         )}
       </div>

@@ -148,7 +148,6 @@ function harness(opts: {
     now: () => timers.now,
     onError: (error) => errors.push(error),
     onServerEvent: () => {},
-    playbackClock: () => 0,
     postId: "post-1",
     setTimer: timers.setTimer,
     socketConnectTimeoutMs: Number.POSITIVE_INFINITY,

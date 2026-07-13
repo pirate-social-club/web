@@ -115,12 +115,14 @@ function GateRow({ item, mode }: { item: CommunitySidebarGateItem; mode?: "all" 
 
 export interface CommunitySidebarGatesProps {
   className?: string;
+  expressionLabel?: string | null;
   items: CommunitySidebarGateItem[];
   mode?: "all" | "any";
 }
 
 export function CommunitySidebarGates({
   className,
+  expressionLabel,
   items,
   mode,
 }: CommunitySidebarGatesProps) {
@@ -129,12 +131,12 @@ export function CommunitySidebarGates({
 
   if (items.length === 0) return null;
 
-  const subtext =
-    items.length === 1
+  const subtext = expressionLabel
+    ?? (items.length === 1
       ? copy.joinSingleNote
       : mode === "any"
         ? copy.joinAnyNote
-        : copy.joinAllNote;
+        : copy.joinAllNote);
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>

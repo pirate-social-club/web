@@ -79,4 +79,21 @@ describe("openExternalHref", () => {
 
     expect(opened).toEqual(["https://example.test/verify"]);
   });
+
+  test("rejects executable URL schemes", () => {
+    const { window } = installDomGlobals();
+    const opened: string[] = [];
+
+    Object.defineProperty(window, "open", {
+      configurable: true,
+      value: (url: string) => {
+        opened.push(url);
+        return {};
+      },
+    });
+
+    openExternalHref("javascript:alert(document.domain)");
+
+    expect(opened).toEqual([]);
+  });
 });

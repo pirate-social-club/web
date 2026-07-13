@@ -103,7 +103,7 @@ const TRANSFER_ABI = [{
 const CDR_READ_GAS_MARGIN_WEI = parseEther("0.01");
 const DEFAULT_API_BASE_URL = "https://api-staging.pirate.sc";
 // Reuse a Story-proven staging community from a green E2E run. Creating a fresh
-// community per release consumes a Turso database and staging is capped.
+// community per release consumes isolated database storage and staging capacity is finite.
 const DEFAULT_STORY_E2E_COMMUNITY_ID = "cmt_98abfdc5ebe24d379ab41b229fda6798";
 const DEFAULT_STORY_E2E_HOST_SUBJECT = "story-e2e-author-1780678999641-65820e";
 

@@ -30,6 +30,8 @@ The Playwright suite lives in [`e2e/`](./e2e). The default project is determinis
 
 `bun run test:e2e:live-staging` is the Tier 3 staging integration check. It exchanges a real staging JWT session, opens the deployed browser app, creates a real post, and adds a real comment in the seeded staging smoke community. CI reads its JWT values from GitHub Actions secrets; `AUTH_UPSTREAM_JWT_SHARED_SECRET` should be copied from Infisical staging `/services/api` whenever that secret is rotated.
 
+The required multipart release gate uses the repository variables `E2E_MULTIPART_GATE_SUBJECT` and `E2E_MULTIPART_GATE_COMMUNITY_ID` to select a permanent staging owner/community fixture. Keep the pair aligned: the subject must own or otherwise have write access to the configured community. The gate fails rather than falling back to a skip when the fixture is unavailable.
+
 `bun run test:zkpassport:staging` is the ZKPassport staging smoke harness. Run it with staging `/services/api` secrets injected, for example:
 
 ```bash

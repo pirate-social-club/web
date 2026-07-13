@@ -3,7 +3,7 @@ import type { KaraokeScoringState } from "./scoring/karaoke-scoring-controller";
 
 export const RATING_PERFECT_THRESHOLD = 0.9;
 export const RATING_GREAT_THRESHOLD = 0.75;
-export const RATING_GOOD_THRESHOLD = 0.5;
+const RATING_GOOD_THRESHOLD = 0.5;
 export const COMBO_THRESHOLD = RATING_GOOD_THRESHOLD;
 
 export type RatingTier = "perfect" | "great" | "good" | "miss";
@@ -15,14 +15,14 @@ export function ratingTierForScore(score: number): RatingTier {
   return "miss";
 }
 
-export const RATING_LABEL: Record<RatingTier, string> = {
+const RATING_LABEL: Record<RatingTier, string> = {
   perfect: "Perfect",
   great: "Great",
   good: "Good",
   miss: "Miss",
 };
 
-export const RATING_TONE: Record<RatingTier, KaraokeLineRating["tone"]> = {
+const RATING_TONE: Record<RatingTier, KaraokeLineRating["tone"]> = {
   perfect: "success",
   great: "info",
   good: "warning",

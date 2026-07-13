@@ -39,6 +39,7 @@ type PrivyAuthBridgeComponent = React.ComponentType<{
   onModalClosed?: () => void;
   onReadyChange?: (ready: boolean) => void;
   onReconnectEthereumWalletReady?: (connect: (() => void) | null) => void;
+  onPrivyAccessTokenGetterChange?: (getter: (() => Promise<string | null>) | null) => void;
   onSponsoredIntentSenderChange?: (sender: PirateSponsoredIntentSender | null) => void;
 }>;
 type PrivyWalletBridgeComponent = React.ComponentType<{
@@ -51,6 +52,7 @@ type PrivyRuntimeState = {
   connect: (() => void) | null;
   connectedWallets: PirateConnectedEvmWallet[];
   configured: boolean;
+  getPrivyAccessToken: (() => Promise<string | null>) | null;
   loadError: string | null;
   loaded: boolean;
   privyAuthenticated: boolean;
@@ -72,6 +74,7 @@ const PrivyRuntimeContext = React.createContext<PrivyRuntimeState>({
   connect: null,
   connectedWallets: [],
   configured: false,
+  getPrivyAccessToken: null,
   loadError: null,
   loaded: false,
   privyAuthenticated: false,
@@ -140,6 +143,7 @@ export function PirateAuthProvider({
   const [connectMountRequested, setConnectMountRequested] = React.useState(false);
   const [loadedConnect, setLoadedConnect] = React.useState<(() => void) | null>(null);
   const [loadedReconnectEthereumWallet, setLoadedReconnectEthereumWallet] = React.useState<(() => void) | null>(null);
+  const [loadedPrivyAccessTokenGetter, setLoadedPrivyAccessTokenGetter] = React.useState<(() => Promise<string | null>) | null>(null);
   const [loadedSponsoredIntentSender, setLoadedSponsoredIntentSender] =
     React.useState<((request: PirateSponsoredIntentRequest) => Promise<`0x${string}`>) | null>(null);
   const [ProviderComponent, setProviderComponent] = React.useState<PrivyProviderComponent | null>(null);
@@ -390,6 +394,10 @@ export function PirateAuthProvider({
     setLoadedSponsoredIntentSender((current: PirateSponsoredIntentSender | null) => current === next ? current : next);
   }, []);
 
+  const handlePrivyAccessTokenGetterChange = React.useCallback((next: (() => Promise<string | null>) | null) => {
+    setLoadedPrivyAccessTokenGetter(() => next);
+  }, []);
+
   React.useEffect(() => {
     if (!pendingConnect || !loadedConnect) {
       return;
@@ -413,6 +421,7 @@ export function PirateAuthProvider({
     connect: appId ? connect : null,
     connectedWallets,
     configured: !!appId,
+    getPrivyAccessToken: loadedPrivyAccessTokenGetter,
     loadError,
     loaded: !appId || !shouldLoadPrivy || !!loadError || (!!ProviderComponent && !!BridgeComponent && privyReady && !busy),
     privyAuthenticated,
@@ -429,6 +438,7 @@ export function PirateAuthProvider({
     busy,
     connect,
     connectedWallets,
+    loadedPrivyAccessTokenGetter,
     loadedReconnectEthereumWallet,
     loadedSponsoredIntentSender,
     loadError,
@@ -465,6 +475,7 @@ export function PirateAuthProvider({
             onBusyChange={setBusy}
             onConnectReady={handleConnectReady}
             onModalClosed={unloadPrivy}
+            onPrivyAccessTokenGetterChange={handlePrivyAccessTokenGetterChange}
             onReadyChange={setPrivyReady}
             onReconnectEthereumWalletReady={handleReconnectEthereumWalletReady}
             onSponsoredIntentSenderChange={handleSponsoredIntentSenderChange}

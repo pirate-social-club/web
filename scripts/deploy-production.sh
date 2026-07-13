@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/scripts/lib/release-source.sh"
 if [[ -d "$ROOT_DIR/web" && -f "$ROOT_DIR/web/package.json" ]]; then
   WEB_DIR="$ROOT_DIR/web"
 else
@@ -115,33 +116,6 @@ require_file() {
   fi
 }
 
-repo_status() {
-  git -C "$1" status --short
-}
-
-repo_ref() {
-  git -C "$1" rev-parse --abbrev-ref HEAD
-}
-
-repo_sha() {
-  git -C "$1" rev-parse --short HEAD
-}
-
-require_clean_main() {
-  local dir="$1"
-  local name="$2"
-  local branch
-  branch="$(repo_ref "$dir")"
-  if [[ "$branch" != "main" ]]; then
-    printf '%s must be on main, got %s\n' "$name" "$branch" >&2
-    exit 1
-  fi
-  if [[ -n "$(repo_status "$dir")" ]]; then
-    printf '%s worktree is dirty:\n%s\n' "$name" "$(repo_status "$dir")" >&2
-    exit 1
-  fi
-}
-
 check_api_production_secrets() {
   local secrets_json
   secrets_json="$(cd "$API_DIR" && "$API_WRANGLER" secret list --env production --format json)"
@@ -180,8 +154,11 @@ API_REF="$(repo_ref "$API_DIR")"
 BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 if [[ "$HOTFIX" != "1" ]]; then
-  require_clean_main "$WEB_DIR" "web"
-  require_clean_main "$API_DIR" "api"
+  require_clean_release_source "$WEB_DIR" "web"
+  require_clean_release_source "$API_DIR" "api" "${API_RELEASE_SHA:-}"
+  if [[ -n "${API_RELEASE_SHA:-}" ]]; then
+    API_REF="pinned/$API_RELEASE_SHA"
+  fi
 else
   SAFE_SUFFIX="$(printf '%s' "$HOTFIX_REASON" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//' | cut -c1-40)"
   WEB_SHA="${WEB_SHA}-hotfix-${SAFE_SUFFIX:-manual}"

@@ -455,8 +455,15 @@ async function uploadSongArtifact(input: {
   filename: string;
   mimeType: string;
   session: Session;
-}): Promise<{ id: string; storage_ref: string }> {
-  const upload = await api<{ id: string; storage_ref: string }>({
+}): Promise<{ id: string }> {
+  const upload = await api<{
+    id: string;
+    upload_session?: {
+      id: string;
+      total_parts: number;
+      upload_id: string;
+    } | null;
+  }>({
     apiBase: input.apiBase,
     method: "POST",
     path: `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads`,
@@ -466,17 +473,47 @@ async function uploadSongArtifact(input: {
       filename: input.filename,
       mime_type: input.mimeType,
       size_bytes: input.bytes.byteLength,
+      upload_mode: "direct_multipart",
     },
   });
+
+  const uploadSession = upload.upload_session;
+  if (!uploadSession?.id || !uploadSession.upload_id || uploadSession.total_parts !== 1) {
+    throw new Error("primary audio direct multipart session is invalid");
+  }
+  const signedPart = await api<{ part_number: number; url: string }>({
+    apiBase: input.apiBase,
+    method: "GET",
+    path: `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/sessions/${encodeURIComponent(uploadSession.id)}/parts/1/signed-url`,
+    token: input.session.accessToken,
+  });
+  if (signedPart.part_number !== 1 || !signedPart.url) {
+    throw new Error("primary audio multipart signed URL is invalid");
+  }
+
+  const partResponse = await fetch(signedPart.url, {
+    body: toRequestArrayBuffer(input.bytes),
+    headers: { "content-type": input.mimeType },
+    method: "PUT",
+  });
+  if (!partResponse.ok) {
+    throw new Error(`PUT signed primary audio part failed with ${partResponse.status}: ${await partResponse.text()}`);
+  }
+  const etag = partResponse.headers.get("etag");
+  if (!etag) throw new Error("primary audio multipart part is missing an ETag");
+
   await api({
     apiBase: input.apiBase,
     method: "POST",
-    path: `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/content`,
+    path: `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/sessions/${encodeURIComponent(uploadSession.id)}/complete`,
     token: input.session.accessToken,
-    bytes: input.bytes,
-    contentType: input.mimeType,
+    body: {
+      content_hash: `0x${sha256Hex(input.bytes)}`,
+      parts: [{ etag, part_number: 1 }],
+      upload_id: uploadSession.upload_id,
+    },
   });
-  return upload;
+  return { id: upload.id };
 }
 
 async function createSongBundle(input: {

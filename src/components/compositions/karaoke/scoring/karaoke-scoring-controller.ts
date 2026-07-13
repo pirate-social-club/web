@@ -138,9 +138,9 @@ function statusForPhase(phase: KaraokeClientPhase, hasBeenLive: boolean): Karaok
       return "active";
     case "expired":
     case "capture_failed":
+    case "aborted":
       return "error";
     case "closed":
-    case "aborted":
       return "ended";
     case "idle":
     default:

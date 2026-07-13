@@ -1597,7 +1597,8 @@ test.describe("live staging integration", () => {
     await expectNoBrowserError(page);
   });
 
-  test("creates a real post and comment with a real staging session", async ({ page }) => {
+  test("creates a real post and comment with a real staging session", async ({ page }, testInfo) => {
+    testInfo.setTimeout(90_000);
     let session = await createLiveSession();
     await completeSelfVerification(session);
     session = await createLiveSession();
@@ -1615,6 +1616,8 @@ test.describe("live staging integration", () => {
     await page.getByPlaceholder(/body text/i).fill(body);
     await page.getByRole("button", { name: /^continue$/i }).click();
     await page.getByRole("button", { name: /^continue$/i }).click();
+    await page.getByRole("button", { name: /^(publish|post)$/i }).click();
+    await expect(page.getByRole("heading", { name: "Post preview" })).toBeVisible();
     await page.getByRole("button", { name: /^(publish|post)$/i }).click();
 
     await expect(page).toHaveURL(/\/p\/[^/?#]+/u, { timeout: 30_000 });

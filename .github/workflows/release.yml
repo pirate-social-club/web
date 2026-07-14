@@ -415,18 +415,30 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  # Deterministic commerce failures remain release-blocking. This runs in
-  # parallel with the owned-infrastructure gate, so it adds only its own critical
-  # path latency while retaining the projection + verification + settlement proof.
+  # Story commerce canary — NON-BLOCKING by deliberate decision.
+  #
+  # This drives a real settlement on the Story/Aeneid TESTNET. Its failures are
+  # dominated by third-party availability (RPC, DKG servicers, operator funding),
+  # not by our defects: on 2026-07-13 it failed 11 of 17 releases and single-
+  # handedly kept every web deploy off production for a full day.
+  #
+  # A third-party chain must never be a prerequisite for shipping the web app.
+  # Commerce regressions are caught by the contract/unit suites we own; this job
+  # remains a loud, alerted, artifact-producing signal that cannot stall a deploy.
+  # If you are about to re-add this to `production.needs`, read
+  # docs/release-pipeline.md first.
   commerce-gate:
-    name: Story commerce gate
+    name: Story commerce canary (non-blocking)
     needs: [release-inputs, staging]
     if: github.event_name != 'pull_request'
+    continue-on-error: true
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 40
     permissions:
       contents: read
       id-token: write
+    outputs:
+      story: ${{ steps.story.outcome }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -469,6 +481,8 @@ jobs:
           SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Story derivative royalty E2E staging
+        id: story
+        continue-on-error: true
         timeout-minutes: 30
         working-directory: web
         env:
@@ -490,10 +504,10 @@ jobs:
           retention-days: 14
 
   # Guard against an older run overwriting a newer production deployment. Checked
-  # as late as possible — after both gates, immediately before deploying.
+  # as late as possible — after the blocking gate, immediately before deploying.
   production-freshness:
     name: Check release freshness
-    needs: [release-gate, commerce-gate]
+    needs: [release-gate]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: blacksmith-2vcpu-ubuntu-2404
     permissions:
@@ -525,7 +539,7 @@ jobs:
 
   production:
     name: Deploy production
-    needs: [release-inputs, release-gate, commerce-gate, production-freshness]
+    needs: [release-inputs, release-gate, production-freshness]
     # Only deploy production on a push to main. This keeps workflow_dispatch on
     # any branch (e.g. release/* validation) staging-only, so a manual dispatch
     # can never push an unmerged branch to production.
@@ -731,10 +745,10 @@ jobs:
   # canary cannot be ignored just because releases stay green.
   canary-alert:
     name: Report canary failures
-    needs: canaries
+    needs: [canaries, commerce-gate]
     if: >-
       always() && github.ref == 'refs/heads/main' && github.event_name == 'push'
-      && needs.canaries.result != 'skipped' && needs.canaries.result != 'cancelled'
+      && !(needs.canaries.result == 'skipped' && needs['commerce-gate'].result == 'skipped')
     runs-on: blacksmith-2vcpu-ubuntu-2404
     permissions:
       contents: read
@@ -744,20 +758,30 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         env:
           LIVE_BROWSER_OUTCOME: ${{ needs.canaries.outputs.live_browser }}
+          STORY_OUTCOME: ${{ needs['commerce-gate'].outputs.story }}
         with:
           script: |
             const label = "canary-failure";
-            const liveBrowser = process.env.LIVE_BROWSER_OUTCOME || "";
-            // The canary job died before the step reported. Stay silent rather
-            // than raise a canary alarm for what is really a job-infrastructure fault.
-            if (!liveBrowser) {
-              core.warning("Canary job reported no step outcomes; skipping canary issue update.");
+            // A step that never executed (its job died at checkout/install, or timed
+            // out) reports "skipped" or nothing at all. That is a fault in the canary
+            // job's own plumbing, not a signal about the system under test — reporting
+            // it as "the Story canary is failing" would be a false alarm.
+            const ran = (outcome) => outcome && outcome !== "skipped";
+            const canaries = [
+              { name: "Story commerce settlement", outcome: process.env.STORY_OUTCOME || "" },
+              { name: "Live browser journeys", outcome: process.env.LIVE_BROWSER_OUTCOME || "" },
+            ];
+            const executed = canaries.filter((c) => ran(c.outcome));
+            if (executed.length === 0) {
+              core.warning(
+                "No canary step executed (the canary jobs themselves failed). Leaving the tracking " +
+                "issue untouched; the failed job is the signal."
+              );
               return;
             }
-            const describe = (outcome) => outcome || "did not complete";
-            const failed = [
-              liveBrowser !== "success" ? `Live browser journeys: **${describe(liveBrowser)}**` : null,
-            ].filter(Boolean);
+            const failed = executed
+              .filter((c) => c.outcome !== "success")
+              .map((c) => `${c.name}: **${c.outcome}**`);
 
             const { data: open } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
@@ -770,7 +794,9 @@ jobs:
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 
             if (failed.length === 0) {
-              if (existing) {
+              // Only declare recovery when every canary actually ran and passed. A
+              // partial run that happens to be green is not evidence the others are.
+              if (existing && executed.length === canaries.length) {
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -794,7 +820,8 @@ jobs:
               "",
               `Run: ${runUrl}`,
               "",
-              "Canaries are non-blocking: production still deployed. Investigate from the uploaded artifacts, not by pushing to main.",
+              "Canaries never block production — this release was promoted or held on the " +
+              "release gate alone. Investigate from the uploaded artifacts, not by pushing to main.",
             ].join("\n");
 
             if (existing) {

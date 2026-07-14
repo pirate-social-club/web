@@ -1726,13 +1726,16 @@ test.describe("live staging integration", () => {
     testInfo.setTimeout(240_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const community = await discoverSeedCommunity();
-    const seedOwnerHeaders = seedOwnerAdminHeaders(community);
-    const session = seedOwnerHeaders ? null : await createLiveSession(`song-preview-smoke-${runId}`);
-    if (session) {
-      await completeSelfVerification(session);
+    const session = await createLiveSession(
+      storySmokeHostSubject,
+      walletAddressForSubject(storySmokeHostSubject),
+    );
+    await completeSelfVerification(session);
+    const community = await discoverWritableSeedCommunity(session, storySmokeCommunityId);
+    if (!community) {
+      throw new Error(`Stable staging fixture ${storySmokeCommunityId} is not writable by its configured owner`);
     }
-    const authHeaders = seedOwnerHeaders ?? { authorization: `Bearer ${session?.accessToken ?? ""}` };
+    const authHeaders = { authorization: `Bearer ${session.accessToken}` };
     const communityId = community.id;
     const title = `Paid preview song smoke ${runId}`;
     const audio = createSineWaveWav();

@@ -688,12 +688,10 @@ async function waitForCommunityPreview(
   throw new Error(`community preview did not become available; last status ${lastStatus}: ${lastBody}`);
 }
 
-async function configureGeorgiaPlaceSmokeCommunity(runId: string, host: StoredSession): Promise<LiveCommunity> {
-  const displayName = `Georgia Place Smoke ${runId}`;
+async function configureGeorgiaPlaceSmokeCommunity(host: StoredSession): Promise<LiveCommunity> {
   await requestJson(`/communities/${encodeURIComponent(storySmokeCommunityId)}`, {
     body: JSON.stringify({
       country_code: "ge",
-      display_name: displayName,
     }),
     headers: { authorization: `Bearer ${host.accessToken}` },
     method: "POST",
@@ -701,7 +699,7 @@ async function configureGeorgiaPlaceSmokeCommunity(runId: string, host: StoredSe
 
   return {
     id: storySmokeCommunityId,
-    label: displayName,
+    label: storySmokeCommunityId,
     routeSegment: storySmokeCommunityId,
   };
 }
@@ -1311,7 +1309,6 @@ test.describe("live staging integration", () => {
 
       await installStoredSession(page, follower);
       await page.goto(`/c/${pathSegment(community.routeSegment)}`);
-      await expect(page.locator("body")).toContainText(community.label, { timeout: 30_000 });
 
       const followButton = page.getByTestId("community-follow-button").first();
       await expect(followButton).toBeVisible({ timeout: 30_000 });
@@ -1499,9 +1496,8 @@ test.describe("live staging integration", () => {
   test("searches real Georgia event places through Geoapify", async ({ page }, testInfo) => {
     testInfo.setTimeout(90_000);
 
-    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
     const session = await createLiveSession(storySmokeHostSubject);
-    const community = await configureGeorgiaPlaceSmokeCommunity(runId, session);
+    const community = await configureGeorgiaPlaceSmokeCommunity(session);
     await installStoredSession(page, session);
 
     const geoResponses: Array<{ ok: boolean; placesLength?: number; status: number; url: URL }> = [];

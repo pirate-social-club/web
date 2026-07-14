@@ -34,8 +34,8 @@ const multipartGateVideoBytes = Number.parseInt(
   process.env.E2E_MULTIPART_GATE_VIDEO_BYTES ?? String(1 * 1024 * 1024),
   10,
 );
-const multipartGateSubject = process.env.E2E_MULTIPART_GATE_SUBJECT?.trim() || liveSubject;
-const multipartGateCommunityId = process.env.E2E_MULTIPART_GATE_COMMUNITY_ID?.trim() || null;
+const multipartGateSubject = process.env.E2E_MULTIPART_GATE_SUBJECT?.trim() || storySmokeHostSubject;
+const multipartGateCommunityId = process.env.E2E_MULTIPART_GATE_COMMUNITY_ID?.trim() || storySmokeCommunityId;
 const require = createRequire(import.meta.url);
 const agoraSdkPath = require.resolve("agora-rtc-sdk-ng");
 const liveSecretsPresent = Boolean(

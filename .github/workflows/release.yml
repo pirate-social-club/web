@@ -619,6 +619,7 @@ jobs:
         working-directory: core
         run: npm audit --audit-level=high
       - name: Fetch production control-plane migration secret
+        id: production_migration_secret
         continue-on-error: true
         working-directory: core
         env:
@@ -628,11 +629,23 @@ jobs:
           INFISICAL_SECRET_PATH: /services/control-plane
           SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
         run: scripts/ci/fetch-infisical-secrets.sh
+      - name: Warn when production migrations are unavailable
+        if: steps.production_migration_secret.outcome != 'success'
+        shell: bash
+        run: |
+          echo "::warning title=Production migrations skipped::Infisical OIDC failed for identity ec0ad659-af1c-4009-a845-9e6092cc062b at prod:/services/control-plane. Control-plane and bookings migrations will be skipped; production deployment remains temporarily non-blocking."
+          {
+            echo "## ⚠️ Production migrations skipped"
+            echo ""
+            echo 'Infisical OIDC failed for identity `ec0ad659-af1c-4009-a845-9e6092cc062b` at `prod:/services/control-plane`.'
+            echo ""
+            echo "Both control-plane and bookings migrations are unavailable. Production deployment remains temporarily non-blocking until the dedicated Web production migration identity passes its read-only doctor."
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Apply production control-plane migrations
         working-directory: core
         run: |
           if [ -z "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}" ]; then
-            echo "::notice::Skipping production control-plane migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable."
+            echo "::warning::Skipping production control-plane migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable."
             exit 0
           fi
           export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
@@ -644,7 +657,7 @@ jobs:
         working-directory: core
         run: |
           if [ -z "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}" ]; then
-            echo "::notice::Skipping production bookings migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable."
+            echo "::warning::Skipping production bookings migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable."
             exit 0
           fi
           export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"

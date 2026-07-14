@@ -1305,7 +1305,6 @@ test.describe("live staging integration", () => {
 
       const previewBefore = await waitForCommunityPreview(publicCommunityId, followerHeaders);
       expect(previewBefore.viewer_following).toBe(false);
-      const followerCountBefore = previewBefore.follower_count ?? 0;
 
       await installStoredSession(page, follower);
       await page.goto(`/c/${pathSegment(community.routeSegment)}`);
@@ -1336,7 +1335,11 @@ test.describe("live staging integration", () => {
         community: publicCommunityId,
         following: true,
       });
-      expect(followBody.follower_count).toBeGreaterThanOrEqual(followerCountBefore + 1);
+      // Other release/canary runs share this stable staging community and may
+      // follow or unfollow it between the preview and mutation responses. The
+      // absolute delta is therefore racy; the user-specific state assertions
+      // below are the persistence contract this gate owns.
+      expect(followBody.follower_count).toBeGreaterThanOrEqual(1);
       expect("community_id" in followBody).toBe(false);
       expect(followBody.community).toMatch(/^com_cmt_/u);
 

@@ -26,6 +26,19 @@ export const INVENTORY_MATCH_KEYS = [
 export const INVENTORY_CATEGORIES = ["trading_card", "watch"] as const;
 export const MAX_INVENTORY_MATCH_VALUES_PER_KEY = 10;
 
+export type InventoryAssetMatchValidationError = {
+  code:
+    | "inventoryAttributeFilterRequired"
+    | "inventoryAttributeValues"
+    | "inventoryCardIdentityRequired"
+    | "inventoryCollectionRequired"
+    | "inventoryCollectionTypeUnsupported"
+    | "inventoryMatchRequired"
+    | "inventoryUnsupportedAttribute"
+    | "inventoryWatchIdentityRequired";
+  params?: Record<string, string>;
+};
+
 /** The API only accepts inventory gates pointing at an allowlisted Courtyard registry. */
 export function isAllowedCourtyardRegistry(chainNamespace: string, contractAddress: string): boolean {
   const address = contractAddress.trim().toLowerCase();
@@ -87,42 +100,42 @@ function hasMatchValue(match: Record<string, unknown>, key: string): boolean {
  * for cards or brand/model for watches. A grade-only card filter or a reference-only watch filter
  * looks complete in the editor but is rejected server-side.
  */
-export function validateInventoryAssetMatch(match: unknown): string | null {
+export function validateInventoryAssetMatch(match: unknown): InventoryAssetMatchValidationError | null {
   if (!match || typeof match !== "object" || Array.isArray(match)) {
-    return "Choose a collection and at least one attribute.";
+    return { code: "inventoryMatchRequired" };
   }
 
   const raw = match as Record<string, unknown>;
   const allowedKeys = new Set<string>(INVENTORY_MATCH_KEYS);
   const invalidKeys = Object.keys(raw).filter((key) => !allowedKeys.has(key));
   if (invalidKeys.length > 0) {
-    return `Unsupported attribute: ${invalidKeys.join(", ")}.`;
+    return { code: "inventoryUnsupportedAttribute", params: { attributes: invalidKeys.join(", ") } };
   }
 
   if (Object.values(raw).some((value) => !isValidInventoryMatchValue(value))) {
-    return `Each attribute needs 1 to ${MAX_INVENTORY_MATCH_VALUES_PER_KEY} unique values.`;
+    return { code: "inventoryAttributeValues", params: { max: String(MAX_INVENTORY_MATCH_VALUES_PER_KEY) } };
   }
 
   const categories = normalizeInventoryMatchValue(raw.category);
   if (!categories) {
-    return "Choose a collection.";
+    return { code: "inventoryCollectionRequired" };
   }
   if (categories.some((category) => !INVENTORY_CATEGORIES.some((allowed) => allowed === category))) {
-    return "Choose a supported collection type.";
+    return { code: "inventoryCollectionTypeUnsupported" };
   }
 
   const identifyingKeys = INVENTORY_MATCH_KEYS
     .filter((key) => key !== "category" && hasMatchValue(raw, key));
   if (identifyingKeys.length === 0) {
-    return "Add at least one attribute filter.";
+    return { code: "inventoryAttributeFilterRequired" };
   }
 
   if (categories.includes("trading_card") && !hasMatchValue(raw, "franchise") && !hasMatchValue(raw, "subject")) {
-    return "Trading card rules need a Franchise or Name filter.";
+    return { code: "inventoryCardIdentityRequired" };
   }
 
   if (categories.includes("watch") && !hasMatchValue(raw, "brand") && !hasMatchValue(raw, "model")) {
-    return "Watch rules need a Brand or Model filter.";
+    return { code: "inventoryWatchIdentityRequired" };
   }
 
   return null;

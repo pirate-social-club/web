@@ -25,7 +25,9 @@ jobs:
     name: Allocate and verify one staging community
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 10
-    environment: staging
+    # Do not attach a GitHub Environment here. Infisical's OIDC auth method is
+    # intentionally bound to repo:pirate-social-club/web:ref:refs/heads/main;
+    # an environment would replace that subject and make secret auth fail.
     permissions:
       contents: read
       id-token: write

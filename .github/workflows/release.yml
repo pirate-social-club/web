@@ -618,36 +618,28 @@ jobs:
       - name: Audit core dependencies
         working-directory: core
         run: npm audit --audit-level=high
+      - name: Require dedicated Web production migration identity
+        shell: bash
+        env:
+          INFISICAL_IDENTITY_ID: ${{ vars.INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID }}
+        run: |
+          if [[ -z "$INFISICAL_IDENTITY_ID" ]]; then
+            echo "::error::Set repository variable INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID to the doctor-verified github-web-prod-migration identity ID."
+            exit 1
+          fi
       - name: Fetch production control-plane migration secret
-        id: production_migration_secret
-        continue-on-error: true
         working-directory: core
         env:
-          INFISICAL_IDENTITY_ID: ec0ad659-af1c-4009-a845-9e6092cc062b
+          INFISICAL_IDENTITY_ID: ${{ vars.INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID }}
           INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
           INFISICAL_ENV: prod
           INFISICAL_SECRET_PATH: /services/control-plane
           SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
         run: scripts/ci/fetch-infisical-secrets.sh
-      - name: Warn when production migrations are unavailable
-        if: steps.production_migration_secret.outcome != 'success'
-        shell: bash
-        run: |
-          echo "::warning title=Production migrations skipped::Infisical OIDC failed for identity ec0ad659-af1c-4009-a845-9e6092cc062b at prod:/services/control-plane. Control-plane and bookings migrations will be skipped; production deployment remains temporarily non-blocking."
-          {
-            echo "## ⚠️ Production migrations skipped"
-            echo ""
-            echo 'Infisical OIDC failed for identity `ec0ad659-af1c-4009-a845-9e6092cc062b` at `prod:/services/control-plane`.'
-            echo ""
-            echo "Both control-plane and bookings migrations are unavailable. Production deployment remains temporarily non-blocking until the dedicated Web production migration identity passes its read-only doctor."
-          } >> "$GITHUB_STEP_SUMMARY"
       - name: Apply production control-plane migrations
         working-directory: core
         run: |
-          if [ -z "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}" ]; then
-            echo "::warning::Skipping production control-plane migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable."
-            exit 0
-          fi
+          test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
           export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
           bun scripts/control-plane/apply-postgres-migrations.ts \
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
@@ -656,10 +648,7 @@ jobs:
       - name: Apply production bookings migrations
         working-directory: core
         run: |
-          if [ -z "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}" ]; then
-            echo "::warning::Skipping production bookings migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable."
-            exit 0
-          fi
+          test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
           export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
           bun scripts/control-plane/apply-postgres-migrations.ts \
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \

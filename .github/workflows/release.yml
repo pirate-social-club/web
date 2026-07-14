@@ -69,64 +69,80 @@ jobs:
           script: |
             const apiSha = process.env.API_SHA;
             const coreSha = process.env.CORE_SHA;
-            const [apiRuns, coreRuns] = await Promise.all([
-              github.rest.actions.listWorkflowRuns({
-                owner: "pirate-social-club",
-                repo: "api",
-                workflow_id: "api-ci.yml",
-                head_sha: apiSha,
-                status: "completed",
-                per_page: 100,
-              }),
-              github.rest.actions.listWorkflowRuns({
-                owner: "pirate-social-club",
-                repo: "core",
-                workflow_id: "core-ci.yml",
-                head_sha: coreSha,
-                status: "completed",
-                per_page: 100,
-              }),
-            ]);
-            const successfulApiRun = apiRuns.data.workflow_runs.find((run) =>
-              run.head_sha === apiSha &&
-              run.head_branch === "main" &&
-              run.event === "push" &&
-              run.conclusion === "success"
+            const proof = await github.graphql(`
+              query($apiSha: GitObjectID!, $coreSha: GitObjectID!, $apiCoreRef: String!) {
+                api: repository(owner: "pirate-social-club", name: "api") {
+                  commit: object(oid: $apiSha) {
+                    ... on Commit {
+                      checkSuites(first: 100) {
+                        nodes {
+                          branch { name }
+                          conclusion
+                          workflowRun {
+                            event
+                            url
+                            workflow { name }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  coreRef: object(expression: $apiCoreRef) {
+                    ... on Blob { text }
+                  }
+                }
+                core: repository(owner: "pirate-social-club", name: "core") {
+                  commit: object(oid: $coreSha) {
+                    ... on Commit {
+                      checkSuites(first: 100) {
+                        nodes {
+                          branch { name }
+                          conclusion
+                          workflowRun {
+                            event
+                            url
+                            workflow { name }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `, {
+              apiSha,
+              coreSha,
+              apiCoreRef: `${apiSha}:.github/ci-refs/core.sha`,
+            });
+            const successfulApiRun = proof.api?.commit?.checkSuites?.nodes?.find((suite) =>
+              suite.branch?.name === "main" &&
+              suite.workflowRun?.workflow?.name === "api-ci" &&
+              suite.workflowRun.event === "push" &&
+              suite.conclusion === "SUCCESS"
             );
-            if (!successfulApiRun) {
+            if (!successfulApiRun?.workflowRun) {
               core.setFailed(
                 `Pinned API commit ${apiSha} has no successful completed api-ci main push run.`
               );
               return;
             }
-            const successfulCoreRun = coreRuns.data.workflow_runs.find((run) =>
-              run.head_sha === coreSha &&
-              run.head_branch === "main" &&
-              run.event === "push" &&
-              run.conclusion === "success"
+            const successfulCoreRun = proof.core?.commit?.checkSuites?.nodes?.find((suite) =>
+              suite.branch?.name === "main" &&
+              suite.workflowRun?.workflow?.name === "core-ci" &&
+              suite.workflowRun.event === "push" &&
+              suite.conclusion === "SUCCESS"
             );
-            if (!successfulCoreRun) {
+            if (!successfulCoreRun?.workflowRun) {
               core.setFailed(
                 `Pinned Core commit ${coreSha} has no successful completed core-ci main push run.`
               );
               return;
             }
 
-            let apiCoreRef;
-            try {
-              const { data } = await github.rest.repos.getContent({
-                owner: "pirate-social-club",
-                repo: "api",
-                path: ".github/ci-refs/core.sha",
-                ref: apiSha,
-              });
-              if (Array.isArray(data) || data.type !== "file" || !data.content) {
-                throw new Error("Core CI reference is not a readable file");
-              }
-              apiCoreRef = Buffer.from(data.content, "base64").toString("utf8").trim();
-            } catch (error) {
+            const apiCoreRef = proof.api?.coreRef?.text?.trim();
+            if (!apiCoreRef) {
               core.setFailed(
-                `Unable to read the Core CI reference from API ${apiSha}: ${error.message}`
+                `Unable to read the Core CI reference from API ${apiSha}.`
               );
               return;
             }
@@ -142,8 +158,8 @@ jobs:
               .addHeading("Pinned release inputs")
               .addTable([
                 [{ data: "Repository", header: true }, { data: "Commit", header: true }, { data: "CI proof", header: true }],
-                ["API", apiSha, `<a href="${successfulApiRun.html_url}">api-ci</a>`],
-                ["Core", coreSha, `<a href="${successfulCoreRun.html_url}">core-ci</a>`],
+                ["API", apiSha, `<a href="${successfulApiRun.workflowRun.url}">api-ci</a>`],
+                ["Core", coreSha, `<a href="${successfulCoreRun.workflowRun.url}">core-ci</a>`],
               ])
               .write();
 

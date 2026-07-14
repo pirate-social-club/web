@@ -38,6 +38,22 @@ If a run allocates a fixture but fails during verification, resume that exact fi
 `RESUME_STAGING_PROVISIONING_FIXTURE`, budget `0`, and the community/run ids from its artifact. Never
 spend a second binding merely to retry post-allocation assertions.
 
+## Production migration OIDC doctor
+
+Production migration access is verified by the manual, read-only
+`Production migration OIDC doctor` workflow. Dispatch it from `main`; any other ref is rejected so
+the GitHub OIDC `sub` claim remains `repo:pirate-social-club/web:ref:refs/heads/main`.
+
+Set repository variable `INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID` to the dedicated
+`github-web-prod-migration` identity. That identity may read only
+`prod:/services/control-plane/CONTROL_PLANE_MIGRATOR_DATABASE_URL`. The doctor checks out the exact
+Core SHA pinned by Web, fetches the credential through OIDC, and compares the production ledger to
+that pinned migration tree. It never applies migrations or deploys.
+
+Do not make the release migration steps fail closed until this doctor has passed end-to-end with
+the dedicated identity. Once release is fail closed, a doctor failure remains diagnostic evidence;
+it is never permission to restore silent migration skips.
+
 ## Why (read before you "fix" this)
 
 On **2026-07-13** the Story derivative-royalty E2E and the broad live-browser suite were hard prerequisites for `production`, inside one monolithic job with no concurrency group.

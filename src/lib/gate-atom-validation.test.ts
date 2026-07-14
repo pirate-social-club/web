@@ -44,19 +44,19 @@ describe("inventory match completeness (API parity)", () => {
   test("rejects a grade-only card filter", () => {
     // The old validator accepted this; the API does not.
     expect(validateGateAtom(inventoryGate({ category: "trading_card", grade: "PSA 9" })))
-      .toBe("Trading card rules need a Franchise or Name filter.");
+      .toEqual({ code: "inventoryCardIdentityRequired" });
   });
 
   test("rejects a reference-only watch filter", () => {
     expect(validateGateAtom(inventoryGate({ category: "watch", reference: "116610LN" })))
-      .toBe("Watch rules need a Brand or Model filter.");
+      .toEqual({ code: "inventoryWatchIdentityRequired" });
   });
 
   test("rejects a non-allowlisted contract", () => {
     expect(validateGateAtom(inventoryGate(
       { category: "trading_card", franchise: "Pokemon" },
       { contract_address: BAYC, chain_namespace: "eip155:1" },
-    ))).toBe("Choose a trusted collection.");
+    ))).toEqual({ code: "trustedCollectionRequired" });
   });
 
   test("rejects an out-of-range quantity", () => {
@@ -98,7 +98,7 @@ describe("other atoms (API parity)", () => {
       type: "erc721_holding",
       chain_namespace: "eip155:1",
       contract_address: "not-an-address",
-    } as GateAtom)).toBe("Enter a valid contract address.");
+    } as GateAtom)).toEqual({ code: "contractAddressInvalid" });
   });
 
   test("rejects an ERC-721 gate off Ethereum mainnet", () => {
@@ -207,4 +207,3 @@ describe("inventory value normalization (API parity)", () => {
     }))).toBe(false);
   });
 });
-

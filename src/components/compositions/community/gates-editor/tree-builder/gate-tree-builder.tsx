@@ -42,6 +42,7 @@ import {
 } from "@/components/primitives/select";
 import { Chip } from "@/components/primitives/chip";
 import { validateGateAtom } from "@/lib/gate-atom-validation";
+import type { GateAtomValidationError } from "@/lib/gate-atom-validation";
 import { interpolateMessage } from "@/lib/route-messages";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,10 @@ export type GateTreeBuilderProps = {
 };
 
 type TreeBuilderCopy = ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
+
+function validationMessage(copy: TreeBuilderCopy, error: GateAtomValidationError): string {
+  return interpolateMessage(copy.validation[error.code], error.params ?? {});
+}
 
 type RuleKind =
   | "altcha_pow"
@@ -284,7 +289,7 @@ function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
   // a Courtyard rule rendered read-only because no capability source is wired.
   const ruleError = validateGateAtom(rule.gate);
   const errorLine = ruleError ? (
-    <p className="text-base text-destructive" role="alert">{ruleError}</p>
+    <p className="text-base text-destructive" role="alert">{validationMessage(copy, ruleError)}</p>
   ) : null;
   const invalidCard = ruleError ? "border-destructive/50" : undefined;
 
@@ -293,7 +298,7 @@ function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
       <div className={cn(RULE_CARD, "flex flex-col gap-1", invalidCard)}>
         <div className="flex flex-wrap items-center gap-2">
           <div className={cn(RULE_KIND_COL, "min-w-0")}>
-            <div className="text-base font-medium">Courtyard collectible</div>
+            <div className="text-base font-medium">{copy.sources.courtyardCollectible}</div>
             <div className="truncate text-base text-muted-foreground">{courtyardInventorySummary(rule.gate)}</div>
           </div>
           <div className="flex min-w-0 flex-1 flex-wrap gap-2">
@@ -484,19 +489,29 @@ function NftHoldingEditor({
   onChange: (gate: GateAtom) => void;
 }) {
   const [sources, setSources] = React.useState<AssetSourceDescriptor[]>([]);
+  const [sourceLoadFailed, setSourceLoadFailed] = React.useState(false);
   const [pendingFacetKeys, setPendingFacetKeys] = React.useState<string[]>([]);
 
   React.useEffect(() => {
     if (!capabilitySource) {
       setSources([]);
+      setSourceLoadFailed(false);
       return;
     }
     let cancelled = false;
-    void capabilitySource.listTrustedSources().then((trustedSources) => {
-      if (!cancelled) {
-        setSources(trustedSources);
-      }
-    });
+    setSourceLoadFailed(false);
+    void capabilitySource.listTrustedSources()
+      .then((trustedSources) => {
+        if (!cancelled) {
+          setSources(trustedSources);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSources([]);
+          setSourceLoadFailed(true);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -673,16 +688,16 @@ function NftHoldingEditor({
                       <ComboboxChip className={CHIPS_CHIP} key={source.id}>{source.label}</ComboboxChip>
                     ))}
                     <ComboboxChipsInput
-                      aria-label="Search collections or paste address"
+                      aria-label={copy.sources.searchCollections}
                       className={selectedSources.length > 0 ? CHIPS_INPUT_WITH_VALUE : undefined}
-                      placeholder={selectedSources.length > 0 ? "" : "Search collections or paste address"}
+                      placeholder={selectedSources.length > 0 ? "" : copy.sources.searchCollections}
                     />
                   </>
                 )}
               </ComboboxValue>
             </ComboboxChips>
             <ComboboxContent>
-              <ComboboxEmpty>No trusted source found. Paste a contract address below.</ComboboxEmpty>
+              <ComboboxEmpty>{sourceLoadFailed ? copy.sources.loadError : copy.sources.empty}</ComboboxEmpty>
               <ComboboxList>
                 {(source) => (
                   <ComboboxItem key={source.id} value={source}>
@@ -695,6 +710,10 @@ function NftHoldingEditor({
         </div>
         {actions}
       </div>
+
+      {sourceLoadFailed ? (
+        <p className="text-base text-destructive" role="alert">{copy.sources.loadError}</p>
+      ) : null}
 
       {!selectedSource ? (
         <Input
@@ -710,7 +729,7 @@ function NftHoldingEditor({
             <div className={cn(RULE_LINE, "gap-2")} key={facetKey}>
               <div className={FACET_KEY_COL}>
                 <Select value={facetKey} onValueChange={(nextKey) => replaceFacet(facetKey, nextKey)}>
-                  <SelectTrigger aria-label="Attribute" className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label={copy.sources.attribute} className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {selectedSource.facetKeys.filter((key) => key === facetKey || (!(key in match) && !(key in (selectedSource.fixedMatch ?? {})))).map((key) => (
                       <SelectItem key={key} value={key}>{formatSourceFacetKey(selectedSource, key)}</SelectItem>
@@ -726,13 +745,14 @@ function NftHoldingEditor({
                   capabilitySource={capabilitySource}
                   facetKey={facetKey}
                   facetLabel={formatSourceFacetKey(selectedSource, facetKey)}
+                  copy={copy}
                   maxValues={selectedSource.maxValuesPerFacet}
                   onChange={(value) => updateFacet(facetKey, value)}
                   source={selectedSource}
                   value={match[facetKey] ? [{ value: match[facetKey]! }] : []}
                 />
               </div>
-              <Button aria-label="Remove attribute filter" className="ms-auto shrink-0 md:ms-0" size="icon" variant="ghost" onClick={() => removeFacet(facetKey)}>
+              <Button aria-label={copy.sources.removeAttribute} className="ms-auto shrink-0 md:ms-0" size="icon" variant="ghost" onClick={() => removeFacet(facetKey)}>
                 <X size={18} />
               </Button>
             </div>
@@ -745,7 +765,7 @@ function NftHoldingEditor({
               leadingIcon={<Plus size={16} />}
               onClick={() => setPendingFacetKeys((current) => [...current, addableFacetKeys[0]!])}
             >
-              Add attribute filter
+              {copy.sources.addAttribute}
             </Button>
           ) : null}
         </div>
@@ -756,6 +776,7 @@ function NftHoldingEditor({
 
 function FacetValuePicker({
   capabilitySource,
+  copy,
   facetKey,
   facetLabel,
   maxValues,
@@ -764,6 +785,7 @@ function FacetValuePicker({
   value,
 }: {
   capabilitySource: CollectionCapabilitySource;
+  copy: TreeBuilderCopy;
   facetKey: string;
   facetLabel: string;
   maxValues: number;
@@ -772,13 +794,22 @@ function FacetValuePicker({
   value: FacetValueSuggestion[];
 }) {
   const [options, setOptions] = React.useState<FacetValueSuggestion[]>([]);
+  const [optionsLoadFailed, setOptionsLoadFailed] = React.useState(false);
   React.useEffect(() => {
     let cancelled = false;
-    void capabilitySource.searchFacetValues(source.id, facetKey, "").then((suggestions) => {
-      if (!cancelled) {
-        setOptions(suggestions);
-      }
-    });
+    setOptionsLoadFailed(false);
+    void capabilitySource.searchFacetValues(source.id, facetKey, "")
+      .then((suggestions) => {
+        if (!cancelled) {
+          setOptions(suggestions);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setOptions([]);
+          setOptionsLoadFailed(true);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -805,23 +836,25 @@ function FacetValuePicker({
                 <ComboboxChip className={CHIPS_CHIP} key={option.value}>{option.value}</ComboboxChip>
               ))}
               <ComboboxChipsInput
-                aria-label={`Search ${facetLabel}`}
+                aria-label={interpolateMessage(copy.sources.searchFacet, { facet: facetLabel })}
                 className={selectedOptions.length > 0 ? CHIPS_INPUT_WITH_VALUE : undefined}
-                placeholder={selectedOptions.length > 0 ? "" : `Search ${facetLabel.toLowerCase()}`}
+                placeholder={selectedOptions.length > 0 ? "" : interpolateMessage(copy.sources.searchFacet, { facet: facetLabel })}
               />
             </>
           )}
         </ComboboxValue>
       </ComboboxChips>
       <ComboboxContent>
-        <ComboboxEmpty>No values found.</ComboboxEmpty>
+        <ComboboxEmpty>{optionsLoadFailed ? copy.sources.facetLoadError : copy.sources.noValues}</ComboboxEmpty>
         <ComboboxList className="py-0">
           {(option) => (
             <ComboboxItem key={option.value} value={option}>
               <div className="flex w-full items-center justify-between gap-4">
                 <span className="text-base font-medium">{option.value}</span>
                 {option.approximateCount != null ? (
-                  <span className="text-base text-muted-foreground">{option.approximateCount.toLocaleString("en-US")} matches</span>
+                  <span className="text-base text-muted-foreground">
+                    {interpolateMessage(copy.sources.matches, { count: option.approximateCount.toLocaleString() })}
+                  </span>
                 ) : null}
               </div>
             </ComboboxItem>

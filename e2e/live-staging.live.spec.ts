@@ -1134,10 +1134,14 @@ async function seedCommunityCandidates(): Promise<LiveCommunity[]> {
 }
 
 async function discoverSeedCommunity(): Promise<LiveCommunity> {
-  const [community] = await seedCommunityCandidates();
+  const community = await hydrateRoutableLiveCommunityOwner({
+    id: storySmokeCommunityId,
+    label: storySmokeCommunityId,
+    routeSegment: storySmokeCommunityId,
+  });
   if (community) return community;
 
-  throw new Error(`Could not discover seeded staging community ${seedCommunityLabel}`);
+  throw new Error(`Could not load stable staging fixture ${storySmokeCommunityId}`);
 }
 
 async function discoverWritableSeedCommunity(
@@ -1657,18 +1661,17 @@ test.describe("live staging integration", () => {
     testInfo.setTimeout(540_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const session = await createLiveSession(liveSubject, walletAddressForSubject(liveSubject));
+    const session = await createLiveSession(
+      storySmokeHostSubject,
+      walletAddressForSubject(storySmokeHostSubject),
+    );
     await completeSelfVerification(session);
-    const writableCommunity = await discoverWritableSeedCommunity(session);
-    const community = writableCommunity ?? await discoverSeedCommunity();
-    const communityId = community.id;
-    const authHeaders = writableCommunity
-      ? { authorization: `Bearer ${session.accessToken}` }
-      : seedOwnerAdminHeaders(community);
-    if (!authHeaders) {
-      test.skip(true, "No authenticated writable or admin-owned staging seed community is available for async song publish smoke.");
-      return;
+    const community = await discoverWritableSeedCommunity(session, storySmokeCommunityId);
+    if (!community) {
+      throw new Error(`Stable staging fixture ${storySmokeCommunityId} is not writable by its configured owner`);
     }
+    const communityId = community.id;
+    const authHeaders = { authorization: `Bearer ${session.accessToken}` };
 
     const freeSong = await createAsyncSongSmokePost({
       accessMode: "public",
@@ -1692,13 +1695,11 @@ test.describe("live staging integration", () => {
     );
     expect(pending.items.some((item) => item.post.id === paidSong.postId && item.post.status === "processing")).toBe(true);
 
-    if (writableCommunity) {
-      await installStoredSession(page, session);
-      await page.goto(`/c/${pathSegment(community.routeSegment)}`);
-      await expect(page.locator("body")).toContainText(paidSong.title, { timeout: 30_000 });
-      await expect(page.getByText("Visible only to you until checks complete.")).toBeVisible({ timeout: 30_000 });
-      await expectNoBrowserError(page);
-    }
+    await installStoredSession(page, session);
+    await page.goto(`/c/${pathSegment(community.routeSegment)}`);
+    await expect(page.locator("body")).toContainText(paidSong.title, { timeout: 30_000 });
+    await expect(page.getByText("Visible only to you until checks complete.")).toBeVisible({ timeout: 30_000 });
+    await expectNoBrowserError(page);
 
     const [publishedFree, publishedPaid] = await Promise.all([
       waitForAsyncSongPublished({ authHeaders, postId: freeSong.postId }),

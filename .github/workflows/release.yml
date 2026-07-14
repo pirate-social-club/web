@@ -285,7 +285,7 @@ jobs:
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/bookings/migrations \
             --label bookings
-      - name: Apply multipart fixture D1 migration
+      - name: Apply multipart fixture D1 migrations
         # Keep D1 access isolated from the broader Worker deployment token.
         # Fixture migration failures must block promotion to production.
         working-directory: web
@@ -294,8 +294,9 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
           E2E_MULTIPART_GATE_D1_DATABASE: COMMUNITY_DB
           E2E_MULTIPART_GATE_D1_CONFIG: scripts/wrangler.multipart-fixture.jsonc
-          E2E_MULTIPART_GATE_D1_MIGRATION: ../core/db/community-template/migrations/1124_community_job_checkpoints.sql
-        run: node scripts/ensure-staging-community-job-checkpoints.mjs
+          E2E_MULTIPART_GATE_CHECKPOINT_MIGRATION: ../core/db/community-template/migrations/1124_community_job_checkpoints.sql
+          E2E_MULTIPART_GATE_STORY_METADATA_MIGRATION: ../core/db/community-template/migrations/1127_asset_story_metadata_refs.sql
+        run: node scripts/ensure-staging-community-schema.mjs
 
   # Blocking gate. Everything here exercises infrastructure we own: the app boots,
   # auth works, a community follow round-trips, a booking hold quotes, one

@@ -116,7 +116,7 @@ const CDR_READ_GAS_MARGIN_WEI = parseEther("0.01");
 const DEFAULT_API_BASE_URL = "https://api-staging.pirate.sc";
 // Reuse a Story-proven staging community from a green E2E run. Creating a fresh
 // community per release consumes isolated database storage and staging capacity is finite.
-const DEFAULT_STORY_E2E_COMMUNITY_ID = "cmt_98abfdc5ebe24d379ab41b229fda6798";
+const DEFAULT_STORY_E2E_COMMUNITY_ID = "cmt_b3ede813fccf489982e93739ef1bf6b0";
 const DEFAULT_STORY_E2E_HOST_SUBJECT = "story-e2e-author-1780678999641-65820e";
 
 const artifact: AuditArtifact = {
@@ -1168,11 +1168,11 @@ async function main(): Promise<void> {
   const buyer = await createSession({ apiBase, privateKey: buyerPrivateKey, subject: `story-e2e-buyer-${runId}` });
 
   step(createFreshCommunity ? "create community" : "use seeded community");
-  let communityId = createFreshCommunity
+  const communityId = createFreshCommunity
     ? await createCommunity(apiBase, author, runId)
     : configuredCommunityId();
-  let communityHost = createFreshCommunity ? author : host;
-  let communityMode = createFreshCommunity ? "fresh" : "seeded";
+  const communityHost = createFreshCommunity ? author : host;
+  const communityMode = createFreshCommunity ? "fresh" : "seeded";
   artifact.community = {
     id: `com_${communityId}`,
     mode: communityMode,
@@ -1181,17 +1181,9 @@ async function main(): Promise<void> {
     await joinCommunity(apiBase, communityId, communityHost, author);
   } catch (error) {
     if (createFreshCommunity || !isMissingCommunityError(error, communityId)) throw error;
-    const missingSeed = communityId;
-    step("seeded community missing; create fallback community", { missing_seed: `com_${missingSeed}` });
-    communityId = await createCommunity(apiBase, host, runId);
-    communityHost = host;
-    communityMode = "fallback";
-    artifact.community = {
-      id: `com_${communityId}`,
-      missing_seed: `com_${missingSeed}`,
-      mode: communityMode,
-    };
-    await joinCommunity(apiBase, communityId, communityHost, author);
+    throw new Error(
+      `seeded Story E2E community com_${communityId} is missing; restore the fixture instead of allocating a fallback`,
+    );
   }
   await joinCommunity(apiBase, communityId, communityHost, remixer);
   await joinCommunity(apiBase, communityId, communityHost, buyer);

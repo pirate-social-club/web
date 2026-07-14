@@ -8,10 +8,18 @@ on:
         required: true
         type: string
       allocation_budget:
-        description: Permanent staging D1 allocations allowed by this run (must be 1)
+        description: Permanent allocations allowed (1 normally; 0 only when resuming)
         required: true
         default: 1
         type: number
+      resume_community_id:
+        description: Existing fixture id from a partial run; requires resume confirmation and budget 0
+        required: false
+        type: string
+      resume_run_id:
+        description: Original run id from the partial-run artifact
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -79,6 +87,8 @@ jobs:
           PIRATE_PROVISIONING_ALLOCATION_BUDGET: ${{ inputs.allocation_budget }}
           PIRATE_PROVISIONING_ARTIFACT_PATH: tmp/e2e-artifacts/manual-staging-provisioning.json
           PIRATE_PROVISIONING_CONFIRM: ${{ inputs.confirmation }}
+          PIRATE_PROVISIONING_RESUME_COMMUNITY_ID: ${{ inputs.resume_community_id }}
+          PIRATE_PROVISIONING_RESUME_RUN_ID: ${{ inputs.resume_run_id }}
         run: bun run scripts/manual-staging-community-provisioning.ts
       - name: Upload provisioning evidence
         if: always()

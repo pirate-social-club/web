@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 
 import {
   assertCapacityBeforeAllocation,
+  assertNoAllocation,
   assertOneBindingBudget,
+  assertResumeBudget,
   assertSingleAllocation,
   type PoolCapacity,
 } from "./manual-staging-community-provisioning";
@@ -24,6 +26,11 @@ describe("manual staging community provisioning guards", () => {
     expect(() => assertOneBindingBudget(undefined)).toThrow("exactly 1");
   });
 
+  test("requires a zero budget when resuming a consumed fixture", () => {
+    expect(assertResumeBudget("0")).toBe(0);
+    expect(() => assertResumeBudget("1")).toThrow("exactly 0");
+  });
+
   test("preserves the configured free-capacity threshold", () => {
     expect(() => assertCapacityBeforeAllocation(capacity(), 1)).not.toThrow();
     expect(() => assertCapacityBeforeAllocation(capacity({ free: 9 }), 1)).not.toThrow();
@@ -36,5 +43,10 @@ describe("manual staging community provisioning guards", () => {
     expect(() => assertSingleAllocation(capacity(), capacity())).toThrow("exactly one allocation");
     expect(() => assertSingleAllocation(capacity(), capacity({ allocated: 206, free: 18 }))).toThrow("exactly one allocation");
     expect(() => assertSingleAllocation(capacity(), capacity({ allocated: 205, free: 19, total: 225 }))).toThrow("total changed");
+  });
+
+  test("requires a resumed verification to leave capacity unchanged", () => {
+    expect(() => assertNoAllocation(capacity(), capacity())).not.toThrow();
+    expect(() => assertNoAllocation(capacity(), capacity({ allocated: 205, free: 19 }))).toThrow("unexpectedly changed");
   });
 });

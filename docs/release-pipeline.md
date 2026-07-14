@@ -34,6 +34,9 @@ Each invocation permanently consumes exactly one staging binding, so it requires
 unless one allocation would leave the pool at or above its configured free-capacity threshold. The
 workflow records capacity before and after, the created fixture id, and routed read/write evidence.
 Do not schedule this workflow or add it to `release.yml` until safe fixture reclamation exists.
+If a run allocates a fixture but fails during verification, resume that exact fixture with confirmation
+`RESUME_STAGING_PROVISIONING_FIXTURE`, budget `0`, and the community/run ids from its artifact. Never
+spend a second binding merely to retry post-allocation assertions.
 
 ## Why (read before you "fix" this)
 

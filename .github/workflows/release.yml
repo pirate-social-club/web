@@ -403,8 +403,6 @@ jobs:
           E2E_API_BASE_URL: https://api-staging.pirate.sc
           E2E_BASE_URL: https://staging.pirate.sc
           E2E_LIVE_STAGING: "true"
-          E2E_MULTIPART_GATE_COMMUNITY_ID: ${{ vars.E2E_MULTIPART_GATE_COMMUNITY_ID }}
-          E2E_MULTIPART_GATE_SUBJECT: ${{ vars.E2E_MULTIPART_GATE_SUBJECT }}
           E2E_REQUIRED_RELEASE_GATE: "true"
         run: bun run test:e2e:required-gate -- e2e/live-staging.live.spec.ts --project=live-staging --grep "uploads a public video through direct multipart in a real browser"
       - name: Fetch staging song preview container health secret

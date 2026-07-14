@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 
 const DEFAULT_API_ORIGIN = "https://api-staging.pirate.sc";
 const CONFIRMATION = "ALLOCATE_ONE_STAGING_D1";
+const RESUME_CONFIRMATION = "RESUME_STAGING_PROVISIONING_FIXTURE";
 const FIXTURE_MARKER = "automated-fixture:manual-staging-provisioning";
 
 export type PoolCapacity = {
@@ -64,6 +65,14 @@ export function assertOneBindingBudget(value: string | undefined): number {
   return budget;
 }
 
+export function assertResumeBudget(value: string | undefined): number {
+  const budget = Number.parseInt(value ?? "", 10);
+  if (budget !== 0) {
+    throw new Error(`resume allocation budget must be exactly 0, received ${value ?? "<unset>"}`);
+  }
+  return budget;
+}
+
 export function assertCapacityBeforeAllocation(capacity: PoolCapacity, budget: number): void {
   for (const key of ["allocated", "free", "quarantined", "threshold", "total"] as const) {
     if (!Number.isSafeInteger(capacity[key]) || capacity[key] < 0) {
@@ -84,6 +93,12 @@ export function assertSingleAllocation(before: PoolCapacity, after: PoolCapacity
     throw new Error(
       `expected exactly one allocation; before=${JSON.stringify(before)} after=${JSON.stringify(after)}`,
     );
+  }
+}
+
+export function assertNoAllocation(before: PoolCapacity, after: PoolCapacity): void {
+  if (after.total !== before.total || after.allocated !== before.allocated || after.free !== before.free) {
+    throw new Error(`resume unexpectedly changed pool capacity; before=${JSON.stringify(before)} after=${JSON.stringify(after)}`);
   }
 }
 
@@ -173,13 +188,18 @@ async function waitForJob(apiOrigin: string, jobId: string, token: string): Prom
 async function waitForPreview(
   apiOrigin: string,
   communityId: string,
+  token: string,
   expectedDescription?: string,
 ): Promise<CommunityPreview> {
   const deadline = Date.now() + 60_000;
   let lastBody = "";
   while (Date.now() < deadline) {
     const response = await fetch(new URL(`/communities/${encodeURIComponent(communityId)}/preview`, apiOrigin), {
-      headers: { accept: "application/json", "cache-control": "no-cache" },
+      headers: {
+        accept: "application/json",
+        authorization: `Bearer ${token}`,
+        "cache-control": "no-cache",
+      },
     });
     lastBody = await response.text();
     if (response.ok) {
@@ -197,10 +217,19 @@ async function writeArtifact(path: string, value: Record<string, unknown>): Prom
 }
 
 export async function main(): Promise<void> {
-  if (requiredEnv("PIRATE_PROVISIONING_CONFIRM") !== CONFIRMATION) {
-    throw new Error(`PIRATE_PROVISIONING_CONFIRM must equal ${CONFIRMATION}`);
+  const resumeCommunityId = process.env.PIRATE_PROVISIONING_RESUME_COMMUNITY_ID?.trim() ?? "";
+  const resumeRunId = process.env.PIRATE_PROVISIONING_RESUME_RUN_ID?.trim() ?? "";
+  const resume = Boolean(resumeCommunityId || resumeRunId);
+  if (resume && (!resumeCommunityId || !resumeRunId)) {
+    throw new Error("resume community id and run id must be supplied together");
   }
-  const budget = assertOneBindingBudget(process.env.PIRATE_PROVISIONING_ALLOCATION_BUDGET);
+  const expectedConfirmation = resume ? RESUME_CONFIRMATION : CONFIRMATION;
+  if (requiredEnv("PIRATE_PROVISIONING_CONFIRM") !== expectedConfirmation) {
+    throw new Error(`PIRATE_PROVISIONING_CONFIRM must equal ${expectedConfirmation}`);
+  }
+  const budget = resume
+    ? assertResumeBudget(process.env.PIRATE_PROVISIONING_ALLOCATION_BUDGET)
+    : assertOneBindingBudget(process.env.PIRATE_PROVISIONING_ALLOCATION_BUDGET);
   const apiOrigin = process.env.E2E_API_BASE_URL?.trim() || DEFAULT_API_ORIGIN;
   if (new URL(apiOrigin).hostname !== "api-staging.pirate.sc") {
     throw new Error(`manual provisioning canary is staging-only, received ${apiOrigin}`);
@@ -211,11 +240,12 @@ export async function main(): Promise<void> {
   const before = (await provisioningHealth(apiOrigin)).pool_capacity;
   assertCapacityBeforeAllocation(before, budget);
 
-  const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const runId = resumeRunId || `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   const artifactBase = {
     allocation_budget: budget,
     capacity_before: before,
     fixture_marker: FIXTURE_MARKER,
+    mode: resume ? "resume" : "allocate",
     run_id: runId,
   };
   await writeArtifact(artifactPath, {
@@ -228,42 +258,45 @@ export async function main(): Promise<void> {
   await completeSelfVerification(apiOrigin, token);
 
   const initialDescription = `${FIXTURE_MARKER}; run=${runId}; phase=created`;
-  const created = await requestJson<CommunityCreate>(apiOrigin, "/communities", {
-    body: JSON.stringify({
-      database_region: "aws-us-east-1",
-      description: initialDescription,
-      display_name: `Manual provisioning fixture ${runId}`,
-      handle_policy: { policy_template: "standard" },
-      membership_mode: "request",
-    }),
-    headers: { authorization: `Bearer ${token}` },
-    method: "POST",
-  });
-  const communityId = created.community?.id;
+  const created = resume
+    ? null
+    : await requestJson<CommunityCreate>(apiOrigin, "/communities", {
+        body: JSON.stringify({
+          database_region: "aws-us-east-1",
+          description: initialDescription,
+          display_name: `Manual provisioning fixture ${runId}`,
+          handle_policy: { policy_template: "standard" },
+          membership_mode: "request",
+        }),
+        headers: { authorization: `Bearer ${token}` },
+        method: "POST",
+      });
+  const communityId = resumeCommunityId || created?.community?.id;
   if (!communityId) throw new Error("community creation did not return an id");
   await writeArtifact(artifactPath, {
     ...artifactBase,
     community_id: communityId,
     phase: "community_allocated",
-    provisioning_job_id: created.job?.id ?? null,
+    provisioning_job_id: created?.job?.id ?? null,
     recorded_at: new Date().toISOString(),
   });
-  if (created.job?.status !== "succeeded") {
+  if (created && created.job?.status !== "succeeded") {
     if (!created.job?.id) throw new Error("community creation did not return a provisioning job id");
     await waitForJob(apiOrigin, created.job.id, token);
   }
 
-  await waitForPreview(apiOrigin, communityId, initialDescription);
+  await waitForPreview(apiOrigin, communityId, token, resume ? undefined : initialDescription);
   const updatedDescription = `${FIXTURE_MARKER}; run=${runId}; phase=routed-write-verified`;
   await requestJson(apiOrigin, `/communities/${encodeURIComponent(communityId)}`, {
     body: JSON.stringify({ description: updatedDescription }),
     headers: { authorization: `Bearer ${token}` },
     method: "POST",
   });
-  const preview = await waitForPreview(apiOrigin, communityId, updatedDescription);
+  const preview = await waitForPreview(apiOrigin, communityId, token, updatedDescription);
 
   const after = (await provisioningHealth(apiOrigin)).pool_capacity;
-  assertSingleAllocation(before, after);
+  if (resume) assertNoAllocation(before, after);
+  else assertSingleAllocation(before, after);
 
   const artifact = {
     ...artifactBase,

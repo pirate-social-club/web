@@ -170,6 +170,11 @@ describe("HNS forwarded origin resolution", () => {
       `app.${"a".repeat(64)}`,
       "app.localhost",
       "127.0.0.1",
+      "2130706433",
+      "0x7f000001",
+      "[::1]",
+      "[::ffff:127.0.0.1]",
+      "xn--0",
     ]) {
       expect(resolveEffectiveRequestUrl(await forwarded({
         "x-pirate-hns-host": hostname,

@@ -1070,8 +1070,11 @@ async function hydrateRoutableLiveCommunityOwner(community: LiveCommunity): Prom
   const detail = await requestJson<any>(`/public-communities/${encodeURIComponent(community.id)}`).catch(() => null);
   if (!detail) return null;
   const ownerUser = firstString(detail?.owner?.user);
+  const id = firstString(detail?.id, community.id) ?? community.id;
   return {
-    id: firstString(detail?.id, community.id) ?? community.id,
+    // Public responses expose `com_<internal id>`, while authenticated
+    // `/communities/:id` mutation routes require the internal id.
+    id: rawPublicId(id, "com"),
     label: firstString(detail?.display_name, community.label) ?? community.label,
     ownerUserId: ownerUser ? rawPublicUserId(ownerUser) : community.ownerUserId ?? null,
     routeSegment: firstString(detail?.route_slug, community.routeSegment, detail?.id, community.id) ?? community.routeSegment,
@@ -1151,8 +1154,9 @@ async function discoverWritableSeedCommunity(
       { headers: { authorization: `Bearer ${session.accessToken}` } },
     ).catch(() => null);
     if (!detail) continue;
+    const id = firstString(detail?.id, community.id) ?? community.id;
     return {
-      id: firstString(detail?.id, community.id) ?? community.id,
+      id: rawPublicId(id, "com"),
       label: firstString(detail?.display_name, community.label) ?? community.label,
       ownerUserId: community.ownerUserId ?? null,
       routeSegment: firstString(detail?.route_slug, community.routeSegment, detail?.id, community.id) ?? community.routeSegment,

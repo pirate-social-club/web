@@ -23,6 +23,18 @@ release-inputs ──> staging ──> release-gate ──> production-freshness
 
 `commerce-gate` and `canaries` never block production. They drive systems we do not control — the Story/Aeneid testnet, its RPC, DKG servicers, operator wallet funding — plus the broad live-browser journey suite. They run *in parallel* with `release-gate`, so they add **zero** latency to the deploy path. Failures raise a tracking issue (`canary-failure` label) and upload artifacts.
 
+## Community provisioning coverage
+
+Per-release tests use persistent staging fixtures and must not create communities. A loaded
+community owns its D1 binding permanently until a verified erase-and-quarantine lifecycle exists.
+
+Fresh provisioning is covered by the manual `Manual staging community provisioning` workflow.
+Each invocation permanently consumes exactly one staging binding, so it requires the confirmation
+`ALLOCATE_ONE_STAGING_D1`, disables test retries by running a single Bun script, and refuses to run
+unless one allocation would leave the pool at or above its configured free-capacity threshold. The
+workflow records capacity before and after, the created fixture id, and routed read/write evidence.
+Do not schedule this workflow or add it to `release.yml` until safe fixture reclamation exists.
+
 ## Why (read before you "fix" this)
 
 On **2026-07-13** the Story derivative-royalty E2E and the broad live-browser suite were hard prerequisites for `production`, inside one monolithic job with no concurrency group.

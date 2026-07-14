@@ -216,29 +216,6 @@ async function requestJson<T>(
   return body;
 }
 
-async function requestOctetJson<T>(
-  path: string,
-  body: ArrayBuffer,
-  init: RequestInit = {},
-  okStatuses = [200, 201, 202],
-): Promise<T> {
-  const response = await fetch(new URL(path, apiBaseURL), {
-    ...init,
-    body,
-    headers: {
-      accept: "application/json",
-      "content-type": "application/octet-stream",
-      ...init.headers,
-    },
-  });
-  const text = await response.text();
-  const parsed = (text.trim() ? JSON.parse(text) : null) as T;
-  if (!okStatuses.includes(response.status)) {
-    throw new Error(`${init.method ?? "PUT"} ${path} failed with ${response.status}: ${text}`);
-  }
-  return parsed;
-}
-
 async function requestArrayBuffer(
   urlOrPath: string,
   init: RequestInit = {},
@@ -296,6 +273,70 @@ function createSineWaveWav(): ArrayBuffer {
   }
 
   return buffer;
+}
+
+async function uploadDirectMultipartSongArtifact(input: {
+  audio: ArrayBuffer;
+  authHeaders: Record<string, string>;
+  communityId: string;
+  filename: string;
+}): Promise<string> {
+  const upload = await requestJson<{
+    id: string;
+    upload_session?: {
+      id: string;
+      part_size_bytes: number;
+      total_parts: number;
+      upload_id: string;
+    } | null;
+  }>(`/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads`, {
+    body: JSON.stringify({
+      artifact_kind: "primary_audio",
+      filename: input.filename,
+      mime_type: "audio/wav",
+      size_bytes: input.audio.byteLength,
+      upload_mode: "direct_multipart",
+    }),
+    headers: input.authHeaders,
+    method: "POST",
+  });
+  expect(upload.id, "song artifact upload id").toMatch(/^sau_/u);
+  expect(upload.upload_session, "song artifact upload session").toBeTruthy();
+  expect(upload.upload_session?.total_parts).toBe(1);
+
+  const sessionId = upload.upload_session?.id ?? "";
+  const signedPart = await requestJson<{ part_number: number; url: string }>(
+    `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/sessions/${encodeURIComponent(sessionId)}/parts/1/signed-url`,
+    { headers: input.authHeaders },
+  );
+  expect(signedPart.part_number).toBe(1);
+
+  const audioBuffer = Buffer.from(input.audio);
+  const partResponse = await fetch(signedPart.url, {
+    body: audioBuffer,
+    headers: { "content-type": "audio/wav" },
+    method: "PUT",
+  });
+  if (!partResponse.ok) {
+    throw new Error(`PUT signed song artifact part failed with ${partResponse.status}: ${await partResponse.text()}`);
+  }
+  const etag = partResponse.headers.get("etag");
+  expect(etag, "multipart part ETag").toBeTruthy();
+
+  const completedUpload = await requestJson<{ content_hash?: string | null; id: string; status: string }>(
+    `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/sessions/${encodeURIComponent(sessionId)}/complete`,
+    {
+      body: JSON.stringify({
+        content_hash: `0x${createHash("sha256").update(audioBuffer).digest("hex")}`,
+        parts: [{ etag, part_number: 1 }],
+        upload_id: upload.upload_session?.upload_id,
+      }),
+      headers: input.authHeaders,
+      method: "POST",
+    },
+  );
+  expect(completedUpload.status).toBe("uploaded");
+  return upload.id;
 }
 
 async function waitForSongPreview(input: {
@@ -356,60 +397,12 @@ async function createAsyncSongSmokePost(input: {
   const title = `${input.titlePrefix} ${input.runId}`;
   const audio = createSineWaveWav();
 
-  const upload = await requestJson<{
-    id: string;
-    upload_session?: {
-      id: string;
-      part_size_bytes: number;
-      total_parts: number;
-      upload_id: string;
-    } | null;
-  }>(`/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads`, {
-    body: JSON.stringify({
-      artifact_kind: "primary_audio",
-      filename: `${input.titlePrefix.toLowerCase().replace(/\s+/gu, "-")}-${input.runId}.wav`,
-      mime_type: "audio/wav",
-      size_bytes: audio.byteLength,
-      upload_mode: "direct_multipart",
-    }),
-    headers: input.authHeaders,
-    method: "POST",
+  const uploadId = await uploadDirectMultipartSongArtifact({
+    audio,
+    authHeaders: input.authHeaders,
+    communityId: input.communityId,
+    filename: `${input.titlePrefix.toLowerCase().replace(/\s+/gu, "-")}-${input.runId}.wav`,
   });
-  expect(upload.id, "song artifact upload id").toMatch(/^sau_/u);
-  expect(upload.upload_session, "song artifact upload session").toBeTruthy();
-  expect(upload.upload_session?.total_parts).toBe(1);
-
-  const signedPart = await requestJson<{ part_number: number; url: string }>(
-    `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/sessions/${encodeURIComponent(upload.upload_session?.id ?? "")}/parts/1/signed-url`,
-    { headers: input.authHeaders },
-  );
-  expect(signedPart.part_number).toBe(1);
-
-  const audioBuffer = Buffer.from(audio);
-  const partResponse = await fetch(signedPart.url, {
-    body: audioBuffer,
-    headers: { "content-type": "audio/wav" },
-    method: "PUT",
-  });
-  if (!partResponse.ok) {
-    throw new Error(`PUT signed song artifact part failed with ${partResponse.status}: ${await partResponse.text()}`);
-  }
-  const etag = partResponse.headers.get("etag");
-  expect(etag, "multipart part ETag").toBeTruthy();
-
-  const completedUpload = await requestJson<{ content_hash?: string | null; id: string; status: string }>(
-    `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/sessions/${encodeURIComponent(upload.upload_session?.id ?? "")}/complete`,
-    {
-      body: JSON.stringify({
-        content_hash: `0x${createHash("sha256").update(audioBuffer).digest("hex")}`,
-        parts: [{ etag, part_number: 1 }],
-        upload_id: upload.upload_session?.upload_id,
-      }),
-      headers: input.authHeaders,
-      method: "POST",
-    },
-  );
-  expect(completedUpload.status).toBe("uploaded");
 
   const bundle = await requestJson<{ id: string; preview_status?: string | null }>(
     `/communities/${encodeURIComponent(input.communityId)}/song-artifacts`,
@@ -427,7 +420,7 @@ async function createAsyncSongSmokePost(input: {
               start_ms: 0,
             }
           : null,
-        primary_audio: { song_artifact_upload: upload.id },
+        primary_audio: { song_artifact_upload: uploadId },
         title,
         vocal_audio: null,
       }),
@@ -1643,26 +1636,12 @@ test.describe("live staging integration", () => {
     const title = `Story registered song smoke ${runId}`;
     const audio = createSineWaveWav();
 
-    const upload = await requestJson<{ id: string }>(`/communities/${encodeURIComponent(communityId)}/song-artifact-uploads`, {
-      body: JSON.stringify({
-        artifact_kind: "primary_audio",
-        filename: `story-smoke-${runId}.wav`,
-        mime_type: "audio/wav",
-        size_bytes: audio.byteLength,
-      }),
-      headers: { authorization: `Bearer ${session.accessToken}` },
-      method: "POST",
-    });
-    expect(upload.id, "song artifact upload id").toMatch(/^sau_/u);
-
-    await requestOctetJson(
-      `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/content`,
+    const uploadId = await uploadDirectMultipartSongArtifact({
       audio,
-      {
-        headers: { authorization: `Bearer ${session.accessToken}` },
-        method: "PUT",
-      },
-    );
+      authHeaders: { authorization: `Bearer ${session.accessToken}` },
+      communityId,
+      filename: `story-smoke-${runId}.wav`,
+    });
 
     const bundle = await requestJson<{ id: string }>(`/communities/${encodeURIComponent(communityId)}/song-artifacts`, {
       body: JSON.stringify({
@@ -1672,7 +1651,7 @@ test.describe("live staging integration", () => {
         instrumental_audio: null,
         lyrics: "E2E Story registration smoke lyrics",
         preview_window: null,
-        primary_audio: { song_artifact_upload: upload.id },
+        primary_audio: { song_artifact_upload: uploadId },
         title,
         vocal_audio: null,
       }),
@@ -1805,26 +1784,12 @@ test.describe("live staging integration", () => {
     const title = `Paid preview song smoke ${runId}`;
     const audio = createSineWaveWav();
 
-    const upload = await requestJson<{ id: string }>(`/communities/${encodeURIComponent(communityId)}/song-artifact-uploads`, {
-      body: JSON.stringify({
-        artifact_kind: "primary_audio",
-        filename: `paid-preview-smoke-${runId}.wav`,
-        mime_type: "audio/wav",
-        size_bytes: audio.byteLength,
-      }),
-      headers: authHeaders,
-      method: "POST",
-    });
-    expect(upload.id, "song artifact upload id").toMatch(/^sau_/u);
-
-    await requestOctetJson(
-      `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/content`,
+    const uploadId = await uploadDirectMultipartSongArtifact({
       audio,
-      {
-        headers: authHeaders,
-        method: "PUT",
-      },
-    );
+      authHeaders,
+      communityId,
+      filename: `paid-preview-smoke-${runId}.wav`,
+    });
 
     const bundle = await requestJson<{ id: string; preview_status?: string | null }>(
       `/communities/${encodeURIComponent(communityId)}/song-artifacts`,
@@ -1839,7 +1804,7 @@ test.describe("live staging integration", () => {
             duration_ms: 1_000,
             start_ms: 0,
           },
-          primary_audio: { song_artifact_upload: upload.id },
+          primary_audio: { song_artifact_upload: uploadId },
           title,
           vocal_audio: null,
         }),

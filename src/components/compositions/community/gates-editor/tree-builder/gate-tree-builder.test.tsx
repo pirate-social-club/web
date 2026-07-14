@@ -4,6 +4,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import * as React from "react";
 
 import type { GateBuilderGroupDraft } from "@/app/authenticated-helpers/community-gate-tree-draft";
+import { UiLocaleProvider } from "@/lib/ui-locale";
+import type { CollectionCapabilitySource } from "./collection-capability-source";
 import { GateTreeBuilder } from "./gate-tree-builder";
 
 for (const key of ["Event", "HTMLInputElement", "Node"] as const) {
@@ -38,19 +40,27 @@ const humanRule = {
   gate: { type: "unique_human", provider: "self" },
 } as const;
 
-function renderBuilder(initialValue: GateBuilderGroupDraft = { kind: "group", op: "and", children: [] }) {
+function renderBuilder(
+  initialValue: GateBuilderGroupDraft = { kind: "group", op: "and", children: [] },
+  options: { capabilitySource?: CollectionCapabilitySource; locale?: "ar" | "en" | "zh" } = {},
+) {
   let latestValue = initialValue;
+  window.localStorage.setItem("pirate_ui_locale", options.locale ?? "en");
 
   function Harness() {
     const [value, setValue] = React.useState(initialValue);
+    const locale = options.locale ?? "en";
     return (
-      <GateTreeBuilder
-        onChange={(nextValue) => {
-          latestValue = nextValue;
-          setValue(nextValue);
-        }}
-        value={value}
-      />
+      <UiLocaleProvider dir={locale === "ar" ? "rtl" : "ltr"} locale={locale}>
+        <GateTreeBuilder
+          capabilitySource={options.capabilitySource}
+          onChange={(nextValue) => {
+            latestValue = nextValue;
+            setValue(nextValue);
+          }}
+          value={value}
+        />
+      </UiLocaleProvider>
     );
   }
 
@@ -83,6 +93,31 @@ describe("GateTreeBuilder", () => {
     expect(addGroup.hasAttribute("disabled")).toBe(true);
     fireEvent.click(addGroup);
     expect(view.getLatestValue().children).toHaveLength(20);
+  });
+
+  test("shows a localized source error when trusted collections fail to load", async () => {
+    const capabilitySource: CollectionCapabilitySource = {
+      estimateMatchCount: async () => null,
+      listTrustedSources: async () => Promise.reject(new Error("catalog unavailable")),
+      probeContract: async () => null,
+      searchFacetValues: async () => [],
+    };
+    const nftRule = {
+      kind: "group",
+      op: "and",
+      children: [{
+        kind: "rule",
+        gate: {
+          type: "erc721_holding",
+          chain_namespace: "eip155:1",
+          contract_address: "0x0000000000000000000000000000000000000000",
+        },
+      }],
+    } as unknown as GateBuilderGroupDraft;
+    const view = renderBuilder(nftRule, { capabilitySource, locale: "zh" });
+
+    expect((await view.findByRole("alert")).textContent)
+      .toContain("无法加载系列");
   });
 });
 
@@ -142,5 +177,19 @@ describe("GateTreeBuilder rule validation", () => {
     } as unknown as GateBuilderGroupDraft;
 
     expect(renderBuilder(badAge).getByRole("alert").textContent).toContain("18 to 125");
+  });
+
+  test("localizes validation messages", () => {
+    const badAge = {
+      kind: "group",
+      op: "and",
+      children: [{ kind: "rule", gate: { type: "minimum_age", provider: "self", minimum_age: 5 } }],
+    } as unknown as GateBuilderGroupDraft;
+
+    expect(renderBuilder(badAge, { locale: "ar" }).getByRole("alert").textContent)
+      .toContain("عددًا صحيحًا");
+    cleanup();
+    expect(renderBuilder(badAge, { locale: "zh" }).getByRole("alert").textContent)
+      .toContain("整数");
   });
 });

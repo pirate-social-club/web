@@ -3,6 +3,7 @@ import type { GateAtom } from "@pirate/api-contracts";
 
 import { normalizeCountryCode } from "./countries";
 import { isAllowedCourtyardRegistry, validateInventoryAssetMatch } from "./gate-inventory-validation";
+import type { InventoryAssetMatchValidationError } from "./gate-inventory-validation";
 
 /**
  * Client mirror of the API's gate-atom validation
@@ -15,6 +16,30 @@ import { isAllowedCourtyardRegistry, validateInventoryAssetMatch } from "./gate-
 export const MIN_AGE = 18;
 export const MAX_AGE = 125;
 export const DOCUMENT_PROOF_PROVIDERS = ["self", "zkpassport"] as const;
+
+export type GateAtomValidationError = InventoryAssetMatchValidationError | {
+  code:
+    | "acceptedProvidersEmpty"
+    | "acceptedProvidersUnsupported"
+    | "collectibleChainUnsupported"
+    | "collectibleProviderUnsupported"
+    | "contractAddressInvalid"
+    | "countryCodesInvalid"
+    | "countryListInvalid"
+    | "genderMarkerInvalid"
+    | "genderMarkerRequired"
+    | "genderProviderInvalid"
+    | "humanProviderRequired"
+    | "minimumAgeProviderInvalid"
+    | "minimumAgeRange"
+    | "nationalityProviderInvalid"
+    | "nftChainInvalid"
+    | "passportScoreProviderInvalid"
+    | "passportScoreRange"
+    | "quantityRange"
+    | "trustedCollectionRequired";
+  params?: Record<string, string>;
+};
 
 /**
  * Kosovo has no ISO-3166 assignment. The API canonicalizes the ICAO Doc 9303 travel-document
@@ -50,20 +75,20 @@ export function normalizeContractAddress(value: unknown): string | null {
 }
 
 /** accepted_providers may be omitted, but when present must be a non-empty self/zkpassport list. */
-function validateAcceptedProviders(input: unknown): string | null {
+function validateAcceptedProviders(input: unknown): GateAtomValidationError | null {
   if (input == null) {
     return null;
   }
   if (!Array.isArray(input) || input.length === 0) {
-    return "Accepted providers must not be empty.";
+    return { code: "acceptedProvidersEmpty" };
   }
   return input.every((value) => DOCUMENT_PROOF_PROVIDERS.some((provider) => provider === value))
     ? null
-    : "Accepted providers must be Self or ZKPassport.";
+    : { code: "acceptedProvidersUnsupported" };
 }
 
-/** Returns a human-readable reason the API would reject this atom, or null when it is valid. */
-export function validateGateAtom(gate: GateAtom): string | null {
+/** Returns a stable, localizable reason the API would reject this atom, or null when it is valid. */
+export function validateGateAtom(gate: GateAtom): GateAtomValidationError | null {
   const atom = gate as GateAtom & Record<string, unknown>;
 
   switch (gate.type) {
@@ -73,91 +98,91 @@ export function validateGateAtom(gate: GateAtom): string | null {
     case "unique_human":
       return atom.provider === "self" || atom.provider === "very"
         ? null
-        : "Choose a human verification provider.";
+        : { code: "humanProviderRequired" };
 
     case "minimum_age": {
       if (atom.provider !== "self") {
-        return "Minimum age rules must be proven with Self.";
+        return { code: "minimumAgeProviderInvalid" };
       }
       const age = atom.minimum_age;
       if (!Number.isInteger(age) || (age as number) < MIN_AGE || (age as number) > MAX_AGE) {
-        return `Minimum age must be a whole number from ${MIN_AGE} to ${MAX_AGE}.`;
+        return { code: "minimumAgeRange", params: { max: String(MAX_AGE), min: String(MIN_AGE) } };
       }
       return validateAcceptedProviders(atom.accepted_providers);
     }
 
     case "nationality": {
       if (atom.provider !== "self") {
-        return "Nationality rules must be proven with Self.";
+        return { code: "nationalityProviderInvalid" };
       }
       const allowed = atom.allowed;
       if (allowed != null && !Array.isArray(allowed)) {
-        return "Countries must be a list.";
+        return { code: "countryListInvalid" };
       }
       // An empty list is valid and means "any verified nationality" — it does not admit nobody.
       const countries = Array.isArray(allowed) ? allowed : [];
       if (!countries.every(isValidCountryCode)) {
-        return "Countries must be valid ISO country codes.";
+        return { code: "countryCodesInvalid" };
       }
       return validateAcceptedProviders(atom.accepted_providers);
     }
 
     case "gender": {
       if (atom.provider !== "self") {
-        return "Document sex marker rules must be proven with Self.";
+        return { code: "genderProviderInvalid" };
       }
       const allowed = atom.allowed;
       if (!Array.isArray(allowed) || allowed.length === 0) {
-        return "Choose a document sex marker.";
+        return { code: "genderMarkerRequired" };
       }
       if (!allowed.every((value) => value === "M" || value === "F")) {
-        return "Document sex marker must be M or F.";
+        return { code: "genderMarkerInvalid" };
       }
       return validateAcceptedProviders(atom.accepted_providers);
     }
 
     case "wallet_score": {
       if (atom.provider !== "passport") {
-        return "Passport score rules must use the Passport provider.";
+        return { code: "passportScoreProviderInvalid" };
       }
       const score = atom.minimum_score;
       return typeof score === "number" && Number.isFinite(score) && score >= 0 && score <= 100
         ? null
-        : "Passport score must be a number from 0 to 100.";
+        : { code: "passportScoreRange" };
     }
 
     case "erc721_holding": {
       if (atom.chain_namespace !== "eip155:1") {
-        return "NFT holding rules must target Ethereum mainnet.";
+        return { code: "nftChainInvalid" };
       }
       if (!normalizeContractAddress(atom.contract_address)) {
-        return "Enter a valid contract address.";
+        return { code: "contractAddressInvalid" };
       }
       const minCount = atom.min_count;
       if (minCount != null && (!Number.isInteger(minCount) || (minCount as number) < 1 || (minCount as number) > 100)) {
-        return "Quantity must be a whole number from 1 to 100.";
+        return { code: "quantityRange" };
       }
       return null;
     }
 
     case "erc721_inventory_match": {
       if (atom.provider !== "courtyard") {
-        return "Collectible rules must use a supported inventory provider.";
+        return { code: "collectibleProviderUnsupported" };
       }
       const chainNamespace = atom.chain_namespace;
       if (chainNamespace !== "eip155:1" && chainNamespace !== "eip155:137") {
-        return "Collectible rules must target a supported chain.";
+        return { code: "collectibleChainUnsupported" };
       }
       const contractAddress = normalizeContractAddress(atom.contract_address);
       if (!contractAddress) {
-        return "Enter a valid contract address.";
+        return { code: "contractAddressInvalid" };
       }
       if (!isAllowedCourtyardRegistry(chainNamespace, contractAddress)) {
-        return "Choose a trusted collection.";
+        return { code: "trustedCollectionRequired" };
       }
       const minQuantity = atom.min_quantity;
       if (!Number.isInteger(minQuantity) || (minQuantity as number) < 1 || (minQuantity as number) > 100) {
-        return "Quantity must be a whole number from 1 to 100.";
+        return { code: "quantityRange" };
       }
       return validateInventoryAssetMatch(atom.match);
     }

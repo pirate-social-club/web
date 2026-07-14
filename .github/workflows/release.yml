@@ -775,29 +775,53 @@ jobs:
         env:
           LIVE_BROWSER_OUTCOME: ${{ needs.canaries.outputs.live_browser }}
           STORY_OUTCOME: ${{ needs['commerce-gate'].outputs.story }}
+          LIVE_BROWSER_JOB: ${{ needs.canaries.result }}
+          STORY_JOB: ${{ needs['commerce-gate'].result }}
         with:
           script: |
             const label = "canary-failure";
-            // A step that never executed (its job died at checkout/install, or timed
-            // out) reports "skipped" or nothing at all. That is a fault in the canary
-            // job's own plumbing, not a signal about the system under test — reporting
-            // it as "the Story canary is failing" would be a false alarm.
-            const ran = (outcome) => outcome && outcome !== "skipped";
+            // A canary reports through its step outcome. If the JOB died before the
+            // step ever ran (checkout, install, secret fetch, job timeout), that
+            // outcome is "skipped" or empty.
+            //
+            // Such a plumbing failure must STILL raise the alert. The canary jobs are
+            // continue-on-error, so a silent plumbing failure would otherwise leave a
+            // green workflow AND an untouched tracking issue — the canary would be
+            // dead and nobody would know. That is strictly worse than a false alarm,
+            // and it is exactly what this job exists to prevent.
+            //
+            // We deliberately do NOT infer health from the job result alone: with
+            // continue-on-error its reported result is unreliable. A job that truly
+            // ran its canary always yields a step outcome, so "no step outcome and
+            // the job was not skipped" is a sound definition of "the canary is broken".
             const canaries = [
-              { name: "Story commerce settlement", outcome: process.env.STORY_OUTCOME || "" },
-              { name: "Live browser journeys", outcome: process.env.LIVE_BROWSER_OUTCOME || "" },
+              {
+                name: "Story commerce settlement",
+                outcome: process.env.STORY_OUTCOME || "",
+                job: process.env.STORY_JOB || "",
+              },
+              {
+                name: "Live browser journeys",
+                outcome: process.env.LIVE_BROWSER_OUTCOME || "",
+                job: process.env.LIVE_BROWSER_JOB || "",
+              },
             ];
-            const executed = canaries.filter((c) => ran(c.outcome));
-            if (executed.length === 0) {
-              core.warning(
-                "No canary step executed (the canary jobs themselves failed). Leaving the tracking " +
-                "issue untouched; the failed job is the signal."
-              );
+            const ran = (c) => c.outcome && c.outcome !== "skipped";
+            // The job never started (e.g. staging failed) — genuinely nothing to say.
+            const considered = canaries.filter((c) => c.job !== "skipped");
+            if (considered.length === 0) {
+              core.notice("Canary jobs were skipped; nothing to report.");
               return;
             }
-            const failed = executed
-              .filter((c) => c.outcome !== "success")
-              .map((c) => `${c.name}: **${c.outcome}**`);
+            const executed = considered.filter(ran);
+            const failed = considered
+              .filter((c) => !ran(c) || c.outcome !== "success")
+              .map((c) =>
+                ran(c)
+                  ? `${c.name}: **${c.outcome}**`
+                  : `${c.name}: **did not run** — the canary job failed before the test started ` +
+                    `(setup/plumbing, job result: \`${c.job || "unknown"}\`). The canary is blind, not passing.`
+              );
 
             const { data: open } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
@@ -810,9 +834,10 @@ jobs:
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 
             if (failed.length === 0) {
-              // Only declare recovery when every canary actually ran and passed. A
+              // Only declare recovery when EVERY canary actually ran and passed. A
               // partial run that happens to be green is not evidence the others are.
               if (existing && executed.length === canaries.length) {
+                core.notice("All canaries ran and passed; closing the tracking issue.");
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,

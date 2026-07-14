@@ -22,6 +22,11 @@ const apiOrigin = new URL(apiBaseURL).origin;
 const liveSubject = process.env.E2E_LIVE_STAGING_SUBJECT ?? "seed-staging-mcp-smoke-staff";
 const seedCommunityLabel = process.env.E2E_LIVE_STAGING_COMMUNITY_LABEL ?? "MCP Guest Comment Smoke";
 const seedPostTitle = process.env.E2E_LIVE_STAGING_SEED_POST_TITLE ?? "MCP guest comment smoke target";
+const storySmokeCommunityId = (
+  process.env.PIRATE_STORY_E2E_COMMUNITY_ID ?? "cmt_b3ede813fccf489982e93739ef1bf6b0"
+).replace(/^com_/u, "");
+const storySmokeHostSubject = process.env.PIRATE_STORY_E2E_HOST_SUBJECT
+  ?? "story-e2e-author-1780678999641-65820e";
 const multipartGateVideoBytes = Number.parseInt(
   // Keep the default below the retired 64 MiB proxy threshold. This makes the
   // release gate catch clients that accidentally send ordinary videos through
@@ -657,42 +662,6 @@ function walletAttachmentId(session: StoredSession): string {
   return attachment;
 }
 
-async function waitForJob(jobId: string, token: string): Promise<void> {
-  const deadline = Date.now() + 120_000;
-  let lastStatus = "unknown";
-  while (Date.now() < deadline) {
-    const job = await requestJson<{ error_code?: string | null; id: string; status: string }>(
-      `/jobs/${encodeURIComponent(jobId)}`,
-      { headers: { authorization: `Bearer ${token}` } },
-    );
-    lastStatus = job.status;
-    if (job.status === "succeeded") return;
-    if (job.status === "failed") {
-      throw new Error(`job ${job.id} failed: ${job.error_code ?? "unknown"}`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 3_000));
-  }
-  throw new Error(`job ${jobId} did not finish; last status ${lastStatus}`);
-}
-
-async function createSmokeCommunity(runId: string, host: StoredSession): Promise<string> {
-  const createdCommunity = await requestJson<{ community: { id: string }; job?: { id?: string; status?: string } }>("/communities", {
-    body: JSON.stringify({
-      display_name: `Live Room Browser Smoke ${runId}`,
-      handle_policy: { policy_template: "standard" },
-      membership_mode: "request",
-    }),
-    headers: { authorization: `Bearer ${host.accessToken}` },
-    method: "POST",
-  });
-  if (createdCommunity.job?.status && createdCommunity.job.status !== "succeeded") {
-    const jobId = firstString(createdCommunity.job.id);
-    if (!jobId) throw new Error("community creation job id is missing");
-    await waitForJob(jobId, host.accessToken);
-  }
-  return rawPublicId(createdCommunity.community.id, "com");
-}
-
 async function waitForCommunityPreview(
   communityId: string,
   headers: Record<string, string> = {},
@@ -719,40 +688,21 @@ async function waitForCommunityPreview(
   throw new Error(`community preview did not become available; last status ${lastStatus}: ${lastBody}`);
 }
 
-async function createGeorgiaPlaceSmokeCommunity(runId: string, host: StoredSession): Promise<LiveCommunity> {
-  const createdCommunity = await requestJson<{
-    community: { display_name?: string | null; id: string; route_slug?: string | null };
-    job?: { id?: string; status?: string };
-  }>("/communities", {
+async function configureGeorgiaPlaceSmokeCommunity(runId: string, host: StoredSession): Promise<LiveCommunity> {
+  const displayName = `Georgia Place Smoke ${runId}`;
+  await requestJson(`/communities/${encodeURIComponent(storySmokeCommunityId)}`, {
     body: JSON.stringify({
       country_code: "ge",
-      display_name: `Georgia Place Smoke ${runId}`,
-      handle_policy: { policy_template: "standard" },
-      membership_mode: "request",
-    }),
-    headers: { authorization: `Bearer ${host.accessToken}` },
-    method: "POST",
-  });
-  if (createdCommunity.job?.status && createdCommunity.job.status !== "succeeded") {
-    const jobId = firstString(createdCommunity.job.id);
-    if (!jobId) throw new Error("community creation job id is missing");
-    await waitForJob(jobId, host.accessToken);
-  }
-
-  const id = rawPublicId(createdCommunity.community.id, "com");
-  await requestJson(`/communities/${encodeURIComponent(id)}`, {
-    body: JSON.stringify({
-      country_code: "ge",
-      display_name: firstString(createdCommunity.community.display_name) ?? `Georgia Place Smoke ${runId}`,
+      display_name: displayName,
     }),
     headers: { authorization: `Bearer ${host.accessToken}` },
     method: "POST",
   });
 
   return {
-    id,
-    label: firstString(createdCommunity.community.display_name) ?? `Georgia Place Smoke ${runId}`,
-    routeSegment: firstString(createdCommunity.community.route_slug, id) ?? id,
+    id: storySmokeCommunityId,
+    label: displayName,
+    routeSegment: storySmokeCommunityId,
   };
 }
 
@@ -1542,8 +1492,8 @@ test.describe("live staging integration", () => {
     testInfo.setTimeout(90_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const session = await createLiveSession(`georgia-place-smoke-${runId}`);
-    const community = await createGeorgiaPlaceSmokeCommunity(runId, session);
+    const session = await createLiveSession(storySmokeHostSubject);
+    const community = await configureGeorgiaPlaceSmokeCommunity(runId, session);
     await installStoredSession(page, session);
 
     const geoResponses: Array<{ ok: boolean; placesLength?: number; status: number; url: URL }> = [];
@@ -1593,8 +1543,8 @@ test.describe("live staging integration", () => {
   test("creates a real post and comment with a real staging session", async ({ page }, testInfo) => {
     testInfo.setTimeout(180_000);
     const timestamp = new Date().toISOString();
-    const session = await createLiveSession();
-    const communityId = await createSmokeCommunity(`post-${Date.now()}`, session);
+    const session = await createLiveSession(storySmokeHostSubject);
+    const communityId = storySmokeCommunityId;
     const community: LiveCommunity = {
       id: communityId,
       label: communityId,
@@ -1630,9 +1580,9 @@ test.describe("live staging integration", () => {
     testInfo.setTimeout(180_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const session = await createLiveSession(`song-story-smoke-${runId}`);
+    const session = await createLiveSession(storySmokeHostSubject);
     await completeSelfVerification(session);
-    const communityId = await createSmokeCommunity(runId, session);
+    const communityId = storySmokeCommunityId;
     const title = `Story registered song smoke ${runId}`;
     const audio = createSineWaveWav();
 
@@ -1967,14 +1917,13 @@ test.describe("live staging integration", () => {
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
     const priceCents = 199;
-    const hostSubject = `paid-live-ui-host-${runId}`;
     const buyerSubject = `paid-live-ui-buyer-${runId}`;
-    const host = await createLiveSession(hostSubject, walletAddressForSubject(hostSubject));
+    const host = await createLiveSession(storySmokeHostSubject);
     const buyer = await createLiveSession(buyerSubject, walletAddressForSubject(buyerSubject));
     await completeSelfVerification(host);
     await completeSelfVerification(buyer);
 
-    const communityId = await createSmokeCommunity(runId, host);
+    const communityId = storySmokeCommunityId;
     await joinCommunityAsViewer(communityId, host, buyer);
 
     let roomId: string | null = null;

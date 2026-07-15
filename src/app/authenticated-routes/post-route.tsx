@@ -169,7 +169,7 @@ export function PostPage({
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, requestCommentAccess, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const activeLiveRoomId = post?.post.anchor_live_room ?? null;
   const activeAssetId = post?.post.asset ?? null;
   const activeAssetPostType = post?.post.post_type ?? null;
@@ -1086,6 +1086,11 @@ export function PostPage({
         publicLabel: publicReplyLabel,
       }
     : undefined;
+  const viewerMustJoinToComment = Boolean(
+    session
+    && community?.viewer_membership_status === "not_member"
+    && community.viewer_community_role == null,
+  );
   const mobileCommentSortAction = (
     <ResponsiveOptionSelect
       ariaLabel="Sort comments"
@@ -1167,13 +1172,15 @@ export function PostPage({
           commentsHeadingLang={contentLocale === "ar" ? "ar" : undefined}
           emptyCommentsLabel={threadPartial ? copy.common.loadingReplies : copy.common.noComments}
           onCommentSortChange={setCommentSort}
-          onRootReplySubmit={createTopLevelComment}
+          onRootReplyBlocked={viewerMustJoinToComment ? requestCommentAccess : undefined}
+          onRootReplySubmit={viewerMustJoinToComment ? undefined : createTopLevelComment}
           post={localizedPostCard}
           postOriginal={originalPostCard}
           replyIdentity={replyIdentity}
           comments={comments}
           rootReplyActionLabel={copy.common.replyAction}
           rootReplyCancelLabel={copy.common.cancelReply}
+          rootReplyBlockedLabel={viewerMustJoinToComment ? copy.common.joinToComment : undefined}
           rootReplyPlaceholder={copy.common.replyPlaceholder}
           rootReplySubmitLabel={copy.common.submitReply}
         />

@@ -24,6 +24,7 @@
     "replyingAsPublicLabel": "الردّ باسم {handle}",
     "replyingAsAnonymousLabel": "الردّ باسم {label}",
     "joinedStatLabel": "انضم",
+    "joinToComment": "انضم للتعليق",
     "loadMore": "حمّل المزيد",
     "loadMoreReplies": "حمّل المزيد من الردود",
     "loadReplies": "حمّل الردود",

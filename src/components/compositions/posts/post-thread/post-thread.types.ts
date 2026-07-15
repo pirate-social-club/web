@@ -91,6 +91,8 @@ export interface PostThreadProps {
   rootReplyPlaceholder?: string;
   rootReplyCancelLabel?: string;
   rootReplySubmitLabel?: string;
+  rootReplyBlockedLabel?: string;
+  onRootReplyBlocked?: () => Promise<void> | void;
   onRootReplySubmit?: (input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
   replyIdentity?: PostThreadReplyIdentity;
   commentSort?: CommentSort;

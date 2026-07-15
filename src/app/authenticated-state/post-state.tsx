@@ -254,7 +254,7 @@ export function usePost(
   // different post. Updated only where post data is actually applied, not from
   // the `postId` prop directly, which would race ahead of the data on nav.
   const visiblePostIdRef = React.useRef<string | null>(null);
-  const { gateModal, prewarmCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
+  const { gateModal, invalidateCommunityGate, prewarmCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: locale,
     routeKind: "post",
     uiLocale,
@@ -478,6 +478,25 @@ export function usePost(
     });
     return result === "allowed" ? "submitted" : "blocked";
   }, [api, buildCommentRequestBody, getCommentSubmitErrorMessage, post, refreshTopLevelComments, runGatedCommunityAction, signAgentAuthoredCommentBody]);
+
+  const requestCommentAccess = React.useCallback(async (): Promise<void> => {
+    if (!post) return;
+    const communityId = post.post.community;
+    invalidateCommunityGate(communityId);
+    try {
+      await runGatedCommunityAction({
+        action: "reply_post",
+        communityId,
+        onAllowed: async () => {
+          const refreshedCommunity = await api.communities.preview(communityId, { locale });
+          setCommunity(refreshedCommunity);
+        },
+        postId: post.post.id,
+      });
+    } catch (nextError) {
+      toast.error(getErrorMessage(nextError, "Could not check comment access."));
+    }
+  }, [api.communities, invalidateCommunityGate, locale, post, runGatedCommunityAction]);
 
   const createReply = React.useCallback(async (commentId: string, input: PostThreadReplyInput): Promise<PostThreadSubmitResult> => {
     if (!post) return "blocked";
@@ -947,6 +966,7 @@ export function usePost(
     commentCount,
     availableAgent,
     createTopLevelComment,
+    requestCommentAccess,
     cancelEvent,
     deletePost,
     removePost,

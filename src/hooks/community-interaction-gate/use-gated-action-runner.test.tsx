@@ -3,6 +3,7 @@ import { act, renderHook } from "@testing-library/react";
 import * as React from "react";
 import type { MembershipGateSummary, User } from "@pirate/api-contracts";
 
+import { ApiError } from "@/lib/api/client";
 import { installDomGlobals } from "@/test/setup-dom";
 import {
   altchaGateEvaluation,
@@ -247,6 +248,48 @@ describe("useGatedActionRunner", () => {
     expect(allowedCalls).toEqual(["allowed"]);
     expect(runner.pendingInteraction).toBe(null);
     expect(runner.hook.result.current.modalState).toBe(null);
+  });
+
+  test("invalidates the gate cache when an allowed write is rejected for membership", async () => {
+    const runner = renderRunner();
+    const rejection = new ApiError(
+      "eligibility_failed",
+      "Join this community to comment",
+      403,
+      false,
+      { community_id: "community-1", reason: "membership_required" },
+    );
+
+    await act(async () => {
+      await expect(runner.hook.result.current.run({
+        action: "reply_post",
+        communityId: "community-1",
+        onAllowed: () => {
+          throw rejection;
+        },
+        postId: "post-1",
+      })).rejects.toBe(rejection);
+    });
+
+    expect(runner.calls).toContain("invalidate:community-1");
+  });
+
+  test("does not invalidate the gate cache for unrelated write failures", async () => {
+    const runner = renderRunner();
+    const rejection = new ApiError("comment_media_rejected", "This image cannot be posted.", 422);
+
+    await act(async () => {
+      await expect(runner.hook.result.current.run({
+        action: "reply_post",
+        communityId: "community-1",
+        onAllowed: () => {
+          throw rejection;
+        },
+        postId: "post-1",
+      })).rejects.toBe(rejection);
+    });
+
+    expect(runner.calls.filter((call) => call.startsWith("invalidate:"))).toEqual([]);
   });
 
   test("blocks Altcha-gated post votes for a vote-bound proof", async () => {

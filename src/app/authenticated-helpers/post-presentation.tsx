@@ -116,7 +116,7 @@ export function toCommunityFeedItem(
   const isPublished = post.status === "published";
   const isProcessing = post.status === "processing";
   const isFailed = post.status === "failed";
-  const statusNotice = isProcessing && post.post_type !== "song"
+  const statusNotice = isProcessing && post.post_type === "song"
     ? {
         tone: "neutral" as const,
         label: "Preparing song features",

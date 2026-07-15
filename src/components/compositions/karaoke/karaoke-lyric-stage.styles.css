@@ -1,28 +1,29 @@
 .karaoke-lyric-stage {
-  --karaoke-line-gap: 5rem;
+  --karaoke-line-gap: 2rem;
   position: relative;
   min-height: 24rem;
   overflow: hidden;
 }
 
-.karaoke-lyric-stage__slot {
+.karaoke-lyric-stage__lines {
   position: absolute;
   left: 50%;
+  top: 54%;
+  display: flex;
+  max-height: calc(100% - 2rem);
   width: 100%;
   max-inline-size: 56rem;
+  flex-direction: column;
+  gap: var(--karaoke-line-gap);
+  overflow: hidden;
   padding-inline: 1rem;
   pointer-events: none;
   text-align: center;
   transform: translate(-50%, -50%);
 }
 
-.karaoke-lyric-stage__slot--active,
-.karaoke-lyric-stage__slot--cue {
-  top: 54%;
-}
-
-.karaoke-lyric-stage__slot--next {
-  top: calc(54% + var(--karaoke-line-gap));
+.karaoke-lyric-stage__slot {
+  flex: 0 0 auto;
 }
 
 .karaoke-lyric-stage__line {
@@ -146,11 +147,11 @@
 
 @media (max-width: 480px) {
   .karaoke-lyric-stage {
-    --karaoke-line-gap: 4rem;
+    --karaoke-line-gap: 1.5rem;
     min-height: 20rem;
   }
 
-  .karaoke-lyric-stage__slot {
+  .karaoke-lyric-stage__lines {
     padding-inline: 0.75rem;
   }
 }

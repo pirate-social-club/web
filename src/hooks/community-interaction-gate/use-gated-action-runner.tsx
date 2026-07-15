@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { navigate } from "@/app/router";
 import { toast } from "@/components/primitives/sonner";
+import { ApiError } from "@/lib/api/client";
 import { buildCanonicalAuthUrl, isCanonicalAuthOrigin } from "@/lib/auth-origin";
 import { buildCommunityPath } from "@/lib/community-routing";
 import type { MembershipGateSummary, User } from "@pirate/api-contracts";
@@ -199,6 +200,12 @@ function hasRefreshablePowFallback(gate: CommunityGateData): boolean {
   const requirements = gate.preview.membership_gate_summaries;
   return requirements.some((summary) => summary.gate_type === "altcha_pow")
     && requirements.some(isRefreshableNonPowGate);
+}
+
+function isMembershipRequiredWriteRejection(error: unknown): boolean {
+  return error instanceof ApiError
+    && error.code === "eligibility_failed"
+    && error.details?.reason === "membership_required";
 }
 
 function hasViewerCommunityRoleBypass(gate: CommunityGateData): boolean {
@@ -397,7 +404,23 @@ export function useGatedActionRunner({
         reason: "viewer_community_role",
         viewerCommunityRole: gate.preview.viewer_community_role,
       });
-      await onAllowed();
+      try {
+        await onAllowed();
+      } catch (error) {
+        if (isMembershipRequiredWriteRejection(error)) {
+          // The write said membership is missing even though eligibility
+          // allowed the action — the cached gate is stale or reads and
+          // writes disagree. Drop the cache so the next attempt re-checks
+          // and can surface the join flow instead of failing again.
+          invalidateCommunityGate(communityId);
+          logger.warn("[interaction-gate] write rejected for membership after allowed eligibility", {
+            ...logBase,
+            eligibilityStatus: gate.eligibility.status,
+            reason: "viewer_community_role",
+          });
+        }
+        throw error;
+      }
       return "allowed";
     }
 
@@ -482,7 +505,18 @@ export function useGatedActionRunner({
         ...logBase,
         eligibilityStatus: gate.eligibility.status,
       });
-      await onAllowed();
+      try {
+        await onAllowed();
+      } catch (error) {
+        if (isMembershipRequiredWriteRejection(error)) {
+          invalidateCommunityGate(communityId);
+          logger.warn("[interaction-gate] write rejected for membership after allowed eligibility", {
+            ...logBase,
+            eligibilityStatus: gate.eligibility.status,
+          });
+        }
+        throw error;
+      }
       return "allowed";
     }
 

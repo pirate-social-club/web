@@ -1319,7 +1319,7 @@ test.describe("live staging integration", () => {
     const saveResponsePromise = page.waitForResponse((response) => {
       const request = response.request();
       return request.method() === "POST"
-        && new URL(response.url()).pathname.endsWith(`/communities/${communityId}/gates`);
+        && /\/communities\/[^/]+\/gates$/u.test(new URL(response.url()).pathname);
     }, { timeout: 30_000 });
     await saveButton.click();
     const saveResponse = await saveResponsePromise;

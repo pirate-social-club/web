@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { ApiError } from "@/lib/api/client";
 
 import {
   altchaRequirement,
@@ -99,6 +100,45 @@ describe("completeAltchaJoin", () => {
       "allowed",
     ]);
   });
+
+  test("re-enters the interaction gate after authoritative membership refresh", async () => {
+    const calls: string[] = [];
+    const modal = createModalSetter();
+    const pendingInteraction = createPendingInteraction(
+      gate("verification_required", {}, [altchaRequirement]),
+    );
+    const communitiesApi: AltchaCommunitiesApi = {
+      getJoinEligibility: async () => eligibility("already_joined"),
+      join: async () => ({ status: "joined" }),
+    };
+
+    await completeAltchaJoin({
+      clearPendingInteraction: () => calls.push("clear-pending"),
+      closeModal: () => calls.push("close"),
+      communitiesApi,
+      gatesPanel,
+      interactionCopy,
+      invalidateCommunityGate: (communityId) => calls.push(`invalidate:${communityId}`),
+      payload: "join-proof",
+      pendingInteraction,
+      rerunJoinedInteraction: (interaction, joinedGate) => {
+        calls.push(`rerun:${interaction.action}:${joinedGate.eligibility.status}`);
+      },
+      setModalState: modal.setModalState,
+      updateCachedGate: (communityId, nextGate) => {
+        calls.push(`cache:${communityId}:${nextGate.eligibility.status}`);
+      },
+    });
+
+    expect(calls).toEqual([
+      "invalidate:community-1",
+      "cache:community-1:already_joined",
+      "close",
+      "clear-pending",
+      "rerun:reply_post:already_joined",
+    ]);
+    expect(modal.modalState).toBeNull();
+  });
 });
 
 describe("completeAltchaAction", () => {
@@ -113,6 +153,7 @@ describe("completeAltchaAction", () => {
         calls.push("close");
       },
       context: { altchaPayload: "proof" },
+      invalidateCommunityGate: () => undefined,
       pendingInteraction: createPendingInteraction(gate("already_joined", {}, [altchaRequirement]), (context) => {
         calls.push(context ?? {});
       }),
@@ -123,5 +164,31 @@ describe("completeAltchaAction", () => {
       { altchaPayload: "proof" },
       "clear-pending",
     ]);
+  });
+
+  test("invalidates deferred membership disagreement and clears the pending action", async () => {
+    const calls: string[] = [];
+    const rejection = new ApiError(
+      "eligibility_failed",
+      "Join this community to comment",
+      403,
+      false,
+      { reason: "membership_required" },
+    );
+
+    await expect(completeAltchaAction({
+      clearPendingInteraction: () => calls.push("clear-pending"),
+      closeModal: () => calls.push("close"),
+      context: { altchaPayload: "action-proof" },
+      invalidateCommunityGate: (communityId) => calls.push(`invalidate:${communityId}`),
+      pendingInteraction: createPendingInteraction(
+        gate("already_joined", {}, [altchaRequirement]),
+        () => {
+          throw rejection;
+        },
+      ),
+    })).rejects.toBe(rejection);
+
+    expect(calls).toEqual(["close", "invalidate:community-1", "clear-pending"]);
   });
 });

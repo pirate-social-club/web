@@ -18,6 +18,11 @@ export interface PostCardEngagementBarProps {
   unlock?: UnlockAction;
   shareActions?: PostCardShareAction[];
   onVote?: (direction: "up" | "down" | null) => void;
+  voteAccess?: {
+    disabled?: boolean;
+    label: string;
+    onClick?: () => void;
+  };
   onComment?: () => void;
   onShare?: () => void;
   compact?: boolean;
@@ -80,6 +85,7 @@ export function PostCardEngagementBar({
   unlock,
   shareActions = [],
   onVote,
+  voteAccess,
   onComment,
   onShare,
   compact = false,
@@ -112,12 +118,25 @@ export function PostCardEngagementBar({
         className,
       )}
     >
-      <VotePill
-        className="shrink-0 justify-center"
-        score={score}
-        viewerVote={viewerVote}
-        onVote={onVote}
-      />
+      {voteAccess ? (
+        <button
+          className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-border-soft bg-background px-4 text-base font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground disabled:cursor-wait disabled:opacity-60"
+          data-post-card-interactive="true"
+          disabled={voteAccess.disabled}
+          onClick={voteAccess.onClick}
+          type="button"
+        >
+          <Lock className="size-[20px]" />
+          <span>{voteAccess.label}</span>
+        </button>
+      ) : (
+        <VotePill
+          className="shrink-0 justify-center"
+          score={score}
+          viewerVote={viewerVote}
+          onVote={onVote}
+        />
+      )}
       <CommentPill
         className="shrink-0 justify-center whitespace-nowrap"
         count={commentCount}

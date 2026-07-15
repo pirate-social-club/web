@@ -92,6 +92,7 @@ export interface PostThreadProps {
   rootReplyCancelLabel?: string;
   rootReplySubmitLabel?: string;
   rootReplyBlockedLabel?: string;
+  rootReplyDisabled?: boolean;
   onRootReplyBlocked?: () => Promise<void> | void;
   onRootReplySubmit?: (input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
   replyIdentity?: PostThreadReplyIdentity;

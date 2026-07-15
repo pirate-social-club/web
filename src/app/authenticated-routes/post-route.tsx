@@ -169,7 +169,7 @@ export function PostPage({
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, requestCommentAccess, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, requestCommentAccess, requestVoteAccess, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const activeLiveRoomId = post?.post.anchor_live_room ?? null;
   const activeAssetId = post?.post.asset ?? null;
   const activeAssetPostType = post?.post.post_type ?? null;
@@ -1024,6 +1024,16 @@ export function PostPage({
       viewerAttachResponse: liveViewerOpen ? null : liveViewerSession,
     }
     : undefined;
+  const viewerMustJoin = Boolean(
+    session
+    && community?.viewer_membership_status === "not_member"
+    && community.viewer_community_role == null,
+  );
+  const viewerMembershipResolving = Boolean(
+    session
+    && community?.viewer_community_role == null
+    && community?.viewer_membership_status == null,
+  );
   const localizedPostCard = toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
     canModeratePost: viewerCanModerateCommunity(session?.user?.id, community),
     commentCountOverride: commentCount,
@@ -1033,6 +1043,11 @@ export function PostPage({
     onRemove: removePost,
     onVerifyAge: handleVerifyAge,
     onVote: voteOnPost,
+    voteAccess: viewerMustJoin
+      ? { label: copy.common.joinToVote, onClick: requestVoteAccess }
+      : viewerMembershipResolving
+        ? { disabled: true, label: copy.common.checkingVoteAccess }
+        : undefined,
     showOriginalLabel: copy.common.showOriginal,
     showTranslationLabel: copy.common.showTranslation,
     viewerContentLocale: contentLocale,
@@ -1047,6 +1062,11 @@ export function PostPage({
       onRemove: removePost,
       onVerifyAge: handleVerifyAge,
       onVote: voteOnPost,
+      voteAccess: viewerMustJoin
+        ? { label: copy.common.joinToVote, onClick: requestVoteAccess }
+        : viewerMembershipResolving
+          ? { disabled: true, label: copy.common.checkingVoteAccess }
+          : undefined,
       preferOriginalText: true,
       showOriginalLabel: copy.common.showOriginal,
       showTranslationLabel: copy.common.showTranslation,
@@ -1086,11 +1106,6 @@ export function PostPage({
         publicLabel: publicReplyLabel,
       }
     : undefined;
-  const viewerMustJoinToComment = Boolean(
-    session
-    && community?.viewer_membership_status === "not_member"
-    && community.viewer_community_role == null,
-  );
   const mobileCommentSortAction = (
     <ResponsiveOptionSelect
       ariaLabel="Sort comments"
@@ -1172,16 +1187,19 @@ export function PostPage({
           commentsHeadingLang={contentLocale === "ar" ? "ar" : undefined}
           emptyCommentsLabel={threadPartial ? copy.common.loadingReplies : copy.common.noComments}
           onCommentSortChange={setCommentSort}
-          onRootReplyBlocked={viewerMustJoinToComment ? requestCommentAccess : undefined}
-          onRootReplySubmit={viewerMustJoinToComment ? undefined : createTopLevelComment}
+          onRootReplyBlocked={viewerMustJoin ? requestCommentAccess : undefined}
+          onRootReplySubmit={viewerMustJoin ? undefined : createTopLevelComment}
           post={localizedPostCard}
           postOriginal={originalPostCard}
           replyIdentity={replyIdentity}
           comments={comments}
           rootReplyActionLabel={copy.common.replyAction}
           rootReplyCancelLabel={copy.common.cancelReply}
-          rootReplyBlockedLabel={viewerMustJoinToComment ? copy.common.joinToComment : undefined}
-          rootReplyPlaceholder={copy.common.replyPlaceholder}
+          rootReplyBlockedLabel={viewerMustJoin ? copy.common.joinToComment : undefined}
+          rootReplyDisabled={viewerMembershipResolving}
+          rootReplyPlaceholder={viewerMembershipResolving
+            ? copy.common.checkingCommentAccess
+            : copy.common.replyPlaceholder}
           rootReplySubmitLabel={copy.common.submitReply}
         />
       </ContentRailShell>

@@ -492,9 +492,31 @@ export function usePost(
           setCommunity(refreshedCommunity);
         },
         postId: post.post.id,
+        resumeActionAfterJoin: false,
       });
     } catch (nextError) {
       toast.error(getErrorMessage(nextError, "Could not check comment access."));
+    }
+  }, [api.communities, invalidateCommunityGate, locale, post, runGatedCommunityAction]);
+
+  const requestVoteAccess = React.useCallback(async (): Promise<void> => {
+    if (!post) return;
+    const communityId = post.post.community;
+    invalidateCommunityGate(communityId);
+    try {
+      await runGatedCommunityAction({
+        action: "vote_post",
+        communityId,
+        onAllowed: async () => {
+          const refreshedCommunity = await api.communities.preview(communityId, { locale });
+          setCommunity(refreshedCommunity);
+        },
+        postId: post.post.id,
+        resumeActionAfterJoin: false,
+        voteValue: 1,
+      });
+    } catch (nextError) {
+      toast.error(getErrorMessage(nextError, "Could not check voting access."));
     }
   }, [api.communities, invalidateCommunityGate, locale, post, runGatedCommunityAction]);
 
@@ -967,6 +989,7 @@ export function usePost(
     availableAgent,
     createTopLevelComment,
     requestCommentAccess,
+    requestVoteAccess,
     cancelEvent,
     deletePost,
     removePost,

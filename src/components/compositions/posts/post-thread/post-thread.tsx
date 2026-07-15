@@ -30,6 +30,7 @@ export function PostThread({
   rootReplyCancelLabel,
   rootReplySubmitLabel,
   rootReplyBlockedLabel,
+  rootReplyDisabled = false,
   onRootReplyBlocked,
   onRootReplySubmit,
   replyIdentity,
@@ -74,7 +75,7 @@ export function PostThread({
   const activePost = showOriginalPost && postOriginal ? postOriginal : post;
   const canToggleOriginalPost = Boolean(postOriginal);
   const hasRootReplyBlock = Boolean(rootReplyBlockedLabel && onRootReplyBlocked);
-  const canReplyAtRoot = Boolean(onRootReplySubmit || hasRootReplyBlock);
+  const canReplyAtRoot = Boolean(onRootReplySubmit || hasRootReplyBlock || rootReplyDisabled);
   const resolvedEmptyCommentsLabel = emptyCommentsLabel === "No comments yet." ? copy.common.noComments : emptyCommentsLabel;
   const resolvedRootReplyPlaceholder = rootReplyPlaceholder || rootReplyActionLabel || copy.common.replyAction;
   const activeSort = commentSort ?? availableCommentSorts?.[0]?.value;
@@ -233,6 +234,7 @@ export function PostThread({
                 }}
                 placeholder={resolvedRootReplyPlaceholder}
                 readOnly
+                disabled={rootReplyDisabled}
                 type="text"
               />
             )}

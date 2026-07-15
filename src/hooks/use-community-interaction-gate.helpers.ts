@@ -104,6 +104,7 @@ export type PendingInteraction = {
   gate: CommunityGateData;
   onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
   postId?: string;
+  resumeActionAfterJoin?: boolean;
   voteValue?: -1 | 1;
 };
 
@@ -123,6 +124,7 @@ export type RunGatedCommunityActionParams = {
   onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
   postId?: string;
   resolveGateData?: () => Promise<CommunityGateData>;
+  resumeActionAfterJoin?: boolean;
   voteValue?: -1 | 1;
 };
 

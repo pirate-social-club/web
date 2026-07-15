@@ -4,7 +4,6 @@ import * as React from "react";
 
 import { navigate } from "@/app/router";
 import { toast } from "@/components/primitives/sonner";
-import { ApiError } from "@/lib/api/client";
 import { buildCanonicalAuthUrl, isCanonicalAuthOrigin } from "@/lib/auth-origin";
 import { buildCommunityPath } from "@/lib/community-routing";
 import type { MembershipGateSummary, User } from "@pirate/api-contracts";
@@ -30,6 +29,7 @@ import {
   type RunGatedCommunityActionParams,
 } from "@/hooks/use-community-interaction-gate.helpers";
 import { getLocaleMessages } from "@/locales";
+import { isMembershipRequiredWriteRejection } from "./membership-write-rejection";
 
 type ToastInfoOptions = {
   action?: {
@@ -202,12 +202,6 @@ function hasRefreshablePowFallback(gate: CommunityGateData): boolean {
     && requirements.some(isRefreshableNonPowGate);
 }
 
-function isMembershipRequiredWriteRejection(error: unknown): boolean {
-  return error instanceof ApiError
-    && error.code === "eligibility_failed"
-    && error.details?.reason === "membership_required";
-}
-
 function hasViewerCommunityRoleBypass(gate: CommunityGateData): boolean {
   return gate.preview.viewer_community_role != null;
 }
@@ -343,6 +337,7 @@ export function useGatedActionRunner({
     postId,
     commentId,
     resolveGateData,
+    resumeActionAfterJoin,
     voteValue,
   }: RunGatedCommunityActionParams): Promise<InteractionResult> => {
     const hasSession = Boolean(sessionAccessToken);
@@ -430,8 +425,11 @@ export function useGatedActionRunner({
     });
 
     const actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId, sessionUser, voteValue });
-    const shouldUseActionAltcha = actionAltchaConfig
-      && (state === "allowed" || (state === "verification_required" && canSatisfyWithAltchaOnly(gate)));
+    // An action-bound proof can only authorize a write for an existing member.
+    // Non-members whose join gate is satisfiable with ALTCHA must first take
+    // the community_join path below, which creates membership and then
+    // re-enters this runner for the original action.
+    const shouldUseActionAltcha = actionAltchaConfig && state === "allowed";
     if (shouldUseActionAltcha) {
       let allowedCompleted = false;
       const guardedOnAllowed: PendingInteraction["onAllowed"] = async (context) => {
@@ -449,6 +447,7 @@ export function useGatedActionRunner({
         gate,
         onAllowed: guardedOnAllowed,
         postId,
+        resumeActionAfterJoin,
         voteValue,
       });
       const body = buildAltchaBody({
@@ -527,6 +526,7 @@ export function useGatedActionRunner({
       gate,
       onAllowed,
       postId,
+      resumeActionAfterJoin,
       voteValue,
     });
 

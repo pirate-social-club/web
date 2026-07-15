@@ -287,6 +287,7 @@ jobs:
         working-directory: web
         run: scripts/smoke-test.sh staging
       - name: Fetch staging control-plane migration secret
+        if: github.ref_name == 'main'
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
@@ -296,6 +297,7 @@ jobs:
           SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Apply staging control-plane migrations
+        if: github.ref_name == 'main'
         working-directory: core
         run: |
           test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
@@ -305,6 +307,7 @@ jobs:
             --migrations db/control-plane/migrations \
             --label control-plane
       - name: Apply staging bookings migrations
+        if: github.ref_name == 'main'
         working-directory: core
         run: |
           test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"

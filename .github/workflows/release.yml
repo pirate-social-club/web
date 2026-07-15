@@ -368,6 +368,7 @@ jobs:
             "follows a real staging community and persists after reload"
             "uploads a public video through direct multipart in a real browser"
             "creates and quotes a global booking hold on staging"
+            "creates a real post and comment with a real staging session"
           )
           for title in "${titles[@]}"; do
             count=$(bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --list --grep "$title" 2>&1 | grep -F -c "$title")
@@ -406,6 +407,17 @@ jobs:
           E2E_LIVE_STAGING: "true"
           E2E_REQUIRED_RELEASE_GATE: "true"
         run: bun run test:e2e:required-gate -- e2e/live-staging.live.spec.ts --project=live-staging --grep "uploads a public video through direct multipart in a real browser"
+      - name: Verify staging post and comment contract
+        timeout-minutes: 10
+        working-directory: web
+        env:
+          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
+          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
+          E2E_API_BASE_URL: https://api-staging.pirate.sc
+          E2E_BASE_URL: https://staging.pirate.sc
+          E2E_LIVE_STAGING: "true"
+          E2E_REQUIRED_RELEASE_GATE: "true"
+        run: bun run test:e2e:required-gate -- e2e/live-staging.live.spec.ts --project=live-staging --grep "creates a real post and comment with a real staging session"
       - name: Fetch staging song preview container health secret
         working-directory: core
         env:

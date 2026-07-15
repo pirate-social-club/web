@@ -334,15 +334,30 @@ jobs:
         with:
           node-version: 24
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-      - name: Verify staging fleet satisfies pinned API schema requirements
-        # The gate reads the community-d1-shard pool + every live shard via
-        # `wrangler d1 execute --remote`, so it needs a token with D1 READ across
-        # community-d1-pool-* and community-d1-shard-pool-* (the account deploy
-        # token; the isolated D1 fixture token is scoped to one database). It is
-        # strictly read-only — a first-run token gap fails safe, never mutates.
+      # Probe D1 access up front. The gate's wrangler wrapper reports only stderr
+      # on failure, and `bunx wrangler` writes install progress there, so a real
+      # auth error is otherwise masked as "Resolving dependencies". Non-fatal —
+      # the gate below is the real check; this just makes any auth error visible.
+      - name: Probe staging D1 read access
+        continue-on-error: true
+        working-directory: api/services/community-d1-shard
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          echo "Probing read access to community-d1-shard-pool-staging..."
+          bunx wrangler@4.100.0 d1 execute community-d1-shard-pool-staging \
+            --remote --json --command "SELECT COUNT(*) AS n FROM d1_pool" 2>&1 || true
+      - name: Verify staging fleet satisfies pinned API schema requirements
+        # The gate reads the community-d1-shard pool + every live shard via
+        # `wrangler d1 execute --remote`, so it needs D1 READ across
+        # community-d1-pool-* and community-d1-shard-pool-*. That is the isolated
+        # D1 token (CLOUDFLARE_D1_API_TOKEN), NOT the Worker-deploy token — D1
+        # access is deliberately kept off the deploy token (see the multipart
+        # fixture step). Read-only: a token-scope gap fails safe, never mutates.
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
         run: |
           bun core/scripts/community/verify-community-schema-requirements.ts \
             --requirements api/services/api/community-schema-requirements.json \
@@ -700,7 +715,9 @@ jobs:
       - name: Verify production fleet satisfies pinned API schema requirements
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # D1 read across the fleet — the isolated D1 token, not the Worker-deploy
+          # token (D1 access is deliberately kept off the deploy token).
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
         run: |
           bun core/scripts/community/verify-community-schema-requirements.ts \
             --prod \

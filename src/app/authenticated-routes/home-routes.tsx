@@ -471,26 +471,30 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     if (!direction) return;
     const voteValue = toPostVoteValue(direction);
     const voteGateData = voteGateDataByPostId.get(postId) ?? null;
-    await runGatedCommunityAction({
-      action: "vote_post",
-      communityId: voteGateData?.preview.id ?? entry.community.id,
-      ...(voteGateData ? { gateData: voteGateData } : {}),
-      onAllowed: async (context) => {
-        const previousPost = entry.post;
-        await submitOptimisticPostVote({
-          altchaPayload: context?.altchaPayload,
-          direction,
-          onApply: (nextValue) => setFeedEntries((current) => updateHomeFeedEntryPostVote(current, postId, nextValue)),
-          onRollback: (restoredPost) => setFeedEntries((current) => current.map((currentEntry) => currentEntry.post.post.id === postId ? { ...currentEntry, post: restoredPost } : currentEntry)),
-          postId,
-          previousPost: previousPost ?? null,
-          requestIdsRef: voteRequestIdsRef,
-          vote: api.posts.vote,
-        });
-      },
-      postId,
-      voteValue,
-    });
+    try {
+      await runGatedCommunityAction({
+        action: "vote_post",
+        communityId: voteGateData?.preview.id ?? entry.community.id,
+        ...(voteGateData ? { gateData: voteGateData } : {}),
+        onAllowed: async (context) => {
+          const previousPost = entry.post;
+          await submitOptimisticPostVote({
+            altchaPayload: context?.altchaPayload,
+            direction,
+            onApply: (nextValue) => setFeedEntries((current) => updateHomeFeedEntryPostVote(current, postId, nextValue)),
+            onRollback: (restoredPost) => setFeedEntries((current) => current.map((currentEntry) => currentEntry.post.post.id === postId ? { ...currentEntry, post: restoredPost } : currentEntry)),
+            postId,
+            previousPost: previousPost ?? null,
+            requestIdsRef: voteRequestIdsRef,
+            vote: api.posts.vote,
+          });
+        },
+        postId,
+        voteValue,
+      });
+    } catch {
+      // The optimistic submitter already rolled back and displayed the error.
+    }
   }, [api.posts.vote, feedEntries, runGatedCommunityAction, voteGateDataByPostId]);
 
   const cancelEvent = React.useCallback(async (postId: string) => {

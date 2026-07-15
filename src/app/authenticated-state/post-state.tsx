@@ -642,26 +642,30 @@ export function usePost(
     if (!post) return;
     if (!direction) return;
     const voteValue = toPostVoteValue(direction);
-    await runGatedCommunityAction({
-      action: "vote_post",
-      communityId: post.post.community,
-      ...(voteGateData ? { gateData: voteGateData } : {}),
-      onAllowed: async (context) => {
-        const nextPostId = post.post.id;
-        await submitOptimisticPostVote({
-          altchaPayload: context?.altchaPayload,
-          direction,
-          onApply: (nextValue) => setPost((current) => current ? applyPostVote(current, nextValue) : current),
-          onRollback: (restoredPost) => setPost(restoredPost),
-          postId: nextPostId,
-          previousPost: post,
-          requestIdsRef: voteRequestIdsRef,
-          vote: api.posts.vote,
-        });
-      },
-      postId: post.post.id,
-      voteValue,
-    });
+    try {
+      await runGatedCommunityAction({
+        action: "vote_post",
+        communityId: post.post.community,
+        ...(voteGateData ? { gateData: voteGateData } : {}),
+        onAllowed: async (context) => {
+          const nextPostId = post.post.id;
+          await submitOptimisticPostVote({
+            altchaPayload: context?.altchaPayload,
+            direction,
+            onApply: (nextValue) => setPost((current) => current ? applyPostVote(current, nextValue) : current),
+            onRollback: (restoredPost) => setPost(restoredPost),
+            postId: nextPostId,
+            previousPost: post,
+            requestIdsRef: voteRequestIdsRef,
+            vote: api.posts.vote,
+          });
+        },
+        postId: post.post.id,
+        voteValue,
+      });
+    } catch {
+      // The optimistic submitter already rolled back and displayed the error.
+    }
   }, [api.posts.vote, post, runGatedCommunityAction, voteGateData]);
 
   const deletePost = React.useCallback(async () => {

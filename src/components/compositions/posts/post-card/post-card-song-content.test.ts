@@ -93,7 +93,7 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).toContain("Buy $3.99");
+    expect(markup).toContain("Buy for $3.99");
     expect(markup).toContain("$3.99");
     expect(markup).toContain("Vinyl");
     expect(markup).toContain("https://elasticstage.com/kevin-tameimpala/releases/midnight-waves");
@@ -115,9 +115,29 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).toContain("Buy $3.99");
+    expect(markup).toContain("Buy for $3.99");
     expect(markup).not.toContain("Study");
     expect(markup).not.toContain("Sing");
+  });
+
+  test("renders remix provenance as a distinct compact link", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          songMode: "remix",
+          upstreamAttributions: [{
+            assetId: "ast_dark_dividend",
+            href: "/songs/dark-dividend",
+            relationshipType: "remix_of",
+            title: "Dark Dividend",
+          }],
+        },
+      }),
+    );
+
+    expect(markup).toContain('href="/songs/dark-dividend"');
+    expect(markup).toContain(">Remix of Dark Dividend</a>");
   });
 
   test("requires age proof until the viewer is verified allowed", () => {
@@ -402,6 +422,23 @@ describe("deriveSongUI", () => {
     );
 
     expect(markup).toContain("Study");
+  });
+
+  test("labels reward amounts as earnings rather than prices", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaoke: { rewardLabel: "$.10", status: "ready" },
+          onKaraoke: () => {},
+          onStudy: () => {},
+          study: { rewardLabel: "$.10", status: "ready" },
+        },
+      }),
+    );
+
+    expect(markup).toContain("Study · Earn $.10");
+    expect(markup).toContain("Karaoke · Earn $.10");
   });
 
   test("renders the Study CTA as preparing when study is processing", () => {

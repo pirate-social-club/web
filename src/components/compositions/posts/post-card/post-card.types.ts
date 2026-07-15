@@ -181,6 +181,7 @@ export interface SongFeatureCapabilityReason {
 export interface SongStudyCapability {
   status: SongStudyStatus;
   exerciseCount?: number;
+  rewardLabel?: string;
   reason?: SongFeatureCapabilityReason;
   sourceLanguage?: string;
   targetLanguage?: string;
@@ -188,6 +189,7 @@ export interface SongStudyCapability {
 
 export type SongKaraokeStatus = "unavailable" | "processing" | "ready" | "failed";
 export interface SongKaraokeCapability {
+  rewardLabel?: string;
   reason?: SongFeatureCapabilityReason;
   status: SongKaraokeStatus;
 }

@@ -4,9 +4,11 @@
 
 ```
 release-inputs ──> schema-gate ──> staging ──> release-gate ──> production-freshness ──> production
-                                      │                                    (environment: production; re-checks prod fleet)
-                                      ├──────> commerce-gate  (non-blocking canary)  ──┐
-                                      └──────> canaries       (non-blocking canary)  ──┴─> canary-alert
+                                      └──────> api-staging-contract-gate ────┘
+                                                                           (production re-checks prod fleet)
+
+successful current Release ──workflow_run──> verify deployed SHA ──┬─> Story commerce canary ─┐
+                                                                   └─> live browser canary ───┴─> canary alert
 ```
 
 `schema-gate` runs **before** the staging deploy: the invariant is that the pinned API may
@@ -18,15 +20,22 @@ list it explicitly (it is transitively required through `staging`, but naming it
 
 **A third-party system must never be a prerequisite for deploying the web app.**
 
-`release-gate` blocks production. It contains only things we own and control:
+The blocking `release-gate` and API-owned `api-staging-contract-gate` contain only things we own
+and control:
 
-- the app boots and serves (`smoke-test.sh`, `test:e2e` browser smoke)
-- auth works and a community follow round-trips
-- a global booking hold quotes
-- one controlled direct-multipart upload completes
-- the song-preview container is healthy
+- `release-gate`: the app boots and serves (`smoke-test.sh`, `test:e2e` browser smoke), and the
+  song-preview container is healthy
+- `api-staging-contract-gate`: auth works and a community follow round-trips, a global booking hold
+  quotes, one controlled direct-multipart upload completes, and a real post/comment round-trips
 
-`commerce-gate` and `canaries` never block production. They drive systems we do not control — the Story/Aeneid testnet, its RPC, DKG servicers, operator wallet funding — plus the broad live-browser journey suite. They run *in parallel* with `release-gate`, so they add **zero** latency to the deploy path. Failures raise a tracking issue (`canary-failure` label) and upload artifacts.
+`release-canaries.yml` runs only after a successful current `Release` workflow and verifies that
+staging still serves that release's exact Web/API pair before testing. Its Story and live-browser
+jobs drive systems we do not control — the Story/Aeneid testnet, its RPC, DKG servicers, operator
+wallet funding — plus the broad live-browser journey suite. They have their own concurrency group,
+so a slow canary cannot hold or delay the next release. Failures raise a tracking issue
+(`canary-failure` label) and upload artifacts; setup or SHA-verification failures alert as blind
+canaries rather than passing silently. Stale completed releases are skipped without alerting, and
+a new `main` push cancels the older canary before its staging target can change underneath it.
 
 ## Community schema gate
 
@@ -121,11 +130,14 @@ A canary that fails is a signal to investigate, from its uploaded artifacts, on 
 
 - **`concurrency: release-${{ github.ref }}`** (`cancel-in-progress: false`) — releases serialize instead of racing. A run mid-migration is never killed.
 - **`production-freshness`** — compares the run SHA to the live `main` tip immediately before deploying. If `main` has advanced, production is **skipped** (not failed) and the newer run deploys. An older run can never overwrite a newer deployment.
+- **`concurrency: release-canaries-*`** (`cancel-in-progress: true`) — observational canaries serialize separately. A newer completed release may replace an older canary run, but can never cancel or queue a production deploy.
 
 ## Validating a change to release.yml
 
 ```sh
-actionlint -ignore 'label ".+" is unknown' .github/workflows/release.yml
+actionlint -ignore 'label ".+" is unknown' \
+  .github/workflows/release.yml \
+  .github/workflows/release-canaries.yml
 ```
 
 The suppressed rule is only the Blacksmith self-hosted runner labels, which actionlint does not know about.

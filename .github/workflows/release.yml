@@ -168,7 +168,11 @@ jobs:
   # environment that the release gate can then exercise.
   staging:
     name: Deploy staging
-    needs: release-inputs
+    # schema-gate runs FIRST: the invariant is "the pinned API may deploy only
+    # after the live fleet satisfies its schema requirements". Deploying the
+    # pinned API to staging before that check is the exact failure this prevents.
+    # The gate reads the existing fleet and needs nothing from this deploy.
+    needs: [release-inputs, schema-gate]
     if: github.event_name != 'pull_request'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 30
@@ -297,6 +301,58 @@ jobs:
           E2E_MULTIPART_GATE_CHECKPOINT_MIGRATION: ../core/db/community-template/migrations/1124_community_job_checkpoints.sql
           E2E_MULTIPART_GATE_STORY_METADATA_MIGRATION: ../core/db/community-template/migrations/1127_asset_story_metadata_refs.sql
         run: node scripts/ensure-staging-community-schema.mjs
+
+  # Blocking gate: does every LIVE staging community shard satisfy the pinned
+  # API's declared community-template schema requirements? Nothing gated this
+  # before, and it broke production twice (1124, 1127). This is schema
+  # ATTESTATION across the whole fleet; the multipart test below is BEHAVIOURAL
+  # on one community. They catch different failures — keep both. Read-only.
+  schema-gate:
+    name: Community schema gate (staging fleet)
+    needs: [release-inputs]
+    if: github.event_name != 'pull_request'
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/api
+          ref: ${{ needs.release-inputs.outputs.api_sha }}
+          path: api
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/core
+          ref: ${{ needs.release-inputs.outputs.core_sha }}
+          path: core
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Verify staging fleet satisfies pinned API schema requirements
+        # The gate reads the community-d1-shard pool + every live shard via
+        # `wrangler d1 execute --remote`, so it needs a token with D1 READ across
+        # community-d1-pool-* and community-d1-shard-pool-* (the account deploy
+        # token; the isolated D1 fixture token is scoped to one database). It is
+        # strictly read-only — a first-run token gap fails safe, never mutates.
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          bun core/scripts/community/verify-community-schema-requirements.ts \
+            --requirements api/services/api/community-schema-requirements.json \
+            --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
+            --migrations-dir core/db/community-template/migrations \
+            --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
+            --concurrency 14
+      - name: Upload staging schema manifest
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: schema-gate-staging-${{ github.run_id }}-${{ github.run_attempt }}
+          path: schema-gate-staging.json
+          if-no-files-found: warn
+          retention-days: 14
 
   # Blocking gate. Everything here exercises infrastructure we own: the app boots,
   # auth works, a community follow round-trips, a booking hold quotes, one
@@ -534,7 +590,7 @@ jobs:
   # as late as possible — after the blocking gate, immediately before deploying.
   production-freshness:
     name: Check release freshness
-    needs: [release-gate]
+    needs: [release-gate, schema-gate]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: blacksmith-2vcpu-ubuntu-2404
     permissions:
@@ -566,7 +622,7 @@ jobs:
 
   production:
     name: Deploy production
-    needs: [release-inputs, release-gate, production-freshness]
+    needs: [release-inputs, release-gate, schema-gate, production-freshness]
     # Only deploy production on a push to main. This keeps workflow_dispatch on
     # any branch (e.g. release/* validation) staging-only, so a manual dispatch
     # can never push an unmerged branch to production.
@@ -631,6 +687,31 @@ jobs:
       - name: Audit core dependencies
         working-directory: core
         run: npm audit --audit-level=high
+      # Fresh check of the LIVE PRODUCTION fleet, immediately before migrations and
+      # deploy. The staging schema-gate is a promotion gate; this is the real one —
+      # the allocated prod fleet can change between then and now, so we re-attest it
+      # here rather than trust the earlier pass. Read-only. If any live prod shard
+      # is missing a required migration, we STOP before mutating or deploying.
+      - name: Verify production fleet satisfies pinned API schema requirements
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          bun core/scripts/community/verify-community-schema-requirements.ts \
+            --prod \
+            --requirements api/services/api/community-schema-requirements.json \
+            --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
+            --migrations-dir core/db/community-template/migrations \
+            --manifest "$GITHUB_WORKSPACE/schema-gate-production.json" \
+            --concurrency 14
+      - name: Upload production schema manifest
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: schema-gate-production-${{ github.run_id }}-${{ github.run_attempt }}
+          path: schema-gate-production.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Require dedicated Web production migration identity
         shell: bash
         env:

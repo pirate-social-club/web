@@ -3,11 +3,16 @@
 ## Shape
 
 ```
-release-inputs ──> staging ──> release-gate ──> production-freshness ──> production
-                      │                                                  (environment: production)
-                      ├──────> commerce-gate  (non-blocking canary)  ──┐
-                      └──────> canaries       (non-blocking canary)  ──┴─> canary-alert
+release-inputs ──> schema-gate ──> staging ──> release-gate ──> production-freshness ──> production
+                                      │                                    (environment: production; re-checks prod fleet)
+                                      ├──────> commerce-gate  (non-blocking canary)  ──┐
+                                      └──────> canaries       (non-blocking canary)  ──┴─> canary-alert
 ```
+
+`schema-gate` runs **before** the staging deploy: the invariant is that the pinned API may
+deploy only after the live fleet satisfies its schema requirements, so an incompatible pin is
+caught before it reaches staging — not after. `production` and `production-freshness` still
+list it explicitly (it is transitively required through `staging`, but naming it is clearer).
 
 ## The one rule
 
@@ -22,6 +27,27 @@ release-inputs ──> staging ──> release-gate ──> production-freshness
 - the song-preview container is healthy
 
 `commerce-gate` and `canaries` never block production. They drive systems we do not control — the Story/Aeneid testnet, its RPC, DKG servicers, operator wallet funding — plus the broad live-browser journey suite. They run *in parallel* with `release-gate`, so they add **zero** latency to the deploy path. Failures raise a tracking issue (`canary-failure` label) and upload artifacts.
+
+## Community schema gate
+
+`schema-gate` blocks production alongside `release-gate`. It answers one question:
+**does every live community shard satisfy the pinned API's declared community-template
+schema requirements?** Nothing gated this before, and it broke production twice — 1124
+(async post publish) and 1127 (every publish). It runs the read-only verifier from the
+pinned Core (`core/scripts/community/verify-community-schema-requirements.ts`) against the
+requirements manifest from the pinned API (`api/services/api/community-schema-requirements.json`).
+
+- The **staging** run is the promotion gate. The **production** job re-runs it `--prod`
+  immediately before migrations/deploy — the live allocated fleet can change between the two,
+  so production is attested fresh, never on the staging pass.
+- It is schema **attestation** across the whole fleet. The multipart test in `release-gate`
+  is **behavioural** on one community. They catch different failures — the gate found 1124
+  missing on 104 live staging shards that the multipart test passed anyway. **Keep both.**
+- Requirements have two classes: `unconditional` (always) and `features` (only required when
+  that flag bundle is being enabled, so e.g. flipping `REWARDS_*` cannot bypass its migration).
+- When a Core pin adds a new `community-template` migration, classify it in the API manifest
+  (unconditional / feature / explicitly deferred with a reason). This is the remaining
+  "someone must remember" gap; it is not yet enforced in CI.
 
 ## Community provisioning coverage
 

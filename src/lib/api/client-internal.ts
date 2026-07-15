@@ -2,6 +2,7 @@ export interface JsonErrorResponse {
   code?: string;
   message?: string;
   retryable?: boolean;
+  request_id?: string;
 }
 
 export type RefreshAuthCallback = () => Promise<boolean>;

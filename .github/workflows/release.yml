@@ -449,32 +449,6 @@ jobs:
           E2E_BASE_URL: https://staging.pirate.sc
           E2E_API_BASE_URL: https://api-staging.pirate.sc
         run: bun run test:e2e
-      - name: Fetch staging moderator browser verification secret
-        if: github.event_name == 'workflow_dispatch'
-        working-directory: core
-        env:
-          INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
-          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
-          INFISICAL_ENV: staging
-          INFISICAL_SECRET_PATH: /services/api
-          SECRET_NAMES: AUTH_UPSTREAM_JWT_SHARED_SECRET
-        run: scripts/ci/fetch-infisical-secrets.sh
-      - name: Verify gate builder moderator save and reload
-        if: github.event_name == 'workflow_dispatch'
-        timeout-minutes: 8
-        working-directory: web
-        env:
-          AUTH_UPSTREAM_JWT_AUDIENCE: pirate-api-staging
-          AUTH_UPSTREAM_JWT_ISSUER: pirate-staging-upstream
-          E2E_API_BASE_URL: https://api-staging.pirate.sc
-          E2E_BASE_URL: https://staging.pirate.sc
-          E2E_LIVE_STAGING: "true"
-          E2E_REQUIRED_RELEASE_GATE: "true"
-        run: >-
-          bun run test:e2e:required-gate --
-          e2e/live-staging.live.spec.ts
-          --project=live-staging
-          --grep "round-trips a nested gate policy through the staging moderator UI"
       - name: Fetch staging song preview container health secret
         working-directory: core
         env:
@@ -493,6 +467,86 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: release-gate-playwright-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            web/playwright-report
+            web/test-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Manual-only authenticated browser verification for the gate-tree rollout.
+  # Keep it independent from the broad release smoke: an unrelated mocked UI
+  # failure must not prevent this focused staging contract from running.
+  gate-builder-staging-verification:
+    name: Gate builder moderator round trip
+    needs: [release-inputs, staging]
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: web
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/api
+          ref: ${{ needs.release-inputs.outputs.api_sha }}
+          path: api
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/core
+          ref: ${{ needs.release-inputs.outputs.core_sha }}
+          path: core
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Install web dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile
+      - name: Install Playwright browser
+        working-directory: web
+        run: bunx playwright install --with-deps chromium
+      - name: Require this run's staging artifacts
+        working-directory: web
+        env:
+          EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          EXPECTED_WEB_SHA: ${{ github.sha }}
+        run: |
+          node -e 'Promise.all([["https://staging.pirate.sc/__version",process.env.EXPECTED_WEB_SHA],["https://api-staging.pirate.sc/__version",process.env.EXPECTED_API_SHA]].map(async ([url,sha])=>{const body=await fetch(url).then(r=>r.json());if(!String(body.git_sha).startsWith(sha.slice(0,7)))throw new Error(`${url} expected ${sha}, got ${body.git_sha}`)}))'
+      - name: Fetch staging moderator browser verification secret
+        working-directory: core
+        env:
+          INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_ENV: staging
+          INFISICAL_SECRET_PATH: /services/api
+          SECRET_NAMES: AUTH_UPSTREAM_JWT_SHARED_SECRET
+        run: scripts/ci/fetch-infisical-secrets.sh
+      - name: Verify gate builder moderator save and reload
+        timeout-minutes: 8
+        working-directory: web
+        env:
+          AUTH_UPSTREAM_JWT_AUDIENCE: pirate-api-staging
+          AUTH_UPSTREAM_JWT_ISSUER: pirate-staging-upstream
+          E2E_API_BASE_URL: https://api-staging.pirate.sc
+          E2E_BASE_URL: https://staging.pirate.sc
+          E2E_LIVE_STAGING: "true"
+          E2E_REQUIRED_RELEASE_GATE: "true"
+        run: >-
+          bun run test:e2e:required-gate --
+          e2e/live-staging.live.spec.ts
+          --project=live-staging
+          --grep "round-trips a nested gate policy through the staging moderator UI"
+      - name: Upload gate builder Playwright report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: gate-builder-staging-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             web/playwright-report
             web/test-results

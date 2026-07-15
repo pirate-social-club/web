@@ -45,9 +45,11 @@ requirements manifest from the pinned API (`api/services/api/community-schema-re
   missing on 104 live staging shards that the multipart test passed anyway. **Keep both.**
 - Requirements have two classes: `unconditional` (always) and `features` (only required when
   that flag bundle is being enabled, so e.g. flipping `REWARDS_*` cannot bypass its migration).
-- When a Core pin adds a new `community-template` migration, classify it in the API manifest
-  (unconditional / feature / explicitly deferred with a reason). This is the remaining
-  "someone must remember" gap; it is not yet enforced in CI.
+- When a Core pin adds a new `community-template` migration, the `release-inputs` ratchet
+  requires it to be classified exactly once in the pinned API manifest: unconditional,
+  feature-conditional, or explicitly deferred with a non-empty rationale. The comparison
+  runs against the previous Web commit's Core pin on pull requests and main pushes, so a pin
+  bump cannot silently introduce an unclassified shard migration.
 
 ## Community provisioning coverage
 

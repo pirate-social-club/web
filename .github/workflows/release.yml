@@ -162,6 +162,30 @@ jobs:
                 ["Core", coreSha, `<a href="${successfulCoreRun.workflowRun.url}">core-ci</a>`],
               ])
               .write();
+      - name: Require classification for newly pinned community migrations
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        env:
+          API_SHA: ${{ steps.api_ref.outputs.sha }}
+          CORE_SHA: ${{ steps.core_ref.outputs.sha }}
+        with:
+          github-token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          script: |
+            const { pathToFileURL } = require("node:url");
+            const moduleUrl = pathToFileURL(
+              `${process.env.GITHUB_WORKSPACE}/web/scripts/community-migration-classification-ratchet.mjs`
+            ).href;
+            const { enforceCommunityMigrationClassification } = await import(moduleUrl);
+            await enforceCommunityMigrationClassification({
+              github,
+              context,
+              actionsCore: core,
+              owner: context.repo.owner,
+              webRepo: context.repo.repo,
+              apiRepo: "api",
+              coreRepo: "core",
+              apiSha: process.env.API_SHA,
+              coreSha: process.env.CORE_SHA,
+            });
 
   # Deploy staging and bring its schema up to date. Nothing here talks to a
   # third-party chain or drives a browser: this is the shortest path to a staging

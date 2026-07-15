@@ -6,7 +6,7 @@ import * as React from "react";
 import type { GateBuilderGroupDraft } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import { UiLocaleProvider } from "@/lib/ui-locale";
 import type { CollectionCapabilitySource } from "./collection-capability-source";
-import { GateTreeBuilder } from "./gate-tree-builder";
+import { GateTreeBuilder, serializeFacetSelection } from "./gate-tree-builder";
 
 for (const key of ["Event", "HTMLInputElement", "Node"] as const) {
   Object.defineProperty(globalThis, key, {
@@ -118,6 +118,77 @@ describe("GateTreeBuilder", () => {
 
     expect((await view.findByRole("alert")).textContent)
       .toContain("无法加载系列");
+  });
+
+  test("preserves a loaded multi-value facet when another inventory field changes", async () => {
+    const capabilitySource: CollectionCapabilitySource = {
+      estimateMatchCount: async () => null,
+      listTrustedSources: async () => [{
+        id: "courtyard-cards",
+        label: "Courtyard graded cards",
+        chainNamespace: "eip155:137",
+        contractAddress: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+        standard: "erc721",
+        traitFiltersSupported: true,
+        facetKeys: ["franchise", "subject", "grade"],
+        maxValuesPerFacet: 10,
+        inventoryProvider: "courtyard",
+        fixedMatch: { category: "trading_card" },
+        minQuantitySupported: true,
+      }],
+      probeContract: async () => null,
+      searchFacetValues: async () => [
+        { value: "Charizard" },
+        { value: "Gengar" },
+      ],
+    };
+    const view = renderBuilder({
+      kind: "group",
+      op: "and",
+      children: [{
+        kind: "rule",
+        gate: {
+          type: "erc721_inventory_match",
+          provider: "courtyard",
+          chain_namespace: "eip155:137",
+          contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+          min_quantity: 1,
+          match: {
+            category: "trading_card",
+            subject: ["Charizard", "Gengar"],
+          },
+        },
+      }],
+    } as unknown as GateBuilderGroupDraft, { capabilitySource });
+
+    await view.findByText("Courtyard graded cards");
+    expect(view.getAllByText("Charizard").length).toBeGreaterThan(0);
+    expect(view.getAllByText("Gengar").length).toBeGreaterThan(0);
+
+    fireEvent.change(view.getByRole("spinbutton", { name: "Minimum NFT quantity" }), {
+      target: { value: "2" },
+    });
+    const rule = view.getLatestValue().children[0] as { gate: { match: Record<string, unknown> } };
+    expect(rule.gate.match.subject).toEqual(["Charizard", "Gengar"]);
+  });
+});
+
+describe("inventory facet selection serialization", () => {
+  test("uses a scalar for one selection and an array for multiple selections", () => {
+    expect(serializeFacetSelection(["Charizard"], 10)).toBe("Charizard");
+    expect(serializeFacetSelection(["Charizard", "Gengar"], 10))
+      .toEqual(["Charizard", "Gengar"]);
+  });
+
+  test("does not confuse a comma-bearing scalar with a multi-value selection", () => {
+    expect(serializeFacetSelection(["Charizard,Gengar"], 10)).toBe("Charizard,Gengar");
+    expect(serializeFacetSelection(["Charizard", "Gengar"], 10))
+      .not.toEqual("Charizard,Gengar");
+  });
+
+  test("normalizes changed values, deduplicates like the API, and honors the cap", () => {
+    const values = [" Charizard ", "charizard", ...Array.from({ length: 12 }, (_, index) => `Card ${index}`)];
+    expect(serializeFacetSelection(values, 3)).toEqual(["Charizard", "Card 0", "Card 1"]);
   });
 });
 

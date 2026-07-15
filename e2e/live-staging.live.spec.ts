@@ -3,6 +3,15 @@ import { readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { expect, test, type Page, type Response } from "@playwright/test";
 import type { CommunityFollowResponse, SessionExchangeResponse } from "@pirate/api-contracts";
+import {
+  createPublicClient,
+  createWalletClient,
+  defineChain,
+  encodeFunctionData,
+  http,
+  type Hex,
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 import {
   expectNoBrowserError,
@@ -44,6 +53,13 @@ const liveSecretsPresent = Boolean(
   && process.env.AUTH_UPSTREAM_JWT_SHARED_SECRET?.trim(),
 );
 const requiredReleaseGate = process.env.E2E_REQUIRED_RELEASE_GATE === "true";
+const erc20TransferAbi = [{
+  inputs: [{ name: "to", type: "address" }, { name: "value", type: "uint256" }],
+  name: "transfer",
+  outputs: [{ name: "", type: "bool" }],
+  stateMutability: "nonpayable",
+  type: "function",
+}] as const;
 
 // Contract-drift gate for community follow. This catches response shape regressions,
 // hook silent rollback, and persistence across reload; it is not a broad follow suite.
@@ -795,9 +811,10 @@ async function createLiveRoomTicketQuote(input: {
   communityId: string;
   listingId: string;
   roomId: string;
-}): Promise<{ finalPriceCents: number; id: string }> {
+}): Promise<{ finalPriceCents: number; fundingDestination: Hex; id: string }> {
   const quote = await requestJson<{
     final_price_cents: number;
+    funding_destination_address: string;
     id: string;
     live_room: string | null;
     settlement_mode: string;
@@ -824,17 +841,56 @@ async function createLiveRoomTicketQuote(input: {
   });
   expect(quote.live_room).toBe(input.roomId);
   expect(quote.settlement_mode).toBe("delivery_only_story_settlement");
-  return { finalPriceCents: quote.final_price_cents, id: quote.id };
+  expect(quote.funding_destination_address).toMatch(/^0x[a-f0-9]{40}$/iu);
+  return {
+    finalPriceCents: quote.final_price_cents,
+    fundingDestination: quote.funding_destination_address as Hex,
+    id: quote.id,
+  };
+}
+
+async function fundLiveRoomTicket(input: {
+  buyerPrivateKey: Hex;
+  destination: Hex;
+  finalPriceCents: number;
+}): Promise<Hex> {
+  const rpcUrl = process.env.PIRATE_CHECKOUT_RPC_URL?.trim();
+  const token = process.env.PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS?.trim() as Hex | undefined;
+  if (!rpcUrl || !token) {
+    throw new Error("PIRATE_CHECKOUT_RPC_URL and PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS are required");
+  }
+  const chainId = Number(process.env.PIRATE_CHECKOUT_SOURCE_CHAIN_ID ?? "84532");
+  const chain = defineChain({
+    id: chainId,
+    name: "Base Sepolia",
+    nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
+    rpcUrls: { default: { http: [rpcUrl] } },
+  });
+  const account = privateKeyToAccount(input.buyerPrivateKey);
+  const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
+  const walletClient = createWalletClient({ account, chain, transport: http(rpcUrl) });
+  const hash = await walletClient.sendTransaction({
+    account,
+    chain,
+    data: encodeFunctionData({
+      abi: erc20TransferAbi,
+      args: [input.destination, BigInt(input.finalPriceCents) * 10_000n],
+      functionName: "transfer",
+    }),
+    to: token,
+  });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error(`Live-room ticket funding failed: ${hash}`);
+  return hash;
 }
 
 async function settleLiveRoomTicket(input: {
   buyer: StoredSession;
   communityId: string;
+  fundingTxRef: Hex;
   quoteId: string;
   roomId: string;
-  runId: string;
 }): Promise<string> {
-  const settlementRef = `live-paid-ui:${input.runId}`;
   const settlement = await requestJson<{
     entitlement_kind: string;
     entitlement_target_ref: string;
@@ -842,9 +898,9 @@ async function settleLiveRoomTicket(input: {
     purchase_entitlement: string;
   }>(`/communities/${encodeURIComponent(input.communityId)}/purchase-settlements`, {
     body: JSON.stringify({
-      funding_tx_ref: settlementRef,
+      funding_tx_ref: input.fundingTxRef,
       quote: input.quoteId,
-      settlement_tx_ref: settlementRef,
+      settlement_tx_ref: input.fundingTxRef,
       settlement_wallet_attachment: walletAttachmentId(input.buyer),
     }),
     headers: { authorization: `Bearer ${input.buyer.accessToken}` },
@@ -1924,8 +1980,16 @@ test.describe("live staging integration", () => {
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
     const priceCents = 199;
     const buyerSubject = `paid-live-ui-buyer-${runId}`;
+    const rawBuyerPrivateKey = process.env.PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY?.trim() ?? "";
+    const buyerPrivateKey = (rawBuyerPrivateKey.startsWith("0x")
+      ? rawBuyerPrivateKey
+      : `0x${rawBuyerPrivateKey}`) as Hex;
+    if (!/^0x[a-f0-9]{64}$/iu.test(buyerPrivateKey)) {
+      throw new Error("PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY is required");
+    }
+    const buyerAccount = privateKeyToAccount(buyerPrivateKey);
     const host = await createLiveSession(storySmokeHostSubject);
-    const buyer = await createLiveSession(buyerSubject, walletAddressForSubject(buyerSubject));
+    const buyer = await createLiveSession(buyerSubject, buyerAccount.address);
     await completeSelfVerification(host);
     await completeSelfVerification(buyer);
 
@@ -1996,12 +2060,17 @@ test.describe("live staging integration", () => {
         roomId: published.roomId,
       });
       expect(quote.finalPriceCents).toBe(priceCents);
+      const fundingTxRef = await fundLiveRoomTicket({
+        buyerPrivateKey,
+        destination: quote.fundingDestination,
+        finalPriceCents: quote.finalPriceCents,
+      });
       const entitlement = await settleLiveRoomTicket({
         buyer,
         communityId,
+        fundingTxRef,
         quoteId: quote.id,
         roomId: published.roomId,
-        runId,
       });
       const accessAfter = await requestJson<{
         access: { allowed: boolean; decision_reason: string | null; purchase_entitlement: string | null };

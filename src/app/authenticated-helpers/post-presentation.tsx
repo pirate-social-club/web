@@ -330,6 +330,7 @@ export function toThreadPostCard(
       if (key === "cancel-event") opts?.onCancelEvent?.();
     } : undefined,
     onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
+    voteAccess: post.status === "deleted" || post.status === "removed" ? undefined : opts?.voteAccess,
     postHref: undefined,
     qualifierLabels: resolvePostQualifierLabels(postResponse),
     ...titleProps,

@@ -69,34 +69,39 @@ export function useCommunityVoteAction({
       }
 
       const voteValue = toPostVoteValue(direction);
-      await runGatedCommunityAction({
-        action: "vote_post",
-        buildBlockedModalState,
-        communityId: resolvedCommunityId,
-        ...(gateData ? { gateData } : {}),
-        onAllowed: async (context) => {
-          await submitOptimisticPostVote({
-            altchaPayload: context?.altchaPayload,
-            direction,
-            onApply: (nextValue) =>
-              setPosts((current) =>
-                updateCommunityPostVote(current, postId, nextValue),
-              ),
-            onRollback: (restoredPost) =>
-              setPosts((current) =>
-                current.map((post) =>
-                  post.post.id === postId ? restoredPost : post
+      try {
+        await runGatedCommunityAction({
+          action: "vote_post",
+          buildBlockedModalState,
+          communityId: resolvedCommunityId,
+          ...(gateData ? { gateData } : {}),
+          onAllowed: async (context) => {
+            await submitOptimisticPostVote({
+              altchaPayload: context?.altchaPayload,
+              direction,
+              onApply: (nextValue) =>
+                setPosts((current) =>
+                  updateCommunityPostVote(current, postId, nextValue),
                 ),
-              ),
-            postId,
-            previousPost,
-            requestIdsRef: voteRequestIdsRef,
-            vote,
-          });
-        },
-        postId,
-        voteValue,
-      });
+              onRollback: (restoredPost) =>
+                setPosts((current) =>
+                  current.map((post) =>
+                    post.post.id === postId ? restoredPost : post
+                  ),
+                ),
+              postId,
+              previousPost,
+              requestIdsRef: voteRequestIdsRef,
+              vote,
+            });
+          },
+          postId,
+          voteValue,
+        });
+      } catch {
+        // The submitter owns rollback and error display; the gate only needs
+        // the rejection long enough to invalidate contradictory membership.
+      }
     },
     [
       buildBlockedModalState,

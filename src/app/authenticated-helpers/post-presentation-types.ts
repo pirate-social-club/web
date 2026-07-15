@@ -53,6 +53,7 @@ export type PostPresentationOptions = {
   liveRoom?: LiveRoomPresentationOptions;
   onVerifyAge?: () => void;
   onVote?: PostCardProps["onVote"];
+  voteAccess?: PostCardProps["voteAccess"];
   onComment?: PostCardProps["onComment"];
   onDelete?: () => void;
   onRemove?: () => void;

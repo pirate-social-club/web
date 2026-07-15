@@ -492,9 +492,31 @@ export function usePost(
           setCommunity(refreshedCommunity);
         },
         postId: post.post.id,
+        resumeActionAfterJoin: false,
       });
     } catch (nextError) {
       toast.error(getErrorMessage(nextError, "Could not check comment access."));
+    }
+  }, [api.communities, invalidateCommunityGate, locale, post, runGatedCommunityAction]);
+
+  const requestVoteAccess = React.useCallback(async (): Promise<void> => {
+    if (!post) return;
+    const communityId = post.post.community;
+    invalidateCommunityGate(communityId);
+    try {
+      await runGatedCommunityAction({
+        action: "vote_post",
+        communityId,
+        onAllowed: async () => {
+          const refreshedCommunity = await api.communities.preview(communityId, { locale });
+          setCommunity(refreshedCommunity);
+        },
+        postId: post.post.id,
+        resumeActionAfterJoin: false,
+        voteValue: 1,
+      });
+    } catch (nextError) {
+      toast.error(getErrorMessage(nextError, "Could not check voting access."));
     }
   }, [api.communities, invalidateCommunityGate, locale, post, runGatedCommunityAction]);
 
@@ -620,26 +642,30 @@ export function usePost(
     if (!post) return;
     if (!direction) return;
     const voteValue = toPostVoteValue(direction);
-    await runGatedCommunityAction({
-      action: "vote_post",
-      communityId: post.post.community,
-      ...(voteGateData ? { gateData: voteGateData } : {}),
-      onAllowed: async (context) => {
-        const nextPostId = post.post.id;
-        await submitOptimisticPostVote({
-          altchaPayload: context?.altchaPayload,
-          direction,
-          onApply: (nextValue) => setPost((current) => current ? applyPostVote(current, nextValue) : current),
-          onRollback: (restoredPost) => setPost(restoredPost),
-          postId: nextPostId,
-          previousPost: post,
-          requestIdsRef: voteRequestIdsRef,
-          vote: api.posts.vote,
-        });
-      },
-      postId: post.post.id,
-      voteValue,
-    });
+    try {
+      await runGatedCommunityAction({
+        action: "vote_post",
+        communityId: post.post.community,
+        ...(voteGateData ? { gateData: voteGateData } : {}),
+        onAllowed: async (context) => {
+          const nextPostId = post.post.id;
+          await submitOptimisticPostVote({
+            altchaPayload: context?.altchaPayload,
+            direction,
+            onApply: (nextValue) => setPost((current) => current ? applyPostVote(current, nextValue) : current),
+            onRollback: (restoredPost) => setPost(restoredPost),
+            postId: nextPostId,
+            previousPost: post,
+            requestIdsRef: voteRequestIdsRef,
+            vote: api.posts.vote,
+          });
+        },
+        postId: post.post.id,
+        voteValue,
+      });
+    } catch {
+      // The optimistic submitter already rolled back and displayed the error.
+    }
   }, [api.posts.vote, post, runGatedCommunityAction, voteGateData]);
 
   const deletePost = React.useCallback(async () => {
@@ -967,6 +993,7 @@ export function usePost(
     availableAgent,
     createTopLevelComment,
     requestCommentAccess,
+    requestVoteAccess,
     cancelEvent,
     deletePost,
     removePost,

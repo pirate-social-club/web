@@ -41,6 +41,10 @@ type JoinCompletionInput = {
   interactionCopy: InteractionGateCopy;
   invalidateCommunityGate: (communityId: string) => void;
   openCommunity: (communityId: string) => void;
+  onReadyAfterJoin?: (
+    pendingInteraction: PendingInteraction,
+    joinedGate: CommunityGateData,
+  ) => Promise<void> | void;
   pendingInteraction: PendingInteraction | null;
   setModalState: (modalState: ModalState) => void;
   startDefaultVerification?: BuildBlockedModalStateArgs["startDefaultVerification"];
@@ -163,6 +167,18 @@ async function finishCommunityJoinWithEligibility(
       ...context.gate,
       eligibility: nextEligibility,
     });
+  }
+
+  if (
+    nextEligibility.status === "already_joined"
+    && context.pendingInteraction
+    && input.onReadyAfterJoin
+  ) {
+    const joinedGate = { ...context.gate, eligibility: nextEligibility };
+    input.closeModal();
+    input.clearPendingInteraction();
+    await input.onReadyAfterJoin(context.pendingInteraction, joinedGate);
+    return;
   }
 
   if (nextEligibility.status === "already_joined") {

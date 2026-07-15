@@ -326,7 +326,7 @@ describe("useGatedActionRunner", () => {
     expect(runner.calls).toEqual(["load:community-1", "complete-action"]);
   });
 
-  test("uses a vote-bound proof for verification-required PoW-only post votes", async () => {
+  test("routes verification-required PoW-only post votes through community join", async () => {
     const runner = renderRunner({
       gateData: gate("verification_required", {
         gate_evaluation: altchaGateEvaluation(),
@@ -346,8 +346,8 @@ describe("useGatedActionRunner", () => {
     });
 
     expect(runner.pendingInteraction?.action).toBe("vote_post");
-    expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:1:vote");
-    expect(runner.hook.result.current.modalState?.primaryAction).toBeNull();
+    expect(runner.hook.result.current.modalState?.body).toBe("altcha:community:community-1:community_join");
+    expect(runner.hook.result.current.modalState?.primaryAction?.label).toBe("Continue");
   });
 
   test("blocks Altcha-gated comment votes for a vote-bound proof", async () => {
@@ -585,7 +585,7 @@ describe("useGatedActionRunner", () => {
     expect(runner.hook.result.current.modalState?.secondaryAction).toBeUndefined();
   });
 
-  test("uses an action proof for verification-required PoW-only replies", async () => {
+  test("routes verification-required PoW-only replies through community join", async () => {
     const runner = renderRunner({
       gateData: gate("verification_required", {
         gate_evaluation: altchaGateEvaluation(),
@@ -605,9 +605,9 @@ describe("useGatedActionRunner", () => {
 
     expect(runner.pendingInteraction?.action).toBe("reply_post");
     expect(runner.hook.result.current.modalState?.title).toBe("Browser anti-bot check required");
-    expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:comment_create");
+    expect(runner.hook.result.current.modalState?.body).toBe("altcha:community:community-1:community_join");
     expect(runner.hook.result.current.modalState?.description).toBe(gatesPanel.powOnlyDescription);
-    expect(runner.hook.result.current.modalState?.primaryAction).toBeNull();
+    expect(runner.hook.result.current.modalState?.primaryAction?.label).toBe("Continue");
     expect(runner.hook.result.current.modalState?.secondaryAction).toBeUndefined();
   });
 

@@ -14,6 +14,8 @@ import {
   type ModalState,
   type PendingInteraction,
 } from "@/hooks/use-community-interaction-gate.helpers";
+import { logger } from "@/lib/logger";
+import { isMembershipRequiredWriteRejection } from "./membership-write-rejection";
 
 export type AltchaCommunitiesApi = {
   getJoinEligibility: (communityId: string) => Promise<JoinEligibility>;
@@ -37,6 +39,10 @@ export async function completeAltchaJoin(input: {
   pendingInteraction: PendingInteraction | null;
   setModalState: SetModalState;
   updateCachedGate: (communityId: string, gate: CommunityGateData) => void;
+  rerunJoinedInteraction?: (
+    pendingInteraction: PendingInteraction,
+    joinedGate: CommunityGateData,
+  ) => Promise<void> | void;
 }) {
   const pendingInteraction = input.pendingInteraction;
   if (!pendingInteraction) {
@@ -58,6 +64,7 @@ export async function completeAltchaJoin(input: {
     pendingInteraction,
     setModalState: input.setModalState,
     updateCachedGate: input.updateCachedGate,
+    onReadyAfterJoin: input.rerunJoinedInteraction,
   });
 }
 
@@ -65,6 +72,7 @@ export async function completeAltchaAction(input: {
   clearPendingInteraction: () => void;
   closeModal: () => void;
   context: InteractionAllowedContext;
+  invalidateCommunityGate: (communityId: string) => void;
   pendingInteraction: PendingInteraction | null;
 }) {
   const pendingInteraction = input.pendingInteraction;
@@ -73,6 +81,20 @@ export async function completeAltchaAction(input: {
   }
 
   input.closeModal();
-  await pendingInteraction.onAllowed(input.context);
-  input.clearPendingInteraction();
+  try {
+    await pendingInteraction.onAllowed(input.context);
+  } catch (error) {
+    if (isMembershipRequiredWriteRejection(error)) {
+      input.invalidateCommunityGate(pendingInteraction.communityId);
+      logger.warn("[interaction-gate] deferred write rejected for membership after allowed eligibility", {
+        action: pendingInteraction.action,
+        communityId: pendingInteraction.communityId,
+        eligibilityStatus: pendingInteraction.gate.eligibility.status,
+        postId: pendingInteraction.postId,
+      });
+    }
+    throw error;
+  } finally {
+    input.clearPendingInteraction();
+  }
 }

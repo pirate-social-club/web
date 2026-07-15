@@ -753,6 +753,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           VITE_BASE_NETWORK: ${{ vars.VITE_BASE_NETWORK }}
           VITE_EFP_ENVIRONMENT: ${{ vars.VITE_EFP_ENVIRONMENT }}
+          VITE_GATE_TREE_BUILDER_ENABLED: "true"
           VITE_PIRATE_APP_ENV: ${{ vars.VITE_PIRATE_APP_ENV || 'prod' }}
           VITE_ASYNC_SONG_PUBLISH_ENABLED: ${{ vars.VITE_ASYNC_SONG_PUBLISH_ENABLED || 'false' }}
           VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}

@@ -207,7 +207,7 @@ test.describe("mobile non-member gated interactions", () => {
     expect(captures.commentPosts).toBe(0);
 
     await page.getByRole("textbox", { name: /^reply$/i }).click();
-    await page.getByPlaceholder(/write a reply/i).fill("Joined before commenting");
+    await page.getByRole("textbox", { name: "Write a reply", exact: true }).fill("Joined before commenting");
     await page.getByRole("button", { name: /post reply/i }).click();
     await expect.poll(() => captures.challengeUrls.length).toBe(2);
     expect(captures.challengeUrls[1]?.searchParams.get("scope")).toBe("comment_create");

@@ -47,6 +47,7 @@ export class ApiError extends Error {
   readonly retryable: boolean;
   readonly retryableExplicit: boolean;
   readonly details: Record<string, unknown> | null;
+  readonly requestId: string | null;
 
   constructor(
     code: string,
@@ -54,6 +55,7 @@ export class ApiError extends Error {
     status: number,
     retryable?: boolean,
     details: Record<string, unknown> | null = null,
+    requestId: string | null = null,
   ) {
     super(message);
     this.name = "ApiError";
@@ -62,6 +64,7 @@ export class ApiError extends Error {
     this.retryable = retryable ?? false;
     this.retryableExplicit = retryable !== undefined;
     this.details = details;
+    this.requestId = requestId;
   }
 }
 
@@ -290,6 +293,7 @@ export class ApiClient {
       let code = "internal_error";
       let message = `Request failed with status ${res.status}`;
       let retryable: boolean | undefined;
+      let requestId = res.headers.get("x-request-id");
 
       try {
         const body: JsonErrorResponse & { details?: unknown; error?: string; preview?: unknown } = await res.json();
@@ -297,6 +301,7 @@ export class ApiClient {
         else if (typeof body.error === "string") code = body.error; // routes that return { error: reason }
         if (body.message) message = body.message;
         if (typeof body.retryable === "boolean") retryable = body.retryable;
+        if (typeof body.request_id === "string" && body.request_id) requestId = body.request_id;
         let parsedDetails =
           body.details && typeof body.details === "object"
             ? (body.details as Record<string, unknown>)
@@ -345,8 +350,9 @@ export class ApiClient {
           code,
           message,
           retryable,
+          requestId,
         });
-        throw new ApiError(code, message, res.status, retryable, parsedDetails);
+        throw new ApiError(code, message, res.status, retryable, parsedDetails, requestId);
       } catch (error) {
         if (error instanceof ApiError) {
           throw error;
@@ -358,8 +364,9 @@ export class ApiClient {
           code,
           message,
           retryable,
+          requestId,
         });
-        throw new ApiError(code, message, res.status, retryable);
+        throw new ApiError(code, message, res.status, retryable, null, requestId);
       }
     }
 

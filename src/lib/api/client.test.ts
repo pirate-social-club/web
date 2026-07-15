@@ -25,6 +25,40 @@ test("preserves an explicit retryable false from an API error response", async (
   }
 });
 
+test("captures request_id from error bodies and falls back to the x-request-id header", async () => {
+  globalThis.fetch = async () => Response.json({
+    code: "internal_error",
+    message: "Internal server error",
+    retryable: true,
+    request_id: "body-req-id",
+  }, { status: 500, headers: { "x-request-id": "header-req-id" } });
+
+  try {
+    const client = new ApiClient({ baseUrl: "http://pirate.test", getToken: () => null });
+    await client.publicPosts.getKaraoke("pst_test").then(
+      () => { throw new Error("Expected request to fail"); },
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ApiError);
+        expect(error).toMatchObject({ requestId: "body-req-id", status: 500 });
+      },
+    );
+
+    globalThis.fetch = async () => new Response("not json", {
+      status: 500,
+      headers: { "x-request-id": "header-req-id" },
+    });
+    await client.publicPosts.getKaraoke("pst_test").then(
+      () => { throw new Error("Expected request to fail"); },
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ApiError);
+        expect(error).toMatchObject({ requestId: "header-req-id", status: 500 });
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 function requireRequest(request: Request | null): Request {
   if (!request) {
     throw new Error("Expected request to be captured");

@@ -70,6 +70,10 @@ export interface SongRewardOfferProps {
   eligibleActivity: "study" | "karaoke" | "either";
 }
 
+export function rewardAmountLabel(amountCents: number): string {
+  return `$${(amountCents / 100).toFixed(2)} USDC`;
+}
+
 export interface StreakRewardEarnedProps {
   activityKind?: "karaoke" | "study";
   amountLabel: string;

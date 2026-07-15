@@ -39,6 +39,8 @@ export interface KaraokePracticeSurfaceProps {
   scoringStatus?: KaraokeScoringStatus | null;
   /** Optional per-line rating pop rendered on the lyric stage. */
   rating?: KaraokeLineRating | null;
+  /** Optional campaign offer shown above the lyric stage. */
+  rewardSlot?: React.ReactNode;
   /** Footer content for the pre-performance scoring flow (Start button, connect
    *  status). The end-of-take RESULT does not go here — see `centerContent`. Pass
    *  null/omit during active performance to leave the footer empty. */
@@ -92,6 +94,7 @@ export function KaraokePracticeSurface({
   combo,
   scoringStatus,
   rating,
+  rewardSlot,
   footerContent,
   centerContent,
   title,
@@ -185,6 +188,14 @@ export function KaraokePracticeSurface({
           ) : null}
         </div>
       </header>
+
+      {rewardSlot ? (
+        <div className="border-b border-border-soft px-4 py-4 sm:px-6">
+          <div className="mx-auto w-full max-w-3xl">
+            {rewardSlot}
+          </div>
+        </div>
+      ) : null}
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {artworkSrc ? (

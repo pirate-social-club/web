@@ -13,7 +13,10 @@ import {
 import type { SongStreakSummary } from "@/components/compositions/song-study/song-streak-preview";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { Button } from "@/components/primitives/button";
-import { SongRewardOffer } from "@/components/compositions/rewards/reward-surfaces";
+import {
+  rewardAmountLabel,
+  SongRewardOffer,
+} from "@/components/compositions/rewards/reward-surfaces";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
@@ -77,10 +80,6 @@ function pageTitle(post: LocalizedPostResponse | null, study?: SongStudyPayload 
 
 function pageArtwork(post: LocalizedPostResponse | null, study?: SongStudyPayload | null): string | undefined {
   return study?.artwork_src?.trim() || post?.song_presentation?.cover_art_ref || undefined;
-}
-
-function rewardAmountLabel(amountCents: number): string {
-  return `$${(amountCents / 100).toFixed(2)} USDC`;
 }
 
 function lockedSurface(_study: SongStudyPayload): SongStudySurfaceState {

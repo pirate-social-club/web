@@ -5,6 +5,10 @@ import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
 import { KaraokeAudioSurface } from "@/components/compositions/karaoke/karaoke-audio-surface";
+import {
+  rewardAmountLabel,
+  SongRewardOffer,
+} from "@/components/compositions/rewards/reward-surfaces";
 import { toKaraokeStageLines } from "@/components/compositions/karaoke/lyric-transform";
 import { toScorableKaraokeLines } from "@/components/compositions/karaoke/karaoke-stage-bridge";
 import { useKaraokeScoring } from "@/components/compositions/karaoke/scoring/use-karaoke-scoring-session";
@@ -13,6 +17,7 @@ import { Button } from "@/components/primitives/button";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
+import type { ApiPublicRewardOffer } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -27,7 +32,12 @@ import {
 
 type KaraokeRouteState =
   | { phase: "loading" }
-  | { phase: "ready"; payload: NormalizedKaraokePayload; communityId: string }
+  | {
+      phase: "ready";
+      payload: NormalizedKaraokePayload;
+      communityId: string;
+      rewardOffer: ApiPublicRewardOffer | null;
+    }
   | { phase: "blocked"; title: string; message: string }
   | { phase: "error"; title: string; message: string };
 
@@ -96,10 +106,16 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
         if (canceled) return;
 
         const communityId = post.post.community;
+        const rewardOfferPromise = communityId
+          ? api.rewards.getActiveCampaignForSong(communityId, post.post.id).catch(() => null)
+          : Promise.resolve(null);
         let payload: NormalizedKaraokePayload | null = null;
         let payloadProblem: string | null = null;
 
-        const karaokeResult = await karaokePromise;
+        const [karaokeResult, rewardOffer] = await Promise.all([
+          karaokePromise,
+          rewardOfferPromise,
+        ]);
         if (karaokeResult.ok) {
           payload = normalizeApiKaraokePayload(karaokeResult.payload, post);
           if (!payload) {
@@ -123,7 +139,7 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
           return;
         }
 
-        setState({ communityId: communityId ?? "", payload, phase: "ready" });
+        setState({ communityId: communityId ?? "", payload, phase: "ready", rewardOffer });
       } catch (error) {
         if (canceled) return;
         setState({
@@ -189,6 +205,12 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
       onExit={() => navigate(`/p/${encodeURIComponent(postId)}`)}
       onRequestSignIn={connect ?? undefined}
       onViewScores={() => navigate(`/p/${encodeURIComponent(postId)}/karaoke/leaderboard`)}
+      rewardSlot={state.rewardOffer && state.rewardOffer.eligible_activity !== "study" ? (
+        <SongRewardOffer
+          amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents)}
+          eligibleActivity={state.rewardOffer.eligible_activity}
+        />
+      ) : undefined}
       scoring={scoring}
       showSignInCta={needsAuth}
       signInBusy={authBusy}

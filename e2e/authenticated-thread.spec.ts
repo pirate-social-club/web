@@ -40,7 +40,7 @@ test.describe("authenticated thread flows with mocked API", () => {
   test("shows a join CTA to a non-member without posting a comment", async ({ page }) => {
     let commentPostCount = 0;
     await page.route(
-      `**/communities/${encodeURIComponent(mockCommunityId)}/preview`,
+      new RegExp(`/communities/${encodeURIComponent(mockCommunityId)}/preview(?:\\?.*)?$`),
       (route) => route.fulfill({
         body: JSON.stringify({
           ...mockCommunityPreview,

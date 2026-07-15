@@ -572,6 +572,50 @@ async function completeSelfVerification(session: StoredSession): Promise<void> {
   });
 }
 
+async function waitForCommunityProvisioningJob(session: StoredSession, jobId: string): Promise<void> {
+  const deadline = Date.now() + 180_000;
+  let lastStatus = "unknown";
+  while (Date.now() < deadline) {
+    const job = await requestJson<{ error_code?: string | null; id: string; status: string }>(
+      `/jobs/${encodeURIComponent(jobId)}`,
+      { headers: { authorization: `Bearer ${session.accessToken}` } },
+    );
+    lastStatus = job.status;
+    if (job.status === "succeeded") return;
+    if (job.status === "failed") {
+      throw new Error(`community provisioning job ${job.id} failed: ${job.error_code ?? "unknown"}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+  }
+  throw new Error(`community provisioning job ${jobId} did not finish; last status ${lastStatus}`);
+}
+
+async function createGateBuilderCommunity(session: StoredSession, runId: string): Promise<string> {
+  const created = await requestJson<{
+    community: { community_id?: string; id?: string };
+    job?: { id?: string; status?: string };
+  }>("/communities", {
+    body: JSON.stringify({
+      display_name: `Gate builder staging ${runId}`,
+      handle_policy: { policy_template: "standard" },
+      membership_mode: "request",
+    }),
+    headers: { authorization: `Bearer ${session.accessToken}` },
+    method: "POST",
+  });
+  if (created.job?.id && created.job.status !== "succeeded") {
+    await waitForCommunityProvisioningJob(session, created.job.id);
+  }
+  const communityId = firstString(created.community.id, created.community.community_id);
+  if (!communityId) throw new Error("created gate-builder community id is missing");
+  return communityId.replace(/^com_/u, "");
+}
+
+async function chooseSelectOption(page: Page, triggerIndex: number, triggerName: string, optionName: string): Promise<void> {
+  await page.getByRole("combobox", { name: triggerName }).nth(triggerIndex).click();
+  await page.getByRole("option", { exact: true, name: optionName }).click();
+}
+
 async function writeGeneratedMultipartVideo(page: Page, sizeBytes: number, filePath: string): Promise<string> {
   if (!Number.isSafeInteger(sizeBytes) || sizeBytes <= 0) {
     throw new Error(`Invalid target video size ${sizeBytes}`);
@@ -1229,6 +1273,89 @@ test.describe("live staging integration", () => {
 
   test.skip(process.env.E2E_LIVE_STAGING !== "true", "Set E2E_LIVE_STAGING=true to run real staging mutations.");
   test.skip(!liveSecretsPresent, "Live staging JWT secrets are not available.");
+
+  test("round-trips a nested gate policy through the staging moderator UI", async ({ page }, testInfo) => {
+    testInfo.setTimeout(5 * 60_000);
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const subject = `gate-builder-staging-${runId}`;
+    const session = await createLiveSession(subject, walletAddressForSubject(subject));
+    await completeSelfVerification(session);
+    const communityId = await createGateBuilderCommunity(session, runId);
+    const authHeaders = { authorization: `Bearer ${session.accessToken}` };
+
+    await page.setViewportSize({ height: 900, width: 1440 });
+    await installStoredSession(page, session);
+    await page.goto(`/c/${pathSegment(communityId)}/mod/gates`);
+    await expect(page.getByRole("heading", { name: "Access and gates" })).toBeVisible({ timeout: 30_000 });
+    await page.getByRole("button", { name: "Automatic after passing gates" }).click();
+    await expect(page.getByText("Live summary", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { exact: true, name: "Rule" }).first().click();
+    await page.getByRole("button", { exact: true, name: "Group" }).first().click();
+    await chooseSelectOption(page, 1, "Group match mode", "OR");
+    await chooseSelectOption(page, 1, "Requirement type", "Browser challenge");
+    await page.getByRole("button", { exact: true, name: "Rule" }).nth(1).click();
+    await chooseSelectOption(page, 2, "Requirement type", "Passport score");
+    await expect(page.getByRole("spinbutton", { name: "Minimum Passport score" })).toHaveValue("20");
+
+    const expectedGatePolicy = {
+      expression: {
+        children: [
+          { gate: { provider: "self", type: "unique_human" }, op: "gate" },
+          {
+            children: [
+              { gate: { type: "altcha_pow" }, op: "gate" },
+              { gate: { minimum_score: 20, provider: "passport", type: "wallet_score" }, op: "gate" },
+            ],
+            op: "or",
+          },
+        ],
+        op: "and",
+      },
+      version: 1,
+    };
+    const saveButton = page.getByRole("button", { exact: true, name: "Save" });
+    await expect(saveButton).toBeEnabled();
+    const saveResponsePromise = page.waitForResponse((response) => {
+      const request = response.request();
+      return request.method() === "POST"
+        && new URL(response.url()).pathname === `/communities/${communityId}/gates`;
+    });
+    await saveButton.click();
+    const saveResponse = await saveResponsePromise;
+    expect(saveResponse.ok()).toBe(true);
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "Access and gates" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("combobox", { name: "Group match mode" }).nth(1)).toContainText("OR");
+    await expect(page.getByRole("combobox", { name: "Requirement type" }).nth(0)).toContainText("Human verification");
+    await expect(page.getByRole("combobox", { name: "Requirement type" }).nth(1)).toContainText("Browser challenge");
+    await expect(page.getByRole("combobox", { name: "Requirement type" }).nth(2)).toContainText("Passport score");
+
+    const persistedCommunity = await requestJson<{ gate_policy?: unknown }>(
+      `/communities/${encodeURIComponent(communityId)}`,
+      { headers: authHeaders },
+    );
+    expect(persistedCommunity.gate_policy).toEqual(expectedGatePolicy);
+    const persistedJson = JSON.stringify(persistedCommunity.gate_policy, null, 2);
+    console.log(`[gate-builder-staging] community=${communityId} persisted gate_policy=${persistedJson}`);
+    await testInfo.attach("persisted-gate-policy", {
+      body: Buffer.from(`${persistedJson}\n`),
+      contentType: "application/json",
+    });
+
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+
+    await page.getByRole("button", { exact: true, name: "Rule" }).first().click();
+    await chooseSelectOption(page, 3, "Requirement type", "NFT holding");
+    await page.getByRole("textbox", { name: "NFT contract address" }).fill("not-an-address");
+    await expect(page.getByRole("alert")).toHaveText("Enter a valid contract address.");
+    await expect(saveButton).toBeDisabled();
+
+    await page.setViewportSize({ height: 844, width: 390 });
+    await expect(page.getByText("Live summary", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  });
 
   test("uploads a public video through direct multipart in a real browser", async ({ page }, testInfo) => {
     testInfo.setTimeout(15 * 60_000);

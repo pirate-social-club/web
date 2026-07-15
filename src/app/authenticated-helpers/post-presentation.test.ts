@@ -4,6 +4,7 @@ import type { Asset, LocalizedPostResponse } from "@pirate/api-contracts";
 import {
   resolveLocalizedLinkTitle,
   toCommunityPostContent,
+  toCommunityFeedItem,
   toThreadPostCard,
 } from "@/app/authenticated-helpers/post-presentation";
 import { resolvePostCardHeadingTitle } from "@/app/authenticated-helpers/post-link-presentation";
@@ -228,6 +229,20 @@ function createSongAsset(overrides: Partial<Asset> = {}): Asset {
     ...overrides,
   };
 }
+
+describe("processing post status notices", () => {
+  test("shows the song preparation notice only for processing songs", () => {
+    const song = toCommunityFeedItem(createSongPost({ status: "processing" }), null, {});
+    const video = toCommunityFeedItem(createVideoPost({ status: "processing" }), null, {});
+
+    expect(song.post.statusNotice).toEqual({
+      tone: "neutral",
+      label: "Preparing song features",
+      message: "Visible only to you while we finish rights, lyrics, and audio checks.",
+    });
+    expect(video.post.statusNotice).toBeUndefined();
+  });
+});
 
 function createLiveRoomAccess(): ApiLiveRoomAccessResponse {
   return {

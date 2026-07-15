@@ -16,6 +16,7 @@ export const mediaControlButtonVariants = cva(
       size: {
         sm: "size-8",
         md: "size-10",
+        lg: "size-11",
       },
     },
     defaultVariants: {

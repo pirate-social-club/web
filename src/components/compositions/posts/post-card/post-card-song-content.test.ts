@@ -120,6 +120,26 @@ describe("deriveSongUI", () => {
     expect(markup).not.toContain("Sing");
   });
 
+  test("renders remix provenance as a distinct compact link", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          songMode: "remix",
+          upstreamAttributions: [{
+            assetId: "ast_dark_dividend",
+            href: "/songs/dark-dividend",
+            relationshipType: "remix_of",
+            title: "Dark Dividend",
+          }],
+        },
+      }),
+    );
+
+    expect(markup).toContain('href="/songs/dark-dividend"');
+    expect(markup).toContain(">Remix of Dark Dividend</a>");
+  });
+
   test("requires age proof until the viewer is verified allowed", () => {
     const lockedUi = deriveSongUI({
       ...baseSong,

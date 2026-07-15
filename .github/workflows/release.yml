@@ -168,7 +168,11 @@ jobs:
   # environment that the release gate can then exercise.
   staging:
     name: Deploy staging
-    needs: release-inputs
+    # schema-gate runs FIRST: the invariant is "the pinned API may deploy only
+    # after the live fleet satisfies its schema requirements". Deploying the
+    # pinned API to staging before that check is the exact failure this prevents.
+    # The gate reads the existing fleet and needs nothing from this deploy.
+    needs: [release-inputs, schema-gate]
     if: github.event_name != 'pull_request'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 30
@@ -305,7 +309,7 @@ jobs:
   # on one community. They catch different failures — keep both. Read-only.
   schema-gate:
     name: Community schema gate (staging fleet)
-    needs: [release-inputs, staging]
+    needs: [release-inputs]
     if: github.event_name != 'pull_request'
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 15

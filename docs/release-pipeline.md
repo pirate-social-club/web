@@ -3,11 +3,16 @@
 ## Shape
 
 ```
-release-inputs ──> staging ──┬─> release-gate ──┬─> production-freshness ──> production
-                      │       └─> schema-gate  ──┘             (environment: production; re-checks prod fleet)
-                      ├──────> commerce-gate  (non-blocking canary)  ──┐
-                      └──────> canaries       (non-blocking canary)  ──┴─> canary-alert
+release-inputs ──> schema-gate ──> staging ──> release-gate ──> production-freshness ──> production
+                                      │                                    (environment: production; re-checks prod fleet)
+                                      ├──────> commerce-gate  (non-blocking canary)  ──┐
+                                      └──────> canaries       (non-blocking canary)  ──┴─> canary-alert
 ```
+
+`schema-gate` runs **before** the staging deploy: the invariant is that the pinned API may
+deploy only after the live fleet satisfies its schema requirements, so an incompatible pin is
+caught before it reaches staging — not after. `production` and `production-freshness` still
+list it explicitly (it is transitively required through `staging`, but naming it is clearer).
 
 ## The one rule
 

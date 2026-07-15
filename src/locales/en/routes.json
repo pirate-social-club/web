@@ -24,6 +24,7 @@
     "replyingAsPublicLabel": "Reply as {handle}",
     "replyingAsAnonymousLabel": "Reply as {label}",
     "joinedStatLabel": "Joined",
+    "joinToComment": "Join to comment",
     "loadMore": "Load more",
     "loadMoreReplies": "Load more replies",
     "loadReplies": "Load replies",

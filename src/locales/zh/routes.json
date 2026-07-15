@@ -24,6 +24,7 @@
     "replyingAsPublicLabel": "以 {handle} 身份回复",
     "replyingAsAnonymousLabel": "以 {label} 身份回复",
     "joinedStatLabel": "加入时间",
+    "joinToComment": "加入后评论",
     "loadMore": "加载更多",
     "loadMoreReplies": "加载更多回复",
     "loadReplies": "加载回复",

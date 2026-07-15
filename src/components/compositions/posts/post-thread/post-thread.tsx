@@ -29,6 +29,8 @@ export function PostThread({
   rootReplyPlaceholder,
   rootReplyCancelLabel,
   rootReplySubmitLabel,
+  rootReplyBlockedLabel,
+  onRootReplyBlocked,
   onRootReplySubmit,
   replyIdentity,
   commentSort,
@@ -71,7 +73,8 @@ export function PostThread({
   React.useEffect(() => () => revokeReplyAttachment(mobileReplyAttachment), [mobileReplyAttachment]);
   const activePost = showOriginalPost && postOriginal ? postOriginal : post;
   const canToggleOriginalPost = Boolean(postOriginal);
-  const canReplyAtRoot = Boolean(onRootReplySubmit);
+  const hasRootReplyBlock = Boolean(rootReplyBlockedLabel && onRootReplyBlocked);
+  const canReplyAtRoot = Boolean(onRootReplySubmit || hasRootReplyBlock);
   const resolvedEmptyCommentsLabel = emptyCommentsLabel === "No comments yet." ? copy.common.noComments : emptyCommentsLabel;
   const resolvedRootReplyPlaceholder = rootReplyPlaceholder || rootReplyActionLabel || copy.common.replyAction;
   const activeSort = commentSort ?? availableCommentSorts?.[0]?.value;
@@ -206,27 +209,33 @@ export function PostThread({
       <section>
         {canReplyAtRoot && !rootReplyOpen ? (
           <div className="px-4 pb-5">
-            <input
-              aria-label={rootReplyActionLabel ?? copy.common.replyAction}
-              className="h-12 w-full rounded-full border border-border-soft bg-background px-4 text-base text-foreground shadow-sm outline-none transition-[color,box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-border focus-visible:ring-1 focus-visible:ring-border-soft"
-              onClick={() => {
-                if (isMobile) {
-                  openMobileRootReply();
-                } else {
-                  setRootReplyOpen(true);
-                }
-              }}
-              onFocus={() => {
-                if (isMobile) {
-                  openMobileRootReply();
-                } else {
-                  setRootReplyOpen(true);
-                }
-              }}
-              placeholder={resolvedRootReplyPlaceholder}
-              readOnly
-              type="text"
-            />
+            {hasRootReplyBlock ? (
+              <Button className="w-full" onClick={() => void onRootReplyBlocked?.()}>
+                {rootReplyBlockedLabel}
+              </Button>
+            ) : (
+              <input
+                aria-label={rootReplyActionLabel ?? copy.common.replyAction}
+                className="h-12 w-full rounded-full border border-border-soft bg-background px-4 text-base text-foreground shadow-sm outline-none transition-[color,box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-border focus-visible:ring-1 focus-visible:ring-border-soft"
+                onClick={() => {
+                  if (isMobile) {
+                    openMobileRootReply();
+                  } else {
+                    setRootReplyOpen(true);
+                  }
+                }}
+                onFocus={() => {
+                  if (isMobile) {
+                    openMobileRootReply();
+                  } else {
+                    setRootReplyOpen(true);
+                  }
+                }}
+                placeholder={resolvedRootReplyPlaceholder}
+                readOnly
+                type="text"
+              />
+            )}
           </div>
         ) : null}
         {commentsBody ? (

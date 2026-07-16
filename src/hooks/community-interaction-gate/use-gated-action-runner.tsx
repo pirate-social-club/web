@@ -428,11 +428,15 @@ export function useGatedActionRunner({
     });
 
     const actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId, sessionUser, voteValue });
-    // An action-bound proof can only authorize a write for an existing member.
-    // Non-members whose join gate is satisfiable with ALTCHA must first take
-    // the community_join path below, which creates membership and then
-    // re-enters this runner for the original action.
-    const shouldUseActionAltcha = actionAltchaConfig && state === "allowed";
+    const isPublicReply = (action === "reply_post" || action === "reply_comment")
+      && !requireMembership;
+    const shouldUsePublicReplyAltcha = isPublicReply
+      && state === "verification_required"
+      && canSatisfyWithAltchaOnly(gate);
+    // Public replies satisfy a PoW membership policy as an action-bound
+    // comment_create proof. They must never take the community_join path.
+    const shouldUseActionAltcha = actionAltchaConfig
+      && (state === "allowed" || shouldUsePublicReplyAltcha);
     if (shouldUseActionAltcha) {
       let allowedCompleted = false;
       const guardedOnAllowed: PendingInteraction["onAllowed"] = async (context) => {
@@ -450,6 +454,7 @@ export function useGatedActionRunner({
         gate,
         onAllowed: guardedOnAllowed,
         postId,
+        requireMembership: requireMembership === true,
         resumeActionAfterJoin,
         voteValue,
       });
@@ -529,6 +534,7 @@ export function useGatedActionRunner({
       gate,
       onAllowed,
       postId,
+      requireMembership: requireMembership === true,
       resumeActionAfterJoin,
       voteValue,
     });

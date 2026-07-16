@@ -392,6 +392,7 @@ export function useCommunityInteractionGate({
       gateData: joinedGate,
       onAllowed: pendingInteraction.onAllowed,
       postId: pendingInteraction.postId,
+      requireMembership: pendingInteraction.requireMembership,
       resumeActionAfterJoin: pendingInteraction.resumeActionAfterJoin,
       voteValue: pendingInteraction.voteValue,
     });

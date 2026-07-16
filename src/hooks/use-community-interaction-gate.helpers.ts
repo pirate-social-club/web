@@ -104,6 +104,8 @@ export type PendingInteraction = {
   gate: CommunityGateData;
   onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
   postId?: string;
+  /** Whether this specific write must create/retain community membership. */
+  requireMembership?: boolean;
   resumeActionAfterJoin?: boolean;
   voteValue?: -1 | 1;
 };

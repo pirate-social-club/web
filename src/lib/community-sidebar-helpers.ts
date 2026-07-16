@@ -144,14 +144,15 @@ function formatSidebarRequirement(input: {
       return "Passport score";
     case "erc721_holding": {
       const label = input.contractAddress ? shortenAddress(input.contractAddress) : null;
+      const quantity = input.minQuantity ?? 1;
       if (label) {
-        if (locale === "ar") return `حاملو NFT على إيثريوم من ${label}`;
-        if (locale === "zh") return `来自 ${label} 的以太坊 NFT 持有者`;
-        return `Ethereum NFT from ${label}`;
+        if (locale === "ar") return `${quantity} NFT على إيثريوم من ${label}`;
+        if (locale === "zh") return `${quantity} 个来自 ${label} 的以太坊 NFT`;
+        return `${quantity} Ethereum NFT${quantity === 1 ? "" : "s"} from ${label}`;
       }
-      if (locale === "ar") return "حاملو NFT على إيثريوم";
-      if (locale === "zh") return "以太坊 NFT 持有者";
-      return "Ethereum NFT holder";
+      if (locale === "ar") return `${quantity} NFT على إيثريوم`;
+      if (locale === "zh") return `${quantity} 个以太坊 NFT`;
+      return `${quantity} Ethereum NFT${quantity === 1 ? "" : "s"}`;
     }
     case "erc721_inventory_match": {
       const quantity = String(input.minQuantity ?? 1);
@@ -361,7 +362,9 @@ export function getCommunityGateSummaries(
     asset_filter_label: "asset_filter_label" in atom ? (atom.asset_filter_label as string | null | undefined) : null,
     contract_address: "contract_address" in atom ? atom.contract_address : null,
     gate_type: atom.type as ApiMembershipGateSummary["gate_type"],
-    min_quantity: "min_quantity" in atom ? atom.min_quantity : null,
+    min_quantity: atom.type === "erc721_holding"
+      ? ("min_count" in atom && typeof atom.min_count === "number" ? atom.min_count : 1)
+      : "min_quantity" in atom ? atom.min_quantity : null,
     required_value: atom.type === "gender" ? atom.allowed?.[0] ?? null : atom.type === "nationality" && atom.allowed?.length === 1 ? atom.allowed[0] : null,
     required_values: atom.type === "nationality" && (atom.allowed?.length ?? 0) > 1 ? atom.allowed : atom.type === "gender" && (atom.allowed?.length ?? 0) > 1 ? atom.allowed : null,
     required_minimum_age: atom.type === "minimum_age" ? atom.minimum_age : null,

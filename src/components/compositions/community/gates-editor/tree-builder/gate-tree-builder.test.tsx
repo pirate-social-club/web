@@ -4,6 +4,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import * as React from "react";
 
 import type { GateBuilderGroupDraft } from "@/app/authenticated-helpers/community-gate-tree-draft";
+import { withGateAssetMinimum } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import { UiLocaleProvider } from "@/lib/ui-locale";
 import type { CollectionCapabilitySource } from "./collection-capability-source";
 import { GateTreeBuilder, serializeFacetSelection } from "./gate-tree-builder";
@@ -118,6 +119,44 @@ describe("GateTreeBuilder", () => {
 
     expect((await view.findByRole("alert")).textContent)
       .toContain("无法加载系列");
+  });
+
+  test("renders a plain ERC-721 collection quantity", async () => {
+    const capabilitySource: CollectionCapabilitySource = {
+      estimateMatchCount: async () => null,
+      listTrustedSources: async () => [],
+      probeContract: async () => null,
+      searchFacetValues: async () => [],
+    };
+    const view = renderBuilder({
+      kind: "group",
+      op: "and",
+      children: [{
+        kind: "rule",
+        gate: {
+          type: "erc721_holding",
+          chain_namespace: "eip155:1",
+          contract_address: "0x0000000000000000000000000000000000000001",
+          min_count: 10,
+        },
+      }],
+    } as GateBuilderGroupDraft, { capabilitySource });
+
+    const input = await view.findByRole("spinbutton", { name: "Minimum NFT quantity" });
+    expect(input.getAttribute("value")).toBe("10");
+    expect(input.hasAttribute("disabled")).toBe(false);
+  });
+
+  test("updates ERC-721 collection quantities without dropping the atom", () => {
+    expect(withGateAssetMinimum({
+      type: "erc721_holding",
+      chain_namespace: "eip155:1",
+      contract_address: "0x0000000000000000000000000000000000000001",
+    }, 10)).toMatchObject({
+      type: "erc721_holding",
+      contract_address: "0x0000000000000000000000000000000000000001",
+      min_count: 10,
+    });
   });
 
   test("preserves a loaded multi-value facet when another inventory field changes", async () => {

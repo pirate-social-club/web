@@ -17,6 +17,7 @@ import { CheckboxCard } from "@/components/primitives/checkbox-card";
 import { OptionCard } from "@/components/primitives/option-card";
 import { NationalityMultiPicker } from "@/components/compositions/community/create-composer/nationality-picker";
 import { GateTreeBuilder } from "@/components/compositions/community/gates-editor/tree-builder/gate-tree-builder";
+import { createOwnedCourtyardCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/owned-courtyard-capability-source";
 import type { GateBuilderGroupDraft } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import {
   DEFAULT_DOCUMENT_PROOF_PROVIDERS,
@@ -420,6 +421,10 @@ export function CommunityGatesEditorPage({
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const courtyardInventoryGate = gateDrafts.find((draft) => draft.gateType === "erc721_inventory_match");
   const courtyardInventoryAuthoringAvailable = canAuthorCourtyardInventoryGate(courtyardInventoryGroups);
+  const courtyardCapabilitySource = React.useMemo(
+    () => createOwnedCourtyardCapabilitySource(courtyardInventoryGroups ?? []),
+    [courtyardInventoryGroups],
+  );
   const selectedCourtyardInventoryGroup = courtyardInventoryGroups?.find((group) =>
     courtyardInventoryDraftMatchesGroup(courtyardInventoryGate, group)
   ) ?? null;
@@ -494,6 +499,7 @@ export function CommunityGatesEditorPage({
               {mode === "gated" && effectiveMembershipMode === "gated" ? (
                 useGateTreeBuilder && gateTreeDraft && onGateTreeDraftChange ? (
                   <GateTreeBuilder
+                    capabilitySource={courtyardCapabilitySource}
                     className="max-w-none p-0"
                     onChange={onGateTreeDraftChange}
                     showHeader={false}

@@ -77,7 +77,7 @@ function mapPaymentInstructions(
 
 function mapQuoteToSearchResult(quote: CommunityHandleQuote): HandleSearchResult {
   return {
-    availability: mapAvailability(quote.availability),
+    availability: quote.eligible ? mapAvailability(quote.availability) : "unavailable",
     priceCents: quote.price_cents,
     pricingTier: quote.pricing_tier ?? undefined,
     reason: quote.reason ?? undefined,
@@ -160,7 +160,7 @@ export function useCommunityHandleClaimController(input: {
   }, [debounceMs, input.api, input.communityId, searchValue]);
 
   const onClaim = React.useCallback(async () => {
-    if (!quote || quote.availability !== "available" || phase === "processing") {
+    if (!quote || !quote.eligible || quote.availability !== "available" || phase === "processing") {
       return;
     }
 

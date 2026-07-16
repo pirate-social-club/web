@@ -169,6 +169,49 @@ describe("useCommunityHandleClaimController", () => {
     expect(result.current.phase).toBe("success");
   });
 
+  test("never pays or claims an ineligible available quote", async () => {
+    let checkoutCalls = 0;
+    let claimCalls = 0;
+    const api = {
+      quoteHandle: async () => createQuote({
+        eligible: false,
+        availability: "available",
+        reason: "A Bitcoin Taproot wallet is required for protocol-issued names",
+        price_cents: 500,
+        payment_instructions: createPaymentInstructions(),
+      }),
+      claimHandle: async () => {
+        claimCalls += 1;
+        return createHandle();
+      },
+    };
+
+    const { result } = renderHook(() => useCommunityHandleClaimController({
+      api,
+      communityId: "cmt_test",
+      connectedWallets: [createWallet()],
+      primaryWalletAddress: "0x1000000000000000000000000000000000000001",
+      settlementWalletAttachmentId: "wa_test",
+      debounceMs: 0,
+      executeCheckout: async () => {
+        checkoutCalls += 1;
+        return "0xfunded" as Hex;
+      },
+    }));
+
+    act(() => result.current.onSearchChange("amira"));
+    await waitFor(() => expect(result.current.searchResult?.availability).toBe("unavailable"));
+
+    await act(async () => {
+      await result.current.onClaim();
+    });
+
+    expect(result.current.searchResult?.reason).toBe("A Bitcoin Taproot wallet is required for protocol-issued names");
+    expect(checkoutCalls).toBe(0);
+    expect(claimCalls).toBe(0);
+    expect(result.current.phase).toBe("confirm");
+  });
+
   test("maps structured claim conflicts back into the search result", async () => {
     const api = {
       quoteHandle: async () => createQuote(),

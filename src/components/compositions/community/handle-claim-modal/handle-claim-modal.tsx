@@ -69,6 +69,26 @@ function resolveCommunityRouteLabel(
   return `/c/${communityHandle}`;
 }
 
+export function resolveCommunityHandleSuffix(
+  communityHandle: string,
+  communityRouteLabel: string | null | undefined,
+): string {
+  const normalizedRoute = communityRouteLabel?.trim().replace(/^\/+|\/+$/gu, "");
+  const routeRoot = normalizedRoute?.toLowerCase().startsWith("c/")
+    ? normalizedRoute.slice(2)
+    : normalizedRoute;
+  const rawRoot = routeRoot || communityHandle;
+  const isSpaces = rawRoot.startsWith("@");
+  const root = rawRoot.replace(/^@/u, "") || communityHandle.replace(/^@/u, "");
+  return `${isSpaces ? "@" : "."}${root}`;
+}
+
+function stripCommunityHandleSuffix(value: string, suffix: string): string {
+  return value.toLowerCase().endsWith(suffix.toLowerCase())
+    ? value.slice(0, -suffix.length)
+    : value;
+}
+
 function SearchResultFeedback({
   phase,
   result,
@@ -180,6 +200,10 @@ export function HandleClaimModal({
     communityHandle,
     communityRouteLabel,
   );
+  const communityHandleSuffix = resolveCommunityHandleSuffix(
+    communityHandle,
+    communityRouteLabel,
+  );
 
   const priceCents = searchResult?.priceCents ?? 0;
   const needsFunds = priceCents > 0;
@@ -202,13 +226,10 @@ export function HandleClaimModal({
     ? `Save up to ${selfVerificationSavingsPercent}% with Self.xyz`
     : null;
 
-  const displayValue = searchValue.endsWith(`@${communityHandle}`)
-    ? searchValue.slice(0, -communityHandle.length - 1)
-    : searchValue;
+  const displayValue = stripCommunityHandleSuffix(searchValue, communityHandleSuffix);
 
   const handleInputChange = (value: string) => {
-    const base = value.replace(new RegExp(`@${communityHandle}$`, "i"), "");
-    onSearchChange(base);
+    onSearchChange(stripCommunityHandleSuffix(value, communityHandleSuffix));
   };
 
   const handlePrimaryClick = () => {
@@ -288,7 +309,7 @@ export function HandleClaimModal({
                     value={displayValue}
                   />
                   <span className="shrink-0 font-mono text-lg text-muted-foreground">
-                    @{communityHandle}
+                    {communityHandleSuffix}
                   </span>
                 </div>
 

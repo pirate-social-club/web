@@ -34,6 +34,12 @@ export const DEFAULT_SHARE_IMAGE_TYPE = "image/jpeg";
 export const DEFAULT_SHARE_IMAGE_WIDTH = 1200;
 export const DEFAULT_SHARE_IMAGE_HEIGHT = 630;
 const TRANSFORMED_SHARE_IMAGE_QUALITY = 80;
+// Must stay in sync with the pirate.sc zone's Image Transformations allowed-origins
+// list (Cloudflare dashboard → Images → Transformations). Sources on any other host
+// are served untransformed: /cdn-cgi/image/ rejects them with ERROR 9401.
+const TRANSFORMABLE_IMAGE_SOURCE_HOSTS = new Set([
+  "psc.myfilebase.com",
+]);
 const TRANSFORMED_SHARE_IMAGE_OPTIONS = [
   `width=${DEFAULT_SHARE_IMAGE_WIDTH}`,
   `height=${DEFAULT_SHARE_IMAGE_HEIGHT}`,
@@ -187,11 +193,26 @@ export function buildCloudflareShareImageUrl(appOrigin: string, sourceUrl: strin
   return `${appOrigin.replace(/\/+$/, "")}/cdn-cgi/image/${TRANSFORMED_SHARE_IMAGE_OPTIONS}/${source.toString()}`;
 }
 
+function isTransformableImageSource(sourceUrl: string, appOrigin: string): boolean {
+  try {
+    const source = new URL(sourceUrl);
+    if (TRANSFORMABLE_IMAGE_SOURCE_HOSTS.has(source.hostname)) {
+      return true;
+    }
+    // Same-zone sources never need allowlisting in the transform config.
+    return source.hostname === new URL(appOrigin).hostname;
+  } catch {
+    return false;
+  }
+}
+
 function shareMetadataFromImageCandidate(appOrigin: string, image: ShareImageCandidate): Pick<
   SeoMetadata,
   "imageAlt" | "imageHeight" | "imageType" | "imageUrl" | "imageWidth"
 > {
-  const shouldTransform = image.transformable === true && shouldUseCloudflareImageTransform(appOrigin);
+  const shouldTransform = image.transformable === true
+    && shouldUseCloudflareImageTransform(appOrigin)
+    && isTransformableImageSource(image.url, appOrigin);
   return {
     imageAlt: image.alt ?? null,
     imageHeight: shouldTransform ? DEFAULT_SHARE_IMAGE_HEIGHT : image.height ?? null,
@@ -300,20 +321,23 @@ export function buildPostSeoMetadata(input: {
       ?? post.body
       ?? post.caption,
   );
-  const titleText = postTitleText ?? linkTitleText ?? copy.post.fallbackTitle;
+  const titleText = postTitleText ?? linkTitleText;
   const communityName = normalizeMetaText(community?.display_name);
   const contextTitle = communityName
     ? copy.post.titleInCommunity.replace("{name}", communityName)
     : copy.post.postOnPirate;
-  const imageAlt = `${titleText} on Pirate`;
+  // Untitled posts fall back to the community context as the card title; titled
+  // posts carry that context in the description instead so the post title stays
+  // the headline.
+  const title = titleText ?? contextTitle;
+  const imageAlt = `${titleText ?? copy.post.fallbackTitle} on Pirate`;
   const description = truncateMetaDescription(
     contentText
       ?? joinMetaParts([
-        postTitleText,
         mediaLabel,
+        titleText ? contextTitle : null,
       ])
-      ?? linkTitleText
-      ?? mediaLabel
+      ?? (titleText ? contextTitle : null)
       ?? copy.post.postOnPirate,
   ) ?? copy.post.postOnPirate;
   const image = firstPostMediaImageCandidate(post, input.appOrigin, imageAlt)
@@ -330,7 +354,7 @@ export function buildPostSeoMetadata(input: {
   return {
     description,
     ...shareMetadataFromImageCandidate(input.appOrigin, image),
-    title: contextTitle,
+    title,
     type: "article",
   };
 }

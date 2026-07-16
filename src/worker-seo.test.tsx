@@ -43,8 +43,8 @@ const community = {
   object: "community_preview",
   display_name: "Preview Club",
   description: "A community with rich link previews.",
-  avatar_ref: "https://media.test/avatar.png",
-  banner_ref: "https://media.test/banner.jpg",
+  avatar_ref: "https://psc.myfilebase.com/ipfs/avatar",
+  banner_ref: "https://psc.myfilebase.com/ipfs/banner",
 } as never;
 
 describe("share metadata", () => {
@@ -116,7 +116,7 @@ describe("share metadata", () => {
           media_refs: [{
             storage_ref: "https://media.test/video.mp4",
             mime_type: "video/mp4",
-            poster_ref: "https://media.test/poster.webp",
+            poster_ref: "https://psc.myfilebase.com/ipfs/poster",
             poster_mime_type: "image/webp",
             poster_width: 1280,
             poster_height: 720,
@@ -126,9 +126,9 @@ describe("share metadata", () => {
       }),
     });
 
-    expect(metadata.title).toBe("Preview Club, a community on Pirate");
+    expect(metadata.title).toBe("A proper preview");
     expect(metadata.description).toBe("The body should become the share description.");
-    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/poster.webp"));
+    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://psc.myfilebase.com/ipfs/poster"));
     expect(metadata.imageType).toBe("image/jpeg");
     expect(metadata.imageWidth).toBe(1200);
     expect(metadata.imageHeight).toBe(630);
@@ -143,7 +143,7 @@ describe("share metadata", () => {
         post: basePost({
           link_og_image_url: "https://media.test/link.jpg",
           media_refs: [{
-            storage_ref: "https://media.test/post-image.png",
+            storage_ref: "https://psc.myfilebase.com/ipfs/post-image",
             mime_type: "image/png",
           }],
           post_type: "image",
@@ -151,9 +151,9 @@ describe("share metadata", () => {
       }),
     });
 
-    expect(metadata.title).toBe("Preview Club, a community on Pirate");
+    expect(metadata.title).toBe("A proper preview");
     expect(metadata.description).toBe("The body should become the share description.");
-    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/post-image.png"));
+    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://psc.myfilebase.com/ipfs/post-image"));
     expect(metadata.imageType).toBe("image/jpeg");
   });
 
@@ -165,7 +165,7 @@ describe("share metadata", () => {
       postResponse: postResponse({
         post: basePost({
           media_refs: [{
-            storage_ref: "https://media.test/post-image.jpg?signature=test",
+            storage_ref: "https://psc.myfilebase.com/ipfs/post-image.jpg?signature=test",
             mime_type: null,
           }],
           post_type: "image",
@@ -174,7 +174,7 @@ describe("share metadata", () => {
     });
 
     expect(metadata.description).toBe("The body should become the share description.");
-    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/post-image.jpg?signature=test"));
+    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://psc.myfilebase.com/ipfs/post-image.jpg?signature=test"));
   });
 
   test("uses song cover art when a song has no image media", () => {
@@ -193,18 +193,19 @@ describe("share metadata", () => {
         }),
         song_presentation: {
           title: "Cover track",
-          cover_art_ref: "https://media.test/song-cover.jpg",
+          cover_art_ref: "https://api.pirate.sc/communities/cmt_x/song-artifact-uploads/sau_y/content",
           duration_ms: 180000,
         },
       }),
     });
 
-    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/song-cover.jpg"));
+    // api.pirate.sc is not in the transform allowlist: the raw URL must be used.
+    expect(metadata.imageUrl).toBe("https://api.pirate.sc/communities/cmt_x/song-artifact-uploads/sau_y/content");
     expect(metadata.description).toBe("The body should become the share description.");
     expect(metadata.imageAlt).toBe("Cover track on Pirate");
   });
 
-  test("uses link OG image before community fallback", () => {
+  test("uses the raw link OG image URL for non-allowlisted external hosts", () => {
     const metadata = buildPostSeoMetadata({
       appOrigin: "https://pirate.sc",
       community,
@@ -218,7 +219,7 @@ describe("share metadata", () => {
     });
 
     expect(metadata.description).toBe("The body should become the share description.");
-    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://link-preview.test/card.jpg"));
+    expect(metadata.imageUrl).toBe("https://link-preview.test/card.jpg");
   });
 
   test("uses inline public post community fields without a separate community input", () => {
@@ -235,12 +236,12 @@ describe("share metadata", () => {
       }),
     });
 
-    expect(metadata.title).toBe("Preview Club, a community on Pirate");
-    expect(metadata.description).toBe("A proper preview");
-    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/banner.jpg"));
+    expect(metadata.title).toBe("A proper preview");
+    expect(metadata.description).toBe("Preview Club, a community on Pirate");
+    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://psc.myfilebase.com/ipfs/banner"));
   });
 
-  test("uses social context title and media description when a media post has no body", () => {
+  test("uses community context in the description when a titled media post has no body", () => {
     const metadata = buildPostSeoMetadata({
       appOrigin: "https://pirate.sc",
       community,
@@ -250,7 +251,7 @@ describe("share metadata", () => {
           body: null,
           caption: null,
           media_refs: [{
-            storage_ref: "https://media.test/post-image.png",
+            storage_ref: "https://psc.myfilebase.com/ipfs/post-image",
             mime_type: "image/png",
           }],
           post_type: "image",
@@ -259,8 +260,59 @@ describe("share metadata", () => {
       }),
     });
 
+    expect(metadata.title).toBe("test");
+    expect(metadata.description).toBe("Image post · Preview Club, a community on Pirate");
+  });
+
+  test("falls back to the community context title for untitled posts", () => {
+    const metadata = buildPostSeoMetadata({
+      appOrigin: "https://pirate.sc",
+      community,
+      locale: "en",
+      postResponse: postResponse({
+        post: basePost({
+          body: null,
+          caption: "Only a caption",
+          media_refs: [{
+            storage_ref: "https://psc.myfilebase.com/ipfs/post-image",
+            mime_type: "image/png",
+          }],
+          post_type: "image",
+          title: null,
+        }),
+      }),
+    });
+
     expect(metadata.title).toBe("Preview Club, a community on Pirate");
-    expect(metadata.description).toBe("test · Image post");
+    expect(metadata.description).toBe("Only a caption");
+  });
+
+  test("serves community banners from non-allowlisted hosts untransformed", () => {
+    const metadata = buildCommunitySeoMetadata({
+      appOrigin: "https://pirate.sc",
+      locale: "en",
+      preview: {
+        ...community,
+        avatar_ref: null,
+        banner_ref: "https://api.pirate.sc/community-media/banner/banner_test.png",
+      },
+    });
+
+    expect(metadata.imageUrl).toBe("https://api.pirate.sc/community-media/banner/banner_test.png");
+    expect(metadata.imageType).toBe(null);
+  });
+
+  test("ignores data-URI banners and falls back to the avatar", () => {
+    const metadata = buildCommunitySeoMetadata({
+      appOrigin: "https://pirate.sc",
+      locale: "en",
+      preview: {
+        ...community,
+        banner_ref: "data:image/svg+xml;charset=utf-8,%3Csvg%3E",
+      },
+    });
+
+    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://psc.myfilebase.com/ipfs/avatar"));
   });
 
   test("renders structured Open Graph and X image tags", () => {

@@ -10,6 +10,9 @@ describe("community handle claim dismissal helpers", () => {
     expect(communityHandleClaimDismissalKey("com_123")).toBe(
       "pirate:handle-claim-dismissed:com_123",
     );
+    expect(communityHandleClaimDismissalKey("com_123", "nv_charizard")).toBe(
+      "pirate:handle-claim-dismissed:com_123:nv_charizard",
+    );
   });
 
   test("derives display handles from route labels", () => {

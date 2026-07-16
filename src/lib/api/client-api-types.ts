@@ -987,3 +987,16 @@ export type KaraokeSongLeaderboard = {
   viewer_best_reached_at: string | null;
   viewer_eligible_attempt_count: number;
 };
+
+export type ApiCommunityNamespaceAttachment = {
+  namespace_verification: string;
+  namespace_role: "primary" | "mirror";
+  family: "hns" | "spaces";
+  root_label: string;
+  route_slug: string;
+  verification_status: "verified" | "stale" | "expired" | "disputed";
+};
+
+export type ApiCommunityNamespaceListResponse = {
+  namespaces: ApiCommunityNamespaceAttachment[];
+};

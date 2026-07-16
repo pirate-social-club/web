@@ -117,6 +117,33 @@ describe("useCommunityHandleClaimController", () => {
     expect(result.current.claimedLabel).toBe("amira");
   });
 
+  test("binds quotes to the selected namespace", async () => {
+    const quoteBodies: unknown[] = [];
+    const api = {
+      quoteHandle: async (_communityId: string, body: unknown) => {
+        quoteBodies.push(body);
+        return createQuote();
+      },
+      claimHandle: async () => createHandle(),
+    };
+
+    const { result } = renderHook(() => useCommunityHandleClaimController({
+      api,
+      communityId: "cmt_test",
+      namespaceVerificationId: "nv_charizard",
+      connectedWallets: [],
+      debounceMs: 0,
+    }));
+
+    act(() => result.current.onSearchChange("ash"));
+    await waitFor(() => expect(result.current.searchResult?.availability).toBe("available"));
+
+    expect(quoteBodies).toEqual([{
+      desired_label: "ash",
+      namespace_verification: "nv_charizard",
+    }]);
+  });
+
   test("runs USDC checkout before claiming a paid handle", async () => {
     const instructions = createPaymentInstructions();
     const claimBodies: unknown[] = [];

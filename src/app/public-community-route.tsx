@@ -32,6 +32,7 @@ import { getJoinCtaLabel, getVerificationCapabilitiesForProvider, getVerificatio
 import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
 import { useCommunityFollow } from "@/hooks/use-community-follow";
 import { useCommunityMembershipActions } from "@/hooks/use-community-membership-actions";
+import { useCommunityHandleNamespaces } from "@/hooks/use-community-handle-namespaces";
 import { useCommunityVoteAction } from "@/hooks/use-community-vote-action";
 import { forgetKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
@@ -250,15 +251,24 @@ export function PublicCommunityRoutePage({
   const { connectedWallets } = usePiratePrivyWallets({
     enabled: Boolean(session?.user?.id),
   });
+  const handleClaimCommunityId = preview?.id ?? communityId;
+  const handleNamespaces = useCommunityHandleNamespaces({
+    api: api.communities,
+    communityId: handleClaimCommunityId,
+    enabled: Boolean(session?.accessToken),
+  });
   const handleClaim = useCommunityHandleClaimController({
     api: api.communities,
     communityId: preview?.id ?? communityId,
+    namespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     connectedWallets,
     primaryWalletAddress: session?.profile.primary_wallet_address,
     settlementWalletAttachmentId: session?.user.primary_wallet_attachment,
   });
-  const handleClaimCommunityId = preview?.id ?? communityId;
-  const handleClaimDismissal = useCommunityHandleClaimDismissal(handleClaimCommunityId);
+  const handleClaimDismissal = useCommunityHandleClaimDismissal(
+    handleClaimCommunityId,
+    handleNamespaces.selectedNamespaceVerification,
+  );
   const {
     startVerification: startVeryVerification,
     verificationLoading: veryLoading,
@@ -475,6 +485,7 @@ export function PublicCommunityRoutePage({
     handleClaim,
     handleClaimApi: api.communities,
     handleClaimCommunityId,
+    handleClaimNamespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     handleClaimDismissal,
     handleJoin,
     onAuthRequired: () => {
@@ -702,6 +713,9 @@ export function PublicCommunityRoutePage({
         communityHandle={communityHandleLabel}
         communityName={preview.display_name}
         communityRouteLabel={routeLabel}
+        namespaceOptions={handleNamespaces.namespaceOptions}
+        onNamespaceChange={handleNamespaces.setSelectedNamespaceVerification}
+        selectedNamespaceVerification={handleNamespaces.selectedNamespaceVerification}
         error={handleClaim.error}
         onClaim={handleClaim.onClaim}
         onNotNow={handleClaimNotNow}

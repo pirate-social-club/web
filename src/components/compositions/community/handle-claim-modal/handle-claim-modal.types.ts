@@ -32,12 +32,22 @@ export interface HandleSearchResult {
   paymentInstructions?: HandlePaymentInstructions | null;
 }
 
+export interface HandleClaimNamespaceOption {
+  namespaceVerification: string;
+  label: string;
+  routeLabel: string;
+  disabled?: boolean;
+}
+
 export interface HandleClaimModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   communityName: string;
   communityHandle: string;
   communityRouteLabel?: string | null;
+  namespaceOptions?: HandleClaimNamespaceOption[];
+  selectedNamespaceVerification?: string | null;
+  onNamespaceChange?: (namespaceVerification: string) => void;
   phase: HandleClaimPhase;
   searchValue: string;
   onSearchChange: (value: string) => void;

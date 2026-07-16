@@ -49,6 +49,7 @@ import { buildLiveRoomParticipants } from "@/app/authenticated-helpers/post-live
 import { toCommunityFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { processingPostPollDelayMs, shouldContinueProcessingPostPolling } from "@/app/authenticated-helpers/processing-post-polling";
 import { useCommunityMembershipActions } from "@/hooks/use-community-membership-actions";
+import { useCommunityHandleNamespaces } from "@/hooks/use-community-handle-namespaces";
 import { useCommunityVoteAction } from "@/hooks/use-community-vote-action";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
@@ -342,15 +343,24 @@ export function CommunityPage({
   const { connectedWallets } = usePiratePrivyWallets({
     enabled: Boolean(session?.user?.id),
   });
+  const handleClaimCommunityId = previewCommunityId ?? community?.id ?? communityId;
+  const handleNamespaces = useCommunityHandleNamespaces({
+    api: api.communities,
+    communityId: handleClaimCommunityId,
+    enabled: Boolean(session?.accessToken),
+  });
   const handleClaim = useCommunityHandleClaimController({
     api: api.communities,
     communityId: previewCommunityId ?? communityId,
+    namespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     connectedWallets,
     primaryWalletAddress: session?.profile.primary_wallet_address,
     settlementWalletAttachmentId: session?.user.primary_wallet_attachment,
   });
-  const handleClaimCommunityId = previewCommunityId ?? community?.id ?? communityId;
-  const handleClaimDismissal = useCommunityHandleClaimDismissal(handleClaimCommunityId);
+  const handleClaimDismissal = useCommunityHandleClaimDismissal(
+    handleClaimCommunityId,
+    handleNamespaces.selectedNamespaceVerification,
+  );
   const {
     handleClaimModalOpen,
     handleClaimModalOpenChange,
@@ -371,6 +381,7 @@ export function CommunityPage({
     handleClaim,
     handleClaimApi: api.communities,
     handleClaimCommunityId,
+    handleClaimNamespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     handleClaimDismissal,
     handleJoin,
     invalidateCommunityGate,
@@ -844,6 +855,9 @@ export function CommunityPage({
         communityHandle={communityHandleLabel}
         communityName={communityTitle}
         communityRouteLabel={routeLabel}
+        namespaceOptions={handleNamespaces.namespaceOptions}
+        onNamespaceChange={handleNamespaces.setSelectedNamespaceVerification}
+        selectedNamespaceVerification={handleNamespaces.selectedNamespaceVerification}
         error={handleClaim.error}
         forceMobile={isMobileWeb}
         onClaim={handleClaim.onClaim}

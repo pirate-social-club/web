@@ -20,6 +20,13 @@ import {
 import { Button } from "@/components/primitives/button";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/primitives/select";
 import { Type, typeVariants } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -174,6 +181,9 @@ export function HandleClaimModal({
   onOpenChange,
   communityHandle,
   communityRouteLabel,
+  namespaceOptions = [],
+  selectedNamespaceVerification,
+  onNamespaceChange,
   phase,
   searchValue,
   onSearchChange,
@@ -196,13 +206,17 @@ export function HandleClaimModal({
   const isProcessing = phase === "processing";
   const showInput = !isSuccess;
   const showNotNow = !isSuccess && !isProcessing;
+  const selectedNamespace = namespaceOptions.find(
+    (option) => option.namespaceVerification === selectedNamespaceVerification,
+  );
+  const effectiveRouteLabel = selectedNamespace?.routeLabel ?? communityRouteLabel;
   const successCommunityLabel = resolveCommunityRouteLabel(
     communityHandle,
-    communityRouteLabel,
+    effectiveRouteLabel,
   );
   const communityHandleSuffix = resolveCommunityHandleSuffix(
     communityHandle,
-    communityRouteLabel,
+    effectiveRouteLabel,
   );
 
   const priceCents = searchResult?.priceCents ?? 0;
@@ -294,6 +308,29 @@ export function HandleClaimModal({
             </div>
           ) : (
             <>
+              {namespaceOptions.length > 1 && selectedNamespaceVerification && onNamespaceChange ? (
+                <Select
+                  disabled={isProcessing}
+                  onValueChange={onNamespaceChange}
+                  value={selectedNamespaceVerification}
+                >
+                  <SelectTrigger aria-label="Name namespace" className="h-12 rounded-[var(--radius-lg)]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {namespaceOptions.map((option) => (
+                      <SelectItem
+                        disabled={option.disabled}
+                        key={option.namespaceVerification}
+                        value={option.namespaceVerification}
+                      >
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
+
               <div className="space-y-3">
                 <div
                   className="flex h-16 items-center gap-2 rounded-full border border-input bg-background px-5 shadow-sm focus-within:border-border focus-within:ring-1 focus-within:ring-border-soft"

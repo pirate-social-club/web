@@ -68,6 +68,7 @@ export interface SongRewardOfferProps {
   amountLabel: string;
   className?: string;
   eligibleActivity: "study" | "karaoke" | "either";
+  minScoreBps: number;
 }
 
 export function rewardAmountLabel(amountCents: number): string {
@@ -155,11 +156,13 @@ export function SongRewardOffer({
   amountLabel,
   className,
   eligibleActivity,
+  minScoreBps,
 }: SongRewardOfferProps) {
+  const minimumScoreLabel = `${Number((minScoreBps / 100).toFixed(2))}%`;
   const qualificationLabel = {
     study: "Complete today's study set",
-    karaoke: "Complete a karaoke pass",
-    either: "Complete a study set or karaoke pass",
+    karaoke: `Score at least ${minimumScoreLabel} in Karaoke`,
+    either: `Complete a study set or score at least ${minimumScoreLabel} in Karaoke`,
   }[eligibleActivity];
 
   return (

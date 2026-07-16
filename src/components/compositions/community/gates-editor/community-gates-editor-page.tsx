@@ -18,6 +18,8 @@ import { OptionCard } from "@/components/primitives/option-card";
 import { NationalityMultiPicker } from "@/components/compositions/community/create-composer/nationality-picker";
 import { GateTreeBuilder } from "@/components/compositions/community/gates-editor/tree-builder/gate-tree-builder";
 import { createOwnedCourtyardCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/owned-courtyard-capability-source";
+import { createFallbackCollectionCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/api-collection-capability-source";
+import type { CollectionCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/collection-capability-source";
 import type { GateBuilderGroupDraft } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import {
   DEFAULT_DOCUMENT_PROOF_PROVIDERS,
@@ -327,6 +329,7 @@ export interface CommunityGatesEditorPageProps {
   creatorVerificationState?: CreatorVerificationState;
   courtyardInventoryGroups?: CourtyardWalletInventoryGroup[] | null;
   courtyardInventoryLoading?: boolean;
+  collectionCapabilitySource?: CollectionCapabilitySource;
   defaultAgeGatePolicy: CommunityDefaultAgeGatePolicy;
   gateDrafts: IdentityGateDraft[];
   gateMatchMode?: "all" | "any";
@@ -362,6 +365,7 @@ export function CommunityGatesEditorPage({
   creatorVerificationState,
   courtyardInventoryGroups,
   courtyardInventoryLoading = false,
+  collectionCapabilitySource,
   defaultAgeGatePolicy,
   gateDrafts,
   gateMatchMode = "all",
@@ -421,10 +425,12 @@ export function CommunityGatesEditorPage({
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const courtyardInventoryGate = gateDrafts.find((draft) => draft.gateType === "erc721_inventory_match");
   const courtyardInventoryAuthoringAvailable = canAuthorCourtyardInventoryGate(courtyardInventoryGroups);
-  const courtyardCapabilitySource = React.useMemo(
-    () => createOwnedCourtyardCapabilitySource(courtyardInventoryGroups ?? []),
-    [courtyardInventoryGroups],
-  );
+  const courtyardCapabilitySource = React.useMemo(() => {
+    const ownedSource = createOwnedCourtyardCapabilitySource(courtyardInventoryGroups ?? []);
+    return collectionCapabilitySource
+      ? createFallbackCollectionCapabilitySource(collectionCapabilitySource, ownedSource)
+      : ownedSource;
+  }, [collectionCapabilitySource, courtyardInventoryGroups]);
   const selectedCourtyardInventoryGroup = courtyardInventoryGroups?.find((group) =>
     courtyardInventoryDraftMatchesGroup(courtyardInventoryGate, group)
   ) ?? null;

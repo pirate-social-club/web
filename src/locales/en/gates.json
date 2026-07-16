@@ -192,6 +192,8 @@
       "addAttribute": "Add attribute filter",
       "searchFacet": "Search {facet}",
       "facetLoadError": "Values could not be loaded.",
+      "facetLoading": "Loading values…",
+      "retry": "Try again",
       "noValues": "No values found.",
       "matches": "{count} matches"
     },

@@ -242,6 +242,7 @@ describe("GateTreeBuilder", () => {
     const rule = view.getLatestValue().children[0] as { gate: { match: Record<string, unknown> } };
     expect(rule.gate.match.subject).toEqual(["Charizard", "Gengar"]);
   });
+
 });
 
 describe("inventory facet selection serialization", () => {

@@ -192,6 +192,8 @@
       "addAttribute": "添加属性筛选条件",
       "searchFacet": "搜索{facet}",
       "facetLoadError": "无法加载选项。",
+      "facetLoading": "正在加载选项…",
+      "retry": "重试",
       "noValues": "未找到选项。",
       "matches": "{count} 个匹配项"
     },

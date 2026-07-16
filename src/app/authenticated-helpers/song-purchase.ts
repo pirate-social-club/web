@@ -10,6 +10,7 @@ import type {
 
 import { useApi } from "@/lib/api";
 import type { ApiClient } from "@/lib/api/client";
+import type { CommunityPurchaseSettlementResult } from "@/lib/api/client-groups-community-commerce";
 import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
@@ -28,6 +29,33 @@ type CommunitiesApi = Pick<
 >;
 
 type PurchaseAssetLabel = "song" | "video" | "ticket" | "replay" | "asset";
+
+const SETTLEMENT_POLL_ATTEMPTS = 60;
+
+function settlementPollDelayMs(attempt: number): number {
+  return Math.min(1_000 * (2 ** Math.min(attempt, 3)), 8_000);
+}
+
+export function isPendingPurchaseSettlement(
+  result: CommunityPurchaseSettlementResult,
+): result is Extract<CommunityPurchaseSettlementResult, { object: "community_purchase_settlement_pending" }> {
+  return result.object === "community_purchase_settlement_pending";
+}
+
+export async function waitForPurchaseSettlement(params: {
+  settle: () => Promise<CommunityPurchaseSettlementResult>;
+  wait?: (delayMs: number) => Promise<void>;
+  maxAttempts?: number;
+}): Promise<CommunityPurchaseSettlement> {
+  const wait = params.wait ?? ((delayMs: number) => new Promise((resolve) => setTimeout(resolve, delayMs)));
+  const maxAttempts = params.maxAttempts ?? SETTLEMENT_POLL_ATTEMPTS;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const result = await params.settle();
+    if (!isPendingPurchaseSettlement(result)) return result;
+    if (attempt + 1 < maxAttempts) await wait(settlementPollDelayMs(attempt));
+  }
+  throw new Error("Your purchase is still processing. Try again in a moment.");
+}
 
 export type SongPurchaseSuccessMessage = (params: {
   settlement: CommunityPurchaseSettlement;
@@ -75,11 +103,14 @@ export async function executeSongPurchase(params: {
       quote,
       wallet: fundingWallet,
     });
-    const settlement = await params.communities.settlePurchase(params.communityId, {
+    const settlementBody = {
       quote: quote.id,
       settlement_wallet_attachment: params.settlementWalletAttachmentId,
       funding_tx_ref: fundingTxRef,
       settlement_tx_ref: fundingTxRef,
+    };
+    const settlement = await waitForPurchaseSettlement({
+      settle: () => params.communities.settlePurchase(params.communityId, settlementBody),
     });
     await params.refreshSongCommerce();
     params.onSuccess(params.successMessage({ settlement, titleText: params.titleText }));
@@ -139,6 +170,7 @@ type PendingSongPurchase = {
 };
 
 type QuotedSongPurchase = PendingSongPurchase & {
+  fundingTxRef?: string | null;
   maxSelfDiscountPercent: number | null;
   quote: CommunityPurchaseQuote;
 };
@@ -238,6 +270,7 @@ export function useSongPurchaseFlow({
   const closePurchaseModal = React.useCallback((open: boolean) => {
     if (open) return;
     if (purchaseProcessing) return;
+    if (pendingPurchase?.fundingTxRef) return;
     const quoteToFail = pendingPurchase;
     setPendingPurchase(null);
     setPurchaseError(null);
@@ -307,17 +340,23 @@ export function useSongPurchaseFlow({
 
     setPurchaseProcessing(true);
     setPurchaseError(null);
-    let fundingTxRef: string | null = null;
+    let fundingTxRef: string | null = pendingPurchase.fundingTxRef ?? null;
     try {
-      fundingTxRef = await executeRoutedStoryCheckout({
-        quote: pendingPurchase.quote,
-        wallet: fundingWallet,
-      });
-      const settlement = await api.communities.settlePurchase(pendingPurchase.communityId, {
+      if (!fundingTxRef) {
+        fundingTxRef = await executeRoutedStoryCheckout({
+          quote: pendingPurchase.quote,
+          wallet: fundingWallet,
+        });
+        setPendingPurchase((current) => current ? { ...current, fundingTxRef } : current);
+      }
+      const settlementBody = {
         quote: pendingPurchase.quote.id,
         settlement_wallet_attachment: session.user.primary_wallet_attachment,
         funding_tx_ref: fundingTxRef,
         settlement_tx_ref: fundingTxRef,
+      };
+      const settlement = await waitForPurchaseSettlement({
+        settle: () => api.communities.settlePurchase(pendingPurchase.communityId, settlementBody),
       });
       await refreshSongCommerce();
       toast.success(pendingPurchase.successMessage({ settlement, titleText: pendingPurchase.titleText }));

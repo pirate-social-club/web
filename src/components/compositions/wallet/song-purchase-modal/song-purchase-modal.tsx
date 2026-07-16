@@ -142,7 +142,7 @@ export function SongPurchaseModal({
             loading={processing}
             onClick={onConfirm}
           >
-            Unlock for {priceLabel}
+            {processing ? "Processing purchase" : `Unlock for ${priceLabel}`}
           </Button>
         </div>
       </ModalContent>

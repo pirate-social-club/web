@@ -7,7 +7,11 @@ import type {
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 
-import { executeSongPurchase, resolveQuoteDiscountPercent } from "@/app/authenticated-helpers/song-purchase";
+import {
+  executeSongPurchase,
+  resolveQuoteDiscountPercent,
+  waitForPurchaseSettlement,
+} from "@/app/authenticated-helpers/song-purchase";
 
 function createListing(): ApiCommunityListing {
   return {
@@ -176,6 +180,49 @@ describe("executeSongPurchase", () => {
     expect(calls.failPurchase).toEqual(["quote-1"]);
     expect(calls.settlePurchase).toHaveLength(0);
     expect(errors).toEqual(["This quote requires an unsupported checkout chain."]);
+  });
+});
+
+describe("waitForPurchaseSettlement", () => {
+  test("polls the same settlement until the coordinator reaches finality", async () => {
+    const settlement = createCommunities().communities.settlePurchase("community-1", { quote: "quote-1" });
+    let calls = 0;
+    const waits: number[] = [];
+    const result = await waitForPurchaseSettlement({
+      settle: async () => {
+        calls += 1;
+        if (calls < 3) {
+          return {
+            object: "community_purchase_settlement_pending" as const,
+            community: "com_community-1",
+            quote: "pq_quote-1",
+            purchase: "pur_purchase-1",
+            coordinator_plan_ref: `0x${"11".repeat(32)}`,
+            status: "settlement_pending" as const,
+          };
+        }
+        return settlement;
+      },
+      wait: async (delayMs) => { waits.push(delayMs); },
+    });
+    expect(calls).toBe(3);
+    expect(waits).toEqual([1_000, 2_000]);
+    expect(result.settlement_tx_ref).toBe("0xabc");
+  });
+
+  test("keeps a still-pending purchase retryable instead of treating it as failed", async () => {
+    await expect(waitForPurchaseSettlement({
+      settle: async () => ({
+        object: "community_purchase_settlement_pending" as const,
+        community: "com_community-1",
+        quote: "pq_quote-1",
+        purchase: "pur_purchase-1",
+        coordinator_plan_ref: `0x${"11".repeat(32)}`,
+        status: "settlement_pending" as const,
+      }),
+      maxAttempts: 2,
+      wait: async () => undefined,
+    })).rejects.toThrow("still processing");
   });
 });
 

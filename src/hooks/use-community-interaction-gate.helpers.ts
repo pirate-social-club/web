@@ -123,6 +123,8 @@ export type RunGatedCommunityActionParams = {
   gateData?: CommunityGateData;
   onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
   postId?: string;
+  /** Force the membership flow after the API identifies a members-only thread. */
+  requireMembership?: boolean;
   resolveGateData?: () => Promise<CommunityGateData>;
   resumeActionAfterJoin?: boolean;
   voteValue?: -1 | 1;
@@ -700,8 +702,10 @@ export function createDefaultBlockedModalState({
 }
 
 export function resolveCommunityInteractionState(input: {
+  action: InteractionAction;
   eligibility: JoinEligibility | null | undefined;
   hasSession: boolean;
+  requireMembership?: boolean;
 }): "allowed" | "auth" | Exclude<JoinEligibility["status"], "already_joined"> {
   if (!input.hasSession) {
     return "auth";
@@ -712,6 +716,19 @@ export function resolveCommunityInteractionState(input: {
   }
 
   if (input.eligibility.status === "already_joined") {
+    return "allowed";
+  }
+
+  const isReplyAction = input.action === "reply_post" || input.action === "reply_comment";
+  if (
+    isReplyAction
+    && !input.requireMembership
+    && (
+      input.eligibility.status === "joinable"
+      || input.eligibility.status === "requestable"
+      || input.eligibility.status === "pending_request"
+    )
+  ) {
     return "allowed";
   }
 

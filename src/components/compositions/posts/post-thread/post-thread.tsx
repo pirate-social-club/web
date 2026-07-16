@@ -32,6 +32,7 @@ export function PostThread({
   rootReplyBlockedLabel,
   rootReplyDisabled = false,
   onRootReplyBlocked,
+  onReplyIntent,
   onRootReplySubmit,
   replyIdentity,
   commentSort,
@@ -219,6 +220,7 @@ export function PostThread({
                 aria-label={rootReplyActionLabel ?? copy.common.replyAction}
                 className="h-12 w-full rounded-full border border-border-soft bg-background px-4 text-base text-foreground shadow-sm outline-none transition-[color,box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-border focus-visible:ring-1 focus-visible:ring-border-soft"
                 onClick={() => {
+                  onReplyIntent?.();
                   if (isMobile) {
                     openMobileRootReply();
                   } else {
@@ -305,6 +307,7 @@ export function PostThread({
             className="px-4"
             comments={items}
             onReplyRequest={isMobile ? handleCommentReplyRequest : undefined}
+            onReplyIntent={onReplyIntent}
             replyIdentity={replyIdentity}
           />
         ) : (

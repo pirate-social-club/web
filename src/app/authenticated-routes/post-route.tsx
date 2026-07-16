@@ -169,7 +169,7 @@ export function PostPage({
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, requestCommentAccess, requestVoteAccess, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, requestVoteAccess, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const activeLiveRoomId = post?.post.anchor_live_room ?? null;
   const activeAssetId = post?.post.asset ?? null;
   const activeAssetPostType = post?.post.post_type ?? null;
@@ -265,6 +265,12 @@ export function PostPage({
 
     toast.error(authRuntime.loadError ?? fallbackMessage);
   }, [authRuntime.connect, authRuntime.loadError, postId, copy.publicProfile.openInPirate]);
+
+  const handleReplyIntent = React.useCallback(() => {
+    if (session?.accessToken) return;
+    if (authRuntime.busy || (authRuntime.privyAuthenticated && !authRuntime.privyReady)) return;
+    requestAuth("Sign in to comment.");
+  }, [authRuntime.busy, authRuntime.privyAuthenticated, authRuntime.privyReady, requestAuth, session?.accessToken]);
 
   const handleVerifyAge = React.useCallback(() => {
     if (!session) {
@@ -1187,19 +1193,15 @@ export function PostPage({
           commentsHeadingLang={contentLocale === "ar" ? "ar" : undefined}
           emptyCommentsLabel={threadPartial ? copy.common.loadingReplies : copy.common.noComments}
           onCommentSortChange={setCommentSort}
-          onRootReplyBlocked={viewerMustJoin ? requestCommentAccess : undefined}
-          onRootReplySubmit={viewerMustJoin ? undefined : createTopLevelComment}
+          onReplyIntent={handleReplyIntent}
+          onRootReplySubmit={createTopLevelComment}
           post={localizedPostCard}
           postOriginal={originalPostCard}
           replyIdentity={replyIdentity}
           comments={comments}
           rootReplyActionLabel={copy.common.replyAction}
           rootReplyCancelLabel={copy.common.cancelReply}
-          rootReplyBlockedLabel={viewerMustJoin ? copy.common.joinToComment : undefined}
-          rootReplyDisabled={viewerMembershipResolving}
-          rootReplyPlaceholder={viewerMembershipResolving
-            ? copy.common.checkingCommentAccess
-            : copy.common.replyPlaceholder}
+          rootReplyPlaceholder={copy.common.replyPlaceholder}
           rootReplySubmitLabel={copy.common.submitReply}
         />
       </ContentRailShell>

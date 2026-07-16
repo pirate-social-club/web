@@ -80,6 +80,7 @@ export interface CommentCardProps {
     identityMode?: PostThreadIdentityMode;
   }) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
   onReplyRequest?: () => void;
+  onReplyIntent?: () => void;
   replyIdentity?: PostThreadReplyIdentity;
   avatarClassName?: string;
   className?: string;
@@ -113,6 +114,7 @@ export function CommentCard({
   submitReplyLabel,
   onReplySubmit,
   onReplyRequest,
+  onReplyIntent,
   replyIdentity,
   avatarClassName,
   className,
@@ -267,6 +269,7 @@ export function CommentCard({
               className="inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-muted-foreground transition-colors hover:bg-muted-foreground/10 hover:text-foreground"
               onClick={() => {
                 triggerCommentTapHaptic();
+                onReplyIntent?.();
                 if (onReplyRequest) {
                   onReplyRequest();
                 } else {

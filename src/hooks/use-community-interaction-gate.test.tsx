@@ -162,6 +162,9 @@ describe("useCommunityInteractionGate", () => {
   });
 
   test("wires auth, gate loading, and default modal creation", async () => {
+    nextEligibility = eligibility("verification_required", {
+      suggested_verification_provider: "self",
+    }, [uniqueHumanRequirement]);
     const { result } = renderHook(() =>
       useCommunityInteractionGate({
         previewLocale: "en",

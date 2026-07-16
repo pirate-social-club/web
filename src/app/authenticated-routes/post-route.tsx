@@ -268,9 +268,10 @@ export function PostPage({
 
   const handleReplyIntent = React.useCallback(() => {
     if (session?.accessToken) return;
-    if (authRuntime.busy || !authRuntime.privyReady) return;
+    // `connect()` is also the signal that mounts Privy on deferred-auth routes.
+    // Waiting for Privy to be ready here deadlocks the first auth intent.
     requestAuth("Sign in to comment.");
-  }, [authRuntime.busy, authRuntime.privyReady, requestAuth, session?.accessToken]);
+  }, [requestAuth, session?.accessToken]);
 
   const handleVerifyAge = React.useCallback(() => {
     if (!session) {

@@ -87,7 +87,15 @@ describe("buildCommunitySidebarRequirements", () => {
   test("renders ethereum nft requirement labels", () => {
     expect(buildCommunitySidebarRequirements({
       gateSummaries: [{ gate_type: "erc721_holding", contract_address: "0x1111111111111111111111111111111111111111" }],
-    })).toEqual(["Ethereum NFT from 0x1111...1111"]);
+    })).toEqual(["1 Ethereum NFT from 0x1111...1111"]);
+
+    expect(buildCommunitySidebarRequirements({
+      gateSummaries: [{
+        gate_type: "erc721_holding",
+        contract_address: "0x1111111111111111111111111111111111111111",
+        min_quantity: 10,
+      }],
+    })).toEqual(["10 Ethereum NFTs from 0x1111...1111"]);
   });
 
   test("includes proof-of-work in visible policy labels", () => {

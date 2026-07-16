@@ -19,6 +19,7 @@ import {
 import {
   captchaAloneAdmits,
   gateAssetMinimum,
+  withGateAssetMinimum,
   GATE_POLICY_MAX_ATOMS,
   GATE_POLICY_MAX_DEPTH,
   getGateBuilderBudget,
@@ -530,14 +531,29 @@ function NftHoldingEditor({
     : [];
 
   if (!capabilitySource) {
+    const quantity = gateAssetMinimum(gate);
     return (
       <div className={cn(RULE_LINE, "gap-2")}>
         <div className={RULE_KIND_COL}>{kindSelect}</div>
         <RuleToken>{operator}</RuleToken>
+        <Input
+          aria-label={copy.inputs.minimumNftQuantity}
+          className="w-20 shrink-0"
+          max={100}
+          min={1}
+          onChange={(event) => onChange(withGateAssetMinimum({
+            type: "erc721_holding",
+            chain_namespace: "eip155:1",
+            contract_address: getGateContractAddress(gate),
+          }, Number.parseInt(event.currentTarget.value || "1", 10)))}
+          type="number"
+          value={quantity}
+        />
+        <RuleToken>{copy.operators.from}</RuleToken>
         <div className="min-w-0 flex-1">
           <Input
             aria-label={copy.inputs.nftContractAddress}
-            onChange={(event) => onChange({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: event.currentTarget.value })}
+            onChange={(event) => onChange(withGateAssetMinimum({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: event.currentTarget.value }, quantity))}
             value={getGateContractAddress(gate)}
           />
         </div>
@@ -560,15 +576,19 @@ function NftHoldingEditor({
       } as GateAtom);
       return;
     }
-    onChange({
+    onChange(withGateAssetMinimum({
       type: "erc721_holding",
       chain_namespace: source.chainNamespace,
       contract_address: source.contractAddress,
-    });
+    }, isInventoryMatchGate(gate) ? gate.min_quantity ?? 1 : gateAssetMinimum(gate)));
   };
 
   const pasteAddress = (contractAddress: string) => {
-    onChange({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: contractAddress });
+    onChange(withGateAssetMinimum({
+      type: "erc721_holding",
+      chain_namespace: "eip155:1",
+      contract_address: contractAddress,
+    }, gateAssetMinimum(gate)));
   };
 
   const updateFacet = (facetKey: string, values: string[]) => {
@@ -612,11 +632,11 @@ function NftHoldingEditor({
         } as GateAtom);
         return;
       }
-      onChange({
+      onChange(withGateAssetMinimum({
         type: "erc721_holding",
         chain_namespace: selectedSource.chainNamespace,
         contract_address: selectedSource.contractAddress,
-      });
+      }, gateAssetMinimum(gate)));
       return;
     }
     onChange({
@@ -646,14 +666,16 @@ function NftHoldingEditor({
   const addableFacetKeys = selectedSource?.traitFiltersSupported
     ? selectedSource.facetKeys.filter((key) => !(key in match) && !(key in (selectedSource.fixedMatch ?? {})) && !pendingFacetKeys.includes(key))
     : [];
-  const currentQuantity = isInventoryMatchGate(gate) ? gate.min_quantity ?? 1 : 1;
-  const quantitySupported = selectedSource?.minQuantitySupported === true && isInventoryMatchGate(gate);
+  const currentQuantity = gateAssetMinimum(gate);
+  const quantitySupported = gate.type === "erc721_holding"
+    || (selectedSource?.minQuantitySupported === true && isInventoryMatchGate(gate));
   const updateQuantity = (quantity: number) => {
-    if (!selectedSource?.inventoryProvider || !isInventoryMatchGate(gate)) return;
-    onChange({
-      ...gate,
-      min_quantity: Math.min(100, Math.max(1, quantity)),
-    } as GateAtom);
+    const nextQuantity = Math.min(100, Math.max(1, quantity));
+    if (gate.type === "erc721_holding") {
+      onChange(withGateAssetMinimum(gate, nextQuantity));
+    } else if (selectedSource?.inventoryProvider && isInventoryMatchGate(gate)) {
+      onChange({ ...gate, min_quantity: nextQuantity } as GateAtom);
+    }
   };
 
   return (

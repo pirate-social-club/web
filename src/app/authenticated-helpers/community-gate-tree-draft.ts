@@ -154,6 +154,17 @@ export function gateAssetMinimum(gate: GateAtom): number {
   return 0;
 }
 
+export function withGateAssetMinimum(gate: GateAtom, quantity: number): GateAtom {
+  const nextQuantity = Math.min(100, Math.max(1, Math.trunc(quantity)));
+  if (gate.type === "erc721_inventory_match") {
+    return { ...gate, min_quantity: nextQuantity };
+  }
+  if (gate.type === "erc721_holding") {
+    return { ...gate, min_count: nextQuantity } as GateAtom;
+  }
+  return gate;
+}
+
 function expressionToDraftNode(expression: RecursiveGateExpression | Record<string, unknown>): GateBuilderDraftNode | null {
   if (expression.op === "gate") {
     return isGateAtomLike(expression.gate) ? { kind: "rule", gate: expression.gate } : null;

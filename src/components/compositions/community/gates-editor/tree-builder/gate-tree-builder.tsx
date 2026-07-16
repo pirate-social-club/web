@@ -530,6 +530,35 @@ function NftHoldingEditor({
     ]))
     : [];
 
+  // A persisted inventory atom is meaningful only through the source descriptor that owns its
+  // fixed match and provider semantics. If that source is missing (including while loading or on
+  // provider failure), converting edits into a plain holding atom would silently discard traits.
+  if (isInventoryMatchGate(gate) && !selectedSource) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className={cn(RULE_LINE, "gap-2")}>
+          <RuleToken>{copy.requirementTypes.nftHolding}</RuleToken>
+          <RuleToken>{copy.operators.holds}</RuleToken>
+          <Input
+            aria-label={copy.inputs.minimumNftQuantity}
+            className="w-20 shrink-0"
+            disabled
+            value={gateAssetMinimum(gate)}
+          />
+          <RuleToken>{copy.operators.from}</RuleToken>
+          <Input
+            aria-label={copy.inputs.nftContractAddress}
+            className="min-w-0 flex-1"
+            disabled
+            value={getGateContractAddress(gate)}
+          />
+          {actions}
+        </div>
+        <p className="text-base text-muted-foreground">{copy.unsupportedAtom}</p>
+      </div>
+    );
+  }
+
   if (!capabilitySource) {
     const quantity = gateAssetMinimum(gate);
     return (

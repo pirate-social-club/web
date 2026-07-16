@@ -336,6 +336,7 @@ export function useGatedActionRunner({
     onAllowed,
     postId,
     commentId,
+    requireMembership,
     resolveGateData,
     resumeActionAfterJoin,
     voteValue,
@@ -420,8 +421,10 @@ export function useGatedActionRunner({
     }
 
     const state = resolveCommunityInteractionState({
+      action,
       eligibility: gate.eligibility,
       hasSession,
+      requireMembership,
     });
 
     const actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId, sessionUser, voteValue });

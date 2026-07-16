@@ -7,6 +7,7 @@ import { installDomGlobals } from "@/test/setup-dom";
 import { CommentTree } from "./comment-tree";
 
 const { window } = installDomGlobals();
+window.HTMLElement.prototype.scrollIntoView = () => undefined;
 Object.defineProperty(window.navigator, "vibrate", { configurable: true, value: () => true });
 Object.defineProperty(window, "getComputedStyle", {
   configurable: true,
@@ -129,6 +130,7 @@ describe("CommentTree", () => {
   });
 
   test("renders reply action when status is omitted", () => {
+    let replyIntents = 0;
     const view = renderTree(
       <CommentTree
         comments={[
@@ -144,10 +146,15 @@ describe("CommentTree", () => {
             timestampLabel: "4m",
           },
         ]}
+        onReplyIntent={() => {
+          replyIntents += 1;
+        }}
       />,
     );
 
-    expect(Boolean(view.getByRole("button", { name: "Reply" }))).toBe(true);
+    fireEvent.click(view.getByRole("button", { name: "Reply" }));
+    expect(replyIntents).toBe(1);
+    expect(Boolean(view.getByPlaceholderText("Write a reply"))).toBe(true);
 
     view.unmount();
   });

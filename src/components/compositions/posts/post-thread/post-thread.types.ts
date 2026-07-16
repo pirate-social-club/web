@@ -94,6 +94,7 @@ export interface PostThreadProps {
   rootReplyBlockedLabel?: string;
   rootReplyDisabled?: boolean;
   onRootReplyBlocked?: () => Promise<void> | void;
+  onReplyIntent?: () => void;
   onRootReplySubmit?: (input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
   replyIdentity?: PostThreadReplyIdentity;
   commentSort?: CommentSort;

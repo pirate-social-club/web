@@ -639,7 +639,7 @@ describe("useGatedActionRunner", () => {
     expect(runner.calls).toEqual(["load:community-1", "verify:self"]);
   });
 
-  test("routes joinable gates through the default join modal", async () => {
+  test("allows replies on public threads without joining", async () => {
     const runner = renderRunner({
       gateData: gate("joinable"),
     });
@@ -648,18 +648,20 @@ describe("useGatedActionRunner", () => {
       const result = await runner.hook.result.current.run({
         action: "reply_post",
         communityId: "community-1",
-        onAllowed: () => undefined,
+        onAllowed: () => {
+          runner.calls.push("allowed");
+        },
         postId: "post-1",
       });
-      expect(result).toBe("blocked");
+      expect(result).toBe("allowed");
     });
 
-    expect(runner.pendingInteraction?.action).toBe("reply_post");
-    expect(runner.hook.result.current.modalState?.icon).toBe("join");
-    expect(runner.hook.result.current.modalState?.primaryAction?.label).toBe("Join");
+    expect(runner.pendingInteraction).toBeNull();
+    expect(runner.hook.result.current.modalState).toBeNull();
+    expect(runner.calls).toEqual(["load:community-1", "allowed"]);
   });
 
-  test("routes pending request gates through the default pending modal", async () => {
+  test("allows replies while a community membership request is pending", async () => {
     const runner = renderRunner({
       gateData: gate("pending_request"),
     });
@@ -671,11 +673,45 @@ describe("useGatedActionRunner", () => {
         onAllowed: () => undefined,
         postId: "post-1",
       });
+      expect(result).toBe("allowed");
+    });
+
+    expect(runner.pendingInteraction).toBeNull();
+    expect(runner.hook.result.current.modalState).toBeNull();
+  });
+
+  test("keeps votes membership-gated", async () => {
+    const runner = renderRunner({ gateData: gate("joinable") });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: () => undefined,
+        postId: "post-1",
+        voteValue: 1,
+      });
       expect(result).toBe("blocked");
     });
 
-    expect(runner.pendingInteraction?.action).toBe("reply_post");
-    expect(runner.hook.result.current.modalState?.icon).toBe("pending");
+    expect(runner.hook.result.current.modalState?.icon).toBe("join");
+  });
+
+  test("forces the join flow when the API identifies a members-only thread", async () => {
+    const runner = renderRunner({ gateData: gate("joinable") });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "reply_post",
+        communityId: "community-1",
+        onAllowed: () => undefined,
+        postId: "post-1",
+        requireMembership: true,
+      });
+      expect(result).toBe("blocked");
+    });
+
+    expect(runner.hook.result.current.modalState?.icon).toBe("join");
   });
 
   test("routes gate failed gates through the default blocked modal", async () => {

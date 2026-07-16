@@ -192,6 +192,8 @@
       "addAttribute": "إضافة عامل تصفية للسمة",
       "searchFacet": "البحث في {facet}",
       "facetLoadError": "تعذر تحميل القيم.",
+      "facetLoading": "جارٍ تحميل القيم…",
+      "retry": "إعادة المحاولة",
       "noValues": "لم يتم العثور على قيم.",
       "matches": "{count} نتيجة"
     },

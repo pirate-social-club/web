@@ -7,6 +7,7 @@ import type { MembershipRequestSummary } from "@pirate/api-contracts";
 import { navigate } from "@/app/router";
 import { CommunityDonationsEditorPage } from "@/components/compositions/community/donations-editor/community-donations-editor-page";
 import { CommunityGatesEditorPage } from "@/components/compositions/community/gates-editor/community-gates-editor-page";
+import { createApiCollectionCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/api-collection-capability-source";
 import { CommunityLabelsEditorPage } from "@/components/compositions/community/labels-editor/community-labels-editor-page";
 import { CommunityLinksEditorPage, createEmptyCommunityLinkEditorItem } from "@/components/compositions/community/links-editor/community-links-editor-page";
 import { CommunityMembershipRequestsPage } from "@/components/compositions/community/membership-requests-page/community-membership-requests-page";
@@ -434,6 +435,10 @@ export function CommunityModerationPage({
   const [courtyardInventoryGroups, setCourtyardInventoryGroups] =
     React.useState<CourtyardWalletInventoryGroup[] | null | undefined>(undefined);
   const [courtyardInventoryLoading, setCourtyardInventoryLoading] = React.useState(false);
+  const collectionCapabilitySource = React.useMemo(
+    () => createApiCollectionCapabilitySource(api.gateCapabilities),
+    [api.gateCapabilities],
+  );
   const pricingLocalCountryCodes = React.useMemo(
     () => getNationalityGateCountryCodes(state.gateDrafts),
     [state.gateDrafts],
@@ -924,6 +929,7 @@ export function CommunityModerationPage({
           defaultAgeGatePolicy={state.defaultAgeGatePolicy}
           courtyardInventoryGroups={courtyardInventoryGroups}
           courtyardInventoryLoading={courtyardInventoryLoading}
+          collectionCapabilitySource={collectionCapabilitySource}
           gateDrafts={state.gateDrafts}
           gateMatchMode={state.gateMatchMode}
           gateTreeDraft={state.gateTreeDraft}

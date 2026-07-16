@@ -199,6 +199,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "addAttribute": "Add attribute filter",
           "searchFacet": "Search {facet}",
           "facetLoadError": "Values could not be loaded.",
+          "facetLoading": "Loading values…",
+          "retry": "Try again",
           "noValues": "No values found.",
           "matches": "{count} matches"
         },
@@ -2152,6 +2154,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "addAttribute": "إضافة عامل تصفية للسمة",
           "searchFacet": "البحث في {facet}",
           "facetLoadError": "تعذر تحميل القيم.",
+          "facetLoading": "جارٍ تحميل القيم…",
+          "retry": "إعادة المحاولة",
           "noValues": "لم يتم العثور على قيم.",
           "matches": "{count} نتيجة"
         },
@@ -4105,6 +4109,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "addAttribute": "添加属性筛选条件",
           "searchFacet": "搜索{facet}",
           "facetLoadError": "无法加载选项。",
+          "facetLoading": "正在加载选项…",
+          "retry": "重试",
           "noValues": "未找到选项。",
           "matches": "{count} 个匹配项"
         },

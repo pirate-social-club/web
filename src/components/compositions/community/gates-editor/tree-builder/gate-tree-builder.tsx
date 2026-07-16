@@ -856,25 +856,39 @@ function FacetValuePicker({
 }) {
   const [options, setOptions] = React.useState<FacetValueSuggestion[]>([]);
   const [optionsLoadFailed, setOptionsLoadFailed] = React.useState(false);
+  const [optionsLoading, setOptionsLoading] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const [retryAttempt, setRetryAttempt] = React.useState(0);
+  const requestGenerationRef = React.useRef(0);
   React.useEffect(() => {
+    const generation = ++requestGenerationRef.current;
     let cancelled = false;
-    setOptionsLoadFailed(false);
-    void capabilitySource.searchFacetValues(source.id, facetKey, "")
-      .then((suggestions) => {
-        if (!cancelled) {
-          setOptions(suggestions);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setOptions([]);
-          setOptionsLoadFailed(true);
-        }
-      });
+    const timeoutId = globalThis.setTimeout(() => {
+      setOptionsLoadFailed(false);
+      setOptionsLoading(true);
+      void capabilitySource.searchFacetValues(source.id, facetKey, query)
+        .then((suggestions) => {
+          if (!cancelled && requestGenerationRef.current === generation) {
+            setOptions(suggestions);
+          }
+        })
+        .catch(() => {
+          if (!cancelled && requestGenerationRef.current === generation) {
+            setOptions([]);
+            setOptionsLoadFailed(true);
+          }
+        })
+        .finally(() => {
+          if (!cancelled && requestGenerationRef.current === generation) {
+            setOptionsLoading(false);
+          }
+        });
+    }, query ? 250 : 0);
     return () => {
       cancelled = true;
+      globalThis.clearTimeout(timeoutId);
     };
-  }, [capabilitySource, facetKey, source.id]);
+  }, [capabilitySource, facetKey, query, retryAttempt, source.id]);
 
   return (
     <Combobox<FacetValueSuggestion, true>
@@ -883,6 +897,7 @@ function FacetValuePicker({
       items={options}
       itemToStringLabel={(option) => option.value}
       itemToStringValue={(option) => option.value}
+      onInputValueChange={setQuery}
       onValueChange={(nextValue) => {
         onChange(nextValue.slice(0, facetSelectionLimit(maxValues)).map((option) => option.value));
       }}
@@ -905,7 +920,16 @@ function FacetValuePicker({
         </ComboboxValue>
       </ComboboxChips>
       <ComboboxContent>
-        <ComboboxEmpty>{optionsLoadFailed ? copy.sources.facetLoadError : copy.sources.noValues}</ComboboxEmpty>
+        <ComboboxEmpty>
+          {optionsLoadFailed ? (
+            <span className="flex items-center justify-between gap-3">
+              <span>{copy.sources.facetLoadError}</span>
+              <Button size="sm" variant="ghost" onClick={() => setRetryAttempt((attempt) => attempt + 1)}>
+                {copy.sources.retry}
+              </Button>
+            </span>
+          ) : optionsLoading ? copy.sources.facetLoading : copy.sources.noValues}
+        </ComboboxEmpty>
         <ComboboxList className="py-0">
           {(option) => (
             <ComboboxItem key={option.value} value={option}>

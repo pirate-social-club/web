@@ -37,7 +37,7 @@ test.describe("authenticated thread flows with mocked API", () => {
     await expectNoBrowserError(page);
   });
 
-  test("shows a join CTA to a non-member without posting a comment", async ({ page }) => {
+  test("shows the public-thread composer to a non-member without posting a comment", async ({ page }) => {
     let commentPostCount = 0;
     await page.route(
       new RegExp(`/communities/${encodeURIComponent(mockCommunityId)}/preview(?:\\?.*)?$`),
@@ -77,11 +77,8 @@ test.describe("authenticated thread flows with mocked API", () => {
 
     await page.goto(`/p/${mockFeedPostId}`);
 
-    const joinToComment = page.getByRole("button", { name: "Join to comment" });
-    await expect(joinToComment).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("textbox", { name: /^reply$/i })).toHaveCount(0);
-    await joinToComment.click();
-    await expect(page.getByRole("dialog")).toContainText(/join to reply/i);
+    await expect(page.getByRole("textbox", { name: /^reply$/i })).toBeEnabled({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Join to comment" })).toHaveCount(0);
     expect(commentPostCount).toBe(0);
     await expectNoBrowserError(page);
   });

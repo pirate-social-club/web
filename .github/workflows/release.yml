@@ -385,6 +385,8 @@ jobs:
           bunx wrangler@4.100.0 d1 execute community-d1-shard-pool-staging \
             --remote --json --command "SELECT COUNT(*) AS n FROM d1_pool" 2>&1 || true
       - name: Verify staging fleet satisfies pinned API schema requirements
+        # Keep staging concurrency low: high fan-out causes random Wrangler/D1
+        # read failures across the fleet and makes this fail-closed gate flaky.
         # The gate reads the community-d1-shard pool + every live shard via
         # `wrangler d1 execute --remote`, so it needs D1 READ across
         # community-d1-pool-* and community-d1-shard-pool-*. That is the isolated
@@ -400,7 +402,7 @@ jobs:
             --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
             --migrations-dir core/db/community-template/migrations \
             --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
-            --concurrency 14
+            --concurrency 2
       - name: Upload staging schema manifest
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -575,6 +577,9 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    # GitHub snapshots this reusable-workflow ref per run attempt. If the API
+    # gate workflow changes, start a new push run; rerunning an older attempt
+    # continues to use its previously resolved API workflow commit.
     uses: pirate-social-club/api/.github/workflows/staging-contract-gate.yml@main
     with:
       api_sha: ${{ needs.release-inputs.outputs.api_sha }}

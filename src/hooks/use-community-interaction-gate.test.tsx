@@ -182,6 +182,7 @@ describe("useCommunityInteractionGate", () => {
           apiCalls.push("allowed");
         },
         postId: "post-1",
+        requireMembership: true,
       });
     });
 
@@ -192,6 +193,39 @@ describe("useCommunityInteractionGate", () => {
     ]);
     expect(result.current.gateModal).not.toBeNull();
     expect(connectCalls).toBe(0);
+  });
+
+  test("lets the API authorize public-thread replies without forcing the membership gate", async () => {
+    nextEligibility = eligibility("verification_required", {
+      suggested_verification_provider: "altcha",
+    }, [uniqueHumanRequirement]);
+    const { result } = renderHook(() =>
+      useCommunityInteractionGate({
+        previewLocale: "en",
+        routeKind: "post",
+        uiLocale: "en",
+      })
+    );
+
+    let actionResult: "allowed" | "blocked" | null = null;
+    await act(async () => {
+      actionResult = await result.current.runGatedCommunityAction({
+        action: "reply_post",
+        communityId: "community-1",
+        onAllowed: () => {
+          apiCalls.push("allowed");
+        },
+        postId: "post-1",
+      });
+    });
+
+    expect(actionResult).toBe("allowed");
+    expect(apiCalls).toEqual([
+      "preview:community-1:en",
+      "eligibility:community-1",
+      "allowed",
+    ]);
+    expect(result.current.gateModal).toBeNull();
   });
 
   test("uses wallet reconnect for failed NFT gates", async () => {
@@ -214,6 +248,7 @@ describe("useCommunityInteractionGate", () => {
         communityId: "community-1",
         onAllowed: () => undefined,
         postId: "post-1",
+        requireMembership: true,
       });
     });
 

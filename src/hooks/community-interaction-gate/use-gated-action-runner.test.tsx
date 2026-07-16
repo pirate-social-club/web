@@ -585,7 +585,7 @@ describe("useGatedActionRunner", () => {
     expect(runner.hook.result.current.modalState?.secondaryAction).toBeUndefined();
   });
 
-  test("routes verification-required PoW-only replies through community join", async () => {
+  test("routes verification-required PoW-only public replies through an action proof", async () => {
     const runner = renderRunner({
       gateData: gate("verification_required", {
         gate_evaluation: altchaGateEvaluation(),
@@ -605,9 +605,9 @@ describe("useGatedActionRunner", () => {
 
     expect(runner.pendingInteraction?.action).toBe("reply_post");
     expect(runner.hook.result.current.modalState?.title).toBe("Browser anti-bot check required");
-    expect(runner.hook.result.current.modalState?.body).toBe("altcha:community:community-1:community_join");
+    expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:comment_create");
     expect(runner.hook.result.current.modalState?.description).toBe(gatesPanel.powOnlyDescription);
-    expect(runner.hook.result.current.modalState?.primaryAction?.label).toBe("Continue");
+    expect(runner.hook.result.current.modalState?.primaryAction).toBeNull();
     expect(runner.hook.result.current.modalState?.secondaryAction).toBeUndefined();
   });
 
@@ -625,6 +625,7 @@ describe("useGatedActionRunner", () => {
         communityId: "community-1",
         onAllowed: () => undefined,
         postId: "post-1",
+        requireMembership: true,
       });
       expect(result).toBe("blocked");
     });
@@ -727,6 +728,7 @@ describe("useGatedActionRunner", () => {
         communityId: "community-1",
         onAllowed: () => undefined,
         postId: "post-1",
+        requireMembership: true,
       });
       expect(result).toBe("blocked");
     });
@@ -752,6 +754,7 @@ describe("useGatedActionRunner", () => {
         communityId: "community-1",
         onAllowed: () => undefined,
         postId: "post-1",
+        requireMembership: true,
       });
       expect(result).toBe("blocked");
     });
@@ -778,6 +781,7 @@ describe("useGatedActionRunner", () => {
         communityId: "community-1",
         onAllowed: () => undefined,
         postId: "post-1",
+        requireMembership: true,
       });
       expect(result).toBe("blocked");
     });

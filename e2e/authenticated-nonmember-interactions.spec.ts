@@ -186,37 +186,29 @@ test.describe("mobile non-member gated interactions", () => {
     await expectNoBrowserError(page);
   });
 
-  test("joins from the comment CTA before exposing the mobile composer", async ({ page }) => {
+  test("comments on a public thread without joining first", async ({ page }) => {
     const captures: Captures = { challengeUrls: [], commentPosts: 0, joins: 0, votePosts: 0 };
     await installNonMemberFixture(page, captures);
     await page.goto(`/p/${mockFeedPostId}`);
 
-    const joinToComment = page.getByRole("button", { name: "Join to comment" });
-    await expect(joinToComment).toBeVisible();
-    await expect(page.getByRole("textbox", { name: /^reply$/i })).toHaveCount(0);
-    await joinToComment.click();
-    await expect.poll(() => captures.challengeUrls.length).toBe(1);
-    expect(captures.challengeUrls[0]?.searchParams.get("scope")).toBe("community_join");
-    expect(captures.commentPosts).toBe(0);
-
-    await solveVisibleAltcha(page, "join-proof");
-    await page.getByRole("dialog").getByRole("button", { name: /^continue$/i }).click();
-    await expect.poll(() => captures.joins).toBe(1);
-    await expect(page.getByRole("textbox", { name: /^reply$/i })).toBeEnabled();
-    expect(captures.challengeUrls).toHaveLength(1);
-    expect(captures.commentPosts).toBe(0);
-
-    await page.getByRole("textbox", { name: /^reply$/i }).click();
-    await page.getByRole("textbox", { name: "Write a reply", exact: true }).fill("Joined before commenting");
+    const reply = page.getByRole("textbox", { name: /^reply$/i });
+    await expect(reply).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Join to comment" })).toHaveCount(0);
+    await reply.click();
+    await page.getByRole("textbox", { name: "Write a reply", exact: true }).fill("Commenting without joining");
     await page.getByRole("button", { name: "Post", exact: true }).click();
-    await expect.poll(() => captures.challengeUrls.length).toBe(2);
-    expect(captures.challengeUrls[1]?.searchParams.get("scope")).toBe("comment_create");
+    await expect.poll(() => captures.challengeUrls.length).toBe(1);
+    expect(captures.challengeUrls[0]?.searchParams.get("scope")).toBe("comment_create");
+    expect(captures.commentPosts).toBe(0);
+    expect(captures.joins).toBe(0);
+
     await solveVisibleAltcha(page, "comment-proof");
     await expect.poll(() => captures.commentPosts).toBe(1);
+    expect(captures.joins).toBe(0);
     await expectNoBrowserError(page);
   });
 
-  test("keeps the composer visible but disabled while membership is unknown", async ({ page }) => {
+  test("keeps public-thread commenting available while membership is unknown", async ({ page }) => {
     let commentPosts = 0;
     await installAuthenticatedApiMocks(page);
     await page.route(pirateApiPattern, async (route) => {
@@ -259,8 +251,8 @@ test.describe("mobile non-member gated interactions", () => {
     const reply = page.getByRole("textbox", { name: /^reply$/i });
     const voteAccess = page.getByRole("button", { name: "Checking voting access…" });
     await expect(reply).toBeVisible();
-    await expect(reply).toBeDisabled();
-    await expect(reply).toHaveAttribute("placeholder", "Checking comment access…");
+    await expect(reply).toBeEnabled();
+    await expect(reply).toHaveAttribute("placeholder", "Write a reply");
     await expect(voteAccess).toBeVisible();
     await expect(voteAccess).toBeDisabled();
     expect(commentPosts).toBe(0);

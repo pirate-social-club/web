@@ -575,6 +575,9 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    # GitHub snapshots this reusable-workflow ref per run attempt. If the API
+    # gate workflow changes, start a new push run; rerunning an older attempt
+    # continues to use its previously resolved API workflow commit.
     uses: pirate-social-club/api/.github/workflows/staging-contract-gate.yml@main
     with:
       api_sha: ${{ needs.release-inputs.outputs.api_sha }}

@@ -7,6 +7,14 @@ import type {
   UpdateCommunityHandlePolicyRequest,
 } from "@pirate/api-contracts";
 
+import {
+  gateTreeDraftMatchesPolicy,
+  isGateBuilderDraftSavable,
+  parseGatePolicyToTreeDraft,
+  serializeGateBuilderTreeDraft,
+  type GateBuilderGroupDraft,
+} from "@/app/authenticated-helpers/community-gate-tree-draft";
+
 import { useApi } from "@/lib/api";
 import { toast } from "@/components/primitives/sonner";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -16,6 +24,8 @@ export type HandleStatusFilter = "all" | CommunityHandle["status"];
 
 export type HandlePolicyDraft = {
   claimsEnabled: boolean;
+  claimGateMode: "none" | "inherit_community" | "explicit";
+  claimGateTreeDraft: GateBuilderGroupDraft;
   pricingMode: HandlePricingMode;
   standardPriceCents: number | null;
   premiumPriceCents: number | null;
@@ -100,10 +110,12 @@ function pricingModeFromApi(policy: CommunityHandlePolicy | null): HandlePricing
   return "flat";
 }
 
-function buildDraft(policy: CommunityHandlePolicy | null): HandlePolicyDraft {
+export function buildHandlePolicyDraft(policy: CommunityHandlePolicy | null): HandlePolicyDraft {
   const settings = policy?.settings ?? {};
   return {
     claimsEnabled: policy?.claims_enabled ?? true,
+    claimGateMode: policy?.claim_gate_mode ?? "none",
+    claimGateTreeDraft: parseGatePolicyToTreeDraft(policy?.claim_gate_expression),
     pricingMode: pricingModeFromApi(policy),
     standardPriceCents: settings.flat_price_cents ?? DEFAULT_STANDARD_PRICE_CENTS,
     premiumPriceCents: settings.premium_price_cents ?? DEFAULT_PREMIUM_PRICE_CENTS,
@@ -115,7 +127,7 @@ function buildDraft(policy: CommunityHandlePolicy | null): HandlePolicyDraft {
   };
 }
 
-function buildSavePayload(draft: HandlePolicyDraft): UpdateCommunityHandlePolicyRequest {
+export function buildHandlePolicySavePayload(draft: HandlePolicyDraft): UpdateCommunityHandlePolicyRequest {
   const pricingMode = draft.pricingMode;
   const policyTemplate = pricingMode === "premium_short" ? "premium" : "standard";
   const pricingModel = "flat_by_length";
@@ -158,6 +170,11 @@ function buildSavePayload(draft: HandlePolicyDraft): UpdateCommunityHandlePolicy
     policy_template: policyTemplate,
     pricing_model: pricingModel,
     claims_enabled: draft.claimsEnabled,
+    claim_gate_mode: draft.claimGateMode,
+    claim_gate_expression: draft.claimGateMode === "explicit"
+      ? serializeGateBuilderTreeDraft(draft.claimGateTreeDraft)
+      : null,
+    eligibility_timing: "claim_time",
     settings,
   };
 }
@@ -174,7 +191,7 @@ export function useCommunityHandlePolicyState({
   const [policy, setPolicy] = React.useState<CommunityHandlePolicy | null>(null);
   const [policyLoading, setPolicyLoading] = React.useState(false);
   const [policyError, setPolicyError] = React.useState<unknown>(null);
-  const [draft, setDraft] = React.useState<HandlePolicyDraft>(() => buildDraft(null));
+  const [draft, setDraft] = React.useState<HandlePolicyDraft>(() => buildHandlePolicyDraft(null));
   const [saving, setSaving] = React.useState(false);
   const [handles, setHandles] = React.useState<CommunityHandle[]>([]);
   const [handlesLoading, setHandlesLoading] = React.useState(false);
@@ -204,7 +221,7 @@ export function useCommunityHandlePolicyState({
       setPolicy(null);
       setPolicyError(null);
       setPolicyLoading(false);
-      setDraft(buildDraft(null));
+      setDraft(buildHandlePolicyDraft(null));
       setHandles([]);
       setHandleStatusFilter("all");
       return;
@@ -219,7 +236,7 @@ export function useCommunityHandlePolicyState({
       .then((result) => {
         if (!cancelled) {
           setPolicy(result);
-          setDraft(buildDraft(result));
+          setDraft(buildHandlePolicyDraft(result));
         }
       })
       .catch((nextError: unknown) => {
@@ -243,9 +260,14 @@ export function useCommunityHandlePolicyState({
   }, [loadHandles]);
 
   const hasChanges = React.useMemo(() => {
-    const saved = buildDraft(policy);
+    const saved = buildHandlePolicyDraft(policy);
     return (
       saved.claimsEnabled !== draft.claimsEnabled ||
+      saved.claimGateMode !== draft.claimGateMode ||
+      !gateTreeDraftMatchesPolicy(
+        policy?.claim_gate_expression,
+        draft.claimGateTreeDraft,
+      ) ||
       saved.pricingMode !== draft.pricingMode ||
       saved.standardPriceCents !== draft.standardPriceCents ||
       saved.premiumPriceCents !== draft.premiumPriceCents ||
@@ -258,13 +280,18 @@ export function useCommunityHandlePolicyState({
   }, [policy, draft]);
 
   const handleSave = React.useCallback(() => {
-    if (!communityId || saving || !hasChanges) return;
+    if (
+      !communityId
+      || saving
+      || !hasChanges
+      || (draft.claimGateMode === "explicit" && !isGateBuilderDraftSavable(draft.claimGateTreeDraft))
+    ) return;
     setSaving(true);
     void api.communities
-      .updateHandlePolicy(communityId, buildSavePayload(draft))
+      .updateHandlePolicy(communityId, buildHandlePolicySavePayload(draft))
       .then((updatedPolicy) => {
         setPolicy(updatedPolicy);
-        setDraft(buildDraft(updatedPolicy));
+        setDraft(buildHandlePolicyDraft(updatedPolicy));
         toast.success("Names policy saved.");
       })
       .catch((nextError: unknown) => {

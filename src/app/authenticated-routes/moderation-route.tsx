@@ -1155,8 +1155,10 @@ export function CommunityModerationPage({
             />
           );
     } else if (section === "handles") {
+      const handleClaimGateInvalid = state.draft.claimGateMode === "explicit"
+        && !isGateBuilderDraftSavable(state.draft.claimGateTreeDraft);
       setMobileSaveAction({
-        disabled: state.saving || !state.hasChanges || !state.community?.namespace_verification,
+        disabled: state.saving || !state.hasChanges || !state.community?.namespace_verification || handleClaimGateInvalid,
         loading: state.saving,
         onSave: state.handleSave,
       });
@@ -1172,6 +1174,7 @@ export function CommunityModerationPage({
       } else {
         content = (
           <CommunityHandlePolicyEditorPage
+            collectionCapabilitySource={collectionCapabilitySource}
             draft={state.draft}
             handleOpsLoading={state.handleOpsLoading}
             handleStatusFilter={state.handleStatusFilter}
@@ -1186,7 +1189,7 @@ export function CommunityModerationPage({
             onRevokeHandle={state.handleRevoke}
             onSave={state.handleSave}
             onStatusFilterChange={state.setHandleStatusFilter}
-            saveDisabled={state.saving || !state.hasChanges}
+            saveDisabled={state.saving || !state.hasChanges || handleClaimGateInvalid}
             saveLoading={state.saving}
           />
         );

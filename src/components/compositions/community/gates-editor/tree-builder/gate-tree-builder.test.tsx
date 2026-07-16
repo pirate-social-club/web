@@ -121,6 +121,38 @@ describe("GateTreeBuilder", () => {
       .toContain("无法加载系列");
   });
 
+  test("keeps an inventory atom read-only when its capability source cannot be resolved", async () => {
+    const capabilitySource: CollectionCapabilitySource = {
+      estimateMatchCount: async () => null,
+      listTrustedSources: async () => [],
+      probeContract: async () => null,
+      searchFacetValues: async () => [],
+    };
+    const initialValue = {
+      kind: "group",
+      op: "and",
+      children: [{
+        kind: "rule",
+        gate: {
+          type: "erc721_inventory_match",
+          provider: "courtyard",
+          chain_namespace: "eip155:137",
+          contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+          min_quantity: 2,
+          match: { category: "trading_card", subject: ["Charizard", "Gengar"] },
+        },
+      }],
+    } as unknown as GateBuilderGroupDraft;
+    const view = renderBuilder(initialValue, { capabilitySource });
+
+    const quantity = await view.findByRole("textbox", { name: "Minimum NFT quantity" });
+    const contract = view.getByRole("textbox", { name: "NFT contract address" });
+    expect(quantity.hasAttribute("disabled")).toBe(true);
+    expect(contract.hasAttribute("disabled")).toBe(true);
+    expect(view.queryByRole("combobox", { name: "Search collections" })).toBeNull();
+    expect(view.getLatestValue()).toEqual(initialValue);
+  });
+
   test("renders a plain ERC-721 collection quantity", async () => {
     const capabilitySource: CollectionCapabilitySource = {
       estimateMatchCount: async () => null,
@@ -249,8 +281,7 @@ describe("GateTreeBuilder rule validation", () => {
   }) as unknown as GateBuilderGroupDraft;
 
   test("shows an inline error on an incomplete Courtyard rule rendered read-only", () => {
-    // No capability source is wired in the real app, so this rule takes the read-only branch.
-    // It must still explain why it blocks saving, rather than failing silently.
+    // An unresolved inventory source stays read-only and must still explain why the atom is invalid.
     const view = renderBuilder(courtyardRule({ category: "trading_card" }));
 
     expect(view.getByRole("alert").textContent).toContain("Add at least one attribute filter");

@@ -54,6 +54,43 @@ export function useVerificationCompletion({
     }
 
     try {
+      const isPublicReply = (
+        pendingInteraction.action === "reply_post"
+        || pendingInteraction.action === "reply_comment"
+      ) && pendingInteraction.requireMembership === false;
+      if (isPublicReply) {
+        const nextEligibility = await getJoinEligibility(pendingInteraction.communityId);
+        if (
+          nextEligibility.status === "joinable"
+          || nextEligibility.status === "already_joined"
+        ) {
+          updateCachedGate(pendingInteraction.communityId, {
+            ...pendingInteraction.gate,
+            eligibility: nextEligibility,
+          });
+          await pendingInteraction.onAllowed();
+          closeModal();
+          clearPendingInteraction();
+          return;
+        }
+
+        await completeCommunityJoinFromEligibility({
+          clearPendingInteraction,
+          closeModal,
+          gatesPanel,
+          getJoinEligibility,
+          initialEligibility: nextEligibility,
+          interactionCopy,
+          invalidateCommunityGate,
+          joinIfJoinable: false,
+          openCommunity,
+          pendingInteraction,
+          setModalState,
+          updateCachedGate,
+        });
+        return;
+      }
+
       await completeCommunityJoinFromEligibility({
         clearPendingInteraction,
         closeModal,
@@ -68,7 +105,10 @@ export function useVerificationCompletion({
         updateCachedGate,
       });
     } catch (error: unknown) {
-      showError(getErrorMessage(error, "Verification completed, but Pirate could not join this community."));
+      const fallback = pendingInteraction.requireMembership === false
+        ? "Verification completed, but Pirate could not finish this reply."
+        : "Verification completed, but Pirate could not join this community.";
+      showError(getErrorMessage(error, fallback));
     }
   }, [
     clearPendingInteraction,

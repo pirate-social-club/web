@@ -276,13 +276,14 @@ describe("KaraokeRoutePage", () => {
   });
 
   test.each([
-    ["karaoke", "Complete a karaoke pass · once per UTC day"],
-    ["either", "Complete a study set or karaoke pass · once per UTC day"],
+    ["karaoke", "Score at least 85% in Karaoke · once per UTC day"],
+    ["either", "Complete a study set or score at least 85% in Karaoke · once per UTC day"],
   ] as const)("shows a %s reward offer on the karaoke surface", async (eligibleActivity, qualificationCopy) => {
     rewardOfferResult = {
       daily_reward_cents: 100,
       eligible_activity: eligibleActivity,
       ends_at: Date.now() + 86_400_000,
+      min_score_bps: 8_500,
     };
 
     const view = render(<KaraokeRoutePage postId="pst_song" />);
@@ -296,6 +297,7 @@ describe("KaraokeRoutePage", () => {
       daily_reward_cents: 100,
       eligible_activity: "study",
       ends_at: Date.now() + 86_400_000,
+      min_score_bps: 7_000,
     };
 
     const view = render(<KaraokeRoutePage postId="pst_song" />);

@@ -53,6 +53,7 @@ export type ApiPublicRewardOffer = {
   eligible_activity: "study" | "karaoke" | "either";
   daily_reward_cents: number;
   ends_at: number;
+  min_score_bps: number;
 };
 
 export type ApiRewardEventKind =

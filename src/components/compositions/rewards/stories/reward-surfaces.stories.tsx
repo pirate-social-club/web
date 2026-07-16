@@ -108,7 +108,7 @@ export const SongRewardOfferEither: Story = {
   name: "SongRewardOffer / Study or karaoke",
   render: () => (
     <SurfaceFrame>
-      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" />
+      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" minScoreBps={7_000} />
     </SurfaceFrame>
   ),
 };
@@ -117,7 +117,7 @@ export const SongRewardOfferStudy: Story = {
   name: "SongRewardOffer / Study only",
   render: () => (
     <SurfaceFrame>
-      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="study" />
+      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="study" minScoreBps={7_000} />
     </SurfaceFrame>
   ),
 };
@@ -126,7 +126,7 @@ export const SongRewardOfferKaraoke: Story = {
   name: "SongRewardOffer / Karaoke only",
   render: () => (
     <SurfaceFrame>
-      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="karaoke" />
+      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="karaoke" minScoreBps={8_500} />
     </SurfaceFrame>
   ),
 };
@@ -138,7 +138,7 @@ export const SongRewardOfferMobile: Story = {
   },
   render: () => (
     <SurfaceFrame>
-      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" />
+      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" minScoreBps={7_000} />
     </SurfaceFrame>
   ),
 };

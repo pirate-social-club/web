@@ -256,12 +256,13 @@ describe("StudyRoutePage", () => {
       eligible_activity: "either",
       daily_reward_cents: 40,
       ends_at: 1_786_060_799,
+      min_score_bps: 8_500,
     };
 
     const view = render(<StudyRoutePage postId="pst_song" />);
 
     await waitFor(() => expect(view.getByText("Earn $0.40 USDC")).toBeTruthy());
-    expect(view.getByText("Complete a study set or karaoke pass · once per UTC day")).toBeTruthy();
+    expect(view.getByText("Complete a study set or score at least 85% in Karaoke · once per UTC day")).toBeTruthy();
   });
 
   test("shows a caught-up message when a ready study pack has no remaining exercises", async () => {

@@ -862,6 +862,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         <SongRewardOffer
           amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents)}
           eligibleActivity={state.rewardOffer.eligible_activity}
+          minScoreBps={state.rewardOffer.min_score_bps}
         />
       ) : undefined}
       state={state.surface}

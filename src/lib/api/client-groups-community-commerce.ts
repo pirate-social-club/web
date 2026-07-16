@@ -19,6 +19,19 @@ import type {
 
 import type { ApiRequest } from "./client-internal";
 
+export type CommunityPurchaseSettlementPending = {
+  object: "community_purchase_settlement_pending";
+  community: string;
+  quote: string;
+  purchase: string;
+  coordinator_plan_ref: string;
+  status: "settlement_pending";
+};
+
+export type CommunityPurchaseSettlementResult =
+  | CommunityPurchaseSettlement
+  | CommunityPurchaseSettlementPending;
+
 export function createCommunityCommerceApi(request: ApiRequest) {
   return {
     getAsset: (communityId: string, assetId: string): Promise<Asset> =>
@@ -81,8 +94,8 @@ export function createCommunityCommerceApi(request: ApiRequest) {
     settlePurchase: (
       communityId: string,
       body: CommunityPurchaseSettlementRequest,
-    ): Promise<CommunityPurchaseSettlement> =>
-      request<CommunityPurchaseSettlement>(
+    ): Promise<CommunityPurchaseSettlementResult> =>
+      request<CommunityPurchaseSettlementResult>(
         `/communities/${encodeURIComponent(communityId)}/purchase-settlements`,
         { method: "POST", body: JSON.stringify(body) },
       ),

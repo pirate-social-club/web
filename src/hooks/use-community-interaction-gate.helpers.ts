@@ -713,24 +713,16 @@ export function resolveCommunityInteractionState(input: {
     return "auth";
   }
 
+  const isReplyAction = input.action === "reply_post" || input.action === "reply_comment";
+  if (isReplyAction && !input.requireMembership) {
+    return "allowed";
+  }
+
   if (!input.eligibility) {
     return "gate_failed";
   }
 
   if (input.eligibility.status === "already_joined") {
-    return "allowed";
-  }
-
-  const isReplyAction = input.action === "reply_post" || input.action === "reply_comment";
-  if (
-    isReplyAction
-    && !input.requireMembership
-    && (
-      input.eligibility.status === "joinable"
-      || input.eligibility.status === "requestable"
-      || input.eligibility.status === "pending_request"
-    )
-  ) {
     return "allowed";
   }
 

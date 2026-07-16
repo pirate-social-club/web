@@ -625,6 +625,7 @@ describe("useGatedActionRunner", () => {
         communityId: "community-1",
         onAllowed: () => undefined,
         postId: "post-1",
+        requireMembership: true,
       });
       expect(result).toBe("blocked");
     });
@@ -727,6 +728,7 @@ describe("useGatedActionRunner", () => {
         communityId: "community-1",
         onAllowed: () => undefined,
         postId: "post-1",
+        requireMembership: true,
       });
       expect(result).toBe("blocked");
     });
@@ -752,6 +754,7 @@ describe("useGatedActionRunner", () => {
         communityId: "community-1",
         onAllowed: () => undefined,
         postId: "post-1",
+        requireMembership: true,
       });
       expect(result).toBe("blocked");
     });
@@ -778,6 +781,7 @@ describe("useGatedActionRunner", () => {
         communityId: "community-1",
         onAllowed: () => undefined,
         postId: "post-1",
+        requireMembership: true,
       });
       expect(result).toBe("blocked");
     });

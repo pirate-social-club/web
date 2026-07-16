@@ -22,6 +22,7 @@ import type { PostThreadReplyInput, PostThreadSubmitResult } from "@/components/
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { applyPostVote, submitOptimisticPostVote, toPostVoteValue } from "@/app/authenticated-helpers/post-vote";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
+import { isMembershipRequiredWriteRejection } from "@/hooks/community-interaction-gate/membership-write-rejection";
 import { selectPostVoteGateData } from "@/hooks/use-community-interaction-gate.helpers";
 import { getErrorMessage } from "@/lib/error-utils";
 import {
@@ -485,7 +486,7 @@ export function usePost(
         });
         return "blocked";
       }
-      if (nextError instanceof ApiError && nextError.code === "membership_required") {
+      if (isMembershipRequiredWriteRejection(nextError)) {
         const recoveryResult = await runGatedCommunityAction({
           action: "reply_post",
           communityId,
@@ -593,7 +594,7 @@ export function usePost(
         });
         return "blocked";
       }
-      if (nextError instanceof ApiError && nextError.code === "membership_required") {
+      if (isMembershipRequiredWriteRejection(nextError)) {
         const recoveryResult = await runGatedCommunityAction({
           action: "reply_comment",
           commentId,

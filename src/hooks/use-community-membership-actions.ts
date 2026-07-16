@@ -14,8 +14,14 @@ type JoinAttemptOptions = {
 type JoinAttemptResult = "blocked" | "failed" | "joined" | "requested";
 
 type CommunityHandleClaimApi = {
-  getHandleStatus: (communityId: string) => Promise<CommunityHandleStatusResponse>;
-  getMyHandle: (communityId: string) => Promise<CommunityHandleMeResponse>;
+  getHandleStatus: (
+    communityId: string,
+    selector?: { namespaceVerification?: string | null },
+  ) => Promise<CommunityHandleStatusResponse>;
+  getMyHandle: (
+    communityId: string,
+    selector?: { namespaceVerification?: string | null },
+  ) => Promise<CommunityHandleMeResponse>;
 };
 
 type CommunityHandleClaimDismissal = {
@@ -35,6 +41,7 @@ export interface UseCommunityMembershipActionsOptions {
   handleClaim: CommunityHandleClaimState;
   handleClaimApi: CommunityHandleClaimApi;
   handleClaimCommunityId: string;
+  handleClaimNamespaceVerificationId?: string | null;
   handleClaimDismissal: CommunityHandleClaimDismissal;
   handleJoin: (options?: JoinAttemptOptions) => Promise<JoinAttemptResult>;
   invalidateCommunityGate?: (communityId: string) => void;
@@ -65,6 +72,7 @@ export function useCommunityMembershipActions({
   handleClaim,
   handleClaimApi,
   handleClaimCommunityId,
+  handleClaimNamespaceVerificationId,
   handleClaimDismissal,
   handleJoin,
   invalidateCommunityGate,
@@ -87,11 +95,14 @@ export function useCommunityMembershipActions({
     }
 
     try {
-      const status = await handleClaimApi.getHandleStatus(handleClaimCommunityId);
+      const selector = {
+        namespaceVerification: handleClaimNamespaceVerificationId,
+      };
+      const status = await handleClaimApi.getHandleStatus(handleClaimCommunityId, selector);
       if (!status.available) {
         return;
       }
-      const current = await handleClaimApi.getMyHandle(handleClaimCommunityId);
+      const current = await handleClaimApi.getMyHandle(handleClaimCommunityId, selector);
       if (!current.handle) {
         setHandleClaimModalOpen(true);
       }
@@ -101,6 +112,7 @@ export function useCommunityMembershipActions({
   }, [
     handleClaimApi,
     handleClaimCommunityId,
+    handleClaimNamespaceVerificationId,
     handleClaimDismissal,
     onHandleClaimCheckError,
     sessionUserId,

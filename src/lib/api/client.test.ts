@@ -447,6 +447,36 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("lists namespaces and scopes handle reads to a selected namespace", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      return request.url.endsWith("/namespaces")
+        ? Response.json({ namespaces: [] })
+        : Response.json({ handle: null });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.listNamespaces("cmt_test");
+      await client.communities.getMyHandle("cmt_test", {
+        namespaceVerification: "nv_charizard",
+      });
+
+      expect(requests.map((request) => request.url)).toEqual([
+        "http://pirate.test/communities/cmt_test/namespaces",
+        "http://pirate.test/communities/cmt_test/handles/me?namespace_verification=nv_charizard",
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("calls community Telegram chat settings endpoints", async () => {
     const requests: Request[] = [];
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

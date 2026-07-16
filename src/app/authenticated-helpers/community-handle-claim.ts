@@ -106,6 +106,7 @@ function getClaimErrorMessage(error: unknown, fallback: string): string {
 export function useCommunityHandleClaimController(input: {
   api: CommunityHandleApi;
   communityId: string;
+  namespaceVerificationId?: string | null;
   connectedWallets: PirateConnectedEvmWallet[];
   primaryWalletAddress?: string | null;
   settlementWalletAttachmentId?: string | null;
@@ -121,6 +122,15 @@ export function useCommunityHandleClaimController(input: {
   const sequenceRef = React.useRef(0);
   const executeCheckout = input.executeCheckout ?? executeHandleUsdcCheckout;
   const debounceMs = input.debounceMs ?? DEFAULT_QUOTE_DEBOUNCE_MS;
+
+  React.useEffect(() => {
+    sequenceRef.current += 1;
+    setQuote(null);
+    setSearchResult(undefined);
+    setClaimedHandle(null);
+    setError(null);
+    setPhase((current) => current === "intro" ? "intro" : "search");
+  }, [input.namespaceVerificationId]);
 
   const onSearchChange = React.useCallback((value: string) => {
     setSearchValue(value);
@@ -140,7 +150,12 @@ export function useCommunityHandleClaimController(input: {
 
     const timeout = window.setTimeout(() => {
       setPhase("quoting");
-      const body: CommunityHandleQuoteRequest = { desired_label: desiredLabel };
+      const body: CommunityHandleQuoteRequest = {
+        desired_label: desiredLabel,
+        ...(input.namespaceVerificationId
+          ? { namespace_verification: input.namespaceVerificationId }
+          : {}),
+      };
       void input.api.quoteHandle(input.communityId, body).then((nextQuote) => {
         if (sequence !== sequenceRef.current) return;
         setQuote(nextQuote);
@@ -157,7 +172,7 @@ export function useCommunityHandleClaimController(input: {
     }, debounceMs);
 
     return () => window.clearTimeout(timeout);
-  }, [debounceMs, input.api, input.communityId, searchValue]);
+  }, [debounceMs, input.api, input.communityId, input.namespaceVerificationId, searchValue]);
 
   const onClaim = React.useCallback(async () => {
     if (!quote || !quote.eligible || quote.availability !== "available" || phase === "processing") {

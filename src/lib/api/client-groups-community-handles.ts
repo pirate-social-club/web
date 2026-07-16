@@ -12,37 +12,59 @@ import type {
   UpdateCommunityHandlePolicyRequest,
 } from "@pirate/api-contracts";
 
-import type { ApiRequest } from "./client-internal";
+import { buildQueryPath, type ApiRequest } from "./client-internal";
+
+type CommunityNamespaceSelector = {
+  namespaceVerification?: string | null;
+};
+
+function namespacePath(path: string, selector?: CommunityNamespaceSelector): string {
+  return buildQueryPath(path, {
+    namespace_verification: selector?.namespaceVerification,
+  });
+}
 
 export function createCommunityHandleApi(request: ApiRequest) {
   return {
-    getMyHandle: (communityId: string): Promise<CommunityHandleMeResponse> =>
+    getMyHandle: (
+      communityId: string,
+      selector?: CommunityNamespaceSelector,
+    ): Promise<CommunityHandleMeResponse> =>
       request<CommunityHandleMeResponse>(
-        `/communities/${encodeURIComponent(communityId)}/handles/me`,
+        namespacePath(`/communities/${encodeURIComponent(communityId)}/handles/me`, selector),
       ),
-    getHandleStatus: (communityId: string): Promise<CommunityHandleStatusResponse> =>
+    getHandleStatus: (
+      communityId: string,
+      selector?: CommunityNamespaceSelector,
+    ): Promise<CommunityHandleStatusResponse> =>
       request<CommunityHandleStatusResponse>(
-        `/communities/${encodeURIComponent(communityId)}/handles/status`,
+        namespacePath(`/communities/${encodeURIComponent(communityId)}/handles/status`, selector),
       ),
     listHandles: (
       communityId: string,
-      params?: { status?: CommunityHandle["status"] | null },
+      params?: { status?: CommunityHandle["status"] | null; namespaceVerification?: string | null },
     ): Promise<CommunityHandleListResponse> => {
-      const search = params?.status ? `?status=${encodeURIComponent(params.status)}` : "";
       return request<CommunityHandleListResponse>(
-        `/communities/${encodeURIComponent(communityId)}/handles${search}`,
+        buildQueryPath(`/communities/${encodeURIComponent(communityId)}/handles`, {
+          status: params?.status,
+          namespace_verification: params?.namespaceVerification,
+        }),
       );
     },
-    getHandlePolicy: (communityId: string): Promise<CommunityHandlePolicy> =>
+    getHandlePolicy: (
+      communityId: string,
+      selector?: CommunityNamespaceSelector,
+    ): Promise<CommunityHandlePolicy> =>
       request<CommunityHandlePolicy>(
-        `/communities/${encodeURIComponent(communityId)}/handle-policy`,
+        namespacePath(`/communities/${encodeURIComponent(communityId)}/handle-policy`, selector),
       ),
     updateHandlePolicy: (
       communityId: string,
       body: UpdateCommunityHandlePolicyRequest,
+      selector?: CommunityNamespaceSelector,
     ): Promise<CommunityHandlePolicy> =>
       request<CommunityHandlePolicy>(
-        `/communities/${encodeURIComponent(communityId)}/handle-policy`,
+        namespacePath(`/communities/${encodeURIComponent(communityId)}/handle-policy`, selector),
         { method: "POST", body: JSON.stringify(body) },
       ),
     quoteHandle: (
@@ -64,9 +86,10 @@ export function createCommunityHandleApi(request: ApiRequest) {
     reserveHandle: (
       communityId: string,
       body: CommunityHandleReserveRequest,
+      selector?: CommunityNamespaceSelector,
     ): Promise<CommunityHandle> =>
       request<CommunityHandle>(
-        `/communities/${encodeURIComponent(communityId)}/handles/reserve`,
+        namespacePath(`/communities/${encodeURIComponent(communityId)}/handles/reserve`, selector),
         { method: "POST", body: JSON.stringify(body) },
       ),
     revokeHandle: (

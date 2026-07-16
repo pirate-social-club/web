@@ -19,7 +19,6 @@ import {
   formatCommunityRouteLabel,
 } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
-import { CommunityMembershipGatePanel } from "@/components/compositions/community/membership-gate-panel/community-membership-gate-panel";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
 import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
@@ -29,8 +28,8 @@ import { CommunityProofOfWorkModal } from "@/components/compositions/community/p
 import { Button } from "@/components/primitives/button";
 import { IconButton } from "@/components/primitives/icon-button";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getJoinCtaLabel, getMissingCapabilitiesFromGateEvaluation, isJoinCtaActionable, isJoinSurfaceGate } from "@/lib/identity-gates";
-import { createCommunityBlockedModalStateFactory, getRequirementGroups } from "@/hooks/use-community-interaction-gate.helpers";
+import { getJoinCtaLabel, getMissingCapabilitiesFromGateEvaluation, isJoinCtaActionable } from "@/lib/identity-gates";
+import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 
@@ -276,9 +275,7 @@ export function CommunityPage({
     handleZkPassportModalOpenChange,
     handleSelfQrError,
     handleSelfQrSuccess,
-    joinError,
     joinLoading,
-    joinRequested,
     passportLoading,
     selfError,
     selfLoading,
@@ -551,11 +548,6 @@ export function CommunityPage({
       preview,
     ],
   );
-  const membershipRequirementGroups = React.useMemo(
-    () => voteGateData ? getRequirementGroups(voteGateData) : undefined,
-    [voteGateData],
-  );
-  const hasJoinSurfaceGates = preview?.membership_gate_summaries.some(isJoinSurfaceGate) ?? false;
   const voteOnPost = useCommunityVoteAction({
     buildBlockedModalState,
     communityId,
@@ -930,27 +922,6 @@ export function CommunityPage({
         />
       ) : null}
       <section className="flex min-w-0 flex-1 flex-col gap-6">
-        {hasJoinSurfaceGates && !canCreatePost ? (
-          <CommunityMembershipGatePanel
-            eligibility={eligibility}
-            gates={preview.membership_gate_summaries}
-            joinError={
-              joinError ??
-              (eligibility?.status === "gate_failed" &&
-              eligibility.failure_reason
-                ? getGateFailureMessage(eligibility, { locale })
-                : null)
-            }
-            joinLoading={joinLoading}
-            joinRequested={joinRequested}
-            locale={locale}
-            mode={preview.gate_match_mode ?? null}
-            requirementGroups={membershipRequirementGroups}
-            verificationError={selfError}
-            verificationLoading={selfLoading}
-            onJoin={handlePrimaryJoinAction}
-          />
-        ) : null}
         <CommunityPageShell
           activeSort={activeSort}
           avatarSrc={communityAvatarRef ?? undefined}

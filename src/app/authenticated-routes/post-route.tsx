@@ -268,9 +268,9 @@ export function PostPage({
 
   const handleReplyIntent = React.useCallback(() => {
     if (session?.accessToken) return;
-    if (authRuntime.busy || (authRuntime.privyAuthenticated && !authRuntime.privyReady)) return;
+    if (authRuntime.busy || !authRuntime.privyReady) return;
     requestAuth("Sign in to comment.");
-  }, [authRuntime.busy, authRuntime.privyAuthenticated, authRuntime.privyReady, requestAuth, session?.accessToken]);
+  }, [authRuntime.busy, authRuntime.privyReady, requestAuth, session?.accessToken]);
 
   const handleVerifyAge = React.useCallback(() => {
     if (!session) {

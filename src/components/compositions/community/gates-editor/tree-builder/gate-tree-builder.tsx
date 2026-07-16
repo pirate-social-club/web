@@ -43,6 +43,7 @@ import {
 import { Chip } from "@/components/primitives/chip";
 import { validateGateAtom } from "@/lib/gate-atom-validation";
 import type { GateAtomValidationError } from "@/lib/gate-atom-validation";
+import { normalizeInventoryText } from "@/lib/gate-inventory-validation";
 import { interpolateMessage } from "@/lib/route-messages";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,8 @@ import type {
   AssetSourceDescriptor,
   CollectionCapabilitySource,
   FacetValueSuggestion,
+  InventoryFacetMatch,
+  InventoryFacetValue,
 } from "./collection-capability-source";
 import { replaceEditableFacet } from "./collection-capability-source";
 
@@ -517,7 +520,7 @@ function NftHoldingEditor({
     };
   }, [capabilitySource]);
 
-  const match = isInventoryMatchGate(gate) ? normalizeStringMatch(gate.match) : {};
+  const match = isInventoryMatchGate(gate) ? inventoryFacetMatch(gate.match) : {};
   const selectedSource = sources.find((source) => sourceMatchesGate(source, gate, match));
   const traitKeys = selectedSource?.traitFiltersSupported
     ? Array.from(new Set([
@@ -568,16 +571,23 @@ function NftHoldingEditor({
     onChange({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: contractAddress });
   };
 
-  const updateFacet = (facetKey: string, value: string) => {
+  const updateFacet = (facetKey: string, values: string[]) => {
     if (!selectedSource?.inventoryProvider) return;
     setPendingFacetKeys((current) => current.filter((key) => key !== facetKey));
+    const nextMatch = { ...selectedSource.fixedMatch, ...match };
+    const value = serializeFacetSelection(values, selectedSource.maxValuesPerFacet);
+    if (value == null) {
+      delete nextMatch[facetKey];
+    } else {
+      nextMatch[facetKey] = value;
+    }
     onChange({
       type: "erc721_inventory_match",
       provider: selectedSource.inventoryProvider,
       chain_namespace: selectedSource.chainNamespace,
       contract_address: selectedSource.contractAddress,
       min_quantity: isInventoryMatchGate(gate) ? gate.min_quantity ?? 1 : 1,
-      match: { ...selectedSource.fixedMatch, ...match, [facetKey]: value },
+      match: nextMatch,
     } as GateAtom);
   };
 
@@ -747,9 +757,9 @@ function NftHoldingEditor({
                   facetLabel={formatSourceFacetKey(selectedSource, facetKey)}
                   copy={copy}
                   maxValues={selectedSource.maxValuesPerFacet}
-                  onChange={(value) => updateFacet(facetKey, value)}
+                  onChange={(values) => updateFacet(facetKey, values)}
                   source={selectedSource}
-                  value={match[facetKey] ? [{ value: match[facetKey]! }] : []}
+                  value={facetValueSuggestions(match[facetKey])}
                 />
               </div>
               <Button aria-label={copy.sources.removeAttribute} className="ms-auto shrink-0 md:ms-0" size="icon" variant="ghost" onClick={() => removeFacet(facetKey)}>
@@ -789,7 +799,7 @@ function FacetValuePicker({
   facetKey: string;
   facetLabel: string;
   maxValues: number;
-  onChange: (value: string) => void;
+  onChange: (values: string[]) => void;
   source: AssetSourceDescriptor;
   value: FacetValueSuggestion[];
 }) {
@@ -823,8 +833,7 @@ function FacetValuePicker({
       itemToStringLabel={(option) => option.value}
       itemToStringValue={(option) => option.value}
       onValueChange={(nextValue) => {
-        const selected = nextValue.slice(-Math.max(1, maxValues))[0];
-        onChange(selected?.value ?? "");
+        onChange(nextValue.slice(0, facetSelectionLimit(maxValues)).map((option) => option.value));
       }}
       value={value.filter((option) => option.value.length > 0)}
     >
@@ -865,7 +874,7 @@ function FacetValuePicker({
   );
 }
 
-function sourceMatchesGate(source: AssetSourceDescriptor, gate: GateAtom, match: Record<string, string>) {
+function sourceMatchesGate(source: AssetSourceDescriptor, gate: GateAtom, match: InventoryFacetMatch) {
   if (
     source.chainNamespace !== getGateChainNamespace(gate)
     || source.contractAddress.toLowerCase() !== getGateContractAddress(gate).toLowerCase()
@@ -878,7 +887,7 @@ function sourceMatchesGate(source: AssetSourceDescriptor, gate: GateAtom, match:
   if (!isInventoryMatchGate(gate)) {
     return false;
   }
-  return Object.entries(source.fixedMatch ?? {}).every(([key, value]) => match[key] === value);
+  return Object.entries(source.fixedMatch ?? {}).every(([key, value]) => facetValuesEqual(match[key], value));
 }
 
 function formatSourceFacetKey(source: AssetSourceDescriptor, key: string) {
@@ -1047,14 +1056,54 @@ function getGateContractAddress(gate: GateAtom): string {
   return "";
 }
 
-function normalizeStringMatch(match: Record<string, unknown> | undefined): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(match ?? {})
-      .flatMap(([key, value]) => {
-        const stringValue = stringifyFacetValue(value);
-        return stringValue == null || stringValue.trim().length === 0 ? [] : [[key, stringValue]];
-      }),
-  );
+function inventoryFacetMatch(match: Record<string, unknown> | undefined): InventoryFacetMatch {
+  const result: InventoryFacetMatch = {};
+  for (const [key, value] of Object.entries(match ?? {})) {
+    if (typeof value === "string" && value.length > 0) {
+      result[key] = value;
+    } else if (Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === "string")) {
+      result[key] = [...value];
+    }
+  }
+  return result;
+}
+
+function facetSelectionLimit(maxValues: number): number {
+  return Math.min(10, Math.max(1, Math.trunc(maxValues)));
+}
+
+/**
+ * Values loaded from a policy retain their scalar/array boundaries and original spelling until
+ * this facet is edited. Changed selections are trimmed, NFC-normalized, and deduplicated using
+ * the API's comparison normalization. A single selection stays scalar for backwards compatibility.
+ */
+export function serializeFacetSelection(values: string[], maxValues: number): InventoryFacetValue | null {
+  const selected: string[] = [];
+  const identities = new Set<string>();
+  for (const rawValue of values) {
+    const value = rawValue.trim().normalize("NFC");
+    const identity = normalizeInventoryText(value);
+    if (!identity || identities.has(identity)) continue;
+    identities.add(identity);
+    selected.push(value);
+    if (selected.length === facetSelectionLimit(maxValues)) break;
+  }
+  if (selected.length === 0) return null;
+  return selected.length === 1 ? selected[0]! : selected;
+}
+
+export function facetValueSuggestions(value: InventoryFacetValue | undefined): FacetValueSuggestion[] {
+  if (value == null) return [];
+  return (Array.isArray(value) ? value : [value]).map((item) => ({ value: item }));
+}
+
+function facetValuesEqual(left: InventoryFacetValue | undefined, right: InventoryFacetValue): boolean {
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left) && Array.isArray(right)
+      && left.length === right.length
+      && left.every((value, index) => value === right[index]);
+  }
+  return left === right;
 }
 
 function courtyardInventorySummary(gate: GateAtom & { match?: Record<string, unknown>; min_quantity?: number }): string {

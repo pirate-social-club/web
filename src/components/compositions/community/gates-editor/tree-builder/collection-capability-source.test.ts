@@ -11,4 +11,13 @@ describe("replaceEditableFacet", () => {
       "grade",
     )).toEqual({ category: "Trading Cards", grade: "Pokemon" });
   });
+
+  test("moves an array value without joining or changing it", () => {
+    expect(replaceEditableFacet(
+      { category: "trading_card", subject: ["Charizard", "Gengar"] },
+      { category: "trading_card" },
+      "subject",
+      "set",
+    )).toEqual({ category: "trading_card", set: ["Charizard", "Gengar"] });
+  });
 });

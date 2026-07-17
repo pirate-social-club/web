@@ -103,6 +103,6 @@ describe("reward surfaces", () => {
     expect(RewardStories.WalletRewardsCashoutReady).toBeTruthy();
     expect(RewardStories.VerifyHumanConflict).toBeTruthy();
     expect(RewardStories.CashoutSuccess).toBeTruthy();
-    expect(Object.values(RewardStories).filter((story) => typeof story === "object" && story !== null && "render" in story).length).toBe(33);
+    expect(Object.values(RewardStories).filter((story) => typeof story === "object" && story !== null && "render" in story).length).toBe(34);
   });
 });

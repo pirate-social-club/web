@@ -67,6 +67,7 @@ const EMPTY_CLAIMABLE: ClaimableRoyaltiesResponse = {
 };
 
 const EMPTY_REWARDS_SUMMARY: ApiRewardsSummaryResponse = {
+  chain_id: 84532,
   balance_cents: 0,
   today_earned_cents: 0,
   recent_events: [],
@@ -292,8 +293,11 @@ function formatNativeBalance(balance: bigint, decimals = 18): string {
   return trimmedFraction ? `${whole}.${trimmedFraction}` : whole;
 }
 
-function formatUsdCents(cents: number): string {
-  return walletSettingsUsdFormatter.format(cents / 100);
+function formatRewardCents(cents: number, chainId: number): string {
+  const amount = (cents / 100).toFixed(2);
+  if (chainId === 8453) return `$${amount} USDC`;
+  if (chainId === 84532) return `${amount} testnet USDC`;
+  return `${amount} USDC (chain ${chainId})`;
 }
 
 function parseUsdCentsInput(value: string): number | null {
@@ -333,7 +337,7 @@ function walletRewardsSummary(input: {
 }): WalletHubRewardsSummary {
   const amountLabel = input.loading && input.rewards.balance_cents <= 0
     ? "..."
-    : formatUsdCents(input.rewards.balance_cents);
+    : formatRewardCents(input.rewards.balance_cents, input.rewards.chain_id);
   if (input.rewardsError) {
     return {
       actionLabel: "Retry",
@@ -373,7 +377,7 @@ function walletRewardsSummary(input: {
     actionLabel: "Claim",
     amountLabel,
     supportingLabel: input.rewards.balance_cents > 0 || input.rewards.today_earned_cents > 0
-      ? `${formatUsdCents(input.rewards.cashout.min_cents)} minimum`
+      ? `${formatRewardCents(input.rewards.cashout.min_cents, input.rewards.chain_id)} minimum`
       : "Earn by practicing.",
   };
 }
@@ -746,7 +750,7 @@ export function CurrentUserWalletPage() {
 
   const openRewardsCashout = React.useCallback(() => {
     if (!rewardsSummary.cashout.eligible || rewardsSummary.balance_cents <= 0) return;
-    setRewardsCashoutAmountLabel(formatUsdCents(rewardsSummary.balance_cents));
+    setRewardsCashoutAmountLabel((rewardsSummary.balance_cents / 100).toFixed(2));
     setRewardsCashoutTxHash(null);
     setRewardsCashoutRecipientAddress(walletAddress);
     setRewardsCashoutErrorMessage(null);
@@ -755,7 +759,7 @@ export function CurrentUserWalletPage() {
   }, [rewardsSummary.balance_cents, rewardsSummary.cashout.eligible, walletAddress]);
 
   const applyCashoutResult = React.useCallback((result: ApiRewardCashoutResponse) => {
-    setRewardsCashoutAmountLabel(formatUsdCents(result.payout.amount_cents));
+    setRewardsCashoutAmountLabel(formatRewardCents(result.payout.amount_cents, result.chain_id));
     setRewardsCashoutTxHash(result.payout.settlement_ref);
     setRewardsCashoutRecipientAddress(result.payout.recipient_address);
     if (result.payout.status === "failed") {
@@ -994,10 +998,10 @@ export function CurrentUserWalletPage() {
       {rewardsEnabled ? (
         <CashoutSheet
           amountLabel={rewardsCashoutAmountLabel}
-          availableLabel={formatUsdCents(rewardsSummary.balance_cents)}
+          availableLabel={formatRewardCents(rewardsSummary.balance_cents, rewardsSummary.chain_id)}
           basescanUrl={baseTxUrl(rewardsCashoutTxHash)}
           errorMessage={rewardsCashoutErrorMessage ?? undefined}
-          minimumCashoutLabel={formatUsdCents(rewardsSummary.cashout.min_cents)}
+          minimumCashoutLabel={formatRewardCents(rewardsSummary.cashout.min_cents, rewardsSummary.chain_id)}
           onAmountChange={setRewardsCashoutAmountLabel}
           onConfirm={() => {
             void handleRewardsCashout();

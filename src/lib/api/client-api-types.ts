@@ -50,9 +50,11 @@ export type ApiWalletIdentityResponse = WalletIdentityResponse;
 export type ApiRewardVerificationState = "unverified" | "verified" | "conflict";
 
 export type ApiPublicRewardOffer = {
+  chain_id: number;
   eligible_activity: "study" | "karaoke" | "either";
   daily_reward_cents: number;
   ends_at: number;
+  min_score_bps: number;
 };
 
 export type ApiRewardEventKind =
@@ -72,6 +74,7 @@ export type ApiRewardEventSummary = {
 };
 
 export type ApiRewardsSummaryResponse = {
+  chain_id: number;
   balance_cents: number;
   today_earned_cents: number;
   recent_events: ApiRewardEventSummary[];
@@ -94,8 +97,10 @@ export type ApiRewardCashoutRequest = {
 };
 
 export type ApiRewardCashoutResponse = {
+  chain_id: number;
   payout: {
     id: string;
+    chain_id: number;
     amount_cents: number;
     recipient_address: string;
     status: "submitted" | "confirmed" | "failed";

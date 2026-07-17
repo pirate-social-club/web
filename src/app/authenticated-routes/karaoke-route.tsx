@@ -207,8 +207,9 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
       onViewScores={() => navigate(`/p/${encodeURIComponent(postId)}/karaoke/leaderboard`)}
       rewardSlot={state.rewardOffer && state.rewardOffer.eligible_activity !== "study" ? (
         <SongRewardOffer
-          amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents)}
+          amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
           eligibleActivity={state.rewardOffer.eligible_activity}
+          minScoreBps={state.rewardOffer.min_score_bps}
         />
       ) : undefined}
       scoring={scoring}

@@ -168,8 +168,10 @@ beforeEach(() => {
   fakeApi = {
     rewards: {
       cashOut: mock(async () => ({
+        chain_id: 84532,
         payout: {
           id: "rpe_test",
+          chain_id: 84532,
           amount_cents: 120,
           recipient_address: "0x9000000000000000000000000000000000000009",
           status: "confirmed",
@@ -179,8 +181,10 @@ beforeEach(() => {
         balance_cents: 0,
       })),
       getCashout: mock(async () => ({
+        chain_id: 84532,
         payout: {
           id: "rpe_test",
+          chain_id: 84532,
           amount_cents: 120,
           recipient_address: "0x1000000000000000000000000000000000000001",
           status: "confirmed",
@@ -190,6 +194,7 @@ beforeEach(() => {
         balance_cents: 0,
       })),
       getSummary: mock(async () => ({
+        chain_id: 84532,
         balance_cents: 120,
         today_earned_cents: 30,
         recent_events: [],
@@ -230,12 +235,13 @@ describe("CurrentUserWalletPage rewards", () => {
     await waitFor(() => {
       expect(fakeApi.rewards.getSummary).toHaveBeenCalled();
       expect(view.getByText("Rewards")).toBeTruthy();
-      expect(view.getAllByText("$1.20").length).toBeGreaterThan(0);
+      expect(view.getAllByText("1.20 testnet USDC").length).toBeGreaterThan(0);
     });
   });
 
   test("recovers a submitted cashout from the rewards summary after a lost POST response", async () => {
     fakeApi.rewards.getSummary.mockImplementationOnce(async () => ({
+      chain_id: 84532,
       balance_cents: 20,
       today_earned_cents: 30,
       recent_events: [],
@@ -246,6 +252,7 @@ describe("CurrentUserWalletPage rewards", () => {
       },
       latest_in_flight_cashout: {
         id: "rpe_recovered",
+        chain_id: 84532,
         amount_cents: 100,
         recipient_address: "0x8000000000000000000000000000000000000008",
         status: "submitted" as const,
@@ -282,7 +289,7 @@ describe("CurrentUserWalletPage rewards", () => {
     });
     fireEvent.click(view.getByText("Claim"));
     expect(view.getByText("Claim rewards")).toBeTruthy();
-    expect(view.getByDisplayValue("$1.20")).toBeTruthy();
+    expect(view.getByDisplayValue("1.20")).toBeTruthy();
     fireEvent.click(view.getByText("Continue"));
     expect(view.getByText("Confirm claim")).toBeTruthy();
     fireEvent.click(view.getByText("Confirm claim"));
@@ -308,7 +315,7 @@ describe("CurrentUserWalletPage rewards", () => {
     });
     await waitFor(() => {
       expect(view.getByText("Claim complete")).toBeTruthy();
-      expect(view.getByText("$1.20 USDC was sent to 0x9000...0009.")).toBeTruthy();
+      expect(view.getByText("1.20 testnet USDC was sent to 0x9000...0009.")).toBeTruthy();
     });
     await waitFor(() => {
       expect(fakeApi.rewards.getSummary.mock.calls.length).toBeGreaterThanOrEqual(2);

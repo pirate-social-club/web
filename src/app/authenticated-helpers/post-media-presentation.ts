@@ -639,12 +639,16 @@ export function toSongPostContent(
     }) : undefined,
     stems: downloadableStems.length ? downloadableStems : undefined,
     entitledStems: downloadableStems.map((stem) => stem.kind),
-    karaoke: karaokeCapability ? { reason: karaokeCapability.reason, status: karaokeCapability.status } : undefined,
+    karaoke: karaokeCapability ? {
+      reason: karaokeCapability.reason,
+      rewardLabel: songOptions?.karaokeRewardLabel,
+      status: karaokeCapability.status,
+    } : undefined,
     karaokeHref: karaokeCapability?.canKaraoke
       ? `/p/${encodeURIComponent(post.id)}/karaoke`
       : undefined,
     onKaraoke: karaokeCapability?.canKaraoke ? songOptions?.onKaraoke : undefined,
-    study,
+    study: study ? { ...study, rewardLabel: songOptions?.studyRewardLabel } : undefined,
     studyHref: study?.status === "ready"
       ? `/p/${encodeURIComponent(post.id)}/study`
       : undefined,

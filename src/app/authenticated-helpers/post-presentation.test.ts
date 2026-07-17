@@ -839,6 +839,22 @@ describe("post presentation songs", () => {
     expect(card.content.karaokeHref).toBe("/p/pst_song/karaoke");
   });
 
+  test("maps campaign reward labels onto the song actions", () => {
+    const post = createSongPost();
+    post.karaoke_capability = { status: "ready" };
+    post.study_capability = { status: "ready" };
+
+    const card = toThreadPostCard(post, undefined, undefined, {
+      karaokeRewardLabel: "1.00 testnet USDC (Base Sepolia)",
+      studyRewardLabel: "1.00 testnet USDC (Base Sepolia)",
+    });
+
+    expect(card.content.type).toBe("song");
+    if (card.content.type !== "song") return;
+    expect(card.content.karaoke?.rewardLabel).toBe("1.00 testnet USDC (Base Sepolia)");
+    expect(card.content.study?.rewardLabel).toBe("1.00 testnet USDC (Base Sepolia)");
+  });
+
   test("maps derivative source summaries into song card content", () => {
     const post = createSongPost({
       rights_basis: "derivative",

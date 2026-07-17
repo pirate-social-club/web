@@ -345,6 +345,59 @@ function applyGateStatuses(
   return items.map((item, index) => ({ ...item, status: statuses[index] ?? "unknown" }));
 }
 
+type RequiredActionLike = {
+  asset_id?: string;
+  capability?: string;
+  evaluated_wallet_count?: number | null;
+  items?: RequiredActionLike[];
+  kind?: string;
+  required_amount_atomic?: string;
+  shortfall_amount_atomic?: string;
+};
+
+function formatBalanceShortfall(
+  gate: SidebarGateSummary,
+  eligibility: ApiJoinEligibility | null | undefined,
+  locale?: string | null,
+): string | null {
+  if (
+    gate.gate_type !== "asset_balance"
+    || eligibility?.failure_reason !== "asset_balance_too_low"
+    || !gate.asset_id
+    || !gate.min_amount_atomic
+    || !gate.asset_symbol
+    || typeof gate.asset_decimals !== "number"
+  ) return null;
+
+  const roots = (eligibility.gate_evaluation?.required_action_set?.items ?? []) as RequiredActionLike[];
+  const find = (actions: RequiredActionLike[]): RequiredActionLike | null => {
+    for (const action of actions) {
+      if (action.kind === "set") {
+        const nested = find(action.items ?? []);
+        if (nested) return nested;
+        continue;
+      }
+      if (
+        action.capability === "asset_balance"
+        && action.asset_id === gate.asset_id
+        && action.required_amount_atomic === gate.min_amount_atomic
+        && typeof action.evaluated_wallet_count === "number"
+        && action.evaluated_wallet_count > 0
+      ) return action;
+    }
+    return null;
+  };
+
+  const action = find(roots);
+  if (!action?.shortfall_amount_atomic) return null;
+  const amount = formatAssetAmount(action.shortfall_amount_atomic, gate.asset_decimals);
+  if (!amount) return null;
+  const formatted = `${amount} ${gate.asset_symbol}`;
+  if (locale === "ar") return `تحتاج إلى ${formatted} إضافية`;
+  if (locale === "zh") return `还需要 ${formatted}`;
+  return `You need ${formatted} more`;
+}
+
 export function buildCommunitySidebarGateItems(input: {
   defaultAgeGatePolicy?: CommunityDefaultAgeGatePolicy | null;
   gateSummaries?: SidebarGateSummary[] | null;
@@ -388,6 +441,7 @@ export function buildCommunitySidebarGateItems(input: {
     if (label && !seenLabels.has(label)) {
       seenLabels.add(label);
       items.push({
+        detail: formatBalanceShortfall(gate, input.eligibility, input.locale),
         gateType: gate.gate_type,
         label,
         provider: resolveGateProvider(gate),

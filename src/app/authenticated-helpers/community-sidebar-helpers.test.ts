@@ -189,6 +189,63 @@ describe("buildCommunitySidebarRequirements", () => {
   });
 });
 
+describe("asset balance shortfalls", () => {
+  const summary = {
+    gate_type: "asset_balance" as const,
+    asset_id: "eip155:1/slip44:60",
+    min_amount_atomic: "500000000000000000",
+    asset_symbol: "ETH",
+    asset_decimals: 18,
+  };
+
+  function eligibility(evaluatedWalletCount: number, overrides: Record<string, unknown> = {}): JoinEligibility {
+    return {
+      status: "verification_required",
+      failure_reason: "asset_balance_too_low",
+      membership_gate_summaries: [summary],
+      gate_evaluation: {
+        required_action_set: {
+          kind: "set",
+          mode: "all",
+          items: [{
+            kind: "action",
+            capability: "asset_balance",
+            asset_id: summary.asset_id,
+            required_amount_atomic: summary.min_amount_atomic,
+            current_amount_atomic: "200000000000000000",
+            shortfall_amount_atomic: "300000000000000000",
+            evaluated_wallet_count: evaluatedWalletCount,
+            ...overrides,
+          }],
+        },
+      },
+    } as JoinEligibility;
+  }
+
+  test("shows an exact shortfall only after at least one wallet was evaluated", () => {
+    expect(buildCommunitySidebarGateItems({ gateSummaries: [summary], eligibility: eligibility(1) }))
+      .toMatchObject([{ label: "At least 0.5 ETH", detail: "You need 0.3 ETH more" }]);
+    expect(buildCommunitySidebarGateItems({ gateSummaries: [summary], eligibility: eligibility(0) })[0]?.detail)
+      .toBeNull();
+  });
+
+  test("does not join a shortfall to a different threshold for the same asset", () => {
+    expect(buildCommunitySidebarGateItems({
+      gateSummaries: [summary],
+      eligibility: eligibility(1, { required_amount_atomic: "1000000000000000000" }),
+    })[0]?.detail).toBeNull();
+  });
+
+  test("localizes an observed shortfall and suppresses it for other outcomes", () => {
+    expect(buildCommunitySidebarGateItems({ gateSummaries: [summary], eligibility: eligibility(1), locale: "zh" })[0]?.detail)
+      .toBe("还需要 0.3 ETH");
+    expect(buildCommunitySidebarGateItems({
+      gateSummaries: [summary],
+      eligibility: { ...eligibility(1), failure_reason: "provider_unavailable" } as JoinEligibility,
+    })[0]?.detail).toBeNull();
+  });
+});
+
 describe("buildCommunitySidebarGateItems", () => {
   test("uses eligibility to mark all-mode satisfied gates met", () => {
     expect(buildCommunitySidebarGateItems({

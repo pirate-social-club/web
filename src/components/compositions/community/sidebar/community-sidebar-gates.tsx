@@ -93,13 +93,10 @@ function GateRow({ item, mode }: { item: CommunitySidebarGateItem; mode?: "all" 
           weight="duotone"
         />
       </div>
-      <Type
-        as="span"
-        className="min-w-0 flex-1"
-        variant="body-strong"
-      >
-        {item.label}
-      </Type>
+      <div className="min-w-0 flex-1">
+        <Type as="span" className="block" variant="body-strong">{item.label}</Type>
+        {item.detail ? <Type as="span" className="block text-muted-foreground" variant="caption">{item.detail}</Type> : null}
+      </div>
       <div className="grid size-6 shrink-0 place-items-center">
         {item.status === "met" ? (
           <CheckCircle className="size-5 text-success" weight="fill" />

@@ -275,29 +275,11 @@ describe("KaraokeRoutePage", () => {
     });
   });
 
-  test.each([
-    ["karaoke", "Score at least 85% in Karaoke"],
-    ["either", "Complete a study set or score at least 85% in Karaoke"],
-  ] as const)("shows a %s reward offer on the karaoke surface", async (eligibleActivity, qualificationCopy) => {
+  test("does not repeat the reward offer inside the karaoke surface", async () => {
     rewardOfferResult = {
       chain_id: 84532,
       daily_reward_cents: 100,
-      eligible_activity: eligibleActivity,
-      ends_at: Date.now() + 86_400_000,
-      min_score_bps: 8_500,
-    };
-
-    const view = render(<KaraokeRoutePage postId="pst_song" />);
-
-    await waitFor(() => expect(view.getByText("Earn 1.00 testnet USDC (Base Sepolia) per UTC day")).toBeTruthy());
-    expect(view.getByText(qualificationCopy)).toBeTruthy();
-  });
-
-  test("hides a study-only reward offer on the karaoke surface", async () => {
-    rewardOfferResult = {
-      chain_id: 84532,
-      daily_reward_cents: 100,
-      eligible_activity: "study",
+      eligible_activity: "karaoke",
       ends_at: Date.now() + 86_400_000,
       min_score_bps: 7_000,
     };
@@ -306,18 +288,9 @@ describe("KaraokeRoutePage", () => {
 
     await waitFor(() => expect(calls).toContain("rewards.getActiveCampaignForSong"));
     await waitFor(() => expect(view.container.querySelector('[aria-label="Fallback Karaoke"]')).toBeTruthy());
-    expect(view.queryByText("Practice reward")).toBeNull();
-  });
-
-  test("keeps karaoke usable when the reward offer fetch fails", async () => {
-    rewardOfferError = new Error("reward service unavailable");
-
-    const view = render(<KaraokeRoutePage postId="pst_song" />);
-
-    await waitFor(() => expect(view.container.querySelector('[aria-label="Fallback Karaoke"]')).toBeTruthy());
-    expect(view.container.querySelector("audio")).toBeTruthy();
-    expect(view.queryByText("reward service unavailable")).toBeNull();
-    expect(view.queryByText("Practice reward")).toBeNull();
+    expect(view.queryByText("Reward")).toBeNull();
+    expect(view.queryByText(/testnet USDC/)).toBeNull();
+    expect(view.queryByText(/Score at least 70%/)).toBeNull();
   });
 
   test("blocks with payload-problem copy when the dedicated payload is unusable", async () => {

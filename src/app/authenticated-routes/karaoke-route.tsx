@@ -5,10 +5,6 @@ import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
 import { KaraokeAudioSurface } from "@/components/compositions/karaoke/karaoke-audio-surface";
-import {
-  rewardAmountLabel,
-  SongRewardOffer,
-} from "@/components/compositions/rewards/reward-surfaces";
 import { toKaraokeStageLines } from "@/components/compositions/karaoke/lyric-transform";
 import { toScorableKaraokeLines } from "@/components/compositions/karaoke/karaoke-stage-bridge";
 import { useKaraokeScoring } from "@/components/compositions/karaoke/scoring/use-karaoke-scoring-session";
@@ -205,13 +201,6 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
       onExit={() => navigate(`/p/${encodeURIComponent(postId)}`)}
       onRequestSignIn={connect ?? undefined}
       onViewScores={() => navigate(`/p/${encodeURIComponent(postId)}/karaoke/leaderboard`)}
-      rewardSlot={state.rewardOffer && state.rewardOffer.eligible_activity !== "study" ? (
-        <SongRewardOffer
-          amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
-          eligibleActivity={state.rewardOffer.eligible_activity}
-          minScoreBps={state.rewardOffer.min_score_bps}
-        />
-      ) : undefined}
       scoring={scoring}
       showSignInCta={needsAuth}
       signInBusy={authBusy}

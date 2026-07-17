@@ -61,6 +61,7 @@ function getGateIconConfig(
       };
     case "erc721_holding":
     case "erc721_inventory_match":
+    case "asset_balance":
       return {
         icon: CurrencyEth,
       };

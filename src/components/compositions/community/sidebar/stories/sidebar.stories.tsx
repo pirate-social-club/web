@@ -108,9 +108,17 @@ export const RequirementsOr: Story = {
     followerCount: 5400,
     memberCount: 890,
     requirementsMode: "any",
+    showFlatGateOrMarkers: true,
     gates: [
       { gateType: "wallet_score", label: "Passport score 8+", provider: null, status: "met" },
       { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unmet" },
+      {
+        detail: "You need 0.3 ETH more",
+        gateType: "asset_balance",
+        label: "At least 0.5 ETH",
+        provider: null,
+        status: "unmet",
+      },
     ],
   },
 };

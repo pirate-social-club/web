@@ -1274,6 +1274,56 @@ test.describe("live staging integration", () => {
   test.skip(process.env.E2E_LIVE_STAGING !== "true", "Set E2E_LIVE_STAGING=true to run real staging mutations.");
   test.skip(!liveSecretsPresent, "Live staging JWT secrets are not available.");
 
+  test("exposes stable gate identity and authoritative outcomes in live join eligibility", async () => {
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const subject = `gate-contract-staging-${runId}`;
+    const session = await createLiveSession(subject, walletAddressForSubject(subject));
+    await completeSelfVerification(session);
+    const communityId = await createGateBuilderCommunity(session, runId);
+    const headers = { authorization: `Bearer ${session.accessToken}` };
+
+    const gatePolicy = {
+      expression: {
+        children: [
+          { gate: { gate_id: "verified-human", provider: "self", type: "unique_human" }, op: "gate" },
+          { gate: { gate_id: "browser-challenge", type: "altcha_pow" }, op: "gate" },
+        ],
+        op: "and",
+      },
+      version: 1,
+    };
+    await requestJson(`/communities/${encodeURIComponent(communityId)}/gates`, {
+      body: JSON.stringify({
+        allow_anonymous_identity: true,
+        anonymous_identity_scope: "community_stable",
+        default_age_gate_policy: "none",
+        gate_policy: gatePolicy,
+        membership_mode: "gated",
+      }),
+      headers,
+      method: "POST",
+    });
+
+    const eligibility = await requestJson<{
+      gate_evaluation?: { trace?: unknown } | null;
+    }>(`/communities/${encodeURIComponent(communityId)}/join-eligibility`, { headers });
+    const leaves: Array<{ gate_id?: unknown; outcome?: unknown }> = [];
+    const visit = (node: unknown): void => {
+      if (!node || typeof node !== "object") return;
+      const record = node as Record<string, unknown>;
+      if (record.kind === "gate") {
+        leaves.push(record);
+        return;
+      }
+      if (Array.isArray(record.children)) record.children.forEach(visit);
+    };
+    visit(eligibility.gate_evaluation?.trace);
+
+    expect(leaves).toHaveLength(2);
+    expect(leaves.map((leaf) => leaf.gate_id)).toEqual(["verified-human", "browser-challenge"]);
+    expect(leaves.map((leaf) => leaf.outcome)).toEqual(["passed", "action_required"]);
+  });
+
   test("round-trips a nested gate policy through the staging moderator UI", async ({ page }, testInfo) => {
     testInfo.setTimeout(5 * 60_000);
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;

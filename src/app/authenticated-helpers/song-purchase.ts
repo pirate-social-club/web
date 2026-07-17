@@ -9,11 +9,9 @@ import type {
 } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
-import type { ApiClient } from "@/lib/api/client";
 import type { CommunityPurchaseSettlementResult } from "@/lib/api/client-groups-community-commerce";
 import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyWallets } from "@/components/auth/privy-provider";
-import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { DEFAULT_STORY_CHECKOUT_ROUTE, executeRoutedStoryCheckout, findConnectedFundingWallet } from "@/lib/commerce/routed-checkout";
 import { getErrorMessage } from "@/lib/error-utils";
 import { toast } from "@/components/primitives/sonner";
@@ -22,11 +20,6 @@ import { SelfVerificationModal } from "@/components/compositions/verification/se
 import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
-
-type CommunitiesApi = Pick<
-  ApiClient["communities"],
-  "createPurchaseQuote" | "failPurchase" | "settlePurchase"
->;
 
 type PurchaseAssetLabel = "song" | "video" | "ticket" | "replay" | "asset";
 
@@ -61,105 +54,6 @@ export type SongPurchaseSuccessMessage = (params: {
   settlement: CommunityPurchaseSettlement;
   titleText: string;
 }) => string;
-
-export async function executeSongPurchase(params: {
-  assetLabel?: PurchaseAssetLabel;
-  communities: CommunitiesApi;
-  communityId: string;
-  connectedWallets: PirateConnectedEvmWallet[];
-  listing: ApiCommunityListing;
-  onError: (message: string) => void;
-  onSuccess: (message: string) => void;
-  primaryWalletAddress?: string | null;
-  refreshSongCommerce: () => Promise<void> | void;
-  settlementWalletAttachmentId?: string | null;
-  successMessage: SongPurchaseSuccessMessage;
-  titleText: string;
-}) {
-  const assetLabel = params.assetLabel ?? "song";
-  if (!params.settlementWalletAttachmentId) {
-    params.onError(`Connect a primary wallet before buying this ${assetLabel}.`);
-    return;
-  }
-
-  let quoteId: string | null = null;
-  let fundingTxRef: string | null = null;
-  try {
-    const fundingWallet = findConnectedFundingWallet({
-      connectedWallets: params.connectedWallets,
-      primaryWalletAddress: params.primaryWalletAddress,
-    });
-    if (!fundingWallet) {
-      params.onError(`Connect your primary wallet before buying this ${assetLabel}.`);
-      return;
-    }
-
-    const quote = await params.communities.createPurchaseQuote(params.communityId, {
-      listing: params.listing.id,
-      ...DEFAULT_STORY_CHECKOUT_ROUTE,
-    });
-    quoteId = quote.id;
-    fundingTxRef = await executeRoutedStoryCheckout({
-      quote,
-      wallet: fundingWallet,
-    });
-    const settlementBody = {
-      quote: quote.id,
-      settlement_wallet_attachment: params.settlementWalletAttachmentId,
-      funding_tx_ref: fundingTxRef,
-      settlement_tx_ref: fundingTxRef,
-    };
-    const settlement = await waitForPurchaseSettlement({
-      settle: () => params.communities.settlePurchase(params.communityId, settlementBody),
-    });
-    await params.refreshSongCommerce();
-    params.onSuccess(params.successMessage({ settlement, titleText: params.titleText }));
-  } catch (error) {
-    if (quoteId && !fundingTxRef) {
-      await params.communities.failPurchase(params.communityId, { quote: quoteId }).catch(() => undefined);
-    }
-    params.onError(getErrorMessage(error, `Could not unlock this ${assetLabel}.`));
-  }
-}
-
-export function useSongPurchase({
-  commerceEnabled,
-  refreshSongCommerce,
-}: {
-  commerceEnabled: boolean;
-  refreshSongCommerce: () => Promise<void> | void;
-}) {
-  const api = useApi();
-  const session = useSession();
-  const { connectedWallets } = usePiratePrivyWallets({ enabled: commerceEnabled });
-
-  return React.useCallback((params: {
-    assetLabel?: PurchaseAssetLabel;
-    communityId: string;
-    listing: ApiCommunityListing;
-    successMessage: SongPurchaseSuccessMessage;
-    titleText: string;
-  }) => executeSongPurchase({
-    assetLabel: params.assetLabel,
-    communities: api.communities,
-    communityId: params.communityId,
-    connectedWallets,
-    listing: params.listing,
-    onError: toast.error,
-    onSuccess: toast.success,
-    primaryWalletAddress: session?.profile.primary_wallet_address,
-    refreshSongCommerce,
-    settlementWalletAttachmentId: session?.user.primary_wallet_attachment,
-    successMessage: params.successMessage,
-    titleText: params.titleText,
-  }), [
-    api.communities,
-    connectedWallets,
-    refreshSongCommerce,
-    session?.profile.primary_wallet_address,
-    session?.user.primary_wallet_attachment,
-  ]);
-}
 
 type PendingSongPurchase = {
   assetLabel?: PurchaseAssetLabel;

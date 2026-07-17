@@ -9,6 +9,14 @@ type GateStatusInput = {
   requirements: Array<Pick<MembershipGateSummary, "gate_type">>;
 };
 
+type GateTraceLike = {
+  children?: GateTraceLike[];
+  gate_type?: string;
+  kind?: string;
+  passed?: boolean;
+  reason?: string;
+};
+
 function gateTypeToCapability(gateType: string): RequiredActionCapability | null {
   switch (gateType) {
     case "unique_human": return "unique_human";
@@ -36,15 +44,45 @@ function requirementMatchesRequiredAction(
   return capability != null && requiredCapabilities.includes(capability);
 }
 
-export function deriveGateStatuses({
+function traceGateKey(gateType: string): string {
+  return gateType === "age_over_18" || gateType === "minimum_age" ? "minimum_age" : gateType;
+}
+
+function traceStatus(node: GateTraceLike): CommunityGateRequirementStatus {
+  if (node.reason?.includes("unavailable")) return "unknown";
+  return node.passed ? "met" : "unmet";
+}
+
+function deriveTraceStatuses(
+  eligibility: JoinEligibility,
+  requirements: Array<Pick<MembershipGateSummary, "gate_type">>,
+): Array<CommunityGateRequirementStatus | null> | null {
+  const root = eligibility.gate_evaluation?.trace as GateTraceLike | null | undefined;
+  if (!root) return null;
+
+  const leavesByType = new Map<string, GateTraceLike[]>();
+  const visit = (node: GateTraceLike): void => {
+    if (node.kind === "gate" && node.gate_type) {
+      const key = traceGateKey(node.gate_type);
+      leavesByType.set(key, [...(leavesByType.get(key) ?? []), node]);
+      return;
+    }
+    node.children?.forEach(visit);
+  };
+  visit(root);
+
+  return requirements.map((requirement) => {
+    const queue = leavesByType.get(traceGateKey(requirement.gate_type));
+    const leaf = queue?.shift();
+    return leaf ? traceStatus(leaf) : null;
+  });
+}
+
+function deriveLegacyStatuses({
   eligibility,
   gateMatchMode,
   requirements,
-}: GateStatusInput): CommunityGateRequirementStatus[] {
-  if (!eligibility) {
-    return requirements.map(() => "unknown");
-  }
-
+}: GateStatusInput & { eligibility: JoinEligibility }): CommunityGateRequirementStatus[] {
   switch (eligibility.status) {
     case "already_joined":
     case "joinable":
@@ -67,4 +105,18 @@ export function deriveGateStatuses({
     default:
       return requirements.map(() => "unknown");
   }
+}
+
+export function deriveGateStatuses({
+  eligibility,
+  gateMatchMode,
+  requirements,
+}: GateStatusInput): CommunityGateRequirementStatus[] {
+  if (!eligibility) {
+    return requirements.map(() => "unknown");
+  }
+
+  const fallback = deriveLegacyStatuses({ eligibility, gateMatchMode, requirements });
+  const traced = deriveTraceStatuses(eligibility, requirements);
+  return traced?.map((status, index) => status ?? fallback[index] ?? "unknown") ?? fallback;
 }

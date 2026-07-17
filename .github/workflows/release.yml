@@ -763,5 +763,6 @@ jobs:
           VITE_ASYNC_SONG_PUBLISH_ENABLED: ${{ vars.VITE_ASYNC_SONG_PUBLISH_ENABLED || 'false' }}
           VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
           VITE_PRIVY_CLIENT_ID: ${{ vars.VITE_PRIVY_CLIENT_ID }}
+          VITE_REWARDS_ENABLED: "true"
           VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
         run: scripts/deploy-production.sh --confirm-production --skip-tests

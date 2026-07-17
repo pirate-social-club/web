@@ -137,7 +137,13 @@ export const StudyCompletionRewardPending: Story = {
           onKaraoke={() => undefined}
           onPrimaryAction={() => undefined}
           onStudyAgain={() => undefined}
-          rewardSlot={<SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" />}
+          rewardSlot={(
+            <SongRewardOffer
+              amountLabel="0.40 testnet USDC (Base Sepolia)"
+              eligibleActivity="either"
+              minScoreBps={7_000}
+            />
+          )}
           state={{
             correctCount: 3,
             kind: "complete",

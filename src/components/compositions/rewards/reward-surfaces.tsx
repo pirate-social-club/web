@@ -68,10 +68,14 @@ export interface SongRewardOfferProps {
   amountLabel: string;
   className?: string;
   eligibleActivity: "study" | "karaoke" | "either";
+  minScoreBps: number;
 }
 
-export function rewardAmountLabel(amountCents: number): string {
-  return `$${(amountCents / 100).toFixed(2)} USDC`;
+export function rewardAmountLabel(amountCents: number, chainId: number): string {
+  const amount = (amountCents / 100).toFixed(2);
+  if (chainId === 8453) return `$${amount} USDC`;
+  if (chainId === 84532) return `${amount} testnet USDC (Base Sepolia)`;
+  return `${amount} USDC (chain ${chainId})`;
 }
 
 export interface StreakRewardEarnedProps {
@@ -155,11 +159,13 @@ export function SongRewardOffer({
   amountLabel,
   className,
   eligibleActivity,
+  minScoreBps,
 }: SongRewardOfferProps) {
+  const minimumScoreLabel = `${Number((minScoreBps / 100).toFixed(2))}%`;
   const qualificationLabel = {
     study: "Complete today's study set",
-    karaoke: "Complete a karaoke pass",
-    either: "Complete a study set or karaoke pass",
+    karaoke: `Score at least ${minimumScoreLabel} in Karaoke`,
+    either: `Complete a study set or score at least ${minimumScoreLabel} in Karaoke`,
   }[eligibleActivity];
 
   return (
@@ -170,13 +176,13 @@ export function SongRewardOffer({
         </div>
         <div className="min-w-0 flex-1">
           <Type as="div" className="text-muted-foreground" variant="overline">
-            Practice reward
+            Reward
           </Type>
           <Type as="div" variant="h3">
-            Earn {amountLabel}
+            Earn {amountLabel} per UTC day
           </Type>
           <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
-            {qualificationLabel} · once per UTC day
+            {qualificationLabel}
           </Type>
         </div>
       </div>
@@ -311,7 +317,7 @@ export function WalletRewardsCard({
       ) : null}
       {isComplete ? (
         <Type as="p" className="mt-4 text-muted-foreground" variant="body">
-          Reward USDC was sent to your Base wallet.
+          Reward was sent to your wallet.
         </Type>
       ) : null}
       {isError ? (
@@ -504,7 +510,7 @@ export function CashoutSheet({
         <ModalHeader className="text-start">
           <ModalTitle>Claim rewards</ModalTitle>
           <ModalDescription className="text-muted-foreground">
-            Sends reward USDC to your wallet.
+            Sends rewards to your wallet.
           </ModalDescription>
         </ModalHeader>
 
@@ -553,7 +559,7 @@ export function CashoutSheet({
                   Claim complete
                 </Type>
                 <Type as="div" className="mt-1 text-muted-foreground" variant="body">
-                  {amountLabel} USDC was sent to {recipientLabel}.
+                  {amountLabel} was sent to {recipientLabel}.
                 </Type>
               </div>
             </div>

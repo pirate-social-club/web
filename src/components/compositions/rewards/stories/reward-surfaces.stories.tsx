@@ -108,7 +108,11 @@ export const SongRewardOfferEither: Story = {
   name: "SongRewardOffer / Study or karaoke",
   render: () => (
     <SurfaceFrame>
-      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" />
+      <SongRewardOffer
+        amountLabel="$0.40 USDC"
+        eligibleActivity="either"
+        minScoreBps={7_000}
+      />
     </SurfaceFrame>
   ),
 };
@@ -117,7 +121,11 @@ export const SongRewardOfferStudy: Story = {
   name: "SongRewardOffer / Study only",
   render: () => (
     <SurfaceFrame>
-      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="study" />
+      <SongRewardOffer
+        amountLabel="$0.40 USDC"
+        eligibleActivity="study"
+        minScoreBps={7_000}
+      />
     </SurfaceFrame>
   ),
 };
@@ -126,7 +134,24 @@ export const SongRewardOfferKaraoke: Story = {
   name: "SongRewardOffer / Karaoke only",
   render: () => (
     <SurfaceFrame>
-      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="karaoke" />
+      <SongRewardOffer
+        amountLabel="$0.40 USDC"
+        eligibleActivity="karaoke"
+        minScoreBps={8_500}
+      />
+    </SurfaceFrame>
+  ),
+};
+
+export const SongRewardOfferDaily: Story = {
+  name: "SongRewardOffer / Daily karaoke",
+  render: () => (
+    <SurfaceFrame>
+      <SongRewardOffer
+        amountLabel="1.00 testnet USDC (Base Sepolia)"
+        eligibleActivity="karaoke"
+        minScoreBps={7_000}
+      />
     </SurfaceFrame>
   ),
 };
@@ -138,7 +163,11 @@ export const SongRewardOfferMobile: Story = {
   },
   render: () => (
     <SurfaceFrame>
-      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" />
+      <SongRewardOffer
+        amountLabel="0.40 testnet USDC (Base Sepolia)"
+        eligibleActivity="either"
+        minScoreBps={7_000}
+      />
     </SurfaceFrame>
   ),
 };
@@ -215,6 +244,21 @@ export const WalletRewardsCashoutReady: Story = {
   render: () => (
     <SurfaceFrame>
       <WalletRewardsCard {...baseWalletCardArgs("cashout-ready")} />
+    </SurfaceFrame>
+  ),
+};
+
+export const WalletRewardsTestnetCashoutReady: Story = {
+  name: "WalletRewardsCard / Testnet claim ready",
+  render: () => (
+    <SurfaceFrame>
+      <WalletRewardsCard
+        {...baseWalletCardArgs("cashout-ready")}
+        availableLabel="1.40 testnet USDC"
+        balanceLabel="1.70 testnet USDC"
+        earnedTodayLabel="0.30 testnet USDC"
+        minimumCashoutLabel="1.00 testnet USDC"
+      />
     </SurfaceFrame>
   ),
 };

@@ -7,6 +7,7 @@ import type {
   VerificationRequirement,
 } from "@pirate/api-contracts";
 import { getCountryDisplayName, normalizeCountryCode } from "@/lib/countries";
+import { formatAssetAmount } from "@/lib/asset-amount";
 import { isUiLocaleCode, type UiLocaleCode } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
 
@@ -236,6 +237,17 @@ export function formatGateRequirement(
       const assetLabel = formatInventoryAssetLabel(gate);
       return copy.erc721InventoryMatch.replace("{quantity}", quantity).replace("{assetLabel}", assetLabel);
     }
+    case "asset_balance": {
+      if (gate.min_amount_atomic && typeof gate.asset_decimals === "number" && gate.asset_symbol) {
+        const amount = formatAssetAmount(gate.min_amount_atomic, gate.asset_decimals);
+        if (amount) {
+          return copy.assetBalance.withAmount
+            .replace("{amount}", amount)
+            .replace("{symbol}", gate.asset_symbol);
+        }
+      }
+      return copy.assetBalance.withoutAmount;
+    }
     default:
       return copy.fallback.replace("{gateType}", gate.gate_type);
   }
@@ -279,7 +291,9 @@ export function hasOnlyWalletGateRequirements(
 ): boolean {
   const capabilities = getRequiredActionCapabilities(input);
   return capabilities.length > 0 && capabilities.every((capability) =>
-    capability === "erc721_holding" || capability === "erc721_inventory_match"
+    capability === "erc721_holding"
+    || capability === "erc721_inventory_match"
+    || capability === "asset_balance"
   );
 }
 

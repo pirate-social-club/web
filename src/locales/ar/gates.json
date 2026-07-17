@@ -24,6 +24,10 @@
       "withoutLabel": "يتطلب امتلاك NFT على إيثريوم"
     },
     "erc721InventoryMatch": "يتطلب {quantity} من مقتنيات Courtyard: {assetLabel}",
+    "assetBalance": {
+      "withAmount": "{amount} {symbol} على الأقل",
+      "withoutAmount": "رصيد الرمز"
+    },
     "fallback": "يتطلب التحقق من {gateType}"
   },
   "joinCta": {

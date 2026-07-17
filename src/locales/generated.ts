@@ -172,8 +172,9 @@ export const GENERATED_LOCALE_CATALOGS = {
           "minimumAge": "Minimum age"
         },
         "providers": {
-          "self": "Self.xyz",
-          "very": "Very palm scan"
+          "self": "ID check (Self)",
+          "zkpassport": "ID check (ZKPassport)",
+          "very": "Palm scan (Very)"
         },
         "operators": {
           "provenBy": "proven by",
@@ -2151,8 +2152,9 @@ export const GENERATED_LOCALE_CATALOGS = {
           "minimumAge": "Minimum age"
         },
         "providers": {
-          "self": "Self.xyz",
-          "very": "Very palm scan"
+          "self": "ID check (Self)",
+          "zkpassport": "ID check (ZKPassport)",
+          "very": "Palm scan (Very)"
         },
         "operators": {
           "provenBy": "proven by",
@@ -4130,8 +4132,9 @@ export const GENERATED_LOCALE_CATALOGS = {
           "minimumAge": "Minimum age"
         },
         "providers": {
-          "self": "Self.xyz",
-          "very": "Very palm scan"
+          "self": "ID check (Self)",
+          "zkpassport": "ID check (ZKPassport)",
+          "very": "Palm scan (Very)"
         },
         "operators": {
           "provenBy": "proven by",

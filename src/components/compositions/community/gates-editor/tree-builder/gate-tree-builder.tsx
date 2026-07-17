@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { GateAtom, GateExpression } from "@pirate/api-contracts";
+import type { GateAtom } from "@pirate/api-contracts";
 import { Plus, Trash, X } from "@phosphor-icons/react";
 
 import { NationalityMultiPicker } from "@/components/compositions/community/create-composer/nationality-picker";
@@ -136,15 +136,6 @@ export function GateTreeBuilder({ capabilities, className, onChange, showHeader 
         <h1 className="text-3xl font-semibold tracking-normal">{copy.title}</h1>
       ) : null}
 
-      <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
-        <div className="mb-2 text-base font-semibold uppercase tracking-wide text-muted-foreground">{copy.liveSummaryTitle}</div>
-        {policy ? (
-          <GateSummaryTree copy={copy} expression={policy.expression as GateExpression} isRoot />
-        ) : (
-          <p className="text-base leading-7 text-muted-foreground">{copy.emptySummary}</p>
-        )}
-      </div>
-
       {shouldShowComplexityWarning ? (
         <div className="rounded-[var(--radius-lg)] border border-warning/40 bg-warning/10 p-3 text-base text-warning">
           {addRuleDisabled || addGroupDisabled
@@ -165,43 +156,6 @@ export function GateTreeBuilder({ capabilities, className, onChange, showHeader 
       <GateGroupEditor addGroupDisabled={addGroupDisabled} addRuleDisabled={addRuleDisabled} capabilities={capabilities} copy={copy} group={value} isRoot onChange={applyValidChange} />
 
     </section>
-  );
-}
-
-/**
- * Renders the expression as an indented ALL-of / ANY-of checklist.
- *
- * A flat sentence ("a and (b or c or d)") collapses the tree into parentheses and stops being
- * readable past one level of nesting.
- */
-function GateSummaryTree({ copy, expression, isRoot = false }: {
-  copy: TreeBuilderCopy;
-  expression: GateExpression;
-  isRoot?: boolean;
-}) {
-  const node = expression as { children?: GateExpression[]; gate?: GateAtom; op: string };
-
-  if (node.op === "gate" && node.gate) {
-    return <span className="text-base leading-7">{describeGate(node.gate)}</span>;
-  }
-
-  const children = node.children ?? [];
-  const groupLabel = node.op === "or" ? copy.summaryAnyOf : copy.summaryAllOf;
-
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-baseline gap-2 text-base">
-        {isRoot ? <span className="text-muted-foreground">{copy.summaryIntro}</span> : null}
-        <span className="font-semibold uppercase tracking-wide text-foreground">{groupLabel}</span>
-      </div>
-      <ul className="flex list-none flex-col gap-1 border-s border-border-soft ps-4">
-        {children.map((child, index) => (
-          <li className="text-base leading-7" key={index}>
-            <GateSummaryTree copy={copy} expression={child} />
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 
@@ -539,6 +493,14 @@ function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
             onClick={() => onChange({ type: "unique_human", provider: "self" })}
           >
             {copy.providers.self}
+          </Chip>
+          <Chip
+            aria-pressed={gate.provider === "zkpassport"}
+            className="h-11 px-4"
+            variant={gate.provider === "zkpassport" ? "active" : "outline"}
+            onClick={() => onChange({ type: "unique_human", provider: "zkpassport" })}
+          >
+            {copy.providers.zkpassport}
           </Chip>
           <Chip
             aria-pressed={gate.provider === "very"}
@@ -1221,33 +1183,6 @@ function operatorLabel(copy: ReturnType<typeof getLocaleMessages<"gates">>["tree
       return copy.operators.atLeast;
     default:
       return copy.operators.matches;
-  }
-}
-
-function describeGate(gate: GateAtom): string {
-  switch (gate.type) {
-    case "unique_human":
-      return gate.provider === "very" ? "prove human with Very palm scan" : "prove human with Self.xyz";
-    case "altcha_pow":
-      return "complete browser challenge";
-    case "wallet_score":
-      return `have Passport score at least ${gate.minimum_score ?? 0}`;
-    case "asset_balance":
-      return `hold at least ${gate.min_amount_atomic ?? "?"} atomic units of ${gate.asset_id ?? "(asset)"}`;
-    case "erc721_holding":
-      return `hold at least ${gateAssetMinimum(gate)} NFT${gateAssetMinimum(gate) === 1 ? "" : "s"} from ${shortAddress(gate.contract_address ?? "")}`;
-    case "nationality":
-      return gate.allowed?.length
-        ? `prove nationality ${gate.allowed.join("/")}`
-        : "prove any verified nationality";
-    case "gender":
-      return `match document sex marker ${gate.allowed?.[0] ?? "(choose marker)"}`;
-    case "minimum_age":
-      return `prove age at least ${gate.minimum_age ?? 18}`;
-    case "erc721_inventory_match":
-      return `hold ${courtyardInventorySummary(gate)}`;
-    default:
-      return "satisfy an unrecognized requirement";
   }
 }
 

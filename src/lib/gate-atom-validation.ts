@@ -98,7 +98,7 @@ export function validateGateAtom(gate: GateAtom): GateAtomValidationError | null
       return null;
 
     case "unique_human":
-      return atom.provider === "self" || atom.provider === "very"
+      return atom.provider === "self" || atom.provider === "zkpassport" || atom.provider === "very"
         ? null
         : { code: "humanProviderRequired" };
 

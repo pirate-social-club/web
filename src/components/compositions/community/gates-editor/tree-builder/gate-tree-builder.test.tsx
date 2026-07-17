@@ -73,6 +73,23 @@ function renderBuilder(
 }
 
 describe("GateTreeBuilder", () => {
+  test("uses task-first verification labels without a duplicate live summary", () => {
+    const view = renderBuilder({
+      kind: "group",
+      op: "or",
+      children: [
+        humanRule,
+        { kind: "rule", gate: { type: "unique_human", provider: "zkpassport" } },
+        { kind: "rule", gate: { type: "unique_human", provider: "very" } },
+      ],
+    });
+
+    expect(view.getAllByText("ID check (Self)")).toHaveLength(3);
+    expect(view.getAllByText("ID check (ZKPassport)")).toHaveLength(3);
+    expect(view.getAllByText("Palm scan (Very)")).toHaveLength(3);
+    expect(view.queryByText("Live summary")).toBeNull();
+  });
+
   test("edits a loaded asset balance using capability decimals", async () => {
     const assetCapabilitySource: AssetCapabilitySource = {
       listAssets: async () => [{

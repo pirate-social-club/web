@@ -119,6 +119,7 @@ export interface CreateCommunityComposerProps {
   initialStep?: ComposerStep;
   courtyardInventoryGroups?: CourtyardWalletInventoryGroup[] | null;
   courtyardInventoryLoading?: boolean;
+  enableCourtyardGate?: boolean;
   onCreate?: (input: {
     avatarFile: File | null;
     avatarRef: string | null;

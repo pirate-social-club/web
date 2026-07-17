@@ -96,7 +96,8 @@ describe("GateTreeBuilder", () => {
 
     const amount = await view.findByRole("textbox", { name: "Minimum token balance" });
     expect(amount.getAttribute("value")).toBe("0.5");
-    fireEvent.change(amount, { target: { value: "10" } });
+    fireEvent.input(amount, { target: { value: "10" } });
+    await view.findByDisplayValue("10");
     expect((view.getLatestValue().children[0] as { gate: { min_amount_atomic: string } }).gate.min_amount_atomic)
       .toBe("10000000000000000000");
   });

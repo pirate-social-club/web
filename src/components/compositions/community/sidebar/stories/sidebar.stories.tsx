@@ -223,13 +223,6 @@ export const GateStatuses: Story = {
 
 export const BalanceGuidanceOverflow: Story = {
   name: "Gates / Balance guidance overflow",
-  decorators: [
-    (Story: () => React.ReactNode) => (
-      <div style={{ maxWidth: 232 }}>
-        <Story />
-      </div>
-    ),
-  ],
   args: {
     description: "Narrow-width coverage for exact token balance guidance.",
     followerCount: 620,

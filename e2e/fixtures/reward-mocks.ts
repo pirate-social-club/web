@@ -44,6 +44,7 @@ export function createRewardMockState(overrides: Partial<RewardMockState> = {}):
 function summary(state: RewardMockState) {
   const inFlight = state.latestInFlight?.status === "submitted" ? state.latestInFlight : null;
   return {
+    chain_id: 84532,
     balance_cents: state.balanceCents,
     today_earned_cents: 30,
     recent_events: [],
@@ -58,6 +59,7 @@ function summary(state: RewardMockState) {
 
 function cashoutResponse(state: RewardMockState) {
   return {
+    chain_id: 84532,
     payout: state.payout,
     balance_cents: state.payout.status === "submitted" ? Math.max(0, state.balanceCents - state.payout.amount_cents) : state.balanceCents,
   };

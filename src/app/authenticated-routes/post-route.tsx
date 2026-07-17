@@ -45,7 +45,8 @@ import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import { toast } from "@/components/primitives/sonner";
-import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
+import { rewardAmountLabel } from "@/components/compositions/rewards/reward-surfaces";
+import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse, ApiPublicRewardOffer } from "@/lib/api/client-api-types";
 import { logger } from "@/lib/logger";
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
 
@@ -174,6 +175,7 @@ export function PostPage({
   const activeAssetId = post?.post.asset ?? null;
   const activeAssetPostType = post?.post.post_type ?? null;
   const [threadAsset, setThreadAsset] = React.useState<ApiAsset | null>(null);
+  const [rewardOffer, setRewardOffer] = React.useState<ApiPublicRewardOffer | null>(null);
   const [liveRoomAccess, setLiveRoomAccess] = React.useState<ApiLiveRoomAccessResponse | null>(null);
   const [liveViewerSession, setLiveViewerSession] = React.useState<ApiLiveRoomViewerAttachResponse | null>(null);
   const [liveViewerOpen, setLiveViewerOpen] = React.useState(false);
@@ -194,6 +196,29 @@ export function PostPage({
   React.useEffect(() => {
     setStoryLicenseReuseNotice(takeStoryLicenseReuseNotice(postId));
   }, [postId]);
+  React.useEffect(() => {
+    const communityId = post?.post.community;
+    const songPostId = post?.post.id;
+    const rewardsEnabled = import.meta.env.VITE_REWARDS_ENABLED === "true";
+    if (!rewardsEnabled || post?.post.post_type !== "song" || !communityId || !songPostId) {
+      setRewardOffer(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setRewardOffer(null);
+    void api.rewards.getActiveCampaignForSong(communityId, songPostId)
+      .then((offer) => {
+        if (!cancelled) setRewardOffer(offer);
+      })
+      .catch(() => {
+        if (!cancelled) setRewardOffer(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api.rewards, post?.post.community, post?.post.id, post?.post.post_type]);
   React.useEffect(() => () => {
     for (const url of replayObjectUrlsRef.current) {
       URL.revokeObjectURL(url);
@@ -948,11 +973,15 @@ export function PostPage({
   const threadLiveRoomPurchase = threadLiveRoomId ? purchasesByLiveRoomId[threadLiveRoomId] : undefined;
   const unauthenticatedLiveTicketRequired = !session?.accessToken
     && liveRoomAccess?.access.decision_reason === "purchase_required";
+  const rewardLabel = rewardOffer
+    ? rewardAmountLabel(rewardOffer.daily_reward_cents, rewardOffer.chain_id)
+    : undefined;
   const songOptions = (post.post.post_type === "song" || post.post.post_type === "video") && community && threadAssetId
     ? {
       currentUserId: session?.user?.id,
       asset: threadAsset,
       listing: threadListing,
+      karaokeRewardLabel: rewardOffer?.eligible_activity !== "study" ? rewardLabel : undefined,
       onBuy: threadListing ? () => void handleBuySong(
         threadListing,
         post.post.title ?? (post.post.post_type === "video" ? "video" : "song"),
@@ -965,6 +994,7 @@ export function PostPage({
       playback: songPlayback,
       purchase: threadPurchase,
       storyLicenseNotice: storyLicenseReuseNotice ?? undefined,
+      studyRewardLabel: rewardOffer?.eligible_activity !== "karaoke" ? rewardLabel : undefined,
     }
     : undefined;
   const liveRoom = liveRoomAccess?.room ?? null;

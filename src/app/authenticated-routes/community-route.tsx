@@ -276,6 +276,7 @@ export function CommunityPage({
     handleZkPassportModalOpenChange,
     handleSelfQrError,
     handleSelfQrSuccess,
+    joinError,
     joinLoading,
     passportLoading,
     selfError,
@@ -367,11 +368,13 @@ export function CommunityPage({
     handleClaimNotNow,
     handleJoinRequestModalOpenChange,
     handleJoinRequestSubmit,
+    handleProofOfWorkVerified,
     handlePrimaryJoinAction,
     joinRequestError,
     joinRequestModalOpen,
     joinRequestSubmitting,
     proofOfWorkModalOpen,
+    proofOfWorkRetryKey,
     setProofOfWorkModalOpen,
   } = useCommunityMembershipActions({
     altchaPayload,
@@ -883,14 +886,16 @@ export function CommunityPage({
           action={altchaAction}
           continueDisabled={!altchaPayload}
           continueLoading={joinLoading}
+          error={joinError}
           locale={locale}
           onContinue={async () => {
-            setProofOfWorkModalOpen(false);
             await handlePrimaryJoinAction();
           }}
           onOpenChange={setProofOfWorkModalOpen}
           onPayloadChange={setAltchaPayload}
+          onVerified={handleProofOfWorkVerified}
           open={proofOfWorkModalOpen}
+          retryKey={proofOfWorkRetryKey}
           requirements={preview?.membership_gate_summaries}
           requirementsMode={preview?.gate_match_mode ?? null}
           scope={altchaScope}

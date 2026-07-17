@@ -14,14 +14,19 @@ import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/c
 import { hasActionTimeCheck, isJoinSurfaceGate } from "@/lib/identity-gates";
 import { flattenGatePolicyAtoms, getGatePolicyMatchMode } from "@/lib/gate-policy-utils";
 import { deriveGateStatuses } from "@/lib/community-gate-statuses";
+import { formatAssetAmount } from "@/lib/asset-amount";
 
 type SidebarGateSummary = Pick<
   ApiMembershipGateSummary,
   | "accepted_providers"
   | "asset_category"
+  | "asset_decimals"
   | "asset_filter_label"
+  | "asset_id"
+  | "asset_symbol"
   | "contract_address"
   | "gate_type"
+  | "min_amount_atomic"
   | "min_quantity"
   | "minimum_score"
   | "required_minimum_age"
@@ -54,6 +59,23 @@ function shortenAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+/**
+ * Renders an asset-balance requirement as a human amount, e.g. `0.5 ETH`.
+ *
+ * Returns null unless the summary carries everything needed to be exact. The
+ * atomic amount is meaningless without its asset's decimals, so a partial
+ * summary must degrade to a vaguer label rather than guess a scale.
+ */
+function formatBalanceGateAmount(input: {
+  assetDecimals?: number | null;
+  assetSymbol?: string | null;
+  minAmountAtomic?: string | null;
+}): string | null {
+  if (!input.minAmountAtomic || typeof input.assetDecimals !== "number" || !input.assetSymbol) return null;
+  const amount = formatAssetAmount(input.minAmountAtomic, input.assetDecimals);
+  return amount ? `${amount} ${input.assetSymbol}` : null;
+}
+
 function formatInventoryAssetLabel(input: {
   assetFilterLabel?: string | null;
   assetCategory?: string | null;
@@ -68,8 +90,11 @@ function formatInventoryAssetLabel(input: {
 function formatSidebarRequirement(input: {
   acceptedProviders?: ApiMembershipGateSummary["accepted_providers"];
   assetCategory?: string | null;
+  assetDecimals?: number | null;
   assetFilterLabel?: string | null;
+  assetSymbol?: string | null;
   gateType: string;
+  minAmountAtomic?: string | null;
   requiredValue?: string | null;
   requiredValues?: string[] | null;
   requiredMinimumAge?: number | null;
@@ -161,6 +186,20 @@ function formatSidebarRequirement(input: {
       if (locale === "zh") return `${quantity} Courtyard ${assetLabel}`;
       return `${quantity} Courtyard ${assetLabel}`;
     }
+    case "asset_balance": {
+      const amount = formatBalanceGateAmount(input);
+      // Symbol and decimals ride on the API summary. Without them an atomic
+      // integer cannot be rendered as an amount at all, so say only what is
+      // known rather than showing raw atomic units as if they were tokens.
+      if (!amount) {
+        if (locale === "ar") return "رصيد رمز مطلوب";
+        if (locale === "zh") return "需要代币余额";
+        return "Token balance required";
+      }
+      if (locale === "ar") return `${amount} على الأقل`;
+      if (locale === "zh") return `至少 ${amount}`;
+      return `At least ${amount}`;
+    }
     default:
       return null;
   }
@@ -191,6 +230,9 @@ function formatGateExpressionLabel(
         acceptedProviders: node.gate.accepted_providers,
         assetCategory: node.gate.asset_category,
         assetFilterLabel: node.gate.asset_filter_label,
+        assetDecimals: node.gate.asset_decimals,
+        assetSymbol: node.gate.asset_symbol,
+        minAmountAtomic: node.gate.min_amount_atomic,
         contractAddress: node.gate.contract_address,
         gateType: node.gate.gate_type,
         minQuantity: node.gate.min_quantity,
@@ -258,6 +300,9 @@ export function buildCommunitySidebarRequirements(input: {
         acceptedProviders: gate.accepted_providers ?? null,
         assetCategory: gate.asset_category ?? null,
         assetFilterLabel: gate.asset_filter_label ?? null,
+        assetDecimals: gate.asset_decimals ?? null,
+        assetSymbol: gate.asset_symbol ?? null,
+        minAmountAtomic: gate.min_amount_atomic ?? null,
         gateType: gate.gate_type,
         contractAddress: gate.contract_address ?? null,
         minQuantity: gate.min_quantity ?? null,
@@ -328,6 +373,9 @@ export function buildCommunitySidebarGateItems(input: {
       acceptedProviders: gate.accepted_providers ?? null,
       assetCategory: gate.asset_category ?? null,
       assetFilterLabel: gate.asset_filter_label ?? null,
+      assetDecimals: gate.asset_decimals ?? null,
+      assetSymbol: gate.asset_symbol ?? null,
+      minAmountAtomic: gate.min_amount_atomic ?? null,
       contractAddress: gate.contract_address ?? null,
       gateType: gate.gate_type,
       locale: input.locale,
@@ -351,9 +399,34 @@ export function buildCommunitySidebarGateItems(input: {
   return applyGateStatuses(items, input.eligibility, input.gateMatchMode);
 }
 
+/**
+ * Indexes asset display metadata from API-built gate summaries by asset id.
+ *
+ * The authenticated sidebar projects its rows from raw `gate_policy` atoms, but
+ * an `asset_balance` atom carries only an id and an atomic amount — symbol and
+ * decimals live on the API summary. An asset id fully determines both (it is
+ * the server registry's key), so matching by id avoids depending on the two
+ * lists being ordered alike.
+ */
+function indexAssetDisplayByAssetId(
+  gateSummaries: ApiMembershipGateSummary[] | null | undefined,
+): Map<string, { symbol: string | null; decimals: number | null }> {
+  const byAssetId = new Map<string, { symbol: string | null; decimals: number | null }>();
+  for (const summary of gateSummaries ?? []) {
+    if (summary.gate_type !== "asset_balance" || !summary.asset_id) continue;
+    byAssetId.set(summary.asset_id, {
+      symbol: summary.asset_symbol ?? null,
+      decimals: typeof summary.asset_decimals === "number" ? summary.asset_decimals : null,
+    });
+  }
+  return byAssetId;
+}
+
 export function getCommunityGateSummaries(
   community: ApiCommunity,
+  apiGateSummaries?: ApiMembershipGateSummary[] | null,
 ): SidebarGateSummary[] {
+  const assetDisplay = indexAssetDisplayByAssetId(apiGateSummaries);
   return flattenGatePolicyAtoms(community.gate_policy).map((atom) => ({
     accepted_providers: "provider" in atom && (atom.provider === "self" || atom.provider === "very" || atom.provider === "passport")
       ? [atom.provider]
@@ -369,11 +442,21 @@ export function getCommunityGateSummaries(
     required_values: atom.type === "nationality" && (atom.allowed?.length ?? 0) > 1 ? atom.allowed : atom.type === "gender" && (atom.allowed?.length ?? 0) > 1 ? atom.allowed : null,
     required_minimum_age: atom.type === "minimum_age" ? atom.minimum_age : null,
     minimum_score: atom.type === "wallet_score" ? atom.minimum_score : null,
+    asset_id: atom.type === "asset_balance" ? atom.asset_id ?? null : null,
+    min_amount_atomic: atom.type === "asset_balance" ? atom.min_amount_atomic ?? null : null,
+    asset_symbol: atom.type === "asset_balance" && atom.asset_id
+      ? assetDisplay.get(atom.asset_id)?.symbol ?? null
+      : null,
+    asset_decimals: atom.type === "asset_balance" && atom.asset_id
+      ? assetDisplay.get(atom.asset_id)?.decimals ?? null
+      : null,
   }));
 }
 
 export function buildCommunitySidebar(community: ApiCommunity, locale?: string | null, eligibility?: ApiJoinEligibility | null) {
-  const gateSummaries = getCommunityGateSummaries(community);
+  // The community payload has no API-built gate summaries, so asset display
+  // metadata is sourced from the eligibility readout when it has loaded.
+  const gateSummaries = getCommunityGateSummaries(community, eligibility?.membership_gate_summaries);
   const gateExpression = buildGateExpressionSummary(community.gate_policy, gateSummaries);
   const charityHref = community.donation_partner?.provider_partner_ref
     ? `https://app.endaoment.org/orgs/${community.donation_partner.provider_partner_ref}`

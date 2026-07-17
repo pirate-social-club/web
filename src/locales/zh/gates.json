@@ -250,6 +250,7 @@
     "erc721InventoryMatchRequired": "连接持有所需 Courtyard 藏品的钱包即可加入。",
     "tokenInventoryUnavailable": "暂时无法检查 Courtyard 藏品。",
     "walletScoreTooLow": "你的 Passport 分数不符合该社区要求。",
+    "assetBalanceTooLow": "你已连接的钱包持有的所需资产不足，无法加入该社区。",
     "banned": "你没有资格加入这个社区。"
   }
 }

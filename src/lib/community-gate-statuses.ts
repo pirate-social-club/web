@@ -20,6 +20,7 @@ function gateTypeToCapability(gateType: string): RequiredActionCapability | null
     case "altcha_pow": return "altcha_pow";
     case "erc721_holding": return "erc721_holding";
     case "erc721_inventory_match": return "erc721_inventory_match";
+    case "asset_balance": return "asset_balance";
     default: return null;
   }
 }

@@ -250,6 +250,7 @@
     "erc721InventoryMatchRequired": "Connect a wallet that holds the required Courtyard collectibles to join.",
     "tokenInventoryUnavailable": "Courtyard collectible inventory could not be checked right now.",
     "walletScoreTooLow": "Your Passport score does not meet this community's requirement.",
+    "assetBalanceTooLow": "Your connected wallets do not hold enough of the required asset to join this community.",
     "banned": "You are not eligible to join this community."
   }
 }

@@ -250,6 +250,7 @@
     "erc721InventoryMatchRequired": "اربط محفظة تملك مقتنيات Courtyard المطلوبة للانضمام.",
     "tokenInventoryUnavailable": "تعذر فحص مقتنيات Courtyard الآن.",
     "walletScoreTooLow": "درجة Passport الخاصة بك لا تلبي متطلبات هذا المجتمع.",
+    "assetBalanceTooLow": "محافظك المتصلة لا تملك رصيدًا كافيًا من الأصل المطلوب للانضمام إلى هذا المجتمع.",
     "banned": "أنت غير مؤهل للانضمام إلى هذا المجتمع."
   }
 }

@@ -6,14 +6,16 @@ import { getRequiredActionCapabilities, type RequiredActionCapability } from "@/
 type GateStatusInput = {
   eligibility?: JoinEligibility | null;
   gateMatchMode?: "all" | "any" | null;
-  requirements: Array<Pick<MembershipGateSummary, "gate_type"> & { trace_match?: boolean }>;
+  requirements: Array<Pick<MembershipGateSummary, "gate_id" | "gate_type"> & { trace_match?: boolean }>;
 };
 
 type GateTraceLike = {
   children?: GateTraceLike[];
+  gate_id?: string | null;
   gate_type?: string;
   kind?: string;
   op?: "and" | "or";
+  outcome?: "passed" | "action_required" | "terminal_mismatch" | "provider_unavailable" | null;
   passed?: boolean;
   reason?: string;
 };
@@ -64,22 +66,31 @@ function isProviderUnavailableReason(reason?: string): boolean {
   );
 }
 
-function collectStructuralTraceStatuses(root: GateTraceLike): Map<string, CommunityGateRequirementStatus[]> {
-  const statuses = new Map<string, CommunityGateRequirementStatus[]>();
-  const add = (gateType: string, status: CommunityGateRequirementStatus): void => {
-    const key = traceGateKey(gateType);
-    statuses.set(key, [...(statuses.get(key) ?? []), status]);
-  };
+type TraceLeafStatus = {
+  gateId: string | null;
+  gateType: string;
+  status: CommunityGateRequirementStatus;
+};
+
+function collectStructuralTraceStatuses(root: GateTraceLike): TraceLeafStatus[] {
+  const statuses: TraceLeafStatus[] = [];
   const visit = (node: GateTraceLike, muted = false): void => {
     if (node.kind === "gate" && node.gate_type) {
-      add(
-        node.gate_type,
-        muted || isProviderUnavailableReason(node.reason)
+      statuses.push({
+        gateId: node.gate_id ?? null,
+        gateType: traceGateKey(node.gate_type),
+        status: muted || node.outcome === "provider_unavailable"
+          ? "unknown"
+          : node.outcome === "passed"
+            ? "met"
+            : node.outcome === "action_required" || node.outcome === "terminal_mismatch"
+              ? "unmet"
+              : isProviderUnavailableReason(node.reason)
           ? "unknown"
           : node.passed
             ? "met"
             : "unmet",
-      );
+      });
       return;
     }
     if (node.kind !== "op") return;
@@ -101,9 +112,20 @@ function deriveTraceStatuses(
   const root = eligibility.gate_evaluation?.trace as GateTraceLike | null | undefined;
   if (!root) return null;
   const statuses = collectStructuralTraceStatuses(root);
+  const consumed = new Set<number>();
   return requirements.map((requirement) => {
     if (requirement.trace_match === false) return null;
-    return statuses.get(traceGateKey(requirement.gate_type))?.shift() ?? null;
+    const byIdentity = requirement.gate_id
+      ? statuses.findIndex((leaf, index) => !consumed.has(index) && leaf.gateId === requirement.gate_id)
+      : -1;
+    const matchIndex = byIdentity >= 0
+      ? byIdentity
+      : statuses.findIndex((leaf, index) => (
+          !consumed.has(index) && leaf.gateType === traceGateKey(requirement.gate_type)
+        ));
+    if (matchIndex < 0) return null;
+    consumed.add(matchIndex);
+    return statuses[matchIndex]?.status ?? null;
   });
 }
 

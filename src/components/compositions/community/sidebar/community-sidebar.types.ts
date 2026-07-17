@@ -77,6 +77,7 @@ export interface CommunitySidebarStore {
 
 export interface CommunitySidebarGateItem {
   detail?: string | null;
+  gateId?: string | null;
   gateType: string;
   label: string;
   provider?: "self" | "very" | "passport" | null;

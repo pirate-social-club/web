@@ -362,7 +362,7 @@ function GateRuleRow({ capabilities, copy, onChange, onRemove, rule }: {
         capabilitySource={capabilities?.assets}
         copy={copy}
         gate={rule.gate}
-        onChange={(gate) => onChange({ ...rule, gate })}
+        onChange={(gate) => onChange({ ...rule, gate: preserveGateIdentity(rule.gate, gate) })}
       />
     );
   }
@@ -377,7 +377,7 @@ function GateRuleRow({ capabilities, copy, onChange, onRemove, rule }: {
           gate={rule.gate}
           kindSelect={<RuleKindSelect copy={copy} value={kind} onChange={(nextKind) => onChange({ ...rule, gate: defaultGateForKind(nextKind) })} />}
           operator={operator ?? copy.operators.holdsOneFrom}
-          onChange={(gate) => onChange({ ...rule, gate })}
+          onChange={(gate) => onChange({ ...rule, gate: preserveGateIdentity(rule.gate, gate) })}
         />
         {errorLine}
       </div>
@@ -392,7 +392,7 @@ function GateRuleRow({ capabilities, copy, onChange, onRemove, rule }: {
         </div>
         {hasOperator ? <RuleToken>{operator}</RuleToken> : null}
         <div className="min-w-0 flex-1">
-          <RuleValueEditor capabilitySource={capabilitySource} copy={copy} gate={rule.gate} onChange={(gate) => onChange({ ...rule, gate })} />
+          <RuleValueEditor capabilitySource={capabilitySource} copy={copy} gate={rule.gate} onChange={(gate) => onChange({ ...rule, gate: preserveGateIdentity(rule.gate, gate) })} />
         </div>
         {removeButton}
       </div>
@@ -1147,30 +1147,39 @@ function RuleKindSelect({ copy, onChange, value }: {
 }
 
 function defaultRule(): GateBuilderRuleDraft {
-  return { kind: "rule", gate: { type: "unique_human", provider: "self" } };
+  return { kind: "rule", gate: { gate_id: createGateId(), type: "unique_human", provider: "self" } };
 }
 
 function defaultGateForKind(kind: RuleKind): GateAtom {
+  const identity = { gate_id: createGateId() };
   switch (kind) {
     case "altcha_pow":
-      return { type: "altcha_pow" };
+      return { ...identity, type: "altcha_pow" };
     case "erc721_holding":
-      return { type: "erc721_holding", chain_namespace: "eip155:1", contract_address: DEFAULT_CONTRACT };
+      return { ...identity, type: "erc721_holding", chain_namespace: "eip155:1", contract_address: DEFAULT_CONTRACT };
     case "asset_balance":
-      return { type: "asset_balance", asset_id: "", min_amount_atomic: "" };
+      return { ...identity, type: "asset_balance", asset_id: "", min_amount_atomic: "" };
     case "minimum_age":
-      return { type: "minimum_age", provider: "self", minimum_age: 18 };
+      return { ...identity, type: "minimum_age", provider: "self", minimum_age: 18 };
     case "gender":
-      return { type: "gender", provider: "self", accepted_providers: ["self", "zkpassport"], allowed: ["F"] };
+      return { ...identity, type: "gender", provider: "self", accepted_providers: ["self", "zkpassport"], allowed: ["F"] };
     case "nationality":
-      return { type: "nationality", provider: "self", accepted_providers: ["self", "zkpassport"], allowed: [] };
+      return { ...identity, type: "nationality", provider: "self", accepted_providers: ["self", "zkpassport"], allowed: [] };
     case "wallet_score":
-      return { type: "wallet_score", provider: "passport", minimum_score: 20 };
+      return { ...identity, type: "wallet_score", provider: "passport", minimum_score: 20 };
     case "unique_human":
     case "unknown":
     default:
-      return { type: "unique_human", provider: "self" };
+      return { ...identity, type: "unique_human", provider: "self" };
   }
+}
+
+function createGateId(): string {
+  return `gate_${crypto.randomUUID().replaceAll("-", "")}`;
+}
+
+function preserveGateIdentity(current: GateAtom, next: GateAtom): GateAtom {
+  return current.gate_id ? { ...next, gate_id: current.gate_id } : next;
 }
 
 function getRuleKind(gate: GateAtom): RuleKind {

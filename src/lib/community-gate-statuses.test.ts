@@ -120,6 +120,38 @@ describe("deriveGateStatuses", () => {
     })).toEqual(["met", "unknown", "met"]);
   });
 
+  test("matches repeated gate types by stable identity instead of traversal order", () => {
+    expect(deriveGateStatuses({
+      eligibility: eligibilityWithTrace({
+        kind: "op",
+        op: "and",
+        passed: false,
+        children: [
+          { kind: "gate", gate_id: "second", gate_type: "asset_balance", outcome: "action_required", passed: false },
+          { kind: "gate", gate_id: "first", gate_type: "asset_balance", outcome: "passed", passed: true },
+        ],
+      }),
+      requirements: [
+        { gate_id: "first", gate_type: "asset_balance" },
+        { gate_id: "second", gate_type: "asset_balance" },
+      ],
+    })).toEqual(["met", "unmet"]);
+  });
+
+  test("uses the authoritative leaf outcome instead of reason-text inference", () => {
+    expect(deriveGateStatuses({
+      eligibility: eligibilityWithTrace({
+        kind: "gate",
+        gate_id: "rpc-gate",
+        gate_type: "erc721_holding",
+        outcome: "provider_unavailable",
+        passed: false,
+        reason: "new_provider_reason_not_known_to_web",
+      }),
+      requirements: [{ gate_id: "rpc-gate", gate_type: "erc721_holding" }],
+    })).toEqual(["unknown"]);
+  });
+
   test("keeps unmatched real rows unknown once a trace exists", () => {
     expect(deriveGateStatuses({
       eligibility: eligibilityWithTrace({ kind: "gate", gate_type: "unique_human", passed: true }, "joinable"),

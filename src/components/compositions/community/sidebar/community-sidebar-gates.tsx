@@ -93,7 +93,7 @@ function GateRow({ item, mode }: { item: CommunitySidebarGateItem; mode?: "all" 
           weight="duotone"
         />
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
         <Type as="span" className="block" variant="body-strong">{item.label}</Type>
         {item.detail ? <Type as="span" className="block text-muted-foreground" variant="caption">{item.detail}</Type> : null}
       </div>

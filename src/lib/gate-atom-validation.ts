@@ -21,6 +21,8 @@ export type GateAtomValidationError = InventoryAssetMatchValidationError | {
   code:
     | "acceptedProvidersEmpty"
     | "acceptedProvidersUnsupported"
+    | "assetAmountInvalid"
+    | "assetRequired"
     | "collectibleChainUnsupported"
     | "collectibleProviderUnsupported"
     | "contractAddressInvalid"
@@ -161,6 +163,21 @@ export function validateGateAtom(gate: GateAtom): GateAtomValidationError | null
       const minCount = atom.min_count;
       if (minCount != null && (!Number.isInteger(minCount) || (minCount as number) < 1 || (minCount as number) > 100)) {
         return { code: "quantityRange" };
+      }
+      return null;
+    }
+
+    case "asset_balance": {
+      if (typeof atom.asset_id !== "string" || atom.asset_id.trim().length === 0) {
+        return { code: "assetRequired" };
+      }
+      if (typeof atom.min_amount_atomic !== "string" || !/^[1-9]\d*$/.test(atom.min_amount_atomic)) {
+        return { code: "assetAmountInvalid" };
+      }
+      try {
+        BigInt(atom.min_amount_atomic);
+      } catch {
+        return { code: "assetAmountInvalid" };
       }
       return null;
     }

@@ -157,6 +157,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "humanVerification": "Human verification",
           "browserChallenge": "Browser challenge",
           "passportScore": "Passport score",
+          "assetBalance": "Token balance",
           "nftHolding": "NFT holding",
           "documentSexMarker": "Document sex marker",
           "nationality": "Nationality",
@@ -169,6 +170,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "operators": {
           "provenBy": "proven by",
           "atLeast": "at least",
+          "holdsAtLeast": "holds at least",
           "holdsOneFrom": "holds ≥ 1 from",
           "holds": "holds ≥",
           "from": "from",
@@ -183,6 +185,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "requirementType": "Requirement type",
           "humanVerificationProvider": "Human verification provider",
           "minimumPassportScore": "Minimum Passport score",
+          "asset": "Asset",
+          "minimumAssetBalance": "Minimum token balance",
           "nftContractAddress": "NFT contract address",
           "minimumNftQuantity": "Minimum NFT quantity",
           "minimumAge": "Minimum age",
@@ -204,9 +208,18 @@ export const GENERATED_LOCALE_CATALOGS = {
           "noValues": "No values found.",
           "matches": "{count} matches"
         },
+        "assets": {
+          "loading": "Loading supported assets…",
+          "unknownAsset": "unknown asset",
+          "unavailableReadOnly": "{asset} is unavailable in this editor. This requirement is preserved read-only.",
+          "amountError": "Enter an amount greater than zero using ordinary decimal notation.",
+          "precisionError": "This asset supports at most {decimals} decimal places."
+        },
         "validation": {
           "acceptedProvidersEmpty": "Accepted providers must not be empty.",
           "acceptedProvidersUnsupported": "Accepted providers must be Self or ZKPassport.",
+          "assetAmountInvalid": "Enter a valid token amount greater than zero.",
+          "assetRequired": "Choose a supported asset.",
           "collectibleChainUnsupported": "Collectible rules must target a supported chain.",
           "collectibleProviderUnsupported": "Collectible rules must use a supported inventory provider.",
           "contractAddressInvalid": "Enter a valid contract address.",
@@ -2112,6 +2125,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "humanVerification": "Human verification",
           "browserChallenge": "Browser challenge",
           "passportScore": "Passport score",
+          "assetBalance": "رصيد الرمز",
           "nftHolding": "NFT holding",
           "documentSexMarker": "Document sex marker",
           "nationality": "Nationality",
@@ -2124,6 +2138,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "operators": {
           "provenBy": "proven by",
           "atLeast": "at least",
+          "holdsAtLeast": "يمتلك على الأقل",
           "holdsOneFrom": "holds ≥ 1 from",
           "holds": "holds ≥",
           "from": "from",
@@ -2138,6 +2153,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "requirementType": "Requirement type",
           "humanVerificationProvider": "Human verification provider",
           "minimumPassportScore": "Minimum Passport score",
+          "asset": "الأصل",
+          "minimumAssetBalance": "الحد الأدنى لرصيد الرمز",
           "nftContractAddress": "NFT contract address",
           "minimumNftQuantity": "Minimum NFT quantity",
           "minimumAge": "Minimum age",
@@ -2159,9 +2176,18 @@ export const GENERATED_LOCALE_CATALOGS = {
           "noValues": "لم يتم العثور على قيم.",
           "matches": "{count} نتيجة"
         },
+        "assets": {
+          "loading": "جارٍ تحميل الأصول المدعومة…",
+          "unknownAsset": "أصل غير معروف",
+          "unavailableReadOnly": "الأصل {asset} غير متاح في هذا المحرر. تم الاحتفاظ بالمتطلب للقراءة فقط.",
+          "amountError": "أدخل مبلغًا أكبر من صفر بالصيغة العشرية العادية.",
+          "precisionError": "يدعم هذا الأصل حتى {decimals} منازل عشرية."
+        },
         "validation": {
           "acceptedProvidersEmpty": "يجب ألا تكون قائمة مزوّدي الإثبات المقبولين فارغة.",
           "acceptedProvidersUnsupported": "يجب أن يكون مزوّدو الإثبات المقبولون Self أو ZKPassport.",
+          "assetAmountInvalid": "أدخل مبلغ رمز صالحًا أكبر من صفر.",
+          "assetRequired": "اختر أصلًا مدعومًا.",
           "collectibleChainUnsupported": "يجب أن تستهدف قواعد المقتنيات شبكة مدعومة.",
           "collectibleProviderUnsupported": "يجب أن تستخدم قواعد المقتنيات مزوّد مخزون مدعومًا.",
           "contractAddressInvalid": "أدخل عنوان عقد صالحًا.",
@@ -4067,6 +4093,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "humanVerification": "Human verification",
           "browserChallenge": "Browser challenge",
           "passportScore": "Passport score",
+          "assetBalance": "代币余额",
           "nftHolding": "NFT holding",
           "documentSexMarker": "Document sex marker",
           "nationality": "Nationality",
@@ -4079,6 +4106,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "operators": {
           "provenBy": "proven by",
           "atLeast": "at least",
+          "holdsAtLeast": "持有至少",
           "holdsOneFrom": "holds ≥ 1 from",
           "holds": "holds ≥",
           "from": "from",
@@ -4093,6 +4121,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "requirementType": "Requirement type",
           "humanVerificationProvider": "Human verification provider",
           "minimumPassportScore": "Minimum Passport score",
+          "asset": "资产",
+          "minimumAssetBalance": "最低代币余额",
           "nftContractAddress": "NFT contract address",
           "minimumNftQuantity": "Minimum NFT quantity",
           "minimumAge": "Minimum age",
@@ -4114,9 +4144,18 @@ export const GENERATED_LOCALE_CATALOGS = {
           "noValues": "未找到选项。",
           "matches": "{count} 个匹配项"
         },
+        "assets": {
+          "loading": "正在加载支持的资产…",
+          "unknownAsset": "未知资产",
+          "unavailableReadOnly": "此编辑器无法使用 {asset}。该要求将以只读方式保留。",
+          "amountError": "请使用普通十进制格式输入大于零的金额。",
+          "precisionError": "此资产最多支持 {decimals} 位小数。"
+        },
         "validation": {
           "acceptedProvidersEmpty": "接受的验证提供商不能为空。",
           "acceptedProvidersUnsupported": "接受的验证提供商必须是 Self 或 ZKPassport。",
+          "assetAmountInvalid": "请输入大于零的有效代币金额。",
+          "assetRequired": "请选择支持的资产。",
           "collectibleChainUnsupported": "藏品规则必须使用支持的区块链。",
           "collectibleProviderUnsupported": "藏品规则必须使用支持的库存提供商。",
           "contractAddressInvalid": "请输入有效的合约地址。",

@@ -150,6 +150,7 @@
       "humanVerification": "Human verification",
       "browserChallenge": "Browser challenge",
       "passportScore": "Passport score",
+      "assetBalance": "Token balance",
       "nftHolding": "NFT holding",
       "documentSexMarker": "Document sex marker",
       "nationality": "Nationality",
@@ -162,6 +163,7 @@
     "operators": {
       "provenBy": "proven by",
       "atLeast": "at least",
+      "holdsAtLeast": "holds at least",
       "holdsOneFrom": "holds ≥ 1 from",
       "holds": "holds ≥",
       "from": "from",
@@ -176,6 +178,8 @@
       "requirementType": "Requirement type",
       "humanVerificationProvider": "Human verification provider",
       "minimumPassportScore": "Minimum Passport score",
+      "asset": "Asset",
+      "minimumAssetBalance": "Minimum token balance",
       "nftContractAddress": "NFT contract address",
       "minimumNftQuantity": "Minimum NFT quantity",
       "minimumAge": "Minimum age",
@@ -197,9 +201,18 @@
       "noValues": "No values found.",
       "matches": "{count} matches"
     },
+    "assets": {
+      "loading": "Loading supported assets…",
+      "unknownAsset": "unknown asset",
+      "unavailableReadOnly": "{asset} is unavailable in this editor. This requirement is preserved read-only.",
+      "amountError": "Enter an amount greater than zero using ordinary decimal notation.",
+      "precisionError": "This asset supports at most {decimals} decimal places."
+    },
     "validation": {
       "acceptedProvidersEmpty": "Accepted providers must not be empty.",
       "acceptedProvidersUnsupported": "Accepted providers must be Self or ZKPassport.",
+      "assetAmountInvalid": "Enter a valid token amount greater than zero.",
+      "assetRequired": "Choose a supported asset.",
       "collectibleChainUnsupported": "Collectible rules must target a supported chain.",
       "collectibleProviderUnsupported": "Collectible rules must use a supported inventory provider.",
       "contractAddressInvalid": "Enter a valid contract address.",

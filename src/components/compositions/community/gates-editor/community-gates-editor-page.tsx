@@ -19,7 +19,7 @@ import { NationalityMultiPicker } from "@/components/compositions/community/crea
 import { GateTreeBuilder } from "@/components/compositions/community/gates-editor/tree-builder/gate-tree-builder";
 import { createOwnedCourtyardCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/owned-courtyard-capability-source";
 import { createFallbackCollectionCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/api-collection-capability-source";
-import type { CollectionCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/collection-capability-source";
+import type { GateCapabilitySources } from "@/components/compositions/community/gates-editor/tree-builder/gate-capability-sources";
 import type { GateBuilderGroupDraft } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import {
   DEFAULT_DOCUMENT_PROOF_PROVIDERS,
@@ -329,7 +329,7 @@ export interface CommunityGatesEditorPageProps {
   creatorVerificationState?: CreatorVerificationState;
   courtyardInventoryGroups?: CourtyardWalletInventoryGroup[] | null;
   courtyardInventoryLoading?: boolean;
-  collectionCapabilitySource?: CollectionCapabilitySource;
+  capabilities?: GateCapabilitySources;
   defaultAgeGatePolicy: CommunityDefaultAgeGatePolicy;
   gateDrafts: IdentityGateDraft[];
   gateMatchMode?: "all" | "any";
@@ -365,7 +365,7 @@ export function CommunityGatesEditorPage({
   creatorVerificationState,
   courtyardInventoryGroups,
   courtyardInventoryLoading = false,
-  collectionCapabilitySource,
+  capabilities,
   defaultAgeGatePolicy,
   gateDrafts,
   gateMatchMode = "all",
@@ -427,10 +427,10 @@ export function CommunityGatesEditorPage({
   const courtyardInventoryAuthoringAvailable = canAuthorCourtyardInventoryGate(courtyardInventoryGroups);
   const courtyardCapabilitySource = React.useMemo(() => {
     const ownedSource = createOwnedCourtyardCapabilitySource(courtyardInventoryGroups ?? []);
-    return collectionCapabilitySource
-      ? createFallbackCollectionCapabilitySource(collectionCapabilitySource, ownedSource)
+    return capabilities?.collections
+      ? createFallbackCollectionCapabilitySource(capabilities.collections, ownedSource)
       : ownedSource;
-  }, [collectionCapabilitySource, courtyardInventoryGroups]);
+  }, [capabilities?.collections, courtyardInventoryGroups]);
   const selectedCourtyardInventoryGroup = courtyardInventoryGroups?.find((group) =>
     courtyardInventoryDraftMatchesGroup(courtyardInventoryGate, group)
   ) ?? null;
@@ -505,7 +505,7 @@ export function CommunityGatesEditorPage({
               {mode === "gated" && effectiveMembershipMode === "gated" ? (
                 useGateTreeBuilder && gateTreeDraft && onGateTreeDraftChange ? (
                   <GateTreeBuilder
-                    capabilitySource={courtyardCapabilitySource}
+                    capabilities={{ ...capabilities, collections: courtyardCapabilitySource }}
                     className="max-w-none p-0"
                     onChange={onGateTreeDraftChange}
                     showHeader={false}

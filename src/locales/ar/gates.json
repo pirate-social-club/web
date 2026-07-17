@@ -150,6 +150,7 @@
       "humanVerification": "Human verification",
       "browserChallenge": "Browser challenge",
       "passportScore": "Passport score",
+      "assetBalance": "رصيد الرمز",
       "nftHolding": "NFT holding",
       "documentSexMarker": "Document sex marker",
       "nationality": "Nationality",
@@ -162,6 +163,7 @@
     "operators": {
       "provenBy": "proven by",
       "atLeast": "at least",
+      "holdsAtLeast": "يمتلك على الأقل",
       "holdsOneFrom": "holds ≥ 1 from",
       "holds": "holds ≥",
       "from": "from",
@@ -176,6 +178,8 @@
       "requirementType": "Requirement type",
       "humanVerificationProvider": "Human verification provider",
       "minimumPassportScore": "Minimum Passport score",
+      "asset": "الأصل",
+      "minimumAssetBalance": "الحد الأدنى لرصيد الرمز",
       "nftContractAddress": "NFT contract address",
       "minimumNftQuantity": "Minimum NFT quantity",
       "minimumAge": "Minimum age",
@@ -197,9 +201,18 @@
       "noValues": "لم يتم العثور على قيم.",
       "matches": "{count} نتيجة"
     },
+    "assets": {
+      "loading": "جارٍ تحميل الأصول المدعومة…",
+      "unknownAsset": "أصل غير معروف",
+      "unavailableReadOnly": "الأصل {asset} غير متاح في هذا المحرر. تم الاحتفاظ بالمتطلب للقراءة فقط.",
+      "amountError": "أدخل مبلغًا أكبر من صفر بالصيغة العشرية العادية.",
+      "precisionError": "يدعم هذا الأصل حتى {decimals} منازل عشرية."
+    },
     "validation": {
       "acceptedProvidersEmpty": "يجب ألا تكون قائمة مزوّدي الإثبات المقبولين فارغة.",
       "acceptedProvidersUnsupported": "يجب أن يكون مزوّدو الإثبات المقبولون Self أو ZKPassport.",
+      "assetAmountInvalid": "أدخل مبلغ رمز صالحًا أكبر من صفر.",
+      "assetRequired": "اختر أصلًا مدعومًا.",
       "collectibleChainUnsupported": "يجب أن تستهدف قواعد المقتنيات شبكة مدعومة.",
       "collectibleProviderUnsupported": "يجب أن تستخدم قواعد المقتنيات مزوّد مخزون مدعومًا.",
       "contractAddressInvalid": "أدخل عنوان عقد صالحًا.",

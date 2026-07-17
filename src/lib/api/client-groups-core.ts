@@ -1,4 +1,5 @@
 import type {
+  AssetBalanceCapabilityListResponse,
   NftGateCapabilitySourceListResponse,
   NftGateFacetValuePage,
   HomeFeedResponse,
@@ -89,6 +90,8 @@ export function createGeoApi(request: ApiRequest) {
 
 export function createGateCapabilitiesApi(request: ApiRequest) {
   return {
+    listAssets: (): Promise<AssetBalanceCapabilityListResponse> =>
+      request<AssetBalanceCapabilityListResponse>("/gate-capabilities/assets"),
     listNftSources: (): Promise<NftGateCapabilitySourceListResponse> =>
       request<NftGateCapabilitySourceListResponse>("/gate-capabilities/nft/sources"),
     searchNftFacetValues: (

@@ -29,7 +29,7 @@ export type IdentityGateDraft =
   }
   | {
     gateType: "unique_human";
-    provider: "self" | "very";
+    provider: "self" | "zkpassport" | "very";
     gateRuleId?: string;
   }
   | {

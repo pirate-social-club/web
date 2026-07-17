@@ -25,6 +25,7 @@ type SidebarGateSummary = Pick<
   | "asset_id"
   | "asset_symbol"
   | "contract_address"
+  | "gate_id"
   | "gate_type"
   | "min_amount_atomic"
   | "min_quantity"
@@ -344,6 +345,7 @@ function applyGateStatuses(
     gateMatchMode,
     requirements: items.map((item, index) => ({
       gate_type: item.gateType as ApiMembershipGateSummary["gate_type"],
+      gate_id: item.gateId ?? null,
       trace_match: !excluded.has(index),
     })),
   });
@@ -358,13 +360,13 @@ export function buildCommunitySidebarGateItems(input: {
   gateMatchMode?: "all" | "any" | null;
 }): CommunitySidebarGateItem[] {
   const items: CommunitySidebarGateItem[] = [];
-  const seenLabels = new Set<string>();
+  const seenRequirements = new Set<string>();
   const traceExcludedIndexes: number[] = [];
 
   if (input.defaultAgeGatePolicy === "18_plus") {
     const label = formatSidebarRequirement({ gateType: "age_over_18", locale: input.locale });
     if (label) {
-      seenLabels.add(label);
+      seenRequirements.add(`label:${label}`);
       traceExcludedIndexes.push(items.length);
       items.push({
         gateType: "age_over_18",
@@ -392,9 +394,11 @@ export function buildCommunitySidebarGateItems(input: {
       requiredMinimumAge: gate.required_minimum_age ?? null,
       minimumScore: gate.minimum_score ?? null,
     });
-    if (label && !seenLabels.has(label)) {
-      seenLabels.add(label);
+    const requirementKey = gate.gate_id ? `id:${gate.gate_id}` : `label:${label}`;
+    if (label && !seenRequirements.has(requirementKey)) {
+      seenRequirements.add(requirementKey);
       items.push({
+        gateId: gate.gate_id ?? null,
         gateType: gate.gate_type,
         label,
         provider: resolveGateProvider(gate),
@@ -441,6 +445,7 @@ export function getCommunityGateSummaries(
     asset_category: "asset_category" in atom ? (atom.asset_category as string | null | undefined) : null,
     asset_filter_label: "asset_filter_label" in atom ? (atom.asset_filter_label as string | null | undefined) : null,
     contract_address: "contract_address" in atom ? atom.contract_address : null,
+    gate_id: atom.gate_id ?? null,
     gate_type: atom.type as ApiMembershipGateSummary["gate_type"],
     min_quantity: atom.type === "erc721_holding"
       ? ("min_count" in atom && typeof atom.min_count === "number" ? atom.min_count : 1)

@@ -352,6 +352,7 @@ function gateMatchesRequiredAction(
   action: RequiredActionNode,
 ): boolean {
   if (action.kind !== "action") return false;
+  if (action.gate_id && gate.gate_id) return action.gate_id === gate.gate_id;
   switch (action.capability) {
     case "minimum_age":
       return gate.gate_type === "minimum_age" || gate.gate_type === "age_over_18";
@@ -369,6 +370,8 @@ function gateMatchesRequiredAction(
       return gate.gate_type === "erc721_holding";
     case "erc721_inventory_match":
       return gate.gate_type === "erc721_inventory_match";
+    case "asset_balance":
+      return gate.gate_type === "asset_balance";
     default:
       return false;
   }

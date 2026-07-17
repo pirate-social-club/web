@@ -88,6 +88,7 @@ describe("GateTreeBuilder", () => {
       kind: "group",
       op: "and",
       children: [{ kind: "rule", gate: {
+        gate_id: "balance-stable",
         type: "asset_balance",
         asset_id: "eip155:1/slip44:60",
         min_amount_atomic: "500000000000000000",
@@ -100,6 +101,8 @@ describe("GateTreeBuilder", () => {
     await view.findByDisplayValue("10");
     expect((view.getLatestValue().children[0] as { gate: { min_amount_atomic: string } }).gate.min_amount_atomic)
       .toBe("10000000000000000000");
+    expect((view.getLatestValue().children[0] as { gate: { gate_id: string } }).gate.gate_id)
+      .toBe("balance-stable");
   });
 
   test("preserves a retired or unavailable asset read-only", async () => {
@@ -124,7 +127,11 @@ describe("GateTreeBuilder", () => {
     const view = renderBuilder();
 
     fireEvent.click(view.getByRole("button", { name: "Rule" }));
-    expect(view.getLatestValue().children).toEqual([humanRule]);
+    expect(view.getLatestValue().children).toHaveLength(1);
+    const added = view.getLatestValue().children[0];
+    expect(added).toMatchObject(humanRule);
+    if (added?.kind !== "rule") throw new Error("expected rule");
+    expect(added.gate.gate_id).toMatch(/^gate_[a-f0-9]{32}$/);
     expect(view.getByRole("combobox", { name: "Requirement type" })).not.toBeNull();
 
     fireEvent.click(view.getByRole("button", { name: "Remove requirement" }));

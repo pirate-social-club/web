@@ -1,9 +1,33 @@
 import { describe, expect, test } from "bun:test";
 import type { GatePolicy } from "@pirate/api-contracts";
 
-import { isGatePolicyProjectionLossy } from "./gate-policy-utils";
+import { isFlatOrGateExpression, isGatePolicyProjectionLossy } from "./gate-policy-utils";
 
 describe("gate-policy-utils", () => {
+  test("recognizes only top-level OR expressions made entirely of gate atoms", () => {
+    expect(isFlatOrGateExpression({
+      op: "or",
+      children: [
+        { op: "gate", gate: { type: "wallet_score" } },
+        { op: "gate", gate: { type: "altcha_pow" } },
+      ],
+    })).toBe(true);
+    expect(isFlatOrGateExpression({
+      op: "or",
+      children: [
+        { op: "gate", gate: { type: "wallet_score" } },
+        { op: "and", children: [{ op: "gate", gate: { type: "altcha_pow" } }] },
+      ],
+    })).toBe(false);
+    expect(isFlatOrGateExpression({
+      op: "and",
+      children: [
+        { op: "gate", gate: { type: "wallet_score" } },
+        { op: "gate", gate: { type: "altcha_pow" } },
+      ],
+    })).toBe(false);
+  });
+
   test("detects nested policies that cannot be represented by the flat editor projection", () => {
     const originalPolicy: GatePolicy = {
       version: 1,

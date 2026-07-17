@@ -35,7 +35,18 @@ describe("reward surfaces", () => {
     const view = render(
       <div>
         <SongRewardBadge amountLabel="$0.10" />
-        <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" minScoreBps={7250} />
+        <SongRewardOffer
+          amountLabel="$0.40 USDC"
+          eligibleActivity="either"
+          minScoreBps={7250}
+          settlementNetwork="mainnet"
+        />
+        <SongRewardOffer
+          amountLabel="0.40 test USDC"
+          eligibleActivity="karaoke"
+          minScoreBps={7000}
+          settlementNetwork="testnet"
+        />
         <StreakRewardEarned amountLabel="$0.10" state="earned-today" />
         <StreakRewardEarned activityKind="karaoke" amountLabel="$0.10" state="earned-today" />
       </div>,
@@ -43,6 +54,9 @@ describe("reward surfaces", () => {
 
     expect(view.getByText("Earn $0.10/day")).toBeTruthy();
     expect(view.getByText("Earn $0.40 USDC")).toBeTruthy();
+    expect(view.getByText("Earn 0.40 test USDC")).toBeTruthy();
+    expect(view.getByText("Testnet practice reward")).toBeTruthy();
+    expect(view.getByText("Base Sepolia test tokens have no monetary value.")).toBeTruthy();
     expect(view.getByText("Complete a study set or score at least 72.5% in Karaoke · once per UTC day")).toBeTruthy();
     expect(view.getAllByText("$0.10 reward pending").length).toBe(2);
     expect(view.getByText("Today's karaoke pass qualified. Reward credit updates after confirmation.")).toBeTruthy();
@@ -81,9 +95,10 @@ describe("reward surfaces", () => {
   test("storybook file exports the required reward states", () => {
     expect(RewardStories.SongRewardBadgeDefault).toBeTruthy();
     expect(RewardStories.SongRewardOfferEither).toBeTruthy();
+    expect(RewardStories.SongRewardOfferTestnet).toBeTruthy();
     expect(RewardStories.WalletRewardsCashoutReady).toBeTruthy();
     expect(RewardStories.VerifyHumanConflict).toBeTruthy();
     expect(RewardStories.CashoutSuccess).toBeTruthy();
-    expect(Object.values(RewardStories).filter((story) => typeof story === "object" && story !== null && "render" in story).length).toBe(32);
+    expect(Object.values(RewardStories).filter((story) => typeof story === "object" && story !== null && "render" in story).length).toBe(33);
   });
 });

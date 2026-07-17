@@ -69,10 +69,15 @@ export interface SongRewardOfferProps {
   className?: string;
   eligibleActivity: "study" | "karaoke" | "either";
   minScoreBps: number;
+  settlementNetwork: "mainnet" | "testnet";
 }
 
-export function rewardAmountLabel(amountCents: number): string {
-  return `$${(amountCents / 100).toFixed(2)} USDC`;
+export function rewardAmountLabel(
+  amountCents: number,
+  settlementNetwork: SongRewardOfferProps["settlementNetwork"],
+): string {
+  const amount = (amountCents / 100).toFixed(2);
+  return settlementNetwork === "testnet" ? `${amount} test USDC` : `$${amount} USDC`;
 }
 
 export interface StreakRewardEarnedProps {
@@ -157,7 +162,9 @@ export function SongRewardOffer({
   className,
   eligibleActivity,
   minScoreBps,
+  settlementNetwork,
 }: SongRewardOfferProps) {
+  const isTestnet = settlementNetwork === "testnet";
   const minimumScoreLabel = `${Number((minScoreBps / 100).toFixed(2))}%`;
   const qualificationLabel = {
     study: "Complete today's study set",
@@ -173,7 +180,7 @@ export function SongRewardOffer({
         </div>
         <div className="min-w-0 flex-1">
           <Type as="div" className="text-muted-foreground" variant="overline">
-            Practice reward
+            {isTestnet ? "Testnet practice reward" : "Practice reward"}
           </Type>
           <Type as="div" variant="h3">
             Earn {amountLabel}
@@ -181,6 +188,11 @@ export function SongRewardOffer({
           <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
             {qualificationLabel} · once per UTC day
           </Type>
+          {isTestnet ? (
+            <Type as="p" className="mt-1 text-warning" variant="caption">
+              Base Sepolia test tokens have no monetary value.
+            </Type>
+          ) : null}
         </div>
       </div>
     </Card>

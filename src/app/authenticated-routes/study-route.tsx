@@ -32,6 +32,7 @@ import type {
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
+import { getPirateNetworkConfig } from "@/lib/network-config";
 
 type StudyRouteState =
   | { phase: "loading" }
@@ -850,6 +851,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     );
   }
 
+  const rewardSettlementNetwork = getPirateNetworkConfig().base.network === "base-sepolia" ? "testnet" : "mainnet";
+
   return (
     <SongStudySurface
       artistName={undefined}
@@ -860,9 +863,10 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       onPrimaryAction={handlePrimaryAction}
       rewardSlot={state.rewardOffer && state.rewardOffer.eligible_activity !== "karaoke" ? (
         <SongRewardOffer
-          amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents)}
+          amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, rewardSettlementNetwork)}
           eligibleActivity={state.rewardOffer.eligible_activity}
           minScoreBps={state.rewardOffer.min_score_bps}
+          settlementNetwork={rewardSettlementNetwork}
         />
       ) : undefined}
       state={state.surface}

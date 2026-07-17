@@ -21,6 +21,7 @@ import type { ApiPublicRewardOffer } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
+import { getPirateNetworkConfig } from "@/lib/network-config";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import {
   karaokeUnavailableMessage,
@@ -73,6 +74,7 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
   const { busy: authBusy, configured: authConfigured, connect, loadError: authLoadError } = usePiratePrivyRuntime();
   const contentLocale = useRouteContentLocale();
   const [state, setState] = React.useState<KaraokeRouteState>({ phase: "loading" });
+  const rewardSettlementNetwork = getPirateNetworkConfig().base.network === "base-sepolia" ? "testnet" : "mainnet";
 
   React.useEffect(() => {
     let canceled = false;
@@ -207,9 +209,10 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
       onViewScores={() => navigate(`/p/${encodeURIComponent(postId)}/karaoke/leaderboard`)}
       rewardSlot={state.rewardOffer && state.rewardOffer.eligible_activity !== "study" ? (
         <SongRewardOffer
-          amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents)}
+          amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, rewardSettlementNetwork)}
           eligibleActivity={state.rewardOffer.eligible_activity}
           minScoreBps={state.rewardOffer.min_score_bps}
+          settlementNetwork={rewardSettlementNetwork}
         />
       ) : undefined}
       scoring={scoring}

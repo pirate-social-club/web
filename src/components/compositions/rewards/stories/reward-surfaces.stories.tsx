@@ -108,7 +108,12 @@ export const SongRewardOfferEither: Story = {
   name: "SongRewardOffer / Study or karaoke",
   render: () => (
     <SurfaceFrame>
-      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" minScoreBps={7_000} />
+      <SongRewardOffer
+        amountLabel="$0.40 USDC"
+        eligibleActivity="either"
+        minScoreBps={7_000}
+        settlementNetwork="mainnet"
+      />
     </SurfaceFrame>
   ),
 };
@@ -117,7 +122,12 @@ export const SongRewardOfferStudy: Story = {
   name: "SongRewardOffer / Study only",
   render: () => (
     <SurfaceFrame>
-      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="study" minScoreBps={7_000} />
+      <SongRewardOffer
+        amountLabel="$0.40 USDC"
+        eligibleActivity="study"
+        minScoreBps={7_000}
+        settlementNetwork="mainnet"
+      />
     </SurfaceFrame>
   ),
 };
@@ -126,7 +136,26 @@ export const SongRewardOfferKaraoke: Story = {
   name: "SongRewardOffer / Karaoke only",
   render: () => (
     <SurfaceFrame>
-      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="karaoke" minScoreBps={8_500} />
+      <SongRewardOffer
+        amountLabel="$0.40 USDC"
+        eligibleActivity="karaoke"
+        minScoreBps={8_500}
+        settlementNetwork="mainnet"
+      />
+    </SurfaceFrame>
+  ),
+};
+
+export const SongRewardOfferTestnet: Story = {
+  name: "SongRewardOffer / Testnet karaoke",
+  render: () => (
+    <SurfaceFrame>
+      <SongRewardOffer
+        amountLabel="1.00 test USDC"
+        eligibleActivity="karaoke"
+        minScoreBps={7_000}
+        settlementNetwork="testnet"
+      />
     </SurfaceFrame>
   ),
 };
@@ -138,7 +167,12 @@ export const SongRewardOfferMobile: Story = {
   },
   render: () => (
     <SurfaceFrame>
-      <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" minScoreBps={7_000} />
+      <SongRewardOffer
+        amountLabel="0.40 test USDC"
+        eligibleActivity="either"
+        minScoreBps={7_000}
+        settlementNetwork="testnet"
+      />
     </SurfaceFrame>
   ),
 };

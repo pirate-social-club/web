@@ -226,7 +226,7 @@ describe("buildCommunitySidebarRequirements", () => {
   });
 });
 
-describe("asset balance shortfalls", () => {
+describe("asset balance sidebar presentation", () => {
   const summary = {
     gate_type: "asset_balance" as const,
     asset_id: "eip155:1/slip44:60",
@@ -235,7 +235,7 @@ describe("asset balance shortfalls", () => {
     asset_decimals: 18,
   };
 
-  function eligibility(evaluatedWalletCount: number, overrides: Record<string, unknown> = {}): JoinEligibility {
+  function eligibility(): JoinEligibility {
     return {
       status: "verification_required",
       failure_reason: "asset_balance_too_low",
@@ -251,59 +251,17 @@ describe("asset balance shortfalls", () => {
             required_amount_atomic: summary.min_amount_atomic,
             current_amount_atomic: "200000000000000000",
             shortfall_amount_atomic: "300000000000000000",
-            evaluated_wallet_count: evaluatedWalletCount,
-            ...overrides,
+            evaluated_wallet_count: 1,
           }],
         },
       },
     } as JoinEligibility;
   }
 
-  test("shows a shortfall after observation and connect-wallet guidance without one", () => {
-    expect(buildCommunitySidebarGateItems({ gateSummaries: [summary], eligibility: eligibility(1) }))
-      .toMatchObject([{ label: "At least 0.5 ETH", detail: "You need 0.3 ETH more" }]);
-    expect(buildCommunitySidebarGateItems({ gateSummaries: [summary], eligibility: eligibility(0) })[0]?.detail)
-      .toBe("Connect a wallet holding ETH");
-  });
-
-  test("does not join a shortfall to a different threshold for the same asset", () => {
-    expect(buildCommunitySidebarGateItems({
-      gateSummaries: [summary],
-      eligibility: eligibility(1, { required_amount_atomic: "1000000000000000000" }),
-    })[0]?.detail).toBeNull();
-  });
-
-  test("uses the per-row action despite a higher-precedence global NFT failure", () => {
-    expect(buildCommunitySidebarGateItems({
-      gateSummaries: [summary],
-      eligibility: { ...eligibility(1), failure_reason: "erc721_holding_required" } as JoinEligibility,
-    })[0]?.detail).toBe("You need 0.3 ETH more");
-  });
-
-  test("suppresses details for a genuine outage shape with no balance action", () => {
-    const outage = {
-      ...eligibility(1),
-      gate_evaluation: { required_action_set: { kind: "set", mode: "all", items: [] } },
-    } as JoinEligibility;
-    expect(buildCommunitySidebarGateItems({ gateSummaries: [summary], eligibility: outage })[0]?.detail).toBeNull();
-  });
-
-  test("finds nested actions and localizes shortfalls and connect-wallet guidance", () => {
-    const nested = eligibility(1);
-    const action = nested.gate_evaluation?.required_action_set?.items[0];
-    nested.gate_evaluation!.required_action_set = {
-      kind: "set",
-      mode: "all",
-      items: [{ kind: "set", mode: "any", items: action ? [action] : [] }],
-    };
-    expect(buildCommunitySidebarGateItems({ gateSummaries: [summary], eligibility: eligibility(1), locale: "zh" })[0]?.detail)
-      .toBe("还需要 0.3 ETH");
-    expect(buildCommunitySidebarGateItems({ gateSummaries: [summary], eligibility: nested, locale: "ar" })[0]?.detail)
-      .toBe("تحتاج إلى 0.3 ETH إضافية");
-    expect(buildCommunitySidebarGateItems({ gateSummaries: [summary], eligibility: eligibility(0), locale: "zh" })[0]?.detail)
-      .toBe("连接持有 ETH 的钱包");
-    expect(buildCommunitySidebarGateItems({ gateSummaries: [summary], eligibility: eligibility(0), locale: "ar" })[0]?.detail)
-      .toBe("اربط محفظة تحتوي على ETH");
+  test("keeps the persistent row requirement-only when action data includes a shortfall", () => {
+    const [item] = buildCommunitySidebarGateItems({ gateSummaries: [summary], eligibility: eligibility() });
+    expect(item?.label).toBe("At least 0.5 ETH");
+    expect(item && "detail" in item).toBe(false);
   });
 });
 

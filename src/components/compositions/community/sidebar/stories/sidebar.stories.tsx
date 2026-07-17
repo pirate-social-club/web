@@ -113,7 +113,6 @@ export const RequirementsOr: Story = {
       { gateType: "wallet_score", label: "Passport score 8+", provider: null, status: "met" },
       { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unmet" },
       {
-        detail: "You need 0.3 ETH more",
         gateType: "asset_balance",
         label: "At least 0.5 ETH",
         provider: null,
@@ -230,22 +229,20 @@ export const GateStatuses: Story = {
 };
 
 export const BalanceGuidanceOverflow: Story = {
-  name: "Gates / Balance guidance overflow",
+  name: "Gates / Balance requirement overflow",
   args: {
-    description: "Narrow-width coverage for exact token balance guidance.",
+    description: "Narrow-width coverage for exact token balance requirements.",
     followerCount: 620,
     memberCount: 80,
     requirementsMode: "all",
     gates: [
       {
-        detail: "You need 12,345,678.901234567890123456 WETH more",
         gateType: "asset_balance",
         label: "At least 123,456,789.123456789012345678 WETH",
         provider: null,
         status: "unmet",
       },
       {
-        detail: "Connect a wallet holding USDC",
         gateType: "asset_balance",
         label: "At least 10,000,000 USDC",
         provider: null,
@@ -256,7 +253,7 @@ export const BalanceGuidanceOverflow: Story = {
 };
 
 export const BalanceGuidanceArabic: Story = {
-  name: "Gates / Balance guidance Arabic RTL",
+  name: "Gates / Balance requirement Arabic RTL",
   render: (args) => (
     <UiLocaleProvider dir="rtl" locale="ar">
       <div dir="rtl">
@@ -272,14 +269,12 @@ export const BalanceGuidanceArabic: Story = {
     requirementsMode: "all",
     gates: [
       {
-        detail: "تحتاج إلى 0.3 ETH إضافية",
         gateType: "asset_balance",
         label: "0.5 ETH على الأقل",
         provider: null,
         status: "unmet",
       },
       {
-        detail: "اربط محفظة تحتوي على USDC",
         gateType: "asset_balance",
         label: "10 USDC على الأقل",
         provider: null,

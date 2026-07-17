@@ -25,11 +25,14 @@ import { Textarea } from "@/components/primitives/textarea";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import { parseSpecialPricesText, type HandlePolicyDraft, type HandlePricingMode, type HandleStatusFilter } from "@/app/authenticated-state/use-community-handle-policy-state";
+import { GateTreeBuilder } from "@/components/compositions/community/gates-editor/tree-builder/gate-tree-builder";
+import type { CollectionCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/collection-capability-source";
 
 const EMPTY_HANDLES: CommunityHandle[] = [];
 
 export interface CommunityHandlePolicyEditorPageProps {
   className?: string;
+  collectionCapabilitySource?: CollectionCapabilitySource;
   draft: HandlePolicyDraft;
   hasChanges: boolean;
   hasNamespace: boolean;
@@ -199,6 +202,7 @@ function computePreviewPrice(label: string, draft: HandlePolicyDraft): { priceCe
 
 export function CommunityHandlePolicyEditorPage({
   className,
+  collectionCapabilitySource,
   draft,
   hasChanges,
   hasNamespace,
@@ -278,6 +282,48 @@ export function CommunityHandlePolicyEditorPage({
             label="Enable name claims"
             onCheckedChange={(checked) => update({ claimsEnabled: checked })}
           />
+        </div>
+      </Section>
+
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Who can claim">
+        <div className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <OptionCard
+              description="Anyone who can access this community may claim a name."
+              disabled={editorDisabled}
+              selected={draft.claimGateMode === "none"}
+              title="Community members"
+              onClick={() => update({ claimGateMode: "none" })}
+            />
+            <OptionCard
+              description="Require the community membership gate again when the name is claimed."
+              disabled={editorDisabled}
+              selected={draft.claimGateMode === "inherit_community"}
+              title="Community requirements"
+              onClick={() => update({ claimGateMode: "inherit_community" })}
+            />
+            <OptionCard
+              description="Set requirements that apply only to names in this namespace."
+              disabled={editorDisabled}
+              selected={draft.claimGateMode === "explicit"}
+              title="Custom requirements"
+              onClick={() => update({ claimGateMode: "explicit" })}
+            />
+          </div>
+
+          {draft.claimGateMode === "explicit" ? (
+            <GateTreeBuilder
+              capabilitySource={collectionCapabilitySource}
+              className="max-w-none p-0"
+              onChange={(claimGateTreeDraft) => update({ claimGateTreeDraft })}
+              showHeader={false}
+              value={draft.claimGateTreeDraft}
+            />
+          ) : null}
+
+          <FormNote tone="muted">
+            Eligibility is checked when a member claims the name. Holding requirements are non-consumptive: the same eligible asset may satisfy more than one namespace.
+          </FormNote>
         </div>
       </Section>
 

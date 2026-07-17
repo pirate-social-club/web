@@ -158,6 +158,7 @@ function satisfiesNonPowGate(
       return value != null && (allowed.length === 0 || allowed.includes(value));
     }
     case "altcha_pow":
+    case "asset_balance":
     case "erc721_holding":
     case "erc721_inventory_match":
       return false;
@@ -190,6 +191,7 @@ function isRefreshableNonPowGate(summary: MembershipGateSummary): boolean {
     case "gender":
       return true;
     case "altcha_pow":
+    case "asset_balance":
     case "erc721_holding":
     case "erc721_inventory_match":
       return false;

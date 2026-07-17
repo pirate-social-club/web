@@ -351,6 +351,7 @@ export function getMissingCapabilitiesFromGateEvaluation(
     }
     if (
       !action.capability
+      || action.capability === "asset_balance"
       || action.capability === "erc721_holding"
       || action.capability === "erc721_inventory_match"
     ) {

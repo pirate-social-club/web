@@ -500,7 +500,7 @@ function AssetBalanceRuleEditor({ actions, capabilitySource, copy, gate, onChang
           aria-label={copy.inputs.minimumAssetBalance}
           className="max-w-48"
           inputMode="decimal"
-          onChange={(event) => updateAmount(event.currentTarget.value, selected)}
+          onInput={(event) => updateAmount(event.currentTarget.value, selected)}
           value={amount}
         />
         <Select

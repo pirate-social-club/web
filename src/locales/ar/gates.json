@@ -87,7 +87,11 @@
     "passportPromptActionLabel": "زيارة Passport.xyz",
     "powOnlyTitle": "مطلوب فحص المتصفح",
     "powOnlyDescription": "أكمل فحص إثبات عمل سريعًا للمتابعة.",
-    "powSkipNote": "يمكن للمستخدمين الموثقين تخطي هذا الفحص."
+    "powSkipNote": "يمكن للمستخدمين الموثقين تخطي هذا الفحص.",
+    "requirementSummaryAll": "أكمل {requirements}.",
+    "requirementSummaryAny": "يكفي استيفاء أحد الخيارات التالية: {requirements}.",
+    "requirementSummaryMixed": "أكمل {requiredRequirements}. واستوفِ أيضًا أحد الخيارات التالية: {alternativeRequirements}.",
+    "requirementSummaryAnyGroups": "استوفِ خيارًا واحدًا من كل مجموعة: {requirements}."
   },
   "modal": {
     "anyTitle": "اختر طريقة للمتابعة",

@@ -7,6 +7,7 @@ import { installDomGlobals } from "@/test/setup-dom";
 import {
   CashoutSheet,
   rewardAmountLabel,
+  rewardCtaAmountLabel,
   SongRewardBadge,
   SongRewardOffer,
   StreakRewardEarned,
@@ -64,6 +65,11 @@ describe("reward surfaces", () => {
     expect(rewardAmountLabel(100, 8453)).toBe("$1.00 USDC");
     expect(rewardAmountLabel(100, 84532)).toBe("1.00 testnet USDC (Base Sepolia)");
     expect(rewardAmountLabel(100, 1)).toBe("1.00 USDC (chain 1)");
+  });
+
+  test("formats compact reward amounts for action labels", () => {
+    expect(rewardCtaAmountLabel(100)).toBe("$1");
+    expect(rewardCtaAmountLabel(10)).toBe("$0.10");
   });
 
   test("renders wallet cashout and verification states", () => {

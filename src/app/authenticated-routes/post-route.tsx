@@ -45,7 +45,7 @@ import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import { toast } from "@/components/primitives/sonner";
-import { rewardAmountLabel } from "@/components/compositions/rewards/reward-surfaces";
+import { rewardCtaAmountLabel } from "@/components/compositions/rewards/reward-surfaces";
 import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse, ApiPublicRewardOffer } from "@/lib/api/client-api-types";
 import { logger } from "@/lib/logger";
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
@@ -974,7 +974,7 @@ export function PostPage({
   const unauthenticatedLiveTicketRequired = !session?.accessToken
     && liveRoomAccess?.access.decision_reason === "purchase_required";
   const rewardLabel = rewardOffer
-    ? rewardAmountLabel(rewardOffer.daily_reward_cents, rewardOffer.chain_id)
+    ? rewardCtaAmountLabel(rewardOffer.daily_reward_cents)
     : undefined;
   const songOptions = (post.post.post_type === "song" || post.post.post_type === "video") && community && threadAssetId
     ? {

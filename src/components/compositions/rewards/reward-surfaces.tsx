@@ -78,6 +78,11 @@ export function rewardAmountLabel(amountCents: number, chainId: number): string 
   return `${amount} USDC (chain ${chainId})`;
 }
 
+export function rewardCtaAmountLabel(amountCents: number): string {
+  const amount = amountCents / 100;
+  return `$${Number.isInteger(amount) ? amount.toFixed(0) : amount.toFixed(2)}`;
+}
+
 export interface StreakRewardEarnedProps {
   activityKind?: "karaoke" | "study";
   amountLabel: string;

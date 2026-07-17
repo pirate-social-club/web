@@ -24,6 +24,10 @@
       "withoutLabel": "需要持有以太坊 NFT"
     },
     "erc721InventoryMatch": "需要 {quantity} 个 Courtyard 藏品：{assetLabel}",
+    "assetBalance": {
+      "withAmount": "至少 {amount} {symbol}",
+      "withoutAmount": "代币余额"
+    },
     "fallback": "需要 {gateType} 验证"
   },
   "joinCta": {

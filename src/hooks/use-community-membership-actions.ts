@@ -45,6 +45,7 @@ export interface UseCommunityMembershipActionsOptions {
   handleClaimNamespaceVerificationId?: string | null;
   handleClaimDismissal: CommunityHandleClaimDismissal;
   handleJoin: (options?: JoinAttemptOptions) => Promise<JoinAttemptResult>;
+  hasVerificationChoices?: boolean;
   invalidateCommunityGate?: (communityId: string) => void;
   onAuthRequired?: () => void;
   onHandleClaimCheckError?: (error: unknown) => void;
@@ -65,6 +66,8 @@ export interface CommunityMembershipActions {
   proofOfWorkModalOpen: boolean;
   proofOfWorkRetryKey: number;
   setProofOfWorkModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setVerificationChooserModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  verificationChooserModalOpen: boolean;
 }
 
 export function useCommunityMembershipActions({
@@ -78,6 +81,7 @@ export function useCommunityMembershipActions({
   handleClaimNamespaceVerificationId,
   handleClaimDismissal,
   handleJoin,
+  hasVerificationChoices = false,
   invalidateCommunityGate,
   onAuthRequired,
   onHandleClaimCheckError,
@@ -88,6 +92,7 @@ export function useCommunityMembershipActions({
   const [joinRequestError, setJoinRequestError] = React.useState<string | null>(null);
   const [proofOfWorkModalOpen, setProofOfWorkModalOpen] = React.useState(false);
   const [proofOfWorkRetryKey, setProofOfWorkRetryKey] = React.useState(0);
+  const [verificationChooserModalOpen, setVerificationChooserModalOpen] = React.useState(false);
   const [handleClaimModalOpen, setHandleClaimModalOpen] = React.useState(false);
   const previousEligibilityStatusRef = React.useRef<ApiJoinEligibility["status"] | null>(
     eligibility?.status ?? null,
@@ -175,6 +180,10 @@ export function useCommunityMembershipActions({
       openJoinRequestModal();
       return;
     }
+    if (hasVerificationChoices) {
+      setVerificationChooserModalOpen(true);
+      return;
+    }
     if (altchaRequired) {
       if (!altchaPayload) {
         setProofOfWorkModalOpen(true);
@@ -192,6 +201,7 @@ export function useCommunityMembershipActions({
     altchaRequired,
     eligibility?.status,
     handleJoin,
+    hasVerificationChoices,
     maybeOpenHandleClaimModal,
     onAuthRequired,
     openJoinRequestModal,
@@ -250,6 +260,8 @@ export function useCommunityMembershipActions({
       proofOfWorkModalOpen,
       proofOfWorkRetryKey,
       setProofOfWorkModalOpen,
+      setVerificationChooserModalOpen,
+      verificationChooserModalOpen,
     }),
     [
       handleClaimModalOpen,
@@ -264,6 +276,7 @@ export function useCommunityMembershipActions({
       joinRequestSubmitting,
       proofOfWorkModalOpen,
       proofOfWorkRetryKey,
+      verificationChooserModalOpen,
     ],
   );
 }

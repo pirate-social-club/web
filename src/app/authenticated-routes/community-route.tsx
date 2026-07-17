@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
-import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
+import type { JoinEligibility as ApiJoinEligibility, MembershipGateSummary } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 import { Plus } from "@phosphor-icons/react";
 
@@ -20,6 +20,7 @@ import {
 } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
+import { CommunityJoinVerificationChooserModal } from "@/components/compositions/community/join-verification-chooser-modal/community-join-verification-chooser-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
 import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
@@ -29,7 +30,7 @@ import { Button } from "@/components/primitives/button";
 import { IconButton } from "@/components/primitives/icon-button";
 import { toast } from "@/components/primitives/sonner";
 import { getJoinCtaLabel, getMissingCapabilitiesFromGateEvaluation, isJoinCtaActionable } from "@/lib/identity-gates";
-import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
+import { createCommunityBlockedModalStateFactory, getRequirementGroups } from "@/hooks/use-community-interaction-gate.helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 
@@ -284,6 +285,7 @@ export function CommunityPage({
     selfModalOpen,
     selfPrompt,
     startSelfVerification,
+    startGateVerification,
     startVeryVerification,
     startZkPassportVerification,
     setAltchaPayload,
@@ -362,6 +364,31 @@ export function CommunityPage({
     handleClaimCommunityId,
     handleNamespaces.selectedNamespaceVerification,
   );
+  const voteGateData = React.useMemo(
+    () => preview && eligibility
+      ? {
+          eligibility,
+          gateMatchMode: preview.gate_match_mode ?? null,
+          preview: {
+            id: preview.id,
+            display_name: preview.display_name,
+            membership_gate_summaries: preview.membership_gate_summaries,
+            viewer_community_role: preview.viewer_community_role ?? null,
+          },
+        }
+      : null,
+    [eligibility, preview],
+  );
+  const membershipRequirementGroups = React.useMemo(
+    () => voteGateData ? getRequirementGroups(voteGateData) : undefined,
+    [voteGateData],
+  );
+  const membershipRequirementChoices = React.useMemo(
+    () => membershipRequirementGroups
+      ?.find((group) => group.mode === "any" && group.requirements.length > 1)
+      ?.requirements ?? [],
+    [membershipRequirementGroups],
+  );
   const {
     handleClaimModalOpen,
     handleClaimModalOpenChange,
@@ -376,6 +403,8 @@ export function CommunityPage({
     proofOfWorkModalOpen,
     proofOfWorkRetryKey,
     setProofOfWorkModalOpen,
+    setVerificationChooserModalOpen,
+    verificationChooserModalOpen,
   } = useCommunityMembershipActions({
     altchaPayload,
     altchaRequired,
@@ -387,12 +416,20 @@ export function CommunityPage({
     handleClaimNamespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     handleClaimDismissal,
     handleJoin,
+    hasVerificationChoices: membershipRequirementChoices.length > 1,
     invalidateCommunityGate,
     onHandleClaimCheckError: (error) => {
       toast.error(getErrorMessage(error, "Could not check community names."));
     },
     sessionUserId: session?.user?.id,
   });
+  const handleChooseJoinRequirement = React.useCallback(async (gate: MembershipGateSummary) => {
+    setVerificationChooserModalOpen(false);
+    const result = await startGateVerification(gate);
+    if (result === "altcha") {
+      setProofOfWorkModalOpen(true);
+    }
+  }, [setProofOfWorkModalOpen, setVerificationChooserModalOpen, startGateVerification]);
 
   React.useEffect(() => {
     if (isImportedRoot) return;
@@ -544,24 +581,6 @@ export function CommunityPage({
     ],
   );
 
-  const voteGateData = React.useMemo(
-    () => preview && eligibility
-      ? {
-          eligibility,
-          gateMatchMode: preview.gate_match_mode ?? null,
-          preview: {
-            id: preview.id,
-            display_name: preview.display_name,
-            membership_gate_summaries: preview.membership_gate_summaries,
-            viewer_community_role: preview.viewer_community_role ?? null,
-          },
-        }
-      : null,
-    [
-      eligibility,
-      preview,
-    ],
-  );
   const voteOnPost = useCommunityVoteAction({
     buildBlockedModalState,
     communityId,
@@ -880,6 +899,13 @@ export function CommunityPage({
         onSubmit={handleJoinRequestSubmit}
         open={joinRequestModalOpen}
         submitting={joinRequestSubmitting || joinLoading}
+      />
+      <CommunityJoinVerificationChooserModal
+        choices={membershipRequirementChoices}
+        locale={locale}
+        onChoose={handleChooseJoinRequirement}
+        onOpenChange={setVerificationChooserModalOpen}
+        open={verificationChooserModalOpen}
       />
       {altchaRequired ? (
         <CommunityProofOfWorkModal

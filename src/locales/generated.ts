@@ -31,6 +31,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           "withoutLabel": "Ethereum NFT"
         },
         "erc721InventoryMatch": "{quantity} Courtyard {assetLabel}",
+        "assetBalance": {
+          "withAmount": "At least {amount} {symbol}",
+          "withoutAmount": "Token balance"
+        },
         "fallback": "{gateType} verification"
       },
       "joinCta": {
@@ -2004,6 +2008,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           "withoutLabel": "يتطلب امتلاك NFT على إيثريوم"
         },
         "erc721InventoryMatch": "يتطلب {quantity} من مقتنيات Courtyard: {assetLabel}",
+        "assetBalance": {
+          "withAmount": "{amount} {symbol} على الأقل",
+          "withoutAmount": "رصيد الرمز"
+        },
         "fallback": "يتطلب التحقق من {gateType}"
       },
       "joinCta": {
@@ -3977,6 +3985,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           "withoutLabel": "需要持有以太坊 NFT"
         },
         "erc721InventoryMatch": "需要 {quantity} 个 Courtyard 藏品：{assetLabel}",
+        "assetBalance": {
+          "withAmount": "至少 {amount} {symbol}",
+          "withoutAmount": "代币余额"
+        },
         "fallback": "需要 {gateType} 验证"
       },
       "joinCta": {

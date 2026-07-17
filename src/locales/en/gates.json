@@ -24,6 +24,10 @@
       "withoutLabel": "Ethereum NFT"
     },
     "erc721InventoryMatch": "{quantity} Courtyard {assetLabel}",
+    "assetBalance": {
+      "withAmount": "At least {amount} {symbol}",
+      "withoutAmount": "Token balance"
+    },
     "fallback": "{gateType} verification"
   },
   "joinCta": {

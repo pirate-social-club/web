@@ -95,6 +95,23 @@ describe("useCommunityMembershipActions", () => {
     expect(result.current.proofOfWorkModalOpen).toBe(true);
   });
 
+  test("opens the branch chooser before proof of work for multi-branch policies", async () => {
+    const { result } = renderHook(() =>
+      useCommunityMembershipActions(createOptions({
+        altchaRequired: true,
+        eligibility: eligibility("verification_required"),
+        hasVerificationChoices: true,
+      }))
+    );
+
+    await act(async () => {
+      await result.current.handlePrimaryJoinAction();
+    });
+
+    expect(result.current.verificationChooserModalOpen).toBe(true);
+    expect(result.current.proofOfWorkModalOpen).toBe(false);
+  });
+
   test("submits a newly verified proof immediately and closes the modal after joining", async () => {
     const submittedPayloads: Array<string | null | undefined> = [];
     const { result } = renderHook(() =>

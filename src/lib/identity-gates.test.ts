@@ -3,6 +3,7 @@ import type { JoinEligibility } from "@pirate/api-contracts";
 
 import {
   isJoinSurfaceGate,
+  formatGateRequirement,
   getGateFailureMessage,
   getJoinCtaLabel,
   isJoinCtaActionable,
@@ -36,6 +37,23 @@ describe("identity gate join CTA helpers", () => {
 
     expect(isJoinCtaActionable(eligibility)).toBe(true);
     expect(getJoinCtaLabel(eligibility, { locale: "en" })).toBe("Connect wallet");
+  });
+
+  test("wallet-only balance requirements are actionable and display exact amounts", () => {
+    const eligibility = walletGateEligibility();
+    eligibility.gate_evaluation!.required_action_set!.items = [{
+      capability: "asset_balance",
+      kind: "capability",
+    }];
+
+    expect(getJoinCtaLabel(eligibility, { locale: "en" })).toBe("Connect wallet");
+    expect(formatGateRequirement({
+      asset_decimals: 18,
+      asset_id: "eip155:1/slip44:60",
+      asset_symbol: "ETH",
+      gate_type: "asset_balance",
+      min_amount_atomic: "500000000000000000",
+    }, { locale: "en" })).toBe("At least 0.5 ETH");
   });
 
   test("proof-of-work requirements are visible before the action modal", () => {

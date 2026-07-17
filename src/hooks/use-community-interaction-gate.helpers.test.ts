@@ -283,7 +283,7 @@ describe("gate requirement display state", () => {
     }]);
   });
 
-  test("groups required actions separately from OR alternatives", () => {
+  test("groups required actions without inferring status for leaves omitted from the trace", () => {
     const nationalityRequirement = { gate_type: "nationality" as const, required_value: "GE" };
     const gateData = gate("verification_required", {
       gate_evaluation: {
@@ -311,7 +311,7 @@ describe("gate requirement display state", () => {
       {
         mode: "all",
         requirements: [nationalityRequirement],
-        requirementStatuses: ["unmet"],
+        requirementStatuses: ["unknown"],
       },
       {
         mode: "any",

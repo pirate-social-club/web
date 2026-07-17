@@ -266,6 +266,26 @@ describe("asset balance sidebar presentation", () => {
 });
 
 describe("buildCommunitySidebarGateItems", () => {
+  test("keeps a synthetic default-age row outside trace matching", () => {
+    const items = buildCommunitySidebarGateItems({
+      defaultAgeGatePolicy: "18_plus",
+      eligibility: {
+        status: "verification_required",
+        gate_evaluation: {
+          passed: false,
+          trace: { kind: "gate", gate_type: "minimum_age", passed: false },
+          required_action_set: null,
+        },
+      } as JoinEligibility,
+      gateSummaries: [{ gate_type: "minimum_age", required_minimum_age: 21 }],
+    });
+
+    expect(items.map((item) => [item.label, item.status])).toEqual([
+      ["18+", "met"],
+      ["21+", "unmet"],
+    ]);
+  });
+
   test("uses eligibility to mark all-mode satisfied gates met", () => {
     expect(buildCommunitySidebarGateItems({
       gateMatchMode: "all",

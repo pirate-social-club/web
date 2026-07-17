@@ -12,7 +12,7 @@ import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
 import { hasActionTimeCheck, isJoinSurfaceGate } from "@/lib/identity-gates";
-import { flattenGatePolicyAtoms, getGatePolicyMatchMode } from "@/lib/gate-policy-utils";
+import { flattenGatePolicyAtoms, getGatePolicyMatchMode, isFlatOrGateExpression } from "@/lib/gate-policy-utils";
 import { deriveGateStatuses } from "@/lib/community-gate-statuses";
 import { formatAssetAmount } from "@/lib/asset-amount";
 
@@ -559,6 +559,8 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
       gateMatchMode: getGatePolicyMatchMode(community.gate_policy),
     }),
     gateExpressionLabel: formatGateExpressionLabel(gateExpression, locale),
+    showFlatGateOrMarkers: (community.default_age_gate_policy ?? "none") !== "18_plus"
+      && isFlatOrGateExpression(community.gate_policy?.expression),
     hasActionTimeCheck: hasActionTimeCheck(gateSummaries),
     requirementsMode: getGatePolicyMatchMode(community.gate_policy),
     referenceLinks: community.reference_links?.map((link) => ({
@@ -672,6 +674,8 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
       gateMatchMode: preview.gate_match_mode ?? null,
     }),
     gateExpressionLabel: formatGateExpressionLabel(preview.membership_gate_expression, locale),
+    showFlatGateOrMarkers: !preview.membership_gate_summaries.some((summary) => summary.gate_type === "age_over_18")
+      && isFlatOrGateExpression(preview.membership_gate_expression),
     hasActionTimeCheck: hasActionTimeCheck(preview.membership_gate_summaries),
     requirementsMode: preview.gate_match_mode ?? undefined,
     referenceLinks: preview.reference_links?.map((link) => ({

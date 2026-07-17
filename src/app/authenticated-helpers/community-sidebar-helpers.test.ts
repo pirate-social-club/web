@@ -31,7 +31,43 @@ function balanceCommunity(minAmountAtomic: string, assetId = "eip155:1/slip44:60
   } as Community;
 }
 
+function flatOrCommunity(defaultAgeGatePolicy: "none" | "18_plus" = "none"): Community {
+  return {
+    id: "cmt_flat_or",
+    object: "community",
+    display_name: "Flat OR Club",
+    membership_mode: "gated",
+    default_age_gate_policy: defaultAgeGatePolicy,
+    gate_policy: {
+      version: 1,
+      expression: {
+        op: "or",
+        children: [
+          { op: "gate", gate: { type: "unique_human", provider: "very" } },
+          { op: "gate", gate: { type: "altcha_pow" } },
+        ],
+      },
+    },
+    donation_policy_mode: "none",
+    donation_partner: null,
+    reference_links: [],
+    rules: [],
+    created: Date.parse("2026-07-17T00:00:00.000Z"),
+  } as Community;
+}
+
 describe("buildCommunitySidebar", () => {
+  test("shows row-level OR markers for a flat OR gate policy", () => {
+    expect(buildCommunitySidebar(flatOrCommunity()).showFlatGateOrMarkers).toBe(true);
+  });
+
+  test("hides row-level OR markers when the required default age row is injected", () => {
+    const sidebar = buildCommunitySidebar(flatOrCommunity("18_plus"));
+
+    expect(sidebar.gates?.[0]?.gateType).toBe("age_over_18");
+    expect(sidebar.showFlatGateOrMarkers).toBe(false);
+  });
+
   test("preserves mixed operators from the authenticated gate policy", () => {
     const sidebar = buildCommunitySidebar({
       id: "cmt_authenticated",
@@ -64,6 +100,7 @@ describe("buildCommunitySidebar", () => {
 
     expect(sidebar.requirementsMode).toBe("all");
     expect(sidebar.gateExpressionLabel).toBe("Private ID proof and (Palm scan or Proof of work)");
+    expect(sidebar.showFlatGateOrMarkers).toBe(false);
   });
 
   test("renders a balance requirement using asset display metadata from eligibility", () => {
@@ -405,6 +442,7 @@ describe("buildCommunityPreviewSidebar", () => {
 
     expect(sidebar.requirementsMode).toBe("any");
     expect(sidebar.gateExpressionLabel).toBe("Private ID proof and (Palm scan or Proof of work)");
+    expect(sidebar.showFlatGateOrMarkers).toBe(false);
     expect(sidebar.hasActionTimeCheck).toBe(true);
   });
 });

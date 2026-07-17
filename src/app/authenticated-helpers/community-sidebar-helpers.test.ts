@@ -9,6 +9,28 @@ import {
   getCommunityActionLabel,
 } from "@/app/authenticated-helpers/community-sidebar-helpers";
 
+function balanceCommunity(minAmountAtomic: string, assetId = "eip155:1/slip44:60"): Community {
+  return {
+    id: "cmt_balance",
+    object: "community",
+    display_name: "Balance Club",
+    membership_mode: "gated",
+    default_age_gate_policy: "none",
+    gate_policy: {
+      version: 1,
+      expression: {
+        op: "gate",
+        gate: { type: "asset_balance", asset_id: assetId, min_amount_atomic: minAmountAtomic },
+      },
+    },
+    donation_policy_mode: "none",
+    donation_partner: null,
+    reference_links: [],
+    rules: [],
+    created: Date.parse("2026-07-17T00:00:00.000Z"),
+  } as Community;
+}
+
 describe("buildCommunitySidebar", () => {
   test("preserves mixed operators from the authenticated gate policy", () => {
     const sidebar = buildCommunitySidebar({
@@ -43,6 +65,30 @@ describe("buildCommunitySidebar", () => {
     expect(sidebar.requirementsMode).toBe("all");
     expect(sidebar.gateExpressionLabel).toBe("Private ID proof and (Palm scan or Proof of work)");
   });
+
+  test("renders a balance requirement using asset display metadata from eligibility", () => {
+    // The community payload carries only raw atoms; symbol and decimals arrive
+    // on the API-built summaries in the eligibility readout.
+    const sidebar = buildCommunitySidebar(balanceCommunity("500000000000000000"), null, {
+      membership_gate_summaries: [{
+        gate_type: "asset_balance",
+        asset_id: "eip155:1/slip44:60",
+        min_amount_atomic: "500000000000000000",
+        asset_symbol: "ETH",
+        asset_decimals: 18,
+      }],
+    } as JoinEligibility);
+
+    expect(sidebar.requirements).toEqual(["At least 0.5 ETH"]);
+  });
+
+  test("degrades to a vaguer balance label rather than guessing a scale", () => {
+    // Without decimals an atomic integer cannot be scaled. Rendering it raw
+    // would claim a member needs 500000000000000000 ETH.
+    const sidebar = buildCommunitySidebar(balanceCommunity("500000000000000000"));
+
+    expect(sidebar.requirements).toEqual(["Token balance required"]);
+  });
 });
 
 describe("buildCommunitySidebarRequirements", () => {
@@ -62,6 +108,41 @@ describe("buildCommunitySidebarRequirements", () => {
         { gate_type: "wallet_score", required_value: null, minimum_score: 20 },
       ],
     })).toEqual(["18+", "فحص راحة اليد", "درجة Passport 20+"]);
+  });
+
+  test("scales balance amounts by each asset's own decimals", () => {
+    expect(buildCommunitySidebarRequirements({
+      gateSummaries: [
+        // 18-decimal native asset.
+        { gate_type: "asset_balance", asset_id: "eip155:1/slip44:60", min_amount_atomic: "500000000000000000", asset_symbol: "ETH", asset_decimals: 18 },
+        // 6-decimal token: the same digits would be wildly wrong at 18.
+        { gate_type: "asset_balance", asset_id: "eip155:1/erc20:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", min_amount_atomic: "10000000", asset_symbol: "USDC", asset_decimals: 6 },
+      ],
+    })).toEqual(["At least 0.5 ETH", "At least 10 USDC"]);
+  });
+
+  test("renders large balances exactly rather than in exponent notation", () => {
+    expect(buildCommunitySidebarRequirements({
+      gateSummaries: [{
+        gate_type: "asset_balance",
+        asset_id: "eip155:1/slip44:60",
+        min_amount_atomic: "1000000000000000000000000",
+        asset_symbol: "ETH",
+        asset_decimals: 18,
+      }],
+    })).toEqual(["At least 1000000 ETH"]);
+  });
+
+  test("localizes balance requirements", () => {
+    const gateSummaries = [{
+      gate_type: "asset_balance" as const,
+      asset_id: "eip155:1/slip44:60",
+      min_amount_atomic: "500000000000000000",
+      asset_symbol: "ETH",
+      asset_decimals: 18,
+    }];
+    expect(buildCommunitySidebarRequirements({ locale: "ar", gateSummaries })).toEqual(["0.5 ETH على الأقل"]);
+    expect(buildCommunitySidebarRequirements({ locale: "zh", gateSummaries })).toEqual(["至少 0.5 ETH"]);
   });
 
   test("names unique human requirements by accepted provider", () => {

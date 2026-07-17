@@ -257,6 +257,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "erc721InventoryMatchRequired": "Connect a wallet that holds the required Courtyard collectibles to join.",
         "tokenInventoryUnavailable": "Courtyard collectible inventory could not be checked right now.",
         "walletScoreTooLow": "Your Passport score does not meet this community's requirement.",
+        "assetBalanceTooLow": "Your connected wallets do not hold enough of the required asset to join this community.",
         "banned": "You are not eligible to join this community."
       }
     },
@@ -2225,6 +2226,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "erc721InventoryMatchRequired": "اربط محفظة تملك مقتنيات Courtyard المطلوبة للانضمام.",
         "tokenInventoryUnavailable": "تعذر فحص مقتنيات Courtyard الآن.",
         "walletScoreTooLow": "درجة Passport الخاصة بك لا تلبي متطلبات هذا المجتمع.",
+        "assetBalanceTooLow": "محافظك المتصلة لا تملك رصيدًا كافيًا من الأصل المطلوب للانضمام إلى هذا المجتمع.",
         "banned": "أنت غير مؤهل للانضمام إلى هذا المجتمع."
       }
     },
@@ -4193,6 +4195,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "erc721InventoryMatchRequired": "连接持有所需 Courtyard 藏品的钱包即可加入。",
         "tokenInventoryUnavailable": "暂时无法检查 Courtyard 藏品。",
         "walletScoreTooLow": "你的 Passport 分数不符合该社区要求。",
+        "assetBalanceTooLow": "你已连接的钱包持有的所需资产不足，无法加入该社区。",
         "banned": "你没有资格加入这个社区。"
       }
     },

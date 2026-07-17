@@ -17,7 +17,7 @@ type MissingCapability = "unique_human" | "age_over_18" | "minimum_age" | "natio
 type RequiredActionNode = Omit<NonNullable<NonNullable<JoinEligibility["gate_evaluation"]>["required_action_set"]>["items"][number], "items"> & {
   items?: RequiredActionNode[];
 };
-export type RequiredActionCapability = MissingCapability | "erc721_holding" | "erc721_inventory_match";
+export type RequiredActionCapability = MissingCapability | "erc721_holding" | "erc721_inventory_match" | "asset_balance";
 
 const SELF_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
   "unique_human",
@@ -384,6 +384,7 @@ export function getRequiredActionCapabilities(
       || capability === "altcha_pow"
       || capability === "erc721_holding"
       || capability === "erc721_inventory_match"
+      || capability === "asset_balance"
     ) {
       capabilities.add(capability);
     }
@@ -808,6 +809,8 @@ export function getGateFailureMessage(
       return copy.tokenInventoryUnavailable;
     case "wallet_score_too_low":
       return copy.walletScoreTooLow;
+    case "asset_balance_too_low":
+      return copy.assetBalanceTooLow;
     case "banned":
       return copy.banned;
     default:

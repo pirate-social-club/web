@@ -3,6 +3,7 @@ import type { JoinEligibility } from "@pirate/api-contracts";
 
 import {
   isJoinSurfaceGate,
+  getGateFailureMessage,
   getJoinCtaLabel,
   isJoinCtaActionable,
 } from "./identity-gates";
@@ -39,5 +40,14 @@ describe("identity gate join CTA helpers", () => {
 
   test("proof-of-work requirements are visible before the action modal", () => {
     expect(isJoinSurfaceGate({ gate_type: "altcha_pow" })).toBe(true);
+  });
+
+  test("explains an insufficient balance instead of falling back to generic copy", () => {
+    // Before the API reported asset_balance_too_low this reached the default
+    // branch and rendered the generic "gate failed" description.
+    expect(getGateFailureMessage({ failure_reason: "asset_balance_too_low" }, { locale: "en" }))
+      .toBe("Your connected wallets do not hold enough of the required asset to join this community.");
+    expect(getGateFailureMessage({ failure_reason: "asset_balance_too_low" }, { locale: "ar" })).toBeTruthy();
+    expect(getGateFailureMessage({ failure_reason: "asset_balance_too_low" }, { locale: "zh" })).toBeTruthy();
   });
 });

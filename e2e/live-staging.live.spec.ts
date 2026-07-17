@@ -1304,9 +1304,14 @@ test.describe("live staging integration", () => {
       method: "POST",
     });
 
+    const viewerSubject = `gate-contract-viewer-${runId}`;
+    const viewerSession = await createLiveSession(viewerSubject, walletAddressForSubject(viewerSubject));
+    await completeSelfVerification(viewerSession);
     const eligibility = await requestJson<{
       gate_evaluation?: { trace?: unknown } | null;
-    }>(`/communities/${encodeURIComponent(communityId)}/join-eligibility`, { headers });
+    }>(`/communities/${encodeURIComponent(communityId)}/join-eligibility`, {
+      headers: { authorization: `Bearer ${viewerSession.accessToken}` },
+    });
     const leaves: Array<{ gate_id?: unknown; outcome?: unknown }> = [];
     const visit = (node: unknown): void => {
       if (!node || typeof node !== "object") return;

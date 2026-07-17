@@ -36,6 +36,7 @@ export function AltchaPowWidget({
   locale,
   onPayloadChange,
   onVerified,
+  retryKey,
   scope,
 }: {
   action: string;
@@ -44,6 +45,7 @@ export function AltchaPowWidget({
   locale?: string | null;
   onPayloadChange: (payload: string | null) => void;
   onVerified?: (payload: string) => void | Promise<void>;
+  retryKey?: number;
   scope: AltchaScope;
 }) {
   const api = useApi();
@@ -54,7 +56,7 @@ export function AltchaPowWidget({
   const [challenge, setChallenge] = React.useState<Record<string, unknown> | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [retryKey, setRetryKey] = React.useState(0);
+  const [localRetryKey, setLocalRetryKey] = React.useState(0);
   const [verified, setVerified] = React.useState(false);
 
   React.useEffect(() => {
@@ -95,7 +97,7 @@ export function AltchaPowWidget({
     return () => {
       cancelled = true;
     };
-  }, [action, api.verification.createAltchaChallenge, challengeLoader, retryKey, scope]);
+  }, [action, api.verification.createAltchaChallenge, challengeLoader, localRetryKey, retryKey, scope]);
 
   React.useEffect(() => {
     const widget = widgetRef.current;
@@ -196,7 +198,7 @@ export function AltchaPowWidget({
       <ActionBanner
         action={(
           <Button
-            onClick={() => setRetryKey((current) => current + 1)}
+            onClick={() => setLocalRetryKey((current) => current + 1)}
             size="sm"
             variant="secondary"
           >

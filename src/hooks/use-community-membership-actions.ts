@@ -8,6 +8,7 @@ import type {
 } from "@pirate/api-contracts";
 
 type JoinAttemptOptions = {
+  altchaPayload?: string | null;
   note?: string | null;
 };
 
@@ -56,11 +57,13 @@ export interface CommunityMembershipActions {
   handleClaimNotNow: () => void;
   handleJoinRequestModalOpenChange: (open: boolean) => void;
   handleJoinRequestSubmit: (note: string) => Promise<void>;
+  handleProofOfWorkVerified: (payload: string) => Promise<void>;
   handlePrimaryJoinAction: () => Promise<void>;
   joinRequestError: string | null;
   joinRequestModalOpen: boolean;
   joinRequestSubmitting: boolean;
   proofOfWorkModalOpen: boolean;
+  proofOfWorkRetryKey: number;
   setProofOfWorkModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
@@ -84,6 +87,7 @@ export function useCommunityMembershipActions({
   const [joinRequestSubmitting, setJoinRequestSubmitting] = React.useState(false);
   const [joinRequestError, setJoinRequestError] = React.useState<string | null>(null);
   const [proofOfWorkModalOpen, setProofOfWorkModalOpen] = React.useState(false);
+  const [proofOfWorkRetryKey, setProofOfWorkRetryKey] = React.useState(0);
   const [handleClaimModalOpen, setHandleClaimModalOpen] = React.useState(false);
   const previousEligibilityStatusRef = React.useRef<ApiJoinEligibility["status"] | null>(
     eligibility?.status ?? null,
@@ -143,6 +147,24 @@ export function useCommunityMembershipActions({
     setJoinRequestModalOpen(true);
   }, []);
 
+  const submitProofOfWork = React.useCallback(async (payload: string) => {
+    const result = await handleJoin({ altchaPayload: payload });
+    if (result === "joined" || result === "requested") {
+      setProofOfWorkModalOpen(false);
+      if (result === "joined") {
+        await maybeOpenHandleClaimModal();
+      }
+      return;
+    }
+    if (result === "failed") {
+      setProofOfWorkRetryKey((current) => current + 1);
+    }
+  }, [handleJoin, maybeOpenHandleClaimModal]);
+
+  const handleProofOfWorkVerified = React.useCallback(async (payload: string) => {
+    await submitProofOfWork(payload);
+  }, [submitProofOfWork]);
+
   const handlePrimaryJoinAction = React.useCallback(async () => {
     if (!sessionUserId && onAuthRequired) {
       onAuthRequired();
@@ -153,8 +175,12 @@ export function useCommunityMembershipActions({
       openJoinRequestModal();
       return;
     }
-    if (altchaRequired && !altchaPayload) {
-      setProofOfWorkModalOpen(true);
+    if (altchaRequired) {
+      if (!altchaPayload) {
+        setProofOfWorkModalOpen(true);
+        return;
+      }
+      await submitProofOfWork(altchaPayload);
       return;
     }
     const result = await handleJoin();
@@ -170,6 +196,7 @@ export function useCommunityMembershipActions({
     onAuthRequired,
     openJoinRequestModal,
     sessionUserId,
+    submitProofOfWork,
   ]);
 
   const handleJoinRequestSubmit = React.useCallback(async (note: string) => {
@@ -215,11 +242,13 @@ export function useCommunityMembershipActions({
       handleClaimNotNow,
       handleJoinRequestModalOpenChange,
       handleJoinRequestSubmit,
+      handleProofOfWorkVerified,
       handlePrimaryJoinAction,
       joinRequestError,
       joinRequestModalOpen,
       joinRequestSubmitting,
       proofOfWorkModalOpen,
+      proofOfWorkRetryKey,
       setProofOfWorkModalOpen,
     }),
     [
@@ -228,11 +257,13 @@ export function useCommunityMembershipActions({
       handleClaimNotNow,
       handleJoinRequestModalOpenChange,
       handleJoinRequestSubmit,
+      handleProofOfWorkVerified,
       handlePrimaryJoinAction,
       joinRequestError,
       joinRequestModalOpen,
       joinRequestSubmitting,
       proofOfWorkModalOpen,
+      proofOfWorkRetryKey,
     ],
   );
 }

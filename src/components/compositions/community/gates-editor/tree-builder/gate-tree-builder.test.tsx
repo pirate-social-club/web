@@ -7,6 +7,7 @@ import type { GateBuilderGroupDraft } from "@/app/authenticated-helpers/communit
 import { withGateAssetMinimum } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import { UiLocaleProvider } from "@/lib/ui-locale";
 import type { CollectionCapabilitySource } from "./collection-capability-source";
+import type { AssetCapabilitySource } from "./asset-capability-source";
 import { GateTreeBuilder, serializeFacetSelection } from "./gate-tree-builder";
 
 for (const key of ["Event", "HTMLInputElement", "Node"] as const) {
@@ -43,7 +44,7 @@ const humanRule = {
 
 function renderBuilder(
   initialValue: GateBuilderGroupDraft = { kind: "group", op: "and", children: [] },
-  options: { capabilitySource?: CollectionCapabilitySource; locale?: "ar" | "en" | "zh" } = {},
+  options: { assetCapabilitySource?: AssetCapabilitySource; capabilitySource?: CollectionCapabilitySource; locale?: "ar" | "en" | "zh" } = {},
 ) {
   let latestValue = initialValue;
   window.localStorage.setItem("pirate_ui_locale", options.locale ?? "en");
@@ -54,7 +55,7 @@ function renderBuilder(
     return (
       <UiLocaleProvider dir={locale === "ar" ? "rtl" : "ltr"} locale={locale}>
         <GateTreeBuilder
-          capabilitySource={options.capabilitySource}
+          capabilities={{ assets: options.assetCapabilitySource, collections: options.capabilitySource }}
           onChange={(nextValue) => {
             latestValue = nextValue;
             setValue(nextValue);
@@ -72,6 +73,53 @@ function renderBuilder(
 }
 
 describe("GateTreeBuilder", () => {
+  test("edits a loaded asset balance using capability decimals", async () => {
+    const assetCapabilitySource: AssetCapabilitySource = {
+      listAssets: async () => [{
+        assetId: "eip155:1/slip44:60",
+        label: "ETH on Ethereum",
+        chainNamespace: "eip155:1",
+        standard: "native",
+        symbol: "ETH",
+        decimals: 18,
+      }],
+    };
+    const view = renderBuilder({
+      kind: "group",
+      op: "and",
+      children: [{ kind: "rule", gate: {
+        type: "asset_balance",
+        asset_id: "eip155:1/slip44:60",
+        min_amount_atomic: "500000000000000000",
+      } }],
+    } as GateBuilderGroupDraft, { assetCapabilitySource });
+
+    const amount = await view.findByRole("textbox", { name: "Minimum token balance" });
+    expect(amount.getAttribute("value")).toBe("0.5");
+    fireEvent.input(amount, { target: { value: "10" } });
+    await view.findByDisplayValue("10");
+    expect((view.getLatestValue().children[0] as { gate: { min_amount_atomic: string } }).gate.min_amount_atomic)
+      .toBe("10000000000000000000");
+  });
+
+  test("preserves a retired or unavailable asset read-only", async () => {
+    const assetCapabilitySource: AssetCapabilitySource = { listAssets: async () => [] };
+    const initialValue = {
+      kind: "group",
+      op: "and",
+      children: [{ kind: "rule", gate: {
+        type: "asset_balance",
+        asset_id: "eip155:1/slip44:60",
+        min_amount_atomic: "500000000000000000",
+      } }],
+    } as GateBuilderGroupDraft;
+    const view = renderBuilder(initialValue, { assetCapabilitySource });
+
+    await view.findByText(/preserved read-only/);
+    expect(view.queryByRole("textbox", { name: "Minimum token balance" })).toBeNull();
+    expect(view.getLatestValue()).toEqual(initialValue);
+  });
+
   test("adds and removes a requirement through rendered controls", () => {
     const view = renderBuilder();
 

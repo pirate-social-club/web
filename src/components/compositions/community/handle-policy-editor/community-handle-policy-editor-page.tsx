@@ -26,13 +26,13 @@ import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import { parseSpecialPricesText, type HandlePolicyDraft, type HandlePricingMode, type HandleStatusFilter } from "@/app/authenticated-state/use-community-handle-policy-state";
 import { GateTreeBuilder } from "@/components/compositions/community/gates-editor/tree-builder/gate-tree-builder";
-import type { CollectionCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/collection-capability-source";
+import type { GateCapabilitySources } from "@/components/compositions/community/gates-editor/tree-builder/gate-capability-sources";
 
 const EMPTY_HANDLES: CommunityHandle[] = [];
 
 export interface CommunityHandlePolicyEditorPageProps {
   className?: string;
-  collectionCapabilitySource?: CollectionCapabilitySource;
+  capabilities?: GateCapabilitySources;
   draft: HandlePolicyDraft;
   hasChanges: boolean;
   hasNamespace: boolean;
@@ -202,7 +202,7 @@ function computePreviewPrice(label: string, draft: HandlePolicyDraft): { priceCe
 
 export function CommunityHandlePolicyEditorPage({
   className,
-  collectionCapabilitySource,
+  capabilities,
   draft,
   hasChanges,
   hasNamespace,
@@ -313,7 +313,7 @@ export function CommunityHandlePolicyEditorPage({
 
           {draft.claimGateMode === "explicit" ? (
             <GateTreeBuilder
-              capabilitySource={collectionCapabilitySource}
+              capabilities={capabilities}
               className="max-w-none p-0"
               onChange={(claimGateTreeDraft) => update({ claimGateTreeDraft })}
               showHeader={false}

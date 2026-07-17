@@ -48,6 +48,7 @@ import { normalizeInventoryText } from "@/lib/gate-inventory-validation";
 import { interpolateMessage } from "@/lib/route-messages";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
+import { formatAssetAmount, parseAssetAmount } from "@/lib/asset-amount";
 import { getLocaleMessages } from "@/locales";
 import type {
   AssetSourceDescriptor,
@@ -57,9 +58,11 @@ import type {
   InventoryFacetValue,
 } from "./collection-capability-source";
 import { replaceEditableFacet } from "./collection-capability-source";
+import type { GateCapabilitySources } from "./gate-capability-sources";
+import type { AssetCapabilityDescriptor, AssetCapabilitySource } from "./asset-capability-source";
 
 export type GateTreeBuilderProps = {
-  capabilitySource?: CollectionCapabilitySource;
+  capabilities?: GateCapabilitySources;
   className?: string;
   onChange: (value: GateBuilderGroupDraft) => void;
   showHeader?: boolean;
@@ -74,6 +77,7 @@ function validationMessage(copy: TreeBuilderCopy, error: GateAtomValidationError
 
 type RuleKind =
   | "altcha_pow"
+  | "asset_balance"
   | "erc721_holding"
   | "gender"
   | "minimum_age"
@@ -110,7 +114,7 @@ function RuleToken({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function GateTreeBuilder({ capabilitySource, className, onChange, showHeader = true, value }: GateTreeBuilderProps) {
+export function GateTreeBuilder({ capabilities, className, onChange, showHeader = true, value }: GateTreeBuilderProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "gates").treeBuilder;
   const policy = serializeGateBuilderTreeDraft(value);
@@ -158,7 +162,7 @@ export function GateTreeBuilder({ capabilitySource, className, onChange, showHea
         </div>
       ) : null}
 
-      <GateGroupEditor addGroupDisabled={addGroupDisabled} addRuleDisabled={addRuleDisabled} capabilitySource={capabilitySource} copy={copy} group={value} isRoot onChange={applyValidChange} />
+      <GateGroupEditor addGroupDisabled={addGroupDisabled} addRuleDisabled={addRuleDisabled} capabilities={capabilities} copy={copy} group={value} isRoot onChange={applyValidChange} />
 
     </section>
   );
@@ -204,7 +208,7 @@ function GateSummaryTree({ copy, expression, isRoot = false }: {
 function GateGroupEditor({
   addGroupDisabled,
   addRuleDisabled,
-  capabilitySource,
+  capabilities,
   copy,
   group,
   isRoot = false,
@@ -213,7 +217,7 @@ function GateGroupEditor({
 }: {
   addGroupDisabled: boolean;
   addRuleDisabled: boolean;
-  capabilitySource?: CollectionCapabilitySource;
+  capabilities?: GateCapabilitySources;
   copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
   group: GateBuilderGroupDraft;
   isRoot?: boolean;
@@ -257,7 +261,7 @@ function GateGroupEditor({
           <GateGroupEditor
             addGroupDisabled={addGroupDisabled}
             addRuleDisabled={addRuleDisabled}
-            capabilitySource={capabilitySource}
+            capabilities={capabilities}
             copy={copy}
             group={child}
             key={index}
@@ -266,7 +270,7 @@ function GateGroupEditor({
           />
         ) : (
           <GateRuleRow
-            capabilitySource={capabilitySource}
+            capabilities={capabilities}
             copy={copy}
             key={index}
             onChange={(updated) => updateChild(index, updated)}
@@ -279,13 +283,14 @@ function GateGroupEditor({
   );
 }
 
-function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
-  capabilitySource?: CollectionCapabilitySource;
+function GateRuleRow({ capabilities, copy, onChange, onRemove, rule }: {
+  capabilities?: GateCapabilitySources;
   copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
   onChange: (value: GateBuilderRuleDraft) => void;
   onRemove: () => void;
   rule: GateBuilderRuleDraft;
 }) {
+  const capabilitySource = capabilities?.collections;
   const kind = getRuleKind(rule.gate);
   const operator = operatorLabel(copy, rule.gate);
   const hasOperator = operator != null;
@@ -350,6 +355,18 @@ function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
     </Button>
   );
 
+  if (kind === "asset_balance") {
+    return (
+      <AssetBalanceRuleEditor
+        actions={removeButton}
+        capabilitySource={capabilities?.assets}
+        copy={copy}
+        gate={rule.gate}
+        onChange={(gate) => onChange({ ...rule, gate })}
+      />
+    );
+  }
+
   if (kind === "erc721_holding") {
     return (
       <div className={cn(RULE_CARD, "flex flex-col gap-1", invalidCard)}>
@@ -380,6 +397,127 @@ function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
         {removeButton}
       </div>
       {errorLine}
+    </div>
+  );
+}
+
+function AssetBalanceRuleEditor({ actions, capabilitySource, copy, gate, onChange }: {
+  actions: React.ReactNode;
+  capabilitySource?: AssetCapabilitySource;
+  copy: TreeBuilderCopy;
+  gate: GateAtom;
+  onChange: (gate: GateAtom) => void;
+}) {
+  const [assets, setAssets] = React.useState<AssetCapabilityDescriptor[] | null>(null);
+  const [loadFailed, setLoadFailed] = React.useState(false);
+  const selected = assets?.find((asset) => asset.assetId === gate.asset_id) ?? null;
+  const formatted = selected && typeof gate.min_amount_atomic === "string"
+    ? formatAssetAmount(gate.min_amount_atomic, selected.decimals)
+    : null;
+  const [amount, setAmount] = React.useState(formatted ?? "");
+
+  React.useEffect(() => {
+    let active = true;
+    setAssets(null);
+    setLoadFailed(false);
+    if (!capabilitySource) {
+      setLoadFailed(true);
+      return () => { active = false; };
+    }
+    void capabilitySource.listAssets()
+      .then((nextAssets) => {
+        if (!active) return;
+        setAssets(nextAssets);
+      })
+      .catch(() => {
+        if (!active) return;
+        setLoadFailed(true);
+      });
+    return () => { active = false; };
+  }, [capabilitySource]);
+
+  React.useEffect(() => {
+    if (formatted != null) setAmount(formatted);
+  }, [formatted]);
+
+  React.useEffect(() => {
+    if (!assets?.length || gate.asset_id) return;
+    const first = assets[0];
+    const parsed = parseAssetAmount("1", first.decimals);
+    if (parsed.ok) {
+      onChange({ type: "asset_balance", asset_id: first.assetId, min_amount_atomic: parsed.atomic });
+    }
+  }, [assets, gate.asset_id, onChange]);
+
+  const updateAmount = (nextAmount: string, asset: AssetCapabilityDescriptor) => {
+    setAmount(nextAmount);
+    const parsed = parseAssetAmount(nextAmount, asset.decimals);
+    onChange({
+      type: "asset_balance",
+      asset_id: asset.assetId,
+      min_amount_atomic: parsed.ok ? parsed.atomic : "",
+    });
+  };
+
+  if (loadFailed || (assets && !selected)) {
+    return (
+      <div className={cn(RULE_CARD, "flex items-center gap-2 px-3")}>
+        <div className="min-w-0 flex-1">
+          <div className="text-base font-medium">{copy.requirementTypes.assetBalance}</div>
+          <div className="truncate text-base text-muted-foreground">
+            {interpolateMessage(copy.assets.unavailableReadOnly, { asset: gate.asset_id ?? copy.assets.unknownAsset })}
+          </div>
+        </div>
+        {actions}
+      </div>
+    );
+  }
+
+  if (!assets || !selected) {
+    return (
+      <div className={cn(RULE_CARD, "flex items-center gap-2 px-3 text-base text-muted-foreground")}>
+        <span className="flex-1">{copy.assets.loading}</span>
+        {actions}
+      </div>
+    );
+  }
+
+  const parsedAmount = parseAssetAmount(amount, selected.decimals);
+  const amountError = parsedAmount.ok
+    ? null
+    : parsedAmount.error === "precision"
+      ? interpolateMessage(copy.assets.precisionError, { decimals: String(selected.decimals) })
+      : copy.assets.amountError;
+
+  return (
+    <div className={cn(RULE_CARD, "flex flex-col gap-1", amountError && "border-destructive/50")}>
+      <div className={RULE_LINE}>
+        <div className={RULE_KIND_COL}>
+          <RuleKindSelect copy={copy} value="asset_balance" onChange={(nextKind) => onChange(defaultGateForKind(nextKind))} />
+        </div>
+        <RuleToken>{copy.operators.holdsAtLeast}</RuleToken>
+        <Input
+          aria-label={copy.inputs.minimumAssetBalance}
+          className="max-w-48"
+          inputMode="decimal"
+          onInput={(event) => updateAmount(event.currentTarget.value, selected)}
+          value={amount}
+        />
+        <Select
+          value={selected.assetId}
+          onValueChange={(assetId: string) => {
+            const nextAsset = assets.find((asset) => asset.assetId === assetId);
+            if (nextAsset) updateAmount(amount, nextAsset);
+          }}
+        >
+          <SelectTrigger aria-label={copy.inputs.asset}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {assets.map((asset) => <SelectItem key={asset.assetId} value={asset.assetId}>{asset.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {actions}
+      </div>
+      {amountError ? <p className="text-base text-destructive" role="alert">{amountError}</p> : null}
     </div>
   );
 }
@@ -448,6 +586,7 @@ function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
       );
     case "erc721_holding":
     case "erc721_inventory_match":
+    case "asset_balance":
       return null;
     case "minimum_age":
       return (
@@ -997,6 +1136,7 @@ function RuleKindSelect({ copy, onChange, value }: {
         <SelectItem value="unique_human">{copy.requirementTypes.humanVerification}</SelectItem>
         <SelectItem value="altcha_pow">{copy.requirementTypes.browserChallenge}</SelectItem>
         <SelectItem value="wallet_score">{copy.requirementTypes.passportScore}</SelectItem>
+        <SelectItem value="asset_balance">{copy.requirementTypes.assetBalance}</SelectItem>
         <SelectItem value="erc721_holding">{copy.requirementTypes.nftHolding}</SelectItem>
         <SelectItem value="gender">{copy.requirementTypes.documentSexMarker}</SelectItem>
         <SelectItem value="nationality">{copy.requirementTypes.nationality}</SelectItem>
@@ -1016,6 +1156,8 @@ function defaultGateForKind(kind: RuleKind): GateAtom {
       return { type: "altcha_pow" };
     case "erc721_holding":
       return { type: "erc721_holding", chain_namespace: "eip155:1", contract_address: DEFAULT_CONTRACT };
+    case "asset_balance":
+      return { type: "asset_balance", asset_id: "", min_amount_atomic: "" };
     case "minimum_age":
       return { type: "minimum_age", provider: "self", minimum_age: 18 };
     case "gender":
@@ -1036,6 +1178,7 @@ function getRuleKind(gate: GateAtom): RuleKind {
     case "erc721_inventory_match":
       return "erc721_holding";
     case "altcha_pow":
+    case "asset_balance":
     case "erc721_holding":
     case "gender":
     case "minimum_age":
@@ -1056,6 +1199,8 @@ function operatorLabel(copy: ReturnType<typeof getLocaleMessages<"gates">>["tree
       return null;
     case "wallet_score":
       return copy.operators.atLeast;
+    case "asset_balance":
+      return copy.operators.holdsAtLeast;
     case "erc721_holding":
     case "erc721_inventory_match":
       return copy.operators.holdsOneFrom;
@@ -1078,6 +1223,8 @@ function describeGate(gate: GateAtom): string {
       return "complete browser challenge";
     case "wallet_score":
       return `have Passport score at least ${gate.minimum_score ?? 0}`;
+    case "asset_balance":
+      return `hold at least ${gate.min_amount_atomic ?? "?"} atomic units of ${gate.asset_id ?? "(asset)"}`;
     case "erc721_holding":
       return `hold at least ${gateAssetMinimum(gate)} NFT${gateAssetMinimum(gate) === 1 ? "" : "s"} from ${shortAddress(gate.contract_address ?? "")}`;
     case "nationality":

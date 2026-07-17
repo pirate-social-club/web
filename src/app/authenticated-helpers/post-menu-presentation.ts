@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowSquareOut } from "@phosphor-icons/react";
+import { ArrowSquareOut, Gear, Megaphone } from "@phosphor-icons/react";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
 import { getPirateNetworkConfig, type PirateStoryNetwork } from "@/lib/network-config";
@@ -39,11 +39,15 @@ export function resolvePostStoryPortalHref(input: {
 
 export function buildPostMenu(input: {
   canModeratePost?: boolean;
+  canBoost?: boolean;
+  canManageRewardSettings?: boolean;
   eventStatus?: string | null;
+  onBoost?: () => void;
   onCancelEvent?: () => void;
   onDelete?: () => void;
   onRemove?: () => void;
-  post: Pick<ApiPost["post"], "status">;
+  onRewardSettings?: () => void;
+  post: Pick<ApiPost["post"], "status"> & Partial<Pick<ApiPost["post"], "post_type">>;
   storyPortalHref?: string | null;
   viewerIsAuthor?: boolean | null;
 }) {
@@ -57,7 +61,21 @@ export function buildPostMenu(input: {
     && !input.viewerIsAuthor
     && Boolean(input.canModeratePost && input.onRemove);
   const canViewStoryAsset = input.post.status === "published" && Boolean(input.storyPortalHref);
+  const canBoost = input.post.status === "published" && input.post.post_type === "song" && Boolean(input.canBoost && input.onBoost);
+  const canManageRewardSettings = input.post.status === "published"
+    && input.post.post_type === "song"
+    && Boolean(input.canManageRewardSettings && input.onRewardSettings);
   const postMenuItems = [
+    ...(canBoost ? [{
+      key: "boost",
+      label: "Boost",
+      icon: React.createElement(Megaphone, { className: "size-4" }),
+    }] : []),
+    ...(canManageRewardSettings ? [{
+      key: "reward-settings",
+      label: "Reward settings",
+      icon: React.createElement(Gear, { className: "size-4" }),
+    }] : []),
     ...(canViewStoryAsset ? [{
       key: "view-story",
       label: "View on Story",

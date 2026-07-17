@@ -79,6 +79,28 @@ describe("buildPostMenu", () => {
     expect(menu.postMenuItems.find((item) => item.key === "view-story")?.icon).toBeTruthy();
   });
 
+  test("shows Boost and owner reward settings only for eligible song actions", () => {
+    const menu = buildPostMenu({
+      canBoost: true,
+      canManageRewardSettings: true,
+      onBoost: () => undefined,
+      onRewardSettings: () => undefined,
+      post: { post_type: "song", status: "published" },
+    });
+
+    expect(menu.postMenuItems.map((item) => item.key)).toEqual(["boost", "reward-settings"]);
+  });
+
+  test("does not put Boost on non-song posts", () => {
+    const menu = buildPostMenu({
+      canBoost: true,
+      onBoost: () => undefined,
+      post: { post_type: "text", status: "published" },
+    });
+
+    expect(menu.postMenuItems.some((item) => item.key === "boost")).toBe(false);
+  });
+
   test("builds Aeneid Story IP Explorer links for registered assets", () => {
     expect(resolvePostStoryPortalHref({
       asset: {

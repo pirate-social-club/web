@@ -94,7 +94,11 @@ export const GENERATED_LOCALE_CATALOGS = {
         "passportPromptActionLabel": "Visit Passport.xyz",
         "powOnlyTitle": "Browser anti-bot check required",
         "powOnlyDescription": "Complete a quick browser anti-bot check to continue.",
-        "powSkipNote": "A verified identity or wallet gate can skip this check when one is offered."
+        "powSkipNote": "A verified identity or wallet gate can skip this check when one is offered.",
+        "requirementSummaryAll": "Complete {requirements}.",
+        "requirementSummaryAny": "Either {requirements} is accepted.",
+        "requirementSummaryMixed": "Complete {requiredRequirements}. Also complete one of: {alternativeRequirements}.",
+        "requirementSummaryAnyGroups": "Complete one option from each group: {requirements}."
       },
       "modal": {
         "anyTitle": "Choose a way to continue",
@@ -2063,7 +2067,11 @@ export const GENERATED_LOCALE_CATALOGS = {
         "passportPromptActionLabel": "زيارة Passport.xyz",
         "powOnlyTitle": "مطلوب فحص المتصفح",
         "powOnlyDescription": "أكمل فحص إثبات عمل سريعًا للمتابعة.",
-        "powSkipNote": "يمكن للمستخدمين الموثقين تخطي هذا الفحص."
+        "powSkipNote": "يمكن للمستخدمين الموثقين تخطي هذا الفحص.",
+        "requirementSummaryAll": "أكمل {requirements}.",
+        "requirementSummaryAny": "يكفي استيفاء أحد الخيارات التالية: {requirements}.",
+        "requirementSummaryMixed": "أكمل {requiredRequirements}. واستوفِ أيضًا أحد الخيارات التالية: {alternativeRequirements}.",
+        "requirementSummaryAnyGroups": "استوفِ خيارًا واحدًا من كل مجموعة: {requirements}."
       },
       "modal": {
         "anyTitle": "اختر طريقة للمتابعة",
@@ -4032,7 +4040,11 @@ export const GENERATED_LOCALE_CATALOGS = {
         "passportPromptActionLabel": "访问 Passport.xyz",
         "powOnlyTitle": "需要浏览器检查",
         "powOnlyDescription": "完成快速工作量证明检查以继续。",
-        "powSkipNote": "已验证用户可以跳过此检查。"
+        "powSkipNote": "已验证用户可以跳过此检查。",
+        "requirementSummaryAll": "完成{requirements}。",
+        "requirementSummaryAny": "满足以下任一项即可：{requirements}。",
+        "requirementSummaryMixed": "完成{requiredRequirements}，并满足以下任一项：{alternativeRequirements}。",
+        "requirementSummaryAnyGroups": "请分别从以下每组中满足一项：{requirements}。"
       },
       "modal": {
         "anyTitle": "选择一种方式继续",

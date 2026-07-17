@@ -26,6 +26,7 @@ import {
 import { Type } from "@/components/primitives/type";
 import { getLocaleMessages } from "@/locales";
 import { isUiLocaleCode } from "@/lib/ui-locale-core";
+import { interpolateMessage } from "@/lib/route-messages";
 import type { CommunityGateRequirementGroup } from "@/components/compositions/community/gate-requirements.types";
 
 type VerificationPrompt = {
@@ -52,7 +53,7 @@ export interface CommunityMembershipGatePanelProps {
   onCancelVerification?: () => void;
 }
 
-type RequirementGroupSummary = {
+export type RequirementGroupSummary = {
   mode: "all" | "any";
   text: string;
 };
@@ -82,15 +83,35 @@ function formatRequirementGroupSummaries(input: {
   });
 }
 
-function formatRequirementSummarySentence(groups: RequirementGroupSummary[]): string | null {
+export function formatRequirementSummarySentence(
+  groups: RequirementGroupSummary[],
+  listFormatLocale: Intl.LocalesArgument,
+  copy: ReturnType<typeof getLocaleMessages<"gates">>["panel"],
+): string | null {
   if (groups.length === 0) return null;
-  const requiredText = groups.filter((group) => group.mode === "all").map((group) => group.text).join(", ");
-  const alternativeText = groups.filter((group) => group.mode === "any").map((group) => group.text).join(" or ");
+  const formatGroupList = (items: string[]) => items.length > 1
+    ? new Intl.ListFormat(listFormatLocale, { style: "long", type: "conjunction" }).format(items)
+    : items[0] ?? "";
+  const requiredTexts = groups.filter((group) => group.mode === "all").map((group) => group.text);
+  const alternativeTexts = groups.filter((group) => group.mode === "any").map((group) => group.text);
+  const requiredText = formatGroupList(requiredTexts);
+  const alternativeText = formatGroupList(alternativeTexts);
 
-  if (alternativeText) {
-    return `Either ${alternativeText} is accepted.`;
+  if (requiredText && alternativeText) {
+    return interpolateMessage(copy.requirementSummaryMixed, {
+      alternativeRequirements: alternativeText,
+      requiredRequirements: requiredText,
+    });
   }
-  return requiredText ? `Complete ${requiredText}.` : null;
+  if (alternativeTexts.length === 1) {
+    return interpolateMessage(copy.requirementSummaryAny, { requirements: alternativeText });
+  }
+  if (alternativeTexts.length > 1) {
+    return interpolateMessage(copy.requirementSummaryAnyGroups, { requirements: alternativeText });
+  }
+  return requiredText
+    ? interpolateMessage(copy.requirementSummaryAll, { requirements: requiredText })
+    : null;
 }
 
 function formatRequirementLabel(
@@ -237,7 +258,11 @@ export function CommunityMembershipGatePanel({
     listFormatLocale,
     locale: resolvedLocale,
   });
-  const groupedRequirementSentence = formatRequirementSummarySentence(groupedRequirementSummaries);
+  const groupedRequirementSentence = formatRequirementSummarySentence(
+    groupedRequirementSummaries,
+    listFormatLocale,
+    panelCopy,
+  );
   const requirementSummary = requirementLabels.length > 1 && requirementLabels.length <= 3
     ? new Intl.ListFormat(listFormatLocale, {
         style: "long",

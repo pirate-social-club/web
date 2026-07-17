@@ -87,7 +87,11 @@
     "passportPromptActionLabel": "访问 Passport.xyz",
     "powOnlyTitle": "需要浏览器检查",
     "powOnlyDescription": "完成快速工作量证明检查以继续。",
-    "powSkipNote": "已验证用户可以跳过此检查。"
+    "powSkipNote": "已验证用户可以跳过此检查。",
+    "requirementSummaryAll": "完成{requirements}。",
+    "requirementSummaryAny": "满足以下任一项即可：{requirements}。",
+    "requirementSummaryMixed": "完成{requiredRequirements}，并满足以下任一项：{alternativeRequirements}。",
+    "requirementSummaryAnyGroups": "请分别从以下每组中满足一项：{requirements}。"
   },
   "modal": {
     "anyTitle": "选择一种方式继续",

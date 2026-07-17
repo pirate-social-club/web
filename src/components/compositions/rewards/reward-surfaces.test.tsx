@@ -6,6 +6,7 @@ import { installDomGlobals } from "@/test/setup-dom";
 
 import {
   CashoutSheet,
+  rewardAmountLabel,
   SongRewardBadge,
   SongRewardOffer,
   StreakRewardEarned,
@@ -51,12 +52,18 @@ describe("reward surfaces", () => {
     );
 
     expect(view.getByText("Earn $0.10/day")).toBeTruthy();
-    expect(view.getAllByText("Earn $0.40 USDC per day").length).toBe(2);
+    expect(view.getAllByText("Earn $0.40 USDC per UTC day").length).toBe(2);
     expect(view.getAllByText("Reward").length).toBe(2);
     expect(view.getByText("Complete a study set or score at least 72.5% in Karaoke")).toBeTruthy();
     expect(view.getByText("Score at least 70% in Karaoke")).toBeTruthy();
     expect(view.getAllByText("$0.10 reward pending").length).toBe(2);
     expect(view.getByText("Today's karaoke pass qualified. Reward credit updates after confirmation.")).toBeTruthy();
+  });
+
+  test("derives honest reward labels from the settlement chain", () => {
+    expect(rewardAmountLabel(100, 8453)).toBe("$1.00 USDC");
+    expect(rewardAmountLabel(100, 84532)).toBe("1.00 testnet USDC (Base Sepolia)");
+    expect(rewardAmountLabel(100, 1)).toBe("1.00 USDC (chain 1)");
   });
 
   test("renders wallet cashout and verification states", () => {

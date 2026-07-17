@@ -71,9 +71,11 @@ export interface SongRewardOfferProps {
   minScoreBps: number;
 }
 
-export function rewardAmountLabel(amountCents: number): string {
+export function rewardAmountLabel(amountCents: number, chainId: number): string {
   const amount = (amountCents / 100).toFixed(2);
-  return `$${amount} USDC`;
+  if (chainId === 8453) return `$${amount} USDC`;
+  if (chainId === 84532) return `${amount} testnet USDC (Base Sepolia)`;
+  return `${amount} USDC (chain ${chainId})`;
 }
 
 export interface StreakRewardEarnedProps {
@@ -177,7 +179,7 @@ export function SongRewardOffer({
             Reward
           </Type>
           <Type as="div" variant="h3">
-            Earn {amountLabel} per day
+            Earn {amountLabel} per UTC day
           </Type>
           <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
             {qualificationLabel}

@@ -280,6 +280,7 @@ describe("KaraokeRoutePage", () => {
     ["either", "Complete a study set or score at least 85% in Karaoke"],
   ] as const)("shows a %s reward offer on the karaoke surface", async (eligibleActivity, qualificationCopy) => {
     rewardOfferResult = {
+      chain_id: 84532,
       daily_reward_cents: 100,
       eligible_activity: eligibleActivity,
       ends_at: Date.now() + 86_400_000,
@@ -288,12 +289,13 @@ describe("KaraokeRoutePage", () => {
 
     const view = render(<KaraokeRoutePage postId="pst_song" />);
 
-    await waitFor(() => expect(view.getByText("Earn $1.00 USDC per day")).toBeTruthy());
+    await waitFor(() => expect(view.getByText("Earn 1.00 testnet USDC (Base Sepolia) per UTC day")).toBeTruthy());
     expect(view.getByText(qualificationCopy)).toBeTruthy();
   });
 
   test("hides a study-only reward offer on the karaoke surface", async () => {
     rewardOfferResult = {
+      chain_id: 84532,
       daily_reward_cents: 100,
       eligible_activity: "study",
       ends_at: Date.now() + 86_400_000,

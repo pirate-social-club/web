@@ -253,6 +253,7 @@ describe("StudyRoutePage", () => {
 
   test("shows an exact uniform reward offer for the active song campaign", async () => {
     rewardCampaignResult = {
+      chain_id: 8453,
       eligible_activity: "either",
       daily_reward_cents: 40,
       ends_at: 1_786_060_799,
@@ -261,7 +262,7 @@ describe("StudyRoutePage", () => {
 
     const view = render(<StudyRoutePage postId="pst_song" />);
 
-    await waitFor(() => expect(view.getByText("Earn $0.40 USDC per day")).toBeTruthy());
+    await waitFor(() => expect(view.getByText("Earn $0.40 USDC per UTC day")).toBeTruthy());
     expect(view.getByText("Complete a study set or score at least 85% in Karaoke")).toBeTruthy();
   });
 

@@ -50,6 +50,7 @@ export type ApiWalletIdentityResponse = WalletIdentityResponse;
 export type ApiRewardVerificationState = "unverified" | "verified" | "conflict";
 
 export type ApiPublicRewardOffer = {
+  chain_id: number;
   eligible_activity: "study" | "karaoke" | "either";
   daily_reward_cents: number;
   ends_at: number;

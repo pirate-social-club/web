@@ -148,7 +148,7 @@ export const SongRewardOfferDaily: Story = {
   render: () => (
     <SurfaceFrame>
       <SongRewardOffer
-        amountLabel="$1.00 USDC"
+        amountLabel="1.00 testnet USDC (Base Sepolia)"
         eligibleActivity="karaoke"
         minScoreBps={7_000}
       />
@@ -164,7 +164,7 @@ export const SongRewardOfferMobile: Story = {
   render: () => (
     <SurfaceFrame>
       <SongRewardOffer
-        amountLabel="$0.40 USDC"
+        amountLabel="0.40 testnet USDC (Base Sepolia)"
         eligibleActivity="either"
         minScoreBps={7_000}
       />

@@ -861,7 +861,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       onPrimaryAction={handlePrimaryAction}
       rewardSlot={state.rewardOffer && state.rewardOffer.eligible_activity !== "karaoke" ? (
         <SongRewardOffer
-          amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents)}
+          amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
           eligibleActivity={state.rewardOffer.eligible_activity}
           minScoreBps={state.rewardOffer.min_score_bps}
         />

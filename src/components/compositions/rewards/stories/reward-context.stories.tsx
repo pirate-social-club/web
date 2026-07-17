@@ -139,10 +139,9 @@ export const StudyCompletionRewardPending: Story = {
           onStudyAgain={() => undefined}
           rewardSlot={(
             <SongRewardOffer
-              amountLabel="0.40 test USDC"
+              amountLabel="$0.40 USDC"
               eligibleActivity="either"
               minScoreBps={7_000}
-              settlementNetwork="testnet"
             />
           )}
           state={{

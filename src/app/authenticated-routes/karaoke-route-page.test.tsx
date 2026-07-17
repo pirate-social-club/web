@@ -276,8 +276,8 @@ describe("KaraokeRoutePage", () => {
   });
 
   test.each([
-    ["karaoke", "Score at least 85% in Karaoke · once per UTC day"],
-    ["either", "Complete a study set or score at least 85% in Karaoke · once per UTC day"],
+    ["karaoke", "Score at least 85% in Karaoke"],
+    ["either", "Complete a study set or score at least 85% in Karaoke"],
   ] as const)("shows a %s reward offer on the karaoke surface", async (eligibleActivity, qualificationCopy) => {
     rewardOfferResult = {
       daily_reward_cents: 100,
@@ -288,7 +288,7 @@ describe("KaraokeRoutePage", () => {
 
     const view = render(<KaraokeRoutePage postId="pst_song" />);
 
-    await waitFor(() => expect(view.getByText("Earn $1.00 USDC")).toBeTruthy());
+    await waitFor(() => expect(view.getByText("Earn $1.00 USDC per day")).toBeTruthy());
     expect(view.getByText(qualificationCopy)).toBeTruthy();
   });
 

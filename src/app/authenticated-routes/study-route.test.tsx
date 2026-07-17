@@ -261,8 +261,8 @@ describe("StudyRoutePage", () => {
 
     const view = render(<StudyRoutePage postId="pst_song" />);
 
-    await waitFor(() => expect(view.getByText("Earn $0.40 USDC")).toBeTruthy());
-    expect(view.getByText("Complete a study set or score at least 85% in Karaoke · once per UTC day")).toBeTruthy();
+    await waitFor(() => expect(view.getByText("Earn $0.40 USDC per day")).toBeTruthy());
+    expect(view.getByText("Complete a study set or score at least 85% in Karaoke")).toBeTruthy();
   });
 
   test("shows a caught-up message when a ready study pack has no remaining exercises", async () => {

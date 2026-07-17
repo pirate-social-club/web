@@ -112,7 +112,6 @@ export const SongRewardOfferEither: Story = {
         amountLabel="$0.40 USDC"
         eligibleActivity="either"
         minScoreBps={7_000}
-        settlementNetwork="mainnet"
       />
     </SurfaceFrame>
   ),
@@ -126,7 +125,6 @@ export const SongRewardOfferStudy: Story = {
         amountLabel="$0.40 USDC"
         eligibleActivity="study"
         minScoreBps={7_000}
-        settlementNetwork="mainnet"
       />
     </SurfaceFrame>
   ),
@@ -140,21 +138,19 @@ export const SongRewardOfferKaraoke: Story = {
         amountLabel="$0.40 USDC"
         eligibleActivity="karaoke"
         minScoreBps={8_500}
-        settlementNetwork="mainnet"
       />
     </SurfaceFrame>
   ),
 };
 
-export const SongRewardOfferTestnet: Story = {
-  name: "SongRewardOffer / Testnet karaoke",
+export const SongRewardOfferDaily: Story = {
+  name: "SongRewardOffer / Daily karaoke",
   render: () => (
     <SurfaceFrame>
       <SongRewardOffer
-        amountLabel="1.00 test USDC"
+        amountLabel="$1.00 USDC"
         eligibleActivity="karaoke"
         minScoreBps={7_000}
-        settlementNetwork="testnet"
       />
     </SurfaceFrame>
   ),
@@ -168,10 +164,9 @@ export const SongRewardOfferMobile: Story = {
   render: () => (
     <SurfaceFrame>
       <SongRewardOffer
-        amountLabel="0.40 test USDC"
+        amountLabel="$0.40 USDC"
         eligibleActivity="either"
         minScoreBps={7_000}
-        settlementNetwork="testnet"
       />
     </SurfaceFrame>
   ),

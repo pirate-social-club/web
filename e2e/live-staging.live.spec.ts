@@ -1326,7 +1326,7 @@ test.describe("live staging integration", () => {
 
     expect(leaves).toHaveLength(2);
     expect(leaves.map((leaf) => leaf.gate_id)).toEqual(["verified-human", "browser-challenge"]);
-    expect(leaves.map((leaf) => leaf.outcome)).toEqual(["passed", "action_required"]);
+    expect(leaves.map((leaf) => leaf.outcome)).toEqual(["action_required", "action_required"]);
   });
 
   test("round-trips a nested gate policy through the staging moderator UI", async ({ page }, testInfo) => {

@@ -102,11 +102,15 @@ export function toCommunityFeedItem(
     upstreamAssetRefs: post.upstream_asset_refs,
   });
   const { hasPostMenu, postMenuItems } = buildPostMenu({
+    canBoost: opts?.canBoost,
+    canManageRewardSettings: opts?.canManageRewardSettings,
     canModeratePost: opts?.canModeratePost,
     eventStatus: toPostCardEvent(post)?.status ?? null,
     onCancelEvent: opts?.onCancelEvent,
+    onBoost: opts?.onBoost,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
+    onRewardSettings: opts?.onRewardSettings,
     post,
     storyPortalHref,
     viewerIsAuthor: postResponse.viewer_is_author,
@@ -187,6 +191,8 @@ export function toCommunityFeedItem(
       menuItems: hasPostMenu ? postMenuItems : undefined,
       shareActions: isPublished ? buildPostShareActions(post) : undefined,
       onMenuAction: hasPostMenu ? (key) => {
+        if (key === "boost") opts?.onBoost?.();
+        if (key === "reward-settings") opts?.onRewardSettings?.();
         if (key === "view-story" && storyPortalHref) openExternalUrl(storyPortalHref);
         if (key === "delete") opts?.onDelete?.();
         if (key === "remove") opts?.onRemove?.();
@@ -245,11 +251,15 @@ export function toThreadPostCard(
     upstreamAssetRefs: post.upstream_asset_refs,
   });
   const { hasPostMenu, postMenuItems } = buildPostMenu({
+    canBoost: opts?.canBoost,
+    canManageRewardSettings: opts?.canManageRewardSettings,
     canModeratePost: opts?.canModeratePost,
     eventStatus: toPostCardEvent(post)?.status ?? null,
     onCancelEvent: opts?.onCancelEvent,
+    onBoost: opts?.onBoost,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
+    onRewardSettings: opts?.onRewardSettings,
     post,
     storyPortalHref,
     viewerIsAuthor: postResponse.viewer_is_author,
@@ -324,6 +334,8 @@ export function toThreadPostCard(
     menuItems: hasPostMenu ? postMenuItems : undefined,
     shareActions: buildPostShareActions(post),
     onMenuAction: hasPostMenu ? (key) => {
+      if (key === "boost") opts?.onBoost?.();
+      if (key === "reward-settings") opts?.onRewardSettings?.();
       if (key === "view-story" && storyPortalHref) openExternalUrl(storyPortalHref);
       if (key === "delete") opts?.onDelete?.();
       if (key === "remove") opts?.onRemove?.();

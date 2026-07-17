@@ -46,9 +46,11 @@ import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import { toast } from "@/components/primitives/sonner";
 import { rewardCtaAmountLabel } from "@/components/compositions/rewards/reward-surfaces";
+import { BoostCampaignSheet, SongRewardPolicySheet } from "@/components/compositions/rewards/reward-booster-surfaces";
 import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse, ApiPublicRewardOffer } from "@/lib/api/client-api-types";
 import { logger } from "@/lib/logger";
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
+import { useBoostCampaignController } from "@/app/authenticated-helpers/use-boost-campaign-controller";
 
 function closeMobileThread(fallbackPath: string) {
   if (typeof window !== "undefined" && window.history.length > 1) {
@@ -290,6 +292,16 @@ export function PostPage({
 
     toast.error(authRuntime.loadError ?? fallbackMessage);
   }, [authRuntime.connect, authRuntime.loadError, postId, copy.publicProfile.openInPirate]);
+
+  const boostController = useBoostCampaignController({
+    activePublicOffer: Boolean(rewardOffer),
+    authenticated: Boolean(session?.accessToken),
+    communityId: community?.id ?? null,
+    postId,
+    requestAuth: () => requestAuth("Sign in to boost this song."),
+    song: post?.post.post_type === "song",
+    viewerIsAuthor: Boolean(post?.viewer_is_author),
+  });
 
   const handleReplyIntent = React.useCallback(() => {
     if (session?.accessToken) return;
@@ -1072,12 +1084,16 @@ export function PostPage({
     && community?.viewer_membership_status == null,
   );
   const localizedPostCard = toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
+    canBoost: boostController.canBoost,
+    canManageRewardSettings: boostController.canManagePolicy,
     canModeratePost: viewerCanModerateCommunity(session?.user?.id, community),
     commentCountOverride: commentCount,
     liveRoom: liveRoomOptions,
     onCancelEvent: cancelEvent,
+    onBoost: boostController.openBoost,
     onDelete: deletePost,
     onRemove: removePost,
+    onRewardSettings: boostController.openPolicy,
     onVerifyAge: handleVerifyAge,
     onVote: voteOnPost,
     voteAccess: viewerMustJoin
@@ -1091,12 +1107,16 @@ export function PostPage({
   });
   const originalPostCard = shouldShowOriginalPost(post)
     ? toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
+      canBoost: boostController.canBoost,
+      canManageRewardSettings: boostController.canManagePolicy,
       canModeratePost: viewerCanModerateCommunity(session?.user?.id, community),
       commentCountOverride: commentCount,
       liveRoom: liveRoomOptions,
       onCancelEvent: cancelEvent,
+      onBoost: boostController.openBoost,
       onDelete: deletePost,
       onRemove: removePost,
+      onRewardSettings: boostController.openPolicy,
       onVerifyAge: handleVerifyAge,
       onVote: voteOnPost,
       voteAccess: viewerMustJoin
@@ -1159,6 +1179,8 @@ export function PostPage({
   );
   const threadBody = (
     <>
+      <BoostCampaignSheet {...boostController.sheetProps} />
+      <SongRewardPolicySheet {...boostController.policySheetProps} />
       {gateModal}
       {ageSelfPrompt ? (
         <SelfVerificationModal

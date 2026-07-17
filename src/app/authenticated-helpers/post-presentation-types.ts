@@ -61,6 +61,10 @@ export type PostPresentationOptions = {
   onRemove?: () => void;
   onCancelEvent?: () => void;
   onRetryPublish?: () => void;
+  onBoost?: () => void;
+  onRewardSettings?: () => void;
+  canBoost?: boolean;
+  canManageRewardSettings?: boolean;
   postHref?: string;
   canModeratePost?: boolean;
   preferOriginalText?: boolean;

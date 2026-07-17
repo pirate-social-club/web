@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import type {
   CommunityHandlePaymentInstructions,
   CommunityPurchaseQuote,
+  RewardCampaignFundingQuote,
 } from "@pirate/api-contracts";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 
@@ -10,6 +11,7 @@ import {
   DEFAULT_STORY_CHECKOUT_ROUTE,
   findConnectedFundingWallet,
   resolveHandleCheckoutTransferInput,
+  resolveRewardFundingTransferInput,
   resolveStoryCheckoutTransferInput,
 } from "./routed-checkout";
 
@@ -100,6 +102,22 @@ describe("routed checkout helpers", () => {
       tokenAddress: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
       recipientAddress: "0x5000000000000000000000000000000000000005",
       amountAtomic: 5000000n,
+    });
+  });
+
+  test("resolves a reward funding quote without changing its exact atomic amount", () => {
+    const quote = {
+      chain_id: 84532,
+      token_address: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+      treasury_address: "0x5000000000000000000000000000000000000005",
+      amount_atomic: "1000000",
+    } as RewardCampaignFundingQuote;
+
+    expect(resolveRewardFundingTransferInput(quote)).toEqual({
+      chainId: 84532,
+      tokenAddress: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+      recipientAddress: "0x5000000000000000000000000000000000000005",
+      amountAtomic: 1000000n,
     });
   });
 });

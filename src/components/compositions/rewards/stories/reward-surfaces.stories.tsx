@@ -248,6 +248,21 @@ export const WalletRewardsCashoutReady: Story = {
   ),
 };
 
+export const WalletRewardsTestnetCashoutReady: Story = {
+  name: "WalletRewardsCard / Testnet claim ready",
+  render: () => (
+    <SurfaceFrame>
+      <WalletRewardsCard
+        {...baseWalletCardArgs("cashout-ready")}
+        availableLabel="1.40 testnet USDC"
+        balanceLabel="1.70 testnet USDC"
+        earnedTodayLabel="0.30 testnet USDC"
+        minimumCashoutLabel="1.00 testnet USDC"
+      />
+    </SurfaceFrame>
+  ),
+};
+
 export const WalletRewardsVerifyRequired: Story = {
   name: "WalletRewardsCard / Verify required",
   render: () => (

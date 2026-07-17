@@ -74,6 +74,7 @@ export type ApiRewardEventSummary = {
 };
 
 export type ApiRewardsSummaryResponse = {
+  chain_id: number;
   balance_cents: number;
   today_earned_cents: number;
   recent_events: ApiRewardEventSummary[];
@@ -96,8 +97,10 @@ export type ApiRewardCashoutRequest = {
 };
 
 export type ApiRewardCashoutResponse = {
+  chain_id: number;
   payout: {
     id: string;
+    chain_id: number;
     amount_cents: number;
     recipient_address: string;
     status: "submitted" | "confirmed" | "failed";

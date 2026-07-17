@@ -317,7 +317,7 @@ export function WalletRewardsCard({
       ) : null}
       {isComplete ? (
         <Type as="p" className="mt-4 text-muted-foreground" variant="body">
-          Reward USDC was sent to your Base wallet.
+          Reward was sent to your wallet.
         </Type>
       ) : null}
       {isError ? (
@@ -510,7 +510,7 @@ export function CashoutSheet({
         <ModalHeader className="text-start">
           <ModalTitle>Claim rewards</ModalTitle>
           <ModalDescription className="text-muted-foreground">
-            Sends reward USDC to your wallet.
+            Sends rewards to your wallet.
           </ModalDescription>
         </ModalHeader>
 
@@ -559,7 +559,7 @@ export function CashoutSheet({
                   Claim complete
                 </Type>
                 <Type as="div" className="mt-1 text-muted-foreground" variant="body">
-                  {amountLabel} USDC was sent to {recipientLabel}.
+                  {amountLabel} was sent to {recipientLabel}.
                 </Type>
               </div>
             </div>

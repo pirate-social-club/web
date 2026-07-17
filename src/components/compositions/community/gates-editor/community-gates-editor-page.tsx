@@ -159,8 +159,9 @@ export function courtyardInventoryDraftMatchesGroup(
 
 export function canAuthorCourtyardInventoryGate(
   groups: CourtyardWalletInventoryGroup[] | null | undefined,
+  enabled = true,
 ): boolean {
-  return Boolean(groups?.length);
+  return enabled && Boolean(groups?.length);
 }
 
 type DocumentGateDraft = Extract<IdentityGateDraft, { gateType: "nationality" | "minimum_age" | "gender" }>;
@@ -327,6 +328,7 @@ export interface CommunityGatesEditorPageProps {
   readAccessMode?: CommunityReadAccessMode;
   className?: string;
   creatorVerificationState?: CreatorVerificationState;
+  courtyardInventoryAuthoringEnabled?: boolean;
   courtyardInventoryGroups?: CourtyardWalletInventoryGroup[] | null;
   courtyardInventoryLoading?: boolean;
   capabilities?: GateCapabilitySources;
@@ -363,6 +365,7 @@ export function CommunityGatesEditorPage({
   anonymousScopeChangeWarning: anonymousScopeChangeWarningProp,
   className,
   creatorVerificationState,
+  courtyardInventoryAuthoringEnabled = true,
   courtyardInventoryGroups,
   courtyardInventoryLoading = false,
   capabilities,
@@ -424,7 +427,10 @@ export function CommunityGatesEditorPage({
   const altchaPowGate = gateDrafts.find((draft) => draft.gateType === "altcha_pow");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const courtyardInventoryGate = gateDrafts.find((draft) => draft.gateType === "erc721_inventory_match");
-  const courtyardInventoryAuthoringAvailable = canAuthorCourtyardInventoryGate(courtyardInventoryGroups);
+  const courtyardInventoryAuthoringAvailable = canAuthorCourtyardInventoryGate(
+    courtyardInventoryGroups,
+    courtyardInventoryAuthoringEnabled,
+  );
   const courtyardCapabilitySource = React.useMemo(() => {
     const ownedSource = createOwnedCourtyardCapabilitySource(courtyardInventoryGroups ?? []);
     return capabilities?.collections
@@ -764,6 +770,7 @@ export function CommunityGatesEditorPage({
                     className={courtyardInventoryGate ? "border-border bg-muted/30" : undefined}
                     checked={Boolean(courtyardInventoryGate)}
                     disabled={!courtyardInventoryAuthoringAvailable && !courtyardInventoryGate}
+                    disabledHint={!courtyardInventoryAuthoringEnabled ? mc.courtyardComingSoon : undefined}
                     title={mc.courtyardTitle}
                     onCheckedChange={(checked) => {
                       if (!checked) {

@@ -336,11 +336,16 @@ function applyGateStatuses(
   items: CommunitySidebarGateItem[],
   eligibility: ApiJoinEligibility | null | undefined,
   gateMatchMode?: "all" | "any" | null,
+  traceExcludedIndexes: number[] = [],
 ): CommunitySidebarGateItem[] {
+  const excluded = new Set(traceExcludedIndexes);
   const statuses = deriveGateStatuses({
     eligibility,
     gateMatchMode,
-    requirements: items.map((item) => ({ gate_type: item.gateType as ApiMembershipGateSummary["gate_type"] })),
+    requirements: items.map((item, index) => ({
+      gate_type: item.gateType as ApiMembershipGateSummary["gate_type"],
+      trace_match: !excluded.has(index),
+    })),
   });
   return items.map((item, index) => ({ ...item, status: statuses[index] ?? "unknown" }));
 }
@@ -354,11 +359,13 @@ export function buildCommunitySidebarGateItems(input: {
 }): CommunitySidebarGateItem[] {
   const items: CommunitySidebarGateItem[] = [];
   const seenLabels = new Set<string>();
+  const traceExcludedIndexes: number[] = [];
 
   if (input.defaultAgeGatePolicy === "18_plus") {
     const label = formatSidebarRequirement({ gateType: "age_over_18", locale: input.locale });
     if (label) {
       seenLabels.add(label);
+      traceExcludedIndexes.push(items.length);
       items.push({
         gateType: "age_over_18",
         label,
@@ -396,7 +403,7 @@ export function buildCommunitySidebarGateItems(input: {
     }
   }
 
-  return applyGateStatuses(items, input.eligibility, input.gateMatchMode);
+  return applyGateStatuses(items, input.eligibility, input.gateMatchMode, traceExcludedIndexes);
 }
 
 /**

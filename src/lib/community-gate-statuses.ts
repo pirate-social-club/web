@@ -6,8 +6,25 @@ import { getRequiredActionCapabilities, type RequiredActionCapability } from "@/
 type GateStatusInput = {
   eligibility?: JoinEligibility | null;
   gateMatchMode?: "all" | "any" | null;
-  requirements: Array<Pick<MembershipGateSummary, "gate_type">>;
+  requirements: Array<Pick<MembershipGateSummary, "gate_type"> & { trace_match?: boolean }>;
 };
+
+type GateTraceLike = {
+  children?: GateTraceLike[];
+  gate_type?: string;
+  kind?: string;
+  op?: "and" | "or";
+  passed?: boolean;
+  reason?: string;
+};
+
+const PROVIDER_UNAVAILABLE_REASONS = new Set([
+  "asset_balance_unavailable",
+  "ethereum_rpc_not_configured",
+  "token_inventory_unavailable",
+  "unsupported_chain_namespace",
+  "unsupported_gate_config",
+]);
 
 function gateTypeToCapability(gateType: string): RequiredActionCapability | null {
   switch (gateType) {
@@ -36,15 +53,65 @@ function requirementMatchesRequiredAction(
   return capability != null && requiredCapabilities.includes(capability);
 }
 
-export function deriveGateStatuses({
+function traceGateKey(gateType: string): string {
+  return gateType === "age_over_18" || gateType === "minimum_age" ? "minimum_age" : gateType;
+}
+
+function isProviderUnavailableReason(reason?: string): boolean {
+  return reason != null && (
+    PROVIDER_UNAVAILABLE_REASONS.has(reason)
+    || reason.startsWith("unsupported_gate_type:")
+  );
+}
+
+function collectStructuralTraceStatuses(root: GateTraceLike): Map<string, CommunityGateRequirementStatus[]> {
+  const statuses = new Map<string, CommunityGateRequirementStatus[]>();
+  const add = (gateType: string, status: CommunityGateRequirementStatus): void => {
+    const key = traceGateKey(gateType);
+    statuses.set(key, [...(statuses.get(key) ?? []), status]);
+  };
+  const visit = (node: GateTraceLike, muted = false): void => {
+    if (node.kind === "gate" && node.gate_type) {
+      add(
+        node.gate_type,
+        muted || isProviderUnavailableReason(node.reason)
+          ? "unknown"
+          : node.passed
+            ? "met"
+            : "unmet",
+      );
+      return;
+    }
+    if (node.kind !== "op") return;
+    for (const child of node.children ?? []) {
+      // A failed child of a satisfied OR is an unused alternative, not a
+      // requirement the member failed. Mute its entire subtree.
+      const childMuted = muted || (node.op === "or" && node.passed === true && child.passed !== true);
+      visit(child, childMuted);
+    }
+  };
+  visit(root);
+  return statuses;
+}
+
+function deriveTraceStatuses(
+  eligibility: JoinEligibility,
+  requirements: GateStatusInput["requirements"],
+): Array<CommunityGateRequirementStatus | null> | null {
+  const root = eligibility.gate_evaluation?.trace as GateTraceLike | null | undefined;
+  if (!root) return null;
+  const statuses = collectStructuralTraceStatuses(root);
+  return requirements.map((requirement) => {
+    if (requirement.trace_match === false) return null;
+    return statuses.get(traceGateKey(requirement.gate_type))?.shift() ?? null;
+  });
+}
+
+function deriveMissingTraceStatuses({
   eligibility,
   gateMatchMode,
   requirements,
-}: GateStatusInput): CommunityGateRequirementStatus[] {
-  if (!eligibility) {
-    return requirements.map(() => "unknown");
-  }
-
+}: GateStatusInput & { eligibility: JoinEligibility }): CommunityGateRequirementStatus[] {
   switch (eligibility.status) {
     case "already_joined":
     case "joinable":
@@ -67,4 +134,24 @@ export function deriveGateStatuses({
     default:
       return requirements.map(() => "unknown");
   }
+}
+
+export function deriveGateStatuses({
+  eligibility,
+  gateMatchMode,
+  requirements,
+}: GateStatusInput): CommunityGateRequirementStatus[] {
+  if (!eligibility) {
+    return requirements.map(() => "unknown");
+  }
+
+  const missingTraceStatuses = deriveMissingTraceStatuses({ eligibility, gateMatchMode, requirements });
+  const traced = deriveTraceStatuses(eligibility, requirements);
+  if (!traced) return missingTraceStatuses;
+
+  // Once a trace exists it is authoritative. A real row with no matching leaf
+  // is ambiguous and stays unknown; only explicitly synthetic rows may use the
+  // missing-trace compatibility status.
+  return traced.map((status, index) => status
+    ?? (requirements[index]?.trace_match === false ? missingTraceStatuses[index] ?? "unknown" : "unknown"));
 }

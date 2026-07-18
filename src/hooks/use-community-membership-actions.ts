@@ -180,16 +180,16 @@ export function useCommunityMembershipActions({
       openJoinRequestModal();
       return;
     }
+    if (altchaRequired && altchaPayload) {
+      await submitProofOfWork(altchaPayload);
+      return;
+    }
     if (hasVerificationChoices) {
       setVerificationChooserModalOpen(true);
       return;
     }
     if (altchaRequired) {
-      if (!altchaPayload) {
-        setProofOfWorkModalOpen(true);
-        return;
-      }
-      await submitProofOfWork(altchaPayload);
+      setProofOfWorkModalOpen(true);
       return;
     }
     const result = await handleJoin();

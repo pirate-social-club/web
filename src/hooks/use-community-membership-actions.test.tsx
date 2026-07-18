@@ -112,6 +112,30 @@ describe("useCommunityMembershipActions", () => {
     expect(result.current.proofOfWorkModalOpen).toBe(false);
   });
 
+  test("submits a stored proof instead of reopening the branch chooser", async () => {
+    const submittedPayloads: Array<string | null | undefined> = [];
+    const { result } = renderHook(() =>
+      useCommunityMembershipActions(createOptions({
+        altchaPayload: "solved-proof",
+        altchaRequired: true,
+        eligibility: eligibility("verification_required"),
+        handleJoin: async (options) => {
+          submittedPayloads.push(options?.altchaPayload);
+          return "joined";
+        },
+        hasVerificationChoices: true,
+      }))
+    );
+
+    await act(async () => {
+      await result.current.handlePrimaryJoinAction();
+    });
+
+    expect(submittedPayloads).toEqual(["solved-proof"]);
+    expect(result.current.verificationChooserModalOpen).toBe(false);
+    expect(result.current.proofOfWorkModalOpen).toBe(false);
+  });
+
   test("submits a newly verified proof immediately and closes the modal after joining", async () => {
     const submittedPayloads: Array<string | null | undefined> = [];
     const { result } = renderHook(() =>

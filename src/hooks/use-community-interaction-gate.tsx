@@ -187,7 +187,7 @@ export function useCommunityInteractionGate({
       setModalState((current) => current ? {
         ...current,
         body: buildAltchaBody({
-          action: `community:${pendingInteraction.communityId}`,
+          action: `community:${pendingInteraction.gate.eligibility.community || pendingInteraction.communityId}`,
           resetKey: nextResetKey,
           scope: "community_join",
         }),

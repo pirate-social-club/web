@@ -21,6 +21,7 @@ let connectCalls = 0;
 let connectedWallets: Array<{ address: string }> = [];
 let walletsReady = true;
 let privyConfigured = true;
+let passportRefreshResult: Record<string, unknown> | null = null;
 let privyConnect: (() => void) | null = () => {
   connectCalls += 1;
 };
@@ -33,7 +34,7 @@ const fakeApi = {
     },
   },
   verification: {
-    refreshPassportWalletScore: async () => ({
+    refreshPassportWalletScore: async () => passportRefreshResult ?? ({
       join_eligibility: eligibility("joinable"),
     }),
   },
@@ -70,6 +71,7 @@ mock.module("@/lib/verification/use-very-verification", () => ({
   useVeryVerification: () => ({
     startVerification: async (options?: unknown) => {
       veryStarts.push(options);
+      return { started: true };
     },
     verificationError: null,
     verificationHref: null,
@@ -146,6 +148,7 @@ beforeEach(() => {
   connectCalls = 0;
   connectedWallets = [];
   walletsReady = true;
+  passportRefreshResult = null;
   privyConfigured = true;
   privyConnect = () => {
     connectCalls += 1;
@@ -153,6 +156,67 @@ beforeEach(() => {
 });
 
 describe("useCommunityJoinVerification", () => {
+  test("binds the proof-of-work action to the canonical community id from eligibility", async () => {
+    const { result } = renderHook(() =>
+      useCommunityJoinVerification({
+        communityId: "dankmeme",
+        eligibility: {
+          ...eligibility("verification_required"),
+          community: "com_cmt_canonical",
+        } as JoinEligibility,
+        locale: "en",
+        refetchEligibility: async () => eligibility("verification_required"),
+      })
+    );
+
+    expect(result.current.altchaAction).toBe("community:com_cmt_canonical");
+  });
+
+  test("falls back to the route segment for the proof-of-work action before eligibility loads", async () => {
+    const { result } = renderHook(() =>
+      useCommunityJoinVerification({
+        communityId: "dankmeme",
+        eligibility: null,
+        locale: "en",
+        refetchEligibility: async () => eligibility("verification_required"),
+      })
+    );
+
+    expect(result.current.altchaAction).toBe("community:dankmeme");
+  });
+
+  test("shows the current and required wallet score when the refresh does not qualify", async () => {
+    const belowThreshold = {
+      ...eligibility("verification_required"),
+      wallet_score_status: {
+        current_score_decimal: "7.5",
+        last_scored_at: null,
+        passing_score: false,
+        required_score_decimal: "30",
+      },
+    } as JoinEligibility;
+    passportRefreshResult = { join_eligibility: belowThreshold };
+    const { result } = renderHook(() =>
+      useCommunityJoinVerification({
+        communityId: "com_or",
+        eligibility: eligibility("verification_required"),
+        locale: "en",
+        refetchEligibility: async () => eligibility("verification_required"),
+      })
+    );
+
+    await act(async () => {
+      expect(await result.current.startGateVerification({
+        gate_type: "wallet_score",
+        minimum_score: 30,
+      })).toBe("blocked");
+    });
+
+    expect(result.current.joinError).toContain("7.5");
+    expect(result.current.joinError).toContain("30");
+    expect(toastErrors.some((message) => message.includes("7.5") && message.includes("30"))).toBe(true);
+  });
+
   test("returns the proof-of-work branch without launching another provider", async () => {
     const { result } = renderHook(() =>
       useCommunityJoinVerification({

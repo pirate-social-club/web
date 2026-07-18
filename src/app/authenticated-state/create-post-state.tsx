@@ -1258,7 +1258,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     monetizationState,
     royaltySplit,
     regionalPricingPreview,
-    postAltchaAction: `community:${communityId}`,
+    postAltchaAction: `community:${eligibility?.community ?? community?.id ?? communityId}`,
     postAltchaPayload,
     postAltchaRequired,
     postAltchaResetKey,

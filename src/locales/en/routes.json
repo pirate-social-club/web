@@ -173,6 +173,7 @@
     "connectToContinue": "Connect to continue.",
     "couldNotCheckRequirements": "Couldn't check this community's interaction requirements.",
     "joinInCommunity": "{joinLabel}",
+    "nowFollowingCommunity": "Following {community}",
     "joinToReplyDescription": "{joinLabel} {communityName} before you reply.",
     "joinToReplyTitle": "{joinLabel} to reply",
     "joinToVoteDescription": "{joinLabel} {communityName} before you vote.",

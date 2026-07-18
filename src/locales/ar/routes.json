@@ -173,6 +173,7 @@
     "connectToContinue": "اتصل للمتابعة.",
     "couldNotCheckRequirements": "تعذر التحقق من متطلبات التفاعل في هذا المجتمع.",
     "joinInCommunity": "{joinLabel} في {communityName}",
+    "nowFollowingCommunity": "تتابع الآن {community}",
     "joinToReplyDescription": "{joinLabel} في {communityName} قبل أن ترد.",
     "joinToReplyTitle": "{joinLabel} قبل الرد",
     "joinToVoteDescription": "{joinLabel} في {communityName} قبل أن تصوّت.",

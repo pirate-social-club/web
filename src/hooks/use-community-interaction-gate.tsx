@@ -19,6 +19,8 @@ import type { VerificationIntent } from "@pirate/api-contracts";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { logger } from "@/lib/logger";
+import { solveAltchaChallengeHeadless } from "@/lib/verification/altcha-headless";
+import type { AltchaScope } from "@/lib/api/client-groups-core";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { useZkPassportVerification } from "@/lib/verification/use-zkpassport-verification";
@@ -358,6 +360,16 @@ export function useCommunityInteractionGate({
     return refreshedUser;
   }, [api.users]);
 
+  const solveActionAltcha = React.useCallback(
+    (input: { action: string; scope: AltchaScope }) =>
+      solveAltchaChallengeHeadless({
+        action: input.action,
+        loadChallenge: api.verification.createAltchaChallenge,
+        scope: input.scope,
+      }),
+    [api.verification.createAltchaChallenge],
+  );
+
   const runGatedCommunityAction = useGatedActionRunner({
     altchaLoading,
     buildAltchaBody,
@@ -385,6 +397,7 @@ export function useCommunityInteractionGate({
     setPendingInteraction: (pendingInteraction) => {
       pendingInteractionRef.current = pendingInteraction;
     },
+    solveActionAltcha,
     startDefaultVerification,
     startWalletConnection,
     walletConnectionLoading,

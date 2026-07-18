@@ -109,8 +109,10 @@ export function createRewardsApi(request: ApiRequest) {
       request<ApiRewardCashoutResponse>(`/me/rewards/cashouts/${encodeURIComponent(cashoutId)}`),
 
     // --- Booster (rewarder) side: create → quote → confirm funding funnel. ---
-    getCampaignCapabilities: (): Promise<RewardCampaignCapabilities> =>
-      request<RewardCampaignCapabilities>("/reward_campaign_capabilities"),
+    getCampaignCapabilities: (postId: string): Promise<RewardCampaignCapabilities> =>
+      request<RewardCampaignCapabilities>(
+        buildQueryPath("/reward_campaign_capabilities", { post_id: postId }),
+      ),
 
     getSongOwnerPolicy: (
       communityId: string,

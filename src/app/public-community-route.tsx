@@ -452,6 +452,8 @@ export function PublicCommunityRoutePage({
     selfLoading: joinSelfLoading,
     selfModalOpen: joinSelfModalOpen,
     selfPrompt: joinSelfPrompt,
+    startGateVerification,
+    startSelfVerification,
     setAltchaPayload,
     veryLoading: joinVeryLoading,
     zkPassportError: joinZkPassportError,
@@ -718,9 +720,24 @@ export function PublicCommunityRoutePage({
         selectedNamespaceVerification={handleNamespaces.selectedNamespaceVerification}
         error={handleClaim.error}
         onClaim={handleClaim.onClaim}
+        onClaimGateRecheck={handleClaim.refreshQuote}
         onNotNow={handleClaimNotNow}
         onOpenChange={handleClaimModalOpenChange}
         onSearchChange={handleClaim.onSearchChange}
+        onSelfVerificationClick={() => {
+          void startSelfVerification({
+            membershipGateSummaries: handleClaim.claimGateSummaries,
+            showToastOnError: true,
+          });
+        }}
+        onWalletConnectionClick={() => {
+          const gate = handleClaim.claimGateSummaries.find((summary) =>
+            summary.gate_type === "erc721_holding"
+            || summary.gate_type === "erc721_inventory_match"
+            || summary.gate_type === "asset_balance"
+          );
+          if (gate) void startGateVerification(gate);
+        }}
         open={handleClaimModalOpen}
         phase={handleClaim.phase}
         processing={handleClaim.processing}

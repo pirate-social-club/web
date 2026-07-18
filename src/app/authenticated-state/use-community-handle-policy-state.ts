@@ -23,6 +23,7 @@ export type HandlePricingMode = "flat" | "premium_short";
 export type HandleStatusFilter = "all" | CommunityHandle["status"];
 
 export type HandleLabelClaimRuleDraft = {
+  id?: string;
   key: string;
   selectorType: "exact" | "any";
   labelsText: string;
@@ -142,6 +143,7 @@ export function isLabelClaimRuleDraftSavable(rule: HandleLabelClaimRuleDraft): b
 
 function buildLabelClaimRuleDrafts(policy: CommunityHandlePolicy | null): HandleLabelClaimRuleDraft[] {
   return (policy?.label_claim_rules ?? []).map((rule) => ({
+    id: rule.id,
     key: rule.id,
     selectorType: rule.selector.type,
     labelsText: (rule.selector.labels ?? []).join(", "),
@@ -222,6 +224,7 @@ export function buildHandlePolicySavePayload(draft: HandlePolicyDraft): UpdateCo
       const expression = serializeGateBuilderTreeDraft(rule.gateTreeDraft);
       if (!expression) return [];
       return [{
+        ...(rule.id ? { id: rule.id } : {}),
         selector: rule.selectorType === "any"
           ? { type: "any" as const, labels: null }
           : { type: "exact" as const, labels: parseLabelClaimRuleLabels(rule.labelsText) },

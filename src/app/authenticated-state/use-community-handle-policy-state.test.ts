@@ -89,10 +89,12 @@ describe("community handle claim eligibility policy", () => {
     const payload = buildHandlePolicySavePayload(draft);
     expect(payload.label_claim_rules).toEqual([
       {
+        id: "hlcr_1",
         selector: { type: "exact", labels: ["charizard", "gengar"] },
         claim_gate_expression: expression,
       },
       {
+        id: "hlcr_2",
         selector: { type: "any", labels: null },
         claim_gate_expression: expression,
       },

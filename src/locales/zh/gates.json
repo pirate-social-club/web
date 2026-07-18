@@ -251,6 +251,28 @@
       "inventoryWatchIdentityRequired": "腕表规则需要品牌或型号筛选条件。"
     }
   },
+  "handleClaims": {
+    "requires": "领取此名称需要：",
+    "verifyWithSelf": "使用 Self 验证",
+    "connectWallet": "连接钱包",
+    "checkAgain": "重新检查",
+    "ruleEditor": {
+      "sectionTitle": "按名称设置要求",
+      "sectionDescription": "为特定名称设置独立的领取要求——例如，只有持有喷火龙卡牌的人才能领取“charizard”。规则按从上到下的顺序检查；首个匹配规则会取代命名空间要求。在卡牌要求中选择“使用领取的名称”，即可匹配用户正在领取的名称。",
+      "ruleTitle": "规则 {number}",
+      "moveUp": "上移规则",
+      "moveDown": "下移规则",
+      "remove": "删除规则",
+      "selectorLabel": "此规则适用的名称",
+      "specificNames": "指定名称",
+      "allNames": "所有名称",
+      "namesLabel": "此规则适用的名称",
+      "namesPlaceholder": "charizard, gengar",
+      "invalidExact": "请至少列出一个有效名称（小写字母、数字和连字符），并完成要求设置。",
+      "invalidAny": "请先完成要求设置再保存。",
+      "add": "添加名称规则"
+    }
+  },
   "gateFailure": {
     "nationalityMismatch": "你的身份验证结果不符合该社区要求。",
     "genderMismatch": "你的证件验证结果不符合该社区规则。",

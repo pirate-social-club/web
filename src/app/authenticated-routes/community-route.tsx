@@ -883,9 +883,24 @@ export function CommunityPage({
         error={handleClaim.error}
         forceMobile={isMobileWeb}
         onClaim={handleClaim.onClaim}
+        onClaimGateRecheck={handleClaim.refreshQuote}
         onNotNow={handleClaimNotNow}
         onOpenChange={handleClaimModalOpenChange}
         onSearchChange={handleClaim.onSearchChange}
+        onSelfVerificationClick={() => {
+          void startSelfVerification({
+            membershipGateSummaries: handleClaim.claimGateSummaries,
+            showToastOnError: true,
+          });
+        }}
+        onWalletConnectionClick={() => {
+          const gate = handleClaim.claimGateSummaries.find((summary) =>
+            summary.gate_type === "erc721_holding"
+            || summary.gate_type === "erc721_inventory_match"
+            || summary.gate_type === "asset_balance"
+          );
+          if (gate) void startGateVerification(gate);
+        }}
         open={handleClaimModalOpen}
         phase={handleClaim.phase}
         processing={handleClaim.processing}

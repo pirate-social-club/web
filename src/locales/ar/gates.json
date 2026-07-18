@@ -208,7 +208,9 @@
       "facetLoading": "جارٍ تحميل القيم…",
       "retry": "إعادة المحاولة",
       "noValues": "لم يتم العثور على قيم.",
-      "matches": "{count} نتيجة"
+      "matches": "{count} نتيجة",
+      "claimedNameOption": "استخدام الاسم المُطالَب به",
+      "claimedNameHint": "يطابق الاسم الذي تتم المطالبة به"
     },
     "assets": {
       "loading": "جارٍ تحميل الأصول المدعومة…",

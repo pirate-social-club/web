@@ -30,6 +30,10 @@ export interface HandleSearchResult {
   pricingTier?: string;
   reason?: string;
   paymentInstructions?: HandlePaymentInstructions | null;
+  /** False when a claim gate applies to this name and the viewer does not satisfy it. */
+  claimGateSatisfied?: boolean;
+  /** Human-readable requirement labels for an unsatisfied claim gate. */
+  claimGateRequirements?: string[];
 }
 
 export interface HandleClaimNamespaceOption {

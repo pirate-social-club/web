@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Warning } from "@phosphor-icons/react";
+import { ArrowDown, ArrowUp, Plus, Warning, X } from "@phosphor-icons/react";
 import type { CommunityHandle } from "@pirate/api-contracts";
 
 import { CommunityModerationSaveFooter } from "@/components/compositions/community/moderation-shell/community-moderation-save-footer";
@@ -24,11 +24,127 @@ import { Switch } from "@/components/primitives/switch";
 import { Textarea } from "@/components/primitives/textarea";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
-import { parseSpecialPricesText, type HandlePolicyDraft, type HandlePricingMode, type HandleStatusFilter } from "@/app/authenticated-state/use-community-handle-policy-state";
+import {
+  MAX_LABEL_CLAIM_RULES,
+  isLabelClaimRuleDraftSavable,
+  parseSpecialPricesText,
+  type HandleLabelClaimRuleDraft,
+  type HandlePolicyDraft,
+  type HandlePricingMode,
+  type HandleStatusFilter,
+} from "@/app/authenticated-state/use-community-handle-policy-state";
+import { parseGatePolicyToTreeDraft } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import { GateTreeBuilder } from "@/components/compositions/community/gates-editor/tree-builder/gate-tree-builder";
 import type { GateCapabilitySources } from "@/components/compositions/community/gates-editor/tree-builder/gate-capability-sources";
 
 const EMPTY_HANDLES: CommunityHandle[] = [];
+
+function LabelClaimRuleCard({
+  capabilities,
+  disabled,
+  index,
+  onChange,
+  onMove,
+  onRemove,
+  rule,
+  ruleCount,
+}: {
+  capabilities?: GateCapabilitySources;
+  disabled: boolean;
+  index: number;
+  onChange: (rule: HandleLabelClaimRuleDraft) => void;
+  onMove: (direction: -1 | 1) => void;
+  onRemove: () => void;
+  rule: HandleLabelClaimRuleDraft;
+  ruleCount: number;
+}) {
+  const savable = isLabelClaimRuleDraftSavable(rule);
+  return (
+    <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/10 p-4">
+      <div className="flex items-center gap-2">
+        <Type as="h3" variant="body-strong" className="min-w-0 flex-1">
+          {`Rule ${index + 1}`}
+        </Type>
+        <Button
+          aria-label="Move rule up"
+          disabled={disabled || index === 0}
+          onClick={() => onMove(-1)}
+          size="icon"
+          variant="ghost"
+        >
+          <ArrowUp size={16} />
+        </Button>
+        <Button
+          aria-label="Move rule down"
+          disabled={disabled || index === ruleCount - 1}
+          onClick={() => onMove(1)}
+          size="icon"
+          variant="ghost"
+        >
+          <ArrowDown size={16} />
+        </Button>
+        <Button
+          aria-label="Remove rule"
+          disabled={disabled}
+          onClick={onRemove}
+          size="icon"
+          variant="ghost"
+        >
+          <X size={16} />
+        </Button>
+      </div>
+
+      <div className="flex flex-col gap-2 md:flex-row md:items-center">
+        <div className="w-full md:w-56 md:shrink-0">
+          <Select
+            value={rule.selectorType}
+            onValueChange={(selectorType) => {
+              if (selectorType === "exact" || selectorType === "any") {
+                onChange({ ...rule, selectorType });
+              }
+            }}
+          >
+            <SelectTrigger aria-label="Which names this rule applies to" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="exact">Specific names</SelectItem>
+              <SelectItem value="any">All names</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {rule.selectorType === "exact" ? (
+          <div className="min-w-0 flex-1">
+            <Input
+              aria-label="Names this rule applies to"
+              disabled={disabled}
+              onChange={(event) => onChange({ ...rule, labelsText: event.currentTarget.value })}
+              placeholder="charizard, gengar"
+              value={rule.labelsText}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      <GateTreeBuilder
+        capabilities={capabilities}
+        className="max-w-none p-0"
+        labelBindingEnabled
+        onChange={(gateTreeDraft) => onChange({ ...rule, gateTreeDraft })}
+        showHeader={false}
+        value={rule.gateTreeDraft}
+      />
+
+      {!savable ? (
+        <FormNote tone="warning">
+          {rule.selectorType === "exact"
+            ? "List at least one valid name (lowercase letters, digits, hyphens) and complete the requirement."
+            : "Complete the requirement before saving."}
+        </FormNote>
+      ) : null}
+    </div>
+  );
+}
 
 export interface CommunityHandlePolicyEditorPageProps {
   className?: string;
@@ -324,6 +440,68 @@ export function CommunityHandlePolicyEditorPage({
           <FormNote tone="muted">
             Eligibility is checked when a member claims the name. Holding requirements are non-consumptive: the same eligible asset may satisfy more than one namespace.
           </FormNote>
+        </div>
+      </Section>
+
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Per-name requirements">
+        <div className="space-y-4">
+          <Type as="p" variant="caption">
+            Give specific names their own claim requirements — for example, only holders of a
+            Charizard card may claim “charizard”. Rules are checked top to bottom; the first rule
+            that matches a name applies instead of the namespace requirement above. In card
+            requirements, pick “Use the claimed name” as an attribute value to require an asset
+            matching whichever name is claimed.
+          </Type>
+
+          {draft.labelClaimRules.map((rule, index) => (
+            <LabelClaimRuleCard
+              key={rule.key}
+              capabilities={capabilities}
+              disabled={editorDisabled}
+              index={index}
+              onChange={(nextRule) => {
+                const labelClaimRules = draft.labelClaimRules.slice();
+                labelClaimRules[index] = nextRule;
+                update({ labelClaimRules });
+              }}
+              onMove={(direction) => {
+                const target = index + direction;
+                if (target < 0 || target >= draft.labelClaimRules.length) return;
+                const labelClaimRules = draft.labelClaimRules.slice();
+                const [moved] = labelClaimRules.splice(index, 1);
+                if (!moved) return;
+                labelClaimRules.splice(target, 0, moved);
+                update({ labelClaimRules });
+              }}
+              onRemove={() => {
+                update({ labelClaimRules: draft.labelClaimRules.filter((_, i) => i !== index) });
+              }}
+              rule={rule}
+              ruleCount={draft.labelClaimRules.length}
+            />
+          ))}
+
+          <Button
+            disabled={editorDisabled || draft.labelClaimRules.length >= MAX_LABEL_CLAIM_RULES}
+            leadingIcon={<Plus size={16} />}
+            onClick={() => {
+              update({
+                labelClaimRules: [
+                  ...draft.labelClaimRules,
+                  {
+                    key: globalThis.crypto.randomUUID(),
+                    selectorType: "exact",
+                    labelsText: "",
+                    gateTreeDraft: parseGatePolicyToTreeDraft(null),
+                  },
+                ],
+              });
+            }}
+            size="sm"
+            variant="outline"
+          >
+            Add name rule
+          </Button>
         </div>
       </Section>
 

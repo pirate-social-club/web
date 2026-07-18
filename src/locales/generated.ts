@@ -215,7 +215,9 @@ export const GENERATED_LOCALE_CATALOGS = {
           "facetLoading": "Loading values…",
           "retry": "Try again",
           "noValues": "No values found.",
-          "matches": "{count} matches"
+          "matches": "{count} matches",
+          "claimedNameOption": "Use the claimed name",
+          "claimedNameHint": "Matches the name being claimed"
         },
         "assets": {
           "loading": "Loading supported assets…",
@@ -2195,7 +2197,9 @@ export const GENERATED_LOCALE_CATALOGS = {
           "facetLoading": "جارٍ تحميل القيم…",
           "retry": "إعادة المحاولة",
           "noValues": "لم يتم العثور على قيم.",
-          "matches": "{count} نتيجة"
+          "matches": "{count} نتيجة",
+          "claimedNameOption": "استخدام الاسم المُطالَب به",
+          "claimedNameHint": "يطابق الاسم الذي تتم المطالبة به"
         },
         "assets": {
           "loading": "جارٍ تحميل الأصول المدعومة…",
@@ -4175,7 +4179,9 @@ export const GENERATED_LOCALE_CATALOGS = {
           "facetLoading": "正在加载选项…",
           "retry": "重试",
           "noValues": "未找到选项。",
-          "matches": "{count} 个匹配项"
+          "matches": "{count} 个匹配项",
+          "claimedNameOption": "使用所认领的名称",
+          "claimedNameHint": "匹配正在认领的名称"
         },
         "assets": {
           "loading": "正在加载支持的资产…",

@@ -16,7 +16,9 @@ import {
   executeHandleUsdcCheckout,
   findConnectedFundingWallet,
 } from "@/lib/commerce/routed-checkout";
+import { buildCommunitySidebarRequirements } from "@/lib/community-sidebar-helpers";
 import { getErrorMessage } from "@/lib/error-utils";
+import { useUiLocale } from "@/lib/ui-locale";
 import { getWalletTransactionErrorMessage } from "@/lib/wallet-error-utils";
 import type {
   HandleAvailability,
@@ -75,13 +77,18 @@ function mapPaymentInstructions(
   };
 }
 
-function mapQuoteToSearchResult(quote: CommunityHandleQuote): HandleSearchResult {
+function mapQuoteToSearchResult(quote: CommunityHandleQuote, locale?: string | null): HandleSearchResult {
+  const claimGate = quote.claim_gate;
   return {
     availability: quote.eligible ? mapAvailability(quote.availability) : "unavailable",
     priceCents: quote.price_cents,
     pricingTier: quote.pricing_tier ?? undefined,
     reason: quote.reason ?? undefined,
     paymentInstructions: mapPaymentInstructions(quote.payment_instructions),
+    claimGateSatisfied: claimGate ? claimGate.satisfied : undefined,
+    claimGateRequirements: claimGate && !claimGate.satisfied
+      ? buildCommunitySidebarRequirements({ gateSummaries: claimGate.summaries ?? null, locale })
+      : undefined,
   };
 }
 
@@ -113,6 +120,7 @@ export function useCommunityHandleClaimController(input: {
   debounceMs?: number;
   executeCheckout?: ExecuteHandleCheckout;
 }) {
+  const { locale } = useUiLocale();
   const [phase, setPhase] = React.useState<HandleClaimPhase>("intro");
   const [searchValue, setSearchValue] = React.useState("");
   const [quote, setQuote] = React.useState<CommunityHandleQuote | null>(null);
@@ -159,7 +167,7 @@ export function useCommunityHandleClaimController(input: {
       void input.api.quoteHandle(input.communityId, body).then((nextQuote) => {
         if (sequence !== sequenceRef.current) return;
         setQuote(nextQuote);
-        setSearchResult(mapQuoteToSearchResult(nextQuote));
+        setSearchResult(mapQuoteToSearchResult(nextQuote, locale));
         setError(null);
         setPhase("confirm");
       }).catch((caught) => {
@@ -172,7 +180,7 @@ export function useCommunityHandleClaimController(input: {
     }, debounceMs);
 
     return () => window.clearTimeout(timeout);
-  }, [debounceMs, input.api, input.communityId, input.namespaceVerificationId, searchValue]);
+  }, [debounceMs, input.api, input.communityId, input.namespaceVerificationId, locale, searchValue]);
 
   const onClaim = React.useCallback(async () => {
     if (!quote || !quote.eligible || quote.availability !== "available" || phase === "processing") {

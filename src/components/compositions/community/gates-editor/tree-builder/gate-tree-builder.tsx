@@ -64,10 +64,20 @@ import type { AssetCapabilityDescriptor, AssetCapabilitySource } from "./asset-c
 export type GateTreeBuilderProps = {
   capabilities?: GateCapabilitySources;
   className?: string;
+  /**
+   * When true (per-name claim rules), facet value pickers offer a "claimed name"
+   * binding that serializes as the literal {label} placeholder, resolved by the
+   * API against the name being claimed.
+   */
+  labelBindingEnabled?: boolean;
   onChange: (value: GateBuilderGroupDraft) => void;
   showHeader?: boolean;
   value: GateBuilderGroupDraft;
 };
+
+export const GATE_LABEL_BINDING_PLACEHOLDER = "{label}";
+
+const LabelBindingContext = React.createContext(false);
 
 type TreeBuilderCopy = ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
 
@@ -114,7 +124,7 @@ function RuleToken({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function GateTreeBuilder({ capabilities, className, onChange, showHeader = true, value }: GateTreeBuilderProps) {
+export function GateTreeBuilder({ capabilities, className, labelBindingEnabled = false, onChange, showHeader = true, value }: GateTreeBuilderProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "gates").treeBuilder;
   const policy = serializeGateBuilderTreeDraft(value);
@@ -153,7 +163,9 @@ export function GateTreeBuilder({ capabilities, className, onChange, showHeader 
         </div>
       ) : null}
 
-      <GateGroupEditor addGroupDisabled={addGroupDisabled} addRuleDisabled={addRuleDisabled} capabilities={capabilities} copy={copy} group={value} isRoot onChange={applyValidChange} />
+      <LabelBindingContext.Provider value={labelBindingEnabled}>
+        <GateGroupEditor addGroupDisabled={addGroupDisabled} addRuleDisabled={addRuleDisabled} capabilities={capabilities} copy={copy} group={value} isRoot onChange={applyValidChange} />
+      </LabelBindingContext.Provider>
 
     </section>
   );
@@ -955,12 +967,21 @@ function FacetValuePicker({
   source: AssetSourceDescriptor;
   value: FacetValueSuggestion[];
 }) {
+  const labelBindingEnabled = React.useContext(LabelBindingContext);
   const [options, setOptions] = React.useState<FacetValueSuggestion[]>([]);
   const [optionsLoadFailed, setOptionsLoadFailed] = React.useState(false);
   const [optionsLoading, setOptionsLoading] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [retryAttempt, setRetryAttempt] = React.useState(0);
   const requestGenerationRef = React.useRef(0);
+  const bindingLabel = copy.sources.claimedNameOption;
+  const bindingSelected = value.some((option) => option.value === GATE_LABEL_BINDING_PLACEHOLDER);
+  const bindingVisible = labelBindingEnabled
+    && !bindingSelected
+    && (query.trim().length === 0 || bindingLabel.toLowerCase().includes(query.trim().toLowerCase()));
+  const visibleOptions = bindingVisible
+    ? [{ value: GATE_LABEL_BINDING_PLACEHOLDER }, ...options.filter((option) => option.value !== GATE_LABEL_BINDING_PLACEHOLDER)]
+    : options;
   React.useEffect(() => {
     const generation = ++requestGenerationRef.current;
     let cancelled = false;
@@ -995,8 +1016,8 @@ function FacetValuePicker({
     <Combobox<FacetValueSuggestion, true>
       multiple
       autoHighlight
-      items={options}
-      itemToStringLabel={(option) => option.value}
+      items={visibleOptions}
+      itemToStringLabel={(option) => option.value === GATE_LABEL_BINDING_PLACEHOLDER ? bindingLabel : option.value}
       itemToStringValue={(option) => option.value}
       onInputValueChange={setQuery}
       onValueChange={(nextValue) => {
@@ -1009,7 +1030,9 @@ function FacetValuePicker({
           {(selectedOptions) => (
             <>
               {selectedOptions.map((option: FacetValueSuggestion) => (
-                <ComboboxChip className={CHIPS_CHIP} key={option.value}>{option.value}</ComboboxChip>
+                <ComboboxChip className={CHIPS_CHIP} key={option.value}>
+                  {option.value === GATE_LABEL_BINDING_PLACEHOLDER ? bindingLabel : option.value}
+                </ComboboxChip>
               ))}
               <ComboboxChipsInput
                 aria-label={interpolateMessage(copy.sources.searchFacet, { facet: facetLabel })}
@@ -1035,8 +1058,12 @@ function FacetValuePicker({
           {(option) => (
             <ComboboxItem key={option.value} value={option}>
               <div className="flex w-full items-center justify-between gap-4">
-                <span className="text-base font-medium">{option.value}</span>
-                {option.approximateCount != null ? (
+                <span className="text-base font-medium">
+                  {option.value === GATE_LABEL_BINDING_PLACEHOLDER ? bindingLabel : option.value}
+                </span>
+                {option.value === GATE_LABEL_BINDING_PLACEHOLDER ? (
+                  <span className="text-base text-muted-foreground">{copy.sources.claimedNameHint}</span>
+                ) : option.approximateCount != null ? (
                   <span className="text-base text-muted-foreground">
                     {interpolateMessage(copy.sources.matches, { count: option.approximateCount.toLocaleString() })}
                   </span>

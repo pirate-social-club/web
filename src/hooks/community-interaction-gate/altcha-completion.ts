@@ -72,7 +72,7 @@ export async function completeAltchaAction(input: {
     return;
   }
 
-  input.closeModal();
   await pendingInteraction.onAllowed(input.context);
   input.clearPendingInteraction();
+  input.closeModal();
 }

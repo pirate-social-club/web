@@ -86,7 +86,7 @@
     "passportPromptDescription": "هل أنت إنسان؟ ارفع درجة محفظتك وحاول مرة أخرى.",
     "passportPromptActionLabel": "زيارة Passport.xyz",
     "powOnlyTitle": "مطلوب فحص المتصفح",
-    "powOnlyDescription": "أكمل فحص إثبات عمل سريعًا للمتابعة.",
+    "powOnlyDescription": "أكمل الفحص للمتابعة.",
     "powSkipNote": "يمكن للمستخدمين الموثقين تخطي هذا الفحص."
   },
   "modal": {

@@ -121,6 +121,7 @@ describe("useInteractionAltcha", () => {
   });
 
   test("increments the reset key when action completion fails", async () => {
+    Date.now = () => 54_321;
     const errors: unknown[] = [];
     const { result } = renderAltchaHook();
     const error = new Error("action failed");
@@ -140,7 +141,7 @@ describe("useInteractionAltcha", () => {
     });
 
     expect(errors).toEqual([error]);
-    expect(result.current.altchaResetKey).toBe(1);
+    expect(result.current.altchaResetKey).toBe(54_321);
     expect(result.current.altchaLoading).toBe(false);
   });
 

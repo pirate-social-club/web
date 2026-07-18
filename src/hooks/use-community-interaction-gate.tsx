@@ -204,10 +204,19 @@ export function useCommunityInteractionGate({
         context,
         pendingInteraction,
       });
-    }, (error) => {
+    }, (error, nextResetKey) => {
+      setModalState((current) => current && pendingInteraction.altchaAction && pendingInteraction.altchaScope ? {
+        ...current,
+        body: buildAltchaBody({
+          action: pendingInteraction.altchaAction,
+          onVerified: completeAltchaAction,
+          resetKey: nextResetKey,
+          scope: pendingInteraction.altchaScope,
+        }),
+      } : current);
       toast.error(getErrorMessage(error, "Browser anti-bot check failed."));
     });
-  }, [closeModal, completeAltchaActionWithPayload]);
+  }, [buildAltchaBody, closeModal, completeAltchaActionWithPayload]);
 
   const {
     startVerification: startVeryVerification,

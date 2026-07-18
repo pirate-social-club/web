@@ -92,9 +92,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "passportPromptTitle": "Higher Score Required",
         "passportPromptDescription": "Are you human? Improve your wallet score and try again.",
         "passportPromptActionLabel": "Visit Passport.xyz",
-        "powOnlyTitle": "Browser anti-bot check required",
-        "powOnlyDescription": "Complete a quick browser anti-bot check to continue.",
-        "powSkipNote": "A verified identity or wallet gate can skip this check when one is offered."
+        "powOnlyTitle": "Browser check required",
+        "powOnlyDescription": "Complete the check to continue.",
+        "powSkipNote": "A verified identity or wallet can skip this check."
       },
       "modal": {
         "anyTitle": "Choose a way to continue",
@@ -1840,7 +1840,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "passportPromptDescription": "هل أنت إنسان؟ ارفع درجة محفظتك وحاول مرة أخرى.",
         "passportPromptActionLabel": "زيارة Passport.xyz",
         "powOnlyTitle": "مطلوب فحص المتصفح",
-        "powOnlyDescription": "أكمل فحص إثبات عمل سريعًا للمتابعة.",
+        "powOnlyDescription": "أكمل الفحص للمتابعة.",
         "powSkipNote": "يمكن للمستخدمين الموثقين تخطي هذا الفحص."
       },
       "modal": {
@@ -3587,7 +3587,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "passportPromptDescription": "你是真人吗？提高你的钱包分数后再试。",
         "passportPromptActionLabel": "访问 Passport.xyz",
         "powOnlyTitle": "需要浏览器检查",
-        "powOnlyDescription": "完成快速工作量证明检查以继续。",
+        "powOnlyDescription": "完成检查以继续。",
         "powSkipNote": "已验证用户可以跳过此检查。"
       },
       "modal": {

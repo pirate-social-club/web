@@ -119,9 +119,25 @@ describe("completeAltchaAction", () => {
     });
 
     expect(calls).toEqual([
-      "close",
       { altchaPayload: "proof" },
       "clear-pending",
+      "close",
     ]);
+  });
+
+  test("keeps the modal and pending interaction open when the action fails", async () => {
+    const calls: string[] = [];
+    const error = new Error("submit failed");
+
+    await expect(completeAltchaAction({
+      clearPendingInteraction: () => calls.push("clear-pending"),
+      closeModal: () => calls.push("close"),
+      context: { altchaPayload: "proof" },
+      pendingInteraction: createPendingInteraction(gate("already_joined", {}, [altchaRequirement]), () => {
+        throw error;
+      }),
+    })).rejects.toBe(error);
+
+    expect(calls).toEqual([]);
   });
 });

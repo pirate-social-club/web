@@ -117,7 +117,7 @@ export function derivativeSourceToComposerReference(
   source: ApiDerivativeSource,
 ): ComposerReference {
   return {
-    id: `story:asset:${source.asset}`,
+    id: source.source_ref,
     title: source.title,
     subtitle: source.creator_handle ?? source.creator_display_name ?? undefined,
     licensePreset: source.license_preset,

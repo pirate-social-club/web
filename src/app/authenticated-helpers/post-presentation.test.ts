@@ -918,6 +918,7 @@ describe("post presentation songs", () => {
         relationshipType: "remix_of",
         title: "Travel Guide",
         artist: "4dmonsterlobsters.pirate",
+        artistHref: "/u/4dmonsterlobsters.pirate",
         href: "/p/post_pst_original",
       },
     ]);

@@ -173,6 +173,7 @@
     "connectToContinue": "连接后继续。",
     "couldNotCheckRequirements": "无法检查这个社区的互动要求。",
     "joinInCommunity": "在 {communityName} 中{joinLabel}",
+    "nowFollowingCommunity": "已关注 {community}",
     "joinToReplyDescription": "在回复前，先在 {communityName} 中{joinLabel}。",
     "joinToReplyTitle": "{joinLabel}后回复",
     "joinToVoteDescription": "在投票前，先在 {communityName} 中{joinLabel}。",

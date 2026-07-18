@@ -251,6 +251,15 @@ function actionNodeHasAltchaOnlyPath(action: RequiredActionNode): boolean {
   return items.every(actionNodeHasAltchaOnlyPath);
 }
 
+// Strictly PoW-only: every gate atom is altcha_pow. Matches the API's
+// open-participation predicate — OR-trees that PoW could satisfy still
+// require membership server-side, so they must keep the join path here.
+function isPowOnlyCommunity(gate: CommunityGateData): boolean {
+  const requirements = gate.preview.membership_gate_summaries;
+  return requirements.length > 0
+    && requirements.every((summary) => summary.gate_type === "altcha_pow");
+}
+
 function canSatisfyWithAltchaOnly(gate: CommunityGateData): boolean {
   const actionSet = gate.eligibility.gate_evaluation?.required_action_set as RequiredActionNode | null | undefined;
   if (actionSet) {
@@ -295,6 +304,8 @@ export function useGatedActionRunner({
   setPendingInteraction,
   showError,
   showInfo,
+  showSuccess,
+  solveActionAltcha,
   startDefaultVerification,
   startWalletConnection,
   walletConnectionLoading,
@@ -326,6 +337,8 @@ export function useGatedActionRunner({
   setPendingInteraction: (pendingInteraction: PendingInteraction | null) => void;
   showError?: (message: string) => void;
   showInfo?: (message: string, options?: ToastInfoOptions) => void;
+  showSuccess?: (message: string) => void;
+  solveActionAltcha?: ((input: { action: string; scope: AltchaScope }) => Promise<string>) | null;
   startDefaultVerification: NonNullable<BuildBlockedModalStateArgs["startDefaultVerification"]>;
   startWalletConnection?: NonNullable<BuildBlockedModalStateArgs["startWalletConnection"]>;
   walletConnectionLoading?: boolean;
@@ -435,10 +448,15 @@ export function useGatedActionRunner({
     const shouldUsePublicReplyAltcha = isPublicReply
       && state === "verification_required"
       && canSatisfyWithAltchaOnly(gate);
+    // PoW-only communities admit non-member interactions server-side: the
+    // write carries an action-bound proof, no join happens, and the API
+    // subscribes the actor as a follower.
+    const shouldUseOpenPowParticipation = state === "verification_required"
+      && isPowOnlyCommunity(gate);
     // Public replies satisfy a PoW membership policy as an action-bound
     // comment_create proof. They must never take the community_join path.
     const shouldUseActionAltcha = actionAltchaConfig
-      && (state === "allowed" || shouldUsePublicReplyAltcha);
+      && (state === "allowed" || shouldUsePublicReplyAltcha || shouldUseOpenPowParticipation);
     if (shouldUseActionAltcha) {
       let allowedCompleted = false;
       let allowedInFlight: Promise<void> | null = null;
@@ -465,6 +483,37 @@ export function useGatedActionRunner({
           }
         }
       };
+      if (solveActionAltcha) {
+        // Solve the proof invisibly — PoW needs computation, not user input.
+        // Any failure falls through to the visible widget modal below.
+        try {
+          const payload = await solveActionAltcha({
+            action: actionAltchaConfig.actionRef,
+            scope: actionAltchaConfig.scope,
+          });
+          await guardedOnAllowed({ altchaPayload: payload });
+          logger.info("[interaction-gate] allowed", {
+            ...logBase,
+            eligibilityStatus: gate.eligibility.status,
+            reason: "headless_pow",
+          });
+          if (shouldUseOpenPowParticipation) {
+            // The API auto-followed the community as part of the write.
+            invalidateCommunityGate(communityId);
+            const notifySuccess = showSuccess ?? toast.success;
+            notifySuccess(interactionCopy.nowFollowingCommunity.replace("{community}", gate.preview.display_name));
+          }
+          return "allowed";
+        } catch (error) {
+          if (isMembershipRequiredWriteRejection(error)) {
+            invalidateCommunityGate(communityId);
+          }
+          logger.warn("[interaction-gate] headless proof-of-work attempt failed", {
+            ...logBase,
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
       const copy = proofOfWorkModalCopy(gate, interactionCopy.locale);
       setPendingInteraction({
         action,
@@ -650,6 +699,8 @@ export function useGatedActionRunner({
     setPendingInteraction,
     showError,
     showInfo,
+    showSuccess,
+    solveActionAltcha,
     startDefaultVerification,
     startWalletConnection,
     walletConnectionLoading,

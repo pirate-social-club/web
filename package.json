@@ -84,6 +84,7 @@
     "@zkpassport/sdk": "^0.14.2",
     "agora-rtc-sdk-ng": "^4.24.3",
     "altcha": "^3.0.8",
+    "altcha-lib": "2.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "qrcode.react": "^4.2.0",

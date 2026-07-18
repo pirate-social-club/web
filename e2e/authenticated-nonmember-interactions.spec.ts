@@ -4,6 +4,7 @@ import {
   installAuthenticatedApiMocks,
   installMockSession,
 } from "./fixtures/api-mocks";
+import { createSolvableAltchaChallenge } from "./fixtures/altcha-challenge";
 import {
   createMockPostResponse,
   mockCommunityId,
@@ -109,13 +110,10 @@ async function installNonMemberFixture(page: Page, captures: Captures): Promise<
     }
     if (method === "GET" && path === "/verification/altcha/challenge") {
       captures.challengeUrls.push(url);
-      await route.fulfill(jsonResponse({
-        algorithm: "SHA-256",
-        challenge: "deadbeef",
-        maxnumber: 100000,
-        salt: "00",
-        signature: "00",
-      }));
+      await route.fulfill(jsonResponse(await createSolvableAltchaChallenge({
+        action: url.searchParams.get("action") ?? "",
+        scope: url.searchParams.get("scope") ?? "",
+      })));
       return;
     }
     if (
@@ -145,44 +143,26 @@ async function installNonMemberFixture(page: Page, captures: Captures): Promise<
   await installMockSession(page);
 }
 
-async function solveVisibleAltcha(page: Page, payload: string): Promise<void> {
-  const widget = page.locator("altcha-widget");
-  await widget.waitFor({ state: "attached" });
-  await widget.evaluate((element, nextPayload) => {
-    element.dispatchEvent(new CustomEvent("verified", {
-      bubbles: true,
-      detail: { payload: nextPayload },
-    }));
-  }, payload);
-}
-
 test.describe("mobile non-member gated interactions", () => {
   test.use({ viewport: { height: 844, width: 390 } });
 
-  test("joins before a PoW-gated vote, then requests an action-bound proof", async ({ page }) => {
+  test("votes in a PoW-only community without joining, using an action-bound proof", async ({ page }) => {
     const captures: Captures = { challengeUrls: [], commentPosts: 0, joins: 0, votePosts: 0 };
     await installNonMemberFixture(page, captures);
     await page.goto(`/p/${mockFeedPostId}`);
 
-    const joinToVote = page.getByRole("button", { name: "Join to vote" });
-    await expect(joinToVote).toBeVisible();
-    await expect(page.getByRole("button", { name: /^upvote$/i })).toHaveCount(0);
-    await joinToVote.click();
-    await expect.poll(() => captures.challengeUrls.length).toBe(1);
-    expect(captures.challengeUrls[0]?.searchParams.get("scope")).toBe("community_join");
-    expect(captures.votePosts).toBe(0);
+    // PoW-only gate: the vote control is offered directly, no join CTA.
+    const upvote = page.getByRole("button", { name: /^upvote$/i });
+    await expect(upvote).toBeVisible();
+    await expect(page.getByRole("button", { name: "Join to vote" })).toHaveCount(0);
 
-    await solveVisibleAltcha(page, "join-proof");
-    await page.getByRole("dialog").getByRole("button", { name: /^continue$/i }).click();
-    await expect.poll(() => captures.joins).toBe(1);
-    await expect(page.getByRole("button", { name: /^upvote$/i })).toBeVisible();
-    await page.getByRole("button", { name: /^upvote$/i }).click();
-    await expect.poll(() => captures.challengeUrls.length).toBe(2);
-    expect(captures.challengeUrls[1]?.searchParams.get("scope")).toBe("vote");
-    expect(captures.votePosts).toBe(0);
-
-    await solveVisibleAltcha(page, "vote-proof");
+    await upvote.click();
+    // The proof is solved headlessly, so the vote lands without any modal.
     await expect.poll(() => captures.votePosts).toBe(1);
+    expect(captures.challengeUrls).toHaveLength(1);
+    expect(captures.challengeUrls[0]?.searchParams.get("scope")).toBe("vote");
+    expect(captures.joins).toBe(0);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await expectNoBrowserError(page);
   });
 
@@ -197,14 +177,12 @@ test.describe("mobile non-member gated interactions", () => {
     await reply.click();
     await page.getByRole("textbox", { name: "Write a reply", exact: true }).fill("Commenting without joining");
     await page.getByRole("button", { name: "Post", exact: true }).click();
-    await expect.poll(() => captures.challengeUrls.length).toBe(1);
-    expect(captures.challengeUrls[0]?.searchParams.get("scope")).toBe("comment_create");
-    expect(captures.commentPosts).toBe(0);
-    expect(captures.joins).toBe(0);
-
-    await solveVisibleAltcha(page, "comment-proof");
+    // Headless proof: the reply posts without a browser-check modal.
     await expect.poll(() => captures.commentPosts).toBe(1);
+    expect(captures.challengeUrls).toHaveLength(1);
+    expect(captures.challengeUrls[0]?.searchParams.get("scope")).toBe("comment_create");
     expect(captures.joins).toBe(0);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await expectNoBrowserError(page);
   });
 

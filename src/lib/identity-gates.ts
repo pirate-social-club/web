@@ -179,6 +179,21 @@ export function hasActionTimeCheck(gates: Array<Pick<MembershipGateSummary, "gat
   return (gates ?? []).some((gate) => gate.gate_type === "altcha_pow");
 }
 
+/**
+ * A community whose entire membership gate is proof-of-work admits non-member
+ * votes, comments and posts: each write carries its own action-scoped proof,
+ * so joining first proves nothing more (the API mirrors this predicate in
+ * open-participation.ts and auto-follows the actor instead). Gates mixing PoW
+ * with identity/asset atoms — including OR-trees PoW alone could satisfy —
+ * still require membership server-side, so they keep the join surfaces.
+ */
+export function isPowOnlyGate(
+  gates: Array<Pick<MembershipGateSummary, "gate_type">> | null | undefined,
+): boolean {
+  const summaries = gates ?? [];
+  return summaries.length > 0 && summaries.every((gate) => gate.gate_type === "altcha_pow");
+}
+
 export function formatGateRequirement(
   gate: MembershipGateSummary,
   options?: { audience?: IdentityGateAudience; locale?: string | null; provider?: RequirementProviderContext },

@@ -12,6 +12,7 @@ import {
   FormSectionHeading,
 } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
+import { EditableNumberInput } from "@/components/primitives/editable-number-input";
 import { Label } from "@/components/primitives/label";
 import {
   Select,
@@ -215,17 +216,11 @@ function TierRow({
         <div>
           <FormFieldLabel label={mc.priceAdjustmentLabel} />
           <div className="relative">
-            <Input
+            <EditableNumberInput
               className="h-10 pr-8"
               inputMode="numeric"
-              onChange={(event) => {
-                const parsed = parseInt(event.target.value, 10);
-                if (!Number.isNaN(parsed)) {
-                  onUpdate?.({ adjustment_value: percentToAdjustment(parsed) });
-                }
-              }}
+              onValueChange={(value) => onUpdate?.({ adjustment_value: percentToAdjustment(value) })}
               placeholder={mc.priceAdjustmentPlaceholder}
-              type="number"
               value={adjustmentToPercent(tier.adjustment_value)}
             />
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">

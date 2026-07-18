@@ -5,6 +5,7 @@ import * as React from "react";
 import { Button } from "@/components/primitives/button";
 import { Checkbox } from "@/components/primitives/checkbox";
 import { Input } from "@/components/primitives/input";
+import { EditableNumberInput } from "@/components/primitives/editable-number-input";
 import { ImageSquare, Lock, Minus, Plus, Users } from "@phosphor-icons/react";
 import {
   FormFieldLabel,
@@ -131,17 +132,13 @@ export function NumericStepper({
       >
         <Minus className="size-4" />
       </Button>
-      <Input
+      <EditableNumberInput
         className="h-12 w-20 text-center rounded-[var(--radius-lg)]"
         inputMode="numeric"
         max={max}
         min={min}
-        onChange={(e) => {
-          const parsed = parseInt(e.target.value, 10);
-          if (!Number.isNaN(parsed)) onChange(parsed);
-        }}
-        type="number"
-        value={String(value)}
+        onValueChange={onChange}
+        value={value}
       />
       <Button
         disabled={value >= max}

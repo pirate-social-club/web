@@ -12,6 +12,7 @@ const createKeys: string[] = [];
 const quoteKeys: string[] = [];
 let connectedWallets: Array<{ address: string }> = [];
 let campaignStatus = "draft";
+let confirmStatus = "confirmed";
 let confirmError: unknown = null;
 let createError: unknown = null;
 let quoteError: unknown = null;
@@ -93,8 +94,8 @@ const fakeApi = {
     confirmFundingQuote: async () => {
       calls.confirm += 1;
       if (confirmError) throw confirmError;
-      campaignStatus = "active";
-      return { ...quote(), status: "confirmed" };
+      if (confirmStatus === "confirmed") campaignStatus = "active";
+      return { ...quote(), status: confirmStatus };
     },
   },
 };
@@ -138,6 +139,7 @@ beforeEach(() => {
   createKeys.length = 0;
   quoteKeys.length = 0;
   campaignStatus = "draft";
+  confirmStatus = "confirmed";
   confirmError = null;
   createError = null;
   quoteError = null;
@@ -284,6 +286,23 @@ describe("useBoostCampaignController", () => {
     await waitFor(() => expect(restoredView.result.current.sheetProps.state).toBe("funding-review"));
     act(() => restoredView.result.current.openBoost());
     expect(restoredView.result.current.sheetProps.state).toBe("funding-review");
+    expect(calls.confirm).toBe(1);
+  });
+
+  test("refund-pending confirmation becomes terminal support review without activation polling", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    confirmStatus = "refund_pending";
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("funding-review"));
+
+    expect(view.result.current.sheetProps.errorMessage).toContain("refund is pending");
+    expect(view.result.current.sheetProps.supportReference).toStartWith("rfq_");
+    expect(localStorage.getItem("pirate_reward_pending_funding:com_test:pst_test")).toBeNull();
     expect(calls.confirm).toBe(1);
   });
 });

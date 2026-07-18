@@ -182,7 +182,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     const storedCampaignId = terminal?.campaignId ?? pending?.campaignId
       ?? globalThis.localStorage?.getItem(campaignStorageKey(input.communityId, input.postId));
     void Promise.all([
-      api.rewards.getCampaignCapabilities(),
+      api.rewards.getCampaignCapabilities(input.postId),
       api.rewards.getSongOwnerPolicy(input.communityId, input.postId).catch((error: unknown) => {
         if (isApiNotFoundError(error)) return null;
         throw error;
@@ -440,8 +440,14 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   return {
     // Keep the entry point visible for blocked songs so the menu explains why a
     // second campaign cannot be created instead of silently making Boost vanish.
-    canBoost: Boolean(input.song && input.authenticated && capabilities?.enabled),
-    canManagePolicy: Boolean(input.song && input.authenticated && input.viewerIsAuthor && capabilities?.enabled),
+    canBoost: Boolean(input.song && input.authenticated && capabilities?.enabled && capabilities.post_eligible),
+    canManagePolicy: Boolean(
+      input.song
+      && input.authenticated
+      && input.viewerIsAuthor
+      && capabilities?.enabled
+      && capabilities.post_eligible
+    ),
     campaign,
     openBoost,
     openPolicy: () => setPolicyOpen(true),

@@ -16,6 +16,7 @@ let confirmStatus = "confirmed";
 let confirmError: unknown = null;
 let createError: unknown = null;
 let quoteError: unknown = null;
+let postEligible = true;
 
 const campaign = () => ({
   id: "rcp_test",
@@ -62,8 +63,9 @@ const quote = () => ({
 
 const fakeApi = {
   rewards: {
-    getCampaignCapabilities: async () => ({
+    getCampaignCapabilities: async (_postId: string) => ({
       enabled: true,
+      post_eligible: postEligible,
       min_budget_cents: 100,
       max_budget_cents: 10_000,
       max_reward_cents: 500,
@@ -143,11 +145,19 @@ beforeEach(() => {
   confirmError = null;
   createError = null;
   quoteError = null;
+  postEligible = true;
   connectedWallets = [];
   localStorage.clear();
 });
 
 describe("useBoostCampaignController", () => {
+  test("hides Boost when the running campaign allowlist excludes the post", async () => {
+    postEligible = false;
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(false));
+    expect(view.result.current.canManagePolicy).toBe(false);
+  });
+
   test("creates once and re-quotes the existing draft campaign", async () => {
     const view = renderHook(() => useBoostCampaignController(input()));
     await waitFor(() => expect(view.result.current.canBoost).toBe(true));

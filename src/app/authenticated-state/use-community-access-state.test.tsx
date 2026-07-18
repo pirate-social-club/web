@@ -142,6 +142,60 @@ describe("useCommunityAccessState", () => {
     });
   });
 
+  test("echoes explicit gate ids through a nested structural edit and save request", async () => {
+    const calls = installCommunityApiMocks();
+    const originalPolicy = {
+      version: 1 as const,
+      expression: {
+        op: "and" as const,
+        children: [
+          { op: "gate" as const, gate: { gate_id: "age-stable", type: "minimum_age" as const, provider: "self" as const, minimum_age: 21 } },
+          {
+            op: "or" as const,
+            children: [
+              { op: "gate" as const, gate: { gate_id: "human-stable", type: "unique_human" as const, provider: "self" as const } },
+              { op: "gate" as const, gate: { gate_id: "pow-stable", type: "altcha_pow" as const } },
+            ],
+          },
+        ],
+      },
+    };
+    const { result } = renderAccessHook({
+      community: createCommunity({ gate_policy: originalPolicy }),
+      useGateTreeBuilder: true,
+    });
+
+    await waitFor(() => expect(result.current.gateTreeDraft.children).toHaveLength(2));
+    const nested = result.current.gateTreeDraft.children[1];
+    if (nested?.kind !== "group") throw new Error("expected nested group");
+    act(() => result.current.setGateTreeDraft({
+      ...result.current.gateTreeDraft,
+      children: [
+        result.current.gateTreeDraft.children[0]!,
+        { ...nested, children: [...nested.children].reverse() },
+      ],
+    }));
+    act(() => result.current.handleSaveGates());
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+
+    expect(calls.updateGates[0]?.body.gate_policy).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          { op: "gate", gate: { gate_id: "age-stable", type: "minimum_age", provider: "self", minimum_age: 21 } },
+          {
+            op: "or",
+            children: [
+              { op: "gate", gate: { gate_id: "pow-stable", type: "altcha_pow" } },
+              { op: "gate", gate: { gate_id: "human-stable", type: "unique_human", provider: "self" } },
+            ],
+          },
+        ],
+      },
+    });
+  });
+
   test("preserves unknown atoms when a flagged tree policy is edited", async () => {
     const calls = installCommunityApiMocks();
     const futureGate = { type: "future_reputation_gate", threshold: 7 };

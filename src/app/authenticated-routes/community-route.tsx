@@ -424,8 +424,14 @@ export function CommunityPage({
     sessionUserId: session?.user?.id,
   });
   const handleChooseJoinRequirement = React.useCallback(async (gate: MembershipGateSummary) => {
-    setVerificationChooserModalOpen(false);
+    // Keep the chooser open (with the chosen row loading) until the selected
+    // flow has actually launched, and keep it open when the attempt could not
+    // start or did not qualify so the remaining options stay reachable.
     const result = await startGateVerification(gate);
+    if (result === "blocked") {
+      return;
+    }
+    setVerificationChooserModalOpen(false);
     if (result === "altcha") {
       setProofOfWorkModalOpen(true);
     }

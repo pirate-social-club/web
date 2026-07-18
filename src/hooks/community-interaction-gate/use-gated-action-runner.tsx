@@ -583,7 +583,7 @@ export function useGatedActionRunner({
         ? (() => {
             const copy = proofOfWorkModalCopy(gate, interactionCopy.locale);
             const body = buildAltchaBody({
-              action: `community:${communityId}`,
+              action: `community:${gate.eligibility.community || gate.preview.id}`,
               scope: "community_join",
             });
             const hasPowFallback = hasRefreshablePowFallback(gate);

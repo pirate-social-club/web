@@ -65,7 +65,7 @@ type JoinAttemptOptions = {
 };
 
 type JoinAttemptResult = "blocked" | "failed" | "joined" | "requested";
-type GateVerificationStartResult = "altcha" | "started";
+type GateVerificationStartResult = "altcha" | "blocked" | "started";
 
 const SELF_CAPABILITIES = ["unique_human", "age_over_18", "minimum_age", "nationality", "gender"] as const;
 type SelfCapability = typeof SELF_CAPABILITIES[number];
@@ -295,11 +295,18 @@ export function useCommunityJoinVerification({
 	      const gateFailureMessage = updatedEligibility.status === "gate_failed"
 	        ? getGateFailureMessage(updatedEligibility, { locale })
 	        : null;
-	      setJoinError(gateFailureMessage ?? getVerificationPromptCopy(
-	        "passport",
-	        getPassportPromptCapabilities(details ?? updatedEligibility),
-	        { locale },
-	      ).description);
+	      const scoreStatus = refreshed.wallet_score_status ?? updatedEligibility.wallet_score_status ?? null;
+	      const scoreMessage = scoreStatus?.current_score_decimal != null && scoreStatus.required_score_decimal != null
+	        ? `Your wallet score is ${scoreStatus.current_score_decimal}; this community requires ${scoreStatus.required_score_decimal}.`
+	        : null;
+	      const message = [gateFailureMessage, scoreMessage].filter(Boolean).join(" ")
+	        || getVerificationPromptCopy(
+	          "passport",
+	          getPassportPromptCapabilities(details ?? updatedEligibility),
+	          { locale },
+	        ).description;
+	      setJoinError(message);
+	      toast.error(message);
 	      return "blocked";
 	    } catch (error: unknown) {
 	      const apiError = error as ApiError;
@@ -344,23 +351,22 @@ export function useCommunityJoinVerification({
       || gate.gate_type === "erc721_inventory_match"
       || gate.gate_type === "asset_balance"
     ) {
-      startWalletGateVerification();
-      return "started";
+      return startWalletGateVerification() === "started" ? "started" : "blocked";
     }
     if (gate.gate_type === "wallet_score") {
-      await refreshPassportAndJoin({
+      const result = await refreshPassportAndJoin({
         failure_reason: null,
         gate_evaluation: null,
         membership_gate_summaries: [gate],
         wallet_score_status: null,
       });
-      return "started";
+      return result === "blocked" || result === "failed" ? "blocked" : "started";
     }
 
     const acceptedProviders = gate.accepted_providers ?? [];
     if (gate.gate_type === "unique_human" && acceptedProviders.includes("very")) {
-      await startVeryVerification();
-      return "started";
+      const result = await startVeryVerification();
+      return result.started ? "started" : "blocked";
     }
 
     const missingCapabilities = [getGateCapability(gate)];
@@ -368,20 +374,20 @@ export function useCommunityJoinVerification({
     const useZkPassport = acceptedProviders.includes("zkpassport") &&
       (isTelegramMiniAppRuntime() || !acceptedProviders.includes("self"));
     if (useZkPassport) {
-      await startZkPassportVerification({
+      const result = await startZkPassportVerification({
         missingCapabilities,
         membershipGateSummaries,
         showToastOnError: true,
       });
-      return "started";
+      return result.started ? "started" : "blocked";
     }
 
-    await startSelfVerification({
+    const result = await startSelfVerification({
       missingCapabilities,
       membershipGateSummaries,
       showToastOnError: true,
     });
-    return "started";
+    return result.started ? "started" : "blocked";
   }, [refreshPassportAndJoin, startSelfVerification, startVeryVerification, startWalletGateVerification, startZkPassportVerification]);
 
   React.useEffect(() => {
@@ -538,7 +544,9 @@ export function useCommunityJoinVerification({
 
   return {
     handleJoin,
-    altchaAction: `community:${communityId}`,
+    // The API binds the join proof to the canonical public community id, so the
+    // challenge action must use the server-reported id, not the route segment.
+    altchaAction: `community:${eligibility?.community ?? communityId}`,
     altchaPayload,
     altchaRequired,
     altchaScope: "community_join" as const,

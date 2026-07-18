@@ -43,6 +43,10 @@ export function useVeryVerification(input: {
   const mobileFallbackTimerRef = React.useRef<number | null>(null);
   const mobilePollingTimerRef = React.useRef<number | null>(null);
   const widgetRef = React.useRef<{ destroy?: () => void; open?: () => void } | null>(null);
+  // The Very widget exposes no close/dismiss callback, so track settlement
+  // ourselves and treat overlay removal without success/error as a dismissal.
+  const widgetSettledRef = React.useRef(false);
+  const widgetObserverRef = React.useRef<MutationObserver | null>(null);
 
   const clearMobileTimers = React.useCallback(() => {
     if (mobileFallbackTimerRef.current != null) {
@@ -56,6 +60,9 @@ export function useVeryVerification(input: {
   }, []);
 
   const cleanupWidget = React.useCallback(() => {
+    widgetObserverRef.current?.disconnect();
+    widgetObserverRef.current = null;
+    widgetSettledRef.current = true;
     clearMobileTimers();
     widgetRef.current?.destroy?.();
     widgetRef.current = null;
@@ -116,6 +123,7 @@ export function useVeryVerification(input: {
 
     cleanupWidget();
     setVerificationHref(null);
+    widgetSettledRef.current = false;
     const { createVeryWidget } = await loadVeryWidgetModule();
     bridgeFetchProxyCleanupRef.current = installVeryBridgeFetchProxy(result.id);
     widgetRef.current = createVeryWidget({
@@ -125,9 +133,11 @@ export function useVeryVerification(input: {
       query: JSON.stringify(launch.query),
       verifyUrl: launch.verify_url,
       onSuccess: async (proof: string) => {
+        widgetSettledRef.current = true;
         await completeVeryProof(result, proof);
       },
       onError: (error: string) => {
+        widgetSettledRef.current = true;
         setVerificationError(error || "Very verification failed");
         setVerificationSessionId(null);
         setVerificationHref(null);
@@ -138,7 +148,29 @@ export function useVeryVerification(input: {
     });
 
     widgetRef.current.open?.();
-  }, [cleanupWidget, completeVeryProof]);
+    if (typeof MutationObserver !== "undefined" && typeof document !== "undefined") {
+      const observer = new MutationObserver(() => {
+        if (widgetSettledRef.current || !widgetRef.current) {
+          return;
+        }
+        if (document.querySelector(".very-dialog-overlay")) {
+          return;
+        }
+        // The user dismissed the Very dialog (X or backdrop); the widget does
+        // not notify us, so clear the pending state to unblock the join CTA.
+        widgetSettledRef.current = true;
+        widgetRef.current = null;
+        bridgeFetchProxyCleanupRef.current?.();
+        bridgeFetchProxyCleanupRef.current = null;
+        clearMobileTimers();
+        setVerificationSessionId(null);
+        setVerificationHref(null);
+        setVerificationLoading(false);
+      });
+      observer.observe(document.body, { childList: true });
+      widgetObserverRef.current = observer;
+    }
+  }, [cleanupWidget, clearMobileTimers, completeVeryProof]);
 
   const handleVeryMobileCompletion = React.useCallback(async (
     result: VerificationSession,

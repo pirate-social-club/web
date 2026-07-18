@@ -33,6 +33,7 @@ const CREATE_KEY_STORAGE_PREFIX = "pirate_reward_create_key:";
 const QUOTE_KEY_STORAGE_PREFIX = "pirate_reward_quote_key:";
 
 const TERMINAL_FUNDING_CODES = new Set([
+  "funding_refund_pending",
   "funding_quote_expired",
   "funding_confirmed_after_quote_expiry",
   "funding_quote_already_claimed",
@@ -121,6 +122,9 @@ function writePendingFunding(communityId: string, postId: string, pending: Pendi
 }
 
 function terminalFundingMessage(code: string): string {
+  if (code === "funding_refund_pending") {
+    return "Funds were received, but the campaign was not activated. A refund is pending; do not send again.";
+  }
   if (code === "funding_refunded" || code === "funding_quote_already_claimed") {
     return "Funding was refunded or already entered refund handling. The campaign was not activated.";
   }
@@ -310,6 +314,11 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     setSheetState("confirming");
     try {
       const funding = await api.rewards.confirmFundingQuote(targetCampaign.id, targetQuote.id, { tx_hash: hash });
+      // Keep this string check compatible with the currently pinned API contract while
+      // the release pin advances to the API version that adds refund_pending.
+      if ((funding.status as string) === "refund_pending") {
+        throw new ApiError("funding_refund_pending", "Funding reached the treasury and is awaiting refund.", 409);
+      }
       if (funding.status === "refunded") {
         throw new ApiError("funding_refunded", "Funding was refunded and the campaign was not activated.", 409);
       }

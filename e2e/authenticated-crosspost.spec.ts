@@ -332,7 +332,7 @@ test.describe("authenticated crosspost flow with mocked API", () => {
       }));
     });
 
-    await expect(dialog).toContainText("Proof-of-work complete");
+    await expect(dialog).toContainText("Finishing…");
     const continueButton = dialog.getByRole("button", { name: /^continue$/i });
     await expect(continueButton).toBeEnabled();
     await continueButton.click();

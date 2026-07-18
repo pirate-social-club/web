@@ -125,6 +125,7 @@ export function CommentCard({
   const [replyAttachment, setReplyAttachment] = React.useState<PostThreadReplyAttachment | null>(null);
   const [replyIdentityMode, setReplyIdentityMode] = React.useState<PostThreadIdentityMode>("public");
   const [replyBusy, setReplyBusy] = React.useState(false);
+  const replyBusyRef = React.useRef(false);
   const replyContainerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -155,9 +156,10 @@ export function CommentCard({
 
   const handleReplySubmit = React.useCallback(async () => {
     const trimmed = replyBody.trim();
-    if (!canSubmitReply || !onReplySubmit) {
+    if (!canSubmitReply || !onReplySubmit || replyBusyRef.current) {
       return;
     }
+    replyBusyRef.current = true;
     try {
       setReplyBusy(true);
       const result = await onReplySubmit({
@@ -175,6 +177,7 @@ export function CommentCard({
       setReplyIdentityMode("public");
       setReplyOpen(false);
     } finally {
+      replyBusyRef.current = false;
       setReplyBusy(false);
     }
   }, [canSubmitReply, onReplySubmit, replyAttachment, replyBody, replyIdentity?.anonymousScope, replyIdentityMode]);

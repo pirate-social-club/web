@@ -168,10 +168,10 @@ function nestedField(body, path) {
 
 function shasMatch(expected, actual) {
   if (!expected || !actual) return false;
-  const expectedText = String(expected);
-  const actualText = String(actual);
+  const expectedText = String(expected).match(/^([0-9a-f]{7,40})(?:$|-)/i)?.[1] ?? "";
+  const actualText = String(actual).match(/^([0-9a-f]{7,40})(?:$|-)/i)?.[1] ?? "";
+  if (!expectedText || !actualText) return false;
   if (expectedText === actualText) return true;
-  if (!/^[0-9a-f]+$/i.test(expectedText) || !/^[0-9a-f]+$/i.test(actualText)) return false;
   if (Math.min(expectedText.length, actualText.length) < 7) return false;
   return expectedText.startsWith(actualText) || actualText.startsWith(expectedText);
 }

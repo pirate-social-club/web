@@ -208,7 +208,9 @@
       "facetLoading": "Loading values…",
       "retry": "Try again",
       "noValues": "No values found.",
-      "matches": "{count} matches"
+      "matches": "{count} matches",
+      "claimedNameOption": "Use the claimed name",
+      "claimedNameHint": "Matches the name being claimed"
     },
     "assets": {
       "loading": "Loading supported assets…",

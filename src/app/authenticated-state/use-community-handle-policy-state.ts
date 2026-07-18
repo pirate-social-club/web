@@ -22,10 +22,20 @@ import { getErrorMessage } from "@/lib/error-utils";
 export type HandlePricingMode = "flat" | "premium_short";
 export type HandleStatusFilter = "all" | CommunityHandle["status"];
 
+export type HandleLabelClaimRuleDraft = {
+  key: string;
+  selectorType: "exact" | "any";
+  labelsText: string;
+  gateTreeDraft: GateBuilderGroupDraft;
+};
+
+export const MAX_LABEL_CLAIM_RULES = 20;
+
 export type HandlePolicyDraft = {
   claimsEnabled: boolean;
   claimGateMode: "none" | "inherit_community" | "explicit";
   claimGateTreeDraft: GateBuilderGroupDraft;
+  labelClaimRules: HandleLabelClaimRuleDraft[];
   pricingMode: HandlePricingMode;
   standardPriceCents: number | null;
   premiumPriceCents: number | null;
@@ -110,12 +120,42 @@ function pricingModeFromApi(policy: CommunityHandlePolicy | null): HandlePricing
   return "flat";
 }
 
+export function parseLabelClaimRuleLabels(labelsText: string): string[] {
+  return Array.from(new Set(
+    labelsText
+      .split(/[\n,\s]+/)
+      .map((label) => label.trim().toLowerCase().replace(/^@/, ""))
+      .filter((label) => label.length > 0),
+  ));
+}
+
+export function isValidLabelClaimRuleLabel(label: string): boolean {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(label);
+}
+
+export function isLabelClaimRuleDraftSavable(rule: HandleLabelClaimRuleDraft): boolean {
+  if (!isGateBuilderDraftSavable(rule.gateTreeDraft)) return false;
+  if (rule.selectorType === "any") return true;
+  const labels = parseLabelClaimRuleLabels(rule.labelsText);
+  return labels.length > 0 && labels.length <= 100 && labels.every(isValidLabelClaimRuleLabel);
+}
+
+function buildLabelClaimRuleDrafts(policy: CommunityHandlePolicy | null): HandleLabelClaimRuleDraft[] {
+  return (policy?.label_claim_rules ?? []).map((rule) => ({
+    key: rule.id,
+    selectorType: rule.selector.type,
+    labelsText: (rule.selector.labels ?? []).join(", "),
+    gateTreeDraft: parseGatePolicyToTreeDraft(rule.claim_gate_expression),
+  }));
+}
+
 export function buildHandlePolicyDraft(policy: CommunityHandlePolicy | null): HandlePolicyDraft {
   const settings = policy?.settings ?? {};
   return {
     claimsEnabled: policy?.claims_enabled ?? true,
     claimGateMode: policy?.claim_gate_mode ?? "none",
     claimGateTreeDraft: parseGatePolicyToTreeDraft(policy?.claim_gate_expression),
+    labelClaimRules: buildLabelClaimRuleDrafts(policy),
     pricingMode: pricingModeFromApi(policy),
     standardPriceCents: settings.flat_price_cents ?? DEFAULT_STANDARD_PRICE_CENTS,
     premiumPriceCents: settings.premium_price_cents ?? DEFAULT_PREMIUM_PRICE_CENTS,
@@ -175,6 +215,19 @@ export function buildHandlePolicySavePayload(draft: HandlePolicyDraft): UpdateCo
       ? serializeGateBuilderTreeDraft(draft.claimGateTreeDraft)
       : null,
     eligibility_timing: "claim_time",
+    label_claim_rules: draft.labelClaimRules.flatMap((rule) => {
+      // The save guard blocks unsavable rules; an unserializable draft here means
+      // the guard was bypassed, and dropping the rule would silently weaken the
+      // policy, so keep the entry out only when there is genuinely no expression.
+      const expression = serializeGateBuilderTreeDraft(rule.gateTreeDraft);
+      if (!expression) return [];
+      return [{
+        selector: rule.selectorType === "any"
+          ? { type: "any" as const, labels: null }
+          : { type: "exact" as const, labels: parseLabelClaimRuleLabels(rule.labelsText) },
+        claim_gate_expression: expression,
+      }];
+    }),
     settings,
   };
 }
@@ -260,10 +313,23 @@ export function useCommunityHandlePolicyState({
   }, [loadHandles]);
 
   const hasChanges = React.useMemo(() => {
+    const savedRules = policy?.label_claim_rules ?? [];
+    const labelClaimRulesChanged =
+      savedRules.length !== draft.labelClaimRules.length ||
+      draft.labelClaimRules.some((rule, index) => {
+        const savedRule = savedRules[index];
+        if (!savedRule) return true;
+        return (
+          savedRule.selector.type !== rule.selectorType ||
+          (savedRule.selector.labels ?? []).join(",") !== parseLabelClaimRuleLabels(rule.labelsText).join(",") ||
+          !gateTreeDraftMatchesPolicy(savedRule.claim_gate_expression, rule.gateTreeDraft)
+        );
+      });
     const saved = buildHandlePolicyDraft(policy);
     return (
       saved.claimsEnabled !== draft.claimsEnabled ||
       saved.claimGateMode !== draft.claimGateMode ||
+      labelClaimRulesChanged ||
       !gateTreeDraftMatchesPolicy(
         policy?.claim_gate_expression,
         draft.claimGateTreeDraft,
@@ -285,6 +351,7 @@ export function useCommunityHandlePolicyState({
       || saving
       || !hasChanges
       || (draft.claimGateMode === "explicit" && !isGateBuilderDraftSavable(draft.claimGateTreeDraft))
+      || !draft.labelClaimRules.every(isLabelClaimRuleDraftSavable)
     ) return;
     setSaving(true);
     void api.communities

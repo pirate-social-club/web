@@ -168,6 +168,24 @@ function SearchResultFeedback({
     );
   }
 
+  if (result.claimGateSatisfied === false && (result.claimGateRequirements?.length ?? 0) > 0) {
+    return (
+      <div className="space-y-1">
+        <FormNote className="inline-flex items-center gap-2" tone="warning">
+          <Prohibit className="size-4" weight="bold" />
+          This name requires:
+        </FormNote>
+        <ul className="ms-6 list-disc space-y-0.5">
+          {result.claimGateRequirements?.map((requirement) => (
+            <li className={cn(typeVariants({ variant: "caption" }))} key={requirement}>
+              {requirement}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
   return (
     <FormNote className="inline-flex items-center gap-2" tone="warning">
       <X className="size-4" weight="bold" />

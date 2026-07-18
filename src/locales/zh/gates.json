@@ -90,7 +90,7 @@
     "passportPromptDescription": "你是真人吗？提高你的钱包分数后再试。",
     "passportPromptActionLabel": "访问 Passport.xyz",
     "powOnlyTitle": "需要浏览器检查",
-    "powOnlyDescription": "完成快速工作量证明检查以继续。",
+    "powOnlyDescription": "完成检查以继续。",
     "powSkipNote": "已验证用户可以跳过此检查。",
     "requirementSummaryAll": "完成{requirements}。",
     "requirementSummaryAny": "满足以下任一项即可：{requirements}。",

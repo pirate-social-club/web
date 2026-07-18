@@ -160,13 +160,13 @@ describe("completeAltchaAction", () => {
     });
 
     expect(calls).toEqual([
-      "close",
       { altchaPayload: "proof" },
       "clear-pending",
+      "close",
     ]);
   });
 
-  test("invalidates deferred membership disagreement and clears the pending action", async () => {
+  test("invalidates deferred membership disagreement and keeps the action retryable", async () => {
     const calls: string[] = [];
     const rejection = new ApiError(
       "eligibility_failed",
@@ -189,6 +189,23 @@ describe("completeAltchaAction", () => {
       ),
     })).rejects.toBe(rejection);
 
-    expect(calls).toEqual(["close", "invalidate:community-1", "clear-pending"]);
+    expect(calls).toEqual(["invalidate:community-1"]);
+  });
+
+  test("keeps the modal and pending interaction open when the action fails", async () => {
+    const calls: string[] = [];
+    const error = new Error("submit failed");
+
+    await expect(completeAltchaAction({
+      clearPendingInteraction: () => calls.push("clear-pending"),
+      closeModal: () => calls.push("close"),
+      context: { altchaPayload: "proof" },
+      invalidateCommunityGate: () => undefined,
+      pendingInteraction: createPendingInteraction(gate("already_joined", {}, [altchaRequirement]), () => {
+        throw error;
+      }),
+    })).rejects.toBe(error);
+
+    expect(calls).toEqual([]);
   });
 });

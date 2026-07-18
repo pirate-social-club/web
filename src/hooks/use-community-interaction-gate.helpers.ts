@@ -9,6 +9,7 @@ import type {
   CommunityGateRequirementGroup,
   CommunityGateRequirementStatus,
 } from "@/components/compositions/community/gate-requirements.types";
+import type { AltchaScope } from "@/lib/api/client-groups-core";
 import {
   getJoinCtaLabel,
   getGateFailureMessage,
@@ -99,6 +100,8 @@ export type BuildBlockedModalStateArgs = {
 
 export type PendingInteraction = {
   action: InteractionAction;
+  altchaAction?: string;
+  altchaScope?: AltchaScope;
   commentId?: string;
   communityId: string;
   gate: CommunityGateData;

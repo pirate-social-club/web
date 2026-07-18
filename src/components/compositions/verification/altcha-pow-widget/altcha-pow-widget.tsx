@@ -224,10 +224,10 @@ export function AltchaPowWidget({
         title={(
           <span className="flex items-center gap-2 text-success">
             <CheckCircle aria-hidden className="size-5 shrink-0" weight="fill" />
-            Proof-of-work complete
+            Finishing&hellip;
           </span>
         )}
-        subtitle={onVerified ? "Finishing this action..." : "Proof accepted."}
+        subtitle={onVerified ? undefined : "Proof accepted."}
       />
     );
   }

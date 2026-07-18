@@ -213,15 +213,25 @@ export function useCommunityInteractionGate({
         invalidateCommunityGate,
         pendingInteraction,
       });
-    }, (error) => {
+    }, (error, nextResetKey) => {
+      setModalState((current) => current && pendingInteraction.altchaAction && pendingInteraction.altchaScope ? {
+        ...current,
+        body: buildAltchaBody({
+          action: pendingInteraction.altchaAction,
+          onVerified: completeAltchaAction,
+          resetKey: nextResetKey,
+          scope: pendingInteraction.altchaScope,
+        }),
+      } : current);
       logger.warn("[interaction-gate] action after browser check failed", {
         action: pendingInteraction.action,
         communityId: pendingInteraction.communityId,
         message: getErrorMessage(error, "Browser anti-bot check failed."),
         postId: pendingInteraction.postId,
       });
+      toast.error(getErrorMessage(error, "Browser anti-bot check failed."));
     });
-  }, [closeModal, completeAltchaActionWithPayload, invalidateCommunityGate]);
+  }, [buildAltchaBody, closeModal, completeAltchaActionWithPayload, invalidateCommunityGate]);
 
   const {
     startVerification: startVeryVerification,

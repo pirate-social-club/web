@@ -441,16 +441,35 @@ export function useGatedActionRunner({
       && (state === "allowed" || shouldUsePublicReplyAltcha);
     if (shouldUseActionAltcha) {
       let allowedCompleted = false;
+      let allowedInFlight: Promise<void> | null = null;
       const guardedOnAllowed: PendingInteraction["onAllowed"] = async (context) => {
         if (allowedCompleted) {
           return;
         }
-        allowedCompleted = true;
-        await onAllowed(context);
+        if (allowedInFlight) {
+          try {
+            await allowedInFlight;
+            return;
+          } catch {
+            // The current invocation can retry after the earlier attempt fails.
+          }
+        }
+        const attempt = Promise.resolve(onAllowed(context));
+        allowedInFlight = attempt;
+        try {
+          await attempt;
+          allowedCompleted = true;
+        } finally {
+          if (allowedInFlight === attempt) {
+            allowedInFlight = null;
+          }
+        }
       };
       const copy = proofOfWorkModalCopy(gate, interactionCopy.locale);
       setPendingInteraction({
         action,
+        altchaAction: actionAltchaConfig.actionRef,
+        altchaScope: actionAltchaConfig.scope,
         commentId,
         communityId,
         gate,
@@ -495,9 +514,9 @@ export function useGatedActionRunner({
               eligibilityStatus: gate.eligibility.status,
               reason: "refreshed_verification_capabilities",
             });
+            await guardedOnAllowed();
             setPendingInteraction(null);
             closeModal();
-            await guardedOnAllowed();
           })
           .catch((error) => {
             logger.warn("[interaction-gate] session refresh before action proof failed", {

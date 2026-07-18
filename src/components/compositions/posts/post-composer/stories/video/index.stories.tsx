@@ -109,11 +109,13 @@ function progress(input: {
 }
 
 function VideoUsesSongComposer({
+  caption = "Danced to Sunset Driver at the warehouse show.",
   composerStep = "details",
   derivativeStep,
   locked = false,
   title = "Dance cut from the floor",
 }: {
+  caption?: string;
   composerStep?: "details" | "settings" | "publish";
   derivativeStep: DerivativeStepState;
   locked?: boolean;
@@ -161,7 +163,7 @@ function VideoUsesSongComposer({
       mode="video"
       titleValue={title}
       titleCountLabel="24/300"
-      captionValue="Danced to Sunset Driver at the warehouse show."
+      captionValue={caption}
       derivativeStep={derivativeStep}
       license={{
         presetId: locked ? "commercial-use" : "non-commercial",
@@ -659,6 +661,8 @@ export const UsesSongTermsAccepted: Story = {
   name: "Uses Song / Terms Accepted",
   render: () => (
     <VideoUsesSongComposer
+      caption=""
+      composerStep="publish"
       derivativeStep={videoUsesSongStep({
         references: [sunsetDriverSource],
         sourceTermsAccepted: true,

@@ -640,6 +640,37 @@ describe("post presentation videos", () => {
     if (content.type !== "video") return;
     expect(content.aspectRatio).toBe(9 / 16);
   });
+
+  test("maps a referenced song into published video card attribution", () => {
+    const post = createVideoPost({ rights_basis: "derivative" });
+    post.derivative_sources = [{
+      source_ref: "story:asset:asset_song",
+      title: "Midnight Signal",
+      kind: "song",
+      relationship_type: "references_song",
+      community: "com_cmt_songs",
+      asset: "asset_song",
+      source_post: "post_source_song",
+      story_ip: null,
+      story_license_terms: null,
+      creator_user: "usr_artist",
+      creator_handle: "artist.pirate",
+    }];
+
+    const content = toCommunityPostContent(post);
+
+    expect(content.type).toBe("video");
+    if (content.type !== "video") return;
+    expect(content.rightsBasis).toBe("derivative");
+    expect(content.upstreamAttributions).toEqual([{
+      assetId: "asset_song",
+      relationshipType: "references_song",
+      title: "Midnight Signal",
+      artist: "artist.pirate",
+      artistHref: "/u/artist.pirate",
+      href: "/p/post_source_song",
+    }]);
+  });
 });
 
 describe("post presentation songs", () => {
@@ -887,6 +918,7 @@ describe("post presentation songs", () => {
         relationshipType: "remix_of",
         title: "Travel Guide",
         artist: "4dmonsterlobsters.pirate",
+        artistHref: "/u/4dmonsterlobsters.pirate",
         href: "/p/post_pst_original",
       },
     ]);

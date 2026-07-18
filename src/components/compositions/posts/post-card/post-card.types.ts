@@ -57,6 +57,7 @@ export interface UpstreamAttribution {
   relationshipType: "remix_of" | "references_song" | "references_video" | "inspired_by" | "samples";
   title: string;
   artist?: string;
+  artistHref?: string;
   href?: string;
 }
 

@@ -1,7 +1,8 @@
 import type { PlaybackState, PostCardContent, StemKind } from "@/components/compositions/posts/post-card/post-card.types";
 
-import type { AttachmentState, LinkPreviewState, LiveComposerState, VideoDetailsState } from "./post-composer.types";
+import type { AttachmentState, DerivativeStepState, LinkPreviewState, LiveComposerState, VideoDetailsState } from "./post-composer.types";
 import type { LiveRoomParticipant } from "@/components/compositions/posts/post-card/post-card.types";
+import { buildPublicProfilePath } from "@/lib/profile-routing";
 
 const fallbackImageSrc = "https://picsum.photos/seed/post-composer-image-preview/720/720";
 const fallbackVideoSrc = "https://www.w3schools.com/html/mov_bbb.mp4";
@@ -33,6 +34,7 @@ export function buildPostComposerPreviewContent({
   access,
   attachment,
   body,
+  derivativeStep,
   linkPreview,
   price,
   vinylReleaseUrl,
@@ -53,6 +55,7 @@ export function buildPostComposerPreviewContent({
   access: "free" | "paid";
   attachment: AttachmentState;
   body: string;
+  derivativeStep?: DerivativeStepState;
   linkPreview?: LinkPreviewState;
   liveCoverSrc?: string;
   liveState?: LiveComposerState;
@@ -95,6 +98,9 @@ export function buildPostComposerPreviewContent({
   }
 
   if (attachment.kind === "video") {
+    const songReferences = derivativeStep?.visible && derivativeStep.trigger === "uses_song"
+      ? derivativeStep.references ?? []
+      : [];
     return {
       type: "video",
       src: attachment.previewUrl ?? fallbackVideoSrc,
@@ -108,6 +114,16 @@ export function buildPostComposerPreviewContent({
       priceLabel: access === "paid" ? priceLabel : undefined,
       hasEntitlement: true,
       playbackState: "idle",
+      rightsBasis: songReferences.length ? "derivative" : undefined,
+      upstreamAttributions: songReferences.length
+        ? songReferences.map((reference) => ({
+            assetId: reference.id,
+            relationshipType: "references_song" as const,
+            title: reference.title,
+            artist: reference.subtitle,
+            artistHref: reference.subtitle ? buildPublicProfilePath(reference.subtitle) : undefined,
+          }))
+        : undefined,
     };
   }
 

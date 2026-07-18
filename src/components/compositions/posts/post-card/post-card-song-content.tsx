@@ -233,21 +233,24 @@ function sourceTitle(source: UpstreamAttribution): string {
   return source.artist ? `${source.title} by ${source.artist}` : source.title;
 }
 
-function getDerivativeSummary(upstreamAttributions?: UpstreamAttribution[]): string | null {
+function getDerivativeSummary(
+  upstreamAttributions: UpstreamAttribution[] | undefined,
+  songMode: SongContentSpec["songMode"],
+): string | null {
   if (!upstreamAttributions || upstreamAttributions.length === 0) {
     return null;
   }
 
   if (upstreamAttributions.length === 1) {
     const source = upstreamAttributions[0];
-    if (source.relationshipType === "remix_of") {
-      return `Remix of ${source.title}`;
+    if (songMode === "remix") {
+      return `${source.title} remix`;
     }
     return `${relationshipLabel(source)} ${sourceTitle(source)}`;
   }
 
-  if (upstreamAttributions[0].relationshipType === "remix_of") {
-    return `Remix of ${upstreamAttributions[0].title} +${upstreamAttributions.length - 1}`;
+  if (songMode === "remix") {
+    return `${upstreamAttributions[0].title} remix +${upstreamAttributions.length - 1}`;
   }
 
   return `${relationshipLabel(upstreamAttributions[0])} ${sourceTitle(upstreamAttributions[0])} +${upstreamAttributions.length - 1}`;
@@ -635,7 +638,9 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
     }
   };
 
-  const derivativeSummary = ui.showAttribution ? getDerivativeSummary(upstreamAttributions) : null;
+  const derivativeSummary = ui.showAttribution
+    ? getDerivativeSummary(upstreamAttributions, content.songMode)
+    : null;
   const derivativeHref = upstreamAttributions?.find((source) => source.href)?.href;
   const playbackDurationMs = ui.previewMaxMs;
   const scrubberDurationMs = playbackDurationMs && playbackDurationMs > 0 ? playbackDurationMs : 100;

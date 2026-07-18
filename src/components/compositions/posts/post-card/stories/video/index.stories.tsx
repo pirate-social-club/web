@@ -89,6 +89,28 @@ export const Paused: Story = {
   ),
 };
 
+export const UsesSongAttribution: Story = {
+  name: "Derivative / Uses Song",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Dance cut from the floor"
+      content={{
+        ...baseVideo,
+        rightsBasis: "derivative",
+        upstreamAttributions: [{
+          assetId: "asset_ast_source_song_1",
+          relationshipType: "references_song",
+          title: "Sunset Driver",
+          artist: "lena-wave.pirate",
+          artistHref: "/u/lena-wave.pirate",
+          href: "#source-song",
+        }],
+      }}
+    />
+  ),
+};
+
 export const Buffering: Story = {
   name: "Playback / Buffering",
   render: () => (

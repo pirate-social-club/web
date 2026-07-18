@@ -339,6 +339,41 @@ describe("buildPostComposerPreviewContent", () => {
     });
   });
 
+  test("shows the selected source song in video publish previews", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "free",
+      attachment: {
+        kind: "video",
+        label: "dance.mp4",
+        previewUrl: "blob:https://app.test/video",
+      },
+      body: "",
+      derivativeStep: {
+        visible: true,
+        trigger: "uses_song",
+        references: [{
+          id: "story:asset:asset_song",
+          title: "Midnight Signal",
+          subtitle: "artist.pirate",
+        }],
+      },
+      price: "",
+      title: "Dance clip",
+    });
+
+    expect(content).toMatchObject({
+      type: "video",
+      rightsBasis: "derivative",
+      upstreamAttributions: [{
+        assetId: "story:asset:asset_song",
+        relationshipType: "references_song",
+        title: "Midnight Signal",
+        artist: "artist.pirate",
+        artistHref: "/u/artist.pirate",
+      }],
+    });
+  });
+
   test("uses fetched link preview title instead of typed title for generic links", () => {
     const content = buildPostComposerPreviewContent({
       access: "free",

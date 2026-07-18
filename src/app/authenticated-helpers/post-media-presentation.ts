@@ -16,6 +16,7 @@ import { getAccessToken } from "@/lib/api/session-store";
 import { buildStoryExplorerIpAssetUrl } from "@/lib/story/story-portal";
 import { toast } from "@/components/primitives/sonner";
 import { normalizeMediaAspectRatio } from "@/components/compositions/posts/video-preview-layout";
+import { buildPublicProfilePath } from "@/lib/profile-routing";
 
 type StoryRoyaltyAsset = NonNullable<SongPresentationOptions["asset"]>;
 type VinylReleaseCarrier = Pick<ApiCommunityListing | ApiCommunityPurchase, "vinyl_release_provider" | "vinyl_release_url">;
@@ -385,6 +386,7 @@ function toUpstreamAttributions(
     relationshipType: source.relationship_type,
     title: source.title,
     artist: source.creator_handle ?? source.creator_display_name ?? undefined,
+    artistHref: source.creator_handle ? buildPublicProfilePath(source.creator_handle) : undefined,
     href: source.source_post
       ? `/p/${source.source_post}`
       : buildStoryExplorerIpAssetUrl(source.story_ip, songOptions?.storyNetwork) ?? undefined,
@@ -467,9 +469,11 @@ export function toVideoPostContent(
     playbackState: assetSourceState?.playbackState ?? "idle",
     posterSrc: primaryMedia?.poster_ref ?? undefined,
     priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,
+    rightsBasis: post.rights_basis ?? undefined,
     storyRegistration: toStoryRegistrationStatus(songOptions?.asset),
     src: assetSourceState?.src ?? primaryMedia?.storage_ref ?? "",
     title: post.song_title ?? input.title,
+    upstreamAttributions: toUpstreamAttributions(postResponse, songOptions),
   };
 }
 

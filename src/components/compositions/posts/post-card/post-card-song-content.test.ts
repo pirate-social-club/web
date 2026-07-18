@@ -137,7 +137,28 @@ describe("deriveSongUI", () => {
     );
 
     expect(markup).toContain('href="/songs/dark-dividend"');
-    expect(markup).toContain(">Remix of Dark Dividend</a>");
+    expect(markup).toContain(">Dark Dividend remix</a>");
+    expect(markup).not.toContain("Remix of Dark Dividend");
+  });
+
+  test("uses remix presentation instead of generic relationship copy", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          songMode: "remix",
+          upstreamAttributions: [{
+            assetId: "ast_midnight_waves",
+            relationshipType: "references_song",
+            title: "Midnight Waves",
+            artist: "The Sailors",
+          }],
+        },
+      }),
+    );
+
+    expect(markup).toContain("Midnight Waves remix");
+    expect(markup).not.toContain("References Midnight Waves");
   });
 
   test("requires age proof until the viewer is verified allowed", () => {

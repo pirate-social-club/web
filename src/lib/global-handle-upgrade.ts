@@ -1,7 +1,20 @@
 import type { HandleUpgradeQuoteResponse } from "@/lib/api/client-api-types";
 
 export function normalizeGlobalHandleStem(value: string): string {
-  return value.trim().replace(/\.pirate$/iu, "").toLowerCase();
+  const trimmed = value.trim().replace(/\.pirate$/iu, "").toLowerCase();
+  if (/^[\x00-\x7F]+$/u.test(trimmed)) return trimmed;
+
+  try {
+    return new URL(`https://${trimmed}.pirate`).hostname.split(".")[0] ?? trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
+export function isValidGlobalHandleCandidate(value: string): boolean {
+  const label = normalizeGlobalHandleStem(value);
+  if (!label || label.length > 32) return false;
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(label) || /^xn--[a-z0-9-]+$/u.test(label);
 }
 
 export function isCurrentGlobalHandleCandidate(value: string, currentHandle: string): boolean {

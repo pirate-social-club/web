@@ -21,6 +21,7 @@ import { generateSignupStyleHandle } from "@/lib/generated-handle-suggestion";
 import {
   isCurrentGlobalHandleCandidate,
   isFreeCleanupHandleQuote,
+  isValidGlobalHandleCandidate,
   normalizeGlobalHandleStem,
 } from "@/lib/global-handle-upgrade";
 import type { HandleUpgradeQuoteResponse } from "@/lib/api/client-api-types";
@@ -89,6 +90,7 @@ function quoteToHandleSuggestion(username: string, eligible: boolean, reason?: s
 type UseDomainsTabMessages = {
   connectPrimaryWalletError: string;
   chooseHandleError: string;
+  invalidHandleError: string;
   reconnectPrimaryWalletError: string;
   renameFailedError: string;
 };
@@ -428,6 +430,12 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
       setError(null);
       return;
     }
+    if (!isValidGlobalHandleCandidate(label)) {
+      setPaidQuote(null);
+      setBuyNameChecking(false);
+      setError(messages.invalidHandleError);
+      return;
+    }
     const requestId = buyNameQuoteRequestRef.current + 1;
     buyNameQuoteRequestRef.current = requestId;
     setBuyNameChecking(true);
@@ -450,7 +458,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
           setBuyNameChecking(false);
         }
       });
-  }, [api, busy, buyNameValue, messages.chooseHandleError, session?.profile?.global_handle?.label]);
+  }, [api, busy, buyNameValue, messages.chooseHandleError, messages.invalidHandleError, session?.profile?.global_handle?.label]);
 
   React.useEffect(() => {
     if (!enabled || phase !== "buy_name" || paidClaimedHandle) return;
@@ -466,6 +474,12 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
       setBuyNameChecking(false);
       return;
     }
+    if (!isValidGlobalHandleCandidate(label)) {
+      setPaidQuote(null);
+      setBuyNameChecking(false);
+      setError(messages.invalidHandleError);
+      return;
+    }
     setBuyNameChecking(true);
     const timeout = window.setTimeout(() => {
       quoteBuyName({ desiredValue: label, surfaceErrors: false });
@@ -474,7 +488,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
       window.clearTimeout(timeout);
       setBuyNameChecking(false);
     };
-  }, [buyNameValue, enabled, paidClaimedHandle, phase, quoteBuyName, session?.profile?.global_handle?.label]);
+  }, [buyNameValue, enabled, messages.invalidHandleError, paidClaimedHandle, phase, quoteBuyName, session?.profile?.global_handle?.label]);
 
   const handleBuyNameQuote = React.useCallback(() => {
     quoteBuyName({ surfaceErrors: true });

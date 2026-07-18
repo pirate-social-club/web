@@ -23,6 +23,7 @@ import { centsToUsd, formatUsdCompactLabel } from "@/lib/formatting/currency";
 import {
   isCurrentGlobalHandleCandidate,
   isFreeCleanupHandleQuote,
+  isValidGlobalHandleCandidate,
 } from "@/lib/global-handle-upgrade";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -481,6 +482,7 @@ function BuyNamePhase({
 }) {
   const displayValue = value.replace(/\.pirate$/iu, "");
   const isCurrentName = isCurrentGlobalHandleCandidate(displayValue, currentHandle);
+  const isValidCandidate = isValidGlobalHandleCandidate(displayValue);
   const payable = Boolean(quote?.eligible && quote.quote && (quote.price_cents ?? 0) > 0);
   const freeCleanupClaim = isFreeCleanupHandleQuote({
     cleanupRenameAvailable,
@@ -575,7 +577,7 @@ function BuyNamePhase({
         ) : null}
         <Button
           className="h-14 w-full text-lg"
-          disabled={busy || isCurrentName || displayValue.trim().length === 0 || (Boolean(quote) && !payable && !freeCleanupClaim)}
+          disabled={busy || isCurrentName || !isValidCandidate || (Boolean(quote) && !payable && !freeCleanupClaim)}
           loading={busy}
           onClick={payable || freeCleanupClaim ? onClaim : onQuote}
         >

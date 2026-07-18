@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   isCurrentGlobalHandleCandidate,
   isFreeCleanupHandleQuote,
+  isValidGlobalHandleCandidate,
   normalizeGlobalHandleStem,
 } from "./global-handle-upgrade";
 
@@ -14,6 +15,13 @@ describe("global handle upgrades", () => {
   test("recognizes the user's active name instead of treating it as unavailable", () => {
     expect(isCurrentGlobalHandleCandidate("captain", "captain.pirate")).toBe(true);
     expect(isCurrentGlobalHandleCandidate("new-captain", "captain.pirate")).toBe(false);
+  });
+
+  test("validates candidates before they reach the quote endpoint", () => {
+    expect(isValidGlobalHandleCandidate(" clean-name-123.pirate ")).toBe(true);
+    expect(isValidGlobalHandleCandidate("pokémon")).toBe(true);
+    expect(isValidGlobalHandleCandidate("not a handle!")).toBe(false);
+    expect(isValidGlobalHandleCandidate("a".repeat(33))).toBe(false);
   });
 
   test("recognizes base and discounted free cleanup quotes without a paid quote id", () => {

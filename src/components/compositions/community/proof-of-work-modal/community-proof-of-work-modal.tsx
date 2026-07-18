@@ -62,7 +62,7 @@ export function CommunityProofOfWorkModal({
         challengeLoader={challengeLoader}
         locale={locale}
         onPayloadChange={onPayloadChange}
-        onVerified={onVerified ?? (() => onContinue())}
+        onVerified={onVerified}
         retryKey={retryKey}
         scope={scope}
       />

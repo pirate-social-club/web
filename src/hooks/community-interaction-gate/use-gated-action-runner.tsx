@@ -12,6 +12,7 @@ import type { AltchaScope } from "@/lib/api/client-groups-core";
 import {
   getMissingCapabilitiesFromGateEvaluation,
   hasAltchaProofAction,
+  isPowOnlyGate,
 } from "@/lib/identity-gates";
 import { logger } from "@/lib/logger";
 import {
@@ -251,13 +252,8 @@ function actionNodeHasAltchaOnlyPath(action: RequiredActionNode): boolean {
   return items.every(actionNodeHasAltchaOnlyPath);
 }
 
-// Strictly PoW-only: every gate atom is altcha_pow. Matches the API's
-// open-participation predicate — OR-trees that PoW could satisfy still
-// require membership server-side, so they must keep the join path here.
 function isPowOnlyCommunity(gate: CommunityGateData): boolean {
-  const requirements = gate.preview.membership_gate_summaries;
-  return requirements.length > 0
-    && requirements.every((summary) => summary.gate_type === "altcha_pow");
+  return isPowOnlyGate(gate.preview.membership_gate_summaries);
 }
 
 function canSatisfyWithAltchaOnly(gate: CommunityGateData): boolean {

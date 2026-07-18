@@ -20,6 +20,7 @@ import { ResponsiveOptionSelect } from "@/components/compositions/system/respons
 import { IconButton } from "@/components/primitives/icon-button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { buildAnonymousLabel } from "@/lib/anonymous-label";
+import { isPowOnlyGate } from "@/lib/identity-gates";
 import { useApi } from "@/lib/api";
 import { resolveApiBaseUrl } from "@/lib/api/base-url";
 import { buildCommunityPath } from "@/lib/community-routing";
@@ -1076,7 +1077,10 @@ export function PostPage({
   const viewerMustJoin = Boolean(
     session
     && community?.viewer_membership_status === "not_member"
-    && community.viewer_community_role == null,
+    && community.viewer_community_role == null
+    // PoW-only communities accept non-member votes, so show the real vote
+    // control instead of a join CTA.
+    && !isPowOnlyGate(community.membership_gate_summaries),
   );
   const viewerMembershipResolving = Boolean(
     session

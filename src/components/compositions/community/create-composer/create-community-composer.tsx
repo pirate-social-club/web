@@ -55,16 +55,19 @@ export function CreateCommunityComposer(props: CreateCommunityComposerProps) {
               defaultAgeGatePolicy={controller.access.activeDefaultAgeGatePolicy}
               gateDrafts={controller.access.gateDrafts}
               gateMatchMode={controller.access.gateMatchMode}
+              gateTreeDraft={controller.access.gateTreeDraft}
               membershipMode={controller.access.activeMembershipMode ?? "gated"}
               onAllowAnonymousIdentityChange={controller.access.setActiveAllowAnonymousIdentity}
               onAnonymousIdentityScopeChange={controller.access.setActiveAnonymousScope}
               onDefaultAgeGatePolicyChange={controller.access.setActiveDefaultAgeGatePolicy}
               onGateDraftsChange={controller.access.setActiveGateDrafts}
               onGateMatchModeChange={controller.access.setActiveGateMatchMode}
+              onGateTreeDraftChange={controller.access.setActiveGateTreeDraft}
               onMembershipModeChange={controller.access.setActiveMembershipMode}
               showReadAccessSection={false}
               showSaveAction={false}
               showTitle={false}
+              useGateTreeBuilder
             />
           ) : null}
 

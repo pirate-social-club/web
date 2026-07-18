@@ -13,7 +13,7 @@ export function normalizeGlobalHandleStem(value: string): string {
 
 export function isValidGlobalHandleCandidate(value: string): boolean {
   const label = normalizeGlobalHandleStem(value);
-  if (!label || label.length > 32) return false;
+  if (label.length < 3 || label.length > 30) return false;
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(label) || /^xn--[a-z0-9-]+$/u.test(label);
 }
 

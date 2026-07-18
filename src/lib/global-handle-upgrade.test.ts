@@ -20,8 +20,9 @@ describe("global handle upgrades", () => {
   test("validates candidates before they reach the quote endpoint", () => {
     expect(isValidGlobalHandleCandidate(" clean-name-123.pirate ")).toBe(true);
     expect(isValidGlobalHandleCandidate("pokémon")).toBe(true);
+    expect(isValidGlobalHandleCandidate("ab")).toBe(false);
     expect(isValidGlobalHandleCandidate("not a handle!")).toBe(false);
-    expect(isValidGlobalHandleCandidate("a".repeat(33))).toBe(false);
+    expect(isValidGlobalHandleCandidate("a".repeat(31))).toBe(false);
   });
 
   test("recognizes base and discounted free cleanup quotes without a paid quote id", () => {

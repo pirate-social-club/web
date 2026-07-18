@@ -33,6 +33,21 @@ describe("resolveCommunityLocalizedText", () => {
     }, "community.description", "Canonical")).toBe("Canonical");
   });
 
+  test("falls back to canonical text when translation has terminally failed", () => {
+    expect(resolveCommunityLocalizedText({
+      localized_text: {
+        resolved_locale: "es",
+        items: [
+          {
+            field_key: "community.description",
+            translated_value: null,
+            translation_state: "failed",
+          },
+        ],
+      },
+    }, "community.description", "Canonical")).toBe("Canonical");
+  });
+
   test("falls back to canonical text when translation is same_language", () => {
     expect(resolveCommunityLocalizedText({
       localized_text: {

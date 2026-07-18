@@ -258,6 +258,28 @@ export const GENERATED_LOCALE_CATALOGS = {
           "inventoryWatchIdentityRequired": "Watch rules need a Brand or Model filter."
         }
       },
+      "handleClaims": {
+        "requires": "This name requires:",
+        "verifyWithSelf": "Verify with Self",
+        "connectWallet": "Connect wallet",
+        "checkAgain": "Check again",
+        "ruleEditor": {
+          "sectionTitle": "Per-name requirements",
+          "sectionDescription": "Give specific names their own claim requirements — for example, only holders of a Charizard card may claim ‘charizard’. Rules are checked top to bottom; the first matching rule replaces the namespace requirement. In card requirements, choose ‘Use the claimed name’ to match whichever name is claimed.",
+          "ruleTitle": "Rule {number}",
+          "moveUp": "Move rule up",
+          "moveDown": "Move rule down",
+          "remove": "Remove rule",
+          "selectorLabel": "Which names this rule applies to",
+          "specificNames": "Specific names",
+          "allNames": "All names",
+          "namesLabel": "Names this rule applies to",
+          "namesPlaceholder": "charizard, gengar",
+          "invalidExact": "List at least one valid name (lowercase letters, digits, hyphens) and complete the requirement.",
+          "invalidAny": "Complete the requirement before saving.",
+          "add": "Add name rule"
+        }
+      },
       "gateFailure": {
         "nationalityMismatch": "Your verified ID does not match this community's requirement.",
         "genderMismatch": "Your ID check does not match this community's rule.",
@@ -2240,6 +2262,28 @@ export const GENERATED_LOCALE_CATALOGS = {
           "inventoryWatchIdentityRequired": "تحتاج قواعد الساعات إلى عامل تصفية للعلامة التجارية أو الطراز."
         }
       },
+      "handleClaims": {
+        "requires": "يتطلب هذا الاسم:",
+        "verifyWithSelf": "تحقق باستخدام Self",
+        "connectWallet": "اربط المحفظة",
+        "checkAgain": "تحقق مرة أخرى",
+        "ruleEditor": {
+          "sectionTitle": "متطلبات لكل اسم",
+          "sectionDescription": "امنح أسماء محددة متطلبات مطالبة خاصة بها — مثل السماح لحاملي بطاقة Charizard فقط بالمطالبة باسم ‘charizard’. تُفحص القواعد من الأعلى إلى الأسفل، وتحل أول قاعدة مطابقة محل متطلبات مساحة الأسماء. في متطلبات البطاقات، اختر ‘استخدام الاسم المطالب به’ لمطابقة أي اسم تتم المطالبة به.",
+          "ruleTitle": "القاعدة {number}",
+          "moveUp": "انقل القاعدة إلى الأعلى",
+          "moveDown": "انقل القاعدة إلى الأسفل",
+          "remove": "احذف القاعدة",
+          "selectorLabel": "الأسماء التي تنطبق عليها هذه القاعدة",
+          "specificNames": "أسماء محددة",
+          "allNames": "كل الأسماء",
+          "namesLabel": "الأسماء التي تنطبق عليها القاعدة",
+          "namesPlaceholder": "charizard, gengar",
+          "invalidExact": "أدرج اسمًا صالحًا واحدًا على الأقل (أحرف لاتينية صغيرة وأرقام وشرطات) وأكمل المتطلب.",
+          "invalidAny": "أكمل المتطلب قبل الحفظ.",
+          "add": "أضف قاعدة اسم"
+        }
+      },
       "gateFailure": {
         "nationalityMismatch": "لا يطابق فحص هويتك متطلبات هذا المجتمع.",
         "genderMismatch": "فحص هويتك لا يطابق قاعدة هذا المجتمع.",
@@ -4220,6 +4264,28 @@ export const GENERATED_LOCALE_CATALOGS = {
           "inventoryMatchRequired": "请选择系列并至少添加一个属性。",
           "inventoryUnsupportedAttribute": "不支持的属性：{attributes}。",
           "inventoryWatchIdentityRequired": "腕表规则需要品牌或型号筛选条件。"
+        }
+      },
+      "handleClaims": {
+        "requires": "领取此名称需要：",
+        "verifyWithSelf": "使用 Self 验证",
+        "connectWallet": "连接钱包",
+        "checkAgain": "重新检查",
+        "ruleEditor": {
+          "sectionTitle": "按名称设置要求",
+          "sectionDescription": "为特定名称设置独立的领取要求——例如，只有持有喷火龙卡牌的人才能领取“charizard”。规则按从上到下的顺序检查；首个匹配规则会取代命名空间要求。在卡牌要求中选择“使用领取的名称”，即可匹配用户正在领取的名称。",
+          "ruleTitle": "规则 {number}",
+          "moveUp": "上移规则",
+          "moveDown": "下移规则",
+          "remove": "删除规则",
+          "selectorLabel": "此规则适用的名称",
+          "specificNames": "指定名称",
+          "allNames": "所有名称",
+          "namesLabel": "此规则适用的名称",
+          "namesPlaceholder": "charizard, gengar",
+          "invalidExact": "请至少列出一个有效名称（小写字母、数字和连字符），并完成要求设置。",
+          "invalidAny": "请先完成要求设置再保存。",
+          "add": "添加名称规则"
         }
       },
       "gateFailure": {

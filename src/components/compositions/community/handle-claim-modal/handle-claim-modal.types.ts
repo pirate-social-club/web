@@ -34,6 +34,8 @@ export interface HandleSearchResult {
   claimGateSatisfied?: boolean;
   /** Human-readable requirement labels for an unsatisfied claim gate. */
   claimGateRequirements?: string[];
+  /** Available completion actions derived from the unsatisfied gate summaries. */
+  claimGateActions?: Array<"self" | "wallet">;
 }
 
 export interface HandleClaimNamespaceOption {
@@ -59,6 +61,8 @@ export interface HandleClaimModalProps {
   confirmedDiscountPercent?: number | null;
   selfVerificationSavingsPercent?: number | null;
   onSelfVerificationClick?: () => void;
+  onWalletConnectionClick?: () => void;
+  onClaimGateRecheck?: () => void;
   onClaim: () => void;
   onNotNow: () => void;
   processing?: boolean;

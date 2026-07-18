@@ -251,6 +251,28 @@
       "inventoryWatchIdentityRequired": "Watch rules need a Brand or Model filter."
     }
   },
+  "handleClaims": {
+    "requires": "This name requires:",
+    "verifyWithSelf": "Verify with Self",
+    "connectWallet": "Connect wallet",
+    "checkAgain": "Check again",
+    "ruleEditor": {
+      "sectionTitle": "Per-name requirements",
+      "sectionDescription": "Give specific names their own claim requirements — for example, only holders of a Charizard card may claim ‘charizard’. Rules are checked top to bottom; the first matching rule replaces the namespace requirement. In card requirements, choose ‘Use the claimed name’ to match whichever name is claimed.",
+      "ruleTitle": "Rule {number}",
+      "moveUp": "Move rule up",
+      "moveDown": "Move rule down",
+      "remove": "Remove rule",
+      "selectorLabel": "Which names this rule applies to",
+      "specificNames": "Specific names",
+      "allNames": "All names",
+      "namesLabel": "Names this rule applies to",
+      "namesPlaceholder": "charizard, gengar",
+      "invalidExact": "List at least one valid name (lowercase letters, digits, hyphens) and complete the requirement.",
+      "invalidAny": "Complete the requirement before saving.",
+      "add": "Add name rule"
+    }
+  },
   "gateFailure": {
     "nationalityMismatch": "Your verified ID does not match this community's requirement.",
     "genderMismatch": "Your ID check does not match this community's rule.",

@@ -6,6 +6,7 @@ import type {
   CommunityHandlePaymentInstructions,
   CommunityHandleQuote,
   CommunityHandleQuoteRequest,
+  MembershipGateSummary,
 } from "@pirate/api-contracts";
 import type { Hex } from "viem";
 
@@ -77,6 +78,21 @@ function mapPaymentInstructions(
   };
 }
 
+export function buildHandleClaimGateActions(
+  summaries: MembershipGateSummary[] | null | undefined,
+): Array<"self" | "wallet"> {
+  const actions = new Set<"self" | "wallet">();
+  for (const summary of summaries ?? []) {
+    if (summary.accepted_providers?.includes("self")) actions.add("self");
+    if (
+      summary.gate_type === "erc721_holding"
+      || summary.gate_type === "erc721_inventory_match"
+      || summary.gate_type === "asset_balance"
+    ) actions.add("wallet");
+  }
+  return [...actions];
+}
+
 function mapQuoteToSearchResult(quote: CommunityHandleQuote, locale?: string | null): HandleSearchResult {
   const claimGate = quote.claim_gate;
   return {
@@ -88,6 +104,9 @@ function mapQuoteToSearchResult(quote: CommunityHandleQuote, locale?: string | n
     claimGateSatisfied: claimGate ? claimGate.satisfied : undefined,
     claimGateRequirements: claimGate && !claimGate.satisfied
       ? buildCommunitySidebarRequirements({ gateSummaries: claimGate.summaries ?? null, locale })
+      : undefined,
+    claimGateActions: claimGate && !claimGate.satisfied
+      ? buildHandleClaimGateActions(claimGate.summaries)
       : undefined,
   };
 }
@@ -127,6 +146,7 @@ export function useCommunityHandleClaimController(input: {
   const [searchResult, setSearchResult] = React.useState<HandleSearchResult | undefined>();
   const [claimedHandle, setClaimedHandle] = React.useState<CommunityHandle | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [quoteRefreshKey, setQuoteRefreshKey] = React.useState(0);
   const sequenceRef = React.useRef(0);
   const executeCheckout = input.executeCheckout ?? executeHandleUsdcCheckout;
   const debounceMs = input.debounceMs ?? DEFAULT_QUOTE_DEBOUNCE_MS;
@@ -180,7 +200,12 @@ export function useCommunityHandleClaimController(input: {
     }, debounceMs);
 
     return () => window.clearTimeout(timeout);
-  }, [debounceMs, input.api, input.communityId, input.namespaceVerificationId, locale, searchValue]);
+  }, [debounceMs, input.api, input.communityId, input.namespaceVerificationId, locale, quoteRefreshKey, searchValue]);
+
+  const refreshQuote = React.useCallback(() => {
+    if (!searchValue.trim() || phase === "processing") return;
+    setQuoteRefreshKey((current) => current + 1);
+  }, [phase, searchValue]);
 
   const onClaim = React.useCallback(async () => {
     if (!quote || !quote.eligible || quote.availability !== "available" || phase === "processing") {
@@ -250,12 +275,14 @@ export function useCommunityHandleClaimController(input: {
   return {
     claimedHandle,
     claimedLabel: claimedHandle?.label ?? null,
+    claimGateSummaries: quote?.claim_gate?.summaries ?? [],
     error,
     onClaim,
     onSearchChange,
     phase,
     processing: phase === "processing",
     quote,
+    refreshQuote,
     searchResult,
     searchValue,
   };

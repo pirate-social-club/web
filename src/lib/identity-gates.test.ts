@@ -3,6 +3,7 @@ import type { JoinEligibility } from "@pirate/api-contracts";
 
 import {
   isJoinSurfaceGate,
+  isPowSatisfiableGate,
   formatGateRequirement,
   getGateFailureMessage,
   getJoinCtaLabel,
@@ -67,5 +68,16 @@ describe("identity gate join CTA helpers", () => {
       .toBe("Your connected wallets do not hold enough of the required asset to join this community.");
     expect(getGateFailureMessage({ failure_reason: "asset_balance_too_low" }, { locale: "ar" })).toBeTruthy();
     expect(getGateFailureMessage({ failure_reason: "asset_balance_too_low" }, { locale: "zh" })).toBeTruthy();
+  });
+  test("a browser check alone satisfies an any-mode gate but not an all-mode one", () => {
+    const pow = { gate_type: "altcha_pow" } as const;
+    const human = { gate_type: "unique_human" } as const;
+    // The dankmeme shape: any one branch admits, and anyone clears the check.
+    expect(isPowSatisfiableGate([pow, human], "any")).toBe(true);
+    expect(isPowSatisfiableGate([pow], "all")).toBe(true);
+    expect(isPowSatisfiableGate([pow, human], "all")).toBe(false);
+    expect(isPowSatisfiableGate([human], "any")).toBe(false);
+    expect(isPowSatisfiableGate([], "any")).toBe(false);
+    expect(isPowSatisfiableGate(null)).toBe(false);
   });
 });

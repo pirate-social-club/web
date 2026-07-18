@@ -106,14 +106,8 @@ export function buildThreadCommentTreeFromItems(items: ApiCommentListItem[]): Th
     nodesByCommentId.set(getCommentId(item.comment), createThreadCommentNode(item));
   }
 
-  for (const item of items) {
-    const commentId = getCommentId(item.comment);
-    const node = nodesByCommentId.get(commentId);
-    if (!node) {
-      continue;
-    }
-
-    const parentCommentId = getParentCommentId(item.comment);
+  for (const [commentId, node] of nodesByCommentId) {
+    const parentCommentId = getParentCommentId(node.item.comment);
     const parent = parentCommentId ? nodesByCommentId.get(parentCommentId) : null;
     if (parent) {
       parent.children.push(node);
@@ -191,14 +185,16 @@ export function upsertThreadCommentNodes(
 async function listAllCommentPages(
   fetchPage: (cursor: string | null) => Promise<CommentPage>,
 ): Promise<ApiCommentListItem[]> {
-  const items: ApiCommentListItem[] = [];
+  const itemsByCommentId = new Map<string, ApiCommentListItem>();
   let cursor: string | null = null;
 
   while (true) {
     const page = await fetchPage(cursor);
-    items.push(...page.items);
+    for (const item of page.items) {
+      itemsByCommentId.set(getCommentId(item.comment), item);
+    }
     if (!page.next_cursor) {
-      return items;
+      return [...itemsByCommentId.values()];
     }
     cursor = page.next_cursor;
   }

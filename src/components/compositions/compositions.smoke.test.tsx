@@ -283,8 +283,9 @@ describe("composition smoke tests", () => {
       />,
     );
 
-    expect(markup).toContain("Buy domain");
-    expect(markup).toContain("A .pirate name you can use or sell. Pay with Base USDC.");
+    expect(markup).toContain("Current handle");
+    expect(markup).toContain("Change your .pirate name");
+    expect(markup).toContain("Replace your active .pirate name. Paid changes use Base USDC.");
     expect(markup).toContain(".pirate");
   });
 

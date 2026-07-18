@@ -61,6 +61,7 @@ function BoostStory({ state, walletMismatch = false }: Pick<BoostCampaignSheetPr
         rewardCountLabel={plan.rewardCount == null ? "—" : boostRewardCountLabel(plan.rewardCount)}
         senderAddressLabel="0xCc4049…17b928"
         state={state}
+        supportReference="rfq_01JZSUPPORT"
         treasuryAddress="0x1234567890abcdef1234567890abcdef12345678"
         walletMismatch={walletMismatch}
       />
@@ -88,6 +89,7 @@ export const Confirming: Story = { render: () => <BoostStory state="confirming" 
 export const Active: Story = { render: () => <BoostStory state="active" /> };
 export const Expired: Story = { render: () => <BoostStory state="expired" /> };
 export const Failed: Story = { render: () => <BoostStory state="failed" /> };
+export const FundingReview: Story = { render: () => <BoostStory state="funding-review" /> };
 
 export const Lifecycle: Story = {
   render: () => <Frame>{(["scheduled", "active", "paused", "operational-hold", "exhausted", "ended", "canceled"] as const).map((state) => <CampaignStatusCard key={state} {...statusProps(state)} />)}</Frame>,

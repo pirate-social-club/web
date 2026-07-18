@@ -3,13 +3,18 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { act, renderHook, waitFor } from "@testing-library/react";
 
 import { installDomGlobals } from "@/test/setup-dom";
+import { ApiError } from "@/lib/api/client";
 
 installDomGlobals();
 
 const calls = { confirm: 0, create: 0, quote: 0, transfer: 0 };
+const createKeys: string[] = [];
+const quoteKeys: string[] = [];
 let connectedWallets: Array<{ address: string }> = [];
 let campaignStatus = "draft";
-let confirmError: Error | null = null;
+let confirmError: unknown = null;
+let createError: unknown = null;
+let quoteError: unknown = null;
 
 const campaign = () => ({
   id: "rcp_test",
@@ -72,9 +77,19 @@ const fakeApi = {
     updateSongOwnerPolicy: async (_community: string, _post: string, input: { third_party_rewards: string }) => ({
       third_party_rewards: input.third_party_rewards,
     }),
-    createCampaign: async () => { calls.create += 1; return campaign(); },
+    createCampaign: async (body: { idempotency_key: string }) => {
+      calls.create += 1;
+      createKeys.push(body.idempotency_key);
+      if (createError) throw createError;
+      return campaign();
+    },
     getCampaign: async () => campaign(),
-    createFundingQuote: async () => { calls.quote += 1; return quote(); },
+    createFundingQuote: async (_campaignId: string, body: { idempotency_key: string }) => {
+      calls.quote += 1;
+      quoteKeys.push(body.idempotency_key);
+      if (quoteError) throw quoteError;
+      return quote();
+    },
     confirmFundingQuote: async () => {
       calls.confirm += 1;
       if (confirmError) throw confirmError;
@@ -120,8 +135,12 @@ beforeEach(() => {
   calls.create = 0;
   calls.quote = 0;
   calls.transfer = 0;
+  createKeys.length = 0;
+  quoteKeys.length = 0;
   campaignStatus = "draft";
   confirmError = null;
+  createError = null;
+  quoteError = null;
   connectedWallets = [];
   localStorage.clear();
 });
@@ -224,5 +243,47 @@ describe("useBoostCampaignController", () => {
     await waitFor(() => expect(restoredView.result.current.sheetProps.state).toBe("active"));
     expect(calls.transfer).toBe(1);
     expect(calls.confirm).toBe(2);
+  });
+
+  test("reuses persisted create and quote idempotency keys after lost responses", async () => {
+    createError = new Error("response lost");
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("failed"));
+    createError = null;
+    quoteError = new Error("quote response lost");
+    act(() => view.result.current.sheetProps.onRetry?.());
+    await waitFor(() => expect(calls.quote).toBe(1));
+    expect(createKeys[1]).toBe(createKeys[0]);
+
+    quoteError = null;
+    act(() => view.result.current.sheetProps.onRetry?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    expect(quoteKeys[1]).toBe(quoteKeys[0]);
+  });
+
+  test("terminal funding errors stop confirmation retry and survive reload as support review", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    confirmError = new ApiError("funding_quote_expired", "mined too late", 409);
+    const firstView = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(firstView.result.current.canBoost).toBe(true));
+    act(() => firstView.result.current.openBoost());
+    act(() => firstView.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(firstView.result.current.sheetProps.state).toBe("quote"));
+    act(() => firstView.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(firstView.result.current.sheetProps.state).toBe("funding-review"));
+    expect(firstView.result.current.sheetProps.onRetry).toBeDefined();
+    expect(firstView.result.current.sheetProps.supportReference).toStartWith("rfq_");
+    expect(localStorage.getItem("pirate_reward_pending_funding:com_test:pst_test")).toBeNull();
+    expect(calls.confirm).toBe(1);
+    firstView.unmount();
+
+    const restoredView = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(restoredView.result.current.sheetProps.state).toBe("funding-review"));
+    act(() => restoredView.result.current.openBoost());
+    expect(restoredView.result.current.sheetProps.state).toBe("funding-review");
+    expect(calls.confirm).toBe(1);
   });
 });

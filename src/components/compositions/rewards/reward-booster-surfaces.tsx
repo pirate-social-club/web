@@ -43,6 +43,7 @@ export type BoostCampaignSheetState =
   | "confirming"
   | "active"
   | "expired"
+  | "funding-review"
   | "failed";
 
 export type CampaignStatusState =
@@ -93,6 +94,7 @@ export interface BoostCampaignSheetProps {
   /** Blocks submission and explains why the current terms are not fundable. */
   planProblem?: string;
   rewardCountLabel: string;
+  supportReference?: string;
   /**
    * The wallet the quote is pinned to. Funding MUST originate from this address
    * or receipt verification rejects it and the transfer is stranded, so it is
@@ -187,6 +189,7 @@ export function BoostCampaignSheet({
   rewardCountLabel,
   senderAddressLabel,
   state,
+  supportReference,
   treasuryAddress,
   walletMismatch,
 }: BoostCampaignSheetProps) {
@@ -412,6 +415,38 @@ export function BoostCampaignSheet({
           </div>
         ) : null}
 
+        {state === "funding-review" ? (
+          <div className="mt-6 rounded-lg border border-warning/40 bg-warning/5 p-4">
+            <div className="flex items-start gap-3">
+              <ShieldWarning aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-warning" weight="fill" />
+              <div>
+                <Type as="div" variant="body-strong">
+                  Campaign not activated
+                </Type>
+                <Type as="div" className="mt-1 text-muted-foreground" variant="body">
+                  {errorMessage ?? "Your transfer reached a terminal funding state. Refund or support review is required."}
+                </Type>
+              </div>
+            </div>
+            {supportReference ? (
+              <div className="mt-4">
+                <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
+                  Support reference
+                </Type>
+                <CopyField value={supportReference} />
+              </div>
+            ) : null}
+            {explorerTxUrl ? (
+              <Button asChild className="mt-4 h-11 w-full" variant="outline">
+                <a href={explorerTxUrl} rel="noreferrer" target="_blank">
+                  View funding transaction
+                  <ArrowSquareOut aria-hidden="true" className="size-4" weight="bold" />
+                </a>
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
         <ModalFooter className="mt-6">
           {state === "compose" ? (
             <Button className="h-12 w-full" disabled={Boolean(planProblem)} onClick={onConfirm}>
@@ -434,6 +469,11 @@ export function BoostCampaignSheet({
             </Button>
           ) : null}
           {state === "active" ? (
+            <Button className="h-12 w-full" onClick={() => onOpenChange?.(false)}>
+              Done
+            </Button>
+          ) : null}
+          {state === "funding-review" ? (
             <Button className="h-12 w-full" onClick={() => onOpenChange?.(false)}>
               Done
             </Button>

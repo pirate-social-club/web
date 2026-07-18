@@ -84,3 +84,26 @@ test("owner policy explains that blocking does not return funding", () => {
   );
   expect(view.getByText(/Campaign funding is not returned/i)).toBeTruthy();
 });
+
+test("terminal funding review exposes the transaction and support reference without a retry", () => {
+  const view = render(
+    <BoostCampaignSheet
+      budgetLabel="10.00"
+      chainLabel="Base Sepolia"
+      dailyRewardLabel="1.00"
+      eligibleActivity="karaoke"
+      errorMessage="Funds were received, but the campaign was not activated."
+      explorerTxUrl="https://sepolia.basescan.org/tx/0x1234"
+      onOpenChange={() => undefined}
+      onRetry={() => { throw new Error("must not render"); }}
+      open
+      rewardCountLabel="10 rewards"
+      state="funding-review"
+      supportReference="rfq_support"
+    />,
+  );
+  expect(view.getByText("Campaign not activated")).toBeTruthy();
+  expect(view.getByText("rfq_support")).toBeTruthy();
+  expect(view.getByText("View funding transaction")).toBeTruthy();
+  expect(view.queryByText("Retry confirmation")).toBeNull();
+});

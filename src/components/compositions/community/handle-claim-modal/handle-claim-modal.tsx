@@ -29,6 +29,7 @@ import {
 } from "@/components/primitives/select";
 import { Type, typeVariants } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 
 import type {
@@ -97,9 +98,15 @@ function stripCommunityHandleSuffix(value: string, suffix: string): string {
 }
 
 function SearchResultFeedback({
+  copy,
+  onClaimGateAction,
+  onClaimGateRecheck,
   phase,
   result,
 }: {
+  copy: ReturnType<typeof getLocaleMessages<"gates">>["handleClaims"];
+  onClaimGateAction?: (action: "self" | "wallet") => void;
+  onClaimGateRecheck?: () => void;
   phase: HandleClaimPhase;
   result: HandleSearchResult | undefined;
 }) {
@@ -173,7 +180,7 @@ function SearchResultFeedback({
       <div className="space-y-1">
         <FormNote className="inline-flex items-center gap-2" tone="warning">
           <Prohibit className="size-4" weight="bold" />
-          This name requires:
+          {copy.requires}
         </FormNote>
         <ul className="ms-6 list-disc space-y-0.5">
           {result.claimGateRequirements?.map((requirement) => (
@@ -182,6 +189,25 @@ function SearchResultFeedback({
             </li>
           ))}
         </ul>
+        {(result.claimGateActions?.length ?? 0) > 0 || onClaimGateRecheck ? (
+          <div className="ms-6 flex flex-wrap gap-2 pt-2">
+            {result.claimGateActions?.map((action) => (
+              <Button
+                key={action}
+                onClick={() => onClaimGateAction?.(action)}
+                size="sm"
+                variant="outline"
+              >
+                {action === "self" ? copy.verifyWithSelf : copy.connectWallet}
+              </Button>
+            ))}
+            {onClaimGateRecheck ? (
+              <Button onClick={onClaimGateRecheck} size="sm" variant="secondary">
+                {copy.checkAgain}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -209,6 +235,8 @@ export function HandleClaimModal({
   confirmedDiscountPercent,
   selfVerificationSavingsPercent,
   onSelfVerificationClick,
+  onWalletConnectionClick,
+  onClaimGateRecheck,
   onClaim,
   onNotNow,
   processing = false,
@@ -219,7 +247,11 @@ export function HandleClaimModal({
   walletBalanceCents,
   onAddFunds,
 }: HandleClaimModalProps) {
-  const { dir } = useUiLocale();
+  const { dir, locale } = useUiLocale();
+  const claimGateCopy = React.useMemo(
+    () => getLocaleMessages(locale, "gates").handleClaims,
+    [locale],
+  );
   const isSuccess = phase === "success";
   const isProcessing = phase === "processing";
   const showInput = !isSuccess;
@@ -368,7 +400,16 @@ export function HandleClaimModal({
                   </span>
                 </div>
 
-                <SearchResultFeedback phase={phase} result={searchResult} />
+                <SearchResultFeedback
+                  copy={claimGateCopy}
+                  onClaimGateAction={(action) => {
+                    if (action === "self") onSelfVerificationClick?.();
+                    if (action === "wallet") onWalletConnectionClick?.();
+                  }}
+                  onClaimGateRecheck={onClaimGateRecheck}
+                  phase={phase}
+                  result={searchResult}
+                />
               </div>
 
               {searchResult && searchResult.availability === "available" && selfVerificationLabel && onSelfVerificationClick ? (

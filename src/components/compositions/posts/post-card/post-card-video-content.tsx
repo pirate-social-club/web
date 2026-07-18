@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, Lock as FilledLockIcon, Play as PlayIcon, VideoCamera } from "@phosphor-icons/react";
+import { Check, Lock as FilledLockIcon, MusicNote, Play as PlayIcon, VideoCamera } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
@@ -204,11 +204,9 @@ export function deriveVideoUI(content: VideoContentSpec): DerivedVideoUI {
   const showBuy = isLocked && !isOwned && isListedActive && Boolean(onBuy);
   const showUnlock = isLocked && !isOwned && !isListedActive && Boolean(onUnlock);
 
-  const showAttribution = !!(
-    videoMode &&
-    videoMode !== "original" &&
-    upstreamAttributions &&
-    upstreamAttributions.length > 0
+  const showAttribution = Boolean(
+    upstreamAttributions?.length
+    && (videoMode !== "original" || upstreamAttributions.some((source) => source.relationshipType === "references_song")),
   );
 
   const hasPlayableSource = content.src.trim().length > 0;
@@ -242,6 +240,37 @@ function getDerivativeSummary(upstreamAttributions?: UpstreamAttribution[]): str
   }
 
   return `Derived from ${upstreamAttributions[0].title} +${upstreamAttributions.length - 1}`;
+}
+
+function SongAttribution({ source }: { source: UpstreamAttribution }) {
+  return (
+    <div className={cn("flex min-w-0 items-center gap-1.5 text-muted-foreground", postCardType.meta)}>
+      <MusicNote aria-hidden="true" className="size-4 shrink-0" weight="fill" />
+      {source.href ? (
+        <a className="truncate text-foreground hover:underline" data-post-card-interactive="true" href={source.href}>
+          {source.title}
+        </a>
+      ) : <span className="truncate text-foreground">{source.title}</span>}
+      {source.artist ? <span aria-hidden="true">·</span> : null}
+      {source.artist && source.artistHref ? (
+        <a className="truncate hover:text-foreground hover:underline" data-post-card-interactive="true" href={source.artistHref}>
+          {source.artist}
+        </a>
+      ) : source.artist ? <span className="truncate">{source.artist}</span> : null}
+    </div>
+  );
+}
+
+function VideoAttribution({ upstreamAttributions }: { upstreamAttributions?: UpstreamAttribution[] }) {
+  const songSource = upstreamAttributions?.find((source) => source.relationshipType === "references_song");
+  if (songSource) return <SongAttribution source={songSource} />;
+
+  const derivativeSummary = getDerivativeSummary(upstreamAttributions);
+  return derivativeSummary ? (
+    <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
+      {derivativeSummary}
+    </p>
+  ) : null;
 }
 
 function VideoCaption({ content }: { content: VideoContentSpec }) {
@@ -365,7 +394,9 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
     onVerifyAge,
   } = content;
 
-  const derivativeSummary = ui.showAttribution ? getDerivativeSummary(upstreamAttributions) : null;
+  const attribution = ui.showAttribution
+    ? <VideoAttribution upstreamAttributions={upstreamAttributions} />
+    : null;
   const hasPlayableSource = content.src.trim().length > 0;
   const isBuffering = content.playbackState === "buffering";
   const aspectRatioStyle = getMediaAspectRatioStyle(content.aspectRatio);
@@ -407,11 +438,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
             />
             {offerRows}
           </div>
-          {derivativeSummary && (
-            <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
-              {derivativeSummary}
-            </p>
-          )}
+          {attribution}
           <VideoCaption content={content} />
           <StoryRegistrationBadge status={content.storyRegistration} />
         </div>
@@ -423,11 +450,17 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
         <div className={cn("overflow-hidden rounded-lg border border-border-soft bg-card", frameClassName)}>
           <React.Suspense
             fallback={
-              <div className="aspect-video w-full bg-black/90" aria-busy="true" />
+              <div
+                className={cn("w-full bg-black/90", !aspectRatioStyle && "aspect-video")}
+                style={aspectRatioStyle}
+                aria-busy="true"
+              />
             }
           >
             <LazyVideoPlayer
+              aspectRatio={content.aspectRatio}
               autoPlay
+              className="rounded-none"
               src={content.src}
               poster={content.posterSrc}
               title={content.title}
@@ -436,11 +469,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
           </React.Suspense>
           {offerRows}
         </div>
-        {derivativeSummary && (
-          <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
-            {derivativeSummary}
-          </p>
-        )}
+        {attribution}
         <VideoCaption content={content} />
         <StoryRegistrationBadge status={content.storyRegistration} />
       </div>
@@ -540,11 +569,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
         {offerRows}
       </div>
 
-      {derivativeSummary && (
-        <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
-          {derivativeSummary}
-        </p>
-      )}
+      {attribution}
 
       <VideoCaption content={content} />
 

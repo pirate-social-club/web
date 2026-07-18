@@ -4,6 +4,7 @@ import { Plus, Trash } from "@phosphor-icons/react";
 import { Button } from "@/components/primitives/button";
 import { Card, CardContent } from "@/components/primitives/card";
 import { Input } from "@/components/primitives/input";
+import { EditableNumberInput } from "@/components/primitives/editable-number-input";
 import { Separator } from "@/components/primitives/separator";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
@@ -201,12 +202,9 @@ export function HostAvailabilityEditor({
                 </label>
                 <label className="flex flex-col gap-1">
                   <Type variant="caption">Slot length (min)</Type>
-                  <Input
+                  <EditableNumberInput
                     min={5}
-                    onChange={(e) =>
-                      updateRule(rule.id, { slotDurationMinutes: parseInt(e.target.value, 10) || 30 })
-                    }
-                    type="number"
+                    onValueChange={(value) => updateRule(rule.id, { slotDurationMinutes: value })}
                     value={rule.slotDurationMinutes}
                   />
                 </label>
@@ -257,12 +255,9 @@ export function HostAvailabilityEditor({
                 </label>
                 <label className="flex flex-col gap-1">
                   <Type variant="caption">Price (cents)</Type>
-                  <Input
+                  <EditableNumberInput
                     min={0}
-                    onChange={(e) =>
-                      updatePriceRule(rule.id, { priceCents: parseInt(e.target.value, 10) || 0 })
-                    }
-                    type="number"
+                    onValueChange={(value) => updatePriceRule(rule.id, { priceCents: value })}
                     value={rule.priceCents}
                   />
                 </label>

@@ -7,6 +7,7 @@ import type {
   VerificationRequirement,
 } from "@pirate/api-contracts";
 import { getCountryDisplayName, normalizeCountryCode } from "@/lib/countries";
+import { formatAssetAmount } from "@/lib/asset-amount";
 import { isUiLocaleCode, type UiLocaleCode } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
 
@@ -17,7 +18,7 @@ type MissingCapability = "unique_human" | "age_over_18" | "minimum_age" | "natio
 type RequiredActionNode = Omit<NonNullable<NonNullable<JoinEligibility["gate_evaluation"]>["required_action_set"]>["items"][number], "items"> & {
   items?: RequiredActionNode[];
 };
-export type RequiredActionCapability = MissingCapability | "erc721_holding" | "erc721_inventory_match";
+export type RequiredActionCapability = MissingCapability | "erc721_holding" | "erc721_inventory_match" | "asset_balance";
 
 const SELF_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
   "unique_human",
@@ -236,6 +237,17 @@ export function formatGateRequirement(
       const assetLabel = formatInventoryAssetLabel(gate);
       return copy.erc721InventoryMatch.replace("{quantity}", quantity).replace("{assetLabel}", assetLabel);
     }
+    case "asset_balance": {
+      if (gate.min_amount_atomic && typeof gate.asset_decimals === "number" && gate.asset_symbol) {
+        const amount = formatAssetAmount(gate.min_amount_atomic, gate.asset_decimals);
+        if (amount) {
+          return copy.assetBalance.withAmount
+            .replace("{amount}", amount)
+            .replace("{symbol}", gate.asset_symbol);
+        }
+      }
+      return copy.assetBalance.withoutAmount;
+    }
     default:
       return copy.fallback.replace("{gateType}", gate.gate_type);
   }
@@ -279,7 +291,9 @@ export function hasOnlyWalletGateRequirements(
 ): boolean {
   const capabilities = getRequiredActionCapabilities(input);
   return capabilities.length > 0 && capabilities.every((capability) =>
-    capability === "erc721_holding" || capability === "erc721_inventory_match"
+    capability === "erc721_holding"
+    || capability === "erc721_inventory_match"
+    || capability === "asset_balance"
   );
 }
 
@@ -351,6 +365,7 @@ export function getMissingCapabilitiesFromGateEvaluation(
     }
     if (
       !action.capability
+      || action.capability === "asset_balance"
       || action.capability === "erc721_holding"
       || action.capability === "erc721_inventory_match"
     ) {
@@ -383,6 +398,7 @@ export function getRequiredActionCapabilities(
       || capability === "altcha_pow"
       || capability === "erc721_holding"
       || capability === "erc721_inventory_match"
+      || capability === "asset_balance"
     ) {
       capabilities.add(capability);
     }
@@ -807,6 +823,8 @@ export function getGateFailureMessage(
       return copy.tokenInventoryUnavailable;
     case "wallet_score_too_low":
       return copy.walletScoreTooLow;
+    case "asset_balance_too_low":
+      return copy.assetBalanceTooLow;
     case "banned":
       return copy.banned;
     default:

@@ -16,6 +16,16 @@ export function getGatePolicyMatchMode(policy: GatePolicy | null | undefined): "
   return policy?.expression.op === "or" ? "any" : "all";
 }
 
+export function isFlatOrGateExpression(expression: unknown): boolean {
+  if (!expression || typeof expression !== "object" || (expression as { op?: unknown }).op !== "or") {
+    return false;
+  }
+  const children = (expression as { children?: unknown }).children;
+  return Array.isArray(children) && children.length > 1 && children.every((child) =>
+    Boolean(child) && typeof child === "object" && (child as { op?: unknown }).op === "gate"
+  );
+}
+
 export function areGatePoliciesEqual(
   left: GatePolicy | null | undefined,
   right: GatePolicy | null | undefined,

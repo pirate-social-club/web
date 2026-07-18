@@ -45,9 +45,12 @@ import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import { toast } from "@/components/primitives/sonner";
-import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
+import { rewardCtaAmountLabel } from "@/components/compositions/rewards/reward-surfaces";
+import { BoostCampaignSheet, SongRewardPolicySheet } from "@/components/compositions/rewards/reward-booster-surfaces";
+import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse, ApiPublicRewardOffer } from "@/lib/api/client-api-types";
 import { logger } from "@/lib/logger";
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
+import { useBoostCampaignController } from "@/app/authenticated-helpers/use-boost-campaign-controller";
 
 function closeMobileThread(fallbackPath: string) {
   if (typeof window !== "undefined" && window.history.length > 1) {
@@ -169,11 +172,12 @@ export function PostPage({
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, requestVoteAccess, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const activeLiveRoomId = post?.post.anchor_live_room ?? null;
   const activeAssetId = post?.post.asset ?? null;
   const activeAssetPostType = post?.post.post_type ?? null;
   const [threadAsset, setThreadAsset] = React.useState<ApiAsset | null>(null);
+  const [rewardOffer, setRewardOffer] = React.useState<ApiPublicRewardOffer | null>(null);
   const [liveRoomAccess, setLiveRoomAccess] = React.useState<ApiLiveRoomAccessResponse | null>(null);
   const [liveViewerSession, setLiveViewerSession] = React.useState<ApiLiveRoomViewerAttachResponse | null>(null);
   const [liveViewerOpen, setLiveViewerOpen] = React.useState(false);
@@ -194,6 +198,29 @@ export function PostPage({
   React.useEffect(() => {
     setStoryLicenseReuseNotice(takeStoryLicenseReuseNotice(postId));
   }, [postId]);
+  React.useEffect(() => {
+    const communityId = post?.post.community;
+    const songPostId = post?.post.id;
+    const rewardsEnabled = import.meta.env.VITE_REWARDS_ENABLED === "true";
+    if (!rewardsEnabled || post?.post.post_type !== "song" || !communityId || !songPostId) {
+      setRewardOffer(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setRewardOffer(null);
+    void api.rewards.getActiveCampaignForSong(communityId, songPostId)
+      .then((offer) => {
+        if (!cancelled) setRewardOffer(offer);
+      })
+      .catch(() => {
+        if (!cancelled) setRewardOffer(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api.rewards, post?.post.community, post?.post.id, post?.post.post_type]);
   React.useEffect(() => () => {
     for (const url of replayObjectUrlsRef.current) {
       URL.revokeObjectURL(url);
@@ -265,6 +292,23 @@ export function PostPage({
 
     toast.error(authRuntime.loadError ?? fallbackMessage);
   }, [authRuntime.connect, authRuntime.loadError, postId, copy.publicProfile.openInPirate]);
+
+  const boostController = useBoostCampaignController({
+    activePublicOffer: Boolean(rewardOffer),
+    authenticated: Boolean(session?.accessToken),
+    communityId: community?.id ?? null,
+    postId,
+    requestAuth: () => requestAuth("Sign in to boost this song."),
+    song: post?.post.post_type === "song",
+    viewerIsAuthor: Boolean(post?.viewer_is_author),
+  });
+
+  const handleReplyIntent = React.useCallback(() => {
+    if (session?.accessToken) return;
+    // `connect()` is also the signal that mounts Privy on deferred-auth routes.
+    // Waiting for Privy to be ready here deadlocks the first auth intent.
+    requestAuth("Sign in to comment.");
+  }, [requestAuth, session?.accessToken]);
 
   const handleVerifyAge = React.useCallback(() => {
     if (!session) {
@@ -941,11 +985,15 @@ export function PostPage({
   const threadLiveRoomPurchase = threadLiveRoomId ? purchasesByLiveRoomId[threadLiveRoomId] : undefined;
   const unauthenticatedLiveTicketRequired = !session?.accessToken
     && liveRoomAccess?.access.decision_reason === "purchase_required";
+  const rewardLabel = rewardOffer
+    ? rewardCtaAmountLabel(rewardOffer.daily_reward_cents)
+    : undefined;
   const songOptions = (post.post.post_type === "song" || post.post.post_type === "video") && community && threadAssetId
     ? {
       currentUserId: session?.user?.id,
       asset: threadAsset,
       listing: threadListing,
+      karaokeRewardLabel: rewardOffer?.eligible_activity !== "study" ? rewardLabel : undefined,
       onBuy: threadListing ? () => void handleBuySong(
         threadListing,
         post.post.title ?? (post.post.post_type === "video" ? "video" : "song"),
@@ -958,6 +1006,7 @@ export function PostPage({
       playback: songPlayback,
       purchase: threadPurchase,
       storyLicenseNotice: storyLicenseReuseNotice ?? undefined,
+      studyRewardLabel: rewardOffer?.eligible_activity !== "karaoke" ? rewardLabel : undefined,
     }
     : undefined;
   const liveRoom = liveRoomAccess?.room ?? null;
@@ -1024,29 +1073,57 @@ export function PostPage({
       viewerAttachResponse: liveViewerOpen ? null : liveViewerSession,
     }
     : undefined;
+  const viewerMustJoin = Boolean(
+    session
+    && community?.viewer_membership_status === "not_member"
+    && community.viewer_community_role == null,
+  );
+  const viewerMembershipResolving = Boolean(
+    session
+    && community?.viewer_community_role == null
+    && community?.viewer_membership_status == null,
+  );
   const localizedPostCard = toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
+    canBoost: boostController.canBoost,
+    canManageRewardSettings: boostController.canManagePolicy,
     canModeratePost: viewerCanModerateCommunity(session?.user?.id, community),
     commentCountOverride: commentCount,
     liveRoom: liveRoomOptions,
     onCancelEvent: cancelEvent,
+    onBoost: boostController.openBoost,
     onDelete: deletePost,
     onRemove: removePost,
+    onRewardSettings: boostController.openPolicy,
     onVerifyAge: handleVerifyAge,
     onVote: voteOnPost,
+    voteAccess: viewerMustJoin
+      ? { label: copy.common.joinToVote, onClick: requestVoteAccess }
+      : viewerMembershipResolving
+        ? { disabled: true, label: copy.common.checkingVoteAccess }
+        : undefined,
     showOriginalLabel: copy.common.showOriginal,
     showTranslationLabel: copy.common.showTranslation,
     viewerContentLocale: contentLocale,
   });
   const originalPostCard = shouldShowOriginalPost(post)
     ? toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
+      canBoost: boostController.canBoost,
+      canManageRewardSettings: boostController.canManagePolicy,
       canModeratePost: viewerCanModerateCommunity(session?.user?.id, community),
       commentCountOverride: commentCount,
       liveRoom: liveRoomOptions,
       onCancelEvent: cancelEvent,
+      onBoost: boostController.openBoost,
       onDelete: deletePost,
       onRemove: removePost,
+      onRewardSettings: boostController.openPolicy,
       onVerifyAge: handleVerifyAge,
       onVote: voteOnPost,
+      voteAccess: viewerMustJoin
+        ? { label: copy.common.joinToVote, onClick: requestVoteAccess }
+        : viewerMembershipResolving
+          ? { disabled: true, label: copy.common.checkingVoteAccess }
+          : undefined,
       preferOriginalText: true,
       showOriginalLabel: copy.common.showOriginal,
       showTranslationLabel: copy.common.showTranslation,
@@ -1102,6 +1179,8 @@ export function PostPage({
   );
   const threadBody = (
     <>
+      <BoostCampaignSheet {...boostController.sheetProps} />
+      <SongRewardPolicySheet {...boostController.policySheetProps} />
       {gateModal}
       {ageSelfPrompt ? (
         <SelfVerificationModal
@@ -1167,6 +1246,7 @@ export function PostPage({
           commentsHeadingLang={contentLocale === "ar" ? "ar" : undefined}
           emptyCommentsLabel={threadPartial ? copy.common.loadingReplies : copy.common.noComments}
           onCommentSortChange={setCommentSort}
+          onReplyIntent={handleReplyIntent}
           onRootReplySubmit={createTopLevelComment}
           post={localizedPostCard}
           postOriginal={originalPostCard}

@@ -1,6 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { SQL } from "bun";
 
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import {
@@ -70,6 +71,16 @@ type SettlementEffect = {
   attempt_count: number;
 };
 
+type RoyaltyProjectionRow = {
+  allocation_status: string;
+  distribution_status: string;
+  failure_reason: string | null;
+  recipient_kind: string;
+  source_updated_at: string;
+  story_ip_id: string;
+  wallet_address_normalized: string;
+};
+
 type AuditArtifact = {
   status: "running" | "passed" | "failed";
   started_at: string;
@@ -79,6 +90,7 @@ type AuditArtifact = {
   community: Record<string, unknown>;
   original: Record<string, unknown>;
   derivative: Record<string, unknown>;
+  royalty_projection: Record<string, unknown>;
   listing: Record<string, unknown>;
   quote: Record<string, unknown>;
   purchase: Record<string, unknown>;
@@ -103,8 +115,8 @@ const TRANSFER_ABI = [{
 const CDR_READ_GAS_MARGIN_WEI = parseEther("0.01");
 const DEFAULT_API_BASE_URL = "https://api-staging.pirate.sc";
 // Reuse a Story-proven staging community from a green E2E run. Creating a fresh
-// community per release consumes a Turso database and staging is capped.
-const DEFAULT_STORY_E2E_COMMUNITY_ID = "cmt_98abfdc5ebe24d379ab41b229fda6798";
+// community per release consumes isolated database storage and staging capacity is finite.
+const DEFAULT_STORY_E2E_COMMUNITY_ID = "cmt_b3ede813fccf489982e93739ef1bf6b0";
 const DEFAULT_STORY_E2E_HOST_SUBJECT = "story-e2e-author-1780678999641-65820e";
 
 const artifact: AuditArtifact = {
@@ -116,6 +128,7 @@ const artifact: AuditArtifact = {
   community: {},
   original: {},
   derivative: {},
+  royalty_projection: {},
   listing: {},
   quote: {},
   purchase: {},
@@ -134,6 +147,7 @@ function usage(): string {
     "  AUTH_UPSTREAM_JWT_AUDIENCE",
     "  AUTH_UPSTREAM_JWT_ISSUER",
     "  AUTH_UPSTREAM_JWT_SHARED_SECRET",
+    "  CONTROL_PLANE_MIGRATOR_DATABASE_URL",
     "  PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY or PIRATE_STORY_E2E_BUYER_PRIVATE_KEY",
     "  PIRATE_CHECKOUT_RPC_URL",
     "  PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS",
@@ -455,8 +469,15 @@ async function uploadSongArtifact(input: {
   filename: string;
   mimeType: string;
   session: Session;
-}): Promise<{ id: string; storage_ref: string }> {
-  const upload = await api<{ id: string; storage_ref: string }>({
+}): Promise<{ id: string }> {
+  const upload = await api<{
+    id: string;
+    upload_session?: {
+      id: string;
+      total_parts: number;
+      upload_id: string;
+    } | null;
+  }>({
     apiBase: input.apiBase,
     method: "POST",
     path: `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads`,
@@ -466,17 +487,47 @@ async function uploadSongArtifact(input: {
       filename: input.filename,
       mime_type: input.mimeType,
       size_bytes: input.bytes.byteLength,
+      upload_mode: "direct_multipart",
     },
   });
+
+  const uploadSession = upload.upload_session;
+  if (!uploadSession?.id || !uploadSession.upload_id || uploadSession.total_parts !== 1) {
+    throw new Error("primary audio direct multipart session is invalid");
+  }
+  const signedPart = await api<{ part_number: number; url: string }>({
+    apiBase: input.apiBase,
+    method: "GET",
+    path: `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/sessions/${encodeURIComponent(uploadSession.id)}/parts/1/signed-url`,
+    token: input.session.accessToken,
+  });
+  if (signedPart.part_number !== 1 || !signedPart.url) {
+    throw new Error("primary audio multipart signed URL is invalid");
+  }
+
+  const partResponse = await fetch(signedPart.url, {
+    body: toRequestArrayBuffer(input.bytes),
+    headers: { "content-type": input.mimeType },
+    method: "PUT",
+  });
+  if (!partResponse.ok) {
+    throw new Error(`PUT signed primary audio part failed with ${partResponse.status}: ${await partResponse.text()}`);
+  }
+  const etag = partResponse.headers.get("etag");
+  if (!etag) throw new Error("primary audio multipart part is missing an ETag");
+
   await api({
     apiBase: input.apiBase,
     method: "POST",
-    path: `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/content`,
+    path: `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/sessions/${encodeURIComponent(uploadSession.id)}/complete`,
     token: input.session.accessToken,
-    bytes: input.bytes,
-    contentType: input.mimeType,
+    body: {
+      content_hash: `0x${sha256Hex(input.bytes)}`,
+      parts: [{ etag, part_number: 1 }],
+      upload_id: uploadSession.upload_id,
+    },
   });
-  return upload;
+  return { id: upload.id };
 }
 
 async function createSongBundle(input: {
@@ -629,6 +680,90 @@ async function waitForAssetReady(input: {
     await sleep(intervalMs);
   }
   throw new Error(`${input.label} asset readiness timed out: ${JSON.stringify(last)}`);
+}
+
+function controlPlaneDatabaseUrl(): string {
+  const url = new URL(requiredEnv("CONTROL_PLANE_MIGRATOR_DATABASE_URL"));
+  // Bun's Postgres client does not consume libpq's local certificate path option.
+  url.searchParams.delete("sslrootcert");
+  return url.toString();
+}
+
+function internalId(value: string, externalPrefix: string): string {
+  return value.startsWith(externalPrefix) ? value.slice(externalPrefix.length) : value;
+}
+
+async function waitForScheduledRoyaltyAllocationVerification(input: {
+  assetId: string;
+  communityId: string;
+}): Promise<RoyaltyProjectionRow[]> {
+  const timeoutMs = Number(optionalEnv("PIRATE_STORY_E2E_ALLOCATION_TIMEOUT_MS") ?? "420000");
+  const intervalMs = Number(optionalEnv("PIRATE_STORY_E2E_ALLOCATION_INTERVAL_MS") ?? "5000");
+  const startedAt = Date.now();
+  const communityId = internalId(input.communityId, "com_");
+  const assetId = internalId(input.assetId, "asset_");
+  const sql = new SQL({
+    url: controlPlaneDatabaseUrl(),
+    max: 1,
+    connectionTimeout: 10,
+  } as Record<string, unknown>);
+  let lastRows: RoyaltyProjectionRow[] = [];
+  try {
+    while (Date.now() - startedAt < timeoutMs) {
+      const rows = await sql`
+        SELECT
+          allocation_status,
+          distribution_status,
+          failure_reason,
+          recipient_kind,
+          source_updated_at,
+          story_ip_id,
+          wallet_address_normalized
+        FROM story_royalty_allocation_projections
+        WHERE community_id = ${communityId}
+          AND asset_id = ${assetId}
+        ORDER BY recipient_kind, wallet_address_normalized
+      ` as RoyaltyProjectionRow[];
+      lastRows = rows;
+      artifact.royalty_projection = {
+        asset_id: assetId,
+        community_id: communityId,
+        elapsed_ms: Date.now() - startedAt,
+        rows,
+      };
+      step("royalty allocation projection status", {
+        elapsed_ms: Date.now() - startedAt,
+        row_count: rows.length,
+        statuses: rows.map((row) => ({
+          allocation_status: row.allocation_status,
+          distribution_status: row.distribution_status,
+          recipient_kind: row.recipient_kind,
+        })),
+      });
+      const terminalFailure = rows.find((row) =>
+        row.distribution_status === "failed" || row.allocation_status.endsWith("_failed")
+      );
+      if (terminalFailure) {
+        throw new Error(`royalty allocation projection failed: ${JSON.stringify(rows)}`);
+      }
+      if (
+        rows.length > 0
+        && rows.every((row) =>
+          row.allocation_status === "verified" && row.distribution_status === "verified"
+        )
+      ) {
+        return rows;
+      }
+      await sleep(intervalMs);
+    }
+  } finally {
+    await sql.close();
+  }
+  throw new Error(`scheduled royalty allocation verification timed out: ${JSON.stringify({
+    asset_id: assetId,
+    community_id: communityId,
+    rows: lastRows,
+  })}`);
 }
 
 function createChain(chainId: number, rpcUrl: string, label: string) {
@@ -1033,11 +1168,11 @@ async function main(): Promise<void> {
   const buyer = await createSession({ apiBase, privateKey: buyerPrivateKey, subject: `story-e2e-buyer-${runId}` });
 
   step(createFreshCommunity ? "create community" : "use seeded community");
-  let communityId = createFreshCommunity
+  const communityId = createFreshCommunity
     ? await createCommunity(apiBase, author, runId)
     : configuredCommunityId();
-  let communityHost = createFreshCommunity ? author : host;
-  let communityMode = createFreshCommunity ? "fresh" : "seeded";
+  const communityHost = createFreshCommunity ? author : host;
+  const communityMode = createFreshCommunity ? "fresh" : "seeded";
   artifact.community = {
     id: `com_${communityId}`,
     mode: communityMode,
@@ -1046,17 +1181,9 @@ async function main(): Promise<void> {
     await joinCommunity(apiBase, communityId, communityHost, author);
   } catch (error) {
     if (createFreshCommunity || !isMissingCommunityError(error, communityId)) throw error;
-    const missingSeed = communityId;
-    step("seeded community missing; create fallback community", { missing_seed: `com_${missingSeed}` });
-    communityId = await createCommunity(apiBase, host, runId);
-    communityHost = host;
-    communityMode = "fallback";
-    artifact.community = {
-      id: `com_${communityId}`,
-      missing_seed: `com_${missingSeed}`,
-      mode: communityMode,
-    };
-    await joinCommunity(apiBase, communityId, communityHost, author);
+    throw new Error(
+      `seeded Story E2E community com_${communityId} is missing; restore the fixture instead of allocating a fallback`,
+    );
   }
   await joinCommunity(apiBase, communityId, communityHost, remixer);
   await joinCommunity(apiBase, communityId, communityHost, buyer);
@@ -1155,6 +1282,15 @@ async function main(): Promise<void> {
     story_ip: derivativeAsset.story_ip ?? null,
     story_royalty_registration_status: derivativeAsset.story_royalty_registration_status ?? null,
   };
+
+  // This must happen before the first quote request. A quote-time fallback may
+  // improve buyer latency, but it must never be able to satisfy the scheduler
+  // discovery invariant exercised by this release gate.
+  step("wait for scheduled royalty allocation projection verification");
+  await waitForScheduledRoyaltyAllocationVerification({
+    assetId: derivativePost.asset,
+    communityId,
+  });
 
   step("create listing and purchase quote");
   const listing = await api<{ id: string; price_cents: number; status: string }>({

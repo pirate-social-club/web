@@ -53,12 +53,6 @@ export interface KaraokeSessionClientOptions {
   createSession: (input: { idempotencyKey: string }) => Promise<KaraokeSessionDescriptor>;
   /** Opens a socket to the descriptor's websocketUrl. */
   connect: (url: string) => KaraokeClientSocket;
-  /**
-   * LEGACY ONLY (SPEC §4.5): current SONG-time position (ms). Used solely by the
-   * deprecated `pushAudioAtPlaybackClock` delivery-time path, which is biased
-   * late. The default `pushAudio` uses the explicit capture anchor instead.
-   */
-  playbackClock?: () => number;
   onServerEvent: (event: KaraokeServerEvent) => void;
   onPhaseChange?: (phase: KaraokeClientPhase) => void;
   onError?: (error: { code: string; message: string }) => void;
@@ -68,8 +62,12 @@ export interface KaraokeSessionClientOptions {
   clearTimer?: (handle: unknown) => void;
   /** Refresh the capability this many ms before token expiry. */
   tokenRefreshLeadMs?: number;
-  /** Delay before a reconnect attempt after an unexpected close. */
+  /** Base delay before reconnect attempts; subsequent attempts back off exponentially. */
   reconnectDelayMs?: number;
+  /** Maximum reconnect attempts before the session aborts. Default 5. */
+  maxReconnectAttempts?: number;
+  /** Maximum reconnect delay after backoff. Default 2000ms. */
+  maxReconnectDelayMs?: number;
   /** Max ms to wait for a WebSocket `open` event before treating connect as failed. */
   socketConnectTimeoutMs?: number;
   sampleRate?: 16000;
@@ -108,9 +106,13 @@ export interface KaraokeCaptureAnchor {
   playbackRate: number;
 }
 
-const DEFAULT_RECONNECT_DELAY_MS = 500;
+const DEFAULT_RECONNECT_DELAY_MS = 250;
+const DEFAULT_MAX_RECONNECT_ATTEMPTS = 5;
+const DEFAULT_MAX_RECONNECT_DELAY_MS = 2_000;
 const DEFAULT_SOCKET_CONNECT_TIMEOUT_MS = 10_000;
 const DEFAULT_CAPTURE_TEARDOWN_TIMEOUT_MS = 2_000;
+const SESSION_EXPIRED_CLOSE_CODE = 4001;
+const SESSION_CONFIGURATION_CLOSE_CODE = 4002;
 
 function isServerEvent(value: unknown): value is KaraokeServerEvent {
   if (!value || typeof value !== "object") return false;
@@ -143,6 +145,8 @@ export class KaraokeSessionClient {
   private readonly setTimer: (callback: () => void, ms: number) => unknown;
   private readonly clearTimer: (handle: unknown) => void;
   private readonly reconnectDelayMs: number;
+  private readonly maxReconnectAttempts: number;
+  private readonly maxReconnectDelayMs: number;
   private readonly socketConnectTimeoutMs: number;
   private readonly sampleRate: 16000;
   private readonly captureTeardownTimeoutMs: number;
@@ -156,7 +160,11 @@ export class KaraokeSessionClient {
   private chunkId = 0;
   private refreshTimer: unknown = null;
   private socketConnectTimer: unknown = null;
-  private reconnecting = false;
+  private reconnectAttempts = 0;
+  private reconnectTimer: unknown = null;
+  // Covers the full create→socket-open reconnect attempt. The timer is cleared
+  // before creation begins, so it cannot serve as the in-flight guard itself.
+  private reconnectAttemptInFlight = false;
   private anchor: KaraokeCaptureAnchor | null = null;
   private lastCapturedAtMs: number | null = null; // monotonic guard within the current anchor epoch
   // Serialized capture-transition chain: suspend and resume NEVER overlap. A
@@ -174,6 +182,8 @@ export class KaraokeSessionClient {
     this.setTimer = options.setTimer ?? ((cb, ms) => setTimeout(cb, ms));
     this.clearTimer = options.clearTimer ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
     this.reconnectDelayMs = options.reconnectDelayMs ?? DEFAULT_RECONNECT_DELAY_MS;
+    this.maxReconnectAttempts = options.maxReconnectAttempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS;
+    this.maxReconnectDelayMs = options.maxReconnectDelayMs ?? DEFAULT_MAX_RECONNECT_DELAY_MS;
     this.socketConnectTimeoutMs = options.socketConnectTimeoutMs ?? DEFAULT_SOCKET_CONNECT_TIMEOUT_MS;
     this.sampleRate = options.sampleRate ?? 16000;
     this.captureTeardownTimeoutMs = options.captureTeardownTimeoutMs ?? DEFAULT_CAPTURE_TEARDOWN_TIMEOUT_MS;
@@ -242,21 +252,6 @@ export class KaraokeSessionClient {
     const songStartMs = Math.max(0, songEndMs - durationMs * anchor.playbackRate);
     this.lastCapturedAtMs = capturedAtMs;
     this.sendBinary(pcm16, Math.round(songStartMs), Math.round(songEndMs));
-  }
-
-  /**
-   * @deprecated Legacy delivery-time stamping (SPEC §4.5): stamps song-time
-   * bounds from `playbackClock()` at push time. Biased late; use the anchor API.
-   * No-op unless `playbackClock` was provided.
-   */
-  pushAudioAtPlaybackClock(pcm16: ArrayBuffer): void {
-    if (this.phase !== "live" || !this.socket || !this.descriptor) return;
-    const playbackClock = this.options.playbackClock;
-    if (!playbackClock) return;
-    const durationMs = (pcm16.byteLength / 2 / this.sampleRate) * 1000;
-    const songEndMs = Math.max(0, Math.round(playbackClock()));
-    const songStartMs = Math.max(0, Math.round(songEndMs - durationMs));
-    this.sendBinary(pcm16, songStartMs, songEndMs);
   }
 
   private sendBinary(pcm16: ArrayBuffer, songStartMs: number, songEndMs: number): void {
@@ -361,6 +356,7 @@ export class KaraokeSessionClient {
     try {
       descriptor = await this.options.createSession({ idempotencyKey: this.idempotencyKey });
     } catch (error) {
+      if (!sendStart) this.reconnectAttemptInFlight = false;
       this.options.onError?.({ code: "karaoke_create_failed", message: stringifyError(error) });
       this.scheduleReconnect();
       return;
@@ -396,7 +392,8 @@ export class KaraokeSessionClient {
       opened = true;
       this.clearSocketConnectTimer();
       this.setPhase("live");
-      this.reconnecting = false;
+      this.reconnectAttempts = 0;
+      this.reconnectAttemptInFlight = false;
       // Send `start` only on the initial connection. On reconnect the server's
       // DO is already recording (restored); resume by streaming fresh audio —
       // never re-send start and never replay PCM.
@@ -439,6 +436,11 @@ export class KaraokeSessionClient {
     socket.addEventListener("close", (event) => {
       if (this.socket !== socket) return;
       this.clearSocketConnectTimer();
+      if (!opened && (event.code === SESSION_EXPIRED_CLOSE_CODE || event.code === SESSION_CONFIGURATION_CLOSE_CODE)) {
+        this.socket = null;
+        this.handleUnexpectedClose(event.code);
+        return;
+      }
       if (!opened) {
         this.options.onError?.({
           code: "karaoke_socket_closed_before_open",
@@ -448,7 +450,7 @@ export class KaraokeSessionClient {
         return;
       }
       this.socket = null;
-      this.handleUnexpectedClose();
+      this.handleUnexpectedClose(event.code);
     });
     socket.addEventListener("error", () => {
       if (this.socket !== socket) return;
@@ -462,12 +464,25 @@ export class KaraokeSessionClient {
     });
   }
 
-  private handleUnexpectedClose(): void {
+  private handleUnexpectedClose(closeCode: number): void {
     if (this.isTerminal()) return;
     // Suspend capture on EVERY live-socket loss, before deciding expired vs.
     // reconnect — otherwise an expired session leaves the mic engine active.
     this.requestCaptureSuspension();
     this.clearTokenRefresh();
+    if (closeCode === SESSION_EXPIRED_CLOSE_CODE) {
+      this.setPhase("expired");
+      void this.teardownCaptureOnce();
+      return;
+    }
+    if (closeCode === SESSION_CONFIGURATION_CLOSE_CODE) {
+      this.options.onError?.({
+        code: "karaoke_stt_unconfigured",
+        message: "Karaoke scoring is not configured for this community",
+      });
+      this.shutdown("aborted");
+      return;
+    }
     if (this.descriptor && this.now() >= this.descriptor.sessionExpiresAt * 1000) {
       this.setPhase("expired");
       // Expiry is terminal — release the mic fully (teardown awaits the flush).
@@ -478,15 +493,30 @@ export class KaraokeSessionClient {
   }
 
   private scheduleReconnect(): void {
-    if (this.reconnecting || this.isTerminal()) return;
-    this.reconnecting = true;
+    if (this.reconnectTimer !== null || this.reconnectAttemptInFlight || this.isTerminal()) return;
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      const attemptsLabel = `${this.maxReconnectAttempts} reconnect attempt${this.maxReconnectAttempts === 1 ? "" : "s"}`;
+      this.options.onError?.({
+        code: "karaoke_reconnect_exhausted",
+        message: `Karaoke connection failed after ${attemptsLabel}`,
+      });
+      this.shutdown("aborted");
+      return;
+    }
+    const delayMs = Math.min(
+      this.reconnectDelayMs * (2 ** this.reconnectAttempts),
+      this.maxReconnectDelayMs,
+    );
+    this.reconnectAttempts += 1;
     this.setPhase("reconnecting");
-    this.setTimer(() => {
+    this.reconnectTimer = this.setTimer(() => {
+      this.reconnectTimer = null;
       if (this.isTerminal()) return;
+      this.reconnectAttemptInFlight = true;
       // Replay creation with the SAME idempotency key → refreshed token, same
       // attempt. Do not re-send start; do not replay PCM.
       void this.createAndConnect(false);
-    }, this.reconnectDelayMs);
+    }, delayMs);
   }
 
   /** Appends a capture transition to the serialized chain so none ever overlap. */
@@ -574,6 +604,8 @@ export class KaraokeSessionClient {
    */
   private failCaptureTransition(): void {
     if (this.isTerminal()) return;
+    this.reconnectAttemptInFlight = false;
+    this.clearReconnectTimer();
     this.clearTokenRefresh();
     this.clearCaptureAnchor();
     const socket = this.socket;
@@ -646,9 +678,18 @@ export class KaraokeSessionClient {
     }
   }
 
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer !== null) {
+      this.clearTimer(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+
   private shutdown(phase: "closed" | "aborted"): void {
     this.clearTokenRefresh();
     this.clearSocketConnectTimer();
+    this.clearReconnectTimer();
+    this.reconnectAttemptInFlight = false;
     this.clearCaptureAnchor();
     this.setPhase(phase);
     const socket = this.socket;

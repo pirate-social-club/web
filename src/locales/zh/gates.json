@@ -24,6 +24,10 @@
       "withoutLabel": "需要持有以太坊 NFT"
     },
     "erc721InventoryMatch": "需要 {quantity} 个 Courtyard 藏品：{assetLabel}",
+    "assetBalance": {
+      "withAmount": "至少 {amount} {symbol}",
+      "withoutAmount": "代币余额"
+    },
     "fallback": "需要 {gateType} 验证"
   },
   "joinCta": {
@@ -87,7 +91,11 @@
     "passportPromptActionLabel": "访问 Passport.xyz",
     "powOnlyTitle": "需要浏览器检查",
     "powOnlyDescription": "完成快速工作量证明检查以继续。",
-    "powSkipNote": "已验证用户可以跳过此检查。"
+    "powSkipNote": "已验证用户可以跳过此检查。",
+    "requirementSummaryAll": "完成{requirements}。",
+    "requirementSummaryAny": "满足以下任一项即可：{requirements}。",
+    "requirementSummaryMixed": "完成{requiredRequirements}，并满足以下任一项：{alternativeRequirements}。",
+    "requirementSummaryAnyGroups": "请分别从以下每组中满足一项：{requirements}。"
   },
   "modal": {
     "anyTitle": "选择一种方式继续",
@@ -127,6 +135,122 @@
     "walletScore": "Passport 分数",
     "altchaPow": "工作量证明状态"
   },
+  "treeBuilder": {
+    "title": "Join requirements",
+    "liveSummaryTitle": "Live summary",
+    "emptySummary": "No join requirements yet.",
+    "summaryAllOf": "ALL of",
+    "summaryAnyOf": "ANY of",
+    "summaryIntro": "Members must meet",
+    "complexityWarning": "This rule is getting complex — {used} of {limit} conditions used.",
+    "limitReached": "Remove a condition or group to add more.",
+    "strongBrowserChallengeWarning": "Anyone can join by completing just a quick browser challenge — no identity, score, or holdings needed. Good for stopping spam; not a member check.",
+    "actions": {
+      "rule": "Rule",
+      "group": "Group",
+      "removeRequirement": "Remove requirement",
+      "removeGroup": "Remove group"
+    },
+    "emptyGroup": "Add a rule or nested group.",
+    "unknownRequirementTitle": "Unrecognized requirement",
+    "unknownRequirementDescription": "Preserved as {gate}",
+    "requirementTypes": {
+      "humanVerification": "Human verification",
+      "browserChallenge": "Browser challenge",
+      "passportScore": "Passport score",
+      "assetBalance": "代币余额",
+      "nftHolding": "NFT holding",
+      "documentSexMarker": "Document sex marker",
+      "nationality": "Nationality",
+      "minimumAge": "Minimum age"
+    },
+    "providers": {
+      "self": "ID check (Self)",
+      "zkpassport": "ID check (ZKPassport)",
+      "very": "Palm scan (Very)"
+    },
+    "operators": {
+      "provenBy": "proven by",
+      "atLeast": "at least",
+      "holdsAtLeast": "持有至少",
+      "holdsOneFrom": "holds ≥ 1 from",
+      "holds": "holds ≥",
+      "from": "from",
+      "is": "is",
+      "isOneOf": "is one of",
+      "matches": "matches"
+    },
+    "nftQuantityLocked": "This NFT check only supports a quantity of 1 today.",
+    "unsupportedAtom": "Unsupported atom",
+    "inputs": {
+      "groupMatchMode": "Group match mode",
+      "requirementType": "Requirement type",
+      "humanVerificationProvider": "Human verification provider",
+      "minimumPassportScore": "Minimum Passport score",
+      "asset": "资产",
+      "minimumAssetBalance": "最低代币余额",
+      "nftContractAddress": "NFT contract address",
+      "minimumNftQuantity": "Minimum NFT quantity",
+      "minimumAge": "Minimum age",
+      "documentSexMarker": "Document sex marker",
+      "allowedNationalities": "Allowed nationalities"
+    },
+    "sources": {
+      "courtyardCollectible": "Courtyard 藏品",
+      "searchCollections": "搜索系列或粘贴合约地址",
+      "loadError": "无法加载系列。请在下方粘贴合约地址。",
+      "empty": "未找到可信来源。请在下方粘贴合约地址。",
+      "attribute": "属性",
+      "removeAttribute": "移除属性筛选条件",
+      "addAttribute": "添加属性筛选条件",
+      "searchFacet": "搜索{facet}",
+      "facetLoadError": "无法加载选项。",
+      "facetLoading": "正在加载选项…",
+      "retry": "重试",
+      "noValues": "未找到选项。",
+      "matches": "{count} 个匹配项",
+      "claimedNameOption": "使用所认领的名称",
+      "claimedNameHint": "匹配正在认领的名称"
+    },
+    "assets": {
+      "loading": "正在加载支持的资产…",
+      "unknownAsset": "未知资产",
+      "unavailableReadOnly": "此编辑器无法使用 {asset}。该要求将以只读方式保留。",
+      "amountError": "请使用普通十进制格式输入大于零的金额。",
+      "precisionError": "此资产最多支持 {decimals} 位小数。"
+    },
+    "validation": {
+      "acceptedProvidersEmpty": "接受的验证提供商不能为空。",
+      "acceptedProvidersUnsupported": "接受的验证提供商必须是 Self 或 ZKPassport。",
+      "assetAmountInvalid": "请输入大于零的有效代币金额。",
+      "assetRequired": "请选择支持的资产。",
+      "collectibleChainUnsupported": "藏品规则必须使用支持的区块链。",
+      "collectibleProviderUnsupported": "藏品规则必须使用支持的库存提供商。",
+      "contractAddressInvalid": "请输入有效的合约地址。",
+      "countryCodesInvalid": "国家/地区必须使用有效的 ISO 代码。",
+      "countryListInvalid": "国家/地区必须以列表形式提供。",
+      "genderMarkerInvalid": "证件性别标记必须为 M 或 F。",
+      "genderMarkerRequired": "请选择证件性别标记。",
+      "genderProviderInvalid": "证件性别标记规则必须通过 Self 验证。",
+      "humanProviderRequired": "请选择真人验证提供商。",
+      "minimumAgeProviderInvalid": "最低年龄规则必须通过 Self 验证。",
+      "minimumAgeRange": "最低年龄必须是 {min} 到 {max} 之间的整数。",
+      "nationalityProviderInvalid": "国籍规则必须通过 Self 验证。",
+      "nftChainInvalid": "NFT 持有规则必须使用 Ethereum 主网。",
+      "passportScoreProviderInvalid": "Passport 分数规则必须使用 Passport 提供商。",
+      "passportScoreRange": "Passport 分数必须是 0 到 100 之间的数字。",
+      "quantityRange": "数量必须是 1 到 100 之间的整数。",
+      "trustedCollectionRequired": "请选择可信系列。",
+      "inventoryAttributeFilterRequired": "请至少添加一个属性筛选条件。",
+      "inventoryAttributeValues": "每个属性需要 1 到 {max} 个不重复的值。",
+      "inventoryCardIdentityRequired": "集换式卡牌规则需要系列或名称筛选条件。",
+      "inventoryCollectionRequired": "请选择系列。",
+      "inventoryCollectionTypeUnsupported": "请选择支持的系列类型。",
+      "inventoryMatchRequired": "请选择系列并至少添加一个属性。",
+      "inventoryUnsupportedAttribute": "不支持的属性：{attributes}。",
+      "inventoryWatchIdentityRequired": "腕表规则需要品牌或型号筛选条件。"
+    }
+  },
   "gateFailure": {
     "nationalityMismatch": "你的身份验证结果不符合该社区要求。",
     "genderMismatch": "你的证件验证结果不符合该社区规则。",
@@ -137,6 +261,7 @@
     "erc721InventoryMatchRequired": "连接持有所需 Courtyard 藏品的钱包即可加入。",
     "tokenInventoryUnavailable": "暂时无法检查 Courtyard 藏品。",
     "walletScoreTooLow": "你的 Passport 分数不符合该社区要求。",
+    "assetBalanceTooLow": "你已连接的钱包持有的所需资产不足，无法加入该社区。",
     "banned": "你没有资格加入这个社区。"
   }
 }

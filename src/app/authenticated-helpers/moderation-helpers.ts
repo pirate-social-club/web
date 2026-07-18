@@ -30,8 +30,6 @@ export {
   buildCommunityModerationEntryPath,
   buildCommunityModerationIndexPath,
   buildCommunityModerationPath,
-  buildDefaultCommunityModerationPath,
-  DEFAULT_COMMUNITY_MODERATION_SECTION,
   type CommunityModerationSection,
 } from "./moderation-paths";
 

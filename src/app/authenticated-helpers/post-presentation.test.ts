@@ -4,6 +4,7 @@ import type { Asset, LocalizedPostResponse } from "@pirate/api-contracts";
 import {
   resolveLocalizedLinkTitle,
   toCommunityPostContent,
+  toCommunityFeedItem,
   toThreadPostCard,
 } from "@/app/authenticated-helpers/post-presentation";
 import { resolvePostCardHeadingTitle } from "@/app/authenticated-helpers/post-link-presentation";
@@ -228,6 +229,20 @@ function createSongAsset(overrides: Partial<Asset> = {}): Asset {
     ...overrides,
   };
 }
+
+describe("processing post status notices", () => {
+  test("shows the song preparation notice only for processing songs", () => {
+    const song = toCommunityFeedItem(createSongPost({ status: "processing" }), null, {});
+    const video = toCommunityFeedItem(createVideoPost({ status: "processing" }), null, {});
+
+    expect(song.post.statusNotice).toEqual({
+      tone: "neutral",
+      label: "Preparing song features",
+      message: "Visible only to you while we finish rights, lyrics, and audio checks.",
+    });
+    expect(video.post.statusNotice).toBeUndefined();
+  });
+});
 
 function createLiveRoomAccess(): ApiLiveRoomAccessResponse {
   return {
@@ -823,9 +838,10 @@ describe("post presentation songs", () => {
     expect(content.entitledStems).toEqual(["instrumental", "vocals"]);
   });
 
-  test("uses the thread community argument for karaoke capability", () => {
+  test("uses the server karaoke capability when the nested community is absent", () => {
     const post = createSongPost();
     post.community = null;
+    post.karaoke_capability = { status: "ready" };
     post.song_presentation = {
       title: "Canonical track title",
       cover_art_ref: "https://media.test/cover.jpg",
@@ -852,6 +868,22 @@ describe("post presentation songs", () => {
     expect(card.content.type).toBe("song");
     if (card.content.type !== "song") return;
     expect(card.content.karaokeHref).toBe("/p/pst_song/karaoke");
+  });
+
+  test("maps campaign reward labels onto the song actions", () => {
+    const post = createSongPost();
+    post.karaoke_capability = { status: "ready" };
+    post.study_capability = { status: "ready" };
+
+    const card = toThreadPostCard(post, undefined, undefined, {
+      karaokeRewardLabel: "1.00 testnet USDC (Base Sepolia)",
+      studyRewardLabel: "1.00 testnet USDC (Base Sepolia)",
+    });
+
+    expect(card.content.type).toBe("song");
+    if (card.content.type !== "song") return;
+    expect(card.content.karaoke?.rewardLabel).toBe("1.00 testnet USDC (Base Sepolia)");
+    expect(card.content.study?.rewardLabel).toBe("1.00 testnet USDC (Base Sepolia)");
   });
 
   test("maps derivative source summaries into song card content", () => {

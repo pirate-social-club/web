@@ -1,0 +1,193 @@
+name: Production migration OIDC doctor
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: production-migration-oidc-doctor
+  cancel-in-progress: false
+
+jobs:
+  doctor:
+    name: Verify production migration access (read-only)
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+    # MUST match the production job in release.yml. GitHub derives the OIDC
+    # `sub` claim from the environment when a job declares one:
+    #
+    #   with    environment: production -> repo:pirate-social-club/web:environment:production
+    #   without                         -> repo:pirate-social-club/web:ref:refs/heads/main
+    #
+    # Infisical pins the identity to the environment form, so a doctor without
+    # this line would present a different subject than the deploy it is meant to
+    # certify — passing while production still 403s, or vice versa. Do not remove.
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Require main branch dispatch
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Dispatch this doctor from main: production only ever deploys from main, so this is the only ref whose access is meaningful to verify."
+            exit 1
+          fi
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: web
+      - name: Read pinned Core commit
+        id: core_ref
+        working-directory: web
+        shell: bash
+        run: |
+          core_sha="$(< .github/release-refs/core.sha)"
+          if [[ ! "$core_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::.github/release-refs/core.sha must contain one full lowercase commit SHA"
+            exit 1
+          fi
+          echo "sha=$core_sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/core
+          ref: ${{ steps.core_ref.outputs.sha }}
+          path: core
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Require dedicated Web production identity
+        shell: bash
+        env:
+          INFISICAL_IDENTITY_ID: ${{ vars.INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID }}
+        run: |
+          if [[ -z "$INFISICAL_IDENTITY_ID" ]]; then
+            echo "::error::Set repository variable INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID to the dedicated github-web-prod-migration identity ID."
+            exit 1
+          fi
+      # Print the claims this job actually presents, so a 403 below is immediately
+      # attributable: mismatched claims => Infisical OIDC config; matching claims
+      # => the identity's project role (it needs to read the secret VALUE).
+      # Only the sub/aud/iss claims are echoed — never the token itself.
+      - name: Show the OIDC claims this job presents
+        shell: bash
+        env:
+          INFISICAL_GITHUB_AUDIENCE: https://github.com/pirate-social-club
+        run: |
+          set -euo pipefail
+          token="$(curl -fsS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=$(node -e 'process.stdout.write(encodeURIComponent(process.env.INFISICAL_GITHUB_AUDIENCE))')" \
+            | node -e 'let i="";process.stdin.on("data",c=>i+=c);process.stdin.on("end",()=>process.stdout.write(JSON.parse(i).value))')"
+          claims="$(TOKEN="$token" node -e '
+            const payload = JSON.parse(Buffer.from(process.env.TOKEN.split(".")[1], "base64url").toString("utf8"));
+            for (const key of ["iss", "aud", "sub"]) console.log(`  ${key}: ${payload[key]}`);
+          ')"
+          echo "OIDC claims presented to Infisical:"
+          printf '%s\n' "$claims"
+          {
+            echo "### OIDC claims presented"
+            echo ""
+            echo '```'
+            printf '%s\n' "$claims"
+            echo '```'
+            echo ""
+            echo "Infisical must pin this identity to exactly this \`sub\` and \`aud\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+      # fetch-infisical-secrets.sh pipes both of its curls into node, so a 403
+      # surfaces only as "Unexpected end of JSON input" with no indication of
+      # WHICH call failed. Probe the two independently first and name the culprit.
+      - name: Isolate the 403 (login vs secret read)
+        shell: bash
+        env:
+          INFISICAL_IDENTITY_ID: ${{ vars.INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID }}
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_GITHUB_AUDIENCE: https://github.com/pirate-social-club
+        run: |
+          set -uo pipefail
+          oidc="$(curl -fsS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=$(node -e 'process.stdout.write(encodeURIComponent(process.env.INFISICAL_GITHUB_AUDIENCE))')" \
+            | node -e 'let i="";process.stdin.on("data",c=>i+=c);process.stdin.on("end",()=>process.stdout.write(JSON.parse(i).value))')"
+
+          # --- call 1: Infisical OIDC login -------------------------------------
+          login_body="$(INFISICAL_IDENTITY_ID="$INFISICAL_IDENTITY_ID" OIDC="$oidc" node -e \
+            'process.stdout.write(JSON.stringify({identityId:process.env.INFISICAL_IDENTITY_ID, jwt:process.env.OIDC}))')"
+          login_code="$(curl -s -o /tmp/login.json -w '%{http_code}' \
+            -X POST "https://app.infisical.com/api/v1/auth/oidc-auth/login" \
+            -H "Content-Type: application/json" --data "$login_body")"
+          echo "OIDC login  -> HTTP $login_code"
+
+          if [[ "$login_code" != "200" ]]; then
+            echo "::error::Infisical OIDC LOGIN failed (HTTP $login_code). The identity's auth config rejects our claims — check Subject/Audience/Issuer on the identity."
+            echo "response: $(cat /tmp/login.json)"
+            exit 1
+          fi
+
+          token="$(node -e 'process.stdout.write(require("/tmp/login.json").accessToken)')"
+          echo "::add-mask::$token"
+          echo "  login OK — the identity's OIDC auth config (sub/aud/iss) is CORRECT."
+
+          # --- call 2: read the secret VALUE ------------------------------------
+          read_code="$(curl -s -o /tmp/secret.json -w '%{http_code}' --get \
+            "https://app.infisical.com/api/v4/secrets/CONTROL_PLANE_MIGRATOR_DATABASE_URL" \
+            -H "Authorization: Bearer $token" \
+            --data-urlencode "projectId=$INFISICAL_PROJECT_ID" \
+            --data-urlencode "environment=prod" \
+            --data-urlencode "secretPath=/services/control-plane" \
+            --data-urlencode "type=shared" \
+            --data-urlencode "viewSecretValue=true" \
+            --data-urlencode "expandSecretReferences=true" \
+            --data-urlencode "includeImports=false")"
+          echo "secret read -> HTTP $read_code"
+
+          if [[ "$read_code" != "200" ]]; then
+            echo "::error::Infisical LOGIN SUCCEEDED but reading the secret VALUE failed (HTTP $read_code). The identity is authenticating fine; it lacks PROJECT access. Add it to project $INFISICAL_PROJECT_ID with a role granting secret-VALUE read on environment 'prod', path '/services/control-plane'."
+            echo "response: $(node -e 'const r=require("/tmp/secret.json"); delete r.secret; console.log(JSON.stringify(r))' 2>/dev/null || echo '(unparseable)')"
+            exit 1
+          fi
+          echo "  secret read OK — project role is CORRECT."
+      - name: Fetch production migration secret through OIDC
+        working-directory: core
+        env:
+          INFISICAL_IDENTITY_ID: ${{ vars.INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID }}
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_ENV: prod
+          INFISICAL_SECRET_PATH: /services/control-plane
+          SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
+        run: scripts/ci/fetch-infisical-secrets.sh
+      - name: Inspect pinned production migration ledger
+        working-directory: core
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
+          ledger_output="$(bun scripts/control-plane/inspect-control-plane-migration-ledger.ts \
+            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
+            --migrations db/control-plane/migrations \
+            --limit 25)"
+          printf '%s\n' "$ledger_output"
+
+          missing="$(printf '%s\n' "$ledger_output" | awk -F': ' '$1 == "missing" { print $2; exit }')"
+          mismatched="$(printf '%s\n' "$ledger_output" | awk -F': ' '$1 == "mismatched" { print $2; exit }')"
+          expected="$(printf '%s\n' "$ledger_output" | awk -F': ' '$1 == "expected_migrations" { print $2; exit }')"
+          matching="$(printf '%s\n' "$ledger_output" | awk -F': ' '$1 == "matching" { print $2; exit }')"
+
+          if [[ -z "$missing" || -z "$mismatched" || -z "$expected" || -z "$matching" ]]; then
+            echo "::error::Could not parse migration ledger summary."
+            exit 1
+          fi
+          if [[ "$missing" != "0" || "$mismatched" != "0" || "$matching" != "$expected" ]]; then
+            echo "::error::Production migration ledger drift detected: expected=$expected matching=$matching missing=$missing mismatched=$mismatched"
+            exit 1
+          fi
+
+          {
+            echo "## Production migration OIDC doctor passed"
+            echo ""
+            echo "- Web ref: \`$GITHUB_REF\`"
+            echo "- Pinned Core: \`${{ steps.core_ref.outputs.sha }}\`"
+            echo "- Matching migrations: $matching/$expected"
+            echo "- Missing migrations: $missing"
+            echo "- Checksum mismatches: $mismatched"
+            echo ""
+            echo "This workflow is read-only; it does not apply migrations or deploy."
+          } >> "$GITHUB_STEP_SUMMARY"

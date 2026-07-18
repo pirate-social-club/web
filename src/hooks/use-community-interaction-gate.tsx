@@ -18,6 +18,7 @@ import {
 import type { VerificationIntent } from "@pirate/api-contracts";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
+import { logger } from "@/lib/logger";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { useZkPassportVerification } from "@/lib/verification/use-zkpassport-verification";
@@ -33,6 +34,7 @@ import { useInteractionAltcha } from "./community-interaction-gate/use-interacti
 import { useVerificationCompletion } from "./community-interaction-gate/use-verification-completion";
 import {
   SELF_INTERACTION_GATE_STORAGE_KEY,
+  type CommunityGateData,
   type ModalState,
   type PendingInteraction,
   type RouteKind,
@@ -81,6 +83,10 @@ export function useCommunityInteractionGate({
   const [walletConnectionLoading, setWalletConnectionLoading] = React.useState(false);
   const sessionKey = session?.user.id ?? null;
   const pendingInteractionRef = React.useRef<PendingInteraction | null>(null);
+  const rerunJoinedInteractionRef = React.useRef<(
+    pendingInteraction: PendingInteraction,
+    joinedGate: CommunityGateData,
+  ) => Promise<void> | void>(() => undefined);
   const interactionCopy = React.useMemo(
     () => {
       const localeMessages = getLocaleMessages(
@@ -172,6 +178,8 @@ export function useCommunityInteractionGate({
         invalidateCommunityGate,
         payload,
         pendingInteraction,
+        rerunJoinedInteraction: (joinedInteraction, joinedGate) =>
+          rerunJoinedInteractionRef.current(joinedInteraction, joinedGate),
         setModalState,
         updateCachedGate,
       });
@@ -202,12 +210,18 @@ export function useCommunityInteractionGate({
         },
         closeModal,
         context,
+        invalidateCommunityGate,
         pendingInteraction,
       });
     }, (error) => {
-      toast.error(getErrorMessage(error, "Browser anti-bot check failed."));
+      logger.warn("[interaction-gate] action after browser check failed", {
+        action: pendingInteraction.action,
+        communityId: pendingInteraction.communityId,
+        message: getErrorMessage(error, "Browser anti-bot check failed."),
+        postId: pendingInteraction.postId,
+      });
     });
-  }, [closeModal, completeAltchaActionWithPayload]);
+  }, [closeModal, completeAltchaActionWithPayload, invalidateCommunityGate]);
 
   const {
     startVerification: startVeryVerification,
@@ -365,6 +379,24 @@ export function useCommunityInteractionGate({
     startWalletConnection,
     walletConnectionLoading,
   });
+
+  rerunJoinedInteractionRef.current = async (pendingInteraction, joinedGate) => {
+    if (pendingInteraction.resumeActionAfterJoin === false) {
+      await pendingInteraction.onAllowed();
+      return;
+    }
+    await runGatedCommunityAction({
+      action: pendingInteraction.action,
+      commentId: pendingInteraction.commentId,
+      communityId: pendingInteraction.communityId,
+      gateData: joinedGate,
+      onAllowed: pendingInteraction.onAllowed,
+      postId: pendingInteraction.postId,
+      requireMembership: pendingInteraction.requireMembership,
+      resumeActionAfterJoin: pendingInteraction.resumeActionAfterJoin,
+      voteValue: pendingInteraction.voteValue,
+    });
+  };
 
   const interactionModal = modalState ? (
     <CommunityInteractionGateModal

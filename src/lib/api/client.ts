@@ -1,6 +1,7 @@
 import {
   createAuthApi,
   createFeedApi,
+  createGateCapabilitiesApi,
   createGeoApi,
   createOnboardingApi,
   createUsersApi,
@@ -27,6 +28,7 @@ import {
 import {
   createJobsApi,
   createNotificationsApi,
+  createRewardsApi,
   createRoyaltiesApi,
 } from "./client-groups-system";
 import type {
@@ -44,21 +46,26 @@ export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
   readonly retryable: boolean;
+  readonly retryableExplicit: boolean;
   readonly details: Record<string, unknown> | null;
+  readonly requestId: string | null;
 
   constructor(
     code: string,
     message: string,
     status: number,
-    retryable = false,
+    retryable?: boolean,
     details: Record<string, unknown> | null = null,
+    requestId: string | null = null,
   ) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = status;
-    this.retryable = retryable;
+    this.retryable = retryable ?? false;
+    this.retryableExplicit = retryable !== undefined;
     this.details = details;
+    this.requestId = requestId;
   }
 }
 
@@ -86,6 +93,7 @@ export class ApiClient {
   readonly verification = createVerificationApi(this.request.bind(this));
   readonly feed = createFeedApi(this.request.bind(this));
   readonly geo = createGeoApi(this.request.bind(this));
+  readonly gateCapabilities = createGateCapabilitiesApi(this.request.bind(this));
   readonly communities = {
     ...createCommunitiesApi(this.request.bind(this)),
     ...createCommunityContentApi(this.request.bind(this)),
@@ -103,6 +111,7 @@ export class ApiClient {
   readonly publicComments = createPublicCommentsApi(this.request.bind(this));
   readonly jobs = createJobsApi(this.request.bind(this));
   readonly notifications = createNotificationsApi(this.request.bind(this));
+  readonly rewards = createRewardsApi(this.request.bind(this));
   readonly royalties = createRoyaltiesApi(this.request.bind(this));
 
   constructor(options?: { baseUrl?: string; getToken?: () => string | null }) {
@@ -194,10 +203,14 @@ export class ApiClient {
       ...fetchInit
     } = init ?? {};
     const body = fetchInit.body;
+    const method = init?.method ?? "GET";
     const usesFormData = typeof FormData !== "undefined" && body instanceof FormData;
     const hasBody = body !== undefined && body !== null;
     const headers = new Headers(usesFormData || !hasBody ? undefined : { "Content-Type": "application/json" });
-    if (typeof window !== "undefined") {
+    // Identity headers are not CORS-safelisted, so sending them on a public GET
+    // forces a preflight. Writes already preflight (JSON content-type), so they
+    // keep both headers: the API reads them for server-side event attribution.
+    if (typeof window !== "undefined" && method !== "GET" && method !== "HEAD") {
       const identity = getAnalyticsIdentity();
       headers.set("x-pirate-anonymous-id", identity.anonymousId);
       headers.set("x-pirate-session-id", identity.sessionId);
@@ -226,7 +239,6 @@ export class ApiClient {
       headers.set(key, value);
     }
 
-    const method = init?.method ?? "GET";
     logger.debug("[api-client] request", { method, path, tokenOptional, tokenRequired });
 
     let res: Response;
@@ -282,18 +294,23 @@ export class ApiClient {
     if (!res.ok) {
       let code = "internal_error";
       let message = `Request failed with status ${res.status}`;
-      let retryable = false;
+      let retryable: boolean | undefined;
+      let requestId = res.headers.get("x-request-id");
 
       try {
-        const body: JsonErrorResponse & { details?: unknown; error?: string } = await res.json();
+        const body: JsonErrorResponse & { details?: unknown; error?: string; preview?: unknown } = await res.json();
         if (body.code) code = body.code;
         else if (typeof body.error === "string") code = body.error; // routes that return { error: reason }
         if (body.message) message = body.message;
-        if (body.retryable) retryable = body.retryable;
-        const parsedDetails =
+        if (typeof body.retryable === "boolean") retryable = body.retryable;
+        if (typeof body.request_id === "string" && body.request_id) requestId = body.request_id;
+        let parsedDetails =
           body.details && typeof body.details === "object"
             ? (body.details as Record<string, unknown>)
             : null;
+        if ("preview" in body && body.preview && typeof body.preview === "object") {
+          parsedDetails = { ...(parsedDetails ?? {}), preview: body.preview };
+        }
 
         if (
           tokenRequired &&
@@ -335,8 +352,9 @@ export class ApiClient {
           code,
           message,
           retryable,
+          requestId,
         });
-        throw new ApiError(code, message, res.status, retryable, parsedDetails);
+        throw new ApiError(code, message, res.status, retryable, parsedDetails, requestId);
       } catch (error) {
         if (error instanceof ApiError) {
           throw error;
@@ -348,8 +366,9 @@ export class ApiClient {
           code,
           message,
           retryable,
+          requestId,
         });
-        throw new ApiError(code, message, res.status, retryable);
+        throw new ApiError(code, message, res.status, retryable, null, requestId);
       }
     }
 

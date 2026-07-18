@@ -24,6 +24,7 @@ export function WalletHub({
   onReceive,
   onSend,
   onViewActivity,
+  rewardsSummary,
   chainSections,
   recentActivity,
 }: WalletHubProps) {
@@ -51,6 +52,7 @@ export function WalletHub({
         onSend={onSend}
         onViewActivity={onViewActivity}
         recentActivity={recentActivity}
+        rewardsSummary={rewardsSummary}
         totalBalanceUsd={resolvedTotalBalanceUsd}
         title={title ?? copy.title}
         variant={variant}
@@ -66,6 +68,7 @@ export function WalletHub({
         onReceive={onReceive}
         onSend={onSend}
         recentActivity={recentActivity}
+        rewardsSummary={rewardsSummary}
         totalBalanceUsd={resolvedTotalBalanceUsd}
         variant={variant}
         walletAddress={walletAddress}

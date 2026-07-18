@@ -247,6 +247,7 @@ export interface SongContentSpec {
 
   // The study ("Study") capability + surface for this song, when available.
   study?: SongStudyCapability;
+  studyHref?: string;
   onStudy?: () => void;
 
   // Streak leaderboard for this song. `streakSummary` renders the inline streak
@@ -541,6 +542,11 @@ export interface PostCardProps {
   menuItems?: PostCardMenuItem[];
   shareActions?: PostCardShareAction[];
   onVote?: (direction: "up" | "down" | null) => void;
+  voteAccess?: {
+    disabled?: boolean;
+    label: string;
+    onClick?: () => void;
+  };
   onComment?: () => void;
   onShare?: () => void;
   onToggleOriginal?: () => void;

@@ -29,6 +29,7 @@ import {
   type RunGatedCommunityActionParams,
 } from "@/hooks/use-community-interaction-gate.helpers";
 import { getLocaleMessages } from "@/locales";
+import { isMembershipRequiredWriteRejection } from "./membership-write-rejection";
 
 type ToastInfoOptions = {
   action?: {
@@ -157,6 +158,7 @@ function satisfiesNonPowGate(
       return value != null && (allowed.length === 0 || allowed.includes(value));
     }
     case "altcha_pow":
+    case "asset_balance":
     case "erc721_holding":
     case "erc721_inventory_match":
       return false;
@@ -189,6 +191,7 @@ function isRefreshableNonPowGate(summary: MembershipGateSummary): boolean {
     case "gender":
       return true;
     case "altcha_pow":
+    case "asset_balance":
     case "erc721_holding":
     case "erc721_inventory_match":
       return false;
@@ -335,7 +338,9 @@ export function useGatedActionRunner({
     onAllowed,
     postId,
     commentId,
+    requireMembership,
     resolveGateData,
+    resumeActionAfterJoin,
     voteValue,
   }: RunGatedCommunityActionParams): Promise<InteractionResult> => {
     const hasSession = Boolean(sessionAccessToken);
@@ -397,18 +402,43 @@ export function useGatedActionRunner({
         reason: "viewer_community_role",
         viewerCommunityRole: gate.preview.viewer_community_role,
       });
-      await onAllowed();
+      try {
+        await onAllowed();
+      } catch (error) {
+        if (isMembershipRequiredWriteRejection(error)) {
+          // The write said membership is missing even though eligibility
+          // allowed the action — the cached gate is stale or reads and
+          // writes disagree. Drop the cache so the next attempt re-checks
+          // and can surface the join flow instead of failing again.
+          invalidateCommunityGate(communityId);
+          logger.warn("[interaction-gate] write rejected for membership after allowed eligibility", {
+            ...logBase,
+            eligibilityStatus: gate.eligibility.status,
+            reason: "viewer_community_role",
+          });
+        }
+        throw error;
+      }
       return "allowed";
     }
 
     const state = resolveCommunityInteractionState({
+      action,
       eligibility: gate.eligibility,
       hasSession,
+      requireMembership,
     });
 
     const actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId, sessionUser, voteValue });
+    const isPublicReply = (action === "reply_post" || action === "reply_comment")
+      && !requireMembership;
+    const shouldUsePublicReplyAltcha = isPublicReply
+      && state === "verification_required"
+      && canSatisfyWithAltchaOnly(gate);
+    // Public replies satisfy a PoW membership policy as an action-bound
+    // comment_create proof. They must never take the community_join path.
     const shouldUseActionAltcha = actionAltchaConfig
-      && (state === "allowed" || (state === "verification_required" && canSatisfyWithAltchaOnly(gate)));
+      && (state === "allowed" || shouldUsePublicReplyAltcha);
     if (shouldUseActionAltcha) {
       let allowedCompleted = false;
       const guardedOnAllowed: PendingInteraction["onAllowed"] = async (context) => {
@@ -426,6 +456,8 @@ export function useGatedActionRunner({
         gate,
         onAllowed: guardedOnAllowed,
         postId,
+        requireMembership: requireMembership === true,
+        resumeActionAfterJoin,
         voteValue,
       });
       const body = buildAltchaBody({
@@ -482,7 +514,18 @@ export function useGatedActionRunner({
         ...logBase,
         eligibilityStatus: gate.eligibility.status,
       });
-      await onAllowed();
+      try {
+        await onAllowed();
+      } catch (error) {
+        if (isMembershipRequiredWriteRejection(error)) {
+          invalidateCommunityGate(communityId);
+          logger.warn("[interaction-gate] write rejected for membership after allowed eligibility", {
+            ...logBase,
+            eligibilityStatus: gate.eligibility.status,
+          });
+        }
+        throw error;
+      }
       return "allowed";
     }
 
@@ -493,6 +536,8 @@ export function useGatedActionRunner({
       gate,
       onAllowed,
       postId,
+      requireMembership: requireMembership === true,
+      resumeActionAfterJoin,
       voteValue,
     });
 

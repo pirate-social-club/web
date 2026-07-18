@@ -4,6 +4,7 @@ import type {
   CommunityHandlePaymentInstructions,
   CommunityPurchaseQuote,
   CommunityPurchaseQuoteRequest,
+  RewardCampaignFundingQuote,
 } from "@pirate/api-contracts";
 import {
   createPublicClient,
@@ -249,6 +250,32 @@ export function resolveBookingCheckoutTransferInput(payment: {
   }
   if (amountAtomic <= 0n) throw new Error("This booking quote has a zero or negative payment amount.");
   return { chainId: payment.chain_id, tokenAddress, recipientAddress, amountAtomic };
+}
+
+/**
+ * Reward-campaign funding transfer. The quote pins `sender_address`; callers MUST
+ * verify the connected wallet equals it before sending (a transfer from any other
+ * wallet is rejected by receipt verification and strands the funds). This resolver
+ * only maps the on-chain transfer target — the sender check belongs to the caller.
+ */
+export function resolveRewardFundingTransferInput(
+  quote: RewardCampaignFundingQuote,
+): UsdcTransferInput {
+  const tokenAddress = normalizeAddress(quote.token_address);
+  if (!tokenAddress) throw new Error("This funding quote has an invalid payment token.");
+  const recipientAddress = normalizeAddress(quote.treasury_address);
+  if (!recipientAddress) throw new Error("This funding quote is missing its treasury destination.");
+  if (typeof quote.chain_id !== "number" || !Number.isSafeInteger(quote.chain_id) || quote.chain_id <= 0) {
+    throw new Error("This funding quote has an invalid chain.");
+  }
+  let amountAtomic: bigint;
+  try {
+    amountAtomic = BigInt(quote.amount_atomic);
+  } catch {
+    throw new Error("This funding quote has an invalid amount.");
+  }
+  if (amountAtomic <= 0n) throw new Error("This funding quote has a zero or negative amount.");
+  return { chainId: quote.chain_id, tokenAddress, recipientAddress, amountAtomic };
 }
 
 export async function executeUsdcTransfer(params: {

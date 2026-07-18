@@ -10,6 +10,7 @@ import type {
 
 import type {
   CreateKaraokeSessionClientOptions,
+  KaraokeBridgeError,
   KaraokeSessionBridgeHandle,
 } from "../karaoke-session-bridge";
 import {
@@ -65,6 +66,7 @@ interface Harness {
     emit: (event: KaraokeServerEvent) => void;
     chunk: (bytes: number, capturedAtMs: number) => void;
     micError: (error: { code: string; message: string }) => void;
+    bridgeError: (error: KaraokeBridgeError) => void;
     setCaptureClock: (ms: number) => void;
   };
   controller: ReturnType<typeof createKaraokeScoringController>;
@@ -86,6 +88,7 @@ function makeHarness(opts: { failStart?: Error } = {}): Harness {
   let teardownCapture: (() => void | Promise<void>) | undefined;
   let onChunk: ((pcm16: ArrayBuffer, capturedAtMs: number) => void) | undefined;
   let onCaptureError: ((e: { code: string; message: string }) => void) | undefined;
+  let onBridgeError: ((e: KaraokeBridgeError) => void) | undefined;
 
   const handle: KaraokeSessionBridgeHandle = {
     abort: (code) => { events.aborted.push(code); phase = "aborted"; onPhaseChange?.("aborted"); },
@@ -106,6 +109,7 @@ function makeHarness(opts: { failStart?: Error } = {}): Harness {
   const createSessionClient = (o: CreateKaraokeSessionClientOptions): KaraokeSessionBridgeHandle => {
     onPhaseChange = o.onPhaseChange;
     onServerEvent = o.onServerEvent;
+    onBridgeError = o.onError;
     teardownCapture = o.teardownCapture;
     return handle;
   };
@@ -137,6 +141,7 @@ function makeHarness(opts: { failStart?: Error } = {}): Harness {
     capture,
     controller,
     driver: {
+      bridgeError: (error) => onBridgeError?.(error),
       chunk: (bytes, capturedAtMs) => onChunk?.(new ArrayBuffer(bytes), capturedAtMs),
       emit: (event) => onServerEvent?.(event),
       micError: (error) => onCaptureError?.(error),
@@ -285,6 +290,24 @@ describe("createKaraokeScoringController", () => {
     h.driver.micError({ code: "device_unavailable", message: "Microphone track ended" });
     expect(h.events.aborted).toEqual(["karaoke_mic_lost"]);
     expect(h.controller.getState().micError).toEqual({ code: "device_unavailable", message: "Microphone track ended" });
+  });
+
+  test("keeps terminal transport aborts in the error state", async () => {
+    const h = makeHarness();
+    await h.controller.start(0);
+    h.driver.bridgeError({
+      code: "karaoke_reconnect_exhausted",
+      message: "Karaoke connection failed after 5 reconnect attempts",
+      retryable: false,
+      status: null,
+    });
+    h.driver.setPhase("aborted");
+
+    expect(h.controller.getState()).toMatchObject({
+      error: { code: "karaoke_reconnect_exhausted" },
+      phase: "aborted",
+      status: "error",
+    });
   });
 
   test("dispose closes the session (driving capture teardown)", async () => {

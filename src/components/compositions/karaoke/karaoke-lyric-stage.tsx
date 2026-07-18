@@ -240,38 +240,40 @@ export function KaraokeLyricStage({
         </div>
       ) : null}
 
-      {activeLine ? (
-        <div className="karaoke-lyric-stage__slot karaoke-lyric-stage__slot--active">
-          <StageLine
-            key={getKaraokeStageLineKey(activeLine)}
-            currentTimeMs={currentTimeMs}
-            line={activeLine}
-            mode="active"
-          />
-        </div>
-      ) : null}
+      <div className="karaoke-lyric-stage__lines">
+        {activeLine ? (
+          <div className="karaoke-lyric-stage__slot karaoke-lyric-stage__slot--active">
+            <StageLine
+              key={getKaraokeStageLineKey(activeLine)}
+              currentTimeMs={currentTimeMs}
+              line={activeLine}
+              mode="active"
+            />
+          </div>
+        ) : null}
 
-      {cueLine ? (
-        <div className="karaoke-lyric-stage__slot karaoke-lyric-stage__slot--cue">
-          <StageLine
-            key={getKaraokeStageLineKey(cueLine)}
-            currentTimeMs={currentTimeMs}
-            line={cueLine}
-            mode={cueMode}
-          />
-        </div>
-      ) : null}
+        {cueLine ? (
+          <div className="karaoke-lyric-stage__slot karaoke-lyric-stage__slot--cue">
+            <StageLine
+              key={getKaraokeStageLineKey(cueLine)}
+              currentTimeMs={currentTimeMs}
+              line={cueLine}
+              mode={cueMode}
+            />
+          </div>
+        ) : null}
 
-      {nextLine ? (
-        <div className="karaoke-lyric-stage__slot karaoke-lyric-stage__slot--next">
-          <StageLine
-            key={getKaraokeStageLineKey(nextLine)}
-            currentTimeMs={currentTimeMs}
-            line={nextLine}
-            mode="next"
-          />
-        </div>
-      ) : null}
+        {nextLine ? (
+          <div className="karaoke-lyric-stage__slot karaoke-lyric-stage__slot--next">
+            <StageLine
+              key={getKaraokeStageLineKey(nextLine)}
+              currentTimeMs={currentTimeMs}
+              line={nextLine}
+              mode="next"
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -13,13 +13,22 @@ import {
 import type { SongStreakSummary } from "@/components/compositions/song-study/song-streak-preview";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { Button } from "@/components/primitives/button";
+import {
+  rewardAmountLabel,
+  SongRewardOffer,
+} from "@/components/compositions/rewards/reward-surfaces";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { toStreakSummary } from "@/app/authenticated-helpers/post-media-presentation";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
-import type { SongStudyAttemptResult, SongStudyExercise, SongStudyPayload } from "@/lib/api/client-api-types";
+import type {
+  ApiPublicRewardOffer,
+  SongStudyAttemptResult,
+  SongStudyExercise,
+  SongStudyPayload,
+} from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -33,10 +42,17 @@ type StudyRouteState =
       lastAttemptResult?: SongStudyAttemptResult;
       phase: "ready";
       post: LocalizedPostResponse;
+      rewardOffer: ApiPublicRewardOffer | null;
       study: SongStudyPayload;
       surface: SongStudySurfaceState;
     }
-  | { phase: "locked"; post: LocalizedPostResponse; study: SongStudyPayload; surface: SongStudySurfaceState }
+  | {
+      phase: "locked";
+      post: LocalizedPostResponse;
+      rewardOffer: ApiPublicRewardOffer | null;
+      study: SongStudyPayload;
+      surface: SongStudySurfaceState;
+    }
   | { actionLabel?: string; message: string; phase: "blocked"; title: string }
   | { phase: "error"; message: string; title: string };
 
@@ -379,15 +395,19 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           return;
         }
 
-        const study = await api.communities.getPostStudy(post.post.community, post.post.id, {
-          targetLanguage: contentLocale,
-        });
+        const [study, rewardOffer] = await Promise.all([
+          api.communities.getPostStudy(post.post.community, post.post.id, {
+            targetLanguage: contentLocale,
+          }),
+          api.rewards.getActiveCampaignForSong(post.post.community, post.post.id).catch(() => null),
+        ]);
         if (canceled) return;
 
         if (study.access === "locked") {
           setState({
             phase: "locked",
             post,
+            rewardOffer,
             study,
             surface: lockedSurface(study),
           });
@@ -428,6 +448,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           exerciseIndex: 0,
           phase: "ready",
           post,
+          rewardOffer,
           study,
           surface: exerciseSurface(study.exercises[0]!),
         });
@@ -829,6 +850,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     );
   }
 
+
   return (
     <SongStudySurface
       artistName={undefined}
@@ -837,6 +859,13 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       onExit={() => navigate(`/p/${encodeURIComponent(postId)}`)}
       onOptionSelect={handleOptionSelect}
       onPrimaryAction={handlePrimaryAction}
+      rewardSlot={state.rewardOffer && state.rewardOffer.eligible_activity !== "karaoke" ? (
+        <SongRewardOffer
+          amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
+          eligibleActivity={state.rewardOffer.eligible_activity}
+          minScoreBps={state.rewardOffer.min_score_bps}
+        />
+      ) : undefined}
       state={state.surface}
       title={pageTitle(state.post, state.study)}
     />

@@ -1,4 +1,7 @@
 import type {
+  AssetBalanceCapabilityListResponse,
+  NftGateCapabilitySourceListResponse,
+  NftGateFacetValuePage,
   HomeFeedResponse,
   HomeFeedSort,
   NamespaceVerification,
@@ -82,6 +85,28 @@ export function createGeoApi(request: ApiRequest) {
         limit: input.limit,
         text: input.text,
       })),
+  };
+}
+
+export function createGateCapabilitiesApi(request: ApiRequest) {
+  return {
+    listAssets: (): Promise<AssetBalanceCapabilityListResponse> =>
+      request<AssetBalanceCapabilityListResponse>("/gate-capabilities/assets"),
+    listNftSources: (): Promise<NftGateCapabilitySourceListResponse> =>
+      request<NftGateCapabilitySourceListResponse>("/gate-capabilities/nft/sources"),
+    searchNftFacetValues: (
+      sourceId: string,
+      facetKey: string,
+      options?: { cursor?: string | null; limit?: number; query?: string },
+    ): Promise<NftGateFacetValuePage> =>
+      request<NftGateFacetValuePage>(buildQueryPath(
+        `/gate-capabilities/nft/sources/${encodeURIComponent(sourceId)}/facets/${encodeURIComponent(facetKey)}/values`,
+        {
+          cursor: options?.cursor,
+          limit: options?.limit,
+          q: options?.query,
+        },
+      )),
   };
 }
 

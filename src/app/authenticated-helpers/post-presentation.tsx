@@ -76,13 +76,24 @@ function openExternalUrl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
+type PostPresentationCommunity =
+  | Pick<ApiCommunity, "avatar_ref" | "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
+  | Pick<ApiCommunityPreview, "avatar_ref" | "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
+  | null;
+
 export function toCommunityFeedItem(
   postResponse: ApiPost,
+  community: PostPresentationCommunity,
   authorProfiles: Record<string, ApiProfile | null>,
   songOptions?: SongPresentationOptions,
   opts?: PostPresentationOptions,
 ): FeedItem {
   const { post } = postResponse;
+  const effectiveCommunity = postResponse.community ?? community;
+  const postResponseWithCommunity = {
+    ...postResponse,
+    community: effectiveCommunity,
+  } as ApiPost;
   const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
   const storyPortalHref = resolvePostStoryPortalHref({
     asset: postResponse.asset_story ?? (post as typeof post & { asset_story?: NonNullable<ApiPost["asset_story"]> | null }).asset_story,
@@ -91,11 +102,15 @@ export function toCommunityFeedItem(
     upstreamAssetRefs: post.upstream_asset_refs,
   });
   const { hasPostMenu, postMenuItems } = buildPostMenu({
+    canBoost: opts?.canBoost,
+    canManageRewardSettings: opts?.canManageRewardSettings,
     canModeratePost: opts?.canModeratePost,
     eventStatus: toPostCardEvent(post)?.status ?? null,
     onCancelEvent: opts?.onCancelEvent,
+    onBoost: opts?.onBoost,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
+    onRewardSettings: opts?.onRewardSettings,
     post,
     storyPortalHref,
     viewerIsAuthor: postResponse.viewer_is_author,
@@ -105,7 +120,7 @@ export function toCommunityFeedItem(
   const isPublished = post.status === "published";
   const isProcessing = post.status === "processing";
   const isFailed = post.status === "failed";
-  const statusNotice = isProcessing && post.post_type !== "song"
+  const statusNotice = isProcessing && post.post_type === "song"
     ? {
         tone: "neutral" as const,
         label: "Preparing song features",
@@ -125,7 +140,7 @@ export function toCommunityFeedItem(
         }
       : undefined;
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
-  const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
+  const content = toCommunityPostContent(postResponseWithCommunity, songOptions, { ...opts, embedMode: "official" });
   const heading = resolvePostCardHeadingTitle({
     translatedTitle: postResponse.translated_title,
     originalTitle: post.title,
@@ -176,6 +191,8 @@ export function toCommunityFeedItem(
       menuItems: hasPostMenu ? postMenuItems : undefined,
       shareActions: isPublished ? buildPostShareActions(post) : undefined,
       onMenuAction: hasPostMenu ? (key) => {
+        if (key === "boost") opts?.onBoost?.();
+        if (key === "reward-settings") opts?.onRewardSettings?.();
         if (key === "view-story" && storyPortalHref) openExternalUrl(storyPortalHref);
         if (key === "delete") opts?.onDelete?.();
         if (key === "remove") opts?.onRemove?.();
@@ -192,7 +209,7 @@ export function toCommunityFeedItem(
   );
   const originalPost = canShowOriginalToggle(postResponse, opts)
     ? (() => {
-      const originalContent = toCommunityPostContent(postResponse, songOptions, { ...opts, preferOriginalText: true });
+      const originalContent = toCommunityPostContent(postResponseWithCommunity, songOptions, { ...opts, preferOriginalText: true });
       const originalTitleProps = buildPostCardTitleProps({
         content: originalContent,
         title: post.title,
@@ -215,10 +232,7 @@ export function toCommunityFeedItem(
 
 export function toThreadPostCard(
   postResponse: ApiPost,
-  community:
-    | Pick<ApiCommunity, "avatar_ref" | "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
-    | Pick<ApiCommunityPreview, "avatar_ref" | "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
-    | null,
+  community: PostPresentationCommunity,
   authorProfile?: ApiProfile,
   songOptions?: SongPresentationOptions,
   opts?: PostPresentationOptions,
@@ -237,11 +251,15 @@ export function toThreadPostCard(
     upstreamAssetRefs: post.upstream_asset_refs,
   });
   const { hasPostMenu, postMenuItems } = buildPostMenu({
+    canBoost: opts?.canBoost,
+    canManageRewardSettings: opts?.canManageRewardSettings,
     canModeratePost: opts?.canModeratePost,
     eventStatus: toPostCardEvent(post)?.status ?? null,
     onCancelEvent: opts?.onCancelEvent,
+    onBoost: opts?.onBoost,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
+    onRewardSettings: opts?.onRewardSettings,
     post,
     storyPortalHref,
     viewerIsAuthor: postResponse.viewer_is_author,
@@ -316,12 +334,15 @@ export function toThreadPostCard(
     menuItems: hasPostMenu ? postMenuItems : undefined,
     shareActions: buildPostShareActions(post),
     onMenuAction: hasPostMenu ? (key) => {
+      if (key === "boost") opts?.onBoost?.();
+      if (key === "reward-settings") opts?.onRewardSettings?.();
       if (key === "view-story" && storyPortalHref) openExternalUrl(storyPortalHref);
       if (key === "delete") opts?.onDelete?.();
       if (key === "remove") opts?.onRemove?.();
       if (key === "cancel-event") opts?.onCancelEvent?.();
     } : undefined,
     onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
+    voteAccess: post.status === "deleted" || post.status === "removed" ? undefined : opts?.voteAccess,
     postHref: undefined,
     qualifierLabels: resolvePostQualifierLabels(postResponse),
     ...titleProps,

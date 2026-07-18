@@ -24,6 +24,10 @@
       "withoutLabel": "يتطلب امتلاك NFT على إيثريوم"
     },
     "erc721InventoryMatch": "يتطلب {quantity} من مقتنيات Courtyard: {assetLabel}",
+    "assetBalance": {
+      "withAmount": "{amount} {symbol} على الأقل",
+      "withoutAmount": "رصيد الرمز"
+    },
     "fallback": "يتطلب التحقق من {gateType}"
   },
   "joinCta": {
@@ -87,7 +91,11 @@
     "passportPromptActionLabel": "زيارة Passport.xyz",
     "powOnlyTitle": "مطلوب فحص المتصفح",
     "powOnlyDescription": "أكمل فحص إثبات عمل سريعًا للمتابعة.",
-    "powSkipNote": "يمكن للمستخدمين الموثقين تخطي هذا الفحص."
+    "powSkipNote": "يمكن للمستخدمين الموثقين تخطي هذا الفحص.",
+    "requirementSummaryAll": "أكمل {requirements}.",
+    "requirementSummaryAny": "يكفي استيفاء أحد الخيارات التالية: {requirements}.",
+    "requirementSummaryMixed": "أكمل {requiredRequirements}. واستوفِ أيضًا أحد الخيارات التالية: {alternativeRequirements}.",
+    "requirementSummaryAnyGroups": "استوفِ خيارًا واحدًا من كل مجموعة: {requirements}."
   },
   "modal": {
     "anyTitle": "اختر طريقة للمتابعة",
@@ -127,6 +135,122 @@
     "walletScore": "درجة Passport",
     "altchaPow": "حالة إثبات العمل"
   },
+  "treeBuilder": {
+    "title": "Join requirements",
+    "liveSummaryTitle": "Live summary",
+    "emptySummary": "No join requirements yet.",
+    "summaryAllOf": "ALL of",
+    "summaryAnyOf": "ANY of",
+    "summaryIntro": "Members must meet",
+    "complexityWarning": "This rule is getting complex — {used} of {limit} conditions used.",
+    "limitReached": "Remove a condition or group to add more.",
+    "strongBrowserChallengeWarning": "Anyone can join by completing just a quick browser challenge — no identity, score, or holdings needed. Good for stopping spam; not a member check.",
+    "actions": {
+      "rule": "Rule",
+      "group": "Group",
+      "removeRequirement": "Remove requirement",
+      "removeGroup": "Remove group"
+    },
+    "emptyGroup": "Add a rule or nested group.",
+    "unknownRequirementTitle": "Unrecognized requirement",
+    "unknownRequirementDescription": "Preserved as {gate}",
+    "requirementTypes": {
+      "humanVerification": "Human verification",
+      "browserChallenge": "Browser challenge",
+      "passportScore": "Passport score",
+      "assetBalance": "رصيد الرمز",
+      "nftHolding": "NFT holding",
+      "documentSexMarker": "Document sex marker",
+      "nationality": "Nationality",
+      "minimumAge": "Minimum age"
+    },
+    "providers": {
+      "self": "ID check (Self)",
+      "zkpassport": "ID check (ZKPassport)",
+      "very": "Palm scan (Very)"
+    },
+    "operators": {
+      "provenBy": "proven by",
+      "atLeast": "at least",
+      "holdsAtLeast": "يمتلك على الأقل",
+      "holdsOneFrom": "holds ≥ 1 from",
+      "holds": "holds ≥",
+      "from": "from",
+      "is": "is",
+      "isOneOf": "is one of",
+      "matches": "matches"
+    },
+    "nftQuantityLocked": "This NFT check only supports a quantity of 1 today.",
+    "unsupportedAtom": "Unsupported atom",
+    "inputs": {
+      "groupMatchMode": "Group match mode",
+      "requirementType": "Requirement type",
+      "humanVerificationProvider": "Human verification provider",
+      "minimumPassportScore": "Minimum Passport score",
+      "asset": "الأصل",
+      "minimumAssetBalance": "الحد الأدنى لرصيد الرمز",
+      "nftContractAddress": "NFT contract address",
+      "minimumNftQuantity": "Minimum NFT quantity",
+      "minimumAge": "Minimum age",
+      "documentSexMarker": "Document sex marker",
+      "allowedNationalities": "Allowed nationalities"
+    },
+    "sources": {
+      "courtyardCollectible": "مقتنى من Courtyard",
+      "searchCollections": "ابحث في المجموعات أو ألصق العنوان",
+      "loadError": "تعذر تحميل المجموعات. ألصق عنوان العقد أدناه.",
+      "empty": "لم يتم العثور على مصدر موثوق. ألصق عنوان العقد أدناه.",
+      "attribute": "السمة",
+      "removeAttribute": "إزالة عامل تصفية السمة",
+      "addAttribute": "إضافة عامل تصفية للسمة",
+      "searchFacet": "البحث في {facet}",
+      "facetLoadError": "تعذر تحميل القيم.",
+      "facetLoading": "جارٍ تحميل القيم…",
+      "retry": "إعادة المحاولة",
+      "noValues": "لم يتم العثور على قيم.",
+      "matches": "{count} نتيجة",
+      "claimedNameOption": "استخدام الاسم المُطالَب به",
+      "claimedNameHint": "يطابق الاسم الذي تتم المطالبة به"
+    },
+    "assets": {
+      "loading": "جارٍ تحميل الأصول المدعومة…",
+      "unknownAsset": "أصل غير معروف",
+      "unavailableReadOnly": "الأصل {asset} غير متاح في هذا المحرر. تم الاحتفاظ بالمتطلب للقراءة فقط.",
+      "amountError": "أدخل مبلغًا أكبر من صفر بالصيغة العشرية العادية.",
+      "precisionError": "يدعم هذا الأصل حتى {decimals} منازل عشرية."
+    },
+    "validation": {
+      "acceptedProvidersEmpty": "يجب ألا تكون قائمة مزوّدي الإثبات المقبولين فارغة.",
+      "acceptedProvidersUnsupported": "يجب أن يكون مزوّدو الإثبات المقبولون Self أو ZKPassport.",
+      "assetAmountInvalid": "أدخل مبلغ رمز صالحًا أكبر من صفر.",
+      "assetRequired": "اختر أصلًا مدعومًا.",
+      "collectibleChainUnsupported": "يجب أن تستهدف قواعد المقتنيات شبكة مدعومة.",
+      "collectibleProviderUnsupported": "يجب أن تستخدم قواعد المقتنيات مزوّد مخزون مدعومًا.",
+      "contractAddressInvalid": "أدخل عنوان عقد صالحًا.",
+      "countryCodesInvalid": "يجب أن تكون البلدان رموز دول ISO صالحة.",
+      "countryListInvalid": "يجب تقديم البلدان في قائمة.",
+      "genderMarkerInvalid": "يجب أن تكون علامة الجنس في الوثيقة M أو F.",
+      "genderMarkerRequired": "اختر علامة الجنس في الوثيقة.",
+      "genderProviderInvalid": "يجب إثبات قواعد علامة الجنس في الوثيقة باستخدام Self.",
+      "humanProviderRequired": "اختر مزوّدًا لإثبات أن المستخدم إنسان.",
+      "minimumAgeProviderInvalid": "يجب إثبات قواعد الحد الأدنى للعمر باستخدام Self.",
+      "minimumAgeRange": "يجب أن يكون الحد الأدنى للعمر عددًا صحيحًا من {min} إلى {max}.",
+      "nationalityProviderInvalid": "يجب إثبات قواعد الجنسية باستخدام Self.",
+      "nftChainInvalid": "يجب أن تستهدف قواعد امتلاك NFT شبكة Ethereum الرئيسية.",
+      "passportScoreProviderInvalid": "يجب أن تستخدم قواعد درجة Passport مزوّد Passport.",
+      "passportScoreRange": "يجب أن تكون درجة Passport رقمًا من 0 إلى 100.",
+      "quantityRange": "يجب أن تكون الكمية عددًا صحيحًا من 1 إلى 100.",
+      "trustedCollectionRequired": "اختر مجموعة موثوقة.",
+      "inventoryAttributeFilterRequired": "أضف عامل تصفية واحدًا للسمة على الأقل.",
+      "inventoryAttributeValues": "تحتاج كل سمة إلى قيمة واحدة وحتى {max} قيم فريدة.",
+      "inventoryCardIdentityRequired": "تحتاج قواعد بطاقات التداول إلى عامل تصفية للسلسلة أو الاسم.",
+      "inventoryCollectionRequired": "اختر مجموعة.",
+      "inventoryCollectionTypeUnsupported": "اختر نوع مجموعة مدعومًا.",
+      "inventoryMatchRequired": "اختر مجموعة وسمة واحدة على الأقل.",
+      "inventoryUnsupportedAttribute": "سمة غير مدعومة: {attributes}.",
+      "inventoryWatchIdentityRequired": "تحتاج قواعد الساعات إلى عامل تصفية للعلامة التجارية أو الطراز."
+    }
+  },
   "gateFailure": {
     "nationalityMismatch": "لا يطابق فحص هويتك متطلبات هذا المجتمع.",
     "genderMismatch": "فحص هويتك لا يطابق قاعدة هذا المجتمع.",
@@ -137,6 +261,7 @@
     "erc721InventoryMatchRequired": "اربط محفظة تملك مقتنيات Courtyard المطلوبة للانضمام.",
     "tokenInventoryUnavailable": "تعذر فحص مقتنيات Courtyard الآن.",
     "walletScoreTooLow": "درجة Passport الخاصة بك لا تلبي متطلبات هذا المجتمع.",
+    "assetBalanceTooLow": "محافظك المتصلة لا تملك رصيدًا كافيًا من الأصل المطلوب للانضمام إلى هذا المجتمع.",
     "banned": "أنت غير مؤهل للانضمام إلى هذا المجتمع."
   }
 }

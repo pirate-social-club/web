@@ -83,6 +83,7 @@ function songPost(overrides: {
   return {
     post: {
       community: overrides.community ?? "cmt_karaoke",
+      id: "pst_song",
       post_type: overrides.postType ?? "song",
       song_title: overrides.title ?? "Fallback Song",
       title: overrides.title ?? "Fallback Post",
@@ -104,6 +105,8 @@ let publicPostError: unknown = null;
 let karaokeResult: unknown = null;
 let karaokeError: unknown = new ApiError("not_found", "not found", 404);
 let karaokeDeferred: Deferred<unknown> | null = null;
+let rewardOfferResult: unknown = null;
+let rewardOfferError: unknown = null;
 
 const fakeApi = {
   communities: {
@@ -132,6 +135,13 @@ const fakeApi = {
       }
       if (karaokeError) throw karaokeError;
       return karaokeResult;
+    },
+  },
+  rewards: {
+    getActiveCampaignForSong: async () => {
+      calls.push("rewards.getActiveCampaignForSong");
+      if (rewardOfferError) throw rewardOfferError;
+      return rewardOfferResult;
     },
   },
 };
@@ -175,6 +185,8 @@ beforeEach(() => {
   karaokeResult = null;
   karaokeError = new ApiError("not_found", "not found", 404);
   karaokeDeferred = null;
+  rewardOfferResult = null;
+  rewardOfferError = null;
 });
 
 afterEach(() => {
@@ -205,7 +217,11 @@ describe("KaraokeRoutePage", () => {
     await waitFor(() => {
       expect((view.container.querySelector("audio") as HTMLAudioElement | null)?.src).toBe("https://cdn.example.test/api-instrumental.mp3");
     });
-    expect(calls).toEqual(["posts.get", "publicPosts.getKaraoke"]);
+    expect(calls).toEqual([
+      "posts.get",
+      "publicPosts.getKaraoke",
+      "rewards.getActiveCampaignForSong",
+    ]);
   });
 
   test("uses the dedicated karaoke payload for ref-only post metadata", async () => {
@@ -240,7 +256,11 @@ describe("KaraokeRoutePage", () => {
     await waitFor(() => {
       expect((view.container.querySelector("audio") as HTMLAudioElement | null)?.src).toBe("https://cdn.example.test/ref-api-instrumental.mp3");
     });
-    expect(calls).toEqual(["posts.get", "publicPosts.getKaraoke"]);
+    expect(calls).toEqual([
+      "posts.get",
+      "publicPosts.getKaraoke",
+      "rewards.getActiveCampaignForSong",
+    ]);
   });
 
   test("falls back to post metadata when the dedicated payload is missing", async () => {
@@ -253,6 +273,24 @@ describe("KaraokeRoutePage", () => {
     await waitFor(() => {
       expect((view.container.querySelector("audio") as HTMLAudioElement | null)?.src).toContain("/instrumental-fallback.mp3");
     });
+  });
+
+  test("does not repeat the reward offer inside the karaoke surface", async () => {
+    rewardOfferResult = {
+      chain_id: 84532,
+      daily_reward_cents: 100,
+      eligible_activity: "karaoke",
+      ends_at: Date.now() + 86_400_000,
+      min_score_bps: 7_000,
+    };
+
+    const view = render(<KaraokeRoutePage postId="pst_song" />);
+
+    await waitFor(() => expect(calls).toContain("rewards.getActiveCampaignForSong"));
+    await waitFor(() => expect(view.container.querySelector('[aria-label="Fallback Karaoke"]')).toBeTruthy());
+    expect(view.queryByText("Reward")).toBeNull();
+    expect(view.queryByText(/testnet USDC/)).toBeNull();
+    expect(view.queryByText(/Score at least 70%/)).toBeNull();
   });
 
   test("blocks with payload-problem copy when the dedicated payload is unusable", async () => {
@@ -323,7 +361,11 @@ describe("KaraokeRoutePage", () => {
 
     const view = render(<KaraokeRoutePage postId="pst_song" />);
 
-    await waitFor(() => expect(calls).toEqual(["posts.get", "publicPosts.getKaraoke"]));
+    await waitFor(() => expect(calls).toEqual([
+      "posts.get",
+      "publicPosts.getKaraoke",
+      "rewards.getActiveCampaignForSong",
+    ]));
     view.unmount();
     karaokeDeferred.resolve({
       instrumental_audio_url: "https://cdn.example.test/late.mp3",

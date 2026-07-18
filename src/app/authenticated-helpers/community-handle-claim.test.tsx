@@ -117,6 +117,33 @@ describe("useCommunityHandleClaimController", () => {
     expect(result.current.claimedLabel).toBe("amira");
   });
 
+  test("binds quotes to the selected namespace", async () => {
+    const quoteBodies: unknown[] = [];
+    const api = {
+      quoteHandle: async (_communityId: string, body: unknown) => {
+        quoteBodies.push(body);
+        return createQuote();
+      },
+      claimHandle: async () => createHandle(),
+    };
+
+    const { result } = renderHook(() => useCommunityHandleClaimController({
+      api,
+      communityId: "cmt_test",
+      namespaceVerificationId: "nv_charizard",
+      connectedWallets: [],
+      debounceMs: 0,
+    }));
+
+    act(() => result.current.onSearchChange("ash"));
+    await waitFor(() => expect(result.current.searchResult?.availability).toBe("available"));
+
+    expect(quoteBodies).toEqual([{
+      desired_label: "ash",
+      namespace_verification: "nv_charizard",
+    }]);
+  });
+
   test("runs USDC checkout before claiming a paid handle", async () => {
     const instructions = createPaymentInstructions();
     const claimBodies: unknown[] = [];
@@ -167,6 +194,49 @@ describe("useCommunityHandleClaimController", () => {
       settlement_tx_ref: "0xfunded",
     }]);
     expect(result.current.phase).toBe("success");
+  });
+
+  test("never pays or claims an ineligible available quote", async () => {
+    let checkoutCalls = 0;
+    let claimCalls = 0;
+    const api = {
+      quoteHandle: async () => createQuote({
+        eligible: false,
+        availability: "available",
+        reason: "A Bitcoin Taproot wallet is required for protocol-issued names",
+        price_cents: 500,
+        payment_instructions: createPaymentInstructions(),
+      }),
+      claimHandle: async () => {
+        claimCalls += 1;
+        return createHandle();
+      },
+    };
+
+    const { result } = renderHook(() => useCommunityHandleClaimController({
+      api,
+      communityId: "cmt_test",
+      connectedWallets: [createWallet()],
+      primaryWalletAddress: "0x1000000000000000000000000000000000000001",
+      settlementWalletAttachmentId: "wa_test",
+      debounceMs: 0,
+      executeCheckout: async () => {
+        checkoutCalls += 1;
+        return "0xfunded" as Hex;
+      },
+    }));
+
+    act(() => result.current.onSearchChange("amira"));
+    await waitFor(() => expect(result.current.searchResult?.availability).toBe("unavailable"));
+
+    await act(async () => {
+      await result.current.onClaim();
+    });
+
+    expect(result.current.searchResult?.reason).toBe("A Bitcoin Taproot wallet is required for protocol-issued names");
+    expect(checkoutCalls).toBe(0);
+    expect(claimCalls).toBe(0);
+    expect(result.current.phase).toBe("confirm");
   });
 
   test("maps structured claim conflicts back into the search result", async () => {

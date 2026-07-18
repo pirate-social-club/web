@@ -24,6 +24,7 @@ Default smoke tests are unauthenticated and safe:
   - web /__version
   - api /__version
   - api /health
+  - api /health/provisioning (including live D1 pool capacity)
   - api CORS from the web origin
 
 Authenticated community creation is opt-in and requires PIRATE_SMOKE_AUTH_TOKEN.
@@ -111,6 +112,14 @@ console.log(`api version: ${apiVersion.body.git_sha}`);
 
 await expectJson(`${apiOrigin}/health`);
 console.log("api health: ok");
+
+const provisioningHealth = await expectJson(`${apiOrigin}/health/provisioning`);
+const freeCapacity = provisioningHealth.body?.pool_capacity?.free;
+const capacityThreshold = provisioningHealth.body?.pool_capacity?.threshold;
+if (!Number.isFinite(freeCapacity) || !Number.isFinite(capacityThreshold)) {
+  throw new Error("api provisioning health is missing D1 pool capacity");
+}
+console.log(`api provisioning health: ok (${freeCapacity} free, threshold ${capacityThreshold})`);
 
 const cors = await fetchWithTimeout(`${apiOrigin}/health`, {
   headers: { origin: webOrigin, accept: "application/json" },

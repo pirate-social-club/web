@@ -3,6 +3,8 @@
     "backHome": "العودة إلى الرئيسية",
     "bestTab": "الأفضل",
     "chooseCommunity": "اختر مجتمعًا",
+    "checkingCommentAccess": "جارٍ التحقق من إمكانية التعليق…",
+    "checkingVoteAccess": "جارٍ التحقق من إمكانية التصويت…",
     "close": "إغلاق",
     "commentsHeading": "التعليقات",
     "collapseReplies": "طيّ الردود",
@@ -24,6 +26,8 @@
     "replyingAsPublicLabel": "الردّ باسم {handle}",
     "replyingAsAnonymousLabel": "الردّ باسم {label}",
     "joinedStatLabel": "انضم",
+    "joinToComment": "انضم للتعليق",
+    "joinToVote": "انضم للتصويت",
     "loadMore": "حمّل المزيد",
     "loadMoreReplies": "حمّل المزيد من الردود",
     "loadReplies": "حمّل الردود",
@@ -601,6 +605,7 @@
       "collectionContractPlaceholder": "0x...",
       "invalidContractAddress": "أدخل عنوان عقد Ethereum صالح.",
       "courtyardTitle": "مقتنيات Courtyard",
+      "courtyardComingSoon": "قريبًا",
       "courtyardDescription": "اشترط بطاقات أو ساعات محددة من Courtyard.",
       "courtyardCatalogUnavailable": "مصدر الفهرس غير متصل.",
       "courtyardInventoryLoading": "جارٍ تحميل مقتنيات Courtyard في محفظتك.",
@@ -1094,6 +1099,7 @@
       "collectionContractPlaceholder": "0x...",
       "invalidContractAddress": "أدخل عنوان عقد Ethereum صالح.",
       "courtyardTitle": "مقتنيات Courtyard",
+      "courtyardComingSoon": "قريبًا",
       "courtyardDescription": "اشترط بطاقات أو ساعات محددة من Courtyard.",
       "courtyardCatalogUnavailable": "مصدر الفهرس غير متصل.",
       "courtyardInventoryLoading": "جارٍ تحميل مقتنيات Courtyard في محفظتك.",
@@ -1347,6 +1353,52 @@
     "unreadMessageCountOne": "رسالة غير مقروءة واحدة",
     "verifyWalletTitle": "تحقق من المحفظة",
     "yesterday": "أمس"
+  },
+  "bookingManagement": {
+    "view": {
+      "title": "الحجوزات", "roleLabel": "دور الحجز", "asBooker": "كحاجز", "asHost": "كمضيف",
+      "upcoming": "القادمة", "review": "تحتاج إلى مراجعة", "past": "السابقة", "cancelled": "الملغاة",
+      "join": "الانضمام إلى الجلسة", "rejoin": "العودة إلى الجلسة", "addToCalendar": "إضافة إلى التقويم", "cancel": "إلغاء الحجز",
+      "loading": "جارٍ تحميل الحجوزات", "signedOutTitle": "سجّل الدخول لعرض حجوزاتك", "signedOutDetail": "تظهر جلساتك القادمة والسابقة هنا.", "signIn": "تسجيل الدخول",
+      "errorTitle": "تعذّر تحميل الحجوزات", "errorDetail": "حاول مرة أخرى بعد قليل.", "retry": "إعادة المحاولة",
+      "emptyTitle": "لا توجد حجوزات بعد", "emptyBookerDetail": "ستظهر الجلسات التي حجزتها هنا.", "emptyHostDetail": "ستظهر الجلسات المحجوزة معك هنا."
+    },
+    "status": {
+      "confirmed": "مؤكد", "confirmedDetail": "تم حجز جلستك.", "live": "قيد الانعقاد", "liveDetail": "بدأت الجلسة.",
+      "joinOpens": "يفتح الانضمام قبل الجلسة بخمس دقائق.", "review": "الحضور قيد المراجعة", "reviewDetail": "لن تُحوّل أي دفعة حتى تأكيد النتيجة.",
+      "completed": "مكتملة", "completedHostDetail": "اكتمل تحويل مستحقاتك.", "completedBookerDetail": "اكتمل تحويل مستحقات المضيف.",
+      "hostMissed": "لم يحضر المضيف الجلسة", "hostMissedDetail": "اكتمل رد المبلغ بالكامل.",
+      "bookerMissed": "لم يحضر الحاجز الجلسة", "bookerMissedDetail": "اكتمل تحويل مستحقات المضيف وفق سياسة الحضور.",
+      "cancelledByHost": "ألغى المضيف الحجز", "cancelledByHostDetail": "اكتمل رد المبلغ بالكامل.",
+      "cancelledRefunded": "ملغى — تم رد المبلغ", "cancelledNoRefund": "ملغى — دون رد",
+      "cancelledRefundedDetail": "اكتمل رد المبلغ بالكامل.", "cancelledNoRefundDetail": "انتهت مهلة الإلغاء المجاني.",
+      "cancelledBeforePayment": "الملغاة", "cancelledBeforePaymentDetail": "لم يتم تحصيل أي دفعة.",
+      "paymentComplete": "اكتملت الدفعة", "legacyOutcomeUnknown": "نتيجة الجلسة الأصلية غير متاحة."
+    },
+    "dialog": {
+      "title": "إلغاء الحجز؟", "sessionWith": "{time} مع {name}", "termsChanged": "تغيّرت شروط رد المبلغ", "termsChangedDetail": "راجع المبلغ المحدّث قبل الإلغاء.",
+      "sessionTotal": "إجمالي الجلسة", "refund": "المبلغ المسترد", "fullRefund": "سيسترد {name} المبلغ بالكامل.", "refundBack": "ستسترد {amount}.", "noRefund": "لا يشمل هذا الإلغاء ردًا للمبلغ.",
+      "acknowledgement": "أفهم أنني لن أسترد أي مبلغ.", "cutoffEnded": "انتهت مهلة الإلغاء المجاني في {time}.",
+      "genericError": "تعذّر إلغاء الحجز. حاول مرة أخرى.", "keepBooking": "الاحتفاظ بالحجز", "confirm": "تأكيد الإلغاء"
+    },
+    "session": {
+      "attendanceInterrupted": "انقطع تسجيل الحضور", "attendanceRetrying": "جارٍ إعادة اتصال تسجيل الحضور",
+      "degradedDetail": "ابقَ في الجلسة أثناء إعادة المحاولة. يمكن لمكالمة الفيديو أن تستمر.", "retryingDetail": "تجري إعادة تسجيل حضورك تلقائيًا.",
+      "sessionWith": "جلسة مع {name}", "paymentUnlocks": "تتاح إجراءات الدفع بعد انتهاء وقت الجلسة المحدد.", "leave": "مغادرة الجلسة",
+      "sessionEnded": "انتهى وقت الجلسة المحدد", "attendanceDetermines": "تحدد سجلات الحضور التحويل أو رد المبلغ.",
+      "finish": "إنهاء الجلسة", "report": "الإبلاغ عن مشكلة في الحضور", "checking": "جارٍ التحقق من الحضور",
+      "checkingDetail": "أبقِ هذه الصفحة مفتوحة أثناء تأكيد النتيجة.", "confirmed": "تم تأكيد نتيجة الجلسة",
+      "confirmedDetail": "حالة الدفع النهائية متاحة في حجوزاتك."
+    },
+    "route": {
+      "loadError": "تعذّر تحميل حجوزاتك.", "cancelledToast": "تم إلغاء الحجز.", "cancelError": "تعذّر إلغاء الحجز.",
+      "previewError": "تعذّر التحقق من شروط الإلغاء.", "sessionTitle": "الجلسة", "connecting": "جارٍ الاتصال…",
+      "back": "العودة إلى الحجوزات", "notActive": "هذه الجلسة غير نشطة.", "notYet": "الجلسة غير متاحة بعد. يمكنك الانضمام قبل وقت البدء المحدد بخمس دقائق.",
+      "passed": "انقضى الوقت المحدد لهذه الجلسة.", "joinError": "تعذّر الانضمام إلى الجلسة.",
+      "completedToast": "اكتملت الجلسة — ستتم تسوية مستحقات المضيف.", "completeError": "تعذّر إكمال الجلسة.",
+      "reportedToast": "تم الإبلاغ عن مشكلة الحضور.", "reportError": "تعذّر الإبلاغ عن مشكلة الحضور.",
+      "videoUnavailableTitle": "الجلسة جاهزة", "videoUnavailable": "الفيديو غير مهيأ لهذه البيئة."
+    }
   },
   "routeStatus": {
     "chat": {

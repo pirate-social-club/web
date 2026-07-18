@@ -8,6 +8,7 @@ import type {
   ApiCommunityMediaUploadResponse,
   ApiCreateLiveRoomRequest,
   ApiCreateCommunityRequest,
+  ApiCommunityNamespaceListResponse,
   ApiLiveRoom,
   ApiLiveRoomAccessResponse,
   ApiLiveRoomReplayAccessResponse,
@@ -61,6 +62,10 @@ export function createCommunitiesApi(request: ApiRequest) {
         method: "POST",
         body: JSON.stringify({ namespace_verification: namespaceVerificationId }),
       }),
+    listNamespaces: (communityId: string): Promise<ApiCommunityNamespaceListResponse> =>
+      request<ApiCommunityNamespaceListResponse>(
+        `/communities/${encodeURIComponent(communityId)}/namespaces`,
+      ),
     setPendingNamespaceSession: (
       communityId: string,
       namespaceVerificationSessionId: string | null,

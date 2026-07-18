@@ -228,6 +228,7 @@ export const AccessStepWithCourtyardWalletLoading: Story = {
       {...baseComposer}
       courtyardInventoryGroups={null}
       courtyardInventoryLoading
+      enableCourtyardGate
       gateDrafts={[]}
       initialStep={2}
       membershipMode="gated"
@@ -241,6 +242,7 @@ export const AccessStepWithCourtyardWalletEmpty: Story = {
     <CreateCommunityComposer
       {...baseComposer}
       courtyardInventoryGroups={[]}
+      enableCourtyardGate
       gateDrafts={[]}
       initialStep={2}
       membershipMode="gated"
@@ -281,6 +283,7 @@ export const AccessStepWithCourtyardWalletCards: Story = {
     <CreateCommunityComposer
       {...baseComposer}
       courtyardInventoryGroups={cardInventory}
+      enableCourtyardGate
       gateDrafts={[]}
       initialStep={2}
       membershipMode="gated"
@@ -322,6 +325,7 @@ export const AccessStepWithCourtyardWalletWatches: Story = {
     <CreateCommunityComposer
       {...baseComposer}
       courtyardInventoryGroups={watchInventory}
+      enableCourtyardGate
       gateDrafts={[]}
       initialStep={2}
       membershipMode="gated"
@@ -350,6 +354,7 @@ export const ReviewWithCourtyardGate: Story = {
     <CreateCommunityComposer
       {...baseComposer}
       courtyardInventoryGroups={cardInventory}
+      enableCourtyardGate
       gateDrafts={[...courtyardCardGateDrafts]}
       initialStep={3}
       membershipMode="gated"

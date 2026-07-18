@@ -24,6 +24,10 @@
       "withoutLabel": "Ethereum NFT"
     },
     "erc721InventoryMatch": "{quantity} Courtyard {assetLabel}",
+    "assetBalance": {
+      "withAmount": "At least {amount} {symbol}",
+      "withoutAmount": "Token balance"
+    },
     "fallback": "{gateType} verification"
   },
   "joinCta": {
@@ -87,7 +91,11 @@
     "passportPromptActionLabel": "Visit Passport.xyz",
     "powOnlyTitle": "Browser anti-bot check required",
     "powOnlyDescription": "Complete a quick browser anti-bot check to continue.",
-    "powSkipNote": "A verified identity or wallet gate can skip this check when one is offered."
+    "powSkipNote": "A verified identity or wallet gate can skip this check when one is offered.",
+    "requirementSummaryAll": "Complete {requirements}.",
+    "requirementSummaryAny": "Either {requirements} is accepted.",
+    "requirementSummaryMixed": "Complete {requiredRequirements}. Also complete one of: {alternativeRequirements}.",
+    "requirementSummaryAnyGroups": "Complete one option from each group: {requirements}."
   },
   "modal": {
     "anyTitle": "Choose a way to continue",
@@ -127,6 +135,122 @@
     "walletScore": "Passport score",
     "altchaPow": "browser check status"
   },
+  "treeBuilder": {
+    "title": "Join requirements",
+    "liveSummaryTitle": "Live summary",
+    "emptySummary": "No join requirements yet.",
+    "summaryAllOf": "ALL of",
+    "summaryAnyOf": "ANY of",
+    "summaryIntro": "Members must meet",
+    "complexityWarning": "This rule is getting complex — {used} of {limit} conditions used.",
+    "limitReached": "Remove a condition or group to add more.",
+    "strongBrowserChallengeWarning": "Anyone can join by completing just a quick browser challenge — no identity, score, or holdings needed. Good for stopping spam; not a member check.",
+    "actions": {
+      "rule": "Rule",
+      "group": "Group",
+      "removeRequirement": "Remove requirement",
+      "removeGroup": "Remove group"
+    },
+    "emptyGroup": "Add a rule or nested group.",
+    "unknownRequirementTitle": "Unrecognized requirement",
+    "unknownRequirementDescription": "Preserved as {gate}",
+    "requirementTypes": {
+      "humanVerification": "Human verification",
+      "browserChallenge": "Browser challenge",
+      "passportScore": "Passport score",
+      "assetBalance": "Token balance",
+      "nftHolding": "NFT holding",
+      "documentSexMarker": "Document sex marker",
+      "nationality": "Nationality",
+      "minimumAge": "Minimum age"
+    },
+    "providers": {
+      "self": "ID check (Self)",
+      "zkpassport": "ID check (ZKPassport)",
+      "very": "Palm scan (Very)"
+    },
+    "operators": {
+      "provenBy": "proven by",
+      "atLeast": "at least",
+      "holdsAtLeast": "holds at least",
+      "holdsOneFrom": "holds ≥ 1 from",
+      "holds": "holds ≥",
+      "from": "from",
+      "is": "is",
+      "isOneOf": "is one of",
+      "matches": "matches"
+    },
+    "nftQuantityLocked": "This NFT check only supports a quantity of 1 today.",
+    "unsupportedAtom": "Unsupported atom",
+    "inputs": {
+      "groupMatchMode": "Group match mode",
+      "requirementType": "Requirement type",
+      "humanVerificationProvider": "Human verification provider",
+      "minimumPassportScore": "Minimum Passport score",
+      "asset": "Asset",
+      "minimumAssetBalance": "Minimum token balance",
+      "nftContractAddress": "NFT contract address",
+      "minimumNftQuantity": "Minimum NFT quantity",
+      "minimumAge": "Minimum age",
+      "documentSexMarker": "Document sex marker",
+      "allowedNationalities": "Allowed nationalities"
+    },
+    "sources": {
+      "courtyardCollectible": "Courtyard collectible",
+      "searchCollections": "Search collections or paste address",
+      "loadError": "Collections could not be loaded. Paste a contract address below.",
+      "empty": "No trusted source found. Paste a contract address below.",
+      "attribute": "Attribute",
+      "removeAttribute": "Remove attribute filter",
+      "addAttribute": "Add attribute filter",
+      "searchFacet": "Search {facet}",
+      "facetLoadError": "Values could not be loaded.",
+      "facetLoading": "Loading values…",
+      "retry": "Try again",
+      "noValues": "No values found.",
+      "matches": "{count} matches",
+      "claimedNameOption": "Use the claimed name",
+      "claimedNameHint": "Matches the name being claimed"
+    },
+    "assets": {
+      "loading": "Loading supported assets…",
+      "unknownAsset": "unknown asset",
+      "unavailableReadOnly": "{asset} is unavailable in this editor. This requirement is preserved read-only.",
+      "amountError": "Enter an amount greater than zero using ordinary decimal notation.",
+      "precisionError": "This asset supports at most {decimals} decimal places."
+    },
+    "validation": {
+      "acceptedProvidersEmpty": "Accepted providers must not be empty.",
+      "acceptedProvidersUnsupported": "Accepted providers must be Self or ZKPassport.",
+      "assetAmountInvalid": "Enter a valid token amount greater than zero.",
+      "assetRequired": "Choose a supported asset.",
+      "collectibleChainUnsupported": "Collectible rules must target a supported chain.",
+      "collectibleProviderUnsupported": "Collectible rules must use a supported inventory provider.",
+      "contractAddressInvalid": "Enter a valid contract address.",
+      "countryCodesInvalid": "Countries must be valid ISO country codes.",
+      "countryListInvalid": "Countries must be a list.",
+      "genderMarkerInvalid": "Document sex marker must be M or F.",
+      "genderMarkerRequired": "Choose a document sex marker.",
+      "genderProviderInvalid": "Document sex marker rules must be proven with Self.",
+      "humanProviderRequired": "Choose a human verification provider.",
+      "minimumAgeProviderInvalid": "Minimum age rules must be proven with Self.",
+      "minimumAgeRange": "Minimum age must be a whole number from {min} to {max}.",
+      "nationalityProviderInvalid": "Nationality rules must be proven with Self.",
+      "nftChainInvalid": "NFT holding rules must target Ethereum mainnet.",
+      "passportScoreProviderInvalid": "Passport score rules must use the Passport provider.",
+      "passportScoreRange": "Passport score must be a number from 0 to 100.",
+      "quantityRange": "Quantity must be a whole number from 1 to 100.",
+      "trustedCollectionRequired": "Choose a trusted collection.",
+      "inventoryAttributeFilterRequired": "Add at least one attribute filter.",
+      "inventoryAttributeValues": "Each attribute needs 1 to {max} unique values.",
+      "inventoryCardIdentityRequired": "Trading card rules need a Franchise or Name filter.",
+      "inventoryCollectionRequired": "Choose a collection.",
+      "inventoryCollectionTypeUnsupported": "Choose a supported collection type.",
+      "inventoryMatchRequired": "Choose a collection and at least one attribute.",
+      "inventoryUnsupportedAttribute": "Unsupported attribute: {attributes}.",
+      "inventoryWatchIdentityRequired": "Watch rules need a Brand or Model filter."
+    }
+  },
   "gateFailure": {
     "nationalityMismatch": "Your verified ID does not match this community's requirement.",
     "genderMismatch": "Your ID check does not match this community's rule.",
@@ -137,6 +261,7 @@
     "erc721InventoryMatchRequired": "Connect a wallet that holds the required Courtyard collectibles to join.",
     "tokenInventoryUnavailable": "Courtyard collectible inventory could not be checked right now.",
     "walletScoreTooLow": "Your Passport score does not meet this community's requirement.",
+    "assetBalanceTooLow": "Your connected wallets do not hold enough of the required asset to join this community.",
     "banned": "You are not eligible to join this community."
   }
 }

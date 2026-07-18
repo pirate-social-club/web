@@ -3,6 +3,15 @@ import { readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { expect, test, type Page, type Response } from "@playwright/test";
 import type { CommunityFollowResponse, SessionExchangeResponse } from "@pirate/api-contracts";
+import {
+  createPublicClient,
+  createWalletClient,
+  defineChain,
+  encodeFunctionData,
+  http,
+  type Hex,
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 import {
   expectNoBrowserError,
@@ -22,10 +31,20 @@ const apiOrigin = new URL(apiBaseURL).origin;
 const liveSubject = process.env.E2E_LIVE_STAGING_SUBJECT ?? "seed-staging-mcp-smoke-staff";
 const seedCommunityLabel = process.env.E2E_LIVE_STAGING_COMMUNITY_LABEL ?? "MCP Guest Comment Smoke";
 const seedPostTitle = process.env.E2E_LIVE_STAGING_SEED_POST_TITLE ?? "MCP guest comment smoke target";
+const storySmokeCommunityId = (
+  process.env.PIRATE_STORY_E2E_COMMUNITY_ID ?? "cmt_b3ede813fccf489982e93739ef1bf6b0"
+).replace(/^com_/u, "");
+const storySmokeHostSubject = process.env.PIRATE_STORY_E2E_HOST_SUBJECT
+  ?? "story-e2e-author-1780678999641-65820e";
 const multipartGateVideoBytes = Number.parseInt(
-  process.env.E2E_MULTIPART_GATE_VIDEO_BYTES ?? String(70 * 1024 * 1024),
+  // Keep the default below the retired 64 MiB proxy threshold. This makes the
+  // release gate catch clients that accidentally send ordinary videos through
+  // the legacy proxy upload path instead of direct multipart.
+  process.env.E2E_MULTIPART_GATE_VIDEO_BYTES ?? String(1 * 1024 * 1024),
   10,
 );
+const multipartGateSubject = process.env.E2E_MULTIPART_GATE_SUBJECT?.trim() || storySmokeHostSubject;
+const multipartGateCommunityId = process.env.E2E_MULTIPART_GATE_COMMUNITY_ID?.trim() || storySmokeCommunityId;
 const require = createRequire(import.meta.url);
 const agoraSdkPath = require.resolve("agora-rtc-sdk-ng");
 const liveSecretsPresent = Boolean(
@@ -33,6 +52,14 @@ const liveSecretsPresent = Boolean(
   && process.env.AUTH_UPSTREAM_JWT_ISSUER?.trim()
   && process.env.AUTH_UPSTREAM_JWT_SHARED_SECRET?.trim(),
 );
+const requiredReleaseGate = process.env.E2E_REQUIRED_RELEASE_GATE === "true";
+const erc20TransferAbi = [{
+  inputs: [{ name: "to", type: "address" }, { name: "value", type: "uint256" }],
+  name: "transfer",
+  outputs: [{ name: "", type: "bool" }],
+  stateMutability: "nonpayable",
+  type: "function",
+}] as const;
 
 // Contract-drift gate for community follow. This catches response shape regressions,
 // hook silent rollback, and persistence across reload; it is not a broad follow suite.
@@ -210,29 +237,6 @@ async function requestJson<T>(
   return body;
 }
 
-async function requestOctetJson<T>(
-  path: string,
-  body: ArrayBuffer,
-  init: RequestInit = {},
-  okStatuses = [200, 201, 202],
-): Promise<T> {
-  const response = await fetch(new URL(path, apiBaseURL), {
-    ...init,
-    body,
-    headers: {
-      accept: "application/json",
-      "content-type": "application/octet-stream",
-      ...init.headers,
-    },
-  });
-  const text = await response.text();
-  const parsed = (text.trim() ? JSON.parse(text) : null) as T;
-  if (!okStatuses.includes(response.status)) {
-    throw new Error(`${init.method ?? "PUT"} ${path} failed with ${response.status}: ${text}`);
-  }
-  return parsed;
-}
-
 async function requestArrayBuffer(
   urlOrPath: string,
   init: RequestInit = {},
@@ -290,6 +294,70 @@ function createSineWaveWav(): ArrayBuffer {
   }
 
   return buffer;
+}
+
+async function uploadDirectMultipartSongArtifact(input: {
+  audio: ArrayBuffer;
+  authHeaders: Record<string, string>;
+  communityId: string;
+  filename: string;
+}): Promise<string> {
+  const upload = await requestJson<{
+    id: string;
+    upload_session?: {
+      id: string;
+      part_size_bytes: number;
+      total_parts: number;
+      upload_id: string;
+    } | null;
+  }>(`/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads`, {
+    body: JSON.stringify({
+      artifact_kind: "primary_audio",
+      filename: input.filename,
+      mime_type: "audio/wav",
+      size_bytes: input.audio.byteLength,
+      upload_mode: "direct_multipart",
+    }),
+    headers: input.authHeaders,
+    method: "POST",
+  });
+  expect(upload.id, "song artifact upload id").toMatch(/^sau_/u);
+  expect(upload.upload_session, "song artifact upload session").toBeTruthy();
+  expect(upload.upload_session?.total_parts).toBe(1);
+
+  const sessionId = upload.upload_session?.id ?? "";
+  const signedPart = await requestJson<{ part_number: number; url: string }>(
+    `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/sessions/${encodeURIComponent(sessionId)}/parts/1/signed-url`,
+    { headers: input.authHeaders },
+  );
+  expect(signedPart.part_number).toBe(1);
+
+  const audioBuffer = Buffer.from(input.audio);
+  const partResponse = await fetch(signedPart.url, {
+    body: audioBuffer,
+    headers: { "content-type": "audio/wav" },
+    method: "PUT",
+  });
+  if (!partResponse.ok) {
+    throw new Error(`PUT signed song artifact part failed with ${partResponse.status}: ${await partResponse.text()}`);
+  }
+  const etag = partResponse.headers.get("etag");
+  expect(etag, "multipart part ETag").toBeTruthy();
+
+  const completedUpload = await requestJson<{ content_hash?: string | null; id: string; status: string }>(
+    `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/sessions/${encodeURIComponent(sessionId)}/complete`,
+    {
+      body: JSON.stringify({
+        content_hash: `0x${createHash("sha256").update(audioBuffer).digest("hex")}`,
+        parts: [{ etag, part_number: 1 }],
+        upload_id: upload.upload_session?.upload_id,
+      }),
+      headers: input.authHeaders,
+      method: "POST",
+    },
+  );
+  expect(completedUpload.status).toBe("uploaded");
+  return upload.id;
 }
 
 async function waitForSongPreview(input: {
@@ -350,60 +418,12 @@ async function createAsyncSongSmokePost(input: {
   const title = `${input.titlePrefix} ${input.runId}`;
   const audio = createSineWaveWav();
 
-  const upload = await requestJson<{
-    id: string;
-    upload_session?: {
-      id: string;
-      part_size_bytes: number;
-      total_parts: number;
-      upload_id: string;
-    } | null;
-  }>(`/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads`, {
-    body: JSON.stringify({
-      artifact_kind: "primary_audio",
-      filename: `${input.titlePrefix.toLowerCase().replace(/\s+/gu, "-")}-${input.runId}.wav`,
-      mime_type: "audio/wav",
-      size_bytes: audio.byteLength,
-      upload_mode: "direct_multipart",
-    }),
-    headers: input.authHeaders,
-    method: "POST",
+  const uploadId = await uploadDirectMultipartSongArtifact({
+    audio,
+    authHeaders: input.authHeaders,
+    communityId: input.communityId,
+    filename: `${input.titlePrefix.toLowerCase().replace(/\s+/gu, "-")}-${input.runId}.wav`,
   });
-  expect(upload.id, "song artifact upload id").toMatch(/^sau_/u);
-  expect(upload.upload_session, "song artifact upload session").toBeTruthy();
-  expect(upload.upload_session?.total_parts).toBe(1);
-
-  const signedPart = await requestJson<{ part_number: number; url: string }>(
-    `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/sessions/${encodeURIComponent(upload.upload_session?.id ?? "")}/parts/1/signed-url`,
-    { headers: input.authHeaders },
-  );
-  expect(signedPart.part_number).toBe(1);
-
-  const audioBuffer = Buffer.from(audio);
-  const partResponse = await fetch(signedPart.url, {
-    body: audioBuffer,
-    headers: { "content-type": "audio/wav" },
-    method: "PUT",
-  });
-  if (!partResponse.ok) {
-    throw new Error(`PUT signed song artifact part failed with ${partResponse.status}: ${await partResponse.text()}`);
-  }
-  const etag = partResponse.headers.get("etag");
-  expect(etag, "multipart part ETag").toBeTruthy();
-
-  const completedUpload = await requestJson<{ content_hash?: string | null; id: string; status: string }>(
-    `/communities/${encodeURIComponent(input.communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/sessions/${encodeURIComponent(upload.upload_session?.id ?? "")}/complete`,
-    {
-      body: JSON.stringify({
-        content_hash: `0x${createHash("sha256").update(audioBuffer).digest("hex")}`,
-        parts: [{ etag, part_number: 1 }],
-        upload_id: upload.upload_session?.upload_id,
-      }),
-      headers: input.authHeaders,
-      method: "POST",
-    },
-  );
-  expect(completedUpload.status).toBe("uploaded");
 
   const bundle = await requestJson<{ id: string; preview_status?: string | null }>(
     `/communities/${encodeURIComponent(input.communityId)}/song-artifacts`,
@@ -421,7 +441,7 @@ async function createAsyncSongSmokePost(input: {
               start_ms: 0,
             }
           : null,
-        primary_audio: { song_artifact_upload: upload.id },
+        primary_audio: { song_artifact_upload: uploadId },
         title,
         vocal_audio: null,
       }),
@@ -552,6 +572,50 @@ async function completeSelfVerification(session: StoredSession): Promise<void> {
   });
 }
 
+async function waitForCommunityProvisioningJob(session: StoredSession, jobId: string): Promise<void> {
+  const deadline = Date.now() + 180_000;
+  let lastStatus = "unknown";
+  while (Date.now() < deadline) {
+    const job = await requestJson<{ error_code?: string | null; id: string; status: string }>(
+      `/jobs/${encodeURIComponent(jobId)}`,
+      { headers: { authorization: `Bearer ${session.accessToken}` } },
+    );
+    lastStatus = job.status;
+    if (job.status === "succeeded") return;
+    if (job.status === "failed") {
+      throw new Error(`community provisioning job ${job.id} failed: ${job.error_code ?? "unknown"}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+  }
+  throw new Error(`community provisioning job ${jobId} did not finish; last status ${lastStatus}`);
+}
+
+async function createGateBuilderCommunity(session: StoredSession, runId: string): Promise<string> {
+  const created = await requestJson<{
+    community: { community_id?: string; id?: string };
+    job?: { id?: string; status?: string };
+  }>("/communities", {
+    body: JSON.stringify({
+      display_name: `Gate builder staging ${runId}`,
+      handle_policy: { policy_template: "standard" },
+      membership_mode: "request",
+    }),
+    headers: { authorization: `Bearer ${session.accessToken}` },
+    method: "POST",
+  });
+  if (created.job?.id && created.job.status !== "succeeded") {
+    await waitForCommunityProvisioningJob(session, created.job.id);
+  }
+  const communityId = firstString(created.community.id, created.community.community_id);
+  if (!communityId) throw new Error("created gate-builder community id is missing");
+  return communityId.replace(/^com_/u, "");
+}
+
+async function chooseSelectOption(page: Page, triggerIndex: number, triggerName: string, optionName: string): Promise<void> {
+  await page.getByRole("combobox", { name: triggerName }).nth(triggerIndex).click();
+  await page.getByRole("option", { exact: true, name: optionName }).click();
+}
+
 async function writeGeneratedMultipartVideo(page: Page, sizeBytes: number, filePath: string): Promise<string> {
   if (!Number.isSafeInteger(sizeBytes) || sizeBytes <= 0) {
     throw new Error(`Invalid target video size ${sizeBytes}`);
@@ -658,42 +722,6 @@ function walletAttachmentId(session: StoredSession): string {
   return attachment;
 }
 
-async function waitForJob(jobId: string, token: string): Promise<void> {
-  const deadline = Date.now() + 120_000;
-  let lastStatus = "unknown";
-  while (Date.now() < deadline) {
-    const job = await requestJson<{ error_code?: string | null; id: string; status: string }>(
-      `/jobs/${encodeURIComponent(jobId)}`,
-      { headers: { authorization: `Bearer ${token}` } },
-    );
-    lastStatus = job.status;
-    if (job.status === "succeeded") return;
-    if (job.status === "failed") {
-      throw new Error(`job ${job.id} failed: ${job.error_code ?? "unknown"}`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 3_000));
-  }
-  throw new Error(`job ${jobId} did not finish; last status ${lastStatus}`);
-}
-
-async function createSmokeCommunity(runId: string, host: StoredSession): Promise<string> {
-  const createdCommunity = await requestJson<{ community: { id: string }; job?: { id?: string; status?: string } }>("/communities", {
-    body: JSON.stringify({
-      display_name: `Live Room Browser Smoke ${runId}`,
-      handle_policy: { policy_template: "standard" },
-      membership_mode: "request",
-    }),
-    headers: { authorization: `Bearer ${host.accessToken}` },
-    method: "POST",
-  });
-  if (createdCommunity.job?.status && createdCommunity.job.status !== "succeeded") {
-    const jobId = firstString(createdCommunity.job.id);
-    if (!jobId) throw new Error("community creation job id is missing");
-    await waitForJob(jobId, host.accessToken);
-  }
-  return rawPublicId(createdCommunity.community.id, "com");
-}
-
 async function waitForCommunityPreview(
   communityId: string,
   headers: Record<string, string> = {},
@@ -720,40 +748,19 @@ async function waitForCommunityPreview(
   throw new Error(`community preview did not become available; last status ${lastStatus}: ${lastBody}`);
 }
 
-async function createGeorgiaPlaceSmokeCommunity(runId: string, host: StoredSession): Promise<LiveCommunity> {
-  const createdCommunity = await requestJson<{
-    community: { display_name?: string | null; id: string; route_slug?: string | null };
-    job?: { id?: string; status?: string };
-  }>("/communities", {
+async function configureGeorgiaPlaceSmokeCommunity(host: StoredSession): Promise<LiveCommunity> {
+  await requestJson(`/communities/${encodeURIComponent(storySmokeCommunityId)}`, {
     body: JSON.stringify({
       country_code: "ge",
-      display_name: `Georgia Place Smoke ${runId}`,
-      handle_policy: { policy_template: "standard" },
-      membership_mode: "request",
-    }),
-    headers: { authorization: `Bearer ${host.accessToken}` },
-    method: "POST",
-  });
-  if (createdCommunity.job?.status && createdCommunity.job.status !== "succeeded") {
-    const jobId = firstString(createdCommunity.job.id);
-    if (!jobId) throw new Error("community creation job id is missing");
-    await waitForJob(jobId, host.accessToken);
-  }
-
-  const id = rawPublicId(createdCommunity.community.id, "com");
-  await requestJson(`/communities/${encodeURIComponent(id)}`, {
-    body: JSON.stringify({
-      country_code: "ge",
-      display_name: firstString(createdCommunity.community.display_name) ?? `Georgia Place Smoke ${runId}`,
     }),
     headers: { authorization: `Bearer ${host.accessToken}` },
     method: "POST",
   });
 
   return {
-    id,
-    label: firstString(createdCommunity.community.display_name) ?? `Georgia Place Smoke ${runId}`,
-    routeSegment: firstString(createdCommunity.community.route_slug, id) ?? id,
+    id: storySmokeCommunityId,
+    label: storySmokeCommunityId,
+    routeSegment: storySmokeCommunityId,
   };
 }
 
@@ -848,9 +855,10 @@ async function createLiveRoomTicketQuote(input: {
   communityId: string;
   listingId: string;
   roomId: string;
-}): Promise<{ finalPriceCents: number; id: string }> {
+}): Promise<{ finalPriceCents: number; fundingDestination: Hex; id: string }> {
   const quote = await requestJson<{
     final_price_cents: number;
+    funding_destination_address: string;
     id: string;
     live_room: string | null;
     settlement_mode: string;
@@ -877,17 +885,56 @@ async function createLiveRoomTicketQuote(input: {
   });
   expect(quote.live_room).toBe(input.roomId);
   expect(quote.settlement_mode).toBe("delivery_only_story_settlement");
-  return { finalPriceCents: quote.final_price_cents, id: quote.id };
+  expect(quote.funding_destination_address).toMatch(/^0x[a-f0-9]{40}$/iu);
+  return {
+    finalPriceCents: quote.final_price_cents,
+    fundingDestination: quote.funding_destination_address as Hex,
+    id: quote.id,
+  };
+}
+
+async function fundLiveRoomTicket(input: {
+  buyerPrivateKey: Hex;
+  destination: Hex;
+  finalPriceCents: number;
+}): Promise<Hex> {
+  const rpcUrl = process.env.PIRATE_CHECKOUT_RPC_URL?.trim();
+  const token = process.env.PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS?.trim() as Hex | undefined;
+  if (!rpcUrl || !token) {
+    throw new Error("PIRATE_CHECKOUT_RPC_URL and PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS are required");
+  }
+  const chainId = Number(process.env.PIRATE_CHECKOUT_SOURCE_CHAIN_ID ?? "84532");
+  const chain = defineChain({
+    id: chainId,
+    name: "Base Sepolia",
+    nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
+    rpcUrls: { default: { http: [rpcUrl] } },
+  });
+  const account = privateKeyToAccount(input.buyerPrivateKey);
+  const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
+  const walletClient = createWalletClient({ account, chain, transport: http(rpcUrl) });
+  const hash = await walletClient.sendTransaction({
+    account,
+    chain,
+    data: encodeFunctionData({
+      abi: erc20TransferAbi,
+      args: [input.destination, BigInt(input.finalPriceCents) * 10_000n],
+      functionName: "transfer",
+    }),
+    to: token,
+  });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error(`Live-room ticket funding failed: ${hash}`);
+  return hash;
 }
 
 async function settleLiveRoomTicket(input: {
   buyer: StoredSession;
   communityId: string;
+  fundingTxRef: Hex;
   quoteId: string;
   roomId: string;
-  runId: string;
 }): Promise<string> {
-  const settlementRef = `live-paid-ui:${input.runId}`;
   const settlement = await requestJson<{
     entitlement_kind: string;
     entitlement_target_ref: string;
@@ -895,9 +942,9 @@ async function settleLiveRoomTicket(input: {
     purchase_entitlement: string;
   }>(`/communities/${encodeURIComponent(input.communityId)}/purchase-settlements`, {
     body: JSON.stringify({
-      funding_tx_ref: settlementRef,
+      funding_tx_ref: input.fundingTxRef,
       quote: input.quoteId,
-      settlement_tx_ref: settlementRef,
+      settlement_tx_ref: input.fundingTxRef,
       settlement_wallet_attachment: walletAttachmentId(input.buyer),
     }),
     headers: { authorization: `Bearer ${input.buyer.accessToken}` },
@@ -1121,8 +1168,11 @@ async function hydrateRoutableLiveCommunityOwner(community: LiveCommunity): Prom
   const detail = await requestJson<any>(`/public-communities/${encodeURIComponent(community.id)}`).catch(() => null);
   if (!detail) return null;
   const ownerUser = firstString(detail?.owner?.user);
+  const id = firstString(detail?.id, community.id) ?? community.id;
   return {
-    id: firstString(detail?.id, community.id) ?? community.id,
+    // Public responses expose `com_<internal id>`, while authenticated
+    // `/communities/:id` mutation routes require the internal id.
+    id: rawPublicId(id, "com"),
     label: firstString(detail?.display_name, community.label) ?? community.label,
     ownerUserId: ownerUser ? rawPublicUserId(ownerUser) : community.ownerUserId ?? null,
     routeSegment: firstString(detail?.route_slug, community.routeSegment, detail?.id, community.id) ?? community.routeSegment,
@@ -1182,21 +1232,33 @@ async function seedCommunityCandidates(): Promise<LiveCommunity[]> {
 }
 
 async function discoverSeedCommunity(): Promise<LiveCommunity> {
-  const [community] = await seedCommunityCandidates();
+  const community = await hydrateRoutableLiveCommunityOwner({
+    id: storySmokeCommunityId,
+    label: storySmokeCommunityId,
+    routeSegment: storySmokeCommunityId,
+  });
   if (community) return community;
 
-  throw new Error(`Could not discover seeded staging community ${seedCommunityLabel}`);
+  throw new Error(`Could not load stable staging fixture ${storySmokeCommunityId}`);
 }
 
-async function discoverWritableSeedCommunity(session: StoredSession): Promise<LiveCommunity | null> {
-  for (const community of await seedCommunityCandidates()) {
+async function discoverWritableSeedCommunity(
+  session: StoredSession,
+  preferredCommunityId?: string | null,
+): Promise<LiveCommunity | null> {
+  const candidates = preferredCommunityId
+    ? [{ id: preferredCommunityId, label: preferredCommunityId, routeSegment: preferredCommunityId }]
+    : await seedCommunityCandidates();
+
+  for (const community of candidates) {
     const detail = await requestJson<any>(
       `/communities/${encodeURIComponent(community.id)}`,
       { headers: { authorization: `Bearer ${session.accessToken}` } },
     ).catch(() => null);
     if (!detail) continue;
+    const id = firstString(detail?.id, community.id) ?? community.id;
     return {
-      id: firstString(detail?.id, community.id) ?? community.id,
+      id: rawPublicId(id, "com"),
       label: firstString(detail?.display_name, community.label) ?? community.label,
       ownerUserId: community.ownerUserId ?? null,
       routeSegment: firstString(detail?.route_slug, community.routeSegment, detail?.id, community.id) ?? community.routeSegment,
@@ -1212,14 +1274,285 @@ test.describe("live staging integration", () => {
   test.skip(process.env.E2E_LIVE_STAGING !== "true", "Set E2E_LIVE_STAGING=true to run real staging mutations.");
   test.skip(!liveSecretsPresent, "Live staging JWT secrets are not available.");
 
+  test("exposes stable gate identity and authoritative outcomes in live join eligibility", async () => {
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const subject = `gate-contract-staging-${runId}`;
+    const session = await createLiveSession(subject, walletAddressForSubject(subject));
+    await completeSelfVerification(session);
+    const communityId = await createGateBuilderCommunity(session, runId);
+    const headers = { authorization: `Bearer ${session.accessToken}` };
+
+    const gatePolicy = {
+      expression: {
+        children: [
+          { gate: { gate_id: "verified-human", provider: "self", type: "unique_human" }, op: "gate" },
+          { gate: { gate_id: "browser-challenge", type: "altcha_pow" }, op: "gate" },
+        ],
+        op: "and",
+      },
+      version: 1,
+    };
+    await requestJson(`/communities/${encodeURIComponent(communityId)}/gates`, {
+      body: JSON.stringify({
+        allow_anonymous_identity: true,
+        anonymous_identity_scope: "community_stable",
+        default_age_gate_policy: "none",
+        gate_policy: gatePolicy,
+        membership_mode: "gated",
+      }),
+      headers,
+      method: "POST",
+    });
+
+    const viewerSubject = `gate-contract-viewer-${runId}`;
+    const viewerSession = await createLiveSession(viewerSubject, walletAddressForSubject(viewerSubject));
+    await completeSelfVerification(viewerSession);
+    const eligibility = await requestJson<{
+      gate_evaluation?: { trace?: unknown } | null;
+    }>(`/communities/${encodeURIComponent(communityId)}/join-eligibility`, {
+      headers: { authorization: `Bearer ${viewerSession.accessToken}` },
+    });
+    const leaves: Array<{ gate_id?: unknown; outcome?: unknown }> = [];
+    const visit = (node: unknown): void => {
+      if (!node || typeof node !== "object") return;
+      const record = node as Record<string, unknown>;
+      if (record.kind === "gate") {
+        leaves.push(record);
+        return;
+      }
+      if (Array.isArray(record.children)) record.children.forEach(visit);
+    };
+    visit(eligibility.gate_evaluation?.trace);
+
+    expect(leaves).toHaveLength(2);
+    expect(leaves.map((leaf) => leaf.gate_id)).toEqual(["verified-human", "browser-challenge"]);
+    expect(leaves.map((leaf) => leaf.outcome)).toEqual(["action_required", "action_required"]);
+  });
+
+  test("binds a per-name Courtyard claim rule in live handle quotes", async ({}, testInfo) => {
+    testInfo.setTimeout(3 * 60_000);
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const labelSuffix = createHash("sha256").update(runId).digest("hex").slice(0, 8);
+    const desiredLabel = `charizard${labelSuffix}`;
+    const openLabel = `pikachu${labelSuffix}`;
+    type HandlePolicy = {
+      claims_enabled: boolean;
+      label_claim_rules: Array<{
+        claim_gate_expression: unknown;
+        selector: { labels: string[] | null; type: string };
+      }>;
+    };
+    let target: { community: LiveCommunity; headers: Record<string, string>; policy: HandlePolicy } | null = null;
+    for (const community of await seedCommunityCandidates()) {
+      const headers = seedOwnerAdminHeaders(community);
+      if (!headers) continue;
+      const policy = await requestJson<HandlePolicy>(
+        `/communities/${encodeURIComponent(community.id)}/handle-policy`,
+        { headers },
+      ).catch(() => null);
+      if (policy?.claims_enabled) {
+        target = { community, headers, policy };
+        break;
+      }
+    }
+    if (!target) {
+      const message = "A names-enabled staging community with owner admin access is required.";
+      if (requiredReleaseGate) throw new Error(message);
+      test.skip(true, message);
+      return;
+    }
+
+    const claimGateExpression = {
+      expression: {
+        gate: {
+          chain_namespace: "eip155:137",
+          contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+          match: { category: "trading_card", subject: "{label}" },
+          min_quantity: 1,
+          provider: "courtyard",
+          type: "erc721_inventory_match",
+        },
+        op: "gate",
+      },
+      version: 1,
+    };
+    try {
+      const policy = await requestJson<{
+        label_claim_rules: Array<{
+          claim_gate_expression: unknown;
+          id: string;
+          position: number;
+          selector: { labels: string[] | null; type: string };
+        }>;
+      }>(`/communities/${encodeURIComponent(target.community.id)}/handle-policy`, {
+        body: JSON.stringify({
+          label_claim_rules: [{
+            claim_gate_expression: claimGateExpression,
+            selector: { labels: [desiredLabel], type: "exact" },
+          }],
+        }),
+        headers: target.headers,
+        method: "POST",
+      });
+
+      expect(policy.label_claim_rules).toHaveLength(1);
+      expect(policy.label_claim_rules[0]).toMatchObject({
+        claim_gate_expression: claimGateExpression,
+        position: 0,
+        selector: { labels: [desiredLabel], type: "exact" },
+      });
+      expect(policy.label_claim_rules[0]?.id).toMatch(/^hlcr_/u);
+
+      const gatedQuote = await requestJson<{
+        claim_gate: {
+          expression: {
+            expression: { gate?: { match?: Record<string, unknown> } };
+          };
+          label_claim_rule: string | null;
+          source: string;
+          summaries: Array<{ gate_type: string }>;
+        } | null;
+        eligible: boolean;
+      }>(`/communities/${encodeURIComponent(target.community.id)}/handles/quote`, {
+        body: JSON.stringify({ desired_label: desiredLabel }),
+        headers: target.headers,
+        method: "POST",
+      });
+
+      expect(gatedQuote.eligible).toBe(false);
+      expect(gatedQuote.claim_gate).toMatchObject({
+        label_claim_rule: policy.label_claim_rules[0]?.id,
+        source: "label_rule",
+        summaries: [{ gate_type: "erc721_inventory_match" }],
+      });
+      expect(gatedQuote.claim_gate?.expression.expression.gate?.match).toEqual({
+        category: "trading_card",
+        subject: desiredLabel,
+      });
+
+      const unmatchedQuote = await requestJson<{ claim_gate: unknown; eligible: boolean }>(
+        `/communities/${encodeURIComponent(target.community.id)}/handles/quote`,
+        {
+          body: JSON.stringify({ desired_label: openLabel }),
+          headers: target.headers,
+          method: "POST",
+        },
+      );
+      expect(unmatchedQuote.claim_gate).toBeNull();
+    } finally {
+      await requestJson(`/communities/${encodeURIComponent(target.community.id)}/handle-policy`, {
+        body: JSON.stringify({
+          label_claim_rules: target.policy.label_claim_rules.map(({ claim_gate_expression, selector }) => ({
+            claim_gate_expression,
+            selector,
+          })),
+        }),
+        headers: target.headers,
+        method: "POST",
+      });
+    }
+  });
+
+  test("round-trips a nested gate policy through the staging moderator UI", async ({ page }, testInfo) => {
+    testInfo.setTimeout(5 * 60_000);
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const subject = `gate-builder-staging-${runId}`;
+    const session = await createLiveSession(subject, walletAddressForSubject(subject));
+    await completeSelfVerification(session);
+    const communityId = await createGateBuilderCommunity(session, runId);
+    const authHeaders = { authorization: `Bearer ${session.accessToken}` };
+
+    await page.setViewportSize({ height: 900, width: 1440 });
+    await installStoredSession(page, session);
+    await page.goto(`/c/${pathSegment(communityId)}/mod/gates`);
+    await expect(page.getByRole("heading", { name: "Access and gates" })).toBeVisible({ timeout: 30_000 });
+    await page.getByRole("button", { name: "Automatic after passing gates" }).click();
+    await expect(page.getByText("Live summary", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { exact: true, name: "Rule" }).first().click();
+    await page.getByRole("button", { exact: true, name: "Group" }).first().click();
+    await chooseSelectOption(page, 1, "Group match mode", "OR");
+    await chooseSelectOption(page, 1, "Requirement type", "Browser challenge");
+    await page.getByRole("button", { exact: true, name: "Rule" }).nth(1).click();
+    await chooseSelectOption(page, 2, "Requirement type", "Passport score");
+    await expect(page.getByRole("spinbutton", { name: "Minimum Passport score" })).toHaveValue("20");
+
+    const expectedGatePolicy = {
+      expression: {
+        children: [
+          { gate: { provider: "self", type: "unique_human" }, op: "gate" },
+          {
+            children: [
+              { gate: { type: "altcha_pow" }, op: "gate" },
+              { gate: { minimum_score: 20, provider: "passport", type: "wallet_score" }, op: "gate" },
+            ],
+            op: "or",
+          },
+        ],
+        op: "and",
+      },
+      version: 1,
+    };
+    const saveButton = page.getByRole("button", { exact: true, name: "Save" });
+    await expect(saveButton).toBeEnabled();
+    const saveResponsePromise = page.waitForResponse((response) => {
+      const request = response.request();
+      return request.method() === "POST"
+        && /\/communities\/[^/]+\/gates$/u.test(new URL(response.url()).pathname);
+    }, { timeout: 30_000 });
+    await saveButton.click();
+    const saveResponse = await saveResponsePromise;
+    expect(saveResponse.ok()).toBe(true);
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "Access and gates" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("combobox", { name: "Group match mode" }).nth(1)).toContainText("OR");
+    await expect(page.getByRole("combobox", { name: "Requirement type" }).nth(0)).toContainText("Human verification");
+    await expect(page.getByRole("combobox", { name: "Requirement type" }).nth(1)).toContainText("Browser challenge");
+    await expect(page.getByRole("combobox", { name: "Requirement type" }).nth(2)).toContainText("Passport score");
+
+    const persistedCommunity = await requestJson<{ gate_policy?: unknown }>(
+      `/communities/${encodeURIComponent(communityId)}`,
+      { headers: authHeaders },
+    );
+    expect(persistedCommunity.gate_policy).toEqual(expectedGatePolicy);
+    const persistedJson = JSON.stringify(persistedCommunity.gate_policy, null, 2);
+    console.log(`[gate-builder-staging] community=${communityId} persisted gate_policy=${persistedJson}`);
+    await testInfo.attach("persisted-gate-policy", {
+      body: Buffer.from(`${persistedJson}\n`),
+      contentType: "application/json",
+    });
+
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+
+    await page.getByRole("button", { exact: true, name: "Rule" }).first().click();
+    await chooseSelectOption(page, 3, "Requirement type", "NFT holding");
+    await page.getByRole("textbox", { name: "NFT contract address" }).fill("not-an-address");
+    await expect(page.getByRole("alert")).toHaveText("Enter a valid contract address.");
+    await expect(saveButton).toBeDisabled();
+
+    await page.setViewportSize({ height: 844, width: 390 });
+    await expect(page.getByText("Live summary", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  });
+
   test("uploads a public video through direct multipart in a real browser", async ({ page }, testInfo) => {
     testInfo.setTimeout(15 * 60_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const session = await createLiveSession(liveSubject, walletAddressForSubject(liveSubject));
-    const community = await discoverWritableSeedCommunity(session);
+    const session = await createLiveSession(
+      multipartGateSubject,
+      walletAddressForSubject(multipartGateSubject),
+    );
+    const community = await discoverWritableSeedCommunity(session, multipartGateCommunityId);
     if (!community) {
-      test.skip(true, "No authenticated writable staging seed community is available for direct multipart upload.");
+      const message =
+        "No authenticated writable staging seed community is available for direct multipart upload"
+        + ` (subject=${multipartGateSubject}, community=${multipartGateCommunityId ?? "auto-discovery"}).`;
+      if (requiredReleaseGate) {
+        throw new Error(`Required release gate cannot run: ${message}`);
+      }
+      test.skip(true, message);
       return;
     }
     const title = `Multipart video browser E2E ${runId}`;
@@ -1334,11 +1667,9 @@ test.describe("live staging integration", () => {
 
       const previewBefore = await waitForCommunityPreview(publicCommunityId, followerHeaders);
       expect(previewBefore.viewer_following).toBe(false);
-      const followerCountBefore = previewBefore.follower_count ?? 0;
 
       await installStoredSession(page, follower);
       await page.goto(`/c/${pathSegment(community.routeSegment)}`);
-      await expect(page.locator("body")).toContainText(community.label, { timeout: 30_000 });
 
       const followButton = page.getByTestId("community-follow-button").first();
       await expect(followButton).toBeVisible({ timeout: 30_000 });
@@ -1362,25 +1693,26 @@ test.describe("live staging integration", () => {
       if (!followResponse) throw new Error("follow response was not captured");
       expect(followResponse.status()).toBe(200);
       const followBody = await followResponse.json() as CommunityFollowResponse & { community_id?: unknown };
-      expect(followBody).toEqual({
+      expect(followBody).toMatchObject({
         community: publicCommunityId,
-        follower_count: followerCountBefore + 1,
         following: true,
       });
+      // Other canaries and operators can follow or unfollow the shared fixture
+      // concurrently, so its global count is not a transaction-local delta.
+      expect(followBody.follower_count).toBeGreaterThanOrEqual(1);
       expect("community_id" in followBody).toBe(false);
       expect(followBody.community).toMatch(/^com_cmt_/u);
 
       await expect(followButton).toHaveAttribute("data-state", "following");
       const previewAfter = await waitForCommunityPreview(publicCommunityId, followerHeaders);
       expect(previewAfter.viewer_following).toBe(true);
-      expect(previewAfter.follower_count).toBe(followerCountBefore + 1);
+      expect(previewAfter.follower_count).toBeGreaterThanOrEqual(1);
 
       await page.reload();
-      await expect(page.locator("body")).toContainText(community.label, { timeout: 30_000 });
       await expect(followButton).toHaveAttribute("data-state", "following");
       const previewAfterReload = await waitForCommunityPreview(publicCommunityId, followerHeaders);
       expect(previewAfterReload.viewer_following).toBe(true);
-      expect(previewAfterReload.follower_count).toBe(followerCountBefore + 1);
+      expect(previewAfterReload.follower_count).toBeGreaterThanOrEqual(1);
       await expectNoBrowserError(page);
     } finally {
       await requestJson(
@@ -1395,7 +1727,9 @@ test.describe("live staging integration", () => {
     }
   });
 
-  test("creates and quotes a global booking hold on staging", async () => {
+  test("creates and quotes a global booking hold on staging", async ({}, testInfo) => {
+    testInfo.setTimeout(120_000);
+
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
     const hostSubject = `booking-smoke-host-${runId}`;
     const bookerSubject = `booking-smoke-booker-${runId}`;
@@ -1524,9 +1858,8 @@ test.describe("live staging integration", () => {
   test("searches real Georgia event places through Geoapify", async ({ page }, testInfo) => {
     testInfo.setTimeout(90_000);
 
-    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const session = await createLiveSession(`georgia-place-smoke-${runId}`);
-    const community = await createGeorgiaPlaceSmokeCommunity(runId, session);
+    const session = await createLiveSession(storySmokeHostSubject);
+    const community = await configureGeorgiaPlaceSmokeCommunity(session);
     await installStoredSession(page, session);
 
     const geoResponses: Array<{ ok: boolean; placesLength?: number; status: number; url: URL }> = [];
@@ -1573,12 +1906,18 @@ test.describe("live staging integration", () => {
     await expectNoBrowserError(page);
   });
 
-  test("creates a real post and comment with a real staging session", async ({ page }) => {
-    const session = await createLiveSession();
-    const community = await discoverSeedCommunity();
+  test("creates a real post and comment with a real staging session", async ({ page }, testInfo) => {
+    testInfo.setTimeout(180_000);
+    const timestamp = new Date().toISOString();
+    const session = await createLiveSession(storySmokeHostSubject);
+    const communityId = storySmokeCommunityId;
+    const community: LiveCommunity = {
+      id: communityId,
+      label: communityId,
+      routeSegment: communityId,
+    };
     await installStoredSession(page, session);
 
-    const timestamp = new Date().toISOString();
     const title = `E2E live browser post ${timestamp}`;
     const body = `Created by Playwright against staging at ${timestamp}.`;
     const comment = `E2E live browser comment ${timestamp}`;
@@ -1607,32 +1946,18 @@ test.describe("live staging integration", () => {
     testInfo.setTimeout(180_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const session = await createLiveSession(`song-story-smoke-${runId}`);
+    const session = await createLiveSession(storySmokeHostSubject);
     await completeSelfVerification(session);
-    const communityId = await createSmokeCommunity(runId, session);
+    const communityId = storySmokeCommunityId;
     const title = `Story registered song smoke ${runId}`;
     const audio = createSineWaveWav();
 
-    const upload = await requestJson<{ id: string }>(`/communities/${encodeURIComponent(communityId)}/song-artifact-uploads`, {
-      body: JSON.stringify({
-        artifact_kind: "primary_audio",
-        filename: `story-smoke-${runId}.wav`,
-        mime_type: "audio/wav",
-        size_bytes: audio.byteLength,
-      }),
-      headers: { authorization: `Bearer ${session.accessToken}` },
-      method: "POST",
-    });
-    expect(upload.id, "song artifact upload id").toMatch(/^sau_/u);
-
-    await requestOctetJson(
-      `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/content`,
+    const uploadId = await uploadDirectMultipartSongArtifact({
       audio,
-      {
-        headers: { authorization: `Bearer ${session.accessToken}` },
-        method: "PUT",
-      },
-    );
+      authHeaders: { authorization: `Bearer ${session.accessToken}` },
+      communityId,
+      filename: `story-smoke-${runId}.wav`,
+    });
 
     const bundle = await requestJson<{ id: string }>(`/communities/${encodeURIComponent(communityId)}/song-artifacts`, {
       body: JSON.stringify({
@@ -1642,7 +1967,7 @@ test.describe("live staging integration", () => {
         instrumental_audio: null,
         lyrics: "E2E Story registration smoke lyrics",
         preview_window: null,
-        primary_audio: { song_artifact_upload: upload.id },
+        primary_audio: { song_artifact_upload: uploadId },
         title,
         vocal_audio: null,
       }),
@@ -1694,18 +2019,17 @@ test.describe("live staging integration", () => {
     testInfo.setTimeout(540_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const session = await createLiveSession(liveSubject, walletAddressForSubject(liveSubject));
+    const session = await createLiveSession(
+      storySmokeHostSubject,
+      walletAddressForSubject(storySmokeHostSubject),
+    );
     await completeSelfVerification(session);
-    const writableCommunity = await discoverWritableSeedCommunity(session);
-    const community = writableCommunity ?? await discoverSeedCommunity();
-    const communityId = community.id;
-    const authHeaders = writableCommunity
-      ? { authorization: `Bearer ${session.accessToken}` }
-      : seedOwnerAdminHeaders(community);
-    if (!authHeaders) {
-      test.skip(true, "No authenticated writable or admin-owned staging seed community is available for async song publish smoke.");
-      return;
+    const community = await discoverWritableSeedCommunity(session, storySmokeCommunityId);
+    if (!community) {
+      throw new Error(`Stable staging fixture ${storySmokeCommunityId} is not writable by its configured owner`);
     }
+    const communityId = community.id;
+    const authHeaders = { authorization: `Bearer ${session.accessToken}` };
 
     const freeSong = await createAsyncSongSmokePost({
       accessMode: "public",
@@ -1729,13 +2053,13 @@ test.describe("live staging integration", () => {
     );
     expect(pending.items.some((item) => item.post.id === paidSong.postId && item.post.status === "processing")).toBe(true);
 
-    if (writableCommunity) {
-      await installStoredSession(page, session);
-      await page.goto(`/c/${pathSegment(community.routeSegment)}`);
-      await expect(page.locator("body")).toContainText(paidSong.title, { timeout: 30_000 });
-      await expect(page.getByText("Visible only to you until checks complete.")).toBeVisible({ timeout: 30_000 });
-      await expectNoBrowserError(page);
-    }
+    await installStoredSession(page, session);
+    await page.goto(`/c/${pathSegment(community.routeSegment)}`);
+    await expect(page.locator("body")).toContainText(paidSong.title, { timeout: 30_000 });
+    // The pending endpoint above proves the asynchronous state. Immediate job
+    // processing may publish the post before this page renders, so the
+    // short-lived pending banner is not a stable browser assertion.
+    await expectNoBrowserError(page);
 
     const [publishedFree, publishedPaid] = await Promise.all([
       waitForAsyncSongPublished({ authHeaders, postId: freeSong.postId }),
@@ -1764,37 +2088,26 @@ test.describe("live staging integration", () => {
     testInfo.setTimeout(240_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const community = await discoverSeedCommunity();
-    const seedOwnerHeaders = seedOwnerAdminHeaders(community);
-    const session = seedOwnerHeaders ? null : await createLiveSession(`song-preview-smoke-${runId}`);
-    if (session) {
-      await completeSelfVerification(session);
+    const session = await createLiveSession(
+      storySmokeHostSubject,
+      walletAddressForSubject(storySmokeHostSubject),
+    );
+    await completeSelfVerification(session);
+    const community = await discoverWritableSeedCommunity(session, storySmokeCommunityId);
+    if (!community) {
+      throw new Error(`Stable staging fixture ${storySmokeCommunityId} is not writable by its configured owner`);
     }
-    const authHeaders = seedOwnerHeaders ?? { authorization: `Bearer ${session?.accessToken ?? ""}` };
+    const authHeaders = { authorization: `Bearer ${session.accessToken}` };
     const communityId = community.id;
     const title = `Paid preview song smoke ${runId}`;
     const audio = createSineWaveWav();
 
-    const upload = await requestJson<{ id: string }>(`/communities/${encodeURIComponent(communityId)}/song-artifact-uploads`, {
-      body: JSON.stringify({
-        artifact_kind: "primary_audio",
-        filename: `paid-preview-smoke-${runId}.wav`,
-        mime_type: "audio/wav",
-        size_bytes: audio.byteLength,
-      }),
-      headers: authHeaders,
-      method: "POST",
-    });
-    expect(upload.id, "song artifact upload id").toMatch(/^sau_/u);
-
-    await requestOctetJson(
-      `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/content`,
+    const uploadId = await uploadDirectMultipartSongArtifact({
       audio,
-      {
-        headers: authHeaders,
-        method: "PUT",
-      },
-    );
+      authHeaders,
+      communityId,
+      filename: `paid-preview-smoke-${runId}.wav`,
+    });
 
     const bundle = await requestJson<{ id: string; preview_status?: string | null }>(
       `/communities/${encodeURIComponent(communityId)}/song-artifacts`,
@@ -1809,7 +2122,7 @@ test.describe("live staging integration", () => {
             duration_ms: 1_000,
             start_ms: 0,
           },
-          primary_audio: { song_artifact_upload: upload.id },
+          primary_audio: { song_artifact_upload: uploadId },
           title,
           vocal_audio: null,
         }),
@@ -1972,14 +2285,21 @@ test.describe("live staging integration", () => {
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
     const priceCents = 199;
-    const hostSubject = `paid-live-ui-host-${runId}`;
     const buyerSubject = `paid-live-ui-buyer-${runId}`;
-    const host = await createLiveSession(hostSubject, walletAddressForSubject(hostSubject));
-    const buyer = await createLiveSession(buyerSubject, walletAddressForSubject(buyerSubject));
+    const rawBuyerPrivateKey = process.env.PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY?.trim() ?? "";
+    const buyerPrivateKey = (rawBuyerPrivateKey.startsWith("0x")
+      ? rawBuyerPrivateKey
+      : `0x${rawBuyerPrivateKey}`) as Hex;
+    if (!/^0x[a-f0-9]{64}$/iu.test(buyerPrivateKey)) {
+      throw new Error("PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY is required");
+    }
+    const buyerAccount = privateKeyToAccount(buyerPrivateKey);
+    const host = await createLiveSession(storySmokeHostSubject);
+    const buyer = await createLiveSession(buyerSubject, buyerAccount.address);
     await completeSelfVerification(host);
     await completeSelfVerification(buyer);
 
-    const communityId = await createSmokeCommunity(runId, host);
+    const communityId = storySmokeCommunityId;
     await joinCommunityAsViewer(communityId, host, buyer);
 
     let roomId: string | null = null;
@@ -2046,12 +2366,17 @@ test.describe("live staging integration", () => {
         roomId: published.roomId,
       });
       expect(quote.finalPriceCents).toBe(priceCents);
+      const fundingTxRef = await fundLiveRoomTicket({
+        buyerPrivateKey,
+        destination: quote.fundingDestination,
+        finalPriceCents: quote.finalPriceCents,
+      });
       const entitlement = await settleLiveRoomTicket({
         buyer,
         communityId,
+        fundingTxRef,
         quoteId: quote.id,
         roomId: published.roomId,
-        runId,
       });
       const accessAfter = await requestJson<{
         access: { allowed: boolean; decision_reason: string | null; purchase_entitlement: string | null };

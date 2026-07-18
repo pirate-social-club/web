@@ -130,6 +130,36 @@ describe("useVerificationCompletion", () => {
     expect(verification.pendingInteraction).toBe(null);
   });
 
+  test("finishes a verified public reply without joining", async () => {
+    let joinCalls = 0;
+    const allowedCalls: string[] = [];
+    const pendingInteraction = {
+      ...createPendingInteraction(gate(), () => {
+        allowedCalls.push("allowed");
+      }),
+      requireMembership: false,
+    };
+    const verification = renderVerificationCompletion({
+      getJoinEligibility: async () => eligibility("joinable"),
+      joinCommunity: async () => {
+        joinCalls += 1;
+        return { status: "joined" };
+      },
+      pendingInteraction,
+    });
+
+    await verification.hook.result.current.completeVerificationJoin(verification.pendingInteraction);
+
+    expect(verification.calls).toEqual([
+      "cache:community-1:joinable",
+      "close",
+      "clear-pending",
+    ]);
+    expect(allowedCalls).toEqual(["allowed"]);
+    expect(joinCalls).toBe(0);
+    expect(verification.pendingInteraction).toBe(null);
+  });
+
   test("shows pending request when join returns requested", async () => {
     const verification = renderVerificationCompletion({
       getJoinEligibility: async () => eligibility("joinable"),

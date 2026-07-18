@@ -1,35 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type {
-  CommunityListing as ApiCommunityListing,
   CommunityPurchaseQuote,
   CommunityPurchaseSettlement,
 } from "@pirate/api-contracts";
 
-import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
-
-import { executeSongPurchase, resolveQuoteDiscountPercent } from "@/app/authenticated-helpers/song-purchase";
-
-function createListing(): ApiCommunityListing {
-  return {
-    id: "listing-1",
-    object: "community_listing",
-    community: "community-1",
-    status: "active",
-    listing_mode: "fixed_price",
-    price_cents: 500,
-      regional_pricing_enabled: false,
-      created_by_user: "user-1",
-      created: Date.parse("2026-01-01T00:00:00Z"),
-  } as unknown as ApiCommunityListing;
-}
-
-function createWallet(address: `0x${string}`): PirateConnectedEvmWallet {
-  return {
-    address,
-    getEthereumProvider: async () => ({}),
-    switchChain: async () => undefined,
-  };
-}
+import {
+  resolveQuoteDiscountPercent,
+  waitForPurchaseSettlement,
+} from "@/app/authenticated-helpers/song-purchase";
 
 function createCommunities(overrides: {
   quote?: Partial<CommunityPurchaseQuote>;
@@ -109,73 +87,46 @@ function createCommunities(overrides: {
   };
 }
 
-describe("executeSongPurchase", () => {
-  test("requires a settlement wallet attachment before quoting", async () => {
-    const { calls, communities } = createCommunities();
-    const errors: string[] = [];
-
-    await executeSongPurchase({
-      communities,
-      communityId: "community-1",
-      connectedWallets: [createWallet("0x1111111111111111111111111111111111111111")],
-      listing: createListing(),
-      onError: (message) => errors.push(message),
-      onSuccess: () => undefined,
-      refreshSongCommerce: () => undefined,
-      settlementWalletAttachmentId: null,
-      successMessage: () => "Unlocked.",
-      titleText: "Song",
+describe("waitForPurchaseSettlement", () => {
+  test("polls the same settlement until the coordinator reaches finality", async () => {
+    const settlement = createCommunities().communities.settlePurchase("community-1", { quote: "quote-1" });
+    let calls = 0;
+    const waits: number[] = [];
+    const result = await waitForPurchaseSettlement({
+      settle: async () => {
+        calls += 1;
+        if (calls < 3) {
+          return {
+            object: "community_purchase_settlement_pending" as const,
+            community: "com_community-1",
+            quote: "pq_quote-1",
+            purchase: "pur_purchase-1",
+            coordinator_plan_ref: `0x${"11".repeat(32)}`,
+            status: "settlement_pending" as const,
+          };
+        }
+        return settlement;
+      },
+      wait: async (delayMs) => { waits.push(delayMs); },
     });
-
-    expect(errors).toEqual(["Connect a primary wallet before buying this song."]);
-    expect(calls.createPurchaseQuote).toHaveLength(0);
+    expect(calls).toBe(3);
+    expect(waits).toEqual([1_000, 2_000]);
+    expect(result.settlement_tx_ref).toBe("0xabc");
   });
 
-  test("does not choose a non-primary wallet when primary is disconnected", async () => {
-    const { calls, communities } = createCommunities();
-    const errors: string[] = [];
-
-    await executeSongPurchase({
-      communities,
-      communityId: "community-1",
-      connectedWallets: [createWallet("0x1111111111111111111111111111111111111111")],
-      listing: createListing(),
-      onError: (message) => errors.push(message),
-      onSuccess: () => undefined,
-      primaryWalletAddress: "0x2222222222222222222222222222222222222222",
-      refreshSongCommerce: () => undefined,
-      settlementWalletAttachmentId: "wallet-1",
-      successMessage: () => "Unlocked.",
-      titleText: "Song",
-    });
-
-    expect(errors).toEqual(["Connect your primary wallet before buying this song."]);
-    expect(calls.createPurchaseQuote).toHaveLength(0);
-  });
-
-  test("marks the quote failed when checkout fails before funding transaction submission", async () => {
-    const { calls, communities } = createCommunities({
-      quote: { source_chain: null },
-    });
-    const errors: string[] = [];
-
-    await executeSongPurchase({
-      communities,
-      communityId: "community-1",
-      connectedWallets: [createWallet("0x1111111111111111111111111111111111111111")],
-      listing: createListing(),
-      onError: (message) => errors.push(message),
-      onSuccess: () => undefined,
-      refreshSongCommerce: () => undefined,
-      settlementWalletAttachmentId: "wallet-1",
-      successMessage: () => "Unlocked.",
-      titleText: "Song",
-    });
-
-    expect(calls.createPurchaseQuote).toEqual(["community-1"]);
-    expect(calls.failPurchase).toEqual(["quote-1"]);
-    expect(calls.settlePurchase).toHaveLength(0);
-    expect(errors).toEqual(["This quote requires an unsupported checkout chain."]);
+  test("keeps a still-pending purchase retryable instead of treating it as failed", async () => {
+    await expect(waitForPurchaseSettlement({
+      settle: async () => ({
+        object: "community_purchase_settlement_pending" as const,
+        community: "com_community-1",
+        quote: "pq_quote-1",
+        purchase: "pur_purchase-1",
+        coordinator_plan_ref: `0x${"11".repeat(32)}`,
+        status: "settlement_pending" as const,
+      }),
+      maxAttempts: 2,
+      wait: async () => undefined,
+    })).rejects.toThrow("still processing");
   });
 });
 

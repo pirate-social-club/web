@@ -16,6 +16,11 @@ import { Label } from "@/components/primitives/label";
 import { CheckboxCard } from "@/components/primitives/checkbox-card";
 import { OptionCard } from "@/components/primitives/option-card";
 import { NationalityMultiPicker } from "@/components/compositions/community/create-composer/nationality-picker";
+import { GateTreeBuilder } from "@/components/compositions/community/gates-editor/tree-builder/gate-tree-builder";
+import { createOwnedCourtyardCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/owned-courtyard-capability-source";
+import { createFallbackCollectionCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/api-collection-capability-source";
+import type { GateCapabilitySources } from "@/components/compositions/community/gates-editor/tree-builder/gate-capability-sources";
+import type { GateBuilderGroupDraft } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import {
   DEFAULT_DOCUMENT_PROOF_PROVIDERS,
   type AnonymousIdentityScope,
@@ -154,8 +159,9 @@ export function courtyardInventoryDraftMatchesGroup(
 
 export function canAuthorCourtyardInventoryGate(
   groups: CourtyardWalletInventoryGroup[] | null | undefined,
+  enabled = true,
 ): boolean {
-  return Boolean(groups?.length);
+  return enabled && Boolean(groups?.length);
 }
 
 type DocumentGateDraft = Extract<IdentityGateDraft, { gateType: "nationality" | "minimum_age" | "gender" }>;
@@ -322,11 +328,14 @@ export interface CommunityGatesEditorPageProps {
   readAccessMode?: CommunityReadAccessMode;
   className?: string;
   creatorVerificationState?: CreatorVerificationState;
+  courtyardInventoryAuthoringEnabled?: boolean;
   courtyardInventoryGroups?: CourtyardWalletInventoryGroup[] | null;
   courtyardInventoryLoading?: boolean;
+  capabilities?: GateCapabilitySources;
   defaultAgeGatePolicy: CommunityDefaultAgeGatePolicy;
   gateDrafts: IdentityGateDraft[];
   gateMatchMode?: "all" | "any";
+  gateTreeDraft?: GateBuilderGroupDraft;
   hasAdvancedGatePolicy?: boolean;
   membershipMode: CommunityMembershipMode;
   onAllowAnonymousIdentityChange?: (value: boolean) => void;
@@ -335,6 +344,7 @@ export interface CommunityGatesEditorPageProps {
   onDefaultAgeGatePolicyChange?: (value: CommunityDefaultAgeGatePolicy) => void;
   onGateDraftsChange?: (value: IdentityGateDraft[]) => void;
   onGateMatchModeChange?: (value: "all" | "any") => void;
+  onGateTreeDraftChange?: (value: GateBuilderGroupDraft) => void;
   onMembershipModeChange?: (value: CommunityMembershipMode) => void;
   onReadAccessModeChange?: (value: CommunityReadAccessMode) => void;
   onReplaceAdvancedGatePolicyChange?: (value: boolean) => void;
@@ -345,6 +355,7 @@ export interface CommunityGatesEditorPageProps {
   showSaveAction?: boolean;
   showExperimentalZkPassportProviders?: boolean;
   showTitle?: boolean;
+  useGateTreeBuilder?: boolean;
 }
 
 export function CommunityGatesEditorPage({
@@ -354,11 +365,14 @@ export function CommunityGatesEditorPage({
   anonymousScopeChangeWarning: anonymousScopeChangeWarningProp,
   className,
   creatorVerificationState,
+  courtyardInventoryAuthoringEnabled = true,
   courtyardInventoryGroups,
   courtyardInventoryLoading = false,
+  capabilities,
   defaultAgeGatePolicy,
   gateDrafts,
   gateMatchMode = "all",
+  gateTreeDraft,
   hasAdvancedGatePolicy = false,
   membershipMode,
   readAccessMode = "public",
@@ -368,6 +382,7 @@ export function CommunityGatesEditorPage({
   onDefaultAgeGatePolicyChange,
   onGateDraftsChange,
   onGateMatchModeChange,
+  onGateTreeDraftChange,
   onMembershipModeChange,
   onReadAccessModeChange,
   onReplaceAdvancedGatePolicyChange,
@@ -378,6 +393,7 @@ export function CommunityGatesEditorPage({
   showSaveAction = true,
   showExperimentalZkPassportProviders = true,
   showTitle = true,
+  useGateTreeBuilder = false,
 }: CommunityGatesEditorPageProps) {
   const { locale } = useUiLocale();
   const copy = React.useMemo(() => getLocaleMessages(locale, "routes"), [locale]);
@@ -411,7 +427,16 @@ export function CommunityGatesEditorPage({
   const altchaPowGate = gateDrafts.find((draft) => draft.gateType === "altcha_pow");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const courtyardInventoryGate = gateDrafts.find((draft) => draft.gateType === "erc721_inventory_match");
-  const courtyardInventoryAuthoringAvailable = canAuthorCourtyardInventoryGate(courtyardInventoryGroups);
+  const courtyardInventoryAuthoringAvailable = canAuthorCourtyardInventoryGate(
+    courtyardInventoryGroups,
+    courtyardInventoryAuthoringEnabled,
+  );
+  const courtyardCapabilitySource = React.useMemo(() => {
+    const ownedSource = createOwnedCourtyardCapabilitySource(courtyardInventoryGroups ?? []);
+    return capabilities?.collections
+      ? createFallbackCollectionCapabilitySource(capabilities.collections, ownedSource)
+      : ownedSource;
+  }, [capabilities?.collections, courtyardInventoryGroups]);
   const selectedCourtyardInventoryGroup = courtyardInventoryGroups?.find((group) =>
     courtyardInventoryDraftMatchesGroup(courtyardInventoryGate, group)
   ) ?? null;
@@ -484,6 +509,15 @@ export function CommunityGatesEditorPage({
               />
 
               {mode === "gated" && effectiveMembershipMode === "gated" ? (
+                useGateTreeBuilder && gateTreeDraft && onGateTreeDraftChange ? (
+                  <GateTreeBuilder
+                    capabilities={{ ...capabilities, collections: courtyardCapabilitySource }}
+                    className="max-w-none p-0"
+                    onChange={onGateTreeDraftChange}
+                    showHeader={false}
+                    value={gateTreeDraft}
+                  />
+                ) : (
                 <div className="space-y-3 pt-2">
                   {showGateMatchModeControl ? (
                     <div className="space-y-3">
@@ -736,6 +770,7 @@ export function CommunityGatesEditorPage({
                     className={courtyardInventoryGate ? "border-border bg-muted/30" : undefined}
                     checked={Boolean(courtyardInventoryGate)}
                     disabled={!courtyardInventoryAuthoringAvailable && !courtyardInventoryGate}
+                    disabledHint={!courtyardInventoryAuthoringEnabled ? mc.courtyardComingSoon : undefined}
                     title={mc.courtyardTitle}
                     onCheckedChange={(checked) => {
                       if (!checked) {
@@ -820,6 +855,7 @@ export function CommunityGatesEditorPage({
                     </div>
                   ) : null}
                 </div>
+                )
               ) : null}
             </div>
           ))}

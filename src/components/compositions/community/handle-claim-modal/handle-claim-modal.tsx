@@ -20,6 +20,13 @@ import {
 import { Button } from "@/components/primitives/button";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/primitives/select";
 import { Type, typeVariants } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -67,6 +74,26 @@ function resolveCommunityRouteLabel(
       : `/c/${normalized}`;
   }
   return `/c/${communityHandle}`;
+}
+
+export function resolveCommunityHandleSuffix(
+  communityHandle: string,
+  communityRouteLabel: string | null | undefined,
+): string {
+  const normalizedRoute = communityRouteLabel?.trim().replace(/^\/+|\/+$/gu, "");
+  const routeRoot = normalizedRoute?.toLowerCase().startsWith("c/")
+    ? normalizedRoute.slice(2)
+    : normalizedRoute;
+  const rawRoot = routeRoot || communityHandle;
+  const isSpaces = rawRoot.startsWith("@");
+  const root = rawRoot.replace(/^@/u, "") || communityHandle.replace(/^@/u, "");
+  return `${isSpaces ? "@" : "."}${root}`;
+}
+
+function stripCommunityHandleSuffix(value: string, suffix: string): string {
+  return value.toLowerCase().endsWith(suffix.toLowerCase())
+    ? value.slice(0, -suffix.length)
+    : value;
 }
 
 function SearchResultFeedback({
@@ -141,6 +168,24 @@ function SearchResultFeedback({
     );
   }
 
+  if (result.claimGateSatisfied === false && (result.claimGateRequirements?.length ?? 0) > 0) {
+    return (
+      <div className="space-y-1">
+        <FormNote className="inline-flex items-center gap-2" tone="warning">
+          <Prohibit className="size-4" weight="bold" />
+          This name requires:
+        </FormNote>
+        <ul className="ms-6 list-disc space-y-0.5">
+          {result.claimGateRequirements?.map((requirement) => (
+            <li className={cn(typeVariants({ variant: "caption" }))} key={requirement}>
+              {requirement}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
   return (
     <FormNote className="inline-flex items-center gap-2" tone="warning">
       <X className="size-4" weight="bold" />
@@ -154,6 +199,9 @@ export function HandleClaimModal({
   onOpenChange,
   communityHandle,
   communityRouteLabel,
+  namespaceOptions = [],
+  selectedNamespaceVerification,
+  onNamespaceChange,
   phase,
   searchValue,
   onSearchChange,
@@ -176,9 +224,17 @@ export function HandleClaimModal({
   const isProcessing = phase === "processing";
   const showInput = !isSuccess;
   const showNotNow = !isSuccess && !isProcessing;
+  const selectedNamespace = namespaceOptions.find(
+    (option) => option.namespaceVerification === selectedNamespaceVerification,
+  );
+  const effectiveRouteLabel = selectedNamespace?.routeLabel ?? communityRouteLabel;
   const successCommunityLabel = resolveCommunityRouteLabel(
     communityHandle,
-    communityRouteLabel,
+    effectiveRouteLabel,
+  );
+  const communityHandleSuffix = resolveCommunityHandleSuffix(
+    communityHandle,
+    effectiveRouteLabel,
   );
 
   const priceCents = searchResult?.priceCents ?? 0;
@@ -202,13 +258,10 @@ export function HandleClaimModal({
     ? `Save up to ${selfVerificationSavingsPercent}% with Self.xyz`
     : null;
 
-  const displayValue = searchValue.endsWith(`@${communityHandle}`)
-    ? searchValue.slice(0, -communityHandle.length - 1)
-    : searchValue;
+  const displayValue = stripCommunityHandleSuffix(searchValue, communityHandleSuffix);
 
   const handleInputChange = (value: string) => {
-    const base = value.replace(new RegExp(`@${communityHandle}$`, "i"), "");
-    onSearchChange(base);
+    onSearchChange(stripCommunityHandleSuffix(value, communityHandleSuffix));
   };
 
   const handlePrimaryClick = () => {
@@ -273,6 +326,29 @@ export function HandleClaimModal({
             </div>
           ) : (
             <>
+              {namespaceOptions.length > 1 && selectedNamespaceVerification && onNamespaceChange ? (
+                <Select
+                  disabled={isProcessing}
+                  onValueChange={onNamespaceChange}
+                  value={selectedNamespaceVerification}
+                >
+                  <SelectTrigger aria-label="Name namespace" className="h-12 rounded-[var(--radius-lg)]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {namespaceOptions.map((option) => (
+                      <SelectItem
+                        disabled={option.disabled}
+                        key={option.namespaceVerification}
+                        value={option.namespaceVerification}
+                      >
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
+
               <div className="space-y-3">
                 <div
                   className="flex h-16 items-center gap-2 rounded-full border border-input bg-background px-5 shadow-sm focus-within:border-border focus-within:ring-1 focus-within:ring-border-soft"
@@ -288,7 +364,7 @@ export function HandleClaimModal({
                     value={displayValue}
                   />
                   <span className="shrink-0 font-mono text-lg text-muted-foreground">
-                    @{communityHandle}
+                    {communityHandleSuffix}
                   </span>
                 </div>
 

@@ -1,19 +1,14 @@
-type CachedPrices = {
-  prices: Record<string, number>;
+type CachedPrice = {
+  price: number;
   fetchedAt: number;
 };
 
-let cache: CachedPrices | null = null;
+const cache = new Map<string, CachedPrice>();
 
 const TTL_MS = 60_000;
 
-function getApiKey(): string | null {
-  const value = import.meta.env.VITE_COINGECKO_API_KEY;
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
-}
-
 export function clearPriceCache(): void {
-  cache = null;
+  cache.clear();
 }
 
 export async function fetchCachedPrices(
@@ -21,42 +16,44 @@ export async function fetchCachedPrices(
 ): Promise<Record<string, number>> {
   const now = Date.now();
 
-  if (cache && now - cache.fetchedAt < TTL_MS) {
-    return cache.prices;
-  }
-
-  const params = new URLSearchParams({
-    ids: priceIds.join(","),
-    vs_currencies: "usd",
+  const uniqueIds = [...new Set(priceIds)];
+  const missingIds = uniqueIds.filter((id) => {
+    const cached = cache.get(id);
+    return !cached || now - cached.fetchedAt >= TTL_MS;
   });
 
-  const apiKey = getApiKey();
-  const headers: Record<string, string> = {};
-  if (apiKey) {
-    headers["x-cg-demo-api-key"] = apiKey;
-  }
+  if (missingIds.length > 0) {
+    const params = new URLSearchParams({
+      ids: missingIds.join(","),
+      vs_currencies: "usd",
+    });
 
-  const response = await fetch(
-    `https://api.coingecko.com/api/v3/simple/price?${params.toString()}`,
-    { headers },
-  );
+    const response = await fetch(
+      `https://api.coingecko.com/api/v3/simple/price?${params.toString()}`,
+    );
 
-  if (!response.ok) {
-    throw new Error(`CoinGecko price request failed with ${response.status}`);
-  }
+    if (!response.ok) {
+      throw new Error(`CoinGecko price request failed with ${response.status}`);
+    }
 
-  const json = (await response.json()) as Record<string, unknown>;
-  const prices: Record<string, number> = {};
+    const json = (await response.json()) as Record<string, unknown>;
 
-  for (const id of priceIds) {
-    const coin = json[id];
-    if (!coin || typeof coin !== "object") continue;
-    const usd = (coin as Record<string, unknown>).usd;
-    if (typeof usd === "number" && Number.isFinite(usd)) {
-      prices[id] = usd;
+    for (const id of missingIds) {
+      const coin = json[id];
+      if (!coin || typeof coin !== "object") continue;
+      const usd = (coin as Record<string, unknown>).usd;
+      if (typeof usd === "number" && Number.isFinite(usd)) {
+        cache.set(id, { fetchedAt: now, price: usd });
+      }
     }
   }
 
-  cache = { prices, fetchedAt: now };
+  const prices: Record<string, number> = {};
+  for (const id of uniqueIds) {
+    const cached = cache.get(id);
+    if (cached) {
+      prices[id] = cached.price;
+    }
+  }
   return prices;
 }

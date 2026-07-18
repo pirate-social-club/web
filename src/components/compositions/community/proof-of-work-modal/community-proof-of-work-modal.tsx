@@ -4,6 +4,7 @@ import type { MembershipGateSummary } from "@pirate/api-contracts";
 
 import { CommunityInteractionGateModal } from "@/components/compositions/community/interaction-gate-modal/community-interaction-gate-modal";
 import { AltchaPowWidget } from "@/components/compositions/verification/altcha-pow-widget/altcha-pow-widget";
+import { FormNote } from "@/components/primitives/form-layout";
 import type { CommunityGateRequirementStatus } from "@/components/compositions/community/gate-requirements.types";
 import type { AltchaScope } from "@/lib/api/client-groups-core";
 import { getLocaleMessages } from "@/locales";
@@ -13,11 +14,14 @@ export interface CommunityProofOfWorkModalProps {
   challengeLoader?: (input: { action: string; scope: AltchaScope }) => Promise<Record<string, unknown>>;
   continueDisabled?: boolean;
   continueLoading?: boolean;
+  error?: string | null;
   locale?: string | null;
   onContinue: () => void | Promise<void>;
   onOpenChange: (open: boolean) => void;
   onPayloadChange: (payload: string | null) => void;
+  onVerified?: (payload: string) => void | Promise<void>;
   open: boolean;
+  retryKey?: number;
   requirements?: MembershipGateSummary[];
   requirementsMode?: "all" | "any" | null;
   requirementStatuses?: CommunityGateRequirementStatus[];
@@ -29,11 +33,14 @@ export function CommunityProofOfWorkModal({
   challengeLoader,
   continueDisabled,
   continueLoading,
+  error,
   locale,
   onContinue,
   onOpenChange,
   onPayloadChange,
+  onVerified,
   open,
+  retryKey,
   requirements,
   requirementsMode,
   requirementStatuses,
@@ -48,14 +55,19 @@ export function CommunityProofOfWorkModal({
     ? `${copy.powOnlyDescription} ${copy.powSkipNote}`
     : copy.powOnlyDescription;
   const body = (
-    <AltchaPowWidget
-      key={`${action}:${scope}:${open ? "open" : "closed"}`}
-      action={action}
-      challengeLoader={challengeLoader}
-      locale={locale}
-      onPayloadChange={onPayloadChange}
-      scope={scope}
-    />
+    <div className="space-y-3">
+      <AltchaPowWidget
+        key={`${action}:${scope}:${open ? "open" : "closed"}`}
+        action={action}
+        challengeLoader={challengeLoader}
+        locale={locale}
+        onPayloadChange={onPayloadChange}
+        onVerified={onVerified}
+        retryKey={retryKey}
+        scope={scope}
+      />
+      {error ? <FormNote tone="destructive">{error}</FormNote> : null}
+    </div>
   );
   return (
     <CommunityInteractionGateModal

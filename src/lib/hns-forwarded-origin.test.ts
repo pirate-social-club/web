@@ -75,8 +75,8 @@ describe("HNS forwarded origin", () => {
     }))).toBe(null);
   });
 
-  test("trusts forwarded HNS headers when the gateway token matches", () => {
-    const authenticated = authenticateHnsForwarderRequest(request({
+  test("trusts forwarded HNS headers when the gateway token matches", async () => {
+    const authenticated = await authenticateHnsForwarderRequest(request({
       "x-pirate-hns-forwarder-token": "shared-secret",
       "x-pirate-hns-host": "xn--pokmon-dva",
       "x-pirate-hns-community-id": "com_cmt_public_namespace_test",
@@ -89,8 +89,8 @@ describe("HNS forwarded origin", () => {
     expect(authenticated.headers.has("x-pirate-hns-forwarder-token")).toBe(false);
   });
 
-  test("strips client-supplied trust markers without a matching gateway token", () => {
-    const unauthenticated = authenticateHnsForwarderRequest(request({
+  test("strips client-supplied trust markers without a matching gateway token", async () => {
+    const unauthenticated = await authenticateHnsForwarderRequest(request({
       "x-pirate-hns-trusted-forwarder": "1",
       "x-pirate-hns-forwarder-token": "wrong-secret",
       "x-pirate-hns-host": "xn--pokmon-dva",

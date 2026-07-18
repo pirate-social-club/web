@@ -4,6 +4,7 @@ import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { MembershipGateSummary as ApiMembershipGateSummary } from "@pirate/api-contracts";
+import type { MembershipGateExpressionSummary as ApiMembershipGateExpressionSummary } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import type { CommunitySidebarGateItem, CommunitySidebarRoleHolder, CommunitySidebarRule } from "@/components/compositions/community/sidebar/community-sidebar.types";
@@ -11,22 +12,33 @@ import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
 import { hasActionTimeCheck, isJoinSurfaceGate } from "@/lib/identity-gates";
-import { flattenGatePolicyAtoms, getGatePolicyMatchMode } from "@/lib/gate-policy-utils";
+import { flattenGatePolicyAtoms, getGatePolicyMatchMode, isFlatOrGateExpression } from "@/lib/gate-policy-utils";
 import { deriveGateStatuses } from "@/lib/community-gate-statuses";
+import { formatAssetAmount } from "@/lib/asset-amount";
 
 type SidebarGateSummary = Pick<
   ApiMembershipGateSummary,
   | "accepted_providers"
   | "asset_category"
+  | "asset_decimals"
   | "asset_filter_label"
+  | "asset_id"
+  | "asset_symbol"
   | "contract_address"
+  | "gate_id"
   | "gate_type"
+  | "min_amount_atomic"
   | "min_quantity"
   | "minimum_score"
   | "required_minimum_age"
   | "required_value"
   | "required_values"
 >;
+
+type RecursiveGateExpression = {
+  op: "and" | "or" | "gate";
+  children?: RecursiveGateExpression[];
+};
 
 function normalizeCommunityMembershipMode(mode: ApiCommunity["membership_mode"] | ApiCommunityPreview["membership_mode"]): "request" | "gated" {
   return mode === "request" ? "request" : "gated";
@@ -48,6 +60,23 @@ function shortenAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+/**
+ * Renders an asset-balance requirement as a human amount, e.g. `0.5 ETH`.
+ *
+ * Returns null unless the summary carries everything needed to be exact. The
+ * atomic amount is meaningless without its asset's decimals, so a partial
+ * summary must degrade to a vaguer label rather than guess a scale.
+ */
+function formatBalanceGateAmount(input: {
+  assetDecimals?: number | null;
+  assetSymbol?: string | null;
+  minAmountAtomic?: string | null;
+}): string | null {
+  if (!input.minAmountAtomic || typeof input.assetDecimals !== "number" || !input.assetSymbol) return null;
+  const amount = formatAssetAmount(input.minAmountAtomic, input.assetDecimals);
+  return amount ? `${amount} ${input.assetSymbol}` : null;
+}
+
 function formatInventoryAssetLabel(input: {
   assetFilterLabel?: string | null;
   assetCategory?: string | null;
@@ -62,8 +91,11 @@ function formatInventoryAssetLabel(input: {
 function formatSidebarRequirement(input: {
   acceptedProviders?: ApiMembershipGateSummary["accepted_providers"];
   assetCategory?: string | null;
+  assetDecimals?: number | null;
   assetFilterLabel?: string | null;
+  assetSymbol?: string | null;
   gateType: string;
+  minAmountAtomic?: string | null;
   requiredValue?: string | null;
   requiredValues?: string[] | null;
   requiredMinimumAge?: number | null;
@@ -138,14 +170,15 @@ function formatSidebarRequirement(input: {
       return "Passport score";
     case "erc721_holding": {
       const label = input.contractAddress ? shortenAddress(input.contractAddress) : null;
+      const quantity = input.minQuantity ?? 1;
       if (label) {
-        if (locale === "ar") return `حاملو NFT على إيثريوم من ${label}`;
-        if (locale === "zh") return `来自 ${label} 的以太坊 NFT 持有者`;
-        return `Ethereum NFT from ${label}`;
+        if (locale === "ar") return `${quantity} NFT على إيثريوم من ${label}`;
+        if (locale === "zh") return `${quantity} 个来自 ${label} 的以太坊 NFT`;
+        return `${quantity} Ethereum NFT${quantity === 1 ? "" : "s"} from ${label}`;
       }
-      if (locale === "ar") return "حاملو NFT على إيثريوم";
-      if (locale === "zh") return "以太坊 NFT 持有者";
-      return "Ethereum NFT holder";
+      if (locale === "ar") return `${quantity} NFT على إيثريوم`;
+      if (locale === "zh") return `${quantity} 个以太坊 NFT`;
+      return `${quantity} Ethereum NFT${quantity === 1 ? "" : "s"}`;
     }
     case "erc721_inventory_match": {
       const quantity = String(input.minQuantity ?? 1);
@@ -154,9 +187,101 @@ function formatSidebarRequirement(input: {
       if (locale === "zh") return `${quantity} Courtyard ${assetLabel}`;
       return `${quantity} Courtyard ${assetLabel}`;
     }
+    case "asset_balance": {
+      const amount = formatBalanceGateAmount(input);
+      // Symbol and decimals ride on the API summary. Without them an atomic
+      // integer cannot be rendered as an amount at all, so say only what is
+      // known rather than showing raw atomic units as if they were tokens.
+      if (!amount) {
+        if (locale === "ar") return "رصيد رمز مطلوب";
+        if (locale === "zh") return "需要代币余额";
+        return "Token balance required";
+      }
+      if (locale === "ar") return `${amount} على الأقل`;
+      if (locale === "zh") return `至少 ${amount}`;
+      return `At least ${amount}`;
+    }
     default:
       return null;
   }
+}
+
+function formatGateExpressionLabel(
+  expression: ApiMembershipGateExpressionSummary | null | undefined,
+  locale: string | null | undefined,
+): string | null {
+  if (!expression) return null;
+  const operators = new Set<"and" | "or">();
+  const collectOperators = (node: ApiMembershipGateExpressionSummary): void => {
+    if (node.op === "gate") return;
+    operators.add(node.op);
+    node.children.forEach(collectOperators);
+  };
+  collectOperators(expression);
+  if (operators.size < 2) return null;
+
+  const listLocale = locale === "pseudo" ? "en" : locale || "en";
+
+  const visit = (
+    node: ApiMembershipGateExpressionSummary,
+    parentOp?: "and" | "or",
+  ): string | null => {
+    if (node.op === "gate") {
+      return formatSidebarRequirement({
+        acceptedProviders: node.gate.accepted_providers,
+        assetCategory: node.gate.asset_category,
+        assetFilterLabel: node.gate.asset_filter_label,
+        assetDecimals: node.gate.asset_decimals,
+        assetSymbol: node.gate.asset_symbol,
+        minAmountAtomic: node.gate.min_amount_atomic,
+        contractAddress: node.gate.contract_address,
+        gateType: node.gate.gate_type,
+        minQuantity: node.gate.min_quantity,
+        minimumScore: node.gate.minimum_score,
+        requiredMinimumAge: node.gate.required_minimum_age,
+        requiredValue: node.gate.required_value,
+        requiredValues: node.gate.required_values,
+        locale,
+      });
+    }
+
+    const parts = node.children.flatMap((child) => {
+      const label = visit(child, node.op);
+      return label ? [label] : [];
+    });
+    if (parts.length === 0) return null;
+    if (parts.length === 1) return parts[0];
+    const label = new Intl.ListFormat(listLocale, {
+      style: "long",
+      type: node.op === "or" ? "disjunction" : "conjunction",
+    }).format(parts);
+    return parentOp && parentOp !== node.op ? `(${label})` : label;
+  };
+
+  return visit(expression);
+}
+
+function buildGateExpressionSummary(
+  policy: ApiCommunity["gate_policy"],
+  gateSummaries: SidebarGateSummary[],
+): ApiMembershipGateExpressionSummary | null {
+  if (!policy) return null;
+  let gateIndex = 0;
+
+  const visit = (expression: RecursiveGateExpression): ApiMembershipGateExpressionSummary | null => {
+    if (expression.op === "gate") {
+      const gate = gateSummaries[gateIndex++];
+      return gate ? { op: "gate", gate } : null;
+    }
+
+    const children = (expression.children ?? []).flatMap((child) => {
+      const summary = visit(child);
+      return summary ? [summary] : [];
+    });
+    return children.length > 0 ? { op: expression.op, children } : null;
+  };
+
+  return visit(policy.expression as RecursiveGateExpression);
 }
 
 export function buildCommunitySidebarRequirements(input: {
@@ -176,6 +301,9 @@ export function buildCommunitySidebarRequirements(input: {
         acceptedProviders: gate.accepted_providers ?? null,
         assetCategory: gate.asset_category ?? null,
         assetFilterLabel: gate.asset_filter_label ?? null,
+        assetDecimals: gate.asset_decimals ?? null,
+        assetSymbol: gate.asset_symbol ?? null,
+        minAmountAtomic: gate.min_amount_atomic ?? null,
         gateType: gate.gate_type,
         contractAddress: gate.contract_address ?? null,
         minQuantity: gate.min_quantity ?? null,
@@ -209,11 +337,17 @@ function applyGateStatuses(
   items: CommunitySidebarGateItem[],
   eligibility: ApiJoinEligibility | null | undefined,
   gateMatchMode?: "all" | "any" | null,
+  traceExcludedIndexes: number[] = [],
 ): CommunitySidebarGateItem[] {
+  const excluded = new Set(traceExcludedIndexes);
   const statuses = deriveGateStatuses({
     eligibility,
     gateMatchMode,
-    requirements: items.map((item) => ({ gate_type: item.gateType as ApiMembershipGateSummary["gate_type"] })),
+    requirements: items.map((item, index) => ({
+      gate_type: item.gateType as ApiMembershipGateSummary["gate_type"],
+      gate_id: item.gateId ?? null,
+      trace_match: !excluded.has(index),
+    })),
   });
   return items.map((item, index) => ({ ...item, status: statuses[index] ?? "unknown" }));
 }
@@ -226,12 +360,14 @@ export function buildCommunitySidebarGateItems(input: {
   gateMatchMode?: "all" | "any" | null;
 }): CommunitySidebarGateItem[] {
   const items: CommunitySidebarGateItem[] = [];
-  const seenLabels = new Set<string>();
+  const seenRequirements = new Set<string>();
+  const traceExcludedIndexes: number[] = [];
 
   if (input.defaultAgeGatePolicy === "18_plus") {
     const label = formatSidebarRequirement({ gateType: "age_over_18", locale: input.locale });
     if (label) {
-      seenLabels.add(label);
+      seenRequirements.add(`label:${label}`);
+      traceExcludedIndexes.push(items.length);
       items.push({
         gateType: "age_over_18",
         label,
@@ -246,6 +382,9 @@ export function buildCommunitySidebarGateItems(input: {
       acceptedProviders: gate.accepted_providers ?? null,
       assetCategory: gate.asset_category ?? null,
       assetFilterLabel: gate.asset_filter_label ?? null,
+      assetDecimals: gate.asset_decimals ?? null,
+      assetSymbol: gate.asset_symbol ?? null,
+      minAmountAtomic: gate.min_amount_atomic ?? null,
       contractAddress: gate.contract_address ?? null,
       gateType: gate.gate_type,
       locale: input.locale,
@@ -255,9 +394,11 @@ export function buildCommunitySidebarGateItems(input: {
       requiredMinimumAge: gate.required_minimum_age ?? null,
       minimumScore: gate.minimum_score ?? null,
     });
-    if (label && !seenLabels.has(label)) {
-      seenLabels.add(label);
+    const requirementKey = gate.gate_id ? `id:${gate.gate_id}` : `label:${label}`;
+    if (label && !seenRequirements.has(requirementKey)) {
+      seenRequirements.add(requirementKey);
       items.push({
+        gateId: gate.gate_id ?? null,
         gateType: gate.gate_type,
         label,
         provider: resolveGateProvider(gate),
@@ -266,12 +407,37 @@ export function buildCommunitySidebarGateItems(input: {
     }
   }
 
-  return applyGateStatuses(items, input.eligibility, input.gateMatchMode);
+  return applyGateStatuses(items, input.eligibility, input.gateMatchMode, traceExcludedIndexes);
+}
+
+/**
+ * Indexes asset display metadata from API-built gate summaries by asset id.
+ *
+ * The authenticated sidebar projects its rows from raw `gate_policy` atoms, but
+ * an `asset_balance` atom carries only an id and an atomic amount — symbol and
+ * decimals live on the API summary. An asset id fully determines both (it is
+ * the server registry's key), so matching by id avoids depending on the two
+ * lists being ordered alike.
+ */
+function indexAssetDisplayByAssetId(
+  gateSummaries: ApiMembershipGateSummary[] | null | undefined,
+): Map<string, { symbol: string | null; decimals: number | null }> {
+  const byAssetId = new Map<string, { symbol: string | null; decimals: number | null }>();
+  for (const summary of gateSummaries ?? []) {
+    if (summary.gate_type !== "asset_balance" || !summary.asset_id) continue;
+    byAssetId.set(summary.asset_id, {
+      symbol: summary.asset_symbol ?? null,
+      decimals: typeof summary.asset_decimals === "number" ? summary.asset_decimals : null,
+    });
+  }
+  return byAssetId;
 }
 
 export function getCommunityGateSummaries(
   community: ApiCommunity,
+  apiGateSummaries?: ApiMembershipGateSummary[] | null,
 ): SidebarGateSummary[] {
+  const assetDisplay = indexAssetDisplayByAssetId(apiGateSummaries);
   return flattenGatePolicyAtoms(community.gate_policy).map((atom) => ({
     accepted_providers: "provider" in atom && (atom.provider === "self" || atom.provider === "very" || atom.provider === "passport")
       ? [atom.provider]
@@ -279,17 +445,31 @@ export function getCommunityGateSummaries(
     asset_category: "asset_category" in atom ? (atom.asset_category as string | null | undefined) : null,
     asset_filter_label: "asset_filter_label" in atom ? (atom.asset_filter_label as string | null | undefined) : null,
     contract_address: "contract_address" in atom ? atom.contract_address : null,
+    gate_id: atom.gate_id ?? null,
     gate_type: atom.type as ApiMembershipGateSummary["gate_type"],
-    min_quantity: "min_quantity" in atom ? atom.min_quantity : null,
+    min_quantity: atom.type === "erc721_holding"
+      ? ("min_count" in atom && typeof atom.min_count === "number" ? atom.min_count : 1)
+      : "min_quantity" in atom ? atom.min_quantity : null,
     required_value: atom.type === "gender" ? atom.allowed?.[0] ?? null : atom.type === "nationality" && atom.allowed?.length === 1 ? atom.allowed[0] : null,
     required_values: atom.type === "nationality" && (atom.allowed?.length ?? 0) > 1 ? atom.allowed : atom.type === "gender" && (atom.allowed?.length ?? 0) > 1 ? atom.allowed : null,
     required_minimum_age: atom.type === "minimum_age" ? atom.minimum_age : null,
     minimum_score: atom.type === "wallet_score" ? atom.minimum_score : null,
+    asset_id: atom.type === "asset_balance" ? atom.asset_id ?? null : null,
+    min_amount_atomic: atom.type === "asset_balance" ? atom.min_amount_atomic ?? null : null,
+    asset_symbol: atom.type === "asset_balance" && atom.asset_id
+      ? assetDisplay.get(atom.asset_id)?.symbol ?? null
+      : null,
+    asset_decimals: atom.type === "asset_balance" && atom.asset_id
+      ? assetDisplay.get(atom.asset_id)?.decimals ?? null
+      : null,
   }));
 }
 
 export function buildCommunitySidebar(community: ApiCommunity, locale?: string | null, eligibility?: ApiJoinEligibility | null) {
-  const gateSummaries = getCommunityGateSummaries(community);
+  // The community payload has no API-built gate summaries, so asset display
+  // metadata is sourced from the eligibility readout when it has loaded.
+  const gateSummaries = getCommunityGateSummaries(community, eligibility?.membership_gate_summaries);
+  const gateExpression = buildGateExpressionSummary(community.gate_policy, gateSummaries);
   const charityHref = community.donation_partner?.provider_partner_ref
     ? `https://app.endaoment.org/orgs/${community.donation_partner.provider_partner_ref}`
     : undefined;
@@ -327,6 +507,9 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
       eligibility,
       gateMatchMode: getGatePolicyMatchMode(community.gate_policy),
     }),
+    gateExpressionLabel: formatGateExpressionLabel(gateExpression, locale),
+    showFlatGateOrMarkers: (community.default_age_gate_policy ?? "none") !== "18_plus"
+      && isFlatOrGateExpression(community.gate_policy?.expression),
     hasActionTimeCheck: hasActionTimeCheck(gateSummaries),
     requirementsMode: getGatePolicyMatchMode(community.gate_policy),
     referenceLinks: community.reference_links?.map((link) => ({
@@ -439,6 +622,9 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
       eligibility,
       gateMatchMode: preview.gate_match_mode ?? null,
     }),
+    gateExpressionLabel: formatGateExpressionLabel(preview.membership_gate_expression, locale),
+    showFlatGateOrMarkers: !preview.membership_gate_summaries.some((summary) => summary.gate_type === "age_over_18")
+      && isFlatOrGateExpression(preview.membership_gate_expression),
     hasActionTimeCheck: hasActionTimeCheck(preview.membership_gate_summaries),
     requirementsMode: preview.gate_match_mode ?? undefined,
     referenceLinks: preview.reference_links?.map((link) => ({

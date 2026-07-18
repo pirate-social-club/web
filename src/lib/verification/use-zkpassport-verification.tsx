@@ -24,6 +24,8 @@ type ZkPassportRequestResult = {
   onError: (callback: (error: string) => void) => void;
 };
 
+type VerificationIntentInput = VerificationIntent | null | (() => VerificationIntent | null);
+
 const ZKPASSPORT_CAPABILITIES = new Set(["minimum_age", "nationality", "gender"]);
 
 function isZkPassportCapability(value: unknown): value is ZkPassportDocumentCapability {
@@ -80,7 +82,7 @@ export function useZkPassportVerification(input: {
     requestedCapabilities: VerificationSession["requested_capabilities"];
     session: VerificationSession;
   }) => Promise<void> | void;
-  verificationIntent: VerificationIntent | (() => VerificationIntent);
+  verificationIntent: VerificationIntentInput;
 }) {
   const api = useApi();
   const { onVerified, verificationIntent } = input;

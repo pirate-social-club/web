@@ -76,6 +76,8 @@ export interface CommunitySidebarStore {
 }
 
 export interface CommunitySidebarGateItem {
+  detail?: string | null;
+  gateId?: string | null;
   gateType: string;
   label: string;
   provider?: "self" | "very" | "passport" | null;
@@ -107,6 +109,8 @@ export interface CommunitySidebarProps {
   requirements?: string[];
   requirementsMode?: "all" | "any";
   gates?: CommunitySidebarGateItem[];
+  gateExpressionLabel?: string | null;
+  showFlatGateOrMarkers?: boolean;
   hasActionTimeCheck?: boolean;
   referenceLinks?: CommunitySidebarReferenceLink[];
   rules?: CommunitySidebarRule[];

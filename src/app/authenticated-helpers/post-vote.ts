@@ -134,5 +134,6 @@ export async function submitOptimisticPostVote({
 
     onRollback(previousPost);
     toast.error(getErrorMessage(nextError, "Could not update this vote."));
+    throw nextError;
   }
 }

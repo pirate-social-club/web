@@ -22,6 +22,7 @@ import type { PostThreadReplyInput, PostThreadSubmitResult } from "@/components/
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { applyPostVote, submitOptimisticPostVote, toPostVoteValue } from "@/app/authenticated-helpers/post-vote";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
+import { isMembershipRequiredWriteRejection } from "@/hooks/community-interaction-gate/membership-write-rejection";
 import { selectPostVoteGateData } from "@/hooks/use-community-interaction-gate.helpers";
 import { getErrorMessage } from "@/lib/error-utils";
 import {
@@ -254,7 +255,7 @@ export function usePost(
   // different post. Updated only where post data is actually applied, not from
   // the `postId` prop directly, which would race ahead of the data on nav.
   const visiblePostIdRef = React.useRef<string | null>(null);
-  const { gateModal, prewarmCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
+  const { gateModal, invalidateCommunityGate, prewarmCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: locale,
     routeKind: "post",
     uiLocale,
@@ -451,11 +452,11 @@ export function usePost(
     if (!post) return "blocked";
     const communityId = post.post.community;
     const nextPostId = post.post.id;
-    const result = await runGatedCommunityAction({
-      action: "reply_post",
-      communityId,
-      onAllowed: async (allowedContext) => {
-        try {
+    try {
+      const result = await runGatedCommunityAction({
+        action: "reply_post",
+        communityId,
+        onAllowed: async (allowedContext) => {
           const commentBody = await buildCommentRequestBody(input);
           await api.communities.createComment(
             communityId,
@@ -469,24 +470,90 @@ export function usePost(
             { altchaPayload: allowedContext?.altchaPayload },
           );
           await refreshTopLevelComments(communityId);
-        } catch (nextError) {
-          toast.error(getCommentSubmitErrorMessage(nextError));
-          throw nextError;
+        },
+        postId: nextPostId,
+        requireMembership: post.post.visibility === "members_only",
+      });
+      return result === "allowed" ? "submitted" : "blocked";
+    } catch (nextError) {
+      if (nextError instanceof ApiError && nextError.code === "gate_unsatisfied") {
+        invalidateCommunityGate(communityId);
+        await runGatedCommunityAction({
+          action: "reply_post",
+          communityId,
+          onAllowed: () => undefined,
+          postId: nextPostId,
+        });
+        return "blocked";
+      }
+      if (isMembershipRequiredWriteRejection(nextError)) {
+        const recoveryResult = await runGatedCommunityAction({
+          action: "reply_post",
+          communityId,
+          onAllowed: () => undefined,
+          postId: nextPostId,
+          requireMembership: true,
+        });
+        if (recoveryResult === "allowed") {
+          toast.error("Join this community to reply to this members-only thread.");
         }
-      },
-      postId: nextPostId,
-    });
-    return result === "allowed" ? "submitted" : "blocked";
-  }, [api, buildCommentRequestBody, getCommentSubmitErrorMessage, post, refreshTopLevelComments, runGatedCommunityAction, signAgentAuthoredCommentBody]);
+        return "blocked";
+      }
+      toast.error(getCommentSubmitErrorMessage(nextError));
+      return "blocked";
+    }
+  }, [api, buildCommentRequestBody, getCommentSubmitErrorMessage, invalidateCommunityGate, post, refreshTopLevelComments, runGatedCommunityAction, signAgentAuthoredCommentBody]);
+
+  const requestCommentAccess = React.useCallback(async (): Promise<void> => {
+    if (!post) return;
+    const communityId = post.post.community;
+    invalidateCommunityGate(communityId);
+    try {
+      await runGatedCommunityAction({
+        action: "reply_post",
+        communityId,
+        onAllowed: async () => {
+          const refreshedCommunity = await api.communities.preview(communityId, { locale });
+          setCommunity(refreshedCommunity);
+        },
+        postId: post.post.id,
+        resumeActionAfterJoin: false,
+      });
+    } catch (nextError) {
+      toast.error(getErrorMessage(nextError, "Could not check comment access."));
+    }
+  }, [api.communities, invalidateCommunityGate, locale, post, runGatedCommunityAction]);
+
+  const requestVoteAccess = React.useCallback(async (): Promise<void> => {
+    if (!post) return;
+    const communityId = post.post.community;
+    invalidateCommunityGate(communityId);
+    try {
+      await runGatedCommunityAction({
+        action: "vote_post",
+        communityId,
+        onAllowed: async () => {
+          const refreshedCommunity = await api.communities.preview(communityId, { locale });
+          setCommunity(refreshedCommunity);
+        },
+        postId: post.post.id,
+        resumeActionAfterJoin: false,
+        voteValue: 1,
+      });
+    } catch (nextError) {
+      toast.error(getErrorMessage(nextError, "Could not check voting access."));
+    }
+  }, [api.communities, invalidateCommunityGate, locale, post, runGatedCommunityAction]);
 
   const createReply = React.useCallback(async (commentId: string, input: PostThreadReplyInput): Promise<PostThreadSubmitResult> => {
     if (!post) return "blocked";
-    const result = await runGatedCommunityAction({
-      action: "reply_comment",
-      commentId,
-      communityId: post.post.community,
-      onAllowed: async (allowedContext) => {
-        try {
+    const communityId = post.post.community;
+    try {
+      const result = await runGatedCommunityAction({
+        action: "reply_comment",
+        commentId,
+        communityId,
+        onAllowed: async (allowedContext) => {
           const commentBody = await buildCommentRequestBody(input);
           await api.comments.createReply(
             commentId,
@@ -510,15 +577,41 @@ export function usePost(
             loadingReplies: false,
             nextRepliesCursor: context.next_replies_cursor,
           })));
-        } catch (nextError) {
-          toast.error(getCommentSubmitErrorMessage(nextError));
-          throw nextError;
+        },
+        postId: post.post.id,
+        requireMembership: post.post.visibility === "members_only",
+      });
+      return result === "allowed" ? "submitted" : "blocked";
+    } catch (nextError) {
+      if (nextError instanceof ApiError && nextError.code === "gate_unsatisfied") {
+        invalidateCommunityGate(communityId);
+        await runGatedCommunityAction({
+          action: "reply_comment",
+          commentId,
+          communityId,
+          onAllowed: () => undefined,
+          postId: post.post.id,
+        });
+        return "blocked";
+      }
+      if (isMembershipRequiredWriteRejection(nextError)) {
+        const recoveryResult = await runGatedCommunityAction({
+          action: "reply_comment",
+          commentId,
+          communityId,
+          onAllowed: () => undefined,
+          postId: post.post.id,
+          requireMembership: true,
+        });
+        if (recoveryResult === "allowed") {
+          toast.error("Join this community to reply to this members-only thread.");
         }
-      },
-      postId: post.post.id,
-    });
-    return result === "allowed" ? "submitted" : "blocked";
-  }, [api, buildCommentRequestBody, getCommentSubmitErrorMessage, locale, post, runGatedCommunityAction, session, signAgentAuthoredCommentBody]);
+        return "blocked";
+      }
+      toast.error(getCommentSubmitErrorMessage(nextError));
+      return "blocked";
+    }
+  }, [api, buildCommentRequestBody, getCommentSubmitErrorMessage, invalidateCommunityGate, locale, post, runGatedCommunityAction, session, signAgentAuthoredCommentBody]);
 
   const voteOnComment = React.useCallback(async (commentId: string, direction: "up" | "down") => {
     if (!post) return;
@@ -601,26 +694,30 @@ export function usePost(
     if (!post) return;
     if (!direction) return;
     const voteValue = toPostVoteValue(direction);
-    await runGatedCommunityAction({
-      action: "vote_post",
-      communityId: post.post.community,
-      ...(voteGateData ? { gateData: voteGateData } : {}),
-      onAllowed: async (context) => {
-        const nextPostId = post.post.id;
-        await submitOptimisticPostVote({
-          altchaPayload: context?.altchaPayload,
-          direction,
-          onApply: (nextValue) => setPost((current) => current ? applyPostVote(current, nextValue) : current),
-          onRollback: (restoredPost) => setPost(restoredPost),
-          postId: nextPostId,
-          previousPost: post,
-          requestIdsRef: voteRequestIdsRef,
-          vote: api.posts.vote,
-        });
-      },
-      postId: post.post.id,
-      voteValue,
-    });
+    try {
+      await runGatedCommunityAction({
+        action: "vote_post",
+        communityId: post.post.community,
+        ...(voteGateData ? { gateData: voteGateData } : {}),
+        onAllowed: async (context) => {
+          const nextPostId = post.post.id;
+          await submitOptimisticPostVote({
+            altchaPayload: context?.altchaPayload,
+            direction,
+            onApply: (nextValue) => setPost((current) => current ? applyPostVote(current, nextValue) : current),
+            onRollback: (restoredPost) => setPost(restoredPost),
+            postId: nextPostId,
+            previousPost: post,
+            requestIdsRef: voteRequestIdsRef,
+            vote: api.posts.vote,
+          });
+        },
+        postId: post.post.id,
+        voteValue,
+      });
+    } catch {
+      // The optimistic submitter already rolled back and displayed the error.
+    }
   }, [api.posts.vote, post, runGatedCommunityAction, voteGateData]);
 
   const deletePost = React.useCallback(async () => {
@@ -947,6 +1044,8 @@ export function usePost(
     commentCount,
     availableAgent,
     createTopLevelComment,
+    requestCommentAccess,
+    requestVoteAccess,
     cancelEvent,
     deletePost,
     removePost,

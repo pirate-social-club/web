@@ -148,7 +148,6 @@ function harness(opts: {
     now: () => timers.now,
     onError: (error) => errors.push(error),
     onServerEvent: () => {},
-    playbackClock: () => 0,
     postId: "post-1",
     setTimer: timers.setTimer,
     socketConnectTimeoutMs: Number.POSITIVE_INFINITY,
@@ -213,6 +212,7 @@ describe("classifyKaraokeCreateError", () => {
     expect(classifyKaraokeCreateError(new ApiError("karaoke_session_actor_not_allowed", "no", 403))).toEqual({ code: "karaoke_session_actor_not_allowed", message: "no", retryable: false, status: 403 });
     expect(classifyKaraokeCreateError(new ApiError("karaoke_scoring_disabled", "off", 400)).retryable).toBe(false);
     expect(classifyKaraokeCreateError(new ApiError("karaoke_runtime_unavailable", "down", 503)).retryable).toBe(true);
+    expect(classifyKaraokeCreateError(new ApiError("karaoke_stt_unconfigured", "missing", 503, false)).retryable).toBe(false);
     expect(classifyKaraokeCreateError(new ApiError("karaoke_session_create_in_progress", "wait", 409)).retryable).toBe(true);
     expect(classifyKaraokeCreateError(new KaraokeSessionResponseError("session_identity_changed", "x"))).toEqual({ code: "session_identity_changed", message: "x", retryable: false, status: null });
     expect(classifyKaraokeCreateError(new TypeError("network down"))).toEqual({ code: "karaoke_create_failed", message: "network down", retryable: true, status: null });
@@ -306,6 +306,25 @@ describe("createKaraokeSessionClient", () => {
     expect(h.handle.getPhase()).toBe("live");
   });
 
+  test("surfaces configuration close code 4002 as terminal without reconnecting", async () => {
+    const h = harness();
+    await h.handle.start();
+    h.sockets[0]!.open();
+    await tick();
+
+    h.sockets[0]!.close(4002, "Karaoke scoring unavailable");
+    await tick();
+
+    expect(h.createCalls).toHaveLength(1);
+    expect(h.handle.getPhase()).toBe("aborted");
+    expect(h.errors.at(-1)).toEqual({
+      code: "karaoke_stt_unconfigured",
+      message: "Karaoke scoring is not configured for this community",
+      retryable: false,
+      status: null,
+    });
+  });
+
   test("a terminal HTTP error preserves the server code and aborts (no reconnect loop)", async () => {
     const h = harness({
       responses: () => {
@@ -315,6 +334,28 @@ describe("createKaraokeSessionClient", () => {
     await h.handle.start();
     await tick();
     expect(h.errors).toEqual([{ code: "karaoke_session_actor_not_allowed", message: "actor not allowed", retryable: false, status: 403 }]);
+    expect(h.handle.getPhase()).toBe("aborted");
+  });
+
+  test("reports reconnect exhaustion as terminal when the retry budget is exhausted", async () => {
+    const h = harness({
+      override: { maxReconnectAttempts: 0 },
+      responses: () => { throw new TypeError("network down"); },
+    });
+
+    await h.handle.start();
+    await h.timers.flush();
+    await tick();
+    await tick();
+    await tick();
+
+    expect(h.createCalls).toHaveLength(1);
+    expect(h.errors.at(-1)).toEqual({
+      code: "karaoke_reconnect_exhausted",
+      message: "Karaoke connection failed after 0 reconnect attempts",
+      retryable: false,
+      status: null,
+    });
     expect(h.handle.getPhase()).toBe("aborted");
   });
 

@@ -312,7 +312,7 @@ async function proxyTelegramSessionRequest(request: Request, effectiveUrl: strin
 
   const body = request.method === "GET" || request.method === "HEAD"
     ? undefined
-    : await request.clone().arrayBuffer();
+    : request.body;
   const upstream = await fetch(targetUrl.toString(), {
     body,
     headers,
@@ -564,7 +564,7 @@ const app = defineApp<AppRequestInfo>([
 
 export default {
   async fetch(request: Request, env: Env, cf: AppRequestInfo["cf"]) {
-    request = authenticateHnsForwarderRequest(request, env as HnsForwardedOriginEnv);
+    request = await authenticateHnsForwarderRequest(request, env as HnsForwardedOriginEnv);
     const initialEffectiveUrl = resolveEffectiveRequestUrl(request);
     const initialPathname = new URL(initialEffectiveUrl).pathname;
     if (initialPathname === "/__version") {

@@ -3,6 +3,8 @@ import type { JoinEligibility } from "@pirate/api-contracts";
 
 import {
   isJoinSurfaceGate,
+  formatGateRequirement,
+  getGateFailureMessage,
   getJoinCtaLabel,
   isJoinCtaActionable,
 } from "./identity-gates";
@@ -37,7 +39,33 @@ describe("identity gate join CTA helpers", () => {
     expect(getJoinCtaLabel(eligibility, { locale: "en" })).toBe("Connect wallet");
   });
 
+  test("wallet-only balance requirements are actionable and display exact amounts", () => {
+    const eligibility = walletGateEligibility();
+    eligibility.gate_evaluation!.required_action_set!.items = [{
+      capability: "asset_balance",
+      kind: "capability",
+    }];
+
+    expect(getJoinCtaLabel(eligibility, { locale: "en" })).toBe("Connect wallet");
+    expect(formatGateRequirement({
+      asset_decimals: 18,
+      asset_id: "eip155:1/slip44:60",
+      asset_symbol: "ETH",
+      gate_type: "asset_balance",
+      min_amount_atomic: "500000000000000000",
+    }, { locale: "en" })).toBe("At least 0.5 ETH");
+  });
+
   test("proof-of-work requirements are visible before the action modal", () => {
     expect(isJoinSurfaceGate({ gate_type: "altcha_pow" })).toBe(true);
+  });
+
+  test("explains an insufficient balance instead of falling back to generic copy", () => {
+    // Before the API reported asset_balance_too_low this reached the default
+    // branch and rendered the generic "gate failed" description.
+    expect(getGateFailureMessage({ failure_reason: "asset_balance_too_low" }, { locale: "en" }))
+      .toBe("Your connected wallets do not hold enough of the required asset to join this community.");
+    expect(getGateFailureMessage({ failure_reason: "asset_balance_too_low" }, { locale: "ar" })).toBeTruthy();
+    expect(getGateFailureMessage({ failure_reason: "asset_balance_too_low" }, { locale: "zh" })).toBeTruthy();
   });
 });

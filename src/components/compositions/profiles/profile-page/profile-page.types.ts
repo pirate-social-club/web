@@ -37,6 +37,8 @@ export interface ProfileCommentItem {
   commentId: string;
   authorLabel: string;
   authorHref?: string;
+  authorAvatarSeed?: string;
+  authorAvatarSrc?: string;
   body: string;
   timestampLabel: string;
   communityLabel?: string;

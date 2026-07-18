@@ -30,6 +30,17 @@ export interface HandleSearchResult {
   pricingTier?: string;
   reason?: string;
   paymentInstructions?: HandlePaymentInstructions | null;
+  /** False when a claim gate applies to this name and the viewer does not satisfy it. */
+  claimGateSatisfied?: boolean;
+  /** Human-readable requirement labels for an unsatisfied claim gate. */
+  claimGateRequirements?: string[];
+}
+
+export interface HandleClaimNamespaceOption {
+  namespaceVerification: string;
+  label: string;
+  routeLabel: string;
+  disabled?: boolean;
 }
 
 export interface HandleClaimModalProps {
@@ -38,6 +49,9 @@ export interface HandleClaimModalProps {
   communityName: string;
   communityHandle: string;
   communityRouteLabel?: string | null;
+  namespaceOptions?: HandleClaimNamespaceOption[];
+  selectedNamespaceVerification?: string | null;
+  onNamespaceChange?: (namespaceVerification: string) => void;
   phase: HandleClaimPhase;
   searchValue: string;
   onSearchChange: (value: string) => void;

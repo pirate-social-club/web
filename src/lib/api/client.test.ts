@@ -1,8 +1,63 @@
 import { describe, expect, test } from "bun:test";
 
-import { ApiClient } from "./client";
+import { ApiClient, ApiError } from "./client";
 
 const originalFetch = globalThis.fetch;
+
+test("preserves an explicit retryable false from an API error response", async () => {
+  globalThis.fetch = async () => Response.json({
+    code: "karaoke_stt_unconfigured",
+    message: "Karaoke scoring provider is not configured",
+    retryable: false,
+  }, { status: 503 });
+
+  try {
+    const client = new ApiClient({ baseUrl: "http://pirate.test", getToken: () => null });
+    await client.publicPosts.getKaraoke("pst_test").then(
+      () => { throw new Error("Expected request to fail"); },
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ApiError);
+        expect(error).toMatchObject({ retryable: false, retryableExplicit: true, status: 503 });
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("captures request_id from error bodies and falls back to the x-request-id header", async () => {
+  globalThis.fetch = async () => Response.json({
+    code: "internal_error",
+    message: "Internal server error",
+    retryable: true,
+    request_id: "body-req-id",
+  }, { status: 500, headers: { "x-request-id": "header-req-id" } });
+
+  try {
+    const client = new ApiClient({ baseUrl: "http://pirate.test", getToken: () => null });
+    await client.publicPosts.getKaraoke("pst_test").then(
+      () => { throw new Error("Expected request to fail"); },
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ApiError);
+        expect(error).toMatchObject({ requestId: "body-req-id", status: 500 });
+      },
+    );
+
+    globalThis.fetch = async () => new Response("not json", {
+      status: 500,
+      headers: { "x-request-id": "header-req-id" },
+    });
+    await client.publicPosts.getKaraoke("pst_test").then(
+      () => { throw new Error("Expected request to fail"); },
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ApiError);
+        expect(error).toMatchObject({ requestId: "header-req-id", status: 500 });
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 function requireRequest(request: Request | null): Request {
   if (!request) {
@@ -387,6 +442,36 @@ describe("ApiClient media uploads", () => {
       expect(capturedRequest.method).toBe("GET");
       expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/handles/me");
       expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("lists namespaces and scopes handle reads to a selected namespace", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      return request.url.endsWith("/namespaces")
+        ? Response.json({ namespaces: [] })
+        : Response.json({ handle: null });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.listNamespaces("cmt_test");
+      await client.communities.getMyHandle("cmt_test", {
+        namespaceVerification: "nv_charizard",
+      });
+
+      expect(requests.map((request) => request.url)).toEqual([
+        "http://pirate.test/communities/cmt_test/namespaces",
+        "http://pirate.test/communities/cmt_test/handles/me?namespace_verification=nv_charizard",
+      ]);
     } finally {
       globalThis.fetch = originalFetch;
     }

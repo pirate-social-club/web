@@ -95,6 +95,87 @@ describe("useCommunityMembershipActions", () => {
     expect(result.current.proofOfWorkModalOpen).toBe(true);
   });
 
+  test("opens the branch chooser before proof of work for multi-branch policies", async () => {
+    const { result } = renderHook(() =>
+      useCommunityMembershipActions(createOptions({
+        altchaRequired: true,
+        eligibility: eligibility("verification_required"),
+        hasVerificationChoices: true,
+      }))
+    );
+
+    await act(async () => {
+      await result.current.handlePrimaryJoinAction();
+    });
+
+    expect(result.current.verificationChooserModalOpen).toBe(true);
+    expect(result.current.proofOfWorkModalOpen).toBe(false);
+  });
+
+  test("submits a newly verified proof immediately and closes the modal after joining", async () => {
+    const submittedPayloads: Array<string | null | undefined> = [];
+    const { result } = renderHook(() =>
+      useCommunityMembershipActions(createOptions({
+        altchaRequired: true,
+        eligibility: eligibility("verification_required"),
+        handleJoin: async (options) => {
+          submittedPayloads.push(options?.altchaPayload);
+          return "joined";
+        },
+      }))
+    );
+
+    act(() => {
+      result.current.setProofOfWorkModalOpen(true);
+    });
+    await act(async () => {
+      await result.current.handleProofOfWorkVerified("fresh-proof");
+    });
+
+    expect(submittedPayloads).toEqual(["fresh-proof"]);
+    expect(result.current.proofOfWorkModalOpen).toBe(false);
+    expect(result.current.proofOfWorkRetryKey).toBe(0);
+  });
+
+  test("closes the proof-of-work modal after submitting an approval request", async () => {
+    const { result } = renderHook(() =>
+      useCommunityMembershipActions(createOptions({
+        altchaRequired: true,
+        eligibility: eligibility("verification_required"),
+        handleJoin: async () => "requested",
+      }))
+    );
+
+    act(() => {
+      result.current.setProofOfWorkModalOpen(true);
+    });
+    await act(async () => {
+      await result.current.handleProofOfWorkVerified("fresh-proof");
+    });
+
+    expect(result.current.proofOfWorkModalOpen).toBe(false);
+  });
+
+  test("keeps the proof-of-work modal open and requests one fresh challenge after failure", async () => {
+    const { result } = renderHook(() =>
+      useCommunityMembershipActions(createOptions({
+        altchaRequired: true,
+        eligibility: eligibility("verification_required"),
+        handleJoin: async () => "failed",
+      }))
+    );
+
+    act(() => {
+      result.current.setProofOfWorkModalOpen(true);
+    });
+    await act(async () => {
+      await result.current.handleProofOfWorkVerified("consumed-proof");
+    });
+
+    expect(result.current.proofOfWorkModalOpen).toBe(true);
+    expect(result.current.proofOfWorkRetryKey).toBe(1);
+  });
+
   test("calls handleJoin and opens handle claim when joining succeeds", async () => {
     const statusChecks: string[] = [];
     const myHandleChecks: string[] = [];

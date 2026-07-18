@@ -74,7 +74,7 @@ const recordClaim = bunMock(async () => ({
 
 bunMock.module("@story-protocol/core-sdk", () => ({
   StoryClient: { newClient },
-  TEST_TOKEN_CONTRACT_ADDRESS,
+  WIP_TOKEN_ADDRESS: TEST_TOKEN_CONTRACT_ADDRESS,
 }));
 
 bunMock.module("@/components/auth/privy-provider", () => ({

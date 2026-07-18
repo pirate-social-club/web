@@ -327,6 +327,21 @@ describe("deriveSongUI", () => {
     expect(markup).toContain('href="/p/post_123/karaoke"');
   });
 
+  test("renders the Study href when no action callback is provided", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          study: { status: "ready" },
+          studyHref: "/p/post_123/study",
+        },
+      }),
+    );
+
+    expect(markup).toContain('href="/p/post_123/study"');
+    expect(markup).toContain("Study");
+  });
+
   test("reserves the study action slot while study capability is unknown", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
@@ -445,7 +460,7 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("Study");
   });
 
-  test("labels reward amounts as earnings rather than prices", () => {
+  test("labels campaign rewards as earnings rather than prices", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
@@ -459,7 +474,7 @@ describe("deriveSongUI", () => {
     );
 
     expect(markup).toContain("Study · Earn $.10");
-    expect(markup).toContain("Karaoke · Earn $.10");
+    expect(markup).toContain("Sing · Earn $.10");
   });
 
   test("renders the Study CTA as preparing when study is processing", () => {

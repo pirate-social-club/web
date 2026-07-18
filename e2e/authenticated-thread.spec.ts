@@ -7,7 +7,10 @@ import {
 import { expectNoBrowserError } from "./fixtures/e2e-helpers";
 import {
   mockCommentBody,
+  mockCommunityId,
+  mockCommunityPreview,
   mockFeedPostId,
+  mockJoinEligibility,
   mockStoryPortalAssetUrl,
 } from "./fixtures/auth-session";
 
@@ -31,6 +34,52 @@ test.describe("authenticated thread flows with mocked API", () => {
     await page.getByRole("button", { name: /post reply/i }).click();
 
     await expect(page.locator("body")).toContainText(mockCommentBody, { timeout: 15_000 });
+    await expectNoBrowserError(page);
+  });
+
+  test("shows the public-thread composer to a non-member without posting a comment", async ({ page }) => {
+    let commentPostCount = 0;
+    await page.route(
+      new RegExp(`/communities/${encodeURIComponent(mockCommunityId)}/preview(?:\\?.*)?$`),
+      (route) => route.fulfill({
+        body: JSON.stringify({
+          ...mockCommunityPreview,
+          membership_mode: "gated",
+          viewer_membership_status: "not_member",
+          viewer_following: false,
+        }),
+        contentType: "application/json",
+        status: 200,
+      }),
+    );
+    await page.route(
+      `**/communities/${encodeURIComponent(mockCommunityId)}/join-eligibility`,
+      (route) => route.fulfill({
+        body: JSON.stringify({
+          ...mockJoinEligibility,
+          joinable_now: true,
+          membership_mode: "gated",
+          status: "joinable",
+        }),
+        contentType: "application/json",
+        status: 200,
+      }),
+    );
+    await page.route(
+      `**/communities/${encodeURIComponent(mockCommunityId)}/posts/${encodeURIComponent(mockFeedPostId)}/comments`,
+      async (route) => {
+        if (route.request().method() === "POST") {
+          commentPostCount += 1;
+        }
+        await route.fallback();
+      },
+    );
+
+    await page.goto(`/p/${mockFeedPostId}`);
+
+    await expect(page.getByRole("textbox", { name: /^reply$/i })).toBeEnabled({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Join to comment" })).toHaveCount(0);
+    expect(commentPostCount).toBe(0);
     await expectNoBrowserError(page);
   });
 

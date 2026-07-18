@@ -1,19 +1,36 @@
 import type { RoutesMessages } from "./locales";
+import { getPublicIdentityHandleLabel } from "./lib/public-identity";
 import {
   X_FRAME_OPTIONS_DENY,
   X_FRAME_OPTIONS_HEADER,
 } from "./lib/security-headers";
 import type { PublicAgentResolution, PublicProfileResolution } from "./worker-public.types";
 
-function buildCommunityPath(communityId: string, routeSlug: string | null): string {
-  return `/c/${encodeURIComponent(routeSlug || communityId)}`;
+const PUBLIC_HTML_CSP = [
+  "default-src 'none'",
+  "style-src 'unsafe-inline'",
+  "img-src https: data:",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'",
+].join("; ");
+
+export function buildPublicHtmlHeaders(cacheControl?: string): Headers {
+  const headers = new Headers({
+    "content-security-policy": PUBLIC_HTML_CSP,
+    "content-type": "text/html; charset=utf-8",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-content-type-options": "nosniff",
+    [X_FRAME_OPTIONS_HEADER]: X_FRAME_OPTIONS_DENY,
+  });
+  if (cacheControl) {
+    headers.set("cache-control", cacheControl);
+  }
+  return headers;
 }
 
-function getPublicIdentityHandleLabel(input: {
-  global_handle: { label: string };
-  primary_public_handle?: { label: string } | null;
-}): string {
-  return input.primary_public_handle?.label ?? input.global_handle.label;
+function buildCommunityPath(communityId: string, routeSlug: string | null): string {
+  return `/c/${encodeURIComponent(routeSlug || communityId)}`;
 }
 
 function escapeHtml(value: string): string {
@@ -113,9 +130,9 @@ export function renderPublicProfilePage({
         )
         .join("")
     : "";
-  const bannerStyle = cover
-    ? `background-image:url('${cover.replaceAll("'", "%27")}');background-size:cover;background-position:center;`
-    : "background:linear-gradient(135deg,#302019 0%,#191818 100%);";
+  const bannerMarkup = cover
+    ? `<div class="banner"><img class="banner-image" src="${escapeHtml(cover)}" alt="" /></div>`
+    : '<div class="banner banner-fallback"></div>';
   const avatarMarkup = avatar
     ? `<img class="avatar-image" src="${escapeHtml(avatar)}" alt="${safeDisplayName}" />`
     : `<div class="avatar-fallback">${initials}</div>`;
@@ -170,7 +187,9 @@ export function renderPublicProfilePage({
       .masthead { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; color: var(--muted); font-size: 16px; }
       .brand { font-weight: 700; letter-spacing: 0.02em; }
       .hero { overflow: hidden; border: 1px solid var(--line); border-radius: calc(var(--radius) + 4px); background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); box-shadow: var(--shadow); }
-      .banner { height: 220px; }
+      .banner { height: 220px; overflow: hidden; }
+      .banner-image { width: 100%; height: 100%; object-fit: cover; }
+      .banner-fallback { background: linear-gradient(135deg,#302019 0%,#191818 100%); }
       .identity { display: grid; gap: 24px; padding: 0 24px 28px; margin-top: -48px; }
       .identity-row { display: flex; flex-direction: column; gap: 18px; }
       .avatar { width: 112px; height: 112px; border-radius: 999px; border: 4px solid var(--card); background: linear-gradient(135deg, #25282d 0%, #1a1c20 100%); box-shadow: 0 18px 50px rgba(0,0,0,0.4); overflow: hidden; display: grid; place-items: center; }
@@ -211,7 +230,7 @@ export function renderPublicProfilePage({
         <div class="host-note">${safeHost}</div>
       </div>
       <section class="hero">
-        <div class="banner" style="${bannerStyle}"></div>
+        ${bannerMarkup}
         <div class="identity">
           <div class="identity-row">
             <div class="avatar">${avatarMarkup}</div>
@@ -259,10 +278,7 @@ export function renderPublicProfileErrorPage(
   return new Response(
     `<!doctype html><html lang="${escapeHtml(localeTag)}" dir="${htmlDir}"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(title)}</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0e0f11;color:#f4f4f5;font-family:ui-sans-serif,system-ui,sans-serif;padding:24px}main{max-width:720px;text-align:center;border:1px solid rgba(255,255,255,.08);background:#17191c;border-radius:28px;padding:32px}h1{margin:0 0 12px;font-size:34px;letter-spacing:-.04em}p{margin:0;color:#b3b6bd;font-size:18px;line-height:1.6}</style></head><body><main><h1>${escapeHtml(title)}</h1><p>${escapeHtml(description)}</p></main></body></html>`,
     {
-      headers: {
-        "content-type": "text/html; charset=utf-8",
-        [X_FRAME_OPTIONS_HEADER]: X_FRAME_OPTIONS_DENY,
-      },
+      headers: buildPublicHtmlHeaders(),
       status,
     },
   );
@@ -373,11 +389,7 @@ export function renderPublicAgentPage({
   </body>
 </html>`,
     {
-      headers: {
-        "cache-control": "public, max-age=60, s-maxage=300",
-        "content-type": "text/html; charset=utf-8",
-        [X_FRAME_OPTIONS_HEADER]: X_FRAME_OPTIONS_DENY,
-      },
+      headers: buildPublicHtmlHeaders("public, max-age=60, s-maxage=300"),
     },
   );
 }

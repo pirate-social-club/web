@@ -141,12 +141,16 @@ function installApiSpies(log: ApiCallLog, authGetBehavior: (postId: string) => P
   }).getPostKaraoke = async () => {
     throw new Error("community-scoped karaoke payload should not load on the post karaoke route");
   };
+  api.rewards.getActiveCampaignForSong = async () => {
+    throw new ApiError("not_found", "not found", 404);
+  };
 }
 
 const originalPostsGet = api.posts.get;
 const originalPublicPostsGet = api.publicPosts.get;
 const originalPublicPostsGetKaraoke = api.publicPosts.getKaraoke;
 const originalGetPostKaraoke = api.communities.getPostKaraoke;
+const originalGetActiveCampaignForSong = api.rewards.getActiveCampaignForSong;
 
 beforeEach(() => {
   __resetSessionStoreForTests();
@@ -182,6 +186,7 @@ afterEach(() => {
   api.publicPosts.get = originalPublicPostsGet;
   api.publicPosts.getKaraoke = originalPublicPostsGetKaraoke;
   api.communities.getPostKaraoke = originalGetPostKaraoke;
+  api.rewards.getActiveCampaignForSong = originalGetActiveCampaignForSong;
   mediaElementPrototype.load = originalLoad;
   mediaElementPrototype.play = originalPlay;
   mediaElementPrototype.pause = originalPause;

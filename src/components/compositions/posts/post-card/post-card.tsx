@@ -335,6 +335,7 @@ export function PostCard({
   menuItems,
   shareActions,
   onVote,
+  voteAccess,
   onComment,
   onShare,
   onToggleOriginal,
@@ -503,6 +504,7 @@ export function PostCard({
               engagement={engagement}
               shareActions={shareActions}
               onVote={onVote}
+              voteAccess={voteAccess}
               onComment={onComment}
               onShare={onShare}
             />
@@ -515,6 +517,7 @@ export function PostCard({
             unlock={unlock ? { label: unlock.label, onClick: unlock.onBuy } : undefined}
             shareActions={shareActions}
             onVote={onVote}
+            voteAccess={voteAccess}
             onComment={onComment}
             onShare={onShare}
           />

@@ -1,0 +1,12 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "pirate-web-multipart-fixture",
+  "compatibility_date": "2026-07-13",
+  "d1_databases": [
+    {
+      "binding": "COMMUNITY_DB",
+      "database_name": "community-d1-pool-0176-staging",
+      "database_id": "82271ad6-0f58-4589-bfdf-aa66bd2cf655"
+    }
+  ]
+}

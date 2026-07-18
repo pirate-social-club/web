@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
+import { UiLocaleProvider } from "@/lib/ui-locale";
 import { CommunitySidebar } from "../community-sidebar";
 
 const meta = {
@@ -107,9 +108,16 @@ export const RequirementsOr: Story = {
     followerCount: 5400,
     memberCount: 890,
     requirementsMode: "any",
+    showFlatGateOrMarkers: true,
     gates: [
       { gateType: "wallet_score", label: "Passport score 8+", provider: null, status: "met" },
       { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unmet" },
+      {
+        gateType: "asset_balance",
+        label: "At least 0.5 ETH",
+        provider: null,
+        status: "unmet",
+      },
     ],
   },
 };
@@ -216,6 +224,62 @@ export const GateStatuses: Story = {
       { gateType: "wallet_score", label: "Passport score 20+", provider: null, status: "met" },
       { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unmet" },
       { gateType: "erc721_holding", label: "Ethereum NFT from 0x1234...5678", provider: null, status: "unknown" },
+    ],
+  },
+};
+
+export const BalanceGuidanceOverflow: Story = {
+  name: "Gates / Balance requirement overflow",
+  args: {
+    description: "Narrow-width coverage for exact token balance requirements.",
+    followerCount: 620,
+    memberCount: 80,
+    requirementsMode: "all",
+    gates: [
+      {
+        gateType: "asset_balance",
+        label: "At least 123,456,789.123456789012345678 WETH",
+        provider: null,
+        status: "unmet",
+      },
+      {
+        gateType: "asset_balance",
+        label: "At least 10,000,000 USDC",
+        provider: null,
+        status: "unmet",
+      },
+    ],
+  },
+};
+
+export const BalanceGuidanceArabic: Story = {
+  name: "Gates / Balance requirement Arabic RTL",
+  render: (args) => (
+    <UiLocaleProvider dir="rtl" locale="ar">
+      <div dir="rtl">
+        <CommunitySidebar {...args} />
+      </div>
+    </UiLocaleProvider>
+  ),
+  args: {
+    description: "تغطية اتجاه النص المختلط لمتطلبات رصيد الرموز.",
+    displayName: "مجتمع حاملي الرموز",
+    followerCount: 620,
+    memberCount: 80,
+    requirementsMode: "all",
+    gates: [
+      {
+        gateType: "asset_balance",
+        label: "0.5 ETH على الأقل",
+        provider: null,
+        status: "unmet",
+      },
+      {
+        gateType: "asset_balance",
+        label: "10 USDC على الأقل",
+        provider: null,
+        status: "unmet",
+      },
     ],
   },
 };

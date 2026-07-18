@@ -91,6 +91,8 @@ function CommunitySidebarSections({
   requirements,
   requirementsMode,
   gates,
+  gateExpressionLabel,
+  showFlatGateOrMarkers,
   hasActionTimeCheck,
   referenceLinks,
   rules,
@@ -109,6 +111,8 @@ function CommunitySidebarSections({
   | "requirements"
   | "requirementsMode"
   | "gates"
+  | "gateExpressionLabel"
+  | "showFlatGateOrMarkers"
   | "hasActionTimeCheck"
   | "referenceLinks"
   | "rules"
@@ -214,8 +218,13 @@ function CommunitySidebarSections({
             <AccordionTrigger className={SECTION_LABEL}>
               {gateTitle}
             </AccordionTrigger>
-            <AccordionContent className="pb-0">
-              <CommunitySidebarGates items={gates} mode={requirementsMode} />
+            <AccordionContent className="pb-0 [&>div]:pb-0">
+              <CommunitySidebarGates
+                expressionLabel={gateExpressionLabel}
+                items={gates}
+                mode={requirementsMode}
+                showFlatOrMarkers={showFlatGateOrMarkers}
+              />
             </AccordionContent>
           </AccordionItem>
         )}
@@ -225,7 +234,7 @@ function CommunitySidebarSections({
             <AccordionTrigger className={SECTION_LABEL}>
               {gateTitle}
             </AccordionTrigger>
-            <AccordionContent className="pb-0">
+            <AccordionContent className="pb-0 [&>div]:pb-0">
               <CommunitySidebarRequirements
                 items={activeRequirements}
                 mode={requirementsMode}
@@ -291,6 +300,8 @@ export function CommunitySidebarDetails({
   requirements,
   requirementsMode,
   gates,
+  gateExpressionLabel,
+  showFlatGateOrMarkers,
   hasActionTimeCheck,
   referenceLinks,
   rules,
@@ -309,6 +320,8 @@ export function CommunitySidebarDetails({
   | "requirements"
   | "requirementsMode"
   | "gates"
+  | "gateExpressionLabel"
+  | "showFlatGateOrMarkers"
   | "hasActionTimeCheck"
   | "referenceLinks"
   | "rules"
@@ -330,6 +343,8 @@ export function CommunitySidebarDetails({
           requirements={requirements}
           requirementsMode={requirementsMode}
           gates={gates}
+          gateExpressionLabel={gateExpressionLabel}
+          showFlatGateOrMarkers={showFlatGateOrMarkers}
           hasActionTimeCheck={hasActionTimeCheck}
           rules={rules}
           store={store}
@@ -355,6 +370,8 @@ export function CommunitySidebar({
   requirements,
   requirementsMode,
   gates,
+  gateExpressionLabel,
+  showFlatGateOrMarkers,
   hasActionTimeCheck,
   referenceLinks,
   rules,
@@ -392,6 +409,8 @@ export function CommunitySidebar({
         requirements={requirements}
         requirementsMode={requirementsMode}
         gates={gates}
+        gateExpressionLabel={gateExpressionLabel}
+        showFlatGateOrMarkers={showFlatGateOrMarkers}
         hasActionTimeCheck={hasActionTimeCheck}
         rules={rules}
         store={store}

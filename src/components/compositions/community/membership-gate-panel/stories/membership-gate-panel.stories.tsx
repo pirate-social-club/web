@@ -178,6 +178,67 @@ export const MultipleMissingCapabilities: Story = {
   ),
 };
 
+const flatAnyGates = [
+  { gate_type: "wallet_score" as const, minimum_score: 8 },
+  { accepted_providers: ["very" as const], gate_type: "unique_human" as const },
+  { gate_type: "altcha_pow" as const },
+];
+
+export const FlatAnyMode: Story = {
+  name: "Modes / Any (flat OR)",
+  args: { gates: [] },
+  render: () => (
+    <CommunityMembershipGatePanel
+      gates={flatAnyGates}
+      eligibility={{
+        community: "community_flat_any",
+        membership_mode: "gated",
+        human_verification_lane: "self",
+        joinable_now: false,
+        status: "verification_required",
+        membership_gate_summaries: flatAnyGates,
+        gate_evaluation: gateEvaluation(["wallet_score", "unique_human", "altcha_pow"]),
+        suggested_verification_intent: "community_join",
+      }}
+      mode="any"
+      requirementGroups={[{ mode: "any", requirements: flatAnyGates }]}
+    />
+  ),
+};
+
+export const MixedRequiredAndAnyMode: Story = {
+  name: "Modes / Mixed required and OR",
+  args: { gates: [] },
+  render: () => {
+    const required = { accepted_providers: ["self" as const], gate_type: "unique_human" as const };
+    const alternatives = [
+      { accepted_providers: ["very" as const], gate_type: "unique_human" as const },
+      { gate_type: "altcha_pow" as const },
+    ];
+    const gates = [required, ...alternatives];
+    return (
+      <CommunityMembershipGatePanel
+        gates={gates}
+        eligibility={{
+          community: "community_mixed",
+          membership_mode: "gated",
+          human_verification_lane: "self",
+          joinable_now: false,
+          status: "verification_required",
+          membership_gate_summaries: gates,
+          gate_evaluation: gateEvaluation(["unique_human", "altcha_pow"]),
+          suggested_verification_intent: "community_join",
+        }}
+        mode="all"
+        requirementGroups={[
+          { mode: "all", requirements: [required] },
+          { mode: "any", requirements: alternatives },
+        ]}
+      />
+    );
+  },
+};
+
 export const VeryVerificationRequired: Story = {
   name: "States / Very Verification Required",
   args: { gates: [] },

@@ -54,6 +54,9 @@ export function classifyKaraokeCreateError(error: unknown): KaraokeBridgeError {
     return { code: error.code, message: error.message, retryable: false, status: null };
   }
   if (error instanceof ApiError) {
+    if (error.retryableExplicit && !error.retryable) {
+      return { code: error.code, message: error.message, retryable: false, status: error.status };
+    }
     const retryable =
       error.retryable === true
       || error.status >= 500
@@ -213,11 +216,6 @@ export interface CreateKaraokeSessionClientOptions {
   communityId: string;
   /** Public post id (the server route decodes it). */
   postId: string;
-  /**
-   * LEGACY ONLY: song-time clock for the deprecated delivery-time audio path.
-   * The default audio path uses the explicit capture anchor (SPEC §4).
-   */
-  playbackClock?: () => number;
   onServerEvent: (event: KaraokeServerEvent) => void;
   onPhaseChange?: (phase: KaraokeClientPhase) => void;
   onError?: (error: KaraokeBridgeError) => void;
@@ -227,6 +225,8 @@ export interface CreateKaraokeSessionClientOptions {
   now?: () => number;
   tokenRefreshLeadMs?: number;
   reconnectDelayMs?: number;
+  maxReconnectAttempts?: number;
+  maxReconnectDelayMs?: number;
   socketConnectTimeoutMs?: number;
   /** Timer seams (injectable for tests); default to setTimeout/clearTimeout. */
   setTimer?: (callback: () => void, ms: number) => unknown;
@@ -305,13 +305,22 @@ export function createKaraokeSessionClient(options: CreateKaraokeSessionClientOp
     // Other runtime errors (socket) are surfaced as transient.
     onError: (error) => {
       if (error.code === "karaoke_create_failed") return;
-      options.onError?.({ code: error.code, message: error.message, retryable: true, status: null });
+      const terminalRuntimeError =
+        error.code === "karaoke_reconnect_exhausted"
+        || error.code === "karaoke_stt_unconfigured";
+      options.onError?.({
+        code: error.code,
+        message: error.message,
+        retryable: !terminalRuntimeError,
+        status: null,
+      });
     },
     clearTimer: options.clearTimer,
     onPhaseChange: options.onPhaseChange,
     onServerEvent: options.onServerEvent,
-    playbackClock: options.playbackClock,
     reconnectDelayMs: options.reconnectDelayMs,
+    maxReconnectAttempts: options.maxReconnectAttempts,
+    maxReconnectDelayMs: options.maxReconnectDelayMs,
     resumeCapture: options.resumeCapture,
     setTimer: options.setTimer,
     socketConnectTimeoutMs: options.socketConnectTimeoutMs,

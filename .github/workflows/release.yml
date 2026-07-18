@@ -4,36 +4,243 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - .github/release-refs/**
+      - scripts/deploy-staging.sh
+      - scripts/deploy-production.sh
+      - scripts/lib/release-source.sh
   workflow_dispatch:
+    inputs:
+      expected_staging_web_sha:
+        description: Optional deployed Web SHA for the focused gate-builder verification
+        required: false
+        type: string
+      expected_staging_api_sha:
+        description: Optional deployed API SHA for the focused gate-builder verification
+        required: false
+        type: string
+
+# Serialize releases per ref. cancel-in-progress stays false so a run that is
+# already applying migrations or deploying production is never killed midway;
+# staleness is handled by the production-freshness job instead.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  release-inputs:
+    name: Verify release inputs
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      api_sha: ${{ steps.api_ref.outputs.sha }}
+      core_sha: ${{ steps.core_ref.outputs.sha }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: web
+      - name: Read pinned API commit
+        id: api_ref
+        working-directory: web
+        shell: bash
+        run: |
+          api_sha="$(< .github/release-refs/api.sha)"
+          if [[ ! "$api_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::.github/release-refs/api.sha must contain one full lowercase commit SHA"
+            exit 1
+          fi
+          echo "sha=$api_sha" >> "$GITHUB_OUTPUT"
+      - name: Read pinned Core commit
+        id: core_ref
+        working-directory: web
+        shell: bash
+        run: |
+          core_sha="$(< .github/release-refs/core.sha)"
+          if [[ ! "$core_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::.github/release-refs/core.sha must contain one full lowercase commit SHA"
+            exit 1
+          fi
+          echo "sha=$core_sha" >> "$GITHUB_OUTPUT"
+      - name: Require compatible green API/Core pair
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        env:
+          API_SHA: ${{ steps.api_ref.outputs.sha }}
+          CORE_SHA: ${{ steps.core_ref.outputs.sha }}
+        with:
+          github-token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          script: |
+            const apiSha = process.env.API_SHA;
+            const coreSha = process.env.CORE_SHA;
+            const proof = await github.graphql(`
+              query($apiSha: GitObjectID!, $coreSha: GitObjectID!, $apiCoreRef: String!) {
+                api: repository(owner: "pirate-social-club", name: "api") {
+                  commit: object(oid: $apiSha) {
+                    ... on Commit {
+                      checkSuites(first: 100) {
+                        nodes {
+                          branch { name }
+                          conclusion
+                          workflowRun {
+                            event
+                            url
+                            workflow { name }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  coreRef: object(expression: $apiCoreRef) {
+                    ... on Blob { text }
+                  }
+                }
+                core: repository(owner: "pirate-social-club", name: "core") {
+                  commit: object(oid: $coreSha) {
+                    ... on Commit {
+                      checkSuites(first: 100) {
+                        nodes {
+                          branch { name }
+                          conclusion
+                          workflowRun {
+                            event
+                            url
+                            workflow { name }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `, {
+              apiSha,
+              coreSha,
+              apiCoreRef: `${apiSha}:.github/ci-refs/core.sha`,
+            });
+            const successfulApiRun = proof.api?.commit?.checkSuites?.nodes?.find((suite) =>
+              suite.branch?.name === "main" &&
+              suite.workflowRun?.workflow?.name === "api-ci" &&
+              suite.workflowRun.event === "push" &&
+              suite.conclusion === "SUCCESS"
+            );
+            if (!successfulApiRun?.workflowRun) {
+              core.setFailed(
+                `Pinned API commit ${apiSha} has no successful completed api-ci main push run.`
+              );
+              return;
+            }
+            const successfulCoreRun = proof.core?.commit?.checkSuites?.nodes?.find((suite) =>
+              suite.branch?.name === "main" &&
+              suite.workflowRun?.workflow?.name === "core-ci" &&
+              suite.workflowRun.event === "push" &&
+              suite.conclusion === "SUCCESS"
+            );
+            if (!successfulCoreRun?.workflowRun) {
+              core.setFailed(
+                `Pinned Core commit ${coreSha} has no successful completed core-ci main push run.`
+              );
+              return;
+            }
+
+            const apiCoreRef = proof.api?.coreRef?.text?.trim();
+            if (!apiCoreRef) {
+              core.setFailed(
+                `Unable to read the Core CI reference from API ${apiSha}.`
+              );
+              return;
+            }
+            if (apiCoreRef !== coreSha) {
+              core.setFailed(
+                `API ${apiSha} was tested with Core ${apiCoreRef}, not release Core ${coreSha}.`
+              );
+              return;
+            }
+
+            core.notice(`Pinned API/Core compatibility pair passed CI: ${apiSha} / ${coreSha}`);
+            await core.summary
+              .addHeading("Pinned release inputs")
+              .addTable([
+                [{ data: "Repository", header: true }, { data: "Commit", header: true }, { data: "CI proof", header: true }],
+                ["API", apiSha, `<a href="${successfulApiRun.workflowRun.url}">api-ci</a>`],
+                ["Core", coreSha, `<a href="${successfulCoreRun.workflowRun.url}">core-ci</a>`],
+              ])
+              .write();
+      - name: Require classification for newly pinned community migrations
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        env:
+          API_SHA: ${{ steps.api_ref.outputs.sha }}
+          CORE_SHA: ${{ steps.core_ref.outputs.sha }}
+        with:
+          github-token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          script: |
+            const { pathToFileURL } = require("node:url");
+            const moduleUrl = pathToFileURL(
+              `${process.env.GITHUB_WORKSPACE}/web/scripts/community-migration-classification-ratchet.mjs`
+            ).href;
+            const { enforceCommunityMigrationClassification } = await import(moduleUrl);
+            await enforceCommunityMigrationClassification({
+              github,
+              context,
+              actionsCore: core,
+              owner: context.repo.owner,
+              webRepo: context.repo.repo,
+              apiRepo: "api",
+              coreRepo: "core",
+              apiSha: process.env.API_SHA,
+              coreSha: process.env.CORE_SHA,
+            });
+
+  # Deploy staging and bring its schema up to date. Nothing here talks to a
+  # third-party chain or drives a browser: this is the shortest path to a staging
+  # environment that the release gate can then exercise.
   staging:
     name: Deploy staging
+    # schema-gate runs FIRST: the invariant is "the pinned API may deploy only
+    # after the live fleet satisfies its schema requirements". Deploying the
+    # pinned API to staging before that check is the exact failure this prevents.
+    # The gate reads the existing fleet and needs nothing from this deploy.
+    needs: [release-inputs, schema-gate]
+    if: github.event_name != 'pull_request'
     runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 30
     permissions:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           path: web
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/api
+          ref: ${{ needs.release-inputs.outputs.api_sha }}
           path: api
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/core
+          ref: ${{ needs.release-inputs.outputs.core_sha }}
           path: core
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-      - uses: actions/setup-node@v4
+      - name: Verify Core checkout
+        working-directory: web
+        shell: bash
+        env:
+          CORE_RELEASE_SHA: ${{ needs.release-inputs.outputs.core_sha }}
+        run: |
+          source scripts/lib/release-source.sh
+          require_clean_release_source "$GITHUB_WORKSPACE/core" "core" "$CORE_RELEASE_SHA"
+          echo "Using pinned Core commit $CORE_RELEASE_SHA"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
       - name: Install web dependencies
         working-directory: web
         run: bun install --frozen-lockfile
@@ -63,14 +270,22 @@ jobs:
       - name: Deploy staging
         working-directory: web
         env:
+          API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           VITE_BASE_NETWORK: base-sepolia
           VITE_EFP_ENVIRONMENT: testnet
+          VITE_GATE_TREE_BUILDER_ENABLED: "true"
           VITE_PIRATE_APP_ENV: staging
           VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
+          VITE_REWARDS_ENABLED: "true"
           VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
-        run: scripts/deploy-staging.sh
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            scripts/deploy-staging.sh
+          else
+            scripts/deploy-staging.sh --allow-non-main -m "GitHub Actions staging validation for ${GITHUB_REF_NAME} (${GITHUB_RUN_ID})"
+          fi
       - name: Verify staging/prod metadata
         working-directory: web
         env:
@@ -81,7 +296,7 @@ jobs:
         working-directory: web
         run: scripts/smoke-test.sh staging
       - name: Fetch staging control-plane migration secret
-        continue-on-error: true
+        if: github.ref_name == 'main'
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
@@ -91,104 +306,160 @@ jobs:
           SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Apply staging control-plane migrations
+        if: github.ref_name == 'main'
         working-directory: core
         run: |
-          if [ -z "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}" ]; then
-            echo "::notice::Skipping staging control-plane migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable."
-            exit 0
-          fi
+          test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
           export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
           bun scripts/control-plane/apply-postgres-migrations.ts \
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/control-plane/migrations \
             --label control-plane
       - name: Apply staging bookings migrations
+        if: github.ref_name == 'main'
         working-directory: core
         run: |
-          if [ -z "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}" ]; then
-            echo "::notice::Skipping staging bookings migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable."
-            exit 0
-          fi
+          test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
           export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
           bun scripts/control-plane/apply-postgres-migrations.ts \
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/bookings/migrations \
             --label bookings
+      - name: Apply multipart fixture D1 migrations
+        # Keep D1 access isolated from the broader Worker deployment token.
+        # Fixture migration failures must block promotion to production.
+        working-directory: web
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          E2E_MULTIPART_GATE_D1_DATABASE: COMMUNITY_DB
+          E2E_MULTIPART_GATE_D1_CONFIG: scripts/wrangler.multipart-fixture.jsonc
+          E2E_MULTIPART_GATE_CHECKPOINT_MIGRATION: ../core/db/community-template/migrations/1124_community_job_checkpoints.sql
+          E2E_MULTIPART_GATE_STORY_METADATA_MIGRATION: ../core/db/community-template/migrations/1127_asset_story_metadata_refs.sql
+        run: node scripts/ensure-staging-community-schema.mjs
+
+  # Blocking gate: does every LIVE staging community shard satisfy the pinned
+  # API's declared community-template schema requirements? Nothing gated this
+  # before, and it broke production twice (1124, 1127). This is schema
+  # ATTESTATION across the whole fleet; the multipart test below is BEHAVIOURAL
+  # on one community. They catch different failures — keep both. Read-only.
+  schema-gate:
+    name: Community schema gate (staging fleet)
+    needs: [release-inputs]
+    if: github.event_name != 'pull_request'
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/api
+          ref: ${{ needs.release-inputs.outputs.api_sha }}
+          path: api
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/core
+          ref: ${{ needs.release-inputs.outputs.core_sha }}
+          path: core
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      # wrangler runs on system Node (bunx invokes its node shebang), and
+      # wrangler@4.100.0 requires Node >= 22 — the runner default is v20.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      # Probe D1 access up front. The gate's wrangler wrapper reports only stderr
+      # on failure, and `bunx wrangler` writes install progress there, so a real
+      # auth error is otherwise masked as "Resolving dependencies". Non-fatal —
+      # the gate below is the real check; this just makes any auth error visible.
+      - name: Probe staging D1 read access
+        continue-on-error: true
+        working-directory: api/services/community-d1-shard
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          echo "Probing read access to community-d1-shard-pool-staging..."
+          bunx wrangler@4.100.0 d1 execute community-d1-shard-pool-staging \
+            --remote --json --command "SELECT COUNT(*) AS n FROM d1_pool" 2>&1 || true
+      - name: Verify staging fleet satisfies pinned API schema requirements
+        # Keep staging concurrency low: high fan-out causes random Wrangler/D1
+        # read failures across the fleet and makes this fail-closed gate flaky.
+        # The gate reads the community-d1-shard pool + every live shard via
+        # `wrangler d1 execute --remote`, so it needs D1 READ across
+        # community-d1-pool-* and community-d1-shard-pool-*. That is the isolated
+        # D1 token (CLOUDFLARE_D1_API_TOKEN), NOT the Worker-deploy token — D1
+        # access is deliberately kept off the deploy token (see the multipart
+        # fixture step). Read-only: a token-scope gap fails safe, never mutates.
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          bun core/scripts/community/verify-community-schema-requirements.ts \
+            --requirements api/services/api/community-schema-requirements.json \
+            --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
+            --migrations-dir core/db/community-template/migrations \
+            --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
+            --concurrency 2
+      - name: Upload staging schema manifest
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: schema-gate-staging-${{ github.run_id }}-${{ github.run_attempt }}
+          path: schema-gate-staging.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  # Blocking web/runtime gate. The API-owned job below exercises the four required
+  # authenticated contracts against the exact API commit deployed by `staging`.
+  # External canaries run after this workflow completes in release-canaries.yml.
+  release-gate:
+    name: Release gate
+    needs: [release-inputs, staging]
+    if: github.event_name != 'pull_request'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: web
+      # web/package.json resolves @pirate/api-contracts and @pirate/efp-shared as
+      # file:../api/... , so `bun install` in web needs the sibling api tree even
+      # though this job never builds or audits the API itself.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/api
+          ref: ${{ needs.release-inputs.outputs.api_sha }}
+          path: api
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/core
+          ref: ${{ needs.release-inputs.outputs.core_sha }}
+          path: core
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Install web dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile
       - name: Install Playwright browser
         working-directory: web
         run: bunx playwright install --with-deps chromium
       - name: Browser smoke staging
+        timeout-minutes: 10
         working-directory: web
         env:
           E2E_BASE_URL: https://staging.pirate.sc
           E2E_API_BASE_URL: https://api-staging.pirate.sc
         run: bun run test:e2e
-      - name: Fetch live browser staging secret
-        working-directory: core
-        env:
-          INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
-          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
-          INFISICAL_ENV: staging
-          INFISICAL_SECRET_PATH: /services/api
-          SECRET_NAMES: AUTH_UPSTREAM_JWT_SHARED_SECRET
-        run: scripts/ci/fetch-infisical-secrets.sh
-      - name: Verify follow contract test exists
-        working-directory: web
-        env:
-          E2E_LIVE_STAGING: "true"
-        run: |
-          count=$(bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --list --grep "follows a real staging community and persists after reload" 2>&1 | grep -F -c "follows a real staging community and persists after reload")
-          test "$count" -eq 1 || { echo "Expected exactly 1 matching test, found $count"; exit 1; }
-      - name: Verify direct multipart browser upload test exists
-        working-directory: web
-        env:
-          E2E_LIVE_STAGING: "true"
-        run: |
-          count=$(bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --list --grep "uploads a public video through direct multipart in a real browser" 2>&1 | grep -F -c "uploads a public video through direct multipart in a real browser")
-          test "$count" -eq 1 || { echo "Expected exactly 1 matching test, found $count"; exit 1; }
-      - name: Verify global booking staging smoke test exists
-        working-directory: web
-        env:
-          E2E_LIVE_STAGING: "true"
-        run: |
-          count=$(bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --list --grep "creates and quotes a global booking hold on staging" 2>&1 | grep -F -c "creates and quotes a global booking hold on staging")
-          test "$count" -eq 1 || { echo "Expected exactly 1 matching test, found $count"; exit 1; }
-      - name: Verify global booking staging smoke
-        working-directory: web
-        env:
-          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
-          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
-          E2E_API_BASE_URL: https://api-staging.pirate.sc
-          E2E_BASE_URL: https://staging.pirate.sc
-          E2E_LIVE_STAGING: "true"
-        run: bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --grep "creates and quotes a global booking hold on staging"
-      - name: Verify staging community follow contract
-        working-directory: web
-        env:
-          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
-          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
-          E2E_API_BASE_URL: https://api-staging.pirate.sc
-          E2E_BASE_URL: https://staging.pirate.sc
-          E2E_LIVE_STAGING: "true"
-        run: bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --grep "follows a real staging community and persists after reload"
-      - name: Verify staging direct multipart browser upload
-        working-directory: web
-        env:
-          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
-          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
-          E2E_API_BASE_URL: https://api-staging.pirate.sc
-          E2E_BASE_URL: https://staging.pirate.sc
-          E2E_LIVE_STAGING: "true"
-        run: bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --grep "uploads a public video through direct multipart in a real browser"
-      - name: Fetch Story derivative royalty E2E secrets
-        working-directory: core
-        env:
-          INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
-          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
-          INFISICAL_ENV: staging
-          INFISICAL_SECRET_PATH: /services/api
-          SECRET_NAMES: PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY PIRATE_CHECKOUT_RPC_URL PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS STORY_RUNTIME_FUNDER_PRIVATE_KEY
-        run: scripts/ci/fetch-infisical-secrets.sh
       - name: Fetch staging song preview container health secret
         working-directory: core
         env:
@@ -202,94 +473,197 @@ jobs:
         timeout-minutes: 5
         working-directory: web
         run: scripts/check-song-preview-container.sh staging
-      - name: Story derivative royalty E2E staging
-        # This validates the external song-preview/Story path. Keep artifacts
-        # for diagnosis, but do not block unrelated production releases after
-        # the focused deploy, migration, browser-smoke, and multipart gates pass.
-        continue-on-error: true
-        timeout-minutes: 30
-        working-directory: web
-        env:
-          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
-          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
-          E2E_API_BASE_URL: https://api-staging.pirate.sc
-          PIRATE_STORY_E2E_ARTIFACT_DIR: tmp/e2e-artifacts
-          # Preview generation is queued through the API scheduled job runner.
-          # Keep this long enough to span several staging cron cycles.
-          PIRATE_STORY_E2E_PREVIEW_TIMEOUT_MS: "420000"
-        run: bun run test:e2e:story-derivative-royalty
-      - name: Upload Story derivative royalty E2E artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: story-derivative-royalty-${{ github.run_id }}
-          path: web/tmp/e2e-artifacts/*.json
-          if-no-files-found: ignore
-      # This broader live-staging suite is intentionally soft; unrelated staging
-      # integrations should not block prod when the focused gates above pass.
-      - name: Live browser integration staging
-        continue-on-error: true
-        timeout-minutes: 5
-        working-directory: web
-        env:
-          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
-          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
-        run: timeout 300s bun run test:e2e:live-staging
-      - name: Upload Playwright report
+      - name: Upload release gate Playwright report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: playwright-report
+          name: release-gate-playwright-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             web/playwright-report
             web/test-results
           if-no-files-found: ignore
-      - name: Fetch staging migration secrets
-        working-directory: core
-        env:
-          INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
-          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
-          INFISICAL_ENV: staging
-          INFISICAL_SECRET_PATH: /services/api
-          SECRET_NAMES: CONTROL_PLANE_DATABASE_URL TURSO_COMMUNITY_DB_WRAP_KEY
-        run: scripts/ci/fetch-infisical-secrets.sh
-      - name: Repair staging community migrations
-        continue-on-error: true
-        working-directory: core
-        run: |
-          test -n "$CONTROL_PLANE_DATABASE_URL"
-          test -n "$TURSO_COMMUNITY_DB_WRAP_KEY"
-          bun scripts/community/repair-community-migration-ledger.ts --execute
+          retention-days: 14
 
-  production:
-    name: Deploy production
-    needs: staging
-    # Only deploy production on a push to main. This keeps workflow_dispatch on
-    # any branch (e.g. release/* validation) staging-only, so a manual dispatch
-    # can never push an unmerged branch to production.
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  # Manual-only authenticated browser verification for the gate-tree rollout.
+  # Keep it independent from the broad release smoke: an unrelated mocked UI
+  # failure must not prevent this focused staging contract from running.
+  gate-builder-staging-verification:
+    name: Gate builder moderator round trip
+    needs: [release-inputs]
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      && inputs.expected_staging_web_sha != ''
+      && inputs.expected_staging_api_sha != ''
     runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 15
     permissions:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           path: web
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/api
+          ref: ${{ inputs.expected_staging_api_sha }}
           path: api
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/core
+          ref: ${{ needs.release-inputs.outputs.core_sha }}
           path: core
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Install web dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile
+      - name: Install Playwright browser
+        working-directory: web
+        run: bunx playwright install --with-deps chromium
+      - name: Require this run's staging artifacts
+        working-directory: web
+        env:
+          EXPECTED_API_SHA: ${{ inputs.expected_staging_api_sha }}
+          EXPECTED_WEB_SHA: ${{ inputs.expected_staging_web_sha }}
+        run: |
+          node -e 'Promise.all([["https://staging.pirate.sc/__version",process.env.EXPECTED_WEB_SHA],["https://api-staging.pirate.sc/__version",process.env.EXPECTED_API_SHA]].map(async ([url,sha])=>{const body=await fetch(url).then(r=>r.json());if(!String(body.git_sha).startsWith(sha.slice(0,7)))throw new Error(`${url} expected ${sha}, got ${body.git_sha}`)}))'
+      - name: Fetch staging moderator browser verification secret
+        working-directory: core
+        env:
+          INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_ENV: staging
+          INFISICAL_SECRET_PATH: /services/api
+          SECRET_NAMES: AUTH_UPSTREAM_JWT_SHARED_SECRET
+        run: scripts/ci/fetch-infisical-secrets.sh
+      - name: Verify gate builder moderator save and reload
+        timeout-minutes: 8
+        working-directory: web
+        env:
+          AUTH_UPSTREAM_JWT_AUDIENCE: pirate-api-staging
+          AUTH_UPSTREAM_JWT_ISSUER: pirate-staging-upstream
+          E2E_API_BASE_URL: https://api-staging.pirate.sc
+          E2E_BASE_URL: https://staging.pirate.sc
+          E2E_LIVE_STAGING: "true"
+          E2E_REQUIRED_RELEASE_GATE: "true"
+        run: >-
+          bun run test:e2e:required-gate --
+          e2e/live-staging.live.spec.ts
+          --project=live-staging
+          --grep "round-trips a nested gate policy through the staging moderator UI"
+      - name: Upload gate builder Playwright report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: gate-builder-staging-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            web/playwright-report
+            web/test-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # The contract definitions and runner live in the API repository. This job
+  # verifies the deployed SHA before testing, so an older staging Worker can
+  # never satisfy a newer API release gate.
+  api-staging-contract-gate:
+    name: API staging contract gate
+    needs: [release-inputs, staging]
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      id-token: write
+    # GitHub snapshots this reusable-workflow ref per run attempt. If the API
+    # gate workflow changes, start a new push run; rerunning an older attempt
+    # continues to use its previously resolved API workflow commit.
+    uses: pirate-social-club/api/.github/workflows/staging-contract-gate.yml@main
+    with:
+      api_sha: ${{ needs.release-inputs.outputs.api_sha }}
+      core_ref: ${{ needs.release-inputs.outputs.core_sha }}
+      web_ref: ${{ github.sha }}
+    secrets:
+      AUTH_UPSTREAM_JWT_SHARED_SECRET: ${{ secrets.AUTH_UPSTREAM_JWT_SHARED_SECRET }}
+      PIRATE_ADMIN_TOKEN: ${{ secrets.PIRATE_ADMIN_TOKEN }}
+
+  # Guard against an older run overwriting a newer production deployment. Checked
+  # as late as possible — after the blocking gate, immediately before deploying.
+  production-freshness:
+    name: Check release freshness
+    needs: [api-staging-contract-gate, release-gate, schema-gate]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      contents: read
+    outputs:
+      stale: ${{ steps.check.outputs.stale }}
+    steps:
+      - name: Compare run SHA against current main tip
+        id: check
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            const { data: ref } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+            const tip = ref.object.sha;
+            if (tip !== context.sha) {
+              core.setOutput("stale", "true");
+              core.warning(
+                `Skipping production deploy: main has advanced to ${tip}, but this run built ${context.sha}. ` +
+                `The release for ${tip} deploys instead.`
+              );
+              return;
+            }
+            core.setOutput("stale", "false");
+            core.notice(`Run SHA ${context.sha} is the current main tip; proceeding to production.`);
+
+  production:
+    name: Deploy production
+    needs: [api-staging-contract-gate, release-inputs, release-gate, schema-gate, production-freshness]
+    # Only deploy production on a push to main. This keeps workflow_dispatch on
+    # any branch (e.g. release/* validation) staging-only, so a manual dispatch
+    # can never push an unmerged branch to production.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.production-freshness.outputs.stale == 'false'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: web
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/api
+          ref: ${{ needs.release-inputs.outputs.api_sha }}
+          path: api
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/core
+          ref: ${{ needs.release-inputs.outputs.core_sha }}
+          path: core
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - name: Verify Core checkout
+        working-directory: web
+        shell: bash
+        env:
+          CORE_RELEASE_SHA: ${{ needs.release-inputs.outputs.core_sha }}
+        run: |
+          source scripts/lib/release-source.sh
+          require_clean_release_source "$GITHUB_WORKSPACE/core" "core" "$CORE_RELEASE_SHA"
+          echo "Using pinned Core commit $CORE_RELEASE_SHA"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
       - name: Install web dependencies
         working-directory: web
         run: bun install --frozen-lockfile
@@ -316,11 +690,46 @@ jobs:
       - name: Audit core dependencies
         working-directory: core
         run: npm audit --audit-level=high
+      # Fresh check of the LIVE PRODUCTION fleet, immediately before migrations and
+      # deploy. The staging schema-gate is a promotion gate; this is the real one —
+      # the allocated prod fleet can change between then and now, so we re-attest it
+      # here rather than trust the earlier pass. Read-only. If any live prod shard
+      # is missing a required migration, we STOP before mutating or deploying.
+      - name: Verify production fleet satisfies pinned API schema requirements
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # D1 read across the fleet — the isolated D1 token, not the Worker-deploy
+          # token (D1 access is deliberately kept off the deploy token).
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          bun core/scripts/community/verify-community-schema-requirements.ts \
+            --prod \
+            --requirements api/services/api/community-schema-requirements.json \
+            --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
+            --migrations-dir core/db/community-template/migrations \
+            --manifest "$GITHUB_WORKSPACE/schema-gate-production.json" \
+            --concurrency 14
+      - name: Upload production schema manifest
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: schema-gate-production-${{ github.run_id }}-${{ github.run_attempt }}
+          path: schema-gate-production.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Require dedicated Web production migration identity
+        shell: bash
+        env:
+          INFISICAL_IDENTITY_ID: ${{ vars.INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID }}
+        run: |
+          if [[ -z "$INFISICAL_IDENTITY_ID" ]]; then
+            echo "::error::Set repository variable INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID to the doctor-verified github-web-prod-migration identity ID."
+            exit 1
+          fi
       - name: Fetch production control-plane migration secret
-        continue-on-error: true
         working-directory: core
         env:
-          INFISICAL_IDENTITY_ID: ec0ad659-af1c-4009-a845-9e6092cc062b
+          INFISICAL_IDENTITY_ID: ${{ vars.INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID }}
           INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
           INFISICAL_ENV: prod
           INFISICAL_SECRET_PATH: /services/control-plane
@@ -329,10 +738,7 @@ jobs:
       - name: Apply production control-plane migrations
         working-directory: core
         run: |
-          if [ -z "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}" ]; then
-            echo "::notice::Skipping production control-plane migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable."
-            exit 0
-          fi
+          test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
           export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
           bun scripts/control-plane/apply-postgres-migrations.ts \
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
@@ -341,10 +747,7 @@ jobs:
       - name: Apply production bookings migrations
         working-directory: core
         run: |
-          if [ -z "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}" ]; then
-            echo "::notice::Skipping production bookings migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable."
-            exit 0
-          fi
+          test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
           export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
           bun scripts/control-plane/apply-postgres-migrations.ts \
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
@@ -353,13 +756,16 @@ jobs:
       - name: Deploy production
         working-directory: web
         env:
+          API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           VITE_BASE_NETWORK: ${{ vars.VITE_BASE_NETWORK }}
           VITE_EFP_ENVIRONMENT: ${{ vars.VITE_EFP_ENVIRONMENT }}
+          VITE_GATE_TREE_BUILDER_ENABLED: "true"
           VITE_PIRATE_APP_ENV: ${{ vars.VITE_PIRATE_APP_ENV || 'prod' }}
           VITE_ASYNC_SONG_PUBLISH_ENABLED: ${{ vars.VITE_ASYNC_SONG_PUBLISH_ENABLED || 'false' }}
           VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
           VITE_PRIVY_CLIENT_ID: ${{ vars.VITE_PRIVY_CLIENT_ID }}
+          VITE_REWARDS_ENABLED: "true"
           VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
         run: scripts/deploy-production.sh --confirm-production --skip-tests

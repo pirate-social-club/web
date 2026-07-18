@@ -3,6 +3,8 @@
     "backHome": "返回首页",
     "bestTab": "最佳",
     "chooseCommunity": "选择社区",
+    "checkingCommentAccess": "正在检查评论权限…",
+    "checkingVoteAccess": "正在检查投票权限…",
     "close": "关闭",
     "commentsHeading": "评论",
     "collapseReplies": "收起回复",
@@ -24,6 +26,8 @@
     "replyingAsPublicLabel": "以 {handle} 身份回复",
     "replyingAsAnonymousLabel": "以 {label} 身份回复",
     "joinedStatLabel": "加入时间",
+    "joinToComment": "加入后评论",
+    "joinToVote": "加入后投票",
     "loadMore": "加载更多",
     "loadMoreReplies": "加载更多回复",
     "loadReplies": "加载回复",
@@ -601,6 +605,7 @@
       "collectionContractPlaceholder": "0x...",
       "invalidContractAddress": "输入有效的 Ethereum 合约地址。",
       "courtyardTitle": "Courtyard 藏品",
+      "courtyardComingSoon": "即将推出",
       "courtyardDescription": "要求持有指定 Courtyard 卡牌或腕表。",
       "courtyardCatalogUnavailable": "目录源尚未连接。",
       "courtyardInventoryLoading": "正在加载你的 Courtyard 藏品。",
@@ -1094,6 +1099,7 @@
       "collectionContractPlaceholder": "0x...",
       "invalidContractAddress": "输入有效的 Ethereum 合约地址。",
       "courtyardTitle": "Courtyard 藏品",
+      "courtyardComingSoon": "即将推出",
       "courtyardDescription": "要求持有指定 Courtyard 卡牌或腕表。",
       "courtyardCatalogUnavailable": "目录源尚未连接。",
       "courtyardInventoryLoading": "正在加载你的 Courtyard 藏品。",
@@ -1347,6 +1353,52 @@
     "unreadMessageCountOne": "1 条未读消息",
     "verifyWalletTitle": "验证钱包",
     "yesterday": "昨天"
+  },
+  "bookingManagement": {
+    "view": {
+      "title": "预约", "roleLabel": "预约身份", "asBooker": "作为预约者", "asHost": "作为导师",
+      "upcoming": "即将开始", "review": "需要审核", "past": "已结束", "cancelled": "已取消",
+      "join": "加入课程", "rejoin": "重新加入课程", "addToCalendar": "添加到日历", "cancel": "取消预约",
+      "loading": "正在加载预约", "signedOutTitle": "登录以查看预约", "signedOutDetail": "即将开始和已结束的课程会显示在这里。", "signIn": "登录",
+      "errorTitle": "无法加载预约", "errorDetail": "请稍后重试。", "retry": "重试",
+      "emptyTitle": "暂无预约", "emptyBookerDetail": "你预约的课程会显示在这里。", "emptyHostDetail": "他人向你预约的课程会显示在这里。"
+    },
+    "status": {
+      "confirmed": "已确认", "confirmedDetail": "课程已预约。", "live": "进行中", "liveDetail": "课程已开始。",
+      "joinOpens": "课程开始前 5 分钟可加入。", "review": "出席情况审核中", "reviewDetail": "结果确认前不会处理任何款项。",
+      "completed": "已完成", "completedHostDetail": "你的收款已完成。", "completedBookerDetail": "导师收款已完成。",
+      "hostMissed": "导师未出席课程", "hostMissedDetail": "你的全额退款已完成。",
+      "bookerMissed": "预约者未出席课程", "bookerMissedDetail": "已根据出席政策完成导师收款。",
+      "cancelledByHost": "导师已取消", "cancelledByHostDetail": "你的全额退款已完成。",
+      "cancelledRefunded": "已取消 — 已退款", "cancelledNoRefund": "已取消 — 不退款",
+      "cancelledRefundedDetail": "你的全额退款已完成。", "cancelledNoRefundDetail": "免费取消期限已结束。",
+      "cancelledBeforePayment": "已取消", "cancelledBeforePaymentDetail": "未收取任何款项。",
+      "paymentComplete": "付款已完成", "legacyOutcomeUnknown": "无法获取原始课程结果。"
+    },
+    "dialog": {
+      "title": "取消预约？", "sessionWith": "{time}，与 {name}", "termsChanged": "退款条款已变更", "termsChangedDetail": "取消前请确认更新后的金额。",
+      "sessionTotal": "课程总额", "refund": "退款", "fullRefund": "{name} 将获得全额退款。", "refundBack": "你将收到 {amount} 退款。", "noRefund": "此次取消不可退款。",
+      "acknowledgement": "我了解此次取消不会获得退款。", "cutoffEnded": "免费取消期限已于 {time} 结束。",
+      "genericError": "无法取消预约，请重试。", "keepBooking": "保留预约", "confirm": "确认取消"
+    },
+    "session": {
+      "attendanceInterrupted": "出席记录上报中断", "attendanceRetrying": "正在重新连接出席记录上报",
+      "degradedDetail": "重试期间请留在课程中，视频通话可以继续。", "retryingDetail": "系统正在自动重试出席记录。",
+      "sessionWith": "与 {name} 的课程", "paymentUnlocks": "预定课程结束后才可处理款项。", "leave": "离开课程",
+      "sessionEnded": "预定课程已结束", "attendanceDetermines": "出席记录将决定收款或退款。",
+      "finish": "完成课程", "report": "报告出席问题", "checking": "正在核对出席情况",
+      "checkingDetail": "确认结果期间请保持此页面打开。", "confirmed": "课程结果已确认",
+      "confirmedDetail": "最终付款状态可在预约中查看。"
+    },
+    "route": {
+      "loadError": "无法加载你的预约。", "cancelledToast": "预约已取消。", "cancelError": "无法取消预约。",
+      "previewError": "无法检查取消条款。", "sessionTitle": "课程", "connecting": "正在连接…",
+      "back": "返回预约", "notActive": "此课程当前未启用。", "notYet": "课程尚未开放，可在预定开始前 5 分钟加入。",
+      "passed": "此课程的预定时间已过。", "joinError": "无法加入课程。",
+      "completedToast": "课程已完成 — 将结算导师收款。", "completeError": "无法完成课程。",
+      "reportedToast": "出席问题已报告。", "reportError": "无法报告出席问题。",
+      "videoUnavailableTitle": "课程已就绪", "videoUnavailable": "此环境未配置视频功能。"
+    }
   },
   "routeStatus": {
     "chat": {

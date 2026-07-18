@@ -283,7 +283,7 @@ describe("gate requirement display state", () => {
     }]);
   });
 
-  test("groups required actions separately from OR alternatives", () => {
+  test("groups required actions without inferring status for leaves omitted from the trace", () => {
     const nationalityRequirement = { gate_type: "nationality" as const, required_value: "GE" };
     const gateData = gate("verification_required", {
       gate_evaluation: {
@@ -311,7 +311,7 @@ describe("gate requirement display state", () => {
       {
         mode: "all",
         requirements: [nationalityRequirement],
-        requirementStatuses: ["unmet"],
+        requirementStatuses: ["unknown"],
       },
       {
         mode: "any",
@@ -319,5 +319,35 @@ describe("gate requirement display state", () => {
         requirementStatuses: ["unknown", "unknown"],
       },
     ]);
+  });
+
+  test("joins same-type required actions to summaries by gate identity", () => {
+    const first = { gate_id: "balance-first", gate_type: "asset_balance" as const, asset_id: "asset:first", min_amount_atomic: "10" };
+    const second = { gate_id: "balance-second", gate_type: "asset_balance" as const, asset_id: "asset:second", min_amount_atomic: "20" };
+    const gateData = gate("verification_required", {
+      gate_evaluation: {
+        passed: false,
+        trace: {
+          kind: "op",
+          op: "or",
+          passed: false,
+          children: [
+            { kind: "gate", gate_id: "balance-first", gate_type: "asset_balance", outcome: "action_required", passed: false },
+            { kind: "gate", gate_id: "balance-second", gate_type: "asset_balance", outcome: "action_required", passed: false },
+          ],
+        },
+        required_action_set: {
+          kind: "set",
+          mode: "any",
+          items: [
+            { kind: "action", gate_id: "balance-second", provider: "wallet", capability: "asset_balance" },
+            { kind: "action", gate_id: "balance-first", provider: "wallet", capability: "asset_balance" },
+          ],
+        },
+      } as NonNullable<CommunityGateData["eligibility"]["gate_evaluation"]>,
+    }, [first, second]);
+
+    expect(getRequirementGroups(gateData)?.[0]?.requirements).toEqual([second, first]);
+    expect(getRequirementGroups(gateData)?.[0]?.requirementStatuses).toEqual(["unmet", "unmet"]);
   });
 });

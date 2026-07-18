@@ -3,6 +3,7 @@ import type {
   AnonymousIdentityScope,
   CommunityDefaultAgeGatePolicy,
 } from "@/lib/community-access-types";
+import type { GatePolicy } from "@pirate/api-contracts";
 
 export type CommunityMembershipMode = "request" | "gated";
 export type CommunityGateMatchMode = "all" | "any";
@@ -29,7 +30,7 @@ export type IdentityGateDraft =
   }
   | {
     gateType: "unique_human";
-    provider: "self" | "very";
+    provider: "self" | "zkpassport" | "very";
     gateRuleId?: string;
   }
   | {
@@ -119,6 +120,7 @@ export interface CreateCommunityComposerProps {
   initialStep?: ComposerStep;
   courtyardInventoryGroups?: CourtyardWalletInventoryGroup[] | null;
   courtyardInventoryLoading?: boolean;
+  enableCourtyardGate?: boolean;
   onCreate?: (input: {
     avatarFile: File | null;
     avatarRef: string | null;
@@ -133,6 +135,7 @@ export interface CreateCommunityComposerProps {
     anonymousIdentityScope: AnonymousIdentityScope;
     gateDrafts: IdentityGateDraft[];
     gateMatchMode: CommunityGateMatchMode;
+    gatePolicy: GatePolicy | null;
   }) => Promise<{
     communityId: string;
   } | void>;

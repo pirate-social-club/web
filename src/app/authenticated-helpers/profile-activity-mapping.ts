@@ -1,8 +1,8 @@
 import type {
   CommentListItem,
   CommunityPreview,
-  HomeFeedItem,
   LocalizedPostResponse,
+  Profile,
   ProfileActivityCommentPage,
   ProfileActivityPostPage,
   ProfileActivityResponse,
@@ -16,6 +16,7 @@ import type {
 } from "@/components/compositions/profiles/profile-page/profile-page.types";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/home-feed-presentation";
 import {
+  resolveCommentAuthorAvatarSeed,
   resolveCommentAuthorLabel,
   toCommentViewerVote,
 } from "@/app/authenticated-helpers/post-identity-presentation";
@@ -24,6 +25,13 @@ import { formatRelativeTimestamp } from "@/lib/formatting/time";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
 
 export const PROFILE_ACTIVITY_PAGE_LIMIT = 25;
+
+type AuthorProfilesByUserId = Record<string, Profile | null>;
+
+type ProfileActivityHomeFeedEntry = {
+  community: ProfileActivityPostPage["community"];
+  post: ProfileActivityPostPage["post"];
+};
 
 function communityId(community: CommunityPreview): string {
   return (community as CommunityPreview & { community?: string; community_id?: string }).community
@@ -40,45 +48,11 @@ function communityHref(community: CommunityPreview): string {
   return buildCommunityPath(communityId(community), community.route_slug ?? undefined);
 }
 
-type CommunityOwnerIdentity = {
-  avatar_ref?: string | null;
-  handle?: string | null;
-  user?: string | null;
-};
-
-function communityOwner(community: CommunityPreview): CommunityOwnerIdentity | null {
-  return (community as CommunityPreview & { owner?: CommunityOwnerIdentity | null }).owner ?? null;
-}
-
-function matchingCommunityOwnerHandle(
-  community: CommunityPreview,
-  authorUserId: string | null | undefined,
-): string | null {
-  const owner = communityOwner(community);
-  if (!owner?.handle || !owner.user || !authorUserId || owner.user !== authorUserId) {
-    return null;
-  }
-  return owner.handle;
-}
-
-function matchingCommunityOwnerAvatarSrc(
-  community: CommunityPreview,
-  authorUserId: string | null | undefined,
-): string | undefined {
-  const owner = communityOwner(community);
-  if (!owner?.avatar_ref || !owner.user || !authorUserId || owner.user !== authorUserId) {
-    return undefined;
-  }
-  return owner.avatar_ref;
-}
-
-function publicAuthorHandle(item: CommentListItem, community: CommunityPreview): string | null {
+function publicAuthorHandle(item: CommentListItem): string | null {
   if (item.comment.identity_mode !== "public") {
     return null;
   }
-  return item.comment.author_public_handle
-    ?? matchingCommunityOwnerHandle(community, item.comment.author_user)
-    ?? null;
+  return item.comment.author_public_handle ?? null;
 }
 
 function publicAuthorHref(item: CommentListItem): string | undefined {
@@ -86,17 +60,15 @@ function publicAuthorHref(item: CommentListItem): string | undefined {
   return handle ? buildPublicProfilePath(handle) : undefined;
 }
 
-function postAuthorHandle(post: LocalizedPostResponse, community: CommunityPreview): string | null {
+function postAuthorHandle(post: LocalizedPostResponse): string | null {
   if (post.post.identity_mode !== "public") {
     return null;
   }
-  return post.post.author_public_handle
-    ?? matchingCommunityOwnerHandle(community, post.post.author_user)
-    ?? null;
+  return post.post.author_public_handle ?? null;
 }
 
-function postAuthorHref(post: LocalizedPostResponse, community: CommunityPreview): string | undefined {
-  const handle = postAuthorHandle(post, community);
+function postAuthorHref(post: LocalizedPostResponse): string | undefined {
+  const handle = postAuthorHandle(post);
   return handle ? buildPublicProfilePath(handle) : undefined;
 }
 
@@ -109,14 +81,17 @@ function scoreLabel(score: number): string {
   return `${score} score`;
 }
 
-export function mapProfileActivityPost(item: ProfileActivityPostPage): ProfilePostItem {
-  const feedItem = toHomeFeedItem({
+export function mapProfileActivityPost(
+  item: ProfileActivityPostPage,
+  authorProfiles: AuthorProfilesByUserId = {},
+): ProfilePostItem {
+  const entry: ProfileActivityHomeFeedEntry = {
     community: item.community,
     post: item.post,
-  } as unknown as HomeFeedItem, {});
-  const authorHandle = postAuthorHandle(item.post, item.community);
-  const authorHref = postAuthorHref(item.post, item.community);
-  const ownerAvatarSrc = matchingCommunityOwnerAvatarSrc(item.community, item.post.post.author_user);
+  };
+  const feedItem = toHomeFeedItem(entry, authorProfiles);
+  const authorHandle = postAuthorHandle(item.post);
+  const authorHref = postAuthorHref(item.post);
   return {
     postId: item.post.post.id,
     post: {
@@ -127,7 +102,6 @@ export function mapProfileActivityPost(item: ProfileActivityPostPage): ProfilePo
             author: feedItem.post.byline.author
               ? {
                   ...feedItem.post.byline.author,
-                  avatarSrc: feedItem.post.byline.author.avatarSrc ?? ownerAvatarSrc,
                   href: authorHref,
                   label: authorHandle ?? feedItem.post.byline.author.label,
                 }
@@ -139,14 +113,20 @@ export function mapProfileActivityPost(item: ProfileActivityPostPage): ProfilePo
   };
 }
 
-export function mapProfileActivityComment(item: ProfileActivityCommentPage): ProfileCommentItem {
+export function mapProfileActivityComment(
+  item: ProfileActivityCommentPage,
+  authorProfiles: AuthorProfilesByUserId = {},
+): ProfileCommentItem {
   const comment = item.comment.comment;
   const rootPostId = item.thread_root_post.post.id;
   const body = item.comment.translated_body ?? comment.body ?? "";
-  const authorHandle = publicAuthorHandle(item.comment, item.community);
+  const authorHandle = publicAuthorHandle(item.comment);
+  const authorProfile = comment.author_user ? authorProfiles[comment.author_user] ?? null : null;
   return {
+    authorAvatarSeed: resolveCommentAuthorAvatarSeed(comment, authorProfile),
+    authorAvatarSrc: comment.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
     authorHref: authorHandle ? buildPublicProfilePath(authorHandle) : publicAuthorHref(item.comment),
-    authorLabel: authorHandle ?? resolveCommentAuthorLabel(comment, null),
+    authorLabel: authorHandle ?? resolveCommentAuthorLabel(comment, authorProfile),
     body,
     bodyDir: item.comment.translation_state === "ready" && item.comment.resolved_locale.toLowerCase().startsWith("ar")
       ? "rtl"
@@ -167,16 +147,17 @@ export function mapProfileActivityComment(item: ProfileActivityCommentPage): Pro
 
 export function mapProfileActivityItem(
   item: ProfileActivityPostPage | ProfileActivityCommentPage,
+  authorProfiles: AuthorProfilesByUserId = {},
 ): ProfileActivityItem {
   if (item.kind === "post") {
     return {
       id: `post:${item.post.post.id}`,
       kind: "post",
-      post: mapProfileActivityPost(item),
+      post: mapProfileActivityPost(item, authorProfiles),
     };
   }
   return {
-    comment: mapProfileActivityComment(item),
+    comment: mapProfileActivityComment(item, authorProfiles),
     id: `comment:${item.comment.comment.id}`,
     kind: "comment",
   };
@@ -184,10 +165,11 @@ export function mapProfileActivityItem(
 
 export function mapProfileActivityProps(
   activity: Pick<ProfileActivityResponse, "comments" | "overview_items" | "posts">,
+  authorProfiles: AuthorProfilesByUserId = {},
 ): Pick<ProfilePageProps, "comments" | "overviewItems" | "posts"> {
   return {
-    comments: activity.comments.map(mapProfileActivityComment),
-    overviewItems: activity.overview_items.map(mapProfileActivityItem),
-    posts: activity.posts.map(mapProfileActivityPost),
+    comments: activity.comments.map((item) => mapProfileActivityComment(item, authorProfiles)),
+    overviewItems: activity.overview_items.map((item) => mapProfileActivityItem(item, authorProfiles)),
+    posts: activity.posts.map((item) => mapProfileActivityPost(item, authorProfiles)),
   };
 }

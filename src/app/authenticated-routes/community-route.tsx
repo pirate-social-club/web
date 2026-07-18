@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
-import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
+import type { JoinEligibility as ApiJoinEligibility, MembershipGateSummary } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 import { Plus } from "@phosphor-icons/react";
 
@@ -19,8 +19,8 @@ import {
   formatCommunityRouteLabel,
 } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
-import { CommunityMembershipGatePanel } from "@/components/compositions/community/membership-gate-panel/community-membership-gate-panel";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
+import { CommunityJoinVerificationChooserModal } from "@/components/compositions/community/join-verification-chooser-modal/community-join-verification-chooser-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
 import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
@@ -29,7 +29,7 @@ import { CommunityProofOfWorkModal } from "@/components/compositions/community/p
 import { Button } from "@/components/primitives/button";
 import { IconButton } from "@/components/primitives/icon-button";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getJoinCtaLabel, getMissingCapabilitiesFromGateEvaluation, isJoinCtaActionable, isJoinSurfaceGate } from "@/lib/identity-gates";
+import { getJoinCtaLabel, getMissingCapabilitiesFromGateEvaluation, isJoinCtaActionable } from "@/lib/identity-gates";
 import { createCommunityBlockedModalStateFactory, getRequirementGroups } from "@/hooks/use-community-interaction-gate.helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -50,6 +50,7 @@ import { buildLiveRoomParticipants } from "@/app/authenticated-helpers/post-live
 import { toCommunityFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { processingPostPollDelayMs, shouldContinueProcessingPostPolling } from "@/app/authenticated-helpers/processing-post-polling";
 import { useCommunityMembershipActions } from "@/hooks/use-community-membership-actions";
+import { useCommunityHandleNamespaces } from "@/hooks/use-community-handle-namespaces";
 import { useCommunityVoteAction } from "@/hooks/use-community-vote-action";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
@@ -278,13 +279,13 @@ export function CommunityPage({
     handleSelfQrSuccess,
     joinError,
     joinLoading,
-    joinRequested,
     passportLoading,
     selfError,
     selfLoading,
     selfModalOpen,
     selfPrompt,
     startSelfVerification,
+    startGateVerification,
     startVeryVerification,
     startZkPassportVerification,
     setAltchaPayload,
@@ -345,27 +346,65 @@ export function CommunityPage({
   const { connectedWallets } = usePiratePrivyWallets({
     enabled: Boolean(session?.user?.id),
   });
+  const handleClaimCommunityId = previewCommunityId ?? community?.id ?? communityId;
+  const handleNamespaces = useCommunityHandleNamespaces({
+    api: api.communities,
+    communityId: handleClaimCommunityId,
+    enabled: Boolean(session?.accessToken),
+  });
   const handleClaim = useCommunityHandleClaimController({
     api: api.communities,
     communityId: previewCommunityId ?? communityId,
+    namespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     connectedWallets,
     primaryWalletAddress: session?.profile.primary_wallet_address,
     settlementWalletAttachmentId: session?.user.primary_wallet_attachment,
   });
-  const handleClaimCommunityId = previewCommunityId ?? community?.id ?? communityId;
-  const handleClaimDismissal = useCommunityHandleClaimDismissal(handleClaimCommunityId);
+  const handleClaimDismissal = useCommunityHandleClaimDismissal(
+    handleClaimCommunityId,
+    handleNamespaces.selectedNamespaceVerification,
+  );
+  const voteGateData = React.useMemo(
+    () => preview && eligibility
+      ? {
+          eligibility,
+          gateMatchMode: preview.gate_match_mode ?? null,
+          preview: {
+            id: preview.id,
+            display_name: preview.display_name,
+            membership_gate_summaries: preview.membership_gate_summaries,
+            viewer_community_role: preview.viewer_community_role ?? null,
+          },
+        }
+      : null,
+    [eligibility, preview],
+  );
+  const membershipRequirementGroups = React.useMemo(
+    () => voteGateData ? getRequirementGroups(voteGateData) : undefined,
+    [voteGateData],
+  );
+  const membershipRequirementChoices = React.useMemo(
+    () => membershipRequirementGroups
+      ?.find((group) => group.mode === "any" && group.requirements.length > 1)
+      ?.requirements ?? [],
+    [membershipRequirementGroups],
+  );
   const {
     handleClaimModalOpen,
     handleClaimModalOpenChange,
     handleClaimNotNow,
     handleJoinRequestModalOpenChange,
     handleJoinRequestSubmit,
+    handleProofOfWorkVerified,
     handlePrimaryJoinAction,
     joinRequestError,
     joinRequestModalOpen,
     joinRequestSubmitting,
     proofOfWorkModalOpen,
+    proofOfWorkRetryKey,
     setProofOfWorkModalOpen,
+    setVerificationChooserModalOpen,
+    verificationChooserModalOpen,
   } = useCommunityMembershipActions({
     altchaPayload,
     altchaRequired,
@@ -374,14 +413,23 @@ export function CommunityPage({
     handleClaim,
     handleClaimApi: api.communities,
     handleClaimCommunityId,
+    handleClaimNamespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     handleClaimDismissal,
     handleJoin,
+    hasVerificationChoices: membershipRequirementChoices.length > 1,
     invalidateCommunityGate,
     onHandleClaimCheckError: (error) => {
       toast.error(getErrorMessage(error, "Could not check community names."));
     },
     sessionUserId: session?.user?.id,
   });
+  const handleChooseJoinRequirement = React.useCallback(async (gate: MembershipGateSummary) => {
+    setVerificationChooserModalOpen(false);
+    const result = await startGateVerification(gate);
+    if (result === "altcha") {
+      setProofOfWorkModalOpen(true);
+    }
+  }, [setProofOfWorkModalOpen, setVerificationChooserModalOpen, startGateVerification]);
 
   React.useEffect(() => {
     if (isImportedRoot) return;
@@ -533,29 +581,6 @@ export function CommunityPage({
     ],
   );
 
-  const voteGateData = React.useMemo(
-    () => preview && eligibility
-      ? {
-          eligibility,
-          gateMatchMode: preview.gate_match_mode ?? null,
-          preview: {
-            id: preview.id,
-            display_name: preview.display_name,
-            membership_gate_summaries: preview.membership_gate_summaries,
-            viewer_community_role: preview.viewer_community_role ?? null,
-          },
-        }
-      : null,
-    [
-      eligibility,
-      preview,
-    ],
-  );
-  const membershipRequirementGroups = React.useMemo(
-    () => voteGateData ? getRequirementGroups(voteGateData) : undefined,
-    [voteGateData],
-  );
-  const hasJoinSurfaceGates = preview?.membership_gate_summaries.some(isJoinSurfaceGate) ?? false;
   const voteOnPost = useCommunityVoteAction({
     buildBlockedModalState,
     communityId,
@@ -717,6 +742,7 @@ export function CommunityPage({
     };
     return toCommunityFeedItem(
       post,
+      community ?? preview,
       liveRoomProfilesByUserId,
       post.post.post_type === "song" || post.post.post_type === "video"
         ? {
@@ -851,6 +877,9 @@ export function CommunityPage({
         communityHandle={communityHandleLabel}
         communityName={communityTitle}
         communityRouteLabel={routeLabel}
+        namespaceOptions={handleNamespaces.namespaceOptions}
+        onNamespaceChange={handleNamespaces.setSelectedNamespaceVerification}
+        selectedNamespaceVerification={handleNamespaces.selectedNamespaceVerification}
         error={handleClaim.error}
         forceMobile={isMobileWeb}
         onClaim={handleClaim.onClaim}
@@ -871,19 +900,28 @@ export function CommunityPage({
         open={joinRequestModalOpen}
         submitting={joinRequestSubmitting || joinLoading}
       />
+      <CommunityJoinVerificationChooserModal
+        choices={membershipRequirementChoices}
+        locale={locale}
+        onChoose={handleChooseJoinRequirement}
+        onOpenChange={setVerificationChooserModalOpen}
+        open={verificationChooserModalOpen}
+      />
       {altchaRequired ? (
         <CommunityProofOfWorkModal
           action={altchaAction}
           continueDisabled={!altchaPayload}
           continueLoading={joinLoading}
+          error={joinError}
           locale={locale}
           onContinue={async () => {
-            setProofOfWorkModalOpen(false);
             await handlePrimaryJoinAction();
           }}
           onOpenChange={setProofOfWorkModalOpen}
           onPayloadChange={setAltchaPayload}
+          onVerified={handleProofOfWorkVerified}
           open={proofOfWorkModalOpen}
+          retryKey={proofOfWorkRetryKey}
           requirements={preview?.membership_gate_summaries}
           requirementsMode={preview?.gate_match_mode ?? null}
           scope={altchaScope}
@@ -929,27 +967,6 @@ export function CommunityPage({
         />
       ) : null}
       <section className="flex min-w-0 flex-1 flex-col gap-6">
-        {hasJoinSurfaceGates && !canCreatePost ? (
-          <CommunityMembershipGatePanel
-            eligibility={eligibility}
-            gates={preview.membership_gate_summaries}
-            joinError={
-              joinError ??
-              (eligibility?.status === "gate_failed" &&
-              eligibility.failure_reason
-                ? getGateFailureMessage(eligibility, { locale })
-                : null)
-            }
-            joinLoading={joinLoading}
-            joinRequested={joinRequested}
-            locale={locale}
-            mode={preview.gate_match_mode ?? null}
-            requirementGroups={membershipRequirementGroups}
-            verificationError={selfError}
-            verificationLoading={selfLoading}
-            onJoin={handlePrimaryJoinAction}
-          />
-        ) : null}
         <CommunityPageShell
           activeSort={activeSort}
           avatarSrc={communityAvatarRef ?? undefined}

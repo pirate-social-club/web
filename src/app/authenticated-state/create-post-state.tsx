@@ -1155,15 +1155,22 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       }
       if ((publishedPostType === "song" || publishedPostType === "video") && result?.status === "published") {
         reportProgress("check_registration");
-        const asset = await warnIfStoryRegistrationIncomplete(result, publishedPostType);
-        if (result?.id && publishedPostType === "song") {
-          rememberStoryLicenseReuseNotice(
-            result.id,
-            buildStoryLicenseReuseNotice({
-              asset,
-              submittedLicense: license,
-            }),
-          );
+        if (publishedPostType === "video") {
+          // Story status is advisory for an already-published video. A slow
+          // status read must not leave the composer stuck after POST /posts
+          // has succeeded.
+          void warnIfStoryRegistrationIncomplete(result, publishedPostType);
+        } else {
+          const asset = await warnIfStoryRegistrationIncomplete(result, publishedPostType);
+          if (result.id) {
+            rememberStoryLicenseReuseNotice(
+              result.id,
+              buildStoryLicenseReuseNotice({
+                asset,
+                submittedLicense: license,
+              }),
+            );
+          }
         }
       }
       if (result?.status && result.status !== "published") {

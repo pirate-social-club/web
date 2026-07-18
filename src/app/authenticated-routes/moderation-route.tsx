@@ -7,6 +7,8 @@ import type { MembershipRequestSummary } from "@pirate/api-contracts";
 import { navigate } from "@/app/router";
 import { CommunityDonationsEditorPage } from "@/components/compositions/community/donations-editor/community-donations-editor-page";
 import { CommunityGatesEditorPage } from "@/components/compositions/community/gates-editor/community-gates-editor-page";
+import { createApiCollectionCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/api-collection-capability-source";
+import { createApiAssetCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/api-asset-capability-source";
 import { CommunityLabelsEditorPage } from "@/components/compositions/community/labels-editor/community-labels-editor-page";
 import { CommunityLinksEditorPage, createEmptyCommunityLinkEditorItem } from "@/components/compositions/community/links-editor/community-links-editor-page";
 import { CommunityMembershipRequestsPage } from "@/components/compositions/community/membership-requests-page/community-membership-requests-page";
@@ -44,6 +46,7 @@ import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-r
 import { buildPublicProfilePath } from "@/lib/profile-routing";
 
 import { CommunityModerationGuard, getCommunityModerationTitle } from "@/app/authenticated-helpers/moderation-route-helpers";
+import { isGateBuilderDraftSavable } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import {
   buildCommunityModerationIndexPath,
   buildCommunityModerationPath,
@@ -433,6 +436,13 @@ export function CommunityModerationPage({
   const [courtyardInventoryGroups, setCourtyardInventoryGroups] =
     React.useState<CourtyardWalletInventoryGroup[] | null | undefined>(undefined);
   const [courtyardInventoryLoading, setCourtyardInventoryLoading] = React.useState(false);
+  const gateCapabilities = React.useMemo(
+    () => ({
+      assets: createApiAssetCapabilitySource(api.gateCapabilities),
+      collections: createApiCollectionCapabilitySource(api.gateCapabilities),
+    }),
+    [api.gateCapabilities],
+  );
   const pricingLocalCountryCodes = React.useMemo(
     () => getNationalityGateCountryCodes(state.gateDrafts),
     [state.gateDrafts],
@@ -899,15 +909,19 @@ export function CommunityModerationPage({
         />
       );
     } else if (section === "gates") {
-      setMobileSaveAction({
-        disabled: state.savingGates
-          || (state.advancedGatePolicyReplacementRequired && !state.replaceAdvancedGatePolicy)
-          || (state.membershipMode === "gated" && state.gateDrafts.length === 0 && state.preservedGateRuleCount === 0)
+      const useGateTreeBuilder = import.meta.env.VITE_GATE_TREE_BUILDER_ENABLED === "true";
+      const gateConfigurationInvalid = state.membershipMode === "gated" && (useGateTreeBuilder
+        ? !isGateBuilderDraftSavable(state.gateTreeDraft)
+        : state.gateDrafts.length === 0 && state.preservedGateRuleCount === 0
           || state.gateDrafts.some((draft) => (
             draft.gateType === "erc721_holding" && !isAddress(draft.contractAddress.trim())
             || draft.gateType === "erc721_inventory_match" && !isValidCourtyardInventoryDraft(draft)
             || draft.gateType === "wallet_score" && (!Number.isFinite(draft.minimumScore) || draft.minimumScore < 0 || draft.minimumScore > 100)
-          )),
+          )));
+      setMobileSaveAction({
+        disabled: state.savingGates
+          || (state.advancedGatePolicyReplacementRequired && !state.replaceAdvancedGatePolicy)
+          || gateConfigurationInvalid,
         loading: state.savingGates,
         onSave: state.handleSaveGates,
       });
@@ -919,9 +933,11 @@ export function CommunityModerationPage({
           defaultAgeGatePolicy={state.defaultAgeGatePolicy}
           courtyardInventoryGroups={courtyardInventoryGroups}
           courtyardInventoryLoading={courtyardInventoryLoading}
+          capabilities={gateCapabilities}
           gateDrafts={state.gateDrafts}
           gateMatchMode={state.gateMatchMode}
-          hasAdvancedGatePolicy={state.hasAdvancedGatePolicy}
+          gateTreeDraft={state.gateTreeDraft}
+          hasAdvancedGatePolicy={useGateTreeBuilder ? state.hasUnsupportedGateExpression : state.hasAdvancedGatePolicy}
           membershipMode={state.membershipMode}
           onAllowAnonymousIdentityChange={state.setAllowAnonymousIdentity}
           onAnonymousIdentityScopeChange={state.setAnonymousIdentityScope}
@@ -929,6 +945,7 @@ export function CommunityModerationPage({
           onDefaultAgeGatePolicyChange={state.setDefaultAgeGatePolicy}
           onGateDraftsChange={state.setGateDrafts}
           onGateMatchModeChange={state.setGateMatchMode}
+          onGateTreeDraftChange={state.setGateTreeDraft}
           onMembershipModeChange={state.setMembershipMode}
           onReplaceAdvancedGatePolicyChange={state.setReplaceAdvancedGatePolicy}
           onSave={state.handleSaveGates}
@@ -936,14 +953,10 @@ export function CommunityModerationPage({
           saveDisabled={
             state.savingGates
             || (state.advancedGatePolicyReplacementRequired && !state.replaceAdvancedGatePolicy)
-            || (state.membershipMode === "gated" && state.gateDrafts.length === 0 && state.preservedGateRuleCount === 0)
-            || state.gateDrafts.some((draft) => (
-              draft.gateType === "erc721_holding" && !isAddress(draft.contractAddress.trim())
-              || draft.gateType === "erc721_inventory_match" && !isValidCourtyardInventoryDraft(draft)
-              || draft.gateType === "wallet_score" && (!Number.isFinite(draft.minimumScore) || draft.minimumScore < 0 || draft.minimumScore > 100)
-            ))
+            || gateConfigurationInvalid
           }
           showSaveAction
+          useGateTreeBuilder={useGateTreeBuilder}
         />
       );
     } else if (section === "safety") {
@@ -1146,8 +1159,10 @@ export function CommunityModerationPage({
             />
           );
     } else if (section === "handles") {
+      const handleClaimGateInvalid = state.draft.claimGateMode === "explicit"
+        && !isGateBuilderDraftSavable(state.draft.claimGateTreeDraft);
       setMobileSaveAction({
-        disabled: state.saving || !state.hasChanges || !state.community?.namespace_verification,
+        disabled: state.saving || !state.hasChanges || !state.community?.namespace_verification || handleClaimGateInvalid,
         loading: state.saving,
         onSave: state.handleSave,
       });
@@ -1163,6 +1178,7 @@ export function CommunityModerationPage({
       } else {
         content = (
           <CommunityHandlePolicyEditorPage
+            capabilities={gateCapabilities}
             draft={state.draft}
             handleOpsLoading={state.handleOpsLoading}
             handleStatusFilter={state.handleStatusFilter}
@@ -1177,7 +1193,7 @@ export function CommunityModerationPage({
             onRevokeHandle={state.handleRevoke}
             onSave={state.handleSave}
             onStatusFilterChange={state.setHandleStatusFilter}
-            saveDisabled={state.saving || !state.hasChanges}
+            saveDisabled={state.saving || !state.hasChanges || handleClaimGateInvalid}
             saveLoading={state.saving}
           />
         );

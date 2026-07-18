@@ -6,6 +6,14 @@ import type {
   NotificationFeedResponse,
   NotificationSummary,
   NotificationTasksResponse,
+  RewardCampaign,
+  RewardCampaignCapabilities,
+  RewardCampaignCreateRequest,
+  RewardCampaignFundingConfirmRequest,
+  RewardCampaignFundingQuote,
+  RewardCampaignFundingQuoteRequest,
+  RewardSongOwnerPolicy,
+  RewardSongOwnerPolicyUpdateRequest,
   RoyaltyActivityResponse,
   RoyaltyClaimHistoryResponse,
   RoyaltyClaimRecord,
@@ -14,6 +22,12 @@ import type {
 } from "@pirate/api-contracts";
 
 import type { NotificationFeedOptions } from "./client-api-types";
+import type {
+  ApiPublicRewardOffer,
+  ApiRewardCashoutRequest,
+  ApiRewardCashoutResponse,
+  ApiRewardsSummaryResponse,
+} from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
 export function createJobsApi(request: ApiRequest) {
@@ -71,5 +85,74 @@ export function createRoyaltiesApi(request: ApiRequest) {
         method: "POST",
         body: JSON.stringify(input),
       }),
+  };
+}
+
+export function createRewardsApi(request: ApiRequest) {
+  return {
+    getActiveCampaignForSong: (communityId: string, postId: string): Promise<ApiPublicRewardOffer> =>
+      request<ApiPublicRewardOffer>(
+        buildQueryPath("/public/reward_campaigns", {
+          community_id: communityId,
+          post_id: postId,
+        }),
+        { tokenRequired: false },
+      ),
+    getSummary: (): Promise<ApiRewardsSummaryResponse> =>
+      request<ApiRewardsSummaryResponse>("/me/rewards"),
+    cashOut: (input: ApiRewardCashoutRequest): Promise<ApiRewardCashoutResponse> =>
+      request<ApiRewardCashoutResponse>("/me/rewards/cashouts", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    getCashout: (cashoutId: string): Promise<ApiRewardCashoutResponse> =>
+      request<ApiRewardCashoutResponse>(`/me/rewards/cashouts/${encodeURIComponent(cashoutId)}`),
+
+    // --- Booster (rewarder) side: create → quote → confirm funding funnel. ---
+    getCampaignCapabilities: (): Promise<RewardCampaignCapabilities> =>
+      request<RewardCampaignCapabilities>("/reward_campaign_capabilities"),
+
+    getSongOwnerPolicy: (
+      communityId: string,
+      postId: string,
+    ): Promise<RewardSongOwnerPolicy> =>
+      request<RewardSongOwnerPolicy>(
+        `/reward_song_policies/${encodeURIComponent(communityId)}/${encodeURIComponent(postId)}`,
+      ),
+    updateSongOwnerPolicy: (
+      communityId: string,
+      postId: string,
+      input: RewardSongOwnerPolicyUpdateRequest,
+    ): Promise<RewardSongOwnerPolicy> =>
+      request<RewardSongOwnerPolicy>(
+        `/reward_song_policies/${encodeURIComponent(communityId)}/${encodeURIComponent(postId)}`,
+        { method: "PUT", body: JSON.stringify(input) },
+      ),
+
+    createCampaign: (input: RewardCampaignCreateRequest): Promise<RewardCampaign> =>
+      request<RewardCampaign>("/reward_campaigns", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    getCampaign: (campaignId: string): Promise<RewardCampaign> =>
+      request<RewardCampaign>(`/reward_campaigns/${encodeURIComponent(campaignId)}`),
+
+    createFundingQuote: (
+      campaignId: string,
+      input: RewardCampaignFundingQuoteRequest,
+    ): Promise<RewardCampaignFundingQuote> =>
+      request<RewardCampaignFundingQuote>(
+        `/reward_campaigns/${encodeURIComponent(campaignId)}/funding_quotes`,
+        { method: "POST", body: JSON.stringify(input) },
+      ),
+    confirmFundingQuote: (
+      campaignId: string,
+      quoteId: string,
+      input: RewardCampaignFundingConfirmRequest,
+    ): Promise<RewardCampaignFundingQuote> =>
+      request<RewardCampaignFundingQuote>(
+        `/reward_campaigns/${encodeURIComponent(campaignId)}/funding_quotes/${encodeURIComponent(quoteId)}/confirm`,
+        { method: "POST", body: JSON.stringify(input) },
+      ),
   };
 }

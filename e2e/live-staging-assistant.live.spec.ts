@@ -20,6 +20,11 @@ const openRouterApiKey = process.env.E2E_OPENROUTER_API_KEY?.trim() ?? "";
 const assistantModelId = process.env.E2E_ASSISTANT_MODEL_ID?.trim()
   || "openrouter/free";
 const expectedAssistantText = "ASSISTANT_E2E_OK";
+const smokeCommunityId = (
+  process.env.PIRATE_STORY_E2E_COMMUNITY_ID ?? "cmt_b3ede813fccf489982e93739ef1bf6b0"
+).replace(/^com_/u, "");
+const smokeOwnerSubject = process.env.PIRATE_STORY_E2E_HOST_SUBJECT
+  ?? "story-e2e-author-1780678999641-65820e";
 const apiRequestTimeoutMs = 60_000;
 const liveSecretsPresent = Boolean(
   process.env.AUTH_UPSTREAM_JWT_AUDIENCE?.trim()
@@ -47,10 +52,6 @@ function signHs256Jwt(payload: Record<string, unknown>, secret: string): string 
   const signingInput = `${header}.${body}`;
   const signature = createHmac("sha256", secret).update(signingInput).digest();
   return `${signingInput}.${base64Url(signature)}`;
-}
-
-function rawPublicId(value: string, prefix: string): string {
-  return value.startsWith(`${prefix}_`) ? value.slice(prefix.length + 1) : value;
 }
 
 function walletAddressForSubject(subject: string): string {
@@ -129,40 +130,15 @@ async function completeSelfVerification(session: StoredSession): Promise<void> {
   });
 }
 
-async function waitForJob(jobId: string, token: string): Promise<void> {
-  const deadline = Date.now() + 120_000;
-  let lastStatus = "unknown";
-  while (Date.now() < deadline) {
-    const job = await requestJson<{ error_code?: string | null; id: string; status: string }>(
-      `/jobs/${encodeURIComponent(jobId)}`,
-      { headers: { authorization: `Bearer ${token}` } },
-    );
-    lastStatus = job.status;
-    if (job.status === "succeeded") return;
-    if (job.status === "failed") {
-      throw new Error(`job ${job.id} failed: ${job.error_code ?? "unknown"}`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 3_000));
-  }
-  throw new Error(`job ${jobId} did not finish; last status ${lastStatus}`);
-}
-
-async function createAssistantSmokeCommunity(runId: string, owner: StoredSession): Promise<string> {
-  const created = await requestJson<{ community: { id: string }; job?: { id?: string; status?: string } }>("/communities", {
+async function configureAssistantSmokeCommunity(runId: string, owner: StoredSession): Promise<string> {
+  await requestJson(`/communities/${encodeURIComponent(smokeCommunityId)}`, {
     body: JSON.stringify({
       display_name: `Assistant E2E Smoke ${runId}`,
-      handle_policy: { policy_template: "standard" },
-      membership_mode: "request",
     }),
     headers: { authorization: `Bearer ${owner.accessToken}` },
     method: "POST",
   });
-  if (created.job?.status && created.job.status !== "succeeded") {
-    const jobId = firstString(created.job.id);
-    if (!jobId) throw new Error("community creation job id is missing");
-    await waitForJob(jobId, owner.accessToken);
-  }
-  return rawPublicId(created.community.id, "com");
+  return smokeCommunityId;
 }
 
 async function seedCommunityRules(communityId: string, owner: StoredSession): Promise<void> {
@@ -237,10 +213,10 @@ test.describe("live staging community assistant", () => {
     let communityId: string | null = null;
 
     try {
-      owner = await createLiveSession(`assistant-smoke-owner-${runId}`);
+      owner = await createLiveSession(smokeOwnerSubject);
       await completeSelfVerification(owner);
 
-      communityId = await createAssistantSmokeCommunity(runId, owner);
+      communityId = await configureAssistantSmokeCommunity(runId, owner);
       const communityName = `Assistant E2E Smoke ${runId}`;
       await seedCommunityRules(communityId, owner);
       await configureAssistant(communityId, owner);

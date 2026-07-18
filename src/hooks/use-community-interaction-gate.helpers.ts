@@ -21,6 +21,7 @@ import {
 import { deriveGateStatuses } from "@/lib/community-gate-statuses";
 import { interpolateMessage } from "@/lib/route-messages";
 import { getLocaleMessages } from "@/locales";
+import { openExternalHref } from "@/lib/open-external-href";
 import { type UiLocaleCode } from "@/lib/ui-locale-core";
 
 export type RouteKind = "community" | "home" | "post" | "public-community";
@@ -103,6 +104,9 @@ export type PendingInteraction = {
   gate: CommunityGateData;
   onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
   postId?: string;
+  /** Whether this specific write must create/retain community membership. */
+  requireMembership?: boolean;
+  resumeActionAfterJoin?: boolean;
   voteValue?: -1 | 1;
 };
 
@@ -121,7 +125,10 @@ export type RunGatedCommunityActionParams = {
   gateData?: CommunityGateData;
   onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
   postId?: string;
+  /** Force the membership flow after the API identifies a members-only thread. */
+  requireMembership?: boolean;
   resolveGateData?: () => Promise<CommunityGateData>;
+  resumeActionAfterJoin?: boolean;
   voteValue?: -1 | 1;
 };
 
@@ -345,6 +352,7 @@ function gateMatchesRequiredAction(
   action: RequiredActionNode,
 ): boolean {
   if (action.kind !== "action") return false;
+  if (action.gate_id && gate.gate_id) return action.gate_id === gate.gate_id;
   switch (action.capability) {
     case "minimum_age":
       return gate.gate_type === "minimum_age" || gate.gate_type === "age_over_18";
@@ -362,6 +370,8 @@ function gateMatchesRequiredAction(
       return gate.gate_type === "erc721_holding";
     case "erc721_inventory_match":
       return gate.gate_type === "erc721_inventory_match";
+    case "asset_balance":
+      return gate.gate_type === "asset_balance";
     default:
       return false;
   }
@@ -697,11 +707,18 @@ export function createDefaultBlockedModalState({
 }
 
 export function resolveCommunityInteractionState(input: {
+  action: InteractionAction;
   eligibility: JoinEligibility | null | undefined;
   hasSession: boolean;
+  requireMembership?: boolean;
 }): "allowed" | "auth" | Exclude<JoinEligibility["status"], "already_joined"> {
   if (!input.hasSession) {
     return "auth";
+  }
+
+  const isReplyAction = input.action === "reply_post" || input.action === "reply_comment";
+  if (isReplyAction && !input.requireMembership) {
+    return "allowed";
   }
 
   if (!input.eligibility) {
@@ -791,7 +808,7 @@ export function createCommunityBlockedModalStateFactory(options: {
               if (result.started) {
                 closeModal();
                 if (!result.openedModal && result.href) {
-                  window.location.href = result.href;
+                  openExternalHref(result.href);
                 }
               }
             }

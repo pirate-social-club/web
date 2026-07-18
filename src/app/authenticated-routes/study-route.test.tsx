@@ -5,7 +5,12 @@ import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { installDomGlobals } from "@/test/setup-dom";
 import { ApiClient, ApiError } from "@/lib/api/client";
-import type { SongStudyAttemptRequest, SongStudyAttemptResult, SongStudyPayload } from "@/lib/api/client-api-types";
+import type {
+  ApiPublicRewardOffer,
+  SongStudyAttemptRequest,
+  SongStudyAttemptResult,
+  SongStudyPayload,
+} from "@/lib/api/client-api-types";
 
 installDomGlobals();
 Object.defineProperty(window, "location", {
@@ -76,6 +81,7 @@ let publicPostResult: LocalizedPostResponse = songPost({ title: "Public Study So
 let publicPostError: unknown = null;
 let studyResult: SongStudyPayload = readyStudyPayload();
 let studyError: unknown = null;
+let rewardCampaignResult: ApiPublicRewardOffer | null = null;
 let privyConnectCalls = 0;
 let submitPostStudyAttemptError: unknown = null;
 let submitPostStudyAttemptResult: SongStudyAttemptResult = {
@@ -105,6 +111,10 @@ fakeApi.communities.getPostStudy = async () => {
   calls.push("communities.getPostStudy");
   if (studyError) throw studyError;
   return studyResult;
+};
+fakeApi.rewards.getActiveCampaignForSong = async () => {
+  if (!rewardCampaignResult) throw new ApiError("not_found", "Active reward campaign not found", 404);
+  return rewardCampaignResult;
 };
 fakeApi.communities.submitPostStudyAttempt = async (_communityId, _postId, body) => {
   submittedStudyAttempts.push(body);
@@ -172,6 +182,7 @@ beforeEach(() => {
   publicPostError = null;
   studyResult = readyStudyPayload();
   studyError = null;
+  rewardCampaignResult = null;
   privyConnectCalls = 0;
   submitPostStudyAttemptError = null;
   submitPostStudyAttemptResult = {
@@ -238,6 +249,21 @@ describe("StudyRoutePage", () => {
     expect(view.queryByText("Hello world")).toBeNull();
     expect(view.queryByText("Learn this song line by line")).toBeNull();
     expect(calls).toEqual(["posts.get", "communities.getPostStudy"]);
+  });
+
+  test("shows an exact uniform reward offer for the active song campaign", async () => {
+    rewardCampaignResult = {
+      chain_id: 8453,
+      eligible_activity: "either",
+      daily_reward_cents: 40,
+      ends_at: 1_786_060_799,
+      min_score_bps: 8_500,
+    };
+
+    const view = render(<StudyRoutePage postId="pst_song" />);
+
+    await waitFor(() => expect(view.getByText("Earn $0.40 USDC per UTC day")).toBeTruthy());
+    expect(view.getByText("Complete a study set or score at least 85% in Karaoke")).toBeTruthy();
   });
 
   test("shows a caught-up message when a ready study pack has no remaining exercises", async () => {

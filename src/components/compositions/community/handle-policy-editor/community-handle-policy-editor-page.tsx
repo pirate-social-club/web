@@ -23,6 +23,8 @@ import {
 import { Switch } from "@/components/primitives/switch";
 import { Textarea } from "@/components/primitives/textarea";
 import { Type } from "@/components/primitives/type";
+import { getLocaleMessages } from "@/locales";
+import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import {
   MAX_LABEL_CLAIM_RULES,
@@ -38,9 +40,11 @@ import { GateTreeBuilder } from "@/components/compositions/community/gates-edito
 import type { GateCapabilitySources } from "@/components/compositions/community/gates-editor/tree-builder/gate-capability-sources";
 
 const EMPTY_HANDLES: CommunityHandle[] = [];
+type RuleEditorCopy = ReturnType<typeof getLocaleMessages<"gates">>["handleClaims"]["ruleEditor"];
 
 function LabelClaimRuleCard({
   capabilities,
+  copy,
   disabled,
   index,
   onChange,
@@ -50,6 +54,7 @@ function LabelClaimRuleCard({
   ruleCount,
 }: {
   capabilities?: GateCapabilitySources;
+  copy: RuleEditorCopy;
   disabled: boolean;
   index: number;
   onChange: (rule: HandleLabelClaimRuleDraft) => void;
@@ -63,10 +68,10 @@ function LabelClaimRuleCard({
     <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/10 p-4">
       <div className="flex items-center gap-2">
         <Type as="h3" variant="body-strong" className="min-w-0 flex-1">
-          {`Rule ${index + 1}`}
+          {copy.ruleTitle.replace("{number}", String(index + 1))}
         </Type>
         <Button
-          aria-label="Move rule up"
+          aria-label={copy.moveUp}
           disabled={disabled || index === 0}
           onClick={() => onMove(-1)}
           size="icon"
@@ -75,7 +80,7 @@ function LabelClaimRuleCard({
           <ArrowUp size={16} />
         </Button>
         <Button
-          aria-label="Move rule down"
+          aria-label={copy.moveDown}
           disabled={disabled || index === ruleCount - 1}
           onClick={() => onMove(1)}
           size="icon"
@@ -84,7 +89,7 @@ function LabelClaimRuleCard({
           <ArrowDown size={16} />
         </Button>
         <Button
-          aria-label="Remove rule"
+          aria-label={copy.remove}
           disabled={disabled}
           onClick={onRemove}
           size="icon"
@@ -104,22 +109,22 @@ function LabelClaimRuleCard({
               }
             }}
           >
-            <SelectTrigger aria-label="Which names this rule applies to" className="w-full">
+            <SelectTrigger aria-label={copy.selectorLabel} className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="exact">Specific names</SelectItem>
-              <SelectItem value="any">All names</SelectItem>
+              <SelectItem value="exact">{copy.specificNames}</SelectItem>
+              <SelectItem value="any">{copy.allNames}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         {rule.selectorType === "exact" ? (
           <div className="min-w-0 flex-1">
             <Input
-              aria-label="Names this rule applies to"
+              aria-label={copy.namesLabel}
               disabled={disabled}
               onChange={(event) => onChange({ ...rule, labelsText: event.currentTarget.value })}
-              placeholder="charizard, gengar"
+              placeholder={copy.namesPlaceholder}
               value={rule.labelsText}
             />
           </div>
@@ -138,8 +143,8 @@ function LabelClaimRuleCard({
       {!savable ? (
         <FormNote tone="warning">
           {rule.selectorType === "exact"
-            ? "List at least one valid name (lowercase letters, digits, hyphens) and complete the requirement."
-            : "Complete the requirement before saving."}
+            ? copy.invalidExact
+            : copy.invalidAny}
         </FormNote>
       ) : null}
     </div>
@@ -336,6 +341,8 @@ export function CommunityHandlePolicyEditorPage({
   saveDisabled = false,
   saveLoading = false,
 }: CommunityHandlePolicyEditorPageProps) {
+  const { locale } = useUiLocale();
+  const ruleCopy = getLocaleMessages(locale, "gates").handleClaims.ruleEditor;
   const [previewInput, setPreviewInput] = React.useState("alex");
   const [reserveInput, setReserveInput] = React.useState("");
   const preview = computePreviewPrice(previewInput, draft);
@@ -443,20 +450,17 @@ export function CommunityHandlePolicyEditorPage({
         </div>
       </Section>
 
-      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Per-name requirements">
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title={ruleCopy.sectionTitle}>
         <div className="space-y-4">
           <Type as="p" variant="caption">
-            Give specific names their own claim requirements — for example, only holders of a
-            Charizard card may claim “charizard”. Rules are checked top to bottom; the first rule
-            that matches a name applies instead of the namespace requirement above. In card
-            requirements, pick “Use the claimed name” as an attribute value to require an asset
-            matching whichever name is claimed.
+            {ruleCopy.sectionDescription}
           </Type>
 
           {draft.labelClaimRules.map((rule, index) => (
             <LabelClaimRuleCard
               key={rule.key}
               capabilities={capabilities}
+              copy={ruleCopy}
               disabled={editorDisabled}
               index={index}
               onChange={(nextRule) => {
@@ -500,7 +504,7 @@ export function CommunityHandlePolicyEditorPage({
             size="sm"
             variant="outline"
           >
-            Add name rule
+            {ruleCopy.add}
           </Button>
         </div>
       </Section>

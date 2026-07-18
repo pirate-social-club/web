@@ -376,4 +376,45 @@ describe("useCommunityHandleClaimController", () => {
 
     expect(labels).toEqual(["amira"]);
   });
+
+  test("offers gate completion actions and can recheck the active quote", async () => {
+    let quoteCalls = 0;
+    const api = {
+      quoteHandle: async () => {
+        quoteCalls += 1;
+        return createQuote({
+          eligible: false,
+          claim_gate: {
+            source: "label_rule",
+            satisfied: false,
+            label_claim_rule: "hlcr_test",
+            summaries: [
+              { gate_type: "unique_human", accepted_providers: ["self"] },
+              { gate_type: "erc721_inventory_match", inventory_provider: "courtyard" },
+            ],
+          },
+        });
+      },
+      claimHandle: async () => createHandle(),
+    };
+
+    const { result } = renderHook(() => useCommunityHandleClaimController({
+      api,
+      communityId: "cmt_test",
+      connectedWallets: [],
+      debounceMs: 0,
+    }));
+
+    act(() => result.current.onSearchChange("charizard"));
+    await waitFor(() => expect(quoteCalls).toBe(1));
+
+    expect(result.current.searchResult?.claimGateActions).toEqual(["self", "wallet"]);
+    expect(result.current.claimGateSummaries.map((summary) => summary.gate_type)).toEqual([
+      "unique_human",
+      "erc721_inventory_match",
+    ]);
+
+    act(() => result.current.refreshQuote());
+    await waitFor(() => expect(quoteCalls).toBe(2));
+  });
 });

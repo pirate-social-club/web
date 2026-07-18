@@ -1355,8 +1355,12 @@ test.describe("live staging integration", () => {
         break;
       }
     }
-    test.skip(!target, "A names-enabled staging community with owner admin access is required.");
-    if (!target) return;
+    if (!target) {
+      const message = "A names-enabled staging community with owner admin access is required.";
+      if (requiredReleaseGate) throw new Error(message);
+      test.skip(true, message);
+      return;
+    }
 
     const claimGateExpression = {
       expression: {

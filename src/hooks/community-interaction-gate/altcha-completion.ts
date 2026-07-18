@@ -80,7 +80,6 @@ export async function completeAltchaAction(input: {
     return;
   }
 
-  input.closeModal();
   try {
     await pendingInteraction.onAllowed(input.context);
   } catch (error) {
@@ -94,7 +93,7 @@ export async function completeAltchaAction(input: {
       });
     }
     throw error;
-  } finally {
-    input.clearPendingInteraction();
   }
+  input.clearPendingInteraction();
+  input.closeModal();
 }

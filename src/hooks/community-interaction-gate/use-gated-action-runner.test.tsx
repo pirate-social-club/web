@@ -314,7 +314,7 @@ describe("useGatedActionRunner", () => {
     expect(allowedCalls).toEqual([]);
     expect(runner.pendingInteraction?.action).toBe("vote_post");
     expect(runner.pendingInteraction?.voteValue).toBe(1);
-    expect(runner.hook.result.current.modalState?.title).toBe("Browser anti-bot check required");
+    expect(runner.hook.result.current.modalState?.title).toBe("Browser check required");
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:1:vote");
     expect(runner.hook.result.current.modalState?.description).toBe(gatesPanel.powOnlyDescription);
     expect(runner.hook.result.current.modalState?.primaryAction).toBeNull();
@@ -438,9 +438,9 @@ describe("useGatedActionRunner", () => {
     });
 
     expect(runner.pendingInteraction?.action).toBe("vote_post");
-    expect(runner.hook.result.current.modalState?.title).toBe("Browser anti-bot check required");
+    expect(runner.hook.result.current.modalState?.title).toBe("Browser check required");
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:1:vote");
-    expect(runner.hook.result.current.modalState?.description).toContain("verified identity or wallet gate can skip this check");
+    expect(runner.hook.result.current.modalState?.description).toContain("verified identity or wallet can skip this check");
     expect(runner.hook.result.current.modalState?.requirements).toEqual([]);
   });
 
@@ -472,7 +472,7 @@ describe("useGatedActionRunner", () => {
     expect(runner.calls).toEqual(["load:community-1", "refresh-user"]);
     expect(allowedCalls).toEqual([]);
     expect(runner.pendingInteraction?.action).toBe("vote_post");
-    expect(runner.hook.result.current.modalState?.title).toBe("Browser anti-bot check required");
+    expect(runner.hook.result.current.modalState?.title).toBe("Browser check required");
 
     await act(async () => {
       refreshDeferred.resolve(verifiedVeryUser);
@@ -484,6 +484,43 @@ describe("useGatedActionRunner", () => {
     expect(allowedCalls).toEqual(["allowed"]);
     expect(runner.pendingInteraction).toBe(null);
     expect(runner.hook.result.current.modalState).toBe(null);
+  });
+
+  test("retries a solved proof after a concurrent refreshed-session action fails", async () => {
+    const refreshDeferred = createDeferred<Pick<User, "verification_capabilities"> | null>();
+    const firstAttempt = createDeferred<void>();
+    const contexts: Array<import("@/hooks/use-community-interaction-gate.helpers").InteractionAllowedContext | undefined> = [];
+    const runner = renderRunner({
+      gateData: gate("already_joined", {}, [veryRequirement, altchaRequirement]),
+      refreshSessionUser: () => refreshDeferred.promise,
+      sessionUser: unverifiedUser,
+    });
+
+    await act(async () => {
+      await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: async (context) => {
+          contexts.push(context);
+          if (contexts.length === 1) await firstAttempt.promise;
+        },
+        postId: "post-1",
+        voteValue: 1,
+      });
+    });
+
+    refreshDeferred.resolve(verifiedVeryUser);
+    await act(async () => {
+      await refreshDeferred.promise;
+      await Promise.resolve();
+    });
+    const proofAttempt = runner.pendingInteraction?.onAllowed({ altchaPayload: "proof" });
+    firstAttempt.reject(new Error("transient failure"));
+    await act(async () => {
+      await proofAttempt;
+    });
+
+    expect(contexts).toEqual([undefined, { altchaPayload: "proof" }]);
   });
 
   test("shows mixed Very-or-PoW post vote fallback when refreshed capabilities are still unverified", async () => {
@@ -509,9 +546,9 @@ describe("useGatedActionRunner", () => {
 
     expect(runner.calls).toEqual(["load:community-1", "refresh-user"]);
     expect(runner.pendingInteraction?.action).toBe("vote_post");
-    expect(runner.hook.result.current.modalState?.title).toBe("Browser anti-bot check required");
+    expect(runner.hook.result.current.modalState?.title).toBe("Browser check required");
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:1:vote");
-    expect(runner.hook.result.current.modalState?.description).toContain("verified identity or wallet gate can skip this check");
+    expect(runner.hook.result.current.modalState?.description).toContain("verified identity or wallet can skip this check");
     expect(runner.hook.result.current.modalState?.requirements).toEqual([]);
   });
 
@@ -579,7 +616,7 @@ describe("useGatedActionRunner", () => {
     });
 
     expect(runner.pendingInteraction?.action).toBe("reply_post");
-    expect(runner.hook.result.current.modalState?.title).toBe("Browser anti-bot check required");
+    expect(runner.hook.result.current.modalState?.title).toBe("Browser check required");
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:comment_create");
     expect(runner.hook.result.current.modalState?.primaryAction).toBeNull();
     expect(runner.hook.result.current.modalState?.secondaryAction).toBeUndefined();
@@ -604,7 +641,7 @@ describe("useGatedActionRunner", () => {
     });
 
     expect(runner.pendingInteraction?.action).toBe("reply_post");
-    expect(runner.hook.result.current.modalState?.title).toBe("Browser anti-bot check required");
+    expect(runner.hook.result.current.modalState?.title).toBe("Browser check required");
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:comment_create");
     expect(runner.hook.result.current.modalState?.description).toBe(gatesPanel.powOnlyDescription);
     expect(runner.hook.result.current.modalState?.primaryAction).toBeNull();

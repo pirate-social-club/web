@@ -1329,6 +1329,126 @@ test.describe("live staging integration", () => {
     expect(leaves.map((leaf) => leaf.outcome)).toEqual(["action_required", "action_required"]);
   });
 
+  test("binds a per-name Courtyard claim rule in live handle quotes", async ({}, testInfo) => {
+    testInfo.setTimeout(3 * 60_000);
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const labelSuffix = createHash("sha256").update(runId).digest("hex").slice(0, 8);
+    const desiredLabel = `charizard${labelSuffix}`;
+    const openLabel = `pikachu${labelSuffix}`;
+    type HandlePolicy = {
+      claims_enabled: boolean;
+      label_claim_rules: Array<{
+        claim_gate_expression: unknown;
+        selector: { labels: string[] | null; type: string };
+      }>;
+    };
+    let target: { community: LiveCommunity; headers: Record<string, string>; policy: HandlePolicy } | null = null;
+    for (const community of await seedCommunityCandidates()) {
+      const headers = seedOwnerAdminHeaders(community);
+      if (!headers) continue;
+      const policy = await requestJson<HandlePolicy>(
+        `/communities/${encodeURIComponent(community.id)}/handle-policy`,
+        { headers },
+      ).catch(() => null);
+      if (policy?.claims_enabled) {
+        target = { community, headers, policy };
+        break;
+      }
+    }
+    test.skip(!target, "A names-enabled staging community with owner admin access is required.");
+    if (!target) return;
+
+    const claimGateExpression = {
+      expression: {
+        gate: {
+          chain_namespace: "eip155:137",
+          contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+          match: { category: "trading_card", subject: "{label}" },
+          min_quantity: 1,
+          provider: "courtyard",
+          type: "erc721_inventory_match",
+        },
+        op: "gate",
+      },
+      version: 1,
+    };
+    try {
+      const policy = await requestJson<{
+        label_claim_rules: Array<{
+          claim_gate_expression: unknown;
+          id: string;
+          position: number;
+          selector: { labels: string[] | null; type: string };
+        }>;
+      }>(`/communities/${encodeURIComponent(target.community.id)}/handle-policy`, {
+        body: JSON.stringify({
+          label_claim_rules: [{
+            claim_gate_expression: claimGateExpression,
+            selector: { labels: [desiredLabel], type: "exact" },
+          }],
+        }),
+        headers: target.headers,
+        method: "POST",
+      });
+
+      expect(policy.label_claim_rules).toHaveLength(1);
+      expect(policy.label_claim_rules[0]).toMatchObject({
+        claim_gate_expression: claimGateExpression,
+        position: 0,
+        selector: { labels: [desiredLabel], type: "exact" },
+      });
+      expect(policy.label_claim_rules[0]?.id).toMatch(/^hlcr_/u);
+
+      const gatedQuote = await requestJson<{
+        claim_gate: {
+          expression: {
+            expression: { gate?: { match?: Record<string, unknown> } };
+          };
+          label_claim_rule: string | null;
+          source: string;
+          summaries: Array<{ gate_type: string }>;
+        } | null;
+        eligible: boolean;
+      }>(`/communities/${encodeURIComponent(target.community.id)}/handles/quote`, {
+        body: JSON.stringify({ desired_label: desiredLabel }),
+        headers: target.headers,
+        method: "POST",
+      });
+
+      expect(gatedQuote.eligible).toBe(false);
+      expect(gatedQuote.claim_gate).toMatchObject({
+        label_claim_rule: policy.label_claim_rules[0]?.id,
+        source: "label_rule",
+        summaries: [{ gate_type: "erc721_inventory_match" }],
+      });
+      expect(gatedQuote.claim_gate?.expression.expression.gate?.match).toEqual({
+        category: "trading_card",
+        subject: desiredLabel,
+      });
+
+      const unmatchedQuote = await requestJson<{ claim_gate: unknown; eligible: boolean }>(
+        `/communities/${encodeURIComponent(target.community.id)}/handles/quote`,
+        {
+          body: JSON.stringify({ desired_label: openLabel }),
+          headers: target.headers,
+          method: "POST",
+        },
+      );
+      expect(unmatchedQuote.claim_gate).toBeNull();
+    } finally {
+      await requestJson(`/communities/${encodeURIComponent(target.community.id)}/handle-policy`, {
+        body: JSON.stringify({
+          label_claim_rules: target.policy.label_claim_rules.map(({ claim_gate_expression, selector }) => ({
+            claim_gate_expression,
+            selector,
+          })),
+        }),
+        headers: target.headers,
+        method: "POST",
+      });
+    }
+  });
+
   test("round-trips a nested gate policy through the staging moderator UI", async ({ page }, testInfo) => {
     testInfo.setTimeout(5 * 60_000);
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;

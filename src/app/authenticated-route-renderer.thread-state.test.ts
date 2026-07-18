@@ -178,6 +178,34 @@ describe("thread comment state helpers", () => {
     expect(tree[0]?.children[0]?.item.comment.id).toBe("cmt_reply");
   });
 
+  test("buildThreadCommentTreeFromItems links duplicate root and reply ids once", () => {
+    const parent = createCommentListItem({
+      anonymousLabel: "deckhand",
+      body: "Parent comment",
+      commentId: "cmt_parent",
+      descendantCount: 1,
+      depth: 0,
+      directReplyCount: 1,
+      score: 2,
+    });
+    const reply = createCommentListItem({
+      anonymousLabel: "lookout",
+      body: "Reply comment",
+      commentId: "cmt_reply",
+      descendantCount: 0,
+      depth: 1,
+      directReplyCount: 0,
+      parentCommentId: "cmt_parent",
+      score: 0,
+    });
+
+    const tree = buildThreadCommentTreeFromItems([parent, parent, reply, reply]);
+
+    expect(tree).toHaveLength(1);
+    expect(tree[0]?.children).toHaveLength(1);
+    expect(tree[0]?.children[0]?.item.comment.id).toBe("cmt_reply");
+  });
+
   test("loadThreadCommentTree auto-loads first-level replies for roots", async () => {
     const parent = createCommentListItem({
       anonymousLabel: "deckhand",
@@ -225,6 +253,39 @@ describe("thread comment state helpers", () => {
     expect(tree[0]?.nextRepliesCursor).toBe(null);
     expect(tree[0]?.children).toHaveLength(1);
     expect(tree[0]?.children[0]?.item.comment.id).toBe("cmt_reply");
+  });
+
+  test("loadThreadCommentTree deduplicates comments across pages", async () => {
+    const root = createCommentListItem({
+      anonymousLabel: "deckhand",
+      body: "Root comment",
+      commentId: "cmt_root",
+      descendantCount: 0,
+      depth: 0,
+      directReplyCount: 0,
+      score: 2,
+    });
+    const secondRoot = createCommentListItem({
+      anonymousLabel: "lookout",
+      body: "Second root",
+      commentId: "cmt_root_2",
+      descendantCount: 0,
+      depth: 0,
+      directReplyCount: 0,
+      score: 1,
+    });
+    const api = {
+      communities: {
+        listComments: async (_communityId: string, _postId: string, opts?: { cursor?: string | null }) => opts?.cursor
+          ? { items: [root, secondRoot], next_cursor: null }
+          : { items: [root], next_cursor: "page-2" },
+      },
+      comments: { listReplies: async () => ({ items: [], next_cursor: null }) },
+    } as unknown as Parameters<typeof loadThreadCommentTree>[0];
+
+    const tree = await loadThreadCommentTree(api, "cmt_browser", "pst_browser", "en", true, "best");
+
+    expect(tree.map((node) => node.item.comment.id)).toEqual(["cmt_root", "cmt_root_2"]);
   });
 });
 import "@/test/setup-runtime";

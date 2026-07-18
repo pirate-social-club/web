@@ -65,6 +65,8 @@ export function PostThread({
   const [mobileReplyAttachment, setMobileReplyAttachment] = React.useState<PostThreadReplyAttachment | null>(null);
   const [mobileReplyIdentityMode, setMobileReplyIdentityMode] = React.useState<PostThreadIdentityMode>("public");
   const [mobileReplyBusy, setMobileReplyBusy] = React.useState(false);
+  const rootReplyBusyRef = React.useRef(false);
+  const mobileReplyBusyRef = React.useRef(false);
 
   React.useEffect(() => {
     if (rootReplyOpen && rootReplyContainerRef.current) {
@@ -90,9 +92,10 @@ export function PostThread({
 
   const handleRootReplySubmit = React.useCallback(async () => {
     const trimmed = rootReplyBody.trim();
-    if (!canSubmitRootReply || !onRootReplySubmit) {
+    if (!canSubmitRootReply || !onRootReplySubmit || rootReplyBusyRef.current) {
       return;
     }
+    rootReplyBusyRef.current = true;
     try {
       setRootReplyBusy(true);
       const result = await onRootReplySubmit({
@@ -110,15 +113,17 @@ export function PostThread({
       setRootReplyIdentityMode("public");
       setRootReplyOpen(false);
     } finally {
+      rootReplyBusyRef.current = false;
       setRootReplyBusy(false);
     }
   }, [canSubmitRootReply, onRootReplySubmit, replyIdentity?.anonymousScope, rootReplyAttachment, rootReplyBody, rootReplyIdentityMode]);
 
   const handleMobileReplySubmit = React.useCallback(async () => {
     const trimmed = mobileReplyBody.trim();
-    if (!canSubmitMobileReply || !mobileReplyTarget) {
+    if (!canSubmitMobileReply || !mobileReplyTarget || mobileReplyBusyRef.current) {
       return;
     }
+    mobileReplyBusyRef.current = true;
     try {
       setMobileReplyBusy(true);
       const result = await mobileReplyTarget.onSubmit({
@@ -136,6 +141,7 @@ export function PostThread({
       setMobileReplyIdentityMode("public");
       setMobileReplyTarget(null);
     } finally {
+      mobileReplyBusyRef.current = false;
       setMobileReplyBusy(false);
     }
   }, [canSubmitMobileReply, mobileReplyAttachment, mobileReplyBody, mobileReplyIdentityMode, mobileReplyTarget, replyIdentity?.anonymousScope]);

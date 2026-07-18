@@ -3,6 +3,7 @@ import type {
   AnonymousIdentityScope,
   CommunityDefaultAgeGatePolicy,
 } from "@/lib/community-access-types";
+import type { GatePolicy } from "@pirate/api-contracts";
 
 export type CommunityMembershipMode = "request" | "gated";
 export type CommunityGateMatchMode = "all" | "any";
@@ -134,6 +135,7 @@ export interface CreateCommunityComposerProps {
     anonymousIdentityScope: AnonymousIdentityScope;
     gateDrafts: IdentityGateDraft[];
     gateMatchMode: CommunityGateMatchMode;
+    gatePolicy: GatePolicy | null;
   }) => Promise<{
     communityId: string;
   } | void>;

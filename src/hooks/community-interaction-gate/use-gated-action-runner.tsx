@@ -12,7 +12,6 @@ import type { AltchaScope } from "@/lib/api/client-groups-core";
 import {
   getMissingCapabilitiesFromGateEvaluation,
   hasAltchaProofAction,
-  isPowOnlyGate,
 } from "@/lib/identity-gates";
 import { logger } from "@/lib/logger";
 import {
@@ -252,10 +251,6 @@ function actionNodeHasAltchaOnlyPath(action: RequiredActionNode): boolean {
   return items.every(actionNodeHasAltchaOnlyPath);
 }
 
-function isPowOnlyCommunity(gate: CommunityGateData): boolean {
-  return isPowOnlyGate(gate.preview.membership_gate_summaries);
-}
-
 function canSatisfyWithAltchaOnly(gate: CommunityGateData): boolean {
   const actionSet = gate.eligibility.gate_evaluation?.required_action_set as RequiredActionNode | null | undefined;
   if (actionSet) {
@@ -444,11 +439,11 @@ export function useGatedActionRunner({
     const shouldUsePublicReplyAltcha = isPublicReply
       && state === "verification_required"
       && canSatisfyWithAltchaOnly(gate);
-    // PoW-only communities admit non-member interactions server-side: the
-    // write carries an action-bound proof, no join happens, and the API
-    // subscribes the actor as a follower.
+    // Where a browser check alone satisfies the gate, the API admits the
+    // non-member write on its action-bound proof, skips the join entirely and
+    // subscribes the actor as a follower instead.
     const shouldUseOpenPowParticipation = state === "verification_required"
-      && isPowOnlyCommunity(gate);
+      && canSatisfyWithAltchaOnly(gate);
     // Public replies satisfy a PoW membership policy as an action-bound
     // comment_create proof. They must never take the community_join path.
     const shouldUseActionAltcha = actionAltchaConfig

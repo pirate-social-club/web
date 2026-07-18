@@ -187,11 +187,20 @@ export function hasActionTimeCheck(gates: Array<Pick<MembershipGateSummary, "gat
  * with identity/asset atoms — including OR-trees PoW alone could satisfy —
  * still require membership server-side, so they keep the join surfaces.
  */
-export function isPowOnlyGate(
+export function isPowSatisfiableGate(
   gates: Array<Pick<MembershipGateSummary, "gate_type">> | null | undefined,
+  matchMode?: "all" | "any" | null,
 ): boolean {
   const summaries = gates ?? [];
-  return summaries.length > 0 && summaries.every((gate) => gate.gate_type === "altcha_pow");
+  if (summaries.length === 0) {
+    return false;
+  }
+  // Summaries are the flattened atoms; match mode says how they combine. Any
+  // branch clears an "any" gate, so one altcha_pow makes it PoW-satisfiable;
+  // an "all" gate needs every atom to be PoW.
+  return matchMode === "any"
+    ? summaries.some((gate) => gate.gate_type === "altcha_pow")
+    : summaries.every((gate) => gate.gate_type === "altcha_pow");
 }
 
 export function formatGateRequirement(

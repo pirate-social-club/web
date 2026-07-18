@@ -323,14 +323,52 @@ describe("useGatedActionRunner", () => {
     expect(runner.pendingInteraction?.altchaScope).toBe("vote");
   });
 
-  test("does not open-participate votes when the gate mixes PoW with other atoms", async () => {
+  test("open-participates an OR gate that PoW alone satisfies, without joining", async () => {
+    // The dankmeme shape: or(altcha_pow, unique_human). A browser check
+    // clears it, so the API takes the write and follows the actor.
     const solves: string[] = [];
+    const allowedContexts: Array<{ altchaPayload?: string | null } | undefined> = [];
     const runner = renderRunner({
       gateData: gate(
         "verification_required",
         undefined,
         [altchaRequirement, uniqueHumanRequirement],
         { gateMatchMode: "any" },
+      ),
+      sessionUser: unverifiedUser,
+      solveActionAltcha: async (input) => {
+        solves.push(input.action);
+        return "solved-payload";
+      },
+    });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: (context) => {
+          allowedContexts.push(context);
+        },
+        postId: "post-1",
+        voteValue: 1,
+      });
+      expect(result).toBe("allowed");
+    });
+
+    expect(solves).toEqual(["post:post-1:1"]);
+    expect(allowedContexts).toEqual([{ altchaPayload: "solved-payload" }]);
+    expect(runner.successes).toEqual(["Following Test Community"]);
+    expect(runner.hook.result.current.modalState).toBe(null);
+  });
+
+  test("does not open-participate when identity is required alongside PoW", async () => {
+    const solves: string[] = [];
+    const runner = renderRunner({
+      gateData: gate(
+        "verification_required",
+        undefined,
+        [altchaRequirement, uniqueHumanRequirement],
+        { gateMatchMode: "all" },
       ),
       sessionUser: unverifiedUser,
       solveActionAltcha: async (input) => {

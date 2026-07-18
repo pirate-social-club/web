@@ -18,6 +18,12 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { getWalletTransactionErrorMessage } from "@/lib/wallet-error-utils";
 import { generateRedditFallbackHandle } from "@/lib/reddit-handle-suggestion";
 import { generateSignupStyleHandle } from "@/lib/generated-handle-suggestion";
+import {
+  isCurrentGlobalHandleCandidate,
+  isFreeCleanupHandleQuote,
+  isValidGlobalHandleCandidate,
+  normalizeGlobalHandleStem,
+} from "@/lib/global-handle-upgrade";
 import type { HandleUpgradeQuoteResponse } from "@/lib/api/client-api-types";
 import type {
   HandleSuggestion,
@@ -81,28 +87,10 @@ function quoteToHandleSuggestion(username: string, eligible: boolean, reason?: s
   };
 }
 
-function normalizeHandleLabel(value: string): string {
-  return value.trim().replace(/\.pirate$/i, "").toLowerCase();
-}
-
-function isFreeCleanupPaidQuote(input: {
-  cleanupRenameAvailable: boolean;
-  label: string;
-  quote: HandleUpgradeQuoteResponse | null;
-}): boolean {
-  const label = normalizeHandleLabel(input.label);
-  return Boolean(
-    input.cleanupRenameAvailable
-    && input.quote?.eligible
-    && input.quote.pricing_tier === "base"
-    && input.quote.tier === "standard"
-    && label.length >= 8,
-  );
-}
-
 type UseDomainsTabMessages = {
   connectPrimaryWalletError: string;
   chooseHandleError: string;
+  invalidHandleError: string;
   reconnectPrimaryWalletError: string;
   renameFailedError: string;
 };
@@ -183,10 +171,9 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
     setImportJob(mapImportJobStatus(status.reddit_import_status));
     const currentHandle = session?.profile?.global_handle?.label ?? "";
     setGeneratedHandle(currentHandle);
-    if (status.cleanup_rename_available && buyNameValueRef.current.trim().length === 0) {
-      const currentLabel = normalizeHandleLabel(currentHandle);
-      buyNameValueRef.current = currentLabel;
-      setBuyNameValue(currentLabel);
+    if (isCurrentGlobalHandleCandidate(buyNameValueRef.current, currentHandle)) {
+      buyNameValueRef.current = "";
+      setBuyNameValue("");
     }
     if (!phaseInitializedRef.current) {
       setPhaseState("buy_name");
@@ -343,7 +330,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
     setError(null);
 
     const currentHandle = session?.profile?.global_handle?.label ?? "";
-    if (normalizeHandleLabel(generatedHandle) === normalizeHandleLabel(currentHandle)) {
+    if (normalizeGlobalHandleStem(generatedHandle) === normalizeGlobalHandleStem(currentHandle)) {
       setBusy(false);
       setPhase("buy_name");
       return;
@@ -351,13 +338,13 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
 
     const desiredLabel = generatedHandle.replace(/\.pirate$/, "");
     const shouldUseRedditClaim = redditImportSummary
-      && normalizeHandleLabel(desiredLabel) === normalizeHandleLabel(redditImportSummary.redditUsername);
+      && normalizeGlobalHandleStem(desiredLabel) === normalizeGlobalHandleStem(redditImportSummary.redditUsername);
     trackAnalyticsEvent({
       eventName: "handle_claim_started",
       properties: {
         surface: "settings",
         source: shouldUseRedditClaim ? "verified_reddit_username" : "free_cleanup_rename",
-        handle_length: normalizeHandleLabel(desiredLabel).length,
+        handle_length: normalizeGlobalHandleStem(desiredLabel).length,
       },
     });
     const rename = shouldUseRedditClaim
@@ -378,7 +365,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
           properties: {
             surface: "settings",
             source: shouldUseRedditClaim ? "verified_reddit_username" : "free_cleanup_rename",
-            handle_length: normalizeHandleLabel(desiredLabel).length,
+            handle_length: normalizeGlobalHandleStem(desiredLabel).length,
             failure_code: typeof (e as { code?: unknown })?.code === "string" ? (e as { code: string }).code : "unknown",
           },
         });
@@ -440,6 +427,21 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
       setBuyNameChecking(false);
       return;
     }
+    const currentHandle = session?.profile?.global_handle?.label ?? "";
+    if (isCurrentGlobalHandleCandidate(label, currentHandle)) {
+      setPaidQuote(null);
+      setBuyNameChecking(false);
+      setError(null);
+      return;
+    }
+    if (!isValidGlobalHandleCandidate(label)) {
+      setPaidQuote(null);
+      setBuyNameChecking(false);
+      const timeout = window.setTimeout(() => {
+        setError(messages.invalidHandleError);
+      }, 350);
+      return () => window.clearTimeout(timeout);
+    }
     const requestId = buyNameQuoteRequestRef.current + 1;
     buyNameQuoteRequestRef.current = requestId;
     setBuyNameChecking(true);
@@ -462,7 +464,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
           setBuyNameChecking(false);
         }
       });
-  }, [api, busy, buyNameValue, messages.chooseHandleError]);
+  }, [api, busy, buyNameValue, messages.chooseHandleError, messages.invalidHandleError, session?.profile?.global_handle?.label]);
 
   React.useEffect(() => {
     if (!enabled || phase !== "buy_name" || paidClaimedHandle) return;
@@ -470,6 +472,18 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
     if (!label) {
       setPaidQuote(null);
       setBuyNameChecking(false);
+      return;
+    }
+    const currentHandle = session?.profile?.global_handle?.label ?? "";
+    if (isCurrentGlobalHandleCandidate(label, currentHandle)) {
+      setPaidQuote(null);
+      setBuyNameChecking(false);
+      return;
+    }
+    if (!isValidGlobalHandleCandidate(label)) {
+      setPaidQuote(null);
+      setBuyNameChecking(false);
+      setError(messages.invalidHandleError);
       return;
     }
     setBuyNameChecking(true);
@@ -480,7 +494,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
       window.clearTimeout(timeout);
       setBuyNameChecking(false);
     };
-  }, [buyNameValue, enabled, paidClaimedHandle, phase, quoteBuyName]);
+  }, [buyNameValue, enabled, messages.invalidHandleError, paidClaimedHandle, phase, quoteBuyName, session?.profile?.global_handle?.label]);
 
   const handleBuyNameQuote = React.useCallback(() => {
     quoteBuyName({ surfaceErrors: true });
@@ -488,12 +502,18 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
 
   const handleBuyNameClaim = React.useCallback(() => {
     const desiredLabel = buyNameValue.trim().replace(/\.pirate$/iu, "");
-    const freeCleanupClaim = isFreeCleanupPaidQuote({
+    const quote = paidQuote;
+    const freeCleanupClaim = isFreeCleanupHandleQuote({
       cleanupRenameAvailable,
       label: desiredLabel,
-      quote: paidQuote,
+      quote,
     });
-    if (busy || !paidQuote?.quote || (!freeCleanupClaim && (paidQuote.price_cents ?? 0) <= 0)) return;
+    const paidClaim = Boolean(quote?.eligible && quote.quote && (quote.price_cents ?? 0) > 0);
+    if (
+      busy
+      || isCurrentGlobalHandleCandidate(desiredLabel, session?.profile?.global_handle?.label ?? "")
+      || (!freeCleanupClaim && !paidClaim)
+    ) return;
     setBusy(true);
     setError(null);
     let fundingTxRef: Hex | null = null;
@@ -511,7 +531,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
         setBuyNameValue(profile.global_handle.label.replace(/\.pirate$/iu, ""));
         return;
       }
-      if (!paidQuote.payment_instructions) {
+      if (!quote?.quote || !quote.payment_instructions) {
         throw new Error("This paid quote is missing payment instructions.");
       }
       const settlementWalletAttachment = session?.user.primary_wallet_attachment;
@@ -526,12 +546,12 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
         throw new Error(messages.reconnectPrimaryWalletError);
       }
       const submittedFundingTxRef = await executeHandleUsdcCheckout({
-        paymentInstructions: paidQuote.payment_instructions,
+        paymentInstructions: quote.payment_instructions,
         wallet: fundingWallet,
       });
       fundingTxRef = submittedFundingTxRef;
       const handle = await api.profiles.claimPaidHandle({
-        quote: paidQuote.quote ?? "",
+        quote: quote.quote,
         settlement_wallet_attachment: settlementWalletAttachment,
         funding_tx_ref: submittedFundingTxRef,
       });

@@ -202,6 +202,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     messages: {
       connectPrimaryWalletError: copy.settings.connectPrimaryWalletClaimName,
       chooseHandleError: copy.onboarding.errors.chooseHandle,
+      invalidHandleError: copy.settings.handleInvalidMessage,
       reconnectPrimaryWalletError: copy.settings.reconnectPrimaryWalletClaimName,
       renameFailedError: copy.onboarding.errors.renameFailed,
     },

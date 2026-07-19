@@ -227,12 +227,15 @@ test.describe("mobile non-member gated interactions", () => {
     await page.goto(`/p/${mockFeedPostId}`);
 
     const reply = page.getByRole("textbox", { name: /^reply$/i });
-    const voteAccess = page.getByRole("button", { name: "Checking voting access…" });
+    const upvote = page.getByRole("button", { name: "Upvote" });
+    const downvote = page.getByRole("button", { name: "Downvote" });
     await expect(reply).toBeVisible();
     await expect(reply).toBeEnabled();
     await expect(reply).toHaveAttribute("placeholder", "Write a reply");
-    await expect(voteAccess).toBeVisible();
-    await expect(voteAccess).toBeDisabled();
+    await expect(upvote).toBeVisible();
+    await expect(upvote).toBeDisabled();
+    await expect(downvote).toBeVisible();
+    await expect(downvote).toBeDisabled();
     expect(commentPosts).toBe(0);
     await expectNoBrowserError(page);
   });

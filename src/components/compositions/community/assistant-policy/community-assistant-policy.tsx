@@ -531,6 +531,13 @@ function StarterPromptRow({
   );
 }
 
+let nextStarterPromptId = 0;
+
+function createStarterPromptId() {
+  nextStarterPromptId += 1;
+  return `starter-prompt-${nextStarterPromptId}`;
+}
+
 export function CommunityAssistantPolicyPage({
   className,
   onAvatarFileSelect,
@@ -540,6 +547,10 @@ export function CommunityAssistantPolicyPage({
   settings,
   submitState,
 }: CommunityAssistantPolicyPageProps) {
+  const [starterPromptIds, setStarterPromptIds] = React.useState(
+    () => settings.starterPrompts.map(() => createStarterPromptId()),
+  );
+
   function update(partial: Partial<CommunityAssistantPolicySettings>) {
     onSettingsChange?.({ ...settings, ...partial });
   }
@@ -565,6 +576,7 @@ export function CommunityAssistantPolicyPage({
   }
 
   function removeStarterPrompt(index: number) {
+    setStarterPromptIds((current) => current.filter((_, itemIndex) => itemIndex !== index));
     update({
       starterPrompts: settings.starterPrompts.filter((_, itemIndex) => itemIndex !== index),
     });
@@ -706,7 +718,10 @@ export function CommunityAssistantPolicyPage({
               </div>
               <Button
                 disabled={settings.starterPrompts.length >= 5}
-                onClick={() => update({ starterPrompts: [...settings.starterPrompts, ""] })}
+                onClick={() => {
+                  setStarterPromptIds((current) => [...current, createStarterPromptId()]);
+                  update({ starterPrompts: [...settings.starterPrompts, ""] });
+                }}
                 size="sm"
                 variant="outline"
               >
@@ -717,7 +732,7 @@ export function CommunityAssistantPolicyPage({
               {settings.starterPrompts.map((prompt, index) => (
                 <StarterPromptRow
                   index={index}
-                  key={index}
+                  key={starterPromptIds[index]}
                   onChange={(value) => updateStarterPrompt(index, value)}
                   onRemove={() => removeStarterPrompt(index)}
                   value={prompt}

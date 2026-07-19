@@ -482,49 +482,57 @@ export function useGatedActionRunner({
       };
       if (solveActionAltcha) {
         // Solve the proof invisibly — PoW needs computation, not user input.
-        // Any failure falls through to the visible widget modal below.
+        // Only proof acquisition failures fall through to the visible widget.
+        // Once the write starts, retrying it through the modal can duplicate an
+        // action that already committed before a later bookkeeping failure.
+        let payload: string | null = null;
         try {
-          const payload = await solveActionAltcha({
+          payload = await solveActionAltcha({
             action: actionAltchaConfig.actionRef,
             scope: actionAltchaConfig.scope,
           });
-          await guardedOnAllowed({ altchaPayload: payload });
+        } catch (error) {
+          logger.warn("[interaction-gate] headless proof-of-work attempt failed", {
+            ...logBase,
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+        if (payload !== null) {
+          try {
+            await guardedOnAllowed({ altchaPayload: payload });
+          } catch (error) {
+            if (isMembershipRequiredWriteRejection(error)) {
+              invalidateCommunityGate(communityId);
+            }
+            throw error;
+          }
           logger.info("[interaction-gate] allowed", {
             ...logBase,
             eligibilityStatus: gate.eligibility.status,
             reason: "headless_pow",
           });
           if (shouldUseOpenPowParticipation) {
-            invalidateCommunityGate(communityId);
-            if (!viewerWasFollowing) {
-              let viewerIsFollowing = false;
-              try {
+            try {
+              invalidateCommunityGate(communityId);
+              if (!viewerWasFollowing) {
                 const refreshedGate = await loadCommunityGate(communityId);
-                viewerIsFollowing = refreshedGate.preview.viewer_following === true;
+                const viewerIsFollowing = refreshedGate.preview.viewer_following === true;
                 knownViewerFollowingRef.current.set(followingCacheKey, viewerIsFollowing);
-              } catch (error) {
-                // The write succeeded, but without an authoritative follow read
-                // there is no basis for claiming that subscription changed.
-                logger.warn("[interaction-gate] could not confirm auto-follow", {
-                  ...logBase,
-                  message: error instanceof Error ? error.message : String(error),
-                });
+                if (viewerIsFollowing) {
+                  const notifySuccess = showSuccess ?? toast.success;
+                  notifySuccess(interactionCopy.nowFollowingCommunity.replace("{community}", gate.preview.display_name));
+                }
               }
-              if (viewerIsFollowing) {
-                const notifySuccess = showSuccess ?? toast.success;
-                notifySuccess(interactionCopy.nowFollowingCommunity.replace("{community}", gate.preview.display_name));
-              }
+            } catch (error) {
+              // The write already committed. Follow-cache refresh and toast
+              // failures must not reopen verification or retry the write.
+              logger.warn("[interaction-gate] post-write bookkeeping failed", {
+                ...logBase,
+                message: error instanceof Error ? error.message : String(error),
+              });
             }
           }
           return "allowed";
-        } catch (error) {
-          if (isMembershipRequiredWriteRejection(error)) {
-            invalidateCommunityGate(communityId);
-          }
-          logger.warn("[interaction-gate] headless proof-of-work attempt failed", {
-            ...logBase,
-            message: error instanceof Error ? error.message : String(error),
-          });
         }
       }
       const copy = proofOfWorkModalCopy(gate, interactionCopy.locale);

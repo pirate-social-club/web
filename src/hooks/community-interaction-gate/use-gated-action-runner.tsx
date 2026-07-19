@@ -222,7 +222,7 @@ function getAltchaActionConfig(input: {
   if (input.action === "vote_post" && input.postId && input.voteValue != null) {
     return { actionRef: `post:${input.postId}:${input.voteValue}`, scope: "vote" };
   }
-  if (input.action === "vote_comment" && input.commentId && input.voteValue) {
+  if (input.action === "vote_comment" && input.commentId && input.voteValue != null) {
     return { actionRef: `comment:${input.commentId}:${input.voteValue}`, scope: "vote" };
   }
   if (input.action === "reply_post" && input.postId) {

@@ -17,6 +17,8 @@ rtk bun run ui:audit
 
 Use `rtk bun run types:safe` instead of `rtk bun run types` for routine local verification. It uses the TypeScript 7 native preview compiler (`tsgo`) with incremental build info, bounded memory, and lower process priority so it is less likely to stall the machine. Use `rtk bun run types` only when exact uncapped CI parity is required.
 
+Do not use bare `rtk bun test` as the repository-wide gate. It collects Playwright specs and runs unit files in one shared process, while `.github/workflows/web-ci.yml` deliberately limits discovery to `src/` and `packages/` and isolates each test file across four shards. Run focused files locally with `rtk bun test path/to/file.test.ts`; rely on `web-ci` for the full unit/component suite.
+
 Use the already-running Storybook dev server for component story validation when available. Never run `rtk bun run build-storybook`, `storybook build`, or other Storybook production builds unless the user explicitly asks for that exact command; they are too heavy for routine agent validation and can freeze the machine. Avoid `rtk bun run build` by default; use the lighter Vite checks from the workspace instructions unless a full production build is required.
 
 ## Deployment

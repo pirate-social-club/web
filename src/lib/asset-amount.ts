@@ -1,4 +1,4 @@
-export type AssetAmountParseError = "invalid" | "precision";
+type AssetAmountParseError = "invalid" | "precision";
 
 export type AssetAmountParseResult =
   | { ok: true; atomic: string }

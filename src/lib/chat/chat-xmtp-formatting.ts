@@ -44,7 +44,7 @@ export function ethereumAddressFromIdentifiers(
   return null;
 }
 
-export function fallbackConversationTitle(peer: { peerAddress: `0x${string}` | null; peerInboxId: string | null }, dm: XmtpDm): string {
+function fallbackConversationTitle(peer: { peerAddress: `0x${string}` | null; peerInboxId: string | null }, dm: XmtpDm): string {
   if (peer.peerAddress) return shortAddress(peer.peerAddress);
   if (peer.peerInboxId) return peer.peerInboxId;
   return String(dm?.id ?? "XMTP chat");

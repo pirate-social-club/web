@@ -29,7 +29,7 @@ const typeVariants = cva("", {
 
 type TypeVariant = VariantProps<typeof typeVariants>["variant"];
 
-export interface TypeProps extends React.ComponentProps<"span"> {
+interface TypeProps extends React.ComponentProps<"span"> {
   as?: React.ElementType;
   variant?: TypeVariant;
 }

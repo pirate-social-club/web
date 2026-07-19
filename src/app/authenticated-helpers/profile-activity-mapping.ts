@@ -81,7 +81,7 @@ function scoreLabel(score: number): string {
   return `${score} score`;
 }
 
-export function mapProfileActivityPost(
+function mapProfileActivityPost(
   item: ProfileActivityPostPage,
   authorProfiles: AuthorProfilesByUserId = {},
 ): ProfilePostItem {
@@ -113,7 +113,7 @@ export function mapProfileActivityPost(
   };
 }
 
-export function mapProfileActivityComment(
+function mapProfileActivityComment(
   item: ProfileActivityCommentPage,
   authorProfiles: AuthorProfilesByUserId = {},
 ): ProfileCommentItem {
@@ -145,7 +145,7 @@ export function mapProfileActivityComment(
   };
 }
 
-export function mapProfileActivityItem(
+function mapProfileActivityItem(
   item: ProfileActivityPostPage | ProfileActivityCommentPage,
   authorProfiles: AuthorProfilesByUserId = {},
 ): ProfileActivityItem {

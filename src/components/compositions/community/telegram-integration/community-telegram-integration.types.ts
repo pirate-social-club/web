@@ -7,7 +7,7 @@ export type TelegramBotAdminStatus =
   | "insufficient_permissions"
   | "left_chat";
 
-export interface TelegramLinkedChatSettings {
+interface TelegramLinkedChatSettings {
   status: "not_connected" | "connected";
   chatTitle: string | null;
   chatUsername: string | null;
@@ -28,7 +28,7 @@ export interface CommunityTelegramIntegrationSettings {
   linkedChat: TelegramLinkedChatSettings;
 }
 
-export type CommunityTelegramIntegrationSubmitState =
+type CommunityTelegramIntegrationSubmitState =
   | { kind: "idle" }
   | { kind: "saving" }
   | { kind: "error"; message: string };

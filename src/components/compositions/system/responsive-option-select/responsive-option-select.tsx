@@ -22,7 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Type } from "@/components/primitives/type";
 
-export interface ResponsiveOptionSelectOption<TValue extends string = string> {
+interface ResponsiveOptionSelectOption<TValue extends string = string> {
   description?: string;
   disabled?: boolean;
   disabledReason?: string;

@@ -36,7 +36,7 @@ function isHttpUrl(value: string): boolean {
   return /^https?:\/\//u.test(value);
 }
 
-export function toPlayableAudioUrl(value: unknown): string | undefined {
+function toPlayableAudioUrl(value: unknown): string | undefined {
   const audioUrl = stringValue(value);
 
   if (!audioUrl) {
@@ -74,7 +74,7 @@ function gatewayUrlFromArtifact(artifact: KaraokeAudioArtifact | null | undefine
   return stringValue(proof?.gateway_url) ?? stringValue(artifact.gateway_url);
 }
 
-export function toPlayableArtifactAudioUrl(artifact: KaraokeAudioArtifact | null | undefined): string | undefined {
+function toPlayableArtifactAudioUrl(artifact: KaraokeAudioArtifact | null | undefined): string | undefined {
   return toPlayableAudioUrl(artifact?.storage_ref) ?? toPlayableAudioUrl(gatewayUrlFromArtifact(artifact));
 }
 
@@ -124,7 +124,7 @@ function isLikelyRawKaraokeLine(value: Record<string, unknown>): boolean {
   return rawLineTextKeys.some((key) => value[key] !== undefined);
 }
 
-export function extractRawLines(value: unknown): RawKaraokeLine[] {
+function extractRawLines(value: unknown): RawKaraokeLine[] {
   if (Array.isArray(value)) {
     const lines: RawKaraokeLine[] = [];
 

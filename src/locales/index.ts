@@ -7,8 +7,8 @@ import {
   type RealLocaleCode,
 } from "./generated";
 
-export { LOCALE_NAMESPACES } from "./generated";
-export type { LocaleNamespace, RealLocaleCode } from "./generated";
+;
+export type { LocaleNamespace,  } from "./generated";
 
 type WidenLocaleMessages<T> = T extends string
   ? string

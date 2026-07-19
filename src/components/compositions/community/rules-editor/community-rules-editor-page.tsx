@@ -20,7 +20,7 @@ export interface RuleDraft {
   reportReason: string;
 }
 
-export function createEmptyRuleDraft(): RuleDraft {
+function createEmptyRuleDraft(): RuleDraft {
   return {
     id: `draft-${Math.random().toString(36).slice(2, 10)}`,
     existingRuleId: null,

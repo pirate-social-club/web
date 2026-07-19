@@ -13,10 +13,10 @@ import {
 
 import { readViteEnv } from "@/lib/vite-env";
 
-export type PirateAppEnvironment = "dev" | "staging" | "prod";
-export type PirateBaseNetwork = "base-sepolia" | "base-mainnet";
+type PirateAppEnvironment = "dev" | "staging" | "prod";
+type PirateBaseNetwork = "base-sepolia" | "base-mainnet";
 export type PirateStoryNetwork = "story-aeneid" | "story-mainnet";
-export type PirateEfpEnvironment = "testnet" | "mainnet";
+type PirateEfpEnvironment = "testnet" | "mainnet";
 type NetworkEnvReader = (name: string) => string | null;
 type NetworkMetaEnv = {
   DEV?: boolean;

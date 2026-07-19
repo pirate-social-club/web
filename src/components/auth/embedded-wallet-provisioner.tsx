@@ -11,7 +11,7 @@ import {
 // Bounded retry schedule for provisioning a Privy embedded wallet for an authenticated user
 // who has none. Privy's createOnLogin handles future logins; this covers already-authenticated
 // wallet-less users (and the gap where createOnLogin only affects future login events).
-export const EMBEDDED_WALLET_PROVISION_DELAYS_MS = [0, 2_000, 5_000] as const;
+const EMBEDDED_WALLET_PROVISION_DELAYS_MS = [0, 2_000, 5_000] as const;
 
 // Returns a stable guard key (the Pirate user id) when this authenticated user has NO embedded
 // wallet and provisioning should be attempted; null otherwise. One attempt set per user; resets

@@ -2,7 +2,7 @@ export function isAndroidUserAgent(userAgent: string | null | undefined): boolea
   return /\bAndroid\b/i.test(userAgent ?? "");
 }
 
-export function isAppleMobileUserAgent(userAgent: string | null | undefined): boolean {
+function isAppleMobileUserAgent(userAgent: string | null | undefined): boolean {
   return /\b(iPhone|iPad|iPod)\b/i.test(userAgent ?? "");
 }
 

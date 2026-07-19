@@ -11,7 +11,7 @@ export function communityHandleClaimDismissalKey(
   return `${HANDLE_CLAIM_DISMISSAL_PREFIX}${communityId}${namespaceVerification ? `:${namespaceVerification}` : ""}`;
 }
 
-export function readCommunityHandleClaimDismissed(
+function readCommunityHandleClaimDismissed(
   communityId: string,
   namespaceVerification?: string | null,
 ): boolean {
@@ -21,7 +21,7 @@ export function readCommunityHandleClaimDismissed(
   ) === "1";
 }
 
-export function writeCommunityHandleClaimDismissed(
+function writeCommunityHandleClaimDismissed(
   communityId: string,
   namespaceVerification?: string | null,
 ): void {

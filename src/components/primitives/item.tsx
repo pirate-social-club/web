@@ -5,9 +5,9 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { typeVariants } from "./type";
 
-export type ItemVariant = "default" | "outline" | "muted";
-export type ItemSize = "default" | "sm" | "dense";
-export type ItemMediaVariant = "default" | "icon" | "image";
+type ItemVariant = "default" | "outline" | "muted";
+type ItemSize = "default" | "sm" | "dense";
+type ItemMediaVariant = "default" | "icon" | "image";
 
 export interface ItemProps extends React.HTMLAttributes<HTMLDivElement> {
   size?: ItemSize;

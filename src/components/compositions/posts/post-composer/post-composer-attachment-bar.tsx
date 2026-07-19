@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { tabMeta } from "./post-composer-config";
 import type { AttachmentKind } from "./post-composer.types";
 
-export function PostComposerAttachmentBar({
+function PostComposerAttachmentBar({
   activeKind,
   availableKinds,
   onSelect,

@@ -1,6 +1,6 @@
 "use client";
 
-export type ChatTransport = "xmtp" | "assistant";
+type ChatTransport = "xmtp" | "assistant";
 
 export interface ChatConversation {
   assistantKind?: "bedsheet" | "community";

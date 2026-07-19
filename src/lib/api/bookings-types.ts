@@ -17,7 +17,7 @@ export interface BookingProfile {
   created: number;
   updated: number;
 }
-export interface BookingProfileEmpty {
+interface BookingProfileEmpty {
   object: "booking_profile";
   exists: false;
   host: string;
@@ -135,7 +135,7 @@ export interface CreateHoldRequest {
   slot_end_utc: string;
   source_community_id?: string | null;
 }
-export interface PaymentInstructions {
+interface PaymentInstructions {
   payment_intent_id: string;
   version: number;
   chain_id: number;
@@ -163,24 +163,24 @@ export interface ConfirmHoldRequest {
   wallet_attachment_id: string;
 }
 
-export type BookingStatus =
+type BookingStatus =
   | "confirmed" | "live" | "completed" | "settled" | "refunded"
   | "no_show_host" | "no_show_booker" | "cancelled_by_host" | "cancelled_by_booker"
   | "cancelled_before_payment" | "expired_hold" | "disputed";
 
-export type BookingOutcome =
+type BookingOutcome =
   | "completed" | "no_show_host" | "no_show_booker"
   | "cancelled_by_host" | "cancelled_by_booker";
-export type BookingSettlementStatus = "pending" | "live" | "settling" | "settled" | "refunded" | "disputed";
+type BookingSettlementStatus = "pending" | "live" | "settling" | "settled" | "refunded" | "disputed";
 
-export interface BookingCounterparty {
+interface BookingCounterparty {
   user_id: string;
   public_handle: string | null;
   display_name: string | null;
   avatar_ref: string | null;
 }
 
-export interface Booking {
+interface Booking {
   booking_id: string;
   source_community_id: string | null;
   hold_id: string;
@@ -204,7 +204,7 @@ export interface Booking {
 export interface ConfirmHoldResponse { booking: Booking; already_confirmed: boolean }
 
 // Lifecycle action responses share a compact booking snapshot.
-export interface BookingSnapshot {
+interface BookingSnapshot {
   booking_id: string;
   status: BookingStatus;
   outcome: BookingOutcome | null;
@@ -248,7 +248,7 @@ export interface BookingView {
   viewer_role: "host" | "booker";
 }
 
-export interface AgoraBlock {
+interface AgoraBlock {
   app_id: string;
   channel: string;
   uid: number;

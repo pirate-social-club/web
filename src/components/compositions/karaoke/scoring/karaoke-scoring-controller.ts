@@ -53,7 +53,7 @@ export type KaraokeScoringStatus =
   | "ended"
   | "error";
 
-export interface KaraokeScoringSimpleError {
+interface KaraokeScoringSimpleError {
   code: string;
   message: string;
 }
@@ -82,12 +82,12 @@ export interface KaraokeScoringCaptureEngine extends CaptureEngineLike {
   start(): Promise<void>;
 }
 
-export type CreateScoringCaptureEngine = (handlers: {
+type CreateScoringCaptureEngine = (handlers: {
   onChunk: (pcm16: ArrayBuffer, capturedAtMs: number) => void;
   onError: (error: KaraokeScoringSimpleError) => void;
 }) => KaraokeScoringCaptureEngine;
 
-export type CreateScoringSessionClient = (
+type CreateScoringSessionClient = (
   options: CreateKaraokeSessionClientOptions,
 ) => KaraokeSessionBridgeHandle;
 

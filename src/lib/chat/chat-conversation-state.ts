@@ -45,6 +45,6 @@ export function buildVisibleConversations({
   return [...conversations];
 }
 
-export function assistantConversationForAvailability(): ChatConversation {
+function assistantConversationForAvailability(): ChatConversation {
   return getAssistantConversation();
 }

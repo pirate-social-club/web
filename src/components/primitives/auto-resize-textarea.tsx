@@ -5,7 +5,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./textarea";
 
-export interface AutoResizeTextareaProps
+interface AutoResizeTextareaProps
   extends React.ComponentProps<"textarea"> {
   maxRows?: number;
 }

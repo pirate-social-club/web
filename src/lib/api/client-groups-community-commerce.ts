@@ -19,7 +19,7 @@ import type {
 
 import type { ApiRequest } from "./client-internal";
 
-export type CommunityPurchaseSettlementPending = {
+type CommunityPurchaseSettlementPending = {
   object: "community_purchase_settlement_pending";
   community: string;
   quote: string;

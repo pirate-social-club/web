@@ -22,7 +22,7 @@ const pillButtonVariants = cva(
   },
 );
 
-export interface PillButtonProps
+interface PillButtonProps
   extends React.ComponentProps<"button">,
     VariantProps<typeof pillButtonVariants> {}
 

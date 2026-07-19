@@ -13,7 +13,7 @@ function isLocalHost(hostname: string): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("127.");
 }
 
-export function resolveAppOrigin(url: URL): string {
+function resolveAppOrigin(url: URL): string {
   const hostname = url.hostname.toLowerCase();
 
   if (hostname === "www.pirate.sc") {
@@ -44,7 +44,7 @@ export function resolveApiOriginFromHostname(hostname: string): string {
   return "https://api.pirate.sc";
 }
 
-export function buildCanonicalUrl(url: URL): string {
+function buildCanonicalUrl(url: URL): string {
   return `${resolveAppOrigin(url)}${normalizePathname(url.pathname)}`;
 }
 

@@ -8,7 +8,7 @@ import { VotePill } from "@/components/primitives/vote-pill";
 import { CommentPill } from "@/components/primitives/comment-pill";
 import type { PostCardEngagement, PostCardShareAction } from "./post-card.types";
 
-export interface UnlockAction {
+interface UnlockAction {
   label: string;
   onClick: () => void;
 }

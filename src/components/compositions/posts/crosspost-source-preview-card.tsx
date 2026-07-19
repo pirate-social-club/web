@@ -7,9 +7,9 @@ import type { CrosspostSourcePreview } from "./post-card/post-card.types";
 import { SongPostContent } from "./post-card/post-card-song-content";
 import { VideoPostContent } from "./post-card/post-card-video-content";
 
-export type PostSourceSummaryKind = NonNullable<CrosspostSourcePreview["postType"]>;
+type PostSourceSummaryKind = NonNullable<CrosspostSourcePreview["postType"]>;
 
-export function postSourceKindLabel(kind: PostSourceSummaryKind | null | undefined): string | null {
+function postSourceKindLabel(kind: PostSourceSummaryKind | null | undefined): string | null {
   if (!kind || kind === "text") {
     return null;
   }
@@ -32,7 +32,7 @@ function sourceStatusLabel(status: CrosspostSourcePreview["status"]) {
   return null;
 }
 
-export interface PostSourceSummaryCardProps {
+interface PostSourceSummaryCardProps {
   available?: boolean;
   className?: string;
   href?: string;
@@ -46,7 +46,7 @@ export interface PostSourceSummaryCardProps {
   untitledLabel?: string;
 }
 
-export function PostSourceSummaryCard({
+function PostSourceSummaryCard({
   available = true,
   className,
   href,

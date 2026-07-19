@@ -11,7 +11,7 @@ export function normalizeMediaAspectRatio(width: number, height: number): number
   return width / height;
 }
 
-export function isPortraitMedia(aspectRatio: number | undefined): boolean {
+function isPortraitMedia(aspectRatio: number | undefined): boolean {
   return typeof aspectRatio === "number" && aspectRatio > 0 && aspectRatio < 1;
 }
 

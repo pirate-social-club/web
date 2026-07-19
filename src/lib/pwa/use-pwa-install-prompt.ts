@@ -11,9 +11,9 @@ interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
-export type PwaPromptOutcome = "accepted" | "dismissed" | null;
+type PwaPromptOutcome = "accepted" | "dismissed" | null;
 
-export type PwaInstallPromptState =
+type PwaInstallPromptState =
   | { kind: "unknown" }
   | { kind: "unavailable" }
   | { kind: "deferred"; event: BeforeInstallPromptEvent }

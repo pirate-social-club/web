@@ -9,7 +9,7 @@ import {
   sameContentLanguage,
 } from "@/app/authenticated-helpers/post-translation-presentation";
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 

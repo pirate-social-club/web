@@ -47,7 +47,7 @@ export interface BookingManagementViewProps {
   copy?: Partial<BookingManagementViewCopy>;
 }
 
-export interface BookingManagementViewCopy {
+interface BookingManagementViewCopy {
   title: string; roleLabel: string; asBooker: string; asHost: string;
   upcoming: string; review: string; past: string; cancelled: string;
   join: string; rejoin: string; addToCalendar: string; cancel: string;
@@ -56,7 +56,7 @@ export interface BookingManagementViewCopy {
   emptyTitle: string; emptyBookerDetail: string; emptyHostDetail: string;
 }
 
-export const defaultBookingManagementViewCopy: BookingManagementViewCopy = {
+const defaultBookingManagementViewCopy: BookingManagementViewCopy = {
   title: "Bookings", roleLabel: "Booking role", asBooker: "As booker", asHost: "As host",
   upcoming: "Upcoming", review: "Needs review", past: "Past", cancelled: "Cancelled",
   join: "Join session", rejoin: "Rejoin session", addToCalendar: "Add to calendar", cancel: "Cancel booking",

@@ -18,7 +18,7 @@ import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 
-export const ISO_ALPHA_2 = /^[A-Z]{2}$/;
+const ISO_ALPHA_2 = /^[A-Z]{2}$/;
 export const acceptedCommunityImageTypes = "image/png,image/jpeg,image/webp,image/gif,image/avif";
 
 
@@ -53,7 +53,7 @@ export function FieldLabel({ label }: { label: string }) {
   return <FormFieldLabel className="mb-1.5" label={label} />;
 }
 
-export function CheckboxRow({
+function CheckboxRow({
   checked,
   id,
   label,
@@ -78,7 +78,7 @@ export function CheckboxRow({
   );
 }
 
-export function ReviewField({
+function ReviewField({
   label,
   value,
 }: {
@@ -93,7 +93,7 @@ export function ReviewField({
   );
 }
 
-export function ReviewSection({
+function ReviewSection({
   title,
   children,
 }: {

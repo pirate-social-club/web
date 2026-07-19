@@ -433,7 +433,7 @@ function indexAssetDisplayByAssetId(
   return byAssetId;
 }
 
-export function getCommunityGateSummaries(
+function getCommunityGateSummaries(
   community: ApiCommunity,
   apiGateSummaries?: ApiMembershipGateSummary[] | null,
 ): SidebarGateSummary[] {
@@ -539,7 +539,7 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
   };
 }
 
-export function buildCommunitySidebarRoleHolderFromProfile(profile: ApiProfile | null | undefined): CommunitySidebarRoleHolder | null {
+function buildCommunitySidebarRoleHolderFromProfile(profile: ApiProfile | null | undefined): CommunitySidebarRoleHolder | null {
   if (!profile) {
     return null;
   }
@@ -658,7 +658,7 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
   };
 }
 
-export function getCommunitySidebarRules(community: ApiCommunity | null): CommunitySidebarRule[] {
+function getCommunitySidebarRules(community: ApiCommunity | null): CommunitySidebarRule[] {
   return community?.community_profile?.rules?.map((rule) => ({
     body: resolveCommunityLocalizedText(
       community,

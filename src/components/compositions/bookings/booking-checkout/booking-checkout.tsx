@@ -8,7 +8,7 @@ import type { BookingQuotePreview, IanaTz } from "../view-models";
 
 import { formatCentsAsUsd } from "../fixtures/bookings-format";
 
-export type CheckoutPhase = "holding" | "pending" | "conflict";
+type CheckoutPhase = "holding" | "pending" | "conflict";
 
 export interface BookingCheckoutProps {
   quote: BookingQuotePreview;

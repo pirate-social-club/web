@@ -24,7 +24,7 @@ const optionCardVariants = cva(
   },
 );
 
-export interface OptionCardProps
+interface OptionCardProps
   extends
     React.ComponentProps<"button">,
     VariantProps<typeof optionCardVariants> {
@@ -98,4 +98,4 @@ function OptionCard({
   );
 }
 
-export { OptionCard, optionCardVariants };
+export { OptionCard,  };

@@ -29,13 +29,13 @@ import { Input } from "@/components/primitives/input";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
-export type RewardEarnedState =
+type RewardEarnedState =
   | "earned-today"
   | "already-earned-today"
   | "daily-cap-reached"
   | "milestone-bonus";
 
-export type WalletRewardsCardState =
+type WalletRewardsCardState =
   | "zero"
   | "accruing"
   | "cashout-ready"

@@ -73,7 +73,7 @@ export function addLocalChatNotification(input: {
   }, ...current]);
 }
 
-export function listLocalChatNotificationItems(): NotificationFeedItem[] {
+function listLocalChatNotificationItems(): NotificationFeedItem[] {
   return readItems().map((item) => ({
     event: {
       actor_user: null,

@@ -46,7 +46,7 @@ export async function publishChatInboxId(api: ApiClient, inboxId: string | null 
   await api.profiles.publishXmtpInboxId(normalizedInboxId);
 }
 
-export async function registerChat(
+async function registerChat(
   session: StoredSession,
   signerWallet: PirateConnectedEvmWallet,
   cache: XmtpClientCache,

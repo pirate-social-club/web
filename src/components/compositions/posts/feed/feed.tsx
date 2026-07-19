@@ -64,7 +64,7 @@ export interface TopTimeRangeOption {
   value: string;
 }
 
-export const topTimeRangeOptions = [
+const topTimeRangeOptions = [
   { value: "hour", label: "This hour" },
   { value: "day", label: "Today" },
   { value: "week", label: "This week" },

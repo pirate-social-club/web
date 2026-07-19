@@ -1,6 +1,6 @@
 import type * as React from "react";
 
-export interface SongItemMetaItem {
+interface SongItemMetaItem {
   label: string;
   href?: string;
 }

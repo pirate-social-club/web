@@ -10,7 +10,7 @@ import {
 export {
   COURTYARD_MAINNET_REGISTRY,
   COURTYARD_POLYGON_REGISTRY,
-  isAllowedCourtyardRegistry,
+
 } from "@/lib/gate-inventory-validation";
 
 export type CourtyardWalletInventoryGroup = {

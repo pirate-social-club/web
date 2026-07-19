@@ -1,6 +1,6 @@
 import type { UseGlobalHandleFlowReturn } from "@/hooks/use-global-handle-flow";
 
-export type EditProfileFormValues = {
+type EditProfileFormValues = {
   displayName: string;
   bio: string;
 };
@@ -10,7 +10,7 @@ export type EditProfileFieldError = {
   message: string;
 };
 
-export type EditProfileSubmitState =
+type EditProfileSubmitState =
   | { kind: "idle" }
   | { kind: "saving" }
   | { kind: "error"; message: string }

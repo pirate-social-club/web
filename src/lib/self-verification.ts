@@ -39,7 +39,7 @@ function hashParams(url: URL): URLSearchParams {
   return new URLSearchParams(rawParams.replace(/^\?/u, ""));
 }
 
-export function getSelfCallbackParam(url: URL, param: SelfCallbackParam): string | null {
+function getSelfCallbackParam(url: URL, param: SelfCallbackParam): string | null {
   return url.searchParams.get(param) ?? hashParams(url).get(param);
 }
 
@@ -112,7 +112,7 @@ function getSelfDisclosures(launch: SelfAppLaunch): SelfApp["disclosures"] {
   };
 }
 
-export function getSelfVerificationApp(
+function getSelfVerificationApp(
   launch: SelfAppLaunch | null | undefined,
   options: { deeplinkCallback?: string | null } = {},
 ): SelfApp | null {

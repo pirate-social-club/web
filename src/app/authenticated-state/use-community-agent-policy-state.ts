@@ -12,7 +12,7 @@ import { useApi } from "@/lib/api";
 import { submitCommunitySave, type SaveCommunityAction } from "@/app/authenticated-helpers/community-moderation-save";
 import { getErrorMessage } from "@/lib/error-utils";
 
-export function getCommunityAgentPolicySettings(
+function getCommunityAgentPolicySettings(
   community: ApiCommunity | null,
 ): CommunityAgentPolicySettings {
   return {

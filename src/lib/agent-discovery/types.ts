@@ -10,7 +10,7 @@ export type FeedCommunity = {
   updated_at?: string | null;
 };
 
-export type FeedPost = {
+type FeedPost = {
   id?: string;
   post?: string;
   post_id?: string;
@@ -20,7 +20,7 @@ export type FeedPost = {
   updated_at?: string | null;
 };
 
-export type LocalizedPostLike = {
+type LocalizedPostLike = {
   post?: FeedPost | null;
 };
 

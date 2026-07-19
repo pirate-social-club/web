@@ -1,14 +1,14 @@
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 
 export type TelegramVerifyLaunchProvider = "self" | "very" | "zkpassport";
-export type DeferredTelegramVerifyLaunchProvider = Exclude<TelegramVerifyLaunchProvider, "very">;
+type DeferredTelegramVerifyLaunchProvider = Exclude<TelegramVerifyLaunchProvider, "very">;
 
 export type PendingTelegramVerificationLaunch = {
   href: string;
   provider: DeferredTelegramVerifyLaunchProvider;
 };
 
-export type TelegramVerifyDoneResult = "already_member" | "joined" | "pending_request";
+type TelegramVerifyDoneResult = "already_member" | "joined" | "pending_request";
 
 export type TelegramVerifyScreenState =
   | { kind: "idle" }

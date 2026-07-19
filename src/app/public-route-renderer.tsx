@@ -8,7 +8,7 @@ import { PublicAgentRoutePage } from "@/app/public-agent-route";
 import { PublicCommunityRoutePage } from "@/app/public-community-route";
 import { PublicProfileRoutePage } from "@/app/public-profile-route";
 
-export function renderPublicRoute(
+function renderPublicRoute(
   route: Extract<AppRoute, { kind: "public-profile" | "public-agent" | "community" | "post" }>,
 ): React.ReactNode {
   switch (route.kind) {

@@ -23,7 +23,7 @@ import { SettingsSection } from "@/components/compositions/settings/settings-pag
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-export const BOOKING_DURATION_SECONDS = [900, 1800, 2700, 3600] as const;
+const BOOKING_DURATION_SECONDS = [900, 1800, 2700, 3600] as const;
 
 // Display-only formatter; persistence/validation lives in the container (mirrors
 // booking-host-settings-validation). Kept tiny + inline so this composition stays app-layer-free.

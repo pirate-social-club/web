@@ -4,9 +4,9 @@ import type {
   WalletHubToken,
 } from "./wallet-hub.types";
 
-export type WalletFamilyId = "ethereum" | "tempo" | "solana" | "bitcoin" | "cosmos";
+type WalletFamilyId = "ethereum" | "tempo" | "solana" | "bitcoin" | "cosmos";
 
-export type WalletFamily = {
+type WalletFamily = {
   id: WalletFamilyId;
   address: string | null;
   assets: Array<WalletHubToken & { chainId: WalletHubChainId; chainTitle: string }>;
@@ -39,7 +39,7 @@ export type WalletHubAssetRow = {
 
 const usdFormatter = new Intl.NumberFormat("en-US", { currency: "USD", style: "currency" });
 
-export function getWalletFamilyId(chainId: WalletHubChainId): WalletFamilyId {
+function getWalletFamilyId(chainId: WalletHubChainId): WalletFamilyId {
   switch (chainId) {
     case "ethereum":
     case "base":
@@ -54,7 +54,7 @@ export function getWalletFamilyId(chainId: WalletHubChainId): WalletFamilyId {
   }
 }
 
-export function getWalletFamilyTitle(id: WalletFamilyId) {
+function getWalletFamilyTitle(id: WalletFamilyId) {
   if (id === "ethereum") return "Ethereum";
   if (id === "tempo") return "Tempo";
   if (id === "solana") return "Solana";
@@ -62,7 +62,7 @@ export function getWalletFamilyTitle(id: WalletFamilyId) {
   return "Cosmos";
 }
 
-export function getWalletFamilyChainIcon(id: WalletFamilyId): WalletHubChainId {
+function getWalletFamilyChainIcon(id: WalletFamilyId): WalletHubChainId {
   if (id === "ethereum") return "ethereum";
   if (id === "tempo") return "tempo";
   if (id === "solana") return "solana";
@@ -70,11 +70,11 @@ export function getWalletFamilyChainIcon(id: WalletFamilyId): WalletHubChainId {
   return "cosmos";
 }
 
-export function truncateAddress(address: string): string {
+function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-export function buildWalletFamilies({
+function buildWalletFamilies({
   chainSections,
   walletAddress,
 }: {
@@ -140,7 +140,7 @@ function sumFiatValues(values: (string | null | undefined)[]): string | null {
   return usdFormatter.format(total);
 }
 
-export function formatUsdValue(token: WalletHubToken) {
+function formatUsdValue(token: WalletHubToken) {
   if (token.fiatValue) return token.fiatValue;
   if (!token.balance || typeof token.usdPrice !== "number") return null;
   const balance = Number.parseFloat(token.balance.replace(/,/g, ""));
@@ -165,7 +165,7 @@ export function formatTotalBalanceUsd(chainSections: WalletHubChainSection[]): s
   return usdFormatter.format(total);
 }
 
-export function hasNonZeroBalance(token: WalletHubToken): boolean {
+function hasNonZeroBalance(token: WalletHubToken): boolean {
   if (!token.balance) return false;
   const num = Number.parseFloat(token.balance.replace(/,/g, ""));
   return Number.isFinite(num) && num > 0;
@@ -334,7 +334,7 @@ function isRedundantAssetLabel(
   );
 }
 
-export function formatAssetSubtitle(
+function formatAssetSubtitle(
   token: WalletHubToken & { chainId?: WalletHubChainId; chainTitle?: string },
 ) {
   if (!token.chainTitle) return isRedundantAssetLabel(token) ? null : token.name;
@@ -345,7 +345,7 @@ export function formatAssetSubtitle(
   return token.chainTitle;
 }
 
-export function formatTokenBalance(token: WalletHubToken) {
+function formatTokenBalance(token: WalletHubToken) {
   const balance = token.balance?.trim();
   if (!balance) return `0 ${token.symbol}`;
   if (!Number.isFinite(Number.parseFloat(balance.replace(/,/g, "")))) return balance;
@@ -377,7 +377,7 @@ const CHAIN_ORDER_BY_ID: Record<WalletHubChainId, number> = {
   cosmos: 7,
 };
 
-export function sortWalletAssets(assets: WalletFamily["assets"]) {
+function sortWalletAssets(assets: WalletFamily["assets"]) {
   return assets.toSorted((a, b) => {
     const aOrder = TOKEN_ORDER_BY_SYMBOL[a.symbol.toUpperCase()] ?? 100;
     const bOrder = TOKEN_ORDER_BY_SYMBOL[b.symbol.toUpperCase()] ?? 100;

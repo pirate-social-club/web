@@ -42,7 +42,7 @@ function nextSummaryPollDelayMs(success: boolean): number {
   return FAILURE_BACKOFF_MS[index] ?? POLL_INTERVAL_MS;
 }
 
-export function clearUnreadNotificationActivityCount() {
+function clearUnreadNotificationActivityCount() {
   updateSummary((current) => ({
     ...current,
     unread_activity_count: 0,

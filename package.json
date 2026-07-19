@@ -40,7 +40,7 @@
     "test:zkpassport:staging": "bun run scripts/live-zkpassport-staging-smoke.ts",
     "test:e2e:story-derivative-royalty": "bun run scripts/live-story-derivative-royalty-e2e.ts",
     "boundary:audit": "node ./scripts/boundary-audit.mjs",
-    "deadcode:audit": "knip --no-progress",
+    "deadcode:audit": "NODE_OPTIONS=--max-old-space-size=8192 knip --no-progress",
     "deps:audit": "knip --dependencies --no-progress",
     "agents:openclaw:challenge": "node ./scripts/build-openclaw-challenge.mjs",
     "ui:audit": "node ./scripts/ui-audit.mjs",

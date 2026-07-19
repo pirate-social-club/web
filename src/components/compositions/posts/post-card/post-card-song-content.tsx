@@ -559,7 +559,7 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
           className={cn(
             "mt-3",
             !content.streakSummary && "border-t border-border-soft pt-3",
-            primaryActions.length > 1 ? "grid grid-cols-1 gap-3 sm:grid-cols-2" : "grid grid-cols-1",
+            primaryActions.length > 1 ? "grid grid-cols-2 gap-3" : "grid grid-cols-1",
           )}
         >
           {primaryActions}

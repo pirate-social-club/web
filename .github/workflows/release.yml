@@ -21,6 +21,11 @@ on:
         description: Optional deployed API SHA for the focused gate-builder verification
         required: false
         type: string
+      deploy_production:
+        description: Deploy the validated current main commit to production
+        required: false
+        default: false
+        type: boolean
 
 # Serialize releases per ref. cancel-in-progress stays false so a run that is
 # already applying migrations or deploying production is never killed midway;
@@ -598,7 +603,7 @@ jobs:
   production-freshness:
     name: Check release freshness
     needs: [api-staging-contract-gate, release-gate, schema-gate]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_production))
     runs-on: blacksmith-2vcpu-ubuntu-2404
     permissions:
       contents: read
@@ -630,10 +635,9 @@ jobs:
   production:
     name: Deploy production
     needs: [api-staging-contract-gate, release-inputs, release-gate, schema-gate, production-freshness]
-    # Only deploy production on a push to main. This keeps workflow_dispatch on
-    # any branch (e.g. release/* validation) staging-only, so a manual dispatch
-    # can never push an unmerged branch to production.
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.production-freshness.outputs.stale == 'false'
+    # Manual production deploys remain default-off and can only deploy the
+    # validated current main tip after the same freshness and staging gates.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_production)) && needs.production-freshness.outputs.stale == 'false'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     environment: production
     permissions:

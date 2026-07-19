@@ -302,6 +302,7 @@ function buildPreviewPost(
     access: commerce.monetizationState.visible ? "paid" : "free",
     attachment,
     body: getPostComposerPreviewBody(controller),
+    derivativeStep: controller.primary.derivativeState,
     linkPreview: fields.linkPreview,
     liveCoverSrc: liveCoverPreviewUrl,
     liveGuestLabel: controller.primary.liveState.guestUserId ?? undefined,

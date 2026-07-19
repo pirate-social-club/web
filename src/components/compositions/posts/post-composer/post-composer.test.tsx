@@ -1403,6 +1403,49 @@ describe("PostComposer monetization", () => {
     expect(content.type === "video" ? content.aspectRatio : undefined).toBe(9 / 16);
   });
 
+  test("shows the selected source song in the video publish preview", () => {
+    const tree = renderComposer({
+      availableTabs: ["video"],
+      clubName: "Lane1",
+      composerStep: "publish",
+      derivativeStep: {
+        visible: true,
+        trigger: "uses_song",
+        references: [{
+          id: "story:asset:source-song",
+          title: "Midnight Signal",
+          subtitle: "artist.pirate",
+        }],
+        sourceTermsAccepted: true,
+      },
+      mode: "video",
+      titleValue: "Dance clip",
+      video: {
+        primaryVideoLabel: "dance.mp4",
+        primaryVideoUpload: new File(["video"], "dance.mp4", { type: "video/mp4" }),
+      },
+    });
+
+    const previewCard = findElement(
+      tree,
+      (element) => typeof element.type !== "string" && element.type.name === "PostCard",
+    );
+    if (!previewCard) {
+      throw new Error("Missing preview post card");
+    }
+
+    const content = previewCard.props.content as PostCardProps["content"];
+    expect(content).toMatchObject({
+      type: "video",
+      upstreamAttributions: [{
+        assetId: "story:asset:source-song",
+        relationshipType: "references_song",
+        title: "Midnight Signal",
+        artist: "artist.pirate",
+      }],
+    });
+  });
+
   test("renders live publish preview as the live post page surface", () => {
     const tree = renderComposer({
       availableTabs: ["live"],

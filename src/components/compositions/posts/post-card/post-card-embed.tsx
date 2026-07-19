@@ -1,4 +1,5 @@
 import * as React from "react";
+import { normalizeHttpUrl } from "@/lib/http-url";
 import { ArrowSquareOut } from "@phosphor-icons/react";
 
 import { getLocaleMessages } from "@/locales";
@@ -405,7 +406,7 @@ function PredictionMarketEmbed({
         className,
       )}
       data-post-card-interactive="true"
-      href={content.canonicalUrl}
+      href={normalizeHttpUrl(content.canonicalUrl) ?? undefined}
       rel="noopener noreferrer"
       target="_blank"
     >
@@ -551,7 +552,7 @@ export function PostEmbedPreview({ content, className }: { content: EmbedContent
           imageSrc ? "grid-cols-[minmax(0,7fr)_minmax(5rem,3fr)]" : "grid-cols-1",
         )}
         data-post-card-interactive="true"
-        href={content.canonicalUrl}
+        href={normalizeHttpUrl(content.canonicalUrl) ?? undefined}
         rel="noopener noreferrer"
         target="_blank"
       >

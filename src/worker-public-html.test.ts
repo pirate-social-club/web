@@ -46,6 +46,7 @@ describe("public profile HTML", () => {
     const response = renderPublicProfileErrorPage("Not found", "Missing", 404);
 
     expect(response.headers.get("content-security-policy")).toContain("default-src 'none'");
+    expect(response.headers.get("permissions-policy")).toBe("camera=(), microphone=(), geolocation=()");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(response.headers.get("x-frame-options")).toBe("DENY");
   });

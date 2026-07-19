@@ -148,13 +148,13 @@ function formatSidebarRequirement(input: {
       return "Proof of work";
     case "wallet_score":
       if (typeof input.minimumScore === "number") {
-        if (locale === "ar") return `درجة Passport ${input.minimumScore}+`;
-        if (locale === "zh") return `Passport 分数 ${input.minimumScore}+`;
-        return `Passport score ${input.minimumScore}+`;
+        if (locale === "ar") return `درجة Passport.xyz ${input.minimumScore}+`;
+        if (locale === "zh") return `Passport.xyz 分数 ${input.minimumScore}+`;
+        return `Passport.xyz score ${input.minimumScore}+`;
       }
-      if (locale === "ar") return "درجة Passport";
-      if (locale === "zh") return "Passport 分数";
-      return "Passport score";
+      if (locale === "ar") return "درجة Passport.xyz";
+      if (locale === "zh") return "Passport.xyz 分数";
+      return "Passport.xyz score";
     case "erc721_holding": {
       const label = input.contractAddress ? shortenAddress(input.contractAddress) : null;
       const quantity = input.minQuantity ?? 1;

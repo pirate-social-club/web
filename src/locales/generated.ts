@@ -24,8 +24,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "ageOver18": "18+ ID check",
         "minimumAge": "{age}+ ID check",
         "walletScore": {
-          "withScore": "Passport score {minimumScore}+",
-          "withoutScore": "Passport score"
+          "withScore": "Passport.xyz score {minimumScore}+",
+          "withoutScore": "Passport.xyz score"
         },
         "altchaPow": "Browser anti-bot check",
         "erc721Holding": {
@@ -2030,8 +2030,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "ageOver18": "يتطلب التحقق من أن عمرك 18+",
         "minimumAge": "يتطلب التحقق من أن عمرك {age}+",
         "walletScore": {
-          "withScore": "يتطلب درجة Passport {minimumScore}+",
-          "withoutScore": "يتطلب درجة Passport"
+          "withScore": "يتطلب درجة Passport.xyz {minimumScore}+",
+          "withoutScore": "يتطلب درجة Passport.xyz"
         },
         "altchaPow": "يتطلب فحص إثبات العمل",
         "erc721Holding": {
@@ -4036,8 +4036,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "ageOver18": "需要 18+ 验证",
         "minimumAge": "需要 {age}+ 验证",
         "walletScore": {
-          "withScore": "需要 Passport 分数 {minimumScore}+",
-          "withoutScore": "需要 Passport 分数"
+          "withScore": "需要 Passport.xyz 分数 {minimumScore}+",
+          "withoutScore": "需要 Passport.xyz 分数"
         },
         "altchaPow": "需要工作量证明检查",
         "erc721Holding": {

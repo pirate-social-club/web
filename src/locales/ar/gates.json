@@ -17,8 +17,8 @@
     "ageOver18": "يتطلب التحقق من أن عمرك 18+",
     "minimumAge": "يتطلب التحقق من أن عمرك {age}+",
     "walletScore": {
-      "withScore": "يتطلب درجة Passport {minimumScore}+",
-      "withoutScore": "يتطلب درجة Passport"
+      "withScore": "يتطلب درجة Passport.xyz {minimumScore}+",
+      "withoutScore": "يتطلب درجة Passport.xyz"
     },
     "altchaPow": "يتطلب فحص إثبات العمل",
     "erc721Holding": {

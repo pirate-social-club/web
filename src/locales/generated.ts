@@ -17,13 +17,15 @@ export const GENERATED_LOCALE_CATALOGS = {
         },
         "uniqueHuman": {
           "very": "Palm scan",
-          "self": "Real person check"
+          "self": "Private ID proof",
+          "zkpassport": "ZKPassport proof",
+          "any": "Human proof"
         },
         "ageOver18": "18+ ID check",
         "minimumAge": "{age}+ ID check",
         "walletScore": {
-          "withScore": "Passport Score {minimumScore}+",
-          "withoutScore": "Passport Score"
+          "withScore": "Passport score {minimumScore}+",
+          "withoutScore": "Passport score"
         },
         "altchaPow": "Browser anti-bot check",
         "erc721Holding": {
@@ -2020,8 +2022,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           "adminWithValue": "يتطلب علامة الجنس في وثيقة الهوية: {requiredValue}"
         },
         "uniqueHuman": {
-          "very": "يتطلب فحص راحة اليد",
-          "self": "يتطلب التحقق من أنك إنسان"
+          "very": "فحص راحة اليد",
+          "self": "إثبات هوية خاص",
+          "zkpassport": "إثبات ZKPassport",
+          "any": "إثبات أنك إنسان"
         },
         "ageOver18": "يتطلب التحقق من أن عمرك 18+",
         "minimumAge": "يتطلب التحقق من أن عمرك {age}+",
@@ -4024,8 +4028,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           "adminWithValue": "需要证件性别标记 {requiredValue}"
         },
         "uniqueHuman": {
-          "very": "需要掌纹扫描",
-          "self": "需要真人验证"
+          "very": "掌纹扫描",
+          "self": "私密身份证明",
+          "zkpassport": "ZKPassport 证明",
+          "any": "真人证明"
         },
         "ageOver18": "需要 18+ 验证",
         "minimumAge": "需要 {age}+ 验证",

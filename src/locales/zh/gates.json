@@ -9,8 +9,10 @@
       "adminWithValue": "需要证件性别标记 {requiredValue}"
     },
     "uniqueHuman": {
-      "very": "需要掌纹扫描",
-      "self": "需要真人验证"
+      "very": "掌纹扫描",
+      "self": "私密身份证明",
+      "zkpassport": "ZKPassport 证明",
+      "any": "真人证明"
     },
     "ageOver18": "需要 18+ 验证",
     "minimumAge": "需要 {age}+ 验证",

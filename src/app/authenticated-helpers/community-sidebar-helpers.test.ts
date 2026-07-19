@@ -194,6 +194,10 @@ describe("buildCommunitySidebarRequirements", () => {
     expect(buildCommunitySidebarRequirements({
       gateSummaries: [{ gate_type: "unique_human", accepted_providers: ["self", "very"] }],
     })).toEqual(["Human proof"]);
+
+    expect(buildCommunitySidebarRequirements({
+      gateSummaries: [{ gate_type: "unique_human", accepted_providers: ["zkpassport"] }],
+    })).toEqual(["ZKPassport proof"]);
   });
 
   test("falls back to English labels when locale is omitted", () => {

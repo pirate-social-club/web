@@ -531,7 +531,9 @@ jobs:
           EXPECTED_API_SHA: ${{ inputs.expected_staging_api_sha }}
           EXPECTED_WEB_SHA: ${{ inputs.expected_staging_web_sha }}
         run: |
-          node -e 'Promise.all([["https://staging.pirate.sc/__version",process.env.EXPECTED_WEB_SHA],["https://api-staging.pirate.sc/__version",process.env.EXPECTED_API_SHA]].map(async ([url,sha])=>{const body=await fetch(url).then(r=>r.json());if(!String(body.git_sha).startsWith(sha.slice(0,7)))throw new Error(`${url} expected ${sha}, got ${body.git_sha}`)}))'
+          node scripts/verify-deployed-versions.mjs \
+            https://staging.pirate.sc/__version "$EXPECTED_WEB_SHA" \
+            https://api-staging.pirate.sc/__version "$EXPECTED_API_SHA"
       - name: Fetch staging moderator browser verification secret
         working-directory: core
         env:
@@ -769,3 +771,12 @@ jobs:
           VITE_REWARDS_ENABLED: "true"
           VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
         run: scripts/deploy-production.sh --confirm-production --skip-tests
+      - name: Verify production release metadata
+        working-directory: web
+        env:
+          EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          EXPECTED_WEB_SHA: ${{ github.sha }}
+        run: |
+          node scripts/verify-deployed-versions.mjs \
+            https://pirate.sc/__version "$EXPECTED_WEB_SHA" \
+            https://api.pirate.sc/__version "$EXPECTED_API_SHA"

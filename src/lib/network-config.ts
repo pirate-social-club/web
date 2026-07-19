@@ -121,7 +121,8 @@ function resolveStoryNetwork(appEnvironment: PirateAppEnvironment, readEnv: Netw
     return "story-aeneid";
   }
 
-  return appEnvironment === "prod" ? "story-aeneid" : "story-aeneid";
+  // Production deliberately remains on Aeneid until the catalog is re-registered on Story Mainnet.
+  return "story-aeneid";
 }
 
 function resolveEfpEnvironment(

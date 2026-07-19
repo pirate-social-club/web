@@ -9,12 +9,9 @@ import type { MembershipGateExpressionSummary as ApiMembershipGateExpressionSumm
 import type { CommunitySidebarGateItem, CommunitySidebarRule } from "@/components/compositions/community/sidebar/community-sidebar.types";
 import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
-import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
 import { formatGateRequirement, hasActionTimeCheck, isJoinSurfaceGate } from "@/lib/identity-gates";
-import { formatCompactAddress } from "@/lib/formatting/address";
 import { flattenGatePolicyAtoms, getGatePolicyMatchMode, isFlatOrGateExpression } from "@/lib/gate-policy-utils";
 import { deriveGateStatuses } from "@/lib/community-gate-statuses";
-import { formatAssetAmount } from "@/lib/asset-amount";
 
 type SidebarGateSummary = Pick<
   ApiMembershipGateSummary,
@@ -44,49 +41,6 @@ function normalizeCommunityMembershipMode(mode: ApiCommunity["membership_mode"] 
   return mode === "request" ? "request" : "gated";
 }
 
-function getRequirementLocale(locale: string | null | undefined): "ar" | "zh" | "en" {
-  const normalized = String(locale ?? "").toLowerCase();
-  if (normalized.startsWith("ar")) return "ar";
-  if (normalized.startsWith("zh")) return "zh";
-  return "en";
-}
-
-function getCountryDisplayName(requiredValue: string, locale: string | null | undefined): string {
-  return getLocalizedCountryDisplayName(requiredValue, locale) ?? requiredValue;
-}
-
-function shortenAddress(address: string): string {
-  return formatCompactAddress(address);
-}
-
-/**
- * Renders an asset-balance requirement as a human amount, e.g. `0.5 ETH`.
- *
- * Returns null unless the summary carries everything needed to be exact. The
- * atomic amount is meaningless without its asset's decimals, so a partial
- * summary must degrade to a vaguer label rather than guess a scale.
- */
-function formatBalanceGateAmount(input: {
-  assetDecimals?: number | null;
-  assetSymbol?: string | null;
-  minAmountAtomic?: string | null;
-}): string | null {
-  if (!input.minAmountAtomic || typeof input.assetDecimals !== "number" || !input.assetSymbol) return null;
-  const amount = formatAssetAmount(input.minAmountAtomic, input.assetDecimals);
-  return amount ? `${amount} ${input.assetSymbol}` : null;
-}
-
-function formatInventoryAssetLabel(input: {
-  assetFilterLabel?: string | null;
-  assetCategory?: string | null;
-  minQuantity?: number | null;
-}): string {
-  if (input.assetFilterLabel?.trim()) return input.assetFilterLabel.trim();
-  const plural = (input.minQuantity ?? 1) !== 1;
-  if (input.assetCategory === "watch") return plural ? "watches" : "watch";
-  return plural ? "cards" : "card";
-}
-
 function formatSidebarRequirement(input: {
   acceptedProviders?: ApiMembershipGateSummary["accepted_providers"];
   assetCategory?: string | null;
@@ -103,94 +57,21 @@ function formatSidebarRequirement(input: {
   minQuantity?: number | null;
   locale?: string | null;
 }): string | null {
-  const locale = getRequirementLocale(input.locale);
-
-  switch (input.gateType) {
-    case "nationality": {
-      const requiredValues = input.requiredValues?.length ? input.requiredValues : input.requiredValue ? [input.requiredValue] : [];
-      if (requiredValues.length === 0) {
-        if (locale === "ar") return "التحقق من الجنسية";
-        if (locale === "zh") return "国籍验证";
-        return "Nationality verification";
-      }
-      const countries = requiredValues.map((value) => getCountryDisplayName(value, input.locale)).join(", ");
-      if (locale === "ar") return `جنسية ${countries}`;
-      if (locale === "zh") return `${countries} 国籍`;
-      return `${countries} nationality`;
-    }
-    case "gender":
-      if (locale === "ar") {
-        return input.requiredValue
-          ? `علامة الجنس في الوثيقة ${input.requiredValue}`
-          : "علامة الجنس في الوثيقة";
-      }
-      if (locale === "zh") {
-        return input.requiredValue
-          ? `证件性别标记 ${input.requiredValue}`
-          : "证件性别标记";
-      }
-      return input.requiredValue
-        ? `Document sex marker ${input.requiredValue}`
-        : "Document sex marker";
-    case "age_over_18":
-      return "18+";
-    case "minimum_age":
-      return `${input.requiredMinimumAge ?? 18}+`;
-    case "unique_human": {
-      return formatGateRequirement({
-        accepted_providers: input.acceptedProviders,
-        gate_type: "unique_human",
-      }, { locale: input.locale });
-    }
-    case "altcha_pow":
-      if (locale === "ar") return "إثبات العمل";
-      if (locale === "zh") return "工作量证明";
-      return "Proof of work";
-    case "wallet_score":
-      if (typeof input.minimumScore === "number") {
-        if (locale === "ar") return `درجة Passport.xyz ${input.minimumScore}+`;
-        if (locale === "zh") return `Passport.xyz 分数 ${input.minimumScore}+`;
-        return `Passport.xyz score ${input.minimumScore}+`;
-      }
-      if (locale === "ar") return "درجة Passport.xyz";
-      if (locale === "zh") return "Passport.xyz 分数";
-      return "Passport.xyz score";
-    case "erc721_holding": {
-      const label = input.contractAddress ? shortenAddress(input.contractAddress) : null;
-      const quantity = input.minQuantity ?? 1;
-      if (label) {
-        if (locale === "ar") return `${quantity} NFT على إيثريوم من ${label}`;
-        if (locale === "zh") return `${quantity} 个来自 ${label} 的以太坊 NFT`;
-        return `${quantity} Ethereum NFT${quantity === 1 ? "" : "s"} from ${label}`;
-      }
-      if (locale === "ar") return `${quantity} NFT على إيثريوم`;
-      if (locale === "zh") return `${quantity} 个以太坊 NFT`;
-      return `${quantity} Ethereum NFT${quantity === 1 ? "" : "s"}`;
-    }
-    case "erc721_inventory_match": {
-      const quantity = String(input.minQuantity ?? 1);
-      const assetLabel = formatInventoryAssetLabel(input);
-      if (locale === "ar") return `${quantity} مقتنيات Courtyard ${assetLabel}`;
-      if (locale === "zh") return `${quantity} Courtyard ${assetLabel}`;
-      return `${quantity} Courtyard ${assetLabel}`;
-    }
-    case "asset_balance": {
-      const amount = formatBalanceGateAmount(input);
-      // Symbol and decimals ride on the API summary. Without them an atomic
-      // integer cannot be rendered as an amount at all, so say only what is
-      // known rather than showing raw atomic units as if they were tokens.
-      if (!amount) {
-        if (locale === "ar") return "رصيد رمز مطلوب";
-        if (locale === "zh") return "需要代币余额";
-        return "Token balance required";
-      }
-      if (locale === "ar") return `${amount} على الأقل`;
-      if (locale === "zh") return `至少 ${amount}`;
-      return `At least ${amount}`;
-    }
-    default:
-      return null;
-  }
+  return formatGateRequirement({
+    accepted_providers: input.acceptedProviders,
+    asset_category: input.assetCategory,
+    asset_decimals: input.assetDecimals,
+    asset_filter_label: input.assetFilterLabel,
+    asset_symbol: input.assetSymbol,
+    contract_address: input.contractAddress,
+    gate_type: input.gateType as ApiMembershipGateSummary["gate_type"],
+    min_amount_atomic: input.minAmountAtomic,
+    min_quantity: input.minQuantity,
+    minimum_score: input.minimumScore,
+    required_minimum_age: input.requiredMinimumAge,
+    required_value: input.requiredValue,
+    required_values: input.requiredValues,
+  }, { locale: input.locale, presentation: "compact" });
 }
 
 function formatGateExpressionLabel(

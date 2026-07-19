@@ -71,14 +71,14 @@ function shortenAddress(address: string): string {
   return formatCompactAddress(address);
 }
 
-function formatInventoryAssetLabel(gate: MembershipGateSummary): string {
+function formatInventoryAssetLabel(gate: MembershipGateSummary, pluralize = false): string {
   if (gate.asset_filter_label?.trim()) {
     return gate.asset_filter_label.trim();
   }
   if (gate.asset_category === "watch") {
-    return "watch";
+    return pluralize && (gate.min_quantity ?? 1) !== 1 ? "watches" : "watch";
   }
-  return "card";
+  return pluralize && (gate.min_quantity ?? 1) !== 1 ? "cards" : "card";
 }
 
 function getVisibleSelfCapabilities(capabilities: MissingCapability[]): MissingCapability[] {
@@ -205,12 +205,18 @@ export function isPowSatisfiableGate(
 
 export function formatGateRequirement(
   gate: MembershipGateSummary,
-  options?: { audience?: IdentityGateAudience; locale?: string | null; provider?: RequirementProviderContext },
+  options?: {
+    audience?: IdentityGateAudience;
+    locale?: string | null;
+    presentation?: "requirement" | "compact";
+    provider?: RequirementProviderContext;
+  },
 ): string {
   const audience = options?.audience ?? "public";
   const locale = resolveGateLocale(options?.locale);
   const provider = options?.provider ?? null;
   const copy = getLocaleMessages(locale, "gates").requirements;
+  const compact = options?.presentation === "compact" ? copy.compact : null;
 
   switch (gate.gate_type) {
     case "nationality": {
@@ -221,11 +227,16 @@ export function formatGateRequirement(
           return audience === "admin" ? `${country} (${value})` : country;
         });
         const countryLabel = joinWithAnd(countries, locale);
-        return copy.nationality.withValues.replace("{countryLabel}", countryLabel);
+        return (compact?.nationality.withValues ?? copy.nationality.withValues).replace("{countryLabel}", countryLabel);
       }
-      return copy.nationality.withoutValues;
+      return compact?.nationality.withoutValues ?? copy.nationality.withoutValues;
     }
     case "gender": {
+      if (compact) {
+        return gate.required_value
+          ? compact.gender.withValue.replace("{requiredValue}", gate.required_value)
+          : compact.gender.withoutValue;
+      }
       if (audience === "admin" && gate.required_value) {
         return copy.gender.adminWithValue.replace("{requiredValue}", gate.required_value);
       }
@@ -239,21 +250,31 @@ export function formatGateRequirement(
       return copy.uniqueHuman.any;
     }
     case "age_over_18":
-      return copy.ageOver18;
+      return compact?.ageOver18 ?? copy.ageOver18;
     case "minimum_age": {
       const age = String(gate.required_minimum_age ?? 18);
-      return copy.minimumAge.replace("{age}", age);
+      return (compact?.minimumAge ?? copy.minimumAge).replace("{age}", age);
     }
     case "wallet_score": {
       if (typeof gate.minimum_score === "number") {
-        return copy.walletScore.withScore.replace("{minimumScore}", String(gate.minimum_score));
+        return (compact?.walletScore.withScore ?? copy.walletScore.withScore)
+          .replace("{minimumScore}", String(gate.minimum_score));
       }
-      return copy.walletScore.withoutScore;
+      return compact?.walletScore.withoutScore ?? copy.walletScore.withoutScore;
     }
     case "altcha_pow":
-      return copy.altchaPow;
+      return compact?.altchaPow ?? copy.altchaPow;
     case "erc721_holding": {
       const label = gate.contract_address ? shortenAddress(gate.contract_address) : null;
+      if (compact) {
+        const quantity = String(gate.min_quantity ?? 1);
+        const nftLabel = (gate.min_quantity ?? 1) === 1 ? "NFT" : "NFTs";
+        const template = label ? compact.erc721Holding.withLabel : compact.erc721Holding.withoutLabel;
+        return template
+          .replace("{quantity}", quantity)
+          .replace("{nftLabel}", nftLabel)
+          .replace("{label}", label ?? "");
+      }
       if (label) {
         return copy.erc721Holding.withLabel.replace("{label}", label);
       }
@@ -261,22 +282,24 @@ export function formatGateRequirement(
     }
     case "erc721_inventory_match": {
       const quantity = String(gate.min_quantity ?? 1);
-      const assetLabel = formatInventoryAssetLabel(gate);
-      return copy.erc721InventoryMatch.replace("{quantity}", quantity).replace("{assetLabel}", assetLabel);
+      const assetLabel = formatInventoryAssetLabel(gate, Boolean(compact));
+      return (compact?.erc721InventoryMatch ?? copy.erc721InventoryMatch)
+        .replace("{quantity}", quantity)
+        .replace("{assetLabel}", assetLabel);
     }
     case "asset_balance": {
       if (gate.min_amount_atomic && typeof gate.asset_decimals === "number" && gate.asset_symbol) {
         const amount = formatAssetAmount(gate.min_amount_atomic, gate.asset_decimals);
         if (amount) {
-          return copy.assetBalance.withAmount
+          return (compact?.assetBalance.withAmount ?? copy.assetBalance.withAmount)
             .replace("{amount}", amount)
             .replace("{symbol}", gate.asset_symbol);
         }
       }
-      return copy.assetBalance.withoutAmount;
+      return compact?.assetBalance.withoutAmount ?? copy.assetBalance.withoutAmount;
     }
     default:
-      return copy.fallback.replace("{gateType}", gate.gate_type);
+      return (compact?.fallback ?? copy.fallback).replace("{gateType}", gate.gate_type);
   }
 }
 

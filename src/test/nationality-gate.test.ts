@@ -98,6 +98,25 @@ describe("formatGateRequirement", () => {
     expect(formatGateRequirement(gate)).toBe("Passport.xyz score 20+");
   });
 
+  test("keeps compact sidebar labels behind the shared formatter", () => {
+    expect(formatGateRequirement(
+      { gate_type: "altcha_pow" },
+      { presentation: "compact" },
+    )).toBe("Proof of work");
+    expect(formatGateRequirement(
+      { gate_type: "erc721_holding", min_quantity: 2, contract_address: "0x1111111111111111111111111111111111111111" },
+      { presentation: "compact" },
+    )).toBe("2 Ethereum NFTs from 0x1111...1111");
+    expect(formatGateRequirement(
+      { gate_type: "erc721_inventory_match", min_quantity: 3, asset_category: "trading_card" },
+      { presentation: "compact" },
+    )).toBe("3 Courtyard cards");
+    expect(formatGateRequirement(
+      { gate_type: "asset_balance" },
+      { presentation: "compact" },
+    )).toBe("Token balance required");
+  });
+
 });
 
 describe("getJoinCtaLabel", () => {

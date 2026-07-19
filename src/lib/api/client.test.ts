@@ -1320,6 +1320,7 @@ describe("ApiClient media uploads", () => {
         body: "Top level",
       }, { altchaPayload: "comment-proof" });
       await client.posts.vote("pst_test", 1, { altchaPayload: "post-vote-proof" });
+      await client.posts.clearVote("pst_test", { altchaPayload: "post-clear-proof" });
       await client.comments.vote("cmt_vote", -1, { altchaPayload: "comment-vote-proof" });
       await client.comments.createReply("cmt_reply", {
         body: "Reply body",
@@ -1330,9 +1331,11 @@ describe("ApiClient media uploads", () => {
       expect(requests[1]?.headers.get("x-pirate-altcha")).toBe("post-proof");
       expect(requests[2]?.headers.get("x-pirate-altcha")).toBe("comment-proof");
       expect(requests[3]?.headers.get("x-pirate-altcha")).toBe("post-vote-proof");
-      expect(requests[4]?.headers.get("x-pirate-altcha")).toBe("comment-vote-proof");
-      expect(requests[5]?.headers.has("x-pirate-altcha")).toBe(false);
+      expect(requests[4]?.headers.get("x-pirate-altcha")).toBe("post-clear-proof");
+      expect(requests[4]?.url).toEndWith("/posts/pst_test/clear_vote");
+      expect(requests[5]?.headers.get("x-pirate-altcha")).toBe("comment-vote-proof");
       expect(requests[6]?.headers.has("x-pirate-altcha")).toBe(false);
+      expect(requests[7]?.headers.has("x-pirate-altcha")).toBe(false);
     } finally {
       globalThis.fetch = originalFetch;
     }

@@ -10,6 +10,7 @@ import {
   updateCommunityPostVote,
   type PostVoteOptions,
   type PostVoteValue,
+  type ClearPostVote,
 } from "@/app/authenticated-helpers/post-vote";
 import type {
   CommunityGateData,
@@ -38,10 +39,12 @@ export interface UseCommunityVoteActionOptions {
   runGatedCommunityAction: RunGatedCommunityAction;
   setPosts: React.Dispatch<React.SetStateAction<ApiPost[]>>;
   vote: VotePost;
+  clearVote: ClearPostVote;
 }
 
 export function useCommunityVoteAction({
   buildBlockedModalState,
+  clearVote,
   communityId,
   gateData,
   locale,
@@ -63,16 +66,12 @@ export function useCommunityVoteAction({
       if (!previousPost) {
         return;
       }
-      if (!direction) {
-        return;
-      }
-
       const resolvedCommunityId = communityId ?? previousPost.post.community;
       if (!resolvedCommunityId) {
         return;
       }
 
-      const voteValue = toPostVoteValue(direction);
+      const voteValue = direction ? toPostVoteValue(direction) : "clear";
       try {
         await runGatedCommunityAction({
           action: "vote_post",
@@ -82,6 +81,7 @@ export function useCommunityVoteAction({
           onAllowed: async (context) => {
             await submitOptimisticPostVote({
               altchaPayload: context?.altchaPayload,
+              clearVote,
               direction,
               locale,
               onApply: (nextValue) =>
@@ -111,6 +111,7 @@ export function useCommunityVoteAction({
     },
     [
       buildBlockedModalState,
+      clearVote,
       communityId,
       gateData,
       locale,

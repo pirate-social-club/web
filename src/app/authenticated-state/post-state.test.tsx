@@ -297,6 +297,7 @@ describe("usePost", () => {
 
     let resolveVote: ((response: { value: 1 }) => void) | null = null;
     const pendingVote = submitOptimisticPostVote({
+      clearVote: async () => ({ value: null }),
       direction: "up",
       locale: "es",
       onApply: () => undefined,

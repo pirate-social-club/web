@@ -602,6 +602,7 @@ export function PublicCommunityRoutePage({
   );
 
   const voteOnPost = useCommunityVoteAction({
+    clearVote: api.posts.clearVote,
     buildBlockedModalState: buildBlockedModalState ?? undefined,
     communityId: preview?.id ?? communityId,
     gateData: preview && eligibility

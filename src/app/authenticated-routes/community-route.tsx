@@ -590,6 +590,7 @@ export function CommunityPage({
 
   const voteOnPost = useCommunityVoteAction({
     buildBlockedModalState,
+    clearVote: api.posts.clearVote,
     communityId,
     gateData: voteGateData,
     locale: contentLocale,

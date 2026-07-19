@@ -129,6 +129,7 @@ export function PostCardEngagementBar({
         </button>
       ) : (
         <VotePill
+          allowClear
           busy={voteBusy}
           className="shrink-0 justify-center"
           score={score}

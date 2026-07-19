@@ -709,6 +709,26 @@ describe("useGatedActionRunner", () => {
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:1:vote");
   });
 
+  test("binds cleared post votes to the clear action proof", async () => {
+    const runner = renderRunner({
+      gateData: gate("already_joined", {}, [altchaRequirement]),
+    });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: () => undefined,
+        postId: "post-1",
+        voteValue: "clear",
+      });
+      expect(result).toBe("blocked");
+    });
+
+    expect(runner.pendingInteraction?.altchaScope).toBe("vote");
+    expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:clear:vote");
+  });
+
   test("blocks Altcha-gated comment votes for a vote-bound proof", async () => {
     const runner = renderRunner({
       gateData: gate("already_joined", {}, [altchaRequirement]),

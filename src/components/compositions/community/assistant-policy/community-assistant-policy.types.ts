@@ -5,15 +5,15 @@ export type CommunityAssistantSubmitState =
 
 export type AssistantContextMode = "live_sql" | "summary_cache" | "hybrid_vector";
 
-export type AssistantActionMode = "answer_only" | "draft_only" | "confirmed_writes";
+type AssistantActionMode = "answer_only" | "draft_only" | "confirmed_writes";
 
 export type AssistantVoiceMode = "off" | "transcription_only" | "voice_replies" | "text_and_voice_replies";
 
-export type AssistantSttProvider = "elevenlabs" | "mistral" | "openai" | "none";
+type AssistantSttProvider = "elevenlabs" | "mistral" | "openai" | "none";
 
-export type AssistantTtsProvider = "elevenlabs" | "none";
+type AssistantTtsProvider = "elevenlabs" | "none";
 
-export type AssistantRetentionMode = "per_user_private" | "community_visible_to_mods" | "ephemeral";
+type AssistantRetentionMode = "per_user_private" | "community_visible_to_mods" | "ephemeral";
 
 export type AssistantProviderKeyStatus =
   | { kind: "missing" }
@@ -23,7 +23,7 @@ export type AssistantProviderKeyStatus =
 export type AssistantOpenRouterKeyStatus = AssistantProviderKeyStatus;
 export type AssistantElevenLabsKeyStatus = AssistantProviderKeyStatus;
 
-export type AssistantModelOption = {
+type AssistantModelOption = {
   contextLength?: number;
   createdAt?: string;
   id: string;
@@ -33,7 +33,7 @@ export type AssistantModelOption = {
   outputCostUsdPerMillionTokens?: number;
 };
 
-export type AssistantContextSources = {
+type AssistantContextSources = {
   communityProfile: boolean;
   rules: boolean;
   referenceLinks: boolean;

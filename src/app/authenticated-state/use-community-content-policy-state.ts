@@ -18,7 +18,7 @@ function isValidHexColor(value: string): boolean {
   return /^#[0-9a-fA-F]{6}$/.test(value.trim());
 }
 
-export function getCommunityLabelDrafts(
+function getCommunityLabelDrafts(
   community: ApiCommunity | null,
 ): LabelEditorDefinition[] {
   return community?.label_policy?.definitions
@@ -32,7 +32,7 @@ export function getCommunityLabelDrafts(
     })) ?? [];
 }
 
-export function getLabelValidationError(
+function getLabelValidationError(
   labelsEnabled: boolean,
   labels: LabelEditorDefinition[],
 ): string | null {
@@ -62,7 +62,7 @@ export function getLabelValidationError(
   return null;
 }
 
-export function getCommunityRuleDrafts(community: ApiCommunity | null): RuleDraft[] {
+function getCommunityRuleDrafts(community: ApiCommunity | null): RuleDraft[] {
   return (community?.community_profile?.rules ?? []).map((rule) => ({
     id: rule.id,
     existingRuleId: rule.id,

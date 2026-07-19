@@ -13,9 +13,9 @@ import type { InventoryAssetMatchValidationError } from "./gate-inventory-valida
  * accepts, which would block a moderator from saving a legitimate rule. Both directions matter.
  */
 
-export const MIN_AGE = 18;
-export const MAX_AGE = 125;
-export const DOCUMENT_PROOF_PROVIDERS = ["self", "zkpassport"] as const;
+const MIN_AGE = 18;
+const MAX_AGE = 125;
+const DOCUMENT_PROOF_PROVIDERS = ["self", "zkpassport"] as const;
 
 export type GateAtomValidationError = InventoryAssetMatchValidationError | {
   code:
@@ -65,7 +65,7 @@ function isValidCountryCode(value: unknown): boolean {
  * acceptance behaviour matches. Deliberately NOT viem's `isAddress`, whose strict mode rejects a
  * non-checksummed mixed-case address the API accepts — that would block legitimate rules.
  */
-export function normalizeContractAddress(value: unknown): string | null {
+function normalizeContractAddress(value: unknown): string | null {
   if (typeof value !== "string" || value.trim().length === 0) {
     return null;
   }

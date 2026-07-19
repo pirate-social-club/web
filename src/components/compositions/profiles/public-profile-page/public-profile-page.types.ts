@@ -3,7 +3,7 @@ import type { SongItemData } from "@/components/compositions/profiles/song-item/
 
 export type PublicProfileTab = "posts" | "songs" | "videos" | "about";
 
-export interface PublicProfileCommunity {
+interface PublicProfileCommunity {
   label: string;
   href?: string;
 }

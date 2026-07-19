@@ -41,7 +41,7 @@ export interface AppSidebarPrimaryItem {
   onSelect?: () => void;
 }
 
-export interface AppSidebarSectionItem {
+interface AppSidebarSectionItem {
   avatarSrc?: string | null;
   icon?: SidebarIcon;
   id: string;

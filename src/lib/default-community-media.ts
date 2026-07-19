@@ -96,7 +96,7 @@ export function resolveCommunityAvatarSrc(input: {
   return avatarSrc || buildDefaultCommunityAvatarSrc(input);
 }
 
-export function buildDefaultCommunityBannerSrc(input: {
+function buildDefaultCommunityBannerSrc(input: {
   communityId: string;
   displayName: string;
 }): string {

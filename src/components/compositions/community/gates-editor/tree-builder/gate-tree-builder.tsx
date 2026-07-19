@@ -75,7 +75,7 @@ export type GateTreeBuilderProps = {
   value: GateBuilderGroupDraft;
 };
 
-export const GATE_LABEL_BINDING_PLACEHOLDER = "{label}";
+const GATE_LABEL_BINDING_PLACEHOLDER = "{label}";
 
 const LabelBindingContext = React.createContext(false);
 
@@ -1285,7 +1285,7 @@ export function serializeFacetSelection(values: string[], maxValues: number): In
   return selected.length === 1 ? selected[0]! : selected;
 }
 
-export function facetValueSuggestions(value: InventoryFacetValue | undefined): FacetValueSuggestion[] {
+function facetValueSuggestions(value: InventoryFacetValue | undefined): FacetValueSuggestion[] {
   if (value == null) return [];
   return (Array.isArray(value) ? value : [value]).map((item) => ({ value: item }));
 }

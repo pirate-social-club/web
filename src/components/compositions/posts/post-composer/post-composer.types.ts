@@ -14,9 +14,9 @@ export type AttachmentState =
   | { kind: "live" }
   | null;
 
-export type ComposerUploadValue = { name: string; previewUrl?: string } | null;
+type ComposerUploadValue = { name: string; previewUrl?: string } | null;
 
-export interface SongDetailsState {
+interface SongDetailsState {
   canvasVideo: ComposerUploadValue;
   coverArt: ComposerUploadValue;
   genre: string;
@@ -46,7 +46,7 @@ export type LiveRoomKind = "solo" | "duet";
 
 export type LiveAccessMode = "free" | "gated" | "paid";
 
-export type LiveAudienceGateMode = "community_members" | "purchase_entitlement";
+type LiveAudienceGateMode = "community_members" | "purchase_entitlement";
 
 export type LiveVisibility = "public" | "unlisted";
 
@@ -55,20 +55,20 @@ export type AuthorAgeGatePolicy = "none" | "18_plus";
 
 export type LiveSetlistItemKind = "original" | "cover" | "remix" | "dj_playback" | "unknown";
 
-export interface LivePerformerAllocation {
+interface LivePerformerAllocation {
   userId: string;
   role: "host" | "guest";
   sharePct: number;
 }
 
-export type DerivativeTrigger = "remix" | "declaration" | "uses_song";
+type DerivativeTrigger = "remix" | "declaration" | "uses_song";
 
 export type { AnonymousIdentityScope };
 
 export type IdentityMode = "public" | "anonymous";
 export type AuthorMode = "human" | "agent";
 
-export interface QualifierOption {
+interface QualifierOption {
   qualifierId: string;
   label: string;
   description?: string;
@@ -132,7 +132,7 @@ export interface ComposerEventState {
   place?: ComposerEventPlace;
 }
 
-export interface DerivativeLicenseSummary {
+interface DerivativeLicenseSummary {
   sourceLicense?: string;
   upstreamRoyaltyPct?: number;
   parentIpId?: string;
@@ -154,7 +154,7 @@ export interface DerivativeStepState {
   sourceTermsAccepted?: boolean;
 }
 
-export interface MoreOptionsState {
+interface MoreOptionsState {
   open?: boolean;
 }
 
@@ -205,7 +205,7 @@ export interface AssetLicenseState {
   commercialRevSharePct?: number;
 }
 
-export interface AssetRoyaltyAllocation {
+interface AssetRoyaltyAllocation {
   id: string;
   recipientKind: "creator" | "collaborator";
   walletAddress?: string;
@@ -281,7 +281,7 @@ export interface ComposerIdentityState {
   helpText?: string;
 }
 
-export interface PostComposerDraftState {
+interface PostComposerDraftState {
   mode: ComposerTab;
   titleValue?: string;
   titleCountLabel?: string;
@@ -309,7 +309,7 @@ export interface PostComposerDraftState {
   regionalPricingPreview?: RegionalPricingPreview | null;
 }
 
-export interface PostComposerDraftActions {
+interface PostComposerDraftActions {
   onCaptionValueChange?: (value: string) => void;
   onImageUploadChange?: (file: File | null) => void;
   onTextBodyValueChange?: (value: string) => void;
@@ -335,7 +335,7 @@ export interface PostComposerDraftActions {
   onEventChange?: (value: ComposerEventState) => void;
 }
 
-export interface PostComposerSubmitState {
+interface PostComposerSubmitState {
   canContinue?: boolean;
   canPost?: boolean;
   disabled?: boolean;

@@ -8,7 +8,7 @@ import {
   type PirateConnectedEvmWallet,
 } from "@/lib/auth/privy-wallet";
 
-export const EMBEDDED_WALLET_RECONCILE_DELAYS_MS = [0, 1_000, 3_000] as const;
+const EMBEDDED_WALLET_RECONCILE_DELAYS_MS = [0, 1_000, 3_000] as const;
 
 export function getEmbeddedWalletReconcileKey(
   session: StoredSession | null,

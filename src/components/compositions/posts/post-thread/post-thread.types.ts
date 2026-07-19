@@ -2,7 +2,7 @@ import type { CommunityAuthorRole, PostCardProps } from "@/components/compositio
 
 export type PostThreadAuthorMode = "human" | "agent";
 export type PostThreadIdentityMode = "public" | "anonymous";
-export type PostThreadAnonymousScope = "community_stable" | "thread_stable";
+type PostThreadAnonymousScope = "community_stable" | "thread_stable";
 export type PostThreadSubmitResult = "blocked" | "submitted";
 export type CommentSort = "best" | "new" | "top";
 

@@ -164,7 +164,7 @@ function resolveUniqueHumanRequirementProvider(
   return null;
 }
 
-export function getProofOfWorkGateRequirements(
+function getProofOfWorkGateRequirements(
   gates: MembershipGateSummary[] | null | undefined,
 ): MembershipGateSummary[] {
   const proofOfWorkGates = (gates ?? []).filter((gate) => gate.gate_type === "altcha_pow");
@@ -437,7 +437,7 @@ export function hasAltchaProofAction(
   return getRequiredActionCapabilities(input).includes("altcha_pow");
 }
 
-export function getAltchaProofScope(
+function getAltchaProofScope(
   input: { gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null },
   fallback = "community_join",
 ): string {

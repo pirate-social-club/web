@@ -20,7 +20,7 @@ export interface KaraokeStageLine {
   tokens?: KaraokeStageToken[];
 }
 
-export type KaraokeRatingTone = "success" | "info" | "warning" | "destructive";
+type KaraokeRatingTone = "success" | "info" | "warning" | "destructive";
 
 /**
  * Guitar-Hero-style transient rating for the most recently scored line.

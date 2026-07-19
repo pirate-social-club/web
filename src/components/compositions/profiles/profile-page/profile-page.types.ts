@@ -5,7 +5,7 @@ import type { WalletHubChainId, WalletHubChainSection } from "@/components/compo
 
 export type ProfilePageTab = "overview" | "posts" | "comments" | "wallet" | "book";
 
-export interface ProfileHeaderMetaItem {
+interface ProfileHeaderMetaItem {
   label: string;
   value: string;
 }

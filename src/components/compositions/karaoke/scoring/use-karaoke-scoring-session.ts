@@ -36,7 +36,7 @@ function resolveWorkletModuleUrl(): URL {
 }
 
 /** The authenticated `POST .../karaoke/sessions` call (api.posts.createKaraokeSession). */
-export type CreateKaraokeSessionApi = (
+type CreateKaraokeSessionApi = (
   communityId: string,
   postId: string,
   idempotencyKey: string,

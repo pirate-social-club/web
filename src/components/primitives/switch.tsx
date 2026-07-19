@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-export interface SwitchProps extends Omit<React.ComponentProps<"button">, "onChange" | "role"> {
+interface SwitchProps extends Omit<React.ComponentProps<"button">, "onChange" | "role"> {
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
 }

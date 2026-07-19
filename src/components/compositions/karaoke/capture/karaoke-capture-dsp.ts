@@ -9,7 +9,7 @@
  * AudioContext time at emit), so accumulation latency is not folded into timing.
  */
 
-export const KARAOKE_CAPTURE_OUTPUT_RATE = 16_000 as const;
+const KARAOKE_CAPTURE_OUTPUT_RATE = 16_000 as const;
 /** ~100 ms of 16 kHz mono PCM16 = 1600 samples (3200 bytes). */
 export const KARAOKE_CAPTURE_CHUNK_SAMPLES = 1_600 as const;
 

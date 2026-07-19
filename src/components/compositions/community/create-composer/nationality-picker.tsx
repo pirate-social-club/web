@@ -19,12 +19,12 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { Type } from "@/components/primitives/type";
 
-export interface NationalityPickerProps {
+interface NationalityPickerProps {
   value: string | null;
   onChange: (code: string | null) => void;
 }
 
-export function NationalityPicker({
+function NationalityPicker({
   value,
   onChange,
 }: NationalityPickerProps) {

@@ -217,7 +217,7 @@ export function PostComposerSourceModeTabs({
   );
 }
 
-export function PostComposerAssetLicenseSection({
+function PostComposerAssetLicenseSection({
   licenseCopy,
   licenseState,
   sectionTitle,
@@ -287,7 +287,7 @@ export function PostComposerAssetLicenseSection({
   );
 }
 
-export function PostComposerCommerceAccessSection({
+function PostComposerCommerceAccessSection({
   copy,
   contentKind = "song",
   monetizationState,
@@ -552,7 +552,7 @@ export function PostComposerCommerceAccessSection({
   );
 }
 
-export function PostComposerAudienceSection({
+function PostComposerAudienceSection({
   audience,
   className,
   copy,

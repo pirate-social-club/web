@@ -250,7 +250,7 @@ function Sidebar({
 export {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
+
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -264,5 +264,5 @@ export {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
-  useSidebarSide,
+
 };

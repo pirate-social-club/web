@@ -111,7 +111,7 @@ export async function resolveDmPeer(dm: XmtpDm, client: XmtpClient): Promise<Res
   };
 }
 
-export async function buildCanonicalDmRecord(client: XmtpClient, dm: XmtpDm): Promise<CanonicalDmRecord> {
+async function buildCanonicalDmRecord(client: XmtpClient, dm: XmtpDm): Promise<CanonicalDmRecord> {
   await dm.sync?.();
   const [messages, peer] = await Promise.all([
     fallbackArray<XmtpMessage>(dm.messages(), "dm:messages:failed", {
@@ -205,7 +205,7 @@ export async function resolveCanonicalDmForPeerInbox(
   );
 }
 
-export async function syncAllIfStale(client: XmtpClient, module: XmtpModule, force = false): Promise<void> {
+async function syncAllIfStale(client: XmtpClient, module: XmtpModule, force = false): Promise<void> {
   const key = client as object;
   const lastSyncAt = lastSyncAtByClient.get(key) ?? 0;
   if (!force && Date.now() - lastSyncAt < XMTP_SYNC_STALE_MS) return;

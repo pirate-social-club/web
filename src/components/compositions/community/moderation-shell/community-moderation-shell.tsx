@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 
 type ModNavIcon = React.ComponentType<{ className?: string; weight?: "regular" | "fill" | "bold" }>;
 
-export interface CommunityModerationNavItem {
+interface CommunityModerationNavItem {
   active?: boolean;
   badgeLabel?: string;
   icon: ModNavIcon;

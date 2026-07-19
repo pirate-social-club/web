@@ -78,7 +78,7 @@ function mapPaymentInstructions(
   };
 }
 
-export function buildHandleClaimGateActions(
+function buildHandleClaimGateActions(
   summaries: MembershipGateSummary[] | null | undefined,
 ): Array<"self" | "wallet"> {
   const actions = new Set<"self" | "wallet">();

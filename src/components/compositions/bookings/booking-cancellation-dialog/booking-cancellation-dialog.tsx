@@ -34,13 +34,13 @@ export interface BookingCancellationDialogProps {
   copy?: Partial<BookingCancellationDialogCopy>;
 }
 
-export interface BookingCancellationDialogCopy {
+interface BookingCancellationDialogCopy {
   title: string; sessionWith: string; termsChanged: string; termsChangedDetail: string;
   sessionTotal: string; refund: string; fullRefund: string; refundBack: string; noRefund: string;
   acknowledgement: string; cutoffEnded: string; genericError: string; keepBooking: string; confirm: string;
 }
 
-export const defaultBookingCancellationDialogCopy: BookingCancellationDialogCopy = {
+const defaultBookingCancellationDialogCopy: BookingCancellationDialogCopy = {
   title: "Cancel booking?", sessionWith: "{time} with {name}", termsChanged: "Refund terms changed",
   termsChangedDetail: "Review the updated amount before cancelling.", sessionTotal: "Session total", refund: "Refund",
   fullRefund: "{name} receives a full refund.", refundBack: "You receive {amount} back.", noRefund: "This cancellation is not refundable.",

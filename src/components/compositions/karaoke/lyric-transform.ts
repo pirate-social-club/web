@@ -1,6 +1,6 @@
 import type { KaraokeStageLine, KaraokeStageToken } from "./karaoke-lyric-stage";
 
-export type RawKaraokeWord = Record<string, unknown>;
+type RawKaraokeWord = Record<string, unknown>;
 export type RawKaraokeLine = Record<string, unknown> & {
   words?: unknown;
 };

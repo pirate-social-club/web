@@ -220,7 +220,7 @@ export function clearSession(): void {
     });
 }
 
-export function isSessionClearInProgress(): boolean {
+function isSessionClearInProgress(): boolean {
   return sessionClearInProgress;
 }
 
@@ -238,7 +238,7 @@ export function __resetSessionStoreForTests(): void {
   sessionClearInProgress = false;
 }
 
-export function subscribeToSession(listener: SessionListener): () => void {
+function subscribeToSession(listener: SessionListener): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);

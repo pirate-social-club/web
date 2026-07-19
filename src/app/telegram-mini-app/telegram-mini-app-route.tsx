@@ -44,10 +44,10 @@ import {
 } from "./telegram-mini-app-verify-controller";
 
 export {
-  TelegramMiniAppSelfReturnView,
-  TelegramMiniAppVerifyView,
+
+
   telegramVerifyLaunchButtonLabel,
-  telegramVerifyPreparingMessage,
+
   telegramVerifyReadyMessage,
   telegramVerifyReadyTitle,
   resolveTelegramVerifyViewModel,
@@ -55,7 +55,7 @@ export {
   telegramVerifyWaitingTitle,
 } from "./telegram-mini-app-verify-view";
 export type {
-  PendingTelegramVerificationLaunch,
+
   TelegramVerifyLaunchProvider,
   TelegramVerifyScreenState,
 } from "./telegram-mini-app-verify-controller";

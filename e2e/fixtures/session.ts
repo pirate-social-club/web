@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import type { SessionExchangeResponse } from "@pirate/api-contracts";
 
-export const sessionStorageKey = "pirate_session";
+const sessionStorageKey = "pirate_session";
 
 export type StoredSession = {
   accessToken: string;

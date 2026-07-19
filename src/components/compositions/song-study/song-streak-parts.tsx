@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 type LeaderboardIdentity = SongStreakLeaderboardEntry["identity"];
 
-export function streakDisplayName(identity: LeaderboardIdentity): string {
+function streakDisplayName(identity: LeaderboardIdentity): string {
   if (identity.handle) return identity.handle;
   if (identity.display_name) return identity.display_name;
   return "Anonymous learner";

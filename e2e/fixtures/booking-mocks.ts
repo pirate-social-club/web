@@ -9,14 +9,14 @@ import { mockProfile, mockWalletAddress } from "./auth-session";
 // Everything is Base SEPOLIA / testnet — mirrors the current prod-testnet posture, so the checkout
 // screen must never surface mainnet chain/token/amount.
 
-export const BOOKING_TESTNET = {
+const BOOKING_TESTNET = {
   chainId: 84532,
   // Base Sepolia USDC + the settlement operator wallet (pay-in recipient), lowercased as served.
   tokenAddress: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
   recipientAddress: "0xbba024600cba5f375afdcec401f7dccb3d515829",
 } as const;
 
-export interface CapturedRequest {
+interface CapturedRequest {
   method: string;
   path: string;
   body: unknown;

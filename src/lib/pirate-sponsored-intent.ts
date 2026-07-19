@@ -16,7 +16,7 @@ export type PirateSponsoredIntent =
       slot: string;
     };
 
-export interface PirateSponsoredTransactionEnvelope {
+interface PirateSponsoredTransactionEnvelope {
   data: `0x${string}`;
   to: `0x${string}`;
   value?: string;
@@ -45,7 +45,7 @@ export type PirateSponsoredRelayErrorCode =
   | "wallet_needs_migration"
   | "wallet_not_found";
 
-export interface PirateSponsoredRelaySuccess {
+interface PirateSponsoredRelaySuccess {
   txHash: `0x${string}`;
 }
 

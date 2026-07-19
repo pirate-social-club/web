@@ -3,7 +3,7 @@ import type { CrosspostSourcePreview } from "@/components/compositions/posts/pos
 
 export type CrosspostTargetCommunity = CommunityPickerItem;
 
-export interface CrosspostComposerSubmitState {
+interface CrosspostComposerSubmitState {
   disabled?: boolean;
   error?: string | null;
   label?: string;

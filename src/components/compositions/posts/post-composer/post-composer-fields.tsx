@@ -396,7 +396,7 @@ export function LabeledTextarea({
   );
 }
 
-export function LabeledFormattedTextarea({
+function LabeledFormattedTextarea({
   label,
   placeholder,
   value,
@@ -422,7 +422,7 @@ export function LabeledFormattedTextarea({
   );
 }
 
-export function EditorChrome({
+function EditorChrome({
   value,
   onChange,
   placeholder = "Write your post",
@@ -446,7 +446,7 @@ export function EditorChrome({
   );
 }
 
-export function LinkPreviewCard({
+function LinkPreviewCard({
   domain,
   title,
   imageSrc,

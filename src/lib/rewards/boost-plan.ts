@@ -19,7 +19,7 @@ import { formatUsdLabel, parseUsdInput, usdToCents } from "@/lib/formatting/curr
  * (study | karaoke | either) is a property OF the daily-accrual model, not a
  * top-level axis, precisely so prize_pool can carry its own qualification rules.
  */
-export type RewardModelKind = "daily_accrual" | "prize_pool";
+type RewardModelKind = "daily_accrual" | "prize_pool";
 
 export interface BoostPlanLimits {
   maxBudgetCents: number;

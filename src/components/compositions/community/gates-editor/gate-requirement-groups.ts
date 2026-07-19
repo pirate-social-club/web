@@ -1,35 +1,35 @@
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 
-export type HumanityRequirementGroup = {
+type HumanityRequirementGroup = {
   antiBotFallback?: Extract<IdentityGateDraft, { gateType: "altcha_pow" }>;
   kind: "humanity";
   uniqueHuman?: Extract<IdentityGateDraft, { gateType: "unique_human" }>;
 };
 
-export type DocumentAttributesRequirementGroup = {
+type DocumentAttributesRequirementGroup = {
   gender?: Extract<IdentityGateDraft, { gateType: "gender" }>;
   kind: "document_attributes";
   minimumAge?: Extract<IdentityGateDraft, { gateType: "minimum_age" }>;
   nationality?: Extract<IdentityGateDraft, { gateType: "nationality" }>;
 };
 
-export type TokenHoldingsRequirementGroup = {
+type TokenHoldingsRequirementGroup = {
   erc721Holding?: Extract<IdentityGateDraft, { gateType: "erc721_holding" }>;
   courtyardInventory?: Extract<IdentityGateDraft, { gateType: "erc721_inventory_match" }>;
   kind: "token_holdings";
 };
 
-export type ReputationRequirementGroup = {
+type ReputationRequirementGroup = {
   kind: "reputation";
   walletScore?: Extract<IdentityGateDraft, { gateType: "wallet_score" }>;
 };
 
-export type StandaloneAntiBotRequirementGroup = {
+type StandaloneAntiBotRequirementGroup = {
   antiBot: Extract<IdentityGateDraft, { gateType: "altcha_pow" }>;
   kind: "standalone_antibot";
 };
 
-export type GateRequirementGroup =
+type GateRequirementGroup =
   | HumanityRequirementGroup
   | DocumentAttributesRequirementGroup
   | TokenHoldingsRequirementGroup

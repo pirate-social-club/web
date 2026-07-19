@@ -30,7 +30,7 @@ export async function fetchProfileLists(address: Address): Promise<ProfileListsR
   return await fetchJson<ProfileListsResponse>(`/users/${address}/lists?cache=fresh`);
 }
 
-export async function fetchFollowStatus(
+async function fetchFollowStatus(
   viewerAddress: Address,
   targetAddress: Address,
 ): Promise<boolean> {
@@ -54,7 +54,7 @@ export async function getListStorageLocation(listId: string) {
   return decodeStorageLocation(storageLocation as Hex);
 }
 
-export async function getPrimaryListIdForAddress(address: Address): Promise<string | null> {
+async function getPrimaryListIdForAddress(address: Address): Promise<string | null> {
   const { efp } = getPirateNetworkConfig();
   const client = createEfpPublicClient(efp.primaryListChainId);
   const encoded = await client.readContract({
@@ -67,7 +67,7 @@ export async function getPrimaryListIdForAddress(address: Address): Promise<stri
   return decodePrimaryListId(encoded as Hex);
 }
 
-export async function getListUser(chainId: number, slot: bigint): Promise<Address | null> {
+async function getListUser(chainId: number, slot: bigint): Promise<Address | null> {
   const { efp } = getPirateNetworkConfig();
   const recordsAddress = efp.listRecordsByChain[chainId];
   if (!recordsAddress) {
@@ -102,7 +102,7 @@ export async function resolvePrimaryListStorageForAddress(
   return { chainId: storage.chainId, listId, slot: storage.slot };
 }
 
-export async function getAllListOps(chainId: number, slot: bigint): Promise<Hex[]> {
+async function getAllListOps(chainId: number, slot: bigint): Promise<Hex[]> {
   const { efp } = getPirateNetworkConfig();
   const recordsAddress = efp.listRecordsByChain[chainId];
   if (!recordsAddress) {
@@ -120,7 +120,7 @@ export async function getAllListOps(chainId: number, slot: bigint): Promise<Hex[
   return ops as Hex[];
 }
 
-export async function buildOnChainListStateForAddress(
+async function buildOnChainListStateForAddress(
   address: Address,
 ): Promise<Map<Address, OnChainListEntry>> {
   const storage = await resolvePrimaryListStorageForAddress(address);
@@ -137,7 +137,7 @@ export async function buildOnChainListStateForAddress(
   return entries;
 }
 
-export async function fetchViewerFollowStateOnChain(
+async function fetchViewerFollowStateOnChain(
   viewerAddress: Address,
   targetAddress: Address,
 ): Promise<boolean> {
@@ -145,7 +145,7 @@ export async function fetchViewerFollowStateOnChain(
   return isEffectiveFollow(entries.get(targetAddress));
 }
 
-export async function fetchProfileFollowSummaryOnChain(
+async function fetchProfileFollowSummaryOnChain(
   address: Address,
 ): Promise<OnChainFollowSummary> {
   const entries = await buildOnChainListStateForAddress(address);

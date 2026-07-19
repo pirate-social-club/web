@@ -45,7 +45,7 @@ export function normalizeHttpUrl(value: string) {
   return parse(`https://${trimmed}`);
 }
 
-export function getComposeCanAdvance({
+function getComposeCanAdvance({
   attachment,
   body,
   title,
@@ -58,7 +58,7 @@ export function getComposeCanAdvance({
   return Boolean(title.trim() || body.trim() || attachment);
 }
 
-export function composerTabHasDetailsStep(mode: ComposerTab) {
+function composerTabHasDetailsStep(mode: ComposerTab) {
   return mode === "song" || mode === "video";
 }
 
@@ -113,7 +113,7 @@ export function canSubmitLiveRoomDraft(liveState: LiveComposerState, title: stri
   return liveState.performerAllocations.reduce((sum, allocation) => sum + allocation.sharePct, 0) === 100;
 }
 
-export function isValidLiveScheduleAt(scheduleAt: string | undefined): boolean {
+function isValidLiveScheduleAt(scheduleAt: string | undefined): boolean {
   const value = scheduleAt?.trim();
   if (!value) return false;
   return Number.isFinite(Date.parse(value));

@@ -592,6 +592,7 @@ export function CommunityPage({
     buildBlockedModalState,
     communityId,
     gateData: voteGateData,
+    locale: contentLocale,
     posts,
     runGatedCommunityAction,
     setPosts,

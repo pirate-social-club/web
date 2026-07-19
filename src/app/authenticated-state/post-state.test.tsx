@@ -12,6 +12,7 @@ import { __resetSessionStoreForTests, setSession } from "@/lib/api/session-store
 import { PirateQueryProvider } from "@/lib/query/query-client";
 import { postKeys } from "@/lib/query/keys";
 import type { PublicThreadQueryData } from "@/lib/query/public-thread-cache";
+import { submitOptimisticPostVote } from "@/app/authenticated-helpers/post-vote";
 
 import { usePost } from "./post-state";
 
@@ -274,6 +275,57 @@ describe("usePost", () => {
     expect(result.current.threadPartial).toBe(true);
     expect(result.current.post?.post.id).toBe("pst_test");
     expect(result.current.community?.display_name).toBe("Preview Community");
+  });
+
+  test("renders an optimistic feed vote from the locale-matched permalink fallback", async () => {
+    __resetSessionStoreForTests();
+    installLiveSession();
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+    const queryKey = postKeys.publicThread({ postId: "pst_test", locale: "es", sort: "best" });
+    queryClient.setQueryData<PublicThreadQueryData>(queryKey, {
+      post: createPostResponse(),
+      community: createPreview({ viewer_membership_status: null }),
+      comments: [],
+      authorProfiles: {},
+      partial: true,
+      source: "feed_seed",
+    });
+
+    let resolveVote: ((response: { value: 1 }) => void) | null = null;
+    const pendingVote = submitOptimisticPostVote({
+      direction: "up",
+      locale: "es",
+      onApply: () => undefined,
+      onRollback: () => undefined,
+      postId: "pst_test",
+      previousPost: createPostResponse(),
+      queryClient,
+      requestIdsRef: { current: {} },
+      vote: () => new Promise<{ value: 1 }>((resolve) => {
+        resolveVote = resolve;
+      }),
+    });
+
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    posts.get = () => new Promise<LocalizedPostResponse>(() => undefined);
+
+    const { result } = renderHook(() => usePost("pst_test", "es", true, labels), {
+      wrapper: wrapperWithClient(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.post?.viewer_vote).toBe(1);
+    expect(result.current.post?.upvote_count).toBe(1);
+    expect(result.current.community?.viewer_membership_status).toBeNull();
+
+    resolveVote?.({ value: 1 });
+    await pendingVote;
   });
 
   test("keeps the rendered public thread visible while login upgrades to the authenticated fetch", async () => {

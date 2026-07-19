@@ -704,10 +704,12 @@ export function usePost(
           await submitOptimisticPostVote({
             altchaPayload: context?.altchaPayload,
             direction,
+            locale,
             onApply: (nextValue) => setPost((current) => current ? applyPostVote(current, nextValue) : current),
             onRollback: (restoredPost) => setPost(restoredPost),
             postId: nextPostId,
             previousPost: post,
+            queryClient,
             requestIdsRef: voteRequestIdsRef,
             vote: api.posts.vote,
           });
@@ -718,7 +720,7 @@ export function usePost(
     } catch {
       // The optimistic submitter already rolled back and displayed the error.
     }
-  }, [api.posts.vote, post, runGatedCommunityAction, voteGateData]);
+  }, [api.posts.vote, locale, post, queryClient, runGatedCommunityAction, voteGateData]);
 
   const deletePost = React.useCallback(async () => {
     if (!post) return;

@@ -479,6 +479,7 @@ export type PostCardIdentityPresentation =
 export type PostCardEngagement = {
   score: number;
   viewerVote?: "up" | "down" | null;
+  voteBusy?: boolean;
   commentCount: number;
   saved?: boolean;
   unlock?: {
@@ -546,7 +547,6 @@ export interface PostCardProps {
   shareActions?: PostCardShareAction[];
   onVote?: (direction: "up" | "down" | null) => Promise<void> | void;
   voteAccess?: {
-    disabled?: boolean;
     label: string;
     onClick?: () => void;
   };

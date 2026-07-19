@@ -52,4 +52,44 @@ describe("VotePill", () => {
     expect((downvote as HTMLButtonElement).disabled).toBe(false);
     expect(upvote.closest('[aria-busy="true"]')).toBeNull();
   });
+
+  test("makes the selected direction pressed and inert while allowing a vote change", async () => {
+    const votes: Array<"up" | "down" | null> = [];
+    const view = render(
+      <VotePill
+        onVote={(direction) => votes.push(direction)}
+        score={4}
+        viewerVote="up"
+      />,
+    );
+    const upvote = view.getByRole("button", { name: "Upvote" });
+    const downvote = view.getByRole("button", { name: "Downvote" });
+
+    expect(upvote.getAttribute("aria-pressed")).toBe("true");
+    expect(downvote.getAttribute("aria-pressed")).toBe("false");
+    expect((upvote as HTMLButtonElement).disabled).toBe(true);
+    expect((downvote as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(upvote);
+    await act(async () => {
+      fireEvent.click(downvote);
+      await Promise.resolve();
+    });
+
+    expect(votes).toEqual(["down"]);
+  });
+
+  test("keeps the normal vote pill disabled and busy during external revalidation", () => {
+    const votes: Array<"up" | "down" | null> = [];
+    const view = render(<VotePill busy onVote={(direction) => votes.push(direction)} score={4} viewerVote="up" />);
+    const upvote = view.getByRole("button", { name: "Upvote" });
+    const downvote = view.getByRole("button", { name: "Downvote" });
+
+    expect(upvote.closest('[aria-busy="true"]')).not.toBeNull();
+    expect((upvote as HTMLButtonElement).disabled).toBe(true);
+    expect((downvote as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(downvote);
+    expect(votes).toEqual([]);
+  });
 });

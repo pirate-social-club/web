@@ -322,6 +322,7 @@ export function toThreadPostCard(
       commentCount: opts?.commentCountOverride ?? getPostCommentCount(postResponse),
       score: postResponse.upvote_count - postResponse.downvote_count,
       viewerVote: toViewerVote(postResponse.viewer_vote),
+      voteBusy: opts?.voteBusy,
     },
     authorCommunityRole: postResponse.author_community_role ?? undefined,
     event: toPostCardEvent(post),

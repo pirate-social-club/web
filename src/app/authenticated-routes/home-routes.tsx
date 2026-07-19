@@ -334,6 +334,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
 
 export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const api = useApi();
+  const queryClient = useQueryClient();
   const hydrated = useClientHydrated();
   const session = useSession();
   const { locale } = useUiLocale();
@@ -481,10 +482,12 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
           await submitOptimisticPostVote({
             altchaPayload: context?.altchaPayload,
             direction,
+            locale: contentLocale,
             onApply: (nextValue) => setFeedEntries((current) => updateHomeFeedEntryPostVote(current, postId, nextValue)),
             onRollback: (restoredPost) => setFeedEntries((current) => current.map((currentEntry) => currentEntry.post.post.id === postId ? { ...currentEntry, post: restoredPost } : currentEntry)),
             postId,
             previousPost: previousPost ?? null,
+            queryClient,
             requestIdsRef: voteRequestIdsRef,
             vote: api.posts.vote,
           });
@@ -495,7 +498,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     } catch {
       // The optimistic submitter already rolled back and displayed the error.
     }
-  }, [api.posts.vote, feedEntries, runGatedCommunityAction, voteGateDataByPostId]);
+  }, [api.posts.vote, contentLocale, feedEntries, queryClient, runGatedCommunityAction, voteGateDataByPostId]);
 
   const cancelEvent = React.useCallback(async (postId: string) => {
     const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);

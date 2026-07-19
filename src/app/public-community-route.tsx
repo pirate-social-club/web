@@ -616,6 +616,7 @@ export function PublicCommunityRoutePage({
           },
         }
       : null,
+    locale: contentLocale,
     posts,
     runGatedCommunityAction,
     setPosts,

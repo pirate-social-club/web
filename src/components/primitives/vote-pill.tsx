@@ -22,6 +22,7 @@ export interface VotePillProps {
   viewerVote?: "up" | "down" | null;
   onVote?: (direction: "up" | "down" | null) => Promise<void> | void;
   allowClear?: boolean;
+  busy?: boolean;
   className?: string;
   downvoteLabel?: string;
   size?: "default" | "compact";
@@ -34,6 +35,7 @@ export function VotePill({
   viewerVote,
   onVote,
   allowClear = false,
+  busy = false,
   className,
   downvoteLabel,
   size = "default",
@@ -45,7 +47,9 @@ export function VotePill({
   const pendingRef = React.useRef(false);
   const [pendingDirection, setPendingDirection] = React.useState<"up" | "down" | null>(null);
   const handleVote = React.useCallback(async (direction: "up" | "down") => {
-    if (!onVote || pendingRef.current) return;
+    if (!onVote || busy || pendingRef.current) return;
+
+    if (viewerVote === direction && !allowClear) return;
 
     const nextVote = viewerVote === direction && allowClear ? null : direction;
 
@@ -58,8 +62,9 @@ export function VotePill({
       pendingRef.current = false;
       setPendingDirection(null);
     }
-  }, [allowClear, onVote, viewerVote]);
+  }, [allowClear, busy, onVote, viewerVote]);
   const pending = pendingDirection != null;
+  const controlsBusy = busy || pending;
 
   return (
     <div
@@ -76,7 +81,7 @@ export function VotePill({
       )}
       data-post-card-interactive="true"
       dir="ltr"
-      aria-busy={pending}
+      aria-busy={controlsBusy}
     >
       <button
         className={cn(
@@ -87,7 +92,8 @@ export function VotePill({
             ? "text-primary hover:bg-primary/10"
             : "text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground",
         )}
-        disabled={pending}
+        aria-pressed={viewerVote === "up"}
+        disabled={controlsBusy || (viewerVote === "up" && !allowClear)}
         onClick={() => void handleVote("up")}
         type="button"
         aria-label={upvoteLabel ?? copy.upvote}
@@ -128,7 +134,8 @@ export function VotePill({
             ? "text-destructive hover:bg-destructive/10"
             : "text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground",
         )}
-        disabled={pending}
+        aria-pressed={viewerVote === "down"}
+        disabled={controlsBusy || (viewerVote === "down" && !allowClear)}
         onClick={() => void handleVote("down")}
         type="button"
         aria-label={downvoteLabel ?? copy.downvote}

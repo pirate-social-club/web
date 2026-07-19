@@ -44,6 +44,39 @@ const SONG_ARTIFACT_PART_UPLOAD_TIMEOUT_MS = 60_000;
 const SONG_ARTIFACT_MULTIPART_COMPLETE_TIMEOUT_MS = 120_000;
 const SONG_ARTIFACT_MULTIPART_CONCURRENCY = 3;
 
+async function readAudioDurationMs(file: File | null | undefined): Promise<number | undefined> {
+  if (!file || typeof Audio === "undefined" || typeof URL.createObjectURL !== "function") return undefined;
+
+  const objectUrl = URL.createObjectURL(file);
+  const audio = new Audio();
+  audio.preload = "metadata";
+  try {
+    return await new Promise<number | undefined>((resolve) => {
+      let settled = false;
+      const finish = (durationMs?: number) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        resolve(durationMs);
+      };
+      const readDuration = () => {
+        const durationMs = Number.isFinite(audio.duration) && audio.duration > 0
+          ? Math.round(audio.duration * 1000)
+          : undefined;
+        finish(durationMs);
+      };
+      const timeout = setTimeout(() => finish(), 5_000);
+      audio.addEventListener("loadedmetadata", readDuration, { once: true });
+      audio.addEventListener("error", () => finish(), { once: true });
+      audio.src = objectUrl;
+    });
+  } finally {
+    audio.removeAttribute("src");
+    audio.load();
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 function isAsyncSongPublishEnabled(): boolean {
   return import.meta.env.VITE_ASYNC_SONG_PUBLISH_ENABLED !== "false";
 }
@@ -387,6 +420,7 @@ export function useSongSubmit({
 
     if (!bundleId) {
       logger.info("[song-submit] uploading song artifacts");
+      const primaryAudioDurationPromise = readAudioDurationMs(songState.primaryAudioUpload);
       // Seed at "0%" (start of band) before uploading so the first real byte report
       // can't snap the bar backward — see the same pattern in video.ts.
       reportProgress?.("upload_primary_audio", "0%");
@@ -436,7 +470,10 @@ export function useSongSubmit({
       });
       reportProgress?.("create_bundle");
       const bundleRequest = {
-        primary_audio: { song_artifact_upload: primaryAudio.id },
+        primary_audio: {
+          song_artifact_upload: primaryAudio.id,
+          duration_ms: await primaryAudioDurationPromise,
+        },
         ...(publishMode === "async" ? { analysis_mode: "deferred" as const } : {}),
         title: songTitle.trim(),
         lyrics: lyrics.trim(),

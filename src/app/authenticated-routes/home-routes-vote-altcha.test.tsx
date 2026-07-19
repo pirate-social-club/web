@@ -33,6 +33,11 @@ const ageVerificationRequests: Array<{
   unavailableMessage?: string;
 }> = [];
 
+type TestFeedApi = {
+  home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: CommunityPreview[] }>;
+  publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: CommunityPreview[] }>;
+};
+
 mock.module("@/hooks/use-client-hydrated", () => ({
   useClientHydrated: () => true,
 }));
@@ -264,10 +269,7 @@ beforeEach(() => {
 describe("HomePage vote ALTCHA plumbing", () => {
   test("shows and executes Delete post for an authored home-feed post", async () => {
     const deleteCalls: Array<{ communityId: string; postId: string }> = [];
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const postsApi = api.posts as unknown as {
       delete: (communityId: string, postId: string) => Promise<unknown>;
     };
@@ -307,10 +309,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_community_role: "owner",
       viewer_membership_status: "member",
     });
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const moderatedPost = createFeedItem("post_pst_moderated", preview);
     moderatedPost.post.post.author_user = "usr_other";
     moderatedPost.post.post.identity_mode = "public";
@@ -330,10 +329,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
   });
 
   test("enables age verification on age-gated home feed song cards", async () => {
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const ageGatedSong = createFeedItem("post_pst_explicit_song");
     ageGatedSong.post.post.post_type = "song";
     ageGatedSong.post.post.title = "Explicit song";
@@ -370,10 +366,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       postId: string;
       value: -1 | 1;
     }> = [];
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const postsApi = api.posts as unknown as {
       vote: (
         postId: string,
@@ -420,10 +413,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_membership_status: "not_member",
     });
     const voteCalls: string[] = [];
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const postsApi = api.posts as unknown as {
       vote: (postId: string, value: -1 | 1) => Promise<{ value: -1 | 1 }>;
     };
@@ -458,10 +448,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_community_role: null,
       viewer_membership_status: "member",
     });
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const postsApi = api.posts as unknown as {
       vote: (postId: string, value: -1 | 1) => Promise<{ value: -1 | 1 }>;
     };
@@ -490,10 +477,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_community_role: null,
       viewer_membership_status: "not_member",
     });
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const postsApi = api.posts as unknown as {
       vote: (postId: string, value: -1 | 1) => Promise<{ value: -1 | 1 }>;
     };
@@ -522,10 +506,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_community_role: null,
       viewer_membership_status: "banned",
     });
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const postsApi = api.posts as unknown as {
       vote: () => Promise<{ value: -1 | 1 }>;
     };

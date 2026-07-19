@@ -171,7 +171,7 @@ function getProofOfWorkGateRequirements(
   return proofOfWorkGates.length > 0 ? proofOfWorkGates : [{ gate_type: "altcha_pow" }];
 }
 
-export function isJoinSurfaceGate(gate: Pick<MembershipGateSummary, "gate_type">): boolean {
+export function isJoinSurfaceGate(_gate: Pick<MembershipGateSummary, "gate_type">): boolean {
   return true;
 }
 

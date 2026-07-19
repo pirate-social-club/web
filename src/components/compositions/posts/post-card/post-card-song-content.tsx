@@ -11,7 +11,7 @@ import {
 import { Spinner } from "@/components/primitives/spinner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
-import { SongStreakPreview, type SongStreakSummary } from "@/components/compositions/song-study/song-streak-preview";
+import { SongStreakPreview } from "@/components/compositions/song-study/song-streak-preview";
 import { MediaControlButton } from "@/components/primitives/media-control-button";
 import { Scrubber } from "@/components/primitives/scrubber";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/primitives/tooltip";

@@ -47,7 +47,6 @@ const MRENCLAVE_SIZE = 32;
 const MRSIGNER_OFFSET = SGX_QUOTE_HEADER_SIZE + 128; // 176
 const MRSIGNER_SIZE = 32;
 const ISV_SVN_OFFSET = SGX_QUOTE_HEADER_SIZE + 258; // 306
-const ISV_SVN_SIZE = 2;
 
 /**
  * Parse fields from an SGX DCAP Quote v3 binary.

@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
 import { CopyField } from "@/components/primitives/copy-field";
@@ -40,11 +39,8 @@ export function getHnsVerificationMode(input: {
 }
 
 export function NamespaceVerificationHnsPanel({
-  challengePending,
   challengeTxtValue,
-  mode,
   onAbandon,
-  rootLabel,
   showAbandonAction = true,
   setupNameservers,
   statusBusy = false,

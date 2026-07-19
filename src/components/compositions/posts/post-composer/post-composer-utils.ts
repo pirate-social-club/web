@@ -77,7 +77,6 @@ export function getPreviousComposerStep(current: ComposerStep, mode: ComposerTab
 }
 
 export function canAdvanceComposerWriteStep({
-  body,
   imageUploadPresent,
   linkUrl,
   liveState,

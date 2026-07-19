@@ -1,7 +1,6 @@
 import type { UiLocaleCode } from "@/lib/ui-locale";
 import {
   GENERATED_LOCALE_CATALOGS,
-  LOCALE_NAMESPACES,
   type GeneratedLocaleCatalogs,
   type LocaleNamespace,
   type RealLocaleCode,

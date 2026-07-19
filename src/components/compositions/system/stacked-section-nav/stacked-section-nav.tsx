@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 
 import { Type } from "@/components/primitives/type";

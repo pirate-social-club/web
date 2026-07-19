@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react";
 
 import type { CommunityModerationNavSection } from "@/components/compositions/community/moderation-shell/community-moderation-shell";

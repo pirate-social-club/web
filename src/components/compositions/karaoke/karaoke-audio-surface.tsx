@@ -186,11 +186,6 @@ export function KaraokeAudioSurface({
     scoringRef.current?.controls.noteSeek(clampedTimeMs);
   }, [durationMs]);
 
-  const resetAudio = React.useCallback(() => {
-    pauseAudio();
-    seekAudio(initialTimeMs);
-  }, [initialTimeMs, pauseAudio, seekAudio]);
-
   const confirmExit = React.useCallback(() => (
     !isPlaying
     || typeof window === "undefined"

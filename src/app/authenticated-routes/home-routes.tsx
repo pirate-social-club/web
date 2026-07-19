@@ -49,10 +49,6 @@ import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 
-function unixOrIsoMs(value: string | number): number {
-  return typeof value === "number" ? value * 1000 : Date.parse(value);
-}
-
 type UseHomeFeedInput = {
   activeSort: FeedSort;
   contentLocale: string;

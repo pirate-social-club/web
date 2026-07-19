@@ -1,4 +1,3 @@
-import * as React from "react";
 
 import { Card, CardContent } from "@/components/primitives/card";
 import { Separator } from "@/components/primitives/separator";

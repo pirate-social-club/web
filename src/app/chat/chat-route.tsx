@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 
 import { ChatPageView } from "@/app/chat/chat-page-view";
 import { useChatController } from "@/app/chat/use-chat-controller";

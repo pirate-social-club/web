@@ -1,11 +1,9 @@
-import * as React from "react";
 import { Plus, Trash } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
 import { Card, CardContent } from "@/components/primitives/card";
 import { Input } from "@/components/primitives/input";
 import { EditableNumberInput } from "@/components/primitives/editable-number-input";
-import { Separator } from "@/components/primitives/separator";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 

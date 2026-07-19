@@ -255,7 +255,7 @@ function DocumentProofProviderRows({
 
 export function normalizeGateDraftsForMatchMode(
   drafts: IdentityGateDraft[],
-  gateMatchMode: "all" | "any",
+  _gateMatchMode: "all" | "any",
 ): IdentityGateDraft[] {
   return drafts;
 }
@@ -378,7 +378,6 @@ export function CommunityGatesEditorPage({
   readAccessMode = "public",
   onAllowAnonymousIdentityChange,
   onAnonymousIdentityScopeChange,
-  onBackClick,
   onDefaultAgeGatePolicyChange,
   onGateDraftsChange,
   onGateMatchModeChange,

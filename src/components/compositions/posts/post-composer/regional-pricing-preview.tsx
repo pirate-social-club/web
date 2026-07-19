@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { X } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
@@ -15,7 +14,6 @@ import {
   DialogTrigger,
 } from "@/components/primitives/dialog";
 import { IconButton } from "@/components/primitives/icon-button";
-import { Type } from "@/components/primitives/type";
 import { countryCodeToFlag, getCountryDisplayName, normalizeCountryCode } from "@/lib/countries";
 import { formatUsdLabel, parseUsdInput } from "@/lib/formatting/currency";
 import { useUiLocale } from "@/lib/ui-locale";

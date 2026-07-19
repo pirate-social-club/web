@@ -4,7 +4,6 @@ import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
 import { Checkbox } from "@/components/primitives/checkbox";
-import { Input } from "@/components/primitives/input";
 import { EditableNumberInput } from "@/components/primitives/editable-number-input";
 import { ImageSquare, Lock, Minus, Plus, Users } from "@phosphor-icons/react";
 import {

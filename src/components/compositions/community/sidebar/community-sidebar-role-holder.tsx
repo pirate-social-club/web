@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { AvatarWithBadge } from "@/components/compositions/system/avatar-badge/avatar-with-badge";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
 import { cn } from "@/lib/utils";

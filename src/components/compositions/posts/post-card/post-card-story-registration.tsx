@@ -1,4 +1,3 @@
-import * as React from "react";
 import { CheckCircle, Clock, Info, WarningCircle } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";

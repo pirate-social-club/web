@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { ShoppingBag } from "@phosphor-icons/react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {

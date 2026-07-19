@@ -345,7 +345,6 @@ export function CreatePostPage({
     joinError,
     joinLoading,
     joinRequested,
-    passportLoading,
     veryLoading: joinVeryLoading,
     selfError: joinSelfError,
     selfLoading: joinSelfLoading,

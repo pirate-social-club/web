@@ -224,14 +224,12 @@ export function HandleClaimModal({
   searchValue,
   onSearchChange,
   searchResult,
-  confirmedDiscountPercent,
   selfVerificationSavingsPercent,
   onSelfVerificationClick,
   onWalletConnectionClick,
   onClaimGateRecheck,
   onClaim,
   onNotNow,
-  processing = false,
   error,
   claimedLabel,
   forceMobile,
@@ -239,14 +237,13 @@ export function HandleClaimModal({
   walletBalanceCents,
   onAddFunds,
 }: HandleClaimModalProps) {
-  const { dir, locale } = useUiLocale();
+  const { locale } = useUiLocale();
   const claimGateCopy = React.useMemo(
     () => getLocaleMessages(locale, "gates").handleClaims,
     [locale],
   );
   const isSuccess = phase === "success";
   const isProcessing = phase === "processing";
-  const showInput = !isSuccess;
   const showNotNow = !isSuccess && !isProcessing;
   const selectedNamespace = namespaceOptions.find(
     (option) => option.namespaceVerification === selectedNamespaceVerification,

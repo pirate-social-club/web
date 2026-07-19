@@ -1,4 +1,3 @@
-import * as React from "react";
 
 import { COMMUNITY_RECORDS, HOME_POSTS, YOUR_COMMUNITIES_POSTS } from "@/app/mocks";
 import { PillButton } from "@/components/primitives/pill-button";

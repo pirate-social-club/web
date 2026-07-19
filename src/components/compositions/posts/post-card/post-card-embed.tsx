@@ -334,7 +334,6 @@ function buildSparkline(points: NonNullable<EmbedContent["preview"]>["chart"], l
     return { x, y };
   });
   const linePath = coordinates.map(({ x, y }, index) => `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
-  const last = coordinates[coordinates.length - 1];
   return {
     areaPath: `${linePath} L${width} ${height} L0 ${height} Z`,
     endLabel: formatChartDateLabel(chartPoints[chartPoints.length - 1]?.ts, locale),

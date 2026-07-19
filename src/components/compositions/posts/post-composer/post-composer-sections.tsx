@@ -11,7 +11,6 @@ import { Scrubber } from "@/components/primitives/scrubber";
 import { Tabs, TabsList, TabsTrigger } from "@/components/primitives/tabs";
 import { Type } from "@/components/primitives/type";
 import { AudienceSelect } from "./post-composer-audience-select";
-import { Avatar } from "@/components/primitives/avatar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
@@ -51,13 +50,6 @@ type SourceModeOption = {
   label: string;
   value: string;
 };
-
-function buildAvatarFallback(name: string): string {
-  const tokens = name.trim().split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return "?";
-  if (tokens.length === 1) return tokens[0].slice(0, 2).toUpperCase();
-  return `${tokens[0][0] ?? ""}${tokens[1][0] ?? ""}`.toUpperCase();
-}
 
 function normalizeSecondsInput(value: string): string {
   const digits = value.replace(/\D/g, "");

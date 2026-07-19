@@ -1,4 +1,3 @@
-import * as React from "react";
 import { Crown, Fire, Medal } from "@phosphor-icons/react";
 import type {
   SongStreakLeaderboardEntry,

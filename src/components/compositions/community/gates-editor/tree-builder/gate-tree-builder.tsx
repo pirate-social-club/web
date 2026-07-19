@@ -488,7 +488,7 @@ function AssetBalanceRuleEditor({ actions, capabilitySource, copy, gate, onChang
   );
 }
 
-function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
+function RuleValueEditor({ capabilitySource: _capabilitySource, copy, gate, onChange }: {
   capabilitySource?: CollectionCapabilitySource;
   copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
   gate: GateAtom;
@@ -1211,10 +1211,6 @@ function operatorLabel(copy: ReturnType<typeof getLocaleMessages<"gates">>["tree
     default:
       return copy.operators.matches;
   }
-}
-
-function shortAddress(value: string): string {
-  return value.length > 12 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value || "(contract)";
 }
 
 function isCourtyardInventoryMatchGate(gate: GateAtom): gate is GateAtom & {

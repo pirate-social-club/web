@@ -143,7 +143,6 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   const isMobile = useIsMobile();
   const walletAttachments = session?.walletAttachments ?? [];
   const { locale, setLocale } = useUiLocale();
-  const pageTitle = copy.settings.title;
   const sectionTitle = getSettingsSectionTitle(activeTab, copy);
   const syncedPrimaryWalletRef = React.useRef<string | null>(null);
   const profileFormResetProfileIdRef = React.useRef<string | null>(null);

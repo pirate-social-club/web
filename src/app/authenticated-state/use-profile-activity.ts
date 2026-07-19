@@ -137,7 +137,10 @@ function useProfileActivity(
     };
   }, [activeTab, api, key, loadTab, session?.profile, session?.user?.id]);
 
-  return { ...activityProps, error, loading };
+  // Treat the tab as loading even before the fetch effect commits, so panels
+  // never flash their empty state for a frame while `loading` is still false.
+  const tabLoaded = loadedTabsRef.current.has(activeTab);
+  return { ...activityProps, error, loading: loading || (key != null && !tabLoaded && !error) };
 }
 
 export function useCurrentUserProfileActivity(

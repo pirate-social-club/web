@@ -1100,11 +1100,10 @@ export function PostPage({
     onRewardSettings: boostController.openPolicy,
     onVerifyAge: handleVerifyAge,
     onVote: voteOnPost,
+    voteBusy: viewerMembershipResolving,
     voteAccess: viewerMustJoin
       ? { label: copy.common.joinToVote, onClick: requestVoteAccess }
-      : viewerMembershipResolving
-        ? { disabled: true, label: copy.common.checkingVoteAccess }
-        : undefined,
+      : undefined,
     showOriginalLabel: copy.common.showOriginal,
     showTranslationLabel: copy.common.showTranslation,
     viewerContentLocale: contentLocale,
@@ -1123,11 +1122,10 @@ export function PostPage({
       onRewardSettings: boostController.openPolicy,
       onVerifyAge: handleVerifyAge,
       onVote: voteOnPost,
+      voteBusy: viewerMembershipResolving,
       voteAccess: viewerMustJoin
         ? { label: copy.common.joinToVote, onClick: requestVoteAccess }
-        : viewerMembershipResolving
-          ? { disabled: true, label: copy.common.checkingVoteAccess }
-          : undefined,
+        : undefined,
       preferOriginalText: true,
       showOriginalLabel: copy.common.showOriginal,
       showTranslationLabel: copy.common.showTranslation,

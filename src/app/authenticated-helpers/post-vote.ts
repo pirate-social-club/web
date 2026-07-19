@@ -3,10 +3,12 @@
 import * as React from "react";
 import type { HomeFeedItem as ApiHomeFeedItem } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
+import type { QueryClient } from "@tanstack/react-query";
 
 import { toast } from "@/components/primitives/sonner";
 
 import { getErrorMessage } from "@/lib/error-utils";
+import { updateCachedPublicThreadPost } from "@/lib/query/public-thread-cache";
 
 export type PostVoteValue = -1 | 1;
 export type PostVoteOptions = {
@@ -90,17 +92,21 @@ export function updateCommunityPostVote(
 export async function submitOptimisticPostVote({
   altchaPayload,
   direction,
+  locale,
   onApply,
   onRollback,
   postId,
   previousPost,
+  queryClient,
   requestIdsRef,
   vote,
 }: {
   altchaPayload?: string | null;
+  locale: string | null;
   postId: string;
   direction: "up" | "down" | null;
   previousPost: ApiPost | null;
+  queryClient: QueryClient;
   requestIdsRef: React.MutableRefObject<Record<string, number>>;
   vote: (postId: string, value: PostVoteValue, options?: PostVoteOptions) => Promise<{ value: PostVoteValue }>;
   onApply: (nextValue: PostVoteValue) => void;
@@ -114,6 +120,12 @@ export async function submitOptimisticPostVote({
   const requestId = (requestIdsRef.current[postId] ?? 0) + 1;
   requestIdsRef.current[postId] = requestId;
 
+  updateCachedPublicThreadPost({
+    locale,
+    postId,
+    queryClient,
+    update: (current) => applyPostVote(current, nextValue),
+  });
   onApply(nextValue);
 
   try {
@@ -126,12 +138,24 @@ export async function submitOptimisticPostVote({
       return;
     }
 
+    updateCachedPublicThreadPost({
+      locale,
+      postId,
+      queryClient,
+      update: (current) => applyPostVote(current, response.value),
+    });
     onApply(response.value);
   } catch (nextError) {
     if (requestIdsRef.current[postId] !== requestId) {
       return;
     }
 
+    updateCachedPublicThreadPost({
+      locale,
+      postId,
+      queryClient,
+      update: () => previousPost,
+    });
     onRollback(previousPost);
     toast.error(getErrorMessage(nextError, "Could not update this vote."));
     throw nextError;

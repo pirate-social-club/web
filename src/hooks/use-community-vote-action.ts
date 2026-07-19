@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
   submitOptimisticPostVote,
@@ -32,6 +33,7 @@ export interface UseCommunityVoteActionOptions {
   buildBlockedModalState?: RunGatedCommunityActionParams["buildBlockedModalState"];
   communityId?: string | null;
   gateData?: CommunityGateData | null;
+  locale: string;
   posts: ApiPost[];
   runGatedCommunityAction: RunGatedCommunityAction;
   setPosts: React.Dispatch<React.SetStateAction<ApiPost[]>>;
@@ -42,11 +44,13 @@ export function useCommunityVoteAction({
   buildBlockedModalState,
   communityId,
   gateData,
+  locale,
   posts,
   runGatedCommunityAction,
   setPosts,
   vote,
 }: UseCommunityVoteActionOptions) {
+  const queryClient = useQueryClient();
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
 
   return React.useCallback(
@@ -79,6 +83,7 @@ export function useCommunityVoteAction({
             await submitOptimisticPostVote({
               altchaPayload: context?.altchaPayload,
               direction,
+              locale,
               onApply: (nextValue) =>
                 setPosts((current) =>
                   updateCommunityPostVote(current, postId, nextValue),
@@ -91,6 +96,7 @@ export function useCommunityVoteAction({
                 ),
               postId,
               previousPost,
+              queryClient,
               requestIdsRef: voteRequestIdsRef,
               vote,
             });
@@ -107,7 +113,9 @@ export function useCommunityVoteAction({
       buildBlockedModalState,
       communityId,
       gateData,
+      locale,
       posts,
+      queryClient,
       runGatedCommunityAction,
       setPosts,
       vote,

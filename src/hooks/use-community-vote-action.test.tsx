@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { act, renderHook } from "@testing-library/react";
 import * as React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type {
   JoinEligibility,
   LocalizedPostResponse as ApiPost,
@@ -79,6 +80,7 @@ function renderVoteHarness(options: {
     voteCalls.push(voteOptions ? { postId, value, options: voteOptions } : { postId, value });
     return { value };
   });
+  const queryClient = new QueryClient();
 
   const hook = renderHook(() => {
     const [posts, setPosts] = React.useState<ApiPost[]>(options.posts ?? [createPost()]);
@@ -86,12 +88,17 @@ function renderVoteHarness(options: {
       buildBlockedModalState: options.buildBlockedModalState,
       communityId: options.communityId,
       gateData: options.gateData,
+      locale: "en",
       posts,
       runGatedCommunityAction,
       setPosts,
       vote,
     });
     return { posts, voteOnPost };
+  }, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
   });
 
   return {

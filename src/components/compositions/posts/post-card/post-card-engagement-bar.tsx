@@ -19,7 +19,6 @@ export interface PostCardEngagementBarProps {
   shareActions?: PostCardShareAction[];
   onVote?: (direction: "up" | "down" | null) => Promise<void> | void;
   voteAccess?: {
-    disabled?: boolean;
     label: string;
     onClick?: () => void;
   };
@@ -91,7 +90,7 @@ export function PostCardEngagementBar({
   compact = false,
   className,
 }: PostCardEngagementBarProps) {
-  const { score, viewerVote, commentCount } = engagement;
+  const { score, viewerVote, voteBusy, commentCount } = engagement;
   const handleUnlock = React.useCallback(() => {
     if (!unlock) return;
 
@@ -120,9 +119,8 @@ export function PostCardEngagementBar({
     >
       {voteAccess ? (
         <button
-          className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-border-soft bg-background px-4 text-base font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground disabled:cursor-wait disabled:opacity-60"
+          className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-border-soft bg-background px-4 text-base font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground"
           data-post-card-interactive="true"
-          disabled={voteAccess.disabled}
           onClick={voteAccess.onClick}
           type="button"
         >
@@ -131,6 +129,7 @@ export function PostCardEngagementBar({
         </button>
       ) : (
         <VotePill
+          busy={voteBusy}
           className="shrink-0 justify-center"
           score={score}
           viewerVote={viewerVote}

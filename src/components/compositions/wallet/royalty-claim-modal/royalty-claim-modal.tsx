@@ -18,6 +18,7 @@ import { Type } from "@/components/primitives/type";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { useStoryRoyalties, type RoyaltyClaimState } from "@/lib/story/use-story-royalties";
 import { cn } from "@/lib/utils";
+import { formatCompactAddress } from "@/lib/formatting/address";
 
 export interface RoyaltyClaimModalProps {
   onClaimed?: () => void;
@@ -43,7 +44,7 @@ function formatWipAmount(wei: string | null | undefined): string {
 function formatAddress(address: string | null | undefined): string {
   if (!address || !isAddress(address)) return "No wallet connected";
   const normalized = getAddress(address);
-  return `${normalized.slice(0, 6)}...${normalized.slice(-4)}`;
+  return formatCompactAddress(normalized);
 }
 
 function claimStatusLabel(status: RoyaltyClaimState["status"]): string {

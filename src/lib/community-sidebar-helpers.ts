@@ -11,6 +11,7 @@ import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
 import { formatGateRequirement, hasActionTimeCheck, isJoinSurfaceGate } from "@/lib/identity-gates";
+import { formatCompactAddress } from "@/lib/formatting/address";
 import { flattenGatePolicyAtoms, getGatePolicyMatchMode, isFlatOrGateExpression } from "@/lib/gate-policy-utils";
 import { deriveGateStatuses } from "@/lib/community-gate-statuses";
 import { formatAssetAmount } from "@/lib/asset-amount";
@@ -55,8 +56,7 @@ function getCountryDisplayName(requiredValue: string, locale: string | null | un
 }
 
 function shortenAddress(address: string): string {
-  if (address.length <= 10) return address;
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  return formatCompactAddress(address);
 }
 
 /**

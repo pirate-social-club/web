@@ -33,6 +33,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
+import { formatCompactAddress as compactAddress } from "@/lib/formatting/address";
 
 const EMPTY_ROYALTY_ACTIVITY_ITEMS: RoyaltyActivityItem[] = [];
 import { trackAnalyticsEvent } from "@/lib/analytics";
@@ -108,7 +109,7 @@ function formatWipAmount(wei: string): string {
 function formatCompactAddress(address: string | null | undefined): string | null {
   if (!address || !isAddress(address)) return null;
   const normalized = getAddress(address);
-  return `${normalized.slice(0, 6)}...${normalized.slice(-4)}`;
+  return compactAddress(normalized);
 }
 
 function formatRelativeShort(value: string | number): string {

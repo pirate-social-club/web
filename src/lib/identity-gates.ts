@@ -68,10 +68,7 @@ function formatCountryName(code: string, locale: UiLocaleCode): string {
 }
 
 function shortenAddress(address: string): string {
-  if (address.length <= 10) {
-    return address;
-  }
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  return formatCompactAddress(address);
 }
 
 function formatInventoryAssetLabel(gate: MembershipGateSummary): string {
@@ -831,3 +828,4 @@ export function getGateFailureMessage(
       return null;
   }
 }
+import { formatCompactAddress } from "@/lib/formatting/address";

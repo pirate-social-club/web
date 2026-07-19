@@ -5,11 +5,12 @@ import type { SessionExchangeResponse } from "@pirate/api-contracts";
 import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
+import { formatCompactAddress } from "@/lib/formatting/address";
 
 type WalletAttachment = SessionExchangeResponse["wallet_attachments"][number];
 
 function shortAddress(address: string): string {
-  return address.length > 10 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;
+  return formatCompactAddress(address);
 }
 
 export interface IdentityWalletSectionProps {

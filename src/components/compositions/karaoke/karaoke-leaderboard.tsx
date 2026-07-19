@@ -15,6 +15,7 @@ import type {
   KaraokeSongLeaderboard,
 } from "@/lib/api/client-api-types";
 import { cn } from "@/lib/utils";
+import { formatAvatarInitials } from "@/lib/formatting/initials";
 
 export type KaraokeLeaderboardState =
   | { kind: "loading" }
@@ -46,10 +47,7 @@ function displayName(entry: KaraokeLeaderboardEntry): string {
 function initials(entry: KaraokeLeaderboardEntry): string {
   if (entry.identity.visibility === "anonymized") return "FM";
   const source = entry.identity.display_name || entry.identity.handle || "?";
-  const parts = source.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return formatAvatarInitials(source);
 }
 
 function avatarHue(entry: KaraokeLeaderboardEntry): number {

@@ -103,6 +103,29 @@ Recommended API boundary: return the required author, listing/purchase, and live
 
 The route renderer already uses dynamic imports for major authenticated routes, verification modals, video, XMTP, Agora, Story CDR, and wallet sheets. That is good. However, there is no committed bundle-size budget or CI regression check, so heavy SDK movement is invisible. Add a CI-produced Vite manifest/chunk report and enforce budgets on the initial client chunk and the largest lazy chunks. A production build was intentionally not run locally under repository rules.
 
+### Playback route re-renders: accepted pending runtime evidence
+
+Decision recorded 2026-07-19: `useSongPlayback` is owned by the home, community,
+post, and public-community route components, and each media `timeupdate` creates a
+new progress-state object. The owning route therefore re-renders while a song is
+playing. Static analysis proves that path, but not that its cost is material.
+
+Runtime profiling was attempted without starting a development server. The only
+existing staging session was unauthenticated and had no playable song fixture, so
+it could not produce sustained `timeupdate` measurements. The click/load trace is
+not playback evidence and must not be used to justify an optimization.
+
+The project accepts this unmeasured render path for now rather than building a
+staging fixture solely for the audit. Reopen the finding when either:
+
+- authenticated staging already has a playable song suitable for a controlled
+  paused-versus-playing React/Chrome profile; or
+- user telemetry or a reproducible report indicates playback jank.
+
+At that point, measure commits per second, total and p95 commit duration, owning
+route versus card renders, and main-thread scripting/rendering across feed,
+community, and post routes before changing state ownership.
+
 ## Oversized production files
 
 Generated locales and vendored crypto/ABI code are excluded as required by `AGENTS.md`.

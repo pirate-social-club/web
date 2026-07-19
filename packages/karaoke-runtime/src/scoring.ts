@@ -7,8 +7,9 @@ export const KARAOKE_LINE_WINDOW_TRAIL_MS = 800;
  * so this MUST be bumped whenever a change to the scoring algorithm or weights would
  * move scores. v1 = the first explicitly versioned contract — the number is a contract
  * marker, NOT an encoding of the current weights.
+ * v2 = g-drop normalization ("in'" → "ing") now also fires before trailing punctuation.
  */
-export const KARAOKE_SCORING_VERSION = 1;
+export const KARAOKE_SCORING_VERSION = 2;
 
 export type KaraokeTimingTrend = "early" | "late" | "mixed" | "on_time";
 
@@ -167,7 +168,7 @@ function normalizeKaraokeText(value: string): string {
     .replace(/\b(i)['’]?m\b/gu, "$1 am")
     .replace(/\b(i|you|he|she|it|we|they)['’]?d\b/gu, "$1 would")
     .replace(/\b(it|that|there|here|what|who|how|where|when|why)['’]?s\b/gu, "$1 is")
-    .replace(/\b([a-z]{3,})in['’](?=\s|$)/gu, "$1ing")
+    .replace(/\b([a-z]{3,})in['’](?=\P{L}|$)/gu, "$1ing")
     .replace(/\b['’]?til\b/gu, "till")
     .replace(/\b(?:ima|i['’]?ma|imma)\b/gu, "i am going to")
     .replace(/\btryna\b/gu, "trying to")

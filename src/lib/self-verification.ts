@@ -112,14 +112,6 @@ function getSelfDisclosures(launch: SelfAppLaunch): SelfApp["disclosures"] {
   };
 }
 
-function getSelfVerificationApp(
-  launch: SelfAppLaunch | null | undefined,
-  options: { deeplinkCallback?: string | null } = {},
-): SelfApp | null {
-  const result = buildSelfVerificationLaunch(launch, options);
-  return result.selfApp;
-}
-
 export function buildSelfVerificationLaunch(
   launch: SelfAppLaunch | null | undefined,
   options: { deeplinkCallback?: string | null } = {},

@@ -42,14 +42,6 @@ function nextSummaryPollDelayMs(success: boolean): number {
   return FAILURE_BACKOFF_MS[index] ?? POLL_INTERVAL_MS;
 }
 
-function clearUnreadNotificationActivityCount() {
-  updateSummary((current) => ({
-    ...current,
-    unread_activity_count: 0,
-    has_unread: current.open_task_count > 0,
-  }));
-}
-
 export function decrementUnreadNotificationActivityCount(count = 1) {
   updateSummary((current) => {
     const unreadActivityCount = Math.max(0, current.unread_activity_count - count);

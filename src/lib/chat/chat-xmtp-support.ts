@@ -448,15 +448,6 @@ export function getAllowedConsentStates(module: XmtpModule): unknown[] {
 
 const XMTP_REGISTRATION_HINT_PREFIX = "pirate.xmtp.registered.v1";
 
-function getXmtpRegistrationHint(walletAddress: string): boolean {
-  try {
-    return typeof window !== "undefined"
-      && window.localStorage.getItem(`${XMTP_REGISTRATION_HINT_PREFIX}:${walletAddress}`) === "1";
-  } catch {
-    return false;
-  }
-}
-
 export function setXmtpRegistrationHint(walletAddress: string): void {
   try {
     if (typeof window !== "undefined") {

@@ -26,11 +26,9 @@ import {
   SidebarSideContext,
   type SidebarContextProps,
   useSidebar,
-  useSidebarSide,
 } from "./sidebar.shared";
 import {
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,

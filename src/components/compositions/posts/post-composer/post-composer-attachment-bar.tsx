@@ -7,42 +7,7 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/primitives/button";
 import { cn } from "@/lib/utils";
 
-import { tabMeta } from "./post-composer-config";
 import type { AttachmentKind } from "./post-composer.types";
-
-function PostComposerAttachmentBar({
-  activeKind,
-  availableKinds,
-  onSelect,
-}: {
-  activeKind: AttachmentKind | null;
-  availableKinds: AttachmentKind[];
-  onSelect: (kind: AttachmentKind) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      {availableKinds.map((kind) => {
-        const meta = tabMeta[kind];
-        return (
-          <button
-            aria-label={meta.label}
-            className={cn(
-              "grid size-11 place-items-center rounded-full border transition-colors",
-              activeKind === kind
-                ? "border-primary bg-primary-subtle text-primary"
-                : "border-border-soft text-muted-foreground hover:border-primary/40 hover:text-foreground",
-            )}
-            key={kind}
-            onClick={() => onSelect(kind)}
-            type="button"
-          >
-            {meta.icon}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export function PostComposerMobileAttachmentBar({
   actions,

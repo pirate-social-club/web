@@ -5,9 +5,8 @@ import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contra
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { MembershipGateSummary as ApiMembershipGateSummary } from "@pirate/api-contracts";
 import type { MembershipGateExpressionSummary as ApiMembershipGateExpressionSummary } from "@pirate/api-contracts";
-import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
-import type { CommunitySidebarGateItem, CommunitySidebarRoleHolder, CommunitySidebarRule } from "@/components/compositions/community/sidebar/community-sidebar.types";
+import type { CommunitySidebarGateItem, CommunitySidebarRule } from "@/components/compositions/community/sidebar/community-sidebar.types";
 import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
@@ -524,30 +523,6 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
     owner: undefined,
     moderators: [],
     rules: getCommunitySidebarRules(community),
-  };
-}
-
-function buildCommunitySidebarRoleHolderFromProfile(profile: ApiProfile | null | undefined): CommunitySidebarRoleHolder | null {
-  if (!profile) {
-    return null;
-  }
-
-  const handle = profile.primary_public_handle?.label?.trim()
-    || profile.global_handle.label.trim();
-  const displayName = profile.display_name?.trim() || handle;
-  if (!handle || !displayName) {
-    return null;
-  }
-
-  return {
-    user: profile.id,
-    avatarSeed: profile.id,
-    avatarSrc: profile.avatar_ref ?? undefined,
-    displayName,
-    handle,
-    nationalityBadgeCountryCode: profile.nationality_badge_country ?? undefined,
-    nationalityBadgeLabel: profile.nationality_badge_country ?? undefined,
-    role: "owner" as const,
   };
 }
 

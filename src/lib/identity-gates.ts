@@ -174,13 +174,6 @@ function resolveUniqueHumanRequirementProvider(
   return null;
 }
 
-function getProofOfWorkGateRequirements(
-  gates: MembershipGateSummary[] | null | undefined,
-): MembershipGateSummary[] {
-  const proofOfWorkGates = (gates ?? []).filter((gate) => gate.gate_type === "altcha_pow");
-  return proofOfWorkGates.length > 0 ? proofOfWorkGates : [{ gate_type: "altcha_pow" }];
-}
-
 export function isJoinSurfaceGate(_gate: Pick<MembershipGateSummary, "gate_type">): boolean {
   return true;
 }
@@ -444,32 +437,6 @@ export function hasAltchaProofAction(
   input: { gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null },
 ): boolean {
   return getRequiredActionCapabilities(input).includes("altcha_pow");
-}
-
-function getAltchaProofScope(
-  input: { gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null },
-  fallback = "community_join",
-): string {
-  const actions = (input.gate_evaluation?.required_action_set?.items ?? []) as RequiredActionNode[];
-  const visit = (action: RequiredActionNode): string | null => {
-    if (action.kind === "set") {
-      for (const item of action.items ?? []) {
-        const scope = visit(item);
-        if (scope) return scope;
-      }
-      return null;
-    }
-    if (action.capability === "altcha_pow") {
-      return typeof action.scope === "string" && action.scope.trim() ? action.scope : fallback;
-    }
-    return null;
-  };
-
-  for (const action of actions) {
-    const scope = visit(action);
-    if (scope) return scope;
-  }
-  return fallback;
 }
 
 export function getVerificationRequirementsForGates(

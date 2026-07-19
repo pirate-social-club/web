@@ -16,17 +16,6 @@ export type AttachmentState =
 
 type ComposerUploadValue = { name: string; previewUrl?: string } | null;
 
-interface SongDetailsState {
-  canvasVideo: ComposerUploadValue;
-  coverArt: ComposerUploadValue;
-  genre: string;
-  geniusAnnotationsUrl: string;
-  instrumentalStem: ComposerUploadValue;
-  language: string;
-  lyrics: string;
-  vocalStem: ComposerUploadValue;
-}
-
 export interface VideoDetailsState {
   posterFrameSeconds: string;
   thumbnail: ComposerUploadValue;
@@ -152,10 +141,6 @@ export interface DerivativeStepState {
   requirementLabel?: string;
   licenseSummary?: DerivativeLicenseSummary;
   sourceTermsAccepted?: boolean;
-}
-
-interface MoreOptionsState {
-  open?: boolean;
 }
 
 export interface LinkPreviewState {

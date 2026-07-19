@@ -101,10 +101,6 @@ function getPrivyClientId(): string | null {
   return readViteEnv("VITE_PRIVY_CLIENT_ID");
 }
 
-function isPrivyConfigured(): boolean {
-  return getPrivyAppId() !== null;
-}
-
 export function usePiratePrivyRuntime(): PrivyRuntimeState {
   return React.use(PrivyRuntimeContext);
 }

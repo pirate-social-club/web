@@ -1,6 +1,5 @@
 "use client";
 
-import { getAssistantConversation } from "@/lib/chat/chat-assistant-client";
 import type { ChatConversation } from "@/lib/chat/chat-types";
 
 export function sortConversations(conversations: readonly ChatConversation[]): ChatConversation[] {
@@ -42,8 +41,4 @@ export function buildVisibleConversations({
   conversations: readonly ChatConversation[];
 }): ChatConversation[] {
   return [...conversations];
-}
-
-function assistantConversationForAvailability(): ChatConversation {
-  return getAssistantConversation();
 }

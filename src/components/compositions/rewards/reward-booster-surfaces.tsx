@@ -62,12 +62,6 @@ type BoostBlockedReason =
 
 export type BoostEligibleActivity = "study" | "karaoke" | "either";
 
-interface BoostSongButtonProps {
-  className?: string;
-  disabled?: boolean;
-  onClick?: () => void;
-}
-
 export interface BoostCampaignSheetProps {
   budgetLabel: string;
   /** Preset budgets offered as one-tap chips, already formatted (e.g. "$25.00"). */
@@ -141,15 +135,6 @@ const ACTIVITY_LABEL = {
   karaoke: "a karaoke pass",
   either: "a study set or karaoke pass",
 } satisfies Record<BoostEligibleActivity, string>;
-
-function BoostSongButton({ className, disabled, onClick }: BoostSongButtonProps) {
-  return (
-    <Button className={cn("h-11", className)} disabled={disabled} onClick={onClick} variant="outline">
-      <Megaphone aria-hidden="true" className="size-4 text-primary" weight="bold" />
-      Boost this song
-    </Button>
-  );
-}
 
 function CampaignSummaryRow({ label, value }: { label: string; value: string }) {
   return (

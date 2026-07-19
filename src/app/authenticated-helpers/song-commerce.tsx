@@ -23,15 +23,6 @@ async function loadStoryCdrBrowser() {
   return await storyCdrBrowserModulePromise;
 }
 
-type SongCommerceState = {
-  listingsByAssetId: Record<string, ApiCommunityListing | undefined>;
-  listingsByLiveRoomId: Record<string, ApiCommunityListing | undefined>;
-  listingsByReplayAssetId: Record<string, ApiCommunityListing | undefined>;
-  purchasesByAssetId: Record<string, ApiCommunityPurchase | undefined>;
-  purchasesByLiveRoomId: Record<string, ApiCommunityPurchase | undefined>;
-  purchasesByReplayAssetId: Record<string, ApiCommunityPurchase | undefined>;
-};
-
 export type SongPlaybackDescriptor = {
   key: string;
   title: string;

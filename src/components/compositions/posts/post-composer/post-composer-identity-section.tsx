@@ -9,68 +9,8 @@ import {
 } from "@/components/primitives/combobox";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
-import type {
-  AuthorMode,
-  ComposerIdentityState,
-  IdentityMode,
-} from "./post-composer.types";
-import { IdentitySelect, type IdentityOption } from "./post-composer-identity-select";
+import type { ComposerIdentityState } from "./post-composer.types";
 import { Type } from "@/components/primitives/type";
-
-function IdentitySection({
-  authorMode,
-  className,
-  controlClassName,
-  hideLabel,
-  identity,
-  identityMode,
-  onAuthorModeChange,
-  onIdentityModeChange,
-  postAsLabel,
-  size,
-  triggerClassName,
-}: {
-  authorMode: AuthorMode;
-  className?: string;
-  controlClassName?: string;
-  hideLabel?: boolean;
-  identity: ComposerIdentityState;
-  identityMode: IdentityMode;
-  onAuthorModeChange: (mode: AuthorMode) => void;
-  onIdentityModeChange: (mode: IdentityMode) => void;
-  postAsLabel?: string;
-  size?: "default" | "lg";
-  triggerClassName?: string;
-}) {
-  const { locale } = useUiLocale();
-  const copy = getLocaleMessages(locale, "routes").createPost;
-  const currentOption: IdentityOption = authorMode === "agent" ? "agent" : identityMode;
-  const label = postAsLabel ?? copy.sections.postAs;
-
-  function selectIdentityOption(option: IdentityOption) {
-    if (option === "agent") {
-      onAuthorModeChange("agent");
-      onIdentityModeChange("public");
-    } else {
-      onAuthorModeChange("human");
-      onIdentityModeChange(option);
-    }
-  }
-
-  return (
-    <IdentitySelect
-      className={className}
-      controlClassName={controlClassName}
-      hideLabel={hideLabel}
-      identity={identity}
-      postAsLabel={label}
-      size={size}
-      triggerClassName={triggerClassName}
-      value={currentOption}
-      onChange={selectIdentityOption}
-    />
-  );
-}
 
 export function QualifierSection({
   identity,

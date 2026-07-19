@@ -9,7 +9,6 @@ import {
   ComboboxChipsInput,
   ComboboxContent,
   ComboboxEmpty,
-  ComboboxInput,
   ComboboxItem,
   ComboboxList,
   ComboboxValue,
@@ -18,48 +17,6 @@ import { COUNTRIES, findCountry, type Country } from "@/lib/countries";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { Type } from "@/components/primitives/type";
-
-interface NationalityPickerProps {
-  value: string | null;
-  onChange: (code: string | null) => void;
-}
-
-function NationalityPicker({
-  value,
-  onChange,
-}: NationalityPickerProps) {
-  const selectedCountry = React.useMemo(() => findCountry(value), [value]);
-  const { locale } = useUiLocale();
-  const copy = React.useMemo(() => getLocaleMessages(locale, "routes"), [locale]);
-  const cc = copy.createCommunity.composer;
-
-  return (
-    <Combobox<Country>
-      autoHighlight
-      items={COUNTRIES}
-      itemToStringLabel={(country) => `${country.name} (${country.code})`}
-      itemToStringValue={(country) => country.code}
-      onValueChange={(country) => onChange(country?.code ?? null)}
-      value={selectedCountry ?? undefined}
-    >
-      <ComboboxInput
-        className="h-12 rounded-[var(--radius-lg)]"
-        placeholder={cc.searchCountry}
-      />
-      <ComboboxContent>
-        <ComboboxEmpty>{cc.noCountriesFound}</ComboboxEmpty>
-        <ComboboxList className="py-0">
-          {(country) => (
-            <ComboboxItem key={country.code} value={country}>
-              <Type as="p" variant="body-strong">{country.name}</Type>
-              <p className="text-base text-muted-foreground">{country.code}</p>
-            </ComboboxItem>
-          )}
-        </ComboboxList>
-      </ComboboxContent>
-    </Combobox>
-  );
-}
 
 export interface NationalityMultiPickerProps {
   values: string[];

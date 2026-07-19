@@ -140,22 +140,6 @@ function ComboboxItem({ children, className, ref, ...props }: React.ComponentPro
   );
 }
 
-function ComboboxGroup({ className, ref, ...props }: React.ComponentProps<typeof ComboboxPrimitive.Group>) {
-  return <ComboboxPrimitive.Group ref={ref} className={cn("py-1", className)} {...props} />;
-}
-
-function ComboboxLabel({ className, ref, ...props }: React.ComponentProps<typeof ComboboxPrimitive.GroupLabel>) {
-  return (
-    <ComboboxPrimitive.GroupLabel
-      ref={ref}
-      className={cn("px-4 py-2 text-base font-semibold text-foreground", className)}
-      {...props}
-    />
-  );
-}
-
-const ComboboxCollection = ComboboxPrimitive.Collection;
-const ComboboxSeparator = ComboboxPrimitive.Separator;
 function ComboboxTrigger({ children, className, ref, ...props }: React.ComponentProps<typeof ComboboxPrimitive.Trigger>) {
   return (
     <ComboboxPrimitive.Trigger

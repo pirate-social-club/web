@@ -1,4 +1,4 @@
-import type { AttachmentState, ComposerStep, ComposerTab, LiveComposerState } from "./post-composer.types";
+import type { ComposerStep, ComposerTab, LiveComposerState } from "./post-composer.types";
 
 export function isValidHttpUrl(value: string) {
   return normalizeHttpUrl(value) !== null;
@@ -43,19 +43,6 @@ export function normalizeHttpUrl(value: string) {
   if (!schemelessWebUrl) return null;
 
   return parse(`https://${trimmed}`);
-}
-
-function getComposeCanAdvance({
-  attachment,
-  body,
-  title,
-}: {
-  attachment: AttachmentState;
-  body: string;
-  title: string;
-}) {
-  if (attachment?.kind === "link") return isValidHttpUrl(attachment.url);
-  return Boolean(title.trim() || body.trim() || attachment);
 }
 
 function composerTabHasDetailsStep(mode: ComposerTab) {

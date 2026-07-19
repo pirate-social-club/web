@@ -32,7 +32,6 @@ import {
   createRoyaltiesApi,
 } from "./client-groups-system";
 import type {
-  ApiRequest,
   ApiRequestInit,
   JsonErrorResponse,
   RefreshAuthCallback,

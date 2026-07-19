@@ -525,13 +525,9 @@ export function resolveHydrationPathname(input: {
 }
 
 function getCurrentRoute(): AppRoute {
-  let pathname = normalizePathname(window.location.pathname);
+  const windowPathname = normalizePathname(window.location.pathname);
   const hostname = window.location.hostname.toLowerCase();
-  const canonicalPathname = canonicalizeRoutePathname(pathname, hostname);
-  if (canonicalPathname !== pathname) {
-    replaceCurrentPathname(canonicalPathname);
-    pathname = canonicalPathname;
-  }
+  const pathname = canonicalizeRoutePathname(windowPathname, hostname);
 
   if (pathname === cachedPathname && hostname === cachedHostname) {
     return cachedRoute;
@@ -617,9 +613,6 @@ export function useRoute(
         }),
         window.location.hostname,
       );
-      if (cachedPathname !== normalizePathname(window.location.pathname)) {
-        replaceCurrentPathname(cachedPathname);
-      }
       cachedHostname = window.location.hostname.toLowerCase();
       cachedRoute = matchRouteWithImportedRootCommunity(cachedPathname, cachedHostname, rootCommunityId);
       return cachedRoute;
@@ -631,12 +624,24 @@ export function useRoute(
         ? { kind: "community" as const, path: "/", communityId: rootCommunityId, isImportedRoot: true }
         : HOME_ROUTE;
   }, [importedRootCommunityId, initialHostname, initialPathname]);
+  const hydrationPathname = cachedPathname;
 
   const liveRoute = React.useSyncExternalStore(
     subscribeToNavigation,
     getCurrentRoute,
     () => initialRoute,
   );
+
+  React.useEffect(() => {
+    const windowPathname = normalizePathname(window.location.pathname);
+    const canonicalPathname = canonicalizeRoutePathname(
+      hydrationPathname,
+      window.location.hostname,
+    );
+    if (canonicalPathname !== windowPathname) {
+      replaceCurrentPathname(canonicalPathname);
+    }
+  }, [hydrationPathname, liveRoute]);
 
   return liveRoute;
 }

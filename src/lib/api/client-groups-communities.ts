@@ -57,10 +57,17 @@ export function createCommunitiesApi(request: ApiRequest) {
         { locale: opts?.locale },
       ));
     },
-    attachNamespace: (communityId: string, namespaceVerificationId: string): Promise<Community> =>
+    attachNamespace: (
+      communityId: string,
+      namespaceVerificationId: string,
+      namespaceRole: "primary" | "mirror" = "primary",
+    ): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}/namespace`, {
         method: "POST",
-        body: JSON.stringify({ namespace_verification: namespaceVerificationId }),
+        body: JSON.stringify({
+          namespace_verification: namespaceVerificationId,
+          namespace_role: namespaceRole,
+        }),
       }),
     listNamespaces: (communityId: string): Promise<ApiCommunityNamespaceListResponse> =>
       request<ApiCommunityNamespaceListResponse>(

@@ -27,6 +27,7 @@ import type {
   NamespaceFamily,
 } from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
 import { Type } from "@/components/primitives/type";
+import type { ApiCommunityNamespaceAttachment } from "@/lib/api/client-api-types";
 
 const namespaceFamilyMeta: Record<NamespaceFamily, {
   externalExample: string;
@@ -49,6 +50,7 @@ export interface CommunityNamespaceVerificationPageProps {
   activeSessionId?: string | null;
   attachedNamespaceVerificationId?: string | null;
   attachedRouteSlug?: string | null;
+  namespaceAttachments?: ApiCommunityNamespaceAttachment[];
   callbacks: import("@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types").NamespaceVerificationCallbacks;
   initialFamily?: NamespaceFamily;
   initialRootLabel?: string;
@@ -63,6 +65,7 @@ export function CommunityNamespaceVerificationPage({
   activeSessionId,
   attachedNamespaceVerificationId,
   attachedRouteSlug,
+  namespaceAttachments = [],
   callbacks,
   initialFamily,
   initialRootLabel = "",
@@ -82,6 +85,13 @@ export function CommunityNamespaceVerificationPage({
   };
   const [clearingPending, setClearingPending] = React.useState(false);
   const hasAttachedNamespace = Boolean(attachedNamespaceVerificationId);
+  const [addingMirror, setAddingMirror] = React.useState(
+    Boolean(attachedNamespaceVerificationId && activeSessionId),
+  );
+
+  React.useEffect(() => {
+    if (hasAttachedNamespace && activeSessionId) setAddingMirror(true);
+  }, [activeSessionId, hasAttachedNamespace]);
 
   const handleClearPendingSession = React.useCallback(async () => {
     if (!onClearPendingSession || clearingPending) return;
@@ -101,7 +111,10 @@ export function CommunityNamespaceVerificationPage({
     enabled: true,
     onSessionStarted,
     onSessionCleared,
-    onVerified,
+    onVerified: (namespaceVerificationId) => {
+      setAddingMirror(false);
+      onVerified?.(namespaceVerificationId);
+    },
   });
 
   const meta = namespaceFamilyMeta[flow.activeFamily];
@@ -180,7 +193,7 @@ export function CommunityNamespaceVerificationPage({
     ? "warning"
     : "muted";
 
-  if (hasAttachedNamespace) {
+  if (hasAttachedNamespace && !addingMirror) {
     const publicCommunityUrl = attachedRouteSlug ? `https://pirate.sc/c/${attachedRouteSlug}` : null;
     const handshakeUrl = attachedRouteSlug ? `https://${attachedRouteSlug}/` : null;
 
@@ -224,6 +237,25 @@ export function CommunityNamespaceVerificationPage({
             )}
           </div>
 
+          {namespaceAttachments.length ? (
+            <div className="space-y-2 border-t border-border-soft pt-4">
+              <Type as="h2" variant="body-strong">Attached name namespaces</Type>
+              {namespaceAttachments.map((namespace) => {
+                const label = namespace.family === "spaces"
+                  ? `@${namespace.root_label}`
+                  : `.${namespace.root_label}`;
+                return (
+                  <div className="flex items-center justify-between gap-3" key={namespace.namespace_verification}>
+                    <Type as="span" variant="body">{label}</Type>
+                    <Type as="span" variant="caption">
+                      {namespace.namespace_role === "primary" ? "Primary · community route" : "Mirror · names only"}
+                    </Type>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+
           {activeSessionId ? (
             <div className="space-y-3 border-t border-border-soft pt-4">
               <FormNote tone="warning">
@@ -232,6 +264,24 @@ export function CommunityNamespaceVerificationPage({
               <Button loading={clearingPending} onClick={handleClearPendingSession} variant="outline">
                 Clear pending verification
               </Button>
+            </div>
+          ) : null}
+
+          {!activeSessionId ? (
+            <div className="border-t border-border-soft pt-4">
+              <Button
+                onClick={() => {
+                  flow.actions.reset();
+                  flow.actions.setRootLabel("");
+                  setAddingMirror(true);
+                }}
+                variant="outline"
+              >
+                Attach another namespace
+              </Button>
+              <FormNote className="mt-2">
+                Additional namespaces provide member names only. They do not change this community&apos;s route.
+              </FormNote>
             </div>
           ) : null}
         </div>

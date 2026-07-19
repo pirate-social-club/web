@@ -333,7 +333,7 @@ describe("KaraokeRoutePage", () => {
     });
   });
 
-  test("falls back to public post load after auth errors", async () => {
+  test("surfaces authenticated post auth errors without loading public state", async () => {
     postError = new ApiError("auth_error", "auth expired", 401);
     publicPostResult = songPost({
       presentation: {
@@ -349,10 +349,10 @@ describe("KaraokeRoutePage", () => {
 
     const view = render(<KaraokeRoutePage postId="pst_song" />);
 
-    await waitFor(() => expect(view.container.querySelector('[aria-label="Public Karaoke"]')).toBeTruthy());
-    expect(view.container.querySelector('[aria-label="Public Karaoke"]')).toBeTruthy();
+    await waitFor(() => expect(view.getByText("auth expired")).toBeTruthy());
+    expect(view.container.querySelector('[aria-label="Public Karaoke"]')).toBeNull();
     expect(calls[0]).toBe("posts.get");
-    expect(calls).toContain("publicPosts.get");
+    expect(calls).not.toContain("publicPosts.get");
     expect(calls).toContain("publicPosts.getKaraoke");
   });
 

@@ -17,6 +17,8 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # Required application-source gate. Test and Storybook projects have separate
+  # tsconfigs and are not covered by this job.
   typecheck:
     name: typecheck
     runs-on: blacksmith-4vcpu-ubuntu-2404
@@ -34,6 +36,8 @@ jobs:
       - name: Read pinned API commit
         id: api-pin
         shell: bash
+        # Web ships with this exact API contract. Using API main here would let
+        # web compile against contract changes that production does not serve yet.
         run: echo "sha=$(tr -d '[:space:]' < .github/release-refs/api.sha)" >> "$GITHUB_OUTPUT"
 
       - name: Check out pinned API workspace dependencies

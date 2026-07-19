@@ -24,6 +24,11 @@ import {
   installStoredSession,
   type StoredSession,
 } from "./fixtures/session";
+import {
+  fixtureDiagnosticDetail,
+  formatFixtureDiscoveryDiagnostics,
+  type FixtureDiscoveryDiagnostic,
+} from "./fixtures/fixture-discovery-diagnostics";
 
 const baseURL = process.env.E2E_BASE_URL ?? "https://staging.pirate.sc";
 const apiBaseURL = process.env.E2E_API_BASE_URL ?? resolveApiBaseURL(baseURL);
@@ -1164,8 +1169,15 @@ function communityFromFeedItem(item: any): LiveCommunity | null {
   return { id, label, routeSegment };
 }
 
-async function hydrateRoutableLiveCommunityOwner(community: LiveCommunity): Promise<LiveCommunity | null> {
-  const detail = await requestJson<any>(`/public-communities/${encodeURIComponent(community.id)}`).catch(() => null);
+async function hydrateRoutableLiveCommunityOwner(
+  community: LiveCommunity,
+  diagnostics?: FixtureDiscoveryDiagnostic[],
+): Promise<LiveCommunity | null> {
+  const path = `/public-communities/${encodeURIComponent(community.id)}`;
+  const detail = await requestJson<any>(path).catch((error: unknown) => {
+    diagnostics?.push({ detail: fixtureDiagnosticDetail(error), stage: "hydrate", target: path });
+    return null;
+  });
   if (!detail) return null;
   const ownerUser = firstString(detail?.owner?.user);
   const id = firstString(detail?.id, community.id) ?? community.id;
@@ -1179,14 +1191,14 @@ async function hydrateRoutableLiveCommunityOwner(community: LiveCommunity): Prom
   };
 }
 
-async function seedCommunityCandidates(): Promise<LiveCommunity[]> {
+async function seedCommunityCandidates(diagnostics?: FixtureDiscoveryDiagnostic[]): Promise<LiveCommunity[]> {
   const candidates: LiveCommunity[] = [];
   const seen = new Set<string>();
   const pushHydrated = async (community: LiveCommunity): Promise<void> => {
     const key = community.id.trim();
     if (!key || seen.has(key)) return;
     seen.add(key);
-    const hydrated = await hydrateRoutableLiveCommunityOwner(community);
+    const hydrated = await hydrateRoutableLiveCommunityOwner(community, diagnostics);
     if (hydrated) candidates.push(hydrated);
   };
 
@@ -1206,12 +1218,21 @@ async function seedCommunityCandidates(): Promise<LiveCommunity[]> {
         await pushHydrated(community);
       }
     }
-  } catch {
+  } catch (error) {
+    diagnostics?.push({
+      detail: fixtureDiagnosticDetail(error),
+      stage: "feed",
+      target: "/feed/home/public?sort=best&locale=en",
+    });
     // Fall through to search; live staging feed can be blocked by unrelated data migrations.
   }
 
   for (const query of [seedCommunityLabel, "smoke"]) {
-    const search = await requestJson<any>(`/public-communities?query=${encodeURIComponent(query)}&limit=10`);
+    const path = `/public-communities?query=${encodeURIComponent(query)}&limit=10`;
+    const search = await requestJson<any>(path).catch((error: unknown) => {
+      diagnostics?.push({ detail: fixtureDiagnosticDetail(error), stage: "search", target: path });
+      return null;
+    });
     const searchItems = Array.isArray(search?.items)
       ? search.items
       : Array.isArray(search?.results)
@@ -1343,20 +1364,50 @@ test.describe("live staging integration", () => {
       }>;
     };
     let target: { community: LiveCommunity; headers: Record<string, string>; policy: HandlePolicy } | null = null;
-    for (const community of await seedCommunityCandidates()) {
+    const discoveryDiagnostics: FixtureDiscoveryDiagnostic[] = [];
+    const candidates = await seedCommunityCandidates(discoveryDiagnostics);
+    if (candidates.length === 0) {
+      discoveryDiagnostics.push({ detail: "discovery returned no hydrated candidates", stage: "hydrate", target: "all candidates" });
+    }
+    for (const community of candidates) {
       const headers = seedOwnerAdminHeaders(community);
-      if (!headers) continue;
+      if (!headers) {
+        const missing = [
+          !process.env.PIRATE_ADMIN_TOKEN?.trim() ? "PIRATE_ADMIN_TOKEN" : null,
+          !community.ownerUserId?.trim() ? "owner user id" : null,
+        ].filter(Boolean).join(" and ");
+        discoveryDiagnostics.push({
+          detail: `missing ${missing}`,
+          stage: "owner-admin",
+          target: `${community.label} (${community.id})`,
+        });
+        continue;
+      }
+      const policyPath = `/communities/${encodeURIComponent(community.id)}/handle-policy`;
       const policy = await requestJson<HandlePolicy>(
-        `/communities/${encodeURIComponent(community.id)}/handle-policy`,
+        policyPath,
         { headers },
-      ).catch(() => null);
+      ).catch((error: unknown) => {
+        discoveryDiagnostics.push({ detail: fixtureDiagnosticDetail(error), stage: "policy", target: policyPath });
+        return null;
+      });
       if (policy?.claims_enabled) {
         target = { community, headers, policy };
         break;
       }
+      if (policy) {
+        discoveryDiagnostics.push({
+          detail: "claims_enabled is false",
+          stage: "policy",
+          target: policyPath,
+        });
+      }
     }
     if (!target) {
-      const message = "A names-enabled staging community with owner admin access is required.";
+      const message = [
+        "A names-enabled staging community with owner admin access is required.",
+        formatFixtureDiscoveryDiagnostics(discoveryDiagnostics),
+      ].join("\n");
       if (requiredReleaseGate) throw new Error(message);
       test.skip(true, message);
       return;

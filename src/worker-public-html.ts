@@ -19,6 +19,7 @@ export function buildPublicHtmlHeaders(cacheControl?: string): Headers {
   const headers = new Headers({
     "content-security-policy": PUBLIC_HTML_CSP,
     "content-type": "text/html; charset=utf-8",
+    "permissions-policy": "camera=(), microphone=(), geolocation=()",
     "referrer-policy": "strict-origin-when-cross-origin",
     "x-content-type-options": "nosniff",
     [X_FRAME_OPTIONS_HEADER]: X_FRAME_OPTIONS_DENY,

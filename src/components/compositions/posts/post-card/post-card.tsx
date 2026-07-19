@@ -9,6 +9,7 @@ import { FormattedText } from "@/components/primitives/formatted-text";
 import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
+import { normalizeHttpUrl } from "@/lib/http-url";
 import { PostCardEventBlock } from "./post-card-event-block";
 import { PostCardHeader } from "./post-card-header";
 import { PostCardMedia } from "./post-card-media";
@@ -98,7 +99,10 @@ function canDownloadStem(
 export function openExternalUrl(url: string) {
   if (typeof window === "undefined") return;
 
-  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  const normalizedUrl = normalizeHttpUrl(url);
+  if (!normalizedUrl) return;
+
+  const opened = window.open(normalizedUrl, "_blank", "noopener,noreferrer");
   if (opened) {
     opened.opener = null;
   }

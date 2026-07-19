@@ -214,12 +214,12 @@ function getAltchaActionConfig(input: {
   gate: CommunityGateData;
   postId?: string;
   sessionUser?: Pick<User, "verification_capabilities"> | null;
-  voteValue?: -1 | 1;
+  voteValue?: -1 | 1 | "clear";
 }): { actionRef: string; scope: AltchaScope } | null {
   if (!requiresActionAltchaProof(input.gate, input.sessionUser)) {
     return null;
   }
-  if (input.action === "vote_post" && input.postId && input.voteValue) {
+  if (input.action === "vote_post" && input.postId && input.voteValue != null) {
     return { actionRef: `post:${input.postId}:${input.voteValue}`, scope: "vote" };
   }
   if (input.action === "vote_comment" && input.commentId && input.voteValue) {

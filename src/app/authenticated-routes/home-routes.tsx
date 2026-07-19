@@ -469,8 +469,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
     const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);
     if (!entry) return;
-    if (!direction) return;
-    const voteValue = toPostVoteValue(direction);
+    const voteValue = direction ? toPostVoteValue(direction) : "clear";
     const voteGateData = voteGateDataByPostId.get(postId) ?? null;
     try {
       await runGatedCommunityAction({
@@ -481,6 +480,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
           const previousPost = entry.post;
           await submitOptimisticPostVote({
             altchaPayload: context?.altchaPayload,
+            clearVote: api.posts.clearVote,
             direction,
             locale: contentLocale,
             onApply: (nextValue) => setFeedEntries((current) => updateHomeFeedEntryPostVote(current, postId, nextValue)),
@@ -498,7 +498,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     } catch {
       // The optimistic submitter already rolled back and displayed the error.
     }
-  }, [api.posts.vote, contentLocale, feedEntries, queryClient, runGatedCommunityAction, voteGateDataByPostId]);
+  }, [api.posts.clearVote, api.posts.vote, contentLocale, feedEntries, queryClient, runGatedCommunityAction, voteGateDataByPostId]);
 
   const cancelEvent = React.useCallback(async (postId: string) => {
     const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);

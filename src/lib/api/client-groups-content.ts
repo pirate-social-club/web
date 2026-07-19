@@ -64,6 +64,12 @@ export function createPostsApi(request: ApiRequest) {
         body: JSON.stringify({ value }),
         headers: altchaHeaders(options),
       }),
+    clearVote: (postId: string, options?: AltchaRequestOptions): Promise<{ post: string; value: null }> =>
+      request<{ post: string; value: null }>(`/posts/${encodeURIComponent(postId)}/clear_vote`, {
+        method: "POST",
+        body: JSON.stringify({}),
+        headers: altchaHeaders(options),
+      }),
     delete: (communityId: string, postId: string): Promise<DeletedPostResponse> =>
       request<DeletedPostResponse>(
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/delete`,

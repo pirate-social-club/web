@@ -692,8 +692,7 @@ export function usePost(
 
   const voteOnPost = React.useCallback(async (direction: "up" | "down" | null) => {
     if (!post) return;
-    if (!direction) return;
-    const voteValue = toPostVoteValue(direction);
+    const voteValue = direction ? toPostVoteValue(direction) : "clear";
     try {
       await runGatedCommunityAction({
         action: "vote_post",
@@ -703,6 +702,7 @@ export function usePost(
           const nextPostId = post.post.id;
           await submitOptimisticPostVote({
             altchaPayload: context?.altchaPayload,
+            clearVote: api.posts.clearVote,
             direction,
             locale,
             onApply: (nextValue) => setPost((current) => current ? applyPostVote(current, nextValue) : current),
@@ -720,7 +720,7 @@ export function usePost(
     } catch {
       // The optimistic submitter already rolled back and displayed the error.
     }
-  }, [api.posts.vote, locale, post, queryClient, runGatedCommunityAction, voteGateData]);
+  }, [api.posts.clearVote, api.posts.vote, locale, post, queryClient, runGatedCommunityAction, voteGateData]);
 
   const deletePost = React.useCallback(async () => {
     if (!post) return;

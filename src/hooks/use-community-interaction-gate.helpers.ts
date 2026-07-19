@@ -110,7 +110,7 @@ export type PendingInteraction = {
   /** Whether this specific write must create/retain community membership. */
   requireMembership?: boolean;
   resumeActionAfterJoin?: boolean;
-  voteValue?: -1 | 1;
+  voteValue?: -1 | 1 | "clear";
 };
 
 export type RunGatedCommunityActionParams = {
@@ -132,7 +132,7 @@ export type RunGatedCommunityActionParams = {
   requireMembership?: boolean;
   resolveGateData?: () => Promise<CommunityGateData>;
   resumeActionAfterJoin?: boolean;
-  voteValue?: -1 | 1;
+  voteValue?: -1 | 1 | "clear";
 };
 
 function buildPrewarmedJoinEligibility(

@@ -751,6 +751,26 @@ describe("useGatedActionRunner", () => {
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:comment:cmt-1:-1:vote");
   });
 
+  test("binds cleared comment votes to the clear action proof", async () => {
+    const runner = renderRunner({
+      gateData: gate("already_joined", {}, [altchaRequirement]),
+    });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_comment",
+        commentId: "cmt-1",
+        communityId: "community-1",
+        onAllowed: () => undefined,
+        voteValue: "clear",
+      });
+      expect(result).toBe("blocked");
+    });
+
+    expect(runner.pendingInteraction?.altchaScope).toBe("vote");
+    expect(runner.hook.result.current.modalState?.body).toBe("altcha:comment:cmt-1:clear:vote");
+  });
+
   test("runs actions immediately for community staff roles even when gates include Altcha", async () => {
     const gateData = gate("verification_required", {}, [altchaRequirement]);
     gateData.preview.viewer_community_role = "moderator";

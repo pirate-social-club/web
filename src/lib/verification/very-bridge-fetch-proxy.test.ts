@@ -1,13 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
+import { createFetchMock, type FetchImplementation } from "@/test/fetch-mock";
 import { installVeryBridgeFetchProxy, resolveVeryBridgeProxyPath } from "./very-bridge-fetch-proxy";
 
-function withTestWindow(fetchImpl: typeof fetch): () => void {
+function withTestWindow(fetchImpl: FetchImplementation): () => void {
   const originalWindow = globalThis.window;
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
-      fetch: fetchImpl,
+      fetch: createFetchMock(fetchImpl),
       location: { hostname: "localhost" },
     },
   });

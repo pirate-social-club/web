@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
+import { createFetchMock, type FetchImplementation } from "@/test/fetch-mock";
 import { telegramCommunityJoinRedirect } from "./telegram-join-redirect";
 
 const originalFetch = globalThis.fetch;
@@ -11,10 +12,10 @@ afterEach(() => {
   });
 });
 
-function mockFetch(handler: typeof fetch): void {
+function mockFetch(handler: FetchImplementation): void {
   Object.defineProperty(globalThis, "fetch", {
     configurable: true,
-    value: handler,
+    value: createFetchMock(handler),
   });
 }
 

@@ -33,6 +33,11 @@ const authorProfile = {
   user: "usr_swift",
 } as Profile;
 
+function requireItems<T>(items: T[] | undefined, label: string): T[] {
+  if (!items) throw new Error(`Expected ${label} items`);
+  return items;
+}
+
 function makePost(overrides: Partial<LocalizedPostResponse["post"]> = {}): LocalizedPostResponse {
   return {
     comment_count: 2,
@@ -136,16 +141,18 @@ describe("mapProfileActivityProps", () => {
     };
 
     const props = mapProfileActivityProps(activity, { usr_swift: authorProfile });
+    const posts = requireItems(props.posts, "post");
+    const comments = requireItems(props.comments, "comment");
 
-    expect(props.posts).toHaveLength(1);
-    expect(props.posts[0]?.post.title).toBe("Profile activity post");
-    expect(props.posts[0]?.post.byline?.author?.href).toBe("/u/swift-fox-7721.pirate");
-    expect(props.posts[0]?.post.byline?.author?.avatarSrc).toBe("https://example.test/profile-avatar.png");
-    expect(props.comments).toHaveLength(1);
-    expect(props.comments[0]?.body).toBe("Profile activity comment");
-    expect(props.comments[0]?.authorHref).toBe("/u/swift-fox-7721.pirate");
-    expect(props.comments[0]?.authorAvatarSrc).toBe("https://example.test/profile-avatar.png");
-    expect(props.comments[0]?.postHref).toBe("/p/pst_profile");
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.post.title).toBe("Profile activity post");
+    expect(posts[0]?.post.byline?.author?.href).toBe("/u/swift-fox-7721.pirate");
+    expect(posts[0]?.post.byline?.author?.avatarSrc).toBe("https://example.test/profile-avatar.png");
+    expect(comments).toHaveLength(1);
+    expect(comments[0]?.body).toBe("Profile activity comment");
+    expect(comments[0]?.authorHref).toBe("/u/swift-fox-7721.pirate");
+    expect(comments[0]?.authorAvatarSrc).toBe("https://example.test/profile-avatar.png");
+    expect(comments[0]?.postHref).toBe("/p/pst_profile");
     expect(props.overviewItems).toHaveLength(1);
   });
 
@@ -170,13 +177,15 @@ describe("mapProfileActivityProps", () => {
     };
 
     const props = mapProfileActivityProps(activity);
+    const posts = requireItems(props.posts, "post");
+    const comments = requireItems(props.comments, "comment");
 
-    expect(props.posts[0]?.post.byline?.author?.label).toBe("usr_swif");
-    expect(props.posts[0]?.post.byline?.author?.href).toBeUndefined();
-    expect(props.posts[0]?.post.byline?.author?.avatarSrc).toBeUndefined();
-    expect(props.comments[0]?.authorLabel).toBe("usr_swif");
-    expect(props.comments[0]?.authorHref).toBeUndefined();
-    expect(props.comments[0]?.authorAvatarSrc).toBeUndefined();
+    expect(posts[0]?.post.byline?.author?.label).toBe("usr_swif");
+    expect(posts[0]?.post.byline?.author?.href).toBeUndefined();
+    expect(posts[0]?.post.byline?.author?.avatarSrc).toBeUndefined();
+    expect(comments[0]?.authorLabel).toBe("usr_swif");
+    expect(comments[0]?.authorHref).toBeUndefined();
+    expect(comments[0]?.authorAvatarSrc).toBeUndefined();
   });
 
   test("uses profile avatars without falling back to the community owner avatar", () => {
@@ -200,9 +209,11 @@ describe("mapProfileActivityProps", () => {
     };
 
     const props = mapProfileActivityProps(activity, { usr_swift: authorProfile });
+    const posts = requireItems(props.posts, "post");
+    const comments = requireItems(props.comments, "comment");
 
-    expect(props.posts[0]?.post.byline?.author?.avatarSrc).toBe("https://example.test/profile-avatar.png");
-    expect(props.posts[0]?.post.byline?.author?.avatarSrc).not.toBe("https://example.test/avatar.png");
-    expect(props.comments[0]?.authorAvatarSrc).toBe("https://example.test/profile-avatar.png");
+    expect(posts[0]?.post.byline?.author?.avatarSrc).toBe("https://example.test/profile-avatar.png");
+    expect(posts[0]?.post.byline?.author?.avatarSrc).not.toBe("https://example.test/avatar.png");
+    expect(comments[0]?.authorAvatarSrc).toBe("https://example.test/profile-avatar.png");
   });
 });

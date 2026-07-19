@@ -1,7 +1,6 @@
 import "@/test/setup-runtime";
 
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import * as React from "react";
 import { cleanup, fireEvent, render } from "@testing-library/react";
 
 import { LiveRoomReplayPlayerSurface } from "./live-room-replay-player-modal";

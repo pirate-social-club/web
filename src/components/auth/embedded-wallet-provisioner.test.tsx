@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { act, render, waitFor } from "@testing-library/react";
-import * as React from "react";
 
 import type { StoredSession } from "@/lib/api/session-store";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";

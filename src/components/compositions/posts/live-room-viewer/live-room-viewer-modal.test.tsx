@@ -1,7 +1,6 @@
 import "@/test/setup-runtime";
 
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import * as React from "react";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import type { IAgoraRTCClient, IAgoraRTCRemoteUser } from "agora-rtc-sdk-ng";
 

@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import { fireEvent, render } from "@testing-library/react";
-import * as React from "react";
 
 import { installDomGlobals } from "@/test/setup-dom";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";

@@ -17,13 +17,30 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { toast } from "@/components/primitives/sonner";
 import { SongPurchaseModal } from "@/components/compositions/wallet/song-purchase-modal/song-purchase-modal";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
-import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
+import { centsToUsd, formatUsdCentsLabel, formatUsdLabel } from "@/lib/formatting/currency";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 
 type PurchaseAssetLabel = "song" | "video" | "ticket" | "replay" | "asset";
+type PurchaseSuccessKind = "replay" | "ticket" | "unlocked";
 
 const SETTLEMENT_POLL_ATTEMPTS = 60;
+
+export function buildPurchaseSuccessMessage({
+  kind,
+  locale,
+  priceCents,
+  titleText,
+}: {
+  kind: PurchaseSuccessKind;
+  locale: string;
+  priceCents: number | null | undefined;
+  titleText: string;
+}): string {
+  const priceLabel = formatUsdCentsLabel(priceCents, locale);
+  const action = kind === "unlocked" ? "unlocked" : `${kind} purchased`;
+  return priceLabel ? `${titleText} ${action} for ${priceLabel}.` : `${titleText} ${action}.`;
+}
 
 function settlementPollDelayMs(attempt: number): number {
   return Math.min(1_000 * (2 ** Math.min(attempt, 3)), 8_000);

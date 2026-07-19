@@ -50,6 +50,13 @@ export function formatUsdCompactLabel(
   return getUsdCompactLabelFormatter(localeTag, value % 1 === 0 ? 0 : 2).format(value);
 }
 
+export function formatUsdCentsLabel(
+  value: number | null | undefined,
+  localeTag = "en",
+): string | undefined {
+  return formatUsdLabel(centsToUsd(value), localeTag);
+}
+
 export function parseUsdInput(value: string | null | undefined): number | null {
   if (!value) {
     return null;

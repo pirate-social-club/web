@@ -5,9 +5,19 @@ import type {
 } from "@pirate/api-contracts";
 
 import {
+  buildPurchaseSuccessMessage,
   resolveQuoteDiscountPercent,
   waitForPurchaseSettlement,
 } from "@/app/authenticated-helpers/song-purchase";
+
+describe("buildPurchaseSuccessMessage", () => {
+  test("localizes known prices and omits unknown prices", () => {
+    expect(buildPurchaseSuccessMessage({ kind: "unlocked", locale: "de-DE", priceCents: 1234, titleText: "Song" }))
+      .toBe("Song unlocked for 12,34\u00a0$.");
+    expect(buildPurchaseSuccessMessage({ kind: "ticket", locale: "en", priceCents: Number.NaN, titleText: "Live" }))
+      .toBe("Live ticket purchased.");
+  });
+});
 
 function createCommunities(overrides: {
   quote?: Partial<CommunityPurchaseQuote>;

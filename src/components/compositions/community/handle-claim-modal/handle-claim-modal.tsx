@@ -31,6 +31,7 @@ import { Type, typeVariants } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
+import { formatUsdCentsLabel } from "@/lib/formatting/currency";
 
 import type {
   HandleClaimModalProps,
@@ -38,8 +39,8 @@ import type {
   HandleSearchResult,
 } from "./handle-claim-modal.types";
 
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+function formatCents(cents: number, locale: string): string {
+  return formatUsdCentsLabel(cents, locale) ?? "Price unavailable";
 }
 
 function isActionEnabled(
@@ -56,12 +57,13 @@ function isActionEnabled(
 function resolvePrimaryLabel(
   phase: HandleClaimPhase,
   result: HandleSearchResult | undefined,
+  locale: string,
 ): string {
   if (phase === "success") return "Done";
   if (phase === "processing") return "Claiming…";
   if (!result || result.availability !== "available") return "Claim";
   if (result.priceCents === null || result.priceCents === 0) return "Claim for free";
-  return `Claim for ${formatCents(result.priceCents)}`;
+  return `Claim for ${formatCents(result.priceCents, locale)}`;
 }
 
 export function resolveCommunityHandleSuffix(
@@ -269,8 +271,8 @@ export function HandleClaimModal({
     : isActionEnabled(phase, searchResult);
 
   const primaryLabel = isInsufficientFunds
-    ? `Add ${formatCents(shortfallCents)}`
-    : resolvePrimaryLabel(phase, searchResult);
+    ? `Add ${formatCents(shortfallCents, locale)}`
+    : resolvePrimaryLabel(phase, searchResult, locale);
 
   const hasSelfVerificationNudge =
     typeof selfVerificationSavingsPercent === "number" &&
@@ -419,7 +421,7 @@ export function HandleClaimModal({
 
               {isInsufficientFunds ? (
                 <FormNote tone="warning">
-                  You need {formatCents(shortfallCents)} more to claim this name.
+                  You need {formatCents(shortfallCents, locale)} more to claim this name.
                 </FormNote>
               ) : null}
 

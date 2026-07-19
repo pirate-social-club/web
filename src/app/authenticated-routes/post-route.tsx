@@ -37,7 +37,7 @@ import { useRouteMessages } from "@/hooks/use-route-messages";
 import { getErrorMessage } from "@/lib/error-utils";
 import { getProfileHandleLabel } from "@/lib/profile-routing";
 import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
-import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
+import { buildPurchaseSuccessMessage, useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
 import { useSongCommerceState, useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
 import { loadLiveRoomReplayPlayback } from "@/app/authenticated-helpers/live-room-replay-playback";
 import { takeStoryLicenseReuseNotice, type StoryLicenseReuseNotice } from "@/app/authenticated-helpers/story-license-reuse-notice";
@@ -520,10 +520,10 @@ export function PostPage({
       assetLabel,
       communityId: nextCommunityId,
       listing,
-      successMessage: ({ settlement, titleText: nextTitle }) => `${nextTitle} unlocked for $${(settlement.purchase_price_cents / 100).toFixed(2)}.`,
+      successMessage: ({ settlement, titleText: nextTitle }) => buildPurchaseSuccessMessage({ kind: "unlocked", locale, priceCents: settlement.purchase_price_cents, titleText: nextTitle }),
       titleText,
     });
-  }, [buySong]);
+  }, [buySong, locale]);
 
   const handleBuyLiveTicket = React.useCallback(async (
     listing: ApiCommunityListing,
@@ -538,10 +538,10 @@ export function PostPage({
       assetLabel: "ticket",
       communityId: nextCommunityId,
       listing,
-      successMessage: ({ settlement, titleText: nextTitle }) => `${nextTitle} ticket purchased for $${(settlement.purchase_price_cents / 100).toFixed(2)}.`,
+      successMessage: ({ settlement, titleText: nextTitle }) => buildPurchaseSuccessMessage({ kind: "ticket", locale, priceCents: settlement.purchase_price_cents, titleText: nextTitle }),
       titleText,
     });
-  }, [buySong, requestAuth, session?.accessToken]);
+  }, [buySong, locale, requestAuth, session?.accessToken]);
   const handleBuyReplay = React.useCallback(async (
     listing: ApiCommunityListing,
     titleText: string,
@@ -555,10 +555,10 @@ export function PostPage({
       assetLabel: "replay",
       communityId: nextCommunityId,
       listing,
-      successMessage: ({ settlement, titleText: nextTitle }) => `${nextTitle} replay purchased for $${(settlement.purchase_price_cents / 100).toFixed(2)}.`,
+      successMessage: ({ settlement, titleText: nextTitle }) => buildPurchaseSuccessMessage({ kind: "replay", locale, priceCents: settlement.purchase_price_cents, titleText: nextTitle }),
       titleText,
     });
-  }, [buySong, requestAuth, session?.accessToken]);
+  }, [buySong, locale, requestAuth, session?.accessToken]);
   const handlePromptLiveTicketAuth = React.useCallback(() => {
     requestAuth("Connect your wallet to buy a ticket for this live room.");
   }, [requestAuth]);

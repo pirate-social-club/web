@@ -26,6 +26,7 @@ import { Type } from "@/components/primitives/type";
 import { getLocaleMessages } from "@/locales";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
+import { formatUsdCentsLabel } from "@/lib/formatting/currency";
 import {
   MAX_LABEL_CLAIM_RULES,
   isLabelClaimRuleDraftSavable,
@@ -286,9 +287,8 @@ function MoneyInputRow({
   );
 }
 
-function formatCents(cents: number | null): string {
-  if (cents == null) return "$0.00";
-  return `$${(cents / 100).toFixed(2)}`;
+function formatCents(cents: number | null, locale: string): string {
+  return formatUsdCentsLabel(cents, locale) ?? "—";
 }
 
 function computePreviewPrice(label: string, draft: HandlePolicyDraft): { priceCents: number; tier: string } {
@@ -609,7 +609,7 @@ export function CommunityHandlePolicyEditorPage({
             </div>
             <div className="flex items-center gap-2 text-base">
               <span className="text-muted-foreground">Price:</span>
-              <span className="font-medium">{formatCents(preview.priceCents)}</span>
+              <span className="font-medium">{formatCents(preview.priceCents, locale)}</span>
               {preview.tier ? (
                 <span className="text-muted-foreground">
                   {preview.tier}
@@ -702,7 +702,7 @@ export function CommunityHandlePolicyEditorPage({
                       <td className="px-4 py-3 font-mono">{handle.label}</td>
                       <td className="px-4 py-3">{handle.status}</td>
                       <td className="max-w-64 truncate px-4 py-3 font-mono">{handle.user}</td>
-                      <td className="px-4 py-3">{formatCents(handle.price_cents)}</td>
+                      <td className="px-4 py-3">{formatCents(handle.price_cents, locale)}</td>
                       <td className="px-4 py-3 text-right">
                         <Button
                           disabled={handleOpsLoading || handle.status === "revoked" || handle.status === "expired"}

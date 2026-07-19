@@ -64,19 +64,6 @@ function resolvePrimaryLabel(
   return `Claim for ${formatCents(result.priceCents)}`;
 }
 
-function resolveCommunityRouteLabel(
-  communityHandle: string,
-  communityRouteLabel: string | null | undefined,
-): string {
-  const normalized = communityRouteLabel?.trim().replace(/^\/+/u, "");
-  if (normalized) {
-    return normalized.toLowerCase().startsWith("c/")
-      ? `/${normalized}`
-      : `/c/${normalized}`;
-  }
-  return `/c/${communityHandle}`;
-}
-
 export function resolveCommunityHandleSuffix(
   communityHandle: string,
   communityRouteLabel: string | null | undefined,
@@ -95,6 +82,11 @@ function stripCommunityHandleSuffix(value: string, suffix: string): string {
   return value.toLowerCase().endsWith(suffix.toLowerCase())
     ? value.slice(0, -suffix.length)
     : value;
+}
+
+export function resolveQualifiedCommunityHandle(value: string, suffix: string): string {
+  const label = stripCommunityHandleSuffix(value.trim(), suffix);
+  return label ? `${label}${suffix}` : suffix;
 }
 
 function SearchResultFeedback({
@@ -243,7 +235,7 @@ export function HandleClaimModal({
   error,
   claimedLabel,
   forceMobile,
-  benefits = ["Accessible in Freedom Browser", "Share for payments", "Sell it"],
+  benefits = [],
   walletBalanceCents,
   onAddFunds,
 }: HandleClaimModalProps) {
@@ -260,13 +252,13 @@ export function HandleClaimModal({
     (option) => option.namespaceVerification === selectedNamespaceVerification,
   );
   const effectiveRouteLabel = selectedNamespace?.routeLabel ?? communityRouteLabel;
-  const successCommunityLabel = resolveCommunityRouteLabel(
-    communityHandle,
-    effectiveRouteLabel,
-  );
   const communityHandleSuffix = resolveCommunityHandleSuffix(
     communityHandle,
     effectiveRouteLabel,
+  );
+  const qualifiedClaimedLabel = resolveQualifiedCommunityHandle(
+    claimedLabel ?? searchValue,
+    communityHandleSuffix,
   );
 
   const priceCents = searchResult?.priceCents ?? 0;
@@ -311,7 +303,7 @@ export function HandleClaimModal({
         <StandardModalHeader
           description={
             isSuccess
-              ? `Claimed! Your name is ready to use in ${successCommunityLabel}.`
+              ? `Claim recorded for ${qualifiedClaimedLabel}.`
               : `Choose a name in this community.`
           }
           icon={
@@ -345,7 +337,7 @@ export function HandleClaimModal({
               <div className="flex items-center gap-3 rounded-lg border border-border-soft bg-muted/30 p-4">
                 <Check className="size-5 shrink-0 text-foreground" weight="bold" />
                 <Type as="p" className="min-w-0 font-mono text-lg" variant="body-strong">
-                  {claimedLabel ?? searchValue}
+                  {qualifiedClaimedLabel}
                 </Type>
               </div>
 

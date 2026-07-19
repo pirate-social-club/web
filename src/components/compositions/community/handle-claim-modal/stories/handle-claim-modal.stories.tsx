@@ -120,7 +120,7 @@ function InteractiveModalStory({
     if (!searchResult || searchResult.availability !== "available") return;
     setPhase("processing");
     timeoutRef.current = setTimeout(() => {
-      setClaimedLabel(`${searchValue}@ethiopia`);
+      setClaimedLabel(searchValue);
       setPhase("success");
     }, 1500);
   };

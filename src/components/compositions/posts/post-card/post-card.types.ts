@@ -541,7 +541,7 @@ export interface PostCardProps {
   engagement: PostCardEngagement;
   menuItems?: PostCardMenuItem[];
   shareActions?: PostCardShareAction[];
-  onVote?: (direction: "up" | "down" | null) => void;
+  onVote?: (direction: "up" | "down" | null) => Promise<void> | void;
   voteAccess?: {
     disabled?: boolean;
     label: string;

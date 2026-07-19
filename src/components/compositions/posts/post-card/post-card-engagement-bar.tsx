@@ -17,7 +17,7 @@ export interface PostCardEngagementBarProps {
   engagement: PostCardEngagement;
   unlock?: UnlockAction;
   shareActions?: PostCardShareAction[];
-  onVote?: (direction: "up" | "down" | null) => void;
+  onVote?: (direction: "up" | "down" | null) => Promise<void> | void;
   voteAccess?: {
     disabled?: boolean;
     label: string;

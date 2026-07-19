@@ -442,7 +442,7 @@ export function mapThreadCommentNode(
   labels: Parameters<typeof toThreadComment>[2],
   onLoadReplies: (commentId: string) => void,
   onReplySubmit?: (commentId: string, input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void>,
-  onVote?: (commentId: string, direction: "up" | "down") => void,
+  onVote?: (commentId: string, direction: "up" | "down") => Promise<void> | void,
   onDelete?: (commentId: string) => void,
 ): PostThreadComment {
   const loadMoreRepliesLabel = buildThreadMoreRepliesLabel(node, labels);
@@ -468,7 +468,7 @@ export function mapThreadCommentNode(
         ? async (input) => await onReplySubmit(node.item.comment.id, input)
         : undefined,
       onVote: onVote
-        ? (direction) => onVote(node.item.comment.id, direction)
+        ? async (direction) => await onVote(node.item.comment.id, direction)
         : undefined,
     },
     node.children.map((child) => mapThreadCommentNode(

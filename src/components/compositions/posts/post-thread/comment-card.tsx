@@ -65,7 +65,7 @@ export interface CommentCardProps {
   canDelete?: boolean;
   deleteActionLabel?: string;
   onDelete?: () => void;
-  onVote?: (direction: "up" | "down") => void;
+  onVote?: (direction: "up" | "down") => Promise<void> | void;
   showOriginalLabel?: string;
   showTranslationLabel?: string;
   replyActionLabel?: string;
@@ -152,7 +152,7 @@ export function CommentCard({
   const canSubmitReply = Boolean(replyBody.trim() || replyAttachment);
   const handleVote = React.useCallback((direction: "up" | "down" | null) => {
     if (direction) {
-      onVote?.(direction);
+      return onVote?.(direction);
     }
   }, [onVote]);
 

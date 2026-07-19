@@ -855,7 +855,7 @@ export function PublicCommunityRoutePage({
             onComment: () => navigate(buildPostPath?.(post.post.id) ?? `/p/${post.post.id}`),
             onCancelEvent: () => void cancelEvent(post.post.id),
             onVerifyAge: handleVerifyAge,
-            onVote: (direction) => void voteOnPost(post.post.id, direction),
+            onVote: async (direction) => await voteOnPost(post.post.id, direction),
             postHref: buildPostPath?.(post.post.id),
             showOriginalLabel: copy.common.showOriginal,
             showTranslationLabel: copy.common.showTranslation,

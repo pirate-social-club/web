@@ -575,7 +575,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         onCancelEvent: () => void cancelEvent(entry.post.post.id),
         onComment: () => navigate(`/p/${entry.post.post.id}`),
         onVerifyAge: handleVerifyAge,
-        onVote: (direction) => void voteOnPost(entry.post.post.id, direction),
+        onVote: async (direction) => await voteOnPost(entry.post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,
         showTranslationLabel: copy.common.showTranslation,
         viewerContentLocale: contentLocale,

@@ -73,7 +73,7 @@ export interface PostThreadComment {
   onLoadMoreReplies?: () => void;
   onDelete?: () => void;
   onReplySubmit?: (input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
-  onVote?: (direction: "up" | "down") => void;
+  onVote?: (direction: "up" | "down") => Promise<void> | void;
   children?: PostThreadComment[];
 }
 

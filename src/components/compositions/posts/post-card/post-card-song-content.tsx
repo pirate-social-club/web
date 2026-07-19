@@ -549,13 +549,6 @@ function SongOfferRows({
   const failureReason = studyFailureReason && karaokeFailureReason
     ? "Study and Sing setup failed. Check the song setup, then retry publishing."
     : studyFailureReason ?? karaokeFailureReason;
-  const previewOnlyFeatureLabel = content.study?.previewOnly && content.karaoke?.previewOnly
-    ? "Study and Sing"
-    : content.study?.previewOnly
-      ? "Study"
-      : content.karaoke?.previewOnly
-        ? "Sing"
-        : null;
 
   if (vinylReleaseUrl) {
     rows.push(
@@ -594,11 +587,6 @@ function SongOfferRows({
           )}
         >
           {primaryActions}
-          {previewOnlyFeatureLabel ? (
-            <Type as="p" className="col-span-full text-muted-foreground" variant="caption">
-              {previewOnlyFeatureLabel} will become available after publishing finishes preparing this song.
-            </Type>
-          ) : null}
           {failureReason ? (
             <div className="col-span-full flex items-start gap-2 rounded-md border border-warning/20 bg-warning/5 px-3 py-2 text-warning">
               <WarningCircle className="mt-0.5 size-4 shrink-0" weight="fill" />

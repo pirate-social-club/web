@@ -508,7 +508,7 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("disabled");
   });
 
-  test("renders composer-only song features without unresolved spinners", () => {
+  test("renders composer-only song features as disabled buttons without status copy", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
@@ -519,7 +519,10 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).toContain("Study and Sing will become available after publishing");
+    expect(markup).toContain("Study");
+    expect(markup).toContain("Sing");
+    expect(markup).toContain("disabled");
+    expect(markup).not.toContain("will become available after publishing");
     expect(markup).not.toContain("role=\"status\"");
   });
 

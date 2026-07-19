@@ -401,6 +401,7 @@ jobs:
             --requirements api/services/api/community-schema-requirements.json \
             --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
             --migrations-dir core/db/community-template/migrations \
+            --canonical-baseline api/services/api/docs/attestations/community-schema/staging-canonical-baseline.json \
             --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
             --concurrency 2
       - name: Upload staging schema manifest
@@ -709,6 +710,7 @@ jobs:
             --requirements api/services/api/community-schema-requirements.json \
             --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
             --migrations-dir core/db/community-template/migrations \
+            --canonical-baseline api/services/api/docs/attestations/community-schema/production-canonical-baseline.json \
             --manifest "$GITHUB_WORKSPACE/schema-gate-production.json" \
             --concurrency 14
       - name: Upload production schema manifest

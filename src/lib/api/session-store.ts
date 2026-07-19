@@ -157,9 +157,8 @@ export function updateSessionOnboarding(
 ): void {
   const current = getStoredSession();
   if (!current) return;
-  current.onboarding = onboarding;
-  cachedSession = current;
-  writeToStorage(current);
+  cachedSession = { ...current, onboarding };
+  writeToStorage(cachedSession);
   notifyAll();
 }
 
@@ -168,9 +167,8 @@ export function updateSessionUser(
 ): void {
   const current = getStoredSession();
   if (!current) return;
-  current.user = user;
-  cachedSession = current;
-  writeToStorage(current);
+  cachedSession = { ...current, user };
+  writeToStorage(cachedSession);
   notifyAll();
 }
 
@@ -179,9 +177,8 @@ export function updateSessionProfile(
 ): void {
   const current = getStoredSession();
   if (!current) return;
-  current.profile = profile;
-  cachedSession = current;
-  writeToStorage(current);
+  cachedSession = { ...current, profile };
+  writeToStorage(cachedSession);
   notifyAll();
 }
 
@@ -195,14 +192,16 @@ export function updateSessionIdentityWallet(walletAttachmentId: string): void {
     (attachment) => attachment.wallet_attachment === walletAttachmentId,
   );
   if (!target) return;
-  current.walletAttachments = current.walletAttachments.map((attachment) => ({
-    ...attachment,
-    is_primary: attachment.wallet_attachment === walletAttachmentId,
-  }));
-  current.user = { ...current.user, primary_wallet_attachment: walletAttachmentId };
-  current.profile = { ...current.profile, primary_wallet_address: target.wallet_address };
-  cachedSession = current;
-  writeToStorage(current);
+  cachedSession = {
+    ...current,
+    walletAttachments: current.walletAttachments.map((attachment) => ({
+      ...attachment,
+      is_primary: attachment.wallet_attachment === walletAttachmentId,
+    })),
+    user: { ...current.user, primary_wallet_attachment: walletAttachmentId },
+    profile: { ...current.profile, primary_wallet_address: target.wallet_address },
+  };
+  writeToStorage(cachedSession);
   notifyAll();
 }
 

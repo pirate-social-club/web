@@ -38,8 +38,8 @@ describe("formatGateRequirement", () => {
 
   test("formats gate copy with regional locale tags", () => {
     const gate: MembershipGateSummary = { gate_type: "unique_human" };
-    expect(formatGateRequirement(gate, { locale: "ar-SA" })).toBe("يتطلب التحقق من أنك إنسان");
-    expect(formatGateRequirement(gate, { locale: "zh-CN" })).toBe("需要真人验证");
+    expect(formatGateRequirement(gate, { locale: "ar-SA" })).toBe("إثبات أنك إنسان");
+    expect(formatGateRequirement(gate, { locale: "zh-CN" })).toBe("真人证明");
   });
 
   test("formats nationality gate with country name and code for admin surfaces", () => {
@@ -54,7 +54,17 @@ describe("formatGateRequirement", () => {
 
   test("formats unique human gate without provider jargon", () => {
     const gate: MembershipGateSummary = { gate_type: "unique_human" };
-    expect(formatGateRequirement(gate)).toBe("Real person check");
+    expect(formatGateRequirement(gate)).toBe("Human proof");
+  });
+
+  test("formats Self unique human gate as private ID proof", () => {
+    const gate: MembershipGateSummary = { accepted_providers: ["self"], gate_type: "unique_human" };
+    expect(formatGateRequirement(gate)).toBe("Private ID proof");
+  });
+
+  test("formats ZKPassport unique human gate distinctly", () => {
+    const gate: MembershipGateSummary = { accepted_providers: ["zkpassport"], gate_type: "unique_human" };
+    expect(formatGateRequirement(gate)).toBe("ZKPassport proof");
   });
 
   test("formats Very unique human gate as palm scan", () => {
@@ -85,7 +95,7 @@ describe("formatGateRequirement", () => {
 
   test("formats wallet score gate with threshold", () => {
     const gate: MembershipGateSummary = { gate_type: "wallet_score", minimum_score: 20 };
-    expect(formatGateRequirement(gate)).toBe("Passport Score 20+");
+    expect(formatGateRequirement(gate)).toBe("Passport score 20+");
   });
 
 });

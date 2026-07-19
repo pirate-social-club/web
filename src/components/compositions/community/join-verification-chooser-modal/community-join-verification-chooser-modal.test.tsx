@@ -21,6 +21,8 @@ describe("CommunityJoinVerificationChooserModal", () => {
       <CommunityJoinVerificationChooserModal
         choices={[
           { gate_type: "wallet_score", minimum_score: 8 },
+          { accepted_providers: ["self"], gate_type: "unique_human" },
+          { accepted_providers: ["zkpassport"], gate_type: "unique_human" },
           { accepted_providers: ["very"], gate_type: "unique_human" },
           {
             asset_decimals: 18,
@@ -40,6 +42,8 @@ describe("CommunityJoinVerificationChooserModal", () => {
       />,
     );
 
+    expect(getByRole("button", { name: "Private ID proof" })).toBeTruthy();
+    expect(getByRole("button", { name: "ZKPassport proof" })).toBeTruthy();
     fireEvent.click(getByRole("button", { name: "Palm scan" }));
     await waitFor(() => expect(selected).toEqual(["unique_human"]));
     fireEvent.click(getByRole("button", { name: "At least 0.5 ETH" }));

@@ -10,13 +10,15 @@
     },
     "uniqueHuman": {
       "very": "Palm scan",
-      "self": "Real person check"
+      "self": "Private ID proof",
+      "zkpassport": "ZKPassport proof",
+      "any": "Human proof"
     },
     "ageOver18": "18+ ID check",
     "minimumAge": "{age}+ ID check",
     "walletScore": {
-      "withScore": "Passport Score {minimumScore}+",
-      "withoutScore": "Passport Score"
+      "withScore": "Passport score {minimumScore}+",
+      "withoutScore": "Passport score"
     },
     "altchaPow": "Browser anti-bot check",
     "erc721Holding": {

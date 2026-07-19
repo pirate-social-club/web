@@ -11,7 +11,7 @@ import type { CommunitySidebarGateItem, CommunitySidebarRoleHolder, CommunitySid
 import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
-import { hasActionTimeCheck, isJoinSurfaceGate } from "@/lib/identity-gates";
+import { formatGateRequirement, hasActionTimeCheck, isJoinSurfaceGate } from "@/lib/identity-gates";
 import { flattenGatePolicyAtoms, getGatePolicyMatchMode, isFlatOrGateExpression } from "@/lib/gate-policy-utils";
 import { deriveGateStatuses } from "@/lib/community-gate-statuses";
 import { formatAssetAmount } from "@/lib/asset-amount";
@@ -138,22 +138,10 @@ function formatSidebarRequirement(input: {
     case "minimum_age":
       return `${input.requiredMinimumAge ?? 18}+`;
     case "unique_human": {
-      const acceptedProviders = input.acceptedProviders ?? [];
-      const isVeryOnly = acceptedProviders.length === 1 && acceptedProviders[0] === "very";
-      const isSelfOnly = acceptedProviders.length === 1 && acceptedProviders[0] === "self";
-      if (isVeryOnly) {
-        if (locale === "ar") return "فحص راحة اليد";
-        if (locale === "zh") return "掌纹扫描";
-        return "Palm scan";
-      }
-      if (isSelfOnly) {
-        if (locale === "ar") return "إثبات الهوية الخاص";
-        if (locale === "zh") return "私密身份证明";
-        return "Private ID proof";
-      }
-      if (locale === "ar") return "إثبات أنك إنسان";
-      if (locale === "zh") return "真人证明";
-      return "Human proof";
+      return formatGateRequirement({
+        accepted_providers: input.acceptedProviders,
+        gate_type: "unique_human",
+      }, { locale: input.locale });
     }
     case "altcha_pow":
       if (locale === "ar") return "إثبات العمل";
@@ -439,7 +427,7 @@ function getCommunityGateSummaries(
 ): SidebarGateSummary[] {
   const assetDisplay = indexAssetDisplayByAssetId(apiGateSummaries);
   return flattenGatePolicyAtoms(community.gate_policy).map((atom) => ({
-    accepted_providers: "provider" in atom && (atom.provider === "self" || atom.provider === "very" || atom.provider === "passport")
+    accepted_providers: "provider" in atom && (atom.provider === "self" || atom.provider === "zkpassport" || atom.provider === "very" || atom.provider === "passport")
       ? [atom.provider]
       : null,
     asset_category: "asset_category" in atom ? (atom.asset_category as string | null | undefined) : null,

@@ -150,14 +150,14 @@ function isSelfRequestedCapability(capability: MissingCapability): capability is
 function resolveUniqueHumanRequirementProvider(
   gate: MembershipGateSummary,
   provider: RequirementProviderContext,
-): "self" | "very" | null {
-  if (provider === "self" || provider === "very") {
+): "self" | "zkpassport" | "very" | null {
+  if (provider === "self" || provider === "zkpassport" || provider === "very") {
     return provider;
   }
   const acceptedProviders = gate.accepted_providers ?? [];
   if (acceptedProviders.length === 1) {
     const [acceptedProvider] = acceptedProviders;
-    if (acceptedProvider === "self" || acceptedProvider === "very") {
+    if (acceptedProvider === "self" || acceptedProvider === "zkpassport" || acceptedProvider === "very") {
       return acceptedProvider;
     }
   }
@@ -231,10 +231,13 @@ export function formatGateRequirement(
       }
       return copy.gender.public;
     }
-    case "unique_human":
-      return resolveUniqueHumanRequirementProvider(gate, provider) === "very"
-        ? copy.uniqueHuman.very
-        : copy.uniqueHuman.self;
+    case "unique_human": {
+      const uniqueHumanProvider = resolveUniqueHumanRequirementProvider(gate, provider);
+      if (uniqueHumanProvider === "very") return copy.uniqueHuman.very;
+      if (uniqueHumanProvider === "self") return copy.uniqueHuman.self;
+      if (uniqueHumanProvider === "zkpassport") return copy.uniqueHuman.zkpassport;
+      return copy.uniqueHuman.any;
+    }
     case "age_over_18":
       return copy.ageOver18;
     case "minimum_age": {

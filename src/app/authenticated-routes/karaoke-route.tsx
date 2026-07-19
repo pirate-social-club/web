@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { LocalizedPostResponse } from "@pirate/api-contracts";
-
+import { loadSongRoutePost } from "@/app/authenticated-helpers/load-song-route-post";
 import { navigate } from "@/app/router";
 import { KaraokeAudioSurface } from "@/components/compositions/karaoke/karaoke-audio-surface";
 import { toKaraokeStageLines } from "@/components/compositions/karaoke/lyric-transform";
@@ -73,26 +72,16 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
   React.useEffect(() => {
     let canceled = false;
 
-    async function loadPost(): Promise<LocalizedPostResponse> {
-      if (session?.accessToken) {
-        try {
-          return await api.posts.get(postId, { locale: contentLocale });
-        } catch (error) {
-          // Logged-in non-members get a 404 (not_found: Community not found) from the
-          // authenticated read. Karaoke is public view-only, so fall back to the public
-          // read on not-found as well as auth errors instead of surfacing the 404.
-          if (!isApiAuthError(error) && !isApiNotFoundError(error)) throw error;
-        }
-      }
-
-      return await api.publicPosts.get(postId, { locale: contentLocale });
-    }
-
     async function loadKaraoke() {
       setState({ phase: "loading" });
 
       try {
-        const postPromise = loadPost();
+        const postPromise = loadSongRoutePost({
+          api,
+          contentLocale,
+          hasAccessToken: Boolean(session?.accessToken),
+          postId,
+        });
         const karaokePromise = api.publicPosts.getKaraoke(postId, { locale: contentLocale })
           .then(
             (payload) => ({ ok: true as const, payload }),

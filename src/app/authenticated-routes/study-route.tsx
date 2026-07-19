@@ -4,6 +4,7 @@ import * as React from "react";
 import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
+import { loadSongRoutePost } from "@/app/authenticated-helpers/load-song-route-post";
 import {
   SongStudySurface,
   type SongStudyMultipleChoiceExercise,
@@ -22,7 +23,7 @@ import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { toStreakSummary } from "@/app/authenticated-helpers/post-media-presentation";
-import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
+import { isApiAuthError } from "@/lib/api/client";
 import type {
   ApiPublicRewardOffer,
   SongStudyAttemptResult,
@@ -357,20 +358,6 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   React.useEffect(() => {
     let canceled = false;
 
-    async function loadPost(): Promise<LocalizedPostResponse> {
-      try {
-        return await api.posts.get(postId, { locale: contentLocale });
-      } catch (error) {
-        // Logged-in non-members of request-mode communities get a 404
-        // (not_found: "Community not found") from the authenticated read even
-        // for public posts. The study payload endpoint serves publicly readable
-        // posts to signed-in non-members, so fall back to the public read
-        // instead of surfacing the 404.
-        if (!isApiNotFoundError(error)) throw error;
-        return await api.publicPosts.get(postId, { locale: contentLocale });
-      }
-    }
-
     async function loadStudy() {
       if (!hydrated) {
         return;
@@ -383,7 +370,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
 
       setState({ phase: "loading" });
       try {
-        const post = await loadPost();
+        const post = await loadSongRoutePost({ api, contentLocale, hasAccessToken: true, postId });
         if (canceled) return;
 
         if (post.post.post_type !== "song") {

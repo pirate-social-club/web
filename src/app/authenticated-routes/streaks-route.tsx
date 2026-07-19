@@ -4,6 +4,7 @@ import * as React from "react";
 import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
+import { loadSongRoutePost } from "@/app/authenticated-helpers/load-song-route-post";
 import {
   SongStreakLeaderboard,
   type SongStreakLeaderboardState,
@@ -14,7 +15,6 @@ import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
-import { isApiNotFoundError } from "@/lib/api/client";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -84,18 +84,6 @@ export function StreaksRoutePage({ postId }: { postId: string }) {
   React.useEffect(() => {
     let canceled = false;
 
-    async function loadPost(): Promise<LocalizedPostResponse> {
-      try {
-        return await api.posts.get(postId, { locale: contentLocale });
-      } catch (error) {
-        // Signed-in non-members of request-mode communities get a 404 from the
-        // authenticated read even for public posts; fall back to the public read
-        // so we can still show the song header.
-        if (!isApiNotFoundError(error)) throw error;
-        return await api.publicPosts.get(postId, { locale: contentLocale });
-      }
-    }
-
     async function loadLeaderboard() {
       if (!hydrated) return;
 
@@ -106,7 +94,7 @@ export function StreaksRoutePage({ postId }: { postId: string }) {
 
       setState({ phase: "loading" });
       try {
-        const post = await loadPost();
+        const post = await loadSongRoutePost({ api, contentLocale, hasAccessToken: true, postId });
         if (canceled) return;
 
         const header = {

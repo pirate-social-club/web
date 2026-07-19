@@ -599,6 +599,20 @@ export function CommunityPage({
     vote: api.posts.vote,
   });
 
+  const deletePost = React.useCallback(async (postId: string) => {
+    if (typeof window !== "undefined" && !window.confirm("Delete this post?")) return;
+
+    const previousPosts = posts;
+    const targetPost = posts.find((postResponse) => postResponse.post.id === postId);
+    setPosts((current) => current.filter((postResponse) => postResponse.post.id !== postId));
+    try {
+      await api.posts.delete(targetPost?.post.community ?? communityId, postId);
+    } catch (nextError) {
+      setPosts(previousPosts);
+      toast.error(getErrorMessage(nextError, "Could not delete this post."));
+    }
+  }, [api.posts, communityId, posts, setPosts]);
+
   const removePost = React.useCallback(async (postId: string) => {
     if (typeof window !== "undefined" && !window.confirm("Remove this post?")) return;
 
@@ -797,6 +811,7 @@ export function CommunityPage({
         onVerifyAge: handleVerifyAge,
         onComment: () => navigate(`/p/${post.post.id}`),
         onCancelEvent: () => void cancelEvent(post.post.id),
+        onDelete: () => void deletePost(post.post.id),
         onRemove: () => void removePost(post.post.id),
         onRetryPublish: () => void retryPublish(post.post.id),
         canModeratePost: canModeratePosts,

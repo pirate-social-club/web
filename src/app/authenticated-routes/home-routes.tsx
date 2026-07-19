@@ -496,6 +496,21 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     }
   }, [api.posts.clearVote, api.posts.vote, contentLocale, feedEntries, queryClient, runGatedCommunityAction, voteGateDataByPostId]);
 
+  const deletePost = React.useCallback(async (postId: string) => {
+    const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);
+    if (!entry) return;
+    if (typeof window !== "undefined" && !window.confirm("Delete this post?")) return;
+
+    const previousEntries = feedEntries;
+    setFeedEntries((current) => current.filter((candidate) => candidate.post.post.id !== postId));
+    try {
+      await api.posts.delete(entry.post.post.community, postId);
+    } catch (nextError) {
+      setFeedEntries(previousEntries);
+      toast.error(getErrorMessage(nextError, "Could not delete this post."));
+    }
+  }, [api.posts, feedEntries, setFeedEntries]);
+
   const cancelEvent = React.useCallback(async (postId: string) => {
     const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);
     if (!entry) return;
@@ -573,6 +588,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         } : undefined,
         onCancelEvent: () => void cancelEvent(entry.post.post.id),
         onComment: () => navigate(`/p/${entry.post.post.id}`),
+        onDelete: () => void deletePost(entry.post.post.id),
         onVerifyAge: handleVerifyAge,
         onVote: async (direction) => await voteOnPost(entry.post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,

@@ -70,9 +70,9 @@ describe("IdentityWalletSection", () => {
     });
 
     expect(view.getByText("Connected, not added")).toBeTruthy();
-    expect(view.getByText("0x3333…3333")).toBeTruthy();
+    expect(view.getByText("0x3333...3333")).toBeTruthy();
     // The already-verified connected address is not duplicated into the connected section.
-    expect(view.queryAllByText("0x1111…1111")).toHaveLength(1);
+    expect(view.queryAllByText("0x1111...1111")).toHaveLength(1);
     // No verified non-primary wallet exists, so nothing is selectable.
     expect(view.queryAllByRole("button", { name: /use as identity/i })).toHaveLength(0);
   });

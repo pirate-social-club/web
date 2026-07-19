@@ -34,6 +34,7 @@ import { toast } from "@/components/primitives/sonner";
 import type { WalletHubChainId, WalletHubChainSection, WalletHubRewardsSummary } from "@/components/compositions/wallet/wallet-hub/wallet-hub.types";
 import type { ApiRewardCashoutResponse, ApiRewardsSummaryResponse } from "@/lib/api/client-api-types";
 import { getPirateNetworkConfig } from "@/lib/network-config";
+import { formatCompactAddress } from "@/lib/formatting/address";
 import { useResettableTimeout } from "@/hooks/use-resettable-timeout";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { findPirateEmbeddedEvmWallet } from "@/lib/auth/privy-wallet";
@@ -310,8 +311,7 @@ function parseUsdCentsInput(value: string): number | null {
 
 function shortAddress(address: string | null): string {
   if (!address) return "Base wallet";
-  if (address.length <= 14) return address;
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  return formatCompactAddress(address, { truncateAt: 14 });
 }
 
 function baseTxUrl(txHash: string | null): string | undefined {

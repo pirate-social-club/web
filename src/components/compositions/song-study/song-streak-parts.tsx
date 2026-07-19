@@ -7,6 +7,7 @@ import type {
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
+import { formatAvatarInitials } from "@/lib/formatting/initials";
 
 // Shared visual + data language for every streak surface (full leaderboard,
 // post-page preview, feed chip). One identity formatter, one rank marker, one
@@ -22,10 +23,7 @@ function streakDisplayName(identity: LeaderboardIdentity): string {
 
 function initials(identity: LeaderboardIdentity): string {
   const source = identity.display_name || identity.handle || "?";
-  const parts = source.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return formatAvatarInitials(source);
 }
 
 // Deterministic hue from the user id so avatars are stable without a network fetch.

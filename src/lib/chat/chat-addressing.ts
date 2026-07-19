@@ -22,7 +22,7 @@ export function isChatTarget(value: string): boolean {
 }
 
 export function shortAddress(address: `0x${string}`): string {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  return formatCompactAddress(address);
 }
 
 export function buildChatListPath(): string {
@@ -45,3 +45,4 @@ export function buildChatTargetPath(target: string, options: { initialMessage?: 
   const params = new URLSearchParams({ message: initialMessage });
   return `${path}?${params.toString()}`;
 }
+import { formatCompactAddress } from "@/lib/formatting/address";

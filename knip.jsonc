@@ -1,6 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   "ignore": [
+    "worktrees/**",
     "src/lib/auth/privy-react-auth.ssr.tsx",
     "src/lib/dotenv-browser-shim.ts",
     "src/lib/rwsdk-router.client.ts",

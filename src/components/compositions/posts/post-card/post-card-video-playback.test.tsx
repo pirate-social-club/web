@@ -2,7 +2,6 @@ import "@/test/setup-runtime";
 
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
-import * as React from "react";
 
 let renderedPlayerProps: Record<string, unknown> | undefined;
 

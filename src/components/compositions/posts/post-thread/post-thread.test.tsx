@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import { fireEvent, render } from "@testing-library/react";
-import * as React from "react";
 
 import { POSTS_BY_ID } from "@/app/mocks";
 import { UiLocaleProvider } from "@/lib/ui-locale";

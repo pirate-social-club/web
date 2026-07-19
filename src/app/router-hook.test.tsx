@@ -1,7 +1,6 @@
 import "@/test/setup-runtime";
 
 import { afterEach, expect, test } from "bun:test";
-import * as React from "react";
 
 import { useRoute } from "./router";
 

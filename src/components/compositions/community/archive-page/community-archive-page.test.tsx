@@ -1,7 +1,6 @@
 import "@/test/setup-runtime";
 
 import { afterEach, describe, expect, test } from "bun:test";
-import * as React from "react";
 
 import { CommunityArchivePage } from "./community-archive-page";
 

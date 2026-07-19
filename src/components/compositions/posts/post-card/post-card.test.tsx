@@ -1,7 +1,6 @@
 import "@/test/setup-runtime";
 
 import { describe, expect, mock, test } from "bun:test";
-import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import type { ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";

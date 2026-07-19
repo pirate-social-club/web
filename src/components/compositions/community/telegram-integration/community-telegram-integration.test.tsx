@@ -1,7 +1,6 @@
 import "@/test/setup-runtime";
 
 import { afterEach, describe, expect, test } from "bun:test";
-import * as React from "react";
 
 import { CommunityTelegramIntegrationPage } from "./community-telegram-integration";
 import { createDefaultTelegramIntegrationSettings } from "./community-telegram-integration.types";

@@ -1,4 +1,3 @@
-import * as React from "react";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { act, renderHook, waitFor } from "@testing-library/react";
 

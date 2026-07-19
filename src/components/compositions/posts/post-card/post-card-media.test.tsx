@@ -1,7 +1,6 @@
 import "@/test/setup-runtime";
 
 import { describe, expect, test } from "bun:test";
-import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { PostCardMedia } from "./post-card-media";

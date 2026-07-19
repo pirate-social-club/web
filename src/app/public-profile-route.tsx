@@ -225,6 +225,7 @@ export function PublicProfileRoutePage({
         followingLabel: profileCopy.followingLabel,
       }, followState, localeTag)}
       activityError={activity.error}
+      activityLoading={activity.loading}
       comments={activity.comments}
       defaultTab={activityTab}
       onActivityTabChange={setActivityTab}

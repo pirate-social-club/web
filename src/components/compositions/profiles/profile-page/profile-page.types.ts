@@ -99,6 +99,8 @@ export interface ProfilePageProps {
   posts?: ProfilePostItem[];
   comments?: ProfileCommentItem[];
   activityError?: string | null;
+  /** True while the active activity tab (overview/posts/comments) is fetching; panels render skeletons instead of the empty state. */
+  activityLoading?: boolean;
   defaultTab?: ProfilePageTab;
   className?: string;
   onActivityTabChange?: (tab: Extract<ProfilePageTab, "overview" | "posts" | "comments">) => void;

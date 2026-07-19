@@ -52,6 +52,7 @@ function useHashTab(defaultTab: ProfilePageTab): [ProfilePageTab, (tab: ProfileP
 
 export function ProfilePage({
   activityError,
+  activityLoading = false,
   className,
   comments = EMPTY_PROFILE_COMMENTS,
   defaultTab = "overview",
@@ -150,13 +151,13 @@ export function ProfilePage({
           </FlatTabsList>
 
           <TabsContent className="mt-0" value="overview">
-            <OverviewPanel error={activityError} items={overviewItems} />
+            <OverviewPanel error={activityError} items={overviewItems} loading={activityLoading} />
           </TabsContent>
           <TabsContent className="mt-0" value="posts">
-            <PostsPanel error={activityError} posts={posts} />
+            <PostsPanel error={activityError} loading={activityLoading} posts={posts} />
           </TabsContent>
           <TabsContent className="mt-0" value="comments">
-            <CommentsPanel comments={comments} error={activityError} />
+            <CommentsPanel comments={comments} error={activityError} loading={activityLoading} />
           </TabsContent>
           {hasWalletTab ? (
             <TabsContent className="mt-0" value="wallet">

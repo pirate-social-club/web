@@ -101,6 +101,7 @@ export function CurrentUserProfilePage() {
       {...baseProps}
       comments={activity.comments}
       activityError={activity.error}
+      activityLoading={activity.loading}
       defaultTab={activityTab}
       onActivityTabChange={setActivityTab}
       overviewItems={activity.overviewItems}

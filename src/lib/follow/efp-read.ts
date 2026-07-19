@@ -5,7 +5,6 @@ import type { Address, Hex } from "viem";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 
 import {
-  EFP_READ_TIMEOUT_MS,
   accountMetadataAbi,
   applyListOp,
   asPositiveInt,
@@ -13,7 +12,6 @@ import {
   decodePrimaryListId,
   decodeStorageLocation,
   fetchJson,
-  getPrimaryListRecordsAddress,
   isEffectiveFollow,
   listRecordsAbi,
   listRegistryAbi,
@@ -23,7 +21,6 @@ import {
   type OnChainListEntry,
   type ProfileListsResponse,
   type ProfileStatsResponse,
-  withTimeout,
 } from "./efp-shared";
 
 export async function fetchProfileLists(address: Address): Promise<ProfileListsResponse> {

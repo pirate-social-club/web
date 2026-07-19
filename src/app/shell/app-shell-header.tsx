@@ -105,8 +105,8 @@ export function AppShellHeader({
 }) {
   const session = useSession();
   const { connect } = usePiratePrivyRuntime();
-  const clientReady = useClientHydrated();
   const chatLauncher = useChatLauncher();
+  const clientReady = useClientHydrated();
   const avatarFallback = resolveSessionAvatarFallback(session, copy.appHeader.defaultAvatarFallback);
   const avatarSeed = session?.profile?.id;
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;
@@ -204,7 +204,6 @@ export function AppShellMobileNav({
 }) {
   const session = useSession();
   const { connect } = usePiratePrivyRuntime();
-  const clientReady = useClientHydrated();
   const avatarFallback = resolveSessionAvatarFallback(session, copy.appHeader.defaultAvatarFallback);
   const avatarSeed = session?.profile?.id;
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;

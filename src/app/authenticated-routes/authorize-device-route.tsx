@@ -22,7 +22,7 @@ function readDeviceUserCode(): string {
 export function AuthorizeDevicePage() {
   const api = useApi();
   const session = useSession();
-  const [userCode, setUserCode] = React.useState(readDeviceUserCode);
+  const [userCode] = React.useState(readDeviceUserCode);
   const [status, setStatus] = React.useState<"idle" | "authorizing" | "authorized" | "failed">("idle");
   const [error, setError] = React.useState<string | null>(null);
 

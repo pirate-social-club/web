@@ -162,7 +162,6 @@ export function ProfileBookingsSection({
   onDeleteException,
   className,
 }: ProfileBookingsSectionProps) {
-  const isMobile = useIsMobile();
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").settings.booking;
   const removeLabel = copy.remove;

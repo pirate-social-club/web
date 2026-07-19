@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 
 import { CommunityModerationSaveFooter } from "@/components/compositions/community/moderation-shell/community-moderation-save-footer";
 import { Checkbox } from "@/components/primitives/checkbox";
@@ -10,7 +9,6 @@ import { cn } from "@/lib/utils";
 import { defaultRouteCopy } from "../../system/route-copy-defaults";
 import type {
   CommunityMachineAccessPageProps,
-  CommunityMachineAccessSettings,
   MachineAccessSurface,
 } from "./community-machine-access.types";
 import { Type } from "@/components/primitives/type";

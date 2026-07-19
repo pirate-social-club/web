@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Check, MusicNotes, WarningOctagon, X } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";

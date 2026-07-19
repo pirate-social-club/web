@@ -7,7 +7,6 @@ import { buildPublicProfilePathForProfile } from "@/lib/profile-routing";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import type { FeedItem } from "@/components/compositions/posts/feed/feed";
 import { buildPostCardTitleProps } from "@/components/compositions/posts/post-card/post-card-content-rules";
-import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { buildNationalityBadgeLabel } from "@/components/compositions/posts/post-card/post-card-nationality";
 
 import { formatRelativeTimestamp } from "@/lib/formatting/time";

@@ -1,4 +1,3 @@
-import * as React from "react";
 import { CaretRight, Fire } from "@phosphor-icons/react";
 
 import { Type } from "@/components/primitives/type";

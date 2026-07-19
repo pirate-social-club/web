@@ -68,7 +68,6 @@ async function submitSponsoredTransaction(
   transaction: FollowWriteTransaction,
   sendSponsoredIntent: PirateSponsoredIntentSender,
 ): Promise<Address> {
-  const { efp } = getPirateNetworkConfig();
   if (!canSponsorFollowTransaction(transaction)) {
     throw new Error("Sponsored follows only support primary-chain EFP lists.");
   }

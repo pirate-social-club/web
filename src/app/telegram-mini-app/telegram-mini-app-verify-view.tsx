@@ -44,7 +44,7 @@ export function telegramVerifyReadyTitle(provider?: TelegramVerifyLaunchProvider
   }
 }
 
-export function telegramVerifyWaitingTitle(provider?: TelegramVerifyLaunchProvider | null): string {
+export function telegramVerifyWaitingTitle(): string {
   return "Waiting for verification";
 }
 
@@ -145,7 +145,7 @@ export function resolveTelegramVerifyViewModel({
         busy,
         message: null,
         showSpinner,
-        title: telegramVerifyWaitingTitle(screen.provider),
+        title: telegramVerifyWaitingTitle(),
       };
     case "done":
       return {

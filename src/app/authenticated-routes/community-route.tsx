@@ -40,7 +40,6 @@ import {
   buildCommunityPreviewSidebar,
   buildCommunitySidebar,
   buildCommunitySidebarRequirements,
-  getNamespaceActionLabel,
 } from "@/app/authenticated-helpers/community-sidebar-helpers";
 import {
   buildCommunityModerationEntryPath,

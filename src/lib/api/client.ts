@@ -39,7 +39,6 @@ import type {
 } from "./client-internal";
 import { xhrUploadFetch } from "./client-xhr-upload";
 import { getAnalyticsIdentity } from "../analytics-identity";
-import { getErrorMessage } from "../error-utils";
 import { logger } from "../logger";
 
 export class ApiError extends Error {

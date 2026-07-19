@@ -310,7 +310,7 @@ function getFailedGateRequirements(
 }
 
 function getPassportPromptDescription(
-  gate: CommunityGateData,
+  _gate: CommunityGateData,
   fallback: string,
   options: { locale: string },
 ): string {

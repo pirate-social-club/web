@@ -1,4 +1,3 @@
-import * as React from "react";
 
 import { ActionMenu } from "@/components/primitives/action-menu";
 import type { PostCardMenuItem } from "./post-card.types";

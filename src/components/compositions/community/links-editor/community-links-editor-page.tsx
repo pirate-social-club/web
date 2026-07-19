@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Plus, Trash } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";

@@ -29,7 +29,6 @@ import { openExternalHref } from "@/lib/open-external-href";
 import { useUiLocale } from "@/lib/ui-locale";
 
 import {
-  TelegramMiniAppSelfReturnView,
   TelegramMiniAppVerifyView,
   telegramVerifyReadyMessage,
 } from "./telegram-mini-app-verify-view";
@@ -44,8 +43,6 @@ import {
 } from "./telegram-mini-app-verify-controller";
 
 export {
-
-
   telegramVerifyLaunchButtonLabel,
 
   telegramVerifyReadyMessage,

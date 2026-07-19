@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";

@@ -4,7 +4,6 @@ import { logger } from "@/lib/logger";
 import { normalizeEthereumAddress } from "./chat-addressing";
 import {
   conversationCache,
-  ensureXmtpClient,
   fallbackArray,
   fallbackNull,
   getAllowedConsentStates,

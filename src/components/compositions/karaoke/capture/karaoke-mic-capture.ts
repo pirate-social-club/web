@@ -84,17 +84,6 @@ export interface KaraokeMicCaptureOptions {
 
 type Phase = "idle" | "started" | "stopped";
 
-interface WorkletChunkMessage {
-  type: "chunk";
-  epoch: number;
-  pcm16: ArrayBuffer;
-  capturedAtMs: number;
-}
-interface WorkletFlushedMessage {
-  type: "flushed";
-  epoch: number;
-}
-
 const DEFAULT_FLUSH_TIMEOUT_MS = 1_000;
 
 function mapGetUserMediaError(error: unknown): KaraokeMicError {

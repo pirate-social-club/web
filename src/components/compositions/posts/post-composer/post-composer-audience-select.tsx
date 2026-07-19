@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Globe, Users } from "@phosphor-icons/react";
 
 import { ResponsiveOptionSelect } from "@/components/compositions/system/responsive-option-select/responsive-option-select";

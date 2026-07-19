@@ -300,7 +300,6 @@ export function MobileWalletHub({
   walletAddress,
   walletActionsPending = false,
   chainSections,
-  recentActivity,
 }: {
   claimLoading?: boolean;
   claimableWipWei?: string;

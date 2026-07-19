@@ -1,6 +1,5 @@
 "use client";
 
-import { getErrorMessage } from "@/lib/error-utils";
 import { getAssistantConversation } from "@/lib/chat/chat-assistant-client";
 import type { ChatConversation } from "@/lib/chat/chat-types";
 

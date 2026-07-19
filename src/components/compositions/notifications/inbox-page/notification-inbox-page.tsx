@@ -30,7 +30,6 @@ import { PageContainer } from "@/components/primitives/layout-shell";
 import { Separator } from "@/components/primitives/separator";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
-import { getPirateNetworkConfig } from "@/lib/network-config";
 import { getLocaleMessages } from "@/locales";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
@@ -112,11 +111,6 @@ function formatCompactAddress(address: string | null | undefined): string | null
   return `${normalized.slice(0, 6)}...${normalized.slice(-4)}`;
 }
 
-function formatCompactHash(hash: string | null | undefined): string | null {
-  if (!hash?.startsWith("0x") || hash.length < 14) return null;
-  return `${hash.slice(0, 6)}...${hash.slice(-4)}`;
-}
-
 function formatRelativeShort(value: string | number): string {
   const timestamp = typeof value === "number" ? value * 1000 : Date.parse(value);
   if (!Number.isFinite(timestamp)) return "";
@@ -140,15 +134,6 @@ function formatRelativeShort(value: string | number): string {
   }
 
   return future ? "now" : "now";
-}
-
-function txHref(txHash: string | null | undefined, chainId = getPirateNetworkConfig().story.chainId): string | null {
-  if (!txHash?.startsWith("0x")) return null;
-  const config = getPirateNetworkConfig();
-  const explorerUrl = chainId === config.story.chainId
-    ? config.story.explorerUrl
-    : config.story.explorerUrl;
-  return `${explorerUrl.replace(/\/$/u, "")}/tx/${txHash}`;
 }
 
 function getMembershipReviewCount(task: UserTask): number | null {

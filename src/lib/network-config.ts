@@ -90,7 +90,7 @@ function withRpcOverride(chain: Chain, envVarName: string, readEnv: NetworkEnvRe
   return readEnv(envVarName) ?? chain.rpcUrls.default.http[0];
 }
 
-function rejectMainnetOutsideProduction(appEnvironment: PirateAppEnvironment, envVarName: string, networkLabel: string): never {
+function rejectMainnetOutsideProduction(_appEnvironment: PirateAppEnvironment, envVarName: string, networkLabel: string): never {
   throw new Error(`${envVarName} cannot select ${networkLabel} unless VITE_PIRATE_APP_ENV=prod.`);
 }
 

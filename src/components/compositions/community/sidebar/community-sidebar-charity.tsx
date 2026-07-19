@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Avatar } from "@/components/primitives/avatar";
 import { cn } from "@/lib/utils";
 import type { CommunitySidebarCharity } from "./community-sidebar.types";

@@ -1,4 +1,3 @@
-import * as React from "react";
 import type {
   SongStreakLeaderboardEntry,
   SongStreakViewerStanding,

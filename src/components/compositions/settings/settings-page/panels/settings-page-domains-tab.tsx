@@ -86,15 +86,6 @@ function extractVerificationCode(hint: string | undefined): string | null {
   return hint.trim() || null;
 }
 
-function resolveTierLabel(tier: string): string {
-  switch (tier) {
-    case "generated": return "Auto-generated";
-    case "standard": return "Standard";
-    case "premium": return "Premium";
-    default: return tier;
-  }
-}
-
 function resolveDomainEligibilityLength(importedScore: number | null | undefined): string {
   if (typeof importedScore === "number" && Number.isFinite(importedScore)) {
     if (importedScore >= 100_000) return "5";

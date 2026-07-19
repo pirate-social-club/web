@@ -66,10 +66,6 @@ function getInvalidGateDraftReason(draft: IdentityGateDraft): string | null {
   return null;
 }
 
-function isValidGateDraft(draft: IdentityGateDraft): boolean {
-  return getInvalidGateDraftReason(draft) == null;
-}
-
 function summarizeGateDraftForLog(draft: IdentityGateDraft): Record<string, unknown> {
   switch (draft.gateType) {
     case "altcha_pow":
@@ -136,8 +132,6 @@ export function useCreateCommunityComposerController({
   creatorVerificationState,
   deferCreatorVerification = false,
   initialStep,
-  courtyardInventoryGroups,
-  courtyardInventoryLoading = false,
   onCreate,
 }: CreateCommunityComposerProps) {
   const isMobile = useIsMobile();

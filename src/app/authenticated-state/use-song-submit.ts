@@ -5,7 +5,6 @@ import type {
   CreateSongArtifactUploadRequest,
   Post as ApiCreatedPost,
   SongArtifactBundle as ApiSongArtifactBundle,
-  SongArtifactUpload,
 } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
@@ -334,7 +333,6 @@ export function useSongSubmit({
     reportProgress,
     royaltySplit,
     setPendingSongBundleId,
-    setSubmitError,
     songMode,
     songState,
     songTitle,

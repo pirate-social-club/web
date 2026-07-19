@@ -30,7 +30,6 @@ function formatCountdown(secondsRemaining: number): string {
 
 export function BookingCheckout({
   quote,
-  viewerTimezone,
   phase,
   holdExpiresAtUtc,
   nowUtc,

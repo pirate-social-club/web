@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { cn } from "@/lib/utils";
 import type { CommunitySidebarFlairPolicy } from "./community-sidebar.types";
 import { Type } from "@/components/primitives/type";

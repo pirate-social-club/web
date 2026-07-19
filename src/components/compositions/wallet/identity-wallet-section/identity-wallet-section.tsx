@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import type { SessionExchangeResponse } from "@pirate/api-contracts";
 
 import { Button } from "@/components/primitives/button";

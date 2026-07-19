@@ -4,7 +4,6 @@ import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
 import { ErrorState } from "@/components/states/error-state";
 import { RouteLoadFailureState } from "@/components/states/route-error-states";
-import { StackPageShell } from "@/components/states/stack-page-shell";
 import { getErrorMessage } from "@/lib/error-utils";
 import { interpolateMessage } from "@/lib/route-messages";
 import { useRouteMessages } from "@/hooks/use-route-messages";

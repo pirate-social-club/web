@@ -477,6 +477,33 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("attaches a verified mirror namespace without changing the primary compatibility default", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      return Response.json({ id: "cmt_test", route_slug: "dankmeme" });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.attachNamespace("cmt_test", "nv_somethingelse", "mirror");
+
+      expect(requests).toHaveLength(1);
+      expect(requests[0]?.url).toBe("http://pirate.test/communities/cmt_test/namespace");
+      expect(await requests[0]?.json()).toEqual({
+        namespace_verification: "nv_somethingelse",
+        namespace_role: "mirror",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("calls community Telegram chat settings endpoints", async () => {
     const requests: Request[] = [];
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

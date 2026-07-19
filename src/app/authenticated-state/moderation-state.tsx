@@ -4,6 +4,7 @@ import * as React from "react";
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
+import type { ApiCommunityNamespaceAttachment } from "@/lib/api/client-api-types";
 import { useSession } from "@/lib/api/session-store";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { NamespaceVerificationCallbacks } from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
@@ -32,6 +33,20 @@ export function useCommunityModerationState(communityId: string) {
   const session = useSession();
   const { community, error, loading, setCommunity } = useCommunityRecord(communityId);
   const [activeNamespaceSessionId, setActiveNamespaceSessionId] = React.useState<string | null>(null);
+  const [namespaceAttachments, setNamespaceAttachments] = React.useState<ApiCommunityNamespaceAttachment[]>([]);
+
+  const refreshNamespaceAttachments = React.useCallback(async () => {
+    if (!community?.namespace_verification) {
+      setNamespaceAttachments([]);
+      return;
+    }
+    const response = await api.communities.listNamespaces(communityId);
+    setNamespaceAttachments(response.namespaces);
+  }, [api, community?.namespace_verification, communityId]);
+
+  React.useEffect(() => {
+    void refreshNamespaceAttachments().catch(() => setNamespaceAttachments([]));
+  }, [refreshNamespaceAttachments]);
 
   React.useEffect(() => {
     if (!community) {
@@ -74,9 +89,18 @@ export function useCommunityModerationState(communityId: string) {
       });
 
       if (result.status === "verified" && result.namespace_verification) {
-        const updatedCommunity = await api.communities.attachNamespace(communityId, result.namespace_verification);
+        const namespaceRole = !community?.namespace_verification
+          || result.namespace_verification === community.namespace_verification
+          ? "primary"
+          : "mirror";
+        const updatedCommunity = await api.communities.attachNamespace(
+          communityId,
+          result.namespace_verification,
+          namespaceRole,
+        );
         setCommunity(updatedCommunity);
         setActiveNamespaceSessionId(null);
+        await refreshNamespaceAttachments();
       }
 
       return {
@@ -89,7 +113,7 @@ export function useCommunityModerationState(communityId: string) {
       const result = await api.verification.getNamespaceSession(namespaceVerificationSessionId);
       return toNamespaceSessionResult(result);
     },
-  }), [api, communityId, setCommunity]);
+  }), [api, community?.namespace_verification, communityId, refreshNamespaceAttachments, setCommunity]);
 
   const saveCommunity = React.useCallback(
     async (
@@ -142,7 +166,9 @@ export function useCommunityModerationState(communityId: string) {
     effectiveNamespaceSessionId,
     error,
     loading,
+    namespaceAttachments,
     namespaceVerificationCallbacks,
+    refreshNamespaceAttachments,
     session,
     setActiveNamespaceSessionId,
     setCommunity,

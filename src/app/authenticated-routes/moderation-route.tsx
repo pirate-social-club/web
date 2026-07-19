@@ -1209,7 +1209,6 @@ export function CommunityModerationPage({
           toast.error("Could not clear the saved namespace verification.");
         }
       };
-
       content = (
         <CommunityNamespaceVerificationPage
           activeSessionId={state.effectiveNamespaceSessionId}
@@ -1217,6 +1216,7 @@ export function CommunityModerationPage({
           attachedRouteSlug={state.community.route_slug ?? null}
           callbacks={state.namespaceVerificationCallbacks}
           initialRootLabel={state.community.route_slug ?? ""}
+          namespaceAttachments={state.namespaceAttachments}
           onClearPendingSession={clearPendingNamespaceSession}
           onBackClick={() => navigate(moderationIndexPath)}
           onSessionCleared={() => {

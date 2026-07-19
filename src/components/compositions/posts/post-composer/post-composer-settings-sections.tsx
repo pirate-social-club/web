@@ -26,7 +26,7 @@ import type {
   RegionalPricingPreview,
 } from "./post-composer.types";
 
-export type PostComposerSettingsSectionsCopy = {
+type PostComposerSettingsSectionsCopy = {
   postAsTitle: string;
   publicIdentityDescription: string;
   anonymousIdentityDescription: string;
@@ -132,7 +132,7 @@ function normalizeSecondsInput(value: string): string {
   return String(Math.min(Number.parseInt(digits, 10), 86_400));
 }
 
-export function PostComposerSettingsRow({
+function PostComposerSettingsRow({
   icon,
   label,
   onClick,

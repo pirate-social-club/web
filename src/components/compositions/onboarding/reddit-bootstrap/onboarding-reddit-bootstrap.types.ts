@@ -1,6 +1,6 @@
-export type OnboardingPhase = "import_karma" | "choose_name";
+type OnboardingPhase = "import_karma" | "choose_name";
 
-export type VerificationState =
+type VerificationState =
   | "not_started"
   | "code_ready"
   | "checking"
@@ -8,9 +8,9 @@ export type VerificationState =
   | "failed"
   | "rate_limited";
 
-export type CodePlacementSurface = "profile" | "bio" | "about";
+type CodePlacementSurface = "profile" | "bio" | "about";
 
-export type ImportJobStatus =
+type ImportJobStatus =
   | "not_started"
   | "ready"
   | "queued"
@@ -20,7 +20,7 @@ export type ImportJobStatus =
   | "failed"
 ;
 
-export type HandleAvailability = "available" | "taken" | "manual_review";
+type HandleAvailability = "available" | "taken" | "manual_review";
 
 export interface RedditVerificationState {
   usernameValue: string;
@@ -57,12 +57,12 @@ export interface HandleSuggestion {
   reason?: string;
 }
 
-export interface OnboardingActions {
+interface OnboardingActions {
   primaryLabel?: string;
   tertiaryLabel?: string;
 }
 
-export interface OnboardingCallbacks {
+interface OnboardingCallbacks {
   onUsernameChange: (value: string) => void;
   onImportKarmaNext: () => void;
   onImportKarmaSkip: () => void;
@@ -72,7 +72,7 @@ export interface OnboardingCallbacks {
   onChooseNameContinue: () => void;
 }
 
-export interface OnboardingRedditBootstrapProps {
+interface OnboardingRedditBootstrapProps {
   generatedHandle: string;
   canSkip: boolean;
   busy?: boolean;

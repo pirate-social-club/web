@@ -39,36 +39,36 @@ import { buildPostMenu, resolvePostStoryPortalHref } from "@/app/authenticated-h
 
 export type HomeFeedEntry = ApiHomeFeedItem;
 export { toHomeFeedItem } from "@/app/authenticated-helpers/home-feed-presentation";
-export type { PostVoteValue } from "@/app/authenticated-helpers/post-vote";
+;
 
 export { toCommunityPostContent } from "@/app/authenticated-helpers/post-content-presentation";
 export {
-  formatQualifierLabel,
+
   getPostCommentCount,
-  resolveAgentAuthor,
+
   resolveAnonymousComposerDescription,
   resolveAnonymousComposerLabel,
   resolveCommentAuthorAvatarSeed,
   resolveCommentAuthorLabel,
-  resolvePostAuthorAvatarSeed,
-  resolvePostAuthorLabel,
-  resolvePostQualifierLabels,
-  resolvePublicAuthorFallback,
+
+
+
+
   resolvePublicIdentityLabel,
   toCommentViewerVote,
-  toViewerVote,
+
 } from "@/app/authenticated-helpers/post-identity-presentation";
 export { resolveLocalizedLinkTitle } from "@/app/authenticated-helpers/post-link-presentation";
 export type {
-  LiveRoomPresentationOptions,
+
   PostPresentationOptions,
   SongPresentationOptions,
 } from "@/app/authenticated-helpers/post-presentation-types";
 export {
-  canShowOriginalToggle,
-  resolveTranslatedTextPresentation,
+
+
   shouldShowOriginalPost,
-  withTranslationToggleProps,
+
 } from "@/app/authenticated-helpers/post-translation-presentation";
 
 function openExternalUrl(url: string) {

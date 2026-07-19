@@ -2,7 +2,7 @@
 
 import type { SpacesChallengePayload } from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
 
-export function toSpacesChallengePayload(value: Record<string, unknown> | null | undefined): SpacesChallengePayload | null {
+function toSpacesChallengePayload(value: Record<string, unknown> | null | undefined): SpacesChallengePayload | null {
   if (!value) return null;
   if (
     value.kind !== "fabric_txt_publish" ||

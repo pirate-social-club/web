@@ -15,7 +15,7 @@ import type {
 import type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
 export type ApiCreateCommunityRequest = CreateCommunityRequest;
-export type ApiCreateCommunityListingRequest = CreateCommunityListingRequest;
+type ApiCreateCommunityListingRequest = CreateCommunityListingRequest;
 export type {
   SongStudyAttemptRequest,
   SongStudyAttemptResult,
@@ -44,10 +44,10 @@ export type ApiProfileMediaUploadResponse = {
   storage_object_key: string;
 };
 
-export type ApiWalletIdentityPublicName = WalletIdentityPublicName;
-export type ApiWalletIdentityResponse = WalletIdentityResponse;
+type ApiWalletIdentityPublicName = WalletIdentityPublicName;
+type ApiWalletIdentityResponse = WalletIdentityResponse;
 
-export type ApiRewardVerificationState = "unverified" | "verified" | "conflict";
+type ApiRewardVerificationState = "unverified" | "verified" | "conflict";
 
 export type ApiPublicRewardOffer = {
   chain_id: number;
@@ -57,12 +57,12 @@ export type ApiPublicRewardOffer = {
   min_score_bps: number;
 };
 
-export type ApiRewardEventKind =
+type ApiRewardEventKind =
   | "study_streak_day"
   | "study_streak_milestone_7"
   | "study_streak_milestone_30";
 
-export type ApiRewardEventSummary = {
+type ApiRewardEventSummary = {
   id: string;
   user_id: string;
   community_id: string;
@@ -127,7 +127,7 @@ export type ApiSongArtifactUploadCompleteRequest = {
   content_hash?: string | null;
 };
 
-export type ApiDerivativeSourceKind = "song" | "video";
+type ApiDerivativeSourceKind = "song" | "video";
 export type ApiDerivativeSourceQueryKind = ApiDerivativeSourceKind | "live";
 export type ApiDerivativeSourceScope = "community" | "global";
 
@@ -215,7 +215,7 @@ export type ApiCommunityVisualPolicyUpdateRequest = {
   visual_policy_settings: Omit<Community["visual_policy_settings"], "community" | "policy_origin">;
 };
 
-export type ApiDonationPartnerSummaryInput = {
+type ApiDonationPartnerSummaryInput = {
   donation_partner_id: string;
   display_name: string;
   provider: "endaoment";
@@ -248,19 +248,19 @@ export type CommunityListPostsOptions = {
   sort?: "best" | "new" | "top" | null;
 };
 
-export type ApiLiveRoomKind = "solo" | "duet";
-export type ApiLiveRoomStatus = "scheduled" | "live" | "ended" | "canceled";
-export type ApiLiveRoomAccessMode = "free" | "gated" | "paid";
-export type ApiLiveRoomVisibility = "public" | "unlisted";
-export type ApiLiveRoomSetlistStatus = "draft" | "ready" | "locked";
+type ApiLiveRoomKind = "solo" | "duet";
+type ApiLiveRoomStatus = "scheduled" | "live" | "ended" | "canceled";
+type ApiLiveRoomAccessMode = "free" | "gated" | "paid";
+type ApiLiveRoomVisibility = "public" | "unlisted";
+type ApiLiveRoomSetlistStatus = "draft" | "ready" | "locked";
 export type ApiLiveRoomRightsBasis = "original" | "licensed" | "cover" | "public_domain" | "unknown";
-export type ApiLiveRoomRightsStatus = "pending" | "ready" | "blocked";
-export type ApiLiveRoomGuestInviteStatus = "pending" | "accepted" | "revoked";
-export type ApiLiveRoomReplayDraftStatus = "not_recorded" | "processing" | "ready" | "review_pending" | "published" | "failed";
-export type ApiLiveRoomReplayAssetAccessMode = "free" | "included_with_ticket" | "paid";
-export type ApiLiveRoomReplayAssetPublicationStatus = "draft" | "published" | "failed";
+type ApiLiveRoomRightsStatus = "pending" | "ready" | "blocked";
+type ApiLiveRoomGuestInviteStatus = "pending" | "accepted" | "revoked";
+type ApiLiveRoomReplayDraftStatus = "not_recorded" | "processing" | "ready" | "review_pending" | "published" | "failed";
+type ApiLiveRoomReplayAssetAccessMode = "free" | "included_with_ticket" | "paid";
+type ApiLiveRoomReplayAssetPublicationStatus = "draft" | "published" | "failed";
 
-export type ApiLiveRoomAudienceGateSegment =
+type ApiLiveRoomAudienceGateSegment =
   | { type: "community_members" }
   | {
     type: "purchase_entitlement";
@@ -268,7 +268,7 @@ export type ApiLiveRoomAudienceGateSegment =
     target_refs: string[];
   };
 
-export type ApiLiveRoomAudienceGate = {
+type ApiLiveRoomAudienceGate = {
   version: 1;
   segments: ApiLiveRoomAudienceGateSegment[];
   match: "any";
@@ -471,7 +471,7 @@ export type ApiUpdateLiveRoomReplayDraftRequest = {
   }> | null;
 };
 
-export type ApiLiveRoomAccessDecisionReason =
+type ApiLiveRoomAccessDecisionReason =
   | "not_live"
   | "ended"
   | "canceled"
@@ -481,7 +481,7 @@ export type ApiLiveRoomAccessDecisionReason =
   | "gate_unsatisfied"
   | "allowed";
 
-export type ApiLiveRoomGateAccessPayload = {
+type ApiLiveRoomGateAccessPayload = {
   failed_segments: Array<
     | { type: "community_members" }
     | {
@@ -597,9 +597,9 @@ export type ApiCommunityMachineAccessPolicyUpdate = {
   included_surfaces?: Partial<ApiCommunityMachineAccessPolicy["included_surfaces"]>;
 };
 
-export type ApiTelegramLinkedChatLinkMode = "invite_link" | "join_request";
+type ApiTelegramLinkedChatLinkMode = "invite_link" | "join_request";
 
-export type ApiTelegramBotAdminStatus =
+type ApiTelegramBotAdminStatus =
   | "unknown"
   | "ready"
   | "missing"
@@ -628,7 +628,7 @@ export type ApiTelegramCommunityBot = {
   connected_at: number | null;
 };
 
-export type ApiTelegramLinkedChat = {
+type ApiTelegramLinkedChat = {
   id: string;
   object: "telegram_linked_chat";
   community: string;
@@ -652,14 +652,14 @@ export type ApiCommunityTelegramChatSettingsUpdate = {
   directory_visible?: boolean;
 };
 
-export type ApiAssistantContextMode = "live_sql" | "summary_cache" | "hybrid_vector";
-export type ApiAssistantActionMode = "answer_only" | "draft_only" | "confirmed_writes";
-export type ApiAssistantVoiceMode = "off" | "transcription_only" | "voice_replies" | "text_and_voice_replies";
-export type ApiAssistantSttProvider = "elevenlabs" | "mistral" | "openai" | "none";
-export type ApiAssistantTtsProvider = "elevenlabs" | "none";
-export type ApiAssistantRetentionMode = "per_user_private" | "community_visible_to_mods" | "ephemeral";
+type ApiAssistantContextMode = "live_sql" | "summary_cache" | "hybrid_vector";
+type ApiAssistantActionMode = "answer_only" | "draft_only" | "confirmed_writes";
+type ApiAssistantVoiceMode = "off" | "transcription_only" | "voice_replies" | "text_and_voice_replies";
+type ApiAssistantSttProvider = "elevenlabs" | "mistral" | "openai" | "none";
+type ApiAssistantTtsProvider = "elevenlabs" | "none";
+type ApiAssistantRetentionMode = "per_user_private" | "community_visible_to_mods" | "ephemeral";
 
-export type ApiAssistantProviderKeyStatus =
+type ApiAssistantProviderKeyStatus =
   | { kind: "missing" }
   | { kind: "connected"; last4: string; connectedAt?: string }
   | { kind: "invalid"; last4: string; message: string };
@@ -667,7 +667,7 @@ export type ApiAssistantProviderKeyStatus =
 export type ApiAssistantOpenRouterKeyStatus = ApiAssistantProviderKeyStatus;
 export type ApiAssistantElevenLabsKeyStatus = ApiAssistantProviderKeyStatus;
 
-export type ApiAssistantModelOption = {
+type ApiAssistantModelOption = {
   contextLength?: number;
   createdAt?: string;
   id: string;
@@ -677,7 +677,7 @@ export type ApiAssistantModelOption = {
   outputCostUsdPerMillionTokens?: number;
 };
 
-export type ApiAssistantContextSources = {
+type ApiAssistantContextSources = {
   communityProfile: boolean;
   rules: boolean;
   referenceLinks: boolean;
@@ -728,7 +728,7 @@ export type ApiCommunityAssistantPolicy = {
   updatedAt: string;
 };
 
-export type ApiCommunityAssistantPublicPolicy = {
+type ApiCommunityAssistantPublicPolicy = {
   object: "community_assistant_policy_public";
   community: string;
   enabled: boolean;
@@ -811,7 +811,7 @@ export type ApiCommunityStudyPolicyUpdate = {
   study_enabled: boolean;
 };
 
-export type ApiCommunityAssistantCredentialProvider = "openrouter" | "elevenlabs";
+type ApiCommunityAssistantCredentialProvider = "openrouter" | "elevenlabs";
 
 export type ApiCommunityAssistantCredentialResponse =
   | {
@@ -957,7 +957,7 @@ export type KaraokeSessionCreateApiResponse = {
   scoring_policy: unknown;
 };
 
-export type KaraokeLeaderboardIdentity = {
+type KaraokeLeaderboardIdentity = {
   visibility: "visible" | "anonymized";
   display_name: string | null;
   handle: string | null;

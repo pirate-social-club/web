@@ -1,16 +1,16 @@
 export type {
-  DiscoveryContext,
+
   WebBotAuthEnv,
 } from "./agent-discovery/types";
 
 export {
-  absoluteUrl,
+
   applyDiscoveryHeaders,
-  buildCanonicalUrl,
-  buildCommunityPath,
+
+
   getDiscoveryContext,
   resolveApiOriginFromHostname,
-  resolveAppOrigin,
+
 } from "./agent-discovery/shared";
 export {
   buildAgentSkillResponse,
@@ -29,7 +29,7 @@ export {
   markdownRequested,
 } from "./agent-discovery/markdown";
 export {
-  buildOpenApiDocument,
+
   buildOpenApiResponse,
 } from "./agent-discovery/openapi";
 export {

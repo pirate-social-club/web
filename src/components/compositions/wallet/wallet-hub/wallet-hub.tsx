@@ -6,8 +6,8 @@ import { Card } from "@/components/primitives/card";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { buildGroupedAssets, formatTotalBalanceUsd } from "./wallet-hub-model";
-export { buildGroupedAssets, formatTotalBalanceUsd } from "./wallet-hub-model";
-export { MobileWalletHub } from "./wallet-hub-view";
+;
+;
 import { DesktopWalletHub, MobileWalletHub } from "./wallet-hub-view";
 import type { WalletHubProps } from "./wallet-hub.types";
 

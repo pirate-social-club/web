@@ -9,7 +9,7 @@ class PermanentMultipartPartUploadError extends Error {}
 
 type RetryableMultipartPartUploadError = Error & { retryAfterMs?: number | null };
 
-export type MultipartArtifactProgressReporter = (fraction: number) => void;
+type MultipartArtifactProgressReporter = (fraction: number) => void;
 
 export type MultipartArtifactUploadInput = {
   abortSession: (

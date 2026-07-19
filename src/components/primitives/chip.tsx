@@ -27,7 +27,7 @@ const chipVariants = cva(
   },
 );
 
-export interface ChipProps
+interface ChipProps
   extends React.ComponentProps<"button">,
     VariantProps<typeof chipVariants> {
   leadingIcon?: React.ReactNode;
@@ -47,4 +47,4 @@ function Chip({ children, className, leadingIcon, ref, size, variant, ...props }
   );
 }
 
-export { Chip, chipVariants };
+export { Chip,  };

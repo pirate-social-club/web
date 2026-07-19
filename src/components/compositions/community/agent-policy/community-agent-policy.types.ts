@@ -14,7 +14,7 @@ export interface CommunityAgentPolicySettings {
   dailyReplyCap: number | null;
 }
 
-export type CommunityAgentPolicySubmitState =
+type CommunityAgentPolicySubmitState =
   | { kind: "idle" }
   | { kind: "saving" }
   | { kind: "error"; message: string };

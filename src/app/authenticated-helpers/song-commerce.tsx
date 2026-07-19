@@ -23,7 +23,7 @@ async function loadStoryCdrBrowser() {
   return await storyCdrBrowserModulePromise;
 }
 
-export type SongCommerceState = {
+type SongCommerceState = {
   listingsByAssetId: Record<string, ApiCommunityListing | undefined>;
   listingsByLiveRoomId: Record<string, ApiCommunityListing | undefined>;
   listingsByReplayAssetId: Record<string, ApiCommunityListing | undefined>;

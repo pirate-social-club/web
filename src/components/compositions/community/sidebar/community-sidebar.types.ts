@@ -1,6 +1,6 @@
 import type { CommunityMembershipMode } from "@/components/compositions/community/create-composer/create-community-composer.types";
 
-export type { CommunityMembershipMode };
+;
 
 export type ReferenceLinkPlatform =
   | "musicbrainz"
@@ -40,7 +40,7 @@ export interface CommunitySidebarReferenceLink {
   position: number;
 }
 
-export interface CommunitySidebarFlairDefinition {
+interface CommunitySidebarFlairDefinition {
   flairId: string;
   label: string;
   colorToken?: string | null;
@@ -70,7 +70,7 @@ export interface CommunitySidebarCharity {
   name: string;
 }
 
-export interface CommunitySidebarStore {
+interface CommunitySidebarStore {
   label?: string | null;
   url: string;
 }
@@ -84,7 +84,7 @@ export interface CommunitySidebarGateItem {
   status?: "unknown" | "met" | "unmet";
 }
 
-export interface CommunitySidebarNamespacePanel {
+interface CommunitySidebarNamespacePanel {
   routeLabel: string;
   status: "available" | "pending" | "verified";
   onOpen?: () => void;

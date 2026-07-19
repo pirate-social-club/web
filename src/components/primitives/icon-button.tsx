@@ -46,7 +46,7 @@ const iconButtonVariants = cva(
   },
 );
 
-export interface IconButtonProps
+interface IconButtonProps
   extends React.ComponentProps<"button">,
     VariantProps<typeof iconButtonVariants> {
   active?: boolean;
@@ -69,4 +69,4 @@ function IconButton({ active = false, className, disabled, loading = false, ref,
   );
 }
 
-export { IconButton, iconButtonVariants };
+export { IconButton,  };

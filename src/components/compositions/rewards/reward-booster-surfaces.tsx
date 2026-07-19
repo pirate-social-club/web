@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils";
  * own surface rather than more props on this one.
  */
 
-export type BoostCampaignSheetState =
+type BoostCampaignSheetState =
   | "compose"
   | "quote"
   | "confirming"
@@ -46,7 +46,7 @@ export type BoostCampaignSheetState =
   | "funding-review"
   | "failed";
 
-export type CampaignStatusState =
+type CampaignStatusState =
   | "scheduled"
   | "active"
   | "paused"
@@ -55,14 +55,14 @@ export type CampaignStatusState =
   | "ended"
   | "canceled";
 
-export type BoostBlockedReason =
+type BoostBlockedReason =
   | "owner-opted-out"
   | "campaign-exists"
   | "rate-limited";
 
 export type BoostEligibleActivity = "study" | "karaoke" | "either";
 
-export interface BoostSongButtonProps {
+interface BoostSongButtonProps {
   className?: string;
   disabled?: boolean;
   onClick?: () => void;
@@ -142,7 +142,7 @@ const ACTIVITY_LABEL = {
   either: "a study set or karaoke pass",
 } satisfies Record<BoostEligibleActivity, string>;
 
-export function BoostSongButton({ className, disabled, onClick }: BoostSongButtonProps) {
+function BoostSongButton({ className, disabled, onClick }: BoostSongButtonProps) {
   return (
     <Button className={cn("h-11", className)} disabled={disabled} onClick={onClick} variant="outline">
       <Megaphone aria-hidden="true" className="size-4 text-primary" weight="bold" />

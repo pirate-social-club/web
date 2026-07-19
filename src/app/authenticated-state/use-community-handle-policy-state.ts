@@ -130,7 +130,7 @@ export function parseLabelClaimRuleLabels(labelsText: string): string[] {
   ));
 }
 
-export function isValidLabelClaimRuleLabel(label: string): boolean {
+function isValidLabelClaimRuleLabel(label: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(label);
 }
 

@@ -1,8 +1,8 @@
 import type { AttendanceReportingHealth } from "@/components/compositions/bookings/booking-session-controls/booking-session-controls";
 
 export const BOOKING_HEARTBEAT_INTERVAL_MS = 15_000;
-export const BOOKING_HEARTBEAT_DEGRADED_FAILURES = 3;
-export const BOOKING_HEARTBEAT_DEGRADED_AFTER_MS = 45_000;
+const BOOKING_HEARTBEAT_DEGRADED_FAILURES = 3;
+const BOOKING_HEARTBEAT_DEGRADED_AFTER_MS = 45_000;
 
 export interface BookingHeartbeatState {
   consecutiveFailures: number;

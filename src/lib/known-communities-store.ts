@@ -129,7 +129,7 @@ export function forgetKnownCommunity(communityId: string): void {
   notifyAll();
 }
 
-export function subscribeToKnownCommunities(listener: KnownCommunitiesListener): () => void {
+function subscribeToKnownCommunities(listener: KnownCommunitiesListener): () => void {
   listeners.add(listener);
   const shouldSubscribeToStorage = listeners.size === 1 && typeof window !== "undefined";
 

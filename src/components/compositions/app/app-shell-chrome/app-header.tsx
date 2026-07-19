@@ -51,7 +51,7 @@ function SidebarMenuToggleButton({ ariaLabel }: { ariaLabel: string }) {
   );
 }
 
-export interface AppHeaderLabels {
+interface AppHeaderLabels {
   backAriaLabel?: string;
   connectLabel?: string;
   createLabel?: string;

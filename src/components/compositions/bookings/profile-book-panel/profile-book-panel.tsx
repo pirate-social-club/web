@@ -16,7 +16,7 @@ function formatUsd(cents: number): string {
   return (Math.max(0, Math.round(cents)) / 100).toFixed(2);
 }
 
-export interface ProfileBookPanelViewerProps {
+interface ProfileBookPanelViewerProps {
   mode: "viewer";
   basePriceCents: number;
   slots: ResolvedSlot[];
@@ -28,7 +28,7 @@ export interface ProfileBookPanelViewerProps {
   className?: string;
 }
 
-export interface ProfileBookPanelOwnerProps {
+interface ProfileBookPanelOwnerProps {
   mode: "owner";
   /** Whether the host has a set-up schedule (bookable-configured). false → setup prompt. */
   configured: boolean;

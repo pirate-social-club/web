@@ -6,6 +6,9 @@ import {
   getStoredSession,
   isSessionAccessTokenExpired,
   updateSessionIdentityWallet,
+  updateSessionOnboarding,
+  updateSessionProfile,
+  updateSessionUser,
   type StoredSession,
 } from "./session-store";
 
@@ -98,12 +101,47 @@ describe("session-store", () => {
     __resetSessionStoreForTests();
     seedTwoWalletSession();
     try {
+      const previous = getStoredSession();
       updateSessionIdentityWallet("wal_b");
       const updated = getStoredSession();
+      expect(updated).not.toBe(previous);
+      expect(previous?.walletAttachments.find((wallet) => wallet.is_primary)?.wallet_attachment).toBe("wal_a");
+      expect(previous?.profile.primary_wallet_address).toBe("0xaaa");
+      expect(previous?.user.primary_wallet_attachment).toBe("wal_a");
       expect(updated?.walletAttachments.find((wallet) => wallet.is_primary)?.wallet_attachment).toBe("wal_b");
       expect(updated?.walletAttachments.filter((wallet) => wallet.is_primary)).toHaveLength(1);
       expect(updated?.profile.primary_wallet_address).toBe("0xbbb");
       expect(updated?.user.primary_wallet_attachment).toBe("wal_b");
+    } finally {
+      cleanup();
+    }
+  });
+
+  test("session field updates publish new snapshots without mutating the previous snapshot", () => {
+    __resetSessionStoreForTests();
+    seedTwoWalletSession();
+    try {
+      const original = getStoredSession();
+      const onboarding = { completed: true } as unknown as StoredSession["onboarding"];
+      updateSessionOnboarding(onboarding);
+      const withOnboarding = getStoredSession();
+      expect(withOnboarding).not.toBe(original);
+      expect(withOnboarding?.onboarding).toBe(onboarding);
+      expect(original?.onboarding).not.toBe(onboarding);
+
+      const user = { ...withOnboarding?.user, primary_wallet_attachment: "wal_b" } as StoredSession["user"];
+      updateSessionUser(user);
+      const withUser = getStoredSession();
+      expect(withUser).not.toBe(withOnboarding);
+      expect(withUser?.user).toBe(user);
+      expect(withOnboarding?.user).not.toBe(user);
+
+      const profile = { ...withUser?.profile, primary_wallet_address: "0xbbb" } as StoredSession["profile"];
+      updateSessionProfile(profile);
+      const withProfile = getStoredSession();
+      expect(withProfile).not.toBe(withUser);
+      expect(withProfile?.profile).toBe(profile);
+      expect(withUser?.profile).not.toBe(profile);
     } finally {
       cleanup();
     }

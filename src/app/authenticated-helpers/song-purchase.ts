@@ -29,7 +29,7 @@ function settlementPollDelayMs(attempt: number): number {
   return Math.min(1_000 * (2 ** Math.min(attempt, 3)), 8_000);
 }
 
-export function isPendingPurchaseSettlement(
+function isPendingPurchaseSettlement(
   result: CommunityPurchaseSettlementResult,
 ): result is Extract<CommunityPurchaseSettlementResult, { object: "community_purchase_settlement_pending" }> {
   return result.object === "community_purchase_settlement_pending";
@@ -50,7 +50,7 @@ export async function waitForPurchaseSettlement(params: {
   throw new Error("Your purchase is still processing. Try again in a moment.");
 }
 
-export type SongPurchaseSuccessMessage = (params: {
+type SongPurchaseSuccessMessage = (params: {
   settlement: CommunityPurchaseSettlement;
   titleText: string;
 }) => string;

@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { SongStreakEntryList } from "./song-streak-parts";
 import type { SongStreakSummary } from "./song-streak-preview";
 
-export interface SongStudyOption {
+interface SongStudyOption {
   id: string;
   text: string;
 }
@@ -35,7 +35,7 @@ export interface SongStudySayItBackExercise {
   expected: string;
 }
 
-export interface SongStudySayItBackFeedback {
+interface SongStudySayItBackFeedback {
   extra?: string[];
   matched?: string[];
   missing?: string[];

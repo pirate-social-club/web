@@ -18,7 +18,7 @@ import type {
 import { IdentitySelect, type IdentityOption } from "./post-composer-identity-select";
 import { Type } from "@/components/primitives/type";
 
-export function IdentitySection({
+function IdentitySection({
   authorMode,
   className,
   controlClassName,

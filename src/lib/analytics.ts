@@ -3,7 +3,7 @@ import { getAccessToken } from "@/lib/api/session-store";
 import { getAnalyticsIdentity } from "@/lib/analytics-identity";
 import { logger } from "@/lib/logger";
 
-export type AnalyticsEventName =
+type AnalyticsEventName =
   | "page_viewed"
   | "auth_started"
   | "reddit_verification_started"

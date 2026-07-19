@@ -14,7 +14,7 @@ export interface CommunityMachineAccessSettings {
   authenticatedRateTier: "standard";
 }
 
-export type CommunityMachineAccessSubmitState =
+type CommunityMachineAccessSubmitState =
   | { kind: "idle" }
   | { kind: "saving" }
   | { kind: "error"; message: string };

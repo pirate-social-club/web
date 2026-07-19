@@ -5,7 +5,7 @@ export interface CommunityKaraokePolicySettings {
   updatedAt: string | null;
 }
 
-export type CommunityKaraokePolicySubmitState =
+type CommunityKaraokePolicySubmitState =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "saving" }

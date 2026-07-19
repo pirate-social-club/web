@@ -8,9 +8,9 @@ import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import type { PostThreadCommentMedia, PostThreadReplyAttachment } from "./post-thread.types";
 
-export const commentImageAccept = "image/jpeg,image/png,image/webp,image/gif,image/avif";
+const commentImageAccept = "image/jpeg,image/png,image/webp,image/gif,image/avif";
 
-export function createReplyAttachment(file: File): PostThreadReplyAttachment {
+function createReplyAttachment(file: File): PostThreadReplyAttachment {
   return {
     file,
     label: file.name || "Image",

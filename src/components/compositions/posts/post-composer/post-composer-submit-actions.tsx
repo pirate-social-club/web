@@ -94,7 +94,7 @@ function submitButtonContent(
   return "Posting...";
 }
 
-export function shouldShowIdentity(controller: PostComposerController) {
+function shouldShowIdentity(controller: PostComposerController) {
   const { commerce, identity, tabs } = controller;
 
   if (!identity.identity) {

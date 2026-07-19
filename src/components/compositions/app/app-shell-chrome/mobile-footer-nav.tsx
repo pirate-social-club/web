@@ -34,7 +34,7 @@ function normalizeUnreadCount(count: number): number {
   return Math.max(0, Math.floor(count));
 }
 
-export interface MobileFooterNavLabels {
+interface MobileFooterNavLabels {
   chat?: string;
   chatAriaLabel?: string;
   create?: string;

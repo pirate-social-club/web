@@ -2,7 +2,7 @@ import type { Page, Route } from "@playwright/test";
 
 const pirateApiPattern = /https?:\/\/(?:api-staging\.pirate\.sc|api\.pirate\.sc|127\.0\.0\.1:8787)\/.*/u;
 
-export type RewardPayoutFixture = {
+type RewardPayoutFixture = {
   id: string;
   amount_cents: number;
   recipient_address: string;

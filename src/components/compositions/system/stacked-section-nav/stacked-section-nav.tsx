@@ -7,14 +7,14 @@ import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 
-export interface StackedSectionNavItem {
+interface StackedSectionNavItem {
   active?: boolean;
   label: string;
   description?: string;
   onSelect?: () => void;
 }
 
-export interface StackedSectionNavSection {
+interface StackedSectionNavSection {
   items: StackedSectionNavItem[];
   label: string;
 }

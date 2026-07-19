@@ -1,4 +1,4 @@
-export interface PublicAgentCommunity {
+interface PublicAgentCommunity {
   label: string;
   href?: string;
 }

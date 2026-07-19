@@ -155,20 +155,20 @@ const LazyNotFoundPage = lazyRouteModule(
 
 export {
   applyPostVote,
-  buildAssetListingRequest,
+
   buildThreadCommentTreeFromItems,
-  buildSongPostRequest,
+
   createThreadCommentNode,
   loadThreadCommentTree,
   mergeThreadCommentNodes,
-  resolveComposerSubmitState,
+
   toCommunityFeedItem,
   toHomeFeedItem,
 };
 
-export type { HomeFeedEntry, ThreadCommentNode };
+export type {  ThreadCommentNode };
 
-export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
+function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
   switch (route.kind) {
     case "home":
       return <HomePage />;

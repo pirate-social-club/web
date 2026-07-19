@@ -52,7 +52,7 @@ function isProfile(p: unknown): p is BookingProfile {
 }
 
 /** The props ProfileBookingsSection needs, minus the presentational-only `className`. */
-export type BookingHostSectionProps = Omit<ProfileBookingsSectionProps, "className">;
+type BookingHostSectionProps = Omit<ProfileBookingsSectionProps, "className">;
 
 export interface UseBookingHostSettingsResult {
   loading: boolean;

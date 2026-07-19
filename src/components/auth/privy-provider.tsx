@@ -88,11 +88,11 @@ const PrivyWalletDemandContext = React.createContext<PrivyWalletDemandContextVal
   retainWalletSync: () => () => undefined,
 });
 
-export function getPrivyAppId(): string | null {
+function getPrivyAppId(): string | null {
   return readViteEnv("VITE_PRIVY_APP_ID");
 }
 
-export function getPrivyClientId(): string | null {
+function getPrivyClientId(): string | null {
   const appEnvironment = readViteEnv("VITE_PIRATE_APP_ENV")?.toLowerCase();
   if (appEnvironment && appEnvironment !== "prod" && appEnvironment !== "production") {
     return null;
@@ -101,7 +101,7 @@ export function getPrivyClientId(): string | null {
   return readViteEnv("VITE_PRIVY_CLIENT_ID");
 }
 
-export function isPrivyConfigured(): boolean {
+function isPrivyConfigured(): boolean {
   return getPrivyAppId() !== null;
 }
 

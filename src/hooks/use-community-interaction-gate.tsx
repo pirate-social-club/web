@@ -42,7 +42,7 @@ import {
   type RouteKind,
 } from "./use-community-interaction-gate.helpers";
 
-export { resolveCommunityInteractionState } from "./use-community-interaction-gate.helpers";
+;
 
 const LazySelfVerificationModal = React.lazy(async () => {
   const mod = await import("@/components/compositions/verification/self-verification-modal/self-verification-modal");

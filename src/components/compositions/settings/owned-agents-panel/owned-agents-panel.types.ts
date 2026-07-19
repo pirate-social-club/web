@@ -1,6 +1,6 @@
 import type { AgentOwnershipProvider } from "@pirate/api-contracts";
 
-export type OwnedAgentStatus =
+type OwnedAgentStatus =
   | "pending"
   | "active"
   | "suspended"
@@ -8,9 +8,9 @@ export type OwnedAgentStatus =
   | "transferred"
   | "deregistered";
 
-export type OwnershipProvider = AgentOwnershipProvider;
+type OwnershipProvider = AgentOwnershipProvider;
 
-export interface OwnedAgentOwnershipSnapshot {
+interface OwnedAgentOwnershipSnapshot {
   ownershipProvider: OwnershipProvider;
   verifiedAt: string;
   expiresAt: string | null;

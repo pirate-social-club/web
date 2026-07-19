@@ -18,7 +18,7 @@ function isValidHexColor(value: string): boolean {
   return /^#[0-9a-fA-F]{6}$/.test(value.trim());
 }
 
-export function getCommunityLabelDrafts(
+function getCommunityLabelDrafts(
   community: ApiCommunity | null,
 ): LabelEditorDefinition[] {
   return community?.label_policy?.definitions
@@ -32,7 +32,7 @@ export function getCommunityLabelDrafts(
     })) ?? [];
 }
 
-export function getLabelValidationError(
+function getLabelValidationError(
   labelsEnabled: boolean,
   labels: LabelEditorDefinition[],
 ): string | null {
@@ -62,7 +62,7 @@ export function getLabelValidationError(
   return null;
 }
 
-export function getCommunityRuleDrafts(community: ApiCommunity | null): RuleDraft[] {
+function getCommunityRuleDrafts(community: ApiCommunity | null): RuleDraft[] {
   return (community?.community_profile?.rules ?? []).map((rule) => ({
     id: rule.id,
     existingRuleId: rule.id,
@@ -87,20 +87,30 @@ export function useCommunityContentPolicyState({
   const [savingRules, setSavingRules] = React.useState(false);
   const [savingLinks, setSavingLinks] = React.useState(false);
   const [savingLabels, setSavingLabels] = React.useState(false);
+  const communityId = community?.id ?? null;
+  const communityRules = JSON.stringify(getCommunityRuleDrafts(community));
+  const communityLinks = JSON.stringify(community ? getCommunityLinkDrafts(community) : []);
+  const communityLabels = JSON.stringify({
+    enabled: community?.label_policy?.label_enabled === true,
+    labels: getCommunityLabelDrafts(community),
+  });
 
   React.useEffect(() => {
-    setRules(getCommunityRuleDrafts(community));
-  }, [community]);
+    setRules(JSON.parse(communityRules) as RuleDraft[]);
+  }, [communityId, communityRules]);
 
   React.useEffect(() => {
-    if (!community) {
-      return;
-    }
+    setLinks(JSON.parse(communityLinks) as CommunityLinkEditorItem[]);
+  }, [communityId, communityLinks]);
 
-    setLinks(getCommunityLinkDrafts(community));
-    setLabelsEnabled(community.label_policy?.label_enabled === true);
-    setLabels(getCommunityLabelDrafts(community));
-  }, [community]);
+  React.useEffect(() => {
+    const next = JSON.parse(communityLabels) as {
+      enabled: boolean;
+      labels: LabelEditorDefinition[];
+    };
+    setLabelsEnabled(next.enabled);
+    setLabels(next.labels);
+  }, [communityId, communityLabels]);
 
   const labelsValidationError = getLabelValidationError(labelsEnabled, labels);
 

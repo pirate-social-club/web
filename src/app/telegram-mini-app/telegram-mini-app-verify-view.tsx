@@ -20,7 +20,7 @@ export type TelegramVerifyViewModel = {
   title: string;
 };
 
-export function telegramVerifyPreparingMessage(provider: TelegramVerifyLaunchProvider): string {
+function telegramVerifyPreparingMessage(provider: TelegramVerifyLaunchProvider): string {
   switch (provider) {
     case "zkpassport":
       return "Opening ZKPassport";

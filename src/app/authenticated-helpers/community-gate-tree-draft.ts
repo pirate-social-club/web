@@ -123,7 +123,7 @@ export function gatePolicyHasUnsupportedExpressionNodes(policy: GatePolicy | nul
   return expressionHasUnsupportedNodes(policy.expression as RecursiveGateExpression | Record<string, unknown>);
 }
 
-export function evaluateGateExpression(
+function evaluateGateExpression(
   expression: GateExpression,
   satisfies: (gate: GateAtom) => boolean,
 ): boolean {

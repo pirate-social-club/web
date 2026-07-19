@@ -22,7 +22,7 @@ import {
   SheetTitle,
 } from "@/components/primitives/sheet";
 
-export const ModalResponsiveContext = React.createContext<boolean | null>(null);
+const ModalResponsiveContext = React.createContext<boolean | null>(null);
 
 function useModalIsMobile() {
   const contextValue = React.use(ModalResponsiveContext);

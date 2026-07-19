@@ -43,14 +43,14 @@ export {
   accountMetadataAbi,
   buildFollowTransactions,
   buildSponsoredFollowIntent,
-  createFollowListOp,
-  createMintStorageLocation,
-  generateListNonce,
-  listMinterAbi,
+
+
+
+
   listRecordsAbi,
   listRegistryAbi,
   normalizeAddress,
-  resolveFollowTransactionSlot,
+
   type FollowWriteTransaction,
 };
 
@@ -81,7 +81,7 @@ export type OnChainListEntry = {
   tags: Set<string>;
 };
 
-export function resolveEfpChain(chainId: number) {
+function resolveEfpChain(chainId: number) {
   if (chainId === base.id) return base;
   if (chainId === baseSepolia.id) return baseSepolia;
   if (chainId === optimism.id) return optimism;

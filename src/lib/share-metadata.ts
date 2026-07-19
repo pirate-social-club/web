@@ -38,6 +38,7 @@ const TRANSFORMED_SHARE_IMAGE_QUALITY = 80;
 // list (Cloudflare dashboard → Images → Transformations). Sources on any other host
 // are served untransformed: /cdn-cgi/image/ rejects them with ERROR 9401.
 const TRANSFORMABLE_IMAGE_SOURCE_HOSTS = new Set([
+  "api.pirate.sc",
   "psc.myfilebase.com",
 ]);
 const TRANSFORMED_SHARE_IMAGE_OPTIONS = [

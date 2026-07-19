@@ -199,8 +199,13 @@ describe("share metadata", () => {
       }),
     });
 
-    // api.pirate.sc is not in the transform allowlist: the raw URL must be used.
-    expect(metadata.imageUrl).toBe("https://api.pirate.sc/communities/cmt_x/song-artifact-uploads/sau_y/content");
+    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl(
+      "https://pirate.sc",
+      "https://api.pirate.sc/communities/cmt_x/song-artifact-uploads/sau_y/content",
+    ));
+    expect(metadata.imageType).toBe("image/jpeg");
+    expect(metadata.imageWidth).toBe(1200);
+    expect(metadata.imageHeight).toBe(630);
     expect(metadata.description).toBe("The body should become the share description.");
     expect(metadata.imageAlt).toBe("Cover track on Pirate");
   });
@@ -287,7 +292,7 @@ describe("share metadata", () => {
     expect(metadata.description).toBe("Only a caption");
   });
 
-  test("serves community banners from non-allowlisted hosts untransformed", () => {
+  test("transforms community banners served by the Pirate API", () => {
     const metadata = buildCommunitySeoMetadata({
       appOrigin: "https://pirate.sc",
       locale: "en",
@@ -298,8 +303,13 @@ describe("share metadata", () => {
       },
     });
 
-    expect(metadata.imageUrl).toBe("https://api.pirate.sc/community-media/banner/banner_test.png");
-    expect(metadata.imageType).toBe(null);
+    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl(
+      "https://pirate.sc",
+      "https://api.pirate.sc/community-media/banner/banner_test.png",
+    ));
+    expect(metadata.imageType).toBe("image/jpeg");
+    expect(metadata.imageWidth).toBe(1200);
+    expect(metadata.imageHeight).toBe(630);
   });
 
   test("ignores data-URI banners and falls back to the avatar", () => {

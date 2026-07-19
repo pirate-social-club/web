@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   fixtureDiagnosticDetail,
   formatFixtureDiscoveryDiagnostics,
-} from "./fixture-discovery-diagnostics";
+} from "../../e2e/fixtures/fixture-discovery-diagnostics";
 
 describe("fixture discovery diagnostics", () => {
   test("renders each rejected discovery stage and target", () => {

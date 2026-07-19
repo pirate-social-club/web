@@ -1186,7 +1186,7 @@ export function CommunityModerationPage({
             handlesLoading={state.handlesLoading}
             hasChanges={state.hasChanges}
             hasNamespace={Boolean(state.community?.namespace_verification)}
-            namespaceLabel={state.community?.route_slug ?? null}
+            {...state.handleNamespaceSelectorProps}
             onDraftChange={state.setDraft}
             onNavigateToNamespace={() => navigate(buildCommunityModerationPath(communityId, "namespace", state.community?.route_slug))}
             onReserveHandle={state.handleReserve}

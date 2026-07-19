@@ -16,6 +16,7 @@ import {
 } from "@/app/authenticated-helpers/community-gate-tree-draft";
 
 import { useApi } from "@/lib/api";
+import type { ApiCommunityNamespaceAttachment } from "@/lib/api/client-api-types";
 import { toast } from "@/components/primitives/sonner";
 import { getErrorMessage } from "@/lib/error-utils";
 
@@ -235,12 +236,21 @@ export function buildHandlePolicySavePayload(draft: HandlePolicyDraft): UpdateCo
   };
 }
 
+export function formatHandleNamespaceSuffix(namespace: ApiCommunityNamespaceAttachment): string {
+  return namespace.family === "spaces" ? `@${namespace.root_label}` : `.${namespace.root_label}`;
+}
+
+const DISCARD_NAMESPACE_DRAFT_MESSAGE =
+  "You have unsaved changes for this namespace. Discard them and switch?";
+
 export function useCommunityHandlePolicyState({
   communityId,
   enabled = true,
+  namespaces,
 }: {
   communityId: string | null;
   enabled?: boolean;
+  namespaces?: ApiCommunityNamespaceAttachment[];
 }) {
   const api = useApi();
 
@@ -254,7 +264,38 @@ export function useCommunityHandlePolicyState({
   const [handleOpsLoading, setHandleOpsLoading] = React.useState(false);
   const [handleStatusFilter, setHandleStatusFilter] = React.useState<HandleStatusFilter>("all");
 
+  const verifiedNamespaces = React.useMemo(
+    () => (namespaces ?? []).filter((namespace) => namespace.verification_status === "verified"),
+    [namespaces],
+  );
+  const [selectedHandleNamespaceVerification, setSelectedHandleNamespaceVerification] =
+    React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setSelectedHandleNamespaceVerification((current) => {
+      if (current && verifiedNamespaces.some((namespace) => namespace.namespace_verification === current)) {
+        return current;
+      }
+      const primary = verifiedNamespaces.find((namespace) => namespace.namespace_role === "primary");
+      return primary?.namespace_verification
+        ?? verifiedNamespaces[0]?.namespace_verification
+        ?? null;
+    });
+  }, [verifiedNamespaces]);
+
+  const selectedHandleNamespace = React.useMemo(
+    () => verifiedNamespaces.find(
+      (namespace) => namespace.namespace_verification === selectedHandleNamespaceVerification,
+    ) ?? null,
+    [selectedHandleNamespaceVerification, verifiedNamespaces],
+  );
+
+  const selectedNamespaceRef = React.useRef(selectedHandleNamespaceVerification);
+  selectedNamespaceRef.current = selectedHandleNamespaceVerification;
+
+  const handlesRequestRef = React.useRef(0);
   const loadHandles = React.useCallback(() => {
+    const requestId = ++handlesRequestRef.current;
     if (!communityId || !enabled) {
       setHandles([]);
       setHandlesLoading(false);
@@ -264,13 +305,19 @@ export function useCommunityHandlePolicyState({
     void api.communities
       .listHandles(communityId, {
         status: handleStatusFilter === "all" ? null : handleStatusFilter,
+        namespaceVerification: selectedHandleNamespaceVerification,
       })
-      .then((result) => setHandles(result.handles))
+      .then((result) => {
+        if (handlesRequestRef.current === requestId) setHandles(result.handles);
+      })
       .catch((nextError: unknown) => {
+        if (handlesRequestRef.current !== requestId) return;
         toast.error(getErrorMessage(nextError, "Could not load community names."));
       })
-      .finally(() => setHandlesLoading(false));
-  }, [api.communities, communityId, enabled, handleStatusFilter]);
+      .finally(() => {
+        if (handlesRequestRef.current === requestId) setHandlesLoading(false);
+      });
+  }, [api.communities, communityId, enabled, handleStatusFilter, selectedHandleNamespaceVerification]);
 
   React.useEffect(() => {
     if (!communityId || !enabled) {
@@ -288,7 +335,7 @@ export function useCommunityHandlePolicyState({
     setPolicyError(null);
 
     void api.communities
-      .getHandlePolicy(communityId)
+      .getHandlePolicy(communityId, { namespaceVerification: selectedHandleNamespaceVerification })
       .then((result) => {
         if (!cancelled) {
           setPolicy(result);
@@ -309,7 +356,7 @@ export function useCommunityHandlePolicyState({
     return () => {
       cancelled = true;
     };
-  }, [api.communities, communityId, enabled]);
+  }, [api.communities, communityId, enabled, selectedHandleNamespaceVerification]);
 
   React.useEffect(() => {
     loadHandles();
@@ -356,10 +403,16 @@ export function useCommunityHandlePolicyState({
       || (draft.claimGateMode === "explicit" && !isGateBuilderDraftSavable(draft.claimGateTreeDraft))
       || !draft.labelClaimRules.every(isLabelClaimRuleDraftSavable)
     ) return;
+    const savedNamespaceVerification = selectedHandleNamespaceVerification;
     setSaving(true);
     void api.communities
-      .updateHandlePolicy(communityId, buildHandlePolicySavePayload(draft))
+      .updateHandlePolicy(
+        communityId,
+        buildHandlePolicySavePayload(draft),
+        { namespaceVerification: savedNamespaceVerification },
+      )
       .then((updatedPolicy) => {
+        if (selectedNamespaceRef.current !== savedNamespaceVerification) return;
         setPolicy(updatedPolicy);
         setDraft(buildHandlePolicyDraft(updatedPolicy));
         toast.success("Names policy saved.");
@@ -370,7 +423,7 @@ export function useCommunityHandlePolicyState({
       .finally(() => {
         setSaving(false);
       });
-  }, [api.communities, communityId, draft, hasChanges, saving]);
+  }, [api.communities, communityId, draft, hasChanges, saving, selectedHandleNamespaceVerification]);
 
   const handleReserve = React.useCallback(async (desiredLabel: string) => {
     if (!communityId || handleOpsLoading) return;
@@ -378,7 +431,11 @@ export function useCommunityHandlePolicyState({
     if (!label) return;
     setHandleOpsLoading(true);
     try {
-      await api.communities.reserveHandle(communityId, { desired_label: label });
+      await api.communities.reserveHandle(
+        communityId,
+        { desired_label: label },
+        { namespaceVerification: selectedHandleNamespaceVerification },
+      );
       toast.success("Name reserved.");
       loadHandles();
     } catch (nextError) {
@@ -386,7 +443,7 @@ export function useCommunityHandlePolicyState({
     } finally {
       setHandleOpsLoading(false);
     }
-  }, [api.communities, communityId, handleOpsLoading, loadHandles]);
+  }, [api.communities, communityId, handleOpsLoading, loadHandles, selectedHandleNamespaceVerification]);
 
   const handleRevoke = React.useCallback(async (handleId: string) => {
     if (!communityId || handleOpsLoading) return;
@@ -402,8 +459,33 @@ export function useCommunityHandlePolicyState({
     }
   }, [api.communities, communityId, handleOpsLoading, loadHandles]);
 
+  const selectHandleNamespace = React.useCallback((next: string | null) => {
+    if (next === selectedNamespaceRef.current) return;
+    if (saving) return;
+    if (
+      next !== null
+      && !verifiedNamespaces.some((namespace) => namespace.namespace_verification === next)
+    ) return;
+    if (hasChanges && !globalThis.confirm(DISCARD_NAMESPACE_DRAFT_MESSAGE)) return;
+    setSelectedHandleNamespaceVerification(next);
+  }, [hasChanges, saving, verifiedNamespaces]);
+
+  const handleNamespaceSelectorProps = React.useMemo(() => ({
+    namespaceOptions: verifiedNamespaces.map((namespace) => ({
+      value: namespace.namespace_verification,
+      label: `${formatHandleNamespaceSuffix(namespace)} names${namespace.namespace_role === "primary" ? " (primary)" : ""}`,
+    })),
+    namespaceSuffix: selectedHandleNamespace
+      ? formatHandleNamespaceSuffix(selectedHandleNamespace)
+      : null,
+    onSelectNamespace: selectHandleNamespace,
+    selectedNamespaceVerification: selectedHandleNamespaceVerification,
+  }), [selectHandleNamespace, selectedHandleNamespace, selectedHandleNamespaceVerification, verifiedNamespaces]);
+
   return {
     draft,
+    handleNamespaceSelectorProps,
+    handleNamespaces: verifiedNamespaces,
     handleOpsLoading,
     handleReserve,
     handleRevoke,
@@ -416,6 +498,9 @@ export function useCommunityHandlePolicyState({
     policyError,
     policyLoading,
     saving,
+    selectHandleNamespace,
+    selectedHandleNamespace,
+    selectedHandleNamespaceVerification,
     setDraft,
     setHandleStatusFilter,
   };

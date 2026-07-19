@@ -17,8 +17,8 @@
     "ageOver18": "18+ ID check",
     "minimumAge": "{age}+ ID check",
     "walletScore": {
-      "withScore": "Passport score {minimumScore}+",
-      "withoutScore": "Passport score"
+      "withScore": "Passport.xyz score {minimumScore}+",
+      "withoutScore": "Passport.xyz score"
     },
     "altchaPow": "Browser anti-bot check",
     "erc721Holding": {

@@ -95,7 +95,7 @@ describe("formatGateRequirement", () => {
 
   test("formats wallet score gate with threshold", () => {
     const gate: MembershipGateSummary = { gate_type: "wallet_score", minimum_score: 20 };
-    expect(formatGateRequirement(gate)).toBe("Passport score 20+");
+    expect(formatGateRequirement(gate)).toBe("Passport.xyz score 20+");
   });
 
 });

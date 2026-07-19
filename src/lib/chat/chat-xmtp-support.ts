@@ -69,6 +69,23 @@ export type XmtpMessage = {
   sentAt?: unknown;
 };
 
+export type XmtpMessageStream = {
+  return?: () => Promise<unknown> | unknown;
+};
+
+export async function resolveXmtpMessageStream(
+  streamPromise: Promise<XmtpMessageStream>,
+  isCancelled: () => boolean,
+  setStream: (stream: XmtpMessageStream | null) => void,
+): Promise<void> {
+  const stream = await streamPromise;
+  setStream(stream);
+  if (!isCancelled()) return;
+
+  setStream(null);
+  await stream.return?.();
+}
+
 export type XmtpDm = {
   createdAt?: unknown;
   createdAtNs?: unknown;
@@ -93,7 +110,7 @@ export type XmtpClient = {
       consentStates: unknown[];
       onError?: (error: unknown) => void;
       onValue: (message: XmtpMessage) => void;
-    }) => Promise<{ return?: () => Promise<unknown> | unknown }>;
+    }) => Promise<XmtpMessageStream>;
     syncAll: (consentStates: unknown[]) => Promise<unknown>;
     topic?: unknown;
   };

@@ -4,10 +4,8 @@ import * as React from "react";
 
 import type { AppRoute } from "@/app/router";
 import { HomePage } from "./authenticated-routes/home-routes";
-import { toCommunityFeedItem, toHomeFeedItem, type HomeFeedEntry } from "./authenticated-helpers/post-presentation";
+import { toCommunityFeedItem, toHomeFeedItem } from "./authenticated-helpers/post-presentation";
 import { applyPostVote } from "./authenticated-helpers/post-vote";
-import { buildAssetListingRequest, resolveComposerSubmitState } from "./authenticated-helpers/asset-submit";
-import { buildSongPostRequest } from "./authenticated-helpers/song-submit";
 import {
   buildThreadCommentTreeFromItems,
   createThreadCommentNode,

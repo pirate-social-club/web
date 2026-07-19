@@ -3,21 +3,18 @@
 import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
-import { Checkbox } from "@/components/primitives/checkbox";
 import { EditableNumberInput } from "@/components/primitives/editable-number-input";
 import { ImageSquare, Lock, Minus, Plus, Users } from "@phosphor-icons/react";
 import {
   FormFieldLabel,
   FormNote,
 } from "@/components/primitives/form-layout";
-import { Label } from "@/components/primitives/label";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 
-const ISO_ALPHA_2 = /^[A-Z]{2}$/;
 export const acceptedCommunityImageTypes = "image/png,image/jpeg,image/webp,image/gif,image/avif";
 
 
@@ -50,63 +47,6 @@ export function Section({
 
 export function FieldLabel({ label }: { label: string }) {
   return <FormFieldLabel className="mb-1.5" label={label} />;
-}
-
-function CheckboxRow({
-  checked,
-  id,
-  label,
-  onCheckedChange,
-}: {
-  checked: boolean;
-  id: string;
-  label: string;
-  onCheckedChange: (checked: boolean) => void;
-}) {
-  return (
-    <div className="flex min-h-14 items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3.5">
-      <Checkbox
-        checked={checked}
-        id={id}
-        onCheckedChange={(next) => onCheckedChange(next === true)}
-      />
-      <Label className="flex-1 text-base leading-6" htmlFor={id}>
-        {label}
-      </Label>
-    </div>
-  );
-}
-
-function ReviewField({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1">
-      <Type as="p" className="text-muted-foreground" variant="caption">{label}</Type>
-      <p className="text-base font-medium text-foreground">{value || "\u2014"}</p>
-    </div>
-  );
-}
-
-function ReviewSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-5 py-6 first:pt-0 last:pb-0">
-      <Type as="h3" variant="h4">
-        {title}
-      </Type>
-      <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">{children}</div>
-    </div>
-  );
 }
 
 export function NumericStepper({

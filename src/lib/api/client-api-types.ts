@@ -2,20 +2,17 @@ import type {
   Community,
   CommunityListing,
   CreateCommunityRequest,
-  GatePolicy,
   CreateCommunityListingRequest,
+  GatePolicy,
   SongStudyAttemptRequest,
   SongStudyAttemptResult,
   SongStudyExercise,
   SongStudyPayload,
   SongStudyTranscriptionResponse,
-  WalletIdentityPublicName,
-  WalletIdentityResponse,
 } from "@pirate/api-contracts";
 import type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
 export type ApiCreateCommunityRequest = CreateCommunityRequest;
-type ApiCreateCommunityListingRequest = CreateCommunityListingRequest;
 export type {
   SongStudyAttemptRequest,
   SongStudyAttemptResult,
@@ -43,9 +40,6 @@ export type ApiProfileMediaUploadResponse = {
   storage_bucket: string;
   storage_object_key: string;
 };
-
-type ApiWalletIdentityPublicName = WalletIdentityPublicName;
-type ApiWalletIdentityResponse = WalletIdentityResponse;
 
 type ApiRewardVerificationState = "unverified" | "verified" | "conflict";
 
@@ -810,8 +804,6 @@ export type ApiCommunityStudyPolicy = {
 export type ApiCommunityStudyPolicyUpdate = {
   study_enabled: boolean;
 };
-
-type ApiCommunityAssistantCredentialProvider = "openrouter" | "elevenlabs";
 
 export type ApiCommunityAssistantCredentialResponse =
   | {

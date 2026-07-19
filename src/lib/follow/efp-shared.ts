@@ -27,14 +27,9 @@ import {
   accountMetadataAbi,
   buildFollowTransactions,
   buildSponsoredFollowIntent,
-  createFollowListOp,
-  createMintStorageLocation,
-  generateListNonce,
-  listMinterAbi,
   listRecordsAbi,
   listRegistryAbi,
   normalizeAddress,
-  resolveFollowTransactionSlot,
   type FollowWriteTransaction,
 } from "@pirate/efp-shared";
 

@@ -86,23 +86,6 @@ export function StandaloneMobilePage({
   );
 }
 
-interface ChatRoutePageProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-/**
- * Chat route frame. Constrained layout with overflow control on desktop.
- * Composes StandardRoutePage so frame padding is owned in one place.
- */
-function ChatRoutePage({ children, className }: ChatRoutePageProps) {
-  return (
-    <StandardRoutePage className={className} overflowHidden>
-      {children}
-    </StandardRoutePage>
-  );
-}
-
 export interface PublicRoutePageProps {
   children: React.ReactNode;
   className?: string;

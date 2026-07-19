@@ -1,5 +1,3 @@
-type OnboardingPhase = "import_karma" | "choose_name";
-
 type VerificationState =
   | "not_started"
   | "code_ready"
@@ -55,34 +53,4 @@ export interface HandleSuggestion {
   source: "verified_reddit_username";
   availability: HandleAvailability;
   reason?: string;
-}
-
-interface OnboardingActions {
-  primaryLabel?: string;
-  tertiaryLabel?: string;
-}
-
-interface OnboardingCallbacks {
-  onUsernameChange: (value: string) => void;
-  onImportKarmaNext: () => void;
-  onImportKarmaSkip: () => void;
-  onHandleChange: (value: string) => void;
-  onGenerateHandle: () => void;
-  onChooseNameBack: () => void;
-  onChooseNameContinue: () => void;
-}
-
-interface OnboardingRedditBootstrapProps {
-  generatedHandle: string;
-  canSkip: boolean;
-  busy?: boolean;
-  layout?: "card" | "mobile";
-  phaseError?: string | null;
-  phase: OnboardingPhase;
-  reddit: RedditVerificationState;
-  importJob: ImportJobState;
-  redditImportSummary?: RedditImportSummaryState | null;
-  handleSuggestion?: HandleSuggestion;
-  actions?: OnboardingActions;
-  callbacks?: OnboardingCallbacks;
 }

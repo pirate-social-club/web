@@ -34,7 +34,6 @@ import {
 } from "@/app/authenticated-helpers/post-translation-presentation";
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
 
-type HomeFeedEntry = ApiHomeFeedItem;
 type HomeFeedPresentationEntry = {
   community: ApiHomeFeedItem["community"] | ApiCommunityPreview;
   post: ApiPost;

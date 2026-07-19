@@ -1,7 +1,5 @@
 "use client";
 
-import type { NotificationFeedItem } from "@pirate/api-contracts";
-
 const LEGACY_STORAGE_KEY = "pirate.web.xmtp.notifications.v1";
 const STORAGE_KEY = "pirate.web.chat.notifications.v1";
 const MAX_ITEMS = 50;
@@ -71,31 +69,4 @@ export function addLocalChatNotification(input: {
     targetPath: input.targetPath,
     transport: input.transport,
   }, ...current]);
-}
-
-function listLocalChatNotificationItems(): NotificationFeedItem[] {
-  return readItems().map((item) => ({
-    event: {
-      actor_user: null,
-      created: Math.floor(Date.parse(item.createdAt) / 1000),
-      id: item.eventId,
-      object: "notification_event",
-      object_type: item.transport === "assistant" ? "assistant_conversation" : "xmtp_conversation",
-      payload: {
-        actor_display_name: item.senderLabel,
-        target_path: item.targetPath,
-      },
-      subject: item.conversationId,
-      subject_type: item.transport === "assistant" ? "assistant_conversation" : "xmtp_conversation",
-      type: "xmtp_message",
-    },
-    receipt: {
-      created: Math.floor(Date.parse(item.createdAt) / 1000),
-      id: item.eventId,
-      object: "notification_receipt",
-      recipient_user: "local",
-      read_at: null,
-      seen_at: null,
-    },
-  }));
 }

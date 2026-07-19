@@ -152,6 +152,11 @@ function LabelClaimRuleCard({
   );
 }
 
+export interface HandlePolicyNamespaceOption {
+  value: string;
+  label: string;
+}
+
 export interface CommunityHandlePolicyEditorPageProps {
   className?: string;
   capabilities?: GateCapabilitySources;
@@ -159,6 +164,10 @@ export interface CommunityHandlePolicyEditorPageProps {
   hasChanges: boolean;
   hasNamespace: boolean;
   namespaceLabel?: string | null;
+  namespaceOptions?: HandlePolicyNamespaceOption[];
+  namespaceSuffix?: string | null;
+  onSelectNamespace?: (namespaceVerification: string) => void;
+  selectedNamespaceVerification?: string | null;
   handles?: CommunityHandle[];
   handlesLoading?: boolean;
   handleStatusFilter?: HandleStatusFilter;
@@ -332,6 +341,10 @@ export function CommunityHandlePolicyEditorPage({
   handleOpsLoading = false,
   handleStatusFilter = "all",
   namespaceLabel,
+  namespaceOptions,
+  namespaceSuffix,
+  onSelectNamespace,
+  selectedNamespaceVerification,
   onDraftChange,
   onNavigateToNamespace,
   onReserveHandle,
@@ -393,6 +406,32 @@ export function CommunityHandlePolicyEditorPage({
               </Button>
             ) : null}
           </div>
+        </div>
+      ) : null}
+
+      {hasNamespace && namespaceOptions && namespaceOptions.length > 1 ? (
+        <div className="space-y-2 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 p-4">
+          <FormFieldLabel label="Namespace" />
+          <div className="w-full md:w-72">
+            <Select
+              value={selectedNamespaceVerification ?? undefined}
+              onValueChange={(value) => onSelectNamespace?.(value)}
+            >
+              <SelectTrigger aria-label="Namespace" className="h-11 w-full rounded-[var(--radius-lg)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {namespaceOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <FormNote tone="muted">
+            The policy, pricing, rules, and operations below apply only to the selected namespace.
+          </FormNote>
         </div>
       ) : null}
 
@@ -604,7 +643,7 @@ export function CommunityHandlePolicyEditorPage({
                 value={previewInput}
               />
               <span className="shrink-0 font-mono text-base text-muted-foreground">
-                @{namespaceLabel ?? "community"}
+                {namespaceSuffix ?? `@${namespaceLabel ?? "community"}`}
               </span>
             </div>
             <div className="flex items-center gap-2 text-base">

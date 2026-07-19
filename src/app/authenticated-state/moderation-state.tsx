@@ -158,6 +158,7 @@ export function useCommunityModerationState(communityId: string) {
   const handlePolicy = useCommunityHandlePolicyState({
     communityId: community?.id ?? null,
     enabled: Boolean(community?.namespace_verification),
+    namespaces: namespaceAttachments,
   });
 
   return {

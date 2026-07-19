@@ -202,10 +202,14 @@ describe("share metadata", () => {
     expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl(
       "https://pirate.sc",
       "https://api.pirate.sc/communities/cmt_x/song-artifact-uploads/sau_y/content",
+      "square",
     ));
+    expect(metadata.imageUrl).toContain(
+      "/cdn-cgi/image/width=1080,height=1080,fit=cover,format=jpeg,quality=80,metadata=none,anim=false/",
+    );
     expect(metadata.imageType).toBe("image/jpeg");
-    expect(metadata.imageWidth).toBe(1200);
-    expect(metadata.imageHeight).toBe(630);
+    expect(metadata.imageWidth).toBe(1080);
+    expect(metadata.imageHeight).toBe(1080);
     expect(metadata.description).toBe("The body should become the share description.");
     expect(metadata.imageAlt).toBe("Cover track on Pirate");
   });

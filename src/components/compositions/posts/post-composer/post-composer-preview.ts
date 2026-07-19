@@ -4,9 +4,6 @@ import type { AttachmentState, DerivativeStepState, LinkPreviewState, LiveCompos
 import type { LiveRoomParticipant } from "@/components/compositions/posts/post-card/post-card.types";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
 
-const fallbackImageSrc = "https://picsum.photos/seed/post-composer-image-preview/720/720";
-const fallbackVideoSrc = "https://www.w3schools.com/html/mov_bbb.mp4";
-
 type SongPreviewStem = {
   kind: StemKind;
   label?: string;
@@ -91,7 +88,7 @@ export function buildPostComposerPreviewContent({
   if (attachment.kind === "image") {
     return {
       type: "image",
-      src: attachment.previewUrl ?? fallbackImageSrc,
+      src: attachment.previewUrl ?? "",
       alt: title || "Post image",
       caption: bodyText || undefined,
     };
@@ -103,7 +100,7 @@ export function buildPostComposerPreviewContent({
       : [];
     return {
       type: "video",
-      src: attachment.previewUrl ?? fallbackVideoSrc,
+      src: attachment.previewUrl ?? "",
       aspectRatio: attachment.aspectRatio,
       posterSrc: videoPosterSrc ?? videoDetails?.thumbnail?.previewUrl,
       title: title || "Video",
@@ -112,7 +109,8 @@ export function buildPostComposerPreviewContent({
       listingMode: access === "paid" ? "listed" : "not_listed",
       listingStatus: access === "paid" ? "active" : undefined,
       priceLabel: access === "paid" ? priceLabel : undefined,
-      hasEntitlement: true,
+      hasEntitlement: access === "free",
+      onBuy: access === "paid" ? () => undefined : undefined,
       playbackState: "idle",
       rightsBasis: songReferences.length ? "derivative" : undefined,
       upstreamAttributions: songReferences.length

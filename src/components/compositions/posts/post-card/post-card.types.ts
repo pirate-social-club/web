@@ -181,6 +181,7 @@ export interface SongFeatureCapabilityReason {
 
 export interface SongStudyCapability {
   status: SongStudyStatus;
+  previewOnly?: boolean;
   exerciseCount?: number;
   rewardLabel?: string;
   reason?: SongFeatureCapabilityReason;
@@ -193,6 +194,7 @@ export interface SongKaraokeCapability {
   rewardLabel?: string;
   reason?: SongFeatureCapabilityReason;
   status: SongKaraokeStatus;
+  previewOnly?: boolean;
 }
 
 export interface SongContentSpec {
@@ -512,6 +514,7 @@ export interface PostCardEvent {
 
 export interface PostCardProps {
   viewContext?: PostCardViewContext;
+  previewMode?: boolean;
   identityPresentation?: PostCardIdentityPresentation;
   byline: PostCardByline;
   authorCommunityRole?: CommunityAuthorRole | null;

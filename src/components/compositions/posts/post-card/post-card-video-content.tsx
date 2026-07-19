@@ -163,6 +163,7 @@ function VideoThumbnail({
 export interface VideoPostContentProps {
   content: VideoContentSpec;
   className?: string;
+  previewMode?: boolean;
 }
 
 export interface DerivedVideoUI {
@@ -316,7 +317,15 @@ function VideoOfferRow({ action, icon, label, priceLabel }: VideoOfferRowProps) 
   );
 }
 
-function VideoOfferRows({ content, ui }: { content: VideoContentSpec; ui: DerivedVideoUI }) {
+function VideoOfferRows({
+  content,
+  previewMode,
+  ui,
+}: {
+  content: VideoContentSpec;
+  previewMode?: boolean;
+  ui: DerivedVideoUI;
+}) {
   if (ui.ageGateRequiresProof) return null;
 
   const effectivePrice = content.regionalPriceLabel ?? content.priceLabel;
@@ -330,6 +339,7 @@ function VideoOfferRows({ content, ui }: { content: VideoContentSpec; ui: Derive
             aria-label="Buy Full video"
             className="h-10 w-32 px-5"
             data-post-card-interactive="true"
+            disabled={previewMode}
             onClick={content.onBuy}
             size="sm"
           >
@@ -351,6 +361,7 @@ function VideoOfferRows({ content, ui }: { content: VideoContentSpec; ui: Derive
             aria-label="Unlock Full video"
             className="h-10 w-32 px-5"
             data-post-card-interactive="true"
+            disabled={previewMode}
             onClick={content.onUnlock}
             size="sm"
           >
@@ -381,7 +392,7 @@ function VideoOfferRows({ content, ui }: { content: VideoContentSpec; ui: Derive
   return null;
 }
 
-export function VideoPostContent({ content, className }: VideoPostContentProps) {
+export function VideoPostContent({ content, className, previewMode }: VideoPostContentProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
   const [expanded, setExpanded] = React.useState(false);
@@ -403,7 +414,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
   const frameClassName = getVideoPreviewFrameClassName(content.aspectRatio);
   const objectFitClassName = getVideoPreviewObjectFitClassName(content.aspectRatio);
   const videoFrameClassName = aspectRatioStyle ? "w-full" : "aspect-video w-full";
-  const offerRows = <VideoOfferRows content={content} ui={ui} />;
+  const offerRows = <VideoOfferRows content={content} previewMode={previewMode} ui={ui} />;
 
   React.useEffect(() => {
     if (playRequestedRef.current && hasPlayableSource) {

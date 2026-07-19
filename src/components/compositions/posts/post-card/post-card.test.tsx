@@ -355,6 +355,36 @@ describe("PostCard", () => {
     expect(markup).not.toContain("Read full post");
   });
 
+  test("keeps composer previews bounded and removes inert post chrome", () => {
+    const longBody = Array.from(
+      { length: 24 },
+      (_, index) => `Preview section ${index + 1}: Keep the composer review surface compact.`,
+    ).join("\n\n");
+
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/guide" },
+            timestampLabel: "now",
+          }}
+          content={{ type: "text", body: longBody }}
+          engagement={{ commentCount: 0, score: 0 }}
+          menuItems={[{ key: "copy", label: "Copy link" }]}
+          previewMode
+          shareActions={[{ key: "share", label: "Share" }]}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("max-h-96");
+    expect(markup).toContain("Show full post");
+    expect(markup).not.toContain("Copy link");
+    expect(markup).not.toContain('aria-label="Comments (0)"');
+    expect(markup).not.toContain(">Share</button>");
+  });
+
   test("renders live-room feed cards with watch and ticket states", () => {
     const liveMarkup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">

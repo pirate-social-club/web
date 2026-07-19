@@ -45,10 +45,10 @@ function SharePillMenu({
   }, [onFallbackShare]);
   const handleAction = React.useCallback((key: string) => {
     const action = actions.find((item) => item.key === key);
-    if (!action || action.disabled) return;
+    if (!action || action.disabled || !action.onSelect) return;
 
     triggerShareSuccessHaptic();
-    void action.onSelect?.();
+    void action.onSelect();
   }, [actions]);
 
   const button = (

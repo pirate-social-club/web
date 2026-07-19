@@ -33,6 +33,12 @@ const SELF_REQUESTED_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
   "nationality",
   "gender",
 ];
+const ZKPASSPORT_REQUESTED_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
+  "unique_human",
+  "minimum_age",
+  "nationality",
+  "gender",
+];
 
 function resolveGateLocale(locale: string | null | undefined): UiLocaleCode {
   const normalized = String(locale ?? "").toLowerCase();
@@ -145,6 +151,10 @@ function hasSelfDocumentCapability(capabilities: MissingCapability[]): boolean {
 
 function isSelfRequestedCapability(capability: MissingCapability): capability is RequestedVerificationCapability {
   return SELF_REQUESTED_CAPABILITY_ORDER.some((candidate) => candidate === capability);
+}
+
+function isZkPassportRequestedCapability(capability: MissingCapability): capability is RequestedVerificationCapability {
+  return ZKPASSPORT_REQUESTED_CAPABILITY_ORDER.some((candidate) => candidate === capability);
 }
 
 function resolveUniqueHumanRequirementProvider(
@@ -338,7 +348,7 @@ export function getVerificationCapabilitiesForProvider(
     } else if (provider === "passport") {
       continue;
     } else if (provider === "zkpassport") {
-      if (capability === "minimum_age" || capability === "nationality" || capability === "gender") {
+      if (isZkPassportRequestedCapability(capability)) {
         uniqueCapabilities.add(capability);
       }
     } else if (isSelfRequestedCapability(capability)) {
@@ -352,11 +362,7 @@ export function getVerificationCapabilitiesForProvider(
     return [];
   }
   if (provider === "zkpassport") {
-    return SELF_CAPABILITY_ORDER.filter((capability) =>
-      capability === "minimum_age" || capability === "nationality" || capability === "gender"
-        ? uniqueCapabilities.has(capability)
-        : false
-    );
+    return ZKPASSPORT_REQUESTED_CAPABILITY_ORDER.filter((capability) => uniqueCapabilities.has(capability));
   }
   return Array.from(uniqueCapabilities);
 }

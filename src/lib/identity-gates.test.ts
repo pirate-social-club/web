@@ -7,6 +7,7 @@ import {
   formatGateRequirement,
   getGateFailureMessage,
   getJoinCtaLabel,
+  getVerificationCapabilitiesForProvider,
   isJoinCtaActionable,
 } from "./identity-gates";
 
@@ -59,6 +60,42 @@ describe("identity gate join CTA helpers", () => {
 
   test("proof-of-work requirements are visible before the action modal", () => {
     expect(isJoinSurfaceGate({ gate_type: "altcha_pow" })).toBe(true);
+  });
+
+  test("requests unique-human verification from ZKPassport-only gates", () => {
+    const eligibility = {
+      gate_evaluation: {
+        required_action_set: {
+          items: [{ capability: "unique_human", kind: "capability" }],
+          kind: "set",
+          mode: "all",
+        },
+      },
+    } as JoinEligibility;
+
+    expect(getVerificationCapabilitiesForProvider(eligibility, "zkpassport"))
+      .toEqual(["unique_human"]);
+  });
+
+  test("orders supported ZKPassport capabilities and excludes unsupported ones", () => {
+    const eligibility = {
+      gate_evaluation: {
+        required_action_set: {
+          items: [
+            { capability: "gender", kind: "capability" },
+            { capability: "age_over_18", kind: "capability" },
+            { capability: "nationality", kind: "capability" },
+            { capability: "unique_human", kind: "capability" },
+            { capability: "minimum_age", kind: "capability" },
+          ],
+          kind: "set",
+          mode: "all",
+        },
+      },
+    } as JoinEligibility;
+
+    expect(getVerificationCapabilitiesForProvider(eligibility, "zkpassport"))
+      .toEqual(["unique_human", "minimum_age", "nationality", "gender"]);
   });
 
   test("explains an insufficient balance instead of falling back to generic copy", () => {

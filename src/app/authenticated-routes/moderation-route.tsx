@@ -54,7 +54,6 @@ import {
   type CommunityModerationSection,
 } from "@/app/authenticated-helpers/moderation-helpers";
 import { useCommunityModerationState } from "@/app/authenticated-state/moderation-state";
-import { formatHandleNamespaceSuffix } from "@/app/authenticated-state/use-community-handle-policy-state";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
@@ -1187,16 +1186,7 @@ export function CommunityModerationPage({
             handlesLoading={state.handlesLoading}
             hasChanges={state.hasChanges}
             hasNamespace={Boolean(state.community?.namespace_verification)}
-            namespaceLabel={state.community?.route_slug ?? null}
-            namespaceOptions={state.handleNamespaces.map((namespace) => ({
-              value: namespace.namespace_verification,
-              label: `${formatHandleNamespaceSuffix(namespace)} names${namespace.namespace_role === "primary" ? " (primary)" : ""}`,
-            }))}
-            namespaceSuffix={state.selectedHandleNamespace
-              ? formatHandleNamespaceSuffix(state.selectedHandleNamespace)
-              : null}
-            onSelectNamespace={state.selectHandleNamespace}
-            selectedNamespaceVerification={state.selectedHandleNamespaceVerification}
+            {...state.handleNamespaceSelectorProps}
             onDraftChange={state.setDraft}
             onNavigateToNamespace={() => navigate(buildCommunityModerationPath(communityId, "namespace", state.community?.route_slug))}
             onReserveHandle={state.handleReserve}

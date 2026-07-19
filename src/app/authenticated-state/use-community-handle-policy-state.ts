@@ -470,8 +470,21 @@ export function useCommunityHandlePolicyState({
     setSelectedHandleNamespaceVerification(next);
   }, [hasChanges, saving, verifiedNamespaces]);
 
+  const handleNamespaceSelectorProps = React.useMemo(() => ({
+    namespaceOptions: verifiedNamespaces.map((namespace) => ({
+      value: namespace.namespace_verification,
+      label: `${formatHandleNamespaceSuffix(namespace)} names${namespace.namespace_role === "primary" ? " (primary)" : ""}`,
+    })),
+    namespaceSuffix: selectedHandleNamespace
+      ? formatHandleNamespaceSuffix(selectedHandleNamespace)
+      : null,
+    onSelectNamespace: selectHandleNamespace,
+    selectedNamespaceVerification: selectedHandleNamespaceVerification,
+  }), [selectHandleNamespace, selectedHandleNamespace, selectedHandleNamespaceVerification, verifiedNamespaces]);
+
   return {
     draft,
+    handleNamespaceSelectorProps,
     handleNamespaces: verifiedNamespaces,
     handleOpsLoading,
     handleReserve,

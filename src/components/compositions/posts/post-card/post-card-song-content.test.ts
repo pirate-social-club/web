@@ -522,6 +522,8 @@ describe("deriveSongUI", () => {
 
     expect(markup).toContain("Study");
     expect(markup).toContain("Sing");
+    expect(markup).toContain("grid-cols-2");
+    expect(markup).not.toContain("sm:grid-cols-2");
     expect(markup).not.toContain("Sing unavailable");
     expect(markup).not.toContain("Sing setup failed");
     expect(markup).toContain("disabled");

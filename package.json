@@ -44,6 +44,7 @@
     "deps:audit": "knip --dependencies --no-progress",
     "agents:openclaw:challenge": "node ./scripts/build-openclaw-challenge.mjs",
     "ui:audit": "node ./scripts/ui-audit.mjs",
+    "size:ratchet": "node ./scripts/check-frontend-size-ratchet.mjs",
     "validate": "bun run locales:generate && bun run types && bun run boundary:audit && bun test && bun run ui:audit",
     "types": "bun run locales:generate && tsgo --noEmit -p tsconfig.app.json",
     "types:stories": "tsgo --noEmit -p tsconfig.stories.json",

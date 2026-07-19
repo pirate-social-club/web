@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ArrowFatDown, ArrowFatUp } from "@phosphor-icons/react";
 
+import { Spinner } from "@/components/primitives/spinner";
 import { triggerLikeToggleHaptic } from "@/lib/haptics";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -19,7 +20,7 @@ function formatScore(score: number): string {
 export interface VotePillProps {
   score: number;
   viewerVote?: "up" | "down" | null;
-  onVote?: (direction: "up" | "down" | null) => void;
+  onVote?: (direction: "up" | "down" | null) => Promise<void> | void;
   allowClear?: boolean;
   className?: string;
   downvoteLabel?: string;
@@ -41,14 +42,24 @@ export function VotePill({
 }: VotePillProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
-  const handleVote = React.useCallback((direction: "up" | "down") => {
-    if (!onVote) return;
+  const pendingRef = React.useRef(false);
+  const [pendingDirection, setPendingDirection] = React.useState<"up" | "down" | null>(null);
+  const handleVote = React.useCallback(async (direction: "up" | "down") => {
+    if (!onVote || pendingRef.current) return;
 
     const nextVote = viewerVote === direction && allowClear ? null : direction;
 
     triggerLikeToggleHaptic(nextVote !== null);
-    onVote(nextVote);
+    pendingRef.current = true;
+    setPendingDirection(direction);
+    try {
+      await onVote(nextVote);
+    } finally {
+      pendingRef.current = false;
+      setPendingDirection(null);
+    }
   }, [allowClear, onVote, viewerVote]);
+  const pending = pendingDirection != null;
 
   return (
     <div
@@ -65,6 +76,7 @@ export function VotePill({
       )}
       data-post-card-interactive="true"
       dir="ltr"
+      aria-busy={pending}
     >
       <button
         className={cn(
@@ -75,18 +87,23 @@ export function VotePill({
             ? "text-primary hover:bg-primary/10"
             : "text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground",
         )}
-        onClick={() => handleVote("up")}
+        disabled={pending}
+        onClick={() => void handleVote("up")}
         type="button"
         aria-label={upvoteLabel ?? copy.upvote}
       >
-        <ArrowFatUp
-          className={cn(
-            size === "default" && "size-[23px]",
-            size === "compact" && "size-[20px]",
-            viewerVote === "up" && "fill-current",
-          )}
-          weight={viewerVote === "up" ? "fill" : "regular"}
-        />
+        {pendingDirection === "up" ? (
+          <Spinner className={size === "default" ? "size-5" : "size-4"} />
+        ) : (
+          <ArrowFatUp
+            className={cn(
+              size === "default" && "size-[23px]",
+              size === "compact" && "size-[20px]",
+              viewerVote === "up" && "fill-current",
+            )}
+            weight={viewerVote === "up" ? "fill" : "regular"}
+          />
+        )}
       </button>
 
       <span
@@ -111,18 +128,23 @@ export function VotePill({
             ? "text-destructive hover:bg-destructive/10"
             : "text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground",
         )}
-        onClick={() => handleVote("down")}
+        disabled={pending}
+        onClick={() => void handleVote("down")}
         type="button"
         aria-label={downvoteLabel ?? copy.downvote}
       >
-        <ArrowFatDown
-          className={cn(
-            size === "default" && "size-[23px]",
-            size === "compact" && "size-[20px]",
-            viewerVote === "down" && "fill-current",
-          )}
-          weight={viewerVote === "down" ? "fill" : "regular"}
-        />
+        {pendingDirection === "down" ? (
+          <Spinner className={size === "default" ? "size-5" : "size-4"} />
+        ) : (
+          <ArrowFatDown
+            className={cn(
+              size === "default" && "size-[23px]",
+              size === "compact" && "size-[20px]",
+              viewerVote === "down" && "fill-current",
+            )}
+            weight={viewerVote === "down" ? "fill" : "regular"}
+          />
+        )}
       </button>
     </div>
   );

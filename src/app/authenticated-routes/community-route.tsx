@@ -799,7 +799,7 @@ export function CommunityPage({
         onRemove: () => void removePost(post.post.id),
         onRetryPublish: () => void retryPublish(post.post.id),
         canModeratePost: canModeratePosts,
-        onVote: (direction) => void voteOnPost(post.post.id, direction),
+        onVote: async (direction) => await voteOnPost(post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,
         showTranslationLabel: copy.common.showTranslation,
         viewerContentLocale: contentLocale,

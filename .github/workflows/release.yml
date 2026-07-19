@@ -401,6 +401,7 @@ jobs:
             --requirements api/services/api/community-schema-requirements.json \
             --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
             --migrations-dir core/db/community-template/migrations \
+            --drift-policy core/db/known-community-migration-drifts.json \
             --canonical-baseline api/services/api/docs/attestations/community-schema/staging-canonical-baseline.json \
             --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
             --concurrency 2

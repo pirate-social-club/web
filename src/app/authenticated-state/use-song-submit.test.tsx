@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
+import { createFetchMock } from "@/test/fetch-mock";
 import { installDomGlobals } from "@/test/setup-dom";
 
 installDomGlobals();
@@ -219,10 +220,10 @@ beforeEach(() => {
   createPostBodies.length = 0;
   songArtifactBundleBodies.length = 0;
   FakeXMLHttpRequest.uploads.length = 0;
-  globalThis.fetch = async () => new Response(null, {
+  globalThis.fetch = createFetchMock(async () => new Response(null, {
     status: 200,
     headers: { ETag: "\"part-etag\"" },
-  });
+  }));
   globalThis.XMLHttpRequest = FakeXMLHttpRequest as unknown as typeof XMLHttpRequest;
   createdSongArtifactBundleResult = songBundle({
     id: "sab_created",

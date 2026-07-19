@@ -1,16 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
+import { createFetchMock, type FetchImplementation } from "@/test/fetch-mock";
 import {
   buildVeryMobileLaunchHref,
   createVeryMobileBridgeSession,
 } from "./very-mobile-launch";
 
-function withTestWindow(fetchImpl: typeof fetch): () => void {
+function withTestWindow(fetchImpl: FetchImplementation): () => void {
   const originalWindow = globalThis.window;
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
-      fetch: fetchImpl,
+      fetch: createFetchMock(fetchImpl),
     },
   });
 

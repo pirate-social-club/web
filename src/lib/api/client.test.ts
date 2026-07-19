@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
+import { withFetchMockGlobal } from "@/test/fetch-mock";
 import { ApiClient, ApiError } from "./client";
+
+withFetchMockGlobal((globalThis) => {
 
 const originalFetch = globalThis.fetch;
 
@@ -1794,4 +1797,5 @@ describe("ApiClient media uploads", () => {
       globalThis.fetch = originalFetch;
     }
   });
+});
 });

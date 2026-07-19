@@ -81,6 +81,7 @@ const passingWalletScoreUser = {
 function renderRunner({
   connect,
   gateData = gate("already_joined"),
+  invalidateCommunityGate,
   isAuthOrigin = () => true,
   loadCommunityGate,
   refreshSessionUser,
@@ -88,10 +89,12 @@ function renderRunner({
   sessionUser = null,
   solveActionAltcha,
   startWalletConnection,
+  showSuccess,
   walletConnectionLoading = false,
 }: {
   connect?: (() => void) | null;
   gateData?: CommunityGateData;
+  invalidateCommunityGate?: (communityId: string) => void;
   isAuthOrigin?: () => boolean;
   loadCommunityGate?: (communityId: string) => Promise<CommunityGateData>;
   refreshSessionUser?: (() => Promise<Pick<User, "verification_capabilities"> | null>) | null;
@@ -99,6 +102,7 @@ function renderRunner({
   sessionUser?: Pick<User, "verification_capabilities"> | null;
   solveActionAltcha?: ((input: { action: string; scope: string }) => Promise<string>) | null;
   startWalletConnection?: () => Promise<{ started: boolean }>;
+  showSuccess?: (message: string) => void;
   walletConnectionLoading?: boolean;
 } = {}) {
   const calls: string[] = [];
@@ -139,9 +143,9 @@ function renderRunner({
       connect,
       defaultVerificationLoadingProvider: null,
       interactionCopy,
-      invalidateCommunityGate: (communityId) => {
+      invalidateCommunityGate: invalidateCommunityGate ?? ((communityId) => {
         calls.push(`invalidate:${communityId}`);
-      },
+      }),
       isAuthOrigin,
       loadCommunityGate: loadCommunityGateFn,
       openAuthHref: (href) => {
@@ -164,9 +168,9 @@ function renderRunner({
       showInfo: (message, options) => {
         infos.push({ message, options });
       },
-      showSuccess: (message) => {
+      showSuccess: showSuccess ?? ((message) => {
         successes.push(message);
-      },
+      }),
       solveActionAltcha,
       startDefaultVerification: async ({ provider }) => {
         calls.push(`verify:${provider}`);
@@ -309,6 +313,114 @@ describe("useGatedActionRunner", () => {
     expect(loadedFollowing).toEqual([true]);
     expect(runner.successes).toEqual(["Following Test Community"]);
     expect(runner.calls).toContain("invalidate:community-1");
+    expect(runner.hook.result.current.modalState).toBe(null);
+    expect(runner.pendingInteraction).toBe(null);
+  });
+
+  test("does not reopen verification or retry when the headless write fails", async () => {
+    const runner = renderRunner({
+      gateData: gate(
+        "verification_required",
+        { gate_evaluation: altchaGateEvaluation() },
+        [altchaRequirement],
+      ),
+      solveActionAltcha: async () => "solved-payload",
+    });
+    let allowedCalls = 0;
+    let thrown: unknown;
+
+    await act(async () => {
+      try {
+        await runner.hook.result.current.run({
+          action: "vote_post",
+          communityId: "community-1",
+          onAllowed: () => {
+            allowedCalls += 1;
+            throw new Error("write failed");
+          },
+          postId: "post-1",
+          voteValue: 1,
+        });
+      } catch (error) {
+        thrown = error;
+      }
+    });
+
+    expect((thrown as Error).message).toBe("write failed");
+    expect(allowedCalls).toBe(1);
+    expect(runner.hook.result.current.modalState).toBe(null);
+    expect(runner.pendingInteraction).toBe(null);
+  });
+
+  test("does not reopen verification or retry after post-write bookkeeping fails", async () => {
+    const runner = renderRunner({
+      gateData: gate(
+        "verification_required",
+        { gate_evaluation: altchaGateEvaluation() },
+        [altchaRequirement],
+        { viewerFollowing: false },
+      ),
+      invalidateCommunityGate: () => {
+        throw new Error("cache invalidation failed");
+      },
+      solveActionAltcha: async () => "solved-payload",
+    });
+    let allowedCalls = 0;
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: () => {
+          allowedCalls += 1;
+        },
+        postId: "post-1",
+        voteValue: 1,
+      });
+      expect(result).toBe("allowed");
+    });
+
+    expect(allowedCalls).toBe(1);
+    expect(runner.hook.result.current.modalState).toBe(null);
+    expect(runner.pendingInteraction).toBe(null);
+  });
+
+  test("does not reopen verification or retry when the follow toast fails", async () => {
+    const followedGate = gate(
+      "verification_required",
+      { gate_evaluation: altchaGateEvaluation() },
+      [altchaRequirement],
+      { viewerFollowing: true },
+    );
+    const runner = renderRunner({
+      gateData: gate(
+        "verification_required",
+        { gate_evaluation: altchaGateEvaluation() },
+        [altchaRequirement],
+        { viewerFollowing: false },
+      ),
+      loadCommunityGate: async () => followedGate,
+      showSuccess: () => {
+        throw new Error("toast failed");
+      },
+      solveActionAltcha: async () => "solved-payload",
+    });
+    let allowedCalls = 0;
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: () => {
+          allowedCalls += 1;
+        },
+        postId: "post-1",
+        voteValue: 1,
+      });
+      expect(result).toBe("allowed");
+    });
+
+    expect(allowedCalls).toBe(1);
     expect(runner.hook.result.current.modalState).toBe(null);
     expect(runner.pendingInteraction).toBe(null);
   });

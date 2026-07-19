@@ -7,6 +7,8 @@ storybook-static/
 coverage/
 playwright-report/
 test-results/
+tmp/
+worktrees/
 *.log
 debug-storybook.log
 .env.local

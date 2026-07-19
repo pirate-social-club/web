@@ -1,5 +1,32 @@
 {
   "requirements": {
+    "compact": {
+      "nationality": {
+        "withValues": "جنسية {countryLabel}",
+        "withoutValues": "التحقق من الجنسية"
+      },
+      "gender": {
+        "withValue": "علامة الجنس في الوثيقة {requiredValue}",
+        "withoutValue": "علامة الجنس في الوثيقة"
+      },
+      "ageOver18": "18+",
+      "minimumAge": "{age}+",
+      "walletScore": {
+        "withScore": "درجة Passport.xyz {minimumScore}+",
+        "withoutScore": "درجة Passport.xyz"
+      },
+      "altchaPow": "إثبات العمل",
+      "erc721Holding": {
+        "withLabel": "{quantity} NFT على إيثريوم من {label}",
+        "withoutLabel": "{quantity} NFT على إيثريوم"
+      },
+      "erc721InventoryMatch": "{quantity} مقتنيات Courtyard {assetLabel}",
+      "assetBalance": {
+        "withAmount": "{amount} {symbol} على الأقل",
+        "withoutAmount": "رصيد رمز مطلوب"
+      },
+      "fallback": "{gateType}"
+    },
     "nationality": {
       "withValues": "يتطلب التحقق من الجنسية: {countryLabel}",
       "withoutValues": "يتطلب التحقق من الجنسية"

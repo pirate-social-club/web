@@ -1,5 +1,32 @@
 {
   "requirements": {
+    "compact": {
+      "nationality": {
+        "withValues": "{countryLabel} nationality",
+        "withoutValues": "Nationality verification"
+      },
+      "gender": {
+        "withValue": "Document sex marker {requiredValue}",
+        "withoutValue": "Document sex marker"
+      },
+      "ageOver18": "18+",
+      "minimumAge": "{age}+",
+      "walletScore": {
+        "withScore": "Passport.xyz score {minimumScore}+",
+        "withoutScore": "Passport.xyz score"
+      },
+      "altchaPow": "Proof of work",
+      "erc721Holding": {
+        "withLabel": "{quantity} Ethereum {nftLabel} from {label}",
+        "withoutLabel": "{quantity} Ethereum {nftLabel}"
+      },
+      "erc721InventoryMatch": "{quantity} Courtyard {assetLabel}",
+      "assetBalance": {
+        "withAmount": "At least {amount} {symbol}",
+        "withoutAmount": "Token balance required"
+      },
+      "fallback": "{gateType}"
+    },
     "nationality": {
       "withValues": "{countryLabel} nationality",
       "withoutValues": "Nationality verification"

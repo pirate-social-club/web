@@ -7,6 +7,33 @@ export const GENERATED_LOCALE_CATALOGS = {
   "en": {
     "gates": {
       "requirements": {
+        "compact": {
+          "nationality": {
+            "withValues": "{countryLabel} nationality",
+            "withoutValues": "Nationality verification"
+          },
+          "gender": {
+            "withValue": "Document sex marker {requiredValue}",
+            "withoutValue": "Document sex marker"
+          },
+          "ageOver18": "18+",
+          "minimumAge": "{age}+",
+          "walletScore": {
+            "withScore": "Passport.xyz score {minimumScore}+",
+            "withoutScore": "Passport.xyz score"
+          },
+          "altchaPow": "Proof of work",
+          "erc721Holding": {
+            "withLabel": "{quantity} Ethereum {nftLabel} from {label}",
+            "withoutLabel": "{quantity} Ethereum {nftLabel}"
+          },
+          "erc721InventoryMatch": "{quantity} Courtyard {assetLabel}",
+          "assetBalance": {
+            "withAmount": "At least {amount} {symbol}",
+            "withoutAmount": "Token balance required"
+          },
+          "fallback": "{gateType}"
+        },
         "nationality": {
           "withValues": "{countryLabel} nationality",
           "withoutValues": "Nationality verification"
@@ -2013,6 +2040,33 @@ export const GENERATED_LOCALE_CATALOGS = {
   "ar": {
     "gates": {
       "requirements": {
+        "compact": {
+          "nationality": {
+            "withValues": "جنسية {countryLabel}",
+            "withoutValues": "التحقق من الجنسية"
+          },
+          "gender": {
+            "withValue": "علامة الجنس في الوثيقة {requiredValue}",
+            "withoutValue": "علامة الجنس في الوثيقة"
+          },
+          "ageOver18": "18+",
+          "minimumAge": "{age}+",
+          "walletScore": {
+            "withScore": "درجة Passport.xyz {minimumScore}+",
+            "withoutScore": "درجة Passport.xyz"
+          },
+          "altchaPow": "إثبات العمل",
+          "erc721Holding": {
+            "withLabel": "{quantity} NFT على إيثريوم من {label}",
+            "withoutLabel": "{quantity} NFT على إيثريوم"
+          },
+          "erc721InventoryMatch": "{quantity} مقتنيات Courtyard {assetLabel}",
+          "assetBalance": {
+            "withAmount": "{amount} {symbol} على الأقل",
+            "withoutAmount": "رصيد رمز مطلوب"
+          },
+          "fallback": "{gateType}"
+        },
         "nationality": {
           "withValues": "يتطلب التحقق من الجنسية: {countryLabel}",
           "withoutValues": "يتطلب التحقق من الجنسية"
@@ -4019,6 +4073,33 @@ export const GENERATED_LOCALE_CATALOGS = {
   "zh": {
     "gates": {
       "requirements": {
+        "compact": {
+          "nationality": {
+            "withValues": "{countryLabel} 国籍",
+            "withoutValues": "国籍验证"
+          },
+          "gender": {
+            "withValue": "证件性别标记 {requiredValue}",
+            "withoutValue": "证件性别标记"
+          },
+          "ageOver18": "18+",
+          "minimumAge": "{age}+",
+          "walletScore": {
+            "withScore": "Passport.xyz 分数 {minimumScore}+",
+            "withoutScore": "Passport.xyz 分数"
+          },
+          "altchaPow": "工作量证明",
+          "erc721Holding": {
+            "withLabel": "{quantity} 个来自 {label} 的以太坊 NFT",
+            "withoutLabel": "{quantity} 个以太坊 NFT"
+          },
+          "erc721InventoryMatch": "{quantity} Courtyard {assetLabel}",
+          "assetBalance": {
+            "withAmount": "至少 {amount} {symbol}",
+            "withoutAmount": "需要代币余额"
+          },
+          "fallback": "{gateType}"
+        },
         "nationality": {
           "withValues": "需要国籍验证：{countryLabel}",
           "withoutValues": "需要国籍验证"

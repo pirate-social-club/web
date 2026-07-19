@@ -334,6 +334,8 @@ export function useGatedActionRunner({
   startWalletConnection?: NonNullable<BuildBlockedModalStateArgs["startWalletConnection"]>;
   walletConnectionLoading?: boolean;
 }) {
+  const knownViewerFollowingRef = React.useRef(new Map<string, boolean>());
+
   return React.useCallback(async ({
     action,
     buildBlockedModalState,
@@ -444,6 +446,10 @@ export function useGatedActionRunner({
     // subscribes the actor as a follower instead.
     const shouldUseOpenPowParticipation = state === "verification_required"
       && canSatisfyWithAltchaOnly(gate);
+    const followingCacheKey = `${sessionAccessToken ?? "anon"}:${communityId}`;
+    const viewerWasFollowing = knownViewerFollowingRef.current.get(followingCacheKey)
+      ?? gate.preview.viewer_following
+      ?? false;
     // Public replies satisfy a PoW membership policy as an action-bound
     // comment_create proof. They must never take the community_join path.
     const shouldUseActionAltcha = actionAltchaConfig
@@ -489,10 +495,26 @@ export function useGatedActionRunner({
             reason: "headless_pow",
           });
           if (shouldUseOpenPowParticipation) {
-            // The API auto-followed the community as part of the write.
             invalidateCommunityGate(communityId);
-            const notifySuccess = showSuccess ?? toast.success;
-            notifySuccess(interactionCopy.nowFollowingCommunity.replace("{community}", gate.preview.display_name));
+            if (!viewerWasFollowing) {
+              let viewerIsFollowing = false;
+              try {
+                const refreshedGate = await loadCommunityGate(communityId);
+                viewerIsFollowing = refreshedGate.preview.viewer_following === true;
+                knownViewerFollowingRef.current.set(followingCacheKey, viewerIsFollowing);
+              } catch (error) {
+                // The write succeeded, but without an authoritative follow read
+                // there is no basis for claiming that subscription changed.
+                logger.warn("[interaction-gate] could not confirm auto-follow", {
+                  ...logBase,
+                  message: error instanceof Error ? error.message : String(error),
+                });
+              }
+              if (viewerIsFollowing) {
+                const notifySuccess = showSuccess ?? toast.success;
+                notifySuccess(interactionCopy.nowFollowingCommunity.replace("{community}", gate.preview.display_name));
+              }
+            }
           }
           return "allowed";
         } catch (error) {

@@ -42,7 +42,7 @@ export type CommunityGateData = {
   preview: Pick<
     CommunityPreview,
     "id" | "display_name" | "membership_gate_summaries" | "viewer_community_role"
-  >;
+  > & { viewer_following?: CommunityPreview["viewer_following"] };
 };
 
 type PostViewerGateState = {

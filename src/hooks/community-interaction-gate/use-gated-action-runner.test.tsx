@@ -261,12 +261,24 @@ describe("useGatedActionRunner", () => {
   test("solves PoW headlessly for a non-member vote in a PoW-only community and toasts the auto-follow", async () => {
     const solves: Array<{ action: string; scope: string }> = [];
     const allowedContexts: Array<{ altchaPayload?: string | null } | undefined> = [];
+    const loadedFollowing: Array<boolean | null | undefined> = [];
+    const followedGate = gate(
+      "verification_required",
+      { gate_evaluation: altchaGateEvaluation() },
+      [altchaRequirement],
+      { viewerFollowing: true },
+    );
     const runner = renderRunner({
       gateData: gate(
         "verification_required",
         { gate_evaluation: altchaGateEvaluation() },
         [altchaRequirement],
+        { viewerFollowing: false },
       ),
+      loadCommunityGate: async () => {
+        loadedFollowing.push(followedGate.preview.viewer_following);
+        return followedGate;
+      },
       solveActionAltcha: async (input) => {
         solves.push(input);
         return "solved-payload";
@@ -277,6 +289,12 @@ describe("useGatedActionRunner", () => {
       const result = await runner.hook.result.current.run({
         action: "vote_post",
         communityId: "community-1",
+        gateData: gate(
+          "verification_required",
+          { gate_evaluation: altchaGateEvaluation() },
+          [altchaRequirement],
+          { viewerFollowing: false },
+        ),
         onAllowed: (context) => {
           allowedContexts.push(context);
         },
@@ -288,10 +306,84 @@ describe("useGatedActionRunner", () => {
 
     expect(solves).toEqual([{ action: "post:post-1:1", scope: "vote" }]);
     expect(allowedContexts).toEqual([{ altchaPayload: "solved-payload" }]);
+    expect(loadedFollowing).toEqual([true]);
     expect(runner.successes).toEqual(["Following Test Community"]);
     expect(runner.calls).toContain("invalidate:community-1");
     expect(runner.hook.result.current.modalState).toBe(null);
     expect(runner.pendingInteraction).toBe(null);
+  });
+
+  test("does not repeat the follow toast after the first confirmed transition", async () => {
+    const staleUnfollowedGate = gate(
+      "verification_required",
+      { gate_evaluation: altchaGateEvaluation() },
+      [altchaRequirement],
+      { viewerFollowing: false },
+    );
+    let followReads = 0;
+    const runner = renderRunner({
+      gateData: staleUnfollowedGate,
+      loadCommunityGate: async () => {
+        followReads += 1;
+        return gate(
+          "verification_required",
+          { gate_evaluation: altchaGateEvaluation() },
+          [altchaRequirement],
+          { viewerFollowing: true },
+        );
+      },
+      solveActionAltcha: async () => "solved-payload",
+    });
+
+    await act(async () => {
+      await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        gateData: staleUnfollowedGate,
+        onAllowed: () => undefined,
+        postId: "post-1",
+        voteValue: 1,
+      });
+      await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        gateData: staleUnfollowedGate,
+        onAllowed: () => undefined,
+        postId: "post-2",
+        voteValue: 1,
+      });
+    });
+
+    expect(followReads).toBe(1);
+    expect(runner.successes).toEqual(["Following Test Community"]);
+  });
+
+  test("does not toast when the authoritative follow state remains inactive", async () => {
+    const unfollowedGate = gate(
+      "verification_required",
+      { gate_evaluation: altchaGateEvaluation() },
+      [altchaRequirement],
+      { viewerFollowing: false },
+    );
+    const runner = renderRunner({
+      gateData: unfollowedGate,
+      loadCommunityGate: async () => unfollowedGate,
+      solveActionAltcha: async () => "solved-payload",
+    });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        gateData: unfollowedGate,
+        onAllowed: () => undefined,
+        postId: "post-1",
+        voteValue: 1,
+      });
+      expect(result).toBe("allowed");
+    });
+
+    expect(runner.successes).toEqual([]);
   });
 
   test("falls back to the widget modal when headless solving fails", async () => {
@@ -333,7 +425,13 @@ describe("useGatedActionRunner", () => {
         "verification_required",
         undefined,
         [altchaRequirement, uniqueHumanRequirement],
-        { gateMatchMode: "any" },
+        { gateMatchMode: "any", viewerFollowing: false },
+      ),
+      loadCommunityGate: async () => gate(
+        "verification_required",
+        undefined,
+        [altchaRequirement, uniqueHumanRequirement],
+        { gateMatchMode: "any", viewerFollowing: true },
       ),
       sessionUser: unverifiedUser,
       solveActionAltcha: async (input) => {
@@ -346,6 +444,12 @@ describe("useGatedActionRunner", () => {
       const result = await runner.hook.result.current.run({
         action: "vote_post",
         communityId: "community-1",
+        gateData: gate(
+          "verification_required",
+          undefined,
+          [altchaRequirement, uniqueHumanRequirement],
+          { gateMatchMode: "any", viewerFollowing: false },
+        ),
         onAllowed: (context) => {
           allowedContexts.push(context);
         },

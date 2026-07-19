@@ -374,6 +374,7 @@ export function CommunityPage({
             display_name: preview.display_name,
             membership_gate_summaries: preview.membership_gate_summaries,
             viewer_community_role: preview.viewer_community_role ?? null,
+            viewer_following: preview.viewer_following ?? false,
           },
         }
       : null,

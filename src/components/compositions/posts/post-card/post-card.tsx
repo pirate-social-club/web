@@ -313,6 +313,7 @@ function normalizeUrlForComparison(url: string | undefined): string | null {
 }
 export function PostCard({
   viewContext = "home",
+  previewMode = false,
   identityPresentation,
   authorCommunityRole,
   authorNationalityBadgeCountry,
@@ -386,7 +387,7 @@ export function PostCard({
   const unlock = content.type === "song" || content.type === "video" ? undefined : engagement.unlock;
   const songCommerce = deriveSongCommerce(content);
   const songHeaderMenuActions = deriveSongHeaderMenuActions(content);
-  const effectiveMenuItems = mergePostCardMenuItems(menuItems, songHeaderMenuActions);
+  const effectiveMenuItems = previewMode ? [] : mergePostCardMenuItems(menuItems, songHeaderMenuActions);
   const handleMenuAction = (key: string) => {
     const derivedAction = songHeaderMenuActions.find((action) => action.item.key === key);
     if (derivedAction) {
@@ -420,7 +421,7 @@ export function PostCard({
         }
       } : undefined}
       role={postHref ? "link" : undefined}
-      style={{
+      style={previewMode ? undefined : {
         containIntrinsicSize: "560px",
         contentVisibility: "auto",
       }}
@@ -479,7 +480,7 @@ export function PostCard({
         {titleElement}
         {event ? <PostCardEventBlock event={event} showEventUrl={shouldShowEventUrl} /> : null}
         <SongCaptionBeforeMedia content={content} />
-        <PostCardMedia content={content} postHref={postHref} viewContext={viewContext} />
+        <PostCardMedia content={content} postHref={postHref} previewMode={previewMode} viewContext={viewContext} />
         {canToggleOriginal ? (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-start">
             <Type as="span" variant="caption" className="text-muted-foreground">
@@ -496,7 +497,7 @@ export function PostCard({
           </div>
         ) : null}
 
-        {songCommerce ? (
+        {!previewMode && songCommerce ? (
           <div className="flex flex-col gap-2 pt-0.5 sm:flex-row sm:items-center sm:gap-1.5">
             <PostCardEngagementBar
               compact
@@ -511,7 +512,7 @@ export function PostCard({
             <div className="hidden flex-1 sm:block" />
             <FooterCommerce commerce={songCommerce} />
           </div>
-        ) : (
+        ) : !previewMode ? (
           <PostCardEngagementBar
             engagement={engagement}
             unlock={unlock ? { label: unlock.label, onClick: unlock.onBuy } : undefined}
@@ -521,7 +522,7 @@ export function PostCard({
             onComment={onComment}
             onShare={onShare}
           />
-        )}
+        ) : null}
       </div>
     </article>
   );

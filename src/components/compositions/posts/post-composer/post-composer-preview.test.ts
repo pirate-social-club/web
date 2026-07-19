@@ -4,6 +4,26 @@ import { getPostComposerPreviewBody } from "./post-composer-publish-settings";
 import { buildPostComposerPreviewContent } from "./post-composer-preview";
 
 describe("buildPostComposerPreviewContent", () => {
+  test("does not request third-party fallback media while local URLs initialize", () => {
+    const image = buildPostComposerPreviewContent({
+      access: "free",
+      attachment: { kind: "image", label: "photo.jpg" },
+      body: "",
+      price: "",
+      title: "Photo",
+    });
+    const video = buildPostComposerPreviewContent({
+      access: "free",
+      attachment: { kind: "video", label: "clip.mp4" },
+      body: "",
+      price: "",
+      title: "Clip",
+    });
+
+    expect(image.type === "image" ? image.src : undefined).toBe("");
+    expect(video.type === "video" ? video.src : undefined).toBe("");
+  });
+
   test("uses the selected video poster frame for the publish preview", () => {
     const content = buildPostComposerPreviewContent({
       access: "free",
@@ -26,7 +46,7 @@ describe("buildPostComposerPreviewContent", () => {
     });
   });
 
-  test("treats paid video publish previews as creator-owned and playable", () => {
+  test("shows paid video publish previews from the audience perspective", () => {
     const content = buildPostComposerPreviewContent({
       access: "paid",
       attachment: {
@@ -42,12 +62,13 @@ describe("buildPostComposerPreviewContent", () => {
     expect(content).toMatchObject({
       type: "video",
       accessMode: "locked",
-      hasEntitlement: true,
+      hasEntitlement: false,
       listingMode: "listed",
       listingStatus: "active",
       priceLabel: "$4.99",
       src: "blob:https://app.test/video",
     });
+    expect(typeof (content.type === "video" ? content.onBuy : undefined)).toBe("function");
   });
 
   test("maps song body text into a caption for the publish preview", () => {

@@ -30,6 +30,7 @@ const defaultPreviewDurationMs = 30000;
 export interface SongPostContentProps {
   content: SongContentSpec;
   className?: string;
+  previewMode?: boolean;
 }
 
 function featureFailureCopy(feature: "study" | "sing", reason: SongFeatureCapabilityReason | undefined): string | null {
@@ -331,7 +332,15 @@ function SongOfferRow({ action, icon, label, priceLabel }: SongOfferRowProps) {
   );
 }
 
-function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedSongUI }) {
+function SongOfferRows({
+  content,
+  previewMode,
+  ui,
+}: {
+  content: SongContentSpec;
+  previewMode?: boolean;
+  ui: DerivedSongUI;
+}) {
   if (ui.ageGateRequiresProof) return null;
 
   const isOwned = content.hasEntitlement === true;
@@ -348,6 +357,7 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
           aria-label={effectivePrice ? `Buy Digital MP3 for ${effectivePrice}` : "Buy Digital MP3"}
           className="w-full"
           data-post-card-interactive="true"
+          disabled={previewMode}
           onClick={content.onBuy}
           size="lg"
         >
@@ -362,6 +372,7 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
           aria-label="Unlock Digital MP3"
           className="w-full"
           data-post-card-interactive="true"
+          disabled={previewMode}
           onClick={content.onUnlock}
           size="lg"
         >
@@ -406,7 +417,14 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
         break;
       case "processing":
         studyAction = (
-          <Button className="w-full" disabled key="study" loading size="lg" variant="secondary">
+          <Button
+            className="w-full"
+            disabled
+            key="study"
+            loading={!content.study.previewOnly}
+            size="lg"
+            variant="secondary"
+          >
             Study
           </Button>
         );
@@ -463,7 +481,13 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
         break;
       case "processing":
         karaokeAction = (
-          <Button className="w-full" disabled key="karaoke" loading size="lg">
+          <Button
+            className="w-full"
+            disabled
+            key="karaoke"
+            loading={!content.karaoke.previewOnly}
+            size="lg"
+          >
             Sing
           </Button>
         );
@@ -525,6 +549,13 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
   const failureReason = studyFailureReason && karaokeFailureReason
     ? "Study and Sing setup failed. Check the song setup, then retry publishing."
     : studyFailureReason ?? karaokeFailureReason;
+  const previewOnlyFeatureLabel = content.study?.previewOnly && content.karaoke?.previewOnly
+    ? "Study and Sing"
+    : content.study?.previewOnly
+      ? "Study"
+      : content.karaoke?.previewOnly
+        ? "Sing"
+        : null;
 
   if (vinylReleaseUrl) {
     rows.push(
@@ -563,6 +594,11 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
           )}
         >
           {primaryActions}
+          {previewOnlyFeatureLabel ? (
+            <Type as="p" className="col-span-full text-muted-foreground" variant="caption">
+              {previewOnlyFeatureLabel} will become available after publishing finishes preparing this song.
+            </Type>
+          ) : null}
           {failureReason ? (
             <div className="col-span-full flex items-start gap-2 rounded-md border border-warning/20 bg-warning/5 px-3 py-2 text-warning">
               <WarningCircle className="mt-0.5 size-4 shrink-0" weight="fill" />
@@ -578,7 +614,7 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
   );
 }
 
-export function SongPostContent({ content, className }: SongPostContentProps) {
+export function SongPostContent({ content, className, previewMode }: SongPostContentProps) {
   const ui = deriveSongUI(content);
   const {
     progressMs,
@@ -768,7 +804,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
             <SongStreakPreview href={content.streaksHref} onViewLeaderboard={content.onStreaks} summary={content.streakSummary} />
           </div>
         ) : null}
-        <SongOfferRows content={content} ui={ui} />
+        <SongOfferRows content={content} previewMode={previewMode} ui={ui} />
       </div>
 
       <StoryRegistrationBadge status={content.storyRegistration} />

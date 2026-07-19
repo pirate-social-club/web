@@ -508,6 +508,21 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("disabled");
   });
 
+  test("renders composer-only song features without unresolved spinners", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaoke: { previewOnly: true, status: "processing" },
+          study: { previewOnly: true, status: "processing" },
+        },
+      }),
+    );
+
+    expect(markup).toContain("Study and Sing will become available after publishing");
+    expect(markup).not.toContain("role=\"status\"");
+  });
+
   test("renders failed karaoke as a disabled Sing state without public failure detail", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {

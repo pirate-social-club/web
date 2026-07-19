@@ -1370,9 +1370,10 @@ describe("PostComposer monetization", () => {
     expect(content.type).toBe("song");
     expect(content.type === "song" ? content.caption : undefined).toBeUndefined();
     expect(previewCard.props.viewContext).toBe("post");
+    expect(previewCard.props.previewMode).toBe(true);
     expect((previewCard.props.byline as PostCardProps["byline"]).timestampLabel).toBe("now");
-    expect((previewCard.props.menuItems as NonNullable<PostCardProps["menuItems"]>).length).toBeGreaterThan(0);
-    expect((previewCard.props.shareActions as NonNullable<PostCardProps["shareActions"]>).length).toBeGreaterThan(0);
+    expect(previewCard.props.menuItems).toBeUndefined();
+    expect(previewCard.props.shareActions).toBeUndefined();
   });
 
   test("uses the stored video aspect ratio in the publish preview", () => {

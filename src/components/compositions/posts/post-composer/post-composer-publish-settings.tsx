@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Copy, Flag, Link, ShareNetwork } from "@phosphor-icons/react";
+import { useEffect, useRef, useState } from "react";
 
 import { PostCard } from "@/components/compositions/posts/post-card/post-card";
 import { buildPostCardTitleProps } from "@/components/compositions/posts/post-card/post-card-content-rules";
@@ -19,22 +18,6 @@ import type { PostComposerController } from "./use-post-composer-controller";
 type PostComposerPublishSettingsProps = {
   controller: PostComposerController;
 };
-
-const previewMenuItems: NonNullable<PostCardProps["menuItems"]> = [
-  { key: "copy-link", label: "Copy link", icon: <Link className="size-4" /> },
-  {
-    key: "report",
-    label: "Report",
-    icon: <Flag className="size-4" />,
-    destructive: true,
-    separatorBefore: true,
-  },
-];
-
-const previewShareActions: NonNullable<PostCardProps["shareActions"]> = [
-  { key: "copy-link", label: "Copy link", icon: <Copy className="size-5" /> },
-  { key: "native-share", label: "Share...", icon: <ShareNetwork className="size-5" /> },
-];
 
 function formatPrice(value?: string) {
   const normalized = value?.trim();
@@ -178,12 +161,19 @@ function downloadLocalPreviewFile(url: string, filename: string | undefined) {
 
 function useVideoPosterFrameUrl(file: File | null | undefined, frameSeconds: string | undefined) {
   const [posterUrl, setPosterUrl] = useState<string | undefined>();
+  const previousFileRef = useRef<File | null>(null);
 
   useEffect(() => {
     if (!file) {
-      console.debug("[post-composer] publish preview poster: no video file");
+      previousFileRef.current = null;
       setPosterUrl(undefined);
       return;
+    }
+
+    const fileChanged = previousFileRef.current !== file;
+    previousFileRef.current = file;
+    if (fileChanged) {
+      setPosterUrl(undefined);
     }
 
     let cancelled = false;
@@ -196,13 +186,10 @@ function useVideoPosterFrameUrl(file: File | null | undefined, frameSeconds: str
           setPosterUrl(poster.dataUrl);
         }
       } catch {
-        if (!cancelled) {
-          setPosterUrl(undefined);
-        }
+        // Keep the last valid frame when a new frame cannot be extracted.
       }
     }
 
-    setPosterUrl(undefined);
     void extractFrame();
 
     return () => {
@@ -334,9 +321,11 @@ function buildPreviewPost(
       ? {
           karaoke: controller.fields.lyricsValue.trim()
             && (controller.song.state.instrumentalAudioUpload || controller.song.state.instrumentalAudioLabel)
-            ? { status: "processing" }
+            ? { previewOnly: true, status: "processing" }
             : undefined,
-          study: controller.fields.lyricsValue.trim() ? { status: "processing" } : undefined,
+          study: controller.fields.lyricsValue.trim()
+            ? { previewOnly: true, status: "processing" }
+            : undefined,
         }
       : undefined,
     title: fields.titleValue,
@@ -368,24 +357,10 @@ function buildPreviewPost(
     },
     identityPresentation: identity.identityMode === "anonymous" ? "anonymous_primary" : "author_primary",
     event,
-    menuItems: previewMenuItems,
-    shareActions: previewShareActions,
+    previewMode: true,
     ...titleProps,
     viewContext: "post",
   };
-
-  if (attachment?.kind === "video") {
-    console.debug("[post-composer] publish preview post: video content", {
-      hasPoster: previewPost.content.type === "video" ? Boolean(previewPost.content.posterSrc) : false,
-      hasVideoPosterPreviewUrl: Boolean(videoPosterPreviewUrl),
-      posterPrefix: previewPost.content.type === "video"
-        ? previewPost.content.posterSrc?.slice(0, 32)
-        : undefined,
-      srcPrefix: previewPost.content.type === "video"
-        ? previewPost.content.src.slice(0, 32)
-        : undefined,
-    });
-  }
 
   return previewPost;
 }

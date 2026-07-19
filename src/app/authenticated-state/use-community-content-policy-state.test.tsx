@@ -182,7 +182,11 @@ function renderContentHook({
   community?: ApiCommunity | null;
   saveCommunity?: SaveCommunityAction;
 } = {}) {
-  return renderHook(() => useCommunityContentPolicyState({ community, saveCommunity }));
+  return renderHook(
+    ({ currentCommunity }: { currentCommunity: ApiCommunity | null }) =>
+      useCommunityContentPolicyState({ community: currentCommunity, saveCommunity }),
+    { initialProps: { currentCommunity: community } },
+  );
 }
 
 describe("useCommunityContentPolicyState", () => {
@@ -200,6 +204,63 @@ describe("useCommunityContentPolicyState", () => {
     expect(result.current.links[0]?.label).toBe("Site");
     expect(result.current.labelsEnabled).toBe(true);
     expect(result.current.labels[0]?.label).toBe("News");
+  });
+
+  test("preserves drafts when an unrelated community section replaces the record", async () => {
+    installCommunityApiMocks();
+    const { result, rerender } = renderContentHook();
+
+    await waitFor(() => expect(result.current.rules).toHaveLength(2));
+
+    act(() => {
+      result.current.setRules((current) => [
+        { ...current[0]!, title: "Unsaved rule" },
+        ...current.slice(1),
+      ]);
+      result.current.setLinks((current) => [
+        { ...current[0]!, label: "Unsaved link" },
+      ]);
+      result.current.setLabels((current) => [
+        { ...current[0]!, label: "Unsaved label" },
+      ]);
+    });
+
+    rerender({
+      currentCommunity: createCommunity({ display_name: "Updated elsewhere" }),
+    });
+
+    expect(result.current.rules[0]?.title).toBe("Unsaved rule");
+    expect(result.current.links[0]?.label).toBe("Unsaved link");
+    expect(result.current.labels[0]?.label).toBe("Unsaved label");
+  });
+
+  test("refreshes only the draft family changed by the community record", async () => {
+    installCommunityApiMocks();
+    const initialCommunity = createCommunity();
+    const { result, rerender } = renderContentHook({ community: initialCommunity });
+
+    await waitFor(() => expect(result.current.rules).toHaveLength(2));
+
+    act(() => {
+      result.current.setLinks((current) => [
+        { ...current[0]!, label: "Unsaved link" },
+      ]);
+    });
+
+    rerender({
+      currentCommunity: createCommunity({
+        community_profile: {
+          ...initialCommunity.community_profile,
+          rules: [{
+            ...initialCommunity.community_profile!.rules![0]!,
+            title: "Server rule update",
+          }],
+        },
+      }),
+    });
+
+    await waitFor(() => expect(result.current.rules[0]?.title).toBe("Server rule update"));
+    expect(result.current.links[0]?.label).toBe("Unsaved link");
   });
 
   test("saves all rules through the injected community save boundary", async () => {

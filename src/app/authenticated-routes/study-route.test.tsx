@@ -55,7 +55,10 @@ function readyStudyPayload(overrides: Partial<SongStudyPayload> = {}): SongStudy
         id: "ex_say",
         line_id: "line_1",
         line_index: 0,
+        first_outcome: null,
         max_attempts: 2,
+        mastered: false,
+        presentation_count: 0,
         prompt_text: "Say it back",
         reference_text: "Hola mundo",
         translation_text: "Hello world",
@@ -65,6 +68,20 @@ function readyStudyPayload(overrides: Partial<SongStudyPayload> = {}): SongStudy
     generated_at: 1_782_672_000,
     object: "song_study_payload",
     source_language: "es",
+    session: {
+      completed_exercise_count: 0,
+      due_count: 0,
+      first_pass_correct_count: 0,
+      id: "sts_test",
+      mastered_exercise_count: 0,
+      max_presentations: 3,
+      presentation_count: 0,
+      qualified: false,
+      required_correct_count: 1,
+      served_count: 1,
+      status: "active",
+      total_units: 1,
+    },
     study_pack_version: 1,
     target_language: "en",
     title: "Study Song",
@@ -333,7 +350,8 @@ describe("StudyRoutePage", () => {
     fireEvent.click(view.getByText("Hello world").closest("button")!);
 
     await waitFor(() => expect(calls).toContain("communities.submitPostStudyAttempt:translation_choice:option_correct"));
-    expect(submittedStudyAttempts.at(-1)).toMatchObject({ target_language: "en" });
+    expect(submittedStudyAttempts.at(-1)).toMatchObject({ session_id: "sts_test" });
+    expect(submittedStudyAttempts.at(-1)).not.toHaveProperty("target_language");
     await waitFor(() => expect(view.getByText("Continue")).toBeTruthy());
   });
 

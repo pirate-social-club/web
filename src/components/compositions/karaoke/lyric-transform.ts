@@ -139,6 +139,10 @@ function isSectionMarker(text: string): boolean {
   return /^\[[^\]]+\]$/u.test(normalizeText(text));
 }
 
+function isAdlibLine(text: string): boolean {
+  return /^(?:\([^()]*\)[\s,]*)+$/u.test(text.trim());
+}
+
 function getTokenTrailing(
   lineText: string,
   tokens: readonly Pick<KaraokeStageToken, "text">[],
@@ -216,7 +220,7 @@ function groupTokenStreamLines(rawLines: readonly RawKaraokeLine[]): KaraokeStag
     }
 
     const text = lineTextFromTokens(tokens);
-    if (!text) {
+    if (!text || isAdlibLine(text)) {
       tokens = [];
       return;
     }

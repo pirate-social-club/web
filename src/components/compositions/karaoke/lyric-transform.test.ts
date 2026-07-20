@@ -166,6 +166,20 @@ describe("toKaraokeStageLines", () => {
     expect(lines[0]?.tokens?.map((token) => token.trailing)).toEqual([" ", " ", ""]);
   });
 
+  test("drops ad-libs from token-stream alignment output", () => {
+    const lines = toKaraokeStageLines([
+      { text: "(Ooh)", start: 1, end: 1.5 },
+      { text: " ", start: 1.5, end: 1.6 },
+      { text: "(ooh)", start: 1.6, end: 2 },
+      { text: "\n", start: 2, end: 2.1 },
+      { text: "Lead", start: 2.1, end: 2.5 },
+      { text: " ", start: 2.5, end: 2.6 },
+      { text: "line", start: 2.6, end: 3 },
+    ]);
+
+    expect(lines.map((line) => line.text)).toEqual(["Lead line"]);
+  });
+
   test("drops section cue lines from the sung lyric stage", () => {
     const lines = toKaraokeStageLines([
       {

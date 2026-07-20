@@ -235,7 +235,7 @@ describe("CurrentUserWalletPage rewards", () => {
     await waitFor(() => {
       expect(fakeApi.rewards.getSummary).toHaveBeenCalled();
       expect(view.getByText("Rewards")).toBeTruthy();
-      expect(view.getAllByText("1.20 testnet USDC").length).toBeGreaterThan(0);
+      expect(view.getAllByText("$1.20").length).toBeGreaterThan(0);
     });
   });
 
@@ -403,6 +403,26 @@ describe("CurrentUserWalletPage rewards", () => {
     expect(view.getByText("Self")).toBeTruthy();
     expect(view.queryByText("Very")).toBeNull();
     expect(view.queryByText("ZKPassport")).toBeNull();
+  });
+
+  test("renders a verified zero rewards balance without instructional filler", async () => {
+    fakeApi.rewards.getSummary = mock(async () => ({
+      chain_id: 84532,
+      balance_cents: 0,
+      today_earned_cents: 0,
+      recent_events: [],
+      cashout: {
+        eligible: false,
+        min_cents: 100,
+        verification_state: "verified",
+      },
+      latest_in_flight_cashout: null,
+    }));
+    const view = render(<CurrentUserWalletPage />);
+
+    await waitFor(() => expect(view.getByText("$0.00")).toBeTruthy());
+    expect(view.queryByText("Earn by practicing.")).toBeNull();
+    expect(view.queryByText(/testnet USDC/u)).toBeNull();
   });
 
   test("does not request or render rewards when the flag is disabled", async () => {

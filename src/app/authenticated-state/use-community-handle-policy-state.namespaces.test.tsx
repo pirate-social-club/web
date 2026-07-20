@@ -4,6 +4,7 @@ import { installDomGlobals } from "@/test/setup-dom";
 import type { CommunityHandle, CommunityHandlePolicy, UpdateCommunityHandlePolicyRequest } from "@pirate/api-contracts";
 
 import { api } from "@/lib/api";
+import { ApiError } from "@/lib/api/client";
 import type { ApiCommunityNamespaceAttachment } from "@/lib/api/client-api-types";
 
 import {
@@ -48,6 +49,7 @@ const staleNamespace: ApiCommunityNamespaceAttachment = {
 
 function policyFor(namespaceVerification: string | null): CommunityHandlePolicy {
   return {
+    revision: namespaceVerification === "nv_mirror" ? 7 : 3,
     claims_enabled: namespaceVerification !== "nv_mirror",
     claim_gate_mode: "none",
     claim_gate_expression_ref: null,
@@ -64,8 +66,13 @@ type Selector = { namespaceVerification?: string | null } | undefined;
 
 function installHandleApiMocks({
   policyResolver,
+  updateResolver,
 }: {
   policyResolver?: (namespaceVerification: string | null) => Promise<CommunityHandlePolicy>;
+  updateResolver?: (
+    body: UpdateCommunityHandlePolicyRequest,
+    namespaceVerification: string | null,
+  ) => Promise<CommunityHandlePolicy>;
 } = {}) {
   const calls = {
     getPolicy: [] as Array<string | null>,
@@ -111,8 +118,11 @@ function installHandleApiMocks({
     return Promise.resolve({ id: "hdl_1" } as CommunityHandle);
   };
   communities.updateHandlePolicy = (_communityId, body, selector) => {
-    calls.update.push({ body, namespaceVerification: selector?.namespaceVerification ?? null });
-    return Promise.resolve(policyFor(selector?.namespaceVerification ?? null));
+    const namespaceVerification = selector?.namespaceVerification ?? null;
+    calls.update.push({ body, namespaceVerification });
+    return updateResolver
+      ? updateResolver(body, namespaceVerification)
+      : Promise.resolve(policyFor(namespaceVerification));
   };
 
   return calls;
@@ -167,6 +177,7 @@ describe("useCommunityHandlePolicyState namespace scoping", () => {
     });
     await waitFor(() => expect(calls.update).toHaveLength(1));
     expect(calls.update[0]?.namespaceVerification).toBe("nv_mirror");
+    expect(calls.update[0]?.body.expected_revision).toBe(7);
     await waitFor(() => expect(result.current.saving).toBe(false));
 
     await act(async () => {
@@ -256,6 +267,75 @@ describe("useCommunityHandlePolicyState namespace scoping", () => {
     });
     expect(result.current.draft.claimsEnabled).toBe(false);
     expect(result.current.policy?.claims_enabled).toBe(false);
+  });
+
+  test("preserves a stale draft and supports load-latest or explicit overwrite", async () => {
+    const currentPolicy = {
+      ...policyFor("nv_primary"),
+      claims_enabled: true,
+      revision: 4,
+    } as CommunityHandlePolicy;
+    const latestPolicy = { ...currentPolicy, claims_enabled: false, revision: 6 } as CommunityHandlePolicy;
+    let attempts = 0;
+    const calls = installHandleApiMocks({
+      updateResolver: (body) => {
+        attempts += 1;
+        if (attempts === 1) {
+          return Promise.reject(new ApiError(
+            "conflict",
+            "Community handle policy has changed",
+            409,
+            false,
+            { current_policy: currentPolicy },
+          ));
+        }
+        if (attempts === 3) {
+          return Promise.reject(new ApiError(
+            "conflict",
+            "Community handle policy has changed",
+            409,
+            false,
+            { current_policy: latestPolicy },
+          ));
+        }
+        return Promise.resolve({
+          ...currentPolicy,
+          claims_enabled: body.claims_enabled ?? currentPolicy.claims_enabled,
+          revision: 5,
+        } as CommunityHandlePolicy);
+      },
+    });
+    const { result } = renderPolicyHook([primaryNamespace]);
+
+    await waitFor(() => expect(result.current.policyLoading).toBe(false));
+    act(() => {
+      result.current.setDraft({ ...result.current.draft, claimsEnabled: false });
+    });
+    await waitFor(() => expect(result.current.hasChanges).toBe(true));
+    act(() => result.current.handleSave());
+    await waitFor(() => expect(result.current.policyConflict?.revision).toBe(4));
+    expect(result.current.draft.claimsEnabled).toBe(false);
+    expect(calls.update[0]?.body.expected_revision).toBe(3);
+
+    act(() => result.current.handleOverwritePolicyConflict());
+    await waitFor(() => expect(calls.update).toHaveLength(2));
+    expect(calls.update[1]?.body.expected_revision).toBe(4);
+    await waitFor(() => expect(result.current.policy?.revision).toBe(5));
+    expect(result.current.policyConflict).toBeNull();
+
+    // A later conflict can be resolved by replacing the draft with the server copy.
+    act(() => {
+      result.current.setDraft({ ...result.current.draft, claimsEnabled: true });
+    });
+    await waitFor(() => expect(result.current.hasChanges).toBe(true));
+    act(() => result.current.handleSave());
+    await waitFor(() => expect(result.current.policyConflict?.revision).toBe(6));
+    expect(result.current.draft.claimsEnabled).toBe(true);
+
+    act(() => result.current.handleLoadLatestPolicy());
+    expect(result.current.policyConflict).toBeNull();
+    expect(result.current.policy?.revision).toBe(6);
+    expect(result.current.draft.claimsEnabled).toBe(false);
   });
 });
 

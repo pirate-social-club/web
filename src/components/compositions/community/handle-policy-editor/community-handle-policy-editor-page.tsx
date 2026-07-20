@@ -166,6 +166,7 @@ export interface CommunityHandlePolicyEditorPageProps {
   namespaceLabel?: string | null;
   namespaceOptions?: HandlePolicyNamespaceOption[];
   namespaceSuffix?: string | null;
+  policyConflict?: boolean;
   onSelectNamespace?: (namespaceVerification: string) => void;
   selectedNamespaceVerification?: string | null;
   handles?: CommunityHandle[];
@@ -174,6 +175,8 @@ export interface CommunityHandlePolicyEditorPageProps {
   handleOpsLoading?: boolean;
   onDraftChange: (draft: HandlePolicyDraft) => void;
   onNavigateToNamespace?: () => void;
+  onLoadLatestPolicy?: () => void;
+  onOverwritePolicyConflict?: () => void;
   onReserveHandle?: (desiredLabel: string) => Promise<void> | void;
   onRevokeHandle?: (handleId: string) => Promise<void> | void;
   onStatusFilterChange?: (status: HandleStatusFilter) => void;
@@ -347,12 +350,15 @@ export function CommunityHandlePolicyEditorPage({
   selectedNamespaceVerification,
   onDraftChange,
   onNavigateToNamespace,
+  onLoadLatestPolicy,
+  onOverwritePolicyConflict,
   onReserveHandle,
   onRevokeHandle,
   onStatusFilterChange,
   onSave,
   saveDisabled = false,
   saveLoading = false,
+  policyConflict = false,
 }: CommunityHandlePolicyEditorPageProps) {
   const { locale } = useUiLocale();
   const ruleCopy = getLocaleMessages(locale, "gates").handleClaims.ruleEditor;
@@ -432,6 +438,26 @@ export function CommunityHandlePolicyEditorPage({
           <FormNote tone="muted">
             The policy, pricing, rules, and operations below apply only to the selected namespace.
           </FormNote>
+        </div>
+      ) : null}
+
+      {policyConflict ? (
+        <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-warning/30 bg-warning/5 p-4 md:flex-row md:items-center">
+          <Warning className="size-5 shrink-0 text-warning" weight="bold" />
+          <div className="min-w-0 flex-1 space-y-1">
+            <Type as="p" variant="body-strong">This policy changed while you were editing.</Type>
+            <Type as="p" variant="caption">
+              Your draft is preserved. Load the latest policy or overwrite it with your draft.
+            </Type>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={saveLoading} onClick={onLoadLatestPolicy} size="sm" variant="secondary">
+              Load latest
+            </Button>
+            <Button disabled={saveLoading} onClick={onOverwritePolicyConflict} size="sm">
+              Overwrite with my draft
+            </Button>
+          </div>
         </div>
       ) : null}
 

@@ -4,21 +4,55 @@ import type {
   CreateCommunityRequest,
   CreateCommunityListingRequest,
   GatePolicy,
-  SongStudyAttemptRequest,
-  SongStudyAttemptResult,
-  SongStudyExercise,
-  SongStudyPayload,
+  SongStudyAttemptRequest as ContractSongStudyAttemptRequest,
+  SongStudyAttemptResult as ContractSongStudyAttemptResult,
+  SongStudyExercise as ContractSongStudyExercise,
+  SongStudyPayload as ContractSongStudyPayload,
   SongStudyTranscriptionResponse,
 } from "@pirate/api-contracts";
 import type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
 export type ApiCreateCommunityRequest = CreateCommunityRequest;
 export type {
-  SongStudyAttemptRequest,
-  SongStudyAttemptResult,
-  SongStudyExercise,
-  SongStudyPayload,
   SongStudyTranscriptionResponse,
+};
+
+// Transitional additive contract used while the coordinated API contract PR is
+// landing. Keep this structurally identical to the generated session schema so
+// web CI remains independently typecheckable against the current package.
+export type SongStudySessionSummary = {
+  completed_exercise_count: number;
+  due_count: number;
+  first_pass_correct_count: number;
+  id: string | null;
+  mastered_exercise_count: number;
+  max_presentations: number;
+  next_due_at?: number;
+  presentation_count: number;
+  qualified: boolean;
+  required_correct_count: number;
+  served_count: number;
+  status: "active" | "completed" | "caught_up" | "expired";
+  total_units: number;
+};
+
+export type SongStudyExercise = ContractSongStudyExercise & {
+  first_outcome: "correct" | "incorrect" | "revealed" | null;
+  mastered: boolean;
+  presentation_count: number;
+};
+
+export type SongStudyAttemptRequest = ContractSongStudyAttemptRequest & {
+  session_id: string;
+};
+
+export type SongStudyAttemptResult = ContractSongStudyAttemptResult & {
+  session?: SongStudySessionSummary;
+};
+
+export type SongStudyPayload = Omit<ContractSongStudyPayload, "exercises" | "session"> & {
+  exercises: SongStudyExercise[];
+  session?: SongStudySessionSummary;
 };
 
 export type ApiCommunityMediaUploadResponse = {

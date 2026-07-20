@@ -39,8 +39,9 @@ type StudyRouteState =
   | { phase: "auth_required" }
   | {
       correctCount: number;
-      exerciseIndex: number;
+      exerciseQueue: number[];
       lastAttemptResult?: SongStudyAttemptResult;
+      presentationCounts: Record<string, number>;
       phase: "ready";
       post: LocalizedPostResponse;
       rewardOffer: ApiPublicRewardOffer | null;
@@ -117,16 +118,16 @@ function toMultipleChoiceExercise(exercise: Extract<SongStudyExercise, { type: "
   };
 }
 
-function exerciseSurface(exercise: SongStudyExercise): SongStudySurfaceState {
+function exerciseSurface(exercise: SongStudyExercise, attemptNumber = Number(exercise.presentation_count ?? 0) + 1): SongStudySurfaceState {
   return exercise.type === "translation_choice"
     ? {
         kind: "multiple_choice",
-        attemptNumber: 1,
+        attemptNumber,
         exercise: toMultipleChoiceExercise(exercise),
       }
     : {
         kind: "say_it_back",
-        attemptNumber: 1,
+        attemptNumber,
         exercise: toSayItBackExercise(exercise),
         phase: "idle",
       };
@@ -182,9 +183,57 @@ function completeSurface(input: {
   };
 }
 
-function makeAttemptIdempotencyKey(exerciseId: string, attemptNumber: number): string {
+function advanceLesson(
+  state: ReadyStudyRouteState,
+  outcome: "correct" | "wrong",
+): ReadyStudyRouteState {
+  const currentIndex = state.exerciseQueue[0];
+  if (currentIndex === undefined) return state;
+  const currentExercise = state.study.exercises[currentIndex]!;
+  const attemptNumber = state.surface.kind === "multiple_choice" || state.surface.kind === "say_it_back"
+    ? state.surface.attemptNumber
+    : 0;
+  const presentationCounts = {
+    ...state.presentationCounts,
+    [currentExercise.id]: Math.max(state.presentationCounts[currentExercise.id] ?? 0, attemptNumber),
+  };
+  const firstPassCorrect = outcome === "correct" && attemptNumber === 1;
+  const correctCount = state.lastAttemptResult?.session?.first_pass_correct_count
+    ?? state.correctCount + (firstPassCorrect ? 1 : 0);
+  const remaining = state.exerciseQueue.slice(1);
+  const shouldRequeue = outcome === "wrong"
+    && (state.lastAttemptResult?.attempts_remaining ?? 0) > 0
+    && state.lastAttemptResult?.session?.status !== "completed";
+  if (shouldRequeue) {
+    // Keep two or three different prompts between a miss and its retry where
+    // the remaining lesson is large enough.
+    remaining.splice(Math.min(3, remaining.length), 0, currentIndex);
+  }
+  const completed = (state.lastAttemptResult?.session?.status !== undefined
+    && state.lastAttemptResult.session.status !== "active") || remaining.length === 0;
+  const nextIndex = remaining[0];
+  return {
+    ...state,
+    correctCount,
+    exerciseQueue: remaining,
+    presentationCounts,
+    surface: completed || nextIndex === undefined
+      ? completeSurface({
+          correctCount,
+          lastAttemptResult: state.lastAttemptResult,
+          streakSummary: toStreakSummary(state.post),
+          totalCount: state.study.session?.served_count ?? state.study.exercises.length,
+        })
+      : exerciseSurface(
+          state.study.exercises[nextIndex]!,
+          (presentationCounts[state.study.exercises[nextIndex]!.id] ?? 0) + 1,
+        ),
+  };
+}
+
+function makeAttemptIdempotencyKey(sessionId: string, exerciseId: string, attemptNumber: number): string {
   const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  return `study:${exerciseId}:${attemptNumber}:${random}`;
+  return `study:${sessionId}:${exerciseId}:${attemptNumber}:${random}`;
 }
 
 function getStudyFeedbackAudioContext(): StudyFeedbackAudioState | null {
@@ -342,6 +391,16 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   const recordingChunksRef = React.useRef<BlobPart[]>([]);
   const recordingStreamRef = React.useRef<MediaStream | null>(null);
   const pendingMultipleChoiceAttemptRef = React.useRef<string | null>(null);
+  const attemptIdempotencyKeysRef = React.useRef(new Map<string, string>());
+
+  const attemptIdempotencyKey = React.useCallback((sessionId: string, exerciseId: string, attemptNumber: number) => {
+    const logicalAttempt = `${sessionId}:${exerciseId}:${attemptNumber}`;
+    const existing = attemptIdempotencyKeysRef.current.get(logicalAttempt);
+    if (existing) return existing;
+    const created = makeAttemptIdempotencyKey(sessionId, exerciseId, attemptNumber);
+    attemptIdempotencyKeysRef.current.set(logicalAttempt, created);
+    return created;
+  }, []);
 
   const stopRecordingStream = React.useCallback(() => {
     recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -419,7 +478,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           return;
         }
 
-        if (study.exercises.length === 0) {
+        if (study.exercises.length === 0 || !study.session?.id) {
           const hasNextDue = Boolean(study.session?.next_due_at);
           setState({
             actionLabel: hasNextDue ? "Check again" : undefined,
@@ -430,14 +489,29 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           return;
         }
 
+        const exerciseQueue = study.exercises.flatMap((exercise, index) => exercise.mastered ? [] : [index]);
+        const presentationCounts = Object.fromEntries(
+          study.exercises.map((exercise) => [exercise.id, Number(exercise.presentation_count ?? 0)]),
+        );
+        const firstIndex = exerciseQueue[0];
+        if (firstIndex === undefined) {
+          setState({
+            actionLabel: "Study again",
+            phase: "blocked",
+            title: pageTitle(post, study),
+            message: "This lesson is complete.",
+          });
+          return;
+        }
         setState({
-          correctCount: 0,
-          exerciseIndex: 0,
+          correctCount: study.session.first_pass_correct_count,
+          exerciseQueue,
           phase: "ready",
           post,
+          presentationCounts,
           rewardOffer,
           study,
-          surface: exerciseSurface(study.exercises[0]!),
+          surface: exerciseSurface(study.exercises[firstIndex]!),
         });
         preloadStudyFeedbackSounds();
       } catch (error) {
@@ -473,6 +547,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     pendingMultipleChoiceAttemptRef.current = pendingKey;
 
     const exercise = surface.exercise;
+    const studySessionId = readyState.study.session?.id;
+    if (!studySessionId) return;
     setState((current) => {
       if (
         current.phase !== "ready"
@@ -498,9 +574,9 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     void api.communities.submitPostStudyAttempt(readyState.post.post.community, readyState.post.post.id, {
       attempt_number: surface.attemptNumber,
       exercise_id: exercise.id,
-      idempotency_key: makeAttemptIdempotencyKey(exercise.id, surface.attemptNumber),
+      idempotency_key: attemptIdempotencyKey(studySessionId, exercise.id, surface.attemptNumber),
+      session_id: studySessionId,
       selected_option_id: selectedOptionId,
-      target_language: readyState.study.target_language ?? undefined,
       type: "translation_choice",
     }).then((result) => {
       pendingMultipleChoiceAttemptRef.current = null;
@@ -518,7 +594,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
               ...current.surface.exercise,
               correctOptionId: result.correct_option_id ?? current.surface.exercise.correctOptionId,
             },
-            canRetry: result.outcome !== "correct" && result.attempts_remaining > 0,
+            canRetry: false,
             result: result.outcome === "correct" ? "correct" : "wrong",
             submitting: false,
           },
@@ -541,7 +617,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         };
       });
     });
-  }, [api]);
+  }, [api, attemptIdempotencyKey]);
 
   const handlePrimaryAction = React.useCallback(() => {
     if (state.phase === "locked") {
@@ -553,35 +629,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
 
     if (state.surface.kind === "multiple_choice") {
       if (state.surface.result) {
-        if (state.surface.result === "wrong" && state.surface.canRetry) {
-          setState({
-            ...state,
-            surface: {
-              ...state.surface,
-              attemptNumber: state.surface.attemptNumber + 1,
-              canRetry: false,
-              result: undefined,
-              selectedOptionId: undefined,
-            },
-          });
-          return;
-        }
-        const nextCorrectCount = state.correctCount + (state.surface.result === "correct" ? 1 : 0);
-        const nextIndex = state.exerciseIndex + 1;
-        const nextExercise = state.study.exercises[nextIndex] ?? null;
-        setState({
-          ...state,
-          correctCount: nextCorrectCount,
-          exerciseIndex: nextIndex,
-          surface: nextExercise
-            ? exerciseSurface(nextExercise)
-            : completeSurface({
-                correctCount: nextCorrectCount,
-                lastAttemptResult: state.lastAttemptResult,
-                streakSummary: toStreakSummary(state.post),
-                totalCount: state.study.exercises.length,
-              }),
-        });
+        setState(advanceLesson(state, state.surface.result));
         return;
       }
 
@@ -669,6 +717,11 @@ export function StudyRoutePage({ postId }: { postId: string }) {
               return;
             }
             const exercise = sayItBackSurface.exercise;
+            const studySessionId = state.study.session?.id;
+            if (!studySessionId) {
+              setState({ phase: "error", title: pageTitle(state.post, state.study), message: "Study session expired. Reopen the lesson." });
+              return;
+            }
             setState((current) => current.phase === "ready" && current.surface.kind === "say_it_back" && current.surface.exercise.id === exercise.id
               ? {
                   ...current,
@@ -683,8 +736,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
             }).then((transcription) => api.communities.submitPostStudyAttempt(state.post.post.community, state.post.post.id, {
                 attempt_number: sayItBackSurface.attemptNumber,
                 exercise_id: exercise.id,
-                idempotency_key: makeAttemptIdempotencyKey(exercise.id, sayItBackSurface.attemptNumber),
-                target_language: state.study.target_language ?? undefined,
+                idempotency_key: attemptIdempotencyKey(studySessionId, exercise.id, sayItBackSurface.attemptNumber),
+                session_id: studySessionId,
                 transcript: transcription.text,
                 type: "say_it_back",
               }).then((result) => ({ result, transcript: transcription.text })))
@@ -695,7 +748,6 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                     return current;
                   }
                   const correct = result.outcome === "correct";
-                  const attemptsUsed = result.attempts_remaining <= 0;
                   return {
                     ...current,
                     lastAttemptResult: result,
@@ -704,7 +756,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                       attemptNumber: current.surface.attemptNumber,
                       feedback: result.feedback,
                       phase: correct ? "correct" : "wrong",
-                      revealReference: !correct && (attemptsUsed || result.outcome === "revealed"),
+                      revealReference: !correct,
                       transcript,
                     },
                   };
@@ -749,12 +801,11 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     }
 
     if (state.surface.kind === "say_it_back" && state.surface.phase === "wrong") {
-      if (state.surface.attemptNumber < state.surface.exercise.maxAttempts && !state.surface.revealReference) {
+      if (!state.surface.revealReference) {
         setState({
           ...state,
           surface: {
             ...state.surface,
-            attemptNumber: state.surface.attemptNumber + 1,
             feedback: undefined,
             phase: "idle",
             revealReference: false,
@@ -763,40 +814,14 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         });
         return;
       }
-      setState({
-        ...state,
-        exerciseIndex: state.exerciseIndex + 1,
-        surface: state.study.exercises[state.exerciseIndex + 1]
-          ? exerciseSurface(state.study.exercises[state.exerciseIndex + 1]!)
-          : completeSurface({
-              correctCount: state.correctCount,
-              lastAttemptResult: state.lastAttemptResult,
-              streakSummary: toStreakSummary(state.post),
-              totalCount: state.study.exercises.length,
-            }),
-      });
+      setState(advanceLesson(state, "wrong"));
       return;
     }
 
     if (state.surface.kind === "say_it_back" && state.surface.phase === "correct") {
-      const nextCorrectCount = state.correctCount + 1;
-      const nextIndex = state.exerciseIndex + 1;
-      const nextExercise = state.study.exercises[nextIndex] ?? null;
-      setState({
-        ...state,
-        correctCount: nextCorrectCount,
-        exerciseIndex: nextIndex,
-        surface: nextExercise
-          ? exerciseSurface(nextExercise)
-          : completeSurface({
-              correctCount: nextCorrectCount,
-              lastAttemptResult: state.lastAttemptResult,
-              streakSummary: toStreakSummary(state.post),
-              totalCount: state.study.exercises.length,
-            }),
-      });
+      setState(advanceLesson(state, "correct"));
     }
-  }, [postId, state, stopRecordingStream, submitMultipleChoiceAttempt]);
+  }, [api, attemptIdempotencyKey, postId, state, stopRecordingStream, submitMultipleChoiceAttempt]);
 
   const handleOptionSelect = React.useCallback((optionId: string) => {
     if (state.phase !== "ready" || state.surface.kind !== "multiple_choice" || state.surface.result || state.surface.submitting) {
@@ -840,12 +865,18 @@ export function StudyRoutePage({ postId }: { postId: string }) {
 
   return (
     <SongStudySurface
-      artistName={undefined}
+      artistName={state.study.artist_name ?? undefined}
       artworkSrc={pageArtwork(state.post, state.study)}
       className="h-dvh"
       onExit={() => navigate(`/p/${encodeURIComponent(postId)}`)}
       onOptionSelect={handleOptionSelect}
       onPrimaryAction={handlePrimaryAction}
+      onKaraoke={state.surface.kind === "complete"
+        ? () => navigate(`/p/${encodeURIComponent(postId)}/karaoke`)
+        : undefined}
+      onStudyAgain={state.surface.kind === "complete"
+        ? () => setReloadKey((value) => value + 1)
+        : undefined}
       rewardSlot={state.rewardOffer && state.rewardOffer.eligible_activity !== "karaoke" ? (
         <SongRewardOffer
           amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}

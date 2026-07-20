@@ -280,6 +280,23 @@ function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kin
               {state.transcript ? ` You said, "${state.transcript}"` : null}
             </Type>
           </div>
+          {isWrong && state.revealReference ? (
+            <div className="mt-3 space-y-2 border-t border-destructive/20 pt-3">
+              <Type as="p" dir="auto" variant="body-strong">
+                {state.exercise.expected}
+              </Type>
+              {state.feedback?.missing?.length ? (
+                <Type as="p" className="text-muted-foreground" variant="caption">
+                  Missing: {state.feedback.missing.join(" · ")}
+                </Type>
+              ) : null}
+              {state.feedback?.extra?.length ? (
+                <Type as="p" className="text-muted-foreground" variant="caption">
+                  Extra: {state.feedback.extra.join(" · ")}
+                </Type>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -524,7 +541,12 @@ function CompleteState({ state }: { state: Extract<SongStudySurfaceState, { kind
           {streak?.qualifiedToday ? "Your streak" : "Session complete"}
         </Type>
         {streak?.qualifiedToday && previousStreak !== undefined ? (
-          <StreakSlotNumber currentStreak={streak.currentStreak} previousStreak={previousStreak} />
+          <>
+            <StreakSlotNumber currentStreak={streak.currentStreak} previousStreak={previousStreak} />
+            <Type as="p" className="mt-3 font-semibold text-foreground" variant="body">
+              {`${score}% first-pass score`}
+            </Type>
+          </>
         ) : (
           <Type as="h2" className="mt-1 text-7xl font-bold leading-none sm:text-8xl">
             {`${score}%`}

@@ -27,7 +27,7 @@ test.describe("reward cashouts (mocked API)", () => {
     await page.goto("/wallet");
 
     await expect(page.getByText("Rewards").filter({ visible: true }).first()).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText("1.20 testnet USDC").filter({ visible: true }).first()).toBeVisible();
+    await expect(page.getByText("$1.20").filter({ visible: true }).first()).toBeVisible();
     await openAndConfirmCashout(page);
 
     const claimSheet = page.getByLabel("Claim rewards");

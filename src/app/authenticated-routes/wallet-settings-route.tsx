@@ -301,6 +301,10 @@ function formatRewardCents(cents: number, chainId: number): string {
   return `${amount} USDC (chain ${chainId})`;
 }
 
+function formatRewardBalanceCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
 function parseUsdCentsInput(value: string): number | null {
   const normalized = value.trim().replace(/[$,\s]/gu, "");
   if (!/^\d+(?:\.\d{0,2})?$/u.test(normalized)) return null;
@@ -337,7 +341,7 @@ function walletRewardsSummary(input: {
 }): WalletHubRewardsSummary {
   const amountLabel = input.loading && input.rewards.balance_cents <= 0
     ? "..."
-    : formatRewardCents(input.rewards.balance_cents, input.rewards.chain_id);
+    : formatRewardBalanceCents(input.rewards.balance_cents);
   if (input.rewardsError) {
     return {
       actionLabel: "Retry",
@@ -374,8 +378,8 @@ function walletRewardsSummary(input: {
     actionLabel: "Claim",
     amountLabel,
     supportingLabel: input.rewards.balance_cents > 0 || input.rewards.today_earned_cents > 0
-      ? `${formatRewardCents(input.rewards.cashout.min_cents, input.rewards.chain_id)} minimum`
-      : "Earn by practicing.",
+      ? `${formatRewardBalanceCents(input.rewards.cashout.min_cents)} minimum`
+      : undefined,
   };
 }
 

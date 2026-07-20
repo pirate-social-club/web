@@ -80,6 +80,14 @@ export function buildContentSecurityPolicy(nonce: string): string {
       "https://api.very.org",
       "https://bridge.very.org",
       "https://verify.very.org",
+      // The Self QR SDK talks to its relay (wss://websocket.self.xyz) via
+      // socket.io and may call other *.self.xyz hosts; it only console.errors
+      // transport failures, so a missing connect-src entry hangs verification
+      // silently (regression: verification spinner never completed).
+      // The wildcard covers subdomains only, so the apex is listed too.
+      "https://self.xyz",
+      "https://*.self.xyz",
+      "wss://*.self.xyz",
       "https://platform.x.com",
       "https://platform.twitter.com",
       "https://syndication.twitter.com",

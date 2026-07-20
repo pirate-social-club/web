@@ -193,4 +193,38 @@ describe("toKaraokeStageLines", () => {
 
     expect(lines.map((line) => line.text)).toEqual(["First lyric"]);
   });
+
+  test("drops ad-libs before active-line and next-line selection", () => {
+    const lines = toKaraokeStageLines([
+      {
+        end_ms: 1_000,
+        id: "lyric-first",
+        index: 0,
+        kind: "lyric",
+        start_ms: 0,
+        text: "First lyric",
+        words: [{ end_ms: 1_000, start_ms: 0, text: "First lyric" }],
+      },
+      {
+        end_ms: 2_000,
+        id: "adlib-ooh",
+        index: 1,
+        kind: "adlib",
+        start_ms: 1_000,
+        text: "(Ooh)",
+        words: [{ end_ms: 2_000, start_ms: 1_000, text: "(Ooh)" }],
+      },
+      {
+        end_ms: 3_000,
+        id: "lyric-next",
+        index: 2,
+        kind: "lyric",
+        start_ms: 2_000,
+        text: "Next lyric",
+        words: [{ end_ms: 3_000, start_ms: 2_000, text: "Next lyric" }],
+      },
+    ]);
+
+    expect(lines.map((line) => line.text)).toEqual(["First lyric", "Next lyric"]);
+  });
 });

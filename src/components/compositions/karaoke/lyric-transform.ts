@@ -307,7 +307,7 @@ export function toKaraokeStageLines(rawLines: readonly RawKaraokeLine[] | undefi
     if (!isRecord(rawLine)) {
       continue;
     }
-    if (rawLine.kind === "section") {
+    if (rawLine.kind === "section" || rawLine.kind === "adlib") {
       continue;
     }
 

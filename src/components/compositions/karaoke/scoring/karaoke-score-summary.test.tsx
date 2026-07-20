@@ -40,4 +40,13 @@ describe("KaraokeScoreSummary", () => {
     const clean = render(<KaraokeScoreSummary finalScore={0.7} uncertainLineCount={0} />);
     expect(clean.container.textContent).not.toContain("couldn't be measured");
   });
+
+  test("explains when timing is excluded from grading", () => {
+    const view = render(
+      <KaraokeScoreSummary finalScore={0.8} timingCalibrationUnavailable />,
+    );
+    expect(view.container.textContent).toContain(
+      "Timing calibration is temporarily unavailable and is not included in your score.",
+    );
+  });
 });

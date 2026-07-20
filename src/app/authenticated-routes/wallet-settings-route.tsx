@@ -361,15 +361,12 @@ function walletRewardsSummary(input: {
       onAction: input.onMoveToWallet,
     };
   }
-  if (
-    input.rewards.balance_cents >= input.rewards.cashout.min_cents
-    && input.rewards.cashout.verification_state !== "verified"
-  ) {
+  if (input.rewards.cashout.verification_state !== "verified") {
     return {
       actionLabel: "Verify",
       amountLabel,
       onAction: input.onVerify,
-      supportingLabel: "Verify once to transfer.",
+      supportingLabel: "Verify with Self to earn and transfer rewards.",
     };
   }
   return {
@@ -1029,6 +1026,7 @@ export function CurrentUserWalletPage() {
             void handleRewardsVerifyProvider(provider);
           }}
           open={rewardsVerifyOpen}
+          providers={["self"]}
           state={(selfLoading || veryRewardsLoading || zkPassportRewardsLoading) && rewardsVerifyState !== "failure" && rewardsVerifyState !== "conflict"
             ? "pending"
             : rewardsVerifyState}

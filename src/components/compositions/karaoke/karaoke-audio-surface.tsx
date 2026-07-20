@@ -1,4 +1,5 @@
 import * as React from "react";
+import { KARAOKE_TIMING_SCORING_ENABLED } from "@pirate-social-club/karaoke-runtime";
 
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
@@ -444,6 +445,7 @@ export function KaraokeAudioSurface({
       lineCount={endedSummary.lineCount ?? undefined}
       scoredLineCount={endedSummary.scoredLineCount ?? undefined}
       timingScore={endedSummary.timingScore ?? undefined}
+      timingCalibrationUnavailable={!KARAOKE_TIMING_SCORING_ENABLED}
       uncertainLineCount={endedSummary.uncertainLineCount}
     />
   ) : null;

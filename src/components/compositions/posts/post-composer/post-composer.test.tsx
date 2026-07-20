@@ -1863,6 +1863,7 @@ describe("PostComposer monetization", () => {
     const previewVideoClassName = String(previewVideo?.props.className ?? "");
 
     expect(previewContainerClassName).toContain("max-w-[22rem]");
+    expect(previewVideo?.props.muted).not.toBe(true);
     expect(previewContainerClassName).not.toContain("aspect-video");
     expect(previewContainer?.props.style).toEqual({ aspectRatio: 9 / 16 });
     expect(previewVideoClassName).toContain("object-contain");

@@ -54,23 +54,49 @@ function defaultDraft(overrides: Partial<HandlePolicyDraft> = {}): HandlePolicyD
   };
 }
 
+type StoryNamespace = {
+  value: string;
+  label: string;
+  suffix: string;
+};
+
 function InteractiveStory({
   initialDraft,
   hasNamespace = true,
+  namespaces,
+  initialNamespace,
+  policyConflict = false,
+  hasChanges = false,
 }: {
   initialDraft: HandlePolicyDraft;
   hasNamespace?: boolean;
+  namespaces?: StoryNamespace[];
+  initialNamespace?: string;
+  policyConflict?: boolean;
+  hasChanges?: boolean;
 }) {
   const [draft, setDraft] = React.useState<HandlePolicyDraft>(initialDraft);
+  const [selectedNamespace, setSelectedNamespace] = React.useState<string | null>(
+    initialNamespace ?? namespaces?.[0]?.value ?? null,
+  );
+  const selected = namespaces?.find((namespace) => namespace.value === selectedNamespace) ?? null;
 
   return (
     <CommunityHandlePolicyEditorPage
       draft={draft}
-      hasChanges={false}
+      hasChanges={hasChanges}
       hasNamespace={hasNamespace}
       namespaceLabel={hasNamespace ? "ethiopia" : null}
+      namespaceOptions={namespaces?.map(({ value, label }) => ({ value, label }))}
+      namespaceSuffix={selected?.suffix ?? null}
       onDraftChange={setDraft}
+      onLoadLatestPolicy={() => {}}
+      onOverwritePolicyConflict={() => {}}
       onSave={() => {}}
+      onSelectNamespace={setSelectedNamespace}
+      policyConflict={policyConflict}
+      saveDisabled={policyConflict}
+      selectedNamespaceVerification={selectedNamespace}
     />
   );
 }
@@ -176,6 +202,84 @@ export const WithPerNameRequirements: Story = {
           },
         ],
       })}
+    />
+  ),
+};
+
+const POKEMON_NAMESPACES: StoryNamespace[] = [
+  { value: "nv_pokemon", label: ".pokemon names (primary)", suffix: ".pokemon" },
+  { value: "nv_charizard", label: ".charizard names", suffix: ".charizard" },
+  { value: "nv_collectors", label: "@collectors names", suffix: "@collectors" },
+];
+
+export const MultipleNamespaces: Story = {
+  name: "Namespaces / Multiple attached (selector)",
+  render: () => (
+    <InteractiveStory
+      initialDraft={defaultDraft()}
+      namespaces={POKEMON_NAMESPACES}
+      initialNamespace="nv_pokemon"
+    />
+  ),
+};
+
+export const MirrorWithCardGate: Story = {
+  name: "Namespaces / Mirror selected with card gate",
+  render: () => (
+    <InteractiveStory
+      namespaces={POKEMON_NAMESPACES}
+      initialNamespace="nv_charizard"
+      initialDraft={defaultDraft({
+        claimGateMode: "explicit",
+        claimGateTreeDraft: parseGatePolicyToTreeDraft({
+          version: 1,
+          expression: {
+            op: "gate",
+            gate: {
+              type: "erc721_inventory_match",
+              provider: "courtyard",
+              chain_namespace: "eip155:137",
+              contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+              min_quantity: 1,
+              match: { category: "trading_card", franchise: "Pokemon", subject: "Charizard" },
+            },
+          },
+        }),
+        labelClaimRules: [
+          {
+            key: "claimed-name-rule",
+            selectorType: "any",
+            labelsText: "",
+            gateTreeDraft: parseGatePolicyToTreeDraft({
+              version: 1,
+              expression: {
+                op: "gate",
+                gate: {
+                  type: "erc721_inventory_match",
+                  provider: "courtyard",
+                  chain_namespace: "eip155:137",
+                  contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+                  min_quantity: 1,
+                  match: { category: "trading_card", franchise: "Pokemon", subject: "{label}" },
+                },
+              },
+            }),
+          },
+        ],
+      })}
+    />
+  ),
+};
+
+export const ConcurrentEditConflict: Story = {
+  name: "State / Concurrent edit conflict",
+  render: () => (
+    <InteractiveStory
+      initialDraft={defaultDraft({ claimsEnabled: false })}
+      namespaces={POKEMON_NAMESPACES}
+      initialNamespace="nv_pokemon"
+      policyConflict
+      hasChanges
     />
   ),
 };

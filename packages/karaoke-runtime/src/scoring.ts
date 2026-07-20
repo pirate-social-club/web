@@ -8,8 +8,10 @@ export const KARAOKE_LINE_WINDOW_TRAIL_MS = 800;
  * move scores. v1 = the first explicitly versioned contract — the number is a contract
  * marker, NOT an encoding of the current weights.
  * v2 = g-drop normalization ("in'" → "ing") now also fires before trailing punctuation.
+ * v3 = timing remains measured for diagnostics but is excluded while clock calibration is repaired.
  */
-export const KARAOKE_SCORING_VERSION = 2;
+export const KARAOKE_SCORING_VERSION = 3;
+export const KARAOKE_TIMING_SCORING_ENABLED = false;
 
 export type KaraokeTimingTrend = "early" | "late" | "mixed" | "on_time";
 
@@ -1146,7 +1148,7 @@ export function scoreKaraokeLine(input: {
     score: combineLineScore({
       confidenceScore,
       textScore: textScore.score,
-      timingScore: timingScore?.score ?? null,
+      timingScore: KARAOKE_TIMING_SCORING_ENABLED ? timingScore?.score ?? null : null,
     }),
     scoredLineIndex: input.bucket.scoredLineIndex,
     textScore,
@@ -1212,7 +1214,7 @@ export function applyTimingOffsetCompensation(
       score: combineLineScore({
         confidenceScore: ls.confidenceScore,
         textScore: ls.textScore.score,
-        timingScore: compensatedTimingScore,
+        timingScore: KARAOKE_TIMING_SCORING_ENABLED ? compensatedTimingScore : null,
       }),
       timingScore: nextTiming,
     };
@@ -1289,7 +1291,7 @@ export function aggregateKaraokeSession(input: {
     phoneticUnavailableLineCount: lineScores.filter((lineScore) => !lineScore.textScore.phoneticAvailable).length,
     scoredLineCount: scoredLineScores.length,
     strongestLines,
-    timingScore: timingScores.length > 0
+    timingScore: KARAOKE_TIMING_SCORING_ENABLED && timingScores.length > 0
       ? timingScores.reduce((sum, value) => sum + value, 0) / timingScores.length
       : null,
     timingTrend: aggregateTimingTrend(lineScores),

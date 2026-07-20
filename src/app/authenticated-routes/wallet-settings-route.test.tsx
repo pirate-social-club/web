@@ -118,6 +118,7 @@ mock.module("@/components/compositions/wallet/wallet-hub/wallet-hub", () => ({
       actionDisabled?: boolean;
       actionLabel: string;
       amountLabel: string;
+      assetLabel: string;
       onAction?: () => void;
       supportingLabel?: string;
     };
@@ -127,6 +128,7 @@ mock.module("@/components/compositions/wallet/wallet-hub/wallet-hub", () => ({
         <section>
           <div>Rewards</div>
           <div>{rewardsSummary.amountLabel}</div>
+          <div>{rewardsSummary.assetLabel}</div>
           {rewardsSummary.supportingLabel ? <div>{rewardsSummary.supportingLabel}</div> : null}
           <button disabled={rewardsSummary.actionDisabled} onClick={rewardsSummary.onAction} type="button">
             {rewardsSummary.actionLabel}
@@ -235,7 +237,8 @@ describe("CurrentUserWalletPage rewards", () => {
     await waitFor(() => {
       expect(fakeApi.rewards.getSummary).toHaveBeenCalled();
       expect(view.getByText("Rewards")).toBeTruthy();
-      expect(view.getAllByText("1.20 testnet USDC").length).toBeGreaterThan(0);
+      expect(view.getAllByText("$1.20").length).toBeGreaterThan(0);
+      expect(view.getByText("Base Sepolia · testnet USDC")).toBeTruthy();
     });
   });
 
@@ -380,10 +383,10 @@ describe("CurrentUserWalletPage rewards", () => {
     expect(view.queryByText("Pending")).toBeNull();
   });
 
-  test("opens the rewards verification provider sheet when claim needs verification", async () => {
+  test("offers rewards verification before the user has a balance", async () => {
     fakeApi.rewards.getSummary = mock(async () => ({
-      balance_cents: 120,
-      today_earned_cents: 30,
+      balance_cents: 0,
+      today_earned_cents: 0,
       recent_events: [],
       cashout: {
         eligible: false,
@@ -401,8 +404,28 @@ describe("CurrentUserWalletPage rewards", () => {
 
     expect(view.getByText("Verify once")).toBeTruthy();
     expect(view.getByText("Self")).toBeTruthy();
-    expect(view.getByText("Very")).toBeTruthy();
-    expect(view.getByText("ZKPassport")).toBeTruthy();
+    expect(view.queryByText("Very")).toBeNull();
+    expect(view.queryByText("ZKPassport")).toBeNull();
+  });
+
+  test("renders a verified zero rewards balance without instructional filler", async () => {
+    fakeApi.rewards.getSummary = mock(async () => ({
+      chain_id: 84532,
+      balance_cents: 0,
+      today_earned_cents: 0,
+      recent_events: [],
+      cashout: {
+        eligible: false,
+        min_cents: 100,
+        verification_state: "verified",
+      },
+      latest_in_flight_cashout: null,
+    }));
+    const view = render(<CurrentUserWalletPage />);
+
+    await waitFor(() => expect(view.getByText("$0.00")).toBeTruthy());
+    expect(view.queryByText("Earn by practicing.")).toBeNull();
+    expect(view.getByText("Base Sepolia · testnet USDC")).toBeTruthy();
   });
 
   test("does not request or render rewards when the flag is disabled", async () => {

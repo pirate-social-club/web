@@ -75,6 +75,17 @@ describe("timing offset compensation", () => {
     // Raw (uncompensated) would land in the high 60s; compensated should be much higher.
     expect(summary.finalScore).toBeGreaterThan(0.85);
     expect(summary.lyricsScore).toBeCloseTo(0.95, 1);
+    expect(summary.timingScore).toBeNull();
+  });
+
+  test("timing remains diagnostic but cannot change a v3 final score", () => {
+    const early = line({ index: 0, meanAbsDeltaMs: 900, signedMeanDeltaMs: -900, textScore: 0.8 });
+    const late = line({ index: 1, meanAbsDeltaMs: 900, signedMeanDeltaMs: 900, textScore: 0.8 });
+    const summary = aggregateKaraokeSession({ lineScores: [early, late] });
+
+    expect(summary.timingScore).toBeNull();
+    expect(summary.timingTrend).toBe("mixed");
+    expect(summary.finalScore).toBeGreaterThan(0.8);
   });
 
   test("mis-recognized lines do not skew the offset estimate", () => {

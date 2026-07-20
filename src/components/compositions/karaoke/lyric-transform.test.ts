@@ -166,6 +166,20 @@ describe("toKaraokeStageLines", () => {
     expect(lines[0]?.tokens?.map((token) => token.trailing)).toEqual([" ", " ", ""]);
   });
 
+  test("drops ad-libs from token-stream alignment output", () => {
+    const lines = toKaraokeStageLines([
+      { text: "(Ooh)", start: 1, end: 1.5 },
+      { text: " ", start: 1.5, end: 1.6 },
+      { text: "(ooh)", start: 1.6, end: 2 },
+      { text: "\n", start: 2, end: 2.1 },
+      { text: "Lead", start: 2.1, end: 2.5 },
+      { text: " ", start: 2.5, end: 2.6 },
+      { text: "line", start: 2.6, end: 3 },
+    ]);
+
+    expect(lines.map((line) => line.text)).toEqual(["Lead line"]);
+  });
+
   test("drops section cue lines from the sung lyric stage", () => {
     const lines = toKaraokeStageLines([
       {
@@ -192,5 +206,39 @@ describe("toKaraokeStageLines", () => {
     ]);
 
     expect(lines.map((line) => line.text)).toEqual(["First lyric"]);
+  });
+
+  test("drops ad-libs before active-line and next-line selection", () => {
+    const lines = toKaraokeStageLines([
+      {
+        end_ms: 1_000,
+        id: "lyric-first",
+        index: 0,
+        kind: "lyric",
+        start_ms: 0,
+        text: "First lyric",
+        words: [{ end_ms: 1_000, start_ms: 0, text: "First lyric" }],
+      },
+      {
+        end_ms: 2_000,
+        id: "adlib-ooh",
+        index: 1,
+        kind: "adlib",
+        start_ms: 1_000,
+        text: "(Ooh)",
+        words: [{ end_ms: 2_000, start_ms: 1_000, text: "(Ooh)" }],
+      },
+      {
+        end_ms: 3_000,
+        id: "lyric-next",
+        index: 2,
+        kind: "lyric",
+        start_ms: 2_000,
+        text: "Next lyric",
+        words: [{ end_ms: 3_000, start_ms: 2_000, text: "Next lyric" }],
+      },
+    ]);
+
+    expect(lines.map((line) => line.text)).toEqual(["First lyric", "Next lyric"]);
   });
 });

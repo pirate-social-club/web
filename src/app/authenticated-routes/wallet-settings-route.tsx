@@ -301,6 +301,16 @@ function formatRewardCents(cents: number, chainId: number): string {
   return `${amount} USDC (chain ${chainId})`;
 }
 
+function formatRewardBalanceCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function rewardAssetLabel(chainId: number): string {
+  if (chainId === 8453) return "Base · USDC";
+  if (chainId === 84532) return "Base Sepolia · testnet USDC";
+  return `Chain ${chainId} · USDC`;
+}
+
 function parseUsdCentsInput(value: string): number | null {
   const normalized = value.trim().replace(/[$,\s]/gu, "");
   if (!/^\d+(?:\.\d{0,2})?$/u.test(normalized)) return null;
@@ -337,11 +347,13 @@ function walletRewardsSummary(input: {
 }): WalletHubRewardsSummary {
   const amountLabel = input.loading && input.rewards.balance_cents <= 0
     ? "..."
-    : formatRewardCents(input.rewards.balance_cents, input.rewards.chain_id);
+    : formatRewardBalanceCents(input.rewards.balance_cents);
+  const assetLabel = rewardAssetLabel(input.rewards.chain_id);
   if (input.rewardsError) {
     return {
       actionLabel: "Retry",
       amountLabel,
+      assetLabel,
       onAction: input.onRetry,
       supportingLabel: "Could not load.",
     };
@@ -351,6 +363,7 @@ function walletRewardsSummary(input: {
       actionDisabled: true,
       actionLabel: "Pending",
       amountLabel,
+      assetLabel,
       pending: true,
     };
   }
@@ -358,27 +371,27 @@ function walletRewardsSummary(input: {
     return {
       actionLabel: "Claim",
       amountLabel,
+      assetLabel,
       onAction: input.onMoveToWallet,
     };
   }
-  if (
-    input.rewards.balance_cents >= input.rewards.cashout.min_cents
-    && input.rewards.cashout.verification_state !== "verified"
-  ) {
+  if (input.rewards.cashout.verification_state !== "verified") {
     return {
       actionLabel: "Verify",
       amountLabel,
+      assetLabel,
       onAction: input.onVerify,
-      supportingLabel: "Verify once to transfer.",
+      supportingLabel: "Verify with Self to earn and transfer.",
     };
   }
   return {
     actionDisabled: true,
     actionLabel: "Claim",
     amountLabel,
+    assetLabel,
     supportingLabel: input.rewards.balance_cents > 0 || input.rewards.today_earned_cents > 0
-      ? `${formatRewardCents(input.rewards.cashout.min_cents, input.rewards.chain_id)} minimum`
-      : "Earn by practicing.",
+      ? `${formatRewardBalanceCents(input.rewards.cashout.min_cents)} minimum`
+      : undefined,
   };
 }
 
@@ -1029,6 +1042,7 @@ export function CurrentUserWalletPage() {
             void handleRewardsVerifyProvider(provider);
           }}
           open={rewardsVerifyOpen}
+          providers={["self"]}
           state={(selfLoading || veryRewardsLoading || zkPassportRewardsLoading) && rewardsVerifyState !== "failure" && rewardsVerifyState !== "conflict"
             ? "pending"
             : rewardsVerifyState}

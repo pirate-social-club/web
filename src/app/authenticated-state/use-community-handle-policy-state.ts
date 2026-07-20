@@ -16,6 +16,7 @@ import {
 } from "@/app/authenticated-helpers/community-gate-tree-draft";
 
 import { useApi } from "@/lib/api";
+import { ApiError } from "@/lib/api/client";
 import type { ApiCommunityNamespaceAttachment } from "@/lib/api/client-api-types";
 import { toast } from "@/components/primitives/sonner";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -236,6 +237,16 @@ export function buildHandlePolicySavePayload(draft: HandlePolicyDraft): UpdateCo
   };
 }
 
+function currentPolicyFromConflict(error: unknown): CommunityHandlePolicy | null {
+  if (!(error instanceof ApiError) || error.status !== 409) return null;
+  const currentPolicy = error.details?.current_policy;
+  if (!currentPolicy || typeof currentPolicy !== "object") return null;
+  const revision = (currentPolicy as { revision?: unknown }).revision;
+  return typeof revision === "number" && Number.isSafeInteger(revision) && revision >= 1
+    ? currentPolicy as CommunityHandlePolicy
+    : null;
+}
+
 export function formatHandleNamespaceSuffix(namespace: ApiCommunityNamespaceAttachment): string {
   return namespace.family === "spaces" ? `@${namespace.root_label}` : `.${namespace.root_label}`;
 }
@@ -259,6 +270,7 @@ export function useCommunityHandlePolicyState({
   const [policyError, setPolicyError] = React.useState<unknown>(null);
   const [draft, setDraft] = React.useState<HandlePolicyDraft>(() => buildHandlePolicyDraft(null));
   const [saving, setSaving] = React.useState(false);
+  const [policyConflict, setPolicyConflict] = React.useState<CommunityHandlePolicy | null>(null);
   const [handles, setHandles] = React.useState<CommunityHandle[]>([]);
   const [handlesLoading, setHandlesLoading] = React.useState(false);
   const [handleOpsLoading, setHandleOpsLoading] = React.useState(false);
@@ -325,6 +337,7 @@ export function useCommunityHandlePolicyState({
       setPolicyError(null);
       setPolicyLoading(false);
       setDraft(buildHandlePolicyDraft(null));
+      setPolicyConflict(null);
       setHandles([]);
       setHandleStatusFilter("all");
       return;
@@ -340,6 +353,7 @@ export function useCommunityHandlePolicyState({
         if (!cancelled) {
           setPolicy(result);
           setDraft(buildHandlePolicyDraft(result));
+          setPolicyConflict(null);
         }
       })
       .catch((nextError: unknown) => {
@@ -395,7 +409,7 @@ export function useCommunityHandlePolicyState({
     );
   }, [policy, draft]);
 
-  const handleSave = React.useCallback(() => {
+  const saveDraft = React.useCallback((expectedRevision: number) => {
     if (
       !communityId
       || saving
@@ -405,10 +419,11 @@ export function useCommunityHandlePolicyState({
     ) return;
     const savedNamespaceVerification = selectedHandleNamespaceVerification;
     setSaving(true);
+    setPolicyConflict(null);
     void api.communities
       .updateHandlePolicy(
         communityId,
-        buildHandlePolicySavePayload(draft),
+        { ...buildHandlePolicySavePayload(draft), expected_revision: expectedRevision },
         { namespaceVerification: savedNamespaceVerification },
       )
       .then((updatedPolicy) => {
@@ -418,12 +433,33 @@ export function useCommunityHandlePolicyState({
         toast.success("Names policy saved.");
       })
       .catch((nextError: unknown) => {
+        if (selectedNamespaceRef.current !== savedNamespaceVerification) return;
+        const currentPolicy = currentPolicyFromConflict(nextError);
+        if (currentPolicy) {
+          setPolicyConflict(currentPolicy);
+          return;
+        }
         toast.error(getErrorMessage(nextError, "Could not save names policy."));
       })
       .finally(() => {
         setSaving(false);
       });
   }, [api.communities, communityId, draft, hasChanges, saving, selectedHandleNamespaceVerification]);
+
+  const handleSave = React.useCallback(() => {
+    if (policy) saveDraft(policy.revision);
+  }, [policy, saveDraft]);
+
+  const handleLoadLatestPolicy = React.useCallback(() => {
+    if (!policyConflict) return;
+    setPolicy(policyConflict);
+    setDraft(buildHandlePolicyDraft(policyConflict));
+    setPolicyConflict(null);
+  }, [policyConflict]);
+
+  const handleOverwritePolicyConflict = React.useCallback(() => {
+    if (policyConflict) saveDraft(policyConflict.revision);
+  }, [policyConflict, saveDraft]);
 
   const handleReserve = React.useCallback(async (desiredLabel: string) => {
     if (!communityId || handleOpsLoading) return;
@@ -470,7 +506,7 @@ export function useCommunityHandlePolicyState({
     setSelectedHandleNamespaceVerification(next);
   }, [hasChanges, saving, verifiedNamespaces]);
 
-  const handleNamespaceSelectorProps = React.useMemo(() => ({
+  const handlePolicyEditorProps = React.useMemo(() => ({
     namespaceOptions: verifiedNamespaces.map((namespace) => ({
       value: namespace.namespace_verification,
       label: `${formatHandleNamespaceSuffix(namespace)} names${namespace.namespace_role === "primary" ? " (primary)" : ""}`,
@@ -479,14 +515,27 @@ export function useCommunityHandlePolicyState({
       ? formatHandleNamespaceSuffix(selectedHandleNamespace)
       : null,
     onSelectNamespace: selectHandleNamespace,
+    onLoadLatestPolicy: handleLoadLatestPolicy,
+    onOverwritePolicyConflict: handleOverwritePolicyConflict,
+    policyConflict: Boolean(policyConflict),
     selectedNamespaceVerification: selectedHandleNamespaceVerification,
-  }), [selectHandleNamespace, selectedHandleNamespace, selectedHandleNamespaceVerification, verifiedNamespaces]);
+  }), [
+    handleLoadLatestPolicy,
+    handleOverwritePolicyConflict,
+    policyConflict,
+    selectHandleNamespace,
+    selectedHandleNamespace,
+    selectedHandleNamespaceVerification,
+    verifiedNamespaces,
+  ]);
 
   return {
     draft,
-    handleNamespaceSelectorProps,
+    handlePolicyEditorProps,
     handleNamespaces: verifiedNamespaces,
     handleOpsLoading,
+    handleLoadLatestPolicy,
+    handleOverwritePolicyConflict,
     handleReserve,
     handleRevoke,
     handleSave,
@@ -495,6 +544,7 @@ export function useCommunityHandlePolicyState({
     handlesLoading,
     hasChanges,
     policy,
+    policyConflict,
     policyError,
     policyLoading,
     saving,

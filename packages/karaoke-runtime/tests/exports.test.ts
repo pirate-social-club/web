@@ -26,8 +26,9 @@ describe("karaoke-runtime exports", () => {
     expect(typeof runtime.KARAOKE_LINE_WINDOW_LEAD_MS).toBe("number");
     expect(typeof runtime.KARAOKE_LINE_WINDOW_TRAIL_MS).toBe("number");
     // Explicitly-versioned scoring contract (see karaoke-rankings spec).
-    expect(runtime.KARAOKE_SCORING_VERSION).toBe(2);
+    expect(runtime.KARAOKE_SCORING_VERSION).toBe(3);
     expect(Number.isInteger(runtime.KARAOKE_SCORING_VERSION)).toBe(true);
+    expect(runtime.KARAOKE_TIMING_SCORING_ENABLED).toBe(false);
   });
 
   test("production entry does not export fakes or test utilities", () => {

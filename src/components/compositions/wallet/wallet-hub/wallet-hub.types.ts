@@ -40,6 +40,7 @@ export interface WalletHubRewardsSummary {
   actionDisabled?: boolean;
   actionLabel: string;
   amountLabel: string;
+  assetLabel: string;
   onAction?: () => void;
   pending?: boolean;
   supportingLabel?: string;

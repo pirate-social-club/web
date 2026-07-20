@@ -12,6 +12,8 @@ export interface KaraokeScoreSummaryProps {
   scoredLineCount?: number;
   /** Timing score, 0..1. */
   timingScore?: number;
+  /** Timing was measured for diagnostics but deliberately excluded from grading. */
+  timingCalibrationUnavailable?: boolean;
   /** Lines that couldn't be measured (provider/stream failure) — drives a neutral caveat. */
   uncertainLineCount?: number;
   className?: string;
@@ -52,6 +54,7 @@ export function KaraokeScoreSummary({
   lineCount,
   scoredLineCount,
   timingScore,
+  timingCalibrationUnavailable = false,
   uncertainLineCount = 0,
 }: KaraokeScoreSummaryProps) {
   const showLines = typeof lineCount === "number" && typeof scoredLineCount === "number";
@@ -82,6 +85,11 @@ export function KaraokeScoreSummary({
       {uncertainLineCount > 0 ? (
         <Type as="p" className="text-muted-foreground" variant="caption">
           Some lines couldn't be measured.
+        </Type>
+      ) : null}
+      {timingCalibrationUnavailable ? (
+        <Type as="p" className="text-muted-foreground" variant="caption">
+          Timing calibration is temporarily unavailable and is not included in your score.
         </Type>
       ) : null}
     </div>

@@ -75,7 +75,6 @@ function VideoAttachmentPreview({
         <video
           ref={videoRef}
           className={cn("size-full", objectFitClassName)}
-          muted
           onEnded={() => setIsPlaying(false)}
           onPause={() => setIsPlaying(false)}
           onPlay={() => setIsPlaying(true)}

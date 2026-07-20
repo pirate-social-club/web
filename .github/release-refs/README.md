@@ -11,3 +11,7 @@ before staging or production can start.
 
 Web releases use these pinned commits; they never select the API or Core
 repository's current `main` implicitly.
+
+Current release intent: deploy the karaoke ad-lib exclusion stack with API
+`435830bc8bba52d83093b6a637691a8a5a2dcb53` and Core
+`dcd5fe6422e44d3bcb92729c6fe8127d3b07c6e8`.

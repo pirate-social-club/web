@@ -42,7 +42,7 @@ function useObjectUrl(file: File | null | undefined) {
   return objectUrl;
 }
 
-function useLocalAudioPreview(src: string | undefined): {
+export function useLocalAudioPreview(src: string | undefined): {
   durationMs?: number;
   onPause: () => void;
   onPlay: () => Promise<void>;
@@ -102,10 +102,14 @@ function useLocalAudioPreview(src: string | undefined): {
     if (!audioRef) return;
     audioRef.pause();
     audioRef.removeAttribute("src");
-    audioRef.load();
     setState("idle");
     setProgressMs(0);
     setDurationMs(undefined);
+    if (src) {
+      audioRef.preload = "metadata";
+      audioRef.src = src;
+    }
+    audioRef.load();
   }, [audioRef, src]);
 
   async function onPlay() {

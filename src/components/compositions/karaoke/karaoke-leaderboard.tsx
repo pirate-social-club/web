@@ -8,6 +8,7 @@ import {
   WarningCircle,
 } from "@phosphor-icons/react";
 
+import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import type {
@@ -15,7 +16,6 @@ import type {
   KaraokeSongLeaderboard,
 } from "@/lib/api/client-api-types";
 import { cn } from "@/lib/utils";
-import { formatAvatarInitials } from "@/lib/formatting/initials";
 
 export type KaraokeLeaderboardState =
   | { kind: "loading" }
@@ -44,21 +44,6 @@ function displayName(entry: KaraokeLeaderboardEntry): string {
   return "Anonymous singer";
 }
 
-function initials(entry: KaraokeLeaderboardEntry): string {
-  if (entry.identity.visibility === "anonymized") return "FM";
-  const source = entry.identity.display_name || entry.identity.handle || "?";
-  return formatAvatarInitials(source);
-}
-
-function avatarHue(entry: KaraokeLeaderboardEntry): number {
-  const source = entry.identity.handle || entry.identity.display_name || String(entry.rank);
-  let hash = 0;
-  for (let index = 0; index < source.length; index += 1) {
-    hash = (hash * 31 + source.charCodeAt(index)) % 360;
-  }
-  return hash;
-}
-
 function RankMarker({ rank }: { rank: number }) {
   if (rank <= 3) {
     const tone = rank === 1 ? "text-warning" : rank === 2 ? "text-muted-foreground" : "text-primary";
@@ -77,7 +62,7 @@ function RankMarker({ rank }: { rank: number }) {
 }
 
 function EntryRow({ entry }: { entry: KaraokeLeaderboardEntry }) {
-  const hue = avatarHue(entry);
+  const label = displayName(entry);
   return (
     <li
       className={cn(
@@ -86,13 +71,13 @@ function EntryRow({ entry }: { entry: KaraokeLeaderboardEntry }) {
       )}
     >
       <RankMarker rank={entry.rank} />
-      <span
-        aria-hidden="true"
-        className="grid size-10 shrink-0 place-items-center rounded-full text-base font-semibold text-foreground"
-        style={{ backgroundColor: `oklch(0.45 0.09 ${hue})` }}
-      >
-        {initials(entry)}
-      </span>
+      <Avatar
+        className="size-10 border-0"
+        fallback={label}
+        fallbackSeed={entry.identity.handle ?? entry.identity.display_name ?? String(entry.rank)}
+        size="sm"
+        src={entry.identity.visibility === "visible" ? entry.identity.avatar_ref ?? undefined : undefined}
+      />
       <div className="min-w-0 flex-1">
         <Type as="p" className="truncate" variant="body-strong">
           {displayName(entry)}

@@ -118,6 +118,7 @@ mock.module("@/components/compositions/wallet/wallet-hub/wallet-hub", () => ({
       actionDisabled?: boolean;
       actionLabel: string;
       amountLabel: string;
+      assetLabel: string;
       onAction?: () => void;
       supportingLabel?: string;
     };
@@ -127,6 +128,7 @@ mock.module("@/components/compositions/wallet/wallet-hub/wallet-hub", () => ({
         <section>
           <div>Rewards</div>
           <div>{rewardsSummary.amountLabel}</div>
+          <div>{rewardsSummary.assetLabel}</div>
           {rewardsSummary.supportingLabel ? <div>{rewardsSummary.supportingLabel}</div> : null}
           <button disabled={rewardsSummary.actionDisabled} onClick={rewardsSummary.onAction} type="button">
             {rewardsSummary.actionLabel}
@@ -236,6 +238,7 @@ describe("CurrentUserWalletPage rewards", () => {
       expect(fakeApi.rewards.getSummary).toHaveBeenCalled();
       expect(view.getByText("Rewards")).toBeTruthy();
       expect(view.getAllByText("$1.20").length).toBeGreaterThan(0);
+      expect(view.getByText("Base Sepolia · testnet USDC")).toBeTruthy();
     });
   });
 
@@ -422,7 +425,7 @@ describe("CurrentUserWalletPage rewards", () => {
 
     await waitFor(() => expect(view.getByText("$0.00")).toBeTruthy());
     expect(view.queryByText("Earn by practicing.")).toBeNull();
-    expect(view.queryByText(/testnet USDC/u)).toBeNull();
+    expect(view.getByText("Base Sepolia · testnet USDC")).toBeTruthy();
   });
 
   test("does not request or render rewards when the flag is disabled", async () => {

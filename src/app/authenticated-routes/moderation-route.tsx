@@ -1162,7 +1162,7 @@ export function CommunityModerationPage({
       const handleClaimGateInvalid = state.draft.claimGateMode === "explicit"
         && !isGateBuilderDraftSavable(state.draft.claimGateTreeDraft);
       setMobileSaveAction({
-        disabled: state.saving || !state.hasChanges || !state.community?.namespace_verification || handleClaimGateInvalid,
+        disabled: state.saving || Boolean(state.policyConflict) || !state.hasChanges || !state.community?.namespace_verification || handleClaimGateInvalid,
         loading: state.saving,
         onSave: state.handleSave,
       });
@@ -1186,14 +1186,14 @@ export function CommunityModerationPage({
             handlesLoading={state.handlesLoading}
             hasChanges={state.hasChanges}
             hasNamespace={Boolean(state.community?.namespace_verification)}
-            {...state.handleNamespaceSelectorProps}
+            {...state.handlePolicyEditorProps}
             onDraftChange={state.setDraft}
             onNavigateToNamespace={() => navigate(buildCommunityModerationPath(communityId, "namespace", state.community?.route_slug))}
             onReserveHandle={state.handleReserve}
             onRevokeHandle={state.handleRevoke}
             onSave={state.handleSave}
             onStatusFilterChange={state.setHandleStatusFilter}
-            saveDisabled={state.saving || !state.hasChanges || handleClaimGateInvalid}
+            saveDisabled={state.saving || Boolean(state.policyConflict) || !state.hasChanges || handleClaimGateInvalid}
             saveLoading={state.saving}
           />
         );

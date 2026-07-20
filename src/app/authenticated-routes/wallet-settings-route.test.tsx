@@ -380,10 +380,10 @@ describe("CurrentUserWalletPage rewards", () => {
     expect(view.queryByText("Pending")).toBeNull();
   });
 
-  test("opens the rewards verification provider sheet when claim needs verification", async () => {
+  test("offers rewards verification before the user has a balance", async () => {
     fakeApi.rewards.getSummary = mock(async () => ({
-      balance_cents: 120,
-      today_earned_cents: 30,
+      balance_cents: 0,
+      today_earned_cents: 0,
       recent_events: [],
       cashout: {
         eligible: false,
@@ -401,8 +401,8 @@ describe("CurrentUserWalletPage rewards", () => {
 
     expect(view.getByText("Verify once")).toBeTruthy();
     expect(view.getByText("Self")).toBeTruthy();
-    expect(view.getByText("Very")).toBeTruthy();
-    expect(view.getByText("ZKPassport")).toBeTruthy();
+    expect(view.queryByText("Very")).toBeNull();
+    expect(view.queryByText("ZKPassport")).toBeNull();
   });
 
   test("does not request or render rewards when the flag is disabled", async () => {

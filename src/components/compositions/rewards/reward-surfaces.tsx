@@ -110,6 +110,7 @@ export interface VerifyHumanSheetProps {
   onOpenChange?: (open: boolean) => void;
   onSelectProvider?: (provider: "self" | "very" | "zkpassport") => void;
   open: boolean;
+  providers?: readonly ("self" | "very" | "zkpassport")[];
   state: VerifyHumanSheetState;
 }
 
@@ -390,6 +391,7 @@ export function VerifyHumanSheet({
   onOpenChange,
   onSelectProvider,
   open,
+  providers = ["self", "very", "zkpassport"],
   state,
 }: VerifyHumanSheetProps) {
   const isTerminal = state === "success" || state === "failure" || state === "conflict";
@@ -424,21 +426,27 @@ export function VerifyHumanSheet({
 
         {state === "provider-selection" ? (
           <div className="mt-5 space-y-3">
-            <ProviderButton
-              icon={<QrCode aria-hidden="true" className="size-5" weight="bold" />}
-              label="Self"
-              onClick={() => onSelectProvider?.("self")}
-            />
-            <ProviderButton
-              icon={<Fingerprint aria-hidden="true" className="size-5" weight="bold" />}
-              label="Very"
-              onClick={() => onSelectProvider?.("very")}
-            />
-            <ProviderButton
-              icon={<ShieldCheck aria-hidden="true" className="size-5" weight="bold" />}
-              label="ZKPassport"
-              onClick={() => onSelectProvider?.("zkpassport")}
-            />
+            {providers.includes("self") ? (
+              <ProviderButton
+                icon={<QrCode aria-hidden="true" className="size-5" weight="bold" />}
+                label="Self"
+                onClick={() => onSelectProvider?.("self")}
+              />
+            ) : null}
+            {providers.includes("very") ? (
+              <ProviderButton
+                icon={<Fingerprint aria-hidden="true" className="size-5" weight="bold" />}
+                label="Very"
+                onClick={() => onSelectProvider?.("very")}
+              />
+            ) : null}
+            {providers.includes("zkpassport") ? (
+              <ProviderButton
+                icon={<ShieldCheck aria-hidden="true" className="size-5" weight="bold" />}
+                label="ZKPassport"
+                onClick={() => onSelectProvider?.("zkpassport")}
+              />
+            ) : null}
           </div>
         ) : null}
 

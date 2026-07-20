@@ -366,7 +366,7 @@ function walletRewardsSummary(input: {
       actionLabel: "Verify",
       amountLabel,
       onAction: input.onVerify,
-      supportingLabel: "Verify with Self to earn and transfer rewards.",
+      supportingLabel: "Verify with Self to earn and transfer.",
     };
   }
   return {

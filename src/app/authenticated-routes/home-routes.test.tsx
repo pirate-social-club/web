@@ -543,4 +543,46 @@ describe("useHomeFeed", () => {
     expect(result.current.topCommunities.length).toBe(1);
     expect(result.current.authorProfiles.usr_1).toEqual({ user: "usr_1", display_name: "Test User" });
   });
+
+  test("loads the next page with the server cursor and deduplicates appended posts", async () => {
+    __resetSessionStoreForTests();
+    const requests: Array<{ cursor?: string | null }> = [];
+    const feedApi = api.feed as unknown as {
+      publicHome: (opts: { cursor?: string | null }) => Promise<{
+        items: HomeFeedItem[];
+        next_cursor: string | null;
+        top_communities: HomeFeedCommunitySummary[];
+      }>;
+    };
+    feedApi.publicHome = async (opts) => {
+      requests.push(opts);
+      return opts.cursor === "o:25"
+        ? {
+            items: [createFeedItem({ postId: "pst_1" }), createFeedItem({ postId: "pst_2" })],
+            next_cursor: null,
+            top_communities: [],
+          }
+        : {
+            items: [createFeedItem({ postId: "pst_1" })],
+            next_cursor: "o:25",
+            top_communities: [createTopCommunity()],
+          };
+    };
+
+    const { result } = renderHook(() => useHomeFeed({
+      activeSort: "best",
+      contentLocale: "en",
+      hydrated: true,
+      session: null,
+      topTimeRange: "day",
+    }), { wrapper });
+
+    await waitFor(() => expect(result.current.nextCursor).toBe("o:25"));
+    await act(async () => result.current.loadMore());
+
+    expect(requests[1]?.cursor).toBe("o:25");
+    expect(result.current.feedEntries.map((entry) => entry.post.post.id)).toEqual(["pst_1", "pst_2"]);
+    expect(result.current.nextCursor).toBeNull();
+    expect(result.current.loadMoreError).toBeNull();
+  });
 });

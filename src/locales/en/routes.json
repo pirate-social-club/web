@@ -14,6 +14,7 @@
     "downvoteComment": "Downvote comment",
     "expandReplies": "Expand replies",
     "expandThread": "Expand thread",
+    "feedEnd": "You're all caught up.",
     "identityPublicDescription": "Post and reply with your public handle",
     "identityAnonymousDefaultDescription": "Pseudonymous identity",
     "identityPublicOptionLabel": "Public: {handle}",

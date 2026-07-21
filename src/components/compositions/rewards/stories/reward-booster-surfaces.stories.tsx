@@ -83,11 +83,11 @@ function statusProps(state: CampaignStatusCardProps["state"]): CampaignStatusCar
 }
 
 export const Compose: Story = { render: () => <BoostStory state="compose" /> };
+export const Preparing: Story = { render: () => <BoostStory state="preparing" /> };
 export const FundingQuote: Story = { render: () => <BoostStory state="quote" /> };
 export const WrongWallet: Story = { render: () => <BoostStory state="quote" walletMismatch /> };
 export const Confirming: Story = { render: () => <BoostStory state="confirming" /> };
 export const Active: Story = { render: () => <BoostStory state="active" /> };
-export const Expired: Story = { render: () => <BoostStory state="expired" /> };
 export const Failed: Story = { render: () => <BoostStory state="failed" /> };
 export const FundingReview: Story = { render: () => <BoostStory state="funding-review" /> };
 

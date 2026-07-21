@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils";
 
 type BoostCampaignSheetState =
   | "compose"
+  | "preparing"
   | "quote"
   | "confirming"
   | "active"
@@ -334,6 +335,20 @@ export function BoostCampaignSheet({
           </div>
         ) : null}
 
+        {state === "preparing" ? (
+          <div className="mt-6 flex items-center gap-3 rounded-lg border border-border-soft p-4">
+            <HourglassMedium aria-hidden="true" className="size-5 animate-pulse text-primary" weight="bold" />
+            <div>
+              <Type as="div" variant="body-strong">
+                Preparing funding
+              </Type>
+              <Type as="div" className="text-muted-foreground" variant="caption">
+                Checking the amount, payment wallet, and destination.
+              </Type>
+            </div>
+          </div>
+        ) : null}
+
         {state === "confirming" ? (
           <div className="mt-6 flex items-center gap-3 rounded-lg border border-border-soft p-4">
             <HourglassMedium aria-hidden="true" className="size-5 animate-pulse text-primary" weight="bold" />
@@ -369,20 +384,6 @@ export function BoostCampaignSheet({
                 </a>
               </Button>
             ) : null}
-          </div>
-        ) : null}
-
-        {state === "expired" ? (
-          <div className="mt-6 flex items-start gap-3 rounded-lg border border-border-soft p-4">
-            <Clock aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-warning" weight="fill" />
-            <div>
-              <Type as="div" variant="body-strong">
-                Quote expired
-              </Type>
-              <Type as="div" className="mt-1 text-muted-foreground" variant="body">
-                No funds were taken. Start again to get a fresh amount and address.
-              </Type>
-            </div>
           </div>
         ) : null}
 
@@ -443,12 +444,17 @@ export function BoostCampaignSheet({
               Send from my wallet
             </Button>
           ) : null}
+          {state === "preparing" ? (
+            <Button className="h-12 w-full" disabled>
+              Preparing…
+            </Button>
+          ) : null}
           {state === "confirming" ? (
             <Button className="h-12 w-full" onClick={onRefresh} variant="outline">
               Check status
             </Button>
           ) : null}
-          {state === "expired" || state === "failed" ? (
+          {state === "failed" ? (
             <Button className="h-12 w-full" onClick={onRetry} variant="outline">
               {retryLabel ?? "Start again"}
             </Button>

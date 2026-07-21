@@ -16,6 +16,7 @@ let confirmError: unknown = null;
 let createError: unknown = null;
 let quoteError: unknown = null;
 let postEligible = true;
+let firstQuoteExpired = false;
 
 const campaign = () => ({
   id: "rcp_test",
@@ -56,7 +57,7 @@ const quote = () => ({
   sender_address: "0x2222222222222222222222222222222222222222",
   treasury_address: "0x3333333333333333333333333333333333333333",
   status: "quoted",
-  expires_at: Math.floor(Date.now() / 1000) + 900,
+  expires_at: Math.floor(Date.now() / 1000) + (firstQuoteExpired && calls.quote === 1 ? -1 : 900),
   created: 1,
 });
 
@@ -145,6 +146,7 @@ beforeEach(() => {
   createError = null;
   quoteError = null;
   postEligible = true;
+  firstQuoteExpired = false;
   connectedWallets = [];
   localStorage.clear();
 });
@@ -172,6 +174,19 @@ describe("useBoostCampaignController", () => {
     await act(async () => view.result.current.sheetProps.onRetry?.());
     await waitFor(() => expect(calls.quote).toBe(2));
     expect(calls.create).toBe(1);
+  });
+
+  test("silently replaces an expired pre-transfer quote", async () => {
+    firstQuoteExpired = true;
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+
+    await waitFor(() => expect(calls.quote).toBe(2));
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    expect(calls.create).toBe(1);
+    expect(view.result.current.sheetProps.retryLabel).toBe("Start again");
   });
 
   test("blocks a quote when its pinned sender wallet is not connected", async () => {

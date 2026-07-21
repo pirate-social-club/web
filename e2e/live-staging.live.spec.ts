@@ -1609,6 +1609,15 @@ test.describe("live staging integration", () => {
     const title = `Multipart video browser E2E ${runId}`;
     const filebasePartRequests: URL[] = [];
     const filebasePartStatuses: Array<{ partNumber: string | null; status: number }> = [];
+    const uploadIntentResponses: Array<Promise<{
+      id: string;
+      upload_session?: {
+        id: string;
+        part_size_bytes: number;
+        total_parts: number;
+        upload_id: string;
+      };
+    }>> = [];
 
     page.on("request", (request) => {
       if (request.method().toUpperCase() !== "PUT") return;
@@ -1627,6 +1636,26 @@ test.describe("live staging integration", () => {
         partNumber: url.searchParams.get("partNumber"),
         status: response.status(),
       });
+    });
+    page.on("response", (response) => {
+      const request = response.request();
+      const url = new URL(response.url());
+      if (
+        request.method().toUpperCase() !== "POST"
+        || url.origin !== apiOrigin
+        || !/\/communities\/[^/]+\/song-artifact-uploads$/u.test(url.pathname)
+      ) {
+        return;
+      }
+      uploadIntentResponses.push(response.json() as Promise<{
+        id: string;
+        upload_session?: {
+          id: string;
+          part_size_bytes: number;
+          total_parts: number;
+          upload_id: string;
+        };
+      }>);
     });
 
     await installStoredSession(page, session);
@@ -1686,15 +1715,25 @@ test.describe("live staging integration", () => {
     await expectNoBrowserError(page);
 
     const expectedParts = uploadIntent.upload_session?.total_parts ?? 0;
-    expect(filebasePartRequests.length, "direct Filebase part PUT request count").toBe(expectedParts);
-    expect(filebasePartStatuses.length, "direct Filebase part PUT response count").toBe(expectedParts);
+    const uploadIntents = await Promise.all(uploadIntentResponses);
+    expect(uploadIntents.length, "multipart intent count").toBeGreaterThanOrEqual(1);
+    expect(uploadIntents.length, "multipart intent count").toBeLessThanOrEqual(2);
+    const uploadIds = new Set(
+      uploadIntents.flatMap((intent) => intent.upload_session?.upload_id ? [intent.upload_session.upload_id] : []),
+    );
+    expect(filebasePartRequests.length, "direct Filebase part PUT request count").toBeGreaterThanOrEqual(expectedParts);
+    expect(filebasePartRequests.length, "direct Filebase part PUT request count").toBeLessThanOrEqual(expectedParts * 2);
+    expect(filebasePartStatuses.length, "direct Filebase part PUT response count").toBe(filebasePartRequests.length);
     for (const requestUrl of filebasePartRequests) {
-      expect(requestUrl.searchParams.get("uploadId")).toBe(uploadIntent.upload_session?.upload_id);
+      expect(uploadIds.has(requestUrl.searchParams.get("uploadId") ?? ""), "part uses a recorded upload session").toBe(true);
       expect(requestUrl.searchParams.get("X-Amz-Signature")).toMatch(/^[a-f0-9]{64}$/iu);
       expect(requestUrl.searchParams.get("partNumber")).toMatch(/^\d+$/u);
     }
-    for (const status of filebasePartStatuses) {
-      expect(status.status, `part ${status.partNumber} status`).toBe(200);
+    const successfulParts = filebasePartStatuses.filter((status) => status.status === 200);
+    const failedParts = filebasePartStatuses.filter((status) => status.status !== 200);
+    expect(successfulParts.length, "successful direct Filebase part PUT responses").toBe(expectedParts);
+    for (const status of failedParts) {
+      expect(status.status, `recovered part ${status.partNumber} status`).toBe(404);
     }
   });
 

@@ -264,12 +264,13 @@ export function useSongSubmit({
       ...(usesDirectMultipart(artifactKind) ? { upload_mode: "direct_multipart" as const } : {}),
     };
     const contentHashPromise = usesDirectMultipart(artifactKind) ? sha256File(file) : null;
-    const intent = await withSongSubmitStep("create artifact upload intent", {
+    const createIntent = () => withSongSubmitStep("create artifact upload intent", {
       artifactKind,
       filename: file.name,
       sizeBytes: file.size,
       uploadMode: request.upload_mode ?? "proxy",
     }, () => api.communities.createArtifactUpload(communityId, request, { timeoutMs: SONG_ARTIFACT_API_TIMEOUT_MS }));
+    const intent = await createIntent();
     logger.info("[song-submit] artifact upload intent created", {
       artifactKind,
       intentId: intent.id,
@@ -297,6 +298,7 @@ export function useSongSubmit({
         ),
         concurrency: SONG_ARTIFACT_MULTIPART_CONCURRENCY,
         contentHashPromise,
+        createIntent,
         file,
         getPartSignedUrl: (artifactUploadId, sessionId, partNumber) => api.communities.getArtifactUploadPartSignedUrl(
           communityId,
@@ -314,6 +316,14 @@ export function useSongSubmit({
           });
         },
         onProgress,
+        onSessionRestart: ({ error, previousIntent, providerCode }) => {
+          logger.warn("[song-submit] restarting missing multipart session", {
+            artifactKind,
+            error,
+            intentId: previousIntent.id,
+            providerCode,
+          });
+        },
         partUploadTimeoutMs: SONG_ARTIFACT_PART_UPLOAD_TIMEOUT_MS,
       }));
       logger.info("[song-submit] artifact multipart content uploaded", {

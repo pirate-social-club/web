@@ -10,10 +10,12 @@ const originalXMLHttpRequest = globalThis.XMLHttpRequest;
 
 let xhrStatuses: number[] = [];
 let xhrRetryAfter: string | null = null;
+let xhrResponseText = "";
 let xhrEtagPrefix = "etag";
 const xhrRequests: Array<{ bodySize: number; headers: Record<string, string>; url: string }> = [];
 
 class FakeXMLHttpRequest {
+  responseText = "";
   status = 200;
   statusText = "OK";
   timeout = 0;
@@ -52,6 +54,7 @@ class FakeXMLHttpRequest {
   send(body: BodyInit | null): void {
     this.responseStatus = xhrStatuses.shift() ?? 200;
     this.status = this.responseStatus;
+    this.responseText = this.responseStatus >= 200 && this.responseStatus < 300 ? "" : xhrResponseText;
     const bodySize = body instanceof Blob ? body.size : 0;
     this.responseEtag = this.responseStatus >= 200 && this.responseStatus < 300
       ? `"${xhrEtagPrefix}-${xhrRequests.length + 1}"`
@@ -115,6 +118,7 @@ afterEach(() => {
   xhrEtagPrefix = "etag";
   xhrRequests.length = 0;
   xhrRetryAfter = null;
+  xhrResponseText = "";
   xhrStatuses = [];
 });
 
@@ -239,5 +243,58 @@ describe("uploadMultipartSongArtifact", () => {
     expect(thrown).toBeInstanceOf(Error);
     expect(String((thrown as Error).message)).toContain("failed with 403");
     expect(abortCalls).toEqual([{ artifactUploadId: "sau_test", sessionId: "saus_test" }]);
+  });
+
+  test("recreates a missing multipart session once and records a sanitized provider code", async () => {
+    globalThis.XMLHttpRequest = FakeXMLHttpRequest as unknown as typeof XMLHttpRequest;
+    xhrStatuses = [404, 200];
+    xhrResponseText = "<Error><Code>NoSuchUpload</Code><Message>provider detail</Message></Error>";
+    const abortCalls: Array<{ artifactUploadId: string; sessionId: string }> = [];
+    const signedUrlCalls: Array<{ artifactUploadId: string; sessionId: string }> = [];
+    const restartEvents: Array<{ message: string; previousIntentId: string; providerCode: string | null }> = [];
+    let createIntentCalls = 0;
+
+    const restartedIntent = createIntent({ partSizeBytes: 5, totalParts: 1 });
+    restartedIntent.id = "sau_restarted";
+    if (!restartedIntent.upload_session) throw new Error("restart fixture session is missing");
+    restartedIntent.upload_session.id = "saus_restarted";
+    restartedIntent.upload_session.upload_id = "filebase-upload-restarted";
+
+    const result = await uploadMultipartSongArtifact({
+      abortSession: async (artifactUploadId, sessionId) => {
+        abortCalls.push({ artifactUploadId, sessionId });
+      },
+      artifactLabel: "primary_video",
+      completeSession: async (artifactUploadId) => ({ ...createUploadedArtifact(), id: artifactUploadId }),
+      contentHashPromise: Promise.resolve("d".repeat(64)),
+      createIntent: async () => {
+        createIntentCalls += 1;
+        return restartedIntent;
+      },
+      file: createFile(5),
+      getPartSignedUrl: async (artifactUploadId, sessionId) => {
+        signedUrlCalls.push({ artifactUploadId, sessionId });
+        return { url: `https://upload.test/song/${artifactUploadId}` };
+      },
+      intent: createIntent({ partSizeBytes: 5, totalParts: 1 }),
+      onSessionRestart: ({ error, previousIntent, providerCode }) => {
+        restartEvents.push({ message: error.message, previousIntentId: previousIntent.id, providerCode });
+      },
+      partUploadTimeoutMs: 30_000,
+      retryDelaysMs: [0],
+    });
+
+    expect(result.id).toBe("sau_restarted");
+    expect(createIntentCalls).toBe(1);
+    expect(signedUrlCalls).toEqual([
+      { artifactUploadId: "sau_test", sessionId: "saus_test" },
+      { artifactUploadId: "sau_restarted", sessionId: "saus_restarted" },
+    ]);
+    expect(abortCalls).toEqual([{ artifactUploadId: "sau_test", sessionId: "saus_test" }]);
+    expect(restartEvents).toEqual([{
+      message: "primary_video part 1 upload failed with 404 (NoSuchUpload)",
+      previousIntentId: "sau_test",
+      providerCode: "NoSuchUpload",
+    }]);
   });
 });

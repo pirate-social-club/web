@@ -17,6 +17,7 @@ import type {
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import type { ExtractedVideoPosterFrame } from "@/components/compositions/posts/post-composer/video-poster-frame";
 import { buildAssetListingRequest, buildRoyaltyAllocationRequests } from "@/app/authenticated-helpers/asset-submit";
+import { logger } from "@/lib/logger";
 import { sha256File } from "./file-hash";
 import type { SubmitProgressReporter } from "./progress";
 import { uploadMultipartSongArtifact } from "./multipart-song-artifact-upload";
@@ -218,13 +219,14 @@ export async function uploadVideoArtifact({
     throw new Error("Video upload support is not configured.");
   }
   const contentHashPromise = sha256File(file);
-  const intent = await createArtifactUpload(communityId, {
+  const createIntent = () => createArtifactUpload(communityId, {
     artifact_kind: "primary_video",
     mime_type: file.type,
     filename: file.name,
     size_bytes: file.size,
     upload_mode: "direct_multipart",
   });
+  const intent = await createIntent();
   return await uploadMultipartSongArtifact({
     abortSession: (artifactUploadId, sessionId) => abortArtifactUploadSession(
       communityId,
@@ -240,6 +242,7 @@ export async function uploadVideoArtifact({
     ),
     concurrency: MULTIPART_UPLOAD_CONCURRENCY,
     contentHashPromise,
+    createIntent,
     file,
     getPartSignedUrl: (artifactUploadId, sessionId, partNumber) => getArtifactUploadPartSignedUrl(
       communityId,
@@ -252,6 +255,13 @@ export async function uploadVideoArtifact({
       // The API reaper is the cleanup backstop for abandoned multipart sessions.
     },
     onProgress: (fraction) => reportProgress?.("upload_video", `${Math.round(fraction * 100)}%`),
+    onSessionRestart: ({ error, previousIntent, providerCode }) => {
+      logger.warn("[video-submit] restarting missing multipart session", {
+        error,
+        intentId: previousIntent.id,
+        providerCode,
+      });
+    },
     partUploadTimeoutMs: VIDEO_ARTIFACT_PART_UPLOAD_TIMEOUT_MS,
   });
 }

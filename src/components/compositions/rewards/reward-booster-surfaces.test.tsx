@@ -74,6 +74,25 @@ test("quote exposes the pinned sender and blocks the wrong wallet", () => {
   expect(view.getByText("Send from my wallet").closest("button")?.disabled).toBe(true);
 });
 
+test("preparing hides quote-expiry recovery details", () => {
+  const view = render(
+    <BoostCampaignSheet
+      budgetLabel="10.00"
+      chainLabel="Base Sepolia"
+      dailyRewardLabel="1.00"
+      eligibleActivity="karaoke"
+      onOpenChange={() => undefined}
+      open
+      rewardCountLabel="10 rewards"
+      state="preparing"
+    />,
+  );
+
+  expect(view.getByText("Preparing funding")).toBeTruthy();
+  expect(view.queryByText(/quote expired/i)).toBeNull();
+  expect(view.queryByText(/start again/i)).toBeNull();
+});
+
 test("owner policy explains that blocking does not return funding", () => {
   const view = render(
     <SongRewardPolicySheet

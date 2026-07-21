@@ -221,10 +221,6 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     return () => window.clearInterval(timer);
   }, [quote, sheetOpen, sheetState]);
 
-  React.useEffect(() => {
-    if (quote && sheetState === "quote" && quote.expires_at <= nowSeconds) setSheetState("expired");
-  }, [nowSeconds, quote, sheetState]);
-
   const limits = React.useMemo(() => capabilities ? {
     maxBudgetCents: capabilities.max_budget_cents,
     maxRewardCents: capabilities.max_reward_cents,
@@ -245,6 +241,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     createQuoteInFlight.current = true;
     setBusy(true);
     setErrorMessage(undefined);
+    setSheetState("preparing");
     try {
       const now = Math.floor(Date.now() / 1_000);
       const createKeyStorage = createRequestStorageKey(input.communityId, input.postId);
@@ -287,6 +284,18 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       setBusy(false);
     }
   }, [api.rewards, capabilities, eligibleActivity, input.communityId, input.postId, plan]);
+
+  React.useEffect(() => {
+    if (
+      !sheetOpen
+      || sheetState !== "quote"
+      || !quote
+      || !campaign
+      || transactionHash
+      || quote.expires_at > nowSeconds
+    ) return;
+    void createQuote(campaign);
+  }, [campaign, createQuote, nowSeconds, quote, sheetOpen, sheetState, transactionHash]);
 
   const pollCampaign = React.useCallback(async (campaignId: string) => {
     for (let attempt = 0; attempt < 20; attempt += 1) {
@@ -354,8 +363,11 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   }, [api.rewards, input.communityId, input.postId, pollCampaign]);
 
   const sendFunding = React.useCallback(async () => {
-    if (sendFundingInFlight.current || !quote || !campaign || !fundingWallet || quote.expires_at <= Math.floor(Date.now() / 1_000)) {
-      if (quote?.expires_at && quote.expires_at <= Math.floor(Date.now() / 1_000)) setSheetState("expired");
+    if (sendFundingInFlight.current || !quote || !campaign || !fundingWallet) {
+      return;
+    }
+    if (quote.expires_at <= Math.floor(Date.now() / 1_000)) {
+      void createQuote(campaign);
       return;
     }
     sendFundingInFlight.current = true;
@@ -385,7 +397,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       sendFundingInFlight.current = false;
       setBusy(false);
     }
-  }, [campaign, confirmSubmittedFunding, fundingWallet, input.communityId, input.postId, quote]);
+  }, [campaign, confirmSubmittedFunding, createQuote, fundingWallet, input.communityId, input.postId, quote]);
 
   const hasCampaignConflict = input.activePublicOffer || blocksNewCampaign(campaign);
   const thirdPartyBlocked = !input.viewerIsAuthor && !policyAllowed;
@@ -408,9 +420,10 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       setSheetState("compose");
     }
     else if (transactionHash) setSheetState("failed");
-    else setSheetState(quote.expires_at <= Math.floor(Date.now() / 1_000) ? "expired" : "quote");
+    else if (quote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(campaign);
+    else setSheetState("quote");
     setSheetOpen(true);
-  }, [input, quote, sheetState, transactionHash]);
+  }, [campaign, createQuote, input, quote, sheetState, transactionHash]);
 
   const updatePolicy = React.useCallback(async (allowed: boolean) => {
     if (!input.communityId || busy) return;

@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/primitives/select";
 import { Spinner } from "@/components/primitives/spinner";
+import { Button } from "@/components/primitives/button";
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { FullBleedMobileListSection } from "@/components/compositions/app/page-shell";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,12 @@ export interface FeedProps {
   hideMobileHeaderControls?: boolean;
   loading?: boolean;
   loadingCount?: number;
+  loadingMore?: boolean;
+  hasMore?: boolean;
+  loadMoreError?: string | null;
+  loadMoreLabel?: string;
+  endMessage?: string;
+  onLoadMore?: () => void;
   aside?: React.ReactNode;
   className?: string;
   listClassName?: string;
@@ -171,6 +178,12 @@ export function Feed({
   hideMobileHeaderControls = false,
   loading = false,
   loadingCount = 3,
+  loadingMore = false,
+  hasMore,
+  loadMoreError,
+  loadMoreLabel = "Load more",
+  endMessage = "You're all caught up.",
+  onLoadMore,
   aside,
   className,
   listClassName,
@@ -185,6 +198,18 @@ export function Feed({
   const showLoadingOnly = loading && !hasItems;
   const showLoadingTail = loading && hasItems;
   const [originalPostIds, setOriginalPostIds] = React.useState<Set<string>>(() => new Set());
+  const loadMoreSentinelRef = React.useRef<HTMLDivElement>(null);
+  const paginationEnabled = hasMore !== undefined && Boolean(onLoadMore);
+
+  React.useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel || !hasMore || loadingMore || !onLoadMore || typeof IntersectionObserver === "undefined") return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) onLoadMore();
+    }, { rootMargin: "600px 0px" });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, onLoadMore]);
 
   React.useEffect(() => {
     setOriginalPostIds((current) => {
@@ -298,6 +323,14 @@ export function Feed({
                 );
               })}
                 {showLoadingTail ? <FeedLoadingRows count={loadingCount} /> : null}
+                {paginationEnabled ? (
+                  <div className="flex flex-col items-center gap-2 border-t border-border-soft px-5 py-6" ref={loadMoreSentinelRef}>
+                    {loadingMore ? <Spinner className="size-5" /> : null}
+                    {loadMoreError ? <p className="text-center text-base text-destructive" role="alert">{loadMoreError}</p> : null}
+                    {hasMore && !loadingMore ? <Button onClick={onLoadMore} variant="secondary">{loadMoreLabel}</Button> : null}
+                    {!hasMore && !loadingMore ? <p className="text-base text-muted-foreground">{endMessage}</p> : null}
+                  </div>
+                ) : null}
               </div>
             </ListWrapper>
           ) : null}

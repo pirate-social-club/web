@@ -59,8 +59,11 @@ type UseHomeFeedInput = {
 
 type HomeFeedQueryPayload = {
   feedEntries: ApiHomeFeedItem[];
+  nextCursor: string | null;
   topCommunities: ApiHomeFeedCommunitySummary[];
 };
+
+const EMPTY_HOME_FEED_PAYLOAD: HomeFeedQueryPayload = { feedEntries: [], nextCursor: null, topCommunities: [] };
 
 export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange }: UseHomeFeedInput) {
   const api = useApi();
@@ -80,14 +83,15 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
   );
   const homeFeedQuery = useQuery<HomeFeedQueryPayload>({
     queryKey: homeFeedQueryKey,
-    queryFn: async () => ({ feedEntries: [], topCommunities: [] }),
+    queryFn: async () => EMPTY_HOME_FEED_PAYLOAD,
     enabled: false,
-    initialData: { feedEntries: [], topCommunities: [] },
+    initialData: EMPTY_HOME_FEED_PAYLOAD,
   });
   const feedEntries = homeFeedQuery.data.feedEntries;
+  const nextCursor = homeFeedQuery.data.nextCursor;
   const topCommunities = homeFeedQuery.data.topCommunities;
   const setHomeFeedPayload = React.useCallback((update: React.SetStateAction<HomeFeedQueryPayload>) => {
-    queryClient.setQueryData<HomeFeedQueryPayload>(homeFeedQueryKey, (current = { feedEntries: [], topCommunities: [] }) => (
+    queryClient.setQueryData<HomeFeedQueryPayload>(homeFeedQueryKey, (current = EMPTY_HOME_FEED_PAYLOAD) => (
       typeof update === "function"
         ? (update as (value: HomeFeedQueryPayload) => HomeFeedQueryPayload)(current)
         : update
@@ -110,6 +114,9 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
   const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
   const [error, setError] = React.useState<unknown>(null);
   const [loading, setLoading] = React.useState(true);
+  const [loadingMore, setLoadingMore] = React.useState(false);
+  const [loadMoreError, setLoadMoreError] = React.useState<unknown>(null);
+  const loadingMoreRef = React.useRef(false);
   // Identity of the feed currently rendered (sort / content locale / time
   // range). Enrichment maps are only cleared when this changes; auth/session
   // refreshes reuse the same feed identity so their enriched UI (avatars, buy
@@ -159,7 +166,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
       setLiveRoomAccessById({});
     }
 
-    const applyFeedResult = (result: Awaited<ReturnType<typeof api.feed.home>>) => {
+    const applyFeedResult = (result: Awaited<ReturnType<typeof api.feed.home>>, settled = true) => {
         if (cancelled) return;
 
         const nextFeedEntries = result.items;
@@ -171,9 +178,10 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
         });
         setHomeFeedPayload({
           feedEntries: nextFeedEntries,
+          nextCursor: result.next_cursor ?? null,
           topCommunities: result.top_communities,
         });
-        setLoading(false);
+        if (settled) setLoading(false);
 
         void loadProfilesByUserId(
           api,
@@ -279,7 +287,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     };
 
     const loadAuthenticatedFeed = () => api.feed.home(feedRequest)
-      .then(applyFeedResult)
+      .then((result) => applyFeedResult(result))
       .catch((nextError: unknown) => {
         if (cancelled) return;
         if ((nextError as { status?: number; code?: string }).status === 401 || (nextError as { code?: string }).code === "auth_error") {
@@ -292,7 +300,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
 
     void api.feed.publicHome(feedRequest)
       .then((result) => {
-        applyFeedResult(result);
+        applyFeedResult(result, !sessionUserId);
         if (sessionUserId) {
           void loadAuthenticatedFeed();
         }
@@ -312,6 +320,42 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     };
   }, [api, contentLocale, feedIdentityKey, feedRequest, hydrated, queryClient, sessionAccessToken, sessionProfile, sessionUserId, setHomeFeedPayload]);
 
+  const loadMore = React.useCallback(async () => {
+    if (!nextCursor || loading || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const result = sessionUserId
+        ? await api.feed.home({ ...feedRequest, cursor: nextCursor })
+        : await api.feed.publicHome({ ...feedRequest, cursor: nextCursor });
+      seedPublicThreadQueriesFromFeed({ items: result.items, locale: contentLocale, queryClient, sort: "best" });
+      setHomeFeedPayload((current) => {
+        const seenPostIds = new Set(current.feedEntries.map((entry) => entry.post.post.id));
+        return {
+          feedEntries: [...current.feedEntries, ...result.items.filter((entry) => !seenPostIds.has(entry.post.post.id))],
+          nextCursor: result.next_cursor ?? null,
+          topCommunities: current.topCommunities,
+        };
+      });
+      const appendedAuthorIds = result.items.reduce<string[]>((ids, entry) => {
+        const userId = entry.post.post.identity_mode === "public" ? entry.post.post.author_user : null;
+        if (userId) ids.push(userId);
+        return ids;
+      }, []);
+      if (appendedAuthorIds.length > 0) {
+        void loadProfilesByUserId(api, appendedAuthorIds, authorProfiles)
+          .then((profiles) => setAuthorProfiles((current) => ({ ...current, ...profiles })))
+          .catch(() => undefined);
+      }
+    } catch (nextError) {
+      setLoadMoreError(nextError);
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [api, authorProfiles, contentLocale, feedRequest, loading, nextCursor, queryClient, sessionUserId, setHomeFeedPayload]);
+
   return {
     feedEntries,
     setFeedEntries,
@@ -325,6 +369,10 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     freedomDetected: freedomDetection.detected,
     error,
     loading,
+    loadingMore,
+    loadMore,
+    loadMoreError,
+    nextCursor,
   };
 }
 
@@ -357,6 +405,10 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     freedomDetected,
     error,
     loading,
+    loadingMore,
+    loadMore,
+    loadMoreError,
+    nextCursor,
   } = useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
@@ -665,6 +717,12 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
           fullBleedMobile
           listClassName="border-t-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
           loading={loading}
+          loadingMore={loadingMore}
+          hasMore={Boolean(nextCursor)}
+          loadMoreError={loadMoreError ? getErrorMessage(loadMoreError, copy.routeStatus.home.failure) : null}
+          loadMoreLabel={copy.common.loadMore}
+          endMessage={copy.common.feedEnd}
+          onLoadMore={loadMore}
           onSortChange={setActiveSort}
         />
       </StandardRoutePage>

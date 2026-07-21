@@ -14,6 +14,7 @@
     "downvoteComment": "给评论点踩",
     "expandReplies": "展开回复",
     "expandThread": "展开讨论串",
+    "feedEnd": "你已浏览完所有帖子。",
     "identityPublicDescription": "使用公开身份发布和回复",
     "identityAnonymousDefaultDescription": "匿名身份",
     "identityPublicOptionLabel": "公开: {handle}",

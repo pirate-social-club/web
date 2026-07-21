@@ -788,3 +788,14 @@ jobs:
           node scripts/verify-deployed-versions.mjs \
             https://pirate.sc/__version "$EXPECTED_WEB_SHA" \
             https://api.pirate.sc/__version "$EXPECTED_API_SHA"
+      - name: Verify production multipart storage
+        working-directory: web
+        env:
+          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.PRODUCTION_MULTIPART_CANARY_AUTH_AUDIENCE }}
+          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.PRODUCTION_MULTIPART_CANARY_AUTH_ISSUER }}
+          AUTH_UPSTREAM_JWT_SHARED_SECRET: ${{ secrets.PRODUCTION_MULTIPART_CANARY_AUTH_SECRET }}
+          PIRATE_MULTIPART_CANARY_API_BASE_URL: https://api.pirate.sc
+          PIRATE_MULTIPART_CANARY_COMMUNITY_ID: ${{ vars.PRODUCTION_MULTIPART_CANARY_COMMUNITY_ID }}
+          PIRATE_MULTIPART_CANARY_CONFIRM_PRODUCTION: RUN_PRODUCTION_MULTIPART_CANARY
+          PIRATE_MULTIPART_CANARY_SUBJECT: ${{ vars.PRODUCTION_MULTIPART_CANARY_SUBJECT }}
+        run: bun scripts/live-production-multipart-canary.ts

@@ -84,7 +84,13 @@ export function CommunityNamespaceVerificationPage({
     spaces: { label: family.spacesLabel, rootInputLabel: family.spacesRootLabel },
   };
   const [clearingPending, setClearingPending] = React.useState(false);
-  const hasAttachedNamespace = Boolean(attachedNamespaceVerificationId);
+  const attachedPrimary = namespaceAttachments.find(
+    (namespace) => namespace.namespace_role === "primary" && namespace.namespace_verification === attachedNamespaceVerificationId,
+  );
+  const hasAttachedNamespace = Boolean(
+    attachedNamespaceVerificationId && attachedPrimary?.verification_status === "verified",
+  );
+  const needsPrimaryRecovery = Boolean(attachedNamespaceVerificationId && !hasAttachedNamespace);
   const [addingMirror, setAddingMirror] = React.useState(
     Boolean(attachedNamespaceVerificationId && activeSessionId),
   );
@@ -299,6 +305,11 @@ export function CommunityNamespaceVerificationPage({
       </div>
 
       <div className="space-y-6">
+        {needsPrimaryRecovery ? (
+          <FormNote tone="warning">
+            This community has a previous namespace attachment, but it is no longer verified for routing. Verify the same name again to restore its signed DNS zone and public route.
+          </FormNote>
+        ) : null}
         {(flow.isIdle || flow.isStarting) && !flow.shouldShowResumeState ? (
           <>
             <div className="space-y-2">

@@ -598,8 +598,11 @@ jobs:
         env:
           EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
           EXPECTED_WEB_SHA: ${{ github.sha }}
-          # A mismatch here is terminal, not propagation lag: fail immediately.
-          VERIFY_DEPLOYED_ATTEMPTS: "1"
+          # A MISMATCH here is terminal (staging was replaced) — fail immediately.
+          # A transport failure is NOT: it says nothing about what is deployed, so
+          # it must still retry. Setting ATTEMPTS=1 conflated the two and failed a
+          # green run on one `fetch failed` (run 29937199404), blocking production.
+          VERIFY_DEPLOYED_FAIL_FAST_ON_MISMATCH: "1"
         run: |
           node scripts/verify-deployed-versions.mjs \
             https://staging.pirate.sc/__version "$EXPECTED_WEB_SHA" \

@@ -23,6 +23,20 @@ function parseTargets(args) {
   return targets;
 }
 
+// A SHA MISMATCH and a TRANSPORT FAILURE are different events and must not share
+// a retry policy. A mismatch is a fact about what is deployed: retrying cannot
+// change it, and for a caller checking "was this replaced?" it is terminal. A
+// fetch failure, timeout or 5xx says nothing about what is deployed — it is
+// exactly what retries exist for. Conflating them cost us a production-blocking
+// gate failure on 2026-07-22: a single `fetch failed` on an otherwise green run,
+// with retries disabled because the caller wanted mismatches to fail fast.
+export class VersionMismatchError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "VersionMismatchError";
+  }
+}
+
 async function readVersion(target, attempt, fetchImpl) {
   const url = new URL(target.url);
   url.searchParams.set("release_verify", `${Date.now()}-${attempt}`);
@@ -34,12 +48,15 @@ async function readVersion(target, attempt, fetchImpl) {
     },
   });
   if (!response.ok) {
+    // Transport-ish: the origin may be mid-deploy or briefly unhealthy.
     throw new Error(`${target.url} returned HTTP ${response.status}`);
   }
   const body = await response.json();
   const actualSha = String(body?.git_sha ?? "");
   if (!actualSha.startsWith(target.expectedSha.slice(0, 7))) {
-    throw new Error(`${target.url} expected ${target.expectedSha}, got ${actualSha || "missing git_sha"}`);
+    throw new VersionMismatchError(
+      `${target.url} expected ${target.expectedSha}, got ${actualSha || "missing git_sha"}`,
+    );
   }
   return actualSha;
 }
@@ -47,6 +64,7 @@ async function readVersion(target, attempt, fetchImpl) {
 export async function verifyDeployedVersions(targets, {
   attempts = DEFAULT_ATTEMPTS,
   delayMs = DEFAULT_DELAY_MS,
+  failFastOnMismatch = false,
   fetchImpl = fetch,
 } = {}) {
   let lastErrors = [];
@@ -55,15 +73,23 @@ export async function verifyDeployedVersions(targets, {
       targets.map((target) => readVersion(target, attempt, fetchImpl)),
     );
     lastErrors = [];
+    let mismatched = false;
     for (let index = 0; index < results.length; index += 1) {
       const result = results[index];
       if (result.status === "fulfilled") {
         console.log(`verified ${targets[index].url}: ${result.value}`);
       } else {
+        if (result.reason instanceof VersionMismatchError) mismatched = true;
         lastErrors.push(result.reason instanceof Error ? result.reason.message : String(result.reason));
       }
     }
     if (lastErrors.length === 0) return;
+    // A caller asking "was this replaced?" wants a mismatch to stop immediately,
+    // but must still ride out transport noise. Retrying is decided per FAILURE
+    // KIND, never by the caller disabling retries wholesale.
+    if (failFastOnMismatch && mismatched) {
+      throw new Error(`deployed version verification failed: ${lastErrors.join("; ")}`);
+    }
     if (attempt < attempts) {
       console.warn(`version verification attempt ${attempt}/${attempts} failed: ${lastErrors.join("; ")}`);
       await sleep(delayMs);
@@ -90,5 +116,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   await verifyDeployedVersions(parseTargets(process.argv.slice(2)), {
     attempts: positiveIntFromEnv("VERIFY_DEPLOYED_ATTEMPTS", DEFAULT_ATTEMPTS),
     delayMs: positiveIntFromEnv("VERIFY_DEPLOYED_DELAY_MS", DEFAULT_DELAY_MS),
+    failFastOnMismatch: process.env.VERIFY_DEPLOYED_FAIL_FAST_ON_MISMATCH === "1",
   });
 }

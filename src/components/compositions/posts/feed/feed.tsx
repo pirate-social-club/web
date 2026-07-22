@@ -35,6 +35,9 @@ import {
   type VideoViewerReturnState,
 } from "@/app/authenticated-helpers/video-viewer-return-state";
 import type { VideoFeedPlaybackState } from "@/components/compositions/posts/video-feed/video-feed";
+import { useBoostCampaignController } from "@/app/authenticated-helpers/use-boost-campaign-controller";
+import { BoostCampaignSheet } from "@/components/compositions/rewards/reward-booster-surfaces";
+import { useSession } from "@/lib/api/session-store";
 
 export type FeedSort = "best" | "new" | "top";
 
@@ -101,6 +104,39 @@ const topTimeRangeOptions = [
 ] satisfies readonly TopTimeRangeOption[];
 
 const EMPTY_FEED_SORT_OPTIONS: FeedSortOption[] = [];
+
+function VideoViewerBoostBridge({
+  activePublicOffer,
+  communityId,
+  onAvailabilityChange,
+  postId,
+  viewerIsAuthor,
+}: {
+  activePublicOffer: boolean;
+  communityId: string;
+  onAvailabilityChange: (postId: string, canBoost: boolean, openBoost: () => void) => void;
+  postId: string;
+  viewerIsAuthor: boolean;
+}) {
+  const session = useSession();
+  const requestAuth = React.useCallback(() => undefined, []);
+  const controllerInput = React.useMemo(() => ({
+    activePublicOffer,
+    authenticated: Boolean(session?.accessToken),
+    communityId,
+    postId,
+    requestAuth,
+    song: true,
+    viewerIsAuthor,
+  }), [activePublicOffer, communityId, postId, requestAuth, session?.accessToken, viewerIsAuthor]);
+  const controller = useBoostCampaignController(controllerInput);
+
+  React.useEffect(() => {
+    onAvailabilityChange(postId, controller.canBoost, controller.openBoost);
+  }, [controller.canBoost, controller.openBoost, onAvailabilityChange, postId]);
+
+  return <BoostCampaignSheet {...controller.sheetProps} />;
+}
 
 export function toPageVideoItem(item: FeedItem): VideoFeedItem | null {
   const { post } = item;
@@ -266,6 +302,8 @@ export function Feed({
   const [originalPostIds, setOriginalPostIds] = React.useState<Set<string>>(() => new Set());
   const [viewerItemId, setViewerItemId] = React.useState<string | null>(null);
   const [viewerRestoreState, setViewerRestoreState] = React.useState<VideoViewerReturnState | null>(null);
+  const [activeViewerItemId, setActiveViewerItemId] = React.useState<string | null>(null);
+  const [boostTarget, setBoostTarget] = React.useState<{ open: () => void; sourcePostId: string } | null>(null);
   const [videoCapabilityRevision, setVideoCapabilityRevision] = React.useState(0);
   const loadMoreSentinelRef = React.useRef<HTMLDivElement>(null);
   const paginationEnabled = hasMore !== undefined && Boolean(onLoadMore);
@@ -286,6 +324,7 @@ export function Feed({
     if (!resolution) return item;
     return {
       ...item,
+      boostEligibility: resolution.sourcePostId === boostTarget?.sourcePostId ? "eligible" : "unavailable",
       karaoke: resolution.karaoke,
       rewards: resolution.rewards,
       song: item.song ? {
@@ -295,7 +334,12 @@ export function Feed({
       } : undefined,
       study: resolution.study,
     };
-  }), [pageVideoItems, videoCapabilityCache, videoCapabilityRevision]);
+  }), [boostTarget?.sourcePostId, pageVideoItems, videoCapabilityCache, videoCapabilityRevision]);
+  const activeViewerResolution = React.useMemo(() => {
+    const item = resolvedPageVideoItems.find((candidate) => candidate.id === activeViewerItemId);
+    const sourcePostId = item?.song?.sourcePostId;
+    return sourcePostId ? videoCapabilityCache?.get(sourcePostId) ?? null : null;
+  }, [activeViewerItemId, resolvedPageVideoItems, videoCapabilityCache]);
   const feedItemsById = React.useMemo(
     () => new Map(items.map((item) => [item.id, item] as const)),
     [items],
@@ -316,12 +360,19 @@ export function Feed({
     feedItemsById.get(item.id)?.post.onShare?.();
   }, [feedItemsById]);
   const handleViewerActiveItemChange = React.useCallback((_item: VideoFeedItem, activeIndex: number) => {
+    setActiveViewerItemId(_item.id);
     if (!videoCapabilityCache) return;
     const sourcePostIds = adjacentVideoSourcePostIds(resolvedPageVideoItems, activeIndex);
     void videoCapabilityCache.prefetch(sourcePostIds).then((changed) => {
       if (changed) setVideoCapabilityRevision((current) => current + 1);
     });
   }, [resolvedPageVideoItems, videoCapabilityCache]);
+  const handleBoostAvailabilityChange = React.useCallback((sourcePostId: string, canBoost: boolean, open: () => void) => {
+    setBoostTarget(canBoost ? { open, sourcePostId } : null);
+  }, []);
+  const handleViewerBoost = React.useCallback((item: VideoFeedItem) => {
+    if (item.song?.sourcePostId === boostTarget?.sourcePostId) boostTarget.open();
+  }, [boostTarget]);
   const launchViewerAction = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState, href?: string) => {
     if (!href) return;
     const returnPath = currentRelativePath();
@@ -494,7 +545,7 @@ export function Feed({
         </div>
         {aside ? <div className="hidden w-72 shrink-0 lg:block">{aside}</div> : null}
       </div>
-      <Dialog onOpenChange={(open) => { if (!open) { setViewerItemId(null); setViewerRestoreState(null); clearVideoViewerReturnState(); } }} open={viewerItemId !== null}>
+      <Dialog onOpenChange={(open) => { if (!open) { setViewerItemId(null); setViewerRestoreState(null); setActiveViewerItemId(null); setBoostTarget(null); clearVideoViewerReturnState(); } }} open={viewerItemId !== null}>
         <DialogContent className="h-dvh w-screen max-w-none rounded-none border-0 p-0">
           <DialogTitle className="sr-only">Video viewer</DialogTitle>
           {viewerItemId ? (
@@ -505,6 +556,7 @@ export function Feed({
               initialPlaybackSeconds={viewerRestoreState?.playbackSeconds}
               items={resolvedPageVideoItems}
               onActiveItemChange={handleViewerActiveItemChange}
+              onBoost={handleViewerBoost}
               onComment={handleViewerComment}
               onKaraoke={handleViewerKaraoke}
               onLike={handleViewerLike}
@@ -514,6 +566,16 @@ export function Feed({
           ) : null}
         </DialogContent>
       </Dialog>
+      {viewerItemId && activeViewerResolution?.sourceCommunityId ? (
+        <VideoViewerBoostBridge
+          activePublicOffer={activeViewerResolution.activeRewardOffer}
+          communityId={activeViewerResolution.sourceCommunityId}
+          key={activeViewerResolution.sourcePostId}
+          onAvailabilityChange={handleBoostAvailabilityChange}
+          postId={activeViewerResolution.sourcePostId}
+          viewerIsAuthor={activeViewerResolution.viewerIsAuthor}
+        />
+      ) : null}
     </section>
   );
 }

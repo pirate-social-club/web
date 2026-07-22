@@ -72,6 +72,23 @@ export async function verifyDeployedVersions(targets, {
   throw new Error(`deployed version verification failed: ${lastErrors.join("; ")}`);
 }
 
+function positiveIntFromEnv(name, fallback) {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error(`${name} must be a positive integer, got ${raw}`);
+  }
+  return parsed;
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await verifyDeployedVersions(parseTargets(process.argv.slice(2)));
+  // Defaults suit the post-deploy case, where a mismatch means "not propagated
+  // yet" and retrying is correct. A caller re-checking that a deploy has not been
+  // REPLACED wants the opposite: a mismatch is terminal, so retrying just burns
+  // a minute before failing. Such callers set VERIFY_DEPLOYED_ATTEMPTS=1.
+  await verifyDeployedVersions(parseTargets(process.argv.slice(2)), {
+    attempts: positiveIntFromEnv("VERIFY_DEPLOYED_ATTEMPTS", DEFAULT_ATTEMPTS),
+    delayMs: positiveIntFromEnv("VERIFY_DEPLOYED_DELAY_MS", DEFAULT_DELAY_MS),
+  });
 }

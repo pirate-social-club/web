@@ -27,12 +27,20 @@ on:
         default: false
         type: boolean
 
-# Serialize releases per ref. cancel-in-progress stays false so a run that is
-# already applying migrations or deploying production is never killed midway;
-# staleness is handled by the production-freshness job instead.
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
+# NO workflow-level concurrency. Serializing the whole workflow per ref made every
+# merge queue behind the previous release end-to-end; with a ~20min release and a
+# push every ~10min the queue never drained (runs observed waiting 70min, then
+# getting cancelled unrun because GitHub keeps only one pending run per group).
+#
+# Serialization now sits on the two jobs that actually MUTATE a shared
+# environment, so validation runs overlap freely but deployments never do:
+#   staging     -> concurrency: staging-promotion
+#   production  -> concurrency: production-deploy
+#
+# Both keep cancel-in-progress: false — a run applying migrations or deploying
+# production must never be killed midway. Staleness is handled by terminating
+# superseded runs BEFORE they enter a lane (staging-freshness / production-
+# freshness), and by re-asserting the deployed SHAs around each staging gate.
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -201,6 +209,49 @@ jobs:
               coreSha: process.env.CORE_SHA,
             });
 
+  # Terminate superseded runs BEFORE they enter the staging promotion lane, so a
+  # stale commit never takes the lock and never overwrites newer staging state.
+  # Mirrors production-freshness, but checked early: holding the lane to deploy a
+  # commit that main has already moved past is pure queue latency for everyone
+  # behind it. workflow_dispatch is exempt — a manual staging run on a release/*
+  # branch is deliberate and has no "tip" to compare against.
+  staging-freshness:
+    name: Check staging freshness
+    needs: [release-inputs]
+    if: github.event_name != 'pull_request'
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      contents: read
+    outputs:
+      stale: ${{ steps.check.outputs.stale }}
+    steps:
+      - name: Compare run SHA against current main tip
+        id: check
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            if (context.eventName !== "push" || context.ref !== "refs/heads/main") {
+              core.setOutput("stale", "false");
+              core.notice("Not a push to main; staging promotion proceeds.");
+              return;
+            }
+            const { data: ref } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+            const tip = ref.object.sha;
+            if (tip !== context.sha) {
+              core.setOutput("stale", "true");
+              core.warning(
+                `Skipping staging promotion: main has advanced to ${tip}, but this run built ${context.sha}. ` +
+                `The release for ${tip} promotes instead.`
+              );
+              return;
+            }
+            core.setOutput("stale", "false");
+            core.notice(`Run SHA ${context.sha} is the current main tip; entering the staging promotion lane.`);
+
   # Deploy staging and bring its schema up to date. Nothing here talks to a
   # third-party chain or drives a browser: this is the shortest path to a staging
   # environment that the release gate can then exercise.
@@ -210,8 +261,17 @@ jobs:
     # after the live fleet satisfies its schema requirements". Deploying the
     # pinned API to staging before that check is the exact failure this prevents.
     # The gate reads the existing fleet and needs nothing from this deploy.
-    needs: [release-inputs, schema-gate]
-    if: github.event_name != 'pull_request'
+    needs: [release-inputs, schema-gate, staging-freshness]
+    if: github.event_name != 'pull_request' && needs.staging-freshness.outputs.stale == 'false'
+    # The staging promotion lane. Staging is a single shared environment: two runs
+    # deploying different commits into it concurrently would let an older run
+    # overwrite newer state while the newer run's gates are mid-flight, producing
+    # gate results for a SHA that is no longer deployed. This lock makes the
+    # deploy itself exclusive; the gates below re-assert the deployed SHAs so a
+    # trampled window is detected rather than silently passed.
+    concurrency:
+      group: staging-promotion
+      cancel-in-progress: false
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 30
     permissions:
@@ -460,6 +520,19 @@ jobs:
       - name: Install Playwright browser
         working-directory: web
         run: bunx playwright install --with-deps chromium
+      # Bind this gate to the exact SHAs this run deployed. Without the workflow
+      # -level lock, another run can enter the staging promotion lane the moment
+      # ours releases it, so "staging deployed OK" is no longer proof that our
+      # build is what we are about to exercise.
+      - name: Require this run's staging artifacts
+        working-directory: web
+        env:
+          EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          EXPECTED_WEB_SHA: ${{ github.sha }}
+        run: |
+          node scripts/verify-deployed-versions.mjs \
+            https://staging.pirate.sc/__version "$EXPECTED_WEB_SHA" \
+            https://api-staging.pirate.sc/__version "$EXPECTED_API_SHA"
       - name: Browser smoke staging
         timeout-minutes: 10
         working-directory: web
@@ -467,6 +540,21 @@ jobs:
           E2E_BASE_URL: https://staging.pirate.sc
           E2E_API_BASE_URL: https://api-staging.pirate.sc
         run: bun run test:e2e
+      # ...and re-assert AFTER. If staging was redeployed mid-gate, these results
+      # describe a build that is no longer there: fail rather than promote on
+      # evidence gathered against someone else's SHA. The superseding run has its
+      # own gate, so failing here loses no coverage.
+      - name: Re-verify staging artifacts were not replaced mid-gate
+        working-directory: web
+        env:
+          EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          EXPECTED_WEB_SHA: ${{ github.sha }}
+          # A mismatch here is terminal, not propagation lag: fail immediately.
+          VERIFY_DEPLOYED_ATTEMPTS: "1"
+        run: |
+          node scripts/verify-deployed-versions.mjs \
+            https://staging.pirate.sc/__version "$EXPECTED_WEB_SHA" \
+            https://api-staging.pirate.sc/__version "$EXPECTED_API_SHA"
       - name: Fetch staging song preview container health secret
         working-directory: core
         env:
@@ -638,6 +726,14 @@ jobs:
     # Manual production deploys remain default-off and can only deploy the
     # validated current main tip after the same freshness and staging gates.
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_production)) && needs.production-freshness.outputs.stale == 'false'
+    # The production deploy lane. This job applies migrations and deploys prod:
+    # it must be exclusive, and it must NEVER be cancelled midway — an
+    # interrupted migration is the one failure here that is not recoverable by
+    # re-running. Staleness is handled by production-freshness above, which
+    # rejects superseded runs before they reach this lock.
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
     runs-on: blacksmith-4vcpu-ubuntu-2404
     environment: production
     permissions:

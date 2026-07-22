@@ -249,6 +249,24 @@ describe("useBoostCampaignController", () => {
     expect(calls.confirm).toBe(2);
   });
 
+  test("checks a submitted receipt again instead of only polling an unchanged campaign", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    confirmError = new Error("confirmation timed out");
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("failed"));
+
+    confirmError = null;
+    act(() => view.result.current.sheetProps.onRefresh?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
+    expect(calls.transfer).toBe(1);
+    expect(calls.confirm).toBe(2);
+  });
+
   test("recovers a submitted transfer after reload and only retries confirmation", async () => {
     connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
     confirmError = new Error("confirmation timed out");

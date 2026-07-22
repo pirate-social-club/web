@@ -322,7 +322,18 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     setErrorMessage(undefined);
     setSheetState("confirming");
     try {
-      const funding = await api.rewards.confirmFundingQuote(targetCampaign.id, targetQuote.id, { tx_hash: hash });
+      // A receipt can be mined before it reaches the chain's safe block. Re-submit
+      // the same idempotent confirmation request while that happens; polling only
+      // the campaign cannot advance a `confirming` funding effect.
+      let funding: RewardCampaignFundingQuote | null = null;
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        funding = await api.rewards.confirmFundingQuote(targetCampaign.id, targetQuote.id, { tx_hash: hash });
+        if (funding.status !== "confirming") break;
+        await new Promise((resolve) => window.setTimeout(resolve, 1_500));
+      }
+      if (!funding || funding.status === "confirming") {
+        throw new Error("Funding was submitted, but campaign activation is still pending. Retry confirmation; do not send again.");
+      }
       // Keep this string check compatible with the currently pinned API contract while
       // the release pin advances to the API version that adds refund_pending.
       if ((funding.status as string) === "refund_pending") {
@@ -488,7 +499,13 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       onDailyRewardChange: setDailyRewardInput,
       onEligibleActivityChange: setEligibleActivity,
       onOpenChange: setSheetOpen,
-      onRefresh: () => campaign && void pollCampaign(campaign.id).catch((error) => setErrorMessage(getErrorMessage(error, "Campaign activation is still pending."))),
+      onRefresh: () => {
+        if (campaign && quote && transactionHash) {
+          void confirmSubmittedFunding(campaign, quote, transactionHash);
+          return;
+        }
+        if (campaign) void pollCampaign(campaign.id).catch((error) => setErrorMessage(getErrorMessage(error, "Campaign activation is still pending.")));
+      },
       onRetry: () => {
         if (campaign && quote && transactionHash) {
           void confirmSubmittedFunding(campaign, quote, transactionHash);

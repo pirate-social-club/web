@@ -202,8 +202,8 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         setQuote(pending.quote);
         setTransactionHash(pending.transactionHash);
         if (pending.transactionHash) {
-          setErrorMessage("Your transfer was submitted. Retry confirmation; do not send again.");
-          setSheetState("failed");
+          setErrorMessage(undefined);
+          setSheetState("confirming");
         } else {
           setSheetState(pending.quote.expires_at <= Math.floor(Date.now() / 1_000) ? "expired" : "quote");
         }
@@ -331,6 +331,10 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       if (funding.status === "refunded") {
         throw new ApiError("funding_refunded", "Funding was refunded and the campaign was not activated.", 409);
       }
+      if (funding.status === "confirming") {
+        setSheetState("confirming");
+        return;
+      }
       await pollCampaign(targetCampaign.id);
       if (input.communityId) {
         globalThis.localStorage?.removeItem(pendingFundingStorageKey(input.communityId, input.postId));
@@ -355,8 +359,8 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         setSheetState("funding-review");
         return;
       }
-      setErrorMessage(getErrorMessage(error, "The transfer was submitted, but confirmation is still pending. Retry confirmation; do not send again."));
-      setSheetState("failed");
+      setErrorMessage(getErrorMessage(error, "The transfer was submitted and remains pending. Do not send again."));
+      setSheetState("confirming");
     } finally {
       setBusy(false);
     }
@@ -419,7 +423,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       setErrorMessage(undefined);
       setSheetState("compose");
     }
-    else if (transactionHash) setSheetState("failed");
+    else if (transactionHash) setSheetState("confirming");
     else if (quote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(campaign);
     else setSheetState("quote");
     setSheetOpen(true);
@@ -488,7 +492,11 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       onDailyRewardChange: setDailyRewardInput,
       onEligibleActivityChange: setEligibleActivity,
       onOpenChange: setSheetOpen,
-      onRefresh: () => campaign && void pollCampaign(campaign.id).catch((error) => setErrorMessage(getErrorMessage(error, "Campaign activation is still pending."))),
+      onRefresh: () => {
+        if (campaign && quote && transactionHash) {
+          void confirmSubmittedFunding(campaign, quote, transactionHash);
+        }
+      },
       onRetry: () => {
         if (campaign && quote && transactionHash) {
           void confirmSubmittedFunding(campaign, quote, transactionHash);

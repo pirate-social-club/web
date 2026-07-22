@@ -229,7 +229,7 @@ describe("useBoostCampaignController", () => {
     expect(calls.confirm).toBe(1);
   });
 
-  test("retries confirmation after an ambiguous error without sending twice", async () => {
+  test("keeps an ambiguous confirmation pending and checks it without sending twice", async () => {
     connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
     confirmError = new Error("confirmation timed out");
     const view = renderHook(() => useBoostCampaignController(input()));
@@ -238,12 +238,32 @@ describe("useBoostCampaignController", () => {
     act(() => view.result.current.sheetProps.onConfirm?.());
     await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
     act(() => view.result.current.sheetProps.onConfirm?.());
-    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("failed"));
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("confirming"));
     expect(view.result.current.sheetProps.retryLabel).toBe("Retry confirmation");
     expect(calls.transfer).toBe(1);
 
     confirmError = null;
-    act(() => view.result.current.sheetProps.onRetry?.());
+    act(() => view.result.current.sheetProps.onRefresh?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
+    expect(calls.transfer).toBe(1);
+    expect(calls.confirm).toBe(2);
+  });
+
+  test("rechecks a mined transfer that has not reached safe finality", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    confirmStatus = "confirming";
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("confirming"));
+    expect(calls.transfer).toBe(1);
+    expect(calls.confirm).toBe(1);
+
+    confirmStatus = "confirmed";
+    act(() => view.result.current.sheetProps.onRefresh?.());
     await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
     expect(calls.transfer).toBe(1);
     expect(calls.confirm).toBe(2);
@@ -258,14 +278,15 @@ describe("useBoostCampaignController", () => {
     act(() => firstView.result.current.sheetProps.onConfirm?.());
     await waitFor(() => expect(firstView.result.current.sheetProps.state).toBe("quote"));
     act(() => firstView.result.current.sheetProps.onConfirm?.());
-    await waitFor(() => expect(firstView.result.current.sheetProps.state).toBe("failed"));
+    await waitFor(() => expect(firstView.result.current.sheetProps.state).toBe("confirming"));
     firstView.unmount();
 
     confirmError = null;
     const restoredView = renderHook(() => useBoostCampaignController(input()));
     await waitFor(() => expect(restoredView.result.current.sheetProps.retryLabel).toBe("Retry confirmation"));
     act(() => restoredView.result.current.openBoost());
-    act(() => restoredView.result.current.sheetProps.onRetry?.());
+    expect(restoredView.result.current.sheetProps.state).toBe("confirming");
+    act(() => restoredView.result.current.sheetProps.onRefresh?.());
     await waitFor(() => expect(restoredView.result.current.sheetProps.state).toBe("active"));
     expect(calls.transfer).toBe(1);
     expect(calls.confirm).toBe(2);

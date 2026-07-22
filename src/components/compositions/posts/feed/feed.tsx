@@ -287,6 +287,7 @@ export function Feed({
     return {
       ...item,
       karaoke: resolution.karaoke,
+      rewards: resolution.rewards,
       song: item.song ? {
         ...item.song,
         karaokeHref: resolution.karaokeHref,

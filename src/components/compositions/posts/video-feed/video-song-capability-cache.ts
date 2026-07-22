@@ -6,6 +6,10 @@ export interface VideoSongCapabilityResolution {
   karaoke: VideoFeedCapability;
   karaokeHref?: string;
   readMode: VideoSongCapabilityReadMode;
+  rewards?: {
+    karaoke?: { amountLabel: string };
+    study?: { amountLabel: string };
+  };
   sourcePostId: string;
   study: VideoFeedCapability;
   studyHref?: string;

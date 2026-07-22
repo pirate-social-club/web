@@ -9,8 +9,10 @@ import type {
   VideoSongCapabilityResolution,
 } from "@/components/compositions/posts/video-feed/video-song-capability-cache";
 import type { VideoFeedCapability } from "@/components/compositions/posts/video-feed/video-feed.types";
+import { rewardCtaAmountLabel } from "@/components/compositions/rewards/reward-surfaces";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
+import type { ApiPublicRewardOffer } from "@/lib/api/client-api-types";
 
 function capabilityStatus(value: unknown): VideoFeedCapability {
   return value === "ready" || value === "locked" ? value : "unavailable";
@@ -20,9 +22,10 @@ type PostWithKaraokeCapability = {
   karaoke_capability?: { status?: unknown } | null;
 };
 
-export function resolveVideoSongCapabilities({ post, readMode, sourcePostId }: {
+export function resolveVideoSongCapabilities({ post, readMode, rewardOffer, sourcePostId }: {
   post: LocalizedPostResponse;
   readMode: "authenticated" | "public";
+  rewardOffer?: ApiPublicRewardOffer | null;
   sourcePostId: string;
 }): VideoSongCapabilityResolution {
   const ageBlocked = post.age_gate_viewer_state === "proof_required";
@@ -30,10 +33,19 @@ export function resolveVideoSongCapabilities({ post, readMode, sourcePostId }: {
     ? "unavailable"
     : capabilityStatus((post as LocalizedPostResponse & PostWithKaraokeCapability).karaoke_capability?.status);
   const study = ageBlocked ? "unavailable" : capabilityStatus(post.study_capability?.status);
+  const rewardLabel = rewardOffer ? rewardCtaAmountLabel(rewardOffer.daily_reward_cents) : undefined;
   return {
     karaoke,
     karaokeHref: karaoke === "ready" ? `/p/${encodeURIComponent(sourcePostId)}/karaoke` : undefined,
     readMode,
+    rewards: rewardLabel && !ageBlocked ? {
+      karaoke: karaoke === "ready" && rewardOffer?.eligible_activity !== "study"
+        ? { amountLabel: rewardLabel }
+        : undefined,
+      study: study === "ready" && rewardOffer?.eligible_activity !== "karaoke"
+        ? { amountLabel: rewardLabel }
+        : undefined,
+    } : undefined,
     sourcePostId,
     study,
     studyHref: study === "ready" ? `/p/${encodeURIComponent(sourcePostId)}/study` : undefined,
@@ -59,9 +71,13 @@ export function useVideoViewerSongCapabilities(contentLocale: string): VideoView
       hasAccessToken,
       postId: sourcePostId,
     });
+    const rewardOffer = loaded.post.post.community && loaded.post.age_gate_viewer_state !== "proof_required"
+      ? await api.rewards.getActiveCampaignForSong(loaded.post.post.community, sourcePostId).catch(() => null)
+      : null;
     return resolveVideoSongCapabilities({
       post: loaded.post,
       readMode: loaded.readMode,
+      rewardOffer,
       sourcePostId,
     });
   }, [api, contentLocale, hasAccessToken]);

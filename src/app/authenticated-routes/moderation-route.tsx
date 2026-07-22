@@ -1218,6 +1218,7 @@ export function CommunityModerationPage({
           initialRootLabel={state.community.route_slug ?? ""}
           namespaceAttachments={state.namespaceAttachments}
           onClearPendingSession={clearPendingNamespaceSession}
+          onRestorePrimary={state.restoreNamespacePrimary}
           onBackClick={() => navigate(moderationIndexPath)}
           onSessionCleared={() => {
             void clearPendingNamespaceSession();
@@ -1227,7 +1228,6 @@ export function CommunityModerationPage({
       );
     }
   }
-
   if (isMobile) {
     return (
       <MobileModerationSectionLayout

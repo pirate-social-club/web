@@ -138,6 +138,22 @@ export function useCommunityModerationState(communityId: string) {
     },
   }), [api, community?.namespace_verification, communityId, namespaceAttachments, refreshNamespaceAttachments, setCommunity]);
 
+  const restoreNamespacePrimary = React.useCallback(async (namespaceVerificationId: string) => {
+    try {
+      const updatedCommunity = await api.communities.attachNamespace(
+        communityId,
+        namespaceVerificationId,
+        "primary",
+      );
+      setCommunity(updatedCommunity);
+      setActiveNamespaceSessionId(null);
+      await refreshNamespaceAttachments();
+      toast.success("Namespace restored as the community route.");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not restore the namespace route."));
+    }
+  }, [api, communityId, refreshNamespaceAttachments, setCommunity]);
+
   const saveCommunity = React.useCallback(
     async (
       action: () => Promise<ApiCommunity>,
@@ -193,6 +209,7 @@ export function useCommunityModerationState(communityId: string) {
     namespaceAttachments,
     namespaceVerificationCallbacks,
     refreshNamespaceAttachments,
+    restoreNamespacePrimary,
     session,
     setActiveNamespaceSessionId,
     setCommunity,

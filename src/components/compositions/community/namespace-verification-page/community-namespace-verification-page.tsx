@@ -56,6 +56,7 @@ export interface CommunityNamespaceVerificationPageProps {
   initialRootLabel?: string;
   onBackClick?: () => void;
   onClearPendingSession?: () => Promise<void> | void;
+  onRestorePrimary?: (namespaceVerificationId: string) => Promise<void> | void;
   onSessionCleared?: () => void;
   onSessionStarted?: (sessionId: string) => void;
   onVerified?: (namespaceVerificationId: string) => void;
@@ -71,6 +72,7 @@ export function CommunityNamespaceVerificationPage({
   initialRootLabel = "",
   onBackClick,
   onClearPendingSession,
+  onRestorePrimary,
   onSessionCleared,
   onSessionStarted,
   onVerified,
@@ -84,6 +86,7 @@ export function CommunityNamespaceVerificationPage({
     spaces: { label: family.spacesLabel, rootInputLabel: family.spacesRootLabel },
   };
   const [clearingPending, setClearingPending] = React.useState(false);
+  const [restoringPrimary, setRestoringPrimary] = React.useState(false);
   const attachedPrimary = namespaceAttachments.find(
     (namespace) => namespace.namespace_role === "primary" && namespace.namespace_verification === attachedNamespaceVerificationId,
   );
@@ -91,6 +94,10 @@ export function CommunityNamespaceVerificationPage({
     attachedNamespaceVerificationId && attachedPrimary?.verification_status === "verified",
   );
   const needsPrimaryRecovery = Boolean(attachedNamespaceVerificationId && !hasAttachedNamespace);
+  const recoverableNamespace = findRecoverableNamespace({
+    attachedNamespaceVerificationId,
+    namespaceAttachments,
+  });
   const [addingMirror, setAddingMirror] = React.useState(
     Boolean(attachedNamespaceVerificationId && activeSessionId),
   );
@@ -108,6 +115,16 @@ export function CommunityNamespaceVerificationPage({
       setClearingPending(false);
     }
   }, [clearingPending, onClearPendingSession]);
+
+  const handleRestorePrimary = React.useCallback(async () => {
+    if (!onRestorePrimary || !recoverableNamespace || restoringPrimary) return;
+    setRestoringPrimary(true);
+    try {
+      await onRestorePrimary(recoverableNamespace.namespace_verification);
+    } finally {
+      setRestoringPrimary(false);
+    }
+  }, [onRestorePrimary, recoverableNamespace, restoringPrimary]);
 
   const flow = useNamespaceVerificationFlow({
     callbacks,
@@ -198,6 +215,26 @@ export function CommunityNamespaceVerificationPage({
   const hnsStatusTone = flow.isFailed || flow.isExpired || flow.isDnsSetupRequired || flow.isChallengePending
     ? "warning"
     : "muted";
+
+  if (needsPrimaryRecovery && recoverableNamespace && onRestorePrimary) {
+    const label = recoverableNamespace.family === "spaces"
+      ? `@${recoverableNamespace.root_label}`
+      : `.${recoverableNamespace.root_label}`;
+
+    return (
+      <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8">
+        <Type as="h1" variant="h1" className="md:text-4xl">Restore namespace</Type>
+        <div className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card p-4 md:p-5">
+          <FormNote tone="warning">
+            {label} is already verified and its signed DNS zone is serving. Restore this existing verification as the community&apos;s primary route; no DNS or wallet update is required.
+          </FormNote>
+          <Button loading={restoringPrimary} onClick={handleRestorePrimary}>
+            Restore as primary
+          </Button>
+        </div>
+      </section>
+    );
+  }
 
   if (hasAttachedNamespace && !addingMirror) {
     const publicCommunityUrl = attachedRouteSlug ? `https://pirate.sc/c/${attachedRouteSlug}` : null;
@@ -418,4 +455,24 @@ export function CommunityNamespaceVerificationPage({
       ) : null}
     </section>
   );
+}
+
+export function findRecoverableNamespace(input: {
+  attachedNamespaceVerificationId?: string | null;
+  namespaceAttachments: ApiCommunityNamespaceAttachment[];
+}): ApiCommunityNamespaceAttachment | null {
+  if (!input.attachedNamespaceVerificationId) return null;
+  const stalePrimary = input.namespaceAttachments.find(
+    (namespace) => namespace.namespace_role === "primary"
+      && namespace.namespace_verification === input.attachedNamespaceVerificationId
+      && namespace.verification_status !== "verified",
+  );
+  if (!stalePrimary) return null;
+
+  return input.namespaceAttachments.find(
+    (namespace) => namespace.namespace_role === "mirror"
+      && namespace.verification_status === "verified"
+      && namespace.family === stalePrimary.family
+      && namespace.root_label === stalePrimary.root_label,
+  ) ?? null;
 }

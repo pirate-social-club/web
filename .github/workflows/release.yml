@@ -574,6 +574,7 @@ jobs:
       # ours releases it, so "staging deployed OK" is no longer proof that our
       # build is what we are about to exercise.
       - name: Require this run's staging artifacts
+        id: require-staging-artifacts
         working-directory: web
         env:
           EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
@@ -594,6 +595,13 @@ jobs:
       # evidence gathered against someone else's SHA. The superseding run has its
       # own gate, so failing here loses no coverage.
       - name: Re-verify staging artifacts were not replaced mid-gate
+        # Must run even when the smoke FAILED — that is precisely when the answer
+        # matters. Without it a smoke failure is ambiguous: real product
+        # regression, or another run redeploying staging mid-gate with the failure
+        # an artifact of trampling. Scoped to !cancelled() plus a successful
+        # pre-assertion rather than always(), so it stays quiet when setup or the
+        # pre-assertion already failed and there is nothing meaningful to compare.
+        if: ${{ !cancelled() && steps.require-staging-artifacts.outcome == 'success' }}
         working-directory: web
         env:
           EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}

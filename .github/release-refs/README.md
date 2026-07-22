@@ -12,6 +12,6 @@ before staging or production can start.
 Web releases use these pinned commits; they never select the API or Core
 repository's current `main` implicitly.
 
-Current release intent: deploy the public-read Workers cache invalidation fix with API
-`da1fb0bc8e1593eb7b8abdd4a3e79501b801b970` and Core
-`dcd5fe6422e44d3bcb92729c6fe8127d3b07c6e8`.
+Current release intent: deploy the public-read cache eviction canary with API
+`1eded9e82dcc32a0c8f9d0025d933f4a4164a935` and Core
+`387968e2008891b30cbcaa38a40233fc2341f612`.

@@ -37,6 +37,15 @@ export interface KaraokeStreamingSttAdapter {
   start(input: {
     attemptId: string;
     sessionId: string;
+    /**
+     * Sequence the adapter's STT envelope counter must resume FROM: the first
+     * event it emits is `initialSequence + 1`. The host rejects non-monotonic STT
+     * sequences and does not advance `lastSttSequence` on rejection, so an adapter
+     * that restarts its counter at 0 has every event refused until it climbs back
+     * past the pre-restart high-water mark. Both restart paths (same-host provider
+     * reconnect, fresh-DO restore) MUST pass the host's surviving counter.
+     */
+    initialSequence: number;
     onMessage: (message: KaraokeSttAdapterMessage) => Promise<void>;
     /**
      * Fired when the provider stream drops unexpectedly (network close/error, or
@@ -265,6 +274,11 @@ export class KaraokeSessionHost {
     try {
       await this.sttAdapter.start({
         attemptId: this.state.attemptId,
+        // Resume the STT envelope counter from the surviving high-water mark.
+        // This is the ONLY start() call site, so it covers the initial start, the
+        // provider-reconnect path (reconnectStt) and the restore path
+        // (resumeSttIfRecording) alike.
+        initialSequence: this.lastSttSequence ?? 0,
         onMessage: async (message) => {
           // Serialize message handling (incl. commit acks) on the commit chain.
           this.enqueueCommitTask(() => this.processAdapterMessage(message));

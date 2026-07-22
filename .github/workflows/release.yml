@@ -318,29 +318,35 @@ jobs:
       - name: Install web dependencies
         working-directory: web
         run: bun install --frozen-lockfile
-      - name: Audit web dependencies
-        working-directory: web
-        # rwsdk currently depends on decompress@4.2.1; no patched decompress release
-        # exists yet. Keep the audit strict while ignoring only that upstream advisory.
-        run: bun audit --audit-level=high --ignore GHSA-mp2f-45pm-3cg9
       - name: Install shared dependencies
         working-directory: api/services/shared
         run: bun install --frozen-lockfile
-      - name: Audit shared dependencies
-        working-directory: api/services/shared
-        run: bun audit --audit-level=high
       - name: Install API dependencies
         working-directory: api/services/api
         run: bun install --frozen-lockfile
-      - name: Audit API dependencies
-        working-directory: api/services/api
-        run: bun audit --audit-level=high
       - name: Install core dependencies
         working-directory: core
         run: npm ci
-      - name: Audit core dependencies
-        working-directory: core
-        run: npm audit --audit-level=high
+      # Release-path audit: CRITICAL only, and only advisories we have not
+      # consciously accepted in .github/dependency-audit-baseline.json. High
+      # findings are reported by the scheduled dependency-audit workflow, which
+      # opens a tracked issue instead of turning someone's unrelated merge red.
+      #
+      # Advisory publication is a time-varying input we do not control. It used to
+      # sit on the release critical path at --audit-level=high, so a newly
+      # published advisory failed every release until someone hand-patched an
+      # --ignore: 5 of the 20 release failures in the sampled window were exactly
+      # this, with no dependency change involved.
+      - name: Audit dependencies for unaccepted critical advisories
+        working-directory: web
+        run: |
+          node scripts/ci/dependency-audit.mjs \
+            --mode release \
+            --baseline .github/dependency-audit-baseline.json \
+            --target .:bun \
+            --target ../api/services/shared:bun \
+            --target ../api/services/api:bun \
+            --target ../core:npm
       # IN-LANE freshness. The staging-freshness job is only a cheap queue filter:
       # it runs before schema-gate's ~10min fleet scan, so main can advance while
       # this run is still waiting, and the early check cannot prove the run is
@@ -458,7 +464,19 @@ jobs:
     needs: [release-inputs]
     if: github.event_name != 'pull_request'
     runs-on: blacksmith-2vcpu-ubuntu-2404
-    timeout-minutes: 15
+    # 25min, raised from 15 on 2026-07-22. The 15min ceiling sat INSIDE the
+    # healthy scan's natural variance, so the runner killed a fail-closed check
+    # before it could return a verdict. Measured on consecutive main pushes:
+    # 12m26s, 12m47s, 14m44s, 14m59s (all success) — then run 29947790771 took
+    # 15m20s and was killed mid-scan, leaving main undeployed. A timed-out job
+    # reports as `cancelled`, which reads like supersession, so this failure mode
+    # is expensive to diagnose and easy to misattribute.
+    #
+    # This is CONTAINMENT, not headroom to grow into: it buys a verdict, it does
+    # not fix the 12-15min scan latency, which still scales with fleet size. The
+    # attestation fast-path is the real fix. Watch the duration recorded in the
+    # job summary below — if it climbs toward 25, raise the fast-path, not this.
+    timeout-minutes: 25
     permissions:
       contents: read
     steps:
@@ -494,6 +512,11 @@ jobs:
           echo "Probing read access to community-d1-shard-pool-staging..."
           bunx wrangler@4.100.0 d1 execute community-d1-shard-pool-staging \
             --remote --json --command "SELECT COUNT(*) AS n FROM d1_pool" 2>&1 || true
+      # Fleet-scan duration is the input that invalidated the old ceiling, so make
+      # it a first-class number instead of something you reconstruct from job
+      # timestamps during an incident. Fleet growth shows up here first.
+      - name: Record schema scan start
+        run: echo "SCHEMA_SCAN_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - name: Verify staging fleet satisfies pinned API schema requirements
         # Keep staging concurrency low: high fan-out causes random Wrangler/D1
         # read failures across the fleet and makes this fail-closed gate flaky.
@@ -515,6 +538,21 @@ jobs:
             --canonical-baseline api/services/api/docs/attestations/community-schema/staging-canonical-baseline.json \
             --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
             --concurrency 2
+      # always(): a SLOW scan that then fails is exactly the sample we must not
+      # drop. Never fails the job — an observability step must not be able to
+      # block a release.
+      - name: Report schema scan duration
+        if: always()
+        continue-on-error: true
+        run: |
+          elapsed=$(( $(date +%s) - ${SCHEMA_SCAN_STARTED_AT:-$(date +%s)} ))
+          budget=$(( 25 * 60 ))
+          printf 'Schema fleet scan: %dm%02ds (job ceiling %dm, %d%% used)\n' \
+            "$(( elapsed / 60 ))" "$(( elapsed % 60 ))" "$(( budget / 60 ))" \
+            "$(( elapsed * 100 / budget ))" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$elapsed" -gt $(( budget * 70 / 100 )) ]; then
+            echo "::warning::Schema fleet scan used ${elapsed}s of the ${budget}s ceiling (>70%). Fleet growth is eroding the margin — pursue the attestation fast-path before raising the timeout again."
+          fi
       - name: Upload staging schema manifest
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -574,6 +612,7 @@ jobs:
       # ours releases it, so "staging deployed OK" is no longer proof that our
       # build is what we are about to exercise.
       - name: Require this run's staging artifacts
+        id: require-staging-artifacts
         working-directory: web
         env:
           EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
@@ -594,12 +633,22 @@ jobs:
       # evidence gathered against someone else's SHA. The superseding run has its
       # own gate, so failing here loses no coverage.
       - name: Re-verify staging artifacts were not replaced mid-gate
+        # Must run even when the smoke FAILED — that is precisely when the answer
+        # matters. Without it a smoke failure is ambiguous: real product
+        # regression, or another run redeploying staging mid-gate with the failure
+        # an artifact of trampling. Scoped to !cancelled() plus a successful
+        # pre-assertion rather than always(), so it stays quiet when setup or the
+        # pre-assertion already failed and there is nothing meaningful to compare.
+        if: ${{ !cancelled() && steps.require-staging-artifacts.outcome == 'success' }}
         working-directory: web
         env:
           EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
           EXPECTED_WEB_SHA: ${{ github.sha }}
-          # A mismatch here is terminal, not propagation lag: fail immediately.
-          VERIFY_DEPLOYED_ATTEMPTS: "1"
+          # A MISMATCH here is terminal (staging was replaced) — fail immediately.
+          # A transport failure is NOT: it says nothing about what is deployed, so
+          # it must still retry. Setting ATTEMPTS=1 conflated the two and failed a
+          # green run on one `fetch failed` (run 29937199404), blocking production.
+          VERIFY_DEPLOYED_FAIL_FAST_ON_MISMATCH: "1"
         run: |
           node scripts/verify-deployed-versions.mjs \
             https://staging.pirate.sc/__version "$EXPECTED_WEB_SHA" \
@@ -822,29 +871,19 @@ jobs:
       - name: Install web dependencies
         working-directory: web
         run: bun install --frozen-lockfile
-      - name: Audit web dependencies
-        working-directory: web
-        # rwsdk currently depends on decompress@4.2.1; no patched decompress release
-        # exists yet. Keep the audit strict while ignoring only that upstream advisory.
-        run: bun audit --audit-level=high --ignore GHSA-mp2f-45pm-3cg9
+      # No dependency audit here. The staging job in THIS SAME RUN already audited
+      # the identical web/api/core SHAs, and production cannot be reached without
+      # it. Running the same audit twice doubled our exposure to a time-varying
+      # external input for no additional signal.
       - name: Install shared dependencies
         working-directory: api/services/shared
         run: bun install --frozen-lockfile
-      - name: Audit shared dependencies
-        working-directory: api/services/shared
-        run: bun audit --audit-level=high
       - name: Install API dependencies
         working-directory: api/services/api
         run: bun install --frozen-lockfile
-      - name: Audit API dependencies
-        working-directory: api/services/api
-        run: bun audit --audit-level=high
       - name: Install core dependencies
         working-directory: core
         run: npm ci
-      - name: Audit core dependencies
-        working-directory: core
-        run: npm audit --audit-level=high
       # Fresh check of the LIVE PRODUCTION fleet, immediately before migrations and
       # deploy. The staging schema-gate is a promotion gate; this is the real one —
       # the allocated prod fleet can change between then and now, so we re-attest it

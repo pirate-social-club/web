@@ -1,0 +1,25 @@
+{
+  "$comment": [
+    "Reviewed exceptions to the dependency advisory audit. Every entry needs an",
+    "advisory id, a reason someone actually reasoned about, and an expiry date.",
+    "",
+    "Release runs honour these regardless of expiry, so a lapsed date can never",
+    "block a deploy on a day nobody chose. The scheduled dependency-audit job",
+    "fails on a lapsed entry instead, which forces review on a real deadline",
+    "without coupling it to whoever merges next.",
+    "",
+    "Adding an entry is a security decision, not a build fix. Say why the risk is",
+    "acceptable, not merely that the build is red."
+  ],
+  "exceptions": [
+    {
+      "advisory": "GHSA-mp2f-45pm-3cg9",
+      "package": "decompress",
+      "severity": "critical",
+      "reason": "rwsdk depends on decompress@4.2.1 and no patched release exists upstream. Carried over verbatim in effect from the inline `--ignore GHSA-mp2f-45pm-3cg9` that release.yml passed to `bun audit` before this file existed, so it changes no security posture: the advisory was already suppressed on the release path.",
+      "risk_assessment": "UNVERIFIED — nobody has confirmed whether decompress can be reached with attacker-controlled archives in our build. The pre-existing suppression carried no such analysis either. Until an owner of the rwsdk build path assesses reachability and replaces this field, treat the exception as inherited, not justified.",
+      "expires": "2026-10-01",
+      "tracking": "https://github.com/pirate-social-club/web/issues/new?title=decompress+advisory+review"
+    }
+  ]
+}

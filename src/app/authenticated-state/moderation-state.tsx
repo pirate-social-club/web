@@ -28,6 +28,28 @@ import { useCommunityTelegramState } from "./use-community-telegram-state";
 import { useCommunityVisualPolicyState } from "./use-community-visual-policy-state";
 import { useCommunityHandlePolicyState } from "./use-community-handle-policy-state";
 
+export function namespaceRoleForCompletedVerification(input: {
+  currentNamespaceVerificationId: string | null | undefined;
+  completedNamespaceVerificationId: string;
+  attachments: ApiCommunityNamespaceAttachment[];
+}): "primary" | "mirror" {
+  if (!input.currentNamespaceVerificationId || input.completedNamespaceVerificationId === input.currentNamespaceVerificationId) {
+    return "primary";
+  }
+
+  const currentPrimary = input.attachments.find(
+    (attachment) => attachment.namespace_role === "primary"
+      && attachment.namespace_verification === input.currentNamespaceVerificationId,
+  );
+
+  // A rebuilt verification gets a new id. Promote it only when the current
+  // primary is explicitly present and no longer routable; otherwise preserve
+  // the normal mirror-attachment behavior.
+  return currentPrimary && currentPrimary.verification_status !== "verified"
+    ? "primary"
+    : "mirror";
+}
+
 export function useCommunityModerationState(communityId: string) {
   const api = useApi();
   const session = useSession();
@@ -89,10 +111,11 @@ export function useCommunityModerationState(communityId: string) {
       });
 
       if (result.status === "verified" && result.namespace_verification) {
-        const namespaceRole = !community?.namespace_verification
-          || result.namespace_verification === community.namespace_verification
-          ? "primary"
-          : "mirror";
+        const namespaceRole = namespaceRoleForCompletedVerification({
+          currentNamespaceVerificationId: community?.namespace_verification,
+          completedNamespaceVerificationId: result.namespace_verification,
+          attachments: namespaceAttachments,
+        });
         const updatedCommunity = await api.communities.attachNamespace(
           communityId,
           result.namespace_verification,
@@ -113,7 +136,7 @@ export function useCommunityModerationState(communityId: string) {
       const result = await api.verification.getNamespaceSession(namespaceVerificationSessionId);
       return toNamespaceSessionResult(result);
     },
-  }), [api, community?.namespace_verification, communityId, refreshNamespaceAttachments, setCommunity]);
+  }), [api, community?.namespace_verification, communityId, namespaceAttachments, refreshNamespaceAttachments, setCommunity]);
 
   const saveCommunity = React.useCallback(
     async (

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ScorableKaraokeLine } from "../src/scoring";
 import { createKaraokeSessionState } from "../src/session";
-import { KaraokeSessionHost } from "../src/session-host";
+import { KaraokeSessionHost, type KaraokeTransportGuardDiagnostic } from "../src/session-host";
 import {
   FakeKaraokeEffectRunner,
   FakeKaraokeStreamingSttAdapter,
@@ -204,5 +204,92 @@ describe("KaraokeSessionHost (package)", () => {
       lastClientSequence: 4,
       lastSttSequence: 2,
     });
+  });
+});
+
+describe("KaraokeSessionHost transport guard diagnostics", () => {
+  function hostWithDiagnostics() {
+    const diagnostics: KaraokeTransportGuardDiagnostic[] = [];
+    const effectRunner = new FakeKaraokeEffectRunner();
+    const sttAdapter = new FakeKaraokeStreamingSttAdapter();
+    const host = new KaraokeSessionHost(state(), effectRunner, sttAdapter, {
+      onTransportGuardFailure: (diagnostic) => {
+        diagnostics.push(diagnostic);
+      },
+    });
+    return { diagnostics, effectRunner, host, sttAdapter };
+  }
+
+  test("records a client-channel rejection with both sequences", async () => {
+    const { diagnostics, host } = hostWithDiagnostics();
+    await host.handleClientEvent(client(5, { postId: "post-1", startedAtAudioMs: 0, type: "start" }));
+    // Replaying 5 is non-monotonic against the accepted high-water mark of 5.
+    await host.handleClientEvent(client(5, { audioTimeMs: 10, type: "pause" }));
+
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toMatchObject({
+      attemptId: ENVELOPE.attemptId,
+      channel: "client",
+      code: "non_monotonic_sequence",
+      incomingSequence: 5,
+      previousSequence: 5,
+      sessionId: ENVELOPE.sessionId,
+    });
+  });
+
+  test("records an STT-channel rejection and the stream generation", async () => {
+    const { diagnostics, host, sttAdapter } = hostWithDiagnostics();
+    await host.handleClientEvent(client(1, { postId: "post-1", startedAtAudioMs: 0, type: "start" }));
+    await sttAdapter.emit(stt(4));
+    await host.drainCommitChain();
+    // A restarted stream replaying 1 against a high-water mark of 4 — the shape
+    // the seeding defect produced in production.
+    await sttAdapter.emit(stt(1));
+    await host.drainCommitChain();
+
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toMatchObject({
+      channel: "stt",
+      code: "non_monotonic_sequence",
+      incomingSequence: 1,
+      previousSequence: 4,
+    });
+    expect(diagnostics[0]?.sttStreamGeneration).toBe(sttAdapter.streamGeneration);
+  });
+
+  test("stays silent on healthy traffic", async () => {
+    const { diagnostics, host, sttAdapter } = hostWithDiagnostics();
+    await host.handleClientEvent(client(1, { postId: "post-1", startedAtAudioMs: 0, type: "start" }));
+    await host.handleAudioFrame({
+      ...ENVELOPE,
+      chunkId: 1,
+      pcm16: new ArrayBuffer(8),
+      sampleRate: 16000,
+      sequence: 2,
+      songEndMs: 400,
+      songStartMs: 0,
+      type: "audio_chunk",
+    });
+    await sttAdapter.emit(stt(1));
+    await sttAdapter.emit(stt(2));
+    await host.drainCommitChain();
+
+    expect(diagnostics).toEqual([]);
+  });
+
+  test("a throwing sink cannot break the transport path", async () => {
+    const effectRunner = new FakeKaraokeEffectRunner();
+    const sttAdapter = new FakeKaraokeStreamingSttAdapter();
+    const host = new KaraokeSessionHost(state(), effectRunner, sttAdapter, {
+      onTransportGuardFailure: () => {
+        throw new Error("sink exploded");
+      },
+    });
+    await host.handleClientEvent(client(5, { postId: "post-1", startedAtAudioMs: 0, type: "start" }));
+    const rejected = await host.handleClientEvent(client(5, { audioTimeMs: 10, type: "pause" }));
+
+    // The rejection is still reported normally despite the sink throwing.
+    expect(rejected?.code).toBe("non_monotonic_sequence");
+    expect(effectRunner.transportErrors.at(-1)?.code).toBe("non_monotonic_sequence");
   });
 });

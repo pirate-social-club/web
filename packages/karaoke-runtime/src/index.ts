@@ -118,4 +118,5 @@ export type {
   KaraokeSttAdapterMessage,
   KaraokeSttCommitAck,
   KaraokeStreamingSttAdapter,
+  KaraokeTransportGuardDiagnostic,
 } from "./session-host";

@@ -390,6 +390,8 @@ function toUpstreamAttributions(
     href: source.source_post
       ? `/p/${source.source_post}`
       : buildStoryExplorerIpAssetUrl(source.story_ip, songOptions?.storyNetwork) ?? undefined,
+    ...(source.community ? { sourceCommunityId: source.community } : {}),
+    ...(source.source_post ? { sourcePostId: source.source_post } : {}),
   }));
 }
 

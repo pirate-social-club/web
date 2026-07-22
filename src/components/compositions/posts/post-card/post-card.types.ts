@@ -59,6 +59,8 @@ export interface UpstreamAttribution {
   artist?: string;
   artistHref?: string;
   href?: string;
+  sourceCommunityId?: string;
+  sourcePostId?: string;
 }
 
 type StoryRegistrationState = "registered" | "pending" | "failed";

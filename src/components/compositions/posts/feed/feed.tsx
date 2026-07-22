@@ -6,6 +6,10 @@ import { PostCard } from "@/components/compositions/posts/post-card/post-card";
 import { PostCardSkeleton } from "@/components/compositions/posts/post-card/post-card-skeleton";
 import { VideoFeed } from "@/components/compositions/posts/video-feed/video-feed";
 import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/video-feed.types";
+import {
+  VideoSongCapabilityCache,
+  type VideoSongCapabilityLoader,
+} from "@/components/compositions/posts/video-feed/video-song-capability-cache";
 import { ResponsiveOptionSelect } from "@/components/compositions/system/responsive-option-select/responsive-option-select";
 import { pillButtonVariants } from "@/components/primitives/pill-button";
 import {
@@ -22,6 +26,7 @@ import type { PostCardProps } from "@/components/compositions/posts/post-card/po
 import { FullBleedMobileListSection } from "@/components/compositions/app/page-shell";
 import { cn } from "@/lib/utils";
 import { Type } from "@/components/primitives/type";
+import { navigate } from "@/app/router";
 
 export type FeedSort = "best" | "new" | "top";
 
@@ -67,6 +72,10 @@ export interface FeedProps {
   className?: string;
   listClassName?: string;
   fullBleedMobile?: boolean;
+  videoViewerSongCapabilities?: {
+    cacheScope: string;
+    load: VideoSongCapabilityLoader;
+  };
 }
 
 export interface TopTimeRangeOption {
@@ -111,10 +120,23 @@ export function toPageVideoItem(item: FeedItem): VideoFeedItem | null {
       handle: publisher.label,
       kind: publisher.kind === "user" ? "profile" : "community",
     },
-    song: linkedSong ? { artist: linkedSong.artist ?? "", title: linkedSong.title } : undefined,
+    song: linkedSong ? {
+      artist: linkedSong.artist ?? "",
+      sourcePostId: linkedSong.sourcePostId,
+      title: linkedSong.title,
+    } : undefined,
     study: "unavailable",
     viewerState: content.ageGateViewerState === "proof_required" ? "age_proof_required" : "allowed",
   };
+}
+
+export function adjacentVideoSourcePostIds(
+  items: readonly VideoFeedItem[],
+  activeIndex: number,
+): string[] {
+  return items
+    .slice(Math.max(0, activeIndex - 1), activeIndex + 2)
+    .flatMap((item) => item.song?.sourcePostId ? [item.song.sourcePostId] : []);
 }
 
 export function TopTimeRangeControl({
@@ -223,6 +245,7 @@ export function Feed({
   className,
   listClassName,
   fullBleedMobile = false,
+  videoViewerSongCapabilities,
 }: FeedProps) {
   const hasItems = items.length > 0;
   const ListWrapper = fullBleedMobile ? FullBleedMobileListSection : React.Fragment;
@@ -234,12 +257,35 @@ export function Feed({
   const showLoadingTail = loading && hasItems;
   const [originalPostIds, setOriginalPostIds] = React.useState<Set<string>>(() => new Set());
   const [viewerItemId, setViewerItemId] = React.useState<string | null>(null);
+  const [videoCapabilityRevision, setVideoCapabilityRevision] = React.useState(0);
   const loadMoreSentinelRef = React.useRef<HTMLDivElement>(null);
   const paginationEnabled = hasMore !== undefined && Boolean(onLoadMore);
   const pageVideoItems = React.useMemo(() => items.flatMap((item) => {
     const videoItem = toPageVideoItem(item);
     return videoItem ? [videoItem] : [];
   }), [items]);
+  const videoCapabilityCache = React.useMemo(() => videoViewerSongCapabilities
+    ? new VideoSongCapabilityCache(
+        videoViewerSongCapabilities.cacheScope,
+        videoViewerSongCapabilities.load,
+      )
+    : null,
+  [videoViewerSongCapabilities]);
+  const resolvedPageVideoItems = React.useMemo(() => pageVideoItems.map((item) => {
+    const sourcePostId = item.song?.sourcePostId;
+    const resolution = sourcePostId ? videoCapabilityCache?.get(sourcePostId) : undefined;
+    if (!resolution) return item;
+    return {
+      ...item,
+      karaoke: resolution.karaoke,
+      song: item.song ? {
+        ...item.song,
+        karaokeHref: resolution.karaokeHref,
+        studyHref: resolution.studyHref,
+      } : undefined,
+      study: resolution.study,
+    };
+  }), [pageVideoItems, videoCapabilityCache, videoCapabilityRevision]);
   const feedItemsById = React.useMemo(
     () => new Map(items.map((item) => [item.id, item] as const)),
     [items],
@@ -259,6 +305,21 @@ export function Feed({
   const handleViewerShare = React.useCallback((item: VideoFeedItem) => {
     feedItemsById.get(item.id)?.post.onShare?.();
   }, [feedItemsById]);
+  const handleViewerActiveItemChange = React.useCallback((_item: VideoFeedItem, activeIndex: number) => {
+    if (!videoCapabilityCache) return;
+    const sourcePostIds = adjacentVideoSourcePostIds(resolvedPageVideoItems, activeIndex);
+    void videoCapabilityCache.prefetch(sourcePostIds).then((changed) => {
+      if (changed) setVideoCapabilityRevision((current) => current + 1);
+    });
+  }, [resolvedPageVideoItems, videoCapabilityCache]);
+  const handleViewerKaraoke = React.useCallback((item: VideoFeedItem) => {
+    const href = item.song?.karaokeHref;
+    if (href) navigate(href);
+  }, []);
+  const handleViewerStudy = React.useCallback((item: VideoFeedItem) => {
+    const href = item.song?.studyHref;
+    if (href) navigate(href);
+  }, []);
 
   React.useEffect(() => {
     const sentinel = loadMoreSentinelRef.current;
@@ -405,10 +466,13 @@ export function Feed({
           {viewerItemId ? (
             <VideoFeed
               initialItemId={viewerItemId}
-              items={pageVideoItems}
+              items={resolvedPageVideoItems}
+              onActiveItemChange={handleViewerActiveItemChange}
               onComment={handleViewerComment}
+              onKaraoke={handleViewerKaraoke}
               onLike={handleViewerLike}
               onShare={handleViewerShare}
+              onStudy={handleViewerStudy}
             />
           ) : null}
         </DialogContent>

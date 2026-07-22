@@ -1,7 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
 
 import { ApiError } from "@/lib/api/client";
-import { loadSongRoutePost } from "./load-song-route-post";
+import { loadSongRoutePost, loadSongRoutePostWithReadMode } from "./load-song-route-post";
 
 const authenticatedPost = { post: { id: "pst_song" } } as never;
 const publicPost = { post: { id: "pst_song_public" } } as never;
@@ -46,5 +46,15 @@ describe("loadSongRoutePost", () => {
     const { api, publicGet } = createApi(authError);
     await expect(loadSongRoutePost({ api, contentLocale: "en", hasAccessToken: true, postId: "pst_song" })).rejects.toBe(authError);
     expect(publicGet).not.toHaveBeenCalled();
+  });
+
+  test("reports the effective read mode after a membership-masked fallback", async () => {
+    const { api } = createApi(new ApiError("not_found", "Community not found", 404));
+    await expect(loadSongRoutePostWithReadMode({
+      api,
+      contentLocale: "en",
+      hasAccessToken: true,
+      postId: "pst_song",
+    })).resolves.toEqual({ post: publicPost, readMode: "public" });
   });
 });

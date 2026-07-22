@@ -105,6 +105,23 @@ describe("VideoFeed", () => {
     expect(view.getAllByRole("button", { name: "Play video" })).toHaveLength(1);
   });
 
+  test("reports the active slide for adjacent capability prefetch", () => {
+    const calls: string[] = [];
+    const view = render(
+      <VideoFeed
+        items={feedItems()}
+        onActiveItemChange={(activeItem) => calls.push(activeItem.id)}
+      />,
+    );
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+
+    expect(calls).toEqual(["one"]);
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
+    fireEvent.scroll(feed);
+    expect(calls).toEqual(["one", "two"]);
+  });
+
   test("preloads only the active and adjacent playable items", () => {
     const blocked = { ...item, id: "blocked", viewerState: "age_proof_required" as const };
     const view = render(<VideoFeed items={[feedItems()[0]!, blocked, feedItems()[2]!]} />);

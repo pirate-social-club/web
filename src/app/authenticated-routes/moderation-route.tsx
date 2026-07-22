@@ -1228,7 +1228,6 @@ export function CommunityModerationPage({
       );
     }
   }
-
   if (isMobile) {
     return (
       <MobileModerationSectionLayout

@@ -106,10 +106,16 @@ export type ApiRewardsSummaryResponse = {
   balance_cents: number;
   today_earned_cents: number;
   recent_events: ApiRewardEventSummary[];
+  pending_verification: {
+    count: number;
+    conditional_cents: number;
+    earliest_expires_at: number | null;
+  };
   cashout: {
     eligible: boolean;
     min_cents: number;
     verification_state: ApiRewardVerificationState;
+    verification_provider: "self" | "very" | null;
   };
   latest_in_flight_cashout: ApiRewardCashoutResponse["payout"] | null;
 };

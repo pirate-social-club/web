@@ -8,23 +8,48 @@ type PostReader = {
 
 type SongRoutePostApi = { posts: PostReader; publicPosts: PostReader };
 
+export type SongRoutePostReadMode = "authenticated" | "public";
+
+export interface LoadedSongRoutePost {
+  post: LocalizedPostResponse;
+  readMode: SongRoutePostReadMode;
+}
+
+export async function loadSongRoutePostWithReadMode({ api, contentLocale, hasAccessToken, postId }: {
+  api: SongRoutePostApi;
+  contentLocale: string;
+  hasAccessToken: boolean;
+  postId: string;
+}): Promise<LoadedSongRoutePost> {
+  if (!hasAccessToken) {
+    return {
+      post: await api.publicPosts.get(postId, { locale: contentLocale }),
+      readMode: "public",
+    };
+  }
+
+  try {
+    return {
+      post: await api.posts.get(postId, { locale: contentLocale }),
+      readMode: "authenticated",
+    };
+  } catch (error) {
+    // Request-mode communities can mask a public post as not found for a
+    // signed-in non-member. Only that response is safe to retry publicly:
+    // auth failures must remain visible rather than silently changing modes.
+    if (!isApiNotFoundError(error)) throw error;
+    return {
+      post: await api.publicPosts.get(postId, { locale: contentLocale }),
+      readMode: "public",
+    };
+  }
+}
+
 export async function loadSongRoutePost({ api, contentLocale, hasAccessToken, postId }: {
   api: SongRoutePostApi;
   contentLocale: string;
   hasAccessToken: boolean;
   postId: string;
 }): Promise<LocalizedPostResponse> {
-  if (!hasAccessToken) {
-    return await api.publicPosts.get(postId, { locale: contentLocale });
-  }
-
-  try {
-    return await api.posts.get(postId, { locale: contentLocale });
-  } catch (error) {
-    // Request-mode communities can mask a public post as not found for a
-    // signed-in non-member. Only that response is safe to retry publicly:
-    // auth failures must remain visible rather than silently changing modes.
-    if (!isApiNotFoundError(error)) throw error;
-    return await api.publicPosts.get(postId, { locale: contentLocale });
-  }
+  return (await loadSongRoutePostWithReadMode({ api, contentLocale, hasAccessToken, postId })).post;
 }

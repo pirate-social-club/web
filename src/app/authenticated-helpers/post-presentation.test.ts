@@ -669,6 +669,8 @@ describe("post presentation videos", () => {
       artist: "artist.pirate",
       artistHref: "/u/artist.pirate",
       href: "/p/post_source_song",
+      sourceCommunityId: "com_cmt_songs",
+      sourcePostId: "post_source_song",
     }]);
   });
 });
@@ -920,6 +922,8 @@ describe("post presentation songs", () => {
         artist: "4dmonsterlobsters.pirate",
         artistHref: "/u/4dmonsterlobsters.pirate",
         href: "/p/post_pst_original",
+        sourceCommunityId: "com_cmt_songs",
+        sourcePostId: "post_pst_original",
       },
     ]);
   });

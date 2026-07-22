@@ -24,6 +24,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
+import type { VideoViewerSongCapabilities } from "@/app/authenticated-helpers/use-video-viewer-song-capabilities";
 
 export interface CommunityPageShellProps {
   activeSort?: FeedSort;
@@ -43,6 +44,7 @@ export interface CommunityPageShellProps {
   routeVerified?: boolean;
   sidebar: CommunitySidebarProps;
   title: string;
+  videoViewerSongCapabilities?: VideoViewerSongCapabilities;
 }
 
 export function CommunityPageShell({
@@ -63,6 +65,7 @@ export function CommunityPageShell({
   routeVerified,
   sidebar,
   title,
+  videoViewerSongCapabilities,
 }: CommunityPageShellProps) {
   const isMobile = useIsMobile();
   const { locale } = useUiLocale();
@@ -134,6 +137,7 @@ export function CommunityPageShell({
                 listClassName="-mx-3 border-t-0 md:mx-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
                 loading={loading}
                 onSortChange={onSortChange}
+                videoViewerSongCapabilities={videoViewerSongCapabilities}
               />
             </div>
           ) : (
@@ -175,6 +179,7 @@ export function CommunityPageShell({
         listClassName="-mx-3 border-t-0 md:mx-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
         loading={loading}
         onSortChange={onSortChange}
+        videoViewerSongCapabilities={videoViewerSongCapabilities}
       />
     </ContentRailShell>
   );

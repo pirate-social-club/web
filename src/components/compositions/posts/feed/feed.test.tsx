@@ -2,7 +2,7 @@ import "@/test/setup-runtime";
 
 import { describe, expect, test } from "bun:test";
 
-import { toPageVideoItem, type FeedItem } from "./feed";
+import { adjacentVideoSourcePostIds, toPageVideoItem, type FeedItem } from "./feed";
 
 const videoItem: FeedItem = {
   id: "post_video",
@@ -40,5 +40,43 @@ describe("toPageVideoItem", () => {
       ...videoItem,
       post: { ...videoItem.post, content: { type: "text", body: "Not a video" } },
     })).toBeNull();
+  });
+
+  test("addresses a linked song through the hydrated source post id", () => {
+    const item = toPageVideoItem({
+      ...videoItem,
+      post: {
+        ...videoItem.post,
+        content: {
+          ...videoItem.post.content,
+          upstreamAttributions: [{
+            assetId: "asset_song",
+            relationshipType: "references_song",
+            sourceCommunityId: "com_music",
+            sourcePostId: "pst_song",
+            title: "Source Song",
+          }],
+        },
+      },
+    });
+
+    expect(item?.song).toMatchObject({ sourcePostId: "pst_song", title: "Source Song" });
+  });
+});
+
+describe("adjacentVideoSourcePostIds", () => {
+  test("prefetches capability metadata for only the active and adjacent slides", () => {
+    const items = ["pst_one", "pst_two", "pst_three", "pst_four"].map((sourcePostId, index) => ({
+      id: `video_${index}`,
+      publisher: { handle: "pirate", kind: "profile" as const },
+      commentCount: 0,
+      karaoke: "unavailable" as const,
+      likeCount: 0,
+      media: { orientation: "portrait" as const, posterSrc: "poster" },
+      song: { artist: "", sourcePostId, title: sourcePostId },
+      study: "unavailable" as const,
+    }));
+
+    expect(adjacentVideoSourcePostIds(items, 2)).toEqual(["pst_two", "pst_three", "pst_four"]);
   });
 });

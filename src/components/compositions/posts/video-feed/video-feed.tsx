@@ -26,6 +26,7 @@ import type { VideoFeedCapability, VideoFeedItem } from "./video-feed.types";
 export interface VideoFeedProps {
   initialItemId?: string;
   items: VideoFeedItem[];
+  onActiveItemChange?: (item: VideoFeedItem, index: number) => void;
   onComment?: (item: VideoFeedItem) => void;
   onBoost?: (item: VideoFeedItem) => void;
   onGateRequired?: (item: VideoFeedItem) => void;
@@ -358,6 +359,11 @@ export function VideoFeed({ initialItemId, items, ...actions }: VideoFeedProps) 
   React.useEffect(() => {
     containerRef.current?.focus({ preventScroll: true });
   }, []);
+
+  React.useEffect(() => {
+    const activeItem = items[activeIndex];
+    if (activeItem) actions.onActiveItemChange?.(activeItem, activeIndex);
+  }, [actions.onActiveItemChange, activeIndex, items]);
 
   if (items.length === 0) {
     return <div className="grid h-dvh place-items-center"><Type variant="h3">No videos yet</Type></div>;

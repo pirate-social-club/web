@@ -41,6 +41,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { buildFeedSortOptions, buildTopTimeRangeOptions } from "@/lib/feed-sort-options";
 import { EmptyFeedState, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
+import { useVideoViewerSongCapabilities } from "@/app/authenticated-helpers/use-video-viewer-song-capabilities";
 import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { selectPostVoteGateData } from "@/hooks/use-community-interaction-gate.helpers";
@@ -386,6 +387,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const sortOptions = React.useMemo(() => buildFeedSortOptions(copy.common), [copy.common]);
   const topTimeRangeOptions = React.useMemo(() => buildTopTimeRangeOptions(copy.common), [copy.common]);
   const contentLocale = useRouteContentLocale();
+  const videoViewerSongCapabilities = useVideoViewerSongCapabilities(contentLocale);
   const createCommunityLabel = copy.home.createCommunityLabel;
   const emptyHomeBody = copy.home.emptyHomeBody;
   const emptyHomeTitle = copy.home.emptyHomeTitle;
@@ -723,6 +725,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
           loadMoreLabel={copy.common.loadMore}
           endMessage={copy.common.feedEnd}
           onLoadMore={loadMore}
+          videoViewerSongCapabilities={videoViewerSongCapabilities}
           onSortChange={setActiveSort}
         />
       </StandardRoutePage>

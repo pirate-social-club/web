@@ -27,6 +27,9 @@ export interface VideoFeedItem {
   };
   song?: {
     artist: string;
+    karaokeHref?: string;
+    sourcePostId?: string;
+    studyHref?: string;
     title: string;
   };
   study: VideoFeedCapability;

@@ -54,6 +54,15 @@ describe("VideoFeed", () => {
     expect(view.queryByRole("button", { name: "Sing" })).toBeNull();
   });
 
+  test("renders canonical handles verbatim on an explicit dark media stage", () => {
+    const view = render(<VideoFeed items={[{ ...item, publisher: { handle: "aveestel.pirate", kind: "profile" } }]} />);
+
+    expect(view.getByText("aveestel.pirate")).toBeTruthy();
+    expect(view.queryByText("@aveestel.pirate")).toBeNull();
+    expect(view.container.innerHTML).toContain("bg-black");
+    expect(view.container.innerHTML).not.toContain("bg-foreground");
+  });
+
   test("annotates existing learning actions and exposes boost only from server-stated eligibility", () => {
     const rewarded = {
       ...item,

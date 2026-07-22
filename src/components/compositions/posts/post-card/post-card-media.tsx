@@ -235,6 +235,7 @@ export interface PostCardMediaProps {
   content: PostCardContent;
   className?: string;
   postHref?: string;
+  onOpenVideoViewer?: () => void;
   viewContext?: PostCardViewContext;
   previewMode?: boolean;
 }
@@ -308,7 +309,7 @@ function TextPostContent({
   );
 }
 
-export function PostCardMedia({ content, className, postHref, previewMode, viewContext }: PostCardMediaProps) {
+export function PostCardMedia({ content, className, onOpenVideoViewer, postHref, previewMode, viewContext }: PostCardMediaProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
   switch (content.type) {
@@ -374,7 +375,7 @@ export function PostCardMedia({ content, className, postHref, previewMode, viewC
           resetKey={`video:${content.src}`}
         >
           <React.Suspense fallback={<VideoPostContentFallback aspectRatio={content.aspectRatio} className={className} />}>
-            <LazyVideoPostContent content={content} className={className} previewMode={previewMode} />
+            <LazyVideoPostContent content={content} className={className} onOpenVideoViewer={onOpenVideoViewer} previewMode={previewMode} />
           </React.Suspense>
         </LazyPostMediaErrorBoundary>
       );

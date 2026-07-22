@@ -4,6 +4,8 @@ import * as React from "react";
 
 import { PostCard } from "@/components/compositions/posts/post-card/post-card";
 import { PostCardSkeleton } from "@/components/compositions/posts/post-card/post-card-skeleton";
+import { VideoFeed } from "@/components/compositions/posts/video-feed/video-feed";
+import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/video-feed.types";
 import { ResponsiveOptionSelect } from "@/components/compositions/system/responsive-option-select/responsive-option-select";
 import { pillButtonVariants } from "@/components/primitives/pill-button";
 import {
@@ -15,6 +17,7 @@ import {
 } from "@/components/primitives/select";
 import { Spinner } from "@/components/primitives/spinner";
 import { Button } from "@/components/primitives/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/primitives/dialog";
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { FullBleedMobileListSection } from "@/components/compositions/app/page-shell";
 import { cn } from "@/lib/utils";
@@ -81,6 +84,37 @@ const topTimeRangeOptions = [
 ] satisfies readonly TopTimeRangeOption[];
 
 const EMPTY_FEED_SORT_OPTIONS: FeedSortOption[] = [];
+
+export function toPageVideoItem(item: FeedItem): VideoFeedItem | null {
+  const { post } = item;
+  if (post.content.type !== "video") return null;
+  const content = post.content;
+  if (!content.src.trim() && !content.posterSrc) return null;
+  const publisher = post.byline.author ?? post.byline.community;
+  if (!publisher) return null;
+  const linkedSong = content.upstreamAttributions?.find((source) => source.relationshipType === "references_song");
+
+  return {
+    id: item.id,
+    caption: content.caption,
+    commentCount: post.engagement.commentCount,
+    karaoke: "unavailable",
+    likeCount: post.engagement.score,
+    media: {
+      orientation: content.aspectRatio != null && content.aspectRatio < 1 ? "portrait" : "landscape",
+      posterSrc: content.posterSrc ?? "",
+      src: content.src,
+    },
+    publisher: {
+      avatarSrc: publisher.avatarSrc,
+      handle: publisher.label,
+      kind: publisher.kind === "user" ? "profile" : "community",
+    },
+    song: linkedSong ? { artist: linkedSong.artist ?? "", title: linkedSong.title } : undefined,
+    study: "unavailable",
+    viewerState: content.ageGateViewerState === "proof_required" ? "age_proof_required" : "allowed",
+  };
+}
 
 export function TopTimeRangeControl({
   options = topTimeRangeOptions,
@@ -198,8 +232,13 @@ export function Feed({
   const showLoadingOnly = loading && !hasItems;
   const showLoadingTail = loading && hasItems;
   const [originalPostIds, setOriginalPostIds] = React.useState<Set<string>>(() => new Set());
+  const [viewerItemId, setViewerItemId] = React.useState<string | null>(null);
   const loadMoreSentinelRef = React.useRef<HTMLDivElement>(null);
   const paginationEnabled = hasMore !== undefined && Boolean(onLoadMore);
+  const pageVideoItems = React.useMemo(() => items.flatMap((item) => {
+    const videoItem = toPageVideoItem(item);
+    return videoItem ? [videoItem] : [];
+  }), [items]);
 
   React.useEffect(() => {
     const sentinel = loadMoreSentinelRef.current;
@@ -308,6 +347,9 @@ export function Feed({
                     className={cn(index === items.length - 1 ? "border-b-0" : undefined, postClassName)}
                     isViewingOriginal={isViewingOriginal}
                     key={item.id}
+                    onOpenVideoViewer={pageVideoItems.some((videoItem) => videoItem.id === item.id)
+                      ? () => setViewerItemId(item.id)
+                      : undefined}
                     onToggleOriginal={item.postOriginal
                       ? () => setOriginalPostIds((current) => {
                         const next = new Set(current);
@@ -337,6 +379,12 @@ export function Feed({
         </div>
         {aside ? <div className="hidden w-72 shrink-0 lg:block">{aside}</div> : null}
       </div>
+      <Dialog onOpenChange={(open) => { if (!open) setViewerItemId(null); }} open={viewerItemId !== null}>
+        <DialogContent className="h-dvh w-screen max-w-none rounded-none border-0 p-0">
+          <DialogTitle className="sr-only">Video viewer</DialogTitle>
+          {viewerItemId ? <VideoFeed initialItemId={viewerItemId} items={pageVideoItems} /> : null}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

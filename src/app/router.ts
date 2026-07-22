@@ -14,6 +14,7 @@ import { extractPublicProfileHost } from "@/lib/public-host";
 
 export type AppRoute =
   | { kind: "home"; path: "/" }
+  | { kind: "community-feed"; path: "/feed" }
   | { kind: "popular"; path: "/popular" }
   | { kind: "public-profile"; path: string; handleLabel: string; hostSuffix?: string | null }
   | { kind: "public-agent"; path: string; handleLabel: string; hostSuffix?: string | null }
@@ -109,6 +110,10 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
 
   if (normalized === "/popular") {
     return { kind: "popular", path: "/popular" };
+  }
+
+  if (normalized === "/feed") {
+    return { kind: "community-feed", path: "/feed" };
   }
 
   if (normalized === "/your-communities") {

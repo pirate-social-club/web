@@ -72,9 +72,10 @@ describe("buildSidebarSections", () => {
 });
 
 describe("buildPrimaryItems", () => {
-  test("keeps one-time domain purchase out of primary navigation", () => {
+  test("uses Home and Community Feed without a duplicate Popular destination", () => {
     const items = buildPrimaryItems({
       agentsLabel: "Agents",
+      communityFeedLabel: "Community Feed",
       createCommunityLabel: "Create",
       feedSortBestLabel: "Popular",
       homeLabel: "Home",
@@ -83,6 +84,13 @@ describe("buildPrimaryItems", () => {
     } as ShellMessages["appSidebar"]);
 
     expect(items.map((item) => item.id)).not.toContain("names");
+    expect(items.map((item) => item.id)).toEqual([
+      "home",
+      "community-feed",
+      "your-communities",
+      "agents",
+      "create-community",
+    ]);
   });
 });
 

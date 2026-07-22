@@ -225,6 +225,9 @@ describe("useBoostCampaignController", () => {
       view.result.current.sheetProps.onConfirm?.();
     });
     await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
+    expect(view.result.current.sheetProps.explorerTxUrl).toBe(
+      "https://sepolia.basescan.org/tx/0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    );
     expect(calls.transfer).toBe(1);
     expect(calls.confirm).toBe(1);
   });

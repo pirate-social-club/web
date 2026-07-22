@@ -222,6 +222,21 @@ export function PostPage({
       cancelled = true;
     };
   }, [api.rewards, post?.post.community, post?.post.id, post?.post.post_type]);
+
+  const refreshRewardOffer = React.useCallback(() => {
+    const communityId = post?.post.community;
+    const songPostId = post?.post.id;
+    if (
+      import.meta.env.VITE_REWARDS_ENABLED !== "true"
+      || post?.post.post_type !== "song"
+      || !communityId
+      || !songPostId
+    ) return;
+
+    void api.rewards.getActiveCampaignForSong(communityId, songPostId)
+      .then(setRewardOffer)
+      .catch(() => undefined);
+  }, [api.rewards, post?.post.community, post?.post.id, post?.post.post_type]);
   React.useEffect(() => () => {
     for (const url of replayObjectUrlsRef.current) {
       URL.revokeObjectURL(url);
@@ -298,6 +313,7 @@ export function PostPage({
     activePublicOffer: Boolean(rewardOffer),
     authenticated: Boolean(session?.accessToken),
     communityId: community?.id ?? null,
+    onCampaignActivated: refreshRewardOffer,
     postId,
     requestAuth: () => requestAuth("Sign in to boost this song."),
     song: post?.post.post_type === "song",

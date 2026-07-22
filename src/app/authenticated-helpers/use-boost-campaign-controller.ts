@@ -6,6 +6,7 @@ import type {
   RewardCampaignCapabilities,
   RewardCampaignFundingQuote,
 } from "@pirate/api-contracts";
+import { base, baseSepolia } from "viem/chains";
 
 import type { BoostCampaignSheetProps, BoostEligibleActivity } from "@/components/compositions/rewards/reward-booster-surfaces";
 import { usePiratePrivyWallets } from "@/components/auth/privy-provider";
@@ -69,6 +70,12 @@ function chainLabel(chainId: number): string {
   if (chainId === 8453) return "Base";
   if (chainId === 84532) return "Base Sepolia";
   return `chain ${chainId}`;
+}
+
+function explorerBaseForChain(chainId: number): string | null {
+  if (chainId === base.id) return base.blockExplorers.default.url;
+  if (chainId === baseSepolia.id) return baseSepolia.blockExplorers.default.url;
+  return null;
 }
 
 function campaignStorageKey(communityId: string, postId: string): string {
@@ -143,6 +150,7 @@ export interface BoostCampaignControllerInput {
   authenticated: boolean;
   communityId: string | null;
   postId: string;
+  onCampaignActivated?: () => void;
   requestAuth: () => void;
   song: boolean;
   viewerIsAuthor: boolean;
@@ -303,6 +311,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       setCampaign(nextCampaign);
       if (["scheduled", "active"].includes(nextCampaign.status)) {
         setSheetState("active");
+        input.onCampaignActivated?.();
         return;
       }
       if (["canceled", "exhausted", "ended"].includes(nextCampaign.status)) {
@@ -311,7 +320,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       await new Promise((resolve) => window.setTimeout(resolve, 1_500));
     }
     throw new Error("Funding was submitted, but campaign activation is still pending. Check status again shortly.");
-  }, [api.rewards]);
+  }, [api.rewards, input.onCampaignActivated]);
 
   const confirmSubmittedFunding = React.useCallback(async (
     targetCampaign: RewardCampaign,
@@ -445,7 +454,9 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     }
   }, [api.rewards, busy, input.communityId, input.postId]);
 
-  const explorerBase = getPirateNetworkConfig().base.explorerUrl.replace(/\/$/u, "");
+  const explorerBase = quote
+    ? explorerBaseForChain(quote.chain_id)
+    : getPirateNetworkConfig().base.explorerUrl.replace(/\/$/u, "");
   const rewardCount = plan?.rewardCount ?? 0;
   const quoteSecondsRemaining = quote ? Math.max(0, quote.expires_at - nowSeconds) : 0;
   const availabilityProblem = hasCampaignConflict
@@ -484,7 +495,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       eligibleActivity,
       eligibleActivities: capabilities?.eligible_activities,
       errorMessage,
-      explorerTxUrl: transactionHash ? `${explorerBase}/tx/${transactionHash}` : undefined,
+      explorerTxUrl: transactionHash && explorerBase ? `${explorerBase}/tx/${transactionHash}` : undefined,
       expiresInLabel: quote && sheetState === "quote" ? `${Math.floor(quoteSecondsRemaining / 60)}:${String(quoteSecondsRemaining % 60).padStart(2, "0")}` : undefined,
       fundingAmountLabel: quote ? formatUsdLabel(quote.amount_cents / 100) ?? undefined : undefined,
       onBudgetChange: setBudgetInput,

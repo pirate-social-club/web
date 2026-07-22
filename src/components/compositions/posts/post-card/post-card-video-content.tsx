@@ -163,6 +163,7 @@ function VideoThumbnail({
 export interface VideoPostContentProps {
   content: VideoContentSpec;
   className?: string;
+  onOpenVideoViewer?: () => void;
   previewMode?: boolean;
 }
 
@@ -392,7 +393,7 @@ function VideoOfferRows({
   return null;
 }
 
-export function VideoPostContent({ content, className, previewMode }: VideoPostContentProps) {
+export function VideoPostContent({ content, className, onOpenVideoViewer, previewMode }: VideoPostContentProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
   const [expanded, setExpanded] = React.useState(false);
@@ -425,6 +426,10 @@ export function VideoPostContent({ content, className, previewMode }: VideoPostC
 
   const handlePlay = () => {
     if (ui.canPlay) {
+      if (onOpenVideoViewer) {
+        onOpenVideoViewer();
+        return;
+      }
       if (hasPlayableSource) {
         setExpanded(true);
       } else {

@@ -551,6 +551,8 @@ export interface PostCardProps {
     onClick?: () => void;
   };
   onComment?: () => void;
+  /** Opens the page-scoped vertical viewer for this video card when available. */
+  onOpenVideoViewer?: () => void;
   onShare?: () => void;
   onToggleOriginal?: () => void;
   onMenuAction?: (key: string) => void;

@@ -338,6 +338,7 @@ export function PostCard({
   onVote,
   voteAccess,
   onComment,
+  onOpenVideoViewer,
   onShare,
   onToggleOriginal,
   onMenuAction,
@@ -480,7 +481,7 @@ export function PostCard({
         {titleElement}
         {event ? <PostCardEventBlock event={event} showEventUrl={shouldShowEventUrl} /> : null}
         <SongCaptionBeforeMedia content={content} />
-        <PostCardMedia content={content} postHref={postHref} previewMode={previewMode} viewContext={viewContext} />
+        <PostCardMedia content={content} onOpenVideoViewer={onOpenVideoViewer} postHref={postHref} previewMode={previewMode} viewContext={viewContext} />
         {canToggleOriginal ? (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-start">
             <Type as="span" variant="caption" className="text-muted-foreground">

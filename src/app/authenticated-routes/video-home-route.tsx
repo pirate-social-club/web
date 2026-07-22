@@ -49,7 +49,12 @@ export function VideoHomePage() {
   const [activeItemId, setActiveItemId] = React.useState<string | null>(null);
   const [boostTarget, setBoostTarget] = React.useState<{ open: () => void; sourcePostId: string } | null>(null);
   const loadingMoreRef = React.useRef(false);
-  const restored = React.useMemo(() => readVideoViewerReturnState(currentRelativePath()), []);
+  // Session storage only exists on the client, and the restored state is consumed
+  // no earlier than the first post-hydration render, so defer the read.
+  const restored = React.useMemo(
+    () => (hydrated ? readVideoViewerReturnState(currentRelativePath()) : null),
+    [hydrated],
+  );
   const capabilityCache = React.useMemo(
     () => new VideoSongCapabilityCache(capabilityLoader.cacheScope, capabilityLoader.load),
     [capabilityLoader],

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import {
   clearVideoViewerReturnState,
+  currentRelativePath,
   readVideoViewerReturnState,
   safeReturnPath,
   saveVideoViewerReturnState,
@@ -29,6 +30,19 @@ describe("video viewer return state", () => {
     expect(safeReturnPath("/?sort=new#post")).toBe("/?sort=new#post");
     expect(safeReturnPath("//attacker.test/path")).toBeNull();
     expect(safeReturnPath("https://attacker.test/path")).toBeNull();
+  });
+
+  test("resolves a path without a window, as during server render", () => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+    // @ts-expect-error -- emulating the worker server-render global, which has no window.
+    delete globalThis.window;
+    try {
+      expect(() => currentRelativePath()).not.toThrow();
+      expect(currentRelativePath()).toBe("");
+      expect(readVideoViewerReturnState(currentRelativePath())).toBeNull();
+    } finally {
+      if (descriptor) Object.defineProperty(globalThis, "window", descriptor);
+    }
   });
 
   test("restores a matching, recent snapshot", () => {

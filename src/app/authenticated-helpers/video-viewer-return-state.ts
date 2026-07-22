@@ -11,8 +11,13 @@ export interface VideoViewerReturnState {
 const STORAGE_KEY = "pirate.videoViewer.returnState";
 const MAX_AGE_MS = 30 * 60 * 1000;
 
-export function currentRelativePath(location: Pick<Location, "hash" | "pathname" | "search"> = window.location): string {
-  return `${location.pathname}${location.search}${location.hash}`;
+// The default is resolved at call time, so it must not touch `window`: this helper
+// is reached during server render of the video Home route, where dereferencing
+// `window` throws before the caller's try/catch can absorb it.
+export function currentRelativePath(location?: Pick<Location, "hash" | "pathname" | "search">): string {
+  const resolved = location ?? (typeof window === "undefined" ? null : window.location);
+  if (!resolved) return "";
+  return `${resolved.pathname}${resolved.search}${resolved.hash}`;
 }
 
 export function safeReturnPath(value: string | null): string | null {

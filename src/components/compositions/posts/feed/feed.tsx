@@ -85,7 +85,7 @@ const topTimeRangeOptions = [
 
 const EMPTY_FEED_SORT_OPTIONS: FeedSortOption[] = [];
 
-function toPageVideoItem(item: FeedItem): VideoFeedItem | null {
+export function toPageVideoItem(item: FeedItem): VideoFeedItem | null {
   const { post } = item;
   if (post.content.type !== "video") return null;
   const content = post.content;

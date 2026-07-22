@@ -380,7 +380,7 @@ export function Feed({
         {aside ? <div className="hidden w-72 shrink-0 lg:block">{aside}</div> : null}
       </div>
       <Dialog onOpenChange={(open) => { if (!open) setViewerItemId(null); }} open={viewerItemId !== null}>
-        <DialogContent className="h-dvh w-screen max-w-none rounded-none border-0 p-0" hideCloseButton>
+        <DialogContent className="h-dvh w-screen max-w-none rounded-none border-0 p-0">
           <DialogTitle className="sr-only">Video viewer</DialogTitle>
           {viewerItemId ? <VideoFeed initialItemId={viewerItemId} items={pageVideoItems} /> : null}
         </DialogContent>

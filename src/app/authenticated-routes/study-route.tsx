@@ -4,6 +4,7 @@ import * as React from "react";
 import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
+import { routeReturnPath } from "@/app/authenticated-helpers/video-viewer-return-state";
 import { loadSongRoutePost } from "@/app/authenticated-helpers/load-song-route-post";
 import {
   SongStudySurface,
@@ -868,7 +869,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       artistName={state.study.artist_name ?? undefined}
       artworkSrc={pageArtwork(state.post, state.study)}
       className="h-dvh"
-      onExit={() => navigate(`/p/${encodeURIComponent(postId)}`)}
+      onExit={() => navigate(routeReturnPath(`/p/${encodeURIComponent(postId)}`))}
       onOptionSelect={handleOptionSelect}
       onPrimaryAction={handlePrimaryAction}
       onKaraoke={state.surface.kind === "complete"

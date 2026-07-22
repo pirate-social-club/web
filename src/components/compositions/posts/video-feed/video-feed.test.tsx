@@ -67,6 +67,25 @@ describe("VideoFeed", () => {
     expect(view.getByLabelText("More video actions")).toBeTruthy();
   });
 
+  test("reports playback state when a learning action launches", () => {
+    const calls: unknown[] = [];
+    const view = render(<VideoFeed initialMuted={false} items={[item]} onStudy={(_item, state) => calls.push(state)} />);
+    const video = view.container.querySelector<HTMLVideoElement>("video")!;
+    Object.defineProperty(video, "currentTime", { configurable: true, value: 12.5 });
+
+    fireEvent.click(view.getByRole("button", { name: "Study" }));
+
+    expect(calls).toEqual([{ muted: false, paused: false, playbackSeconds: 12.5 }]);
+  });
+
+  test("restores the selected slide and intentional pause", () => {
+    const view = render(<VideoFeed initialItemId="two" initialPaused items={feedItems()} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+
+    expect(feed.dataset.activeIndex).toBe("1");
+    expect(view.getAllByRole("button", { name: "Play video" })).toHaveLength(1);
+  });
+
   test("keeps keyboard navigation scoped to the focused feed", () => {
     const view = render(<VideoFeed items={feedItems()} />);
     const feed = view.getByLabelText("Video feed");

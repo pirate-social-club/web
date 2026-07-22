@@ -25,15 +25,24 @@ import type { VideoFeedCapability, VideoFeedItem } from "./video-feed.types";
 
 export interface VideoFeedProps {
   initialItemId?: string;
+  initialMuted?: boolean;
+  initialPaused?: boolean;
+  initialPlaybackSeconds?: number;
   items: VideoFeedItem[];
   onActiveItemChange?: (item: VideoFeedItem, index: number) => void;
   onComment?: (item: VideoFeedItem) => void;
   onBoost?: (item: VideoFeedItem) => void;
   onGateRequired?: (item: VideoFeedItem) => void;
-  onKaraoke?: (item: VideoFeedItem) => void;
+  onKaraoke?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onLike?: (item: VideoFeedItem) => void;
   onShare?: (item: VideoFeedItem) => void;
-  onStudy?: (item: VideoFeedItem) => void;
+  onStudy?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
+}
+
+export interface VideoFeedPlaybackState {
+  muted: boolean;
+  paused: boolean;
+  playbackSeconds: number;
 }
 
 function compactCount(value: number): string {
@@ -124,7 +133,8 @@ function VideoFeedSlide({
   onStudy,
   onTogglePlayback,
   muted,
-}: Omit<VideoFeedProps, "initialItemId" | "items"> & {
+  initialPlaybackSeconds,
+}: Omit<VideoFeedProps, "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items"> & {
   active: boolean;
   allowAutoplay: boolean;
   item: VideoFeedItem;
@@ -134,6 +144,7 @@ function VideoFeedSlide({
   muted: boolean;
   paused: boolean;
   preload: "auto" | "metadata";
+  initialPlaybackSeconds?: number;
 }) {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const ageBlocked = item.viewerState === "age_proof_required";
@@ -150,12 +161,33 @@ function VideoFeedSlide({
     void playback?.catch(() => undefined);
   }, [active, allowAutoplay, paused]);
 
+  React.useEffect(() => {
+    const video = videoRef.current;
+    if (!active || !video || initialPlaybackSeconds === undefined) return;
+    const restore = () => { video.currentTime = initialPlaybackSeconds; };
+    if (video.readyState >= 1) restore();
+    else video.addEventListener("loadedmetadata", restore, { once: true });
+    return () => video.removeEventListener("loadedmetadata", restore);
+  }, [active, initialPlaybackSeconds]);
+
   const runInteraction = (action: ((item: VideoFeedItem) => void) | undefined) => {
     if (item.interactionGate === "membership_required") {
       onGateRequired?.(item);
       return;
     }
     action?.(item);
+  };
+
+  const runPlaybackInteraction = (action: ((item: VideoFeedItem, state: VideoFeedPlaybackState) => void) | undefined) => {
+    if (item.interactionGate === "membership_required") {
+      onGateRequired?.(item);
+      return;
+    }
+    action?.(item, {
+      muted,
+      paused,
+      playbackSeconds: videoRef.current?.currentTime ?? 0,
+    });
   };
 
   return (
@@ -268,8 +300,8 @@ function VideoFeedSlide({
             value={compactCount(item.likeCount)}
           />
           <VideoAction icon={<ChatCircle className="size-5" weight="fill" />} label="Comments" onClick={() => runInteraction(onComment)} value={compactCount(item.commentCount)} />
-          <CapabilityAction capability={item.study} icon={<BookOpen className="size-5" weight="fill" />} label="Study" onClick={() => runInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
-          <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-5" weight="fill" />} label="Sing" onClick={() => runInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
+          <CapabilityAction capability={item.study} icon={<BookOpen className="size-5" weight="fill" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
+          <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-5" weight="fill" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
           <VideoAction icon={<ShareNetwork className="size-5" weight="fill" />} label="Share" onClick={() => onShare?.(item)} />
         </div>
       </div>
@@ -277,15 +309,20 @@ function VideoFeedSlide({
   );
 }
 
-export function VideoFeed({ initialItemId, items, ...actions }: VideoFeedProps) {
+export function VideoFeed({ initialItemId, initialMuted = true, initialPaused = false, initialPlaybackSeconds, items, ...actions }: VideoFeedProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const initialIndex = Math.max(0, items.findIndex((item) => item.id === initialItemId));
   const [activeIndex, setActiveIndex] = React.useState(initialIndex);
   const [documentHidden, setDocumentHidden] = React.useState(false);
-  const [pausedItemIds, setPausedItemIds] = React.useState<Set<string>>(() => new Set());
+  const [pausedItemIds, setPausedItemIds] = React.useState<Set<string>>(() => initialPaused && initialItemId ? new Set([initialItemId]) : new Set());
   const [userStartedItemIds, setUserStartedItemIds] = React.useState<Set<string>>(() => new Set());
   const [reduceMotion, setReduceMotion] = React.useState(false);
-  const [muted, setMuted] = React.useState(true);
+  const [muted, setMuted] = React.useState(initialMuted);
+
+  React.useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (container && initialIndex > 0) container.scrollTop = initialIndex * container.clientHeight;
+  }, [initialIndex]);
 
   React.useEffect(() => {
     const mediaQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -388,6 +425,7 @@ export function VideoFeed({ initialItemId, items, ...actions }: VideoFeedProps) 
             active={index === activeIndex}
             allowAutoplay={!documentHidden && (!reduceMotion || userStartedItemIds.has(item.id))}
             item={item}
+            initialPlaybackSeconds={item.id === initialItemId ? initialPlaybackSeconds : undefined}
             onPausePlayback={pausePlayback}
             onToggleMute={toggleMute}
             onTogglePlayback={togglePlayback}

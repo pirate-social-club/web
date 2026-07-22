@@ -3,6 +3,7 @@
 import * as React from "react";
 import { loadSongRoutePost } from "@/app/authenticated-helpers/load-song-route-post";
 import { navigate } from "@/app/router";
+import { routeReturnPath } from "@/app/authenticated-helpers/video-viewer-return-state";
 import { KaraokeAudioSurface } from "@/components/compositions/karaoke/karaoke-audio-surface";
 import { toKaraokeStageLines } from "@/components/compositions/karaoke/lyric-transform";
 import { toScorableKaraokeLines } from "@/components/compositions/karaoke/karaoke-stage-bridge";
@@ -187,7 +188,7 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
       className="h-dvh"
       instrumentalAudioUrl={state.payload.instrumentalAudioUrl}
       lines={stageLines}
-      onExit={() => navigate(`/p/${encodeURIComponent(postId)}`)}
+      onExit={() => navigate(routeReturnPath(`/p/${encodeURIComponent(postId)}`))}
       onRequestSignIn={connect ?? undefined}
       onViewScores={() => navigate(`/p/${encodeURIComponent(postId)}/karaoke/leaderboard`)}
       scoring={scoring}

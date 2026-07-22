@@ -27,6 +27,14 @@ import { FullBleedMobileListSection } from "@/components/compositions/app/page-s
 import { cn } from "@/lib/utils";
 import { Type } from "@/components/primitives/type";
 import { navigate } from "@/app/router";
+import {
+  clearVideoViewerReturnState,
+  currentRelativePath,
+  readVideoViewerReturnState,
+  saveVideoViewerReturnState,
+  type VideoViewerReturnState,
+} from "@/app/authenticated-helpers/video-viewer-return-state";
+import type { VideoFeedPlaybackState } from "@/components/compositions/posts/video-feed/video-feed";
 
 export type FeedSort = "best" | "new" | "top";
 
@@ -257,6 +265,7 @@ export function Feed({
   const showLoadingTail = loading && hasItems;
   const [originalPostIds, setOriginalPostIds] = React.useState<Set<string>>(() => new Set());
   const [viewerItemId, setViewerItemId] = React.useState<string | null>(null);
+  const [viewerRestoreState, setViewerRestoreState] = React.useState<VideoViewerReturnState | null>(null);
   const [videoCapabilityRevision, setVideoCapabilityRevision] = React.useState(0);
   const loadMoreSentinelRef = React.useRef<HTMLDivElement>(null);
   const paginationEnabled = hasMore !== undefined && Boolean(onLoadMore);
@@ -312,14 +321,38 @@ export function Feed({
       if (changed) setVideoCapabilityRevision((current) => current + 1);
     });
   }, [resolvedPageVideoItems, videoCapabilityCache]);
-  const handleViewerKaraoke = React.useCallback((item: VideoFeedItem) => {
+  const launchViewerAction = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState, href?: string) => {
+    if (!href) return;
+    const returnPath = currentRelativePath();
+    saveVideoViewerReturnState({
+      createdAt: Date.now(),
+      itemId: item.id,
+      muted: playback.muted,
+      paused: playback.paused,
+      playbackSeconds: playback.playbackSeconds,
+      returnPath,
+      scrollY: window.scrollY,
+    });
+    const destination = new URL(href, window.location.origin);
+    destination.searchParams.set("return_to", returnPath);
+    navigate(`${destination.pathname}${destination.search}${destination.hash}`);
+  }, []);
+  const handleViewerKaraoke = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState) => {
     const href = item.song?.karaokeHref;
-    if (href) navigate(href);
-  }, []);
-  const handleViewerStudy = React.useCallback((item: VideoFeedItem) => {
+    launchViewerAction(item, playback, href);
+  }, [launchViewerAction]);
+  const handleViewerStudy = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState) => {
     const href = item.song?.studyHref;
-    if (href) navigate(href);
-  }, []);
+    launchViewerAction(item, playback, href);
+  }, [launchViewerAction]);
+
+  React.useEffect(() => {
+    const restored = readVideoViewerReturnState(currentRelativePath());
+    if (!restored || !pageVideoItems.some((item) => item.id === restored.itemId)) return;
+    setViewerRestoreState(restored);
+    setViewerItemId(restored.itemId);
+    window.requestAnimationFrame(() => window.scrollTo({ top: restored.scrollY, left: 0, behavior: "auto" }));
+  }, [pageVideoItems]);
 
   React.useEffect(() => {
     const sentinel = loadMoreSentinelRef.current;
@@ -460,12 +493,15 @@ export function Feed({
         </div>
         {aside ? <div className="hidden w-72 shrink-0 lg:block">{aside}</div> : null}
       </div>
-      <Dialog onOpenChange={(open) => { if (!open) setViewerItemId(null); }} open={viewerItemId !== null}>
+      <Dialog onOpenChange={(open) => { if (!open) { setViewerItemId(null); setViewerRestoreState(null); clearVideoViewerReturnState(); } }} open={viewerItemId !== null}>
         <DialogContent className="h-dvh w-screen max-w-none rounded-none border-0 p-0">
           <DialogTitle className="sr-only">Video viewer</DialogTitle>
           {viewerItemId ? (
             <VideoFeed
               initialItemId={viewerItemId}
+              initialMuted={viewerRestoreState?.muted}
+              initialPaused={viewerRestoreState?.paused}
+              initialPlaybackSeconds={viewerRestoreState?.playbackSeconds}
               items={resolvedPageVideoItems}
               onActiveItemChange={handleViewerActiveItemChange}
               onComment={handleViewerComment}

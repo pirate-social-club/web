@@ -16,25 +16,35 @@ import { VideoFeed, type VideoFeedPlaybackState } from "@/components/composition
 import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/video-feed.types";
 import { VideoSongCapabilityCache } from "@/components/compositions/posts/video-feed/video-song-capability-cache";
 import { Spinner } from "@/components/primitives/spinner";
-import { Button } from "@/components/primitives/button";
-import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
-import { useRouteMessages } from "@/hooks/use-route-messages";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
+import { HomePage } from "./home-routes";
+
+export type VideoHomeSurface = "loading" | "video" | "community-feed-empty" | "community-feed-error";
+
+export function resolveVideoHomeSurface(input: {
+  error: unknown;
+  itemCount: number;
+  loading: boolean;
+}): VideoHomeSurface {
+  if (input.loading) return "loading";
+  if (input.error) return "community-feed-error";
+  if (input.itemCount === 0) return "community-feed-empty";
+  return "video";
+}
 
 export function VideoHomePage() {
   const api = useApi();
   const hydrated = useClientHydrated();
   const session = useSession();
   const contentLocale = useRouteContentLocale();
-  const { copy } = useRouteMessages();
   const capabilityLoader = useVideoViewerSongCapabilities(contentLocale);
   const [entries, setEntries] = React.useState<ApiHomeFeedItem[]>([]);
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(false);
+  const [error, setError] = React.useState<unknown>(null);
   const [capabilityRevision, setCapabilityRevision] = React.useState(0);
   const [activeItemId, setActiveItemId] = React.useState<string | null>(null);
   const [boostTarget, setBoostTarget] = React.useState<{ open: () => void; sourcePostId: string } | null>(null);
@@ -49,7 +59,7 @@ export function VideoHomePage() {
     if (!hydrated) return;
     let cancelled = false;
     setLoading(true);
-    setError(false);
+    setError(null);
     const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
     void request({ locale: contentLocale, sort: "best" })
       .then((response) => {
@@ -57,7 +67,7 @@ export function VideoHomePage() {
         setEntries(response.items);
         setNextCursor(response.next_cursor ?? null);
       })
-      .catch(() => { if (!cancelled) setError(true); })
+      .catch((nextError: unknown) => { if (!cancelled) setError(nextError); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [api, contentLocale, hydrated, session?.accessToken]);
@@ -153,18 +163,10 @@ export function VideoHomePage() {
     navigate(`${destination.pathname}${destination.search}`);
   }, []);
 
-  if (loading) return <div className="grid min-h-dvh w-full place-items-center bg-background"><Spinner className="size-6" /></div>;
-  if (error || items.length === 0) {
-    return (
-      <div className="grid min-h-dvh w-full place-items-center bg-background px-5">
-        <div className="flex max-w-md flex-col items-center gap-4 text-center">
-          <Type as="h1" variant="h3">{error ? copy.home.videoLoadError : copy.home.emptyVideoTitle}</Type>
-          {!error ? <Type className="text-muted-foreground" variant="body">{copy.home.emptyVideoBody}</Type> : null}
-          <Button onClick={() => navigate("/feed")} variant="secondary">{copy.home.communityFeedLabel}</Button>
-        </div>
-      </div>
-    );
-  }
+  const surface = resolveVideoHomeSurface({ error, itemCount: items.length, loading });
+  if (surface === "loading") return <div className="grid min-h-dvh w-full place-items-center bg-background"><Spinner className="size-6" /></div>;
+  if (surface === "community-feed-error") return <HomePage videoFallbackReason="error" />;
+  if (surface === "community-feed-empty") return <HomePage videoFallbackReason="empty" />;
 
   return (
     <div className="min-h-0 w-full flex-1 bg-background">

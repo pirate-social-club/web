@@ -101,6 +101,7 @@
     "emptyVideoBody": "There are no playable videos for you right now.",
     "emptyVideoTitle": "No videos yet",
     "videoLoadError": "Could not load videos.",
+    "videoFallbackErrorBody": "The video feed is unavailable, so we're showing the Community Feed instead.",
     "emptyYourCommunitiesBody": "Communities you create or join show up here.",
     "emptyYourCommunitiesTitle": "No communities yet",
     "membersLabel": "{count} members",

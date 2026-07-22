@@ -101,6 +101,7 @@
     "emptyVideoBody": "لا توجد فيديوهات قابلة للتشغيل لك الآن.",
     "emptyVideoTitle": "لا توجد فيديوهات بعد",
     "videoLoadError": "تعذر تحميل الفيديوهات.",
+    "videoFallbackErrorBody": "خلاصة الفيديو غير متاحة، لذا نعرض خلاصة المجتمع بدلًا منها.",
     "emptyYourCommunitiesBody": "المجتمعات التي تنشئها أو تنضم إليها تظهر هنا.",
     "emptyYourCommunitiesTitle": "لا توجد مجتمعات بعد",
     "membersLabel": "{count} عضو",

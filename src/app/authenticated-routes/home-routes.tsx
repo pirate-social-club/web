@@ -376,7 +376,10 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
   };
 }
 
-export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
+export function HomePage({ initialSort, videoFallbackReason }: {
+  initialSort?: FeedSort;
+  videoFallbackReason?: "empty" | "error";
+} = {}) {
   const api = useApi();
   const queryClient = useQueryClient();
   const hydrated = useClientHydrated();
@@ -688,6 +691,17 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         />
       ) : null}
       <StandardRoutePage size="rail" className="gap-6" frameClassName="md:pb-0">
+        {videoFallbackReason ? (
+          <div className="flex flex-col items-start gap-3 border-b border-border-soft pb-5">
+            <Type as="h1" variant="h3">
+              {videoFallbackReason === "error" ? copy.home.videoLoadError : copy.home.emptyVideoTitle}
+            </Type>
+            <Type className="text-muted-foreground" variant="body">
+              {videoFallbackReason === "error" ? copy.home.videoFallbackErrorBody : copy.home.emptyVideoBody}
+            </Type>
+            <Button onClick={() => navigate("/feed")} variant="secondary">{copy.home.communityFeedLabel}</Button>
+          </div>
+        ) : null}
         <Feed
           activeSort={activeSort}
           aside={(

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { defineChain } from "viem";
+import { defineChain, type Chain } from "viem";
 import {
   base,
   baseSepolia,
@@ -68,6 +68,12 @@ type PrivyWalletDemandContextValue = {
 };
 
 const REFRESH_WINDOW_MS = 5 * 60 * 1000;
+
+export function resolvePrivyBaseChains(baseChain: Chain): Chain[] {
+  return baseChain.id === baseSepolia.id
+    ? [baseChain]
+    : [baseChain, baseSepolia];
+}
 
 const PrivyRuntimeContext = React.createContext<PrivyRuntimeState>({
   busy: false,
@@ -191,7 +197,12 @@ export function PirateAuthProvider({
 
     return {
       defaultChain: baseChain,
-      supportedChains: [baseChain, ethereumChain, optimismChain, storyChain],
+      supportedChains: [
+        ...resolvePrivyBaseChains(baseChain),
+        ethereumChain,
+        optimismChain,
+        storyChain,
+      ],
     };
   }, [networkConfig]);
 

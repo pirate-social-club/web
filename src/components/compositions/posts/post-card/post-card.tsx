@@ -479,9 +479,8 @@ export function PostCard({
         ) : null}
 
         {titleElement}
-        {event ? <PostCardEventBlock event={event} showEventUrl={shouldShowEventUrl} /> : null}
-        <SongCaptionBeforeMedia content={content} />
-        <PostCardMedia content={content} onOpenVideoViewer={onOpenVideoViewer} postHref={postHref} previewMode={previewMode} viewContext={viewContext} />
+        {/* Translation attribution sits directly below the title: it describes the
+            translated text fields, not the media or actions that follow. */}
         {canToggleOriginal ? (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-start">
             <Type as="span" variant="caption" className="text-muted-foreground">
@@ -497,6 +496,9 @@ export function PostCard({
             </Button>
           </div>
         ) : null}
+        {event ? <PostCardEventBlock event={event} showEventUrl={shouldShowEventUrl} /> : null}
+        <SongCaptionBeforeMedia content={content} />
+        <PostCardMedia content={content} onOpenVideoViewer={onOpenVideoViewer} postHref={postHref} previewMode={previewMode} viewContext={viewContext} />
 
         {!previewMode && songCommerce ? (
           <div className="flex flex-col gap-2 pt-0.5 sm:flex-row sm:items-center sm:gap-1.5">

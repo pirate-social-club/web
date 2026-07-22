@@ -1,0 +1,108 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import * as React from "react";
+
+import { toast } from "@/components/primitives/sonner";
+import { VideoFeed } from "../video-feed";
+import type { VideoFeedItem } from "../video-feed.types";
+
+const videoSrc = "https://stream.mux.com/VZtzUzGRv02OhRnZCxcNg49OilvolTqdnFLEqBsTwaxU/low.mp4";
+const posterSrc = "https://image.mux.com/VZtzUzGRv02OhRnZCxcNg49OilvolTqdnFLEqBsTwaxU/thumbnail.webp?time=0";
+
+const portrait: VideoFeedItem = {
+  id: "video_portrait",
+  publisher: { handle: "karaoke.pirate", kind: "community" },
+  caption: "Working through the chorus one line at a time.",
+  commentCount: 86,
+  interactionGate: "open",
+  karaoke: "ready",
+  likeCount: 12400,
+  media: { orientation: "portrait", posterSrc, src: videoSrc },
+  rewards: { karaoke: { amountLabel: "$2" }, study: { amountLabel: "$1" } },
+  song: { artist: "Britney Spears", title: "Toxic" },
+  study: "ready",
+  viewerState: "allowed",
+};
+
+const landscape: VideoFeedItem = {
+  ...portrait,
+  id: "video_landscape",
+  publisher: { handle: "performances.pirate", kind: "community" },
+  caption: "Landscape performances stay eligible in a contained player with an ambient backdrop.",
+  likeCount: 3800,
+  media: { orientation: "landscape", posterSrc, src: videoSrc },
+  song: { artist: "Daft Punk", title: "Studio Session" },
+};
+
+const gated: VideoFeedItem = {
+  ...portrait,
+  id: "video_gated",
+  publisher: { handle: "members.pirate", kind: "community" },
+  caption: "Public to watch; joining is required before interacting.",
+  interactionGate: "membership_required",
+  karaoke: "locked",
+  likeCount: 712,
+  study: "ready",
+};
+
+const ageBlocked: VideoFeedItem = {
+  ...portrait,
+  id: "video_age_blocked",
+  caption: "The story deliberately contains no playable source in the rendered video element.",
+  media: { orientation: "portrait", posterSrc, src: "https://media.example.test/must-not-render.mp4" },
+  viewerState: "age_proof_required",
+};
+
+const meta = {
+  title: "Compositions/Posts/VideoFeed",
+  component: VideoFeed,
+  parameters: { layout: "fullscreen" },
+} satisfies Meta<typeof VideoFeed>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+function InteractiveFeed({ items, initialItemId }: { items: VideoFeedItem[]; initialItemId?: string }) {
+  return (
+    <VideoFeed
+      initialItemId={initialItemId}
+      items={items}
+      onBoost={(item) => toast.message(`Boost: ${item.song?.title}`)}
+      onComment={(item) => toast.message(`Comments: ${item.id}`)}
+      onGateRequired={() => toast.message("Join this community to interact")}
+      onKaraoke={(item) => toast.message(`Sing: ${item.song?.title}`)}
+      onLike={(item) => toast.message(`Liked: ${item.id}`)}
+      onShare={(item) => toast.message(`Shared: ${item.id}`)}
+      onStudy={(item) => toast.message(`Study: ${item.song?.title}`)}
+    />
+  );
+}
+
+export const VerticalFeed: Story = {
+  args: { items: [] },
+  render: () => <InteractiveFeed items={[portrait, landscape, gated]} />,
+};
+
+export const LandscapeTreatment: Story = {
+  args: { items: [] },
+  render: () => <InteractiveFeed items={[landscape]} />,
+};
+
+export const MembershipGatedActions: Story = {
+  args: { items: [] },
+  render: () => <InteractiveFeed items={[gated]} />,
+};
+
+export const AgeProofRequired: Story = {
+  args: { items: [] },
+  render: () => <InteractiveFeed items={[ageBlocked]} />,
+};
+
+export const NoLinkedSong: Story = {
+  args: { items: [] },
+  render: () => <InteractiveFeed items={[{ ...portrait, id: "video_unlinked", karaoke: "unavailable", song: undefined, study: "unavailable" }]} />,
+};
+
+export const RewardedActionsAndBoost: Story = {
+  args: { items: [] },
+  render: () => <InteractiveFeed items={[{ ...portrait, boostEligibility: "eligible" }]} />,
+};

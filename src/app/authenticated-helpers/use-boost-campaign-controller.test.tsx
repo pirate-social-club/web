@@ -212,7 +212,11 @@ describe("useBoostCampaignController", () => {
 
   test("sends from the pinned wallet, confirms the hash, and reaches active", async () => {
     connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
-    const view = renderHook(() => useBoostCampaignController(input()));
+    let activated = 0;
+    const view = renderHook(() => useBoostCampaignController({
+      ...input(),
+      onCampaignActivated: () => { activated += 1; },
+    }));
     await waitFor(() => expect(view.result.current.canBoost).toBe(true));
     act(() => view.result.current.openBoost());
     act(() => {
@@ -230,6 +234,7 @@ describe("useBoostCampaignController", () => {
     );
     expect(calls.transfer).toBe(1);
     expect(calls.confirm).toBe(1);
+    expect(activated).toBe(1);
   });
 
   test("keeps an ambiguous confirmation pending and checks it without sending twice", async () => {

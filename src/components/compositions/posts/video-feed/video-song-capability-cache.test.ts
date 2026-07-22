@@ -12,16 +12,22 @@ describe("VideoSongCapabilityCache", () => {
     const pending = cache.prefetch(["pst_first", "pst_second"]);
 
     resolvers.get("pst_second")?.({
+      activeRewardOffer: false,
       karaoke: "ready",
       readMode: "public",
       sourcePostId: "pst_second",
+      sourceCommunityId: "cmt_second",
       study: "unavailable",
+      viewerIsAuthor: false,
     } as never);
     resolvers.get("pst_first")?.({
+      activeRewardOffer: false,
       karaoke: "unavailable",
       readMode: "authenticated",
       sourcePostId: "pst_first",
+      sourceCommunityId: "cmt_first",
       study: "ready",
+      viewerIsAuthor: false,
     } as never);
     await pending;
 
@@ -42,10 +48,13 @@ describe("VideoSongCapabilityCache", () => {
 
   test("deduplicates the same source across adjacent slides", async () => {
     const load = mock(async (sourcePostId: string) => ({
+      activeRewardOffer: false,
       karaoke: "ready" as const,
       readMode: "authenticated" as const,
       sourcePostId,
+      sourceCommunityId: "cmt_song",
       study: "ready" as const,
+      viewerIsAuthor: false,
     }));
     const cache = new VideoSongCapabilityCache("viewer:1", load);
 

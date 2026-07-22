@@ -35,6 +35,7 @@ export function resolveVideoSongCapabilities({ post, readMode, rewardOffer, sour
   const study = ageBlocked ? "unavailable" : capabilityStatus(post.study_capability?.status);
   const rewardLabel = rewardOffer ? rewardCtaAmountLabel(rewardOffer.daily_reward_cents) : undefined;
   return {
+    activeRewardOffer: Boolean(rewardOffer),
     karaoke,
     karaokeHref: karaoke === "ready" ? `/p/${encodeURIComponent(sourcePostId)}/karaoke` : undefined,
     readMode,
@@ -47,8 +48,10 @@ export function resolveVideoSongCapabilities({ post, readMode, rewardOffer, sour
         : undefined,
     } : undefined,
     sourcePostId,
+    sourceCommunityId: post.post.community ?? null,
     study,
     studyHref: study === "ready" ? `/p/${encodeURIComponent(sourcePostId)}/study` : undefined,
+    viewerIsAuthor: Boolean(post.viewer_is_author),
   };
 }
 

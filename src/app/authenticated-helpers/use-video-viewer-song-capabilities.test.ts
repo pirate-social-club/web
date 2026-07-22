@@ -8,6 +8,7 @@ describe("resolveVideoSongCapabilities", () => {
       post: {
         age_gate_viewer_state: null,
         karaoke_capability: { status: "ready" },
+        post: { community: "cmt_song" },
         study_capability: { status: "locked" },
       } as never,
       readMode: "public",
@@ -26,6 +27,7 @@ describe("resolveVideoSongCapabilities", () => {
       post: {
         age_gate_viewer_state: "proof_required",
         karaoke_capability: { status: "ready" },
+        post: { community: "cmt_song" },
         study_capability: { status: "ready" },
       } as never,
       readMode: "authenticated",
@@ -38,6 +40,7 @@ describe("resolveVideoSongCapabilities", () => {
       post: {
         age_gate_viewer_state: null,
         karaoke_capability: { status: "ready" },
+        post: { community: "cmt_song" },
         study_capability: { status: "ready" },
       } as never,
       readMode: "authenticated",
@@ -57,6 +60,7 @@ describe("resolveVideoSongCapabilities", () => {
       post: {
         age_gate_viewer_state: "proof_required",
         karaoke_capability: { status: "ready" },
+        post: { community: "cmt_song" },
         study_capability: { status: "ready" },
       } as never,
       readMode: "authenticated",

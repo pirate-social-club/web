@@ -105,7 +105,7 @@ const topTimeRangeOptions = [
 
 const EMPTY_FEED_SORT_OPTIONS: FeedSortOption[] = [];
 
-export function VideoViewerBoostBridge({
+function VideoViewerBoostBridge({
   activePublicOffer,
   communityId,
   onAvailabilityChange,
@@ -307,10 +307,10 @@ export function Feed({
   const [videoCapabilityRevision, setVideoCapabilityRevision] = React.useState(0);
   const loadMoreSentinelRef = React.useRef<HTMLDivElement>(null);
   const paginationEnabled = hasMore !== undefined && Boolean(onLoadMore);
-  const pageVideoItems = React.useMemo(() => videoViewerSongCapabilities ? items.flatMap((item) => {
+  const pageVideoItems = React.useMemo(() => items.flatMap((item) => {
     const videoItem = toPageVideoItem(item);
     return videoItem ? [videoItem] : [];
-  }) : [], [items, videoViewerSongCapabilities]);
+  }), [items]);
   const videoCapabilityCache = React.useMemo(() => videoViewerSongCapabilities
     ? new VideoSongCapabilityCache(
         videoViewerSongCapabilities.cacheScope,

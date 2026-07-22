@@ -1,6 +1,7 @@
 import {
   Code,
   FileCode,
+  Fire,
   Flag,
   GitBranch,
   GithubLogo,
@@ -165,10 +166,10 @@ export function buildPrimaryItems(messages: ShellMessages["appSidebar"]): AppSid
       onSelect: () => navigate("/"),
     },
     {
-      id: "community-feed",
-      icon: Newspaper,
-      label: messages.communityFeedLabel,
-      onSelect: () => navigate("/feed"),
+      id: "popular",
+      icon: Fire,
+      label: messages.feedSortBestLabel,
+      onSelect: () => navigate("/popular"),
     },
     {
       id: "your-communities",
@@ -230,8 +231,6 @@ export function activeSidebarItem(route: AppRoute): string | undefined {
       return "home";
     case "popular":
       return "popular";
-    case "community-feed":
-      return "community-feed";
     case "wallet":
       return undefined;
     case "your-communities":

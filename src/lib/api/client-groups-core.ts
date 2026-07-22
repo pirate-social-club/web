@@ -207,22 +207,6 @@ export function createVerificationApi(request: ApiRequest) {
 }
 
 export function createFeedApi(request: ApiRequest) {
-  const videoFeed = (
-    path: string,
-    opts?: {
-      cursor?: string | null;
-      locale?: string | null;
-      sort?: HomeFeedSort | null;
-      timeRange?: string | null;
-    },
-    tokenRequired?: boolean,
-  ): Promise<HomeFeedResponse> => request<HomeFeedResponse>(buildQueryPath(path, {
-    cursor: opts?.cursor,
-    locale: opts?.locale,
-    sort: opts?.sort,
-    time_range: opts?.timeRange,
-  }), tokenRequired === false ? { tokenRequired: false } : { tokenOptional: true });
-
   return {
     home: (
       opts?: {
@@ -254,9 +238,5 @@ export function createFeedApi(request: ApiRequest) {
         time_range: opts?.timeRange,
       }), { tokenRequired: false });
     },
-    videos: (opts?: Parameters<typeof videoFeed>[1]): Promise<HomeFeedResponse> =>
-      videoFeed("/feed/home/videos", opts),
-    publicVideos: (opts?: Parameters<typeof videoFeed>[1]): Promise<HomeFeedResponse> =>
-      videoFeed("/feed/home/videos/public", opts, false),
   };
 }

@@ -24,7 +24,6 @@ import { cn } from "@/lib/utils";
 import type { VideoFeedCapability, VideoFeedItem } from "./video-feed.types";
 
 export interface VideoFeedProps {
-  className?: string;
   initialItemId?: string;
   initialMuted?: boolean;
   initialPaused?: boolean;
@@ -310,7 +309,7 @@ function VideoFeedSlide({
   );
 }
 
-export function VideoFeed({ className, initialItemId, initialMuted = true, initialPaused = false, initialPlaybackSeconds, items, ...actions }: VideoFeedProps) {
+export function VideoFeed({ initialItemId, initialMuted = true, initialPaused = false, initialPlaybackSeconds, items, ...actions }: VideoFeedProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const initialIndex = Math.max(0, items.findIndex((item) => item.id === initialItemId));
   const [activeIndex, setActiveIndex] = React.useState(initialIndex);
@@ -411,7 +410,7 @@ export function VideoFeed({ className, initialItemId, initialMuted = true, initi
     <div
       ref={containerRef}
       aria-label="Video feed"
-      className={cn("h-dvh w-full snap-y snap-mandatory overflow-y-auto overscroll-y-contain", className)}
+      className="h-dvh w-full snap-y snap-mandatory overflow-y-auto overscroll-y-contain"
       data-active-index={activeIndex}
       onScroll={(event) => {
         const container = event.currentTarget;
@@ -420,7 +419,7 @@ export function VideoFeed({ className, initialItemId, initialMuted = true, initi
       tabIndex={0}
     >
       {items.map((item, index) => (
-        <div className="h-full" key={item.id}>
+        <div className="h-dvh" key={item.id}>
           <VideoFeedSlide
             {...actions}
             active={index === activeIndex}

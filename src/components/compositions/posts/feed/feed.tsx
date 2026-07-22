@@ -318,7 +318,7 @@ export function Feed({
       )
     : null,
   [videoViewerSongCapabilities]);
-  const resolvedPageVideoItems = React.useMemo(() => pageVideoItems.map((item) => {
+  const resolvedPageVideoItems = React.useMemo<VideoFeedItem[]>(() => pageVideoItems.map((item) => {
     const sourcePostId = item.song?.sourcePostId;
     const resolution = sourcePostId ? videoCapabilityCache?.get(sourcePostId) : undefined;
     if (!resolution) return item;
@@ -371,7 +371,8 @@ export function Feed({
     setBoostTarget(canBoost ? { open, sourcePostId } : null);
   }, []);
   const handleViewerBoost = React.useCallback((item: VideoFeedItem) => {
-    if (item.song?.sourcePostId === boostTarget?.sourcePostId) boostTarget.open();
+    const target = boostTarget;
+    if (target && item.song?.sourcePostId === target.sourcePostId) target.open();
   }, [boostTarget]);
   const launchViewerAction = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState, href?: string) => {
     if (!href) return;

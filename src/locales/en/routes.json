@@ -93,10 +93,14 @@
     "googlePlay": "Google Play"
   },
   "home": {
+    "communityFeedLabel": "Community Feed",
     "createCommunityLabel": "Create community",
     "emptyHomeBody": "When communities start posting, trending posts will appear here.",
     "emptyHomeVerifyBody": "Verify your account before you make your first post.",
     "emptyHomeTitle": "No posts yet",
+    "emptyVideoBody": "There are no playable videos for you right now.",
+    "emptyVideoTitle": "No videos yet",
+    "videoLoadError": "Could not load videos.",
     "emptyYourCommunitiesBody": "Communities you create or join show up here.",
     "emptyYourCommunitiesTitle": "No communities yet",
     "membersLabel": "{count} members",
@@ -1438,7 +1442,7 @@
       "membershipRequiredDescription": "Only community members can publish posts here.",
       "membershipRequiredTitle": "Join this community before posting"
     },
-    "home": {
+  "home": {
       "auth": "Sign in to view your home feed.",
       "failure": "The home feed could not be loaded right now.",
       "incomplete": "The home feed response was incomplete. Try loading it again.",

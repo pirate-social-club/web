@@ -418,10 +418,14 @@ export const GENERATED_LOCALE_CATALOGS = {
         "googlePlay": "Google Play"
       },
       "home": {
+        "communityFeedLabel": "Community Feed",
         "createCommunityLabel": "Create community",
         "emptyHomeBody": "When communities start posting, trending posts will appear here.",
         "emptyHomeVerifyBody": "Verify your account before you make your first post.",
         "emptyHomeTitle": "No posts yet",
+        "emptyVideoBody": "There are no playable videos for you right now.",
+        "emptyVideoTitle": "No videos yet",
+        "videoLoadError": "Could not load videos.",
         "emptyYourCommunitiesBody": "Communities you create or join show up here.",
         "emptyYourCommunitiesTitle": "No communities yet",
         "membersLabel": "{count} members",
@@ -2453,10 +2457,14 @@ export const GENERATED_LOCALE_CATALOGS = {
         "googlePlay": "Google Play"
       },
       "home": {
+        "communityFeedLabel": "خلاصة المجتمع",
         "createCommunityLabel": "أنشئ مجتمعًا",
         "emptyHomeBody": "عندما تبدأ المجتمعات بالنشر، ستظهر المنشورات الرائجة هنا.",
         "emptyHomeVerifyBody": "تحقق من حسابك قبل أن تنشر أول مشاركة.",
         "emptyHomeTitle": "لا توجد منشورات بعد",
+        "emptyVideoBody": "لا توجد فيديوهات قابلة للتشغيل لك الآن.",
+        "emptyVideoTitle": "لا توجد فيديوهات بعد",
+        "videoLoadError": "تعذر تحميل الفيديوهات.",
         "emptyYourCommunitiesBody": "المجتمعات التي تنشئها أو تنضم إليها تظهر هنا.",
         "emptyYourCommunitiesTitle": "لا توجد مجتمعات بعد",
         "membersLabel": "{count} عضو",
@@ -4488,10 +4496,14 @@ export const GENERATED_LOCALE_CATALOGS = {
         "googlePlay": "Google Play"
       },
       "home": {
+        "communityFeedLabel": "社区动态",
         "createCommunityLabel": "创建社区",
         "emptyHomeBody": "当社区开始发布内容时，热门帖子会显示在这里。",
         "emptyHomeVerifyBody": "先完成验证，再发你的第一条帖子。",
         "emptyHomeTitle": "还没有帖子",
+        "emptyVideoBody": "目前没有适合你播放的视频。",
+        "emptyVideoTitle": "还没有视频",
+        "videoLoadError": "无法加载视频。",
         "emptyYourCommunitiesBody": "你创建或加入的社区会显示在这里。",
         "emptyYourCommunitiesTitle": "还没有社区",
         "membersLabel": "{count} 位成员",

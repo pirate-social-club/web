@@ -16,9 +16,11 @@ import { VideoFeed, type VideoFeedPlaybackState } from "@/components/composition
 import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/video-feed.types";
 import { VideoSongCapabilityCache } from "@/components/compositions/posts/video-feed/video-song-capability-cache";
 import { Spinner } from "@/components/primitives/spinner";
+import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
+import { useRouteMessages } from "@/hooks/use-route-messages";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 
@@ -27,6 +29,7 @@ export function VideoHomePage() {
   const hydrated = useClientHydrated();
   const session = useSession();
   const contentLocale = useRouteContentLocale();
+  const { copy } = useRouteMessages();
   const capabilityLoader = useVideoViewerSongCapabilities(contentLocale);
   const [entries, setEntries] = React.useState<ApiHomeFeedItem[]>([]);
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
@@ -151,7 +154,17 @@ export function VideoHomePage() {
   }, []);
 
   if (loading) return <div className="grid min-h-dvh w-full place-items-center bg-background"><Spinner className="size-6" /></div>;
-  if (error) return <div className="grid min-h-dvh w-full place-items-center bg-background"><Type variant="h3">Could not load videos</Type></div>;
+  if (error || items.length === 0) {
+    return (
+      <div className="grid min-h-dvh w-full place-items-center bg-background px-5">
+        <div className="flex max-w-md flex-col items-center gap-4 text-center">
+          <Type as="h1" variant="h3">{error ? copy.home.videoLoadError : copy.home.emptyVideoTitle}</Type>
+          {!error ? <Type className="text-muted-foreground" variant="body">{copy.home.emptyVideoBody}</Type> : null}
+          <Button onClick={() => navigate("/feed")} variant="secondary">{copy.home.communityFeedLabel}</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-0 w-full flex-1 bg-background">

@@ -52,6 +52,12 @@ function summary(state: RewardMockState) {
       eligible: state.balanceCents >= 100 && !inFlight,
       min_cents: 100,
       verification_state: "verified",
+      verification_provider: "self",
+    },
+    pending_verification: {
+      count: 0,
+      conditional_cents: 0,
+      earliest_expires_at: null,
     },
     latest_in_flight_cashout: inFlight,
   };

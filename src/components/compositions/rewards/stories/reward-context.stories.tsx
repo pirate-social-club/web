@@ -79,12 +79,11 @@ function RewardsWalletContext({
         <WalletHub
           {...walletHubProps}
           rewardsSummary={{
-            actionLabel: verifyState ? "Verify" : cashoutState === "pending" ? "Pending" : "Claim",
+            actionLabel: cashoutState === "pending" ? "Pending" : "Claim",
             amountLabel: rewardWallet.balance,
             actionDisabled: cashoutState === "pending",
             onAction: verifyState ? () => setVerifyOpen(true) : () => setCashoutOpen(true),
             pending: cashoutState === "pending",
-            supportingLabel: verifyState ? "Verify once to claim." : undefined,
           }}
         />
       </div>
@@ -104,6 +103,7 @@ function RewardsWalletContext({
         onOpenChange={setVerifyOpen}
         onSelectProvider={() => undefined}
         open={verifyOpen}
+        providers={["self"]}
         state={verifyState ?? "provider-selection"}
       />
     </StandardRoutePage>
@@ -115,8 +115,8 @@ export const WalletPageClaimReady: Story = {
   render: () => <RewardsWalletContext />,
 };
 
-export const WalletPageVerifyRequired: Story = {
-  name: "Wallet page / Verify required",
+export const WalletPagePendingVerification: Story = {
+  name: "Wallet page / Earned, verification on Claim",
   render: () => <RewardsWalletContext verifyState="provider-selection" />,
 };
 

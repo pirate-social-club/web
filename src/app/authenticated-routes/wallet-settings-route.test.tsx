@@ -200,10 +200,16 @@ beforeEach(() => {
         balance_cents: 120,
         today_earned_cents: 30,
         recent_events: [],
+        pending_verification: {
+          count: 0,
+          conditional_cents: 0,
+          earliest_expires_at: null,
+        },
         cashout: {
           eligible: true,
           min_cents: 100,
           verification_state: "verified",
+          verification_provider: "self",
         },
         latest_in_flight_cashout: null,
       })),
@@ -248,10 +254,16 @@ describe("CurrentUserWalletPage rewards", () => {
       balance_cents: 20,
       today_earned_cents: 30,
       recent_events: [],
+      pending_verification: {
+        count: 0,
+        conditional_cents: 0,
+        earliest_expires_at: null,
+      },
       cashout: {
         eligible: false,
         min_cents: 100,
         verification_state: "verified" as const,
+        verification_provider: "self" as const,
       },
       latest_in_flight_cashout: {
         id: "rpe_recovered",
@@ -383,24 +395,33 @@ describe("CurrentUserWalletPage rewards", () => {
     expect(view.queryByText("Pending")).toBeNull();
   });
 
-  test("offers rewards verification before the user has a balance", async () => {
+  test("shows conditional rewards and keeps Claim as the verification entry point", async () => {
     fakeApi.rewards.getSummary = mock(async () => ({
+      chain_id: 84532,
       balance_cents: 0,
       today_earned_cents: 0,
       recent_events: [],
+      pending_verification: {
+        count: 1,
+        conditional_cents: 100,
+        earliest_expires_at: 1_774_521_600,
+      },
       cashout: {
         eligible: false,
         min_cents: 100,
         verification_state: "unverified",
+        verification_provider: "self",
       },
       latest_in_flight_cashout: null,
     }));
     const view = render(<CurrentUserWalletPage />);
 
     await waitFor(() => {
-      expect(view.getByText("Verify")).toBeTruthy();
+      expect(view.getByText("$1.00")).toBeTruthy();
+      expect(view.getByText("Claim")).toBeTruthy();
     });
-    fireEvent.click(view.getByText("Verify"));
+    expect(view.queryByText("Verify with Self to earn and transfer.")).toBeNull();
+    fireEvent.click(view.getByText("Claim"));
 
     expect(view.getByText("Verify once")).toBeTruthy();
     expect(view.getByText("Self")).toBeTruthy();
@@ -414,10 +435,16 @@ describe("CurrentUserWalletPage rewards", () => {
       balance_cents: 0,
       today_earned_cents: 0,
       recent_events: [],
+      pending_verification: {
+        count: 0,
+        conditional_cents: 0,
+        earliest_expires_at: null,
+      },
       cashout: {
         eligible: false,
         min_cents: 100,
         verification_state: "verified",
+        verification_provider: "self",
       },
       latest_in_flight_cashout: null,
     }));

@@ -209,12 +209,19 @@ jobs:
               coreSha: process.env.CORE_SHA,
             });
 
-  # Terminate superseded runs BEFORE they enter the staging promotion lane, so a
-  # stale commit never takes the lock and never overwrites newer staging state.
-  # Mirrors production-freshness, but checked early: holding the lane to deploy a
-  # commit that main has already moved past is pure queue latency for everyone
-  # behind it. workflow_dispatch is exempt — a manual staging run on a release/*
-  # branch is deliberate and has no "tip" to compare against.
+  # Cheap QUEUE FILTER, not a guarantee. Drops runs that are already superseded
+  # when they start, so they never occupy schema-gate or the staging lane and
+  # never add latency for the runs behind them.
+  #
+  # This check is NOT what makes "an older run cannot deploy" true. It runs
+  # before schema-gate's ~10min fleet scan, so main can advance afterwards, and
+  # nothing orders lane acquisition against it. The authoritative check is
+  # in-lane-freshness inside the staging job, taken with the lock held
+  # immediately before the first mutation. Keep both: this one saves queue time,
+  # that one is the correctness boundary.
+  #
+  # workflow_dispatch is exempt — a manual staging run on a release/* branch is
+  # deliberate and has no "tip" to compare against.
   staging-freshness:
     name: Check staging freshness
     needs: [release-inputs]
@@ -277,6 +284,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    outputs:
+      superseded: ${{ steps.in-lane-freshness.outputs.stale }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -332,7 +341,40 @@ jobs:
       - name: Audit core dependencies
         working-directory: core
         run: npm audit --audit-level=high
+      # IN-LANE freshness. The staging-freshness job is only a cheap queue filter:
+      # it runs before schema-gate's ~10min fleet scan, so main can advance while
+      # this run is still waiting, and the early check cannot prove the run is
+      # current by the time it actually holds the lane. Nothing orders lane
+      # acquisition against that check either. So re-check HERE — after the lock
+      # is held, immediately before the first mutation — and gate every mutating
+      # step below on the result. This is the check that actually enforces "an
+      # older run never overwrites newer staging state".
+      - name: Re-check freshness inside the staging lane
+        id: in-lane-freshness
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            if (context.eventName !== "push" || context.ref !== "refs/heads/main") {
+              core.setOutput("stale", "false");
+              return;
+            }
+            const { data: ref } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+            const tip = ref.object.sha;
+            if (tip !== context.sha) {
+              core.setOutput("stale", "true");
+              core.notice(
+                `Superseded: main advanced to ${tip} while this run (${context.sha}) waited for the ` +
+                `staging lane. Skipping deploy and migrations; the release for ${tip} promotes instead.`
+              );
+              return;
+            }
+            core.setOutput("stale", "false");
       - name: Deploy staging
+        if: steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: web
         env:
           API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
@@ -352,16 +394,18 @@ jobs:
             scripts/deploy-staging.sh --allow-non-main -m "GitHub Actions staging validation for ${GITHUB_REF_NAME} (${GITHUB_RUN_ID})"
           fi
       - name: Verify staging/prod metadata
+        if: steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: web
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: scripts/check-deployments.sh --scope staging --retry-for 30
       - name: Smoke staging
+        if: steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: web
         run: scripts/smoke-test.sh staging
       - name: Fetch staging control-plane migration secret
-        if: github.ref_name == 'main'
+        if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
@@ -371,7 +415,7 @@ jobs:
           SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Apply staging control-plane migrations
-        if: github.ref_name == 'main'
+        if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: core
         run: |
           test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
@@ -381,7 +425,7 @@ jobs:
             --migrations db/control-plane/migrations \
             --label control-plane
       - name: Apply staging bookings migrations
-        if: github.ref_name == 'main'
+        if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: core
         run: |
           test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
@@ -393,6 +437,7 @@ jobs:
       - name: Apply multipart fixture D1 migrations
         # Keep D1 access isolated from the broader Worker deployment token.
         # Fixture migration failures must block promotion to production.
+        if: steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: web
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -485,7 +530,11 @@ jobs:
   release-gate:
     name: Release gate
     needs: [release-inputs, staging]
-    if: github.event_name != 'pull_request'
+    # Skip rather than fail when staging was superseded. The SHA assertions below
+    # would fail closed anyway, which is safe but indistinguishable from a real
+    # regression in the flake statistics. A superseded run is expected
+    # obsolescence, not a red test: the run that took the lane gates its own SHA.
+    if: github.event_name != 'pull_request' && needs.staging.outputs.superseded != 'true'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 25
     permissions:
@@ -670,7 +719,9 @@ jobs:
   api-staging-contract-gate:
     name: API staging contract gate
     needs: [release-inputs, staging]
-    if: github.event_name != 'pull_request'
+    # Same reasoning as release-gate: a superseded run has nothing of its own
+    # deployed to staging, so gating it against staging proves nothing.
+    if: github.event_name != 'pull_request' && needs.staging.outputs.superseded != 'true'
     permissions:
       contents: read
       id-token: write
@@ -841,7 +892,34 @@ jobs:
           INFISICAL_SECRET_PATH: /services/control-plane
           SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
         run: scripts/ci/fetch-infisical-secrets.sh
+      # IN-LANE freshness, mirroring the staging lane. production-freshness runs
+      # before this job acquires the production-deploy lock, and nothing orders
+      # lock acquisition against that check — so between the two, main can
+      # advance and another run can finish deploying. Re-check with the lock
+      # held, immediately before the first mutation. Everything below that
+      # mutates production is gated on this result, not the earlier job.
+      - name: Re-check freshness inside the production lane
+        id: in-lane-freshness-prod
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            const { data: ref } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+            const tip = ref.object.sha;
+            if (tip !== context.sha) {
+              core.setOutput("stale", "true");
+              core.notice(
+                `Superseded: main advanced to ${tip} while this run (${context.sha}) waited for the ` +
+                `production lane. Skipping migrations and deploy; the release for ${tip} deploys instead.`
+              );
+              return;
+            }
+            core.setOutput("stale", "false");
       - name: Apply production control-plane migrations
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: core
         run: |
           test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
@@ -851,6 +929,7 @@ jobs:
             --migrations db/control-plane/migrations \
             --label control-plane
       - name: Apply production bookings migrations
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: core
         run: |
           test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
@@ -860,6 +939,7 @@ jobs:
             --migrations db/bookings/migrations \
             --label bookings
       - name: Deploy production
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: web
         env:
           API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
@@ -876,6 +956,7 @@ jobs:
           VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
         run: scripts/deploy-production.sh --confirm-production --skip-tests
       - name: Verify production release metadata
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: web
         env:
           EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
@@ -885,6 +966,7 @@ jobs:
             https://pirate.sc/__version "$EXPECTED_WEB_SHA" \
             https://api.pirate.sc/__version "$EXPECTED_API_SHA"
       - name: Verify production multipart storage
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: web
         env:
           AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.PRODUCTION_MULTIPART_CANARY_AUTH_AUDIENCE }}

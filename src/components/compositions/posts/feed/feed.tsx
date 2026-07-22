@@ -100,6 +100,7 @@ export function toPageVideoItem(item: FeedItem): VideoFeedItem | null {
     commentCount: post.engagement.commentCount,
     karaoke: "unavailable",
     likeCount: post.engagement.score,
+    liked: post.engagement.viewerVote === "up",
     media: {
       orientation: content.aspectRatio != null && content.aspectRatio < 1 ? "portrait" : "landscape",
       posterSrc: content.posterSrc ?? "",
@@ -239,6 +240,25 @@ export function Feed({
     const videoItem = toPageVideoItem(item);
     return videoItem ? [videoItem] : [];
   }), [items]);
+  const feedItemsById = React.useMemo(
+    () => new Map(items.map((item) => [item.id, item] as const)),
+    [items],
+  );
+  const handleViewerLike = React.useCallback((item: VideoFeedItem) => {
+    const sourcePost = feedItemsById.get(item.id)?.post;
+    if (!sourcePost) return;
+    if (!sourcePost.onVote) {
+      sourcePost.voteAccess?.onClick?.();
+      return;
+    }
+    void sourcePost.onVote(sourcePost.engagement.viewerVote === "up" ? null : "up");
+  }, [feedItemsById]);
+  const handleViewerComment = React.useCallback((item: VideoFeedItem) => {
+    feedItemsById.get(item.id)?.post.onComment?.();
+  }, [feedItemsById]);
+  const handleViewerShare = React.useCallback((item: VideoFeedItem) => {
+    feedItemsById.get(item.id)?.post.onShare?.();
+  }, [feedItemsById]);
 
   React.useEffect(() => {
     const sentinel = loadMoreSentinelRef.current;
@@ -382,7 +402,15 @@ export function Feed({
       <Dialog onOpenChange={(open) => { if (!open) setViewerItemId(null); }} open={viewerItemId !== null}>
         <DialogContent className="h-dvh w-screen max-w-none rounded-none border-0 p-0">
           <DialogTitle className="sr-only">Video viewer</DialogTitle>
-          {viewerItemId ? <VideoFeed initialItemId={viewerItemId} items={pageVideoItems} /> : null}
+          {viewerItemId ? (
+            <VideoFeed
+              initialItemId={viewerItemId}
+              items={pageVideoItems}
+              onComment={handleViewerComment}
+              onLike={handleViewerLike}
+              onShare={handleViewerShare}
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
     </section>

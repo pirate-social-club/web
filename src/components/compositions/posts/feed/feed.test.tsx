@@ -19,7 +19,7 @@ const videoItem: FeedItem = {
       posterSrc: "https://media.test/poster.webp",
       src: "https://media.test/video.mp4",
     },
-    engagement: { commentCount: 3, score: 12 },
+    engagement: { commentCount: 3, score: 12, viewerVote: "up" },
   },
 };
 
@@ -28,6 +28,7 @@ describe("toPageVideoItem", () => {
     expect(toPageVideoItem(videoItem)).toEqual(expect.objectContaining({
       id: "post_video",
       karaoke: "unavailable",
+      liked: true,
       media: expect.objectContaining({ orientation: "portrait", src: "https://media.test/video.mp4" }),
       publisher: { handle: "scarlett", kind: "profile", avatarSrc: undefined },
       study: "unavailable",

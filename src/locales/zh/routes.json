@@ -93,15 +93,10 @@
     "googlePlay": "Google Play"
   },
   "home": {
-    "communityFeedLabel": "社区动态",
     "createCommunityLabel": "创建社区",
     "emptyHomeBody": "当社区开始发布内容时，热门帖子会显示在这里。",
     "emptyHomeVerifyBody": "先完成验证，再发你的第一条帖子。",
     "emptyHomeTitle": "还没有帖子",
-    "emptyVideoBody": "目前没有适合你播放的视频。",
-    "emptyVideoTitle": "还没有视频",
-    "videoLoadError": "无法加载视频。",
-    "videoFallbackErrorBody": "视频动态暂不可用，因此这里显示社区动态。",
     "emptyYourCommunitiesBody": "你创建或加入的社区会显示在这里。",
     "emptyYourCommunitiesTitle": "还没有社区",
     "membersLabel": "{count} 位成员",

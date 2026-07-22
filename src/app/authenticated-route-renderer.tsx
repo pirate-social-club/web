@@ -37,10 +37,6 @@ const LazyYourCommunitiesPage = lazyRouteModule(
   () => import("./authenticated-routes/home-routes"),
   "YourCommunitiesPage",
 );
-const LazyVideoHomePage = lazyRouteModule(
-  () => import("./authenticated-routes/video-home-route"),
-  "VideoHomePage",
-);
 const LazyCreatePostPage = lazyRouteModule(
   () => import("./authenticated-routes/create-post-route"),
   "CreatePostPage",
@@ -173,8 +169,6 @@ export type {  ThreadCommentNode };
 function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
   switch (route.kind) {
     case "home":
-      return <LazyVideoHomePage />;
-    case "community-feed":
       return <HomePage />;
     case "popular":
       return <HomePage initialSort="best" />;

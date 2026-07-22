@@ -71,6 +71,7 @@ import { useCommunityJoinVerification } from "@/app/authenticated-state/use-comm
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { updateSessionUser } from "@/lib/api/session-store";
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
+import { useVideoViewerSongCapabilities } from "@/app/authenticated-helpers/use-video-viewer-song-capabilities";
 import {
   communityHandleFromRouteLabel,
   useCommunityHandleClaimDismissal,
@@ -129,6 +130,7 @@ export function CommunityPage({
     [copy.common],
   );
   const contentLocale = useRouteContentLocale();
+  const videoViewerSongCapabilities = useVideoViewerSongCapabilities(contentLocale);
   const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">(
     "best",
   );
@@ -1050,6 +1052,7 @@ export function CommunityPage({
               : null,
           }}
           title={communityTitle}
+          videoViewerSongCapabilities={videoViewerSongCapabilities}
         />
       </section>
     </>

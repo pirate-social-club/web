@@ -1162,32 +1162,6 @@ describe("ApiClient media uploads", () => {
     }
   });
 
-  test("loads authenticated and public video feeds from dedicated endpoints", async () => {
-    const requests: Request[] = [];
-    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-      const request = input instanceof Request ? input : new Request(input, init);
-      requests.push(request);
-      return Response.json({ items: [], next_cursor: null, top_communities: [] });
-    };
-
-    try {
-      const client = new ApiClient({
-        baseUrl: "http://pirate.test",
-        getToken: () => "session-token",
-      });
-
-      await client.feed.videos({ cursor: "v1:1000:25", locale: "en" });
-      await client.feed.publicVideos({ locale: "en" });
-
-      expect(requests[0]?.url).toBe("http://pirate.test/feed/home/videos?cursor=v1%3A1000%3A25&locale=en");
-      expect(requests[0]?.headers.get("authorization")).toBe("Bearer session-token");
-      expect(requests[1]?.url).toBe("http://pirate.test/feed/home/videos/public?locale=en");
-      expect(requests[1]?.headers.get("authorization")).toBe(null);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-
   test("loads public communities without auth headers", async () => {
     const requests: Request[] = [];
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

@@ -44,7 +44,6 @@ function routeUsesMobileFooter(route: AppRoute): boolean {
 
 function routeUsesMobileCreateAction(route: AppRoute): boolean {
   return route.kind === "home"
-    || route.kind === "community-feed"
     || route.kind === "popular";
 }
 
@@ -60,8 +59,6 @@ function resolveMobileHeaderTitle({
   switch (route.kind) {
     case "home":
       return "Pirate";
-    case "community-feed":
-      return copy.appSidebar.communityFeedLabel;
     case "popular":
       return copy.appSidebar.feedSortBestLabel;
     case "inbox":

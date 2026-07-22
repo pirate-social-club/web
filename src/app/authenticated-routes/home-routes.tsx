@@ -41,6 +41,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { buildFeedSortOptions, buildTopTimeRangeOptions } from "@/lib/feed-sort-options";
 import { EmptyFeedState, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
+import { useVideoViewerSongCapabilities } from "@/app/authenticated-helpers/use-video-viewer-song-capabilities";
 import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { selectPostVoteGateData } from "@/hooks/use-community-interaction-gate.helpers";
@@ -376,10 +377,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
   };
 }
 
-export function HomePage({ initialSort, videoFallbackReason }: {
-  initialSort?: FeedSort;
-  videoFallbackReason?: "empty" | "error";
-} = {}) {
+export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const api = useApi();
   const queryClient = useQueryClient();
   const hydrated = useClientHydrated();
@@ -389,6 +387,7 @@ export function HomePage({ initialSort, videoFallbackReason }: {
   const sortOptions = React.useMemo(() => buildFeedSortOptions(copy.common), [copy.common]);
   const topTimeRangeOptions = React.useMemo(() => buildTopTimeRangeOptions(copy.common), [copy.common]);
   const contentLocale = useRouteContentLocale();
+  const videoViewerSongCapabilities = useVideoViewerSongCapabilities(contentLocale);
   const createCommunityLabel = copy.home.createCommunityLabel;
   const emptyHomeBody = copy.home.emptyHomeBody;
   const emptyHomeTitle = copy.home.emptyHomeTitle;
@@ -691,17 +690,6 @@ export function HomePage({ initialSort, videoFallbackReason }: {
         />
       ) : null}
       <StandardRoutePage size="rail" className="gap-6" frameClassName="md:pb-0">
-        {videoFallbackReason ? (
-          <div className="flex flex-col items-start gap-3 border-b border-border-soft pb-5">
-            <Type as="h1" variant="h3">
-              {videoFallbackReason === "error" ? copy.home.videoLoadError : copy.home.emptyVideoTitle}
-            </Type>
-            <Type className="text-muted-foreground" variant="body">
-              {videoFallbackReason === "error" ? copy.home.videoFallbackErrorBody : copy.home.emptyVideoBody}
-            </Type>
-            <Button onClick={() => navigate("/feed")} variant="secondary">{copy.home.communityFeedLabel}</Button>
-          </div>
-        ) : null}
         <Feed
           activeSort={activeSort}
           aside={(
@@ -737,6 +725,7 @@ export function HomePage({ initialSort, videoFallbackReason }: {
           loadMoreLabel={copy.common.loadMore}
           endMessage={copy.common.feedEnd}
           onLoadMore={loadMore}
+          videoViewerSongCapabilities={videoViewerSongCapabilities}
           onSortChange={setActiveSort}
         />
       </StandardRoutePage>

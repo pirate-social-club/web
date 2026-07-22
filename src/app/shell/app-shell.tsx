@@ -96,7 +96,7 @@ function AnalyticsRouteTracker({ route }: { route: AppRoute }) {
       properties: { pathname },
     });
 
-    if (route.kind === "home" || route.kind === "community-feed" || route.kind === "popular") {
+    if (route.kind === "home" || route.kind === "popular") {
       trackAnalyticsEvent({ eventName: "home_feed_viewed" });
     } else if (route.kind === "community") {
       trackAnalyticsEvent({
@@ -172,7 +172,7 @@ function NotificationShell({
   const useStandaloneRouteShell = isCommunityModerationRoute || isMobileStandaloneRoute || isStandaloneViewerRoute;
   // Temporary: migrated routes own their own page shell padding.
   // Remove this once all routes are converted.
-  const isMigratedRoute = route.kind === "home" || route.kind === "community-feed" || route.kind === "popular" || route.kind === "wallet";
+  const isMigratedRoute = route.kind === "home" || route.kind === "popular" || route.kind === "wallet";
   const unreadNotificationCount = notificationSummary.open_task_count + notificationSummary.unread_activity_count;
   useNotificationBadges(unreadNotificationCount);
 
@@ -283,7 +283,6 @@ export function PirateAppShell({
     route.kind === "create-community"
     || (!session && (
       route.kind === "home"
-      || route.kind === "community-feed"
       || route.kind === "popular"
       || route.kind === "community"
       || route.kind === "wallet"

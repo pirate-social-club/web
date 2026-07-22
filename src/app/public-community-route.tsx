@@ -49,7 +49,6 @@ import { buildFeedSortOptions } from "@/lib/feed-sort-options";
 import { CommunityRouteLoadingState } from "./route-loading-states";
 import { useCommunityJoinVerification } from "./authenticated-state/use-community-join-verification";
 import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
-import { useVideoViewerSongCapabilities } from "@/app/authenticated-helpers/use-video-viewer-song-capabilities";
 import {
   communityHandleFromRouteLabel,
   useCommunityHandleClaimDismissal,
@@ -238,7 +237,6 @@ export function PublicCommunityRoutePage({
       ? []
       : [...navigator.languages, navigator.language].filter(Boolean),
   }), [locale]);
-  const videoViewerSongCapabilities = useVideoViewerSongCapabilities(contentLocale);
   const [activeSort, setActiveSort] = React.useState<FeedSort>("best");
   const hasSession = Boolean(session?.accessToken);
   const { authorProfiles, error, posts, postsLoading, preview, previewLoading, setPosts } = usePublicCommunityPageData(communityId, contentLocale, activeSort, hasSession);
@@ -875,7 +873,6 @@ export function PublicCommunityRoutePage({
           memberCount,
         }}
         title={preview.display_name}
-        videoViewerSongCapabilities={videoViewerSongCapabilities}
         />
       </section>
     </>

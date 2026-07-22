@@ -225,6 +225,13 @@ describe("public profile host routing", () => {
     });
   });
 
+  test("matches the community card feed route", () => {
+    expectJson(matchRoute("/feed"), {
+      kind: "community-feed",
+      path: "/feed",
+    });
+  });
+
   test("matches advertise as an authenticated app route", () => {
     expectJson(matchRoute("/advertise"), {
       kind: "advertise",

@@ -85,7 +85,7 @@ function VideoAction({
           </span>
         ) : null}
       </div>
-      {value ? <Type className="text-background drop-shadow-md" variant="caption">{value}</Type> : null}
+      {value ? <Type className="text-white drop-shadow-md" variant="caption">{value}</Type> : null}
     </div>
   );
 }
@@ -191,7 +191,7 @@ function VideoFeedSlide({
   };
 
   return (
-    <article className="relative flex h-full w-full snap-start snap-always items-center justify-center overflow-hidden bg-foreground">
+    <article className="relative flex h-full w-full snap-start snap-always items-center justify-center overflow-hidden bg-black">
       {item.media.orientation === "landscape" ? (
         <img
           aria-hidden
@@ -202,7 +202,7 @@ function VideoFeedSlide({
       ) : null}
       <div className="relative flex size-full items-center justify-center md:gap-4">
         <div className={cn(
-          "relative h-full w-full overflow-hidden bg-foreground md:rounded-[var(--radius-xl)]",
+          "relative h-full w-full overflow-hidden bg-black md:rounded-[var(--radius-xl)]",
           item.media.orientation === "portrait"
             ? "md:h-[min(88dvh,50rem)] md:w-[min(49.5dvh,28rem)]"
             : "md:h-auto md:max-h-[min(88dvh,50rem)] md:w-[min(72vw,64rem)] md:aspect-video",
@@ -228,8 +228,8 @@ function VideoFeedSlide({
         )}
 
         {ageBlocked ? (
-          <div className="absolute inset-0 grid place-items-center bg-foreground/80 p-6 text-center">
-            <div className="flex max-w-sm flex-col items-center gap-3 text-background">
+          <div className="absolute inset-0 grid place-items-center bg-black/80 p-6 text-center">
+            <div className="flex max-w-sm flex-col items-center gap-3 text-white">
               <Lock className="size-8" weight="fill" />
               <Type as="h2" variant="h3">Age verification required</Type>
               <Type variant="body">Verify your age before this video can load.</Type>
@@ -238,7 +238,7 @@ function VideoFeedSlide({
         ) : playableSrc ? (
           <button
             aria-label={paused ? "Play video" : "Pause video"}
-            className="absolute inset-0 grid cursor-pointer place-items-center text-background"
+            className="absolute inset-0 grid cursor-pointer place-items-center text-white"
             data-video-play-control
             onClick={() => onTogglePlayback?.(item)}
             onMouseDown={(event) => event.preventDefault()}
@@ -277,16 +277,16 @@ function VideoFeedSlide({
           </div>
         ) : null}
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/90 to-transparent px-5 pb-5 pt-24 text-background">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-5 pb-5 pt-24 text-white">
           <div className="pointer-events-auto max-w-[calc(100%-4.5rem)] space-y-2">
             <div className="flex items-center gap-2">
               <Avatar fallback={item.publisher.handle} size="sm" src={item.publisher.avatarSrc} />
               <Type variant="body-strong">
-                {item.publisher.kind === "profile" ? "@" : ""}{item.publisher.handle}
+                {item.publisher.handle}
               </Type>
             </div>
             {item.caption ? <Type className="line-clamp-2" variant="body">{item.caption}</Type> : null}
-            {item.song ? <Type className="text-background/80" variant="caption">{item.song.title} · {item.song.artist}</Type> : null}
+            {item.song ? <Type className="text-white/80" variant="caption">{item.song.title} · {item.song.artist}</Type> : null}
           </div>
         </div>
         </div>

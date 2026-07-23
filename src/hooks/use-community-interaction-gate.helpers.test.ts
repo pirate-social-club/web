@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   altchaRequirement,
   gate,
+  gatesPanel,
   interactionCopy,
   uniqueHumanRequirement,
 } from "./community-interaction-gate/test-fixtures.test";
@@ -180,8 +181,10 @@ describe("createCommunityBlockedModalStateFactory", () => {
     })(args(gate("joinable")));
 
     expect(modal?.icon).toBe("join");
+    expect(modal?.description).toBe(gatesPanel.joinableDescription);
     expect(modal?.primaryAction?.label).toBe("Join");
     expect(modal?.primaryAction?.loading).toBe(true);
+    expect(modal?.requirements).toEqual([]);
 
     await modal?.primaryAction?.onClick?.();
     expect(calls).toEqual(["join:community-1", "invalidate:community-1"]);
@@ -238,6 +241,18 @@ describe("createCommunityBlockedModalStateFactory", () => {
 });
 
 describe("createDefaultBlockedModalState", () => {
+  test("keeps a joinable modal focused on joining instead of repeating gate options", () => {
+    const modal = createDefaultBlockedModalState({
+      ...args(gate("joinable", {}, [uniqueHumanRequirement, altchaRequirement], { gateMatchMode: "any" })),
+      defaultVerificationLoadingProvider: null,
+      startDefaultVerification: async () => ({ started: false }),
+    });
+
+    expect(modal.description).toBe(gatesPanel.joinableDescription);
+    expect(modal.title).toBe("Join to Vote");
+    expect(modal.requirements).toEqual([]);
+  });
+
   test("passes the real zkpassport provider to startDefaultVerification", async () => {
     const startedProviders: string[] = [];
     const gateData = gate("verification_required", {

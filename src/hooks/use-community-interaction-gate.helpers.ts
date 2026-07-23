@@ -508,24 +508,6 @@ export function getRequirementDisplayState(
   };
 }
 
-function getJoinableDescription(
-  gate: CommunityGateData,
-  action: InteractionAction,
-  fallback: string,
-  options: { locale: string },
-): string {
-  const normalized = options.locale.toLowerCase();
-  if (normalized.startsWith("ar") || normalized.startsWith("zh"))
-    return fallback;
-
-  const taskLabel = getInteractionTaskLabel(action, options);
-  if (gate.preview.membership_gate_summaries.length > 0) {
-    return `You meet this community's requirements. Join to ${taskLabel}.`;
-  }
-
-  return fallback;
-}
-
 function isNftGateFailure(gate: CommunityGateData): boolean {
   return gate.eligibility.status === "gate_failed"
     && (
@@ -627,9 +609,7 @@ export function createDefaultBlockedModalState({
       return {
         description:
           gate.eligibility.status === "joinable"
-            ? getJoinableDescription(gate, action, defaultDescription, {
-                locale: interactionCopy.locale,
-              })
+            ? gatesPanel.joinableDescription
             : getRequestableDescription(gate, action, defaultDescription, {
                 locale: interactionCopy.locale,
               }),
@@ -643,7 +623,9 @@ export function createDefaultBlockedModalState({
             openCommunity();
           },
         },
-        ...getRequirementDisplayState(gate),
+        ...(gate.eligibility.status === "joinable"
+          ? { requirements: [] }
+          : getRequirementDisplayState(gate)),
         title:
           getJoinGateTitle(action, { locale: interactionCopy.locale }) ??
           interpolateMessage(
@@ -756,6 +738,16 @@ export function createCommunityBlockedModalStateFactory(options: {
   invalidateCommunityGate?: (communityId: string) => void;
   includeVerificationCloseAction?: boolean;
 }) {
+  const resolvedLocale: UiLocaleCode =
+    options.interactionCopy.locale === "pseudo"
+      ? "pseudo"
+      : options.interactionCopy.locale === "ar"
+        ? "ar"
+        : options.interactionCopy.locale === "zh"
+          ? "zh"
+          : "en";
+  const gatesPanel = getLocaleMessages(resolvedLocale, "gates").panel;
+
   return function buildBlockedModalState({
     action,
     closeModal,
@@ -848,12 +840,7 @@ export function createCommunityBlockedModalStateFactory(options: {
         locale: options.interactionCopy.locale,
       });
       return {
-        description: (isVoteAction
-          ? options.interactionCopy.joinToVoteDescription
-          : options.interactionCopy.joinToReplyDescription
-        )
-          .replace("{joinLabel}", ctaLabel)
-          .replace("{communityName}", gate.preview.display_name),
+        description: gatesPanel.joinableDescription,
         icon: "join",
         primaryAction: {
           label: ctaLabel,
@@ -864,7 +851,7 @@ export function createCommunityBlockedModalStateFactory(options: {
             closeModal();
           },
         },
-        ...getRequirementDisplayState(gate),
+        requirements: [],
         title: (isVoteAction
           ? options.interactionCopy.joinToVoteTitle
           : options.interactionCopy.joinToReplyTitle

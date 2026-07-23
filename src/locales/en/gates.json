@@ -37,7 +37,7 @@
     },
     "uniqueHuman": {
       "very": "Palm scan",
-      "self": "Private ID proof",
+      "self": "Self.xyz ID proof",
       "zkpassport": "ZKPassport proof",
       "any": "Human proof"
     },

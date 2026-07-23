@@ -57,9 +57,9 @@ describe("formatGateRequirement", () => {
     expect(formatGateRequirement(gate)).toBe("Human proof");
   });
 
-  test("formats Self unique human gate as private ID proof", () => {
+  test("formats Self unique human gate with the provider name", () => {
     const gate: MembershipGateSummary = { accepted_providers: ["self"], gate_type: "unique_human" };
-    expect(formatGateRequirement(gate)).toBe("Private ID proof");
+    expect(formatGateRequirement(gate)).toBe("Self.xyz ID proof");
   });
 
   test("formats ZKPassport unique human gate distinctly", () => {

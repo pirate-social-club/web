@@ -37,7 +37,7 @@
     },
     "uniqueHuman": {
       "very": "فحص راحة اليد",
-      "self": "إثبات هوية خاص",
+      "self": "إثبات هوية Self.xyz",
       "zkpassport": "إثبات ZKPassport",
       "any": "إثبات أنك إنسان"
     },

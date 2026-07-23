@@ -216,7 +216,16 @@ function getAltchaActionConfig(input: {
   sessionUser?: Pick<User, "verification_capabilities"> | null;
   voteValue?: -1 | 1 | "clear";
 }): { actionRef: string; scope: AltchaScope } | null {
-  if (!requiresActionAltchaProof(input.gate, input.sessionUser)) {
+  const isVote = input.action === "vote_post" || input.action === "vote_comment";
+  // A non-member who already satisfies another branch is "joinable", but an
+  // ALTCHA-only path still lets the API accept a vote without joining.
+  const shouldOpenParticipateInsteadOfJoin = isVote
+    && input.gate.eligibility.status === "joinable"
+    && canSatisfyWithAltchaOnly(input.gate);
+  if (
+    !shouldOpenParticipateInsteadOfJoin
+    && !requiresActionAltchaProof(input.gate, input.sessionUser)
+  ) {
     return null;
   }
   if (input.action === "vote_post" && input.postId && input.voteValue != null) {
@@ -444,7 +453,10 @@ export function useGatedActionRunner({
     // Where a browser check alone satisfies the gate, the API admits the
     // non-member write on its action-bound proof, skips the join entirely and
     // subscribes the actor as a follower instead.
-    const shouldUseOpenPowParticipation = state === "verification_required"
+    const shouldUseOpenPowParticipation = (
+      state === "verification_required" || state === "joinable"
+    )
+      && requireMembership !== true
       && canSatisfyWithAltchaOnly(gate);
     const followingCacheKey = `${sessionAccessToken ?? "anon"}:${communityId}`;
     const viewerWasFollowing = knownViewerFollowingRef.current.get(followingCacheKey)

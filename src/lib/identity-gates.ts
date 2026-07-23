@@ -183,9 +183,8 @@ export function hasActionTimeCheck(gates: Array<Pick<MembershipGateSummary, "gat
  * A community whose entire membership gate is proof-of-work admits non-member
  * votes, comments and posts: each write carries its own action-scoped proof,
  * so joining first proves nothing more (the API mirrors this predicate in
- * open-participation.ts and auto-follows the actor instead). Gates mixing PoW
- * with identity/asset atoms — including OR-trees PoW alone could satisfy —
- * still require membership server-side, so they keep the join surfaces.
+ * open-participation.ts and auto-follows the actor instead). This also applies
+ * to mixed OR-trees when the PoW branch alone can satisfy the gate.
  */
 export function isPowSatisfiableGate(
   gates: Array<Pick<MembershipGateSummary, "gate_type">> | null | undefined,

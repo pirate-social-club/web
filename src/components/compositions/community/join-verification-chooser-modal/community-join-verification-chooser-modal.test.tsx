@@ -42,7 +42,7 @@ describe("CommunityJoinVerificationChooserModal", () => {
       />,
     );
 
-    expect(getByRole("button", { name: "Private ID proof" })).toBeTruthy();
+    expect(getByRole("button", { name: "Self.xyz ID proof" })).toBeTruthy();
     expect(getByRole("button", { name: "ZKPassport proof" })).toBeTruthy();
     fireEvent.click(getByRole("button", { name: "Palm scan" }));
     await waitFor(() => expect(selected).toEqual(["unique_human"]));

@@ -185,7 +185,7 @@ export const RequirementsManyOr: Story = {
     requirementsMode: "any",
     gates: [
       { gateType: "wallet_score", label: "Passport score 20+", provider: null, status: "met" },
-      { gateType: "unique_human", label: "Private ID proof", provider: "self", status: "unmet" },
+      { gateType: "unique_human", label: "Self.xyz ID proof", provider: "self", status: "unmet" },
       { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unmet" },
       { gateType: "nationality", label: "US nationality", provider: null, status: "unmet" },
     ],
@@ -200,7 +200,7 @@ export const GateTypes: Story = {
     memberCount: 210,
     requirementsMode: "all",
     gates: [
-      { gateType: "unique_human", label: "Private ID proof", provider: "self", status: "unknown" },
+      { gateType: "unique_human", label: "Self.xyz ID proof", provider: "self", status: "unknown" },
       { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unknown" },
       { gateType: "nationality", label: "US nationality", provider: null, status: "unknown" },
       { gateType: "wallet_score", label: "Passport score 20+", provider: null, status: "unknown" },

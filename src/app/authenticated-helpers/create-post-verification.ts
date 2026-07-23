@@ -19,13 +19,11 @@ export function requiresPostAltchaProofForNonMember(input: {
 
 export function canSendCreatePostRequest(input: {
   canPost: boolean;
-  hasCommunity: boolean;
   hasCommunityPostingRole: boolean;
   hasOpenPowPostingAccess: boolean;
   isAlreadyJoined: boolean;
 }): boolean {
   return input.canPost
-    && input.hasCommunity
     && (input.isAlreadyJoined || input.hasCommunityPostingRole || input.hasOpenPowPostingAccess);
 }
 

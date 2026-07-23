@@ -827,7 +827,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       title: title.trim(),
     });
 
-    if (!canSendCreatePostRequest({ canPost: submitState.canPost, hasCommunity: Boolean(community), hasCommunityPostingRole, hasOpenPowPostingAccess, isAlreadyJoined: eligibility?.status === "already_joined" })) {
+    if (!community || !canSendCreatePostRequest({ canPost: submitState.canPost, hasCommunityPostingRole, hasOpenPowPostingAccess, isAlreadyJoined: eligibility?.status === "already_joined" })) {
       logger.warn("[create-post] submit blocked before request", {
         canPost: submitState.canPost,
         communityId,

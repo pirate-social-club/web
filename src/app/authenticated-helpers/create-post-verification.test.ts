@@ -33,7 +33,6 @@ describe("create post verification decisions", () => {
   test("allows the create request with either membership or a solved open PoW path", () => {
     expect(canSendCreatePostRequest({
       canPost: true,
-      hasCommunity: true,
       hasCommunityPostingRole: false,
       hasOpenPowPostingAccess: true,
       isAlreadyJoined: false,

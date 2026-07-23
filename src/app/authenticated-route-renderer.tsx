@@ -74,6 +74,10 @@ const LazyLiveRoomRoutePage = lazyRouteModule(
   () => import("./authenticated-routes/live-room-route"),
   "LiveRoomRoutePage",
 );
+const LazyLiveIndexPage = lazyRouteModule(
+  () => import("./authenticated-routes/live-index-route"),
+  "LiveIndexPage",
+);
 const LazyReplayDraftRoutePage = lazyRouteModule(
   () => import("./authenticated-routes/replay-draft-route"),
   "ReplayDraftRoutePage",
@@ -174,6 +178,8 @@ function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
   switch (route.kind) {
     case "home":
       return <LazyVideoHomePage />;
+    case "live":
+      return <LazyLiveIndexPage />;
     case "community-feed":
       return <HomePage />;
     case "popular":

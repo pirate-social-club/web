@@ -17,6 +17,7 @@ const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { kind: "home", domain: "authenticated", testPaths: [{ pathname: "/" }], serverRouteExpected: true },
   { kind: "popular", domain: "authenticated", testPaths: [{ pathname: "/popular" }], serverRouteExpected: true },
   { kind: "community-feed", domain: "authenticated", testPaths: [{ pathname: "/feed" }], serverRouteExpected: true },
+  { kind: "live", domain: "authenticated", testPaths: [{ pathname: "/live" }], serverRouteExpected: true },
   { kind: "public-profile", domain: "public", testPaths: [{ pathname: "/u/test-handle" }, { pathname: "/", hostname: "test.pirate" }], serverRouteExpected: true },
   { kind: "public-agent", domain: "public", testPaths: [{ pathname: "/a/test-agent" }, { pathname: "/", hostname: "test.clawitzer" }], serverRouteExpected: true },
   { kind: "your-communities", domain: "authenticated", testPaths: [{ pathname: "/your-communities" }], serverRouteExpected: true },
@@ -63,6 +64,7 @@ const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
 
 const _KIND_COVERAGE: { [K in AppRoute["kind"]]: true } = {
   home: true,
+  live: true,
   popular: true,
   "community-feed": true,
   "public-profile": true,
@@ -113,6 +115,7 @@ void _KIND_COVERAGE;
 const EXPECTED_DOMAIN_KINDS: Record<RouteRenderingDomain, readonly AppRoute["kind"][]> = {
   authenticated: [
     "home",
+    "live",
     "popular",
     "community-feed",
     "your-communities",

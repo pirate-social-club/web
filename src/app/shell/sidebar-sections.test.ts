@@ -2,7 +2,14 @@ import { describe, expect, test } from "bun:test";
 
 import type { ShellMessages } from "@/locales";
 
-import { buildPrimaryItems, buildResourceItems, buildSidebarSections, resolveCreatePostPath } from "./sidebar-sections";
+import {
+  buildPrimaryItems,
+  buildResourceItems,
+  buildSidebarSections,
+  buildVideoPrimaryItems,
+  resolveCreatePostPath,
+  usesVideoDesktopShell,
+} from "./sidebar-sections";
 
 describe("resolveCreatePostPath", () => {
   test("canonicalizes emoji community handles for submit routes", () => {
@@ -88,9 +95,41 @@ describe("buildPrimaryItems", () => {
       "home",
       "community-feed",
       "your-communities",
-      "agents",
       "create-community",
     ]);
+  });
+});
+
+describe("buildVideoPrimaryItems", () => {
+  test("builds the settled six-item desktop media spine without Agents", () => {
+    const items = buildVideoPrimaryItems({
+      videoActivityLabel: "Activity",
+      videoChatLabel: "Chat",
+      videoExploreLabel: "Explore",
+      videoForYouLabel: "For You",
+      videoLiveLabel: "Live",
+      videoUploadLabel: "Upload",
+    } as ShellMessages["appSidebar"]);
+
+    expect(items.map((item) => item.id)).toEqual([
+      "home",
+      "community-feed",
+      "live",
+      "chat",
+      "upload",
+      "activity",
+    ]);
+    expect(items.map((item) => item.id)).not.toContain("agents");
+  });
+});
+
+describe("usesVideoDesktopShell", () => {
+  test("keeps home surface-scoped while preserving the media rail across its destinations", () => {
+    expect(usesVideoDesktopShell({ kind: "home", path: "/" }, false)).toBe(false);
+    expect(usesVideoDesktopShell({ kind: "home", path: "/" }, true)).toBe(true);
+    expect(usesVideoDesktopShell({ kind: "community-feed", path: "/feed" }, false)).toBe(true);
+    expect(usesVideoDesktopShell({ kind: "live", path: "/live" }, false)).toBe(true);
+    expect(usesVideoDesktopShell({ kind: "inbox", path: "/inbox" }, false)).toBe(true);
   });
 });
 

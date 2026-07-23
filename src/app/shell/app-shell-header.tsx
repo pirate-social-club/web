@@ -104,12 +104,14 @@ function navigateBack(fallbackPath: string): void {
 
 export function AppShellHeader({
   copy,
+  desktopHidden = false,
   mobileMediaOverlay = false,
   route,
   unreadChatCount = 0,
   unreadNotificationCount,
 }: {
   copy: ShellMessages;
+  desktopHidden?: boolean;
   mobileMediaOverlay?: boolean;
   route: AppRoute;
   unreadChatCount?: number;
@@ -158,6 +160,7 @@ export function AppShellHeader({
     <AppHeader
       avatarFallback={avatarFallback}
       disableCreateAction={disableCreateAction}
+      className={desktopHidden ? "md:hidden" : undefined}
       hideMobileBrand
       labels={{
         backAriaLabel: copy.appHeader.backAriaLabel,

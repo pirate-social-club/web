@@ -1,6 +1,6 @@
 import "@/test/setup-runtime";
 
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 
 import { VideoFeed } from "./video-feed";
@@ -44,9 +44,24 @@ function manyFeedItems(count = 7): VideoFeedItem[] {
   }));
 }
 
+function mockVideoPlay(play: () => Promise<void>): () => void {
+  const prototype = Object.getPrototypeOf(document.createElement("video")) as object;
+  const previous = Object.getOwnPropertyDescriptor(prototype, "play");
+  Object.defineProperty(prototype, "play", { configurable: true, value: play });
+  return () => {
+    if (previous) Object.defineProperty(prototype, "play", previous);
+    else Reflect.deleteProperty(prototype, "play");
+  };
+}
+
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+});
+
+beforeEach(() => {
+  window.localStorage.setItem("pirate.video-feed.muted", "true");
 });
 
 describe("VideoFeed", () => {
@@ -110,7 +125,7 @@ describe("VideoFeed", () => {
     expect(slide.className).toContain("md:[--feed-chrome-top:0px]");
     expect(slide.className).toContain("md:[--feed-chrome-bottom:0px]");
 
-    expect(view.getByLabelText("Turn sound on").className).toContain("top-[calc(var(--feed-chrome-top)+0.75rem)]");
+    expect(view.queryByLabelText("Turn sound on")).toBeNull();
     // Overflow is inset via the rail's bottom offset now that it no longer floats over the media;
     // its placement is covered by "keeps overflow in the rail on every slide".
     expect(view.getByRole("button", { name: "Like" }).closest("div.absolute")!.className)
@@ -153,20 +168,20 @@ describe("VideoFeed", () => {
   test("opens a linked song and preserves playback state", () => {
     const calls: unknown[] = [];
     const linkedItem = { ...item, song: { artist: "Britney Spears", songHref: "/p/pst_toxic", title: "Toxic" } };
-    const view = render(<VideoFeed initialMuted={false} items={[linkedItem]} onSong={(songItem, state) => calls.push({ songItem, state })} />);
+    const view = render(<VideoFeed initialMuted items={[linkedItem]} onSong={(songItem, state) => calls.push({ songItem, state })} />);
     const video = view.container.querySelector<HTMLVideoElement>("video")!;
     Object.defineProperty(video, "currentTime", { configurable: true, value: 5 });
 
     fireEvent.click(view.getByRole("button", { name: "Open Toxic by Britney Spears" }));
 
-    expect(calls).toEqual([{ songItem: linkedItem, state: { muted: false, paused: false, playbackSeconds: 5 } }]);
+    expect(calls).toEqual([{ songItem: linkedItem, state: { muted: true, paused: false, playbackSeconds: 5 } }]);
   });
 
   test("exposes booking only for a server-stated bookable publisher", () => {
     const calls: unknown[] = [];
     const view = render(
       <VideoFeed
-        initialMuted={false}
+        initialMuted
         items={[{ ...item, booking: { basePriceCents: 3500, currency: "USDC", hostUserId: "usr_host" } }]}
         onBook={(bookedItem, state) => calls.push({ bookedItem, state })}
       />,
@@ -177,7 +192,7 @@ describe("VideoFeed", () => {
     fireEvent.click(view.getByRole("button", { name: "Book" }));
 
     expect(view.getByText("35.00 USDC")).toBeTruthy();
-    expect(calls).toEqual([{ bookedItem: { ...item, booking: { basePriceCents: 3500, currency: "USDC", hostUserId: "usr_host" } }, state: { muted: false, paused: false, playbackSeconds: 8 } }]);
+    expect(calls).toEqual([{ bookedItem: { ...item, booking: { basePriceCents: 3500, currency: "USDC", hostUserId: "usr_host" } }, state: { muted: true, paused: false, playbackSeconds: 8 } }]);
   });
 
   test("omits booking when the publisher is not marked bookable", () => {
@@ -188,13 +203,80 @@ describe("VideoFeed", () => {
 
   test("reports playback state when a learning action launches", () => {
     const calls: unknown[] = [];
-    const view = render(<VideoFeed initialMuted={false} items={[item]} onStudy={(_item, state) => calls.push(state)} />);
+    const view = render(<VideoFeed initialMuted items={[item]} onStudy={(_item, state) => calls.push(state)} />);
     const video = view.container.querySelector<HTMLVideoElement>("video")!;
     Object.defineProperty(video, "currentTime", { configurable: true, value: 12.5 });
 
     fireEvent.click(view.getByRole("button", { name: "Study" }));
 
-    expect(calls).toEqual([{ muted: false, paused: false, playbackSeconds: 12.5 }]);
+    expect(calls).toEqual([{ muted: true, paused: false, playbackSeconds: 12.5 }]);
+  });
+
+  test("only clears effective mute after unmuted playback resolves", async () => {
+    const restorePlay = mockVideoPlay(() => Promise.reject(new Error("blocked")));
+    try {
+      const view = render(<VideoFeed initialMuted={false} items={[item]} />);
+      const video = view.container.querySelector<HTMLVideoElement>("video")!;
+      await act(async () => { await Promise.resolve(); });
+      Object.defineProperty(video, "play", { configurable: true, value: () => Promise.resolve() });
+
+      fireEvent.click(view.getByRole("button", { name: "Tap for sound" }));
+      await act(async () => { await Promise.resolve(); });
+
+      expect(video.muted).toBe(false);
+      expect(window.localStorage.getItem("pirate.video-feed.muted")).toBe("false");
+    } finally {
+      restorePlay();
+    }
+  });
+
+  test("restores a sound-on preference by attempting unmuted playback on activation", async () => {
+    const restorePlay = mockVideoPlay(() => Promise.resolve());
+    try {
+      const view = render(<VideoFeed initialMuted={false} items={[item]} />);
+      const video = view.container.querySelector<HTMLVideoElement>("video")!;
+
+      await act(async () => { await Promise.resolve(); });
+
+      expect(video.muted).toBe(false);
+      expect(window.localStorage.getItem("pirate.video-feed.muted")).toBe("false");
+    } finally {
+      restorePlay();
+    }
+  });
+
+  test("stays effectively muted when unmuted playback is rejected", async () => {
+    const restorePlay = mockVideoPlay(() => Promise.reject(new Error("blocked")));
+    try {
+      const view = render(<VideoFeed initialMuted={false} items={[item]} />);
+      const video = view.container.querySelector<HTMLVideoElement>("video")!;
+
+      await act(async () => { await Promise.resolve(); });
+
+      expect(video.muted).toBe(true);
+      expect(window.localStorage.getItem("pirate.video-feed.muted")).toBe("true");
+    } finally {
+      restorePlay();
+    }
+  });
+
+  test("shows the sound fallback prompt only once while scrolling the session", async () => {
+    const restorePlay = mockVideoPlay(() => Promise.reject(new Error("blocked")));
+    try {
+      const view = render(<VideoFeed initialMuted={false} items={feedItems()} />);
+      const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+      Object.defineProperty(feed, "clientHeight", { configurable: true, value: 700 });
+      await act(async () => { await Promise.resolve(); });
+      expect(view.getByRole("button", { name: "Tap for sound" })).toBeTruthy();
+
+      feed.scrollTop = 700;
+      fireEvent.scroll(feed);
+      await act(async () => { await Promise.resolve(); });
+
+      expect(view.queryByRole("button", { name: "Tap for sound" })).toBeNull();
+    } finally {
+      restorePlay();
+    }
   });
 
   test("restores the selected slide and intentional pause", () => {
@@ -359,6 +441,14 @@ describe("VideoFeed", () => {
   test("renders overflow even when the item is not boost eligible", () => {
     const view = render(<VideoFeed items={[{ ...item, boostEligibility: "unavailable" }]} />);
     expect(view.getByLabelText("More video actions")).toBeTruthy();
+  });
+
+  test("does not pause playback merely because the non-modal overflow opens", () => {
+    const view = render(<VideoFeed items={[item]} />);
+
+    fireEvent.click(view.getByLabelText("More video actions"));
+
+    expect(view.queryByRole("button", { name: "Play video" })).toBeNull();
   });
 
   test("rings the publisher avatar and uses a neutral fallback over media", () => {

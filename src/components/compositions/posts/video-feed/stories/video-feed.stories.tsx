@@ -101,7 +101,15 @@ const BOOKING_SLOTS: ResolvedSlot[] = [
   { startUtc: "2026-09-22T14:00:00.000Z", endUtc: "2026-09-22T14:30:00.000Z", priceCents: 5000, available: true },
 ] as ResolvedSlot[];
 
-function InteractiveFeed({ items, initialItemId }: { items: VideoFeedItem[]; initialItemId?: string }) {
+function InteractiveFeed({
+  initialItemId,
+  initialMuted,
+  items,
+}: {
+  initialItemId?: string;
+  initialMuted?: boolean;
+  items: VideoFeedItem[];
+}) {
   // The container owns the overlay; the feed only reports intent and pauses the item behind it.
   const [bookingItem, setBookingItem] = React.useState<VideoFeedItem | undefined>(undefined);
 
@@ -110,6 +118,7 @@ function InteractiveFeed({ items, initialItemId }: { items: VideoFeedItem[]; ini
       <VideoFeed
         bookingOpenItemId={bookingItem?.id}
         initialItemId={initialItemId}
+        initialMuted={initialMuted}
         items={items}
         onBook={(item) => setBookingItem(item)}
         onBoost={(item) => toast.message(`Boost: ${item.song?.title}`)}
@@ -369,6 +378,34 @@ export const MobileRailWithoutBoost: Story = {
       }]}
     />
   ),
+};
+
+export const MobileTapForSound: Story = {
+  name: "Audio / Mobile tap for sound",
+  args: { items: [] },
+  parameters: {
+    docs: {
+      description: {
+        story: "Fresh and previously sound-on sessions still autoplay muted; the explicit prompt is the only path that attempts unmuted playback.",
+      },
+    },
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => <InteractiveFeed initialMuted={false} items={[portrait]} />,
+};
+
+export const MobilePersistedMuted: Story = {
+  name: "Audio / Mobile persisted mute",
+  args: { items: [] },
+  parameters: {
+    docs: {
+      description: {
+        story: "A viewer who chose mute gets no sound prompt. Open the rail overflow to review the accessible Sound on action.",
+      },
+    },
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => <InteractiveFeed initialMuted items={[portrait]} />,
 };
 
 export const Empty: Story = {

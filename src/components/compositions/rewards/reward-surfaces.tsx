@@ -37,7 +37,6 @@ export type VerifyHumanSheetState =
   | "conflict";
 
 export type CashoutSheetState =
-  | "amount-entry"
   | "confirm"
   | "pending"
   | "success"
@@ -55,7 +54,8 @@ export interface RewardQualificationNoticeProps {
   className?: string;
   expiresAt?: number | null;
   outcomeReason?: "campaign_ended" | "budget_unavailable" | "identity_duplicate" | "owner_blocked" | "score" | "verification_window_expired" | null;
-  status: "checking" | "pending_verification" | "credited" | "expired" | "unavailable";
+  status: "checking" | "delayed" | "pending_verification" | "credited" | "expired" | "unavailable";
+  testMode?: boolean;
 }
 
 export function rewardAmountLabel(amountCents: number, chainId: number): string {
@@ -84,7 +84,6 @@ export interface CashoutSheetProps {
   errorMessage?: string;
   forceMobile?: boolean;
   minimumCashoutLabel: string;
-  onAmountChange?: (value: string) => void;
   onConfirm?: () => void;
   onOpenChange?: (open: boolean) => void;
   onRefresh?: () => void;
@@ -135,6 +134,7 @@ export function RewardQualificationNotice({
   expiresAt,
   outcomeReason,
   status,
+  testMode = false,
 }: RewardQualificationNoticeProps) {
   const daysLeft = expiresAt == null
     ? null
@@ -152,6 +152,11 @@ export function RewardQualificationNotice({
       icon: <HourglassMedium aria-hidden="true" className="size-6 text-primary" weight="duotone" />,
       title: `Checking your ${amountLabel} reward…`,
       body: "This usually takes less than a minute.",
+    },
+    delayed: {
+      icon: <Clock aria-hidden="true" className="size-6 text-primary" weight="duotone" />,
+      title: "Still checking your reward",
+      body: "You can leave this screen. The result will appear in your Wallet.",
     },
     pending_verification: {
       icon: <Fingerprint aria-hidden="true" className="size-6 text-primary" weight="duotone" />,
@@ -185,6 +190,11 @@ export function RewardQualificationNotice({
       </div>
       <Type as="p" variant="h3">{selected.title}</Type>
       <Type as="p" className="mt-1 text-muted-foreground" variant="caption">{selected.body}</Type>
+      {testMode ? (
+        <Type as="p" className="mt-2 text-muted-foreground" variant="caption">
+          Test reward — no cash value.
+        </Type>
+      ) : null}
     </Card>
   );
 }
@@ -347,7 +357,6 @@ export function CashoutSheet({
   errorMessage,
   forceMobile,
   minimumCashoutLabel,
-  onAmountChange,
   onConfirm,
   onOpenChange,
   onRefresh,
@@ -373,7 +382,7 @@ export function CashoutSheet({
           </ModalDescription>
         </ModalHeader>
 
-        {state === "amount-entry" || state === "confirm" ? (
+        {state === "confirm" ? (
           <div className="mt-5 space-y-4">
             <label className="block" htmlFor="reward-cashout-amount">
               <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
@@ -382,8 +391,7 @@ export function CashoutSheet({
               <Input
                 id="reward-cashout-amount"
                 inputMode="decimal"
-                onChange={(event) => onAmountChange?.(event.target.value)}
-                readOnly={state === "confirm"}
+                readOnly
                 value={amountLabel}
               />
             </label>
@@ -447,7 +455,7 @@ export function CashoutSheet({
           </div>
         ) : null}
 
-        {txHashLabel && state !== "amount-entry" ? (
+        {txHashLabel ? (
           <details className="mt-4 rounded-lg bg-muted px-3 py-2 text-muted-foreground">
             <summary className="cursor-pointer text-sm font-medium">Details</summary>
             <Type as="div" className="mt-2 truncate font-mono" variant="caption">{txHashLabel}</Type>
@@ -458,11 +466,6 @@ export function CashoutSheet({
           {state === "confirm" ? (
             <Button className="h-12 w-full" onClick={onConfirm}>
               Confirm claim
-            </Button>
-          ) : null}
-          {state === "amount-entry" ? (
-            <Button className="h-12 w-full" onClick={onConfirm}>
-              Continue
             </Button>
           ) : null}
           {state === "pending" ? (

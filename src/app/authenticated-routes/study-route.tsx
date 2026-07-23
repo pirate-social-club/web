@@ -390,6 +390,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   const contentLocale = useRouteContentLocale();
   const [state, setState] = React.useState<StudyRouteState>({ phase: "loading" });
   const [rewardQualification, setRewardQualification] = React.useState<ApiRewardQualificationSummary | null>(null);
+  const [rewardCheckDelayed, setRewardCheckDelayed] = React.useState(false);
   const [reloadKey, setReloadKey] = React.useState(0);
   const recorderRef = React.useRef<MediaRecorder | null>(null);
   const recordingChunksRef = React.useRef<BlobPart[]>([]);
@@ -437,9 +438,12 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       }
       if (attempt < 5) {
         timeout = window.setTimeout(() => { void poll(); }, 1_500 * 2 ** attempt++);
+      } else {
+        setRewardCheckDelayed(true);
       }
     };
     setRewardQualification(null);
+    setRewardCheckDelayed(false);
     void poll();
     return () => {
       cancelled = true;
@@ -916,7 +920,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
             amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
             expiresAt={rewardQualification?.expires_at}
             outcomeReason={rewardQualification?.outcome_reason}
-            status={rewardQualification?.status ?? "checking"}
+            status={rewardQualification?.status ?? (rewardCheckDelayed ? "delayed" : "checking")}
+            testMode={state.rewardOffer.chain_id === 84532}
           />
         ) : (
           <SongRewardOffer

@@ -480,10 +480,9 @@ export function CurrentUserWalletPage() {
   const [rewardsError, setRewardsError] = React.useState(false);
   const [rewardsCashoutPending, setRewardsCashoutPending] = React.useState(false);
   const [rewardsCashoutOpen, setRewardsCashoutOpen] = React.useState(false);
-  const [rewardsCashoutState, setRewardsCashoutState] = React.useState<CashoutSheetState>("amount-entry");
+  const [rewardsCashoutState, setRewardsCashoutState] = React.useState<CashoutSheetState>("confirm");
   const [rewardsCashoutAmountLabel, setRewardsCashoutAmountLabel] = React.useState("$0.00");
   const [rewardsCashoutTxHash, setRewardsCashoutTxHash] = React.useState<string | null>(null);
-  const [rewardsCashoutRecipientAddress, setRewardsCashoutRecipientAddress] = React.useState<string | null>(null);
   const [rewardsCashoutErrorMessage, setRewardsCashoutErrorMessage] = React.useState<string | null>(null);
   const [rewardsCashoutAttempt, setRewardsCashoutAttempt] = React.useState<RewardsCashoutAttempt | null>(loadRewardsCashoutAttempt);
   const [rewardsCashoutPollGeneration, setRewardsCashoutPollGeneration] = React.useState(0);
@@ -686,7 +685,6 @@ export function CurrentUserWalletPage() {
       setRewardsSummary(summary);
       if (summary.latest_in_flight_cashout) {
         const payout = summary.latest_in_flight_cashout;
-        setRewardsCashoutRecipientAddress(payout.recipient_address);
         setRewardsCashoutAttempt((current) => {
           if (current?.cashoutId === payout.id) return current;
           const recovered = {
@@ -785,11 +783,10 @@ export function CurrentUserWalletPage() {
       return attempt;
     });
     setRewardsCashoutTxHash(null);
-    setRewardsCashoutRecipientAddress(walletAddress);
     setRewardsCashoutErrorMessage(null);
     setRewardsCashoutState("confirm");
     setRewardsCashoutOpen(true);
-  }, [walletAddress]);
+  }, []);
 
   const openRewardsCashout = React.useCallback(() => {
     openRewardsCashoutForSummary(rewardsSummary);
@@ -826,7 +823,6 @@ export function CurrentUserWalletPage() {
   const applyCashoutResult = React.useCallback((result: ApiRewardCashoutResponse) => {
     setRewardsCashoutAmountLabel(formatRewardCents(result.payout.amount_cents, result.chain_id));
     setRewardsCashoutTxHash(result.payout.settlement_ref);
-    setRewardsCashoutRecipientAddress(result.payout.recipient_address);
     if (result.payout.status === "failed") {
       setRewardsCashoutState("failure");
       setRewardsCashoutErrorMessage(result.payout.failure_reason || "The reward transfer failed. Your reward balance is available to try again.");
@@ -856,15 +852,6 @@ export function CurrentUserWalletPage() {
     const amountCents = parseUsdCentsInput(rewardsCashoutAmountLabel);
     if (!amountCents || amountCents < rewardsSummary.cashout.min_cents || amountCents > rewardsSummary.balance_cents) {
       toast.error("Enter an amount within your available reward credits.");
-      return;
-    }
-    if (rewardsCashoutState === "amount-entry") {
-      const attempt = rewardsCashoutAttempt?.amountCents === amountCents
-        ? rewardsCashoutAttempt
-        : { amountCents, idempotencyKey: `wallet-rewards:${Date.now()}:${crypto.randomUUID()}` };
-      setRewardsCashoutAttempt(attempt);
-      storeRewardsCashoutAttempt(attempt);
-      setRewardsCashoutState("confirm");
       return;
     }
     if (rewardsCashoutState !== "confirm") return;
@@ -921,7 +908,7 @@ export function CurrentUserWalletPage() {
   ]);
 
   React.useEffect(() => {
-    if (rewardsCashoutAttempt?.cashoutId && rewardsCashoutState === "amount-entry") {
+    if (rewardsCashoutAttempt?.cashoutId && rewardsCashoutState === "confirm") {
       setRewardsCashoutState("pending");
     }
   }, [rewardsCashoutAttempt?.cashoutId, rewardsCashoutState]);
@@ -1071,14 +1058,13 @@ export function CurrentUserWalletPage() {
           basescanUrl={baseTxUrl(rewardsCashoutTxHash)}
           errorMessage={rewardsCashoutErrorMessage ?? undefined}
           minimumCashoutLabel={formatRewardCents(rewardsSummary.cashout.min_cents, rewardsSummary.chain_id)}
-          onAmountChange={setRewardsCashoutAmountLabel}
           onConfirm={() => {
             void handleRewardsCashout();
           }}
           onOpenChange={(open) => {
             setRewardsCashoutOpen(open);
             if (!open && rewardsCashoutState !== "pending") {
-              setRewardsCashoutState("amount-entry");
+              setRewardsCashoutState("confirm");
             }
           }}
           onRefresh={() => {

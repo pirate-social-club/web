@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import {
   ArrowSquareOut,
   CheckCircle,
@@ -145,10 +144,12 @@ export function BoostCampaignSheet({
   dailyRewardLabel,
   eligibleActivity,
   eligibleActivities = ["karaoke", "study", "either"],
+  endsAtLabel,
   errorMessage,
   explorerTxUrl,
   forceMobile,
   fundingAmountLabel,
+  fundedLabel,
   onBudgetChange,
   onConfirm,
   onDailyRewardChange,
@@ -160,6 +161,8 @@ export function BoostCampaignSheet({
   open,
   planProblem,
   rewardCountLabel,
+  rewardsPaidLabel,
+  remainingLabel,
   state,
   supportReference,
   walletMismatch,

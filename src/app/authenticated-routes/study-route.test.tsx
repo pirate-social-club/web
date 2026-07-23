@@ -7,6 +7,7 @@ import { installDomGlobals } from "@/test/setup-dom";
 import { ApiClient, ApiError } from "@/lib/api/client";
 import type {
   ApiPublicRewardOffer,
+  ApiRewardsSummaryResponse,
   SongStudyAttemptRequest,
   SongStudyAttemptResult,
   SongStudyPayload,
@@ -99,6 +100,7 @@ let publicPostError: unknown = null;
 let studyResult: SongStudyPayload = readyStudyPayload();
 let studyError: unknown = null;
 let rewardCampaignResult: ApiPublicRewardOffer | null = null;
+let rewardSummaryResult: ApiRewardsSummaryResponse | null = null;
 let privyConnectCalls = 0;
 let submitPostStudyAttemptError: unknown = null;
 let submitPostStudyAttemptResult: SongStudyAttemptResult = {
@@ -132,6 +134,10 @@ fakeApi.communities.getPostStudy = async () => {
 fakeApi.rewards.getActiveCampaignForSong = async () => {
   if (!rewardCampaignResult) throw new ApiError("not_found", "Active reward campaign not found", 404);
   return rewardCampaignResult;
+};
+fakeApi.rewards.getSummary = async () => {
+  if (!rewardSummaryResult) throw new ApiError("not_found", "Reward summary not configured", 404);
+  return rewardSummaryResult;
 };
 fakeApi.communities.submitPostStudyAttempt = async (_communityId, _postId, body) => {
   submittedStudyAttempts.push(body);
@@ -200,6 +206,7 @@ beforeEach(() => {
   studyResult = readyStudyPayload();
   studyError = null;
   rewardCampaignResult = null;
+  rewardSummaryResult = null;
   privyConnectCalls = 0;
   submitPostStudyAttemptError = null;
   submitPostStudyAttemptResult = {
@@ -427,6 +434,47 @@ describe("StudyRoutePage", () => {
   });
 
   test("renders server-owned streak progress on completion", async () => {
+    rewardCampaignResult = {
+      chain_id: 84532,
+      eligible_activity: "study",
+      daily_reward_cents: 40,
+      ends_at: Math.floor(Date.now() / 1000) + 86_400,
+      min_score_bps: 7_000,
+    };
+    rewardSummaryResult = {
+      balance_cents: 40,
+      cashout: {
+        eligible: false,
+        min_cents: 100,
+        verification_provider: "self",
+        verification_state: "verified",
+      },
+      chain_id: 84532,
+      latest_in_flight_cashout: null,
+      pending_verification: {
+        conditional_cents: 0,
+        count: 0,
+        earliest_expires_at: null,
+      },
+      recent_events: [],
+      recent_qualifications: [{
+        amount_cents: 40,
+        community_id: "cmt_study",
+        created_at: 1,
+        credited_reward_event_id: "rew_study",
+        expires_at: Math.floor(Date.now() / 1000) + 86_400,
+        id: "rpq_study",
+        outcome_reason: null,
+        post_id: "pst_song",
+        qualification_basis: "study",
+        reward_campaign_id: "rcp_study",
+        reward_period_key: "2026-07-23",
+        reward_qualification_event_id: "rqe_study",
+        status: "credited",
+        updated_at: 2,
+      }],
+      today_earned_cents: 40,
+    };
     submitPostStudyAttemptResult = {
       attempts_remaining: 0,
       correct_option_id: "option_correct",
@@ -472,6 +520,8 @@ describe("StudyRoutePage", () => {
     await waitFor(() => expect(view.getByText("Your streak")).toBeTruthy());
     expect(view.getByLabelText("4 day streak")).toBeTruthy();
     expect(view.getByText("1/1")).toBeTruthy();
+    await waitFor(() => expect(view.getByText("+$0.40 🎉")).toBeTruthy());
+    expect(view.getByText("Test reward — no cash value.")).toBeTruthy();
   });
 
   test("keeps the multiple choice exercise visible when attempt recording fails", async () => {

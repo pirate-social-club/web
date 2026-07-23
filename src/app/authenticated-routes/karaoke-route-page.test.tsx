@@ -275,7 +275,7 @@ describe("KaraokeRoutePage", () => {
     });
   });
 
-  test("does not repeat the reward offer inside the karaoke surface", async () => {
+  test("shows the plain-dollar reward offer inside the karaoke surface", async () => {
     rewardOfferResult = {
       chain_id: 84532,
       daily_reward_cents: 100,
@@ -288,9 +288,9 @@ describe("KaraokeRoutePage", () => {
 
     await waitFor(() => expect(calls).toContain("rewards.getActiveCampaignForSong"));
     await waitFor(() => expect(view.container.querySelector('[aria-label="Fallback Karaoke"]')).toBeTruthy());
-    expect(view.queryByText("Reward")).toBeNull();
-    expect(view.queryByText(/testnet USDC/)).toBeNull();
-    expect(view.queryByText(/Score at least 70%/)).toBeNull();
+    expect(view.getByText("Reward")).toBeTruthy();
+    expect(view.getByText("Earn $1 today")).toBeTruthy();
+    expect(view.getByText(/Score at least 70%/u)).toBeTruthy();
   });
 
   test("blocks with payload-problem copy when the dedicated payload is unusable", async () => {

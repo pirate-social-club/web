@@ -46,6 +46,8 @@ describe("reward surfaces", () => {
         />
         <RewardQualificationNotice amountLabel="$0.10" status="checking" />
         <RewardQualificationNotice amountLabel="$0.10" status="credited" />
+        <RewardQualificationNotice amountLabel="$0.10" status="delayed" testMode />
+        <RewardQualificationNotice amountLabel="$0.10" outcomeReason="score" status="unavailable" />
       </div>,
     );
 
@@ -55,6 +57,9 @@ describe("reward surfaces", () => {
     expect(view.getByText(/Score at least 70% in Karaoke/u)).toBeTruthy();
     expect(view.getByText("Checking your $0.10 reward…")).toBeTruthy();
     expect(view.getByText("+$0.10 🎉")).toBeTruthy();
+    expect(view.getByText("Still checking your reward")).toBeTruthy();
+    expect(view.getByText("Test reward — no cash value.")).toBeTruthy();
+    expect(view.getByText("Your score was below the reward target.")).toBeTruthy();
   });
 
   test("uses plain dollar labels on every settlement chain", () => {

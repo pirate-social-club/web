@@ -71,7 +71,7 @@ function RewardsWalletContext({
 }) {
   const [cashoutOpen, setCashoutOpen] = React.useState(Boolean(cashoutState));
   const [verifyOpen, setVerifyOpen] = React.useState(Boolean(verifyState));
-  const [amount, setAmount] = React.useState(rewardWallet.available);
+  const amount = rewardWallet.available;
 
   return (
     <StandardRoutePage size="rail">
@@ -92,11 +92,10 @@ function RewardsWalletContext({
         availableLabel={rewardWallet.available}
         basescanUrl={rewardWallet.basescanUrl}
         minimumCashoutLabel={rewardAmounts.minimumCashout}
-        onAmountChange={setAmount}
         onOpenChange={setCashoutOpen}
         open={cashoutOpen}
         recipientLabel={rewardWallet.recipient}
-        state={cashoutState ?? "amount-entry"}
+        state={cashoutState ?? "confirm"}
         txHashLabel={cashoutState === "pending" || cashoutState === "success" ? rewardWallet.txHash : undefined}
       />
       <VerifyHumanSheet

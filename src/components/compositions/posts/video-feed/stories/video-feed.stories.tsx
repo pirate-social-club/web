@@ -333,6 +333,44 @@ export const MobileBookableCreator: Story = {
   render: () => <InteractiveFeed items={[bookableCreator]} />,
 };
 
+/**
+ * Widest rail the surface can produce: publisher, upvote, comments, book, study, sing, share and
+ * overflow. Reviewed on mobile because that is where the rail competes with the caption.
+ */
+export const MobileFullRail: Story = {
+  name: "Rail / Mobile full rail",
+  args: { items: [] },
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+  render: () => (
+    <InteractiveFeed
+      items={[{
+        ...bookableCreator,
+        boostEligibility: "eligible",
+        karaoke: "ready",
+        rewards: { karaoke: { amountLabel: "$2" }, study: { amountLabel: "$1" } },
+        study: "ready",
+      }]}
+    />
+  ),
+};
+
+/** Overflow still renders with no boost offer, so the rail keeps its height between videos. */
+export const MobileRailWithoutBoost: Story = {
+  name: "Rail / Mobile without boost",
+  args: { items: [] },
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+  render: () => (
+    <InteractiveFeed
+      items={[{
+        ...portrait,
+        boostEligibility: "unavailable",
+        downvoted: true,
+        publisher: { handle: "songs.pirate", kind: "community" },
+      }]}
+    />
+  ),
+};
+
 export const Empty: Story = {
   args: { items: [] },
 };

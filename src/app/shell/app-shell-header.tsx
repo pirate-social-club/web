@@ -48,15 +48,22 @@ function routeUsesMobileCreateAction(route: AppRoute): boolean {
     || route.kind === "popular";
 }
 
-function resolveMobileHeaderTitle({
+/**
+ * The media overlay drops the centre title so nothing sits on top of the video that isn't a
+ * control. Every other route keeps its title. Exported so the suppression stays under test.
+ */
+export function resolveMobileHeaderTitle({
   copy,
+  mediaOverlay = false,
   route,
   session,
 }: {
   copy: ShellMessages;
+  mediaOverlay?: boolean;
   route: AppRoute;
   session: ReturnType<typeof useSession>;
 }): string | null {
+  if (mediaOverlay) return null;
   switch (route.kind) {
     case "home":
       return "Pirate";
@@ -133,7 +140,7 @@ export function AppShellHeader({
   const mobileTrailingContent = mobileHeaderAction ?? (route.kind === "community" || isPublicProfileRoute || (clientReady && session && routeUsesMobileFooter(route) && !showMobileCreateAction)
     ? <div className="size-11" aria-hidden="true" />
     : undefined);
-  const mobileHeaderTitle = resolveMobileHeaderTitle({ copy, route, session });
+  const mobileHeaderTitle = resolveMobileHeaderTitle({ copy, mediaOverlay: mobileMediaOverlay, route, session });
   const isChatRoute = route.kind === "chat"
     || route.kind === "chat-new"
     || route.kind === "chat-conversation"

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  ArrowFatDown,
   BookOpen,
   CalendarCheck,
   ChatCircle,
@@ -15,6 +16,7 @@ import {
   ShareNetwork,
   SpeakerHigh,
   SpeakerSlash,
+  User,
 } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
@@ -42,6 +44,7 @@ export interface VideoFeedProps {
   onBook?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onComment?: (item: VideoFeedItem) => void;
   onBoost?: (item: VideoFeedItem) => void;
+  onDownvote?: (item: VideoFeedItem) => void;
   onGateRequired?: (item: VideoFeedItem) => void;
   onKaraoke?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onLike?: (item: VideoFeedItem) => void;
@@ -141,6 +144,7 @@ function VideoFeedSlide({
   paused,
   preload,
   onComment,
+  onDownvote,
   onGateRequired,
   onKaraoke,
   onLike,
@@ -297,23 +301,6 @@ function VideoFeedSlide({
           </IconButton>
         ) : null}
 
-        {item.boostEligibility === "eligible" ? (
-          <div className="absolute right-3 top-[calc(var(--feed-chrome-top)+0.75rem)] z-10">
-            <ActionMenu
-              items={[{ key: "boost", label: "Boost this song", icon: <CurrencyDollar className="size-5" weight="bold" /> }]}
-              label="More video actions"
-              onAction={() => onBoost?.(item)}
-              onOpenChange={(open) => { if (open) onPausePlayback(item); }}
-              title="Video actions"
-              trigger={(
-                <IconButton aria-label="More video actions" className="border border-border-soft bg-card/85 shadow-md backdrop-blur hover:bg-card" variant="secondary">
-                  <DotsThree className="size-5" weight="bold" />
-                </IconButton>
-              )}
-            />
-          </div>
-        ) : null}
-
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-5 pb-[calc(var(--feed-chrome-bottom)+1.25rem)] pt-24 text-white">
           <div className="pointer-events-auto max-w-[calc(100%-4.5rem)] space-y-2">
             <div className="flex items-center gap-2">
@@ -341,13 +328,27 @@ function VideoFeedSlide({
         </div>
 
         <div className="absolute bottom-[calc(var(--feed-chrome-bottom)+1.25rem)] right-3 z-10 flex flex-col items-center gap-3 md:static">
+          {/*
+            The ring separates the avatar from arbitrary video behind it. The neutral fallback icon
+            suppresses the generated identicon, whose saturated colours read as a UI element rather
+            than a person once they sit on top of media.
+          */}
           <div
             aria-label={`Publisher ${item.publisher.handle}`}
-            className="rounded-full shadow-md"
+            className="rounded-full ring-2 ring-white/90 shadow-md"
             data-video-publisher-avatar
             role="img"
           >
-            <Avatar fallback={item.publisher.handle} size="md" src={item.publisher.avatarSrc} />
+            <Avatar
+              fallback={item.publisher.handle}
+              fallbackIcon={(
+                <span className="grid size-full place-items-center rounded-full bg-black/70 text-white">
+                  <User aria-hidden className="size-5" weight="fill" />
+                </span>
+              )}
+              size="md"
+              src={item.publisher.avatarSrc}
+            />
           </div>
           <VideoAction
             active={item.liked}
@@ -379,6 +380,40 @@ function VideoFeedSlide({
             label="Share"
             onClick={() => onShare?.(item)}
             tone="social"
+          />
+          {/*
+            Overflow renders on every slide so the rail keeps a stable height between videos.
+            Downvote lives here rather than in the rail: it is low-frequency, and a seventh
+            persistent action would push the rail into the caption.
+          */}
+          <ActionMenu
+            items={[
+              {
+                key: "downvote",
+                label: item.downvoted ? "Remove downvote" : "Downvote",
+                icon: <ArrowFatDown className="size-5" weight={item.downvoted ? "fill" : "regular"} />,
+              },
+              ...(item.boostEligibility === "eligible"
+                ? [{ key: "boost", label: "Boost this song", icon: <CurrencyDollar className="size-5" weight="bold" /> }]
+                : []),
+            ]}
+            label="More video actions"
+            onAction={(key) => {
+              if (key === "boost") onBoost?.(item);
+              if (key === "downvote") runInteraction(onDownvote);
+            }}
+            onOpenChange={(open) => { if (open) onPausePlayback(item); }}
+            title="Video actions"
+            trigger={(
+              <IconButton
+                aria-label="More video actions"
+                className="text-white drop-shadow-md hover:bg-white/15"
+                data-video-overflow-trigger
+                variant="ghost"
+              >
+                <DotsThree className="size-7" weight="bold" />
+              </IconButton>
+            )}
           />
         </div>
       </div>

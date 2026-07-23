@@ -4,7 +4,7 @@ import type { JoinEligibility } from "@pirate/api-contracts";
 import {
   canSendCreatePostRequest,
   canSubmitPostWithProofOfWork,
-  requiresPostAltchaProofForNonMember,
+  requiresPostAltchaProof,
   shouldPromptUniqueHumanForPost,
 } from "./create-post-verification";
 
@@ -23,10 +23,19 @@ describe("create post verification decisions", () => {
       },
       status: "verification_required",
     } as JoinEligibility;
-    expect(requiresPostAltchaProofForNonMember({
+    expect(requiresPostAltchaProof({
       eligibility,
       hasCommunityPostingRole: false,
       requirements: [{ gate_type: "altcha_pow" }, { gate_type: "unique_human" }],
+    })).toBe(true);
+  });
+
+  test("requires PoW for a member of an AND-mode gate", () => {
+    expect(requiresPostAltchaProof({
+      eligibility: { status: "already_joined" } as JoinEligibility,
+      gateMatchMode: "all",
+      hasCommunityPostingRole: false,
+      requirements: [{ gate_type: "altcha_pow" }, { gate_type: "nationality" }],
     })).toBe(true);
   });
 

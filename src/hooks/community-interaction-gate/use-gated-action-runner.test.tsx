@@ -927,6 +927,32 @@ describe("useGatedActionRunner", () => {
     expect(runner.hook.result.current.modalState).toBe(null);
   });
 
+  test("requires fresh PoW from a member when an AND gate also contains identity", async () => {
+    const runner = renderRunner({
+      gateData: gate(
+        "already_joined",
+        {},
+        [veryRequirement, altchaRequirement],
+        { gateMatchMode: "all" },
+      ),
+      sessionUser: verifiedVeryUser,
+    });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: () => undefined,
+        postId: "post-1",
+        voteValue: 1,
+      });
+      expect(result).toBe("blocked");
+    });
+
+    expect(runner.pendingInteraction?.action).toBe("vote_post");
+    expect(runner.hook.result.current.modalState?.title).toBe("Quick browser check");
+  });
+
   test("keeps PoW available as the fallback action for mixed Very-or-PoW gates when Very is not satisfied", async () => {
     const runner = renderRunner({
       gateData: gate("already_joined", {}, [veryRequirement, altchaRequirement]),

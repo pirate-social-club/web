@@ -2,19 +2,22 @@ import type { JoinEligibility, MembershipGateSummary } from "@pirate/api-contrac
 
 import { canSatisfyGateWithAltchaOnly } from "@/lib/altcha-gate-path";
 
-export function requiresPostAltchaProofForNonMember(input: {
+export function requiresPostAltchaProof(input: {
   eligibility: JoinEligibility | null;
   gateMatchMode?: "all" | "any" | null;
   hasCommunityPostingRole: boolean;
   requirements: MembershipGateSummary[];
 }): boolean {
-  return !input.hasCommunityPostingRole
-    && input.eligibility != null
-    && canSatisfyGateWithAltchaOnly({
-      eligibility: input.eligibility,
-      gateMatchMode: input.gateMatchMode,
-      requirements: input.requirements,
-    });
+  if (input.hasCommunityPostingRole || input.eligibility == null) return false;
+  const hasPow = input.requirements.some((gate) => gate.gate_type === "altcha_pow");
+  if (input.eligibility.status === "already_joined" && input.gateMatchMode === "all") {
+    return hasPow;
+  }
+  return canSatisfyGateWithAltchaOnly({
+    eligibility: input.eligibility,
+    gateMatchMode: input.gateMatchMode,
+    requirements: input.requirements,
+  });
 }
 
 export function canSendCreatePostRequest(input: {

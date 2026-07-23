@@ -48,6 +48,11 @@ export interface FeedSortOption {
 
 export interface FeedItem {
   id: string;
+  booking?: {
+    basePriceCents: number;
+    currency: "USDC";
+    hostUserId: string;
+  };
   post: PostCardProps;
   postOriginal?: PostCardProps;
 }
@@ -149,6 +154,7 @@ export function toPageVideoItem(item: FeedItem): VideoFeedItem | null {
 
   return {
     id: item.id,
+    booking: item.booking,
     caption: content.caption,
     commentCount: post.engagement.commentCount,
     karaoke: "unavailable",
@@ -166,7 +172,9 @@ export function toPageVideoItem(item: FeedItem): VideoFeedItem | null {
     },
     song: linkedSong ? {
       artist: linkedSong.artist ?? "",
-      songHref: `/p/${encodeURIComponent(linkedSong.sourcePostId)}`,
+      songHref: linkedSong.sourcePostId
+        ? `/p/${encodeURIComponent(linkedSong.sourcePostId)}`
+        : undefined,
       sourcePostId: linkedSong.sourcePostId,
       title: linkedSong.title,
     } : undefined,

@@ -3,8 +3,9 @@ export type VideoFeedCapability = "ready" | "locked" | "unavailable";
 export interface VideoFeedItem {
   /** Server-stated booking availability for this item's publisher. */
   booking?: {
-    /** Compact display price, such as "$35". */
-    priceLabel?: string;
+    basePriceCents: number;
+    currency: "USDC";
+    hostUserId: string;
   };
   /** Server-stated eligibility for funding this item's linked song. */
   boostEligibility?: "eligible" | "unavailable";

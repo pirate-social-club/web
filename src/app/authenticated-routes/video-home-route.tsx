@@ -11,6 +11,9 @@ import {
   readVideoViewerReturnState,
   saveVideoViewerReturnState,
 } from "@/app/authenticated-helpers/video-viewer-return-state";
+import { VideoBookingAvailabilityCache } from "@/app/authenticated-helpers/video-booking-availability-cache";
+import { FeedBookingSheet } from "@/components/compositions/bookings/feed-booking-sheet/feed-booking-sheet";
+import type { IanaTz, ResolvedSlot } from "@/components/compositions/bookings/view-models";
 import { toPageVideoItem, adjacentVideoSourcePostIds, VideoViewerBoostBridge } from "@/components/compositions/posts/feed/feed";
 import { VideoFeed, type VideoFeedPlaybackState } from "@/components/compositions/posts/video-feed/video-feed";
 import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/video-feed.types";
@@ -23,6 +26,22 @@ import { useSession } from "@/lib/api/session-store";
 import { HomePage } from "./home-routes";
 
 export type VideoHomeSurface = "loading" | "video" | "community-feed-empty" | "community-feed-error";
+
+export function checkoutPathForFeedSlot(hostUserId: string, slot: ResolvedSlot): string {
+  const query = new URLSearchParams({
+    end: slot.endUtc,
+    start: slot.startUtc,
+  });
+  return `/book/${encodeURIComponent(hostUserId)}/checkout?${query.toString()}`;
+}
+
+function viewerTimezone(): IanaTz {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
 
 export function resolveVideoHomeSurface(input: {
   error: unknown;
@@ -48,7 +67,15 @@ export function VideoHomePage() {
   const [capabilityRevision, setCapabilityRevision] = React.useState(0);
   const [activeItemId, setActiveItemId] = React.useState<string | null>(null);
   const [boostTarget, setBoostTarget] = React.useState<{ open: () => void; sourcePostId: string } | null>(null);
+  const [bookingTarget, setBookingTarget] = React.useState<{
+    item: VideoFeedItem;
+    playback: VideoFeedPlaybackState;
+  } | null>(null);
+  const [bookingSlots, setBookingSlots] = React.useState<ResolvedSlot[]>([]);
+  const [bookingLoading, setBookingLoading] = React.useState(false);
   const loadingMoreRef = React.useRef(false);
+  const bookingRequestHostRef = React.useRef<string | null>(null);
+  const bookingTimezone = React.useMemo(viewerTimezone, []);
   // Session storage only exists on the client, and the restored state is consumed
   // no earlier than the first post-hydration render, so defer the read.
   const restored = React.useMemo(
@@ -58,6 +85,19 @@ export function VideoHomePage() {
   const capabilityCache = React.useMemo(
     () => new VideoSongCapabilityCache(capabilityLoader.cacheScope, capabilityLoader.load),
     [capabilityLoader],
+  );
+  const bookingCache = React.useMemo(
+    () => new VideoBookingAvailabilityCache(async (hostUserId) => {
+      const from = new Date().toISOString();
+      const to = new Date(Date.now() + 14 * 86_400_000).toISOString();
+      const response = await api.bookings.listBookingSlots(hostUserId, {
+        from,
+        to,
+        tz: bookingTimezone,
+      });
+      return response.slots as ResolvedSlot[];
+    }),
+    [api.bookings, bookingTimezone],
   );
 
   React.useEffect(() => {
@@ -168,6 +208,52 @@ export function VideoHomePage() {
     navigate(`${destination.pathname}${destination.search}`);
   }, []);
 
+  const openBooking = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState) => {
+    if (!item.booking) return;
+    const hostUserId = item.booking.hostUserId;
+    const cached = bookingCache.get(hostUserId);
+    bookingRequestHostRef.current = hostUserId;
+    setBookingTarget({ item, playback });
+    setBookingSlots(cached ?? []);
+    setBookingLoading(!cached);
+    if (cached) return;
+
+    void bookingCache.ensure(hostUserId)
+      .then((slots) => {
+        if (bookingRequestHostRef.current === hostUserId) setBookingSlots(slots);
+      })
+      .catch(() => {
+        if (bookingRequestHostRef.current === hostUserId) setBookingSlots([]);
+      })
+      .finally(() => {
+        if (bookingRequestHostRef.current === hostUserId) setBookingLoading(false);
+      });
+  }, [bookingCache]);
+
+  const setBookingOpen = React.useCallback((open: boolean) => {
+    if (open) return;
+    bookingRequestHostRef.current = null;
+    setBookingTarget(null);
+    setBookingLoading(false);
+    setBookingSlots([]);
+  }, []);
+
+  const selectBookingSlot = React.useCallback((slot: ResolvedSlot, event?: React.MouseEvent) => {
+    const booking = bookingTarget?.item.booking;
+    if (!bookingTarget || !booking) return;
+    event?.preventDefault();
+    saveVideoViewerReturnState({
+      createdAt: Date.now(),
+      itemId: bookingTarget.item.id,
+      muted: bookingTarget.playback.muted,
+      paused: bookingTarget.playback.paused,
+      playbackSeconds: bookingTarget.playback.playbackSeconds,
+      returnPath: currentRelativePath(),
+      scrollY: 0,
+    });
+    navigate(checkoutPathForFeedSlot(booking.hostUserId, slot));
+  }, [bookingTarget]);
+
   const surface = resolveVideoHomeSurface({ error, itemCount: items.length, loading });
   if (surface === "loading") return <div className="grid min-h-dvh w-full place-items-center bg-background"><Spinner className="size-6" /></div>;
   if (surface === "community-feed-error") return <HomePage videoFallbackReason="error" />;
@@ -176,6 +262,7 @@ export function VideoHomePage() {
   return (
     <div className="min-h-0 w-full flex-1 bg-background">
       <VideoFeed
+        bookingOpenItemId={bookingTarget?.item.id}
         className="h-[calc(100dvh-var(--header-height))] md:h-dvh"
         initialItemId={restored?.itemId}
         initialMuted={restored?.muted}
@@ -186,6 +273,7 @@ export function VideoHomePage() {
         onBoost={(item) => {
           if (boostTarget && item.song?.sourcePostId === boostTarget.sourcePostId) boostTarget.open();
         }}
+        onBook={openBooking}
         onComment={(item) => navigate(`/p/${encodeURIComponent(item.id)}`)}
         onKaraoke={(item, playback) => launchSongAction(item, playback, item.song?.karaokeHref)}
         onLike={onLike}
@@ -193,6 +281,19 @@ export function VideoHomePage() {
         onSong={(item, playback) => launchSongAction(item, playback, item.song?.songHref)}
         onStudy={(item, playback) => launchSongAction(item, playback, item.song?.studyHref)}
       />
+      {bookingTarget?.item.booking ? (
+        <FeedBookingSheet
+          basePriceCents={bookingTarget.item.booking.basePriceCents}
+          getSlotHref={(slot) => checkoutPathForFeedSlot(bookingTarget.item.booking!.hostUserId, slot)}
+          handle={bookingTarget.item.publisher.handle}
+          loading={bookingLoading}
+          onOpenChange={setBookingOpen}
+          onSelectSlot={selectBookingSlot}
+          open
+          slots={bookingSlots}
+          viewerTimezone={bookingTimezone}
+        />
+      ) : null}
       {activeResolution?.sourceCommunityId ? (
         <VideoViewerBoostBridge
           activePublicOffer={activeResolution.activeRewardOffer}

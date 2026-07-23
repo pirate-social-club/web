@@ -93,7 +93,7 @@ describe("VideoFeed", () => {
     const view = render(
       <VideoFeed
         initialMuted={false}
-        items={[{ ...item, booking: { priceLabel: "$35" } }]}
+        items={[{ ...item, booking: { basePriceCents: 3500, currency: "USDC", hostUserId: "usr_host" } }]}
         onBook={(bookedItem, state) => calls.push({ bookedItem, state })}
       />,
     );
@@ -102,8 +102,8 @@ describe("VideoFeed", () => {
 
     fireEvent.click(view.getByRole("button", { name: "Book" }));
 
-    expect(view.getByText("$35")).toBeTruthy();
-    expect(calls).toEqual([{ bookedItem: { ...item, booking: { priceLabel: "$35" } }, state: { muted: false, paused: false, playbackSeconds: 8 } }]);
+    expect(view.getByText("35.00 USDC")).toBeTruthy();
+    expect(calls).toEqual([{ bookedItem: { ...item, booking: { basePriceCents: 3500, currency: "USDC", hostUserId: "usr_host" } }, state: { muted: false, paused: false, playbackSeconds: 8 } }]);
   });
 
   test("omits booking when the publisher is not marked bookable", () => {
@@ -198,13 +198,13 @@ describe("VideoFeed", () => {
   });
 
   test("omits booking when the container supplies no booking handler", () => {
-    const view = render(<VideoFeed items={[{ ...item, booking: { priceLabel: "$35" } }]} />);
+    const view = render(<VideoFeed items={[{ ...item, booking: { basePriceCents: 3500, currency: "USDC", hostUserId: "usr_host" } }]} />);
 
     expect(view.queryByRole("button", { name: "Book" })).toBeNull();
   });
 
   test("pauses the item whose booking overlay is open and resumes it on dismiss", () => {
-    const bookable = { ...item, booking: { priceLabel: "$35" } };
+    const bookable = { ...item, booking: { basePriceCents: 3500, currency: "USDC" as const, hostUserId: "usr_host" } };
     const view = render(<VideoFeed items={[bookable]} onBook={() => {}} />);
     const video = view.container.querySelector<HTMLVideoElement>("video")!;
     const paused: string[] = [];
@@ -221,7 +221,7 @@ describe("VideoFeed", () => {
   });
 
   test("keeps an intentional pause after the booking overlay is dismissed", () => {
-    const bookable = { ...item, booking: { priceLabel: "$35" } };
+    const bookable = { ...item, booking: { basePriceCents: 3500, currency: "USDC" as const, hostUserId: "usr_host" } };
     const view = render(
       <VideoFeed bookingOpenItemId={bookable.id} initialPaused initialItemId={bookable.id} items={[bookable]} onBook={() => {}} />,
     );

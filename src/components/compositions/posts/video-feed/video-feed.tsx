@@ -19,6 +19,7 @@ import {
 
 import { Avatar } from "@/components/primitives/avatar";
 import { ActionMenu } from "@/components/primitives/action-menu";
+import { formatCentsAsUsdc } from "@/components/compositions/bookings/fixtures/bookings-format";
 import { IconButton } from "@/components/primitives/icon-button";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
@@ -308,16 +309,16 @@ function VideoFeedSlide({
             {item.caption ? <Type className="line-clamp-2" variant="body">{item.caption}</Type> : null}
             {item.song ? (
               item.song.songHref && onSong ? (
-                <Type
+                <button
                   aria-label={`Open ${item.song.title} by ${item.song.artist}`}
-                  as="button"
                   className="cursor-pointer text-left text-white/80 underline decoration-white/60 underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   onClick={runSongNavigation}
                   type="button"
-                  variant="caption"
                 >
-                  {item.song.title} · {item.song.artist}
-                </Type>
+                  <Type as="span" className="text-inherit" variant="caption">
+                    {item.song.title} · {item.song.artist}
+                  </Type>
+                </button>
               ) : <Type className="text-white/80" variant="caption">{item.song.title} · {item.song.artist}</Type>
             ) : null}
           </div>
@@ -338,7 +339,7 @@ function VideoFeedSlide({
               icon={<CalendarCheck className="size-5" weight="fill" />}
               label="Book"
               onClick={() => runPlaybackInteraction(onBook)}
-              value={item.booking.priceLabel ?? "Book"}
+              value={formatCentsAsUsdc(item.booking.basePriceCents)}
             />
           ) : null}
           <CapabilityAction capability={item.study} icon={<BookOpen className="size-5" weight="fill" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />

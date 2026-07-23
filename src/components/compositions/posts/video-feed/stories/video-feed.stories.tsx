@@ -56,7 +56,7 @@ const ageBlocked: VideoFeedItem = {
 
 const bookableCreator: VideoFeedItem = {
   ...portrait,
-  booking: { priceLabel: "$35" },
+  booking: { basePriceCents: 3500, currency: "USDC", hostUserId: "usr_scarlett" },
   id: "video_bookable_creator",
   publisher: { handle: "mara.english", kind: "profile" },
   caption: "Practice the chorus, then book a private pronunciation class with me.",

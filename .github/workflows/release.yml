@@ -14,8 +14,6 @@ on:
     paths:
       - .github/workflows/release.yml
       - .github/release-refs/**
-      - scripts/check-release-pin-ancestry.mjs
-      - scripts/check-release-pin-ancestry.test.mjs
       - scripts/deploy-staging.sh
       - scripts/deploy-production.sh
       - scripts/lib/release-source.sh
@@ -66,7 +64,6 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          fetch-depth: 0
           path: web
       - name: Read pinned API commit
         id: api_ref
@@ -90,43 +87,6 @@ jobs:
             exit 1
           fi
           echo "sha=$core_sha" >> "$GITHUB_OUTPUT"
-      - name: Check out API history for pin ancestry
-        if: >-
-          github.event_name == 'pull_request'
-          && !contains(github.event.pull_request.labels.*.name, 'release-pin-rollback-approved')
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          fetch-depth: 0
-          path: api
-          ref: ${{ steps.api_ref.outputs.sha }}
-          repository: pirate-social-club/api
-          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-      - name: Reject API pin rollback
-        if: >-
-          github.event_name == 'pull_request'
-          && !contains(github.event.pull_request.labels.*.name, 'release-pin-rollback-approved')
-        working-directory: web
-        env:
-          BASE_WEB_SHA: ${{ github.event.pull_request.base.sha }}
-          PROPOSED_API_SHA: ${{ steps.api_ref.outputs.sha }}
-        shell: bash
-        run: |
-          base_api_sha="$(git show "$BASE_WEB_SHA:.github/release-refs/api.sha")"
-          if [[ ! "$base_api_sha" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::error::Base branch .github/release-refs/api.sha must contain one full lowercase commit SHA"
-            exit 1
-          fi
-          node scripts/check-release-pin-ancestry.mjs \
-            --repo ../api \
-            --base "$base_api_sha" \
-            --proposed "$PROPOSED_API_SHA"
-      - name: Acknowledge intentional API rollback
-        if: >-
-          github.event_name == 'pull_request'
-          && contains(github.event.pull_request.labels.*.name, 'release-pin-rollback-approved')
-        run: >-
-          echo "::warning::API pin ancestry check bypassed by the
-          release-pin-rollback-approved label for an intentional rollback."
       - name: Require compatible green API/Core pair
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         env:

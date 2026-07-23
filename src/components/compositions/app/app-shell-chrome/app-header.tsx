@@ -32,6 +32,13 @@ function normalizeUnreadCount(count: number): number {
   return Math.max(0, Math.floor(count));
 }
 
+export function shouldShowMobileConnectAction(
+  showConnectAction: boolean,
+  appearance: AppHeaderProps["mobileAppearance"],
+): boolean {
+  return showConnectAction && appearance !== "media-overlay";
+}
+
 function CreatePostGlyph() {
   return (
     <span className="relative inline-flex size-5 items-center justify-center">
@@ -264,6 +271,7 @@ export function AppHeader({
 
   if (isMobile) {
     const mediaOverlay = mobileAppearance === "media-overlay";
+    const showMobileConnectAction = shouldShowMobileConnectAction(showConnectAction, mobileAppearance);
     return (
       <header
         className={cn(
@@ -308,7 +316,7 @@ export function AppHeader({
             {mobileCenterContent ?? (hideBrand || hideMobileBrand ? null : brand)}
           </div>
           <div className="min-w-0 justify-self-end">
-            {mobileTrailingContent ?? (showConnectAction ? (
+            {mobileTrailingContent ?? (showMobileConnectAction ? (
               <Button className="h-11 px-4" onClick={onConnectClick}>
                 {connectLabel}
               </Button>

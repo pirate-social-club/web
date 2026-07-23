@@ -207,12 +207,7 @@ describe("composition smoke tests", () => {
     expect(markup).toContain("from-black/75");
     expect(markup).toContain("[&amp;_button[data-app-header-icon]]:text-white");
     expect(markup).not.toContain("[&amp;_button]:text-white");
-    const connectTextIndex = markup.indexOf("Connect");
-    const connectButtonStart = markup.lastIndexOf("<button", connectTextIndex);
-    const connectButtonTag = markup.slice(connectButtonStart, markup.indexOf(">", connectButtonStart) + 1);
-    expect(connectTextIndex).toBeGreaterThan(-1);
-    expect(connectButtonStart).toBeGreaterThan(-1);
-    expect(connectButtonTag).not.toContain("data-app-header-icon");
+    expect(markup).not.toContain("Connect");
   });
 
   test("renders sidebar requirements as a minimal section", () => {

@@ -139,7 +139,7 @@ function MobileChromeStory() {
   );
 }
 
-function MobileMediaOverlayHeaderStory() {
+function MobileMediaOverlayHeaderStory({ loggedOut = false }: { loggedOut?: boolean }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "shell");
 
@@ -157,7 +157,8 @@ function MobileMediaOverlayHeaderStory() {
         }}
         mobileAppearance="media-overlay"
         mobileCenterContent={<Type as="div" variant="h4">Pirate</Type>}
-        mobileTrailingContent={<div className="size-11" aria-hidden="true" />}
+        mobileTrailingContent={loggedOut ? undefined : <div className="size-11" aria-hidden="true" />}
+        showConnectAction={loggedOut}
         showCreateAction={false}
         showNotificationsAction={false}
         showProfileAction={false}
@@ -211,6 +212,14 @@ export const MobileMediaOverlayHeader: Story = {
     viewport: { defaultViewport: "mobile1" },
   },
   render: () => <MobileMediaOverlayHeaderStory />,
+};
+
+export const MobileMediaOverlayHeaderLoggedOut: Story = {
+  name: "Mobile header / Media overlay / Logged out",
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => <MobileMediaOverlayHeaderStory loggedOut />,
 };
 
 export const MobileHeaderArabic: Story = {

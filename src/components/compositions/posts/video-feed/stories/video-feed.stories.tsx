@@ -220,6 +220,24 @@ export const DesktopInFlowHeader: Story = {
   render: () => <DesktopChromeReview />,
 };
 
+export const NarrowDesktopStage: Story = {
+  name: "Viewport / Narrow desktop dock stage",
+  args: { items: [] },
+  parameters: {
+    docs: {
+      description: {
+        story: "Simulates the remaining feed column when the app sidebar and 26rem comments dock are both present. The media frame shrinks within the stage instead of overflowing beneath the action rail.",
+      },
+    },
+    viewport: { defaultViewport: "desktop" },
+  },
+  render: () => (
+    <div className="h-dvh w-96 overflow-hidden bg-background">
+      <InteractiveFeed items={[publisherAvatarRail]} />
+    </div>
+  ),
+};
+
 export const LongFeedMediaWindow: Story = {
   name: "Loading / Near-slide media window",
   args: { items: [] },

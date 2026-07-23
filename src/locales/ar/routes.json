@@ -101,6 +101,8 @@
     "emptyVideoBody": "لا توجد فيديوهات قابلة للتشغيل لك الآن.",
     "emptyVideoTitle": "لا توجد فيديوهات بعد",
     "videoLoadError": "تعذر تحميل الفيديوهات.",
+    "videoCommentAuthRequired": "اتصل للانضمام إلى المحادثة.",
+    "videoLikeAuthRequired": "اتصل للإعجاب بهذا الفيديو.",
     "videoPaginationError": "تعذر تحميل المزيد من الفيديوهات.",
     "videoPaginationKeepLoading": "متابعة التحميل",
     "videoPaginationPaused": "قد تتوفر فيديوهات إضافية.",

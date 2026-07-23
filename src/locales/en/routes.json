@@ -101,6 +101,8 @@
     "emptyVideoBody": "There are no playable videos for you right now.",
     "emptyVideoTitle": "No videos yet",
     "videoLoadError": "Could not load videos.",
+    "videoCommentAuthRequired": "Connect to join the conversation.",
+    "videoLikeAuthRequired": "Connect to like this video.",
     "videoPaginationError": "Couldn't load more videos.",
     "videoPaginationKeepLoading": "Keep loading",
     "videoPaginationPaused": "More videos may be available.",

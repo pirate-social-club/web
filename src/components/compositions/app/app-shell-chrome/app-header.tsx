@@ -45,7 +45,7 @@ function SidebarMenuToggleButton({ ariaLabel }: { ariaLabel: string }) {
   const { toggleSidebar } = useSidebar();
 
   return (
-    <IconButton aria-label={ariaLabel} onClick={toggleSidebar} variant="ghost">
+    <IconButton aria-label={ariaLabel} data-app-header-icon onClick={toggleSidebar} variant="ghost">
       <List className="size-6" weight="bold" />
     </IconButton>
   );
@@ -166,6 +166,7 @@ export function AppHeader({
     <IconButton
       aria-label={createLabel}
       className="relative"
+      data-app-header-icon
       disabled={disableCreateAction}
       onClick={onCreateClick}
       title={createActionTitle}
@@ -179,6 +180,7 @@ export function AppHeader({
     <IconButton
       aria-label={unreadNotificationsLabel}
       className="relative"
+      data-app-header-icon
       onClick={onNotificationsClick}
       variant="ghost"
       key="notifications"
@@ -198,6 +200,7 @@ export function AppHeader({
     <IconButton
       aria-label={chatAccessibleLabel}
       className="relative"
+      data-app-header-icon
       onClick={onChatClick}
       variant="ghost"
       key="chat"
@@ -217,6 +220,7 @@ export function AppHeader({
     <IconButton
       aria-label={walletAriaLabel}
       className="relative"
+      data-app-header-icon
       onClick={onWalletClick}
       variant="ghost"
       key="wallet"
@@ -228,6 +232,7 @@ export function AppHeader({
     <IconButton
       aria-label={profileAriaLabel}
       className="p-0"
+      data-app-header-icon
       onClick={onProfileClick}
       variant="ghost"
       key="profile"
@@ -278,14 +283,14 @@ export function AppHeader({
         ) : null}
         <div className={cn(
           "relative grid h-16 grid-cols-[minmax(0,1fr)_minmax(0,auto)_minmax(0,1fr)] items-center gap-2 px-3",
-          mediaOverlay && "[&_button]:text-white [&_button]:drop-shadow-md [&_button:hover]:bg-black/25",
+          mediaOverlay && "[&_button[data-app-header-icon]]:text-white [&_button[data-app-header-icon]]:drop-shadow-md [&_button[data-app-header-icon]:hover]:bg-black/25",
         )}>
           <div className="min-w-0 justify-self-start">
             {mobileLeadingContent ?? (
               useSidebarTrigger ? (
                 <SidebarMenuToggleButton ariaLabel={openNavigationAriaLabel} />
               ) : onBackClick ? (
-                <IconButton aria-label={backAriaLabel} onClick={onBackClick} variant="ghost">
+                <IconButton aria-label={backAriaLabel} data-app-header-icon onClick={onBackClick} variant="ghost">
                   {isRtl ? (
                     <ArrowRight className="size-6" weight="bold" />
                   ) : (
@@ -293,7 +298,7 @@ export function AppHeader({
                   )}
                 </IconButton>
               ) : (
-                <IconButton aria-label={openNavigationAriaLabel} onClick={onMenuClick} variant="ghost">
+                <IconButton aria-label={openNavigationAriaLabel} data-app-header-icon onClick={onMenuClick} variant="ghost">
                   <List className="size-6" weight="bold" />
                 </IconButton>
               )

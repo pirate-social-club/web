@@ -196,6 +196,8 @@ describe("composition smoke tests", () => {
             forceMobile
             mobileAppearance="media-overlay"
             onHomeClick={() => undefined}
+            showConnectAction
+            showProfileAction={false}
           />
         </SidebarProvider>
       </UiLocaleProvider>,
@@ -203,7 +205,14 @@ describe("composition smoke tests", () => {
 
     expect(markup).toContain('data-appearance="media-overlay"');
     expect(markup).toContain("from-black/75");
-    expect(markup).toContain("[&amp;_button]:text-white");
+    expect(markup).toContain("[&amp;_button[data-app-header-icon]]:text-white");
+    expect(markup).not.toContain("[&amp;_button]:text-white");
+    const connectTextIndex = markup.indexOf("Connect");
+    const connectButtonStart = markup.lastIndexOf("<button", connectTextIndex);
+    const connectButtonTag = markup.slice(connectButtonStart, markup.indexOf(">", connectButtonStart) + 1);
+    expect(connectTextIndex).toBeGreaterThan(-1);
+    expect(connectButtonStart).toBeGreaterThan(-1);
+    expect(connectButtonTag).not.toContain("data-app-header-icon");
   });
 
   test("renders sidebar requirements as a minimal section", () => {

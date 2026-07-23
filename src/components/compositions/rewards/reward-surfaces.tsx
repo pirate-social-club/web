@@ -58,6 +58,14 @@ export interface RewardQualificationNoticeProps {
   testMode?: boolean;
 }
 
+export function displayedRewardQualificationStatus(
+  status: Exclude<RewardQualificationNoticeProps["status"], "delayed"> | null | undefined,
+  pollingTimedOut: boolean,
+): RewardQualificationNoticeProps["status"] {
+  if (pollingTimedOut && (status == null || status === "checking")) return "delayed";
+  return status ?? "checking";
+}
+
 export function rewardAmountLabel(amountCents: number, chainId: number): string {
   void chainId;
   return rewardCtaAmountLabel(amountCents);

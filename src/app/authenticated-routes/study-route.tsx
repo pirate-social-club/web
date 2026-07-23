@@ -16,6 +16,7 @@ import type { SongStreakSummary } from "@/components/compositions/song-study/son
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { Button } from "@/components/primitives/button";
 import {
+  displayedRewardQualificationStatus,
   RewardQualificationNotice,
   rewardAmountLabel,
   SongRewardOffer,
@@ -920,7 +921,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
             amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
             expiresAt={rewardQualification?.expires_at}
             outcomeReason={rewardQualification?.outcome_reason}
-            status={rewardQualification?.status ?? (rewardCheckDelayed ? "delayed" : "checking")}
+            status={displayedRewardQualificationStatus(rewardQualification?.status, rewardCheckDelayed)}
             testMode={state.rewardOffer.chain_id === 84532}
           />
         ) : (

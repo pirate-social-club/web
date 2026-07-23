@@ -6,6 +6,7 @@ import { installDomGlobals } from "@/test/setup-dom";
 
 import {
   CashoutSheet,
+  displayedRewardQualificationStatus,
   RewardQualificationNotice,
   rewardAmountLabel,
   rewardCtaAmountLabel,
@@ -71,6 +72,13 @@ describe("reward surfaces", () => {
   test("formats compact reward amounts for action labels", () => {
     expect(rewardCtaAmountLabel(100)).toBe("$1");
     expect(rewardCtaAmountLabel(10)).toBe("$0.10");
+  });
+
+  test("degrades a missing or stuck checking projection after polling times out", () => {
+    expect(displayedRewardQualificationStatus(null, true)).toBe("delayed");
+    expect(displayedRewardQualificationStatus("checking", true)).toBe("delayed");
+    expect(displayedRewardQualificationStatus("pending_verification", true)).toBe("pending_verification");
+    expect(displayedRewardQualificationStatus("credited", true)).toBe("credited");
   });
 
   test("exports verification and cashout sheet elements", () => {

@@ -6,6 +6,7 @@ import { navigate } from "@/app/router";
 import { routeReturnPath } from "@/app/authenticated-helpers/video-viewer-return-state";
 import { KaraokeAudioSurface } from "@/components/compositions/karaoke/karaoke-audio-surface";
 import {
+  displayedRewardQualificationStatus,
   RewardQualificationNotice,
   SongRewardOffer,
   rewardAmountLabel,
@@ -236,7 +237,7 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
             amountLabel={rewardAmountLabel(rewardOffer.daily_reward_cents, rewardOffer.chain_id)}
             expiresAt={rewardQualification?.expires_at}
             outcomeReason={rewardQualification?.outcome_reason}
-            status={rewardQualification?.status ?? (rewardCheckDelayed ? "delayed" : "checking")}
+            status={displayedRewardQualificationStatus(rewardQualification?.status, rewardCheckDelayed)}
             testMode={rewardOffer.chain_id === 84532}
           />
         ) : (

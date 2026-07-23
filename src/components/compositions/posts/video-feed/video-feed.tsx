@@ -52,13 +52,37 @@ export interface VideoFeedProps {
   onShare?: (item: VideoFeedItem) => void;
   onSong?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onStudy?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
+  muteVideoLabel?: string;
   removeDownvoteLabel?: string;
+  soundOnLabel?: string;
+  tapForSoundLabel?: string;
 }
 
 export interface VideoFeedPlaybackState {
   muted: boolean;
   paused: boolean;
   playbackSeconds: number;
+}
+
+export const VIDEO_FEED_MUTED_PREFERENCE_KEY = "pirate.video-feed.muted";
+
+function readStoredMutedPreference(): boolean | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = window.localStorage.getItem(VIDEO_FEED_MUTED_PREFERENCE_KEY);
+    return stored === "true" ? true : stored === "false" ? false : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredMutedPreference(muted: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(VIDEO_FEED_MUTED_PREFERENCE_KEY, String(muted));
+  } catch {
+    // Storage can be unavailable in private browsing; sound still works for the current feed.
+  }
 }
 
 function compactCount(value: number): string {
@@ -153,32 +177,59 @@ function VideoFeedSlide({
   onKaraoke,
   onLike,
   onShare,
-  onPausePlayback,
   onSong,
+  onSoundPromptShown,
   onToggleMute,
   onStudy,
   onTogglePlayback,
   muted,
+  preferenceMuted,
+  soundOnLabel,
+  soundPromptEligible,
+  tapForSoundLabel,
+  muteVideoLabel,
   initialPlaybackSeconds,
-}: Omit<VideoFeedProps, "downvoteLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "removeDownvoteLabel"> & {
+}: Omit<VideoFeedProps, "downvoteLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "muteVideoLabel" | "removeDownvoteLabel" | "soundOnLabel" | "tapForSoundLabel"> & {
   active: boolean;
   allowAutoplay: boolean;
   downvoteLabel: string;
   item: VideoFeedItem;
   mountMedia: boolean;
-  onPausePlayback: (item: VideoFeedItem) => void;
-  onToggleMute: () => void;
+  muteVideoLabel: string;
+  onSoundPromptShown: () => void;
+  onToggleMute: (video: HTMLVideoElement | null) => void;
   onTogglePlayback: (item: VideoFeedItem) => void;
   muted: boolean;
+  preferenceMuted: boolean;
   paused: boolean;
   preload: "auto" | "metadata";
   removeDownvoteLabel: string;
+  soundOnLabel: string;
+  soundPromptEligible: boolean;
+  tapForSoundLabel: string;
   initialPlaybackSeconds?: number;
 }) {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const ageBlocked = item.viewerState === "age_proof_required";
   const hasPlayableSource = !ageBlocked && Boolean(item.media.src);
   const mediaMounted = mountMedia && hasPlayableSource;
+  const [showSoundPrompt, setShowSoundPrompt] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!active || !mediaMounted || !muted || preferenceMuted || !soundPromptEligible) {
+      setShowSoundPrompt(false);
+      return;
+    }
+    onSoundPromptShown();
+    setShowSoundPrompt(true);
+    const timeout = window.setTimeout(() => setShowSoundPrompt(false), 2500);
+    return () => window.clearTimeout(timeout);
+  }, [active, mediaMounted, muted, onSoundPromptShown, preferenceMuted, soundPromptEligible]);
+
+  React.useEffect(() => {
+    if (!active || !mediaMounted || !muted || preferenceMuted) return;
+    onToggleMute(videoRef.current);
+  }, [active, mediaMounted, muted, onToggleMute, preferenceMuted]);
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -295,16 +346,14 @@ function VideoFeedSlide({
           </button>
         ) : null}
 
-        {mediaMounted ? (
-          <IconButton
-            aria-label={muted ? "Turn sound on" : "Mute video"}
-            className="absolute left-3 top-[calc(var(--feed-chrome-top)+0.75rem)] z-10 border border-border-soft bg-card/85 shadow-md backdrop-blur hover:bg-card"
-            onClick={onToggleMute}
-            onMouseDown={(event) => event.preventDefault()}
-            variant="secondary"
+        {showSoundPrompt ? (
+          <button
+            className="absolute left-1/2 top-[calc(var(--feed-chrome-top)+1rem)] z-10 -translate-x-1/2 rounded-full bg-black/70 px-4 py-2 text-white shadow-md backdrop-blur"
+            onClick={() => onToggleMute(videoRef.current)}
+            type="button"
           >
-            {muted ? <SpeakerSlash className="size-5" weight="fill" /> : <SpeakerHigh className="size-5" weight="fill" />}
-          </IconButton>
+            <Type as="span" className="text-inherit" variant="caption">{tapForSoundLabel}</Type>
+          </button>
         ) : null}
 
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-5 pb-[calc(var(--feed-chrome-bottom)+1.25rem)] pt-24 text-white">
@@ -395,6 +444,13 @@ function VideoFeedSlide({
           <ActionMenu
             items={[
               {
+                key: "sound",
+                label: muted ? soundOnLabel : muteVideoLabel,
+                icon: muted
+                  ? <SpeakerHigh className="size-5" weight="fill" />
+                  : <SpeakerSlash className="size-5" weight="fill" />,
+              },
+              {
                 key: "downvote",
                 label: item.downvoted ? removeDownvoteLabel : downvoteLabel,
                 icon: <ArrowFatDown className="size-5" weight={item.downvoted ? "fill" : "regular"} />,
@@ -407,8 +463,8 @@ function VideoFeedSlide({
             onAction={(key) => {
               if (key === "boost") onBoost?.(item);
               if (key === "downvote") runInteraction(onDownvote);
+              if (key === "sound") onToggleMute(videoRef.current);
             }}
-            onOpenChange={(open) => { if (open) onPausePlayback(item); }}
             title="Video actions"
             trigger={(
               <IconButton
@@ -432,11 +488,14 @@ export function VideoFeed({
   className,
   downvoteLabel = "Downvote",
   initialItemId,
-  initialMuted = true,
+  initialMuted,
   initialPaused = false,
   initialPlaybackSeconds,
   items,
+  muteVideoLabel = "Mute video",
   removeDownvoteLabel = "Remove downvote",
+  soundOnLabel = "Sound on",
+  tapForSoundLabel = "Tap for sound",
   ...actions
 }: VideoFeedProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
@@ -446,7 +505,10 @@ export function VideoFeed({
   const [pausedItemIds, setPausedItemIds] = React.useState<Set<string>>(() => initialPaused && initialItemId ? new Set([initialItemId]) : new Set());
   const [userStartedItemIds, setUserStartedItemIds] = React.useState<Set<string>>(() => new Set());
   const [reduceMotion, setReduceMotion] = React.useState(false);
-  const [muted, setMuted] = React.useState(initialMuted);
+  const [preferenceMuted, setPreferenceMuted] = React.useState(() => initialMuted ?? readStoredMutedPreference() ?? false);
+  const hasShownSoundPromptRef = React.useRef(false);
+  // Autoplay always begins muted. We only clear this after an unmuted play() has resolved.
+  const [muted, setMuted] = React.useState(true);
 
   React.useLayoutEffect(() => {
     const container = containerRef.current;
@@ -487,11 +549,33 @@ export function VideoFeed({
     setUserStartedItemIds((current) => new Set(current).add(item.id));
   }, []);
 
-  const pausePlayback = React.useCallback((item: VideoFeedItem) => {
-    setPausedItemIds((current) => new Set(current).add(item.id));
-  }, []);
+  const toggleMute = React.useCallback((video: HTMLVideoElement | null) => {
+    if (!muted) {
+      if (video) video.muted = true;
+      setMuted(true);
+      setPreferenceMuted(true);
+      writeStoredMutedPreference(true);
+      return;
+    }
+    if (!video) return;
+    // This imperative write must precede play(): browsers inspect the media element itself. The
+    // paired state update after resolution keeps React's controlled `muted` prop synchronized.
+    video.muted = false;
+    const playback = video.play?.();
+    void Promise.resolve(playback).then(() => {
+      if (video.muted) return;
+      setPreferenceMuted(false);
+      writeStoredMutedPreference(false);
+      setMuted(false);
+    }).catch(() => {
+      video.muted = true;
+      setMuted(true);
+    });
+  }, [muted]);
 
-  const toggleMute = React.useCallback(() => setMuted((current) => !current), []);
+  const markSoundPromptShown = React.useCallback(() => {
+    hasShownSoundPromptRef.current = true;
+  }, []);
 
   const onKeyDown = React.useCallback((event: KeyboardEvent) => {
     const container = containerRef.current;
@@ -557,13 +641,18 @@ export function VideoFeed({
             item={item}
             initialPlaybackSeconds={item.id === initialItemId ? initialPlaybackSeconds : undefined}
             mountMedia={Math.abs(index - activeIndex) <= 2}
-            onPausePlayback={pausePlayback}
+            muteVideoLabel={muteVideoLabel}
+            onSoundPromptShown={markSoundPromptShown}
             onToggleMute={toggleMute}
             onTogglePlayback={togglePlayback}
             muted={muted}
+            preferenceMuted={preferenceMuted}
             paused={pausedItemIds.has(item.id) || bookingOpenItemId === item.id}
             preload={Math.abs(index - activeIndex) <= 1 ? "auto" : "metadata"}
             removeDownvoteLabel={removeDownvoteLabel}
+            soundOnLabel={soundOnLabel}
+            soundPromptEligible={!hasShownSoundPromptRef.current}
+            tapForSoundLabel={tapForSoundLabel}
           />
         </div>
       ))}

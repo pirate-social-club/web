@@ -403,6 +403,7 @@ export function VideoHomePage() {
         initialPaused={restored?.paused}
         initialPlaybackSeconds={restored?.playbackSeconds}
         items={items}
+        muteVideoLabel={copy.common.muteVideo}
         onActiveItemChange={onActiveItemChange}
         onBoost={(item) => {
           if (boostTarget && item.song?.sourcePostId === boostTarget.sourcePostId) boostTarget.open();
@@ -422,6 +423,8 @@ export function VideoHomePage() {
         onSong={(item, playback) => launchSongAction(item, playback, item.song?.songHref)}
         onStudy={(item, playback) => launchSongAction(item, playback, item.song?.studyHref)}
         removeDownvoteLabel={copy.common.removeDownvote}
+        soundOnLabel={copy.common.soundOn}
+        tapForSoundLabel={copy.common.tapForSound}
       />
       {loadMoreError ? (
         <VideoFeedPaginationNotice

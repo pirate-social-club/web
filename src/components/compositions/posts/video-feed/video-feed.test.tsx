@@ -83,6 +83,22 @@ describe("VideoFeed", () => {
     expect(view.getByText("songs.pirate").parentElement?.querySelector("[data-video-publisher-avatar]")).toBeNull();
   });
 
+  test("separates lightweight social actions from capability actions", () => {
+    const view = render(<VideoFeed items={[item]} onComment={() => undefined} onKaraoke={() => undefined} onShare={() => undefined} onStudy={() => undefined} />);
+
+    for (const label of ["Like", "Comments", "Share"]) {
+      const action = view.getByRole("button", { name: label });
+      expect(action.closest("[data-video-action-tone]")?.getAttribute("data-video-action-tone")).toBe("social");
+      expect(action.className).toContain("bg-transparent");
+    }
+
+    for (const label of ["Study", "Sing"]) {
+      const action = view.getByRole("button", { name: label });
+      expect(action.closest("[data-video-action-tone]")?.getAttribute("data-video-action-tone")).toBe("action");
+      expect(action.className).toContain("bg-card/85");
+    }
+  });
+
   test("insets overlaid controls clear of the fixed mobile chrome", () => {
     const view = render(<VideoFeed items={[{ ...item, boostEligibility: "eligible" }]} />);
     const slide = view.container.querySelector("article")!;

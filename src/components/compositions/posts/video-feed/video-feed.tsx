@@ -67,6 +67,7 @@ function VideoAction({
   label,
   onClick,
   rewardLabel,
+  tone = "action",
   value,
 }: {
   active?: boolean;
@@ -75,18 +76,21 @@ function VideoAction({
   label: string;
   onClick?: () => void;
   rewardLabel?: string;
+  tone?: "action" | "social";
   value?: string;
 }) {
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1" data-video-action-tone={tone}>
       <div className="relative">
         <IconButton
           active={active}
           aria-label={label}
-          className="border border-border-soft bg-card/85 shadow-md backdrop-blur hover:bg-card"
+          className={tone === "social"
+            ? "bg-transparent text-white drop-shadow-[0_2px_3px_rgb(0_0_0/0.9)] hover:bg-black/25 data-[active=true]:bg-transparent data-[active=true]:text-destructive data-[active=true]:hover:bg-black/25"
+            : "border border-border-soft bg-card/85 shadow-md backdrop-blur hover:bg-card"}
           disabled={disabled}
           onClick={onClick}
-          variant="secondary"
+          variant={tone === "social" ? "ghost" : "secondary"}
         >
           {icon}
         </IconButton>
@@ -347,12 +351,19 @@ function VideoFeedSlide({
           </div>
           <VideoAction
             active={item.liked}
-            icon={<Heart className="size-5" weight={item.liked ? "fill" : "regular"} />}
+            icon={<Heart className="size-7" weight={item.liked ? "fill" : "regular"} />}
             label="Like"
             onClick={() => runInteraction(onLike)}
+            tone="social"
             value={compactCount(item.likeCount)}
           />
-          <VideoAction icon={<ChatCircle className="size-5" weight="fill" />} label="Comments" onClick={() => runInteraction(onComment)} value={compactCount(item.commentCount)} />
+          <VideoAction
+            icon={<ChatCircle className="size-7" weight="fill" />}
+            label="Comments"
+            onClick={() => runInteraction(onComment)}
+            tone="social"
+            value={compactCount(item.commentCount)}
+          />
           {item.booking && onBook ? (
             <VideoAction
               icon={<CalendarCheck className="size-5" weight="fill" />}
@@ -363,7 +374,12 @@ function VideoFeedSlide({
           ) : null}
           <CapabilityAction capability={item.study} icon={<BookOpen className="size-5" weight="fill" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
           <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-5" weight="fill" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
-          <VideoAction icon={<ShareNetwork className="size-5" weight="fill" />} label="Share" onClick={() => onShare?.(item)} />
+          <VideoAction
+            icon={<ShareNetwork className="size-7" weight="fill" />}
+            label="Share"
+            onClick={() => onShare?.(item)}
+            tone="social"
+          />
         </div>
       </div>
     </article>

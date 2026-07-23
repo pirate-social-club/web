@@ -5,6 +5,7 @@ import { toast } from "@/components/primitives/sonner";
 import { FeedBookingSheet } from "@/components/compositions/bookings/feed-booking-sheet/feed-booking-sheet";
 import type { ResolvedSlot } from "@/components/compositions/bookings/view-models";
 import { VideoFeed } from "../video-feed";
+import { VideoFeedPaginationNotice } from "../video-feed-pagination-notice";
 import type { VideoFeedItem } from "../video-feed.types";
 
 const videoSrc = "https://stream.mux.com/VZtzUzGRv02OhRnZCxcNg49OilvolTqdnFLEqBsTwaxU/low.mp4";
@@ -230,6 +231,25 @@ export const LongFeedMediaWindow: Story = {
     },
   },
   render: () => <InteractiveFeed items={longFeed} />,
+};
+
+export const PaginationFailure: Story = {
+  name: "Loading / Pagination failure",
+  args: { items: [] },
+  parameters: {
+    docs: {
+      description: {
+        story: "A non-modal retry notice stays above fixed mobile navigation without changing the snap-scroll geometry or pausing playback.",
+      },
+    },
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <div className="relative h-dvh overflow-hidden">
+      <InteractiveFeed items={[portrait]} />
+      <VideoFeedPaginationNotice onRetry={() => toast.message("Retry pagination")} />
+    </div>
+  ),
 };
 
 export const LandscapeTreatment: Story = {

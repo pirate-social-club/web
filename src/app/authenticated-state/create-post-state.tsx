@@ -31,7 +31,6 @@ import type {
 import type { ApiDerivativeSource } from "@/lib/api/client-api-types";
 import { canSubmitLiveRoomDraft, isValidHttpUrl, normalizeHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
 import { extractVideoPosterFrameFile } from "@/components/compositions/posts/post-composer/video-poster-frame";
-
 import { useCreatePostDraftState, type CreatePostDraftState } from "./create-post-draft-state";
 import { formatQualifierLabel } from "@/app/authenticated-helpers/post-identity-presentation";
 import { parseUsdInput } from "@/lib/formatting/currency";
@@ -63,6 +62,7 @@ import {
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
 import { upsertCommunityFeedPostCache } from "@/app/authenticated-data/community-feed-data";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
+import { canSendCreatePostRequest, requiresPostAltchaProofForNonMember } from "@/app/authenticated-helpers/create-post-verification";
 
 export function isPublicAudienceAllowed(community: ApiCommunity | ApiCommunityPreview | null): boolean {
   if (!community) {
@@ -812,8 +812,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, [availableAgent]);
   const submitSongPost = useSongSubmit({ communityId, signAgentAuthoredBody });
   const hasCommunityPostingRole = viewerHasCommunityPostingRole(session?.user.id, community, communityOwnerUserId);
-  const postAltchaRequired = !hasCommunityPostingRole
-    && (community?.membership_gate_summaries ?? []).some((gate) => gate.gate_type === "altcha_pow");
+  const postAltchaRequired = requiresPostAltchaProofForNonMember({ eligibility, gateMatchMode: community?.gate_match_mode, hasCommunityPostingRole, requirements: community?.membership_gate_summaries ?? [] });
+  const hasOpenPowPostingAccess = postAltchaRequired && Boolean(postAltchaPayload);
   const postAltchaRequestOptions = postAltchaPayload ? { altchaPayload: postAltchaPayload } : undefined;
   const handleSubmit = React.useCallback(async () => {
     logger.info("[create-post] publish clicked", {
@@ -827,7 +827,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       title: title.trim(),
     });
 
-    if (!submitState.canPost || !community || (eligibility?.status !== "already_joined" && !hasCommunityPostingRole)) {
+    if (!community || !canSendCreatePostRequest({ canPost: submitState.canPost, hasCommunityPostingRole, hasOpenPowPostingAccess, isAlreadyJoined: eligibility?.status === "already_joined" })) {
       logger.warn("[create-post] submit blocked before request", {
         canPost: submitState.canPost,
         communityId,
@@ -1216,7 +1216,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       setPageState((current) => ({ ...current, submitting: false }));
     }
   }, [
-    api, audience, ageGatePolicy, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, contentLocale, derivativeStep, eligibility?.status, event, hasCommunityPostingRole,
+    api, audience, ageGatePolicy, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, contentLocale, derivativeStep, eligibility?.status, event, hasCommunityPostingRole, hasOpenPowPostingAccess,
     identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, paidLiveRoomMode, pendingSongBundleId, postAltchaPayload, postAltchaRequestOptions, postAltchaRequired, pricingPolicy?.regional_pricing_enabled, royaltySplit,
     queryClient, selectedQualifierIds, session?.user.id, setPendingSongBundleId, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     videoState,

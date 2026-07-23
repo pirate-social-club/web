@@ -468,7 +468,6 @@ export function CreatePostPage({
     }
 
     if (canSubmitPostWithProofOfWork({
-      hasPostingAccess,
       postAltchaPayload: state.postAltchaPayload,
       postAltchaRequired: state.postAltchaRequired,
     })) {
@@ -630,6 +629,7 @@ export function CreatePostPage({
   if (
     state.eligibility.status !== "already_joined" &&
     !state.isCommunityOwner &&
+    !state.postAltchaRequired &&
     hasJoinSurfaceGates
   ) {
     const joinPanel = (

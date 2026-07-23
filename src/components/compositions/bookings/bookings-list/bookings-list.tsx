@@ -7,7 +7,7 @@ import type { BookingState, IanaTz, IsoInstant } from "../view-models";
 
 import {
   formatBookingDate,
-  formatCentsAsUsd,
+  formatCentsAsUsdc,
   formatSlotTime,
 } from "../fixtures/bookings-format";
 
@@ -87,7 +87,7 @@ export function BookingsList({ items, viewerTimezone, onSelectBooking, className
           <div className="flex flex-1 flex-col gap-1">
             <div className="flex items-center justify-between gap-2">
               <Type variant="body-strong">{item.hostName}</Type>
-              <Type variant="body-strong">{formatCentsAsUsd(item.priceCents)}</Type>
+              <Type variant="body-strong">{formatCentsAsUsdc(item.priceCents)}</Type>
             </div>
             <div className="flex items-center justify-between gap-2">
               <Type variant="caption">

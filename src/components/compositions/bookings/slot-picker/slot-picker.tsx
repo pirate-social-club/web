@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import type { IanaTz, ResolvedSlot } from "../view-models";
 
 import {
-  formatCentsAsUsd,
+  formatCentsAsUsdc,
   formatSlotDuration,
   formatSlotTime,
 } from "../fixtures/bookings-format";
@@ -77,7 +77,7 @@ export function SlotPicker({
               variant="body-strong"
               className={cn(isSelected && "text-primary-foreground")}
             >
-              {formatCentsAsUsd(slot.priceCents)}
+              {formatCentsAsUsdc(slot.priceCents)}
             </Type>
           </button>
         );

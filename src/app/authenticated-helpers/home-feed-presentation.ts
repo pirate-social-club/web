@@ -35,6 +35,7 @@ import {
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
 
 type HomeFeedPresentationEntry = {
+  booking?: ApiHomeFeedItem["booking"];
   community: ApiHomeFeedItem["community"] | ApiCommunityPreview;
   post: ApiPost;
 };
@@ -181,6 +182,11 @@ export function toHomeFeedItem(
     : undefined;
 
   return {
+    booking: entry.booking ? {
+      basePriceCents: entry.booking.base_price_cents,
+      currency: entry.booking.currency,
+      hostUserId: entry.booking.host_user_id,
+    } : undefined,
     id: postId,
     post: localizedPost,
     postOriginal: originalPost,

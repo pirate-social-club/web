@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import type { IanaTz, IsoInstant, ResolvedSlot } from "../view-models";
 
 import {
-  formatCentsAsUsd,
+  formatCentsAsUsdc,
   formatSlotDuration,
   formatSlotTime,
   formatTzAbbrev,
@@ -122,7 +122,7 @@ export function AvailabilityCalendar({
                       variant="caption"
                       className={cn(isSelected && "text-primary-foreground/80")}
                     >
-                      {formatCentsAsUsd(slot.priceCents)}
+                      {formatCentsAsUsdc(slot.priceCents)}
                     </Type>
                   </>
                 );

@@ -1,6 +1,12 @@
 export type VideoFeedCapability = "ready" | "locked" | "unavailable";
 
 export interface VideoFeedItem {
+  /** Server-stated booking availability for this item's publisher. */
+  booking?: {
+    basePriceCents: number;
+    currency: "USDC";
+    hostUserId: string;
+  };
   /** Server-stated eligibility for funding this item's linked song. */
   boostEligibility?: "eligible" | "unavailable";
   id: string;
@@ -28,6 +34,8 @@ export interface VideoFeedItem {
   song?: {
     artist: string;
     karaokeHref?: string;
+    /** Canonical destination for the source song/post. */
+    songHref?: string;
     sourcePostId?: string;
     studyHref?: string;
     title: string;

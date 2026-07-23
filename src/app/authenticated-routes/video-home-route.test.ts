@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { checkoutPathForFeedSlot, resolveVideoHomeSurface, VIDEO_FEED_VIEWPORT_CLASS } from "./video-home-route";
+import type { HomeFeedItem } from "@pirate/api-contracts";
+
+import { appendUniqueVideoEntries, checkoutPathForFeedSlot, resolveVideoHomeSurface, VIDEO_FEED_VIEWPORT_CLASS } from "./video-home-route";
+
+function feedEntry(id: string): HomeFeedItem {
+  return { post: { post: { id } } } as HomeFeedItem;
+}
 
 describe("VIDEO_FEED_VIEWPORT_CLASS", () => {
   test("subtracts the in-flow desktop header so the document never scrolls", () => {
@@ -46,6 +52,25 @@ describe("resolveVideoHomeSurface", () => {
       itemCount: 1,
       loading: false,
     })).toBe("video");
+  });
+});
+
+describe("appendUniqueVideoEntries", () => {
+  test("deduplicates overlapping cursors and duplicates inside the incoming page", () => {
+    const first = feedEntry("first");
+    const second = feedEntry("second");
+    const third = feedEntry("third");
+
+    expect(appendUniqueVideoEntries(
+      [first, second],
+      [second, third, third],
+    )).toEqual([first, second, third]);
+  });
+
+  test("preserves the current array when a page contains no new posts", () => {
+    const current = [feedEntry("first")];
+
+    expect(appendUniqueVideoEntries(current, [feedEntry("first")])).toBe(current);
   });
 });
 

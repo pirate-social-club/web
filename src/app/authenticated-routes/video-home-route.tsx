@@ -17,6 +17,7 @@ import { FeedBookingSheet } from "@/components/compositions/bookings/feed-bookin
 import type { IanaTz, ResolvedSlot } from "@/components/compositions/bookings/view-models";
 import { toPageVideoItem, adjacentVideoSourcePostIds, VideoViewerBoostBridge } from "@/components/compositions/posts/feed/feed";
 import { VideoFeed, type VideoFeedPlaybackState } from "@/components/compositions/posts/video-feed/video-feed";
+import { VideoFeedPaginationNotice } from "@/components/compositions/posts/video-feed/video-feed-pagination-notice";
 import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/video-feed.types";
 import { VideoSongCapabilityCache } from "@/components/compositions/posts/video-feed/video-song-capability-cache";
 import { Spinner } from "@/components/primitives/spinner";
@@ -63,6 +64,20 @@ export function resolveVideoHomeSurface(input: {
   return "video";
 }
 
+export function appendUniqueVideoEntries(
+  current: ApiHomeFeedItem[],
+  incoming: ApiHomeFeedItem[],
+): ApiHomeFeedItem[] {
+  const seenPostIds = new Set(current.map((entry) => entry.post.post.id));
+  const uniqueIncoming = incoming.filter((entry) => {
+    const postId = entry.post.post.id;
+    if (seenPostIds.has(postId)) return false;
+    seenPostIds.add(postId);
+    return true;
+  });
+  return uniqueIncoming.length > 0 ? [...current, ...uniqueIncoming] : current;
+}
+
 export function VideoHomePage() {
   const api = useApi();
   const hydrated = useClientHydrated();
@@ -73,6 +88,7 @@ export function VideoHomePage() {
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<unknown>(null);
+  const [loadMoreError, setLoadMoreError] = React.useState<unknown>(null);
   const [capabilityRevision, setCapabilityRevision] = React.useState(0);
   const [activeItemId, setActiveItemId] = React.useState<string | null>(null);
   const [boostTarget, setBoostTarget] = React.useState<{ open: () => void; sourcePostId: string } | null>(null);
@@ -160,11 +176,14 @@ export function VideoHomePage() {
   const loadMore = React.useCallback(async () => {
     if (!nextCursor || loadingMoreRef.current) return;
     loadingMoreRef.current = true;
+    setLoadMoreError(null);
     try {
       const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
       const response = await request({ cursor: nextCursor, locale: contentLocale, sort: "best" });
-      setEntries((current) => [...current, ...response.items]);
+      setEntries((current) => appendUniqueVideoEntries(current, response.items));
       setNextCursor(response.next_cursor ?? null);
+    } catch (nextError) {
+      setLoadMoreError(nextError);
     } finally {
       loadingMoreRef.current = false;
     }
@@ -308,6 +327,7 @@ export function VideoHomePage() {
         onSong={(item, playback) => launchSongAction(item, playback, item.song?.songHref)}
         onStudy={(item, playback) => launchSongAction(item, playback, item.song?.studyHref)}
       />
+      {loadMoreError ? <VideoFeedPaginationNotice onRetry={() => { void loadMore(); }} /> : null}
       {bookingTarget?.item.booking ? (
         <FeedBookingSheet
           basePriceCents={bookingTarget.item.booking.basePriceCents}

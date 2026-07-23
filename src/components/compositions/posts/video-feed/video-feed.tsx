@@ -35,6 +35,7 @@ export interface VideoFeedProps {
    */
   bookingOpenItemId?: string;
   className?: string;
+  downvoteLabel?: string;
   initialItemId?: string;
   initialMuted?: boolean;
   initialPaused?: boolean;
@@ -51,6 +52,7 @@ export interface VideoFeedProps {
   onShare?: (item: VideoFeedItem) => void;
   onSong?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onStudy?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
+  removeDownvoteLabel?: string;
 }
 
 export interface VideoFeedPlaybackState {
@@ -137,12 +139,14 @@ function CapabilityAction({
 function VideoFeedSlide({
   active,
   allowAutoplay,
+  downvoteLabel,
   item,
   onBook,
   mountMedia,
   onBoost,
   paused,
   preload,
+  removeDownvoteLabel,
   onComment,
   onDownvote,
   onGateRequired,
@@ -156,9 +160,10 @@ function VideoFeedSlide({
   onTogglePlayback,
   muted,
   initialPlaybackSeconds,
-}: Omit<VideoFeedProps, "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items"> & {
+}: Omit<VideoFeedProps, "downvoteLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "removeDownvoteLabel"> & {
   active: boolean;
   allowAutoplay: boolean;
+  downvoteLabel: string;
   item: VideoFeedItem;
   mountMedia: boolean;
   onPausePlayback: (item: VideoFeedItem) => void;
@@ -167,6 +172,7 @@ function VideoFeedSlide({
   muted: boolean;
   paused: boolean;
   preload: "auto" | "metadata";
+  removeDownvoteLabel: string;
   initialPlaybackSeconds?: number;
 }) {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
@@ -390,7 +396,7 @@ function VideoFeedSlide({
             items={[
               {
                 key: "downvote",
-                label: item.downvoted ? "Remove downvote" : "Downvote",
+                label: item.downvoted ? removeDownvoteLabel : downvoteLabel,
                 icon: <ArrowFatDown className="size-5" weight={item.downvoted ? "fill" : "regular"} />,
               },
               ...(item.boostEligibility === "eligible"
@@ -421,7 +427,18 @@ function VideoFeedSlide({
   );
 }
 
-export function VideoFeed({ bookingOpenItemId, className, initialItemId, initialMuted = true, initialPaused = false, initialPlaybackSeconds, items, ...actions }: VideoFeedProps) {
+export function VideoFeed({
+  bookingOpenItemId,
+  className,
+  downvoteLabel = "Downvote",
+  initialItemId,
+  initialMuted = true,
+  initialPaused = false,
+  initialPlaybackSeconds,
+  items,
+  removeDownvoteLabel = "Remove downvote",
+  ...actions
+}: VideoFeedProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const initialIndex = Math.max(0, items.findIndex((item) => item.id === initialItemId));
   const [activeIndex, setActiveIndex] = React.useState(initialIndex);
@@ -536,6 +553,7 @@ export function VideoFeed({ bookingOpenItemId, className, initialItemId, initial
             {...actions}
             active={index === activeIndex}
             allowAutoplay={!documentHidden && (!reduceMotion || userStartedItemIds.has(item.id))}
+            downvoteLabel={downvoteLabel}
             item={item}
             initialPlaybackSeconds={item.id === initialItemId ? initialPlaybackSeconds : undefined}
             mountMedia={Math.abs(index - activeIndex) <= 2}
@@ -545,6 +563,7 @@ export function VideoFeed({ bookingOpenItemId, className, initialItemId, initial
             muted={muted}
             paused={pausedItemIds.has(item.id) || bookingOpenItemId === item.id}
             preload={Math.abs(index - activeIndex) <= 1 ? "auto" : "metadata"}
+            removeDownvoteLabel={removeDownvoteLabel}
           />
         </div>
       ))}

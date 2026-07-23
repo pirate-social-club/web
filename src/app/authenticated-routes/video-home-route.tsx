@@ -285,7 +285,7 @@ export function VideoHomePage() {
   // upvote back off the count, because the rail renders upvote_count rather than a net score.
   const onDownvote = React.useCallback((item: VideoFeedItem) => {
     if (!session?.accessToken) {
-      requestAuth(copy.home.videoLikeAuthRequired);
+      requestAuth(copy.home.videoDownvoteAuthRequired);
       return;
     }
     const entry = entries.find((candidate) => candidate.post.post.id === item.id);
@@ -305,7 +305,7 @@ export function VideoHomePage() {
     void request.catch(() => {
       setEntries((current) => current.map((candidate) => candidate.post.post.id === item.id ? entry : candidate));
     });
-  }, [api.posts, copy.home.videoLikeAuthRequired, entries, requestAuth, session?.accessToken]);
+  }, [api.posts, copy.home.videoDownvoteAuthRequired, entries, requestAuth, session?.accessToken]);
 
   const launchSongAction = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState, href?: string) => {
     if (!href) return;
@@ -397,6 +397,7 @@ export function VideoHomePage() {
       <VideoFeed
         bookingOpenItemId={bookingTarget?.item.id}
         className={VIDEO_FEED_VIEWPORT_CLASS}
+        downvoteLabel={copy.common.downvote}
         initialItemId={restored?.itemId}
         initialMuted={restored?.muted}
         initialPaused={restored?.paused}
@@ -420,6 +421,7 @@ export function VideoHomePage() {
         onShare={(item) => void navigator.share?.({ url: `${window.location.origin}/p/${encodeURIComponent(item.id)}` })}
         onSong={(item, playback) => launchSongAction(item, playback, item.song?.songHref)}
         onStudy={(item, playback) => launchSongAction(item, playback, item.song?.studyHref)}
+        removeDownvoteLabel={copy.common.removeDownvote}
       />
       {loadMoreError ? (
         <VideoFeedPaginationNotice

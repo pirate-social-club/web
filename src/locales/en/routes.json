@@ -104,6 +104,8 @@
     "emptyHomeTitle": "No posts yet",
     "emptyVideoBody": "There are no playable videos for you right now.",
     "emptyVideoTitle": "No videos yet",
+    "liveEmptyBody": "Live community broadcasts will appear here when they begin.",
+    "liveEmptyTitle": "Nothing is live right now",
     "videoLoadError": "Could not load videos.",
     "videoCommentAuthRequired": "Connect to join the conversation.",
     "videoDownvoteAuthRequired": "Connect to downvote this video.",

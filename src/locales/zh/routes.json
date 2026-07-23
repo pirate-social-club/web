@@ -104,6 +104,8 @@
     "emptyHomeTitle": "还没有帖子",
     "emptyVideoBody": "目前没有适合你播放的视频。",
     "emptyVideoTitle": "还没有视频",
+    "liveEmptyBody": "社区直播开始后会显示在这里。",
+    "liveEmptyTitle": "当前没有直播",
     "videoLoadError": "无法加载视频。",
     "videoCommentAuthRequired": "连接后参与讨论。",
     "videoDownvoteAuthRequired": "连接后为此视频点踩。",

@@ -232,6 +232,13 @@ describe("public profile host routing", () => {
     });
   });
 
+  test("matches the live discovery route", () => {
+    expectJson(matchRoute("/live"), {
+      kind: "live",
+      path: "/live",
+    });
+  });
+
   test("matches advertise as an authenticated app route", () => {
     expectJson(matchRoute("/advertise"), {
       kind: "advertise",

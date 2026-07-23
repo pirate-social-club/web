@@ -7,8 +7,10 @@ import { MobileFooterNav } from "@/components/compositions/app/app-shell-chrome/
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { SidebarInset, SidebarProvider } from "@/components/compositions/system/sidebar/sidebar";
+import { Button } from "@/components/primitives/button";
 
 import { AppSidebar } from "../app-sidebar";
+import { buildVideoPrimaryItems } from "@/app/shell/sidebar-sections";
 
 const meta = {
   title: "Compositions/App/AppSidebar",
@@ -140,8 +142,90 @@ function ShellChrome({ mobile = false }: { mobile?: boolean }) {
   );
 }
 
+function MediaShellReview({
+  collapsed = false,
+  dockOpen = false,
+  populatedCommunities = false,
+}: {
+  collapsed?: boolean;
+  dockOpen?: boolean;
+  populatedCommunities?: boolean;
+}) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "shell");
+  const mediaSections = [{
+    action: { ariaLabel: copy.appSidebar.createCommunityLabel, icon: Plus, onSelect: () => undefined },
+    defaultOpen: true,
+    id: "communities",
+    items: [
+      { id: "your-communities", icon: Flag, label: copy.appSidebar.yourCommunitiesLabel },
+      ...(populatedCommunities ? [
+        { id: "c/pirate-radio", label: "c/pirate-radio" },
+        { id: "c/builders", label: "c/builders" },
+      ] : []),
+    ],
+    label: copy.appSidebar.sections.find((section) => section.id === "communities")?.label ?? "Communities",
+  }];
+
+  return (
+    <SidebarProvider defaultOpen={!collapsed}>
+      <AppSidebar
+        activeItemId="home"
+        appearance="media"
+        brandLabel={copy.appSidebar.brandLabel}
+        homeAriaLabel={copy.appSidebar.homeAriaLabel}
+        mediaPrimaryItems={buildVideoPrimaryItems(copy.appSidebar)}
+        mediaAction={<Button className="w-full">{copy.appHeader.connectLabel}</Button>}
+        mediaSections={mediaSections}
+        onHomeClick={() => undefined}
+        onSearchClick={() => undefined}
+        primaryItems={[]}
+        searchLabel={copy.appHeader.searchPlaceholder}
+        sections={[]}
+      />
+      <SidebarInset className="h-dvh min-h-0 overflow-hidden bg-black">
+        <main className={dockOpen ? "grid size-full grid-cols-[minmax(0,1fr)_26rem]" : "size-full"}>
+          <div className="grid min-w-0 place-items-center p-6">
+            <div className="aspect-[9/16] h-[min(88dvh,50rem)] max-w-full rounded-[var(--radius-xl)] bg-gradient-to-b from-muted/50 to-muted" />
+          </div>
+          {dockOpen ? (
+            <aside className="border-s border-border-soft bg-background p-6">
+              <Type as="h2" variant="h3">Comments</Type>
+              <div className="mt-6 space-y-4">
+                <div className="h-16 rounded-xl bg-muted" />
+                <div className="h-20 rounded-xl bg-muted" />
+                <div className="h-16 rounded-xl bg-muted" />
+              </div>
+            </aside>
+          ) : null}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+
 export const DesktopShell: Story = {
   render: () => <ShellChrome />,
+};
+
+export const MediaShellExpanded: Story = {
+  name: "Media shell / Expanded",
+  render: () => <MediaShellReview />,
+};
+
+export const MediaShellCollapsed: Story = {
+  name: "Media shell / Collapsed icon rail",
+  render: () => <MediaShellReview collapsed />,
+};
+
+export const MediaShellCommunities: Story = {
+  name: "Media shell / Communities populated",
+  render: () => <MediaShellReview populatedCommunities />,
+};
+
+export const MediaShellWithDock: Story = {
+  name: "Media shell / Comments dock open",
+  render: () => <MediaShellReview dockOpen populatedCommunities />,
 };
 
 export const DesktopShellArabic: Story = {

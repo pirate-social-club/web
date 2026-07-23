@@ -1,5 +1,8 @@
 import {
+  Bell,
+  ChatCircle,
   Code,
+  Compass,
   FileCode,
   Flag,
   GitBranch,
@@ -9,10 +12,11 @@ import {
   Megaphone,
   Newspaper,
   Plus,
-  Robot,
   Scroll,
   Shield,
+  Television,
   Trash,
+  UploadSimple,
 } from "@phosphor-icons/react";
 import type { ComponentProps } from "react";
 
@@ -47,6 +51,18 @@ const resourceIcons = {
   "source-radicle-web": GitBranch,
   "terms-of-service": Scroll,
 } satisfies Record<ResourceLinkId, typeof House>;
+
+export function usesVideoDesktopShell(route: AppRoute, videoHomeActive: boolean): boolean {
+  if (route.kind === "home") return videoHomeActive;
+  return route.kind === "community-feed"
+    || route.kind === "live"
+    || route.kind === "chat"
+    || route.kind === "chat-new"
+    || route.kind === "chat-conversation"
+    || route.kind === "chat-target"
+    || route.kind === "inbox"
+    || route.kind === "create-post-global";
+}
 
 export function resolveCreatePostPath(route: AppRoute): string | null {
   if (route.kind === "community") {
@@ -177,16 +193,51 @@ export function buildPrimaryItems(messages: ShellMessages["appSidebar"]): AppSid
       onSelect: () => navigate("/your-communities"),
     },
     {
-      id: "agents",
-      icon: Robot,
-      label: messages.agentsLabel,
-      onSelect: () => navigate("/settings/agents"),
-    },
-    {
       id: "create-community",
       icon: Plus,
       label: messages.createCommunityLabel,
       onSelect: () => navigate("/communities/new"),
+    },
+  ];
+}
+
+export function buildVideoPrimaryItems(messages: ShellMessages["appSidebar"]): AppSidebarPrimaryItem[] {
+  return [
+    {
+      id: "home",
+      icon: House,
+      label: messages.videoForYouLabel,
+      onSelect: () => navigate("/"),
+    },
+    {
+      id: "community-feed",
+      icon: Compass,
+      label: messages.videoExploreLabel,
+      onSelect: () => navigate("/feed"),
+    },
+    {
+      id: "live",
+      icon: Television,
+      label: messages.videoLiveLabel,
+      onSelect: () => navigate("/live"),
+    },
+    {
+      id: "chat",
+      icon: ChatCircle,
+      label: messages.videoChatLabel,
+      onSelect: () => navigate("/chat"),
+    },
+    {
+      id: "upload",
+      icon: UploadSimple,
+      label: messages.videoUploadLabel,
+      onSelect: () => navigate("/submit"),
+    },
+    {
+      id: "activity",
+      icon: Bell,
+      label: messages.videoActivityLabel,
+      onSelect: () => navigate("/inbox"),
     },
   ];
 }
@@ -232,6 +283,15 @@ export function activeSidebarItem(route: AppRoute): string | undefined {
       return "popular";
     case "community-feed":
       return "community-feed";
+    case "live":
+      return "live";
+    case "chat":
+    case "chat-new":
+    case "chat-conversation":
+    case "chat-target":
+      return "chat";
+    case "inbox":
+      return "activity";
     case "wallet":
       return undefined;
     case "your-communities":
@@ -246,7 +306,7 @@ export function activeSidebarItem(route: AppRoute): string | undefined {
     case "create-post":
       return `c/${route.communityId}`;
     case "create-post-global":
-      return undefined;
+      return "upload";
     case "create-community":
       return "create-community";
     case "advertise":

@@ -15,11 +15,9 @@ function feedEntry(id: string): HomeFeedItem {
 }
 
 describe("VIDEO_FEED_VIEWPORT_CLASS", () => {
-  test("subtracts the in-flow desktop header so the document never scrolls", () => {
-    expect(VIDEO_FEED_VIEWPORT_CLASS).toContain("md:h-[calc(100dvh-var(--header-height))]");
-    // A bare md:h-dvh here overflows the shell by the sticky header's height and centres every
-    // slide against a viewport taller than the visible one.
-    expect(VIDEO_FEED_VIEWPORT_CLASS).not.toContain("md:h-dvh");
+  test("owns the full desktop viewport when navigation moves into the media sidebar", () => {
+    expect(VIDEO_FEED_VIEWPORT_CLASS.split(" ")).toEqual(["h-dvh"]);
+    expect(VIDEO_FEED_VIEWPORT_CLASS).not.toContain("header-height");
   });
 
   test("gives the feed the whole viewport on mobile, where the chrome is fixed", () => {

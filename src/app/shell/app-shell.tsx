@@ -1,18 +1,21 @@
 "use client";
 
 import * as React from "react";
+import { Flag, Plus } from "@phosphor-icons/react";
 
 import type { AppRoute } from "@/app/router";
 import { isNativePublicIdentityRoute, navigate, useRoute } from "@/app/router";
 import { AppSidebar, type AppSidebarPrimaryItem } from "@/components/compositions/app/app-sidebar/app-sidebar";
+import { Button } from "@/components/primitives/button";
 import { SidebarInset, SidebarProvider } from "@/components/compositions/system/sidebar/sidebar";
 import { PageContainer } from "@/components/primitives/layout-shell";
-import { Toaster } from "@/components/primitives/sonner";
+import { Toaster, toast } from "@/components/primitives/sonner";
 import { ApiProvider, useSessionRevalidation } from "@/lib/api";
 import { PirateQueryProvider } from "@/lib/query/query-client";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { useSession } from "@/lib/api/session-store";
 import { PirateAuthProvider } from "@/components/auth/privy-provider";
+import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { useAssistantUnreadCount } from "@/lib/chat/chat-assistant-client";
 import { useNotificationBadges } from "@/lib/notifications/use-notification-badges";
 import { useNotificationSummary } from "@/lib/notifications/use-notification-summary";
@@ -32,6 +35,8 @@ import {
   buildPrimaryItems,
   buildResourceItems,
   buildSidebarSections,
+  buildVideoPrimaryItems,
+  usesVideoDesktopShell,
 } from "./sidebar-sections";
 import { useShellMobileLayout } from "./use-shell-mobile-layout";
 import { VideoHomeChromeContext } from "./video-home-chrome-context";
@@ -146,11 +151,13 @@ function NotificationShell({
   session: ReturnType<typeof useSession>;
 }) {
   const isMobileLayout = useShellMobileLayout();
+  const { connect } = usePiratePrivyRuntime();
   const notificationSummary = useNotificationSummary();
   const unreadChatCount = useAssistantUnreadCount();
   const { moderatedCommunities, recentCommunities } = useSidebarCommunities();
   const codeItems = buildCodeItems(copy.appSidebar);
   const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities, isMobileLayout);
+  const mediaPrimaryItems = buildVideoPrimaryItems(copy.appSidebar);
   const resourceItems = buildResourceItems(copy.appSidebar);
   const isMobileStandaloneRoute = isMobileLayout && (
     route.kind === "post"
@@ -176,6 +183,30 @@ function NotificationShell({
   const isMigratedRoute = route.kind === "home" || route.kind === "community-feed" || route.kind === "popular" || route.kind === "wallet";
   const unreadNotificationCount = notificationSummary.open_task_count + notificationSummary.unread_activity_count;
   const [videoHomeChromeActive, setVideoHomeChromeActive] = React.useState(false);
+  const useVideoDesktopShell = usesVideoDesktopShell(route, videoHomeChromeActive);
+  const recentSection = sections.find((section) => section.id === "recent");
+  const mediaSections = [
+    {
+      action: {
+        ariaLabel: copy.appSidebar.createCommunityLabel,
+        icon: Plus,
+        onSelect: () => navigate("/communities/new"),
+      },
+      defaultOpen: true,
+      id: "communities",
+      items: [
+        {
+          icon: Flag,
+          id: "your-communities",
+          label: copy.appSidebar.yourCommunitiesLabel,
+          onSelect: () => navigate("/your-communities"),
+        },
+        ...(recentSection?.items ?? []),
+      ],
+      label: copy.appSidebar.sections.find((section) => section.id === "communities")?.label ?? "Communities",
+    },
+    ...sections.filter((section) => section.id !== "recent"),
+  ];
   useNotificationBadges(unreadNotificationCount);
 
   return (
@@ -197,6 +228,7 @@ function NotificationShell({
         {isMobileStandaloneRoute || isStandaloneViewerRoute ? null : (
           <AppShellHeader
             copy={copy}
+            desktopHidden={useVideoDesktopShell}
             mobileMediaOverlay={route.kind === "home" && videoHomeChromeActive}
             route={route}
             unreadChatCount={unreadChatCount}
@@ -219,15 +251,28 @@ function NotificationShell({
             <>
               <AppSidebar
                 activeItemId={activeSidebarItem(route)}
+                appearance={useVideoDesktopShell ? "media" : "default"}
                 brandLabel={copy.appSidebar.brandLabel}
                 homeAriaLabel={copy.appSidebar.homeAriaLabel}
+                mediaPrimaryItems={mediaPrimaryItems}
+                mediaAction={!session ? (
+                  <Button
+                    className="w-full"
+                    onClick={() => connect ? connect() : toast.info(copy.appHeader.connectUnavailableToast)}
+                  >
+                    {copy.appHeader.connectLabel}
+                  </Button>
+                ) : undefined}
+                mediaSections={mediaSections}
                 codeItems={codeItems}
                 codeLabel={copy.appSidebar.codeLabel}
                 onHomeClick={() => navigate("/")}
                 onNavigate={navigate}
+                onSearchClick={() => toast.message(copy.appHeader.searchUnavailableToast)}
                 primaryItems={primaryItems}
                 resourceItems={resourceItems}
                 resourcesLabel={copy.appSidebar.resourcesLabel}
+                searchLabel={copy.appHeader.searchPlaceholder}
                 sections={sections}
                 side="start"
               />

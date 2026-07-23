@@ -187,6 +187,7 @@ export function toHomeFeedItem(
       basePriceCents: entry.booking.base_price_cents,
       currency: entry.booking.currency,
       hostUserId: entry.booking.host_user_id,
+      startingPriceCents: entry.booking.starting_price_cents,
     } : undefined,
     id: postId,
     post: localizedPost,

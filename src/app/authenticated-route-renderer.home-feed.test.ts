@@ -125,12 +125,14 @@ describe("toHomeFeedItem", () => {
       base_price_cents: 3500,
       currency: "USDC",
       host_user_id: "usr_author",
+      starting_price_cents: 2500,
     };
 
     expect(toHomeFeedItem(entry, {}).booking).toEqual({
       basePriceCents: 3500,
       currency: "USDC",
       hostUserId: "usr_author",
+      startingPriceCents: 2500,
     });
   });
 

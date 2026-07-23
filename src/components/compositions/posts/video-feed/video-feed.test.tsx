@@ -114,6 +114,23 @@ describe("VideoFeed", () => {
     }
   });
 
+  test("uses outline rail icons by default and a red filled heart when liked", () => {
+    const view = render(<VideoFeed items={[{ ...item, liked: false }]} onBook={() => {}} />);
+    const idleLike = view.getByRole("button", { name: "Like" });
+
+    expect(idleLike.getAttribute("data-active")).toBeNull();
+    expect(idleLike.querySelector("svg")?.getAttribute("data-video-icon-weight")).toBe("regular");
+    expect(view.getByRole("button", { name: "Comments" }).querySelector("svg")?.getAttribute("data-video-icon-weight")).toBe("regular");
+    expect(view.getByRole("button", { name: "Share" }).querySelector("svg")?.getAttribute("data-video-icon-weight")).toBe("regular");
+
+    view.rerender(<VideoFeed items={[{ ...item, liked: true }]} />);
+    const liked = view.getByRole("button", { name: "Like" });
+
+    expect(liked.getAttribute("data-active")).toBe("true");
+    expect(liked.className).toContain("data-[active=true]:text-destructive");
+    expect(liked.querySelector("svg")?.getAttribute("data-video-icon-weight")).toBe("fill");
+  });
+
   test("insets overlaid controls clear of the fixed mobile chrome", () => {
     const view = render(<VideoFeed items={[{ ...item, boostEligibility: "eligible" }]} />);
     const slide = view.container.querySelector("article")!;
@@ -196,7 +213,15 @@ describe("VideoFeed", () => {
     const view = render(
       <VideoFeed
         initialMuted
-        items={[{ ...item, booking: { basePriceCents: 3500, currency: "USDC", hostUserId: "usr_host" } }]}
+        items={[{
+          ...item,
+          booking: {
+            basePriceCents: 5000,
+            currency: "USDC",
+            hostUserId: "usr_host",
+            startingPriceCents: 3500,
+          },
+        }]}
         onBook={(bookedItem, state) => calls.push({ bookedItem, state })}
       />,
     );
@@ -205,8 +230,20 @@ describe("VideoFeed", () => {
 
     fireEvent.click(view.getByRole("button", { name: "Book" }));
 
-    expect(view.getByText("35.00 USDC")).toBeTruthy();
-    expect(calls).toEqual([{ bookedItem: { ...item, booking: { basePriceCents: 3500, currency: "USDC", hostUserId: "usr_host" } }, state: { muted: true, paused: false, playbackSeconds: 8 } }]);
+    expect(view.getByText("$35+")).toBeTruthy();
+    expect(view.queryByText(/USDC/u)).toBeNull();
+    expect(calls).toEqual([{
+      bookedItem: {
+        ...item,
+        booking: {
+          basePriceCents: 5000,
+          currency: "USDC",
+          hostUserId: "usr_host",
+          startingPriceCents: 3500,
+        },
+      },
+      state: { muted: true, paused: false, playbackSeconds: 8 },
+    }]);
   });
 
   test("omits booking when the publisher is not marked bookable", () => {
@@ -403,13 +440,29 @@ describe("VideoFeed", () => {
   });
 
   test("omits booking when the container supplies no booking handler", () => {
-    const view = render(<VideoFeed items={[{ ...item, booking: { basePriceCents: 3500, currency: "USDC", hostUserId: "usr_host" } }]} />);
+    const view = render(<VideoFeed items={[{
+      ...item,
+      booking: {
+        basePriceCents: 3500,
+        currency: "USDC",
+        hostUserId: "usr_host",
+        startingPriceCents: 2500,
+      },
+    }]} />);
 
     expect(view.queryByRole("button", { name: "Book" })).toBeNull();
   });
 
   test("pauses the item whose booking overlay is open and resumes it on dismiss", () => {
-    const bookable = { ...item, booking: { basePriceCents: 3500, currency: "USDC" as const, hostUserId: "usr_host" } };
+    const bookable = {
+      ...item,
+      booking: {
+        basePriceCents: 3500,
+        currency: "USDC" as const,
+        hostUserId: "usr_host",
+        startingPriceCents: 2500,
+      },
+    };
     const view = render(<VideoFeed items={[bookable]} onBook={() => {}} />);
     const video = view.container.querySelector<HTMLVideoElement>("video")!;
     const paused: string[] = [];
@@ -426,7 +479,15 @@ describe("VideoFeed", () => {
   });
 
   test("keeps an intentional pause after the booking overlay is dismissed", () => {
-    const bookable = { ...item, booking: { basePriceCents: 3500, currency: "USDC" as const, hostUserId: "usr_host" } };
+    const bookable = {
+      ...item,
+      booking: {
+        basePriceCents: 3500,
+        currency: "USDC" as const,
+        hostUserId: "usr_host",
+        startingPriceCents: 2500,
+      },
+    };
     const view = render(
       <VideoFeed bookingOpenItemId={bookable.id} initialPaused initialItemId={bookable.id} items={[bookable]} onBook={() => {}} />,
     );

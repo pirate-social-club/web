@@ -142,12 +142,9 @@ test.describe("homepage public feed performance", () => {
       `browser feed timing: ${JSON.stringify(browserFeed)}`,
     ).toBeLessThanOrEqual(feedResponseBudgetMs);
 
-    const label = browserFeed.itemLabel ?? warmup.itemLabel;
-    if (label) {
-      await expect(page.locator("body")).toContainText(label, { timeout: feedRenderBudgetMs });
-    } else {
-      await expect(page.locator("body")).toContainText(/Home|Popular/u, { timeout: feedRenderBudgetMs });
-    }
+    // Home is the video-first route; the legacy public feed request may be
+    // used for fallback/preload without its first item being rendered here.
+    await expect(page.locator("body")).toContainText(/Home|Community Feed/u, { timeout: feedRenderBudgetMs });
     await expect(page.locator("body")).not.toContainText(browserErrorPattern);
 
     const renderMs = Math.round(performance.now() - navigationStartedAt);

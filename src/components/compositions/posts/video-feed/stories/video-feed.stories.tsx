@@ -61,6 +61,17 @@ const bookableCreator: VideoFeedItem = {
   caption: "Practice the chorus, then book a private pronunciation class with me.",
 };
 
+const longFeed = Array.from({ length: 7 }, (_, index): VideoFeedItem => ({
+  ...portrait,
+  id: `video_window_${index + 1}`,
+  caption: `Media-window review slide ${index + 1} of 7.`,
+  likeCount: 12000 + index,
+  media: {
+    ...portrait.media,
+    src: `${videoSrc}?slide=${index + 1}`,
+  },
+}));
+
 const meta = {
   title: "Compositions/Posts/VideoFeed",
   component: VideoFeed,
@@ -168,6 +179,19 @@ export const DesktopInFlowHeader: Story = {
     viewport: { defaultViewport: "desktop" },
   },
   render: () => <DesktopChromeReview />,
+};
+
+export const LongFeedMediaWindow: Story = {
+  name: "Loading / Near-slide media window",
+  args: { items: [] },
+  parameters: {
+    docs: {
+      description: {
+        story: "All seven snap shells remain mounted while video elements are limited to the active slide plus two neighbors on each side.",
+      },
+    },
+  },
+  render: () => <InteractiveFeed items={longFeed} />,
 };
 
 export const LandscapeTreatment: Story = {

@@ -36,6 +36,14 @@ function feedItems(): VideoFeedItem[] {
   ];
 }
 
+function manyFeedItems(count = 7): VideoFeedItem[] {
+  return Array.from({ length: count }, (_, index) => ({
+    ...item,
+    id: `video-${index}`,
+    media: { ...item.media, src: `https://media.test/video-${index}.mp4` },
+  }));
+}
+
 afterEach(() => {
   cleanup();
   Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
@@ -217,15 +225,50 @@ describe("VideoFeed", () => {
     expect(calls).toEqual(["one", "two"]);
   });
 
-  test("preloads only the active and adjacent playable items", () => {
-    const blocked = { ...item, id: "blocked", viewerState: "age_proof_required" as const };
-    const view = render(<VideoFeed items={[feedItems()[0]!, blocked, feedItems()[2]!]} />);
-    const videos = view.container.querySelectorAll("video");
+  test("mounts media only near the active slide without removing snap shells", () => {
+    const items = manyFeedItems();
+    const view = render(<VideoFeed items={items} />);
 
-    expect(videos).toHaveLength(2);
-    expect(videos[0]?.getAttribute("preload")).toBe("auto");
-    expect(videos[1]?.getAttribute("preload")).toBe("metadata");
-    expect(view.container.innerHTML).not.toContain("private.mp4");
+    expect(view.container.querySelectorAll("article")).toHaveLength(items.length);
+    expect(view.container.querySelectorAll("video")).toHaveLength(3);
+    expect(Array.from(view.container.querySelectorAll("video"), (video) => video.getAttribute("preload")))
+      .toEqual(["auto", "auto", "metadata"]);
+    expect(view.container.innerHTML).not.toContain("video-3.mp4");
+  });
+
+  test("uses a black placeholder instead of an empty image source when distant media has no poster", () => {
+    const items = manyFeedItems().map((feedItem) => ({
+      ...feedItem,
+      media: { ...feedItem.media, posterSrc: "" },
+    }));
+    const view = render(<VideoFeed items={items} />);
+
+    expect(view.container.querySelectorAll("article")).toHaveLength(items.length);
+    expect(view.container.querySelectorAll("video")).toHaveLength(3);
+    expect(view.container.querySelectorAll("img[src='']")).toHaveLength(0);
+  });
+
+  test("moves the media window while preserving every full-height slide shell", () => {
+    const items = manyFeedItems();
+    const view = render(<VideoFeed items={items} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 300 });
+
+    fireEvent.scroll(feed);
+
+    expect(view.container.querySelectorAll("article")).toHaveLength(items.length);
+    expect(view.container.querySelectorAll("video")).toHaveLength(5);
+    expect(Array.from(view.container.querySelectorAll("video"), (video) => video.getAttribute("src")))
+      .toEqual([
+        "https://media.test/video-1.mp4",
+        "https://media.test/video-2.mp4",
+        "https://media.test/video-3.mp4",
+        "https://media.test/video-4.mp4",
+        "https://media.test/video-5.mp4",
+    ]);
+    expect(Array.from(view.container.querySelectorAll("video"), (video) => video.getAttribute("preload")))
+      .toEqual(["metadata", "auto", "auto", "auto", "metadata"]);
   });
 
   test("omits booking when the container supplies no booking handler", () => {

@@ -132,6 +132,7 @@ function VideoFeedSlide({
   allowAutoplay,
   item,
   onBook,
+  mountMedia,
   onBoost,
   paused,
   preload,
@@ -151,6 +152,7 @@ function VideoFeedSlide({
   active: boolean;
   allowAutoplay: boolean;
   item: VideoFeedItem;
+  mountMedia: boolean;
   onPausePlayback: (item: VideoFeedItem) => void;
   onToggleMute: () => void;
   onTogglePlayback: (item: VideoFeedItem) => void;
@@ -161,7 +163,8 @@ function VideoFeedSlide({
 }) {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const ageBlocked = item.viewerState === "age_proof_required";
-  const playableSrc = ageBlocked ? undefined : item.media.src;
+  const hasPlayableSource = !ageBlocked && Boolean(item.media.src);
+  const mediaMounted = mountMedia && hasPlayableSource;
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -235,7 +238,7 @@ function VideoFeedSlide({
             ? "md:h-[min(88dvh,50rem)] md:w-[min(49.5dvh,28rem)]"
             : "md:h-auto md:max-h-[min(88dvh,50rem)] md:w-[min(72vw,64rem)] md:aspect-video",
         )}>
-        {playableSrc ? (
+        {mediaMounted ? (
           <video
             ref={videoRef}
             aria-label={item.song?.title ?? item.caption ?? "Video"}
@@ -245,14 +248,16 @@ function VideoFeedSlide({
             playsInline
             poster={item.media.posterSrc}
             preload={preload}
-            src={playableSrc}
+            src={item.media.src}
           />
-        ) : (
+        ) : item.media.posterSrc ? (
           <img
             alt={item.song?.title ?? item.caption ?? "Video poster"}
             className={cn("size-full", item.media.orientation === "portrait" ? "object-cover" : "object-contain")}
             src={item.media.posterSrc}
           />
+        ) : (
+          <div aria-hidden className="size-full bg-black" />
         )}
 
         {ageBlocked ? (
@@ -263,7 +268,7 @@ function VideoFeedSlide({
               <Type variant="body">Verify your age before this video can load.</Type>
             </div>
           </div>
-        ) : playableSrc ? (
+        ) : mediaMounted ? (
           <button
             aria-label={paused ? "Play video" : "Pause video"}
             className="absolute inset-0 grid cursor-pointer place-items-center text-white"
@@ -276,7 +281,7 @@ function VideoFeedSlide({
           </button>
         ) : null}
 
-        {playableSrc ? (
+        {mediaMounted ? (
           <IconButton
             aria-label={muted ? "Turn sound on" : "Mute video"}
             className="absolute left-3 top-[calc(var(--feed-chrome-top)+0.75rem)] z-10 border border-border-soft bg-card/85 shadow-md backdrop-blur hover:bg-card"
@@ -475,6 +480,7 @@ export function VideoFeed({ bookingOpenItemId, className, initialItemId, initial
             allowAutoplay={!documentHidden && (!reduceMotion || userStartedItemIds.has(item.id))}
             item={item}
             initialPlaybackSeconds={item.id === initialItemId ? initialPlaybackSeconds : undefined}
+            mountMedia={Math.abs(index - activeIndex) <= 2}
             onPausePlayback={pausePlayback}
             onToggleMute={toggleMute}
             onTogglePlayback={togglePlayback}

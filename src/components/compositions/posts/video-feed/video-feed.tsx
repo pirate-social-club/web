@@ -132,6 +132,7 @@ function VideoFeedSlide({
   allowAutoplay,
   item,
   onBook,
+  mountMedia,
   onBoost,
   paused,
   preload,
@@ -151,17 +152,18 @@ function VideoFeedSlide({
   active: boolean;
   allowAutoplay: boolean;
   item: VideoFeedItem;
+  mountMedia: boolean;
   onPausePlayback: (item: VideoFeedItem) => void;
   onToggleMute: () => void;
   onTogglePlayback: (item: VideoFeedItem) => void;
   muted: boolean;
   paused: boolean;
-  preload: "auto" | "metadata";
+  preload: "auto" | "none";
   initialPlaybackSeconds?: number;
 }) {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const ageBlocked = item.viewerState === "age_proof_required";
-  const playableSrc = ageBlocked ? undefined : item.media.src;
+  const playableSrc = ageBlocked || !mountMedia ? undefined : item.media.src;
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -475,6 +477,7 @@ export function VideoFeed({ bookingOpenItemId, className, initialItemId, initial
             allowAutoplay={!documentHidden && (!reduceMotion || userStartedItemIds.has(item.id))}
             item={item}
             initialPlaybackSeconds={item.id === initialItemId ? initialPlaybackSeconds : undefined}
+            mountMedia={Math.abs(index - activeIndex) <= 2}
             onPausePlayback={pausePlayback}
             onToggleMute={toggleMute}
             onTogglePlayback={togglePlayback}

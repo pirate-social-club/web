@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import * as React from "react";
 
 import { toast } from "@/components/primitives/sonner";
 import { FeedBookingSheet } from "@/components/compositions/bookings/feed-booking-sheet/feed-booking-sheet";
@@ -165,6 +164,9 @@ export const MobileFixedChrome: Story = {
 export const DesktopInFlowHeader: Story = {
   name: "Viewport / Desktop in-flow header",
   args: { items: [] },
+  parameters: {
+    viewport: { defaultViewport: "desktop" },
+  },
   render: () => <DesktopChromeReview />,
 };
 

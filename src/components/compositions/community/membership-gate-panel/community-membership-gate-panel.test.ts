@@ -1,7 +1,24 @@
 import { describe, expect, test } from "bun:test";
+import type { JoinEligibility } from "@pirate/api-contracts";
 
 import { getLocaleMessages } from "@/locales";
-import { formatRequirementSummarySentence } from "./community-membership-gate-panel";
+import {
+  formatRequirementSummarySentence,
+  shouldShowMembershipRequirements,
+} from "./community-membership-gate-panel";
+
+describe("shouldShowMembershipRequirements", () => {
+  test("hides redundant requirements when the viewer is ready to join", () => {
+    expect(shouldShowMembershipRequirements({ status: "joinable" } as JoinEligibility)).toBe(false);
+  });
+
+  test("keeps requirements visible when they still explain the next step", () => {
+    expect(shouldShowMembershipRequirements(
+      { status: "verification_required" } as JoinEligibility,
+    )).toBe(true);
+    expect(shouldShowMembershipRequirements(null)).toBe(true);
+  });
+});
 
 describe("formatRequirementSummarySentence", () => {
   test("renders a localized flat OR sentence", () => {

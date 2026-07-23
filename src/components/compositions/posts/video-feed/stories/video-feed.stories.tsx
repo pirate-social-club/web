@@ -114,9 +114,58 @@ function InteractiveFeed({ items, initialItemId }: { items: VideoFeedItem[]; ini
   );
 }
 
+function MobileChromeReview() {
+  return (
+    <div className="relative h-dvh overflow-hidden bg-background">
+      <InteractiveFeed items={[{ ...portrait, boostEligibility: "eligible" }]} />
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-40 border-b border-white/15 bg-black/75 pt-[env(safe-area-inset-top)] text-white backdrop-blur-md">
+        <div className="grid h-16 place-items-center text-sm font-semibold">Fixed mobile header</div>
+      </div>
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 border-t border-white/15 bg-black/75 pb-[env(safe-area-inset-bottom)] text-white backdrop-blur-md">
+        <div className="grid h-[var(--header-height)] place-items-center text-sm font-semibold">Fixed mobile navigation</div>
+      </div>
+    </div>
+  );
+}
+
+function DesktopChromeReview() {
+  return (
+    <div className="h-dvh overflow-hidden bg-background">
+      <div className="grid h-[var(--header-height)] place-items-center border-b border-border-soft bg-background text-sm font-semibold">
+        In-flow desktop header
+      </div>
+      <VideoFeed
+        className="h-[calc(100dvh-var(--header-height))]"
+        items={[{ ...portrait, boostEligibility: "eligible" }]}
+        onBoost={(item) => toast.message(`Boost: ${item.song?.title}`)}
+        onComment={(item) => toast.message(`Comments: ${item.id}`)}
+        onKaraoke={(item) => toast.message(`Sing: ${item.song?.title}`)}
+        onLike={(item) => toast.message(`Liked: ${item.id}`)}
+        onShare={(item) => toast.message(`Shared: ${item.id}`)}
+        onStudy={(item) => toast.message(`Study: ${item.song?.title}`)}
+      />
+    </div>
+  );
+}
+
 export const VerticalFeed: Story = {
   args: { items: [] },
   render: () => <InteractiveFeed items={[portrait, landscape, gated]} />,
+};
+
+export const MobileFixedChrome: Story = {
+  name: "Viewport / Mobile fixed chrome",
+  args: { items: [] },
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => <MobileChromeReview />,
+};
+
+export const DesktopInFlowHeader: Story = {
+  name: "Viewport / Desktop in-flow header",
+  args: { items: [] },
+  render: () => <DesktopChromeReview />,
 };
 
 export const LandscapeTreatment: Story = {

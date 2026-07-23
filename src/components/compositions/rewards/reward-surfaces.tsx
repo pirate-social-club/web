@@ -465,7 +465,7 @@ export function CashoutSheet({
 
         {txHashLabel ? (
           <details className="mt-4 rounded-lg bg-muted px-3 py-2 text-muted-foreground">
-            <summary className="cursor-pointer text-sm font-medium">Details</summary>
+            <summary className="cursor-pointer font-medium">Details</summary>
             <Type as="div" className="mt-2 truncate font-mono" variant="caption">{txHashLabel}</Type>
           </details>
         ) : null}

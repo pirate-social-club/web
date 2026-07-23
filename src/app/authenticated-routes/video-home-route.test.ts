@@ -8,6 +8,7 @@ import {
   nextVideoPaginationCursor,
   resolveVideoHomeSurface,
   resolveVideoPublisherRelationship,
+  videoImpressionAnalyticsProperties,
   VIDEO_FEED_VIEWPORT_CLASS,
 } from "./video-home-route";
 
@@ -141,6 +142,48 @@ describe("resolveVideoPublisherRelationship", () => {
       kind: "join",
       label: "Joined community",
     });
+  });
+});
+
+describe("videoImpressionAnalyticsProperties", () => {
+  test("keeps ranking signals bounded and excludes media URLs", () => {
+    const properties = videoImpressionAnalyticsProperties({
+      id: "pst_video",
+      communityId: "cmt_video",
+      commentCount: 0,
+      karaoke: "unavailable",
+      likeCount: 0,
+      media: {
+        orientation: "portrait",
+        posterSrc: "https://private.example/poster",
+        src: "https://private.example/video",
+      },
+      publisher: { handle: "artist", kind: "profile" },
+      study: "unavailable",
+    }, {
+      completionRatio: 0.876543,
+      durationSeconds: 12.34567,
+      dwellMs: 9_876,
+      muted: false,
+      playbackSeconds: 10.98765,
+      position: 3,
+      replayCount: 1,
+      soundOnAtAnyPoint: true,
+    });
+
+    expect(properties).toEqual({
+      completion_ratio: 0.8765,
+      duration_seconds: 12.346,
+      dwell_ms: 9_876,
+      muted: false,
+      orientation: "portrait",
+      playback_seconds: 10.988,
+      position: 3,
+      publisher_kind: "profile",
+      replay_count: 1,
+      sound_on: true,
+    });
+    expect(JSON.stringify(properties)).not.toContain("private.example");
   });
 });
 

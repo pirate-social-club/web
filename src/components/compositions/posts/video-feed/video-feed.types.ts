@@ -10,6 +10,8 @@ export interface VideoFeedItem {
   };
   /** Server-stated eligibility for funding this item's linked song. */
   boostEligibility?: "eligible" | "unavailable";
+  /** Owning community, when known. Used for analytics attribution rather than panel behavior. */
+  communityId?: string;
   id: string;
   publisher: {
     avatarSrc?: string;

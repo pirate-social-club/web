@@ -10,6 +10,7 @@ type AnalyticsEventName =
   | "handle_claim_started"
   | "handle_claim_failed"
   | "home_feed_viewed"
+  | "video_impression"
   | "community_viewed"
   | "community_follow_contract_drift"
   | "community_join_requested"

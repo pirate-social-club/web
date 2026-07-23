@@ -54,6 +54,7 @@ export interface VideoFeedProps {
   onGateRequired?: (item: VideoFeedItem) => void;
   onKaraoke?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onLike?: (item: VideoFeedItem) => void;
+  onImpression?: (item: VideoFeedItem, impression: VideoFeedImpression) => void;
   onPublisherRelationship?: (item: VideoFeedItem) => void;
   onShare?: (item: VideoFeedItem) => void;
   onSong?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
@@ -68,6 +69,17 @@ export interface VideoFeedPlaybackState {
   muted: boolean;
   paused: boolean;
   playbackSeconds: number;
+}
+
+export interface VideoFeedImpression {
+  completionRatio: number;
+  durationSeconds: number;
+  dwellMs: number;
+  muted: boolean;
+  playbackSeconds: number;
+  position: number;
+  replayCount: number;
+  soundOnAtAnyPoint: boolean;
 }
 
 export const VIDEO_FEED_MUTED_PREFERENCE_KEY = "pirate.video-feed.muted";
@@ -233,7 +245,9 @@ function VideoFeedSlide({
   downvoteLabel,
   followLabel,
   followingLabel,
+  impressionVisible,
   item,
+  itemPosition,
   onBook,
   mountMedia,
   onBoost,
@@ -245,6 +259,7 @@ function VideoFeedSlide({
   onGateRequired,
   onKaraoke,
   onLike,
+  onImpression,
   onPublisherRelationship,
   onShare,
   onSong,
@@ -265,7 +280,9 @@ function VideoFeedSlide({
   downvoteLabel: string;
   followLabel: string;
   followingLabel: string;
+  impressionVisible: boolean;
   item: VideoFeedItem;
+  itemPosition: number;
   mountMedia: boolean;
   muteVideoLabel: string;
   onSoundPromptShown: () => void;
@@ -286,6 +303,54 @@ function VideoFeedSlide({
   const hasPlayableSource = !ageBlocked && Boolean(item.media.src);
   const mediaMounted = mountMedia && hasPlayableSource;
   const [showSoundPrompt, setShowSoundPrompt] = React.useState(false);
+  const impressionRef = React.useRef<{
+    maxPlaybackSeconds: number;
+    muted: boolean;
+    previousPlaybackSeconds: number;
+    replayCount: number;
+    soundOnAtAnyPoint: boolean;
+    startedAt: number;
+    item: VideoFeedItem;
+  } | null>(null);
+
+  React.useEffect(() => {
+    if (!impressionVisible) return;
+    impressionRef.current = {
+      maxPlaybackSeconds: videoRef.current?.currentTime ?? 0,
+      muted,
+      previousPlaybackSeconds: videoRef.current?.currentTime ?? 0,
+      replayCount: 0,
+      soundOnAtAnyPoint: !muted,
+      startedAt: performance.now(),
+      item,
+    };
+    return () => {
+      const impression = impressionRef.current;
+      impressionRef.current = null;
+      if (!impression) return;
+      const video = videoRef.current;
+      const durationSeconds = Number.isFinite(video?.duration) && (video?.duration ?? 0) > 0
+        ? video!.duration
+        : 0;
+      const playbackSeconds = Math.max(impression.maxPlaybackSeconds, video?.currentTime ?? 0);
+      onImpression?.(impression.item, {
+        completionRatio: durationSeconds > 0 ? Math.min(1, playbackSeconds / durationSeconds) : 0,
+        durationSeconds,
+        dwellMs: Math.max(0, Math.round(performance.now() - impression.startedAt)),
+        muted: impression.muted,
+        playbackSeconds,
+        position: itemPosition,
+        replayCount: impression.replayCount,
+        soundOnAtAnyPoint: impression.soundOnAtAnyPoint,
+      });
+    };
+  }, [impressionVisible, item.id, itemPosition, onImpression]);
+
+  React.useEffect(() => {
+    if (!impressionRef.current) return;
+    impressionRef.current.muted = muted;
+    if (!muted) impressionRef.current.soundOnAtAnyPoint = true;
+  }, [muted]);
 
   React.useEffect(() => {
     if (!active || !mediaMounted || !muted || preferenceMuted || !soundPromptEligible) {
@@ -388,6 +453,14 @@ function VideoFeedSlide({
             poster={item.media.posterSrc}
             preload={preload}
             src={item.media.src}
+            onTimeUpdate={(event) => {
+              const impression = impressionRef.current;
+              if (!impression) return;
+              const currentTime = event.currentTarget.currentTime;
+              if (currentTime + 1 < impression.previousPlaybackSeconds) impression.replayCount += 1;
+              impression.maxPlaybackSeconds = Math.max(impression.maxPlaybackSeconds, currentTime);
+              impression.previousPlaybackSeconds = currentTime;
+            }}
           />
         ) : item.media.posterSrc ? (
           <img
@@ -739,6 +812,8 @@ export function VideoFeed({
             followLabel={followLabel}
             followingLabel={followingLabel}
             item={item}
+            itemPosition={index}
+            impressionVisible={index === activeIndex && !documentHidden}
             initialPlaybackSeconds={item.id === initialItemId ? initialPlaybackSeconds : undefined}
             mountMedia={Math.abs(index - activeIndex) <= 2}
             muteVideoLabel={muteVideoLabel}

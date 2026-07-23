@@ -211,8 +211,15 @@ function VideoFeedSlide({
     });
   };
 
+  // The mobile header (h-16) and footer nav (--header-height) are fixed overlays, so the slide stays
+  // full-bleed and only the overlaid controls are inset out from under them. On md+ the header is in
+  // flow and the feed box already excludes it, so the insets collapse to zero.
   return (
-    <article className="relative flex h-full w-full snap-start snap-always items-center justify-center overflow-hidden bg-black">
+    <article className={cn(
+      "relative flex h-full w-full snap-start snap-always items-center justify-center overflow-hidden bg-black",
+      "[--feed-chrome-top:calc(env(safe-area-inset-top)+4rem)] [--feed-chrome-bottom:calc(env(safe-area-inset-bottom)+var(--header-height))]",
+      "md:[--feed-chrome-bottom:0px] md:[--feed-chrome-top:0px]",
+    )}>
       {item.media.orientation === "landscape" ? (
         <img
           aria-hidden
@@ -272,7 +279,7 @@ function VideoFeedSlide({
         {playableSrc ? (
           <IconButton
             aria-label={muted ? "Turn sound on" : "Mute video"}
-            className="absolute left-3 top-3 z-10 border border-border-soft bg-card/85 shadow-md backdrop-blur hover:bg-card"
+            className="absolute left-3 top-[calc(var(--feed-chrome-top)+0.75rem)] z-10 border border-border-soft bg-card/85 shadow-md backdrop-blur hover:bg-card"
             onClick={onToggleMute}
             onMouseDown={(event) => event.preventDefault()}
             variant="secondary"
@@ -282,7 +289,7 @@ function VideoFeedSlide({
         ) : null}
 
         {item.boostEligibility === "eligible" ? (
-          <div className="absolute right-3 top-3 z-10">
+          <div className="absolute right-3 top-[calc(var(--feed-chrome-top)+0.75rem)] z-10">
             <ActionMenu
               items={[{ key: "boost", label: "Boost this song", icon: <CurrencyDollar className="size-5" weight="bold" /> }]}
               label="More video actions"
@@ -298,7 +305,7 @@ function VideoFeedSlide({
           </div>
         ) : null}
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-5 pb-5 pt-24 text-white">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-5 pb-[calc(var(--feed-chrome-bottom)+1.25rem)] pt-24 text-white">
           <div className="pointer-events-auto max-w-[calc(100%-4.5rem)] space-y-2">
             <div className="flex items-center gap-2">
               <Avatar fallback={item.publisher.handle} size="sm" src={item.publisher.avatarSrc} />
@@ -325,7 +332,7 @@ function VideoFeedSlide({
         </div>
         </div>
 
-        <div className="absolute bottom-5 right-3 z-10 flex flex-col items-center gap-3 md:static">
+        <div className="absolute bottom-[calc(var(--feed-chrome-bottom)+1.25rem)] right-3 z-10 flex flex-col items-center gap-3 md:static">
           <VideoAction
             active={item.liked}
             icon={<Heart className="size-5" weight={item.liked ? "fill" : "regular"} />}

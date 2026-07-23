@@ -43,6 +43,14 @@ function viewerTimezone(): IanaTz {
   }
 }
 
+/**
+ * Viewport box for the feed. Mobile chrome is fixed, so the feed owns the whole viewport and the
+ * slide insets its controls clear of it. The md+ header is sticky and therefore in flow, so its
+ * height has to come out of the box, or the document itself scrolls and slides centre against the
+ * wrong height. Exported so the geometry stays under test.
+ */
+export const VIDEO_FEED_VIEWPORT_CLASS = "h-dvh md:h-[calc(100dvh-var(--header-height))]";
+
 export function resolveVideoHomeSurface(input: {
   error: unknown;
   itemCount: number;
@@ -280,7 +288,7 @@ export function VideoHomePage() {
     <div className="min-h-0 w-full flex-1 bg-background">
       <VideoFeed
         bookingOpenItemId={bookingTarget?.item.id}
-        className="h-[calc(100dvh-var(--header-height))] md:h-dvh"
+        className={VIDEO_FEED_VIEWPORT_CLASS}
         initialItemId={restored?.itemId}
         initialMuted={restored?.muted}
         initialPaused={restored?.paused}

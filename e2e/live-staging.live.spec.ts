@@ -528,15 +528,29 @@ async function waitForAsyncSongPublished(input: {
 }
 
 async function createLiveSession(subject = liveSubject, walletAddress?: string | null): Promise<StoredSession> {
-  const response = await requestJson<SessionExchangeResponse>("/auth/session/exchange", {
-    body: JSON.stringify({
-      proof: {
-        jwt: mintUpstreamJwt(subject, walletAddress),
-        type: "jwt_based_auth",
-      },
-    }),
-    method: "POST",
+  const body = JSON.stringify({
+    proof: {
+      jwt: mintUpstreamJwt(subject, walletAddress),
+      type: "jwt_based_auth",
+    },
   });
+  let response: SessionExchangeResponse | null = null;
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      response = await requestJson<SessionExchangeResponse>("/auth/session/exchange", {
+        body,
+        method: "POST",
+      });
+      break;
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      if (attempt === 3 || !/failed with 50[0234]:/u.test(message)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1_000));
+    }
+  }
+  if (!response) throw lastError;
 
   return createStoredSessionFromExchange(response);
 }

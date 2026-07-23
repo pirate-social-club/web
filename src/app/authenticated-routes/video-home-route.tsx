@@ -52,6 +52,7 @@ function viewerTimezone(): IanaTz {
  * wrong height. Exported so the geometry stays under test.
  */
 export const VIDEO_FEED_VIEWPORT_CLASS = "h-dvh md:h-[calc(100dvh-var(--header-height))]";
+export const MAX_CONSECUTIVE_NO_GROWTH_PAGES = 3;
 
 export function resolveVideoHomeSurface(input: {
   error: unknown;
@@ -78,6 +79,20 @@ export function appendUniqueVideoEntries(
   return uniqueIncoming.length > 0 ? [...current, ...uniqueIncoming] : current;
 }
 
+export function nextVideoPaginationCursor(input: {
+  consecutiveNoGrowthPages: number;
+  didGrow: boolean;
+  serverCursor: string | null;
+}): { consecutiveNoGrowthPages: number; nextCursor: string | null } {
+  const consecutiveNoGrowthPages = input.didGrow ? 0 : input.consecutiveNoGrowthPages + 1;
+  return {
+    consecutiveNoGrowthPages,
+    nextCursor: consecutiveNoGrowthPages >= MAX_CONSECUTIVE_NO_GROWTH_PAGES
+      ? null
+      : input.serverCursor,
+  };
+}
+
 export function VideoHomePage() {
   const api = useApi();
   const hydrated = useClientHydrated();
@@ -100,6 +115,8 @@ export function VideoHomePage() {
   const [bookingLoading, setBookingLoading] = React.useState(false);
   const [bookingError, setBookingError] = React.useState(false);
   const loadingMoreRef = React.useRef(false);
+  const consecutiveNoGrowthPagesRef = React.useRef(0);
+  const seenPostIdsRef = React.useRef(new Set<string>());
   const bookingRequestHostRef = React.useRef<string | null>(null);
   const bookingTimezone = React.useMemo(viewerTimezone, []);
   // Session storage only exists on the client, and the restored state is consumed
@@ -135,6 +152,8 @@ export function VideoHomePage() {
     void request({ locale: contentLocale, sort: "best" })
       .then((response) => {
         if (cancelled) return;
+        seenPostIdsRef.current = new Set(response.items.map((entry) => entry.post.post.id));
+        consecutiveNoGrowthPagesRef.current = 0;
         setEntries(response.items);
         setNextCursor(response.next_cursor ?? null);
       })
@@ -180,8 +199,20 @@ export function VideoHomePage() {
     try {
       const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
       const response = await request({ cursor: nextCursor, locale: contentLocale, sort: "best" });
-      setEntries((current) => appendUniqueVideoEntries(current, response.items));
-      setNextCursor(response.next_cursor ?? null);
+      const unseenItems = response.items.filter((entry) => {
+        const postId = entry.post.post.id;
+        if (seenPostIdsRef.current.has(postId)) return false;
+        seenPostIdsRef.current.add(postId);
+        return true;
+      });
+      setEntries((current) => appendUniqueVideoEntries(current, unseenItems));
+      const pagination = nextVideoPaginationCursor({
+        consecutiveNoGrowthPages: consecutiveNoGrowthPagesRef.current,
+        didGrow: unseenItems.length > 0,
+        serverCursor: response.next_cursor ?? null,
+      });
+      consecutiveNoGrowthPagesRef.current = pagination.consecutiveNoGrowthPages;
+      setNextCursor(pagination.nextCursor);
     } catch (nextError) {
       setLoadMoreError(nextError);
     } finally {

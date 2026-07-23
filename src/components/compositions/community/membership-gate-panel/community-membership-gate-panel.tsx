@@ -58,6 +58,12 @@ export type RequirementGroupSummary = {
   text: string;
 };
 
+export function shouldShowMembershipRequirements(
+  eligibility: JoinEligibility | null | undefined,
+): boolean {
+  return eligibility?.status !== "joinable";
+}
+
 function formatRequirementGroupSummaries(input: {
   groups?: CommunityGateRequirementGroup[];
   listFormatLocale: Intl.LocalesArgument;
@@ -311,6 +317,7 @@ export function CommunityMembershipGatePanel({
     isVeryVerificationRequired,
     passportPrompt,
   });
+  const showRequirements = shouldShowMembershipRequirements(eligibility);
   const action = showPromptAction ? (
     <Button
       asChild
@@ -355,7 +362,7 @@ export function CommunityMembershipGatePanel({
         />
       ) : null}
 
-      {groupedRequirementSentence ? (
+      {showRequirements && groupedRequirementSentence ? (
         <Type
           as="p"
           className="mt-4 text-muted-foreground"
@@ -363,7 +370,7 @@ export function CommunityMembershipGatePanel({
         >
           {groupedRequirementSentence}
         </Type>
-      ) : requirementSummary ? (
+      ) : showRequirements && requirementSummary ? (
         <Type
           as="p"
           className="mt-4 text-muted-foreground"
@@ -371,7 +378,7 @@ export function CommunityMembershipGatePanel({
         >
           {requirementSummary}
         </Type>
-      ) : requirementLabels.length > 0 ? (
+      ) : showRequirements && requirementLabels.length > 0 ? (
         <ul aria-label="Membership requirements" className="mt-4 space-y-2">
           {requirementLabels.map((label) => (
             <Type

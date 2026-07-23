@@ -10,7 +10,13 @@ afterEach(cleanup);
 describe("VideoFeedPaginationNotice", () => {
   test("reports the failure without blocking the feed and retries on demand", () => {
     let retries = 0;
-    const view = render(<VideoFeedPaginationNotice onRetry={() => { retries += 1; }} />);
+    const view = render(
+      <VideoFeedPaginationNotice
+        actionLabel="Retry"
+        message="Couldn't load more videos."
+        onAction={() => { retries += 1; }}
+      />,
+    );
     const status = view.getByRole("status");
 
     expect(status.textContent).toContain("Couldn't load more videos.");

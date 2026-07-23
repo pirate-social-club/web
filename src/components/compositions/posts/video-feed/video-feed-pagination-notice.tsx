@@ -6,9 +6,13 @@ import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 
 export function VideoFeedPaginationNotice({
-  onRetry,
+  actionLabel,
+  message,
+  onAction,
 }: {
-  onRetry: () => void;
+  actionLabel: string;
+  message: string;
+  onAction: () => void;
 }) {
   return (
     <div
@@ -17,9 +21,9 @@ export function VideoFeedPaginationNotice({
     >
       <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-white/15 bg-black/80 py-2 pl-4 pr-2 text-white shadow-lg backdrop-blur-md">
         <WarningCircle aria-hidden className="size-5 shrink-0 text-destructive" weight="fill" />
-        <Type className="text-white" variant="caption">Couldn&apos;t load more videos.</Type>
-        <Button className="h-9 rounded-full" onClick={onRetry} size="sm" variant="secondary">
-          Retry
+        <Type className="text-white" variant="caption">{message}</Type>
+        <Button className="h-9 rounded-full" onClick={onAction} size="sm" variant="secondary">
+          {actionLabel}
         </Button>
       </div>
     </div>

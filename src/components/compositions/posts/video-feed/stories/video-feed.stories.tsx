@@ -247,7 +247,34 @@ export const PaginationFailure: Story = {
   render: () => (
     <div className="relative h-dvh overflow-hidden">
       <InteractiveFeed items={[portrait]} />
-      <VideoFeedPaginationNotice onRetry={() => toast.message("Retry pagination")} />
+      <VideoFeedPaginationNotice
+        actionLabel="Retry"
+        message="Couldn't load more videos."
+        onAction={() => toast.message("Retry pagination")}
+      />
+    </div>
+  ),
+};
+
+export const PaginationPaused: Story = {
+  name: "Loading / Pagination paused",
+  args: { items: [] },
+  parameters: {
+    docs: {
+      description: {
+        story: "After three pages add no unseen posts, automatic loading pauses and the viewer can explicitly resume from the preserved server cursor.",
+      },
+    },
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <div className="relative h-dvh overflow-hidden">
+      <InteractiveFeed items={[portrait]} />
+      <VideoFeedPaginationNotice
+        actionLabel="Keep loading"
+        message="More videos may be available."
+        onAction={() => toast.message("Resume pagination")}
+      />
     </div>
   ),
 };

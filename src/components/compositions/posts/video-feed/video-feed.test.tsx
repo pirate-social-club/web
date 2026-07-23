@@ -63,6 +63,37 @@ describe("VideoFeed", () => {
     expect(view.container.innerHTML).not.toContain("bg-foreground");
   });
 
+  test("insets overlaid controls clear of the fixed mobile chrome", () => {
+    const view = render(<VideoFeed items={[{ ...item, boostEligibility: "eligible" }]} />);
+    const slide = view.container.querySelector("article")!;
+
+    // The mobile header is h-16, not var(--header-height); the footer nav is var(--header-height).
+    expect(slide.className).toContain("[--feed-chrome-top:calc(env(safe-area-inset-top)+4rem)]");
+    expect(slide.className).toContain("[--feed-chrome-bottom:calc(env(safe-area-inset-bottom)+var(--header-height))]");
+    // On md+ the chrome is in flow and already excluded from the feed box, so the insets collapse.
+    expect(slide.className).toContain("md:[--feed-chrome-top:0px]");
+    expect(slide.className).toContain("md:[--feed-chrome-bottom:0px]");
+
+    expect(view.getByLabelText("Turn sound on").className).toContain("top-[calc(var(--feed-chrome-top)+0.75rem)]");
+    expect(view.getByLabelText("More video actions").parentElement!.className)
+      .toContain("top-[calc(var(--feed-chrome-top)+0.75rem)]");
+    expect(view.getByRole("button", { name: "Like" }).closest("div.absolute")!.className)
+      .toContain("bottom-[calc(var(--feed-chrome-bottom)+1.25rem)]");
+  });
+
+  test("keeps the media frame full-bleed rather than letterboxing it away from the chrome", () => {
+    const view = render(<VideoFeed items={[item]} />);
+    const video = view.container.querySelector<HTMLVideoElement>("video")!;
+    const frame = video.parentElement!;
+
+    expect(video.className).toContain("size-full");
+    expect(frame.className).toContain("h-full");
+    expect(frame.className).toContain("w-full");
+    // Insetting the frame itself reproduces the letterboxed layout under a different name.
+    expect(frame.className).not.toContain("--feed-chrome");
+    expect(video.className).not.toContain("--feed-chrome");
+  });
+
   test("annotates existing learning actions and exposes boost only from server-stated eligibility", () => {
     const rewarded = {
       ...item,

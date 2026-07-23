@@ -1,6 +1,19 @@
 import { describe, expect, test } from "bun:test";
 
-import { checkoutPathForFeedSlot, resolveVideoHomeSurface } from "./video-home-route";
+import { checkoutPathForFeedSlot, resolveVideoHomeSurface, VIDEO_FEED_VIEWPORT_CLASS } from "./video-home-route";
+
+describe("VIDEO_FEED_VIEWPORT_CLASS", () => {
+  test("subtracts the in-flow desktop header so the document never scrolls", () => {
+    expect(VIDEO_FEED_VIEWPORT_CLASS).toContain("md:h-[calc(100dvh-var(--header-height))]");
+    // A bare md:h-dvh here overflows the shell by the sticky header's height and centres every
+    // slide against a viewport taller than the visible one.
+    expect(VIDEO_FEED_VIEWPORT_CLASS).not.toContain("md:h-dvh");
+  });
+
+  test("gives the feed the whole viewport on mobile, where the chrome is fixed", () => {
+    expect(VIDEO_FEED_VIEWPORT_CLASS.split(" ")).toContain("h-dvh");
+  });
+});
 
 describe("resolveVideoHomeSurface", () => {
   test("renders the Community Feed inline when the source returns 404", () => {

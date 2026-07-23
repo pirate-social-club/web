@@ -232,8 +232,20 @@ describe("VideoFeed", () => {
     expect(view.container.querySelectorAll("article")).toHaveLength(items.length);
     expect(view.container.querySelectorAll("video")).toHaveLength(3);
     expect(Array.from(view.container.querySelectorAll("video"), (video) => video.getAttribute("preload")))
-      .toEqual(["auto", "auto", "none"]);
+      .toEqual(["auto", "auto", "metadata"]);
     expect(view.container.innerHTML).not.toContain("video-3.mp4");
+  });
+
+  test("uses a black placeholder instead of an empty image source when distant media has no poster", () => {
+    const items = manyFeedItems().map((feedItem) => ({
+      ...feedItem,
+      media: { ...feedItem.media, posterSrc: "" },
+    }));
+    const view = render(<VideoFeed items={items} />);
+
+    expect(view.container.querySelectorAll("article")).toHaveLength(items.length);
+    expect(view.container.querySelectorAll("video")).toHaveLength(3);
+    expect(view.container.querySelectorAll("img[src='']")).toHaveLength(0);
   });
 
   test("moves the media window while preserving every full-height slide shell", () => {
@@ -254,9 +266,9 @@ describe("VideoFeed", () => {
         "https://media.test/video-3.mp4",
         "https://media.test/video-4.mp4",
         "https://media.test/video-5.mp4",
-      ]);
+    ]);
     expect(Array.from(view.container.querySelectorAll("video"), (video) => video.getAttribute("preload")))
-      .toEqual(["none", "auto", "auto", "auto", "none"]);
+      .toEqual(["metadata", "auto", "auto", "auto", "metadata"]);
   });
 
   test("omits booking when the container supplies no booking handler", () => {

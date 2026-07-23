@@ -57,7 +57,12 @@ const ageBlocked: VideoFeedItem = {
 
 const bookableCreator: VideoFeedItem = {
   ...portrait,
-  booking: { basePriceCents: 3500, currency: "USDC", hostUserId: "usr_scarlett" },
+  booking: {
+    basePriceCents: 5000,
+    currency: "USDC",
+    hostUserId: "usr_scarlett",
+    startingPriceCents: 3500,
+  },
   id: "video_bookable_creator",
   publisher: { handle: "mara.english", kind: "profile" },
   caption: "Practice the chorus, then book a private pronunciation class with me.",
@@ -131,7 +136,7 @@ function InteractiveFeed({
         onStudy={(item) => toast.message(`Study: ${item.song?.title}`)}
       />
       <FeedBookingSheet
-        basePriceCents={3500}
+        basePriceCents={bookingItem?.booking?.basePriceCents ?? 0}
         handle={bookingItem?.publisher.handle ?? ""}
         onOpenChange={(open) => { if (!open) setBookingItem(undefined); }}
         onSelectSlot={(slot) => {

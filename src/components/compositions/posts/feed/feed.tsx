@@ -52,6 +52,7 @@ export interface FeedItem {
     basePriceCents: number;
     currency: "USDC";
     hostUserId: string;
+    startingPriceCents: number;
   };
   post: PostCardProps;
   postOriginal?: PostCardProps;

@@ -21,7 +21,7 @@ import {
 
 import { Avatar } from "@/components/primitives/avatar";
 import { ActionMenu } from "@/components/primitives/action-menu";
-import { formatCentsAsUsdc } from "@/components/compositions/bookings/fixtures/bookings-format";
+import { formatCentsAsStartingUsd } from "@/components/compositions/bookings/fixtures/bookings-format";
 import { IconButton } from "@/components/primitives/icon-button";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
@@ -409,14 +409,20 @@ function VideoFeedSlide({
           </div>
           <VideoAction
             active={item.liked}
-            icon={<Heart className="size-7" weight={item.liked ? "fill" : "regular"} />}
+            icon={(
+              <Heart
+                className="size-7"
+                data-video-icon-weight={item.liked ? "fill" : "regular"}
+                weight={item.liked ? "fill" : "regular"}
+              />
+            )}
             label="Like"
             onClick={() => runInteraction(onLike)}
             tone="social"
             value={compactCount(item.likeCount)}
           />
           <VideoAction
-            icon={<ChatCircle className="size-7" weight="fill" />}
+            icon={<ChatCircle className="size-7" data-video-icon-weight="regular" weight="regular" />}
             label="Comments"
             onClick={() => runInteraction(onComment)}
             tone="social"
@@ -424,16 +430,16 @@ function VideoFeedSlide({
           />
           {item.booking && onBook ? (
             <VideoAction
-              icon={<CalendarCheck className="size-5" weight="fill" />}
+              icon={<CalendarCheck className="size-5" data-video-icon-weight="regular" weight="regular" />}
               label="Book"
               onClick={() => runPlaybackInteraction(onBook)}
-              value={formatCentsAsUsdc(item.booking.basePriceCents)}
+              value={formatCentsAsStartingUsd(item.booking.startingPriceCents)}
             />
           ) : null}
-          <CapabilityAction capability={item.study} icon={<BookOpen className="size-5" weight="fill" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
-          <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-5" weight="fill" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
+          <CapabilityAction capability={item.study} icon={<BookOpen className="size-5" data-video-icon-weight="regular" weight="regular" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
+          <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-5" data-video-icon-weight="regular" weight="regular" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
           <VideoAction
-            icon={<ShareNetwork className="size-7" weight="fill" />}
+            icon={<ShareNetwork className="size-7" data-video-icon-weight="regular" weight="regular" />}
             label="Share"
             onClick={() => onShare?.(item)}
             tone="social"

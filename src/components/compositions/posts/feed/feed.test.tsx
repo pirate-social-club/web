@@ -43,11 +43,13 @@ describe("toPageVideoItem", () => {
         basePriceCents: 3500,
         currency: "USDC",
         hostUserId: "usr_host",
+        startingPriceCents: 2500,
       },
     })?.booking).toEqual({
       basePriceCents: 3500,
       currency: "USDC",
       hostUserId: "usr_host",
+      startingPriceCents: 2500,
     });
   });
 

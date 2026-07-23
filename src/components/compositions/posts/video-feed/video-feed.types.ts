@@ -6,6 +6,7 @@ export interface VideoFeedItem {
     basePriceCents: number;
     currency: "USDC";
     hostUserId: string;
+    startingPriceCents: number;
   };
   /** Server-stated eligibility for funding this item's linked song. */
   boostEligibility?: "eligible" | "unavailable";

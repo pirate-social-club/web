@@ -10,6 +10,17 @@ export function formatCentsAsUsd(cents: Cents): string {
   }).format(dollars);
 }
 
+export function formatCentsAsStartingUsd(cents: Cents): string {
+  const hasFractionalDollars = cents % 100 !== 0;
+  const dollars = new Intl.NumberFormat("en", {
+    currency: "USD",
+    minimumFractionDigits: hasFractionalDollars ? 2 : 0,
+    maximumFractionDigits: hasFractionalDollars ? 2 : 0,
+    style: "currency",
+  }).format(cents / 100);
+  return `${dollars}+`;
+}
+
 export function formatCentsAsUsdc(cents: Cents): string {
   return `${(cents / 100).toFixed(2)} USDC`;
 }

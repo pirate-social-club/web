@@ -356,12 +356,26 @@ export const RewardedActionsAndBoost: Story = {
 
 export const BookableCreator: Story = {
   args: { items: [] },
+  parameters: {
+    docs: {
+      description: {
+        story: "The Book action remains available while the feed omits an unverified starting-price claim.",
+      },
+    },
+  },
   render: () => <InteractiveFeed items={[bookableCreator]} />,
 };
 
 export const MobileBookableCreator: Story = {
   args: { items: [] },
-  parameters: { viewport: { defaultViewport: "mobile1" } },
+  parameters: {
+    docs: {
+      description: {
+        story: "The mobile rail keeps the Book action without displaying an unverified starting price.",
+      },
+    },
+    viewport: { defaultViewport: "mobile1" },
+  },
   render: () => <InteractiveFeed items={[bookableCreator]} />,
 };
 

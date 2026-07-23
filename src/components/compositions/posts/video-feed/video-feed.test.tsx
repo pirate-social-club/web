@@ -230,7 +230,8 @@ describe("VideoFeed", () => {
 
     fireEvent.click(view.getByRole("button", { name: "Book" }));
 
-    expect(view.getByText("$35+")).toBeTruthy();
+    expect(view.getByRole("button", { name: "Book" })).toBeTruthy();
+    expect(view.queryByText("$35+")).toBeNull();
     expect(view.queryByText(/USDC/u)).toBeNull();
     expect(calls).toEqual([{
       bookedItem: {

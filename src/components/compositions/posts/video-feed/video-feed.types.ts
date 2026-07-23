@@ -33,6 +33,8 @@ export interface VideoFeedItem {
   song?: {
     artist: string;
     karaokeHref?: string;
+    /** Canonical destination for the source song/post. */
+    songHref?: string;
     sourcePostId?: string;
     studyHref?: string;
     title: string;

@@ -190,6 +190,7 @@ export function VideoHomePage() {
         onKaraoke={(item, playback) => launchSongAction(item, playback, item.song?.karaokeHref)}
         onLike={onLike}
         onShare={(item) => void navigator.share?.({ url: `${window.location.origin}/p/${encodeURIComponent(item.id)}` })}
+        onSong={(item, playback) => launchSongAction(item, playback, item.song?.songHref)}
         onStudy={(item, playback) => launchSongAction(item, playback, item.song?.studyHref)}
       />
       {activeResolution?.sourceCommunityId ? (

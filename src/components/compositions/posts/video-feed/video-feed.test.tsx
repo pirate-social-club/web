@@ -76,6 +76,18 @@ describe("VideoFeed", () => {
     expect(view.getByLabelText("More video actions")).toBeTruthy();
   });
 
+  test("opens a linked song and preserves playback state", () => {
+    const calls: unknown[] = [];
+    const linkedItem = { ...item, song: { artist: "Britney Spears", songHref: "/p/pst_toxic", title: "Toxic" } };
+    const view = render(<VideoFeed initialMuted={false} items={[linkedItem]} onSong={(songItem, state) => calls.push({ songItem, state })} />);
+    const video = view.container.querySelector<HTMLVideoElement>("video")!;
+    Object.defineProperty(video, "currentTime", { configurable: true, value: 5 });
+
+    fireEvent.click(view.getByRole("button", { name: "Open Toxic by Britney Spears" }));
+
+    expect(calls).toEqual([{ songItem: linkedItem, state: { muted: false, paused: false, playbackSeconds: 5 } }]);
+  });
+
   test("exposes booking only for a server-stated bookable publisher", () => {
     const calls: unknown[] = [];
     const view = render(

@@ -20,7 +20,7 @@ const portrait: VideoFeedItem = {
   likeCount: 12400,
   media: { orientation: "portrait", posterSrc, src: videoSrc },
   rewards: { karaoke: { amountLabel: "$2" }, study: { amountLabel: "$1" } },
-  song: { artist: "Britney Spears", title: "Toxic" },
+  song: { artist: "Britney Spears", songHref: "/p/pst_toxic", title: "Toxic" },
   study: "ready",
   viewerState: "allowed",
 };
@@ -95,6 +95,7 @@ function InteractiveFeed({ items, initialItemId }: { items: VideoFeedItem[]; ini
         onKaraoke={(item) => toast.message(`Sing: ${item.song?.title}`)}
         onLike={(item) => toast.message(`Liked: ${item.id}`)}
         onShare={(item) => toast.message(`Shared: ${item.id}`)}
+        onSong={(item) => toast.message(`Open song: ${item.song?.title}`)}
         onStudy={(item) => toast.message(`Study: ${item.song?.title}`)}
       />
       <FeedBookingSheet

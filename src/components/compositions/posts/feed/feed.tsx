@@ -166,6 +166,7 @@ export function toPageVideoItem(item: FeedItem): VideoFeedItem | null {
     },
     song: linkedSong ? {
       artist: linkedSong.artist ?? "",
+      songHref: `/p/${encodeURIComponent(linkedSong.sourcePostId)}`,
       sourcePostId: linkedSong.sourcePostId,
       title: linkedSong.title,
     } : undefined,
@@ -398,6 +399,9 @@ export function Feed({
     const href = item.song?.studyHref;
     launchViewerAction(item, playback, href);
   }, [launchViewerAction]);
+  const handleViewerSong = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState) => {
+    launchViewerAction(item, playback, item.song?.songHref);
+  }, [launchViewerAction]);
 
   React.useEffect(() => {
     const restored = readVideoViewerReturnState(currentRelativePath());
@@ -562,6 +566,7 @@ export function Feed({
               onKaraoke={handleViewerKaraoke}
               onLike={handleViewerLike}
               onShare={handleViewerShare}
+              onSong={handleViewerSong}
               onStudy={handleViewerStudy}
             />
           ) : null}

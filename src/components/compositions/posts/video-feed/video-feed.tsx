@@ -45,6 +45,7 @@ export interface VideoFeedProps {
   onKaraoke?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onLike?: (item: VideoFeedItem) => void;
   onShare?: (item: VideoFeedItem) => void;
+  onSong?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onStudy?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
 }
 
@@ -139,6 +140,7 @@ function VideoFeedSlide({
   onLike,
   onShare,
   onPausePlayback,
+  onSong,
   onToggleMute,
   onStudy,
   onTogglePlayback,
@@ -194,6 +196,14 @@ function VideoFeedSlide({
       return;
     }
     action?.(item, {
+      muted,
+      paused,
+      playbackSeconds: videoRef.current?.currentTime ?? 0,
+    });
+  };
+
+  const runSongNavigation = () => {
+    onSong?.(item, {
       muted,
       paused,
       playbackSeconds: videoRef.current?.currentTime ?? 0,
@@ -296,7 +306,20 @@ function VideoFeedSlide({
               </Type>
             </div>
             {item.caption ? <Type className="line-clamp-2" variant="body">{item.caption}</Type> : null}
-            {item.song ? <Type className="text-white/80" variant="caption">{item.song.title} · {item.song.artist}</Type> : null}
+            {item.song ? (
+              item.song.songHref && onSong ? (
+                <Type
+                  aria-label={`Open ${item.song.title} by ${item.song.artist}`}
+                  as="button"
+                  className="cursor-pointer text-left text-white/80 underline decoration-white/60 underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  onClick={runSongNavigation}
+                  type="button"
+                  variant="caption"
+                >
+                  {item.song.title} · {item.song.artist}
+                </Type>
+              ) : <Type className="text-white/80" variant="caption">{item.song.title} · {item.song.artist}</Type>
+            ) : null}
           </div>
         </div>
         </div>

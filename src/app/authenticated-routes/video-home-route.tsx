@@ -42,12 +42,19 @@ import { HomePage } from "./home-routes";
 
 export type VideoHomeSurface = "loading" | "video" | "community-feed-empty" | "community-feed-error";
 
-export function checkoutPathForFeedSlot(hostUserId: string, slot: ResolvedSlot): string {
+export function checkoutPathForFeedSlot(
+  hostUserId: string,
+  slot: ResolvedSlot,
+  sourceCommunityId: string | null = null,
+): string {
   const query = new URLSearchParams({
     end: slot.endUtc,
     start: slot.startUtc,
   });
-  return `/book/${encodeURIComponent(hostUserId)}/checkout?${query.toString()}`;
+  const checkoutPath = sourceCommunityId
+    ? `/c/${encodeURIComponent(sourceCommunityId)}/book/${encodeURIComponent(hostUserId)}/checkout`
+    : `/book/${encodeURIComponent(hostUserId)}/checkout`;
+  return `${checkoutPath}?${query.toString()}`;
 }
 
 function viewerTimezone(): IanaTz {
@@ -175,6 +182,7 @@ export function VideoHomePage() {
   const [bookingTarget, setBookingTarget] = React.useState<{
     item: VideoFeedItem;
     playback: VideoFeedPlaybackState;
+    sourceCommunityId: string | null;
   } | null>(null);
   const [bookingSlots, setBookingSlots] = React.useState<ResolvedSlot[]>([]);
   const [bookingLoading, setBookingLoading] = React.useState(false);
@@ -522,12 +530,16 @@ export function VideoHomePage() {
     const hostUserId = item.booking.hostUserId;
     const cached = bookingCache.get(hostUserId);
     bookingRequestHostRef.current = hostUserId;
-    setBookingTarget({ item, playback });
+    setBookingTarget({
+      item,
+      playback,
+      sourceCommunityId: activeResolution?.sourceCommunityId ?? null,
+    });
     setBookingError(false);
     setBookingSlots(cached ?? []);
     setBookingLoading(!cached);
     if (!cached) loadBookingAvailability(hostUserId);
-  }, [bookingCache, loadBookingAvailability]);
+  }, [activeResolution?.sourceCommunityId, bookingCache, loadBookingAvailability]);
 
   const retryBookingAvailability = React.useCallback(() => {
     const hostUserId = bookingTarget?.item.booking?.hostUserId;
@@ -558,7 +570,11 @@ export function VideoHomePage() {
       returnPath: currentRelativePath(),
       scrollY: 0,
     });
-    navigate(checkoutPathForFeedSlot(booking.hostUserId, slot));
+    navigate(checkoutPathForFeedSlot(
+      booking.hostUserId,
+      slot,
+      bookingTarget.sourceCommunityId,
+    ));
   }, [bookingTarget]);
 
   const surface = resolveVideoHomeSurface({ error, itemCount: items.length, loading });
@@ -622,7 +638,11 @@ export function VideoHomePage() {
         <FeedBookingSheet
           basePriceCents={bookingTarget.item.booking.basePriceCents}
           error={bookingError}
-          getSlotHref={(slot) => checkoutPathForFeedSlot(bookingTarget.item.booking!.hostUserId, slot)}
+          getSlotHref={(slot) => checkoutPathForFeedSlot(
+            bookingTarget.item.booking!.hostUserId,
+            slot,
+            bookingTarget.sourceCommunityId,
+          )}
           handle={bookingTarget.item.publisher.handle}
           loading={bookingLoading}
           onOpenChange={setBookingOpen}

@@ -171,6 +171,9 @@ function requiresActionAltchaProof(
   if (!hasPowFallback) {
     return false;
   }
+  if (gate.eligibility.status === "already_joined" && gate.gateMatchMode === "all") {
+    return true;
+  }
 
   return !requirements.some((summary) =>
     summary.gate_type !== "altcha_pow" &&

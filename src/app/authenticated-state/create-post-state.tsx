@@ -62,7 +62,7 @@ import {
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
 import { upsertCommunityFeedPostCache } from "@/app/authenticated-data/community-feed-data";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
-import { canSendCreatePostRequest, requiresPostAltchaProofForNonMember } from "@/app/authenticated-helpers/create-post-verification";
+import { canSendCreatePostRequest, requiresPostAltchaProof } from "@/app/authenticated-helpers/create-post-verification";
 
 export function isPublicAudienceAllowed(community: ApiCommunity | ApiCommunityPreview | null): boolean {
   if (!community) {
@@ -812,7 +812,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, [availableAgent]);
   const submitSongPost = useSongSubmit({ communityId, signAgentAuthoredBody });
   const hasCommunityPostingRole = viewerHasCommunityPostingRole(session?.user.id, community, communityOwnerUserId);
-  const postAltchaRequired = requiresPostAltchaProofForNonMember({ eligibility, gateMatchMode: community?.gate_match_mode, hasCommunityPostingRole, requirements: community?.membership_gate_summaries ?? [] });
+  const postAltchaRequired = requiresPostAltchaProof({ eligibility, gateMatchMode: community?.gate_match_mode, hasCommunityPostingRole, requirements: community?.membership_gate_summaries ?? [] });
   const hasOpenPowPostingAccess = postAltchaRequired && Boolean(postAltchaPayload);
   const postAltchaRequestOptions = postAltchaPayload ? { altchaPayload: postAltchaPayload } : undefined;
   const handleSubmit = React.useCallback(async () => {

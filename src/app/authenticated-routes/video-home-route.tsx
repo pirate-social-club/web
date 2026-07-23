@@ -23,6 +23,7 @@ import { VideoSongCapabilityCache } from "@/components/compositions/posts/video-
 import { Spinner } from "@/components/primitives/spinner";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
+import { useRouteMessages } from "@/hooks/use-route-messages";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { HomePage } from "./home-routes";
@@ -98,12 +99,14 @@ export function VideoHomePage() {
   const hydrated = useClientHydrated();
   const session = useSession();
   const contentLocale = useRouteContentLocale();
+  const { copy } = useRouteMessages();
   const capabilityLoader = useVideoViewerSongCapabilities(contentLocale);
   const [entries, setEntries] = React.useState<ApiHomeFeedItem[]>([]);
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<unknown>(null);
   const [loadMoreError, setLoadMoreError] = React.useState<unknown>(null);
+  const [pausedPaginationCursor, setPausedPaginationCursor] = React.useState<string | null>(null);
   const [capabilityRevision, setCapabilityRevision] = React.useState(0);
   const [activeItemId, setActiveItemId] = React.useState<string | null>(null);
   const [boostTarget, setBoostTarget] = React.useState<{ open: () => void; sourcePostId: string } | null>(null);
@@ -116,6 +119,7 @@ export function VideoHomePage() {
   const [bookingError, setBookingError] = React.useState(false);
   const loadingMoreRef = React.useRef(false);
   const consecutiveNoGrowthPagesRef = React.useRef(0);
+  const feedGenerationRef = React.useRef(0);
   const seenPostIdsRef = React.useRef(new Set<string>());
   const bookingRequestHostRef = React.useRef<string | null>(null);
   const bookingTimezone = React.useMemo(viewerTimezone, []);
@@ -145,6 +149,9 @@ export function VideoHomePage() {
 
   React.useEffect(() => {
     if (!hydrated) return;
+    const generation = feedGenerationRef.current + 1;
+    feedGenerationRef.current = generation;
+    loadingMoreRef.current = false;
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -154,12 +161,16 @@ export function VideoHomePage() {
         if (cancelled) return;
         seenPostIdsRef.current = new Set(response.items.map((entry) => entry.post.post.id));
         consecutiveNoGrowthPagesRef.current = 0;
+        setPausedPaginationCursor(null);
         setEntries(response.items);
         setNextCursor(response.next_cursor ?? null);
       })
       .catch((nextError: unknown) => { if (!cancelled) setError(nextError); })
       .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (feedGenerationRef.current === generation) feedGenerationRef.current += 1;
+    };
   }, [api, contentLocale, hydrated, session?.accessToken]);
 
   const pageItems = React.useMemo(
@@ -196,9 +207,11 @@ export function VideoHomePage() {
     if (!nextCursor || loadingMoreRef.current) return;
     loadingMoreRef.current = true;
     setLoadMoreError(null);
+    const generation = feedGenerationRef.current;
     try {
       const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
       const response = await request({ cursor: nextCursor, locale: contentLocale, sort: "best" });
+      if (generation !== feedGenerationRef.current) return;
       const unseenItems = response.items.filter((entry) => {
         const postId = entry.post.post.id;
         if (seenPostIdsRef.current.has(postId)) return false;
@@ -213,12 +226,24 @@ export function VideoHomePage() {
       });
       consecutiveNoGrowthPagesRef.current = pagination.consecutiveNoGrowthPages;
       setNextCursor(pagination.nextCursor);
+      setPausedPaginationCursor(
+        pagination.nextCursor === null && response.next_cursor
+          ? response.next_cursor
+          : null,
+      );
     } catch (nextError) {
-      setLoadMoreError(nextError);
+      if (generation === feedGenerationRef.current) setLoadMoreError(nextError);
     } finally {
-      loadingMoreRef.current = false;
+      if (generation === feedGenerationRef.current) loadingMoreRef.current = false;
     }
   }, [api, contentLocale, nextCursor, session?.accessToken]);
+
+  const resumePagination = React.useCallback(() => {
+    if (!pausedPaginationCursor) return;
+    consecutiveNoGrowthPagesRef.current = 0;
+    setPausedPaginationCursor(null);
+    setNextCursor(pausedPaginationCursor);
+  }, [pausedPaginationCursor]);
 
   const onActiveItemChange = React.useCallback((_item: VideoFeedItem, index: number) => {
     setActiveItemId(_item.id);
@@ -358,7 +383,19 @@ export function VideoHomePage() {
         onSong={(item, playback) => launchSongAction(item, playback, item.song?.songHref)}
         onStudy={(item, playback) => launchSongAction(item, playback, item.song?.studyHref)}
       />
-      {loadMoreError ? <VideoFeedPaginationNotice onRetry={() => { void loadMore(); }} /> : null}
+      {loadMoreError ? (
+        <VideoFeedPaginationNotice
+          actionLabel={copy.home.videoPaginationRetry}
+          message={copy.home.videoPaginationError}
+          onAction={() => { void loadMore(); }}
+        />
+      ) : pausedPaginationCursor ? (
+        <VideoFeedPaginationNotice
+          actionLabel={copy.home.videoPaginationKeepLoading}
+          message={copy.home.videoPaginationPaused}
+          onAction={resumePagination}
+        />
+      ) : null}
       {bookingTarget?.item.booking ? (
         <FeedBookingSheet
           basePriceCents={bookingTarget.item.booking.basePriceCents}

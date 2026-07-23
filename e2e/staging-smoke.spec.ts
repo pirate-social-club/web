@@ -92,7 +92,7 @@ async function discoverRoutes(): Promise<DiscoveredRoutes> {
 
 async function expectAppShell(page: Page): Promise<void> {
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.locator("body")).toContainText(/PIRATE|Home|Popular|Connect|Sign in|Sign In/u);
+  await expect(page.locator("body")).toContainText(/PIRATE|Home|Community Feed|Connect|Sign in|Sign In/u);
   await expect(page.locator("body")).not.toContainText(browserErrorPattern);
 }
 
@@ -110,13 +110,13 @@ test.describe("unauthenticated staging smoke", () => {
     await page.goto("/");
     await expectAppShell(page);
     await expect(page.getByRole("button", { name: /^home$/i }).first()).toBeVisible();
-    await expect(page.getByRole("button", { name: /^popular$/i }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /^community feed$/i }).first()).toBeVisible();
   });
 
-  test("popular feed renders", async ({ page }) => {
-    await page.goto("/popular");
+  test("community feed renders", async ({ page }) => {
+    await page.goto("/feed");
     await expectAppShell(page);
-    await expect(page).toHaveURL(/\/popular$/u);
+    await expect(page).toHaveURL(/\/feed$/u);
   });
 
   test("desktop navigation exposes primary routes", async ({ page }) => {
@@ -124,7 +124,7 @@ test.describe("unauthenticated staging smoke", () => {
     await page.goto("/");
     await expectAppShell(page);
     await expect(page.getByText("Home", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Popular", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Community Feed", { exact: true }).first()).toBeVisible();
   });
 
   test("mobile viewport exposes core footer navigation", async ({ page }) => {

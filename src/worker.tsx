@@ -502,6 +502,7 @@ const app = defineApp<AppRequestInfo>([
     ),
     route("/", AppRoutePage),
     route("/popular", AppRoutePage),
+    route("/feed", AppRoutePage),
     route("/advertise", AppRoutePage),
     route("/tg", AppRoutePage),
     route("/tg/exchange", AppRoutePage),

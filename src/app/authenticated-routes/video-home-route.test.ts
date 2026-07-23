@@ -7,6 +7,7 @@ import {
   checkoutPathForFeedSlot,
   nextVideoPaginationCursor,
   resolveVideoHomeSurface,
+  resolveVideoPublisherRelationship,
   VIDEO_FEED_VIEWPORT_CLASS,
 } from "./video-home-route";
 
@@ -99,6 +100,47 @@ describe("nextVideoPaginationCursor", () => {
       didGrow: true,
       serverCursor: "page-4",
     })).toEqual({ consecutiveNoGrowthPages: 0, nextCursor: "page-4" });
+  });
+});
+
+describe("resolveVideoPublisherRelationship", () => {
+  test("uses the wallet-backed follow relationship for a public profile", () => {
+    expect(resolveVideoPublisherRelationship({
+      authorUserId: "usr_author",
+      authorWalletAddress: "0x0000000000000000000000000000000000000001",
+      currentUserId: "usr_viewer",
+      identityMode: "public",
+      joinedLabel: "Joined community",
+      joinLabel: "Join community",
+    })).toEqual({
+      kind: "follow",
+      ownProfile: false,
+      targetWalletAddress: "0x0000000000000000000000000000000000000001",
+    });
+  });
+
+  test("does not pretend a profile is followable before its wallet resolves", () => {
+    expect(resolveVideoPublisherRelationship({
+      authorUserId: "usr_author",
+      identityMode: "public",
+      joinedLabel: "Joined community",
+      joinLabel: "Join community",
+    })).toBeUndefined();
+  });
+
+  test("reflects server or optimistic community membership", () => {
+    expect(resolveVideoPublisherRelationship({
+      identityMode: "anonymous",
+      joinedLabel: "Joined community",
+      joinedLocally: true,
+      joinLabel: "Join community",
+      viewerMembershipStatus: "not_member",
+    })).toEqual({
+      active: true,
+      disabled: true,
+      kind: "join",
+      label: "Joined community",
+    });
   });
 });
 

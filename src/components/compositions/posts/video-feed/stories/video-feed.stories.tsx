@@ -403,6 +403,80 @@ export const MobileRailWithoutBoost: Story = {
   ),
 };
 
+export const DesktopPublisherJoin: Story = {
+  name: "Publisher relationship / Desktop join",
+  args: { items: [] },
+  parameters: { viewport: { defaultViewport: "desktop" } },
+  render: () => (
+    <VideoFeed
+      items={[{
+        ...portrait,
+        publisher: {
+          ...portrait.publisher,
+          relationship: {
+            active: false,
+            kind: "join",
+            label: "Join community",
+          },
+        },
+      }]}
+      onPublisherRelationship={(item) => toast.success(`Join ${item.publisher.handle}`)}
+    />
+  ),
+};
+
+export const MobilePublisherJoined: Story = {
+  name: "Publisher relationship / Mobile joined",
+  args: { items: [] },
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+  render: () => (
+    <VideoFeed
+      items={[{
+        ...portrait,
+        publisher: {
+          ...portrait.publisher,
+          relationship: {
+            active: true,
+            disabled: true,
+            kind: "join",
+            label: "Joined community",
+          },
+        },
+      }]}
+    />
+  ),
+};
+
+export const MobilePublisherFollow: Story = {
+  name: "Publisher relationship / Mobile follow",
+  args: { items: [] },
+  parameters: {
+    docs: {
+      description: {
+        story: "Profile publishers use the real wallet-backed follow controller; signed-out interaction opens the normal connect flow.",
+      },
+    },
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <VideoFeed
+      followLabel="Follow"
+      followingLabel="Following"
+      items={[{
+        ...bookableCreator,
+        publisher: {
+          ...bookableCreator.publisher,
+          relationship: {
+            kind: "follow",
+            ownProfile: false,
+            targetWalletAddress: "0x0000000000000000000000000000000000000001",
+          },
+        },
+      }]}
+    />
+  ),
+};
+
 export const MobileTapForSound: Story = {
   name: "Audio / Mobile tap for sound",
   args: { items: [] },

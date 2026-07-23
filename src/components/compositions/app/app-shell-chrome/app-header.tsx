@@ -39,6 +39,13 @@ export function shouldShowMobileConnectAction(
   return showConnectAction && appearance !== "media-overlay";
 }
 
+export function shouldShowDesktopConnectAction(
+  showConnectAction: boolean,
+  hideDesktopConnectAction: boolean,
+): boolean {
+  return showConnectAction && !hideDesktopConnectAction;
+}
+
 function CreatePostGlyph() {
   return (
     <span className="relative inline-flex size-5 items-center justify-center">
@@ -79,6 +86,7 @@ export interface AppHeaderProps {
   disableCreateAction?: boolean;
   forceMobile?: boolean;
   hideBrand?: boolean;
+  hideDesktopConnectAction?: boolean;
   hideDesktopBrand?: boolean;
   hideMobileBrand?: boolean;
   labels?: AppHeaderLabels;
@@ -117,6 +125,7 @@ export function AppHeader({
   disableCreateAction = false,
   forceMobile,
   hideBrand = false,
+  hideDesktopConnectAction = false,
   hideDesktopBrand = false,
   hideMobileBrand = false,
   labels,
@@ -339,7 +348,7 @@ export function AppHeader({
         </div>
 
         <div className="flex min-w-0 items-center justify-end gap-1.5">
-          {showConnectAction ? (
+          {shouldShowDesktopConnectAction(showConnectAction, hideDesktopConnectAction) ? (
             <Button className="h-12 px-5" onClick={onConnectClick}>
               {connectLabel}
             </Button>

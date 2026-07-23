@@ -51,8 +51,9 @@ export interface FeedItem {
   booking?: {
     basePriceCents: number;
     currency: "USDC";
+    hasAvailableSlot: boolean;
     hostUserId: string;
-    startingPriceCents: number;
+    startingPriceCents: number | null;
   };
   post: PostCardProps;
   postOriginal?: PostCardProps;

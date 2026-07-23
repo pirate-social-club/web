@@ -5,8 +5,9 @@ export interface VideoFeedItem {
   booking?: {
     basePriceCents: number;
     currency: "USDC";
+    hasAvailableSlot: boolean;
     hostUserId: string;
-    startingPriceCents: number;
+    startingPriceCents: number | null;
   };
   /** Server-stated eligibility for funding this item's linked song. */
   boostEligibility?: "eligible" | "unavailable";

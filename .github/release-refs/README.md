@@ -15,6 +15,12 @@ a routine rebase cannot silently roll production backwards. An intentional
 incident rollback requires the auditable `release-pin-rollback-approved` PR label.
 Missing or orphaned API commits fail the ancestry check.
 
+`API pin monotonicity` is an always-running required PR context. Unchanged pins
+exit without cloning API history, while changed pins run the ancestry check.
+The guarantee also depends on branch protection keeping strict status checks
+enabled: an out-of-date branch must rerun against the latest base pin before it
+can merge.
+
 Web releases use these pinned commits; they never select the API or Core
 repository's current `main` implicitly.
 

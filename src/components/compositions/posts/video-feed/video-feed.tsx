@@ -226,6 +226,8 @@ function VideoFeedSlide({
     return () => window.clearTimeout(timeout);
   }, [active, mediaMounted, muted, onSoundPromptShown, preferenceMuted, soundPromptEligible]);
 
+  // Keep this before the muted-autoplay effect below. A rejected unmuted preference attempt must
+  // re-mute the element before the fallback play starts, or the browser can leave playback stopped.
   React.useEffect(() => {
     if (!active || !mediaMounted || !muted || preferenceMuted) return;
     onToggleMute(videoRef.current);
@@ -296,12 +298,12 @@ function VideoFeedSlide({
           src={item.media.posterSrc}
         />
       ) : null}
-      <div className="relative flex size-full items-center justify-center md:gap-4">
+      <div className="relative flex size-full items-center justify-center [container-type:inline-size] md:gap-4">
         <div className={cn(
           "relative h-full w-full overflow-hidden bg-black md:rounded-[var(--radius-xl)]",
           item.media.orientation === "portrait"
-            ? "md:h-[min(88dvh,50rem)] md:w-[min(49.5dvh,28rem)] md:max-w-[calc(100%-4rem)]"
-            : "md:h-auto md:max-h-[min(88dvh,50rem)] md:w-[min(72vw,64rem)] md:max-w-[calc(100%-4rem)] md:aspect-video",
+            ? "md:h-[min(88dvh,50rem,calc(177.7778cqw-7.1111rem))] md:w-auto md:aspect-[9/16]"
+            : "md:h-[min(88dvh,36rem,40.5cqw)] md:w-auto md:aspect-video",
         )}>
         {mediaMounted ? (
           <video

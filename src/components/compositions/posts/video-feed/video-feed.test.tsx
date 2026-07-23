@@ -145,11 +145,25 @@ describe("VideoFeed", () => {
     expect(video.className).not.toContain("--feed-chrome");
   });
 
-  test("caps desktop media width against its actual stage column", () => {
+  test("sizes portrait media from its stage container instead of the viewport width", () => {
     const view = render(<VideoFeed items={[item]} />);
     const frame = view.container.querySelector<HTMLVideoElement>("video")!.parentElement!;
+    const stage = frame.parentElement!;
 
-    expect(frame.className).toContain("md:max-w-[calc(100%-4rem)]");
+    expect(stage.className).toContain("[container-type:inline-size]");
+    expect(frame.className).toContain("177.7778cqw");
+    expect(frame.className).toContain("md:aspect-[9/16]");
+    expect(frame.className).not.toContain("md:w-[min(49.5dvh");
+  });
+
+  test("sizes landscape media from its stage container instead of the viewport width", () => {
+    const landscapeItem = { ...item, media: { ...item.media, orientation: "landscape" as const } };
+    const view = render(<VideoFeed items={[landscapeItem]} />);
+    const frame = view.container.querySelector<HTMLVideoElement>("video")!.parentElement!;
+
+    expect(frame.className).toContain("40.5cqw");
+    expect(frame.className).toContain("md:aspect-video");
+    expect(frame.className).not.toContain("72vw");
   });
 
   test("annotates existing learning actions and exposes boost only from server-stated eligibility", () => {

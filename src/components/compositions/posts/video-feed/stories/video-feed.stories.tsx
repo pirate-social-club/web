@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import * as React from "react";
 
 import { toast } from "@/components/primitives/sonner";
 import { FeedBookingSheet } from "@/components/compositions/bookings/feed-booking-sheet/feed-booking-sheet";
@@ -178,6 +179,26 @@ export const PublisherAvatarRail: Story = {
   name: "Rail / Publisher avatar",
   args: { items: [] },
   render: () => <InteractiveFeed items={[publisherAvatarRail]} />,
+};
+
+export const SocialAndEarningActions: Story = {
+  name: "Rail / Social and earning actions",
+  args: { items: [] },
+  parameters: {
+    docs: {
+      description: {
+        story: "Like, comments, and share use lightweight white glyphs; Book, Study, and Sing remain surfaced actions with labels and reward badges.",
+      },
+    },
+  },
+  render: () => <InteractiveFeed items={[bookableCreator]} />,
+};
+
+export const MobileSocialAndEarningActions: Story = {
+  name: "Rail / Social and earning actions / Mobile",
+  args: { items: [] },
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+  render: () => <InteractiveFeed items={[bookableCreator]} />,
 };
 
 export const MobileFixedChrome: Story = {

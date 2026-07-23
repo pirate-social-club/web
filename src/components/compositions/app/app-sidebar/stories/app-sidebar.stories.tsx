@@ -135,11 +135,13 @@ function MediaShellReview({
   collapsed = false,
   contentRoute = false,
   dockOpen = false,
+  moderationRoute = false,
   populatedCommunities = false,
 }: {
   collapsed?: boolean;
   contentRoute?: boolean;
   dockOpen?: boolean;
+  moderationRoute?: boolean;
   populatedCommunities?: boolean;
 }) {
   const { locale } = useUiLocale();
@@ -189,10 +191,10 @@ function MediaShellReview({
         <main className={contentRoute ? "min-h-0 flex-1 overflow-auto p-8" : dockOpen ? "grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_26rem]" : "min-h-0 flex-1"}>
           {contentRoute ? (
             <div className="mx-auto max-w-4xl space-y-5">
-              <Type as="h1" variant="h2">Settings</Type>
+              <Type as="h1" variant="h2">{moderationRoute ? "Moderator tools" : "Settings"}</Type>
               <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-8">
                 <div className="h-6 w-40 rounded-full bg-muted" />
-                <div className="mt-6 h-48 rounded-[calc(var(--radius-xl)-0.5rem)] bg-muted/70" />
+                <div className={moderationRoute ? "mt-6 h-[75rem] rounded-[calc(var(--radius-xl)-0.5rem)] bg-muted/70" : "mt-6 h-48 rounded-[calc(var(--radius-xl)-0.5rem)] bg-muted/70"} />
               </div>
             </div>
           ) : (
@@ -231,6 +233,14 @@ export const UnifiedContentShell: Story = {
     viewport: { defaultViewport: "desktop" },
   },
   render: () => <MediaShellReview contentRoute populatedCommunities />,
+};
+
+export const UnifiedModerationShell: Story = {
+  name: "Unified shell / Tall moderation route",
+  parameters: {
+    viewport: { defaultViewport: "desktop" },
+  },
+  render: () => <MediaShellReview contentRoute moderationRoute populatedCommunities />,
 };
 
 export const MediaShellCollapsed: Story = {

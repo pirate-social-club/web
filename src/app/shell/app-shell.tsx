@@ -172,6 +172,8 @@ function NotificationShell({
     || route.kind === "chat-target"
     || route.kind === "chat-conversation"
     || route.kind === "chat-new";
+  const isCommunityModerationRoute = route.kind === "community-moderation"
+    || route.kind === "community-moderation-index";
   const isPublicRoute = route.kind === "public-profile" || route.kind === "public-agent";
   const useStandaloneRouteShell = isMobileStandaloneRoute || isStandaloneViewerRoute;
   // Temporary: migrated routes own their own page shell padding.
@@ -272,6 +274,7 @@ function NotificationShell({
                     "flex min-h-0 w-full flex-1",
                     !isMigratedRoute && "px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.5rem)] md:px-5 md:pb-8 md:pt-6 lg:px-8",
                     isChatRoute && "md:overflow-hidden",
+                    isCommunityModerationRoute && "md:overflow-y-auto",
                   )}
                 >
                   <React.Suspense fallback={<RouteContentFallback route={route} />}>

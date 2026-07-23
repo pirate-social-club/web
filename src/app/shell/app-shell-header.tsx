@@ -161,6 +161,7 @@ export function AppShellHeader({
       avatarFallback={avatarFallback}
       disableCreateAction={disableCreateAction}
       className={desktopHidden ? "md:hidden" : undefined}
+      hideDesktopConnectAction
       hideMobileBrand
       labels={{
         backAriaLabel: copy.appHeader.backAriaLabel,

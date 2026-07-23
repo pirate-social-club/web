@@ -71,6 +71,18 @@ describe("VideoFeed", () => {
     expect(view.container.innerHTML).not.toContain("bg-foreground");
   });
 
+  test("places the publisher avatar at the top of the action rail", () => {
+    const view = render(<VideoFeed items={[item]} />);
+    const publisherAvatar = view.getByRole("img", { name: "Publisher songs.pirate" });
+    const likeAction = view.getByRole("button", { name: "Like" });
+    const rail = publisherAvatar.parentElement!;
+
+    expect(publisherAvatar.hasAttribute("data-video-publisher-avatar")).toBe(true);
+    expect(rail.children[0]).toBe(publisherAvatar);
+    expect(rail.children[1]?.contains(likeAction)).toBe(true);
+    expect(view.getByText("songs.pirate").parentElement?.querySelector("[data-video-publisher-avatar]")).toBeNull();
+  });
+
   test("insets overlaid controls clear of the fixed mobile chrome", () => {
     const view = render(<VideoFeed items={[{ ...item, boostEligibility: "eligible" }]} />);
     const slide = view.container.querySelector("article")!;

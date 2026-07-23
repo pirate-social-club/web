@@ -177,6 +177,7 @@ export function toCommunityFeedItem(
       engagement: {
         commentCount: getPostCommentCount(postResponse),
         score: postResponse.upvote_count - postResponse.downvote_count,
+        upvoteCount: postResponse.upvote_count,
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
       authorCommunityRole: postResponse.author_community_role ?? undefined,
@@ -321,6 +322,7 @@ export function toThreadPostCard(
     engagement: {
       commentCount: opts?.commentCountOverride ?? getPostCommentCount(postResponse),
       score: postResponse.upvote_count - postResponse.downvote_count,
+      upvoteCount: postResponse.upvote_count,
       viewerVote: toViewerVote(postResponse.viewer_vote),
       voteBusy: opts?.voteBusy,
     },

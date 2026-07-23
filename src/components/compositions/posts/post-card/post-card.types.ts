@@ -480,6 +480,8 @@ export type PostCardIdentityPresentation =
 
 export type PostCardEngagement = {
   score: number;
+  /** Positive reactions only. Unlike score, this never includes downvotes. */
+  upvoteCount?: number;
   viewerVote?: "up" | "down" | null;
   voteBusy?: boolean;
   commentCount: number;

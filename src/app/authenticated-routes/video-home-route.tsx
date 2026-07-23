@@ -5,7 +5,6 @@ import type { HomeFeedItem as ApiHomeFeedItem, Profile as ApiProfile } from "@pi
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { navigate } from "@/app/router";
-import { useVideoHomeChrome } from "@/app/shell/video-home-chrome-context";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { useVideoViewerSongCapabilities } from "@/app/authenticated-helpers/use-video-viewer-song-capabilities";
 import {
@@ -563,7 +562,6 @@ export function VideoHomePage() {
   }, [bookingTarget]);
 
   const surface = resolveVideoHomeSurface({ error, itemCount: items.length, loading });
-  useVideoHomeChrome(surface === "video");
   if (surface === "loading") return <div className="grid min-h-dvh w-full place-items-center bg-background"><Spinner className="size-6" /></div>;
   if (surface === "community-feed-error") return <HomePage videoFallbackReason="error" />;
   if (surface === "community-feed-empty") return <HomePage videoFallbackReason="empty" />;

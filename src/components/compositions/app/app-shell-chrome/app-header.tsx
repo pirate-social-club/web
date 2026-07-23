@@ -76,6 +76,7 @@ export interface AppHeaderProps {
   hideMobileBrand?: boolean;
   labels?: AppHeaderLabels;
   mobileLeadingContent?: React.ReactNode;
+  mobileAppearance?: "default" | "media-overlay";
   mobileCenterContent?: React.ReactNode;
   mobileTrailingContent?: React.ReactNode;
   onBackClick?: () => void;
@@ -113,6 +114,7 @@ export function AppHeader({
   hideMobileBrand = false,
   labels,
   mobileLeadingContent,
+  mobileAppearance = "default",
   mobileCenterContent,
   mobileTrailingContent,
   onBackClick,
@@ -256,9 +258,28 @@ export function AppHeader({
   );
 
   if (isMobile) {
+    const mediaOverlay = mobileAppearance === "media-overlay";
     return (
-      <header className={cn("fixed inset-x-0 top-0 z-40 border-b border-border-soft bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur-md", className)}>
-        <div className="grid h-16 grid-cols-[minmax(0,1fr)_minmax(0,auto)_minmax(0,1fr)] items-center gap-2 px-3">
+      <header
+        className={cn(
+          "fixed inset-x-0 top-0 z-40 pt-[env(safe-area-inset-top)]",
+          mediaOverlay
+            ? "border-b border-transparent bg-transparent text-white"
+            : "border-b border-border-soft bg-background/95 backdrop-blur-md",
+          className,
+        )}
+        data-appearance={mobileAppearance}
+      >
+        {mediaOverlay ? (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-[calc(100%+2rem)] bg-gradient-to-b from-black/75 via-black/35 to-transparent"
+          />
+        ) : null}
+        <div className={cn(
+          "relative grid h-16 grid-cols-[minmax(0,1fr)_minmax(0,auto)_minmax(0,1fr)] items-center gap-2 px-3",
+          mediaOverlay && "[&_button]:text-white [&_button]:drop-shadow-md [&_button:hover]:bg-black/25",
+        )}>
           <div className="min-w-0 justify-self-start">
             {mobileLeadingContent ?? (
               useSidebarTrigger ? (

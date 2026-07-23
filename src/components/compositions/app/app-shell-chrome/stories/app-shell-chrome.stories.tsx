@@ -139,6 +139,33 @@ function MobileChromeStory() {
   );
 }
 
+function MobileMediaOverlayHeaderStory() {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "shell");
+
+  return (
+    <div className="relative h-dvh overflow-hidden bg-gradient-to-br from-muted via-card to-secondary">
+      <div className="absolute inset-0 grid place-items-center px-8 text-center text-foreground/70">
+        <Type as="div" variant="h2">Bright video frame</Type>
+      </div>
+      <AppHeader
+        forceMobile
+        hideMobileBrand
+        labels={{
+          homeAriaLabel: copy.appHeader.homeAriaLabel,
+          openNavigationAriaLabel: copy.appHeader.openNavigationAriaLabel,
+        }}
+        mobileAppearance="media-overlay"
+        mobileCenterContent={<Type as="div" variant="h4">Pirate</Type>}
+        mobileTrailingContent={<div className="size-11" aria-hidden="true" />}
+        showCreateAction={false}
+        showNotificationsAction={false}
+        showProfileAction={false}
+      />
+    </div>
+  );
+}
+
 export const DesktopHeader: Story = {
   render: () => <HeaderOnlyStory />,
 };
@@ -176,6 +203,14 @@ export const MobileHeader: Story = {
     viewport: { defaultViewport: "mobile1" },
   },
   render: () => <HeaderOnlyStory forceMobile />,
+};
+
+export const MobileMediaOverlayHeader: Story = {
+  name: "Mobile header / Media overlay",
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => <MobileMediaOverlayHeaderStory />,
 };
 
 export const MobileHeaderArabic: Story = {

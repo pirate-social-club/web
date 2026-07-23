@@ -188,6 +188,24 @@ describe("composition smoke tests", () => {
     expect((markup.match(/<svg/g) ?? []).length).toBe(1);
   });
 
+  test("renders media-overlay mobile chrome with a scrim", () => {
+    const markup = render(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <SidebarProvider>
+          <AppHeader
+            forceMobile
+            mobileAppearance="media-overlay"
+            onHomeClick={() => undefined}
+          />
+        </SidebarProvider>
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain('data-appearance="media-overlay"');
+    expect(markup).toContain("from-black/75");
+    expect(markup).toContain("[&amp;_button]:text-white");
+  });
+
   test("renders sidebar requirements as a minimal section", () => {
     const markup = render(
       <CommunitySidebar

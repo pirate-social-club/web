@@ -34,6 +34,7 @@ import {
   buildSidebarSections,
 } from "./sidebar-sections";
 import { useShellMobileLayout } from "./use-shell-mobile-layout";
+import { VideoHomeChromeContext } from "./video-home-chrome-context";
 
 const LazyAuthenticatedRouteRenderer = React.lazy(async () => {
   const mod = await import("@/app/authenticated-route-renderer");
@@ -174,26 +175,29 @@ function NotificationShell({
   // Remove this once all routes are converted.
   const isMigratedRoute = route.kind === "home" || route.kind === "community-feed" || route.kind === "popular" || route.kind === "wallet";
   const unreadNotificationCount = notificationSummary.open_task_count + notificationSummary.unread_activity_count;
+  const [videoHomeChromeActive, setVideoHomeChromeActive] = React.useState(false);
   useNotificationBadges(unreadNotificationCount);
 
   return (
-    <SidebarProvider
-      className={cn(
-        "flex-col",
-        isChatRoute && "md:h-svh md:min-h-0 md:overflow-hidden",
-      )}
-      defaultOpen
-      dir={effectiveDir}
-      style={{
-        "--sidebar-width": "15.5rem",
-        "--sidebar-width-mobile": "18rem",
-        "--sidebar-width-icon": "3.75rem",
-      } as React.CSSProperties}
-    >
-      <DesktopChatWidgetProvider>
+    <VideoHomeChromeContext.Provider value={setVideoHomeChromeActive}>
+      <SidebarProvider
+        className={cn(
+          "flex-col",
+          isChatRoute && "md:h-svh md:min-h-0 md:overflow-hidden",
+        )}
+        defaultOpen
+        dir={effectiveDir}
+        style={{
+          "--sidebar-width": "15.5rem",
+          "--sidebar-width-mobile": "18rem",
+          "--sidebar-width-icon": "3.75rem",
+        } as React.CSSProperties}
+      >
+        <DesktopChatWidgetProvider>
         {isMobileStandaloneRoute || isStandaloneViewerRoute ? null : (
           <AppShellHeader
             copy={copy}
+            mobileMediaOverlay={route.kind === "home" && videoHomeChromeActive}
             route={route}
             unreadChatCount={unreadChatCount}
             unreadNotificationCount={unreadNotificationCount}
@@ -255,9 +259,10 @@ function NotificationShell({
             </>
           )}
         </div>
-        <Toaster />
-      </DesktopChatWidgetProvider>
-    </SidebarProvider>
+          <Toaster />
+        </DesktopChatWidgetProvider>
+      </SidebarProvider>
+    </VideoHomeChromeContext.Provider>
   );
 }
 

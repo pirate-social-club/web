@@ -97,11 +97,13 @@ function navigateBack(fallbackPath: string): void {
 
 export function AppShellHeader({
   copy,
+  mobileMediaOverlay = false,
   route,
   unreadChatCount = 0,
   unreadNotificationCount,
 }: {
   copy: ShellMessages;
+  mobileMediaOverlay?: boolean;
   route: AppRoute;
   unreadChatCount?: number;
   unreadNotificationCount: number;
@@ -168,6 +170,7 @@ export function AppShellHeader({
           {mobileHeaderTitle}
         </Type>
       ) : undefined}
+      mobileAppearance={mobileMediaOverlay ? "media-overlay" : "default"}
       mobileTrailingContent={mobileTrailingContent}
       onBackClick={mobileBackPath ? () => navigate(mobileBackPath) : isPublicProfileRoute ? () => navigateBack("/") : undefined}
       onChatClick={handleChatClick}

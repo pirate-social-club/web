@@ -186,6 +186,7 @@ export function toHomeFeedItem(
     booking: entry.booking ? {
       basePriceCents: entry.booking.base_price_cents,
       currency: entry.booking.currency,
+      hasAvailableSlot: entry.booking.has_available_slot,
       hostUserId: entry.booking.host_user_id,
       startingPriceCents: entry.booking.starting_price_cents,
     } : undefined,

@@ -42,12 +42,14 @@ describe("toPageVideoItem", () => {
       booking: {
         basePriceCents: 3500,
         currency: "USDC",
+        hasAvailableSlot: true,
         hostUserId: "usr_host",
         startingPriceCents: 2500,
       },
     })?.booking).toEqual({
       basePriceCents: 3500,
       currency: "USDC",
+      hasAvailableSlot: true,
       hostUserId: "usr_host",
       startingPriceCents: 2500,
     });

@@ -218,6 +218,7 @@ describe("VideoFeed", () => {
           booking: {
             basePriceCents: 5000,
             currency: "USDC",
+            hasAvailableSlot: true,
             hostUserId: "usr_host",
             startingPriceCents: 3500,
           },
@@ -231,7 +232,7 @@ describe("VideoFeed", () => {
     fireEvent.click(view.getByRole("button", { name: "Book" }));
 
     expect(view.getByRole("button", { name: "Book" })).toBeTruthy();
-    expect(view.queryByText("$35+")).toBeNull();
+    expect(view.getByText("$35+")).toBeTruthy();
     expect(view.queryByText(/USDC/u)).toBeNull();
     expect(calls).toEqual([{
       bookedItem: {
@@ -239,6 +240,7 @@ describe("VideoFeed", () => {
         booking: {
           basePriceCents: 5000,
           currency: "USDC",
+          hasAvailableSlot: true,
           hostUserId: "usr_host",
           startingPriceCents: 3500,
         },
@@ -251,6 +253,27 @@ describe("VideoFeed", () => {
     const view = render(<VideoFeed items={[item]} />);
 
     expect(view.queryByRole("button", { name: "Book" })).toBeNull();
+  });
+
+  test("omits booking when the canonical discovery window has no available slot", () => {
+    const view = render(
+      <VideoFeed
+        items={[{
+          ...item,
+          booking: {
+            basePriceCents: 5000,
+            currency: "USDC",
+            hasAvailableSlot: false,
+            hostUserId: "usr_host",
+            startingPriceCents: null,
+          },
+        }]}
+        onBook={() => {}}
+      />,
+    );
+
+    expect(view.queryByRole("button", { name: "Book" })).toBeNull();
+    expect(view.queryByText("$50+")).toBeNull();
   });
 
   test("reports playback state when a learning action launches", () => {
@@ -480,6 +503,7 @@ describe("VideoFeed", () => {
       booking: {
         basePriceCents: 3500,
         currency: "USDC",
+        hasAvailableSlot: true,
         hostUserId: "usr_host",
         startingPriceCents: 2500,
       },
@@ -494,6 +518,7 @@ describe("VideoFeed", () => {
       booking: {
         basePriceCents: 3500,
         currency: "USDC" as const,
+        hasAvailableSlot: true,
         hostUserId: "usr_host",
         startingPriceCents: 2500,
       },
@@ -519,6 +544,7 @@ describe("VideoFeed", () => {
       booking: {
         basePriceCents: 3500,
         currency: "USDC" as const,
+        hasAvailableSlot: true,
         hostUserId: "usr_host",
         startingPriceCents: 2500,
       },

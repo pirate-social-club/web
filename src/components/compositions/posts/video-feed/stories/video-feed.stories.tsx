@@ -60,6 +60,7 @@ const bookableCreator: VideoFeedItem = {
   booking: {
     basePriceCents: 5000,
     currency: "USDC",
+    hasAvailableSlot: true,
     hostUserId: "usr_scarlett",
     startingPriceCents: 3500,
   },
@@ -359,7 +360,7 @@ export const BookableCreator: Story = {
   parameters: {
     docs: {
       description: {
-        story: "The Book action remains available while the feed omits an unverified starting-price claim.",
+        story: "The Book action shows the lowest currently available canonical slot price in the 14-day window.",
       },
     },
   },
@@ -371,7 +372,7 @@ export const MobileBookableCreator: Story = {
   parameters: {
     docs: {
       description: {
-        story: "The mobile rail keeps the Book action without displaying an unverified starting price.",
+        story: "The compact rail shows the canonical 14-day starting price without exposing settlement currency.",
       },
     },
     viewport: { defaultViewport: "mobile1" },

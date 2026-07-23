@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import { toast } from "@/components/primitives/sonner";
+import { FeedBookingSheet } from "@/components/compositions/bookings/feed-booking-sheet/feed-booking-sheet";
+import type { ResolvedSlot } from "@/components/compositions/bookings/view-models";
 import { VideoFeed } from "../video-feed";
 import type { VideoFeedItem } from "../video-feed.types";
 
@@ -69,20 +71,45 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const BOOKING_SLOTS: ResolvedSlot[] = [
+  { startUtc: "2026-09-21T09:00:00.000Z", endUtc: "2026-09-21T09:30:00.000Z", priceCents: 3500, available: true },
+  { startUtc: "2026-09-21T10:00:00.000Z", endUtc: "2026-09-21T10:30:00.000Z", priceCents: 3500, available: true },
+  { startUtc: "2026-09-21T11:00:00.000Z", endUtc: "2026-09-21T11:30:00.000Z", priceCents: 3500, available: false },
+  { startUtc: "2026-09-22T14:00:00.000Z", endUtc: "2026-09-22T14:30:00.000Z", priceCents: 5000, available: true },
+] as ResolvedSlot[];
+
 function InteractiveFeed({ items, initialItemId }: { items: VideoFeedItem[]; initialItemId?: string }) {
+  // The container owns the overlay; the feed only reports intent and pauses the item behind it.
+  const [bookingItem, setBookingItem] = React.useState<VideoFeedItem | undefined>(undefined);
+
   return (
-    <VideoFeed
-      initialItemId={initialItemId}
-      items={items}
-      onBook={(item) => toast.message(`Open schedule: ${item.publisher.handle}`)}
-      onBoost={(item) => toast.message(`Boost: ${item.song?.title}`)}
-      onComment={(item) => toast.message(`Comments: ${item.id}`)}
-      onGateRequired={() => toast.message("Join this community to interact")}
-      onKaraoke={(item) => toast.message(`Sing: ${item.song?.title}`)}
-      onLike={(item) => toast.message(`Liked: ${item.id}`)}
-      onShare={(item) => toast.message(`Shared: ${item.id}`)}
-      onStudy={(item) => toast.message(`Study: ${item.song?.title}`)}
-    />
+    <>
+      <VideoFeed
+        bookingOpenItemId={bookingItem?.id}
+        initialItemId={initialItemId}
+        items={items}
+        onBook={(item) => setBookingItem(item)}
+        onBoost={(item) => toast.message(`Boost: ${item.song?.title}`)}
+        onComment={(item) => toast.message(`Comments: ${item.id}`)}
+        onGateRequired={() => toast.message("Join this community to interact")}
+        onKaraoke={(item) => toast.message(`Sing: ${item.song?.title}`)}
+        onLike={(item) => toast.message(`Liked: ${item.id}`)}
+        onShare={(item) => toast.message(`Shared: ${item.id}`)}
+        onStudy={(item) => toast.message(`Study: ${item.song?.title}`)}
+      />
+      <FeedBookingSheet
+        basePriceCents={3500}
+        handle={bookingItem?.publisher.handle ?? ""}
+        onOpenChange={(open) => { if (!open) setBookingItem(undefined); }}
+        onSelectSlot={(slot) => {
+          setBookingItem(undefined);
+          toast.message(`Checkout: ${slot.startUtc}`);
+        }}
+        open={bookingItem !== undefined}
+        slots={BOOKING_SLOTS}
+        viewerTimezone={"Europe/Vienna" as never}
+      />
+    </>
   );
 }
 

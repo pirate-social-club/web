@@ -25,6 +25,12 @@ import { cn } from "@/lib/utils";
 import type { VideoFeedCapability, VideoFeedItem } from "./video-feed.types";
 
 export interface VideoFeedProps {
+  /**
+   * Id of the item whose booking overlay is open. That item pauses while the overlay is up and
+   * returns to whatever playback state it had once this clears — the feed is never re-ordered or
+   * remounted, so the viewer comes back to the same frame.
+   */
+  bookingOpenItemId?: string;
   className?: string;
   initialItemId?: string;
   initialMuted?: boolean;
@@ -304,7 +310,7 @@ function VideoFeedSlide({
             value={compactCount(item.likeCount)}
           />
           <VideoAction icon={<ChatCircle className="size-5" weight="fill" />} label="Comments" onClick={() => runInteraction(onComment)} value={compactCount(item.commentCount)} />
-          {item.booking ? (
+          {item.booking && onBook ? (
             <VideoAction
               icon={<CalendarCheck className="size-5" weight="fill" />}
               label="Book"
@@ -321,7 +327,7 @@ function VideoFeedSlide({
   );
 }
 
-export function VideoFeed({ className, initialItemId, initialMuted = true, initialPaused = false, initialPlaybackSeconds, items, ...actions }: VideoFeedProps) {
+export function VideoFeed({ bookingOpenItemId, className, initialItemId, initialMuted = true, initialPaused = false, initialPlaybackSeconds, items, ...actions }: VideoFeedProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const initialIndex = Math.max(0, items.findIndex((item) => item.id === initialItemId));
   const [activeIndex, setActiveIndex] = React.useState(initialIndex);
@@ -442,7 +448,7 @@ export function VideoFeed({ className, initialItemId, initialMuted = true, initi
             onToggleMute={toggleMute}
             onTogglePlayback={togglePlayback}
             muted={muted}
-            paused={pausedItemIds.has(item.id)}
+            paused={pausedItemIds.has(item.id) || bookingOpenItemId === item.id}
             preload={Math.abs(index - activeIndex) <= 1 ? "auto" : "metadata"}
           />
         </div>

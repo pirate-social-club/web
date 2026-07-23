@@ -185,6 +185,45 @@ describe("VideoFeed", () => {
     expect(view.container.innerHTML).not.toContain("private.mp4");
   });
 
+  test("omits booking when the container supplies no booking handler", () => {
+    const view = render(<VideoFeed items={[{ ...item, booking: { priceLabel: "$35" } }]} />);
+
+    expect(view.queryByRole("button", { name: "Book" })).toBeNull();
+  });
+
+  test("pauses the item whose booking overlay is open and resumes it on dismiss", () => {
+    const bookable = { ...item, booking: { priceLabel: "$35" } };
+    const view = render(<VideoFeed items={[bookable]} onBook={() => {}} />);
+    const video = view.container.querySelector<HTMLVideoElement>("video")!;
+    const paused: string[] = [];
+    const played: string[] = [];
+    Object.defineProperty(video, "pause", { configurable: true, value: () => { paused.push("pause"); } });
+    Object.defineProperty(video, "play", { configurable: true, value: () => { played.push("play"); return undefined; } });
+
+    view.rerender(<VideoFeed bookingOpenItemId={bookable.id} items={[bookable]} onBook={() => {}} />);
+    expect(paused.length).toBeGreaterThan(0);
+
+    // Dismissing returns the item to its prior (playing) state rather than leaving it stuck.
+    view.rerender(<VideoFeed items={[bookable]} onBook={() => {}} />);
+    expect(played.length).toBeGreaterThan(0);
+  });
+
+  test("keeps an intentional pause after the booking overlay is dismissed", () => {
+    const bookable = { ...item, booking: { priceLabel: "$35" } };
+    const view = render(
+      <VideoFeed bookingOpenItemId={bookable.id} initialPaused initialItemId={bookable.id} items={[bookable]} onBook={() => {}} />,
+    );
+    const video = view.container.querySelector<HTMLVideoElement>("video")!;
+    const played: string[] = [];
+    Object.defineProperty(video, "play", { configurable: true, value: () => { played.push("play"); return undefined; } });
+
+    view.rerender(
+      <VideoFeed initialPaused initialItemId={bookable.id} items={[bookable]} onBook={() => {}} />,
+    );
+
+    expect(played).toEqual([]);
+  });
+
   test("pauses active playback while the document is hidden", () => {
     const calls: HTMLVideoElement[] = [];
     const view = render(<VideoFeed items={feedItems()} />);

@@ -230,7 +230,7 @@ export const DesktopInFlowHeader: Story = {
 };
 
 export const NarrowDesktopStage: Story = {
-  name: "Viewport / Narrow desktop dock stage",
+  name: "Viewport / Narrow desktop dock stage / Portrait",
   args: { items: [] },
   parameters: {
     docs: {
@@ -243,6 +243,24 @@ export const NarrowDesktopStage: Story = {
   render: () => (
     <div className="h-dvh w-96 overflow-hidden bg-background">
       <InteractiveFeed items={[publisherAvatarRail]} />
+    </div>
+  ),
+};
+
+export const NarrowDesktopLandscapeStage: Story = {
+  name: "Viewport / Narrow desktop dock stage / Landscape",
+  args: { items: [] },
+  parameters: {
+    docs: {
+      description: {
+        story: "Landscape media uses the same container-owned sizing contract, preserving 16:9 without escaping beneath the rail in a narrow three-column shell.",
+      },
+    },
+    viewport: { defaultViewport: "desktop" },
+  },
+  render: () => (
+    <div className="h-dvh w-96 overflow-hidden bg-background">
+      <InteractiveFeed items={[landscape]} />
     </div>
   ),
 };

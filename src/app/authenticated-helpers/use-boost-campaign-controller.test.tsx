@@ -227,6 +227,10 @@ describe("useBoostCampaignController", () => {
     await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
     expect(calls.transfer).toBe(1);
     expect(calls.confirm).toBe(1);
+    act(() => view.result.current.sheetProps.onOpenChange?.(false));
+    act(() => view.result.current.openBoost());
+    expect(view.result.current.sheetProps.state).toBe("active");
+    expect(calls.transfer).toBe(1);
   });
 
   test("retries confirmation after an ambiguous error without sending twice", async () => {

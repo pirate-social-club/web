@@ -6,7 +6,6 @@ import {
   CheckCircle,
   Clock,
   Confetti,
-  CurrencyDollar,
   Fingerprint,
   Gift,
   HourglassMedium,
@@ -29,21 +28,6 @@ import { Input } from "@/components/primitives/input";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
-type RewardEarnedState =
-  | "earned-today"
-  | "already-earned-today"
-  | "daily-cap-reached"
-  | "milestone-bonus";
-
-type WalletRewardsCardState =
-  | "zero"
-  | "accruing"
-  | "cashout-ready"
-  | "verify-required"
-  | "payout-pending"
-  | "payout-complete"
-  | "error";
-
 export type VerifyHumanSheetState =
   | "intro"
   | "provider-selection"
@@ -59,11 +43,6 @@ export type CashoutSheetState =
   | "success"
   | "failure";
 
-export interface SongRewardBadgeProps {
-  amountLabel: string;
-  className?: string;
-}
-
 export interface SongRewardOfferProps {
   amountLabel: string;
   className?: string;
@@ -71,11 +50,17 @@ export interface SongRewardOfferProps {
   minScoreBps: number;
 }
 
+export interface RewardQualificationNoticeProps {
+  amountLabel: string;
+  className?: string;
+  expiresAt?: number | null;
+  outcomeReason?: "campaign_ended" | "budget_unavailable" | "identity_duplicate" | "owner_blocked" | "score" | "verification_window_expired" | null;
+  status: "checking" | "pending_verification" | "credited" | "expired" | "unavailable";
+}
+
 export function rewardAmountLabel(amountCents: number, chainId: number): string {
-  const amount = (amountCents / 100).toFixed(2);
-  if (chainId === 8453) return `$${amount} USDC`;
-  if (chainId === 84532) return `${amount} testnet USDC (Base Sepolia)`;
-  return `${amount} USDC (chain ${chainId})`;
+  void chainId;
+  return rewardCtaAmountLabel(amountCents);
 }
 
 export function rewardCtaAmountLabel(amountCents: number): string {
@@ -83,34 +68,12 @@ export function rewardCtaAmountLabel(amountCents: number): string {
   return `$${Number.isInteger(amount) ? amount.toFixed(0) : amount.toFixed(2)}`;
 }
 
-export interface StreakRewardEarnedProps {
-  activityKind?: "karaoke" | "study";
-  amountLabel: string;
-  className?: string;
-  milestoneLabel?: string;
-  state: RewardEarnedState;
-}
-
-export interface WalletRewardsCardProps {
-  availableLabel: string;
-  balanceLabel: string;
-  className?: string;
-  earnedTodayLabel: string;
-  errorMessage?: string;
-  minimumCashoutLabel: string;
-  onCashout?: () => void;
-  onRetry?: () => void;
-  onVerify?: () => void;
-  pendingAmountLabel?: string;
-  state: WalletRewardsCardState;
-}
-
 export interface VerifyHumanSheetProps {
   forceMobile?: boolean;
   onOpenChange?: (open: boolean) => void;
   onSelectProvider?: (provider: "self" | "very" | "zkpassport") => void;
   open: boolean;
-  providers?: readonly ("self" | "very" | "zkpassport")[];
+  providers: readonly ("self" | "very" | "zkpassport")[];
   state: VerifyHumanSheetState;
 }
 
@@ -129,36 +92,6 @@ export interface CashoutSheetProps {
   recipientLabel: string;
   state: CashoutSheetState;
   txHashLabel?: string;
-}
-
-function InlinePill({
-  children,
-  className,
-  icon,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <div className={cn("inline-flex min-h-9 items-center gap-2 rounded-full border border-border-soft bg-card px-3 text-foreground shadow-sm", className)}>
-      {icon}
-      <Type as="span" className="leading-none" variant="body-strong">
-        {children}
-      </Type>
-    </div>
-  );
-}
-
-export function SongRewardBadge({ amountLabel, className }: SongRewardBadgeProps) {
-  return (
-    <InlinePill
-      className={className}
-      icon={<CurrencyDollar aria-hidden="true" className="size-4 text-primary" weight="bold" />}
-    >
-      Earn {amountLabel}/day
-    </InlinePill>
-  );
 }
 
 export function SongRewardOffer({
@@ -185,10 +118,10 @@ export function SongRewardOffer({
             Reward
           </Type>
           <Type as="div" variant="h3">
-            Earn {amountLabel} per UTC day
+            Earn {amountLabel} today
           </Type>
           <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
-            {qualificationLabel}
+            {qualificationLabel}. Resets daily.
           </Type>
         </div>
       </div>
@@ -196,159 +129,72 @@ export function SongRewardOffer({
   );
 }
 
-export function StreakRewardEarned({
-  activityKind = "study",
+export function RewardQualificationNotice({
   amountLabel,
   className,
-  milestoneLabel,
-  state,
-}: StreakRewardEarnedProps) {
-  const activityLabel = activityKind === "karaoke" ? "karaoke pass" : "study";
+  expiresAt,
+  outcomeReason,
+  status,
+}: RewardQualificationNoticeProps) {
+  const daysLeft = expiresAt == null
+    ? null
+    : Math.max(1, Math.ceil((expiresAt * 1_000 - Date.now()) / 86_400_000));
+  const unavailableCopy = {
+    budget_unavailable: "Today's rewards have all been claimed.",
+    campaign_ended: "This boost has ended.",
+    identity_duplicate: "You already got this song's reward today.",
+    owner_blocked: "Rewards are unavailable for this song.",
+    score: "Your score was below the reward target.",
+    verification_window_expired: "The time to claim this reward ended.",
+  }[outcomeReason ?? "campaign_ended"];
   const content = {
-    "earned-today": {
-      icon: <CheckCircle aria-hidden="true" className="size-5 text-primary" weight="fill" />,
-      title: `${amountLabel} reward pending`,
-      body: `Today's ${activityLabel} qualified. Reward credit updates after confirmation.`,
+    checking: {
+      icon: <HourglassMedium aria-hidden="true" className="size-6 text-primary" weight="duotone" />,
+      title: `Checking your ${amountLabel} reward…`,
+      body: "This usually takes less than a minute.",
     },
-    "already-earned-today": {
-      icon: <Clock aria-hidden="true" className="size-5 text-muted-foreground" weight="bold" />,
-      title: "Reward already pending",
-      body: "You already qualified this song today. Come back tomorrow to keep the streak paying.",
+    pending_verification: {
+      icon: <Fingerprint aria-hidden="true" className="size-6 text-primary" weight="duotone" />,
+      title: `${amountLabel} pending`,
+      body: daysLeft == null
+        ? "Verify to claim it."
+        : `Verify within ${daysLeft} ${daysLeft === 1 ? "day" : "days"} to claim it.`,
     },
-    "daily-cap-reached": {
-      icon: <WarningCircle aria-hidden="true" className="size-5 text-warning" weight="fill" />,
-      title: "Daily reward cap reached",
-      body: "Your streak still counts, but today's reward budget is already used.",
+    credited: {
+      icon: <Confetti aria-hidden="true" className="size-6 text-primary" weight="fill" />,
+      title: `+${amountLabel} 🎉`,
+      body: "Added to your rewards.",
     },
-    "milestone-bonus": {
-      icon: <Confetti aria-hidden="true" className="size-5 text-primary" weight="fill" />,
-      title: `${milestoneLabel ?? "Milestone"} bonus pending`,
-      body: `${amountLabel} will be added after this streak milestone is confirmed.`,
+    expired: {
+      icon: <Clock aria-hidden="true" className="size-6 text-muted-foreground" weight="bold" />,
+      title: "Reward expired",
+      body: unavailableCopy,
     },
-  } satisfies Record<RewardEarnedState, { body: string; icon: React.ReactNode; title: string }>;
-
-  const selected = content[state];
+    unavailable: {
+      icon: <WarningCircle aria-hidden="true" className="size-6 text-muted-foreground" weight="fill" />,
+      title: "No reward this time",
+      body: unavailableCopy,
+    },
+  } satisfies Record<RewardQualificationNoticeProps["status"], { body: string; icon: React.ReactNode; title: string }>;
+  const selected = content[status];
 
   return (
-    <div className={cn("flex items-start gap-3 rounded-lg border border-border-soft bg-card p-4 shadow-sm", className)}>
-      <div className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-muted">
+    <Card className={cn("border-primary/30 bg-primary-subtle p-4 text-center shadow-none", className)}>
+      <div className="mx-auto mb-2 grid size-11 place-items-center rounded-full bg-background">
         {selected.icon}
       </div>
-      <div className="min-w-0">
-        <Type as="div" variant="body-strong">
-          {selected.title}
-        </Type>
-        <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
-          {selected.body}
-        </Type>
-      </div>
-    </div>
+      <Type as="p" variant="h3">{selected.title}</Type>
+      <Type as="p" className="mt-1 text-muted-foreground" variant="caption">{selected.body}</Type>
+    </Card>
   );
 }
 
 function RewardSummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-border-soft py-3 last:border-b-0">
-      <Type as="div" className="text-muted-foreground" variant="body">
-        {label}
-      </Type>
-      <Type as="div" className="tabular-nums" variant="body-strong">
-        {value}
-      </Type>
+      <Type as="div" className="text-muted-foreground" variant="body">{label}</Type>
+      <Type as="div" className="tabular-nums" variant="body-strong">{value}</Type>
     </div>
-  );
-}
-
-export function WalletRewardsCard({
-  availableLabel,
-  balanceLabel,
-  className,
-  earnedTodayLabel,
-  errorMessage,
-  minimumCashoutLabel,
-  onCashout,
-  onRetry,
-  onVerify,
-  pendingAmountLabel,
-  state,
-}: WalletRewardsCardProps) {
-  const isCashoutReady = state === "cashout-ready";
-  const needsVerify = state === "verify-required";
-  const isPending = state === "payout-pending";
-  const isComplete = state === "payout-complete";
-  const isError = state === "error";
-
-  return (
-    <Card className={cn("rounded-lg border-border bg-card p-5 shadow-none", className)}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <Type as="div" className="text-muted-foreground" variant="body">
-            Rewards
-          </Type>
-          <Type as="div" className="mt-0.5 text-4xl font-semibold leading-tight tabular-nums" variant="h1">
-            {balanceLabel}
-          </Type>
-        </div>
-        <div className="grid size-11 place-items-center rounded-full bg-primary/10 text-primary">
-          <Gift aria-hidden="true" className="size-6" weight="fill" />
-        </div>
-      </div>
-
-      <div className="mt-4 border-y border-border-soft">
-        <RewardSummaryRow label="Available" value={availableLabel} />
-        <RewardSummaryRow label="Earned today" value={earnedTodayLabel} />
-        <RewardSummaryRow label="Minimum transfer" value={minimumCashoutLabel} />
-        {pendingAmountLabel ? <RewardSummaryRow label="Pending transfer" value={pendingAmountLabel} /> : null}
-      </div>
-
-      {state === "zero" ? (
-        <Type as="p" className="mt-4 text-muted-foreground" variant="body">
-          Study a rewarded song to start earning.
-        </Type>
-      ) : null}
-      {state === "accruing" ? (
-        <Type as="p" className="mt-4 text-muted-foreground" variant="body">
-          Keep practicing to reach the transfer minimum.
-        </Type>
-      ) : null}
-      {needsVerify ? (
-        <Type as="p" className="mt-4 text-muted-foreground" variant="body">
-          Verify once to claim rewards.
-        </Type>
-      ) : null}
-      {isPending ? (
-        <Type as="p" className="mt-4 text-muted-foreground" variant="body">
-          Reward claim is waiting for network confirmation.
-        </Type>
-      ) : null}
-      {isComplete ? (
-        <Type as="p" className="mt-4 text-muted-foreground" variant="body">
-          Reward was sent to your wallet.
-        </Type>
-      ) : null}
-      {isError ? (
-        <Type as="p" className="mt-4 text-destructive" variant="body">
-          {errorMessage ?? "Transfer failed. Try again in a moment."}
-        </Type>
-      ) : null}
-
-      <div className="mt-5 flex gap-3">
-        {needsVerify ? (
-          <Button className="h-12 flex-1" onClick={onVerify}>
-            Verify
-          </Button>
-        ) : (
-          <Button className="h-12 flex-1" disabled={!isCashoutReady || !onCashout} onClick={onCashout}>
-            Claim
-          </Button>
-        )}
-        {isError ? (
-          <Button className="h-12" onClick={onRetry} variant="outline">
-            Retry
-          </Button>
-        ) : null}
-      </div>
-    </Card>
   );
 }
 
@@ -391,7 +237,7 @@ export function VerifyHumanSheet({
   onOpenChange,
   onSelectProvider,
   open,
-  providers = ["self", "very", "zkpassport"],
+  providers,
   state,
 }: VerifyHumanSheetProps) {
   const isTerminal = state === "success" || state === "failure" || state === "conflict";
@@ -455,10 +301,10 @@ export function VerifyHumanSheet({
             <HourglassMedium aria-hidden="true" className="size-5 animate-pulse text-primary" weight="bold" />
             <div>
               <Type as="div" variant="body-strong">
-                Waiting for proof
+                {providers[0] === "self" ? "Waiting for the Self app…" : "Waiting for verification…"}
               </Type>
               <Type as="div" className="text-muted-foreground" variant="caption">
-                Finish the provider flow to claim rewards.
+                Finish the check on your phone.
               </Type>
             </div>
           </div>
@@ -477,7 +323,7 @@ export function VerifyHumanSheet({
               </Type>
               <Type as="div" className="mt-1 text-muted-foreground" variant="body">
                 {state === "success" ? "You can claim rewards from this account." : null}
-                {state === "failure" ? "The provider could not complete the proof. Try another provider or retry." : null}
+                {state === "failure" ? "We could not verify you. Close this message and try again." : null}
                 {state === "conflict" ? "This proof is already connected to another Pirate account. Use that account or contact support." : null}
               </Type>
             </div>
@@ -554,10 +400,10 @@ export function CashoutSheet({
             <HourglassMedium aria-hidden="true" className="size-5 animate-pulse text-primary" weight="bold" />
             <div>
               <Type as="div" variant="body-strong">
-                Payout submitted
+                Sending your {amountLabel}…
               </Type>
               <Type as="div" className="text-muted-foreground" variant="caption">
-                Waiting for network confirmation.
+                Usually under a minute.
               </Type>
             </div>
           </div>
@@ -569,10 +415,10 @@ export function CashoutSheet({
               <CheckCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" weight="fill" />
               <div>
                 <Type as="div" variant="body-strong">
-                  Claim complete
+                  {amountLabel} is in your wallet 🎉
                 </Type>
                 <Type as="div" className="mt-1 text-muted-foreground" variant="body">
-                  {amountLabel} was sent to {recipientLabel}.
+                  Reward sent successfully.
                 </Type>
               </div>
             </div>
@@ -602,9 +448,10 @@ export function CashoutSheet({
         ) : null}
 
         {txHashLabel && state !== "amount-entry" ? (
-          <Type as="div" className="mt-4 truncate rounded-lg bg-muted px-3 py-2 font-mono text-muted-foreground" variant="caption">
-            {txHashLabel}
-          </Type>
+          <details className="mt-4 rounded-lg bg-muted px-3 py-2 text-muted-foreground">
+            <summary className="cursor-pointer text-sm font-medium">Details</summary>
+            <Type as="div" className="mt-2 truncate font-mono" variant="caption">{txHashLabel}</Type>
+          </details>
         ) : null}
 
         <ModalFooter className="mt-6">

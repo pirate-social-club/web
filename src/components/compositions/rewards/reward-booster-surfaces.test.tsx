@@ -30,12 +30,12 @@ mock.module("@/components/compositions/system/modal/modal", () => ({
 
 const { BoostCampaignSheet, SongRewardPolicySheet } = await import("./reward-booster-surfaces");
 
-test("compose selects karaoke, study, or both without promising refunds", () => {
+test("compose selects karaoke, study, or either and explains upfront funding", () => {
   let selected = "";
   const view = render(
     <BoostCampaignSheet
+      budgetDisplayLabel="$10.00"
       budgetLabel="10.00"
-      chainLabel="Base Sepolia"
       dailyRewardLabel="1.00"
       eligibleActivity="karaoke"
       onEligibleActivityChange={(activity) => { selected = activity; }}
@@ -46,39 +46,40 @@ test("compose selects karaoke, study, or both without promising refunds", () => 
     />,
   );
 
-  fireEvent.click(view.getByText("Both"));
+  fireEvent.click(view.getByText("Either"));
   expect(selected).toBe("either");
-  expect(view.getByText(/funding is final/i)).toBeTruthy();
+  expect(view.getByText(/You pay \$10\.00 now/i)).toBeTruthy();
+  expect(view.getByText(/Unused money cannot be withdrawn yet/i)).toBeTruthy();
   expect(view.queryByText(/refund whatever is left/i)).toBeNull();
 });
 
-test("quote exposes the pinned sender and blocks the wrong wallet", () => {
+test("quote hides payment infrastructure and blocks when the pinned wallet is unavailable", () => {
   const view = render(
     <BoostCampaignSheet
+      budgetDisplayLabel="$10.00"
       budgetLabel="10.00"
-      chainLabel="Base Sepolia"
       dailyRewardLabel="1.00"
       eligibleActivity="karaoke"
       fundingAmountLabel="$10.00"
       onOpenChange={() => undefined}
       open
       rewardCountLabel="10 rewards"
-      senderAddressLabel="0x2222…2222"
       state="quote"
-      treasuryAddress="0x3333333333333333333333333333333333333333"
       walletMismatch
     />,
   );
 
-  expect(view.getByText("0x2222…2222")).toBeTruthy();
-  expect(view.getByText("Send from my wallet").closest("button")?.disabled).toBe(true);
+  expect(view.queryByText(/0x2222/i)).toBeNull();
+  expect(view.queryByText(/0x3333/i)).toBeNull();
+  expect(view.getByText("Pay $10.00").closest("button")?.disabled).toBe(true);
+  expect(view.getByText(/Connect your Pirate Wallet/i)).toBeTruthy();
 });
 
 test("preparing hides quote-expiry recovery details", () => {
   const view = render(
     <BoostCampaignSheet
+      budgetDisplayLabel="$10.00"
       budgetLabel="10.00"
-      chainLabel="Base Sepolia"
       dailyRewardLabel="1.00"
       eligibleActivity="karaoke"
       onOpenChange={() => undefined}
@@ -107,8 +108,8 @@ test("owner policy explains that blocking does not return funding", () => {
 test("terminal funding review exposes the transaction and support reference without a retry", () => {
   const view = render(
     <BoostCampaignSheet
+      budgetDisplayLabel="$10.00"
       budgetLabel="10.00"
-      chainLabel="Base Sepolia"
       dailyRewardLabel="1.00"
       eligibleActivity="karaoke"
       errorMessage="Funds were received, but the campaign was not activated."

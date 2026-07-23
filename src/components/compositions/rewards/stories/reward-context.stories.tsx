@@ -11,8 +11,8 @@ import { fiveChainSections, sharedWalletAddress } from "@/components/composition
 
 import {
   CashoutSheet,
+  RewardQualificationNotice,
   SongRewardOffer,
-  StreakRewardEarned,
   VerifyHumanSheet,
   type CashoutSheetState,
   type VerifyHumanSheetState,
@@ -138,10 +138,10 @@ export const StudyCompletionRewardPending: Story = {
           onPrimaryAction={() => undefined}
           onStudyAgain={() => undefined}
           rewardSlot={(
-            <SongRewardOffer
-              amountLabel="0.40 testnet USDC (Base Sepolia)"
-              eligibleActivity="either"
-              minScoreBps={7_000}
+            <RewardQualificationNotice
+              amountLabel="$0.40"
+              expiresAt={Math.floor(Date.now() / 1000) + 6 * 86_400}
+              status="pending_verification"
             />
           )}
           state={{
@@ -160,11 +160,6 @@ export const StudyCompletionRewardPending: Story = {
           }}
           title="Midnight Waves"
         />
-        <StreakRewardEarned
-          amountLabel={rewardAmounts.daily}
-          milestoneLabel="7-day streak"
-          state="milestone-bonus"
-        />
       </div>
     </StandardRoutePage>
   ),
@@ -175,7 +170,7 @@ export const StudyQuestionRewardMotivation: Story = {
   render: () => (
     <StandardRoutePage size="rail">
       <div className="flex flex-col gap-4">
-        <StreakRewardEarned amountLabel={rewardAmounts.daily} state="already-earned-today" />
+        <SongRewardOffer amountLabel={rewardAmounts.daily} eligibleActivity="study" minScoreBps={7_000} />
         <SongStudySurface
           artistName="The Castaways"
           artworkSrc="https://picsum.photos/seed/pirate-study/160/160"

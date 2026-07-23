@@ -33,7 +33,6 @@ import { toast } from "@/components/primitives/sonner";
 import type { WalletHubChainId, WalletHubChainSection, WalletHubRewardsSummary } from "@/components/compositions/wallet/wallet-hub/wallet-hub.types";
 import type { ApiRewardCashoutResponse, ApiRewardsSummaryResponse } from "@/lib/api/client-api-types";
 import { getPirateNetworkConfig } from "@/lib/network-config";
-import { formatCompactAddress } from "@/lib/formatting/address";
 import { useResettableTimeout } from "@/hooks/use-resettable-timeout";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { findPirateEmbeddedEvmWallet } from "@/lib/auth/privy-wallet";
@@ -70,6 +69,7 @@ const EMPTY_REWARDS_SUMMARY: ApiRewardsSummaryResponse = {
   balance_cents: 0,
   today_earned_cents: 0,
   recent_events: [],
+  recent_qualifications: [],
   pending_verification: {
     count: 0,
     conditional_cents: 0,
@@ -295,10 +295,8 @@ function formatNativeBalance(balance: bigint, decimals = 18): string {
 }
 
 function formatRewardCents(cents: number, chainId: number): string {
-  const amount = (cents / 100).toFixed(2);
-  if (chainId === 8453) return `$${amount} USDC`;
-  if (chainId === 84532) return `${amount} testnet USDC`;
-  return `${amount} USDC (chain ${chainId})`;
+  void chainId;
+  return formatRewardBalanceCents(cents);
 }
 
 function formatRewardBalanceCents(cents: number): string {
@@ -306,9 +304,15 @@ function formatRewardBalanceCents(cents: number): string {
 }
 
 function rewardAssetLabel(chainId: number): string {
-  if (chainId === 8453) return "Base · USDC";
-  if (chainId === 84532) return "Base Sepolia · testnet USDC";
-  return `Chain ${chainId} · USDC`;
+  if (chainId === 8453) return "";
+  if (chainId === 84532) return "Test rewards — no cash value";
+  return "Dollar rewards";
+}
+
+function pendingRewardDeadline(expiresAt: number | null): string {
+  if (expiresAt == null) return "Verify to claim this reward.";
+  const days = Math.max(1, Math.ceil((expiresAt * 1_000 - Date.now()) / 86_400_000));
+  return `Verify within ${days} ${days === 1 ? "day" : "days"} to claim.`;
 }
 
 function parseUsdCentsInput(value: string): number | null {
@@ -317,11 +321,6 @@ function parseUsdCentsInput(value: string): number | null {
   const [whole, fraction = ""] = normalized.split(".");
   const cents = Number.parseInt(whole, 10) * 100 + Number.parseInt(fraction.padEnd(2, "0").slice(0, 2), 10);
   return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
-}
-
-function shortAddress(address: string | null): string {
-  if (!address) return "Base wallet";
-  return formatCompactAddress(address, { truncateAt: 14 });
 }
 
 function baseTxUrl(txHash: string | null): string | undefined {
@@ -367,6 +366,7 @@ function walletRewardsSummary(input: {
       amountLabel,
       assetLabel,
       pending: true,
+      supportingLabel: "Sending your reward — usually under a minute.",
     };
   }
   if (input.rewardsVerificationPending) {
@@ -376,6 +376,7 @@ function walletRewardsSummary(input: {
       amountLabel,
       assetLabel,
       pending: true,
+      supportingLabel: "Waiting for verification on your phone.",
     };
   }
   if (input.rewards.cashout.eligible) {
@@ -393,6 +394,7 @@ function walletRewardsSummary(input: {
         actionLabel: "Claim",
         amountLabel,
         assetLabel,
+        supportingLabel: "Practice a boosted song to earn.",
       };
     }
     return {
@@ -400,6 +402,7 @@ function walletRewardsSummary(input: {
       amountLabel,
       assetLabel,
       onAction: input.onVerify,
+      supportingLabel: pendingRewardDeadline(input.rewards.pending_verification.earliest_expires_at),
     };
   }
   if (input.rewards.pending_verification.conditional_cents > 0) {
@@ -409,13 +412,18 @@ function walletRewardsSummary(input: {
       amountLabel,
       assetLabel,
       pending: true,
+      supportingLabel: "Getting your reward ready — check back in a minute.",
     };
   }
+  const remainingCents = Math.max(0, input.rewards.cashout.min_cents - input.rewards.balance_cents);
   return {
     actionDisabled: true,
     actionLabel: "Claim",
     amountLabel,
     assetLabel,
+    supportingLabel: remainingCents > 0
+      ? `Earn ${formatRewardBalanceCents(remainingCents)} more to claim.`
+      : "Practice a boosted song to earn.",
   };
 }
 
@@ -769,10 +777,17 @@ export function CurrentUserWalletPage() {
   const openRewardsCashoutForSummary = React.useCallback((summary: ApiRewardsSummaryResponse) => {
     if (!summary.cashout.eligible || summary.balance_cents <= 0) return;
     setRewardsCashoutAmountLabel((summary.balance_cents / 100).toFixed(2));
+    setRewardsCashoutAttempt((current) => {
+      const attempt = current?.amountCents === summary.balance_cents
+        ? current
+        : { amountCents: summary.balance_cents, idempotencyKey: `wallet-rewards:${Date.now()}:${crypto.randomUUID()}` };
+      storeRewardsCashoutAttempt(attempt);
+      return attempt;
+    });
     setRewardsCashoutTxHash(null);
     setRewardsCashoutRecipientAddress(walletAddress);
     setRewardsCashoutErrorMessage(null);
-    setRewardsCashoutState("amount-entry");
+    setRewardsCashoutState("confirm");
     setRewardsCashoutOpen(true);
   }, [walletAddress]);
 
@@ -992,8 +1007,11 @@ export function CurrentUserWalletPage() {
         void refreshRewardsSummary();
       },
       onVerify: () => {
-        setRewardsVerifyState("provider-selection");
+        const provider = rewardsSummary.cashout.verification_provider;
+        if (!provider) return;
+        setRewardsVerifyState("pending");
         setRewardsVerifyOpen(true);
+        void handleRewardsVerifyProvider(provider);
       },
       rewards: rewardsSummary,
       rewardsCashoutPending: rewardsCashoutPending || rewardsCashoutState === "pending",
@@ -1068,7 +1086,7 @@ export function CurrentUserWalletPage() {
             setRewardsCashoutPollGeneration((generation) => generation + 1);
           }}
           open={rewardsCashoutOpen}
-          recipientLabel={shortAddress(rewardsCashoutRecipientAddress ?? walletAddress)}
+          recipientLabel="your Pirate wallet"
           state={rewardsCashoutState}
           txHashLabel={rewardsCashoutTxHash ?? undefined}
         />

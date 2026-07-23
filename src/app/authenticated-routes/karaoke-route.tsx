@@ -5,6 +5,11 @@ import { loadSongRoutePost } from "@/app/authenticated-helpers/load-song-route-p
 import { navigate } from "@/app/router";
 import { routeReturnPath } from "@/app/authenticated-helpers/video-viewer-return-state";
 import { KaraokeAudioSurface } from "@/components/compositions/karaoke/karaoke-audio-surface";
+import {
+  RewardQualificationNotice,
+  SongRewardOffer,
+  rewardAmountLabel,
+} from "@/components/compositions/rewards/reward-surfaces";
 import { toKaraokeStageLines } from "@/components/compositions/karaoke/lyric-transform";
 import { toScorableKaraokeLines } from "@/components/compositions/karaoke/karaoke-stage-bridge";
 import { useKaraokeScoring } from "@/components/compositions/karaoke/scoring/use-karaoke-scoring-session";
@@ -13,7 +18,7 @@ import { Button } from "@/components/primitives/button";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
-import type { ApiPublicRewardOffer } from "@/lib/api/client-api-types";
+import type { ApiPublicRewardOffer, ApiRewardQualificationSummary } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -68,6 +73,7 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
   const session = useSession();
   const { busy: authBusy, configured: authConfigured, connect, loadError: authLoadError } = usePiratePrivyRuntime();
   const contentLocale = useRouteContentLocale();
+  const [rewardQualification, setRewardQualification] = React.useState<ApiRewardQualificationSummary | null>(null);
   const [state, setState] = React.useState<KaraokeRouteState>({ phase: "loading" });
 
   React.useEffect(() => {
@@ -168,6 +174,35 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
   // scoringEnabled's preconditions (incl. communityId) so the CTA only promises
   // scoring when sign-in will actually unlock the Start panel.
   const needsAuth = Boolean(communityId && !session?.accessToken && scorableLines.length > 0);
+  const rewardOffer = state.phase === "ready" ? state.rewardOffer : null;
+  const karaokeEnded = scoring.state.status === "ended";
+
+  React.useEffect(() => {
+    if (!karaokeEnded || !rewardOffer || !session?.accessToken) return;
+    let cancelled = false;
+    let timeout: number | undefined;
+    let attempt = 0;
+    const poll = async () => {
+      const summary = await api.rewards.getSummary().catch(() => null);
+      if (cancelled) return;
+      const qualification = summary?.recent_qualifications?.find((item) =>
+        item.post_id === postId && item.qualification_basis === "karaoke"
+      ) ?? null;
+      if (qualification) {
+        setRewardQualification(qualification);
+        if (qualification.status !== "checking") return;
+      }
+      if (attempt < 5) {
+        timeout = window.setTimeout(() => { void poll(); }, 1_500 * 2 ** attempt++);
+      }
+    };
+    setRewardQualification(null);
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
+  }, [api, karaokeEnded, postId, rewardOffer, session?.accessToken]);
 
   if (state.phase === "loading") {
     return (
@@ -191,6 +226,22 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
       onExit={() => navigate(routeReturnPath(`/p/${encodeURIComponent(postId)}`))}
       onRequestSignIn={connect ?? undefined}
       onViewScores={() => navigate(`/p/${encodeURIComponent(postId)}/karaoke/leaderboard`)}
+      rewardSlot={rewardOffer ? (
+        karaokeEnded ? (
+          <RewardQualificationNotice
+            amountLabel={rewardAmountLabel(rewardOffer.daily_reward_cents, rewardOffer.chain_id)}
+            expiresAt={rewardQualification?.expires_at}
+            outcomeReason={rewardQualification?.outcome_reason}
+            status={rewardQualification?.status ?? "checking"}
+          />
+        ) : (
+          <SongRewardOffer
+            amountLabel={rewardAmountLabel(rewardOffer.daily_reward_cents, rewardOffer.chain_id)}
+            eligibleActivity={rewardOffer.eligible_activity}
+            minScoreBps={rewardOffer.min_score_bps}
+          />
+        )
+      ) : undefined}
       scoring={scoring}
       showSignInCta={needsAuth}
       signInBusy={authBusy}

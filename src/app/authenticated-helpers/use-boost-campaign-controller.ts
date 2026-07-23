@@ -61,16 +61,6 @@ function idempotencyKey(prefix: string): string {
   return `${prefix}_${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`}`;
 }
 
-function shortAddress(value: string): string {
-  return value.length > 14 ? `${value.slice(0, 8)}…${value.slice(-6)}` : value;
-}
-
-function chainLabel(chainId: number): string {
-  if (chainId === 8453) return "Base";
-  if (chainId === 84532) return "Base Sepolia";
-  return `chain ${chainId}`;
-}
-
 function campaignStorageKey(communityId: string, postId: string): string {
   return `${CAMPAIGN_STORAGE_PREFIX}${communityId}:${postId}`;
 }
@@ -425,7 +415,8 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       input.requestAuth();
       return;
     }
-    if (sheetState === "funding-review") setSheetState("funding-review");
+    if (campaign && ["scheduled", "active"].includes(campaign.status)) setSheetState("active");
+    else if (sheetState === "funding-review") setSheetState("funding-review");
     else if (!quote) {
       setErrorMessage(undefined);
       setSheetState("compose");
@@ -454,7 +445,6 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
 
   const explorerBase = getPirateNetworkConfig().base.explorerUrl.replace(/\/$/u, "");
   const rewardCount = plan?.rewardCount ?? 0;
-  const quoteSecondsRemaining = quote ? Math.max(0, quote.expires_at - nowSeconds) : 0;
   const availabilityProblem = hasCampaignConflict
     ? "This song already has a live boost. A new campaign can be funded after it ends."
     : thirdPartyBlocked
@@ -484,16 +474,19 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       open: policyOpen,
     },
     sheetProps: {
+      budgetDisplayLabel: formatUsdLabel((plan?.budgetCents ?? 0) / 100) ?? "$0.00",
       budgetLabel: budgetInput,
-      budgetPresets: ["5.00", "10.00", "25.00"],
-      chainLabel: quote ? chainLabel(quote.chain_id) : capabilities ? chainLabel(capabilities.chain_id) : "Base",
+      budgetPresets: ["$5.00", "$10.00", "$25.00"],
       dailyRewardLabel: dailyRewardInput,
       eligibleActivity,
       eligibleActivities: capabilities?.eligible_activities,
+      endsAtLabel: campaign
+        ? new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(new Date(campaign.ends_at * 1_000))
+        : undefined,
       errorMessage,
       explorerTxUrl: transactionHash ? `${explorerBase}/tx/${transactionHash}` : undefined,
-      expiresInLabel: quote && sheetState === "quote" ? `${Math.floor(quoteSecondsRemaining / 60)}:${String(quoteSecondsRemaining % 60).padStart(2, "0")}` : undefined,
       fundingAmountLabel: quote ? formatUsdLabel(quote.amount_cents / 100) ?? undefined : undefined,
+      fundedLabel: campaign ? formatUsdLabel(campaign.funded_cents / 100) ?? undefined : undefined,
       onBudgetChange: setBudgetInput,
       onConfirm: handleConfirm,
       onDailyRewardChange: setDailyRewardInput,
@@ -522,11 +515,11 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
           ? boostPlanProblemLabel(plan.problem, limits!)
           : undefined),
       rewardCountLabel: boostRewardCountLabel(rewardCount),
+      rewardsPaidLabel: campaign ? formatUsdLabel(campaign.credited_cents / 100) ?? undefined : undefined,
+      remainingLabel: campaign ? formatUsdLabel(campaign.remaining_cents / 100) ?? undefined : undefined,
       retryLabel: transactionHash ? "Retry confirmation" : "Start again",
-      senderAddressLabel: quote ? shortAddress(quote.sender_address) : undefined,
       state: sheetState,
       supportReference,
-      treasuryAddress: quote?.treasury_address,
       walletMismatch,
     } satisfies BoostCampaignSheetProps,
   };

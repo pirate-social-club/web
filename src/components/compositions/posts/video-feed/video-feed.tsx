@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   BookOpen,
+  CalendarCheck,
   ChatCircle,
   CurrencyDollar,
   DotsThree,
@@ -31,6 +32,7 @@ export interface VideoFeedProps {
   initialPlaybackSeconds?: number;
   items: VideoFeedItem[];
   onActiveItemChange?: (item: VideoFeedItem, index: number) => void;
+  onBook?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onComment?: (item: VideoFeedItem) => void;
   onBoost?: (item: VideoFeedItem) => void;
   onGateRequired?: (item: VideoFeedItem) => void;
@@ -121,6 +123,7 @@ function VideoFeedSlide({
   active,
   allowAutoplay,
   item,
+  onBook,
   onBoost,
   paused,
   preload,
@@ -301,6 +304,14 @@ function VideoFeedSlide({
             value={compactCount(item.likeCount)}
           />
           <VideoAction icon={<ChatCircle className="size-5" weight="fill" />} label="Comments" onClick={() => runInteraction(onComment)} value={compactCount(item.commentCount)} />
+          {item.booking ? (
+            <VideoAction
+              icon={<CalendarCheck className="size-5" weight="fill" />}
+              label="Book"
+              onClick={() => runPlaybackInteraction(onBook)}
+              value={item.booking.priceLabel ?? "Book"}
+            />
+          ) : null}
           <CapabilityAction capability={item.study} icon={<BookOpen className="size-5" weight="fill" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
           <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-5" weight="fill" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
           <VideoAction icon={<ShareNetwork className="size-5" weight="fill" />} label="Share" onClick={() => onShare?.(item)} />

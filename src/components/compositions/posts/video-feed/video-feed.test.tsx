@@ -76,6 +76,30 @@ describe("VideoFeed", () => {
     expect(view.getByLabelText("More video actions")).toBeTruthy();
   });
 
+  test("exposes booking only for a server-stated bookable publisher", () => {
+    const calls: unknown[] = [];
+    const view = render(
+      <VideoFeed
+        initialMuted={false}
+        items={[{ ...item, booking: { priceLabel: "$35" } }]}
+        onBook={(bookedItem, state) => calls.push({ bookedItem, state })}
+      />,
+    );
+    const video = view.container.querySelector<HTMLVideoElement>("video")!;
+    Object.defineProperty(video, "currentTime", { configurable: true, value: 8 });
+
+    fireEvent.click(view.getByRole("button", { name: "Book" }));
+
+    expect(view.getByText("$35")).toBeTruthy();
+    expect(calls).toEqual([{ bookedItem: { ...item, booking: { priceLabel: "$35" } }, state: { muted: false, paused: false, playbackSeconds: 8 } }]);
+  });
+
+  test("omits booking when the publisher is not marked bookable", () => {
+    const view = render(<VideoFeed items={[item]} />);
+
+    expect(view.queryByRole("button", { name: "Book" })).toBeNull();
+  });
+
   test("reports playback state when a learning action launches", () => {
     const calls: unknown[] = [];
     const view = render(<VideoFeed initialMuted={false} items={[item]} onStudy={(_item, state) => calls.push(state)} />);

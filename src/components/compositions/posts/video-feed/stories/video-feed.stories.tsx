@@ -52,6 +52,14 @@ const ageBlocked: VideoFeedItem = {
   viewerState: "age_proof_required",
 };
 
+const bookableCreator: VideoFeedItem = {
+  ...portrait,
+  booking: { priceLabel: "$35" },
+  id: "video_bookable_creator",
+  publisher: { handle: "mara.english", kind: "profile" },
+  caption: "Practice the chorus, then book a private pronunciation class with me.",
+};
+
 const meta = {
   title: "Compositions/Posts/VideoFeed",
   component: VideoFeed,
@@ -66,6 +74,7 @@ function InteractiveFeed({ items, initialItemId }: { items: VideoFeedItem[]; ini
     <VideoFeed
       initialItemId={initialItemId}
       items={items}
+      onBook={(item) => toast.message(`Open schedule: ${item.publisher.handle}`)}
       onBoost={(item) => toast.message(`Boost: ${item.song?.title}`)}
       onComment={(item) => toast.message(`Comments: ${item.id}`)}
       onGateRequired={() => toast.message("Join this community to interact")}
@@ -105,4 +114,19 @@ export const NoLinkedSong: Story = {
 export const RewardedActionsAndBoost: Story = {
   args: { items: [] },
   render: () => <InteractiveFeed items={[{ ...portrait, boostEligibility: "eligible" }]} />,
+};
+
+export const BookableCreator: Story = {
+  args: { items: [] },
+  render: () => <InteractiveFeed items={[bookableCreator]} />,
+};
+
+export const MobileBookableCreator: Story = {
+  args: { items: [] },
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+  render: () => <InteractiveFeed items={[bookableCreator]} />,
+};
+
+export const Empty: Story = {
+  args: { items: [] },
 };

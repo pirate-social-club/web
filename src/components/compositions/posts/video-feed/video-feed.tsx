@@ -239,8 +239,8 @@ function VideoFeedSlide({
         <div className={cn(
           "relative h-full w-full overflow-hidden bg-black md:rounded-[var(--radius-xl)]",
           item.media.orientation === "portrait"
-            ? "md:h-[min(88dvh,50rem)] md:w-[min(49.5dvh,28rem)]"
-            : "md:h-auto md:max-h-[min(88dvh,50rem)] md:w-[min(72vw,64rem)] md:aspect-video",
+            ? "md:h-[min(88dvh,50rem)] md:w-[min(49.5dvh,28rem)] md:max-w-[calc(100%-4rem)]"
+            : "md:h-auto md:max-h-[min(88dvh,50rem)] md:w-[min(72vw,64rem)] md:max-w-[calc(100%-4rem)] md:aspect-video",
         )}>
         {mediaMounted ? (
           <video

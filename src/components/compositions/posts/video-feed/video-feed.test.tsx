@@ -130,6 +130,13 @@ describe("VideoFeed", () => {
     expect(video.className).not.toContain("--feed-chrome");
   });
 
+  test("caps desktop media width against its actual stage column", () => {
+    const view = render(<VideoFeed items={[item]} />);
+    const frame = view.container.querySelector<HTMLVideoElement>("video")!.parentElement!;
+
+    expect(frame.className).toContain("md:max-w-[calc(100%-4rem)]");
+  });
+
   test("annotates existing learning actions and exposes boost only from server-stated eligibility", () => {
     const rewarded = {
       ...item,

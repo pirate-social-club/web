@@ -24,6 +24,7 @@ import { Spinner } from "@/components/primitives/spinner";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
+import { useRequestAuth } from "@/hooks/use-request-auth";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { HomePage } from "./home-routes";
@@ -100,6 +101,7 @@ export function VideoHomePage() {
   const session = useSession();
   const contentLocale = useRouteContentLocale();
   const { copy } = useRouteMessages();
+  const requestAuth = useRequestAuth();
   const capabilityLoader = useVideoViewerSongCapabilities(contentLocale);
   const [entries, setEntries] = React.useState<ApiHomeFeedItem[]>([]);
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
@@ -258,7 +260,10 @@ export function VideoHomePage() {
   }, []);
 
   const onLike = React.useCallback((item: VideoFeedItem) => {
-    if (!session?.accessToken) return;
+    if (!session?.accessToken) {
+      requestAuth(copy.home.videoLikeAuthRequired);
+      return;
+    }
     const entry = entries.find((candidate) => candidate.post.post.id === item.id);
     if (!entry) return;
     const wasLiked = entry.post.viewer_vote === 1;
@@ -274,7 +279,7 @@ export function VideoHomePage() {
     void request.catch(() => {
       setEntries((current) => current.map((candidate) => candidate.post.post.id === item.id ? entry : candidate));
     });
-  }, [api.posts, entries, session?.accessToken]);
+  }, [api.posts, copy.home.videoLikeAuthRequired, entries, requestAuth, session?.accessToken]);
 
   const launchSongAction = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState, href?: string) => {
     if (!href) return;
@@ -376,7 +381,13 @@ export function VideoHomePage() {
           if (boostTarget && item.song?.sourcePostId === boostTarget.sourcePostId) boostTarget.open();
         }}
         onBook={openBooking}
-        onComment={(item) => navigate(`/p/${encodeURIComponent(item.id)}`)}
+        onComment={(item) => {
+          if (!session?.accessToken) {
+            requestAuth(copy.home.videoCommentAuthRequired);
+            return;
+          }
+          navigate(`/p/${encodeURIComponent(item.id)}`);
+        }}
         onKaraoke={(item, playback) => launchSongAction(item, playback, item.song?.karaokeHref)}
         onLike={onLike}
         onShare={(item) => void navigator.share?.({ url: `${window.location.origin}/p/${encodeURIComponent(item.id)}` })}

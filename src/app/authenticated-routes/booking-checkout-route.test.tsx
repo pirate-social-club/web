@@ -115,6 +115,19 @@ describe("BookingCheckoutPage", () => {
     expect((document.body.textContent ?? "").includes("expired")).toBe(false);
   });
 
+  test("sends community attribution only when creating the hold", async () => {
+    render(<BookingCheckoutPage communityId="com_feed" hostUserId="usr_host" />);
+    await waitFor(() => {
+      expect(fakeApi.bookings.createBookingHold).toHaveBeenCalledWith("usr_host", {
+        slot_end_utc: "2099-01-05T10:30:00.000Z",
+        slot_start_utc: "2099-01-05T10:00:00.000Z",
+        source_community_id: "com_feed",
+      });
+    });
+    expect(fakeApi.bookings.quoteBookingHold).toHaveBeenCalledWith("hold_1");
+    expect(fakeApi.bookings.confirmBookingHold).not.toHaveBeenCalled();
+  });
+
   // Logged out: must show a sign-in prompt and NEVER hit the authenticated hold API (which would 401
   // into "Authentication failed").
   test("prompts sign-in and creates no hold when logged out", async () => {

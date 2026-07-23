@@ -577,6 +577,113 @@ describe("useGatedActionRunner", () => {
     expect(runner.hook.result.current.modalState).toBe(null);
   });
 
+  test("open-participates instead of joining when another OR branch is already satisfied", async () => {
+    const solves: string[] = [];
+    const allowedContexts: Array<{ altchaPayload?: string | null } | undefined> = [];
+    const initialGate = gate(
+      "joinable",
+      undefined,
+      [altchaRequirement, veryRequirement],
+      { gateMatchMode: "any", viewerFollowing: false },
+    );
+    const runner = renderRunner({
+      gateData: initialGate,
+      loadCommunityGate: async () => gate(
+        "joinable",
+        undefined,
+        [altchaRequirement, veryRequirement],
+        { gateMatchMode: "any", viewerFollowing: true },
+      ),
+      sessionUser: verifiedVeryUser,
+      solveActionAltcha: async (input) => {
+        solves.push(input.action);
+        return "solved-payload";
+      },
+    });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        gateData: initialGate,
+        onAllowed: (context) => {
+          allowedContexts.push(context);
+        },
+        postId: "post-1",
+        voteValue: 1,
+      });
+      expect(result).toBe("allowed");
+    });
+
+    expect(solves).toEqual(["post:post-1:1"]);
+    expect(allowedContexts).toEqual([{ altchaPayload: "solved-payload" }]);
+    expect(runner.successes).toEqual(["Following Test Community"]);
+    expect(runner.calls).not.toContain("open:community-1");
+    expect(runner.hook.result.current.modalState).toBe(null);
+  });
+
+  test("falls back to the action-bound browser check for a joinable mixed OR gate", async () => {
+    const runner = renderRunner({
+      gateData: gate(
+        "joinable",
+        undefined,
+        [altchaRequirement, veryRequirement],
+        { gateMatchMode: "any" },
+      ),
+      sessionUser: verifiedVeryUser,
+      solveActionAltcha: async () => {
+        throw new Error("challenge rate limited");
+      },
+    });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: () => undefined,
+        postId: "post-1",
+        voteValue: 1,
+      });
+      expect(result).toBe("blocked");
+    });
+
+    expect(runner.pendingInteraction?.altchaAction).toBe("post:post-1:1");
+    expect(runner.pendingInteraction?.altchaScope).toBe("vote");
+    expect(runner.hook.result.current.modalState?.title).toBe("Quick browser check");
+    expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:1:vote");
+    expect(runner.hook.result.current.modalState?.requirements).toEqual([]);
+  });
+
+  test("does not add a PoW step to public replies when a joinable identity branch is satisfied", async () => {
+    const solves: string[] = [];
+    const runner = renderRunner({
+      gateData: gate(
+        "joinable",
+        undefined,
+        [altchaRequirement, veryRequirement],
+        { gateMatchMode: "any" },
+      ),
+      sessionUser: verifiedVeryUser,
+      solveActionAltcha: async (input) => {
+        solves.push(input.action);
+        return "solved-payload";
+      },
+    });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "reply_post",
+        communityId: "community-1",
+        onAllowed: () => undefined,
+        postId: "post-1",
+      });
+      expect(result).toBe("allowed");
+    });
+
+    expect(solves).toEqual([]);
+    expect(runner.hook.result.current.modalState).toBe(null);
+  });
+
   test("does not open-participate when identity is required alongside PoW", async () => {
     const solves: string[] = [];
     const runner = renderRunner({

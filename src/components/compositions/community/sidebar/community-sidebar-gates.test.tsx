@@ -32,13 +32,13 @@ describe("CommunitySidebarGates", () => {
   test("leaves nested expressions to the expression sentence", () => {
     const { queryByText, getByText } = render(
       <CommunitySidebarGates
-        expressionLabel="Private ID proof and (Palm scan or Proof of work)"
+        expressionLabel="Self.xyz ID proof and (Palm scan or Proof of work)"
         items={items}
         mode="any"
       />,
     );
 
-    expect(getByText("Private ID proof and (Palm scan or Proof of work)")).toBeTruthy();
+    expect(getByText("Self.xyz ID proof and (Palm scan or Proof of work)")).toBeTruthy();
     expect(queryByText("OR")).toBeNull();
   });
 });

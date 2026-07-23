@@ -44,7 +44,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         },
         "uniqueHuman": {
           "very": "Palm scan",
-          "self": "Private ID proof",
+          "self": "Self.xyz ID proof",
           "zkpassport": "ZKPassport proof",
           "any": "Human proof"
         },
@@ -2094,7 +2094,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         },
         "uniqueHuman": {
           "very": "فحص راحة اليد",
-          "self": "إثبات هوية خاص",
+          "self": "إثبات هوية Self.xyz",
           "zkpassport": "إثبات ZKPassport",
           "any": "إثبات أنك إنسان"
         },
@@ -4144,7 +4144,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         },
         "uniqueHuman": {
           "very": "掌纹扫描",
-          "self": "私密身份证明",
+          "self": "Self.xyz 身份证明",
           "zkpassport": "ZKPassport 证明",
           "any": "真人证明"
         },

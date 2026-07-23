@@ -454,7 +454,7 @@ export function CommunityGatesEditorPage({
     effectiveMembershipMode === "gated"
     && groupedAuthoringState.showMatchModeControl;
   const uniqueHumanGateTitle = uniqueHumanGate?.provider === "self"
-    ? "Private ID proof (Self.xyz)"
+    ? "Self.xyz ID proof"
     : mc.uniqueHumanTitle;
   const palmScanPowFallbackEnabled = Boolean(
     uniqueHumanGate?.provider === "very"

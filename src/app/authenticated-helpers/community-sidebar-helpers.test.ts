@@ -99,7 +99,7 @@ describe("buildCommunitySidebar", () => {
     } as Community);
 
     expect(sidebar.requirementsMode).toBe("all");
-    expect(sidebar.gateExpressionLabel).toBe("Private ID proof and (Palm scan or Proof of work)");
+    expect(sidebar.gateExpressionLabel).toBe("Self.xyz ID proof and (Palm scan or Proof of work)");
     expect(sidebar.showFlatGateOrMarkers).toBe(false);
   });
 
@@ -189,7 +189,7 @@ describe("buildCommunitySidebarRequirements", () => {
 
     expect(buildCommunitySidebarRequirements({
       gateSummaries: [{ gate_type: "unique_human", accepted_providers: ["self"] }],
-    })).toEqual(["Private ID proof"]);
+    })).toEqual(["Self.xyz ID proof"]);
 
     expect(buildCommunitySidebarRequirements({
       gateSummaries: [{ gate_type: "unique_human", accepted_providers: ["self", "very"] }],
@@ -423,7 +423,7 @@ describe("buildCommunityPreviewSidebar", () => {
     });
 
     expect(sidebar.requirementsMode).toBe("any");
-    expect(sidebar.gateExpressionLabel).toBe("Private ID proof and (Palm scan or Proof of work)");
+    expect(sidebar.gateExpressionLabel).toBe("Self.xyz ID proof and (Palm scan or Proof of work)");
     expect(sidebar.showFlatGateOrMarkers).toBe(false);
     expect(sidebar.hasActionTimeCheck).toBe(true);
   });

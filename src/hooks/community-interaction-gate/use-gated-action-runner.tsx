@@ -13,6 +13,7 @@ import {
   getMissingCapabilitiesFromGateEvaluation,
   hasAltchaProofAction,
 } from "@/lib/identity-gates";
+import { canSatisfyGateWithAltchaOnly } from "@/lib/altcha-gate-path";
 import { logger } from "@/lib/logger";
 import {
   createDefaultBlockedModalState,
@@ -45,10 +46,6 @@ type GatedActionRunnerCopy = InteractionGateCopy & {
 type VerificationCapabilities = User["verification_capabilities"];
 
 const PRE_POW_SESSION_REFRESH_TIMEOUT_MS = 2_000;
-
-type RequiredActionNode = Omit<NonNullable<NonNullable<CommunityGateData["eligibility"]["gate_evaluation"]>["required_action_set"]>["items"][number], "items"> & {
-  items?: RequiredActionNode[];
-};
 
 function resolveGateMessagesLocale(locale: string): "ar" | "en" | "pseudo" | "zh" {
   if (locale === "pseudo") return "pseudo";
@@ -243,42 +240,12 @@ function getAltchaActionConfig(input: {
   return null;
 }
 
-function actionNodeHasAltchaOnlyPath(action: RequiredActionNode): boolean {
-  if (action.kind !== "set") {
-    return action.capability === "altcha_pow";
-  }
-
-  const items = action.items ?? [];
-  if (items.length === 0) {
-    return false;
-  }
-
-  if (action.mode === "any") {
-    return items.some(actionNodeHasAltchaOnlyPath);
-  }
-
-  return items.every(actionNodeHasAltchaOnlyPath);
-}
-
 function canSatisfyWithAltchaOnly(gate: CommunityGateData): boolean {
-  const actionSet = gate.eligibility.gate_evaluation?.required_action_set as RequiredActionNode | null | undefined;
-  if (actionSet) {
-    return actionNodeHasAltchaOnlyPath(actionSet);
-  }
-
-  const missingCapabilities = getMissingCapabilitiesFromGateEvaluation(gate.eligibility);
-  if (missingCapabilities.length > 0) {
-    return missingCapabilities.every((capability) => capability === "altcha_pow");
-  }
-
-  const requirements = gate.preview.membership_gate_summaries;
-  const hasAltcha = requirements.some((summary) => summary.gate_type === "altcha_pow");
-  if (!hasAltcha) {
-    return false;
-  }
-
-  return requirements.every((summary) => summary.gate_type === "altcha_pow")
-    || gate.gateMatchMode === "any";
+  return canSatisfyGateWithAltchaOnly({
+    eligibility: gate.eligibility,
+    gateMatchMode: gate.gateMatchMode,
+    requirements: gate.preview.membership_gate_summaries,
+  });
 }
 
 export function useGatedActionRunner({

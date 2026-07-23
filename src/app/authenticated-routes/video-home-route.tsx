@@ -73,6 +73,7 @@ export function VideoHomePage() {
   } | null>(null);
   const [bookingSlots, setBookingSlots] = React.useState<ResolvedSlot[]>([]);
   const [bookingLoading, setBookingLoading] = React.useState(false);
+  const [bookingError, setBookingError] = React.useState(false);
   const loadingMoreRef = React.useRef(false);
   const bookingRequestHostRef = React.useRef<string | null>(null);
   const bookingTimezone = React.useMemo(viewerTimezone, []);
@@ -208,32 +209,48 @@ export function VideoHomePage() {
     navigate(`${destination.pathname}${destination.search}`);
   }, []);
 
-  const openBooking = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState) => {
-    if (!item.booking) return;
-    const hostUserId = item.booking.hostUserId;
-    const cached = bookingCache.get(hostUserId);
-    bookingRequestHostRef.current = hostUserId;
-    setBookingTarget({ item, playback });
-    setBookingSlots(cached ?? []);
-    setBookingLoading(!cached);
-    if (cached) return;
-
+  const loadBookingAvailability = React.useCallback((hostUserId: string) => {
+    setBookingError(false);
+    setBookingLoading(true);
     void bookingCache.ensure(hostUserId)
       .then((slots) => {
         if (bookingRequestHostRef.current === hostUserId) setBookingSlots(slots);
       })
       .catch(() => {
-        if (bookingRequestHostRef.current === hostUserId) setBookingSlots([]);
+        if (bookingRequestHostRef.current === hostUserId) {
+          setBookingSlots([]);
+          setBookingError(true);
+        }
       })
       .finally(() => {
         if (bookingRequestHostRef.current === hostUserId) setBookingLoading(false);
       });
   }, [bookingCache]);
 
+  const openBooking = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState) => {
+    if (!item.booking) return;
+    const hostUserId = item.booking.hostUserId;
+    const cached = bookingCache.get(hostUserId);
+    bookingRequestHostRef.current = hostUserId;
+    setBookingTarget({ item, playback });
+    setBookingError(false);
+    setBookingSlots(cached ?? []);
+    setBookingLoading(!cached);
+    if (!cached) loadBookingAvailability(hostUserId);
+  }, [bookingCache, loadBookingAvailability]);
+
+  const retryBookingAvailability = React.useCallback(() => {
+    const hostUserId = bookingTarget?.item.booking?.hostUserId;
+    if (!hostUserId) return;
+    bookingRequestHostRef.current = hostUserId;
+    loadBookingAvailability(hostUserId);
+  }, [bookingTarget, loadBookingAvailability]);
+
   const setBookingOpen = React.useCallback((open: boolean) => {
     if (open) return;
     bookingRequestHostRef.current = null;
     setBookingTarget(null);
+    setBookingError(false);
     setBookingLoading(false);
     setBookingSlots([]);
   }, []);
@@ -284,10 +301,12 @@ export function VideoHomePage() {
       {bookingTarget?.item.booking ? (
         <FeedBookingSheet
           basePriceCents={bookingTarget.item.booking.basePriceCents}
+          error={bookingError}
           getSlotHref={(slot) => checkoutPathForFeedSlot(bookingTarget.item.booking!.hostUserId, slot)}
           handle={bookingTarget.item.publisher.handle}
           loading={bookingLoading}
           onOpenChange={setBookingOpen}
+          onRetry={retryBookingAvailability}
           onSelectSlot={selectBookingSlot}
           open
           slots={bookingSlots}

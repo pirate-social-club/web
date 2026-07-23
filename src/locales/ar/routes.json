@@ -696,6 +696,8 @@
     "bookTab": "التقويم",
     "bookPriceLabel": "{price} USDC لكل جلسة",
     "bookNoAvailability": "لا توجد أوقات متاحة الآن — تحقق لاحقًا.",
+    "bookAvailabilityError": "تعذر تحميل الأوقات المتاحة.",
+    "bookAvailabilityRetry": "حاول مرة أخرى",
     "bookSheetTitle": "احجز مع {handle}",
     "bookSheetDescription": "اختر وقتًا لحصة فردية. ستؤكد وتدفع في الخطوة التالية.",
     "bookOwnerLiveNote": "حجوزاتك مفعّلة. يمكن لأي شخص لديه رابط ملفك الشخصي حجز وقت متاح.",

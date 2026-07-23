@@ -111,8 +111,8 @@ describe("VideoFeed", () => {
     expect(slide.className).toContain("md:[--feed-chrome-bottom:0px]");
 
     expect(view.getByLabelText("Turn sound on").className).toContain("top-[calc(var(--feed-chrome-top)+0.75rem)]");
-    expect(view.getByLabelText("More video actions").parentElement!.className)
-      .toContain("top-[calc(var(--feed-chrome-top)+0.75rem)]");
+    // Overflow is inset via the rail's bottom offset now that it no longer floats over the media;
+    // its placement is covered by "keeps overflow in the rail on every slide".
     expect(view.getByRole("button", { name: "Like" }).closest("div.absolute")!.className)
       .toContain("bottom-[calc(var(--feed-chrome-bottom)+1.25rem)]");
   });
@@ -343,6 +343,32 @@ describe("VideoFeed", () => {
     );
 
     expect(played).toEqual([]);
+  });
+
+  test("keeps overflow in the rail on every slide, not floating over the media", () => {
+    const view = render(<VideoFeed items={[item]} />);
+    const trigger = view.getByLabelText("More video actions");
+    const rail = view.getByRole("button", { name: "Like" }).closest("div.absolute");
+
+    // Consistent placement is what keeps the rail the same height between videos.
+    expect(trigger.closest("div.absolute")).toBe(rail);
+    // The old treatment pinned it to the media's top-right, under the app chrome.
+    expect(trigger.closest("div")?.className ?? "").not.toContain("--feed-chrome-top");
+  });
+
+  test("renders overflow even when the item is not boost eligible", () => {
+    const view = render(<VideoFeed items={[{ ...item, boostEligibility: "unavailable" }]} />);
+    expect(view.getByLabelText("More video actions")).toBeTruthy();
+  });
+
+  test("rings the publisher avatar and uses a neutral fallback over media", () => {
+    const view = render(<VideoFeed items={[{ ...item, publisher: { handle: "songs.pirate", kind: "community" } }]} />);
+    const avatar = view.container.querySelector("[data-video-publisher-avatar]")!;
+
+    expect(avatar.className).toContain("ring-2");
+    // The generated identicon is a data: URI; the neutral fallback must replace it on this surface.
+    expect(avatar.innerHTML).not.toContain("data:image/svg+xml");
+    expect(avatar.querySelector("svg")).toBeTruthy();
   });
 
   test("pauses active playback while the document is hidden", () => {

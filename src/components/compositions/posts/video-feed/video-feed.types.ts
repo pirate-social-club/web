@@ -19,6 +19,8 @@ export interface VideoFeedItem {
   commentCount: number;
   interactionGate?: "open" | "membership_required";
   karaoke: VideoFeedCapability;
+  /** Viewer has downvoted. Surfaced in the overflow menu, never as a rail action. */
+  downvoted?: boolean;
   likeCount: number;
   liked?: boolean;
   media: {

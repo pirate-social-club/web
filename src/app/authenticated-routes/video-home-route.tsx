@@ -281,6 +281,32 @@ export function VideoHomePage() {
     });
   }, [api.posts, copy.home.videoLikeAuthRequired, entries, requestAuth, session?.accessToken]);
 
+  // Downvote mirrors onLike, with one extra case: switching from up to down has to take the
+  // upvote back off the count, because the rail renders upvote_count rather than a net score.
+  const onDownvote = React.useCallback((item: VideoFeedItem) => {
+    if (!session?.accessToken) {
+      requestAuth(copy.home.videoDownvoteAuthRequired);
+      return;
+    }
+    const entry = entries.find((candidate) => candidate.post.post.id === item.id);
+    if (!entry) return;
+    const wasDownvoted = entry.post.viewer_vote === -1;
+    const wasUpvoted = entry.post.viewer_vote === 1;
+    setEntries((current) => current.map((candidate) => candidate.post.post.id === item.id ? {
+      ...candidate,
+      post: {
+        ...candidate.post,
+        downvote_count: Math.max(0, candidate.post.downvote_count + (wasDownvoted ? -1 : 1)),
+        upvote_count: Math.max(0, candidate.post.upvote_count - (wasUpvoted ? 1 : 0)),
+        viewer_vote: wasDownvoted ? null : -1,
+      },
+    } : candidate));
+    const request = wasDownvoted ? api.posts.clearVote(item.id) : api.posts.vote(item.id, -1);
+    void request.catch(() => {
+      setEntries((current) => current.map((candidate) => candidate.post.post.id === item.id ? entry : candidate));
+    });
+  }, [api.posts, copy.home.videoDownvoteAuthRequired, entries, requestAuth, session?.accessToken]);
+
   const launchSongAction = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState, href?: string) => {
     if (!href) return;
     const returnPath = currentRelativePath();
@@ -371,6 +397,7 @@ export function VideoHomePage() {
       <VideoFeed
         bookingOpenItemId={bookingTarget?.item.id}
         className={VIDEO_FEED_VIEWPORT_CLASS}
+        downvoteLabel={copy.common.downvote}
         initialItemId={restored?.itemId}
         initialMuted={restored?.muted}
         initialPaused={restored?.paused}
@@ -389,10 +416,12 @@ export function VideoHomePage() {
           navigate(`/p/${encodeURIComponent(item.id)}`);
         }}
         onKaraoke={(item, playback) => launchSongAction(item, playback, item.song?.karaokeHref)}
+        onDownvote={onDownvote}
         onLike={onLike}
         onShare={(item) => void navigator.share?.({ url: `${window.location.origin}/p/${encodeURIComponent(item.id)}` })}
         onSong={(item, playback) => launchSongAction(item, playback, item.song?.songHref)}
         onStudy={(item, playback) => launchSongAction(item, playback, item.song?.studyHref)}
+        removeDownvoteLabel={copy.common.removeDownvote}
       />
       {loadMoreError ? (
         <VideoFeedPaginationNotice

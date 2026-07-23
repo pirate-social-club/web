@@ -6,6 +6,7 @@ import {
   BookOpen,
   CalendarCheck,
   ChatCircle,
+  Check,
   CurrencyDollar,
   DotsThree,
   Heart,
@@ -13,6 +14,7 @@ import {
   MicrophoneStage,
   Pause,
   Play,
+  Plus,
   ShareNetwork,
   SpeakerHigh,
   SpeakerSlash,
@@ -25,6 +27,7 @@ import { formatCentsAsStartingUsd } from "@/components/compositions/bookings/fix
 import { IconButton } from "@/components/primitives/icon-button";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
+import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
 import type { VideoFeedCapability, VideoFeedItem } from "./video-feed.types";
 
 export interface VideoFeedProps {
@@ -36,6 +39,8 @@ export interface VideoFeedProps {
   bookingOpenItemId?: string;
   className?: string;
   downvoteLabel?: string;
+  followLabel?: string;
+  followingLabel?: string;
   initialItemId?: string;
   initialMuted?: boolean;
   initialPaused?: boolean;
@@ -49,6 +54,7 @@ export interface VideoFeedProps {
   onGateRequired?: (item: VideoFeedItem) => void;
   onKaraoke?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onLike?: (item: VideoFeedItem) => void;
+  onPublisherRelationship?: (item: VideoFeedItem) => void;
   onShare?: (item: VideoFeedItem) => void;
   onSong?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onStudy?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
@@ -87,6 +93,67 @@ function writeStoredMutedPreference(muted: boolean): void {
 
 function compactCount(value: number): string {
   return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+}
+
+function PublisherRelationshipButton({
+  active,
+  disabled,
+  label,
+  onClick,
+  pending,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  label: string;
+  onClick?: () => void;
+  pending?: boolean;
+}) {
+  return (
+    <button
+      aria-label={label}
+      aria-pressed={active}
+      className={cn(
+        "-mt-5 grid size-6 place-items-center rounded-full border-2 border-white text-white shadow-md transition-colors",
+        active ? "bg-success text-success-foreground" : "bg-destructive",
+        "disabled:cursor-not-allowed disabled:opacity-70",
+      )}
+      disabled={disabled || pending}
+      onClick={onClick}
+      type="button"
+    >
+      {pending ? (
+        <span aria-hidden className="size-2.5 animate-pulse rounded-full bg-current" />
+      ) : active ? (
+        <Check aria-hidden className="size-4" weight="bold" />
+      ) : (
+        <Plus aria-hidden className="size-4" weight="bold" />
+      )}
+    </button>
+  );
+}
+
+function ProfilePublisherRelationship({
+  followLabel,
+  followingLabel,
+  ownProfile,
+  targetWalletAddress,
+}: {
+  followLabel: string;
+  followingLabel: string;
+  ownProfile: boolean;
+  targetWalletAddress: string;
+}) {
+  const follow = useProfileFollowState(targetWalletAddress, ownProfile);
+  if (ownProfile) return null;
+  return (
+    <PublisherRelationshipButton
+      active={follow.isFollowing}
+      disabled={follow.followDisabled}
+      label={follow.isFollowing ? followingLabel : followLabel}
+      onClick={follow.onToggleFollow}
+      pending={follow.followBusy || follow.followLoading}
+    />
+  );
 }
 
 function VideoAction({
@@ -164,6 +231,8 @@ function VideoFeedSlide({
   active,
   allowAutoplay,
   downvoteLabel,
+  followLabel,
+  followingLabel,
   item,
   onBook,
   mountMedia,
@@ -176,6 +245,7 @@ function VideoFeedSlide({
   onGateRequired,
   onKaraoke,
   onLike,
+  onPublisherRelationship,
   onShare,
   onSong,
   onSoundPromptShown,
@@ -189,10 +259,12 @@ function VideoFeedSlide({
   tapForSoundLabel,
   muteVideoLabel,
   initialPlaybackSeconds,
-}: Omit<VideoFeedProps, "downvoteLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "muteVideoLabel" | "removeDownvoteLabel" | "soundOnLabel" | "tapForSoundLabel"> & {
+}: Omit<VideoFeedProps, "downvoteLabel" | "followLabel" | "followingLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "muteVideoLabel" | "removeDownvoteLabel" | "soundOnLabel" | "tapForSoundLabel"> & {
   active: boolean;
   allowAutoplay: boolean;
   downvoteLabel: string;
+  followLabel: string;
+  followingLabel: string;
   item: VideoFeedItem;
   mountMedia: boolean;
   muteVideoLabel: string;
@@ -407,6 +479,22 @@ function VideoFeedSlide({
               src={item.publisher.avatarSrc}
             />
           </div>
+          {active && item.publisher.relationship?.kind === "follow" ? (
+            <ProfilePublisherRelationship
+              followLabel={followLabel}
+              followingLabel={followingLabel}
+              ownProfile={item.publisher.relationship.ownProfile}
+              targetWalletAddress={item.publisher.relationship.targetWalletAddress}
+            />
+          ) : item.publisher.relationship?.kind === "join" ? (
+            <PublisherRelationshipButton
+              active={item.publisher.relationship.active}
+              disabled={item.publisher.relationship.disabled}
+              label={item.publisher.relationship.label}
+              onClick={() => onPublisherRelationship?.(item)}
+              pending={item.publisher.relationship.pending}
+            />
+          ) : null}
           <VideoAction
             active={item.liked}
             icon={(
@@ -495,6 +583,8 @@ export function VideoFeed({
   bookingOpenItemId,
   className,
   downvoteLabel = "Downvote",
+  followLabel = "Follow",
+  followingLabel = "Following",
   initialItemId,
   initialMuted,
   initialPaused = false,
@@ -646,6 +736,8 @@ export function VideoFeed({
             active={index === activeIndex}
             allowAutoplay={!documentHidden && (!reduceMotion || userStartedItemIds.has(item.id))}
             downvoteLabel={downvoteLabel}
+            followLabel={followLabel}
+            followingLabel={followingLabel}
             item={item}
             initialPlaybackSeconds={item.id === initialItemId ? initialPlaybackSeconds : undefined}
             mountMedia={Math.abs(index - activeIndex) <= 2}

@@ -15,6 +15,19 @@ export interface VideoFeedItem {
     avatarSrc?: string;
     handle: string;
     kind: "community" | "profile";
+    relationship?:
+      | {
+        kind: "follow";
+        ownProfile: boolean;
+        targetWalletAddress: string;
+      }
+      | {
+        active: boolean;
+        disabled?: boolean;
+        kind: "join";
+        label: string;
+        pending?: boolean;
+      };
   };
   caption?: string;
   commentCount: number;

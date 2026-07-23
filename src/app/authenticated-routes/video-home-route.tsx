@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import type { HomeFeedItem as ApiHomeFeedItem } from "@pirate/api-contracts";
+import type { HomeFeedItem as ApiHomeFeedItem, Profile as ApiProfile } from "@pirate/api-contracts";
 
+import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { navigate } from "@/app/router";
 import { useVideoHomeChrome } from "@/app/shell/video-home-chrome-context";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
@@ -25,8 +26,14 @@ import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { useRequestAuth } from "@/hooks/use-request-auth";
+import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
+import {
+  createDefaultBlockedModalState,
+  selectPostVoteGateData,
+} from "@/hooks/use-community-interaction-gate.helpers";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
+import { interpolateMessage } from "@/lib/route-messages";
 import { HomePage } from "./home-routes";
 
 export type VideoHomeSurface = "loading" | "video" | "community-feed-empty" | "community-feed-error";
@@ -95,15 +102,46 @@ export function nextVideoPaginationCursor(input: {
   };
 }
 
+export function resolveVideoPublisherRelationship(input: {
+  authorUserId?: string | null;
+  authorWalletAddress?: string | null;
+  currentUserId?: string | null;
+  identityMode: "anonymous" | "public";
+  joinedLabel: string;
+  joinedLocally?: boolean;
+  joinLabel: string;
+  viewerCommunityRole?: string | null;
+  viewerMembershipStatus?: "member" | "not_member" | "banned" | null;
+}): VideoFeedItem["publisher"]["relationship"] {
+  if (input.identityMode === "public" && input.authorUserId) {
+    return input.authorWalletAddress ? {
+      kind: "follow",
+      ownProfile: input.authorUserId === input.currentUserId,
+      targetWalletAddress: input.authorWalletAddress,
+    } : undefined;
+  }
+  const joined = input.joinedLocally
+    || input.viewerCommunityRole != null
+    || input.viewerMembershipStatus === "member";
+  return {
+    active: Boolean(joined),
+    disabled: Boolean(joined) || input.viewerMembershipStatus === "banned",
+    kind: "join",
+    label: joined ? input.joinedLabel : input.joinLabel,
+  };
+}
+
 export function VideoHomePage() {
   const api = useApi();
   const hydrated = useClientHydrated();
   const session = useSession();
   const contentLocale = useRouteContentLocale();
-  const { copy } = useRouteMessages();
+  const { copy, localeTag } = useRouteMessages();
   const requestAuth = useRequestAuth();
   const capabilityLoader = useVideoViewerSongCapabilities(contentLocale);
   const [entries, setEntries] = React.useState<ApiHomeFeedItem[]>([]);
+  const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | null>>({});
+  const [joinedCommunityIds, setJoinedCommunityIds] = React.useState<Set<string>>(() => new Set());
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<unknown>(null);
@@ -148,6 +186,15 @@ export function VideoHomePage() {
     }),
     [api.bookings, bookingTimezone],
   );
+  const {
+    gateModal,
+    prewarmCommunityGate,
+    runGatedCommunityAction,
+  } = useCommunityInteractionGate({
+    previewLocale: contentLocale,
+    routeKind: "home",
+    uiLocale: localeTag,
+  });
 
   React.useEffect(() => {
     if (!hydrated) return;
@@ -157,6 +204,8 @@ export function VideoHomePage() {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setAuthorProfiles({});
+    setJoinedCommunityIds(new Set());
     const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
     void request({ locale: contentLocale, sort: "best" })
       .then((response) => {
@@ -175,12 +224,70 @@ export function VideoHomePage() {
     };
   }, [api, contentLocale, hydrated, session?.accessToken]);
 
-  const pageItems = React.useMemo(
-    () => entries.map((entry) => toHomeFeedItem(entry, {})).flatMap((item) => {
+  React.useEffect(() => {
+    const userIds = entries.flatMap((entry) => {
+      const post = entry.post.post;
+      return post.identity_mode === "public" && post.author_user ? [post.author_user] : [];
+    });
+    const missingUserIds = [...new Set(userIds)].filter((userId) => !(userId in authorProfiles));
+    if (missingUserIds.length === 0) return;
+    let cancelled = false;
+    void loadProfilesByUserId(api, missingUserIds, authorProfiles).then((loaded) => {
+      if (!cancelled) setAuthorProfiles((current) => ({ ...current, ...loaded }));
+    });
+    return () => { cancelled = true; };
+  }, [api, authorProfiles, entries]);
+
+  const pageItems = React.useMemo<VideoFeedItem[]>(
+    () => entries.flatMap((entry): VideoFeedItem[] => {
+      const item = toHomeFeedItem(entry, authorProfiles);
       const video = toPageVideoItem(item);
-      return video ? [video] : [];
+      if (!video) return [];
+      const post = entry.post.post;
+      const authorProfile = post.author_user ? authorProfiles[post.author_user] : null;
+      const publicProfilePublisher = post.identity_mode === "public" && Boolean(post.author_user);
+      const viewerCommunity = entry.post as typeof entry.post & {
+        viewer_gate_state?: {
+          viewer_community_role?: string | null;
+          viewer_membership_status?: "member" | "not_member" | "banned" | null;
+        } | null;
+      };
+      const communityStatus = viewerCommunity.viewer_gate_state?.viewer_membership_status
+        ?? entry.post.community?.viewer_membership_status
+        ?? null;
+      const relationship = resolveVideoPublisherRelationship({
+        authorUserId: post.author_user,
+        authorWalletAddress: authorProfile?.primary_wallet_address,
+        currentUserId: session?.user.id,
+        identityMode: post.identity_mode,
+        joinedLabel: copy.home.videoPublisherJoined,
+        joinedLocally: joinedCommunityIds.has(entry.community.id),
+        joinLabel: copy.home.videoPublisherJoin,
+        viewerCommunityRole: viewerCommunity.viewer_gate_state?.viewer_community_role
+          ?? entry.post.community?.viewer_community_role,
+        viewerMembershipStatus: communityStatus,
+      });
+      if (publicProfilePublisher) {
+        return [{
+          ...video,
+          publisher: {
+            ...video.publisher,
+            kind: "profile" as const,
+            relationship,
+          },
+        }];
+      }
+      return [{
+        ...video,
+        publisher: {
+          avatarSrc: item.post.byline.community?.avatarSrc,
+          handle: item.post.byline.community?.label ?? video.publisher.handle,
+          kind: "community" as const,
+          relationship,
+        },
+      }];
     }),
-    [entries],
+    [authorProfiles, copy.home.videoPublisherJoin, copy.home.videoPublisherJoined, entries, joinedCommunityIds, session?.user.id],
   );
   const items = React.useMemo(() => pageItems.map((item) => {
     const sourcePostId = item.song?.sourcePostId;
@@ -307,6 +414,41 @@ export function VideoHomePage() {
     });
   }, [api.posts, copy.home.videoDownvoteAuthRequired, entries, requestAuth, session?.accessToken]);
 
+  const onPublisherRelationship = React.useCallback((item: VideoFeedItem) => {
+    if (item.publisher.relationship?.kind !== "join" || item.publisher.relationship.active) return;
+    const entry = entries.find((candidate) => candidate.post.post.id === item.id);
+    if (!entry) return;
+    const gateData = selectPostVoteGateData(entry.post);
+    if (gateData) prewarmCommunityGate(gateData.preview.id, gateData);
+    // The shared gate runner currently models membership as a prerequisite to a post action.
+    // Reuse its vote lane to obtain the complete join/verification flow, but never resume the
+    // action after joining: this avatar control changes membership and must not cast a vote.
+    void runGatedCommunityAction({
+      action: "vote_post",
+      buildBlockedModalState: (args) => {
+        const defaultState = createDefaultBlockedModalState(args);
+        if (args.gate.eligibility.status !== "joinable" && args.gate.eligibility.status !== "requestable") {
+          return defaultState;
+        }
+        return {
+          ...defaultState,
+          description: interpolateMessage(copy.home.videoPublisherJoinDescription, {
+            communityName: args.gate.preview.display_name,
+          }),
+          title: copy.home.videoPublisherJoin,
+        };
+      },
+      communityId: gateData?.preview.id ?? entry.community.id,
+      ...(gateData ? { gateData } : {}),
+      onAllowed: () => {
+        setJoinedCommunityIds((current) => new Set(current).add(entry.community.id));
+      },
+      postId: item.id,
+      requireMembership: true,
+      resumeActionAfterJoin: false,
+    });
+  }, [copy.home.videoPublisherJoin, copy.home.videoPublisherJoinDescription, entries, prewarmCommunityGate, runGatedCommunityAction]);
+
   const launchSongAction = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState, href?: string) => {
     if (!href) return;
     const returnPath = currentRelativePath();
@@ -394,10 +536,13 @@ export function VideoHomePage() {
 
   return (
     <div className="min-h-0 w-full flex-1 bg-background">
+      {gateModal}
       <VideoFeed
         bookingOpenItemId={bookingTarget?.item.id}
         className={VIDEO_FEED_VIEWPORT_CLASS}
         downvoteLabel={copy.common.downvote}
+        followLabel={copy.home.videoPublisherFollow}
+        followingLabel={copy.home.videoPublisherFollowing}
         initialItemId={restored?.itemId}
         initialMuted={restored?.muted}
         initialPaused={restored?.paused}
@@ -419,6 +564,7 @@ export function VideoHomePage() {
         onKaraoke={(item, playback) => launchSongAction(item, playback, item.song?.karaokeHref)}
         onDownvote={onDownvote}
         onLike={onLike}
+        onPublisherRelationship={onPublisherRelationship}
         onShare={(item) => void navigator.share?.({ url: `${window.location.origin}/p/${encodeURIComponent(item.id)}` })}
         onSong={(item, playback) => launchSongAction(item, playback, item.song?.songHref)}
         onStudy={(item, playback) => launchSongAction(item, playback, item.song?.studyHref)}

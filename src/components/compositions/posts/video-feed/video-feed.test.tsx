@@ -536,6 +536,53 @@ describe("VideoFeed", () => {
     expect(avatar.querySelector("svg")).toBeTruthy();
   });
 
+  test("renders an actionable join badge on the publisher avatar", () => {
+    let selected: VideoFeedItem | null = null;
+    const joinItem: VideoFeedItem = {
+      ...item,
+      publisher: {
+        handle: "songs.pirate",
+        kind: "community",
+        relationship: {
+          active: false,
+          kind: "join",
+          label: "Join community",
+        },
+      },
+    };
+    const view = render(
+      <VideoFeed
+        items={[joinItem]}
+        onPublisherRelationship={(nextItem) => { selected = nextItem; }}
+      />,
+    );
+
+    const join = view.getByRole("button", { name: "Join community" });
+    expect(join.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(join);
+    expect(selected).toBe(joinItem);
+  });
+
+  test("shows joined publisher state without allowing a duplicate join", () => {
+    const view = render(<VideoFeed items={[{
+      ...item,
+      publisher: {
+        handle: "songs.pirate",
+        kind: "community",
+        relationship: {
+          active: true,
+          disabled: true,
+          kind: "join",
+          label: "Joined community",
+        },
+      },
+    }]} />);
+
+    const joined = view.getByRole("button", { name: "Joined community" });
+    expect(joined.getAttribute("aria-pressed")).toBe("true");
+    expect((joined as HTMLButtonElement).disabled).toBe(true);
+  });
+
   test("pauses active playback while the document is hidden", () => {
     const calls: HTMLVideoElement[] = [];
     const view = render(<VideoFeed items={feedItems()} />);

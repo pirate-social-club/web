@@ -2,7 +2,13 @@ import { describe, expect, test } from "bun:test";
 
 import type { HomeFeedItem } from "@pirate/api-contracts";
 
-import { appendUniqueVideoEntries, checkoutPathForFeedSlot, resolveVideoHomeSurface, VIDEO_FEED_VIEWPORT_CLASS } from "./video-home-route";
+import {
+  appendUniqueVideoEntries,
+  checkoutPathForFeedSlot,
+  nextVideoPaginationCursor,
+  resolveVideoHomeSurface,
+  VIDEO_FEED_VIEWPORT_CLASS,
+} from "./video-home-route";
 
 function feedEntry(id: string): HomeFeedItem {
   return { post: { post: { id } } } as HomeFeedItem;
@@ -71,6 +77,30 @@ describe("appendUniqueVideoEntries", () => {
     const current = [feedEntry("first")];
 
     expect(appendUniqueVideoEntries(current, [feedEntry("first")])).toBe(current);
+  });
+});
+
+describe("nextVideoPaginationCursor", () => {
+  test("stops automatic pagination after three consecutive no-growth pages", () => {
+    let pagination = { consecutiveNoGrowthPages: 0, nextCursor: "page-1" as string | null };
+
+    for (const serverCursor of ["page-2", "page-3", "page-4"]) {
+      pagination = nextVideoPaginationCursor({
+        consecutiveNoGrowthPages: pagination.consecutiveNoGrowthPages,
+        didGrow: false,
+        serverCursor,
+      });
+    }
+
+    expect(pagination).toEqual({ consecutiveNoGrowthPages: 3, nextCursor: null });
+  });
+
+  test("resets the no-growth budget as soon as a page contributes a post", () => {
+    expect(nextVideoPaginationCursor({
+      consecutiveNoGrowthPages: 2,
+      didGrow: true,
+      serverCursor: "page-4",
+    })).toEqual({ consecutiveNoGrowthPages: 0, nextCursor: "page-4" });
   });
 });
 

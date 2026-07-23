@@ -11,7 +11,6 @@ import {
   House,
   Megaphone,
   Newspaper,
-  Plus,
   Scroll,
   Shield,
   Television,
@@ -52,9 +51,9 @@ const resourceIcons = {
   "terms-of-service": Scroll,
 } satisfies Record<ResourceLinkId, typeof House>;
 
-export function usesVideoDesktopShell(route: AppRoute, videoHomeActive: boolean): boolean {
-  if (route.kind === "home") return videoHomeActive;
-  return route.kind === "community-feed"
+export function usesHeaderlessDesktopLayout(route: AppRoute): boolean {
+  return route.kind === "home"
+    || route.kind === "community-feed"
     || route.kind === "live"
     || route.kind === "chat"
     || route.kind === "chat-new"
@@ -170,35 +169,6 @@ export function buildSidebarSections(
   }
 
   return sections;
-}
-
-export function buildPrimaryItems(messages: ShellMessages["appSidebar"]): AppSidebarPrimaryItem[] {
-  return [
-    {
-      id: "home",
-      icon: House,
-      label: messages.homeLabel,
-      onSelect: () => navigate("/"),
-    },
-    {
-      id: "community-feed",
-      icon: Newspaper,
-      label: messages.communityFeedLabel,
-      onSelect: () => navigate("/feed"),
-    },
-    {
-      id: "your-communities",
-      icon: Flag,
-      label: messages.yourCommunitiesLabel,
-      onSelect: () => navigate("/your-communities"),
-    },
-    {
-      id: "create-community",
-      icon: Plus,
-      label: messages.createCommunityLabel,
-      onSelect: () => navigate("/communities/new"),
-    },
-  ];
 }
 
 export function buildVideoPrimaryItems(messages: ShellMessages["appSidebar"]): AppSidebarPrimaryItem[] {

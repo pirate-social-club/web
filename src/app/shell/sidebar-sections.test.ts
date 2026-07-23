@@ -3,12 +3,11 @@ import { describe, expect, test } from "bun:test";
 import type { ShellMessages } from "@/locales";
 
 import {
-  buildPrimaryItems,
   buildResourceItems,
   buildSidebarSections,
   buildVideoPrimaryItems,
   resolveCreatePostPath,
-  usesVideoDesktopShell,
+  usesHeaderlessDesktopLayout,
 } from "./sidebar-sections";
 
 describe("resolveCreatePostPath", () => {
@@ -78,28 +77,6 @@ describe("buildSidebarSections", () => {
   });
 });
 
-describe("buildPrimaryItems", () => {
-  test("uses Home and Community Feed without a duplicate Popular destination", () => {
-    const items = buildPrimaryItems({
-      agentsLabel: "Agents",
-      communityFeedLabel: "Community Feed",
-      createCommunityLabel: "Create",
-      feedSortBestLabel: "Popular",
-      homeLabel: "Home",
-      namesLabel: "Names",
-      yourCommunitiesLabel: "Your communities",
-    } as ShellMessages["appSidebar"]);
-
-    expect(items.map((item) => item.id)).not.toContain("names");
-    expect(items.map((item) => item.id)).toEqual([
-      "home",
-      "community-feed",
-      "your-communities",
-      "create-community",
-    ]);
-  });
-});
-
 describe("buildVideoPrimaryItems", () => {
   test("builds the settled six-item desktop media spine without Agents", () => {
     const items = buildVideoPrimaryItems({
@@ -123,13 +100,13 @@ describe("buildVideoPrimaryItems", () => {
   });
 });
 
-describe("usesVideoDesktopShell", () => {
-  test("keeps home surface-scoped while preserving the media rail across its destinations", () => {
-    expect(usesVideoDesktopShell({ kind: "home", path: "/" }, false)).toBe(false);
-    expect(usesVideoDesktopShell({ kind: "home", path: "/" }, true)).toBe(true);
-    expect(usesVideoDesktopShell({ kind: "community-feed", path: "/feed" }, false)).toBe(true);
-    expect(usesVideoDesktopShell({ kind: "live", path: "/live" }, false)).toBe(true);
-    expect(usesVideoDesktopShell({ kind: "inbox", path: "/inbox" }, false)).toBe(true);
+describe("usesHeaderlessDesktopLayout", () => {
+  test("selects headerless destinations synchronously from the route", () => {
+    expect(usesHeaderlessDesktopLayout({ kind: "home", path: "/" })).toBe(true);
+    expect(usesHeaderlessDesktopLayout({ kind: "community-feed", path: "/feed" })).toBe(true);
+    expect(usesHeaderlessDesktopLayout({ kind: "live", path: "/live" })).toBe(true);
+    expect(usesHeaderlessDesktopLayout({ kind: "inbox", path: "/inbox" })).toBe(true);
+    expect(usesHeaderlessDesktopLayout({ kind: "settings-index", path: "/settings" })).toBe(false);
   });
 });
 

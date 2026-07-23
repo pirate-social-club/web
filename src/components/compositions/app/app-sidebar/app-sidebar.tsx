@@ -249,9 +249,7 @@ export interface AppSidebarProps
   codeItems?: readonly AppSidebarSectionItem[];
   codeLabel?: string;
   homeAriaLabel?: string;
-  mediaPrimaryItems?: readonly AppSidebarPrimaryItem[];
   mediaAction?: React.ReactNode;
-  mediaSections?: readonly AppSidebarSection[];
   onHomeClick?: () => void;
   onNavigate?: (path: string) => void;
   onSearchClick?: () => void;
@@ -271,9 +269,7 @@ export function AppSidebar({
   codeItems,
   codeLabel,
   homeAriaLabel,
-  mediaPrimaryItems,
   mediaAction,
-  mediaSections,
   onHomeClick,
   onNavigate,
   onSearchClick,
@@ -318,10 +314,15 @@ export function AppSidebar({
     window.addEventListener(HOME_FEED_SORT_CHANGE_EVENT, handleSortChange);
     return () => window.removeEventListener(HOME_FEED_SORT_CHANGE_EVENT, handleSortChange);
   }, []);
-  const selectedPrimaryItems = appearance === "media" && !isMobile && mediaPrimaryItems
-    ? mediaPrimaryItems
-    : primaryItems ?? DEFAULT_PRIMARY_ITEMS;
+  const selectedPrimaryItems = primaryItems ?? DEFAULT_PRIMARY_ITEMS;
   const resolvedPrimaryItems = selectedPrimaryItems.map((item) => {
+    if (primaryItems) {
+      if (item.id === "home" && onHomeClick && item.onSelect === undefined) {
+        return { ...item, onSelect: onHomeClick };
+      }
+      return item;
+    }
+
     let resolvedItem = item;
     if (item.id === "home") resolvedItem = { ...item, label: copy.appSidebar.homeLabel };
     if (item.id === "popular") resolvedItem = { ...item, label: copy.appSidebar.feedSortBestLabel };
@@ -336,9 +337,7 @@ export function AppSidebar({
     : resolvedPrimaryItems;
   const resolvedCodeItems = codeItems ?? copy.appSidebar.codeItems;
   const resolvedCodeLabel = codeLabel ?? copy.appSidebar.codeLabel;
-  const resolvedSections = appearance === "media" && !isMobile && mediaSections
-    ? mediaSections
-    : sections ?? copy.appSidebar.sections;
+  const resolvedSections = sections ?? copy.appSidebar.sections;
   const resolvedResourceItems = resourceItems ?? copy.appSidebar.resourceItems;
   const resolvedResourcesLabel = resourcesLabel ?? copy.appSidebar.resourcesLabel;
   const resolvedSide = resolveDirectionalSide(side, dir);

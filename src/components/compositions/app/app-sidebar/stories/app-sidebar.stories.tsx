@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
-import { Fire, Flag, House, Plus } from "@phosphor-icons/react";
+import { Flag, Plus } from "@phosphor-icons/react";
 
 import { AppHeader } from "@/components/compositions/app/app-shell-chrome/app-header";
 import { MobileFooterNav } from "@/components/compositions/app/app-shell-chrome/mobile-footer-nav";
@@ -38,25 +38,13 @@ function ShellChrome({ mobile = false }: { mobile?: boolean }) {
     ...section,
     defaultOpen: true,
   }));
-  const primaryItems = [
-    { id: "home", icon: House, label: copy.appSidebar.homeLabel },
-    { id: "popular", icon: Fire, label: copy.appSidebar.feedSortBestLabel },
-    {
-      id: "your-communities",
-      icon: Flag,
-      label: copy.appSidebar.yourCommunitiesLabel,
-    },
-    {
-      id: "create-community",
-      icon: Plus,
-      label: copy.appSidebar.createCommunityLabel,
-    },
-  ] as const;
+  const primaryItems = buildVideoPrimaryItems(copy.appSidebar);
 
   if (mobile) {
     return (
       <SidebarProvider defaultOpen={false}>
         <AppSidebar
+          appearance="media"
           brandLabel={copy.appSidebar.brandLabel}
           homeAriaLabel={copy.appSidebar.homeAriaLabel}
           primaryItems={primaryItems}
@@ -109,6 +97,7 @@ function ShellChrome({ mobile = false }: { mobile?: boolean }) {
   return (
     <SidebarProvider>
       <AppSidebar
+        appearance="media"
         brandLabel={copy.appSidebar.brandLabel}
         homeAriaLabel={copy.appSidebar.homeAriaLabel}
         primaryItems={primaryItems}
@@ -144,10 +133,12 @@ function ShellChrome({ mobile = false }: { mobile?: boolean }) {
 
 function MediaShellReview({
   collapsed = false,
+  contentRoute = false,
   dockOpen = false,
   populatedCommunities = false,
 }: {
   collapsed?: boolean;
+  contentRoute?: boolean;
   dockOpen?: boolean;
   populatedCommunities?: boolean;
 }) {
@@ -174,20 +165,41 @@ function MediaShellReview({
         appearance="media"
         brandLabel={copy.appSidebar.brandLabel}
         homeAriaLabel={copy.appSidebar.homeAriaLabel}
-        mediaPrimaryItems={buildVideoPrimaryItems(copy.appSidebar)}
         mediaAction={<Button className="w-full">{copy.appHeader.connectLabel}</Button>}
-        mediaSections={mediaSections}
         onHomeClick={() => undefined}
         onSearchClick={() => undefined}
-        primaryItems={[]}
+        primaryItems={buildVideoPrimaryItems(copy.appSidebar)}
         searchLabel={copy.appHeader.searchPlaceholder}
-        sections={[]}
+        sections={mediaSections}
       />
-      <SidebarInset className="h-dvh min-h-0 overflow-hidden bg-black">
-        <main className={dockOpen ? "grid size-full grid-cols-[minmax(0,1fr)_26rem]" : "size-full"}>
-          <div className="grid min-w-0 place-items-center p-6">
-            <div className="aspect-[9/16] h-[min(88dvh,50rem)] max-w-full rounded-[var(--radius-xl)] bg-gradient-to-b from-muted/50 to-muted" />
-          </div>
+      <SidebarInset className={contentRoute ? "h-dvh min-h-0 overflow-hidden bg-background" : "h-dvh min-h-0 overflow-hidden bg-black"}>
+        {contentRoute ? (
+          <AppHeader
+            labels={{
+              createLabel: copy.appHeader.createLabel,
+              homeAriaLabel: copy.appHeader.homeAriaLabel,
+              notificationsAriaLabel: copy.appHeader.notificationsAriaLabel,
+              openNavigationAriaLabel: copy.appHeader.openNavigationAriaLabel,
+              profileAriaLabel: copy.appHeader.profileAriaLabel,
+              searchAriaLabel: copy.appHeader.searchAriaLabel,
+              searchPlaceholder: copy.appHeader.searchPlaceholder,
+            }}
+          />
+        ) : null}
+        <main className={contentRoute ? "min-h-0 flex-1 overflow-auto p-8" : dockOpen ? "grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_26rem]" : "min-h-0 flex-1"}>
+          {contentRoute ? (
+            <div className="mx-auto max-w-4xl space-y-5">
+              <Type as="h1" variant="h2">Settings</Type>
+              <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-8">
+                <div className="h-6 w-40 rounded-full bg-muted" />
+                <div className="mt-6 h-48 rounded-[calc(var(--radius-xl)-0.5rem)] bg-muted/70" />
+              </div>
+            </div>
+          ) : (
+            <div className="grid min-w-0 place-items-center p-6">
+              <div className="aspect-[9/16] h-[min(88dvh,50rem)] max-w-full rounded-[var(--radius-xl)] bg-gradient-to-b from-muted/50 to-muted" />
+            </div>
+          )}
           {dockOpen ? (
             <aside className="border-s border-border-soft bg-background p-6">
               <Type as="h2" variant="h3">Comments</Type>
@@ -211,6 +223,14 @@ export const DesktopShell: Story = {
 export const MediaShellExpanded: Story = {
   name: "Media shell / Expanded",
   render: () => <MediaShellReview />,
+};
+
+export const UnifiedContentShell: Story = {
+  name: "Unified shell / Content route with header",
+  parameters: {
+    viewport: { defaultViewport: "desktop" },
+  },
+  render: () => <MediaShellReview contentRoute populatedCommunities />,
 };
 
 export const MediaShellCollapsed: Story = {

@@ -5,7 +5,7 @@ import { Flag, Plus } from "@phosphor-icons/react";
 
 import type { AppRoute } from "@/app/router";
 import { isNativePublicIdentityRoute, navigate, useRoute } from "@/app/router";
-import { AppSidebar, type AppSidebarPrimaryItem } from "@/components/compositions/app/app-sidebar/app-sidebar";
+import { AppSidebar } from "@/components/compositions/app/app-sidebar/app-sidebar";
 import { Button } from "@/components/primitives/button";
 import { SidebarInset, SidebarProvider } from "@/components/compositions/system/sidebar/sidebar";
 import { PageContainer } from "@/components/primitives/layout-shell";
@@ -32,14 +32,12 @@ import { RouteContentFallback } from "./route-content-fallback";
 import {
   activeSidebarItem,
   buildCodeItems,
-  buildPrimaryItems,
   buildResourceItems,
   buildSidebarSections,
   buildVideoPrimaryItems,
-  usesVideoDesktopShell,
+  usesHeaderlessDesktopLayout,
 } from "./sidebar-sections";
 import { useShellMobileLayout } from "./use-shell-mobile-layout";
-import { VideoHomeChromeContext } from "./video-home-chrome-context";
 
 const LazyAuthenticatedRouteRenderer = React.lazy(async () => {
   const mod = await import("@/app/authenticated-route-renderer");
@@ -138,15 +136,11 @@ function AnalyticsRouteTracker({ route }: { route: AppRoute }) {
 function NotificationShell({
   copy,
   effectiveDir,
-  isCommunityModerationRoute,
-  primaryItems,
   route,
   session,
 }: {
   copy: ShellMessages;
   effectiveDir: "ltr" | "rtl";
-  isCommunityModerationRoute: boolean;
-  primaryItems: AppSidebarPrimaryItem[];
   route: AppRoute;
   session: ReturnType<typeof useSession>;
 }) {
@@ -157,7 +151,7 @@ function NotificationShell({
   const { moderatedCommunities, recentCommunities } = useSidebarCommunities();
   const codeItems = buildCodeItems(copy.appSidebar);
   const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities, isMobileLayout);
-  const mediaPrimaryItems = buildVideoPrimaryItems(copy.appSidebar);
+  const primaryItems = buildVideoPrimaryItems(copy.appSidebar);
   const resourceItems = buildResourceItems(copy.appSidebar);
   const isMobileStandaloneRoute = isMobileLayout && (
     route.kind === "post"
@@ -170,6 +164,8 @@ function NotificationShell({
     || route.kind === "chat-target"
     || route.kind === "chat-conversation"
     || route.kind === "chat-new"
+    || route.kind === "community-moderation"
+    || route.kind === "community-moderation-index"
     );
   const isStandaloneViewerRoute = route.kind === "live-room" || route.kind === "post-karaoke" || route.kind === "post-karaoke-leaderboard" || route.kind === "post-study" || route.kind === "post-streaks";
   const isChatRoute = route.kind === "chat"
@@ -177,13 +173,12 @@ function NotificationShell({
     || route.kind === "chat-conversation"
     || route.kind === "chat-new";
   const isPublicRoute = route.kind === "public-profile" || route.kind === "public-agent";
-  const useStandaloneRouteShell = isCommunityModerationRoute || isMobileStandaloneRoute || isStandaloneViewerRoute;
+  const useStandaloneRouteShell = isMobileStandaloneRoute || isStandaloneViewerRoute;
   // Temporary: migrated routes own their own page shell padding.
   // Remove this once all routes are converted.
   const isMigratedRoute = route.kind === "home" || route.kind === "community-feed" || route.kind === "popular" || route.kind === "wallet";
   const unreadNotificationCount = notificationSummary.open_task_count + notificationSummary.unread_activity_count;
-  const [videoHomeChromeActive, setVideoHomeChromeActive] = React.useState(false);
-  const useVideoDesktopShell = usesVideoDesktopShell(route, videoHomeChromeActive);
+  const useHeaderlessDesktopLayout = usesHeaderlessDesktopLayout(route);
   const recentSection = sections.find((section) => section.id === "recent");
   const mediaSections = [
     {
@@ -210,8 +205,7 @@ function NotificationShell({
   useNotificationBadges(unreadNotificationCount);
 
   return (
-    <VideoHomeChromeContext.Provider value={setVideoHomeChromeActive}>
-      <SidebarProvider
+    <SidebarProvider
         className={cn(
           "flex-col",
           isChatRoute && "md:h-svh md:min-h-0 md:overflow-hidden",
@@ -225,16 +219,6 @@ function NotificationShell({
         } as React.CSSProperties}
       >
         <DesktopChatWidgetProvider>
-        {isMobileStandaloneRoute || isStandaloneViewerRoute ? null : (
-          <AppShellHeader
-            copy={copy}
-            desktopHidden={useVideoDesktopShell}
-            mobileMediaOverlay={route.kind === "home" && videoHomeChromeActive}
-            route={route}
-            unreadChatCount={unreadChatCount}
-            unreadNotificationCount={unreadNotificationCount}
-          />
-        )}
         <div
           className={cn(
             "flex min-h-0 w-full flex-1",
@@ -251,10 +235,9 @@ function NotificationShell({
             <>
               <AppSidebar
                 activeItemId={activeSidebarItem(route)}
-                appearance={useVideoDesktopShell ? "media" : "default"}
+                appearance="media"
                 brandLabel={copy.appSidebar.brandLabel}
                 homeAriaLabel={copy.appSidebar.homeAriaLabel}
-                mediaPrimaryItems={mediaPrimaryItems}
                 mediaAction={!session ? (
                   <Button
                     className="w-full"
@@ -263,7 +246,6 @@ function NotificationShell({
                     {copy.appHeader.connectLabel}
                   </Button>
                 ) : undefined}
-                mediaSections={mediaSections}
                 codeItems={codeItems}
                 codeLabel={copy.appSidebar.codeLabel}
                 onHomeClick={() => navigate("/")}
@@ -273,10 +255,18 @@ function NotificationShell({
                 resourceItems={resourceItems}
                 resourcesLabel={copy.appSidebar.resourcesLabel}
                 searchLabel={copy.appHeader.searchPlaceholder}
-                sections={sections}
+                sections={mediaSections}
                 side="start"
               />
               <SidebarInset className="min-h-0">
+                <AppShellHeader
+                  copy={copy}
+                  desktopHidden={useHeaderlessDesktopLayout}
+                  mobileMediaOverlay={route.kind === "home"}
+                  route={route}
+                  unreadChatCount={unreadChatCount}
+                  unreadNotificationCount={unreadNotificationCount}
+                />
                 <main
                   className={cn(
                     "flex min-h-0 w-full flex-1",
@@ -306,8 +296,7 @@ function NotificationShell({
         </div>
           <Toaster />
         </DesktopChatWidgetProvider>
-      </SidebarProvider>
-    </VideoHomeChromeContext.Provider>
+    </SidebarProvider>
   );
 }
 
@@ -326,7 +315,6 @@ export function PirateAppShell({
   const effectiveLocale = locale;
   const effectiveDir = resolveLocaleDirection(effectiveLocale);
   const copy = getLocaleMessages(effectiveLocale, "shell");
-  const isCommunityModerationRoute = route.kind === "community-moderation" || route.kind === "community-moderation-index";
   const useStandalonePublicProfileShell = isNativePublicIdentityRoute(route);
   const isTelegramMiniAppRoute = route.kind === "telegram-mini-app" || route.kind === "telegram-exchange" || route.kind === "telegram-self-return" || route.kind === "telegram-join" || route.kind === "telegram-verify" || route.kind === "telegram-community" || route.kind === "telegram-post";
   const shouldDeferPrivyUntilConnect =
@@ -340,7 +328,6 @@ export function PirateAppShell({
       || route.kind === "post"
       || route.kind === "live-room"
     ));
-  const primaryItems = buildPrimaryItems(copy.appSidebar);
 
   return (
     <RootErrorBoundary
@@ -386,8 +373,6 @@ export function PirateAppShell({
                 <NotificationShell
                   copy={copy}
                   effectiveDir={effectiveDir}
-                  isCommunityModerationRoute={isCommunityModerationRoute}
-                  primaryItems={primaryItems}
                   route={route}
                   session={session}
                 />

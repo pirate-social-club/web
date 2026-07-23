@@ -200,6 +200,7 @@ beforeEach(() => {
         balance_cents: 120,
         today_earned_cents: 30,
         recent_events: [],
+        recent_qualifications: [],
         pending_verification: {
           count: 0,
           conditional_cents: 0,
@@ -244,7 +245,7 @@ describe("CurrentUserWalletPage rewards", () => {
       expect(fakeApi.rewards.getSummary).toHaveBeenCalled();
       expect(view.getByText("Rewards")).toBeTruthy();
       expect(view.getAllByText("$1.20").length).toBeGreaterThan(0);
-      expect(view.getByText("Base Sepolia · testnet USDC")).toBeTruthy();
+      expect(view.getByText("Test rewards — no cash value")).toBeTruthy();
     });
   });
 
@@ -254,6 +255,7 @@ describe("CurrentUserWalletPage rewards", () => {
       balance_cents: 20,
       today_earned_cents: 30,
       recent_events: [],
+      recent_qualifications: [],
       pending_verification: {
         count: 0,
         conditional_cents: 0,
@@ -305,7 +307,6 @@ describe("CurrentUserWalletPage rewards", () => {
     fireEvent.click(view.getByText("Claim"));
     expect(view.getByText("Claim rewards")).toBeTruthy();
     expect(view.getByDisplayValue("1.20")).toBeTruthy();
-    fireEvent.click(view.getByText("Continue"));
     expect(view.getByText("Confirm claim")).toBeTruthy();
     fireEvent.click(view.getByText("Confirm claim"));
 
@@ -329,8 +330,8 @@ describe("CurrentUserWalletPage rewards", () => {
       wallet_address: walletAddress,
     });
     await waitFor(() => {
-      expect(view.getByText("Claim complete")).toBeTruthy();
-      expect(view.getByText("1.20 testnet USDC was sent to 0x9000...0009.")).toBeTruthy();
+      expect(view.getByText("$1.20 is in your wallet 🎉")).toBeTruthy();
+      expect(view.getByText("Reward sent successfully.")).toBeTruthy();
     });
     await waitFor(() => {
       expect(fakeApi.rewards.getSummary.mock.calls.length).toBeGreaterThanOrEqual(2);
@@ -355,13 +356,11 @@ describe("CurrentUserWalletPage rewards", () => {
     await waitFor(() => expect(view.getByText("Claim")).toBeTruthy());
 
     fireEvent.click(view.getByText("Claim"));
-    fireEvent.click(view.getByText("Continue"));
     fireEvent.click(view.getByText("Confirm claim"));
     await waitFor(() => expect(view.getByText("Transfer failed")).toBeTruthy());
     fireEvent.click(view.getByText("Close"));
 
     fireEvent.click(view.getByText("Claim"));
-    fireEvent.click(view.getByText("Continue"));
     fireEvent.click(view.getByText("Confirm claim"));
     await waitFor(() => expect(fakeApi.rewards.cashOut.mock.calls).toHaveLength(2));
 
@@ -385,7 +384,6 @@ describe("CurrentUserWalletPage rewards", () => {
     await waitFor(() => expect(view.getByText("Claim")).toBeTruthy());
 
     fireEvent.click(view.getByText("Claim"));
-    fireEvent.click(view.getByText("Continue"));
     fireEvent.click(view.getByText("Confirm claim"));
 
     await waitFor(() => {
@@ -401,6 +399,7 @@ describe("CurrentUserWalletPage rewards", () => {
       balance_cents: 0,
       today_earned_cents: 0,
       recent_events: [],
+      recent_qualifications: [],
       pending_verification: {
         count: 1,
         conditional_cents: 100,
@@ -424,17 +423,19 @@ describe("CurrentUserWalletPage rewards", () => {
     fireEvent.click(view.getByText("Claim"));
 
     expect(view.getByText("Verify once")).toBeTruthy();
-    expect(view.getByText("Self")).toBeTruthy();
+    expect(view.getByText("Verification failed")).toBeTruthy();
+    expect(view.queryByText("Self")).toBeNull();
     expect(view.queryByText("Very")).toBeNull();
     expect(view.queryByText("ZKPassport")).toBeNull();
   });
 
-  test("renders a verified zero rewards balance without instructional filler", async () => {
+  test("explains how a verified user can reach the claim minimum", async () => {
     fakeApi.rewards.getSummary = mock(async () => ({
       chain_id: 84532,
       balance_cents: 0,
       today_earned_cents: 0,
       recent_events: [],
+      recent_qualifications: [],
       pending_verification: {
         count: 0,
         conditional_cents: 0,
@@ -451,8 +452,8 @@ describe("CurrentUserWalletPage rewards", () => {
     const view = render(<CurrentUserWalletPage />);
 
     await waitFor(() => expect(view.getByText("$0.00")).toBeTruthy());
-    expect(view.queryByText("Earn by practicing.")).toBeNull();
-    expect(view.getByText("Base Sepolia · testnet USDC")).toBeTruthy();
+    expect(view.getByText("Earn $1.00 more to claim.")).toBeTruthy();
+    expect(view.getByText("Test rewards — no cash value")).toBeTruthy();
   });
 
   test("does not request or render rewards when the flag is disabled", async () => {

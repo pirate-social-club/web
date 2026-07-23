@@ -1,16 +1,10 @@
 "use client";
 
-import * as React from "react";
 import {
   ArrowSquareOut,
   CheckCircle,
-  Clock,
-  Confetti,
-  CurrencyDollar,
   HourglassMedium,
   Lock,
-  Megaphone,
-  Prohibit,
   ShieldWarning,
   WarningCircle,
 } from "@phosphor-icons/react";
@@ -47,36 +41,23 @@ type BoostCampaignSheetState =
   | "funding-review"
   | "failed";
 
-type CampaignStatusState =
-  | "scheduled"
-  | "active"
-  | "paused"
-  | "operational-hold"
-  | "exhausted"
-  | "ended"
-  | "canceled";
-
-type BoostBlockedReason =
-  | "owner-opted-out"
-  | "campaign-exists"
-  | "rate-limited";
-
 export type BoostEligibleActivity = "study" | "karaoke" | "either";
 
 export interface BoostCampaignSheetProps {
+  budgetDisplayLabel: string;
   budgetLabel: string;
   /** Preset budgets offered as one-tap chips, already formatted (e.g. "$25.00"). */
   budgetPresets?: string[];
-  chainLabel: string;
   dailyRewardLabel: string;
   eligibleActivity: BoostEligibleActivity;
   eligibleActivities?: BoostEligibleActivity[];
   errorMessage?: string;
   /** Funding-transaction link on the settlement chain's explorer (Base or Base Sepolia). */
   explorerTxUrl?: string;
-  expiresInLabel?: string;
+  endsAtLabel?: string;
   forceMobile?: boolean;
   fundingAmountLabel?: string;
+  fundedLabel?: string;
   onBudgetChange?: (value: string) => void;
   onConfirm?: () => void;
   onDailyRewardChange?: (value: string) => void;
@@ -89,17 +70,11 @@ export interface BoostCampaignSheetProps {
   /** Blocks submission and explains why the current terms are not fundable. */
   planProblem?: string;
   rewardCountLabel: string;
+  rewardsPaidLabel?: string;
+  remainingLabel?: string;
   supportReference?: string;
-  /**
-   * The wallet the quote is pinned to. Funding MUST originate from this address
-   * or receipt verification rejects it and the transfer is stranded, so it is
-   * shown prominently and the send action is blocked when the connected wallet
-   * differs (see {@link walletMismatch}).
-   */
-  senderAddressLabel?: string;
   state: BoostCampaignSheetState;
-  treasuryAddress?: string;
-  /** True when the connected wallet is not {@link senderAddressLabel}; blocks the send. */
+  /** True when the quote's pinned funding wallet is not connected; blocks payment. */
   walletMismatch?: boolean;
 }
 
@@ -110,25 +85,6 @@ export interface SongRewardPolicySheetProps {
   onAllowThirdPartyRewardsChange?: (allowed: boolean) => void;
   onOpenChange?: (open: boolean) => void;
   open: boolean;
-}
-
-export interface CampaignStatusCardProps {
-  budgetLabel: string;
-  className?: string;
-  dailyRewardLabel: string;
-  endsAtLabel?: string;
-  onViewDetails?: () => void;
-  remainingLabel: string;
-  rewardsPaidLabel: string;
-  spentLabel: string;
-  state: CampaignStatusState;
-}
-
-export interface BoostEligibilityNoticeProps {
-  className?: string;
-  onRetry?: () => void;
-  reason: BoostBlockedReason;
-  retryInLabel?: string;
 }
 
 const ACTIVITY_LABEL = {
@@ -150,18 +106,50 @@ function CampaignSummaryRow({ label, value }: { label: string; value: string }) 
   );
 }
 
+function MoneyInput({
+  describedBy,
+  id,
+  invalid,
+  onChange,
+  value,
+}: {
+  describedBy?: string;
+  id: string;
+  invalid?: boolean;
+  onChange?: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <div className="relative">
+      <Type as="span" className="pointer-events-none absolute inset-y-0 left-4 z-10 flex items-center text-muted-foreground" variant="body">
+        $
+      </Type>
+      <Input
+        aria-describedby={describedBy}
+        aria-invalid={invalid}
+        className="pl-8"
+        id={id}
+        inputMode="decimal"
+        onChange={(event) => onChange?.(event.target.value)}
+        value={value}
+      />
+    </div>
+  );
+}
+
 export function BoostCampaignSheet({
+  budgetDisplayLabel,
   budgetLabel,
   budgetPresets,
-  chainLabel,
   dailyRewardLabel,
   eligibleActivity,
   eligibleActivities = ["karaoke", "study", "either"],
+  endsAtLabel,
   errorMessage,
   explorerTxUrl,
-  expiresInLabel,
   forceMobile,
   fundingAmountLabel,
+  fundedLabel,
   onBudgetChange,
   onConfirm,
   onDailyRewardChange,
@@ -173,10 +161,10 @@ export function BoostCampaignSheet({
   open,
   planProblem,
   rewardCountLabel,
-  senderAddressLabel,
+  rewardsPaidLabel,
+  remainingLabel,
   state,
   supportReference,
-  treasuryAddress,
   walletMismatch,
 }: BoostCampaignSheetProps) {
   return (
@@ -192,7 +180,7 @@ export function BoostCampaignSheet({
         <ModalHeader className="text-start">
           <ModalTitle>Boost this song</ModalTitle>
           <ModalDescription className="text-muted-foreground">
-            Fund USDC rewards so learners earn by practising this song.
+            Put up rewards for people who practice this song.
           </ModalDescription>
         </ModalHeader>
 
@@ -211,7 +199,7 @@ export function BoostCampaignSheet({
                     type="button"
                     variant={eligibleActivity === activity ? "secondary" : "outline"}
                   >
-                    {{ karaoke: "Karaoke", study: "Study", either: "Both" }[activity]}
+                    {{ karaoke: "Karaoke", study: "Study", either: "Either" }[activity]}
                   </Button>
                 ))}
               </div>
@@ -220,10 +208,9 @@ export function BoostCampaignSheet({
               <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
                 Reward per learner, per day
               </Type>
-              <Input
+              <MoneyInput
                 id="boost-daily-reward"
-                inputMode="decimal"
-                onChange={(event) => onDailyRewardChange?.(event.target.value)}
+                onChange={onDailyRewardChange}
                 value={dailyRewardLabel}
               />
             </label>
@@ -232,12 +219,11 @@ export function BoostCampaignSheet({
                 <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
                   Total budget
                 </Type>
-                <Input
-                  aria-describedby={planProblem ? "boost-plan-problem" : undefined}
-                  aria-invalid={planProblem ? true : undefined}
+                <MoneyInput
+                  describedBy={planProblem ? "boost-plan-problem" : undefined}
                   id="boost-budget"
-                  inputMode="decimal"
-                  onChange={(event) => onBudgetChange?.(event.target.value)}
+                  invalid={Boolean(planProblem)}
+                  onChange={onBudgetChange}
                   value={budgetLabel}
                 />
               </label>
@@ -279,8 +265,8 @@ export function BoostCampaignSheet({
                 </div>
 
                 <Type as="p" className="text-muted-foreground" variant="caption">
-                  You only pay for rewards people actually earn. Rewards are paid out as they are
-                  claimed — funding is final and any budget that goes unspent is not currently refundable.
+                  You pay {budgetDisplayLabel} now. Up to {rewardCountLabel} can be earned.
+                  Unused money cannot be withdrawn yet.
                 </Type>
               </>
             )}
@@ -288,8 +274,7 @@ export function BoostCampaignSheet({
             <div className="flex items-start gap-3 rounded-lg border border-border-soft bg-muted/30 p-4">
               <Lock aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted-foreground" weight="bold" />
               <Type as="p" className="text-muted-foreground" variant="body">
-                Terms are locked once funded. The reward rate and budget cannot be changed afterwards,
-                and funding cannot be withdrawn.
+                The reward and budget cannot be changed after you pay.
               </Type>
             </div>
           </div>
@@ -297,38 +282,25 @@ export function BoostCampaignSheet({
 
         {state === "quote" ? (
           <div className="mt-5 space-y-4">
-            <Card className="border-primary/30 bg-primary-subtle p-4 shadow-none">
+            <Card className="border-primary/30 bg-primary-subtle p-4 text-center shadow-none">
               <Type as="div" className="text-muted-foreground" variant="overline">
-                Send exactly
+                Pay now
               </Type>
               <Type as="div" className="mt-0.5 tabular-nums" variant="h1">
                 {fundingAmountLabel}
               </Type>
-              <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
-                A different amount will not activate the campaign.
-              </Type>
             </Card>
-
-            <div>
-              <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
-                To this address on {chainLabel}
-              </Type>
-              <CopyField value={treasuryAddress ?? ""} />
-            </div>
 
             <div className="rounded-lg border border-border-soft px-4">
               <CampaignSummaryRow label="Reward per day" value={dailyRewardLabel} />
               <CampaignSummaryRow label="Pays for" value={`Up to ${rewardCountLabel}`} />
-              {senderAddressLabel ? <CampaignSummaryRow label="Pays from your wallet" value={senderAddressLabel} /> : null}
-              {expiresInLabel ? <CampaignSummaryRow label="Quote expires in" value={expiresInLabel} /> : null}
             </div>
 
             {walletMismatch ? (
               <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
                 <WarningCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-destructive" weight="fill" />
                 <Type as="p" className="text-destructive" variant="body">
-                  This quote can only be funded from {senderAddressLabel ?? "your primary wallet"}. Switch to that
-                  wallet before sending — a transfer from any other wallet cannot be credited.
+                  Connect your Pirate Wallet to continue. Do not pay from a different wallet.
                 </Type>
               </div>
             ) : null}
@@ -372,10 +344,26 @@ export function BoostCampaignSheet({
                   Boost is live
                 </Type>
                 <Type as="div" className="mt-1 text-muted-foreground" variant="body">
-                  Learners now earn {dailyRewardLabel} for completing {ACTIVITY_LABEL[eligibleActivity]}. They have 7 days to verify and claim each reward.
+                  People can now earn {dailyRewardLabel} for {ACTIVITY_LABEL[eligibleActivity]}.
                 </Type>
               </div>
             </div>
+            {fundedLabel && rewardsPaidLabel && remainingLabel ? (
+              <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3">
+                {[
+                  ["Funded", fundedLabel],
+                  ["Earned", rewardsPaidLabel],
+                  ["Left", remainingLabel],
+                  ["Each", dailyRewardLabel],
+                  ...(endsAtLabel ? [["Ends", endsAtLabel]] : []),
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <Type as="dt" className="text-muted-foreground" variant="caption">{label}</Type>
+                    <Type as="dd" variant="body-strong">{value}</Type>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
             {explorerTxUrl ? (
               <Button asChild className="mt-4 h-11 w-full" variant="outline">
                 <a href={explorerTxUrl} rel="noreferrer" target="_blank">
@@ -395,7 +383,7 @@ export function BoostCampaignSheet({
                 Funding failed
               </Type>
               <Type as="div" className="mt-1 text-muted-foreground" variant="body">
-                {errorMessage ?? "The transfer could not be confirmed. No campaign was created."}
+                {errorMessage ?? "We could not start the boost. No payment was sent."}
               </Type>
             </div>
           </div>
@@ -441,7 +429,7 @@ export function BoostCampaignSheet({
           ) : null}
           {state === "quote" ? (
             <Button className="h-12 w-full" disabled={Boolean(walletMismatch)} onClick={onConfirm}>
-              Send from my wallet
+              Pay {fundingAmountLabel}
             </Button>
           ) : null}
           {state === "preparing" ? (
@@ -520,153 +508,5 @@ export function SongRewardPolicySheet({
         </ModalFooter>
       </ModalContent>
     </Modal>
-  );
-}
-
-export function CampaignStatusCard({
-  budgetLabel,
-  className,
-  dailyRewardLabel,
-  endsAtLabel,
-  onViewDetails,
-  remainingLabel,
-  rewardsPaidLabel,
-  spentLabel,
-  state,
-}: CampaignStatusCardProps) {
-  // Every backend lifecycle state is representable for DISPLAY, but the card exposes
-  // no pause/resume/cancel actions: the API supports no user-driven campaign mutation,
-  // so paused and operational-hold are explanatory states, not interactive controls.
-  const content = {
-    scheduled: {
-      icon: <Clock aria-hidden="true" className="size-6" weight="bold" />,
-      title: "Scheduled",
-      body: "Funded and waiting to start.",
-      tone: "text-muted-foreground",
-    },
-    active: {
-      icon: <Megaphone aria-hidden="true" className="size-6" weight="fill" />,
-      title: "Boost is live",
-      body: `Learners earn ${dailyRewardLabel} per day.`,
-      tone: "text-primary",
-    },
-    paused: {
-      icon: <HourglassMedium aria-hidden="true" className="size-6" weight="bold" />,
-      title: "Paused",
-      body: "No new rewards are being paid right now.",
-      tone: "text-muted-foreground",
-    },
-    // Deliberately does not expose incident internals. The booster is told the truth
-    // that matters to them: nothing new is being paid while the accounting is checked.
-    "operational-hold": {
-      icon: <ShieldWarning aria-hidden="true" className="size-6" weight="fill" />,
-      title: "Paused for an integrity check",
-      body: "We paused this boost while we verify its accounting. No new rewards are being paid in the meantime.",
-      tone: "text-warning",
-    },
-    exhausted: {
-      icon: <Confetti aria-hidden="true" className="size-6" weight="fill" />,
-      title: "Fully claimed",
-      body: "Every reward you funded has been earned.",
-      tone: "text-primary",
-    },
-    ended: {
-      icon: <CheckCircle aria-hidden="true" className="size-6" weight="bold" />,
-      title: "Boost ended",
-      body: "This campaign has finished.",
-      tone: "text-muted-foreground",
-    },
-    canceled: {
-      icon: <Prohibit aria-hidden="true" className="size-6" weight="bold" />,
-      title: "Boost canceled",
-      body: "This campaign was canceled before it started.",
-      tone: "text-muted-foreground",
-    },
-  } satisfies Record<CampaignStatusState, { body: string; icon: React.ReactNode; title: string; tone: string }>;
-
-  const selected = content[state];
-
-  return (
-    <Card className={cn("rounded-lg border-border bg-card p-5 shadow-none", className)}>
-      <div className="flex items-start gap-3">
-        <div className={cn("grid size-11 shrink-0 place-items-center rounded-full bg-muted", selected.tone)}>
-          {selected.icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <Type as="div" variant="body-strong">
-            {selected.title}
-          </Type>
-          <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
-            {selected.body}
-          </Type>
-        </div>
-      </div>
-
-      <div className="mt-4 border-y border-border-soft">
-        <CampaignSummaryRow label="Budget" value={budgetLabel} />
-        <CampaignSummaryRow label="Spent" value={spentLabel} />
-        <CampaignSummaryRow label="Remaining" value={remainingLabel} />
-        <CampaignSummaryRow label="Rewards paid" value={rewardsPaidLabel} />
-        {endsAtLabel ? <CampaignSummaryRow label="Ends" value={endsAtLabel} /> : null}
-      </div>
-
-      {onViewDetails ? (
-        <div className="mt-5 flex gap-3">
-          <Button className="h-12 flex-1" onClick={onViewDetails} variant="outline">
-            View details
-          </Button>
-        </div>
-      ) : null}
-    </Card>
-  );
-}
-
-export function BoostEligibilityNotice({
-  className,
-  onRetry,
-  reason,
-  retryInLabel,
-}: BoostEligibilityNoticeProps) {
-  const content = {
-    "owner-opted-out": {
-      icon: <Prohibit aria-hidden="true" className="size-5 text-muted-foreground" weight="bold" />,
-      title: "Boosts are turned off for this song",
-      body: "The artist has chosen not to accept rewards funded by other people.",
-    },
-    "campaign-exists": {
-      icon: <CurrencyDollar aria-hidden="true" className="size-5 text-primary" weight="bold" />,
-      title: "This song is already boosted",
-      body: "A live boost is already running. You can fund a new one once it finishes.",
-    },
-    "rate-limited": {
-      icon: <Clock aria-hidden="true" className="size-5 text-muted-foreground" weight="bold" />,
-      title: "Too many boosts started",
-      body: retryInLabel
-        ? `You have started several boosts recently. Try again in ${retryInLabel}.`
-        : "You have started several boosts recently. Try again shortly.",
-    },
-  } satisfies Record<BoostBlockedReason, { body: string; icon: React.ReactNode; title: string }>;
-
-  const selected = content[reason];
-
-  return (
-    <div className={cn("flex items-start gap-3 rounded-lg border border-border-soft bg-card p-4 shadow-sm", className)}>
-      <div className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-muted">
-        {selected.icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <Type as="div" variant="body-strong">
-          {selected.title}
-        </Type>
-        <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
-          {selected.body}
-        </Type>
-      </div>
-      {reason === "rate-limited" && onRetry ? (
-        <Button className="h-9 shrink-0" onClick={onRetry} variant="ghost">
-          Retry
-        </Button>
-      ) : null}
-    </div>
   );
 }

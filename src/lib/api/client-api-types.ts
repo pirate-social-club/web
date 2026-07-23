@@ -4,6 +4,7 @@ import type {
   CreateCommunityRequest,
   CreateCommunityListingRequest,
   GatePolicy,
+  RewardQualificationSummary as ContractRewardQualificationSummary,
   SongStudyAttemptRequest as ContractSongStudyAttemptRequest,
   SongStudyAttemptResult as ContractSongStudyAttemptResult,
   SongStudyExercise as ContractSongStudyExercise,
@@ -101,11 +102,14 @@ type ApiRewardEventSummary = {
   created_at: number;
 };
 
+export type ApiRewardQualificationSummary = ContractRewardQualificationSummary;
+
 export type ApiRewardsSummaryResponse = {
   chain_id: number;
   balance_cents: number;
   today_earned_cents: number;
   recent_events: ApiRewardEventSummary[];
+  recent_qualifications: ApiRewardQualificationSummary[];
   pending_verification: {
     count: number;
     conditional_cents: number;

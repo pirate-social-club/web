@@ -16,6 +16,8 @@ import type { SongStreakSummary } from "@/components/compositions/song-study/son
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { Button } from "@/components/primitives/button";
 import {
+  displayedRewardQualificationStatus,
+  RewardQualificationNotice,
   rewardAmountLabel,
   SongRewardOffer,
 } from "@/components/compositions/rewards/reward-surfaces";
@@ -27,6 +29,7 @@ import { toStreakSummary } from "@/app/authenticated-helpers/post-media-presenta
 import { isApiAuthError } from "@/lib/api/client";
 import type {
   ApiPublicRewardOffer,
+  ApiRewardQualificationSummary,
   SongStudyAttemptResult,
   SongStudyExercise,
   SongStudyPayload,
@@ -387,6 +390,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   const { configured, loaded } = usePiratePrivyRuntime();
   const contentLocale = useRouteContentLocale();
   const [state, setState] = React.useState<StudyRouteState>({ phase: "loading" });
+  const [rewardQualification, setRewardQualification] = React.useState<ApiRewardQualificationSummary | null>(null);
+  const [rewardCheckDelayed, setRewardCheckDelayed] = React.useState(false);
   const [reloadKey, setReloadKey] = React.useState(0);
   const recorderRef = React.useRef<MediaRecorder | null>(null);
   const recordingChunksRef = React.useRef<BlobPart[]>([]);
@@ -414,6 +419,38 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     }
     stopRecordingStream();
   }, [stopRecordingStream]);
+
+  const studyComplete = state.phase === "ready" && state.surface.kind === "complete";
+  const completedRewardOffer = state.phase === "ready" ? state.rewardOffer : null;
+  React.useEffect(() => {
+    if (!studyComplete || !completedRewardOffer || !session?.accessToken) return;
+    let cancelled = false;
+    let timeout: number | undefined;
+    let attempt = 0;
+    const poll = async () => {
+      const summary = await api.rewards.getSummary().catch(() => null);
+      if (cancelled) return;
+      const qualification = summary?.recent_qualifications?.find((item) =>
+        item.post_id === postId && item.qualification_basis === "study"
+      ) ?? null;
+      if (qualification) {
+        setRewardQualification(qualification);
+        if (qualification.status !== "checking") return;
+      }
+      if (attempt < 5) {
+        timeout = window.setTimeout(() => { void poll(); }, 1_500 * 2 ** attempt++);
+      } else {
+        setRewardCheckDelayed(true);
+      }
+    };
+    setRewardQualification(null);
+    setRewardCheckDelayed(false);
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
+  }, [api, completedRewardOffer, postId, session?.accessToken, studyComplete]);
 
   React.useEffect(() => {
     let canceled = false;
@@ -879,11 +916,21 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         ? () => setReloadKey((value) => value + 1)
         : undefined}
       rewardSlot={state.rewardOffer && state.rewardOffer.eligible_activity !== "karaoke" ? (
-        <SongRewardOffer
-          amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
-          eligibleActivity={state.rewardOffer.eligible_activity}
-          minScoreBps={state.rewardOffer.min_score_bps}
-        />
+        state.surface.kind === "complete" ? (
+          <RewardQualificationNotice
+            amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
+            expiresAt={rewardQualification?.expires_at}
+            outcomeReason={rewardQualification?.outcome_reason}
+            status={displayedRewardQualificationStatus(rewardQualification?.status, rewardCheckDelayed)}
+            testMode={state.rewardOffer.chain_id === 84532}
+          />
+        ) : (
+          <SongRewardOffer
+            amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
+            eligibleActivity={state.rewardOffer.eligible_activity}
+            minScoreBps={state.rewardOffer.min_score_bps}
+          />
+        )
       ) : undefined}
       state={state.surface}
       title={pageTitle(state.post, state.study)}

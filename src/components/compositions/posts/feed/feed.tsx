@@ -158,7 +158,7 @@ export function toPageVideoItem(item: FeedItem): VideoFeedItem | null {
     caption: content.caption,
     commentCount: post.engagement.commentCount,
     karaoke: "unavailable",
-    likeCount: post.engagement.score,
+    likeCount: post.engagement.upvoteCount ?? Math.max(0, post.engagement.score),
     liked: post.engagement.viewerVote === "up",
     media: {
       orientation: content.aspectRatio != null && content.aspectRatio < 1 ? "portrait" : "landscape",

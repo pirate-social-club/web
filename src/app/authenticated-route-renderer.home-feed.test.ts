@@ -116,6 +116,7 @@ describe("toHomeFeedItem", () => {
     expect(item.post.byline?.community?.label).toBe("c/alpha");
     expect(item.post.engagement?.commentCount).toBe(5);
     expect(item.post.engagement?.score).toBe(9);
+    expect(item.post.engagement?.upvoteCount).toBe(11);
   });
 
   test("maps raw booking discovery metadata without formatting it", () => {

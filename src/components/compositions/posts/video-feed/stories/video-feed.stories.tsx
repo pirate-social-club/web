@@ -61,6 +61,17 @@ const bookableCreator: VideoFeedItem = {
   caption: "Practice the chorus, then book a private pronunciation class with me.",
 };
 
+const publisherAvatarRail: VideoFeedItem = {
+  ...portrait,
+  id: "video_publisher_avatar_rail",
+  publisher: {
+    avatarSrc: "https://i.pravatar.cc/128?img=47",
+    handle: "mara.english",
+    kind: "profile",
+  },
+  caption: "Publisher identity moves to the top of the action rail; the caption keeps the handle.",
+};
+
 const longFeed = Array.from({ length: 7 }, (_, index): VideoFeedItem => ({
   ...portrait,
   id: `video_window_${index + 1}`,
@@ -161,6 +172,12 @@ function DesktopChromeReview() {
 export const VerticalFeed: Story = {
   args: { items: [] },
   render: () => <InteractiveFeed items={[portrait, landscape, gated]} />,
+};
+
+export const PublisherAvatarRail: Story = {
+  name: "Rail / Publisher avatar",
+  args: { items: [] },
+  render: () => <InteractiveFeed items={[publisherAvatarRail]} />,
 };
 
 export const MobileFixedChrome: Story = {

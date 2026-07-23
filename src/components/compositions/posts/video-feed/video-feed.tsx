@@ -313,7 +313,6 @@ function VideoFeedSlide({
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-5 pb-[calc(var(--feed-chrome-bottom)+1.25rem)] pt-24 text-white">
           <div className="pointer-events-auto max-w-[calc(100%-4.5rem)] space-y-2">
             <div className="flex items-center gap-2">
-              <Avatar fallback={item.publisher.handle} size="sm" src={item.publisher.avatarSrc} />
               <Type variant="body-strong">
                 {item.publisher.handle}
               </Type>
@@ -338,6 +337,14 @@ function VideoFeedSlide({
         </div>
 
         <div className="absolute bottom-[calc(var(--feed-chrome-bottom)+1.25rem)] right-3 z-10 flex flex-col items-center gap-3 md:static">
+          <div
+            aria-label={`Publisher ${item.publisher.handle}`}
+            className="rounded-full shadow-md"
+            data-video-publisher-avatar
+            role="img"
+          >
+            <Avatar fallback={item.publisher.handle} size="md" src={item.publisher.avatarSrc} />
+          </div>
           <VideoAction
             active={item.liked}
             icon={<Heart className="size-5" weight={item.liked ? "fill" : "regular"} />}

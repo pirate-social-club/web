@@ -138,6 +138,7 @@ export function toHomeFeedItem(
       engagement: {
         commentCount: getPostCommentCount(postResponse),
         score: getPostScore(postResponse),
+        upvoteCount: postResponse.upvote_count,
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
       authorCommunityRole: postResponse.author_community_role ?? undefined,

@@ -23,7 +23,6 @@ import {
 
 import { Avatar } from "@/components/primitives/avatar";
 import { ActionMenu } from "@/components/primitives/action-menu";
-import { formatCentsAsStartingUsd } from "@/components/compositions/bookings/fixtures/bookings-format";
 import { IconButton } from "@/components/primitives/icon-button";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
@@ -594,7 +593,6 @@ function VideoFeedSlide({
               icon={<CalendarCheck className="size-5" data-video-icon-weight="regular" weight="regular" />}
               label="Book"
               onClick={() => runPlaybackInteraction(onBook)}
-              value={formatCentsAsStartingUsd(item.booking.startingPriceCents)}
             />
           ) : null}
           <CapabilityAction capability={item.study} icon={<BookOpen className="size-5" data-video-icon-weight="regular" weight="regular" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />

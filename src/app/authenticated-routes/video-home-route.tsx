@@ -17,7 +17,11 @@ import { VideoBookingAvailabilityCache } from "@/app/authenticated-helpers/video
 import { FeedBookingSheet } from "@/components/compositions/bookings/feed-booking-sheet/feed-booking-sheet";
 import type { IanaTz, ResolvedSlot } from "@/components/compositions/bookings/view-models";
 import { toPageVideoItem, adjacentVideoSourcePostIds, VideoViewerBoostBridge } from "@/components/compositions/posts/feed/feed";
-import { VideoFeed, type VideoFeedPlaybackState } from "@/components/compositions/posts/video-feed/video-feed";
+import {
+  VideoFeed,
+  type VideoFeedImpression,
+  type VideoFeedPlaybackState,
+} from "@/components/compositions/posts/video-feed/video-feed";
 import { VideoFeedPaginationNotice } from "@/components/compositions/posts/video-feed/video-feed-pagination-notice";
 import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/video-feed.types";
 import { VideoSongCapabilityCache } from "@/components/compositions/posts/video-feed/video-song-capability-cache";
@@ -33,6 +37,7 @@ import {
 } from "@/hooks/use-community-interaction-gate.helpers";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { interpolateMessage } from "@/lib/route-messages";
 import { HomePage } from "./home-routes";
 
@@ -128,6 +133,24 @@ export function resolveVideoPublisherRelationship(input: {
     disabled: Boolean(joined) || input.viewerMembershipStatus === "banned",
     kind: "join",
     label: joined ? input.joinedLabel : input.joinLabel,
+  };
+}
+
+export function videoImpressionAnalyticsProperties(
+  item: VideoFeedItem,
+  impression: VideoFeedImpression,
+): Record<string, string | number | boolean> {
+  return {
+    completion_ratio: Number(impression.completionRatio.toFixed(4)),
+    duration_seconds: Number(impression.durationSeconds.toFixed(3)),
+    dwell_ms: impression.dwellMs,
+    muted: impression.muted,
+    orientation: item.media.orientation,
+    playback_seconds: Number(impression.playbackSeconds.toFixed(3)),
+    position: impression.position,
+    publisher_kind: item.publisher.kind,
+    replay_count: impression.replayCount,
+    sound_on: impression.soundOnAtAnyPoint,
   };
 }
 
@@ -270,6 +293,7 @@ export function VideoHomePage() {
       if (publicProfilePublisher) {
         return [{
           ...video,
+          communityId: entry.community.id,
           publisher: {
             ...video.publisher,
             kind: "profile" as const,
@@ -279,6 +303,7 @@ export function VideoHomePage() {
       }
       return [{
         ...video,
+        communityId: entry.community.id,
         publisher: {
           avatarSrc: item.post.byline.community?.avatarSrc,
           handle: item.post.byline.community?.label ?? video.publisher.handle,
@@ -361,6 +386,15 @@ export function VideoHomePage() {
     });
     if (index >= items.length - 3) void loadMore();
   }, [capabilityCache, items, loadMore]);
+
+  const onImpression = React.useCallback((item: VideoFeedItem, impression: VideoFeedImpression) => {
+    trackAnalyticsEvent({
+      eventName: "video_impression",
+      communityId: item.communityId,
+      postId: item.id,
+      properties: videoImpressionAnalyticsProperties(item, impression),
+    });
+  }, []);
 
   const onBoostAvailabilityChange = React.useCallback((sourcePostId: string, canBoost: boolean, open: () => void) => {
     setBoostTarget(canBoost ? { open, sourcePostId } : null);
@@ -564,6 +598,7 @@ export function VideoHomePage() {
         onKaraoke={(item, playback) => launchSongAction(item, playback, item.song?.karaokeHref)}
         onDownvote={onDownvote}
         onLike={onLike}
+        onImpression={onImpression}
         onPublisherRelationship={onPublisherRelationship}
         onShare={(item) => void navigator.share?.({ url: `${window.location.origin}/p/${encodeURIComponent(item.id)}` })}
         onSong={(item, playback) => launchSongAction(item, playback, item.song?.songHref)}

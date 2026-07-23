@@ -3,7 +3,7 @@ import "@/test/setup-runtime";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 
-import { VideoFeed } from "./video-feed";
+import { VideoFeed, type VideoFeedImpression } from "./video-feed";
 import type { VideoFeedItem } from "./video-feed.types";
 
 if (!window.matchMedia) {
@@ -391,6 +391,40 @@ describe("VideoFeed", () => {
     Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
     fireEvent.scroll(feed);
     expect(calls).toEqual(["one", "two"]);
+  });
+
+  test("reports bounded impression metrics when the active slide changes", () => {
+    const calls: Array<{ id: string; impression: VideoFeedImpression }> = [];
+    const view = render(
+      <VideoFeed
+        items={feedItems()}
+        onImpression={(activeItem, impression) => calls.push({ id: activeItem.id, impression })}
+      />,
+    );
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    const activeVideo = view.container.querySelector<HTMLVideoElement>("video")!;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+    Object.defineProperty(activeVideo, "duration", { configurable: true, value: 10 });
+    Object.defineProperty(activeVideo, "currentTime", { configurable: true, writable: true, value: 9 });
+    fireEvent.timeUpdate(activeVideo);
+    activeVideo.currentTime = 1;
+    fireEvent.timeUpdate(activeVideo);
+
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
+    fireEvent.scroll(feed);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.id).toBe("one");
+    expect(calls[0]?.impression).toMatchObject({
+      completionRatio: 0.9,
+      durationSeconds: 10,
+      muted: true,
+      playbackSeconds: 9,
+      position: 0,
+      replayCount: 1,
+      soundOnAtAnyPoint: false,
+    });
+    expect(calls[0]?.impression.dwellMs).toBeGreaterThanOrEqual(0);
   });
 
   test("mounts media only near the active slide without removing snap shells", () => {

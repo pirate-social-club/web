@@ -118,6 +118,21 @@ describe("toHomeFeedItem", () => {
     expect(item.post.engagement?.score).toBe(9);
   });
 
+  test("maps raw booking discovery metadata without formatting it", () => {
+    const entry = createEntry();
+    entry.booking = {
+      base_price_cents: 3500,
+      currency: "USDC",
+      host_user_id: "usr_author",
+    };
+
+    expect(toHomeFeedItem(entry, {}).booking).toEqual({
+      basePriceCents: 3500,
+      currency: "USDC",
+      hostUserId: "usr_author",
+    });
+  });
+
   test("links home feed community bylines directly to canonical punycode routes", () => {
     const entry = createEntry();
     entry.community.route_slug = "@xn--t77hga";

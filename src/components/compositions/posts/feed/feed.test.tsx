@@ -35,6 +35,21 @@ describe("toPageVideoItem", () => {
     }));
   });
 
+  test("carries raw booking discovery metadata into the viewer item", () => {
+    expect(toPageVideoItem({
+      ...videoItem,
+      booking: {
+        basePriceCents: 3500,
+        currency: "USDC",
+        hostUserId: "usr_host",
+      },
+    })?.booking).toEqual({
+      basePriceCents: 3500,
+      currency: "USDC",
+      hostUserId: "usr_host",
+    });
+  });
+
   test("does not invent viewer entries for non-video cards", () => {
     expect(toPageVideoItem({
       ...videoItem,

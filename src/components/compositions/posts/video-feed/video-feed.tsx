@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   BookOpen,
+  CalendarCheck,
   ChatCircle,
   CurrencyDollar,
   DotsThree,
@@ -18,12 +19,19 @@ import {
 
 import { Avatar } from "@/components/primitives/avatar";
 import { ActionMenu } from "@/components/primitives/action-menu";
+import { formatCentsAsUsdc } from "@/components/compositions/bookings/fixtures/bookings-format";
 import { IconButton } from "@/components/primitives/icon-button";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import type { VideoFeedCapability, VideoFeedItem } from "./video-feed.types";
 
 export interface VideoFeedProps {
+  /**
+   * Id of the item whose booking overlay is open. That item pauses while the overlay is up and
+   * returns to whatever playback state it had once this clears — the feed is never re-ordered or
+   * remounted, so the viewer comes back to the same frame.
+   */
+  bookingOpenItemId?: string;
   className?: string;
   initialItemId?: string;
   initialMuted?: boolean;
@@ -31,12 +39,14 @@ export interface VideoFeedProps {
   initialPlaybackSeconds?: number;
   items: VideoFeedItem[];
   onActiveItemChange?: (item: VideoFeedItem, index: number) => void;
+  onBook?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onComment?: (item: VideoFeedItem) => void;
   onBoost?: (item: VideoFeedItem) => void;
   onGateRequired?: (item: VideoFeedItem) => void;
   onKaraoke?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onLike?: (item: VideoFeedItem) => void;
   onShare?: (item: VideoFeedItem) => void;
+  onSong?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onStudy?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
 }
 
@@ -121,6 +131,7 @@ function VideoFeedSlide({
   active,
   allowAutoplay,
   item,
+  onBook,
   onBoost,
   paused,
   preload,
@@ -130,6 +141,7 @@ function VideoFeedSlide({
   onLike,
   onShare,
   onPausePlayback,
+  onSong,
   onToggleMute,
   onStudy,
   onTogglePlayback,
@@ -185,6 +197,14 @@ function VideoFeedSlide({
       return;
     }
     action?.(item, {
+      muted,
+      paused,
+      playbackSeconds: videoRef.current?.currentTime ?? 0,
+    });
+  };
+
+  const runSongNavigation = () => {
+    onSong?.(item, {
       muted,
       paused,
       playbackSeconds: videoRef.current?.currentTime ?? 0,
@@ -287,7 +307,20 @@ function VideoFeedSlide({
               </Type>
             </div>
             {item.caption ? <Type className="line-clamp-2" variant="body">{item.caption}</Type> : null}
-            {item.song ? <Type className="text-white/80" variant="caption">{item.song.title} · {item.song.artist}</Type> : null}
+            {item.song ? (
+              item.song.songHref && onSong ? (
+                <button
+                  aria-label={`Open ${item.song.title} by ${item.song.artist}`}
+                  className="cursor-pointer text-left text-white/80 underline decoration-white/60 underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  onClick={runSongNavigation}
+                  type="button"
+                >
+                  <Type as="span" className="text-inherit" variant="caption">
+                    {item.song.title} · {item.song.artist}
+                  </Type>
+                </button>
+              ) : <Type className="text-white/80" variant="caption">{item.song.title} · {item.song.artist}</Type>
+            ) : null}
           </div>
         </div>
         </div>
@@ -301,6 +334,14 @@ function VideoFeedSlide({
             value={compactCount(item.likeCount)}
           />
           <VideoAction icon={<ChatCircle className="size-5" weight="fill" />} label="Comments" onClick={() => runInteraction(onComment)} value={compactCount(item.commentCount)} />
+          {item.booking && onBook ? (
+            <VideoAction
+              icon={<CalendarCheck className="size-5" weight="fill" />}
+              label="Book"
+              onClick={() => runPlaybackInteraction(onBook)}
+              value={formatCentsAsUsdc(item.booking.basePriceCents)}
+            />
+          ) : null}
           <CapabilityAction capability={item.study} icon={<BookOpen className="size-5" weight="fill" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
           <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-5" weight="fill" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
           <VideoAction icon={<ShareNetwork className="size-5" weight="fill" />} label="Share" onClick={() => onShare?.(item)} />
@@ -310,7 +351,7 @@ function VideoFeedSlide({
   );
 }
 
-export function VideoFeed({ className, initialItemId, initialMuted = true, initialPaused = false, initialPlaybackSeconds, items, ...actions }: VideoFeedProps) {
+export function VideoFeed({ bookingOpenItemId, className, initialItemId, initialMuted = true, initialPaused = false, initialPlaybackSeconds, items, ...actions }: VideoFeedProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const initialIndex = Math.max(0, items.findIndex((item) => item.id === initialItemId));
   const [activeIndex, setActiveIndex] = React.useState(initialIndex);
@@ -431,7 +472,7 @@ export function VideoFeed({ className, initialItemId, initialMuted = true, initi
             onToggleMute={toggleMute}
             onTogglePlayback={togglePlayback}
             muted={muted}
-            paused={pausedItemIds.has(item.id)}
+            paused={pausedItemIds.has(item.id) || bookingOpenItemId === item.id}
             preload={Math.abs(index - activeIndex) <= 1 ? "auto" : "metadata"}
           />
         </div>

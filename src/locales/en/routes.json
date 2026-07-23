@@ -696,6 +696,8 @@
     "bookTab": "Book",
     "bookPriceLabel": "{price} USDC per session",
     "bookNoAvailability": "No available times right now — check back soon.",
+    "bookSheetTitle": "Book {handle}",
+    "bookSheetDescription": "Pick a time for a 1:1 class. You'll confirm and pay on the next step.",
     "bookOwnerLiveNote": "Your bookings are live. Anyone with your profile link can book an available slot.",
     "bookOwnerSetupNote": "Set up your paid 1:1 bookings to let people book time with you.",
     "editSchedule": "Edit schedule",

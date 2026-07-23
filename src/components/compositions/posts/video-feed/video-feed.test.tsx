@@ -76,6 +76,42 @@ describe("VideoFeed", () => {
     expect(view.getByLabelText("More video actions")).toBeTruthy();
   });
 
+  test("opens a linked song and preserves playback state", () => {
+    const calls: unknown[] = [];
+    const linkedItem = { ...item, song: { artist: "Britney Spears", songHref: "/p/pst_toxic", title: "Toxic" } };
+    const view = render(<VideoFeed initialMuted={false} items={[linkedItem]} onSong={(songItem, state) => calls.push({ songItem, state })} />);
+    const video = view.container.querySelector<HTMLVideoElement>("video")!;
+    Object.defineProperty(video, "currentTime", { configurable: true, value: 5 });
+
+    fireEvent.click(view.getByRole("button", { name: "Open Toxic by Britney Spears" }));
+
+    expect(calls).toEqual([{ songItem: linkedItem, state: { muted: false, paused: false, playbackSeconds: 5 } }]);
+  });
+
+  test("exposes booking only for a server-stated bookable publisher", () => {
+    const calls: unknown[] = [];
+    const view = render(
+      <VideoFeed
+        initialMuted={false}
+        items={[{ ...item, booking: { basePriceCents: 3500, currency: "USDC", hostUserId: "usr_host" } }]}
+        onBook={(bookedItem, state) => calls.push({ bookedItem, state })}
+      />,
+    );
+    const video = view.container.querySelector<HTMLVideoElement>("video")!;
+    Object.defineProperty(video, "currentTime", { configurable: true, value: 8 });
+
+    fireEvent.click(view.getByRole("button", { name: "Book" }));
+
+    expect(view.getByText("35.00 USDC")).toBeTruthy();
+    expect(calls).toEqual([{ bookedItem: { ...item, booking: { basePriceCents: 3500, currency: "USDC", hostUserId: "usr_host" } }, state: { muted: false, paused: false, playbackSeconds: 8 } }]);
+  });
+
+  test("omits booking when the publisher is not marked bookable", () => {
+    const view = render(<VideoFeed items={[item]} />);
+
+    expect(view.queryByRole("button", { name: "Book" })).toBeNull();
+  });
+
   test("reports playback state when a learning action launches", () => {
     const calls: unknown[] = [];
     const view = render(<VideoFeed initialMuted={false} items={[item]} onStudy={(_item, state) => calls.push(state)} />);
@@ -159,6 +195,45 @@ describe("VideoFeed", () => {
     expect(videos[0]?.getAttribute("preload")).toBe("auto");
     expect(videos[1]?.getAttribute("preload")).toBe("metadata");
     expect(view.container.innerHTML).not.toContain("private.mp4");
+  });
+
+  test("omits booking when the container supplies no booking handler", () => {
+    const view = render(<VideoFeed items={[{ ...item, booking: { basePriceCents: 3500, currency: "USDC", hostUserId: "usr_host" } }]} />);
+
+    expect(view.queryByRole("button", { name: "Book" })).toBeNull();
+  });
+
+  test("pauses the item whose booking overlay is open and resumes it on dismiss", () => {
+    const bookable = { ...item, booking: { basePriceCents: 3500, currency: "USDC" as const, hostUserId: "usr_host" } };
+    const view = render(<VideoFeed items={[bookable]} onBook={() => {}} />);
+    const video = view.container.querySelector<HTMLVideoElement>("video")!;
+    const paused: string[] = [];
+    const played: string[] = [];
+    Object.defineProperty(video, "pause", { configurable: true, value: () => { paused.push("pause"); } });
+    Object.defineProperty(video, "play", { configurable: true, value: () => { played.push("play"); return undefined; } });
+
+    view.rerender(<VideoFeed bookingOpenItemId={bookable.id} items={[bookable]} onBook={() => {}} />);
+    expect(paused.length).toBeGreaterThan(0);
+
+    // Dismissing returns the item to its prior (playing) state rather than leaving it stuck.
+    view.rerender(<VideoFeed items={[bookable]} onBook={() => {}} />);
+    expect(played.length).toBeGreaterThan(0);
+  });
+
+  test("keeps an intentional pause after the booking overlay is dismissed", () => {
+    const bookable = { ...item, booking: { basePriceCents: 3500, currency: "USDC" as const, hostUserId: "usr_host" } };
+    const view = render(
+      <VideoFeed bookingOpenItemId={bookable.id} initialPaused initialItemId={bookable.id} items={[bookable]} onBook={() => {}} />,
+    );
+    const video = view.container.querySelector<HTMLVideoElement>("video")!;
+    const played: string[] = [];
+    Object.defineProperty(video, "play", { configurable: true, value: () => { played.push("play"); return undefined; } });
+
+    view.rerender(
+      <VideoFeed initialPaused initialItemId={bookable.id} items={[bookable]} onBook={() => {}} />,
+    );
+
+    expect(played).toEqual([]);
   });
 
   test("pauses active playback while the document is hidden", () => {

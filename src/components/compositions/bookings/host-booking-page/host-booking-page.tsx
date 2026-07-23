@@ -7,7 +7,7 @@ import { Separator } from "@/components/primitives/separator";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
-import { formatCentsAsUsd } from "../fixtures/bookings-format";
+import { formatCentsAsUsdc } from "../fixtures/bookings-format";
 
 export interface HostBookingPageProps {
   name: string;
@@ -42,7 +42,7 @@ export function HostBookingPage({
               <Type as="h1" variant="h2">
                 {name}
               </Type>
-              <Type variant="caption">{formatCentsAsUsd(basePriceCents)} per session</Type>
+              <Type variant="caption">{formatCentsAsUsdc(basePriceCents)} per session</Type>
             </div>
           </div>
 

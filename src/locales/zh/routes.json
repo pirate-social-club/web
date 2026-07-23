@@ -696,6 +696,8 @@
     "bookTab": "日历",
     "bookPriceLabel": "每场 {price} USDC",
     "bookNoAvailability": "目前没有可预约时间 — 请稍后再查看。",
+    "bookAvailabilityError": "无法加载可预约时间。",
+    "bookAvailabilityRetry": "重试",
     "bookSheetTitle": "预约 {handle}",
     "bookSheetDescription": "选择一个一对一课程时间。你将在下一步确认并付款。",
     "bookOwnerLiveNote": "你的预约已上线。拥有你个人资料链接的任何人都可以预约可用时段。",

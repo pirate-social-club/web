@@ -68,6 +68,23 @@ describe("FeedBookingSheet", () => {
     expect(view.getByText("No available times right now — check back soon.")).toBeTruthy();
   });
 
+  test("distinguishes a load failure from empty availability and retries", () => {
+    let retries = 0;
+    const view = render(
+      <FeedBookingSheetBody
+        {...base}
+        error
+        onRetry={() => { retries += 1; }}
+        slots={[]}
+      />,
+    );
+
+    expect(view.getByRole("alert").textContent).toContain("We couldn't load available times.");
+    expect(view.queryByText("No available times right now — check back soon.")).toBeNull();
+    fireEvent.click(view.getByRole("button", { name: "Try again" }));
+    expect(retries).toBe(1);
+  });
+
   test("shows the session price so the viewer sees cost before choosing", () => {
     const view = render(<FeedBookingSheetBody {...base} />);
 

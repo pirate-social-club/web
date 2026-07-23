@@ -60,3 +60,8 @@ export const NoAvailability: Story = {
   args: { ...BASE, onOpenChange: () => {}, open: true },
   render: () => <ControlledSheet slots={[]} />,
 };
+
+export const AvailabilityError: Story = {
+  args: { ...BASE, onOpenChange: () => {}, open: true },
+  render: () => <ControlledSheet error onRetry={() => {}} slots={[]} />,
+};

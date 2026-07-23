@@ -565,7 +565,11 @@ async function enableEventDetails(page: Page): Promise<void> {
 async function completeSelfVerification(session: StoredSession): Promise<void> {
   const started = await requestJson<{ id?: string; verification_session_id?: string }>("/verification-sessions", {
     body: JSON.stringify({ provider: "self" }),
-    headers: { authorization: `Bearer ${session.accessToken}` },
+    headers: {
+      authorization: `Bearer ${session.accessToken}`,
+      "x-pirate-allocation-source": "web-e2e:gate-builder",
+      "x-pirate-allocation-run-id": process.env.GITHUB_RUN_ID?.trim() || runId,
+    },
     method: "POST",
   });
   const id = firstString(started.id, started.verification_session_id);

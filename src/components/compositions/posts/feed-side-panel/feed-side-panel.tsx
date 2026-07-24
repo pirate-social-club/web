@@ -8,7 +8,9 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
-const FEED_DOCK_QUERY = "(min-width: 1024px)";
+// The 26rem dock shares the viewport with the 15.5rem app sidebar. Below xl that leaves too little
+// room for the media stage, so tablet/small-desktop widths intentionally retain the bottom sheet.
+export const FEED_DOCK_QUERY = "(min-width: 1280px)";
 
 function useFeedDockDesktop(): boolean {
   return React.useSyncExternalStore(
@@ -55,7 +57,7 @@ export function FeedPanelLayout({
   return (
     <div className={cn(
       "grid min-h-0 w-full grid-cols-1",
-      panel && "lg:grid-cols-[minmax(0,1fr)_26rem]",
+      panel && "xl:grid-cols-[minmax(0,1fr)_26rem]",
       className,
     )}>
       <div className="min-h-0 min-w-0">{children}</div>
@@ -112,7 +114,7 @@ export function FeedSidePanel({
   return (
     <aside
       aria-label={title}
-      className="hidden min-h-0 border-s border-border-soft bg-card lg:flex lg:flex-col"
+      className="hidden min-h-0 border-s border-border-soft bg-card xl:flex xl:flex-col"
       data-feed-side-panel
       onKeyDown={(event) => {
         if (event.key === "Escape") {

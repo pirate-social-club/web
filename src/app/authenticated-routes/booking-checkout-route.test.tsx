@@ -236,7 +236,7 @@ describe("BookingCheckoutPage", () => {
       object: "list", has_more: false, data: [pendingIntent("refund_pending")],
     }));
     render(<BookingCheckoutPage communityId={null} hostUserId="usr_host" />);
-    await waitFor(() => expect(document.body.textContent).toContain("A refund is pending"));
+    await waitFor(() => expect(document.body.textContent).toContain("The refund requires manual processing"));
     expect(fakeApi.bookings.confirmBookingHold).not.toHaveBeenCalled();
     expect(fakeApi.bookings.createBookingHold).not.toHaveBeenCalled();
   });

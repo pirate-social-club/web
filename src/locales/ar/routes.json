@@ -1440,7 +1440,7 @@
     "quoteRefreshFailed": "تعذّر تحديث عرض السعر. حاول مرة أخرى.",
     "paymentNotSubmitted": "لم تُرسل الدفعة. يمكنك المحاولة مرة أخرى.",
     "resumeLookupFailed": "تعذّر التحقق بأمان من وجود دفعة سابقة. أعد المحاولة قبل بدء دفعة أخرى.",
-    "refundPending": "وصلت دفعتك بعد انتهاء صلاحية الحجز المؤقت. استرداد المبلغ قيد الانتظار."
+    "refundPending": "وصلت دفعتك بعد انتهاء صلاحية الحجز المؤقت. يتطلب رد المبلغ معالجة يدوية — راسل support@pirate.sc مرفقًا بيانات هذا الحجز لإتمامه."
   },
   "bookingManagement": {
     "view": {
@@ -1451,17 +1451,23 @@
       "errorTitle": "تعذّر تحميل الحجوزات", "errorDetail": "حاول مرة أخرى بعد قليل.", "retry": "إعادة المحاولة",
       "emptyTitle": "لا توجد حجوزات بعد", "emptyBookerDetail": "ستظهر الجلسات التي حجزتها هنا.", "emptyHostDetail": "ستظهر الجلسات المحجوزة معك هنا.",
       "paymentInProgress": "الدفع قيد المعالجة", "paymentResumeDetail": "أُرسلت دفعتك. استأنف التأكيد دون الدفع مرة أخرى.", "resumePayment": "استئناف الدفع",
-      "refundPendingTitle": "استرداد المبلغ قيد الانتظار", "refundPendingDetail": "وصلت دفعتك بعد انتهاء الحجز المؤقت للموعد. استرداد المبلغ قيد الانتظار."
+      "refundPendingTitle": "استرداد المبلغ قيد الانتظار", "refundPendingDetail": "وصلت دفعتك بعد انتهاء الحجز المؤقت للموعد. يتطلب رد المبلغ معالجة يدوية — راسل support@pirate.sc مرفقًا بيانات هذا الحجز لإتمامه."
     },
     "status": {
       "confirmed": "مؤكد", "confirmedDetail": "تم حجز جلستك.", "live": "قيد الانعقاد", "liveDetail": "بدأت الجلسة.",
       "joinOpens": "يفتح الانضمام قبل الجلسة بخمس دقائق.", "review": "الحضور قيد المراجعة", "reviewDetail": "لن تُحوّل أي دفعة حتى تأكيد النتيجة.",
       "completed": "مكتملة", "completedHostDetail": "اكتمل تحويل مستحقاتك.", "completedBookerDetail": "اكتمل تحويل مستحقات المضيف.",
+      "completedHostDetailUnsettled": "لم تُحوَّل مستحقاتك بعد. راسل support@pirate.sc لإتمام التحويل.",
+      "completedBookerDetailUnsettled": "لم تُحوَّل مستحقات المضيف بعد.",
       "hostMissed": "لم يحضر المضيف الجلسة", "hostMissedDetail": "اكتمل رد المبلغ بالكامل.",
+      "hostMissedDetailUnsettled": "لم يُرد المبلغ بعد. راسل support@pirate.sc لإتمام رد المبلغ.",
       "bookerMissed": "لم يحضر الحاجز الجلسة", "bookerMissedDetail": "اكتمل تحويل مستحقات المضيف وفق سياسة الحضور.",
+      "bookerMissedDetailUnsettled": "لم تُحوَّل مستحقات المضيف بعد وفق سياسة الحضور.",
       "cancelledByHost": "ألغى المضيف الحجز", "cancelledByHostDetail": "اكتمل رد المبلغ بالكامل.",
+      "cancelledByHostDetailUnsettled": "لم يُرد المبلغ بعد. راسل support@pirate.sc لإتمام رد المبلغ.",
       "cancelledRefunded": "ملغى — تم رد المبلغ", "cancelledNoRefund": "ملغى — دون رد",
       "cancelledRefundedDetail": "اكتمل رد المبلغ بالكامل.", "cancelledNoRefundDetail": "انتهت مهلة الإلغاء المجاني.",
+      "cancelledRefundedDetailUnsettled": "لم يُرد المبلغ بعد. راسل support@pirate.sc لإتمام رد المبلغ.",
       "cancelledBeforePayment": "الملغاة", "cancelledBeforePaymentDetail": "لم يتم تحصيل أي دفعة.",
       "paymentComplete": "اكتملت الدفعة", "legacyOutcomeUnknown": "نتيجة الجلسة الأصلية غير متاحة."
     },

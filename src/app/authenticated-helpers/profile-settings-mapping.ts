@@ -43,10 +43,11 @@ type ProfileLabels = {
 
 type ProfileFollowState = {
   followerCount: string | number | null;
-  followingCount: string | number;
+  followingCount: string | number | null;
   followBusy: boolean;
   followDisabled: boolean;
   followLoading: boolean;
+  followUnavailable: boolean;
   isFollowing: boolean;
   onToggleFollow: () => void;
 };
@@ -106,12 +107,13 @@ export function apiProfileToProps(
       followBusy: followState.followBusy,
       followDisabled: followState.followDisabled || followState.followLoading,
       followLoading: followState.followLoading,
+      followUnavailable: followState.followUnavailable,
       onToggleFollow: followState.onToggleFollow,
     },
     rightRail: {
       stats: [
-        { label: labels.followersLabel, value: followState.followerCount ?? 0 },
-        { label: labels.followingLabel, value: followState.followingCount },
+        { label: labels.followersLabel, value: followState.followerCount ?? "—" },
+        { label: labels.followingLabel, value: followState.followingCount ?? "—" },
       ],
       description: profile.bio ?? undefined,
       walletAddress: profile.primary_wallet_address ?? undefined,

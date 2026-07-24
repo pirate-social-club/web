@@ -701,6 +701,7 @@
     "follow": "关注",
     "followersLabel": "关注者",
     "followFailed": "关注失败。",
+    "followUnavailable": "暂时无法关注",
     "following": "已关注",
     "followingLabel": "关注中",
     "handleUpdated": "用户名已更新",

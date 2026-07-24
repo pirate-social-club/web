@@ -51,13 +51,9 @@ export {
 
 export const EFP_READ_TIMEOUT_MS = 4_000;
 
-export interface ProfileListsResponse {
-  primary_list?: string | null;
-}
-
-export interface FollowStatusResponse {
+export interface FollowRelationshipResponse {
   state?: {
-    follow?: boolean;
+    is_following?: boolean;
   };
 }
 
@@ -68,7 +64,7 @@ export interface ProfileStatsResponse {
 
 export interface OnChainFollowSummary {
   followerCount: number | null;
-  followingCount: number;
+  followingCount: number | null;
 }
 
 export type OnChainListEntry = {
@@ -119,19 +115,19 @@ export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T>
   return await response.json() as T;
 }
 
-export function asPositiveInt(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+export function asNonNegativeIntOrNull(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
     return Math.floor(value);
   }
 
-  if (typeof value === "string") {
+  if (typeof value === "string" && /^\d+$/u.test(value.trim())) {
     const parsed = Number.parseInt(value, 10);
-    if (Number.isFinite(parsed) && parsed > 0) {
+    if (Number.isSafeInteger(parsed) && parsed >= 0) {
       return parsed;
     }
   }
 
-  return 0;
+  return null;
 }
 
 export function decodeStorageLocation(storageLocation: Hex) {

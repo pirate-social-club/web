@@ -84,4 +84,17 @@ describe("EFP sponsored follow writes", () => {
     expect(transaction?.functionName).toBe("applyListOps");
     expect(__testOnly.canSponsorFollowTransaction(transaction!, TEST_EFP_CONFIG)).toBe(false);
   });
+
+  test("mints only when primary-list metadata is genuinely absent", () => {
+    expect(__testOnly.followStorageFromResolution({ kind: "none" })).toBeUndefined();
+    expect(__testOnly.followStorageFromResolution({
+      kind: "found",
+      chainId: baseSepolia.id,
+      listId: "7",
+      slot: 9n,
+    })).toEqual({ chainId: baseSepolia.id, slot: 9n });
+    expect(() => __testOnly.followStorageFromResolution({ kind: "unresolved" })).toThrow(
+      "Unable to load your follow list",
+    );
+  });
 });

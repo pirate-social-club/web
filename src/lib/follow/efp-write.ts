@@ -9,7 +9,8 @@ import type {
   PirateSponsoredIntentSender,
 } from "@/lib/pirate-sponsored-intent";
 
-import { fetchProfileLists, getListStorageLocation, resolvePrimaryListStorageForAddress } from "./efp-read";
+import { resolvePrimaryListStorageForAddress } from "./efp-read";
+import type { PrimaryListStorageResolution } from "./efp-read";
 import {
   buildFollowTransactions as buildSharedFollowTransactions,
   buildSponsoredFollowIntent,
@@ -60,6 +61,18 @@ function canSponsorFollowTransaction(transaction: FollowWriteTransaction, efp = 
   return efp.environment === "testnet" && transaction.chainId === efp.primaryListChainId;
 }
 
+function followStorageFromResolution(
+  resolution: PrimaryListStorageResolution,
+): { chainId: number; slot: bigint } | undefined {
+  if (resolution.kind === "none") {
+    return undefined;
+  }
+  if (resolution.kind === "unresolved") {
+    throw new Error("Unable to load your follow list right now.");
+  }
+  return { chainId: resolution.chainId, slot: resolution.slot };
+}
+
 async function submitSponsoredTransaction(
   wallet: PirateConnectedEvmWallet,
   viewerAddress: Address,
@@ -93,7 +106,6 @@ export async function submitFollowAction(
   params: { followed: boolean; targetAddress: string },
   options?: SubmitFollowActionOptions,
 ): Promise<{ txHash: Address }> {
-  const { efp } = getPirateNetworkConfig();
   const viewerAddress = normalizeAddress(wallet.address);
   const targetAddress = normalizeAddress(params.targetAddress);
 
@@ -110,28 +122,11 @@ export async function submitFollowAction(
   }
 
   let storage: { chainId: number; slot: bigint } | undefined;
-  if (efp.environment === "testnet") {
-    try {
-      const resolved = await resolvePrimaryListStorageForAddress(viewerAddress);
-      storage = resolved ? { chainId: resolved.chainId, slot: resolved.slot } : undefined;
-    } catch {
-      throw new Error("Unable to load your follow list right now.");
-    }
-  } else {
-    let primaryList: string | null = null;
-    try {
-      const lists = await fetchProfileLists(viewerAddress);
-      primaryList =
-        typeof lists.primary_list === "string" && lists.primary_list.trim().length > 0
-          ? lists.primary_list.trim()
-          : null;
-    } catch {
-      throw new Error("Unable to load your follow list right now.");
-    }
-
-    storage = primaryList
-      ? await getListStorageLocation(primaryList)
-      : undefined;
+  try {
+    const resolved = await resolvePrimaryListStorageForAddress(viewerAddress);
+    storage = followStorageFromResolution(resolved);
+  } catch {
+    throw new Error("Unable to load your follow list right now.");
   }
 
   const transactions = buildFollowTransactions(
@@ -173,5 +168,6 @@ export const __testOnly = {
   buildFollowTransactions,
   buildSponsoredFollowIntent,
   canSponsorFollowTransaction,
+  followStorageFromResolution,
   isEmbeddedPrivyWallet,
 };

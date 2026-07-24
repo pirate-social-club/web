@@ -205,7 +205,11 @@ function ProfilePublisherRelationship({
     <PublisherRelationshipButton
       active={follow.isFollowing}
       disabled={follow.followDisabled}
-      label={follow.isFollowing ? followingLabel : followLabel}
+      label={follow.followUnavailable
+        ? follow.followUnavailableLabel
+        : follow.isFollowing
+          ? followingLabel
+          : followLabel}
       onClick={follow.onToggleFollow}
       pending={follow.followBusy || follow.followLoading}
     />

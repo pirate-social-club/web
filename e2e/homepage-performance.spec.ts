@@ -144,7 +144,7 @@ test.describe("homepage public feed performance", () => {
 
     // Home is the video-first route; the legacy public feed request may be
     // used for fallback/preload without its first item being rendered here.
-    await expect(page.locator("body")).toContainText(/Home|Community Feed/u, { timeout: feedRenderBudgetMs });
+    await expect(page.locator("body")).toContainText(/For You|Explore/u, { timeout: feedRenderBudgetMs });
     await expect(page.locator("body")).not.toContainText(browserErrorPattern);
 
     const renderMs = Math.round(performance.now() - navigationStartedAt);

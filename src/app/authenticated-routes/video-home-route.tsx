@@ -45,6 +45,7 @@ import {
 } from "@/components/compositions/posts/feed-side-panel/feed-side-panel";
 import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/video-feed.types";
 import { VideoSongCapabilityCache } from "@/components/compositions/posts/video-feed/video-song-capability-cache";
+import { consumeHomeVideoFeedBootstrap } from "@/lib/api/home-video-feed-bootstrap";
 import { Spinner } from "@/components/primitives/spinner";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
@@ -275,6 +276,10 @@ export function VideoHomePage() {
   const loadingMoreRef = React.useRef(false);
   const consecutiveNoGrowthPagesRef = React.useRef(0);
   const feedGenerationRef = React.useRef(0);
+  const bootstrapRequestRef = React.useRef<{
+    key: string;
+    request: ReturnType<typeof consumeHomeVideoFeedBootstrap>;
+  } | null>(null);
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const seenPostIdsRef = React.useRef(new Set<string>());
   const bookingRequestHostRef = React.useRef<string | null>(null);
@@ -369,7 +374,18 @@ export function VideoHomePage() {
     setAuthorProfiles({});
     setJoinedCommunityIds(new Set());
     const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
-    void request({ locale: contentLocale, sort: "best" })
+    const bootstrapKey = `${Boolean(session?.accessToken)}:${contentLocale}`;
+    if (bootstrapRequestRef.current?.key !== bootstrapKey) {
+      bootstrapRequestRef.current = {
+        key: bootstrapKey,
+        request: consumeHomeVideoFeedBootstrap({
+          authenticated: Boolean(session?.accessToken),
+          locale: contentLocale,
+        }),
+      };
+    }
+    const bootstrappedRequest = bootstrapRequestRef.current.request;
+    void (bootstrappedRequest ?? request({ locale: contentLocale, sort: "best" }))
       .then((response) => {
         if (cancelled) return;
         seedPublicThreadQueriesFromFeed({

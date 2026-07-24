@@ -121,7 +121,7 @@ function buildPublicApiUrl(apiOrigin: string, path: string, locale: UiLocaleCode
 }
 
 function buildHomeFeedPreloadUrl(apiOrigin: string, contentLocale: string): string {
-  const url = new URL("/feed/home/public", apiOrigin);
+  const url = new URL("/feed/home/videos/public", apiOrigin);
   url.searchParams.set("locale", contentLocale);
   url.searchParams.set("sort", "best");
   return url.toString();

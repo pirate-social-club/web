@@ -290,15 +290,18 @@ function CapabilityAction({
 function VideoFeedSlide({
   active,
   allowAutoplay,
+  autoplayBlocked,
   downvoteLabel,
   followLabel,
   followingLabel,
   impressionVisible,
+  intentionalPaused,
   item,
   itemPosition,
   onBook,
   mountMedia,
   onBoost,
+  onAutoplayBlockedChange,
   paused,
   preload,
   removeDownvoteLabel,
@@ -328,14 +331,17 @@ function VideoFeedSlide({
 }: Omit<VideoFeedProps, "downvoteLabel" | "followLabel" | "followingLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "muteVideoLabel" | "removeDownvoteLabel" | "soundOnLabel" | "tapForSoundLabel"> & {
   active: boolean;
   allowAutoplay: boolean;
+  autoplayBlocked: boolean;
   downvoteLabel: string;
   followLabel: string;
   followingLabel: string;
   impressionVisible: boolean;
+  intentionalPaused: boolean;
   item: VideoFeedItem;
   itemPosition: number;
   mountMedia: boolean;
   muteVideoLabel: string;
+  onAutoplayBlockedChange: (itemId: string, blocked: boolean) => void;
   onSoundPromptShown: () => void;
   onToggleMute: (video: HTMLVideoElement | null) => void;
   onTogglePlayback: (item: VideoFeedItem) => void;
@@ -472,8 +478,24 @@ function VideoFeedSlide({
       return;
     }
     const playback = video.play?.();
-    void playback?.catch(() => undefined);
-  }, [active, allowAutoplay, paused]);
+    void Promise.resolve(playback).then(() => {
+      if (autoplayBlocked) onAutoplayBlockedChange(item.id, false);
+    }).catch(() => {
+      onAutoplayBlockedChange(item.id, true);
+    });
+  }, [active, allowAutoplay, autoplayBlocked, item.id, onAutoplayBlockedChange, paused]);
+
+  const togglePlaybackFromControl = () => {
+    if (autoplayBlocked) {
+      const playback = videoRef.current?.play?.();
+      void Promise.resolve(playback).then(() => {
+        onAutoplayBlockedChange(item.id, false);
+      }).catch(() => {
+        onAutoplayBlockedChange(item.id, true);
+      });
+    }
+    onTogglePlayback(item);
+  };
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -499,7 +521,7 @@ function VideoFeedSlide({
     }
     action?.(item, {
       muted,
-      paused,
+      paused: intentionalPaused,
       playbackSeconds: videoRef.current?.currentTime ?? 0,
     });
   };
@@ -643,7 +665,7 @@ function VideoFeedSlide({
             aria-label={paused ? "Play video" : "Pause video"}
             className="absolute inset-0 grid cursor-pointer place-items-center text-white"
             data-video-play-control
-            onClick={() => onTogglePlayback?.(item)}
+            onClick={togglePlaybackFromControl}
             onMouseDown={(event) => event.preventDefault()}
             type="button"
           >
@@ -795,7 +817,7 @@ function VideoFeedSlide({
                 event.stopPropagation();
                 if (action === "previous") onMovePrevious();
                 if (action === "next") onMoveNext();
-                if (action === "toggle") onTogglePlayback(item);
+                if (action === "toggle") togglePlaybackFromControl();
               }}
               step="0.1"
               type="range"
@@ -958,6 +980,7 @@ export function VideoFeed({
   const [activeIndex, setActiveIndex] = React.useState(initialIndex);
   const [documentHidden, setDocumentHidden] = React.useState(false);
   const [pausedItemIds, setPausedItemIds] = React.useState<Set<string>>(() => initialPaused && initialItemId ? new Set([initialItemId]) : new Set());
+  const [autoplayBlockedItemIds, setAutoplayBlockedItemIds] = React.useState<Set<string>>(() => new Set());
   const [userStartedItemIds, setUserStartedItemIds] = React.useState<Set<string>>(() => new Set());
   const [reduceMotion, setReduceMotion] = React.useState(false);
   const [preferenceMuted, setPreferenceMuted] = React.useState(() => initialMuted ?? readStoredMutedPreference() ?? false);
@@ -1061,15 +1084,33 @@ export function VideoFeed({
     };
   }, [commitSettledIndex]);
 
-  const togglePlayback = React.useCallback((item: VideoFeedItem) => {
-    setPausedItemIds((current) => {
+  const setAutoplayBlocked = React.useCallback((itemId: string, blocked: boolean) => {
+    setAutoplayBlockedItemIds((current) => {
+      if (current.has(itemId) === blocked) return current;
       const next = new Set(current);
-      if (next.has(item.id)) next.delete(item.id);
-      else next.add(item.id);
+      if (blocked) next.add(itemId);
+      else next.delete(itemId);
       return next;
     });
-    setUserStartedItemIds((current) => new Set(current).add(item.id));
   }, []);
+
+  const togglePlayback = React.useCallback((item: VideoFeedItem) => {
+    if (autoplayBlockedItemIds.has(item.id)) {
+      setAutoplayBlockedItemIds((current) => {
+        const next = new Set(current);
+        next.delete(item.id);
+        return next;
+      });
+    } else {
+      setPausedItemIds((current) => {
+        const next = new Set(current);
+        if (next.has(item.id)) next.delete(item.id);
+        else next.add(item.id);
+        return next;
+      });
+    }
+    setUserStartedItemIds((current) => new Set(current).add(item.id));
+  }, [autoplayBlockedItemIds]);
 
   const toggleMute = React.useCallback((video: HTMLVideoElement | null) => {
     if (!muted) {
@@ -1162,15 +1203,18 @@ export function VideoFeed({
             {...actions}
             active={index === activeIndex}
             allowAutoplay={!documentHidden && (!reduceMotion || userStartedItemIds.has(item.id))}
+            autoplayBlocked={autoplayBlockedItemIds.has(item.id)}
             downvoteLabel={downvoteLabel}
             followLabel={followLabel}
             followingLabel={followingLabel}
             item={item}
             itemPosition={index}
             impressionVisible={index === activeIndex && !documentHidden}
+            intentionalPaused={pausedItemIds.has(item.id)}
             initialPlaybackSeconds={item.id === initialItemId ? initialPlaybackSeconds : undefined}
             mountMedia={Math.abs(index - activeIndex) <= 1 || recentItemIds.includes(item.id)}
             muteVideoLabel={muteVideoLabel}
+            onAutoplayBlockedChange={setAutoplayBlocked}
             onSoundPromptShown={markSoundPromptShown}
             onMoveNext={() => moveTo(index + 1)}
             onMovePrevious={() => moveTo(index - 1)}
@@ -1178,7 +1222,7 @@ export function VideoFeed({
             onTogglePlayback={togglePlayback}
             muted={muted}
             preferenceMuted={preferenceMuted}
-            paused={pausedItemIds.has(item.id) || externallyPausedItemId === item.id}
+            paused={autoplayBlockedItemIds.has(item.id) || pausedItemIds.has(item.id) || externallyPausedItemId === item.id}
             preload={index === activeIndex ? "auto" : Math.abs(index - activeIndex) === 1 ? "metadata" : "none"}
             removeDownvoteLabel={removeDownvoteLabel}
             soundOnLabel={soundOnLabel}

@@ -8,6 +8,7 @@ import {
   videoProgressKeyAction,
   VideoFeed,
   type VideoFeedImpression,
+  type VideoFeedPlaybackState,
   watchedPlaybackDelta,
 } from "./video-feed";
 import type { VideoFeedItem } from "./video-feed.types";
@@ -383,7 +384,11 @@ describe("VideoFeed", () => {
   });
 
   test("only clears effective mute after unmuted playback resolves", async () => {
-    const restorePlay = mockVideoPlay(() => Promise.reject(new Error("blocked")));
+    let playCount = 0;
+    const restorePlay = mockVideoPlay(() => {
+      playCount += 1;
+      return playCount === 1 ? Promise.reject(new Error("blocked")) : Promise.resolve();
+    });
     try {
       const view = render(<VideoFeed initialMuted={false} items={[item]} />);
       const video = view.container.querySelector<HTMLVideoElement>("video")!;
@@ -430,8 +435,41 @@ describe("VideoFeed", () => {
     }
   });
 
+  test("shows a non-persistent play affordance when muted autoplay is blocked", async () => {
+    const restorePlay = mockVideoPlay(() => Promise.reject(new Error("autoplay blocked")));
+    try {
+      const calls: VideoFeedPlaybackState[] = [];
+      const view = render(
+        <VideoFeed
+          initialMuted
+          items={[item]}
+          onStudy={(_item, state) => calls.push(state)}
+        />,
+      );
+
+      await act(async () => { await Promise.resolve(); });
+
+      expect(view.getByRole("button", { name: "Play video" })).toBeTruthy();
+      fireEvent.click(view.getByRole("button", { name: "Study" }));
+      expect(calls).toEqual([{ muted: true, paused: false, playbackSeconds: 0 }]);
+
+      const video = view.container.querySelector<HTMLVideoElement>("video")!;
+      Object.defineProperty(video, "play", { configurable: true, value: () => Promise.resolve() });
+      fireEvent.click(view.getByRole("button", { name: "Play video" }));
+      await act(async () => { await Promise.resolve(); });
+
+      expect(view.getByRole("button", { name: "Pause video" })).toBeTruthy();
+    } finally {
+      restorePlay();
+    }
+  });
+
   test("shows the sound fallback prompt only once while scrolling the session", async () => {
-    const restorePlay = mockVideoPlay(() => Promise.reject(new Error("blocked")));
+    let playCount = 0;
+    const restorePlay = mockVideoPlay(() => {
+      playCount += 1;
+      return playCount === 1 ? Promise.reject(new Error("blocked")) : Promise.resolve();
+    });
     try {
       const view = render(<VideoFeed initialMuted={false} items={feedItems()} />);
       const feed = view.getByLabelText("Video feed") as HTMLDivElement;

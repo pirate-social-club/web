@@ -18,7 +18,12 @@ import {
   formatFeedBookingTitle,
 } from "@/components/compositions/bookings/feed-booking-sheet/feed-booking-sheet";
 import type { IanaTz, ResolvedSlot } from "@/components/compositions/bookings/view-models";
-import { toPageVideoItem, adjacentVideoSourcePostIds, VideoViewerBoostBridge } from "@/components/compositions/posts/feed/feed";
+import {
+  toPageVideoItem,
+  adjacentVideoSourcePostIds,
+  VideoViewerBoostBridge,
+  type FeedItem,
+} from "@/components/compositions/posts/feed/feed";
 import {
   VideoFeed,
   type VideoFeedImpression,
@@ -95,6 +100,23 @@ export const VIDEO_FEED_VIEWPORT_CLASS = "h-dvh";
 export const VIDEO_FEED_STAGE_CLASS = "relative h-full min-h-0";
 export const MAX_CONSECUTIVE_NO_GROWTH_PAGES = 3;
 const FEED_COMMENTS_HISTORY_KEY = "pirateFeedComments";
+
+export function videoTranslationForFeedItem(
+  item: Pick<FeedItem, "postOriginal">,
+  video: Pick<VideoFeedItem, "caption">,
+  labels: { showOriginalLabel: string; showTranslationLabel: string },
+): VideoFeedItem["translation"] {
+  const originalContent = item.postOriginal?.content;
+  if (originalContent?.type !== "video" || !originalContent.caption || originalContent.caption === video.caption) {
+    return undefined;
+  }
+  return {
+    originalCaption: originalContent.caption,
+    originalDir: originalContent.captionDir,
+    originalLang: originalContent.captionLang,
+    ...labels,
+  };
+}
 
 export function postIdForVideoItem(entries: ApiHomeFeedItem[], itemId: string): string | null {
   return entries.find((entry) => entry.post.post.id === itemId)?.post.post.id ?? null;
@@ -342,9 +364,23 @@ export function VideoHomePage() {
 
   const pageItems = React.useMemo<VideoFeedItem[]>(
     () => entries.flatMap((entry): VideoFeedItem[] => {
-      const item = toHomeFeedItem(entry, authorProfiles);
+      const item = toHomeFeedItem(entry, authorProfiles, undefined, {
+        showOriginalLabel: copy.common.showOriginal,
+        showTranslationLabel: copy.common.showTranslation,
+        viewerContentLocale: contentLocale,
+      });
       const video = toPageVideoItem(item);
       if (!video) return [];
+      const translation = videoTranslationForFeedItem(item, video, {
+        showOriginalLabel: copy.common.showOriginal,
+        showTranslationLabel: copy.common.showTranslation,
+      });
+      const translatedVideo = translation
+        ? {
+            ...video,
+            translation,
+          }
+        : video;
       const post = entry.post.post;
       const authorProfile = post.author_user ? authorProfiles[post.author_user] : null;
       const publicProfilePublisher = post.identity_mode === "public" && Boolean(post.author_user);
@@ -371,7 +407,7 @@ export function VideoHomePage() {
       });
       if (publicProfilePublisher) {
         return [{
-          ...video,
+          ...translatedVideo,
           communityId: entry.community.id,
           publisher: {
             ...video.publisher,
@@ -382,7 +418,7 @@ export function VideoHomePage() {
         }];
       }
       return [{
-        ...video,
+        ...translatedVideo,
         communityId: entry.community.id,
         publisher: {
           avatarSrc: item.post.byline.community?.avatarSrc,
@@ -393,7 +429,7 @@ export function VideoHomePage() {
         },
       }];
     }),
-    [authorProfiles, copy.home.videoPublisherJoin, copy.home.videoPublisherJoined, entries, joinedCommunityIds, session?.user.id],
+    [authorProfiles, contentLocale, copy.common.showOriginal, copy.common.showTranslation, copy.home.videoPublisherJoin, copy.home.videoPublisherJoined, entries, joinedCommunityIds, session?.user.id],
   );
   const items = React.useMemo(() => pageItems.map((item) => {
     const sourcePostId = item.song?.sourcePostId;

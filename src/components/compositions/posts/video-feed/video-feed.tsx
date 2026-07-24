@@ -352,6 +352,7 @@ function VideoFeedSlide({
   const hasPlayableSource = !ageBlocked && Boolean(item.media.src);
   const mediaMounted = mountMedia && hasPlayableSource;
   const [showSoundPrompt, setShowSoundPrompt] = React.useState(false);
+  const [showOriginalCaption, setShowOriginalCaption] = React.useState(false);
   const impressionRef = React.useRef<{
     muted: boolean;
     previousPlaybackSeconds: number;
@@ -389,6 +390,10 @@ function VideoFeedSlide({
   React.useEffect(() => () => {
     if (progressFrameRef.current !== null) window.cancelAnimationFrame?.(progressFrameRef.current);
   }, []);
+
+  React.useEffect(() => {
+    setShowOriginalCaption(false);
+  }, [item.id]);
 
   React.useEffect(() => {
     if (!impressionVisible) return;
@@ -497,6 +502,15 @@ function VideoFeedSlide({
       playbackSeconds: videoRef.current?.currentTime ?? 0,
     });
   };
+  const displayedCaption = showOriginalCaption
+    ? item.translation?.originalCaption ?? item.caption
+    : item.caption;
+  const displayedCaptionDir = showOriginalCaption
+    ? item.translation?.originalDir
+    : item.captionDir;
+  const displayedCaptionLang = showOriginalCaption
+    ? item.translation?.originalLang
+    : item.captionLang;
 
   // One overflow definition feeds both responsive slots: the mobile rail instance and the desktop
   // hover corner. ActionMenu itself picks Sheet vs dropdown from the viewport, so the two slots can
@@ -694,7 +708,30 @@ function VideoFeedSlide({
                 <Type variant="body-strong">{item.publisher.handle}</Type>
               )}
             </div>
-            {item.caption ? <Type className="line-clamp-2" variant="body">{item.caption}</Type> : null}
+            {displayedCaption ? (
+              <Type
+                className="line-clamp-2"
+                dir={displayedCaptionDir ?? "auto"}
+                lang={displayedCaptionLang}
+                variant="body"
+              >
+                {displayedCaption}
+              </Type>
+            ) : null}
+            {item.translation ? (
+              <button
+                aria-pressed={showOriginalCaption}
+                className="rounded-sm text-left text-white/80 hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                onClick={() => setShowOriginalCaption((current) => !current)}
+                type="button"
+              >
+                <Type as="span" className="text-inherit" variant="caption">
+                  {showOriginalCaption
+                    ? item.translation.showTranslationLabel
+                    : item.translation.showOriginalLabel}
+                </Type>
+              </button>
+            ) : null}
             {item.song ? (
               item.song.songHref && onSong ? (
                 <button

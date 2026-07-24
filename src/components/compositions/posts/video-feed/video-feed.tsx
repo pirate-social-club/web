@@ -144,7 +144,7 @@ function PublisherRelationshipButton({
       aria-label={label}
       aria-pressed={active}
       className={cn(
-        "-mt-5 grid size-6 place-items-center rounded-full border-2 border-white text-white shadow-md transition-colors",
+        "-mt-5 grid size-6 place-items-center rounded-full text-white shadow-md transition-colors",
         active ? "bg-success text-success-foreground" : "bg-destructive",
         "disabled:cursor-not-allowed disabled:opacity-70",
       )}
@@ -206,23 +206,23 @@ function VideoAction({
   tone?: "action" | "social";
   value?: string;
 }) {
+  // Every rail action shares one filled dark circle; `tone` is now semantic metadata only, and
+  // earning actions are distinguished by the reward badge rather than a different surface.
   return (
     <div className="flex flex-col items-center gap-1" data-video-action-tone={tone}>
       <div className="relative">
         <IconButton
           active={active}
           aria-label={label}
-          className={tone === "social"
-            ? "bg-transparent text-white drop-shadow-[0_2px_3px_rgb(0_0_0/0.9)] hover:bg-black/25 data-[active=true]:bg-transparent data-[active=true]:text-destructive data-[active=true]:hover:bg-black/25"
-            : "border border-border-soft bg-card/85 shadow-md backdrop-blur hover:bg-card"}
+          className="bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75 data-[active=true]:bg-black/55 data-[active=true]:text-destructive data-[active=true]:hover:bg-black/75"
           disabled={disabled}
           onClick={onClick}
-          variant={tone === "social" ? "ghost" : "secondary"}
+          variant="ghost"
         >
           {icon}
         </IconButton>
         {rewardLabel ? (
-          <span aria-label={`Earn ${rewardLabel}`} className="absolute -right-2 -top-2 inline-flex min-h-5 items-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground shadow-sm">
+          <span aria-label={`Earn ${rewardLabel}`} className="absolute -right-1 -top-1 inline-flex min-h-5 items-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground shadow-sm ring-2 ring-black/60">
             {rewardLabel}
           </span>
         ) : null}
@@ -249,7 +249,7 @@ function CapabilityAction({
   return (
     <VideoAction
       disabled={capability !== "ready"}
-      icon={capability === "locked" ? <Lock className="size-5" weight="fill" /> : icon}
+      icon={capability === "locked" ? <Lock className="size-6" weight="fill" /> : icon}
       label={capability === "locked" ? `${label} locked` : label}
       onClick={onClick}
       rewardLabel={rewardLabel}
@@ -440,6 +440,32 @@ function VideoFeedSlide({
     });
   };
 
+  // One overflow definition feeds both responsive slots: the mobile rail instance and the desktop
+  // hover corner. ActionMenu itself picks Sheet vs dropdown from the viewport, so the two slots can
+  // never drift apart in content or behaviour.
+  const overflowItems = [
+    {
+      key: "sound",
+      label: muted ? soundOnLabel : muteVideoLabel,
+      icon: muted
+        ? <SpeakerHigh className="size-5" weight="fill" />
+        : <SpeakerSlash className="size-5" weight="fill" />,
+    },
+    {
+      key: "downvote",
+      label: item.downvoted ? removeDownvoteLabel : downvoteLabel,
+      icon: <ArrowFatDown className="size-5" weight={item.downvoted ? "fill" : "regular"} />,
+    },
+    ...(item.boostEligibility === "eligible"
+      ? [{ key: "boost", label: "Boost this song", icon: <CurrencyDollar className="size-5" weight="bold" /> }]
+      : []),
+  ];
+  const runOverflowAction = (key: string) => {
+    if (key === "boost") onBoost?.(item);
+    if (key === "downvote") runInteraction(onDownvote);
+    if (key === "sound") onToggleMute(videoRef.current);
+  };
+
   // The mobile header (h-16) and footer nav (--header-height) are fixed overlays, so the slide stays
   // full-bleed and only the overlaid controls are inset out from under them. On md+ the header is in
   // flow and the feed box already excludes it, so the insets collapse to zero.
@@ -454,15 +480,24 @@ function VideoFeedSlide({
           aria-hidden
           alt=""
           className="absolute inset-0 size-full scale-110 object-cover opacity-40 blur-2xl"
+          decoding="async"
+          loading="lazy"
           src={item.media.posterSrc}
         />
       ) : null}
-      <div className="relative flex size-full items-center justify-center [container-type:inline-size] md:gap-4">
+      {/*
+        On md+ the stage becomes a two-track grid: the media frame owns the first track and sets the
+        row height through its explicit md:h, so `items-end` anchors the rail's bottom edge to the
+        frame's bottom edge. The cqw sizing term still reserves ~4rem of inline space, which is what
+        the in-flow rail track plus the gap consume — do not shrink it without moving the rail back
+        out of flow.
+      */}
+      <div className="relative flex size-full items-center justify-center [container-type:inline-size] md:grid md:grid-cols-[auto_auto] md:content-center md:items-end md:justify-center md:gap-4">
         <div className={cn(
-          "relative h-full w-full overflow-hidden bg-black md:rounded-[var(--radius-xl)]",
+          "group relative h-full w-full overflow-hidden bg-black md:rounded-[var(--radius-xl)]",
           item.media.orientation === "portrait"
-            ? "md:h-[min(88dvh,50rem,calc(177.7778cqw-7.1111rem))] md:w-auto md:aspect-[9/16]"
-            : "md:h-[min(88dvh,36rem,40.5cqw)] md:w-auto md:aspect-video",
+            ? "md:h-[min(92dvh,54rem,calc(177.7778cqw-7.1111rem))] md:w-auto md:aspect-[9/16]"
+            : "md:h-[min(92dvh,40rem,40.5cqw)] md:w-auto md:aspect-video",
         )}>
         {mediaMounted ? (
           <video
@@ -497,6 +532,8 @@ function VideoFeedSlide({
           <img
             alt={item.song?.title ?? item.caption ?? "Video poster"}
             className={cn("size-full", item.media.orientation === "portrait" ? "object-cover" : "object-contain")}
+            decoding="async"
+            loading="lazy"
             src={item.media.posterSrc}
           />
         ) : (
@@ -534,8 +571,48 @@ function VideoFeedSlide({
           </button>
         ) : null}
 
+        {/*
+          Desktop-only corner controls, revealed while the frame is hovered or focused within.
+          Mobile keeps sound on "Tap for sound" and overflow in the rail, where there is no hover.
+          They render after the full-frame play control so clicks reach them instead of toggling
+          playback.
+        */}
+        {mediaMounted ? (
+          <div className="absolute left-3 top-3 z-10 hidden opacity-0 transition-opacity duration-150 md:block md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+            <IconButton
+              aria-label={muted ? soundOnLabel : muteVideoLabel}
+              className="bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75"
+              onClick={() => onToggleMute(videoRef.current)}
+              variant="ghost"
+            >
+              {muted
+                ? <SpeakerSlash aria-hidden className="size-6" weight="fill" />
+                : <SpeakerHigh aria-hidden className="size-6" weight="fill" />}
+            </IconButton>
+          </div>
+        ) : null}
+        <div className="absolute right-3 top-3 z-10 hidden opacity-0 transition-opacity duration-150 md:block md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+          <ActionMenu
+            items={overflowItems}
+            label="More video actions"
+            onAction={runOverflowAction}
+            title="Video actions"
+            trigger={(
+              <IconButton
+                aria-label="More video actions"
+                className="bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75"
+                data-video-overflow-trigger
+                variant="ghost"
+              >
+                <DotsThree className="size-6" weight="bold" />
+              </IconButton>
+            )}
+          />
+        </div>
+
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-5 pb-[calc(var(--feed-chrome-bottom)+1.25rem)] pt-24 text-white">
-          <div className="pointer-events-auto max-w-[calc(100%-4.5rem)] space-y-2">
+          {/* The 4.5rem reserve clears the overlaid rail on mobile; on md+ the rail is out of frame. */}
+          <div className="pointer-events-auto max-w-[calc(100%-4.5rem)] space-y-2 md:max-w-none">
             <div className="flex items-center gap-2">
               <Type variant="body-strong">
                 {item.publisher.handle}
@@ -546,7 +623,7 @@ function VideoFeedSlide({
               item.song.songHref && onSong ? (
                 <button
                   aria-label={`Open ${item.song.title} by ${item.song.artist}`}
-                  className="cursor-pointer text-left text-white/80 underline decoration-white/60 underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="cursor-pointer text-left text-white/80 underline-offset-4 hover:text-white hover:underline hover:decoration-white/60 focus-visible:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   onClick={runSongNavigation}
                   type="button"
                 >
@@ -562,13 +639,13 @@ function VideoFeedSlide({
 
         <div className="absolute bottom-[calc(var(--feed-chrome-bottom)+1.25rem)] right-3 z-10 flex flex-col items-center gap-3 md:static">
           {/*
-            The ring separates the avatar from arbitrary video behind it. The neutral fallback icon
+            The avatar sits clean on the media without a separating ring. The neutral fallback icon
             suppresses the generated identicon, whose saturated colours read as a UI element rather
             than a person once they sit on top of media.
           */}
           <div
             aria-label={`Publisher ${item.publisher.handle}`}
-            className="rounded-full ring-2 ring-white/90 shadow-md"
+            className="rounded-full shadow-md"
             data-video-publisher-avatar
             role="img"
           >
@@ -603,9 +680,9 @@ function VideoFeedSlide({
             active={item.liked}
             icon={(
               <Heart
-                className="size-7"
-                data-video-icon-weight={item.liked ? "fill" : "regular"}
-                weight={item.liked ? "fill" : "regular"}
+                className="size-6"
+                data-video-icon-weight="fill"
+                weight="fill"
               />
             )}
             label="Like"
@@ -614,7 +691,7 @@ function VideoFeedSlide({
             value={compactCount(item.likeCount)}
           />
           <VideoAction
-            icon={<ChatCircle className="size-7" data-video-icon-weight="regular" weight="regular" />}
+            icon={<ChatCircle className="size-6" data-video-icon-weight="fill" weight="fill" />}
             label="Comments"
             // Reading a public thread is not a gated interaction. Authentication and membership
             // are requested by the composer only when the viewer tries to write.
@@ -624,61 +701,43 @@ function VideoFeedSlide({
           />
           {item.booking?.hasAvailableSlot && item.booking.startingPriceCents !== null && onBook ? (
             <VideoAction
-              icon={<CalendarCheck className="size-5" data-video-icon-weight="regular" weight="regular" />}
+              icon={<CalendarCheck className="size-6" data-video-icon-weight="fill" weight="fill" />}
               label="Book"
               onClick={() => runPlaybackInteraction(onBook)}
               value={formatCentsAsStartingUsd(item.booking.startingPriceCents)}
             />
           ) : null}
-          <CapabilityAction capability={item.study} icon={<BookOpen className="size-5" data-video-icon-weight="regular" weight="regular" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
-          <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-5" data-video-icon-weight="regular" weight="regular" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
+          <CapabilityAction capability={item.study} icon={<BookOpen className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
+          <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
           <VideoAction
-            icon={<ShareNetwork className="size-7" data-video-icon-weight="regular" weight="regular" />}
+            icon={<ShareNetwork className="size-6" data-video-icon-weight="fill" weight="fill" />}
             label="Share"
             onClick={() => onShare?.(item)}
             tone="social"
           />
           {/*
-            Overflow renders on every slide so the rail keeps a stable height between videos.
-            Downvote lives here rather than in the rail: it is low-frequency, and a seventh
-            persistent action would push the rail into the caption.
+            Mobile keeps overflow in the rail so the rail height stays stable between videos and the
+            menu stays reachable without hover. On md+ the desktop hover corner inside the frame
+            takes over; both slots share the single overflow definition above.
           */}
-          <ActionMenu
-            items={[
-              {
-                key: "sound",
-                label: muted ? soundOnLabel : muteVideoLabel,
-                icon: muted
-                  ? <SpeakerHigh className="size-5" weight="fill" />
-                  : <SpeakerSlash className="size-5" weight="fill" />,
-              },
-              {
-                key: "downvote",
-                label: item.downvoted ? removeDownvoteLabel : downvoteLabel,
-                icon: <ArrowFatDown className="size-5" weight={item.downvoted ? "fill" : "regular"} />,
-              },
-              ...(item.boostEligibility === "eligible"
-                ? [{ key: "boost", label: "Boost this song", icon: <CurrencyDollar className="size-5" weight="bold" /> }]
-                : []),
-            ]}
-            label="More video actions"
-            onAction={(key) => {
-              if (key === "boost") onBoost?.(item);
-              if (key === "downvote") runInteraction(onDownvote);
-              if (key === "sound") onToggleMute(videoRef.current);
-            }}
-            title="Video actions"
-            trigger={(
-              <IconButton
-                aria-label="More video actions"
-                className="text-white drop-shadow-md hover:bg-white/15"
-                data-video-overflow-trigger
-                variant="ghost"
-              >
-                <DotsThree className="size-7" weight="bold" />
-              </IconButton>
-            )}
-          />
+          <div className="md:hidden">
+            <ActionMenu
+              items={overflowItems}
+              label="More video actions"
+              onAction={runOverflowAction}
+              title="Video actions"
+              trigger={(
+                <IconButton
+                  aria-label="More video actions"
+                  className="bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75"
+                  data-video-overflow-trigger
+                  variant="ghost"
+                >
+                  <DotsThree className="size-6" weight="bold" />
+                </IconButton>
+              )}
+            />
+          </div>
         </div>
       </div>
     </article>

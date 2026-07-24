@@ -216,11 +216,47 @@ export const SocialAndEarningActions: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Like, comments, and share use lightweight white glyphs; Book, Study, and Sing remain surfaced actions with labels and reward badges.",
+        story: "Every rail action shares one filled dark circle with a filled white glyph; earning actions are distinguished by their reward badges, and the active heart turns red.",
       },
     },
   },
   render: () => <InteractiveFeed items={[bookableCreator]} />,
+};
+
+/**
+ * The rail is anchored to the media frame's bottom edge on desktop, so per-video rail growth
+ * (Book, Study, Sing, badges) extends upward away from the caption instead of pushing into it.
+ */
+export const DesktopBottomAlignedRail: Story = {
+  name: "Rail / Desktop bottom-aligned",
+  args: { items: [] },
+  parameters: { viewport: { defaultViewport: "desktop" } },
+  render: () => (
+    <InteractiveFeed
+      items={[{
+        ...bookableCreator,
+        boostEligibility: "eligible",
+        rewards: { karaoke: { amountLabel: "$2" }, study: { amountLabel: "$1" } },
+      }]}
+    />
+  ),
+};
+
+/**
+ * Desktop reveals a sound toggle (top-left) and the overflow menu (top-right) while the frame is
+ * hovered or focused within. The play function focuses the corner overflow trigger so the revealed
+ * state is reviewable without a real pointer.
+ */
+export const DesktopHoverCornerControls: Story = {
+  name: "Frame / Desktop hover corner controls",
+  args: { items: [] },
+  parameters: { viewport: { defaultViewport: "desktop" } },
+  play: ({ canvasElement }) => {
+    const triggers = canvasElement.querySelectorAll<HTMLElement>("[data-video-overflow-trigger]");
+    // The first trigger is the frame's corner slot; the mobile rail slot stays hidden on desktop.
+    triggers[0]?.focus();
+  },
+  render: () => <InteractiveFeed items={[{ ...portrait, boostEligibility: "eligible" }]} />,
 };
 
 export const MobileSocialAndEarningActions: Story = {
@@ -394,8 +430,9 @@ export const MobileBookableCreator: Story = {
 };
 
 /**
- * Widest rail the surface can produce: publisher, upvote, comments, book, study, sing, share and
- * overflow. Reviewed on mobile because that is where the rail competes with the caption.
+ * Widest rail the surface can produce: publisher, heart, comments, book, study, sing, share and
+ * overflow, with reward badges sitting on the filled circles. Reviewed on mobile because that is
+ * where the rail competes with the caption, and where the badge-on-circle contrast is weakest.
  */
 export const MobileFullRail: Story = {
   name: "Rail / Mobile full rail",

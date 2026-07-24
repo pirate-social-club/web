@@ -59,6 +59,7 @@ export interface VideoFeedProps {
   removeDownvoteLabel?: string;
   soundOnLabel?: string;
   tapForSoundLabel?: string;
+  videoProgressLabel?: string;
 }
 
 export interface VideoFeedPlaybackState {
@@ -103,6 +104,13 @@ export function watchedPlaybackDelta(currentTime: number, previousTime: number):
   return delta > 0 && delta <= 1.25 ? delta : 0;
 }
 
+export function videoProgressKeyAction(key: string): "next" | "previous" | "toggle" | null {
+  if (key === "ArrowUp" || key === "k") return "previous";
+  if (key === "ArrowDown" || key === "j") return "next";
+  if (key === " " || key === "Spacebar") return "toggle";
+  return null;
+}
+
 function readStoredMutedPreference(): boolean | null {
   if (typeof window === "undefined") return null;
   try {
@@ -124,6 +132,12 @@ function writeStoredMutedPreference(muted: boolean): void {
 
 function compactCount(value: number): string {
   return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+}
+
+function formatVideoTime(seconds: number): string {
+  const safeSeconds = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+  const minutes = Math.floor(safeSeconds / 60);
+  return `${minutes}:${String(safeSeconds % 60).padStart(2, "0")}`;
 }
 
 function PublisherRelationshipButton({
@@ -194,7 +208,6 @@ function VideoAction({
   label,
   onClick,
   rewardLabel,
-  tone = "action",
   value,
 }: {
   active?: boolean;
@@ -203,13 +216,12 @@ function VideoAction({
   label: string;
   onClick?: () => void;
   rewardLabel?: string;
-  tone?: "action" | "social";
   value?: string;
 }) {
-  // Every rail action shares one filled dark circle; `tone` is now semantic metadata only, and
-  // earning actions are distinguished by the reward badge rather than a different surface.
+  // Every rail action shares one filled dark circle; earning actions remain distinguished by the
+  // reward badge rather than a second surface treatment.
   return (
-    <div className="flex flex-col items-center gap-1" data-video-action-tone={tone}>
+    <div className="flex flex-col items-center gap-1">
       <div className="relative">
         <IconButton
           active={active}
@@ -286,12 +298,15 @@ function VideoFeedSlide({
   onToggleMute,
   onStudy,
   onTogglePlayback,
+  onMoveNext,
+  onMovePrevious,
   muted,
   preferenceMuted,
   soundOnLabel,
   soundPromptEligible,
   tapForSoundLabel,
   muteVideoLabel,
+  videoProgressLabel,
   initialPlaybackSeconds,
 }: Omit<VideoFeedProps, "downvoteLabel" | "followLabel" | "followingLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "muteVideoLabel" | "removeDownvoteLabel" | "soundOnLabel" | "tapForSoundLabel"> & {
   active: boolean;
@@ -307,6 +322,8 @@ function VideoFeedSlide({
   onSoundPromptShown: () => void;
   onToggleMute: (video: HTMLVideoElement | null) => void;
   onTogglePlayback: (item: VideoFeedItem) => void;
+  onMoveNext: () => void;
+  onMovePrevious: () => void;
   muted: boolean;
   preferenceMuted: boolean;
   paused: boolean;
@@ -315,9 +332,14 @@ function VideoFeedSlide({
   soundOnLabel: string;
   soundPromptEligible: boolean;
   tapForSoundLabel: string;
+  videoProgressLabel: string;
   initialPlaybackSeconds?: number;
 }) {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
+  const progressFillRef = React.useRef<HTMLDivElement | null>(null);
+  const progressInputRef = React.useRef<HTMLInputElement | null>(null);
+  const progressFrameRef = React.useRef<number | null>(null);
+  const suppressSeekTelemetryRef = React.useRef(false);
   const ageBlocked = item.viewerState === "age_proof_required";
   const hasPlayableSource = !ageBlocked && Boolean(item.media.src);
   const mediaMounted = mountMedia && hasPlayableSource;
@@ -331,6 +353,34 @@ function VideoFeedSlide({
     item: VideoFeedItem;
     watchedSeconds: number;
   } | null>(null);
+
+  const paintProgress = React.useCallback((video: HTMLVideoElement) => {
+    const paint = () => {
+      progressFrameRef.current = null;
+      const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
+      const currentTime = duration > 0 ? Math.min(duration, Math.max(0, video.currentTime)) : 0;
+      const ratio = duration > 0 ? currentTime / duration : 0;
+      if (progressFillRef.current) progressFillRef.current.style.transform = `scaleX(${ratio})`;
+      if (progressInputRef.current) {
+        progressInputRef.current.max = String(duration);
+        progressInputRef.current.value = String(currentTime);
+        progressInputRef.current.setAttribute(
+          "aria-valuetext",
+          `${formatVideoTime(currentTime)} / ${formatVideoTime(duration)}`,
+        );
+      }
+    };
+    if (!window.requestAnimationFrame) {
+      paint();
+      return;
+    }
+    if (progressFrameRef.current !== null) window.cancelAnimationFrame?.(progressFrameRef.current);
+    progressFrameRef.current = window.requestAnimationFrame(paint);
+  }, []);
+
+  React.useEffect(() => () => {
+    if (progressFrameRef.current !== null) window.cancelAnimationFrame?.(progressFrameRef.current);
+  }, []);
 
   React.useEffect(() => {
     if (!impressionVisible) return;
@@ -510,10 +560,17 @@ function VideoFeedSlide({
             poster={item.media.posterSrc}
             preload={preload}
             src={item.media.src}
+            onDurationChange={(event) => paintProgress(event.currentTarget)}
             onTimeUpdate={(event) => {
+              paintProgress(event.currentTarget);
+              const currentTime = event.currentTarget.currentTime;
+              if (suppressSeekTelemetryRef.current) {
+                suppressSeekTelemetryRef.current = false;
+                if (impressionRef.current) impressionRef.current.previousPlaybackSeconds = currentTime;
+                return;
+              }
               const impression = impressionRef.current;
               if (!impression) return;
-              const currentTime = event.currentTarget.currentTime;
               if (isVideoLoopReplay({
                 currentTime,
                 duration: event.currentTarget.duration,
@@ -635,6 +692,51 @@ function VideoFeedSlide({
             ) : null}
           </div>
         </div>
+
+        {mediaMounted ? (
+          <div
+            className="group/timeline absolute inset-x-0 bottom-[var(--feed-chrome-bottom)] z-20 h-5 touch-pan-x md:bottom-0"
+            data-video-progress
+            dir="ltr"
+          >
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-white/30 transition-[height] group-hover/timeline:h-1 group-focus-within/timeline:h-1">
+              <div
+                ref={progressFillRef}
+                className="h-full origin-left scale-x-0 bg-white will-change-transform"
+                data-video-progress-fill
+              />
+            </div>
+            <input
+              ref={progressInputRef}
+              aria-label={videoProgressLabel}
+              aria-valuetext="0:00 / 0:00"
+              className="absolute inset-x-0 bottom-0 h-5 w-full cursor-pointer touch-pan-x opacity-0 accent-white focus-visible:opacity-100 group-hover/timeline:opacity-100"
+              defaultValue="0"
+              max="0"
+              min="0"
+              onInput={(event) => {
+                const video = videoRef.current;
+                if (!video) return;
+                const nextTime = Number(event.currentTarget.value);
+                suppressSeekTelemetryRef.current = true;
+                if (impressionRef.current) impressionRef.current.previousPlaybackSeconds = nextTime;
+                video.currentTime = nextTime;
+                paintProgress(video);
+              }}
+              onKeyDown={(event) => {
+                const action = videoProgressKeyAction(event.key);
+                if (!action) return;
+                event.preventDefault();
+                event.stopPropagation();
+                if (action === "previous") onMovePrevious();
+                if (action === "next") onMoveNext();
+                if (action === "toggle") onTogglePlayback(item);
+              }}
+              step="0.1"
+              type="range"
+            />
+          </div>
+        ) : null}
         </div>
 
         <div className="absolute bottom-[calc(var(--feed-chrome-bottom)+1.25rem)] right-3 z-10 flex flex-col items-center gap-3 md:static">
@@ -687,7 +789,6 @@ function VideoFeedSlide({
             )}
             label="Like"
             onClick={() => runInteraction(onLike)}
-            tone="social"
             value={compactCount(item.likeCount)}
           />
           <VideoAction
@@ -696,7 +797,6 @@ function VideoFeedSlide({
             // Reading a public thread is not a gated interaction. Authentication and membership
             // are requested by the composer only when the viewer tries to write.
             onClick={() => onComment?.(item)}
-            tone="social"
             value={compactCount(item.commentCount)}
           />
           {item.booking?.hasAvailableSlot && item.booking.startingPriceCents !== null && onBook ? (
@@ -713,7 +813,6 @@ function VideoFeedSlide({
             icon={<ShareNetwork className="size-6" data-video-icon-weight="fill" weight="fill" />}
             label="Share"
             onClick={() => onShare?.(item)}
-            tone="social"
           />
           {/*
             Mobile keeps overflow in the rail so the rail height stays stable between videos and the
@@ -759,6 +858,7 @@ export function VideoFeed({
   removeDownvoteLabel = "Remove downvote",
   soundOnLabel = "Sound on",
   tapForSoundLabel = "Tap for sound",
+  videoProgressLabel = "Video progress",
   ...actions
 }: VideoFeedProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
@@ -910,6 +1010,8 @@ export function VideoFeed({
             mountMedia={Math.abs(index - activeIndex) <= 2}
             muteVideoLabel={muteVideoLabel}
             onSoundPromptShown={markSoundPromptShown}
+            onMoveNext={() => moveTo(index + 1)}
+            onMovePrevious={() => moveTo(index - 1)}
             onToggleMute={toggleMute}
             onTogglePlayback={togglePlayback}
             muted={muted}
@@ -920,6 +1022,7 @@ export function VideoFeed({
             soundOnLabel={soundOnLabel}
             soundPromptEligible={!hasShownSoundPromptRef.current}
             tapForSoundLabel={tapForSoundLabel}
+            videoProgressLabel={videoProgressLabel}
           />
         </div>
       ))}

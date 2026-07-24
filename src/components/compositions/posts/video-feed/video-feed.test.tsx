@@ -5,6 +5,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/react";
 
 import {
   isVideoLoopReplay,
+  videoProgressKeyAction,
   VideoFeed,
   type VideoFeedImpression,
   watchedPlaybackDelta,
@@ -117,18 +118,16 @@ describe("VideoFeed", () => {
     expect(view.getByText("songs.pirate").parentElement?.querySelector("[data-video-publisher-avatar]")).toBeNull();
   });
 
-  test("unifies rail actions on filled dark circles, keeping tone as metadata", () => {
+  test("unifies every rail action on the same filled dark circle", () => {
     const view = render(<VideoFeed items={[item]} onComment={() => undefined} onKaraoke={() => undefined} onShare={() => undefined} onStudy={() => undefined} />);
 
     for (const label of ["Like", "Comments", "Share"]) {
       const action = view.getByRole("button", { name: label });
-      expect(action.closest("[data-video-action-tone]")?.getAttribute("data-video-action-tone")).toBe("social");
       expect(action.className).toContain("bg-black/55");
     }
 
     for (const label of ["Study", "Sing"]) {
       const action = view.getByRole("button", { name: label });
-      expect(action.closest("[data-video-action-tone]")?.getAttribute("data-video-action-tone")).toBe("action");
       expect(action.className).toContain("bg-black/55");
     }
   });
@@ -421,6 +420,29 @@ describe("VideoFeed", () => {
     act(() => feed.dispatchEvent(keyEvent));
     expect(feed.dataset.activeIndex).toBe("1");
     expect(calls).toEqual([{ behavior: "smooth", top: 640 }]);
+  });
+
+  test("renders a frame-bottom progress bar with an accessible scrubber", () => {
+    const view = render(<VideoFeed items={[item]} videoProgressLabel="Playback position" />);
+    const progress = view.container.querySelector("[data-video-progress]");
+    const fill = view.container.querySelector("[data-video-progress-fill]");
+    const slider = view.getByRole("slider", { name: "Playback position" });
+
+    expect(progress?.className).toContain("bottom-[var(--feed-chrome-bottom)]");
+    expect(progress?.className).toContain("md:bottom-0");
+    expect(progress?.className).toContain("touch-pan-x");
+    expect(fill?.className).toContain("origin-left");
+    expect(slider.getAttribute("aria-valuetext")).toBe("0:00 / 0:00");
+  });
+
+  test("keeps feed navigation and playback keys owned while the scrubber is focused", () => {
+    expect(videoProgressKeyAction("ArrowUp")).toBe("previous");
+    expect(videoProgressKeyAction("k")).toBe("previous");
+    expect(videoProgressKeyAction("ArrowDown")).toBe("next");
+    expect(videoProgressKeyAction("j")).toBe("next");
+    expect(videoProgressKeyAction(" ")).toBe("toggle");
+    expect(videoProgressKeyAction("ArrowLeft")).toBeNull();
+    expect(videoProgressKeyAction("ArrowRight")).toBeNull();
   });
 
   test("keeps an intentional pause when the item leaves and re-enters the active slot", () => {

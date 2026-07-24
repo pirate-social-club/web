@@ -259,6 +259,28 @@ export const DesktopHoverCornerControls: Story = {
   render: () => <InteractiveFeed items={[{ ...portrait, boostEligibility: "eligible" }]} />,
 };
 
+/**
+ * The thin progress line is always visible at the frame edge. Focusing the native range reveals
+ * its scrub affordance without requiring a pointer and keeps the review state accessible.
+ */
+export const DesktopProgressScrubber: Story = {
+  name: "Playback / Desktop progress scrubber",
+  args: { items: [] },
+  parameters: { viewport: { defaultViewport: "desktop" } },
+  play: ({ canvasElement }) => {
+    canvasElement.querySelector<HTMLInputElement>("[data-video-progress] input")?.focus();
+  },
+  render: () => <InteractiveFeed items={[portrait]} />,
+};
+
+/** Mobile keeps the timeline above the fixed footer through the shared feed chrome inset. */
+export const MobileProgressBar: Story = {
+  name: "Playback / Mobile progress bar",
+  args: { items: [] },
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+  render: () => <InteractiveFeed items={[portrait]} />,
+};
+
 export const MobileSocialAndEarningActions: Story = {
   name: "Rail / Social and earning actions / Mobile",
   args: { items: [] },

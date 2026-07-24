@@ -48,7 +48,11 @@ function ProfileHeroActions({
         onClick={profile.onToggleFollow}
         variant={profile.viewerFollows ? "secondary" : "default"}
       >
-        {profile.viewerFollows ? copy.following : copy.follow}
+        {profile.followUnavailable
+          ? copy.followUnavailable
+          : profile.viewerFollows
+            ? copy.following
+            : copy.follow}
       </Button>
       <Button
         className="flex-1 sm:flex-none"

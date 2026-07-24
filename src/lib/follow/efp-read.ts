@@ -7,7 +7,7 @@ import { getPirateNetworkConfig } from "@/lib/network-config";
 import {
   accountMetadataAbi,
   applyListOp,
-  asPositiveInt,
+  asNonNegativeIntOrNull,
   createEfpPublicClient,
   decodePrimaryListId,
   decodeStorageLocation,
@@ -16,26 +16,25 @@ import {
   listRecordsAbi,
   listRegistryAbi,
   normalizeAddress,
-  type FollowStatusResponse,
+  type FollowRelationshipResponse,
   type OnChainFollowSummary,
   type OnChainListEntry,
-  type ProfileListsResponse,
   type ProfileStatsResponse,
 } from "./efp-shared";
-
-export async function fetchProfileLists(address: Address): Promise<ProfileListsResponse> {
-  return await fetchJson<ProfileListsResponse>(`/users/${address}/lists?cache=fresh`);
-}
 
 async function fetchFollowStatus(
   viewerAddress: Address,
   targetAddress: Address,
 ): Promise<boolean> {
-  const response = await fetchJson<FollowStatusResponse>(
-    `/users/${viewerAddress}/${targetAddress}/buttonState?cache=fresh`,
+  const response = await fetchJson<FollowRelationshipResponse>(
+    `/users/${viewerAddress}/${targetAddress}/relationship?cache=fresh`,
   );
 
-  return Boolean(response.state?.follow);
+  if (typeof response.state?.is_following !== "boolean") {
+    throw new Error("EFP relationship response is missing follow state.");
+  }
+
+  return response.state.is_following;
 }
 
 export async function getListStorageLocation(listId: string) {
@@ -51,7 +50,9 @@ export async function getListStorageLocation(listId: string) {
   return decodeStorageLocation(storageLocation as Hex);
 }
 
-async function getPrimaryListIdForAddress(address: Address): Promise<string | null> {
+async function getPrimaryListIdForAddress(
+  address: Address,
+): Promise<{ kind: "none" } | { kind: "found"; listId: string } | { kind: "unresolved" }> {
   const { efp } = getPirateNetworkConfig();
   const client = createEfpPublicClient(efp.primaryListChainId);
   const encoded = await client.readContract({
@@ -61,7 +62,12 @@ async function getPrimaryListIdForAddress(address: Address): Promise<string | nu
     args: [address, "primary-list"],
   });
 
-  return decodePrimaryListId(encoded as Hex);
+  if (!encoded || encoded === "0x") {
+    return { kind: "none" };
+  }
+
+  const listId = decodePrimaryListId(encoded as Hex);
+  return listId ? { kind: "found", listId } : { kind: "unresolved" };
 }
 
 async function getListUser(chainId: number, slot: bigint): Promise<Address | null> {
@@ -82,21 +88,31 @@ async function getListUser(chainId: number, slot: bigint): Promise<Address | nul
   return normalizeAddress(user as string);
 }
 
+export type PrimaryListStorageResolution =
+  | { kind: "none" }
+  | { kind: "found"; chainId: number; listId: string; slot: bigint }
+  | { kind: "unresolved" };
+
 export async function resolvePrimaryListStorageForAddress(
   address: Address,
-): Promise<{ chainId: number; listId: string; slot: bigint } | null> {
-  const listId = await getPrimaryListIdForAddress(address);
-  if (!listId) {
-    return null;
+): Promise<PrimaryListStorageResolution> {
+  const primaryList = await getPrimaryListIdForAddress(address);
+  if (primaryList.kind !== "found") {
+    return primaryList;
   }
 
-  const storage = await getListStorageLocation(listId);
+  const storage = await getListStorageLocation(primaryList.listId);
   const listUser = await getListUser(storage.chainId, storage.slot);
-  if (listUser !== address) {
-    return null;
+  if (!listUser || listUser !== address) {
+    return { kind: "unresolved" };
   }
 
-  return { chainId: storage.chainId, listId, slot: storage.slot };
+  return {
+    kind: "found",
+    chainId: storage.chainId,
+    listId: primaryList.listId,
+    slot: storage.slot,
+  };
 }
 
 async function getAllListOps(chainId: number, slot: bigint): Promise<Hex[]> {
@@ -121,8 +137,11 @@ async function buildOnChainListStateForAddress(
   address: Address,
 ): Promise<Map<Address, OnChainListEntry>> {
   const storage = await resolvePrimaryListStorageForAddress(address);
-  if (!storage) {
+  if (storage.kind === "none") {
     return new Map();
+  }
+  if (storage.kind === "unresolved") {
+    throw new Error("Unable to resolve EFP primary-list storage.");
   }
 
   const ops = await getAllListOps(storage.chainId, storage.slot);
@@ -163,12 +182,12 @@ async function fetchProfileFollowSummaryOnChain(
 export async function fetchViewerFollowState(
   viewerAddress: string | null | undefined,
   targetAddress: string | null | undefined,
-): Promise<boolean> {
+): Promise<boolean | null> {
   const { efp } = getPirateNetworkConfig();
   const viewer = normalizeAddress(viewerAddress);
   const target = normalizeAddress(targetAddress);
   if (!viewer || !target) {
-    return false;
+    return null;
   }
 
   if (viewer === target) {
@@ -188,14 +207,14 @@ export async function fetchProfileFollowSummary(
   const { efp } = getPirateNetworkConfig();
   const target = normalizeAddress(address);
   if (!target) {
-    return { followerCount: efp.environment === "testnet" ? null : 0, followingCount: 0 };
+    return { followerCount: null, followingCount: null };
   }
 
   if (efp.environment === "testnet") {
     try {
       return await fetchProfileFollowSummaryOnChain(target);
     } catch {
-      return { followerCount: null, followingCount: 0 };
+      return { followerCount: null, followingCount: null };
     }
   }
 
@@ -203,11 +222,17 @@ export async function fetchProfileFollowSummary(
     const stats = await fetchJson<ProfileStatsResponse>(
       `/users/${target}/stats?live=true&cache=fresh`,
     );
+    const followerCount = asNonNegativeIntOrNull(stats.followers_count);
+    const followingCount = asNonNegativeIntOrNull(stats.following_count);
+    if (followerCount === null || followingCount === null) {
+      return { followerCount: null, followingCount: null };
+    }
+
     return {
-      followerCount: Math.max(0, asPositiveInt(stats.followers_count)),
-      followingCount: Math.max(0, asPositiveInt(stats.following_count)),
+      followerCount,
+      followingCount,
     };
   } catch {
-    return { followerCount: 0, followingCount: 0 };
+    return { followerCount: null, followingCount: null };
   }
 }

@@ -82,6 +82,7 @@ export interface ProfileData {
   followBusy?: boolean;
   followDisabled?: boolean;
   followLoading?: boolean;
+  followUnavailable?: boolean;
   onToggleFollow?: () => void;
 }
 

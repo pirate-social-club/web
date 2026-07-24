@@ -701,6 +701,7 @@
     "follow": "Follow",
     "followersLabel": "Followers",
     "followFailed": "Follow failed.",
+    "followUnavailable": "Follow unavailable",
     "following": "Following",
     "followingLabel": "Following",
     "handleUpdated": "Handle updated",

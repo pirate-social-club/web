@@ -701,6 +701,7 @@
     "follow": "تابع",
     "followersLabel": "المتابعون",
     "followFailed": "فشلت المتابعة.",
+    "followUnavailable": "المتابعة غير متاحة",
     "following": "تتابع",
     "followingLabel": "يتابع",
     "handleUpdated": "تم تحديث المعرّف",

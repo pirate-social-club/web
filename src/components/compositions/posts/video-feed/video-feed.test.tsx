@@ -726,14 +726,14 @@ describe("VideoFeed", () => {
     expect(slot.className).toContain("left-3");
   });
 
-  test("keeps the publisher avatar ring-free with a neutral fallback over media", () => {
+  test("keeps the publisher avatar ring-free with the canonical generated ghost", () => {
     const view = render(<VideoFeed items={[{ ...item, publisher: { handle: "songs.pirate", kind: "community" } }]} />);
     const avatar = view.container.querySelector("[data-video-publisher-avatar]")!;
 
     expect(avatar.className).not.toContain("ring-2");
-    // The generated identicon is a data: URI; the neutral fallback must replace it on this surface.
-    expect(avatar.innerHTML).not.toContain("data:image/svg+xml");
-    expect(avatar.querySelector("svg")).toBeTruthy();
+    const image = avatar.querySelector("img");
+    expect(image?.getAttribute("src")).toContain("data:image/svg+xml");
+    expect(image?.getAttribute("alt")).toBe("songs.pirate");
   });
 
   test("underlines the linked song only on hover or focus", () => {
@@ -757,7 +757,7 @@ describe("VideoFeed", () => {
     const view = render(<VideoFeed items={items} />);
     // The landscape backdrop renders for its slide; distant slides beyond the media window render
     // poster images. Neither may block the initial load.
-    const images = Array.from(view.container.querySelectorAll("img"));
+    const images = Array.from(view.container.querySelectorAll("[data-video-media-image]"));
 
     expect(images.length).toBeGreaterThan(1);
     for (const image of images) {

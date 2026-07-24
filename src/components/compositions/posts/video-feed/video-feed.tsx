@@ -20,7 +20,6 @@ import {
   ShareNetwork,
   SpeakerHigh,
   SpeakerSlash,
-  User,
 } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
@@ -539,6 +538,7 @@ function VideoFeedSlide({
           aria-hidden
           alt=""
           className="absolute inset-0 size-full scale-110 object-cover opacity-40 blur-2xl"
+          data-video-media-image
           decoding="async"
           loading="lazy"
           src={item.media.posterSrc}
@@ -598,6 +598,7 @@ function VideoFeedSlide({
           <img
             alt={item.song?.title ?? item.caption ?? "Video poster"}
             className={cn("size-full", item.media.orientation === "portrait" ? "object-cover" : "object-contain")}
+            data-video-media-image
             decoding="async"
             loading="lazy"
             src={item.media.posterSrc}
@@ -763,9 +764,8 @@ function VideoFeedSlide({
 
         <div className="absolute bottom-[calc(var(--feed-chrome-bottom)+1.25rem)] right-3 z-10 flex flex-col items-center gap-3 md:static">
           {/*
-            The avatar sits clean on the media without a separating ring. The neutral fallback icon
-            suppresses the generated identicon, whose saturated colours read as a UI element rather
-            than a person once they sit on top of media.
+            The avatar sits clean on the media without a separating ring. Missing images deliberately
+            use Avatar's canonical generated ghost so account identity stays consistent app-wide.
           */}
           {item.publisher.href ? (
             <a className="rounded-full shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" href={item.publisher.href}>
@@ -777,11 +777,6 @@ function VideoFeedSlide({
               >
                 <Avatar
                   fallback={item.publisher.handle}
-                  fallbackIcon={(
-                    <span className="grid size-full place-items-center rounded-full bg-black/70 text-white">
-                      <User aria-hidden className="size-5" weight="fill" />
-                    </span>
-                  )}
                   size="md"
                   src={item.publisher.avatarSrc}
                 />
@@ -796,11 +791,6 @@ function VideoFeedSlide({
             >
             <Avatar
               fallback={item.publisher.handle}
-              fallbackIcon={(
-                <span className="grid size-full place-items-center rounded-full bg-black/70 text-white">
-                  <User aria-hidden className="size-5" weight="fill" />
-                </span>
-              )}
               size="md"
               src={item.publisher.avatarSrc}
             />

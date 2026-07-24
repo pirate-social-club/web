@@ -17,6 +17,8 @@ export interface VideoFeedItem {
   publisher: {
     avatarSrc?: string;
     handle: string;
+    /** Canonical profile or community destination for both publisher identity affordances. */
+    href?: string;
     kind: "community" | "profile";
     relationship?:
       | {

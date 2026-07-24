@@ -59,6 +59,7 @@ export interface VideoFeedProps {
   onStudy?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   muteVideoLabel?: string;
   nextVideoLabel?: string;
+  originalSoundLabel?: string;
   previousVideoLabel?: string;
   removeDownvoteLabel?: string;
   soundOnLabel?: string;
@@ -312,6 +313,7 @@ function VideoFeedSlide({
   soundPromptEligible,
   tapForSoundLabel,
   muteVideoLabel,
+  originalSoundLabel,
   videoProgressLabel,
   initialPlaybackSeconds,
 }: Omit<VideoFeedProps, "downvoteLabel" | "followLabel" | "followingLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "muteVideoLabel" | "removeDownvoteLabel" | "soundOnLabel" | "tapForSoundLabel"> & {
@@ -325,6 +327,7 @@ function VideoFeedSlide({
   itemPosition: number;
   mountMedia: boolean;
   muteVideoLabel: string;
+  originalSoundLabel: string;
   onSoundPromptShown: () => void;
   onToggleMute: (video: HTMLVideoElement | null) => void;
   onTogglePlayback: (item: VideoFeedItem) => void;
@@ -677,9 +680,18 @@ function VideoFeedSlide({
           {/* The 4.5rem reserve clears the overlaid rail on mobile; on md+ the rail is out of frame. */}
           <div className="pointer-events-auto max-w-[calc(100%-4.5rem)] space-y-2 md:max-w-none">
             <div className="flex items-center gap-2">
-              <Type variant="body-strong">
-                {item.publisher.handle}
-              </Type>
+              {item.publisher.href ? (
+                <a
+                  className="rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  href={item.publisher.href}
+                >
+                  <Type as="span" className="text-inherit" variant="body-strong">
+                    {item.publisher.handle}
+                  </Type>
+                </a>
+              ) : (
+                <Type variant="body-strong">{item.publisher.handle}</Type>
+              )}
             </div>
             {item.caption ? <Type className="line-clamp-2" variant="body">{item.caption}</Type> : null}
             {item.song ? (
@@ -695,7 +707,11 @@ function VideoFeedSlide({
                   </Type>
                 </button>
               ) : <Type className="text-white/80" variant="caption">{item.song.title} · {item.song.artist}</Type>
-            ) : null}
+            ) : (
+              <Type className="text-white/80" variant="caption">
+                {originalSoundLabel} · {item.publisher.handle}
+              </Type>
+            )}
           </div>
         </div>
 
@@ -751,12 +767,33 @@ function VideoFeedSlide({
             suppresses the generated identicon, whose saturated colours read as a UI element rather
             than a person once they sit on top of media.
           */}
-          <div
-            aria-label={`Publisher ${item.publisher.handle}`}
-            className="rounded-full shadow-md"
-            data-video-publisher-avatar
-            role="img"
-          >
+          {item.publisher.href ? (
+            <a className="rounded-full shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" href={item.publisher.href}>
+              <span
+                aria-label={`Publisher ${item.publisher.handle}`}
+                className="block rounded-full"
+                data-video-publisher-avatar
+                role="img"
+              >
+                <Avatar
+                  fallback={item.publisher.handle}
+                  fallbackIcon={(
+                    <span className="grid size-full place-items-center rounded-full bg-black/70 text-white">
+                      <User aria-hidden className="size-5" weight="fill" />
+                    </span>
+                  )}
+                  size="md"
+                  src={item.publisher.avatarSrc}
+                />
+              </span>
+            </a>
+          ) : (
+            <div
+              aria-label={`Publisher ${item.publisher.handle}`}
+              className="rounded-full shadow-md"
+              data-video-publisher-avatar
+              role="img"
+            >
             <Avatar
               fallback={item.publisher.handle}
               fallbackIcon={(
@@ -767,7 +804,8 @@ function VideoFeedSlide({
               size="md"
               src={item.publisher.avatarSrc}
             />
-          </div>
+            </div>
+          )}
           {active && item.publisher.relationship?.kind === "follow" ? (
             <ProfilePublisherRelationship
               followLabel={followLabel}
@@ -862,6 +900,7 @@ export function VideoFeed({
   items,
   muteVideoLabel = "Mute video",
   nextVideoLabel = "Next video",
+  originalSoundLabel = "Original sound",
   previousVideoLabel = "Previous video",
   removeDownvoteLabel = "Remove downvote",
   soundOnLabel = "Sound on",
@@ -1021,6 +1060,7 @@ export function VideoFeed({
             onSoundPromptShown={markSoundPromptShown}
             onMoveNext={() => moveTo(index + 1)}
             onMovePrevious={() => moveTo(index - 1)}
+            originalSoundLabel={originalSoundLabel}
             onToggleMute={toggleMute}
             onTogglePlayback={togglePlayback}
             muted={muted}

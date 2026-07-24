@@ -118,6 +118,22 @@ describe("VideoFeed", () => {
     expect(view.getByText("songs.pirate").parentElement?.querySelector("[data-video-publisher-avatar]")).toBeNull();
   });
 
+  test("links both publisher affordances and labels unattributed audio as original sound", () => {
+    const view = render(<VideoFeed
+      items={[{
+        ...item,
+        publisher: { ...item.publisher, href: "/c/songs" },
+        song: undefined,
+      }]}
+      originalSoundLabel="Original sound"
+    />);
+
+    const publisherLinks = view.getAllByRole("link");
+    expect(publisherLinks.filter((link) => link.getAttribute("href") === "/c/songs")).toHaveLength(2);
+    expect(view.getByText("Original sound · songs.pirate")).toBeTruthy();
+    expect(view.queryByRole("button", { name: /Open .* by/u })).toBeNull();
+  });
+
   test("keeps mobile rail actions circle-free and gives desktop actions a visible circle", () => {
     const view = render(<VideoFeed items={[item]} onComment={() => undefined} onKaraoke={() => undefined} onShare={() => undefined} onStudy={() => undefined} />);
 

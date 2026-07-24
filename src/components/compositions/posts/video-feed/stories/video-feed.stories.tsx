@@ -429,6 +429,17 @@ export const NoLinkedSong: Story = {
   render: () => <InteractiveFeed items={[{ ...portrait, id: "video_unlinked", karaoke: "unavailable", song: undefined, study: "unavailable" }]} />,
 };
 
+/** Both publisher affordances share one canonical destination; unattributed media stays honest. */
+export const PublisherLinksWithOriginalSound: Story = {
+  name: "Publisher / Links and original sound",
+  args: { items: [] },
+  render: () => <InteractiveFeed items={[{
+    ...portrait,
+    publisher: { ...portrait.publisher, href: "/c/karaoke" },
+    song: undefined,
+  }]} />,
+};
+
 export const RewardedActionsAndBoost: Story = {
   args: { items: [] },
   render: () => <InteractiveFeed items={[{ ...portrait, boostEligibility: "eligible" }]} />,

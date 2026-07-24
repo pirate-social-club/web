@@ -375,6 +375,7 @@ export function VideoHomePage() {
           communityId: entry.community.id,
           publisher: {
             ...video.publisher,
+            href: item.post.byline.author?.href,
             kind: "profile" as const,
             relationship,
           },
@@ -386,6 +387,7 @@ export function VideoHomePage() {
         publisher: {
           avatarSrc: item.post.byline.community?.avatarSrc,
           handle: item.post.byline.community?.label ?? video.publisher.handle,
+          href: item.post.byline.community?.href,
           kind: "community" as const,
           relationship,
         },
@@ -725,6 +727,7 @@ export function VideoHomePage() {
         items={items}
         muteVideoLabel={copy.common.muteVideo}
         nextVideoLabel={copy.common.nextVideo}
+        originalSoundLabel={copy.common.originalSound}
         onActiveItemChange={onActiveItemChange}
         onBoost={(item) => {
           if (boostTarget && item.song?.sourcePostId === boostTarget.sourcePostId) boostTarget.open();

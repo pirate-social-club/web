@@ -222,15 +222,17 @@ function VideoAction({
   rewardLabel?: string;
   value?: string;
 }) {
-  // Every rail action shares one filled dark circle; earning actions remain distinguished by the
-  // reward badge rather than a second surface treatment.
+  // Mobile overlays the video, so actions stay bare filled glyphs with a drop shadow and no
+  // circle. On md+ the rail sits on the black stage outside the frame, where a dark circle is
+  // invisible — so desktop uses a light filled circle instead. Earning actions remain
+  // distinguished by the reward badge rather than a second surface treatment.
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-0.5 md:gap-1">
       <div className="relative">
         <IconButton
           active={active}
           aria-label={label}
-          className="bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75 data-[active=true]:bg-black/55 data-[active=true]:text-destructive data-[active=true]:hover:bg-black/75"
+          className="bg-transparent text-white drop-shadow-[0_2px_3px_rgb(0_0_0/0.9)] hover:bg-white/15 data-[active=true]:text-destructive md:bg-white/10 md:shadow-md md:drop-shadow-none md:hover:bg-white/20"
           disabled={disabled}
           onClick={onClick}
           variant="ghost"
@@ -832,7 +834,7 @@ function VideoFeedSlide({
               trigger={(
                 <IconButton
                   aria-label="More video actions"
-                  className="bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75"
+                  className="bg-transparent text-white drop-shadow-[0_2px_3px_rgb(0_0_0/0.9)] hover:bg-white/15"
                   data-video-overflow-trigger
                   variant="ghost"
                 >
@@ -1041,7 +1043,7 @@ export function VideoFeed({
       >
         <IconButton
           aria-label={previousVideoLabel}
-          className="pointer-events-auto bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75 disabled:bg-black/35 disabled:text-white/40"
+          className="pointer-events-auto bg-white/10 text-white shadow-md hover:bg-white/20 disabled:bg-white/5 disabled:text-white/40"
           disabled={activeIndex === 0}
           onClick={() => moveTo(activeIndex - 1)}
           variant="ghost"
@@ -1050,7 +1052,7 @@ export function VideoFeed({
         </IconButton>
         <IconButton
           aria-label={nextVideoLabel}
-          className="pointer-events-auto bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75 disabled:bg-black/35 disabled:text-white/40"
+          className="pointer-events-auto bg-white/10 text-white shadow-md hover:bg-white/20 disabled:bg-white/5 disabled:text-white/40"
           disabled={activeIndex === items.length - 1}
           onClick={() => moveTo(activeIndex + 1)}
           variant="ghost"

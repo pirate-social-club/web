@@ -216,7 +216,7 @@ export const SocialAndEarningActions: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Every rail action shares one filled dark circle with a filled white glyph; earning actions are distinguished by their reward badges, and the active heart turns red.",
+        story: "On mobile every rail action is a bare filled glyph with a drop shadow over the video; on desktop each sits on a visible light circle against the black stage. Earning actions are distinguished by their reward badges, and the active heart turns red.",
       },
     },
   },
@@ -461,7 +461,7 @@ export const MobileBookableCreator: Story = {
 
 /**
  * Widest rail the surface can produce: publisher, heart, comments, book, study, sing, share and
- * overflow, with reward badges sitting on the filled circles. Reviewed on mobile because that is
+ * overflow, with reward badges sitting beside the glyphs. Reviewed on mobile because that is
  * where the rail competes with the caption, and where the badge-on-circle contrast is weakest.
  */
 export const MobileFullRail: Story = {

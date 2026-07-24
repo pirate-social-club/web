@@ -13,7 +13,10 @@ import {
   saveVideoViewerReturnState,
 } from "@/app/authenticated-helpers/video-viewer-return-state";
 import { VideoBookingAvailabilityCache } from "@/app/authenticated-helpers/video-booking-availability-cache";
-import { FeedBookingSheet } from "@/components/compositions/bookings/feed-booking-sheet/feed-booking-sheet";
+import {
+  FeedBookingSheetBody,
+  formatFeedBookingTitle,
+} from "@/components/compositions/bookings/feed-booking-sheet/feed-booking-sheet";
 import type { IanaTz, ResolvedSlot } from "@/components/compositions/bookings/view-models";
 import { toPageVideoItem, adjacentVideoSourcePostIds, VideoViewerBoostBridge } from "@/components/compositions/posts/feed/feed";
 import {
@@ -210,11 +213,6 @@ export function VideoHomePage() {
   const [capabilityRevision, setCapabilityRevision] = React.useState(0);
   const [activeItemId, setActiveItemId] = React.useState<string | null>(null);
   const [boostTarget, setBoostTarget] = React.useState<{ open: () => void; sourcePostId: string } | null>(null);
-  const [bookingTarget, setBookingTarget] = React.useState<{
-    item: VideoFeedItem;
-    playback: VideoFeedPlaybackState;
-    sourceCommunityId: string | null;
-  } | null>(null);
   const [bookingSlots, setBookingSlots] = React.useState<ResolvedSlot[]>([]);
   const [bookingLoading, setBookingLoading] = React.useState(false);
   const [bookingError, setBookingError] = React.useState(false);
@@ -227,6 +225,7 @@ export function VideoHomePage() {
   const commentComposerRef = React.useRef<HTMLTextAreaElement>(null);
   const feedFocusRef = React.useRef<HTMLDivElement>(null);
   const panelReturnFocusRef = React.useRef<HTMLElement | null>(null);
+  const feedPathRef = React.useRef(currentRelativePath());
   const bookingTimezone = React.useMemo(viewerTimezone, []);
   // Session storage only exists on the client, and the restored state is consumed
   // no earlier than the first post-hydration render, so defer the read.
@@ -591,8 +590,18 @@ export function VideoHomePage() {
     const hostUserId = item.booking.hostUserId;
     const cached = bookingCache.get(hostUserId);
     bookingRequestHostRef.current = hostUserId;
-    setBookingTarget({
-      item,
+    panelReturnFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : feedFocusRef.current;
+    if (panelFromHistoryState(window.history.state).kind === "comments") {
+      window.history.replaceState({}, "", feedPathRef.current);
+    }
+    setPanelState({
+      basePriceCents: item.booking.basePriceCents,
+      handle: item.publisher.handle,
+      hostUserId,
+      itemId: item.id,
+      kind: "booking",
       playback,
       sourceCommunityId: activeResolution?.sourceCommunityId ?? null,
     });
@@ -603,40 +612,39 @@ export function VideoHomePage() {
   }, [activeResolution?.sourceCommunityId, bookingCache, loadBookingAvailability]);
 
   const retryBookingAvailability = React.useCallback(() => {
-    const hostUserId = bookingTarget?.item.booking?.hostUserId;
-    if (!hostUserId) return;
-    bookingRequestHostRef.current = hostUserId;
-    loadBookingAvailability(hostUserId);
-  }, [bookingTarget, loadBookingAvailability]);
+    if (panelState.kind !== "booking") return;
+    bookingRequestHostRef.current = panelState.hostUserId;
+    loadBookingAvailability(panelState.hostUserId);
+  }, [loadBookingAvailability, panelState]);
 
   const setBookingOpen = React.useCallback((open: boolean) => {
     if (open) return;
     bookingRequestHostRef.current = null;
-    setBookingTarget(null);
     setBookingError(false);
     setBookingLoading(false);
     setBookingSlots([]);
-  }, []);
+    setPanelState({ kind: "none" });
+    restoreFeedFocus();
+  }, [restoreFeedFocus]);
 
   const selectBookingSlot = React.useCallback((slot: ResolvedSlot, event?: React.MouseEvent) => {
-    const booking = bookingTarget?.item.booking;
-    if (!bookingTarget || !booking) return;
+    if (panelState.kind !== "booking") return;
     event?.preventDefault();
     saveVideoViewerReturnState({
       createdAt: Date.now(),
-      itemId: bookingTarget.item.id,
-      muted: bookingTarget.playback.muted,
-      paused: bookingTarget.playback.paused,
-      playbackSeconds: bookingTarget.playback.playbackSeconds,
+      itemId: panelState.itemId,
+      muted: panelState.playback.muted,
+      paused: panelState.playback.paused,
+      playbackSeconds: panelState.playback.playbackSeconds,
       returnPath: currentRelativePath(),
       scrollY: 0,
     });
     navigate(checkoutPathForFeedSlot(
-      booking.hostUserId,
+      panelState.hostUserId,
       slot,
-      bookingTarget.sourceCommunityId,
+      panelState.sourceCommunityId,
     ));
-  }, [bookingTarget]);
+  }, [panelState]);
 
   const surface = resolveVideoHomeSurface({ error, itemCount: items.length, loading });
   if (surface === "loading") return <div className="grid min-h-dvh w-full place-items-center bg-background"><Spinner className="size-6" /></div>;
@@ -661,11 +669,37 @@ export function VideoHomePage() {
           >
             <FeedCommentsPanel composerRef={commentComposerRef} postId={panelState.postId} />
           </FeedSidePanel>
+        ) : panelState.kind === "booking" ? (
+          <FeedSidePanel
+            closeLabel={copy.common.close}
+            description={copy.profile.bookSheetDescription}
+            onOpenChange={setBookingOpen}
+            open
+            returnFocusRef={panelReturnFocusRef}
+            title={formatFeedBookingTitle(copy.profile.bookSheetTitle, panelState.handle)}
+          >
+            <div className="h-full overflow-y-auto p-5">
+              <FeedBookingSheetBody
+                basePriceCents={panelState.basePriceCents}
+                error={bookingError}
+                getSlotHref={(slot) => checkoutPathForFeedSlot(
+                  panelState.hostUserId,
+                  slot,
+                  panelState.sourceCommunityId,
+                )}
+                loading={bookingLoading}
+                onRetry={retryBookingAvailability}
+                onSelectSlot={selectBookingSlot}
+                slots={bookingSlots}
+                viewerTimezone={bookingTimezone}
+              />
+            </div>
+          </FeedSidePanel>
         ) : undefined}
       >
         <div className="relative min-h-0" ref={feedFocusRef} tabIndex={-1}>
       <VideoFeed
-        bookingOpenItemId={bookingTarget?.item.id}
+        externallyPausedItemId={panelState.kind === "booking" ? panelState.itemId : undefined}
         className="h-full"
         downvoteLabel={copy.common.downvote}
         followLabel={copy.home.videoPublisherFollow}
@@ -684,6 +718,12 @@ export function VideoHomePage() {
         onComment={(item) => {
           const postId = postIdForVideoItem(entries, item.id);
           if (!postId) return;
+          if (panelState.kind === "booking") {
+            bookingRequestHostRef.current = null;
+            setBookingError(false);
+            setBookingLoading(false);
+            setBookingSlots([]);
+          }
           const nextPanel: Extract<FeedPanelState, { kind: "comments" }> = {
             itemId: item.id,
             kind: "comments",
@@ -727,25 +767,6 @@ export function VideoHomePage() {
       ) : null}
         </div>
       </FeedPanelLayout>
-      {bookingTarget?.item.booking ? (
-        <FeedBookingSheet
-          basePriceCents={bookingTarget.item.booking.basePriceCents}
-          error={bookingError}
-          getSlotHref={(slot) => checkoutPathForFeedSlot(
-            bookingTarget.item.booking!.hostUserId,
-            slot,
-            bookingTarget.sourceCommunityId,
-          )}
-          handle={bookingTarget.item.publisher.handle}
-          loading={bookingLoading}
-          onOpenChange={setBookingOpen}
-          onRetry={retryBookingAvailability}
-          onSelectSlot={selectBookingSlot}
-          open
-          slots={bookingSlots}
-          viewerTimezone={bookingTimezone}
-        />
-      ) : null}
       {activeResolution?.sourceCommunityId ? (
         <VideoViewerBoostBridge
           activePublicOffer={activeResolution.activeRewardOffer}

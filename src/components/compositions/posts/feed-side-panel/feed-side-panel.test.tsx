@@ -21,9 +21,12 @@ describe("FeedSidePanel", () => {
     expect(feedPanelBlocksPlayback({ itemId: "video-1", kind: "comments", postId: "post-1" }, "video-1")).toBe(false);
     expect(feedPanelBlocksPlayback({
       basePriceCents: 1_000,
+      handle: "host",
       hostUserId: "host-1",
       itemId: "video-1",
       kind: "booking",
+      playback: { muted: false, paused: false, playbackSeconds: 12 },
+      sourceCommunityId: null,
     }, "video-1")).toBe(true);
   });
 

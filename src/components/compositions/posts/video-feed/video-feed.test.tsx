@@ -114,6 +114,23 @@ describe("VideoFeed", () => {
     }
   });
 
+  test("opens public comments without routing through the membership gate", () => {
+    let comments = 0;
+    let gates = 0;
+    const view = render(
+      <VideoFeed
+        items={[{ ...item, interactionGate: "membership_required" }]}
+        onComment={() => { comments += 1; }}
+        onGateRequired={() => { gates += 1; }}
+      />,
+    );
+
+    fireEvent.click(view.getByRole("button", { name: "Comments" }));
+
+    expect(comments).toBe(1);
+    expect(gates).toBe(0);
+  });
+
   test("uses outline rail icons by default and a red filled heart when liked", () => {
     const view = render(<VideoFeed items={[{ ...item, liked: false }]} onBook={() => {}} />);
     const idleLike = view.getByRole("button", { name: "Like" });
@@ -530,7 +547,7 @@ describe("VideoFeed", () => {
     Object.defineProperty(video, "pause", { configurable: true, value: () => { paused.push("pause"); } });
     Object.defineProperty(video, "play", { configurable: true, value: () => { played.push("play"); return undefined; } });
 
-    view.rerender(<VideoFeed bookingOpenItemId={bookable.id} items={[bookable]} onBook={() => {}} />);
+    view.rerender(<VideoFeed externallyPausedItemId={bookable.id} items={[bookable]} onBook={() => {}} />);
     expect(paused.length).toBeGreaterThan(0);
 
     // Dismissing returns the item to its prior (playing) state rather than leaving it stuck.
@@ -550,7 +567,7 @@ describe("VideoFeed", () => {
       },
     };
     const view = render(
-      <VideoFeed bookingOpenItemId={bookable.id} initialPaused initialItemId={bookable.id} items={[bookable]} onBook={() => {}} />,
+      <VideoFeed externallyPausedItemId={bookable.id} initialPaused initialItemId={bookable.id} items={[bookable]} onBook={() => {}} />,
     );
     const video = view.container.querySelector<HTMLVideoElement>("video")!;
     const played: string[] = [];

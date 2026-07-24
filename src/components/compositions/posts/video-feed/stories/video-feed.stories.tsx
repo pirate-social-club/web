@@ -2,8 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import { toast } from "@/components/primitives/sonner";
-import { FeedBookingSheet } from "@/components/compositions/bookings/feed-booking-sheet/feed-booking-sheet";
+import { FeedBookingSheetBody } from "@/components/compositions/bookings/feed-booking-sheet/feed-booking-sheet";
 import type { ResolvedSlot } from "@/components/compositions/bookings/view-models";
+import { FeedPanelLayout, FeedSidePanel } from "@/components/compositions/posts/feed-side-panel/feed-side-panel";
 import { VideoFeed } from "../video-feed";
 import { VideoFeedPaginationNotice } from "../video-feed-pagination-notice";
 import type { VideoFeedItem } from "../video-feed.types";
@@ -120,9 +121,33 @@ function InteractiveFeed({
   const [bookingItem, setBookingItem] = React.useState<VideoFeedItem | undefined>(undefined);
 
   return (
-    <>
+    <FeedPanelLayout
+      className="h-dvh"
+      panel={bookingItem ? (
+        <FeedSidePanel
+          closeLabel="Close"
+          description="Choose an available time."
+          onOpenChange={(open) => { if (!open) setBookingItem(undefined); }}
+          open
+          title={`Book ${bookingItem.publisher.handle}`}
+        >
+          <div className="h-full overflow-y-auto p-5">
+            <FeedBookingSheetBody
+              basePriceCents={bookingItem.booking?.basePriceCents ?? 0}
+              onSelectSlot={(slot) => {
+                setBookingItem(undefined);
+                toast.message(`Checkout: ${slot.startUtc}`);
+              }}
+              slots={BOOKING_SLOTS}
+              viewerTimezone={"Europe/Vienna" as never}
+            />
+          </div>
+        </FeedSidePanel>
+      ) : undefined}
+    >
       <VideoFeed
-        bookingOpenItemId={bookingItem?.id}
+        className="h-full"
+        externallyPausedItemId={bookingItem?.id}
         initialItemId={initialItemId}
         initialMuted={initialMuted}
         items={items}
@@ -136,19 +161,7 @@ function InteractiveFeed({
         onSong={(item) => toast.message(`Open song: ${item.song?.title}`)}
         onStudy={(item) => toast.message(`Study: ${item.song?.title}`)}
       />
-      <FeedBookingSheet
-        basePriceCents={bookingItem?.booking?.basePriceCents ?? 0}
-        handle={bookingItem?.publisher.handle ?? ""}
-        onOpenChange={(open) => { if (!open) setBookingItem(undefined); }}
-        onSelectSlot={(slot) => {
-          setBookingItem(undefined);
-          toast.message(`Checkout: ${slot.startUtc}`);
-        }}
-        open={bookingItem !== undefined}
-        slots={BOOKING_SLOTS}
-        viewerTimezone={"Europe/Vienna" as never}
-      />
-    </>
+    </FeedPanelLayout>
   );
 }
 

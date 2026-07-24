@@ -31,12 +31,8 @@ import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
 import type { VideoFeedCapability, VideoFeedItem } from "./video-feed.types";
 
 export interface VideoFeedProps {
-  /**
-   * Id of the item whose booking overlay is open. That item pauses while the overlay is up and
-   * returns to whatever playback state it had once this clears — the feed is never re-ordered or
-   * remounted, so the viewer comes back to the same frame.
-   */
-  bookingOpenItemId?: string;
+  /** Item paused by an external feed surface. Clearing this resumes its prior playback position. */
+  externallyPausedItemId?: string;
   className?: string;
   downvoteLabel?: string;
   followLabel?: string;
@@ -585,7 +581,9 @@ function VideoFeedSlide({
           <VideoAction
             icon={<ChatCircle className="size-7" data-video-icon-weight="regular" weight="regular" />}
             label="Comments"
-            onClick={() => runInteraction(onComment)}
+            // Reading a public thread is not a gated interaction. Authentication and membership
+            // are requested by the composer only when the viewer tries to write.
+            onClick={() => onComment?.(item)}
             tone="social"
             value={compactCount(item.commentCount)}
           />
@@ -653,7 +651,7 @@ function VideoFeedSlide({
 }
 
 export function VideoFeed({
-  bookingOpenItemId,
+  externallyPausedItemId,
   className,
   downvoteLabel = "Downvote",
   followLabel = "Follow",
@@ -822,7 +820,7 @@ export function VideoFeed({
             onTogglePlayback={togglePlayback}
             muted={muted}
             preferenceMuted={preferenceMuted}
-            paused={pausedItemIds.has(item.id) || bookingOpenItemId === item.id}
+            paused={pausedItemIds.has(item.id) || externallyPausedItemId === item.id}
             preload={Math.abs(index - activeIndex) <= 1 ? "auto" : "metadata"}
             removeDownvoteLabel={removeDownvoteLabel}
             soundOnLabel={soundOnLabel}

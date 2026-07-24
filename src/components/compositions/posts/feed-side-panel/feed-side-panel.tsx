@@ -25,7 +25,19 @@ function useFeedDockDesktop(): boolean {
 export type FeedPanelState =
   | { kind: "none" }
   | { kind: "comments"; itemId: string; postId: string }
-  | { kind: "booking"; basePriceCents: number; hostUserId: string; itemId: string };
+  | {
+    kind: "booking";
+    basePriceCents: number;
+    handle: string;
+    hostUserId: string;
+    itemId: string;
+    playback: {
+      muted: boolean;
+      paused: boolean;
+      playbackSeconds: number;
+    };
+    sourceCommunityId: string | null;
+  };
 
 export function feedPanelBlocksPlayback(panel: FeedPanelState, itemId: string): boolean {
   return panel.kind === "booking" && panel.itemId === itemId;

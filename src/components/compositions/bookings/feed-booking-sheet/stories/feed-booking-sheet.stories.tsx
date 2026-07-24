@@ -3,13 +3,14 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Button } from "@/components/primitives/button";
 import type { ResolvedSlot } from "@/components/compositions/bookings/view-models";
-import { FeedBookingSheet } from "../feed-booking-sheet";
+import { FeedPanelLayout, FeedSidePanel } from "@/components/compositions/posts/feed-side-panel/feed-side-panel";
+import { FeedBookingSheetBody } from "../feed-booking-sheet";
 
 const meta = {
-  title: "Compositions/Bookings/FeedBookingSheet",
-  component: FeedBookingSheet,
+  title: "Compositions/Bookings/FeedBookingPanel",
+  component: FeedBookingSheetBody,
   parameters: { layout: "fullscreen" },
-} satisfies Meta<typeof FeedBookingSheet>;
+} satisfies Meta<typeof FeedBookingSheetBody>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -23,45 +24,54 @@ const SLOTS: ResolvedSlot[] = [
 
 const BASE = {
   basePriceCents: 3500,
-  handle: "mara.english",
   onSelectSlot: () => {},
   slots: SLOTS,
   viewerTimezone: "Europe/Vienna" as never,
 };
 
-/** Opens closed so the story exercises the real trigger → open → dismiss path. */
-function ControlledSheet(props: Partial<React.ComponentProps<typeof FeedBookingSheet>>) {
+/** Opens closed so the story exercises the shared trigger → dock/sheet → dismiss path. */
+function ControlledPanel(props: Partial<React.ComponentProps<typeof FeedBookingSheetBody>>) {
   const [open, setOpen] = React.useState(false);
   return (
-    <div className="flex h-dvh items-center justify-center bg-surface-skeleton">
-      <Button onClick={() => setOpen(true)} type="button">Book</Button>
-      <FeedBookingSheet {...BASE} {...props} onOpenChange={setOpen} open={open} />
-    </div>
+    <FeedPanelLayout
+      className="h-dvh bg-surface-skeleton"
+      panel={open ? (
+        <FeedSidePanel closeLabel="Close" description="Choose an available time." onOpenChange={setOpen} open title="Book mara.english">
+          <div className="h-full overflow-y-auto p-5">
+            <FeedBookingSheetBody {...BASE} {...props} />
+          </div>
+        </FeedSidePanel>
+      ) : undefined}
+    >
+      <div className="grid h-full place-items-center">
+        <Button onClick={() => setOpen(true)} type="button">Book</Button>
+      </div>
+    </FeedPanelLayout>
   );
 }
 
 export const Desktop: Story = {
-  args: { ...BASE, onOpenChange: () => {}, open: true },
-  render: () => <ControlledSheet />,
+  args: BASE,
+  render: () => <ControlledPanel />,
 };
 
 export const Mobile: Story = {
-  args: { ...BASE, onOpenChange: () => {}, open: true },
+  args: BASE,
   parameters: { viewport: { defaultViewport: "mobile1" } },
-  render: () => <ControlledSheet />,
+  render: () => <ControlledPanel />,
 };
 
 export const Loading: Story = {
-  args: { ...BASE, onOpenChange: () => {}, open: true },
-  render: () => <ControlledSheet loading slots={[]} />,
+  args: BASE,
+  render: () => <ControlledPanel loading slots={[]} />,
 };
 
 export const NoAvailability: Story = {
-  args: { ...BASE, onOpenChange: () => {}, open: true },
-  render: () => <ControlledSheet slots={[]} />,
+  args: BASE,
+  render: () => <ControlledPanel slots={[]} />,
 };
 
 export const AvailabilityError: Story = {
-  args: { ...BASE, onOpenChange: () => {}, open: true },
-  render: () => <ControlledSheet error onRetry={() => {}} slots={[]} />,
+  args: BASE,
+  render: () => <ControlledPanel error onRetry={() => {}} slots={[]} />,
 };

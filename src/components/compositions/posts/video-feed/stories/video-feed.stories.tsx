@@ -273,6 +273,14 @@ export const DesktopProgressScrubber: Story = {
   render: () => <InteractiveFeed items={[portrait]} />,
 };
 
+/** Desktop feed navigation lives at the stage edge and stays independent from each slide's rail. */
+export const DesktopPreviousNextNavigation: Story = {
+  name: "Navigation / Desktop previous and next",
+  args: { items: [] },
+  parameters: { viewport: { defaultViewport: "desktop" } },
+  render: () => <InteractiveFeed initialItemId={longFeed[3]?.id} items={longFeed} />,
+};
+
 /** Mobile keeps the timeline above the fixed footer through the shared feed chrome inset. */
 export const MobileProgressBar: Story = {
   name: "Playback / Mobile progress bar",

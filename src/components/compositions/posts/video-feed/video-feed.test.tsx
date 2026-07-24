@@ -422,6 +422,32 @@ describe("VideoFeed", () => {
     expect(calls).toEqual([{ behavior: "smooth", top: 640 }]);
   });
 
+  test("exposes desktop previous and next controls with bounded navigation", () => {
+    const view = render(
+      <VideoFeed
+        items={feedItems()}
+        nextVideoLabel="Go forward"
+        previousVideoLabel="Go back"
+      />,
+    );
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 640 });
+    const calls: ScrollToOptions[] = [];
+    Object.defineProperty(feed, "scrollTo", {
+      configurable: true,
+      value: (options: ScrollToOptions) => calls.push(options),
+    });
+    const previous = view.getByRole("button", { name: "Go back" });
+    const next = view.getByRole("button", { name: "Go forward" });
+
+    expect(previous.hasAttribute("disabled")).toBe(true);
+    expect(next.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(next);
+    expect(feed.dataset.activeIndex).toBe("1");
+    expect(calls).toEqual([{ behavior: "smooth", top: 640 }]);
+    expect(previous.hasAttribute("disabled")).toBe(false);
+  });
+
   test("renders a frame-bottom progress bar with an accessible scrubber", () => {
     const view = render(<VideoFeed items={[item]} videoProgressLabel="Playback position" />);
     const progress = view.container.querySelector("[data-video-progress]");

@@ -5,6 +5,8 @@ import {
   ArrowFatDown,
   BookOpen,
   CalendarCheck,
+  CaretDown,
+  CaretUp,
   ChatCircle,
   Check,
   CurrencyDollar,
@@ -56,6 +58,8 @@ export interface VideoFeedProps {
   onSong?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onStudy?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   muteVideoLabel?: string;
+  nextVideoLabel?: string;
+  previousVideoLabel?: string;
   removeDownvoteLabel?: string;
   soundOnLabel?: string;
   tapForSoundLabel?: string;
@@ -855,6 +859,8 @@ export function VideoFeed({
   initialPlaybackSeconds,
   items,
   muteVideoLabel = "Mute video",
+  nextVideoLabel = "Next video",
+  previousVideoLabel = "Previous video",
   removeDownvoteLabel = "Remove downvote",
   soundOnLabel = "Sound on",
   tapForSoundLabel = "Tap for sound",
@@ -983,10 +989,11 @@ export function VideoFeed({
   }
 
   return (
+    <div className={cn("relative h-dvh w-full", className)}>
     <div
       ref={containerRef}
       aria-label="Video feed"
-      className={cn("h-dvh w-full snap-y snap-mandatory overflow-y-auto overscroll-y-contain", className)}
+      className="h-full w-full snap-y snap-mandatory overflow-y-auto overscroll-y-contain"
       data-active-index={activeIndex}
       onScroll={(event) => {
         const container = event.currentTarget;
@@ -1026,6 +1033,31 @@ export function VideoFeed({
           />
         </div>
       ))}
+    </div>
+      <div
+        aria-label="Video navigation"
+        className="pointer-events-none absolute right-4 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-3 md:flex"
+        role="group"
+      >
+        <IconButton
+          aria-label={previousVideoLabel}
+          className="pointer-events-auto bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75 disabled:bg-black/35 disabled:text-white/40"
+          disabled={activeIndex === 0}
+          onClick={() => moveTo(activeIndex - 1)}
+          variant="ghost"
+        >
+          <CaretUp aria-hidden className="size-6" weight="bold" />
+        </IconButton>
+        <IconButton
+          aria-label={nextVideoLabel}
+          className="pointer-events-auto bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75 disabled:bg-black/35 disabled:text-white/40"
+          disabled={activeIndex === items.length - 1}
+          onClick={() => moveTo(activeIndex + 1)}
+          variant="ghost"
+        >
+          <CaretDown aria-hidden className="size-6" weight="bold" />
+        </IconButton>
+      </div>
     </div>
   );
 }

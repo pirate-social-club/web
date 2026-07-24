@@ -14,6 +14,8 @@
     "downvoteComment": "Downvote comment",
     "removeDownvote": "Remove downvote",
     "muteVideo": "Mute video",
+    "nextVideo": "Next video",
+    "previousVideo": "Previous video",
     "soundOn": "Sound on",
     "tapForSound": "Tap for sound",
     "videoProgress": "Video progress",

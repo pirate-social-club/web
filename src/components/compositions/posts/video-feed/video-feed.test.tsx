@@ -3,7 +3,12 @@ import "@/test/setup-runtime";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 
-import { VideoFeed, type VideoFeedImpression } from "./video-feed";
+import {
+  isVideoLoopReplay,
+  VideoFeed,
+  type VideoFeedImpression,
+  watchedPlaybackDelta,
+} from "./video-feed";
 import type { VideoFeedItem } from "./video-feed.types";
 
 if (!window.matchMedia) {
@@ -65,6 +70,20 @@ beforeEach(() => {
 });
 
 describe("VideoFeed", () => {
+  test("counts only an end-to-start wrap as a replay", () => {
+    expect(isVideoLoopReplay({ currentTime: 0.2, duration: 10, previousTime: 9.4 })).toBe(true);
+    expect(isVideoLoopReplay({ currentTime: 2, duration: 10, previousTime: 6 })).toBe(false);
+    expect(isVideoLoopReplay({ currentTime: 0.2, duration: Number.NaN, previousTime: 9.4 })).toBe(false);
+    expect(isVideoLoopReplay({ currentTime: 0.2, duration: 10, previousTime: 4 })).toBe(false);
+  });
+
+  test("counts watched time without crediting seeks or restored positions", () => {
+    expect(watchedPlaybackDelta(0.5, 0)).toBe(0.5);
+    expect(watchedPlaybackDelta(1.1, 0.5)).toBeCloseTo(0.6);
+    expect(watchedPlaybackDelta(9, 1.1)).toBe(0);
+    expect(watchedPlaybackDelta(2, 9)).toBe(0);
+  });
+
   test("redacts the video source from age-blocked markup", () => {
     const view = render(<VideoFeed items={[{ ...item, viewerState: "age_proof_required" }]} />);
     expect(view.container.innerHTML).not.toContain("private.mp4");
@@ -446,7 +465,11 @@ describe("VideoFeed", () => {
     const activeVideo = view.container.querySelector<HTMLVideoElement>("video")!;
     Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
     Object.defineProperty(activeVideo, "duration", { configurable: true, value: 10 });
-    Object.defineProperty(activeVideo, "currentTime", { configurable: true, writable: true, value: 9 });
+    Object.defineProperty(activeVideo, "currentTime", { configurable: true, writable: true, value: 0.5 });
+    fireEvent.timeUpdate(activeVideo);
+    activeVideo.currentTime = 1;
+    fireEvent.timeUpdate(activeVideo);
+    activeVideo.currentTime = 9;
     fireEvent.timeUpdate(activeVideo);
     activeVideo.currentTime = 1;
     fireEvent.timeUpdate(activeVideo);
@@ -457,10 +480,10 @@ describe("VideoFeed", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]?.id).toBe("one");
     expect(calls[0]?.impression).toMatchObject({
-      completionRatio: 0.9,
+      completionRatio: 0.1,
       durationSeconds: 10,
       muted: true,
-      playbackSeconds: 9,
+      playbackSeconds: 1,
       position: 0,
       replayCount: 1,
       soundOnAtAnyPoint: false,

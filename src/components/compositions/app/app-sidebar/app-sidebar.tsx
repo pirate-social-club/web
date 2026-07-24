@@ -139,7 +139,10 @@ function SidebarSectionBlock({
           value={section.id}
         >
           <div className="flex items-center">
-            <AccordionTrigger className={cn(sectionLabelClassName, "min-w-0 flex-1")}>
+            {/* Symmetric vertical padding keeps the section action button (e.g. the
+                Communities "+") centered on the label text instead of the trigger's
+                otherwise asymmetric box. */}
+            <AccordionTrigger className={cn(sectionLabelClassName, "min-w-0 flex-1 py-2.5")}>
               {section.label}
             </AccordionTrigger>
             {section.action ? (

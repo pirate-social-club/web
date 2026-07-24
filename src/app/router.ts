@@ -586,6 +586,26 @@ export function navigate(path: string): void {
   window.dispatchEvent(new Event(NAVIGATION_EVENT));
 }
 
+/**
+ * Sidebar-style navigation: navigates to the path, but when the path is the
+ * current location it reloads the page instead of silently doing nothing, so
+ * clicking the active entry acts as a refresh.
+ */
+export function navigateOrReload(path: string): void {
+  const nextUrl = new URL(path, window.location.origin);
+  const nextPath = normalizePathname(nextUrl.pathname);
+  const nextHref = `${nextPath}${nextUrl.search}${nextUrl.hash}`;
+  const currentPath = normalizePathname(window.location.pathname);
+  const currentHref = `${currentPath}${window.location.search}${window.location.hash}`;
+
+  if (currentHref === nextHref) {
+    window.location.reload();
+    return;
+  }
+
+  navigate(path);
+}
+
 export function replaceRoute(path: string): void {
   const nextUrl = new URL(path, window.location.origin);
   const nextPath = normalizePathname(nextUrl.pathname);

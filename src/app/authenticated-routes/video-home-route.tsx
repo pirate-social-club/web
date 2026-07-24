@@ -711,6 +711,7 @@ export function VideoHomePage() {
         initialPlaybackSeconds={restored?.playbackSeconds}
         items={items}
         muteVideoLabel={copy.common.muteVideo}
+        nextVideoLabel={copy.common.nextVideo}
         onActiveItemChange={onActiveItemChange}
         onBoost={(item) => {
           if (boostTarget && item.song?.sourcePostId === boostTarget.sourcePostId) boostTarget.open();
@@ -750,6 +751,7 @@ export function VideoHomePage() {
         onSong={(item, playback) => launchSongAction(item, playback, item.song?.songHref)}
         onStudy={(item, playback) => launchSongAction(item, playback, item.song?.studyHref)}
         removeDownvoteLabel={copy.common.removeDownvote}
+        previousVideoLabel={copy.common.previousVideo}
         soundOnLabel={copy.common.soundOn}
         tapForSoundLabel={copy.common.tapForSound}
         videoProgressLabel={copy.common.videoProgress}

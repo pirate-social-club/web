@@ -13,6 +13,7 @@ import type {
   CreateHoldRequest,
   HeartbeatRequest,
   NoShowBookingResponse,
+  PendingBookingPaymentIntentsResponse,
   SlotsResponse,
   StartSessionResponse,
 } from "./bookings-types";
@@ -37,6 +38,16 @@ export function createBookingsApi(request: ApiRequest) {
       request<{ quote: BookingQuote }>(`/bookings/holds/${c(holdId)}/quote`, { method: "POST" }),
     confirmBookingHold: (holdId: string, body: ConfirmHoldRequest): Promise<ConfirmHoldResponse> =>
       request<ConfirmHoldResponse>(`/bookings/holds/${c(holdId)}/confirm`, { method: "POST", body: JSON.stringify(body) }),
+    reportBookingPaymentSubmitted: (
+      holdId: string,
+      body: { tx_ref: string; wallet_attachment_id: string },
+    ): Promise<{ payment_intent_id: string; status: "recorded"; claimed_tx_ref: string }> =>
+      request(`/bookings/holds/${c(holdId)}/payment-submitted`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    listPendingBookingPaymentIntents: (): Promise<PendingBookingPaymentIntentsResponse> =>
+      request("/bookings/payment-intents/pending"),
 
     getBooking: (bookingId: string): Promise<{ booking: BookingView }> =>
       request<{ booking: BookingView }>(`/bookings/${c(bookingId)}`),

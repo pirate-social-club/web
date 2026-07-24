@@ -9,7 +9,7 @@ import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
-import type { BookingHold, BookingQuote } from "@/lib/api/bookings-types";
+import type { BookingHold, BookingQuote, PendingBookingPaymentIntent } from "@/lib/api/bookings-types";
 import { useSession } from "@/lib/api/session-store";
 import { useRequestAuth } from "@/hooks/use-request-auth";
 import { useRouteMessages } from "@/hooks/use-route-messages";
@@ -64,6 +64,7 @@ type Phase =
   | { kind: "paying"; hold: BookingHold; quote: BookingQuote }
   | { kind: "confirming"; txHash: string }
   | { kind: "confirmed"; bookingId: string }
+  | { kind: "refund_pending"; txHash: string }
   | { kind: "expired" }
   | {
       kind: "failed";
@@ -78,6 +79,31 @@ type Phase =
 
 function viewerTz(): string {
   try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
+}
+
+function pendingIntentForCheckout(
+  intents: PendingBookingPaymentIntent[],
+  hostUserId: string,
+  slotStart: string,
+): PendingBookingPaymentIntent | null {
+  return intents.find((intent) => intent.host_user_id === hostUserId && intent.slot_start_utc === slotStart)
+    ?? intents.find((intent) => intent.host_user_id === hostUserId)
+    ?? intents.find((intent) => intent.resume_state !== "payable")
+    ?? null;
+}
+
+function holdFromPending(intent: PendingBookingPaymentIntent): BookingHold {
+  return {
+    hold_id: intent.hold_id,
+    source_community_id: null,
+    host_user_id: intent.host_user_id,
+    booker_user_id: "",
+    slot_start_utc: intent.slot_start_utc,
+    slot_end_utc: intent.slot_end_utc,
+    price_cents: intent.payment.gross_cents,
+    status: "active",
+    expires_at_utc: intent.hold_expires_at,
+  };
 }
 function formatSlotTime(iso: string, tz: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -174,7 +200,8 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
     }
   }, [api, key, messages]);
 
-  // Mount: resume from persisted state (confirm-only) or create a fresh hold + quote.
+  // Mount: consult the server before creating a hold. sessionStorage remains the fast local recovery
+  // record, but the durable claim wins when the two disagree.
   React.useEffect(() => {
     // Never touch the authenticated hold/quote APIs while logged out — the render shows a sign-in state
     // instead. Once the user signs in (session.accessToken appears), isAuthed flips and this re-runs.
@@ -186,25 +213,85 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
     let cancelled = false;
     void (async () => {
       const saved = loadPersisted(key);
-      // Already confirmed in a prior load.
       if (saved?.bookingId) { setPhase({ kind: "confirmed", bookingId: saved.bookingId }); return; }
-      // Paid but not yet confirmed → RESUME confirmation only (never re-submit a transfer).
+
+      let serverIntent: PendingBookingPaymentIntent | null = null;
+      try {
+        const pending = await api.bookings.listPendingBookingPaymentIntents();
+        if (cancelled) return;
+        serverIntent = pendingIntentForCheckout(pending.data, hostUserId, slotStart);
+      } catch (error) {
+        if (cancelled) return;
+        // A surviving local tx is still safe to confirm. With no durable or local evidence, fail
+        // closed: creating a hold while discovery is unavailable could invite a second payment.
+        if (!(saved?.holdId && saved.txHash && saved.walletAttachmentId)) {
+          setPhase({
+            kind: "failed",
+            message: error instanceof ApiError ? error.message : messages.resumeLookupFailed,
+          });
+          return;
+        }
+      }
+
+      if (serverIntent?.resume_state === "booked" && serverIntent.booking_id) {
+        savePersisted(key, { bookingId: serverIntent.booking_id });
+        setPhase({ kind: "confirmed", bookingId: serverIntent.booking_id });
+        return;
+      }
+      if (serverIntent?.resume_state === "refund_pending") {
+        setPhase({ kind: "refund_pending", txHash: serverIntent.claimed_tx_ref ?? "" });
+        return;
+      }
+      if (
+        serverIntent
+        && (serverIntent.resume_state === "confirmable" || serverIntent.resume_state === "finalizable")
+        && serverIntent.claimed_tx_ref
+        && serverIntent.wallet_attachment_id
+      ) {
+        if (saved?.txHash && saved.txHash.toLowerCase() !== serverIntent.claimed_tx_ref.toLowerCase()) {
+          console.warn("[booking-checkout] local payment differs from durable server claim", {
+            holdId: serverIntent.hold_id,
+            localTxRef: saved.txHash,
+            serverTxRef: serverIntent.claimed_tx_ref,
+          });
+        }
+        savePersisted(key, {
+          holdId: serverIntent.hold_id,
+          paymentIntentId: serverIntent.payment_intent_id,
+          txHash: serverIntent.claimed_tx_ref,
+          walletAttachmentId: serverIntent.wallet_attachment_id,
+        });
+        await runConfirm(
+          serverIntent.hold_id,
+          serverIntent.claimed_tx_ref,
+          serverIntent.wallet_attachment_id,
+        );
+        return;
+      }
+
       if (saved?.holdId && saved?.txHash && saved?.walletAttachmentId) {
         await runConfirm(saved.holdId, saved.txHash, saved.walletAttachmentId);
         return;
       }
-      // Held but not paid → re-fetch the quote authoritatively (hold may have expired).
-      if (saved?.holdId) {
+
+      const resumableHoldId = serverIntent?.resume_state === "payable"
+        ? serverIntent.hold_id
+        : saved?.holdId;
+      if (resumableHoldId) {
         try {
-          const { quote } = await api.bookings.quoteBookingHold(saved.holdId);
+          const { quote } = await api.bookings.quoteBookingHold(resumableHoldId);
           if (cancelled) return;
-          setPhase({ kind: "quoted", hold: { hold_id: saved.holdId, slot_start_utc: slotStart, slot_end_utc: slotEnd } as BookingHold, quote });
+          const hold = serverIntent?.resume_state === "payable"
+            ? holdFromPending(serverIntent)
+            : { hold_id: resumableHoldId, slot_start_utc: slotStart, slot_end_utc: slotEnd } as BookingHold;
+          savePersisted(key, { holdId: resumableHoldId, paymentIntentId: quote.payment.payment_intent_id });
+          setPhase({ kind: "quoted", hold, quote });
           return;
         } catch (e) {
           if (cancelled) return;
           const code = e instanceof ApiError ? e.code : "";
           if (EXPIRED_CONFIRM_CODES.has(code)) { clearPersisted(key); setPhase({ kind: "expired" }); return; }
-          // fall through to a fresh hold
+          // A stale local hold can be replaced only after server discovery proved no money claim exists.
         }
       }
       // Fresh: create the hold + quote.
@@ -226,7 +313,7 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
       }
     })();
     return () => { cancelled = true; };
-  }, [api, communityId, hostUserId, slotStart, slotEnd, key, messages.noSlotSelected, messages.reserveFailed, runConfirm, isAuthed]);
+  }, [api, communityId, hostUserId, slotStart, slotEnd, key, messages.noSlotSelected, messages.reserveFailed, messages.resumeLookupFailed, runConfirm, isAuthed]);
 
   const expiresAt = phase.kind === "quoted" ? phase.quote.expires_at_utc : null;
   const countdown = useCountdown(expiresAt);
@@ -274,6 +361,16 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
           // confirmation, never re-pays.
           submittedHash = hash;
           savePersisted(key, { txHash: hash });
+          void api.bookings.reportBookingPaymentSubmitted(hold.hold_id, {
+            tx_ref: hash,
+            wallet_attachment_id: walletAttachmentId,
+          }).catch((error) => {
+            console.warn("[booking-checkout] durable payment report failed", {
+              holdId: hold.hold_id,
+              txRef: hash,
+              error,
+            });
+          });
           setPhase({ kind: "confirming", txHash: hash });
         },
       });
@@ -329,6 +426,16 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
           <div className="space-y-4">
             <Type variant="body">{messages.holdExpired}</Type>
             <Button variant="outline" onClick={backToAvailability}>{messages.pickAnotherTime}</Button>
+          </div>
+        )}
+
+        {phase.kind === "refund_pending" && (
+          <div className="space-y-4">
+            <Type variant="body">{messages.refundPending}</Type>
+            {phase.txHash && (
+              <Type variant="caption" className="text-muted-foreground font-mono break-all">{phase.txHash}</Type>
+            )}
+            <Button variant="outline" onClick={() => navigate("/bookings")}>{messages.viewMyBookings}</Button>
           </div>
         )}
 

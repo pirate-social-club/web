@@ -1762,7 +1762,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "noWalletAttached": "No wallet is attached to your account. Add one in settings to pay.",
         "connectWallet": "Connect the wallet attached to your account to pay.",
         "quoteRefreshFailed": "Could not refresh the quote. Please try again.",
-        "paymentNotSubmitted": "Payment was not submitted. You can try again."
+        "paymentNotSubmitted": "Payment was not submitted. You can try again.",
+        "resumeLookupFailed": "We could not safely check for an existing payment. Retry before starting another payment.",
+        "refundPending": "Your payment arrived after this hold could be completed. A refund is pending."
       },
       "bookingManagement": {
         "view": {
@@ -3893,7 +3895,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "noWalletAttached": "لا توجد محفظة مرتبطة بحسابك. أضف محفظة في الإعدادات للدفع.",
         "connectWallet": "اربط المحفظة المرتبطة بحسابك لإتمام الدفع.",
         "quoteRefreshFailed": "تعذّر تحديث عرض السعر. حاول مرة أخرى.",
-        "paymentNotSubmitted": "لم تُرسل الدفعة. يمكنك المحاولة مرة أخرى."
+        "paymentNotSubmitted": "لم تُرسل الدفعة. يمكنك المحاولة مرة أخرى.",
+        "resumeLookupFailed": "تعذّر التحقق بأمان من وجود دفعة سابقة. أعد المحاولة قبل بدء دفعة أخرى.",
+        "refundPending": "وصلت دفعتك بعد انتهاء صلاحية الحجز المؤقت. استرداد المبلغ قيد الانتظار."
       },
       "bookingManagement": {
         "view": {
@@ -6024,7 +6028,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "noWalletAttached": "你的账户尚未关联钱包。请在设置中添加钱包后付款。",
         "connectWallet": "请连接与你账户关联的钱包以付款。",
         "quoteRefreshFailed": "无法刷新报价，请重试。",
-        "paymentNotSubmitted": "付款未提交，你可以重试。"
+        "paymentNotSubmitted": "付款未提交，你可以重试。",
+        "resumeLookupFailed": "无法安全检查是否已有付款。请重试后再发起新的付款。",
+        "refundPending": "付款在保留时段失效后到账，退款正在等待处理。"
       },
       "bookingManagement": {
         "view": {

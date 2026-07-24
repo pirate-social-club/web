@@ -3,7 +3,12 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, render, waitFor } from "@testing-library/react";
 
 import { installDomGlobals } from "@/test/setup-dom";
-import type { BookingHold, BookingQuote } from "@/lib/api/bookings-types";
+import type {
+  BookingHold,
+  BookingPaymentResumeState,
+  BookingQuote,
+  PendingBookingPaymentIntent,
+} from "@/lib/api/bookings-types";
 import { UiLocaleProvider } from "@/lib/ui-locale";
 
 installDomGlobals();
@@ -13,6 +18,8 @@ let fakeApi: {
     createBookingHold: ReturnType<typeof mock>;
     quoteBookingHold: ReturnType<typeof mock>;
     confirmBookingHold: ReturnType<typeof mock>;
+    reportBookingPaymentSubmitted: ReturnType<typeof mock>;
+    listPendingBookingPaymentIntents: ReturnType<typeof mock>;
   };
 };
 // Controllable per-test: an authed session (default) or null (logged out).
@@ -83,7 +90,34 @@ function quote(): BookingQuote {
   };
 }
 
+function pendingIntent(
+  resumeState: BookingPaymentResumeState,
+  overrides: Partial<PendingBookingPaymentIntent> = {},
+): PendingBookingPaymentIntent {
+  return {
+    hold_id: "hold_server",
+    payment_intent_id: "bpi_server",
+    intent_status: resumeState === "booked"
+      ? "consumed"
+      : resumeState === "finalizable" || resumeState === "refund_pending"
+        ? "verified"
+        : resumeState === "payable" ? "active" : "verifying",
+    resume_state: resumeState,
+    claimed_tx_ref: resumeState === "payable" ? null : "0xserver",
+    wallet_attachment_id: resumeState === "payable" ? null : "wa_server",
+    payment: quote().payment,
+    quote_expires_at: SOON(),
+    hold_expires_at: SOON(),
+    host_user_id: "usr_host",
+    slot_start_utc: "2099-01-05T10:00:00.000Z",
+    slot_end_utc: "2099-01-05T10:30:00.000Z",
+    booking_id: resumeState === "booked" ? "bkg_server" : null,
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
+  try { sessionStorage.clear(); } catch { /* unavailable in a minimal DOM */ }
   // The route reads the slot from window.location.search; the linkedom test window has no history API,
   // so define the query directly.
   Object.defineProperty(window, "location", {
@@ -96,6 +130,10 @@ beforeEach(() => {
       createBookingHold: mock(async () => ({ hold: hold() })),
       quoteBookingHold: mock(async () => ({ quote: quote() })),
       confirmBookingHold: mock(async () => ({ booking: { booking_id: "bkg_1" }, already_confirmed: false })),
+      reportBookingPaymentSubmitted: mock(async () => ({
+        payment_intent_id: "bpi_1", status: "recorded", claimed_tx_ref: "0xtx",
+      })),
+      listPendingBookingPaymentIntents: mock(async () => ({ object: "list", data: [], has_more: false })),
     },
   };
 });
@@ -144,6 +182,63 @@ describe("BookingCheckoutPage", () => {
     });
     expect(fakeApi.bookings.quoteBookingHold).toHaveBeenCalledWith("hold_1");
     expect(fakeApi.bookings.confirmBookingHold).not.toHaveBeenCalled();
+  });
+
+  test("resumes a server-recorded payment with empty session storage and creates no new hold", async () => {
+    fakeApi.bookings.listPendingBookingPaymentIntents.mockImplementation(async () => ({
+      object: "list",
+      has_more: false,
+      data: [pendingIntent("confirmable")],
+    }));
+
+    render(<BookingCheckoutPage communityId={null} hostUserId="usr_host" />);
+    await waitFor(() => {
+      expect(fakeApi.bookings.confirmBookingHold).toHaveBeenCalledWith("hold_server", {
+        funding_tx_ref: "0xserver",
+        wallet_attachment_id: "wa_server",
+      });
+    });
+    expect(fakeApi.bookings.createBookingHold).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain("Booking confirmed");
+  });
+
+  test("resumes finalization through confirm without creating a hold", async () => {
+    fakeApi.bookings.listPendingBookingPaymentIntents.mockImplementation(async () => ({
+      object: "list", has_more: false, data: [pendingIntent("finalizable")],
+    }));
+    render(<BookingCheckoutPage communityId={null} hostUserId="usr_host" />);
+    await waitFor(() => expect(fakeApi.bookings.confirmBookingHold).toHaveBeenCalled());
+    expect(fakeApi.bookings.createBookingHold).not.toHaveBeenCalled();
+  });
+
+  test("restores a payable server hold without creating another hold", async () => {
+    fakeApi.bookings.listPendingBookingPaymentIntents.mockImplementation(async () => ({
+      object: "list", has_more: false, data: [pendingIntent("payable")],
+    }));
+    render(<BookingCheckoutPage communityId={null} hostUserId="usr_host" />);
+    await waitFor(() => expect(document.body.textContent).toContain("Total"));
+    expect(fakeApi.bookings.quoteBookingHold).toHaveBeenCalledWith("hold_server");
+    expect(fakeApi.bookings.createBookingHold).not.toHaveBeenCalled();
+  });
+
+  test("restores a consumed intent as booked", async () => {
+    fakeApi.bookings.listPendingBookingPaymentIntents.mockImplementation(async () => ({
+      object: "list", has_more: false, data: [pendingIntent("booked")],
+    }));
+    render(<BookingCheckoutPage communityId={null} hostUserId="usr_host" />);
+    await waitFor(() => expect(document.body.textContent).toContain("bkg_server"));
+    expect(fakeApi.bookings.confirmBookingHold).not.toHaveBeenCalled();
+    expect(fakeApi.bookings.createBookingHold).not.toHaveBeenCalled();
+  });
+
+  test("shows the authoritative refund-pending state without paying or confirming", async () => {
+    fakeApi.bookings.listPendingBookingPaymentIntents.mockImplementation(async () => ({
+      object: "list", has_more: false, data: [pendingIntent("refund_pending")],
+    }));
+    render(<BookingCheckoutPage communityId={null} hostUserId="usr_host" />);
+    await waitFor(() => expect(document.body.textContent).toContain("A refund is pending"));
+    expect(fakeApi.bookings.confirmBookingHold).not.toHaveBeenCalled();
+    expect(fakeApi.bookings.createBookingHold).not.toHaveBeenCalled();
   });
 
   // Logged out: must show a sign-in prompt and NEVER hit the authenticated hold API (which would 401

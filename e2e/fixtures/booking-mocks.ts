@@ -34,6 +34,8 @@ export interface PaidBookingMockState {
   // Recorded mutating calls, for assertions.
   captured: CapturedRequest[];
   managementBookingCancelled: boolean;
+  pendingPaymentIntents: unknown[];
+  resumedBookingId: string | null;
 }
 
 export function createPaidBookingMockState(overrides: Partial<PaidBookingMockState> = {}): PaidBookingMockState {
@@ -46,6 +48,8 @@ export function createPaidBookingMockState(overrides: Partial<PaidBookingMockSta
     hostTimezone: "UTC",
     captured: [],
     managementBookingCancelled: false,
+    pendingPaymentIntents: [],
+    resumedBookingId: null,
     ...overrides,
   };
 }
@@ -184,6 +188,9 @@ export async function installPaidBookingApiMocks(page: Page, state: PaidBookingM
   await page.route(/\/bookings\/hosts\/[^/]+\/slots(\?.*)?$/u, (route) =>
     route.fulfill(json({ host_timezone: state.hostTimezone, viewer_timezone: state.hostTimezone, slots: state.isBookable ? [futureSlot(state)] : [] })));
 
+  await page.route(/\/bookings\/payment-intents\/pending(\?.*)?$/u, (route) =>
+    route.fulfill(json({ object: "list", data: state.pendingPaymentIntents, has_more: false })));
+
   await page.route(/\/bookings\/hosts\/[^/]+\/holds(\?.*)?$/u, async (route) => {
     await record(state, route);
     const slot = futureSlot(state);
@@ -212,6 +219,12 @@ export async function installPaidBookingApiMocks(page: Page, state: PaidBookingM
   // hits confirm — otherwise the check is dead.
   await page.route(/\/bookings\/holds\/[^/]+\/confirm(\?.*)?$/u, async (route) => {
     await record(state, route);
+    if (state.resumedBookingId) {
+      return route.fulfill(json({
+        booking: { booking_id: state.resumedBookingId },
+        already_confirmed: false,
+      }));
+    }
     return route.fulfill(json({ error: "confirm is disabled in mocked smoke" }, 409));
   });
 

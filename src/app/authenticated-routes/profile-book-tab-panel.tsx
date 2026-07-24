@@ -16,7 +16,7 @@ function viewerTimezone(): string {
 }
 
 function checkoutPathForSlot(hostUserId: string, slot: ResolvedSlot): string {
-  const q = new URLSearchParams({ start: slot.startUtc, end: slot.endUtc, price: String(slot.priceCents) });
+  const q = new URLSearchParams({ start: slot.startUtc, end: slot.endUtc });
   return `/book/${encodeURIComponent(hostUserId)}/checkout?${q.toString()}`;
 }
 

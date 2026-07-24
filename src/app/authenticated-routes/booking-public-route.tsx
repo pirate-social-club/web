@@ -63,7 +63,7 @@ export function BookingPublicPage({ communityId, hostUserId }: { communityId: st
       return;
     }
     // Hand off to checkout, which re-validates availability and creates the hold authoritatively.
-    const q = new URLSearchParams({ start: slot.startUtc, end: slot.endUtc, price: String(slot.priceCents) });
+    const q = new URLSearchParams({ start: slot.startUtc, end: slot.endUtc });
     const base = communityId
       ? `/c/${encodeURIComponent(communityId)}/book/${encodeURIComponent(hostUserId)}`
       : `/book/${encodeURIComponent(hostUserId)}`;

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 
 import { installDomGlobals } from "@/test/setup-dom";
 
@@ -59,5 +59,22 @@ describe("BookingPublicPage (logged out)", () => {
     expect(connect).toHaveBeenCalledTimes(1);
     expect(navigate).not.toHaveBeenCalled();
     expect((document.body.textContent ?? "").includes("Authentication failed")).toBe(false);
+  });
+
+  test("signed-in checkout navigation carries only the authoritative slot bounds", async () => {
+    fakeSession = { accessToken: "tok" };
+    const { container } = render(<BookingPublicPage communityId={null} hostUserId="usr_host" />);
+    const slot = await waitFor(() => {
+      const btn = [...container.querySelectorAll("button")].find((b) => /USDC/u.test(b.textContent ?? ""));
+      if (!btn) throw new Error("slot button not rendered yet");
+      return btn as HTMLButtonElement;
+    });
+    fireEvent.click(slot);
+    expect(navigate).toHaveBeenCalledTimes(1);
+    const path = String(navigate.mock.calls[0]?.[0]);
+    const url = new URL(path, "https://pirate.test");
+    expect(url.searchParams.get("start")).toBe("2099-01-05T10:00:00.000Z");
+    expect(url.searchParams.get("end")).toBe("2099-01-05T10:30:00.000Z");
+    expect(url.searchParams.has("price")).toBe(false);
   });
 });

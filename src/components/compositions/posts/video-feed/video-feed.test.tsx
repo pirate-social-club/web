@@ -118,18 +118,27 @@ describe("VideoFeed", () => {
     expect(view.getByText("songs.pirate").parentElement?.querySelector("[data-video-publisher-avatar]")).toBeNull();
   });
 
-  test("unifies every rail action on the same filled dark circle", () => {
+  test("keeps mobile rail actions circle-free and gives desktop actions a visible circle", () => {
     const view = render(<VideoFeed items={[item]} onComment={() => undefined} onKaraoke={() => undefined} onShare={() => undefined} onStudy={() => undefined} />);
 
-    for (const label of ["Like", "Comments", "Share"]) {
+    for (const label of ["Like", "Comments", "Share", "Study", "Sing"]) {
       const action = view.getByRole("button", { name: label });
-      expect(action.className).toContain("bg-black/55");
+      // Mobile overlays the video: bare filled glyphs with a drop shadow, no filled circle.
+      expect(action.className).toContain("bg-transparent");
+      expect(action.className).toContain("drop-shadow-[0_2px_3px_rgb(0_0_0/0.9)]");
+      // Desktop sits on the black stage outside the frame, where a dark circle is invisible.
+      expect(action.className).toContain("md:bg-white/10");
+      expect(action.className).toContain("md:drop-shadow-none");
     }
+  });
 
-    for (const label of ["Study", "Sing"]) {
-      const action = view.getByRole("button", { name: label });
-      expect(action.className).toContain("bg-black/55");
-    }
+  test("tightens the gap between rail icons and their counts on mobile", () => {
+    const view = render(<VideoFeed items={[item]} />);
+    const action = view.getByRole("button", { name: "Like" });
+    const wrapper = action.parentElement!.parentElement!;
+
+    expect(wrapper.className).toContain("gap-0.5");
+    expect(wrapper.className).toContain("md:gap-1");
   });
 
   test("opens public comments without routing through the membership gate", () => {

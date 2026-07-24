@@ -50,6 +50,11 @@ function manyFeedItems(count = 7): VideoFeedItem[] {
   }));
 }
 
+function settleFeedScroll(feed: HTMLDivElement): void {
+  fireEvent.scroll(feed);
+  fireEvent(feed, new window.Event("scrollend"));
+}
+
 function mockVideoPlay(play: () => Promise<void>): () => void {
   const prototype = Object.getPrototypeOf(document.createElement("video")) as object;
   const previous = Object.getOwnPropertyDescriptor(prototype, "play");
@@ -435,7 +440,7 @@ describe("VideoFeed", () => {
       expect(view.getByRole("button", { name: "Tap for sound" })).toBeTruthy();
 
       feed.scrollTop = 700;
-      fireEvent.scroll(feed);
+      settleFeedScroll(feed);
       await act(async () => { await Promise.resolve(); });
 
       expect(view.queryByRole("button", { name: "Tap for sound" })).toBeNull();
@@ -450,6 +455,24 @@ describe("VideoFeed", () => {
 
     expect(feed.dataset.activeIndex).toBe("1");
     expect(view.getAllByRole("button", { name: "Play video" })).toHaveLength(1);
+  });
+
+  test("restores a selected slide that arrives later without teleporting again", () => {
+    const firstPage = feedItems().slice(0, 1);
+    const view = render(<VideoFeed initialItemId="two" items={firstPage} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+
+    view.rerender(<VideoFeed initialItemId="two" items={feedItems()} />);
+    expect(feed.dataset.activeIndex).toBe("1");
+    expect(feed.scrollTop).toBe(100);
+
+    Object.defineProperty(feed, "scrollTop", { configurable: true, writable: true, value: 0 });
+    settleFeedScroll(feed);
+    view.rerender(<VideoFeed initialItemId="two" items={[...feedItems()]} />);
+
+    expect(feed.dataset.activeIndex).toBe("0");
+    expect(feed.scrollTop).toBe(0);
   });
 
   test("keeps keyboard navigation scoped to the focused feed", () => {
@@ -532,9 +555,9 @@ describe("VideoFeed", () => {
     expect(view.getAllByRole("button", { name: "Play video" })).toHaveLength(1);
 
     Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
-    fireEvent.scroll(feed);
+    settleFeedScroll(feed);
     Object.defineProperty(feed, "scrollTop", { configurable: true, value: 0 });
-    fireEvent.scroll(feed);
+    settleFeedScroll(feed);
 
     expect(view.getAllByRole("button", { name: "Play video" })).toHaveLength(1);
   });
@@ -552,8 +575,35 @@ describe("VideoFeed", () => {
 
     expect(calls).toEqual(["one"]);
     Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
-    fireEvent.scroll(feed);
+    settleFeedScroll(feed);
     expect(calls).toEqual(["one", "two"]);
+  });
+
+  test("keeps playback on the current slide until scrolling settles", () => {
+    const view = render(<VideoFeed items={feedItems()} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 60 });
+
+    fireEvent.scroll(feed);
+    expect(feed.dataset.activeIndex).toBe("0");
+
+    fireEvent(feed, new window.Event("scrollend"));
+    expect(feed.dataset.activeIndex).toBe("1");
+  });
+
+  test("does not let in-flight smooth-scroll events undo the requested slide", () => {
+    const view = render(<VideoFeed items={feedItems()} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+    Object.defineProperty(feed, "scrollTo", { configurable: true, value: () => {} });
+
+    fireEvent.click(view.getByRole("button", { name: "Next video" }));
+    expect(feed.dataset.activeIndex).toBe("1");
+
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 20 });
+    fireEvent.scroll(feed);
+    expect(feed.dataset.activeIndex).toBe("1");
   });
 
   test("reports bounded impression metrics when the active slide changes", () => {
@@ -578,7 +628,7 @@ describe("VideoFeed", () => {
     fireEvent.timeUpdate(activeVideo);
 
     Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
-    fireEvent.scroll(feed);
+    settleFeedScroll(feed);
 
     expect(calls).toHaveLength(1);
     expect(calls[0]?.id).toBe("one");
@@ -635,7 +685,7 @@ describe("VideoFeed", () => {
     Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
     Object.defineProperty(feed, "scrollTop", { configurable: true, value: 300 });
 
-    fireEvent.scroll(feed);
+    settleFeedScroll(feed);
 
     expect(view.container.querySelectorAll("article")).toHaveLength(items.length);
     // The ±1 window covers slides 2-4; the initially viewed slide 0 stays mounted as keep-alive.
@@ -658,7 +708,7 @@ describe("VideoFeed", () => {
     Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
     const scrollTo = (index: number) => {
       Object.defineProperty(feed, "scrollTop", { configurable: true, value: index * 100 });
-      fireEvent.scroll(feed);
+      settleFeedScroll(feed);
     };
 
     scrollTo(3);

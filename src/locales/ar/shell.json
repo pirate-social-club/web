@@ -12,7 +12,13 @@
     "openNavigationAriaLabel": "افتح التنقل",
     "profileAriaLabel": "افتح الملف الشخصي",
     "searchAriaLabel": "ابحث في بايرت",
+    "searchCommunitiesLabel": "المجتمعات",
+    "searchDescription": "ابحث عن المجتمعات في بايرت.",
+    "searchError": "تعذر تحميل البحث. حاول مرة أخرى.",
+    "searchHint": "أدخل حرفين على الأقل للبحث.",
+    "searchNoResults": "لم يتم العثور على مجتمعات.",
     "searchPlaceholder": "ابحث في بايرت",
+    "searchTitle": "بحث",
     "searchUnavailableToast": "البحث غير متاح بعد.",
     "walletAriaLabel": "المحفظة"
   },

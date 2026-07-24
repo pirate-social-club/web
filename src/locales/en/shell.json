@@ -12,7 +12,13 @@
     "openNavigationAriaLabel": "Open navigation",
     "profileAriaLabel": "Open profile",
     "searchAriaLabel": "Search Pirate",
+    "searchCommunitiesLabel": "Communities",
+    "searchDescription": "Find communities across Pirate.",
+    "searchError": "Search couldn't load. Try again.",
+    "searchHint": "Enter at least two characters to search.",
+    "searchNoResults": "No communities found.",
     "searchPlaceholder": "Search Pirate",
+    "searchTitle": "Search",
     "searchUnavailableToast": "Search is not scaffolded yet.",
     "walletAriaLabel": "Wallet"
   },

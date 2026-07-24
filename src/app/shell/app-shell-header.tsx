@@ -106,6 +106,7 @@ export function AppShellHeader({
   copy,
   desktopHidden = false,
   mobileMediaOverlay = false,
+  onSearchClick,
   route,
   unreadChatCount = 0,
   unreadNotificationCount,
@@ -113,6 +114,7 @@ export function AppShellHeader({
   copy: ShellMessages;
   desktopHidden?: boolean;
   mobileMediaOverlay?: boolean;
+  onSearchClick?: () => void;
   route: AppRoute;
   unreadChatCount?: number;
   unreadNotificationCount: number;
@@ -190,7 +192,7 @@ export function AppShellHeader({
       onNotificationsClick={() => navigate("/inbox")}
       onConnectClick={() => connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
       onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
-      onSearchClick={() => showSearchUnavailable(copy.appHeader.searchUnavailableToast)}
+      onSearchClick={onSearchClick ?? (() => showSearchUnavailable(copy.appHeader.searchUnavailableToast))}
       onWalletClick={() => navigate("/wallet")}
       showCreateAction={clientReady && !!session}
       showChatAction={clientReady && !!session}

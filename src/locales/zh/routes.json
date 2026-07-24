@@ -1440,7 +1440,7 @@
     "quoteRefreshFailed": "无法刷新报价，请重试。",
     "paymentNotSubmitted": "付款未提交，你可以重试。",
     "resumeLookupFailed": "无法安全检查是否已有付款。请重试后再发起新的付款。",
-    "refundPending": "付款在保留时段失效后到账，退款正在等待处理。"
+    "refundPending": "付款在保留时段失效后到账。退款需人工处理——请发送邮件至 support@pirate.sc 并附上此预约信息以便办理。"
   },
   "bookingManagement": {
     "view": {
@@ -1451,17 +1451,23 @@
       "errorTitle": "无法加载预约", "errorDetail": "请稍后重试。", "retry": "重试",
       "emptyTitle": "暂无预约", "emptyBookerDetail": "你预约的课程会显示在这里。", "emptyHostDetail": "他人向你预约的课程会显示在这里。",
       "paymentInProgress": "付款处理中", "paymentResumeDetail": "付款已提交。继续确认即可，无需再次付款。", "resumePayment": "继续付款",
-      "refundPendingTitle": "退款处理中", "refundPendingDetail": "付款在时段保留结束后到账，退款正在等待处理。"
+      "refundPendingTitle": "退款处理中", "refundPendingDetail": "付款在时段保留结束后到账。退款需人工处理——请发送邮件至 support@pirate.sc 并附上此预约信息以便办理。"
     },
     "status": {
       "confirmed": "已确认", "confirmedDetail": "课程已预约。", "live": "进行中", "liveDetail": "课程已开始。",
       "joinOpens": "课程开始前 5 分钟可加入。", "review": "出席情况审核中", "reviewDetail": "结果确认前不会处理任何款项。",
       "completed": "已完成", "completedHostDetail": "你的收款已完成。", "completedBookerDetail": "导师收款已完成。",
+      "completedHostDetailUnsettled": "你的收款尚未发放。请发送邮件至 support@pirate.sc 以便办理。",
+      "completedBookerDetailUnsettled": "导师收款尚未发放。",
       "hostMissed": "导师未出席课程", "hostMissedDetail": "你的全额退款已完成。",
+      "hostMissedDetailUnsettled": "你的全额退款尚未发放。请发送邮件至 support@pirate.sc 以便办理。",
       "bookerMissed": "预约者未出席课程", "bookerMissedDetail": "已根据出席政策完成导师收款。",
+      "bookerMissedDetailUnsettled": "根据出席政策，导师收款尚未发放。",
       "cancelledByHost": "导师已取消", "cancelledByHostDetail": "你的全额退款已完成。",
+      "cancelledByHostDetailUnsettled": "你的全额退款尚未发放。请发送邮件至 support@pirate.sc 以便办理。",
       "cancelledRefunded": "已取消 — 已退款", "cancelledNoRefund": "已取消 — 不退款",
       "cancelledRefundedDetail": "你的全额退款已完成。", "cancelledNoRefundDetail": "免费取消期限已结束。",
+      "cancelledRefundedDetailUnsettled": "你的全额退款尚未发放。请发送邮件至 support@pirate.sc 以便办理。",
       "cancelledBeforePayment": "已取消", "cancelledBeforePaymentDetail": "未收取任何款项。",
       "paymentComplete": "付款已完成", "legacyOutcomeUnknown": "无法获取原始课程结果。"
     },

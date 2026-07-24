@@ -1765,7 +1765,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "quoteRefreshFailed": "Could not refresh the quote. Please try again.",
         "paymentNotSubmitted": "Payment was not submitted. You can try again.",
         "resumeLookupFailed": "We could not safely check for an existing payment. Retry before starting another payment.",
-        "refundPending": "Your payment arrived after this hold could be completed. A refund is pending."
+        "refundPending": "Your payment arrived after this hold could be completed. The refund requires manual processing — email support@pirate.sc with this booking to have it issued."
       },
       "bookingManagement": {
         "view": {
@@ -1795,7 +1795,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "paymentResumeDetail": "Your payment was submitted. Resume confirmation without paying again.",
           "resumePayment": "Resume payment",
           "refundPendingTitle": "Refund pending",
-          "refundPendingDetail": "Your payment arrived after the slot hold ended. A refund is pending."
+          "refundPendingDetail": "Your payment arrived after the slot hold ended. The refund requires manual processing — email support@pirate.sc with this booking to have it issued."
         },
         "status": {
           "confirmed": "Confirmed",
@@ -1808,16 +1808,22 @@ export const GENERATED_LOCALE_CATALOGS = {
           "completed": "Completed",
           "completedHostDetail": "Your payout completed.",
           "completedBookerDetail": "Host payout completed.",
+          "completedHostDetailUnsettled": "Your payout has not been sent yet. Email support@pirate.sc to have it processed.",
+          "completedBookerDetailUnsettled": "The host payout has not been sent yet.",
           "hostMissed": "Host missed the session",
           "hostMissedDetail": "Your full refund completed.",
+          "hostMissedDetailUnsettled": "Your full refund has not been sent yet. Email support@pirate.sc to have it processed.",
           "bookerMissed": "Booker missed the session",
           "bookerMissedDetail": "The host payout completed under the attendance policy.",
+          "bookerMissedDetailUnsettled": "The host payout has not been sent yet under the attendance policy.",
           "cancelledByHost": "Cancelled by host",
           "cancelledByHostDetail": "Your full refund completed.",
+          "cancelledByHostDetailUnsettled": "Your full refund has not been sent yet. Email support@pirate.sc to have it processed.",
           "cancelledRefunded": "Cancelled — refunded",
           "cancelledNoRefund": "Cancelled — no refund",
           "cancelledRefundedDetail": "Your full refund completed.",
           "cancelledNoRefundDetail": "The free-cancellation window had ended.",
+          "cancelledRefundedDetailUnsettled": "Your full refund has not been sent yet. Email support@pirate.sc to have it processed.",
           "cancelledBeforePayment": "Cancelled",
           "cancelledBeforePaymentDetail": "No payment was collected.",
           "paymentComplete": "Payment complete",
@@ -3904,7 +3910,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "quoteRefreshFailed": "تعذّر تحديث عرض السعر. حاول مرة أخرى.",
         "paymentNotSubmitted": "لم تُرسل الدفعة. يمكنك المحاولة مرة أخرى.",
         "resumeLookupFailed": "تعذّر التحقق بأمان من وجود دفعة سابقة. أعد المحاولة قبل بدء دفعة أخرى.",
-        "refundPending": "وصلت دفعتك بعد انتهاء صلاحية الحجز المؤقت. استرداد المبلغ قيد الانتظار."
+        "refundPending": "وصلت دفعتك بعد انتهاء صلاحية الحجز المؤقت. يتطلب رد المبلغ معالجة يدوية — راسل support@pirate.sc مرفقًا بيانات هذا الحجز لإتمامه."
       },
       "bookingManagement": {
         "view": {
@@ -3934,7 +3940,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "paymentResumeDetail": "أُرسلت دفعتك. استأنف التأكيد دون الدفع مرة أخرى.",
           "resumePayment": "استئناف الدفع",
           "refundPendingTitle": "استرداد المبلغ قيد الانتظار",
-          "refundPendingDetail": "وصلت دفعتك بعد انتهاء الحجز المؤقت للموعد. استرداد المبلغ قيد الانتظار."
+          "refundPendingDetail": "وصلت دفعتك بعد انتهاء الحجز المؤقت للموعد. يتطلب رد المبلغ معالجة يدوية — راسل support@pirate.sc مرفقًا بيانات هذا الحجز لإتمامه."
         },
         "status": {
           "confirmed": "مؤكد",
@@ -3947,16 +3953,22 @@ export const GENERATED_LOCALE_CATALOGS = {
           "completed": "مكتملة",
           "completedHostDetail": "اكتمل تحويل مستحقاتك.",
           "completedBookerDetail": "اكتمل تحويل مستحقات المضيف.",
+          "completedHostDetailUnsettled": "لم تُحوَّل مستحقاتك بعد. راسل support@pirate.sc لإتمام التحويل.",
+          "completedBookerDetailUnsettled": "لم تُحوَّل مستحقات المضيف بعد.",
           "hostMissed": "لم يحضر المضيف الجلسة",
           "hostMissedDetail": "اكتمل رد المبلغ بالكامل.",
+          "hostMissedDetailUnsettled": "لم يُرد المبلغ بعد. راسل support@pirate.sc لإتمام رد المبلغ.",
           "bookerMissed": "لم يحضر الحاجز الجلسة",
           "bookerMissedDetail": "اكتمل تحويل مستحقات المضيف وفق سياسة الحضور.",
+          "bookerMissedDetailUnsettled": "لم تُحوَّل مستحقات المضيف بعد وفق سياسة الحضور.",
           "cancelledByHost": "ألغى المضيف الحجز",
           "cancelledByHostDetail": "اكتمل رد المبلغ بالكامل.",
+          "cancelledByHostDetailUnsettled": "لم يُرد المبلغ بعد. راسل support@pirate.sc لإتمام رد المبلغ.",
           "cancelledRefunded": "ملغى — تم رد المبلغ",
           "cancelledNoRefund": "ملغى — دون رد",
           "cancelledRefundedDetail": "اكتمل رد المبلغ بالكامل.",
           "cancelledNoRefundDetail": "انتهت مهلة الإلغاء المجاني.",
+          "cancelledRefundedDetailUnsettled": "لم يُرد المبلغ بعد. راسل support@pirate.sc لإتمام رد المبلغ.",
           "cancelledBeforePayment": "الملغاة",
           "cancelledBeforePaymentDetail": "لم يتم تحصيل أي دفعة.",
           "paymentComplete": "اكتملت الدفعة",
@@ -6043,7 +6055,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "quoteRefreshFailed": "无法刷新报价，请重试。",
         "paymentNotSubmitted": "付款未提交，你可以重试。",
         "resumeLookupFailed": "无法安全检查是否已有付款。请重试后再发起新的付款。",
-        "refundPending": "付款在保留时段失效后到账，退款正在等待处理。"
+        "refundPending": "付款在保留时段失效后到账。退款需人工处理——请发送邮件至 support@pirate.sc 并附上此预约信息以便办理。"
       },
       "bookingManagement": {
         "view": {
@@ -6073,7 +6085,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "paymentResumeDetail": "付款已提交。继续确认即可，无需再次付款。",
           "resumePayment": "继续付款",
           "refundPendingTitle": "退款处理中",
-          "refundPendingDetail": "付款在时段保留结束后到账，退款正在等待处理。"
+          "refundPendingDetail": "付款在时段保留结束后到账。退款需人工处理——请发送邮件至 support@pirate.sc 并附上此预约信息以便办理。"
         },
         "status": {
           "confirmed": "已确认",
@@ -6086,16 +6098,22 @@ export const GENERATED_LOCALE_CATALOGS = {
           "completed": "已完成",
           "completedHostDetail": "你的收款已完成。",
           "completedBookerDetail": "导师收款已完成。",
+          "completedHostDetailUnsettled": "你的收款尚未发放。请发送邮件至 support@pirate.sc 以便办理。",
+          "completedBookerDetailUnsettled": "导师收款尚未发放。",
           "hostMissed": "导师未出席课程",
           "hostMissedDetail": "你的全额退款已完成。",
+          "hostMissedDetailUnsettled": "你的全额退款尚未发放。请发送邮件至 support@pirate.sc 以便办理。",
           "bookerMissed": "预约者未出席课程",
           "bookerMissedDetail": "已根据出席政策完成导师收款。",
+          "bookerMissedDetailUnsettled": "根据出席政策，导师收款尚未发放。",
           "cancelledByHost": "导师已取消",
           "cancelledByHostDetail": "你的全额退款已完成。",
+          "cancelledByHostDetailUnsettled": "你的全额退款尚未发放。请发送邮件至 support@pirate.sc 以便办理。",
           "cancelledRefunded": "已取消 — 已退款",
           "cancelledNoRefund": "已取消 — 不退款",
           "cancelledRefundedDetail": "你的全额退款已完成。",
           "cancelledNoRefundDetail": "免费取消期限已结束。",
+          "cancelledRefundedDetailUnsettled": "你的全额退款尚未发放。请发送邮件至 support@pirate.sc 以便办理。",
           "cancelledBeforePayment": "已取消",
           "cancelledBeforePaymentDetail": "未收取任何款项。",
           "paymentComplete": "付款已完成",

@@ -1440,7 +1440,7 @@
     "quoteRefreshFailed": "Could not refresh the quote. Please try again.",
     "paymentNotSubmitted": "Payment was not submitted. You can try again.",
     "resumeLookupFailed": "We could not safely check for an existing payment. Retry before starting another payment.",
-    "refundPending": "Your payment arrived after this hold could be completed. A refund is pending."
+    "refundPending": "Your payment arrived after this hold could be completed. The refund requires manual processing — email support@pirate.sc with this booking to have it issued."
   },
   "bookingManagement": {
     "view": {
@@ -1451,17 +1451,23 @@
       "errorTitle": "Bookings could not be loaded", "errorDetail": "Try again in a moment.", "retry": "Try again",
       "emptyTitle": "No bookings yet", "emptyBookerDetail": "Booked sessions will appear here.", "emptyHostDetail": "Sessions booked with you will appear here.",
       "paymentInProgress": "Payment in progress", "paymentResumeDetail": "Your payment was submitted. Resume confirmation without paying again.", "resumePayment": "Resume payment",
-      "refundPendingTitle": "Refund pending", "refundPendingDetail": "Your payment arrived after the slot hold ended. A refund is pending."
+      "refundPendingTitle": "Refund pending", "refundPendingDetail": "Your payment arrived after the slot hold ended. The refund requires manual processing — email support@pirate.sc with this booking to have it issued."
     },
     "status": {
       "confirmed": "Confirmed", "confirmedDetail": "Your session is booked.", "live": "In progress", "liveDetail": "The session has started.",
       "joinOpens": "Join opens 5 minutes before the session.", "review": "Attendance under review", "reviewDetail": "No payment will move until the outcome is confirmed.",
       "completed": "Completed", "completedHostDetail": "Your payout completed.", "completedBookerDetail": "Host payout completed.",
+      "completedHostDetailUnsettled": "Your payout has not been sent yet. Email support@pirate.sc to have it processed.",
+      "completedBookerDetailUnsettled": "The host payout has not been sent yet.",
       "hostMissed": "Host missed the session", "hostMissedDetail": "Your full refund completed.",
+      "hostMissedDetailUnsettled": "Your full refund has not been sent yet. Email support@pirate.sc to have it processed.",
       "bookerMissed": "Booker missed the session", "bookerMissedDetail": "The host payout completed under the attendance policy.",
+      "bookerMissedDetailUnsettled": "The host payout has not been sent yet under the attendance policy.",
       "cancelledByHost": "Cancelled by host", "cancelledByHostDetail": "Your full refund completed.",
+      "cancelledByHostDetailUnsettled": "Your full refund has not been sent yet. Email support@pirate.sc to have it processed.",
       "cancelledRefunded": "Cancelled — refunded", "cancelledNoRefund": "Cancelled — no refund",
       "cancelledRefundedDetail": "Your full refund completed.", "cancelledNoRefundDetail": "The free-cancellation window had ended.",
+      "cancelledRefundedDetailUnsettled": "Your full refund has not been sent yet. Email support@pirate.sc to have it processed.",
       "cancelledBeforePayment": "Cancelled", "cancelledBeforePaymentDetail": "No payment was collected.",
       "paymentComplete": "Payment complete", "legacyOutcomeUnknown": "The original session outcome is unavailable."
     },

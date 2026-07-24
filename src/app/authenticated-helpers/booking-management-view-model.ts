@@ -12,16 +12,22 @@ export interface BookingManagementMessages {
   reviewDetail: string;
   completed: string;
   completedHostDetail: string;
+  completedHostDetailUnsettled: string;
   completedBookerDetail: string;
+  completedBookerDetailUnsettled: string;
   hostMissed: string;
   hostMissedDetail: string;
+  hostMissedDetailUnsettled: string;
   bookerMissed: string;
   bookerMissedDetail: string;
+  bookerMissedDetailUnsettled: string;
   cancelledByHost: string;
   cancelledByHostDetail: string;
+  cancelledByHostDetailUnsettled: string;
   cancelledRefunded: string;
   cancelledNoRefund: string;
   cancelledRefundedDetail: string;
+  cancelledRefundedDetailUnsettled: string;
   cancelledNoRefundDetail: string;
   cancelledBeforePayment: string;
   cancelledBeforePaymentDetail: string;
@@ -59,6 +65,17 @@ export function formatBookingTimeRange(startIso: string, endIso: string, locale:
     : `${time(start)}, ${date(start)}–${time(end)}, ${date(end)}`;
 }
 
+// `outcome` is written when the outcome is *decided* (api reserveBookingSettlementIntent), while the
+// transfer itself is recorded later by settlement (finalizeBookingSettlement -> payout/refund tx ref).
+// Detail copy must key off the tx ref, not the outcome, or it claims money moved before it has.
+function payoutSent(booking: BookingView): boolean {
+  return Boolean(booking.payout_tx_ref);
+}
+
+function refundSent(booking: BookingView): boolean {
+  return Boolean(booking.refund_tx_ref);
+}
+
 function presentation(booking: BookingView, messages: BookingManagementMessages): {
   label: string; detail: string; tone: BookingManagementTone;
 } {
@@ -66,21 +83,41 @@ function presentation(booking: BookingView, messages: BookingManagementMessages)
     return { label: messages.review, detail: messages.reviewDetail, tone: "warning" };
   }
   switch (booking.outcome) {
-    case "completed":
+    case "completed": {
+      const sent = payoutSent(booking);
+      const hostDetail = sent ? messages.completedHostDetail : messages.completedHostDetailUnsettled;
+      const bookerDetail = sent ? messages.completedBookerDetail : messages.completedBookerDetailUnsettled;
       return {
         label: messages.completed,
-        detail: booking.viewer_role === "host" ? messages.completedHostDetail : messages.completedBookerDetail,
+        detail: booking.viewer_role === "host" ? hostDetail : bookerDetail,
         tone: "muted",
       };
+    }
     case "no_show_host":
-      return { label: messages.hostMissed, detail: messages.hostMissedDetail, tone: "warning" };
+      return {
+        label: messages.hostMissed,
+        detail: refundSent(booking) ? messages.hostMissedDetail : messages.hostMissedDetailUnsettled,
+        tone: "warning",
+      };
     case "no_show_booker":
-      return { label: messages.bookerMissed, detail: messages.bookerMissedDetail, tone: "warning" };
+      return {
+        label: messages.bookerMissed,
+        detail: payoutSent(booking) ? messages.bookerMissedDetail : messages.bookerMissedDetailUnsettled,
+        tone: "warning",
+      };
     case "cancelled_by_host":
-      return { label: messages.cancelledByHost, detail: messages.cancelledByHostDetail, tone: "muted" };
+      return {
+        label: messages.cancelledByHost,
+        detail: refundSent(booking) ? messages.cancelledByHostDetail : messages.cancelledByHostDetailUnsettled,
+        tone: "muted",
+      };
     case "cancelled_by_booker":
       return booking.refund_cents && booking.refund_cents > 0
-        ? { label: messages.cancelledRefunded, detail: messages.cancelledRefundedDetail, tone: "muted" }
+        ? {
+            label: messages.cancelledRefunded,
+            detail: refundSent(booking) ? messages.cancelledRefundedDetail : messages.cancelledRefundedDetailUnsettled,
+            tone: "muted",
+          }
         : { label: messages.cancelledNoRefund, detail: messages.cancelledNoRefundDetail, tone: "muted" };
     default:
       break;

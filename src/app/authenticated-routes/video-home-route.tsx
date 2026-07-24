@@ -66,6 +66,17 @@ export function checkoutPathForFeedSlot(
   return `${checkoutPath}?${query.toString()}`;
 }
 
+/**
+ * Booking attribution authority for a feed-opened booking: the viewed post's owning
+ * community. On the global home feed that community is the best proxy for the surface the
+ * booking was discovered in. The song capability resolution's `sourceCommunityId` is the
+ * wrong authority here — it names the community where the linked song was originally
+ * posted, and it is null whenever no song is linked or its capability fetch failed.
+ */
+export function feedBookingSourceCommunityId(item: Pick<VideoFeedItem, "communityId">): string | null {
+  return item.communityId ?? null;
+}
+
 function viewerTimezone(): IanaTz {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -604,13 +615,15 @@ export function VideoHomePage() {
       itemId: item.id,
       kind: "booking",
       playback,
-      sourceCommunityId: activeResolution?.sourceCommunityId ?? null,
+      // Attribution authority is the viewed post's owning community (a proxy for the surface
+      // the booking was discovered in), captured at open time — never the song origin.
+      sourceCommunityId: feedBookingSourceCommunityId(item),
     });
     setBookingError(false);
     setBookingSlots(cached ?? []);
     setBookingLoading(!cached);
     if (!cached) loadBookingAvailability(hostUserId);
-  }, [activeResolution?.sourceCommunityId, bookingCache, loadBookingAvailability]);
+  }, [bookingCache, loadBookingAvailability]);
 
   const retryBookingAvailability = React.useCallback(() => {
     if (panelState.kind !== "booking") return;

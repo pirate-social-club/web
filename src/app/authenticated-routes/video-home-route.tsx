@@ -280,7 +280,7 @@ export function VideoHomePage() {
         to,
         tz: bookingTimezone,
       });
-      return response.slots as ResolvedSlot[];
+      return response.slots;
     }),
     [api.bookings, bookingTimezone],
   );

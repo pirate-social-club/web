@@ -54,5 +54,9 @@ describe("ProfileBookTabPanel viewer slot gate", () => {
     const notPrevented = fireEvent.click(anchor);
     expect(requestAuth).not.toHaveBeenCalled();
     expect(notPrevented).toBe(true);
+    const href = new URL(anchor.getAttribute("href") ?? "", "https://pirate.test");
+    expect(href.searchParams.get("start")).toBe(SLOTS[0]!.startUtc);
+    expect(href.searchParams.get("end")).toBe(SLOTS[0]!.endUtc);
+    expect(href.searchParams.has("price")).toBe(false);
   });
 });

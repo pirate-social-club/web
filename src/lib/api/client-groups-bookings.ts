@@ -1,4 +1,5 @@
 import { buildQueryPath, type ApiRequest } from "./client-internal";
+import { parseSlotsResponse } from "./bookings-types";
 import type {
   AttachSessionResponse,
   BookingCancellationPreview,
@@ -25,10 +26,10 @@ export function createBookingsApi(request: ApiRequest) {
       hostUserId: string,
       params: { from?: string; to?: string; tz?: string } = {},
     ): Promise<SlotsResponse> =>
-      request<SlotsResponse>(buildQueryPath(
+      request<unknown>(buildQueryPath(
         `/bookings/hosts/${c(hostUserId)}/slots`,
         { from: params.from, to: params.to, tz: params.tz },
-      )),
+      )).then(parseSlotsResponse),
 
     createBookingHold: (hostUserId: string, body: CreateHoldRequest): Promise<{ hold: BookingHold }> =>
       request<{ hold: BookingHold }>(`/bookings/hosts/${c(hostUserId)}/holds`, { method: "POST", body: JSON.stringify(body) }),

@@ -10,11 +10,18 @@ import { BookingManagementView, type BookingManagementItem } from "@/components/
 import { nextBookingJoinBoundary } from "@/components/compositions/bookings/booking-management-view/booking-management-policy";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { toast } from "@/components/primitives/sonner";
+import { Button } from "@/components/primitives/button";
+import { Card, CardContent } from "@/components/primitives/card";
+import { Type } from "@/components/primitives/type";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { useApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
 import { useSession } from "@/lib/api/session-store";
-import type { BookingCancellationPreview, BookingView } from "@/lib/api/bookings-types";
+import type {
+  BookingCancellationPreview,
+  BookingView,
+  PendingBookingPaymentIntent,
+} from "@/lib/api/bookings-types";
 
 function viewerTz(): string {
   try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
@@ -60,6 +67,7 @@ export function BookingManagementPage({ sourceCommunityId, role }: {
   const messages = copy.bookingManagement;
   const timeZone = React.useMemo(viewerTz, []);
   const [bookings, setBookings] = React.useState<BookingView[] | null>(null);
+  const [pendingPayments, setPendingPayments] = React.useState<PendingBookingPaymentIntent[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [nowMs, setNowMs] = React.useState(() => Date.now());
@@ -72,8 +80,17 @@ export function BookingManagementPage({ sourceCommunityId, role }: {
     if (!session?.profile) { setLoading(false); setBookings(null); return; }
     setLoading(true); setError(null);
     try {
-      const response = await api.bookings.listBookings({ role, source_community_id: sourceCommunityId });
+      const [response, pending] = await Promise.all([
+        api.bookings.listBookings({ role, source_community_id: sourceCommunityId }),
+        role === "booker"
+          ? api.bookings.listPendingBookingPaymentIntents().catch(() => ({ object: "list" as const, data: [], has_more: false }))
+          : Promise.resolve({ object: "list" as const, data: [], has_more: false }),
+      ]);
       setBookings(response.data);
+      setPendingPayments(pending.data.filter((intent) =>
+        intent.resume_state === "confirmable"
+        || intent.resume_state === "finalizable"
+        || intent.resume_state === "refund_pending"));
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : messages.route.loadError);
     } finally { setLoading(false); }
@@ -130,6 +147,38 @@ export function BookingManagementPage({ sourceCommunityId, role }: {
   return (
     <StandardRoutePage size="rail">
       <div className="p-6">
+        {pendingPayments.length > 0 ? (
+          <div className="mx-auto mb-6 flex w-full max-w-2xl flex-col gap-3">
+            {pendingPayments.map((intent) => (
+              <Card key={intent.payment_intent_id}>
+                <CardContent className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-1">
+                    <Type variant="body-strong">
+                      {intent.resume_state === "refund_pending"
+                        ? messages.view.refundPendingTitle
+                        : messages.view.paymentInProgress}
+                    </Type>
+                    <Type variant="caption">
+                      {intent.resume_state === "refund_pending"
+                        ? messages.view.refundPendingDetail
+                        : messages.view.paymentResumeDetail}
+                    </Type>
+                  </div>
+                  {intent.resume_state !== "refund_pending" ? (
+                    <Button onClick={() => navigate(
+                      `/book/${encodeURIComponent(intent.host_user_id)}/checkout?${new URLSearchParams({
+                        start: intent.slot_start_utc,
+                        end: intent.slot_end_utc,
+                      }).toString()}`,
+                    )}>
+                      {messages.view.resumePayment}
+                    </Button>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : null}
         <BookingManagementView
           copy={messages.view}
           errorMessage={error ?? undefined}

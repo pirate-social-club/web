@@ -1437,7 +1437,9 @@
     "noWalletAttached": "你的账户尚未关联钱包。请在设置中添加钱包后付款。",
     "connectWallet": "请连接与你账户关联的钱包以付款。",
     "quoteRefreshFailed": "无法刷新报价，请重试。",
-    "paymentNotSubmitted": "付款未提交，你可以重试。"
+    "paymentNotSubmitted": "付款未提交，你可以重试。",
+    "resumeLookupFailed": "无法安全检查是否已有付款。请重试后再发起新的付款。",
+    "refundPending": "付款在保留时段失效后到账，退款正在等待处理。"
   },
   "bookingManagement": {
     "view": {

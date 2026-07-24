@@ -1437,7 +1437,9 @@
     "noWalletAttached": "No wallet is attached to your account. Add one in settings to pay.",
     "connectWallet": "Connect the wallet attached to your account to pay.",
     "quoteRefreshFailed": "Could not refresh the quote. Please try again.",
-    "paymentNotSubmitted": "Payment was not submitted. You can try again."
+    "paymentNotSubmitted": "Payment was not submitted. You can try again.",
+    "resumeLookupFailed": "We could not safely check for an existing payment. Retry before starting another payment.",
+    "refundPending": "Your payment arrived after this hold could be completed. A refund is pending."
   },
   "bookingManagement": {
     "view": {

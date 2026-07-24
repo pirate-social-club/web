@@ -296,7 +296,7 @@ export class ApiClient {
       let requestId = res.headers.get("x-request-id");
 
       try {
-        const body: JsonErrorResponse & { details?: unknown; error?: string; preview?: unknown } = await res.json();
+        const body: JsonErrorResponse & { details?: unknown; error?: string; fields?: unknown; preview?: unknown } = await res.json();
         if (body.code) code = body.code;
         else if (typeof body.error === "string") code = body.error; // routes that return { error: reason }
         if (body.message) message = body.message;
@@ -306,6 +306,10 @@ export class ApiClient {
           body.details && typeof body.details === "object"
             ? (body.details as Record<string, unknown>)
             : null;
+        if (Array.isArray(body.fields)) {
+          // Routes that return { error: "validation_failed", fields: [{ field, reason }] }
+          parsedDetails = { ...(parsedDetails ?? {}), fields: body.fields };
+        }
         if ("preview" in body && body.preview && typeof body.preview === "object") {
           parsedDetails = { ...(parsedDetails ?? {}), preview: body.preview };
         }

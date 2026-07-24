@@ -984,6 +984,7 @@
       "bookableLabel": "Bookable",
       "bookableOnHint": "People can book you. Turn off to pause without losing your schedule.",
       "bookableOffHint": "You're not bookable yet — turn on when you're ready.",
+      "bookableNoAvailability": "Bookable is on, but you're not visible yet — add weekly availability below to appear in search and feed.",
       "autosaveNote": "Changes save automatically.",
       "savingNote": "Saving…"
     }

@@ -76,7 +76,7 @@ type Story = StoryObj<typeof meta>;
 const EMPTY_VALUES: ProfileBookingsValues = {
   timezone: "Europe/Vienna",
   durationSeconds: 1800,
-  priceUsd: "0.00",
+  priceUsd: "",
 };
 
 const CONFIGURED_VALUES: ProfileBookingsValues = {
@@ -122,6 +122,16 @@ export const PublishedWithAvailability: Story = {
       rules={WEEKLY_RULES}
       priceRules={PRICE_RULES}
       exceptions={EXCEPTIONS}
+      bookable
+    />
+  ),
+};
+
+/** Trap state: Bookable is on but no availability exists — invisible to bookers, with a warning. */
+export const PublishedWithoutAvailability: Story = {
+  render: () => (
+    <InteractiveProfileBookings
+      initialValues={CONFIGURED_VALUES}
       bookable
     />
   ),

@@ -21,17 +21,29 @@ async function openAndConfirmCashout(page: Page): Promise<void> {
 }
 
 test.describe("reward cashouts (mocked API)", () => {
-  test("renders rewards and a confirmed cashout using the server recipient", async ({ page }) => {
+  test("claims the full balance in one step and reports the server settlement", async ({ page }) => {
     const state = await installRewardFixture(page);
     await page.goto("/wallet");
 
     await expect(page.getByText("Rewards").filter({ visible: true }).first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText("$1.20").filter({ visible: true }).first()).toBeVisible();
-    await openAndConfirmCashout(page);
 
+    const claim = page.getByRole("button", { name: "Claim" }).filter({ visible: true }).last();
+    await expect(claim).toBeVisible({ timeout: 30_000 });
+    await claim.click();
+
+    // The simplified flow opens directly on confirmation with the full balance
+    // pre-filled. Guard the release gate against restoring the removed amount step.
     const claimSheet = page.getByLabel("Claim rewards");
+    await expect(claimSheet.getByLabel("Amount")).toHaveValue("1.20");
+    await expect(page.getByRole("button", { name: "Continue" })).toHaveCount(0);
+    await claimSheet.getByRole("button", { name: "Confirm claim" }).click();
+
     await expect(claimSheet.getByText("$1.20 is in your wallet 🎉", { exact: true })).toBeVisible();
     await expect(claimSheet.getByText("Reward sent successfully.", { exact: true })).toBeVisible();
+    await expect(claimSheet.getByRole("link", { name: "View on Basescan" }))
+      .toHaveAttribute("href", /0xbrowserreward$/u);
+    await expect(claimSheet.getByText("0xbrowserreward", { exact: true })).toBeHidden();
     expect(state.cashoutKeys).toHaveLength(1);
     await expectNoBrowserError(page);
   });

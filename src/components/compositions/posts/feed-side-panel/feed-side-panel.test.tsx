@@ -4,6 +4,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, render } from "@testing-library/react";
 
 import {
+  FEED_DOCK_QUERY,
   feedPanelBlocksPlayback,
   FeedPanelLayout,
   FeedSidePanel,
@@ -15,6 +16,13 @@ describe("FeedSidePanel", () => {
   test("does not reserve an empty dock column while the panel is closed", () => {
     const view = render(<FeedPanelLayout><article /></FeedPanelLayout>);
     expect(view.container.firstElementChild?.className).not.toContain("26rem");
+  });
+
+  test("reserves the desktop dock for widths that leave the media stage usable", () => {
+    expect(FEED_DOCK_QUERY).toBe("(min-width: 1280px)");
+    const view = render(<FeedPanelLayout panel={<aside />}><article /></FeedPanelLayout>);
+    expect(view.container.firstElementChild?.className).toContain("xl:grid-cols-");
+    expect(view.container.firstElementChild?.className).not.toContain("lg:grid-cols-");
   });
 
   test("keeps comments playing while booking retains its pause policy", () => {

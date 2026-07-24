@@ -752,6 +752,7 @@ export function VideoHomePage() {
         removeDownvoteLabel={copy.common.removeDownvote}
         soundOnLabel={copy.common.soundOn}
         tapForSoundLabel={copy.common.tapForSound}
+        videoProgressLabel={copy.common.videoProgress}
       />
       {loadMoreError ? (
         <VideoFeedPaginationNotice

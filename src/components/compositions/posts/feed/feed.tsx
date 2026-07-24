@@ -167,7 +167,7 @@ export function toPageVideoItem(item: FeedItem): VideoFeedItem | null {
     liked: post.engagement.viewerVote === "up",
     media: {
       orientation: content.aspectRatio != null && content.aspectRatio < 1 ? "portrait" : "landscape",
-      posterSrc: content.posterSrc ?? "",
+      posterSrc: content.posterSrc,
       src: content.src,
     },
     publisher: {

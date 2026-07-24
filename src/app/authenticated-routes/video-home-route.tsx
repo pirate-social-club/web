@@ -6,6 +6,7 @@ import type { HomeFeedItem as ApiHomeFeedItem, Profile as ApiProfile } from "@pi
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { navigate } from "@/app/router";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
+import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
 import { useVideoViewerSongCapabilities } from "@/app/authenticated-helpers/use-video-viewer-song-capabilities";
 import {
   currentRelativePath,
@@ -382,6 +383,7 @@ export function VideoHomePage() {
           }
         : video;
       const post = entry.post.post;
+      const shareActions = buildPostShareActions(post);
       const authorProfile = post.author_user ? authorProfiles[post.author_user] : null;
       const publicProfilePublisher = post.identity_mode === "public" && Boolean(post.author_user);
       const viewerCommunity = entry.post as typeof entry.post & {
@@ -409,6 +411,7 @@ export function VideoHomePage() {
         return [{
           ...translatedVideo,
           communityId: entry.community.id,
+          shareActions,
           publisher: {
             ...video.publisher,
             href: item.post.byline.author?.href,
@@ -420,6 +423,7 @@ export function VideoHomePage() {
       return [{
         ...translatedVideo,
         communityId: entry.community.id,
+        shareActions,
         publisher: {
           avatarSrc: item.post.byline.community?.avatarSrc,
           handle: item.post.byline.community?.label ?? video.publisher.handle,
@@ -763,7 +767,6 @@ export function VideoHomePage() {
         items={items}
         muteVideoLabel={copy.common.muteVideo}
         nextVideoLabel={copy.common.nextVideo}
-        originalSoundLabel={copy.common.originalSound}
         onActiveItemChange={onActiveItemChange}
         onBoost={(item) => {
           if (boostTarget && item.song?.sourcePostId === boostTarget.sourcePostId) boostTarget.open();
@@ -799,7 +802,6 @@ export function VideoHomePage() {
         onLike={onLike}
         onImpression={onImpression}
         onPublisherRelationship={onPublisherRelationship}
-        onShare={(item) => void navigator.share?.({ url: `${window.location.origin}/p/${encodeURIComponent(item.id)}` })}
         onSong={(item, playback) => launchSongAction(item, playback, item.song?.songHref)}
         onStudy={(item, playback) => launchSongAction(item, playback, item.song?.studyHref)}
         removeDownvoteLabel={copy.common.removeDownvote}

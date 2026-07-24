@@ -30,6 +30,7 @@ import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
 import type { VideoFeedCapability, VideoFeedItem } from "./video-feed.types";
+import { VideoShareSurface } from "./video-share-surface";
 
 export interface VideoFeedProps {
   /** Item paused by an external feed surface. Clearing this resumes its prior playback position. */
@@ -58,7 +59,6 @@ export interface VideoFeedProps {
   onStudy?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   muteVideoLabel?: string;
   nextVideoLabel?: string;
-  originalSoundLabel?: string;
   previousVideoLabel?: string;
   removeDownvoteLabel?: string;
   soundOnLabel?: string;
@@ -256,7 +256,7 @@ function VideoAction({
           </span>
         ) : null}
       </div>
-      {value ? <Type className="text-white drop-shadow-md" variant="caption">{value}</Type> : null}
+      {value ? <Type className="-mt-2 text-white drop-shadow-md md:mt-0" variant="caption">{value}</Type> : null}
     </div>
   );
 }
@@ -323,7 +323,6 @@ function VideoFeedSlide({
   soundPromptEligible,
   tapForSoundLabel,
   muteVideoLabel,
-  originalSoundLabel,
   videoProgressLabel,
   initialPlaybackSeconds,
 }: Omit<VideoFeedProps, "downvoteLabel" | "followLabel" | "followingLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "muteVideoLabel" | "removeDownvoteLabel" | "soundOnLabel" | "tapForSoundLabel"> & {
@@ -337,7 +336,6 @@ function VideoFeedSlide({
   itemPosition: number;
   mountMedia: boolean;
   muteVideoLabel: string;
-  originalSoundLabel: string;
   onSoundPromptShown: () => void;
   onToggleMute: (video: HTMLVideoElement | null) => void;
   onTogglePlayback: (item: VideoFeedItem) => void;
@@ -346,7 +344,7 @@ function VideoFeedSlide({
   muted: boolean;
   preferenceMuted: boolean;
   paused: boolean;
-  preload: "auto" | "metadata";
+  preload: "auto" | "metadata" | "none";
   removeDownvoteLabel: string;
   soundOnLabel: string;
   soundPromptEligible: boolean;
@@ -558,7 +556,7 @@ function VideoFeedSlide({
       "[--feed-chrome-top:calc(env(safe-area-inset-top)+4rem)] [--feed-chrome-bottom:calc(env(safe-area-inset-bottom)+var(--header-height))]",
       "md:[--feed-chrome-bottom:0px] md:[--feed-chrome-top:0px]",
     )}>
-      {item.media.orientation === "landscape" ? (
+      {item.media.orientation === "landscape" && item.media.posterSrc ? (
         <img
           aria-hidden
           alt=""
@@ -591,7 +589,7 @@ function VideoFeedSlide({
             loop
             muted={muted}
             playsInline
-            poster={item.media.posterSrc}
+            poster={item.media.posterSrc || undefined}
             preload={preload}
             src={item.media.src}
             onDurationChange={(event) => paintProgress(event.currentTarget)}
@@ -756,11 +754,7 @@ function VideoFeedSlide({
                   </Type>
                 </button>
               ) : <Type className="text-white/80" variant="caption">{item.song.title} · {item.song.artist}</Type>
-            ) : (
-              <Type className="text-white/80" variant="caption">
-                {originalSoundLabel} · {item.publisher.handle}
-              </Type>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -891,11 +885,23 @@ function VideoFeedSlide({
           ) : null}
           <CapabilityAction capability={item.study} icon={<BookOpen className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
           <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
-          <VideoAction
-            icon={<ShareNetwork className="size-6" data-video-icon-weight="fill" weight="fill" />}
-            label="Share"
-            onClick={() => onShare?.(item)}
-          />
+          {item.shareActions?.length ? (
+            <VideoShareSurface actions={item.shareActions}>
+              <IconButton
+                aria-label="Share"
+                className="bg-transparent text-white drop-shadow-[0_2px_3px_rgb(0_0_0/0.9)] hover:bg-white/15 md:bg-white/10 md:shadow-md md:drop-shadow-none md:hover:bg-white/20"
+                variant="ghost"
+              >
+                <ShareNetwork className="size-6" data-video-icon-weight="fill" weight="fill" />
+              </IconButton>
+            </VideoShareSurface>
+          ) : (
+            <VideoAction
+              icon={<ShareNetwork className="size-6" data-video-icon-weight="fill" weight="fill" />}
+              label="Share"
+              onClick={onShare ? () => onShare(item) : undefined}
+            />
+          )}
           {/*
             Mobile keeps overflow in the rail so the rail height stays stable between videos and the
             menu stays reachable without hover. On md+ the desktop hover corner inside the frame
@@ -938,7 +944,6 @@ export function VideoFeed({
   items,
   muteVideoLabel = "Mute video",
   nextVideoLabel = "Next video",
-  originalSoundLabel = "Original sound",
   previousVideoLabel = "Previous video",
   removeDownvoteLabel = "Remove downvote",
   soundOnLabel = "Sound on",
@@ -1107,18 +1112,17 @@ export function VideoFeed({
             itemPosition={index}
             impressionVisible={index === activeIndex && !documentHidden}
             initialPlaybackSeconds={item.id === initialItemId ? initialPlaybackSeconds : undefined}
-            mountMedia={Math.abs(index - activeIndex) <= 2 || recentItemIds.includes(item.id)}
+            mountMedia={Math.abs(index - activeIndex) <= 1 || recentItemIds.includes(item.id)}
             muteVideoLabel={muteVideoLabel}
             onSoundPromptShown={markSoundPromptShown}
             onMoveNext={() => moveTo(index + 1)}
             onMovePrevious={() => moveTo(index - 1)}
-            originalSoundLabel={originalSoundLabel}
             onToggleMute={toggleMute}
             onTogglePlayback={togglePlayback}
             muted={muted}
             preferenceMuted={preferenceMuted}
             paused={pausedItemIds.has(item.id) || externallyPausedItemId === item.id}
-            preload={Math.abs(index - activeIndex) <= 1 ? "auto" : "metadata"}
+            preload={index === activeIndex ? "auto" : Math.abs(index - activeIndex) === 1 ? "metadata" : "none"}
             removeDownvoteLabel={removeDownvoteLabel}
             soundOnLabel={soundOnLabel}
             soundPromptEligible={!hasShownSoundPromptRef.current}

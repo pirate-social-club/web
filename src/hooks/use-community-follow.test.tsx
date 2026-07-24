@@ -118,6 +118,29 @@ describe("useCommunityFollow", () => {
     expect(result.current.followerCount).toBe(14);
   });
 
+  test("keeps the successful follow action when the response echoes stale state", async () => {
+    const { result } = renderHook(() =>
+      useCommunityFollow({
+        communityId: "com_test",
+        follow: async () => createFollowResponse({
+          follower_count: 11,
+          following: false,
+        }),
+        initialFollowerCount: 10,
+        initialViewerFollowing: false,
+        unfollow: async () => createFollowResponse({ following: false }),
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleToggleFollow();
+    });
+
+    expect(result.current.followLoading).toBe(false);
+    expect(result.current.viewerFollowing).toBe(true);
+    expect(result.current.followerCount).toBe(11);
+  });
+
   test("accepts a raw community id in the follow response without rolling back", async () => {
     const { result } = renderHook(() =>
       useCommunityFollow({

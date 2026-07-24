@@ -952,6 +952,8 @@ export function VideoFeed({
   ...actions
 }: VideoFeedProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const scrollSettleTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restoredInitialItemIdRef = React.useRef<string | null>(null);
   const initialIndex = Math.max(0, items.findIndex((item) => item.id === initialItemId));
   const [activeIndex, setActiveIndex] = React.useState(initialIndex);
   const [documentHidden, setDocumentHidden] = React.useState(false);
@@ -978,9 +980,28 @@ export function VideoFeed({
   }, [activeIndex, items]);
 
   React.useLayoutEffect(() => {
-    const container = containerRef.current;
-    if (container && initialIndex > 0) container.scrollTop = initialIndex * container.clientHeight;
-  }, [initialIndex]);
+    if (!initialItemId || restoredInitialItemIdRef.current === initialItemId) return;
+    let frame: number | null = null;
+    const restore = () => {
+      const container = containerRef.current;
+      const restoredIndex = items.findIndex((item) => item.id === initialItemId);
+      if (!container || restoredIndex < 0) return;
+      // A newly mounted dvh container can report zero before its first layout. Committing the
+      // restoration at that point leaves activeIndex pointing at a different slide than the one
+      // physically visible, so the visible video never receives active preload/playback.
+      if (container.clientHeight <= 0) {
+        frame = window.requestAnimationFrame(restore);
+        return;
+      }
+      restoredInitialItemIdRef.current = initialItemId;
+      setActiveIndex(restoredIndex);
+      if (restoredIndex > 0) container.scrollTop = restoredIndex * container.clientHeight;
+    };
+    restore();
+    return () => {
+      if (frame != null) window.cancelAnimationFrame(frame);
+    };
+  }, [initialItemId, items]);
 
   React.useEffect(() => {
     const mediaQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -1005,6 +1026,40 @@ export function VideoFeed({
     container.scrollTo({ behavior: reduceMotion ? "auto" : "smooth", top: nextIndex * container.clientHeight });
     setActiveIndex(nextIndex);
   }, [activeIndex, items.length, reduceMotion]);
+
+  const commitSettledIndex = React.useCallback(() => {
+    const container = containerRef.current;
+    if (!container || container.clientHeight <= 0) return;
+    setActiveIndex(Math.max(0, Math.min(
+      items.length - 1,
+      Math.round(container.scrollTop / container.clientHeight),
+    )));
+  }, [items.length]);
+
+  const scheduleSettledIndex = React.useCallback(() => {
+    if (scrollSettleTimerRef.current) clearTimeout(scrollSettleTimerRef.current);
+    scrollSettleTimerRef.current = setTimeout(() => {
+      scrollSettleTimerRef.current = null;
+      commitSettledIndex();
+    }, 120);
+  }, [commitSettledIndex]);
+
+  React.useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const onScrollEnd = () => {
+      if (scrollSettleTimerRef.current) {
+        clearTimeout(scrollSettleTimerRef.current);
+        scrollSettleTimerRef.current = null;
+      }
+      commitSettledIndex();
+    };
+    container.addEventListener("scrollend", onScrollEnd);
+    return () => {
+      container.removeEventListener("scrollend", onScrollEnd);
+      if (scrollSettleTimerRef.current) clearTimeout(scrollSettleTimerRef.current);
+    };
+  }, [commitSettledIndex]);
 
   const togglePlayback = React.useCallback((item: VideoFeedItem) => {
     setPausedItemIds((current) => {
@@ -1093,9 +1148,11 @@ export function VideoFeed({
       aria-label="Video feed"
       className="h-full w-full snap-y snap-mandatory overflow-y-auto overscroll-y-contain"
       data-active-index={activeIndex}
-      onScroll={(event) => {
-        const container = event.currentTarget;
-        setActiveIndex(Math.max(0, Math.min(items.length - 1, Math.round(container.scrollTop / container.clientHeight))));
+      onScroll={() => {
+        // Playback and media mounting should follow the settled snap position, not oscillate as
+        // the viewport crosses a midpoint. `scrollend` handles modern browsers; the timer is the
+        // fallback for older Safari and interrupted programmatic scrolls.
+        scheduleSettledIndex();
       }}
       tabIndex={0}
     >

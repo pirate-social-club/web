@@ -12,6 +12,8 @@ import { ApiError } from "@/lib/api/client";
 import type { BookingHold, BookingQuote } from "@/lib/api/bookings-types";
 import { useSession } from "@/lib/api/session-store";
 import { useRequestAuth } from "@/hooks/use-request-auth";
+import { useRouteMessages } from "@/hooks/use-route-messages";
+import { interpolateMessage } from "@/lib/route-messages";
 import {
   executeUsdcTransfer,
   findConnectedFundingWallet,
@@ -112,6 +114,8 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
   const api = useApi();
   const session = useSession();
   const requestAuth = useRequestAuth();
+  const { copy } = useRouteMessages();
+  const messages = copy.bookingCheckout;
   const isAuthed = Boolean(session?.accessToken);
   const { connectedWallets } = usePiratePrivyWallets({ enabled: true });
   const tz = React.useMemo(viewerTz, []);
@@ -137,8 +141,8 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
     if (isAuthed) { autoPrompted.current = false; return; }
     if (autoPrompted.current) return;
     autoPrompted.current = true;
-    requestAuth("Sign in to book this session.");
-  }, [isAuthed, requestAuth]);
+    requestAuth(messages.signInToBookThisSession);
+  }, [isAuthed, messages.signInToBookThisSession, requestAuth]);
 
   // Run API confirmation for an ALREADY-submitted transaction. Pure resume — never submits a transfer.
   const runConfirm = React.useCallback(async (holdId: string, txHash: string, walletAttachmentId: string) => {
@@ -154,21 +158,21 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
       if (EXPIRED_CONFIRM_CODES.has(code)) { clearPersisted(key); setPhase({ kind: "expired" }); return; }
       if (TERMINAL_CONFIRM_CODES.has(code)) {
         const message = code === "payment_rejected"
-          ? "The on-chain payment did not match this booking. No booking was created."
+          ? messages.paymentMismatch
           : code === "transaction_already_used"
-            ? "That transaction was already used for another booking."
-            : "This booking could not be confirmed. No booking was created.";
+            ? messages.transactionAlreadyUsed
+            : messages.confirmFailed;
         setPhase({ kind: "failed", message, canRetryConfirm: false });
         return;
       }
       // Resumable: payment pending on-chain, or a transient API/network error. Keep the tx hash so the
       // user can retry confirmation WITHOUT paying again.
       const message = RESUMABLE_CONFIRM_CODES.has(code)
-        ? "Payment is not yet confirmed on-chain. You can retry confirmation in a moment — you will not be charged again."
-        : (e instanceof ApiError ? e.message : "Could not reach the server to confirm. Retry — you will not be charged again.");
+        ? messages.paymentPending
+        : (e instanceof ApiError ? e.message : messages.confirmServerError);
       setPhase({ kind: "failed", message, canRetryConfirm: true, txHash, walletAttachmentId });
     }
-  }, [api, key]);
+  }, [api, key, messages]);
 
   // Mount: resume from persisted state (confirm-only) or create a fresh hold + quote.
   React.useEffect(() => {
@@ -176,7 +180,7 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
     // instead. Once the user signs in (session.accessToken appears), isAuthed flips and this re-runs.
     if (!isAuthed) return;
     if (!slotStart || !slotEnd) {
-      setPhase({ kind: "failed", message: "No slot selected. Please go back and pick a time." });
+      setPhase({ kind: "failed", message: messages.noSlotSelected });
       return;
     }
     let cancelled = false;
@@ -217,12 +221,12 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
         setPhase({ kind: "quoted", hold, quote });
       } catch (e) {
         if (cancelled) return;
-        const message = e instanceof ApiError ? e.message : "Could not reserve this slot. It may have just been taken — please pick another time.";
+        const message = e instanceof ApiError ? e.message : messages.reserveFailed;
         setPhase({ kind: "failed", message });
       }
     })();
     return () => { cancelled = true; };
-  }, [api, communityId, hostUserId, slotStart, slotEnd, key, runConfirm, isAuthed]);
+  }, [api, communityId, hostUserId, slotStart, slotEnd, key, messages.noSlotSelected, messages.reserveFailed, runConfirm, isAuthed]);
 
   const expiresAt = phase.kind === "quoted" ? phase.quote.expires_at_utc : null;
   const countdown = useCountdown(expiresAt);
@@ -236,12 +240,12 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
     // the CONNECTED wallet matches that attachment's address before paying.
     const walletAttachmentId = session?.user.primary_wallet_attachment;
     if (!walletAttachmentId) {
-      setPhase({ kind: "wallet_required", hold, quote, message: "No wallet is attached to your account. Add one in settings to pay." });
+      setPhase({ kind: "wallet_required", hold, quote, message: messages.noWalletAttached });
       return;
     }
     const wallet = findConnectedFundingWallet({ connectedWallets, primaryWalletAddress: session?.profile.primary_wallet_address });
     if (!wallet) {
-      setPhase({ kind: "wallet_required", hold, quote, message: "Connect the wallet attached to your account to pay." });
+      setPhase({ kind: "wallet_required", hold, quote, message: messages.connectWallet });
       return;
     }
 
@@ -253,7 +257,7 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
     } catch (e) {
       const code = e instanceof ApiError ? e.code : "";
       if (EXPIRED_CONFIRM_CODES.has(code)) { clearPersisted(key); setPhase({ kind: "expired" }); return; }
-      setPhase({ kind: "failed", message: e instanceof ApiError ? e.message : "Could not refresh the quote. Please try again.", hold, quote, canRetryPay: true });
+      setPhase({ kind: "failed", message: e instanceof ApiError ? e.message : messages.quoteRefreshFailed, hold, quote, canRetryPay: true });
       return;
     }
 
@@ -277,14 +281,14 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
     } catch (e) {
       if (!submittedHash) {
         // Rejected/failed BEFORE submission — nothing on-chain, safe to let the user pay again.
-        setPhase({ kind: "failed", message: e instanceof Error ? e.message : "Payment was not submitted. You can try again.", hold, quote: fresh, canRetryPay: true });
+        setPhase({ kind: "failed", message: e instanceof Error ? e.message : messages.paymentNotSubmitted, hold, quote: fresh, canRetryPay: true });
         return;
       }
       // Submitted but the receipt errored/reverted — the API is authoritative on the outcome. Resume
       // confirmation with the submitted hash (it will classify reverted/mismatched payments).
       await runConfirm(hold.hold_id, submittedHash, walletAttachmentId);
     }
-  }, [api, connectedWallets, session, key, runConfirm]);
+  }, [api, connectedWallets, session, key, messages, runConfirm]);
 
   // Logged out: prompt sign-in instead of firing authenticated hold/quote (which would 401 into
   // "Authentication failed"). After sign-in, session.accessToken appears → the mount effect proceeds.
@@ -292,12 +296,12 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
     return (
       <StandardRoutePage size="rail">
         <div className="mx-auto max-w-2xl space-y-6 p-6">
-          <Type as="h1" variant="h2">Confirm booking</Type>
+          <Type as="h1" variant="h2">{messages.title}</Type>
           <div className="space-y-4">
-            <Type variant="body">Sign in to book this session.</Type>
+            <Type variant="body">{messages.signInToBookThisSession}</Type>
             <div className="flex gap-2">
-              <Button onClick={() => requestAuth("Sign in to book a session.")}>Sign in</Button>
-              <Button variant="outline" onClick={backToAvailability}>Back to availability</Button>
+              <Button onClick={() => requestAuth(messages.signInToBookSession)}>{messages.signIn}</Button>
+              <Button variant="outline" onClick={backToAvailability}>{messages.backToAvailability}</Button>
             </div>
           </div>
         </div>
@@ -308,23 +312,23 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
   return (
     <StandardRoutePage size="rail">
       <div className="mx-auto max-w-2xl space-y-6 p-6">
-        <Type as="h1" variant="h2">Confirm booking</Type>
+        <Type as="h1" variant="h2">{messages.title}</Type>
 
         {phase.kind === "holding" && (
-          <Type variant="body" className="text-muted-foreground">Reserving your slot…</Type>
+          <Type variant="body" className="text-muted-foreground">{messages.reserving}</Type>
         )}
 
         {phase.kind === "confirming" && (
           <div className="space-y-2">
-            <Type variant="body" className="text-muted-foreground">Confirming your payment…</Type>
+            <Type variant="body" className="text-muted-foreground">{messages.confirmingPayment}</Type>
             <Type variant="caption" className="text-muted-foreground font-mono break-all">{phase.txHash}</Type>
           </div>
         )}
 
         {phase.kind === "expired" && (
           <div className="space-y-4">
-            <Type variant="body">This hold expired before payment. No charge was made.</Type>
-            <Button variant="outline" onClick={backToAvailability}>Pick another time</Button>
+            <Type variant="body">{messages.holdExpired}</Type>
+            <Button variant="outline" onClick={backToAvailability}>{messages.pickAnotherTime}</Button>
           </div>
         )}
 
@@ -334,13 +338,13 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
             <div className="flex gap-2">
               {phase.canRetryConfirm && phase.txHash && phase.walletAttachmentId && (
                 <Button onClick={() => void runConfirm(loadPersisted(key)?.holdId ?? "", phase.txHash!, phase.walletAttachmentId!)}>
-                  Retry confirmation
+                  {messages.retryConfirmation}
                 </Button>
               )}
               {phase.canRetryPay && phase.hold && phase.quote && (
-                <Button onClick={() => void handlePay(phase.hold!, phase.quote!)}>Try payment again</Button>
+                <Button onClick={() => void handlePay(phase.hold!, phase.quote!)}>{messages.tryPaymentAgain}</Button>
               )}
-              <Button variant="outline" onClick={backToAvailability}>Back to availability</Button>
+              <Button variant="outline" onClick={backToAvailability}>{messages.backToAvailability}</Button>
             </div>
           </div>
         )}
@@ -349,8 +353,8 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
           <div className="space-y-4">
             <Type variant="body" className="text-destructive">{phase.message}</Type>
             <div className="flex gap-2">
-              <Button onClick={() => void handlePay(phase.hold, phase.quote)}>Retry</Button>
-              <Button variant="outline" onClick={() => navigate("/settings/wallet")}>Wallet settings</Button>
+              <Button onClick={() => void handlePay(phase.hold, phase.quote)}>{messages.retry}</Button>
+              <Button variant="outline" onClick={() => navigate("/settings/wallet")}>{messages.walletSettings}</Button>
             </div>
           </div>
         )}
@@ -361,46 +365,47 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
           return (
             <div className="space-y-6">
               <div className="rounded-lg border border-border p-4 space-y-3">
-                <div className="flex justify-between"><Type variant="label">Session</Type><Type variant="body">{formatSlotTime(hold.slot_start_utc, tz)}</Type></div>
-                <div className="flex justify-between"><Type variant="label">Duration</Type><Type variant="body">{formatDuration(hold.slot_start_utc, hold.slot_end_utc)}</Type></div>
-                <div className="flex justify-between"><Type variant="label">Total</Type><Type variant="body">{formatPrice(quote.gross_cents)}</Type></div>
-                <div className="flex justify-between text-muted-foreground"><Type variant="caption">Platform fee ({Math.round(quote.platform_fee_bps / 100)}%)</Type><Type variant="caption">{formatPrice(quote.platform_fee_cents)}</Type></div>
-                <div className="flex justify-between text-muted-foreground"><Type variant="caption">Host receives</Type><Type variant="caption">{formatPrice(quote.host_payout_cents)}</Type></div>
+                <div className="flex justify-between"><Type variant="label">{messages.session}</Type><Type variant="body">{formatSlotTime(hold.slot_start_utc, tz)}</Type></div>
+                <div className="flex justify-between"><Type variant="label">{messages.duration}</Type><Type variant="body">{formatDuration(hold.slot_start_utc, hold.slot_end_utc)}</Type></div>
+                <div className="flex justify-between"><Type variant="label">{messages.total}</Type><Type variant="body">{formatPrice(quote.gross_cents)}</Type></div>
+                <div className="flex justify-between text-muted-foreground"><Type variant="caption">{interpolateMessage(messages.platformFee, { percent: String(Math.round(quote.platform_fee_bps / 100)) })}</Type><Type variant="caption">{formatPrice(quote.platform_fee_cents)}</Type></div>
+                <div className="flex justify-between text-muted-foreground"><Type variant="caption">{messages.hostReceives}</Type><Type variant="caption">{formatPrice(quote.host_payout_cents)}</Type></div>
               </div>
 
               {!isPaying && (
                 <div className="flex items-center gap-2">
-                  <Type variant="caption" className="text-muted-foreground">Hold reserved for</Type>
+                  <Type variant="caption" className="text-muted-foreground">{messages.holdReservedFor}</Type>
                   <Type variant="label" className={countdown < 60 ? "text-destructive" : undefined}>{formatCountdown(countdown)}</Type>
                 </div>
               )}
 
-              <div className="space-y-2 rounded-lg border border-border-soft bg-muted/30 p-4" aria-label="Booking policies">
+              <div className="space-y-2 rounded-lg border border-border-soft bg-muted/30 p-4" aria-label={messages.bookingPolicies}>
                 <Type variant="caption" className="text-muted-foreground">
-                  Time shown in your timezone ({tz}).
+                  {interpolateMessage(messages.viewerTimezone, { timezone: tz })}
                 </Type>
                 <Type variant="caption" className="text-muted-foreground">
-                  Cancel at least 24 hours before the session for a full refund. Later cancellations are non-refundable.
-                  If the host cancels or does not attend, you receive a full refund.
+                  {messages.cancellationPolicy}
                 </Type>
                 <Type variant="caption" className="text-muted-foreground">
-                  Payment is held until your session is complete.
+                  {messages.paymentHeld}
                 </Type>
               </div>
 
               <Button className="w-full" onClick={() => void handlePay(hold, quote)} loading={isPaying} disabled={isPaying || countdown === 0}>
-                {isPaying ? "Submitting payment…" : `Pay ${formatPrice(quote.gross_cents)} with USDC`}
+                {isPaying
+                  ? messages.submittingPayment
+                  : interpolateMessage(messages.payWithUsdc, { amount: formatPrice(quote.gross_cents) })}
               </Button>
-              <Button variant="ghost" className="w-full" disabled={isPaying} onClick={backToAvailability}>Cancel</Button>
+              <Button variant="ghost" className="w-full" disabled={isPaying} onClick={backToAvailability}>{messages.cancel}</Button>
             </div>
           );
         })()}
 
         {phase.kind === "confirmed" && (
           <div className="space-y-4">
-            <Type variant="body">Booking confirmed. Your session is reserved and you will receive details shortly.</Type>
+            <Type variant="body">{messages.bookingConfirmed}</Type>
             <Type variant="caption" className="text-muted-foreground font-mono">{phase.bookingId}</Type>
-            <Button variant="outline" onClick={() => navigate("/bookings")}>View my bookings</Button>
+            <Button variant="outline" onClick={() => navigate("/bookings")}>{messages.viewMyBookings}</Button>
           </div>
         )}
       </div>

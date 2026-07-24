@@ -2,16 +2,17 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 
 import {
   installAuthenticatedApiMocks,
-  installMockSession,
 } from "./fixtures/api-mocks";
 import { createSolvableAltchaChallenge } from "./fixtures/altcha-challenge";
 import {
   createMockHomeFeedItem,
+  createMockStoredSession,
   mockCommunityId,
   mockCommunityPreview,
   mockFeedPostId,
   mockJoinEligibility,
 } from "./fixtures/auth-session";
+import { installStoredSession } from "./fixtures/session";
 
 const pirateApiPattern = /https?:\/\/(?:api-staging\.pirate\.sc|api\.pirate\.sc|127\.0\.0\.1:8787)\/.*/u;
 const altchaGate = { gate_type: "altcha_pow" } as const;
@@ -196,7 +197,18 @@ async function installVideoPowFixture(
     }
     await route.fallback();
   });
-  await installMockSession(page);
+  // The shared E2E account is already unique-human verified. This fixture
+  // models the new account from the report, for which either branch of this
+  // community's `any` gate is still unsatisfied and the PoW branch is used.
+  const session = createMockStoredSession();
+  session.user = {
+    ...session.user,
+    verification_capabilities: {
+      ...session.user.verification_capabilities,
+      unique_human: { state: "unverified" },
+    },
+  };
+  await installStoredSession(page, session);
 }
 
 test.describe("video-feed proof-of-work vote gate", () => {
@@ -207,7 +219,7 @@ test.describe("video-feed proof-of-work vote gate", () => {
 
     const like = page.getByRole("button", { name: "Like" });
     await expect(like).toBeVisible();
-    await expect(like).toHaveAttribute("aria-pressed", "false");
+    await expect(like).not.toHaveAttribute("data-active", "true");
     await like.click();
 
     await expect.poll(() => captures.voteRequests.length).toBe(1);
@@ -216,7 +228,7 @@ test.describe("video-feed proof-of-work vote gate", () => {
     expect(captures.voteRequests[0]?.body).toEqual({ value: 1 });
     expect(captures.voteRequests[0]?.altchaHeader).toBeTruthy();
     expect(captures.joins).toBe(0);
-    await expect(like).toHaveAttribute("aria-pressed", "true");
+    await expect(like).toHaveAttribute("data-active", "true");
     const join = page.getByRole("button", { name: "Join community" });
     await expect(join).toBeEnabled();
 
@@ -226,7 +238,7 @@ test.describe("video-feed proof-of-work vote gate", () => {
     expect(captures.challengeUrls[1]?.searchParams.get("scope")).toBe("vote");
     expect(captures.clearVoteRequests[0]?.altchaHeader).toBeTruthy();
     expect(captures.joins).toBe(0);
-    await expect(like).toHaveAttribute("aria-pressed", "false");
+    await expect(like).not.toHaveAttribute("data-active", "true");
   });
 
   test("rolls back the heart and surfaces a failed vote", async ({ page }) => {
@@ -238,7 +250,7 @@ test.describe("video-feed proof-of-work vote gate", () => {
     await like.click();
 
     await expect.poll(() => captures.voteRequests.length).toBe(1);
-    await expect(like).toHaveAttribute("aria-pressed", "false");
+    await expect(like).not.toHaveAttribute("data-active", "true");
     await expect(page.getByText("Verification is required to vote in this community")).toBeVisible();
   });
 });

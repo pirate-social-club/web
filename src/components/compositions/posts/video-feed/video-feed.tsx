@@ -80,6 +80,29 @@ export interface VideoFeedImpression {
 
 export const VIDEO_FEED_MUTED_PREFERENCE_KEY = "pirate.video-feed.muted";
 
+export function isVideoLoopReplay({
+  currentTime,
+  duration,
+  previousTime,
+}: {
+  currentTime: number;
+  duration: number;
+  previousTime: number;
+}): boolean {
+  if (!Number.isFinite(duration) || duration <= 0) return false;
+  if (!Number.isFinite(currentTime) || !Number.isFinite(previousTime)) return false;
+  const loopWindow = Math.min(1.5, duration * 0.25);
+  return previousTime >= duration - loopWindow
+    && currentTime <= loopWindow
+    && currentTime < previousTime;
+}
+
+export function watchedPlaybackDelta(currentTime: number, previousTime: number): number {
+  if (!Number.isFinite(currentTime) || !Number.isFinite(previousTime)) return 0;
+  const delta = currentTime - previousTime;
+  return delta > 0 && delta <= 1.25 ? delta : 0;
+}
+
 function readStoredMutedPreference(): boolean | null {
   if (typeof window === "undefined") return null;
   try {
@@ -300,25 +323,25 @@ function VideoFeedSlide({
   const mediaMounted = mountMedia && hasPlayableSource;
   const [showSoundPrompt, setShowSoundPrompt] = React.useState(false);
   const impressionRef = React.useRef<{
-    maxPlaybackSeconds: number;
     muted: boolean;
     previousPlaybackSeconds: number;
     replayCount: number;
     soundOnAtAnyPoint: boolean;
     startedAt: number;
     item: VideoFeedItem;
+    watchedSeconds: number;
   } | null>(null);
 
   React.useEffect(() => {
     if (!impressionVisible) return;
     impressionRef.current = {
-      maxPlaybackSeconds: videoRef.current?.currentTime ?? 0,
       muted,
       previousPlaybackSeconds: videoRef.current?.currentTime ?? 0,
       replayCount: 0,
       soundOnAtAnyPoint: !muted,
       startedAt: performance.now(),
       item,
+      watchedSeconds: 0,
     };
     return () => {
       const impression = impressionRef.current;
@@ -328,7 +351,10 @@ function VideoFeedSlide({
       const durationSeconds = Number.isFinite(video?.duration) && (video?.duration ?? 0) > 0
         ? video!.duration
         : 0;
-      const playbackSeconds = Math.max(impression.maxPlaybackSeconds, video?.currentTime ?? 0);
+      const playbackSeconds = impression.watchedSeconds + watchedPlaybackDelta(
+        video?.currentTime ?? impression.previousPlaybackSeconds,
+        impression.previousPlaybackSeconds,
+      );
       onImpression?.(impression.item, {
         completionRatio: durationSeconds > 0 ? Math.min(1, playbackSeconds / durationSeconds) : 0,
         durationSeconds,
@@ -453,8 +479,17 @@ function VideoFeedSlide({
               const impression = impressionRef.current;
               if (!impression) return;
               const currentTime = event.currentTarget.currentTime;
-              if (currentTime + 1 < impression.previousPlaybackSeconds) impression.replayCount += 1;
-              impression.maxPlaybackSeconds = Math.max(impression.maxPlaybackSeconds, currentTime);
+              if (isVideoLoopReplay({
+                currentTime,
+                duration: event.currentTarget.duration,
+                previousTime: impression.previousPlaybackSeconds,
+              })) {
+                impression.replayCount += 1;
+              }
+              impression.watchedSeconds += watchedPlaybackDelta(
+                currentTime,
+                impression.previousPlaybackSeconds,
+              );
               impression.previousPlaybackSeconds = currentTime;
             }}
           />

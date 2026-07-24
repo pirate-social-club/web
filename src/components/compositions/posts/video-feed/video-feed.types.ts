@@ -1,3 +1,5 @@
+import type { PostCardShareAction } from "@/components/compositions/posts/post-card/post-card.types";
+
 export type VideoFeedCapability = "ready" | "locked" | "unavailable";
 
 export interface VideoFeedItem {
@@ -46,9 +48,10 @@ export interface VideoFeedItem {
   liked?: boolean;
   media: {
     orientation: "portrait" | "landscape";
-    posterSrc: string;
+    posterSrc?: string;
     src?: string;
   };
+  shareActions?: PostCardShareAction[];
   /** Alternate authored caption when the API supplied a translated presentation. */
   translation?: {
     originalCaption: string;

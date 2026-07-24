@@ -118,19 +118,18 @@ describe("VideoFeed", () => {
     expect(view.getByText("songs.pirate").parentElement?.querySelector("[data-video-publisher-avatar]")).toBeNull();
   });
 
-  test("links both publisher affordances and labels unattributed audio as original sound", () => {
+  test("links both publisher affordances without fabricating an original-sound attribution", () => {
     const view = render(<VideoFeed
       items={[{
         ...item,
         publisher: { ...item.publisher, href: "/c/songs" },
         song: undefined,
       }]}
-      originalSoundLabel="Original sound"
     />);
 
     const publisherLinks = view.getAllByRole("link");
     expect(publisherLinks.filter((link) => link.getAttribute("href") === "/c/songs")).toHaveLength(2);
-    expect(view.getByText("Original sound · songs.pirate")).toBeTruthy();
+    expect(view.queryByText(/Original sound/u)).toBeNull();
     expect(view.queryByRole("button", { name: /Open .* by/u })).toBeNull();
   });
 
@@ -181,6 +180,8 @@ describe("VideoFeed", () => {
 
     expect(wrapper.className).toContain("gap-0.5");
     expect(wrapper.className).toContain("md:gap-1");
+    expect(view.getByText("4").className).toContain("-mt-2");
+    expect(view.getByText("4").className).toContain("md:mt-0");
   });
 
   test("opens public comments without routing through the membership gate", () => {
@@ -598,10 +599,10 @@ describe("VideoFeed", () => {
     const view = render(<VideoFeed items={items} />);
 
     expect(view.container.querySelectorAll("article")).toHaveLength(items.length);
-    expect(view.container.querySelectorAll("video")).toHaveLength(3);
+    expect(view.container.querySelectorAll("video")).toHaveLength(2);
     expect(Array.from(view.container.querySelectorAll("video"), (video) => video.getAttribute("preload")))
-      .toEqual(["auto", "auto", "metadata"]);
-    expect(view.container.innerHTML).not.toContain("video-3.mp4");
+      .toEqual(["auto", "metadata"]);
+    expect(view.container.innerHTML).not.toContain("video-2.mp4");
   });
 
   test("uses a black placeholder instead of an empty image source when distant media has no poster", () => {
@@ -612,8 +613,19 @@ describe("VideoFeed", () => {
     const view = render(<VideoFeed items={items} />);
 
     expect(view.container.querySelectorAll("article")).toHaveLength(items.length);
-    expect(view.container.querySelectorAll("video")).toHaveLength(3);
+    expect(view.container.querySelectorAll("video")).toHaveLength(2);
     expect(view.container.querySelectorAll("img[src='']")).toHaveLength(0);
+  });
+
+  test("omits poster attributes and the landscape backdrop when no poster exists", () => {
+    const view = render(<VideoFeed items={[{
+      ...item,
+      media: { ...item.media, orientation: "landscape", posterSrc: undefined },
+    }]} />);
+
+    expect(view.container.querySelector("video")?.hasAttribute("poster")).toBe(false);
+    expect(view.container.querySelectorAll("article img")).toHaveLength(1);
+    expect(view.container.querySelector("article img")?.getAttribute("alt")).toBe("songs.pirate");
   });
 
   test("moves the media window while preserving every full-height slide shell", () => {
@@ -626,19 +638,17 @@ describe("VideoFeed", () => {
     fireEvent.scroll(feed);
 
     expect(view.container.querySelectorAll("article")).toHaveLength(items.length);
-    // The ±2 window covers slides 1-5; the initially viewed slide 0 stays mounted as keep-alive.
-    expect(view.container.querySelectorAll("video")).toHaveLength(6);
+    // The ±1 window covers slides 2-4; the initially viewed slide 0 stays mounted as keep-alive.
+    expect(view.container.querySelectorAll("video")).toHaveLength(4);
     expect(Array.from(view.container.querySelectorAll("video"), (video) => video.getAttribute("src")))
       .toEqual([
         "https://media.test/video-0.mp4",
-        "https://media.test/video-1.mp4",
         "https://media.test/video-2.mp4",
         "https://media.test/video-3.mp4",
         "https://media.test/video-4.mp4",
-        "https://media.test/video-5.mp4",
     ]);
     expect(Array.from(view.container.querySelectorAll("video"), (video) => video.getAttribute("preload")))
-      .toEqual(["metadata", "metadata", "auto", "auto", "auto", "metadata"]);
+      .toEqual(["none", "metadata", "auto", "metadata"]);
   });
 
   test("keeps recently viewed media mounted for scroll-back and evicts beyond the cap", () => {

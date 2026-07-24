@@ -1448,7 +1448,9 @@
       "join": "الانضمام إلى الجلسة", "rejoin": "العودة إلى الجلسة", "addToCalendar": "إضافة إلى التقويم", "cancel": "إلغاء الحجز",
       "loading": "جارٍ تحميل الحجوزات", "signedOutTitle": "سجّل الدخول لعرض حجوزاتك", "signedOutDetail": "تظهر جلساتك القادمة والسابقة هنا.", "signIn": "تسجيل الدخول",
       "errorTitle": "تعذّر تحميل الحجوزات", "errorDetail": "حاول مرة أخرى بعد قليل.", "retry": "إعادة المحاولة",
-      "emptyTitle": "لا توجد حجوزات بعد", "emptyBookerDetail": "ستظهر الجلسات التي حجزتها هنا.", "emptyHostDetail": "ستظهر الجلسات المحجوزة معك هنا."
+      "emptyTitle": "لا توجد حجوزات بعد", "emptyBookerDetail": "ستظهر الجلسات التي حجزتها هنا.", "emptyHostDetail": "ستظهر الجلسات المحجوزة معك هنا.",
+      "paymentInProgress": "الدفع قيد المعالجة", "paymentResumeDetail": "أُرسلت دفعتك. استأنف التأكيد دون الدفع مرة أخرى.", "resumePayment": "استئناف الدفع",
+      "refundPendingTitle": "استرداد المبلغ قيد الانتظار", "refundPendingDetail": "وصلت دفعتك بعد انتهاء الحجز المؤقت للموعد. استرداد المبلغ قيد الانتظار."
     },
     "status": {
       "confirmed": "مؤكد", "confirmedDetail": "تم حجز جلستك.", "live": "قيد الانعقاد", "liveDetail": "بدأت الجلسة.",

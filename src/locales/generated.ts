@@ -1789,7 +1789,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "retry": "Try again",
           "emptyTitle": "No bookings yet",
           "emptyBookerDetail": "Booked sessions will appear here.",
-          "emptyHostDetail": "Sessions booked with you will appear here."
+          "emptyHostDetail": "Sessions booked with you will appear here.",
+          "paymentInProgress": "Payment in progress",
+          "paymentResumeDetail": "Your payment was submitted. Resume confirmation without paying again.",
+          "resumePayment": "Resume payment",
+          "refundPendingTitle": "Refund pending",
+          "refundPendingDetail": "Your payment arrived after the slot hold ended. A refund is pending."
         },
         "status": {
           "confirmed": "Confirmed",
@@ -3922,7 +3927,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "retry": "إعادة المحاولة",
           "emptyTitle": "لا توجد حجوزات بعد",
           "emptyBookerDetail": "ستظهر الجلسات التي حجزتها هنا.",
-          "emptyHostDetail": "ستظهر الجلسات المحجوزة معك هنا."
+          "emptyHostDetail": "ستظهر الجلسات المحجوزة معك هنا.",
+          "paymentInProgress": "الدفع قيد المعالجة",
+          "paymentResumeDetail": "أُرسلت دفعتك. استأنف التأكيد دون الدفع مرة أخرى.",
+          "resumePayment": "استئناف الدفع",
+          "refundPendingTitle": "استرداد المبلغ قيد الانتظار",
+          "refundPendingDetail": "وصلت دفعتك بعد انتهاء الحجز المؤقت للموعد. استرداد المبلغ قيد الانتظار."
         },
         "status": {
           "confirmed": "مؤكد",
@@ -6055,7 +6065,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "retry": "重试",
           "emptyTitle": "暂无预约",
           "emptyBookerDetail": "你预约的课程会显示在这里。",
-          "emptyHostDetail": "他人向你预约的课程会显示在这里。"
+          "emptyHostDetail": "他人向你预约的课程会显示在这里。",
+          "paymentInProgress": "付款处理中",
+          "paymentResumeDetail": "付款已提交。继续确认即可，无需再次付款。",
+          "resumePayment": "继续付款",
+          "refundPendingTitle": "退款处理中",
+          "refundPendingDetail": "付款在时段保留结束后到账，退款正在等待处理。"
         },
         "status": {
           "confirmed": "已确认",

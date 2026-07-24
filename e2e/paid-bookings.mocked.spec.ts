@@ -181,6 +181,30 @@ test.describe("paid bookings UI (mocked API)", () => {
     await expectNoBrowserError(page);
   });
 
+  test("management surfaces a server-recorded payment resume card", async ({ page }) => {
+    await installBookingFixture(page, {
+      pendingPaymentIntents: [{
+        hold_id: "hold_resumed_e2e",
+        payment_intent_id: "bpi_hold_resumed_e2e",
+        intent_status: "verifying",
+        resume_state: "confirmable",
+        claimed_tx_ref: "0xserverstored",
+        wallet_attachment_id: "wal_mock_primary",
+        payment: bookingPaymentForResume(),
+        quote_expires_at: "2099-01-05T10:15:00.000Z",
+        hold_expires_at: "2099-01-05T10:15:00.000Z",
+        host_user_id: HOST,
+        slot_start_utc: "2099-01-05T10:00:00.000Z",
+        slot_end_utc: "2099-01-05T10:30:00.000Z",
+        booking_id: null,
+      }],
+    });
+    await page.goto("/bookings?role=booker");
+    await expect(page.getByText("Payment in progress")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Resume payment" })).toBeVisible();
+    await expectNoBrowserError(page);
+  });
+
   test("cancellation previews terms and sends the acknowledged refund amount", async ({ page }) => {
     const state = await installBookingFixture(page);
     await page.goto("/bookings?role=booker");

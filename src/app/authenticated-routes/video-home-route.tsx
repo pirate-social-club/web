@@ -175,6 +175,18 @@ export function appendUniqueVideoEntries(
   return uniqueIncoming.length > 0 ? [...current, ...uniqueIncoming] : current;
 }
 
+export function takeUnseenVideoEntries(
+  seenPostIds: Set<string>,
+  incoming: ApiHomeFeedItem[],
+): ApiHomeFeedItem[] {
+  return incoming.filter((entry) => {
+    const postId = entry.post.post.id;
+    if (seenPostIds.has(postId)) return false;
+    seenPostIds.add(postId);
+    return true;
+  });
+}
+
 export function nextVideoPaginationCursor(input: {
   consecutiveNoGrowthPages: number;
   didGrow: boolean;
@@ -197,8 +209,6 @@ export function resolveVideoPublisherRelationship(input: {
   joinedLabel: string;
   joinedLocally?: boolean;
   joinLabel: string;
-  followedLabel?: string;
-  followedLocally?: boolean;
   viewerCommunityRole?: string | null;
   viewerMembershipStatus?: "member" | "not_member" | "banned" | null;
 }): VideoFeedItem["publisher"]["relationship"] {
@@ -212,12 +222,11 @@ export function resolveVideoPublisherRelationship(input: {
   const joined = input.joinedLocally
     || input.viewerCommunityRole != null
     || input.viewerMembershipStatus === "member";
-  const followed = !joined && input.followedLocally;
   return {
-    active: Boolean(joined || followed),
+    active: Boolean(joined),
     disabled: Boolean(joined) || input.viewerMembershipStatus === "banned",
     kind: "join",
-    label: joined ? input.joinedLabel : followed ? input.followedLabel ?? input.joinLabel : input.joinLabel,
+    label: joined ? input.joinedLabel : input.joinLabel,
   };
 }
 
@@ -251,7 +260,6 @@ export function VideoHomePage() {
   const [entries, setEntries] = React.useState<ApiHomeFeedItem[]>([]);
   const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | null>>({});
   const [joinedCommunityIds, setJoinedCommunityIds] = React.useState<Set<string>>(() => new Set());
-  const [followedCommunityIds, setFollowedCommunityIds] = React.useState<Set<string>>(() => new Set());
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<unknown>(null);
@@ -360,7 +368,6 @@ export function VideoHomePage() {
     setError(null);
     setAuthorProfiles({});
     setJoinedCommunityIds(new Set());
-    setFollowedCommunityIds(new Set());
     const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
     void request({ locale: contentLocale, sort: "best" })
       .then((response) => {
@@ -436,8 +443,6 @@ export function VideoHomePage() {
         authorWalletAddress: authorProfile?.primary_wallet_address,
         currentUserId: session?.user.id,
         identityMode: post.identity_mode,
-        followedLabel: copy.home.videoPublisherFollowing,
-        followedLocally: followedCommunityIds.has(entry.community.id),
         joinedLabel: copy.home.videoPublisherJoined,
         joinedLocally: joinedCommunityIds.has(entry.community.id),
         joinLabel: copy.home.videoPublisherJoin,
@@ -471,7 +476,7 @@ export function VideoHomePage() {
         },
       }];
     }),
-    [authorProfiles, contentLocale, copy.common.showOriginal, copy.common.showTranslation, copy.home.videoPublisherFollowing, copy.home.videoPublisherJoin, copy.home.videoPublisherJoined, entries, followedCommunityIds, joinedCommunityIds, session?.user.id],
+    [authorProfiles, contentLocale, copy.common.showOriginal, copy.common.showTranslation, copy.home.videoPublisherJoin, copy.home.videoPublisherJoined, entries, joinedCommunityIds, session?.user.id],
   );
   const items = React.useMemo(() => pageItems.map((item) => {
     const sourcePostId = item.song?.sourcePostId;
@@ -505,17 +510,12 @@ export function VideoHomePage() {
       const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
       const response = await request({ cursor: nextCursor, locale: contentLocale, sort: "best" });
       if (generation !== feedGenerationRef.current) return;
+      const unseenItems = takeUnseenVideoEntries(seenPostIdsRef.current, response.items);
       seedPublicThreadQueriesFromFeed({
-        items: response.items,
+        items: unseenItems,
         locale: contentLocale,
         queryClient,
         sort: "best",
-      });
-      const unseenItems = response.items.filter((entry) => {
-        const postId = entry.post.post.id;
-        if (seenPostIdsRef.current.has(postId)) return false;
-        seenPostIdsRef.current.add(postId);
-        return true;
       });
       setEntries((current) => appendUniqueVideoEntries(current, unseenItems));
       const pagination = nextVideoPaginationCursor({
@@ -597,9 +597,6 @@ export function VideoHomePage() {
             requestIdsRef: voteRequestIdsRef,
             vote: api.posts.vote,
           });
-        },
-        onFollowingConfirmed: () => {
-          setFollowedCommunityIds((current) => new Set(current).add(entry.community.id));
         },
         postId: item.id,
         voteValue,

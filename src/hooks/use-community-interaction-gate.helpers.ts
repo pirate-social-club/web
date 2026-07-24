@@ -106,7 +106,6 @@ export type PendingInteraction = {
   communityId: string;
   gate: CommunityGateData;
   onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
-  onFollowingConfirmed?: () => void;
   postId?: string;
   /** Whether this specific write must create/retain community membership. */
   requireMembership?: boolean;
@@ -128,7 +127,6 @@ export type RunGatedCommunityActionParams = {
   commentId?: string;
   gateData?: CommunityGateData;
   onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
-  onFollowingConfirmed?: () => void;
   postId?: string;
   /** Force the membership flow after the API identifies a members-only thread. */
   requireMembership?: boolean;

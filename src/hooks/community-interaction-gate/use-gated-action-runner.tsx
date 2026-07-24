@@ -321,7 +321,6 @@ export function useGatedActionRunner({
     communityId,
     gateData,
     onAllowed,
-    onFollowingConfirmed,
     postId,
     commentId,
     requireMembership,
@@ -497,14 +496,11 @@ export function useGatedActionRunner({
           if (shouldUseOpenPowParticipation) {
             try {
               invalidateCommunityGate(communityId);
-              if (viewerWasFollowing) {
-                onFollowingConfirmed?.();
-              } else {
+              if (!viewerWasFollowing) {
                 const refreshedGate = await loadCommunityGate(communityId);
                 const viewerIsFollowing = refreshedGate.preview.viewer_following === true;
                 knownViewerFollowingRef.current.set(followingCacheKey, viewerIsFollowing);
                 if (viewerIsFollowing) {
-                  onFollowingConfirmed?.();
                   const notifySuccess = showSuccess ?? toast.success;
                   notifySuccess(interactionCopy.nowFollowingCommunity.replace("{community}", gate.preview.display_name));
                 }
@@ -530,7 +526,6 @@ export function useGatedActionRunner({
         communityId,
         gate,
         onAllowed: guardedOnAllowed,
-        onFollowingConfirmed,
         postId,
         requireMembership: requireMembership === true,
         resumeActionAfterJoin,

@@ -1,6 +1,15 @@
 import { describe, expect, test } from "bun:test";
 
 import type { HomeFeedItem } from "@pirate/api-contracts";
+import { QueryClient } from "@tanstack/react-query";
+
+import { applyPostVote } from "@/app/authenticated-helpers/post-vote";
+import { postKeys } from "@/lib/query/keys";
+import {
+  type PublicThreadQueryData,
+  seedPublicThreadQueriesFromFeed,
+  updateCachedPublicThreadPost,
+} from "@/lib/query/public-thread-cache";
 
 import {
   appendUniqueVideoEntries,
@@ -11,6 +20,7 @@ import {
   postIdForVideoItem,
   resolveVideoHomeSurface,
   resolveVideoPublisherRelationship,
+  takeUnseenVideoEntries,
   videoImpressionAnalyticsProperties,
   videoTranslationForFeedItem,
   VIDEO_FEED_STAGE_CLASS,
@@ -19,6 +29,29 @@ import {
 
 function feedEntry(id: string): HomeFeedItem {
   return { post: { post: { id } } } as HomeFeedItem;
+}
+
+function cacheableFeedEntry(id: string, upvoteCount = 8): HomeFeedItem {
+  return {
+    community: {
+      id: "cmt_video",
+      object: "home_feed_community_summary",
+      display_name: "Video Community",
+      route_slug: "video-community",
+    },
+    post: {
+      comment_count: 0,
+      downvote_count: 0,
+      machine_translated: false,
+      post: {
+        community: "cmt_video",
+        created: Date.parse("2026-07-24T00:00:00.000Z"),
+        id,
+      },
+      upvote_count: upvoteCount,
+      viewer_vote: null,
+    },
+  } as HomeFeedItem;
 }
 
 describe("VIDEO_FEED_VIEWPORT_CLASS", () => {
@@ -134,6 +167,51 @@ describe("appendUniqueVideoEntries", () => {
   });
 });
 
+describe("takeUnseenVideoEntries", () => {
+  test("keeps overlapping cursor entries out of the thread-cache reseed input", () => {
+    const seenPostIds = new Set(["liked-post"]);
+    const likedPost = feedEntry("liked-post");
+    const nextPost = feedEntry("next-post");
+
+    expect(takeUnseenVideoEntries(seenPostIds, [likedPost, nextPost])).toEqual([nextPost]);
+    expect(seenPostIds).toEqual(new Set(["liked-post", "next-post"]));
+  });
+
+  test("preserves a liked post in the comments-panel cache across an overlapping page", () => {
+    const queryClient = new QueryClient();
+    const staleLikedPost = cacheableFeedEntry("liked-post");
+    seedPublicThreadQueriesFromFeed({
+      items: [staleLikedPost],
+      locale: "en",
+      queryClient,
+      sort: "best",
+    });
+    updateCachedPublicThreadPost({
+      locale: "en",
+      postId: "liked-post",
+      queryClient,
+      update: (post) => applyPostVote(post, 1),
+    });
+
+    const unseenItems = takeUnseenVideoEntries(
+      new Set(["liked-post"]),
+      [staleLikedPost, cacheableFeedEntry("next-post")],
+    );
+    seedPublicThreadQueriesFromFeed({
+      items: unseenItems,
+      locale: "en",
+      queryClient,
+      sort: "best",
+    });
+
+    const cachedThread = queryClient.getQueryData<PublicThreadQueryData>(
+      postKeys.publicThread({ postId: "liked-post", locale: "en", sort: "best" }),
+    );
+    expect(cachedThread?.post.viewer_vote).toBe(1);
+    expect(cachedThread?.post.upvote_count).toBe(9);
+  });
+});
+
 describe("nextVideoPaginationCursor", () => {
   test("stops automatic pagination after three consecutive no-growth pages", () => {
     let pagination = { consecutiveNoGrowthPages: 0, nextCursor: "page-1" as string | null };
@@ -198,21 +276,6 @@ describe("resolveVideoPublisherRelationship", () => {
     });
   });
 
-  test("shows a locally confirmed PoW follow without pretending the viewer joined", () => {
-    expect(resolveVideoPublisherRelationship({
-      followedLabel: "Following",
-      followedLocally: true,
-      identityMode: "anonymous",
-      joinedLabel: "Joined community",
-      joinLabel: "Join community",
-      viewerMembershipStatus: "not_member",
-    })).toEqual({
-      active: true,
-      disabled: false,
-      kind: "join",
-      label: "Following",
-    });
-  });
 });
 
 describe("videoImpressionAnalyticsProperties", () => {

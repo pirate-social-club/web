@@ -18,6 +18,7 @@ const altchaGate = { gate_type: "altcha_pow" } as const;
 
 type Captures = {
   challengeUrls: URL[];
+  clearVoteRequests: Array<{ altchaHeader: string | null }>;
   joins: number;
   voteRequests: Array<{ altchaHeader: string | null; body: unknown }>;
 };
@@ -181,6 +182,13 @@ async function installVideoPowFixture(
       await route.fulfill(jsonResponse({ post: mockFeedPostId, value: 1 }));
       return;
     }
+    if (method === "POST" && path === `/posts/${encodeURIComponent(mockFeedPostId)}/clear_vote`) {
+      captures.clearVoteRequests.push({
+        altchaHeader: request.headers()["x-pirate-altcha"] ?? null,
+      });
+      await route.fulfill(jsonResponse({ post: mockFeedPostId, value: null }));
+      return;
+    }
     if (method === "POST" && path === `/communities/${encodeURIComponent(mockCommunityId)}/join`) {
       captures.joins += 1;
       await route.fulfill(jsonResponse({ community: mockCommunityId, status: "joined" }));
@@ -193,7 +201,7 @@ async function installVideoPowFixture(
 
 test.describe("video-feed proof-of-work vote gate", () => {
   test("sends a headless action proof, persists the heart, and never joins", async ({ page }) => {
-    const captures: Captures = { challengeUrls: [], joins: 0, voteRequests: [] };
+    const captures: Captures = { challengeUrls: [], clearVoteRequests: [], joins: 0, voteRequests: [] };
     await installVideoPowFixture(page, captures);
     await page.goto("/");
 
@@ -209,11 +217,20 @@ test.describe("video-feed proof-of-work vote gate", () => {
     expect(captures.voteRequests[0]?.altchaHeader).toBeTruthy();
     expect(captures.joins).toBe(0);
     await expect(like).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByRole("button", { name: "Following" })).toBeVisible();
+    const join = page.getByRole("button", { name: "Join community" });
+    await expect(join).toBeEnabled();
+
+    await like.click();
+    await expect.poll(() => captures.clearVoteRequests.length).toBe(1);
+    expect(captures.challengeUrls[1]?.searchParams.get("action")).toBe(`post:${mockFeedPostId}:clear`);
+    expect(captures.challengeUrls[1]?.searchParams.get("scope")).toBe("vote");
+    expect(captures.clearVoteRequests[0]?.altchaHeader).toBeTruthy();
+    expect(captures.joins).toBe(0);
+    await expect(like).toHaveAttribute("aria-pressed", "false");
   });
 
   test("rolls back the heart and surfaces a failed vote", async ({ page }) => {
-    const captures: Captures = { challengeUrls: [], joins: 0, voteRequests: [] };
+    const captures: Captures = { challengeUrls: [], clearVoteRequests: [], joins: 0, voteRequests: [] };
     await installVideoPowFixture(page, captures, 403);
     await page.goto("/");
 

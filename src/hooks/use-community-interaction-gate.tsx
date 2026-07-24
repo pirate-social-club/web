@@ -215,13 +215,6 @@ export function useCommunityInteractionGate({
         invalidateCommunityGate,
         pendingInteraction,
       });
-      if (pendingInteraction.onFollowingConfirmed) {
-        invalidateCommunityGate(pendingInteraction.communityId);
-        const refreshedGate = await loadCommunityGate(pendingInteraction.communityId);
-        if (refreshedGate.preview.viewer_following === true) {
-          pendingInteraction.onFollowingConfirmed();
-        }
-      }
     }, (error, nextResetKey) => {
       setModalState((current) => current && pendingInteraction.altchaAction && pendingInteraction.altchaScope ? {
         ...current,
@@ -240,7 +233,7 @@ export function useCommunityInteractionGate({
       });
       toast.error(getErrorMessage(error, "Browser anti-bot check failed."));
     });
-  }, [buildAltchaBody, closeModal, completeAltchaActionWithPayload, invalidateCommunityGate, loadCommunityGate]);
+  }, [buildAltchaBody, closeModal, completeAltchaActionWithPayload, invalidateCommunityGate]);
 
   const {
     startVerification: startVeryVerification,
@@ -421,7 +414,6 @@ export function useCommunityInteractionGate({
       communityId: pendingInteraction.communityId,
       gateData: joinedGate,
       onAllowed: pendingInteraction.onAllowed,
-      onFollowingConfirmed: pendingInteraction.onFollowingConfirmed,
       postId: pendingInteraction.postId,
       requireMembership: pendingInteraction.requireMembership,
       resumeActionAfterJoin: pendingInteraction.resumeActionAfterJoin,

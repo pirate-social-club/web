@@ -28,7 +28,7 @@
     "deploy:main:staging": "scripts/deploy-staging.sh",
     "deploy:public": "scripts/deploy-public.sh --env production --confirm-production",
     "deploy:public:staging": "scripts/deploy-public.sh --env staging",
-    "test": "bun test",
+    "test": "bun test --isolate",
     "test:assistant:light": "bun test src/lib/chat/community-assistant-chat-client.test.ts src/lib/chat/chat-conversation-state.test.ts src/components/compositions/chat/chat-route-views.test.tsx",
     "test:e2e": "playwright test",
     "test:e2e:required-gate": "node scripts/run-required-playwright-gate.mjs",

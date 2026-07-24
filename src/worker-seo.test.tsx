@@ -391,6 +391,29 @@ describe("share metadata", () => {
     expect(markup).toContain('property="og:image:height" content="630"');
   });
 
+  test("starts the home video request before hydration without embedding its response", () => {
+    const markup = renderToStaticMarkup(
+      <Document
+        ctx={{
+          canonicalUrl: "https://pirate.sc/",
+          homeFeedPreloadUrl: "https://api.pirate.sc/feed/home/videos/public?locale=en&sort=best",
+          isIndexable: true,
+          locale: "en",
+          seoMetadata: null,
+        }}
+        rw={{ nonce: "nonce" } as never}
+      >
+        <main />
+      </Document>,
+    );
+
+    expect(markup).toContain('href="https://api.pirate.sc" rel="preconnect"');
+    expect(markup).toContain('href="https://psc.myfilebase.com" rel="preconnect"');
+    expect(markup).toContain("window.__pirateHomeVideoFeedBootstrap");
+    expect(markup).toContain("https://api.pirate.sc/feed/home/videos/public?locale=en&sort=best");
+    expect(markup).not.toContain('as="fetch"');
+  });
+
   test("does not render a generic social card for entity routes when SEO lookup misses", () => {
     const markup = renderToStaticMarkup(
       <Document

@@ -27,6 +27,10 @@ export type FeedPanelState =
   | { kind: "comments"; itemId: string; postId: string }
   | { kind: "booking"; basePriceCents: number; hostUserId: string; itemId: string };
 
+export function feedPanelBlocksPlayback(panel: FeedPanelState, itemId: string): boolean {
+  return panel.kind === "booking" && panel.itemId === itemId;
+}
+
 export function FeedPanelLayout({
   children,
   className,
@@ -37,7 +41,11 @@ export function FeedPanelLayout({
   panel?: React.ReactNode;
 }) {
   return (
-    <div className={cn("grid min-h-0 w-full grid-cols-1 lg:grid-cols-[minmax(0,1fr)_26rem]", className)}>
+    <div className={cn(
+      "grid min-h-0 w-full grid-cols-1",
+      panel && "lg:grid-cols-[minmax(0,1fr)_26rem]",
+      className,
+    )}>
       <div className="min-h-0 min-w-0">{children}</div>
       {panel}
     </div>
@@ -48,30 +56,42 @@ export function FeedSidePanel({
   children,
   closeLabel,
   description,
+  initialFocusRef,
   onOpenChange,
   open,
+  returnFocusRef,
   title,
 }: {
   children: React.ReactNode;
   closeLabel: string;
   description?: string;
+  initialFocusRef?: React.RefObject<HTMLElement | null>;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  returnFocusRef?: React.RefObject<HTMLElement | null>;
   title: string;
 }) {
   const desktop = useFeedDockDesktop();
+  const handleOpenChange = React.useCallback((nextOpen: boolean) => {
+    onOpenChange(nextOpen);
+    if (!nextOpen) returnFocusRef?.current?.focus();
+  }, [onOpenChange, returnFocusRef]);
+
+  React.useLayoutEffect(() => {
+    if (open) initialFocusRef?.current?.focus();
+  }, [initialFocusRef, open]);
 
   if (!open) return null;
 
   if (!desktop) {
     return (
-      <Sheet onOpenChange={onOpenChange} open>
+      <Sheet onOpenChange={handleOpenChange} open>
         <SheetContent className="flex h-[88dvh] w-full flex-col overflow-hidden px-0 pb-[env(safe-area-inset-bottom)]" side="bottom">
           <SheetHeader className="shrink-0 px-5 text-start">
             <SheetTitle>{title}</SheetTitle>
             {description ? <SheetDescription>{description}</SheetDescription> : null}
           </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+          <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
         </SheetContent>
       </Sheet>
     );
@@ -85,7 +105,7 @@ export function FeedSidePanel({
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.stopPropagation();
-          onOpenChange(false);
+          handleOpenChange(false);
         }
       }}
     >
@@ -94,11 +114,11 @@ export function FeedSidePanel({
           <Type as="h2" variant="h3">{title}</Type>
           {description ? <Type className="line-clamp-1" variant="caption">{description}</Type> : null}
         </div>
-        <IconButton aria-label={closeLabel} onClick={() => onOpenChange(false)} size="sm" variant="ghost">
+        <IconButton aria-label={closeLabel} onClick={() => handleOpenChange(false)} size="sm" variant="ghost">
           <X aria-hidden className="size-5" weight="bold" />
         </IconButton>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
     </aside>
   );
 }

@@ -22,6 +22,12 @@ import {
   type VideoFeedPlaybackState,
 } from "@/components/compositions/posts/video-feed/video-feed";
 import { VideoFeedPaginationNotice } from "@/components/compositions/posts/video-feed/video-feed-pagination-notice";
+import { FeedCommentsPanel } from "./feed-comments-panel";
+import {
+  FeedPanelLayout,
+  FeedSidePanel,
+  type FeedPanelState,
+} from "@/components/compositions/posts/feed-side-panel/feed-side-panel";
 import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/video-feed.types";
 import { VideoSongCapabilityCache } from "@/components/compositions/posts/video-feed/video-song-capability-cache";
 import { Spinner } from "@/components/primitives/spinner";
@@ -73,6 +79,31 @@ function viewerTimezone(): IanaTz {
  */
 export const VIDEO_FEED_VIEWPORT_CLASS = "h-dvh";
 export const MAX_CONSECUTIVE_NO_GROWTH_PAGES = 3;
+const FEED_COMMENTS_HISTORY_KEY = "pirateFeedComments";
+
+export function postIdForVideoItem(entries: ApiHomeFeedItem[], itemId: string): string | null {
+  return entries.find((entry) => entry.post.post.id === itemId)?.post.post.id ?? null;
+}
+
+function commentsHistoryState(panel: Extract<FeedPanelState, { kind: "comments" }>) {
+  return {
+    [FEED_COMMENTS_HISTORY_KEY]: {
+      itemId: panel.itemId,
+      postId: panel.postId,
+    },
+  };
+}
+
+export function panelFromHistoryState(state: unknown): FeedPanelState {
+  if (!state || typeof state !== "object") return { kind: "none" };
+  const value = (state as Record<string, unknown>)[FEED_COMMENTS_HISTORY_KEY];
+  if (!value || typeof value !== "object") return { kind: "none" };
+  const itemId = (value as Record<string, unknown>).itemId;
+  const postId = (value as Record<string, unknown>).postId;
+  return typeof itemId === "string" && typeof postId === "string"
+    ? { kind: "comments", itemId, postId }
+    : { kind: "none" };
+}
 
 export function resolveVideoHomeSurface(input: {
   error: unknown;
@@ -187,11 +218,15 @@ export function VideoHomePage() {
   const [bookingSlots, setBookingSlots] = React.useState<ResolvedSlot[]>([]);
   const [bookingLoading, setBookingLoading] = React.useState(false);
   const [bookingError, setBookingError] = React.useState(false);
+  const [panelState, setPanelState] = React.useState<FeedPanelState>({ kind: "none" });
   const loadingMoreRef = React.useRef(false);
   const consecutiveNoGrowthPagesRef = React.useRef(0);
   const feedGenerationRef = React.useRef(0);
   const seenPostIdsRef = React.useRef(new Set<string>());
   const bookingRequestHostRef = React.useRef<string | null>(null);
+  const commentComposerRef = React.useRef<HTMLTextAreaElement>(null);
+  const feedFocusRef = React.useRef<HTMLDivElement>(null);
+  const panelReturnFocusRef = React.useRef<HTMLElement | null>(null);
   const bookingTimezone = React.useMemo(viewerTimezone, []);
   // Session storage only exists on the client, and the restored state is consumed
   // no earlier than the first post-hydration render, so defer the read.
@@ -216,6 +251,32 @@ export function VideoHomePage() {
     }),
     [api.bookings, bookingTimezone],
   );
+
+  const restoreFeedFocus = React.useCallback(() => {
+    window.requestAnimationFrame(() => {
+      (panelReturnFocusRef.current ?? feedFocusRef.current)?.focus();
+      panelReturnFocusRef.current = null;
+    });
+  }, []);
+
+  const closeCommentsPanel = React.useCallback(() => {
+    if (panelFromHistoryState(window.history.state).kind === "comments") {
+      window.history.back();
+      return;
+    }
+    setPanelState({ kind: "none" });
+    restoreFeedFocus();
+  }, [restoreFeedFocus]);
+
+  React.useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      setPanelState(panelFromHistoryState(event.state));
+      if (panelFromHistoryState(event.state).kind === "none") restoreFeedFocus();
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [restoreFeedFocus]);
+
   const {
     gateModal,
     prewarmCommunityGate,
@@ -585,9 +646,27 @@ export function VideoHomePage() {
   return (
     <div className="min-h-0 w-full flex-1 bg-background">
       {gateModal}
+      <FeedPanelLayout
+        className={VIDEO_FEED_VIEWPORT_CLASS}
+        panel={panelState.kind === "comments" ? (
+          <FeedSidePanel
+            closeLabel={copy.common.close}
+            initialFocusRef={commentComposerRef}
+            onOpenChange={(open) => {
+              if (!open) closeCommentsPanel();
+            }}
+            open
+            returnFocusRef={panelReturnFocusRef}
+            title={copy.common.commentsHeading}
+          >
+            <FeedCommentsPanel composerRef={commentComposerRef} postId={panelState.postId} />
+          </FeedSidePanel>
+        ) : undefined}
+      >
+        <div className="relative min-h-0" ref={feedFocusRef} tabIndex={-1}>
       <VideoFeed
         bookingOpenItemId={bookingTarget?.item.id}
-        className={VIDEO_FEED_VIEWPORT_CLASS}
+        className="h-full"
         downvoteLabel={copy.common.downvote}
         followLabel={copy.home.videoPublisherFollow}
         followingLabel={copy.home.videoPublisherFollowing}
@@ -603,11 +682,23 @@ export function VideoHomePage() {
         }}
         onBook={openBooking}
         onComment={(item) => {
-          if (!session?.accessToken) {
-            requestAuth(copy.home.videoCommentAuthRequired);
-            return;
+          const postId = postIdForVideoItem(entries, item.id);
+          if (!postId) return;
+          const nextPanel: Extract<FeedPanelState, { kind: "comments" }> = {
+            itemId: item.id,
+            kind: "comments",
+            postId,
+          };
+          panelReturnFocusRef.current = document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : feedFocusRef.current;
+          const nextUrl = `/p/${encodeURIComponent(postId)}`;
+          if (panelState.kind === "comments") {
+            window.history.replaceState(commentsHistoryState(nextPanel), "", nextUrl);
+          } else {
+            window.history.pushState(commentsHistoryState(nextPanel), "", nextUrl);
           }
-          navigate(`/p/${encodeURIComponent(item.id)}`);
+          setPanelState(nextPanel);
         }}
         onKaraoke={(item, playback) => launchSongAction(item, playback, item.song?.karaokeHref)}
         onDownvote={onDownvote}
@@ -634,6 +725,8 @@ export function VideoHomePage() {
           onAction={resumePagination}
         />
       ) : null}
+        </div>
+      </FeedPanelLayout>
       {bookingTarget?.item.booking ? (
         <FeedBookingSheet
           basePriceCents={bookingTarget.item.booking.basePriceCents}

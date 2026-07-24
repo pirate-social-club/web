@@ -132,7 +132,7 @@ test.describe("unauthenticated staging smoke", () => {
     await page.goto("/");
     await expectAppShell(page);
     await expect(page.getByRole("navigation", { name: /primary/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /^for you$/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^home$/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /wallet/i })).toBeVisible();
   });
 

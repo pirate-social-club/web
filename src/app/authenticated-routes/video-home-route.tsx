@@ -1,9 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { HomeFeedItem as ApiHomeFeedItem, Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
+import {
+  submitOptimisticPostVote,
+  toPostVoteValue,
+  updateHomeFeedEntryPostVote,
+} from "@/app/authenticated-helpers/post-vote";
 import { navigate } from "@/app/router";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
@@ -53,6 +59,7 @@ import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { interpolateMessage } from "@/lib/route-messages";
+import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
 import { HomePage } from "./home-routes";
 
 export type VideoHomeSurface = "loading" | "video" | "community-feed-empty" | "community-feed-error";
@@ -168,6 +175,18 @@ export function appendUniqueVideoEntries(
   return uniqueIncoming.length > 0 ? [...current, ...uniqueIncoming] : current;
 }
 
+export function takeUnseenVideoEntries(
+  seenPostIds: Set<string>,
+  incoming: ApiHomeFeedItem[],
+): ApiHomeFeedItem[] {
+  return incoming.filter((entry) => {
+    const postId = entry.post.post.id;
+    if (seenPostIds.has(postId)) return false;
+    seenPostIds.add(postId);
+    return true;
+  });
+}
+
 export function nextVideoPaginationCursor(input: {
   consecutiveNoGrowthPages: number;
   didGrow: boolean;
@@ -231,6 +250,7 @@ export function videoImpressionAnalyticsProperties(
 
 export function VideoHomePage() {
   const api = useApi();
+  const queryClient = useQueryClient();
   const hydrated = useClientHydrated();
   const session = useSession();
   const contentLocale = useRouteContentLocale();
@@ -255,6 +275,7 @@ export function VideoHomePage() {
   const loadingMoreRef = React.useRef(false);
   const consecutiveNoGrowthPagesRef = React.useRef(0);
   const feedGenerationRef = React.useRef(0);
+  const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const seenPostIdsRef = React.useRef(new Set<string>());
   const bookingRequestHostRef = React.useRef<string | null>(null);
   const commentComposerRef = React.useRef<HTMLTextAreaElement>(null);
@@ -320,6 +341,22 @@ export function VideoHomePage() {
     routeKind: "home",
     uiLocale: localeTag,
   });
+  const voteGateDataByPostId = React.useMemo(() => {
+    const next = new Map<string, NonNullable<ReturnType<typeof selectPostVoteGateData>>>();
+    for (const entry of entries) {
+      const gateData = selectPostVoteGateData(entry.post);
+      if (gateData) {
+        next.set(entry.post.post.id, gateData);
+      }
+    }
+    return next;
+  }, [entries]);
+
+  React.useEffect(() => {
+    for (const gateData of voteGateDataByPostId.values()) {
+      prewarmCommunityGate(gateData.preview.id, gateData);
+    }
+  }, [prewarmCommunityGate, voteGateDataByPostId]);
 
   React.useEffect(() => {
     if (!hydrated) return;
@@ -335,6 +372,12 @@ export function VideoHomePage() {
     void request({ locale: contentLocale, sort: "best" })
       .then((response) => {
         if (cancelled) return;
+        seedPublicThreadQueriesFromFeed({
+          items: response.items,
+          locale: contentLocale,
+          queryClient,
+          sort: "best",
+        });
         seenPostIdsRef.current = new Set(response.items.map((entry) => entry.post.post.id));
         consecutiveNoGrowthPagesRef.current = 0;
         setPausedPaginationCursor(null);
@@ -347,7 +390,7 @@ export function VideoHomePage() {
       cancelled = true;
       if (feedGenerationRef.current === generation) feedGenerationRef.current += 1;
     };
-  }, [api, contentLocale, hydrated, session?.accessToken]);
+  }, [api, contentLocale, hydrated, queryClient, session?.accessToken]);
 
   React.useEffect(() => {
     const userIds = entries.flatMap((entry) => {
@@ -467,11 +510,12 @@ export function VideoHomePage() {
       const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
       const response = await request({ cursor: nextCursor, locale: contentLocale, sort: "best" });
       if (generation !== feedGenerationRef.current) return;
-      const unseenItems = response.items.filter((entry) => {
-        const postId = entry.post.post.id;
-        if (seenPostIdsRef.current.has(postId)) return false;
-        seenPostIdsRef.current.add(postId);
-        return true;
+      const unseenItems = takeUnseenVideoEntries(seenPostIdsRef.current, response.items);
+      seedPublicThreadQueriesFromFeed({
+        items: unseenItems,
+        locale: contentLocale,
+        queryClient,
+        sort: "best",
       });
       setEntries((current) => appendUniqueVideoEntries(current, unseenItems));
       const pagination = nextVideoPaginationCursor({
@@ -491,7 +535,7 @@ export function VideoHomePage() {
     } finally {
       if (generation === feedGenerationRef.current) loadingMoreRef.current = false;
     }
-  }, [api, contentLocale, nextCursor, session?.accessToken]);
+  }, [api, contentLocale, nextCursor, queryClient, session?.accessToken]);
 
   const resumePagination = React.useCallback(() => {
     if (!pausedPaginationCursor) return;
@@ -521,53 +565,60 @@ export function VideoHomePage() {
     setBoostTarget(canBoost ? { open, sourcePostId } : null);
   }, []);
 
-  const onLike = React.useCallback((item: VideoFeedItem) => {
+  const voteOnPost = React.useCallback(async (
+    item: VideoFeedItem,
+    direction: "up" | "down" | null,
+    authRequiredMessage: string,
+  ) => {
     if (!session?.accessToken) {
-      requestAuth(copy.home.videoLikeAuthRequired);
+      requestAuth(authRequiredMessage);
       return;
     }
     const entry = entries.find((candidate) => candidate.post.post.id === item.id);
     if (!entry) return;
-    const wasLiked = entry.post.viewer_vote === 1;
-    setEntries((current) => current.map((candidate) => candidate.post.post.id === item.id ? {
-      ...candidate,
-      post: {
-        ...candidate.post,
-        upvote_count: Math.max(0, candidate.post.upvote_count + (wasLiked ? -1 : 1)),
-        viewer_vote: wasLiked ? null : 1,
-      },
-    } : candidate));
-    const request = wasLiked ? api.posts.clearVote(item.id) : api.posts.vote(item.id, 1);
-    void request.catch(() => {
-      setEntries((current) => current.map((candidate) => candidate.post.post.id === item.id ? entry : candidate));
-    });
-  }, [api.posts, copy.home.videoLikeAuthRequired, entries, requestAuth, session?.accessToken]);
+    const voteValue = direction ? toPostVoteValue(direction) : "clear";
+    const gateData = voteGateDataByPostId.get(item.id) ?? null;
+    try {
+      await runGatedCommunityAction({
+        action: "vote_post",
+        communityId: gateData?.preview.id ?? entry.community.id,
+        ...(gateData ? { gateData } : {}),
+        onAllowed: async (context) => {
+          await submitOptimisticPostVote({
+            altchaPayload: context?.altchaPayload,
+            clearVote: api.posts.clearVote,
+            direction,
+            locale: contentLocale,
+            onApply: (nextValue) => setEntries((current) => updateHomeFeedEntryPostVote(current, item.id, nextValue)),
+            onRollback: (restoredPost) => setEntries((current) => current.map((candidate) => candidate.post.post.id === item.id ? { ...candidate, post: restoredPost } : candidate)),
+            postId: item.id,
+            previousPost: entry.post,
+            queryClient,
+            requestIdsRef: voteRequestIdsRef,
+            vote: api.posts.vote,
+          });
+        },
+        postId: item.id,
+        voteValue,
+      });
+    } catch {
+      // The shared optimistic submitter already rolled back and displayed the error.
+    }
+  }, [api.posts.clearVote, api.posts.vote, contentLocale, entries, queryClient, requestAuth, runGatedCommunityAction, session?.accessToken, voteGateDataByPostId]);
 
-  // Downvote mirrors onLike, with one extra case: switching from up to down has to take the
-  // upvote back off the count, because the rail renders upvote_count rather than a net score.
+  const onLike = React.useCallback((item: VideoFeedItem) => {
+    const direction = entries.find((candidate) => candidate.post.post.id === item.id)?.post.viewer_vote === 1
+      ? null
+      : "up";
+    void voteOnPost(item, direction, copy.home.videoLikeAuthRequired);
+  }, [copy.home.videoLikeAuthRequired, entries, voteOnPost]);
+
   const onDownvote = React.useCallback((item: VideoFeedItem) => {
-    if (!session?.accessToken) {
-      requestAuth(copy.home.videoDownvoteAuthRequired);
-      return;
-    }
-    const entry = entries.find((candidate) => candidate.post.post.id === item.id);
-    if (!entry) return;
-    const wasDownvoted = entry.post.viewer_vote === -1;
-    const wasUpvoted = entry.post.viewer_vote === 1;
-    setEntries((current) => current.map((candidate) => candidate.post.post.id === item.id ? {
-      ...candidate,
-      post: {
-        ...candidate.post,
-        downvote_count: Math.max(0, candidate.post.downvote_count + (wasDownvoted ? -1 : 1)),
-        upvote_count: Math.max(0, candidate.post.upvote_count - (wasUpvoted ? 1 : 0)),
-        viewer_vote: wasDownvoted ? null : -1,
-      },
-    } : candidate));
-    const request = wasDownvoted ? api.posts.clearVote(item.id) : api.posts.vote(item.id, -1);
-    void request.catch(() => {
-      setEntries((current) => current.map((candidate) => candidate.post.post.id === item.id ? entry : candidate));
-    });
-  }, [api.posts, copy.home.videoDownvoteAuthRequired, entries, requestAuth, session?.accessToken]);
+    const direction = entries.find((candidate) => candidate.post.post.id === item.id)?.post.viewer_vote === -1
+      ? null
+      : "down";
+    void voteOnPost(item, direction, copy.home.videoDownvoteAuthRequired);
+  }, [copy.home.videoDownvoteAuthRequired, entries, voteOnPost]);
 
   const onPublisherRelationship = React.useCallback((item: VideoFeedItem) => {
     if (item.publisher.relationship?.kind !== "join" || item.publisher.relationship.active) return;

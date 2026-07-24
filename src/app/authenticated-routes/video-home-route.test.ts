@@ -12,6 +12,7 @@ import {
   resolveVideoHomeSurface,
   resolveVideoPublisherRelationship,
   videoImpressionAnalyticsProperties,
+  videoTranslationForFeedItem,
   VIDEO_FEED_STAGE_CLASS,
   VIDEO_FEED_VIEWPORT_CLASS,
 } from "./video-home-route";
@@ -35,6 +36,34 @@ describe("VIDEO_FEED_STAGE_CLASS", () => {
   test("bounds the percentage-height snap scroller to one viewport", () => {
     expect(VIDEO_FEED_STAGE_CLASS.split(" ")).toContain("h-full");
     expect(VIDEO_FEED_STAGE_CLASS.split(" ")).toContain("min-h-0");
+  });
+});
+
+describe("videoTranslationForFeedItem", () => {
+  test("bridges the authored video caption and its language metadata into the feed item", () => {
+    const translation = videoTranslationForFeedItem({
+      postOriginal: {
+        content: {
+          accessMode: "public",
+          caption: "Authored caption",
+          captionDir: "ltr",
+          captionLang: "en",
+          src: "https://media.example/video.mp4",
+          type: "video",
+        },
+      } as never,
+    }, { caption: "تعليق مترجم" }, {
+      showOriginalLabel: "Show original",
+      showTranslationLabel: "Show translation",
+    });
+
+    expect(translation).toEqual({
+      originalCaption: "Authored caption",
+      originalDir: "ltr",
+      originalLang: "en",
+      showOriginalLabel: "Show original",
+      showTranslationLabel: "Show translation",
+    });
   });
 });
 

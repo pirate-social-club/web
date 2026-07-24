@@ -158,6 +158,8 @@ export function toPageVideoItem(item: FeedItem): VideoFeedItem | null {
     id: item.id,
     booking: item.booking,
     caption: content.caption,
+    captionDir: content.captionDir,
+    captionLang: content.captionLang,
     commentCount: post.engagement.commentCount,
     karaoke: "unavailable",
     likeCount: post.engagement.upvoteCount ?? Math.max(0, post.engagement.score),

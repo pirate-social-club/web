@@ -35,6 +35,8 @@ export interface VideoFeedItem {
       };
   };
   caption?: string;
+  captionDir?: "ltr" | "rtl" | "auto";
+  captionLang?: string;
   commentCount: number;
   interactionGate?: "open" | "membership_required";
   karaoke: VideoFeedCapability;
@@ -46,6 +48,14 @@ export interface VideoFeedItem {
     orientation: "portrait" | "landscape";
     posterSrc: string;
     src?: string;
+  };
+  /** Alternate authored caption when the API supplied a translated presentation. */
+  translation?: {
+    originalCaption: string;
+    originalDir?: "ltr" | "rtl" | "auto";
+    originalLang?: string;
+    showOriginalLabel: string;
+    showTranslationLabel: string;
   };
   /** Server-stated, action-specific earning opportunities for the linked song. */
   rewards?: {

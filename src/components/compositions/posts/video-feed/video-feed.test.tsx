@@ -134,6 +134,32 @@ describe("VideoFeed", () => {
     expect(view.queryByRole("button", { name: /Open .* by/u })).toBeNull();
   });
 
+  test("presents translated caption direction and toggles back to the authored caption", () => {
+    const view = render(<VideoFeed items={[{
+      ...item,
+      caption: "تعليق مترجم",
+      captionDir: "rtl",
+      captionLang: "ar",
+      translation: {
+        originalCaption: "Authored caption",
+        originalDir: "ltr",
+        originalLang: "en",
+        showOriginalLabel: "Show original",
+        showTranslationLabel: "Show translation",
+      },
+    }]} />);
+    const translated = view.getByText("تعليق مترجم");
+
+    expect(translated.getAttribute("dir")).toBe("rtl");
+    expect(translated.getAttribute("lang")).toBe("ar");
+    fireEvent.click(view.getByRole("button", { name: "Show original" }));
+
+    const original = view.getByText("Authored caption");
+    expect(original.getAttribute("dir")).toBe("ltr");
+    expect(original.getAttribute("lang")).toBe("en");
+    expect(view.getByRole("button", { name: "Show translation" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
   test("keeps mobile rail actions circle-free and gives desktop actions a visible circle", () => {
     const view = render(<VideoFeed items={[item]} onComment={() => undefined} onKaraoke={() => undefined} onShare={() => undefined} onStudy={() => undefined} />);
 

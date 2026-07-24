@@ -450,6 +450,25 @@ export const PublisherGhostFallback: Story = {
   }]} />,
 };
 
+/** Arabic translated captions carry RTL metadata and expose the authored-text toggle in-overlay. */
+export const TranslatedCaption: Story = {
+  name: "Caption / RTL translation toggle",
+  args: { items: [] },
+  render: () => <InteractiveFeed items={[{
+    ...portrait,
+    caption: "تعليق عربي مترجم يظهر باتجاه صحيح",
+    captionDir: "rtl",
+    captionLang: "ar",
+    translation: {
+      originalCaption: "The authored English caption.",
+      originalDir: "ltr",
+      originalLang: "en",
+      showOriginalLabel: "Show original",
+      showTranslationLabel: "Show translation",
+    },
+  }]} />,
+};
+
 export const RewardedActionsAndBoost: Story = {
   args: { items: [] },
   render: () => <InteractiveFeed items={[{ ...portrait, boostEligibility: "eligible" }]} />,

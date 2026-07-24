@@ -20,6 +20,7 @@ import { useAssistantUnreadCount } from "@/lib/chat/chat-assistant-client";
 import { useNotificationBadges } from "@/lib/notifications/use-notification-badges";
 import { useNotificationSummary } from "@/lib/notifications/use-notification-summary";
 import { useSidebarCommunities } from "@/lib/owned-communities";
+import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { resolveLocaleDirection } from "@/lib/ui-locale-core";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -147,6 +148,10 @@ function NotificationShell({
 }) {
   const isMobileLayout = useShellMobileLayout();
   const { connect } = usePiratePrivyRuntime();
+  // SSR and the first hydration render see a null session even for signed-in viewers, so gating
+  // the Connect CTA on the session alone flashes it for people who already have one. Wait for
+  // client hydration; signed-out viewers get the button one paint later instead.
+  const clientReady = useClientHydrated();
   const notificationSummary = useNotificationSummary();
   const unreadChatCount = useAssistantUnreadCount();
   const { moderatedCommunities, recentCommunities } = useSidebarCommunities();
@@ -242,7 +247,7 @@ function NotificationShell({
                 appearance="media"
                 brandLabel={copy.appSidebar.brandLabel}
                 homeAriaLabel={copy.appSidebar.homeAriaLabel}
-                mediaAction={!session ? (
+                mediaAction={clientReady && !session ? (
                   <Button
                     className="w-full"
                     onClick={() => connect ? connect() : toast.info(copy.appHeader.connectUnavailableToast)}

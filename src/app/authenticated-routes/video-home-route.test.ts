@@ -5,6 +5,7 @@ import type { HomeFeedItem } from "@pirate/api-contracts";
 import {
   appendUniqueVideoEntries,
   checkoutPathForFeedSlot,
+  feedBookingSourceCommunityId,
   nextVideoPaginationCursor,
   panelFromHistoryState,
   postIdForVideoItem,
@@ -208,6 +209,16 @@ describe("videoImpressionAnalyticsProperties", () => {
       sound_on: true,
     });
     expect(JSON.stringify(properties)).not.toContain("private.example");
+  });
+});
+
+describe("feedBookingSourceCommunityId", () => {
+  test("attributes the booking to the viewed post's owning community", () => {
+    expect(feedBookingSourceCommunityId({ communityId: "com_viewed" })).toBe("com_viewed");
+  });
+
+  test("yields no attribution when the viewed post has no known community", () => {
+    expect(feedBookingSourceCommunityId({})).toBeNull();
   });
 });
 

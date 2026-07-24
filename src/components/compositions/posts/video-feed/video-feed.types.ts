@@ -11,7 +11,7 @@ export interface VideoFeedItem {
   };
   /** Server-stated eligibility for funding this item's linked song. */
   boostEligibility?: "eligible" | "unavailable";
-  /** Owning community, when known. Used for analytics attribution rather than panel behavior. */
+  /** Owning community, when known. Used for analytics attribution and as the booking attribution authority for feed-opened bookings. */
   communityId?: string;
   id: string;
   publisher: {

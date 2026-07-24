@@ -208,6 +208,25 @@ function nextBookingSmokeSlot(hostTimezone: string): {
   };
 }
 
+/**
+ * The 30-minute slot directly after a smoke slot. The availability rule must be widened to
+ * `ruleEndLocal` for it to exist; used to place a second, community-attributed hold.
+ */
+function adjacentBookingSmokeSlot(slot: { endUtc: string }, hostTimezone: string): {
+  endUtc: string;
+  ruleEndLocal: string;
+  startUtc: string;
+} {
+  const start = new Date(slot.endUtc);
+  const end = new Date(start.getTime() + 30 * 60_000);
+  const endLocal = localSlotParts(end, hostTimezone);
+  return {
+    endUtc: end.toISOString(),
+    ruleEndLocal: `${endLocal.hour}:${endLocal.minute}`,
+    startUtc: start.toISOString(),
+  };
+}
+
 function mintUpstreamJwt(subject: string, walletAddressOverride?: string | null): string {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const walletAddress = walletAddressOverride?.trim() || process.env.E2E_LIVE_STAGING_WALLET_ADDRESS?.trim();
@@ -1852,6 +1871,7 @@ test.describe("live staging integration", () => {
     const bookerHeaders = { authorization: `Bearer ${booker.accessToken}` };
     const hostTimezone = "America/New_York";
     const slot = nextBookingSmokeSlot(hostTimezone);
+    const attributedSlot = adjacentBookingSmokeSlot(slot, hostTimezone);
 
     const profile = await requestJson<{
       base_price_cents: number;
@@ -1875,7 +1895,8 @@ test.describe("live staging integration", () => {
     const rule = await requestJson<{ by_weekday: number[]; slot_duration_seconds: number }>("/host-bookings/me/availability-rules", {
       body: JSON.stringify({
         by_weekday: [slot.weekday],
-        end_local: slot.endLocal,
+        // Covers the smoke slot and the adjacent one used for the attributed hold below.
+        end_local: attributedSlot.ruleEndLocal,
         slot_duration_seconds: 1800,
         start_local: slot.startLocal,
       }),
@@ -1905,6 +1926,12 @@ test.describe("live staging integration", () => {
     expect(resolvedSlot, "expected smoke slot in global availability").toBeTruthy();
     expect(resolvedSlot?.available).toBe(true);
     expect(resolvedSlot?.priceCents).toBe(1234);
+    const attributedResolvedSlot = slots.slots.find((candidate) =>
+      Date.parse(candidate.startUtc) === Date.parse(attributedSlot.startUtc)
+      && Date.parse(candidate.endUtc) === Date.parse(attributedSlot.endUtc)
+    );
+    expect(attributedResolvedSlot, "expected adjacent smoke slot in global availability").toBeTruthy();
+    expect(attributedResolvedSlot?.available).toBe(true);
 
     const hold = await requestJson<{
       hold: {
@@ -1939,6 +1966,31 @@ test.describe("live staging integration", () => {
       headers: bookerHeaders,
       method: "POST",
     }, [409]);
+
+    // Feed bookings capture the viewed post's owning community as attribution at open time,
+    // and hold-create is the only attribution intake — the API must persist a non-null
+    // source community verbatim. Attribute to the seeded story-smoke community.
+    const attributedCommunityId = toPublicCommunityId(storySmokeCommunityId);
+    const attributedHold = await requestJson<{
+      hold: {
+        booker_user_id: string;
+        host_user_id: string;
+        source_community_id: string | null;
+        status: string;
+      };
+    }>(`/bookings/hosts/${encodeURIComponent(hostUserId)}/holds`, {
+      body: JSON.stringify({
+        slot_end_utc: attributedSlot.endUtc,
+        slot_start_utc: attributedSlot.startUtc,
+        source_community_id: attributedCommunityId,
+      }),
+      headers: bookerHeaders,
+      method: "POST",
+    });
+    expect(attributedHold.hold.host_user_id).toBe(hostUserId);
+    expect(attributedHold.hold.booker_user_id).toBe(bookerUserId);
+    expect(attributedHold.hold.source_community_id).toBe(attributedCommunityId);
+    expect(attributedHold.hold.status).toBe("active");
 
     const quote = await requestJson<{
       quote: {

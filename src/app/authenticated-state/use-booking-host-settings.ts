@@ -15,7 +15,6 @@ import type {
 import {
   isDateTimeRange,
   isTimeRange,
-  isValidMoneyInput,
   isValidPositiveMoneyInput,
   zonedLocalInputToIsoUtc,
   usdToCents,
@@ -51,6 +50,34 @@ function isProfile(p: unknown): p is BookingProfile {
   return Boolean(p) && (p as { exists?: boolean }).exists !== false;
 }
 
+interface ApiFieldError {
+  field: string;
+  reason: string;
+}
+
+/** Per-field validation reasons from { error: "validation_failed", fields: [...] } responses. */
+function apiFieldErrors(error: unknown): ApiFieldError[] {
+  if (!(error instanceof ApiError)) return [];
+  const fields = error.details?.fields;
+  if (!Array.isArray(fields)) return [];
+  return fields.filter((f): f is ApiFieldError =>
+    Boolean(f)
+    && typeof (f as ApiFieldError).field === "string"
+    && typeof (f as ApiFieldError).reason === "string");
+}
+
+/** Prefer the server's specific field errors over the generic HTTP status message. */
+function describeApiError(error: unknown, fallback: string): string {
+  const fields = apiFieldErrors(error);
+  if (fields.length > 0) return fields.map((f) => `${f.field}: ${f.reason}`).join("; ");
+  return error instanceof ApiError ? error.message : fallback;
+}
+
+/** Surface a server-side base-price rejection inline, next to the field it belongs to. */
+function basePriceFieldError(error: unknown): string | null {
+  return apiFieldErrors(error).find((f) => f.field === "base_price_cents")?.reason ?? null;
+}
+
 /** The props ProfileBookingsSection needs, minus the presentational-only `className`. */
 type BookingHostSectionProps = Omit<ProfileBookingsSectionProps, "className">;
 
@@ -83,7 +110,8 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
   const [values, setValues] = React.useState<ProfileBookingsValues>({
     timezone: browserTimezone(),
     durationSeconds: 1800,
-    priceUsd: "0.00",
+    // Empty, not "0.00" — the server requires base_price_cents > 0, so the required-ness is honest.
+    priceUsd: "",
   });
 
   const [rules, setRules] = React.useState<AvailabilityRule[]>([]);
@@ -117,7 +145,8 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
           setValues({
             timezone: profile.host_timezone || browserTimezone(),
             durationSeconds: profile.default_slot_duration_seconds || 1800,
-            priceUsd: centsToUsd(profile.base_price_cents || 0),
+            // A stored 0 is not publishable server-side; show it as empty rather than "0.00".
+            priceUsd: profile.base_price_cents ? centsToUsd(profile.base_price_cents) : "",
           });
           setIsPublished(profile.is_published);
         }
@@ -134,9 +163,13 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
   }, [api, reloadAvailability]);
 
   // Persist profile fields + the app-wallet payout destination. Returns false on validation failure.
+  // The server requires base_price_cents > 0 whenever it is sent, so the client gate matches: a
+  // transient empty price simply skips persistence (no nag while typing); anything else invalid
+  // (non-numeric, 0, negative) shows the inline error and is never sent.
   const persistProfile = React.useCallback(async (): Promise<boolean> => {
-    if (!isValidMoneyInput(values.priceUsd)) {
-      setBasePriceError("Enter a valid base price");
+    if (values.priceUsd.trim() === "") return false;
+    if (!isValidPositiveMoneyInput(values.priceUsd)) {
+      setBasePriceError("Enter a base price greater than 0");
       return false;
     }
     setBasePriceError(null);
@@ -161,7 +194,11 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
     const timer = setTimeout(() => {
       setSaving(true);
       void persistProfile()
-        .catch((error) => toast.error(error instanceof ApiError ? error.message : "Could not save"))
+        .catch((error) => {
+          const inline = basePriceFieldError(error);
+          if (inline) setBasePriceError(inline);
+          toast.error(describeApiError(error, "Could not save"));
+        })
         .finally(() => setSaving(false));
     }, 700);
     return () => clearTimeout(timer);
@@ -171,6 +208,12 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
     setPublishing(true);
     try {
       if (!isPublished) {
+        // Publish requires a real price — the server rejects base_price_cents <= 0, so gate here
+        // with an inline error instead of round-tripping into a generic validation_failed toast.
+        if (!isValidPositiveMoneyInput(values.priceUsd)) {
+          setBasePriceError("Enter a base price greater than 0 to publish");
+          return;
+        }
         // Ensure the profile (incl. the app-wallet payout destination) is persisted before publish,
         // so publish never 409s on an unsaved/absent profile regardless of save order.
         if (!await persistProfile()) return;
@@ -183,11 +226,13 @@ export function useBookingHostSettings(): UseBookingHostSettingsResult {
         toast.success("Bookings unpublished");
       }
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : "Publish failed");
+      const inline = basePriceFieldError(error);
+      if (inline) setBasePriceError(inline);
+      toast.error(describeApiError(error, "Publish failed"));
     } finally {
       setPublishing(false);
     }
-  }, [api, isPublished, persistProfile]);
+  }, [api, isPublished, values.priceUsd, persistProfile]);
 
   const onAddRule = React.useCallback(async (draft: AvailabilityRuleInput) => {
     if (draft.byWeekday.length === 0) {

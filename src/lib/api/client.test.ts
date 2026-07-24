@@ -62,6 +62,29 @@ test("captures request_id from error bodies and falls back to the x-request-id h
   }
 });
 
+test("captures per-field validation errors from { error, fields } bodies into details", async () => {
+  globalThis.fetch = async () => Response.json({
+    error: "validation_failed",
+    fields: [{ field: "base_price_cents", reason: "must be a positive integer (cents)" }],
+  }, { status: 400 });
+
+  try {
+    const client = new ApiClient({ baseUrl: "http://pirate.test", getToken: () => null });
+    await client.publicPosts.getKaraoke("pst_test").then(
+      () => { throw new Error("Expected request to fail"); },
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ApiError);
+        expect(error).toMatchObject({ code: "validation_failed", status: 400 });
+        expect((error as ApiError).details).toMatchObject({
+          fields: [{ field: "base_price_cents", reason: "must be a positive integer (cents)" }],
+        });
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 function requireRequest(request: Request | null): Request {
   if (!request) {
     throw new Error("Expected request to be captured");

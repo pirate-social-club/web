@@ -82,4 +82,20 @@ describe("ProfileBookingsSection", () => {
     const doc = renderToDoc({ bookable: true });
     expect(doc.body.textContent).toContain("People can book you");
   });
+
+  test("warns when bookable but no availability rules exist (published but invisible)", () => {
+    const doc = renderToDoc({ bookable: true, rules: [] });
+    expect(doc.body.textContent).toContain("not visible yet");
+  });
+
+  test("no invisible-warning when availability exists or when not bookable", () => {
+    const withRules = renderToDoc({
+      bookable: true,
+      rules: [{ object: "availability_rule", id: "bar_1", by_weekday: [1], start_local: "09:00", end_local: "17:00", slot_duration_seconds: 1800, effective_from: null, effective_until: null, created: 0, updated: 0 }],
+    });
+    expect(withRules.body.textContent).not.toContain("not visible yet");
+
+    const notBookable = renderToDoc({ bookable: false, rules: [] });
+    expect(notBookable.body.textContent).not.toContain("not visible yet");
+  });
 });

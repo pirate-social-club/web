@@ -1309,6 +1309,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "bookableLabel": "Bookable",
           "bookableOnHint": "People can book you. Turn off to pause without losing your schedule.",
           "bookableOffHint": "You're not bookable yet — turn on when you're ready.",
+          "bookableNoAvailability": "Bookable is on, but you're not visible yet — add weekly availability below to appear in search and feed.",
           "autosaveNote": "Changes save automatically.",
           "savingNote": "Saving…"
         }
@@ -3386,6 +3387,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "bookableLabel": "قابل للحجز",
           "bookableOnHint": "يمكن للأشخاص حجزك. أوقفه مؤقتًا دون فقدان جدولك.",
           "bookableOffHint": "لست قابلًا للحجز بعد — فعّله عندما تكون جاهزًا.",
+          "bookableNoAvailability": "الحجز مفعّل، لكنك غير مرئي بعد — أضف توافرًا أسبوعيًا أدناه لتظهر في البحث والخلاصة.",
           "autosaveNote": "تُحفظ التغييرات تلقائيًا.",
           "savingNote": "جارٍ الحفظ…"
         }
@@ -5463,6 +5465,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "bookableLabel": "可预约",
           "bookableOnHint": "人们可以预约你。关闭后可暂停预约，且不会丢失你的日程。",
           "bookableOffHint": "你还不可预约 — 准备好后再开启。",
+          "bookableNoAvailability": "可预约已开启，但你还不会显示 — 在下方添加每周重复时段，才会出现在搜索和动态中。",
           "autosaveNote": "更改会自动保存。",
           "savingNote": "正在保存…"
         }

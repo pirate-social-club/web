@@ -8,7 +8,6 @@ import {
   epochSecondsToZonedLocalInput,
   isDateTimeRange,
   isTimeRange,
-  isValidMoneyInput,
   isValidPositiveMoneyInput,
   localInputToIsoUtc,
   zonedLocalInputToIsoUtc,
@@ -19,11 +18,16 @@ describe("booking host settings validation", () => {
   test("converts money inputs using integer cents", () => {
     expect(centsToUsd(1234)).toBe("12.34");
     expect(usdToCents("12.345")).toBe(1235);
-    expect(isValidMoneyInput("0")).toBe(true);
-    expect(isValidMoneyInput("-1")).toBe(false);
-    expect(isValidMoneyInput("not-money")).toBe(false);
-    expect(isValidPositiveMoneyInput("0")).toBe(false);
+  });
+
+  test("money gate matches the server: a positive amount is required", () => {
     expect(isValidPositiveMoneyInput("0.01")).toBe(true);
+    expect(isValidPositiveMoneyInput("50.00")).toBe(true);
+    expect(isValidPositiveMoneyInput("0")).toBe(false);
+    expect(isValidPositiveMoneyInput("0.00")).toBe(false);
+    expect(isValidPositiveMoneyInput("-1")).toBe(false);
+    expect(isValidPositiveMoneyInput("")).toBe(false);
+    expect(isValidPositiveMoneyInput("not-money")).toBe(false);
   });
 
   test("validates local HH:MM ranges without allowing equal or reversed ranges", () => {

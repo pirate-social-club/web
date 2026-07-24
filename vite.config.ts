@@ -54,7 +54,6 @@ export default defineConfig(() => ({
   },
   optimizeDeps: {
     exclude: ["@xmtp/wasm-bindings", "@xmtp/browser-sdk"],
-    include: ["@xmtp/proto"],
   },
   environments: {
     ssr: {},

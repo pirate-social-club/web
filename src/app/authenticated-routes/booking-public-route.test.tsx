@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 
 import { installDomGlobals } from "@/test/setup-dom";
+import { UiLocaleProvider } from "@/lib/ui-locale";
 
 installDomGlobals();
 
@@ -46,6 +47,18 @@ afterEach(() => {
 });
 
 describe("BookingPublicPage (logged out)", () => {
+  test("renders the public booking copy in Arabic", async () => {
+    const { container } = render(
+      <UiLocaleProvider dir="rtl" locale="ar">
+        <BookingPublicPage communityId={null} hostUserId="usr_host" />
+      </UiLocaleProvider>,
+    );
+    await waitFor(() => {
+      expect(container.textContent).toContain("حجز جلسة");
+      expect(container.textContent).toContain("المواعيد المتاحة");
+    });
+  });
+
   // Tapping a slot while logged out must prompt sign-in (Privy connect), NOT route to checkout — that
   // route hits authenticated hold/quote APIs and dead-ends on "Authentication failed".
   test("a slot tap triggers sign-in and does not navigate to checkout", async () => {

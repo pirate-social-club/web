@@ -4,6 +4,7 @@ import { cleanup, render, waitFor } from "@testing-library/react";
 
 import { installDomGlobals } from "@/test/setup-dom";
 import type { BookingHold, BookingQuote } from "@/lib/api/bookings-types";
+import { UiLocaleProvider } from "@/lib/ui-locale";
 
 installDomGlobals();
 
@@ -104,6 +105,19 @@ afterEach(() => {
 });
 
 describe("BookingCheckoutPage", () => {
+  test("renders checkout and policy copy in Chinese", async () => {
+    render(
+      <UiLocaleProvider dir="ltr" locale="zh">
+        <BookingCheckoutPage communityId={null} hostUserId="usr_host" />
+      </UiLocaleProvider>,
+    );
+    await waitFor(() => {
+      expect(document.body.textContent).toContain("确认预约");
+      expect(document.body.textContent).toContain("在课程开始至少 24 小时前取消可获得全额退款");
+      expect(document.body.textContent).toContain("付款将保留至课程完成");
+    });
+  });
+
   // Regression for the first-render expiry race: a freshly quoted hold with a FUTURE expiry must land on
   // the payable summary, never flip straight to "expired" because the countdown momentarily read 0.
   test("renders the payable summary for a fresh quote with a future expiry", async () => {

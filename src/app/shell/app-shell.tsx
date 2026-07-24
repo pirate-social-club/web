@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
 
 import { AppShellHeader, AppShellMobileNav } from "./app-shell-header";
+import { AppSearchDialog } from "./app-search-dialog";
 import { DesktopChatWidgetProvider } from "./desktop-chat-widget";
 import { RootErrorBoundary } from "./root-error-boundary";
 import { RouteContentFallback } from "./route-content-fallback";
@@ -153,6 +154,7 @@ function NotificationShell({
   const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities, isMobileLayout);
   const primaryItems = buildVideoPrimaryItems(copy.appSidebar);
   const resourceItems = buildResourceItems(copy.appSidebar);
+  const [searchOpen, setSearchOpen] = React.useState(false);
   const isMobileStandaloneRoute = isMobileLayout && (
     route.kind === "post"
     || route.kind === "create-post"
@@ -252,7 +254,7 @@ function NotificationShell({
                 codeLabel={copy.appSidebar.codeLabel}
                 onHomeClick={() => navigate("/")}
                 onNavigate={navigate}
-                onSearchClick={() => toast.message(copy.appHeader.searchUnavailableToast)}
+                onSearchClick={() => setSearchOpen(true)}
                 primaryItems={primaryItems}
                 resourceItems={resourceItems}
                 resourcesLabel={copy.appSidebar.resourcesLabel}
@@ -260,11 +262,17 @@ function NotificationShell({
                 sections={mediaSections}
                 side="start"
               />
+              <AppSearchDialog
+                onNavigate={navigate}
+                onOpenChange={setSearchOpen}
+                open={searchOpen}
+              />
               <SidebarInset className="min-h-0">
                 <AppShellHeader
                   copy={copy}
                   desktopHidden={useHeaderlessDesktopLayout}
                   mobileMediaOverlay={route.kind === "home"}
+                  onSearchClick={() => setSearchOpen(true)}
                   route={route}
                   unreadChatCount={unreadChatCount}
                   unreadNotificationCount={unreadNotificationCount}

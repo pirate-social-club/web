@@ -12,7 +12,13 @@
     "openNavigationAriaLabel": "打开导航",
     "profileAriaLabel": "打开个人资料",
     "searchAriaLabel": "搜索 Pirate",
+    "searchCommunitiesLabel": "社区",
+    "searchDescription": "查找 Pirate 上的社区。",
+    "searchError": "无法加载搜索，请重试。",
+    "searchHint": "请输入至少两个字符进行搜索。",
+    "searchNoResults": "未找到社区。",
     "searchPlaceholder": "搜索 Pirate",
+    "searchTitle": "搜索",
     "searchUnavailableToast": "搜索功能暂未开放。",
     "walletAriaLabel": "钱包"
   },

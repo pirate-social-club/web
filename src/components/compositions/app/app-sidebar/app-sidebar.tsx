@@ -381,9 +381,26 @@ export function AppSidebar({
       ) : null}
       <SidebarContent className="gap-3 overflow-y-auto px-0 pb-4 pt-3">
         {isMobile ? (
-          <SidebarGroup className="px-4 pt-1">
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-1">
+          <>
+            <SidebarGroup className="px-4 pt-1">
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className={topLevelRowClassName}
+                      onClick={() => handleItemSelect(onSearchClick)}
+                      tooltip={searchLabel}
+                    >
+                      <MagnifyingGlass className="size-5" />
+                      <span>{searchLabel}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            <SidebarGroup className="px-4 pt-1">
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-1">
                 {mobileHomeFeedSortItems.map((item) => {
                   const Icon = item.icon;
                   const active = item.id === homeFeedSort;
@@ -402,9 +419,10 @@ export function AppSidebar({
                     </SidebarMenuItem>
                   );
                 })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
         ) : null}
 
         <SidebarGroup className="px-4 pt-1">

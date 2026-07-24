@@ -197,6 +197,22 @@ describe("resolveVideoPublisherRelationship", () => {
       label: "Joined community",
     });
   });
+
+  test("shows a locally confirmed PoW follow without pretending the viewer joined", () => {
+    expect(resolveVideoPublisherRelationship({
+      followedLabel: "Following",
+      followedLocally: true,
+      identityMode: "anonymous",
+      joinedLabel: "Joined community",
+      joinLabel: "Join community",
+      viewerMembershipStatus: "not_member",
+    })).toEqual({
+      active: true,
+      disabled: false,
+      kind: "join",
+      label: "Following",
+    });
+  });
 });
 
 describe("videoImpressionAnalyticsProperties", () => {

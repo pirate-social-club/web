@@ -266,6 +266,7 @@ describe("useGatedActionRunner", () => {
     const solves: Array<{ action: string; scope: string }> = [];
     const allowedContexts: Array<{ altchaPayload?: string | null } | undefined> = [];
     const loadedFollowing: Array<boolean | null | undefined> = [];
+    let followingConfirmations = 0;
     const followedGate = gate(
       "verification_required",
       { gate_evaluation: altchaGateEvaluation() },
@@ -302,6 +303,9 @@ describe("useGatedActionRunner", () => {
         onAllowed: (context) => {
           allowedContexts.push(context);
         },
+        onFollowingConfirmed: () => {
+          followingConfirmations += 1;
+        },
         postId: "post-1",
         voteValue: 1,
       });
@@ -311,6 +315,7 @@ describe("useGatedActionRunner", () => {
     expect(solves).toEqual([{ action: "post:post-1:1", scope: "vote" }]);
     expect(allowedContexts).toEqual([{ altchaPayload: "solved-payload" }]);
     expect(loadedFollowing).toEqual([true]);
+    expect(followingConfirmations).toBe(1);
     expect(runner.successes).toEqual(["Following Test Community"]);
     expect(runner.calls).toContain("invalidate:community-1");
     expect(runner.hook.result.current.modalState).toBe(null);
@@ -471,6 +476,7 @@ describe("useGatedActionRunner", () => {
   });
 
   test("does not toast when the authoritative follow state remains inactive", async () => {
+    let followingConfirmations = 0;
     const unfollowedGate = gate(
       "verification_required",
       { gate_evaluation: altchaGateEvaluation() },
@@ -489,6 +495,9 @@ describe("useGatedActionRunner", () => {
         communityId: "community-1",
         gateData: unfollowedGate,
         onAllowed: () => undefined,
+        onFollowingConfirmed: () => {
+          followingConfirmations += 1;
+        },
         postId: "post-1",
         voteValue: 1,
       });
@@ -496,6 +505,7 @@ describe("useGatedActionRunner", () => {
     });
 
     expect(runner.successes).toEqual([]);
+    expect(followingConfirmations).toBe(0);
   });
 
   test("falls back to the widget modal when headless solving fails", async () => {

@@ -375,7 +375,18 @@ export function BookingCheckoutPage({ communityId, hostUserId }: { communityId: 
                 </div>
               )}
 
-              <Type variant="caption" className="text-muted-foreground">Payment is held until your session is complete.</Type>
+              <div className="space-y-2 rounded-lg border border-border-soft bg-muted/30 p-4" aria-label="Booking policies">
+                <Type variant="caption" className="text-muted-foreground">
+                  Time shown in your timezone ({tz}).
+                </Type>
+                <Type variant="caption" className="text-muted-foreground">
+                  Cancel at least 24 hours before the session for a full refund. Later cancellations are non-refundable.
+                  If the host cancels or does not attend, you receive a full refund.
+                </Type>
+                <Type variant="caption" className="text-muted-foreground">
+                  Payment is held until your session is complete.
+                </Type>
+              </div>
 
               <Button className="w-full" onClick={() => void handlePay(hold, quote)} loading={isPaying} disabled={isPaying || countdown === 0}>
                 {isPaying ? "Submitting payment…" : `Pay ${formatPrice(quote.gross_cents)} with USDC`}

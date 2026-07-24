@@ -117,19 +117,19 @@ describe("VideoFeed", () => {
     expect(view.getByText("songs.pirate").parentElement?.querySelector("[data-video-publisher-avatar]")).toBeNull();
   });
 
-  test("separates lightweight social actions from capability actions", () => {
+  test("unifies rail actions on filled dark circles, keeping tone as metadata", () => {
     const view = render(<VideoFeed items={[item]} onComment={() => undefined} onKaraoke={() => undefined} onShare={() => undefined} onStudy={() => undefined} />);
 
     for (const label of ["Like", "Comments", "Share"]) {
       const action = view.getByRole("button", { name: label });
       expect(action.closest("[data-video-action-tone]")?.getAttribute("data-video-action-tone")).toBe("social");
-      expect(action.className).toContain("bg-transparent");
+      expect(action.className).toContain("bg-black/55");
     }
 
     for (const label of ["Study", "Sing"]) {
       const action = view.getByRole("button", { name: label });
       expect(action.closest("[data-video-action-tone]")?.getAttribute("data-video-action-tone")).toBe("action");
-      expect(action.className).toContain("bg-card/85");
+      expect(action.className).toContain("bg-black/55");
     }
   });
 
@@ -150,14 +150,14 @@ describe("VideoFeed", () => {
     expect(gates).toBe(0);
   });
 
-  test("uses outline rail icons by default and a red filled heart when liked", () => {
+  test("uses filled rail icons with a red heart when liked", () => {
     const view = render(<VideoFeed items={[{ ...item, liked: false }]} onBook={() => {}} />);
     const idleLike = view.getByRole("button", { name: "Like" });
 
     expect(idleLike.getAttribute("data-active")).toBeNull();
-    expect(idleLike.querySelector("svg")?.getAttribute("data-video-icon-weight")).toBe("regular");
-    expect(view.getByRole("button", { name: "Comments" }).querySelector("svg")?.getAttribute("data-video-icon-weight")).toBe("regular");
-    expect(view.getByRole("button", { name: "Share" }).querySelector("svg")?.getAttribute("data-video-icon-weight")).toBe("regular");
+    expect(idleLike.querySelector("svg")?.getAttribute("data-video-icon-weight")).toBe("fill");
+    expect(view.getByRole("button", { name: "Comments" }).querySelector("svg")?.getAttribute("data-video-icon-weight")).toBe("fill");
+    expect(view.getByRole("button", { name: "Share" }).querySelector("svg")?.getAttribute("data-video-icon-weight")).toBe("fill");
 
     view.rerender(<VideoFeed items={[{ ...item, liked: true }]} />);
     const liked = view.getByRole("button", { name: "Like" });
@@ -179,8 +179,8 @@ describe("VideoFeed", () => {
     expect(slide.className).toContain("md:[--feed-chrome-bottom:0px]");
 
     expect(view.queryByLabelText("Turn sound on")).toBeNull();
-    // Overflow is inset via the rail's bottom offset now that it no longer floats over the media;
-    // its placement is covered by "keeps overflow in the rail on every slide".
+    // Overflow is inset via the rail's bottom offset on mobile now that it no longer floats over
+    // the media there; the two-slot placement is covered by the rail-and-hover-corner test below.
     expect(view.getByRole("button", { name: "Like" }).closest("div.absolute")!.className)
       .toContain("bottom-[calc(var(--feed-chrome-bottom)+1.25rem)]");
   });
@@ -205,6 +205,8 @@ describe("VideoFeed", () => {
 
     expect(stage.className).toContain("[container-type:inline-size]");
     expect(frame.className).toContain("177.7778cqw");
+    expect(frame.className).toContain("92dvh");
+    expect(frame.className).toContain("54rem");
     expect(frame.className).toContain("md:aspect-[9/16]");
     expect(frame.className).not.toContain("md:w-[min(49.5dvh");
   });
@@ -229,7 +231,8 @@ describe("VideoFeed", () => {
 
     expect(view.getByLabelText("Earn $1")).toBeTruthy();
     expect(view.getByLabelText("Earn $2")).toBeTruthy();
-    expect(view.getByLabelText("More video actions")).toBeTruthy();
+    // Mobile rail slot and desktop hover-corner slot render one trigger each.
+    expect(view.getAllByLabelText("More video actions")).toHaveLength(2);
   });
 
   test("opens a linked song and preserves playback state", () => {
@@ -603,38 +606,91 @@ describe("VideoFeed", () => {
     expect(played).toEqual([]);
   });
 
-  test("keeps overflow in the rail on every slide, not floating over the media", () => {
+  test("places overflow in the mobile rail and the desktop hover corner from one definition", () => {
     const view = render(<VideoFeed items={[item]} />);
-    const trigger = view.getByLabelText("More video actions");
-    const rail = view.getByRole("button", { name: "Like" }).closest("div.absolute");
+    const triggers = view.getAllByLabelText("More video actions");
+    expect(triggers).toHaveLength(2);
 
-    // Consistent placement is what keeps the rail the same height between videos.
-    expect(trigger.closest("div.absolute")).toBe(rail);
-    // The old treatment pinned it to the media's top-right, under the app chrome.
-    expect(trigger.closest("div")?.className ?? "").not.toContain("--feed-chrome-top");
+    const rail = view.getByRole("button", { name: "Like" }).closest("div.absolute")!;
+    const frame = view.container.querySelector<HTMLVideoElement>("video")!.parentElement!;
+    const [cornerTrigger, railTrigger] = triggers;
+
+    // The corner slot lives inside the media frame and is revealed by hover/focus on md+ only.
+    expect(frame.contains(cornerTrigger)).toBe(true);
+    const cornerSlot = cornerTrigger.parentElement!;
+    expect(cornerSlot.className).toContain("hidden");
+    expect(cornerSlot.className).toContain("md:block");
+    expect(cornerSlot.className).toContain("md:group-hover:opacity-100");
+    expect(cornerSlot.className).toContain("md:group-focus-within:opacity-100");
+
+    // The rail slot keeps the mobile rail a stable height between videos and hides on md+.
+    expect(rail.contains(railTrigger)).toBe(true);
+    expect(railTrigger.parentElement!.className).toContain("md:hidden");
   });
 
   test("renders overflow even when the item is not boost eligible", () => {
     const view = render(<VideoFeed items={[{ ...item, boostEligibility: "unavailable" }]} />);
-    expect(view.getByLabelText("More video actions")).toBeTruthy();
+    expect(view.getAllByLabelText("More video actions")).toHaveLength(2);
   });
 
   test("does not pause playback merely because the non-modal overflow opens", () => {
     const view = render(<VideoFeed items={[item]} />);
 
-    fireEvent.click(view.getByLabelText("More video actions"));
+    fireEvent.click(view.getAllByLabelText("More video actions")[0]);
 
     expect(view.queryByRole("button", { name: "Play video" })).toBeNull();
   });
 
-  test("rings the publisher avatar and uses a neutral fallback over media", () => {
+  test("reveals a desktop sound control from the frame's top-left corner", () => {
+    const view = render(<VideoFeed items={[item]} />);
+    const sound = view.getByLabelText("Sound on");
+    const slot = sound.parentElement!;
+
+    expect(slot.className).toContain("hidden");
+    expect(slot.className).toContain("md:block");
+    expect(slot.className).toContain("md:group-hover:opacity-100");
+    // Mobile keeps the rail menu's sound item; the corner control is desktop-only.
+    expect(slot.className).toContain("left-3");
+  });
+
+  test("keeps the publisher avatar ring-free with a neutral fallback over media", () => {
     const view = render(<VideoFeed items={[{ ...item, publisher: { handle: "songs.pirate", kind: "community" } }]} />);
     const avatar = view.container.querySelector("[data-video-publisher-avatar]")!;
 
-    expect(avatar.className).toContain("ring-2");
+    expect(avatar.className).not.toContain("ring-2");
     // The generated identicon is a data: URI; the neutral fallback must replace it on this surface.
     expect(avatar.innerHTML).not.toContain("data:image/svg+xml");
     expect(avatar.querySelector("svg")).toBeTruthy();
+  });
+
+  test("underlines the linked song only on hover or focus", () => {
+    const view = render(
+      <VideoFeed
+        items={[{ ...item, song: { artist: "Britney Spears", songHref: "/p/pst_toxic", title: "Toxic" } }]}
+        onSong={() => undefined}
+      />,
+    );
+    const songLink = view.getByRole("button", { name: "Open Toxic by Britney Spears" });
+    const tokens = songLink.className.split(/\s+/);
+
+    expect(tokens).not.toContain("underline");
+    expect(tokens).toContain("hover:underline");
+    expect(tokens).toContain("focus-visible:underline");
+  });
+
+  test("lazy-loads poster and ambient backdrop images", () => {
+    const items = manyFeedItems(5);
+    items[1] = { ...items[1], media: { ...items[1].media, orientation: "landscape" as const } };
+    const view = render(<VideoFeed items={items} />);
+    // The landscape backdrop renders for its slide; distant slides beyond the media window render
+    // poster images. Neither may block the initial load.
+    const images = Array.from(view.container.querySelectorAll("img"));
+
+    expect(images.length).toBeGreaterThan(1);
+    for (const image of images) {
+      expect(image.getAttribute("loading")).toBe("lazy");
+      expect(image.getAttribute("decoding")).toBe("async");
+    }
   });
 
   test("renders an actionable join badge on the publisher avatar", () => {

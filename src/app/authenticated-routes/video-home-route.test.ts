@@ -6,6 +6,8 @@ import {
   appendUniqueVideoEntries,
   checkoutPathForFeedSlot,
   nextVideoPaginationCursor,
+  panelFromHistoryState,
+  postIdForVideoItem,
   resolveVideoHomeSurface,
   resolveVideoPublisherRelationship,
   videoImpressionAnalyticsProperties,
@@ -58,6 +60,20 @@ describe("resolveVideoHomeSurface", () => {
       itemCount: 1,
       loading: false,
     })).toBe("video");
+  });
+});
+
+describe("feed comments panel routing", () => {
+  test("derives the post id from the feed entry instead of manufacturing it", () => {
+    expect(postIdForVideoItem([feedEntry("post-1")], "post-1")).toBe("post-1");
+    expect(postIdForVideoItem([feedEntry("post-1")], "missing")).toBeNull();
+  });
+
+  test("restores only valid comments-panel history state", () => {
+    expect(panelFromHistoryState({
+      pirateFeedComments: { itemId: "video-1", postId: "post-1" },
+    })).toEqual({ itemId: "video-1", kind: "comments", postId: "post-1" });
+    expect(panelFromHistoryState({ pirateFeedComments: { itemId: "video-1" } })).toEqual({ kind: "none" });
   });
 });
 

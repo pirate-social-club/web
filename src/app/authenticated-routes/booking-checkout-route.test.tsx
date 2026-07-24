@@ -112,6 +112,10 @@ describe("BookingCheckoutPage", () => {
       expect(document.body.textContent).toContain("Total");
     });
     expect(document.body.textContent).toContain("50.00 USDC");
+    expect(document.body.textContent).toContain("Time shown in your timezone");
+    expect(document.body.textContent).toContain("Cancel at least 24 hours before the session for a full refund.");
+    expect(document.body.textContent).toContain("If the host cancels or does not attend, you receive a full refund.");
+    expect(document.body.textContent).toContain("Payment is held until your session is complete.");
     expect((document.body.textContent ?? "").includes("expired")).toBe(false);
   });
 

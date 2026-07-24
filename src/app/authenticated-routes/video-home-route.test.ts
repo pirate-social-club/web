@@ -11,6 +11,7 @@ import {
   resolveVideoHomeSurface,
   resolveVideoPublisherRelationship,
   videoImpressionAnalyticsProperties,
+  VIDEO_FEED_STAGE_CLASS,
   VIDEO_FEED_VIEWPORT_CLASS,
 } from "./video-home-route";
 
@@ -26,6 +27,13 @@ describe("VIDEO_FEED_VIEWPORT_CLASS", () => {
 
   test("gives the feed the whole viewport on mobile, where the chrome is fixed", () => {
     expect(VIDEO_FEED_VIEWPORT_CLASS.split(" ")).toContain("h-dvh");
+  });
+});
+
+describe("VIDEO_FEED_STAGE_CLASS", () => {
+  test("bounds the percentage-height snap scroller to one viewport", () => {
+    expect(VIDEO_FEED_STAGE_CLASS.split(" ")).toContain("h-full");
+    expect(VIDEO_FEED_STAGE_CLASS.split(" ")).toContain("min-h-0");
   });
 });
 

@@ -81,6 +81,7 @@ function viewerTimezone(): IanaTz {
  * breakpoint. Exported so that ownership stays under test.
  */
 export const VIDEO_FEED_VIEWPORT_CLASS = "h-dvh";
+export const VIDEO_FEED_STAGE_CLASS = "relative h-full min-h-0";
 export const MAX_CONSECUTIVE_NO_GROWTH_PAGES = 3;
 const FEED_COMMENTS_HISTORY_KEY = "pirateFeedComments";
 
@@ -697,7 +698,7 @@ export function VideoHomePage() {
           </FeedSidePanel>
         ) : undefined}
       >
-        <div className="relative min-h-0" ref={feedFocusRef} tabIndex={-1}>
+        <div className={VIDEO_FEED_STAGE_CLASS} ref={feedFocusRef} tabIndex={-1}>
       <VideoFeed
         externallyPausedItemId={panelState.kind === "booking" ? panelState.itemId : undefined}
         className="h-full"

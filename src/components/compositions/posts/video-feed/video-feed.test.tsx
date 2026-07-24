@@ -626,9 +626,11 @@ describe("VideoFeed", () => {
     fireEvent.scroll(feed);
 
     expect(view.container.querySelectorAll("article")).toHaveLength(items.length);
-    expect(view.container.querySelectorAll("video")).toHaveLength(5);
+    // The ±2 window covers slides 1-5; the initially viewed slide 0 stays mounted as keep-alive.
+    expect(view.container.querySelectorAll("video")).toHaveLength(6);
     expect(Array.from(view.container.querySelectorAll("video"), (video) => video.getAttribute("src")))
       .toEqual([
+        "https://media.test/video-0.mp4",
         "https://media.test/video-1.mp4",
         "https://media.test/video-2.mp4",
         "https://media.test/video-3.mp4",
@@ -636,7 +638,34 @@ describe("VideoFeed", () => {
         "https://media.test/video-5.mp4",
     ]);
     expect(Array.from(view.container.querySelectorAll("video"), (video) => video.getAttribute("preload")))
-      .toEqual(["metadata", "auto", "auto", "auto", "metadata"]);
+      .toEqual(["metadata", "metadata", "auto", "auto", "auto", "metadata"]);
+  });
+
+  test("keeps recently viewed media mounted for scroll-back and evicts beyond the cap", () => {
+    const items = manyFeedItems();
+    const view = render(<VideoFeed items={items} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+    const scrollTo = (index: number) => {
+      Object.defineProperty(feed, "scrollTop", { configurable: true, value: index * 100 });
+      fireEvent.scroll(feed);
+    };
+
+    scrollTo(3);
+    scrollTo(6);
+
+    // Visited slides 0 and 3 remain mounted even though both sit outside the ±2 window of slide 6.
+    const mountedSources = () => Array.from(view.container.querySelectorAll("video"), (video) => video.getAttribute("src"));
+    expect(mountedSources()).toContain("https://media.test/video-0.mp4");
+    expect(mountedSources()).toContain("https://media.test/video-3.mp4");
+
+    // Visiting slides 5 and 4 pushes slide 0 past the keep-alive cap; it unmounts while slide 3,
+    // still within the cap, survives.
+    scrollTo(5);
+    scrollTo(4);
+
+    expect(mountedSources()).not.toContain("https://media.test/video-0.mp4");
+    expect(mountedSources()).toContain("https://media.test/video-3.mp4");
   });
 
   test("omits booking when the container supplies no booking handler", () => {

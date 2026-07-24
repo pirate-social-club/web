@@ -85,6 +85,13 @@ export interface VideoFeedImpression {
 
 export const VIDEO_FEED_MUTED_PREFERENCE_KEY = "pirate.video-feed.muted";
 
+/**
+ * Recently viewed slides keep their media element mounted so scrolling back does not re-download
+ * or re-buffer. The cap is deliberately small: mobile Safari only tolerates a handful of live
+ * video decoders at once, and kept slides are paused, so they cost memory rather than CPU.
+ */
+export const VIDEO_FEED_KEEP_ALIVE_MEDIA_COUNT = 4;
+
 export function isVideoLoopReplay({
   currentTime,
   duration,
@@ -946,6 +953,20 @@ export function VideoFeed({
   const hasShownSoundPromptRef = React.useRef(false);
   // Autoplay always begins muted. We only clear this after an unmuted play() has resolved.
   const [muted, setMuted] = React.useState(true);
+  const [recentItemIds, setRecentItemIds] = React.useState<string[]>(() => {
+    const initial = items[initialIndex];
+    return initial ? [initial.id] : [];
+  });
+
+  React.useEffect(() => {
+    const activeItem = items[activeIndex];
+    if (!activeItem) return;
+    // Bail out when the active slide is already most-recent: a fresh array would re-render the
+    // feed and recompute render-scoped state such as the sound prompt's one-shot eligibility.
+    setRecentItemIds((current) => current[0] === activeItem.id
+      ? current
+      : [activeItem.id, ...current.filter((id) => id !== activeItem.id)].slice(0, VIDEO_FEED_KEEP_ALIVE_MEDIA_COUNT));
+  }, [activeIndex, items]);
 
   React.useLayoutEffect(() => {
     const container = containerRef.current;
@@ -1082,7 +1103,7 @@ export function VideoFeed({
             itemPosition={index}
             impressionVisible={index === activeIndex && !documentHidden}
             initialPlaybackSeconds={item.id === initialItemId ? initialPlaybackSeconds : undefined}
-            mountMedia={Math.abs(index - activeIndex) <= 2}
+            mountMedia={Math.abs(index - activeIndex) <= 2 || recentItemIds.includes(item.id)}
             muteVideoLabel={muteVideoLabel}
             onSoundPromptShown={markSoundPromptShown}
             onMoveNext={() => moveTo(index + 1)}

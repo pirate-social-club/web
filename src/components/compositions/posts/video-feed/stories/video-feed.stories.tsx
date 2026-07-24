@@ -356,7 +356,7 @@ export const LongFeedMediaWindow: Story = {
   parameters: {
     docs: {
       description: {
-        story: "All seven snap shells remain mounted while video elements are limited to the active slide plus two neighbors on each side.",
+        story: "All seven snap shells remain mounted while video elements are limited to the active slide plus two neighbors on each side, with up to four recently viewed slides kept alive so scrolling back does not re-buffer.",
       },
     },
   },

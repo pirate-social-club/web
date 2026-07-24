@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Flag, Plus } from "@phosphor-icons/react";
+import { Flag, Plus, User, Wallet } from "@phosphor-icons/react";
 
 import type { AppRoute } from "@/app/router";
-import { isNativePublicIdentityRoute, navigate, useRoute } from "@/app/router";
+import { isNativePublicIdentityRoute, navigate, navigateOrReload, useRoute } from "@/app/router";
 import { AppSidebar } from "@/components/compositions/app/app-sidebar/app-sidebar";
 import { Button } from "@/components/primitives/button";
 import { SidebarInset, SidebarProvider } from "@/components/compositions/system/sidebar/sidebar";
@@ -157,7 +157,35 @@ function NotificationShell({
   const { moderatedCommunities, recentCommunities } = useSidebarCommunities();
   const codeItems = buildCodeItems(copy.appSidebar);
   const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities, isMobileLayout);
-  const primaryItems = buildVideoPrimaryItems(copy.appSidebar);
+  // Profile and Wallet used to live in the desktop header; with the headerless media
+  // layout they belong in the sidebar spine instead. Upload stays last.
+  const basePrimaryItems = buildVideoPrimaryItems(copy.appSidebar);
+  const primaryItems = [
+    ...basePrimaryItems.filter((item) => item.id !== "upload"),
+    {
+      icon: User,
+      id: "profile",
+      label: copy.mobileFooter.profileLabel,
+      onSelect: () => {
+        if (session) {
+          navigateOrReload("/me");
+          return;
+        }
+        if (connect) {
+          connect();
+          return;
+        }
+        toast.info(copy.appHeader.connectUnavailableToast);
+      },
+    },
+    {
+      icon: Wallet,
+      id: "wallet",
+      label: copy.mobileFooter.walletLabel,
+      onSelect: () => navigateOrReload("/wallet"),
+    },
+    ...basePrimaryItems.filter((item) => item.id === "upload"),
+  ];
   const resourceItems = buildResourceItems(copy.appSidebar);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const isMobileStandaloneRoute = isMobileLayout && (
@@ -194,7 +222,7 @@ function NotificationShell({
       action: {
         ariaLabel: copy.appSidebar.createCommunityLabel,
         icon: Plus,
-        onSelect: () => navigate("/communities/new"),
+        onSelect: () => navigateOrReload("/communities/new"),
       },
       defaultOpen: true,
       id: "communities",
@@ -203,7 +231,7 @@ function NotificationShell({
           icon: Flag,
           id: "your-communities",
           label: copy.appSidebar.yourCommunitiesLabel,
-          onSelect: () => navigate("/your-communities"),
+          onSelect: () => navigateOrReload("/your-communities"),
         },
         ...(recentSection?.items ?? []),
       ],
@@ -257,8 +285,8 @@ function NotificationShell({
                 ) : undefined}
                 codeItems={codeItems}
                 codeLabel={copy.appSidebar.codeLabel}
-                onHomeClick={() => navigate("/")}
-                onNavigate={navigate}
+                onHomeClick={() => navigateOrReload("/")}
+                onNavigate={navigateOrReload}
                 onSearchClick={() => setSearchOpen(true)}
                 primaryItems={primaryItems}
                 resourceItems={resourceItems}

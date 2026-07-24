@@ -20,7 +20,7 @@ import {
 import type { ComponentProps } from "react";
 
 import type { AppRoute } from "@/app/router";
-import { navigate } from "@/app/router";
+import { navigateOrReload } from "@/app/router";
 import {
   buildCommunityModerationEntryPath,
   buildCommunityModerationIndexPath,
@@ -60,6 +60,8 @@ export function usesHeaderlessDesktopLayout(route: AppRoute): boolean {
     || route.kind === "chat-conversation"
     || route.kind === "chat-target"
     || route.kind === "inbox"
+    || route.kind === "community-moderation"
+    || route.kind === "community-moderation-index"
     || route.kind === "create-post-global";
 }
 
@@ -145,7 +147,7 @@ export function buildSidebarSections(
           avatarSrc: community.avatarSrc,
           id: `c/${community.communityId}`,
           label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
-          onSelect: () => navigate(buildCommunityPath(community.communityId, community.routeSlug)),
+          onSelect: () => navigateOrReload(buildCommunityPath(community.communityId, community.routeSlug)),
         })),
       });
     }
@@ -162,7 +164,7 @@ export function buildSidebarSections(
           avatarSrc: community.avatarSrc,
           id: `moderation/${community.communityId}`,
           label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
-          onSelect: () => navigate(buildCommunityModerationEntryPath(community.communityId, isMobileWeb, community.routeSlug)),
+          onSelect: () => navigateOrReload(buildCommunityModerationEntryPath(community.communityId, isMobileWeb, community.routeSlug)),
         })),
       });
     }
@@ -177,37 +179,37 @@ export function buildVideoPrimaryItems(messages: ShellMessages["appSidebar"]): A
       id: "home",
       icon: House,
       label: messages.videoForYouLabel,
-      onSelect: () => navigate("/"),
+      onSelect: () => navigateOrReload("/"),
     },
     {
       id: "community-feed",
       icon: Compass,
       label: messages.videoExploreLabel,
-      onSelect: () => navigate("/feed"),
+      onSelect: () => navigateOrReload("/feed"),
     },
     {
       id: "live",
       icon: Television,
       label: messages.videoLiveLabel,
-      onSelect: () => navigate("/live"),
+      onSelect: () => navigateOrReload("/live"),
     },
     {
       id: "chat",
       icon: ChatCircle,
       label: messages.videoChatLabel,
-      onSelect: () => navigate("/chat"),
-    },
-    {
-      id: "upload",
-      icon: UploadSimple,
-      label: messages.videoUploadLabel,
-      onSelect: () => navigate("/submit"),
+      onSelect: () => navigateOrReload("/chat"),
     },
     {
       id: "activity",
       icon: Bell,
       label: messages.videoActivityLabel,
-      onSelect: () => navigate("/inbox"),
+      onSelect: () => navigateOrReload("/inbox"),
+    },
+    {
+      id: "upload",
+      icon: UploadSimple,
+      label: messages.videoUploadLabel,
+      onSelect: () => navigateOrReload("/submit"),
     },
   ];
 }
@@ -218,7 +220,7 @@ export function buildResourceItems(messages: ShellMessages["appSidebar"]) {
     icon: resourceIcons[item.id as ResourceLinkId],
     onSelect: () => {
       if (item.id === "advertise") {
-        navigate(ADVERTISING_ROUTE_PATH);
+        navigateOrReload(ADVERTISING_ROUTE_PATH);
         return;
       }
 
@@ -263,7 +265,9 @@ export function activeSidebarItem(route: AppRoute): string | undefined {
     case "inbox":
       return "activity";
     case "wallet":
-      return undefined;
+      return "wallet";
+    case "me":
+      return "profile";
     case "your-communities":
       return "your-communities";
     case "settings-index":

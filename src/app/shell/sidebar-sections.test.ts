@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
+import type { AppRoute } from "@/app/router";
 import type { ShellMessages } from "@/locales";
 
 import {
+  activeSidebarItem,
   buildResourceItems,
   buildSidebarSections,
   buildVideoPrimaryItems,
@@ -78,7 +80,7 @@ describe("buildSidebarSections", () => {
 });
 
 describe("buildVideoPrimaryItems", () => {
-  test("builds the settled six-item desktop media spine without Agents", () => {
+  test("builds the settled six-item desktop media spine with Upload last and without Agents", () => {
     const items = buildVideoPrimaryItems({
       videoActivityLabel: "Activity",
       videoChatLabel: "Chat",
@@ -93,10 +95,17 @@ describe("buildVideoPrimaryItems", () => {
       "community-feed",
       "live",
       "chat",
-      "upload",
       "activity",
+      "upload",
     ]);
     expect(items.map((item) => item.id)).not.toContain("agents");
+  });
+});
+
+describe("activeSidebarItem", () => {
+  test("highlights the wallet and profile sidebar entries on their routes", () => {
+    expect(activeSidebarItem({ kind: "wallet", path: "/wallet" })).toBe("wallet");
+    expect(activeSidebarItem({ kind: "me", path: "/me" } as AppRoute)).toBe("profile");
   });
 });
 
@@ -106,6 +115,17 @@ describe("usesHeaderlessDesktopLayout", () => {
     expect(usesHeaderlessDesktopLayout({ kind: "community-feed", path: "/feed" })).toBe(true);
     expect(usesHeaderlessDesktopLayout({ kind: "live", path: "/live" })).toBe(true);
     expect(usesHeaderlessDesktopLayout({ kind: "inbox", path: "/inbox" })).toBe(true);
+    expect(usesHeaderlessDesktopLayout({
+      kind: "community-moderation",
+      path: "/c/cmt_123/mod/queue",
+      communityId: "cmt_123",
+      section: "queue",
+    } as AppRoute)).toBe(true);
+    expect(usesHeaderlessDesktopLayout({
+      kind: "community-moderation-index",
+      path: "/c/cmt_123/mod",
+      communityId: "cmt_123",
+    } as AppRoute)).toBe(true);
     expect(usesHeaderlessDesktopLayout({ kind: "settings-index", path: "/settings" })).toBe(false);
   });
 });

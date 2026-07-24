@@ -440,6 +440,16 @@ export const PublisherLinksWithOriginalSound: Story = {
   }]} />,
 };
 
+/** Missing publisher images use the same generated ghost as every other account surface. */
+export const PublisherGhostFallback: Story = {
+  name: "Publisher / Canonical ghost fallback",
+  args: { items: [] },
+  render: () => <InteractiveFeed items={[{
+    ...portrait,
+    publisher: { handle: "ghost.pirate", href: "/c/ghost", kind: "community" },
+  }]} />,
+};
+
 export const RewardedActionsAndBoost: Story = {
   args: { items: [] },
   render: () => <InteractiveFeed items={[{ ...portrait, boostEligibility: "eligible" }]} />,

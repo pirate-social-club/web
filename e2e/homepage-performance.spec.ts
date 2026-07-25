@@ -39,16 +39,16 @@ function isHostedApp(url: string): boolean {
   return hostname === "staging.pirate.sc" || hostname === "pirate.sc" || hostname === "www.pirate.sc";
 }
 
-function publicFeedUrl(): string {
-  const url = new URL("/feed/home/public", apiBaseURL);
+function publicVideoFeedUrl(): string {
+  const url = new URL("/feed/home/videos/public", apiBaseURL);
   url.searchParams.set("locale", "en");
   url.searchParams.set("sort", "best");
   return url.toString();
 }
 
-function isPublicFeedResponse(response: Response): boolean {
+function isPublicVideoFeedResponse(response: Response): boolean {
   const url = new URL(response.url());
-  return `${url.origin}` === apiBaseURL && url.pathname === "/feed/home/public";
+  return `${url.origin}` === apiBaseURL && url.pathname === "/feed/home/videos/public";
 }
 
 function responseCacheStatus(headers: Record<string, string>): string | null {
@@ -74,8 +74,8 @@ function firstFeedItemLabel(feed: any): string | null {
   ) ?? null;
 }
 
-async function warmPublicFeed(request: APIRequestContext): Promise<FeedProbe> {
-  const response = await request.get(publicFeedUrl(), {
+async function warmPublicVideoFeed(request: APIRequestContext): Promise<FeedProbe> {
+  const response = await request.get(publicVideoFeedUrl(), {
     headers: {
       accept: "application/json",
       origin: baseURL,
@@ -94,15 +94,15 @@ async function warmPublicFeed(request: APIRequestContext): Promise<FeedProbe> {
   };
 }
 
-async function captureBrowserPublicFeed(page: Page): Promise<BrowserFeedProbe> {
+async function captureBrowserPublicVideoFeed(page: Page): Promise<BrowserFeedProbe> {
   const feedRequestStartTimes = new Map<string, number>();
   page.on("request", (request) => {
-    if (new URL(request.url()).pathname === "/feed/home/public") {
+    if (new URL(request.url()).pathname === "/feed/home/videos/public") {
       feedRequestStartTimes.set(request.url(), performance.now());
     }
   });
 
-  const response = await page.waitForResponse(isPublicFeedResponse, { timeout: 15_000 });
+  const response = await page.waitForResponse(isPublicVideoFeedResponse, { timeout: 15_000 });
   const responseHeadersAt = performance.now();
   const finishedError = await response.finished();
   if (finishedError) throw finishedError;
@@ -124,14 +124,14 @@ async function captureBrowserPublicFeed(page: Page): Promise<BrowserFeedProbe> {
   };
 }
 
-test.describe("homepage public feed performance", () => {
+test.describe("homepage public video feed performance", () => {
   test.skip(!isHostedApp(baseURL), "Homepage performance smoke runs against hosted staging or production.");
 
-  test("loads the homepage feed from a warm public cache", async ({ page, request }) => {
-    const warmup = await warmPublicFeed(request);
+  test("loads the homepage video feed from a warm public cache", async ({ page, request }) => {
+    const warmup = await warmPublicVideoFeed(request);
     expect(warmup.status, `warmup status: ${JSON.stringify(warmup)}`).toBe(200);
 
-    const browserFeedPromise = captureBrowserPublicFeed(page);
+    const browserFeedPromise = captureBrowserPublicVideoFeed(page);
     const navigationStartedAt = performance.now();
     await page.goto("/", { waitUntil: "domcontentloaded" });
     const browserFeed = await browserFeedPromise;
@@ -142,8 +142,8 @@ test.describe("homepage public feed performance", () => {
       `browser feed timing: ${JSON.stringify(browserFeed)}`,
     ).toBeLessThanOrEqual(feedResponseBudgetMs);
 
-    // Home is the video-first route; the legacy public feed request may be
-    // used for fallback/preload without its first item being rendered here.
+    // The video-first homepage may render a fallback shell before the first
+    // video item, so keep the render assertion independent of feed contents.
     await expect(page.locator("body")).toContainText(/For You|Explore/u, { timeout: feedRenderBudgetMs });
     await expect(page.locator("body")).not.toContainText(browserErrorPattern);
 

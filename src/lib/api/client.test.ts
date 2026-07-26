@@ -586,6 +586,64 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("calls community Telegram broadcast channel endpoints", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+
+      if (request.url.endsWith("/setup-intents")) {
+        return Response.json({
+          id: "tsi_channel",
+          object: "telegram_setup_intent",
+          community: "cmt_test",
+          status: "pending",
+          expires_at: 1_777_000_600,
+          bot_start_parameter: "tgchan_test",
+          bot_deep_link: "https://t.me/pirate_bot?start=tgchan_test",
+        });
+      }
+
+      if (request.url.endsWith("/unlink")) {
+        return Response.json({
+          id: "tcd_test",
+          object: "telegram_channel_destination",
+          unlinked: true,
+        });
+      }
+
+      if (request.url.endsWith("/backfill")) {
+        return Response.json({ enqueued: 20 }, { status: 202 });
+      }
+
+      return Response.json(null);
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      const destination = await client.communities.getTelegramChannel("cmt_test");
+      await client.communities.createTelegramChannelSetupIntent("cmt_test");
+      await client.communities.backfillTelegramChannel("cmt_test", { limit: 20 });
+      await client.communities.unlinkTelegramChannel("cmt_test");
+
+      expect(destination).toBeNull();
+      expect(requests.map((request) => `${request.method} ${request.url}`)).toEqual([
+        "GET http://pirate.test/communities/cmt_test/telegram-channel",
+        "POST http://pirate.test/communities/cmt_test/telegram-channel/setup-intents",
+        "POST http://pirate.test/communities/cmt_test/telegram-channel/backfill",
+        "POST http://pirate.test/communities/cmt_test/telegram-channel/unlink",
+      ]);
+      expect(requests.every((request) => request.headers.get("authorization") === "Bearer session-token")).toBe(true);
+      expect(await requests[2]!.json()).toEqual({ limit: 20 });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("quotes community handles as JSON", async () => {
     let request: Request | null = null;
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

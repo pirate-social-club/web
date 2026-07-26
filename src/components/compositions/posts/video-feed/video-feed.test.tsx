@@ -198,7 +198,7 @@ describe("VideoFeed", () => {
       expect(action.className).toContain("drop-shadow-[0_1px_2px_rgb(0_0_0/0.65)]");
       expect(action.className).toContain("[&_svg]:size-7");
       // Desktop sits on the black stage outside the frame, where a dark circle is invisible.
-      expect(action.className).toContain("md:bg-white/10");
+      expect(action.className).toMatch(/md:!?bg-white\/10/);
       expect(action.className).toContain("md:drop-shadow-none");
     }
   });
@@ -867,8 +867,7 @@ describe("VideoFeed", () => {
     }]} />);
 
     expect(view.container.querySelector("video")?.hasAttribute("poster")).toBe(false);
-    expect(view.container.querySelectorAll("article img")).toHaveLength(1);
-    expect(view.container.querySelector("article img")?.getAttribute("alt")).toBe("songs.pirate");
+    expect(view.container.querySelectorAll("article [data-video-media-image]")).toHaveLength(0);
   });
 
   test("moves the media window while preserving every full-height slide shell", () => {
@@ -1041,6 +1040,8 @@ describe("VideoFeed", () => {
     expect(slot.className).toContain("md:opacity-0");
     expect(slot.className).toContain("md:group-hover:opacity-100");
     expect(slot.className).toContain("left-3");
+    expect(slot.className).toContain("top-[calc(var(--feed-chrome-top)+0.75rem)]");
+    expect(slot.className).toContain("md:top-3");
   });
 
   test("gives the publisher avatar a white rail ring", () => {
@@ -1070,6 +1071,18 @@ describe("VideoFeed", () => {
     expect(slots).toHaveLength(2);
     expect(slots[0]?.className).toBe(slots[1]?.className);
     expect(slots[0]?.className).toContain("size-6");
+  });
+
+  test("fills the mobile rail share slot with an audio disc", () => {
+    const view = render(<VideoFeed items={[item]} onShare={() => undefined} />);
+    const disc = view.container.querySelector("[data-video-audio-disc]");
+    const share = view.getByRole("button", { name: "Share" });
+
+    expect(disc).not.toBeNull();
+    expect(disc?.parentElement?.className).toContain("md:hidden");
+    const desktopShareSlot = share.closest("div.hidden");
+    expect(desktopShareSlot?.className).toContain("hidden");
+    expect(desktopShareSlot?.className).toContain("md:block");
   });
 
   test("underlines the linked song only on hover or focus", () => {

@@ -229,7 +229,7 @@ function PublisherRelationshipButton({
       type="button"
     >
       {pending ? (
-        <span aria-hidden className="size-2.5 animate-pulse rounded-full bg-current" />
+        <Plus aria-hidden className="size-4 animate-pulse" weight="bold" />
       ) : active ? (
         <Check aria-hidden className="size-4" weight="bold" />
       ) : (
@@ -294,7 +294,7 @@ function VideoAction({
         <IconButton
           active={active}
           aria-label={label}
-          className="bg-transparent text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.65)] hover:bg-white/15 data-[active=true]:text-destructive [&_svg]:size-7 md:bg-white/10 md:shadow-md md:drop-shadow-none md:hover:bg-white/20 md:[&_svg]:size-6"
+          className="!bg-transparent text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.65)] hover:!bg-white/15 data-[active=true]:text-destructive [&_svg]:size-7 md:!bg-white/10 md:shadow-md md:drop-shadow-none md:hover:!bg-white/20 md:[&_svg]:size-6"
           disabled={disabled}
           onClick={onClick}
           variant="ghost"
@@ -667,16 +667,37 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   // One overflow definition feeds the mobile long-press sheet and desktop hover-corner menu, so
   // their content and behaviour cannot drift apart.
   const overflowItems = [
+    ...(item.shareActions?.length
+      ? item.shareActions.map((action) => ({
+        key: `share:${action.key}`,
+        label: action.label,
+        icon: action.icon,
+        destructive: action.destructive,
+        disabled: action.disabled,
+      }))
+      : onShare
+        ? [{
+          key: "share:fallback",
+          label: "Share",
+          icon: <ShareFat className="size-5" weight="fill" />,
+        }]
+        : []),
     {
       key: "downvote",
       label: item.downvoted ? removeDownvoteLabel : downvoteLabel,
       icon: <ArrowFatDown className="size-5" weight={item.downvoted ? "fill" : "regular"} />,
+      separatorBefore: Boolean(item.shareActions?.length || onShare),
     },
     ...(item.boostEligibility === "eligible"
       ? [{ key: "boost", label: "Boost this song", icon: <CurrencyDollar className="size-5" weight="bold" /> }]
       : []),
   ];
   const runOverflowAction = (key: string) => {
+    if (key.startsWith("share:")) {
+      const action = item.shareActions?.find((candidate) => `share:${candidate.key}` === key);
+      if (action) void action.onSelect?.();
+      else onShare?.(item);
+    }
     if (key === "boost") onBoost?.(item);
     if (key === "downvote") runInteraction(onDownvote);
   };
@@ -822,7 +843,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
           full-frame play control so clicks reach them instead of toggling playback.
         */}
         {mediaMounted ? (
-          <div className="absolute left-3 top-3 z-10 block opacity-100 transition-opacity duration-150 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+          <div className="absolute left-3 top-[calc(var(--feed-chrome-top)+0.75rem)] z-10 block opacity-100 transition-opacity duration-150 md:top-3 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
             <IconButton
               aria-label={muted ? soundOnLabel : muteVideoLabel}
               className="bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75"
@@ -998,7 +1019,15 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
                   ownProfile={item.publisher.relationship.ownProfile}
                   targetWalletAddress={item.publisher.relationship.targetWalletAddress}
                 />
-              ) : null}
+              ) : item.publisher.relationship.ownProfile ? null : (
+                <span
+                  aria-hidden
+                  className="grid size-6 place-items-center rounded-full bg-destructive text-white shadow-md"
+                  data-video-publisher-relationship-placeholder
+                >
+                  <Plus className="size-4" weight="bold" />
+                </span>
+              )}
             </div>
           ) : item.publisher.relationship?.kind === "join" ? (
             <div className="-mt-5 size-6" data-video-publisher-relationship-slot>
@@ -1042,23 +1071,49 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
           ) : null}
           <CapabilityAction capability={item.study} icon={<BookOpen className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
           <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
-          {item.shareActions?.length ? (
-            <VideoShareSurface actions={item.shareActions}>
-              <IconButton
-                aria-label="Share"
-                className="bg-transparent text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.65)] hover:bg-white/15 [&_svg]:size-7 md:bg-white/10 md:shadow-md md:drop-shadow-none md:hover:bg-white/20 md:[&_svg]:size-6"
-                variant="ghost"
+          <div className="hidden md:block">
+            {item.shareActions?.length ? (
+              <VideoShareSurface actions={item.shareActions}>
+                <IconButton
+                  aria-label="Share"
+                  className="bg-transparent text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.65)] hover:bg-white/15 [&_svg]:size-7 md:bg-white/10 md:shadow-md md:drop-shadow-none md:hover:bg-white/20 md:[&_svg]:size-6"
+                  variant="ghost"
+                >
+                  <ShareFat className="size-7 md:size-6" data-video-icon-weight="fill" weight="fill" />
+                </IconButton>
+              </VideoShareSurface>
+            ) : (
+              <VideoAction
+                icon={<ShareFat className="size-7 md:size-6" data-video-icon-weight="fill" weight="fill" />}
+                label="Share"
+                onClick={onShare ? () => onShare(item) : undefined}
+              />
+            )}
+          </div>
+          <div className="grid size-11 place-items-center md:hidden">
+            {item.song?.songHref ? (
+              <a
+                aria-label={`Open audio: ${item.song.title}`}
+                className="grid size-10 animate-[spin_8s_linear_infinite] place-items-center overflow-hidden rounded-full border-[5px] border-neutral-950 bg-neutral-900 shadow-sm motion-reduce:animate-none"
+                data-video-audio-disc
+                href={item.song.songHref}
+                onClick={(event) => {
+                  event.preventDefault();
+                  runSongNavigation();
+                }}
               >
-                <ShareFat className="size-7 md:size-6" data-video-icon-weight="fill" weight="fill" />
-              </IconButton>
-            </VideoShareSurface>
-          ) : (
-            <VideoAction
-              icon={<ShareFat className="size-7 md:size-6" data-video-icon-weight="fill" weight="fill" />}
-              label="Share"
-              onClick={onShare ? () => onShare(item) : undefined}
-            />
-          )}
+                <Avatar fallback={item.publisher.handle} size="sm" src={item.publisher.avatarSrc} />
+              </a>
+            ) : (
+              <span
+                aria-hidden
+                className="grid size-10 animate-[spin_8s_linear_infinite] place-items-center overflow-hidden rounded-full border-[5px] border-neutral-950 bg-neutral-900 shadow-sm motion-reduce:animate-none"
+                data-video-audio-disc
+              >
+                <Avatar fallback={item.publisher.handle} size="sm" src={item.publisher.avatarSrc} />
+              </span>
+            )}
+          </div>
           {/* Mobile opens overflow by long-pressing the video; desktop keeps the hover-corner menu. */}
           <div className="md:hidden">
             <ActionMenu
@@ -1067,6 +1122,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
               onAction={runOverflowAction}
               onOpenChange={setMobileOverflowOpen}
               open={mobileOverflowOpen}
+              mobilePresentation="gesture"
               title="Video actions"
               trigger={(
                 <button

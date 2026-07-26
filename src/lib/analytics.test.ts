@@ -77,6 +77,7 @@ describe("trackAnalyticsEvent", () => {
     const request = requireCapturedRequest(capturedRequest);
     expect(request.url).toBe("http://127.0.0.1:8787/analytics/events");
     const body = await request.json() as Record<string, unknown>;
+    expect(body.event_id).toMatch(/^evt_[a-f0-9]{32}$/);
     expect(body.community_id).toBe("cmt_analytics");
     expect(body.post_id).toBe("post_analytics");
     expect(body.comment_id).toBe("cmt_comment");

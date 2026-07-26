@@ -38,6 +38,7 @@ type AnalyticsProperties = Record<string, string | number | boolean | null | und
 
 type TrackAnalyticsEventInput = {
   eventName: AnalyticsEventName;
+  eventId?: string;
   communityId?: string | null;
   postId?: string | null;
   commentId?: string | null;
@@ -82,6 +83,7 @@ export function trackAnalyticsEvent(input: TrackAnalyticsEventInput): void {
 
   void fetch(resolveApiUrl("/analytics/events", window.location.hostname), {
     body: JSON.stringify({
+      event_id: input.eventId ?? `evt_${crypto.randomUUID().replaceAll("-", "")}`,
       event_name: input.eventName,
       session_id: identity.sessionId,
       anonymous_id: identity.anonymousId,

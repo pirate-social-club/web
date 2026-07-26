@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Flag, Plus, User, Wallet } from "@phosphor-icons/react";
+import { Flag, Plus } from "@phosphor-icons/react";
 
 import type { AppRoute } from "@/app/router";
 import { isNativePublicIdentityRoute, navigate, navigateOrReload, useRoute } from "@/app/router";
@@ -34,11 +34,11 @@ import { RouteContentFallback } from "./route-content-fallback";
 import {
   activeSidebarItem,
   buildCodeItems,
+  buildMediaSpineItems,
   buildResourceItems,
   buildSidebarSections,
-  buildVideoPrimaryItems,
-  usesHeaderlessDesktopLayout,
 } from "./sidebar-sections";
+import { resolveSessionAvatarFallback } from "./session-avatar";
 import { useShellMobileLayout } from "./use-shell-mobile-layout";
 
 const LazyAuthenticatedRouteRenderer = React.lazy(async () => {
@@ -154,38 +154,37 @@ function NotificationShell({
   const clientReady = useClientHydrated();
   const notificationSummary = useNotificationSummary();
   const unreadChatCount = useAssistantUnreadCount();
+  const unreadNotificationCount = notificationSummary.open_task_count + notificationSummary.unread_activity_count;
   const { moderatedCommunities, recentCommunities } = useSidebarCommunities();
   const codeItems = buildCodeItems(copy.appSidebar);
   const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities, isMobileLayout);
   // Profile and Wallet used to live in the desktop header; with the headerless media
-  // layout they belong in the sidebar spine instead. Upload stays last.
-  const basePrimaryItems = buildVideoPrimaryItems(copy.appSidebar);
-  const primaryItems = [
-    ...basePrimaryItems.filter((item) => item.id !== "upload"),
-    {
-      icon: User,
-      id: "profile",
-      label: copy.mobileFooter.profileLabel,
-      onSelect: () => {
-        if (session) {
-          navigateOrReload("/me");
-          return;
-        }
-        if (connect) {
-          connect();
-          return;
-        }
-        toast.info(copy.appHeader.connectUnavailableToast);
-      },
+  // layout they belong in the sidebar spine instead. Profile anchors the bottom of the
+  // spine, below Wallet and Upload, and shows the signed-in viewer's real avatar
+  // (TikTok-style) once hydration confirms a session; signed-out viewers keep the
+  // generic icon and get the connect flow on select. The unread badges the desktop
+  // header used to carry ride the Chat and Activity spine items instead.
+  const primaryItems = buildMediaSpineItems(copy.appSidebar, {
+    avatarFallback: resolveSessionAvatarFallback(session, copy.appHeader.defaultAvatarFallback),
+    avatarSeed: clientReady && session ? session.profile?.id ?? null : null,
+    avatarSrc: clientReady && session ? session.profile?.avatar_ref ?? null : undefined,
+    onProfileSelect: () => {
+      if (session) {
+        navigateOrReload("/me");
+        return;
+      }
+      if (connect) {
+        connect();
+        return;
+      }
+      toast.info(copy.appHeader.connectUnavailableToast);
     },
-    {
-      icon: Wallet,
-      id: "wallet",
-      label: copy.mobileFooter.walletLabel,
-      onSelect: () => navigateOrReload("/wallet"),
-    },
-    ...basePrimaryItems.filter((item) => item.id === "upload"),
-  ];
+    onWalletSelect: () => navigateOrReload("/wallet"),
+    profileLabel: copy.mobileFooter.profileLabel,
+    unreadActivityCount: clientReady && session ? unreadNotificationCount : 0,
+    unreadChatCount: clientReady && session ? unreadChatCount : 0,
+    walletLabel: copy.mobileFooter.walletLabel,
+  });
   const resourceItems = buildResourceItems(copy.appSidebar);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const isMobileStandaloneRoute = isMobileLayout && (
@@ -214,8 +213,6 @@ function NotificationShell({
   // Temporary: migrated routes own their own page shell padding.
   // Remove this once all routes are converted.
   const isMigratedRoute = route.kind === "home" || route.kind === "community-feed" || route.kind === "popular" || route.kind === "wallet";
-  const unreadNotificationCount = notificationSummary.open_task_count + notificationSummary.unread_activity_count;
-  const useHeaderlessDesktopLayout = usesHeaderlessDesktopLayout(route);
   const recentSection = sections.find((section) => section.id === "recent");
   const mediaSections = [
     {
@@ -303,7 +300,6 @@ function NotificationShell({
               <SidebarInset className="min-h-0">
                 <AppShellHeader
                   copy={copy}
-                  desktopHidden={useHeaderlessDesktopLayout}
                   mobileMediaOverlay={route.kind === "home"}
                   onSearchClick={() => setSearchOpen(true)}
                   route={route}

@@ -15,7 +15,6 @@ import { RootErrorBoundary } from "../root-error-boundary";
 import { RouteContentFallback } from "../route-content-fallback";
 
 const copy = getLocaleMessages("en", "shell");
-const homeRoute: AppRoute = { kind: "home", path: "/" };
 const communityRoute: AppRoute = { kind: "community", path: "/c/builders", communityId: "cmt_builders" };
 const postRoute: AppRoute = { kind: "post", path: "/posts/post_123", postId: "post_123" };
 const storyCapabilities: SessionExchangeResponse["user"]["verification_capabilities"] = {
@@ -108,30 +107,6 @@ const meta = {
 export default meta;
 
 type Story = StoryObj<typeof meta>;
-
-export const DesktopHeader: Story = {
-  render: () => (
-    <ShellFrame>
-      <AppShellHeader copy={copy} route={homeRoute} unreadNotificationCount={0} />
-    </ShellFrame>
-  ),
-};
-
-export const DesktopHeaderWithNotifications: Story = {
-  render: () => (
-    <AuthenticatedShellFrame>
-      <AppShellHeader copy={copy} route={homeRoute} unreadNotificationCount={12} />
-    </AuthenticatedShellFrame>
-  ),
-};
-
-export const DesktopHeaderWithChatNotification: Story = {
-  render: () => (
-    <AuthenticatedShellFrame>
-      <AppShellHeader copy={copy} route={homeRoute} unreadChatCount={1} unreadNotificationCount={0} />
-    </AuthenticatedShellFrame>
-  ),
-};
 
 export const MobileHeaderBack: Story = {
   parameters: {

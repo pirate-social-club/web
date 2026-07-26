@@ -38,6 +38,12 @@ import { Type } from "@/components/primitives/type";
 type SidebarIcon = Icon;
 
 export interface AppSidebarPrimaryItem {
+  avatarFallback?: string;
+  avatarSeed?: string | null;
+  /** `undefined` renders the icon; a string or null renders the viewer's avatar (fallback when null). */
+  avatarSrc?: string | null;
+  /** Unread count overlaid on the item visual; 0 or undefined hides the badge. */
+  badgeCount?: number;
   id: string;
   icon: SidebarIcon;
   label: string;
@@ -69,6 +75,18 @@ const sectionLabelClassName =
 
 const topLevelRowClassName = "h-11 rounded-xl px-3.5 text-base font-medium";
 const nestedRowClassName = "h-11 rounded-xl px-3.5 text-base font-medium";
+// These destinations already have persistent, one-tap homes in the mobile footer.
+// Keep the drawer focused on search, feed controls, discovery, and communities.
+const mobileFooterItemIds = new Set(["home", "popular", "chat", "activity", "wallet", "profile"]);
+
+function formatUnreadCount(count: number): string {
+  return count > 99 ? "99+" : String(count);
+}
+
+function normalizeUnreadCount(count: number | undefined): number {
+  if (count === undefined || !Number.isFinite(count)) return 0;
+  return Math.max(0, Math.floor(count));
+}
 
 const DEFAULT_PRIMARY_ITEMS: readonly AppSidebarPrimaryItem[] = [
   { id: "home", icon: House, label: "Home" },
@@ -77,6 +95,12 @@ const DEFAULT_PRIMARY_ITEMS: readonly AppSidebarPrimaryItem[] = [
   { id: "create-community", icon: Plus, label: "Create Community" },
 ];
 
+export function filterPrimaryItemsForLayout(
+  items: readonly AppSidebarPrimaryItem[],
+  isMobile: boolean,
+): readonly AppSidebarPrimaryItem[] {
+  return isMobile ? items.filter((item) => !mobileFooterItemIds.has(item.id)) : items;
+}
 
 
 function SidebarSectionBlock({
@@ -335,9 +359,7 @@ export function AppSidebar({
     if (item.id === "home" && onHomeClick && item.onSelect === undefined) return { ...resolvedItem, onSelect: onHomeClick };
     return resolvedItem;
   });
-  const visiblePrimaryItems = isMobile
-    ? resolvedPrimaryItems.filter((item) => item.id !== "home" && item.id !== "popular")
-    : resolvedPrimaryItems;
+  const visiblePrimaryItems = filterPrimaryItemsForLayout(resolvedPrimaryItems, isMobile);
   const resolvedCodeItems = codeItems ?? copy.appSidebar.codeItems;
   const resolvedCodeLabel = codeLabel ?? copy.appSidebar.codeLabel;
   const resolvedSections = sections ?? copy.appSidebar.sections;
@@ -438,10 +460,12 @@ export function AppSidebar({
                   : item.id === "home"
                     ? activeItemId === "home"
                     : item.id === activeItemId;
+                const badgeCount = normalizeUnreadCount(item.badgeCount);
 
                 return (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
+                      aria-label={badgeCount > 0 ? `${item.label}, ${badgeCount}` : undefined}
                       className={topLevelRowClassName}
                       isActive={active}
                       onClick={() => {
@@ -454,7 +478,27 @@ export function AppSidebar({
                       }}
                       tooltip={item.label}
                     >
-                      <Icon className="size-5" weight={active ? "fill" : "regular"} />
+                      <span className="relative inline-flex shrink-0">
+                        {item.avatarSrc !== undefined ? (
+                          <Avatar
+                            className="size-7 border-border-soft"
+                            fallback={item.avatarFallback ?? item.label}
+                            fallbackSeed={item.avatarSeed ?? undefined}
+                            size="xs"
+                            src={item.avatarSrc ?? undefined}
+                          />
+                        ) : (
+                          <Icon className="size-5" weight={active ? "fill" : "regular"} />
+                        )}
+                        {badgeCount > 0 ? (
+                          <span
+                            aria-hidden="true"
+                            className="notification-count-badge absolute -end-2 -top-2"
+                          >
+                            {formatUnreadCount(badgeCount)}
+                          </span>
+                        ) : null}
+                      </span>
                       <span>{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

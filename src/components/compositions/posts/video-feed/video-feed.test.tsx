@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 
 import {
+  classifyVideoPlayRejection,
   isVideoLoopReplay,
+  videoImpressionEventId,
   videoProgressKeyAction,
   VideoFeed,
   type VideoFeedImpression,
@@ -34,6 +36,21 @@ const item: VideoFeedItem = {
   study: "ready",
   viewerState: "allowed",
 };
+
+describe("video impression identity and playback failures", () => {
+  test("builds one deterministic id from the feed, item, and committed activation sequence", () => {
+    expect(videoImpressionEventId("feed_test", "post_test", 3))
+      .toBe("evt_video_feed_test_post_test_3");
+  });
+
+  test("separates autoplay policy, abort, and media playback failures", () => {
+    expect(classifyVideoPlayRejection(new DOMException("blocked", "NotAllowedError")))
+      .toBe("autoplay_blocked");
+    expect(classifyVideoPlayRejection(new DOMException("interrupted", "AbortError"))).toBeNull();
+    expect(classifyVideoPlayRejection(new DOMException("decode", "NotSupportedError")))
+      .toBe("playback_error");
+  });
+});
 
 function feedItems(): VideoFeedItem[] {
   return [
@@ -439,7 +456,9 @@ describe("VideoFeed", () => {
   });
 
   test("shows a non-persistent play affordance when muted autoplay is blocked", async () => {
-    const restorePlay = mockVideoPlay(() => Promise.reject(new Error("autoplay blocked")));
+    const restorePlay = mockVideoPlay(() => Promise.reject(
+      new DOMException("autoplay blocked", "NotAllowedError"),
+    ));
     try {
       const calls: VideoFeedPlaybackState[] = [];
       const view = render(
@@ -470,7 +489,7 @@ describe("VideoFeed", () => {
   test("retries a previously blocked autoplay when the slide becomes active again", async () => {
     let shouldReject = true;
     const restorePlay = mockVideoPlay(() => shouldReject
-      ? Promise.reject(new Error("autoplay blocked"))
+      ? Promise.reject(new DOMException("autoplay blocked", "NotAllowedError"))
       : Promise.resolve());
     try {
       const view = render(<VideoFeed initialMuted items={feedItems()} />);
@@ -653,6 +672,7 @@ describe("VideoFeed", () => {
     const calls: string[] = [];
     const view = render(
       <VideoFeed
+        feedRequestId="feed_metrics"
         items={feedItems()}
         onActiveItemChange={(activeItem) => calls.push(activeItem.id)}
       />,
@@ -714,6 +734,7 @@ describe("VideoFeed", () => {
     const calls: Array<{ id: string; impression: VideoFeedImpression }> = [];
     const view = render(
       <VideoFeed
+        feedRequestId="feed_metrics"
         items={feedItems()}
         onImpression={(activeItem, impression) => calls.push({ id: activeItem.id, impression })}
       />,
@@ -739,13 +760,74 @@ describe("VideoFeed", () => {
     expect(calls[0]?.impression).toMatchObject({
       completionRatio: 0.1,
       durationSeconds: 10,
+      eventId: "evt_video_feed_metrics_one_1",
+      exitReason: "swipe",
+      feedRequestId: "feed_metrics",
       muted: true,
       playbackSeconds: 1,
       position: 0,
       replayCount: 1,
+      slideEntrySequence: 1,
       soundOnAtAnyPoint: false,
     });
     expect(calls[0]?.impression.dwellMs).toBeGreaterThanOrEqual(0);
+  });
+
+  test("reuses an activation id across item-identity rerenders and increments on revisit", () => {
+    const calls: VideoFeedImpression[] = [];
+    const onImpression = (_activeItem: VideoFeedItem, impression: VideoFeedImpression) => {
+      calls.push(impression);
+    };
+    const view = render(
+      <VideoFeed
+        feedRequestId="feed_revisit"
+        items={feedItems()}
+        onImpression={onImpression}
+      />,
+    );
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+
+    view.rerender(
+      <VideoFeed
+        feedRequestId="feed_revisit"
+        items={feedItems().map((feedItem) => ({ ...feedItem }))}
+        onImpression={onImpression}
+      />,
+    );
+    expect(calls).toHaveLength(0);
+
+    Object.defineProperty(feed, "scrollTop", { configurable: true, writable: true, value: 100 });
+    settleFeedScroll(feed);
+    feed.scrollTop = 0;
+    settleFeedScroll(feed);
+    feed.scrollTop = 100;
+    settleFeedScroll(feed);
+
+    expect(calls.map((impression) => impression.eventId)).toEqual([
+      "evt_video_feed_revisit_one_1",
+      "evt_video_feed_revisit_two_1",
+      "evt_video_feed_revisit_one_2",
+    ]);
+  });
+
+  test("gives media errors precedence over swipe", () => {
+    const calls: VideoFeedImpression[] = [];
+    const view = render(
+      <VideoFeed
+        feedRequestId="feed_error"
+        items={feedItems()}
+        onImpression={(_activeItem, impression) => calls.push(impression)}
+      />,
+    );
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    const activeVideo = view.container.querySelector<HTMLVideoElement>("video")!;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+    fireEvent.error(activeVideo);
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
+    settleFeedScroll(feed);
+
+    expect(calls[0]?.exitReason).toBe("playback_error");
   });
 
   test("mounts media only near the active slide without removing snap shells", () => {

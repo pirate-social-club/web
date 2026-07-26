@@ -43,6 +43,8 @@ export interface VideoFeedProps {
   initialMuted?: boolean;
   initialPaused?: boolean;
   initialPlaybackSeconds?: number;
+  /** Opaque identity shared by every impression in one accepted feed bootstrap. */
+  feedRequestId?: string;
   items: VideoFeedItem[];
   onActiveItemChange?: (item: VideoFeedItem, index: number) => void;
   onBook?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
@@ -78,11 +80,49 @@ export interface VideoFeedImpression {
   completionRatio: number;
   durationSeconds: number;
   dwellMs: number;
+  eventId: string;
+  exitReason: VideoFeedImpressionExitReason;
+  feedRequestId: string;
   muted: boolean;
   playbackSeconds: number;
   position: number;
   replayCount: number;
+  slideEntrySequence: number;
   soundOnAtAnyPoint: boolean;
+}
+
+export type VideoFeedImpressionExitReason =
+  | "autoplay_blocked"
+  | "playback_error"
+  | "route_unmount"
+  | "swipe"
+  | "visibility_hidden";
+
+type VideoFeedImpressionIdentity = {
+  eventId: string;
+  feedRequestId: string;
+  slideEntrySequence: number;
+};
+
+export function videoImpressionEventId(
+  feedRequestId: string,
+  itemId: string,
+  slideEntrySequence: number,
+): string {
+  return `evt_video_${feedRequestId}_${encodeURIComponent(itemId)}_${slideEntrySequence}`;
+}
+
+export function classifyVideoPlayRejection(
+  error: unknown,
+): "autoplay_blocked" | "playback_error" | null {
+  const name = error instanceof DOMException
+    ? error.name
+    : typeof error === "object" && error !== null && "name" in error
+      ? String(error.name)
+      : "";
+  if (name === "AbortError") return null;
+  if (name === "NotAllowedError") return "autoplay_blocked";
+  return "playback_error";
 }
 
 export const VIDEO_FEED_MUTED_PREFERENCE_KEY = "pirate.video-feed.muted";
@@ -296,6 +336,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   followLabel,
   followingLabel,
   impressionVisible,
+  impressionIdentity,
   intentionalPaused,
   item,
   itemPosition,
@@ -337,6 +378,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   followLabel: string;
   followingLabel: string;
   impressionVisible: boolean;
+  impressionIdentity: VideoFeedImpressionIdentity;
   intentionalPaused: boolean;
   item: VideoFeedItem;
   itemPosition: number;
@@ -372,14 +414,26 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   const [showSoundPrompt, setShowSoundPrompt] = React.useState(false);
   const [showOriginalCaption, setShowOriginalCaption] = React.useState(false);
   const impressionRef = React.useRef<{
+    autoplayBlocked: boolean;
+    eventId: string;
+    feedRequestId: string;
     muted: boolean;
+    playbackError: boolean;
+    playbackStarted: boolean;
     previousPlaybackSeconds: number;
     replayCount: number;
+    slideEntrySequence: number;
     soundOnAtAnyPoint: boolean;
     startedAt: number;
     item: VideoFeedItem;
     watchedSeconds: number;
   } | null>(null);
+  const navigationExitReasonRef = React.useRef<VideoFeedImpressionExitReason>("route_unmount");
+  navigationExitReasonRef.current = impressionVisible
+    ? "route_unmount"
+    : active
+      ? "visibility_hidden"
+      : "swipe";
 
   const paintProgress = React.useCallback((video: HTMLVideoElement) => {
     const paint = () => {
@@ -416,9 +470,15 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   React.useEffect(() => {
     if (!impressionVisible) return;
     impressionRef.current = {
+      autoplayBlocked: false,
+      eventId: impressionIdentity.eventId,
+      feedRequestId: impressionIdentity.feedRequestId,
       muted,
+      playbackError: false,
+      playbackStarted: false,
       previousPlaybackSeconds: videoRef.current?.currentTime ?? 0,
       replayCount: 0,
+      slideEntrySequence: impressionIdentity.slideEntrySequence,
       soundOnAtAnyPoint: !muted,
       startedAt: performance.now(),
       item,
@@ -436,18 +496,27 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
         video?.currentTime ?? impression.previousPlaybackSeconds,
         impression.previousPlaybackSeconds,
       );
+      const exitReason = impression.playbackError
+        ? "playback_error"
+        : impression.autoplayBlocked && !impression.playbackStarted && playbackSeconds <= 0
+          ? "autoplay_blocked"
+          : navigationExitReasonRef.current;
       onImpression?.(impression.item, {
         completionRatio: durationSeconds > 0 ? Math.min(1, playbackSeconds / durationSeconds) : 0,
         durationSeconds,
         dwellMs: Math.max(0, Math.round(performance.now() - impression.startedAt)),
+        eventId: impression.eventId,
+        exitReason,
+        feedRequestId: impression.feedRequestId,
         muted: impression.muted,
         playbackSeconds,
         position: itemPosition,
         replayCount: impression.replayCount,
+        slideEntrySequence: impression.slideEntrySequence,
         soundOnAtAnyPoint: impression.soundOnAtAnyPoint,
       });
     };
-  }, [impressionVisible, item.id, itemPosition, onImpression]);
+  }, [impressionIdentity, impressionVisible, item.id, itemPosition, onImpression]);
 
   React.useEffect(() => {
     if (!impressionRef.current) return;
@@ -482,9 +551,19 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
     }
     const playback = video.play?.();
     void Promise.resolve(playback).then(() => {
+      if (impressionRef.current) {
+        impressionRef.current.autoplayBlocked = false;
+        impressionRef.current.playbackStarted = true;
+      }
       if (autoplayBlocked) onAutoplayBlockedChange(item.id, false);
-    }).catch(() => {
-      onAutoplayBlockedChange(item.id, true);
+    }).catch((error: unknown) => {
+      const failure = classifyVideoPlayRejection(error);
+      if (!failure) return;
+      if (impressionRef.current) {
+        impressionRef.current.autoplayBlocked = failure === "autoplay_blocked";
+        impressionRef.current.playbackError = failure === "playback_error";
+      }
+      onAutoplayBlockedChange(item.id, failure === "autoplay_blocked");
     });
   }, [active, allowAutoplay, autoplayBlocked, item.id, mediaMounted, onAutoplayBlockedChange, paused]);
 
@@ -642,6 +721,14 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
                 impression.previousPlaybackSeconds,
               );
               impression.previousPlaybackSeconds = currentTime;
+            }}
+            onError={() => {
+              if (impressionRef.current) impressionRef.current.playbackError = true;
+            }}
+            onPlaying={() => {
+              if (!impressionRef.current) return;
+              impressionRef.current.autoplayBlocked = false;
+              impressionRef.current.playbackStarted = true;
             }}
           />
         ) : item.media.posterSrc ? (
@@ -971,6 +1058,7 @@ export function VideoFeed({
   downvoteLabel = "Downvote",
   followLabel = "Follow",
   followingLabel = "Following",
+  feedRequestId,
   initialItemId,
   initialMuted,
   initialPaused = false,
@@ -991,6 +1079,37 @@ export function VideoFeed({
   const restoredInitialItemIdRef = React.useRef<string | null>(null);
   const initialIndex = Math.max(0, items.findIndex((item) => item.id === initialItemId));
   const [activeIndex, setActiveIndex] = React.useState(initialIndex);
+  const activeIndexRef = React.useRef(initialIndex);
+  const localFeedRequestIdRef = React.useRef(`feed_${crypto.randomUUID().replaceAll("-", "")}`);
+  const effectiveFeedRequestId = feedRequestId ?? localFeedRequestIdRef.current;
+  const activationFeedRequestIdRef = React.useRef(effectiveFeedRequestId);
+  const activationSequenceByItemRef = React.useRef(new Map<string, number>());
+  const impressionIdentityByItemRef = React.useRef(new Map<string, VideoFeedImpressionIdentity>());
+  const activeActivationItemIdRef = React.useRef<string | null>(null);
+  if (activationFeedRequestIdRef.current !== effectiveFeedRequestId) {
+    activationFeedRequestIdRef.current = effectiveFeedRequestId;
+    activationSequenceByItemRef.current.clear();
+    impressionIdentityByItemRef.current.clear();
+    activeActivationItemIdRef.current = null;
+  }
+  const activateItem = React.useCallback((itemId: string): VideoFeedImpressionIdentity => {
+    if (activeActivationItemIdRef.current === itemId) {
+      const existing = impressionIdentityByItemRef.current.get(itemId);
+      if (existing) return existing;
+    }
+    const sequence = (activationSequenceByItemRef.current.get(itemId) ?? 0) + 1;
+    activationSequenceByItemRef.current.set(itemId, sequence);
+    const identity = {
+      eventId: videoImpressionEventId(effectiveFeedRequestId, itemId, sequence),
+      feedRequestId: effectiveFeedRequestId,
+      slideEntrySequence: sequence,
+    };
+    impressionIdentityByItemRef.current.set(itemId, identity);
+    activeActivationItemIdRef.current = itemId;
+    return identity;
+  }, [effectiveFeedRequestId]);
+  const initialActiveItem = items[initialIndex];
+  if (initialActiveItem && activeActivationItemIdRef.current === null) activateItem(initialActiveItem.id);
   const [documentHidden, setDocumentHidden] = React.useState(false);
   const [pausedItemIds, setPausedItemIds] = React.useState<Set<string>>(() => initialPaused && initialItemId ? new Set([initialItemId]) : new Set());
   const [autoplayBlockedItemIds, setAutoplayBlockedItemIds] = React.useState<Set<string>>(() => new Set());
@@ -1030,6 +1149,8 @@ export function VideoFeed({
         return;
       }
       restoredInitialItemIdRef.current = initialItemId;
+      activeIndexRef.current = restoredIndex;
+      activateItem(initialItemId);
       setActiveIndex(restoredIndex);
       if (restoredIndex > 0) container.scrollTop = restoredIndex * container.clientHeight;
     };
@@ -1037,7 +1158,7 @@ export function VideoFeed({
     return () => {
       if (frame != null) window.cancelAnimationFrame(frame);
     };
-  }, [initialItemId, items]);
+  }, [activateItem, initialItemId, items]);
 
   React.useEffect(() => {
     const mediaQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -1060,17 +1181,28 @@ export function VideoFeed({
     const container = containerRef.current;
     if (!container) return;
     container.scrollTo({ behavior: reduceMotion ? "auto" : "smooth", top: nextIndex * container.clientHeight });
+    const nextItem = items[nextIndex];
+    if (nextItem && (activeIndexRef.current !== nextIndex || activeActivationItemIdRef.current !== nextItem.id)) {
+      activeIndexRef.current = nextIndex;
+      activateItem(nextItem.id);
+    }
     setActiveIndex(nextIndex);
-  }, [items.length, reduceMotion]);
+  }, [activateItem, items, reduceMotion]);
 
   const commitSettledIndex = React.useCallback(() => {
     const container = containerRef.current;
     if (!container || container.clientHeight <= 0) return;
-    setActiveIndex(Math.max(0, Math.min(
+    const nextIndex = Math.max(0, Math.min(
       items.length - 1,
       Math.round(container.scrollTop / container.clientHeight),
-    )));
-  }, [items.length]);
+    ));
+    const nextItem = items[nextIndex];
+    if (nextItem && (activeIndexRef.current !== nextIndex || activeActivationItemIdRef.current !== nextItem.id)) {
+      activeIndexRef.current = nextIndex;
+      activateItem(nextItem.id);
+    }
+    setActiveIndex(nextIndex);
+  }, [activateItem, items]);
 
   const scheduleSettledIndex = React.useCallback(() => {
     if (scrollSettleTimerRef.current) clearTimeout(scrollSettleTimerRef.current);
@@ -1195,6 +1327,18 @@ export function VideoFeed({
     return <div className="grid h-lvh place-items-center md:h-dvh"><Type variant="h3">No videos yet</Type></div>;
   }
 
+  const impressionIdentityForItem = (itemId: string): VideoFeedImpressionIdentity => {
+    const existing = impressionIdentityByItemRef.current.get(itemId);
+    if (existing) return existing;
+    const inactiveIdentity = {
+      eventId: videoImpressionEventId(effectiveFeedRequestId, itemId, 0),
+      feedRequestId: effectiveFeedRequestId,
+      slideEntrySequence: 0,
+    };
+    impressionIdentityByItemRef.current.set(itemId, inactiveIdentity);
+    return inactiveIdentity;
+  };
+
   return (
     <div className={cn("relative h-lvh w-full md:h-dvh", className)}>
     <div
@@ -1222,6 +1366,7 @@ export function VideoFeed({
             followingLabel={followingLabel}
             item={item}
             itemPosition={index}
+            impressionIdentity={impressionIdentityForItem(item.id)}
             impressionVisible={index === activeIndex && !documentHidden}
             intentionalPaused={pausedItemIds.has(item.id)}
             initialPlaybackSeconds={item.id === initialItemId ? initialPlaybackSeconds : undefined}

@@ -265,12 +265,15 @@ export function videoImpressionAnalyticsProperties(
     completion_ratio: Number(impression.completionRatio.toFixed(4)),
     duration_seconds: Number(impression.durationSeconds.toFixed(3)),
     dwell_ms: impression.dwellMs,
+    exit_reason: impression.exitReason,
+    feed_request_id: impression.feedRequestId,
     muted: impression.muted,
     orientation: item.media.orientation,
     playback_seconds: Number(impression.playbackSeconds.toFixed(3)),
     position: impression.position,
     publisher_kind: item.publisher.kind,
     replay_count: impression.replayCount,
+    slide_entry_sequence: impression.slideEntrySequence,
     sound_on: impression.soundOnAtAnyPoint,
   };
 }
@@ -302,6 +305,7 @@ export function VideoHomePage() {
   const loadingMoreRef = React.useRef(false);
   const consecutiveNoGrowthPagesRef = React.useRef(0);
   const feedGenerationRef = React.useRef(0);
+  const feedRequestIdRef = React.useRef<string | null>(null);
   const authorProfilesRef = React.useRef(authorProfiles);
   const pageItemCacheRef = React.useRef(new Map<string, CachedPageItem>());
   const bootstrapRequestRef = React.useRef<{
@@ -434,6 +438,7 @@ export function VideoHomePage() {
           (entry) => entry.post.post.id,
           readRecentLeadVideoIds(),
         );
+        feedRequestIdRef.current = `feed_${crypto.randomUUID().replaceAll("-", "")}`;
         const leadPostId = items[0]?.post.post.id;
         if (leadPostId) recordRecentLeadVideoId(leadPostId);
         seenPostIdsRef.current = new Set(items.map((entry) => entry.post.post.id));
@@ -657,6 +662,7 @@ export function VideoHomePage() {
 
   const onImpression = React.useCallback((item: VideoFeedItem, impression: VideoFeedImpression) => {
     trackAnalyticsEvent({
+      eventId: impression.eventId,
       eventName: "video_impression",
       communityId: item.communityId,
       postId: item.id,
@@ -959,6 +965,7 @@ export function VideoHomePage() {
         downvoteLabel={copy.common.downvote}
         followLabel={copy.home.videoPublisherFollow}
         followingLabel={copy.home.videoPublisherFollowing}
+        feedRequestId={feedRequestIdRef.current ?? undefined}
         initialItemId={restored?.itemId}
         initialMuted={restored?.muted}
         initialPaused={restored?.paused}

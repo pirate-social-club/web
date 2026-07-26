@@ -10,6 +10,7 @@ import {
   seedPublicThreadQueriesFromFeed,
   updateCachedPublicThreadPost,
 } from "@/lib/query/public-thread-cache";
+import { rotateToUnseenLead } from "@/lib/video-feed-lead-rotation";
 
 import {
   appendUniqueVideoEntries,
@@ -146,6 +147,33 @@ describe("feed comments panel routing", () => {
       pirateFeedComments: { itemId: "video-1", postId: "post-1" },
     })).toEqual({ itemId: "video-1", kind: "comments", postId: "post-1" });
     expect(panelFromHistoryState({ pirateFeedComments: { itemId: "video-1" } })).toEqual({ kind: "none" });
+  });
+});
+
+describe("recent-lead rotation over feed entries", () => {
+  // The bootstrap effect reads ids through `entry.post.post.id`. The rotation
+  // helper is generic, so this is the only place that accessor is pinned
+  // against the real feed-entry shape.
+  const idOf = (entry: HomeFeedItem) => entry.post.post.id;
+
+  test("opens on the first video the viewer has not recently been led with", () => {
+    const page = [feedEntry("pst_a"), feedEntry("pst_b"), feedEntry("pst_c")];
+    const rotated = rotateToUnseenLead(page, idOf, ["pst_a"]);
+    expect(rotated.map(idOf)).toEqual(["pst_b", "pst_c", "pst_a"]);
+  });
+
+  test("keeps every post on the page so pagination dedupe still sees them", () => {
+    const page = [feedEntry("pst_a"), feedEntry("pst_b"), feedEntry("pst_c")];
+    const rotated = rotateToUnseenLead(page, idOf, ["pst_a", "pst_b"]);
+    expect(new Set(rotated.map(idOf))).toEqual(new Set(["pst_a", "pst_b", "pst_c"]));
+  });
+
+  test("still fills the feed once every post has led", () => {
+    const page = [feedEntry("pst_a"), feedEntry("pst_b")];
+    expect(rotateToUnseenLead(page, idOf, ["pst_a", "pst_b"]).map(idOf)).toEqual([
+      "pst_a",
+      "pst_b",
+    ]);
   });
 });
 

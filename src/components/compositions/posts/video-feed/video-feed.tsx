@@ -1189,11 +1189,11 @@ export function VideoFeed({
   }, [actions.onActiveItemChange, activeIndex, items]);
 
   if (items.length === 0) {
-    return <div className="grid h-dvh place-items-center"><Type variant="h3">No videos yet</Type></div>;
+    return <div className="grid h-svh place-items-center md:h-dvh"><Type variant="h3">No videos yet</Type></div>;
   }
 
   return (
-    <div className={cn("relative h-dvh w-full", className)}>
+    <div className={cn("relative h-svh w-full md:h-dvh", className)}>
     <div
       ref={containerRef}
       aria-label="Video feed"

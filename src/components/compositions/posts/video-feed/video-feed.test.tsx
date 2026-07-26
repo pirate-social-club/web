@@ -581,6 +581,15 @@ describe("VideoFeed", () => {
     expect(calls).toEqual([{ behavior: "smooth", top: 640 }]);
   });
 
+  test("uses stable mobile viewport geometry while browser chrome changes", () => {
+    const view = render(<VideoFeed items={[item]} />);
+    const viewport = view.getByLabelText("Video feed").parentElement!;
+
+    expect(viewport.className).toContain("h-svh");
+    expect(viewport.className).toContain("md:h-dvh");
+    expect(viewport.className.split(" ")).not.toContain("h-dvh");
+  });
+
   test("exposes desktop previous and next controls with bounded navigation", () => {
     const view = render(
       <VideoFeed

@@ -38,6 +38,12 @@ import { Type } from "@/components/primitives/type";
 type SidebarIcon = Icon;
 
 export interface AppSidebarPrimaryItem {
+  avatarFallback?: string;
+  avatarSeed?: string | null;
+  /** `undefined` renders the icon; a string or null renders the viewer's avatar (fallback when null). */
+  avatarSrc?: string | null;
+  /** Unread count overlaid on the item visual; 0 or undefined hides the badge. */
+  badgeCount?: number;
   id: string;
   icon: SidebarIcon;
   label: string;
@@ -69,6 +75,15 @@ const sectionLabelClassName =
 
 const topLevelRowClassName = "h-11 rounded-xl px-3.5 text-base font-medium";
 const nestedRowClassName = "h-11 rounded-xl px-3.5 text-base font-medium";
+
+function formatUnreadCount(count: number): string {
+  return count > 99 ? "99+" : String(count);
+}
+
+function normalizeUnreadCount(count: number | undefined): number {
+  if (count === undefined || !Number.isFinite(count)) return 0;
+  return Math.max(0, Math.floor(count));
+}
 
 const DEFAULT_PRIMARY_ITEMS: readonly AppSidebarPrimaryItem[] = [
   { id: "home", icon: House, label: "Home" },
@@ -438,10 +453,12 @@ export function AppSidebar({
                   : item.id === "home"
                     ? activeItemId === "home"
                     : item.id === activeItemId;
+                const badgeCount = normalizeUnreadCount(item.badgeCount);
 
                 return (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
+                      aria-label={badgeCount > 0 ? `${item.label}, ${badgeCount}` : undefined}
                       className={topLevelRowClassName}
                       isActive={active}
                       onClick={() => {
@@ -454,7 +471,27 @@ export function AppSidebar({
                       }}
                       tooltip={item.label}
                     >
-                      <Icon className="size-5" weight={active ? "fill" : "regular"} />
+                      <span className="relative inline-flex shrink-0">
+                        {item.avatarSrc !== undefined ? (
+                          <Avatar
+                            className="size-7 border-border-soft"
+                            fallback={item.avatarFallback ?? item.label}
+                            fallbackSeed={item.avatarSeed ?? undefined}
+                            size="xs"
+                            src={item.avatarSrc ?? undefined}
+                          />
+                        ) : (
+                          <Icon className="size-5" weight={active ? "fill" : "regular"} />
+                        )}
+                        {badgeCount > 0 ? (
+                          <span
+                            aria-hidden="true"
+                            className="notification-count-badge absolute -end-2 -top-2"
+                          >
+                            {formatUnreadCount(badgeCount)}
+                          </span>
+                        ) : null}
+                      </span>
                       <span>{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

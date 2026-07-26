@@ -104,7 +104,6 @@ function navigateBack(fallbackPath: string): void {
 
 export function AppShellHeader({
   copy,
-  desktopHidden = false,
   mobileMediaOverlay = false,
   onSearchClick,
   route,
@@ -112,7 +111,6 @@ export function AppShellHeader({
   unreadNotificationCount,
 }: {
   copy: ShellMessages;
-  desktopHidden?: boolean;
   mobileMediaOverlay?: boolean;
   onSearchClick?: () => void;
   route: AppRoute;
@@ -162,7 +160,10 @@ export function AppShellHeader({
     <AppHeader
       avatarFallback={avatarFallback}
       disableCreateAction={disableCreateAction}
-      className={desktopHidden ? "md:hidden" : undefined}
+      // Desktop chrome lives in the media sidebar (brand, search, spine, account items), so
+      // the header is the mobile top bar only — this also keeps the brand logo from
+      // rendering twice, once in the sidebar header and once here.
+      className="md:hidden"
       hideDesktopConnectAction
       hideMobileBrand
       labels={{

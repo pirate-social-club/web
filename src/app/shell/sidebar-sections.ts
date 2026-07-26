@@ -16,6 +16,8 @@ import {
   Television,
   Trash,
   UploadSimple,
+  User,
+  Wallet,
 } from "@phosphor-icons/react";
 import type { ComponentProps } from "react";
 
@@ -50,20 +52,6 @@ const resourceIcons = {
   "source-radicle-web": GitBranch,
   "terms-of-service": Scroll,
 } satisfies Record<ResourceLinkId, typeof House>;
-
-export function usesHeaderlessDesktopLayout(route: AppRoute): boolean {
-  return route.kind === "home"
-    || route.kind === "community-feed"
-    || route.kind === "live"
-    || route.kind === "chat"
-    || route.kind === "chat-new"
-    || route.kind === "chat-conversation"
-    || route.kind === "chat-target"
-    || route.kind === "inbox"
-    || route.kind === "community-moderation"
-    || route.kind === "community-moderation-index"
-    || route.kind === "create-post-global";
-}
 
 export function resolveCreatePostPath(route: AppRoute): string | null {
   if (route.kind === "community") {
@@ -210,6 +198,53 @@ export function buildVideoPrimaryItems(messages: ShellMessages["appSidebar"]): A
       icon: UploadSimple,
       label: messages.videoUploadLabel,
       onSelect: () => navigateOrReload("/submit"),
+    },
+  ];
+}
+
+/**
+ * The full media spine: the six destination items with Wallet and Profile restored from the
+ * retired desktop header. Wallet slots in ahead of Upload and Profile anchors the bottom,
+ * below both, showing the signed-in viewer's real avatar (TikTok-style). `avatarSrc` left
+ * `undefined` keeps the generic Profile icon (signed out or pre-hydration). Unread counts
+ * ride the Chat and Activity items, replacing the badges the desktop header used to carry.
+ */
+export function buildMediaSpineItems(
+  messages: ShellMessages["appSidebar"],
+  account: {
+    avatarFallback: string;
+    avatarSeed?: string | null;
+    avatarSrc?: string | null;
+    onProfileSelect: () => void;
+    onWalletSelect: () => void;
+    profileLabel: string;
+    unreadActivityCount?: number;
+    unreadChatCount?: number;
+    walletLabel: string;
+  },
+): AppSidebarPrimaryItem[] {
+  const baseItems = buildVideoPrimaryItems(messages).map((item) => {
+    if (item.id === "chat") return { ...item, badgeCount: account.unreadChatCount };
+    if (item.id === "activity") return { ...item, badgeCount: account.unreadActivityCount };
+    return item;
+  });
+  return [
+    ...baseItems.filter((item) => item.id !== "upload"),
+    {
+      icon: Wallet,
+      id: "wallet",
+      label: account.walletLabel,
+      onSelect: account.onWalletSelect,
+    },
+    ...baseItems.filter((item) => item.id === "upload"),
+    {
+      avatarFallback: account.avatarFallback,
+      avatarSeed: account.avatarSeed ?? null,
+      avatarSrc: account.avatarSrc,
+      icon: User,
+      id: "profile",
+      label: account.profileLabel,
+      onSelect: account.onProfileSelect,
     },
   ];
 }

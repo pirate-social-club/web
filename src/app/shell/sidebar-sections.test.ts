@@ -5,11 +5,11 @@ import type { ShellMessages } from "@/locales";
 
 import {
   activeSidebarItem,
+  buildMediaSpineItems,
   buildResourceItems,
   buildSidebarSections,
   buildVideoPrimaryItems,
   resolveCreatePostPath,
-  usesHeaderlessDesktopLayout,
 } from "./sidebar-sections";
 
 describe("resolveCreatePostPath", () => {
@@ -102,31 +102,69 @@ describe("buildVideoPrimaryItems", () => {
   });
 });
 
+describe("buildMediaSpineItems", () => {
+  const account = {
+    avatarFallback: "Pirate User",
+    onProfileSelect: () => undefined,
+    onWalletSelect: () => undefined,
+    profileLabel: "Profile",
+    walletLabel: "Wallet",
+  };
+
+  test("anchors Profile below Wallet and Upload at the bottom of the spine", () => {
+    const items = buildMediaSpineItems({
+      videoActivityLabel: "Activity",
+      videoChatLabel: "Chat",
+      videoExploreLabel: "Explore",
+      videoForYouLabel: "For You",
+      videoLiveLabel: "Live",
+      videoUploadLabel: "Upload",
+    } as ShellMessages["appSidebar"], account);
+
+    expect(items.map((item) => item.id)).toEqual([
+      "home",
+      "community-feed",
+      "live",
+      "chat",
+      "activity",
+      "wallet",
+      "upload",
+      "profile",
+    ]);
+  });
+
+  test("keeps the generic Profile icon until a session avatar is supplied", () => {
+    const signedOut = buildMediaSpineItems({} as ShellMessages["appSidebar"], account);
+    expect(signedOut.at(-1)?.avatarSrc).toBeUndefined();
+
+    const signedIn = buildMediaSpineItems({} as ShellMessages["appSidebar"], {
+      ...account,
+      avatarSeed: "usr_1",
+      avatarSrc: null,
+    });
+    expect(signedIn.at(-1)?.avatarSrc).toBeNull();
+    expect(signedIn.at(-1)?.avatarFallback).toBe("Pirate User");
+    expect(signedIn.at(-1)?.avatarSeed).toBe("usr_1");
+  });
+
+  test("carries unread counts onto the Chat and Activity items only", () => {
+    const items = buildMediaSpineItems({} as ShellMessages["appSidebar"], {
+      ...account,
+      unreadActivityCount: 5,
+      unreadChatCount: 2,
+    });
+
+    expect(items.find((item) => item.id === "activity")?.badgeCount).toBe(5);
+    expect(items.find((item) => item.id === "chat")?.badgeCount).toBe(2);
+    expect(items.find((item) => item.id === "wallet")?.badgeCount).toBeUndefined();
+    expect(items.find((item) => item.id === "profile")?.badgeCount).toBeUndefined();
+  });
+});
+
 describe("activeSidebarItem", () => {
   test("highlights the wallet and profile sidebar entries on their routes", () => {
     expect(activeSidebarItem({ kind: "wallet", path: "/wallet" })).toBe("wallet");
     expect(activeSidebarItem({ kind: "me", path: "/me" } as AppRoute)).toBe("profile");
-  });
-});
-
-describe("usesHeaderlessDesktopLayout", () => {
-  test("selects headerless destinations synchronously from the route", () => {
-    expect(usesHeaderlessDesktopLayout({ kind: "home", path: "/" })).toBe(true);
-    expect(usesHeaderlessDesktopLayout({ kind: "community-feed", path: "/feed" })).toBe(true);
-    expect(usesHeaderlessDesktopLayout({ kind: "live", path: "/live" })).toBe(true);
-    expect(usesHeaderlessDesktopLayout({ kind: "inbox", path: "/inbox" })).toBe(true);
-    expect(usesHeaderlessDesktopLayout({
-      kind: "community-moderation",
-      path: "/c/cmt_123/mod/queue",
-      communityId: "cmt_123",
-      section: "queue",
-    } as AppRoute)).toBe(true);
-    expect(usesHeaderlessDesktopLayout({
-      kind: "community-moderation-index",
-      path: "/c/cmt_123/mod",
-      communityId: "cmt_123",
-    } as AppRoute)).toBe(true);
-    expect(usesHeaderlessDesktopLayout({ kind: "settings-index", path: "/settings" })).toBe(false);
   });
 });
 

@@ -171,8 +171,14 @@ describe("karaoke reducer watermark second gate", () => {
 
     const finished = reduce({ ...state, pendingCommit: null }, { audioTimeMs: 3000, type: "finish" })
     expect(finished.state.summary?.lineCount).toBe(2)
-    // finalScore averages only the measured (non-uncertain) line.
-    expect(finished.state.summary?.finalScore).toBeCloseTo(l1Score.score, 5)
+    // finalScore averages only the measured (non-uncertain) line. Its exact value
+    // is the summary's own recomputation: a one-line take carries too little
+    // evidence to calibrate timing, so timing contributes its neutral value
+    // rather than the live per-line read.
+    expect(finished.state.summary?.timingCalibration.state).toBe("uncalibrated")
+    const summaryL1 = finished.state.summary?.strongestLines.find((s) => s.lineId === "l1")
+    expect(finished.state.summary?.finalScore).toBeCloseTo(summaryL1!.score, 5)
+    expect(l1Score.uncertain).toBe(false)
   })
 
   test("seek rewinds watermark, clears incompatible pending commits, and releases affected scores", () => {

@@ -131,7 +131,7 @@ function viewerTimezone(): IanaTz {
  * and navigation moves into the full-height media sidebar, so the feed owns the viewport at every
  * breakpoint. Exported so that ownership stays under test.
  */
-export const VIDEO_FEED_VIEWPORT_CLASS = "h-dvh";
+export const VIDEO_FEED_VIEWPORT_CLASS = "h-lvh md:h-dvh";
 export const VIDEO_FEED_STAGE_CLASS = "relative h-full min-h-0";
 export const MAX_CONSECUTIVE_NO_GROWTH_PAGES = 3;
 const FEED_COMMENTS_HISTORY_KEY = "pirateFeedComments";

@@ -12,8 +12,14 @@ export interface KaraokeScoreSummaryProps {
   scoredLineCount?: number;
   /** Timing score, 0..1. */
   timingScore?: number;
-  /** Timing was measured for diagnostics but deliberately excluded from grading. */
+  /**
+   * Timing was measured but could not be calibrated for this take, so it did not
+   * count. Say so plainly: the singer must never be left guessing whether a
+   * missing metric cost them something.
+   */
   timingCalibrationUnavailable?: boolean;
+  /** Which way the singer sat against the beat — shown alongside the timing score. */
+  timingTrend?: "early" | "late" | "mixed" | "on_time";
   /** Lines that couldn't be measured (provider/stream failure) — drives a neutral caveat. */
   uncertainLineCount?: number;
   className?: string;
@@ -21,6 +27,21 @@ export interface KaraokeScoreSummaryProps {
 
 function percent(score: number): number {
   return Math.round(Math.min(1, Math.max(0, score)) * 100);
+}
+
+// The trend is the actionable half of the timing metric: the score says how
+// consistent you were, the label says which way to move.
+function timingLabel(trend: KaraokeScoreSummaryProps["timingTrend"]): string {
+  switch (trend) {
+    case "early":
+      return "Timing · ahead";
+    case "late":
+      return "Timing · behind";
+    case "mixed":
+      return "Timing · uneven";
+    default:
+      return "Timing";
+  }
 }
 
 function Metric({
@@ -55,6 +76,7 @@ export function KaraokeScoreSummary({
   scoredLineCount,
   timingScore,
   timingCalibrationUnavailable = false,
+  timingTrend,
   uncertainLineCount = 0,
 }: KaraokeScoreSummaryProps) {
   const showLines = typeof lineCount === "number" && typeof scoredLineCount === "number";
@@ -72,7 +94,7 @@ export function KaraokeScoreSummary({
       {showMetrics ? (
         <div className="grid w-full grid-cols-3 gap-3">
           {typeof timingScore === "number" ? (
-            <Metric label="Timing" value={`${percent(timingScore)}%`} />
+            <Metric label={timingLabel(timingTrend)} value={`${percent(timingScore)}%`} />
           ) : null}
           {typeof lyricsScore === "number" ? (
             <Metric label="Lyrics" value={`${percent(lyricsScore)}%`} />
@@ -89,7 +111,7 @@ export function KaraokeScoreSummary({
       ) : null}
       {timingCalibrationUnavailable ? (
         <Type as="p" className="text-muted-foreground" variant="caption">
-          Timing calibration is temporarily unavailable and is not included in your score.
+          We couldn't measure your timing on this take, so it didn't count against your score.
         </Type>
       ) : null}
     </div>

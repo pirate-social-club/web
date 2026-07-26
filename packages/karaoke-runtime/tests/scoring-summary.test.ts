@@ -22,7 +22,15 @@ function line(opts: { index: number; uncertain: boolean; recognized: boolean }):
       score: 0.8,
       wer: 0.2,
     },
-    timingScore: { matchedWordCount: 3, meanAbsDeltaMs: 50, score: 0.9, signedMeanDeltaMs: 50, timingTrend: "on_time" },
+    timingScore: {
+      matchedWordCount: 3,
+      meanAbsDeltaMs: 50,
+      medianAbsDeltaMs: 50,
+      medianSignedDeltaMs: 50,
+      score: 0.9,
+      signedMeanDeltaMs: 50,
+      timingTrend: "on_time",
+    },
     transcript: opts.recognized ? "x" : "",
     uncertain: opts.uncertain,
   };

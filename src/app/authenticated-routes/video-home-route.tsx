@@ -91,6 +91,14 @@ export function feedBookingSourceCommunityId(item: Pick<VideoFeedItem, "communit
   return item.communityId ?? null;
 }
 
+export function feedBookingStartingPriceCents(
+  item: Pick<VideoFeedItem, "booking">,
+): number | null {
+  return item.booking?.hasAvailableSlot
+    ? item.booking.startingPriceCents
+    : null;
+}
+
 function viewerTimezone(): IanaTz {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -708,6 +716,8 @@ export function VideoHomePage() {
 
   const openBooking = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState) => {
     if (!item.booking) return;
+    const startingPriceCents = feedBookingStartingPriceCents(item);
+    if (startingPriceCents === null) return;
     const hostUserId = item.booking.hostUserId;
     const cached = bookingCache.get(hostUserId);
     bookingRequestHostRef.current = hostUserId;
@@ -718,7 +728,7 @@ export function VideoHomePage() {
       window.history.replaceState({}, "", feedPathRef.current);
     }
     setPanelState({
-      basePriceCents: item.booking.basePriceCents,
+      startingPriceCents,
       handle: item.publisher.handle,
       hostUserId,
       itemId: item.id,
@@ -803,7 +813,7 @@ export function VideoHomePage() {
           >
             <div className="h-full overflow-y-auto p-5">
               <FeedBookingSheetBody
-                basePriceCents={panelState.basePriceCents}
+                startingPriceCents={panelState.startingPriceCents}
                 error={bookingError}
                 getSlotHref={(slot) => checkoutPathForFeedSlot(
                   panelState.hostUserId,

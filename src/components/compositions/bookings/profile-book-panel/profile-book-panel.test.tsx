@@ -44,15 +44,16 @@ describe("ProfileBookPanel", () => {
   });
 
   test("viewer with slots → price + availability rendered", () => {
-    const t = text({ mode: "viewer", basePriceCents: 5000, slots: SLOTS, viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} });
-    expect(t).toContain("50.00 USDC per session");
+    const t = text({ mode: "viewer", startingPriceCents: 5000, slots: SLOTS, viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} });
+    expect(t).toContain("$50+");
+    expect(t).not.toContain("USDC per session");
     expect(t).not.toContain("No available times");
   });
 
   test("viewer slots render checkout links when an href builder is supplied", () => {
     const markup = html({
       mode: "viewer",
-      basePriceCents: 5000,
+      startingPriceCents: 5000,
       slots: SLOTS,
       viewerTimezone: "Europe/Vienna" as never,
       getSlotHref: () => "/book/usr_host/checkout?start=2026-09-21T09%3A00%3A00.000Z",
@@ -63,13 +64,13 @@ describe("ProfileBookPanel", () => {
   });
 
   test("viewer with no slots → empty-state copy", () => {
-    const t = text({ mode: "viewer", basePriceCents: 5000, slots: [], viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} });
+    const t = text({ mode: "viewer", startingPriceCents: 5000, slots: [], viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} });
     expect(t).toContain("No available times right now");
   });
 
   // Prevents the flash: while availability is loading, show a loading hint, never the empty state.
   test("viewer loading → loading hint, not empty state", () => {
-    const t = text({ mode: "viewer", loading: true, basePriceCents: 5000, slots: [], viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} });
+    const t = text({ mode: "viewer", loading: true, startingPriceCents: 5000, slots: [], viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} });
     expect(t).toContain("Loading availability…");
     expect(t).not.toContain("No available times");
   });

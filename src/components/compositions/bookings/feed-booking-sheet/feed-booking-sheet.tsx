@@ -17,7 +17,7 @@ export function formatFeedBookingTitle(template: string, handle: string): string
 }
 
 interface FeedBookingContentProps {
-  basePriceCents: number;
+  startingPriceCents: number;
   /** Availability could not be loaded. Kept distinct from a successful empty response. */
   error?: boolean;
   slots: ResolvedSlot[];
@@ -34,7 +34,7 @@ interface FeedBookingContentProps {
  * independent of either shell also lets stories and tests exercise availability states directly.
  */
 export function FeedBookingSheetBody({
-  basePriceCents,
+  startingPriceCents,
   error,
   getSlotHref,
   loading,
@@ -57,7 +57,7 @@ export function FeedBookingSheetBody({
 
   return (
     <ProfileBookPanel
-      basePriceCents={basePriceCents}
+      startingPriceCents={startingPriceCents}
       getSlotHref={getSlotHref}
       loading={loading}
       mode="viewer"

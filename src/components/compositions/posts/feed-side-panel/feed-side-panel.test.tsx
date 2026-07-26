@@ -28,7 +28,7 @@ describe("FeedSidePanel", () => {
   test("keeps comments playing while booking retains its pause policy", () => {
     expect(feedPanelBlocksPlayback({ itemId: "video-1", kind: "comments", postId: "post-1" }, "video-1")).toBe(false);
     expect(feedPanelBlocksPlayback({
-      basePriceCents: 1_000,
+      startingPriceCents: 1_000,
       handle: "host",
       hostUserId: "host-1",
       itemId: "video-1",

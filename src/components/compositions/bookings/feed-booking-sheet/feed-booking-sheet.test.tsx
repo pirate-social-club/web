@@ -19,7 +19,7 @@ const slots = [
 ] as ResolvedSlot[];
 
 const base = {
-  basePriceCents: 3500,
+  startingPriceCents: 3500,
   onSelectSlot: () => {},
   slots,
   viewerTimezone: "Europe/Vienna" as never,
@@ -85,9 +85,10 @@ describe("FeedBookingSheet", () => {
     expect(retries).toBe(1);
   });
 
-  test("shows the session price so the viewer sees cost before choosing", () => {
-    const view = render(<FeedBookingSheetBody {...base} />);
+  test("shows the canonical starting price without claiming every session costs the base price", () => {
+    const view = render(<FeedBookingSheetBody {...base} startingPriceCents={5000} />);
 
-    expect(view.getByText("35.00 USDC per session")).toBeTruthy();
+    expect(view.getByText("$50+")).toBeTruthy();
+    expect(view.queryByText(/35(?:\.00)? USDC per session/)).toBeNull();
   });
 });

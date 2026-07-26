@@ -15,6 +15,7 @@ import {
   appendUniqueVideoEntries,
   checkoutPathForFeedSlot,
   feedBookingSourceCommunityId,
+  feedBookingStartingPriceCents,
   nextVideoPaginationCursor,
   panelFromHistoryState,
   postIdForVideoItem,
@@ -327,6 +328,32 @@ describe("feedBookingSourceCommunityId", () => {
 
   test("yields no attribution when the viewed post has no known community", () => {
     expect(feedBookingSourceCommunityId({})).toBeNull();
+  });
+});
+
+describe("feedBookingStartingPriceCents", () => {
+  test("uses the canonical discovery floor rather than the host base price", () => {
+    expect(feedBookingStartingPriceCents({
+      booking: {
+        basePriceCents: 3500,
+        currency: "USDC",
+        hasAvailableSlot: true,
+        hostUserId: "host_1",
+        startingPriceCents: 5000,
+      },
+    })).toBe(5000);
+  });
+
+  test("does not advertise a price without canonical availability", () => {
+    expect(feedBookingStartingPriceCents({
+      booking: {
+        basePriceCents: 3500,
+        currency: "USDC",
+        hasAvailableSlot: false,
+        hostUserId: "host_1",
+        startingPriceCents: null,
+      },
+    })).toBeNull();
   });
 });
 

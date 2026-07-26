@@ -445,7 +445,10 @@ export function KaraokeAudioSurface({
       lineCount={endedSummary.lineCount ?? undefined}
       scoredLineCount={endedSummary.scoredLineCount ?? undefined}
       timingScore={endedSummary.timingScore ?? undefined}
-      timingCalibrationUnavailable={!KARAOKE_TIMING_SCORING_ENABLED}
+      timingCalibrationUnavailable={
+        KARAOKE_TIMING_SCORING_ENABLED && endedSummary.timingScore === null
+      }
+      timingTrend={endedSummary.timingTrend}
       uncertainLineCount={endedSummary.uncertainLineCount}
     />
   ) : null;

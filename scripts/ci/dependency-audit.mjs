@@ -19,6 +19,7 @@
 
 import { readFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { constants as zlibConstants, gunzipSync } from "node:zlib";
 
 const SEVERITY_RANK = { critical: 4, high: 3, moderate: 2, low: 1, info: 0 };
 
@@ -40,13 +41,26 @@ function parseArgs(argv) {
 function run(command, args, cwd) {
   return new Promise((resolve) => {
     const child = spawn(command, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
-    let stdout = "";
+    const stdout = [];
     let stderr = "";
-    child.stdout.on("data", (chunk) => { stdout += chunk; });
+    child.stdout.on("data", (chunk) => { stdout.push(Buffer.from(chunk)); });
     child.stderr.on("data", (chunk) => { stderr += chunk; });
-    child.on("error", (error) => resolve({ code: -1, stderr: String(error), stdout: "" }));
-    child.on("close", (code) => resolve({ code, stderr, stdout }));
+    child.on("error", (error) => resolve({ code: -1, stderr: String(error), stdout: Buffer.alloc(0) }));
+    child.on("close", (code) => resolve({ code, stderr, stdout: Buffer.concat(stdout) }));
   });
+}
+
+export function decodeBunAuditOutput(raw) {
+  const bytes = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
+  if (bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
+    // Bun exposes only the response body, not HTTP Content-Encoding. Accept
+    // gzip-framed stdout as well as the documented plain JSON form. Z_SYNC_FLUSH
+    // also recovers a complete JSON body when a proxy omits the gzip trailer.
+    const decoded = gunzipSync(bytes, { finishFlush: zlibConstants.Z_SYNC_FLUSH }).toString("utf8");
+    if (!decoded.trim()) throw new Error("bun audit gzip output decoded to an empty body");
+    return decoded;
+  }
+  return bytes.toString("utf8");
 }
 
 // `bun audit --json` keys advisories by package name. Exit code is non-zero when
@@ -95,10 +109,11 @@ async function auditTarget(target) {
   const [dir, tool] = target.split(":");
   const command = tool === "npm" ? "npm" : "bun";
   const { code, stderr, stdout } = await run(command, ["audit", "--json"], dir);
-  if (!stdout.trim()) {
+  if (stdout.length === 0) {
     throw new Error(`${command} audit in ${dir} produced no output (exit ${code}): ${stderr.slice(0, 400)}`);
   }
-  const findings = tool === "npm" ? normalizeNpm(stdout) : normalizeBun(stdout);
+  const decoded = tool === "npm" ? stdout.toString("utf8") : decodeBunAuditOutput(stdout);
+  const findings = tool === "npm" ? normalizeNpm(decoded) : normalizeBun(decoded);
   return findings.map((finding) => ({ ...finding, target: dir }));
 }
 

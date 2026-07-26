@@ -46,9 +46,14 @@ and unexplained Worker resource exhaustion.
 
 ## Containment
 
+- Root cause: the dependency audit was not an enforced pull-request or
+  deployment gate, and its post-merge failure had no owned alert. The vulnerable
+  dependency therefore remained deployed without an actionable detection signal.
 - React, React DOM, and React Server DOM Webpack are pinned to patched version
   19.2.8.
 - `Advisory audit (high and above)` is a required Web `main` pull-request check.
+- Scheduled failures open or update an assigned tracking issue and notify the
+  owner again on every failed run rather than relying on a workflow badge.
 - Release preflight independently re-runs the shared audit at high severity and
   fails closed on transport, parsing, unaccepted findings, or expired
   exceptions. This closes the merge-to-deploy advisory-publication gap.

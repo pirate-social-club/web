@@ -87,8 +87,8 @@ jobs:
               "covered by an unexpired entry in `.github/dependency-audit-baseline.json`,",
               "or found a baseline exception whose expiry has lapsed.",
               "",
-              "Releases are NOT blocked by this: release runs fail only on an unaccepted",
-              "**critical**. Fix the dependency, or add a reviewed baseline exception with a",
+              "Production releases are blocked by the same high-and-above policy.",
+              "Fix the dependency, or add a reviewed baseline exception with a",
               "reason and an expiry — an exception is a security decision, not a build fix.",
               "",
               "```",
@@ -112,6 +112,13 @@ jobs:
                 repo: context.repo.repo,
                 issue_number: match.number,
                 body,
+                assignees: ["technohippi3"],
+              });
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body: `@technohippi3 dependency audit failed again: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               });
               core.notice(`Updated tracked advisory issue #${match.number}`);
             } else {
@@ -121,6 +128,7 @@ jobs:
                 title,
                 body,
                 labels: ["dependency-audit"],
+                assignees: ["technohippi3"],
               });
               core.notice(`Opened tracked advisory issue #${created.data.number}`);
             }

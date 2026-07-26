@@ -133,7 +133,7 @@ function InteractiveFeed({
         >
           <div className="h-full overflow-y-auto p-5">
             <FeedBookingSheetBody
-              basePriceCents={bookingItem.booking?.basePriceCents ?? 0}
+              startingPriceCents={bookingItem.booking?.startingPriceCents ?? 0}
               onSelectSlot={(slot) => {
                 setBookingItem(undefined);
                 toast.message(`Checkout: ${slot.startUtc}`);

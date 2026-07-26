@@ -29,7 +29,7 @@ export type FeedPanelState =
   | { kind: "comments"; itemId: string; postId: string }
   | {
     kind: "booking";
-    basePriceCents: number;
+    startingPriceCents: number;
     handle: string;
     hostUserId: string;
     itemId: string;

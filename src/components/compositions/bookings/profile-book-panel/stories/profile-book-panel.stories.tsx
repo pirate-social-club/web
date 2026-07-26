@@ -27,14 +27,14 @@ export const OwnerConfigured: Story = {
 };
 
 export const ViewerWithAvailability: Story = {
-  args: { mode: "viewer", basePriceCents: 5000, slots: SLOTS, viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} },
+  args: { mode: "viewer", startingPriceCents: 5000, slots: SLOTS, viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} },
 };
 
 export const ViewerNoAvailability: Story = {
-  args: { mode: "viewer", basePriceCents: 5000, slots: [], viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} },
+  args: { mode: "viewer", startingPriceCents: 5000, slots: [], viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} },
 };
 
 export const Mobile: Story = {
   parameters: { viewport: { defaultViewport: "mobile1" } },
-  args: { mode: "viewer", basePriceCents: 5000, slots: SLOTS, viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} },
+  args: { mode: "viewer", startingPriceCents: 5000, slots: SLOTS, viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} },
 };

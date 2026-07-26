@@ -8,17 +8,15 @@ import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
+import { formatCentsAsStartingUsd } from "@/components/compositions/bookings/fixtures/bookings-format";
 
 import { AvailabilityCalendar } from "@/components/compositions/bookings/availability-calendar/availability-calendar";
 import type { IanaTz, ResolvedSlot } from "@/components/compositions/bookings/view-models";
 
-function formatUsd(cents: number): string {
-  return (Math.max(0, Math.round(cents)) / 100).toFixed(2);
-}
-
 interface ProfileBookPanelViewerProps {
   mode: "viewer";
-  basePriceCents: number;
+  /** Canonical cheapest currently bookable slot, already resolved by the server/feed. */
+  startingPriceCents: number;
   slots: ResolvedSlot[];
   /** Availability is still loading — show a loading hint instead of the empty state. */
   loading?: boolean;
@@ -82,7 +80,7 @@ export function ProfileBookPanel(props: ProfileBookPanelProps) {
   return (
     <div className={cn("space-y-4", props.className)}>
       <Type as="p" variant="body-strong">
-        {copy.bookPriceLabel.replace("{price}", formatUsd(props.basePriceCents))}
+        {formatCentsAsStartingUsd(props.startingPriceCents)}
       </Type>
       {props.loading ? (
         <Type as="p" variant="caption" className="text-muted-foreground">Loading availability…</Type>

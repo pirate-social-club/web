@@ -23,7 +23,7 @@ const SLOTS: ResolvedSlot[] = [
 ] as ResolvedSlot[];
 
 const BASE = {
-  basePriceCents: 3500,
+  startingPriceCents: 3500,
   onSelectSlot: () => {},
   slots: SLOTS,
   viewerTimezone: "Europe/Vienna" as never,

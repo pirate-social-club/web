@@ -6,7 +6,7 @@ import { Bell, ChatCircle, House } from "@phosphor-icons/react";
 
 import { SidebarProvider } from "@/components/compositions/system/sidebar/sidebar";
 
-import { AppSidebar, type AppSidebarPrimaryItem } from "./app-sidebar";
+import { AppSidebar, filterPrimaryItemsForLayout, type AppSidebarPrimaryItem } from "./app-sidebar";
 
 function renderSidebar(primaryItems: AppSidebarPrimaryItem[]) {
   return renderToStaticMarkup(
@@ -45,5 +45,28 @@ describe("AppSidebar spine badges", () => {
 
     expect(markup).not.toContain("notification-count-badge");
     expect(markup).not.toContain('aria-label="Activity, 0"');
+  });
+});
+
+describe("AppSidebar mobile drawer", () => {
+  test("keeps footer destinations out of the primary drawer list", () => {
+    const items = [
+      { icon: House, id: "home", label: "For You" },
+      { icon: House, id: "popular", label: "Best" },
+      { icon: Bell, id: "activity", label: "Activity" },
+      { icon: ChatCircle, id: "chat", label: "Chat" },
+      { icon: House, id: "community-feed", label: "Explore" },
+      { icon: House, id: "live", label: "Live" },
+      { icon: House, id: "wallet", label: "Wallet" },
+      { icon: House, id: "upload", label: "Upload" },
+      { icon: House, id: "profile", label: "Profile" },
+    ] as AppSidebarPrimaryItem[];
+
+    expect(filterPrimaryItemsForLayout(items, true).map((item) => item.id)).toEqual([
+      "community-feed",
+      "live",
+      "upload",
+    ]);
+    expect(filterPrimaryItemsForLayout(items, false)).toEqual(items);
   });
 });

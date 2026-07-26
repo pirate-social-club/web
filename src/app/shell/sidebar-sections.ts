@@ -287,7 +287,8 @@ export function activeSidebarItem(route: AppRoute): string | undefined {
     case "home":
       return "home";
     case "popular":
-      return "popular";
+      // Best is a sort of the For You feed, not a separate desktop spine destination.
+      return "home";
     case "community-feed":
       return "community-feed";
     case "live":

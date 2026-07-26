@@ -75,6 +75,9 @@ const sectionLabelClassName =
 
 const topLevelRowClassName = "h-11 rounded-xl px-3.5 text-base font-medium";
 const nestedRowClassName = "h-11 rounded-xl px-3.5 text-base font-medium";
+// These destinations already have persistent, one-tap homes in the mobile footer.
+// Keep the drawer focused on search, feed controls, discovery, and communities.
+const mobileFooterItemIds = new Set(["home", "popular", "chat", "activity", "wallet", "profile"]);
 
 function formatUnreadCount(count: number): string {
   return count > 99 ? "99+" : String(count);
@@ -92,6 +95,12 @@ const DEFAULT_PRIMARY_ITEMS: readonly AppSidebarPrimaryItem[] = [
   { id: "create-community", icon: Plus, label: "Create Community" },
 ];
 
+export function filterPrimaryItemsForLayout(
+  items: readonly AppSidebarPrimaryItem[],
+  isMobile: boolean,
+): readonly AppSidebarPrimaryItem[] {
+  return isMobile ? items.filter((item) => !mobileFooterItemIds.has(item.id)) : items;
+}
 
 
 function SidebarSectionBlock({
@@ -350,9 +359,7 @@ export function AppSidebar({
     if (item.id === "home" && onHomeClick && item.onSelect === undefined) return { ...resolvedItem, onSelect: onHomeClick };
     return resolvedItem;
   });
-  const visiblePrimaryItems = isMobile
-    ? resolvedPrimaryItems.filter((item) => item.id !== "home" && item.id !== "popular")
-    : resolvedPrimaryItems;
+  const visiblePrimaryItems = filterPrimaryItemsForLayout(resolvedPrimaryItems, isMobile);
   const resolvedCodeItems = codeItems ?? copy.appSidebar.codeItems;
   const resolvedCodeLabel = codeLabel ?? copy.appSidebar.codeLabel;
   const resolvedSections = sections ?? copy.appSidebar.sections;

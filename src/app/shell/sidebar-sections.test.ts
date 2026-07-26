@@ -166,6 +166,10 @@ describe("activeSidebarItem", () => {
     expect(activeSidebarItem({ kind: "wallet", path: "/wallet" })).toBe("wallet");
     expect(activeSidebarItem({ kind: "me", path: "/me" } as AppRoute)).toBe("profile");
   });
+
+  test("maps the Best feed route to the visible For You spine item", () => {
+    expect(activeSidebarItem({ kind: "popular", path: "/popular" })).toBe("home");
+  });
 });
 
 describe("buildResourceItems", () => {

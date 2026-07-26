@@ -58,12 +58,13 @@ function cacheableFeedEntry(id: string, upvoteCount = 8): HomeFeedItem {
 
 describe("VIDEO_FEED_VIEWPORT_CLASS", () => {
   test("owns the full desktop viewport when navigation moves into the media sidebar", () => {
-    expect(VIDEO_FEED_VIEWPORT_CLASS.split(" ")).toEqual(["h-dvh"]);
+    expect(VIDEO_FEED_VIEWPORT_CLASS.split(" ")).toContain("md:h-dvh");
     expect(VIDEO_FEED_VIEWPORT_CLASS).not.toContain("header-height");
   });
 
-  test("gives the feed the whole viewport on mobile, where the chrome is fixed", () => {
-    expect(VIDEO_FEED_VIEWPORT_CLASS.split(" ")).toContain("h-dvh");
+  test("keeps mobile snap geometry stable while browser chrome changes height", () => {
+    expect(VIDEO_FEED_VIEWPORT_CLASS.split(" ")).toContain("h-lvh");
+    expect(VIDEO_FEED_VIEWPORT_CLASS.split(" ")).not.toContain("h-dvh");
   });
 });
 

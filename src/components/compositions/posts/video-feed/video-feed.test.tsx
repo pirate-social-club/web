@@ -229,9 +229,11 @@ describe("VideoFeed", () => {
     const slide = view.container.querySelector("article")!;
 
     // The mobile header is h-16, not var(--header-height); the footer nav is var(--header-height).
+    expect(slide.className).toContain("[--feed-browser-occlusion:max(0px,calc(100lvh-100dvh))]");
     expect(slide.className).toContain("[--feed-chrome-top:calc(env(safe-area-inset-top)+4rem)]");
-    expect(slide.className).toContain("[--feed-chrome-bottom:calc(env(safe-area-inset-bottom)+var(--header-height))]");
+    expect(slide.className).toContain("[--feed-chrome-bottom:calc(env(safe-area-inset-bottom)+var(--header-height)+var(--feed-browser-occlusion))]");
     // On md+ the chrome is in flow and already excluded from the feed box, so the insets collapse.
+    expect(slide.className).toContain("md:[--feed-browser-occlusion:0px]");
     expect(slide.className).toContain("md:[--feed-chrome-top:0px]");
     expect(slide.className).toContain("md:[--feed-chrome-bottom:0px]");
 
@@ -253,6 +255,7 @@ describe("VideoFeed", () => {
     // Insetting the frame itself reproduces the letterboxed layout under a different name.
     expect(frame.className).not.toContain("--feed-chrome");
     expect(video.className).not.toContain("--feed-chrome");
+    expect(video.style.transform).toBe("translateY(calc(var(--feed-browser-occlusion) / -2))");
   });
 
   test("sizes portrait media from its stage container instead of the viewport width", () => {

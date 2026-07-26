@@ -578,8 +578,9 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   return (
     <article className={cn(
       "relative flex h-full w-full snap-start snap-always items-center justify-center overflow-hidden bg-black",
-      "[--feed-chrome-top:calc(env(safe-area-inset-top)+4rem)] [--feed-chrome-bottom:calc(env(safe-area-inset-bottom)+var(--header-height))]",
-      "md:[--feed-chrome-bottom:0px] md:[--feed-chrome-top:0px]",
+      "[--feed-browser-occlusion:max(0px,calc(100lvh-100dvh))]",
+      "[--feed-chrome-top:calc(env(safe-area-inset-top)+4rem)] [--feed-chrome-bottom:calc(env(safe-area-inset-bottom)+var(--header-height)+var(--feed-browser-occlusion))]",
+      "md:[--feed-browser-occlusion:0px] md:[--feed-chrome-bottom:0px] md:[--feed-chrome-top:0px]",
     )}>
       {item.media.orientation === "landscape" && item.media.posterSrc ? (
         <img
@@ -611,6 +612,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
             ref={videoRef}
             aria-label={item.song?.title ?? item.caption ?? "Video"}
             className={cn("size-full", item.media.orientation === "portrait" ? "object-cover" : "object-contain")}
+            style={{ transform: "translateY(calc(var(--feed-browser-occlusion) / -2))" }}
             loop
             muted={muted}
             playsInline
@@ -650,6 +652,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
             decoding="async"
             loading="lazy"
             src={item.media.posterSrc}
+            style={{ transform: "translateY(calc(var(--feed-browser-occlusion) / -2))" }}
           />
         ) : (
           <div aria-hidden className="size-full bg-black" />
@@ -1189,11 +1192,11 @@ export function VideoFeed({
   }, [actions.onActiveItemChange, activeIndex, items]);
 
   if (items.length === 0) {
-    return <div className="grid h-dvh place-items-center"><Type variant="h3">No videos yet</Type></div>;
+    return <div className="grid h-lvh place-items-center md:h-dvh"><Type variant="h3">No videos yet</Type></div>;
   }
 
   return (
-    <div className={cn("relative h-dvh w-full", className)}>
+    <div className={cn("relative h-lvh w-full md:h-dvh", className)}>
     <div
       ref={containerRef}
       aria-label="Video feed"

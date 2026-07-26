@@ -25,6 +25,9 @@ import type {
   ApiCommunityStudyPolicyUpdate,
   ApiCommunityTelegramChatSettings,
   ApiCommunityTelegramChatSettingsUpdate,
+  ApiTelegramChannelBackfillResponse,
+  ApiTelegramChannelDestination,
+  ApiTelegramChannelUnlinkResponse,
   ApiTelegramCommunityBot,
   ApiCommunityRuleInput,
   ApiCommunitySafetyUpdateRequest,
@@ -167,6 +170,33 @@ export function createCommunitySettingsApi(request: ApiRequest) {
       request<ApiCommunityTelegramChatSettings>(
         `/communities/${encodeURIComponent(communityId)}/telegram-chat/unlink`,
         { method: "POST" },
+      ),
+    // NOTE: the API also accepts a numeric `telegram_chat` id on POST
+    // `/communities/{id}/telegram-channel`. That direct-connect path is an
+    // operator/integration fallback, not a web flow — the web UI only connects
+    // channels through setup intents and Telegram's native channel picker, so
+    // owners never handle Telegram numeric IDs.
+    getTelegramChannel: (communityId: string): Promise<ApiTelegramChannelDestination | null> =>
+      request<ApiTelegramChannelDestination | null>(
+        `/communities/${encodeURIComponent(communityId)}/telegram-channel`,
+      ),
+    createTelegramChannelSetupIntent: (communityId: string): Promise<ApiTelegramSetupIntent> =>
+      request<ApiTelegramSetupIntent>(
+        `/communities/${encodeURIComponent(communityId)}/telegram-channel/setup-intents`,
+        { method: "POST" },
+      ),
+    unlinkTelegramChannel: (communityId: string): Promise<ApiTelegramChannelUnlinkResponse> =>
+      request<ApiTelegramChannelUnlinkResponse>(
+        `/communities/${encodeURIComponent(communityId)}/telegram-channel/unlink`,
+        { method: "POST" },
+      ),
+    backfillTelegramChannel: (
+      communityId: string,
+      body: { limit: number },
+    ): Promise<ApiTelegramChannelBackfillResponse> =>
+      request<ApiTelegramChannelBackfillResponse>(
+        `/communities/${encodeURIComponent(communityId)}/telegram-channel/backfill`,
+        { method: "POST", body: JSON.stringify(body) },
       ),
     getAssistantPolicy: (communityId: string): Promise<ApiCommunityAssistantPolicyResponse> =>
       request<ApiCommunityAssistantPolicyResponse>(

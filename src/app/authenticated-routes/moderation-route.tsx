@@ -392,9 +392,7 @@ export function CommunityModerationIndexPage({
       <div className="min-h-screen w-full bg-background text-foreground">
         <MobilePageHeader onBackClick={() => navigate(`/c/${communityId}`)} title={copy.moderation.index.title} />
         <section className="flex min-w-0 flex-1 flex-col py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
-          <div className="min-w-0">
-            {content}
-          </div>
+          <div className="min-w-0">{content}</div>
         </section>
       </div>
     );
@@ -1147,6 +1145,7 @@ export function CommunityModerationPage({
           )
           : (
             <CommunityTelegramIntegrationPage
+              channel={state.telegramChannelSectionProps}
               joinUrl={state.telegramJoinUrl}
               onConnectChat={state.handleConnectTelegramChat}
               onRevokeBot={state.handleRevokeTelegramBot}

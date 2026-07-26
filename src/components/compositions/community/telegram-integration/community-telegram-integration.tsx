@@ -25,6 +25,7 @@ import type {
   TelegramBotAdminStatus,
   TelegramLinkedChatLinkMode,
 } from "./community-telegram-integration.types";
+import { TelegramBroadcastChannelSection } from "./telegram-broadcast-channel-section";
 
 function Section({
   children,
@@ -163,6 +164,7 @@ function updateSettings(
 }
 
 export function CommunityTelegramIntegrationPage({
+  channel,
   className,
   joinUrl,
   onConnectChat,
@@ -243,6 +245,8 @@ export function CommunityTelegramIntegrationPage({
           )}
         </div>
       </Section>
+
+      {channel ? <TelegramBroadcastChannelSection {...channel} /> : null}
 
       {!connected ? null : (
         <>

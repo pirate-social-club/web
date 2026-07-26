@@ -690,6 +690,29 @@ export type ApiCommunityTelegramChatSettingsUpdate = {
   directory_visible?: boolean;
 };
 
+export type ApiTelegramChannelPublicationMode = "off" | "from_now" | "recent_backfill";
+
+export type ApiTelegramChannelDestination = {
+  id: string;
+  object: "telegram_channel_destination";
+  community: string;
+  title: string;
+  username: string | null;
+  bot_admin_status: "ready";
+  publication_mode: ApiTelegramChannelPublicationMode;
+  linked_at: number;
+};
+
+export type ApiTelegramChannelUnlinkResponse = {
+  id: string;
+  object: "telegram_channel_destination";
+  unlinked: true;
+};
+
+export type ApiTelegramChannelBackfillResponse = {
+  enqueued: number;
+};
+
 type ApiAssistantContextMode = "live_sql" | "summary_cache" | "hybrid_vector";
 type ApiAssistantActionMode = "answer_only" | "draft_only" | "confirmed_writes";
 type ApiAssistantVoiceMode = "off" | "transcription_only" | "voice_replies" | "text_and_voice_replies";

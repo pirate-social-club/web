@@ -333,21 +333,15 @@ jobs:
       - name: Install core dependencies
         working-directory: core
         run: npm ci
-      # Release-path audit: CRITICAL only, and only advisories we have not
-      # consciously accepted in .github/dependency-audit-baseline.json. High
-      # findings are reported by the scheduled dependency-audit workflow, which
-      # opens a tracked issue instead of turning someone's unrelated merge red.
-      #
-      # Advisory publication is a time-varying input we do not control. It used to
-      # sit on the release critical path at --audit-level=high, so a newly
-      # published advisory failed every release until someone hand-patched an
-      # --ignore: 5 of the 20 release failures in the sampled window were exactly
-      # this, with no dependency change involved.
-      - name: Audit dependencies for unaccepted critical advisories
+      # Re-evaluate high-and-above advisories immediately before deployment.
+      # The same job is required on pull requests, but advisory publication is a
+      # time-varying input: a finding published after merge must still stop the
+      # release. Exceptions are explicit, bounded, and expiry-enforced here.
+      - name: Audit dependencies for unaccepted high advisories
         working-directory: web
         run: |
           node scripts/ci/dependency-audit.mjs \
-            --mode release \
+            --mode scheduled \
             --baseline .github/dependency-audit-baseline.json \
             --target .:bun \
             --target ../api/services/shared:bun \

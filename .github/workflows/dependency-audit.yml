@@ -1,29 +1,14 @@
 name: Dependency audit
 
-# The audit that used to sit on the release critical path. Advisory publication is
-# a time-varying input we do not control, so a newly published high advisory would
-# turn every release red until someone hand-patched an --ignore — with no
-# dependency change involved. That signal is worth having; blocking unrelated
-# deploys on somebody else's publication schedule is not.
-#
-# Releases still fail on an unaccepted CRITICAL (see release.yml). Everything at
-# high runs here and lands in a tracked issue instead.
+# High-and-above advisories gate every pull request. The release workflow repeats
+# this check immediately before deployment because advisory publication is a
+# time-varying input and can occur after a pull request was merged.
 on:
   schedule:
     # 06:15 UTC daily. Off-hours so a newly published advisory is triaged before
     # the working day rather than discovered mid-release.
     - cron: "15 6 * * *"
   pull_request:
-    # Dependency changes are the one case where an audit result is genuinely
-    # attributable to the change under review, so gate those on the PR.
-    paths:
-      - "**/package.json"
-      - "**/bun.lock"
-      - "**/bun.lockb"
-      - "**/package-lock.json"
-      - .github/dependency-audit-baseline.json
-      - .github/workflows/dependency-audit.yml
-      - scripts/ci/dependency-audit.mjs
   workflow_dispatch:
 
 concurrency:

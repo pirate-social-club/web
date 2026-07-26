@@ -24,13 +24,14 @@ content is not the exploit path.
   at 2026-06-01 15:27:15 UTC.
 - Fixed version merged: `19.2.8` in Web commit
   `84b20c9a90dd7f32f1141684795b2c08c3dcfea3` at 2026-07-26 06:39:57 UTC.
-- Fixed production deployment: pending Release run `30191436861`; update this
-  line with its terminal production timestamp.
+- Fixed production deployment: Web Release run `30192620579` completed its
+  `Deploy production` job successfully at 2026-07-26 07:41:43 UTC.
 
-The maximum confirmed exposure is from the vulnerable deployment through the
-fixed production deployment. No conclusion about exploitation is made here;
-that requires a separate review of edge request/error telemetry for crafted RSC
-action requests and unexplained Worker resource exhaustion.
+The maximum confirmed exposure was 54 days, 16 hours, 14 minutes, and 28
+seconds, from the vulnerable deployment through the fixed production
+deployment. No conclusion about exploitation is made here; that requires a
+separate review of edge request/error telemetry for crafted RSC action requests
+and unexplained Worker resource exhaustion.
 
 ## Evidence
 

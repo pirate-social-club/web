@@ -327,10 +327,14 @@ describe("videoImpressionAnalyticsProperties", () => {
       completionRatio: 0.876543,
       durationSeconds: 12.34567,
       dwellMs: 9_876,
+      eventId: "evt_video_feed_test_pst_video_2",
+      exitReason: "swipe",
+      feedRequestId: "feed_test",
       muted: false,
       playbackSeconds: 10.98765,
       position: 3,
       replayCount: 1,
+      slideEntrySequence: 2,
       soundOnAtAnyPoint: true,
     });
 
@@ -338,12 +342,15 @@ describe("videoImpressionAnalyticsProperties", () => {
       completion_ratio: 0.8765,
       duration_seconds: 12.346,
       dwell_ms: 9_876,
+      exit_reason: "swipe",
+      feed_request_id: "feed_test",
       muted: false,
       orientation: "portrait",
       playback_seconds: 10.988,
       position: 3,
       publisher_kind: "profile",
       replay_count: 1,
+      slide_entry_sequence: 2,
       sound_on: true,
     });
     expect(JSON.stringify(properties)).not.toContain("private.example");

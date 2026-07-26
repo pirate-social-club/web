@@ -1094,21 +1094,23 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
             {item.song?.songHref ? (
               <a
                 aria-label={`Open audio: ${item.song.title}`}
-                className="grid size-10 animate-[spin_8s_linear_infinite] place-items-center overflow-hidden rounded-full border-[5px] border-neutral-950 bg-neutral-900 shadow-sm motion-reduce:animate-none"
+                className="grid size-10 animate-spin place-items-center overflow-hidden rounded-full border-4 border-background bg-card shadow-sm motion-reduce:animate-none"
                 data-video-audio-disc
                 href={item.song.songHref}
                 onClick={(event) => {
                   event.preventDefault();
                   runSongNavigation();
                 }}
+                style={{ animationDuration: "8s" }}
               >
                 <Avatar fallback={item.publisher.handle} size="sm" src={item.publisher.avatarSrc} />
               </a>
             ) : (
               <span
                 aria-hidden
-                className="grid size-10 animate-[spin_8s_linear_infinite] place-items-center overflow-hidden rounded-full border-[5px] border-neutral-950 bg-neutral-900 shadow-sm motion-reduce:animate-none"
+                className="grid size-10 animate-spin place-items-center overflow-hidden rounded-full border-4 border-background bg-card shadow-sm motion-reduce:animate-none"
                 data-video-audio-disc
+                style={{ animationDuration: "8s" }}
               >
                 <Avatar fallback={item.publisher.handle} size="sm" src={item.publisher.avatarSrc} />
               </span>

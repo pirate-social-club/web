@@ -93,7 +93,6 @@ export const VIDEO_FEED_MUTED_PREFERENCE_KEY = "pirate.video-feed.muted";
  * video decoders at once, and kept slides are paused, so they cost memory rather than CPU.
  */
 export const VIDEO_FEED_KEEP_ALIVE_MEDIA_COUNT = 4;
-
 export function isVideoLoopReplay({
   currentTime,
   duration,
@@ -171,7 +170,7 @@ function PublisherRelationshipButton({
       aria-label={label}
       aria-pressed={active}
       className={cn(
-        "-mt-5 grid size-6 place-items-center rounded-full text-white shadow-md transition-colors",
+        "grid size-6 place-items-center rounded-full text-white shadow-md transition-colors",
         active ? "bg-success text-success-foreground" : "bg-destructive",
         "disabled:cursor-not-allowed disabled:opacity-70",
       )}
@@ -476,7 +475,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
 
   React.useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!mediaMounted || !video) return;
     if (!active || paused || !allowAutoplay) {
       video.pause?.();
       return;
@@ -487,7 +486,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
     }).catch(() => {
       onAutoplayBlockedChange(item.id, true);
     });
-  }, [active, allowAutoplay, autoplayBlocked, item.id, onAutoplayBlockedChange, paused]);
+  }, [active, allowAutoplay, autoplayBlocked, item.id, mediaMounted, onAutoplayBlockedChange, paused]);
 
   const togglePlaybackFromControl = () => {
     if (autoplayBlocked) {
@@ -666,14 +665,14 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
           </div>
         ) : mediaMounted ? (
           <button
-            aria-label={paused ? "Play video" : "Pause video"}
+            aria-label={paused || autoplayBlocked ? "Play video" : "Pause video"}
             className="absolute inset-0 grid cursor-pointer place-items-center text-white"
             data-video-play-control
             onClick={togglePlaybackFromControl}
             onMouseDown={(event) => event.preventDefault()}
             type="button"
           >
-            {paused ? <Play className="size-14 drop-shadow-md" weight="fill" /> : <span className="sr-only"><Pause />Pause</span>}
+            {paused || autoplayBlocked ? <Play className="size-14 drop-shadow-md" weight="fill" /> : <span className="sr-only"><Pause />Pause</span>}
           </button>
         ) : null}
 
@@ -864,21 +863,27 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
             />
             </div>
           )}
-          {active && item.publisher.relationship?.kind === "follow" ? (
-            <ProfilePublisherRelationship
-              followLabel={followLabel}
-              followingLabel={followingLabel}
-              ownProfile={item.publisher.relationship.ownProfile}
-              targetWalletAddress={item.publisher.relationship.targetWalletAddress}
-            />
+          {item.publisher.relationship?.kind === "follow" ? (
+            <div className="-mt-5 size-6" data-video-publisher-relationship-slot>
+              {active ? (
+                <ProfilePublisherRelationship
+                  followLabel={followLabel}
+                  followingLabel={followingLabel}
+                  ownProfile={item.publisher.relationship.ownProfile}
+                  targetWalletAddress={item.publisher.relationship.targetWalletAddress}
+                />
+              ) : null}
+            </div>
           ) : item.publisher.relationship?.kind === "join" ? (
-            <PublisherRelationshipButton
-              active={item.publisher.relationship.active}
-              disabled={item.publisher.relationship.disabled}
-              label={item.publisher.relationship.label}
-              onClick={() => onPublisherRelationship?.(item)}
-              pending={item.publisher.relationship.pending}
-            />
+            <div className="-mt-5 size-6" data-video-publisher-relationship-slot>
+              <PublisherRelationshipButton
+                active={item.publisher.relationship.active}
+                disabled={item.publisher.relationship.disabled}
+                label={item.publisher.relationship.label}
+                onClick={() => onPublisherRelationship?.(item)}
+                pending={item.publisher.relationship.pending}
+              />
+            </div>
           ) : null}
           <VideoAction
             active={item.liked}
@@ -1227,7 +1232,7 @@ export function VideoFeed({
             onTogglePlayback={togglePlayback}
             muted={muted}
             preferenceMuted={preferenceMuted}
-            paused={autoplayBlockedItemIds.has(item.id) || pausedItemIds.has(item.id) || externallyPausedItemId === item.id}
+            paused={pausedItemIds.has(item.id) || externallyPausedItemId === item.id}
             preload={index === activeIndex ? "auto" : Math.abs(index - activeIndex) === 1 ? "metadata" : "none"}
             removeDownvoteLabel={removeDownvoteLabel}
             soundOnLabel={soundOnLabel}

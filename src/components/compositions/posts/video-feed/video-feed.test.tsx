@@ -464,6 +464,52 @@ describe("VideoFeed", () => {
     }
   });
 
+  test("retries a previously blocked autoplay when the slide becomes active again", async () => {
+    let shouldReject = true;
+    const restorePlay = mockVideoPlay(() => shouldReject
+      ? Promise.reject(new Error("autoplay blocked"))
+      : Promise.resolve());
+    try {
+      const view = render(<VideoFeed initialMuted items={feedItems()} />);
+      const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+      Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+
+      await act(async () => { await Promise.resolve(); });
+      expect(view.getAllByRole("button", { name: "Play video" })).toHaveLength(1);
+
+      shouldReject = false;
+      Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
+      settleFeedScroll(feed);
+      Object.defineProperty(feed, "scrollTop", { configurable: true, value: 0 });
+      settleFeedScroll(feed);
+      await act(async () => { await Promise.resolve(); });
+
+      expect(view.queryByRole("button", { name: "Play video" })).toBeNull();
+    } finally {
+      restorePlay();
+    }
+  });
+
+  test("starts playback when playable media mounts after the initial render", async () => {
+    let playCount = 0;
+    const restorePlay = mockVideoPlay(() => {
+      playCount += 1;
+      return Promise.resolve();
+    });
+    try {
+      const pendingItem = { ...item, media: { ...item.media, src: "" } };
+      const view = render(<VideoFeed initialMuted items={[pendingItem]} />);
+      expect(playCount).toBe(0);
+
+      view.rerender(<VideoFeed initialMuted items={[item]} />);
+      await act(async () => { await Promise.resolve(); });
+
+      expect(playCount).toBeGreaterThan(0);
+    } finally {
+      restorePlay();
+    }
+  });
+
   test("shows the sound fallback prompt only once while scrolling the session", async () => {
     let playCount = 0;
     const restorePlay = mockVideoPlay(() => {
@@ -904,6 +950,24 @@ describe("VideoFeed", () => {
     const image = avatar.querySelector("img");
     expect(image?.getAttribute("src")).toContain("data:image/svg+xml");
     expect(image?.getAttribute("alt")).toBe("songs.pirate");
+  });
+
+  test("reserves follow-badge geometry for active and inactive avatars", () => {
+    const relationship = {
+      kind: "follow" as const,
+      ownProfile: true,
+      targetWalletAddress: "0x0000000000000000000000000000000000000001",
+    };
+    const items = feedItems().slice(0, 2).map((feedItem) => ({
+      ...feedItem,
+      publisher: { ...feedItem.publisher, relationship },
+    }));
+    const view = render(<VideoFeed items={items} />);
+    const slots = view.container.querySelectorAll("[data-video-publisher-relationship-slot]");
+
+    expect(slots).toHaveLength(2);
+    expect(slots[0]?.className).toBe(slots[1]?.className);
+    expect(slots[0]?.className).toContain("size-6");
   });
 
   test("underlines the linked song only on hover or focus", () => {

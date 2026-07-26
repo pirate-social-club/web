@@ -46,6 +46,11 @@ import {
 import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/video-feed.types";
 import { VideoSongCapabilityCache } from "@/components/compositions/posts/video-feed/video-song-capability-cache";
 import { consumeHomeVideoFeedBootstrap } from "@/lib/api/home-video-feed-bootstrap";
+import {
+  readRecentLeadVideoIds,
+  recordRecentLeadVideoId,
+  rotateToUnseenLead,
+} from "@/lib/video-feed-lead-rotation";
 import { Spinner } from "@/components/primitives/spinner";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
@@ -421,10 +426,20 @@ export function VideoHomePage() {
           queryClient,
           sort: "best",
         });
-        seenPostIdsRef.current = new Set(response.items.map((entry) => entry.post.post.id));
+        // Rotate the first page so a reload does not open on the same video.
+        // Membership is unchanged, so seenPostIdsRef and pagination are
+        // unaffected — only the entry point moves.
+        const items = rotateToUnseenLead(
+          response.items,
+          (entry) => entry.post.post.id,
+          readRecentLeadVideoIds(),
+        );
+        const leadPostId = items[0]?.post.post.id;
+        if (leadPostId) recordRecentLeadVideoId(leadPostId);
+        seenPostIdsRef.current = new Set(items.map((entry) => entry.post.post.id));
         consecutiveNoGrowthPagesRef.current = 0;
         setPausedPaginationCursor(null);
-        setEntries(response.items);
+        setEntries(items);
         setNextCursor(response.next_cursor ?? null);
       })
       .catch((nextError: unknown) => { if (!cancelled) setError(nextError); })

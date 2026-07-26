@@ -644,6 +644,23 @@ describe("VideoFeed", () => {
     expect(feed.dataset.activeIndex).toBe("1");
   });
 
+  test("does not rerender distant slides when the settled active index changes", () => {
+    const renders = new Map<string, number>();
+    const onSlideRender = (itemId: string) => {
+      renders.set(itemId, (renders.get(itemId) ?? 0) + 1);
+    };
+    const view = render(<VideoFeed items={manyFeedItems()} onSlideRender={onSlideRender} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+    const distantInitialRenders = renders.get("video-6");
+
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
+    settleFeedScroll(feed);
+
+    expect(feed.dataset.activeIndex).toBe("1");
+    expect(renders.get("video-6")).toBe(distantInitialRenders);
+  });
+
   test("reports bounded impression metrics when the active slide changes", () => {
     const calls: Array<{ id: string; impression: VideoFeedImpression }> = [];
     const view = render(

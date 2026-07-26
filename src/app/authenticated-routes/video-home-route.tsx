@@ -65,6 +65,19 @@ import { HomePage } from "./home-routes";
 
 export type VideoHomeSurface = "loading" | "video" | "community-feed-empty" | "community-feed-error";
 
+type CachedPageItem = {
+  authorProfile: ApiProfile | null | undefined;
+  contentLocale: string;
+  entry: ApiHomeFeedItem;
+  item: VideoFeedItem | null;
+  joinedLocally: boolean;
+  showOriginalLabel: string;
+  showTranslationLabel: string;
+  userId: string | undefined;
+  videoPublisherJoin: string;
+  videoPublisherJoined: string;
+};
+
 export function checkoutPathForFeedSlot(
   hostUserId: string,
   slot: ResolvedSlot,
@@ -284,6 +297,8 @@ export function VideoHomePage() {
   const loadingMoreRef = React.useRef(false);
   const consecutiveNoGrowthPagesRef = React.useRef(0);
   const feedGenerationRef = React.useRef(0);
+  const authorProfilesRef = React.useRef(authorProfiles);
+  const pageItemCacheRef = React.useRef(new Map<string, CachedPageItem>());
   const bootstrapRequestRef = React.useRef<{
     key: string;
     request: ReturnType<typeof consumeHomeVideoFeedBootstrap>;
@@ -335,6 +350,10 @@ export function VideoHomePage() {
     setPanelState({ kind: "none" });
     restoreFeedFocus();
   }, [restoreFeedFocus]);
+
+  React.useEffect(() => {
+    authorProfilesRef.current = authorProfiles;
+  }, [authorProfiles]);
 
   React.useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
@@ -421,24 +440,59 @@ export function VideoHomePage() {
       const post = entry.post.post;
       return post.identity_mode === "public" && post.author_user ? [post.author_user] : [];
     });
-    const missingUserIds = [...new Set(userIds)].filter((userId) => !(userId in authorProfiles));
+    const knownProfiles = authorProfilesRef.current;
+    const missingUserIds = [...new Set(userIds)].filter((userId) => !(userId in knownProfiles));
     if (missingUserIds.length === 0) return;
     let cancelled = false;
-    void loadProfilesByUserId(api, missingUserIds, authorProfiles).then((loaded) => {
-      if (!cancelled) setAuthorProfiles((current) => ({ ...current, ...loaded }));
+    void loadProfilesByUserId(api, missingUserIds, knownProfiles).then((loaded) => {
+      if (!cancelled) setAuthorProfiles((current) => {
+        const next = { ...current, ...loaded };
+        authorProfilesRef.current = next;
+        return next;
+      });
     });
     return () => { cancelled = true; };
-  }, [api, authorProfiles, entries]);
+  }, [api, entries]);
 
   const pageItems = React.useMemo<VideoFeedItem[]>(
     () => entries.flatMap((entry): VideoFeedItem[] => {
+      const post = entry.post.post;
+      const authorProfile = post.author_user ? authorProfiles[post.author_user] : null;
+      const joinedLocally = joinedCommunityIds.has(entry.community.id);
+      const cached = pageItemCacheRef.current.get(post.id);
+      if (
+        cached
+        && cached.entry === entry
+        && cached.authorProfile === authorProfile
+        && cached.contentLocale === contentLocale
+        && cached.joinedLocally === joinedLocally
+        && cached.showOriginalLabel === copy.common.showOriginal
+        && cached.showTranslationLabel === copy.common.showTranslation
+        && cached.userId === session?.user.id
+        && cached.videoPublisherJoin === copy.home.videoPublisherJoin
+        && cached.videoPublisherJoined === copy.home.videoPublisherJoined
+      ) return cached.item ? [cached.item] : [];
       const item = toHomeFeedItem(entry, authorProfiles, undefined, {
         showOriginalLabel: copy.common.showOriginal,
         showTranslationLabel: copy.common.showTranslation,
         viewerContentLocale: contentLocale,
       });
       const video = toPageVideoItem(item);
-      if (!video) return [];
+      if (!video) {
+        pageItemCacheRef.current.set(post.id, {
+          authorProfile,
+          contentLocale,
+          entry,
+          item: null,
+          joinedLocally,
+          showOriginalLabel: copy.common.showOriginal,
+          showTranslationLabel: copy.common.showTranslation,
+          userId: session?.user.id,
+          videoPublisherJoin: copy.home.videoPublisherJoin,
+          videoPublisherJoined: copy.home.videoPublisherJoined,
+        });
+        return [];
+      }
       const translation = videoTranslationForFeedItem(item, video, {
         showOriginalLabel: copy.common.showOriginal,
         showTranslationLabel: copy.common.showTranslation,
@@ -449,9 +503,7 @@ export function VideoHomePage() {
             translation,
           }
         : video;
-      const post = entry.post.post;
       const shareActions = buildPostShareActions(post);
-      const authorProfile = post.author_user ? authorProfiles[post.author_user] : null;
       const publicProfilePublisher = post.identity_mode === "public" && Boolean(post.author_user);
       const viewerCommunity = entry.post as typeof entry.post & {
         viewer_gate_state?: {
@@ -468,14 +520,14 @@ export function VideoHomePage() {
         currentUserId: session?.user.id,
         identityMode: post.identity_mode,
         joinedLabel: copy.home.videoPublisherJoined,
-        joinedLocally: joinedCommunityIds.has(entry.community.id),
+        joinedLocally,
         joinLabel: copy.home.videoPublisherJoin,
         viewerCommunityRole: viewerCommunity.viewer_gate_state?.viewer_community_role
           ?? entry.post.community?.viewer_community_role,
         viewerMembershipStatus: communityStatus,
       });
-      if (publicProfilePublisher) {
-        return [{
+      const pageItem = publicProfilePublisher
+        ? {
           ...translatedVideo,
           communityId: entry.community.id,
           shareActions,
@@ -485,20 +537,32 @@ export function VideoHomePage() {
             kind: "profile" as const,
             relationship,
           },
-        }];
-      }
-      return [{
-        ...translatedVideo,
-        communityId: entry.community.id,
-        shareActions,
-        publisher: {
-          avatarSrc: item.post.byline.community?.avatarSrc,
-          handle: item.post.byline.community?.label ?? video.publisher.handle,
-          href: item.post.byline.community?.href,
-          kind: "community" as const,
-          relationship,
-        },
-      }];
+        }
+        : {
+          ...translatedVideo,
+          communityId: entry.community.id,
+          shareActions,
+          publisher: {
+            avatarSrc: item.post.byline.community?.avatarSrc,
+            handle: item.post.byline.community?.label ?? video.publisher.handle,
+            href: item.post.byline.community?.href,
+            kind: "community" as const,
+            relationship,
+          },
+        };
+      pageItemCacheRef.current.set(post.id, {
+        authorProfile,
+        contentLocale,
+        entry,
+        item: pageItem,
+        joinedLocally,
+        showOriginalLabel: copy.common.showOriginal,
+        showTranslationLabel: copy.common.showTranslation,
+        userId: session?.user.id,
+        videoPublisherJoin: copy.home.videoPublisherJoin,
+        videoPublisherJoined: copy.home.videoPublisherJoined,
+      });
+      return [pageItem];
     }),
     [authorProfiles, contentLocale, copy.common.showOriginal, copy.common.showTranslation, copy.home.videoPublisherJoin, copy.home.videoPublisherJoined, entries, joinedCommunityIds, session?.user.id],
   );
@@ -779,6 +843,49 @@ export function VideoHomePage() {
     ));
   }, [panelState]);
 
+  const onBoost = React.useCallback((item: VideoFeedItem) => {
+    if (boostTarget && item.song?.sourcePostId === boostTarget.sourcePostId) boostTarget.open();
+  }, [boostTarget]);
+
+  const onComment = React.useCallback((item: VideoFeedItem) => {
+    const postId = postIdForVideoItem(entries, item.id);
+    if (!postId) return;
+    if (panelState.kind === "booking") {
+      bookingRequestHostRef.current = null;
+      setBookingError(false);
+      setBookingLoading(false);
+      setBookingSlots([]);
+    }
+    const nextPanel: Extract<FeedPanelState, { kind: "comments" }> = {
+      itemId: item.id,
+      kind: "comments",
+      postId,
+    };
+    panelReturnFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : feedFocusRef.current;
+    const nextUrl = `/p/${encodeURIComponent(postId)}`;
+    if (panelState.kind === "comments") {
+      window.history.replaceState(commentsHistoryState(nextPanel), "", nextUrl);
+    } else {
+      window.history.pushState(commentsHistoryState(nextPanel), "", nextUrl);
+    }
+    setPanelState(nextPanel);
+  }, [entries, panelState]);
+
+  const onKaraoke = React.useCallback(
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.karaokeHref),
+    [launchSongAction],
+  );
+  const onSong = React.useCallback(
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.songHref),
+    [launchSongAction],
+  );
+  const onStudy = React.useCallback(
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.studyHref),
+    [launchSongAction],
+  );
+
   const surface = resolveVideoHomeSurface({ error, itemCount: items.length, loading });
   if (surface === "loading") return <div className="grid min-h-dvh w-full place-items-center bg-background"><Spinner className="size-6" /></div>;
   if (surface === "community-feed-error") return <HomePage videoFallbackReason="error" />;
@@ -845,42 +952,16 @@ export function VideoHomePage() {
         muteVideoLabel={copy.common.muteVideo}
         nextVideoLabel={copy.common.nextVideo}
         onActiveItemChange={onActiveItemChange}
-        onBoost={(item) => {
-          if (boostTarget && item.song?.sourcePostId === boostTarget.sourcePostId) boostTarget.open();
-        }}
+        onBoost={onBoost}
         onBook={openBooking}
-        onComment={(item) => {
-          const postId = postIdForVideoItem(entries, item.id);
-          if (!postId) return;
-          if (panelState.kind === "booking") {
-            bookingRequestHostRef.current = null;
-            setBookingError(false);
-            setBookingLoading(false);
-            setBookingSlots([]);
-          }
-          const nextPanel: Extract<FeedPanelState, { kind: "comments" }> = {
-            itemId: item.id,
-            kind: "comments",
-            postId,
-          };
-          panelReturnFocusRef.current = document.activeElement instanceof HTMLElement
-            ? document.activeElement
-            : feedFocusRef.current;
-          const nextUrl = `/p/${encodeURIComponent(postId)}`;
-          if (panelState.kind === "comments") {
-            window.history.replaceState(commentsHistoryState(nextPanel), "", nextUrl);
-          } else {
-            window.history.pushState(commentsHistoryState(nextPanel), "", nextUrl);
-          }
-          setPanelState(nextPanel);
-        }}
-        onKaraoke={(item, playback) => launchSongAction(item, playback, item.song?.karaokeHref)}
+        onComment={onComment}
+        onKaraoke={onKaraoke}
         onDownvote={onDownvote}
         onLike={onLike}
         onImpression={onImpression}
         onPublisherRelationship={onPublisherRelationship}
-        onSong={(item, playback) => launchSongAction(item, playback, item.song?.songHref)}
-        onStudy={(item, playback) => launchSongAction(item, playback, item.song?.studyHref)}
+        onSong={onSong}
+        onStudy={onStudy}
         removeDownvoteLabel={copy.common.removeDownvote}
         previousVideoLabel={copy.common.previousVideo}
         soundOnLabel={copy.common.soundOn}

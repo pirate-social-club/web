@@ -55,6 +55,8 @@ export interface VideoFeedProps {
   onImpression?: (item: VideoFeedItem, impression: VideoFeedImpression) => void;
   onPublisherRelationship?: (item: VideoFeedItem) => void;
   onShare?: (item: VideoFeedItem) => void;
+  /** Test/diagnostic hook for committed slide renders. Omit in product callers. */
+  onSlideRender?: (itemId: string) => void;
   onSong?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onStudy?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   muteVideoLabel?: string;
@@ -287,7 +289,7 @@ function CapabilityAction({
   );
 }
 
-function VideoFeedSlide({
+const VideoFeedSlide = React.memo(function VideoFeedSlide({
   active,
   allowAutoplay,
   autoplayBlocked,
@@ -313,13 +315,13 @@ function VideoFeedSlide({
   onImpression,
   onPublisherRelationship,
   onShare,
+  onSlideRender,
   onSong,
   onSoundPromptShown,
   onToggleMute,
   onStudy,
   onTogglePlayback,
-  onMoveNext,
-  onMovePrevious,
+  onMoveTo,
   muted,
   preferenceMuted,
   soundOnLabel,
@@ -345,8 +347,7 @@ function VideoFeedSlide({
   onSoundPromptShown: () => void;
   onToggleMute: (video: HTMLVideoElement | null) => void;
   onTogglePlayback: (item: VideoFeedItem) => void;
-  onMoveNext: () => void;
-  onMovePrevious: () => void;
+  onMoveTo: (index: number) => void;
   muted: boolean;
   preferenceMuted: boolean;
   paused: boolean;
@@ -358,6 +359,9 @@ function VideoFeedSlide({
   videoProgressLabel: string;
   initialPlaybackSeconds?: number;
 }) {
+  React.useEffect(() => {
+    onSlideRender?.(item.id);
+  });
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const progressFillRef = React.useRef<HTMLDivElement | null>(null);
   const progressInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -815,8 +819,8 @@ function VideoFeedSlide({
                 if (!action) return;
                 event.preventDefault();
                 event.stopPropagation();
-                if (action === "previous") onMovePrevious();
-                if (action === "next") onMoveNext();
+                if (action === "previous") onMoveTo(itemPosition - 1);
+                if (action === "next") onMoveTo(itemPosition + 1);
                 if (action === "toggle") togglePlaybackFromControl();
               }}
               step="0.1"
@@ -951,7 +955,7 @@ function VideoFeedSlide({
       </div>
     </article>
   );
-}
+});
 
 export function VideoFeed({
   externallyPausedItemId,
@@ -971,6 +975,7 @@ export function VideoFeed({
   soundOnLabel = "Sound on",
   tapForSoundLabel = "Tap for sound",
   videoProgressLabel = "Video progress",
+  onSlideRender,
   ...actions
 }: VideoFeedProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
@@ -1045,10 +1050,10 @@ export function VideoFeed({
   const moveTo = React.useCallback((index: number) => {
     const nextIndex = Math.max(0, Math.min(items.length - 1, index));
     const container = containerRef.current;
-    if (!container || nextIndex === activeIndex) return;
+    if (!container) return;
     container.scrollTo({ behavior: reduceMotion ? "auto" : "smooth", top: nextIndex * container.clientHeight });
     setActiveIndex(nextIndex);
-  }, [activeIndex, items.length, reduceMotion]);
+  }, [items.length, reduceMotion]);
 
   const commitSettledIndex = React.useCallback(() => {
     const container = containerRef.current;
@@ -1216,8 +1221,8 @@ export function VideoFeed({
             muteVideoLabel={muteVideoLabel}
             onAutoplayBlockedChange={setAutoplayBlocked}
             onSoundPromptShown={markSoundPromptShown}
-            onMoveNext={() => moveTo(index + 1)}
-            onMovePrevious={() => moveTo(index - 1)}
+            onSlideRender={onSlideRender}
+            onMoveTo={moveTo}
             onToggleMute={toggleMute}
             onTogglePlayback={togglePlayback}
             muted={muted}

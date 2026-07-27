@@ -11,6 +11,7 @@ import {
   House,
   Megaphone,
   Newspaper,
+  Plus,
   Scroll,
   Shield,
   Television,
@@ -93,6 +94,7 @@ export function resolveMobileBackPath(route: AppRoute): string | null {
 function formatCommunitySidebarLabel(
   communityId?: string | null,
   routeSlug?: string | null,
+  displayName?: string | null,
 ): string {
   const trimmedSlug = routeSlug?.trim();
   if (trimmedSlug) {
@@ -103,6 +105,15 @@ function formatCommunitySidebarLabel(
   }
 
   const trimmedId = communityId?.trim() ?? "";
+  // Unverified communities have no slug; show the display name when it is a
+  // real name rather than the ID fallback set by owned-communities. A name that
+  // starts with "c/" is skipped: rendered bare it would impersonate a community
+  // route, and without a slug there is no such route to reach.
+  const trimmedName = displayName?.trim() ?? "";
+  if (trimmedName && trimmedName !== trimmedId && !trimmedName.toLowerCase().startsWith("c/")) {
+    return trimmedName;
+  }
+
   if (!trimmedId) return "c/unknown";
   if (trimmedId.length <= 14) return `c/${trimmedId}`;
   return `c/${trimmedId.slice(0, 7)}...${trimmedId.slice(-4)}`;
@@ -134,7 +145,7 @@ export function buildSidebarSections(
         items: validRecentCommunities.map((community) => ({
           avatarSrc: community.avatarSrc,
           id: `c/${community.communityId}`,
-          label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
+          label: formatCommunitySidebarLabel(community.communityId, community.routeSlug, community.displayName),
           onSelect: () => navigateOrReload(buildCommunityPath(community.communityId, community.routeSlug)),
         })),
       });
@@ -151,7 +162,7 @@ export function buildSidebarSections(
         items: validModeratedCommunities.map((community) => ({
           avatarSrc: community.avatarSrc,
           id: `moderation/${community.communityId}`,
-          label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
+          label: formatCommunitySidebarLabel(community.communityId, community.routeSlug, community.displayName),
           onSelect: () => navigateOrReload(buildCommunityModerationEntryPath(community.communityId, isMobileWeb, community.routeSlug)),
         })),
       });
@@ -159,6 +170,39 @@ export function buildSidebarSections(
   }
 
   return sections;
+}
+
+/**
+ * The desktop media sidebar's section list: the recent-communities rows promoted into a
+ * "Communities" section that owns the create-community action, followed by every other
+ * section untouched.
+ *
+ * The section deliberately carries no "Your Communities" row. The header already reads
+ * "Communities", and the nested-item renderer ignores `icon`, so such a row draws as bare
+ * avatar-less text that reads as a duplicate subheading. `/your-communities` stays reachable
+ * by URL. `emptyLabel` covers the resulting empty state: the section cannot be dropped when
+ * it has no items, because its `+` is the only create-community entry point in the spine.
+ */
+export function buildMediaSections(
+  messages: ShellMessages["appSidebar"],
+  sections: AppSidebarSection[],
+): AppSidebarSection[] {
+  const recentSection = sections.find((section) => section.id === "recent");
+  return [
+    {
+      action: {
+        ariaLabel: messages.createCommunityLabel,
+        icon: Plus,
+        onSelect: () => navigateOrReload("/communities/new"),
+      },
+      defaultOpen: true,
+      emptyLabel: messages.communitiesEmptyLabel,
+      id: "communities",
+      items: recentSection?.items ?? [],
+      label: messages.sections.find((section) => section.id === "communities")?.label ?? "Communities",
+    },
+    ...sections.filter((section) => section.id !== "recent"),
+  ];
 }
 
 export function buildVideoPrimaryItems(messages: ShellMessages["appSidebar"]): AppSidebarPrimaryItem[] {

@@ -4,6 +4,7 @@ export type VideoSongCapabilityReadMode = "authenticated" | "public";
 
 export interface VideoSongCapabilityResolution {
   activeRewardOffer: boolean;
+  artworkSrc?: string;
   karaoke: VideoFeedCapability;
   karaokeHref?: string;
   readMode: VideoSongCapabilityReadMode;

@@ -64,6 +64,8 @@ export interface AppSidebarSection {
     icon: SidebarIcon;
     onSelect: () => void;
   };
+  /** Rendered in place of the item list when the section has no items. */
+  emptyLabel?: string;
   id: string;
   defaultOpen?: boolean;
   items: readonly AppSidebarSectionItem[];
@@ -183,6 +185,14 @@ function SidebarSectionBlock({
           <AccordionContent className="pb-0">
             <SidebarGroup className="gap-0 p-0">
               <SidebarGroupContent>
+                {/* A section can legitimately be empty (e.g. Communities before you
+                    join any). The header still carries its action button, so show a
+                    hint instead of an empty accordion body. */}
+                {section.items.length === 0 && section.emptyLabel ? (
+                  <Type as="p" className="px-3.5 pb-2 text-sidebar-foreground/50" variant="caption">
+                    {section.emptyLabel}
+                  </Type>
+                ) : null}
                 <SidebarMenu className="gap-1">
                   {section.items.map((item) => (
                     <SidebarMenuItem key={item.id}>

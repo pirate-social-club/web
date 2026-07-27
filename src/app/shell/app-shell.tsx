@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Flag, Plus } from "@phosphor-icons/react";
 
 import type { AppRoute } from "@/app/router";
 import { isNativePublicIdentityRoute, navigate, navigateOrReload, useRoute } from "@/app/router";
@@ -34,6 +33,7 @@ import { RouteContentFallback } from "./route-content-fallback";
 import {
   activeSidebarItem,
   buildCodeItems,
+  buildMediaSections,
   buildMediaSpineItems,
   buildResourceItems,
   buildSidebarSections,
@@ -213,29 +213,7 @@ function NotificationShell({
   // Temporary: migrated routes own their own page shell padding.
   // Remove this once all routes are converted.
   const isMigratedRoute = route.kind === "home" || route.kind === "community-feed" || route.kind === "popular" || route.kind === "wallet";
-  const recentSection = sections.find((section) => section.id === "recent");
-  const mediaSections = [
-    {
-      action: {
-        ariaLabel: copy.appSidebar.createCommunityLabel,
-        icon: Plus,
-        onSelect: () => navigateOrReload("/communities/new"),
-      },
-      defaultOpen: true,
-      id: "communities",
-      items: [
-        {
-          icon: Flag,
-          id: "your-communities",
-          label: copy.appSidebar.yourCommunitiesLabel,
-          onSelect: () => navigateOrReload("/your-communities"),
-        },
-        ...(recentSection?.items ?? []),
-      ],
-      label: copy.appSidebar.sections.find((section) => section.id === "communities")?.label ?? "Communities",
-    },
-    ...sections.filter((section) => section.id !== "recent"),
-  ];
+  const mediaSections = buildMediaSections(copy.appSidebar, sections);
   useNotificationBadges(unreadNotificationCount);
 
   return (

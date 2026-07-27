@@ -79,6 +79,7 @@
       { "id": "terms-of-service", "label": "Terms of Service" },
       { "id": "privacy-policy", "label": "Privacy Policy" }
     ],
+    "communitiesEmptyLabel": "No communities yet",
     "yourCommunitiesLabel": "Your Communities",
     "feedSortBestLabel": "Popular",
     "feedSortNewLabel": "Latest",

@@ -51,6 +51,38 @@ describe("aggregateKaraokeSession line counts", () => {
     expect(summary.uncertainLineCount).toBe(1);
     // Uncertain lines never enter the scored set.
     expect(summary.scoredLineCount).toBe(2);
+    expect(summary.lineDiagnostics).toEqual([
+      {
+        confidenceScore: 0.9,
+        finalizedReason: "asr_final",
+        lineId: "line-0",
+        medianSignedDeltaMs: 50,
+        recognizedWordCount: 1,
+        score: expect.any(Number),
+        textScore: 0.8,
+        timingScore: expect.any(Number),
+      },
+      {
+        confidenceScore: 0.9,
+        finalizedReason: "asr_final",
+        lineId: "line-1",
+        medianSignedDeltaMs: 50,
+        recognizedWordCount: 1,
+        score: expect.any(Number),
+        textScore: 0.8,
+        timingScore: expect.any(Number),
+      },
+      {
+        confidenceScore: 0.9,
+        finalizedReason: "provider_failed",
+        lineId: "line-2",
+        medianSignedDeltaMs: 50,
+        recognizedWordCount: 0,
+        score: expect.any(Number),
+        textScore: 0.8,
+        timingScore: expect.any(Number),
+      },
+    ]);
   });
 
   test("uncertainLineCount is 0 when every line was measured", () => {

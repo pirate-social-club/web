@@ -164,6 +164,9 @@ export function KaraokePracticeSurface({
               <Type as="span" className="tabular-nums" variant="h3">
                 {runningScore ?? 0}
               </Type>
+              <Type as="span" className="text-muted-foreground" variant="caption">
+                Provisional
+              </Type>
               {comboCount >= 2 ? (
                 <Type as="span" className="text-success" variant="caption">
                   Combo x{comboCount}

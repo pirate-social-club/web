@@ -56,6 +56,19 @@ describe("KaraokeScoreSummary", () => {
     expect(view.container.textContent).not.toContain("Try coming in earlier.");
   });
 
+  test("explains the calibration failure reason", () => {
+    const view = render(
+      <KaraokeScoreSummary
+        finalScore={0.8}
+        timingCalibrationReason="incoherent_residuals"
+        timingCalibrationUnavailable
+      />,
+    );
+    expect(view.container.textContent).toContain(
+      "The timing measurements varied too much to trust. They didn't count against your score.",
+    );
+  });
+
   test("keeps a single-word timing label and explains direction plainly", () => {
     const early = render(<KaraokeScoreSummary finalScore={0.9} timingScore={0.82} timingTrend="early" />);
     expect(early.getByText("Timing")).toBeTruthy();

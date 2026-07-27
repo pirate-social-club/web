@@ -517,6 +517,37 @@ function validateStateShape(
       confidenceMean: isFiniteNumber(state.summary.confidenceMean) ? state.summary.confidenceMean : null,
       finalScore: isFiniteNumber(state.summary.finalScore) ? state.summary.finalScore : 0,
       lineCount: isFiniteNumber(state.summary.lineCount) ? state.summary.lineCount : 0,
+      lineDiagnostics: Array.isArray(state.summary.lineDiagnostics)
+        ? state.summary.lineDiagnostics.flatMap((value) => {
+          if (!isPlainRecord(value)
+            || typeof value.lineId !== "string"
+            || typeof value.finalizedReason !== "string"
+            || !isFiniteNumber(value.recognizedWordCount)
+            || !isFiniteNumber(value.score)
+            || !isFiniteNumber(value.textScore)) {
+            return [];
+          }
+          const finalizedReason = value.finalizedReason;
+          if (finalizedReason !== "line_end"
+            && finalizedReason !== "asr_final"
+            && finalizedReason !== "timeout"
+            && finalizedReason !== "seek"
+            && finalizedReason !== "session_end"
+            && finalizedReason !== "provider_failed") {
+            return [];
+          }
+          return [{
+            confidenceScore: isFiniteNumber(value.confidenceScore) ? value.confidenceScore : null,
+            finalizedReason,
+            lineId: value.lineId,
+            medianSignedDeltaMs: isFiniteNumber(value.medianSignedDeltaMs) ? value.medianSignedDeltaMs : null,
+            recognizedWordCount: value.recognizedWordCount,
+            score: value.score,
+            textScore: value.textScore,
+            timingScore: isFiniteNumber(value.timingScore) ? value.timingScore : null,
+          }];
+        })
+        : [],
       lowConfidenceLineCount: isFiniteNumber(state.summary.lowConfidenceLineCount) ? state.summary.lowConfidenceLineCount : 0,
       lyricsScore: isFiniteNumber(state.summary.lyricsScore) ? state.summary.lyricsScore : 0,
       missedWords: Array.isArray(state.summary.missedWords)

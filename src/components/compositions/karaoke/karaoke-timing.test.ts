@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
 import type { KaraokeStageLine } from "./karaoke-lyric-stage";
-import { getLyricDurationMs, KARAOKE_LINE_HOLD_MS } from "./karaoke-timing";
+import {
+  clampKaraokeLinesToDuration,
+  getLyricDurationMs,
+  KARAOKE_LINE_HOLD_MS,
+} from "./karaoke-timing";
 
 function line(startMs: number, endMs: number): KaraokeStageLine {
   return {
@@ -33,5 +37,18 @@ describe("getLyricDurationMs", () => {
 
   test("returns a positive duration for empty lyrics", () => {
     expect(getLyricDurationMs([])).toBe(KARAOKE_LINE_HOLD_MS);
+  });
+});
+
+describe("clampKaraokeLinesToDuration", () => {
+  test("clamps an overlong final line and token to the real audio duration", () => {
+    const result = clampKaraokeLinesToDuration([line(174_580, 185_940)], 182_086);
+
+    expect(result[0]?.endMs).toBe(182_086);
+    expect(result[0]?.tokens?.[0]?.endMs).toBe(182_086);
+  });
+
+  test("drops lyrics that start after the audio has ended", () => {
+    expect(clampKaraokeLinesToDuration([line(6_000, 8_000)], 5_000)).toEqual([]);
   });
 });

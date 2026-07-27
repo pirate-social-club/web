@@ -141,6 +141,17 @@ export interface KaraokeLineScore {
   uncertain: boolean;
 }
 
+export interface KaraokeLineDiagnostic {
+  lineId: string;
+  finalizedReason: KaraokeLineBucket["finalizedReason"];
+  recognizedWordCount: number;
+  score: number;
+  textScore: number;
+  timingScore: number | null;
+  confidenceScore: number | null;
+  medianSignedDeltaMs: number | null;
+}
+
 export interface KaraokeSessionSummary {
   finalScore: number;
   lyricsScore: number;
@@ -166,6 +177,8 @@ export interface KaraokeSessionSummary {
    * is the only way to tell "timing was perfect" apart from "timing was skipped".
    */
   timingCalibration: KaraokeTimingCalibration;
+  /** Derived-only diagnostics. Never includes transcripts, recognized text, or audio. */
+  lineDiagnostics?: KaraokeLineDiagnostic[];
   strongestLines: KaraokeLineScore[];
   weakestLines: KaraokeLineScore[];
   missedWords: string[];
@@ -1574,6 +1587,16 @@ export function aggregateKaraokeSession(input: {
     .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
   const strongestLines = [...scoreSource].sort((a, b) => b.score - a.score).slice(0, 3);
   const weakestLines = [...scoreSource].sort((a, b) => a.score - b.score).slice(0, 3);
+  const lineDiagnostics = lineScores.map((lineScore) => ({
+    confidenceScore: lineScore.confidenceScore,
+    finalizedReason: lineScore.finalizedReason,
+    lineId: lineScore.lineId,
+    medianSignedDeltaMs: lineScore.timingScore?.medianSignedDeltaMs ?? null,
+    recognizedWordCount: lineScore.recognizedWords.length,
+    score: lineScore.score,
+    textScore: lineScore.textScore.score,
+    timingScore: lineScore.timingScore?.score ?? null,
+  }));
 
   return {
     confidenceMean: confidenceScores.length > 0
@@ -1581,6 +1604,7 @@ export function aggregateKaraokeSession(input: {
       : null,
     finalScore: clamp01(finalScore),
     lineCount: lineScores.length,
+    lineDiagnostics,
     lowConfidenceLineCount: lineScores.filter((lineScore) => (
       lineScore.confidenceScore !== null && lineScore.confidenceScore < LOW_CONFIDENCE_THRESHOLD
     )).length,

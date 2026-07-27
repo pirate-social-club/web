@@ -11,7 +11,7 @@ import {
   type KaraokePracticeCompleteSummary,
 } from "./karaoke-practice-surface";
 import { deriveKaraokeFeedback } from "./karaoke-scoring-feedback";
-import { getLyricDurationMs } from "./karaoke-timing";
+import { clampKaraokeLinesToDuration, getLyricDurationMs } from "./karaoke-timing";
 import type { KaraokeStageLine } from "./karaoke-lyric-stage";
 import { KaraokeSignInCta } from "./karaoke-signin-cta";
 import { KaraokeScoreSummary } from "./scoring/karaoke-score-summary";
@@ -112,6 +112,10 @@ export function KaraokeAudioSurface({
   const [isPlaying, setIsPlaying] = React.useState(false);
   const fallbackDurationMs = React.useMemo(() => getLyricDurationMs(lines), [lines]);
   const durationMs = getLyricDurationMs(lines, audioDurationMs);
+  const displayLines = React.useMemo(
+    () => clampKaraokeLinesToDuration(lines, audioDurationMs),
+    [audioDurationMs, lines],
+  );
   const displayTimeMs = Math.max(0, Math.min(durationMs, currentTimeMs + timingOffsetMs));
   const showDriftWarning = Math.abs(timingOffsetMs) > driftWarningThresholdMs;
 
@@ -448,6 +452,7 @@ export function KaraokeAudioSurface({
       timingCalibrationUnavailable={
         KARAOKE_TIMING_SCORING_ENABLED && endedSummary.timingScore === null
       }
+      timingCalibrationReason={endedSummary.timingCalibration.reason}
       timingTrend={endedSummary.timingTrend}
       uncertainLineCount={endedSummary.uncertainLineCount}
     />
@@ -471,7 +476,7 @@ export function KaraokeAudioSurface({
         durationMs={durationMs}
         isLoading={audioState === "loading"}
         isPlaying={isPlaying}
-        lines={lines}
+        lines={displayLines}
         listening={listening}
         onComplete={onComplete}
         onExit={exitAudio}

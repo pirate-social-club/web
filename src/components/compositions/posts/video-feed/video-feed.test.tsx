@@ -1091,6 +1091,7 @@ describe("VideoFeed", () => {
     const relationship = {
       kind: "follow" as const,
       ownProfile: true,
+      targetUserId: "usr_publisher",
       targetWalletAddress: "0x0000000000000000000000000000000000000001",
     };
     const items = feedItems().slice(0, 2).map((feedItem) => ({

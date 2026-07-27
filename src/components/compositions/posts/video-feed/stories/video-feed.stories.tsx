@@ -604,6 +604,7 @@ export const MobilePublisherFollow: Story = {
           relationship: {
             kind: "follow",
             ownProfile: false,
+            targetUserId: "usr_publisher",
             targetWalletAddress: "0x0000000000000000000000000000000000000001",
           },
         },

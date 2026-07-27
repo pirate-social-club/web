@@ -18,11 +18,13 @@ function ProfileHeroActions({
   onEditProfile,
   onMessageProfile,
   onBookingCta,
+  onCommunitiesCta,
   profile,
 }: {
   onEditProfile?: () => void;
   onMessageProfile?: () => void;
   onBookingCta?: () => void;
+  onCommunitiesCta?: () => void;
   profile: ProfileData;
 }) {
   const { locale } = useUiLocale();
@@ -34,6 +36,14 @@ function ProfileHeroActions({
         <Button className="flex-1 sm:flex-none" onClick={onEditProfile}>{copy.editProfile}</Button>
         {profile.bookingCtaLabel && onBookingCta ? (
           <Button variant="secondary" className="flex-1 sm:flex-none" onClick={onBookingCta}>{profile.bookingCtaLabel}</Button>
+        ) : null}
+        {/* The sidebar lists communities but has no link to the Following/Joined
+            page, and the settings index that also links it is unreachable on
+            desktop. Your own profile is the one surface both viewports share. */}
+        {onCommunitiesCta ? (
+          <Button variant="secondary" className="flex-1 sm:flex-none" onClick={onCommunitiesCta}>
+            {getLocaleMessages(locale, "routes").yourCommunities.title}
+          </Button>
         ) : null}
       </div>
     );
@@ -71,6 +81,7 @@ export function ProfileHero({
   onEditProfile,
   onMessageProfile,
   onBookingCta,
+  onCommunitiesCta,
   profile,
   stats = EMPTY_PROFILE_STATS,
 }: {
@@ -78,6 +89,7 @@ export function ProfileHero({
   onEditProfile?: () => void;
   onMessageProfile?: () => void;
   onBookingCta?: () => void;
+  onCommunitiesCta?: () => void;
   profile: ProfileData;
   stats?: ProfileSidebarStat[];
 }) {
@@ -114,7 +126,7 @@ export function ProfileHero({
 
   return (
     <IdentityHero
-      actions={<ProfileHeroActions onEditProfile={onEditProfile} onMessageProfile={onMessageProfile} onBookingCta={onBookingCta} profile={profile} />}
+      actions={<ProfileHeroActions onEditProfile={onEditProfile} onMessageProfile={onMessageProfile} onBookingCta={onBookingCta} onCommunitiesCta={onCommunitiesCta} profile={profile} />}
       avatarBadgeCountryCode={profile.nationalityBadgeCountryCode}
       avatarBadgeLabel={profile.nationalityBadgeLabel}
       avatarFallback={profile.displayName}

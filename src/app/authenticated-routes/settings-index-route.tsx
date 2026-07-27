@@ -32,6 +32,10 @@ export function CurrentUserSettingsIndexPage() {
       onSelect: () => navigate("/settings/bookings"),
     },
     {
+      label: copy.yourCommunities.title,
+      onSelect: () => navigate("/your-communities"),
+    },
+    {
       label: copy.settings.domainsTab,
       onSelect: () => navigate(buildSettingsPath("domains")),
     },

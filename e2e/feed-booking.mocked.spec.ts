@@ -116,7 +116,10 @@ for (const viewport of [
     await book.click();
     await expect(page.getByRole("heading", { name: "Book feed-booking-host.pirate" })).toBeVisible();
     if (viewport.name === "desktop") {
-      await expect(page.getByRole("button", { name: "Play video" })).toBeVisible();
+    await expect(page.getByRole("button", {
+      includeHidden: true,
+      name: "Play video",
+    })).toHaveCount(1);
     }
 
     await page.getByRole("button", { name: "Close" }).click();

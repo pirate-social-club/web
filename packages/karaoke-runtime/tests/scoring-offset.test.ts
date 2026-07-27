@@ -79,8 +79,21 @@ describe("timing offset compensation", () => {
     expect(summary.timingCalibration.offsetMs).toBe(700);
     expect(summary.timingScore).toBeGreaterThan(0.95);
     expect(summary.finalScore).toBeGreaterThan(0.9);
-    // The singer is still told they sat behind the beat.
-    expect(summary.timingTrend).toBe("late");
+    // The shared lag is capture/STT latency, not actionable singer feedback.
+    expect(summary.timingTrend).toBe("on_time");
+  });
+
+  test("REGRESSION: perfect singing through 400ms capture latency is reported on time", () => {
+    const lines = [0, 1, 2, 3].map((i) =>
+      line({ index: i, meanAbsDeltaMs: 400, signedMeanDeltaMs: 400, textScore: 1 }),
+    );
+    const summary = aggregateKaraokeSession({ lineScores: lines });
+
+    expect(summary.timingCalibration.state).toBe("calibrated");
+    expect(summary.timingCalibration.offsetMs).toBe(400);
+    expect(summary.timingCalibration.residualSpreadMs).toBe(0);
+    expect(summary.timingScore).toBeCloseTo(1);
+    expect(summary.timingTrend).toBe("on_time");
   });
 
   test("erratic timing is NOT excused (median offset ~0, residual spread remains)", () => {

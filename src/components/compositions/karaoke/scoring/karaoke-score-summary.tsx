@@ -84,7 +84,9 @@ export function KaraokeScoreSummary({
 }: KaraokeScoreSummaryProps) {
   const showLines = typeof lineCount === "number" && typeof scoredLineCount === "number";
   const showMetrics = typeof timingScore === "number" || typeof lyricsScore === "number" || showLines;
-  const timingFeedback = typeof timingScore === "number" ? timingGuidance(timingTrend) : null;
+  const timingFeedback = typeof timingScore === "number" && !timingCalibrationUnavailable
+    ? timingGuidance(timingTrend)
+    : null;
   return (
     <div className={cn("flex w-full flex-col items-center gap-6 text-center", className)}>
       <div>

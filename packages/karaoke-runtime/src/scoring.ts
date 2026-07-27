@@ -1512,10 +1512,20 @@ export function applyTimingOffsetCompensation(
   };
 }
 
-function aggregateTimingTrend(lineScores: readonly KaraokeLineScore[]): KaraokeTimingTrend {
+function aggregateTimingTrend(
+  lineScores: readonly KaraokeLineScore[],
+  calibration: KaraokeTimingCalibration,
+): KaraokeTimingTrend {
+  // Directional feedback must describe the same residuals that timing scoring
+  // judges. The raw deltas still include capture/STT latency; telling a singer
+  // to correct that system offset would contradict a compensated perfect score.
+  // Preserve the raw diagnostic only when calibration failed—the UI suppresses
+  // guidance for those takes because there is no trustworthy offset.
+  const offsetMs = calibration.state === "calibrated" ? calibration.offsetMs : 0;
   const deltas = lineScores
     .map((lineScore) => lineScore.timingScore?.medianSignedDeltaMs)
-    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+    .map((value) => value - offsetMs);
 
   return timingTrendFromDeltas(deltas);
 }
@@ -1587,7 +1597,7 @@ export function aggregateKaraokeSession(input: {
     timingScore: KARAOKE_TIMING_SCORING_ENABLED && calibration.state === "calibrated" && timingScores.length > 0
       ? timingScores.reduce((sum, value) => sum + value, 0) / timingScores.length
       : null,
-    timingTrend: aggregateTimingTrend(lineScores),
+    timingTrend: aggregateTimingTrend(lineScores, calibration),
     weakestLines,
   };
 }

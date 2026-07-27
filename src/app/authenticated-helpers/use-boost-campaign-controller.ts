@@ -8,7 +8,7 @@ import type {
 } from "@pirate/api-contracts";
 
 import type { BoostCampaignSheetProps, BoostEligibleActivity } from "@/components/compositions/rewards/reward-booster-surfaces";
-import { usePiratePrivyWallets } from "@/components/auth/privy-provider";
+import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { useApi } from "@/lib/api";
 import { ApiError, isApiNotFoundError } from "@/lib/api/client";
 import {
@@ -124,6 +124,84 @@ function terminalFundingMessage(code: string): string {
   return "Funds were received, but the campaign was not activated. Refund or support review is required; do not send again.";
 }
 
+export type BoostFundingErrorKind =
+  | "wrong-network"
+  | "user-rejected"
+  | "wallet-unavailable"
+  | "insufficient-usdc"
+  | "insufficient-gas"
+  | "rpc-failure"
+  | "unknown";
+
+function rawErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return typeof error === "string" ? error : "";
+}
+
+/**
+ * Bucket wallet/provider/transport failures so the booster never shows raw Viem
+ * or EIP-1193 internals. Match on the raw message (not getErrorMessage, which
+ * can blank network errors) and keep the order: more specific causes first. Gas
+ * errors precede token-balance errors because Viem's InsufficientFundsError
+ * ("gas * gasFee + value ... exceeds the balance") mentions both.
+ */
+export function classifyBoostFundingError(error: unknown): BoostFundingErrorKind {
+  const message = rawErrorMessage(error);
+  if (/current chain of the wallet/i.test(message) && /target chain for the transaction/i.test(message)) {
+    return "wrong-network";
+  }
+  if (/user (rejected|denied)|rejected the (request|transaction)/i.test(message)) {
+    return "user-rejected";
+  }
+  if (/insufficient funds|gas \s*\*|intrinsic gas/i.test(message)) {
+    return "insufficient-gas";
+  }
+  if (/insufficient|exceeds (the )?balance/i.test(message)) {
+    return "insufficient-usdc";
+  }
+  if (/no (connected|available) wallet|wallet (is )?(not connected|unavailable|disconnected)|ethereum provider is not available/i.test(message)) {
+    return "wallet-unavailable";
+  }
+  if (/failed to fetch|fetch failed|network error|timed? ?out|econn(reset|refused)|http request failed|\b50[23]\b|rate limit/i.test(message)) {
+    return "rpc-failure";
+  }
+  return "unknown";
+}
+
+export interface BoostFundingErrorContext {
+  /** Settlement-chain label for wrong-network copy (e.g. "Base Sepolia"); tracks the active network config. */
+  networkLabel?: string;
+  /** True once the wallet returned a tx hash; a transport failure after that is a status check, not a safe re-send. */
+  submitted?: boolean;
+}
+
+export function boostFundingErrorMessage(
+  error: unknown,
+  fallback: string,
+  context: BoostFundingErrorContext = {},
+): string {
+  switch (classifyBoostFundingError(error)) {
+    case "wrong-network":
+      return `Switch your wallet to ${context.networkLabel ?? "the required network"}, then try again. No payment was sent.`;
+    case "user-rejected":
+      return "You canceled the payment in your wallet. No payment was sent.";
+    case "wallet-unavailable":
+      return "Your wallet is not connected. Reconnect your Pirate Wallet, then try again. No payment was sent.";
+    case "insufficient-usdc":
+      return "Your wallet does not have enough USDC to fund this boost. No payment was sent.";
+    case "insufficient-gas":
+      return "Your wallet does not have enough ETH for network fees. No payment was sent.";
+    case "rpc-failure":
+      return context.submitted
+        ? "The network did not respond after your transfer was sent. Check status; do not send again."
+        : "The network did not respond. No payment was sent; try again.";
+    default:
+      // Unknown provider errors must not leak engineering internals to the sheet;
+      // API errors carry server-vetted copy and may pass through.
+      return error instanceof ApiError ? getErrorMessage(error, fallback) : fallback;
+  }
+}
+
 function blocksNewCampaign(campaign: RewardCampaign | null): boolean {
   return campaign != null && ["scheduled", "active", "paused", "operational_hold"].includes(campaign.status);
 }
@@ -141,6 +219,7 @@ export interface BoostCampaignControllerInput {
 export function useBoostCampaignController(input: BoostCampaignControllerInput) {
   const api = useApi();
   const { connectedWallets } = usePiratePrivyWallets({ enabled: input.authenticated && input.song });
+  const { reconnectEthereumWallet } = usePiratePrivyRuntime();
   const [capabilities, setCapabilities] = React.useState<RewardCampaignCapabilities | null>(null);
   const [policyAllowed, setPolicyAllowed] = React.useState(true);
   const [campaign, setCampaign] = React.useState<RewardCampaign | null>(null);
@@ -195,7 +274,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
           setErrorMessage("Your transfer was submitted. Retry confirmation; do not send again.");
           setSheetState("failed");
         } else {
-          setSheetState(pending.quote.expires_at <= Math.floor(Date.now() / 1_000) ? "expired" : "quote");
+          setSheetState(pending.quote.expires_at <= Math.floor(Date.now() / 1_000) ? "compose" : "quote");
         }
       }
     }).catch(() => {
@@ -231,7 +310,6 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     createQuoteInFlight.current = true;
     setBusy(true);
     setErrorMessage(undefined);
-    setSheetState("preparing");
     try {
       const now = Math.floor(Date.now() / 1_000);
       const createKeyStorage = createRequestStorageKey(input.communityId, input.postId);
@@ -267,7 +345,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       });
       setSheetState("quote");
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not prepare reward funding."));
+      setErrorMessage(boostFundingErrorMessage(error, "Could not prepare reward funding."));
       setSheetState("failed");
     } finally {
       createQuoteInFlight.current = false;
@@ -375,24 +453,37 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     setBusy(true);
     setErrorMessage(undefined);
     setSheetState("confirming");
+    // Local mirror of the submitted hash: the catch below must know whether a
+    // transaction exists to choose between "retry safely" and "check status".
+    let submittedHash: string | null = null;
     try {
       const hash = await executeUsdcTransfer({
         transfer: resolveRewardFundingTransferInput(quote),
         wallet: fundingWallet,
-        onSubmitted: (submittedHash) => {
-          setTransactionHash(submittedHash);
+        onSubmitted: (submitted) => {
+          submittedHash = submitted;
+          setTransactionHash(submitted);
           if (input.communityId) {
             writePendingFunding(input.communityId, input.postId, {
               campaignId: campaign.id,
               quote,
-              transactionHash: submittedHash,
+              transactionHash: submitted,
             });
           }
         },
       });
       await confirmSubmittedFunding(campaign, quote, hash);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not submit reward funding."));
+      setErrorMessage(boostFundingErrorMessage(
+        error,
+        submittedHash
+          ? "The transfer was submitted, but confirmation is still pending. Retry confirmation; do not send again."
+          : "Could not submit reward funding.",
+        {
+          networkLabel: getPirateNetworkConfig().base.label,
+          submitted: submittedHash != null,
+        },
+      ));
       setSheetState("failed");
     } finally {
       sendFundingInFlight.current = false;
@@ -474,10 +565,14 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       open: policyOpen,
     },
     sheetProps: {
+      busy,
       budgetDisplayLabel: formatUsdLabel((plan?.budgetCents ?? 0) / 100) ?? "$0.00",
       budgetLabel: budgetInput,
       budgetPresets: ["$5.00", "$10.00", "$25.00"],
       dailyRewardLabel: dailyRewardInput,
+      dailyRewardDisplayLabel: plan?.dailyRewardCents != null
+        ? formatUsdLabel(plan.dailyRewardCents / 100) ?? undefined
+        : undefined,
       eligibleActivity,
       eligibleActivities: capabilities?.eligible_activities,
       endsAtLabel: campaign
@@ -489,6 +584,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       fundedLabel: campaign ? formatUsdLabel(campaign.funded_cents / 100) ?? undefined : undefined,
       onBudgetChange: setBudgetInput,
       onConfirm: handleConfirm,
+      onConnectWallet: reconnectEthereumWallet ?? undefined,
       onDailyRewardChange: setDailyRewardInput,
       onEligibleActivityChange: setEligibleActivity,
       onOpenChange: setSheetOpen,
@@ -521,6 +617,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       state: sheetState,
       supportReference,
       walletMismatch,
+      walletMismatchReason: connectedWallets.length > 0 ? "different-wallet" : "no-wallet",
     } satisfies BoostCampaignSheetProps,
   };
 }

@@ -26,6 +26,7 @@ export interface VideoFeedItem {
       | {
         kind: "follow";
         ownProfile: boolean;
+        targetUserId: string;
         targetWalletAddress: string;
       }
       | {

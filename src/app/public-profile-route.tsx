@@ -99,7 +99,11 @@ export function PublicProfileRoutePage({
   const session = useSession();
   const { error, loading, resolution } = usePublicProfile(handleLabel);
   const ownProfile = Boolean(session?.profile.id && resolution?.profile.id === session.profile.id);
-  const followState = useProfileFollowState(resolution?.profile.primary_wallet_address ?? null, ownProfile);
+  const followState = useProfileFollowState(
+    resolution?.profile.primary_wallet_address ?? null,
+    ownProfile,
+    resolution?.profile.id ?? null,
+  );
   const bookingCtaState = useOwnBookingCta(ownProfile);
   const activity = usePublicProfileActivity(resolution?.resolved_handle_label ?? null, localeTag, activityTab);
 

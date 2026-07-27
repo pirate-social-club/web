@@ -243,6 +243,7 @@ export function resolveVideoPublisherRelationship(input: {
     return input.authorWalletAddress ? {
       kind: "follow",
       ownProfile: input.authorUserId === input.currentUserId,
+      targetUserId: input.authorUserId,
       targetWalletAddress: input.authorWalletAddress,
     } : undefined;
   }

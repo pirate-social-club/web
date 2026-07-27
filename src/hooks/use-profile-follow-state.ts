@@ -13,7 +13,6 @@ import { logger } from "@/lib/logger";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import {
-  fetchProfileFollowSummary,
   fetchViewerFollowState,
   submitFollowAction,
 } from "@/lib/follow/efp";
@@ -23,6 +22,7 @@ import {
   writeViewerFollowOverride,
 } from "@/lib/follow/follow-overrides";
 import { getWalletTransactionErrorMessage } from "@/lib/wallet-error-utils";
+import { useApi } from "@/lib/api";
 
 function normalizeAddress(value: string | null | undefined): Address | null {
   if (!value) {
@@ -77,10 +77,12 @@ export interface ProfileFollowState {
 export function useProfileFollowState(
   targetWalletAddress: string | null | undefined,
   ownProfile: boolean,
+  targetUserId?: string | null,
 ): ProfileFollowState {
   const { locale } = useUiLocale();
   const copy = React.useMemo(() => getLocaleMessages(locale, "routes").profile, [locale]);
   const session = useSession();
+  const api = useApi();
   const {
     busy: authBusy,
     connect,
@@ -133,7 +135,7 @@ export function useProfileFollowState(
   }, [ownProfile, targetAddress, targetWalletAddress, viewerAddress]);
 
   React.useEffect(() => {
-    if (!targetAddress) {
+    if (!targetUserId) {
       setFollowerCount(null);
       setFollowingCount(null);
       setCountsReady(true);
@@ -143,22 +145,22 @@ export function useProfileFollowState(
     let cancelled = false;
     setCountsReady(false);
 
-    void fetchProfileFollowSummary(targetAddress)
-      .then((summary) => {
+    void api.profiles.getFollowState(targetUserId)
+      .then((state) => {
         if (cancelled) {
           return;
         }
 
-        setFollowerCount(summary.followerCount);
-        setFollowingCount(summary.followingCount);
+        setFollowerCount(state.counts.status === "current" ? state.counts.follower_count : null);
+        setFollowingCount(state.counts.status === "current" ? state.counts.following_count : null);
       })
       .catch(() => {
         if (cancelled) {
           return;
         }
 
-        warnFollowOnce(`summary:${targetAddress}`, "[profile-follow] Failed to load follow summary.", {
-          targetAddress,
+        warnFollowOnce(`summary:${targetUserId}`, "[profile-follow] Failed to load follow summary.", {
+          targetUserId,
         });
         setFollowerCount(null);
         setFollowingCount(null);
@@ -172,7 +174,7 @@ export function useProfileFollowState(
     return () => {
       cancelled = true;
     };
-  }, [targetAddress]);
+  }, [api, targetUserId]);
 
   React.useEffect(() => {
     if (ownProfile) {

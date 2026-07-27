@@ -112,6 +112,7 @@ export function CurrentUserProfilePage() {
         navigate(isMobile ? "/settings" : buildSettingsPath("profile"));
       }}
       onBookingCta={() => navigate("/settings/bookings")}
+      onCommunitiesCta={() => navigate("/your-communities")}
       bookPanel={bookingCtaState ? (
         <ProfileBookTabPanel
           hostUserId={profile.id}

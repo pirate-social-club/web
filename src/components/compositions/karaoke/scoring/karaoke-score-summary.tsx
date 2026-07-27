@@ -18,11 +18,28 @@ export interface KaraokeScoreSummaryProps {
    * missing metric cost them something.
    */
   timingCalibrationUnavailable?: boolean;
+  /** Why timing could not be trusted for this take. */
+  timingCalibrationReason?: "incoherent_residuals" | "insufficient_evidence" | "offset_out_of_range" | null;
   /** Which way the singer sat against the beat — shown alongside the timing score. */
   timingTrend?: "early" | "late" | "mixed" | "on_time";
   /** Lines that couldn't be measured (provider/stream failure) — drives a neutral caveat. */
   uncertainLineCount?: number;
   className?: string;
+}
+
+function timingUnavailableMessage(
+  reason: KaraokeScoreSummaryProps["timingCalibrationReason"],
+): string {
+  switch (reason) {
+    case "insufficient_evidence":
+      return "Not enough words matched clearly to measure timing. It didn't count against your score.";
+    case "offset_out_of_range":
+      return "The microphone timing was too far out of sync to measure. It didn't count against your score.";
+    case "incoherent_residuals":
+      return "The timing measurements varied too much to trust. They didn't count against your score.";
+    default:
+      return "We couldn't measure your timing on this take, so it didn't count against your score.";
+  }
 }
 
 function percent(score: number): number {
@@ -79,12 +96,15 @@ export function KaraokeScoreSummary({
   scoredLineCount,
   timingScore,
   timingCalibrationUnavailable = false,
+  timingCalibrationReason = null,
   timingTrend,
   uncertainLineCount = 0,
 }: KaraokeScoreSummaryProps) {
   const showLines = typeof lineCount === "number" && typeof scoredLineCount === "number";
   const showMetrics = typeof timingScore === "number" || typeof lyricsScore === "number" || showLines;
-  const timingFeedback = typeof timingScore === "number" ? timingGuidance(timingTrend) : null;
+  const timingFeedback = typeof timingScore === "number" && !timingCalibrationUnavailable
+    ? timingGuidance(timingTrend)
+    : null;
   return (
     <div className={cn("flex w-full flex-col items-center gap-6 text-center", className)}>
       <div>
@@ -120,7 +140,7 @@ export function KaraokeScoreSummary({
       ) : null}
       {timingCalibrationUnavailable ? (
         <Type as="p" className="text-muted-foreground" variant="caption">
-          We couldn't measure your timing on this take, so it didn't count against your score.
+          {timingUnavailableMessage(timingCalibrationReason)}
         </Type>
       ) : null}
     </div>

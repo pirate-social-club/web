@@ -110,6 +110,13 @@ let rewardOfferError: unknown = null;
 
 const fakeApi = {
   communities: {
+    getPostKaraokeLeaderboard: async () => {
+      calls.push("communities.getPostKaraokeLeaderboard");
+      return {
+        entries: [],
+        viewer_eligible_attempt_count: 0,
+      };
+    },
     getPostKaraoke: async () => {
       calls.push("communities.getPostKaraoke");
       throw new Error("community-scoped karaoke payload should not load on the post karaoke route");
@@ -221,6 +228,7 @@ describe("KaraokeRoutePage", () => {
       "posts.get",
       "publicPosts.getKaraoke",
       "rewards.getActiveCampaignForSong",
+      "communities.getPostKaraokeLeaderboard",
     ]);
   });
 
@@ -260,6 +268,7 @@ describe("KaraokeRoutePage", () => {
       "posts.get",
       "publicPosts.getKaraoke",
       "rewards.getActiveCampaignForSong",
+      "communities.getPostKaraokeLeaderboard",
     ]);
   });
 

@@ -29,6 +29,7 @@ export interface PaidBookingMockState {
   isBookable: boolean;
   isPublished: boolean;
   basePriceCents: number;
+  slotPriceCents: number;
   slotDurationSeconds: number;
   hostTimezone: string;
   // Recorded mutating calls, for assertions.
@@ -44,6 +45,7 @@ export function createPaidBookingMockState(overrides: Partial<PaidBookingMockSta
     isBookable: true,
     isPublished: true,
     basePriceCents: 5000,
+    slotPriceCents: 5000,
     slotDurationSeconds: 1800,
     hostTimezone: "UTC",
     captured: [],
@@ -103,11 +105,11 @@ function availabilityRule() {
 function futureSlot(state: PaidBookingMockState) {
   const startUtc = "2099-01-05T10:00:00.000Z";
   const endUtc = "2099-01-05T10:30:00.000Z";
-  return { startUtc, endUtc, priceCents: state.basePriceCents, available: true };
+  return { startUtc, endUtc, priceCents: state.slotPriceCents, available: true };
 }
 
 function bookingQuote(holdId: string, state: PaidBookingMockState) {
-  const gross = state.basePriceCents;
+  const gross = state.slotPriceCents;
   const feeCents = Math.floor((gross * 1000 + 5000) / 10000);
   return {
     hold_id: holdId,
@@ -202,7 +204,7 @@ export async function installPaidBookingApiMocks(page: Page, state: PaidBookingM
         booker_user_id: mockProfile.id,
         slot_start_utc: slot.startUtc,
         slot_end_utc: slot.endUtc,
-        price_cents: state.basePriceCents,
+        price_cents: state.slotPriceCents,
         status: "active",
         expires_at_utc: soonIso(15),
       },

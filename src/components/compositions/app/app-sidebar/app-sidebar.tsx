@@ -399,7 +399,7 @@ export function AppSidebar({
             type="button"
           >
             <PirateBrandMark className="size-10 shrink-0" decorative={false} />
-            <Type as="span" className="font-display tracking-wide group-data-[collapsible=icon]:hidden" variant="h3">
+            <Type as="span" className="font-display uppercase tracking-wide group-data-[collapsible=icon]:hidden" variant="h3">
               {brandLabel ?? copy.appSidebar.brandLabel}
             </Type>
           </button>

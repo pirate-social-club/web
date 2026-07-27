@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { navigate } from "@/app/router";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
+import { formatCentsAsUsd } from "@/components/compositions/bookings/fixtures/bookings-format";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { useApi } from "@/lib/api";
@@ -23,7 +24,6 @@ function dayKey(iso: string, tz: string): string {
 function timeLabel(iso: string, tz: string): string {
   return new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 }
-function priceLabel(cents: number): string { return `${(cents / 100).toFixed(2)} USDC`; }
 
 export function BookingPublicPage({ communityId, hostUserId }: { communityId: string | null; hostUserId: string }): React.ReactElement {
   const api = useApi();
@@ -117,9 +117,9 @@ export function BookingPublicPage({ communityId, hostUserId }: { communityId: st
                     size="sm"
                     disabled={!slot.available}
                     onClick={() => onPickSlot(slot)}
-                    title={slot.available ? priceLabel(slot.priceCents) : messages.unavailable}
+                    title={slot.available ? formatCentsAsUsd(slot.priceCents) : messages.unavailable}
                   >
-                    {timeLabel(slot.startUtc, tz)} · {priceLabel(slot.priceCents)}
+                    {timeLabel(slot.startUtc, tz)} · {formatCentsAsUsd(slot.priceCents)}
                   </Button>
                 ))}
               </div>

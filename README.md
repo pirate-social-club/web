@@ -70,7 +70,6 @@ Optional overrides:
 - `VITE_BASE_MAINNET_RPC_URL`, `VITE_BASE_SEPOLIA_RPC_URL`
 - `VITE_STORY_MAINNET_RPC_URL`, `VITE_STORY_AENEID_RPC_URL`
 - `VITE_EFP_ENVIRONMENT` — `mainnet` or `testnet`
-- `VITE_EFP_API_URL` — override the default EFP API/indexer URL
 
 ## License
 

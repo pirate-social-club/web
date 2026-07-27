@@ -64,7 +64,7 @@ describe("BookingPublicPage (logged out)", () => {
   test("a slot tap triggers sign-in and does not navigate to checkout", async () => {
     const { container } = render(<BookingPublicPage communityId={null} hostUserId="usr_host" />);
     const slot = await waitFor(() => {
-      const btn = [...container.querySelectorAll("button")].find((b) => /USDC/u.test(b.textContent ?? ""));
+      const btn = [...container.querySelectorAll("button")].find((b) => /\$50/u.test(b.textContent ?? ""));
       if (!btn) throw new Error("slot button not rendered yet");
       return btn as HTMLButtonElement;
     });
@@ -78,7 +78,7 @@ describe("BookingPublicPage (logged out)", () => {
     fakeSession = { accessToken: "tok" };
     const { container } = render(<BookingPublicPage communityId={null} hostUserId="usr_host" />);
     const slot = await waitFor(() => {
-      const btn = [...container.querySelectorAll("button")].find((b) => /USDC/u.test(b.textContent ?? ""));
+      const btn = [...container.querySelectorAll("button")].find((b) => /\$50/u.test(b.textContent ?? ""));
       if (!btn) throw new Error("slot button not rendered yet");
       return btn as HTMLButtonElement;
     });

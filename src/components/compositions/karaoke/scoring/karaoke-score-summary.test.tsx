@@ -43,10 +43,29 @@ describe("KaraokeScoreSummary", () => {
 
   test("explains when timing could not be measured for this take", () => {
     const view = render(
-      <KaraokeScoreSummary finalScore={0.8} timingCalibrationUnavailable />,
+      <KaraokeScoreSummary
+        finalScore={0.8}
+        timingCalibrationUnavailable
+        timingScore={0.82}
+        timingTrend="late"
+      />,
     );
     expect(view.container.textContent).toContain(
       "We couldn't measure your timing on this take, so it didn't count against your score.",
+    );
+    expect(view.container.textContent).not.toContain("Try coming in earlier.");
+  });
+
+  test("explains the calibration failure reason", () => {
+    const view = render(
+      <KaraokeScoreSummary
+        finalScore={0.8}
+        timingCalibrationReason="incoherent_residuals"
+        timingCalibrationUnavailable
+      />,
+    );
+    expect(view.container.textContent).toContain(
+      "The timing measurements varied too much to trust. They didn't count against your score.",
     );
   });
 

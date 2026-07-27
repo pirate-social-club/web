@@ -245,14 +245,16 @@ function ProfilePublisherRelationship({
   followLabel,
   followingLabel,
   ownProfile,
+  targetUserId,
   targetWalletAddress,
 }: {
   followLabel: string;
   followingLabel: string;
   ownProfile: boolean;
+  targetUserId: string;
   targetWalletAddress: string;
 }) {
-  const follow = useProfileFollowState(targetWalletAddress, ownProfile);
+  const follow = useProfileFollowState(targetWalletAddress, ownProfile, targetUserId);
   if (ownProfile) return null;
   return (
     <PublisherRelationshipButton
@@ -1020,6 +1022,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
                   followLabel={followLabel}
                   followingLabel={followingLabel}
                   ownProfile={item.publisher.relationship.ownProfile}
+                  targetUserId={item.publisher.relationship.targetUserId}
                   targetWalletAddress={item.publisher.relationship.targetWalletAddress}
                 />
               ) : item.publisher.relationship.ownProfile ? null : (

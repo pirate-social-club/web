@@ -4,10 +4,10 @@ import type {
   SongStreakViewerStanding,
 } from "@pirate/api-contracts";
 
+import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
-import { formatAvatarInitials } from "@/lib/formatting/initials";
 
 // Shared visual + data language for every streak surface (full leaderboard,
 // post-page preview, feed chip). One identity formatter, one rank marker, one
@@ -19,20 +19,6 @@ function streakDisplayName(identity: LeaderboardIdentity): string {
   if (identity.handle) return identity.handle;
   if (identity.display_name) return identity.display_name;
   return "Anonymous learner";
-}
-
-function initials(identity: LeaderboardIdentity): string {
-  const source = identity.display_name || identity.handle || "?";
-  return formatAvatarInitials(source);
-}
-
-// Deterministic hue from the user id so avatars are stable without a network fetch.
-function avatarHue(userId: string): number {
-  let hash = 0;
-  for (let index = 0; index < userId.length; index += 1) {
-    hash = (hash * 31 + userId.charCodeAt(index)) % 360;
-  }
-  return hash;
 }
 
 function StreakBadge({ days, className }: { days: number; className?: string }) {
@@ -67,15 +53,14 @@ function StreakRankMarker({ rank }: { rank: number }) {
 }
 
 function StreakAvatar({ identity }: { identity: LeaderboardIdentity }) {
-  const hue = avatarHue(identity.user_id);
   return (
-    <span
-      aria-hidden="true"
-      className="grid size-10 shrink-0 place-items-center rounded-full text-base font-semibold text-foreground"
-      style={{ backgroundColor: `oklch(0.45 0.09 ${hue})` }}
-    >
-      {initials(identity)}
-    </span>
+    <Avatar
+      className="size-10 shrink-0 border-0"
+      fallback={streakDisplayName(identity)}
+      fallbackSeed={identity.user_id}
+      size="sm"
+      src={identity.avatar_ref ?? undefined}
+    />
   );
 }
 

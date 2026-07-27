@@ -11,7 +11,7 @@ import {
   type KaraokePracticeCompleteSummary,
 } from "./karaoke-practice-surface";
 import { deriveKaraokeFeedback } from "./karaoke-scoring-feedback";
-import { getLyricDurationMs } from "./karaoke-timing";
+import { clampKaraokeLinesToDuration, getLyricDurationMs } from "./karaoke-timing";
 import type { KaraokeStageLine } from "./karaoke-lyric-stage";
 import { KaraokeSignInCta } from "./karaoke-signin-cta";
 import { KaraokeScoreSummary } from "./scoring/karaoke-score-summary";
@@ -33,6 +33,7 @@ export interface KaraokeAudioSurfaceProps {
   driftWarningThresholdMs?: number;
   initialTimeMs?: number;
   instrumentalAudioUrl?: string;
+  leaderboardSlot?: React.ReactNode;
   lines: KaraokeStageLine[];
   rewardSlot?: React.ReactNode;
   onComplete?: (summary: KaraokePracticeCompleteSummary) => void;
@@ -79,6 +80,7 @@ export function KaraokeAudioSurface({
   driftWarningThresholdMs = 250,
   initialTimeMs = 0,
   instrumentalAudioUrl,
+  leaderboardSlot,
   lines,
   onComplete,
   onExit,
@@ -112,6 +114,10 @@ export function KaraokeAudioSurface({
   const [isPlaying, setIsPlaying] = React.useState(false);
   const fallbackDurationMs = React.useMemo(() => getLyricDurationMs(lines), [lines]);
   const durationMs = getLyricDurationMs(lines, audioDurationMs);
+  const displayLines = React.useMemo(
+    () => clampKaraokeLinesToDuration(lines, audioDurationMs),
+    [audioDurationMs, lines],
+  );
   const displayTimeMs = Math.max(0, Math.min(durationMs, currentTimeMs + timingOffsetMs));
   const showDriftWarning = Math.abs(timingOffsetMs) > driftWarningThresholdMs;
 
@@ -439,18 +445,22 @@ export function KaraokeAudioSurface({
   // "Sing again" action stays in the footer.
   const endedSummary = scoringStatus === "ended" ? scoring?.state?.summary : null;
   const centerContent = endedSummary ? (
-    <KaraokeScoreSummary
-      finalScore={endedSummary.finalScore}
-      lyricsScore={endedSummary.lyricsScore ?? undefined}
-      lineCount={endedSummary.lineCount ?? undefined}
-      scoredLineCount={endedSummary.scoredLineCount ?? undefined}
-      timingScore={endedSummary.timingScore ?? undefined}
-      timingCalibrationUnavailable={
-        KARAOKE_TIMING_SCORING_ENABLED && endedSummary.timingScore === null
-      }
-      timingTrend={endedSummary.timingTrend}
-      uncertainLineCount={endedSummary.uncertainLineCount}
-    />
+    <div className="flex w-full flex-col items-center gap-5">
+      <KaraokeScoreSummary
+        finalScore={endedSummary.finalScore}
+        lyricsScore={endedSummary.lyricsScore ?? undefined}
+        lineCount={endedSummary.lineCount ?? undefined}
+        scoredLineCount={endedSummary.scoredLineCount ?? undefined}
+        timingScore={endedSummary.timingScore ?? undefined}
+        timingCalibrationUnavailable={
+          KARAOKE_TIMING_SCORING_ENABLED && endedSummary.timingScore === null
+        }
+        timingCalibrationReason={endedSummary.timingCalibration.reason}
+        timingTrend={endedSummary.timingTrend}
+        uncertainLineCount={endedSummary.uncertainLineCount}
+      />
+      {leaderboardSlot}
+    </div>
   ) : null;
   const footerContent = scoringPanel ?? (showSignInCta ? (
     <KaraokeSignInCta
@@ -471,7 +481,7 @@ export function KaraokeAudioSurface({
         durationMs={durationMs}
         isLoading={audioState === "loading"}
         isPlaying={isPlaying}
-        lines={lines}
+        lines={displayLines}
         listening={listening}
         onComplete={onComplete}
         onExit={exitAudio}

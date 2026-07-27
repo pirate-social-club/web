@@ -280,6 +280,7 @@ describe("resolveVideoPublisherRelationship", () => {
     })).toEqual({
       kind: "follow",
       ownProfile: false,
+      targetUserId: "usr_author",
       targetWalletAddress: "0x0000000000000000000000000000000000000001",
     });
   });

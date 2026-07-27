@@ -37,6 +37,7 @@ import {
   buildMediaSpineItems,
   buildResourceItems,
   buildSidebarSections,
+  usesStandaloneRouteShell,
 } from "./sidebar-sections";
 import { resolveSessionAvatarFallback } from "./session-avatar";
 import { useShellMobileLayout } from "./use-shell-mobile-layout";
@@ -187,29 +188,12 @@ function NotificationShell({
   });
   const resourceItems = buildResourceItems(copy.appSidebar);
   const [searchOpen, setSearchOpen] = React.useState(false);
-  const isMobileStandaloneRoute = isMobileLayout && (
-    route.kind === "post"
-    || route.kind === "create-post"
-    || route.kind === "create-post-global"
-    || route.kind === "create-community"
-    || route.kind === "onboarding"
-    || route.kind === "settings-index"
-    || route.kind === "settings"
-    || route.kind === "chat-target"
-    || route.kind === "chat-conversation"
-    || route.kind === "chat-new"
-    || route.kind === "community-moderation"
-    || route.kind === "community-moderation-index"
-    );
-  const isStandaloneViewerRoute = route.kind === "live-room" || route.kind === "post-karaoke" || route.kind === "post-karaoke-leaderboard" || route.kind === "post-study" || route.kind === "post-streaks";
   const isChatRoute = route.kind === "chat"
     || route.kind === "chat-target"
     || route.kind === "chat-conversation"
     || route.kind === "chat-new";
-  const isCommunityModerationRoute = route.kind === "community-moderation"
-    || route.kind === "community-moderation-index";
   const isPublicRoute = route.kind === "public-profile" || route.kind === "public-agent";
-  const useStandaloneRouteShell = isMobileStandaloneRoute || isStandaloneViewerRoute;
+  const useStandaloneRouteShell = usesStandaloneRouteShell(route, isMobileLayout);
   // Temporary: migrated routes own their own page shell padding.
   // Remove this once all routes are converted.
   const isMigratedRoute = route.kind === "home" || route.kind === "community-feed" || route.kind === "popular" || route.kind === "wallet";
@@ -289,7 +273,6 @@ function NotificationShell({
                     "flex min-h-0 w-full flex-1",
                     !isMigratedRoute && "px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.5rem)] md:px-5 md:pb-8 md:pt-6 lg:px-8",
                     isChatRoute && "md:overflow-hidden",
-                    isCommunityModerationRoute && "md:overflow-y-auto",
                   )}
                 >
                   <React.Suspense fallback={<RouteContentFallback route={route} />}>
@@ -300,14 +283,12 @@ function NotificationShell({
                       : <LazyAuthenticatedRouteRenderer route={route} />}
                   </React.Suspense>
                 </main>
-                {isMobileStandaloneRoute || isStandaloneViewerRoute ? null : (
-                  <AppShellMobileNav
-                    copy={copy}
-                    route={route}
-                    unreadChatCount={unreadChatCount}
-                    unreadNotificationCount={unreadNotificationCount}
-                  />
-                )}
+                <AppShellMobileNav
+                  copy={copy}
+                  route={route}
+                  unreadChatCount={unreadChatCount}
+                  unreadNotificationCount={unreadNotificationCount}
+                />
               </SidebarInset>
             </>
           )}

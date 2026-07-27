@@ -62,6 +62,43 @@ test("captures request_id from error bodies and falls back to the x-request-id h
   }
 });
 
+test("loads profile follow state with optional viewer authentication", async () => {
+  let request: Request | null = null;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    request = input instanceof Request ? input : new Request(input, init);
+    return Response.json({
+      object: "profile_follow_state",
+      target_user_id: "usr_target",
+      target_wallet: { status: "available", address: "0x0000000000000000000000000000000000000001" },
+      relationship: { status: "current", viewer_follows: false },
+      counts: { status: "current", follower_count: 12, following_count: 34 },
+      projection: {
+        availability: "current",
+        revision: "17",
+        indexed_through_block: [{ chain_id: 8453, block_number: "49181298" }],
+      },
+    });
+  };
+
+  try {
+    const client = new ApiClient({
+      baseUrl: "http://pirate.test",
+      getToken: () => "session-token",
+    });
+    const state = await client.profiles.getFollowState("usr/target");
+    const capturedRequest = requireRequest(request);
+    expect(capturedRequest.url).toBe("http://pirate.test/profiles/usr%2Ftarget/follow-state");
+    expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+    expect(state.counts).toEqual({
+      status: "current",
+      follower_count: 12,
+      following_count: 34,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("captures per-field validation errors from { error, fields } bodies into details", async () => {
   globalThis.fetch = async () => Response.json({
     error: "validation_failed",

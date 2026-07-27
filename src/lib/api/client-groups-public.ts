@@ -103,6 +103,33 @@ export function createProfilesApi(request: ApiRequest) {
     },
     getByUserId: (userId: string): Promise<Profile> =>
       request<Profile>(`/profiles/${encodeURIComponent(userId)}`, { tokenRequired: false }),
+    getFollowState: (userId: string): Promise<{
+      object: "profile_follow_state";
+      target_user_id: string;
+      target_wallet: { status: "available"; address: string } | { status: "no_wallet" };
+      relationship: {
+        status: "current" | "viewer_anonymous" | "viewer_no_wallet" | "unavailable";
+        viewer_follows: boolean | null;
+      };
+      counts: {
+        status: "current" | "unavailable" | "not_applicable";
+        follower_count: number | null;
+        following_count: number | null;
+      };
+      projection: {
+        availability:
+          | "current"
+          | "projection_initializing"
+          | "projection_stale"
+          | "projection_rebuilding"
+          | "projection_unavailable";
+        revision: string;
+        indexed_through_block: Array<{ chain_id: number; block_number: string }>;
+      };
+    }> =>
+      request(`/profiles/${encodeURIComponent(userId)}/follow-state`, {
+        tokenOptional: true,
+      }),
     updateMe: (input: ProfileUpdateInput): Promise<Profile> =>
       request<Profile>("/profiles/me", {
         method: "POST",

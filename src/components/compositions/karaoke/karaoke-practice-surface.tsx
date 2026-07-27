@@ -164,6 +164,9 @@ export function KaraokePracticeSurface({
               <Type as="span" className="tabular-nums" variant="h3">
                 {runningScore ?? 0}
               </Type>
+              <Type as="span" className="text-muted-foreground" variant="caption">
+                Provisional
+              </Type>
               {comboCount >= 2 ? (
                 <Type as="span" className="text-success" variant="caption">
                   Combo x{comboCount}
@@ -215,8 +218,8 @@ export function KaraokePracticeSurface({
 
         <div className="relative z-10 size-full">
           {centerContent ? (
-            <div className="grid size-full min-h-64 place-items-center px-4">
-              <div className="flex w-full flex-col items-center sm:max-w-sm">
+            <div className="flex size-full min-h-64 overflow-y-auto px-4 py-6">
+              <div className="m-auto flex w-full max-w-2xl flex-col items-center">
                 {centerContent}
               </div>
             </div>

@@ -37,6 +37,7 @@ describe("Content Security Policy", () => {
     expect(csp).toContain("https://api.coingecko.com");
     expect(csp).toContain("https://efp.pirate.sc");
     expect(csp).toContain("https://efp-staging.pirate.sc");
+    expect(csp).not.toContain("api.ethfollow.xyz");
     expect(csp).toContain("https://s3.filebase.com");
     expect(csp).toContain("frame-src");
   });

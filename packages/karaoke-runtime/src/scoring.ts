@@ -141,6 +141,17 @@ export interface KaraokeLineScore {
   uncertain: boolean;
 }
 
+export interface KaraokeLineDiagnostic {
+  lineId: string;
+  finalizedReason: KaraokeLineBucket["finalizedReason"];
+  recognizedWordCount: number;
+  score: number;
+  textScore: number;
+  timingScore: number | null;
+  confidenceScore: number | null;
+  medianSignedDeltaMs: number | null;
+}
+
 export interface KaraokeSessionSummary {
   finalScore: number;
   lyricsScore: number;
@@ -166,6 +177,8 @@ export interface KaraokeSessionSummary {
    * is the only way to tell "timing was perfect" apart from "timing was skipped".
    */
   timingCalibration: KaraokeTimingCalibration;
+  /** Derived-only diagnostics. Never includes transcripts, recognized text, or audio. */
+  lineDiagnostics?: KaraokeLineDiagnostic[];
   strongestLines: KaraokeLineScore[];
   weakestLines: KaraokeLineScore[];
   missedWords: string[];
@@ -1512,10 +1525,20 @@ export function applyTimingOffsetCompensation(
   };
 }
 
-function aggregateTimingTrend(lineScores: readonly KaraokeLineScore[]): KaraokeTimingTrend {
+function aggregateTimingTrend(
+  lineScores: readonly KaraokeLineScore[],
+  calibration: KaraokeTimingCalibration,
+): KaraokeTimingTrend {
+  // Directional feedback must describe the same residuals that timing scoring
+  // judges. The raw deltas still include capture/STT latency; telling a singer
+  // to correct that system offset would contradict a compensated perfect score.
+  // Preserve the raw diagnostic only when calibration failed—the UI suppresses
+  // guidance for those takes because there is no trustworthy offset.
+  const offsetMs = calibration.state === "calibrated" ? calibration.offsetMs : 0;
   const deltas = lineScores
     .map((lineScore) => lineScore.timingScore?.medianSignedDeltaMs)
-    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+    .map((value) => value - offsetMs);
 
   return timingTrendFromDeltas(deltas);
 }
@@ -1564,6 +1587,16 @@ export function aggregateKaraokeSession(input: {
     .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
   const strongestLines = [...scoreSource].sort((a, b) => b.score - a.score).slice(0, 3);
   const weakestLines = [...scoreSource].sort((a, b) => a.score - b.score).slice(0, 3);
+  const lineDiagnostics = lineScores.map((lineScore) => ({
+    confidenceScore: lineScore.confidenceScore,
+    finalizedReason: lineScore.finalizedReason,
+    lineId: lineScore.lineId,
+    medianSignedDeltaMs: lineScore.timingScore?.medianSignedDeltaMs ?? null,
+    recognizedWordCount: lineScore.recognizedWords.length,
+    score: lineScore.score,
+    textScore: lineScore.textScore.score,
+    timingScore: lineScore.timingScore?.score ?? null,
+  }));
 
   return {
     confidenceMean: confidenceScores.length > 0
@@ -1571,6 +1604,7 @@ export function aggregateKaraokeSession(input: {
       : null,
     finalScore: clamp01(finalScore),
     lineCount: lineScores.length,
+    lineDiagnostics,
     lowConfidenceLineCount: lineScores.filter((lineScore) => (
       lineScore.confidenceScore !== null && lineScore.confidenceScore < LOW_CONFIDENCE_THRESHOLD
     )).length,
@@ -1587,7 +1621,7 @@ export function aggregateKaraokeSession(input: {
     timingScore: KARAOKE_TIMING_SCORING_ENABLED && calibration.state === "calibrated" && timingScores.length > 0
       ? timingScores.reduce((sum, value) => sum + value, 0) / timingScores.length
       : null,
-    timingTrend: aggregateTimingTrend(lineScores),
+    timingTrend: aggregateTimingTrend(lineScores, calibration),
     weakestLines,
   };
 }

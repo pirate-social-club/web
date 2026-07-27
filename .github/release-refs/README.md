@@ -24,6 +24,10 @@ can merge.
 Web releases use these pinned commits; they never select the API or Core
 repository's current `main` implicitly.
 
-Current release intent: deploy the public-read cache eviction canary with API
-`1eded9e82dcc32a0c8f9d0025d933f4a4164a935` and Core
-`387968e2008891b30cbcaa38a40233fc2341f612`.
+Current release intent: deploy explicit uncertain-delivery handling for Telegram
+channel publishing with API `4f2641d1607cd8b4e975dfad715d79f6ef32f82b` and Core
+`afb77f5e89669c0f1f1453d9739bb87f85071227`. Core migration 0166 adds the
+`sending` and `uncertain` delivery states plus the operator resolution audit
+record; the API classifies against them and adds the `/admin/ops/telegram`
+surface. Both refs move together: the pinned API commit records this exact Core
+SHA in `.github/ci-refs/core.sha`.

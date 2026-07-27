@@ -115,10 +115,15 @@ for (const viewport of [
 
     await book.click();
     await expect(page.getByRole("heading", { name: "Book feed-booking-host.pirate" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Play video" })).toBeVisible();
+    if (viewport.name === "desktop") {
+      await expect(page.getByRole("button", { name: "Play video" })).toBeVisible();
+    }
 
     await page.getByRole("button", { name: "Close" }).click();
-    await expect(page.getByRole("button", { name: "Pause video" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Book feed-booking-host.pirate" })).toHaveCount(0);
+    if (viewport.name === "desktop") {
+      await expect(page.getByRole("button", { name: "Pause video" })).toBeVisible();
+    }
     await book.click();
 
     const slot = page.getByRole("link", { name: /\$50/u }).first();

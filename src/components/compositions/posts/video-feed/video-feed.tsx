@@ -1091,7 +1091,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
             )}
           </div>
           <div className="grid size-11 place-items-center md:hidden">
-            {item.song?.songHref ? (
+            {item.song?.songHref && item.song.artworkSrc ? (
               <a
                 aria-label={`Open audio: ${item.song.title}`}
                 className="grid size-10 animate-spin place-items-center overflow-hidden rounded-full border-4 border-background bg-card shadow-sm motion-reduce:animate-none"
@@ -1103,18 +1103,13 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
                 }}
                 style={{ animationDuration: "8s" }}
               >
-                <Avatar fallback={item.publisher.handle} size="sm" src={item.publisher.avatarSrc} />
+                <img
+                  alt=""
+                  className="size-full object-cover"
+                  src={item.song.artworkSrc}
+                />
               </a>
-            ) : (
-              <span
-                aria-hidden
-                className="grid size-10 animate-spin place-items-center overflow-hidden rounded-full border-4 border-background bg-card shadow-sm motion-reduce:animate-none"
-                data-video-audio-disc
-                style={{ animationDuration: "8s" }}
-              >
-                <Avatar fallback={item.publisher.handle} size="sm" src={item.publisher.avatarSrc} />
-              </span>
-            )}
+            ) : null}
           </div>
           {/* Mobile opens overflow by long-pressing the video; desktop keeps the hover-corner menu. */}
           <div className="md:hidden">

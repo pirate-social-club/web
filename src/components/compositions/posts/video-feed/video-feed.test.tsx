@@ -1073,16 +1073,42 @@ describe("VideoFeed", () => {
     expect(slots[0]?.className).toContain("size-6");
   });
 
-  test("fills the mobile rail share slot with an audio disc", () => {
-    const view = render(<VideoFeed items={[item]} onShare={() => undefined} />);
+  test("fills the mobile rail share slot only for a linked song with real artwork", () => {
+    const linkedSong = {
+      ...item,
+      song: {
+        artist: "Britney Spears",
+        artworkSrc: "https://media.test/toxic-cover.webp",
+        songHref: "/p/pst_toxic",
+        title: "Toxic",
+      },
+    };
+    const view = render(<VideoFeed items={[linkedSong]} onShare={() => undefined} />);
     const disc = view.container.querySelector("[data-video-audio-disc]");
     const share = view.getByRole("button", { name: "Share" });
 
     expect(disc).not.toBeNull();
+    expect(disc?.querySelector("img")?.getAttribute("src")).toBe("https://media.test/toxic-cover.webp");
     expect(disc?.parentElement?.className).toContain("md:hidden");
     const desktopShareSlot = share.closest("div.hidden");
     expect(desktopShareSlot?.className).toContain("hidden");
     expect(desktopShareSlot?.className).toContain("md:block");
+  });
+
+  test("leaves the mobile rail slot empty for original audio or linked songs without artwork", () => {
+    const originalAudio = render(<VideoFeed items={[item]} />);
+    expect(originalAudio.container.querySelector("[data-video-audio-disc]")).toBeNull();
+    originalAudio.unmount();
+
+    const linkedWithoutArtwork = render(
+      <VideoFeed
+        items={[{
+          ...item,
+          song: { artist: "Britney Spears", songHref: "/p/pst_toxic", title: "Toxic" },
+        }]}
+      />,
+    );
+    expect(linkedWithoutArtwork.container.querySelector("[data-video-audio-disc]")).toBeNull();
   });
 
   test("underlines the linked song only on hover or focus", () => {

@@ -9,17 +9,33 @@ describe("resolveVideoSongCapabilities", () => {
         age_gate_viewer_state: null,
         karaoke_capability: { status: "ready" },
         post: { community: "cmt_song" },
+        song_presentation: { cover_art_ref: "https://media.test/song-cover.webp" },
         study_capability: { status: "locked" },
       } as never,
       readMode: "public",
       sourcePostId: "pst_song",
     })).toMatchObject({
+      artworkSrc: "https://media.test/song-cover.webp",
       karaoke: "ready",
       karaokeHref: "/p/pst_song/karaoke",
       readMode: "public",
       study: "locked",
       studyHref: undefined,
     });
+  });
+
+  test("does not invent artwork when the linked song has no cover", () => {
+    expect(resolveVideoSongCapabilities({
+      post: {
+        age_gate_viewer_state: null,
+        karaoke_capability: { status: "ready" },
+        post: { community: "cmt_song" },
+        song_presentation: { cover_art_ref: null },
+        study_capability: { status: "ready" },
+      } as never,
+      readMode: "public",
+      sourcePostId: "pst_song",
+    }).artworkSrc).toBeUndefined();
   });
 
   test("fails closed when the linked song requires age proof", () => {

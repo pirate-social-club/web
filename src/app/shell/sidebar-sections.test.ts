@@ -11,6 +11,7 @@ import {
   buildSidebarSections,
   buildVideoPrimaryItems,
   resolveCreatePostPath,
+  usesStandaloneRouteShell,
 } from "./sidebar-sections";
 
 describe("resolveCreatePostPath", () => {
@@ -291,5 +292,47 @@ describe("buildMediaSections", () => {
 
     expect(sections.map((section) => section.id)).toEqual(["communities", "moderation"]);
     expect(sections[1]).toBe(moderation);
+  });
+});
+
+
+describe("usesStandaloneRouteShell", () => {
+  // Regression: community moderation renders its own sidebar, so the app
+  // sidebar must not render alongside it on any viewport.
+  test("community moderation routes are standalone on desktop and mobile", () => {
+    const sectionRoute: AppRoute = {
+      kind: "community-moderation",
+      path: "/c/@xn--tl8h/mod/queue",
+      communityId: "@xn--tl8h",
+      section: "queue",
+    };
+    const indexRoute: AppRoute = {
+      kind: "community-moderation-index",
+      path: "/c/@xn--tl8h/mod",
+      communityId: "@xn--tl8h",
+    };
+
+    expect(usesStandaloneRouteShell(sectionRoute, false)).toBe(true);
+    expect(usesStandaloneRouteShell(sectionRoute, true)).toBe(true);
+    expect(usesStandaloneRouteShell(indexRoute, false)).toBe(true);
+    expect(usesStandaloneRouteShell(indexRoute, true)).toBe(true);
+  });
+
+  test("regular routes stay inside the unified shell on desktop", () => {
+    expect(usesStandaloneRouteShell({ kind: "home", path: "/" }, false)).toBe(false);
+  });
+
+  test("mobile standalone routes only apply to the mobile layout", () => {
+    const postRoute: AppRoute = { kind: "post", path: "/p/post_1", postId: "post_1" };
+
+    expect(usesStandaloneRouteShell(postRoute, true)).toBe(true);
+    expect(usesStandaloneRouteShell(postRoute, false)).toBe(false);
+  });
+
+  test("viewer routes are standalone on every viewport", () => {
+    const liveRoute: AppRoute = { kind: "live-room", path: "/live/post_1", postId: "post_1" };
+
+    expect(usesStandaloneRouteShell(liveRoute, false)).toBe(true);
+    expect(usesStandaloneRouteShell(liveRoute, true)).toBe(true);
   });
 });

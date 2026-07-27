@@ -91,6 +91,38 @@ export function resolveMobileBackPath(route: AppRoute): string | null {
   return null;
 }
 
+export function usesStandaloneRouteShell(route: AppRoute, isMobileLayout: boolean): boolean {
+  // Community moderation renders its own shell (including its sidebar) on every
+  // viewport. Keeping it standalone prevents the app sidebar from rendering
+  // alongside the moderation sidebar.
+  if (route.kind === "community-moderation" || route.kind === "community-moderation-index") {
+    return true;
+  }
+
+  if (
+    route.kind === "live-room"
+    || route.kind === "post-karaoke"
+    || route.kind === "post-karaoke-leaderboard"
+    || route.kind === "post-study"
+    || route.kind === "post-streaks"
+  ) {
+    return true;
+  }
+
+  return isMobileLayout && (
+    route.kind === "post"
+    || route.kind === "create-post"
+    || route.kind === "create-post-global"
+    || route.kind === "create-community"
+    || route.kind === "onboarding"
+    || route.kind === "settings-index"
+    || route.kind === "settings"
+    || route.kind === "chat-target"
+    || route.kind === "chat-conversation"
+    || route.kind === "chat-new"
+  );
+}
+
 function formatCommunitySidebarLabel(
   communityId?: string | null,
   routeSlug?: string | null,

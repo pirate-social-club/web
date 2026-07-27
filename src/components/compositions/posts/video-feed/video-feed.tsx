@@ -17,7 +17,7 @@ import {
   Pause,
   Play,
   Plus,
-  ShareNetwork,
+  ShareFat,
   SpeakerHigh,
   SpeakerSlash,
 } from "@phosphor-icons/react";
@@ -133,6 +133,16 @@ export const VIDEO_FEED_MUTED_PREFERENCE_KEY = "pirate.video-feed.muted";
  * video decoders at once, and kept slides are paused, so they cost memory rather than CPU.
  */
 export const VIDEO_FEED_KEEP_ALIVE_MEDIA_COUNT = 4;
+export const VIDEO_FEED_LONG_PRESS_MS = 500;
+export const VIDEO_FEED_LONG_PRESS_MOVE_THRESHOLD_PX = 10;
+
+export function didVideoLongPressMove(
+  start: { x: number; y: number },
+  current: { x: number; y: number },
+): boolean {
+  return Math.hypot(current.x - start.x, current.y - start.y) > VIDEO_FEED_LONG_PRESS_MOVE_THRESHOLD_PX;
+}
+
 export function isVideoLoopReplay({
   currentTime,
   duration,
@@ -219,7 +229,7 @@ function PublisherRelationshipButton({
       type="button"
     >
       {pending ? (
-        <span aria-hidden className="size-2.5 animate-pulse rounded-full bg-current" />
+        <Plus aria-hidden className="size-4 animate-pulse" weight="bold" />
       ) : active ? (
         <Check aria-hidden className="size-4" weight="bold" />
       ) : (
@@ -284,7 +294,7 @@ function VideoAction({
         <IconButton
           active={active}
           aria-label={label}
-          className="bg-transparent text-white drop-shadow-[0_2px_3px_rgb(0_0_0/0.9)] hover:bg-white/15 data-[active=true]:text-destructive md:bg-white/10 md:shadow-md md:drop-shadow-none md:hover:bg-white/20"
+          className="!bg-transparent text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.65)] hover:!bg-white/15 data-[active=true]:text-destructive [&_svg]:size-7 md:!bg-white/10 md:shadow-md md:drop-shadow-none md:hover:!bg-white/20 md:[&_svg]:size-6"
           disabled={disabled}
           onClick={onClick}
           variant="ghost"
@@ -407,10 +417,14 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   const progressFillRef = React.useRef<HTMLDivElement | null>(null);
   const progressInputRef = React.useRef<HTMLInputElement | null>(null);
   const progressFrameRef = React.useRef<number | null>(null);
+  const longPressTimerRef = React.useRef<number | null>(null);
+  const longPressStartRef = React.useRef<{ x: number; y: number } | null>(null);
+  const suppressNextPlaybackClickRef = React.useRef(false);
   const suppressSeekTelemetryRef = React.useRef(false);
   const ageBlocked = item.viewerState === "age_proof_required";
   const hasPlayableSource = !ageBlocked && Boolean(item.media.src);
   const mediaMounted = mountMedia && hasPlayableSource;
+  const [mobileOverflowOpen, setMobileOverflowOpen] = React.useState(false);
   const [showSoundPrompt, setShowSoundPrompt] = React.useState(false);
   const [showOriginalCaption, setShowOriginalCaption] = React.useState(false);
   const impressionRef = React.useRef<{
@@ -461,6 +475,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
 
   React.useEffect(() => () => {
     if (progressFrameRef.current !== null) window.cancelAnimationFrame?.(progressFrameRef.current);
+    if (longPressTimerRef.current !== null) window.clearTimeout(longPressTimerRef.current);
   }, []);
 
   React.useEffect(() => {
@@ -567,6 +582,30 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
     });
   }, [active, allowAutoplay, autoplayBlocked, item.id, mediaMounted, onAutoplayBlockedChange, paused]);
 
+  const cancelLongPress = React.useCallback(() => {
+    if (longPressTimerRef.current !== null) window.clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+    longPressStartRef.current = null;
+  }, []);
+
+  const startLongPress = React.useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType === "mouse") return;
+    cancelLongPress();
+    longPressStartRef.current = { x: event.clientX, y: event.clientY };
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressTimerRef.current = null;
+      longPressStartRef.current = null;
+      suppressNextPlaybackClickRef.current = true;
+      setMobileOverflowOpen(true);
+    }, VIDEO_FEED_LONG_PRESS_MS);
+  }, [cancelLongPress]);
+
+  const moveLongPress = React.useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const start = longPressStartRef.current;
+    if (!start || !didVideoLongPressMove(start, { x: event.clientX, y: event.clientY })) return;
+    cancelLongPress();
+  }, [cancelLongPress]);
+
   const togglePlaybackFromControl = () => {
     if (autoplayBlocked) {
       const playback = videoRef.current?.play?.();
@@ -625,30 +664,42 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
     ? item.translation?.originalLang
     : item.captionLang;
 
-  // One overflow definition feeds both responsive slots: the mobile rail instance and the desktop
-  // hover corner. ActionMenu itself picks Sheet vs dropdown from the viewport, so the two slots can
-  // never drift apart in content or behaviour.
+  // One overflow definition feeds the mobile long-press sheet and desktop hover-corner menu, so
+  // their content and behaviour cannot drift apart.
   const overflowItems = [
-    {
-      key: "sound",
-      label: muted ? soundOnLabel : muteVideoLabel,
-      icon: muted
-        ? <SpeakerHigh className="size-5" weight="fill" />
-        : <SpeakerSlash className="size-5" weight="fill" />,
-    },
+    ...(item.shareActions?.length
+      ? item.shareActions.map((action) => ({
+        key: `share:${action.key}`,
+        label: action.label,
+        icon: action.icon,
+        destructive: action.destructive,
+        disabled: action.disabled,
+      }))
+      : onShare
+        ? [{
+          key: "share:fallback",
+          label: "Share",
+          icon: <ShareFat className="size-5" weight="fill" />,
+        }]
+        : []),
     {
       key: "downvote",
       label: item.downvoted ? removeDownvoteLabel : downvoteLabel,
       icon: <ArrowFatDown className="size-5" weight={item.downvoted ? "fill" : "regular"} />,
+      separatorBefore: Boolean(item.shareActions?.length || onShare),
     },
     ...(item.boostEligibility === "eligible"
       ? [{ key: "boost", label: "Boost this song", icon: <CurrencyDollar className="size-5" weight="bold" /> }]
       : []),
   ];
   const runOverflowAction = (key: string) => {
+    if (key.startsWith("share:")) {
+      const action = item.shareActions?.find((candidate) => `share:${candidate.key}` === key);
+      if (action) void action.onSelect?.();
+      else onShare?.(item);
+    }
     if (key === "boost") onBoost?.(item);
     if (key === "downvote") runInteraction(onDownvote);
-    if (key === "sound") onToggleMute(videoRef.current);
   };
 
   // The mobile header (h-16) and footer nav (--header-height) are fixed overlays, so the slide stays
@@ -656,7 +707,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   // flow and the feed box already excludes it, so the insets collapse to zero.
   return (
     <article className={cn(
-      "relative flex h-full w-full snap-start snap-always items-center justify-center overflow-hidden bg-black",
+      "relative flex h-full w-full items-center justify-center overflow-hidden bg-black",
       "[--feed-browser-occlusion:max(0px,calc(100lvh-100dvh))]",
       "[--feed-chrome-top:calc(env(safe-area-inset-top)+4rem)] [--feed-chrome-bottom:calc(env(safe-area-inset-bottom)+var(--header-height)+var(--feed-browser-occlusion))]",
       "md:[--feed-browser-occlusion:0px] md:[--feed-chrome-bottom:0px] md:[--feed-chrome-top:0px]",
@@ -758,8 +809,18 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
             aria-label={paused || autoplayBlocked ? "Play video" : "Pause video"}
             className="absolute inset-0 grid cursor-pointer place-items-center text-white"
             data-video-play-control
-            onClick={togglePlaybackFromControl}
+            onClick={() => {
+              if (suppressNextPlaybackClickRef.current) {
+                suppressNextPlaybackClickRef.current = false;
+                return;
+              }
+              togglePlaybackFromControl();
+            }}
             onMouseDown={(event) => event.preventDefault()}
+            onPointerCancel={cancelLongPress}
+            onPointerDown={startLongPress}
+            onPointerMove={moveLongPress}
+            onPointerUp={cancelLongPress}
             type="button"
           >
             {paused || autoplayBlocked ? <Play className="size-14 drop-shadow-md" weight="fill" /> : <span className="sr-only"><Pause />Pause</span>}
@@ -778,12 +839,11 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
 
         {/*
           Desktop-only corner controls, revealed while the frame is hovered or focused within.
-          Mobile keeps sound on "Tap for sound" and overflow in the rail, where there is no hover.
-          They render after the full-frame play control so clicks reach them instead of toggling
-          playback.
+          Mobile keeps sound in the top-left and opens overflow by long press. These render after the
+          full-frame play control so clicks reach them instead of toggling playback.
         */}
         {mediaMounted ? (
-          <div className="absolute left-3 top-3 z-10 hidden opacity-0 transition-opacity duration-150 md:block md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+          <div className="absolute left-3 top-[calc(var(--feed-chrome-top)+0.75rem)] z-10 block opacity-100 transition-opacity duration-150 md:top-3 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
             <IconButton
               aria-label={muted ? soundOnLabel : muteVideoLabel}
               className="bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75"
@@ -920,15 +980,12 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
         </div>
 
         <div className="absolute bottom-[calc(var(--feed-chrome-bottom)+1.25rem)] right-3 z-10 flex flex-col items-center gap-3 md:static">
-          {/*
-            The avatar sits clean on the media without a separating ring. Missing images deliberately
-            use Avatar's canonical generated ghost so account identity stays consistent app-wide.
-          */}
+          {/* Missing images deliberately use Avatar's canonical generated ghost. */}
           {item.publisher.href ? (
             <a className="rounded-full shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" href={item.publisher.href}>
               <span
                 aria-label={`Publisher ${item.publisher.handle}`}
-                className="block rounded-full"
+                className="block rounded-full ring-2 ring-white"
                 data-video-publisher-avatar
                 role="img"
               >
@@ -942,7 +999,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
           ) : (
             <div
               aria-label={`Publisher ${item.publisher.handle}`}
-              className="rounded-full shadow-md"
+              className="rounded-full shadow-md ring-2 ring-white"
               data-video-publisher-avatar
               role="img"
             >
@@ -962,7 +1019,15 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
                   ownProfile={item.publisher.relationship.ownProfile}
                   targetWalletAddress={item.publisher.relationship.targetWalletAddress}
                 />
-              ) : null}
+              ) : item.publisher.relationship.ownProfile ? null : (
+                <span
+                  aria-hidden
+                  className="grid size-6 place-items-center rounded-full bg-destructive text-white shadow-md"
+                  data-video-publisher-relationship-placeholder
+                >
+                  <Plus className="size-4" weight="bold" />
+                </span>
+              )}
             </div>
           ) : item.publisher.relationship?.kind === "join" ? (
             <div className="-mt-5 size-6" data-video-publisher-relationship-slot>
@@ -1006,43 +1071,64 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
           ) : null}
           <CapabilityAction capability={item.study} icon={<BookOpen className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
           <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
-          {item.shareActions?.length ? (
-            <VideoShareSurface actions={item.shareActions}>
-              <IconButton
-                aria-label="Share"
-                className="bg-transparent text-white drop-shadow-[0_2px_3px_rgb(0_0_0/0.9)] hover:bg-white/15 md:bg-white/10 md:shadow-md md:drop-shadow-none md:hover:bg-white/20"
-                variant="ghost"
+          <div className="hidden md:block">
+            {item.shareActions?.length ? (
+              <VideoShareSurface actions={item.shareActions}>
+                <IconButton
+                  aria-label="Share"
+                  className="bg-transparent text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.65)] hover:bg-white/15 [&_svg]:size-7 md:bg-white/10 md:shadow-md md:drop-shadow-none md:hover:bg-white/20 md:[&_svg]:size-6"
+                  variant="ghost"
+                >
+                  <ShareFat className="size-7 md:size-6" data-video-icon-weight="fill" weight="fill" />
+                </IconButton>
+              </VideoShareSurface>
+            ) : (
+              <VideoAction
+                icon={<ShareFat className="size-7 md:size-6" data-video-icon-weight="fill" weight="fill" />}
+                label="Share"
+                onClick={onShare ? () => onShare(item) : undefined}
+              />
+            )}
+          </div>
+          <div className="grid size-11 place-items-center md:hidden">
+            {item.song?.songHref && item.song.artworkSrc ? (
+              <a
+                aria-label={`Open audio: ${item.song.title}`}
+                className="grid size-10 animate-spin place-items-center overflow-hidden rounded-full border-4 border-background bg-card shadow-sm motion-reduce:animate-none"
+                data-video-audio-disc
+                href={item.song.songHref}
+                onClick={(event) => {
+                  event.preventDefault();
+                  runSongNavigation();
+                }}
+                style={{ animationDuration: "8s" }}
               >
-                <ShareNetwork className="size-6" data-video-icon-weight="fill" weight="fill" />
-              </IconButton>
-            </VideoShareSurface>
-          ) : (
-            <VideoAction
-              icon={<ShareNetwork className="size-6" data-video-icon-weight="fill" weight="fill" />}
-              label="Share"
-              onClick={onShare ? () => onShare(item) : undefined}
-            />
-          )}
-          {/*
-            Mobile keeps overflow in the rail so the rail height stays stable between videos and the
-            menu stays reachable without hover. On md+ the desktop hover corner inside the frame
-            takes over; both slots share the single overflow definition above.
-          */}
+                <img
+                  alt=""
+                  className="size-full object-cover"
+                  src={item.song.artworkSrc}
+                />
+              </a>
+            ) : null}
+          </div>
+          {/* Mobile opens overflow by long-pressing the video; desktop keeps the hover-corner menu. */}
           <div className="md:hidden">
             <ActionMenu
               items={overflowItems}
               label="More video actions"
               onAction={runOverflowAction}
+              onOpenChange={setMobileOverflowOpen}
+              open={mobileOverflowOpen}
+              mobilePresentation="gesture"
               title="Video actions"
               trigger={(
-                <IconButton
+                <button
                   aria-label="More video actions"
-                  className="bg-transparent text-white drop-shadow-[0_2px_3px_rgb(0_0_0/0.9)] hover:bg-white/15"
-                  data-video-overflow-trigger
-                  variant="ghost"
+                  className="sr-only"
+                  type="button"
                 >
-                  <DotsThree className="size-6" weight="bold" />
-                </IconButton>
+                  More video actions
+                </button>
               )}
             />
           </div>
@@ -1258,7 +1344,11 @@ export function VideoFeed({
   }, [autoplayBlockedItemIds]);
 
   const toggleMute = React.useCallback((video: HTMLVideoElement | null) => {
-    if (!muted) {
+    // Brave can change the media element's effective mute state independently of React while
+    // restoring autoplay or moving between mounted slides. Use the element as the source of truth
+    // for a direct user gesture so every tap toggles what the viewer is actually hearing.
+    const effectivelyMuted = video?.muted ?? muted;
+    if (!effectivelyMuted) {
       if (video) video.muted = true;
       setMuted(true);
       setPreferenceMuted(true);
@@ -1355,7 +1445,7 @@ export function VideoFeed({
       tabIndex={0}
     >
       {items.map((item, index) => (
-        <div className="h-full" key={item.id}>
+        <div className="h-full snap-start snap-always" key={item.id}>
           <VideoFeedSlide
             {...actions}
             active={index === activeIndex}

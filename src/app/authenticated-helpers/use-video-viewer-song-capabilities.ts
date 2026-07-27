@@ -34,8 +34,10 @@ export function resolveVideoSongCapabilities({ post, readMode, rewardOffer, sour
     : capabilityStatus((post as LocalizedPostResponse & PostWithKaraokeCapability).karaoke_capability?.status);
   const study = ageBlocked ? "unavailable" : capabilityStatus(post.study_capability?.status);
   const rewardLabel = rewardOffer ? rewardCtaAmountLabel(rewardOffer.daily_reward_cents) : undefined;
+  const artworkSrc = post.song_presentation?.cover_art_ref?.trim() || undefined;
   return {
     activeRewardOffer: Boolean(rewardOffer),
+    artworkSrc,
     karaoke,
     karaokeHref: karaoke === "ready" ? `/p/${encodeURIComponent(sourcePostId)}/karaoke` : undefined,
     readMode,

@@ -5,6 +5,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/react";
 
 import {
   classifyVideoPlayRejection,
+  didVideoLongPressMove,
   isVideoLoopReplay,
   videoImpressionEventId,
   videoProgressKeyAction,
@@ -108,6 +109,11 @@ describe("VideoFeed", () => {
     expect(watchedPlaybackDelta(2, 9)).toBe(0);
   });
 
+  test("cancels a video long press only after meaningful pointer movement", () => {
+    expect(didVideoLongPressMove({ x: 100, y: 200 }, { x: 106, y: 208 })).toBe(false);
+    expect(didVideoLongPressMove({ x: 100, y: 200 }, { x: 111, y: 200 })).toBe(true);
+  });
+
   test("redacts the video source from age-blocked markup", () => {
     const view = render(<VideoFeed items={[{ ...item, viewerState: "age_proof_required" }]} />);
     expect(view.container.innerHTML).not.toContain("private.mp4");
@@ -189,9 +195,10 @@ describe("VideoFeed", () => {
       const action = view.getByRole("button", { name: label });
       // Mobile overlays the video: bare filled glyphs with a drop shadow, no filled circle.
       expect(action.className).toContain("bg-transparent");
-      expect(action.className).toContain("drop-shadow-[0_2px_3px_rgb(0_0_0/0.9)]");
+      expect(action.className).toContain("drop-shadow-[0_1px_2px_rgb(0_0_0/0.65)]");
+      expect(action.className).toContain("[&_svg]:size-7");
       // Desktop sits on the black stage outside the frame, where a dark circle is invisible.
-      expect(action.className).toContain("md:bg-white/10");
+      expect(action.className).toMatch(/md:!?bg-white\/10/);
       expect(action.className).toContain("md:drop-shadow-none");
     }
   });
@@ -455,6 +462,27 @@ describe("VideoFeed", () => {
     }
   });
 
+  test("toggles the effective media mute state when Brave drifts from React state", async () => {
+    const restorePlay = mockVideoPlay(() => Promise.resolve());
+    try {
+      const view = render(<VideoFeed initialMuted items={[item]} />);
+      const video = view.container.querySelector<HTMLVideoElement>("video")!;
+      Object.defineProperty(video, "muted", { configurable: true, value: false, writable: true });
+
+      fireEvent.click(view.getByRole("button", { name: "Sound on" }));
+      expect(video.muted).toBe(true);
+
+      fireEvent.click(view.getByRole("button", { name: "Sound on" }));
+      await act(async () => { await Promise.resolve(); });
+
+      expect(video.muted).toBe(false);
+      expect(view.getByRole("button", { name: "Mute video" })).toBeTruthy();
+      expect(window.localStorage.getItem("pirate.video-feed.muted")).toBe("false");
+    } finally {
+      restorePlay();
+    }
+  });
+
   test("shows a non-persistent play affordance when muted autoplay is blocked", async () => {
     const restorePlay = mockVideoPlay(() => Promise.reject(
       new DOMException("autoplay blocked", "NotAllowedError"),
@@ -686,6 +714,17 @@ describe("VideoFeed", () => {
     expect(calls).toEqual(["one", "two"]);
   });
 
+  test("owns snap-stop on each direct scroll child", () => {
+    const view = render(<VideoFeed items={feedItems()} />);
+    const feed = view.getByLabelText("Video feed");
+    const slideWrapper = feed.firstElementChild;
+    const article = slideWrapper?.firstElementChild;
+
+    expect(slideWrapper?.classList.contains("snap-start")).toBe(true);
+    expect(slideWrapper?.classList.contains("snap-always")).toBe(true);
+    expect(article?.classList.contains("snap-always")).toBe(false);
+  });
+
   test("keeps playback on the current slide until scrolling settles", () => {
     const view = render(<VideoFeed items={feedItems()} />);
     const feed = view.getByLabelText("Video feed") as HTMLDivElement;
@@ -860,8 +899,7 @@ describe("VideoFeed", () => {
     }]} />);
 
     expect(view.container.querySelector("video")?.hasAttribute("poster")).toBe(false);
-    expect(view.container.querySelectorAll("article img")).toHaveLength(1);
-    expect(view.container.querySelector("article img")?.getAttribute("alt")).toBe("songs.pirate");
+    expect(view.container.querySelectorAll("article [data-video-media-image]")).toHaveLength(0);
   });
 
   test("moves the media window while preserving every full-height slide shell", () => {
@@ -980,14 +1018,13 @@ describe("VideoFeed", () => {
     expect(played).toEqual([]);
   });
 
-  test("places overflow in the mobile rail and the desktop hover corner from one definition", () => {
+  test("keeps only the desktop overflow dots visible", () => {
     const view = render(<VideoFeed items={[item]} />);
     const triggers = view.getAllByLabelText("More video actions");
     expect(triggers).toHaveLength(2);
 
-    const rail = view.getByRole("button", { name: "Like" }).closest("div.absolute")!;
     const frame = view.container.querySelector<HTMLVideoElement>("video")!.parentElement!;
-    const [cornerTrigger, railTrigger] = triggers;
+    const [cornerTrigger, longPressTrigger] = triggers;
 
     // The corner slot lives inside the media frame and is revealed by hover/focus on md+ only.
     expect(frame.contains(cornerTrigger)).toBe(true);
@@ -997,9 +1034,19 @@ describe("VideoFeed", () => {
     expect(cornerSlot.className).toContain("md:group-hover:opacity-100");
     expect(cornerSlot.className).toContain("md:group-focus-within:opacity-100");
 
-    // The rail slot keeps the mobile rail a stable height between videos and hides on md+.
-    expect(rail.contains(railTrigger)).toBe(true);
-    expect(railTrigger.parentElement!.className).toContain("md:hidden");
+    expect(longPressTrigger.className).toContain("sr-only");
+    expect(view.container.querySelectorAll("[data-video-overflow-trigger]")).toHaveLength(1);
+  });
+
+  test("cancels the mobile action long press when Android claims the pointer", async () => {
+    const view = render(<VideoFeed items={[item]} />);
+    const playback = view.getByRole("button", { name: "Pause video" });
+
+    fireEvent.pointerDown(playback, { clientX: 100, clientY: 200, pointerType: "touch" });
+    fireEvent.pointerCancel(playback, { pointerType: "touch" });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 520)); });
+
+    expect(view.queryByText("Video actions")).toBeNull();
   });
 
   test("renders overflow even when the item is not boost eligible", () => {
@@ -1015,23 +1062,26 @@ describe("VideoFeed", () => {
     expect(view.queryByRole("button", { name: "Play video" })).toBeNull();
   });
 
-  test("reveals a desktop sound control from the frame's top-left corner", () => {
+  test("keeps sound in the frame's top-left corner on mobile and desktop", () => {
     const view = render(<VideoFeed items={[item]} />);
     const sound = view.getByLabelText("Sound on");
     const slot = sound.parentElement!;
 
-    expect(slot.className).toContain("hidden");
-    expect(slot.className).toContain("md:block");
+    expect(slot.className).toContain("block");
+    expect(slot.className).toContain("opacity-100");
+    expect(slot.className).toContain("md:opacity-0");
     expect(slot.className).toContain("md:group-hover:opacity-100");
-    // Mobile keeps the rail menu's sound item; the corner control is desktop-only.
     expect(slot.className).toContain("left-3");
+    expect(slot.className).toContain("top-[calc(var(--feed-chrome-top)+0.75rem)]");
+    expect(slot.className).toContain("md:top-3");
   });
 
-  test("keeps the publisher avatar ring-free with the canonical generated ghost", () => {
+  test("gives the publisher avatar a white rail ring", () => {
     const view = render(<VideoFeed items={[{ ...item, publisher: { handle: "songs.pirate", kind: "community" } }]} />);
     const avatar = view.container.querySelector("[data-video-publisher-avatar]")!;
 
-    expect(avatar.className).not.toContain("ring-2");
+    expect(avatar.className).toContain("ring-2");
+    expect(avatar.className).toContain("ring-white");
     const image = avatar.querySelector("img");
     expect(image?.getAttribute("src")).toContain("data:image/svg+xml");
     expect(image?.getAttribute("alt")).toBe("songs.pirate");
@@ -1053,6 +1103,44 @@ describe("VideoFeed", () => {
     expect(slots).toHaveLength(2);
     expect(slots[0]?.className).toBe(slots[1]?.className);
     expect(slots[0]?.className).toContain("size-6");
+  });
+
+  test("fills the mobile rail share slot only for a linked song with real artwork", () => {
+    const linkedSong = {
+      ...item,
+      song: {
+        artist: "Britney Spears",
+        artworkSrc: "https://media.test/toxic-cover.webp",
+        songHref: "/p/pst_toxic",
+        title: "Toxic",
+      },
+    };
+    const view = render(<VideoFeed items={[linkedSong]} onShare={() => undefined} />);
+    const disc = view.container.querySelector("[data-video-audio-disc]");
+    const share = view.getByRole("button", { name: "Share" });
+
+    expect(disc).not.toBeNull();
+    expect(disc?.querySelector("img")?.getAttribute("src")).toBe("https://media.test/toxic-cover.webp");
+    expect(disc?.parentElement?.className).toContain("md:hidden");
+    const desktopShareSlot = share.closest("div.hidden");
+    expect(desktopShareSlot?.className).toContain("hidden");
+    expect(desktopShareSlot?.className).toContain("md:block");
+  });
+
+  test("leaves the mobile rail slot empty for original audio or linked songs without artwork", () => {
+    const originalAudio = render(<VideoFeed items={[item]} />);
+    expect(originalAudio.container.querySelector("[data-video-audio-disc]")).toBeNull();
+    originalAudio.unmount();
+
+    const linkedWithoutArtwork = render(
+      <VideoFeed
+        items={[{
+          ...item,
+          song: { artist: "Britney Spears", songHref: "/p/pst_toxic", title: "Toxic" },
+        }]}
+      />,
+    );
+    expect(linkedWithoutArtwork.container.querySelector("[data-video-audio-disc]")).toBeNull();
   });
 
   test("underlines the linked song only on hover or focus", () => {

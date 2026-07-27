@@ -343,6 +343,7 @@ export function Feed({
       rewards: resolution.rewards,
       song: item.song ? {
         ...item.song,
+        artworkSrc: resolution.artworkSrc,
         karaokeHref: resolution.karaokeHref,
         studyHref: resolution.studyHref,
       } : undefined,

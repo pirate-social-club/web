@@ -66,6 +66,7 @@ export interface VideoFeedItem {
     study?: { amountLabel?: string };
   };
   song?: {
+    artworkSrc?: string;
     artist: string;
     karaokeHref?: string;
     /** Canonical destination for the source song/post. */

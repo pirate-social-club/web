@@ -192,7 +192,7 @@ function writeStoredMutedPreference(muted: boolean): void {
   }
 }
 
-function compactCount(value: number): string {
+export function compactCount(value: number): string {
   return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 

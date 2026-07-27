@@ -15,8 +15,10 @@ import { rotateToUnseenLead } from "@/lib/video-feed-lead-rotation";
 import {
   appendUniqueVideoEntries,
   checkoutPathForFeedSlot,
+  commentsPanelCommentCount,
   feedBookingSourceCommunityId,
   feedBookingStartingPriceCents,
+  nextCommentsPanelForActiveItem,
   nextVideoPaginationCursor,
   panelFromHistoryState,
   postIdForVideoItem,
@@ -411,5 +413,70 @@ describe("checkoutPathForFeedSlot", () => {
     expect(checkoutPathForFeedSlot("usr/host", slot, "com/feed")).toBe(
       "/c/com%2Ffeed/book/usr%2Fhost/checkout?end=2026-07-24T10%3A30%3A00.000Z&start=2026-07-24T10%3A00%3A00.000Z",
     );
+  });
+});
+
+describe("nextCommentsPanelForActiveItem", () => {
+  const entries = [feedEntry("post_a"), feedEntry("post_b")];
+  const openOnA = { itemId: "post_a", kind: "comments", postId: "post_a" } as const;
+
+  test("follows the feed to the video that settled at the snap point", () => {
+    expect(nextCommentsPanelForActiveItem(openOnA, "post_b", entries)).toEqual({
+      itemId: "post_b",
+      kind: "comments",
+      postId: "post_b",
+    });
+  });
+
+  test("does not churn the panel when the dock is already on the settled video", () => {
+    expect(nextCommentsPanelForActiveItem(openOnA, "post_a", entries)).toBeNull();
+  });
+
+  test("leaves the booking panel alone", () => {
+    const booking = {
+      handle: "host",
+      hostUserId: "usr_host",
+      itemId: "post_a",
+      kind: "booking",
+      playback: { muted: false, paused: false, playbackSeconds: 0 },
+      sourceCommunityId: null,
+      startingPriceCents: 3500,
+    } as const;
+    expect(nextCommentsPanelForActiveItem(booking, "post_b", entries)).toBeNull();
+  });
+
+  test("does not follow while the panel is closed", () => {
+    expect(nextCommentsPanelForActiveItem({ kind: "none" }, "post_b", entries)).toBeNull();
+  });
+
+  // A feed page can be replaced under the viewer mid-scroll; a video with no entry has no
+  // thread to show, so the dock must hold its current post rather than blank out.
+  test("holds position when the settled video is no longer in the feed", () => {
+    expect(nextCommentsPanelForActiveItem(openOnA, "post_gone", entries)).toBeNull();
+    expect(nextCommentsPanelForActiveItem(openOnA, null, entries)).toBeNull();
+  });
+});
+
+describe("commentsPanelCommentCount", () => {
+  const items = [
+    { id: "post_a", commentCount: 12 },
+    { id: "post_b", commentCount: 0 },
+  ];
+  const openOn = (id: string) => ({ itemId: id, kind: "comments", postId: id }) as const;
+
+  test("reports the server total for the docked post", () => {
+    expect(commentsPanelCommentCount(items, openOn("post_a"), {})).toBe(12);
+  });
+
+  test("counts comments the viewer just posted instead of sitting stale", () => {
+    expect(commentsPanelCommentCount(items, openOn("post_a"), { post_a: 2 })).toBe(14);
+  });
+
+  test("does not credit one post with another post's new comments", () => {
+    expect(commentsPanelCommentCount(items, openOn("post_b"), { post_a: 2 })).toBe(0);
+  });
+
+  test("is zero while no comments panel is open", () => {
+    expect(commentsPanelCommentCount(items, { kind: "none" }, { post_a: 2 })).toBe(0);
   });
 });

@@ -93,6 +93,7 @@ export function resolveMobileBackPath(route: AppRoute): string | null {
 function formatCommunitySidebarLabel(
   communityId?: string | null,
   routeSlug?: string | null,
+  displayName?: string | null,
 ): string {
   const trimmedSlug = routeSlug?.trim();
   if (trimmedSlug) {
@@ -103,6 +104,13 @@ function formatCommunitySidebarLabel(
   }
 
   const trimmedId = communityId?.trim() ?? "";
+  // Unverified communities have no slug; show the display name when it is a
+  // real name rather than the ID fallback set by owned-communities.
+  const trimmedName = displayName?.trim() ?? "";
+  if (trimmedName && trimmedName !== trimmedId) {
+    return trimmedName;
+  }
+
   if (!trimmedId) return "c/unknown";
   if (trimmedId.length <= 14) return `c/${trimmedId}`;
   return `c/${trimmedId.slice(0, 7)}...${trimmedId.slice(-4)}`;
@@ -134,7 +142,7 @@ export function buildSidebarSections(
         items: validRecentCommunities.map((community) => ({
           avatarSrc: community.avatarSrc,
           id: `c/${community.communityId}`,
-          label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
+          label: formatCommunitySidebarLabel(community.communityId, community.routeSlug, community.displayName),
           onSelect: () => navigateOrReload(buildCommunityPath(community.communityId, community.routeSlug)),
         })),
       });
@@ -151,7 +159,7 @@ export function buildSidebarSections(
         items: validModeratedCommunities.map((community) => ({
           avatarSrc: community.avatarSrc,
           id: `moderation/${community.communityId}`,
-          label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
+          label: formatCommunitySidebarLabel(community.communityId, community.routeSlug, community.displayName),
           onSelect: () => navigateOrReload(buildCommunityModerationEntryPath(community.communityId, isMobileWeb, community.routeSlug)),
         })),
       });

@@ -59,6 +59,47 @@ describe("buildSidebarSections", () => {
     expect(item?.label).toBe("c/@🇵🇸");
   });
 
+  test("shows the plain display name for unverified communities without a slug", () => {
+    const sections = buildSidebarSections(
+      {
+        sections: [{ id: "recent", label: "Recent", items: [] }],
+      } as unknown as ShellMessages["appSidebar"],
+      [{
+        avatarSrc: null,
+        communityId: "com_cmt_be13447e169a49209b2dc207fc4574c0856e",
+        displayName: "Garage Tapes",
+        routeSlug: null,
+        updatedAt: "2026-04-29T00:00:00.000Z",
+      }],
+      [],
+      false,
+    );
+
+    const item = sections[0]?.items[0];
+    expect(item?.label).toBe("Garage Tapes");
+    expect(item?.label).not.toContain("c/");
+  });
+
+  test("falls back to the truncated community id when the display name is the id", () => {
+    const communityId = "com_cmt_be13447e169a49209b2dc207fc4574c0856e";
+    const sections = buildSidebarSections(
+      {
+        sections: [{ id: "recent", label: "Recent", items: [] }],
+      } as unknown as ShellMessages["appSidebar"],
+      [{
+        avatarSrc: null,
+        communityId,
+        displayName: communityId,
+        routeSlug: null,
+        updatedAt: "2026-04-29T00:00:00.000Z",
+      }],
+      [],
+      false,
+    );
+
+    expect(sections[0]?.items[0]?.label).toBe("c/com_cmt...856e");
+  });
+
   test("skips malformed community summaries without crashing", () => {
     const sections = buildSidebarSections(
       {

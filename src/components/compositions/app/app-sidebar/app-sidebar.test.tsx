@@ -6,7 +6,7 @@ import { Bell, ChatCircle, House } from "@phosphor-icons/react";
 
 import { SidebarProvider } from "@/components/compositions/system/sidebar/sidebar";
 
-import { AppSidebar, filterPrimaryItemsForLayout, type AppSidebarPrimaryItem } from "./app-sidebar";
+import { AppSidebar, filterPrimaryItemsForLayout, type AppSidebarPrimaryItem, type AppSidebarSection } from "./app-sidebar";
 
 function renderSidebar(primaryItems: AppSidebarPrimaryItem[]) {
   return renderToStaticMarkup(
@@ -45,6 +45,55 @@ describe("AppSidebar spine badges", () => {
 
     expect(markup).not.toContain("notification-count-badge");
     expect(markup).not.toContain('aria-label="Activity, 0"');
+  });
+});
+
+describe("AppSidebar sections", () => {
+  function renderSections(sections: AppSidebarSection[]) {
+    return renderToStaticMarkup(
+      <SidebarProvider>
+        <AppSidebar appearance="media" primaryItems={[]} sections={sections} />
+      </SidebarProvider>,
+    );
+  }
+
+  test("shows the empty label instead of a bare header when a section has no items", () => {
+    const markup = renderSections([
+      { defaultOpen: true, emptyLabel: "No communities yet", id: "communities", items: [], label: "Communities" },
+    ]);
+
+    expect(markup).toContain("No communities yet");
+  });
+
+  test("drops the empty label once the section has items", () => {
+    const markup = renderSections([
+      {
+        defaultOpen: true,
+        emptyLabel: "No communities yet",
+        id: "communities",
+        items: [{ id: "c/com_cmt_1", label: "Garage Tapes" }],
+        label: "Communities",
+      },
+    ]);
+
+    expect(markup).toContain("Garage Tapes");
+    expect(markup).not.toContain("No communities yet");
+  });
+
+  // The Communities header already reads "Communities"; a nested "Your Communities"
+  // row under it rendered as a bare, avatar-less line that looked like a subheading.
+  test("does not reintroduce a Your Communities row inside the Communities section", () => {
+    const markup = renderSections([
+      {
+        defaultOpen: true,
+        emptyLabel: "No communities yet",
+        id: "communities",
+        items: [{ id: "c/com_cmt_1", label: "Garage Tapes" }],
+        label: "Communities",
+      },
+    ]);
+
+    expect(markup).not.toContain("Your Communities");
   });
 });
 

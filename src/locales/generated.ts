@@ -2115,6 +2115,7 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "Privacy Policy"
           }
         ],
+        "communitiesEmptyLabel": "No communities yet",
         "yourCommunitiesLabel": "Your Communities",
         "feedSortBestLabel": "Popular",
         "feedSortNewLabel": "Latest",
@@ -4260,6 +4261,7 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "سياسة الخصوصية"
           }
         ],
+        "communitiesEmptyLabel": "لا توجد مجتمعات بعد",
         "yourCommunitiesLabel": "مجتمعاتك",
         "feedSortBestLabel": "الرائج",
         "feedSortNewLabel": "الجديد",
@@ -6405,6 +6407,7 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "隐私政策"
           }
         ],
+        "communitiesEmptyLabel": "还没有社区",
         "yourCommunitiesLabel": "你的社区",
         "feedSortBestLabel": "热门",
         "feedSortNewLabel": "最新",

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Flag, Plus } from "@phosphor-icons/react";
+import { Plus } from "@phosphor-icons/react";
 
 import type { AppRoute } from "@/app/router";
 import { isNativePublicIdentityRoute, navigate, navigateOrReload, useRoute } from "@/app/router";
@@ -222,16 +222,9 @@ function NotificationShell({
         onSelect: () => navigateOrReload("/communities/new"),
       },
       defaultOpen: true,
+      emptyLabel: copy.appSidebar.communitiesEmptyLabel,
       id: "communities",
-      items: [
-        {
-          icon: Flag,
-          id: "your-communities",
-          label: copy.appSidebar.yourCommunitiesLabel,
-          onSelect: () => navigateOrReload("/your-communities"),
-        },
-        ...(recentSection?.items ?? []),
-      ],
+      items: recentSection?.items ?? [],
       label: copy.appSidebar.sections.find((section) => section.id === "communities")?.label ?? "Communities",
     },
     ...sections.filter((section) => section.id !== "recent"),

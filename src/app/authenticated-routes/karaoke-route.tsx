@@ -6,6 +6,10 @@ import { navigate } from "@/app/router";
 import { routeReturnPath } from "@/app/authenticated-helpers/video-viewer-return-state";
 import { KaraokeAudioSurface } from "@/components/compositions/karaoke/karaoke-audio-surface";
 import {
+  KaraokeCompletionLeaderboard,
+  type KaraokeCompletionLeaderboardState,
+} from "@/components/compositions/karaoke/karaoke-leaderboard";
+import {
   displayedRewardQualificationStatus,
   RewardQualificationNotice,
   SongRewardOffer,
@@ -76,6 +80,9 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
   const contentLocale = useRouteContentLocale();
   const [rewardQualification, setRewardQualification] = React.useState<ApiRewardQualificationSummary | null>(null);
   const [rewardCheckDelayed, setRewardCheckDelayed] = React.useState(false);
+  const [completionLeaderboard, setCompletionLeaderboard] =
+    React.useState<KaraokeCompletionLeaderboardState | null>(null);
+  const leaderboardAttemptCountBeforeTake = React.useRef<number | null>(null);
   const [state, setState] = React.useState<KaraokeRouteState>({ phase: "loading" });
 
   React.useEffect(() => {
@@ -209,6 +216,71 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
     };
   }, [api, karaokeEnded, postId, rewardOffer, session?.accessToken]);
 
+  React.useEffect(() => {
+    if (!communityId || !session?.accessToken) {
+      leaderboardAttemptCountBeforeTake.current = null;
+      setCompletionLeaderboard(null);
+      return;
+    }
+    let cancelled = false;
+    let timeout: number | undefined;
+
+    if (!karaokeEnded) {
+      setCompletionLeaderboard(null);
+      void api.communities.getPostKaraokeLeaderboard(communityId, postId, { limit: 3 })
+        .then((leaderboard) => {
+          if (!cancelled) {
+            leaderboardAttemptCountBeforeTake.current = leaderboard.viewer_eligible_attempt_count;
+          }
+        })
+        .catch(() => {
+          if (!cancelled) leaderboardAttemptCountBeforeTake.current = null;
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    let retry = 0;
+    let receivedBoard = false;
+    const poll = async () => {
+      try {
+        const leaderboard = await api.communities.getPostKaraokeLeaderboard(
+          communityId,
+          postId,
+          { limit: 3 },
+        );
+        if (cancelled) return;
+        receivedBoard = true;
+        setCompletionLeaderboard({ kind: "ready", leaderboard });
+        const previousAttemptCount = leaderboardAttemptCountBeforeTake.current;
+        if (
+          previousAttemptCount === null
+          || leaderboard.viewer_eligible_attempt_count > previousAttemptCount
+        ) {
+          return;
+        }
+      } catch {
+        if (cancelled) return;
+      }
+      if (retry < 5) {
+        timeout = window.setTimeout(() => {
+          retry += 1;
+          void poll();
+        }, 1_500 * 2 ** retry);
+      } else if (!receivedBoard) {
+        setCompletionLeaderboard({ kind: "error" });
+      }
+    };
+
+    setCompletionLeaderboard({ kind: "loading" });
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
+  }, [api, communityId, karaokeEnded, postId, session?.accessToken]);
+
   if (state.phase === "loading") {
     return (
       <div className="flex h-dvh min-h-screen w-full items-center justify-center bg-background text-foreground">
@@ -227,6 +299,12 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
       artworkSrc={state.payload.artworkSrc}
       className="h-dvh"
       instrumentalAudioUrl={state.payload.instrumentalAudioUrl}
+      leaderboardSlot={karaokeEnded && completionLeaderboard ? (
+        <KaraokeCompletionLeaderboard
+          onViewAll={() => navigate(`/p/${encodeURIComponent(postId)}/karaoke/leaderboard`)}
+          state={completionLeaderboard}
+        />
+      ) : undefined}
       lines={stageLines}
       onExit={() => navigate(routeReturnPath(`/p/${encodeURIComponent(postId)}`))}
       onRequestSignIn={connect ?? undefined}

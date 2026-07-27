@@ -22,6 +22,11 @@ export type KaraokeLeaderboardState =
   | { kind: "error"; message?: string }
   | { kind: "ready"; leaderboard: KaraokeSongLeaderboard };
 
+export type KaraokeCompletionLeaderboardState =
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "ready"; leaderboard: KaraokeSongLeaderboard };
+
 export interface KaraokeLeaderboardProps {
   artistName?: string;
   artworkSrc?: string;
@@ -294,6 +299,72 @@ function ReadyState({
       </ul>
       {!viewerRankedInEntries ? <ViewerStanding leaderboard={leaderboard} onSing={onSing} /> : null}
     </div>
+  );
+}
+
+export function KaraokeCompletionLeaderboard({
+  onViewAll,
+  state,
+}: {
+  onViewAll?: () => void;
+  state: KaraokeCompletionLeaderboardState;
+}) {
+  const leaderboard = state.kind === "ready" ? state.leaderboard : null;
+  const entries = leaderboard?.entries.slice(0, 3) ?? [];
+  const viewerRankedInEntries = entries.some((entry) => entry.is_viewer);
+
+  return (
+    <section
+      aria-label="Karaoke leaderboard"
+      className="w-full rounded-[var(--radius-xl)] border border-border-soft bg-card/90 p-4 shadow-sm"
+    >
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <Type as="h2" variant="h4">
+          Leaderboard
+        </Type>
+        {onViewAll ? (
+          <Button onClick={onViewAll} size="sm" variant="ghost">
+            View all
+          </Button>
+        ) : null}
+      </div>
+      {state.kind === "loading" ? (
+        <div aria-busy="true" className="space-y-2">
+          {[0, 1].map((row) => (
+            <div className="h-16 animate-pulse rounded-[var(--radius-lg)] bg-muted" key={row} />
+          ))}
+        </div>
+      ) : null}
+      {state.kind === "error" ? (
+        <Type as="p" className="text-muted-foreground" variant="caption">
+          Scores are taking longer to update.
+        </Type>
+      ) : null}
+      {leaderboard ? (
+        <>
+          {entries.length > 0 ? (
+            <ul className="space-y-2">
+              {entries.map((entry) => (
+                <EntryRow
+                  entry={entry}
+                  key={`${entry.rank}:${entry.reached_at}:${entry.identity.handle ?? entry.identity.display_name ?? "anonymous"}`}
+                  totalRanked={leaderboard.total_ranked}
+                />
+              ))}
+            </ul>
+          ) : (
+            <Type as="p" className="text-muted-foreground" variant="caption">
+              No eligible scores yet.
+            </Type>
+          )}
+          {!viewerRankedInEntries ? (
+            <div className="mt-3">
+              <ViewerStanding leaderboard={leaderboard} />
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </section>
   );
 }
 

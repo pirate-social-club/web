@@ -33,6 +33,7 @@ export interface KaraokeAudioSurfaceProps {
   driftWarningThresholdMs?: number;
   initialTimeMs?: number;
   instrumentalAudioUrl?: string;
+  leaderboardSlot?: React.ReactNode;
   lines: KaraokeStageLine[];
   rewardSlot?: React.ReactNode;
   onComplete?: (summary: KaraokePracticeCompleteSummary) => void;
@@ -79,6 +80,7 @@ export function KaraokeAudioSurface({
   driftWarningThresholdMs = 250,
   initialTimeMs = 0,
   instrumentalAudioUrl,
+  leaderboardSlot,
   lines,
   onComplete,
   onExit,
@@ -443,19 +445,22 @@ export function KaraokeAudioSurface({
   // "Sing again" action stays in the footer.
   const endedSummary = scoringStatus === "ended" ? scoring?.state?.summary : null;
   const centerContent = endedSummary ? (
-    <KaraokeScoreSummary
-      finalScore={endedSummary.finalScore}
-      lyricsScore={endedSummary.lyricsScore ?? undefined}
-      lineCount={endedSummary.lineCount ?? undefined}
-      scoredLineCount={endedSummary.scoredLineCount ?? undefined}
-      timingScore={endedSummary.timingScore ?? undefined}
-      timingCalibrationUnavailable={
-        KARAOKE_TIMING_SCORING_ENABLED && endedSummary.timingScore === null
-      }
-      timingCalibrationReason={endedSummary.timingCalibration.reason}
-      timingTrend={endedSummary.timingTrend}
-      uncertainLineCount={endedSummary.uncertainLineCount}
-    />
+    <div className="flex w-full flex-col items-center gap-5">
+      <KaraokeScoreSummary
+        finalScore={endedSummary.finalScore}
+        lyricsScore={endedSummary.lyricsScore ?? undefined}
+        lineCount={endedSummary.lineCount ?? undefined}
+        scoredLineCount={endedSummary.scoredLineCount ?? undefined}
+        timingScore={endedSummary.timingScore ?? undefined}
+        timingCalibrationUnavailable={
+          KARAOKE_TIMING_SCORING_ENABLED && endedSummary.timingScore === null
+        }
+        timingCalibrationReason={endedSummary.timingCalibration.reason}
+        timingTrend={endedSummary.timingTrend}
+        uncertainLineCount={endedSummary.uncertainLineCount}
+      />
+      {leaderboardSlot}
+    </div>
   ) : null;
   const footerContent = scoringPanel ?? (showSignInCta ? (
     <KaraokeSignInCta

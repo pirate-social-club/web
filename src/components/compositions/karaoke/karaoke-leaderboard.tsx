@@ -37,6 +37,10 @@ function formatScore(score: number): string {
   return `${Math.round(score / 100)}%`;
 }
 
+function formatRank(rank: number, totalRanked: number): string {
+  return `Rank ${rank} of ${totalRanked}`;
+}
+
 function displayName(entry: KaraokeLeaderboardEntry): string {
   if (entry.identity.visibility === "anonymized") return "Former member";
   if (entry.identity.handle) return entry.identity.handle;
@@ -61,7 +65,13 @@ function RankMarker({ rank }: { rank: number }) {
   );
 }
 
-function EntryRow({ entry }: { entry: KaraokeLeaderboardEntry }) {
+function EntryRow({
+  entry,
+  totalRanked,
+}: {
+  entry: KaraokeLeaderboardEntry;
+  totalRanked: number;
+}) {
   const label = displayName(entry);
   return (
     <li
@@ -84,7 +94,7 @@ function EntryRow({ entry }: { entry: KaraokeLeaderboardEntry }) {
           {entry.is_viewer ? <span className="text-muted-foreground"> · you</span> : null}
         </Type>
         <Type as="p" className="truncate text-muted-foreground" variant="caption">
-          Top {entry.top_percent}%
+          {formatRank(entry.rank, totalRanked)}
         </Type>
       </div>
       <span className="min-w-16 text-right text-lg font-semibold tabular-nums text-primary">
@@ -243,9 +253,9 @@ function ViewerStanding({
         You are #{leaderboard.viewer_rank} with {formatScore(leaderboard.viewer_best_score)}
       </Type>
       <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
-        {leaderboard.viewer_top_percent != null
-          ? `Top ${leaderboard.viewer_top_percent}% · ${leaderboard.viewer_eligible_attempt_count} eligible ${leaderboard.viewer_eligible_attempt_count === 1 ? "take" : "takes"}`
-          : `${leaderboard.viewer_eligible_attempt_count} eligible ${leaderboard.viewer_eligible_attempt_count === 1 ? "take" : "takes"}`}
+        {formatRank(leaderboard.viewer_rank, leaderboard.total_ranked)}
+        {" · "}
+        {leaderboard.viewer_eligible_attempt_count} eligible {leaderboard.viewer_eligible_attempt_count === 1 ? "take" : "takes"}
       </Type>
     </div>
   );
@@ -275,7 +285,11 @@ function ReadyState({
     <div className="mx-auto w-full max-w-2xl flex-1 space-y-4 px-4 py-6 sm:px-6">
       <ul className="space-y-2">
         {leaderboard.entries.map((entry) => (
-          <EntryRow entry={entry} key={`${entry.rank}:${entry.reached_at}:${entry.identity.handle ?? entry.identity.display_name ?? "anonymous"}`} />
+          <EntryRow
+            entry={entry}
+            key={`${entry.rank}:${entry.reached_at}:${entry.identity.handle ?? entry.identity.display_name ?? "anonymous"}`}
+            totalRanked={leaderboard.total_ranked}
+          />
         ))}
       </ul>
       {!viewerRankedInEntries ? <ViewerStanding leaderboard={leaderboard} onSing={onSing} /> : null}

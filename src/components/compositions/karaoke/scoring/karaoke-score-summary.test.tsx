@@ -50,13 +50,15 @@ describe("KaraokeScoreSummary", () => {
     );
   });
 
-  test("labels the timing metric with the direction the singer drifted", () => {
-    const behind = render(<KaraokeScoreSummary finalScore={0.9} timingScore={0.82} timingTrend="late" />);
-    expect(behind.getByText("Timing · behind")).toBeTruthy();
-    expect(behind.getByText("82%")).toBeTruthy();
+  test("keeps a single-word timing label and explains direction plainly", () => {
+    const early = render(<KaraokeScoreSummary finalScore={0.9} timingScore={0.82} timingTrend="early" />);
+    expect(early.getByText("Timing")).toBeTruthy();
+    expect(early.getByText("82%")).toBeTruthy();
+    expect(early.getByText("You sang a little early. Try coming in later.")).toBeTruthy();
     cleanup();
 
     const onTime = render(<KaraokeScoreSummary finalScore={0.9} timingScore={0.97} timingTrend="on_time" />);
     expect(onTime.getByText("Timing")).toBeTruthy();
+    expect(onTime.getByText("Right on time.")).toBeTruthy();
   });
 });

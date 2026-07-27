@@ -29,18 +29,21 @@ function percent(score: number): number {
   return Math.round(Math.min(1, Math.max(0, score)) * 100);
 }
 
-// The trend is the actionable half of the timing metric: the score says how
-// consistent you were, the label says which way to move.
-function timingLabel(trend: KaraokeScoreSummaryProps["timingTrend"]): string {
+// Keep the metric tile parallel with Lyrics and Lines. Directional feedback is
+// a sentence below the tiles so singers do not have to decode "ahead" or
+// "behind" relative to the backing track.
+function timingGuidance(trend: KaraokeScoreSummaryProps["timingTrend"]): string | null {
   switch (trend) {
     case "early":
-      return "Timing · ahead";
+      return "You sang a little early. Try coming in later.";
     case "late":
-      return "Timing · behind";
+      return "You sang a little late. Try coming in earlier.";
     case "mixed":
-      return "Timing · uneven";
+      return "Your timing varied. Some lines were early and others late.";
+    case "on_time":
+      return "Right on time.";
     default:
-      return "Timing";
+      return null;
   }
 }
 
@@ -81,6 +84,7 @@ export function KaraokeScoreSummary({
 }: KaraokeScoreSummaryProps) {
   const showLines = typeof lineCount === "number" && typeof scoredLineCount === "number";
   const showMetrics = typeof timingScore === "number" || typeof lyricsScore === "number" || showLines;
+  const timingFeedback = typeof timingScore === "number" ? timingGuidance(timingTrend) : null;
   return (
     <div className={cn("flex w-full flex-col items-center gap-6 text-center", className)}>
       <div>
@@ -94,7 +98,7 @@ export function KaraokeScoreSummary({
       {showMetrics ? (
         <div className="grid w-full grid-cols-3 gap-3">
           {typeof timingScore === "number" ? (
-            <Metric label={timingLabel(timingTrend)} value={`${percent(timingScore)}%`} />
+            <Metric label="Timing" value={`${percent(timingScore)}%`} />
           ) : null}
           {typeof lyricsScore === "number" ? (
             <Metric label="Lyrics" value={`${percent(lyricsScore)}%`} />
@@ -103,6 +107,11 @@ export function KaraokeScoreSummary({
             <Metric label="Lines" value={`${scoredLineCount}/${lineCount}`} />
           ) : null}
         </div>
+      ) : null}
+      {timingFeedback ? (
+        <Type as="p" className="text-muted-foreground" variant="caption">
+          {timingFeedback}
+        </Type>
       ) : null}
       {uncertainLineCount > 0 ? (
         <Type as="p" className="text-muted-foreground" variant="caption">

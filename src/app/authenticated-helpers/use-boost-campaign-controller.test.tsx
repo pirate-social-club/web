@@ -10,11 +10,15 @@ const calls = { confirm: 0, create: 0, quote: 0, transfer: 0 };
 const createKeys: string[] = [];
 const quoteKeys: string[] = [];
 let connectedWallets: Array<{ address: string }> = [];
+let reconnectEthereumWallet: (() => void) | null = null;
+let reconnectCalls = 0;
 let campaignStatus = "draft";
 let confirmStatus = "confirmed";
 let confirmError: unknown = null;
 let createError: unknown = null;
 let quoteError: unknown = null;
+let transferError: unknown = null;
+let transferFailAfterSubmit = false;
 let postEligible = true;
 let firstQuoteExpired = false;
 
@@ -104,6 +108,7 @@ const fakeApi = {
 
 mock.module("@/lib/api", () => ({ useApi: () => fakeApi }));
 mock.module("@/components/auth/privy-provider", () => ({
+  usePiratePrivyRuntime: () => ({ reconnectEthereumWallet }),
   usePiratePrivyWallets: () => ({ connectedWallets, walletsReady: true }),
 }));
 mock.module("@/lib/commerce/routed-checkout", () => ({
@@ -114,12 +119,82 @@ mock.module("@/lib/commerce/routed-checkout", () => ({
   resolveRewardFundingTransferInput: () => ({ amountAtomic: 10000000n }),
   executeUsdcTransfer: async ({ onSubmitted }: { onSubmitted?: (hash: string) => void }) => {
     calls.transfer += 1;
+    if (transferError) {
+      if (transferFailAfterSubmit) {
+        onSubmitted?.("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+      }
+      throw transferError;
+    }
     onSubmitted?.("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
     return "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   },
 }));
 
-const { useBoostCampaignController } = await import("./use-boost-campaign-controller");
+const { boostFundingErrorMessage, classifyBoostFundingError, useBoostCampaignController } = await import("./use-boost-campaign-controller");
+
+test("turns wallet chain mismatch internals into actionable funding copy", () => {
+  const error = new Error(
+    "The current chain of the wallet (id: 8453) does not match the target chain for the transaction (id: 84532 – Base Sepolia). Contract Call: transfer(...)",
+  );
+
+  expect(boostFundingErrorMessage(error, "Could not submit reward funding.", { networkLabel: "Base Sepolia" })).toBe(
+    "Switch your wallet to Base Sepolia, then try again. No payment was sent.",
+  );
+  expect(boostFundingErrorMessage(error, "Could not submit reward funding.")).toBe(
+    "Switch your wallet to the required network, then try again. No payment was sent.",
+  );
+});
+
+test("distinguishes gas-fee failures from USDC balance failures", () => {
+  const gasError = new Error(
+    "The total cost (gas * gasFee + value) of executing this transaction exceeds the balance of the account.",
+  );
+  expect(classifyBoostFundingError(gasError)).toBe("insufficient-gas");
+  expect(boostFundingErrorMessage(gasError, "fallback")).toBe(
+    "Your wallet does not have enough ETH for network fees. No payment was sent.",
+  );
+  expect(classifyBoostFundingError(new Error("insufficient funds for gas * price + value"))).toBe("insufficient-gas");
+
+  expect(classifyBoostFundingError(new Error("transfer amount exceeds balance"))).toBe("insufficient-usdc");
+  expect(boostFundingErrorMessage(new Error("transfer amount exceeds balance"), "fallback")).toBe(
+    "Your wallet does not have enough USDC to fund this boost. No payment was sent.",
+  );
+});
+
+test("classifies wallet and transport failures into actionable funding copy", () => {
+  expect(classifyBoostFundingError(new Error("User rejected the request."))).toBe("user-rejected");
+  expect(boostFundingErrorMessage(new Error("User rejected the request."), "fallback")).toBe(
+    "You canceled the payment in your wallet. No payment was sent.",
+  );
+
+  expect(classifyBoostFundingError(new Error("wallet is not connected"))).toBe("wallet-unavailable");
+  expect(boostFundingErrorMessage(new Error("wallet is not connected"), "fallback")).toBe(
+    "Your wallet is not connected. Reconnect your Pirate Wallet, then try again. No payment was sent.",
+  );
+
+  expect(classifyBoostFundingError(new Error("HTTP request failed."))).toBe("rpc-failure");
+  expect(boostFundingErrorMessage(new Error("HTTP request failed."), "fallback")).toBe(
+    "The network did not respond. No payment was sent; try again.",
+  );
+  expect(boostFundingErrorMessage(new Error("HTTP request failed."), "fallback", { submitted: true })).toBe(
+    "The network did not respond after your transfer was sent. Check status; do not send again.",
+  );
+});
+
+test("hides unknown wallet internals behind the fallback instead of leaking them", () => {
+  const verbose = new Error(
+    "Contract Call: transfer(address,uint256) args: (0xabc, 10000000) Docs: https://viem.sh/docs/contract/writeContract",
+  );
+  expect(boostFundingErrorMessage(verbose, "Could not submit reward funding.")).toBe(
+    "Could not submit reward funding.",
+  );
+  expect(classifyBoostFundingError(verbose)).toBe("unknown");
+
+  // Server-vetted API error copy may still pass through.
+  expect(
+    boostFundingErrorMessage(new ApiError("conflict", "This song already has a live boost.", 409), "fallback"),
+  ).toContain("already has a live boost");
+});
 
 function input() {
   return {
@@ -145,9 +220,13 @@ beforeEach(() => {
   confirmError = null;
   createError = null;
   quoteError = null;
+  transferError = null;
+  transferFailAfterSubmit = false;
   postEligible = true;
   firstQuoteExpired = false;
   connectedWallets = [];
+  reconnectEthereumWallet = null;
+  reconnectCalls = 0;
   localStorage.clear();
 });
 
@@ -199,6 +278,69 @@ describe("useBoostCampaignController", () => {
     });
     await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
     expect(view.result.current.sheetProps.walletMismatch).toBe(true);
+  });
+
+  test("exposes wallet recovery when the pinned wallet is missing entirely", async () => {
+    reconnectEthereumWallet = () => { reconnectCalls += 1; };
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+
+    expect(view.result.current.sheetProps.walletMismatch).toBe(true);
+    expect(view.result.current.sheetProps.walletMismatchReason).toBe("no-wallet");
+    expect(view.result.current.sheetProps.dailyRewardDisplayLabel).toBe("$1.00");
+    act(() => view.result.current.sheetProps.onConnectWallet?.());
+    expect(reconnectCalls).toBe(1);
+  });
+
+  test("distinguishes a different connected wallet from a missing wallet", async () => {
+    connectedWallets = [{ address: "0x9999999999999999999999999999999999999999" }];
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+
+    expect(view.result.current.sheetProps.walletMismatch).toBe(true);
+    expect(view.result.current.sheetProps.walletMismatchReason).toBe("different-wallet");
+  });
+
+  test("treats a pre-submission transport failure as safe to start again", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    transferError = new Error("HTTP request failed.");
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("failed"));
+
+    expect(view.result.current.sheetProps.errorMessage).toBe(
+      "The network did not respond. No payment was sent; try again.",
+    );
+    expect(view.result.current.sheetProps.retryLabel).toBe("Start again");
+  });
+
+  test("treats a post-submission transport failure as a status check, never a re-send", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    transferError = new Error("HTTP request failed.");
+    transferFailAfterSubmit = true;
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("failed"));
+
+    expect(view.result.current.sheetProps.errorMessage).toBe(
+      "The network did not respond after your transfer was sent. Check status; do not send again.",
+    );
+    expect(view.result.current.sheetProps.retryLabel).toBe("Retry confirmation");
+    expect(calls.transfer).toBe(1);
   });
 
   test("keeps Boost discoverable while explaining that an active campaign blocks another", async () => {

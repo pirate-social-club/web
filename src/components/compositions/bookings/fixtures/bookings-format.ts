@@ -2,10 +2,11 @@ import type { Cents, IanaTz, IsoInstant } from "../view-models";
 
 export function formatCentsAsUsd(cents: Cents): string {
   const dollars = cents / 100;
+  const hasFractionalDollars = cents % 100 !== 0;
   return new Intl.NumberFormat("en", {
     currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: hasFractionalDollars ? 2 : 0,
+    maximumFractionDigits: hasFractionalDollars ? 2 : 0,
     style: "currency",
   }).format(dollars);
 }

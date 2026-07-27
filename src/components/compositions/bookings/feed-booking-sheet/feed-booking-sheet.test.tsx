@@ -89,6 +89,8 @@ describe("FeedBookingSheet", () => {
     const view = render(<FeedBookingSheetBody {...base} startingPriceCents={5000} />);
 
     expect(view.getByText("$50+")).toBeTruthy();
+    expect(view.getAllByText("$35")).toHaveLength(2);
+    expect(view.queryByText("35.00 USDC")).toBeNull();
     expect(view.queryByText(/35(?:\.00)? USDC per session/)).toBeNull();
   });
 });

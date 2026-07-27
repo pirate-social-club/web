@@ -174,6 +174,9 @@ export function FeedCommentsPanel({
           <CommentTree
             className="px-3"
             comments={comments}
+            // Remount per post: the tree holds collapse state in refs/state that must
+            // not leak across posts now that the dock follows feed scrolling.
+            key={postId}
             onReplyIntent={() => {
               if (!session?.accessToken) requestAuth(copy.home.videoCommentAuthRequired);
             }}

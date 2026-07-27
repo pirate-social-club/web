@@ -2,15 +2,22 @@ import "@/test/setup-runtime";
 
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, render } from "@testing-library/react";
+import * as React from "react";
 
 let fakeSession: unknown = { accessToken: "tok", profile: { id: "usr_1" } };
 let threadLoading = false;
+let commentTreeMountCount = 0;
 const createTopLevelComment = mock(async (_input: unknown) => "submitted" as string);
 
 // The dock keeps one mounted panel across many posts, so the thread body is stubbed out:
 // what these tests exercise is the panel's own per-post bookkeeping.
 mock.module("@/components/compositions/posts/post-thread/comment-tree", () => ({
-  CommentTree: () => <div data-testid="comment-tree" />,
+  CommentTree: () => {
+    React.useEffect(() => {
+      commentTreeMountCount += 1;
+    }, []);
+    return <div data-testid="comment-tree" />;
+  },
 }));
 mock.module("@/lib/api/session-store", () => ({ useSession: () => fakeSession }));
 mock.module("@/hooks/use-request-auth", () => ({ useRequestAuth: () => () => {} }));
@@ -43,6 +50,7 @@ function listOf(container: HTMLElement): HTMLElement {
 beforeEach(() => {
   fakeSession = { accessToken: "tok", profile: { id: "usr_1" } };
   threadLoading = false;
+  commentTreeMountCount = 0;
   createTopLevelComment.mockClear();
 });
 
@@ -106,6 +114,19 @@ describe("FeedCommentsPanel", () => {
   test("labels the sort control as sorting rather than as the panel heading", () => {
     const view = render(<FeedCommentsPanel postId="post_a" />);
     expect(view.container.querySelector("select")?.getAttribute("aria-label")).toBe("Sort comments");
+  });
+
+  // CommentTree keeps collapse bookkeeping in refs/state, so the dock must remount it per
+  // post; otherwise one post's collapse map leaks into the next as the dock follows scrolling.
+  test("remounts the thread when the dock switches post, and only then", () => {
+    const view = render(<FeedCommentsPanel postId="post_a" />);
+    expect(commentTreeMountCount).toBe(1);
+
+    view.rerender(<FeedCommentsPanel postId="post_b" />);
+    expect(commentTreeMountCount).toBe(2);
+
+    view.rerender(<FeedCommentsPanel postId="post_b" />);
+    expect(commentTreeMountCount).toBe(2);
   });
 
   test("shows comment-shaped skeletons rather than a bare spinner while loading", () => {

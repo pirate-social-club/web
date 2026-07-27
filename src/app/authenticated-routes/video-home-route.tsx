@@ -979,7 +979,7 @@ export function VideoHomePage() {
 
   const commentsPanelCount = commentsPanelCommentCount(items, panelState, commentsAddedByPostId);
   const commentsPanelTitle = commentsPanelCount > 0
-    ? copy.common.commentsHeadingWithCount.replace("{count}", compactCount(commentsPanelCount))
+    ? copy.common.commentsHeadingWithCount.replace("{count}", compactCount(commentsPanelCount, localeTag))
     : copy.common.commentsHeading;
 
   return (
@@ -1045,6 +1045,7 @@ export function VideoHomePage() {
         initialPaused={restored?.paused}
         initialPlaybackSeconds={restored?.playbackSeconds}
         items={items}
+        locale={localeTag}
         muteVideoLabel={copy.common.muteVideo}
         nextVideoLabel={copy.common.nextVideo}
         onActiveItemChange={onActiveItemChange}

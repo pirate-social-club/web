@@ -707,7 +707,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   // flow and the feed box already excludes it, so the insets collapse to zero.
   return (
     <article className={cn(
-      "relative flex h-full w-full snap-start snap-always items-center justify-center overflow-hidden bg-black",
+      "relative flex h-full w-full items-center justify-center overflow-hidden bg-black",
       "[--feed-browser-occlusion:max(0px,calc(100lvh-100dvh))]",
       "[--feed-chrome-top:calc(env(safe-area-inset-top)+4rem)] [--feed-chrome-bottom:calc(env(safe-area-inset-bottom)+var(--header-height)+var(--feed-browser-occlusion))]",
       "md:[--feed-browser-occlusion:0px] md:[--feed-chrome-bottom:0px] md:[--feed-chrome-top:0px]",
@@ -1344,7 +1344,11 @@ export function VideoFeed({
   }, [autoplayBlockedItemIds]);
 
   const toggleMute = React.useCallback((video: HTMLVideoElement | null) => {
-    if (!muted) {
+    // Brave can change the media element's effective mute state independently of React while
+    // restoring autoplay or moving between mounted slides. Use the element as the source of truth
+    // for a direct user gesture so every tap toggles what the viewer is actually hearing.
+    const effectivelyMuted = video?.muted ?? muted;
+    if (!effectivelyMuted) {
       if (video) video.muted = true;
       setMuted(true);
       setPreferenceMuted(true);
@@ -1441,7 +1445,7 @@ export function VideoFeed({
       tabIndex={0}
     >
       {items.map((item, index) => (
-        <div className="h-full" key={item.id}>
+        <div className="h-full snap-start snap-always" key={item.id}>
           <VideoFeedSlide
             {...actions}
             active={index === activeIndex}

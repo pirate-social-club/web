@@ -462,6 +462,27 @@ describe("VideoFeed", () => {
     }
   });
 
+  test("toggles the effective media mute state when Brave drifts from React state", async () => {
+    const restorePlay = mockVideoPlay(() => Promise.resolve());
+    try {
+      const view = render(<VideoFeed initialMuted items={[item]} />);
+      const video = view.container.querySelector<HTMLVideoElement>("video")!;
+      Object.defineProperty(video, "muted", { configurable: true, value: false, writable: true });
+
+      fireEvent.click(view.getByRole("button", { name: "Sound on" }));
+      expect(video.muted).toBe(true);
+
+      fireEvent.click(view.getByRole("button", { name: "Sound on" }));
+      await act(async () => { await Promise.resolve(); });
+
+      expect(video.muted).toBe(false);
+      expect(view.getByRole("button", { name: "Mute video" })).toBeTruthy();
+      expect(window.localStorage.getItem("pirate.video-feed.muted")).toBe("false");
+    } finally {
+      restorePlay();
+    }
+  });
+
   test("shows a non-persistent play affordance when muted autoplay is blocked", async () => {
     const restorePlay = mockVideoPlay(() => Promise.reject(
       new DOMException("autoplay blocked", "NotAllowedError"),
@@ -691,6 +712,17 @@ describe("VideoFeed", () => {
     Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
     settleFeedScroll(feed);
     expect(calls).toEqual(["one", "two"]);
+  });
+
+  test("owns snap-stop on each direct scroll child", () => {
+    const view = render(<VideoFeed items={feedItems()} />);
+    const feed = view.getByLabelText("Video feed");
+    const slideWrapper = feed.firstElementChild;
+    const article = slideWrapper?.firstElementChild;
+
+    expect(slideWrapper?.classList.contains("snap-start")).toBe(true);
+    expect(slideWrapper?.classList.contains("snap-always")).toBe(true);
+    expect(article?.classList.contains("snap-always")).toBe(false);
   });
 
   test("keeps playback on the current slide until scrolling settles", () => {

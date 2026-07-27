@@ -4,7 +4,10 @@ import { cleanup, render } from "@testing-library/react";
 import type { KaraokeSongLeaderboard } from "@/lib/api/client-api-types";
 import { installDomGlobals } from "@/test/setup-dom";
 
-import { KaraokeLeaderboard } from "./karaoke-leaderboard";
+import {
+  KaraokeCompletionLeaderboard,
+  KaraokeLeaderboard,
+} from "./karaoke-leaderboard";
 
 installDomGlobals();
 afterEach(cleanup);
@@ -56,5 +59,26 @@ describe("KaraokeLeaderboard", () => {
 
     expect(view.getByText("Rank 1 of 1")).toBeTruthy();
     expect(view.container.textContent).not.toContain("Top 100%");
+  });
+
+  test("completion view shows compact scores and the viewer standing", () => {
+    const leaderboard = singleSingerLeaderboard();
+    leaderboard.entries[0] = {
+      ...leaderboard.entries[0],
+      is_viewer: false,
+    };
+    leaderboard.total_ranked = 2;
+    leaderboard.viewer_rank = 2;
+    leaderboard.viewer_best_score = 8300;
+
+    const view = render(
+      <KaraokeCompletionLeaderboard
+        state={{ kind: "ready", leaderboard }}
+      />,
+    );
+
+    expect(view.getByLabelText("Karaoke leaderboard")).toBeTruthy();
+    expect(view.getByText("Rank 1 of 2")).toBeTruthy();
+    expect(view.getByText("You are #2 with 83%")).toBeTruthy();
   });
 });

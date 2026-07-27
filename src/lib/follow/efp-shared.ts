@@ -21,7 +21,6 @@ import {
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { getPirateNetworkConfig } from "@/lib/network-config";
-import { withTimeout } from "@/lib/promise-utils";
 
 import {
   accountMetadataAbi,
@@ -33,7 +32,6 @@ import {
   type FollowWriteTransaction,
 } from "@pirate/efp-shared";
 
-export { withTimeout };
 export {
   accountMetadataAbi,
   buildFollowTransactions,
@@ -48,24 +46,6 @@ export {
 
   type FollowWriteTransaction,
 };
-
-export const EFP_READ_TIMEOUT_MS = 4_000;
-
-export interface FollowRelationshipResponse {
-  state?: {
-    is_following?: boolean;
-  };
-}
-
-export interface ProfileStatsResponse {
-  followers_count?: number;
-  following_count?: number;
-}
-
-export interface OnChainFollowSummary {
-  followerCount: number | null;
-  followingCount: number | null;
-}
 
 export type OnChainListEntry = {
   followed: boolean;
@@ -91,43 +71,6 @@ export function createEfpPublicClient(chainId: number) {
     chain,
     transport: http(rpcUrl),
   });
-}
-
-export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const { efp } = getPirateNetworkConfig();
-  const response = await withTimeout(
-    fetch(`${efp.apiUrl}${path}`, {
-      cache: "default",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      ...init,
-    }),
-    EFP_READ_TIMEOUT_MS,
-    "EFP request timed out.",
-  );
-
-  if (!response.ok) {
-    throw new Error(`EFP request failed (${response.status}).`);
-  }
-
-  return await response.json() as T;
-}
-
-export function asNonNegativeIntOrNull(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
-    return Math.floor(value);
-  }
-
-  if (typeof value === "string" && /^\d+$/u.test(value.trim())) {
-    const parsed = Number.parseInt(value, 10);
-    if (Number.isSafeInteger(parsed) && parsed >= 0) {
-      return parsed;
-    }
-  }
-
-  return null;
 }
 
 export function decodeStorageLocation(storageLocation: Hex) {

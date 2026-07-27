@@ -10,7 +10,6 @@ const { __testOnly } = await import("./efp-write");
 
 const TEST_EFP_CONFIG = {
   accountMetadata: "0xDAf8088C4DCC8113F49192336cd594300464af8D" as Address,
-  apiUrl: "https://api.ethfollow.xyz/api/v1",
   environment: "testnet" as const,
   listRegistry: "0xDdD39d838909bdFF7b067a5A42DC92Ad4823a26d" as Address,
   listMinter: "0x0c3301561B8e132fe18d97E69d95F5f1F2849f9b" as Address,

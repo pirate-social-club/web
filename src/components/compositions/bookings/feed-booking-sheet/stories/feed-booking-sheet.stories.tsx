@@ -22,6 +22,16 @@ const SLOTS: ResolvedSlot[] = [
   { startUtc: "2026-09-22T14:00:00.000Z", endUtc: "2026-09-22T14:30:00.000Z", priceCents: 5000, available: true },
 ] as ResolvedSlot[];
 
+/** Four uniform days — enough to exercise the day strip, internal list scroll, and confirm footer. */
+const SLOTS_LONG: ResolvedSlot[] = [21, 22, 23, 24].flatMap((day) =>
+  [9, 10, 11, 14, 15, 16, 17].map((hour) => ({
+    startUtc: `2026-09-${day}T${String(hour).padStart(2, "0")}:00:00.000Z`,
+    endUtc: `2026-09-${day}T${String(hour).padStart(2, "0")}:30:00.000Z`,
+    priceCents: 5000,
+    available: true,
+  })),
+) as ResolvedSlot[];
+
 const BASE = {
   startingPriceCents: 3500,
   onSelectSlot: () => {},
@@ -59,6 +69,11 @@ export const Mobile: Story = {
   args: BASE,
   parameters: { viewport: { defaultViewport: "mobile1" } },
   render: () => <ControlledPanel />,
+};
+
+export const LongAvailability: Story = {
+  args: { ...BASE, slots: SLOTS_LONG, startingPriceCents: 5000 },
+  render: () => <ControlledPanel slots={SLOTS_LONG} startingPriceCents={5000} />,
 };
 
 export const Loading: Story = {

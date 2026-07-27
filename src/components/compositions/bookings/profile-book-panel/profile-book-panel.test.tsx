@@ -43,14 +43,15 @@ describe("ProfileBookPanel", () => {
     expect(t).not.toContain("Your availability");
   });
 
-  test("viewer with slots → price + availability rendered", () => {
+  test("viewer with slots → shared duration/price/timezone stated once in the header", () => {
     const t = text({ mode: "viewer", startingPriceCents: 5000, slots: SLOTS, viewerTimezone: "Europe/Vienna" as never, onSelectSlot: () => {} });
-    expect(t).toContain("$50+");
+    expect(t).toContain("30 min · $50 · Times in Vienna");
     expect(t).not.toContain("USDC per session");
+    expect(t).not.toContain("$50+");
     expect(t).not.toContain("No available times");
   });
 
-  test("viewer slots render checkout links when an href builder is supplied", () => {
+  test("viewer renders no checkout link until a slot is chosen", () => {
     const markup = html({
       mode: "viewer",
       startingPriceCents: 5000,
@@ -60,7 +61,9 @@ describe("ProfileBookPanel", () => {
       onSelectSlot: () => {},
     });
 
-    expect(markup).toContain("href=\"/book/usr_host/checkout?start=2026-09-21T09%3A00%3A00.000Z\"");
+    // Selection is an intermediate step now; the checkout href appears on the confirm
+    // footer's Continue only after a chip tap (covered in availability-calendar.test.tsx).
+    expect(markup).not.toContain("/book/usr_host/checkout");
   });
 
   test("viewer with no slots → empty-state copy", () => {

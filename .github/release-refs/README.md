@@ -24,6 +24,10 @@ can merge.
 Web releases use these pinned commits; they never select the API or Core
 repository's current `main` implicitly.
 
-Current release intent: deploy the public-read cache eviction canary with API
-`1eded9e82dcc32a0c8f9d0025d933f4a4164a935` and Core
-`387968e2008891b30cbcaa38a40233fc2341f612`.
+Current release intent: deploy Telegram broadcast-channel publishing with API
+`584ac53ebf2d34b9770ffa5118c85777783dbfce` and Core
+`dff6f395fe85adb9bd9ed332a1fe2932bc5f9438`. This is the API half of the
+settings UI already live in production (web #688/#695), whose endpoints have
+been absent until now; web #697 made the page tolerate that absence, so this
+pin activates the feature rather than unbreaking it. Publishing still only
+runs for a community that has explicitly connected a channel.

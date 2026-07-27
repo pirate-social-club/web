@@ -24,6 +24,7 @@ const toastInfos: string[] = [];
 const toastSuccesses: string[] = [];
 const openedUrls: string[] = [];
 
+let chatSettingsResponse: Record<string, unknown> = { linked_chat: null };
 let botResponse: Record<string, unknown> | null = null;
 let channelDestination: Record<string, unknown> | null = null;
 let channelError: unknown = null;
@@ -77,7 +78,7 @@ function intentFixture(overrides: Record<string, unknown> = {}) {
 
 const fakeApi = {
   communities: {
-    getTelegramChatSettings: async () => ({ linked_chat: null }),
+    getTelegramChatSettings: async () => chatSettingsResponse,
     getTelegramBot: async () => botResponse,
     getTelegramChannel: async () => {
       if (channelError) {
@@ -155,7 +156,24 @@ function renderTelegramHook() {
 }
 
 function channelProps(result: { current: ReturnType<typeof useCommunityTelegramState> }) {
-  return result.current.telegramChannelSectionProps;
+  const props = result.current.telegramChannelSectionProps;
+  if (!props) {
+    throw new Error("expected the broadcast channel section to be rendered");
+  }
+  return props;
+}
+
+function linkedChatSettings() {
+  return {
+    linked_chat: {
+      title: "Pirate Chat",
+      username: "piratechat",
+      directory_visible: true,
+      link_mode: "open",
+      bot_admin_status: "ready",
+    },
+    directory_visible: true,
+  };
 }
 
 describe("useCommunityTelegramState broadcast channel", () => {
@@ -164,6 +182,7 @@ describe("useCommunityTelegramState broadcast channel", () => {
     toastInfos.length = 0;
     toastSuccesses.length = 0;
     openedUrls.length = 0;
+    chatSettingsResponse = { linked_chat: null };
     botResponse = null;
     channelDestination = null;
     channelError = null;
@@ -182,6 +201,41 @@ describe("useCommunityTelegramState broadcast channel", () => {
 
     expect(channelProps(result).state.kind).toBe("loading");
     await waitFor(() => expect(channelProps(result).state.kind).toBe("unconnected"));
+  });
+
+  // Regression: web #688 shipped the channel read inside the same Promise.all
+  // as the bot and chat reads, against an API that had no such route. The
+  // rejection stranded the whole panel — settings that had worked for months
+  // stopped populating. The channel read must fail alone.
+  test("keeps bot and chat settings populated when the channel endpoint 404s", async () => {
+    chatSettingsResponse = linkedChatSettings();
+    botResponse = connectedBot();
+    channelError = new FakeApiError("not_found", "Not Found", 404);
+
+    const { result } = renderTelegramHook();
+
+    await waitFor(() => expect(result.current.loadingTelegram).toBe(false));
+    expect(result.current.telegramLoadError).toBeNull();
+    expect(result.current.telegramSettings.linkedChat.status).toBe("connected");
+    expect(result.current.telegramSettings.linkedChat.chatTitle).toBe("Pirate Chat");
+    expect(result.current.telegramSettings.bot.username).toBe("pirate_bot");
+    // No channel support on this API build: offer no connect flow at all.
+    expect(result.current.telegramChannelSectionProps).toBeNull();
+  });
+
+  test("surfaces a channel-only error when the channel read fails unexpectedly", async () => {
+    chatSettingsResponse = linkedChatSettings();
+    botResponse = connectedBot();
+    channelError = new FakeApiError("internal", "boom", 500);
+
+    const { result } = renderTelegramHook();
+
+    await waitFor(() => expect(result.current.loadingTelegram).toBe(false));
+    expect(result.current.telegramLoadError).toBeNull();
+    expect(result.current.telegramSettings.linkedChat.status).toBe("connected");
+    expect(result.current.telegramSettings.bot.username).toBe("pirate_bot");
+    // Unexpected failures still show the section, degraded rather than hidden.
+    await waitFor(() => expect(channelProps(result).state.kind).toBe("error"));
   });
 
   test("requires the community bot before creating a setup intent", async () => {

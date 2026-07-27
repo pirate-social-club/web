@@ -133,8 +133,40 @@ export function telegramChannelErrorMessage(error: unknown, fallback: string): s
   return fallback;
 }
 
+// The broadcast-channel endpoints are served by a newer API than the one a
+// given deploy may be pinned to, so this read has to be able to fail on its
+// own. A 404/501 means the API build has no channel support at all: hide the
+// section rather than offering a connect flow that cannot work. Every other
+// failure is real and degrades only the channel section — the bot and chat
+// settings load beside it and must never be taken down by either case.
+type ChannelLoadResult =
+  | { kind: "ok"; destination: ApiTelegramChannelDestination | null }
+  | { kind: "unsupported" }
+  | { kind: "failed"; message: string };
+
+function isChannelEndpointUnavailable(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 404 || error.status === 501);
+}
+
+async function loadChannelDestination(
+  read: () => Promise<ApiTelegramChannelDestination | null>,
+): Promise<ChannelLoadResult> {
+  try {
+    return { kind: "ok", destination: await read() };
+  } catch (error) {
+    if (isChannelEndpointUnavailable(error)) {
+      return { kind: "unsupported" };
+    }
+    return {
+      kind: "failed",
+      message: telegramChannelErrorMessage(error, "Could not load the broadcast channel."),
+    };
+  }
+}
+
 type TelegramChannelAction =
   | { type: "loaded"; channel: TelegramBroadcastChannelInfo | null }
+  | { type: "load_failed"; message: string }
   | { type: "connect_started" }
   | { type: "intent_created"; deepLink: string; expiresAt: number }
   | { type: "connect_failed"; message: string }
@@ -171,6 +203,8 @@ function telegramChannelReducer(
       return state.kind === "awaiting_telegram" || state.kind === "creating_intent"
         ? state
         : { kind: "unconnected" };
+    case "load_failed":
+      return { kind: "error", channel: null, message: action.message };
     case "connect_started":
       return { kind: "creating_intent" };
     case "intent_created":
@@ -242,6 +276,7 @@ export function useCommunityTelegramState({
     telegramChannelReducer,
     { kind: "loading" },
   );
+  const [telegramChannelSupported, setTelegramChannelSupported] = React.useState(true);
   const telegramChannelConnectInFlightRef = React.useRef(false);
   const telegramChannelCheckInFlightRef = React.useRef(false);
   const telegramChannelBackfillInFlightRef = React.useRef(false);
@@ -273,20 +308,33 @@ export function useCommunityTelegramState({
     void Promise.all([
       api.communities.getTelegramChatSettings(community.id),
       api.communities.getTelegramBot(community.id),
-      api.communities.getTelegramChannel(community.id),
+      // Resolves rather than rejects: keeping it out of the rejection path is
+      // what stops a channel-endpoint failure from stranding bot/chat settings.
+      loadChannelDestination(() => api.communities.getTelegramChannel(community.id)),
     ])
-      .then(([response, bot, channelDestination]) => {
-        if (!cancelled) {
-          applySettingsResponse(response, bot);
-          dispatchTelegramChannel({
-            type: "loaded",
-            channel: channelDestination ? telegramChannelInfoFromApi(channelDestination) : null,
-          });
+      .then(([response, bot, channel]) => {
+        if (cancelled) {
+          return;
         }
+        applySettingsResponse(response, bot);
+        setTelegramChannelSupported(channel.kind !== "unsupported");
+        if (channel.kind === "failed") {
+          dispatchTelegramChannel({ type: "load_failed", message: channel.message });
+          return;
+        }
+        dispatchTelegramChannel({
+          type: "loaded",
+          channel: channel.kind === "ok" && channel.destination
+            ? telegramChannelInfoFromApi(channel.destination)
+            : null,
+        });
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setTelegramLoadError(getErrorMessage(error, "Could not load Telegram settings."));
+          const message = getErrorMessage(error, "Could not load Telegram settings.");
+          setTelegramLoadError(message);
+          // Without this the section spins forever behind the panel-level error.
+          dispatchTelegramChannel({ type: "load_failed", message });
         }
       })
       .finally(() => {
@@ -677,7 +725,7 @@ export function useCommunityTelegramState({
       ? { kind: "error", message: telegramSaveError }
       : { kind: "idle" };
 
-  const telegramChannelSectionProps: TelegramBroadcastChannelSectionProps = {
+  const telegramChannelSectionProps: TelegramBroadcastChannelSectionProps | null = !telegramChannelSupported ? null : {
     botConnected: telegramChannelBotConnected,
     onCancelBackfill: handleCancelTelegramChannelBackfill,
     onCancelDisconnect: handleCancelTelegramChannelDisconnect,

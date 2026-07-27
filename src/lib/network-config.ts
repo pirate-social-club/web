@@ -29,10 +29,6 @@ const PUBLIC_RPC_FALLBACKS = {
   tempoModerato: "https://rpc.moderato.tempo.xyz",
 } as const;
 
-const PUBLIC_API_FALLBACKS = {
-  efp: "https://api.ethfollow.xyz/api/v1",
-} as const;
-
 interface PirateChainConfig {
   chainId: number;
   explorerUrl: string;
@@ -42,7 +38,6 @@ interface PirateChainConfig {
 
 interface PirateEfpDeploymentConfig {
   accountMetadata: Address;
-  apiUrl: string;
   environment: PirateEfpEnvironment;
   listMinter: Address;
   listRecordsByChain: Record<number, Address>;
@@ -201,7 +196,6 @@ function resolveEfpConfig(
   if (efpEnvironment === "mainnet") {
     return {
       accountMetadata: "0x5289fE5daBC021D02FDDf23d4a4DF96F4E0F17EF",
-      apiUrl: readEnv("VITE_EFP_API_URL") ?? PUBLIC_API_FALLBACKS.efp,
       environment: efpEnvironment,
       listRegistry: "0x0E688f5DCa4a0a4729946ACbC44C792341714e08",
       listMinter: "0xDb17Bfc64aBf7B7F080a49f0Bbbf799dDbb48Ce5",
@@ -221,7 +215,6 @@ function resolveEfpConfig(
 
   return {
     accountMetadata: "0xDAf8088C4DCC8113F49192336cd594300464af8D",
-    apiUrl: readEnv("VITE_EFP_API_URL") ?? PUBLIC_API_FALLBACKS.efp,
     environment: efpEnvironment,
     listRegistry: "0xDdD39d838909bdFF7b067a5A42DC92Ad4823a26d",
     listMinter: "0x0c3301561B8e132fe18d97E69d95F5f1F2849f9b",

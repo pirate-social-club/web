@@ -12,15 +12,13 @@ import { type StoredSession, useSession } from "@/lib/api/session-store";
 import { logger } from "@/lib/logger";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
-import {
-  fetchViewerFollowState,
-  submitFollowAction,
-} from "@/lib/follow/efp";
+import { submitFollowAction } from "@/lib/follow/efp";
 import {
   clearViewerFollowOverride,
   readViewerFollowOverride,
   writeViewerFollowOverride,
 } from "@/lib/follow/follow-overrides";
+import { resolveProfileFollowRelationship } from "@/lib/follow/profile-follow-state";
 import { getWalletTransactionErrorMessage } from "@/lib/wallet-error-utils";
 import { useApi } from "@/lib/api";
 
@@ -124,6 +122,7 @@ export function useProfileFollowState(
   const [countsReady, setCountsReady] = React.useState(false);
   const [followBusy, setFollowBusy] = React.useState(false);
   const [followUnavailable, setFollowUnavailable] = React.useState(false);
+  const [targetNotApplicable, setTargetNotApplicable] = React.useState(!targetAddress);
 
   React.useEffect(() => {
     if (!viewerAddress || !targetAddress || ownProfile) {
@@ -139,11 +138,27 @@ export function useProfileFollowState(
       setFollowerCount(null);
       setFollowingCount(null);
       setCountsReady(true);
+      setServerFollowing(ownProfile);
+      setFollowReady(true);
+      setFollowUnavailable(false);
+      setTargetNotApplicable(!targetAddress);
       return;
     }
 
     let cancelled = false;
     setCountsReady(false);
+    if (ownProfile) {
+      setServerFollowing(true);
+      setFollowReady(true);
+      setFollowUnavailable(false);
+    } else if (!targetAddress || !viewerAddress) {
+      setServerFollowing(false);
+      setFollowReady(true);
+      setFollowUnavailable(false);
+    } else {
+      setFollowReady(false);
+      setFollowUnavailable(false);
+    }
 
     void api.profiles.getFollowState(targetUserId)
       .then((state) => {
@@ -153,6 +168,39 @@ export function useProfileFollowState(
 
         setFollowerCount(state.counts.status === "current" ? state.counts.follower_count : null);
         setFollowingCount(state.counts.status === "current" ? state.counts.following_count : null);
+
+        if (ownProfile) {
+          return;
+        }
+
+        const relationship = resolveProfileFollowRelationship(state);
+        setTargetNotApplicable(relationship.kind === "not_applicable");
+        if (relationship.kind === "not_applicable" || relationship.kind === "viewer_absent") {
+          setServerFollowing(false);
+          setFollowUnavailable(false);
+          return;
+        }
+
+        if (relationship.kind === "unavailable") {
+          setServerFollowing(false);
+          setFollowUnavailable(true);
+          return;
+        }
+
+        const viewerFollows = relationship.viewerFollows;
+        setServerFollowing(viewerFollows);
+        setFollowUnavailable(false);
+        setOverrideFollowing((currentOverride) => {
+          if (currentOverride === null
+            || !viewerAddress
+            || !targetAddress
+            || currentOverride !== viewerFollows) {
+            return currentOverride;
+          }
+
+          clearViewerFollowOverride(viewerAddress, targetAddress);
+          return null;
+        });
       })
       .catch(() => {
         if (cancelled) {
@@ -164,23 +212,26 @@ export function useProfileFollowState(
         });
         setFollowerCount(null);
         setFollowingCount(null);
+        setTargetNotApplicable(!targetAddress);
+        if (!ownProfile && targetAddress && viewerAddress) {
+          setServerFollowing(false);
+          setFollowUnavailable(true);
+        }
       })
       .finally(() => {
         if (!cancelled) {
           setCountsReady(true);
+          setFollowReady(true);
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [api, targetUserId]);
+  }, [api, ownProfile, targetAddress, targetUserId, viewerAddress]);
 
   React.useEffect(() => {
     if (ownProfile) {
-      setServerFollowing(true);
-      setFollowReady(true);
-      setFollowUnavailable(false);
       return;
     }
 
@@ -192,62 +243,8 @@ export function useProfileFollowState(
       } else if (!ownProfile) {
         warnFollowOnce("missing-target-wallet", "[profile-follow] Follow disabled because target profile has no primary wallet address.");
       }
-      setServerFollowing(false);
-      setFollowReady(true);
-      setFollowUnavailable(false);
-      return;
     }
-
-    if (!viewerAddress) {
-      setServerFollowing(false);
-      setFollowReady(true);
-      setFollowUnavailable(false);
-      return;
-    }
-
-    let cancelled = false;
-    setFollowReady(false);
-    setFollowUnavailable(false);
-
-    void fetchViewerFollowState(viewerAddress, targetAddress)
-      .then((value) => {
-        if (!cancelled) {
-          if (value === null) {
-            setFollowUnavailable(true);
-            return;
-          }
-          setServerFollowing(value);
-          setFollowUnavailable(false);
-          setOverrideFollowing((currentOverride) => {
-            if (currentOverride === null || !viewerAddress || !targetAddress || currentOverride !== value) {
-              return currentOverride;
-            }
-
-            clearViewerFollowOverride(viewerAddress, targetAddress);
-            return null;
-          });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          warnFollowOnce(`viewer:${viewerAddress}:${targetAddress}`, "[profile-follow] Failed to load viewer follow state.", {
-            targetAddress,
-            viewerAddress,
-          });
-          setServerFollowing(false);
-          setFollowUnavailable(true);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setFollowReady(true);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [ownProfile, targetAddress, viewerAddress]);
+  }, [ownProfile, targetAddress, targetWalletAddress]);
 
   const isFollowing = ownProfile
     ? true
@@ -344,6 +341,7 @@ export function useProfileFollowState(
     followBusy: followBusy || authBusy,
     followDisabled: ownProfile
       || !targetAddress
+      || targetNotApplicable
       || followUnavailable
       || (Boolean(viewerAddress) && !followReady),
     followLoading: !ownProfile

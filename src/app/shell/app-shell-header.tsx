@@ -33,8 +33,6 @@ function routeUsesMobileFooter(route: AppRoute): boolean {
     && route.kind !== "create-community"
     && route.kind !== "settings-index"
     && route.kind !== "settings"
-    && route.kind !== "community-moderation"
-    && route.kind !== "community-moderation-index"
     && route.kind !== "public-profile"
     && route.kind !== "public-agent"
     && route.kind !== "chat-target"
@@ -131,8 +129,6 @@ export function AppShellHeader({
   const isPublicProfileRoute = route.kind === "public-profile" || route.kind === "public-agent";
   const showMobileCreateAction = clientReady && !!session && routeUsesMobileCreateAction(route);
   const useAppSidebarTrigger = !mobileBackPath
-    && route.kind !== "community-moderation"
-    && route.kind !== "community-moderation-index"
     && !isPublicProfileRoute;
   const mobileHeaderAction = route.kind === "chat" ? (
     <IconButton aria-label="New message" onClick={() => navigate("/chat/new")} variant="ghost">

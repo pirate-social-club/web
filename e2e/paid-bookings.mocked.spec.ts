@@ -100,7 +100,7 @@ test.describe("paid bookings UI (mocked API)", () => {
     await installBookingFixture(page);
     await page.goto(`/book/${HOST}`);
     await expect(page.getByRole("heading", { name: "Book a session" })).toBeVisible({ timeout: 30_000 });
-    const slot = page.getByRole("button", { name: /\$50/u }).first();
+    const slot = page.getByRole("button", { name: /USDC/u }).first();
     await expect(slot).toBeVisible();
     await slot.click();
     await expect(page).toHaveURL(new RegExp(`/book/${HOST}/checkout\\?`, "u"));

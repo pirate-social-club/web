@@ -110,7 +110,7 @@ for (const viewport of [
 
     const book = page.getByRole("button", { name: "Book" });
     await expect(book).toBeVisible({ timeout: 30_000 });
-    await expect(book).toContainText("$50+");
+    await expect(page.getByText("$50+")).toBeVisible();
     await expect(page.getByText("$35+")).toHaveCount(0);
 
     await book.click();
@@ -146,7 +146,8 @@ test("logged-out viewers can discover a bookable host and inspect real slots", a
   await page.goto("/");
 
   const book = page.getByRole("button", { name: "Book" });
-  await expect(book).toContainText("$50+", { timeout: 30_000 });
+  await expect(book).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("$50+")).toBeVisible();
   await book.click();
   await expect(page.getByRole("heading", { name: "Book feed-booking-host.pirate" })).toBeVisible();
   await expect(page.getByRole("link", { name: /\$50/u }).first()).toBeVisible();

@@ -19,6 +19,15 @@ class MutationObserverStub {
 }
 Object.defineProperty(globalThis, "MutationObserver", { configurable: true, value: MutationObserverStub });
 
+// The test DOM has no KeyboardEvent constructor and fireEvent cannot build one
+// with a usable `key`, so arrow-key tests dispatch an initialized event directly.
+function arrowKey(target: Element, key: "ArrowDown" | "ArrowUp") {
+  const event = document.createEvent("Event");
+  event.initEvent("keydown", true, true);
+  Object.defineProperty(event, "key", { value: key });
+  target.dispatchEvent(event);
+}
+
 mock.module("@/components/compositions/system/modal/modal", () => ({
   Modal: ({ children, open }: { children: React.ReactNode; open: boolean }) => open ? <div>{children}</div> : null,
   ModalContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -29,101 +38,196 @@ mock.module("@/components/compositions/system/modal/modal", () => ({
 }));
 
 const { BoostCampaignSheet, SongRewardPolicySheet } = await import("./reward-booster-surfaces");
+type SheetProps = import("./reward-booster-surfaces").BoostCampaignSheetProps;
 
-test("compose selects karaoke, study, or either and explains upfront funding", () => {
+function composeProps(overrides: Partial<SheetProps> = {}): SheetProps {
+  return {
+    budgetDisplayLabel: "$10.00",
+    budgetLabel: "10.00",
+    dailyRewardDisplayLabel: "$1.00",
+    dailyRewardLabel: "1.00",
+    eligibleActivity: "karaoke",
+    onOpenChange: () => undefined,
+    open: true,
+    rewardCountLabel: "10 rewards",
+    state: "compose",
+    ...overrides,
+  };
+}
+
+test("compose offers the exclusive activity enum as a radio group with explicit OR copy", () => {
   let selected = "";
   const view = render(
     <BoostCampaignSheet
-      budgetDisplayLabel="$10.00"
-      budgetLabel="10.00"
-      dailyRewardLabel="1.00"
-      eligibleActivity="karaoke"
-      onEligibleActivityChange={(activity) => { selected = activity; }}
-      onOpenChange={() => undefined}
-      open
-      rewardCountLabel="10 rewards"
-      state="compose"
+      {...composeProps({
+        onEligibleActivityChange: (activity: string) => { selected = activity; },
+      })}
     />,
   );
 
-  fireEvent.click(view.getByText("Either"));
+  expect(view.getAllByRole("radio")).toHaveLength(3);
+  expect(view.getByRole("radio", { name: "Karaoke" }).getAttribute("aria-checked")).toBe("true");
+  expect(view.getByRole("radio", { name: "Study" }).getAttribute("aria-checked")).toBe("false");
+
+  fireEvent.click(view.getByRole("radio", { name: "Karaoke or study" }));
   expect(selected).toBe("either");
-  expect(view.getByText(/You pay \$10\.00 now/i)).toBeTruthy();
-  expect(view.getByText(/Unused money cannot be withdrawn yet/i)).toBeTruthy();
+});
+
+test("compose radio group moves selection with arrow keys", () => {
+  let selected = "";
+  const view = render(
+    <BoostCampaignSheet
+      {...composeProps({
+        onEligibleActivityChange: (activity: string) => { selected = activity; },
+      })}
+    />,
+  );
+
+  arrowKey(view.getByRole("radio", { name: "Karaoke" }), "ArrowDown");
+  expect(selected).toBe("study");
+  arrowKey(view.getByRole("radio", { name: "Karaoke" }), "ArrowUp");
+  expect(selected).toBe("either");
+});
+
+test("compose states the funding terms once, without restating the inputs", () => {
+  const view = render(<BoostCampaignSheet {...composeProps()} />);
+
+  expect(view.getByText(/You pay \$10\.00 now\. The reward and budget lock after payment/)).toBeTruthy();
+  expect(view.getByText(/can't be withdrawn/)).toBeTruthy();
+  expect(view.getByText("Pays for")).toBeTruthy();
+  expect(view.getByText("Up to 10 rewards")).toBeTruthy();
+  expect(view.queryByText(/Qualifies by/)).toBeNull();
+  expect(view.queryByText(/One reward per person/)).toBeNull();
+  expect(view.queryByText(/Unused money cannot be withdrawn/)).toBeNull();
+  expect(view.queryByText(/cannot be changed after you pay/)).toBeNull();
   expect(view.queryByText(/refund whatever is left/i)).toBeNull();
 });
 
-test("quote hides payment infrastructure and blocks when the pinned wallet is unavailable", () => {
+test("quote hides payment infrastructure, shows the formatted reward, and offers wallet recovery", () => {
+  let connectCalls = 0;
   const view = render(
     <BoostCampaignSheet
-      budgetDisplayLabel="$10.00"
-      budgetLabel="10.00"
-      dailyRewardLabel="1.00"
-      eligibleActivity="karaoke"
-      fundingAmountLabel="$10.00"
-      onOpenChange={() => undefined}
-      open
-      rewardCountLabel="10 rewards"
-      state="quote"
-      walletMismatch
+      {...composeProps({
+        fundingAmountLabel: "$10.00",
+        onConnectWallet: () => { connectCalls += 1; },
+        state: "quote",
+        walletMismatch: true,
+        walletMismatchReason: "different-wallet",
+      })}
     />,
   );
 
   expect(view.queryByText(/0x2222/i)).toBeNull();
   expect(view.queryByText(/0x3333/i)).toBeNull();
+  expect(view.getByText("$1.00")).toBeTruthy();
+  expect(view.getByText(/A different wallet is connected/)).toBeTruthy();
   expect(view.getByText("Pay $10.00").closest("button")?.disabled).toBe(true);
-  expect(view.getByText(/Connect your Pirate Wallet/i)).toBeTruthy();
+
+  fireEvent.click(view.getByRole("button", { name: "Connect Pirate Wallet" }));
+  expect(connectCalls).toBe(1);
 });
 
-test("preparing hides quote-expiry recovery details", () => {
+test("quote explains a missing wallet without a dead-end warning", () => {
   const view = render(
     <BoostCampaignSheet
-      budgetDisplayLabel="$10.00"
-      budgetLabel="10.00"
-      dailyRewardLabel="1.00"
-      eligibleActivity="karaoke"
-      onOpenChange={() => undefined}
-      open
-      rewardCountLabel="10 rewards"
-      state="preparing"
+      {...composeProps({
+        fundingAmountLabel: "$10.00",
+        state: "quote",
+        walletMismatch: true,
+        walletMismatchReason: "no-wallet",
+      })}
     />,
   );
 
-  expect(view.getByText("Preparing funding")).toBeTruthy();
-  expect(view.queryByText(/quote expired/i)).toBeNull();
-  expect(view.queryByText(/start again/i)).toBeNull();
+  expect(view.getByText(/Connect your Pirate Wallet to pay/)).toBeTruthy();
+  expect(view.queryByText(/Do not pay from a different wallet/)).toBeNull();
 });
 
-test("owner policy explains that blocking does not return funding", () => {
+test("compose stays visually stable while funding is prepared", () => {
+  const view = render(<BoostCampaignSheet {...composeProps({ busy: true })} />);
+
+  expect(view.queryByText("Preparing funding")).toBeNull();
+  expect(view.getAllByText("Review funding").at(-1)?.closest("button")?.disabled).toBe(true);
+});
+
+test("confirming describes the wait in plain language", () => {
+  const view = render(<BoostCampaignSheet {...composeProps({ state: "confirming" })} />);
+
+  expect(view.getByText(/once the network confirms the transfer/)).toBeTruthy();
+  expect(view.queryByText(/safe block/)).toBeNull();
+});
+
+test("live boost labels metrics plainly", () => {
+  const view = render(
+    <BoostCampaignSheet
+      {...composeProps({
+        eligibleActivity: "either",
+        endsAtLabel: "31 Jul",
+        fundedLabel: "$10.00",
+        remainingLabel: "$7.00",
+        rewardsPaidLabel: "$3.00",
+        state: "active",
+      })}
+    />,
+  );
+
+  expect(view.getByText(/People can now earn \$1\.00 for a study set or karaoke pass/)).toBeTruthy();
+  expect(view.getByText("Paid out")).toBeTruthy();
+  expect(view.getByText("Per day")).toBeTruthy();
+  expect(view.queryByText("Earned")).toBeNull();
+  expect(view.queryByText("Each")).toBeNull();
+});
+
+test("owner policy toggles via a switch and only warns while blocking", () => {
+  let next: boolean | undefined;
   const view = render(
     <SongRewardPolicySheet
       allowThirdPartyRewards
+      onAllowThirdPartyRewardsChange={(allowed) => { next = allowed; }}
       onOpenChange={() => undefined}
       open
     />,
   );
-  expect(view.getByText(/Campaign funding is not returned/i)).toBeTruthy();
+
+  const toggle = view.getByRole("switch", { name: "Allow others to boost this song" });
+  expect(toggle.getAttribute("aria-checked")).toBe("true");
+  expect(view.queryByText(/Campaign funding is not returned/)).toBeNull();
+
+  fireEvent.click(toggle);
+  expect(next).toBe(false);
+
+  view.rerender(
+    <SongRewardPolicySheet
+      allowThirdPartyRewards={false}
+      onOpenChange={() => undefined}
+      open
+    />,
+  );
+  expect(view.getByRole("switch").getAttribute("aria-checked")).toBe("false");
+  expect(view.getByText(/Campaign funding is not returned/)).toBeTruthy();
 });
 
 test("terminal funding review exposes the transaction and support reference without a retry", () => {
   const view = render(
     <BoostCampaignSheet
-      budgetDisplayLabel="$10.00"
-      budgetLabel="10.00"
-      dailyRewardLabel="1.00"
-      eligibleActivity="karaoke"
-      errorMessage="Funds were received, but the campaign was not activated."
-      explorerTxUrl="https://sepolia.basescan.org/tx/0x1234"
-      onOpenChange={() => undefined}
-      onRetry={() => { throw new Error("must not render"); }}
-      open
-      rewardCountLabel="10 rewards"
-      state="funding-review"
-      supportReference="rfq_support"
+      {...composeProps({
+        errorMessage: "Funds were received, but the campaign was not activated.",
+        explorerTxUrl: "https://sepolia.basescan.org/tx/0x1234",
+        onRetry: () => { throw new Error("must not render"); },
+        state: "funding-review",
+        supportReference: "rfq_support",
+      })}
     />,
   );
   expect(view.getByText("Campaign not activated")).toBeTruthy();
   expect(view.getByText("rfq_support")).toBeTruthy();
   expect(view.getByText("View funding transaction")).toBeTruthy();
   expect(view.queryByText("Retry confirmation")).toBeNull();
+});
+
+test("funding review falls back to plain-language copy", () => {
+  const view = render(<BoostCampaignSheet {...composeProps({ state: "funding-review" })} />);
+
+  expect(view.getByText(/Funds arrived, but the boost didn't activate/)).toBeTruthy();
+  expect(view.queryByText(/terminal funding state/)).toBeNull();
 });

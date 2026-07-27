@@ -1,10 +1,10 @@
 "use client";
 
+import * as React from "react";
 import {
   ArrowSquareOut,
   CheckCircle,
   HourglassMedium,
-  Lock,
   ShieldWarning,
   WarningCircle,
 } from "@phosphor-icons/react";
@@ -21,6 +21,7 @@ import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import { CopyField } from "@/components/primitives/copy-field";
 import { Input } from "@/components/primitives/input";
+import { Switch } from "@/components/primitives/switch";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
@@ -33,22 +34,23 @@ import { cn } from "@/lib/utils";
 
 type BoostCampaignSheetState =
   | "compose"
-  | "preparing"
   | "quote"
   | "confirming"
   | "active"
-  | "expired"
   | "funding-review"
   | "failed";
 
 export type BoostEligibleActivity = "study" | "karaoke" | "either";
 
 export interface BoostCampaignSheetProps {
+  busy?: boolean;
   budgetDisplayLabel: string;
   budgetLabel: string;
   /** Preset budgets offered as one-tap chips, already formatted (e.g. "$25.00"). */
   budgetPresets?: string[];
   dailyRewardLabel: string;
+  /** Formatted reward for review/live surfaces (e.g. "$1.00"); inputs keep the raw `dailyRewardLabel`. */
+  dailyRewardDisplayLabel?: string;
   eligibleActivity: BoostEligibleActivity;
   eligibleActivities?: BoostEligibleActivity[];
   errorMessage?: string;
@@ -60,6 +62,8 @@ export interface BoostCampaignSheetProps {
   fundedLabel?: string;
   onBudgetChange?: (value: string) => void;
   onConfirm?: () => void;
+  /** Recovery action offered when the pinned funding wallet is not connected. */
+  onConnectWallet?: () => void;
   onDailyRewardChange?: (value: string) => void;
   onEligibleActivityChange?: (value: BoostEligibleActivity) => void;
   onOpenChange?: (open: boolean) => void;
@@ -76,6 +80,8 @@ export interface BoostCampaignSheetProps {
   state: BoostCampaignSheetState;
   /** True when the quote's pinned funding wallet is not connected; blocks payment. */
   walletMismatch?: boolean;
+  /** Why the pinned wallet is unavailable: nothing connected vs a different wallet connected. */
+  walletMismatchReason?: "different-wallet" | "no-wallet";
 }
 
 export interface SongRewardPolicySheetProps {
@@ -91,6 +97,13 @@ const ACTIVITY_LABEL = {
   study: "a study set",
   karaoke: "a karaoke pass",
   either: "a study set or karaoke pass",
+} satisfies Record<BoostEligibleActivity, string>;
+
+/** Radio-card titles for the exclusive eligible-activity enum; "or" keeps OR semantics explicit. */
+const ACTIVITY_TITLE = {
+  karaoke: "Karaoke",
+  study: "Study",
+  either: "Karaoke or study",
 } satisfies Record<BoostEligibleActivity, string>;
 
 function CampaignSummaryRow({ label, value }: { label: string; value: string }) {
@@ -138,10 +151,12 @@ function MoneyInput({
 }
 
 export function BoostCampaignSheet({
+  busy,
   budgetDisplayLabel,
   budgetLabel,
   budgetPresets,
   dailyRewardLabel,
+  dailyRewardDisplayLabel,
   eligibleActivity,
   eligibleActivities = ["karaoke", "study", "either"],
   endsAtLabel,
@@ -152,6 +167,7 @@ export function BoostCampaignSheet({
   fundedLabel,
   onBudgetChange,
   onConfirm,
+  onConnectWallet,
   onDailyRewardChange,
   onEligibleActivityChange,
   onOpenChange,
@@ -166,7 +182,26 @@ export function BoostCampaignSheet({
   state,
   supportReference,
   walletMismatch,
+  walletMismatchReason = "no-wallet",
 }: BoostCampaignSheetProps) {
+  const activityLabelId = React.useId();
+  const rewardDisplay = dailyRewardDisplayLabel ?? dailyRewardLabel;
+
+  const handleActivityKeyDown = (event: React.KeyboardEvent, index: number) => {
+    const lastIndex = eligibleActivities.length - 1;
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+      nextIndex = index === lastIndex ? 0 : index + 1;
+    } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+      nextIndex = index === 0 ? lastIndex : index - 1;
+    }
+    if (nextIndex == null) return;
+    event.preventDefault();
+    const next = eligibleActivities[nextIndex];
+    onEligibleActivityChange?.(next);
+    document.getElementById(`${activityLabelId}-${next}`)?.focus();
+  };
+
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
       <ModalContent
@@ -187,26 +222,48 @@ export function BoostCampaignSheet({
         {state === "compose" ? (
           <div className="mt-5 space-y-4">
             <div>
-              <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
+              <Type as="span" className="mb-2 block text-muted-foreground" id={activityLabelId} variant="label">
                 People earn by
               </Type>
-              <div className="grid grid-cols-3 gap-2">
-                {eligibleActivities.map((activity) => (
-                  <Button
-                    className="h-10"
-                    key={activity}
-                    onClick={() => onEligibleActivityChange?.(activity)}
-                    type="button"
-                    variant={eligibleActivity === activity ? "secondary" : "outline"}
-                  >
-                    {{ karaoke: "Karaoke", study: "Study", either: "Either" }[activity]}
-                  </Button>
-                ))}
+              <div aria-labelledby={activityLabelId} className="grid gap-2" role="radiogroup">
+                {eligibleActivities.map((activity, index) => {
+                  const selected = eligibleActivity === activity;
+                  return (
+                    <button
+                      aria-checked={selected}
+                      className={cn(
+                        "flex h-11 items-center gap-3 rounded-lg border px-4 text-start transition-colors",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        selected ? "border-primary/40 bg-primary-subtle" : "border-border-soft",
+                      )}
+                      id={`${activityLabelId}-${activity}`}
+                      key={activity}
+                      onClick={() => onEligibleActivityChange?.(activity)}
+                      onKeyDown={(event) => handleActivityKeyDown(event, index)}
+                      role="radio"
+                      tabIndex={selected ? 0 : -1}
+                      type="button"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "flex size-4 shrink-0 items-center justify-center rounded-full border",
+                          selected ? "border-primary" : "border-muted-foreground/50",
+                        )}
+                      >
+                        {selected ? <span className="size-2 rounded-full bg-primary" /> : null}
+                      </span>
+                      <Type as="span" variant="body">
+                        {ACTIVITY_TITLE[activity]}
+                      </Type>
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <label className="block" htmlFor="boost-daily-reward">
               <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
-                Reward per learner, per day
+                Daily reward per learner
               </Type>
               <MoneyInput
                 id="boost-daily-reward"
@@ -257,26 +314,16 @@ export function BoostCampaignSheet({
             ) : (
               <>
                 <div className="rounded-lg border border-border-soft px-4">
-                  <CampaignSummaryRow label="Qualifies by" value={`Completing ${ACTIVITY_LABEL[eligibleActivity]}`} />
                   {/* `Up to`, not a bare count: zero is possible if nobody practises, and the
                       decision record reserves plain counts for guaranteed floors. */}
                   <CampaignSummaryRow label="Pays for" value={`Up to ${rewardCountLabel}`} />
-                  <CampaignSummaryRow label="Limit" value="One reward per person, per day" />
                 </div>
 
                 <Type as="p" className="text-muted-foreground" variant="caption">
-                  You pay {budgetDisplayLabel} now. Up to {rewardCountLabel} can be earned.
-                  Unused money cannot be withdrawn yet.
+                  {`You pay ${budgetDisplayLabel} now. The reward and budget lock after payment, and unused funds can't be withdrawn.`}
                 </Type>
               </>
             )}
-
-            <div className="flex items-start gap-3 rounded-lg border border-border-soft bg-muted/30 p-4">
-              <Lock aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted-foreground" weight="bold" />
-              <Type as="p" className="text-muted-foreground" variant="body">
-                The reward and budget cannot be changed after you pay.
-              </Type>
-            </div>
           </div>
         ) : null}
 
@@ -292,32 +339,27 @@ export function BoostCampaignSheet({
             </Card>
 
             <div className="rounded-lg border border-border-soft px-4">
-              <CampaignSummaryRow label="Reward per day" value={dailyRewardLabel} />
+              <CampaignSummaryRow label="Reward per day" value={rewardDisplay} />
               <CampaignSummaryRow label="Pays for" value={`Up to ${rewardCountLabel}`} />
             </div>
 
             {walletMismatch ? (
-              <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
-                <WarningCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-destructive" weight="fill" />
-                <Type as="p" className="text-destructive" variant="body">
-                  Connect your Pirate Wallet to continue. Do not pay from a different wallet.
-                </Type>
+              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
+                <div className="flex items-start gap-3">
+                  <WarningCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-destructive" weight="fill" />
+                  <Type as="p" className="text-destructive" variant="body">
+                    {walletMismatchReason === "different-wallet"
+                      ? "A different wallet is connected. This boost can only be paid from your Pirate Wallet."
+                      : "Connect your Pirate Wallet to pay. This boost was prepared for that wallet."}
+                  </Type>
+                </div>
+                {onConnectWallet ? (
+                  <Button className="mt-3 h-11 w-full" onClick={onConnectWallet} type="button" variant="outline">
+                    Connect Pirate Wallet
+                  </Button>
+                ) : null}
               </div>
             ) : null}
-          </div>
-        ) : null}
-
-        {state === "preparing" ? (
-          <div className="mt-6 flex items-center gap-3 rounded-lg border border-border-soft p-4">
-            <HourglassMedium aria-hidden="true" className="size-5 animate-pulse text-primary" weight="bold" />
-            <div>
-              <Type as="div" variant="body-strong">
-                Preparing funding
-              </Type>
-              <Type as="div" className="text-muted-foreground" variant="caption">
-                Checking the amount, payment wallet, and destination.
-              </Type>
-            </div>
           </div>
         ) : null}
 
@@ -329,7 +371,7 @@ export function BoostCampaignSheet({
                 Confirming your funding
               </Type>
               <Type as="div" className="text-muted-foreground" variant="caption">
-                The campaign activates once the transfer reaches a safe block.
+                The boost activates once the network confirms the transfer.
               </Type>
             </div>
           </div>
@@ -344,7 +386,7 @@ export function BoostCampaignSheet({
                   Boost is live
                 </Type>
                 <Type as="div" className="mt-1 text-muted-foreground" variant="body">
-                  People can now earn {dailyRewardLabel} for {ACTIVITY_LABEL[eligibleActivity]}.
+                  People can now earn {rewardDisplay} for {ACTIVITY_LABEL[eligibleActivity]}.
                 </Type>
               </div>
             </div>
@@ -352,9 +394,9 @@ export function BoostCampaignSheet({
               <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3">
                 {[
                   ["Funded", fundedLabel],
-                  ["Earned", rewardsPaidLabel],
+                  ["Paid out", rewardsPaidLabel],
                   ["Left", remainingLabel],
-                  ["Each", dailyRewardLabel],
+                  ["Per day", rewardDisplay],
                   ...(endsAtLabel ? [["Ends", endsAtLabel]] : []),
                 ].map(([label, value]) => (
                   <div key={label}>
@@ -398,7 +440,7 @@ export function BoostCampaignSheet({
                   Campaign not activated
                 </Type>
                 <Type as="div" className="mt-1 text-muted-foreground" variant="body">
-                  {errorMessage ?? "Your transfer reached a terminal funding state. Refund or support review is required."}
+                  {errorMessage ?? "Funds arrived, but the boost didn't activate. Don't send again; we'll review or refund."}
                 </Type>
               </div>
             </div>
@@ -423,18 +465,13 @@ export function BoostCampaignSheet({
 
         <ModalFooter className="mt-6">
           {state === "compose" ? (
-            <Button className="h-12 w-full" disabled={Boolean(planProblem)} onClick={onConfirm}>
+            <Button className="h-12 w-full" disabled={Boolean(planProblem) || busy} onClick={onConfirm}>
               Review funding
             </Button>
           ) : null}
           {state === "quote" ? (
-            <Button className="h-12 w-full" disabled={Boolean(walletMismatch)} onClick={onConfirm}>
+            <Button className="h-12 w-full" disabled={Boolean(walletMismatch) || busy} onClick={onConfirm}>
               Pay {fundingAmountLabel}
-            </Button>
-          ) : null}
-          {state === "preparing" ? (
-            <Button className="h-12 w-full" disabled>
-              Preparing…
             </Button>
           ) : null}
           {state === "confirming" ? (
@@ -471,6 +508,7 @@ export function SongRewardPolicySheet({
   onOpenChange,
   open,
 }: SongRewardPolicySheetProps) {
+  const policyLabelId = React.useId();
   return (
     <Modal onOpenChange={onOpenChange} open={open}>
       <ModalContent className="w-[min(100%-2rem,32rem)] max-w-[32rem]">
@@ -481,26 +519,22 @@ export function SongRewardPolicySheet({
           </ModalDescription>
         </ModalHeader>
         <div className="mt-5 rounded-lg border border-border-soft p-4">
-          <Type as="div" variant="body-strong">Allow others to boost this song</Type>
-          <Type as="p" className="mt-1 text-muted-foreground" variant="body">
-            Turning this off pauses third-party reward campaigns. Campaign funding is not returned.
-          </Type>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <Button
+          <div className="flex items-center justify-between gap-4">
+            <Type as="div" id={policyLabelId} variant="body-strong">
+              Allow others to boost this song
+            </Type>
+            <Switch
+              aria-labelledby={policyLabelId}
+              checked={allowThirdPartyRewards}
               disabled={busy}
-              onClick={() => onAllowThirdPartyRewardsChange?.(true)}
-              variant={allowThirdPartyRewards ? "secondary" : "outline"}
-            >
-              Allow
-            </Button>
-            <Button
-              disabled={busy}
-              onClick={() => onAllowThirdPartyRewardsChange?.(false)}
-              variant={!allowThirdPartyRewards ? "secondary" : "outline"}
-            >
-              Block
-            </Button>
+              onCheckedChange={onAllowThirdPartyRewardsChange}
+            />
           </div>
+          {!allowThirdPartyRewards ? (
+            <Type as="p" className="mt-2 text-muted-foreground" variant="body">
+              Blocking pauses third-party reward campaigns. Campaign funding is not returned.
+            </Type>
+          ) : null}
         </div>
         {errorMessage ? <Type as="p" className="mt-3 text-destructive" variant="body">{errorMessage}</Type> : null}
         <ModalFooter className="mt-6">

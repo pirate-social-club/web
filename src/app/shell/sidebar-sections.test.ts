@@ -5,6 +5,7 @@ import type { ShellMessages } from "@/locales";
 
 import {
   activeSidebarItem,
+  buildMediaSections,
   buildMediaSpineItems,
   buildResourceItems,
   buildSidebarSections,
@@ -97,6 +98,27 @@ describe("buildSidebarSections", () => {
       false,
     );
 
+    expect(sections[0]?.items[0]?.label).toBe("c/com_cmt...856e");
+  });
+
+  test("skips a display name that would impersonate a community route", () => {
+    const sections = buildSidebarSections(
+      {
+        sections: [{ id: "recent", label: "Recent", items: [] }],
+      } as unknown as ShellMessages["appSidebar"],
+      [{
+        avatarSrc: null,
+        communityId: "com_cmt_be13447e169a49209b2dc207fc4574c0856e",
+        displayName: "c/garage",
+        routeSlug: null,
+        updatedAt: "2026-04-29T00:00:00.000Z",
+      }],
+      [],
+      false,
+    );
+
+    // No slug means /c/garage does not resolve; fall back to the truncated ID
+    // rather than rendering a label that reads as a working route.
     expect(sections[0]?.items[0]?.label).toBe("c/com_cmt...856e");
   });
 
@@ -221,5 +243,53 @@ describe("buildResourceItems", () => {
 
     expect(item?.icon).toBeDefined();
     expect(typeof item?.onSelect).toBe("function");
+  });
+});
+
+describe("buildMediaSections", () => {
+  const messages = {
+    communitiesEmptyLabel: "No communities yet",
+    createCommunityLabel: "Create community",
+    sections: [{ id: "communities", label: "Communities", items: [] }],
+  } as unknown as ShellMessages["appSidebar"];
+
+  const recentSection = {
+    id: "recent",
+    items: [{ id: "c/com_cmt_1", label: "Garage Tapes" }],
+    label: "Recent",
+  };
+
+  test("promotes recent communities into the Communities section", () => {
+    const [communities] = buildMediaSections(messages, [recentSection]);
+
+    expect(communities?.id).toBe("communities");
+    expect(communities?.label).toBe("Communities");
+    expect(communities?.items.map((item) => item.id)).toEqual(["c/com_cmt_1"]);
+  });
+
+  // The Communities header already reads "Communities"; a nested "Your Communities"
+  // row under it rendered as a bare, avatar-less line that looked like a subheading.
+  test("does not add a Your Communities row", () => {
+    const [communities] = buildMediaSections(messages, [recentSection]);
+
+    expect(communities?.items.some((item) => item.id === "your-communities")).toBe(false);
+  });
+
+  test("keeps the create action and an empty label when there are no communities", () => {
+    const [communities] = buildMediaSections(messages, []);
+
+    expect(communities?.items).toEqual([]);
+    expect(communities?.emptyLabel).toBe("No communities yet");
+    // The section cannot be hidden when empty: this action is the only
+    // create-community entry point in the media spine.
+    expect(communities?.action?.ariaLabel).toBe("Create community");
+  });
+
+  test("passes non-recent sections through untouched", () => {
+    const moderation = { id: "moderation", items: [], label: "Moderation" };
+    const sections = buildMediaSections(messages, [recentSection, moderation]);
+
+    expect(sections.map((section) => section.id)).toEqual(["communities", "moderation"]);
+    expect(sections[1]).toBe(moderation);
   });
 });

@@ -80,21 +80,6 @@ describe("AppSidebar sections", () => {
     expect(markup).not.toContain("No communities yet");
   });
 
-  // The Communities header already reads "Communities"; a nested "Your Communities"
-  // row under it rendered as a bare, avatar-less line that looked like a subheading.
-  test("does not reintroduce a Your Communities row inside the Communities section", () => {
-    const markup = renderSections([
-      {
-        defaultOpen: true,
-        emptyLabel: "No communities yet",
-        id: "communities",
-        items: [{ id: "c/com_cmt_1", label: "Garage Tapes" }],
-        label: "Communities",
-      },
-    ]);
-
-    expect(markup).not.toContain("Your Communities");
-  });
 });
 
 describe("AppSidebar mobile drawer", () => {

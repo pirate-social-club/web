@@ -46,6 +46,8 @@ export interface VideoFeedProps {
   /** Opaque identity shared by every impression in one accepted feed bootstrap. */
   feedRequestId?: string;
   items: VideoFeedItem[];
+  /** BCP-47 tag for the rail's compact counters. Defaults to "en". */
+  locale?: string;
   onActiveItemChange?: (item: VideoFeedItem, index: number) => void;
   onBook?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onComment?: (item: VideoFeedItem) => void;
@@ -192,8 +194,8 @@ function writeStoredMutedPreference(muted: boolean): void {
   }
 }
 
-function compactCount(value: number): string {
-  return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+export function compactCount(value: number, locale = "en"): string {
+  return new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
 function formatVideoTime(seconds: number): string {
@@ -352,6 +354,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   intentionalPaused,
   item,
   itemPosition,
+  locale = "en",
   onBook,
   mountMedia,
   onBoost,
@@ -1054,7 +1057,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
             )}
             label="Like"
             onClick={() => runInteraction(onLike)}
-            value={compactCount(item.likeCount)}
+            value={compactCount(item.likeCount, locale)}
           />
           <VideoAction
             icon={<ChatCircle className="size-6" data-video-icon-weight="fill" weight="fill" />}
@@ -1062,7 +1065,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
             // Reading a public thread is not a gated interaction. Authentication and membership
             // are requested by the composer only when the viewer tries to write.
             onClick={() => onComment?.(item)}
-            value={compactCount(item.commentCount)}
+            value={compactCount(item.commentCount, locale)}
           />
           {item.booking?.hasAvailableSlot && item.booking.startingPriceCents !== null && onBook ? (
             <VideoAction
@@ -1153,6 +1156,7 @@ export function VideoFeed({
   initialPaused = false,
   initialPlaybackSeconds,
   items,
+  locale = "en",
   muteVideoLabel = "Mute video",
   nextVideoLabel = "Next video",
   previousVideoLabel = "Previous video",
@@ -1459,6 +1463,7 @@ export function VideoFeed({
             followingLabel={followingLabel}
             item={item}
             itemPosition={index}
+            locale={locale}
             impressionIdentity={impressionIdentityForItem(item.id)}
             impressionVisible={index === activeIndex && !documentHidden}
             intentionalPaused={pausedItemIds.has(item.id)}

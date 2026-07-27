@@ -5,6 +5,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/react";
 
 import {
   classifyVideoPlayRejection,
+  compactCount,
   didVideoLongPressMove,
   isVideoLoopReplay,
   videoImpressionEventId,
@@ -37,6 +38,17 @@ const item: VideoFeedItem = {
   study: "ready",
   viewerState: "allowed",
 };
+
+describe("compactCount", () => {
+  test("formats rail counters in the viewer's locale instead of hard-locked English", () => {
+    const arabic = compactCount(51900, "ar");
+    expect(arabic).toBe(
+      new Intl.NumberFormat("ar", { maximumFractionDigits: 1, notation: "compact" }).format(51900),
+    );
+    expect(arabic).not.toBe(compactCount(51900, "en"));
+    expect(compactCount(51900)).toBe(compactCount(51900, "en"));
+  });
+});
 
 describe("video impression identity and playback failures", () => {
   test("builds one deterministic id from the feed, item, and committed activation sequence", () => {

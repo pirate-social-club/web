@@ -32,6 +32,7 @@ import {
   type FeedItem,
 } from "@/components/compositions/posts/feed/feed";
 import {
+  compactCount,
   VideoFeed,
   type VideoFeedImpression,
   type VideoFeedPlaybackState,
@@ -135,6 +136,7 @@ export const VIDEO_FEED_VIEWPORT_CLASS = "h-lvh md:h-dvh";
 export const VIDEO_FEED_STAGE_CLASS = "relative h-full min-h-0";
 export const MAX_CONSECUTIVE_NO_GROWTH_PAGES = 3;
 const FEED_COMMENTS_HISTORY_KEY = "pirateFeedComments";
+const COMMENTS_PANEL_FOLLOW_SETTLE_MS = 250;
 
 export function videoTranslationForFeedItem(
   item: Pick<FeedItem, "postOriginal">,
@@ -155,6 +157,37 @@ export function videoTranslationForFeedItem(
 
 export function postIdForVideoItem(entries: ApiHomeFeedItem[], itemId: string): string | null {
   return entries.find((entry) => entry.post.post.id === itemId)?.post.post.id ?? null;
+}
+
+/**
+ * The comments dock follows the video that settles at the snap point. Returns the panel
+ * state to switch to, or null when the dock is already on the settled video (or the video
+ * has no post to show — a feed page can be replaced mid-scroll).
+ */
+export function nextCommentsPanelForActiveItem(
+  panel: FeedPanelState,
+  activeItemId: string | null,
+  entries: ApiHomeFeedItem[],
+): Extract<FeedPanelState, { kind: "comments" }> | null {
+  if (panel.kind !== "comments" || !activeItemId) return null;
+  if (panel.itemId === activeItemId) return null;
+  const postId = postIdForVideoItem(entries, activeItemId);
+  if (!postId) return null;
+  return { itemId: activeItemId, kind: "comments", postId };
+}
+
+/**
+ * Header count for the comments dock. The feed item carries the server total; comments the
+ * viewer posts from the dock are added on top so the count does not sit stale behind them.
+ */
+export function commentsPanelCommentCount(
+  items: readonly { id: string; commentCount: number }[],
+  panel: FeedPanelState,
+  addedByPostId: Record<string, number>,
+): number {
+  if (panel.kind !== "comments") return 0;
+  const base = items.find((item) => item.id === panel.itemId)?.commentCount ?? 0;
+  return base + (addedByPostId[panel.postId] ?? 0);
 }
 
 function commentsHistoryState(panel: Extract<FeedPanelState, { kind: "comments" }>) {
@@ -303,6 +336,8 @@ export function VideoHomePage() {
   const [bookingLoading, setBookingLoading] = React.useState(false);
   const [bookingError, setBookingError] = React.useState(false);
   const [panelState, setPanelState] = React.useState<FeedPanelState>({ kind: "none" });
+  const [commentsAddedByPostId, setCommentsAddedByPostId] = React.useState<Record<string, number>>({});
+  const entriesRef = React.useRef(entries);
   const loadingMoreRef = React.useRef(false);
   const consecutiveNoGrowthPagesRef = React.useRef(0);
   const feedGenerationRef = React.useRef(0);
@@ -366,6 +401,14 @@ export function VideoHomePage() {
   }, [authorProfiles]);
 
   React.useEffect(() => {
+    entriesRef.current = entries;
+  }, [entries]);
+
+  const onCommentAdded = React.useCallback((postId: string) => {
+    setCommentsAddedByPostId((current) => ({ ...current, [postId]: (current[postId] ?? 0) + 1 }));
+  }, []);
+
+  React.useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       setPanelState(panelFromHistoryState(event.state));
       if (panelFromHistoryState(event.state).kind === "none") restoreFeedFocus();
@@ -373,6 +416,27 @@ export function VideoHomePage() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [restoreFeedFocus]);
+
+  // While the comments dock is open, keep it pinned to the video that settles at the
+  // snap point. Fast scrolls debounce down to the final item, and the switch rewrites
+  // the current history entry instead of stacking one entry per scrolled video.
+  // `entries` is read through a ref: it is only a post-id lookup, and depending on it
+  // would re-arm the debounce every time pagination lands a page mid-scroll.
+  React.useEffect(() => {
+    if (panelState.kind !== "comments" || !activeItemId) return;
+    if (panelState.itemId === activeItemId) return;
+    const timeout = window.setTimeout(() => {
+      const nextPanel = nextCommentsPanelForActiveItem(panelState, activeItemId, entriesRef.current);
+      if (!nextPanel) return;
+      window.history.replaceState(
+        commentsHistoryState(nextPanel),
+        "",
+        `/p/${encodeURIComponent(nextPanel.postId)}`,
+      );
+      setPanelState(nextPanel);
+    }, COMMENTS_PANEL_FOLLOW_SETTLE_MS);
+    return () => window.clearTimeout(timeout);
+  }, [activeItemId, panelState]);
 
   const {
     gateModal,
@@ -914,6 +978,11 @@ export function VideoHomePage() {
   if (surface === "community-feed-error") return <HomePage videoFallbackReason="error" />;
   if (surface === "community-feed-empty") return <HomePage videoFallbackReason="empty" />;
 
+  const commentsPanelCount = commentsPanelCommentCount(items, panelState, commentsAddedByPostId);
+  const commentsPanelTitle = commentsPanelCount > 0
+    ? copy.common.commentsHeadingWithCount.replace("{count}", compactCount(commentsPanelCount, localeTag))
+    : copy.common.commentsHeading;
+
   return (
     <div className="min-h-0 w-full flex-1 bg-background">
       {gateModal}
@@ -928,9 +997,13 @@ export function VideoHomePage() {
             }}
             open
             returnFocusRef={panelReturnFocusRef}
-            title={copy.common.commentsHeading}
+            title={commentsPanelTitle}
           >
-            <FeedCommentsPanel composerRef={commentComposerRef} postId={panelState.postId} />
+            <FeedCommentsPanel
+              composerRef={commentComposerRef}
+              onCommentAdded={onCommentAdded}
+              postId={panelState.postId}
+            />
           </FeedSidePanel>
         ) : panelState.kind === "booking" ? (
           <FeedSidePanel
@@ -973,6 +1046,7 @@ export function VideoHomePage() {
         initialPaused={restored?.paused}
         initialPlaybackSeconds={restored?.playbackSeconds}
         items={items}
+        locale={localeTag}
         muteVideoLabel={copy.common.muteVideo}
         nextVideoLabel={copy.common.nextVideo}
         onActiveItemChange={onActiveItemChange}

@@ -10,6 +10,7 @@ import {
   buildResourceItems,
   buildSidebarSections,
   buildVideoPrimaryItems,
+  MAX_SIDEBAR_RECENT_COMMUNITIES,
   resolveCreatePostPath,
   usesStandaloneRouteShell,
 } from "./sidebar-sections";
@@ -121,6 +122,26 @@ describe("buildSidebarSections", () => {
     // No slug means /c/garage does not resolve; fall back to the truncated ID
     // rather than rendering a label that reads as a working route.
     expect(sections[0]?.items[0]?.label).toBe("c/com_cmt...856e");
+  });
+
+  test("caps recent communities so the sections below stay reachable", () => {
+    const sections = buildSidebarSections(
+      {
+        sections: [{ id: "recent", label: "Recent", items: [] }],
+      } as unknown as ShellMessages["appSidebar"],
+      Array.from({ length: MAX_SIDEBAR_RECENT_COMMUNITIES + 8 }, (_unused, index) => ({
+        avatarSrc: null,
+        communityId: `cmt_${String(index).padStart(32, "0")}`,
+        displayName: `Community ${index}`,
+        routeSlug: `@community-${index}`,
+        updatedAt: "2026-04-29T00:00:00.000Z",
+      })),
+      [],
+      false,
+    );
+
+    const recent = sections.find((section) => section.id === "recent");
+    expect(recent?.items).toHaveLength(MAX_SIDEBAR_RECENT_COMMUNITIES);
   });
 
   test("skips malformed community summaries without crashing", () => {

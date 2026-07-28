@@ -157,6 +157,15 @@ function hasCommunityId(
   return typeof community.communityId === "string" && community.communityId.trim().length > 0;
 }
 
+/**
+ * Recent communities are unbounded upstream: useSidebarCommunities merges every
+ * community the viewer has visited with every one they created, and the sidebar
+ * body scrolls. Rendering all of them pushes the Communities section — and every
+ * section below it — out of the viewport for anyone in many communities, so the
+ * spine shows a bounded window and defers the full list to /your-communities.
+ */
+export const MAX_SIDEBAR_RECENT_COMMUNITIES = 6;
+
 export function buildSidebarSections(
   messages: ShellMessages["appSidebar"],
   recentCommunities: SidebarCommunitySummary[],
@@ -168,7 +177,9 @@ export function buildSidebarSections(
   const sections: AppSidebarSection[] = [];
 
   if (recentCommunities.length > 0) {
-    const validRecentCommunities = recentCommunities.filter(hasCommunityId);
+    const validRecentCommunities = recentCommunities
+      .filter(hasCommunityId)
+      .slice(0, MAX_SIDEBAR_RECENT_COMMUNITIES);
     if (validRecentCommunities.length > 0) {
       sections.push({
         id: "recent",

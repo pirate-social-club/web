@@ -6,6 +6,7 @@ import {
   buildResourceItems,
   buildSidebarSections,
   buildVideoPrimaryItems,
+  MAX_SIDEBAR_RECENT_COMMUNITIES,
   resolveCreatePostPath,
   usesHeaderlessDesktopLayout,
 } from "./sidebar-sections";
@@ -55,6 +56,26 @@ describe("buildSidebarSections", () => {
 
     const item = sections[0]?.items[0];
     expect(item?.label).toBe("c/@🇵🇸");
+  });
+
+  test("caps recent communities so the section's trailing actions stay reachable", () => {
+    const sections = buildSidebarSections(
+      {
+        sections: [{ id: "recent", label: "Recent", items: [] }],
+      } as unknown as ShellMessages["appSidebar"],
+      Array.from({ length: MAX_SIDEBAR_RECENT_COMMUNITIES + 8 }, (_unused, index) => ({
+        avatarSrc: null,
+        communityId: `cmt_${String(index).padStart(32, "0")}`,
+        displayName: `Community ${index}`,
+        routeSlug: `@community-${index}`,
+        updatedAt: "2026-04-29T00:00:00.000Z",
+      })),
+      [],
+      false,
+    );
+
+    const recent = sections.find((section) => section.id === "recent");
+    expect(recent?.items).toHaveLength(MAX_SIDEBAR_RECENT_COMMUNITIES);
   });
 
   test("skips malformed community summaries without crashing", () => {

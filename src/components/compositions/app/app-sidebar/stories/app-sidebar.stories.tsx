@@ -11,7 +11,7 @@ import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 
 import { AppSidebar } from "../app-sidebar";
-import { buildVideoPrimaryItems } from "@/app/shell/sidebar-sections";
+import { buildVideoPrimaryItems, MAX_SIDEBAR_RECENT_COMMUNITIES } from "@/app/shell/sidebar-sections";
 
 const meta = {
   title: "Compositions/App/AppSidebar",
@@ -138,11 +138,13 @@ function MediaShellReview({
   dockOpen = false,
   moderationRoute = false,
   populatedCommunities = false,
+  overflowingCommunities = false,
 }: {
   collapsed?: boolean;
   contentRoute?: boolean;
   dockOpen?: boolean;
   moderationRoute?: boolean;
+  overflowingCommunities?: boolean;
   populatedCommunities?: boolean;
 }) {
   const { locale } = useUiLocale();
@@ -151,11 +153,15 @@ function MediaShellReview({
     defaultOpen: true,
     id: "communities",
     items: [
-      { id: "your-communities", icon: Flag, label: copy.appSidebar.yourCommunitiesLabel },
       ...(populatedCommunities ? [
         { id: "c/pirate-radio", label: "c/pirate-radio" },
         { id: "c/builders", label: "c/builders" },
       ] : []),
+      ...(overflowingCommunities ? Array.from(
+        { length: MAX_SIDEBAR_RECENT_COMMUNITIES },
+        (_unused, index) => ({ id: `c/community-${index}`, label: `c/long-community-name-${index}` }),
+      ) : []),
+      { id: "your-communities", icon: Flag, label: copy.appSidebar.yourCommunitiesLabel },
       { id: "create-community", icon: Plus, label: copy.appSidebar.createCommunityLabel },
     ],
     label: copy.appSidebar.sections.find((section) => section.id === "communities")?.label ?? "Communities",
@@ -242,6 +248,11 @@ export const UnifiedModerationShell: Story = {
     viewport: { defaultViewport: "desktop" },
   },
   render: () => <MediaShellReview contentRoute moderationRoute populatedCommunities />,
+};
+
+export const MediaShellCommunitiesOverflowing: Story = {
+  name: "Media shell / Communities at the cap",
+  render: () => <MediaShellReview overflowingCommunities populatedCommunities />,
 };
 
 export const MediaShellCollapsed: Story = {

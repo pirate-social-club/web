@@ -188,14 +188,17 @@ function NotificationShell({
     {
       defaultOpen: true,
       id: "communities",
+      // Communities first, then the two navigation rows grouped beneath them.
+      // The list is capped upstream, so these stay reachable without scrolling
+      // no matter how many communities the viewer belongs to.
       items: [
+        ...(recentSection?.items ?? []),
         {
           icon: Flag,
           id: "your-communities",
           label: copy.appSidebar.yourCommunitiesLabel,
           onSelect: () => navigate("/your-communities"),
         },
-        ...(recentSection?.items ?? []),
         {
           icon: Plus,
           id: "create-community",

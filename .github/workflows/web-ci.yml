@@ -106,8 +106,12 @@ jobs:
         run: |
           set -uo pipefail
 
+          # `scripts` is included deliberately: scripts/ci/dependency-audit.test.ts
+          # existed for weeks without ever running, because discovery stopped at
+          # src and packages. A test that never runs is worse than no test — it
+          # reads as coverage.
           mapfile -t test_files < <(
-            find src packages -type f \
+            find src packages scripts -type f \
               \( -name '*.test.ts' -o -name '*.test.tsx' -o -name '*.spec.ts' -o -name '*.spec.tsx' \) \
               -print | sort
           )

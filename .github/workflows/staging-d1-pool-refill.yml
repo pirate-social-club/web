@@ -21,6 +21,14 @@ on:
 permissions:
   contents: read
 
+# Refill and activation share one lane. Pre-flight assertions alone still race:
+# two refills can each read a clean inventory before either creates anything, and
+# both then allocate the same index range. Never cancel mid-flight — a half-created
+# range is exactly the state the pre-flight exists to prevent.
+concurrency:
+  group: staging-d1-pool-maintenance
+  cancel-in-progress: false
+
 jobs:
   create:
     name: Create staging D1 pool databases
@@ -31,6 +39,9 @@ jobs:
           repository: pirate-social-club/api
           ref: ${{ inputs.api_ref }}
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: web
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
@@ -38,6 +49,43 @@ jobs:
       - name: Install shard dependencies
         working-directory: services/community-d1-shard
         run: bun install --frozen-lockfile
+
+      # READ-ONLY, and it must complete before any mutation: this is the evidence
+      # the pre-flight judges. Capturing it afterwards -- as this workflow used to
+      # -- means it can only ever describe a state we already changed.
+      - name: Capture pool inventory
+        working-directory: services/community-d1-shard
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          bunx wrangler@4.100.0 d1 list --json > d1-list.json
+          bunx wrangler@4.100.0 d1 execute community-d1-shard-pool-staging \
+            --remote --json --command "SELECT binding_name FROM d1_pool" > pool-bindings.json
+
+      - name: Pre-flight (fails closed on overlap or stale config)
+        working-directory: services/community-d1-shard
+        run: |
+          node "$GITHUB_WORKSPACE/web/scripts/ci/staging-pool-preflight.mjs" \
+            --mode refill \
+            --pool-json pool-bindings.json \
+            --d1-list-json d1-list.json \
+            --config wrangler.jsonc \
+            --start '${{ inputs.start_index }}' \
+            --count '${{ inputs.count }}'
+
+      # Uploaded before the mutation as well as after, so a run that dies partway
+      # still leaves behind the inventory needed to reconcile what was created.
+      - name: Upload pre-flight evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: staging-d1-pool-preflight-${{ github.run_id }}
+          path: |
+            services/community-d1-shard/d1-list.json
+            services/community-d1-shard/pool-bindings.json
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Create staging pool databases
         working-directory: services/community-d1-shard
         env:
@@ -50,12 +98,17 @@ jobs:
             --env-suffix staging \
             --apply | tee allocation-output.txt
           test "$(grep -c '"binding": "DB_CMTY_' allocation-output.txt)" -eq '${{ inputs.count }}'
-      - name: Capture current D1 inventory
+
+      # Post-mutation inventory. Its difference against the pre-flight snapshot is
+      # what actually got created, which is what a resume needs after a partial run.
+      - name: Capture resulting D1 inventory
+        if: always()
         working-directory: services/community-d1-shard
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
-        run: bunx wrangler d1 list --json > d1-list.json
+        run: bunx wrangler@4.100.0 d1 list --json > d1-list-after.json || true
+
       - name: Upload generated binding entries
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -64,5 +117,7 @@ jobs:
           path: |
             services/community-d1-shard/allocation-output.txt
             services/community-d1-shard/d1-list.json
-          if-no-files-found: error
-          retention-days: 7
+            services/community-d1-shard/d1-list-after.json
+            services/community-d1-shard/pool-bindings.json
+          if-no-files-found: warn
+          retention-days: 14

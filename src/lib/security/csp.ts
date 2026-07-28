@@ -63,8 +63,6 @@ export function buildContentSecurityPolicy(nonce: string): string {
       "wss://www.walletlink.org",
       "https://*.rpc.privy.systems",
       "https://explorer-api.walletconnect.com",
-      "https://efp.pirate.sc",
-      "https://efp-staging.pirate.sc",
       "https://api.coingecko.com",
       "https://s3.filebase.com",
       "https://mainnet.base.org",

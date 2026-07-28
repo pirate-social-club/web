@@ -5,13 +5,15 @@
 Production deploys should go through the Blacksmith GitHub Actions workflow in
 `.github/workflows/release.yml`.
 
-> **⚠️ Known blocker (web prod auto-deploy broken since ~2026-06-05):** the Release
-> workflow fails at *Deploy staging → Install API dependencies* because
-> `api/services/api/package.json` pins `@pirate-social-club/karaoke-runtime` to a `file:` path
-> into the `web-karaoke-rel` dev worktree, which CI does not check out (CI only fetches
-> `web`, `api`, `core`). Prod is stuck at the Jun-5 build until the canonical home for
-> `@pirate-social-club/karaoke-runtime` is decided. Do **not** manual-bypass `wrangler deploy` for
-> web prod — it skips the release gates. See pirate-social-club/web#39.
+> **Release safety:** do **not** manually deploy web production with `wrangler deploy`.
+> Production must advance through this Release workflow, which enforces the staging,
+> schema, browser, API-contract, migration, and freshness gates.
+>
+> The former karaoke-runtime install blocker is resolved: the API uses
+> `file:../../../web/packages/karaoke-runtime`, and the workflow checks out `web`,
+> `api`, and `core` as sibling directories so that cross-repository file dependencies
+> resolve during `bun install`. Treat the current Release run and its individual job
+> results as the authoritative deployment status.
 
 The release workflow:
 

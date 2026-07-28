@@ -8,7 +8,11 @@ import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
-import { formatCentsAsStartingUsd } from "@/components/compositions/bookings/fixtures/bookings-format";
+import {
+  formatCentsAsStartingUsd,
+  formatTzLabel,
+  getSlotUniformity,
+} from "@/components/compositions/bookings/fixtures/bookings-format";
 
 import { AvailabilityCalendar } from "@/components/compositions/bookings/availability-calendar/availability-calendar";
 import type { IanaTz, ResolvedSlot } from "@/components/compositions/bookings/view-models";
@@ -42,6 +46,27 @@ interface ProfileBookPanelOwnerProps {
 export type ProfileBookPanelProps = ProfileBookPanelViewerProps | ProfileBookPanelOwnerProps;
 
 /**
+ * The one place duration/price/timezone are stated — slot chips stay time-only. When slots
+ * are uniform the exact shared values appear ("30 min · $50 · Times in Tbilisi"); when prices
+ * vary, a "from" price stands in and each chip carries its own price instead.
+ */
+function sessionFactsLine(
+  bookTimesInTemplate: string,
+  slots: ResolvedSlot[],
+  viewerTimezone: IanaTz,
+  fallbackPriceCents: number,
+): string {
+  const uniformity = getSlotUniformity(slots);
+  const pricePart = uniformity.priceLabel
+    ?? (fallbackPriceCents > 0 ? formatCentsAsStartingUsd(fallbackPriceCents) : null);
+  return [
+    uniformity.durationLabel,
+    pricePart,
+    bookTimesInTemplate.replace("{timezone}", formatTzLabel(viewerTimezone)),
+  ].filter(Boolean).join(" · ");
+}
+
+/**
  * Content of the profile "Calendar" tab. Presentational + controlled; the container supplies the
  * host's resolved slots. Owner sees their real availability (read-only) + an Edit-schedule action;
  * viewer sees availability + price and a slot tap → checkout. No data fetching, no money here.
@@ -70,29 +95,37 @@ export function ProfileBookPanel(props: ProfileBookPanelProps) {
         ) : props.slots.length === 0 ? (
           <Type as="p" variant="caption" className="text-muted-foreground">{copy.bookNoAvailability}</Type>
         ) : (
-          // Read-only for the owner (no slot tap).
-          <AvailabilityCalendar slots={props.slots} viewerTimezone={props.viewerTimezone} />
+          <>
+            <Type as="p" variant="caption" className="text-muted-foreground">
+              {sessionFactsLine(copy.bookTimesIn, props.slots, props.viewerTimezone, props.basePriceCents)}
+            </Type>
+            {/* Read-only for the owner (no slot tap). */}
+            <AvailabilityCalendar slots={props.slots} viewerTimezone={props.viewerTimezone} />
+          </>
         )}
       </div>
     );
   }
 
   return (
-    <div className={cn("space-y-4", props.className)}>
-      <Type as="p" variant="body-strong">
-        {formatCentsAsStartingUsd(props.startingPriceCents)}
-      </Type>
+    <div className={cn("flex h-full min-h-0 flex-col gap-3", props.className)}>
       {props.loading ? (
         <Type as="p" variant="caption" className="text-muted-foreground">Loading availability…</Type>
       ) : props.slots.length === 0 ? (
         <Type as="p" variant="caption" className="text-muted-foreground">{copy.bookNoAvailability}</Type>
       ) : (
-        <AvailabilityCalendar
-          slots={props.slots}
-          viewerTimezone={props.viewerTimezone}
-          getSlotHref={props.getSlotHref}
-          onSelectSlot={props.onSelectSlot}
-        />
+        <>
+          <Type as="p" variant="body-strong">
+            {sessionFactsLine(copy.bookTimesIn, props.slots, props.viewerTimezone, props.startingPriceCents)}
+          </Type>
+          <AvailabilityCalendar
+            className="min-h-0 flex-1"
+            slots={props.slots}
+            viewerTimezone={props.viewerTimezone}
+            getSlotHref={props.getSlotHref}
+            onSelectSlot={props.onSelectSlot}
+          />
+        </>
       )}
     </div>
   );

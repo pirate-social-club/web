@@ -1,4 +1,4 @@
-import type { Cents, IanaTz, IsoInstant } from "../view-models";
+import type { Cents, IanaTz, IsoInstant, ResolvedSlot } from "../view-models";
 
 export function formatCentsAsUsd(cents: Cents): string {
   const dollars = cents / 100;
@@ -69,4 +69,51 @@ export function formatBookingDate(startUtc: IsoInstant, viewerTz: IanaTz): strin
     month: "short",
     day: "numeric",
   }).format(new Date(startUtc));
+}
+
+export function formatDayPillWeekday(startUtc: IsoInstant, viewerTz: IanaTz): string {
+  return new Intl.DateTimeFormat("en", {
+    timeZone: viewerTz,
+    weekday: "short",
+  }).format(new Date(startUtc));
+}
+
+export function formatDayPillDay(startUtc: IsoInstant, viewerTz: IanaTz): string {
+  return new Intl.DateTimeFormat("en", {
+    timeZone: viewerTz,
+    day: "numeric",
+  }).format(new Date(startUtc));
+}
+
+export interface SlotUniformity {
+  sameDuration: boolean;
+  samePrice: boolean;
+  /** Shared duration label (e.g. "15 min") when every slot has the same length, else null. */
+  durationLabel: string | null;
+  /** Shared price label (e.g. "$50") when every slot costs the same, else null. */
+  priceLabel: string | null;
+}
+
+/**
+ * Whether the slot set is uniform enough to state duration/price once instead of per slot.
+ * Slot chips stay time-only when uniform; the labels here feed a single header/summary line.
+ */
+export function getSlotUniformity(slots: ResolvedSlot[]): SlotUniformity {
+  const first = slots[0];
+  if (!first) {
+    return { sameDuration: true, samePrice: true, durationLabel: null, priceLabel: null };
+  }
+  const firstDurationMs = Date.parse(first.endUtc) - Date.parse(first.startUtc);
+  let sameDuration = true;
+  let samePrice = true;
+  for (const slot of slots) {
+    if (Date.parse(slot.endUtc) - Date.parse(slot.startUtc) !== firstDurationMs) sameDuration = false;
+    if (slot.priceCents !== first.priceCents) samePrice = false;
+  }
+  return {
+    sameDuration,
+    samePrice,
+    durationLabel: sameDuration ? formatSlotDuration(first.startUtc, first.endUtc) : null,
+    priceLabel: samePrice ? formatCentsAsUsd(first.priceCents) : null,
+  };
 }

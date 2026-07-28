@@ -129,10 +129,15 @@ for (const viewport of [
     }
     await book.click();
 
-    const slot = page.getByRole("link", { name: /\$50/u }).first();
+    const slot = page.getByRole("button", { name: /\d{2}:\d{2}/u }).first();
     await expect(slot).toBeVisible();
     await expect(page.getByText("50.00 USDC")).toHaveCount(0);
     await slot.click();
+
+    // Selecting a chip reveals the sticky confirm footer; Continue carries the checkout href.
+    const confirm = page.getByRole("link", { name: "Continue" });
+    await expect(confirm).toBeVisible();
+    await confirm.click();
 
     await expect(page.getByRole("heading", { name: "Confirm booking" })).toBeVisible();
     const checkout = new URL(page.url());
@@ -158,6 +163,9 @@ test("logged-out viewers can discover a bookable host and inspect real slots", a
   await expect(page.getByText("$50+")).toBeVisible();
   await book.click();
   await expect(page.getByRole("heading", { name: "Book feed-booking-host.pirate" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /\$50/u }).first()).toBeVisible();
+  const slot = page.getByRole("button", { name: /\d{2}:\d{2}/u }).first();
+  await expect(slot).toBeVisible();
+  await slot.click();
+  await expect(page.getByRole("link", { name: "Continue" })).toBeVisible();
   await expectNoBrowserError(page);
 });

@@ -64,6 +64,8 @@ export interface VideoFeedProps {
   onSong?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onStudy?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   muteVideoLabel?: string;
+  /** Hide the desktop prev/next buttons (e.g. while a side panel docks against the feed). */
+  navigationHidden?: boolean;
   nextVideoLabel?: string;
   previousVideoLabel?: string;
   removeDownvoteLabel?: string;
@@ -1158,6 +1160,7 @@ export function VideoFeed({
   items,
   locale = "en",
   muteVideoLabel = "Mute video",
+  navigationHidden = false,
   nextVideoLabel = "Next video",
   previousVideoLabel = "Previous video",
   removeDownvoteLabel = "Remove downvote",
@@ -1489,6 +1492,7 @@ export function VideoFeed({
         </div>
       ))}
     </div>
+      {!navigationHidden ? (
       <div
         aria-label="Video navigation"
         className="pointer-events-none absolute right-4 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-3 md:flex"
@@ -1513,6 +1517,7 @@ export function VideoFeed({
           <CaretDown aria-hidden className="size-6" weight="bold" />
         </IconButton>
       </div>
+      ) : null}
     </div>
   );
 }

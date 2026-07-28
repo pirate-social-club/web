@@ -1048,6 +1048,7 @@ export function VideoHomePage() {
         items={items}
         locale={localeTag}
         muteVideoLabel={copy.common.muteVideo}
+        navigationHidden={panelState.kind !== "none"}
         nextVideoLabel={copy.common.nextVideo}
         onActiveItemChange={onActiveItemChange}
         onBoost={onBoost}

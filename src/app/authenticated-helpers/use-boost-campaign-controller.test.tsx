@@ -130,7 +130,12 @@ mock.module("@/lib/commerce/routed-checkout", () => ({
   },
 }));
 
-const { boostFundingErrorMessage, classifyBoostFundingError, useBoostCampaignController } = await import("./use-boost-campaign-controller");
+const {
+  boostFundingErrorMessage,
+  classifyBoostFundingError,
+  useBoostCampaignController,
+  useBoostMenuEligibility,
+} = await import("./use-boost-campaign-controller");
 
 test("turns wallet chain mismatch internals into actionable funding copy", () => {
   const error = new Error(
@@ -492,5 +497,25 @@ describe("useBoostCampaignController", () => {
     expect(view.result.current.sheetProps.supportReference).toStartWith("rfq_");
     expect(localStorage.getItem("pirate_reward_pending_funding:com_test:pst_test")).toBeNull();
     expect(calls.confirm).toBe(1);
+  });
+});
+
+describe("useBoostMenuEligibility", () => {
+  test("exposes only capability-eligible song post ids", async () => {
+    const view = renderHook(() => useBoostMenuEligibility({
+      authenticated: true,
+      postIds: ["post_one", "post_two"],
+    }));
+
+    await waitFor(() => expect([...view.result.current]).toEqual(["post_one", "post_two"]));
+  });
+
+  test("does not load or expose menu eligibility while signed out", () => {
+    const view = renderHook(() => useBoostMenuEligibility({
+      authenticated: false,
+      postIds: ["post_one"],
+    }));
+
+    expect([...view.result.current]).toEqual([]);
   });
 });

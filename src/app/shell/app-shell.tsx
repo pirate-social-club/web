@@ -186,11 +186,6 @@ function NotificationShell({
   const recentSection = sections.find((section) => section.id === "recent");
   const mediaSections = [
     {
-      action: {
-        ariaLabel: copy.appSidebar.createCommunityLabel,
-        icon: Plus,
-        onSelect: () => navigate("/communities/new"),
-      },
       defaultOpen: true,
       id: "communities",
       items: [
@@ -201,6 +196,12 @@ function NotificationShell({
           onSelect: () => navigate("/your-communities"),
         },
         ...(recentSection?.items ?? []),
+        {
+          icon: Plus,
+          id: "create-community",
+          label: copy.appSidebar.createCommunityLabel,
+          onSelect: () => navigate("/communities/new"),
+        },
       ],
       label: copy.appSidebar.sections.find((section) => section.id === "communities")?.label ?? "Communities",
     },

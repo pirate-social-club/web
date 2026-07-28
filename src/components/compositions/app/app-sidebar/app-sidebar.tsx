@@ -53,11 +53,6 @@ interface AppSidebarSectionItem {
 }
 
 export interface AppSidebarSection {
-  action?: {
-    ariaLabel: string;
-    icon: SidebarIcon;
-    onSelect: () => void;
-  };
   id: string;
   defaultOpen?: boolean;
   items: readonly AppSidebarSectionItem[];
@@ -138,45 +133,39 @@ function SidebarSectionBlock({
           key={section.id}
           value={section.id}
         >
-          <div className="flex items-center">
-            <AccordionTrigger className={cn(sectionLabelClassName, "min-w-0 flex-1")}>
-              {section.label}
-            </AccordionTrigger>
-            {section.action ? (
-              <button
-                aria-label={section.action.ariaLabel}
-                className="me-2 grid size-9 shrink-0 place-items-center rounded-full text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                onClick={() => onItemSelect(section.action?.onSelect)}
-                type="button"
-              >
-                {React.createElement(section.action.icon, { className: "size-5", weight: "bold" })}
-              </button>
-            ) : null}
-          </div>
+          <AccordionTrigger className={sectionLabelClassName}>
+            {section.label}
+          </AccordionTrigger>
           <AccordionContent className="pb-0">
             <SidebarGroup className="gap-0 p-0">
               <SidebarGroupContent>
                 <SidebarMenu className="gap-1">
-                  {section.items.map((item) => (
-                    <SidebarMenuItem key={item.id}>
-                      <SidebarMenuButton
-                        className={nestedRowClassName}
-                        isActive={item.id === activeItemId}
-                        onClick={() => onItemSelect(item.onSelect)}
-                        tooltip={item.label}
-                      >
-                        {item.avatarSrc ? (
-                          <Avatar
-                            className="size-7 border-border-soft"
-                            fallback={item.label}
-                            size="xs"
-                            src={item.avatarSrc}
-                          />
-                        ) : null}
-                        <span>{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+
+                    return (
+                      <SidebarMenuItem key={item.id}>
+                        <SidebarMenuButton
+                          className={nestedRowClassName}
+                          isActive={item.id === activeItemId}
+                          onClick={() => onItemSelect(item.onSelect)}
+                          tooltip={item.label}
+                        >
+                          {item.avatarSrc ? (
+                            <Avatar
+                              className="size-7 border-border-soft"
+                              fallback={item.label}
+                              size="xs"
+                              src={item.avatarSrc}
+                            />
+                          ) : Icon ? (
+                            <Icon className="size-5" />
+                          ) : null}
+                          <span>{item.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

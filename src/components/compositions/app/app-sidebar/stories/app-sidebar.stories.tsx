@@ -147,7 +147,6 @@ function MediaShellReview({
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "shell");
   const mediaSections = [{
-    action: { ariaLabel: copy.appSidebar.createCommunityLabel, icon: Plus, onSelect: () => undefined },
     defaultOpen: true,
     id: "communities",
     items: [
@@ -156,6 +155,7 @@ function MediaShellReview({
         { id: "c/pirate-radio", label: "c/pirate-radio" },
         { id: "c/builders", label: "c/builders" },
       ] : []),
+      { id: "create-community", icon: Plus, label: copy.appSidebar.createCommunityLabel },
     ],
     label: copy.appSidebar.sections.find((section) => section.id === "communities")?.label ?? "Communities",
   }];

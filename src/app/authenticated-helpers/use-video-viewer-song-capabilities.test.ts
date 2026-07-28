@@ -38,7 +38,7 @@ describe("resolveVideoSongCapabilities", () => {
     }).artworkSrc).toBeUndefined();
   });
 
-  test("fails closed when the linked song requires age proof", () => {
+  test("keeps age-gated actions visible but locked", () => {
     expect(resolveVideoSongCapabilities({
       post: {
         age_gate_viewer_state: "proof_required",
@@ -48,7 +48,25 @@ describe("resolveVideoSongCapabilities", () => {
       } as never,
       readMode: "authenticated",
       sourcePostId: "pst_song",
-    })).toMatchObject({ karaoke: "unavailable", study: "unavailable" });
+    })).toMatchObject({
+      karaoke: "locked",
+      karaokeHref: undefined,
+      study: "locked",
+      studyHref: undefined,
+    });
+  });
+
+  test("preserves processing and failed states for feed presentation", () => {
+    expect(resolveVideoSongCapabilities({
+      post: {
+        age_gate_viewer_state: null,
+        karaoke_capability: { status: "processing" },
+        post: { community: "cmt_song" },
+        study_capability: { status: "failed" },
+      } as never,
+      readMode: "public",
+      sourcePostId: "pst_song",
+    })).toMatchObject({ karaoke: "processing", study: "failed" });
   });
 
   test("annotates only reward-eligible ready actions", () => {

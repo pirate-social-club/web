@@ -35,15 +35,21 @@ describe("VideoSongCapabilityCache", () => {
     expect(cache.get("pst_second")).toMatchObject({ sourcePostId: "pst_second", karaoke: "ready" });
   });
 
-  test("negative-caches a bounded failure for the viewer session", async () => {
+  test("retries a bounded failure after the negative-cache TTL", async () => {
+    let now = 1_000;
     const load = mock(async () => { throw new Error("missing"); });
-    const cache = new VideoSongCapabilityCache("viewer:1", load, 2);
+    const cache = new VideoSongCapabilityCache("viewer:1", load, 2, 30_000, () => now);
 
     await cache.prefetch(["pst_missing"]);
     await cache.prefetch(["pst_missing"]);
 
     expect(load).toHaveBeenCalledTimes(2);
     expect(cache.get("pst_missing")).toBeNull();
+
+    now += 30_001;
+    expect(cache.get("pst_missing")).toBeUndefined();
+    await cache.prefetch(["pst_missing"]);
+    expect(load).toHaveBeenCalledTimes(4);
   });
 
   test("deduplicates the same source across adjacent slides", async () => {

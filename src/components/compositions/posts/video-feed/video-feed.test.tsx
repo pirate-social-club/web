@@ -331,6 +331,19 @@ describe("VideoFeed", () => {
     expect(view.getAllByLabelText("More video actions")).toHaveLength(2);
   });
 
+  test("shows non-ready learning actions without requiring a boost", () => {
+    const view = render(<VideoFeed items={[{
+      ...item,
+      boostEligibility: "unavailable",
+      karaoke: "processing",
+      study: "failed",
+    }]} />);
+
+    expect(view.getByRole("button", { name: "Sing processing" }).hasAttribute("disabled")).toBe(true);
+    expect(view.getByRole("button", { name: "Study unavailable" }).hasAttribute("disabled")).toBe(true);
+    expect(view.queryByText("Boost this song")).toBeNull();
+  });
+
   test("opens a linked song and preserves playback state", () => {
     const calls: unknown[] = [];
     const linkedItem = { ...item, song: { artist: "Britney Spears", songHref: "/p/pst_toxic", title: "Toxic" } };

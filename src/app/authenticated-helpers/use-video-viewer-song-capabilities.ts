@@ -15,7 +15,12 @@ import { useSession } from "@/lib/api/session-store";
 import type { ApiPublicRewardOffer } from "@/lib/api/client-api-types";
 
 function capabilityStatus(value: unknown): VideoFeedCapability {
-  return value === "ready" || value === "locked" ? value : "unavailable";
+  return value === "ready"
+    || value === "locked"
+    || value === "processing"
+    || value === "failed"
+    ? value
+    : "unavailable";
 }
 
 type PostWithKaraokeCapability = {
@@ -30,9 +35,9 @@ export function resolveVideoSongCapabilities({ post, readMode, rewardOffer, sour
 }): VideoSongCapabilityResolution {
   const ageBlocked = post.age_gate_viewer_state === "proof_required";
   const karaoke = ageBlocked
-    ? "unavailable"
+    ? "locked"
     : capabilityStatus((post as LocalizedPostResponse & PostWithKaraokeCapability).karaoke_capability?.status);
-  const study = ageBlocked ? "unavailable" : capabilityStatus(post.study_capability?.status);
+  const study = ageBlocked ? "locked" : capabilityStatus(post.study_capability?.status);
   const rewardLabel = rewardOffer ? rewardCtaAmountLabel(rewardOffer.daily_reward_cents) : undefined;
   const artworkSrc = post.song_presentation?.cover_art_ref?.trim() || undefined;
   return {

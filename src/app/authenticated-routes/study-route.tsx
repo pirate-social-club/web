@@ -527,14 +527,18 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           return;
         }
 
-        const exerciseQueue = study.exercises.flatMap((exercise, index) => exercise.mastered ? [] : [index]);
+        const exerciseQueue = study.exercises.flatMap((exercise, index) => (
+          exercise.mastered
+          || Number(exercise.presentation_count ?? 0) >= Math.max(1, exercise.max_attempts || 1)
+            ? []
+            : [index]
+        ));
         const presentationCounts = Object.fromEntries(
           study.exercises.map((exercise) => [exercise.id, Number(exercise.presentation_count ?? 0)]),
         );
         const firstIndex = exerciseQueue[0];
         if (firstIndex === undefined) {
           setState({
-            actionLabel: "Study again",
             phase: "blocked",
             title: pageTitle(post, study),
             message: "This lesson is complete.",
@@ -795,17 +799,25 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                       feedback: result.feedback,
                       phase: correct ? "correct" : "wrong",
                       revealReference: !correct,
+                      submitError: undefined,
                       transcript,
                     },
                   };
                 });
               })
               .catch((error) => {
-                setState({
-                  phase: "error",
-                  title: pageTitle(state.post, state.study),
-                  message: getErrorMessage(error, "Could not transcribe this study attempt."),
-                });
+                setState((current) => current.phase === "ready"
+                  && current.surface.kind === "say_it_back"
+                  && current.surface.exercise.id === exercise.id
+                  ? {
+                      ...current,
+                      surface: {
+                        ...current.surface,
+                        phase: "idle",
+                        submitError: getErrorMessage(error, "Could not submit this study attempt. Try again."),
+                      },
+                    }
+                  : current);
               });
           };
           recorder.start();
@@ -814,6 +826,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
             surface: {
               ...sayItBackSurface,
               phase: "listening",
+              submitError: undefined,
             },
           });
         } catch (error) {

@@ -131,8 +131,8 @@ export function createCommentsApi(request: ApiRequest) {
       commentId: string,
       body: CreateCommentRequest,
       options?: AltchaRequestOptions,
-    ): Promise<void> =>
-      request(`/comments/${encodeURIComponent(commentId)}/replies`, {
+    ): Promise<Comment> =>
+      request<Comment>(`/comments/${encodeURIComponent(commentId)}/replies`, {
         method: "POST",
         body: JSON.stringify(body),
         headers: altchaHeaders(options),
@@ -282,8 +282,8 @@ export function createCommunityContentApi(request: ApiRequest) {
       postId: string,
       body: CreateCommentRequest,
       options?: AltchaRequestOptions,
-    ): Promise<void> =>
-      request(
+    ): Promise<Comment> =>
+      request<Comment>(
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/comments`,
         { method: "POST", body: JSON.stringify(body), headers: altchaHeaders(options) },
       ),

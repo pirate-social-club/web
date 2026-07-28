@@ -99,6 +99,37 @@ test("loads profile follow state with optional viewer authentication", async () 
   }
 });
 
+test("prepares profile follow writes with server idempotency", async () => {
+  let request: Request | null = null;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    request = input instanceof Request ? input : new Request(input, init);
+    return Response.json({
+      object: "profile_follow_write",
+      intent_id: "efw_test",
+      target_user_id: "usr_target",
+      desired_following: true,
+      consistency: { status: "accepted_not_yet_reflected" },
+      sponsorship: { eligible: true, reserved_transaction_count: 0 },
+      transactions: [],
+      expires_at: "2026-07-28T00:10:00.000Z",
+    });
+  };
+  try {
+    const client = new ApiClient({
+      baseUrl: "http://pirate.test",
+      getToken: () => "session-token",
+    });
+    await client.profiles.prepareFollowWrite("usr/target", true, "idem-follow-1");
+    const capturedRequest = requireRequest(request);
+    expect(capturedRequest.url).toBe("http://pirate.test/profiles/usr%2Ftarget/follow");
+    expect(capturedRequest.method).toBe("POST");
+    expect(capturedRequest.headers.get("idempotency-key")).toBe("idem-follow-1");
+    expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("captures per-field validation errors from { error, fields } bodies into details", async () => {
   globalThis.fetch = async () => Response.json({
     error: "validation_failed",

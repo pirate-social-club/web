@@ -260,7 +260,7 @@ export function useProfileFollowState(
     : Math.max(0, followerCount + followerCountDelta);
 
   const onToggleFollow = React.useCallback(() => {
-    if (ownProfile || !targetAddress || followUnavailable) {
+    if (ownProfile || !targetAddress || !targetUserId || followUnavailable) {
       return;
     }
 
@@ -295,12 +295,25 @@ export function useProfileFollowState(
     setOverrideFollowing(nextFollowing);
     writeViewerFollowOverride(viewerAddress, targetAddress, nextFollowing);
 
-    void submitFollowAction(writeWallet, {
-      followed: nextFollowing,
-      targetAddress,
-    }, {
-      sendSponsoredIntent,
-    })
+    const idempotencyKey = crypto.randomUUID();
+    void api.profiles.prepareFollowWrite(targetUserId, nextFollowing, idempotencyKey)
+      .then(async (prepared) => {
+        const submitted = await submitFollowAction(writeWallet, {
+          followed: nextFollowing,
+          targetAddress,
+        }, {
+          prepared,
+          sendSponsoredIntent,
+        });
+        if (submitted.needsConfirmation && prepared.intent_id) {
+          await api.profiles.confirmFollowWrite(
+            targetUserId,
+            prepared.intent_id,
+            submitted.transactionHashes,
+          );
+        }
+        return submitted;
+      })
       .then(() => {
         setServerFollowing(nextFollowing);
       })
@@ -319,6 +332,7 @@ export function useProfileFollowState(
       });
   }, [
     connect,
+    api,
     followBusy,
     followReady,
     followUnavailable,
@@ -328,6 +342,7 @@ export function useProfileFollowState(
     session,
     sendSponsoredIntent,
     targetAddress,
+    targetUserId,
     viewerAddress,
     writeWallet,
     copy.connectWalletToFollow,

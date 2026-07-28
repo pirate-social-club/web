@@ -44,6 +44,16 @@ export function bindingIndex(bindingName) {
   return match ? Number(match[1]) : null;
 }
 
+// The pool also holds non-numeric bindings — DB_CMTY_FIXTURE and DB_CMTY_PILOT —
+// which are real bindings that must be configured, but have no index and no
+// `community-d1-pool-NNNN-staging` database. They have to be treated identically
+// on the pool side and the config side; filtering them out of one but not the
+// other invents both a coverage failure and an inventory mismatch. (It did: the
+// first real dry run reported exactly those two false positives.)
+export function isPoolBindingName(bindingName) {
+  return /^DB_CMTY_[A-Z0-9_]+$/u.test(String(bindingName || ""));
+}
+
 // wrangler.jsonc is JSON with comments. Strip only comments that are outside
 // string literals — a naive replace mangles any "https://..." value.
 export function parseJsonc(text) {
@@ -90,7 +100,7 @@ export function readConfigBindings(config, envName = null) {
   const scope = envName ? config?.env?.[envName] : config;
   const entries = Array.isArray(scope?.d1_databases) ? scope.d1_databases : [];
   return entries
-    .filter((entry) => entry && typeof entry.binding === "string" && bindingIndex(entry.binding) !== null)
+    .filter((entry) => entry && typeof entry.binding === "string" && isPoolBindingName(entry.binding))
     .map((entry) => ({ binding: entry.binding, databaseId: entry.database_id, databaseName: entry.database_name }));
 }
 
@@ -124,16 +134,20 @@ export function checkRefillSafety({ d1Indexes, poolBindingNames, startIndex, cou
   const maxD1Index = d1Indexes.reduce((max, index) => Math.max(max, index), -1);
   const orphaned = d1Indexes.filter((index) => index > maxPoolIndex);
 
-  // Every registered binding has a 1:1 database by construction, so the inventory
-  // can never legitimately be smaller than the pool table. If it is, `d1 list` was
-  // truncated (pagination) or databases were deleted — and a short list makes the
-  // orphan check below silently under-report, which is the exact failure this
-  // pre-flight exists to prevent. Refuse to judge on evidence we cannot trust.
+  // Every INDEXED binding has a 1:1 `community-d1-pool-NNNN-staging` database by
+  // construction, so the inventory can never legitimately be smaller than the
+  // indexed pool rows. If it is, `d1 list` was truncated (pagination) or databases
+  // were deleted — and a short list makes the orphan check below silently
+  // under-report, which is the exact failure this pre-flight exists to prevent.
+  //
+  // Compared against indexed rows only: DB_CMTY_FIXTURE and DB_CMTY_PILOT have no
+  // pool-pattern database and would otherwise make a healthy pool look truncated.
+  const indexedPoolBindings = poolBindingNames.filter((name) => bindingIndex(name) !== null);
   const poolDatabaseCount = d1Indexes.length;
-  if (poolDatabaseCount < poolBindingNames.length) {
+  if (poolDatabaseCount < indexedPoolBindings.length) {
     problems.push(
       `incomplete inventory: d1 list returned ${poolDatabaseCount} pool database(s) but the pool table has `
-      + `${poolBindingNames.length} binding(s). The listing is truncated or databases are missing; `
+      + `${indexedPoolBindings.length} indexed binding(s). The listing is truncated or databases are missing; `
       + `the overlap check cannot be trusted — stand down.`,
     );
   }

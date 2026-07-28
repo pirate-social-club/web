@@ -72,7 +72,7 @@ export function simulate({
   let inFlight = null;
 
   const completeInFlight = (now) => {
-    if (!inFlight || busyUntil === null || busyUntil > now) return;
+    if (!inFlight || busyUntil === null || busyUntil > now) return false;
     const real = realOutcomes.get(inFlight.candidateId);
     // A real outcome applies ONLY if reality promoted this same candidate at
     // this same phase. Anything else is a different promotion.
@@ -95,11 +95,11 @@ export function simulate({
     inFlight.completedAt = busyUntil;
     inFlight = null;
     busyUntil = null;
+    return true;
   };
 
   const tryAdmit = (now) => {
-    completeInFlight(now);
-    if (inFlight) return;
+    if (inFlight) return false;
     // F5: coalesce to the newest eligible candidate at this instant, rather than
     // giving every candidate a turn. Fairness is about production progress.
     const ready = [...eligible]
@@ -107,7 +107,7 @@ export function simulate({
       .filter((candidate) => candidate && isDescendant(candidate.sha, deployedSha))
       .sort((a, b) => b.mintedAt - a.mintedAt);
     const chosen = ready[0];
-    if (!chosen) return;
+    if (!chosen) return false;
 
     for (const other of ready.slice(1)) {
       admissions.push({ at: now, candidateId: other.id, sha: other.sha, decision: SUPERSEDED });
@@ -140,23 +140,41 @@ export function simulate({
     };
     busyUntil = now + duration;
     admissions.push(inFlight);
+    return true;
+  };
+
+  // The promoter's own completion is an event. Waiting for the next EXTERNAL
+  // event before admitting a queued candidate would understate the model: a
+  // promotion that finishes at t admits the next candidate at t, not whenever
+  // CI happens to emit something else.
+  const advanceTo = (now) => {
+    for (;;) {
+      if (inFlight) {
+        if (busyUntil > now) return;
+        const completedAt = busyUntil;
+        completeInFlight(completedAt);
+        tryAdmit(completedAt);
+        continue;
+      }
+      if (!tryAdmit(now)) return;
+    }
   };
 
   for (const event of ordered) {
-    completeInFlight(event.at);
+    advanceTo(event.at);
     if (event.type === "eligible") eligible.add(event.candidateId);
     if (event.type === "ineligible") eligible.delete(event.candidateId);
     if (event.type === "blocked") {
       eligible.delete(event.candidateId);
       admissions.push({ at: event.at, candidateId: event.candidateId, decision: BLOCKED });
     }
-    tryAdmit(event.at);
+    advanceTo(event.at);
   }
-  // Drain: let an in-flight promotion finish and admit anything still waiting.
-  const horizon = ordered.length > 0 ? ordered[ordered.length - 1].at : 0;
-  const endOfTime = Math.max(horizon, busyUntil ?? horizon);
-  completeInFlight(endOfTime);
-  tryAdmit(endOfTime);
+  // Drain to quiescence: repeatedly complete and admit until no promotion is in
+  // flight and nothing is admissible. Completing exactly one promotion would
+  // leave a newly admitted candidate unfinished and silently truncate the
+  // timeline.
+  advanceTo(Number.POSITIVE_INFINITY);
 
   return {
     scenario,

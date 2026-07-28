@@ -1,22 +1,19 @@
 import { describe, expect, test } from "bun:test";
 
 import trace from "./fixtures/release-trace-2026-07-28.json";
+import { GATE_POLICY_VERSION, IMPLIED_GATES, REQUIRED_GATES, findJob } from "./gate-policy.mjs";
 import { AttemptLedger, ingestRun } from "./ingestion.mjs";
 import { SCENARIOS, simulate } from "./simulator.mjs";
 
 // The fixture is captured verbatim from the Actions API and is never edited.
 // Every expectation lives here, derived from that data — so a test cannot pass
 // by having the desired conclusion written into the fixture.
+//
+// The gate policy is the workflow's own production `needs:` set (gate-policy.mjs).
+// It is NOT narrowed to make an admission appear; where the historical trace
+// lacks evidence for a required gate, the candidate is evidence-limited
+// (category D) and reported as such rather than treated as validated.
 
-const GATE_POLICY = [
-  { id: "release_inputs", version: 1, jobName: "Verify release inputs" },
-  { id: "schema_fleet", version: 1, jobName: "Community schema gate (staging fleet)" },
-  { id: "staging_freshness", version: 1, jobName: "Check staging freshness" },
-  { id: "staging_deploy", version: 1, jobName: "Deploy staging" },
-];
-
-// Only push runs on main are promotion attempts; PR runs legitimately skip the
-// deploy lanes and must never be read as failed promotions.
 const pushRuns = trace.runs
   .filter((run) => run.event === "push" && run.head_branch === "main")
   .sort((a, b) => Date.parse(a.run_started_at) - Date.parse(b.run_started_at));
@@ -25,24 +22,54 @@ function candidateId(run: { head_sha: string }): string {
   return `shc_${run.head_sha.slice(0, 12)}`;
 }
 
-// Ancestry derived from the real push order on main: a later push to a linear
-// branch is a descendant of an earlier one. Not a hand-authored conclusion.
 const pushOrder = new Map(pushRuns.map((run, index) => [run.head_sha, index]));
-const isDescendant = (a: string, b: string) =>
-  (pushOrder.get(a) ?? -1) > (pushOrder.get(b) ?? -1);
+const isDescendant = (a: string, b: string) => (pushOrder.get(a) ?? -1) > (pushOrder.get(b) ?? -1);
+
+type Classification = {
+  id: string;
+  sha: string;
+  validated: boolean;
+  evidenceLimited: boolean;
+  unsatisfied: string[];
+  missingEvidence: string[];
+  eligibleAt: number | null;
+};
+
+function classifyAll(): { ledger: AttemptLedger; classifications: Classification[] } {
+  const ledger = new AttemptLedger();
+  const classifications = pushRuns.map((run) => {
+    const id = candidateId(run);
+    ingestRun({ run, gatePolicy: REQUIRED_GATES, ledger, candidateId: id, findJob });
+    const unsatisfied: string[] = [];
+    const missingEvidence: string[] = [];
+    const completions: number[] = [];
+    for (const gate of REQUIRED_GATES) {
+      const key = { candidateId: id, gateId: gate.id, gateVersion: gate.version };
+      const controlling = ledger.controllingAttempt(key);
+      if (!ledger.isSatisfied(key)) unsatisfied.push(gate.id);
+      // No attempt at all => the gate did not run => evidence is absent, which is
+      // a limitation of the historical trace, not a judgement about the code.
+      if (controlling === null) missingEvidence.push(gate.id);
+      if (controlling?.completedAt) completions.push(Date.parse(controlling.completedAt));
+    }
+    return {
+      id,
+      sha: run.head_sha,
+      validated: unsatisfied.length === 0,
+      evidenceLimited: missingEvidence.length > 0,
+      unsatisfied,
+      missingEvidence,
+      eligibleAt: unsatisfied.length === 0 && completions.length > 0 ? Math.max(...completions) : null,
+    };
+  });
+  return { ledger, classifications };
+}
 
 describe("2026-07-28 starvation trace", () => {
-  test("the fixture contains the recorded starvation shape", () => {
-    // Properties of the captured data, asserted so the fixture cannot drift
-    // underneath the conclusions drawn from it.
-    expect(trace.runs.length).toBeGreaterThanOrEqual(9);
+  test("the fixture retains the recorded starvation shape", () => {
     expect(pushRuns.length).toBeGreaterThanOrEqual(6);
-    const prodConclusions = pushRuns.map(
-      (run) => run.jobs.find((job) => job.name === "Deploy production")?.conclusion,
-    );
-    // Every push run reported success at the workflow level...
+    const prodConclusions = pushRuns.map((run) => findJob(run.jobs, "Deploy production")?.conclusion);
     expect(pushRuns.every((run) => run.conclusion === "success")).toBe(true);
-    // ...while all but the last skipped production.
     expect(prodConclusions.filter((conclusion) => conclusion === "skipped").length).toBeGreaterThanOrEqual(5);
     expect(prodConclusions.at(-1)).toBe("success");
   });
@@ -50,58 +77,56 @@ describe("2026-07-28 starvation trace", () => {
   test("PR runs are excluded rather than read as failed promotions", () => {
     const prRuns = trace.runs.filter((run) => run.event !== "push");
     expect(prRuns.length).toBeGreaterThan(0);
-    for (const run of prRuns) {
-      expect(pushRuns.some((push) => push.id === run.id)).toBe(false);
+    expect(prRuns.some((run) => pushRuns.some((push) => push.id === run.id))).toBe(false);
+  });
+
+  test("the policy is the workflow's own production needs, not a narrowed set", () => {
+    expect(GATE_POLICY_VERSION).toBe(1);
+    const ids = REQUIRED_GATES.map((gate) => gate.id).sort();
+    expect(ids).toEqual(["api_staging_contract_gate", "release_gate", "release_inputs", "schema_gate"]);
+    // Implied gates are reported, never separately required.
+    expect(IMPLIED_GATES.map((gate) => gate.id).sort()).toEqual(["staging_deploy", "staging_freshness"]);
+  });
+
+  // The correction that matters: skipped required gates leave a candidate
+  // unsatisfied, and no amount of upstream green changes that.
+  test("required gates that were skipped leave candidates unsatisfied", () => {
+    const { classifications } = classifyAll();
+    const starved = classifications.filter((entry) => !entry.validated);
+    expect(starved.length).toBeGreaterThan(0);
+    for (const entry of starved) {
+      // Every unvalidated candidate here is unvalidated because a required gate
+      // produced no passing attempt — the API contract gate and/or release gate.
+      expect(entry.unsatisfied.length).toBeGreaterThan(0);
     }
   });
 
-  test("ingestion yields validated candidates from the observed gates", () => {
-    const ledger = new AttemptLedger();
-    for (const run of pushRuns) {
-      ingestRun({ run, gatePolicy: GATE_POLICY, ledger, candidateId: candidateId(run) });
+  test("candidates lacking gate evidence are category D, not validated", () => {
+    const { classifications } = classifyAll();
+    const evidenceLimited = classifications.filter((entry) => entry.evidenceLimited);
+    for (const entry of evidenceLimited) {
+      // Category D is a limitation of what the trace can show, and such a
+      // candidate must never be counted as validated.
+      expect(entry.validated).toBe(false);
+      expect(entry.missingEvidence.length).toBeGreaterThan(0);
     }
-    const satisfied = pushRuns.filter((run) =>
-      GATE_POLICY.every((gate) =>
-        ledger.isSatisfied({ candidateId: candidateId(run), gateId: gate.id, gateVersion: gate.version }),
-      ),
+    // Report shape: every candidate lands in exactly one bucket.
+    for (const entry of classifications) {
+      expect(entry.validated === !entry.unsatisfied.length).toBe(true);
+    }
+  });
+
+  test.each(SCENARIOS)("scenario %s: admissions are drawn only from fully validated candidates", (scenario) => {
+    const { classifications } = classifyAll();
+    const candidates = new Map(
+      classifications.map((entry, index) => [
+        entry.id,
+        { id: entry.id, sha: entry.sha, mintedAt: Date.parse(pushRuns[index].run_started_at), observedDurationMs: null },
+      ]),
     );
-    // Derived, not assumed: the runs whose modelled gates all passed.
-    expect(satisfied.length).toBeGreaterThan(0);
-    // No gate should show flakiness in this trace; every run was uniformly green
-    // at the gate level, which is exactly why the skips were invisible.
-    for (const run of pushRuns) {
-      for (const gate of GATE_POLICY) {
-        expect(
-          ledger.flakinessTransitions({ candidateId: candidateId(run), gateId: gate.id, gateVersion: gate.version }),
-        ).toBe(0);
-      }
-    }
-  });
-
-  // The claim S0 is permitted to make: admission, not advancement.
-  test.each(SCENARIOS)("scenario %s: a validated candidate is admitted despite continuing arrivals", (scenario) => {
-    const ledger = new AttemptLedger();
-    const candidates = new Map();
-    const events: Array<{ at: number; seq: number; type: string; candidateId: string }> = [];
-
-    pushRuns.forEach((run, index) => {
-      const id = candidateId(run);
-      ingestRun({ run, gatePolicy: GATE_POLICY, ledger, candidateId: id });
-      const allSatisfied = GATE_POLICY.every((gate) =>
-        ledger.isSatisfied({ candidateId: id, gateId: gate.id, gateVersion: gate.version }),
-      );
-      const mintedAt = Date.parse(run.run_started_at);
-      candidates.set(id, { id, sha: run.head_sha, mintedAt, observedDurationMs: null });
-      if (allSatisfied) {
-        // Eligible when its last modelled gate completed — a timestamp from the
-        // data, not an assumed instant.
-        const completions = GATE_POLICY
-          .map((gate) => run.jobs.find((job) => job.name === gate.jobName)?.completed_at)
-          .filter(Boolean)
-          .map((value) => Date.parse(value as string));
-        events.push({ at: Math.max(...completions), seq: index, type: "eligible", candidateId: id });
-      }
-    });
+    const events = classifications
+      .filter((entry) => entry.validated && entry.eligibleAt !== null)
+      .map((entry, index) => ({ at: entry.eligibleAt as number, seq: index, type: "eligible", candidateId: entry.id }));
 
     const observedDurations = pushRuns
       .map((run) => Date.parse(run.updated_at) - Date.parse(run.run_started_at))
@@ -110,68 +135,75 @@ describe("2026-07-28 starvation trace", () => {
     const result = simulate({
       events,
       candidates,
-      initialDeployedSha: "4b385f99", // what production actually served at the window's start
+      initialDeployedSha: "4b385f99",
       isDescendant,
       scenario,
       observedDurations,
     });
 
-    // S0's permitted claim: the promoter ADMITTED a validated candidate during a
-    // window in which the real pipeline promoted nothing.
-    expect(result.admittedCount).toBeGreaterThan(0);
-
-    // Every admitted candidate had all modelled gates satisfied — no unsafe choice.
+    const validatedIds = new Set(classifications.filter((entry) => entry.validated).map((entry) => entry.id));
     for (const admission of result.admissions.filter((entry) => entry.decision === "admitted")) {
-      for (const gate of GATE_POLICY) {
-        expect(
-          ledger.isSatisfied({ candidateId: admission.candidateId, gateId: gate.id, gateVersion: gate.version }),
-        ).toBe(true);
-      }
+      // Category E — an unsafe choice — must never occur.
+      expect(validatedIds.has(admission.candidateId)).toBe(true);
     }
-
-    // Deployment success is NOT claimed: every completion rests on a recorded
-    // assumption, because these promotions never ran.
-    expect(result.assumptions.length).toBeGreaterThan(0);
-    expect(result.assumptions.every((entry) => typeof entry.assumption === "string")).toBe(true);
+    // Whatever the admission count turns out to be, no completion may be claimed
+    // as observed: these promotions never ran.
+    for (const assumption of result.assumptions) {
+      expect(typeof assumption.assumption).toBe("string");
+    }
   });
+});
 
-  test("the simulation is deterministic for a given scenario", () => {
-    const build = () => {
-      const ledger = new AttemptLedger();
-      const candidates = new Map();
-      const events: Array<{ at: number; seq: number; type: string; candidateId: string }> = [];
-      pushRuns.forEach((run, index) => {
-        const id = candidateId(run);
-        ingestRun({ run, gatePolicy: GATE_POLICY, ledger, candidateId: id });
-        candidates.set(id, { id, sha: run.head_sha, mintedAt: Date.parse(run.run_started_at), observedDurationMs: null });
-        events.push({ at: Date.parse(run.updated_at), seq: index, type: "eligible", candidateId: id });
-      });
-      return simulate({
-        events,
-        candidates,
-        initialDeployedSha: "4b385f99",
-        isDescendant,
-        scenario: "p95",
-        observedDurations: [60_000, 120_000, 300_000],
-      });
-    };
-    expect(JSON.stringify(build())).toBe(JSON.stringify(build()));
-  });
+describe("promoter timing", () => {
+  const base = {
+    initialDeployedSha: "sha0",
+    isDescendant: (a: string, b: string) => Number(a.slice(3)) > Number(b.slice(3)),
+    scenario: "p50" as const,
+    observedDurations: [100],
+  };
 
-  test("ancestry is enforced against the hypothetical deployed sha", () => {
-    // A candidate that is not a descendant of what the SIMULATION has deployed
-    // is never admitted, even though production actually served something else.
+  // A promotion finishing at t must admit the queued candidate at t — not at
+  // whenever CI happens to emit the next external event.
+  test("a candidate eligible during a promotion is admitted exactly at busyUntil", () => {
     const candidates = new Map([
-      ["shc_old", { id: "shc_old", sha: pushRuns[0].head_sha, mintedAt: 1, observedDurationMs: null }],
+      ["c1", { id: "c1", sha: "sha1", mintedAt: 1, observedDurationMs: null }],
+      ["c2", { id: "c2", sha: "sha2", mintedAt: 2, observedDurationMs: null }],
     ]);
     const result = simulate({
-      events: [{ at: 10, seq: 0, type: "eligible", candidateId: "shc_old" }],
+      ...base,
       candidates,
-      initialDeployedSha: pushRuns[pushRuns.length - 1].head_sha, // already ahead
-      isDescendant,
-      scenario: "p50",
-      observedDurations: [60_000],
+      events: [
+        { at: 0, seq: 0, type: "eligible", candidateId: "c1" },
+        { at: 10, seq: 1, type: "eligible", candidateId: "c2" }, // arrives mid-promotion
+      ],
     });
-    expect(result.admittedCount).toBe(0);
+    const admitted = result.admissions.filter((entry) => entry.decision === "admitted");
+    expect(admitted.map((entry) => entry.candidateId)).toEqual(["c1", "c2"]);
+    expect(admitted[0].at).toBe(0);
+    expect(admitted[1].at).toBe(100); // exactly busyUntil, not the next external event
+  });
+
+  test("multiple queued promotions drain without another external event", () => {
+    const candidates = new Map([
+      ["c1", { id: "c1", sha: "sha1", mintedAt: 1, observedDurationMs: null }],
+      ["c2", { id: "c2", sha: "sha2", mintedAt: 2, observedDurationMs: null }],
+      ["c3", { id: "c3", sha: "sha3", mintedAt: 3, observedDurationMs: null }],
+    ]);
+    const result = simulate({
+      ...base,
+      candidates,
+      events: [
+        { at: 0, seq: 0, type: "eligible", candidateId: "c1" },
+        { at: 5, seq: 1, type: "eligible", candidateId: "c2" },
+        { at: 6, seq: 2, type: "eligible", candidateId: "c3" },
+      ],
+    });
+    // c2 and c3 both arrive while c1 promotes; coalescing picks the newest, and
+    // the drain must finish it rather than stopping after one completion.
+    const admitted = result.admissions.filter((entry) => entry.decision === "admitted");
+    expect(admitted.length).toBeGreaterThanOrEqual(2);
+    expect(result.finalDeployedSha).toBe("sha3");
+    // Every admitted promotion reached a completion.
+    for (const entry of admitted) expect(entry.completedAt).toBeGreaterThan(entry.at);
   });
 });

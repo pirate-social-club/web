@@ -1,0 +1,193 @@
+name: Production version gap
+
+# Closes the loop between "merged" and "running".
+#
+# A Release run's conclusion reports whether the WORKFLOW succeeded, not whether
+# production moved. Every way a deploy can silently not happen — a superseded run
+# whose `Deploy production` job skips, a gate that declines, a pin that never got
+# bumped — presents as a green run. On 2026-07-28 production served the same SHA
+# for ~95 minutes across nine green Release runs and nothing surfaced it (web#729).
+#
+# This job watches the only signal that cannot lie about it: what production is
+# actually serving, compared against main.
+on:
+  schedule:
+    # Every 15 minutes. The release lane takes ~15-20 minutes end to end, so this
+    # samples often enough that a stall is caught within one lane duration.
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: prod-version-gap
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  version-gap:
+    name: Main vs production
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Compare main against production
+        id: gap
+        continue-on-error: true
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        env:
+          PROD_VERSION_URL: https://pirate.sc/__version
+          # A gap under this is normal pipeline latency, not a stall. Above it,
+          # something has stopped promoting and a human needs to look.
+          MAX_GAP_MINUTES: "45"
+        with:
+          script: |
+            const maxGapMinutes = Number(process.env.MAX_GAP_MINUTES || "45");
+            const url = process.env.PROD_VERSION_URL;
+
+            // Production being unreachable is its own alarm, and a different one
+            // from production being stale — say which.
+            let served;
+            try {
+              const response = await fetch(url, { headers: { "user-agent": "prod-version-gap" } });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              served = await response.json();
+            } catch (error) {
+              core.setOutput("kind", "unreachable");
+              core.setOutput("detail", `Could not read ${url}: ${error.message}`);
+              core.setFailed(`Production version endpoint is unreachable: ${error.message}`);
+              return;
+            }
+
+            const prodSha = String(served.git_sha || "").trim();
+            if (!prodSha) {
+              core.setOutput("kind", "unreachable");
+              core.setOutput("detail", `${url} returned no git_sha: ${JSON.stringify(served)}`);
+              core.setFailed("Production version endpoint returned no git_sha.");
+              return;
+            }
+
+            const branch = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: "main",
+            });
+            const tipSha = branch.data.commit.sha;
+
+            // /__version serves an abbreviated SHA, so compare by prefix.
+            if (tipSha.startsWith(prodSha)) {
+              core.setOutput("kind", "healthy");
+              core.notice(`Production is serving main's tip (${prodSha}).`);
+              return;
+            }
+
+            const comparison = await github.rest.repos.compareCommitsWithBasehead({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              basehead: `${prodSha}...${tipSha}`,
+            });
+            const { status, ahead_by: aheadBy, commits } = comparison.data;
+
+            // Anything other than a plain fast-forward means production is serving
+            // something that is not an ancestor of main — a rollback, a manual
+            // deploy off a branch, or a force-push. Never normal; always report.
+            if (status !== "ahead") {
+              core.setOutput("kind", "diverged");
+              core.setOutput("detail", `compare ${prodSha}...${tipSha} reported status="${status}"`);
+              core.setFailed(`Production SHA ${prodSha} is not an ancestor of main (${status}).`);
+              return;
+            }
+
+            const oldestUndeployed = commits[0];
+            const waitingSince = new Date(oldestUndeployed.commit.committer.date);
+            const gapMinutes = Math.round((Date.now() - waitingSince.getTime()) / 60000);
+            const summary = [
+              `production: \`${prodSha}\` (built ${served.build_timestamp || "unknown"})`,
+              `main tip: \`${tipSha.slice(0, 7)}\``,
+              `undeployed commits: ${aheadBy}`,
+              `oldest undeployed: \`${oldestUndeployed.sha.slice(0, 7)}\` ${oldestUndeployed.commit.message.split("\n")[0]}`,
+              `waiting: ${gapMinutes} min (threshold ${maxGapMinutes})`,
+            ].join("\n- ");
+
+            core.setOutput("detail", `- ${summary}`);
+            if (gapMinutes <= maxGapMinutes) {
+              core.setOutput("kind", "healthy");
+              core.notice(`Production is ${aheadBy} commit(s) behind, waiting ${gapMinutes} min — within threshold.`);
+              return;
+            }
+            core.setOutput("kind", "stale");
+            core.setFailed(`Production has been ${aheadBy} commit(s) behind for ${gapMinutes} min.`);
+
+      - name: Open or update the tracked staleness issue
+        if: steps.gap.outcome == 'failure'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        env:
+          GAP_KIND: ${{ steps.gap.outputs.kind }}
+          GAP_DETAIL: ${{ steps.gap.outputs.detail }}
+        with:
+          script: |
+            const kind = process.env.GAP_KIND || "stale";
+            const detail = process.env.GAP_DETAIL || "(no detail captured)";
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const title = kind === "unreachable"
+              ? "Production version endpoint is unreachable"
+              : "Production is not serving main";
+            const guidance = {
+              stale: [
+                "Something has stopped promoting main to production. Check the most recent",
+                "Release runs: a run whose conclusion is `success` may still have SKIPPED",
+                "`Deploy production` after being superseded (web#729). If several runs skipped",
+                "in a row, stop merging to `main` — including release and pin-bump PRs — until",
+                "one run reaches the production gate uncontested.",
+              ],
+              unreachable: [
+                "The production version endpoint did not answer. Treat this as a possible",
+                "production outage first and a monitoring failure second.",
+              ],
+              diverged: [
+                "Production is serving a commit that is not an ancestor of `main`. Expect a",
+                "rollback, a manual deploy off a branch, or a force-push to main. Establish",
+                "what is actually deployed before promoting anything else.",
+              ],
+            }[kind] || ["Unclassified version-gap failure."];
+
+            const body = [...guidance, "", detail, "", `Last run: ${runUrl}`].join("\n");
+
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: "prod-version-gap",
+              per_page: 20,
+            });
+            const match = existing.data.find((issue) => issue.title === title);
+            if (match) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body,
+                assignees: ["technohippi3"],
+              });
+              core.notice(`Updated tracked version-gap issue #${match.number}`);
+            } else {
+              const created = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ["prod-version-gap"],
+                assignees: ["technohippi3"],
+              });
+              core.notice(`Opened tracked version-gap issue #${created.data.number}`);
+            }
+
+      # The job status has to reflect reality too — a tracked issue nobody opens is
+      # the same failure mode this workflow exists to catch.
+      - name: Reflect version gap
+        if: steps.gap.outcome == 'failure'
+        run: |
+          echo "::error::Production is not serving main (${{ steps.gap.outputs.kind }})."
+          exit 1

@@ -8,6 +8,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
 import { SidebarInset, SidebarProvider } from "@/components/compositions/system/sidebar/sidebar";
 import { Button } from "@/components/primitives/button";
+import { Type } from "@/components/primitives/type";
 
 import { AppSidebar } from "../app-sidebar";
 import { buildMediaSpineItems } from "@/app/shell/sidebar-sections";

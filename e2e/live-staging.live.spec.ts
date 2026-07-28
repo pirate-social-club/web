@@ -41,6 +41,17 @@ const storySmokeCommunityId = (
 ).replace(/^com_/u, "");
 const storySmokeHostSubject = process.env.PIRATE_STORY_E2E_HOST_SUBJECT
   ?? "story-e2e-author-1780678999641-65820e";
+// Staging has exactly one namespace-backed community: real HNS verification
+// cannot be stubbed remotely, so the names fixture is hand-seeded and singular.
+// The handle-claim contract used to find it by scanning the public home feed,
+// which only works while that community happens to be ranking — when it drops
+// out, every candidate answers `403 eligibility_failed` and the required
+// release gate fails for a reason that has nothing to do with the change under
+// test. Pin it like the story smoke pins its own fixture; feed discovery stays
+// as the fallback.
+const handleClaimCommunityId = (
+  process.env.PIRATE_HANDLE_CLAIM_E2E_COMMUNITY_ID ?? "cmt_3b2300c49b97466fadb362cb58fec018"
+).replace(/^com_/u, "");
 const multipartGateVideoBytes = Number.parseInt(
   // Keep the default below the retired 64 MiB proxy threshold. This makes the
   // release gate catch clients that accidentally send ordinary videos through
@@ -1402,7 +1413,17 @@ test.describe("live staging integration", () => {
     };
     let target: { community: LiveCommunity; headers: Record<string, string>; policy: HandlePolicy } | null = null;
     const discoveryDiagnostics: FixtureDiscoveryDiagnostic[] = [];
-    const candidates = await seedCommunityCandidates(discoveryDiagnostics);
+    // Pinned fixture first, feed discovery second: discovery is a best-effort
+    // widening, not the primary source.
+    const pinned = await hydrateRoutableLiveCommunityOwner({
+      id: handleClaimCommunityId,
+      label: handleClaimCommunityId,
+      routeSegment: handleClaimCommunityId,
+    }, discoveryDiagnostics);
+    const discovered = await seedCommunityCandidates(discoveryDiagnostics);
+    const candidates = pinned
+      ? [pinned, ...discovered.filter((community) => community.id !== pinned.id)]
+      : discovered;
     if (candidates.length === 0) {
       discoveryDiagnostics.push({ detail: "discovery returned no hydrated candidates", stage: "hydrate", target: "all candidates" });
     }

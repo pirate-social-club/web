@@ -332,14 +332,21 @@ function CapabilityAction({
   rewardLabel?: string;
 }) {
   if (capability === "unavailable") return null;
+  const stateLabel = capability === "locked"
+    ? `${label} locked`
+    : capability === "processing"
+      ? `${label} processing`
+      : capability === "failed"
+        ? `${label} unavailable`
+        : label;
   return (
     <VideoAction
       disabled={capability !== "ready"}
       icon={capability === "locked" ? <Lock className="size-6" weight="fill" /> : icon}
-      label={capability === "locked" ? `${label} locked` : label}
+      label={stateLabel}
       onClick={onClick}
       rewardLabel={rewardLabel}
-      value={label}
+      value={capability === "processing" ? "Preparing" : label}
     />
   );
 }

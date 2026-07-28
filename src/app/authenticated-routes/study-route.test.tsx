@@ -131,6 +131,7 @@ fakeApi.communities.getPostStudy = async () => {
   if (studyError) throw studyError;
   return studyResult;
 };
+fakeApi.communities.transcribePostStudyAudio = async () => ({ text: "Hola mundo" });
 fakeApi.rewards.getActiveCampaignForSong = async () => {
   if (!rewardCampaignResult) throw new ApiError("not_found", "Active reward campaign not found", 404);
   return rewardCampaignResult;
@@ -326,6 +327,61 @@ describe("StudyRoutePage", () => {
 
     await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
     expect(calls).toEqual(["posts.get", "communities.getPostStudy", "posts.get", "communities.getPostStudy"]);
+  });
+
+  test("skips an exhausted unmastered exercise when rebuilding the queue", async () => {
+    studyResult = readyStudyPayload({
+      exercise_count: 2,
+      exercises: [
+        {
+          id: "ex_exhausted",
+          line_id: "line_1",
+          line_index: 0,
+          first_outcome: "incorrect",
+          max_attempts: 3,
+          mastered: false,
+          presentation_count: 3,
+          prompt_text: "Exhausted prompt",
+          reference_text: "Exhausted reference",
+          translation_text: "Exhausted translation",
+          type: "say_it_back",
+        },
+        {
+          id: "ex_eligible",
+          line_id: "line_2",
+          line_index: 1,
+          first_outcome: null,
+          max_attempts: 3,
+          mastered: false,
+          presentation_count: 1,
+          prompt_text: "Eligible prompt",
+          reference_text: "Eligible reference",
+          translation_text: "Eligible translation",
+          type: "say_it_back",
+        },
+      ],
+    });
+
+    const view = render(<StudyRoutePage postId="pst_song" />);
+
+    await waitFor(() => expect(view.getByText("Eligible prompt")).toBeTruthy());
+    expect(view.queryByText("Exhausted prompt")).toBeNull();
+  });
+
+  test("shows completion without a restart action when every exercise is exhausted", async () => {
+    studyResult = readyStudyPayload({
+      exercises: [{
+        ...readyStudyPayload().exercises[0]!,
+        max_attempts: 3,
+        presentation_count: 3,
+      }],
+    });
+
+    const view = render(<StudyRoutePage postId="pst_song" />);
+
+    await waitFor(() => expect(view.getByText("This lesson is complete.")).toBeTruthy());
+    expect(view.queryByText("Study again")).toBeNull();
+    expect(view.queryByText("Record")).toBeNull();
   });
 
   test("submits a multiple choice attempt when an answer is selected", async () => {
@@ -553,5 +609,68 @@ describe("StudyRoutePage", () => {
     await waitFor(() => expect(view.getByText("recording failed")).toBeTruthy());
     expect(view.getByText("Choose the translation")).toBeTruthy();
     expect(view.queryByText("Could not submit this study attempt.")).toBeNull();
+  });
+
+  test("keeps the say-it-back exercise visible when attempt recording fails", async () => {
+    submitPostStudyAttemptError = new ApiError("bad_request", "Study exercise presentation limit reached", 400);
+    const originalMediaRecorder = globalThis.MediaRecorder;
+    const originalMediaDevices = navigator.mediaDevices;
+    const stopTrack = () => undefined;
+
+    class FakeMediaRecorder {
+      static isTypeSupported() {
+        return true;
+      }
+
+      mimeType = "audio/webm";
+      ondataavailable: ((event: { data: Blob }) => void) | null = null;
+      onerror: (() => void) | null = null;
+      onstop: (() => void) | null = null;
+      state: RecordingState = "recording";
+
+      constructor(_stream: MediaStream, _options?: MediaRecorderOptions) {}
+      start() {}
+      stop() {
+        this.state = "inactive";
+        this.ondataavailable?.({ data: new Blob(["audio"], { type: this.mimeType }) });
+        this.onstop?.();
+      }
+    }
+
+    Object.defineProperty(globalThis, "MediaRecorder", {
+      configurable: true,
+      value: FakeMediaRecorder,
+    });
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: {
+        getUserMedia: async () => ({
+          getTracks: () => [{ stop: stopTrack }],
+        }),
+      },
+    });
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" />);
+
+      await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
+      fireEvent.click(view.getByText("Record").closest("button")!);
+      await waitFor(() => expect(view.getByText("Stop")).toBeTruthy());
+      fireEvent.click(view.getByText("Stop").closest("button")!);
+
+      await waitFor(() => expect(view.getByText("Study exercise presentation limit reached")).toBeTruthy());
+      expect(view.getAllByText("Say it back").length).toBeGreaterThan(0);
+      expect(view.getByText("Record")).toBeTruthy();
+      expect(view.queryByText("Open post")).toBeNull();
+    } finally {
+      Object.defineProperty(globalThis, "MediaRecorder", {
+        configurable: true,
+        value: originalMediaRecorder,
+      });
+      Object.defineProperty(navigator, "mediaDevices", {
+        configurable: true,
+        value: originalMediaDevices,
+      });
+    }
   });
 });

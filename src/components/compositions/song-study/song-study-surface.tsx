@@ -63,6 +63,7 @@ export type SongStudySurfaceState =
     feedback?: SongStudySayItBackFeedback;
     phase: "idle" | "listening" | "checking" | "wrong" | "correct";
     revealReference?: boolean;
+    submitError?: string;
     transcript?: string;
   }
   | {
@@ -298,6 +299,11 @@ function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kin
             </div>
           ) : null}
         </div>
+      ) : null}
+      {state.submitError ? (
+        <Type as="p" className="text-destructive" role="alert" variant="caption">
+          {state.submitError}
+        </Type>
       ) : null}
     </div>
   );

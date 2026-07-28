@@ -8,7 +8,9 @@ import {
   compactCount,
   didVideoLongPressMove,
   isVideoLoopReplay,
+  recordWarmedVideoSrc,
   shouldRenderVideoFeedSlide,
+  VIDEO_FEED_MAX_WARMED_SRCS,
   VIDEO_FEED_PREFETCH_AHEAD_BYTES,
   videoFeedPrefetchAheadSrc,
   videoFeedPrefetchRangeHeader,
@@ -1137,6 +1139,26 @@ describe("VideoFeed", () => {
   test("builds the forward prefetch range from the byte budget", () => {
     expect(VIDEO_FEED_PREFETCH_AHEAD_BYTES).toBe(512 * 1024);
     expect(videoFeedPrefetchRangeHeader()).toBe("bytes=0-524287");
+  });
+
+  test("bounds the warmed-src set with FIFO eviction so evicted sources prefetch again", () => {
+    const warmed = new Set<string>();
+    for (let index = 0; index < VIDEO_FEED_MAX_WARMED_SRCS; index += 1) {
+      recordWarmedVideoSrc(warmed, `https://media.test/video-${index}.mp4`);
+    }
+    expect(warmed.size).toBe(VIDEO_FEED_MAX_WARMED_SRCS);
+
+    recordWarmedVideoSrc(warmed, "https://media.test/video-500.mp4");
+
+    // The 501st source front-trims the oldest; the newest stays recorded.
+    expect(warmed.size).toBe(VIDEO_FEED_MAX_WARMED_SRCS);
+    expect(warmed.has("https://media.test/video-0.mp4")).toBe(false);
+    expect(warmed.has("https://media.test/video-500.mp4")).toBe(true);
+
+    // An evicted source is no longer recorded, so the prefetch guard treats it as new.
+    recordWarmedVideoSrc(warmed, "https://media.test/video-0.mp4");
+    expect(warmed.has("https://media.test/video-0.mp4")).toBe(true);
+    expect(warmed.has("https://media.test/video-1.mp4")).toBe(false);
   });
 
   test("gates the forward prefetch on item eligibility and connection cost", () => {

@@ -252,6 +252,23 @@ export function videoFeedPrefetchAheadSrc({
   return item.media.src ?? null;
 }
 
+// Deep enough that a long session's prefetching stays repeat-free, bounded because a Set has no
+// eviction of its own: the oldest sources are front-trimmed in insertion order, and an evicted
+// source simply prefetches again on a later settle. Mirrors MAX_SESSION_SEEN_VIDEO_IDS.
+export const VIDEO_FEED_MAX_WARMED_SRCS = 500;
+
+/** Records a warmed source and trims in the same operation, so no caller can skip trimming. */
+export function recordWarmedVideoSrc(warmed: Set<string>, src: string): void {
+  warmed.add(src);
+  let overflow = warmed.size - VIDEO_FEED_MAX_WARMED_SRCS;
+  if (overflow <= 0) return;
+  for (const oldest of warmed) {
+    warmed.delete(oldest);
+    overflow -= 1;
+    if (overflow <= 0) return;
+  }
+}
+
 function readStoredMutedPreference(): boolean | null {
   if (typeof window === "undefined") return null;
   try {
@@ -1341,7 +1358,8 @@ export function VideoFeed({
   // settled, since the video being warmed is usually the one that just became active.
   const prefetchControllersRef = React.useRef(new Map<string, AbortController>());
   // Sources whose 206 body fully drained into the HTTP cache. Failed or aborted fetches are
-  // never recorded here, so a later settle can retry them.
+  // never recorded here, so a later settle can retry them. Writes go through
+  // recordWarmedVideoSrc, which front-trims the oldest entries past VIDEO_FEED_MAX_WARMED_SRCS.
   const warmedVideoSrcsRef = React.useRef(new Set<string>());
   // Items whose media host answered without ACAO: their videos remount once without crossOrigin
   // and stay no-cors for the session. Per item, so one ACAO-less host never downgrades the
@@ -1458,7 +1476,7 @@ export function VideoFeed({
     prefetchControllersRef.current.set(prefetchAheadSrc, controller);
     void prefetchVideoFeedAhead(prefetchAheadSrc, controller.signal).then((warmed) => {
       prefetchControllersRef.current.delete(prefetchAheadSrc);
-      if (warmed) warmedVideoSrcsRef.current.add(prefetchAheadSrc);
+      if (warmed) recordWarmedVideoSrc(warmedVideoSrcsRef.current, prefetchAheadSrc);
     });
   }, [prefetchAheadSrc]);
 

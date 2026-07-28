@@ -94,9 +94,32 @@ describe("staging pool pre-flight", () => {
       startIndex: 947,
       count: 20,
     });
-    expect(result.orphaned).toEqual([945, 946]);
-    expect(result.problems.some((problem) => problem.includes("concurrent refill"))).toBe(true);
+    expect(result.databasesWithoutRow).toEqual([945, 946]);
+    expect(result.problems.some((problem) => problem.includes("unregistered databases"))).toBe(true);
     expect(result.problems.some((problem) => problem.includes("stand down"))).toBe(true);
+  });
+
+  // Counts and maxima both miss this: the stray database sits in an INTERNAL gap,
+  // below the highest index, so no "above the maximum" rule ever sees it.
+  test("fails closed on an unregistered database in an internal gap", () => {
+    const pool = [...bindings(1, 142), ...bindings(145, 944)];
+    const d1Indexes = [...pool.map((name) => Number(name.slice(-4))), 143];
+    const result = checkRefillSafety({ poolBindingNames: pool, d1Indexes, startIndex: 945, count: 20 });
+    expect(result.databasesWithoutRow).toEqual([143]);
+    expect(result.problems.some((problem) => problem.includes("unregistered databases"))).toBe(true);
+  });
+
+  // Count-neutral swap: one registered database is absent from the inventory while
+  // an unregistered gap database keeps the totals equal. Both directions must fire.
+  test("fails closed on a count-neutral missing-row/extra-database swap", () => {
+    const pool = [...bindings(1, 142), ...bindings(145, 944)];
+    const d1Indexes = [...pool.map((name) => Number(name.slice(-4))).filter((index) => index !== 500), 143];
+    expect(d1Indexes.length).toBe(pool.length);
+    const result = checkRefillSafety({ poolBindingNames: pool, d1Indexes, startIndex: 945, count: 20 });
+    expect(result.rowsWithoutDatabase).toEqual([500]);
+    expect(result.databasesWithoutRow).toEqual([143]);
+    expect(result.problems.some((problem) => problem.includes("missing databases"))).toBe(true);
+    expect(result.problems.some((problem) => problem.includes("unregistered databases"))).toBe(true);
   });
 
   test("fails closed when the requested range overlaps existing databases", () => {
@@ -119,7 +142,7 @@ describe("staging pool pre-flight", () => {
       startIndex: 945,
       count: 20,
     });
-    expect(result.problems.some((problem) => problem.includes("incomplete inventory"))).toBe(true);
+    expect(result.problems.some((problem) => problem.includes("missing databases"))).toBe(true);
     expect(result.problems.some((problem) => problem.includes("stand down"))).toBe(true);
   });
 
@@ -223,6 +246,39 @@ describe("staging pool pre-flight", () => {
     });
     expect(report).toContain("### No blocking findings");
     expect(report).toContain("| gaps in config range | 0 |");
+  });
+
+  // Regression for the two false positives the first real dry run produced: the
+  // pool holds DB_CMTY_FIXTURE and DB_CMTY_PILOT, which are configured but have
+  // no index and no pool-pattern database.
+  test("treats non-numeric pool bindings identically on both sides", () => {
+    const numeric = bindings(1, 1142);
+    const poolBindingNames = [...numeric, "DB_CMTY_FIXTURE", "DB_CMTY_PILOT"];
+    const parsed = parseJsonc(configFor(numeric).replace(
+      '"d1_databases": [',
+      '"d1_databases": [{"binding":"DB_CMTY_FIXTURE","database_id":"f"},{"binding":"DB_CMTY_PILOT","database_id":"p"},',
+    ));
+    const configBindingNames = readConfigBindings(parsed).map((entry) => entry.binding);
+    expect(configBindingNames).toContain("DB_CMTY_FIXTURE");
+
+    // Configured, so not "stale config".
+    expect(checkConfigCoverage({ poolBindingNames, configBindingNames }).problems).toEqual([]);
+    // Indexed rows only: 1142 databases for 1142 indexed bindings is complete.
+    expect(checkRefillSafety({
+      d1Indexes: Array.from({ length: 1142 }, (_, i) => i + 1),
+      poolBindingNames,
+      startIndex: 1145,
+      count: 20,
+    }).problems).toEqual([]);
+  });
+
+  test("still flags a non-numeric pool binding that is genuinely unconfigured", () => {
+    const result = checkConfigCoverage({
+      poolBindingNames: ["DB_CMTY_0001", "DB_CMTY_FIXTURE"],
+      configBindingNames: ["DB_CMTY_0001"],
+    });
+    expect(result.missing).toEqual(["DB_CMTY_FIXTURE"]);
+    expect(result.problems[0]).toContain("stale config");
   });
 
   test("duplicate bindings in config are rejected", () => {

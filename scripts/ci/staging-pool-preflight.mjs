@@ -124,41 +124,52 @@ export function readD1PoolIndexes(payload, envSuffix = "staging") {
 }
 
 /**
- * Fails closed when a pool database exists above the highest registered binding:
- * that gap is another session mid-refill, and allocating into it double-allocates.
- * Also refuses a requested range that is not strictly above everything known.
+ * Compares the indexed pool rows and the staging pool databases as SETS, and
+ * fails closed on either difference.
+ *
+ * Counts and maxima are not sufficient. They miss an unregistered database
+ * sitting in an internal gap (DB_CMTY_0143 exists but has no row, and is below
+ * the maximum so no "above the highest binding" rule sees it), and they miss a
+ * count-neutral swap where one registered database is absent from the inventory
+ * while an unregistered gap database keeps the totals equal. Both of those are
+ * exactly the states that make allocation unsafe.
+ *
+ * The two directions mean different things and get different messages:
+ *   row without database    → inventory truncated, or a database was deleted
+ *   database without row    → incomplete or concurrent refill, at ANY index
  */
 export function checkRefillSafety({ d1Indexes, poolBindingNames, startIndex, count }) {
   const problems = [];
-  const maxPoolIndex = poolBindingNames.reduce((max, name) => Math.max(max, bindingIndex(name) ?? -1), -1);
+  // DB_CMTY_FIXTURE and DB_CMTY_PILOT have no index and no pool-pattern database,
+  // so they take no part in this comparison.
+  const indexedPoolIndexes = poolBindingNames
+    .map((name) => bindingIndex(name))
+    .filter((index) => index !== null);
+  const rowIndexSet = new Set(indexedPoolIndexes);
+  const databaseIndexSet = new Set(d1Indexes);
+
+  const rowsWithoutDatabase = [...rowIndexSet].filter((index) => !databaseIndexSet.has(index)).sort((a, b) => a - b);
+  const databasesWithoutRow = [...databaseIndexSet].filter((index) => !rowIndexSet.has(index)).sort((a, b) => a - b);
+
+  const describe = (indexes) => indexes.slice(0, 5).map((index) => poolBindingName(index)).join(", ")
+    + (indexes.length > 5 ? ", …" : "");
+
+  if (rowsWithoutDatabase.length > 0) {
+    problems.push(
+      `missing databases: ${rowsWithoutDatabase.length} indexed pool row(s) have no staging database in d1 list: `
+      + `${describe(rowsWithoutDatabase)}. The listing is truncated or the databases were deleted; `
+      + `the comparison cannot be trusted — stand down.`,
+    );
+  }
+  if (databasesWithoutRow.length > 0) {
+    problems.push(
+      `unregistered databases: ${databasesWithoutRow.length} staging pool database(s) have no d1_pool row: `
+      + `${describe(databasesWithoutRow)}. A refill is incomplete or another session is mid-refill — stand down.`,
+    );
+  }
+
+  const maxPoolIndex = indexedPoolIndexes.reduce((max, index) => Math.max(max, index), -1);
   const maxD1Index = d1Indexes.reduce((max, index) => Math.max(max, index), -1);
-  const orphaned = d1Indexes.filter((index) => index > maxPoolIndex);
-
-  // Every INDEXED binding has a 1:1 `community-d1-pool-NNNN-staging` database by
-  // construction, so the inventory can never legitimately be smaller than the
-  // indexed pool rows. If it is, `d1 list` was truncated (pagination) or databases
-  // were deleted — and a short list makes the orphan check below silently
-  // under-report, which is the exact failure this pre-flight exists to prevent.
-  //
-  // Compared against indexed rows only: DB_CMTY_FIXTURE and DB_CMTY_PILOT have no
-  // pool-pattern database and would otherwise make a healthy pool look truncated.
-  const indexedPoolBindings = poolBindingNames.filter((name) => bindingIndex(name) !== null);
-  const poolDatabaseCount = d1Indexes.length;
-  if (poolDatabaseCount < indexedPoolBindings.length) {
-    problems.push(
-      `incomplete inventory: d1 list returned ${poolDatabaseCount} pool database(s) but the pool table has `
-      + `${indexedPoolBindings.length} indexed binding(s). The listing is truncated or databases are missing; `
-      + `the overlap check cannot be trusted — stand down.`,
-    );
-  }
-
-  if (orphaned.length > 0) {
-    problems.push(
-      `concurrent refill: ${orphaned.length} pool database(s) exist above the highest registered binding `
-      + `(${poolBindingName(maxPoolIndex)}): ${orphaned.slice(0, 5).map((i) => poolDatabaseName(i)).join(", ")}`
-      + `${orphaned.length > 5 ? ", …" : ""}. Another session is mid-refill — stand down.`,
-    );
-  }
   const start = Number(startIndex);
   const highestKnown = Math.max(maxPoolIndex, maxD1Index);
   if (start <= highestKnown) {
@@ -167,7 +178,14 @@ export function checkRefillSafety({ d1Indexes, poolBindingNames, startIndex, cou
       + `refilling here would reallocate existing databases. Use ${highestKnown + 1}.`,
     );
   }
-  return { maxD1Index, maxPoolIndex, orphaned, expected: planExpectedAdditions(startIndex, count), problems };
+  return {
+    maxD1Index,
+    maxPoolIndex,
+    rowsWithoutDatabase,
+    databasesWithoutRow,
+    expected: planExpectedAdditions(startIndex, count),
+    problems,
+  };
 }
 
 /**

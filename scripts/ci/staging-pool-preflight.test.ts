@@ -94,9 +94,32 @@ describe("staging pool pre-flight", () => {
       startIndex: 947,
       count: 20,
     });
-    expect(result.orphaned).toEqual([945, 946]);
-    expect(result.problems.some((problem) => problem.includes("concurrent refill"))).toBe(true);
+    expect(result.databasesWithoutRow).toEqual([945, 946]);
+    expect(result.problems.some((problem) => problem.includes("unregistered databases"))).toBe(true);
     expect(result.problems.some((problem) => problem.includes("stand down"))).toBe(true);
+  });
+
+  // Counts and maxima both miss this: the stray database sits in an INTERNAL gap,
+  // below the highest index, so no "above the maximum" rule ever sees it.
+  test("fails closed on an unregistered database in an internal gap", () => {
+    const pool = [...bindings(1, 142), ...bindings(145, 944)];
+    const d1Indexes = [...pool.map((name) => Number(name.slice(-4))), 143];
+    const result = checkRefillSafety({ poolBindingNames: pool, d1Indexes, startIndex: 945, count: 20 });
+    expect(result.databasesWithoutRow).toEqual([143]);
+    expect(result.problems.some((problem) => problem.includes("unregistered databases"))).toBe(true);
+  });
+
+  // Count-neutral swap: one registered database is absent from the inventory while
+  // an unregistered gap database keeps the totals equal. Both directions must fire.
+  test("fails closed on a count-neutral missing-row/extra-database swap", () => {
+    const pool = [...bindings(1, 142), ...bindings(145, 944)];
+    const d1Indexes = [...pool.map((name) => Number(name.slice(-4))).filter((index) => index !== 500), 143];
+    expect(d1Indexes.length).toBe(pool.length);
+    const result = checkRefillSafety({ poolBindingNames: pool, d1Indexes, startIndex: 945, count: 20 });
+    expect(result.rowsWithoutDatabase).toEqual([500]);
+    expect(result.databasesWithoutRow).toEqual([143]);
+    expect(result.problems.some((problem) => problem.includes("missing databases"))).toBe(true);
+    expect(result.problems.some((problem) => problem.includes("unregistered databases"))).toBe(true);
   });
 
   test("fails closed when the requested range overlaps existing databases", () => {
@@ -119,7 +142,7 @@ describe("staging pool pre-flight", () => {
       startIndex: 945,
       count: 20,
     });
-    expect(result.problems.some((problem) => problem.includes("incomplete inventory"))).toBe(true);
+    expect(result.problems.some((problem) => problem.includes("missing databases"))).toBe(true);
     expect(result.problems.some((problem) => problem.includes("stand down"))).toBe(true);
   });
 

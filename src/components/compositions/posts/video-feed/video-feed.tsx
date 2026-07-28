@@ -146,6 +146,18 @@ export const VIDEO_FEED_LONG_PRESS_MOVE_THRESHOLD_PX = 10;
  */
 export const VIDEO_FEED_SLIDE_RENDER_WINDOW = 2;
 
+/**
+ * EXPERIMENTAL forward-prefetch budget. When the active index settles, the first bytes of the
+ * next video are fetched with a Range request purely to warm the HTTP cache, so a forward swipe
+ * does not start buffering from scratch. Server side is verified: api.pirate.sc (the source of
+ * every measured feed video) answers this range with 206 and
+ * `cache-control: public, max-age=31536000, immutable`, echoing ACAO per Origin (Vary: Origin) —
+ * which is why the feed <video> loads with crossOrigin="anonymous" to share the cache key. The
+ * remaining unknown is whether the browser media stack reuses cached 206s on swipe (Chrome does,
+ * Safari uncertain); measure the warm-cache hit rate in production before keeping or raising this.
+ */
+export const VIDEO_FEED_PREFETCH_AHEAD_BYTES = 512 * 1024;
+
 export function didVideoLongPressMove(
   start: { x: number; y: number },
   current: { x: number; y: number },
@@ -211,6 +223,31 @@ export function shouldRenderVideoFeedSlide({
 /** Restore-effect runs tolerated before an unreachable initial item is given up on. */
 const VIDEO_FEED_RESTORE_MAX_ATTEMPTS = 10;
 
+/** Range header warming the first bytes of the next video, bounded by the prefetch budget. */
+export function videoFeedPrefetchRangeHeader(): string {
+  return `bytes=0-${VIDEO_FEED_PREFETCH_AHEAD_BYTES - 1}`;
+}
+
+/**
+ * The source eligible for the forward (N+1) prefetch, or null when prefetching is wrong here:
+ * no item or source, age-blocked media (its src is redacted everywhere else too), or a
+ * data-expensive connection where speculative downloads cost the viewer real bandwidth.
+ */
+export function videoFeedPrefetchAheadSrc({
+  effectiveType,
+  item,
+  saveData,
+}: {
+  effectiveType?: string;
+  item?: VideoFeedItem;
+  saveData?: boolean;
+}): string | null {
+  if (!item || item.viewerState === "age_proof_required") return null;
+  if (saveData) return null;
+  if (effectiveType === "slow-2g" || effectiveType === "2g") return null;
+  return item.media.src ?? null;
+}
+
 function readStoredMutedPreference(): boolean | null {
   if (typeof window === "undefined") return null;
   try {
@@ -227,6 +264,32 @@ function writeStoredMutedPreference(muted: boolean): void {
     window.localStorage.setItem(VIDEO_FEED_MUTED_PREFERENCE_KEY, String(muted));
   } catch {
     // Storage can be unavailable in private browsing; sound still works for the current feed.
+  }
+}
+
+/**
+ * Best-effort warm-up of the HTTP cache for the next slide. Draining a 206 lands the partial
+ * object in the cache; a server that ignores Range would stream the whole file, so its body is
+ * cancelled before it can blow past the byte budget. Resolves true only when the 206 body fully
+ * drained — the caller records completion, never the attempt. Tests stub `fetch` to observe calls.
+ */
+async function prefetchVideoFeedAhead(src: string, signal: AbortSignal): Promise<boolean> {
+  try {
+    const response = await fetch(src, {
+      headers: { Range: videoFeedPrefetchRangeHeader() },
+      // Low priority: warming the next slide must never compete with the active video.
+      priority: "low",
+      signal,
+    } as RequestInit);
+    if (response.status !== 206) {
+      await response.body?.cancel();
+      return false;
+    }
+    await response.arrayBuffer();
+    return true;
+  } catch {
+    // Aborted on unmount or simply offline: a hint, never a hard dependency.
+    return false;
   }
 }
 
@@ -820,6 +883,10 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
             ref={videoRef}
             aria-label={item.song?.title ?? item.caption ?? "Video"}
             className={cn("size-full", item.media.orientation === "portrait" ? "object-cover" : "object-contain")}
+            // cors mode matches the Range prefetch's fetch: api.pirate.sc echoes ACAO with
+            // Vary: Origin, so a no-cors media load would key a different HTTP cache entry and
+            // the warmed bytes would never be reused. Matches post-card-video-content.tsx.
+            crossOrigin="anonymous"
             style={{ transform: "translateY(calc(var(--feed-browser-occlusion) / -2))" }}
             loop
             muted={muted}
@@ -1248,6 +1315,13 @@ export function VideoFeed({
   // arriving (its page may never load) and its pending render slot is released.
   const restoreAttemptsRef = React.useRef<{ count: number; itemId: string | null }>({ count: 0, itemId: null });
   const [givenUpRestoreItemId, setGivenUpRestoreItemId] = React.useState<string | null>(null);
+  // In-flight forward prefetches by source. A fetch is aborted only on unmount, or once its
+  // source is neither the N+1 target nor near the active slide — never merely because a swipe
+  // settled, since the video being warmed is usually the one that just became active.
+  const prefetchControllersRef = React.useRef(new Map<string, AbortController>());
+  // Sources whose 206 body fully drained into the HTTP cache. Failed or aborted fetches are
+  // never recorded here, so a later settle can retry them.
+  const warmedVideoSrcsRef = React.useRef(new Set<string>());
   const initialIndex = Math.max(0, items.findIndex((item) => item.id === initialItemId));
   const [activeIndex, setActiveIndex] = React.useState(initialIndex);
   const activeIndexRef = React.useRef(initialIndex);
@@ -1311,6 +1385,55 @@ export function VideoFeed({
       ? current
       : [activeItem.id, ...current.filter((id) => id !== activeItem.id)].slice(0, VIDEO_FEED_KEEP_ALIVE_MEDIA_COUNT));
   }, [activeIndex, items]);
+
+  // EXPERIMENTAL: warm the HTTP cache for the forward (N+1) slide once the active index settles.
+  // Backscrolls need nothing — kept-alive media survives — so this deliberately never looks at
+  // activeIndex - 1. See VIDEO_FEED_PREFETCH_AHEAD_BYTES for the measurement caveat.
+  const prefetchConnection = typeof navigator === "undefined"
+    ? undefined
+    : (navigator as Navigator & {
+      connection?: { effectiveType?: string; saveData?: boolean };
+    }).connection;
+  const prefetchAheadSrc = videoFeedPrefetchAheadSrc({
+    effectiveType: prefetchConnection?.effectiveType,
+    item: items[activeIndex + 1],
+    saveData: prefetchConnection?.saveData,
+  });
+
+  // Keyed on the resolved source, not on items identity: capability bumps must not re-run it,
+  // and in-flight or completed fetches for the same source are never duplicated.
+  React.useEffect(() => {
+    if (!prefetchAheadSrc) return;
+    if (warmedVideoSrcsRef.current.has(prefetchAheadSrc)) return;
+    if (prefetchControllersRef.current.has(prefetchAheadSrc)) return;
+    const controller = new AbortController();
+    prefetchControllersRef.current.set(prefetchAheadSrc, controller);
+    void prefetchVideoFeedAhead(prefetchAheadSrc, controller.signal).then((warmed) => {
+      prefetchControllersRef.current.delete(prefetchAheadSrc);
+      if (warmed) warmedVideoSrcsRef.current.add(prefetchAheadSrc);
+    });
+  }, [prefetchAheadSrc]);
+
+  // Abort a prefetch only when its source is no longer the N+1 target AND falls outside the
+  // render window; the active slide's own warm-up always runs to completion.
+  React.useEffect(() => {
+    const controllers = prefetchControllersRef.current;
+    for (const [src, controller] of controllers) {
+      if (src === prefetchAheadSrc) continue;
+      const index = items.findIndex((item) => item.media.src === src);
+      if (index >= 0 && Math.abs(index - activeIndex) <= VIDEO_FEED_SLIDE_RENDER_WINDOW) continue;
+      controllers.delete(src);
+      controller.abort();
+    }
+  }, [activeIndex, items, prefetchAheadSrc]);
+
+  React.useEffect(() => {
+    const controllers = prefetchControllersRef.current;
+    return () => {
+      for (const controller of controllers.values()) controller.abort();
+      controllers.clear();
+    };
+  }, []);
 
   React.useLayoutEffect(() => {
     if (!initialItemId || restoredInitialItemIdRef.current === initialItemId) return;

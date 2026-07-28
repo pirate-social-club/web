@@ -9,6 +9,9 @@ import {
   didVideoLongPressMove,
   isVideoLoopReplay,
   shouldRenderVideoFeedSlide,
+  VIDEO_FEED_PREFETCH_AHEAD_BYTES,
+  videoFeedPrefetchAheadSrc,
+  videoFeedPrefetchRangeHeader,
   videoImpressionEventId,
   videoProgressKeyAction,
   VideoFeed,
@@ -97,14 +100,38 @@ function mockVideoPlay(play: () => Promise<void>): () => void {
   };
 }
 
+type PrefetchCall = { priority: string | null; range: string | null; signal: AbortSignal | null; src: string };
+
+function stubPrefetchFetch(
+  respond: (src: string) => Promise<Response> = () => Promise.resolve(new Response(null, { status: 206 })),
+): PrefetchCall[] {
+  const calls: PrefetchCall[] = [];
+  globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({
+      priority: (init as { priority?: string } | undefined)?.priority ?? null,
+      range: new Headers(init?.headers).get("Range"),
+      signal: init?.signal ?? null,
+      src: String(input),
+    });
+    return respond(String(input));
+  }) as typeof fetch;
+  return calls;
+}
+
+const realFetch = globalThis.fetch;
+
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
   Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+  globalThis.fetch = realFetch;
 });
 
 beforeEach(() => {
   window.localStorage.setItem("pirate.video-feed.muted", "true");
+  // Keep tests hermetic without surfacing network state mid-test: a never-settling fetch means
+  // no component (follow-state hook, forward prefetch) observes a resolution or rejection here.
+  globalThis.fetch = (() => new Promise<Response>(() => {})) as typeof fetch;
 });
 
 describe("VideoFeed", () => {
@@ -1106,6 +1133,216 @@ describe("VideoFeed", () => {
     }
   });
 
+  test("builds the forward prefetch range from the byte budget", () => {
+    expect(VIDEO_FEED_PREFETCH_AHEAD_BYTES).toBe(512 * 1024);
+    expect(videoFeedPrefetchRangeHeader()).toBe("bytes=0-524287");
+  });
+
+  test("gates the forward prefetch on item eligibility and connection cost", () => {
+    const next = feedItems()[1]!;
+    const src = "https://media.test/two.mp4";
+
+    expect(videoFeedPrefetchAheadSrc({ item: next })).toBe(src);
+    expect(videoFeedPrefetchAheadSrc({})).toBeNull();
+    expect(videoFeedPrefetchAheadSrc({ item: { ...next, media: { ...next.media, src: undefined } } })).toBeNull();
+    expect(videoFeedPrefetchAheadSrc({ item: { ...next, viewerState: "age_proof_required" } })).toBeNull();
+    expect(videoFeedPrefetchAheadSrc({ item: next, saveData: true })).toBeNull();
+    expect(videoFeedPrefetchAheadSrc({ effectiveType: "2g", item: next })).toBeNull();
+    expect(videoFeedPrefetchAheadSrc({ effectiveType: "slow-2g", item: next })).toBeNull();
+    expect(videoFeedPrefetchAheadSrc({ effectiveType: "4g", item: next })).toBe(src);
+  });
+
+  test("prefetches the first bytes of the next slide when the active index settles", async () => {
+    const calls = stubPrefetchFetch();
+    const view = render(<VideoFeed items={feedItems()} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+    await act(async () => { await Promise.resolve(); });
+
+    expect(calls.map(({ priority, range, src }) => ({ priority, range, src }))).toEqual([
+      { priority: "low", range: "bytes=0-524287", src: "https://media.test/two.mp4" },
+    ]);
+
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
+    settleFeedScroll(feed);
+    await act(async () => { await Promise.resolve(); });
+
+    expect(calls.map(({ priority, range, src }) => ({ priority, range, src }))).toEqual([
+      { priority: "low", range: "bytes=0-524287", src: "https://media.test/two.mp4" },
+      { priority: "low", range: "bytes=0-524287", src: "https://media.test/three.mp4" },
+    ]);
+  });
+
+  test("never prefetches backward or refetches a source it already warmed", async () => {
+    const calls = stubPrefetchFetch();
+    const view = render(<VideoFeed items={feedItems()} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+    await act(async () => { await Promise.resolve(); });
+
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
+    settleFeedScroll(feed);
+    await act(async () => { await Promise.resolve(); });
+    expect(calls.map((call) => call.src)).toEqual([
+      "https://media.test/two.mp4",
+      "https://media.test/three.mp4",
+    ]);
+
+    // Settling back on slide 0 finds its N+1 already warm; slide 0 itself never becomes a
+    // prefetch candidate because the effect only looks forward.
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 0 });
+    settleFeedScroll(feed);
+    await act(async () => { await Promise.resolve(); });
+    expect(calls.map((call) => call.src)).toEqual([
+      "https://media.test/two.mp4",
+      "https://media.test/three.mp4",
+    ]);
+  });
+
+  test("skips the forward prefetch on data-saver and 2g connections", async () => {
+    const calls = stubPrefetchFetch();
+    Object.defineProperty(navigator, "connection", { configurable: true, value: { saveData: true } });
+    try {
+      const view = render(<VideoFeed items={feedItems()} />);
+      await act(async () => { await Promise.resolve(); });
+      expect(calls).toEqual([]);
+      view.unmount();
+    } finally {
+      Reflect.deleteProperty(navigator, "connection");
+    }
+
+    Object.defineProperty(navigator, "connection", { configurable: true, value: { effectiveType: "2g" } });
+    try {
+      const view = render(<VideoFeed items={feedItems()} />);
+      await act(async () => { await Promise.resolve(); });
+      expect(calls).toEqual([]);
+      view.unmount();
+    } finally {
+      Reflect.deleteProperty(navigator, "connection");
+    }
+  });
+
+  test("skips the forward prefetch for age-blocked or source-less next slides", async () => {
+    const calls = stubPrefetchFetch();
+    const [first, second] = feedItems();
+    const ageBlocked = render(
+      <VideoFeed items={[first!, { ...second!, viewerState: "age_proof_required" }]} />,
+    );
+    await act(async () => { await Promise.resolve(); });
+    expect(calls).toEqual([]);
+    ageBlocked.unmount();
+
+    const sourceless = render(
+      <VideoFeed items={[first!, { ...second!, media: { ...second!.media, src: undefined } }]} />,
+    );
+    await act(async () => { await Promise.resolve(); });
+    expect(calls).toEqual([]);
+    sourceless.unmount();
+  });
+
+  test("aborts an in-flight prefetch when the feed unmounts", async () => {
+    const calls = stubPrefetchFetch(() => new Promise<Response>(() => {}));
+    const view = render(<VideoFeed items={feedItems()} />);
+    await act(async () => { await Promise.resolve(); });
+    expect(calls).toHaveLength(1);
+
+    view.unmount();
+
+    expect(calls[0]?.signal?.aborted).toBe(true);
+  });
+
+  test("cancels the download when the server ignores the Range request", async () => {
+    let cancelled = false;
+    stubPrefetchFetch(() => {
+      const body = new ReadableStream({
+        cancel: () => { cancelled = true; },
+        start: (controller) => controller.enqueue(new Uint8Array([1, 2, 3])),
+      });
+      return Promise.resolve(new Response(body, { status: 200 }));
+    });
+    render(<VideoFeed items={feedItems()} />);
+    await act(async () => { await Promise.resolve(); });
+    await act(async () => { await Promise.resolve(); });
+
+    expect(cancelled).toBe(true);
+  });
+
+  test("loads feed media with anonymous CORS so the warmed cache entry is reused", () => {
+    const view = render(<VideoFeed items={[item]} />);
+
+    expect(view.container.querySelector("video")?.getAttribute("crossorigin")).toBe("anonymous");
+  });
+
+  test("keeps an in-flight prefetch alive across a settle, aborts only past the window", async () => {
+    const calls = stubPrefetchFetch(() => new Promise<Response>(() => {}));
+    const view = render(<VideoFeed items={manyFeedItems()} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+    await act(async () => { await Promise.resolve(); });
+    expect(calls.map((call) => call.src)).toEqual(["https://media.test/video-1.mp4"]);
+
+    // Swiping 0 → 1 must not cancel the warm-up of the video that just became active.
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
+    settleFeedScroll(feed);
+    await act(async () => { await Promise.resolve(); });
+    expect(calls[0]?.signal?.aborted).toBe(false);
+
+    // Once slide 1 is neither the N+1 target nor inside the ±2 window, the fetch is abandoned.
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 400 });
+    settleFeedScroll(feed);
+    await act(async () => { await Promise.resolve(); });
+    expect(calls[0]?.signal?.aborted).toBe(true);
+  });
+
+  test("retries a failed prefetch on a later settle instead of treating it as warmed", async () => {
+    let failTwo = true;
+    const calls = stubPrefetchFetch((src) => {
+      if (failTwo && src.endsWith("two.mp4")) {
+        failTwo = false;
+        return Promise.reject(new Error("offline"));
+      }
+      return Promise.resolve(new Response(null, { status: 206 }));
+    });
+    const view = render(<VideoFeed items={feedItems()} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+    await act(async () => { await Promise.resolve(); });
+
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
+    settleFeedScroll(feed);
+    await act(async () => { await Promise.resolve(); });
+
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 0 });
+    settleFeedScroll(feed);
+    await act(async () => { await Promise.resolve(); });
+
+    expect(calls.map((call) => call.src)).toEqual([
+      "https://media.test/two.mp4",
+      "https://media.test/three.mp4",
+      "https://media.test/two.mp4",
+    ]);
+  });
+
+  test("never duplicates a prefetch that is still in flight", async () => {
+    const calls = stubPrefetchFetch(() => new Promise<Response>(() => {}));
+    const view = render(<VideoFeed items={feedItems()} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+    await act(async () => { await Promise.resolve(); });
+
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
+    settleFeedScroll(feed);
+    await act(async () => { await Promise.resolve(); });
+
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 0 });
+    settleFeedScroll(feed);
+    await act(async () => { await Promise.resolve(); });
+
+    expect(calls.map((call) => call.src)).toEqual([
+      "https://media.test/two.mp4",
+      "https://media.test/three.mp4",
+    ]);
+  });
 
   test("omits booking when the container supplies no booking handler", () => {
     const view = render(<VideoFeed items={[{

@@ -141,12 +141,14 @@ export function mergePostCardMenuItems(
   menuItems: PostCardMenuItem[] | undefined,
   derivedActions: DerivedSongMenuAction[],
 ): PostCardMenuItem[] {
+  const regularMenuItems = (menuItems ?? []).filter((item) => item.key !== "delete");
+  const deleteMenuItems = (menuItems ?? []).filter((item) => item.key === "delete");
   const metadataItems = derivedActions
     .filter((action) => action.category === "metadata")
     .map((action) => action.item);
   const downloadActions = derivedActions.filter((action) => action.category === "download");
   const firstDownloadNeedsSeparator = downloadActions.length > 0
-    && (Boolean(menuItems?.length) || metadataItems.length > 0);
+    && (regularMenuItems.length > 0 || metadataItems.length > 0);
   const downloadItems = downloadActions.map((action, index) => ({
     ...action.item,
     icon: action.item.icon ?? <DownloadSimple className="size-4" />,
@@ -154,9 +156,10 @@ export function mergePostCardMenuItems(
   }));
 
   return [
-    ...(menuItems ?? []),
+    ...regularMenuItems,
     ...metadataItems,
     ...downloadItems,
+    ...deleteMenuItems,
   ];
 }
 

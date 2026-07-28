@@ -192,6 +192,34 @@ describe("PostCard", () => {
     expect(mergedItems[1]?.icon).toBeTruthy();
   });
 
+  test("keeps Delete post at the bottom of song menus", () => {
+    const baseItems: PostCardMenuItem[] = [
+      { key: "view-story", label: "View on Story" },
+      { key: "delete", label: "Delete post", destructive: true },
+    ];
+    const song: SongContentSpec = {
+      type: "song",
+      accessMode: "public",
+      annotationsUrl: "https://genius.com/34172986",
+      downloadPolicy: "free_download",
+      onDownload: () => undefined,
+      title: "Author's song",
+    };
+
+    const mergedItems = mergePostCardMenuItems(baseItems, deriveSongHeaderMenuActions(song));
+
+    expect(mergedItems.map((item) => item.label)).toEqual([
+      "View on Story",
+      "View on Genius",
+      "Download original",
+      "Delete post",
+    ]);
+    expect(mergedItems.at(-1)).toMatchObject({
+      key: "delete",
+      destructive: true,
+    });
+  });
+
   test("moves song downloads into the header menu instead of visible offer rows", () => {
     const content: SongContentSpec = {
       type: "song",

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 
 import type { HomeFeedItem } from "@pirate/api-contracts";
 import { QueryClient } from "@tanstack/react-query";
@@ -10,7 +10,13 @@ import {
   seedPublicThreadQueriesFromFeed,
   updateCachedPublicThreadPost,
 } from "@/lib/query/public-thread-cache";
-import { rotateToUnseenLead } from "@/lib/video-feed-lead-rotation";
+import {
+  clearSessionSeenVideoIds,
+  readSessionSeenVideoIds,
+  recordSessionSeenVideoIds,
+  rotateToUnseenLead,
+  takeUnseenSessionVideos,
+} from "@/lib/video-feed-lead-rotation";
 
 import {
   appendUniqueVideoEntries,
@@ -26,7 +32,6 @@ import {
   resolveVideoHomeSurface,
   resolveVideoPublisherRelationship,
   shouldHuntColdStartPages,
-  takeUnseenVideoEntries,
   videoImpressionAnalyticsProperties,
   videoTranslationForFeedItem,
   VIDEO_FEED_STAGE_CLASS,
@@ -201,14 +206,19 @@ describe("appendUniqueVideoEntries", () => {
   });
 });
 
-describe("takeUnseenVideoEntries", () => {
+describe("takeUnseenSessionVideos over feed entries", () => {
+  // The seen set is module state; clear it so one case cannot decide another.
+  beforeEach(clearSessionSeenVideoIds);
+
+  const idOf = (entry: HomeFeedItem) => entry.post.post.id;
+
   test("keeps overlapping cursor entries out of the thread-cache reseed input", () => {
-    const seenPostIds = new Set(["liked-post"]);
+    recordSessionSeenVideoIds(["liked-post"]);
     const likedPost = feedEntry("liked-post");
     const nextPost = feedEntry("next-post");
 
-    expect(takeUnseenVideoEntries(seenPostIds, [likedPost, nextPost])).toEqual([nextPost]);
-    expect(seenPostIds).toEqual(new Set(["liked-post", "next-post"]));
+    expect(takeUnseenSessionVideos([likedPost, nextPost], idOf)).toEqual([nextPost]);
+    expect(readSessionSeenVideoIds()).toEqual(["liked-post", "next-post"]);
   });
 
   test("preserves a liked post in the comments-panel cache across an overlapping page", () => {
@@ -227,9 +237,10 @@ describe("takeUnseenVideoEntries", () => {
       update: (post) => applyPostVote(post, 1),
     });
 
-    const unseenItems = takeUnseenVideoEntries(
-      new Set(["liked-post"]),
+    recordSessionSeenVideoIds(["liked-post"]);
+    const unseenItems = takeUnseenSessionVideos(
       [staleLikedPost, cacheableFeedEntry("next-post")],
+      idOf,
     );
     seedPublicThreadQueriesFromFeed({
       items: unseenItems,

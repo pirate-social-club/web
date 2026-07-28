@@ -59,6 +59,10 @@ import {
   RouteLoadFailureState,
 } from "@/app/authenticated-helpers/route-shell";
 import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
+import {
+  useBoostCampaignController,
+  useBoostMenuEligibility,
+} from "@/app/authenticated-helpers/use-boost-campaign-controller";
 import { useCommunityHandleClaimController } from "@/app/authenticated-helpers/community-handle-claim";
 import {
   useSongCommerceState,
@@ -78,6 +82,7 @@ import {
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
+import { BoostCampaignSheet, SongRewardPolicySheet } from "@/components/compositions/rewards/reward-booster-surfaces";
 
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
 
@@ -144,6 +149,15 @@ export function CommunityPage({
     refetchPosts,
     setPosts,
   } = useCommunityPageData(communityId, contentLocale, activeSort);
+  const boostEligiblePostIds = useBoostMenuEligibility({
+    authenticated: Boolean(session?.accessToken),
+    postIds: React.useMemo(
+      () => posts
+        .filter((post) => post.post.status === "published" && post.post.post_type === "song")
+        .map((post) => post.post.id),
+      [posts],
+    ),
+  });
   const ownsCommunity =
     session?.user?.id === community?.created_by_user;
   const canModerateCommunity = viewerCanModerateCommunity(session?.user?.id, preview);
@@ -167,6 +181,36 @@ export function CommunityPage({
     refreshSongCommerce,
   });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
+  const [boostTarget, setBoostTarget] = React.useState<{
+    postId: string;
+    viewerIsAuthor: boolean;
+  } | null>(null);
+  const [pendingBoostAction, setPendingBoostAction] = React.useState<"boost" | "policy" | null>(null);
+  const boostController = useBoostCampaignController({
+    activePublicOffer: false,
+    authenticated: Boolean(session?.accessToken),
+    communityId: community?.id ?? communityId,
+    postId: boostTarget?.postId ?? "",
+    requestAuth: () => toast.error("Sign in to boost this song."),
+    song: Boolean(boostTarget),
+    viewerIsAuthor: Boolean(boostTarget?.viewerIsAuthor),
+  });
+  React.useEffect(() => {
+    if (pendingBoostAction === "boost" && boostController.canBoost) {
+      boostController.openBoost();
+      setPendingBoostAction(null);
+    }
+    if (pendingBoostAction === "policy" && boostController.canManagePolicy) {
+      boostController.openPolicy();
+      setPendingBoostAction(null);
+    }
+  }, [
+    boostController.canBoost,
+    boostController.canManagePolicy,
+    boostController.openBoost,
+    boostController.openPolicy,
+    pendingBoostAction,
+  ]);
   const [liveRoomAccessById, setLiveRoomAccessById] = React.useState<Record<string, ApiLiveRoomAccessResponse | undefined>>({});
   const [liveRoomParticipantProfiles, setLiveRoomParticipantProfiles] = React.useState<Record<string, ApiProfile | null>>({});
   const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
@@ -811,8 +855,24 @@ export function CommunityPage({
         onVerifyAge: handleVerifyAge,
         onComment: () => navigate(`/p/${post.post.id}`),
         onCancelEvent: () => void cancelEvent(post.post.id),
+        canBoost: boostEligiblePostIds.has(post.post.id),
+        canManageRewardSettings: Boolean(post.viewer_is_author && boostEligiblePostIds.has(post.post.id)),
+        onBoost: () => {
+          setBoostTarget({
+            postId: post.post.id,
+            viewerIsAuthor: Boolean(post.viewer_is_author),
+          });
+          setPendingBoostAction("boost");
+        },
         onDelete: () => void deletePost(post.post.id),
         onRemove: () => void removePost(post.post.id),
+        onRewardSettings: () => {
+          setBoostTarget({
+            postId: post.post.id,
+            viewerIsAuthor: Boolean(post.viewer_is_author),
+          });
+          setPendingBoostAction("policy");
+        },
         onRetryPublish: () => void retryPublish(post.post.id),
         canModeratePost: canModeratePosts,
         onVote: async (direction) => await voteOnPost(post.post.id, direction),
@@ -895,6 +955,8 @@ export function CommunityPage({
     <>
       {gateModal}
       {purchaseModal}
+      <BoostCampaignSheet {...boostController.sheetProps} />
+      <SongRewardPolicySheet {...boostController.policySheetProps} />
       <HandleClaimModal
         claimedLabel={handleClaim.claimedLabel ?? undefined}
         communityHandle={communityHandleLabel}

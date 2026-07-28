@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { HomeFeedItem as ApiHomeFeedItem, Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
@@ -48,10 +48,15 @@ import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/v
 import { VideoSongCapabilityCache } from "@/components/compositions/posts/video-feed/video-song-capability-cache";
 import { consumeHomeVideoFeedBootstrap } from "@/lib/api/home-video-feed-bootstrap";
 import {
+  countSeenSessionVideoIds,
   readRecentLeadVideoIds,
+  readSessionSeenVideoIds,
   recordRecentLeadVideoId,
+  recordSessionSeenVideoIds,
   rotateToUnseenLead,
+  takeUnseenSessionVideos,
 } from "@/lib/video-feed-lead-rotation";
+import { feedKeys } from "@/lib/query/keys";
 import { Spinner } from "@/components/primitives/spinner";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
@@ -135,6 +140,12 @@ function viewerTimezone(): IanaTz {
 export const VIDEO_FEED_VIEWPORT_CLASS = "h-lvh md:h-dvh";
 export const VIDEO_FEED_STAGE_CLASS = "relative h-full min-h-0";
 export const MAX_CONSECUTIVE_NO_GROWTH_PAGES = 3;
+/**
+ * Pages the cold start may walk looking for unseen content, bounded separately
+ * from MAX_CONSECUTIVE_NO_GROWTH_PAGES so that constant keeps its single
+ * meaning ("stop paginating forever").
+ */
+export const HOME_VIDEO_FEED_COLD_START_HUNT_MAX_PAGES = 2;
 const FEED_COMMENTS_HISTORY_KEY = "pirateFeedComments";
 const COMMENTS_PANEL_FOLLOW_SETTLE_MS = 250;
 
@@ -261,6 +272,50 @@ export function nextVideoPaginationCursor(input: {
   };
 }
 
+/**
+ * The home video feed payload, held in the query cache so leaving the route and
+ * coming back restores the feed instead of remounting into a spinner and a
+ * refetch.
+ */
+export type HomeVideoFeedPayload = {
+  entries: ApiHomeFeedItem[];
+  nextCursor: string | null;
+  pausedCursor: string | null;
+};
+
+export const EMPTY_HOME_VIDEO_FEED_PAYLOAD: HomeVideoFeedPayload = {
+  entries: [],
+  nextCursor: null,
+  pausedCursor: null,
+};
+
+/**
+ * What a mount of the video home route should do.
+ *
+ * There is deliberately no "restore, but refresh page 1" third case. Page 1 of
+ * a deterministic server ordering is, by construction, the part of the corpus
+ * this session has already been served, so refreshing it filters down to
+ * nothing in the common case and appends behind everything the viewer has yet
+ * to watch in the rest. Freshness arrives through pagination, which fetches a
+ * cursor the viewer has genuinely not reached.
+ */
+export function resolveHomeVideoMountPlan(input: { cachedEntryCount: number }): "cold" | "restore" {
+  return input.cachedEntryCount > 0 ? "restore" : "cold";
+}
+
+/**
+ * Whether a cold start should keep walking the cursor in the background looking
+ * for unseen videos. When nothing on the first page has been served before
+ * there is nothing to hunt for — which is the whole of a session's first
+ * landing, the busiest path.
+ */
+export function shouldHuntColdStartPages(input: {
+  alreadySeenCount: number;
+  serverCursor: string | null;
+}): boolean {
+  return input.alreadySeenCount > 0 && Boolean(input.serverCursor);
+}
+
 export function resolveVideoPublisherRelationship(input: {
   authorUserId?: string | null;
   authorWalletAddress?: string | null;
@@ -321,14 +376,43 @@ export function VideoHomePage() {
   const { copy, localeTag } = useRouteMessages();
   const requestAuth = useRequestAuth();
   const capabilityLoader = useVideoViewerSongCapabilities(contentLocale);
-  const [entries, setEntries] = React.useState<ApiHomeFeedItem[]>([]);
+  const homeVideoQueryKey = React.useMemo(
+    () => feedKeys.homeVideos({ locale: contentLocale, userId: session?.user.id ?? null }),
+    [contentLocale, session?.user.id],
+  );
+  const homeVideoQuery = useQuery<HomeVideoFeedPayload>({
+    queryKey: homeVideoQueryKey,
+    queryFn: async () => EMPTY_HOME_VIDEO_FEED_PAYLOAD,
+    enabled: false,
+    initialData: EMPTY_HOME_VIDEO_FEED_PAYLOAD,
+  });
+  const entries = homeVideoQuery.data.entries;
+  const nextCursor = homeVideoQuery.data.nextCursor;
+  const pausedPaginationCursor = homeVideoQuery.data.pausedCursor;
+  const setHomeVideoPayload = React.useCallback((update: React.SetStateAction<HomeVideoFeedPayload>) => {
+    queryClient.setQueryData<HomeVideoFeedPayload>(homeVideoQueryKey, (current = EMPTY_HOME_VIDEO_FEED_PAYLOAD) => (
+      typeof update === "function"
+        ? (update as (value: HomeVideoFeedPayload) => HomeVideoFeedPayload)(current)
+        : update
+    ));
+  }, [homeVideoQueryKey, queryClient]);
+  const setEntries = React.useCallback((update: React.SetStateAction<ApiHomeFeedItem[]>) => {
+    setHomeVideoPayload((current) => ({
+      ...current,
+      entries: typeof update === "function"
+        ? (update as (value: ApiHomeFeedItem[]) => ApiHomeFeedItem[])(current.entries)
+        : update,
+    }));
+  }, [setHomeVideoPayload]);
   const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | null>>({});
   const [joinedCommunityIds, setJoinedCommunityIds] = React.useState<Set<string>>(() => new Set());
-  const [nextCursor, setNextCursor] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(true);
+  // A restored feed renders on the first frame; only a cold start shows the
+  // full-viewport spinner.
+  const [loading, setLoading] = React.useState(() => (
+    resolveHomeVideoMountPlan({ cachedEntryCount: homeVideoQuery.data.entries.length }) === "cold"
+  ));
   const [error, setError] = React.useState<unknown>(null);
   const [loadMoreError, setLoadMoreError] = React.useState<unknown>(null);
-  const [pausedPaginationCursor, setPausedPaginationCursor] = React.useState<string | null>(null);
   const [capabilityRevision, setCapabilityRevision] = React.useState(0);
   const [activeItemId, setActiveItemId] = React.useState<string | null>(null);
   const [boostTarget, setBoostTarget] = React.useState<{ open: () => void; sourcePostId: string } | null>(null);
@@ -349,7 +433,6 @@ export function VideoHomePage() {
     request: ReturnType<typeof consumeHomeVideoFeedBootstrap>;
   } | null>(null);
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
-  const seenPostIdsRef = React.useRef(new Set<string>());
   const bookingRequestHostRef = React.useRef<string | null>(null);
   const commentComposerRef = React.useRef<HTMLTextAreaElement>(null);
   const feedFocusRef = React.useRef<HTMLDivElement>(null);
@@ -470,11 +553,70 @@ export function VideoHomePage() {
     feedGenerationRef.current = generation;
     loadingMoreRef.current = false;
     let cancelled = false;
-    setLoading(true);
     setError(null);
+    const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
+
+    // A fresh correlation id per mount: the restored entries were fetched under
+    // an id this component no longer holds, and the id is client-generated with
+    // no server-side request row to mismatch, so minting one keeps
+    // feed_request_id non-null and correlates this viewing session's
+    // impressions with each other.
+    feedRequestIdRef.current = `feed_${crypto.randomUUID().replaceAll("-", "")}`;
+
+    if (resolveHomeVideoMountPlan({
+      cachedEntryCount: queryClient.getQueryData<HomeVideoFeedPayload>(homeVideoQueryKey)?.entries.length ?? 0,
+    }) === "restore") {
+      // The cached feed continues where it left off, and the sessionStorage
+      // viewer return state (readVideoViewerReturnState, consumed as
+      // `initialItemId` below) puts the viewer back on the video they left —
+      // list and position restore together. Nothing is rotated or refetched:
+      // rotating would move the entry point out from under that restore.
+      setLoading(false);
+      return () => {
+        cancelled = true;
+        if (feedGenerationRef.current === generation) feedGenerationRef.current += 1;
+      };
+    }
+
+    setLoading(true);
     setAuthorProfiles({});
     setJoinedCommunityIds(new Set());
-    const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
+
+    // Cold start only: walk the cursor in the background for videos this
+    // session has not been served. Page 1 is already painted, so this never
+    // delays first frame, and it stops at the first page that yields anything —
+    // ordinary pagination takes it from there.
+    const huntColdStartPages = async (startCursor: string | null) => {
+      let cursor = startCursor;
+      for (let page = 0; page < HOME_VIDEO_FEED_COLD_START_HUNT_MAX_PAGES; page += 1) {
+        if (!cursor || cancelled || generation !== feedGenerationRef.current) return;
+        const response = await request({ cursor, locale: contentLocale, sort: "best" });
+        if (cancelled || generation !== feedGenerationRef.current) return;
+        const unseenItems = takeUnseenSessionVideos(response.items, (entry) => entry.post.post.id);
+        seedPublicThreadQueriesFromFeed({
+          items: unseenItems,
+          locale: contentLocale,
+          queryClient,
+          sort: "best",
+        });
+        const pagination = nextVideoPaginationCursor({
+          consecutiveNoGrowthPages: consecutiveNoGrowthPagesRef.current,
+          didGrow: unseenItems.length > 0,
+          serverCursor: response.next_cursor ?? null,
+        });
+        consecutiveNoGrowthPagesRef.current = pagination.consecutiveNoGrowthPages;
+        setHomeVideoPayload((current) => ({
+          entries: appendUniqueVideoEntries(current.entries, unseenItems),
+          nextCursor: pagination.nextCursor,
+          pausedCursor: pagination.nextCursor === null && response.next_cursor
+            ? response.next_cursor
+            : null,
+        }));
+        if (unseenItems.length > 0) return;
+        cursor = pagination.nextCursor;
+      }
+    };
+
     const bootstrapKey = `${Boolean(session?.accessToken)}:${contentLocale}`;
     if (bootstrapRequestRef.current?.key !== bootstrapKey) {
       bootstrapRequestRef.current = {
@@ -496,21 +638,43 @@ export function VideoHomePage() {
           sort: "best",
         });
         // Rotate the first page so a reload does not open on the same video.
-        // Membership is unchanged, so seenPostIdsRef and pagination are
+        // Membership is unchanged, so the seen set and pagination are
         // unaffected — only the entry point moves.
+        //
+        // Recent leads and this session's served ids are both disqualifying: a
+        // cold start whose cache was evicted mid-session gets the same page 1
+        // back, and opening it on a video already watched a few minutes ago is
+        // the repeat this route is trying to avoid. Rotation still degrades to
+        // the server order when every candidate is disqualified, so the feed is
+        // never emptied.
         const items = rotateToUnseenLead(
           response.items,
           (entry) => entry.post.post.id,
-          readRecentLeadVideoIds(),
+          [...readRecentLeadVideoIds(), ...readSessionSeenVideoIds()],
         );
-        feedRequestIdRef.current = `feed_${crypto.randomUUID().replaceAll("-", "")}`;
         const leadPostId = items[0]?.post.post.id;
         if (leadPostId) recordRecentLeadVideoId(leadPostId);
-        seenPostIdsRef.current = new Set(items.map((entry) => entry.post.post.id));
+        const pageIds = items.map((entry) => entry.post.post.id);
+        const alreadySeenCount = countSeenSessionVideoIds(pageIds);
+        recordSessionSeenVideoIds(pageIds);
         consecutiveNoGrowthPagesRef.current = 0;
-        setPausedPaginationCursor(null);
-        setEntries(items);
-        setNextCursor(response.next_cursor ?? null);
+        setHomeVideoPayload({
+          entries: items,
+          nextCursor: response.next_cursor ?? null,
+          pausedCursor: null,
+        });
+        if (!shouldHuntColdStartPages({ alreadySeenCount, serverCursor: response.next_cursor ?? null })) return;
+        // Held for the duration so the viewport's own loadMore does not race the
+        // hunt down the same cursor.
+        loadingMoreRef.current = true;
+        void huntColdStartPages(response.next_cursor ?? null)
+          .catch(() => {
+            // Background nicety: page 1 is on screen, and pagination will retry
+            // this cursor the moment the viewer approaches the end.
+          })
+          .finally(() => {
+            if (generation === feedGenerationRef.current) loadingMoreRef.current = false;
+          });
       })
       .catch((nextError: unknown) => { if (!cancelled) setError(nextError); })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -518,7 +682,7 @@ export function VideoHomePage() {
       cancelled = true;
       if (feedGenerationRef.current === generation) feedGenerationRef.current += 1;
     };
-  }, [api, contentLocale, hydrated, queryClient, session?.accessToken]);
+  }, [api, contentLocale, homeVideoQueryKey, hydrated, queryClient, session?.accessToken, setHomeVideoPayload]);
 
   React.useEffect(() => {
     const userIds = entries.flatMap((entry) => {
@@ -684,39 +848,42 @@ export function VideoHomePage() {
       const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
       const response = await request({ cursor: nextCursor, locale: contentLocale, sort: "best" });
       if (generation !== feedGenerationRef.current) return;
-      const unseenItems = takeUnseenVideoEntries(seenPostIdsRef.current, response.items);
+      const unseenItems = takeUnseenSessionVideos(response.items, (entry) => entry.post.post.id);
       seedPublicThreadQueriesFromFeed({
         items: unseenItems,
         locale: contentLocale,
         queryClient,
         sort: "best",
       });
-      setEntries((current) => appendUniqueVideoEntries(current, unseenItems));
       const pagination = nextVideoPaginationCursor({
         consecutiveNoGrowthPages: consecutiveNoGrowthPagesRef.current,
         didGrow: unseenItems.length > 0,
         serverCursor: response.next_cursor ?? null,
       });
       consecutiveNoGrowthPagesRef.current = pagination.consecutiveNoGrowthPages;
-      setNextCursor(pagination.nextCursor);
-      setPausedPaginationCursor(
-        pagination.nextCursor === null && response.next_cursor
+      setHomeVideoPayload((current) => ({
+        entries: appendUniqueVideoEntries(current.entries, unseenItems),
+        nextCursor: pagination.nextCursor,
+        pausedCursor: pagination.nextCursor === null && response.next_cursor
           ? response.next_cursor
           : null,
-      );
+      }));
     } catch (nextError) {
       if (generation === feedGenerationRef.current) setLoadMoreError(nextError);
     } finally {
       if (generation === feedGenerationRef.current) loadingMoreRef.current = false;
     }
-  }, [api, contentLocale, nextCursor, queryClient, session?.accessToken]);
+  }, [api, contentLocale, nextCursor, queryClient, session?.accessToken, setHomeVideoPayload]);
 
   const resumePagination = React.useCallback(() => {
     if (!pausedPaginationCursor) return;
     consecutiveNoGrowthPagesRef.current = 0;
-    setPausedPaginationCursor(null);
-    setNextCursor(pausedPaginationCursor);
-  }, [pausedPaginationCursor]);
+    setHomeVideoPayload((current) => ({
+      ...current,
+      nextCursor: current.pausedCursor,
+      pausedCursor: null,
+    }));
+  }, [pausedPaginationCursor, setHomeVideoPayload]);
 
   const onActiveItemChange = React.useCallback((_item: VideoFeedItem, index: number) => {
     setActiveItemId(_item.id);

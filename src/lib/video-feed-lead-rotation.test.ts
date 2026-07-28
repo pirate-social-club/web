@@ -1,8 +1,14 @@
-import { describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 
 import {
+  clearSessionSeenVideoIds,
+  countSeenSessionVideoIds,
   MAX_RECENT_LEAD_IDS,
+  MAX_SESSION_SEEN_VIDEO_IDS,
+  readSessionSeenVideoIds,
+  recordSessionSeenVideoIds,
   rotateToUnseenLead,
+  takeUnseenSessionVideos,
   withRecentLeadVideoId,
 } from "./video-feed-lead-rotation";
 
@@ -87,5 +93,58 @@ describe("withRecentLeadVideoId", () => {
     const recent = ["a", "b"];
     withRecentLeadVideoId(recent, "c");
     expect(recent).toEqual(["a", "b"]);
+  });
+});
+
+describe("session seen video ids", () => {
+  // Module-level state: without this a leftover id from one test silently
+  // changes what the next one is asserting.
+  beforeEach(clearSessionSeenVideoIds);
+
+  test("returns only videos this session has not been served", () => {
+    recordSessionSeenVideoIds(["a", "b"]);
+    expect(takeUnseenSessionVideos(["a", "b", "c", "d"], id)).toEqual(["c", "d"]);
+  });
+
+  test("records what it hands out, so the next page cannot repeat it", () => {
+    expect(takeUnseenSessionVideos(["a", "b"], id)).toEqual(["a", "b"]);
+    expect(takeUnseenSessionVideos(["b", "c"], id)).toEqual(["c"]);
+  });
+
+  test("deduplicates within a single page", () => {
+    expect(takeUnseenSessionVideos(["a", "a", "b"], id)).toEqual(["a", "b"]);
+  });
+
+  test("skips items without an id", () => {
+    expect(takeUnseenSessionVideos(["", "a"], id)).toEqual(["a"]);
+  });
+
+  test("counts prior sightings without recording anything", () => {
+    recordSessionSeenVideoIds(["a"]);
+    expect(countSeenSessionVideoIds(["a", "b"])).toBe(1);
+    expect(readSessionSeenVideoIds()).toEqual(["a"]);
+  });
+
+  test("enforces the cap on ids recorded through the filter, not just the writer", () => {
+    // The filter is the path every real caller takes. A cap that only the
+    // explicit writer applied would never fire in production.
+    const ids = Array.from({ length: MAX_SESSION_SEEN_VIDEO_IDS + 25 }, (_, index) => `v${index}`);
+    takeUnseenSessionVideos(ids, id);
+    expect(readSessionSeenVideoIds()).toHaveLength(MAX_SESSION_SEEN_VIDEO_IDS);
+  });
+
+  test("evicts oldest first, keeping the most recently served ids", () => {
+    const ids = Array.from({ length: MAX_SESSION_SEEN_VIDEO_IDS + 2 }, (_, index) => `v${index}`);
+    recordSessionSeenVideoIds(ids);
+    const retained = readSessionSeenVideoIds();
+    expect(retained[0]).toBe("v2");
+    expect(retained.at(-1)).toBe(`v${MAX_SESSION_SEEN_VIDEO_IDS + 1}`);
+  });
+
+  test("clears back to empty", () => {
+    recordSessionSeenVideoIds(["a"]);
+    clearSessionSeenVideoIds();
+    expect(readSessionSeenVideoIds()).toEqual([]);
+    expect(takeUnseenSessionVideos(["a"], id)).toEqual(["a"]);
   });
 });

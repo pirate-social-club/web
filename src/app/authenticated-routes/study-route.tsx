@@ -26,7 +26,7 @@ import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { toStreakSummary } from "@/app/authenticated-helpers/post-media-presentation";
-import { isApiAuthError } from "@/lib/api/client";
+import { ApiError, isApiAuthError } from "@/lib/api/client";
 import type {
   ApiPublicRewardOffer,
   ApiRewardQualificationSummary,
@@ -235,6 +235,35 @@ function advanceLesson(
   };
 }
 
+// A rejected attempt with one of these statuses means our cached view of the session
+// diverged from the server's: the card is spent, it is already mastered, the attempt
+// number no longer lines up, or the idempotency key was replayed with a different
+// payload. Re-sending the identical attempt can only fail the same way, so the only
+// recovery is to re-read the session and rebuild from server truth.
+const STUDY_ATTEMPT_DIVERGENCE_STATUSES = new Set([400, 404, 409]);
+
+// Recovering silently is safe in both directions: if the rejected attempt was in fact
+// recorded server-side (a lost response), the reload shows the advanced state; if it
+// was never recorded, the same card comes back at the same attempt number and the
+// cached idempotency key is still unused. Either way we never claim a wrong outcome.
+const STUDY_ATTEMPT_DIVERGENCE_RECOVERY_LIMIT = 2;
+
+function isStudyAttemptDivergence(error: unknown): boolean {
+  return error instanceof ApiError && STUDY_ATTEMPT_DIVERGENCE_STATUSES.has(error.status);
+}
+
+// Distinguishes a transcription failure from an attempt rejection: only the latter
+// means our session view is stale, and only the latter should trigger a reload.
+class StudyTranscriptionFailure extends Error {
+  readonly originalError: unknown;
+
+  constructor(originalError: unknown) {
+    super("Study transcription failed");
+    this.name = "StudyTranscriptionFailure";
+    this.originalError = originalError;
+  }
+}
+
 function makeAttemptIdempotencyKey(sessionId: string, exerciseId: string, attemptNumber: number): string {
   const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return `study:${sessionId}:${exerciseId}:${attemptNumber}:${random}`;
@@ -398,6 +427,21 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   const recordingStreamRef = React.useRef<MediaStream | null>(null);
   const pendingMultipleChoiceAttemptRef = React.useRef<string | null>(null);
   const attemptIdempotencyKeysRef = React.useRef(new Map<string, string>());
+
+  const divergenceRecoveryCountRef = React.useRef(0);
+
+  // Returns false when recovery is not available (or has already been tried too many
+  // times), so the caller falls back to a visible inline error rather than reloading
+  // forever against a server that keeps rejecting whatever it just handed us.
+  const recoverFromDivergedAttempt = React.useCallback(() => {
+    if (divergenceRecoveryCountRef.current >= STUDY_ATTEMPT_DIVERGENCE_RECOVERY_LIMIT) {
+      return false;
+    }
+    divergenceRecoveryCountRef.current += 1;
+    setState({ phase: "loading" });
+    setReloadKey((value) => value + 1);
+    return true;
+  }, []);
 
   const attemptIdempotencyKey = React.useCallback((sessionId: string, exerciseId: string, attemptNumber: number) => {
     const logicalAttempt = `${sessionId}:${exerciseId}:${attemptNumber}`;
@@ -622,6 +666,9 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       type: "translation_choice",
     }).then((result) => {
       pendingMultipleChoiceAttemptRef.current = null;
+      // A landed attempt proves we are back in step with the server; spend the
+      // recovery budget again only if we drift a second time.
+      divergenceRecoveryCountRef.current = 0;
       playStudyFeedbackSound(result.outcome === "correct" ? "correct" : "incorrect");
       setState((current) => {
         if (current.phase !== "ready" || current.surface.kind !== "multiple_choice" || current.surface.exercise.id !== exercise.id) {
@@ -644,6 +691,9 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       });
     }).catch((error) => {
       pendingMultipleChoiceAttemptRef.current = null;
+      if (isStudyAttemptDivergence(error) && recoverFromDivergedAttempt()) {
+        return;
+      }
       setState((current) => {
         if (current.phase !== "ready" || current.surface.kind !== "multiple_choice" || current.surface.exercise.id !== exercise.id) {
           return current;
@@ -659,7 +709,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         };
       });
     });
-  }, [api, attemptIdempotencyKey]);
+  }, [api, attemptIdempotencyKey, recoverFromDivergedAttempt]);
 
   const handlePrimaryAction = React.useCallback(() => {
     if (state.phase === "locked") {
@@ -775,6 +825,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
               : current);
             void api.communities.transcribePostStudyAudio(state.post.post.community, state.post.post.id, {
               file: new File([blob], "study-say-it-back.webm", { type }),
+            }).catch((error) => {
+              throw new StudyTranscriptionFailure(error);
             }).then((transcription) => api.communities.submitPostStudyAttempt(state.post.post.community, state.post.post.id, {
                 attempt_number: sayItBackSurface.attemptNumber,
                 exercise_id: exercise.id,
@@ -784,6 +836,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                 type: "say_it_back",
               }).then((result) => ({ result, transcript: transcription.text })))
               .then(({ result, transcript }) => {
+                divergenceRecoveryCountRef.current = 0;
                 playStudyFeedbackSound(result.outcome === "correct" ? "correct" : "incorrect");
                 setState((current) => {
                   if (current.phase !== "ready" || current.surface.kind !== "say_it_back" || current.surface.exercise.id !== exercise.id) {
@@ -806,6 +859,14 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                 });
               })
               .catch((error) => {
+                const transcriptionFailed = error instanceof StudyTranscriptionFailure;
+                const cause = transcriptionFailed ? error.originalError : error;
+                if (!transcriptionFailed && isStudyAttemptDivergence(cause) && recoverFromDivergedAttempt()) {
+                  return;
+                }
+                const fallback = transcriptionFailed
+                  ? "Could not transcribe this study attempt. Try again."
+                  : "Could not submit this study attempt. Try again.";
                 setState((current) => current.phase === "ready"
                   && current.surface.kind === "say_it_back"
                   && current.surface.exercise.id === exercise.id
@@ -814,7 +875,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                       surface: {
                         ...current.surface,
                         phase: "idle",
-                        submitError: getErrorMessage(error, "Could not submit this study attempt. Try again."),
+                        submitError: getErrorMessage(cause, fallback),
                       },
                     }
                   : current);
@@ -872,7 +933,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     if (state.surface.kind === "say_it_back" && state.surface.phase === "correct") {
       setState(advanceLesson(state, "correct"));
     }
-  }, [api, attemptIdempotencyKey, postId, state, stopRecordingStream, submitMultipleChoiceAttempt]);
+  }, [api, attemptIdempotencyKey, postId, recoverFromDivergedAttempt, state, stopRecordingStream, submitMultipleChoiceAttempt]);
 
   const handleOptionSelect = React.useCallback((optionId: string) => {
     if (state.phase !== "ready" || state.surface.kind !== "multiple_choice" || state.surface.result || state.surface.submitting) {

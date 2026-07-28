@@ -53,9 +53,12 @@ describe("required gate policy is derived from the release workflow", () => {
       const job = workflow.jobs[jobId];
       expect(job).toBeTruthy();
       // The workflow's `name:` is what the Actions API reports, possibly with a
-      // " / child" suffix for reusable workflows.
+      // " / child" suffix for reusable workflows. Require it: a required job that
+      // loses its explicit name becomes unfindable by ingestion, so a conditional
+      // assertion here would pass silently while the model stopped seeing the gate.
       const declaredName: string | undefined = job.name;
-      if (declaredName) expect(declaredName.startsWith(gate.jobName)).toBe(true);
+      expect(typeof declaredName).toBe("string");
+      expect((declaredName as string).startsWith(gate.jobName)).toBe(true);
     }
   });
 

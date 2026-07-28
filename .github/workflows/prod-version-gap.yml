@@ -10,16 +10,34 @@ name: Production version gap
 #
 # This job watches the only signal that cannot lie about it: what production is
 # actually serving, compared against main.
+#
+# Detection is event-driven FIRST and scheduled second. Two independent
+# weaknesses make either alone insufficient:
+#
+#   Cron alone — GitHub throttles and drops scheduled runs on busy repositories.
+#   This workflow's own history proves it: two runs fired in the first three
+#   hours despite a */15 schedule, while production sat stale for over an hour
+#   with no alarm. Do not claim a 15-minute cadence from GitHub cron.
+#
+#   workflow_run alone — if the final Release of the day completes before the
+#   gap reaches the threshold and no further release follows, no later event
+#   exists to fire, and a dropped cron leaves the gap undetected indefinitely.
+#
+# A real time-based guarantee needs an external scheduler with delivery
+# guarantees; that remains a separate defence and is deliberately not claimed here.
 on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
   schedule:
-    # Every 15 minutes. The release lane takes ~15-20 minutes end to end, so this
-    # samples often enough that a stall is caught within one lane duration.
+    # Backup sampling. Best-effort by nature — see above.
     - cron: "*/15 * * * *"
   workflow_dispatch:
 
+# Never cancel: a superseding run would drop the very report this exists to make.
 concurrency:
   group: prod-version-gap
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -27,12 +45,55 @@ permissions:
 jobs:
   version-gap:
     name: Main vs production
+    # PR-triggered Release runs legitimately skip every deploy job (the lanes are
+    # gated on push-to-main), so treating them as promotion attempts would report
+    # a "failed deploy" on every pull request. Filter at the job level, before any
+    # work happens.
+    if: >-
+      github.event_name != 'workflow_run'
+      || (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main')
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 10
     permissions:
       contents: read
       issues: write
     steps:
+      # Needed for the decision module below; the comparisons themselves still go
+      # through the API, so this stays a shallow checkout.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      # A push release that failed, or that succeeded while skipping production,
+      # is a promotion that did not happen. Report it now rather than waiting for
+      # the staleness threshold — the information already exists at this point.
+      - name: Classify the triggering release
+        id: release
+        if: github.event_name == 'workflow_run'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            const { classifyRelease } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/ci/version-gap.mjs`);
+            const run = context.payload.workflow_run;
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: run.id,
+              per_page: 100,
+            });
+            const production = jobs.find((job) => job.name === "Deploy production");
+            const outcome = classifyRelease({
+              runConclusion: run.conclusion,
+              productionConclusion: production?.conclusion,
+            });
+            core.setOutput("outcome", outcome);
+            core.setOutput("head-sha", run.head_sha);
+            core.setOutput("detail", [
+              `- release run: ${run.html_url}`,
+              `- head: \`${run.head_sha.slice(0, 7)}\` (${run.event} on ${run.head_branch})`,
+              `- run conclusion: ${run.conclusion}`,
+              `- \`Deploy production\`: ${production?.conclusion ?? "absent"}`,
+            ].join("\n"));
+            core.notice(`Triggering release classified as: ${outcome}`);
+
       - name: Compare main against production
         id: gap
         continue-on-error: true
@@ -42,8 +103,14 @@ jobs:
           # A gap under this is normal pipeline latency, not a stall. Above it,
           # something has stopped promoting and a human needs to look.
           MAX_GAP_MINUTES: "45"
+          RELEASE_OUTCOME: ${{ steps.release.outputs.outcome }}
+          RELEASE_DETAIL: ${{ steps.release.outputs.detail }}
+          RELEASE_HEAD_SHA: ${{ steps.release.outputs.head-sha }}
         with:
           script: |
+            const { decide, productionContainsRelease } = await import(
+              `${process.env.GITHUB_WORKSPACE}/scripts/ci/version-gap.mjs`
+            );
             const maxGapMinutes = Number(process.env.MAX_GAP_MINUTES || "45");
             const url = process.env.PROD_VERSION_URL;
 
@@ -111,14 +178,53 @@ jobs:
               `waiting: ${gapMinutes} min (threshold ${maxGapMinutes})`,
             ].join("\n- ");
 
-            core.setOutput("detail", `- ${summary}`);
-            if (gapMinutes <= maxGapMinutes) {
-              core.setOutput("kind", "healthy");
-              core.notice(`Production is ${aheadBy} commit(s) behind, waiting ${gapMinutes} min — within threshold.`);
-              return;
+            const releaseOutcome = process.env.RELEASE_OUTCOME || "";
+            const releaseHeadSha = process.env.RELEASE_HEAD_SHA || "";
+            const releaseDetail = process.env.RELEASE_DETAIL || "";
+
+            // Observers queue rather than cancel, so one can run long after the
+            // release it describes — by which time a successor may already have
+            // deployed that commit. Establish whether production already contains
+            // it before treating a stale outcome as current news.
+            let containedInProduction = false;
+            if (releaseHeadSha && (releaseOutcome === "release_failed" || releaseOutcome === "not_deployed")) {
+              let containmentStatus = "unknown";
+              if (!releaseHeadSha.startsWith(prodSha)) {
+                const containment = await github.rest.repos.compareCommitsWithBasehead({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  basehead: `${releaseHeadSha}...${prodSha}`,
+                });
+                containmentStatus = containment.data.status;
+              }
+              containedInProduction = productionContainsRelease({
+                releaseHeadSha,
+                productionSha: prodSha,
+                compareStatus: containmentStatus,
+              });
+              if (containedInProduction) {
+                core.notice(
+                  `Observed release ${releaseHeadSha.slice(0, 7)} is already contained in production `
+                  + `(${prodSha}); treating its outcome as superseded and reporting the current gap.`,
+                );
+              }
             }
-            core.setOutput("kind", "stale");
-            core.setFailed(`Production has been ${aheadBy} commit(s) behind for ${gapMinutes} min.`);
+
+            const combined = releaseDetail ? `${releaseDetail}\n- ${summary}` : `- ${summary}`;
+            core.setOutput("detail", combined);
+
+            const decision = decide({
+              productionSha: prodSha,
+              tipSha,
+              aheadBy,
+              gapMinutes,
+              maxGapMinutes,
+              compareStatus: status,
+              release: releaseOutcome ? { outcome: releaseOutcome, containedInProduction } : undefined,
+            });
+            core.setOutput("kind", decision.kind);
+            if (decision.failed) core.setFailed(decision.message);
+            else core.notice(decision.message);
 
       - name: Open or update the tracked staleness issue
         if: steps.gap.outcome == 'failure'
@@ -133,7 +239,9 @@ jobs:
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const title = kind === "unreachable"
               ? "Production version endpoint is unreachable"
-              : "Production is not serving main";
+              : kind === "release_failed"
+                ? "Release to main failed; production not promoted"
+                : "Production is not serving main";
             const guidance = {
               stale: [
                 "Something has stopped promoting main to production. Check the most recent",
@@ -150,6 +258,19 @@ jobs:
                 "Production is serving a commit that is not an ancestor of `main`. Expect a",
                 "rollback, a manual deploy off a branch, or a force-push to main. Establish",
                 "what is actually deployed before promoting anything else.",
+              ],
+              release_failed: [
+                "A push release to `main` failed, so production was not promoted. Read the",
+                "failing job below — this is a blocked release, distinct from the supersession",
+                "in #729 and from any staleness threshold. Reported immediately rather than",
+                "waiting out the gap.",
+              ],
+              not_deployed: [
+                "A push release to `main` reported success but did NOT deploy production.",
+                "Usually supersession (#729): the run was overtaken while in the staging lane",
+                "and declined the production gate. If successive runs keep skipping, stop",
+                "merging to `main` — including release and pin-bump PRs — until one run",
+                "reaches the gate uncontested.",
               ],
             }[kind] || ["Unclassified version-gap failure."];
 

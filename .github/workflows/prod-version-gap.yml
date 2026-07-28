@@ -58,6 +58,10 @@ jobs:
       contents: read
       issues: write
     steps:
+      # Needed for the decision module below; the comparisons themselves still go
+      # through the API, so this stays a shallow checkout.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
       # A push release that failed, or that succeeded while skipping production,
       # is a promotion that did not happen. Report it now rather than waiting for
       # the staleness threshold — the information already exists at this point.
@@ -67,6 +71,7 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           script: |
+            const { classifyRelease } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/ci/version-gap.mjs`);
             const run = context.payload.workflow_run;
             const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
               owner: context.repo.owner,
@@ -75,12 +80,12 @@ jobs:
               per_page: 100,
             });
             const production = jobs.find((job) => job.name === "Deploy production");
-            const outcome = run.conclusion !== "success"
-              ? "release_failed"
-              : production?.conclusion === "success"
-                ? "deployed"
-                : "not_deployed";
+            const outcome = classifyRelease({
+              runConclusion: run.conclusion,
+              productionConclusion: production?.conclusion,
+            });
             core.setOutput("outcome", outcome);
+            core.setOutput("head-sha", run.head_sha);
             core.setOutput("detail", [
               `- release run: ${run.html_url}`,
               `- head: \`${run.head_sha.slice(0, 7)}\` (${run.event} on ${run.head_branch})`,
@@ -100,8 +105,12 @@ jobs:
           MAX_GAP_MINUTES: "45"
           RELEASE_OUTCOME: ${{ steps.release.outputs.outcome }}
           RELEASE_DETAIL: ${{ steps.release.outputs.detail }}
+          RELEASE_HEAD_SHA: ${{ steps.release.outputs.head-sha }}
         with:
           script: |
+            const { decide, productionContainsRelease } = await import(
+              `${process.env.GITHUB_WORKSPACE}/scripts/ci/version-gap.mjs`
+            );
             const maxGapMinutes = Number(process.env.MAX_GAP_MINUTES || "45");
             const url = process.env.PROD_VERSION_URL;
 
@@ -169,30 +178,53 @@ jobs:
               `waiting: ${gapMinutes} min (threshold ${maxGapMinutes})`,
             ].join("\n- ");
 
-            // A push release that failed or skipped production is already proof
-            // that promotion did not happen. Waiting out the staleness threshold
-            // would only delay news we have in hand.
             const releaseOutcome = process.env.RELEASE_OUTCOME || "";
+            const releaseHeadSha = process.env.RELEASE_HEAD_SHA || "";
             const releaseDetail = process.env.RELEASE_DETAIL || "";
-            const combined = releaseDetail ? `${releaseDetail}\n- ${summary}` : `- ${summary}`;
-            core.setOutput("detail", combined);
-            if (releaseOutcome === "release_failed" || releaseOutcome === "not_deployed") {
-              core.setOutput("kind", releaseOutcome === "release_failed" ? "release_failed" : "not_deployed");
-              core.setFailed(
-                releaseOutcome === "release_failed"
-                  ? "A push release to main failed; production was not promoted."
-                  : "A push release to main succeeded without deploying production.",
-              );
-              return;
+
+            // Observers queue rather than cancel, so one can run long after the
+            // release it describes — by which time a successor may already have
+            // deployed that commit. Establish whether production already contains
+            // it before treating a stale outcome as current news.
+            let containedInProduction = false;
+            if (releaseHeadSha && (releaseOutcome === "release_failed" || releaseOutcome === "not_deployed")) {
+              let containmentStatus = "unknown";
+              if (!releaseHeadSha.startsWith(prodSha)) {
+                const containment = await github.rest.repos.compareCommitsWithBasehead({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  basehead: `${releaseHeadSha}...${prodSha}`,
+                });
+                containmentStatus = containment.data.status;
+              }
+              containedInProduction = productionContainsRelease({
+                releaseHeadSha,
+                productionSha: prodSha,
+                compareStatus: containmentStatus,
+              });
+              if (containedInProduction) {
+                core.notice(
+                  `Observed release ${releaseHeadSha.slice(0, 7)} is already contained in production `
+                  + `(${prodSha}); treating its outcome as superseded and reporting the current gap.`,
+                );
+              }
             }
 
-            if (gapMinutes <= maxGapMinutes) {
-              core.setOutput("kind", "healthy");
-              core.notice(`Production is ${aheadBy} commit(s) behind, waiting ${gapMinutes} min — within threshold.`);
-              return;
-            }
-            core.setOutput("kind", "stale");
-            core.setFailed(`Production has been ${aheadBy} commit(s) behind for ${gapMinutes} min.`);
+            const combined = releaseDetail ? `${releaseDetail}\n- ${summary}` : `- ${summary}`;
+            core.setOutput("detail", combined);
+
+            const decision = decide({
+              productionSha: prodSha,
+              tipSha,
+              aheadBy,
+              gapMinutes,
+              maxGapMinutes,
+              compareStatus: status,
+              release: releaseOutcome ? { outcome: releaseOutcome, containedInProduction } : undefined,
+            });
+            core.setOutput("kind", decision.kind);
+            if (decision.failed) core.setFailed(decision.message);
+            else core.notice(decision.message);
 
       - name: Open or update the tracked staleness issue
         if: steps.gap.outcome == 'failure'

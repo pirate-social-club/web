@@ -19,6 +19,8 @@ export const SCENARIOS = ["observed", "p50", "p95", "worst_observed"];
 export const ADMITTED = "admitted";
 export const SUPERSEDED = "superseded";
 export const BLOCKED = "blocked";
+export const HALTED = "halted_needs_repair";
+export const REPAIR_CLEARED = "repair_cleared";
 
 /**
  * Deterministic duration per scenario. No random draws: the same trace and
@@ -70,6 +72,11 @@ export function simulate({
   let deployedSha = initialDeployedSha;
   let busyUntil = null;
   let inFlight = null;
+  // needs_repair is terminal for automation: it halts the lane until an operator
+  // clears it. Nothing else clears it -- not time, not new arrivals, not a newer
+  // candidate becoming eligible. Modelling it as anything softer would let the
+  // simulation promote through a state the design forbids.
+  let haltedForRepair = false;
 
   const completeInFlight = (now) => {
     if (!inFlight || busyUntil === null || busyUntil > now) return false;
@@ -92,6 +99,10 @@ export function simulate({
     if (inFlight.outcome === "assumed_deployed" || inFlight.outcome === "deployed") {
       deployedSha = inFlight.sha;
     }
+    if (inFlight.outcome === "needs_repair") {
+      haltedForRepair = true;
+      admissions.push({ at: busyUntil, candidateId: inFlight.candidateId, decision: HALTED });
+    }
     inFlight.completedAt = busyUntil;
     inFlight = null;
     busyUntil = null;
@@ -99,7 +110,7 @@ export function simulate({
   };
 
   const tryAdmit = (now) => {
-    if (inFlight) return false;
+    if (inFlight || haltedForRepair) return false;
     // F5: coalesce to the newest eligible candidate at this instant, rather than
     // giving every candidate a turn. Fairness is about production progress.
     const ready = [...eligible]
@@ -164,6 +175,10 @@ export function simulate({
     advanceTo(event.at);
     if (event.type === "eligible") eligible.add(event.candidateId);
     if (event.type === "ineligible") eligible.delete(event.candidateId);
+    if (event.type === "repair_clear") {
+      haltedForRepair = false;
+      admissions.push({ at: event.at, decision: REPAIR_CLEARED });
+    }
     if (event.type === "blocked") {
       eligible.delete(event.candidateId);
       admissions.push({ at: event.at, candidateId: event.candidateId, decision: BLOCKED });
@@ -180,6 +195,7 @@ export function simulate({
     scenario,
     admissions,
     assumptions,
+    haltedForRepair,
     finalDeployedSha: deployedSha,
     admittedCount: admissions.filter((entry) => entry.decision === ADMITTED).length,
   };

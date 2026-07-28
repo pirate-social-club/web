@@ -15,6 +15,22 @@
 
 export const GATE_POLICY_VERSION = 1;
 
+// Workflow job id -> observable job-name prefix. GitHub reports a job from a
+// reusable workflow as "Parent / Child", so the prefix is what the trace can be
+// matched on. This mapping is the seam between the workflow's identifiers and
+// the Actions API's rendering, and is asserted against the workflow itself.
+export const WORKFLOW_JOB_IDS = {
+  release_inputs: "release-inputs",
+  schema_gate: "schema-gate",
+  api_staging_contract_gate: "api-staging-contract-gate",
+  release_gate: "release-gate",
+};
+
+// Dependencies of the production job that are NOT evidence about the candidate.
+// production-freshness is the scheduling decision the promoter replaces; keeping
+// it in the required set would mean requiring the very gate we are removing.
+export const SCHEDULING_ONLY_JOB_IDS = ["production-freshness"];
+
 export const REQUIRED_GATES = [
   { id: "release_inputs", version: 1, jobName: "Verify release inputs" },
   { id: "schema_gate", version: 1, jobName: "Community schema gate (staging fleet)" },
@@ -37,4 +53,18 @@ export const IMPLIED_GATES = [
  */
 export function findJob(jobs, jobName) {
   return (jobs ?? []).find((job) => job.name === jobName || job.name.startsWith(`${jobName} / `)) ?? null;
+}
+
+/**
+ * The production job's dependency set, minus scheduling-only gates, expressed as
+ * gate ids. Callers derive this from the workflow rather than trusting
+ * REQUIRED_GATES, so drift in either direction is detectable.
+ */
+export function derivedGateIdsFromWorkflow(workflow) {
+  const needs = workflow?.jobs?.production?.needs ?? [];
+  const byJobId = new Map(Object.entries(WORKFLOW_JOB_IDS).map(([gateId, jobId]) => [jobId, gateId]));
+  return needs
+    .filter((jobId) => !SCHEDULING_ONLY_JOB_IDS.includes(jobId))
+    .map((jobId) => byJobId.get(jobId) ?? `UNMAPPED:${jobId}`)
+    .sort();
 }

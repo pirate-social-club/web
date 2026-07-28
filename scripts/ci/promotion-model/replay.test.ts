@@ -207,3 +207,77 @@ describe("promoter timing", () => {
     for (const entry of admitted) expect(entry.completedAt).toBeGreaterThan(entry.at);
   });
 });
+
+// needs_repair is terminal for automation. The accepted design halts the lane
+// until an operator clears it — so the simulator must model a state that
+// arrivals, eligibility changes and the passage of time cannot dissolve.
+describe("needs_repair halts promotion", () => {
+  const base = {
+    initialDeployedSha: "sha0",
+    isDescendant: (a: string, b: string) => Number(a.slice(3)) > Number(b.slice(3)),
+    scenario: "p50" as const,
+    observedDurations: [100],
+  };
+  const candidates = new Map([
+    ["c1", { id: "c1", sha: "sha1", mintedAt: 1, observedDurationMs: null }],
+    ["c2", { id: "c2", sha: "sha2", mintedAt: 2, observedDurationMs: null }],
+    ["c3", { id: "c3", sha: "sha3", mintedAt: 3, observedDurationMs: null }],
+  ]);
+  const realOutcomes = new Map([
+    ["c1", { candidateId: "c1", phase: "promote", outcome: "needs_repair" }],
+  ]);
+
+  test("no later candidate is admitted while halted", () => {
+    const result = simulate({
+      ...base,
+      candidates,
+      realOutcomes,
+      events: [
+        { at: 0, seq: 0, type: "eligible", candidateId: "c1" },
+        { at: 200, seq: 1, type: "eligible", candidateId: "c2" },
+        { at: 300, seq: 2, type: "eligible", candidateId: "c3" },
+      ],
+    });
+    const admitted = result.admissions.filter((entry) => entry.decision === "admitted");
+    expect(admitted.map((entry) => entry.candidateId)).toEqual(["c1"]);
+    expect(result.haltedForRepair).toBe(true);
+    expect(result.admissions.some((entry) => entry.decision === "halted_needs_repair")).toBe(true);
+    // The failed promotion must not advance the hypothetical deployed sha.
+    expect(result.finalDeployedSha).toBe("sha0");
+  });
+
+  test("ordinary arrivals and eligibility changes do not clear the halt", () => {
+    const result = simulate({
+      ...base,
+      candidates,
+      realOutcomes,
+      events: [
+        { at: 0, seq: 0, type: "eligible", candidateId: "c1" },
+        { at: 200, seq: 1, type: "eligible", candidateId: "c2" },
+        { at: 250, seq: 2, type: "ineligible", candidateId: "c2" },
+        { at: 300, seq: 3, type: "eligible", candidateId: "c2" },
+        { at: 400, seq: 4, type: "eligible", candidateId: "c3" },
+      ],
+    });
+    expect(result.haltedForRepair).toBe(true);
+    expect(result.admissions.filter((entry) => entry.decision === "admitted")).toHaveLength(1);
+  });
+
+  test("only an explicit repair-clear event resumes admission", () => {
+    const result = simulate({
+      ...base,
+      candidates,
+      realOutcomes,
+      events: [
+        { at: 0, seq: 0, type: "eligible", candidateId: "c1" },
+        { at: 200, seq: 1, type: "eligible", candidateId: "c2" },
+        { at: 500, seq: 2, type: "repair_clear" },
+      ],
+    });
+    const admitted = result.admissions.filter((entry) => entry.decision === "admitted");
+    expect(admitted.map((entry) => entry.candidateId)).toEqual(["c1", "c2"]);
+    expect(admitted[1].at).toBe(500); // resumes at the clear, not before
+    expect(result.haltedForRepair).toBe(false);
+    expect(result.admissions.some((entry) => entry.decision === "repair_cleared")).toBe(true);
+  });
+});

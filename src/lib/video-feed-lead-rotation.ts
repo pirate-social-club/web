@@ -71,6 +71,81 @@ export function recordRecentLeadVideoId(leadId: string): void {
   }
 }
 
+// Rotation moves the entry point of a freshly fetched page; it says nothing
+// about which videos the viewer has already been served. That second question
+// only arises once a session navigates away from the feed and back, so the
+// answer lives here too, as the single owner of "what this viewer has seen".
+//
+// Deep enough that a session's pagination stays repeat-free, bounded because a
+// Set has no eviction of its own: the oldest ids are front-trimmed in insertion
+// order, and once trimming starts a very long session degrades to server
+// ordering for the evicted ids — the same graceful-degradation contract the
+// lead rotation above documents.
+export const MAX_SESSION_SEEN_VIDEO_IDS = 500;
+
+// Session scope only, deliberately not localStorage: a reload is still served
+// by the pre-hydration bootstrap plus lead rotation, and persisting served ids
+// across reloads would eventually starve a viewer of a corpus this size. This
+// set exists for SPA navigation within one JS session.
+const sessionSeenVideoIds = new Set<string>();
+
+function trimSessionSeenVideoIds(): void {
+  let overflow = sessionSeenVideoIds.size - MAX_SESSION_SEEN_VIDEO_IDS;
+  if (overflow <= 0) return;
+  for (const id of sessionSeenVideoIds) {
+    sessionSeenVideoIds.delete(id);
+    overflow -= 1;
+    if (overflow <= 0) return;
+  }
+}
+
+/** Insertion-ordered snapshot. A copy: the set itself never escapes. */
+export function readSessionSeenVideoIds(): string[] {
+  return [...sessionSeenVideoIds];
+}
+
+export function countSeenSessionVideoIds(ids: Iterable<string>): number {
+  let count = 0;
+  for (const id of ids) {
+    if (sessionSeenVideoIds.has(id)) count += 1;
+  }
+  return count;
+}
+
+export function recordSessionSeenVideoIds(ids: Iterable<string>): void {
+  for (const id of ids) {
+    if (id) sessionSeenVideoIds.add(id);
+  }
+  trimSessionSeenVideoIds();
+}
+
+/**
+ * Returns the items this session has not been served yet, recording every one
+ * it returns.
+ *
+ * Filtering, recording and trimming are one operation on purpose: an API that
+ * handed out the live Set for callers to filter through would let every real
+ * caller record ids without ever trimming, and the cap above would be
+ * decoration.
+ */
+export function takeUnseenSessionVideos<T>(
+  items: readonly T[],
+  getId: (item: T) => string,
+): T[] {
+  const unseen = items.filter((item) => {
+    const id = getId(item);
+    if (!id || sessionSeenVideoIds.has(id)) return false;
+    sessionSeenVideoIds.add(id);
+    return true;
+  });
+  trimSessionSeenVideoIds();
+  return unseen;
+}
+
+export function clearSessionSeenVideoIds(): void {
+  sessionSeenVideoIds.clear();
+}
+
 /**
  * Rotates `items` so the first entry is the highest-ranked one whose id is not
  * in `recentLeadIds`, moving the skipped prefix to the end.

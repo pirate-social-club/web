@@ -113,7 +113,9 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
   const [liveRoomAccessById, setLiveRoomAccessById] = React.useState<Record<string, ApiLiveRoomAccessResponse | undefined>>({});
   const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
   const [error, setError] = React.useState<unknown>(null);
-  const [loading, setLoading] = React.useState(true);
+  // The payload outlives the route in the query cache, so returning to the feed
+  // renders it on the first frame. Only a genuinely empty cache is a load.
+  const [loading, setLoading] = React.useState(() => homeFeedQuery.data.feedEntries.length === 0);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [loadMoreError, setLoadMoreError] = React.useState<unknown>(null);
   const loadingMoreRef = React.useRef(false);
@@ -150,7 +152,11 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
       };
     }
 
-    setLoading(true);
+    // A cached feed stays on screen while it refreshes in place; only an empty
+    // cache falls back to the loading surface.
+    if ((queryClient.getQueryData<HomeFeedQueryPayload>(homeFeedQueryKey)?.feedEntries.length ?? 0) === 0) {
+      setLoading(true);
+    }
     setError(null);
 
     // Only wipe enrichment when the feed identity actually changed. On an
@@ -318,7 +324,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     return () => {
       cancelled = true;
     };
-  }, [api, contentLocale, feedIdentityKey, feedRequest, hydrated, queryClient, sessionAccessToken, sessionProfile, sessionUserId, setHomeFeedPayload]);
+  }, [api, contentLocale, feedIdentityKey, feedRequest, homeFeedQueryKey, hydrated, queryClient, sessionAccessToken, sessionProfile, sessionUserId, setHomeFeedPayload]);
 
   const loadMore = React.useCallback(async () => {
     if (!nextCursor || loading || loadingMoreRef.current) return;

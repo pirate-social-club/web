@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type * as React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { installDomGlobals } from "@/test/setup-dom";
 
@@ -584,5 +585,55 @@ describe("useHomeFeed", () => {
     expect(result.current.feedEntries.map((entry) => entry.post.post.id)).toEqual(["pst_1", "pst_2"]);
     expect(result.current.nextCursor).toBeNull();
     expect(result.current.loadMoreError).toBeNull();
+  });
+  test("re-renders a cached feed without a loading pass when the route is revisited", async () => {
+    __resetSessionStoreForTests();
+
+    const feedApi = api.feed as unknown as {
+      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
+      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
+    };
+    const profilesApi = api.profiles as unknown as {
+      getByUserId: (userId: string) => Promise<unknown>;
+    };
+
+    const feedResponse = {
+      items: [createFeedItem({ postId: "pst_1", authorUserId: "usr_1" })],
+      top_communities: [createTopCommunity()],
+    };
+    feedApi.home = async () => feedResponse;
+    feedApi.publicHome = async () => feedResponse;
+    profilesApi.getByUserId = async () => ({ user: "usr_1", display_name: "Test User" });
+
+    // One client across both mounts: the payload outliving the route is the
+    // whole mechanism under test.
+    const queryClient = new QueryClient();
+    function sharedWrapper({ children }: { children: React.ReactNode }) {
+      return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    }
+    const input = {
+      activeSort: "best" as const,
+      contentLocale: "en",
+      hydrated: true,
+      session: null,
+      topTimeRange: "day",
+    };
+
+    const first = renderHook(() => useHomeFeed(input), { wrapper: sharedWrapper });
+    await waitFor(() => expect(first.result.current.loading).toBe(false));
+    expect(first.result.current.feedEntries.length).toBe(1);
+    first.unmount();
+
+    const second = renderHook(() => useHomeFeed(input), { wrapper: sharedWrapper });
+
+    // No await: the point is that the revisit never passes through a loading
+    // state on its way to painting the cached entries.
+    expect(second.result.current.loading).toBe(false);
+    expect(second.result.current.feedEntries.map((entry) => entry.post.post.id)).toEqual(["pst_1"]);
+
+    // Settle the background refresh the revisit kicked off, so its state update
+    // lands inside the test rather than after it.
+    await act(async () => { await Promise.resolve(); });
+    second.unmount();
   });
 });

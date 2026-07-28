@@ -22,8 +22,10 @@ import {
   nextVideoPaginationCursor,
   panelFromHistoryState,
   postIdForVideoItem,
+  resolveHomeVideoMountPlan,
   resolveVideoHomeSurface,
   resolveVideoPublisherRelationship,
+  shouldHuntColdStartPages,
   takeUnseenVideoEntries,
   videoImpressionAnalyticsProperties,
   videoTranslationForFeedItem,
@@ -479,5 +481,31 @@ describe("commentsPanelCommentCount", () => {
 
   test("is zero while no comments panel is open", () => {
     expect(commentsPanelCommentCount(items, { kind: "none" }, { post_a: 2 })).toBe(0);
+  });
+});
+
+describe("resolveHomeVideoMountPlan", () => {
+  test("restores the cached feed instead of remounting into a spinner", () => {
+    expect(resolveHomeVideoMountPlan({ cachedEntryCount: 20 })).toBe("restore");
+  });
+
+  test("cold starts when nothing survives in the cache", () => {
+    expect(resolveHomeVideoMountPlan({ cachedEntryCount: 0 })).toBe("cold");
+  });
+});
+
+describe("shouldHuntColdStartPages", () => {
+  test("hunts when the first page repeats videos this session already saw", () => {
+    expect(shouldHuntColdStartPages({ alreadySeenCount: 3, serverCursor: "page-2" })).toBe(true);
+  });
+
+  test("stays quiet on a session's first landing", () => {
+    // Nothing has been served yet, so the whole page is new and there is
+    // nothing to hunt for — this is the busiest path.
+    expect(shouldHuntColdStartPages({ alreadySeenCount: 0, serverCursor: "page-2" })).toBe(false);
+  });
+
+  test("stays quiet when the corpus has no further pages", () => {
+    expect(shouldHuntColdStartPages({ alreadySeenCount: 5, serverCursor: null })).toBe(false);
   });
 });

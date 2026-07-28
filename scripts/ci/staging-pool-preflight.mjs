@@ -77,25 +77,21 @@ export function parseJsonc(text) {
   return JSON.parse(out);
 }
 
-// Collects DB_CMTY bindings from every d1_databases block in the config,
-// including per-environment overrides, so a binding hidden in `env.*` still counts.
-export function readConfigBindings(config) {
-  const found = [];
-  const visit = (node) => {
-    if (!node || typeof node !== "object") return;
-    if (Array.isArray(node.d1_databases)) {
-      for (const entry of node.d1_databases) {
-        if (entry && typeof entry.binding === "string" && bindingIndex(entry.binding) !== null) {
-          found.push({ binding: entry.binding, databaseId: entry.database_id, databaseName: entry.database_name });
-        }
-      }
-    }
-    for (const value of Object.values(node)) {
-      if (value && typeof value === "object") visit(value);
-    }
-  };
-  visit(config);
-  return found;
+// Reads bindings from ONE environment's d1_databases block, defaulting to the
+// top-level (unnamed) environment — which is what `wrangler deploy --env=""`
+// ships and therefore what staging pool maintenance operates on.
+//
+// Deliberately NOT a recursive walk. The same binding name legitimately appears
+// once per environment (DB_CMTY_0054 maps to …-0054-staging at the top level and
+// …-0054-prod under env.production), so collecting across environments both
+// invents duplicate-binding failures and would compare staging pool rows against
+// production database entries.
+export function readConfigBindings(config, envName = null) {
+  const scope = envName ? config?.env?.[envName] : config;
+  const entries = Array.isArray(scope?.d1_databases) ? scope.d1_databases : [];
+  return entries
+    .filter((entry) => entry && typeof entry.binding === "string" && bindingIndex(entry.binding) !== null)
+    .map((entry) => ({ binding: entry.binding, databaseId: entry.database_id, databaseName: entry.database_name }));
 }
 
 // `wrangler d1 execute --json` returns [{ results: [...] }]; be tolerant of the

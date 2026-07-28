@@ -89,6 +89,29 @@ describe("staging pool pre-flight", () => {
     expect(result.problems.some((problem) => problem.includes("Use 945"))).toBe(true);
   });
 
+  // A truncated `d1 list` (pagination) would hide orphans and make the overlap
+  // check pass vacuously, so a short inventory must fail rather than reassure.
+  test("fails closed when the D1 inventory is smaller than the pool table", () => {
+    const result = checkRefillSafety({
+      d1Indexes: Array.from({ length: 100 }, (_, i) => i + 1),
+      poolBindingNames: bindings(1, 944),
+      startIndex: 945,
+      count: 20,
+    });
+    expect(result.problems.some((problem) => problem.includes("incomplete inventory"))).toBe(true);
+    expect(result.problems.some((problem) => problem.includes("stand down"))).toBe(true);
+  });
+
+  test("an equal-sized inventory is not treated as truncated", () => {
+    const result = checkRefillSafety({
+      d1Indexes: Array.from({ length: 944 }, (_, i) => i + 1),
+      poolBindingNames: bindings(1, 944),
+      startIndex: 945,
+      count: 20,
+    });
+    expect(result.problems).toEqual([]);
+  });
+
   // Case 3: unexpected delta — config gained something this refill did not plan.
   test("fails closed on a config delta beyond the planned additions", () => {
     const pool = bindings(1, 944);

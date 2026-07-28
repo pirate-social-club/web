@@ -220,6 +220,38 @@ function parseArgs(argv) {
   return args;
 }
 
+// Renders the state a human needs to diagnose a discrepancy without having to
+// infer it from a pass/fail. Written to the step summary on every run, including
+// dry runs, because "the check passed" is not a description of the pool.
+export function formatReport({ mode, poolBindingNames, configBindingNames, expectedAdditions, d1Indexes, problems }) {
+  const poolSet = new Set(poolBindingNames);
+  const configSet = new Set(configBindingNames);
+  const missingFromConfig = poolBindingNames.filter((name) => !configSet.has(name));
+  const notInPool = configBindingNames.filter((name) => !poolSet.has(name));
+  const indexes = configBindingNames.map((name) => bindingIndex(name)).filter((index) => index !== null);
+  const maxIndex = indexes.length > 0 ? Math.max(...indexes) : 0;
+  const gaps = [];
+  for (let index = 1; index <= maxIndex; index += 1) {
+    if (!configSet.has(poolBindingName(index))) gaps.push(poolBindingName(index));
+  }
+  return [
+    `## Staging pool pre-flight (${mode})`,
+    "",
+    `| measure | value |`,
+    `| --- | --- |`,
+    `| pool rows (\`d1_pool\`) | ${poolBindingNames.length} |`,
+    `| config bindings (deployed env) | ${configBindingNames.length} |`,
+    `| pool databases seen (\`d1 list\`) | ${d1Indexes ? d1Indexes.length : "n/a"} |`,
+    `| highest config index | ${maxIndex} |`,
+    `| planned additions | ${expectedAdditions.length} (${expectedAdditions[0]}…${expectedAdditions[expectedAdditions.length - 1]}) |`,
+    `| pool rows absent from config | ${missingFromConfig.length}${missingFromConfig.length ? ` (${missingFromConfig.slice(0, 10).join(", ")})` : ""} |`,
+    `| config bindings with no pool row | ${notInPool.length}${notInPool.length ? ` (${notInPool.slice(0, 10).join(", ")})` : ""} |`,
+    `| gaps in config range | ${gaps.length}${gaps.length ? ` (${gaps.slice(0, 10).join(", ")})` : ""} |`,
+    "",
+    problems.length > 0 ? `### Blocking\n\n${problems.map((problem) => `- ${problem}`).join("\n")}` : "### No blocking findings",
+  ].join("\n");
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const args = parseArgs(argv);
   const mode = args.mode || "refill";
@@ -235,19 +267,34 @@ export async function main(argv = process.argv.slice(2)) {
   const expectedAdditions = planExpectedAdditions(args.start, args.count);
 
   const problems = [];
+  let d1Indexes = null;
   if (mode === "refill") {
-    const d1Indexes = readD1PoolIndexes(await readJsonFile(args["d1-list-json"]), envSuffix);
+    d1Indexes = readD1PoolIndexes(await readJsonFile(args["d1-list-json"]), envSuffix);
     const refill = checkRefillSafety({ d1Indexes, poolBindingNames, startIndex: args.start, count: args.count });
     problems.push(...refill.problems);
     // The config must already cover what is live before we add to it.
     problems.push(...checkConfigCoverage({ poolBindingNames, configBindingNames }).problems);
-    console.log(`pool bindings: ${poolBindingNames.length}, max pool index: ${refill.maxPoolIndex}, max D1 index: ${refill.maxD1Index}`);
   } else {
     problems.push(...checkConfigCoverage({ poolBindingNames, configBindingNames }).problems);
     problems.push(...checkAppendOnly({ poolBindingNames, configBindingNames, expectedAdditions }).problems);
-    console.log(`pool bindings: ${poolBindingNames.length}, config bindings: ${configBindingNames.length}`);
   }
-  console.log(`expected additions: ${expectedAdditions[0]}…${expectedAdditions[expectedAdditions.length - 1]} (${expectedAdditions.length})`);
+
+  const report = formatReport({ mode, poolBindingNames, configBindingNames, expectedAdditions, d1Indexes, problems });
+  console.log(report);
+  if (args["report-file"]) {
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(args["report-file"], `${report}\n`, "utf8");
+  }
+
+  // A dry run reports and stops. It must never influence whether a mutation
+  // happens, so its exit code describes the pool, not a go/no-go: findings are
+  // surfaced as warnings and the run still succeeds, because a dry run that
+  // "fails" would read as a broken workflow rather than a diagnosis.
+  if (args["dry-run"] === "true") {
+    for (const problem of problems) console.warn(`::warning::${problem}`);
+    console.log(`::notice::dry run: ${problems.length} finding(s); no mutation attempted.`);
+    return 0;
+  }
 
   if (problems.length > 0) {
     for (const problem of problems) console.error(`::error::${problem}`);

@@ -128,6 +128,20 @@ export function checkRefillSafety({ d1Indexes, poolBindingNames, startIndex, cou
   const maxD1Index = d1Indexes.reduce((max, index) => Math.max(max, index), -1);
   const orphaned = d1Indexes.filter((index) => index > maxPoolIndex);
 
+  // Every registered binding has a 1:1 database by construction, so the inventory
+  // can never legitimately be smaller than the pool table. If it is, `d1 list` was
+  // truncated (pagination) or databases were deleted — and a short list makes the
+  // orphan check below silently under-report, which is the exact failure this
+  // pre-flight exists to prevent. Refuse to judge on evidence we cannot trust.
+  const poolDatabaseCount = d1Indexes.length;
+  if (poolDatabaseCount < poolBindingNames.length) {
+    problems.push(
+      `incomplete inventory: d1 list returned ${poolDatabaseCount} pool database(s) but the pool table has `
+      + `${poolBindingNames.length} binding(s). The listing is truncated or databases are missing; `
+      + `the overlap check cannot be trusted — stand down.`,
+    );
+  }
+
   if (orphaned.length > 0) {
     problems.push(
       `concurrent refill: ${orphaned.length} pool database(s) exist above the highest registered binding `

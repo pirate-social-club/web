@@ -46,12 +46,32 @@ describe("staging pool pre-flight", () => {
     expect(readConfigBindings(parsed).map((entry) => entry.binding)).toEqual(["DB_CMTY_0001", "DB_CMTY_0002"]);
   });
 
-  test("reads bindings nested under environment overrides", () => {
+  // The real shard config lists the SAME binding once per environment:
+  // DB_CMTY_0054 is …-0054-staging at the top level and …-0054-prod under
+  // env.production. Collecting across environments invents duplicate-binding
+  // failures and compares staging pool rows against production databases.
+  test("reads only the deployed environment, not every environment", () => {
     const parsed = parseJsonc(`{
-      "d1_databases": [{ "binding": "DB_CMTY_0001", "database_id": "a" }],
-      "env": { "staging": { "d1_databases": [{ "binding": "DB_CMTY_0002", "database_id": "b" }] } }
+      "d1_databases": [
+        { "binding": "DB_CMTY_0001", "database_name": "community-d1-pool-0001-staging", "database_id": "a" }
+      ],
+      "env": {
+        "production": {
+          "d1_databases": [
+            { "binding": "DB_CMTY_0001", "database_name": "community-d1-pool-0001-prod", "database_id": "b" }
+          ]
+        }
+      }
     }`);
-    expect(readConfigBindings(parsed).map((entry) => entry.binding).sort()).toEqual(["DB_CMTY_0001", "DB_CMTY_0002"]);
+    const staging = readConfigBindings(parsed);
+    expect(staging.map((entry) => entry.binding)).toEqual(["DB_CMTY_0001"]);
+    expect(staging[0]?.databaseName).toBe("community-d1-pool-0001-staging");
+    // And the duplicate check must not fire on that perfectly valid config.
+    expect(checkConfigCoverage({
+      poolBindingNames: ["DB_CMTY_0001"],
+      configBindingNames: staging.map((entry) => entry.binding),
+    }).problems).toEqual([]);
+    expect(readConfigBindings(parsed, "production")[0]?.databaseName).toBe("community-d1-pool-0001-prod");
   });
 
   // Case 1: stale config — a live pool binding is absent from the config.

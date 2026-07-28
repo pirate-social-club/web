@@ -2,13 +2,12 @@
 
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Comment as ApiComment, CommentContext, CommunityPreview as ApiCommunityPreview, CreateCommentRequest, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
+import type { Comment as ApiComment, CommentContext, CommunityPreview as ApiCommunityPreview, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
-import { ApiError, isApiNotFoundError } from "@/lib/api/client";
-import { buildAgentActionProof } from "@/lib/agents/browser-agent-action-proof";
+import { isApiNotFoundError } from "@/lib/api/client";
 import { findStoredOwnedAgentKey } from "@/lib/agents/agent-key-store";
 import { useSession } from "@/lib/api/session-store";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
@@ -17,12 +16,10 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { postKeys } from "@/lib/query/keys";
 import type { PublicThreadQueryData } from "@/lib/query/public-thread-cache";
 import { toast } from "@/components/primitives/sonner";
-import type { PostThreadReplyInput, PostThreadSubmitResult } from "@/components/compositions/posts/post-thread/post-thread.types";
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { applyPostVote, submitOptimisticPostVote, toPostVoteValue } from "@/app/authenticated-helpers/post-vote";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
-import { isMembershipRequiredWriteRejection } from "@/hooks/community-interaction-gate/membership-write-rejection";
 import { selectPostVoteGateData } from "@/hooks/use-community-interaction-gate.helpers";
 import { getErrorMessage } from "@/lib/error-utils";
 import {
@@ -40,14 +37,11 @@ import {
   updateThreadCommentNode,
   upsertThreadCommentNodes,
 } from "./thread-state";
-
-type AvailableSigningAgent = {
-  agentId: string;
-  displayName: string;
-  privateKeyPem: string;
-};
-
-type PostReadMode = "authenticated" | "public";
+import {
+  useCommentSubmission,
+  type AvailableSigningAgent,
+  type PostReadMode,
+} from "./comment-submission-state";
 
 type MaybeLegacyPostResponse = ApiPost & {
   post: ApiPost["post"] & {
@@ -302,10 +296,15 @@ export function usePost(
 
   const applyPublicThreadQueryData = React.useCallback((data: PublicThreadQueryData, sort: "best" | "new" | "top") => {
     const nextPost = normalizePostResponse(data.post);
+    // Merge only when this data refreshes the post already on screen (auth
+    // upgrade / session revalidation). On genuine navigation the current
+    // nodes belong to a different thread and must be replaced wholesale —
+    // merging would carry an unconfirmed local echo across posts.
+    const isSamePost = visiblePostIdRef.current === postId;
     visiblePostIdRef.current = postId;
     setPost(nextPost);
     setCommunity(data.community);
-    setCommentNodes(data.comments);
+    setCommentNodes((current) => isSamePost ? mergeThreadCommentNodes(current, data.comments) : data.comments);
     setAuthorProfilesByUserId((current) => ({ ...current, ...data.authorProfiles }));
     setAuthorProfile(
       nextPost.post.identity_mode === "public" && nextPost.post.author_user
@@ -351,58 +350,20 @@ export function usePost(
     ));
   }, [api, session]);
 
-  const refreshTopLevelComments = React.useCallback(async (communityId: string) => {
-    const nextThreadState = await loadTopLevelComments(communityId, readMode, commentSort);
-    setAuthorProfilesByUserId((current) => ({ ...current, ...nextThreadState.authorProfilesByUserId }));
-    setCommentNodes((current) => mergeThreadCommentNodes(current, nextThreadState.commentNodes));
-  }, [commentSort, loadTopLevelComments, readMode]);
-
-  const buildCommentRequestBody = React.useCallback(async (input: PostThreadReplyInput): Promise<CreateCommentRequest> => {
-    const body: CreateCommentRequest = { body: input.body };
-    if (input.identityMode === "anonymous" && input.anonymousScope) {
-      body.identity_mode = "anonymous";
-      body.anonymous_scope = input.anonymousScope;
-    }
-    if (input.attachment?.file) {
-      const uploaded = await api.communities.uploadMedia({
-        kind: "comment_image",
-        file: input.attachment.file,
-      });
-      body.media_refs = [{
-        storage_ref: uploaded.media_ref,
-        mime_type: uploaded.mime_type,
-        size_bytes: uploaded.size_bytes,
-      }];
-    }
-    return body;
-  }, [api.communities]);
-
-  const getCommentSubmitErrorMessage = React.useCallback((error: unknown) => {
-    if (error instanceof ApiError && error.code === "comment_media_rejected") {
-      return "This image cannot be posted.";
-    }
-    return getErrorMessage(error, "Could not post this reply.");
-  }, []);
-
-  const signAgentAuthoredCommentBody = React.useCallback(async (path: string, body: CreateCommentRequest) => {
-    if (!availableAgent) {
-      throw new Error("No local agent key is available for this reply.");
-    }
-
-    const proof = await buildAgentActionProof({
-      method: "POST",
-      url: path,
-      body,
-      privateKeyPem: availableAgent.privateKeyPem,
-    });
-
-    return {
-      ...body,
-      authorship_mode: "user_agent" as const,
-      agent_id: availableAgent.agentId,
-      agent_action_proof: proof,
-    };
-  }, [availableAgent]);
+  const { createTopLevelComment, createReply } = useCommentSubmission({
+    api,
+    post,
+    readMode,
+    commentSort,
+    locale,
+    session,
+    availableAgent,
+    loadTopLevelComments,
+    runGatedCommunityAction,
+    invalidateCommunityGate,
+    setCommentNodes,
+    setAuthorProfilesByUserId,
+  });
 
   const loadRepliesForComment = React.useCallback(async (commentId: string) => {
     const currentNode = findThreadCommentNode(commentNodes, commentId);
@@ -448,62 +409,6 @@ export function usePost(
     }
   }, [api, commentSort, readMode, commentNodes, locale, session]);
 
-  const createTopLevelComment = React.useCallback(async (input: PostThreadReplyInput): Promise<PostThreadSubmitResult> => {
-    if (!post) return "blocked";
-    const communityId = post.post.community;
-    const nextPostId = post.post.id;
-    try {
-      const result = await runGatedCommunityAction({
-        action: "reply_post",
-        communityId,
-        onAllowed: async (allowedContext) => {
-          const commentBody = await buildCommentRequestBody(input);
-          await api.communities.createComment(
-            communityId,
-            nextPostId,
-            input.authorMode === "agent"
-              ? await signAgentAuthoredCommentBody(
-                `/communities/${communityId}/posts/${nextPostId}/comments`,
-                commentBody,
-              )
-              : commentBody,
-            { altchaPayload: allowedContext?.altchaPayload },
-          );
-          await refreshTopLevelComments(communityId);
-        },
-        postId: nextPostId,
-        requireMembership: post.post.visibility === "members_only",
-      });
-      return result === "allowed" ? "submitted" : "blocked";
-    } catch (nextError) {
-      if (nextError instanceof ApiError && nextError.code === "gate_unsatisfied") {
-        invalidateCommunityGate(communityId);
-        await runGatedCommunityAction({
-          action: "reply_post",
-          communityId,
-          onAllowed: () => undefined,
-          postId: nextPostId,
-        });
-        return "blocked";
-      }
-      if (isMembershipRequiredWriteRejection(nextError)) {
-        const recoveryResult = await runGatedCommunityAction({
-          action: "reply_post",
-          communityId,
-          onAllowed: () => undefined,
-          postId: nextPostId,
-          requireMembership: true,
-        });
-        if (recoveryResult === "allowed") {
-          toast.error("Join this community to reply to this members-only thread.");
-        }
-        return "blocked";
-      }
-      toast.error(getCommentSubmitErrorMessage(nextError));
-      return "blocked";
-    }
-  }, [api, buildCommentRequestBody, getCommentSubmitErrorMessage, invalidateCommunityGate, post, refreshTopLevelComments, runGatedCommunityAction, signAgentAuthoredCommentBody]);
-
   const requestCommentAccess = React.useCallback(async (): Promise<void> => {
     if (!post) return;
     const communityId = post.post.community;
@@ -544,74 +449,6 @@ export function usePost(
       toast.error(getErrorMessage(nextError, "Could not check voting access."));
     }
   }, [api.communities, invalidateCommunityGate, locale, post, runGatedCommunityAction]);
-
-  const createReply = React.useCallback(async (commentId: string, input: PostThreadReplyInput): Promise<PostThreadSubmitResult> => {
-    if (!post) return "blocked";
-    const communityId = post.post.community;
-    try {
-      const result = await runGatedCommunityAction({
-        action: "reply_comment",
-        commentId,
-        communityId,
-        onAllowed: async (allowedContext) => {
-          const commentBody = await buildCommentRequestBody(input);
-          await api.comments.createReply(
-            commentId,
-            input.authorMode === "agent"
-              ? await signAgentAuthoredCommentBody(`/comments/${commentId}/replies`, commentBody)
-              : commentBody,
-            { altchaPayload: allowedContext?.altchaPayload },
-          );
-          const context = await api.comments.getContext(commentId, { limit: THREAD_COMMENT_PAGE_LIMIT, locale });
-          const nextProfiles = await loadProfilesByUserId(api, [
-            ...collectCommentAuthorUserIds([context.comment]),
-            ...collectCommentAuthorUserIds(context.replies),
-          ], session?.profile ? { [session.user.id]: session.profile } : {});
-
-          setAuthorProfilesByUserId((current) => ({ ...current, ...nextProfiles }));
-          setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => ({
-            ...node,
-            item: context.comment,
-            children: buildThreadCommentTreeFromItems(context.replies),
-            hasLoadedReplies: true,
-            loadingReplies: false,
-            nextRepliesCursor: context.next_replies_cursor,
-          })));
-        },
-        postId: post.post.id,
-        requireMembership: post.post.visibility === "members_only",
-      });
-      return result === "allowed" ? "submitted" : "blocked";
-    } catch (nextError) {
-      if (nextError instanceof ApiError && nextError.code === "gate_unsatisfied") {
-        invalidateCommunityGate(communityId);
-        await runGatedCommunityAction({
-          action: "reply_comment",
-          commentId,
-          communityId,
-          onAllowed: () => undefined,
-          postId: post.post.id,
-        });
-        return "blocked";
-      }
-      if (isMembershipRequiredWriteRejection(nextError)) {
-        const recoveryResult = await runGatedCommunityAction({
-          action: "reply_comment",
-          commentId,
-          communityId,
-          onAllowed: () => undefined,
-          postId: post.post.id,
-          requireMembership: true,
-        });
-        if (recoveryResult === "allowed") {
-          toast.error("Join this community to reply to this members-only thread.");
-        }
-        return "blocked";
-      }
-      toast.error(getCommentSubmitErrorMessage(nextError));
-      return "blocked";
-    }
-  }, [api, buildCommentRequestBody, getCommentSubmitErrorMessage, invalidateCommunityGate, locale, post, runGatedCommunityAction, session, signAgentAuthoredCommentBody]);
 
   const voteOnComment = React.useCallback(async (commentId: string, direction: "up" | "down") => {
     if (!post) return;
@@ -902,7 +739,7 @@ export function usePost(
             .then((commentAuthorProfilesByUserId) => {
               if (cancelled) return;
               setCommunity(publicThread.community);
-              setCommentNodes(nextCommentNodes);
+              setCommentNodes((current) => mergeThreadCommentNodes(current, nextCommentNodes));
               setAuthorProfilesByUserId((current) => ({ ...current, ...commentAuthorProfilesByUserId }));
               setThreadPartial(false);
               loadedCommentSortKeyRef.current = `${p.post.community}:${nextReadMode}:${commentSort}`;
@@ -914,7 +751,7 @@ export function usePost(
                   postId: p.post.id,
                 });
                 setCommunity(publicThread.community);
-                setCommentNodes(nextCommentNodes);
+                setCommentNodes((current) => mergeThreadCommentNodes(current, nextCommentNodes));
                 setThreadPartial(false);
                 loadedCommentSortKeyRef.current = `${p.post.community}:${nextReadMode}:${commentSort}`;
               }
@@ -934,7 +771,10 @@ export function usePost(
             if (cancelled) return;
             setCommunity(communityResult);
             setAvailableAgent(nextAvailableAgent);
-            setCommentNodes(commentTree.commentNodes);
+            // Merge, not replace: this request may have been in flight while
+            // the user submitted a comment — wholesale replacement would wipe
+            // the unconfirmed local echo.
+            setCommentNodes((current) => mergeThreadCommentNodes(current, commentTree.commentNodes));
             setAuthorProfilesByUserId((current) => ({ ...current, ...commentTree.authorProfilesByUserId }));
             setThreadPartial(false);
             loadedCommentSortKeyRef.current = `${p.post.community}:${nextReadMode}:${commentSort}`;
@@ -1003,7 +843,7 @@ export function usePost(
       .then((nextThreadState) => {
         if (cancelled) return;
         setAuthorProfilesByUserId((current) => ({ ...current, ...nextThreadState.authorProfilesByUserId }));
-        setCommentNodes(nextThreadState.commentNodes);
+        setCommentNodes((current) => mergeThreadCommentNodes(current, nextThreadState.commentNodes));
         setThreadPartial(false);
         loadedCommentSortKeyRef.current = sortKey;
       })

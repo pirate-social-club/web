@@ -149,6 +149,35 @@ function createReplyCommentItem(commentId: string, parentCommentId: string): Com
   } as CommentListItem;
 }
 
+function createApiComment(commentId: string, parentCommentId: string | null = null): Comment {
+  return {
+    id: commentId,
+    object: "comment",
+    community: "cmt_test",
+    thread_root_post: "pst_test",
+    parent_comment: parentCommentId,
+    author_user: "usr_test",
+    authorship_mode: "human_direct",
+    identity_mode: "public",
+    anonymous_scope: null,
+    anonymous_label: null,
+    body: "New comment",
+    media_refs: [],
+    status: "published",
+    depth: parentCommentId ? 1 : 0,
+    direct_reply_count: 0,
+    descendant_count: 0,
+    upvote_count: 0,
+    downvote_count: 0,
+    score: 0,
+    last_reply_at: null,
+    content_hash: "hash",
+    swarm_body_ref: null,
+    idempotency_key: null,
+    created: Date.parse("2026-04-24T00:00:00.000Z"),
+  } as unknown as Comment;
+}
+
 function createPreview(overrides: Partial<CommunityPreview> = {}): CommunityPreview {
   return {
     id: "cmt_test",
@@ -673,7 +702,7 @@ describe("usePost", () => {
       listComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null }>;
       getJoinEligibility: (communityId: string) => Promise<JoinEligibility>;
       uploadMedia: (input: { kind: string; file: File }) => Promise<{ media_ref: string; mime_type: string; size_bytes: number }>;
-      createComment: (communityId: string, postId: string, body: CreateCommentRequest) => Promise<void>;
+      createComment: (communityId: string, postId: string, body: CreateCommentRequest) => Promise<Comment>;
     };
     const posts = api.posts as unknown as {
       get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
@@ -696,6 +725,7 @@ describe("usePost", () => {
     };
     communities.createComment = async (_communityId, _postId, body) => {
       calls.createComment = body;
+      return createApiComment("cmt_new");
     };
     agents.list = async () => ({ items: [] });
 
@@ -718,6 +748,7 @@ describe("usePost", () => {
     expect(calls.uploadKind).toBe("comment_image");
     expect(calls.createComment).toEqual({
       body: "",
+      idempotency_key: expect.any(String),
       media_refs: [{
         storage_ref: "https://media.test/comment.gif",
         mime_type: "image/gif",
@@ -737,7 +768,7 @@ describe("usePost", () => {
       preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
       listComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null }>;
       getJoinEligibility: (communityId: string) => Promise<JoinEligibility>;
-      createComment: (communityId: string, postId: string, body: CreateCommentRequest) => Promise<void>;
+      createComment: (communityId: string, postId: string, body: CreateCommentRequest) => Promise<Comment>;
     };
     const posts = api.posts as unknown as {
       get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
@@ -755,6 +786,7 @@ describe("usePost", () => {
     communities.getJoinEligibility = async () => createJoinEligibility();
     communities.createComment = async (_communityId, _postId, body) => {
       calls.createComment = body;
+      return createApiComment("cmt_new");
     };
     agents.list = async () => ({ items: [] });
 
@@ -774,6 +806,7 @@ describe("usePost", () => {
     expect(calls.createComment).toEqual({
       anonymous_scope: "thread_stable",
       body: "Posting quietly",
+      idempotency_key: expect.any(String),
       identity_mode: "anonymous",
     });
   });
@@ -794,7 +827,7 @@ describe("usePost", () => {
       uploadMedia: (input: { kind: string; file: File }) => Promise<{ media_ref: string; mime_type: string; size_bytes: number }>;
     };
     const comments = api.comments as unknown as {
-      createReply: (commentId: string, body: CreateCommentRequest) => Promise<void>;
+      createReply: (commentId: string, body: CreateCommentRequest) => Promise<Comment>;
       getContext: (commentId: string, opts?: { limit?: string | null; locale?: string | null }) => Promise<{ comment: CommentListItem; replies: CommentListItem[]; next_replies_cursor: null }>;
     };
     const posts = api.posts as unknown as {
@@ -818,6 +851,7 @@ describe("usePost", () => {
     };
     comments.createReply = async (_commentId, body) => {
       calls.createReply = body;
+      return createApiComment("cmt_reply", "cmt_parent");
     };
     comments.getContext = async () => ({
       comment: parentComment,
@@ -845,6 +879,7 @@ describe("usePost", () => {
     expect(calls.uploadKind).toBe("comment_image");
     expect(calls.createReply).toEqual({
       body: "",
+      idempotency_key: expect.any(String),
       media_refs: [{
         storage_ref: "https://media.test/reply.gif",
         mime_type: "image/gif",
@@ -926,5 +961,445 @@ describe("usePost", () => {
         value: originalConfirm,
       });
     }
+  });
+
+  test("shows a submitted top-level comment immediately even when the refresh is stale", async () => {
+    __resetSessionStoreForTests();
+    installLiveSession();
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+      getJoinEligibility: (communityId: string) => Promise<JoinEligibility>;
+      createComment: (communityId: string, postId: string, body: CreateCommentRequest) => Promise<Comment>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => createPostResponse();
+    communities.preview = async () => createPreview();
+    // The list endpoint stays stale — it never returns the new comment.
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    communities.getJoinEligibility = async () => createJoinEligibility();
+    communities.createComment = async () => createApiComment("cmt_new");
+    agents.list = async () => ({ items: [] });
+
+    const { result } = renderHook(() => usePost("pst_test", "en", true, labels), { wrapper });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    let submitResult: string | undefined;
+    await act(async () => {
+      submitResult = await result.current.createTopLevelComment({ authorMode: "human", body: "Ahoy" });
+    });
+
+    expect(submitResult).toBe("submitted");
+    expect(result.current.comments.map((comment) => comment.commentId)).toContain("cmt_new");
+  });
+
+  test("reports submitted when the post-submit refresh fails after a committed top-level comment", async () => {
+    __resetSessionStoreForTests();
+    installLiveSession();
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+      getJoinEligibility: (communityId: string) => Promise<JoinEligibility>;
+      createComment: (communityId: string, postId: string, body: CreateCommentRequest) => Promise<Comment>;
+    };
+    const publicComments = api.publicComments as unknown as {
+      listPostComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null; thread_snapshot: null }>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => createPostResponse();
+    communities.preview = async () => createPreview();
+    communities.listComments = async () => {
+      throw new ApiError("not_found", "Community not found", 404);
+    };
+    publicComments.listPostComments = async () => ({ items: [], next_cursor: null, thread_snapshot: null });
+    communities.getJoinEligibility = async () => createJoinEligibility();
+    communities.createComment = async () => createApiComment("cmt_new");
+    agents.list = async () => ({ items: [] });
+
+    const { result } = renderHook(() => usePost("pst_test", "en", true, labels), { wrapper });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    let submitResult: string | undefined;
+    await act(async () => {
+      submitResult = await result.current.createTopLevelComment({ authorMode: "human", body: "Ahoy" });
+    });
+
+    expect(submitResult).toBe("submitted");
+    expect(result.current.comments.map((comment) => comment.commentId)).toContain("cmt_new");
+  });
+
+  test("reports submitted and keeps the reply visible when the member-only context read rejects after a committed reply", async () => {
+    __resetSessionStoreForTests();
+    installLiveSession();
+    const parentComment = createCommentItem("cmt_parent");
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+      getJoinEligibility: (communityId: string) => Promise<JoinEligibility>;
+    };
+    const comments = api.comments as unknown as {
+      createReply: (commentId: string, body: CreateCommentRequest) => Promise<Comment>;
+      getContext: (commentId: string, opts?: { limit?: string | null; locale?: string | null }) => Promise<unknown>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => createPostResponse();
+    communities.preview = async () => createPreview();
+    communities.listComments = async () => ({ items: [parentComment], next_cursor: null });
+    communities.getJoinEligibility = async () => createJoinEligibility();
+    comments.createReply = async () => createApiComment("cmt_reply", "cmt_parent");
+    // Non-members get the deliberately obfuscated 404 here even though the
+    // reply committed — the submit must still succeed.
+    comments.getContext = async () => {
+      throw new ApiError("not_found", "Community not found", 404);
+    };
+    agents.list = async () => ({ items: [] });
+
+    const { result } = renderHook(() => usePost("pst_test", "en", true, labels), { wrapper });
+
+    await waitFor(() => expect(result.current.comments).toHaveLength(1));
+    let submitResult: string | void | undefined;
+    await act(async () => {
+      submitResult = await result.current.comments[0]?.onReplySubmit?.({ authorMode: "human", body: "Reply ahoy" });
+    });
+
+    expect(submitResult).toBe("submitted");
+    expect(result.current.comments[0]?.children?.map((child) => child.commentId)).toContain("cmt_reply");
+  });
+
+  test("retains the comment idempotency key across retries of an unchanged draft", async () => {
+    __resetSessionStoreForTests();
+    installLiveSession();
+    const sentKeys: Array<string | null | undefined> = [];
+    let attempts = 0;
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+      getJoinEligibility: (communityId: string) => Promise<JoinEligibility>;
+      createComment: (communityId: string, postId: string, body: CreateCommentRequest) => Promise<Comment>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => createPostResponse();
+    communities.preview = async () => createPreview();
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    communities.getJoinEligibility = async () => createJoinEligibility();
+    communities.createComment = async (_communityId, _postId, body) => {
+      attempts += 1;
+      sentKeys.push(body.idempotency_key);
+      if (attempts === 1) {
+        throw new Error("network down");
+      }
+      return createApiComment("cmt_new");
+    };
+    agents.list = async () => ({ items: [] });
+
+    const { result } = renderHook(() => usePost("pst_test", "en", true, labels), { wrapper });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    const input = { authorMode: "human", body: "Ahoy" } as const;
+    let first: string | undefined;
+    await act(async () => {
+      first = await result.current.createTopLevelComment(input);
+    });
+    let second: string | undefined;
+    await act(async () => {
+      second = await result.current.createTopLevelComment(input);
+    });
+    let third: string | undefined;
+    await act(async () => {
+      third = await result.current.createTopLevelComment(input);
+    });
+
+    expect(first).toBe("blocked");
+    expect(second).toBe("submitted");
+    expect(third).toBe("submitted");
+    expect(sentKeys).toHaveLength(3);
+    expect(sentKeys[0]).toBeTruthy();
+    // Unchanged draft retry → same key (server dedupes); after a success the
+    // key rotates so a deliberate re-post creates a new comment.
+    expect(sentKeys[1]).toBe(sentKeys[0]);
+    expect(sentKeys[2]).not.toBe(sentKeys[0]);
+  });
+
+  test("keeps a submitted comment visible when the in-flight initial comment load resolves stale", async () => {
+    __resetSessionStoreForTests();
+    installLiveSession();
+
+    type CommentsPage = { items: CommentListItem[]; next_cursor: null };
+    let resolveInitialList: ((page: CommentsPage) => void) | null = null;
+    let listCalls = 0;
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<CommentsPage>;
+      getJoinEligibility: (communityId: string) => Promise<JoinEligibility>;
+      createComment: (communityId: string, postId: string, body: CreateCommentRequest) => Promise<Comment>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => createPostResponse();
+    communities.preview = async () => createPreview();
+    communities.listComments = async () => {
+      listCalls += 1;
+      if (listCalls === 1) {
+        // The initial comment-tree request stays in flight past the submit.
+        return await new Promise<CommentsPage>((resolve) => {
+          resolveInitialList = resolve;
+        });
+      }
+      return { items: [], next_cursor: null };
+    };
+    communities.getJoinEligibility = async () => createJoinEligibility();
+    communities.createComment = async () => createApiComment("cmt_new");
+    agents.list = async () => ({ items: [] });
+
+    const { result } = renderHook(() => usePost("pst_test", "en", true, labels), { wrapper });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(listCalls).toBe(1));
+
+    let submitResult: string | undefined;
+    await act(async () => {
+      submitResult = await result.current.createTopLevelComment({ authorMode: "human", body: "Ahoy" });
+    });
+    expect(submitResult).toBe("submitted");
+    expect(result.current.comments.map((comment) => comment.commentId)).toContain("cmt_new");
+
+    // The stale initial request finally resolves — it must not wipe the echo.
+    await act(async () => {
+      resolveInitialList?.({ items: [], next_cursor: null });
+    });
+    expect(result.current.comments.map((comment) => comment.commentId)).toContain("cmt_new");
+  });
+
+  test("rotates the comment idempotency key when the authorship mode changes", async () => {
+    __resetSessionStoreForTests();
+    installLiveSession();
+    const sentKeys: Array<string | null | undefined> = [];
+    let attempts = 0;
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+      getJoinEligibility: (communityId: string) => Promise<JoinEligibility>;
+      createComment: (communityId: string, postId: string, body: CreateCommentRequest) => Promise<Comment>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => createPostResponse();
+    communities.preview = async () => createPreview();
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    communities.getJoinEligibility = async () => createJoinEligibility();
+    communities.createComment = async (_communityId, _postId, body) => {
+      attempts += 1;
+      sentKeys.push(body.idempotency_key);
+      if (attempts === 1) {
+        throw new Error("network down");
+      }
+      return createApiComment("cmt_new");
+    };
+    agents.list = async () => ({ items: [] });
+
+    const { result } = renderHook(() => usePost("pst_test", "en", true, labels), { wrapper });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    let first: string | undefined;
+    await act(async () => {
+      first = await result.current.createTopLevelComment({ authorMode: "human", body: "Ahoy" });
+    });
+    // The agent attempt fails signing (no local agent key) before any POST,
+    // but its draft signature must not reuse the human attempt's key.
+    let agentAttempt: string | undefined;
+    await act(async () => {
+      agentAttempt = await result.current.createTopLevelComment({ authorMode: "agent", body: "Ahoy" });
+    });
+    let second: string | undefined;
+    await act(async () => {
+      second = await result.current.createTopLevelComment({ authorMode: "human", body: "Ahoy" });
+    });
+
+    expect(first).toBe("blocked");
+    expect(agentAttempt).toBe("blocked");
+    expect(second).toBe("submitted");
+    expect(sentKeys).toHaveLength(2);
+    expect(sentKeys[0]).toBeTruthy();
+    expect(sentKeys[1]).not.toBe(sentKeys[0]);
+  });
+
+  test("rotates the comment idempotency key when only the attachment changes", async () => {
+    __resetSessionStoreForTests();
+    installLiveSession();
+    const sentKeys: Array<string | null | undefined> = [];
+    let attempts = 0;
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+      getJoinEligibility: (communityId: string) => Promise<JoinEligibility>;
+      uploadMedia: (input: { kind: string; file: File }) => Promise<{ media_ref: string; mime_type: string; size_bytes: number }>;
+      createComment: (communityId: string, postId: string, body: CreateCommentRequest) => Promise<Comment>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => createPostResponse();
+    communities.preview = async () => createPreview();
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    communities.getJoinEligibility = async () => createJoinEligibility();
+    communities.uploadMedia = async (input) => ({
+      media_ref: "https://media.test/comment.gif",
+      mime_type: input.file.type,
+      size_bytes: input.file.size,
+    });
+    communities.createComment = async (_communityId, _postId, body) => {
+      attempts += 1;
+      sentKeys.push(body.idempotency_key);
+      if (attempts === 1) {
+        throw new Error("network down");
+      }
+      return createApiComment("cmt_new");
+    };
+    agents.list = async () => ({ items: [] });
+
+    const makeInput = (lastModified: number) => ({
+      attachment: {
+        file: new File(["gif"], "comment.gif", { type: "image/gif", lastModified }),
+        label: "comment.gif",
+        mimeType: "image/gif",
+        previewUrl: "blob:comment",
+      },
+      authorMode: "human",
+      body: "",
+    }) as const;
+
+    const { result } = renderHook(() => usePost("pst_test", "en", true, labels), { wrapper });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    let first: string | undefined;
+    await act(async () => {
+      first = await result.current.createTopLevelComment(makeInput(100));
+    });
+    // Same name/size/type, different file — must not reuse the failed key.
+    let second: string | undefined;
+    await act(async () => {
+      second = await result.current.createTopLevelComment(makeInput(200));
+    });
+
+    expect(first).toBe("blocked");
+    expect(second).toBe("submitted");
+    expect(sentKeys).toHaveLength(2);
+    expect(sentKeys[0]).toBeTruthy();
+    expect(sentKeys[1]).not.toBe(sentKeys[0]);
+  });
+
+  test("does not carry an unconfirmed echo across navigation to a cached thread", async () => {
+    __resetSessionStoreForTests();
+    installLiveSession();
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+
+    const postBResponse: LocalizedPostResponse = {
+      ...createPostResponse(),
+      post: {
+        ...createPostResponse().post,
+        id: "pst_b",
+        post: "pst_b",
+      },
+    };
+
+    // Seed post B's public thread in the cache, as a feed visit would.
+    queryClient.setQueryData<PublicThreadQueryData>(
+      postKeys.publicThread({ postId: "pst_b", locale: "en", sort: "best" }),
+      {
+        post: postBResponse,
+        community: createPreview(),
+        comments: [],
+        authorProfiles: {},
+        partial: false,
+        source: "thread_api",
+      },
+    );
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+      getJoinEligibility: (communityId: string) => Promise<JoinEligibility>;
+      createComment: (communityId: string, postId: string, body: CreateCommentRequest) => Promise<Comment>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async (postId) => postId === "pst_b" ? postBResponse : createPostResponse();
+    communities.preview = async () => createPreview();
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    communities.getJoinEligibility = async () => createJoinEligibility();
+    communities.createComment = async () => createApiComment("cmt_new");
+    agents.list = async () => ({ items: [] });
+
+    const { result, rerender } = renderHook(
+      ({ postId }: { postId: string }) => usePost(postId, "en", true, labels),
+      { wrapper: wrapperWithClient(queryClient), initialProps: { postId: "pst_test" } },
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => {
+      await result.current.createTopLevelComment({ authorMode: "human", body: "Ahoy" });
+    });
+    expect(result.current.comments.map((comment) => comment.commentId)).toContain("cmt_new");
+
+    // Navigate to post B before post A's echo was confirmed by the server.
+    rerender({ postId: "pst_b" });
+
+    await waitFor(() => expect(result.current.post?.post.id).toBe("pst_b"));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.comments.map((comment) => comment.commentId)).not.toContain("cmt_new");
   });
 });

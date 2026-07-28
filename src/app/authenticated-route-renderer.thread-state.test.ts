@@ -8,6 +8,7 @@ import {
   mergeThreadCommentNodes,
   type ThreadCommentNode,
 } from "@/app/authenticated-route-renderer";
+import { upsertThreadCommentNodes } from "@/app/authenticated-state/thread-state";
 
 function createCommentListItem(input: {
   anonymousLabel: string;
@@ -286,6 +287,144 @@ describe("thread comment state helpers", () => {
     const tree = await loadThreadCommentTree(api, "cmt_browser", "pst_browser", "en", true, "best");
 
     expect(tree.map((node) => node.item.comment.id)).toEqual(["cmt_root", "cmt_root_2"]);
+  });
+
+  test("mergeThreadCommentNodes keeps unconfirmed local echoes and still drops deleted server nodes", () => {
+    const echo = {
+      ...createThreadCommentNode(createCommentListItem({
+        anonymousLabel: "me",
+        body: "Just posted",
+        commentId: "cmt_echo",
+        descendantCount: 0,
+        depth: 0,
+        directReplyCount: 0,
+        score: 0,
+      })),
+      isLocalEcho: true,
+    };
+    const staleServerRoot = createCommentListItem({
+      anonymousLabel: "deckhand",
+      body: "Old root",
+      commentId: "cmt_root",
+      descendantCount: 0,
+      depth: 0,
+      directReplyCount: 0,
+      score: 2,
+    });
+    const deletedServerRoot = createCommentListItem({
+      anonymousLabel: "lookout",
+      body: "Removed elsewhere",
+      commentId: "cmt_root_deleted",
+      descendantCount: 0,
+      depth: 0,
+      directReplyCount: 0,
+      score: 1,
+    });
+
+    // The refetch predates the echo (stale/cached page) and no longer
+    // contains the root deleted elsewhere.
+    const merged = mergeThreadCommentNodes(
+      [echo, createThreadCommentNode(staleServerRoot), createThreadCommentNode(deletedServerRoot)],
+      [createThreadCommentNode(staleServerRoot)],
+    );
+
+    expect(merged.map((node) => node.item.comment.id)).toEqual(["cmt_echo", "cmt_root"]);
+    expect(merged[0]?.isLocalEcho).toBe(true);
+  });
+
+  test("mergeThreadCommentNodes clears the echo flag once the server returns the comment", () => {
+    const echo = {
+      ...createThreadCommentNode(createCommentListItem({
+        anonymousLabel: "me",
+        body: "Just posted",
+        commentId: "cmt_echo",
+        descendantCount: 0,
+        depth: 0,
+        directReplyCount: 0,
+        score: 0,
+      })),
+      isLocalEcho: true,
+    };
+    const serverVersion = createThreadCommentNode(createCommentListItem({
+      anonymousLabel: "me",
+      body: "Just posted",
+      commentId: "cmt_echo",
+      descendantCount: 0,
+      depth: 0,
+      directReplyCount: 0,
+      score: 1,
+    }));
+
+    const merged = mergeThreadCommentNodes([echo], [serverVersion]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.item.comment.score).toBe(1);
+    expect(merged[0]?.isLocalEcho).toBeUndefined();
+  });
+
+  test("loadThreadCommentTree stops paginating when the server repeats a cursor", async () => {
+    const root = createCommentListItem({
+      anonymousLabel: "deckhand",
+      body: "Root comment",
+      commentId: "cmt_root",
+      descendantCount: 0,
+      depth: 0,
+      directReplyCount: 0,
+      score: 2,
+    });
+    let pages = 0;
+    const api = {
+      communities: {
+        listComments: async () => {
+          pages += 1;
+          return { items: [root], next_cursor: "page-2" };
+        },
+      },
+      comments: { listReplies: async () => ({ items: [], next_cursor: null }) },
+    } as unknown as Parameters<typeof loadThreadCommentTree>[0];
+
+    const tree = await loadThreadCommentTree(api, "cmt_browser", "pst_browser", "en", true, "best");
+
+    expect(pages).toBe(2);
+    expect(tree.map((node) => node.item.comment.id)).toEqual(["cmt_root"]);
+  });
+
+  test("upsertThreadCommentNodes clears the echo flag on server confirmation and keeps it otherwise", () => {
+    const buildEcho = () => ({
+      ...createThreadCommentNode(createCommentListItem({
+        anonymousLabel: "me",
+        body: "Just posted",
+        commentId: "cmt_echo",
+        descendantCount: 0,
+        depth: 1,
+        directReplyCount: 0,
+        parentCommentId: "cmt_root",
+        score: 0,
+      })),
+      isLocalEcho: true,
+    });
+    const serverVersion = createThreadCommentNode(createCommentListItem({
+      anonymousLabel: "me",
+      body: "Just posted",
+      commentId: "cmt_echo",
+      descendantCount: 0,
+      depth: 1,
+      directReplyCount: 0,
+      parentCommentId: "cmt_root",
+      score: 1,
+    }));
+
+    // Server returns the reply: the flag clears so a later absence is
+    // treated as deletion again.
+    const confirmed = upsertThreadCommentNodes([buildEcho()], [serverVersion]);
+    expect(confirmed).toHaveLength(1);
+    expect(confirmed[0]?.item.comment.score).toBe(1);
+    expect(confirmed[0]?.isLocalEcho).toBeUndefined();
+
+    // Server has not returned the reply yet: the echo and its flag survive.
+    const pending = upsertThreadCommentNodes([buildEcho()], []);
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.isLocalEcho).toBe(true);
   });
 });
 import "@/test/setup-runtime";

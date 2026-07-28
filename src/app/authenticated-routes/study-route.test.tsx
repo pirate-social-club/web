@@ -90,6 +90,30 @@ function readyStudyPayload(overrides: Partial<SongStudyPayload> = {}): SongStudy
   };
 }
 
+function choiceStudyPayload(overrides: { question: string }): SongStudyPayload {
+  return readyStudyPayload({
+    exercise_count: 1,
+    exercises: [
+      {
+        id: "ex_choice",
+        line_id: "line_1",
+        line_index: 0,
+        first_outcome: null,
+        max_attempts: 3,
+        mastered: false,
+        presentation_count: 0,
+        options: [
+          { id: "option_wrong", text: "Good night" },
+          { id: "option_correct", text: "Hello world" },
+        ],
+        prompt_text: "Hola mundo",
+        question: overrides.question,
+        type: "translation_choice",
+      },
+    ],
+  });
+}
+
 const calls: string[] = [];
 const submittedStudyAttempts: SongStudyAttemptRequest[] = [];
 let sessionValue: { accessToken: string } | null = { accessToken: "token" };
@@ -103,6 +127,7 @@ let rewardCampaignResult: ApiPublicRewardOffer | null = null;
 let rewardSummaryResult: ApiRewardsSummaryResponse | null = null;
 let privyConnectCalls = 0;
 let submitPostStudyAttemptError: unknown = null;
+let transcribeStudyAudioError: unknown = null;
 let submitPostStudyAttemptResult: SongStudyAttemptResult = {
   attempts_remaining: 0,
   correct_option_id: "option_correct",
@@ -131,7 +156,11 @@ fakeApi.communities.getPostStudy = async () => {
   if (studyError) throw studyError;
   return studyResult;
 };
-fakeApi.communities.transcribePostStudyAudio = async () => ({ text: "Hola mundo" });
+fakeApi.communities.transcribePostStudyAudio = async () => {
+  calls.push("communities.transcribePostStudyAudio");
+  if (transcribeStudyAudioError) throw transcribeStudyAudioError;
+  return { text: "Hola mundo" };
+};
 fakeApi.rewards.getActiveCampaignForSong = async () => {
   if (!rewardCampaignResult) throw new ApiError("not_found", "Active reward campaign not found", 404);
   return rewardCampaignResult;
@@ -210,6 +239,7 @@ beforeEach(() => {
   rewardSummaryResult = null;
   privyConnectCalls = 0;
   submitPostStudyAttemptError = null;
+  transcribeStudyAudioError = null;
   submitPostStudyAttemptResult = {
     attempts_remaining: 0,
     correct_option_id: "option_correct",
@@ -222,6 +252,82 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
 });
+
+function studyLoadCount(): number {
+  return calls.filter((entry) => entry === "communities.getPostStudy").length;
+}
+
+// Serves a different payload per load so a reload is observable as the card the
+// learner actually ends up on, not just as a call count. The last payload repeats
+// if the route loads more times than expected.
+function queueStudyPayloads(payloads: SongStudyPayload[]): () => void {
+  const original = fakeApi.communities.getPostStudy;
+  let loads = 0;
+  fakeApi.communities.getPostStudy = async () => {
+    calls.push("communities.getPostStudy");
+    const payload = payloads[Math.min(loads, payloads.length - 1)]!;
+    loads += 1;
+    return payload;
+  };
+  return () => {
+    fakeApi.communities.getPostStudy = original;
+  };
+}
+
+function installFakeMediaRecorder(): () => void {
+  const originalMediaRecorder = globalThis.MediaRecorder;
+  const originalMediaDevices = navigator.mediaDevices;
+
+  class FakeMediaRecorder {
+    static isTypeSupported() {
+      return true;
+    }
+
+    mimeType = "audio/webm";
+    ondataavailable: ((event: { data: Blob }) => void) | null = null;
+    onerror: (() => void) | null = null;
+    onstop: (() => void) | null = null;
+    state: RecordingState = "recording";
+
+    constructor(_stream: MediaStream, _options?: MediaRecorderOptions) {}
+    start() {}
+    stop() {
+      this.state = "inactive";
+      this.ondataavailable?.({ data: new Blob(["audio"], { type: this.mimeType }) });
+      this.onstop?.();
+    }
+  }
+
+  Object.defineProperty(globalThis, "MediaRecorder", {
+    configurable: true,
+    value: FakeMediaRecorder,
+  });
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: {
+      getUserMedia: async () => ({
+        getTracks: () => [{ stop: () => undefined }],
+      }),
+    },
+  });
+
+  return () => {
+    Object.defineProperty(globalThis, "MediaRecorder", {
+      configurable: true,
+      value: originalMediaRecorder,
+    });
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: originalMediaDevices,
+    });
+  };
+}
+
+async function recordSayItBack(view: ReturnType<typeof render>): Promise<void> {
+  fireEvent.click(view.getByText("Record").closest("button")!);
+  await waitFor(() => expect(view.getByText("Stop")).toBeTruthy());
+  fireEvent.click(view.getByText("Stop").closest("button")!);
+}
 
 describe("StudyRoutePage", () => {
   test("requires authentication before loading study data", async () => {
@@ -611,66 +717,112 @@ describe("StudyRoutePage", () => {
     expect(view.queryByText("Could not submit this study attempt.")).toBeNull();
   });
 
-  test("keeps the say-it-back exercise visible when attempt recording fails", async () => {
-    submitPostStudyAttemptError = new ApiError("bad_request", "Study exercise presentation limit reached", 400);
-    const originalMediaRecorder = globalThis.MediaRecorder;
-    const originalMediaDevices = navigator.mediaDevices;
-    const stopTrack = () => undefined;
-
-    class FakeMediaRecorder {
-      static isTypeSupported() {
-        return true;
-      }
-
-      mimeType = "audio/webm";
-      ondataavailable: ((event: { data: Blob }) => void) | null = null;
-      onerror: (() => void) | null = null;
-      onstop: (() => void) | null = null;
-      state: RecordingState = "recording";
-
-      constructor(_stream: MediaStream, _options?: MediaRecorderOptions) {}
-      start() {}
-      stop() {
-        this.state = "inactive";
-        this.ondataavailable?.({ data: new Blob(["audio"], { type: this.mimeType }) });
-        this.onstop?.();
-      }
-    }
-
-    Object.defineProperty(globalThis, "MediaRecorder", {
-      configurable: true,
-      value: FakeMediaRecorder,
-    });
-    Object.defineProperty(navigator, "mediaDevices", {
-      configurable: true,
-      value: {
-        getUserMedia: async () => ({
-          getTracks: () => [{ stop: stopTrack }],
-        }),
-      },
-    });
+  // A transient failure has to leave the learner on the card with a retry, because
+  // re-sending the same attempt is exactly the right move. Contrast with the stale
+  // rejections below, where re-sending can only fail identically.
+  test("keeps the say-it-back exercise visible when the attempt fails transiently", async () => {
+    submitPostStudyAttemptError = new ApiError("server_error", "Study attempt storage is unavailable", 503);
+    const restoreRecorder = installFakeMediaRecorder();
 
     try {
       const view = render(<StudyRoutePage postId="pst_song" />);
 
       await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
-      fireEvent.click(view.getByText("Record").closest("button")!);
-      await waitFor(() => expect(view.getByText("Stop")).toBeTruthy());
-      fireEvent.click(view.getByText("Stop").closest("button")!);
+      await recordSayItBack(view);
 
-      await waitFor(() => expect(view.getByText("Study exercise presentation limit reached")).toBeTruthy());
+      await waitFor(() => expect(view.getByText(/Study attempt storage is unavailable/)).toBeTruthy());
       expect(view.getAllByText("Say it back").length).toBeGreaterThan(0);
       expect(view.getByText("Record")).toBeTruthy();
       expect(view.queryByText("Open post")).toBeNull();
+      expect(studyLoadCount()).toBe(1);
     } finally {
-      Object.defineProperty(globalThis, "MediaRecorder", {
-        configurable: true,
-        value: originalMediaRecorder,
-      });
-      Object.defineProperty(navigator, "mediaDevices", {
-        configurable: true,
-        value: originalMediaDevices,
-      });
+      restoreRecorder();
+    }
+  });
+
+  test("reloads the session when a say-it-back attempt is rejected as stale", async () => {
+    submitPostStudyAttemptError = new ApiError("bad_request", "Study exercise presentation limit reached", 400);
+    const restoreRecorder = installFakeMediaRecorder();
+    const restoreStudy = queueStudyPayloads([
+      readyStudyPayload({
+        exercises: [{
+          ...readyStudyPayload().exercises[0]!,
+          prompt_text: "Say the stale line",
+        }],
+      }),
+      readyStudyPayload({
+        exercises: [{
+          ...readyStudyPayload().exercises[0]!,
+          id: "ex_next",
+          prompt_text: "Say the next line",
+        }],
+      }),
+    ]);
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" />);
+
+      await waitFor(() => expect(view.getByText("Say the stale line")).toBeTruthy());
+      await recordSayItBack(view);
+
+      // Rebuilt from server truth rather than re-arming the rejected card, and no
+      // dead-end page.
+      await waitFor(() => expect(view.getByText("Say the next line")).toBeTruthy());
+      expect(studyLoadCount()).toBe(2);
+      expect(view.queryByText("Study exercise presentation limit reached")).toBeNull();
+      expect(view.queryByText("Open post")).toBeNull();
+    } finally {
+      restoreStudy();
+      restoreRecorder();
+    }
+  });
+
+  test("reloads the session when a multiple choice attempt is rejected as stale", async () => {
+    submitPostStudyAttemptError = new ApiError("bad_request", "attempt_number does not match the next session presentation", 400);
+    const restoreStudy = queueStudyPayloads([
+      choiceStudyPayload({ question: "Choose the translation" }),
+      choiceStudyPayload({ question: "Choose the next translation" }),
+    ]);
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" />);
+
+      await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
+      fireEvent.click(view.getByText("Hello world").closest("button")!);
+
+      await waitFor(() => expect(view.getByText("Choose the next translation")).toBeTruthy());
+      expect(studyLoadCount()).toBe(2);
+      expect(view.queryByText(/attempt_number does not match/)).toBeNull();
+    } finally {
+      restoreStudy();
+    }
+  });
+
+  // Insurance against a server that keeps handing back a card it then rejects: the
+  // learner must end up with a visible error, not a reload loop.
+  test("stops reloading and surfaces the error after repeated stale rejections", async () => {
+    submitPostStudyAttemptError = new ApiError("bad_request", "Study exercise presentation limit reached", 400);
+    const restoreStudy = queueStudyPayloads([
+      choiceStudyPayload({ question: "Choose the translation" }),
+      choiceStudyPayload({ question: "Choose the translation" }),
+      choiceStudyPayload({ question: "Choose the translation" }),
+    ]);
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" />);
+
+      await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
+      fireEvent.click(view.getByText("Hello world").closest("button")!);
+      await waitFor(() => expect(studyLoadCount()).toBe(2));
+
+      fireEvent.click(view.getByText("Hello world").closest("button")!);
+      await waitFor(() => expect(studyLoadCount()).toBe(3));
+
+      fireEvent.click(view.getByText("Hello world").closest("button")!);
+      await waitFor(() => expect(view.getByText("Study exercise presentation limit reached")).toBeTruthy());
+      expect(studyLoadCount()).toBe(3);
+    } finally {
+      restoreStudy();
     }
   });
 });

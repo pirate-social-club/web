@@ -17,6 +17,11 @@ on:
         required: true
         default: 20
         type: number
+      dry_run:
+        description: Report inventory and pre-flight findings, then stop without creating anything
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -72,7 +77,10 @@ jobs:
             --d1-list-json d1-list.json \
             --config wrangler.jsonc \
             --start '${{ inputs.start_index }}' \
-            --count '${{ inputs.count }}'
+            --count '${{ inputs.count }}' \
+            --report-file preflight-report.md \
+            --dry-run '${{ inputs.dry_run }}'
+          cat preflight-report.md >> "$GITHUB_STEP_SUMMARY"
 
       # Uploaded before the mutation as well as after, so a run that dies partway
       # still leaves behind the inventory needed to reconcile what was created.
@@ -83,10 +91,21 @@ jobs:
           path: |
             services/community-d1-shard/d1-list.json
             services/community-d1-shard/pool-bindings.json
+            services/community-d1-shard/preflight-report.md
           if-no-files-found: error
           retention-days: 14
 
+      # A dry run is the only credentialed read-only path into the pool. It stops
+      # here unconditionally: the guard is on the mutating step itself, not merely
+      # on the pre-flight's verdict, so a dry run cannot create anything even if
+      # the pre-flight is clean.
+      - name: Stop (dry run)
+        if: inputs.dry_run
+        run: |
+          echo "::notice::Dry run complete. Inventory and pre-flight report uploaded; nothing was created."
+
       - name: Create staging pool databases
+        if: ${{ !inputs.dry_run }}
         working-directory: services/community-d1-shard
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

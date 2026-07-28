@@ -4,6 +4,7 @@ import {
   checkAppendOnly,
   checkConfigCoverage,
   checkRefillSafety,
+  formatReport,
   parseJsonc,
   planExpectedAdditions,
   poolBindingName,
@@ -188,6 +189,40 @@ describe("staging pool pre-flight", () => {
     expect(readD1PoolIndexes([{ name: "community-d1-pool-0007-staging" }, { name: "unrelated-db" }])).toEqual([7]);
     // A production-suffixed database must never be counted as staging capacity.
     expect(readD1PoolIndexes([{ name: "community-d1-pool-0007-production" }], "staging")).toEqual([]);
+  });
+
+  // The report is the point of a dry run: it has to describe the pool, not just
+  // say pass/fail. This is the shape that would diagnose the 0143/0144 gap.
+  test("reports gaps and both directions of pool/config mismatch", () => {
+    const configBindingNames = bindings(1, 5).filter((name) => name !== "DB_CMTY_0003");
+    const report = formatReport({
+      mode: "refill",
+      poolBindingNames: bindings(1, 6),
+      configBindingNames,
+      expectedAdditions: planExpectedAdditions(7, 2),
+      d1Indexes: [1, 2, 3, 4, 5],
+      problems: ["stale config: 2 live pool binding(s) are absent"],
+    });
+    expect(report).toContain("| pool rows (`d1_pool`) | 6 |");
+    expect(report).toContain("| config bindings (deployed env) | 4 |");
+    // DB_CMTY_0003 is missing from config entirely; DB_CMTY_0006 has a row but no entry.
+    expect(report).toContain("DB_CMTY_0003");
+    expect(report).toContain("DB_CMTY_0006");
+    expect(report).toContain("gaps in config range");
+    expect(report).toContain("### Blocking");
+  });
+
+  test("reports no blocking findings on a clean pool", () => {
+    const report = formatReport({
+      mode: "refill",
+      poolBindingNames: bindings(1, 4),
+      configBindingNames: bindings(1, 4),
+      expectedAdditions: planExpectedAdditions(5, 2),
+      d1Indexes: [1, 2, 3, 4],
+      problems: [],
+    });
+    expect(report).toContain("### No blocking findings");
+    expect(report).toContain("| gaps in config range | 0 |");
   });
 
   test("duplicate bindings in config are rejected", () => {

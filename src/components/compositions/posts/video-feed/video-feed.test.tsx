@@ -8,6 +8,7 @@ import {
   compactCount,
   didVideoLongPressMove,
   isVideoLoopReplay,
+  shouldRenderVideoFeedSlide,
   videoImpressionEventId,
   videoProgressKeyAction,
   VideoFeed,
@@ -785,13 +786,15 @@ describe("VideoFeed", () => {
     const view = render(<VideoFeed items={manyFeedItems()} onSlideRender={onSlideRender} />);
     const feed = view.getByLabelText("Video feed") as HTMLDivElement;
     Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
-    const distantInitialRenders = renders.get("video-6");
+    // Slide 2 renders inside the initial ±2 window, then drops out of it entirely.
+    const distantInitialRenders = renders.get("video-2");
+    expect(distantInitialRenders).toBeGreaterThan(0);
 
-    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 500 });
     settleFeedScroll(feed);
 
-    expect(feed.dataset.activeIndex).toBe("1");
-    expect(renders.get("video-6")).toBe(distantInitialRenders);
+    expect(feed.dataset.activeIndex).toBe("5");
+    expect(renders.get("video-2")).toBe(distantInitialRenders);
   });
 
   test("reports bounded impression metrics when the active slide changes", () => {
@@ -897,8 +900,11 @@ describe("VideoFeed", () => {
   test("mounts media only near the active slide without removing snap shells", () => {
     const items = manyFeedItems();
     const view = render(<VideoFeed items={items} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
 
-    expect(view.container.querySelectorAll("article")).toHaveLength(items.length);
+    expect(feed.children).toHaveLength(items.length);
+    // Only the ±2 slide window renders shell content; every snap spacer stays mounted.
+    expect(view.container.querySelectorAll("article")).toHaveLength(3);
     expect(view.container.querySelectorAll("video")).toHaveLength(2);
     expect(Array.from(view.container.querySelectorAll("video"), (video) => video.getAttribute("preload")))
       .toEqual(["auto", "metadata"]);
@@ -912,7 +918,7 @@ describe("VideoFeed", () => {
     }));
     const view = render(<VideoFeed items={items} />);
 
-    expect(view.container.querySelectorAll("article")).toHaveLength(items.length);
+    expect(view.container.querySelectorAll("article")).toHaveLength(3);
     expect(view.container.querySelectorAll("video")).toHaveLength(2);
     expect(view.container.querySelectorAll("img[src='']")).toHaveLength(0);
   });
@@ -936,7 +942,9 @@ describe("VideoFeed", () => {
 
     settleFeedScroll(feed);
 
-    expect(view.container.querySelectorAll("article")).toHaveLength(items.length);
+    expect(feed.children).toHaveLength(items.length);
+    // The ±2 slide window covers shells 1-5; slide 0 stays rendered through the recent union.
+    expect(view.container.querySelectorAll("article")).toHaveLength(6);
     // The ±1 window covers slides 2-4; the initially viewed slide 0 stays mounted as keep-alive.
     expect(view.container.querySelectorAll("video")).toHaveLength(4);
     expect(Array.from(view.container.querySelectorAll("video"), (video) => video.getAttribute("src")))
@@ -976,6 +984,128 @@ describe("VideoFeed", () => {
     expect(mountedSources()).not.toContain("https://media.test/video-0.mp4");
     expect(mountedSources()).toContain("https://media.test/video-3.mp4");
   });
+
+  test("windows slide shells around the active index, recent slides, and a pending restore", () => {
+    const base = { activeIndex: 0, itemId: "video-5", recentItemIds: ["video-0"] };
+
+    expect(shouldRenderVideoFeedSlide({ ...base, index: 2 })).toBe(true);
+    expect(shouldRenderVideoFeedSlide({ ...base, index: 3 })).toBe(false);
+    expect(shouldRenderVideoFeedSlide({ ...base, index: 5, recentItemIds: ["video-0", "video-5"] })).toBe(true);
+    expect(shouldRenderVideoFeedSlide({ ...base, index: 5, pendingRestoreItemId: "video-5" })).toBe(true);
+    expect(shouldRenderVideoFeedSlide({ ...base, index: 5, pendingRestoreItemId: "video-6" })).toBe(false);
+  });
+
+  test("renders distant slides as inert poster shells while their snap spacers persist", () => {
+    const items = manyFeedItems();
+    const view = render(<VideoFeed items={items} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    const spacers = Array.from(feed.children) as HTMLElement[];
+
+    // Every item keeps its full-height snap spacer, so scroll height and snap points are intact.
+    expect(spacers).toHaveLength(items.length);
+    for (const spacer of spacers) {
+      expect(spacer.className).toContain("h-full");
+      expect(spacer.className).toContain("snap-start");
+      expect(spacer.className).toContain("snap-always");
+    }
+    // The ±2 window covers slides 0-2; slides 3+ render the minimal poster shell instead.
+    expect(spacers.slice(0, 3).every((spacer) => spacer.querySelector("article") !== null)).toBe(true);
+    const shells = spacers.slice(3);
+    expect(shells.every((spacer) => spacer.querySelector("article") === null)).toBe(true);
+    expect(shells.every((spacer) => {
+      const shell = spacer.querySelector("[data-video-slide-shell]");
+      return shell !== null && shell.className.includes("bg-black");
+    })).toBe(true);
+    // The poster shows through fast scrolls, framed like the real slide's poster.
+    const posters = shells.map((spacer) => spacer.querySelector("img[data-video-media-image]"));
+    expect(posters.every((poster) => poster !== null)).toBe(true);
+    for (const poster of posters) {
+      expect(poster?.getAttribute("src")).toBe("https://media.test/poster.webp");
+      expect(poster?.getAttribute("loading")).toBe("lazy");
+      expect(poster?.className).toContain("object-cover");
+    }
+    // Absolutely nothing interactive or media-bearing in a shell.
+    expect(feed.querySelectorAll(
+      "[data-video-slide-shell] button, [data-video-slide-shell] a, [data-video-slide-shell] video, [data-video-slide-shell] [role='menu']",
+    )).toHaveLength(0);
+  });
+
+  test("recenters the slide render window as the active index advances", () => {
+    const renders = new Set<string>();
+    const view = render(
+      <VideoFeed items={manyFeedItems()} onSlideRender={(itemId) => renders.add(itemId)} />,
+    );
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+
+    expect(renders.has("video-6")).toBe(false);
+
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 600 });
+    settleFeedScroll(feed);
+
+    expect(feed.dataset.activeIndex).toBe("6");
+    expect(renders.has("video-6")).toBe(true);
+    // The window recentered onto slides 4-6; slide 0 stays rendered through the recent union.
+    const spacers = Array.from(feed.children) as HTMLElement[];
+    expect(spacers).toHaveLength(7);
+    expect(spacers.map((spacer) => spacer.querySelector("article") !== null))
+      .toEqual([true, false, false, false, true, true, true]);
+  });
+
+  test("renders a pending initial-item restore target far outside the slide window", () => {
+    const items = manyFeedItems();
+    const view = render(<VideoFeed initialItemId="video-6" items={items.slice(0, 1)} />);
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    // Zero height defers the restore through rAF; stub it so restoration stays pending.
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 0 });
+    Object.defineProperty(window, "requestAnimationFrame", { configurable: true, value: () => 1 });
+    Object.defineProperty(window, "cancelAnimationFrame", { configurable: true, value: () => {} });
+
+    try {
+      view.rerender(<VideoFeed initialItemId="video-6" items={items} />);
+
+      const spacers = Array.from(feed.children) as HTMLElement[];
+      expect(spacers).toHaveLength(items.length);
+      expect(feed.dataset.activeIndex).toBe("0");
+      // The ±2 window covers slides 0-2; the pending restore target renders on top of it.
+      expect(feed.querySelectorAll("article")).toHaveLength(4);
+      expect(spacers[6]?.querySelector("article")).not.toBeNull();
+      view.unmount();
+    } finally {
+      Reflect.deleteProperty(window, "requestAnimationFrame");
+      Reflect.deleteProperty(window, "cancelAnimationFrame");
+    }
+  });
+
+  test("releases the pending restore slot after repeated restore misses", () => {
+    const items = manyFeedItems();
+    Object.defineProperty(window, "requestAnimationFrame", { configurable: true, value: () => 1 });
+    Object.defineProperty(window, "cancelAnimationFrame", { configurable: true, value: () => {} });
+    try {
+      const view = render(<VideoFeed initialItemId="video-6" items={items.slice(0, 1)} />);
+      const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+      // Zero height defers the restore through the stubbed rAF forever: every page is a miss.
+      Object.defineProperty(feed, "clientHeight", { configurable: true, value: 0 });
+
+      view.rerender(<VideoFeed initialItemId="video-6" items={[...items]} />);
+      // While restoration is pending, the far target slide stays rendered on top of the window.
+      expect(feed.querySelectorAll("article")).toHaveLength(4);
+
+      for (let page = 0; page < 12; page += 1) {
+        view.rerender(<VideoFeed initialItemId="video-6" items={[...items]} />);
+      }
+
+      // The give-up released the slot: slide 6 falls back to a poster shell, window renders 0-2.
+      expect(feed.dataset.activeIndex).toBe("0");
+      expect(feed.querySelectorAll("article")).toHaveLength(3);
+      const spacers = Array.from(feed.children) as HTMLElement[];
+      expect(spacers[6]?.querySelector("[data-video-slide-shell]")).not.toBeNull();
+    } finally {
+      Reflect.deleteProperty(window, "requestAnimationFrame");
+      Reflect.deleteProperty(window, "cancelAnimationFrame");
+    }
+  });
+
 
   test("omits booking when the container supplies no booking handler", () => {
     const view = render(<VideoFeed items={[{

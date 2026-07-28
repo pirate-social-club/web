@@ -140,6 +140,12 @@ export const VIDEO_FEED_KEEP_ALIVE_MEDIA_COUNT = 4;
 export const VIDEO_FEED_LONG_PRESS_MS = 500;
 export const VIDEO_FEED_LONG_PRESS_MOVE_THRESHOLD_PX = 10;
 
+/**
+ * Only slides within this distance of the settled index render their shell content; every spacer
+ * div stays mounted either way so scroll height, snap points, and index math are preserved.
+ */
+export const VIDEO_FEED_SLIDE_RENDER_WINDOW = 2;
+
 export function didVideoLongPressMove(
   start: { x: number; y: number },
   current: { x: number; y: number },
@@ -176,6 +182,34 @@ export function videoProgressKeyAction(key: string): "next" | "previous" | "togg
   if (key === " " || key === "Spacebar") return "toggle";
   return null;
 }
+
+/**
+ * Slide shells are windowed like the media elements: distant slides keep their full-height spacer
+ * (scroll height, snap points, and index math) but skip rendering the expensive shell content.
+ * Recently viewed slides stay rendered so their kept-alive media is never detached mid-session,
+ * and a pending initial-item restore target renders even outside the window so the restoration
+ * never commits scrollTop onto a blank frame.
+ */
+export function shouldRenderVideoFeedSlide({
+  activeIndex,
+  index,
+  itemId,
+  pendingRestoreItemId,
+  recentItemIds,
+}: {
+  activeIndex: number;
+  index: number;
+  itemId: string;
+  pendingRestoreItemId?: string | null;
+  recentItemIds: readonly string[];
+}): boolean {
+  if (Math.abs(index - activeIndex) <= VIDEO_FEED_SLIDE_RENDER_WINDOW) return true;
+  if (recentItemIds.includes(itemId)) return true;
+  return pendingRestoreItemId != null && itemId === pendingRestoreItemId;
+}
+
+/** Restore-effect runs tolerated before an unreachable initial item is given up on. */
+const VIDEO_FEED_RESTORE_MAX_ATTEMPTS = 10;
 
 function readStoredMutedPreference(): boolean | null {
   if (typeof window === "undefined") return null;
@@ -348,6 +382,36 @@ function CapabilityAction({
       rewardLabel={rewardLabel}
       value={capability === "processing" ? "Preparing" : label}
     />
+  );
+}
+
+/**
+ * Minimal stand-in for slides outside the render window: the black stage plus the poster, framed
+ * like the real slide so a fast scroll shows posters instead of blank transparent spacers and the
+ * swap to the full slide does not visually pop. Nothing interactive, no media, no impression
+ * logic — the windowing DOM win comes from skipping the rail, overflow menu, and video element.
+ */
+function VideoFeedSlideShell({ item }: { item: VideoFeedItem }) {
+  return (
+    <div
+      className={cn(
+        "relative flex h-full w-full items-center justify-center overflow-hidden bg-black",
+        "[--feed-browser-occlusion:max(0px,calc(100lvh-100dvh))] md:[--feed-browser-occlusion:0px]",
+      )}
+      data-video-slide-shell
+    >
+      {item.media.posterSrc ? (
+        <img
+          alt={item.song?.title ?? item.caption ?? "Video poster"}
+          className={cn("size-full", item.media.orientation === "portrait" ? "object-cover" : "object-contain")}
+          data-video-media-image
+          decoding="async"
+          loading="lazy"
+          src={item.media.posterSrc}
+          style={{ transform: "translateY(calc(var(--feed-browser-occlusion) / -2))" }}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -1180,6 +1244,10 @@ export function VideoFeed({
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const scrollSettleTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const restoredInitialItemIdRef = React.useRef<string | null>(null);
+  // Restore-effect misses per target: after enough of them the target is treated as never
+  // arriving (its page may never load) and its pending render slot is released.
+  const restoreAttemptsRef = React.useRef<{ count: number; itemId: string | null }>({ count: 0, itemId: null });
+  const [givenUpRestoreItemId, setGivenUpRestoreItemId] = React.useState<string | null>(null);
   const initialIndex = Math.max(0, items.findIndex((item) => item.id === initialItemId));
   const [activeIndex, setActiveIndex] = React.useState(initialIndex);
   const activeIndexRef = React.useRef(initialIndex);
@@ -1226,6 +1294,13 @@ export function VideoFeed({
     const initial = items[initialIndex];
     return initial ? [initial.id] : [];
   });
+  // Until the restore layout effect commits, its target can sit outside the render window
+  // (e.g. the item arrived with a later page); keep it rendered so restoration never blanks.
+  const pendingRestoreItemId = initialItemId
+    && restoredInitialItemIdRef.current !== initialItemId
+    && givenUpRestoreItemId !== initialItemId
+    ? initialItemId
+    : null;
 
   React.useEffect(() => {
     const activeItem = items[activeIndex];
@@ -1239,6 +1314,18 @@ export function VideoFeed({
 
   React.useLayoutEffect(() => {
     if (!initialItemId || restoredInitialItemIdRef.current === initialItemId) return;
+    // The target may never arrive (its page may never load). After enough misses, give up so the
+    // pending render slot is not held for the rest of the session.
+    const attempts = restoreAttemptsRef.current.itemId === initialItemId
+      ? restoreAttemptsRef.current
+      : { count: 0, itemId: initialItemId };
+    attempts.count += 1;
+    restoreAttemptsRef.current = attempts;
+    if (attempts.count > VIDEO_FEED_RESTORE_MAX_ATTEMPTS) {
+      restoredInitialItemIdRef.current = initialItemId;
+      setGivenUpRestoreItemId(initialItemId);
+      return;
+    }
     let frame: number | null = null;
     const restore = () => {
       const container = containerRef.current;
@@ -1463,39 +1550,49 @@ export function VideoFeed({
     >
       {items.map((item, index) => (
         <div className="h-full snap-start snap-always" key={item.id}>
-          <VideoFeedSlide
-            {...actions}
-            active={index === activeIndex}
-            allowAutoplay={!documentHidden && (!reduceMotion || userStartedItemIds.has(item.id))}
-            autoplayBlocked={autoplayBlockedItemIds.has(item.id)}
-            downvoteLabel={downvoteLabel}
-            followLabel={followLabel}
-            followingLabel={followingLabel}
-            item={item}
-            itemPosition={index}
-            locale={locale}
-            impressionIdentity={impressionIdentityForItem(item.id)}
-            impressionVisible={index === activeIndex && !documentHidden}
-            intentionalPaused={pausedItemIds.has(item.id)}
-            initialPlaybackSeconds={item.id === initialItemId ? initialPlaybackSeconds : undefined}
-            mountMedia={Math.abs(index - activeIndex) <= 1 || recentItemIds.includes(item.id)}
-            muteVideoLabel={muteVideoLabel}
-            onAutoplayBlockedChange={setAutoplayBlocked}
-            onSoundPromptShown={markSoundPromptShown}
-            onSlideRender={onSlideRender}
-            onMoveTo={moveTo}
-            onToggleMute={toggleMute}
-            onTogglePlayback={togglePlayback}
-            muted={muted}
-            preferenceMuted={preferenceMuted}
-            paused={pausedItemIds.has(item.id) || externallyPausedItemId === item.id}
-            preload={index === activeIndex ? "auto" : Math.abs(index - activeIndex) === 1 ? "metadata" : "none"}
-            removeDownvoteLabel={removeDownvoteLabel}
-            soundOnLabel={soundOnLabel}
-            soundPromptEligible={!hasShownSoundPromptRef.current}
-            tapForSoundLabel={tapForSoundLabel}
-            videoProgressLabel={videoProgressLabel}
-          />
+          {shouldRenderVideoFeedSlide({
+            activeIndex,
+            index,
+            itemId: item.id,
+            pendingRestoreItemId,
+            recentItemIds,
+          }) ? (
+            <VideoFeedSlide
+              {...actions}
+              active={index === activeIndex}
+              allowAutoplay={!documentHidden && (!reduceMotion || userStartedItemIds.has(item.id))}
+              autoplayBlocked={autoplayBlockedItemIds.has(item.id)}
+              downvoteLabel={downvoteLabel}
+              followLabel={followLabel}
+              followingLabel={followingLabel}
+              item={item}
+              itemPosition={index}
+              locale={locale}
+              impressionIdentity={impressionIdentityForItem(item.id)}
+              impressionVisible={index === activeIndex && !documentHidden}
+              intentionalPaused={pausedItemIds.has(item.id)}
+              initialPlaybackSeconds={item.id === initialItemId ? initialPlaybackSeconds : undefined}
+              mountMedia={Math.abs(index - activeIndex) <= 1 || recentItemIds.includes(item.id)}
+              muteVideoLabel={muteVideoLabel}
+              onAutoplayBlockedChange={setAutoplayBlocked}
+              onSoundPromptShown={markSoundPromptShown}
+              onSlideRender={onSlideRender}
+              onMoveTo={moveTo}
+              onToggleMute={toggleMute}
+              onTogglePlayback={togglePlayback}
+              muted={muted}
+              preferenceMuted={preferenceMuted}
+              paused={pausedItemIds.has(item.id) || externallyPausedItemId === item.id}
+              preload={index === activeIndex ? "auto" : Math.abs(index - activeIndex) === 1 ? "metadata" : "none"}
+              removeDownvoteLabel={removeDownvoteLabel}
+              soundOnLabel={soundOnLabel}
+              soundPromptEligible={!hasShownSoundPromptRef.current}
+              tapForSoundLabel={tapForSoundLabel}
+              videoProgressLabel={videoProgressLabel}
+            />
+          ) : (
+            <VideoFeedSlideShell item={item} />
+          )}
         </div>
       ))}
     </div>

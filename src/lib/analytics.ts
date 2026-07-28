@@ -11,6 +11,7 @@ type AnalyticsEventName =
   | "handle_claim_failed"
   | "home_feed_viewed"
   | "video_impression"
+  | "video_cors_fallback"
   | "community_viewed"
   | "community_follow_contract_drift"
   | "community_join_requested"

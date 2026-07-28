@@ -915,9 +915,10 @@ describe("VideoFeed", () => {
       />,
     );
     const feed = view.getByLabelText("Video feed") as HTMLDivElement;
-    const activeVideo = view.container.querySelector<HTMLVideoElement>("video")!;
     Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
-    fireEvent.error(activeVideo);
+    // The first error triggers the no-cors retry; only the retried element's error is a failure.
+    fireEvent.error(view.container.querySelector("video")!);
+    fireEvent.error(view.container.querySelector("video")!);
     Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
     settleFeedScroll(feed);
 
@@ -1342,6 +1343,82 @@ describe("VideoFeed", () => {
       "https://media.test/two.mp4",
       "https://media.test/three.mp4",
     ]);
+  });
+
+  test("remounts a failed cors video without the attribute and reports the fallback", () => {
+    const calls: Array<{ itemId: string; srcHost: string | null }> = [];
+    const view = render(
+      <VideoFeed
+        items={[item]}
+        onVideoCorsFallback={(fallbackItem, context) => calls.push({ itemId: fallbackItem.id, srcHost: context.srcHost })}
+      />,
+    );
+    const video = view.container.querySelector("video")!;
+    expect(video.getAttribute("crossorigin")).toBe("anonymous");
+
+    fireEvent.error(video);
+
+    // A key-forced remount, not an attribute flip: the new element refetches without cors.
+    const retried = view.container.querySelector("video")!;
+    expect(retried).not.toBe(video);
+    expect(retried.hasAttribute("crossorigin")).toBe(false);
+    expect(calls).toEqual([{ itemId: "video_test", srcHost: "media.test" }]);
+  });
+
+  test("suppresses the impression playback error while the no-cors retry plays out", () => {
+    const calls: VideoFeedImpression[] = [];
+    const view = render(
+      <VideoFeed
+        feedRequestId="feed_cors_retry"
+        items={feedItems()}
+        onImpression={(_activeItem, impression) => calls.push(impression)}
+      />,
+    );
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+    fireEvent.error(view.container.querySelector("video")!);
+
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
+    settleFeedScroll(feed);
+
+    expect(calls[0]?.exitReason).toBe("swipe");
+  });
+
+  test("reports the playback error once when the no-cors retry also fails", () => {
+    const fallbacks: string[] = [];
+    const calls: VideoFeedImpression[] = [];
+    const view = render(
+      <VideoFeed
+        feedRequestId="feed_cors_double"
+        items={feedItems()}
+        onImpression={(_activeItem, impression) => calls.push(impression)}
+        onVideoCorsFallback={(fallbackItem) => fallbacks.push(fallbackItem.id)}
+      />,
+    );
+    const feed = view.getByLabelText("Video feed") as HTMLDivElement;
+    Object.defineProperty(feed, "clientHeight", { configurable: true, value: 100 });
+
+    fireEvent.error(view.container.querySelector("video")!);
+    fireEvent.error(view.container.querySelector("video")!);
+
+    Object.defineProperty(feed, "scrollTop", { configurable: true, value: 100 });
+    settleFeedScroll(feed);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.exitReason).toBe("playback_error");
+    expect(fallbacks).toEqual(["one"]);
+  });
+
+  test("scopes the no-cors fallback to the failing item only", () => {
+    const view = render(<VideoFeed items={feedItems()} />);
+    const second = view.container.querySelectorAll("video")[1]!;
+    expect(second.getAttribute("crossorigin")).toBe("anonymous");
+
+    fireEvent.error(second);
+
+    const videos = view.container.querySelectorAll("video");
+    expect(videos[0]?.getAttribute("crossorigin")).toBe("anonymous");
+    expect(videos[1]?.hasAttribute("crossorigin")).toBe(false);
   });
 
   test("omits booking when the container supplies no booking handler", () => {

@@ -28,6 +28,7 @@ import { formatCentsAsStartingUsd } from "@/components/compositions/bookings/fix
 import { IconButton } from "@/components/primitives/icon-button";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
 import type { VideoFeedCapability, VideoFeedItem } from "./video-feed.types";
 import { VideoShareSurface } from "./video-share-surface";
@@ -51,6 +52,8 @@ export interface VideoFeedProps {
   onActiveItemChange?: (item: VideoFeedItem, index: number) => void;
   onBook?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onComment?: (item: VideoFeedItem) => void;
+  /** Analytics hook fired when a slide falls back to no-cors playback after a media error. */
+  onVideoCorsFallback?: (item: VideoFeedItem, context: { srcHost: string | null }) => void;
   onBoost?: (item: VideoFeedItem) => void;
   onDownvote?: (item: VideoFeedItem) => void;
   onGateRequired?: (item: VideoFeedItem) => void;
@@ -153,8 +156,9 @@ export const VIDEO_FEED_SLIDE_RENDER_WINDOW = 2;
  * every measured feed video) answers this range with 206 and
  * `cache-control: public, max-age=31536000, immutable`, echoing ACAO per Origin (Vary: Origin) —
  * which is why the feed <video> loads with crossOrigin="anonymous" to share the cache key. The
- * remaining unknown is whether the browser media stack reuses cached 206s on swipe (Chrome does,
- * Safari uncertain); measure the warm-cache hit rate in production before keeping or raising this.
+ * remaining unknown is whether the browser media stack reuses cached 206s on swipe: expected to
+ * be a Chrome/Chromium win, unproven on Safari, whose media stack does not reliably share the
+ * fetch HTTP cache. Measure the warm-cache hit rate in production before keeping or raising this.
  */
 export const VIDEO_FEED_PREFETCH_AHEAD_BYTES = 512 * 1024;
 
@@ -519,9 +523,11 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   soundPromptEligible,
   tapForSoundLabel,
   muteVideoLabel,
+  videoCorsFallback,
   videoProgressLabel,
   initialPlaybackSeconds,
-}: Omit<VideoFeedProps, "downvoteLabel" | "followLabel" | "followingLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "muteVideoLabel" | "removeDownvoteLabel" | "soundOnLabel" | "tapForSoundLabel"> & {
+  onVideoCorsFallbackRequest,
+}: Omit<VideoFeedProps, "downvoteLabel" | "followLabel" | "followingLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "muteVideoLabel" | "onVideoCorsFallback" | "removeDownvoteLabel" | "soundOnLabel" | "tapForSoundLabel"> & {
   active: boolean;
   allowAutoplay: boolean;
   autoplayBlocked: boolean;
@@ -550,6 +556,10 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   tapForSoundLabel: string;
   videoProgressLabel: string;
   initialPlaybackSeconds?: number;
+  /** True once this item's media failed in cors mode: its video stays no-cors for the session. */
+  videoCorsFallback: boolean;
+  /** Returns true when the error triggered a no-cors remount, so it is not a playback failure yet. */
+  onVideoCorsFallbackRequest: (item: VideoFeedItem) => boolean;
 }) {
   React.useEffect(() => {
     onSlideRender?.(item.id);
@@ -721,7 +731,8 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
       }
       onAutoplayBlockedChange(item.id, failure === "autoplay_blocked");
     });
-  }, [active, allowAutoplay, autoplayBlocked, item.id, mediaMounted, onAutoplayBlockedChange, paused]);
+    // videoCorsFallback re-runs this on the no-cors remount so the retried video plays.
+  }, [active, allowAutoplay, autoplayBlocked, item.id, mediaMounted, onAutoplayBlockedChange, paused, videoCorsFallback]);
 
   const cancelLongPress = React.useCallback(() => {
     if (longPressTimerRef.current !== null) window.clearTimeout(longPressTimerRef.current);
@@ -766,7 +777,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
     if (video.readyState >= 1) restore();
     else video.addEventListener("loadedmetadata", restore, { once: true });
     return () => video.removeEventListener("loadedmetadata", restore);
-  }, [active, initialPlaybackSeconds]);
+  }, [active, initialPlaybackSeconds, videoCorsFallback]);
 
   const runInteraction = (action: ((item: VideoFeedItem) => void) | undefined) => {
     if (item.interactionGate === "membership_required") {
@@ -880,13 +891,18 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
         )}>
         {mediaMounted ? (
           <video
+            // A real remount (key) is the only way to refetch the media without cors after an
+            // ACAO-less host errors; flipping the attribute alone does not reload the source.
+            key={videoCorsFallback ? "no-cors" : "cors"}
             ref={videoRef}
             aria-label={item.song?.title ?? item.caption ?? "Video"}
             className={cn("size-full", item.media.orientation === "portrait" ? "object-cover" : "object-contain")}
             // cors mode matches the Range prefetch's fetch: api.pirate.sc echoes ACAO with
             // Vary: Origin, so a no-cors media load would key a different HTTP cache entry and
             // the warmed bytes would never be reused. Matches post-card-video-content.tsx.
-            crossOrigin="anonymous"
+            // Per item, a media error drops the attribute and retries no-cors (hosts without
+            // ACAO would otherwise show the poster forever).
+            crossOrigin={videoCorsFallback ? undefined : "anonymous"}
             style={{ transform: "translateY(calc(var(--feed-browser-occlusion) / -2))" }}
             loop
             muted={muted}
@@ -919,6 +935,10 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
               impression.previousPlaybackSeconds = currentTime;
             }}
             onError={() => {
+              // A media host without ACAO only fails in cors mode: remount this item's video
+              // without crossOrigin and let the retry play out before treating it as a playback
+              // failure. If the no-cors retry also errors, the impression reports once.
+              if (!videoCorsFallback && onVideoCorsFallbackRequest(item)) return;
               if (impressionRef.current) impressionRef.current.playbackError = true;
             }}
             onPlaying={() => {
@@ -1306,6 +1326,7 @@ export function VideoFeed({
   tapForSoundLabel = "Tap for sound",
   videoProgressLabel = "Video progress",
   onSlideRender,
+  onVideoCorsFallback,
   ...actions
 }: VideoFeedProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
@@ -1322,6 +1343,33 @@ export function VideoFeed({
   // Sources whose 206 body fully drained into the HTTP cache. Failed or aborted fetches are
   // never recorded here, so a later settle can retry them.
   const warmedVideoSrcsRef = React.useRef(new Set<string>());
+  // Items whose media host answered without ACAO: their videos remount once without crossOrigin
+  // and stay no-cors for the session. Per item, so one ACAO-less host never downgrades the
+  // CORS/prefetch cache alignment for the rest of the feed. The ref mirrors membership
+  // synchronously because the slide's error handler needs the answer before React re-renders.
+  const corsFallbackItemIdsRef = React.useRef(new Set<string>());
+  const [corsFallbackItemIds, setCorsFallbackItemIds] = React.useState<ReadonlySet<string>>(() => new Set());
+  const requestVideoCorsFallback = React.useCallback((item: VideoFeedItem): boolean => {
+    if (corsFallbackItemIdsRef.current.has(item.id)) return false;
+    corsFallbackItemIdsRef.current.add(item.id);
+    setCorsFallbackItemIds(new Set(corsFallbackItemIdsRef.current));
+    let srcHost: string | null = null;
+    try {
+      srcHost = item.media.src ? new URL(item.media.src).host : null;
+    } catch {
+      srcHost = null;
+    }
+    if (onVideoCorsFallback) {
+      onVideoCorsFallback(item, { srcHost });
+    } else {
+      trackAnalyticsEvent({
+        eventName: "video_cors_fallback",
+        postId: item.id,
+        properties: { srcHost },
+      });
+    }
+    return true;
+  }, [onVideoCorsFallback]);
   const initialIndex = Math.max(0, items.findIndex((item) => item.id === initialItemId));
   const [activeIndex, setActiveIndex] = React.useState(initialIndex);
   const activeIndexRef = React.useRef(initialIndex);
@@ -1703,6 +1751,7 @@ export function VideoFeed({
               onMoveTo={moveTo}
               onToggleMute={toggleMute}
               onTogglePlayback={togglePlayback}
+              onVideoCorsFallbackRequest={requestVideoCorsFallback}
               muted={muted}
               preferenceMuted={preferenceMuted}
               paused={pausedItemIds.has(item.id) || externallyPausedItemId === item.id}
@@ -1711,6 +1760,7 @@ export function VideoFeed({
               soundOnLabel={soundOnLabel}
               soundPromptEligible={!hasShownSoundPromptRef.current}
               tapForSoundLabel={tapForSoundLabel}
+              videoCorsFallback={corsFallbackItemIds.has(item.id)}
               videoProgressLabel={videoProgressLabel}
             />
           ) : (

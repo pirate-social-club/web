@@ -24,10 +24,9 @@ can merge.
 Web releases use these pinned commits; they never select the API or Core
 repository's current `main` implicitly.
 
-Current release intent: deploy explicit uncertain-delivery handling for Telegram
-channel publishing with API `4f2641d1607cd8b4e975dfad715d79f6ef32f82b` and Core
-`afb77f5e89669c0f1f1453d9739bb87f85071227`. Core migration 0166 adds the
-`sending` and `uncertain` delivery states plus the operator resolution audit
-record; the API classifies against them and adds the `/admin/ops/telegram`
-surface. Both refs move together: the pinned API commit records this exact Core
-SHA in `.github/ci-refs/core.sha`.
+Current release intent: deploy the Telegram channel inline-keyboard fix with API
+`18434ab6214ec2ddd4a0168a832b9925dee78cc4` and Core
+`da95b3974908a907a4d4027b7fec097ed653221e` (Core unchanged). Channel posts
+carried a `web_app` inline button, which Telegram permits only in private chats,
+so every channel send failed with BUTTON_TYPE_INVALID and the feature could not
+deliver a post. The button is now a standard URL to the public post page.

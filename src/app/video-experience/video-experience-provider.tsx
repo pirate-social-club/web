@@ -273,6 +273,12 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
     setItemOverrides({});
     setPanelState({ kind: "none" });
     setSeed(nextSeed);
+    trackAnalyticsEvent({
+      communityId: nextSeed.item.communityId,
+      eventName: "video_viewer_opened",
+      postId: nextSeed.item.id,
+      properties: { source_surface: nextSeed.source },
+    });
   }, [removeSeedFromRankedCache]);
 
   const loadDeepLinkedSeed = React.useCallback(async (postId: string) => {
@@ -670,6 +676,15 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
   }, [api.posts, itemOverrides, seed, session?.accessToken]);
 
   const onComment = React.useCallback((item: VideoFeedItem) => {
+    trackAnalyticsEvent({
+      communityId: item.communityId,
+      eventName: "video_capability_selected",
+      postId: item.id,
+      properties: {
+        capability: "comments",
+        source_surface: seedRef.current?.source ?? "deep-link",
+      },
+    });
     panelReturnFocusRef.current = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : feedFocusRef.current;
@@ -710,9 +725,20 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
   const launchSongAction = React.useCallback((
     item: VideoFeedItem,
     playback: VideoFeedPlaybackState,
+    capability: "karaoke" | "song" | "study",
     href?: string,
   ) => {
     if (!href) return;
+    trackAnalyticsEvent({
+      communityId: item.communityId,
+      eventName: "video_capability_selected",
+      postId: item.id,
+      properties: {
+        capability,
+        playback_seconds: playback.playbackSeconds,
+        source_surface: seedRef.current?.source ?? "deep-link",
+      },
+    });
     const returnPath = currentRelativePath();
     saveVideoViewerReturnState({
       createdAt: Date.now(),
@@ -729,15 +755,15 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
     navigate(`${destination.pathname}${destination.search}`);
   }, [dismissForNavigation]);
   const onSong = React.useCallback(
-    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.songHref),
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, "song", item.song?.songHref),
     [launchSongAction],
   );
   const onStudy = React.useCallback(
-    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.studyHref),
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, "study", item.song?.studyHref),
     [launchSongAction],
   );
   const onKaraoke = React.useCallback(
-    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.karaokeHref),
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, "karaoke", item.song?.karaokeHref),
     [launchSongAction],
   );
 
@@ -763,6 +789,16 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
     if (!item.booking) return;
     const startingPriceCents = bookingStartingPriceCents(item);
     if (startingPriceCents === null) return;
+    trackAnalyticsEvent({
+      communityId: item.communityId,
+      eventName: "video_capability_selected",
+      postId: item.id,
+      properties: {
+        capability: "booking",
+        playback_seconds: playback.playbackSeconds,
+        source_surface: seedRef.current?.source ?? "deep-link",
+      },
+    });
     const hostUserId = item.booking.hostUserId;
     const cached = bookingCache.get(hostUserId);
     bookingRequestHostRef.current = hostUserId;
@@ -810,6 +846,15 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
       || item.publisher.relationship.active
       || !item.communityId
     ) return;
+    trackAnalyticsEvent({
+      communityId: item.communityId,
+      eventName: "video_capability_selected",
+      postId: item.id,
+      properties: {
+        capability: "community_join",
+        source_surface: seedRef.current?.source ?? "deep-link",
+      },
+    });
     const entry = homeVideoQuery.data.entries.find((candidate) => entryPostId(candidate) === item.id);
     const gateData = entry ? selectPostVoteGateData(entry.post) : null;
     void runGatedCommunityAction({

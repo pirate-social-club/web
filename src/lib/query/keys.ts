@@ -1,5 +1,21 @@
 export const feedKeys = {
   all: ["feed"] as const,
+  // Explore payloads carry per-viewer vote, membership, purchase, and
+  // authorship state. Refetch-on-mount is freshness policy, not a cache
+  // boundary, so account switches need distinct entries.
+  home: (input: {
+    locale: string | null;
+    sort: string | null;
+    timeRange: string | null;
+    userId: string | null;
+  }) => [
+    ...feedKeys.all,
+    "home",
+    input.userId ?? null,
+    input.locale ?? null,
+    input.sort ?? null,
+    input.timeRange ?? null,
+  ] as const,
   // Keyed by viewer, not by an authenticated boolean: nothing clears the query
   // cache on session change, and a home video payload carries per-viewer state
   // (membership, own-profile, vote). The pre-hydration bootstrap keys on a

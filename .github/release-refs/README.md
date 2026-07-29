@@ -24,9 +24,11 @@ can merge.
 Web releases use these pinned commits; they never select the API or Core
 repository's current `main` implicitly.
 
-Current release intent: deploy the Telegram channel inline-keyboard fix with API
-`18434ab6214ec2ddd4a0168a832b9925dee78cc4` and Core
-`da95b3974908a907a4d4027b7fec097ed653221e` (Core unchanged). Channel posts
-carried a `web_app` inline button, which Telegram permits only in private chats,
-so every channel send failed with BUTTON_TYPE_INVALID and the feature could not
-deliver a post. The button is now a standard URL to the public post page.
+Current release intent: deploy the Telegram dispatch-timeout classification fix
+and community-job scheduler lane isolation with API
+`89c7b174699d03047179bd69681e2ec024a3f1bc` and Core
+`3b109ab98e5a1a4e08fd17472779470bd45e5c25` (Core unchanged). A send timeout was
+recorded as a retryable failure, so retries duplicated two real Telegram channel
+posts on staging; timeouts are now classified uncertain and never retried
+automatically. Community jobs also gain their own scheduler lane and lease so
+slow maintenance cannot stop them starting.

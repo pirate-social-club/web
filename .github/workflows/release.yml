@@ -464,8 +464,14 @@ jobs:
   # on one community. They catch different failures — keep both. Read-only.
   schema-gate:
     name: Community schema gate (staging fleet)
-    needs: [release-inputs]
-    if: github.event_name != 'pull_request'
+    needs: [release-inputs, staging-freshness]
+    if: github.event_name != 'pull_request' && needs.staging-freshness.outputs.stale == 'false'
+    # The scan is strictly read-only, so a newer main push can safely cancel an
+    # obsolete in-flight scan instead of doubling D1 load for another ~20min.
+    # Manual dispatches are deliberate and keep an independent group.
+    concurrency:
+      group: community-schema-gate-${{ github.event_name == 'push' && 'main' || github.run_id }}
+      cancel-in-progress: ${{ github.event_name == 'push' }}
     runs-on: blacksmith-2vcpu-ubuntu-2404
     # 25min, raised from 15 on 2026-07-22. The 15min ceiling sat INSIDE the
     # healthy scan's natural variance, so the runner killed a fail-closed check

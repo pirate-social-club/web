@@ -24,11 +24,13 @@ can merge.
 Web releases use these pinned commits; they never select the API or Core
 repository's current `main` implicitly.
 
-Current release intent: deploy the Telegram dispatch-timeout classification fix
-and community-job scheduler lane isolation with API
-`89c7b174699d03047179bd69681e2ec024a3f1bc` and Core
-`3b109ab98e5a1a4e08fd17472779470bd45e5c25` (Core unchanged). A send timeout was
-recorded as a retryable failure, so retries duplicated two real Telegram channel
-posts on staging; timeouts are now classified uncertain and never retried
-automatically. Community jobs also gain their own scheduler lane and lease so
-slow maintenance cannot stop them starting.
+Current release intent: deploy the /admin cache authorization-bypass fix with API
+`6e48c2189d103f9aff891d5cbe0dc88d10650382` and Core
+`3b109ab98e5a1a4e08fd17472779470bd45e5c25` (Core unchanged). Edge-cached
+/admin/ops 200 responses were served to UNAUTHENTICATED callers on staging
+(cf-cache-status HIT, age 1164) because a cache hit answers before handler
+authorization runs. api#899/#900 send `private, no-store` across the whole
+/admin namespace, including error responses, from middleware registered ahead of
+every /admin mount. Also carries scheduler lane isolation (#893) and the
+Telegram dispatch-timeout classification (#896), both already verified on
+staging.

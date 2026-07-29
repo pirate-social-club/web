@@ -231,3 +231,99 @@ test("funding review falls back to plain-language copy", () => {
   expect(view.getByText(/Funds arrived, but the boost didn't activate/)).toBeTruthy();
   expect(view.queryByText(/terminal funding state/)).toBeNull();
 });
+
+/* ── Nationality payout tiers (dark preview) ────────────────────────────── */
+
+const TIER_VN = { amountLabel: "0.50", id: "tier-vn", nationalities: ["VNM"] };
+const TIER_US = { amountLabel: "5.00", id: "tier-us", nationalities: ["USA"] };
+
+test("without the payoutTiers prop the sheet renders exactly as before (dark default)", () => {
+  const view = render(<BoostCampaignSheet {...composeProps()} />);
+
+  expect(view.queryByText("Payout by nationality")).toBeNull();
+  expect(view.queryByText(/publicly visible on-chain/)).toBeNull();
+  expect(view.getByText("Daily reward per learner")).toBeTruthy();
+  expect(view.getByText("Up to 10 rewards")).toBeTruthy();
+});
+
+test("an empty tier list shows the section with the privacy note and an add button", () => {
+  const view = render(<BoostCampaignSheet {...composeProps({ payoutTiers: [] })} />);
+
+  expect(view.getByText("Payout by nationality")).toBeTruthy();
+  expect(view.getByText(/Payout amounts are publicly visible on-chain and differ by tier/)).toBeTruthy();
+  expect(view.getByText("Default daily reward")).toBeTruthy();
+  expect(view.getByRole("button", { name: "Add a tier" })).toBeTruthy();
+  // No rows yet: the count stays an untiered ceiling.
+  expect(view.getByText("Up to 10 rewards")).toBeTruthy();
+});
+
+test("tiered compose shows the worst-case floor, never a blend", () => {
+  const view = render(
+    <BoostCampaignSheet
+      {...composeProps({
+        budgetDisplayLabel: "$25.00",
+        budgetLabel: "25.00",
+        maxClaimDisplayLabel: "$5.00",
+        payoutTiers: [TIER_VN, TIER_US],
+        rewardCountLabel: "5 rewards",
+      })}
+    />,
+  );
+
+  expect(view.getByText("At least 5 rewards")).toBeTruthy();
+  expect(view.queryByText(/Up to 5 rewards/)).toBeNull();
+  // The direction flip ("up to" → "at least") always carries its explanation.
+  expect(view.getByText(/Worst case assumes the top tier \(\$5\.00\) on every claim/)).toBeTruthy();
+  expect(view.getByText("Tier 1")).toBeTruthy();
+  expect(view.getByText("Tier 2")).toBeTruthy();
+});
+
+test("add and remove tier emit intents; the owner mints and owns row ids", () => {
+  let added = 0;
+  let removedId: string | undefined;
+  const view = render(
+    <BoostCampaignSheet
+      {...composeProps({
+        onAddPayoutTier: () => { added += 1; },
+        onRemovePayoutTier: (tierId: string) => { removedId = tierId; },
+        payoutTiers: [TIER_VN, TIER_US],
+      })}
+    />,
+  );
+
+  fireEvent.click(view.getByRole("button", { name: "Add a tier" }));
+  expect(added).toBe(1);
+
+  fireEvent.click(view.getByRole("button", { name: "Remove tier 2" }));
+  expect(removedId).toBe("tier-us");
+});
+
+test("add tier is disabled at the tier cap", () => {
+  const view = render(
+    <BoostCampaignSheet
+      {...composeProps({
+        maxPayoutTiers: 2,
+        payoutTiers: [TIER_VN, TIER_US],
+      })}
+    />,
+  );
+
+  expect(view.getByRole("button", { name: "Add a tier" }).closest("button")?.disabled).toBe(true);
+});
+
+test("tiered quote shows the range and the guaranteed floor", () => {
+  const view = render(
+    <BoostCampaignSheet
+      {...composeProps({
+        fundingAmountLabel: "$25.00",
+        payoutTiers: [TIER_VN, TIER_US],
+        rewardCountLabel: "5 rewards",
+        state: "quote",
+        tierRangeLabel: "$0.50–$5.00 by nationality",
+      })}
+    />,
+  );
+
+  expect(view.getByText("$0.50–$5.00 by nationality")).toBeTruthy();
+  expect(view.getByText("At least 5 rewards")).toBeTruthy();
+});

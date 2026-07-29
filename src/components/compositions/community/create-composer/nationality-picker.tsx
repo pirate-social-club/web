@@ -21,11 +21,26 @@ import { Type } from "@/components/primitives/type";
 export interface NationalityMultiPickerProps {
   values: string[];
   onChange: (codes: string[]) => void;
+  /** Search input aria-label (defaults to community-composer copy). */
+  inputAriaLabel?: string;
+  /** Placeholder before anything is selected (defaults to community-composer copy). */
+  placeholder?: string;
+  /** Empty-search message (defaults to community-composer copy). */
+  noResultsLabel?: string;
+  /**
+   * Portal target for the dropdown (defaults to document.body). Pass a node
+   * inside a modal dialog or the popup is suppressed by the dialog's focus trap.
+   */
+  portalContainer?: HTMLElement | null;
 }
 
 export function NationalityMultiPicker({
   values,
   onChange,
+  inputAriaLabel,
+  placeholder,
+  noResultsLabel,
+  portalContainer,
 }: NationalityMultiPickerProps) {
   const selectedCountries = React.useMemo(
     () => values.reduce<Country[]>((result, value) => {
@@ -63,15 +78,15 @@ export function NationalityMultiPicker({
                 <ComboboxChip key={country.code}>{country.name}</ComboboxChip>
               ))}
               <ComboboxChipsInput
-                aria-label={cc.searchCountry}
-                placeholder={selectedCountries.length > 0 ? cc.searchCountry : cc.allowedNationalityLabel}
+                aria-label={inputAriaLabel ?? cc.searchCountry}
+                placeholder={selectedCountries.length > 0 ? (inputAriaLabel ?? cc.searchCountry) : (placeholder ?? cc.allowedNationalityLabel)}
               />
             </>
           )}
         </ComboboxValue>
       </ComboboxChips>
-      <ComboboxContent>
-        <ComboboxEmpty>{cc.noCountriesFound}</ComboboxEmpty>
+      <ComboboxContent container={portalContainer}>
+        <ComboboxEmpty>{noResultsLabel ?? cc.noCountriesFound}</ComboboxEmpty>
         <ComboboxList className="py-0">
           {(country) => (
             <ComboboxItem key={country.code} value={country}>

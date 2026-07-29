@@ -7,6 +7,7 @@ import {
   HourglassMedium,
   ShieldWarning,
   WarningCircle,
+  X,
 } from "@phosphor-icons/react";
 
 import {
@@ -20,9 +21,12 @@ import {
 import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import { CopyField } from "@/components/primitives/copy-field";
+import { IconButton } from "@/components/primitives/icon-button";
 import { Input } from "@/components/primitives/input";
 import { Switch } from "@/components/primitives/switch";
 import { Type } from "@/components/primitives/type";
+import { NationalityMultiPicker } from "@/components/compositions/community/create-composer/nationality-picker";
+import { MAX_PAYOUT_TIERS } from "@/lib/rewards/boost-plan";
 import { cn } from "@/lib/utils";
 
 /**
@@ -42,6 +46,18 @@ type BoostCampaignSheetState =
 
 export type BoostEligibleActivity = "study" | "karaoke" | "either";
 
+/**
+ * One row of the dark nationality-tier preview: a set of ISO-3166 alpha-3
+ * nationalities and the raw USD amount input for that tier. The sheet never
+ * mints `id`s — the owner (story, or the controller once Phase 1 lands) creates
+ * rows so tests and stories stay deterministic.
+ */
+export interface BoostPayoutTierDraft {
+  id: string;
+  nationalities: string[];
+  amountLabel: string;
+}
+
 export interface BoostCampaignSheetProps {
   busy?: boolean;
   budgetDisplayLabel: string;
@@ -60,6 +76,23 @@ export interface BoostCampaignSheetProps {
   forceMobile?: boolean;
   fundingAmountLabel?: string;
   fundedLabel?: string;
+  /**
+   * Dark nationality-tier preview. The section renders ONLY when this prop is
+   * present (even as []); undefined keeps the pre-tier sheet exactly. Nothing
+   * here reaches the API — payout tiers have no contract fields until Phase 1
+   * lands, so the production controller never passes this.
+   */
+  payoutTiers?: BoostPayoutTierDraft[];
+  /** Cap on tier rows; defaults to boost-plan's MAX_PAYOUT_TIERS. */
+  maxPayoutTiers?: number;
+  onAddPayoutTier?: () => void;
+  onRemovePayoutTier?: (tierId: string) => void;
+  onPayoutTierNationalitiesChange?: (tierId: string, nationalities: string[]) => void;
+  onPayoutTierAmountChange?: (tierId: string, amountLabel: string) => void;
+  /** Formatted worst case per claim (e.g. "$5.00") for the mandatory tiered caption. */
+  maxClaimDisplayLabel?: string;
+  /** Range summary for the quote state when tiered (e.g. "$0.50–$5.00 by nationality"). */
+  tierRangeLabel?: string;
   onBudgetChange?: (value: string) => void;
   onConfirm?: () => void;
   /** Recovery action offered when the pinned funding wallet is not connected. */
@@ -165,6 +198,14 @@ export function BoostCampaignSheet({
   forceMobile,
   fundingAmountLabel,
   fundedLabel,
+  payoutTiers,
+  maxPayoutTiers = MAX_PAYOUT_TIERS,
+  onAddPayoutTier,
+  onRemovePayoutTier,
+  onPayoutTierNationalitiesChange,
+  onPayoutTierAmountChange,
+  maxClaimDisplayLabel,
+  tierRangeLabel,
   onBudgetChange,
   onConfirm,
   onConnectWallet,
@@ -186,6 +227,16 @@ export function BoostCampaignSheet({
 }: BoostCampaignSheetProps) {
   const activityLabelId = React.useId();
   const rewardDisplay = dailyRewardDisplayLabel ?? dailyRewardLabel;
+  // The tier section renders only when the owner passes `payoutTiers` (even as
+  // []); `tiered` (at least one row) flips budget math to worst-case display.
+  const showPayoutTiers = payoutTiers != null;
+  const tiered = showPayoutTiers && payoutTiers.length > 0;
+  const payoutTiersLabelId = React.useId();
+  // The sheet renders inside a modal dialog, whose focus trap suppresses
+  // anything portaled to document.body — so the country dropdown portals into
+  // the section itself. Callback ref: state, so the portal target exists on
+  // the render that mounts the picker.
+  const [tierPortalContainer, setTierPortalContainer] = React.useState<HTMLElement | null>(null);
 
   const handleActivityKeyDown = (event: React.KeyboardEvent, index: number) => {
     const lastIndex = eligibleActivities.length - 1;
@@ -263,7 +314,7 @@ export function BoostCampaignSheet({
             </div>
             <label className="block" htmlFor="boost-daily-reward">
               <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
-                Daily reward per learner
+                {showPayoutTiers ? "Default daily reward" : "Daily reward per learner"}
               </Type>
               <MoneyInput
                 id="boost-daily-reward"
@@ -301,6 +352,69 @@ export function BoostCampaignSheet({
               ) : null}
             </div>
 
+            {payoutTiers != null ? (
+              <section aria-labelledby={payoutTiersLabelId} ref={setTierPortalContainer}>
+                <Type as="span" className="mb-2 block text-muted-foreground" id={payoutTiersLabelId} variant="label">
+                  Payout by nationality
+                </Type>
+                <Type as="p" className="mb-3 text-muted-foreground" variant="caption">
+                  Verified nationalities earn their tier's amount; everyone else earns the default.
+                </Type>
+                <div className="space-y-3">
+                  {payoutTiers.map((tier, index) => (
+                    <div className="space-y-2 rounded-lg border border-border-soft p-3" key={tier.id}>
+                      <div className="flex items-center justify-between gap-2">
+                        <Type as="span" className="text-muted-foreground" variant="label">
+                          Tier {index + 1}
+                        </Type>
+                        <IconButton
+                          aria-label={`Remove tier ${index + 1}`}
+                          onClick={() => onRemovePayoutTier?.(tier.id)}
+                          size="sm"
+                          variant="ghost"
+                        >
+                          <X aria-hidden="true" className="size-5" weight="bold" />
+                        </IconButton>
+                      </div>
+                      <NationalityMultiPicker
+                        inputAriaLabel="Search countries"
+                        noResultsLabel="No countries found"
+                        onChange={(codes) => onPayoutTierNationalitiesChange?.(tier.id, codes)}
+                        placeholder="Countries in this tier"
+                        portalContainer={tierPortalContainer}
+                        values={tier.nationalities}
+                      />
+                      <label className="block" htmlFor={`boost-tier-amount-${tier.id}`}>
+                        <Type as="span" className="sr-only">
+                          Tier {index + 1} amount
+                        </Type>
+                        <MoneyInput
+                          id={`boost-tier-amount-${tier.id}`}
+                          onChange={(value) => onPayoutTierAmountChange?.(tier.id, value)}
+                          value={tier.amountLabel}
+                        />
+                      </label>
+                    </div>
+                  ))}
+                  <Button
+                    className="h-10 w-full"
+                    disabled={payoutTiers.length >= maxPayoutTiers}
+                    onClick={onAddPayoutTier}
+                    type="button"
+                    variant="outline"
+                  >
+                    Add a tier
+                  </Button>
+                </div>
+                <div className="mt-3 flex items-start gap-3 rounded-lg border border-border-soft bg-muted/30 p-4">
+                  <ShieldWarning aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted-foreground" weight="fill" />
+                  <Type as="p" className="text-muted-foreground" variant="body">
+                    Payout amounts are publicly visible on-chain and differ by tier.
+                  </Type>
+                </div>
+              </section>
+            ) : null}
+
             {planProblem ? (
               <div
                 className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4"
@@ -314,13 +428,19 @@ export function BoostCampaignSheet({
             ) : (
               <>
                 <div className="rounded-lg border border-border-soft px-4">
-                  {/* `Up to`, not a bare count: zero is possible if nobody practises, and the
-                      decision record reserves plain counts for guaranteed floors. */}
-                  <CampaignSummaryRow label="Pays for" value={`Up to ${rewardCountLabel}`} />
+                  {/* Untiered: `Up to` — a ceiling, since zero is possible if nobody
+                      practises. Tiered: `At least` — a guaranteed floor, because loss
+                      bounds assume the top tier amount on every claim. */}
+                  <CampaignSummaryRow
+                    label="Pays for"
+                    value={tiered ? `At least ${rewardCountLabel}` : `Up to ${rewardCountLabel}`}
+                  />
                 </div>
 
                 <Type as="p" className="text-muted-foreground" variant="caption">
-                  {`You pay ${budgetDisplayLabel} now. The reward and budget lock after payment, and unused funds can't be withdrawn.`}
+                  {tiered
+                    ? `Worst case assumes the top tier${maxClaimDisplayLabel ? ` (${maxClaimDisplayLabel})` : ""} on every claim. You pay ${budgetDisplayLabel} now. The reward and budget lock after payment, and unused funds can't be withdrawn.`
+                    : `You pay ${budgetDisplayLabel} now. The reward and budget lock after payment, and unused funds can't be withdrawn.`}
                 </Type>
               </>
             )}
@@ -339,8 +459,14 @@ export function BoostCampaignSheet({
             </Card>
 
             <div className="rounded-lg border border-border-soft px-4">
-              <CampaignSummaryRow label="Reward per day" value={rewardDisplay} />
-              <CampaignSummaryRow label="Pays for" value={`Up to ${rewardCountLabel}`} />
+              <CampaignSummaryRow
+                label="Reward per day"
+                value={tiered && tierRangeLabel ? tierRangeLabel : rewardDisplay}
+              />
+              <CampaignSummaryRow
+                label="Pays for"
+                value={tiered ? `At least ${rewardCountLabel}` : `Up to ${rewardCountLabel}`}
+              />
             </div>
 
             {walletMismatch ? (

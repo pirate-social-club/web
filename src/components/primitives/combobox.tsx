@@ -78,12 +78,19 @@ function ComboboxContent({
   align = "start",
   className,
   collisionPadding = 8,
+  container,
   ref,
   sideOffset = 6,
   ...props
-}: React.ComponentProps<typeof ComboboxPrimitive.Popup> & React.ComponentProps<typeof ComboboxPrimitive.Positioner>) {
+}: React.ComponentProps<typeof ComboboxPrimitive.Popup> & React.ComponentProps<typeof ComboboxPrimitive.Positioner> & {
+  /**
+   * Portal target (defaults to document.body). Pass a node inside a modal
+   * dialog so the popup is not suppressed by the dialog's focus trap.
+   */
+  container?: React.ComponentProps<typeof ComboboxPrimitive.Portal>["container"];
+}) {
   return (
-    <ComboboxPrimitive.Portal>
+    <ComboboxPrimitive.Portal container={container}>
       <ComboboxPrimitive.Positioner
         align={align}
         collisionPadding={collisionPadding}

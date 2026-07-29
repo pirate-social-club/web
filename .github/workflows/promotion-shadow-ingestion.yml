@@ -1,0 +1,44 @@
+name: Promotion shadow ingestion
+
+# S0 observer only. It records completed Release evidence in promotion_shadow.
+# It cannot deploy, migrate, modify environments, or write repository contents.
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+concurrency:
+  # Redeliveries are idempotent in PostgreSQL. Never cancel an observer between
+  # delivery insertion and evidence recording; queue the same run attempt instead.
+  group: promotion-shadow-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  ingest:
+    name: Record completed release evidence
+    if: >-
+      github.event.workflow_run.event == 'push'
+      && github.event.workflow_run.head_branch == 'main'
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+    steps:
+      - name: Check out the observed release
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.2.21
+
+      - name: Record shadow evidence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PROMOTION_SHADOW_DATABASE_URL: ${{ secrets.PROMOTION_SHADOW_DATABASE_URL }}
+        run: bun scripts/ci/promotion-model/workflow-ingestion.ts

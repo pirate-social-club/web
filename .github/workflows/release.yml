@@ -842,7 +842,9 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     environment: production
     permissions:
+      actions: read
       contents: read
+      deployments: read
       id-token: write
       packages: read
     steps:
@@ -950,21 +952,8 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           script: |
-            const { data: ref } = await github.rest.git.getRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: "heads/main",
-            });
-            const tip = ref.object.sha;
-            if (tip !== context.sha) {
-              core.setOutput("stale", "true");
-              core.notice(
-                `Superseded: main advanced to ${tip} while this run (${context.sha}) waited for the ` +
-                `production lane. Skipping migrations and deploy; the release for ${tip} deploys instead.`
-              );
-              return;
-            }
-            core.setOutput("stale", "false");
+            const productionFreshness = require(`${process.env.GITHUB_WORKSPACE}/web/scripts/ci/production-freshness.cjs`);
+            await productionFreshness({ github, context, core });
       - name: Apply production control-plane migrations
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: core

@@ -19,6 +19,19 @@
  *   2. this SHA strictly descends from what production already serves, so an
  *      older validated run can never move production backwards.
  *
+ * Called TWICE per release, and both calls matter:
+ *
+ *   - `production-freshness`, before the `production-deploy` lock, to decide
+ *     whether the job runs at all;
+ *   - `Re-check freshness inside the production lane`, after the lock has been
+ *     acquired, gating the migration and deploy steps.
+ *
+ * The second call is what closes the check-then-act window between them: a run
+ * can sit in the lock queue for a long time, and by the time it acquires the
+ * lock a successor may have appeared or already deployed. Re-running the same
+ * decision under the lock means the monotonicity guard is evaluated against
+ * what production serves *now*, not what it served when the run was admitted.
+ *
  * Lives in a file rather than inline in the workflow so it can be unit tested —
  * this is the production deploy gate, and its failure mode is silent.
  */

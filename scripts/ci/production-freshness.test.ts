@@ -153,3 +153,23 @@ describe("production freshness", () => {
     });
   });
 });
+
+// The same module gates the production job a second time, after the
+// `production-deploy` lock is acquired. That second call is the reason the
+// check-then-act window between admission and deploy is safe: by then a
+// successor may exist, or may already have deployed, and both are caught.
+describe("re-evaluated under the production lock", () => {
+  test("stands down when a successor appeared while waiting for the lock", async () => {
+    const result = await decide({
+      runs: [{ head_sha: TIP, run_number: 101, status: "in_progress" }],
+    });
+    expect(result.stale).toBe("true");
+  });
+
+  test("stands down when a newer run deployed while waiting for the lock", async () => {
+    // Production now serves a descendant of this run, so this run is behind it.
+    const result = await decide({ forward: "behind" });
+    expect(result.stale).toBe("true");
+    expect(result.warnings[0]).toContain("would not move production forward");
+  });
+});

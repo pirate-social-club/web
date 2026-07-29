@@ -44,13 +44,12 @@ const storySmokeHostSubject = process.env.PIRATE_STORY_E2E_HOST_SUBJECT
 // Release gates must not provision communities: every allocation permanently
 // consumes a staging D1 binding until verified reclamation exists. This fixture
 // was created by the former per-run gate contract and is now dedicated to the
-// required gate-identity contract. The deterministic owner subject lets the
-// test recover its existing owner session without an admin impersonation path.
+// required gate-identity contract. Resolve its actual owner from the public
+// fixture record and use the release gate's scoped admin impersonation headers;
+// display names are not an identity source.
 const gateContractCommunityId = (
   process.env.PIRATE_GATE_CONTRACT_E2E_COMMUNITY_ID ?? "cmt_34976b020f7a41dd8a678354fae842f9"
 ).replace(/^com_/u, "");
-const gateContractOwnerSubject = process.env.PIRATE_GATE_CONTRACT_E2E_OWNER_SUBJECT
-  ?? "gate-contract-staging-1784143441363-123ba7";
 // Staging has exactly one namespace-backed community: real HNS verification
 // cannot be stubbed remotely, so the names fixture is hand-seeded and singular.
 // The handle-claim contract used to find it by scanning the public home feed,
@@ -1355,19 +1354,19 @@ test.describe("live staging integration", () => {
 
   test("exposes stable gate identity and authoritative outcomes in live join eligibility", async () => {
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const session = await createLiveSession(
-      gateContractOwnerSubject,
-      walletAddressForSubject(gateContractOwnerSubject),
-    );
-    await completeSelfVerification(session);
-    const community = await discoverWritableSeedCommunity(session, gateContractCommunityId);
+    const community = await hydrateRoutableLiveCommunityOwner({
+      id: gateContractCommunityId,
+      label: gateContractCommunityId,
+      routeSegment: gateContractCommunityId,
+    });
     if (!community) {
-      throw new Error(
-        `Stable gate-contract fixture ${gateContractCommunityId} is not writable by its configured owner`,
-      );
+      throw new Error(`Could not load stable gate-contract fixture ${gateContractCommunityId}`);
+    }
+    const headers = seedOwnerAdminHeaders(community);
+    if (!headers) {
+      throw new Error(`Stable gate-contract fixture ${gateContractCommunityId} has no impersonable owner`);
     }
     const communityId = community.id;
-    const headers = { authorization: `Bearer ${session.accessToken}` };
 
     const gatePolicy = {
       expression: {

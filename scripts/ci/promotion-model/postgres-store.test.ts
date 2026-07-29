@@ -183,6 +183,52 @@ describe.skipIf(!RUN)("PostgreSQL promotion shadow store", () => {
     expect(redelivery).toEqual({ kind: "duplicate", attemptNo: 2 });
   });
 
+  test("records already-terminal workflow evidence atomically and deduplicates redelivery", async () => {
+    const input = {
+      attemptId: "attempt_atomic",
+      deliveryId: "delivery_atomic",
+      candidateId: "shc_store_test",
+      gateId: "release_atomic",
+      gateVersion: 1,
+      sourceRunId: "run-atomic",
+      sourceRunAttempt: 1,
+      result: "pass" as const,
+      startedAt: new Date("2026-07-29T11:59:00Z"),
+      completedAt: new Date("2026-07-29T12:00:00Z"),
+    };
+    expect(await store.recordTerminalAttempt(input)).toEqual({ kind: "recorded", attemptNo: 1 });
+    expect(await store.recordTerminalAttempt({
+      ...input,
+      attemptId: "attempt_atomic_redelivery",
+      deliveryId: "delivery_atomic_redelivery",
+    })).toEqual({ kind: "duplicate", attemptNo: 1 });
+    await expect(store.recordTerminalAttempt({
+      ...input,
+      attemptId: "attempt_atomic_mismatch",
+      deliveryId: "delivery_atomic_mismatch",
+      result: "fail",
+    })).rejects.toBeInstanceOf(ShadowStoreTransitionError);
+
+    const db = connect(TEST_DB);
+    const [state] = await db.unsafe(`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'terminal')::int AS terminal,
+        COUNT(*) FILTER (WHERE status = 'running')::int AS running,
+        MAX(attempt_no)::int AS max_attempt,
+        (SELECT next_attempt_no
+           FROM promotion_shadow.attempt_counters
+          WHERE candidate_id = 'shc_store_test'
+            AND gate_id = 'release_atomic'
+            AND gate_version = 1) AS next_attempt
+      FROM promotion_shadow.attestation_attempts
+      WHERE candidate_id = 'shc_store_test'
+        AND gate_id = 'release_atomic'
+        AND gate_version = 1
+    `) as { terminal: number; running: number; max_attempt: number; next_attempt: number }[];
+    await db.end();
+    expect(state).toEqual({ terminal: 1, running: 0, max_attempt: 1, next_attempt: 2 });
+  });
+
   test("makes completion races durable and rejects stale lease holders", async () => {
     const completions = await Promise.allSettled([
       store.completeAttempt({ attemptId: "attempt_rerun", result: "pass", detectedBy: "runner-a" }),

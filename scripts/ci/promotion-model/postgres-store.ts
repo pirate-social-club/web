@@ -144,6 +144,116 @@ export class PromotionShadowStore {
     return outcome;
   }
 
+  /**
+   * Records an already-terminal external gate in one transaction.
+   *
+   * workflow_run ingestion observes a job only after GitHub has completed it.
+   * Splitting start and completion would create a crash window that could leave a
+   * permanently running attempt for evidence that was terminal before ingestion
+   * began. Live attempts still use startAttempt/completeAttempt.
+   */
+  async recordTerminalAttempt(input: Delivery & {
+    attemptId: string;
+    result: "pass" | "fail" | "inconclusive";
+    startedAt: Date;
+    completedAt: Date;
+  }): Promise<
+    { kind: "recorded"; attemptNo: number } | { kind: "duplicate"; attemptNo: number | null }
+  > {
+    const outcome = await this.sql.begin(async (tx) => {
+      const delivery = await tx<{ delivery_id: string }[]>`
+        INSERT INTO promotion_shadow.gate_deliveries
+          (delivery_id, candidate_id, gate_id, gate_version,
+           source_run_id, source_run_attempt, classified_as)
+        VALUES
+          (${input.deliveryId}, ${input.candidateId}, ${input.gateId}, ${input.gateVersion},
+           ${input.sourceRunId}, ${input.sourceRunAttempt}, 'attempt')
+        ON CONFLICT (candidate_id, gate_id, gate_version, source_run_id, source_run_attempt)
+          DO NOTHING
+        RETURNING delivery_id
+      `;
+      if (delivery.length === 0) {
+        const existing = await tx<{ attempt_no: number; equivalent: boolean }[]>`
+          SELECT attempt.attempt_no,
+                 (
+                   attempt.result = ${input.result}
+                   AND attempt.started_at = ${input.startedAt}
+                   AND attempt.completed_at = ${input.completedAt}
+                 ) AS equivalent
+          FROM promotion_shadow.gate_deliveries AS delivered
+          JOIN promotion_shadow.attestation_attempts AS attempt
+            ON attempt.delivery_id = delivered.delivery_id
+          WHERE delivered.candidate_id = ${input.candidateId}
+            AND delivered.gate_id = ${input.gateId}
+            AND delivered.gate_version = ${input.gateVersion}
+            AND delivered.source_run_id = ${input.sourceRunId}
+            AND delivered.source_run_attempt = ${input.sourceRunAttempt}
+        `;
+        if (!existing[0]?.equivalent) {
+          throw new ShadowStoreTransitionError("attempt delivery idempotency payload mismatch");
+        }
+        return { kind: "duplicate" as const, attemptNo: existing[0].attempt_no };
+      }
+
+      await tx`
+        INSERT INTO promotion_shadow.attempt_counters
+          (candidate_id, gate_id, gate_version)
+        VALUES (${input.candidateId}, ${input.gateId}, ${input.gateVersion})
+        ON CONFLICT (candidate_id, gate_id, gate_version) DO NOTHING
+      `;
+      const counter = await tx<{ next_attempt_no: number }[]>`
+        SELECT next_attempt_no
+        FROM promotion_shadow.attempt_counters
+        WHERE candidate_id = ${input.candidateId}
+          AND gate_id = ${input.gateId}
+          AND gate_version = ${input.gateVersion}
+        FOR UPDATE
+      `;
+      const running = await tx`
+        SELECT 1
+        FROM promotion_shadow.attestation_attempts
+        WHERE candidate_id = ${input.candidateId}
+          AND gate_id = ${input.gateId}
+          AND gate_version = ${input.gateVersion}
+          AND status = 'running'
+      `;
+      if (running.length > 0) {
+        await tx`
+          INSERT INTO promotion_shadow.promotion_anomalies
+            (anomaly_id, kind, candidate_id, gate_id, gate_version, detected_by, detail)
+          VALUES
+            (${`anomaly_${randomUUID()}`}, 'concurrent_attempt', ${input.candidateId},
+             ${input.gateId}, ${input.gateVersion}, 'shadow-ingestion',
+             ${JSON.stringify({ deliveryId: input.deliveryId })}::jsonb)
+        `;
+        return { kind: "conflict" as const };
+      }
+      const attemptNo = counter[0]?.next_attempt_no;
+      if (!attemptNo) throw new Error("attempt counter returned no value");
+      await tx`
+        INSERT INTO promotion_shadow.attestation_attempts
+          (attempt_id, delivery_id, candidate_id, gate_id, gate_version,
+           attempt_no, status, result, started_at, completed_at)
+        VALUES
+          (${input.attemptId}, ${input.deliveryId}, ${input.candidateId}, ${input.gateId},
+           ${input.gateVersion}, ${attemptNo}, 'terminal', ${input.result},
+           ${input.startedAt}, ${input.completedAt})
+      `;
+      await tx`
+        UPDATE promotion_shadow.attempt_counters
+        SET next_attempt_no = next_attempt_no + 1
+        WHERE candidate_id = ${input.candidateId}
+          AND gate_id = ${input.gateId}
+          AND gate_version = ${input.gateVersion}
+      `;
+      return { kind: "recorded" as const, attemptNo };
+    });
+    if (outcome.kind === "conflict") {
+      throw new ShadowStoreTransitionError("attempt already in flight");
+    }
+    return outcome;
+  }
+
   async completeAttempt(input: {
     attemptId: string;
     result: "pass" | "fail" | "inconclusive";

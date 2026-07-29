@@ -527,10 +527,11 @@ jobs:
       - name: Record schema scan start
         run: echo "SCHEMA_SCAN_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - name: Verify staging fleet satisfies pinned API schema requirements
-        # Keep staging concurrency low: high fan-out causes random Wrangler/D1
-        # read failures across the fleet and makes this fail-closed gate flaky.
-        # The gate reads the community-d1-shard pool + every live shard via
-        # `wrangler d1 execute --remote`, so it needs D1 READ across
+        # Increase REST-batch concurrency conservatively after two measured
+        # fleet scans completed with zero retries and no D1 errors. Roll back to
+        # 2 if transport metrics report retries or error code 7429.
+        # The gate reads the community-d1-shard pool + every live shard through
+        # the D1 REST API, so it needs D1 READ across
         # community-d1-pool-* and community-d1-shard-pool-*. That is the isolated
         # D1 token (CLOUDFLARE_D1_API_TOKEN), NOT the Worker-deploy token — D1
         # access is deliberately kept off the deploy token (see the multipart
@@ -546,7 +547,7 @@ jobs:
             --drift-policy core/db/known-community-migration-drifts.json \
             --canonical-baseline api/services/api/docs/attestations/community-schema/staging-canonical-baseline.json \
             --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
-            --concurrency 2
+            --concurrency 3
       # always(): a SLOW scan that then fails is exactly the sample we must not
       # drop. Never fails the job — an observability step must not be able to
       # block a release.
@@ -803,31 +804,24 @@ jobs:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_production))
     runs-on: blacksmith-2vcpu-ubuntu-2404
     permissions:
+      actions: read
       contents: read
+      deployments: read
     outputs:
       stale: ${{ steps.check.outputs.stale }}
     steps:
-      - name: Compare run SHA against current main tip
+      # See scripts/ci/production-freshness.cjs — the decision lives in a file
+      # so it can be unit tested (scripts/ci/production-freshness.test.ts).
+      # This job checks out the repo only to load that module; the authenticated
+      # client still comes from actions/github-script.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Deploy only when no live successor will
         id: check
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           script: |
-            const { data: ref } = await github.rest.git.getRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: "heads/main",
-            });
-            const tip = ref.object.sha;
-            if (tip !== context.sha) {
-              core.setOutput("stale", "true");
-              core.warning(
-                `Skipping production deploy: main has advanced to ${tip}, but this run built ${context.sha}. ` +
-                `The release for ${tip} deploys instead.`
-              );
-              return;
-            }
-            core.setOutput("stale", "false");
-            core.notice(`Run SHA ${context.sha} is the current main tip; proceeding to production.`);
+            const productionFreshness = require(`${process.env.GITHUB_WORKSPACE}/scripts/ci/production-freshness.cjs`);
+            await productionFreshness({ github, context, core });
 
   production:
     name: Deploy production
@@ -839,14 +833,18 @@ jobs:
     # it must be exclusive, and it must NEVER be cancelled midway — an
     # interrupted migration is the one failure here that is not recoverable by
     # re-running. Staleness is handled by production-freshness above, which
-    # rejects superseded runs before they reach this lock.
+    # rejects superseded runs before they reach this lock — but only when a live
+    # successor is actually going to deploy, so that a burst of merges cannot
+    # leave every run deferring to the next (#729).
     concurrency:
       group: production-deploy
       cancel-in-progress: false
     runs-on: blacksmith-4vcpu-ubuntu-2404
     environment: production
     permissions:
+      actions: read
       contents: read
+      deployments: read
       id-token: write
       packages: read
     steps:
@@ -954,21 +952,8 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           script: |
-            const { data: ref } = await github.rest.git.getRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: "heads/main",
-            });
-            const tip = ref.object.sha;
-            if (tip !== context.sha) {
-              core.setOutput("stale", "true");
-              core.notice(
-                `Superseded: main advanced to ${tip} while this run (${context.sha}) waited for the ` +
-                `production lane. Skipping migrations and deploy; the release for ${tip} deploys instead.`
-              );
-              return;
-            }
-            core.setOutput("stale", "false");
+            const productionFreshness = require(`${process.env.GITHUB_WORKSPACE}/web/scripts/ci/production-freshness.cjs`);
+            await productionFreshness({ github, context, core });
       - name: Apply production control-plane migrations
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: core

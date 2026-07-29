@@ -32,11 +32,11 @@ import {
   resolveVideoHomeSurface,
   resolveVideoPublisherRelationship,
   shouldHuntColdStartPages,
-  videoImpressionAnalyticsProperties,
   videoTranslationForFeedItem,
   VIDEO_FEED_STAGE_CLASS,
   VIDEO_FEED_VIEWPORT_CLASS,
 } from "./video-home-route";
+import { videoImpressionAnalyticsProperties } from "@/lib/video-impression-analytics";
 
 function feedEntry(id: string): HomeFeedItem {
   return { post: { post: { id } } } as HomeFeedItem;

@@ -41,6 +41,7 @@ import {
 } from "./sidebar-sections";
 import { resolveSessionAvatarFallback } from "./session-avatar";
 import { useShellMobileLayout } from "./use-shell-mobile-layout";
+import { GlobalVideoExperienceProvider } from "@/app/video-experience/video-experience-provider";
 
 const LazyAuthenticatedRouteRenderer = React.lazy(async () => {
   const mod = await import("@/app/authenticated-route-renderer");
@@ -337,47 +338,49 @@ export function PirateAppShell({
     >
       <PirateQueryProvider>
         <ApiProvider initialHost={initialHost}>
-          <AnalyticsRouteTracker route={route} />
-          {useStandalonePublicProfileShell ? (
-            <>
-              <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
-                <PageContainer>
-                  <React.Suspense fallback={<RouteContentFallback route={route} />}>
-                    {route.kind === "public-profile" || route.kind === "public-agent" ? <LazyPublicRouteRenderer route={route} /> : null}
-                  </React.Suspense>
-                </PageContainer>
-              </main>
-              <Toaster />
-            </>
-          ) : isTelegramMiniAppRoute ? (
-            <PirateAuthProvider>
-              <React.Suspense fallback={<RouteContentFallback route={route} />}>
-                {route.kind === "telegram-community"
-                  ? <LazyTelegramMiniAppCommunityPage communityId={route.communityId} />
-                  : route.kind === "telegram-verify"
-                    ? <LazyTelegramMiniAppVerifyPage communityId={route.communityId} />
-                  : route.kind === "telegram-post"
-                    ? <LazyTelegramMiniAppPostPage postId={route.postId} />
-                  : route.kind === "telegram-exchange"
-                    ? <LazyTelegramMiniAppExchangePage />
-                  : route.kind === "telegram-self-return"
-                    ? <LazyTelegramMiniAppSelfReturnPage communityId={route.communityId} />
-                  : <LazyTelegramMiniAppHomePage />}
-              </React.Suspense>
-              <Toaster />
-            </PirateAuthProvider>
-          ) : (
-            <PirateAuthProvider deferPrivyUntilConnect={shouldDeferPrivyUntilConnect}>
-              <SessionRevalidator>
-                <NotificationShell
-                  copy={copy}
-                  effectiveDir={effectiveDir}
-                  route={route}
-                  session={session}
-                />
-              </SessionRevalidator>
-            </PirateAuthProvider>
-          )}
+          <GlobalVideoExperienceProvider>
+            <AnalyticsRouteTracker route={route} />
+            {useStandalonePublicProfileShell ? (
+              <>
+                <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
+                  <PageContainer>
+                    <React.Suspense fallback={<RouteContentFallback route={route} />}>
+                      {route.kind === "public-profile" || route.kind === "public-agent" ? <LazyPublicRouteRenderer route={route} /> : null}
+                    </React.Suspense>
+                  </PageContainer>
+                </main>
+                <Toaster />
+              </>
+            ) : isTelegramMiniAppRoute ? (
+              <PirateAuthProvider>
+                <React.Suspense fallback={<RouteContentFallback route={route} />}>
+                  {route.kind === "telegram-community"
+                    ? <LazyTelegramMiniAppCommunityPage communityId={route.communityId} />
+                    : route.kind === "telegram-verify"
+                      ? <LazyTelegramMiniAppVerifyPage communityId={route.communityId} />
+                    : route.kind === "telegram-post"
+                      ? <LazyTelegramMiniAppPostPage postId={route.postId} />
+                      : route.kind === "telegram-exchange"
+                        ? <LazyTelegramMiniAppExchangePage />
+                        : route.kind === "telegram-self-return"
+                          ? <LazyTelegramMiniAppSelfReturnPage communityId={route.communityId} />
+                          : <LazyTelegramMiniAppHomePage />}
+                </React.Suspense>
+                <Toaster />
+              </PirateAuthProvider>
+            ) : (
+              <PirateAuthProvider deferPrivyUntilConnect={shouldDeferPrivyUntilConnect}>
+                <SessionRevalidator>
+                  <NotificationShell
+                    copy={copy}
+                    effectiveDir={effectiveDir}
+                    route={route}
+                    session={session}
+                  />
+                </SessionRevalidator>
+              </PirateAuthProvider>
+            )}
+          </GlobalVideoExperienceProvider>
         </ApiProvider>
       </PirateQueryProvider>
     </RootErrorBoundary>

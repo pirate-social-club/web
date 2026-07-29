@@ -1,0 +1,31 @@
+export const VIDEO_EXPERIENCE_QUERY_PARAM = "video";
+export const VIDEO_EXPERIENCE_HISTORY_KEY = "pirateVideoViewer";
+
+export function videoIdFromLocation(location: Pick<Location, "href">): string | null {
+  const value = new URL(location.href).searchParams.get(VIDEO_EXPERIENCE_QUERY_PARAM)?.trim();
+  return value || null;
+}
+
+export function hrefWithVideo(href: string, postId: string): string {
+  const url = new URL(href);
+  url.searchParams.set(VIDEO_EXPERIENCE_QUERY_PARAM, postId);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+export function hrefWithoutVideo(href: string): string {
+  const url = new URL(href);
+  url.searchParams.delete(VIDEO_EXPERIENCE_QUERY_PARAM);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+export function isVideoExperienceHistoryState(state: unknown): boolean {
+  if (!state || typeof state !== "object") return false;
+  return VIDEO_EXPERIENCE_HISTORY_KEY in state;
+}
+
+export function historyStateWithoutVideo(state: unknown): Record<string, unknown> {
+  if (!state || typeof state !== "object") return {};
+  const next = { ...(state as Record<string, unknown>) };
+  delete next[VIDEO_EXPERIENCE_HISTORY_KEY];
+  return next;
+}

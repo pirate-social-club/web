@@ -26,11 +26,13 @@ import {
 } from "@/components/compositions/bookings/feed-booking-sheet/feed-booking-sheet";
 import type { IanaTz, ResolvedSlot } from "@/components/compositions/bookings/view-models";
 import {
-  toPageVideoItem,
-  adjacentVideoSourcePostIds,
   VideoViewerBoostBridge,
   type FeedItem,
 } from "@/components/compositions/posts/feed/feed";
+import {
+  adjacentVideoSourcePostIds,
+  toVideoViewerItem,
+} from "@/components/compositions/posts/video-feed/video-viewer-item";
 import {
   compactCount,
   VideoFeed,
@@ -72,6 +74,7 @@ import { useSession } from "@/lib/api/session-store";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { interpolateMessage } from "@/lib/route-messages";
 import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
+import { videoImpressionAnalyticsProperties } from "@/lib/video-impression-analytics";
 import { HomePage } from "./home-routes";
 
 export type VideoHomeSurface = "loading" | "video" | "community-feed-empty" | "community-feed-error";
@@ -331,27 +334,6 @@ export function resolveVideoPublisherRelationship(input: {
     disabled: Boolean(joined) || input.viewerMembershipStatus === "banned",
     kind: "join",
     label: joined ? input.joinedLabel : input.joinLabel,
-  };
-}
-
-export function videoImpressionAnalyticsProperties(
-  item: VideoFeedItem,
-  impression: VideoFeedImpression,
-): Record<string, string | number | boolean> {
-  return {
-    completion_ratio: Number(impression.completionRatio.toFixed(4)),
-    duration_seconds: Number(impression.durationSeconds.toFixed(3)),
-    dwell_ms: impression.dwellMs,
-    exit_reason: impression.exitReason,
-    feed_request_id: impression.feedRequestId,
-    muted: impression.muted,
-    orientation: item.media.orientation,
-    playback_seconds: Number(impression.playbackSeconds.toFixed(3)),
-    position: impression.position,
-    publisher_kind: item.publisher.kind,
-    replay_count: impression.replayCount,
-    slide_entry_sequence: impression.slideEntrySequence,
-    sound_on: impression.soundOnAtAnyPoint,
   };
 }
 
@@ -714,7 +696,7 @@ export function VideoHomePage() {
         showTranslationLabel: copy.common.showTranslation,
         viewerContentLocale: contentLocale,
       });
-      const video = toPageVideoItem(item);
+      const video = toVideoViewerItem(item);
       if (!video) {
         pageItemCacheRef.current.set(post.id, {
           authorProfile,

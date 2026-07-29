@@ -2,7 +2,11 @@ import "@/test/setup-runtime";
 
 import { describe, expect, test } from "bun:test";
 
-import { adjacentVideoSourcePostIds, toPageVideoItem, type FeedItem } from "./feed";
+import type { FeedItem } from "./feed";
+import {
+  adjacentVideoSourcePostIds,
+  toVideoViewerItem,
+} from "@/components/compositions/posts/video-feed/video-viewer-item";
 
 const videoItem: FeedItem = {
   id: "post_video",
@@ -23,9 +27,9 @@ const videoItem: FeedItem = {
   },
 };
 
-describe("toPageVideoItem", () => {
+describe("toVideoViewerItem", () => {
   test("uses only the already-loaded card data for a playable viewer item", () => {
-    expect(toPageVideoItem(videoItem)).toEqual(expect.objectContaining({
+    expect(toVideoViewerItem(videoItem)).toEqual(expect.objectContaining({
       id: "post_video",
       karaoke: "unavailable",
       likeCount: 12,
@@ -37,7 +41,7 @@ describe("toPageVideoItem", () => {
   });
 
   test("carries raw booking discovery metadata into the viewer item", () => {
-    expect(toPageVideoItem({
+    expect(toVideoViewerItem({
       ...videoItem,
       booking: {
         basePriceCents: 3500,
@@ -56,14 +60,14 @@ describe("toPageVideoItem", () => {
   });
 
   test("does not invent viewer entries for non-video cards", () => {
-    expect(toPageVideoItem({
+    expect(toVideoViewerItem({
       ...videoItem,
       post: { ...videoItem.post, content: { type: "text", body: "Not a video" } },
     })).toBeNull();
   });
 
   test("addresses a linked song through the hydrated source post id", () => {
-    const item = toPageVideoItem({
+    const item = toVideoViewerItem({
       ...videoItem,
       post: {
         ...videoItem.post,

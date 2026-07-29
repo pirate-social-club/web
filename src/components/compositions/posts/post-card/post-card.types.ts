@@ -518,6 +518,8 @@ export interface PostCardEvent {
 }
 
 export interface PostCardProps {
+  /** Canonical post identity used by app-level media experiences. */
+  postId?: string;
   viewContext?: PostCardViewContext;
   previewMode?: boolean;
   identityPresentation?: PostCardIdentityPresentation;
@@ -555,7 +557,7 @@ export interface PostCardProps {
     onClick?: () => void;
   };
   onComment?: () => void;
-  /** Opens the page-scoped vertical viewer for this video card when available. */
+  /** Optional override for the shell-owned vertical viewer entry action. */
   onOpenVideoViewer?: () => void;
   onShare?: () => void;
   onToggleOriginal?: () => void;

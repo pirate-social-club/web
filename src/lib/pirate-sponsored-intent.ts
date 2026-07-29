@@ -29,6 +29,7 @@ export interface PirateSponsoredIntentRequest {
   transactionIndex: number;
   intent: PirateSponsoredIntent;
   privyWalletId?: string;
+  requestExpiry?: string;
   transaction: PirateSponsoredTransactionEnvelope;
   walletAddress: `0x${string}`;
 }

@@ -760,12 +760,12 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
           icon: <ShareFat className="size-5" weight="fill" />,
         }]
         : []),
-    {
+    ...(onDownvote ? [{
       key: "downvote",
       label: item.downvoted ? removeDownvoteLabel : downvoteLabel,
       icon: <ArrowFatDown className="size-5" weight={item.downvoted ? "fill" : "regular"} />,
       separatorBefore: Boolean(item.shareActions?.length || onShare),
-    },
+    }] : []),
     ...(item.boostEligibility === "eligible"
       ? [{ key: "boost", label: "Boost this song", icon: <CurrencyDollar className="size-5" weight="bold" /> }]
       : []),

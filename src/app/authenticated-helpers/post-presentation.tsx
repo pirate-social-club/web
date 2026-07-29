@@ -200,6 +200,7 @@ export function toCommunityFeedItem(
         if (key === "cancel-event") opts?.onCancelEvent?.();
       } : undefined,
       onVote: isPublished ? opts?.onVote : undefined,
+      postId: post.id,
       postHref: isPublished ? `/p/${post.id}` : undefined,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
       ...(isPublished ? titleProps : { ...titleProps, titleHref: undefined }),
@@ -346,6 +347,7 @@ export function toThreadPostCard(
     } : undefined,
     onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
     voteAccess: post.status === "deleted" || post.status === "removed" ? undefined : opts?.voteAccess,
+    postId: post.id,
     postHref: undefined,
     qualifierLabels: resolvePostQualifierLabels(postResponse),
     ...titleProps,

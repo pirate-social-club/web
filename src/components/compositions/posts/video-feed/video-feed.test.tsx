@@ -1174,7 +1174,7 @@ describe("VideoFeed", () => {
   });
 
   test("keeps only the desktop overflow dots visible", () => {
-    const view = render(<VideoFeed items={[item]} />);
+    const view = render(<VideoFeed items={[item]} onDownvote={() => {}} />);
     const triggers = view.getAllByLabelText("More video actions");
     expect(triggers).toHaveLength(2);
 
@@ -1205,16 +1205,23 @@ describe("VideoFeed", () => {
   });
 
   test("renders overflow even when the item is not boost eligible", () => {
-    const view = render(<VideoFeed items={[{ ...item, boostEligibility: "unavailable" }]} />);
+    const view = render(<VideoFeed items={[{ ...item, boostEligibility: "unavailable" }]} onDownvote={() => {}} />);
     expect(view.getAllByLabelText("More video actions")).toHaveLength(2);
   });
 
   test("does not pause playback merely because the non-modal overflow opens", () => {
-    const view = render(<VideoFeed items={[item]} />);
+    const view = render(<VideoFeed items={[item]} onDownvote={() => {}} />);
 
     fireEvent.click(view.getAllByLabelText("More video actions")[0]);
 
     expect(view.queryByRole("button", { name: "Play video" })).toBeNull();
+  });
+
+  test("does not expose a dead downvote action when its container has no handler", () => {
+    const view = render(<VideoFeed items={[item]} />);
+
+    expect(view.queryByLabelText("More video actions")).toBeNull();
+    expect(view.queryByText("Downvote")).toBeNull();
   });
 
   test("keeps sound in the frame's top-left corner on mobile and desktop", () => {

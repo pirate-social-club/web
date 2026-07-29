@@ -136,3 +136,45 @@ jobs:
           if (( failures > 0 )); then
             exit 1
           fi
+
+  promotion-shadow-store:
+    name: promotion-shadow-store
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out web
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: web
+
+      - name: Check out canonical promotion schema
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/core
+          ref: 508477aeed2157f4f6c9dbc34c6ddf1ad189169f
+          path: core
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.2.21
+
+      - name: Run promotion shadow store integration test
+        working-directory: web
+        env:
+          PROMOTION_STORE_TEST_ADMIN_URL: "postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable"
+          PROMOTION_STORE_TEST_CORE_DIR: ${{ github.workspace }}/core
+        run: bun test scripts/ci/promotion-model/postgres-store.test.ts

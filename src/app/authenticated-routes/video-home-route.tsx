@@ -246,18 +246,6 @@ export function appendUniqueVideoEntries(
   return uniqueIncoming.length > 0 ? [...current, ...uniqueIncoming] : current;
 }
 
-export function takeUnseenVideoEntries(
-  seenPostIds: Set<string>,
-  incoming: ApiHomeFeedItem[],
-): ApiHomeFeedItem[] {
-  return incoming.filter((entry) => {
-    const postId = entry.post.post.id;
-    if (seenPostIds.has(postId)) return false;
-    seenPostIds.add(postId);
-    return true;
-  });
-}
-
 export function nextVideoPaginationCursor(input: {
   consecutiveNoGrowthPages: number;
   didGrow: boolean;

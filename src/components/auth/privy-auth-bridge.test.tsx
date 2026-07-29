@@ -87,7 +87,7 @@ mock.module("@/app/router", () => ({
   navigate: () => undefined,
 }));
 
-const { PrivyAuthBridge } = await import("./privy-auth-bridge");
+const { PrivyAuthBridge, resolvePrivyWalletId } = await import("./privy-auth-bridge");
 
 const embeddedWallet: PirateConnectedEvmWallet = {
   address: EMBEDDED_ADDRESS,
@@ -104,6 +104,17 @@ afterEach(() => {
 });
 
 describe("PrivyAuthBridge embedded wallet recovery", () => {
+  test("resolves an embedded wallet id from the authenticated Privy user", () => {
+    expect(resolvePrivyWalletId({
+      linkedAccounts: [{
+        address: EMBEDDED_ADDRESS.toUpperCase(),
+        id: "wallet_from_user",
+        type: "wallet",
+      }],
+    }, EMBEDDED_ADDRESS)).toBe("wallet_from_user");
+    expect(resolvePrivyWalletId(null, EMBEDDED_ADDRESS, "wallet_explicit")).toBe("wallet_explicit");
+  });
+
   test("performs only the bounded number of silent exchanges", async () => {
     fakeSession = makeSession(false);
     render(

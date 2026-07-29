@@ -1,0 +1,112 @@
+name: D1 REST schema rehearsal
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+    paths:
+      - .github/workflows/d1-rest-rehearsal.yml
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  staging-schema-rehearsal:
+    name: Read-only staging schema rehearsal
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'ci/d1-rest-rehearsal-20260729'
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    env:
+      API_SHA: 89c7b174699d03047179bd69681e2ec024a3f1bc
+      CORE_SHA: a78f71ee1ae2c4801b6fc054810cc54967b4ebc0
+    steps:
+      - name: Check out pinned API
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/api
+          ref: ${{ env.API_SHA }}
+          path: api
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+
+      - name: Check out merged Core transport
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/core
+          ref: ${{ env.CORE_SHA }}
+          path: core
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+
+      - name: Record rehearsal start
+        shell: bash
+        run: |
+          started_at="$(date +%s)"
+          echo "REHEARSAL_STARTED_AT=$started_at" >> "$GITHUB_ENV"
+
+      - name: Verify staging fleet through D1 REST batches
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          bun core/scripts/community/verify-community-schema-requirements.ts \
+            --requirements api/services/api/community-schema-requirements.json \
+            --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
+            --migrations-dir core/db/community-template/migrations \
+            --drift-policy core/db/known-community-migration-drifts.json \
+            --canonical-baseline api/services/api/docs/attestations/community-schema/staging-canonical-baseline.json \
+            --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
+            --concurrency 2
+
+      - name: Validate REST transport evidence
+        run: |
+          bun -e '
+            const manifest = await Bun.file("schema-gate-staging.json").json();
+            if (manifest.d1_query_transport !== "rest_batch") {
+              throw new Error(`Expected d1_query_transport=rest_batch, got ${JSON.stringify(manifest.d1_query_transport)}`);
+            }
+            if (!manifest.d1_query_metrics || typeof manifest.d1_query_metrics !== "object") {
+              throw new Error("Manifest is missing d1_query_metrics");
+            }
+          '
+
+      - name: Record wall-clock evidence
+        if: always()
+        shell: bash
+        run: |
+          ended_at="$(date +%s)"
+          elapsed=$(( ended_at - ${REHEARSAL_STARTED_AT:-ended_at} ))
+          export ENDED_AT="$ended_at"
+          export ELAPSED_SECONDS="$elapsed"
+          bun -e '
+            const metadata = {
+              api_sha: process.env.API_SHA,
+              core_sha: process.env.CORE_SHA,
+              started_at_epoch: Number(process.env.REHEARSAL_STARTED_AT || 0),
+              ended_at_epoch: Number(process.env.ENDED_AT),
+              elapsed_seconds: Number(process.env.ELAPSED_SECONDS),
+              concurrency: 2,
+              fleet: "staging",
+              read_only: true,
+            };
+            await Bun.write("d1-rest-rehearsal-metadata.json", JSON.stringify(metadata, null, 2) + "\n");
+          '
+          printf 'D1 REST staging rehearsal: %dm%02ds at concurrency 2\n' \
+            "$(( elapsed / 60 ))" "$(( elapsed % 60 ))" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload rehearsal evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: d1-rest-rehearsal-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            schema-gate-staging.json
+            d1-rest-rehearsal-metadata.json
+          if-no-files-found: error
+          retention-days: 7

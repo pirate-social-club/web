@@ -527,10 +527,11 @@ jobs:
       - name: Record schema scan start
         run: echo "SCHEMA_SCAN_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - name: Verify staging fleet satisfies pinned API schema requirements
-        # Keep staging concurrency low: high fan-out causes random Wrangler/D1
-        # read failures across the fleet and makes this fail-closed gate flaky.
-        # The gate reads the community-d1-shard pool + every live shard via
-        # `wrangler d1 execute --remote`, so it needs D1 READ across
+        # Increase REST-batch concurrency conservatively after two measured
+        # fleet scans completed with zero retries and no D1 errors. Roll back to
+        # 2 if transport metrics report retries or error code 7429.
+        # The gate reads the community-d1-shard pool + every live shard through
+        # the D1 REST API, so it needs D1 READ across
         # community-d1-pool-* and community-d1-shard-pool-*. That is the isolated
         # D1 token (CLOUDFLARE_D1_API_TOKEN), NOT the Worker-deploy token — D1
         # access is deliberately kept off the deploy token (see the multipart
@@ -546,7 +547,7 @@ jobs:
             --drift-policy core/db/known-community-migration-drifts.json \
             --canonical-baseline api/services/api/docs/attestations/community-schema/staging-canonical-baseline.json \
             --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
-            --concurrency 2
+            --concurrency 3
       # always(): a SLOW scan that then fails is exactly the sample we must not
       # drop. Never fails the job — an observability step must not be able to
       # block a release.

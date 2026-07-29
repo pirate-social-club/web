@@ -42,6 +42,7 @@ import { buildFeedSortOptions, buildTopTimeRangeOptions } from "@/lib/feed-sort-
 import { EmptyFeedState, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
 import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
+import { feedKeys } from "@/lib/query/keys";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { selectPostVoteGateData } from "@/hooks/use-community-interaction-gate.helpers";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
@@ -76,10 +77,15 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     sort: activeSort,
     timeRange: activeSort === "top" ? topTimeRange : null,
   }), [activeSort, contentLocale, topTimeRange]);
-  const feedIdentityKey = `${feedRequest.sort}|${feedRequest.locale ?? ""}|${feedRequest.timeRange ?? ""}`;
+  const feedIdentityKey = `${sessionUserId ?? "anonymous"}|${feedRequest.sort}|${feedRequest.locale ?? ""}|${feedRequest.timeRange ?? ""}`;
   const homeFeedQueryKey = React.useMemo(
-    () => ["home-feed", feedRequest.locale, feedRequest.sort, feedRequest.timeRange] as const,
-    [feedRequest.locale, feedRequest.sort, feedRequest.timeRange],
+    () => feedKeys.home({
+      locale: feedRequest.locale,
+      sort: feedRequest.sort,
+      timeRange: feedRequest.timeRange,
+      userId: sessionUserId ?? null,
+    }),
+    [feedRequest.locale, feedRequest.sort, feedRequest.timeRange, sessionUserId],
   );
   const homeFeedQuery = useQuery<HomeFeedQueryPayload>({
     queryKey: homeFeedQueryKey,
@@ -119,10 +125,10 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [loadMoreError, setLoadMoreError] = React.useState<unknown>(null);
   const loadingMoreRef = React.useRef(false);
-  // Identity of the feed currently rendered (sort / content locale / time
-  // range). Enrichment maps are only cleared when this changes; auth/session
-  // refreshes reuse the same feed identity so their enriched UI (avatars, buy
-  // buttons, live-room seats) is preserved and replaced in place, not blanked.
+  // Identity of the feed currently rendered (viewer / sort / content locale /
+  // time range). Token refreshes for the same viewer preserve enrichment, but
+  // an account switch clears purchases and other viewer-shaped maps alongside
+  // the viewer-keyed query payload.
   const feedIdentityRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {

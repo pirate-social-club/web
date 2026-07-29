@@ -467,7 +467,7 @@ describe("useHomeFeed", () => {
     expect(publicAccessCalls).toBeGreaterThan(0);
   });
 
-  test("preserves enriched feed state across an auth-triggered refresh instead of blanking it", async () => {
+  test("does not retain the anonymous feed across an authenticated viewer transition", async () => {
     __resetSessionStoreForTests();
     resolveProfile = null;
     resolveListings = null;
@@ -536,13 +536,13 @@ describe("useHomeFeed", () => {
       rerender({ session: liveSession });
     });
 
-    // Same feed identity, so the enriched, already-rendered state must remain
-    // visible during the pending refresh rather than flickering to empty.
+    // The viewer is part of the feed identity. While the authenticated request
+    // is pending, do not render or enrich the anonymous viewer's cached feed.
     expect(publicHomeCalls).toBeGreaterThan(1);
-    expect(result.current.feedEntries.length).toBe(1);
-    expect(result.current.feedEntries[0]?.post.post.id).toBe("pst_1");
-    expect(result.current.topCommunities.length).toBe(1);
-    expect(result.current.authorProfiles.usr_1).toEqual({ user: "usr_1", display_name: "Test User" });
+    expect(result.current.feedEntries).toEqual([]);
+    expect(result.current.topCommunities).toEqual([]);
+    expect(result.current.authorProfiles).toEqual({});
+    expect(result.current.loading).toBe(true);
   });
 
   test("loads the next page with the server cursor and deduplicates appended posts", async () => {

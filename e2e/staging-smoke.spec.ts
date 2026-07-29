@@ -130,7 +130,7 @@ test.describe("unauthenticated staging smoke", () => {
   test("mobile viewport exposes core footer navigation", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
-    await expectAppShell(page);
+    await expectRouteRendered(page);
     await expect(page.getByRole("navigation", { name: /primary/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /^home$/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /wallet/i })).toBeVisible();

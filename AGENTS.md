@@ -41,6 +41,9 @@ re-running the workflow. In particular:
 - A skipped production job is not a deployment. After success, inspect the
   individual jobs and verify `https://pirate.sc/__version` and
   `https://api.pirate.sc/__version`.
+- Before interpreting a cancelled run as supersession, confirm that the
+  `Release` workflow is enabled. A manually disabled workflow is an explicit
+  operator pause; re-enabling it does not replay missed pushes.
 - Do not push a no-op commit merely to retry or measure a gate. Let the next
   natural release provide the sample unless a real deployment is required.
 

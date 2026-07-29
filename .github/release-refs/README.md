@@ -24,11 +24,7 @@ can merge.
 Web releases use these pinned commits; they never select the API or Core
 repository's current `main` implicitly.
 
-Current release intent: deploy the Telegram dispatch-timeout classification fix
-and community-job scheduler lane isolation with API
-`89c7b174699d03047179bd69681e2ec024a3f1bc` and Core
-`3b109ab98e5a1a4e08fd17472779470bd45e5c25` (Core unchanged). A send timeout was
-recorded as a retryable failure, so retries duplicated two real Telegram channel
-posts on staging; timeouts are now classified uncertain and never retried
-automatically. Community jobs also gain their own scheduler lane and lease so
-slow maintenance cannot stop them starting.
+Do not record a mutable "current release intent" in this file. The checked-in
+SHA files, the commit that changes them, and the merged pull request are the
+auditable source of truth for each release. A narrative copied here becomes
+stale as soon as the next pin advances.

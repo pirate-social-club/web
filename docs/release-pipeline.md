@@ -164,7 +164,14 @@ A canary that fails is a signal to investigate, from its uploaded artifacts, on 
 - **`community-schema-gate-main`** is read-only and uses
   `cancel-in-progress: true`, so a newer `main` push kills an obsolete fleet
   scan instead of doubling D1 load.
-- **`production-freshness`** — compares the run SHA to the live `main` tip immediately before deploying. If `main` has advanced, production is **skipped** (not failed) and the newer run deploys. An older run can never overwrite a newer deployment.
+- **`production-freshness`** — compares the run SHA to the live `main` tip
+  immediately before deploying. If `main` has advanced and another live
+  Release run can still reach production, this run defers. If no live successor
+  remains, the already validated run may deploy only after proving that its SHA
+  is an ancestor of `main` and strictly advances the last successful production
+  deployment. API or ancestry uncertainty fails closed. This gives sustained
+  merge traffic a winner without allowing rollback or deploying an unvalidated
+  tip.
 - **`concurrency: release-canaries-*`** (`cancel-in-progress: true`) — observational canaries serialize separately. A newer completed release may replace an older canary run, but can never cancel or queue a production deploy.
 
 ## Operating a release
@@ -184,6 +191,12 @@ A canary that fails is a signal to investigate, from its uploaded artifacts, on 
    `https://api.pirate.sc/__version`.
 6. Do not push a no-op commit solely to gather timing data. Use natural releases
    for observational performance samples.
+7. Treat a manually disabled `Release` workflow as an explicit operator pause,
+   not as supersession or a pipeline result. Record the incident or maintenance
+   reason and inspect active staging/production jobs before disabling it.
+   Re-enabling the workflow does not replay pushes received while it was
+   disabled; when deployment is required, dispatch `Release` from current
+   `main` with `deploy_production: true` and monitor that new run normally.
 
 ## Validating a change to release.yml
 

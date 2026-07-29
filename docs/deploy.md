@@ -37,8 +37,17 @@ rtk curl -sS https://pirate.sc/__version
 rtk curl -sS https://api.pirate.sc/__version
 ```
 
-If production was skipped because the run became stale, the newer current-tip
-release is responsible for deployment.
+If production was skipped because a live successor existed, that successor is
+responsible for deployment. If no live successor remains, the validated older
+run may deploy only when it is still on `main`'s ancestry and moves production
+forward. The freshness decision fails closed when run, deployment, or ancestry
+state cannot be established.
+
+A manually disabled `Release` workflow is an operator pause, not a successful
+or superseded release. Re-enabling it does not replay pushes received while it
+was disabled. To deploy the current tip after a pause, dispatch `Release` from
+`main` with `deploy_production: true`, then inspect the production job and both
+version endpoints as usual.
 
 Required GitHub Actions variables for the live staging check:
 

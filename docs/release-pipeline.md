@@ -83,6 +83,12 @@ mobile non-member contracts in a second process. The `--expected-count` checks
 are coverage guards: changing a title or grep without updating the inventory
 must fail rather than silently run fewer tests.
 
+Required release contracts use pinned, owned staging fixtures. In particular,
+the gate-identity contract rewrites its dedicated fixture to the expected
+idempotent policy before evaluating a new viewer; it must never call community
+provisioning. Fresh provisioning belongs only to the budgeted manual workflow
+described below.
+
 GitHub snapshots the reusable workflow ref for each run attempt. If
 `api/.github/workflows/staging-contract-gate.yml` changes, start a new Web push
 run. Re-running an old attempt continues to use the API workflow revision that

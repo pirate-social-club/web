@@ -804,31 +804,24 @@ jobs:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_production))
     runs-on: blacksmith-2vcpu-ubuntu-2404
     permissions:
+      actions: read
       contents: read
+      deployments: read
     outputs:
       stale: ${{ steps.check.outputs.stale }}
     steps:
-      - name: Compare run SHA against current main tip
+      # See scripts/ci/production-freshness.cjs — the decision lives in a file
+      # so it can be unit tested (scripts/ci/production-freshness.test.ts).
+      # This job checks out the repo only to load that module; the authenticated
+      # client still comes from actions/github-script.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Deploy only when no live successor will
         id: check
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           script: |
-            const { data: ref } = await github.rest.git.getRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: "heads/main",
-            });
-            const tip = ref.object.sha;
-            if (tip !== context.sha) {
-              core.setOutput("stale", "true");
-              core.warning(
-                `Skipping production deploy: main has advanced to ${tip}, but this run built ${context.sha}. ` +
-                `The release for ${tip} deploys instead.`
-              );
-              return;
-            }
-            core.setOutput("stale", "false");
-            core.notice(`Run SHA ${context.sha} is the current main tip; proceeding to production.`);
+            const productionFreshness = require(`${process.env.GITHUB_WORKSPACE}/scripts/ci/production-freshness.cjs`);
+            await productionFreshness({ github, context, core });
 
   production:
     name: Deploy production
@@ -840,7 +833,9 @@ jobs:
     # it must be exclusive, and it must NEVER be cancelled midway — an
     # interrupted migration is the one failure here that is not recoverable by
     # re-running. Staleness is handled by production-freshness above, which
-    # rejects superseded runs before they reach this lock.
+    # rejects superseded runs before they reach this lock — but only when a live
+    # successor is actually going to deploy, so that a burst of merges cannot
+    # leave every run deferring to the next (#729).
     concurrency:
       group: production-deploy
       cancel-in-progress: false

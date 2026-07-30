@@ -248,7 +248,9 @@ export function CommunityTelegramIntegrationPage({
                   <Type as="p" className="text-muted-foreground" variant="caption">
                     In BotFather, create a named Mini App for @{settings.bot.username} (for example, short name <code>study</code>) and set its URL to:
                   </Type>
-                  <code className="break-all rounded bg-background px-3 py-2 text-xs">{studyMiniAppUrl}</code>
+                  <Type as="code" className="break-all rounded bg-background px-3 py-2" variant="caption">
+                    {studyMiniAppUrl}
+                  </Type>
                   <Type as="p" className="text-muted-foreground" variant="caption">
                     Pirate configures the bot&apos;s menu button automatically. Telegram study becomes available when this community also has Study enabled and ready song posts.
                   </Type>

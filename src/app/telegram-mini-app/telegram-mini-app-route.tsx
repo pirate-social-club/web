@@ -1468,7 +1468,7 @@ function TelegramAccountLinkOffer({ communityId }: { communityId: string }) {
   return (
     <div className="px-4 pt-4">
       <PageContainer size="narrow">
-        <section className="rounded-xl border border-border bg-muted/40 p-4">
+        <section className="rounded-[var(--radius-xl)] border border-border bg-muted/40 p-4">
           <Type as="h2" variant="h4">Already use Pirate on the web?</Type>
           <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
             Link before studying to keep one streak and review history.

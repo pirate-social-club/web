@@ -48,7 +48,7 @@ export function TelegramAccountLinkRoutePage() {
   return (
     <main className="min-h-[70svh] px-4 py-10">
       <PageContainer size="narrow">
-        <section className="mx-auto flex max-w-lg flex-col items-center gap-5 rounded-2xl border border-border bg-card p-6 text-center">
+        <section className="mx-auto flex max-w-lg flex-col items-center gap-5 rounded-[var(--radius-xl)] border border-border bg-card p-6 text-center">
           {state.kind === "linking" ? <Spinner className="size-8 text-muted-foreground" /> : null}
           <div className="space-y-2">
             <Type as="h1" variant="h2">

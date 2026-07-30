@@ -157,6 +157,17 @@ test("confirming describes the wait in plain language", () => {
   expect(view.queryByText(/safe block/)).toBeNull();
 });
 
+test("awaiting finality says the transfer is safe and blocks duplicate status checks", () => {
+  const view = render(
+    <BoostCampaignSheet {...composeProps({ busy: true, state: "awaiting-finality" })} />,
+  );
+
+  expect(view.getByText(/Your transfer is safe/)).toBeTruthy();
+  expect(view.getByText(/Do not send again/)).toBeTruthy();
+  expect(view.getByText("Check status").closest("button")?.disabled).toBe(true);
+  expect(view.queryByText("Funding failed")).toBeNull();
+});
+
 test("live boost labels metrics plainly", () => {
   const view = render(
     <BoostCampaignSheet
@@ -172,10 +183,10 @@ test("live boost labels metrics plainly", () => {
   );
 
   expect(view.getByText(/People can now earn \$1\.00 for a study set or karaoke pass/)).toBeTruthy();
-  expect(view.getByText("Paid out")).toBeTruthy();
-  expect(view.getByText("Per day")).toBeTruthy();
-  expect(view.queryByText("Earned")).toBeNull();
-  expect(view.queryByText("Each")).toBeNull();
+  expect(view.getByText("Earned")).toBeTruthy();
+  expect(view.getByText("Each")).toBeTruthy();
+  expect(view.queryByText("Paid out")).toBeNull();
+  expect(view.queryByText("Per day")).toBeNull();
 });
 
 test("owner policy toggles via a switch and only warns while blocking", () => {

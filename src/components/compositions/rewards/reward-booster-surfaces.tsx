@@ -40,6 +40,7 @@ type BoostCampaignSheetState =
   | "compose"
   | "quote"
   | "confirming"
+  | "awaiting-finality"
   | "active"
   | "funding-review"
   | "failed";
@@ -60,6 +61,8 @@ export interface BoostPayoutTierDraft {
 
 export interface BoostCampaignSheetProps {
   busy?: boolean;
+  /** A terminal transaction failed without moving funds, so a fresh quote is safe. */
+  canRestartFunding?: boolean;
   budgetDisplayLabel: string;
   budgetLabel: string;
   /** Preset budgets offered as one-tap chips, already formatted (e.g. "$25.00"). */
@@ -188,6 +191,7 @@ export function BoostCampaignSheet({
   budgetDisplayLabel,
   budgetLabel,
   budgetPresets,
+  canRestartFunding,
   dailyRewardLabel,
   dailyRewardDisplayLabel,
   eligibleActivity,
@@ -503,6 +507,20 @@ export function BoostCampaignSheet({
           </div>
         ) : null}
 
+        {state === "awaiting-finality" ? (
+          <div className="mt-6 flex items-center gap-3 rounded-lg border border-border-soft p-4">
+            <HourglassMedium aria-hidden="true" className="size-5 animate-pulse text-primary" weight="bold" />
+            <div>
+              <Type as="div" variant="body-strong">
+                Funding submitted
+              </Type>
+              <Type as="div" className="text-muted-foreground" variant="caption">
+                Your transfer is safe while the network reaches finality. Do not send again.
+              </Type>
+            </div>
+          </div>
+        ) : null}
+
         {state === "active" ? (
           <div className="mt-6 rounded-lg border border-border-soft p-4">
             <div className="flex items-start gap-3">
@@ -520,9 +538,9 @@ export function BoostCampaignSheet({
               <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3">
                 {[
                   ["Funded", fundedLabel],
-                  ["Paid out", rewardsPaidLabel],
+                  ["Earned", rewardsPaidLabel],
                   ["Left", remainingLabel],
-                  ["Per day", rewardDisplay],
+                  ["Each", rewardDisplay],
                   ...(endsAtLabel ? [["Ends", endsAtLabel]] : []),
                 ].map(([label, value]) => (
                   <div key={label}>
@@ -600,13 +618,13 @@ export function BoostCampaignSheet({
               Pay {fundingAmountLabel}
             </Button>
           ) : null}
-          {state === "confirming" ? (
-            <Button className="h-12 w-full" onClick={onRefresh} variant="outline">
+          {state === "confirming" || state === "awaiting-finality" ? (
+            <Button className="h-12 w-full" disabled={busy} onClick={onRefresh} variant="outline">
               Check status
             </Button>
           ) : null}
           {state === "failed" ? (
-            <Button className="h-12 w-full" onClick={onRetry} variant="outline">
+            <Button className="h-12 w-full" disabled={busy} onClick={onRetry} variant="outline">
               {retryLabel ?? "Start again"}
             </Button>
           ) : null}
@@ -616,8 +634,13 @@ export function BoostCampaignSheet({
             </Button>
           ) : null}
           {state === "funding-review" ? (
-            <Button className="h-12 w-full" onClick={() => onOpenChange?.(false)}>
-              Done
+            <Button
+              className="h-12 w-full"
+              disabled={busy}
+              onClick={canRestartFunding ? onRetry : () => onOpenChange?.(false)}
+              variant={canRestartFunding ? "outline" : "default"}
+            >
+              {canRestartFunding ? "Start new funding" : "Done"}
             </Button>
           ) : null}
         </ModalFooter>

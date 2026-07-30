@@ -187,7 +187,7 @@ export function CommunityPage({
   } | null>(null);
   const [pendingBoostAction, setPendingBoostAction] = React.useState<"boost" | "policy" | null>(null);
   const boostController = useBoostCampaignController({
-    activePublicOffer: false,
+    activeCampaignId: null,
     authenticated: Boolean(session?.accessToken),
     communityId: community?.id ?? communityId,
     postId: boostTarget?.postId ?? "",

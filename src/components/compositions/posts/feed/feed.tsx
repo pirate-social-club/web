@@ -93,13 +93,13 @@ const topTimeRangeOptions = [
 const EMPTY_FEED_SORT_OPTIONS: FeedSortOption[] = [];
 
 export function VideoViewerBoostBridge({
-  activePublicOffer,
+  activeCampaignId,
   communityId,
   onAvailabilityChange,
   postId,
   viewerIsAuthor,
 }: {
-  activePublicOffer: boolean;
+  activeCampaignId: string | null;
   communityId: string;
   onAvailabilityChange: (postId: string, canBoost: boolean, openBoost: () => void) => void;
   postId: string;
@@ -108,14 +108,14 @@ export function VideoViewerBoostBridge({
   const session = useSession();
   const requestAuth = React.useCallback(() => undefined, []);
   const controllerInput = React.useMemo(() => ({
-    activePublicOffer,
+    activeCampaignId,
     authenticated: Boolean(session?.accessToken),
     communityId,
     postId,
     requestAuth,
     song: true,
     viewerIsAuthor,
-  }), [activePublicOffer, communityId, postId, requestAuth, session?.accessToken, viewerIsAuthor]);
+  }), [activeCampaignId, communityId, postId, requestAuth, session?.accessToken, viewerIsAuthor]);
   const controller = useBoostCampaignController(controllerInput);
 
   React.useEffect(() => {

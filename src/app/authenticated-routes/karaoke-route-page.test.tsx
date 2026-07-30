@@ -286,6 +286,7 @@ describe("KaraokeRoutePage", () => {
 
   test("shows the plain-dollar reward offer inside the karaoke surface", async () => {
     rewardOfferResult = {
+      campaign: "rcp_karaoke_offer",
       chain_id: 84532,
       daily_reward_cents: 100,
       eligible_activity: "karaoke",

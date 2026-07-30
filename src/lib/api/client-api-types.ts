@@ -4,6 +4,7 @@ import type {
   CreateCommunityRequest,
   CreateCommunityListingRequest,
   GatePolicy,
+  RewardCampaignFundingQuote as ContractRewardCampaignFundingQuote,
   RewardQualificationSummary as ContractRewardQualificationSummary,
   SongStudyAttemptRequest as ContractSongStudyAttemptRequest,
   SongStudyAttemptResult as ContractSongStudyAttemptResult,
@@ -79,11 +80,18 @@ export type ApiProfileMediaUploadResponse = {
 type ApiRewardVerificationState = "unverified" | "verified" | "conflict";
 
 export type ApiPublicRewardOffer = {
+  campaign: string;
   chain_id: number;
   eligible_activity: "study" | "karaoke" | "either";
   daily_reward_cents: number;
   ends_at: number;
   min_score_bps: number;
+};
+
+// Transitional additive status used while the coordinated Core/API contract
+// change lands. The API already returns operator_incident from confirmation.
+export type ApiRewardCampaignFundingConfirmation = Omit<ContractRewardCampaignFundingQuote, "status"> & {
+  status: ContractRewardCampaignFundingQuote["status"] | "operator_incident";
 };
 
 type ApiRewardEventKind =

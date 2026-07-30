@@ -384,6 +384,7 @@ describe("StudyRoutePage", () => {
 
   test("shows an exact uniform reward offer for the active song campaign", async () => {
     rewardCampaignResult = {
+      campaign: "rcp_study_offer",
       chain_id: 8453,
       eligible_activity: "either",
       daily_reward_cents: 40,
@@ -597,6 +598,7 @@ describe("StudyRoutePage", () => {
 
   test("renders server-owned streak progress on completion", async () => {
     rewardCampaignResult = {
+      campaign: "rcp_study_progress",
       chain_id: 84532,
       eligible_activity: "study",
       daily_reward_cents: 40,

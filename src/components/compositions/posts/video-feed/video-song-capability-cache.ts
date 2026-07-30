@@ -3,7 +3,7 @@ import type { VideoFeedCapability } from "./video-feed.types";
 export type VideoSongCapabilityReadMode = "authenticated" | "public";
 
 export interface VideoSongCapabilityResolution {
-  activeRewardOffer: boolean;
+  activeRewardCampaignId: string | null;
   artworkSrc?: string;
   karaoke: VideoFeedCapability;
   karaokeHref?: string;

@@ -21,13 +21,17 @@ import {
   type VideoExperienceSeed,
 } from "@/app/video-experience/video-experience-context";
 import {
+  globalVideoCommentsHistoryState,
+  globalVideoPanelFromHistoryState,
   hrefWithVideo,
   hrefWithoutVideo,
   historyStateWithoutVideo,
   isVideoExperienceHistoryState,
+  VIDEO_COMMENTS_HISTORY_KEY,
   VIDEO_EXPERIENCE_HISTORY_KEY,
   videoIdFromLocation,
 } from "@/app/video-experience/video-experience-history";
+import { videoViewerPublisherRelationship } from "@/app/video-experience/video-viewer-publisher";
 import {
   compactCount,
   VideoFeed,
@@ -96,30 +100,6 @@ type OverlayPanelState =
     startingPriceCents: number;
   };
 
-const VIDEO_COMMENTS_HISTORY_KEY = "pirateGlobalVideoComments";
-
-export function globalVideoCommentsHistoryState(
-  state: unknown,
-  itemId: string,
-  postId: string,
-): Record<string, unknown> {
-  return {
-    ...(state && typeof state === "object" ? state : {}),
-    [VIDEO_COMMENTS_HISTORY_KEY]: { itemId, postId },
-  };
-}
-
-export function globalVideoPanelFromHistoryState(state: unknown): FeedPanelState {
-  if (!state || typeof state !== "object") return { kind: "none" };
-  const value = (state as Record<string, unknown>)[VIDEO_COMMENTS_HISTORY_KEY];
-  if (!value || typeof value !== "object") return { kind: "none" };
-  const itemId = (value as Record<string, unknown>).itemId;
-  const postId = (value as Record<string, unknown>).postId;
-  return typeof itemId === "string" && typeof postId === "string"
-    ? { itemId, kind: "comments", postId }
-    : { kind: "none" };
-}
-
 function viewerTimezone(): IanaTz {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -144,33 +124,6 @@ function checkoutPathForSlot(
   return `${path}?${query.toString()}`;
 }
 
-function publisherRelationship(input: {
-  authorUserId?: string | null;
-  authorWalletAddress?: string | null;
-  communityRole?: string | null;
-  currentUserId?: string | null;
-  identityMode: "anonymous" | "public";
-  joinedLabel: string;
-  joinLabel: string;
-  membershipStatus?: "member" | "not_member" | "banned" | null;
-}): VideoFeedItem["publisher"]["relationship"] {
-  if (input.identityMode === "public" && input.authorUserId) {
-    return input.authorWalletAddress ? {
-      kind: "follow",
-      ownProfile: input.authorUserId === input.currentUserId,
-      targetUserId: input.authorUserId,
-      targetWalletAddress: input.authorWalletAddress,
-    } : undefined;
-  }
-  const joined = input.communityRole != null || input.membershipStatus === "member";
-  return {
-    active: joined,
-    disabled: joined || input.membershipStatus === "banned",
-    kind: "join",
-    label: joined ? input.joinedLabel : input.joinLabel,
-  };
-}
-
 function entryPostId(entry: ApiHomeFeedItem): string {
   return entry.post.post.id;
 }
@@ -189,9 +142,10 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
   const contentLocale = useRouteContentLocale();
   const { copy, localeTag } = useRouteMessages();
   const capabilityLoader = useVideoViewerSongCapabilities(contentLocale);
+  const viewerIdentity = session?.user.id ?? null;
   const homeVideoQueryKey = React.useMemo(
-    () => feedKeys.homeVideos({ locale: contentLocale, userId: session?.user.id ?? null }),
-    [contentLocale, session?.user.id],
+    () => feedKeys.homeVideos({ locale: contentLocale, userId: viewerIdentity }),
+    [contentLocale, viewerIdentity],
   );
   const homeVideoQuery = useQuery<HomeVideoFeedCache>({
     enabled: false,
@@ -212,7 +166,26 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
   const [commentsAddedByPostId, setCommentsAddedByPostId] = React.useState<Record<string, number>>({});
   const [joinedCommunityIds, setJoinedCommunityIds] = React.useState<Set<string>>(() => new Set());
   const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | null>>({});
-  const seedRef = React.useRef(seed);
+  // Identity-owned viewer state (optimistic votes, join confirmations, locally
+  // added comment counts) must not survive an account switch. The ranked-feed
+  // query cache is already keyed by viewer; this render-time adjustment applies
+  // the same boundary to component state synchronously, so a frame carrying the
+  // previous identity's state is never painted. Keep every identity-owned reset
+  // in this one place: scattered render-time setters would recreate the state
+  // ownership ambiguity this boundary exists to remove.
+  const [previousViewerIdentity, setPreviousViewerIdentity] = React.useState(viewerIdentity);
+  if (previousViewerIdentity !== viewerIdentity) {
+    setPreviousViewerIdentity(viewerIdentity);
+    setItemOverrides({});
+    setJoinedCommunityIds(new Set());
+    setCommentsAddedByPostId({});
+  }
+  // Read only by the popstate listener, which is user-driven and registered
+  // after the ref-updating effect on mount, so this ref cannot be read stale.
+  // It must never be read during render or by callbacks that child effects can
+  // fire: those can run before a passive effect updates a ref, so analytics
+  // callbacks depend on the seed's source directly instead.
+  const latestSeedRef = React.useRef(seed);
   const seedRequestGenerationRef = React.useRef(0);
   const feedRequestGenerationRef = React.useRef(0);
   const feedRequestIdRef = React.useRef(`feed_${crypto.randomUUID().replaceAll("-", "")}`);
@@ -246,7 +219,6 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
     routeKind: "home",
     uiLocale: localeTag,
   });
-  seedRef.current = seed;
 
   const setHomeVideoCache = React.useCallback((
     update: (current: HomeVideoFeedCache) => HomeVideoFeedCache,
@@ -273,6 +245,12 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
     setItemOverrides({});
     setPanelState({ kind: "none" });
     setSeed(nextSeed);
+    trackAnalyticsEvent({
+      communityId: nextSeed.item.communityId,
+      eventName: "video_viewer_opened",
+      postId: nextSeed.item.id,
+      properties: { source_surface: nextSeed.source },
+    });
   }, [removeSeedFromRankedCache]);
 
   const loadDeepLinkedSeed = React.useCallback(async (postId: string) => {
@@ -312,9 +290,13 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
       setSeed(null);
       return;
     }
-    if (seedRef.current?.item.id === postId) return;
+    if (latestSeedRef.current?.item.id === postId) return;
     void loadDeepLinkedSeed(postId);
   }, [loadDeepLinkedSeed]);
+
+  React.useEffect(() => {
+    latestSeedRef.current = seed;
+  }, [seed]);
 
   React.useEffect(() => {
     syncFromLocation();
@@ -457,19 +439,17 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
           communityId: post.community ?? response.community?.id,
           publisher: {
             ...seed.item.publisher,
-            relationship: publisherRelationship({
+            relationship: videoViewerPublisherRelationship({
               authorUserId: post.author_user,
               authorWalletAddress: post.author_user
                 ? authorProfilesForSeed[post.author_user]?.primary_wallet_address
                 : undefined,
-              communityRole: responseWithGate.viewer_gate_state?.viewer_community_role
-                ?? response.community?.viewer_community_role,
+              community: response.community,
               currentUserId: session?.user.id,
+              gateState: responseWithGate.viewer_gate_state,
               identityMode: post.identity_mode,
               joinedLabel: copy.home.videoPublisherJoined,
               joinLabel: copy.home.videoPublisherJoin,
-              membershipStatus: responseWithGate.viewer_gate_state?.viewer_membership_status
-                ?? response.community?.viewer_membership_status,
             }),
           },
         },
@@ -510,17 +490,15 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
         communityId: entry.community.id,
         publisher: {
           ...item.publisher,
-          relationship: publisherRelationship({
+          relationship: videoViewerPublisherRelationship({
             authorUserId: post.author_user,
             authorWalletAddress: authorProfile?.primary_wallet_address,
-            communityRole: viewerCommunity.viewer_gate_state?.viewer_community_role
-              ?? entry.post.community?.viewer_community_role,
+            community: entry.post.community,
             currentUserId: session?.user.id,
+            gateState: viewerCommunity.viewer_gate_state,
             identityMode: post.identity_mode,
             joinedLabel: copy.home.videoPublisherJoined,
             joinLabel: copy.home.videoPublisherJoin,
-            membershipStatus: viewerCommunity.viewer_gate_state?.viewer_membership_status
-              ?? entry.post.community?.viewer_membership_status,
           }),
         },
       }];
@@ -642,7 +620,6 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
       seedActions.onVoteAccess();
       return;
     }
-    const previous = itemOverrides[item.id] ?? {};
     const active = direction === "up" ? item.liked : item.downvoted;
     const nextLiked = direction === "up" ? !active : false;
     const nextDownvoted = direction === "down" ? !active : false;
@@ -664,12 +641,38 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
       if (active) await api.posts.clearVote(item.id);
       else await api.posts.vote(item.id, direction === "up" ? 1 : -1);
     } catch (error) {
-      setItemOverrides((current) => ({ ...current, [item.id]: previous }));
+      // Roll back only vote-owned fields. The override entry can concurrently
+      // hold enrichment-owned fields (publisher relationship, communityId)
+      // that a whole-entry restore would silently drop.
+      setItemOverrides((current) => ({
+        ...current,
+        [item.id]: {
+          ...current[item.id],
+          downvoted: item.downvoted,
+          likeCount: item.likeCount,
+          liked: item.liked,
+        },
+      }));
       toast.error(error instanceof Error ? error.message : "Could not update your vote.");
     }
-  }, [api.posts, itemOverrides, seed, session?.accessToken]);
+  }, [api.posts, seed, session?.accessToken]);
+
+  // Analytics read the source through state, not a ref: callbacks carrying a
+  // stale source would misattribute the current viewer session, and a
+  // render-time ref write is not safe under concurrent rendering. The source
+  // changes at most once per viewer open, so callback identity stays stable.
+  const viewerSource = seed?.source ?? "deep-link";
 
   const onComment = React.useCallback((item: VideoFeedItem) => {
+    trackAnalyticsEvent({
+      communityId: item.communityId,
+      eventName: "video_capability_selected",
+      postId: item.id,
+      properties: {
+        capability: "comments",
+        source_surface: viewerSource,
+      },
+    });
     panelReturnFocusRef.current = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : feedFocusRef.current;
@@ -680,7 +683,7 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
       window.location.href,
     );
     setPanelState(next);
-  }, []);
+  }, [viewerSource]);
 
   const onShare = React.useCallback((item: VideoFeedItem) => {
     const url = `${window.location.origin}/?video=${encodeURIComponent(item.id)}`;
@@ -702,17 +705,28 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
       postId: item.id,
       properties: {
         ...videoImpressionAnalyticsProperties(item, impression),
-        source_surface: seedRef.current?.source ?? "deep-link",
+        source_surface: viewerSource,
       },
     });
-  }, []);
+  }, [viewerSource]);
 
   const launchSongAction = React.useCallback((
     item: VideoFeedItem,
     playback: VideoFeedPlaybackState,
+    capability: "karaoke" | "song" | "study",
     href?: string,
   ) => {
     if (!href) return;
+    trackAnalyticsEvent({
+      communityId: item.communityId,
+      eventName: "video_capability_selected",
+      postId: item.id,
+      properties: {
+        capability,
+        playback_seconds: playback.playbackSeconds,
+        source_surface: viewerSource,
+      },
+    });
     const returnPath = currentRelativePath();
     saveVideoViewerReturnState({
       createdAt: Date.now(),
@@ -727,17 +741,17 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
     destination.searchParams.set("return_to", returnPath);
     dismissForNavigation();
     navigate(`${destination.pathname}${destination.search}`);
-  }, [dismissForNavigation]);
+  }, [dismissForNavigation, viewerSource]);
   const onSong = React.useCallback(
-    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.songHref),
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, "song", item.song?.songHref),
     [launchSongAction],
   );
   const onStudy = React.useCallback(
-    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.studyHref),
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, "study", item.song?.studyHref),
     [launchSongAction],
   );
   const onKaraoke = React.useCallback(
-    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.karaokeHref),
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, "karaoke", item.song?.karaokeHref),
     [launchSongAction],
   );
 
@@ -763,6 +777,16 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
     if (!item.booking) return;
     const startingPriceCents = bookingStartingPriceCents(item);
     if (startingPriceCents === null) return;
+    trackAnalyticsEvent({
+      communityId: item.communityId,
+      eventName: "video_capability_selected",
+      postId: item.id,
+      properties: {
+        capability: "booking",
+        playback_seconds: playback.playbackSeconds,
+        source_surface: viewerSource,
+      },
+    });
     const hostUserId = item.booking.hostUserId;
     const cached = bookingCache.get(hostUserId);
     bookingRequestHostRef.current = hostUserId;
@@ -782,7 +806,7 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
     setBookingLoading(!cached);
     setBookingError(false);
     if (!cached) loadBookingAvailability(hostUserId);
-  }, [bookingCache, loadBookingAvailability]);
+  }, [bookingCache, loadBookingAvailability, viewerSource]);
 
   const selectBookingSlot = React.useCallback((slot: ResolvedSlot, event?: React.MouseEvent) => {
     if (panelState.kind !== "booking") return;
@@ -810,6 +834,15 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
       || item.publisher.relationship.active
       || !item.communityId
     ) return;
+    trackAnalyticsEvent({
+      communityId: item.communityId,
+      eventName: "video_capability_selected",
+      postId: item.id,
+      properties: {
+        capability: "community_join",
+        source_surface: viewerSource,
+      },
+    });
     const entry = homeVideoQuery.data.entries.find((candidate) => entryPostId(candidate) === item.id);
     const gateData = entry ? selectPostVoteGateData(entry.post) : null;
     void runGatedCommunityAction({
@@ -841,6 +874,7 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
     copy.home.videoPublisherJoinDescription,
     homeVideoQuery.data.entries,
     runGatedCommunityAction,
+    viewerSource,
   ]);
 
   const contextValue = React.useMemo(() => ({ openVideo }), [openVideo]);

@@ -40,6 +40,7 @@ const RETRY_COOLDOWN_MS = 30 * 1000;
 const MAX_RETRY_COUNT = 3;
 const AUTH_BOOTSTRAP_WAIT_MS = 1_500;
 const AUTH_BOOTSTRAP_POLL_MS = 50;
+const PRIVY_REQUEST_TTL_MS = 30 * 60 * 1000;
 
 export interface PrivyAuthBridgeProps {
   connectedWallets?: PirateConnectedEvmWallet[];
@@ -101,6 +102,39 @@ export function resolvePrivyWalletId(
   return null;
 }
 
+export function buildPrivyAuthorizationRequest(
+  request: PirateSponsoredIntentRequest,
+  privyWalletId: string,
+  nowMs = Date.now(),
+) {
+  const requestExpiry = String(nowMs + PRIVY_REQUEST_TTL_MS);
+  return {
+    payload: {
+      body: {
+        caip2: `eip155:${request.chainId}`,
+        chain_type: "ethereum" as const,
+        method: "eth_sendTransaction" as const,
+        params: {
+          transaction: {
+            data: request.transaction.data,
+            to: request.transaction.to,
+            ...(request.transaction.value ? { value: request.transaction.value } : {}),
+          },
+        },
+        sponsor: true,
+      },
+      headers: {
+        "privy-app-id": import.meta.env.VITE_PRIVY_APP_ID,
+        "privy-request-expiry": requestExpiry,
+      },
+      method: "POST" as const,
+      url: `${import.meta.env.VITE_PRIVY_API_URL || "https://api.privy.io"}/v1/wallets/${privyWalletId}/rpc`,
+      version: 1 as const,
+    },
+    requestExpiry,
+  };
+}
+
 export function PrivyAuthBridge({
   connectedWallets = [],
   embeddedWalletReconcileDelaysMs,
@@ -141,6 +175,7 @@ export function PrivyAuthBridge({
   ): Promise<`0x${string}`> => {
     const executeRelaySend = async () => {
       let authorizationSignature: string | undefined;
+      let requestExpiry: string | undefined;
       const privyWalletId = resolvePrivyWalletId(
         user,
         request.walletAddress,
@@ -148,27 +183,9 @@ export function PrivyAuthBridge({
       );
 
       if (privyWalletId) {
-        const { signature } = await generateAuthorizationSignature({
-          body: {
-            caip2: `eip155:${request.chainId}`,
-            chain_type: "ethereum",
-            method: "eth_sendTransaction",
-            params: {
-              transaction: {
-                data: request.transaction.data,
-                to: request.transaction.to,
-                ...(request.transaction.value ? { value: request.transaction.value } : {}),
-              },
-            },
-            sponsor: true,
-          },
-          headers: {
-            "privy-app-id": import.meta.env.VITE_PRIVY_APP_ID,
-          },
-          method: "POST",
-          url: `${import.meta.env.VITE_PRIVY_API_URL || "https://api.privy.io"}/v1/wallets/${privyWalletId}/rpc`,
-          version: 1,
-        });
+        const authorization = buildPrivyAuthorizationRequest(request, privyWalletId);
+        requestExpiry = authorization.requestExpiry;
+        const { signature } = await generateAuthorizationSignature(authorization.payload);
         authorizationSignature = signature;
       }
 
@@ -178,6 +195,7 @@ export function PrivyAuthBridge({
           ...request,
           ...(privyWalletId ? { privyWalletId } : {}),
           ...(authorizationSignature ? { authorizationSignature } : {}),
+          ...(requestExpiry ? { requestExpiry } : {}),
         },
       });
     };

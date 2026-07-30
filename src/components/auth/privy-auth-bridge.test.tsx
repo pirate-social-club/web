@@ -87,7 +87,11 @@ mock.module("@/app/router", () => ({
   navigate: () => undefined,
 }));
 
-const { PrivyAuthBridge, resolvePrivyWalletId } = await import("./privy-auth-bridge");
+const {
+  PrivyAuthBridge,
+  buildPrivyAuthorizationRequest,
+  resolvePrivyWalletId,
+} = await import("./privy-auth-bridge");
 
 const embeddedWallet: PirateConnectedEvmWallet = {
   address: EMBEDDED_ADDRESS,
@@ -113,6 +117,31 @@ describe("PrivyAuthBridge embedded wallet recovery", () => {
       }],
     }, EMBEDDED_ADDRESS)).toBe("wallet_from_user");
     expect(resolvePrivyWalletId(null, EMBEDDED_ADDRESS, "wallet_explicit")).toBe("wallet_explicit");
+  });
+
+  test("binds the Privy request expiry into both the signature payload and relay request", () => {
+    const now = 1_800_000_000_000;
+    const request = {
+      chainId: 8453,
+      intentId: `efw_${"b".repeat(32)}`,
+      transactionIndex: 0,
+      intent: {
+        type: "pirate.follow.apply" as const,
+        followed: true,
+        slot: "server-prepared",
+        targetAddress: `0x${"2".repeat(40)}` as `0x${string}`,
+      },
+      transaction: {
+        data: "0x1234" as `0x${string}`,
+        to: `0x${"3".repeat(40)}` as `0x${string}`,
+      },
+      walletAddress: EMBEDDED_ADDRESS as `0x${string}`,
+    };
+    const authorization = buildPrivyAuthorizationRequest(request, "wallet-id", now);
+    expect(authorization.requestExpiry).toBe(String(now + 30 * 60 * 1000));
+    expect(authorization.payload.headers["privy-request-expiry"]).toBe(
+      authorization.requestExpiry,
+    );
   });
 
   test("performs only the bounded number of silent exchanges", async () => {

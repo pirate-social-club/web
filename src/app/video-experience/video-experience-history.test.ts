@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  globalVideoCommentsHistoryState,
+  globalVideoPanelFromHistoryState,
   hrefWithVideo,
   hrefWithoutVideo,
   historyStateWithoutVideo,
@@ -35,5 +37,32 @@ describe("video experience history", () => {
       routePanel: { kind: "comments" },
       [VIDEO_EXPERIENCE_HISTORY_KEY]: { postId: "pst_1" },
     })).toEqual({ routePanel: { kind: "comments" } });
+  });
+});
+
+describe("global video comments history", () => {
+  test("layers comments over the video entry without losing its history state", () => {
+    const state = globalVideoCommentsHistoryState(
+      { pirateVideoExperience: { postId: "video-a" }, route: "community" },
+      "video-a",
+      "post-a",
+    );
+
+    expect(state).toEqual({
+      pirateGlobalVideoComments: { itemId: "video-a", postId: "post-a" },
+      pirateVideoExperience: { postId: "video-a" },
+      route: "community",
+    });
+    expect(globalVideoPanelFromHistoryState(state)).toEqual({
+      itemId: "video-a",
+      kind: "comments",
+      postId: "post-a",
+    });
+  });
+
+  test("ignores malformed comments state", () => {
+    expect(globalVideoPanelFromHistoryState({
+      pirateGlobalVideoComments: { itemId: "video-a" },
+    })).toEqual({ kind: "none" });
   });
 });

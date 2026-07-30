@@ -579,7 +579,6 @@ export function PostPage({
       ? `/tg/c/${encodeURIComponent(communityId)}/p/${encodeURIComponent(postId)}/study`
       : `/p/${encodeURIComponent(postId)}/study`);
   }, [hasSession, post?.post.community, postId, requestAuth, telegramMiniApp]);
-
   const handleOpenStreaks = React.useCallback(() => {
     if (!hasSession) {
       requestAuth("Connect your wallet to see this song's streak leaderboard.");
@@ -587,7 +586,6 @@ export function PostPage({
     }
     navigate(`/p/${encodeURIComponent(postId)}/streaks`);
   }, [hasSession, postId, requestAuth]);
-
   const openReplayBlob = React.useCallback((blob: Blob, title: string) => {
     if (typeof window === "undefined") return;
     const objectUrl = URL.createObjectURL(blob);
@@ -605,7 +603,6 @@ export function PostPage({
     });
     setReplayPlayerOpen(true);
   }, []);
-
   const handleWatchReplay = React.useCallback(async () => {
     if (!community?.id || !activeLiveRoomId) return;
 

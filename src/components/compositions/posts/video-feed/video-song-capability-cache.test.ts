@@ -12,7 +12,7 @@ describe("VideoSongCapabilityCache", () => {
     const pending = cache.prefetch(["pst_first", "pst_second"]);
 
     resolvers.get("pst_second")?.({
-      activeRewardOffer: false,
+      activeRewardCampaignId: null,
       karaoke: "ready",
       readMode: "public",
       sourcePostId: "pst_second",
@@ -21,7 +21,7 @@ describe("VideoSongCapabilityCache", () => {
       viewerIsAuthor: false,
     } as never);
     resolvers.get("pst_first")?.({
-      activeRewardOffer: false,
+      activeRewardCampaignId: null,
       karaoke: "unavailable",
       readMode: "authenticated",
       sourcePostId: "pst_first",
@@ -54,7 +54,7 @@ describe("VideoSongCapabilityCache", () => {
 
   test("deduplicates the same source across adjacent slides", async () => {
     const load = mock(async (sourcePostId: string) => ({
-      activeRewardOffer: false,
+      activeRewardCampaignId: null,
       karaoke: "ready" as const,
       readMode: "authenticated" as const,
       sourcePostId,

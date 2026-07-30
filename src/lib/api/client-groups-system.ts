@@ -24,6 +24,7 @@ import type {
 import type { NotificationFeedOptions } from "./client-api-types";
 import type {
   ApiPublicRewardOffer,
+  ApiRewardCampaignFundingConfirmation,
   ApiRewardCashoutRequest,
   ApiRewardCashoutResponse,
   ApiRewardsSummaryResponse,
@@ -151,8 +152,8 @@ export function createRewardsApi(request: ApiRequest) {
       campaignId: string,
       quoteId: string,
       input: RewardCampaignFundingConfirmRequest,
-    ): Promise<RewardCampaignFundingQuote> =>
-      request<RewardCampaignFundingQuote>(
+    ): Promise<ApiRewardCampaignFundingConfirmation> =>
+      request<ApiRewardCampaignFundingConfirmation>(
         `/reward_campaigns/${encodeURIComponent(campaignId)}/funding_quotes/${encodeURIComponent(quoteId)}/confirm`,
         { method: "POST", body: JSON.stringify(input) },
       ),

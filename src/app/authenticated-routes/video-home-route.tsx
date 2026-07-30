@@ -1221,7 +1221,7 @@ export function VideoHomePage() {
       </FeedPanelLayout>
       {activeResolution?.sourceCommunityId ? (
         <VideoViewerBoostBridge
-          activePublicOffer={activeResolution.activeRewardOffer}
+          activeCampaignId={activeResolution.activeRewardCampaignId}
           communityId={activeResolution.sourceCommunityId}
           key={activeResolution.sourcePostId}
           onAvailabilityChange={onBoostAvailabilityChange}

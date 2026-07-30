@@ -79,6 +79,7 @@ describe("resolveVideoSongCapabilities", () => {
       } as never,
       readMode: "authenticated",
       rewardOffer: {
+        campaign: "rcp_song",
         chain_id: 8453,
         daily_reward_cents: 200,
         eligible_activity: "karaoke",
@@ -99,6 +100,7 @@ describe("resolveVideoSongCapabilities", () => {
       } as never,
       readMode: "authenticated",
       rewardOffer: {
+        campaign: "rcp_song",
         chain_id: 8453,
         daily_reward_cents: 100,
         eligible_activity: "either",

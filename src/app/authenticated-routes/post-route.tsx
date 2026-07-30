@@ -295,7 +295,7 @@ export function PostPage({
   }, [authRuntime.connect, authRuntime.loadError, postId, copy.publicProfile.openInPirate]);
 
   const boostController = useBoostCampaignController({
-    activePublicOffer: Boolean(rewardOffer),
+    activeCampaignId: rewardOffer?.campaign ?? null,
     authenticated: Boolean(session?.accessToken),
     communityId: community?.id ?? null,
     postId,

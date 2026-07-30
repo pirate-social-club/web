@@ -41,7 +41,7 @@ export function resolveVideoSongCapabilities({ post, readMode, rewardOffer, sour
   const rewardLabel = rewardOffer ? rewardCtaAmountLabel(rewardOffer.daily_reward_cents) : undefined;
   const artworkSrc = post.song_presentation?.cover_art_ref?.trim() || undefined;
   return {
-    activeRewardOffer: Boolean(rewardOffer),
+    activeRewardCampaignId: rewardOffer?.campaign ?? null,
     artworkSrc,
     karaoke,
     karaokeHref: karaoke === "ready" ? `/p/${encodeURIComponent(sourcePostId)}/karaoke` : undefined,

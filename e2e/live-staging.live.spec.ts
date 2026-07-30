@@ -1310,14 +1310,26 @@ async function seedCommunityCandidates(diagnostics?: FixtureDiscoveryDiagnostic[
 }
 
 async function discoverSeedCommunity(): Promise<LiveCommunity> {
-  const community = await hydrateRoutableLiveCommunityOwner({
+  const diagnostics: FixtureDiscoveryDiagnostic[] = [];
+  const fixture = {
     id: storySmokeCommunityId,
     label: storySmokeCommunityId,
     routeSegment: storySmokeCommunityId,
-  });
-  if (community) return community;
+  };
 
-  throw new Error(`Could not load stable staging fixture ${storySmokeCommunityId}`);
+  // The pinned fixture is durable, but its D1-backed public projection can
+  // transiently time out under staging load. A single failed read must not be
+  // misreported as a missing fixture and block an otherwise healthy release.
+  for (let attempt = 1; attempt <= 6; attempt += 1) {
+    const community = await hydrateRoutableLiveCommunityOwner(fixture, diagnostics);
+    if (community) return community;
+    if (attempt < 6) await new Promise((resolve) => setTimeout(resolve, 2_000));
+  }
+
+  throw new Error(
+    `Could not load stable staging fixture ${storySmokeCommunityId} after 6 attempts:\n`
+      + formatFixtureDiscoveryDiagnostics(diagnostics),
+  );
 }
 
 async function discoverWritableSeedCommunity(

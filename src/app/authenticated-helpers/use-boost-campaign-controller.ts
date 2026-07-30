@@ -31,6 +31,7 @@ const PENDING_FUNDING_STORAGE_PREFIX = "pirate_reward_pending_funding:";
 const TERMINAL_FUNDING_STORAGE_PREFIX = "pirate_reward_terminal_funding:";
 const CREATE_KEY_STORAGE_PREFIX = "pirate_reward_create_key:";
 const QUOTE_KEY_STORAGE_PREFIX = "pirate_reward_quote_key:";
+const FUNDING_FINALITY_POLL_INTERVAL_MS = 10_000;
 
 const TERMINAL_FUNDING_CODES = new Set([
   "funding_failed",
@@ -263,6 +264,7 @@ export interface BoostCampaignControllerInput {
   activeCampaignId: string | null;
   authenticated: boolean;
   communityId: string | null;
+  onCampaignActivated?: () => void;
   postId: string;
   requestAuth: () => void;
   song: boolean;
@@ -293,6 +295,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const createQuoteInFlight = React.useRef(false);
   const sendFundingInFlight = React.useRef(false);
   const confirmFundingInFlight = React.useRef(false);
+  const recoveredFundingConfirm = React.useRef(false);
 
   React.useEffect(() => {
     if (!input.authenticated || !input.song || !input.communityId) {
@@ -413,6 +416,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         if (pending.transactionHash) {
           setErrorMessage(undefined);
           setSheetState("awaiting-finality");
+          recoveredFundingConfirm.current = true;
         } else {
           setSheetState(pending.quote.expires_at <= Math.floor(Date.now() / 1_000) ? "compose" : "quote");
         }
@@ -521,11 +525,12 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       setTerminalCode(null);
       setErrorMessage(undefined);
       setSheetState("active");
+      input.onCampaignActivated?.();
       return true;
     }
     setSheetState("awaiting-finality");
     return false;
-  }, [api.rewards, input.communityId, input.postId]);
+  }, [api.rewards, input.communityId, input.onCampaignActivated, input.postId]);
 
   const applyTerminalFunding = React.useCallback((
     code: string,
@@ -612,6 +617,26 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       setBusy(false);
     }
   }, [api.rewards, applyTerminalFunding, input.communityId, refreshCampaign]);
+
+  React.useEffect(() => {
+    if (
+      sheetState !== "awaiting-finality"
+      || !campaign
+      || !quote
+      || !transactionHash
+    ) return;
+
+    // A submission recovered from storage has not been checked in this
+    // session; confirm it immediately instead of waiting a full interval.
+    if (recoveredFundingConfirm.current) {
+      recoveredFundingConfirm.current = false;
+      void confirmSubmittedFunding(campaign, quote, transactionHash);
+    }
+    const timer = window.setInterval(() => {
+      void confirmSubmittedFunding(campaign, quote, transactionHash);
+    }, FUNDING_FINALITY_POLL_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [campaign, confirmSubmittedFunding, quote, sheetState, transactionHash]);
 
   const sendFunding = React.useCallback(async () => {
     if (sendFundingInFlight.current || !quote || !campaign || !fundingWallet) {

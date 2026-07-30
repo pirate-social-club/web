@@ -441,9 +441,7 @@ describe("useBoostCampaignController", () => {
 
     confirmError = null;
     const restoredView = renderHook(() => useBoostCampaignController(input()));
-    await waitFor(() => expect(restoredView.result.current.sheetProps.state).toBe("awaiting-finality"));
-    act(() => restoredView.result.current.openBoost());
-    act(() => restoredView.result.current.sheetProps.onRefresh?.());
+    // Recovery confirms the persisted hash immediately; no sheet interaction.
     await waitFor(() => expect(restoredView.result.current.sheetProps.state).toBe("active"));
     expect(calls.transfer).toBe(1);
     expect(calls.confirm).toBe(2);
@@ -522,6 +520,44 @@ describe("useBoostCampaignController", () => {
     expect(calls.confirm).toBe(1);
     expect(calls.transfer).toBe(1);
     expect(view.result.current.sheetProps.errorMessage).toBeUndefined();
+  });
+
+  test("automatically rechecks recovered finality after the submitted-funding sheet closes", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    confirmStatus = "confirming";
+    let activated = 0;
+    const view = renderHook(() => useBoostCampaignController({
+      ...input(),
+      onCampaignActivated: () => { activated += 1; },
+    }));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    let poll: (() => void) | undefined;
+    const originalSetInterval = window.setInterval;
+    window.setInterval = ((callback: TimerHandler, delay?: number) => {
+      if (delay === 10_000) {
+        poll = callback as () => void;
+        return 1;
+      }
+      return originalSetInterval(callback, delay);
+    }) as typeof window.setInterval;
+    try {
+      act(() => view.result.current.sheetProps.onConfirm?.());
+      await waitFor(() => expect(view.result.current.sheetProps.state).toBe("awaiting-finality"));
+      expect(poll).toBeDefined();
+      act(() => view.result.current.sheetProps.onOpenChange?.(false));
+      confirmStatus = "confirmed";
+      await act(async () => poll?.());
+      await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
+    } finally {
+      window.setInterval = originalSetInterval;
+    }
+
+    expect(calls.transfer).toBe(1);
+    expect(calls.confirm).toBe(2);
+    expect(activated).toBe(1);
   });
 
   test("a transient exhausted read remains pending instead of becoming a failure", async () => {

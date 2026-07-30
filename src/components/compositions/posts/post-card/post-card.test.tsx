@@ -460,6 +460,32 @@ describe("PostCard", () => {
     expect(gatedMarkup).not.toContain("Watch live");
   });
 
+  test("renders Mandarin live-room copy under the zh locale", () => {
+    const liveMarkup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="zh">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "allowed",
+            coverSrc: "https://media.test/live-cover.jpg",
+            liveRoomId: "lr_live_zh",
+            onWatch: () => undefined,
+            status: "live",
+            title: "Live concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(liveMarkup).toContain("观看直播");
+  });
+
   test("renders buyer-gated live-room song purchase and unavailable ownership states", () => {
     const buyMarkup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">

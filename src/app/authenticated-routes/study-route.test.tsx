@@ -782,6 +782,27 @@ describe("StudyRoutePage", () => {
     }
   });
 
+  test("leaves recoverable chat instructions when Telegram cannot close the Mini App", async () => {
+    const originalTelegram = (window as Window & { Telegram?: unknown }).Telegram;
+    (window as Window & {
+      Telegram?: { WebApp?: Record<string, never> };
+    }).Telegram = { WebApp: {} };
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" telegramMiniApp />);
+      await waitFor(() => expect(view.getByText("Send voice message")).toBeTruthy());
+      fireEvent.click(view.getByText("Send voice message").closest("button")!);
+
+      await waitFor(() => expect(view.getByText(
+        "Check your chat with this community’s bot and reply with a voice message. You can close this window now.",
+      )).toBeTruthy(), { timeout: 2_000 });
+      expect(view.getByText("Send voice message")).toBeTruthy();
+      expect(calls).not.toContain("communities.transcribePostStudyAudio");
+    } finally {
+      (window as Window & { Telegram?: unknown }).Telegram = originalTelegram;
+    }
+  });
+
   test("reloads the session when a say-it-back attempt is rejected as stale", async () => {
     submitPostStudyAttemptError = new ApiError("bad_request", "Study exercise presentation limit reached", 400);
     const restoreRecorder = installFakeMediaRecorder();

@@ -61,6 +61,7 @@ export type SongStudySurfaceState =
     attemptNumber: number;
     exercise: SongStudySayItBackExercise;
     feedback?: SongStudySayItBackFeedback;
+    guidance?: string;
     phase: "idle" | "listening" | "checking" | "wrong" | "correct";
     revealReference?: boolean;
     submitError?: string;
@@ -307,6 +308,11 @@ function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kin
       {state.submitError ? (
         <Type as="p" className="text-destructive" role="alert" variant="caption">
           {state.submitError}
+        </Type>
+      ) : null}
+      {state.guidance ? (
+        <Type as="p" className="text-muted-foreground" role="status" variant="body">
+          {state.guidance}
         </Type>
       ) : null}
     </div>

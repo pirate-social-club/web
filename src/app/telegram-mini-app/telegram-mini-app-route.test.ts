@@ -5,6 +5,7 @@ import {
   readTelegramMiniAppStartParam,
   resolveTelegramMiniAppStartPath,
   buildTelegramStartAppHref,
+  buildTelegramCommunityPostPath,
   buildTelegramStudyStartParam,
   resolveTelegramBotUsername,
   resolveTelegramVerifyViewModel,
@@ -67,6 +68,14 @@ describe("resolveTelegramMiniAppStartPath", () => {
     expect(resolveTelegramMiniAppStartPath("")).toBeNull();
     expect(resolveTelegramMiniAppStartPath("community_com_1")).toBeNull();
     expect(resolveTelegramMiniAppStartPath("c_")).toBeNull();
+  });
+});
+
+describe("buildTelegramCommunityPostPath", () => {
+  test("keeps community feed posts inside the Telegram post route", () => {
+    expect(buildTelegramCommunityPostPath("pst_song_with_underscores")).toBe(
+      "/tg/p/pst_song_with_underscores",
+    );
   });
 });
 

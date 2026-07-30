@@ -450,6 +450,7 @@ export function StudyRoutePage({
   const recordingStreamRef = React.useRef<MediaStream | null>(null);
   const pendingMultipleChoiceAttemptRef = React.useRef<string | null>(null);
   const attemptIdempotencyKeysRef = React.useRef(new Map<string, string>());
+  const telegramVoiceHandoffTimeoutRef = React.useRef<number | null>(null);
 
   const divergenceRecoveryCountRef = React.useRef(0);
 
@@ -481,11 +482,31 @@ export function StudyRoutePage({
   }, []);
 
   React.useEffect(() => () => {
+    if (telegramVoiceHandoffTimeoutRef.current !== null) {
+      window.clearTimeout(telegramVoiceHandoffTimeoutRef.current);
+    }
     if (recorderRef.current?.state === "recording") {
       recorderRef.current.stop();
     }
     stopRecordingStream();
   }, [stopRecordingStream]);
+
+  React.useEffect(() => {
+    if (!telegramMiniApp) return;
+    let wasHidden = document.visibilityState === "hidden";
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        wasHidden = true;
+        return;
+      }
+      if (wasHidden) {
+        wasHidden = false;
+        setReloadKey((value) => value + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [telegramMiniApp]);
 
   const studyComplete = state.phase === "ready" && state.surface.kind === "complete";
   const completedRewardOffer = state.phase === "ready" ? state.rewardOffer : null;
@@ -764,6 +785,7 @@ export function StudyRoutePage({
           ...state,
           surface: {
             ...sayItBackSurface,
+            guidance: "I’ll send the line to this bot’s chat. Reply there with a Telegram voice message.",
             phase: "checking",
             submitError: undefined,
           },
@@ -776,9 +798,25 @@ export function StudyRoutePage({
             target_language: state.study.target_language,
           },
         ).then(() => {
-          (window as Window & {
+          const close = (window as Window & {
             Telegram?: { WebApp?: { close?: () => void } };
-          }).Telegram?.WebApp?.close?.();
+          }).Telegram?.WebApp?.close;
+          close?.();
+          telegramVoiceHandoffTimeoutRef.current = window.setTimeout(() => {
+            setState((current) => current.phase === "ready"
+              && current.surface.kind === "say_it_back"
+              && current.surface.exercise.id === sayItBackSurface.exercise.id
+              && current.surface.phase === "checking"
+              ? {
+                  ...current,
+                  surface: {
+                    ...current.surface,
+                    guidance: "Check your chat with this community’s bot and reply with a voice message. You can close this window now.",
+                    phase: "idle",
+                  },
+                }
+              : current);
+          }, 1_000);
         }).catch((error) => {
           setState((current) => current.phase === "ready"
             && current.surface.kind === "say_it_back"

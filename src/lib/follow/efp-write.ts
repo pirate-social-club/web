@@ -106,7 +106,8 @@ export async function submitFollowAction(
   const transactionHashes: `0x${string}`[] = [];
   let needsConfirmation = false;
 
-  for (const [transactionIndex, transaction] of options.prepared.transactions.entries()) {
+  for (const [localIndex, transaction] of options.prepared.transactions.entries()) {
+    const transactionIndex = options.prepared.transaction_index_offset + localIndex;
     if (
       options.prepared.sponsorship.eligible
       && options.prepared.intent_id
@@ -120,7 +121,7 @@ export async function submitFollowAction(
         transactionIndex,
         intent: relayIntent(
           transactionIndex,
-          options.prepared.transactions.length,
+          options.prepared.prepared_transaction_count,
           params.followed,
           targetAddress,
         ),

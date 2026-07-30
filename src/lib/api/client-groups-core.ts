@@ -59,6 +59,23 @@ export function createAuthApi(request: ApiRequest) {
 export function createUsersApi(request: ApiRequest) {
   return {
     getMe: (): Promise<User> => request<User>("/users/me"),
+    createTelegramAccountLinkIntent: (
+      communityId: string,
+    ): Promise<{ expires_at: string; link_url: string }> =>
+      request<{ expires_at: string; link_url: string }>(
+        "/users/me/telegram-account-link-intents",
+        {
+          method: "POST",
+          body: JSON.stringify({ community_id: communityId }),
+        },
+      ),
+    consumeTelegramAccountLinkIntent: (
+      token: string,
+    ): Promise<{ linked: true }> =>
+      request<{ linked: true }>("/users/me/telegram-account-link-intents/consume", {
+        method: "POST",
+        body: JSON.stringify({ token }),
+      }),
     setIdentityWallet: (walletAttachmentId: string): Promise<User> =>
       request<User>("/users/me/identity-wallet", {
         method: "PUT",

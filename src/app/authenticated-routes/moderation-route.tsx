@@ -1154,6 +1154,12 @@ export function CommunityModerationPage({
               onSettingsChange={state.setTelegramSettings}
               saveDisabled={telegramSaveDisabled}
               settings={state.telegramSettings}
+              studyMiniAppUrl={state.telegramJoinUrl
+                ? new URL(
+                    `/tg/c/${encodeURIComponent(communityId)}`,
+                    state.telegramJoinUrl,
+                  ).toString()
+                : null}
               submitState={state.telegramSubmitState}
             />
           );

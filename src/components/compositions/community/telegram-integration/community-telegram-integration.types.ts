@@ -82,6 +82,7 @@ export interface CommunityTelegramIntegrationPageProps {
   channel?: TelegramBroadcastChannelSectionProps | null;
   className?: string;
   joinUrl?: string | null;
+  studyMiniAppUrl?: string | null;
   onConnectChat?: () => void;
   onRevokeBot?: () => void;
   onSave?: () => void;

@@ -355,12 +355,14 @@ function StudyRouteMessage({
   onAction,
   message,
   postId,
+  returnPath,
   title,
 }: {
   actionLabel?: string;
   message: string;
   onAction?: () => void;
   postId: string;
+  returnPath?: string;
   title: string;
 }) {
   return (
@@ -377,7 +379,7 @@ function StudyRouteMessage({
             {actionLabel}
           </Button>
         ) : null}
-        <Button onClick={() => navigate(`/p/${encodeURIComponent(postId)}`)} variant="secondary">
+        <Button onClick={() => navigate(returnPath ?? `/p/${encodeURIComponent(postId)}`)} variant="secondary">
           Open post
         </Button>
       </div>
@@ -385,7 +387,15 @@ function StudyRouteMessage({
   );
 }
 
-function StudyAuthRequiredMessage({ postId }: { postId: string }) {
+function StudyAuthRequiredMessage({
+  postId,
+  returnPath,
+  telegramMiniApp,
+}: {
+  postId: string;
+  returnPath?: string;
+  telegramMiniApp?: boolean;
+}) {
   const { busy, configured, connect, loadError } = usePiratePrivyRuntime();
 
   return (
@@ -394,17 +404,22 @@ function StudyAuthRequiredMessage({ postId }: { postId: string }) {
         <Type as="h1" variant="h3">
           Sign in to study
         </Type>
-        {configured && connect ? (
+        {!telegramMiniApp && configured && connect ? (
           <Button loading={busy} onClick={connect}>
             Sign in
           </Button>
         ) : null}
-        {loadError ? (
+        {!telegramMiniApp && loadError ? (
           <Type as="p" className="text-muted-foreground" variant="caption">
             Authentication is unavailable right now.
           </Type>
         ) : null}
-        <Button onClick={() => navigate(`/p/${encodeURIComponent(postId)}`)} variant="secondary">
+        {telegramMiniApp ? (
+          <Type as="p" className="text-muted-foreground" variant="body">
+            Reopen study from this community&apos;s Telegram bot.
+          </Type>
+        ) : null}
+        <Button onClick={() => navigate(returnPath ?? `/p/${encodeURIComponent(postId)}`)} variant="secondary">
           Open post
         </Button>
       </div>
@@ -412,7 +427,15 @@ function StudyAuthRequiredMessage({ postId }: { postId: string }) {
   );
 }
 
-export function StudyRoutePage({ postId }: { postId: string }) {
+export function StudyRoutePage({
+  postId,
+  returnPath,
+  telegramMiniApp = false,
+}: {
+  postId: string;
+  returnPath?: string;
+  telegramMiniApp?: boolean;
+}) {
   const api = useApi();
   const session = useSession();
   const hydrated = useClientHydrated();
@@ -467,7 +490,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   const studyComplete = state.phase === "ready" && state.surface.kind === "complete";
   const completedRewardOffer = state.phase === "ready" ? state.rewardOffer : null;
   React.useEffect(() => {
-    if (!studyComplete || !completedRewardOffer || !session?.accessToken) return;
+    if (telegramMiniApp || !studyComplete || !completedRewardOffer || !session?.accessToken) return;
     let cancelled = false;
     let timeout: number | undefined;
     let attempt = 0;
@@ -494,7 +517,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       cancelled = true;
       if (timeout !== undefined) window.clearTimeout(timeout);
     };
-  }, [api, completedRewardOffer, postId, session?.accessToken, studyComplete]);
+  }, [api, completedRewardOffer, postId, session?.accessToken, studyComplete, telegramMiniApp]);
 
   React.useEffect(() => {
     let canceled = false;
@@ -527,7 +550,9 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           api.communities.getPostStudy(post.post.community, post.post.id, {
             targetLanguage: contentLocale,
           }),
-          api.rewards.getActiveCampaignForSong(post.post.community, post.post.id).catch(() => null),
+          telegramMiniApp
+            ? Promise.resolve(null)
+            : api.rewards.getActiveCampaignForSong(post.post.community, post.post.id).catch(() => null),
         ]);
         if (canceled) return;
 
@@ -619,7 +644,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     return () => {
       canceled = true;
     };
-  }, [api, contentLocale, hydrated, postId, reloadKey, session?.accessToken]);
+  }, [api, contentLocale, hydrated, postId, reloadKey, session?.accessToken, telegramMiniApp]);
 
   const submitMultipleChoiceAttempt = React.useCallback((
     readyState: ReadyStudyRouteState,
@@ -734,6 +759,42 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     if (state.surface.kind === "say_it_back" && state.surface.phase === "idle") {
       unlockStudyFeedbackAudio();
       const sayItBackSurface = state.surface;
+      if (telegramMiniApp) {
+        setState({
+          ...state,
+          surface: {
+            ...sayItBackSurface,
+            phase: "checking",
+            submitError: undefined,
+          },
+        });
+        void api.communities.createPostStudyTelegramVoiceIntent(
+          state.post.post.community,
+          state.post.post.id,
+          {
+            exercise_id: sayItBackSurface.exercise.id,
+            target_language: state.study.target_language,
+          },
+        ).then(() => {
+          (window as Window & {
+            Telegram?: { WebApp?: { close?: () => void } };
+          }).Telegram?.WebApp?.close?.();
+        }).catch((error) => {
+          setState((current) => current.phase === "ready"
+            && current.surface.kind === "say_it_back"
+            && current.surface.exercise.id === sayItBackSurface.exercise.id
+            ? {
+                ...current,
+                surface: {
+                  ...current.surface,
+                  phase: "idle",
+                  submitError: getErrorMessage(error, "Could not open the Telegram voice exercise."),
+                },
+              }
+            : current);
+        });
+        return;
+      }
       if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
         setState({
           ...state,
@@ -933,7 +994,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     if (state.surface.kind === "say_it_back" && state.surface.phase === "correct") {
       setState(advanceLesson(state, "correct"));
     }
-  }, [api, attemptIdempotencyKey, postId, recoverFromDivergedAttempt, state, stopRecordingStream, submitMultipleChoiceAttempt]);
+  }, [api, attemptIdempotencyKey, postId, recoverFromDivergedAttempt, state, stopRecordingStream, submitMultipleChoiceAttempt, telegramMiniApp]);
 
   const handleOptionSelect = React.useCallback((optionId: string) => {
     if (state.phase !== "ready" || state.surface.kind !== "multiple_choice" || state.surface.result || state.surface.submitting) {
@@ -942,7 +1003,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     submitMultipleChoiceAttempt(state, state.surface, optionId);
   }, [state, submitMultipleChoiceAttempt]);
 
-  if (!hydrated || (configured && !loaded)) {
+  if (!hydrated || (!telegramMiniApp && configured && !loaded)) {
     return (
       <div className="flex h-dvh min-h-screen w-full items-center justify-center bg-background text-foreground">
         <Spinner className="size-8 text-muted-foreground" />
@@ -951,7 +1012,13 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   }
 
   if (!session?.accessToken || state.phase === "auth_required") {
-    return <StudyAuthRequiredMessage postId={postId} />;
+    return (
+      <StudyAuthRequiredMessage
+        postId={postId}
+        returnPath={returnPath}
+        telegramMiniApp={telegramMiniApp}
+      />
+    );
   }
 
   if (state.phase === "loading") {
@@ -969,6 +1036,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         message={state.message}
         onAction={state.phase === "blocked" && state.actionLabel ? () => setReloadKey((value) => value + 1) : undefined}
         postId={postId}
+        returnPath={returnPath}
         title={state.title}
       />
     );
@@ -980,16 +1048,16 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       artistName={state.study.artist_name ?? undefined}
       artworkSrc={pageArtwork(state.post, state.study)}
       className="h-dvh"
-      onExit={() => navigate(routeReturnPath(`/p/${encodeURIComponent(postId)}`))}
+      onExit={() => navigate(returnPath ?? routeReturnPath(`/p/${encodeURIComponent(postId)}`))}
       onOptionSelect={handleOptionSelect}
       onPrimaryAction={handlePrimaryAction}
-      onKaraoke={state.surface.kind === "complete"
+      onKaraoke={!telegramMiniApp && state.surface.kind === "complete"
         ? () => navigate(`/p/${encodeURIComponent(postId)}/karaoke`)
         : undefined}
       onStudyAgain={state.surface.kind === "complete"
         ? () => setReloadKey((value) => value + 1)
         : undefined}
-      rewardSlot={state.rewardOffer && state.rewardOffer.eligible_activity !== "karaoke" ? (
+      rewardSlot={!telegramMiniApp && state.rewardOffer && state.rewardOffer.eligible_activity !== "karaoke" ? (
         state.surface.kind === "complete" ? (
           <RewardQualificationNotice
             amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
@@ -1006,6 +1074,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           />
         )
       ) : undefined}
+      sayItBackIdleLabel={telegramMiniApp ? "Send voice message" : undefined}
       state={state.surface}
       title={pageTitle(state.post, state.study)}
     />

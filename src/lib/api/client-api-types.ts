@@ -57,6 +57,14 @@ export type SongStudyPayload = Omit<ContractSongStudyPayload, "exercises" | "ses
   session?: SongStudySessionSummary;
 };
 
+export type TelegramStudyVoiceIntent = {
+  created: number;
+  expires_at: number;
+  id: string;
+  object: "telegram_study_voice_intent";
+  status: "pending";
+};
+
 export type ApiCommunityMediaUploadResponse = {
   kind: "avatar" | "banner" | "post_image" | "comment_image";
   media_ref: string;

@@ -476,6 +476,7 @@ const app = defineApp<AppRequestInfo>([
     applySecurityHeaders(response.headers, rw.nonce, {
       dev: import.meta.env.DEV,
       reportOnly: import.meta.env.VITE_CSP_REPORT_ONLY === "true",
+      telegramMiniApp: url.pathname === "/tg" || url.pathname.startsWith("/tg/"),
     });
   },
   render(Document, [
@@ -518,9 +519,11 @@ const app = defineApp<AppRequestInfo>([
     ),
     route("/tg/verify/:communityId", AppRoutePage),
     route("/tg/c/:communityId", AppRoutePage),
+    route("/tg/c/:communityId/p/:postId/study", AppRoutePage),
     route("/tg/p/:postId", AppRoutePage),
     route("/your-communities", AppRoutePage),
     route("/communities/new", AppRoutePage),
+    route("/telegram/account-link", AppRoutePage),
     route("/submit", AppRoutePage),
     route("/c/:communityId/submit", AppRoutePage),
     route("/c/:communityId/bookings", AppRoutePage),

@@ -574,8 +574,11 @@ export function PostPage({
       requestAuth("Connect your wallet to study this song.");
       return;
     }
-    navigate(`/p/${encodeURIComponent(postId)}/study`);
-  }, [hasSession, postId, requestAuth]);
+    const communityId = post?.post.community;
+    navigate(telegramMiniApp && communityId
+      ? `/tg/c/${encodeURIComponent(communityId)}/p/${encodeURIComponent(postId)}/study`
+      : `/p/${encodeURIComponent(postId)}/study`);
+  }, [hasSession, post?.post.community, postId, requestAuth, telegramMiniApp]);
 
   const handleOpenStreaks = React.useCallback(() => {
     if (!hasSession) {

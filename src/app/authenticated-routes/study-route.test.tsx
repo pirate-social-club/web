@@ -128,6 +128,7 @@ let rewardSummaryResult: ApiRewardsSummaryResponse | null = null;
 let privyConnectCalls = 0;
 let submitPostStudyAttemptError: unknown = null;
 let transcribeStudyAudioError: unknown = null;
+let telegramVoiceIntentError: unknown = null;
 let submitPostStudyAttemptResult: SongStudyAttemptResult = {
   attempts_remaining: 0,
   correct_option_id: "option_correct",
@@ -160,6 +161,17 @@ fakeApi.communities.transcribePostStudyAudio = async () => {
   calls.push("communities.transcribePostStudyAudio");
   if (transcribeStudyAudioError) throw transcribeStudyAudioError;
   return { text: "Hola mundo" };
+};
+fakeApi.communities.createPostStudyTelegramVoiceIntent = async (_communityId, _postId, body) => {
+  calls.push(`communities.createPostStudyTelegramVoiceIntent:${body.exercise_id}`);
+  if (telegramVoiceIntentError) throw telegramVoiceIntentError;
+  return {
+    created: 1,
+    expires_at: 2,
+    id: "tsv_test",
+    object: "telegram_study_voice_intent",
+    status: "pending",
+  };
 };
 fakeApi.rewards.getActiveCampaignForSong = async () => {
   if (!rewardCampaignResult) throw new ApiError("not_found", "Active reward campaign not found", 404);
@@ -240,6 +252,7 @@ beforeEach(() => {
   privyConnectCalls = 0;
   submitPostStudyAttemptError = null;
   transcribeStudyAudioError = null;
+  telegramVoiceIntentError = null;
   submitPostStudyAttemptResult = {
     attempts_remaining: 0,
     correct_option_id: "option_correct",
@@ -739,6 +752,33 @@ describe("StudyRoutePage", () => {
       expect(studyLoadCount()).toBe(1);
     } finally {
       restoreRecorder();
+    }
+  });
+
+  test("hands say-it-back to a native Telegram voice message without requesting the microphone", async () => {
+    let closeCalls = 0;
+    const originalTelegram = (window as Window & { Telegram?: unknown }).Telegram;
+    (window as Window & {
+      Telegram?: { WebApp?: { close?: () => void } };
+    }).Telegram = {
+      WebApp: {
+        close: () => {
+          closeCalls += 1;
+        },
+      },
+    };
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" telegramMiniApp />);
+      await waitFor(() => expect(view.getByText("Send voice message")).toBeTruthy());
+      fireEvent.click(view.getByText("Send voice message").closest("button")!);
+      await waitFor(() => expect(closeCalls).toBe(1));
+      expect(calls).toContain(
+        "communities.createPostStudyTelegramVoiceIntent:ex_say",
+      );
+      expect(calls).not.toContain("communities.transcribePostStudyAudio");
+    } finally {
+      (window as Window & { Telegram?: unknown }).Telegram = originalTelegram;
     }
   });
 

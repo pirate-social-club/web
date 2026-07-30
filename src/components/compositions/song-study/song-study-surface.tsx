@@ -102,6 +102,7 @@ export interface SongStudySurfaceProps {
   onPrimaryAction?: () => void;
   onStudyAgain?: () => void;
   rewardSlot?: React.ReactNode;
+  sayItBackIdleLabel?: string;
   state: SongStudySurfaceState;
   title: string;
 }
@@ -110,7 +111,10 @@ function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function primaryActionLabel(state: SongStudySurfaceState): string | undefined {
+function primaryActionLabel(
+  state: SongStudySurfaceState,
+  sayItBackIdleLabel?: string,
+): string | undefined {
   switch (state.kind) {
     case "locked":
       return state.priceLabel ? `Buy ${state.priceLabel}` : "Buy";
@@ -118,7 +122,7 @@ function primaryActionLabel(state: SongStudySurfaceState): string | undefined {
       if (state.phase === "correct") return "Continue";
       if (state.phase === "wrong") return state.revealReference ? "Continue" : "Record";
       if (state.phase === "checking") return "Checking…";
-      return state.phase === "listening" ? "Stop" : "Record";
+      return state.phase === "listening" ? "Stop" : sayItBackIdleLabel ?? "Record";
     case "multiple_choice":
       if (state.submitting) return "Checking…";
       if (state.result === "wrong" && state.canRetry) return "Try again";
@@ -611,6 +615,7 @@ export function SongStudySurface({
   onPrimaryAction,
   onStudyAgain,
   rewardSlot,
+  sayItBackIdleLabel,
   state,
   title,
 }: SongStudySurfaceProps) {
@@ -621,7 +626,7 @@ export function SongStudySurface({
       : onKaraoke
         ? "Karaoke"
         : undefined
-    : primaryActionLabel(state);
+    : primaryActionLabel(state, sayItBackIdleLabel);
   const primaryAction = complete ? onStudyAgain ?? onKaraoke : onPrimaryAction;
   const primaryIcon = complete
     ? onStudyAgain

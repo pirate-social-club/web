@@ -8,6 +8,7 @@ import type {
 
 import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
 import { PostPage } from "@/app/authenticated-routes";
+import { StudyRoutePage } from "@/app/authenticated-routes/study-route";
 import { PublicCommunityRoutePage } from "@/app/public-community-route";
 import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
@@ -143,6 +144,18 @@ export function resolveTelegramMiniAppStartPath(startParam: string | null | unde
 
   const kind = value.slice(0, separatorIndex);
   const target = value.slice(separatorIndex + 1);
+  if (kind === "s") {
+    const lengthSeparatorIndex = target.indexOf("_");
+    if (lengthSeparatorIndex <= 0) return null;
+    const communityLengthText = target.slice(0, lengthSeparatorIndex);
+    if (!/^[1-9][0-9]{0,2}$/u.test(communityLengthText)) return null;
+    const payload = target.slice(lengthSeparatorIndex + 1);
+    const communityLength = Number(communityLengthText);
+    if (payload.length <= communityLength) return null;
+    const communityId = payload.slice(0, communityLength);
+    const postId = payload.slice(communityLength);
+    return `/tg/c/${encodeURIComponent(communityId)}/p/${encodeURIComponent(postId)}/study`;
+  }
   if (kind === "c" || kind === "join") {
     return `/tg/c/${encodeURIComponent(target)}`;
   }
@@ -153,6 +166,21 @@ export function resolveTelegramMiniAppStartPath(startParam: string | null | unde
     return `/tg/p/${encodeURIComponent(target)}`;
   }
   return null;
+}
+
+export function buildTelegramStudyStartParam(communityId: string, postId: string): string | null {
+  const community = communityId.trim();
+  const post = postId.trim();
+  if (
+    !community
+    || !post
+    || !/^[A-Za-z0-9_-]+$/u.test(community)
+    || !/^[A-Za-z0-9_-]+$/u.test(post)
+  ) {
+    return null;
+  }
+  const value = `s_${community.length}_${community}${post}`;
+  return value.length <= 512 ? value : null;
 }
 
 export function readTelegramMiniAppStartParam(input: {
@@ -1239,7 +1267,10 @@ export function TelegramMiniAppSelfReturnPage({
   );
 }
 
-function useTelegramMiniAppSessionExchange(communityId: string): TelegramMiniAppSessionExchangeState {
+function useTelegramMiniAppSessionExchange(
+  communityId: string,
+  context: "default" | "study" = "default",
+): TelegramMiniAppSessionExchangeState {
   const [state, setState] = React.useState<TelegramMiniAppSessionExchangeState>({ kind: "checking" });
 
   React.useEffect(() => {
@@ -1262,7 +1293,11 @@ function useTelegramMiniAppSessionExchange(communityId: string): TelegramMiniApp
     void fetch(resolveApiUrl("/telegram/session/auto-exchange"), {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ community_id: communityId, init_data: initData }),
+      body: JSON.stringify({
+        community_id: communityId,
+        context,
+        init_data: initData,
+      }),
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -1284,7 +1319,7 @@ function useTelegramMiniAppSessionExchange(communityId: string): TelegramMiniApp
       });
 
     return () => controller.abort();
-  }, [communityId]);
+  }, [communityId, context]);
 
   return state;
 }
@@ -1330,9 +1365,12 @@ export function TelegramMiniAppCommunityPage({
     <TelegramMiniAppShell showBackButton>
       <div className="px-3 pb-8 pt-[calc(env(safe-area-inset-top)+1rem)]">
         <PublicCommunityRoutePage
-          buildPostPath={(postId) => `/tg/p/${encodeURIComponent(postId)}`}
+          buildPostPath={(postId) =>
+            `/tg/c/${encodeURIComponent(communityId)}/p/${encodeURIComponent(postId)}/study`
+          }
           communityId={communityId}
           disableCanonicalRouteReplace
+          studyOnly
         />
       </div>
     </TelegramMiniAppShell>
@@ -1348,5 +1386,113 @@ export function TelegramMiniAppPostPage({
     <TelegramMiniAppShell backPath="/tg" showBackButton>
       <PostPage postId={postId} telegramMiniApp />
     </TelegramMiniAppShell>
+  );
+}
+
+export function TelegramMiniAppStudyPage({
+  communityId,
+  postId,
+}: {
+  communityId: string;
+  postId: string;
+}) {
+  const sessionExchange = useTelegramMiniAppSessionExchange(communityId, "study");
+  const communityPath = `/tg/c/${encodeURIComponent(communityId)}`;
+
+  if (sessionExchange.kind === "checking") {
+    return (
+      <TelegramMiniAppShell backPath={communityPath} showBackButton>
+        <div className="flex min-h-[70svh] items-center justify-center px-4">
+          <Spinner className="size-9 text-muted-foreground" />
+        </div>
+      </TelegramMiniAppShell>
+    );
+  }
+
+  if (sessionExchange.kind === "error") {
+    return (
+      <TelegramMiniAppShell backPath={communityPath} showBackButton>
+        <div className="px-4 py-6">
+          <PageContainer size="narrow">
+            <section className="flex min-h-[70svh] flex-col justify-center gap-6 text-center">
+              <div className="space-y-3">
+                <Type as="h1" variant="h2">Could not open study</Type>
+                <Type as="p" className="text-muted-foreground" variant="body">
+                  {sessionExchange.message}
+                </Type>
+              </div>
+              <Button onClick={() => navigate(communityPath)} variant="secondary">
+                Open community
+              </Button>
+            </section>
+          </PageContainer>
+        </div>
+      </TelegramMiniAppShell>
+    );
+  }
+
+  return (
+    <TelegramMiniAppShell backPath={communityPath} showBackButton>
+      <TelegramAccountLinkOffer communityId={communityId} />
+      <StudyRoutePage
+        postId={postId}
+        returnPath={communityPath}
+        telegramMiniApp
+      />
+    </TelegramMiniAppShell>
+  );
+}
+
+function TelegramAccountLinkOffer({ communityId }: { communityId: string }) {
+  const api = useApi();
+  const [state, setState] = React.useState<
+    { kind: "idle" } | { kind: "opening" } | { kind: "opened" } | { kind: "error"; message: string }
+  >({ kind: "idle" });
+
+  const openLink = React.useCallback(() => {
+    if (state.kind === "opening") return;
+    setState({ kind: "opening" });
+    void api.users.createTelegramAccountLinkIntent(communityId)
+      .then(({ link_url: linkUrl }) => {
+        setState({ kind: "opened" });
+        openExternalHref(linkUrl);
+      })
+      .catch((error: unknown) => {
+        setState({
+          kind: "error",
+          message: getErrorMessage(error, "Could not start account linking."),
+        });
+      });
+  }, [api.users, communityId, state.kind]);
+
+  return (
+    <div className="px-4 pt-4">
+      <PageContainer size="narrow">
+        <section className="rounded-xl border border-border bg-muted/40 p-4">
+          <Type as="h2" variant="h4">Already use Pirate on the web?</Type>
+          <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
+            Link before studying to keep one streak and review history.
+          </Type>
+          <Button
+            className="mt-3 w-full"
+            disabled={state.kind === "opening" || state.kind === "opened"}
+            onClick={openLink}
+            size="sm"
+            variant="secondary"
+          >
+            {state.kind === "opening"
+              ? "Opening…"
+              : state.kind === "opened"
+                ? "Finish linking in your browser"
+                : "Link existing Pirate account"}
+          </Button>
+          {state.kind === "error" ? (
+            <Type as="p" className="mt-2 text-destructive" variant="caption">
+              {state.message}
+            </Type>
+          ) : null}
+        </section>
+      </PageContainer>
+    </div>
   );
 }

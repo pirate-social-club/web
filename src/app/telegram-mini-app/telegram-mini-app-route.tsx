@@ -1365,16 +1365,17 @@ export function TelegramMiniAppCommunityPage({
     <TelegramMiniAppShell showBackButton>
       <div className="px-3 pb-8 pt-[calc(env(safe-area-inset-top)+1rem)]">
         <PublicCommunityRoutePage
-          buildPostPath={(postId) =>
-            `/tg/c/${encodeURIComponent(communityId)}/p/${encodeURIComponent(postId)}/study`
-          }
+          buildPostPath={buildTelegramCommunityPostPath}
           communityId={communityId}
           disableCanonicalRouteReplace
-          studyOnly
         />
       </div>
     </TelegramMiniAppShell>
   );
+}
+
+export function buildTelegramCommunityPostPath(postId: string): string {
+  return `/tg/p/${encodeURIComponent(postId)}`;
 }
 
 export function TelegramMiniAppPostPage({

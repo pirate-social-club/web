@@ -7,6 +7,7 @@ import {
   buildTelegramStartAppHref,
   buildTelegramCommunityPostPath,
   buildTelegramStudyStartParam,
+  loadTelegramPostCommunityId,
   resolveTelegramBotUsername,
   resolveTelegramVerifyViewModel,
   telegramVerifyLaunchButtonLabel,
@@ -76,6 +77,19 @@ describe("buildTelegramCommunityPostPath", () => {
     expect(buildTelegramCommunityPostPath("pst_song_with_underscores")).toBe(
       "/tg/p/pst_song_with_underscores",
     );
+  });
+});
+
+describe("loadTelegramPostCommunityId", () => {
+  test("derives the community needed for Telegram session exchange from the public post", async () => {
+    const calls: string[] = [];
+    await expect(loadTelegramPostCommunityId({
+      get: async (postId) => {
+        calls.push(postId);
+        return { post: { community: "com_sovereign" } };
+      },
+    }, "pst_deep_link")).resolves.toBe("com_sovereign");
+    expect(calls).toEqual(["pst_deep_link"]);
   });
 });
 

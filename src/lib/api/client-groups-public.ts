@@ -39,6 +39,8 @@ export type PreparedProfileFollowWrite = {
   desired_following: boolean;
   consistency: { status: "already_reflected" | "accepted_not_yet_reflected" };
   sponsorship: { eligible: boolean; reserved_transaction_count: number };
+  prepared_transaction_count: number;
+  transaction_index_offset: number;
   transactions: Array<{ chain_id: number; data: `0x${string}`; to: `0x${string}` }>;
   expires_at: string | null;
 };

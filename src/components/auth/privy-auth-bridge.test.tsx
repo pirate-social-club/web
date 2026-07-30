@@ -119,7 +119,7 @@ describe("PrivyAuthBridge embedded wallet recovery", () => {
     expect(resolvePrivyWalletId(null, EMBEDDED_ADDRESS, "wallet_explicit")).toBe("wallet_explicit");
   });
 
-  test("binds the Privy request expiry into both the signature payload and relay request", () => {
+  test("binds expiry and a deterministic request id into the Privy authorization", () => {
     const now = 1_800_000_000_000;
     const request = {
       chainId: 8453,
@@ -142,6 +142,10 @@ describe("PrivyAuthBridge embedded wallet recovery", () => {
     expect(authorization.payload.headers["privy-request-expiry"]).toBe(
       authorization.requestExpiry,
     );
+    expect(authorization.payload.headers["privy-idempotency-key"]).toBe(
+      `${request.intentId}-0`,
+    );
+    expect(authorization.payload.body.reference_id).toBe(`${request.intentId}-0`);
   });
 
   test("performs only the bounded number of silent exchanges", async () => {

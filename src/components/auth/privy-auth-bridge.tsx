@@ -108,6 +108,7 @@ export function buildPrivyAuthorizationRequest(
   nowMs = Date.now(),
 ) {
   const requestExpiry = String(nowMs + PRIVY_REQUEST_TTL_MS);
+  const requestId = `${request.intentId}-${request.transactionIndex}`;
   return {
     payload: {
       body: {
@@ -121,10 +122,12 @@ export function buildPrivyAuthorizationRequest(
             ...(request.transaction.value ? { value: request.transaction.value } : {}),
           },
         },
+        reference_id: requestId,
         sponsor: true,
       },
       headers: {
         "privy-app-id": import.meta.env.VITE_PRIVY_APP_ID,
+        "privy-idempotency-key": requestId,
         "privy-request-expiry": requestExpiry,
       },
       method: "POST" as const,

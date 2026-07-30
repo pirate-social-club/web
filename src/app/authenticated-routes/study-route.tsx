@@ -451,6 +451,7 @@ export function StudyRoutePage({
   const pendingMultipleChoiceAttemptRef = React.useRef<string | null>(null);
   const attemptIdempotencyKeysRef = React.useRef(new Map<string, string>());
   const telegramVoiceHandoffTimeoutRef = React.useRef<number | null>(null);
+  const telegramVoiceHandoffPendingRef = React.useRef(false);
 
   const divergenceRecoveryCountRef = React.useRef(0);
 
@@ -499,8 +500,10 @@ export function StudyRoutePage({
         wasHidden = true;
         return;
       }
-      if (wasHidden) {
-        wasHidden = false;
+      if (!wasHidden) return;
+      wasHidden = false;
+      if (telegramVoiceHandoffPendingRef.current) {
+        telegramVoiceHandoffPendingRef.current = false;
         setReloadKey((value) => value + 1);
       }
     };
@@ -781,6 +784,7 @@ export function StudyRoutePage({
       unlockStudyFeedbackAudio();
       const sayItBackSurface = state.surface;
       if (telegramMiniApp) {
+        telegramVoiceHandoffPendingRef.current = true;
         setState({
           ...state,
           surface: {
@@ -818,6 +822,7 @@ export function StudyRoutePage({
               : current);
           }, 1_000);
         }).catch((error) => {
+          telegramVoiceHandoffPendingRef.current = false;
           setState((current) => current.phase === "ready"
             && current.surface.kind === "say_it_back"
             && current.surface.exercise.id === sayItBackSurface.exercise.id

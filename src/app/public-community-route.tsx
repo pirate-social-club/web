@@ -18,6 +18,7 @@ import { SelfVerificationModal } from "@/components/compositions/verification/se
 import { ZkPassportVerificationModal } from "@/components/compositions/verification/zkpassport-verification-modal/zkpassport-verification-modal";
 import { CommunityProofOfWorkModal } from "@/components/compositions/community/proof-of-work-modal/community-proof-of-work-modal";
 import { Button } from "@/components/primitives/button";
+import { Type } from "@/components/primitives/type";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
@@ -216,11 +217,13 @@ export function resolvePublicCommunityJoinActionLabel(
 
 export function PublicCommunityRoutePage({
   buildPostPath,
+  buildStudyPath,
   communityId,
   disableCanonicalRouteReplace = false,
   isImportedRoot = false,
 }: {
   buildPostPath?: (postId: string) => string;
+  buildStudyPath?: (postId: string) => string;
   communityId: string;
   disableCanonicalRouteReplace?: boolean;
   isImportedRoot?: boolean;
@@ -673,6 +676,7 @@ export function PublicCommunityRoutePage({
   const viewerIsMember = preview.viewer_membership_status === "member" || eligibility?.status === "already_joined";
   const canCreatePost = Boolean(session?.user?.id) && viewerIsMember;
   const communityCreatePostPath = `${buildCommunityPath(preview.id, preview.route_slug ?? communityId)}/submit`;
+  const studyPosts = buildStudyPath ? posts.filter(isStudyReadyCommunityPost) : [];
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
       {!viewerIsMember && !membershipLoading ? (
@@ -822,6 +826,30 @@ export function PublicCommunityRoutePage({
         title="Verify with ZKPassport"
       />
       <section className="flex min-w-0 flex-1 flex-col gap-6">
+        {buildStudyPath ? (
+          <section
+            aria-label="Study songs"
+            className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-4 shadow-sm"
+          >
+            <Type as="h2" variant="h3">Study</Type>
+            <div className="mt-4 grid gap-3">
+              {studyPosts.length > 0 ? studyPosts.map((post) => (
+                <Button
+                  className="w-full justify-start"
+                  key={post.post.id}
+                  onClick={() => navigate(buildStudyPath(post.post.id))}
+                  variant="secondary"
+                >
+                  {post.post.title?.trim() || "Untitled song"}
+                </Button>
+              )) : (
+                <Type as="p" className="text-muted-foreground" variant="body">
+                  No songs are ready to study yet.
+                </Type>
+              )}
+            </div>
+          </section>
+        ) : null}
         <CommunityPageShell
         activeSort={activeSort}
         avatarSrc={preview.avatar_ref ?? undefined}
@@ -876,4 +904,11 @@ export function PublicCommunityRoutePage({
       </section>
     </>
   );
+}
+
+export function isStudyReadyCommunityPost(post: {
+  post: { post_type: string };
+  study_capability?: { status?: string } | null;
+}): boolean {
+  return post.post.post_type === "song" && post.study_capability?.status === "ready";
 }

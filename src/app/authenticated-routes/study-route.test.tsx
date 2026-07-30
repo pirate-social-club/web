@@ -538,6 +538,34 @@ describe("StudyRoutePage", () => {
     await waitFor(() => expect(view.getByText("Continue")).toBeTruthy());
   });
 
+  test("does not rebuild a multiple choice session after an unrelated app switch", async () => {
+    studyResult = choiceStudyPayload({ question: "Choose the translation" });
+    const originalVisibilityState = document.visibilityState;
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" telegramMiniApp />);
+      await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
+
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+      const hiddenEvent = document.createEvent("Event");
+      hiddenEvent.initEvent("visibilitychange", false, false);
+      document.dispatchEvent(hiddenEvent);
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+      const visibleEvent = document.createEvent("Event");
+      visibleEvent.initEvent("visibilitychange", false, false);
+      document.dispatchEvent(visibleEvent);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(studyLoadCount()).toBe(1);
+      expect(view.getByText("Choose the translation")).toBeTruthy();
+    } finally {
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: originalVisibilityState,
+      });
+    }
+  });
+
   test("unlocks feedback audio on answer selection before the attempt response", async () => {
     let resumeCalls = 0;
     const originalAudioContext = window.AudioContext;

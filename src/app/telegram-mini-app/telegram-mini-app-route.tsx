@@ -1366,6 +1366,9 @@ export function TelegramMiniAppCommunityPage({
       <div className="px-3 pb-8 pt-[calc(env(safe-area-inset-top)+1rem)]">
         <PublicCommunityRoutePage
           buildPostPath={buildTelegramCommunityPostPath}
+          buildStudyPath={(postId) =>
+            `/tg/c/${encodeURIComponent(communityId)}/p/${encodeURIComponent(postId)}/study`
+          }
           communityId={communityId}
           disableCanonicalRouteReplace
         />
@@ -1383,8 +1386,97 @@ export function TelegramMiniAppPostPage({
 }: {
   postId: string;
 }) {
+  const api = useApi();
+  const [communityState, setCommunityState] = React.useState<
+    { kind: "loading" } | { kind: "ready"; communityId: string } | { kind: "error"; message: string }
+  >({ kind: "loading" });
+
+  React.useEffect(() => {
+    const controller = new AbortController();
+    setCommunityState({ kind: "loading" });
+    void loadTelegramPostCommunityId(api.publicPosts, postId)
+      .then((communityId) => {
+        if (controller.signal.aborted) return;
+        setCommunityState({ kind: "ready", communityId });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setCommunityState({
+          kind: "error",
+          message: getErrorMessage(error, "Could not open this post."),
+        });
+      });
+    return () => controller.abort();
+  }, [api.publicPosts, postId]);
+
+  if (communityState.kind === "loading") {
+    return (
+      <TelegramMiniAppShell backPath="/tg" showBackButton>
+        <div className="flex min-h-[70svh] items-center justify-center px-4">
+          <Spinner className="size-9 text-muted-foreground" />
+        </div>
+      </TelegramMiniAppShell>
+    );
+  }
+  if (communityState.kind === "error") {
+    return (
+      <TelegramMiniAppShell backPath="/tg" showBackButton>
+        <div className="px-4 py-6 text-center">
+          <Type as="h1" variant="h2">Could not open this post</Type>
+          <Type as="p" className="mt-3 text-muted-foreground" variant="body">
+            {communityState.message}
+          </Type>
+        </div>
+      </TelegramMiniAppShell>
+    );
+  }
   return (
-    <TelegramMiniAppShell backPath="/tg" showBackButton>
+    <TelegramMiniAppPostWithSession
+      communityId={communityState.communityId}
+      postId={postId}
+    />
+  );
+}
+
+export async function loadTelegramPostCommunityId(
+  publicPosts: { get: (postId: string) => Promise<{ post: { community: string } }> },
+  postId: string,
+): Promise<string> {
+  const post = await publicPosts.get(postId);
+  return post.post.community;
+}
+
+function TelegramMiniAppPostWithSession({
+  communityId,
+  postId,
+}: {
+  communityId: string;
+  postId: string;
+}) {
+  const sessionExchange = useTelegramMiniAppSessionExchange(communityId);
+  if (sessionExchange.kind === "checking") {
+    return (
+      <TelegramMiniAppShell backPath={`/tg/c/${encodeURIComponent(communityId)}`} showBackButton>
+        <div className="flex min-h-[70svh] items-center justify-center px-4">
+          <Spinner className="size-9 text-muted-foreground" />
+        </div>
+      </TelegramMiniAppShell>
+    );
+  }
+  if (sessionExchange.kind === "error") {
+    return (
+      <TelegramMiniAppShell backPath={`/tg/c/${encodeURIComponent(communityId)}`} showBackButton>
+        <div className="px-4 py-6 text-center">
+          <Type as="h1" variant="h2">Could not verify Telegram</Type>
+          <Type as="p" className="mt-3 text-muted-foreground" variant="body">
+            {sessionExchange.message}
+          </Type>
+        </div>
+      </TelegramMiniAppShell>
+    );
+  }
+  return (
+    <TelegramMiniAppShell backPath={`/tg/c/${encodeURIComponent(communityId)}`} showBackButton>
       <PostPage postId={postId} telegramMiniApp />
     </TelegramMiniAppShell>
   );

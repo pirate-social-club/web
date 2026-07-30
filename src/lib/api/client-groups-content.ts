@@ -32,6 +32,7 @@ import type {
   SongStudyAttemptResult,
   SongStudyPayload,
   SongStudyTranscriptionResponse,
+  TelegramStudyVoiceIntent,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
@@ -202,6 +203,15 @@ export function createCommunityContentApi(request: ApiRequest) {
     ): Promise<SongStudyAttemptResult> =>
       request<SongStudyAttemptResult>(
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/study/attempts`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    createPostStudyTelegramVoiceIntent: (
+      communityId: string,
+      postId: string,
+      body: { exercise_id: string; target_language?: string | null },
+    ): Promise<TelegramStudyVoiceIntent> =>
+      request<TelegramStudyVoiceIntent>(
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/study/telegram_voice_intents`,
         { method: "POST", body: JSON.stringify(body) },
       ),
     transcribePostStudyAudio: (

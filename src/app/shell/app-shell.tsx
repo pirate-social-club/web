@@ -83,6 +83,11 @@ const LazyTelegramMiniAppPostPage = React.lazy(async () => {
   return { default: mod.TelegramMiniAppPostPage };
 });
 
+const LazyTelegramMiniAppStudyPage = React.lazy(async () => {
+  const mod = await import("@/app/telegram-mini-app/telegram-mini-app-route");
+  return { default: mod.TelegramMiniAppStudyPage };
+});
+
 function SessionRevalidator({ children }: { children: React.ReactNode }) {
   const { revalidate } = useSessionRevalidation();
   const session = useSession();
@@ -316,7 +321,7 @@ export function PirateAppShell({
   const effectiveDir = resolveLocaleDirection(effectiveLocale);
   const copy = getLocaleMessages(effectiveLocale, "shell");
   const useStandalonePublicProfileShell = isNativePublicIdentityRoute(route);
-  const isTelegramMiniAppRoute = route.kind === "telegram-mini-app" || route.kind === "telegram-exchange" || route.kind === "telegram-self-return" || route.kind === "telegram-join" || route.kind === "telegram-verify" || route.kind === "telegram-community" || route.kind === "telegram-post";
+  const isTelegramMiniAppRoute = route.kind === "telegram-mini-app" || route.kind === "telegram-exchange" || route.kind === "telegram-self-return" || route.kind === "telegram-join" || route.kind === "telegram-verify" || route.kind === "telegram-community" || route.kind === "telegram-post" || route.kind === "telegram-study";
   const shouldDeferPrivyUntilConnect =
     route.kind === "create-community"
     || (!session && (
@@ -356,6 +361,8 @@ export function PirateAppShell({
                 <React.Suspense fallback={<RouteContentFallback route={route} />}>
                   {route.kind === "telegram-community"
                     ? <LazyTelegramMiniAppCommunityPage communityId={route.communityId} />
+                    : route.kind === "telegram-study"
+                      ? <LazyTelegramMiniAppStudyPage communityId={route.communityId} postId={route.postId} />
                     : route.kind === "telegram-verify"
                       ? <LazyTelegramMiniAppVerifyPage communityId={route.communityId} />
                     : route.kind === "telegram-post"

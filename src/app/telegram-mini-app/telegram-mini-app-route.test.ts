@@ -5,6 +5,7 @@ import {
   readTelegramMiniAppStartParam,
   resolveTelegramMiniAppStartPath,
   buildTelegramStartAppHref,
+  buildTelegramStudyStartParam,
   resolveTelegramBotUsername,
   resolveTelegramVerifyViewModel,
   telegramVerifyLaunchButtonLabel,
@@ -38,6 +39,23 @@ describe("resolveTelegramMiniAppStartPath", () => {
     expect(resolveTelegramMiniAppStartPath("p_post_58a12a18213c4bf4a1e6b9343dc3702c")).toBe(
       "/tg/p/post_58a12a18213c4bf4a1e6b9343dc3702c",
     );
+  });
+
+  test("round-trips study links with underscore-bearing public IDs", () => {
+    const communityId = "com_cmt_58a12a18213c4bf4a1e6b9343dc3702c";
+    const postId = "pst_cf89c73fe60641debd05c939252a870c";
+    const startParam = buildTelegramStudyStartParam(communityId, postId);
+
+    expect(startParam).toBe(`s_${communityId.length}_${communityId}${postId}`);
+    expect(resolveTelegramMiniAppStartPath(startParam)).toBe(
+      `/tg/c/${communityId}/p/${postId}/study`,
+    );
+  });
+
+  test("rejects malformed study start params", () => {
+    expect(resolveTelegramMiniAppStartPath("s_0_compst_test")).toBeNull();
+    expect(resolveTelegramMiniAppStartPath("s_999_com_testpst_test")).toBeNull();
+    expect(buildTelegramStudyStartParam("com test", "pst_test")).toBeNull();
   });
 
   test("encodes target payloads without interpreting HNS or space handles", () => {

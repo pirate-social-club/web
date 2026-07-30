@@ -116,4 +116,28 @@ describe("Content Security Policy", () => {
     expect(headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
     expect(headers.get("Permissions-Policy")).toBe("camera=(), microphone=(self), geolocation=()");
   });
+
+  test("allows Telegram framing and bridge script only for Mini App documents", () => {
+    const headers = new Headers();
+
+    applySecurityHeaders(headers, "nonce", {
+      dev: false,
+      reportOnly: false,
+      telegramMiniApp: true,
+    });
+
+    const csp = headers.get(CSP_HEADER) ?? "";
+    expect(csp).toContain("script-src 'self' 'nonce-nonce'");
+    expect(csp).toContain("https://telegram.org");
+    expect(csp).toContain("frame-ancestors https://web.telegram.org");
+    expect(csp).not.toContain("frame-ancestors 'none'");
+    expect(headers.get("X-Frame-Options")).toBeNull();
+  });
+
+  test("does not allow Telegram framing or scripts on regular documents", () => {
+    const csp = buildContentSecurityPolicy("abc123");
+
+    expect(csp).not.toContain("https://telegram.org");
+    expect(csp).toContain("frame-ancestors 'none'");
+  });
 });

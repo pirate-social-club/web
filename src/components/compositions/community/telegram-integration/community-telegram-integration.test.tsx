@@ -60,4 +60,29 @@ describe("CommunityTelegramIntegrationPage", () => {
     expect(view.getByRole("img", { name: "Telegram join QR code" })).not.toBeNull();
     view.unmount();
   });
+
+  test("shows BotFather named Mini App instructions for a connected community bot", () => {
+    const settings = createDefaultTelegramIntegrationSettings();
+    const studyMiniAppUrl = "https://pirate.sc/tg/c/com_cmt_test";
+    const view = render(
+      <CommunityTelegramIntegrationPage
+        settings={{
+          ...settings,
+          bot: {
+            ...settings.bot,
+            status: "connected",
+            username: "TeacherBot",
+            webhookStatus: "active",
+          },
+        }}
+        studyMiniAppUrl={studyMiniAppUrl}
+        submitState={{ kind: "idle" }}
+      />,
+    );
+
+    expect(view.getByText("Register this bot's Study Mini App")).not.toBeNull();
+    expect(view.getByText(studyMiniAppUrl)).not.toBeNull();
+    expect(view.getByText(/menu button automatically/)).not.toBeNull();
+    view.unmount();
+  });
 });

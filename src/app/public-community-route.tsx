@@ -219,11 +219,13 @@ export function PublicCommunityRoutePage({
   communityId,
   disableCanonicalRouteReplace = false,
   isImportedRoot = false,
+  studyOnly = false,
 }: {
   buildPostPath?: (postId: string) => string;
   communityId: string;
   disableCanonicalRouteReplace?: boolean;
   isImportedRoot?: boolean;
+  studyOnly?: boolean;
 }) {
   const api = useApi();
   const session = useSession();
@@ -673,6 +675,12 @@ export function PublicCommunityRoutePage({
   const viewerIsMember = preview.viewer_membership_status === "member" || eligibility?.status === "already_joined";
   const canCreatePost = Boolean(session?.user?.id) && viewerIsMember;
   const communityCreatePostPath = `${buildCommunityPath(preview.id, preview.route_slug ?? communityId)}/submit`;
+  const visiblePosts = studyOnly
+    ? posts.filter((post) =>
+        post.post.post_type === "song"
+        && post.study_capability?.status === "ready"
+      )
+    : posts;
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
@@ -830,8 +838,10 @@ export function PublicCommunityRoutePage({
         bannerSrc={preview.banner_ref ?? undefined}
         communityId={preview.id}
         emptyState={{
-          title: copy.publicCommunity.emptyPosts,
-          body: "Be the first to share something in this community.",
+          title: studyOnly ? "No songs ready to study" : copy.publicCommunity.emptyPosts,
+          body: studyOnly
+            ? "Songs will appear here when their study exercises are ready."
+            : "Be the first to share something in this community.",
           illustration: (
             <div className="relative size-32 overflow-hidden rounded-full md:size-40">
               <picture>
@@ -841,8 +851,8 @@ export function PublicCommunityRoutePage({
             </div>
           ),
         }}
-        headerAction={headerAction}
-        items={posts.map((post) => toCommunityFeedItem(
+        headerAction={studyOnly ? undefined : headerAction}
+        items={visiblePosts.map((post) => toCommunityFeedItem(
           post,
           preview,
           authorProfiles,

@@ -69,6 +69,10 @@ const LazyCreateCommunityPage = lazyRouteModule(
   () => import("./authenticated-routes/create-community-route"),
   "CreateCommunityPage",
 );
+const LazyTelegramAccountLinkRoutePage = lazyRouteModule(
+  () => import("./authenticated-routes/telegram-account-link-route"),
+  "TelegramAccountLinkRoutePage",
+);
 const LazyPostPage = lazyRouteModule(() => import("./authenticated-routes/post-route"), "PostPage");
 const LazyLiveRoomRoutePage = lazyRouteModule(
   () => import("./authenticated-routes/live-room-route"),
@@ -202,6 +206,8 @@ function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyCommunityPage communityId={route.communityId} isImportedRoot={route.isImportedRoot} />;
     case "create-community":
       return <LazyCreateCommunityPage />;
+    case "telegram-account-link":
+      return <LazyTelegramAccountLinkRoutePage />;
     case "post":
       return <LazyPostPage postId={route.postId} />;
     case "post-replay-draft":

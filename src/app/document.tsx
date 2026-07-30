@@ -57,6 +57,8 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
   const dir = ctx.dir ?? resolveLocaleDirection(locale);
   const theme = ctx.theme ?? "dark";
   const nonce = rw.nonce;
+  const effectivePath = new URL(ctx.effectiveUrl ?? "https://pirate.sc/").pathname;
+  const isTelegramMiniApp = effectivePath === "/tg" || effectivePath.startsWith("/tg/");
   const canonicalUrl = ctx.canonicalUrl ?? null;
   const seo = ctx.seoMetadata ?? null;
   const expectsEntitySeoMetadata = ctx.expectsEntitySeoMetadata === true;
@@ -92,6 +94,9 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
     >
       <head>
         <meta charSet="utf-8" />
+        {isTelegramMiniApp ? (
+          <script src="https://telegram.org/js/telegram-web-app.js" />
+        ) : null}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#222324" />
         <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />

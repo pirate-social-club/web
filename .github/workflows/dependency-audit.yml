@@ -36,13 +36,11 @@ jobs:
           repository: pirate-social-club/api
           ref: main
           path: api
-          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/core
           ref: main
           path: core
-          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24

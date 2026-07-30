@@ -48,10 +48,11 @@ import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin"
 import { toast } from "@/components/primitives/sonner";
 import { rewardCtaAmountLabel } from "@/components/compositions/rewards/reward-surfaces";
 import { BoostCampaignSheet, SongRewardPolicySheet } from "@/components/compositions/rewards/reward-booster-surfaces";
-import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse, ApiPublicRewardOffer } from "@/lib/api/client-api-types";
+import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
 import { logger } from "@/lib/logger";
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
 import { useBoostCampaignController } from "@/app/authenticated-helpers/use-boost-campaign-controller";
+import { useActiveSongRewardOffer } from "@/app/authenticated-helpers/use-active-song-reward-offer";
 
 function closeMobileThread(fallbackPath: string) {
   if (typeof window !== "undefined" && window.history.length > 1) {
@@ -178,7 +179,11 @@ export function PostPage({
   const activeAssetId = post?.post.asset ?? null;
   const activeAssetPostType = post?.post.post_type ?? null;
   const [threadAsset, setThreadAsset] = React.useState<ApiAsset | null>(null);
-  const [rewardOffer, setRewardOffer] = React.useState<ApiPublicRewardOffer | null>(null);
+  const [rewardOffer, refreshRewardOffer] = useActiveSongRewardOffer({
+    communityId: post?.post.community,
+    postId: post?.post.id,
+    song: post?.post.post_type === "song",
+  });
   const [liveRoomAccess, setLiveRoomAccess] = React.useState<ApiLiveRoomAccessResponse | null>(null);
   const [liveViewerSession, setLiveViewerSession] = React.useState<ApiLiveRoomViewerAttachResponse | null>(null);
   const [liveViewerOpen, setLiveViewerOpen] = React.useState(false);
@@ -199,29 +204,6 @@ export function PostPage({
   React.useEffect(() => {
     setStoryLicenseReuseNotice(takeStoryLicenseReuseNotice(postId));
   }, [postId]);
-  React.useEffect(() => {
-    const communityId = post?.post.community;
-    const songPostId = post?.post.id;
-    const rewardsEnabled = import.meta.env.VITE_REWARDS_ENABLED === "true";
-    if (!rewardsEnabled || post?.post.post_type !== "song" || !communityId || !songPostId) {
-      setRewardOffer(null);
-      return undefined;
-    }
-
-    let cancelled = false;
-    setRewardOffer(null);
-    void api.rewards.getActiveCampaignForSong(communityId, songPostId)
-      .then((offer) => {
-        if (!cancelled) setRewardOffer(offer);
-      })
-      .catch(() => {
-        if (!cancelled) setRewardOffer(null);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [api.rewards, post?.post.community, post?.post.id, post?.post.post_type]);
   React.useEffect(() => () => {
     for (const url of replayObjectUrlsRef.current) {
       URL.revokeObjectURL(url);
@@ -298,6 +280,7 @@ export function PostPage({
     activeCampaignId: rewardOffer?.campaign ?? null,
     authenticated: Boolean(session?.accessToken),
     communityId: community?.id ?? null,
+    onCampaignActivated: refreshRewardOffer,
     postId,
     requestAuth: () => requestAuth("Sign in to boost this song."),
     song: post?.post.post_type === "song",

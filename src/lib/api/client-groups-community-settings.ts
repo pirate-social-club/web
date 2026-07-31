@@ -153,6 +153,11 @@ export function createCommunitySettingsApi(request: ApiRequest) {
         `/communities/${encodeURIComponent(communityId)}/telegram-bot/revoke`,
         { method: "POST" },
       ),
+    refreshTelegramBotWebhook: (communityId: string): Promise<ApiTelegramCommunityBot> =>
+      request<ApiTelegramCommunityBot>(
+        `/communities/${encodeURIComponent(communityId)}/telegram-bot/refresh-webhook`,
+        { method: "POST" },
+      ),
     createTelegramSetupIntent: (communityId: string): Promise<ApiTelegramSetupIntent> =>
       request<ApiTelegramSetupIntent>(
         `/communities/${encodeURIComponent(communityId)}/telegram-chat/setup-intents`,

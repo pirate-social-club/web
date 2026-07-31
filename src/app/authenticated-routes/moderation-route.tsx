@@ -3,7 +3,6 @@
 import * as React from "react";
 import { isAddress } from "viem";
 import type { MembershipRequestSummary } from "@pirate/api-contracts";
-
 import { navigate } from "@/app/router";
 import { CommunityDonationsEditorPage } from "@/components/compositions/community/donations-editor/community-donations-editor-page";
 import { CommunityGatesEditorPage } from "@/components/compositions/community/gates-editor/community-gates-editor-page";
@@ -1148,6 +1147,7 @@ export function CommunityModerationPage({
               channel={state.telegramChannelSectionProps}
               joinUrl={state.telegramJoinUrl}
               onConnectChat={state.handleConnectTelegramChat}
+              onRefreshBotWebhook={state.handleRefreshTelegramBotWebhook}
               onRevokeBot={state.handleRevokeTelegramBot}
               onSave={state.handleSaveTelegramChat}
               onSaveBotToken={state.handleSaveTelegramBotToken}

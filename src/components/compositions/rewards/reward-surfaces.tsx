@@ -136,6 +136,28 @@ export function SongRewardOffer({
   );
 }
 
+export function SongRewardOfferPill({
+  amountLabel,
+  className,
+}: {
+  amountLabel: string;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-primary/30 bg-primary-subtle px-3 py-1.5",
+        className,
+      )}
+    >
+      <Gift aria-hidden="true" className="size-4 text-primary" weight="fill" />
+      <Type as="span" variant="caption">
+        Earn {amountLabel}
+      </Type>
+    </span>
+  );
+}
+
 export function RewardQualificationNotice({
   amountLabel,
   className,

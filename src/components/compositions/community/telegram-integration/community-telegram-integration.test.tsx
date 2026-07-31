@@ -83,6 +83,7 @@ describe("CommunityTelegramIntegrationPage", () => {
     expect(view.getByText("Register this bot's Study Mini App")).not.toBeNull();
     expect(view.getByText(studyMiniAppUrl)).not.toBeNull();
     expect(view.getByText(/menu button automatically/)).not.toBeNull();
+    expect(view.getByText(/bot owner, you can access messages and voice recordings/)).not.toBeNull();
     view.unmount();
   });
 });

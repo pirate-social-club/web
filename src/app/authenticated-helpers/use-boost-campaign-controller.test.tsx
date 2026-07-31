@@ -22,6 +22,8 @@ let transferError: unknown = null;
 let transferFailAfterSubmit = false;
 let postEligible = true;
 let firstQuoteExpired = false;
+let policyError: unknown = null;
+let policyBlocked = false;
 
 const campaign = () => ({
   id: "rcp_test",
@@ -84,7 +86,10 @@ const fakeApi = {
       chain_id: 84532,
       token_address: "0x1111111111111111111111111111111111111111",
     }),
-    getSongOwnerPolicy: async () => ({ third_party_rewards: "allowed" }),
+    getSongOwnerPolicy: async () => {
+      if (policyError) throw policyError;
+      return { third_party_rewards: policyBlocked ? "blocked" : "allowed" };
+    },
     updateSongOwnerPolicy: async (_community: string, _post: string, input: { third_party_rewards: string }) => ({
       third_party_rewards: input.third_party_rewards,
     }),
@@ -239,6 +244,8 @@ beforeEach(() => {
   transferFailAfterSubmit = false;
   postEligible = true;
   firstQuoteExpired = false;
+  policyError = null;
+  policyBlocked = false;
   connectedWallets = [];
   reconnectEthereumWallet = null;
   reconnectCalls = 0;
@@ -251,6 +258,35 @@ describe("useBoostCampaignController", () => {
     const view = renderHook(() => useBoostCampaignController(input()));
     await waitFor(() => expect(view.result.current.canBoost).toBe(false));
     expect(view.result.current.canManagePolicy).toBe(false);
+  });
+
+  test("keeps Boost available when the advisory song-owner policy fetch fails", async () => {
+    policyError = new ApiError("internal_error", "policy backend down", 500);
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    expect(view.result.current.sheetProps.eligibleActivities).toEqual(["study", "karaoke", "either"]);
+    // The failed read fails open: policy state degrades to the allowed default.
+    await waitFor(() => expect(view.result.current.policySheetProps.allowThirdPartyRewards).toBe(true));
+    act(() => view.result.current.openBoost());
+    expect(view.result.current.sheetProps.open).toBe(true);
+    expect(view.result.current.sheetProps.state).toBe("compose");
+  });
+
+  test("restores the allowed default when a policy fetch fails after a blocked read", async () => {
+    policyBlocked = true;
+    const view = renderHook(
+      (props: ReturnType<typeof input>) => useBoostCampaignController(props),
+      { initialProps: input() },
+    );
+    await waitFor(() => expect(view.result.current.policySheetProps.allowThirdPartyRewards).toBe(false));
+
+    policyBlocked = false;
+    policyError = new ApiError("internal_error", "policy backend down", 500);
+    view.rerender({ ...input(), postId: "pst_test_2" });
+    // A stale blocked state must not survive a failed re-read: policyAllowed is
+    // sticky and also gates the funding confirm CTA via thirdPartyBlocked.
+    await waitFor(() => expect(view.result.current.policySheetProps.allowThirdPartyRewards).toBe(true));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
   });
 
   test("creates once and re-quotes the existing draft campaign", async () => {

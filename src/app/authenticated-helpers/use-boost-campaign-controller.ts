@@ -311,10 +311,6 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       ?? input.activeCampaignId;
     void Promise.all([
       api.rewards.getCampaignCapabilities(input.postId),
-      api.rewards.getSongOwnerPolicy(input.communityId, input.postId).catch((error: unknown) => {
-        if (isApiNotFoundError(error)) return null;
-        throw error;
-      }),
       storedCampaignId
         ? api.rewards.getCampaign(storedCampaignId).then(
           (nextCampaign) => ({ campaign: nextCampaign, missing: false }),
@@ -324,11 +320,10 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
           },
         )
         : Promise.resolve({ campaign: null, missing: false }),
-    ]).then(([nextCapabilities, policy, storedCampaignResult]) => {
+    ]).then(([nextCapabilities, storedCampaignResult]) => {
       if (cancelled) return;
       const storedCampaign = storedCampaignResult.campaign;
       setCapabilities(nextCapabilities);
-      setPolicyAllowed(policy?.third_party_rewards !== "blocked");
       setCampaign(storedCampaign);
       if (storedCampaignId && storedCampaignResult.missing) {
         globalThis.localStorage?.removeItem(campaignStorageKey(input.communityId!, input.postId));
@@ -423,6 +418,22 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       }
     }).catch(() => {
       if (!cancelled) setCapabilities(null);
+    });
+    // The song-owner policy read is advisory: the API enforces the policy on
+    // its own at campaign creation and activation. Fetch it independently so a
+    // failure degrades only the policy state — it must never null capabilities
+    // and hide the Boost entry point. Fail open (a 404 already means "no
+    // policy set", i.e. allowed), and reset explicitly because policyAllowed
+    // is sticky across posts and also gates the funding confirm CTA.
+    void api.rewards.getSongOwnerPolicy(input.communityId, input.postId).then((policy) => {
+      if (cancelled) return;
+      setPolicyAllowed(policy?.third_party_rewards !== "blocked");
+    }).catch((error: unknown) => {
+      if (cancelled) return;
+      if (!isApiNotFoundError(error)) {
+        console.warn("[boost] song-owner policy fetch failed; defaulting to allowed", error);
+      }
+      setPolicyAllowed(true);
     });
     return () => { cancelled = true; };
   }, [api.rewards, input.activeCampaignId, input.authenticated, input.communityId, input.postId, input.song]);

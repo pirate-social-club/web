@@ -21,9 +21,9 @@ import { formatUsdLabel, parseUsdInput, usdToCents } from "@/lib/formatting/curr
  *
  * ── Nationality payout tiers (dark) ────────────────────────────────────────
  * Optional `payoutTiers` mirror the Phase-1 contract fields (`payout_tiers` /
- * `default_amount_cents`), which have NOT landed in @pirate/api-contracts yet.
- * Until they do, nothing here is sent to the API: the boost controller never
- * passes tiers, and only Storybook stories and tests exercise them. Budget
+ * `default_amount_cents`). The Phase-2 controller may persist them only when
+ * both the local preview flag and the server's `draft_only` capability agree;
+ * funding remains blocked. Budget
  * math is conservative by design — loss bounds assume the MAXIMUM tier amount
  * per claim, never a blend — so a tiered `rewardCount` is a guaranteed floor
  * ("at least N rewards") rather than the untiered ceiling ("up to N rewards").
@@ -56,6 +56,7 @@ export type BoostPlanProblem =
   | "daily-reward-missing"
   | "daily-reward-too-large"
   | "tier-count-exceeded"
+  | "tier-country-missing"
   | "tier-country-duplicated"
   | "tier-amount-missing"
   | "tier-amount-too-large"
@@ -90,7 +91,7 @@ export interface BoostPlan {
 /**
  * Resolve the daily-accrual plan from raw USD inputs. Sibling resolvers for
  * other {@link RewardModelKind}s live alongside this one when they ship.
- * `payoutTiers` is the dark nationality-tier preview; omitting it yields
+ * `payoutTiers` is the gated nationality-tier preview; omitting it yields
  * exactly the pre-tier behavior.
  */
 export function resolveDailyAccrualPlan(
@@ -122,6 +123,7 @@ export function resolveDailyAccrualPlan(
     if (tiers.length > MAX_PAYOUT_TIERS) return invalid("tier-count-exceeded");
     const claimed = new Set<string>();
     for (const tier of tiers) {
+      if (tier.nationalities.length === 0) return invalid("tier-country-missing");
       for (const nationality of tier.nationalities) {
         const code = nationality.trim().toUpperCase();
         if (claimed.has(code)) return invalid("tier-country-duplicated");
@@ -174,6 +176,7 @@ export function boostPlanProblemLabel(
     "daily-reward-missing": "Enter a reward amount.",
     "daily-reward-too-large": `A reward can be at most ${maxReward} per person, per day.`,
     "tier-count-exceeded": `You can add at most ${MAX_PAYOUT_TIERS} tiers.`,
+    "tier-country-missing": "Choose at least one country for every tier.",
     "tier-country-duplicated": "Each country can appear in only one tier.",
     "tier-amount-missing": "Enter an amount for every tier.",
     "tier-amount-too-large": `A tier amount can be at most ${maxReward} per person, per day.`,

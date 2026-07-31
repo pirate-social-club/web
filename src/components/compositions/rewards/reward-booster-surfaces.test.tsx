@@ -338,3 +338,14 @@ test("tiered quote shows the range and the guaranteed floor", () => {
   expect(view.getByText("$0.50–$5.00 by nationality")).toBeTruthy();
   expect(view.getByText("At least 5 rewards")).toBeTruthy();
 });
+
+test("draft preview confirms persistence without offering payment", () => {
+  const view = render(
+    <BoostCampaignSheet {...composeProps({ state: "draft-preview" })} />,
+  );
+
+  expect(view.getByText("Tiered draft saved")).toBeTruthy();
+  expect(view.getByText(/No payment was requested/)).toBeTruthy();
+  expect(view.queryByText(/^Pay /)).toBeNull();
+  expect(view.getByRole("button", { name: "Done" })).toBeTruthy();
+});

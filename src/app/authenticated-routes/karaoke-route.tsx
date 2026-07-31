@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { loadSongRoutePost } from "@/app/authenticated-helpers/load-song-route-post";
-import { navigate } from "@/app/router";
+import { navigate, replaceRoute } from "@/app/router";
 import { routeReturnPath } from "@/app/authenticated-helpers/video-viewer-return-state";
 import { KaraokeAudioSurface } from "@/components/compositions/karaoke/karaoke-audio-surface";
 import {
@@ -388,7 +388,7 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
         />
       ) : undefined}
       lines={stageLines}
-      onExit={() => navigate(routeReturnPath(`/p/${encodeURIComponent(postId)}`))}
+      onExit={() => replaceRoute(routeReturnPath(`/p/${encodeURIComponent(postId)}`))}
       onRequestSignIn={connect ?? undefined}
       onViewScores={() => navigate(`/p/${encodeURIComponent(postId)}/karaoke/leaderboard`)}
       rewardSlot={rewardOffer ? (

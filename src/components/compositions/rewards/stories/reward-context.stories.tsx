@@ -12,7 +12,7 @@ import { fiveChainSections, sharedWalletAddress } from "@/components/composition
 import {
   CashoutSheet,
   RewardQualificationNotice,
-  SongRewardOffer,
+  SongRewardOfferPill,
   VerifyHumanSheet,
   type CashoutSheetState,
   type VerifyHumanSheetState,
@@ -130,7 +130,6 @@ export const StudyCompletionRewardPending: Story = {
     <StandardRoutePage size="rail">
       <div className="flex flex-col gap-4">
         <SongStudySurface
-          artistName="The Castaways"
           artworkSrc="https://picsum.photos/seed/pirate-study/160/160"
           onExit={() => undefined}
           onKaraoke={() => undefined}
@@ -157,7 +156,6 @@ export const StudyCompletionRewardPending: Story = {
             },
             totalCount: 3,
           }}
-          title="Midnight Waves"
         />
       </div>
     </StandardRoutePage>
@@ -169,20 +167,18 @@ export const StudyQuestionRewardMotivation: Story = {
   render: () => (
     <StandardRoutePage size="rail">
       <div className="flex flex-col gap-4">
-        <SongRewardOffer amountLabel={rewardAmounts.daily} eligibleActivity="study" minScoreBps={7_000} />
         <SongStudySurface
-          artistName="The Castaways"
           artworkSrc="https://picsum.photos/seed/pirate-study/160/160"
           onExit={() => undefined}
           onKaraoke={() => undefined}
           onPrimaryAction={() => undefined}
           onStudyAgain={() => undefined}
+          rewardSlot={<SongRewardOfferPill amountLabel={rewardAmounts.daily} />}
           state={{
             attemptNumber: 1,
             exercise: studyExercise,
             kind: "multiple_choice",
           }}
-          title="Midnight Waves"
         />
       </div>
     </StandardRoutePage>

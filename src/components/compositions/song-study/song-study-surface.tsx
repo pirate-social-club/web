@@ -35,12 +35,6 @@ export interface SongStudySayItBackExercise {
   expected: string;
 }
 
-interface SongStudySayItBackFeedback {
-  extra?: string[];
-  matched?: string[];
-  missing?: string[];
-}
-
 export interface SongStudyMultipleChoiceExercise {
   id: string;
   lineNumber: number;
@@ -60,12 +54,10 @@ export type SongStudySurfaceState =
     kind: "say_it_back";
     attemptNumber: number;
     exercise: SongStudySayItBackExercise;
-    feedback?: SongStudySayItBackFeedback;
     guidance?: string;
-    phase: "idle" | "listening" | "checking" | "wrong" | "correct";
+    phase: "idle" | "listening" | "checking" | "wrong";
     revealReference?: boolean;
     submitError?: string;
-    transcript?: string;
   }
   | {
     kind: "multiple_choice";
@@ -94,7 +86,6 @@ export type SongStudySurfaceState =
   };
 
 export interface SongStudySurfaceProps {
-  artistName?: string;
   artworkSrc?: string;
   className?: string;
   onExit?: () => void;
@@ -105,7 +96,6 @@ export interface SongStudySurfaceProps {
   rewardSlot?: React.ReactNode;
   sayItBackIdleLabel?: string;
   state: SongStudySurfaceState;
-  title: string;
 }
 
 function clampPercent(value: number) {
@@ -120,7 +110,6 @@ function primaryActionLabel(
     case "locked":
       return state.priceLabel ? `Buy ${state.priceLabel}` : "Buy";
     case "say_it_back":
-      if (state.phase === "correct") return "Continue";
       if (state.phase === "wrong") return state.revealReference ? "Continue" : "Record";
       if (state.phase === "checking") return "Checking…";
       return state.phase === "listening" ? "Stop" : sayItBackIdleLabel ?? "Record";
@@ -131,6 +120,16 @@ function primaryActionLabel(
     case "complete":
       return undefined;
   }
+}
+
+function primaryActionVariant(state: SongStudySurfaceState): "default" | "destructive" | "secondary" {
+  if (state.kind === "say_it_back") {
+    if (state.phase === "listening") return "secondary";
+    if (state.phase === "wrong") return "destructive";
+    return "default";
+  }
+  if (state.kind === "multiple_choice" && state.result === "wrong") return "destructive";
+  return "default";
 }
 
 function primaryActionIcon(state: SongStudySurfaceState): React.ReactNode {
@@ -153,6 +152,7 @@ function ActivityFooter({
   primaryDisabled,
   primaryIcon,
   primaryLabel,
+  primaryVariant = "default",
   secondaryIcon,
   secondaryLabel,
   onPrimaryAction,
@@ -161,6 +161,7 @@ function ActivityFooter({
   primaryDisabled?: boolean;
   primaryIcon?: React.ReactNode;
   primaryLabel?: string;
+  primaryVariant?: "default" | "destructive" | "secondary";
   secondaryIcon?: React.ReactNode;
   secondaryLabel?: string;
   onPrimaryAction?: () => void;
@@ -171,7 +172,7 @@ function ActivityFooter({
   return (
     <footer className="sticky bottom-0 z-10 border-t border-border-soft bg-background/95 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 backdrop-blur-xl sm:px-6">
       <div className={cn("mx-auto grid w-full max-w-3xl gap-3", secondaryLabel && "sm:grid-cols-2")}>
-        <Button className="w-full" disabled={primaryDisabled} leadingIcon={primaryIcon} onClick={onPrimaryAction} size="lg">
+        <Button className="w-full" disabled={primaryDisabled} leadingIcon={primaryIcon} onClick={onPrimaryAction} size="lg" variant={primaryVariant}>
           {primaryLabel}
         </Button>
         {secondaryLabel ? (
@@ -191,13 +192,11 @@ function ActivityFooter({
 }
 
 function Header({
-  artistName,
   onExit,
-  title,
+  trailing,
 }: {
-  artistName?: string;
   onExit?: () => void;
-  title: string;
+  trailing?: React.ReactNode;
 }) {
   return (
     <header className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-border-soft px-4 py-2 sm:min-h-20 sm:px-6 sm:py-3">
@@ -209,15 +208,11 @@ function Header({
         size="icon"
         variant="ghost"
       />
-      <div className="min-w-0">
-        <Type as="h1" className="truncate" variant="h3">
-          {title}
+      <div className="flex min-w-0 items-center justify-end">
+        <Type as="h1" className="sr-only">
+          Study
         </Type>
-        {artistName ? (
-          <Type as="p" className="hidden truncate text-muted-foreground sm:block" variant="caption">
-            {artistName}
-          </Type>
-        ) : null}
+        {trailing}
       </div>
     </header>
   );
@@ -247,10 +242,6 @@ function LockedState({ state }: { state: Extract<SongStudySurfaceState, { kind: 
 }
 
 function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kind: "say_it_back" }> }) {
-  const isWrong = state.phase === "wrong";
-  const isCorrect = state.phase === "correct";
-  const showStatus = isWrong || isCorrect;
-
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-4 py-10 sm:px-6">
       <div className="rounded-[var(--radius-2xl)] border border-border-soft bg-card p-6 shadow-sm sm:p-8">
@@ -263,46 +254,19 @@ function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kin
         </Type>
       </div>
 
-      {showStatus ? (
-        <div
-          className={cn(
-            "rounded-[var(--radius-xl)] border p-4",
-            isWrong && "border-destructive/30 bg-destructive/10",
-            isCorrect && "border-success/30 bg-success/10",
-          )}
-        >
+      {state.phase === "wrong" ? (
+        <div className="rounded-[var(--radius-xl)] border border-destructive/30 bg-destructive/10 p-4">
           <div className="flex items-center gap-3">
-            {isCorrect ? (
-              <CheckCircle className="size-6 text-success" weight="fill" />
-            ) : isWrong ? (
-              <XCircle className="size-6 text-destructive" weight="fill" />
-            ) : (
-              <Microphone className="size-6 animate-pulse text-primary" weight="fill" />
-            )}
-            <Type as="p" className="min-w-0 truncate text-muted-foreground" dir="auto" variant="body-strong">
-              <span className={cn(isCorrect && "text-success", isWrong && "text-destructive")}>
-                {isCorrect ? "Correct." : "Incorrect."}
-              </span>
-              {state.transcript ? ` You said, "${state.transcript}"` : null}
-            </Type>
-          </div>
-          {isWrong && state.revealReference ? (
-            <div className="mt-3 space-y-2 border-t border-destructive/20 pt-3">
+            <XCircle className="size-6 shrink-0 text-destructive" weight="fill" />
+            <div className="min-w-0">
+              <Type as="p" className="text-destructive" variant="caption">
+                Correct answer:
+              </Type>
               <Type as="p" dir="auto" variant="body-strong">
                 {state.exercise.expected}
               </Type>
-              {state.feedback?.missing?.length ? (
-                <Type as="p" className="text-muted-foreground" variant="caption">
-                  Missing: {state.feedback.missing.join(" · ")}
-                </Type>
-              ) : null}
-              {state.feedback?.extra?.length ? (
-                <Type as="p" className="text-muted-foreground" variant="caption">
-                  Extra: {state.feedback.extra.join(" · ")}
-                </Type>
-              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
       ) : null}
       {state.submitError ? (
@@ -383,21 +347,40 @@ function MultipleChoiceState({
 }
 
 // Patch the viewer's leaderboard row with the just-earned streak so the top-3
-// count never contradicts the celebration card. Rank/order stay load-time stale
-// by design; only the visible fire count is refreshed.
+// count never contradicts the celebration card, then re-sort and re-rank the
+// board the same way the server does (current streak desc, best streak desc,
+// oldest streak start first, user id as final tiebreak; competition ranks
+// keyed on the current/best pair) so a viewer who just hit #1 renders at
+// rank 1 with the crown.
 function patchViewerEntry(
   entries: SongStreakSummary["entries"],
   streak: { currentStreak: number },
 ): SongStreakSummary["entries"] {
-  return entries.map((entry) =>
-    entry.is_viewer
-      ? {
-          ...entry,
-          current_streak: streak.currentStreak,
-          best_streak: Math.max(entry.best_streak, streak.currentStreak),
-        }
-      : entry,
-  );
+  const sorted = entries
+    .map((entry) =>
+      entry.is_viewer
+        ? {
+            ...entry,
+            current_streak: streak.currentStreak,
+            best_streak: Math.max(entry.best_streak, streak.currentStreak),
+          }
+        : entry,
+    )
+    .sort((a, b) =>
+      b.current_streak - a.current_streak
+      || b.best_streak - a.best_streak
+      || a.streak_started_date.localeCompare(b.streak_started_date)
+      || a.identity.user_id.localeCompare(b.identity.user_id),
+    );
+  let previousPair: string | undefined;
+  let previousRank = 0;
+  return sorted.map((entry, index) => {
+    const pair = `${entry.current_streak}:${entry.best_streak}`;
+    const rank = pair === previousPair ? previousRank : index + 1;
+    previousPair = pair;
+    previousRank = rank;
+    return { ...entry, rank };
+  });
 }
 
 function usePrefersReducedMotion(): boolean {
@@ -613,7 +596,6 @@ function Body({
 }
 
 export function SongStudySurface({
-  artistName,
   className,
   onExit,
   onKaraoke,
@@ -623,7 +605,6 @@ export function SongStudySurface({
   rewardSlot,
   sayItBackIdleLabel,
   state,
-  title,
 }: SongStudySurfaceProps) {
   const complete = state.kind === "complete";
   const primaryLabel = complete
@@ -645,8 +626,8 @@ export function SongStudySurface({
 
   return (
     <section className={cn("flex h-dvh w-full flex-col overflow-y-auto bg-background text-foreground", className)}>
-      <Header artistName={artistName} onExit={onExit} title={title} />
-      {rewardSlot ? (
+      <Header onExit={onExit} trailing={complete ? undefined : rewardSlot} />
+      {complete && rewardSlot ? (
         <div className="mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6">
           {rewardSlot}
         </div>
@@ -656,6 +637,7 @@ export function SongStudySurface({
         primaryDisabled={primaryActionDisabled(state)}
         primaryIcon={primaryIcon}
         primaryLabel={primaryLabel}
+        primaryVariant={primaryActionVariant(state)}
         secondaryIcon={<Microphone className="size-5" weight="fill" />}
         secondaryLabel={secondaryLabel}
         onPrimaryAction={primaryAction}

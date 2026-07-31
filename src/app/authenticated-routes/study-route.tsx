@@ -3,7 +3,7 @@
 import * as React from "react";
 import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
-import { navigate } from "@/app/router";
+import { navigate, replaceRoute } from "@/app/router";
 import { routeReturnPath } from "@/app/authenticated-helpers/video-viewer-return-state";
 import { loadSongRoutePost } from "@/app/authenticated-helpers/load-song-route-post";
 import {
@@ -20,7 +20,7 @@ import {
   displayedRewardQualificationStatus,
   RewardQualificationNotice,
   rewardAmountLabel,
-  SongRewardOffer,
+  SongRewardOfferPill,
 } from "@/components/compositions/rewards/reward-surfaces";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
@@ -476,6 +476,7 @@ export function StudyRoutePage({
   const recordingChunksRef = React.useRef<BlobPart[]>([]);
   const recordingStreamRef = React.useRef<MediaStream | null>(null);
   const pendingMultipleChoiceAttemptRef = React.useRef<string | null>(null);
+  const multipleChoiceAdvanceTimeoutRef = React.useRef<number | null>(null);
   const attemptIdempotencyKeysRef = React.useRef(new Map<string, string>());
   const telegramVoiceHandoffTimeoutRef = React.useRef<number | null>(null);
   const telegramVoiceHandoffPendingRef = React.useRef(false);
@@ -512,6 +513,9 @@ export function StudyRoutePage({
   React.useEffect(() => () => {
     if (telegramVoiceHandoffTimeoutRef.current !== null) {
       window.clearTimeout(telegramVoiceHandoffTimeoutRef.current);
+    }
+    if (multipleChoiceAdvanceTimeoutRef.current !== null) {
+      window.clearTimeout(multipleChoiceAdvanceTimeoutRef.current);
     }
     if (recorderRef.current?.state === "recording") {
       recorderRef.current.stop();
@@ -708,6 +712,26 @@ export function StudyRoutePage({
     });
   }, [routeCopy.ageVerificationRequired, startAgeSelfVerification]);
 
+  // Auto-advance after a correct multiple choice answer: the green highlight
+  // stays on the selected option briefly, then the lesson moves on without a
+  // "correct" banner. The pending timeout is cleared on unmount and before a
+  // new one is scheduled, and it no-ops when the state has already moved on
+  // (another exercise, a completed surface, or a manual Continue).
+  const scheduleMultipleChoiceAdvance = React.useCallback((exerciseId: string) => {
+    if (multipleChoiceAdvanceTimeoutRef.current !== null) {
+      window.clearTimeout(multipleChoiceAdvanceTimeoutRef.current);
+    }
+    multipleChoiceAdvanceTimeoutRef.current = window.setTimeout(() => {
+      multipleChoiceAdvanceTimeoutRef.current = null;
+      setState((current) => current.phase === "ready"
+        && current.surface.kind === "multiple_choice"
+        && current.surface.exercise.id === exerciseId
+        && current.surface.result === "correct"
+        ? advanceLesson(current, "correct")
+        : current);
+    }, 700);
+  }, []);
+
   const submitMultipleChoiceAttempt = React.useCallback((
     readyState: ReadyStudyRouteState,
     surface: MultipleChoiceSurfaceState,
@@ -776,6 +800,9 @@ export function StudyRoutePage({
           },
         };
       });
+      if (result.outcome === "correct") {
+        scheduleMultipleChoiceAdvance(exercise.id);
+      }
     }).catch((error) => {
       pendingMultipleChoiceAttemptRef.current = null;
       if (isStudyAttemptDivergence(error) && recoverFromDivergedAttempt()) {
@@ -796,7 +823,7 @@ export function StudyRoutePage({
         };
       });
     });
-  }, [api, attemptIdempotencyKey, recoverFromDivergedAttempt]);
+  }, [api, attemptIdempotencyKey, recoverFromDivergedAttempt, scheduleMultipleChoiceAdvance]);
 
   const handlePrimaryAction = React.useCallback(() => {
     if (state.phase === "locked") {
@@ -881,8 +908,8 @@ export function StudyRoutePage({
           ...state,
           surface: {
             ...state.surface,
-            phase: "wrong",
-            transcript: "Voice recording is not available in this browser.",
+            phase: "idle",
+            submitError: "Voice recording is not available in this browser.",
           },
         });
         return;
@@ -912,8 +939,8 @@ export function StudyRoutePage({
                   ...current,
                   surface: {
                     ...current.surface,
-                    phase: "wrong",
-                    transcript: "Could not record audio.",
+                    phase: "idle",
+                    submitError: "Could not record audio.",
                   },
                 }
               : current);
@@ -929,8 +956,8 @@ export function StudyRoutePage({
                     ...current,
                     surface: {
                       ...current.surface,
-                      phase: "wrong",
-                      transcript: "No audio was recorded.",
+                      phase: "idle",
+                      submitError: "No audio was recorded.",
                     },
                   }
                 : current);
@@ -943,8 +970,8 @@ export function StudyRoutePage({
                     ...current,
                     surface: {
                       ...current.surface,
-                      phase: "wrong",
-                      transcript: "No audio was recorded.",
+                      phase: "idle",
+                      submitError: "No audio was recorded.",
                     },
                   }
                 : current);
@@ -977,25 +1004,34 @@ export function StudyRoutePage({
                 transcript: transcription.text,
                 type: "say_it_back",
               }).then((result) => ({ result, transcript: transcription.text })))
-              .then(({ result, transcript }) => {
+              .then(({ result }) => {
                 divergenceRecoveryCountRef.current = 0;
                 playStudyFeedbackSound(result.outcome === "correct" ? "correct" : "incorrect");
+                if (result.outcome === "correct") {
+                  // No "correct" banner: the feedback sound already confirms the
+                  // hit, so advance straight to the next exercise. The fresh
+                  // result must be in place for advanceLesson's completion and
+                  // first-pass bookkeeping.
+                  setState((current) => current.phase === "ready"
+                    && current.surface.kind === "say_it_back"
+                    && current.surface.exercise.id === exercise.id
+                    ? advanceLesson({ ...current, lastAttemptResult: result }, "correct")
+                    : current);
+                  return;
+                }
                 setState((current) => {
                   if (current.phase !== "ready" || current.surface.kind !== "say_it_back" || current.surface.exercise.id !== exercise.id) {
                     return current;
                   }
-                  const correct = result.outcome === "correct";
                   return {
                     ...current,
                     lastAttemptResult: result,
                     surface: {
                       ...current.surface,
                       attemptNumber: current.surface.attemptNumber,
-                      feedback: result.feedback,
-                      phase: correct ? "correct" : "wrong",
-                      revealReference: !correct,
+                      phase: "wrong",
+                      revealReference: true,
                       submitError: undefined,
-                      transcript,
                     },
                   };
                 });
@@ -1038,8 +1074,8 @@ export function StudyRoutePage({
             ...state,
             surface: {
               ...sayItBackSurface,
-              phase: "wrong",
-              transcript: getErrorMessage(error, "Could not start microphone."),
+              phase: "idle",
+              submitError: getErrorMessage(error, "Could not start microphone."),
             },
           });
         }
@@ -1060,20 +1096,14 @@ export function StudyRoutePage({
           ...state,
           surface: {
             ...state.surface,
-            feedback: undefined,
             phase: "idle",
             revealReference: false,
-            transcript: undefined,
           },
         });
         return;
       }
       setState(advanceLesson(state, "wrong"));
       return;
-    }
-
-    if (state.surface.kind === "say_it_back" && state.surface.phase === "correct") {
-      setState(advanceLesson(state, "correct"));
     }
   }, [api, attemptIdempotencyKey, postId, recoverFromDivergedAttempt, state, stopRecordingStream, submitMultipleChoiceAttempt, telegramMiniApp]);
 
@@ -1146,10 +1176,9 @@ export function StudyRoutePage({
 
   return (
     <SongStudySurface
-      artistName={state.study.artist_name ?? undefined}
       artworkSrc={pageArtwork(state.post, state.study)}
       className="h-dvh"
-      onExit={() => navigate(returnPath ?? routeReturnPath(`/p/${encodeURIComponent(postId)}`))}
+      onExit={() => replaceRoute(returnPath ?? routeReturnPath(`/p/${encodeURIComponent(postId)}`))}
       onOptionSelect={handleOptionSelect}
       onPrimaryAction={handlePrimaryAction}
       onKaraoke={!telegramMiniApp && state.surface.kind === "complete"
@@ -1168,16 +1197,13 @@ export function StudyRoutePage({
             testMode={state.rewardOffer.chain_id === 84532}
           />
         ) : (
-          <SongRewardOffer
+          <SongRewardOfferPill
             amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
-            eligibleActivity={state.rewardOffer.eligible_activity}
-            minScoreBps={state.rewardOffer.min_score_bps}
           />
         )
       ) : undefined}
       sayItBackIdleLabel={telegramMiniApp ? "Send voice message" : undefined}
       state={state.surface}
-      title={pageTitle(state.post, state.study)}
     />
   );
 }

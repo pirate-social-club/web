@@ -260,11 +260,22 @@ function mintUpstreamJwt(subject: string, walletAddressOverride?: string | null)
   }, requiredEnv("AUTH_UPSTREAM_JWT_SHARED_SECRET"));
 }
 
+// Every live request is bounded. Without this a single hanging API call consumes
+// the whole 45s Playwright test budget and reports only "Test timeout exceeded",
+// which names neither the endpoint nor the elapsed time — the release gate then
+// looks like a flaky test instead of the API operation that actually stalled.
+// See the 2026-07-31 gate-identity outage: the hang was
+// `POST /auth/session/exchange` for wallet-bearing identities, invisible for
+// three release runs because the timeout collapsed into the test-level one.
+const liveRequestTimeoutMs = Number(process.env.E2E_LIVE_REQUEST_TIMEOUT_MS ?? 30_000);
+
 async function requestJson<T>(
   path: string,
   init: RequestInit = {},
   okStatuses = [200, 201, 202],
 ): Promise<T> {
+  const method = init.method ?? "GET";
+  const startedAt = Date.now();
   const response = await fetch(new URL(path, apiBaseURL), {
     ...init,
     headers: {
@@ -272,6 +283,17 @@ async function requestJson<T>(
       ...(init.body ? { "content-type": "application/json" } : {}),
       ...init.headers,
     },
+    signal: AbortSignal.timeout(liveRequestTimeoutMs),
+  }).catch((error: unknown) => {
+    const elapsedMs = Date.now() - startedAt;
+    const name = error instanceof Error ? error.name : "";
+    if (name === "TimeoutError" || name === "AbortError") {
+      throw new Error(
+        `${method} ${path} did not respond within ${liveRequestTimeoutMs}ms (waited ${elapsedMs}ms).`
+        + " The staging API accepted the request and never answered.",
+      );
+    }
+    throw error;
   });
   const text = await response.text();
   const body = (text.trim() ? JSON.parse(text) : null) as T;
@@ -1366,11 +1388,14 @@ test.describe("live staging integration", () => {
 
   test("exposes stable gate identity and authoritative outcomes in live join eligibility", async () => {
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const community = await hydrateRoutableLiveCommunityOwner({
-      id: gateContractCommunityId,
-      label: gateContractCommunityId,
-      routeSegment: gateContractCommunityId,
-    });
+    // Each live stage is its own step so a stall is attributed to the operation
+    // that hung rather than to the test as a whole.
+    const community = await test.step("hydrate gate-contract fixture", () =>
+      hydrateRoutableLiveCommunityOwner({
+        id: gateContractCommunityId,
+        label: gateContractCommunityId,
+        routeSegment: gateContractCommunityId,
+      }));
     if (!community) {
       throw new Error(`Could not load stable gate-contract fixture ${gateContractCommunityId}`);
     }
@@ -1390,26 +1415,28 @@ test.describe("live staging integration", () => {
       },
       version: 1,
     };
-    await requestJson(`/communities/${encodeURIComponent(communityId)}/gates`, {
-      body: JSON.stringify({
-        allow_anonymous_identity: true,
-        anonymous_identity_scope: "community_stable",
-        default_age_gate_policy: "none",
-        gate_policy: gatePolicy,
-        membership_mode: "gated",
-      }),
-      headers,
-      method: "POST",
-    });
+    await test.step("apply gate policy", () =>
+      requestJson(`/communities/${encodeURIComponent(communityId)}/gates`, {
+        body: JSON.stringify({
+          allow_anonymous_identity: true,
+          anonymous_identity_scope: "community_stable",
+          default_age_gate_policy: "none",
+          gate_policy: gatePolicy,
+          membership_mode: "gated",
+        }),
+        headers,
+        method: "POST",
+      }));
 
     const viewerSubject = `gate-contract-viewer-${runId}`;
-    const viewerSession = await createLiveSession(viewerSubject, walletAddressForSubject(viewerSubject));
-    await completeSelfVerification(viewerSession);
-    const eligibility = await requestJson<{
+    const viewerSession = await test.step("create wallet-bearing viewer session", () =>
+      createLiveSession(viewerSubject, walletAddressForSubject(viewerSubject)));
+    await test.step("complete self verification", () => completeSelfVerification(viewerSession));
+    const eligibility = await test.step("read join eligibility", () => requestJson<{
       gate_evaluation?: { trace?: unknown } | null;
     }>(`/communities/${encodeURIComponent(communityId)}/join-eligibility`, {
       headers: { authorization: `Bearer ${viewerSession.accessToken}` },
-    });
+    }));
     const leaves: Array<{ gate_id?: unknown; outcome?: unknown }> = [];
     const visit = (node: unknown): void => {
       if (!node || typeof node !== "object") return;

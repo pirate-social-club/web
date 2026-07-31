@@ -1,6 +1,6 @@
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { installDomGlobals } from "@/test/setup-dom";
@@ -421,5 +421,51 @@ describe("KaraokeRoutePage", () => {
 
     await Promise.resolve();
     expect(view.queryByText("Late Karaoke")).toBeNull();
+  });
+
+  // Exiting karaoke used to push the post page on top of the karaoke entry, so
+  // the post page's close (history.back()) landed right back on karaoke.
+  // Replacing the karaoke entry breaks that loop.
+  test("replaces the karaoke history entry on exit instead of pushing the post page", async () => {
+    const replaceCalls: (string | undefined)[] = [];
+    const pushCalls: (string | undefined)[] = [];
+    const originalHistory = window.history;
+    const originalEvent = globalThis.Event;
+    Object.defineProperty(window, "history", {
+      configurable: true,
+      value: {
+        pushState: (_data: unknown, _unused: string, url?: string | URL | null) => {
+          pushCalls.push(url?.toString());
+        },
+        replaceState: (_data: unknown, _unused: string, url?: string | URL | null) => {
+          replaceCalls.push(url?.toString());
+        },
+      },
+    });
+    // linkedom's dispatchEvent cannot handle bun's native Event (readonly
+    // eventPhase), so route events use the DOM's own Event class here.
+    Object.defineProperty(globalThis, "Event", {
+      configurable: true,
+      value: window.Event,
+    });
+
+    try {
+      const view = render(<KaraokeRoutePage postId="pst_song" />);
+      await waitFor(() => expect(view.container.querySelector('[aria-label="Fallback Karaoke"]')).toBeTruthy());
+
+      fireEvent.click(view.getByLabelText("Exit karaoke"));
+
+      expect(replaceCalls).toEqual(["/p/pst_song"]);
+      expect(pushCalls).toEqual([]);
+    } finally {
+      Object.defineProperty(window, "history", {
+        configurable: true,
+        value: originalHistory,
+      });
+      Object.defineProperty(globalThis, "Event", {
+        configurable: true,
+        value: originalEvent,
+      });
+    }
   });
 });

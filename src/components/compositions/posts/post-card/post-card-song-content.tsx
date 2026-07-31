@@ -11,7 +11,8 @@ import {
 import { Spinner } from "@/components/primitives/spinner";
 import { cn } from "@/lib/utils";
 import { interpolateMessage } from "@/lib/route-messages";
-import { useRouteMessages } from "@/hooks/use-route-messages";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { Button } from "@/components/primitives/button";
 import { SongStreakPreview } from "@/components/compositions/song-study/song-streak-preview";
 import { MediaControlButton } from "@/components/primitives/media-control-button";
@@ -35,7 +36,7 @@ export interface SongPostContentProps {
   previewMode?: boolean;
 }
 
-type SongMessages = ReturnType<typeof useRouteMessages>["copy"]["post"]["songContent"];
+type SongMessages = ReturnType<typeof getLocaleMessages>["post"]["songContent"];
 
 function featureFailureCopy(feature: "study" | "sing", reason: SongFeatureCapabilityReason | undefined, copy: SongMessages): string | null {
   if (!reason) return null;
@@ -345,7 +346,8 @@ function SongOfferRows({
   previewMode?: boolean;
   ui: DerivedSongUI;
 }) {
-  const { copy } = useRouteMessages();
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes");
   const song = copy.post.songContent;
   if (ui.ageGateRequiresProof) return null;
 
@@ -609,7 +611,8 @@ function SongOfferRows({
 }
 
 export function SongPostContent({ content, className, previewMode }: SongPostContentProps) {
-  const { copy } = useRouteMessages();
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes");
   const song = copy.post.songContent;
   const ui = deriveSongUI(content);
   const {

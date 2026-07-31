@@ -8,7 +8,8 @@ import { Type } from "@/components/primitives/type";
 import { resolveResourceHref } from "@/lib/resource-links";
 import { cn } from "@/lib/utils";
 import { interpolateMessage } from "@/lib/route-messages";
-import { useRouteMessages } from "@/hooks/use-route-messages";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { postCardType } from "./post-card.styles";
 import type { LiveRoomContentSpec, LiveRoomParticipant, PostCardViewContext } from "./post-card.types";
 
@@ -359,7 +360,8 @@ export function LiveRoomPostContent({
   content: LiveRoomContentSpec;
   viewContext?: PostCardViewContext;
 }) {
-  const { copy } = useRouteMessages();
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes");
   const liveRoom = copy.post.liveRoom;
   const ui = deriveLiveRoomUi(content, liveRoom);
   const ageProofRequired = content.ageGatePolicy === "18_plus"

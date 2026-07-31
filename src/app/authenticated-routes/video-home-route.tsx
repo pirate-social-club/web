@@ -40,6 +40,7 @@ import {
   type VideoFeedPlaybackState,
 } from "@/components/compositions/posts/video-feed/video-feed";
 import { VideoFeedPaginationNotice } from "@/components/compositions/posts/video-feed/video-feed-pagination-notice";
+import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { FeedCommentsPanel } from "./feed-comments-panel";
 import {
   FeedPanelLayout,
@@ -70,11 +71,13 @@ import {
   selectPostVoteGateData,
 } from "@/hooks/use-community-interaction-gate.helpers";
 import { useApi } from "@/lib/api";
-import { useSession } from "@/lib/api/session-store";
+import { updateSessionUser, useSession } from "@/lib/api/session-store";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { interpolateMessage } from "@/lib/route-messages";
 import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
 import { videoImpressionAnalyticsProperties } from "@/lib/video-impression-analytics";
+import { useUiLocale } from "@/lib/ui-locale";
+import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { HomePage } from "./home-routes";
 
 export type VideoHomeSurface = "loading" | "video" | "community-feed-empty" | "community-feed-error";
@@ -342,9 +345,30 @@ export function VideoHomePage() {
   const queryClient = useQueryClient();
   const hydrated = useClientHydrated();
   const session = useSession();
+  const { locale } = useUiLocale();
   const contentLocale = useRouteContentLocale();
   const { copy, localeTag } = useRouteMessages();
   const requestAuth = useRequestAuth();
+  const routeCopy = copy.post.route;
+  const {
+    handleModalOpenChange: handleAgeSelfModalOpenChange,
+    handleSelfQrError: handleAgeSelfQrError,
+    handleSelfQrSuccess: handleAgeSelfQrSuccess,
+    selfError: ageSelfError,
+    selfModalOpen: ageSelfModalOpen,
+    selfPrompt: ageSelfPrompt,
+    startVerification: startAgeSelfVerification,
+  } = useSelfVerification({
+    completeErrorMessage: routeCopy.ageVerificationCompleteError,
+    locale,
+    onVerified: async () => {
+      if (!session) return;
+      updateSessionUser(await api.users.getMe());
+    },
+    startErrorMessage: routeCopy.ageVerificationStartError,
+    storageKey: "pirate_pending_self_age_gate:video_feed",
+    verificationIntent: "community_join",
+  });
   const capabilityLoader = useVideoViewerSongCapabilities(contentLocale);
   const homeVideoQueryKey = React.useMemo(
     () => feedKeys.homeVideos({ locale: contentLocale, userId: session?.user.id ?? null }),
@@ -793,6 +817,7 @@ export function VideoHomePage() {
       ...item,
       boostEligibility: resolution.sourcePostId === boostTarget?.sourcePostId ? "eligible" as const : "unavailable" as const,
       karaoke: resolution.karaoke,
+      learningGate: resolution.learningGate,
       rewards: resolution.rewards,
       song: item.song ? {
         ...item.song,
@@ -1109,6 +1134,16 @@ export function VideoHomePage() {
     (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.studyHref),
     [launchSongAction],
   );
+  const onVerifyAge = React.useCallback(() => {
+    if (!session) {
+      requestAuth(routeCopy.connectWalletToVerifyAge);
+      return;
+    }
+    void startAgeSelfVerification({
+      requestedCapabilities: ["age_over_18"],
+      unavailableMessage: routeCopy.ageVerificationRequired,
+    });
+  }, [requestAuth, routeCopy.ageVerificationRequired, routeCopy.connectWalletToVerifyAge, session, startAgeSelfVerification]);
 
   const surface = resolveVideoHomeSurface({ error, itemCount: items.length, loading });
   if (surface === "loading") return <div className="grid min-h-dvh w-full place-items-center bg-background"><Spinner className="size-6" /></div>;
@@ -1123,6 +1158,20 @@ export function VideoHomePage() {
   return (
     <div className="min-h-0 w-full flex-1 bg-background">
       {gateModal}
+      {ageSelfPrompt ? (
+        <SelfVerificationModal
+          actionLabel={ageSelfPrompt.actionLabel}
+          description={ageSelfPrompt.description}
+          error={ageSelfError}
+          href={ageSelfPrompt.href}
+          onOpenChange={handleAgeSelfModalOpenChange}
+          onQrError={handleAgeSelfQrError}
+          onQrSuccess={handleAgeSelfQrSuccess}
+          open={ageSelfModalOpen}
+          selfApp={ageSelfPrompt.selfApp}
+          title={ageSelfPrompt.title}
+        />
+      ) : null}
       <FeedPanelLayout
         className={VIDEO_FEED_VIEWPORT_CLASS}
         panel={panelState.kind === "comments" ? (
@@ -1198,6 +1247,7 @@ export function VideoHomePage() {
         onPublisherRelationship={onPublisherRelationship}
         onSong={onSong}
         onStudy={onStudy}
+        onVerifyAge={onVerifyAge}
         removeDownvoteLabel={copy.common.removeDownvote}
         previousVideoLabel={copy.common.previousVideo}
         soundOnLabel={copy.common.soundOn}

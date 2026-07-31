@@ -14,6 +14,7 @@ import {
 } from "@/components/compositions/song-study/song-study-surface";
 import type { SongStreakSummary } from "@/components/compositions/song-study/song-streak-preview";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
+import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import {
   displayedRewardQualificationStatus,
@@ -25,8 +26,9 @@ import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
+import { useRouteMessages } from "@/hooks/use-route-messages";
 import { toStreakSummary } from "@/app/authenticated-helpers/post-media-presentation";
-import { ApiError, isApiAuthError } from "@/lib/api/client";
+import { ApiError, isApiAuthError, isApiVerificationRequiredError } from "@/lib/api/client";
 import type {
   ApiPublicRewardOffer,
   ApiRewardQualificationSummary,
@@ -35,8 +37,10 @@ import type {
   SongStudyPayload,
 } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
-import { useSession } from "@/lib/api/session-store";
+import { updateSessionUser, useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
+import { useUiLocale } from "@/lib/ui-locale";
+import { useSelfVerification } from "@/lib/verification/use-self-verification";
 
 type StudyRouteState =
   | { phase: "loading" }
@@ -60,6 +64,7 @@ type StudyRouteState =
       surface: SongStudySurfaceState;
     }
   | { actionLabel?: string; message: string; phase: "blocked"; title: string }
+  | { message: string; phase: "verification_required"; title: string }
   | { phase: "error"; message: string; title: string };
 
 type ReadyStudyRouteState = Extract<StudyRouteState, { phase: "ready" }>;
@@ -438,6 +443,9 @@ export function StudyRoutePage({
 }) {
   const api = useApi();
   const session = useSession();
+  const { locale } = useUiLocale();
+  const { copy } = useRouteMessages();
+  const routeCopy = copy.post.route;
   const hydrated = useClientHydrated();
   const { configured, loaded } = usePiratePrivyRuntime();
   const contentLocale = useRouteContentLocale();
@@ -445,6 +453,25 @@ export function StudyRoutePage({
   const [rewardQualification, setRewardQualification] = React.useState<ApiRewardQualificationSummary | null>(null);
   const [rewardCheckDelayed, setRewardCheckDelayed] = React.useState(false);
   const [reloadKey, setReloadKey] = React.useState(0);
+  const {
+    handleModalOpenChange: handleAgeSelfModalOpenChange,
+    handleSelfQrError: handleAgeSelfQrError,
+    handleSelfQrSuccess: handleAgeSelfQrSuccess,
+    selfError: ageSelfError,
+    selfModalOpen: ageSelfModalOpen,
+    selfPrompt: ageSelfPrompt,
+    startVerification: startAgeSelfVerification,
+  } = useSelfVerification({
+    completeErrorMessage: routeCopy.ageVerificationCompleteError,
+    locale,
+    onVerified: async () => {
+      updateSessionUser(await api.users.getMe());
+      setReloadKey((value) => value + 1);
+    },
+    startErrorMessage: routeCopy.ageVerificationStartError,
+    storageKey: `pirate_pending_self_age_gate:study:${postId}`,
+    verificationIntent: "community_join",
+  });
   const recorderRef = React.useRef<MediaRecorder | null>(null);
   const recordingChunksRef = React.useRef<BlobPart[]>([]);
   const recordingStreamRef = React.useRef<MediaStream | null>(null);
@@ -651,6 +678,10 @@ export function StudyRoutePage({
         preloadStudyFeedbackSounds();
       } catch (error) {
         if (canceled) return;
+        if (isApiVerificationRequiredError(error)) {
+          setState({ phase: "verification_required", title: "Study", message: routeCopy.ageVerificationRequired });
+          return;
+        }
         if (isApiAuthError(error)) {
           setState({ phase: "auth_required" });
           return;
@@ -668,7 +699,14 @@ export function StudyRoutePage({
     return () => {
       canceled = true;
     };
-  }, [api, contentLocale, hydrated, postId, reloadKey, session?.accessToken, telegramMiniApp]);
+  }, [api, contentLocale, hydrated, postId, reloadKey, routeCopy.ageVerificationRequired, session?.accessToken, telegramMiniApp]);
+
+  const handleVerifyAge = React.useCallback(() => {
+    void startAgeSelfVerification({
+      requestedCapabilities: ["age_over_18"],
+      unavailableMessage: routeCopy.ageVerificationRequired,
+    });
+  }, [routeCopy.ageVerificationRequired, startAgeSelfVerification]);
 
   const submitMultipleChoiceAttempt = React.useCallback((
     readyState: ReadyStudyRouteState,
@@ -1072,16 +1110,36 @@ export function StudyRoutePage({
     );
   }
 
-  if (state.phase === "blocked" || state.phase === "error") {
+  if (state.phase === "blocked" || state.phase === "error" || state.phase === "verification_required") {
     return (
-      <StudyRouteMessage
-        actionLabel={state.phase === "blocked" ? state.actionLabel : undefined}
-        message={state.message}
-        onAction={state.phase === "blocked" && state.actionLabel ? () => setReloadKey((value) => value + 1) : undefined}
-        postId={postId}
-        returnPath={returnPath}
-        title={state.title}
-      />
+      <>
+        <StudyRouteMessage
+          actionLabel={state.phase === "verification_required" ? "Verify age" : state.phase === "blocked" ? state.actionLabel : undefined}
+          message={state.message}
+          onAction={state.phase === "verification_required"
+            ? handleVerifyAge
+            : state.phase === "blocked" && state.actionLabel
+              ? () => setReloadKey((value) => value + 1)
+              : undefined}
+          postId={postId}
+          returnPath={returnPath}
+          title={state.title}
+        />
+        {ageSelfPrompt ? (
+          <SelfVerificationModal
+            actionLabel={ageSelfPrompt.actionLabel}
+            description={ageSelfPrompt.description}
+            error={ageSelfError}
+            href={ageSelfPrompt.href}
+            onOpenChange={handleAgeSelfModalOpenChange}
+            onQrError={handleAgeSelfQrError}
+            onQrSuccess={handleAgeSelfQrSuccess}
+            open={ageSelfModalOpen}
+            selfApp={ageSelfPrompt.selfApp}
+            title={ageSelfPrompt.title}
+          />
+        ) : null}
+      </>
     );
   }
 

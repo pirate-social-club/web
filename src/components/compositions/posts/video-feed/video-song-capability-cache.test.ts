@@ -13,6 +13,7 @@ describe("VideoSongCapabilityCache", () => {
 
     resolvers.get("pst_second")?.({
       activeRewardCampaignId: null,
+      learningGate: "allowed",
       karaoke: "ready",
       readMode: "public",
       sourcePostId: "pst_second",
@@ -22,6 +23,7 @@ describe("VideoSongCapabilityCache", () => {
     } as never);
     resolvers.get("pst_first")?.({
       activeRewardCampaignId: null,
+      learningGate: "allowed",
       karaoke: "unavailable",
       readMode: "authenticated",
       sourcePostId: "pst_first",
@@ -55,6 +57,7 @@ describe("VideoSongCapabilityCache", () => {
   test("deduplicates the same source across adjacent slides", async () => {
     const load = mock(async (sourcePostId: string) => ({
       activeRewardCampaignId: null,
+      learningGate: "allowed",
       karaoke: "ready" as const,
       readMode: "authenticated" as const,
       sourcePostId,

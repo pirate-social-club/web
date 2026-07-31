@@ -343,6 +343,15 @@ async function recordSayItBack(view: ReturnType<typeof render>): Promise<void> {
 }
 
 describe("StudyRoutePage", () => {
+  test("offers age verification when the lesson requires proof", async () => {
+    studyError = new ApiError("verification_required", "Age verification is required", 403);
+
+    const view = render(<StudyRoutePage postId="pst_song" />);
+
+    expect(await waitFor(() => view.getByRole("button", { name: "Verify age" }))).toBeTruthy();
+    expect(view.getByText("Age verification is required to view 18+ content.")).toBeTruthy();
+  });
+
   test("requires authentication before loading study data", async () => {
     sessionValue = null;
 

@@ -216,6 +216,24 @@ describe("VideoFeed", () => {
     }
   });
 
+  test("offers age verification without showing false Study or Sing locks", () => {
+    const calls: VideoFeedPlaybackState[] = [];
+    const view = render(
+      <VideoFeed
+        items={[{ ...item, learningGate: "age_proof_required" }]}
+        onVerifyAge={(_item, state) => calls.push(state)}
+      />,
+    );
+
+    expect(view.queryByRole("button", { name: "Study locked" })).toBeNull();
+    expect(view.queryByRole("button", { name: "Sing locked" })).toBeNull();
+    expect(view.queryByRole("button", { name: "Study" })).toBeNull();
+    expect(view.queryByRole("button", { name: "Sing" })).toBeNull();
+
+    fireEvent.click(view.getByRole("button", { name: "Verify age" }));
+    expect(calls).toHaveLength(1);
+  });
+
   test("tightens the gap between rail icons and their counts on mobile", () => {
     const view = render(<VideoFeed items={[item]} />);
     const action = view.getByRole("button", { name: "Like" });

@@ -75,6 +75,10 @@ export function isApiNotFoundError(error: unknown): error is ApiError {
   return error instanceof ApiError && error.status === 404;
 }
 
+export function isApiVerificationRequiredError(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.code === "verification_required";
+}
+
 export const DEFAULT_BASE_URL = "http://127.0.0.1:8787";
 
 export class ApiClient {

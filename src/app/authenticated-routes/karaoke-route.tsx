@@ -19,15 +19,19 @@ import { toKaraokeStageLines } from "@/components/compositions/karaoke/lyric-tra
 import { toScorableKaraokeLines } from "@/components/compositions/karaoke/karaoke-stage-bridge";
 import { useKaraokeScoring } from "@/components/compositions/karaoke/scoring/use-karaoke-scoring-session";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
+import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
-import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
+import { isApiAuthError, isApiNotFoundError, isApiVerificationRequiredError } from "@/lib/api/client";
 import type { ApiPublicRewardOffer, ApiRewardQualificationSummary } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
-import { useSession } from "@/lib/api/session-store";
+import { updateSessionUser, useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
+import { useRouteMessages } from "@/hooks/use-route-messages";
+import { useUiLocale } from "@/lib/ui-locale";
+import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import {
   karaokeUnavailableMessage,
   normalizeApiKaraokePayload,
@@ -45,14 +49,19 @@ type KaraokeRouteState =
       rewardOffer: ApiPublicRewardOffer | null;
     }
   | { phase: "blocked"; title: string; message: string }
+  | { phase: "verification_required"; title: string; message: string }
   | { phase: "error"; title: string; message: string };
 
 function KaraokeRouteMessage({
+  actionLabel,
   message,
+  onAction,
   postId,
   title,
 }: {
+  actionLabel?: string;
   message: string;
+  onAction?: () => void;
   postId: string;
   title: string;
 }) {
@@ -65,6 +74,7 @@ function KaraokeRouteMessage({
         <Type as="p" className="text-muted-foreground" variant="body">
           {message}
         </Type>
+        {actionLabel && onAction ? <Button onClick={onAction}>{actionLabel}</Button> : null}
         <Button onClick={() => navigate(`/p/${encodeURIComponent(postId)}`)} variant="secondary">
           Open post
         </Button>
@@ -76,6 +86,9 @@ function KaraokeRouteMessage({
 export function KaraokeRoutePage({ postId }: { postId: string }) {
   const api = useApi();
   const session = useSession();
+  const { locale } = useUiLocale();
+  const { copy } = useRouteMessages();
+  const routeCopy = copy.post.route;
   const { busy: authBusy, configured: authConfigured, connect, loadError: authLoadError } = usePiratePrivyRuntime();
   const contentLocale = useRouteContentLocale();
   const [rewardQualification, setRewardQualification] = React.useState<ApiRewardQualificationSummary | null>(null);
@@ -84,6 +97,26 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
     React.useState<KaraokeCompletionLeaderboardState | null>(null);
   const leaderboardAttemptCountBeforeTake = React.useRef<number | null>(null);
   const [state, setState] = React.useState<KaraokeRouteState>({ phase: "loading" });
+  const [reloadKey, setReloadKey] = React.useState(0);
+  const {
+    handleModalOpenChange: handleAgeSelfModalOpenChange,
+    handleSelfQrError: handleAgeSelfQrError,
+    handleSelfQrSuccess: handleAgeSelfQrSuccess,
+    selfError: ageSelfError,
+    selfModalOpen: ageSelfModalOpen,
+    selfPrompt: ageSelfPrompt,
+    startVerification: startAgeSelfVerification,
+  } = useSelfVerification({
+    completeErrorMessage: routeCopy.ageVerificationCompleteError,
+    locale,
+    onVerified: async () => {
+      updateSessionUser(await api.users.getMe());
+      setReloadKey((value) => value + 1);
+    },
+    startErrorMessage: routeCopy.ageVerificationStartError,
+    storageKey: `pirate_pending_self_age_gate:karaoke:${postId}`,
+    verificationIntent: "community_join",
+  });
 
   React.useEffect(() => {
     let canceled = false;
@@ -98,15 +131,25 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
           hasAccessToken: Boolean(session?.accessToken),
           postId,
         });
-        const karaokePromise = api.publicPosts.getKaraoke(postId, { locale: contentLocale })
-          .then(
-            (payload) => ({ ok: true as const, payload }),
-            (error: unknown) => ({ error, ok: false as const }),
-          );
+        const anonymousKaraokePromise = !session?.accessToken
+          ? api.publicPosts.getKaraoke(postId, { locale: contentLocale }).then(
+              (payload) => ({ ok: true as const, payload }),
+              (error: unknown) => ({ error, ok: false as const }),
+            )
+          : null;
         const post = await postPromise;
         if (canceled) return;
 
         const communityId = post.post.community;
+        const karaokePromise = session?.accessToken && communityId
+          ? api.communities.getPostKaraoke(communityId, postId, { locale: contentLocale }).then(
+              (payload) => ({ ok: true as const, payload }),
+              (error: unknown) => ({ error, ok: false as const }),
+            )
+          : anonymousKaraokePromise ?? api.publicPosts.getKaraoke(postId, { locale: contentLocale }).then(
+              (payload) => ({ ok: true as const, payload }),
+              (error: unknown) => ({ error, ok: false as const }),
+            );
         const rewardOfferPromise = communityId
           ? api.rewards.getActiveCampaignForSong(communityId, post.post.id).catch(() => null)
           : Promise.resolve(null);
@@ -143,6 +186,10 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
         setState({ communityId: communityId ?? "", payload, phase: "ready", rewardOffer });
       } catch (error) {
         if (canceled) return;
+        if (isApiVerificationRequiredError(error)) {
+          setState({ phase: "verification_required", title: "Karaoke", message: routeCopy.ageVerificationRequired });
+          return;
+        }
         setState({
           phase: "error",
           title: "Karaoke",
@@ -156,7 +203,18 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
     return () => {
       canceled = true;
     };
-  }, [api, contentLocale, postId, session?.accessToken]);
+  }, [api, contentLocale, postId, reloadKey, routeCopy.ageVerificationRequired, session?.accessToken]);
+
+  const handleVerifyAge = React.useCallback(() => {
+    if (!session?.accessToken) {
+      connect?.();
+      return;
+    }
+    void startAgeSelfVerification({
+      requestedCapabilities: ["age_over_18"],
+      unavailableMessage: routeCopy.ageVerificationRequired,
+    });
+  }, [connect, routeCopy.ageVerificationRequired, session?.accessToken, startAgeSelfVerification]);
 
   // Stage lines drive the display; scorable lines (with stable identities) drive
   // the line-boundary scoring events. Both derive from the same payload so the
@@ -289,8 +347,32 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
     );
   }
 
-  if (state.phase === "blocked" || state.phase === "error") {
-    return <KaraokeRouteMessage message={state.message} postId={postId} title={state.title} />;
+  if (state.phase === "blocked" || state.phase === "error" || state.phase === "verification_required") {
+    return (
+      <>
+        <KaraokeRouteMessage
+          actionLabel={state.phase === "verification_required" ? "Verify age" : undefined}
+          message={state.message}
+          onAction={state.phase === "verification_required" ? handleVerifyAge : undefined}
+          postId={postId}
+          title={state.title}
+        />
+        {ageSelfPrompt ? (
+          <SelfVerificationModal
+            actionLabel={ageSelfPrompt.actionLabel}
+            description={ageSelfPrompt.description}
+            error={ageSelfError}
+            href={ageSelfPrompt.href}
+            onOpenChange={handleAgeSelfModalOpenChange}
+            onQrError={handleAgeSelfQrError}
+            onQrSuccess={handleAgeSelfQrSuccess}
+            open={ageSelfModalOpen}
+            selfApp={ageSelfPrompt.selfApp}
+            title={ageSelfPrompt.title}
+          />
+        ) : null}
+      </>
+    );
   }
 
   return (

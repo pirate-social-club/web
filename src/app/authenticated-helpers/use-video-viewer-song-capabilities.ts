@@ -34,17 +34,16 @@ export function resolveVideoSongCapabilities({ post, readMode, rewardOffer, sour
   sourcePostId: string;
 }): VideoSongCapabilityResolution {
   const ageBlocked = post.age_gate_viewer_state === "proof_required";
-  const karaoke = ageBlocked
-    ? "locked"
-    : capabilityStatus((post as LocalizedPostResponse & PostWithKaraokeCapability).karaoke_capability?.status);
-  const study = ageBlocked ? "locked" : capabilityStatus(post.study_capability?.status);
+  const karaoke = capabilityStatus((post as LocalizedPostResponse & PostWithKaraokeCapability).karaoke_capability?.status);
+  const study = capabilityStatus(post.study_capability?.status);
   const rewardLabel = rewardOffer ? rewardCtaAmountLabel(rewardOffer.daily_reward_cents) : undefined;
   const artworkSrc = post.song_presentation?.cover_art_ref?.trim() || undefined;
   return {
     activeRewardCampaignId: rewardOffer?.campaign ?? null,
     artworkSrc,
     karaoke,
-    karaokeHref: karaoke === "ready" ? `/p/${encodeURIComponent(sourcePostId)}/karaoke` : undefined,
+    karaokeHref: karaoke === "ready" && !ageBlocked ? `/p/${encodeURIComponent(sourcePostId)}/karaoke` : undefined,
+    learningGate: ageBlocked ? "age_proof_required" : "allowed",
     readMode,
     rewards: rewardLabel && !ageBlocked ? {
       karaoke: karaoke === "ready" && rewardOffer?.eligible_activity !== "study"
@@ -57,7 +56,7 @@ export function resolveVideoSongCapabilities({ post, readMode, rewardOffer, sour
     sourcePostId,
     sourceCommunityId: post.post.community ?? null,
     study,
-    studyHref: study === "ready" ? `/p/${encodeURIComponent(sourcePostId)}/study` : undefined,
+    studyHref: study === "ready" && !ageBlocked ? `/p/${encodeURIComponent(sourcePostId)}/study` : undefined,
     viewerIsAuthor: Boolean(post.viewer_is_author),
   };
 }

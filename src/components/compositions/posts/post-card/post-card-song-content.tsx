@@ -10,6 +10,9 @@ import {
 } from "@phosphor-icons/react";
 import { Spinner } from "@/components/primitives/spinner";
 import { cn } from "@/lib/utils";
+import { interpolateMessage } from "@/lib/route-messages";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages, type RoutesMessages } from "@/locales";
 import { Button } from "@/components/primitives/button";
 import { SongStreakPreview } from "@/components/compositions/song-study/song-streak-preview";
 import { MediaControlButton } from "@/components/primitives/media-control-button";
@@ -33,37 +36,39 @@ export interface SongPostContentProps {
   previewMode?: boolean;
 }
 
-function featureFailureCopy(feature: "study" | "sing", reason: SongFeatureCapabilityReason | undefined): string | null {
+type SongMessages = RoutesMessages["post"]["songContent"];
+
+function featureFailureCopy(feature: "study" | "sing", reason: SongFeatureCapabilityReason | undefined, copy: SongMessages): string | null {
   if (!reason) return null;
-  const label = feature === "study" ? "Study" : "Sing";
+  const label = feature === "study" ? copy.study : copy.sing;
   switch (reason.code) {
     case "provider_key_missing":
-      return `${label} needs an ElevenLabs key. Add it in Integrations.`;
+      return interpolateMessage(copy.providerKeyMissing, { label });
     case "provider_key_invalid":
-      return `The ElevenLabs key did not work. Check it in Integrations.`;
+      return copy.providerKeyInvalid;
     case "provider_rate_limited":
-      return `ElevenLabs is rate-limiting this community. Try again in a minute.`;
+      return copy.providerRateLimited;
     case "provider_unavailable":
-      return `ElevenLabs was unavailable. Retry publishing in a minute.`;
+      return copy.providerUnavailable;
     case "provider_timeout":
-      return `ElevenLabs timed out. Retry publishing.`;
+      return copy.providerTimeout;
     case "provider_invalid_response":
-      return `ElevenLabs returned an unreadable response. Retry publishing.`;
+      return copy.providerInvalidResponse;
     case "lyrics_missing":
-      return `${label} needs lyrics. Add lyrics and retry.`;
+      return interpolateMessage(copy.lyricsMissing, { label });
     case "lyrics_too_short":
-      return `${label} needs more lyrics. Add a longer lyric set.`;
+      return interpolateMessage(copy.lyricsTooShort, { label });
     case "instrumental_missing":
-      return `Sing needs an instrumental track. Upload stems and retry.`;
+      return copy.instrumentalMissing;
     case "timed_lyrics_missing":
     case "alignment_failed":
-      return `Timed lyrics could not be prepared. Check the lyrics and audio, then retry.`;
+      return copy.timedLyricsMissing;
     case "exercise_generation_failed":
-      return `Study exercises could not be generated. Retry publishing.`;
+      return copy.exerciseGenerationFailed;
     case "karaoke_disabled":
-      return `Karaoke is disabled for this community.`;
+      return copy.karaokeDisabled;
     case "locked":
-      return `${label} is locked until the song is purchased.`;
+      return interpolateMessage(copy.locked, { label });
     default:
       return null;
   }
@@ -213,30 +218,30 @@ function getEffectiveDownloadPolicy(content: SongContentSpec): DownloadPolicy {
   return "stream_only";
 }
 
-function relationshipLabel(source: UpstreamAttribution): string {
+function relationshipLabel(source: UpstreamAttribution, copy: SongMessages): string {
   switch (source.relationshipType) {
     case "remix_of":
-      return "Remix of";
+      return copy.remixOf;
     case "samples":
-      return "Samples";
+      return copy.samples;
     case "references_video":
-      return "References";
+      return copy.references;
     case "references_song":
       return "References";
     case "inspired_by":
-      return "Inspired by";
+      return copy.inspiredBy;
     default:
-      return "Derived from";
+      return copy.derivedFrom;
   }
 }
 
-function sourceTitle(source: UpstreamAttribution): string {
-  return source.artist ? `${source.title} by ${source.artist}` : source.title;
+function sourceTitle(source: UpstreamAttribution, copy: SongMessages): string {
+  return source.artist ? interpolateMessage(copy.titleByArtist, { title: source.title, artist: source.artist }) : source.title;
 }
 
 function getDerivativeSummary(
   upstreamAttributions: UpstreamAttribution[] | undefined,
-  songMode: SongContentSpec["songMode"],
+  songMode: SongContentSpec["songMode"], copy: SongMessages,
 ): string | null {
   if (!upstreamAttributions || upstreamAttributions.length === 0) {
     return null;
@@ -245,16 +250,16 @@ function getDerivativeSummary(
   if (upstreamAttributions.length === 1) {
     const source = upstreamAttributions[0];
     if (songMode === "remix") {
-      return `${source.title} remix`;
+      return interpolateMessage(copy.titleRemix, { title: source.title });
     }
-    return `${relationshipLabel(source)} ${sourceTitle(source)}`;
+    return `${relationshipLabel(source, copy)} ${sourceTitle(source, copy)}`;
   }
 
   if (songMode === "remix") {
-    return `${upstreamAttributions[0].title} remix +${upstreamAttributions.length - 1}`;
+    return `${interpolateMessage(copy.titleRemix, { title: upstreamAttributions[0].title })} +${upstreamAttributions.length - 1}`;
   }
 
-  return `${relationshipLabel(upstreamAttributions[0])} ${sourceTitle(upstreamAttributions[0])} +${upstreamAttributions.length - 1}`;
+  return `${relationshipLabel(upstreamAttributions[0], copy)} ${sourceTitle(upstreamAttributions[0], copy)} +${upstreamAttributions.length - 1}`;
 }
 
 function clampProgressMs(progressMs: number | undefined, durationMs: number | undefined): number {
@@ -341,6 +346,9 @@ function SongOfferRows({
   previewMode?: boolean;
   ui: DerivedSongUI;
 }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes");
+  const song = copy.post.songContent;
   if (ui.ageGateRequiresProof) return null;
 
   const isOwned = content.hasEntitlement === true;
@@ -354,14 +362,14 @@ function SongOfferRows({
     rows.push(
       <div className="mt-3" key="digital-buy">
         <Button
-          aria-label={effectivePrice ? `Buy Digital MP3 for ${effectivePrice}` : "Buy Digital MP3"}
+          aria-label={effectivePrice ? interpolateMessage(song.buyDigitalMp3ForPrice, { price: effectivePrice }) : song.buyDigitalMp3}
           className="w-full"
           data-post-card-interactive="true"
           disabled={previewMode}
           onClick={content.onBuy}
           size="lg"
         >
-          {effectivePrice ? `Buy for ${effectivePrice}` : "Buy"}
+          {effectivePrice ? interpolateMessage(song.buyForPrice, { price: effectivePrice }) : song.buy}
         </Button>
       </div>,
     );
@@ -369,14 +377,14 @@ function SongOfferRows({
     rows.push(
       <div className="mt-3" key="digital-unlock">
         <Button
-          aria-label="Unlock Digital MP3"
+          aria-label={song.unlockDigitalMp3}
           className="w-full"
           data-post-card-interactive="true"
           disabled={previewMode}
           onClick={content.onUnlock}
           size="lg"
         >
-          Unlock
+          {song.unlock}
         </Button>
       </div>,
     );
@@ -388,8 +396,8 @@ function SongOfferRows({
   let studyAction: React.ReactNode | null = null;
   let studyFailureReason: string | null = null;
   const studyActionLabel = content.study?.rewardLabel
-    ? `Study · Earn ${content.study.rewardLabel}`
-    : "Study";
+    ? interpolateMessage(song.studyEarnReward, { reward: content.study.rewardLabel })
+    : song.study;
 
   if (!isLocked || isOwned) {
     switch (content.study?.status) {
@@ -408,7 +416,7 @@ function SongOfferRows({
             </Button>
           ) : (
             <Button asChild className="w-full" data-post-card-interactive="true" key="study" size="lg" variant="secondary">
-              <a aria-label="Study this song line by line" href={content.studyHref}>
+              <a aria-label={song.studyAriaLabel} href={content.studyHref}>
                 <span>{studyActionLabel}</span>
               </a>
             </Button>
@@ -425,7 +433,7 @@ function SongOfferRows({
             size="lg"
             variant="secondary"
           >
-            Study
+            {song.study}
           </Button>
         );
         break;
@@ -438,12 +446,12 @@ function SongOfferRows({
             size="lg"
             variant="secondary"
           >
-            Study
+            {song.study}
           </Button>
         );
         if (content.viewerCanManage) {
-          studyFailureReason = featureFailureCopy("study", content.study.reason)
-            ?? "Study is locked. Check the song access settings.";
+          studyFailureReason = featureFailureCopy("study", content.study.reason, song)
+            ?? song.studyLocked;
         }
         break;
       default:
@@ -454,8 +462,8 @@ function SongOfferRows({
   let karaokeAction: React.ReactNode | null = null;
   let karaokeFailureReason: string | null = null;
   const karaokeActionLabel = content.karaoke?.rewardLabel
-    ? `Sing · Earn ${content.karaoke.rewardLabel}`
-    : "Sing";
+    ? interpolateMessage(song.singEarnReward, { reward: content.karaoke.rewardLabel })
+    : song.sing;
   if (!isLocked || isOwned) {
     switch (content.karaoke?.status) {
       case "ready":
@@ -472,7 +480,7 @@ function SongOfferRows({
             </Button>
           ) : (
             <Button asChild className="w-full" data-post-card-interactive="true" key="karaoke" size="lg">
-              <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
+              <a aria-label={song.singAriaLabel} href={content.karaokeHref}>
                 <span>{karaokeActionLabel}</span>
               </a>
             </Button>
@@ -488,26 +496,26 @@ function SongOfferRows({
             loading={!content.karaoke.previewOnly}
             size="lg"
           >
-            Sing
+            {song.sing}
           </Button>
         );
         break;
       case "failed":
         karaokeAction = (
           <Button
-            aria-label="Sing"
+            aria-label={song.sing}
             className="w-full"
             disabled
             key="karaoke"
             size="lg"
             variant="secondary"
           >
-            Sing
+            {song.sing}
           </Button>
         );
         if (content.viewerCanManage) {
-          karaokeFailureReason = featureFailureCopy("sing", content.karaoke.reason)
-            ?? "Sing setup failed. Check the lyrics and stems, then retry publishing.";
+          karaokeFailureReason = featureFailureCopy("sing", content.karaoke.reason, song)
+            ?? song.singSetupFailed;
         }
         break;
       default:
@@ -520,12 +528,12 @@ function SongOfferRows({
               onClick={content.onKaraoke}
               size="lg"
             >
-              Sing
+              {song.sing}
             </Button>
           ) : (
             <Button asChild className="w-full" data-post-card-interactive="true" key="karaoke" size="lg">
-              <a aria-label="Sing this song with karaoke" href={content.karaokeHref}>
-                <span>Sing</span>
+              <a aria-label={song.singAriaLabel} href={content.karaokeHref}>
+                <span>{song.sing}</span>
               </a>
             </Button>
           );
@@ -547,7 +555,7 @@ function SongOfferRows({
   }
 
   const failureReason = studyFailureReason && karaokeFailureReason
-    ? "Study and Sing setup failed. Check the song setup, then retry publishing."
+    ? song.studySingSetupFailed
     : studyFailureReason ?? karaokeFailureReason;
 
   if (vinylReleaseUrl) {
@@ -561,15 +569,15 @@ function SongOfferRows({
             size="sm"
             variant="secondary"
           >
-            <a aria-label="Buy vinyl on ElasticStage" href={vinylReleaseUrl} rel="noreferrer" target="_blank">
-              <span>Buy</span>
+            <a aria-label={song.buyVinyl} href={vinylReleaseUrl} rel="noreferrer" target="_blank">
+              <span>{song.buy}</span>
               <ArrowSquareOut className="size-4" />
             </a>
           </Button>
         )}
         icon={<VinylRecord className="size-5" />}
         key="vinyl"
-        label="Vinyl"
+        label={song.vinylLabel}
       />,
     );
   }
@@ -603,6 +611,9 @@ function SongOfferRows({
 }
 
 export function SongPostContent({ content, className, previewMode }: SongPostContentProps) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes");
+  const song = copy.post.songContent;
   const ui = deriveSongUI(content);
   const {
     progressMs,
@@ -622,19 +633,19 @@ export function SongPostContent({ content, className, previewMode }: SongPostCon
     switch (ui.primaryAction) {
       case "pause":
         return (
-          <MediaControlButton aria-label="Pause" className={controlButtonClassName} onClick={onPause} size="lg">
+          <MediaControlButton aria-label={song.pause} className={controlButtonClassName} onClick={onPause} size="lg">
             <PauseIcon className={controlIconClassName} weight="fill" />
           </MediaControlButton>
         );
       case "play":
         return (
-          <MediaControlButton aria-label="Play" className={controlButtonClassName} onClick={() => onPlay?.()} size="lg">
+          <MediaControlButton aria-label={song.play} className={controlButtonClassName} onClick={() => onPlay?.()} size="lg">
             <PlayIcon className={controlIconClassName} weight="fill" />
           </MediaControlButton>
         );
       case "buffering":
         return (
-          <MediaControlButton aria-label="Loading" className={controlButtonClassName} size="lg" disabled>
+          <MediaControlButton aria-label={song.loading} className={controlButtonClassName} size="lg" disabled>
             <Spinner className="relative z-10 size-5" />
           </MediaControlButton>
         );
@@ -643,11 +654,11 @@ export function SongPostContent({ content, className, previewMode }: SongPostCon
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <MediaControlButton aria-label="Play preview" className={controlButtonClassName} onClick={() => onPlay?.()} size="lg">
+                <MediaControlButton aria-label={song.playPreview} className={controlButtonClassName} onClick={() => onPlay?.()} size="lg">
                   <PlayIcon className={controlIconClassName} weight="fill" />
                 </MediaControlButton>
               </TooltipTrigger>
-              <TooltipContent>Preview ({previewSeconds}s)</TooltipContent>
+              <TooltipContent>{interpolateMessage(song.previewSeconds, { seconds: String(previewSeconds) })}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         );
@@ -655,7 +666,7 @@ export function SongPostContent({ content, className, previewMode }: SongPostCon
         return null;
       default:
         return (
-          <MediaControlButton aria-label="Play" className={controlButtonClassName} onClick={() => onPlay?.()} size="lg">
+          <MediaControlButton aria-label={song.play} className={controlButtonClassName} onClick={() => onPlay?.()} size="lg">
             <PlayIcon className={controlIconClassName} weight="fill" />
           </MediaControlButton>
         );
@@ -663,7 +674,7 @@ export function SongPostContent({ content, className, previewMode }: SongPostCon
   };
 
   const derivativeSummary = ui.showAttribution
-    ? getDerivativeSummary(upstreamAttributions, content.songMode)
+    ? getDerivativeSummary(upstreamAttributions, content.songMode, song)
     : null;
   const derivativeHref = upstreamAttributions?.find((source) => source.href)?.href;
   const playbackDurationMs = ui.previewMaxMs;
@@ -681,7 +692,7 @@ export function SongPostContent({ content, className, previewMode }: SongPostCon
       onClick={onVerifyAge}
       size="sm"
     >
-      Verify Age
+      {song.verifyAge}
     </Button>
   ) : null;
 
@@ -763,7 +774,7 @@ export function SongPostContent({ content, className, previewMode }: SongPostCon
                 ) : null}
                 <div className="col-start-2 row-start-1 flex min-w-0 items-center">
                   <Scrubber
-                    ariaLabel="Track position"
+                    ariaLabel={song.trackPosition}
                     className={!canSeek ? "opacity-100" : undefined}
                     disabled={!canSeek}
                     max={scrubberDurationMs}

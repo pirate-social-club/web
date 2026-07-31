@@ -194,26 +194,32 @@ function SidebarSectionBlock({
                   </Type>
                 ) : null}
                 <SidebarMenu className="gap-1">
-                  {section.items.map((item) => (
-                    <SidebarMenuItem key={item.id}>
-                      <SidebarMenuButton
-                        className={nestedRowClassName}
-                        isActive={item.id === activeItemId}
-                        onClick={() => onItemSelect(item.onSelect)}
-                        tooltip={item.label}
-                      >
-                        {item.avatarSrc ? (
-                          <Avatar
-                            className="size-7 border-border-soft"
-                            fallback={item.label}
-                            size="xs"
-                            src={item.avatarSrc}
-                          />
-                        ) : null}
-                        <span>{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+
+                    return (
+                      <SidebarMenuItem key={item.id}>
+                        <SidebarMenuButton
+                          className={nestedRowClassName}
+                          isActive={item.id === activeItemId}
+                          onClick={() => onItemSelect(item.onSelect)}
+                          tooltip={item.label}
+                        >
+                          {item.avatarSrc ? (
+                            <Avatar
+                              className="size-7 border-border-soft"
+                              fallback={item.label}
+                              size="xs"
+                              src={item.avatarSrc}
+                            />
+                          ) : Icon ? (
+                            <Icon className="size-5" />
+                          ) : null}
+                          <span>{item.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

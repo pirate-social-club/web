@@ -3,6 +3,8 @@ import { Lock, ShareFat } from "@phosphor-icons/react";
 
 import { triggerNavigationTapHaptic, triggerShareSuccessHaptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { ActionMenu } from "@/components/primitives/action-menu";
 import { VotePill } from "@/components/primitives/vote-pill";
 import { CommentPill } from "@/components/primitives/comment-pill";
@@ -35,6 +37,8 @@ function SharePillMenu({
   actions: PostCardShareAction[];
   onFallbackShare?: () => void;
 }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes");
   const hasMenu = actions.length > 0;
   const handleFallbackShare = React.useCallback(() => {
     if (!onFallbackShare) return;
@@ -58,7 +62,7 @@ function SharePillMenu({
       type="button"
     >
       <ShareFat className="size-[23px]" />
-      Share
+      {copy.post.engagement.share}
     </button>
   );
 
@@ -71,9 +75,9 @@ function SharePillMenu({
       align="start"
       contentClassName="min-w-40"
       items={actions}
-      label="Share"
+      label={copy.post.engagement.share}
       onAction={handleAction}
-      title="Share"
+      title={copy.post.engagement.share}
       trigger={button}
     />
   );

@@ -11,6 +11,12 @@ Production deploys should go through the Blacksmith GitHub Actions workflow in
 > API-owned live contracts, migration, freshness, and production verification.
 > Read [`release-pipeline.md`](release-pipeline.md) for the current topology and
 > incident rules.
+>
+> The former karaoke-runtime install blocker is resolved: the API uses
+> `file:../../../web/packages/karaoke-runtime`, and the workflow checks out `web`,
+> `api`, and `core` as sibling directories so that cross-repository file dependencies
+> resolve during `bun install`. Treat the current Release run and its individual job
+> results as the authoritative deployment status.
 
 The release workflow:
 

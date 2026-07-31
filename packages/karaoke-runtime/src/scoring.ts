@@ -942,6 +942,45 @@ function phoneticTokenSimilarity(
   return { quality, coverage, available: true };
 }
 
+function tokenPhonemeStream(tokens: string[]): string[] {
+  const stream: string[] = [];
+  for (const token of tokens) {
+    const phones = wordToApproxArpabet(token);
+    if (phones.length > 0) {
+      stream.push(...phones);
+      continue;
+    }
+    if (latinLettersOnly(token).length > 0) {
+      const fallback = phoneticKey(token);
+      if (fallback.length > 0) {
+        stream.push(fallback);
+      }
+    }
+  }
+  return stream;
+}
+
+// Fragmentation-tolerant phonetic comparison for downstream consumers (e.g.
+// study say-it-back grading). Unlike phoneticTokenSimilarity, which joins
+// phones per word with "-" and is therefore blind to speech-to-text token
+// fragmentation ("shoo be doo" vs "shooby doo"), this flattens every token's
+// phones into one continuous stream per side with no word-boundary markers.
+// Karaoke line scoring deliberately does not use this: per-token boundaries
+// are part of its scoring contract.
+export function phoneticStreamSimilarity(
+  expectedTokens: string[],
+  transcriptTokens: string[],
+): { available: boolean; distance: number; length: number; similarity: number } {
+  const expectedStream = tokenPhonemeStream(expectedTokens);
+  const transcriptStream = tokenPhonemeStream(transcriptTokens);
+
+  const distance = phonemeDistance(expectedStream, transcriptStream);
+  const length = Math.max(expectedStream.length, transcriptStream.length, 1);
+  const similarity = Math.max(0, 1 - (distance / length));
+  const available = expectedStream.length > 0 && transcriptStream.length > 0;
+  return { available, distance, length, similarity };
+}
+
 function confidenceValues(words: readonly KaraokeRecognizedWord[]): number[] {
   return words
     .map((word) => typeof word.confidence === "number" && Number.isFinite(word.confidence)

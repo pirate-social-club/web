@@ -5,6 +5,7 @@ export {
   KARAOKE_TIMING_SCORING_ENABLED,
   aggregateKaraokeSession,
   bucketRecognizedWordsIntoLines,
+  phoneticStreamSimilarity,
   scoreKaraokeLine,
   scoreKaraokeLineText,
   scoreKaraokeLineTiming,

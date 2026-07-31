@@ -1476,7 +1476,13 @@ test.describe("live staging integration", () => {
       label: handleClaimCommunityId,
       routeSegment: handleClaimCommunityId,
     }, discoveryDiagnostics);
-    const discovered = await seedCommunityCandidates(discoveryDiagnostics);
+    // A required release gate must prove the health of its dedicated fixture.
+    // Falling back to whichever names-enabled community happens to rank in the
+    // public feed turns a broken fixture into a data-dependent pass. Keep the
+    // broader discovery fallback only for optional/manual staging runs.
+    const discovered = requiredReleaseGate
+      ? []
+      : await seedCommunityCandidates(discoveryDiagnostics);
     const candidates = pinned
       ? [pinned, ...discovered.filter((community) => community.id !== pinned.id)]
       : discovered;

@@ -12,7 +12,7 @@ import { Spinner } from "@/components/primitives/spinner";
 import { cn } from "@/lib/utils";
 import { interpolateMessage } from "@/lib/route-messages";
 import { useUiLocale } from "@/lib/ui-locale";
-import { getLocaleMessages } from "@/locales";
+import { getLocaleMessages, type RoutesMessages } from "@/locales";
 import { Button } from "@/components/primitives/button";
 import { SongStreakPreview } from "@/components/compositions/song-study/song-streak-preview";
 import { MediaControlButton } from "@/components/primitives/media-control-button";
@@ -36,7 +36,7 @@ export interface SongPostContentProps {
   previewMode?: boolean;
 }
 
-type SongMessages = ReturnType<typeof getLocaleMessages>["post"]["songContent"];
+type SongMessages = RoutesMessages["post"]["songContent"];
 
 function featureFailureCopy(feature: "study" | "sing", reason: SongFeatureCapabilityReason | undefined, copy: SongMessages): string | null {
   if (!reason) return null;

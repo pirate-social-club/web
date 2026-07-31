@@ -209,7 +209,10 @@ export function CommunityTelegramIntegrationPage({
       <Section title="Bot">
         <div className="grid gap-3 rounded-md border border-border-soft bg-card p-5">
           <Type as="p" variant="body">
-            Create a Telegram bot with BotFather, then save its token here. This community will use that bot for setup, join approvals, and assistant replies.
+            Create a Telegram bot with BotFather, then save its token here. This community will use that bot for setup, join approvals, assistant replies, and chat-based study.
+          </Type>
+          <Type as="p" className="text-muted-foreground" variant="caption">
+            As the bot owner, you can access messages and voice recordings learners send to this bot. Tell learners who operates it and how their recordings are used; Pirate receives study recordings for transcription and grading.
           </Type>
           <div className="grid gap-3 md:grid-cols-[1fr_auto]">
             <Input

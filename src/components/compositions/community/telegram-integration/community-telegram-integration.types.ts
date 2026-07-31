@@ -85,6 +85,7 @@ export interface CommunityTelegramIntegrationPageProps {
   studyMiniAppUrl?: string | null;
   onConnectChat?: () => void;
   onRevokeBot?: () => void;
+  onRefreshBotWebhook?: () => void;
   onSave?: () => void;
   onSaveBotToken?: (token: string) => void;
   onSettingsChange?: (settings: CommunityTelegramIntegrationSettings) => void;

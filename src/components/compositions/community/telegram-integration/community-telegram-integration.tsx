@@ -169,6 +169,7 @@ export function CommunityTelegramIntegrationPage({
   joinUrl,
   onConnectChat,
   onRevokeBot,
+  onRefreshBotWebhook,
   onSave,
   onSaveBotToken,
   onSettingsChange,
@@ -242,6 +243,15 @@ export function CommunityTelegramIntegrationPage({
                 </Type>
                 <div className="flex items-center gap-3">
                   <Type as="div" variant="caption">Webhook: {settings.bot.webhookStatus ?? "unknown"}</Type>
+                  <Button
+                    disabled={saveDisabled}
+                    onClick={onRefreshBotWebhook}
+                    size="sm"
+                    type="button"
+                    variant="secondary"
+                  >
+                    Refresh webhook
+                  </Button>
                   <Button onClick={onRevokeBot} size="sm" type="button" variant="secondary">Revoke</Button>
                 </div>
               </div>

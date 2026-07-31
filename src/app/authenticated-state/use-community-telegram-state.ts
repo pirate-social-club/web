@@ -694,6 +694,34 @@ export function useCommunityTelegramState({
       });
   }, [api.communities, applySettingsResponse, community]);
 
+  const handleRefreshTelegramBotWebhook = React.useCallback(() => {
+    if (!community) {
+      return;
+    }
+    setTelegramSaveError(null);
+    setSavingTelegram(true);
+    void Promise.all([
+      api.communities.refreshTelegramBotWebhook(community.id),
+      api.communities.getTelegramChatSettings(community.id),
+    ])
+      .then(([bot, settings]) => {
+        applySettingsResponse(settings, bot);
+        if (bot.webhook_status === "active") {
+          toast.success("Telegram webhook refreshed.");
+          return;
+        }
+        toast.error("Telegram could not activate the webhook. Try again.");
+      })
+      .catch((error: unknown) => {
+        const message = getErrorMessage(error, "Could not refresh Telegram webhook.");
+        setTelegramSaveError(message);
+        toast.error(message);
+      })
+      .finally(() => {
+        setSavingTelegram(false);
+      });
+  }, [api.communities, applySettingsResponse, community]);
+
   const handleSaveTelegramChat = React.useCallback(() => {
     if (!community || savingTelegram || telegramSettings.linkedChat.status !== "connected") {
       return;
@@ -742,6 +770,7 @@ export function useCommunityTelegramState({
 
   return {
     handleConnectTelegramChat,
+    handleRefreshTelegramBotWebhook,
     handleRevokeTelegramBot,
     handleSaveTelegramChat,
     handleSaveTelegramBotToken,

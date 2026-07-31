@@ -4,6 +4,8 @@ import * as React from "react";
 import { ArrowSquareOut, DownloadSimple, Lock, ShoppingCart } from "@phosphor-icons/react";
 
 import { navigate } from "@/app/router";
+import { useVideoExperience } from "@/app/video-experience/video-experience-context";
+import { toVideoViewerItem } from "@/components/compositions/posts/video-feed/video-viewer-item";
 import { Button } from "@/components/primitives/button";
 import { FormattedText } from "@/components/primitives/formatted-text";
 import { Type } from "@/components/primitives/type";
@@ -141,12 +143,14 @@ export function mergePostCardMenuItems(
   menuItems: PostCardMenuItem[] | undefined,
   derivedActions: DerivedSongMenuAction[],
 ): PostCardMenuItem[] {
+  const regularMenuItems = (menuItems ?? []).filter((item) => item.key !== "delete");
+  const deleteMenuItems = (menuItems ?? []).filter((item) => item.key === "delete");
   const metadataItems = derivedActions
     .filter((action) => action.category === "metadata")
     .map((action) => action.item);
   const downloadActions = derivedActions.filter((action) => action.category === "download");
   const firstDownloadNeedsSeparator = downloadActions.length > 0
-    && (Boolean(menuItems?.length) || metadataItems.length > 0);
+    && (regularMenuItems.length > 0 || metadataItems.length > 0);
   const downloadItems = downloadActions.map((action, index) => ({
     ...action.item,
     icon: action.item.icon ?? <DownloadSimple className="size-4" />,
@@ -154,9 +158,10 @@ export function mergePostCardMenuItems(
   }));
 
   return [
-    ...(menuItems ?? []),
+    ...regularMenuItems,
     ...metadataItems,
     ...downloadItems,
+    ...deleteMenuItems,
   ];
 }
 
@@ -312,6 +317,7 @@ function normalizeUrlForComparison(url: string | undefined): string | null {
   }
 }
 export function PostCard({
+  postId,
   viewContext = "home",
   previewMode = false,
   identityPresentation,
@@ -345,6 +351,7 @@ export function PostCard({
   className,
 }: PostCardProps) {
   const { locale } = useUiLocale();
+  const videoExperience = useVideoExperience();
   const effectiveTitleHref = titleHref ?? postHref;
   const sourceLanguageLabel = formatSourceLanguage(sourceLanguage, locale);
   const canToggleOriginal = Boolean(
@@ -402,6 +409,38 @@ export function PostCard({
   const shouldShowEventUrl = event
     ? normalizeUrlForComparison(event.eventUrl) !== normalizeUrlForComparison(content.type === "link" ? content.href : undefined)
     : true;
+  const globalVideoItem = React.useMemo(
+    () => postId && !previewMode
+      ? toVideoViewerItem({
+          id: postId,
+          post: {
+            byline,
+            content,
+            engagement,
+            onComment,
+            onShare,
+            onVote,
+            postId,
+            shareActions,
+            voteAccess,
+          },
+        })
+      : null,
+    [byline, content, engagement, onComment, onShare, onVote, postId, previewMode, shareActions, voteAccess],
+  );
+  const effectiveOpenVideoViewer = onOpenVideoViewer ?? (
+    videoExperience && globalVideoItem
+      ? () => videoExperience.openVideo({
+          actions: {
+            onComment,
+            onVote,
+            onVoteAccess: voteAccess?.onClick,
+          },
+          item: globalVideoItem,
+          source: viewContext,
+        })
+      : undefined
+  );
 
   return (
     <article
@@ -498,7 +537,7 @@ export function PostCard({
         ) : null}
         {event ? <PostCardEventBlock event={event} showEventUrl={shouldShowEventUrl} /> : null}
         <SongCaptionBeforeMedia content={content} />
-        <PostCardMedia content={content} onOpenVideoViewer={onOpenVideoViewer} postHref={postHref} previewMode={previewMode} viewContext={viewContext} />
+        <PostCardMedia content={content} onOpenVideoViewer={effectiveOpenVideoViewer} postHref={postHref} previewMode={previewMode} viewContext={viewContext} />
 
         {!previewMode && songCommerce ? (
           <div className="flex flex-col gap-2 pt-0.5 sm:flex-row sm:items-center sm:gap-1.5">

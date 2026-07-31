@@ -26,7 +26,7 @@ import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { toStreakSummary } from "@/app/authenticated-helpers/post-media-presentation";
-import { isApiAuthError } from "@/lib/api/client";
+import { ApiError, isApiAuthError } from "@/lib/api/client";
 import type {
   ApiPublicRewardOffer,
   ApiRewardQualificationSummary,
@@ -235,6 +235,35 @@ function advanceLesson(
   };
 }
 
+// A rejected attempt with one of these statuses means our cached view of the session
+// diverged from the server's: the card is spent, it is already mastered, the attempt
+// number no longer lines up, or the idempotency key was replayed with a different
+// payload. Re-sending the identical attempt can only fail the same way, so the only
+// recovery is to re-read the session and rebuild from server truth.
+const STUDY_ATTEMPT_DIVERGENCE_STATUSES = new Set([400, 404, 409]);
+
+// Recovering silently is safe in both directions: if the rejected attempt was in fact
+// recorded server-side (a lost response), the reload shows the advanced state; if it
+// was never recorded, the same card comes back at the same attempt number and the
+// cached idempotency key is still unused. Either way we never claim a wrong outcome.
+const STUDY_ATTEMPT_DIVERGENCE_RECOVERY_LIMIT = 2;
+
+function isStudyAttemptDivergence(error: unknown): boolean {
+  return error instanceof ApiError && STUDY_ATTEMPT_DIVERGENCE_STATUSES.has(error.status);
+}
+
+// Distinguishes a transcription failure from an attempt rejection: only the latter
+// means our session view is stale, and only the latter should trigger a reload.
+class StudyTranscriptionFailure extends Error {
+  readonly originalError: unknown;
+
+  constructor(originalError: unknown) {
+    super("Study transcription failed");
+    this.name = "StudyTranscriptionFailure";
+    this.originalError = originalError;
+  }
+}
+
 function makeAttemptIdempotencyKey(sessionId: string, exerciseId: string, attemptNumber: number): string {
   const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return `study:${sessionId}:${exerciseId}:${attemptNumber}:${random}`;
@@ -326,12 +355,14 @@ function StudyRouteMessage({
   onAction,
   message,
   postId,
+  returnPath,
   title,
 }: {
   actionLabel?: string;
   message: string;
   onAction?: () => void;
   postId: string;
+  returnPath?: string;
   title: string;
 }) {
   return (
@@ -348,7 +379,7 @@ function StudyRouteMessage({
             {actionLabel}
           </Button>
         ) : null}
-        <Button onClick={() => navigate(`/p/${encodeURIComponent(postId)}`)} variant="secondary">
+        <Button onClick={() => navigate(returnPath ?? `/p/${encodeURIComponent(postId)}`)} variant="secondary">
           Open post
         </Button>
       </div>
@@ -356,7 +387,15 @@ function StudyRouteMessage({
   );
 }
 
-function StudyAuthRequiredMessage({ postId }: { postId: string }) {
+function StudyAuthRequiredMessage({
+  postId,
+  returnPath,
+  telegramMiniApp,
+}: {
+  postId: string;
+  returnPath?: string;
+  telegramMiniApp?: boolean;
+}) {
   const { busy, configured, connect, loadError } = usePiratePrivyRuntime();
 
   return (
@@ -365,17 +404,22 @@ function StudyAuthRequiredMessage({ postId }: { postId: string }) {
         <Type as="h1" variant="h3">
           Sign in to study
         </Type>
-        {configured && connect ? (
+        {!telegramMiniApp && configured && connect ? (
           <Button loading={busy} onClick={connect}>
             Sign in
           </Button>
         ) : null}
-        {loadError ? (
+        {!telegramMiniApp && loadError ? (
           <Type as="p" className="text-muted-foreground" variant="caption">
             Authentication is unavailable right now.
           </Type>
         ) : null}
-        <Button onClick={() => navigate(`/p/${encodeURIComponent(postId)}`)} variant="secondary">
+        {telegramMiniApp ? (
+          <Type as="p" className="text-muted-foreground" variant="body">
+            Reopen study from this community&apos;s Telegram bot.
+          </Type>
+        ) : null}
+        <Button onClick={() => navigate(returnPath ?? `/p/${encodeURIComponent(postId)}`)} variant="secondary">
           Open post
         </Button>
       </div>
@@ -383,7 +427,15 @@ function StudyAuthRequiredMessage({ postId }: { postId: string }) {
   );
 }
 
-export function StudyRoutePage({ postId }: { postId: string }) {
+export function StudyRoutePage({
+  postId,
+  returnPath,
+  telegramMiniApp = false,
+}: {
+  postId: string;
+  returnPath?: string;
+  telegramMiniApp?: boolean;
+}) {
   const api = useApi();
   const session = useSession();
   const hydrated = useClientHydrated();
@@ -398,6 +450,23 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   const recordingStreamRef = React.useRef<MediaStream | null>(null);
   const pendingMultipleChoiceAttemptRef = React.useRef<string | null>(null);
   const attemptIdempotencyKeysRef = React.useRef(new Map<string, string>());
+  const telegramVoiceHandoffTimeoutRef = React.useRef<number | null>(null);
+  const telegramVoiceHandoffPendingRef = React.useRef(false);
+
+  const divergenceRecoveryCountRef = React.useRef(0);
+
+  // Returns false when recovery is not available (or has already been tried too many
+  // times), so the caller falls back to a visible inline error rather than reloading
+  // forever against a server that keeps rejecting whatever it just handed us.
+  const recoverFromDivergedAttempt = React.useCallback(() => {
+    if (divergenceRecoveryCountRef.current >= STUDY_ATTEMPT_DIVERGENCE_RECOVERY_LIMIT) {
+      return false;
+    }
+    divergenceRecoveryCountRef.current += 1;
+    setState({ phase: "loading" });
+    setReloadKey((value) => value + 1);
+    return true;
+  }, []);
 
   const attemptIdempotencyKey = React.useCallback((sessionId: string, exerciseId: string, attemptNumber: number) => {
     const logicalAttempt = `${sessionId}:${exerciseId}:${attemptNumber}`;
@@ -414,16 +483,38 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   }, []);
 
   React.useEffect(() => () => {
+    if (telegramVoiceHandoffTimeoutRef.current !== null) {
+      window.clearTimeout(telegramVoiceHandoffTimeoutRef.current);
+    }
     if (recorderRef.current?.state === "recording") {
       recorderRef.current.stop();
     }
     stopRecordingStream();
   }, [stopRecordingStream]);
 
+  React.useEffect(() => {
+    if (!telegramMiniApp) return;
+    let wasHidden = document.visibilityState === "hidden";
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        wasHidden = true;
+        return;
+      }
+      if (!wasHidden) return;
+      wasHidden = false;
+      if (telegramVoiceHandoffPendingRef.current) {
+        telegramVoiceHandoffPendingRef.current = false;
+        setReloadKey((value) => value + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [telegramMiniApp]);
+
   const studyComplete = state.phase === "ready" && state.surface.kind === "complete";
   const completedRewardOffer = state.phase === "ready" ? state.rewardOffer : null;
   React.useEffect(() => {
-    if (!studyComplete || !completedRewardOffer || !session?.accessToken) return;
+    if (telegramMiniApp || !studyComplete || !completedRewardOffer || !session?.accessToken) return;
     let cancelled = false;
     let timeout: number | undefined;
     let attempt = 0;
@@ -450,7 +541,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       cancelled = true;
       if (timeout !== undefined) window.clearTimeout(timeout);
     };
-  }, [api, completedRewardOffer, postId, session?.accessToken, studyComplete]);
+  }, [api, completedRewardOffer, postId, session?.accessToken, studyComplete, telegramMiniApp]);
 
   React.useEffect(() => {
     let canceled = false;
@@ -483,7 +574,9 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           api.communities.getPostStudy(post.post.community, post.post.id, {
             targetLanguage: contentLocale,
           }),
-          api.rewards.getActiveCampaignForSong(post.post.community, post.post.id).catch(() => null),
+          telegramMiniApp
+            ? Promise.resolve(null)
+            : api.rewards.getActiveCampaignForSong(post.post.community, post.post.id).catch(() => null),
         ]);
         if (canceled) return;
 
@@ -527,14 +620,18 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           return;
         }
 
-        const exerciseQueue = study.exercises.flatMap((exercise, index) => exercise.mastered ? [] : [index]);
+        const exerciseQueue = study.exercises.flatMap((exercise, index) => (
+          exercise.mastered
+          || Number(exercise.presentation_count ?? 0) >= Math.max(1, exercise.max_attempts || 1)
+            ? []
+            : [index]
+        ));
         const presentationCounts = Object.fromEntries(
           study.exercises.map((exercise) => [exercise.id, Number(exercise.presentation_count ?? 0)]),
         );
         const firstIndex = exerciseQueue[0];
         if (firstIndex === undefined) {
           setState({
-            actionLabel: "Study again",
             phase: "blocked",
             title: pageTitle(post, study),
             message: "This lesson is complete.",
@@ -571,7 +668,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     return () => {
       canceled = true;
     };
-  }, [api, contentLocale, hydrated, postId, reloadKey, session?.accessToken]);
+  }, [api, contentLocale, hydrated, postId, reloadKey, session?.accessToken, telegramMiniApp]);
 
   const submitMultipleChoiceAttempt = React.useCallback((
     readyState: ReadyStudyRouteState,
@@ -618,6 +715,9 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       type: "translation_choice",
     }).then((result) => {
       pendingMultipleChoiceAttemptRef.current = null;
+      // A landed attempt proves we are back in step with the server; spend the
+      // recovery budget again only if we drift a second time.
+      divergenceRecoveryCountRef.current = 0;
       playStudyFeedbackSound(result.outcome === "correct" ? "correct" : "incorrect");
       setState((current) => {
         if (current.phase !== "ready" || current.surface.kind !== "multiple_choice" || current.surface.exercise.id !== exercise.id) {
@@ -640,6 +740,9 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       });
     }).catch((error) => {
       pendingMultipleChoiceAttemptRef.current = null;
+      if (isStudyAttemptDivergence(error) && recoverFromDivergedAttempt()) {
+        return;
+      }
       setState((current) => {
         if (current.phase !== "ready" || current.surface.kind !== "multiple_choice" || current.surface.exercise.id !== exercise.id) {
           return current;
@@ -655,7 +758,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         };
       });
     });
-  }, [api, attemptIdempotencyKey]);
+  }, [api, attemptIdempotencyKey, recoverFromDivergedAttempt]);
 
   const handlePrimaryAction = React.useCallback(() => {
     if (state.phase === "locked") {
@@ -680,6 +783,61 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     if (state.surface.kind === "say_it_back" && state.surface.phase === "idle") {
       unlockStudyFeedbackAudio();
       const sayItBackSurface = state.surface;
+      if (telegramMiniApp) {
+        telegramVoiceHandoffPendingRef.current = true;
+        setState({
+          ...state,
+          surface: {
+            ...sayItBackSurface,
+            guidance: "I’ll send the line to this bot’s chat. Reply there with a Telegram voice message.",
+            phase: "checking",
+            submitError: undefined,
+          },
+        });
+        void api.communities.createPostStudyTelegramVoiceIntent(
+          state.post.post.community,
+          state.post.post.id,
+          {
+            exercise_id: sayItBackSurface.exercise.id,
+            target_language: state.study.target_language,
+          },
+        ).then(() => {
+          const close = (window as Window & {
+            Telegram?: { WebApp?: { close?: () => void } };
+          }).Telegram?.WebApp?.close;
+          close?.();
+          telegramVoiceHandoffTimeoutRef.current = window.setTimeout(() => {
+            setState((current) => current.phase === "ready"
+              && current.surface.kind === "say_it_back"
+              && current.surface.exercise.id === sayItBackSurface.exercise.id
+              && current.surface.phase === "checking"
+              ? {
+                  ...current,
+                  surface: {
+                    ...current.surface,
+                    guidance: "Check your chat with this community’s bot and reply with a voice message. You can close this window now.",
+                    phase: "idle",
+                  },
+                }
+              : current);
+          }, 1_000);
+        }).catch((error) => {
+          telegramVoiceHandoffPendingRef.current = false;
+          setState((current) => current.phase === "ready"
+            && current.surface.kind === "say_it_back"
+            && current.surface.exercise.id === sayItBackSurface.exercise.id
+            ? {
+                ...current,
+                surface: {
+                  ...current.surface,
+                  phase: "idle",
+                  submitError: getErrorMessage(error, "Could not open the Telegram voice exercise."),
+                },
+              }
+            : current);
+        });
+        return;
+      }
       if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
         setState({
           ...state,
@@ -771,6 +929,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
               : current);
             void api.communities.transcribePostStudyAudio(state.post.post.community, state.post.post.id, {
               file: new File([blob], "study-say-it-back.webm", { type }),
+            }).catch((error) => {
+              throw new StudyTranscriptionFailure(error);
             }).then((transcription) => api.communities.submitPostStudyAttempt(state.post.post.community, state.post.post.id, {
                 attempt_number: sayItBackSurface.attemptNumber,
                 exercise_id: exercise.id,
@@ -780,6 +940,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                 type: "say_it_back",
               }).then((result) => ({ result, transcript: transcription.text })))
               .then(({ result, transcript }) => {
+                divergenceRecoveryCountRef.current = 0;
                 playStudyFeedbackSound(result.outcome === "correct" ? "correct" : "incorrect");
                 setState((current) => {
                   if (current.phase !== "ready" || current.surface.kind !== "say_it_back" || current.surface.exercise.id !== exercise.id) {
@@ -795,17 +956,33 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                       feedback: result.feedback,
                       phase: correct ? "correct" : "wrong",
                       revealReference: !correct,
+                      submitError: undefined,
                       transcript,
                     },
                   };
                 });
               })
               .catch((error) => {
-                setState({
-                  phase: "error",
-                  title: pageTitle(state.post, state.study),
-                  message: getErrorMessage(error, "Could not transcribe this study attempt."),
-                });
+                const transcriptionFailed = error instanceof StudyTranscriptionFailure;
+                const cause = transcriptionFailed ? error.originalError : error;
+                if (!transcriptionFailed && isStudyAttemptDivergence(cause) && recoverFromDivergedAttempt()) {
+                  return;
+                }
+                const fallback = transcriptionFailed
+                  ? "Could not transcribe this study attempt. Try again."
+                  : "Could not submit this study attempt. Try again.";
+                setState((current) => current.phase === "ready"
+                  && current.surface.kind === "say_it_back"
+                  && current.surface.exercise.id === exercise.id
+                  ? {
+                      ...current,
+                      surface: {
+                        ...current.surface,
+                        phase: "idle",
+                        submitError: getErrorMessage(cause, fallback),
+                      },
+                    }
+                  : current);
               });
           };
           recorder.start();
@@ -814,6 +991,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
             surface: {
               ...sayItBackSurface,
               phase: "listening",
+              submitError: undefined,
             },
           });
         } catch (error) {
@@ -859,7 +1037,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     if (state.surface.kind === "say_it_back" && state.surface.phase === "correct") {
       setState(advanceLesson(state, "correct"));
     }
-  }, [api, attemptIdempotencyKey, postId, state, stopRecordingStream, submitMultipleChoiceAttempt]);
+  }, [api, attemptIdempotencyKey, postId, recoverFromDivergedAttempt, state, stopRecordingStream, submitMultipleChoiceAttempt, telegramMiniApp]);
 
   const handleOptionSelect = React.useCallback((optionId: string) => {
     if (state.phase !== "ready" || state.surface.kind !== "multiple_choice" || state.surface.result || state.surface.submitting) {
@@ -868,7 +1046,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     submitMultipleChoiceAttempt(state, state.surface, optionId);
   }, [state, submitMultipleChoiceAttempt]);
 
-  if (!hydrated || (configured && !loaded)) {
+  if (!hydrated || (!telegramMiniApp && configured && !loaded)) {
     return (
       <div className="flex h-dvh min-h-screen w-full items-center justify-center bg-background text-foreground">
         <Spinner className="size-8 text-muted-foreground" />
@@ -877,7 +1055,13 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   }
 
   if (!session?.accessToken || state.phase === "auth_required") {
-    return <StudyAuthRequiredMessage postId={postId} />;
+    return (
+      <StudyAuthRequiredMessage
+        postId={postId}
+        returnPath={returnPath}
+        telegramMiniApp={telegramMiniApp}
+      />
+    );
   }
 
   if (state.phase === "loading") {
@@ -895,6 +1079,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         message={state.message}
         onAction={state.phase === "blocked" && state.actionLabel ? () => setReloadKey((value) => value + 1) : undefined}
         postId={postId}
+        returnPath={returnPath}
         title={state.title}
       />
     );
@@ -906,16 +1091,16 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       artistName={state.study.artist_name ?? undefined}
       artworkSrc={pageArtwork(state.post, state.study)}
       className="h-dvh"
-      onExit={() => navigate(routeReturnPath(`/p/${encodeURIComponent(postId)}`))}
+      onExit={() => navigate(returnPath ?? routeReturnPath(`/p/${encodeURIComponent(postId)}`))}
       onOptionSelect={handleOptionSelect}
       onPrimaryAction={handlePrimaryAction}
-      onKaraoke={state.surface.kind === "complete"
+      onKaraoke={!telegramMiniApp && state.surface.kind === "complete"
         ? () => navigate(`/p/${encodeURIComponent(postId)}/karaoke`)
         : undefined}
       onStudyAgain={state.surface.kind === "complete"
         ? () => setReloadKey((value) => value + 1)
         : undefined}
-      rewardSlot={state.rewardOffer && state.rewardOffer.eligible_activity !== "karaoke" ? (
+      rewardSlot={!telegramMiniApp && state.rewardOffer && state.rewardOffer.eligible_activity !== "karaoke" ? (
         state.surface.kind === "complete" ? (
           <RewardQualificationNotice
             amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
@@ -932,6 +1117,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           />
         )
       ) : undefined}
+      sayItBackIdleLabel={telegramMiniApp ? "Send voice message" : undefined}
       state={state.surface}
       title={pageTitle(state.post, state.study)}
     />

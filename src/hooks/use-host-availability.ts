@@ -39,7 +39,7 @@ export function useHostAvailability(hostUserId: string | null, enabled: boolean)
         const from = new Date().toISOString();
         const to = new Date(Date.now() + 14 * 86_400_000).toISOString();
         const res = await api.bookings.listBookingSlots(hostUserId, { from, to, tz });
-        if (active) setSlots(res.slots as ResolvedSlot[]);
+        if (active) setSlots(res.slots);
       } catch {
         if (active) setSlots([]);
       } finally {

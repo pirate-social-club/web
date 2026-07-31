@@ -19,7 +19,7 @@ const slots = [
 ] as ResolvedSlot[];
 
 const base = {
-  basePriceCents: 3500,
+  startingPriceCents: 3500,
   onSelectSlot: () => {},
   slots,
   viewerTimezone: "Europe/Vienna" as never,
@@ -38,12 +38,17 @@ describe("FeedBookingSheet", () => {
     expect(formatFeedBookingTitle("Book a class", "mara.english")).toBe("Book a class");
   });
 
-  test("reports the chosen slot to the container", () => {
+  test("reports the chosen slot to the container once confirmed", () => {
     const chosen: ResolvedSlot[] = [];
     const view = render(<FeedBookingSheetBody {...base} onSelectSlot={(slot) => chosen.push(slot)} />);
 
-    const available = view.getAllByRole("button").find((node) => !(node as HTMLButtonElement).disabled);
+    const available = view
+      .getAllByRole("button", { name: /\d{2}:\d{2}/u })
+      .find((node) => !(node as HTMLButtonElement).disabled);
     fireEvent.click(available!);
+    // The tap only selects; onSelectSlot fires from the confirm footer's Continue.
+    expect(chosen).toEqual([]);
+    fireEvent.click(view.getByRole("button", { name: "Continue" }));
 
     expect(chosen).toEqual([slots[0]]);
   });
@@ -51,7 +56,9 @@ describe("FeedBookingSheet", () => {
   test("does not offer slots the host has not opened", () => {
     const view = render(<FeedBookingSheetBody {...base} />);
 
-    const disabled = view.getAllByRole("button").filter((node) => (node as HTMLButtonElement).disabled);
+    const disabled = view
+      .getAllByRole("button", { name: /\d{2}:\d{2}/u })
+      .filter((node) => (node as HTMLButtonElement).disabled);
 
     expect(disabled.length).toBe(1);
   });
@@ -85,9 +92,25 @@ describe("FeedBookingSheet", () => {
     expect(retries).toBe(1);
   });
 
-  test("shows the session price so the viewer sees cost before choosing", () => {
+  test("states uniform duration/price/timezone once in the header, never per slot", () => {
     const view = render(<FeedBookingSheetBody {...base} />);
 
-    expect(view.getByText("35.00 USDC per session")).toBeTruthy();
+    expect(view.getByText("30 min · $35 · Times in Vienna")).toBeTruthy();
+    // …and never as a standalone per-slot price element.
+    expect(view.queryAllByText(/^\$35$/u)).toHaveLength(0);
+    expect(view.queryByText("35.00 USDC")).toBeNull();
+    expect(view.queryByText(/35(?:\.00)? USDC per session/u)).toBeNull();
+  });
+
+  test("mixed prices fall back to a starting price in the header and per-slot captions", () => {
+    const mixed = [
+      { startUtc: "2026-09-21T09:00:00.000Z", endUtc: "2026-09-21T09:30:00.000Z", priceCents: 3500, available: true },
+      { startUtc: "2026-09-21T10:00:00.000Z", endUtc: "2026-09-21T10:30:00.000Z", priceCents: 5000, available: true },
+    ] as ResolvedSlot[];
+    const view = render(<FeedBookingSheetBody {...base} slots={mixed} startingPriceCents={3500} />);
+
+    expect(view.getByText("30 min · $35+ · Times in Vienna")).toBeTruthy();
+    expect(view.getByText("$35")).toBeTruthy();
+    expect(view.getByText("$50")).toBeTruthy();
   });
 });

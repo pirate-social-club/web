@@ -1,10 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Flag, Plus } from "@phosphor-icons/react";
 
 import type { AppRoute } from "@/app/router";
-import { isNativePublicIdentityRoute, navigate, useRoute } from "@/app/router";
+import { isNativePublicIdentityRoute, navigate, navigateOrReload, useRoute } from "@/app/router";
 import { AppSidebar } from "@/components/compositions/app/app-sidebar/app-sidebar";
 import { Button } from "@/components/primitives/button";
 import { SidebarInset, SidebarProvider } from "@/components/compositions/system/sidebar/sidebar";
@@ -20,6 +19,7 @@ import { useAssistantUnreadCount } from "@/lib/chat/chat-assistant-client";
 import { useNotificationBadges } from "@/lib/notifications/use-notification-badges";
 import { useNotificationSummary } from "@/lib/notifications/use-notification-summary";
 import { useSidebarCommunities } from "@/lib/owned-communities";
+import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { resolveLocaleDirection } from "@/lib/ui-locale-core";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -33,12 +33,15 @@ import { RouteContentFallback } from "./route-content-fallback";
 import {
   activeSidebarItem,
   buildCodeItems,
+  buildMediaSections,
+  buildMediaSpineItems,
   buildResourceItems,
   buildSidebarSections,
-  buildVideoPrimaryItems,
-  usesHeaderlessDesktopLayout,
+  usesStandaloneRouteShell,
 } from "./sidebar-sections";
+import { resolveSessionAvatarFallback } from "./session-avatar";
 import { useShellMobileLayout } from "./use-shell-mobile-layout";
+import { GlobalVideoExperienceProvider } from "@/app/video-experience/video-experience-provider";
 
 const LazyAuthenticatedRouteRenderer = React.lazy(async () => {
   const mod = await import("@/app/authenticated-route-renderer");
@@ -78,6 +81,11 @@ const LazyTelegramMiniAppCommunityPage = React.lazy(async () => {
 const LazyTelegramMiniAppPostPage = React.lazy(async () => {
   const mod = await import("@/app/telegram-mini-app/telegram-mini-app-route");
   return { default: mod.TelegramMiniAppPostPage };
+});
+
+const LazyTelegramMiniAppStudyPage = React.lazy(async () => {
+  const mod = await import("@/app/telegram-mini-app/telegram-mini-app-route");
+  return { default: mod.TelegramMiniAppStudyPage };
 });
 
 function SessionRevalidator({ children }: { children: React.ReactNode }) {
@@ -147,69 +155,55 @@ function NotificationShell({
 }) {
   const isMobileLayout = useShellMobileLayout();
   const { connect } = usePiratePrivyRuntime();
+  // SSR and the first hydration render see a null session even for signed-in viewers, so gating
+  // the Connect CTA on the session alone flashes it for people who already have one. Wait for
+  // client hydration; signed-out viewers get the button one paint later instead.
+  const clientReady = useClientHydrated();
   const notificationSummary = useNotificationSummary();
   const unreadChatCount = useAssistantUnreadCount();
+  const unreadNotificationCount = notificationSummary.open_task_count + notificationSummary.unread_activity_count;
   const { moderatedCommunities, recentCommunities } = useSidebarCommunities();
   const codeItems = buildCodeItems(copy.appSidebar);
   const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities, isMobileLayout);
-  const primaryItems = buildVideoPrimaryItems(copy.appSidebar);
+  // Profile and Wallet used to live in the desktop header; with the headerless media
+  // layout they belong in the sidebar spine instead. Profile anchors the bottom of the
+  // spine, below Wallet and Upload, and shows the signed-in viewer's real avatar
+  // (TikTok-style) once hydration confirms a session; signed-out viewers keep the
+  // generic icon and get the connect flow on select. The unread badges the desktop
+  // header used to carry ride the Chat and Activity spine items instead.
+  const primaryItems = buildMediaSpineItems(copy.appSidebar, {
+    avatarFallback: resolveSessionAvatarFallback(session, copy.appHeader.defaultAvatarFallback),
+    avatarSeed: clientReady && session ? session.profile?.id ?? null : null,
+    avatarSrc: clientReady && session ? session.profile?.avatar_ref ?? null : undefined,
+    onProfileSelect: () => {
+      if (session) {
+        navigateOrReload("/me");
+        return;
+      }
+      if (connect) {
+        connect();
+        return;
+      }
+      toast.info(copy.appHeader.connectUnavailableToast);
+    },
+    onWalletSelect: () => navigateOrReload("/wallet"),
+    profileLabel: copy.mobileFooter.profileLabel,
+    unreadActivityCount: clientReady && session ? unreadNotificationCount : 0,
+    unreadChatCount: clientReady && session ? unreadChatCount : 0,
+    walletLabel: copy.mobileFooter.walletLabel,
+  });
   const resourceItems = buildResourceItems(copy.appSidebar);
   const [searchOpen, setSearchOpen] = React.useState(false);
-  const isMobileStandaloneRoute = isMobileLayout && (
-    route.kind === "post"
-    || route.kind === "create-post"
-    || route.kind === "create-post-global"
-    || route.kind === "create-community"
-    || route.kind === "onboarding"
-    || route.kind === "settings-index"
-    || route.kind === "settings"
-    || route.kind === "chat-target"
-    || route.kind === "chat-conversation"
-    || route.kind === "chat-new"
-    || route.kind === "community-moderation"
-    || route.kind === "community-moderation-index"
-    );
-  const isStandaloneViewerRoute = route.kind === "live-room" || route.kind === "post-karaoke" || route.kind === "post-karaoke-leaderboard" || route.kind === "post-study" || route.kind === "post-streaks";
   const isChatRoute = route.kind === "chat"
     || route.kind === "chat-target"
     || route.kind === "chat-conversation"
     || route.kind === "chat-new";
-  const isCommunityModerationRoute = route.kind === "community-moderation"
-    || route.kind === "community-moderation-index";
   const isPublicRoute = route.kind === "public-profile" || route.kind === "public-agent";
-  const useStandaloneRouteShell = isMobileStandaloneRoute || isStandaloneViewerRoute;
+  const useStandaloneRouteShell = usesStandaloneRouteShell(route, isMobileLayout);
   // Temporary: migrated routes own their own page shell padding.
   // Remove this once all routes are converted.
   const isMigratedRoute = route.kind === "home" || route.kind === "community-feed" || route.kind === "popular" || route.kind === "wallet";
-  const unreadNotificationCount = notificationSummary.open_task_count + notificationSummary.unread_activity_count;
-  const useHeaderlessDesktopLayout = usesHeaderlessDesktopLayout(route);
-  const recentSection = sections.find((section) => section.id === "recent");
-  const mediaSections = [
-    {
-      defaultOpen: true,
-      id: "communities",
-      // Communities first, then the two navigation rows grouped beneath them.
-      // The list is capped upstream, so these stay reachable without scrolling
-      // no matter how many communities the viewer belongs to.
-      items: [
-        ...(recentSection?.items ?? []),
-        {
-          icon: Flag,
-          id: "your-communities",
-          label: copy.appSidebar.yourCommunitiesLabel,
-          onSelect: () => navigate("/your-communities"),
-        },
-        {
-          icon: Plus,
-          id: "create-community",
-          label: copy.appSidebar.createCommunityLabel,
-          onSelect: () => navigate("/communities/new"),
-        },
-      ],
-      label: copy.appSidebar.sections.find((section) => section.id === "communities")?.label ?? "Communities",
-    },
-    ...sections.filter((section) => section.id !== "recent"),
-  ];
+  const mediaSections = buildMediaSections(copy.appSidebar, sections);
   useNotificationBadges(unreadNotificationCount);
 
   return (
@@ -246,7 +240,7 @@ function NotificationShell({
                 appearance="media"
                 brandLabel={copy.appSidebar.brandLabel}
                 homeAriaLabel={copy.appSidebar.homeAriaLabel}
-                mediaAction={!session ? (
+                mediaAction={clientReady && !session ? (
                   <Button
                     className="w-full"
                     onClick={() => connect ? connect() : toast.info(copy.appHeader.connectUnavailableToast)}
@@ -256,8 +250,8 @@ function NotificationShell({
                 ) : undefined}
                 codeItems={codeItems}
                 codeLabel={copy.appSidebar.codeLabel}
-                onHomeClick={() => navigate("/")}
-                onNavigate={navigate}
+                onHomeClick={() => navigateOrReload("/")}
+                onNavigate={navigateOrReload}
                 onSearchClick={() => setSearchOpen(true)}
                 primaryItems={primaryItems}
                 resourceItems={resourceItems}
@@ -274,7 +268,6 @@ function NotificationShell({
               <SidebarInset className="min-h-0">
                 <AppShellHeader
                   copy={copy}
-                  desktopHidden={useHeaderlessDesktopLayout}
                   mobileMediaOverlay={route.kind === "home"}
                   onSearchClick={() => setSearchOpen(true)}
                   route={route}
@@ -286,7 +279,6 @@ function NotificationShell({
                     "flex min-h-0 w-full flex-1",
                     !isMigratedRoute && "px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.5rem)] md:px-5 md:pb-8 md:pt-6 lg:px-8",
                     isChatRoute && "md:overflow-hidden",
-                    isCommunityModerationRoute && "md:overflow-y-auto",
                   )}
                 >
                   <React.Suspense fallback={<RouteContentFallback route={route} />}>
@@ -297,14 +289,12 @@ function NotificationShell({
                       : <LazyAuthenticatedRouteRenderer route={route} />}
                   </React.Suspense>
                 </main>
-                {isMobileStandaloneRoute || isStandaloneViewerRoute ? null : (
-                  <AppShellMobileNav
-                    copy={copy}
-                    route={route}
-                    unreadChatCount={unreadChatCount}
-                    unreadNotificationCount={unreadNotificationCount}
-                  />
-                )}
+                <AppShellMobileNav
+                  copy={copy}
+                  route={route}
+                  unreadChatCount={unreadChatCount}
+                  unreadNotificationCount={unreadNotificationCount}
+                />
               </SidebarInset>
             </>
           )}
@@ -331,7 +321,7 @@ export function PirateAppShell({
   const effectiveDir = resolveLocaleDirection(effectiveLocale);
   const copy = getLocaleMessages(effectiveLocale, "shell");
   const useStandalonePublicProfileShell = isNativePublicIdentityRoute(route);
-  const isTelegramMiniAppRoute = route.kind === "telegram-mini-app" || route.kind === "telegram-exchange" || route.kind === "telegram-self-return" || route.kind === "telegram-join" || route.kind === "telegram-verify" || route.kind === "telegram-community" || route.kind === "telegram-post";
+  const isTelegramMiniAppRoute = route.kind === "telegram-mini-app" || route.kind === "telegram-exchange" || route.kind === "telegram-self-return" || route.kind === "telegram-join" || route.kind === "telegram-verify" || route.kind === "telegram-community" || route.kind === "telegram-post" || route.kind === "telegram-study";
   const shouldDeferPrivyUntilConnect =
     route.kind === "create-community"
     || (!session && (
@@ -353,47 +343,51 @@ export function PirateAppShell({
     >
       <PirateQueryProvider>
         <ApiProvider initialHost={initialHost}>
-          <AnalyticsRouteTracker route={route} />
-          {useStandalonePublicProfileShell ? (
-            <>
-              <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
-                <PageContainer>
-                  <React.Suspense fallback={<RouteContentFallback route={route} />}>
-                    {route.kind === "public-profile" || route.kind === "public-agent" ? <LazyPublicRouteRenderer route={route} /> : null}
-                  </React.Suspense>
-                </PageContainer>
-              </main>
-              <Toaster />
-            </>
-          ) : isTelegramMiniAppRoute ? (
-            <PirateAuthProvider>
-              <React.Suspense fallback={<RouteContentFallback route={route} />}>
-                {route.kind === "telegram-community"
-                  ? <LazyTelegramMiniAppCommunityPage communityId={route.communityId} />
-                  : route.kind === "telegram-verify"
-                    ? <LazyTelegramMiniAppVerifyPage communityId={route.communityId} />
-                  : route.kind === "telegram-post"
-                    ? <LazyTelegramMiniAppPostPage postId={route.postId} />
-                  : route.kind === "telegram-exchange"
-                    ? <LazyTelegramMiniAppExchangePage />
-                  : route.kind === "telegram-self-return"
-                    ? <LazyTelegramMiniAppSelfReturnPage communityId={route.communityId} />
-                  : <LazyTelegramMiniAppHomePage />}
-              </React.Suspense>
-              <Toaster />
-            </PirateAuthProvider>
-          ) : (
-            <PirateAuthProvider deferPrivyUntilConnect={shouldDeferPrivyUntilConnect}>
-              <SessionRevalidator>
-                <NotificationShell
-                  copy={copy}
-                  effectiveDir={effectiveDir}
-                  route={route}
-                  session={session}
-                />
-              </SessionRevalidator>
-            </PirateAuthProvider>
-          )}
+          <GlobalVideoExperienceProvider>
+            <AnalyticsRouteTracker route={route} />
+            {useStandalonePublicProfileShell ? (
+              <>
+                <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
+                  <PageContainer>
+                    <React.Suspense fallback={<RouteContentFallback route={route} />}>
+                      {route.kind === "public-profile" || route.kind === "public-agent" ? <LazyPublicRouteRenderer route={route} /> : null}
+                    </React.Suspense>
+                  </PageContainer>
+                </main>
+                <Toaster />
+              </>
+            ) : isTelegramMiniAppRoute ? (
+              <PirateAuthProvider>
+                <React.Suspense fallback={<RouteContentFallback route={route} />}>
+                  {route.kind === "telegram-community"
+                    ? <LazyTelegramMiniAppCommunityPage communityId={route.communityId} />
+                    : route.kind === "telegram-study"
+                      ? <LazyTelegramMiniAppStudyPage communityId={route.communityId} postId={route.postId} />
+                    : route.kind === "telegram-verify"
+                      ? <LazyTelegramMiniAppVerifyPage communityId={route.communityId} />
+                    : route.kind === "telegram-post"
+                      ? <LazyTelegramMiniAppPostPage postId={route.postId} />
+                      : route.kind === "telegram-exchange"
+                        ? <LazyTelegramMiniAppExchangePage />
+                        : route.kind === "telegram-self-return"
+                          ? <LazyTelegramMiniAppSelfReturnPage communityId={route.communityId} />
+                          : <LazyTelegramMiniAppHomePage />}
+                </React.Suspense>
+                <Toaster />
+              </PirateAuthProvider>
+            ) : (
+              <PirateAuthProvider deferPrivyUntilConnect={shouldDeferPrivyUntilConnect}>
+                <SessionRevalidator>
+                  <NotificationShell
+                    copy={copy}
+                    effectiveDir={effectiveDir}
+                    route={route}
+                    session={session}
+                  />
+                </SessionRevalidator>
+              </PirateAuthProvider>
+            )}
+          </GlobalVideoExperienceProvider>
         </ApiProvider>
       </PirateQueryProvider>
     </RootErrorBoundary>

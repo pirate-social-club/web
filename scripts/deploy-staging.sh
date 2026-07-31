@@ -84,6 +84,11 @@ WEB_REF="$(repo_ref "$WEB_DIR")"
 API_SHA="$(repo_sha "$API_DIR")"
 API_REF="$(repo_ref "$API_DIR")"
 BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+API_SHARD_SOURCE_VERSION="$(
+  printf '%s.%s' \
+    "$(git -C "$API_DIR" rev-parse HEAD:services/community-d1-shard)" \
+    "$(git -C "$API_DIR" rev-parse HEAD:services/shared)"
+)"
 
 WEB_ORIGIN="${WEB_ORIGIN:-https://staging.pirate.sc}"
 API_ORIGIN="${API_ORIGIN:-https://api-staging.pirate.sc}"
@@ -267,7 +272,8 @@ log "deploy api staging worker"
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" \
   --define "__PIRATE_BUILD_GIT_SHA__:\"$API_SHA\"" \
   --define "__PIRATE_BUILD_GIT_REF__:\"$API_REF\"" \
-  --define "__PIRATE_BUILD_TIMESTAMP__:\"$BUILD_TIMESTAMP\"")
+  --define "__PIRATE_BUILD_TIMESTAMP__:\"$BUILD_TIMESTAMP\"" \
+  --define "__PIRATE_COMMUNITY_D1_SHARD_SOURCE_VERSION__:\"$API_SHARD_SOURCE_VERSION\"")
 
 log "smoke checks"
 check_status "$WEB_ORIGIN/" "200"

@@ -8,6 +8,7 @@ import {
   createDefaultTelegramIntegrationSettings,
   type CommunityTelegramIntegrationSettings,
   type CommunityTelegramIntegrationPageProps,
+  type TelegramBroadcastChannelInfo,
 } from "../community-telegram-integration.types";
 
 function InteractiveStory(args: CommunityTelegramIntegrationPageProps) {
@@ -132,5 +133,98 @@ export const Mobile: Story = {
   },
   parameters: {
     viewport: { defaultViewport: "mobile1" },
+  },
+};
+
+const exampleChannel: TelegramBroadcastChannelInfo = {
+  title: "Infinity Mirror Updates",
+  username: "infinitymirrorupdates",
+  publicationMode: "from_now",
+  linkedAt: 1753500000,
+};
+
+const channelNoop = () => undefined;
+
+export const ChannelNotConnected: Story = {
+  name: "Channel not connected",
+  args: {
+    joinUrl: "https://pirate.sc/tg/join/com_cmt_infinity_mirror",
+    settings: connectedSettings(),
+    submitState: { kind: "idle" },
+    channel: {
+      state: { kind: "unconnected" },
+      botConnected: true,
+      onConnect: channelNoop,
+    },
+  },
+};
+
+export const ChannelWaitingForTelegram: Story = {
+  name: "Channel waiting for Telegram",
+  args: {
+    joinUrl: "https://pirate.sc/tg/join/com_cmt_infinity_mirror",
+    settings: connectedSettings(),
+    submitState: { kind: "idle" },
+    channel: {
+      state: {
+        kind: "awaiting_telegram",
+        checking: false,
+        deepLink: "https://t.me/InfinityMirrorBot?start=setup_example",
+        // Far-future expiry so the story does not flip to the expired state.
+        expiresAt: 4102444800,
+      },
+      botConnected: true,
+      onOpenTelegramAgain: channelNoop,
+      onCheckConnection: channelNoop,
+      onCancelSetup: channelNoop,
+    },
+  },
+};
+
+export const ChannelConnected: Story = {
+  name: "Channel connected",
+  args: {
+    joinUrl: "https://pirate.sc/tg/join/com_cmt_infinity_mirror",
+    settings: connectedSettings(),
+    submitState: { kind: "idle" },
+    channel: {
+      state: { kind: "connected", channel: exampleChannel },
+      botConnected: true,
+      onRequestBackfill: channelNoop,
+      onRequestDisconnect: channelNoop,
+    },
+  },
+};
+
+export const ChannelBackfillConfirmation: Story = {
+  name: "Channel backfill confirmation",
+  args: {
+    joinUrl: "https://pirate.sc/tg/join/com_cmt_infinity_mirror",
+    settings: connectedSettings(),
+    submitState: { kind: "idle" },
+    channel: {
+      state: { kind: "backfill_confirm", channel: exampleChannel },
+      botConnected: true,
+      onConfirmBackfill: channelNoop,
+      onCancelBackfill: channelNoop,
+    },
+  },
+};
+
+export const ChannelConnectionError: Story = {
+  name: "Channel connection error",
+  args: {
+    joinUrl: "https://pirate.sc/tg/join/com_cmt_infinity_mirror",
+    settings: connectedSettings(),
+    submitState: { kind: "idle" },
+    channel: {
+      state: {
+        kind: "error",
+        message: "This channel is already connected to another Pirate community.",
+        channel: null,
+      },
+      botConnected: true,
+      onConnect: channelNoop,
+    },
   },
 };

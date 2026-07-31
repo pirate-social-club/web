@@ -41,6 +41,26 @@ const storySmokeCommunityId = (
 ).replace(/^com_/u, "");
 const storySmokeHostSubject = process.env.PIRATE_STORY_E2E_HOST_SUBJECT
   ?? "story-e2e-author-1780678999641-65820e";
+// Release gates must not provision communities: every allocation permanently
+// consumes a staging D1 binding until verified reclamation exists. This fixture
+// was created by the former per-run gate contract and is now dedicated to the
+// required gate-identity contract. Resolve its actual owner from the public
+// fixture record and use the release gate's scoped admin impersonation headers;
+// display names are not an identity source.
+const gateContractCommunityId = (
+  process.env.PIRATE_GATE_CONTRACT_E2E_COMMUNITY_ID ?? "cmt_34976b020f7a41dd8a678354fae842f9"
+).replace(/^com_/u, "");
+// Staging has exactly one namespace-backed community: real HNS verification
+// cannot be stubbed remotely, so the names fixture is hand-seeded and singular.
+// The handle-claim contract used to find it by scanning the public home feed,
+// which only works while that community happens to be ranking — when it drops
+// out, every candidate answers `403 eligibility_failed` and the required
+// release gate fails for a reason that has nothing to do with the change under
+// test. Pin it like the story smoke pins its own fixture; feed discovery stays
+// as the fallback.
+const handleClaimCommunityId = (
+  process.env.PIRATE_HANDLE_CLAIM_E2E_COMMUNITY_ID ?? "cmt_3b2300c49b97466fadb362cb58fec018"
+).replace(/^com_/u, "");
 const multipartGateVideoBytes = Number.parseInt(
   // Keep the default below the retired 64 MiB proxy threshold. This makes the
   // release gate catch clients that accidentally send ordinary videos through
@@ -205,6 +225,25 @@ function nextBookingSmokeSlot(hostTimezone: string): {
     weekday: startLocal.weekday,
     windowEndUtc: windowEnd.toISOString(),
     windowStartUtc: windowStart.toISOString(),
+  };
+}
+
+/**
+ * The 30-minute slot directly after a smoke slot. The availability rule must be widened to
+ * `ruleEndLocal` for it to exist; used to place a second, community-attributed hold.
+ */
+function adjacentBookingSmokeSlot(slot: { endUtc: string }, hostTimezone: string): {
+  endUtc: string;
+  ruleEndLocal: string;
+  startUtc: string;
+} {
+  const start = new Date(slot.endUtc);
+  const end = new Date(start.getTime() + 30 * 60_000);
+  const endLocal = localSlotParts(end, hostTimezone);
+  return {
+    endUtc: end.toISOString(),
+    ruleEndLocal: `${endLocal.hour}:${endLocal.minute}`,
+    startUtc: start.toISOString(),
   };
 }
 
@@ -1271,14 +1310,26 @@ async function seedCommunityCandidates(diagnostics?: FixtureDiscoveryDiagnostic[
 }
 
 async function discoverSeedCommunity(): Promise<LiveCommunity> {
-  const community = await hydrateRoutableLiveCommunityOwner({
+  const diagnostics: FixtureDiscoveryDiagnostic[] = [];
+  const fixture = {
     id: storySmokeCommunityId,
     label: storySmokeCommunityId,
     routeSegment: storySmokeCommunityId,
-  });
-  if (community) return community;
+  };
 
-  throw new Error(`Could not load stable staging fixture ${storySmokeCommunityId}`);
+  // The pinned fixture is durable, but its D1-backed public projection can
+  // transiently time out under staging load. A single failed read must not be
+  // misreported as a missing fixture and block an otherwise healthy release.
+  for (let attempt = 1; attempt <= 6; attempt += 1) {
+    const community = await hydrateRoutableLiveCommunityOwner(fixture, diagnostics);
+    if (community) return community;
+    if (attempt < 6) await new Promise((resolve) => setTimeout(resolve, 2_000));
+  }
+
+  throw new Error(
+    `Could not load stable staging fixture ${storySmokeCommunityId} after 6 attempts:\n`
+      + formatFixtureDiscoveryDiagnostics(diagnostics),
+  );
 }
 
 async function discoverWritableSeedCommunity(
@@ -1315,11 +1366,19 @@ test.describe("live staging integration", () => {
 
   test("exposes stable gate identity and authoritative outcomes in live join eligibility", async () => {
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    const subject = `gate-contract-staging-${runId}`;
-    const session = await createLiveSession(subject, walletAddressForSubject(subject));
-    await completeSelfVerification(session);
-    const communityId = await createGateBuilderCommunity(session, runId);
-    const headers = { authorization: `Bearer ${session.accessToken}` };
+    const community = await hydrateRoutableLiveCommunityOwner({
+      id: gateContractCommunityId,
+      label: gateContractCommunityId,
+      routeSegment: gateContractCommunityId,
+    });
+    if (!community) {
+      throw new Error(`Could not load stable gate-contract fixture ${gateContractCommunityId}`);
+    }
+    const headers = seedOwnerAdminHeaders(community);
+    if (!headers) {
+      throw new Error(`Stable gate-contract fixture ${gateContractCommunityId} has no impersonable owner`);
+    }
+    const communityId = community.id;
 
     const gatePolicy = {
       expression: {
@@ -1383,7 +1442,17 @@ test.describe("live staging integration", () => {
     };
     let target: { community: LiveCommunity; headers: Record<string, string>; policy: HandlePolicy } | null = null;
     const discoveryDiagnostics: FixtureDiscoveryDiagnostic[] = [];
-    const candidates = await seedCommunityCandidates(discoveryDiagnostics);
+    // Pinned fixture first, feed discovery second: discovery is a best-effort
+    // widening, not the primary source.
+    const pinned = await hydrateRoutableLiveCommunityOwner({
+      id: handleClaimCommunityId,
+      label: handleClaimCommunityId,
+      routeSegment: handleClaimCommunityId,
+    }, discoveryDiagnostics);
+    const discovered = await seedCommunityCandidates(discoveryDiagnostics);
+    const candidates = pinned
+      ? [pinned, ...discovered.filter((community) => community.id !== pinned.id)]
+      : discovered;
     if (candidates.length === 0) {
       discoveryDiagnostics.push({ detail: "discovery returned no hydrated candidates", stage: "hydrate", target: "all candidates" });
     }
@@ -1852,6 +1921,7 @@ test.describe("live staging integration", () => {
     const bookerHeaders = { authorization: `Bearer ${booker.accessToken}` };
     const hostTimezone = "America/New_York";
     const slot = nextBookingSmokeSlot(hostTimezone);
+    const attributedSlot = adjacentBookingSmokeSlot(slot, hostTimezone);
 
     const profile = await requestJson<{
       base_price_cents: number;
@@ -1875,7 +1945,8 @@ test.describe("live staging integration", () => {
     const rule = await requestJson<{ by_weekday: number[]; slot_duration_seconds: number }>("/host-bookings/me/availability-rules", {
       body: JSON.stringify({
         by_weekday: [slot.weekday],
-        end_local: slot.endLocal,
+        // Covers the smoke slot and the adjacent one used for the attributed hold below.
+        end_local: attributedSlot.ruleEndLocal,
         slot_duration_seconds: 1800,
         start_local: slot.startLocal,
       }),
@@ -1905,6 +1976,12 @@ test.describe("live staging integration", () => {
     expect(resolvedSlot, "expected smoke slot in global availability").toBeTruthy();
     expect(resolvedSlot?.available).toBe(true);
     expect(resolvedSlot?.priceCents).toBe(1234);
+    const attributedResolvedSlot = slots.slots.find((candidate) =>
+      Date.parse(candidate.startUtc) === Date.parse(attributedSlot.startUtc)
+      && Date.parse(candidate.endUtc) === Date.parse(attributedSlot.endUtc)
+    );
+    expect(attributedResolvedSlot, "expected adjacent smoke slot in global availability").toBeTruthy();
+    expect(attributedResolvedSlot?.available).toBe(true);
 
     const hold = await requestJson<{
       hold: {
@@ -1939,6 +2016,31 @@ test.describe("live staging integration", () => {
       headers: bookerHeaders,
       method: "POST",
     }, [409]);
+
+    // Feed bookings capture the viewed post's owning community as attribution at open time,
+    // and hold-create is the only attribution intake — the API must persist a non-null
+    // source community verbatim. Attribute to the seeded story-smoke community.
+    const attributedCommunityId = toPublicCommunityId(storySmokeCommunityId);
+    const attributedHold = await requestJson<{
+      hold: {
+        booker_user_id: string;
+        host_user_id: string;
+        source_community_id: string | null;
+        status: string;
+      };
+    }>(`/bookings/hosts/${encodeURIComponent(hostUserId)}/holds`, {
+      body: JSON.stringify({
+        slot_end_utc: attributedSlot.endUtc,
+        slot_start_utc: attributedSlot.startUtc,
+        source_community_id: attributedCommunityId,
+      }),
+      headers: bookerHeaders,
+      method: "POST",
+    });
+    expect(attributedHold.hold.host_user_id).toBe(hostUserId);
+    expect(attributedHold.hold.booker_user_id).toBe(bookerUserId);
+    expect(attributedHold.hold.source_community_id).toBe(attributedCommunityId);
+    expect(attributedHold.hold.status).toBe("active");
 
     const quote = await requestJson<{
       quote: {

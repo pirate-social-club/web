@@ -6,12 +6,26 @@ export const CSP_REPORT_ONLY_HEADER = "Content-Security-Policy-Report-Only";
 export type SecurityHeadersMode = {
   dev: boolean;
   reportOnly: boolean;
+  telegramMiniApp?: boolean;
 };
 
-export function buildContentSecurityPolicy(nonce: string): string {
+export function buildContentSecurityPolicy(
+  nonce: string,
+  options: { telegramMiniApp?: boolean } = {},
+): string {
+  const telegramMiniApp = options.telegramMiniApp === true;
   const directives: string[] = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://platform.x.com https://platform.twitter.com`,
+    [
+      "script-src",
+      "'self'",
+      `'nonce-${nonce}'`,
+      "'wasm-unsafe-eval'",
+      "https://challenges.cloudflare.com",
+      "https://platform.x.com",
+      "https://platform.twitter.com",
+      ...(telegramMiniApp ? ["https://telegram.org"] : []),
+    ].join(" "),
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob: https:",
@@ -19,7 +33,9 @@ export function buildContentSecurityPolicy(nonce: string): string {
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "frame-ancestors 'none'",
+    telegramMiniApp
+      ? "frame-ancestors https://web.telegram.org"
+      : "frame-ancestors 'none'",
     [
       "child-src",
       "https://auth.privy.io",
@@ -63,7 +79,6 @@ export function buildContentSecurityPolicy(nonce: string): string {
       "wss://www.walletlink.org",
       "https://*.rpc.privy.systems",
       "https://explorer-api.walletconnect.com",
-      "https://api.ethfollow.xyz",
       "https://api.coingecko.com",
       "https://s3.filebase.com",
       "https://mainnet.base.org",
@@ -106,10 +121,14 @@ export function applySecurityHeaders(headers: Headers, nonce: string, mode: Secu
     return;
   }
 
-  applyFrameDenyHeader(headers);
+  if (!mode.telegramMiniApp) {
+    applyFrameDenyHeader(headers);
+  }
   headers.set(
     mode.reportOnly ? CSP_REPORT_ONLY_HEADER : CSP_HEADER,
-    buildContentSecurityPolicy(nonce),
+    buildContentSecurityPolicy(nonce, {
+      telegramMiniApp: mode.telegramMiniApp,
+    }),
   );
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");

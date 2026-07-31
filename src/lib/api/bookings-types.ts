@@ -119,6 +119,39 @@ export interface SlotsResponse {
   slots: ResolvedSlot[];
 }
 
+function isResolvedSlot(value: unknown): value is ResolvedSlot {
+  if (!value || typeof value !== "object") return false;
+  const slot = value as Record<string, unknown>;
+  return typeof slot.startUtc === "string"
+    && Number.isFinite(Date.parse(slot.startUtc))
+    && typeof slot.endUtc === "string"
+    && Number.isFinite(Date.parse(slot.endUtc))
+    && Date.parse(slot.endUtc) > Date.parse(slot.startUtc)
+    && typeof slot.priceCents === "number"
+    && Number.isSafeInteger(slot.priceCents)
+    && slot.priceCents >= 0
+    && typeof slot.available === "boolean";
+}
+
+/** Runtime guard for the untrusted availability response consumed by every booking surface. */
+export function parseSlotsResponse(value: unknown): SlotsResponse {
+  if (!value || typeof value !== "object") {
+    throw new TypeError("Invalid booking slots response");
+  }
+  const response = value as Record<string, unknown>;
+  if (
+    typeof response.host_timezone !== "string"
+    || response.host_timezone.trim().length === 0
+    || typeof response.viewer_timezone !== "string"
+    || response.viewer_timezone.trim().length === 0
+    || !Array.isArray(response.slots)
+    || !response.slots.every(isResolvedSlot)
+  ) {
+    throw new TypeError("Invalid booking slots response");
+  }
+  return response as unknown as SlotsResponse;
+}
+
 export interface BookingHold {
   hold_id: string;
   source_community_id: string | null;
@@ -135,7 +168,7 @@ export interface CreateHoldRequest {
   slot_end_utc: string;
   source_community_id?: string | null;
 }
-interface PaymentInstructions {
+export interface PaymentInstructions {
   payment_intent_id: string;
   version: number;
   chain_id: number;
@@ -148,6 +181,32 @@ interface PaymentInstructions {
   quote_expires_at: string;
   hold_expires_at: string;
   wallet_attachment_required: boolean;
+}
+export type BookingPaymentResumeState =
+  | "payable"
+  | "confirmable"
+  | "finalizable"
+  | "booked"
+  | "refund_pending";
+export interface PendingBookingPaymentIntent {
+  hold_id: string;
+  payment_intent_id: string;
+  intent_status: "active" | "verifying" | "verified" | "verification_failed" | "consumed";
+  resume_state: BookingPaymentResumeState;
+  claimed_tx_ref: string | null;
+  wallet_attachment_id: string | null;
+  payment: PaymentInstructions;
+  quote_expires_at: string;
+  hold_expires_at: string;
+  host_user_id: string;
+  slot_start_utc: string;
+  slot_end_utc: string;
+  booking_id: string | null;
+}
+export interface PendingBookingPaymentIntentsResponse {
+  object: "list";
+  data: PendingBookingPaymentIntent[];
+  has_more: boolean;
 }
 export interface BookingQuote {
   hold_id: string;

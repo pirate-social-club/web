@@ -25,6 +25,7 @@ import type {
   TelegramBotAdminStatus,
   TelegramLinkedChatLinkMode,
 } from "./community-telegram-integration.types";
+import { TelegramBroadcastChannelSection } from "./telegram-broadcast-channel-section";
 
 function Section({
   children,
@@ -163,6 +164,7 @@ function updateSettings(
 }
 
 export function CommunityTelegramIntegrationPage({
+  channel,
   className,
   joinUrl,
   onConnectChat,
@@ -172,6 +174,7 @@ export function CommunityTelegramIntegrationPage({
   onSettingsChange,
   saveDisabled = false,
   settings,
+  studyMiniAppUrl,
   submitState,
 }: CommunityTelegramIntegrationPageProps) {
   const [botToken, setBotToken] = React.useState("");
@@ -228,21 +231,39 @@ export function CommunityTelegramIntegrationPage({
             </Button>
           </div>
           {botConnected ? (
-            <div className="flex flex-col gap-2 rounded-md border border-border-soft bg-muted/20 px-4 py-3 md:flex-row md:items-center md:justify-between">
-              <Type as="div" variant="body-strong">
-                @{settings.bot.username}
-                {settings.bot.tokenLast4 ? ` · token ends ${settings.bot.tokenLast4}` : ""}
-              </Type>
-              <div className="flex items-center gap-3">
-                <Type as="div" variant="caption">Webhook: {settings.bot.webhookStatus ?? "unknown"}</Type>
-                <Button onClick={onRevokeBot} size="sm" type="button" variant="secondary">Revoke</Button>
+            <>
+              <div className="flex flex-col gap-2 rounded-md border border-border-soft bg-muted/20 px-4 py-3 md:flex-row md:items-center md:justify-between">
+                <Type as="div" variant="body-strong">
+                  @{settings.bot.username}
+                  {settings.bot.tokenLast4 ? ` · token ends ${settings.bot.tokenLast4}` : ""}
+                </Type>
+                <div className="flex items-center gap-3">
+                  <Type as="div" variant="caption">Webhook: {settings.bot.webhookStatus ?? "unknown"}</Type>
+                  <Button onClick={onRevokeBot} size="sm" type="button" variant="secondary">Revoke</Button>
+                </div>
               </div>
-            </div>
+              {studyMiniAppUrl ? (
+                <div className="grid gap-2 rounded-md border border-border-soft bg-muted/20 px-4 py-3">
+                  <Type as="div" variant="body-strong">Register this bot&apos;s Study Mini App</Type>
+                  <Type as="p" className="text-muted-foreground" variant="caption">
+                    In BotFather, create a named Mini App for @{settings.bot.username} (for example, short name <code>study</code>) and set its URL to:
+                  </Type>
+                  <Type as="code" className="break-all rounded bg-background px-3 py-2" variant="caption">
+                    {studyMiniAppUrl}
+                  </Type>
+                  <Type as="p" className="text-muted-foreground" variant="caption">
+                    Pirate configures the bot&apos;s menu button automatically. Telegram study becomes available when this community also has Study enabled and ready song posts.
+                  </Type>
+                </div>
+              ) : null}
+            </>
           ) : (
             <FormNote>Save this community's bot token before connecting a Telegram group.</FormNote>
           )}
         </div>
       </Section>
+
+      {channel ? <TelegramBroadcastChannelSection {...channel} /> : null}
 
       {!connected ? null : (
         <>

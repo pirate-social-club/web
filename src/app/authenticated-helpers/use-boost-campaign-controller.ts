@@ -8,7 +8,7 @@ import type {
 } from "@pirate/api-contracts";
 
 import type { BoostCampaignSheetProps, BoostEligibleActivity } from "@/components/compositions/rewards/reward-booster-surfaces";
-import { usePiratePrivyWallets } from "@/components/auth/privy-provider";
+import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { useApi } from "@/lib/api";
 import { ApiError, isApiNotFoundError } from "@/lib/api/client";
 import {
@@ -31,8 +31,11 @@ const PENDING_FUNDING_STORAGE_PREFIX = "pirate_reward_pending_funding:";
 const TERMINAL_FUNDING_STORAGE_PREFIX = "pirate_reward_terminal_funding:";
 const CREATE_KEY_STORAGE_PREFIX = "pirate_reward_create_key:";
 const QUOTE_KEY_STORAGE_PREFIX = "pirate_reward_quote_key:";
+const FUNDING_FINALITY_POLL_INTERVAL_MS = 10_000;
 
 const TERMINAL_FUNDING_CODES = new Set([
+  "funding_failed",
+  "funding_operator_incident",
   "funding_refund_pending",
   "funding_quote_expired",
   "funding_confirmed_after_quote_expiry",
@@ -52,9 +55,43 @@ interface PendingFunding {
 interface TerminalFunding {
   campaignId: string;
   code: string;
+  fundingId?: string;
   message: string;
   quoteId: string;
   transactionHash: string;
+}
+
+export function useBoostMenuEligibility(input: {
+  authenticated: boolean;
+  postIds: readonly string[];
+}): ReadonlySet<string> {
+  const api = useApi();
+  const postIdsKey = [...new Set(input.postIds.filter(Boolean))].sort().join(",");
+  const [eligiblePostIds, setEligiblePostIds] = React.useState<ReadonlySet<string>>(() => new Set());
+
+  React.useEffect(() => {
+    if (!input.authenticated || !postIdsKey) {
+      setEligiblePostIds(new Set());
+      return;
+    }
+
+    let cancelled = false;
+    const postIds = postIdsKey.split(",");
+    void Promise.all(postIds.map(async (postId) => {
+      try {
+        const capabilities = await api.rewards.getCampaignCapabilities(postId);
+        return capabilities.enabled && capabilities.post_eligible ? postId : null;
+      } catch {
+        return null;
+      }
+    })).then((results) => {
+      if (!cancelled) setEligiblePostIds(new Set(results.filter((postId): postId is string => Boolean(postId))));
+    });
+
+    return () => { cancelled = true; };
+  }, [api.rewards, input.authenticated, postIdsKey]);
+
+  return eligiblePostIds;
 }
 
 function idempotencyKey(prefix: string): string {
@@ -112,6 +149,12 @@ function writePendingFunding(communityId: string, postId: string, pending: Pendi
 }
 
 function terminalFundingMessage(code: string): string {
+  if (code === "funding_failed") {
+    return "This transaction failed on-chain. No funds were received. Start a new funding attempt.";
+  }
+  if (code === "funding_operator_incident") {
+    return "Funding needs support review. Do not send again.";
+  }
   if (code === "funding_refund_pending") {
     return "Funds were received, but the campaign was not activated. A refund is pending; do not send again.";
   }
@@ -124,14 +167,104 @@ function terminalFundingMessage(code: string): string {
   return "Funds were received, but the campaign was not activated. Refund or support review is required; do not send again.";
 }
 
+export type BoostFundingErrorKind =
+  | "wrong-network"
+  | "user-rejected"
+  | "wallet-unavailable"
+  | "insufficient-usdc"
+  | "insufficient-gas"
+  | "rpc-failure"
+  | "unknown";
+
+function rawErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return typeof error === "string" ? error : "";
+}
+
+/**
+ * Bucket wallet/provider/transport failures so the booster never shows raw Viem
+ * or EIP-1193 internals. Match on the raw message (not getErrorMessage, which
+ * can blank network errors) and keep the order: more specific causes first. Gas
+ * errors precede token-balance errors because Viem's InsufficientFundsError
+ * ("gas * gasFee + value ... exceeds the balance") mentions both.
+ */
+export function classifyBoostFundingError(error: unknown): BoostFundingErrorKind {
+  const message = rawErrorMessage(error);
+  if (/current chain of the wallet/i.test(message) && /target chain for the transaction/i.test(message)) {
+    return "wrong-network";
+  }
+  if (/user (rejected|denied)|rejected the (request|transaction)/i.test(message)) {
+    return "user-rejected";
+  }
+  if (/insufficient funds|gas \s*\*|intrinsic gas/i.test(message)) {
+    return "insufficient-gas";
+  }
+  if (/insufficient|exceeds (the )?balance/i.test(message)) {
+    return "insufficient-usdc";
+  }
+  if (/no (connected|available) wallet|wallet (is )?(not connected|unavailable|disconnected)|ethereum provider is not available/i.test(message)) {
+    return "wallet-unavailable";
+  }
+  if (/failed to fetch|fetch failed|network error|timed? ?out|econn(reset|refused)|http request failed|\b50[23]\b|rate limit/i.test(message)) {
+    return "rpc-failure";
+  }
+  return "unknown";
+}
+
+export interface BoostFundingErrorContext {
+  /** Settlement-chain label for wrong-network copy (e.g. "Base Sepolia"); tracks the active network config. */
+  networkLabel?: string;
+  /** True once the wallet returned a tx hash; a transport failure after that is a status check, not a safe re-send. */
+  submitted?: boolean;
+}
+
+export function boostFundingErrorMessage(
+  error: unknown,
+  fallback: string,
+  context: BoostFundingErrorContext = {},
+): string {
+  switch (classifyBoostFundingError(error)) {
+    case "wrong-network":
+      return `Switch your wallet to ${context.networkLabel ?? "the required network"}, then try again. No payment was sent.`;
+    case "user-rejected":
+      return "You canceled the payment in your wallet. No payment was sent.";
+    case "wallet-unavailable":
+      return "Your wallet is not connected. Reconnect your Pirate Wallet, then try again. No payment was sent.";
+    case "insufficient-usdc":
+      return "Your wallet does not have enough USDC to fund this boost. No payment was sent.";
+    case "insufficient-gas":
+      return "Your wallet does not have enough ETH for network fees. No payment was sent.";
+    case "rpc-failure":
+      return context.submitted
+        ? "The network did not respond after your transfer was sent. Check status; do not send again."
+        : "The network did not respond. No payment was sent; try again.";
+    default:
+      // Unknown provider errors must not leak engineering internals to the sheet;
+      // API errors carry server-vetted copy and may pass through.
+      return error instanceof ApiError ? getErrorMessage(error, fallback) : fallback;
+  }
+}
+
 function blocksNewCampaign(campaign: RewardCampaign | null): boolean {
-  return campaign != null && ["scheduled", "active", "paused", "operational_hold"].includes(campaign.status);
+  return campaign != null && [
+    "scheduled",
+    "active",
+    "paused",
+    "operational_hold",
+    "exhausted",
+  ].includes(campaign.status);
+}
+
+function campaignFundingTxHash(campaign: RewardCampaign | null): string | null {
+  return (campaign as (RewardCampaign & { funding_tx_hash?: string | null }) | null)
+    ?.funding_tx_hash ?? null;
 }
 
 export interface BoostCampaignControllerInput {
-  activePublicOffer: boolean;
+  activeCampaignId: string | null;
   authenticated: boolean;
   communityId: string | null;
+  onCampaignActivated?: () => void;
   postId: string;
   requestAuth: () => void;
   song: boolean;
@@ -141,6 +274,7 @@ export interface BoostCampaignControllerInput {
 export function useBoostCampaignController(input: BoostCampaignControllerInput) {
   const api = useApi();
   const { connectedWallets } = usePiratePrivyWallets({ enabled: input.authenticated && input.song });
+  const { reconnectEthereumWallet } = usePiratePrivyRuntime();
   const [capabilities, setCapabilities] = React.useState<RewardCampaignCapabilities | null>(null);
   const [policyAllowed, setPolicyAllowed] = React.useState(true);
   const [campaign, setCampaign] = React.useState<RewardCampaign | null>(null);
@@ -155,10 +289,13 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const [budgetInput, setBudgetInput] = React.useState("10.00");
   const [busy, setBusy] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | undefined>();
+  const [terminalCode, setTerminalCode] = React.useState<string | null>(null);
   const [policyError, setPolicyError] = React.useState<string | undefined>();
   const [nowSeconds, setNowSeconds] = React.useState(() => Math.floor(Date.now() / 1_000));
   const createQuoteInFlight = React.useRef(false);
   const sendFundingInFlight = React.useRef(false);
+  const confirmFundingInFlight = React.useRef(false);
+  const recoveredFundingConfirm = React.useRef(false);
 
   React.useEffect(() => {
     if (!input.authenticated || !input.song || !input.communityId) {
@@ -170,39 +307,125 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     const pending = readPendingFunding(input.communityId, input.postId);
     const terminal = readTerminalFunding(input.communityId, input.postId);
     const storedCampaignId = terminal?.campaignId ?? pending?.campaignId
-      ?? globalThis.localStorage?.getItem(campaignStorageKey(input.communityId, input.postId));
+      ?? globalThis.localStorage?.getItem(campaignStorageKey(input.communityId, input.postId))
+      ?? input.activeCampaignId;
     void Promise.all([
       api.rewards.getCampaignCapabilities(input.postId),
       api.rewards.getSongOwnerPolicy(input.communityId, input.postId).catch((error: unknown) => {
         if (isApiNotFoundError(error)) return null;
         throw error;
       }),
-      storedCampaignId ? api.rewards.getCampaign(storedCampaignId).catch(() => null) : Promise.resolve(null),
-    ]).then(([nextCapabilities, policy, storedCampaign]) => {
+      storedCampaignId
+        ? api.rewards.getCampaign(storedCampaignId).then(
+          (nextCampaign) => ({ campaign: nextCampaign, missing: false }),
+          (error: unknown) => {
+            if (isApiNotFoundError(error)) return { campaign: null, missing: true };
+            throw error;
+          },
+        )
+        : Promise.resolve({ campaign: null, missing: false }),
+    ]).then(([nextCapabilities, policy, storedCampaignResult]) => {
       if (cancelled) return;
+      const storedCampaign = storedCampaignResult.campaign;
       setCapabilities(nextCapabilities);
       setPolicyAllowed(policy?.third_party_rewards !== "blocked");
       setCampaign(storedCampaign);
-      if (terminal && storedCampaign?.id === terminal.campaignId) {
+      if (storedCampaignId && storedCampaignResult.missing) {
+        globalThis.localStorage?.removeItem(campaignStorageKey(input.communityId!, input.postId));
+        globalThis.localStorage?.removeItem(pendingFundingStorageKey(input.communityId!, input.postId));
+        globalThis.localStorage?.removeItem(terminalFundingStorageKey(input.communityId!, input.postId));
+        return;
+      }
+      if (storedCampaign) {
+        setEligibleActivity(storedCampaign.eligible_activity);
+        setDailyRewardInput((storedCampaign.daily_reward_cents / 100).toFixed(2));
+      }
+      const serverTransactionHash = campaignFundingTxHash(storedCampaign);
+      const serverFunded = Boolean(storedCampaign && storedCampaign.funded_cents > 0);
+      if (
+        storedCampaign
+        && serverFunded
+        && ["scheduled", "active"].includes(storedCampaign.status)
+      ) {
+        globalThis.localStorage?.removeItem(pendingFundingStorageKey(input.communityId!, input.postId));
+        globalThis.localStorage?.removeItem(terminalFundingStorageKey(input.communityId!, input.postId));
+        setTransactionHash(serverTransactionHash ?? pending?.transactionHash ?? terminal?.transactionHash ?? null);
+        setTerminalCode(null);
+        setErrorMessage(undefined);
+        setSheetState("active");
+      } else if (terminal && storedCampaign?.id === terminal.campaignId) {
         setTransactionHash(terminal.transactionHash);
         setSupportReference(terminal.quoteId);
         setErrorMessage(terminal.message);
+        setTerminalCode(terminal.code);
         setSheetState("funding-review");
+        const fundingId = terminal.fundingId ?? terminal.quoteId.split(" / ")[0];
+        void api.rewards.confirmFundingQuote(storedCampaign.id, fundingId, {
+          tx_hash: terminal.transactionHash,
+        }).then(async (funding) => {
+          if (cancelled) return;
+          if (funding.status === "confirmed") {
+            const refreshed = await api.rewards.getCampaign(storedCampaign.id);
+            if (cancelled) return;
+            setCampaign(refreshed);
+            setTransactionHash(campaignFundingTxHash(refreshed) ?? terminal.transactionHash);
+            globalThis.localStorage?.removeItem(terminalFundingStorageKey(input.communityId!, input.postId));
+            setTerminalCode(null);
+            setErrorMessage(undefined);
+            setSheetState("active");
+            return;
+          }
+          const statusCode = funding.status === "failed"
+            ? "funding_failed"
+            : funding.status === "operator_incident"
+              ? "funding_operator_incident"
+              : funding.status === "refund_pending"
+                ? "funding_refund_pending"
+                : funding.status === "refunded"
+                  ? "funding_refunded"
+                  : terminal.code;
+          const message = terminalFundingMessage(statusCode);
+          const refreshedTerminal = { ...terminal, code: statusCode, fundingId, message };
+          globalThis.localStorage?.setItem(
+            terminalFundingStorageKey(input.communityId!, input.postId),
+            JSON.stringify(refreshedTerminal),
+          );
+          setTerminalCode(statusCode);
+          setErrorMessage(message);
+        }).catch((error: unknown) => {
+          if (cancelled || !(error instanceof ApiError)) return;
+          if (error.code === "funding_quote_already_claimed") {
+            const message = terminalFundingMessage("funding_refunded");
+            const refreshedTerminal = {
+              ...terminal,
+              code: "funding_refunded",
+              fundingId,
+              message,
+            };
+            globalThis.localStorage?.setItem(
+              terminalFundingStorageKey(input.communityId!, input.postId),
+              JSON.stringify(refreshedTerminal),
+            );
+            setTerminalCode("funding_refunded");
+            setErrorMessage(message);
+          }
+        });
       } else if (pending && storedCampaign?.id === pending.campaignId) {
         setQuote(pending.quote);
         setTransactionHash(pending.transactionHash);
         if (pending.transactionHash) {
-          setErrorMessage("Your transfer was submitted. Retry confirmation; do not send again.");
-          setSheetState("failed");
+          setErrorMessage(undefined);
+          setSheetState("awaiting-finality");
+          recoveredFundingConfirm.current = true;
         } else {
-          setSheetState(pending.quote.expires_at <= Math.floor(Date.now() / 1_000) ? "expired" : "quote");
+          setSheetState(pending.quote.expires_at <= Math.floor(Date.now() / 1_000) ? "compose" : "quote");
         }
       }
     }).catch(() => {
       if (!cancelled) setCapabilities(null);
     });
     return () => { cancelled = true; };
-  }, [api.rewards, input.authenticated, input.communityId, input.postId, input.song]);
+  }, [api.rewards, input.activeCampaignId, input.authenticated, input.communityId, input.postId, input.song]);
 
   React.useEffect(() => {
     if (!sheetOpen || sheetState !== "quote" || !quote) return;
@@ -231,7 +454,6 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     createQuoteInFlight.current = true;
     setBusy(true);
     setErrorMessage(undefined);
-    setSheetState("preparing");
     try {
       const now = Math.floor(Date.now() / 1_000);
       const createKeyStorage = createRequestStorageKey(input.communityId, input.postId);
@@ -267,7 +489,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       });
       setSheetState("quote");
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not prepare reward funding."));
+      setErrorMessage(boostFundingErrorMessage(error, "Could not prepare reward funding."));
       setSheetState("failed");
     } finally {
       createQuoteInFlight.current = false;
@@ -287,81 +509,134 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     void createQuote(campaign);
   }, [campaign, createQuote, nowSeconds, quote, sheetOpen, sheetState, transactionHash]);
 
-  const pollCampaign = React.useCallback(async (campaignId: string) => {
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      const nextCampaign = await api.rewards.getCampaign(campaignId);
-      setCampaign(nextCampaign);
-      if (["scheduled", "active"].includes(nextCampaign.status)) {
-        setSheetState("active");
-        return;
+  const refreshCampaign = React.useCallback(async (campaignId: string) => {
+    const nextCampaign = await api.rewards.getCampaign(campaignId);
+    setCampaign(nextCampaign);
+    const serverTransactionHash = campaignFundingTxHash(nextCampaign);
+    if (serverTransactionHash) setTransactionHash(serverTransactionHash);
+    if (
+      nextCampaign.funded_cents > 0
+      && ["scheduled", "active"].includes(nextCampaign.status)
+    ) {
+      if (input.communityId) {
+        globalThis.localStorage?.removeItem(pendingFundingStorageKey(input.communityId, input.postId));
+        globalThis.localStorage?.removeItem(terminalFundingStorageKey(input.communityId, input.postId));
       }
-      if (["canceled", "exhausted", "ended"].includes(nextCampaign.status)) {
-        throw new Error(`Campaign entered ${nextCampaign.status} before activation.`);
-      }
-      await new Promise((resolve) => window.setTimeout(resolve, 1_500));
+      setTerminalCode(null);
+      setErrorMessage(undefined);
+      setSheetState("active");
+      input.onCampaignActivated?.();
+      return true;
     }
-    throw new Error("Funding was submitted, but campaign activation is still pending. Check status again shortly.");
-  }, [api.rewards]);
+    setSheetState("awaiting-finality");
+    return false;
+  }, [api.rewards, input.communityId, input.onCampaignActivated, input.postId]);
+
+  const applyTerminalFunding = React.useCallback((
+    code: string,
+    targetCampaign: RewardCampaign,
+    targetQuote: RewardCampaignFundingQuote,
+    hash: string,
+    requestId?: string,
+  ) => {
+    const message = terminalFundingMessage(code);
+    if (input.communityId) {
+      const terminal: TerminalFunding = {
+        campaignId: targetCampaign.id,
+        code,
+        fundingId: targetQuote.id,
+        message,
+        quoteId: requestId ? `${targetQuote.id} / ${requestId}` : targetQuote.id,
+        transactionHash: hash,
+      };
+      globalThis.localStorage?.removeItem(pendingFundingStorageKey(input.communityId, input.postId));
+      globalThis.localStorage?.setItem(
+        terminalFundingStorageKey(input.communityId, input.postId),
+        JSON.stringify(terminal),
+      );
+      setSupportReference(terminal.quoteId);
+    }
+    setTerminalCode(code);
+    setErrorMessage(message);
+    setSheetState("funding-review");
+  }, [input.communityId, input.postId]);
 
   const confirmSubmittedFunding = React.useCallback(async (
     targetCampaign: RewardCampaign,
     targetQuote: RewardCampaignFundingQuote,
     hash: string,
   ) => {
+    if (confirmFundingInFlight.current) return;
+    confirmFundingInFlight.current = true;
     setBusy(true);
     setErrorMessage(undefined);
     setSheetState("confirming");
     try {
-      // A receipt can be mined before it reaches the chain's safe block. Re-submit
-      // the same idempotent confirmation request while that happens; polling only
-      // the campaign cannot advance a `confirming` funding effect.
-      let funding: RewardCampaignFundingQuote | null = null;
-      for (let attempt = 0; attempt < 20; attempt += 1) {
-        funding = await api.rewards.confirmFundingQuote(targetCampaign.id, targetQuote.id, { tx_hash: hash });
-        if (funding.status !== "confirming") break;
-        await new Promise((resolve) => window.setTimeout(resolve, 1_500));
+      const funding = await api.rewards.confirmFundingQuote(
+        targetCampaign.id,
+        targetQuote.id,
+        { tx_hash: hash },
+      );
+      if (funding.status === "confirming" || funding.status === "quoted") {
+        setSheetState("awaiting-finality");
+        return;
       }
-      if (!funding || funding.status === "confirming") {
-        throw new Error("Funding was submitted, but campaign activation is still pending. Retry confirmation; do not send again.");
+      if (funding.status === "failed") {
+        applyTerminalFunding("funding_failed", targetCampaign, targetQuote, hash);
+        return;
       }
-      // Keep this string check compatible with the currently pinned API contract while
-      // the release pin advances to the API version that adds refund_pending.
-      if ((funding.status as string) === "refund_pending") {
-        throw new ApiError("funding_refund_pending", "Funding reached the treasury and is awaiting refund.", 409);
+      if (funding.status === "operator_incident") {
+        applyTerminalFunding("funding_operator_incident", targetCampaign, targetQuote, hash);
+        return;
+      }
+      if (funding.status === "refund_pending") {
+        applyTerminalFunding("funding_refund_pending", targetCampaign, targetQuote, hash);
+        return;
       }
       if (funding.status === "refunded") {
-        throw new ApiError("funding_refunded", "Funding was refunded and the campaign was not activated.", 409);
+        applyTerminalFunding("funding_refunded", targetCampaign, targetQuote, hash);
+        return;
       }
-      await pollCampaign(targetCampaign.id);
-      if (input.communityId) {
-        globalThis.localStorage?.removeItem(pendingFundingStorageKey(input.communityId, input.postId));
-      }
+      await refreshCampaign(targetCampaign.id);
     } catch (error) {
       const code = error instanceof ApiError ? error.code : "";
       if ((TERMINAL_FUNDING_CODES.has(code) || code === "funding_refunded") && input.communityId) {
-        const message = terminalFundingMessage(code);
-        const terminal: TerminalFunding = {
-          campaignId: targetCampaign.id,
+        applyTerminalFunding(
           code,
-          message,
-          quoteId: error instanceof ApiError && error.requestId
-            ? `${targetQuote.id} / ${error.requestId}`
-            : targetQuote.id,
-          transactionHash: hash,
-        };
-        globalThis.localStorage?.removeItem(pendingFundingStorageKey(input.communityId, input.postId));
-        globalThis.localStorage?.setItem(terminalFundingStorageKey(input.communityId, input.postId), JSON.stringify(terminal));
-        setSupportReference(terminal.quoteId);
-        setErrorMessage(message);
-        setSheetState("funding-review");
+          targetCampaign,
+          targetQuote,
+          hash,
+          error instanceof ApiError ? error.requestId ?? undefined : undefined,
+        );
         return;
       }
-      setErrorMessage(getErrorMessage(error, "The transfer was submitted, but confirmation is still pending. Retry confirmation; do not send again."));
-      setSheetState("failed");
+      setErrorMessage(undefined);
+      setSheetState("awaiting-finality");
     } finally {
+      confirmFundingInFlight.current = false;
       setBusy(false);
     }
-  }, [api.rewards, input.communityId, input.postId, pollCampaign]);
+  }, [api.rewards, applyTerminalFunding, input.communityId, refreshCampaign]);
+
+  React.useEffect(() => {
+    if (
+      sheetState !== "awaiting-finality"
+      || !campaign
+      || !quote
+      || !transactionHash
+    ) return;
+
+    // A submission recovered from storage has not been checked in this
+    // session; confirm it immediately instead of waiting a full interval.
+    if (recoveredFundingConfirm.current) {
+      recoveredFundingConfirm.current = false;
+      void confirmSubmittedFunding(campaign, quote, transactionHash);
+    }
+    const timer = window.setInterval(() => {
+      void confirmSubmittedFunding(campaign, quote, transactionHash);
+    }, FUNDING_FINALITY_POLL_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [campaign, confirmSubmittedFunding, quote, sheetState, transactionHash]);
 
   const sendFunding = React.useCallback(async () => {
     if (sendFundingInFlight.current || !quote || !campaign || !fundingWallet) {
@@ -375,32 +650,48 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     setBusy(true);
     setErrorMessage(undefined);
     setSheetState("confirming");
+    // Local mirror of the submitted hash: the catch below must know whether a
+    // transaction exists to choose between "retry safely" and "check status".
+    let submittedHash: string | null = null;
     try {
       const hash = await executeUsdcTransfer({
         transfer: resolveRewardFundingTransferInput(quote),
         wallet: fundingWallet,
-        onSubmitted: (submittedHash) => {
-          setTransactionHash(submittedHash);
+        onSubmitted: (submitted) => {
+          submittedHash = submitted;
+          setTransactionHash(submitted);
           if (input.communityId) {
             writePendingFunding(input.communityId, input.postId, {
               campaignId: campaign.id,
               quote,
-              transactionHash: submittedHash,
+              transactionHash: submitted,
             });
           }
         },
       });
       await confirmSubmittedFunding(campaign, quote, hash);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not submit reward funding."));
-      setSheetState("failed");
+      if (submittedHash) {
+        setErrorMessage(undefined);
+        setSheetState("awaiting-finality");
+      } else {
+        setErrorMessage(boostFundingErrorMessage(
+          error,
+          "Could not submit reward funding.",
+          {
+            networkLabel: getPirateNetworkConfig().base.label,
+            submitted: false,
+          },
+        ));
+        setSheetState("failed");
+      }
     } finally {
       sendFundingInFlight.current = false;
       setBusy(false);
     }
   }, [campaign, confirmSubmittedFunding, createQuote, fundingWallet, input.communityId, input.postId, quote]);
 
-  const hasCampaignConflict = input.activePublicOffer || blocksNewCampaign(campaign);
+  const hasCampaignConflict = Boolean(input.activeCampaignId) || blocksNewCampaign(campaign);
   const thirdPartyBlocked = !input.viewerIsAuthor && !policyAllowed;
   const activityUnavailable = Boolean(capabilities && !capabilities.eligible_activities.includes(eligibleActivity));
 
@@ -421,7 +712,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       setErrorMessage(undefined);
       setSheetState("compose");
     }
-    else if (transactionHash) setSheetState("failed");
+    else if (transactionHash) setSheetState("awaiting-finality");
     else if (quote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(campaign);
     else setSheetState("quote");
     setSheetOpen(true);
@@ -446,7 +737,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const explorerBase = getPirateNetworkConfig().base.explorerUrl.replace(/\/$/u, "");
   const rewardCount = plan?.rewardCount ?? 0;
   const availabilityProblem = hasCampaignConflict
-    ? "This song already has a live boost. A new campaign can be funded after it ends."
+      ? "This song already has a live boost. Adding funds to it is not available here yet."
     : thirdPartyBlocked
       ? "The song owner is not accepting boosts from other people."
       : undefined;
@@ -474,21 +765,29 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       open: policyOpen,
     },
     sheetProps: {
+      busy,
+      canRestartFunding: terminalCode === "funding_failed",
       budgetDisplayLabel: formatUsdLabel((plan?.budgetCents ?? 0) / 100) ?? "$0.00",
       budgetLabel: budgetInput,
       budgetPresets: ["$5.00", "$10.00", "$25.00"],
       dailyRewardLabel: dailyRewardInput,
+      dailyRewardDisplayLabel: plan?.dailyRewardCents != null
+        ? formatUsdLabel(plan.dailyRewardCents / 100) ?? undefined
+        : undefined,
       eligibleActivity,
       eligibleActivities: capabilities?.eligible_activities,
       endsAtLabel: campaign
         ? new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(new Date(campaign.ends_at * 1_000))
         : undefined,
       errorMessage,
-      explorerTxUrl: transactionHash ? `${explorerBase}/tx/${transactionHash}` : undefined,
+      explorerTxUrl: (transactionHash ?? campaignFundingTxHash(campaign))
+        ? `${explorerBase}/tx/${transactionHash ?? campaignFundingTxHash(campaign)}`
+        : undefined,
       fundingAmountLabel: quote ? formatUsdLabel(quote.amount_cents / 100) ?? undefined : undefined,
       fundedLabel: campaign ? formatUsdLabel(campaign.funded_cents / 100) ?? undefined : undefined,
       onBudgetChange: setBudgetInput,
       onConfirm: handleConfirm,
+      onConnectWallet: reconnectEthereumWallet ?? undefined,
       onDailyRewardChange: setDailyRewardInput,
       onEligibleActivityChange: setEligibleActivity,
       onOpenChange: setSheetOpen,
@@ -497,9 +796,20 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
           void confirmSubmittedFunding(campaign, quote, transactionHash);
           return;
         }
-        if (campaign) void pollCampaign(campaign.id).catch((error) => setErrorMessage(getErrorMessage(error, "Campaign activation is still pending.")));
+        if (campaign) void refreshCampaign(campaign.id).catch(() => setSheetState("awaiting-finality"));
       },
       onRetry: () => {
+        if (sheetState === "funding-review" && terminalCode === "funding_failed") {
+          if (input.communityId) {
+            globalThis.localStorage?.removeItem(terminalFundingStorageKey(input.communityId, input.postId));
+          }
+          setTerminalCode(null);
+          setTransactionHash(null);
+          setQuote(null);
+          setErrorMessage(undefined);
+          void createQuote(campaign);
+          return;
+        }
         if (campaign && quote && transactionHash) {
           void confirmSubmittedFunding(campaign, quote, transactionHash);
           return;
@@ -517,10 +827,11 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       rewardCountLabel: boostRewardCountLabel(rewardCount),
       rewardsPaidLabel: campaign ? formatUsdLabel(campaign.credited_cents / 100) ?? undefined : undefined,
       remainingLabel: campaign ? formatUsdLabel(campaign.remaining_cents / 100) ?? undefined : undefined,
-      retryLabel: transactionHash ? "Retry confirmation" : "Start again",
+      retryLabel: transactionHash ? "Check funding" : "Start again",
       state: sheetState,
       supportReference,
       walletMismatch,
+      walletMismatchReason: connectedWallets.length > 0 ? "different-wallet" : "no-wallet",
     } satisfies BoostCampaignSheetProps,
   };
 }

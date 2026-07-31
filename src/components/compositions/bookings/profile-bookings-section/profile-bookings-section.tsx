@@ -240,6 +240,10 @@ export function ProfileBookingsSection({
               <Type as="p" variant="caption" className="text-muted-foreground">
                 {!payoutReady ? copy.publishBlockedNote : bookable ? copy.bookableOnHint : copy.bookableOffHint}
               </Type>
+              {/* Bookable without any availability is invisible to bookers — say so explicitly. */}
+              {bookable && rules.length === 0 ? (
+                <FormNote tone="warning">{copy.bookableNoAvailability}</FormNote>
+              ) : null}
             </div>
             <Switch
               checked={bookable}

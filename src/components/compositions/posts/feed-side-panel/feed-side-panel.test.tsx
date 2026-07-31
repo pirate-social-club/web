@@ -4,6 +4,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, render } from "@testing-library/react";
 
 import {
+  FEED_DOCK_QUERY,
   feedPanelBlocksPlayback,
   FeedPanelLayout,
   FeedSidePanel,
@@ -17,10 +18,17 @@ describe("FeedSidePanel", () => {
     expect(view.container.firstElementChild?.className).not.toContain("26rem");
   });
 
+  test("reserves the desktop dock for widths that leave the media stage usable", () => {
+    expect(FEED_DOCK_QUERY).toBe("(min-width: 1280px)");
+    const view = render(<FeedPanelLayout panel={<aside />}><article /></FeedPanelLayout>);
+    expect(view.container.firstElementChild?.className).toContain("xl:grid-cols-");
+    expect(view.container.firstElementChild?.className).not.toContain("lg:grid-cols-");
+  });
+
   test("keeps comments playing while booking retains its pause policy", () => {
     expect(feedPanelBlocksPlayback({ itemId: "video-1", kind: "comments", postId: "post-1" }, "video-1")).toBe(false);
     expect(feedPanelBlocksPlayback({
-      basePriceCents: 1_000,
+      startingPriceCents: 1_000,
       handle: "host",
       hostUserId: "host-1",
       itemId: "video-1",

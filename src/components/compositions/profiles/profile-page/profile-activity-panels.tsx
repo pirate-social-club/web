@@ -196,7 +196,7 @@ function ActivityRows({
         if (item.kind === "post") {
           return (
             <MobileFlatCard isLast={isLast} key={item.id}>
-              <PostCard className="border-b-0" {...item.post.post} />
+              <PostCard className="border-b-0" {...item.post.post} postId={item.post.postId} />
             </MobileFlatCard>
           );
         }
@@ -247,7 +247,7 @@ export function PostsPanel({
     <FeedStack>
       {posts.map((post, index) => (
         <MobileFlatCard isLast={index === posts.length - 1} key={post.postId}>
-          <PostCard className="border-b-0" {...post.post} />
+          <PostCard className="border-b-0" {...post.post} postId={post.postId} />
         </MobileFlatCard>
       ))}
     </FeedStack>

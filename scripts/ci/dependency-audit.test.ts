@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
+import { gzipSync } from "node:zlib";
 
-import { loadExceptions, normalizeBun, normalizeNpm } from "./dependency-audit.mjs";
+import {
+  decodeBunAuditOutput,
+  loadExceptions,
+  normalizeBun,
+  normalizeNpm,
+} from "./dependency-audit.mjs";
 
 // Real shape from `bun audit --json`: advisories keyed by package name.
 const BUN_FIXTURE = JSON.stringify({
@@ -39,6 +45,15 @@ const NPM_FIXTURE = JSON.stringify({
 });
 
 describe("dependency audit normalizers", () => {
+  test("accepts both documented plain JSON and gzip-framed bun stdout", () => {
+    expect(decodeBunAuditOutput(Buffer.from(BUN_FIXTURE))).toBe(BUN_FIXTURE);
+    expect(decodeBunAuditOutput(gzipSync(BUN_FIXTURE))).toBe(BUN_FIXTURE);
+  });
+
+  test("fails closed on invalid compressed output", () => {
+    expect(() => decodeBunAuditOutput(Buffer.from([0x1f, 0x8b, 0x00]))).toThrow();
+  });
+
   test("extracts GHSA, severity and package from bun output", () => {
     const findings = normalizeBun(BUN_FIXTURE);
     expect(findings).toHaveLength(2);

@@ -33,8 +33,6 @@ function routeUsesMobileFooter(route: AppRoute): boolean {
     && route.kind !== "create-community"
     && route.kind !== "settings-index"
     && route.kind !== "settings"
-    && route.kind !== "community-moderation"
-    && route.kind !== "community-moderation-index"
     && route.kind !== "public-profile"
     && route.kind !== "public-agent"
     && route.kind !== "chat-target"
@@ -104,7 +102,6 @@ function navigateBack(fallbackPath: string): void {
 
 export function AppShellHeader({
   copy,
-  desktopHidden = false,
   mobileMediaOverlay = false,
   onSearchClick,
   route,
@@ -112,7 +109,6 @@ export function AppShellHeader({
   unreadNotificationCount,
 }: {
   copy: ShellMessages;
-  desktopHidden?: boolean;
   mobileMediaOverlay?: boolean;
   onSearchClick?: () => void;
   route: AppRoute;
@@ -133,8 +129,6 @@ export function AppShellHeader({
   const isPublicProfileRoute = route.kind === "public-profile" || route.kind === "public-agent";
   const showMobileCreateAction = clientReady && !!session && routeUsesMobileCreateAction(route);
   const useAppSidebarTrigger = !mobileBackPath
-    && route.kind !== "community-moderation"
-    && route.kind !== "community-moderation-index"
     && !isPublicProfileRoute;
   const mobileHeaderAction = route.kind === "chat" ? (
     <IconButton aria-label="New message" onClick={() => navigate("/chat/new")} variant="ghost">
@@ -162,7 +156,10 @@ export function AppShellHeader({
     <AppHeader
       avatarFallback={avatarFallback}
       disableCreateAction={disableCreateAction}
-      className={desktopHidden ? "md:hidden" : undefined}
+      // Desktop chrome lives in the media sidebar (brand, search, spine, account items), so
+      // the header is the mobile top bar only — this also keeps the brand logo from
+      // rendering twice, once in the sidebar header and once here.
+      className="md:hidden"
       hideDesktopConnectAction
       hideMobileBrand
       labels={{

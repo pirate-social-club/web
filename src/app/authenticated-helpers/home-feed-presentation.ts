@@ -158,6 +158,7 @@ export function toHomeFeedItem(
         if (key === "cancel-event") opts?.onCancelEvent?.();
       } : undefined,
       onVote: opts?.onVote,
+      postId,
       postHref: `/p/${postId}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
       ...titleProps,

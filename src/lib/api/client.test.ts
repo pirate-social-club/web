@@ -62,6 +62,97 @@ test("captures request_id from error bodies and falls back to the x-request-id h
   }
 });
 
+test("loads profile follow state with optional viewer authentication", async () => {
+  let request: Request | null = null;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    request = input instanceof Request ? input : new Request(input, init);
+    return Response.json({
+      object: "profile_follow_state",
+      target_user_id: "usr_target",
+      target_wallet: { status: "available", address: "0x0000000000000000000000000000000000000001" },
+      relationship: { status: "current", viewer_follows: false },
+      counts: { status: "current", follower_count: 12, following_count: 34 },
+      projection: {
+        availability: "current",
+        revision: "17",
+        indexed_through_block: [{ chain_id: 8453, block_number: "49181298" }],
+      },
+    });
+  };
+
+  try {
+    const client = new ApiClient({
+      baseUrl: "http://pirate.test",
+      getToken: () => "session-token",
+    });
+    const state = await client.profiles.getFollowState("usr/target");
+    const capturedRequest = requireRequest(request);
+    expect(capturedRequest.url).toBe("http://pirate.test/profiles/usr%2Ftarget/follow-state");
+    expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+    expect(state.counts).toEqual({
+      status: "current",
+      follower_count: 12,
+      following_count: 34,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("prepares profile follow writes with server idempotency", async () => {
+  let request: Request | null = null;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    request = input instanceof Request ? input : new Request(input, init);
+    return Response.json({
+      object: "profile_follow_write",
+      intent_id: "efw_test",
+      target_user_id: "usr_target",
+      desired_following: true,
+      consistency: { status: "accepted_not_yet_reflected" },
+      sponsorship: { eligible: true, reserved_transaction_count: 0 },
+      transactions: [],
+      expires_at: "2026-07-28T00:10:00.000Z",
+    });
+  };
+  try {
+    const client = new ApiClient({
+      baseUrl: "http://pirate.test",
+      getToken: () => "session-token",
+    });
+    await client.profiles.prepareFollowWrite("usr/target", true, "idem-follow-1");
+    const capturedRequest = requireRequest(request);
+    expect(capturedRequest.url).toBe("http://pirate.test/profiles/usr%2Ftarget/follow");
+    expect(capturedRequest.method).toBe("POST");
+    expect(capturedRequest.headers.get("idempotency-key")).toBe("idem-follow-1");
+    expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("captures per-field validation errors from { error, fields } bodies into details", async () => {
+  globalThis.fetch = async () => Response.json({
+    error: "validation_failed",
+    fields: [{ field: "base_price_cents", reason: "must be a positive integer (cents)" }],
+  }, { status: 400 });
+
+  try {
+    const client = new ApiClient({ baseUrl: "http://pirate.test", getToken: () => null });
+    await client.publicPosts.getKaraoke("pst_test").then(
+      () => { throw new Error("Expected request to fail"); },
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ApiError);
+        expect(error).toMatchObject({ code: "validation_failed", status: 400 });
+        expect((error as ApiError).details).toMatchObject({
+          fields: [{ field: "base_price_cents", reason: "must be a positive integer (cents)" }],
+        });
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 function requireRequest(request: Request | null): Request {
   if (!request) {
     throw new Error("Expected request to be captured");
@@ -558,6 +649,64 @@ describe("ApiClient media uploads", () => {
         directory_visible: false,
         link_mode: "invite_link",
       });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("calls community Telegram broadcast channel endpoints", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+
+      if (request.url.endsWith("/setup-intents")) {
+        return Response.json({
+          id: "tsi_channel",
+          object: "telegram_setup_intent",
+          community: "cmt_test",
+          status: "pending",
+          expires_at: 1_777_000_600,
+          bot_start_parameter: "tgchan_test",
+          bot_deep_link: "https://t.me/pirate_bot?start=tgchan_test",
+        });
+      }
+
+      if (request.url.endsWith("/unlink")) {
+        return Response.json({
+          id: "tcd_test",
+          object: "telegram_channel_destination",
+          unlinked: true,
+        });
+      }
+
+      if (request.url.endsWith("/backfill")) {
+        return Response.json({ enqueued: 20 }, { status: 202 });
+      }
+
+      return Response.json(null);
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      const destination = await client.communities.getTelegramChannel("cmt_test");
+      await client.communities.createTelegramChannelSetupIntent("cmt_test");
+      await client.communities.backfillTelegramChannel("cmt_test", { limit: 20 });
+      await client.communities.unlinkTelegramChannel("cmt_test");
+
+      expect(destination).toBeNull();
+      expect(requests.map((request) => `${request.method} ${request.url}`)).toEqual([
+        "GET http://pirate.test/communities/cmt_test/telegram-channel",
+        "POST http://pirate.test/communities/cmt_test/telegram-channel/setup-intents",
+        "POST http://pirate.test/communities/cmt_test/telegram-channel/backfill",
+        "POST http://pirate.test/communities/cmt_test/telegram-channel/unlink",
+      ]);
+      expect(requests.every((request) => request.headers.get("authorization") === "Bearer session-token")).toBe(true);
+      expect(await requests[2]!.json()).toEqual({ limit: 20 });
     } finally {
       globalThis.fetch = originalFetch;
     }

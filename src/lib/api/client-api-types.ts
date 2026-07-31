@@ -4,6 +4,7 @@ import type {
   CreateCommunityRequest,
   CreateCommunityListingRequest,
   GatePolicy,
+  RewardCampaignFundingQuote as ContractRewardCampaignFundingQuote,
   RewardQualificationSummary as ContractRewardQualificationSummary,
   SongStudyAttemptRequest as ContractSongStudyAttemptRequest,
   SongStudyAttemptResult as ContractSongStudyAttemptResult,
@@ -56,6 +57,14 @@ export type SongStudyPayload = Omit<ContractSongStudyPayload, "exercises" | "ses
   session?: SongStudySessionSummary;
 };
 
+export type TelegramStudyVoiceIntent = {
+  created: number;
+  expires_at: number;
+  id: string;
+  object: "telegram_study_voice_intent";
+  status: "pending";
+};
+
 export type ApiCommunityMediaUploadResponse = {
   kind: "avatar" | "banner" | "post_image" | "comment_image";
   media_ref: string;
@@ -79,11 +88,18 @@ export type ApiProfileMediaUploadResponse = {
 type ApiRewardVerificationState = "unverified" | "verified" | "conflict";
 
 export type ApiPublicRewardOffer = {
+  campaign: string;
   chain_id: number;
   eligible_activity: "study" | "karaoke" | "either";
   daily_reward_cents: number;
   ends_at: number;
   min_score_bps: number;
+};
+
+// Transitional additive status used while the coordinated Core/API contract
+// change lands. The API already returns operator_incident from confirmation.
+export type ApiRewardCampaignFundingConfirmation = Omit<ContractRewardCampaignFundingQuote, "status"> & {
+  status: ContractRewardCampaignFundingQuote["status"] | "operator_incident";
 };
 
 type ApiRewardEventKind =
@@ -688,6 +704,29 @@ export type ApiCommunityTelegramChatSettings = {
 export type ApiCommunityTelegramChatSettingsUpdate = {
   link_mode?: ApiTelegramLinkedChatLinkMode;
   directory_visible?: boolean;
+};
+
+export type ApiTelegramChannelPublicationMode = "off" | "from_now" | "recent_backfill";
+
+export type ApiTelegramChannelDestination = {
+  id: string;
+  object: "telegram_channel_destination";
+  community: string;
+  title: string;
+  username: string | null;
+  bot_admin_status: "ready";
+  publication_mode: ApiTelegramChannelPublicationMode;
+  linked_at: number;
+};
+
+export type ApiTelegramChannelUnlinkResponse = {
+  id: string;
+  object: "telegram_channel_destination";
+  unlinked: true;
+};
+
+export type ApiTelegramChannelBackfillResponse = {
+  enqueued: number;
 };
 
 type ApiAssistantContextMode = "live_sql" | "summary_cache" | "hybrid_vector";

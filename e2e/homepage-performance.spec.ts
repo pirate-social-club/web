@@ -40,7 +40,7 @@ function isHostedApp(url: string): boolean {
 }
 
 function publicFeedUrl(): string {
-  const url = new URL("/feed/home/public", apiBaseURL);
+  const url = new URL("/feed/home/videos/public", apiBaseURL);
   url.searchParams.set("locale", "en");
   url.searchParams.set("sort", "best");
   return url.toString();
@@ -48,7 +48,7 @@ function publicFeedUrl(): string {
 
 function isPublicFeedResponse(response: Response): boolean {
   const url = new URL(response.url());
-  return `${url.origin}` === apiBaseURL && url.pathname === "/feed/home/public";
+  return `${url.origin}` === apiBaseURL && url.pathname === "/feed/home/videos/public";
 }
 
 function responseCacheStatus(headers: Record<string, string>): string | null {
@@ -97,7 +97,7 @@ async function warmPublicFeed(request: APIRequestContext): Promise<FeedProbe> {
 async function captureBrowserPublicFeed(page: Page): Promise<BrowserFeedProbe> {
   const feedRequestStartTimes = new Map<string, number>();
   page.on("request", (request) => {
-    if (new URL(request.url()).pathname === "/feed/home/public") {
+    if (new URL(request.url()).pathname === "/feed/home/videos/public") {
       feedRequestStartTimes.set(request.url(), performance.now());
     }
   });
@@ -142,8 +142,8 @@ test.describe("homepage public feed performance", () => {
       `browser feed timing: ${JSON.stringify(browserFeed)}`,
     ).toBeLessThanOrEqual(feedResponseBudgetMs);
 
-    // Home is the video-first route; the legacy public feed request may be
-    // used for fallback/preload without its first item being rendered here.
+    // Home is video-first; this contract follows the same public video
+    // bootstrap request the document starts before hydration.
     await expect(page.locator("body")).toContainText(/For You|Explore/u, { timeout: feedRenderBudgetMs });
     await expect(page.locator("body")).not.toContainText(browserErrorPattern);
 

@@ -90,6 +90,30 @@ function readyStudyPayload(overrides: Partial<SongStudyPayload> = {}): SongStudy
   };
 }
 
+function choiceStudyPayload(overrides: { question: string }): SongStudyPayload {
+  return readyStudyPayload({
+    exercise_count: 1,
+    exercises: [
+      {
+        id: "ex_choice",
+        line_id: "line_1",
+        line_index: 0,
+        first_outcome: null,
+        max_attempts: 3,
+        mastered: false,
+        presentation_count: 0,
+        options: [
+          { id: "option_wrong", text: "Good night" },
+          { id: "option_correct", text: "Hello world" },
+        ],
+        prompt_text: "Hola mundo",
+        question: overrides.question,
+        type: "translation_choice",
+      },
+    ],
+  });
+}
+
 const calls: string[] = [];
 const submittedStudyAttempts: SongStudyAttemptRequest[] = [];
 let sessionValue: { accessToken: string } | null = { accessToken: "token" };
@@ -103,6 +127,8 @@ let rewardCampaignResult: ApiPublicRewardOffer | null = null;
 let rewardSummaryResult: ApiRewardsSummaryResponse | null = null;
 let privyConnectCalls = 0;
 let submitPostStudyAttemptError: unknown = null;
+let transcribeStudyAudioError: unknown = null;
+let telegramVoiceIntentError: unknown = null;
 let submitPostStudyAttemptResult: SongStudyAttemptResult = {
   attempts_remaining: 0,
   correct_option_id: "option_correct",
@@ -130,6 +156,22 @@ fakeApi.communities.getPostStudy = async () => {
   calls.push("communities.getPostStudy");
   if (studyError) throw studyError;
   return studyResult;
+};
+fakeApi.communities.transcribePostStudyAudio = async () => {
+  calls.push("communities.transcribePostStudyAudio");
+  if (transcribeStudyAudioError) throw transcribeStudyAudioError;
+  return { text: "Hola mundo" };
+};
+fakeApi.communities.createPostStudyTelegramVoiceIntent = async (_communityId, _postId, body) => {
+  calls.push(`communities.createPostStudyTelegramVoiceIntent:${body.exercise_id}`);
+  if (telegramVoiceIntentError) throw telegramVoiceIntentError;
+  return {
+    created: 1,
+    expires_at: 2,
+    id: "tsv_test",
+    object: "telegram_study_voice_intent",
+    status: "pending",
+  };
 };
 fakeApi.rewards.getActiveCampaignForSong = async () => {
   if (!rewardCampaignResult) throw new ApiError("not_found", "Active reward campaign not found", 404);
@@ -209,6 +251,8 @@ beforeEach(() => {
   rewardSummaryResult = null;
   privyConnectCalls = 0;
   submitPostStudyAttemptError = null;
+  transcribeStudyAudioError = null;
+  telegramVoiceIntentError = null;
   submitPostStudyAttemptResult = {
     attempts_remaining: 0,
     correct_option_id: "option_correct",
@@ -221,6 +265,82 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
 });
+
+function studyLoadCount(): number {
+  return calls.filter((entry) => entry === "communities.getPostStudy").length;
+}
+
+// Serves a different payload per load so a reload is observable as the card the
+// learner actually ends up on, not just as a call count. The last payload repeats
+// if the route loads more times than expected.
+function queueStudyPayloads(payloads: SongStudyPayload[]): () => void {
+  const original = fakeApi.communities.getPostStudy;
+  let loads = 0;
+  fakeApi.communities.getPostStudy = async () => {
+    calls.push("communities.getPostStudy");
+    const payload = payloads[Math.min(loads, payloads.length - 1)]!;
+    loads += 1;
+    return payload;
+  };
+  return () => {
+    fakeApi.communities.getPostStudy = original;
+  };
+}
+
+function installFakeMediaRecorder(): () => void {
+  const originalMediaRecorder = globalThis.MediaRecorder;
+  const originalMediaDevices = navigator.mediaDevices;
+
+  class FakeMediaRecorder {
+    static isTypeSupported() {
+      return true;
+    }
+
+    mimeType = "audio/webm";
+    ondataavailable: ((event: { data: Blob }) => void) | null = null;
+    onerror: (() => void) | null = null;
+    onstop: (() => void) | null = null;
+    state: RecordingState = "recording";
+
+    constructor(_stream: MediaStream, _options?: MediaRecorderOptions) {}
+    start() {}
+    stop() {
+      this.state = "inactive";
+      this.ondataavailable?.({ data: new Blob(["audio"], { type: this.mimeType }) });
+      this.onstop?.();
+    }
+  }
+
+  Object.defineProperty(globalThis, "MediaRecorder", {
+    configurable: true,
+    value: FakeMediaRecorder,
+  });
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: {
+      getUserMedia: async () => ({
+        getTracks: () => [{ stop: () => undefined }],
+      }),
+    },
+  });
+
+  return () => {
+    Object.defineProperty(globalThis, "MediaRecorder", {
+      configurable: true,
+      value: originalMediaRecorder,
+    });
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: originalMediaDevices,
+    });
+  };
+}
+
+async function recordSayItBack(view: ReturnType<typeof render>): Promise<void> {
+  fireEvent.click(view.getByText("Record").closest("button")!);
+  await waitFor(() => expect(view.getByText("Stop")).toBeTruthy());
+  fireEvent.click(view.getByText("Stop").closest("button")!);
+}
 
 describe("StudyRoutePage", () => {
   test("requires authentication before loading study data", async () => {
@@ -277,6 +397,7 @@ describe("StudyRoutePage", () => {
 
   test("shows an exact uniform reward offer for the active song campaign", async () => {
     rewardCampaignResult = {
+      campaign: "rcp_study_offer",
       chain_id: 8453,
       eligible_activity: "either",
       daily_reward_cents: 40,
@@ -328,6 +449,61 @@ describe("StudyRoutePage", () => {
     expect(calls).toEqual(["posts.get", "communities.getPostStudy", "posts.get", "communities.getPostStudy"]);
   });
 
+  test("skips an exhausted unmastered exercise when rebuilding the queue", async () => {
+    studyResult = readyStudyPayload({
+      exercise_count: 2,
+      exercises: [
+        {
+          id: "ex_exhausted",
+          line_id: "line_1",
+          line_index: 0,
+          first_outcome: "incorrect",
+          max_attempts: 3,
+          mastered: false,
+          presentation_count: 3,
+          prompt_text: "Exhausted prompt",
+          reference_text: "Exhausted reference",
+          translation_text: "Exhausted translation",
+          type: "say_it_back",
+        },
+        {
+          id: "ex_eligible",
+          line_id: "line_2",
+          line_index: 1,
+          first_outcome: null,
+          max_attempts: 3,
+          mastered: false,
+          presentation_count: 1,
+          prompt_text: "Eligible prompt",
+          reference_text: "Eligible reference",
+          translation_text: "Eligible translation",
+          type: "say_it_back",
+        },
+      ],
+    });
+
+    const view = render(<StudyRoutePage postId="pst_song" />);
+
+    await waitFor(() => expect(view.getByText("Eligible prompt")).toBeTruthy());
+    expect(view.queryByText("Exhausted prompt")).toBeNull();
+  });
+
+  test("shows completion without a restart action when every exercise is exhausted", async () => {
+    studyResult = readyStudyPayload({
+      exercises: [{
+        ...readyStudyPayload().exercises[0]!,
+        max_attempts: 3,
+        presentation_count: 3,
+      }],
+    });
+
+    const view = render(<StudyRoutePage postId="pst_song" />);
+
+    await waitFor(() => expect(view.getByText("This lesson is complete.")).toBeTruthy());
+    expect(view.queryByText("Study again")).toBeNull();
+    expect(view.queryByText("Record")).toBeNull();
+  });
+
   test("submits a multiple choice attempt when an answer is selected", async () => {
     studyResult = readyStudyPayload({
       exercise_count: 1,
@@ -360,6 +536,34 @@ describe("StudyRoutePage", () => {
     expect(submittedStudyAttempts.at(-1)).toMatchObject({ session_id: "sts_test" });
     expect(submittedStudyAttempts.at(-1)).not.toHaveProperty("target_language");
     await waitFor(() => expect(view.getByText("Continue")).toBeTruthy());
+  });
+
+  test("does not rebuild a multiple choice session after an unrelated app switch", async () => {
+    studyResult = choiceStudyPayload({ question: "Choose the translation" });
+    const originalVisibilityState = document.visibilityState;
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" telegramMiniApp />);
+      await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
+
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+      const hiddenEvent = document.createEvent("Event");
+      hiddenEvent.initEvent("visibilitychange", false, false);
+      document.dispatchEvent(hiddenEvent);
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+      const visibleEvent = document.createEvent("Event");
+      visibleEvent.initEvent("visibilitychange", false, false);
+      document.dispatchEvent(visibleEvent);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(studyLoadCount()).toBe(1);
+      expect(view.getByText("Choose the translation")).toBeTruthy();
+    } finally {
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: originalVisibilityState,
+      });
+    }
   });
 
   test("unlocks feedback audio on answer selection before the attempt response", async () => {
@@ -435,6 +639,7 @@ describe("StudyRoutePage", () => {
 
   test("renders server-owned streak progress on completion", async () => {
     rewardCampaignResult = {
+      campaign: "rcp_study_progress",
       chain_id: 84532,
       eligible_activity: "study",
       daily_reward_cents: 40,
@@ -553,5 +758,162 @@ describe("StudyRoutePage", () => {
     await waitFor(() => expect(view.getByText("recording failed")).toBeTruthy());
     expect(view.getByText("Choose the translation")).toBeTruthy();
     expect(view.queryByText("Could not submit this study attempt.")).toBeNull();
+  });
+
+  // A transient failure has to leave the learner on the card with a retry, because
+  // re-sending the same attempt is exactly the right move. Contrast with the stale
+  // rejections below, where re-sending can only fail identically.
+  test("keeps the say-it-back exercise visible when the attempt fails transiently", async () => {
+    submitPostStudyAttemptError = new ApiError("server_error", "Study attempt storage is unavailable", 503);
+    const restoreRecorder = installFakeMediaRecorder();
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" />);
+
+      await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
+      await recordSayItBack(view);
+
+      await waitFor(() => expect(view.getByText(/Study attempt storage is unavailable/)).toBeTruthy());
+      expect(view.getAllByText("Say it back").length).toBeGreaterThan(0);
+      expect(view.getByText("Record")).toBeTruthy();
+      expect(view.queryByText("Open post")).toBeNull();
+      expect(studyLoadCount()).toBe(1);
+    } finally {
+      restoreRecorder();
+    }
+  });
+
+  test("hands say-it-back to a native Telegram voice message without requesting the microphone", async () => {
+    let closeCalls = 0;
+    const originalTelegram = (window as Window & { Telegram?: unknown }).Telegram;
+    (window as Window & {
+      Telegram?: { WebApp?: { close?: () => void } };
+    }).Telegram = {
+      WebApp: {
+        close: () => {
+          closeCalls += 1;
+        },
+      },
+    };
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" telegramMiniApp />);
+      await waitFor(() => expect(view.getByText("Send voice message")).toBeTruthy());
+      fireEvent.click(view.getByText("Send voice message").closest("button")!);
+      await waitFor(() => expect(closeCalls).toBe(1));
+      expect(calls).toContain(
+        "communities.createPostStudyTelegramVoiceIntent:ex_say",
+      );
+      expect(calls).not.toContain("communities.transcribePostStudyAudio");
+    } finally {
+      (window as Window & { Telegram?: unknown }).Telegram = originalTelegram;
+    }
+  });
+
+  test("leaves recoverable chat instructions when Telegram cannot close the Mini App", async () => {
+    const originalTelegram = (window as Window & { Telegram?: unknown }).Telegram;
+    (window as Window & {
+      Telegram?: { WebApp?: Record<string, never> };
+    }).Telegram = { WebApp: {} };
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" telegramMiniApp />);
+      await waitFor(() => expect(view.getByText("Send voice message")).toBeTruthy());
+      fireEvent.click(view.getByText("Send voice message").closest("button")!);
+
+      await waitFor(() => expect(view.getByText(
+        "Check your chat with this community’s bot and reply with a voice message. You can close this window now.",
+      )).toBeTruthy(), { timeout: 2_000 });
+      expect(view.getByText("Send voice message")).toBeTruthy();
+      expect(calls).not.toContain("communities.transcribePostStudyAudio");
+    } finally {
+      (window as Window & { Telegram?: unknown }).Telegram = originalTelegram;
+    }
+  });
+
+  test("reloads the session when a say-it-back attempt is rejected as stale", async () => {
+    submitPostStudyAttemptError = new ApiError("bad_request", "Study exercise presentation limit reached", 400);
+    const restoreRecorder = installFakeMediaRecorder();
+    const restoreStudy = queueStudyPayloads([
+      readyStudyPayload({
+        exercises: [{
+          ...readyStudyPayload().exercises[0]!,
+          prompt_text: "Say the stale line",
+        }],
+      }),
+      readyStudyPayload({
+        exercises: [{
+          ...readyStudyPayload().exercises[0]!,
+          id: "ex_next",
+          prompt_text: "Say the next line",
+        }],
+      }),
+    ]);
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" />);
+
+      await waitFor(() => expect(view.getByText("Say the stale line")).toBeTruthy());
+      await recordSayItBack(view);
+
+      // Rebuilt from server truth rather than re-arming the rejected card, and no
+      // dead-end page.
+      await waitFor(() => expect(view.getByText("Say the next line")).toBeTruthy());
+      expect(studyLoadCount()).toBe(2);
+      expect(view.queryByText("Study exercise presentation limit reached")).toBeNull();
+      expect(view.queryByText("Open post")).toBeNull();
+    } finally {
+      restoreStudy();
+      restoreRecorder();
+    }
+  });
+
+  test("reloads the session when a multiple choice attempt is rejected as stale", async () => {
+    submitPostStudyAttemptError = new ApiError("bad_request", "attempt_number does not match the next session presentation", 400);
+    const restoreStudy = queueStudyPayloads([
+      choiceStudyPayload({ question: "Choose the translation" }),
+      choiceStudyPayload({ question: "Choose the next translation" }),
+    ]);
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" />);
+
+      await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
+      fireEvent.click(view.getByText("Hello world").closest("button")!);
+
+      await waitFor(() => expect(view.getByText("Choose the next translation")).toBeTruthy());
+      expect(studyLoadCount()).toBe(2);
+      expect(view.queryByText(/attempt_number does not match/)).toBeNull();
+    } finally {
+      restoreStudy();
+    }
+  });
+
+  // Insurance against a server that keeps handing back a card it then rejects: the
+  // learner must end up with a visible error, not a reload loop.
+  test("stops reloading and surfaces the error after repeated stale rejections", async () => {
+    submitPostStudyAttemptError = new ApiError("bad_request", "Study exercise presentation limit reached", 400);
+    const restoreStudy = queueStudyPayloads([
+      choiceStudyPayload({ question: "Choose the translation" }),
+      choiceStudyPayload({ question: "Choose the translation" }),
+      choiceStudyPayload({ question: "Choose the translation" }),
+    ]);
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" />);
+
+      await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
+      fireEvent.click(view.getByText("Hello world").closest("button")!);
+      await waitFor(() => expect(studyLoadCount()).toBe(2));
+
+      fireEvent.click(view.getByText("Hello world").closest("button")!);
+      await waitFor(() => expect(studyLoadCount()).toBe(3));
+
+      fireEvent.click(view.getByText("Hello world").closest("button")!);
+      await waitFor(() => expect(view.getByText("Study exercise presentation limit reached")).toBeTruthy());
+      expect(studyLoadCount()).toBe(3);
+    } finally {
+      restoreStudy();
+    }
   });
 });

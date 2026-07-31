@@ -1,31 +1,114 @@
-import { describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 
 import type { HomeFeedItem } from "@pirate/api-contracts";
+import { QueryClient } from "@tanstack/react-query";
+
+import { applyPostVote } from "@/app/authenticated-helpers/post-vote";
+import { postKeys } from "@/lib/query/keys";
+import {
+  type PublicThreadQueryData,
+  seedPublicThreadQueriesFromFeed,
+  updateCachedPublicThreadPost,
+} from "@/lib/query/public-thread-cache";
+import {
+  clearSessionSeenVideoIds,
+  readSessionSeenVideoIds,
+  recordSessionSeenVideoIds,
+  rotateToUnseenLead,
+  takeUnseenSessionVideos,
+} from "@/lib/video-feed-lead-rotation";
 
 import {
   appendUniqueVideoEntries,
   checkoutPathForFeedSlot,
+  commentsPanelCommentCount,
+  feedBookingSourceCommunityId,
+  feedBookingStartingPriceCents,
+  nextCommentsPanelForActiveItem,
   nextVideoPaginationCursor,
   panelFromHistoryState,
   postIdForVideoItem,
+  resolveHomeVideoMountPlan,
   resolveVideoHomeSurface,
   resolveVideoPublisherRelationship,
-  videoImpressionAnalyticsProperties,
+  shouldHuntColdStartPages,
+  videoTranslationForFeedItem,
+  VIDEO_FEED_STAGE_CLASS,
   VIDEO_FEED_VIEWPORT_CLASS,
 } from "./video-home-route";
+import { videoImpressionAnalyticsProperties } from "@/lib/video-impression-analytics";
 
 function feedEntry(id: string): HomeFeedItem {
   return { post: { post: { id } } } as HomeFeedItem;
 }
 
+function cacheableFeedEntry(id: string, upvoteCount = 8): HomeFeedItem {
+  return {
+    community: {
+      id: "cmt_video",
+      object: "home_feed_community_summary",
+      display_name: "Video Community",
+      route_slug: "video-community",
+    },
+    post: {
+      comment_count: 0,
+      downvote_count: 0,
+      machine_translated: false,
+      post: {
+        community: "cmt_video",
+        created: Date.parse("2026-07-24T00:00:00.000Z"),
+        id,
+      },
+      upvote_count: upvoteCount,
+      viewer_vote: null,
+    },
+  } as HomeFeedItem;
+}
+
 describe("VIDEO_FEED_VIEWPORT_CLASS", () => {
   test("owns the full desktop viewport when navigation moves into the media sidebar", () => {
-    expect(VIDEO_FEED_VIEWPORT_CLASS.split(" ")).toEqual(["h-dvh"]);
+    expect(VIDEO_FEED_VIEWPORT_CLASS.split(" ")).toContain("md:h-dvh");
     expect(VIDEO_FEED_VIEWPORT_CLASS).not.toContain("header-height");
   });
 
-  test("gives the feed the whole viewport on mobile, where the chrome is fixed", () => {
-    expect(VIDEO_FEED_VIEWPORT_CLASS.split(" ")).toContain("h-dvh");
+  test("keeps mobile snap geometry stable while browser chrome changes height", () => {
+    expect(VIDEO_FEED_VIEWPORT_CLASS.split(" ")).toContain("h-lvh");
+    expect(VIDEO_FEED_VIEWPORT_CLASS.split(" ")).not.toContain("h-dvh");
+  });
+});
+
+describe("VIDEO_FEED_STAGE_CLASS", () => {
+  test("bounds the percentage-height snap scroller to one viewport", () => {
+    expect(VIDEO_FEED_STAGE_CLASS.split(" ")).toContain("h-full");
+    expect(VIDEO_FEED_STAGE_CLASS.split(" ")).toContain("min-h-0");
+  });
+});
+
+describe("videoTranslationForFeedItem", () => {
+  test("bridges the authored video caption and its language metadata into the feed item", () => {
+    const translation = videoTranslationForFeedItem({
+      postOriginal: {
+        content: {
+          accessMode: "public",
+          caption: "Authored caption",
+          captionDir: "ltr",
+          captionLang: "en",
+          src: "https://media.example/video.mp4",
+          type: "video",
+        },
+      } as never,
+    }, { caption: "تعليق مترجم" }, {
+      showOriginalLabel: "Show original",
+      showTranslationLabel: "Show translation",
+    });
+
+    expect(translation).toEqual({
+      originalCaption: "Authored caption",
+      originalDir: "ltr",
+      originalLang: "en",
+      showOriginalLabel: "Show original",
+      showTranslationLabel: "Show translation",
+    });
   });
 });
 
@@ -77,6 +160,33 @@ describe("feed comments panel routing", () => {
   });
 });
 
+describe("recent-lead rotation over feed entries", () => {
+  // The bootstrap effect reads ids through `entry.post.post.id`. The rotation
+  // helper is generic, so this is the only place that accessor is pinned
+  // against the real feed-entry shape.
+  const idOf = (entry: HomeFeedItem) => entry.post.post.id;
+
+  test("opens on the first video the viewer has not recently been led with", () => {
+    const page = [feedEntry("pst_a"), feedEntry("pst_b"), feedEntry("pst_c")];
+    const rotated = rotateToUnseenLead(page, idOf, ["pst_a"]);
+    expect(rotated.map(idOf)).toEqual(["pst_b", "pst_c", "pst_a"]);
+  });
+
+  test("keeps every post on the page so pagination dedupe still sees them", () => {
+    const page = [feedEntry("pst_a"), feedEntry("pst_b"), feedEntry("pst_c")];
+    const rotated = rotateToUnseenLead(page, idOf, ["pst_a", "pst_b"]);
+    expect(new Set(rotated.map(idOf))).toEqual(new Set(["pst_a", "pst_b", "pst_c"]));
+  });
+
+  test("still fills the feed once every post has led", () => {
+    const page = [feedEntry("pst_a"), feedEntry("pst_b")];
+    expect(rotateToUnseenLead(page, idOf, ["pst_a", "pst_b"]).map(idOf)).toEqual([
+      "pst_a",
+      "pst_b",
+    ]);
+  });
+});
+
 describe("appendUniqueVideoEntries", () => {
   test("deduplicates overlapping cursors and duplicates inside the incoming page", () => {
     const first = feedEntry("first");
@@ -93,6 +203,57 @@ describe("appendUniqueVideoEntries", () => {
     const current = [feedEntry("first")];
 
     expect(appendUniqueVideoEntries(current, [feedEntry("first")])).toBe(current);
+  });
+});
+
+describe("takeUnseenSessionVideos over feed entries", () => {
+  // The seen set is module state; clear it so one case cannot decide another.
+  beforeEach(clearSessionSeenVideoIds);
+
+  const idOf = (entry: HomeFeedItem) => entry.post.post.id;
+
+  test("keeps overlapping cursor entries out of the thread-cache reseed input", () => {
+    recordSessionSeenVideoIds(["liked-post"]);
+    const likedPost = feedEntry("liked-post");
+    const nextPost = feedEntry("next-post");
+
+    expect(takeUnseenSessionVideos([likedPost, nextPost], idOf)).toEqual([nextPost]);
+    expect(readSessionSeenVideoIds()).toEqual(["liked-post", "next-post"]);
+  });
+
+  test("preserves a liked post in the comments-panel cache across an overlapping page", () => {
+    const queryClient = new QueryClient();
+    const staleLikedPost = cacheableFeedEntry("liked-post");
+    seedPublicThreadQueriesFromFeed({
+      items: [staleLikedPost],
+      locale: "en",
+      queryClient,
+      sort: "best",
+    });
+    updateCachedPublicThreadPost({
+      locale: "en",
+      postId: "liked-post",
+      queryClient,
+      update: (post) => applyPostVote(post, 1),
+    });
+
+    recordSessionSeenVideoIds(["liked-post"]);
+    const unseenItems = takeUnseenSessionVideos(
+      [staleLikedPost, cacheableFeedEntry("next-post")],
+      idOf,
+    );
+    seedPublicThreadQueriesFromFeed({
+      items: unseenItems,
+      locale: "en",
+      queryClient,
+      sort: "best",
+    });
+
+    const cachedThread = queryClient.getQueryData<PublicThreadQueryData>(
+      postKeys.publicThread({ postId: "liked-post", locale: "en", sort: "best" }),
+    );
+    expect(cachedThread?.post.viewer_vote).toBe(1);
+    expect(cachedThread?.post.upvote_count).toBe(9);
   });
 });
 
@@ -132,6 +293,7 @@ describe("resolveVideoPublisherRelationship", () => {
     })).toEqual({
       kind: "follow",
       ownProfile: false,
+      targetUserId: "usr_author",
       targetWalletAddress: "0x0000000000000000000000000000000000000001",
     });
   });
@@ -159,6 +321,7 @@ describe("resolveVideoPublisherRelationship", () => {
       label: "Joined community",
     });
   });
+
 });
 
 describe("videoImpressionAnalyticsProperties", () => {
@@ -180,10 +343,14 @@ describe("videoImpressionAnalyticsProperties", () => {
       completionRatio: 0.876543,
       durationSeconds: 12.34567,
       dwellMs: 9_876,
+      eventId: "evt_video_feed_test_pst_video_2",
+      exitReason: "swipe",
+      feedRequestId: "feed_test",
       muted: false,
       playbackSeconds: 10.98765,
       position: 3,
       replayCount: 1,
+      slideEntrySequence: 2,
       soundOnAtAnyPoint: true,
     });
 
@@ -191,15 +358,54 @@ describe("videoImpressionAnalyticsProperties", () => {
       completion_ratio: 0.8765,
       duration_seconds: 12.346,
       dwell_ms: 9_876,
+      exit_reason: "swipe",
+      feed_request_id: "feed_test",
       muted: false,
       orientation: "portrait",
       playback_seconds: 10.988,
       position: 3,
       publisher_kind: "profile",
       replay_count: 1,
+      slide_entry_sequence: 2,
       sound_on: true,
     });
     expect(JSON.stringify(properties)).not.toContain("private.example");
+  });
+});
+
+describe("feedBookingSourceCommunityId", () => {
+  test("attributes the booking to the viewed post's owning community", () => {
+    expect(feedBookingSourceCommunityId({ communityId: "com_viewed" })).toBe("com_viewed");
+  });
+
+  test("yields no attribution when the viewed post has no known community", () => {
+    expect(feedBookingSourceCommunityId({})).toBeNull();
+  });
+});
+
+describe("feedBookingStartingPriceCents", () => {
+  test("uses the canonical discovery floor rather than the host base price", () => {
+    expect(feedBookingStartingPriceCents({
+      booking: {
+        basePriceCents: 3500,
+        currency: "USDC",
+        hasAvailableSlot: true,
+        hostUserId: "host_1",
+        startingPriceCents: 5000,
+      },
+    })).toBe(5000);
+  });
+
+  test("does not advertise a price without canonical availability", () => {
+    expect(feedBookingStartingPriceCents({
+      booking: {
+        basePriceCents: 3500,
+        currency: "USDC",
+        hasAvailableSlot: false,
+        hostUserId: "host_1",
+        startingPriceCents: null,
+      },
+    })).toBeNull();
   });
 });
 
@@ -221,5 +427,96 @@ describe("checkoutPathForFeedSlot", () => {
     expect(checkoutPathForFeedSlot("usr/host", slot, "com/feed")).toBe(
       "/c/com%2Ffeed/book/usr%2Fhost/checkout?end=2026-07-24T10%3A30%3A00.000Z&start=2026-07-24T10%3A00%3A00.000Z",
     );
+  });
+});
+
+describe("nextCommentsPanelForActiveItem", () => {
+  const entries = [feedEntry("post_a"), feedEntry("post_b")];
+  const openOnA = { itemId: "post_a", kind: "comments", postId: "post_a" } as const;
+
+  test("follows the feed to the video that settled at the snap point", () => {
+    expect(nextCommentsPanelForActiveItem(openOnA, "post_b", entries)).toEqual({
+      itemId: "post_b",
+      kind: "comments",
+      postId: "post_b",
+    });
+  });
+
+  test("does not churn the panel when the dock is already on the settled video", () => {
+    expect(nextCommentsPanelForActiveItem(openOnA, "post_a", entries)).toBeNull();
+  });
+
+  test("leaves the booking panel alone", () => {
+    const booking = {
+      handle: "host",
+      hostUserId: "usr_host",
+      itemId: "post_a",
+      kind: "booking",
+      playback: { muted: false, paused: false, playbackSeconds: 0 },
+      sourceCommunityId: null,
+      startingPriceCents: 3500,
+    } as const;
+    expect(nextCommentsPanelForActiveItem(booking, "post_b", entries)).toBeNull();
+  });
+
+  test("does not follow while the panel is closed", () => {
+    expect(nextCommentsPanelForActiveItem({ kind: "none" }, "post_b", entries)).toBeNull();
+  });
+
+  // A feed page can be replaced under the viewer mid-scroll; a video with no entry has no
+  // thread to show, so the dock must hold its current post rather than blank out.
+  test("holds position when the settled video is no longer in the feed", () => {
+    expect(nextCommentsPanelForActiveItem(openOnA, "post_gone", entries)).toBeNull();
+    expect(nextCommentsPanelForActiveItem(openOnA, null, entries)).toBeNull();
+  });
+});
+
+describe("commentsPanelCommentCount", () => {
+  const items = [
+    { id: "post_a", commentCount: 12 },
+    { id: "post_b", commentCount: 0 },
+  ];
+  const openOn = (id: string) => ({ itemId: id, kind: "comments", postId: id }) as const;
+
+  test("reports the server total for the docked post", () => {
+    expect(commentsPanelCommentCount(items, openOn("post_a"), {})).toBe(12);
+  });
+
+  test("counts comments the viewer just posted instead of sitting stale", () => {
+    expect(commentsPanelCommentCount(items, openOn("post_a"), { post_a: 2 })).toBe(14);
+  });
+
+  test("does not credit one post with another post's new comments", () => {
+    expect(commentsPanelCommentCount(items, openOn("post_b"), { post_a: 2 })).toBe(0);
+  });
+
+  test("is zero while no comments panel is open", () => {
+    expect(commentsPanelCommentCount(items, { kind: "none" }, { post_a: 2 })).toBe(0);
+  });
+});
+
+describe("resolveHomeVideoMountPlan", () => {
+  test("restores the cached feed instead of remounting into a spinner", () => {
+    expect(resolveHomeVideoMountPlan({ cachedEntryCount: 20 })).toBe("restore");
+  });
+
+  test("cold starts when nothing survives in the cache", () => {
+    expect(resolveHomeVideoMountPlan({ cachedEntryCount: 0 })).toBe("cold");
+  });
+});
+
+describe("shouldHuntColdStartPages", () => {
+  test("hunts when the first page repeats videos this session already saw", () => {
+    expect(shouldHuntColdStartPages({ alreadySeenCount: 3, serverCursor: "page-2" })).toBe(true);
+  });
+
+  test("stays quiet on a session's first landing", () => {
+    // Nothing has been served yet, so the whole page is new and there is
+    // nothing to hunt for — this is the busiest path.
+    expect(shouldHuntColdStartPages({ alreadySeenCount: 0, serverCursor: "page-2" })).toBe(false);
+  });
+
+  test("stays quiet when the corpus has no further pages", () => {
+    expect(shouldHuntColdStartPages({ alreadySeenCount: 5, serverCursor: null })).toBe(false);
   });
 });

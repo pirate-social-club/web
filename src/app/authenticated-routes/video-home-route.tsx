@@ -1,11 +1,18 @@
 "use client";
 
 import * as React from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { HomeFeedItem as ApiHomeFeedItem, Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
+import {
+  submitOptimisticPostVote,
+  toPostVoteValue,
+  updateHomeFeedEntryPostVote,
+} from "@/app/authenticated-helpers/post-vote";
 import { navigate } from "@/app/router";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
+import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
 import { useVideoViewerSongCapabilities } from "@/app/authenticated-helpers/use-video-viewer-song-capabilities";
 import {
   currentRelativePath,
@@ -18,8 +25,16 @@ import {
   formatFeedBookingTitle,
 } from "@/components/compositions/bookings/feed-booking-sheet/feed-booking-sheet";
 import type { IanaTz, ResolvedSlot } from "@/components/compositions/bookings/view-models";
-import { toPageVideoItem, adjacentVideoSourcePostIds, VideoViewerBoostBridge } from "@/components/compositions/posts/feed/feed";
 import {
+  VideoViewerBoostBridge,
+  type FeedItem,
+} from "@/components/compositions/posts/feed/feed";
+import {
+  adjacentVideoSourcePostIds,
+  toVideoViewerItem,
+} from "@/components/compositions/posts/video-feed/video-viewer-item";
+import {
+  compactCount,
   VideoFeed,
   type VideoFeedImpression,
   type VideoFeedPlaybackState,
@@ -33,6 +48,17 @@ import {
 } from "@/components/compositions/posts/feed-side-panel/feed-side-panel";
 import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/video-feed.types";
 import { VideoSongCapabilityCache } from "@/components/compositions/posts/video-feed/video-song-capability-cache";
+import { consumeHomeVideoFeedBootstrap } from "@/lib/api/home-video-feed-bootstrap";
+import {
+  countSeenSessionVideoIds,
+  readRecentLeadVideoIds,
+  readSessionSeenVideoIds,
+  recordRecentLeadVideoId,
+  recordSessionSeenVideoIds,
+  rotateToUnseenLead,
+  takeUnseenSessionVideos,
+} from "@/lib/video-feed-lead-rotation";
+import { feedKeys } from "@/lib/query/keys";
 import { Spinner } from "@/components/primitives/spinner";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
@@ -47,9 +73,24 @@ import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { interpolateMessage } from "@/lib/route-messages";
+import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
+import { videoImpressionAnalyticsProperties } from "@/lib/video-impression-analytics";
 import { HomePage } from "./home-routes";
 
 export type VideoHomeSurface = "loading" | "video" | "community-feed-empty" | "community-feed-error";
+
+type CachedPageItem = {
+  authorProfile: ApiProfile | null | undefined;
+  contentLocale: string;
+  entry: ApiHomeFeedItem;
+  item: VideoFeedItem | null;
+  joinedLocally: boolean;
+  showOriginalLabel: string;
+  showTranslationLabel: string;
+  userId: string | undefined;
+  videoPublisherJoin: string;
+  videoPublisherJoined: string;
+};
 
 export function checkoutPathForFeedSlot(
   hostUserId: string,
@@ -66,6 +107,25 @@ export function checkoutPathForFeedSlot(
   return `${checkoutPath}?${query.toString()}`;
 }
 
+/**
+ * Booking attribution authority for a feed-opened booking: the viewed post's owning
+ * community. On the global home feed that community is the best proxy for the surface the
+ * booking was discovered in. The song capability resolution's `sourceCommunityId` is the
+ * wrong authority here — it names the community where the linked song was originally
+ * posted, and it is null whenever no song is linked or its capability fetch failed.
+ */
+export function feedBookingSourceCommunityId(item: Pick<VideoFeedItem, "communityId">): string | null {
+  return item.communityId ?? null;
+}
+
+export function feedBookingStartingPriceCents(
+  item: Pick<VideoFeedItem, "booking">,
+): number | null {
+  return item.booking?.hasAvailableSlot
+    ? item.booking.startingPriceCents
+    : null;
+}
+
 function viewerTimezone(): IanaTz {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -80,12 +140,68 @@ function viewerTimezone(): IanaTz {
  * and navigation moves into the full-height media sidebar, so the feed owns the viewport at every
  * breakpoint. Exported so that ownership stays under test.
  */
-export const VIDEO_FEED_VIEWPORT_CLASS = "h-dvh";
+export const VIDEO_FEED_VIEWPORT_CLASS = "h-lvh md:h-dvh";
+export const VIDEO_FEED_STAGE_CLASS = "relative h-full min-h-0";
 export const MAX_CONSECUTIVE_NO_GROWTH_PAGES = 3;
+/**
+ * Pages the cold start may walk looking for unseen content, bounded separately
+ * from MAX_CONSECUTIVE_NO_GROWTH_PAGES so that constant keeps its single
+ * meaning ("stop paginating forever").
+ */
+export const HOME_VIDEO_FEED_COLD_START_HUNT_MAX_PAGES = 2;
 const FEED_COMMENTS_HISTORY_KEY = "pirateFeedComments";
+const COMMENTS_PANEL_FOLLOW_SETTLE_MS = 250;
+
+export function videoTranslationForFeedItem(
+  item: Pick<FeedItem, "postOriginal">,
+  video: Pick<VideoFeedItem, "caption">,
+  labels: { showOriginalLabel: string; showTranslationLabel: string },
+): VideoFeedItem["translation"] {
+  const originalContent = item.postOriginal?.content;
+  if (originalContent?.type !== "video" || !originalContent.caption || originalContent.caption === video.caption) {
+    return undefined;
+  }
+  return {
+    originalCaption: originalContent.caption,
+    originalDir: originalContent.captionDir,
+    originalLang: originalContent.captionLang,
+    ...labels,
+  };
+}
 
 export function postIdForVideoItem(entries: ApiHomeFeedItem[], itemId: string): string | null {
   return entries.find((entry) => entry.post.post.id === itemId)?.post.post.id ?? null;
+}
+
+/**
+ * The comments dock follows the video that settles at the snap point. Returns the panel
+ * state to switch to, or null when the dock is already on the settled video (or the video
+ * has no post to show — a feed page can be replaced mid-scroll).
+ */
+export function nextCommentsPanelForActiveItem(
+  panel: FeedPanelState,
+  activeItemId: string | null,
+  entries: ApiHomeFeedItem[],
+): Extract<FeedPanelState, { kind: "comments" }> | null {
+  if (panel.kind !== "comments" || !activeItemId) return null;
+  if (panel.itemId === activeItemId) return null;
+  const postId = postIdForVideoItem(entries, activeItemId);
+  if (!postId) return null;
+  return { itemId: activeItemId, kind: "comments", postId };
+}
+
+/**
+ * Header count for the comments dock. The feed item carries the server total; comments the
+ * viewer posts from the dock are added on top so the count does not sit stale behind them.
+ */
+export function commentsPanelCommentCount(
+  items: readonly { id: string; commentCount: number }[],
+  panel: FeedPanelState,
+  addedByPostId: Record<string, number>,
+): number {
+  if (panel.kind !== "comments") return 0;
+  const base = items.find((item) => item.id === panel.itemId)?.commentCount ?? 0;
+  return base + (addedByPostId[panel.postId] ?? 0);
 }
 
 function commentsHistoryState(panel: Extract<FeedPanelState, { kind: "comments" }>) {
@@ -147,6 +263,50 @@ export function nextVideoPaginationCursor(input: {
   };
 }
 
+/**
+ * The home video feed payload, held in the query cache so leaving the route and
+ * coming back restores the feed instead of remounting into a spinner and a
+ * refetch.
+ */
+export type HomeVideoFeedPayload = {
+  entries: ApiHomeFeedItem[];
+  nextCursor: string | null;
+  pausedCursor: string | null;
+};
+
+export const EMPTY_HOME_VIDEO_FEED_PAYLOAD: HomeVideoFeedPayload = {
+  entries: [],
+  nextCursor: null,
+  pausedCursor: null,
+};
+
+/**
+ * What a mount of the video home route should do.
+ *
+ * There is deliberately no "restore, but refresh page 1" third case. Page 1 of
+ * a deterministic server ordering is, by construction, the part of the corpus
+ * this session has already been served, so refreshing it filters down to
+ * nothing in the common case and appends behind everything the viewer has yet
+ * to watch in the rest. Freshness arrives through pagination, which fetches a
+ * cursor the viewer has genuinely not reached.
+ */
+export function resolveHomeVideoMountPlan(input: { cachedEntryCount: number }): "cold" | "restore" {
+  return input.cachedEntryCount > 0 ? "restore" : "cold";
+}
+
+/**
+ * Whether a cold start should keep walking the cursor in the background looking
+ * for unseen videos. When nothing on the first page has been served before
+ * there is nothing to hunt for — which is the whole of a session's first
+ * landing, the busiest path.
+ */
+export function shouldHuntColdStartPages(input: {
+  alreadySeenCount: number;
+  serverCursor: string | null;
+}): boolean {
+  return input.alreadySeenCount > 0 && Boolean(input.serverCursor);
+}
+
 export function resolveVideoPublisherRelationship(input: {
   authorUserId?: string | null;
   authorWalletAddress?: string | null;
@@ -162,6 +322,7 @@ export function resolveVideoPublisherRelationship(input: {
     return input.authorWalletAddress ? {
       kind: "follow",
       ownProfile: input.authorUserId === input.currentUserId,
+      targetUserId: input.authorUserId,
       targetWalletAddress: input.authorWalletAddress,
     } : undefined;
   }
@@ -176,40 +337,52 @@ export function resolveVideoPublisherRelationship(input: {
   };
 }
 
-export function videoImpressionAnalyticsProperties(
-  item: VideoFeedItem,
-  impression: VideoFeedImpression,
-): Record<string, string | number | boolean> {
-  return {
-    completion_ratio: Number(impression.completionRatio.toFixed(4)),
-    duration_seconds: Number(impression.durationSeconds.toFixed(3)),
-    dwell_ms: impression.dwellMs,
-    muted: impression.muted,
-    orientation: item.media.orientation,
-    playback_seconds: Number(impression.playbackSeconds.toFixed(3)),
-    position: impression.position,
-    publisher_kind: item.publisher.kind,
-    replay_count: impression.replayCount,
-    sound_on: impression.soundOnAtAnyPoint,
-  };
-}
-
 export function VideoHomePage() {
   const api = useApi();
+  const queryClient = useQueryClient();
   const hydrated = useClientHydrated();
   const session = useSession();
   const contentLocale = useRouteContentLocale();
   const { copy, localeTag } = useRouteMessages();
   const requestAuth = useRequestAuth();
   const capabilityLoader = useVideoViewerSongCapabilities(contentLocale);
-  const [entries, setEntries] = React.useState<ApiHomeFeedItem[]>([]);
+  const homeVideoQueryKey = React.useMemo(
+    () => feedKeys.homeVideos({ locale: contentLocale, userId: session?.user.id ?? null }),
+    [contentLocale, session?.user.id],
+  );
+  const homeVideoQuery = useQuery<HomeVideoFeedPayload>({
+    queryKey: homeVideoQueryKey,
+    queryFn: async () => EMPTY_HOME_VIDEO_FEED_PAYLOAD,
+    enabled: false,
+    initialData: EMPTY_HOME_VIDEO_FEED_PAYLOAD,
+  });
+  const entries = homeVideoQuery.data.entries;
+  const nextCursor = homeVideoQuery.data.nextCursor;
+  const pausedPaginationCursor = homeVideoQuery.data.pausedCursor;
+  const setHomeVideoPayload = React.useCallback((update: React.SetStateAction<HomeVideoFeedPayload>) => {
+    queryClient.setQueryData<HomeVideoFeedPayload>(homeVideoQueryKey, (current = EMPTY_HOME_VIDEO_FEED_PAYLOAD) => (
+      typeof update === "function"
+        ? (update as (value: HomeVideoFeedPayload) => HomeVideoFeedPayload)(current)
+        : update
+    ));
+  }, [homeVideoQueryKey, queryClient]);
+  const setEntries = React.useCallback((update: React.SetStateAction<ApiHomeFeedItem[]>) => {
+    setHomeVideoPayload((current) => ({
+      ...current,
+      entries: typeof update === "function"
+        ? (update as (value: ApiHomeFeedItem[]) => ApiHomeFeedItem[])(current.entries)
+        : update,
+    }));
+  }, [setHomeVideoPayload]);
   const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | null>>({});
   const [joinedCommunityIds, setJoinedCommunityIds] = React.useState<Set<string>>(() => new Set());
-  const [nextCursor, setNextCursor] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(true);
+  // A restored feed renders on the first frame; only a cold start shows the
+  // full-viewport spinner.
+  const [loading, setLoading] = React.useState(() => (
+    resolveHomeVideoMountPlan({ cachedEntryCount: homeVideoQuery.data.entries.length }) === "cold"
+  ));
   const [error, setError] = React.useState<unknown>(null);
   const [loadMoreError, setLoadMoreError] = React.useState<unknown>(null);
-  const [pausedPaginationCursor, setPausedPaginationCursor] = React.useState<string | null>(null);
   const [capabilityRevision, setCapabilityRevision] = React.useState(0);
   const [activeItemId, setActiveItemId] = React.useState<string | null>(null);
   const [boostTarget, setBoostTarget] = React.useState<{ open: () => void; sourcePostId: string } | null>(null);
@@ -217,10 +390,19 @@ export function VideoHomePage() {
   const [bookingLoading, setBookingLoading] = React.useState(false);
   const [bookingError, setBookingError] = React.useState(false);
   const [panelState, setPanelState] = React.useState<FeedPanelState>({ kind: "none" });
+  const [commentsAddedByPostId, setCommentsAddedByPostId] = React.useState<Record<string, number>>({});
+  const entriesRef = React.useRef(entries);
   const loadingMoreRef = React.useRef(false);
   const consecutiveNoGrowthPagesRef = React.useRef(0);
   const feedGenerationRef = React.useRef(0);
-  const seenPostIdsRef = React.useRef(new Set<string>());
+  const feedRequestIdRef = React.useRef<string | null>(null);
+  const authorProfilesRef = React.useRef(authorProfiles);
+  const pageItemCacheRef = React.useRef(new Map<string, CachedPageItem>());
+  const bootstrapRequestRef = React.useRef<{
+    key: string;
+    request: ReturnType<typeof consumeHomeVideoFeedBootstrap>;
+  } | null>(null);
+  const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const bookingRequestHostRef = React.useRef<string | null>(null);
   const commentComposerRef = React.useRef<HTMLTextAreaElement>(null);
   const feedFocusRef = React.useRef<HTMLDivElement>(null);
@@ -246,7 +428,7 @@ export function VideoHomePage() {
         to,
         tz: bookingTimezone,
       });
-      return response.slots as ResolvedSlot[];
+      return response.slots;
     }),
     [api.bookings, bookingTimezone],
   );
@@ -268,6 +450,18 @@ export function VideoHomePage() {
   }, [restoreFeedFocus]);
 
   React.useEffect(() => {
+    authorProfilesRef.current = authorProfiles;
+  }, [authorProfiles]);
+
+  React.useEffect(() => {
+    entriesRef.current = entries;
+  }, [entries]);
+
+  const onCommentAdded = React.useCallback((postId: string) => {
+    setCommentsAddedByPostId((current) => ({ ...current, [postId]: (current[postId] ?? 0) + 1 }));
+  }, []);
+
+  React.useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       setPanelState(panelFromHistoryState(event.state));
       if (panelFromHistoryState(event.state).kind === "none") restoreFeedFocus();
@@ -275,6 +469,27 @@ export function VideoHomePage() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [restoreFeedFocus]);
+
+  // While the comments dock is open, keep it pinned to the video that settles at the
+  // snap point. Fast scrolls debounce down to the final item, and the switch rewrites
+  // the current history entry instead of stacking one entry per scrolled video.
+  // `entries` is read through a ref: it is only a post-id lookup, and depending on it
+  // would re-arm the debounce every time pagination lands a page mid-scroll.
+  React.useEffect(() => {
+    if (panelState.kind !== "comments" || !activeItemId) return;
+    if (panelState.itemId === activeItemId) return;
+    const timeout = window.setTimeout(() => {
+      const nextPanel = nextCommentsPanelForActiveItem(panelState, activeItemId, entriesRef.current);
+      if (!nextPanel) return;
+      window.history.replaceState(
+        commentsHistoryState(nextPanel),
+        "",
+        `/p/${encodeURIComponent(nextPanel.postId)}`,
+      );
+      setPanelState(nextPanel);
+    }, COMMENTS_PANEL_FOLLOW_SETTLE_MS);
+    return () => window.clearTimeout(timeout);
+  }, [activeItemId, panelState]);
 
   const {
     gateModal,
@@ -285,6 +500,22 @@ export function VideoHomePage() {
     routeKind: "home",
     uiLocale: localeTag,
   });
+  const voteGateDataByPostId = React.useMemo(() => {
+    const next = new Map<string, NonNullable<ReturnType<typeof selectPostVoteGateData>>>();
+    for (const entry of entries) {
+      const gateData = selectPostVoteGateData(entry.post);
+      if (gateData) {
+        next.set(entry.post.post.id, gateData);
+      }
+    }
+    return next;
+  }, [entries]);
+
+  React.useEffect(() => {
+    for (const gateData of voteGateDataByPostId.values()) {
+      prewarmCommunityGate(gateData.preview.id, gateData);
+    }
+  }, [prewarmCommunityGate, voteGateDataByPostId]);
 
   React.useEffect(() => {
     if (!hydrated) return;
@@ -292,19 +523,128 @@ export function VideoHomePage() {
     feedGenerationRef.current = generation;
     loadingMoreRef.current = false;
     let cancelled = false;
-    setLoading(true);
     setError(null);
+    const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
+
+    // A fresh correlation id per mount: the restored entries were fetched under
+    // an id this component no longer holds, and the id is client-generated with
+    // no server-side request row to mismatch, so minting one keeps
+    // feed_request_id non-null and correlates this viewing session's
+    // impressions with each other.
+    feedRequestIdRef.current = `feed_${crypto.randomUUID().replaceAll("-", "")}`;
+
+    if (resolveHomeVideoMountPlan({
+      cachedEntryCount: queryClient.getQueryData<HomeVideoFeedPayload>(homeVideoQueryKey)?.entries.length ?? 0,
+    }) === "restore") {
+      // The cached feed continues where it left off, and the sessionStorage
+      // viewer return state (readVideoViewerReturnState, consumed as
+      // `initialItemId` below) puts the viewer back on the video they left —
+      // list and position restore together. Nothing is rotated or refetched:
+      // rotating would move the entry point out from under that restore.
+      setLoading(false);
+      return () => {
+        cancelled = true;
+        if (feedGenerationRef.current === generation) feedGenerationRef.current += 1;
+      };
+    }
+
+    setLoading(true);
     setAuthorProfiles({});
     setJoinedCommunityIds(new Set());
-    const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
-    void request({ locale: contentLocale, sort: "best" })
+
+    // Cold start only: walk the cursor in the background for videos this
+    // session has not been served. Page 1 is already painted, so this never
+    // delays first frame, and it stops at the first page that yields anything —
+    // ordinary pagination takes it from there.
+    const huntColdStartPages = async (startCursor: string | null) => {
+      let cursor = startCursor;
+      for (let page = 0; page < HOME_VIDEO_FEED_COLD_START_HUNT_MAX_PAGES; page += 1) {
+        if (!cursor || cancelled || generation !== feedGenerationRef.current) return;
+        const response = await request({ cursor, locale: contentLocale, sort: "best" });
+        if (cancelled || generation !== feedGenerationRef.current) return;
+        const unseenItems = takeUnseenSessionVideos(response.items, (entry) => entry.post.post.id);
+        seedPublicThreadQueriesFromFeed({
+          items: unseenItems,
+          locale: contentLocale,
+          queryClient,
+          sort: "best",
+        });
+        const pagination = nextVideoPaginationCursor({
+          consecutiveNoGrowthPages: consecutiveNoGrowthPagesRef.current,
+          didGrow: unseenItems.length > 0,
+          serverCursor: response.next_cursor ?? null,
+        });
+        consecutiveNoGrowthPagesRef.current = pagination.consecutiveNoGrowthPages;
+        setHomeVideoPayload((current) => ({
+          entries: appendUniqueVideoEntries(current.entries, unseenItems),
+          nextCursor: pagination.nextCursor,
+          pausedCursor: pagination.nextCursor === null && response.next_cursor
+            ? response.next_cursor
+            : null,
+        }));
+        if (unseenItems.length > 0) return;
+        cursor = pagination.nextCursor;
+      }
+    };
+
+    const bootstrapKey = `${Boolean(session?.accessToken)}:${contentLocale}`;
+    if (bootstrapRequestRef.current?.key !== bootstrapKey) {
+      bootstrapRequestRef.current = {
+        key: bootstrapKey,
+        request: consumeHomeVideoFeedBootstrap({
+          authenticated: Boolean(session?.accessToken),
+          locale: contentLocale,
+        }),
+      };
+    }
+    const bootstrappedRequest = bootstrapRequestRef.current.request;
+    void (bootstrappedRequest ?? request({ locale: contentLocale, sort: "best" }))
       .then((response) => {
         if (cancelled) return;
-        seenPostIdsRef.current = new Set(response.items.map((entry) => entry.post.post.id));
+        seedPublicThreadQueriesFromFeed({
+          items: response.items,
+          locale: contentLocale,
+          queryClient,
+          sort: "best",
+        });
+        // Rotate the first page so a reload does not open on the same video.
+        // Membership is unchanged, so the seen set and pagination are
+        // unaffected — only the entry point moves.
+        //
+        // Recent leads and this session's served ids are both disqualifying: a
+        // cold start whose cache was evicted mid-session gets the same page 1
+        // back, and opening it on a video already watched a few minutes ago is
+        // the repeat this route is trying to avoid. Rotation still degrades to
+        // the server order when every candidate is disqualified, so the feed is
+        // never emptied.
+        const items = rotateToUnseenLead(
+          response.items,
+          (entry) => entry.post.post.id,
+          [...readRecentLeadVideoIds(), ...readSessionSeenVideoIds()],
+        );
+        const leadPostId = items[0]?.post.post.id;
+        if (leadPostId) recordRecentLeadVideoId(leadPostId);
+        const pageIds = items.map((entry) => entry.post.post.id);
+        const alreadySeenCount = countSeenSessionVideoIds(pageIds);
+        recordSessionSeenVideoIds(pageIds);
         consecutiveNoGrowthPagesRef.current = 0;
-        setPausedPaginationCursor(null);
-        setEntries(response.items);
-        setNextCursor(response.next_cursor ?? null);
+        setHomeVideoPayload({
+          entries: items,
+          nextCursor: response.next_cursor ?? null,
+          pausedCursor: null,
+        });
+        if (!shouldHuntColdStartPages({ alreadySeenCount, serverCursor: response.next_cursor ?? null })) return;
+        // Held for the duration so the viewport's own loadMore does not race the
+        // hunt down the same cursor.
+        loadingMoreRef.current = true;
+        void huntColdStartPages(response.next_cursor ?? null)
+          .catch(() => {
+            // Background nicety: page 1 is on screen, and pagination will retry
+            // this cursor the moment the viewer approaches the end.
+          })
+          .finally(() => {
+            if (generation === feedGenerationRef.current) loadingMoreRef.current = false;
+          });
       })
       .catch((nextError: unknown) => { if (!cancelled) setError(nextError); })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -312,29 +652,77 @@ export function VideoHomePage() {
       cancelled = true;
       if (feedGenerationRef.current === generation) feedGenerationRef.current += 1;
     };
-  }, [api, contentLocale, hydrated, session?.accessToken]);
+  }, [api, contentLocale, homeVideoQueryKey, hydrated, queryClient, session?.accessToken, setHomeVideoPayload]);
 
   React.useEffect(() => {
     const userIds = entries.flatMap((entry) => {
       const post = entry.post.post;
       return post.identity_mode === "public" && post.author_user ? [post.author_user] : [];
     });
-    const missingUserIds = [...new Set(userIds)].filter((userId) => !(userId in authorProfiles));
+    const knownProfiles = authorProfilesRef.current;
+    const missingUserIds = [...new Set(userIds)].filter((userId) => !(userId in knownProfiles));
     if (missingUserIds.length === 0) return;
     let cancelled = false;
-    void loadProfilesByUserId(api, missingUserIds, authorProfiles).then((loaded) => {
-      if (!cancelled) setAuthorProfiles((current) => ({ ...current, ...loaded }));
+    void loadProfilesByUserId(api, missingUserIds, knownProfiles).then((loaded) => {
+      if (!cancelled) setAuthorProfiles((current) => {
+        const next = { ...current, ...loaded };
+        authorProfilesRef.current = next;
+        return next;
+      });
     });
     return () => { cancelled = true; };
-  }, [api, authorProfiles, entries]);
+  }, [api, entries]);
 
   const pageItems = React.useMemo<VideoFeedItem[]>(
     () => entries.flatMap((entry): VideoFeedItem[] => {
-      const item = toHomeFeedItem(entry, authorProfiles);
-      const video = toPageVideoItem(item);
-      if (!video) return [];
       const post = entry.post.post;
       const authorProfile = post.author_user ? authorProfiles[post.author_user] : null;
+      const joinedLocally = joinedCommunityIds.has(entry.community.id);
+      const cached = pageItemCacheRef.current.get(post.id);
+      if (
+        cached
+        && cached.entry === entry
+        && cached.authorProfile === authorProfile
+        && cached.contentLocale === contentLocale
+        && cached.joinedLocally === joinedLocally
+        && cached.showOriginalLabel === copy.common.showOriginal
+        && cached.showTranslationLabel === copy.common.showTranslation
+        && cached.userId === session?.user.id
+        && cached.videoPublisherJoin === copy.home.videoPublisherJoin
+        && cached.videoPublisherJoined === copy.home.videoPublisherJoined
+      ) return cached.item ? [cached.item] : [];
+      const item = toHomeFeedItem(entry, authorProfiles, undefined, {
+        showOriginalLabel: copy.common.showOriginal,
+        showTranslationLabel: copy.common.showTranslation,
+        viewerContentLocale: contentLocale,
+      });
+      const video = toVideoViewerItem(item);
+      if (!video) {
+        pageItemCacheRef.current.set(post.id, {
+          authorProfile,
+          contentLocale,
+          entry,
+          item: null,
+          joinedLocally,
+          showOriginalLabel: copy.common.showOriginal,
+          showTranslationLabel: copy.common.showTranslation,
+          userId: session?.user.id,
+          videoPublisherJoin: copy.home.videoPublisherJoin,
+          videoPublisherJoined: copy.home.videoPublisherJoined,
+        });
+        return [];
+      }
+      const translation = videoTranslationForFeedItem(item, video, {
+        showOriginalLabel: copy.common.showOriginal,
+        showTranslationLabel: copy.common.showTranslation,
+      });
+      const translatedVideo = translation
+        ? {
+            ...video,
+            translation,
+          }
+        : video;
+      const shareActions = buildPostShareActions(post);
       const publicProfilePublisher = post.identity_mode === "public" && Boolean(post.author_user);
       const viewerCommunity = entry.post as typeof entry.post & {
         viewer_gate_state?: {
@@ -351,35 +739,51 @@ export function VideoHomePage() {
         currentUserId: session?.user.id,
         identityMode: post.identity_mode,
         joinedLabel: copy.home.videoPublisherJoined,
-        joinedLocally: joinedCommunityIds.has(entry.community.id),
+        joinedLocally,
         joinLabel: copy.home.videoPublisherJoin,
         viewerCommunityRole: viewerCommunity.viewer_gate_state?.viewer_community_role
           ?? entry.post.community?.viewer_community_role,
         viewerMembershipStatus: communityStatus,
       });
-      if (publicProfilePublisher) {
-        return [{
-          ...video,
+      const pageItem = publicProfilePublisher
+        ? {
+          ...translatedVideo,
           communityId: entry.community.id,
+          shareActions,
           publisher: {
             ...video.publisher,
+            href: item.post.byline.author?.href,
             kind: "profile" as const,
             relationship,
           },
-        }];
-      }
-      return [{
-        ...video,
-        communityId: entry.community.id,
-        publisher: {
-          avatarSrc: item.post.byline.community?.avatarSrc,
-          handle: item.post.byline.community?.label ?? video.publisher.handle,
-          kind: "community" as const,
-          relationship,
-        },
-      }];
+        }
+        : {
+          ...translatedVideo,
+          communityId: entry.community.id,
+          shareActions,
+          publisher: {
+            avatarSrc: item.post.byline.community?.avatarSrc,
+            handle: item.post.byline.community?.label ?? video.publisher.handle,
+            href: item.post.byline.community?.href,
+            kind: "community" as const,
+            relationship,
+          },
+        };
+      pageItemCacheRef.current.set(post.id, {
+        authorProfile,
+        contentLocale,
+        entry,
+        item: pageItem,
+        joinedLocally,
+        showOriginalLabel: copy.common.showOriginal,
+        showTranslationLabel: copy.common.showTranslation,
+        userId: session?.user.id,
+        videoPublisherJoin: copy.home.videoPublisherJoin,
+        videoPublisherJoined: copy.home.videoPublisherJoined,
+      });
+      return [pageItem];
     }),
-    [authorProfiles, copy.home.videoPublisherJoin, copy.home.videoPublisherJoined, entries, joinedCommunityIds, session?.user.id],
+    [authorProfiles, contentLocale, copy.common.showOriginal, copy.common.showTranslation, copy.home.videoPublisherJoin, copy.home.videoPublisherJoined, entries, joinedCommunityIds, session?.user.id],
   );
   const items = React.useMemo(() => pageItems.map((item) => {
     const sourcePostId = item.song?.sourcePostId;
@@ -392,6 +796,7 @@ export function VideoHomePage() {
       rewards: resolution.rewards,
       song: item.song ? {
         ...item.song,
+        artworkSrc: resolution.artworkSrc,
         karaokeHref: resolution.karaokeHref,
         studyHref: resolution.studyHref,
       } : undefined,
@@ -413,38 +818,42 @@ export function VideoHomePage() {
       const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
       const response = await request({ cursor: nextCursor, locale: contentLocale, sort: "best" });
       if (generation !== feedGenerationRef.current) return;
-      const unseenItems = response.items.filter((entry) => {
-        const postId = entry.post.post.id;
-        if (seenPostIdsRef.current.has(postId)) return false;
-        seenPostIdsRef.current.add(postId);
-        return true;
+      const unseenItems = takeUnseenSessionVideos(response.items, (entry) => entry.post.post.id);
+      seedPublicThreadQueriesFromFeed({
+        items: unseenItems,
+        locale: contentLocale,
+        queryClient,
+        sort: "best",
       });
-      setEntries((current) => appendUniqueVideoEntries(current, unseenItems));
       const pagination = nextVideoPaginationCursor({
         consecutiveNoGrowthPages: consecutiveNoGrowthPagesRef.current,
         didGrow: unseenItems.length > 0,
         serverCursor: response.next_cursor ?? null,
       });
       consecutiveNoGrowthPagesRef.current = pagination.consecutiveNoGrowthPages;
-      setNextCursor(pagination.nextCursor);
-      setPausedPaginationCursor(
-        pagination.nextCursor === null && response.next_cursor
+      setHomeVideoPayload((current) => ({
+        entries: appendUniqueVideoEntries(current.entries, unseenItems),
+        nextCursor: pagination.nextCursor,
+        pausedCursor: pagination.nextCursor === null && response.next_cursor
           ? response.next_cursor
           : null,
-      );
+      }));
     } catch (nextError) {
       if (generation === feedGenerationRef.current) setLoadMoreError(nextError);
     } finally {
       if (generation === feedGenerationRef.current) loadingMoreRef.current = false;
     }
-  }, [api, contentLocale, nextCursor, session?.accessToken]);
+  }, [api, contentLocale, nextCursor, queryClient, session?.accessToken, setHomeVideoPayload]);
 
   const resumePagination = React.useCallback(() => {
     if (!pausedPaginationCursor) return;
     consecutiveNoGrowthPagesRef.current = 0;
-    setPausedPaginationCursor(null);
-    setNextCursor(pausedPaginationCursor);
-  }, [pausedPaginationCursor]);
+    setHomeVideoPayload((current) => ({
+      ...current,
+      nextCursor: current.pausedCursor,
+      pausedCursor: null,
+    }));
+  }, [pausedPaginationCursor, setHomeVideoPayload]);
 
   const onActiveItemChange = React.useCallback((_item: VideoFeedItem, index: number) => {
     setActiveItemId(_item.id);
@@ -456,6 +865,7 @@ export function VideoHomePage() {
 
   const onImpression = React.useCallback((item: VideoFeedItem, impression: VideoFeedImpression) => {
     trackAnalyticsEvent({
+      eventId: impression.eventId,
       eventName: "video_impression",
       communityId: item.communityId,
       postId: item.id,
@@ -467,53 +877,60 @@ export function VideoHomePage() {
     setBoostTarget(canBoost ? { open, sourcePostId } : null);
   }, []);
 
-  const onLike = React.useCallback((item: VideoFeedItem) => {
+  const voteOnPost = React.useCallback(async (
+    item: VideoFeedItem,
+    direction: "up" | "down" | null,
+    authRequiredMessage: string,
+  ) => {
     if (!session?.accessToken) {
-      requestAuth(copy.home.videoLikeAuthRequired);
+      requestAuth(authRequiredMessage);
       return;
     }
     const entry = entries.find((candidate) => candidate.post.post.id === item.id);
     if (!entry) return;
-    const wasLiked = entry.post.viewer_vote === 1;
-    setEntries((current) => current.map((candidate) => candidate.post.post.id === item.id ? {
-      ...candidate,
-      post: {
-        ...candidate.post,
-        upvote_count: Math.max(0, candidate.post.upvote_count + (wasLiked ? -1 : 1)),
-        viewer_vote: wasLiked ? null : 1,
-      },
-    } : candidate));
-    const request = wasLiked ? api.posts.clearVote(item.id) : api.posts.vote(item.id, 1);
-    void request.catch(() => {
-      setEntries((current) => current.map((candidate) => candidate.post.post.id === item.id ? entry : candidate));
-    });
-  }, [api.posts, copy.home.videoLikeAuthRequired, entries, requestAuth, session?.accessToken]);
+    const voteValue = direction ? toPostVoteValue(direction) : "clear";
+    const gateData = voteGateDataByPostId.get(item.id) ?? null;
+    try {
+      await runGatedCommunityAction({
+        action: "vote_post",
+        communityId: gateData?.preview.id ?? entry.community.id,
+        ...(gateData ? { gateData } : {}),
+        onAllowed: async (context) => {
+          await submitOptimisticPostVote({
+            altchaPayload: context?.altchaPayload,
+            clearVote: api.posts.clearVote,
+            direction,
+            locale: contentLocale,
+            onApply: (nextValue) => setEntries((current) => updateHomeFeedEntryPostVote(current, item.id, nextValue)),
+            onRollback: (restoredPost) => setEntries((current) => current.map((candidate) => candidate.post.post.id === item.id ? { ...candidate, post: restoredPost } : candidate)),
+            postId: item.id,
+            previousPost: entry.post,
+            queryClient,
+            requestIdsRef: voteRequestIdsRef,
+            vote: api.posts.vote,
+          });
+        },
+        postId: item.id,
+        voteValue,
+      });
+    } catch {
+      // The shared optimistic submitter already rolled back and displayed the error.
+    }
+  }, [api.posts.clearVote, api.posts.vote, contentLocale, entries, queryClient, requestAuth, runGatedCommunityAction, session?.accessToken, voteGateDataByPostId]);
 
-  // Downvote mirrors onLike, with one extra case: switching from up to down has to take the
-  // upvote back off the count, because the rail renders upvote_count rather than a net score.
+  const onLike = React.useCallback((item: VideoFeedItem) => {
+    const direction = entries.find((candidate) => candidate.post.post.id === item.id)?.post.viewer_vote === 1
+      ? null
+      : "up";
+    void voteOnPost(item, direction, copy.home.videoLikeAuthRequired);
+  }, [copy.home.videoLikeAuthRequired, entries, voteOnPost]);
+
   const onDownvote = React.useCallback((item: VideoFeedItem) => {
-    if (!session?.accessToken) {
-      requestAuth(copy.home.videoDownvoteAuthRequired);
-      return;
-    }
-    const entry = entries.find((candidate) => candidate.post.post.id === item.id);
-    if (!entry) return;
-    const wasDownvoted = entry.post.viewer_vote === -1;
-    const wasUpvoted = entry.post.viewer_vote === 1;
-    setEntries((current) => current.map((candidate) => candidate.post.post.id === item.id ? {
-      ...candidate,
-      post: {
-        ...candidate.post,
-        downvote_count: Math.max(0, candidate.post.downvote_count + (wasDownvoted ? -1 : 1)),
-        upvote_count: Math.max(0, candidate.post.upvote_count - (wasUpvoted ? 1 : 0)),
-        viewer_vote: wasDownvoted ? null : -1,
-      },
-    } : candidate));
-    const request = wasDownvoted ? api.posts.clearVote(item.id) : api.posts.vote(item.id, -1);
-    void request.catch(() => {
-      setEntries((current) => current.map((candidate) => candidate.post.post.id === item.id ? entry : candidate));
-    });
-  }, [api.posts, copy.home.videoDownvoteAuthRequired, entries, requestAuth, session?.accessToken]);
+    const direction = entries.find((candidate) => candidate.post.post.id === item.id)?.post.viewer_vote === -1
+      ? null
+      : "down";
+    void voteOnPost(item, direction, copy.home.videoDownvoteAuthRequired);
+  }, [copy.home.videoDownvoteAuthRequired, entries, voteOnPost]);
 
   const onPublisherRelationship = React.useCallback((item: VideoFeedItem) => {
     if (item.publisher.relationship?.kind !== "join" || item.publisher.relationship.active) return;
@@ -587,6 +1004,8 @@ export function VideoHomePage() {
 
   const openBooking = React.useCallback((item: VideoFeedItem, playback: VideoFeedPlaybackState) => {
     if (!item.booking) return;
+    const startingPriceCents = feedBookingStartingPriceCents(item);
+    if (startingPriceCents === null) return;
     const hostUserId = item.booking.hostUserId;
     const cached = bookingCache.get(hostUserId);
     bookingRequestHostRef.current = hostUserId;
@@ -597,19 +1016,21 @@ export function VideoHomePage() {
       window.history.replaceState({}, "", feedPathRef.current);
     }
     setPanelState({
-      basePriceCents: item.booking.basePriceCents,
+      startingPriceCents,
       handle: item.publisher.handle,
       hostUserId,
       itemId: item.id,
       kind: "booking",
       playback,
-      sourceCommunityId: activeResolution?.sourceCommunityId ?? null,
+      // Attribution authority is the viewed post's owning community (a proxy for the surface
+      // the booking was discovered in), captured at open time — never the song origin.
+      sourceCommunityId: feedBookingSourceCommunityId(item),
     });
     setBookingError(false);
     setBookingSlots(cached ?? []);
     setBookingLoading(!cached);
     if (!cached) loadBookingAvailability(hostUserId);
-  }, [activeResolution?.sourceCommunityId, bookingCache, loadBookingAvailability]);
+  }, [bookingCache, loadBookingAvailability]);
 
   const retryBookingAvailability = React.useCallback(() => {
     if (panelState.kind !== "booking") return;
@@ -646,10 +1067,58 @@ export function VideoHomePage() {
     ));
   }, [panelState]);
 
+  const onBoost = React.useCallback((item: VideoFeedItem) => {
+    if (boostTarget && item.song?.sourcePostId === boostTarget.sourcePostId) boostTarget.open();
+  }, [boostTarget]);
+
+  const onComment = React.useCallback((item: VideoFeedItem) => {
+    const postId = postIdForVideoItem(entries, item.id);
+    if (!postId) return;
+    if (panelState.kind === "booking") {
+      bookingRequestHostRef.current = null;
+      setBookingError(false);
+      setBookingLoading(false);
+      setBookingSlots([]);
+    }
+    const nextPanel: Extract<FeedPanelState, { kind: "comments" }> = {
+      itemId: item.id,
+      kind: "comments",
+      postId,
+    };
+    panelReturnFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : feedFocusRef.current;
+    const nextUrl = `/p/${encodeURIComponent(postId)}`;
+    if (panelState.kind === "comments") {
+      window.history.replaceState(commentsHistoryState(nextPanel), "", nextUrl);
+    } else {
+      window.history.pushState(commentsHistoryState(nextPanel), "", nextUrl);
+    }
+    setPanelState(nextPanel);
+  }, [entries, panelState]);
+
+  const onKaraoke = React.useCallback(
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.karaokeHref),
+    [launchSongAction],
+  );
+  const onSong = React.useCallback(
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.songHref),
+    [launchSongAction],
+  );
+  const onStudy = React.useCallback(
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.studyHref),
+    [launchSongAction],
+  );
+
   const surface = resolveVideoHomeSurface({ error, itemCount: items.length, loading });
   if (surface === "loading") return <div className="grid min-h-dvh w-full place-items-center bg-background"><Spinner className="size-6" /></div>;
   if (surface === "community-feed-error") return <HomePage videoFallbackReason="error" />;
   if (surface === "community-feed-empty") return <HomePage videoFallbackReason="empty" />;
+
+  const commentsPanelCount = commentsPanelCommentCount(items, panelState, commentsAddedByPostId);
+  const commentsPanelTitle = commentsPanelCount > 0
+    ? copy.common.commentsHeadingWithCount.replace("{count}", compactCount(commentsPanelCount, localeTag))
+    : copy.common.commentsHeading;
 
   return (
     <div className="min-h-0 w-full flex-1 bg-background">
@@ -665,9 +1134,13 @@ export function VideoHomePage() {
             }}
             open
             returnFocusRef={panelReturnFocusRef}
-            title={copy.common.commentsHeading}
+            title={commentsPanelTitle}
           >
-            <FeedCommentsPanel composerRef={commentComposerRef} postId={panelState.postId} />
+            <FeedCommentsPanel
+              composerRef={commentComposerRef}
+              onCommentAdded={onCommentAdded}
+              postId={panelState.postId}
+            />
           </FeedSidePanel>
         ) : panelState.kind === "booking" ? (
           <FeedSidePanel
@@ -680,7 +1153,7 @@ export function VideoHomePage() {
           >
             <div className="h-full overflow-y-auto p-5">
               <FeedBookingSheetBody
-                basePriceCents={panelState.basePriceCents}
+                startingPriceCents={panelState.startingPriceCents}
                 error={bookingError}
                 getSlotHref={(slot) => checkoutPathForFeedSlot(
                   panelState.hostUserId,
@@ -697,60 +1170,39 @@ export function VideoHomePage() {
           </FeedSidePanel>
         ) : undefined}
       >
-        <div className="relative min-h-0" ref={feedFocusRef} tabIndex={-1}>
+        <div className={VIDEO_FEED_STAGE_CLASS} ref={feedFocusRef} tabIndex={-1}>
       <VideoFeed
         externallyPausedItemId={panelState.kind === "booking" ? panelState.itemId : undefined}
         className="h-full"
         downvoteLabel={copy.common.downvote}
         followLabel={copy.home.videoPublisherFollow}
         followingLabel={copy.home.videoPublisherFollowing}
+        feedRequestId={feedRequestIdRef.current ?? undefined}
         initialItemId={restored?.itemId}
         initialMuted={restored?.muted}
         initialPaused={restored?.paused}
         initialPlaybackSeconds={restored?.playbackSeconds}
         items={items}
+        locale={localeTag}
         muteVideoLabel={copy.common.muteVideo}
+        navigationHidden={panelState.kind !== "none"}
+        nextVideoLabel={copy.common.nextVideo}
         onActiveItemChange={onActiveItemChange}
-        onBoost={(item) => {
-          if (boostTarget && item.song?.sourcePostId === boostTarget.sourcePostId) boostTarget.open();
-        }}
+        onBoost={onBoost}
         onBook={openBooking}
-        onComment={(item) => {
-          const postId = postIdForVideoItem(entries, item.id);
-          if (!postId) return;
-          if (panelState.kind === "booking") {
-            bookingRequestHostRef.current = null;
-            setBookingError(false);
-            setBookingLoading(false);
-            setBookingSlots([]);
-          }
-          const nextPanel: Extract<FeedPanelState, { kind: "comments" }> = {
-            itemId: item.id,
-            kind: "comments",
-            postId,
-          };
-          panelReturnFocusRef.current = document.activeElement instanceof HTMLElement
-            ? document.activeElement
-            : feedFocusRef.current;
-          const nextUrl = `/p/${encodeURIComponent(postId)}`;
-          if (panelState.kind === "comments") {
-            window.history.replaceState(commentsHistoryState(nextPanel), "", nextUrl);
-          } else {
-            window.history.pushState(commentsHistoryState(nextPanel), "", nextUrl);
-          }
-          setPanelState(nextPanel);
-        }}
-        onKaraoke={(item, playback) => launchSongAction(item, playback, item.song?.karaokeHref)}
+        onComment={onComment}
+        onKaraoke={onKaraoke}
         onDownvote={onDownvote}
         onLike={onLike}
         onImpression={onImpression}
         onPublisherRelationship={onPublisherRelationship}
-        onShare={(item) => void navigator.share?.({ url: `${window.location.origin}/p/${encodeURIComponent(item.id)}` })}
-        onSong={(item, playback) => launchSongAction(item, playback, item.song?.songHref)}
-        onStudy={(item, playback) => launchSongAction(item, playback, item.song?.studyHref)}
+        onSong={onSong}
+        onStudy={onStudy}
         removeDownvoteLabel={copy.common.removeDownvote}
+        previousVideoLabel={copy.common.previousVideo}
         soundOnLabel={copy.common.soundOn}
         tapForSoundLabel={copy.common.tapForSound}
+        videoProgressLabel={copy.common.videoProgress}
       />
       {loadMoreError ? (
         <VideoFeedPaginationNotice
@@ -769,7 +1221,7 @@ export function VideoHomePage() {
       </FeedPanelLayout>
       {activeResolution?.sourceCommunityId ? (
         <VideoViewerBoostBridge
-          activePublicOffer={activeResolution.activeRewardOffer}
+          activeCampaignId={activeResolution.activeRewardCampaignId}
           communityId={activeResolution.sourceCommunityId}
           key={activeResolution.sourcePostId}
           onAvailabilityChange={onBoostAvailabilityChange}

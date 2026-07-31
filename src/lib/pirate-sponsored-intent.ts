@@ -25,8 +25,11 @@ interface PirateSponsoredTransactionEnvelope {
 export interface PirateSponsoredIntentRequest {
   authorizationSignature?: string;
   chainId: number;
+  intentId: string;
+  transactionIndex: number;
   intent: PirateSponsoredIntent;
   privyWalletId?: string;
+  requestExpiry?: string;
   transaction: PirateSponsoredTransactionEnvelope;
   walletAddress: `0x${string}`;
 }

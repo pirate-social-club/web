@@ -40,6 +40,33 @@ describe("booking management view model", () => {
       .toBe("1:30 AM–2:30 AM, November 1");
   });
 
+  test("claims money moved only once settlement recorded a transfer", () => {
+    const detail = (overrides: Partial<BookingView>) => toBookingManagementItem({ ...booking, ...overrides }, {
+      locale: "en-US", timeZone: "Asia/Tbilisi", nowMs: Date.parse("2026-07-06T12:00:00Z"), messages,
+    }).statusDetail;
+
+    // `outcome` is set when the outcome is decided, before any transfer exists.
+    expect(detail({ status: "cancelled_by_host", outcome: "cancelled_by_host" })).toBe("cancelledByHostDetailUnsettled");
+    expect(detail({ status: "refunded", outcome: "cancelled_by_host", refund_tx_ref: "0xrefund" })).toBe("cancelledByHostDetail");
+
+    expect(detail({ status: "no_show_host", outcome: "no_show_host" })).toBe("hostMissedDetailUnsettled");
+    expect(detail({ status: "refunded", outcome: "no_show_host", refund_tx_ref: "0xrefund" })).toBe("hostMissedDetail");
+
+    expect(detail({ status: "no_show_booker", outcome: "no_show_booker" })).toBe("bookerMissedDetailUnsettled");
+    expect(detail({ status: "settled", outcome: "no_show_booker", payout_tx_ref: "0xpayout" })).toBe("bookerMissedDetail");
+
+    expect(detail({ status: "completed", outcome: "completed" })).toBe("completedBookerDetailUnsettled");
+    expect(detail({ status: "completed", outcome: "completed", viewer_role: "host" })).toBe("completedHostDetailUnsettled");
+    expect(detail({ status: "settled", outcome: "completed", payout_tx_ref: "0xpayout" })).toBe("completedBookerDetail");
+    expect(detail({ status: "settled", outcome: "completed", payout_tx_ref: "0xpayout", viewer_role: "host" })).toBe("completedHostDetail");
+
+    expect(detail({ status: "cancelled_by_booker", outcome: "cancelled_by_booker", refund_cents: 4500 })).toBe("cancelledRefundedDetailUnsettled");
+    expect(detail({ status: "refunded", outcome: "cancelled_by_booker", refund_cents: 4500, refund_tx_ref: "0xrefund" })).toBe("cancelledRefundedDetail");
+
+    // A non-refundable cancellation moves no money, so its copy is unconditional.
+    expect(detail({ status: "cancelled_by_booker", outcome: "cancelled_by_booker", refund_cents: 0 })).toBe("cancelledNoRefundDetail");
+  });
+
   test("maps live bookings to a rejoinable approved card", () => {
     const item = toBookingManagementItem({ ...booking, status: "live" }, {
       locale: "en-US", timeZone: "Asia/Tbilisi", nowMs: Date.parse("2026-07-05T12:10:00Z"), messages,

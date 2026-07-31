@@ -32,6 +32,7 @@ import type {
   SongStudyAttemptResult,
   SongStudyPayload,
   SongStudyTranscriptionResponse,
+  TelegramStudyVoiceIntent,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
@@ -131,8 +132,8 @@ export function createCommentsApi(request: ApiRequest) {
       commentId: string,
       body: CreateCommentRequest,
       options?: AltchaRequestOptions,
-    ): Promise<void> =>
-      request(`/comments/${encodeURIComponent(commentId)}/replies`, {
+    ): Promise<Comment> =>
+      request<Comment>(`/comments/${encodeURIComponent(commentId)}/replies`, {
         method: "POST",
         body: JSON.stringify(body),
         headers: altchaHeaders(options),
@@ -202,6 +203,15 @@ export function createCommunityContentApi(request: ApiRequest) {
     ): Promise<SongStudyAttemptResult> =>
       request<SongStudyAttemptResult>(
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/study/attempts`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    createPostStudyTelegramVoiceIntent: (
+      communityId: string,
+      postId: string,
+      body: { exercise_id: string; target_language?: string | null },
+    ): Promise<TelegramStudyVoiceIntent> =>
+      request<TelegramStudyVoiceIntent>(
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/study/telegram_voice_intents`,
         { method: "POST", body: JSON.stringify(body) },
       ),
     transcribePostStudyAudio: (
@@ -282,8 +292,8 @@ export function createCommunityContentApi(request: ApiRequest) {
       postId: string,
       body: CreateCommentRequest,
       options?: AltchaRequestOptions,
-    ): Promise<void> =>
-      request(
+    ): Promise<Comment> =>
+      request<Comment>(
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/comments`,
         { method: "POST", body: JSON.stringify(body), headers: altchaHeaders(options) },
       ),

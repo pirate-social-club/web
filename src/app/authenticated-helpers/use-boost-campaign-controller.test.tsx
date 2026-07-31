@@ -6,15 +6,20 @@ import { ApiError } from "@/lib/api/client";
 
 installDomGlobals();
 
-const calls = { confirm: 0, create: 0, quote: 0, transfer: 0 };
+const calls = { campaignRead: 0, confirm: 0, create: 0, quote: 0, transfer: 0 };
 const createKeys: string[] = [];
 const quoteKeys: string[] = [];
 let connectedWallets: Array<{ address: string }> = [];
+let reconnectEthereumWallet: (() => void) | null = null;
+let reconnectCalls = 0;
 let campaignStatus = "draft";
 let confirmStatus = "confirmed";
 let confirmError: unknown = null;
 let createError: unknown = null;
+let getCampaignError: unknown = null;
 let quoteError: unknown = null;
+let transferError: unknown = null;
+let transferFailAfterSubmit = false;
 let postEligible = true;
 let firstQuoteExpired = false;
 
@@ -34,12 +39,15 @@ const campaign = () => ({
   milestone_30_cents: 0,
   reward_period_cap_cents: 100,
   budget_cents: 1000,
-  funded_cents: 0,
+  funded_cents: ["active", "exhausted"].includes(campaignStatus) ? 1000 : 0,
   reserved_cents: 0,
   credited_cents: 0,
   paid_cents: 0,
   refunded_cents: 0,
   remaining_cents: 1000,
+  funding_tx_hash: ["active", "exhausted"].includes(campaignStatus)
+    ? "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    : null,
   starts_at: 1,
   ends_at: 2,
   created: 1,
@@ -86,7 +94,11 @@ const fakeApi = {
       if (createError) throw createError;
       return campaign();
     },
-    getCampaign: async () => campaign(),
+    getCampaign: async () => {
+      calls.campaignRead += 1;
+      if (getCampaignError) throw getCampaignError;
+      return campaign();
+    },
     createFundingQuote: async (_campaignId: string, body: { idempotency_key: string }) => {
       calls.quote += 1;
       quoteKeys.push(body.idempotency_key);
@@ -104,6 +116,7 @@ const fakeApi = {
 
 mock.module("@/lib/api", () => ({ useApi: () => fakeApi }));
 mock.module("@/components/auth/privy-provider", () => ({
+  usePiratePrivyRuntime: () => ({ reconnectEthereumWallet }),
   usePiratePrivyWallets: () => ({ connectedWallets, walletsReady: true }),
 }));
 mock.module("@/lib/commerce/routed-checkout", () => ({
@@ -114,16 +127,91 @@ mock.module("@/lib/commerce/routed-checkout", () => ({
   resolveRewardFundingTransferInput: () => ({ amountAtomic: 10000000n }),
   executeUsdcTransfer: async ({ onSubmitted }: { onSubmitted?: (hash: string) => void }) => {
     calls.transfer += 1;
+    if (transferError) {
+      if (transferFailAfterSubmit) {
+        onSubmitted?.("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+      }
+      throw transferError;
+    }
     onSubmitted?.("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
     return "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   },
 }));
 
-const { useBoostCampaignController } = await import("./use-boost-campaign-controller");
+const {
+  boostFundingErrorMessage,
+  classifyBoostFundingError,
+  useBoostCampaignController,
+  useBoostMenuEligibility,
+} = await import("./use-boost-campaign-controller");
+
+test("turns wallet chain mismatch internals into actionable funding copy", () => {
+  const error = new Error(
+    "The current chain of the wallet (id: 8453) does not match the target chain for the transaction (id: 84532 – Base Sepolia). Contract Call: transfer(...)",
+  );
+
+  expect(boostFundingErrorMessage(error, "Could not submit reward funding.", { networkLabel: "Base Sepolia" })).toBe(
+    "Switch your wallet to Base Sepolia, then try again. No payment was sent.",
+  );
+  expect(boostFundingErrorMessage(error, "Could not submit reward funding.")).toBe(
+    "Switch your wallet to the required network, then try again. No payment was sent.",
+  );
+});
+
+test("distinguishes gas-fee failures from USDC balance failures", () => {
+  const gasError = new Error(
+    "The total cost (gas * gasFee + value) of executing this transaction exceeds the balance of the account.",
+  );
+  expect(classifyBoostFundingError(gasError)).toBe("insufficient-gas");
+  expect(boostFundingErrorMessage(gasError, "fallback")).toBe(
+    "Your wallet does not have enough ETH for network fees. No payment was sent.",
+  );
+  expect(classifyBoostFundingError(new Error("insufficient funds for gas * price + value"))).toBe("insufficient-gas");
+
+  expect(classifyBoostFundingError(new Error("transfer amount exceeds balance"))).toBe("insufficient-usdc");
+  expect(boostFundingErrorMessage(new Error("transfer amount exceeds balance"), "fallback")).toBe(
+    "Your wallet does not have enough USDC to fund this boost. No payment was sent.",
+  );
+});
+
+test("classifies wallet and transport failures into actionable funding copy", () => {
+  expect(classifyBoostFundingError(new Error("User rejected the request."))).toBe("user-rejected");
+  expect(boostFundingErrorMessage(new Error("User rejected the request."), "fallback")).toBe(
+    "You canceled the payment in your wallet. No payment was sent.",
+  );
+
+  expect(classifyBoostFundingError(new Error("wallet is not connected"))).toBe("wallet-unavailable");
+  expect(boostFundingErrorMessage(new Error("wallet is not connected"), "fallback")).toBe(
+    "Your wallet is not connected. Reconnect your Pirate Wallet, then try again. No payment was sent.",
+  );
+
+  expect(classifyBoostFundingError(new Error("HTTP request failed."))).toBe("rpc-failure");
+  expect(boostFundingErrorMessage(new Error("HTTP request failed."), "fallback")).toBe(
+    "The network did not respond. No payment was sent; try again.",
+  );
+  expect(boostFundingErrorMessage(new Error("HTTP request failed."), "fallback", { submitted: true })).toBe(
+    "The network did not respond after your transfer was sent. Check status; do not send again.",
+  );
+});
+
+test("hides unknown wallet internals behind the fallback instead of leaking them", () => {
+  const verbose = new Error(
+    "Contract Call: transfer(address,uint256) args: (0xabc, 10000000) Docs: https://viem.sh/docs/contract/writeContract",
+  );
+  expect(boostFundingErrorMessage(verbose, "Could not submit reward funding.")).toBe(
+    "Could not submit reward funding.",
+  );
+  expect(classifyBoostFundingError(verbose)).toBe("unknown");
+
+  // Server-vetted API error copy may still pass through.
+  expect(
+    boostFundingErrorMessage(new ApiError("conflict", "This song already has a live boost.", 409), "fallback"),
+  ).toContain("already has a live boost");
+});
 
 function input() {
   return {
-    activePublicOffer: false,
+    activeCampaignId: null,
     authenticated: true,
     communityId: "com_test",
     postId: "pst_test",
@@ -135,6 +223,7 @@ function input() {
 
 beforeEach(() => {
   calls.confirm = 0;
+  calls.campaignRead = 0;
   calls.create = 0;
   calls.quote = 0;
   calls.transfer = 0;
@@ -144,10 +233,15 @@ beforeEach(() => {
   confirmStatus = "confirmed";
   confirmError = null;
   createError = null;
+  getCampaignError = null;
   quoteError = null;
+  transferError = null;
+  transferFailAfterSubmit = false;
   postEligible = true;
   firstQuoteExpired = false;
   connectedWallets = [];
+  reconnectEthereumWallet = null;
+  reconnectCalls = 0;
   localStorage.clear();
 });
 
@@ -201,8 +295,71 @@ describe("useBoostCampaignController", () => {
     expect(view.result.current.sheetProps.walletMismatch).toBe(true);
   });
 
+  test("exposes wallet recovery when the pinned wallet is missing entirely", async () => {
+    reconnectEthereumWallet = () => { reconnectCalls += 1; };
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+
+    expect(view.result.current.sheetProps.walletMismatch).toBe(true);
+    expect(view.result.current.sheetProps.walletMismatchReason).toBe("no-wallet");
+    expect(view.result.current.sheetProps.dailyRewardDisplayLabel).toBe("$1.00");
+    act(() => view.result.current.sheetProps.onConnectWallet?.());
+    expect(reconnectCalls).toBe(1);
+  });
+
+  test("distinguishes a different connected wallet from a missing wallet", async () => {
+    connectedWallets = [{ address: "0x9999999999999999999999999999999999999999" }];
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+
+    expect(view.result.current.sheetProps.walletMismatch).toBe(true);
+    expect(view.result.current.sheetProps.walletMismatchReason).toBe("different-wallet");
+  });
+
+  test("treats a pre-submission transport failure as safe to start again", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    transferError = new Error("HTTP request failed.");
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("failed"));
+
+    expect(view.result.current.sheetProps.errorMessage).toBe(
+      "The network did not respond. No payment was sent; try again.",
+    );
+    expect(view.result.current.sheetProps.retryLabel).toBe("Start again");
+  });
+
+  test("keeps a post-submission transport failure awaiting finality and never re-sends", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    transferError = new Error("HTTP request failed.");
+    transferFailAfterSubmit = true;
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("awaiting-finality"));
+
+    expect(view.result.current.sheetProps.errorMessage).toBeUndefined();
+    expect(calls.transfer).toBe(1);
+    act(() => view.result.current.sheetProps.onRefresh?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
+    expect(calls.transfer).toBe(1);
+  });
+
   test("keeps Boost discoverable while explaining that an active campaign blocks another", async () => {
-    const view = renderHook(() => useBoostCampaignController({ ...input(), activePublicOffer: true }));
+    const view = renderHook(() => useBoostCampaignController({ ...input(), activeCampaignId: "rcp_active" }));
     await waitFor(() => expect(view.result.current.canBoost).toBe(true));
     act(() => view.result.current.openBoost());
     expect(view.result.current.sheetProps.planProblem).toContain("already has a live boost");
@@ -233,7 +390,7 @@ describe("useBoostCampaignController", () => {
     expect(calls.transfer).toBe(1);
   });
 
-  test("retries confirmation after an ambiguous error without sending twice", async () => {
+  test("keeps an ambiguous confirmation awaiting finality without sending twice", async () => {
     connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
     confirmError = new Error("confirmation timed out");
     const view = renderHook(() => useBoostCampaignController(input()));
@@ -242,12 +399,11 @@ describe("useBoostCampaignController", () => {
     act(() => view.result.current.sheetProps.onConfirm?.());
     await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
     act(() => view.result.current.sheetProps.onConfirm?.());
-    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("failed"));
-    expect(view.result.current.sheetProps.retryLabel).toBe("Retry confirmation");
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("awaiting-finality"));
     expect(calls.transfer).toBe(1);
 
     confirmError = null;
-    act(() => view.result.current.sheetProps.onRetry?.());
+    act(() => view.result.current.sheetProps.onRefresh?.());
     await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
     expect(calls.transfer).toBe(1);
     expect(calls.confirm).toBe(2);
@@ -262,7 +418,7 @@ describe("useBoostCampaignController", () => {
     act(() => view.result.current.sheetProps.onConfirm?.());
     await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
     act(() => view.result.current.sheetProps.onConfirm?.());
-    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("failed"));
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("awaiting-finality"));
 
     confirmError = null;
     act(() => view.result.current.sheetProps.onRefresh?.());
@@ -280,14 +436,12 @@ describe("useBoostCampaignController", () => {
     act(() => firstView.result.current.sheetProps.onConfirm?.());
     await waitFor(() => expect(firstView.result.current.sheetProps.state).toBe("quote"));
     act(() => firstView.result.current.sheetProps.onConfirm?.());
-    await waitFor(() => expect(firstView.result.current.sheetProps.state).toBe("failed"));
+    await waitFor(() => expect(firstView.result.current.sheetProps.state).toBe("awaiting-finality"));
     firstView.unmount();
 
     confirmError = null;
     const restoredView = renderHook(() => useBoostCampaignController(input()));
-    await waitFor(() => expect(restoredView.result.current.sheetProps.retryLabel).toBe("Retry confirmation"));
-    act(() => restoredView.result.current.openBoost());
-    act(() => restoredView.result.current.sheetProps.onRetry?.());
+    // Recovery confirms the persisted hash immediately; no sheet interaction.
     await waitFor(() => expect(restoredView.result.current.sheetProps.state).toBe("active"));
     expect(calls.transfer).toBe(1);
     expect(calls.confirm).toBe(2);
@@ -332,7 +486,7 @@ describe("useBoostCampaignController", () => {
     await waitFor(() => expect(restoredView.result.current.sheetProps.state).toBe("funding-review"));
     act(() => restoredView.result.current.openBoost());
     expect(restoredView.result.current.sheetProps.state).toBe("funding-review");
-    expect(calls.confirm).toBe(1);
+    expect(calls.confirm).toBe(2);
   });
 
   test("refund-pending confirmation becomes terminal support review without activation polling", async () => {
@@ -350,5 +504,216 @@ describe("useBoostCampaignController", () => {
     expect(view.result.current.sheetProps.supportReference).toStartWith("rfq_");
     expect(localStorage.getItem("pirate_reward_pending_funding:com_test:pst_test")).toBeNull();
     expect(calls.confirm).toBe(1);
+  });
+
+  test("a safe-block wait remains neutral after one confirmation request", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    confirmStatus = "confirming";
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("awaiting-finality"));
+
+    expect(calls.confirm).toBe(1);
+    expect(calls.transfer).toBe(1);
+    expect(view.result.current.sheetProps.errorMessage).toBeUndefined();
+  });
+
+  test("automatically rechecks recovered finality after the submitted-funding sheet closes", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    confirmStatus = "confirming";
+    let activated = 0;
+    const view = renderHook(() => useBoostCampaignController({
+      ...input(),
+      onCampaignActivated: () => { activated += 1; },
+    }));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    let poll: (() => void) | undefined;
+    const originalSetInterval = window.setInterval;
+    window.setInterval = ((callback: TimerHandler, delay?: number) => {
+      if (delay === 10_000) {
+        poll = callback as () => void;
+        return 1;
+      }
+      return originalSetInterval(callback, delay);
+    }) as typeof window.setInterval;
+    try {
+      act(() => view.result.current.sheetProps.onConfirm?.());
+      await waitFor(() => expect(view.result.current.sheetProps.state).toBe("awaiting-finality"));
+      expect(poll).toBeDefined();
+      act(() => view.result.current.sheetProps.onOpenChange?.(false));
+      confirmStatus = "confirmed";
+      await act(async () => poll?.());
+      await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
+    } finally {
+      window.setInterval = originalSetInterval;
+    }
+
+    expect(calls.transfer).toBe(1);
+    expect(calls.confirm).toBe(2);
+    expect(activated).toBe(1);
+  });
+
+  test("a transient exhausted read remains pending instead of becoming a failure", async () => {
+    campaignStatus = "exhausted";
+    localStorage.setItem("pirate_reward_campaign:com_test:pst_test", "rcp_test");
+    const view = renderHook(() => useBoostCampaignController(input()));
+
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.sheetProps.onRefresh?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("awaiting-finality"));
+    expect(view.result.current.sheetProps.errorMessage).toBeUndefined();
+  });
+
+  test("a verified failed hash becomes review and starts over with a fresh quote", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    confirmStatus = "failed";
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("funding-review"));
+
+    expect(view.result.current.sheetProps.canRestartFunding).toBe(true);
+    expect(view.result.current.sheetProps.errorMessage).toContain("failed on-chain");
+    expect(calls.confirm).toBe(1);
+    expect(calls.transfer).toBe(1);
+
+    act(() => view.result.current.sheetProps.onRetry?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    expect(calls.quote).toBe(2);
+    expect(calls.confirm).toBe(1);
+    expect(calls.transfer).toBe(1);
+  });
+
+  test("an operator incident is terminal and never offers confirmation retry", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    confirmStatus = "operator_incident";
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("funding-review"));
+
+    expect(view.result.current.sheetProps.canRestartFunding).toBe(false);
+    expect(view.result.current.sheetProps.errorMessage).toContain("support review");
+    expect(calls.confirm).toBe(1);
+  });
+
+  test("rehydrates the funding transaction from the server campaign resource", async () => {
+    campaignStatus = "active";
+    localStorage.setItem("pirate_reward_campaign:com_test:pst_test", "rcp_test");
+    const view = renderHook(() => useBoostCampaignController(input()));
+
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
+    expect(view.result.current.sheetProps.explorerTxUrl).toContain(
+      "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    );
+  });
+
+  test("server activation clears a stale terminal browser record", async () => {
+    campaignStatus = "active";
+    localStorage.setItem("pirate_reward_terminal_funding:com_test:pst_test", JSON.stringify({
+      campaignId: "rcp_test",
+      code: "funding_failed",
+      fundingId: "rfq_stale",
+      message: "stale",
+      quoteId: "rfq_stale",
+      transactionHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    }));
+    const view = renderHook(() => useBoostCampaignController(input()));
+
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
+    expect(localStorage.getItem("pirate_reward_terminal_funding:com_test:pst_test")).toBeNull();
+    expect(calls.confirm).toBe(0);
+  });
+
+  test("a transient campaign hydration failure preserves every recovery record", async () => {
+    const pendingKey = "pirate_reward_pending_funding:com_test:pst_test";
+    const campaignKey = "pirate_reward_campaign:com_test:pst_test";
+    const terminalKey = "pirate_reward_terminal_funding:com_test:pst_test";
+    localStorage.setItem(campaignKey, "rcp_test");
+    localStorage.setItem(pendingKey, JSON.stringify({
+      campaignId: "rcp_test",
+      quote: quote(),
+      transactionHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    }));
+    const terminalState = JSON.stringify({
+      campaignId: "rcp_test",
+      code: "funding_operator_incident",
+      fundingId: "rfq_test",
+      message: "support review",
+      quoteId: "rfq_test",
+      transactionHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    });
+    localStorage.setItem(terminalKey, terminalState);
+    getCampaignError = new ApiError("provider_unavailable", "offline", 503);
+
+    renderHook(() => useBoostCampaignController(input()));
+
+    await waitFor(() => expect(calls.campaignRead).toBe(1));
+    expect(localStorage.getItem(campaignKey)).toBe("rcp_test");
+    expect(localStorage.getItem(pendingKey)).not.toBeNull();
+    expect(localStorage.getItem(terminalKey)).toBe(terminalState);
+  });
+
+  test("a missing stored campaign clears stale recovery records", async () => {
+    const pendingKey = "pirate_reward_pending_funding:com_test:pst_test";
+    const campaignKey = "pirate_reward_campaign:com_test:pst_test";
+    const terminalKey = "pirate_reward_terminal_funding:com_test:pst_test";
+    localStorage.setItem(campaignKey, "rcp_missing");
+    localStorage.setItem(pendingKey, "pending-state");
+    localStorage.setItem(terminalKey, "terminal-state");
+    getCampaignError = new ApiError("not_found", "missing", 404);
+
+    renderHook(() => useBoostCampaignController(input()));
+
+    await waitFor(() => expect(localStorage.getItem(campaignKey)).toBeNull());
+    expect(localStorage.getItem(pendingKey)).toBeNull();
+    expect(localStorage.getItem(terminalKey)).toBeNull();
+  });
+
+  test("an ended campaign does not prevent funding a new campaign", async () => {
+    campaignStatus = "ended";
+    localStorage.setItem("pirate_reward_campaign:com_test:pst_test", "rcp_ended");
+    const view = renderHook(() => useBoostCampaignController(input()));
+
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    expect(calls.create).toBe(1);
+    expect(calls.quote).toBe(1);
+  });
+});
+
+describe("useBoostMenuEligibility", () => {
+  test("exposes only capability-eligible song post ids", async () => {
+    const view = renderHook(() => useBoostMenuEligibility({
+      authenticated: true,
+      postIds: ["post_one", "post_two"],
+    }));
+
+    await waitFor(() => expect([...view.result.current]).toEqual(["post_one", "post_two"]));
+  });
+
+  test("does not load or expose menu eligibility while signed out", () => {
+    const view = renderHook(() => useBoostMenuEligibility({
+      authenticated: false,
+      postIds: ["post_one"],
+    }));
+
+    expect([...view.result.current]).toEqual([]);
   });
 });

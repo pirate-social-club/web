@@ -24,6 +24,7 @@ can merge.
 Web releases use these pinned commits; they never select the API or Core
 repository's current `main` implicitly.
 
-Current release intent: deploy the public-read cache eviction canary with API
-`1eded9e82dcc32a0c8f9d0025d933f4a4164a935` and Core
-`387968e2008891b30cbcaa38a40233fc2341f612`.
+Do not record a mutable "current release intent" in this file. The checked-in
+SHA files, the commit that changes them, and the merged pull request are the
+auditable source of truth for each release. A narrative copied here becomes
+stale as soon as the next pin advances.

@@ -27,16 +27,29 @@ afterEach(() => {
   cleanup();
 });
 
+// The checkout link only exists once a slot chip is chosen (two-tap flow): tap the
+// time chip, then the confirm footer's Continue anchor carries the gated navigation.
+async function chooseSlotAndGetContinueAnchor(container: HTMLElement): Promise<HTMLAnchorElement> {
+  const chip = await waitFor(() => {
+    const button = [...container.querySelectorAll("button")]
+      .find((b) => /\d{1,2}:\d{2}/.test(b.textContent ?? "") && !b.disabled);
+    if (!button) throw new Error("slot chip not rendered");
+    return button;
+  });
+  fireEvent.click(chip);
+  return waitFor(() => {
+    const a = container.querySelector("a[href*='/checkout']") as HTMLAnchorElement | null;
+    if (!a) throw new Error("confirm link not rendered");
+    return a;
+  });
+}
+
 describe("ProfileBookTabPanel viewer slot gate", () => {
   // The anchor-bypass fix: a logged-out tap on a profile Book-tab slot must open the sign-in modal and
   // NOT follow the checkout link (which would 401 into a sign-in page).
   test("logged-out slot tap prompts sign-in and prevents navigation", async () => {
     const { container } = render(<ProfileBookTabPanel hostUserId="usr_host" slots={SLOTS} loading={false} />);
-    const anchor = await waitFor(() => {
-      const a = container.querySelector("a[href*='/checkout']") as HTMLAnchorElement | null;
-      if (!a) throw new Error("slot link not rendered");
-      return a;
-    });
+    const anchor = await chooseSlotAndGetContinueAnchor(container);
     // fireEvent.click returns false when the handler called preventDefault (i.e. navigation blocked).
     const notPrevented = fireEvent.click(anchor);
     expect(requestAuth).toHaveBeenCalledTimes(1);
@@ -46,13 +59,13 @@ describe("ProfileBookTabPanel viewer slot gate", () => {
   test("signed-in slot tap does not prompt sign-in (link navigates normally)", async () => {
     fakeSession = { accessToken: "tok" };
     const { container } = render(<ProfileBookTabPanel hostUserId="usr_host" slots={SLOTS} loading={false} />);
-    const anchor = await waitFor(() => {
-      const a = container.querySelector("a[href*='/checkout']") as HTMLAnchorElement | null;
-      if (!a) throw new Error("slot link not rendered");
-      return a;
-    });
+    const anchor = await chooseSlotAndGetContinueAnchor(container);
     const notPrevented = fireEvent.click(anchor);
     expect(requestAuth).not.toHaveBeenCalled();
     expect(notPrevented).toBe(true);
+    const href = new URL(anchor.getAttribute("href") ?? "", "https://pirate.test");
+    expect(href.searchParams.get("start")).toBe(SLOTS[0]!.startUtc);
+    expect(href.searchParams.get("end")).toBe(SLOTS[0]!.endUtc);
+    expect(href.searchParams.has("price")).toBe(false);
   });
 });

@@ -76,6 +76,19 @@ describe("apiProfileToProps", () => {
     ]);
   });
 
+  test("renders unavailable follow counts without inventing zeroes", () => {
+    const props = apiProfileToProps(createProfile(), false, labels, {
+      ...followState,
+      followerCount: null,
+      followingCount: null,
+    }, "en-US");
+
+    expect(props.rightRail.stats).toEqual([
+      { label: "Followers", value: "—" },
+      { label: "Following", value: "—" },
+    ]);
+  });
+
   test("does not provide placeholder activity arrays", () => {
     const props = apiProfileToProps(createProfile(), false, labels, followState, "en-US");
 

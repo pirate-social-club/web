@@ -79,6 +79,7 @@
       { "id": "terms-of-service", "label": "服务条款" },
       { "id": "privacy-policy", "label": "隐私政策" }
     ],
+    "communitiesEmptyLabel": "还没有社区",
     "yourCommunitiesLabel": "你的社区",
     "feedSortBestLabel": "热门",
     "feedSortNewLabel": "最新",

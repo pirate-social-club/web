@@ -9,11 +9,13 @@ describe("resolveVideoSongCapabilities", () => {
         age_gate_viewer_state: null,
         karaoke_capability: { status: "ready" },
         post: { community: "cmt_song" },
+        song_presentation: { cover_art_ref: "https://media.test/song-cover.webp" },
         study_capability: { status: "locked" },
       } as never,
       readMode: "public",
       sourcePostId: "pst_song",
     })).toMatchObject({
+      artworkSrc: "https://media.test/song-cover.webp",
       karaoke: "ready",
       karaokeHref: "/p/pst_song/karaoke",
       readMode: "public",
@@ -22,7 +24,21 @@ describe("resolveVideoSongCapabilities", () => {
     });
   });
 
-  test("fails closed when the linked song requires age proof", () => {
+  test("does not invent artwork when the linked song has no cover", () => {
+    expect(resolveVideoSongCapabilities({
+      post: {
+        age_gate_viewer_state: null,
+        karaoke_capability: { status: "ready" },
+        post: { community: "cmt_song" },
+        song_presentation: { cover_art_ref: null },
+        study_capability: { status: "ready" },
+      } as never,
+      readMode: "public",
+      sourcePostId: "pst_song",
+    }).artworkSrc).toBeUndefined();
+  });
+
+  test("keeps age-gated actions visible but locked", () => {
     expect(resolveVideoSongCapabilities({
       post: {
         age_gate_viewer_state: "proof_required",
@@ -32,7 +48,25 @@ describe("resolveVideoSongCapabilities", () => {
       } as never,
       readMode: "authenticated",
       sourcePostId: "pst_song",
-    })).toMatchObject({ karaoke: "unavailable", study: "unavailable" });
+    })).toMatchObject({
+      karaoke: "locked",
+      karaokeHref: undefined,
+      study: "locked",
+      studyHref: undefined,
+    });
+  });
+
+  test("preserves processing and failed states for feed presentation", () => {
+    expect(resolveVideoSongCapabilities({
+      post: {
+        age_gate_viewer_state: null,
+        karaoke_capability: { status: "processing" },
+        post: { community: "cmt_song" },
+        study_capability: { status: "failed" },
+      } as never,
+      readMode: "public",
+      sourcePostId: "pst_song",
+    })).toMatchObject({ karaoke: "processing", study: "failed" });
   });
 
   test("annotates only reward-eligible ready actions", () => {
@@ -45,6 +79,7 @@ describe("resolveVideoSongCapabilities", () => {
       } as never,
       readMode: "authenticated",
       rewardOffer: {
+        campaign: "rcp_song",
         chain_id: 8453,
         daily_reward_cents: 200,
         eligible_activity: "karaoke",
@@ -65,6 +100,7 @@ describe("resolveVideoSongCapabilities", () => {
       } as never,
       readMode: "authenticated",
       rewardOffer: {
+        campaign: "rcp_song",
         chain_id: 8453,
         daily_reward_cents: 100,
         eligible_activity: "either",

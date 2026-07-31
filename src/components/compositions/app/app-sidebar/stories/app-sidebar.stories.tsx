@@ -5,13 +5,13 @@ import { Flag, Plus } from "@phosphor-icons/react";
 import { AppHeader } from "@/components/compositions/app/app-shell-chrome/app-header";
 import { MobileFooterNav } from "@/components/compositions/app/app-shell-chrome/mobile-footer-nav";
 import { useUiLocale } from "@/lib/ui-locale";
-import { getLocaleMessages } from "@/locales";
+import { getLocaleMessages, type ShellMessages } from "@/locales";
 import { SidebarInset, SidebarProvider } from "@/components/compositions/system/sidebar/sidebar";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 
 import { AppSidebar } from "../app-sidebar";
-import { buildVideoPrimaryItems, MAX_SIDEBAR_RECENT_COMMUNITIES } from "@/app/shell/sidebar-sections";
+import { buildMediaSpineItems, MAX_SIDEBAR_RECENT_COMMUNITIES } from "@/app/shell/sidebar-sections";
 
 const meta = {
   title: "Compositions/App/AppSidebar",
@@ -32,6 +32,21 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+/** Mirrors the shipped media spine from app-shell, with a seeded monogram avatar for Profile. */
+function buildStorySpineItems(copy: ShellMessages) {
+  return buildMediaSpineItems(copy.appSidebar, {
+    avatarFallback: "story.pirate",
+    avatarSeed: "usr_story",
+    avatarSrc: null,
+    onProfileSelect: () => undefined,
+    onWalletSelect: () => undefined,
+    profileLabel: copy.mobileFooter.profileLabel,
+    unreadActivityCount: 12,
+    unreadChatCount: 1,
+    walletLabel: copy.mobileFooter.walletLabel,
+  });
+}
+
 function ShellChrome({ mobile = false }: { mobile?: boolean }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "shell");
@@ -39,7 +54,7 @@ function ShellChrome({ mobile = false }: { mobile?: boolean }) {
     ...section,
     defaultOpen: true,
   }));
-  const primaryItems = buildVideoPrimaryItems(copy.appSidebar);
+  const primaryItems = buildStorySpineItems(copy);
 
   if (mobile) {
     return (
@@ -107,17 +122,6 @@ function ShellChrome({ mobile = false }: { mobile?: boolean }) {
         sections={sections}
       />
       <SidebarInset className="min-h-screen">
-        <AppHeader
-          labels={{
-            createLabel: copy.appHeader.createLabel,
-            homeAriaLabel: copy.appHeader.homeAriaLabel,
-            notificationsAriaLabel: copy.appHeader.notificationsAriaLabel,
-            openNavigationAriaLabel: copy.appHeader.openNavigationAriaLabel,
-            profileAriaLabel: copy.appHeader.profileAriaLabel,
-            searchAriaLabel: copy.appHeader.searchAriaLabel,
-            searchPlaceholder: copy.appHeader.searchPlaceholder,
-          }}
-        />
         <main className="mx-auto w-full max-w-5xl px-6 py-8">
           <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-8">
             <div className="space-y-4">
@@ -150,9 +154,11 @@ function MediaShellReview({
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "shell");
   const mediaSections = [{
+    action: { ariaLabel: copy.appSidebar.createCommunityLabel, icon: Plus, onSelect: () => undefined },
     defaultOpen: true,
     id: "communities",
     items: [
+      { id: "your-communities", icon: Flag, label: copy.appSidebar.yourCommunitiesLabel },
       ...(populatedCommunities ? [
         { id: "c/pirate-radio", label: "c/pirate-radio" },
         { id: "c/builders", label: "c/builders" },
@@ -161,8 +167,6 @@ function MediaShellReview({
         { length: MAX_SIDEBAR_RECENT_COMMUNITIES },
         (_unused, index) => ({ id: `c/community-${index}`, label: `c/long-community-name-${index}` }),
       ) : []),
-      { id: "your-communities", icon: Flag, label: copy.appSidebar.yourCommunitiesLabel },
-      { id: "create-community", icon: Plus, label: copy.appSidebar.createCommunityLabel },
     ],
     label: copy.appSidebar.sections.find((section) => section.id === "communities")?.label ?? "Communities",
   }];
@@ -177,24 +181,11 @@ function MediaShellReview({
         mediaAction={<Button className="w-full">{copy.appHeader.connectLabel}</Button>}
         onHomeClick={() => undefined}
         onSearchClick={() => undefined}
-        primaryItems={buildVideoPrimaryItems(copy.appSidebar)}
+        primaryItems={buildStorySpineItems(copy)}
         searchLabel={copy.appHeader.searchPlaceholder}
         sections={mediaSections}
       />
       <SidebarInset className={contentRoute ? "h-dvh min-h-0 overflow-hidden bg-background" : "h-dvh min-h-0 overflow-hidden bg-black"}>
-        {contentRoute ? (
-          <AppHeader
-            labels={{
-              createLabel: copy.appHeader.createLabel,
-              homeAriaLabel: copy.appHeader.homeAriaLabel,
-              notificationsAriaLabel: copy.appHeader.notificationsAriaLabel,
-              openNavigationAriaLabel: copy.appHeader.openNavigationAriaLabel,
-              profileAriaLabel: copy.appHeader.profileAriaLabel,
-              searchAriaLabel: copy.appHeader.searchAriaLabel,
-              searchPlaceholder: copy.appHeader.searchPlaceholder,
-            }}
-          />
-        ) : null}
         <main className={contentRoute ? "min-h-0 flex-1 overflow-auto p-8" : dockOpen ? "grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_26rem]" : "min-h-0 flex-1"}>
           {contentRoute ? (
             <div className="mx-auto max-w-4xl space-y-5">
@@ -235,7 +226,7 @@ export const MediaShellExpanded: Story = {
 };
 
 export const UnifiedContentShell: Story = {
-  name: "Unified shell / Content route with header",
+  name: "Unified shell / Content route",
   parameters: {
     viewport: { defaultViewport: "desktop" },
   },
@@ -254,7 +245,6 @@ export const MediaShellCommunitiesOverflowing: Story = {
   name: "Media shell / Communities at the cap",
   render: () => <MediaShellReview overflowingCommunities populatedCommunities />,
 };
-
 export const MediaShellCollapsed: Story = {
   name: "Media shell / Collapsed icon rail",
   render: () => <MediaShellReview collapsed />,

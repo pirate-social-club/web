@@ -60,6 +60,7 @@ export function ProfilePage({
   onEditProfile,
   onMessageProfile,
   onBookingCta,
+  onCommunitiesCta,
   bookPanel,
   overviewItems = EMPTY_PROFILE_OVERVIEW_ITEMS,
   posts = EMPTY_PROFILE_POSTS,
@@ -92,6 +93,7 @@ export function ProfilePage({
             onEditProfile={onEditProfile}
             onMessageProfile={onMessageProfile}
             onBookingCta={onBookingCta}
+            onCommunitiesCta={onCommunitiesCta}
             profile={profile}
             stats={rightRail.stats}
           />

@@ -38,6 +38,15 @@ function isDefaultShareImageUrl(value: string | null): boolean {
   }
 }
 
+function buildHomeVideoFeedBootstrapScript(publicUrl: string): string {
+  const parsedPublicUrl = new URL(publicUrl);
+  const authenticatedUrl = new URL(publicUrl);
+  authenticatedUrl.pathname = authenticatedUrl.pathname.replace(/\/public$/u, "");
+  const locale = parsedPublicUrl.searchParams.get("locale") ?? "en";
+
+  return `(function(){try{var publicUrl=${JSON.stringify(publicUrl)};var authenticatedUrl=${JSON.stringify(authenticatedUrl.toString())};var locale=${JSON.stringify(locale)};var token=null;try{var raw=localStorage.getItem("pirate_session");var session=raw?JSON.parse(raw):null;token=session&&typeof session.accessToken==="string"?session.accessToken:null;if(token){var part=token.split(".")[1];if(part){var normalized=part.replace(/-/g,"+").replace(/_/g,"/");var payload=JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length/4)*4,"=")));if(typeof payload.exp==="number"&&payload.exp*1000<=Date.now())token=null;}}}catch(_error){token=null;}var authenticated=Boolean(token);var request=function(withToken){return fetch(authenticated?authenticatedUrl:publicUrl,{headers:withToken&&token?{Authorization:"Bearer "+token}:undefined}).then(function(response){if(response.status===401&&withToken)return request(false);if(!response.ok)return{ok:false};return response.json().then(function(body){return{ok:true,response:body};});}).catch(function(){return{ok:false};});};window.__pirateHomeVideoFeedBootstrap={authenticated:authenticated,locale:locale,promise:request(authenticated)};}catch(_error){}})();`;
+}
+
 export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = ({
   children,
   ctx,
@@ -48,6 +57,8 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
   const dir = ctx.dir ?? resolveLocaleDirection(locale);
   const theme = ctx.theme ?? "dark";
   const nonce = rw.nonce;
+  const effectivePath = new URL(ctx.effectiveUrl ?? "https://pirate.sc/").pathname;
+  const isTelegramMiniApp = effectivePath === "/tg" || effectivePath.startsWith("/tg/");
   const canonicalUrl = ctx.canonicalUrl ?? null;
   const seo = ctx.seoMetadata ?? null;
   const expectsEntitySeoMetadata = ctx.expectsEntitySeoMetadata === true;
@@ -67,6 +78,7 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
   const ogLocale = resolveOpenGraphLocale(locale);
   const twitterCard = pageImageUrl ? "summary_large_image" : "summary";
   const homeFeedPreloadUrl = ctx.homeFeedPreloadUrl ?? null;
+  const homeFeedApiOrigin = homeFeedPreloadUrl ? new URL(homeFeedPreloadUrl).origin : null;
   const clientModuleUrl = isDev
     ? "/src/client.tsx"
     : "rwsdk_asset:/src/client.tsx";
@@ -82,6 +94,9 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
     >
       <head>
         <meta charSet="utf-8" />
+        {isTelegramMiniApp ? (
+          <script src="https://telegram.org/js/telegram-web-app.js" />
+        ) : null}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#222324" />
         <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
@@ -115,8 +130,15 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
         {shouldRenderSocialMetadata && pageImageUrl ? <link rel="image_src" href={pageImageUrl} /> : null}
         {!ctx.isIndexable ? <meta name="robots" content="noindex, nofollow" /> : null}
         <link rel="stylesheet" href={stylesUrl} />
+        {homeFeedApiOrigin ? <link crossOrigin="anonymous" href={homeFeedApiOrigin} rel="preconnect" /> : null}
+        {homeFeedPreloadUrl ? <link crossOrigin="anonymous" href="https://psc.myfilebase.com" rel="preconnect" /> : null}
         {homeFeedPreloadUrl ? (
-          <link as="fetch" crossOrigin="anonymous" href={homeFeedPreloadUrl} rel="preload" type="application/json" />
+          <script
+            nonce={nonce}
+            dangerouslySetInnerHTML={{
+              __html: buildHomeVideoFeedBootstrapScript(homeFeedPreloadUrl),
+            }}
+          />
         ) : null}
         <link rel="modulepreload" href={clientModuleUrl} />
         {isDev ? (

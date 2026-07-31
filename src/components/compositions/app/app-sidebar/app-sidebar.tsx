@@ -38,6 +38,12 @@ import { Type } from "@/components/primitives/type";
 type SidebarIcon = Icon;
 
 export interface AppSidebarPrimaryItem {
+  avatarFallback?: string;
+  avatarSeed?: string | null;
+  /** `undefined` renders the icon; a string or null renders the viewer's avatar (fallback when null). */
+  avatarSrc?: string | null;
+  /** Unread count overlaid on the item visual; 0 or undefined hides the badge. */
+  badgeCount?: number;
   id: string;
   icon: SidebarIcon;
   label: string;
@@ -53,6 +59,13 @@ interface AppSidebarSectionItem {
 }
 
 export interface AppSidebarSection {
+  action?: {
+    ariaLabel: string;
+    icon: SidebarIcon;
+    onSelect: () => void;
+  };
+  /** Rendered in place of the item list when the section has no items. */
+  emptyLabel?: string;
   id: string;
   defaultOpen?: boolean;
   items: readonly AppSidebarSectionItem[];
@@ -64,6 +77,18 @@ const sectionLabelClassName =
 
 const topLevelRowClassName = "h-11 rounded-xl px-3.5 text-base font-medium";
 const nestedRowClassName = "h-11 rounded-xl px-3.5 text-base font-medium";
+// These destinations already have persistent, one-tap homes in the mobile footer.
+// Keep the drawer focused on search, feed controls, discovery, and communities.
+const mobileFooterItemIds = new Set(["home", "popular", "chat", "activity", "wallet", "profile"]);
+
+function formatUnreadCount(count: number): string {
+  return count > 99 ? "99+" : String(count);
+}
+
+function normalizeUnreadCount(count: number | undefined): number {
+  if (count === undefined || !Number.isFinite(count)) return 0;
+  return Math.max(0, Math.floor(count));
+}
 
 const DEFAULT_PRIMARY_ITEMS: readonly AppSidebarPrimaryItem[] = [
   { id: "home", icon: House, label: "Home" },
@@ -72,6 +97,12 @@ const DEFAULT_PRIMARY_ITEMS: readonly AppSidebarPrimaryItem[] = [
   { id: "create-community", icon: Plus, label: "Create Community" },
 ];
 
+export function filterPrimaryItemsForLayout(
+  items: readonly AppSidebarPrimaryItem[],
+  isMobile: boolean,
+): readonly AppSidebarPrimaryItem[] {
+  return isMobile ? items.filter((item) => !mobileFooterItemIds.has(item.id)) : items;
+}
 
 
 function SidebarSectionBlock({
@@ -133,12 +164,35 @@ function SidebarSectionBlock({
           key={section.id}
           value={section.id}
         >
-          <AccordionTrigger className={sectionLabelClassName}>
-            {section.label}
-          </AccordionTrigger>
+          <div className="flex items-center">
+            {/* Symmetric vertical padding keeps the section action button (e.g. the
+                Communities "+") centered on the label text instead of the trigger's
+                otherwise asymmetric box. */}
+            <AccordionTrigger className={cn(sectionLabelClassName, "min-w-0 flex-1 py-2.5")}>
+              {section.label}
+            </AccordionTrigger>
+            {section.action ? (
+              <button
+                aria-label={section.action.ariaLabel}
+                className="me-2 grid size-9 shrink-0 place-items-center rounded-full text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                onClick={() => onItemSelect(section.action?.onSelect)}
+                type="button"
+              >
+                {React.createElement(section.action.icon, { className: "size-5", weight: "bold" })}
+              </button>
+            ) : null}
+          </div>
           <AccordionContent className="pb-0">
             <SidebarGroup className="gap-0 p-0">
               <SidebarGroupContent>
+                {/* A section can legitimately be empty (e.g. Communities before you
+                    join any). The header still carries its action button, so show a
+                    hint instead of an empty accordion body. */}
+                {section.items.length === 0 && section.emptyLabel ? (
+                  <Type as="p" className="px-3.5 pb-2 text-sidebar-foreground/50" variant="caption">
+                    {section.emptyLabel}
+                  </Type>
+                ) : null}
                 <SidebarMenu className="gap-1">
                   {section.items.map((item) => {
                     const Icon = item.icon;
@@ -321,9 +375,7 @@ export function AppSidebar({
     if (item.id === "home" && onHomeClick && item.onSelect === undefined) return { ...resolvedItem, onSelect: onHomeClick };
     return resolvedItem;
   });
-  const visiblePrimaryItems = isMobile
-    ? resolvedPrimaryItems.filter((item) => item.id !== "home" && item.id !== "popular")
-    : resolvedPrimaryItems;
+  const visiblePrimaryItems = filterPrimaryItemsForLayout(resolvedPrimaryItems, isMobile);
   const resolvedCodeItems = codeItems ?? copy.appSidebar.codeItems;
   const resolvedCodeLabel = codeLabel ?? copy.appSidebar.codeLabel;
   const resolvedSections = sections ?? copy.appSidebar.sections;
@@ -353,7 +405,7 @@ export function AppSidebar({
             type="button"
           >
             <PirateBrandMark className="size-10 shrink-0" decorative={false} />
-            <Type as="span" className="font-display tracking-wide group-data-[collapsible=icon]:hidden" variant="h3">
+            <Type as="span" className="font-display uppercase tracking-wide group-data-[collapsible=icon]:hidden" variant="h3">
               {brandLabel ?? copy.appSidebar.brandLabel}
             </Type>
           </button>
@@ -424,10 +476,12 @@ export function AppSidebar({
                   : item.id === "home"
                     ? activeItemId === "home"
                     : item.id === activeItemId;
+                const badgeCount = normalizeUnreadCount(item.badgeCount);
 
                 return (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
+                      aria-label={badgeCount > 0 ? `${item.label}, ${badgeCount}` : undefined}
                       className={topLevelRowClassName}
                       isActive={active}
                       onClick={() => {
@@ -440,7 +494,27 @@ export function AppSidebar({
                       }}
                       tooltip={item.label}
                     >
-                      <Icon className="size-5" weight={active ? "fill" : "regular"} />
+                      <span className="relative inline-flex shrink-0">
+                        {item.avatarSrc !== undefined ? (
+                          <Avatar
+                            className="size-7 border-border-soft"
+                            fallback={item.avatarFallback ?? item.label}
+                            fallbackSeed={item.avatarSeed ?? undefined}
+                            size="xs"
+                            src={item.avatarSrc ?? undefined}
+                          />
+                        ) : (
+                          <Icon className="size-5" weight={active ? "fill" : "regular"} />
+                        )}
+                        {badgeCount > 0 ? (
+                          <span
+                            aria-hidden="true"
+                            className="notification-count-badge absolute -end-2 -top-2"
+                          >
+                            {formatUnreadCount(badgeCount)}
+                          </span>
+                        ) : null}
+                      </span>
                       <span>{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

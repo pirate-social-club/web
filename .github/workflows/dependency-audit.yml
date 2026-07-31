@@ -1,29 +1,14 @@
 name: Dependency audit
 
-# The audit that used to sit on the release critical path. Advisory publication is
-# a time-varying input we do not control, so a newly published high advisory would
-# turn every release red until someone hand-patched an --ignore — with no
-# dependency change involved. That signal is worth having; blocking unrelated
-# deploys on somebody else's publication schedule is not.
-#
-# Releases still fail on an unaccepted CRITICAL (see release.yml). Everything at
-# high runs here and lands in a tracked issue instead.
+# High-and-above advisories gate every pull request. The release workflow repeats
+# this check immediately before deployment because advisory publication is a
+# time-varying input and can occur after a pull request was merged.
 on:
   schedule:
     # 06:15 UTC daily. Off-hours so a newly published advisory is triaged before
     # the working day rather than discovered mid-release.
     - cron: "15 6 * * *"
   pull_request:
-    # Dependency changes are the one case where an audit result is genuinely
-    # attributable to the change under review, so gate those on the PR.
-    paths:
-      - "**/package.json"
-      - "**/bun.lock"
-      - "**/bun.lockb"
-      - "**/package-lock.json"
-      - .github/dependency-audit-baseline.json
-      - .github/workflows/dependency-audit.yml
-      - scripts/ci/dependency-audit.mjs
   workflow_dispatch:
 
 concurrency:
@@ -41,6 +26,7 @@ jobs:
     permissions:
       contents: read
       issues: write
+      packages: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -50,13 +36,11 @@ jobs:
           repository: pirate-social-club/api
           ref: main
           path: api
-          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/core
           ref: main
           path: core
-          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
@@ -69,6 +53,8 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Install API dependencies
         working-directory: api/services/api
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
         run: bun install --frozen-lockfile
       - name: Install core dependencies
         working-directory: core
@@ -102,8 +88,8 @@ jobs:
               "covered by an unexpired entry in `.github/dependency-audit-baseline.json`,",
               "or found a baseline exception whose expiry has lapsed.",
               "",
-              "Releases are NOT blocked by this: release runs fail only on an unaccepted",
-              "**critical**. Fix the dependency, or add a reviewed baseline exception with a",
+              "Production releases are blocked by the same high-and-above policy.",
+              "Fix the dependency, or add a reviewed baseline exception with a",
               "reason and an expiry — an exception is a security decision, not a build fix.",
               "",
               "```",
@@ -127,6 +113,13 @@ jobs:
                 repo: context.repo.repo,
                 issue_number: match.number,
                 body,
+                assignees: ["technohippi3"],
+              });
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body: `@technohippi3 dependency audit failed again: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               });
               core.notice(`Updated tracked advisory issue #${match.number}`);
             } else {
@@ -136,6 +129,7 @@ jobs:
                 title,
                 body,
                 labels: ["dependency-audit"],
+                assignees: ["technohippi3"],
               });
               core.notice(`Opened tracked advisory issue #${created.data.number}`);
             }

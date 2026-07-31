@@ -32,6 +32,19 @@ export type PublicPostThreadResponse = {
   comments: CommentListResponse;
 };
 
+export type PreparedProfileFollowWrite = {
+  object: "profile_follow_write";
+  intent_id: string | null;
+  target_user_id: string;
+  desired_following: boolean;
+  consistency: { status: "already_reflected" | "accepted_not_yet_reflected" };
+  sponsorship: { eligible: boolean; reserved_transaction_count: number };
+  prepared_transaction_count: number;
+  transaction_index_offset: number;
+  transactions: Array<{ chain_id: number; data: `0x${string}`; to: `0x${string}` }>;
+  expires_at: string | null;
+};
+
 type ApiCourtyardWalletInventoryGroup = Omit<CourtyardWalletInventoryGroup, "chainNamespace" | "contractAddress" | "displayLabel" | "displayDetail"> & {
   chain_namespace: "eip155:1" | "eip155:137";
   contract_address: string;
@@ -103,6 +116,58 @@ export function createProfilesApi(request: ApiRequest) {
     },
     getByUserId: (userId: string): Promise<Profile> =>
       request<Profile>(`/profiles/${encodeURIComponent(userId)}`, { tokenRequired: false }),
+    getFollowState: (userId: string): Promise<{
+      object: "profile_follow_state";
+      target_user_id: string;
+      target_wallet: { status: "available"; address: string } | { status: "no_wallet" };
+      relationship: {
+        status: "current" | "viewer_anonymous" | "viewer_no_wallet" | "unavailable";
+        viewer_follows: boolean | null;
+      };
+      counts: {
+        status: "current" | "unavailable" | "not_applicable";
+        follower_count: number | null;
+        following_count: number | null;
+      };
+      projection: {
+        availability:
+          | "current"
+          | "projection_initializing"
+          | "projection_stale"
+          | "projection_rebuilding"
+          | "projection_unavailable";
+        revision: string;
+        indexed_through_block: Array<{ chain_id: number; block_number: string }>;
+      };
+    }> =>
+      request(`/profiles/${encodeURIComponent(userId)}/follow-state`, {
+        tokenOptional: true,
+      }),
+    prepareFollowWrite: (
+      userId: string,
+      followed: boolean,
+      idempotencyKey: string,
+    ): Promise<PreparedProfileFollowWrite> =>
+      request(`/profiles/${encodeURIComponent(userId)}/${followed ? "follow" : "unfollow"}`, {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({}),
+      }),
+    confirmFollowWrite: (
+      userId: string,
+      intentId: string,
+      transactionHashes: `0x${string}`[],
+    ): Promise<{
+      intent_id: string;
+      consistency: { status: "accepted_not_yet_reflected" };
+    }> =>
+      request(`/profiles/${encodeURIComponent(userId)}/follow-confirmation`, {
+        method: "POST",
+        body: JSON.stringify({
+          intent_id: intentId,
+          transaction_hashes: transactionHashes,
+        }),
+      }),
     updateMe: (input: ProfileUpdateInput): Promise<Profile> =>
       request<Profile>("/profiles/me", {
         method: "POST",

@@ -1472,9 +1472,10 @@ test.describe("live staging integration", () => {
         label: handleClaimCommunityId,
         routeSegment: handleClaimCommunityId,
       }, discoveryDiagnostics));
-    // A required release gate must prove its dedicated fixture, not silently
-    // pass against unrelated mutable feed state. Discovery remains useful for
-    // optional local runs only.
+    // A required release gate must prove the health of its dedicated fixture.
+    // Falling back to whichever names-enabled community happens to rank in the
+    // public feed turns a broken fixture into a data-dependent pass. Keep the
+    // broader discovery fallback only for optional/manual staging runs.
     const discovered = requiredReleaseGate
       ? []
       : await seedCommunityCandidates(discoveryDiagnostics);

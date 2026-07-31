@@ -24,6 +24,10 @@ let postEligible = true;
 let firstQuoteExpired = false;
 let policyError: unknown = null;
 let policyBlocked = false;
+let nationalityTierCapability: "unavailable" | "draft_only" = "unavailable";
+let nationalityTierPreview = false;
+let lastCreateBody: Record<string, unknown> | null = null;
+let campaignTiers: Array<{ amount_cents: number; nationalities: string[] }> = [];
 
 const campaign = () => ({
   id: "rcp_test",
@@ -37,6 +41,7 @@ const campaign = () => ({
   eligible_activity: "karaoke",
   min_score_bps: 7000,
   daily_reward_cents: 100,
+  payout_tiers: campaignTiers,
   milestone_7_cents: 0,
   milestone_30_cents: 0,
   reward_period_cap_cents: 100,
@@ -83,6 +88,7 @@ const fakeApi = {
       max_duration_seconds: 2_592_000,
       default_duration_seconds: 604_800,
       eligible_activities: ["study", "karaoke", "either"],
+      nationality_payout_tiers: nationalityTierCapability,
       chain_id: 84532,
       token_address: "0x1111111111111111111111111111111111111111",
     }),
@@ -93,8 +99,9 @@ const fakeApi = {
     updateSongOwnerPolicy: async (_community: string, _post: string, input: { third_party_rewards: string }) => ({
       third_party_rewards: input.third_party_rewards,
     }),
-    createCampaign: async (body: { idempotency_key: string }) => {
+    createCampaign: async (body: { idempotency_key: string } & Record<string, unknown>) => {
       calls.create += 1;
+      lastCreateBody = body;
       createKeys.push(body.idempotency_key);
       if (createError) throw createError;
       return campaign();
@@ -120,6 +127,9 @@ const fakeApi = {
 };
 
 mock.module("@/lib/api", () => ({ useApi: () => fakeApi }));
+mock.module("@/lib/vite-env", () => ({
+  readViteEnv: () => nationalityTierPreview ? "true" : null,
+}));
 mock.module("@/components/auth/privy-provider", () => ({
   usePiratePrivyRuntime: () => ({ reconnectEthereumWallet }),
   usePiratePrivyWallets: () => ({ connectedWallets, walletsReady: true }),
@@ -246,6 +256,10 @@ beforeEach(() => {
   firstQuoteExpired = false;
   policyError = null;
   policyBlocked = false;
+  nationalityTierCapability = "unavailable";
+  nationalityTierPreview = false;
+  lastCreateBody = null;
+  campaignTiers = [];
   connectedWallets = [];
   reconnectEthereumWallet = null;
   reconnectCalls = 0;
@@ -253,6 +267,53 @@ beforeEach(() => {
 });
 
 describe("useBoostCampaignController", () => {
+  test("keeps nationality tiers structurally dark without both preview gates", async () => {
+    nationalityTierCapability = "draft_only";
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    expect(view.result.current.sheetProps.payoutTiers).toBeUndefined();
+  });
+
+  test("persists a tiered preview draft without requesting funding", async () => {
+    nationalityTierCapability = "draft_only";
+    nationalityTierPreview = true;
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.sheetProps.onAddPayoutTier?.());
+    const tierId = view.result.current.sheetProps.payoutTiers?.[0]?.id;
+    expect(tierId).toBeDefined();
+    act(() => {
+      view.result.current.sheetProps.onPayoutTierNationalitiesChange?.(tierId!, ["usa", "can"]);
+      view.result.current.sheetProps.onPayoutTierAmountChange?.(tierId!, "5.00");
+    });
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("draft-preview"));
+
+    expect(calls.create).toBe(1);
+    expect(calls.quote).toBe(0);
+    expect(lastCreateBody).toMatchObject({
+      default_amount_cents: 100,
+      payout_tiers: [{ amount_cents: 500, nationalities: ["CAN", "USA"] }],
+    });
+  });
+
+  test("rehydrates an immutable tiered draft without exposing a funding path", async () => {
+    nationalityTierCapability = "draft_only";
+    nationalityTierPreview = true;
+    campaignTiers = [{ amount_cents: 500, nationalities: ["CAN", "USA"] }];
+    localStorage.setItem("pirate_reward_campaign:com_test:pst_test", "rcp_test");
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("draft-preview"));
+    expect(view.result.current.sheetProps.payoutTiers).toEqual([{
+      amountLabel: "5.00",
+      id: "stored_payout_tier_0",
+      nationalities: ["CAN", "USA"],
+    }]);
+    act(() => view.result.current.openBoost());
+    expect(view.result.current.sheetProps.state).toBe("draft-preview");
+    expect(calls.quote).toBe(0);
+  });
   test("hides Boost when the running campaign allowlist excludes the post", async () => {
     postEligible = false;
     const view = renderHook(() => useBoostCampaignController(input()));

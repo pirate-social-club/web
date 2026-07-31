@@ -8,6 +8,7 @@ import type {
 } from "@pirate/api-contracts";
 
 import type { BoostCampaignSheetProps, BoostEligibleActivity } from "@/components/compositions/rewards/reward-booster-surfaces";
+import type { BoostPayoutTierDraft } from "@/components/compositions/rewards/reward-booster-surfaces";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { useApi } from "@/lib/api";
 import { ApiError, isApiNotFoundError } from "@/lib/api/client";
@@ -17,6 +18,8 @@ import {
   resolveRewardFundingTransferInput,
 } from "@/lib/commerce/routed-checkout";
 import { formatUsdLabel } from "@/lib/formatting/currency";
+import { parseUsdInput, usdToCents } from "@/lib/formatting/currency";
+import { readViteEnv } from "@/lib/vite-env";
 import { getErrorMessage } from "@/lib/error-utils";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 import {
@@ -32,6 +35,9 @@ const TERMINAL_FUNDING_STORAGE_PREFIX = "pirate_reward_terminal_funding:";
 const CREATE_KEY_STORAGE_PREFIX = "pirate_reward_create_key:";
 const QUOTE_KEY_STORAGE_PREFIX = "pirate_reward_quote_key:";
 const FUNDING_FINALITY_POLL_INTERVAL_MS = 10_000;
+function nationalityTiersPreviewEnabled(): boolean {
+  return readViteEnv("VITE_REWARD_NATIONALITY_TIERS_PREVIEW") === "true";
+}
 
 const TERMINAL_FUNDING_CODES = new Set([
   "funding_failed",
@@ -260,6 +266,15 @@ function campaignFundingTxHash(campaign: RewardCampaign | null): string | null {
     ?.funding_tx_hash ?? null;
 }
 
+function campaignPayoutTiers(campaign: RewardCampaign | null): Array<{
+  amount_cents: number;
+  nationalities: string[];
+}> {
+  return (campaign as (RewardCampaign & {
+    payout_tiers?: Array<{ amount_cents: number; nationalities: string[] }>;
+  }) | null)?.payout_tiers ?? [];
+}
+
 export interface BoostCampaignControllerInput {
   activeCampaignId: string | null;
   authenticated: boolean;
@@ -275,7 +290,9 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const api = useApi();
   const { connectedWallets } = usePiratePrivyWallets({ enabled: input.authenticated && input.song });
   const { reconnectEthereumWallet } = usePiratePrivyRuntime();
-  const [capabilities, setCapabilities] = React.useState<RewardCampaignCapabilities | null>(null);
+  const [capabilities, setCapabilities] = React.useState<(RewardCampaignCapabilities & {
+    nationality_payout_tiers?: "unavailable" | "draft_only";
+  }) | null>(null);
   const [policyAllowed, setPolicyAllowed] = React.useState(true);
   const [campaign, setCampaign] = React.useState<RewardCampaign | null>(null);
   const [quote, setQuote] = React.useState<RewardCampaignFundingQuote | null>(null);
@@ -287,6 +304,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const [eligibleActivity, setEligibleActivity] = React.useState<BoostEligibleActivity>("karaoke");
   const [dailyRewardInput, setDailyRewardInput] = React.useState("1.00");
   const [budgetInput, setBudgetInput] = React.useState("10.00");
+  const [payoutTiers, setPayoutTiers] = React.useState<BoostPayoutTierDraft[]>([]);
   const [busy, setBusy] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | undefined>();
   const [terminalCode, setTerminalCode] = React.useState<string | null>(null);
@@ -334,6 +352,15 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       if (storedCampaign) {
         setEligibleActivity(storedCampaign.eligible_activity);
         setDailyRewardInput((storedCampaign.daily_reward_cents / 100).toFixed(2));
+        const storedTiers = campaignPayoutTiers(storedCampaign);
+        if (storedTiers.length > 0) {
+          setPayoutTiers(storedTiers.map((tier, index) => ({
+            id: `stored_payout_tier_${index}`,
+            nationalities: tier.nationalities,
+            amountLabel: (tier.amount_cents / 100).toFixed(2),
+          })));
+          setSheetState("draft-preview");
+        }
       }
       const serverTransactionHash = campaignFundingTxHash(storedCampaign);
       const serverFunded = Boolean(storedCampaign && storedCampaign.funded_cents > 0);
@@ -450,9 +477,22 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     maxRewardCents: capabilities.max_reward_cents,
     minBudgetCents: capabilities.min_budget_cents,
   } : null, [capabilities]);
+  const tiersPreviewAvailable = Boolean(
+    nationalityTiersPreviewEnabled()
+    && capabilities?.nationality_payout_tiers === "draft_only"
+  );
+  const parsedPayoutTiers = React.useMemo(() => payoutTiers.map((tier) => ({
+    nationalities: tier.nationalities,
+    amountCents: usdToCents(parseUsdInput(tier.amountLabel)),
+  })), [payoutTiers]);
   const plan = React.useMemo(
-    () => limits ? resolveDailyAccrualPlan(dailyRewardInput, budgetInput, limits) : null,
-    [budgetInput, dailyRewardInput, limits],
+    () => limits ? resolveDailyAccrualPlan(
+      dailyRewardInput,
+      budgetInput,
+      limits,
+      tiersPreviewAvailable ? parsedPayoutTiers : undefined,
+    ) : null,
+    [budgetInput, dailyRewardInput, limits, parsedPayoutTiers, tiersPreviewAvailable],
   );
   const fundingWallet = quote ? findConnectedFundingWallet({
     connectedWallets,
@@ -468,10 +508,18 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     try {
       const now = Math.floor(Date.now() / 1_000);
       const createKeyStorage = createRequestStorageKey(input.communityId, input.postId);
+      const tieredDraft = tiersPreviewAvailable && payoutTiers.length > 0;
       const targetCampaign = existingCampaign ?? await api.rewards.createCampaign({
         budget_cents: plan.budgetCents,
         community: input.communityId,
         daily_reward_cents: plan.dailyRewardCents,
+        ...(tieredDraft ? {
+          default_amount_cents: plan.dailyRewardCents,
+          payout_tiers: parsedPayoutTiers.map((tier) => ({
+            amount_cents: tier.amountCents!,
+            nationalities: tier.nationalities.map((code) => code.trim().toUpperCase()).sort(),
+          })),
+        } : {}),
         eligible_activity: eligibleActivity,
         ends_at: now + capabilities.default_duration_seconds,
         idempotency_key: requestKey(createKeyStorage, "reward_campaign"),
@@ -485,6 +533,10 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       globalThis.localStorage?.removeItem(createKeyStorage);
       setCampaign(targetCampaign);
       globalThis.localStorage?.setItem(campaignStorageKey(input.communityId, input.postId), targetCampaign.id);
+      if (tieredDraft) {
+        setSheetState("draft-preview");
+        return;
+      }
       const quoteKeyStorage = quoteRequestStorageKey(targetCampaign.id);
       const nextQuote = await api.rewards.createFundingQuote(targetCampaign.id, {
         amount_cents: targetCampaign.budget_cents,
@@ -506,7 +558,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       createQuoteInFlight.current = false;
       setBusy(false);
     }
-  }, [api.rewards, capabilities, eligibleActivity, input.communityId, input.postId, plan]);
+  }, [api.rewards, capabilities, eligibleActivity, input.communityId, input.postId, parsedPayoutTiers, payoutTiers.length, plan, tiersPreviewAvailable]);
 
   React.useEffect(() => {
     if (
@@ -719,6 +771,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     }
     if (campaign && ["scheduled", "active"].includes(campaign.status)) setSheetState("active");
     else if (sheetState === "funding-review") setSheetState("funding-review");
+    else if (campaignPayoutTiers(campaign).length > 0) setSheetState("draft-preview");
     else if (!quote) {
       setErrorMessage(undefined);
       setSheetState("compose");
@@ -797,6 +850,23 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       fundingAmountLabel: quote ? formatUsdLabel(quote.amount_cents / 100) ?? undefined : undefined,
       fundedLabel: campaign ? formatUsdLabel(campaign.funded_cents / 100) ?? undefined : undefined,
       onBudgetChange: setBudgetInput,
+      ...(tiersPreviewAvailable ? {
+        payoutTiers,
+        onAddPayoutTier: () => setPayoutTiers((tiers) => [
+          ...tiers,
+          { id: idempotencyKey("payout_tier"), nationalities: [], amountLabel: "" },
+        ]),
+        onRemovePayoutTier: (tierId: string) => setPayoutTiers((tiers) => tiers.filter((tier) => tier.id !== tierId)),
+        onPayoutTierNationalitiesChange: (tierId: string, nationalities: string[]) => setPayoutTiers((tiers) => tiers.map(
+          (tier) => tier.id === tierId ? { ...tier, nationalities } : tier,
+        )),
+        onPayoutTierAmountChange: (tierId: string, amountLabel: string) => setPayoutTiers((tiers) => tiers.map(
+          (tier) => tier.id === tierId ? { ...tier, amountLabel } : tier,
+        )),
+        maxClaimDisplayLabel: plan?.maxClaimCents != null
+          ? formatUsdLabel(plan.maxClaimCents / 100) ?? undefined
+          : undefined,
+      } : {}),
       onConfirm: handleConfirm,
       onConnectWallet: reconnectEthereumWallet ?? undefined,
       onDailyRewardChange: setDailyRewardInput,

@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 
 type BoostCampaignSheetState =
   | "compose"
+  | "draft-preview"
   | "quote"
   | "confirming"
   | "awaiting-finality"
@@ -80,10 +81,10 @@ export interface BoostCampaignSheetProps {
   fundingAmountLabel?: string;
   fundedLabel?: string;
   /**
-   * Dark nationality-tier preview. The section renders ONLY when this prop is
+   * Gated nationality-tier preview. The section renders ONLY when this prop is
    * present (even as []); undefined keeps the pre-tier sheet exactly. Nothing
-   * here reaches the API — payout tiers have no contract fields until Phase 1
-   * lands, so the production controller never passes this.
+   * here initiates funding; the controller may persist draft-only terms when
+   * both its local preview flag and the server capability allow it.
    */
   payoutTiers?: BoostPayoutTierDraft[];
   /** Cap on tier rows; defaults to boost-plan's MAX_PAYOUT_TIERS. */
@@ -493,6 +494,20 @@ export function BoostCampaignSheet({
           </div>
         ) : null}
 
+        {state === "draft-preview" ? (
+          <div className="mt-6 rounded-lg border border-primary/30 bg-primary-subtle p-4">
+            <div className="flex items-start gap-3">
+              <CheckCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" weight="fill" />
+              <div>
+                <Type as="div" variant="body-strong">Tiered draft saved</Type>
+                <Type as="div" className="mt-1 text-muted-foreground" variant="body">
+                  Funding stays disabled until nationality-based claim resolution is available. No payment was requested.
+                </Type>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {state === "confirming" ? (
           <div className="mt-6 flex items-center gap-3 rounded-lg border border-border-soft p-4">
             <HourglassMedium aria-hidden="true" className="size-5 animate-pulse text-primary" weight="bold" />
@@ -616,6 +631,11 @@ export function BoostCampaignSheet({
           {state === "quote" ? (
             <Button className="h-12 w-full" disabled={Boolean(walletMismatch) || busy} onClick={onConfirm}>
               Pay {fundingAmountLabel}
+            </Button>
+          ) : null}
+          {state === "draft-preview" ? (
+            <Button className="h-12 w-full" onClick={() => onOpenChange?.(false)}>
+              Done
             </Button>
           ) : null}
           {state === "confirming" || state === "awaiting-finality" ? (

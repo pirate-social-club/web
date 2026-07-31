@@ -146,6 +146,13 @@ describe("resolveDailyAccrualPlan with nationality payout tiers (dark)", () => {
     ).toBe("tier-country-duplicated");
   });
 
+  test("rejects a tier without a nationality", () => {
+    const plan = resolveDailyAccrualPlan("1.00", "10.00", tieredLimits, [
+      { nationalities: [], amountCents: 500 },
+    ]);
+    expect(plan.problem).toBe("tier-country-missing");
+  });
+
   test("rejects more tiers than the schema cap", () => {
     const tiers = Array.from({ length: MAX_PAYOUT_TIERS + 1 }, (_, index) =>
       tier(50, `T${index.toString().padStart(2, "0")}`));

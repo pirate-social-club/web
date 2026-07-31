@@ -43,6 +43,8 @@ export interface VideoFeedItem {
   commentCount: number;
   interactionGate?: "open" | "membership_required";
   karaoke: VideoFeedCapability;
+  /** Viewer-specific access to learning actions for the linked song. */
+  learningGate?: "allowed" | "age_proof_required";
   /** Viewer has downvoted. Surfaced in the overflow menu, never as a rail action. */
   downvoted?: boolean;
   likeCount: number;

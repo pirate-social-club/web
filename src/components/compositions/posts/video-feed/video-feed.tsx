@@ -63,6 +63,7 @@ export interface VideoFeedProps {
   onSlideRender?: (itemId: string) => void;
   onSong?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onStudy?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
+  onVerifyAge?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   muteVideoLabel?: string;
   /** Hide the desktop prev/next buttons (e.g. while a side panel docks against the feed). */
   navigationHidden?: boolean;
@@ -448,6 +449,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   onSoundPromptShown,
   onToggleMute,
   onStudy,
+  onVerifyAge,
   onTogglePlayback,
   onMoveTo,
   muted,
@@ -1148,8 +1150,19 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
               value={formatCentsAsStartingUsd(item.booking.startingPriceCents)}
             />
           ) : null}
-          <CapabilityAction capability={item.study} icon={<BookOpen className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
-          <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
+          {item.learningGate === "age_proof_required" ? (
+            <VideoAction
+              icon={<Lock className="size-6" weight="fill" />}
+              label="Verify age"
+              onClick={() => runPlaybackInteraction(onVerifyAge)}
+              value="Verify age"
+            />
+          ) : (
+            <>
+              <CapabilityAction capability={item.study} icon={<BookOpen className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
+              <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
+            </>
+          )}
           <div className="hidden md:block">
             {item.shareActions?.length ? (
               <VideoShareSurface actions={item.shareActions}>

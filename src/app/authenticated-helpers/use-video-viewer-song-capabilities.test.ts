@@ -18,6 +18,7 @@ describe("resolveVideoSongCapabilities", () => {
       artworkSrc: "https://media.test/song-cover.webp",
       karaoke: "ready",
       karaokeHref: "/p/pst_song/karaoke",
+      learningGate: "allowed",
       readMode: "public",
       study: "locked",
       studyHref: undefined,
@@ -38,7 +39,7 @@ describe("resolveVideoSongCapabilities", () => {
     }).artworkSrc).toBeUndefined();
   });
 
-  test("keeps age-gated actions visible but locked", () => {
+  test("preserves capabilities while gating age-restricted learning actions", () => {
     expect(resolveVideoSongCapabilities({
       post: {
         age_gate_viewer_state: "proof_required",
@@ -49,9 +50,10 @@ describe("resolveVideoSongCapabilities", () => {
       readMode: "authenticated",
       sourcePostId: "pst_song",
     })).toMatchObject({
-      karaoke: "locked",
+      karaoke: "ready",
       karaokeHref: undefined,
-      study: "locked",
+      learningGate: "age_proof_required",
+      study: "ready",
       studyHref: undefined,
     });
   });

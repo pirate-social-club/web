@@ -100,6 +100,7 @@ const sessionListeners = new Set<() => void>();
 const notifySessionListeners = () => sessionListeners.forEach((fn) => fn());
 let postResult: LocalizedPostResponse = songPost();
 let postError: unknown = null;
+let postDeferred: Deferred<LocalizedPostResponse> | null = null;
 let publicPostResult: LocalizedPostResponse = songPost();
 let publicPostError: unknown = null;
 let karaokeResult: unknown = null;
@@ -119,7 +120,11 @@ const fakeApi = {
     },
     getPostKaraoke: async () => {
       calls.push("communities.getPostKaraoke");
-      throw new Error("community-scoped karaoke payload should not load on the post karaoke route");
+      if (karaokeDeferred) {
+        return await karaokeDeferred.promise;
+      }
+      if (karaokeError) throw karaokeError;
+      return karaokeResult;
     },
   },
   posts: {
@@ -132,6 +137,7 @@ const fakeApi = {
   publicPosts: {
     get: async () => {
       calls.push("publicPosts.get");
+      if (postDeferred) return await postDeferred.promise;
       if (publicPostError) throw publicPostError;
       return publicPostResult;
     },
@@ -167,6 +173,7 @@ mock.module("@/lib/api/session-store", () => ({
     notifySessionListeners();
     return response;
   },
+  updateSessionUser: () => {},
   useSession: () => React.useSyncExternalStore(
     (listener: () => void) => { sessionListeners.add(listener); return () => { sessionListeners.delete(listener); }; },
     () => sessionValue,
@@ -187,6 +194,7 @@ beforeEach(() => {
   sessionValue = { accessToken: "token" };
   postResult = songPost();
   postError = null;
+  postDeferred = null;
   publicPostResult = songPost();
   publicPostError = null;
   karaokeResult = null;
@@ -203,6 +211,33 @@ afterEach(() => {
 });
 
 describe("KaraokeRoutePage", () => {
+  test("starts the anonymous karaoke payload while post metadata is pending", async () => {
+    sessionValue = null;
+    postDeferred = deferred<LocalizedPostResponse>();
+    karaokeError = null;
+    karaokeResult = {
+      instrumental_audio_url: "https://cdn.example.test/anonymous.mp3",
+      raw_lines: [{ end_ms: 1000, start_ms: 0, text: "Anonymous lyric" }],
+      title: "Anonymous Karaoke",
+    };
+
+    const view = render(<KaraokeRoutePage postId="pst_song" />);
+    await waitFor(() => expect(calls).toContain("publicPosts.getKaraoke"));
+    expect(calls).toEqual(["publicPosts.get", "publicPosts.getKaraoke"]);
+
+    postDeferred.resolve(songPost());
+    await waitFor(() => expect(view.container.querySelector('[aria-label="Anonymous Karaoke"]')).toBeTruthy());
+  });
+
+  test("offers age verification when the authenticated payload requires proof", async () => {
+    karaokeError = new ApiError("verification_required", "Age verification is required", 403);
+
+    const view = render(<KaraokeRoutePage postId="pst_song" />);
+
+    expect(await waitFor(() => view.getByRole("button", { name: "Verify age" }))).toBeTruthy();
+    expect(view.getByText("Age verification is required to view 18+ content.")).toBeTruthy();
+  });
+
   test("uses the dedicated karaoke payload before post metadata fallback", async () => {
     karaokeError = null;
     karaokeResult = {
@@ -226,7 +261,7 @@ describe("KaraokeRoutePage", () => {
     });
     expect(calls).toEqual([
       "posts.get",
-      "publicPosts.getKaraoke",
+      "communities.getPostKaraoke",
       "rewards.getActiveCampaignForSong",
       "communities.getPostKaraokeLeaderboard",
     ]);
@@ -266,7 +301,7 @@ describe("KaraokeRoutePage", () => {
     });
     expect(calls).toEqual([
       "posts.get",
-      "publicPosts.getKaraoke",
+      "communities.getPostKaraoke",
       "rewards.getActiveCampaignForSong",
       "communities.getPostKaraokeLeaderboard",
     ]);
@@ -363,7 +398,8 @@ describe("KaraokeRoutePage", () => {
     expect(view.container.querySelector('[aria-label="Public Karaoke"]')).toBeNull();
     expect(calls[0]).toBe("posts.get");
     expect(calls).not.toContain("publicPosts.get");
-    expect(calls).toContain("publicPosts.getKaraoke");
+    expect(calls).not.toContain("publicPosts.getKaraoke");
+    expect(calls).not.toContain("communities.getPostKaraoke");
   });
 
   test("does not finish rendering after unmounting during payload load", async () => {
@@ -373,7 +409,7 @@ describe("KaraokeRoutePage", () => {
 
     await waitFor(() => expect(calls).toEqual([
       "posts.get",
-      "publicPosts.getKaraoke",
+      "communities.getPostKaraoke",
       "rewards.getActiveCampaignForSong",
     ]));
     view.unmount();

@@ -5,6 +5,7 @@ export type VideoSongCapabilityReadMode = "authenticated" | "public";
 export interface VideoSongCapabilityResolution {
   activeRewardCampaignId: string | null;
   artworkSrc?: string;
+  learningGate: "allowed" | "age_proof_required";
   karaoke: VideoFeedCapability;
   karaokeHref?: string;
   readMode: VideoSongCapabilityReadMode;

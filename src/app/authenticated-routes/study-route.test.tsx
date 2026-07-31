@@ -404,7 +404,7 @@ describe("StudyRoutePage", () => {
     expect(calls).toEqual(["posts.get", "communities.getPostStudy"]);
   });
 
-  test("shows an exact uniform reward offer for the active song campaign", async () => {
+  test("shows a compact reward pill for the active song campaign", async () => {
     rewardCampaignResult = {
       campaign: "rcp_study_offer",
       chain_id: 8453,
@@ -416,8 +416,8 @@ describe("StudyRoutePage", () => {
 
     const view = render(<StudyRoutePage postId="pst_song" />);
 
-    await waitFor(() => expect(view.getByText("Earn $0.40 today")).toBeTruthy());
-    expect(view.getByText(/Complete a study set or score at least 85% in Karaoke/u)).toBeTruthy();
+    await waitFor(() => expect(view.getByText("Earn $0.40")).toBeTruthy());
+    expect(view.queryByText("Earn $0.40 today")).toBeNull();
   });
 
   test("shows a caught-up message when a ready study pack has no remaining exercises", async () => {
@@ -923,6 +923,143 @@ describe("StudyRoutePage", () => {
       expect(studyLoadCount()).toBe(3);
     } finally {
       restoreStudy();
+    }
+  });
+
+  // Exiting study used to push the post page on top of the study entry, so the
+  // post page's close (history.back()) landed right back on study. Replacing
+  // the study entry breaks that loop.
+  test("replaces the study history entry on exit instead of pushing the post page", async () => {
+    const replaceCalls: (string | undefined)[] = [];
+    const pushCalls: (string | undefined)[] = [];
+    const originalHistory = window.history;
+    const originalEvent = globalThis.Event;
+    Object.defineProperty(window, "history", {
+      configurable: true,
+      value: {
+        pushState: (_data: unknown, _unused: string, url?: string | URL | null) => {
+          pushCalls.push(url?.toString());
+        },
+        replaceState: (_data: unknown, _unused: string, url?: string | URL | null) => {
+          replaceCalls.push(url?.toString());
+        },
+      },
+    });
+    // linkedom's dispatchEvent cannot handle bun's native Event (readonly
+    // eventPhase), so route events use the DOM's own Event class here.
+    Object.defineProperty(globalThis, "Event", {
+      configurable: true,
+      value: window.Event,
+    });
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" />);
+      await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
+
+      fireEvent.click(view.getByRole("button", { name: "Exit study" }));
+
+      expect(replaceCalls).toEqual(["/p/pst_song"]);
+      expect(pushCalls).toEqual([]);
+    } finally {
+      Object.defineProperty(window, "history", {
+        configurable: true,
+        value: originalHistory,
+      });
+      Object.defineProperty(globalThis, "Event", {
+        configurable: true,
+        value: originalEvent,
+      });
+    }
+  });
+
+  test("advances straight to the next exercise after a correct say-it-back attempt", async () => {
+    submitPostStudyAttemptResult = {
+      attempts_remaining: 1,
+      exercise_id: "ex_say",
+      object: "song_study_attempt_result",
+      outcome: "correct",
+    };
+    studyResult = readyStudyPayload({
+      exercise_count: 2,
+      exercises: [
+        {
+          ...readyStudyPayload().exercises[0]!,
+          prompt_text: "First say-it-back line",
+        },
+        {
+          ...readyStudyPayload().exercises[0]!,
+          id: "ex_next",
+          line_id: "line_2",
+          line_index: 1,
+          prompt_text: "Second say-it-back line",
+        },
+      ],
+    });
+    const restoreRecorder = installFakeMediaRecorder();
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" />);
+
+      await waitFor(() => expect(view.getByText("First say-it-back line")).toBeTruthy());
+      await recordSayItBack(view);
+
+      // No intermediate "correct" banner: the lesson moves on immediately.
+      await waitFor(() => expect(view.getByText("Second say-it-back line")).toBeTruthy());
+      expect(view.queryByText("Correct.")).toBeNull();
+      expect(view.queryByText("Continue")).toBeNull();
+    } finally {
+      restoreRecorder();
+    }
+  });
+
+  test("shows the expected answer banner after a wrong say-it-back attempt", async () => {
+    submitPostStudyAttemptResult = {
+      attempts_remaining: 1,
+      exercise_id: "ex_say",
+      object: "song_study_attempt_result",
+      outcome: "incorrect",
+    };
+    const restoreRecorder = installFakeMediaRecorder();
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" />);
+
+      await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
+      await recordSayItBack(view);
+
+      await waitFor(() => expect(view.getByText("Correct answer:")).toBeTruthy());
+      expect(view.getByText("Hola mundo")).toBeTruthy();
+      expect(view.getByText("Continue")).toBeTruthy();
+      expect(view.queryByText(/You said/u)).toBeNull();
+      expect(view.queryByText(/Missing:/u)).toBeNull();
+      expect(view.queryByText(/Extra:/u)).toBeNull();
+    } finally {
+      restoreRecorder();
+    }
+  });
+
+  test("surfaces a submit error and stays idle when voice recording is unavailable", async () => {
+    const originalMediaDevices = navigator.mediaDevices;
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: undefined,
+    });
+
+    try {
+      const view = render(<StudyRoutePage postId="pst_song" />);
+
+      await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
+      fireEvent.click(view.getByText("Record").closest("button")!);
+
+      await waitFor(() => expect(view.getByText("Voice recording is not available in this browser.")).toBeTruthy());
+      expect(view.getByRole("alert")).toBeTruthy();
+      expect(view.getByText("Record")).toBeTruthy();
+      expect(view.queryByText("Correct answer:")).toBeNull();
+    } finally {
+      Object.defineProperty(navigator, "mediaDevices", {
+        configurable: true,
+        value: originalMediaDevices,
+      });
     }
   });
 });

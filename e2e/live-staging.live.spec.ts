@@ -50,16 +50,13 @@ const storySmokeHostSubject = process.env.PIRATE_STORY_E2E_HOST_SUBJECT
 const gateContractCommunityId = (
   process.env.PIRATE_GATE_CONTRACT_E2E_COMMUNITY_ID ?? "cmt_34976b020f7a41dd8a678354fae842f9"
 ).replace(/^com_/u, "");
-// Staging has exactly one namespace-backed community: real HNS verification
-// cannot be stubbed remotely, so the names fixture is hand-seeded and singular.
-// The handle-claim contract used to find it by scanning the public home feed,
-// which only works while that community happens to be ranking — when it drops
-// out, every candidate answers `403 eligibility_failed` and the required
-// release gate fails for a reason that has nothing to do with the change under
-// test. Pin it like the story smoke pins its own fixture; feed discovery stays
-// as the fallback.
+// Dedicated staging fixture for the required handle-claim contract. Its shard
+// binding is reserved from provisioning/reclamation and its local namespace
+// policy is restored through a committed idempotent seed. The contract does
+// not require an HNS verification or route slug: it requires a routable public
+// community with an impersonable owner and claims_enabled=true.
 const handleClaimCommunityId = (
-  process.env.PIRATE_HANDLE_CLAIM_E2E_COMMUNITY_ID ?? "cmt_3b2300c49b97466fadb362cb58fec018"
+  process.env.PIRATE_HANDLE_CLAIM_E2E_COMMUNITY_ID ?? "cmt_541911f4cd9145398b7fa79ddc0542fe"
 ).replace(/^com_/u, "");
 const multipartGateVideoBytes = Number.parseInt(
   // Keep the default below the retired 64 MiB proxy threshold. This makes the
@@ -1469,14 +1466,18 @@ test.describe("live staging integration", () => {
     };
     let target: { community: LiveCommunity; headers: Record<string, string>; policy: HandlePolicy } | null = null;
     const discoveryDiagnostics: FixtureDiscoveryDiagnostic[] = [];
-    // Pinned fixture first, feed discovery second: discovery is a best-effort
-    // widening, not the primary source.
-    const pinned = await hydrateRoutableLiveCommunityOwner({
-      id: handleClaimCommunityId,
-      label: handleClaimCommunityId,
-      routeSegment: handleClaimCommunityId,
-    }, discoveryDiagnostics);
-    const discovered = await seedCommunityCandidates(discoveryDiagnostics);
+    const pinned = await test.step("preflight dedicated handle-claim fixture", () =>
+      hydrateRoutableLiveCommunityOwner({
+        id: handleClaimCommunityId,
+        label: handleClaimCommunityId,
+        routeSegment: handleClaimCommunityId,
+      }, discoveryDiagnostics));
+    // A required release gate must prove its dedicated fixture, not silently
+    // pass against unrelated mutable feed state. Discovery remains useful for
+    // optional local runs only.
+    const discovered = requiredReleaseGate
+      ? []
+      : await seedCommunityCandidates(discoveryDiagnostics);
     const candidates = pinned
       ? [pinned, ...discovered.filter((community) => community.id !== pinned.id)]
       : discovered;
@@ -1519,7 +1520,7 @@ test.describe("live staging integration", () => {
     }
     if (!target) {
       const message = [
-        "A names-enabled staging community with owner admin access is required.",
+        `Dedicated handle-claim fixture ${handleClaimCommunityId} must be routable, expose an owner for admin impersonation, and return claims_enabled=true.`,
         formatFixtureDiscoveryDiagnostics(discoveryDiagnostics),
       ].join("\n");
       if (requiredReleaseGate) throw new Error(message);

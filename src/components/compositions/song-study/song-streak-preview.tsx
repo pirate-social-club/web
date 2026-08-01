@@ -3,6 +3,7 @@ import type {
   SongStreakViewerStanding,
 } from "@pirate/api-contracts";
 import { Crown, Fire } from "@phosphor-icons/react";
+import * as React from "react";
 
 import { Avatar } from "@/components/primitives/avatar";
 import { Type } from "@/components/primitives/type";
@@ -26,14 +27,35 @@ export interface SongStreakPreviewProps {
   summary: SongStreakSummary;
 }
 
+// Entries arrive active (the server filters), but a page can stay open across
+// an expiry: drop entries whose active_until_at has passed, and re-check at the
+// next expiration. This is the feed/post-card freshness contract — correct when
+// fetched, self-invalidating while mounted; no refetch loop in a scrolling feed.
+function useLiveEntries(summary: SongStreakSummary): SongStreakLeaderboardEntry[] {
+  const [now, setNow] = React.useState(() => Date.now());
+
+  React.useEffect(() => {
+    const expiries = summary.entries
+      .map((entry) => Date.parse(entry.active_until_at))
+      .filter((value) => Number.isFinite(value));
+    if (expiries.length === 0) return;
+    const delay = Math.max(0, Math.min(...expiries) - Date.now()) + 1000;
+    const timer = window.setTimeout(() => setNow(Date.now()), delay);
+    return () => window.clearTimeout(timer);
+  }, [summary, now]);
+
+  return summary.entries.filter((entry) => Date.parse(entry.active_until_at) > now);
+}
+
 // The inline streak indicator inside the song card: just the #1 holder, rendered
 // with the exact same crown/avatar/fire row as the full leaderboard. Tapping it
 // opens the board. No header, no viewer standing — those live on the route.
 export function SongStreakPreview({ className, href, onViewLeaderboard, summary }: SongStreakPreviewProps) {
-  const leader = summary.entries[0];
+  const entries = useLiveEntries(summary);
+  const leader = entries[0];
   if (!leader) return null;
-  const tiedLeaders = summary.entries.filter((entry) => entry.rank === 1);
-  const tiedLeaderCount = tiedLeaders.length === summary.entries.length
+  const tiedLeaders = entries.filter((entry) => entry.rank === 1);
+  const tiedLeaderCount = tiedLeaders.length === entries.length
     && summary.totalActiveStreaks > tiedLeaders.length
     ? `${tiedLeaders.length}+`
     : String(tiedLeaders.length);

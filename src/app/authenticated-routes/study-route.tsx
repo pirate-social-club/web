@@ -12,7 +12,6 @@ import {
   type SongStudySayItBackExercise,
   type SongStudySurfaceState,
 } from "@/components/compositions/song-study/song-study-surface";
-import type { SongStreakSummary } from "@/components/compositions/song-study/song-streak-preview";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
@@ -29,6 +28,7 @@ import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { toStreakSummary } from "@/app/authenticated-helpers/post-media-presentation";
 import { ApiError, isApiAuthError, isApiVerificationRequiredError } from "@/lib/api/client";
+import { deviceTimezone } from "@/lib/device-timezone";
 import type {
   ApiPublicRewardOffer,
   ApiRewardQualificationSummary,
@@ -167,7 +167,7 @@ function caughtUpMessage(study: SongStudyPayload): string {
 function completeSurface(input: {
   correctCount: number;
   lastAttemptResult?: SongStudyAttemptResult;
-  streakSummary?: SongStreakSummary;
+  previousStreak?: number;
   totalCount: number;
 }): SongStudySurfaceState {
   const progress = input.lastAttemptResult?.study_progress;
@@ -175,6 +175,7 @@ function completeSurface(input: {
     kind: "complete",
     correctCount: input.correctCount,
     nextReviewLabel: formatNextReviewLabel(progress?.next_due_at),
+    previousStreak: input.previousStreak,
     scorePercent: input.totalCount > 0 ? (input.correctCount / input.totalCount) * 100 : 0,
     ...(progress
       ? {
@@ -187,7 +188,6 @@ function completeSurface(input: {
           },
         }
       : {}),
-    streakSummary: input.streakSummary,
     totalCount: input.totalCount,
   };
 }
@@ -230,7 +230,8 @@ function advanceLesson(
       ? completeSurface({
           correctCount,
           lastAttemptResult: state.lastAttemptResult,
-          streakSummary: toStreakSummary(state.post),
+          // Only the slot-number animation may read the pre-session snapshot.
+          previousStreak: toStreakSummary(state.post)?.viewer?.current_streak,
           totalCount: state.study.session?.served_count ?? state.study.exercises.length,
         })
       : exerciseSurface(
@@ -510,6 +511,54 @@ export function StudyRoutePage({
     recordingStreamRef.current = null;
   }, []);
 
+  // The completion screen never shows the pre-session streak snapshot: once the
+  // session completes with a streak, fetch the server-ranked leaderboard and
+  // keep it fresh as displayed streaks expire (active_until_at, owner timezone).
+  const completionActive = state.phase === "ready" && state.surface.kind === "complete" && Boolean(state.surface.streak);
+  const completionPostCommunity = state.phase === "ready" ? state.post.post.community : null;
+  const completionPostId = state.phase === "ready" ? state.post.post.id : null;
+  React.useEffect(() => {
+    if (!completionActive || !completionPostCommunity || !completionPostId) return;
+    const community = completionPostCommunity;
+    const completedPostId = completionPostId;
+    let canceled = false;
+    let timer: number | null = null;
+
+    const load = async () => {
+      try {
+        const board = await api.communities.getPostStreakLeaderboard(community, completedPostId, { limit: 3 });
+        if (canceled) return;
+        setState((current) => current.phase === "ready" && current.surface.kind === "complete"
+          ? {
+              ...current,
+              surface: {
+                ...current.surface,
+                streakSummary: {
+                  entries: board.entries,
+                  totalActiveStreaks: board.total_active_streaks,
+                  viewer: board.viewer,
+                },
+              },
+            }
+          : current);
+        const expiries = [...board.entries.map((entry) => entry.active_until_at), board.viewer?.active_until_at]
+          .filter((value): value is string => typeof value === "string" && Number.isFinite(Date.parse(value)))
+          .map((value) => Date.parse(value));
+        if (!canceled && expiries.length > 0) {
+          const delay = Math.max(0, Math.min(...expiries) - Date.now()) + 1500;
+          timer = window.setTimeout(() => void load(), delay);
+        }
+      } catch {
+        // The celebration still stands on the attempt response; the list stays hidden.
+      }
+    };
+    void load();
+    return () => {
+      canceled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [api, completionActive, completionPostCommunity, completionPostId]);
+
   React.useEffect(() => () => {
     if (telegramVoiceHandoffTimeoutRef.current !== null) {
       window.clearTimeout(telegramVoiceHandoffTimeoutRef.current);
@@ -774,6 +823,7 @@ export function StudyRoutePage({
       idempotency_key: attemptIdempotencyKey(studySessionId, exercise.id, surface.attemptNumber),
       session_id: studySessionId,
       selected_option_id: selectedOptionId,
+      timezone: deviceTimezone(),
       type: "translation_choice",
     }).then((result) => {
       pendingMultipleChoiceAttemptRef.current = null;
@@ -1001,6 +1051,7 @@ export function StudyRoutePage({
                 exercise_id: exercise.id,
                 idempotency_key: attemptIdempotencyKey(studySessionId, exercise.id, sayItBackSurface.attemptNumber),
                 session_id: studySessionId,
+                timezone: deviceTimezone(),
                 transcript: transcription.text,
                 type: "say_it_back",
               }).then((result) => ({ result, transcript: transcription.text })))

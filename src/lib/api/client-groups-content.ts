@@ -35,6 +35,7 @@ import type {
   TelegramStudyVoiceIntent,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
+import { deviceTimezone } from "@/lib/device-timezone";
 
 const ALTCHA_HEADER = "x-pirate-altcha";
 
@@ -94,7 +95,14 @@ export function createPostsApi(request: ApiRequest) {
     ): Promise<KaraokeSessionCreateApiResponse> =>
       request<KaraokeSessionCreateApiResponse>(
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/karaoke/sessions`,
-        { method: "POST", headers: { "Idempotency-Key": idempotencyKey }, signal },
+        {
+          method: "POST",
+          // Device timezone lets the server pin the singer's own streak day
+          // boundary when the take qualifies. Optional server-side.
+          body: JSON.stringify({ timezone: deviceTimezone() }),
+          headers: { "Idempotency-Key": idempotencyKey },
+          signal,
+        },
       ),
   };
 }

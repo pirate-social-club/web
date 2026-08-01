@@ -8,6 +8,7 @@ import { ApiClient, ApiError } from "@/lib/api/client";
 import type {
   ApiPublicRewardOffer,
   ApiRewardsSummaryResponse,
+  SongStreakLeaderboard,
   SongStudyAttemptRequest,
   SongStudyAttemptResult,
   SongStudyPayload,
@@ -129,6 +130,15 @@ let privyConnectCalls = 0;
 let submitPostStudyAttemptError: unknown = null;
 let transcribeStudyAudioError: unknown = null;
 let telegramVoiceIntentError: unknown = null;
+let streakLeaderboardResult: SongStreakLeaderboard = {
+  community_id: "cmt_study",
+  date: "2026-07-27",
+  entries: [],
+  object: "song_streak_leaderboard",
+  post_id: "pst_song",
+  total_active_streaks: 0,
+  viewer: null,
+};
 let submitPostStudyAttemptResult: SongStudyAttemptResult = {
   attempts_remaining: 0,
   correct_option_id: "option_correct",
@@ -186,6 +196,10 @@ fakeApi.communities.submitPostStudyAttempt = async (_communityId, _postId, body)
   calls.push(`communities.submitPostStudyAttempt:${body.type}:${body.type === "translation_choice" ? body.selected_option_id : ""}`);
   if (submitPostStudyAttemptError) throw submitPostStudyAttemptError;
   return submitPostStudyAttemptResult;
+};
+fakeApi.communities.getPostStreakLeaderboard = async () => {
+  calls.push("communities.getPostStreakLeaderboard");
+  return streakLeaderboardResult;
 };
 
 mock.module("@/lib/api", () => ({
@@ -253,6 +267,15 @@ beforeEach(() => {
   submitPostStudyAttemptError = null;
   transcribeStudyAudioError = null;
   telegramVoiceIntentError = null;
+  streakLeaderboardResult = {
+    community_id: "cmt_study",
+    date: "2026-07-27",
+    entries: [],
+    object: "song_streak_leaderboard",
+    post_id: "pst_song",
+    total_active_streaks: 0,
+    viewer: null,
+  };
   submitPostStudyAttemptResult = {
     attempts_remaining: 0,
     correct_option_id: "option_correct",
@@ -705,6 +728,55 @@ describe("StudyRoutePage", () => {
         study_target_count: 3,
       },
     };
+    const freshExpiry = new Date(Date.now() + 86_400_000).toISOString();
+    postResult = {
+      ...songPost(),
+      streak_summary: {
+        entries: [{
+          active_until_at: freshExpiry,
+          best_streak: 9,
+          current_streak: 9,
+          identity: { avatar_ref: null, display_name: "Stale Leader", handle: null, user_id: "usr_stale" },
+          is_viewer: false,
+          last_qualified_date: "2026-07-26",
+          rank: 1,
+          streak_started_date: "2026-07-18",
+          total_qualified_days: 9,
+        }],
+        totalActiveStreaks: 1,
+        viewer: null,
+      },
+    } as unknown as LocalizedPostResponse;
+    streakLeaderboardResult = {
+      community_id: "cmt_study",
+      date: "2026-07-27",
+      entries: [{
+        active_until_at: freshExpiry,
+        best_streak: 6,
+        current_streak: 6,
+        identity: { avatar_ref: null, display_name: "Peer Singer", handle: null, user_id: "usr_peer" },
+        is_viewer: false,
+        last_qualified_date: "2026-07-27",
+        rank: 1,
+        streak_started_date: "2026-07-22",
+        total_qualified_days: 6,
+      }],
+      object: "song_streak_leaderboard",
+      post_id: "pst_song",
+      total_active_streaks: 2,
+      viewer: {
+        active_until_at: freshExpiry,
+        alive: true,
+        best_streak: 4,
+        current_streak: 4,
+        karaoke_passed_today: false,
+        qualified_today: true,
+        rank: 2,
+        study_attempts_today: 3,
+        study_target_today: 3,
+        total_qualified_days: 4,
+      },
+    };
     studyResult = readyStudyPayload({
       exercise_count: 1,
       exercises: [
@@ -736,6 +808,12 @@ describe("StudyRoutePage", () => {
     expect(view.getByText("1/1")).toBeTruthy();
     await waitFor(() => expect(view.getByText("+$0.40 🎉")).toBeTruthy());
     expect(view.getByText("Test reward — no cash value.")).toBeTruthy();
+
+    // The completion list comes from a fresh leaderboard fetch — server ranks,
+    // never the pre-session snapshot riding on the post payload.
+    await waitFor(() => expect(view.getByText("Peer Singer")).toBeTruthy());
+    expect(view.queryByText("Stale Leader")).toBeNull();
+    expect(view.getByText("#2")).toBeTruthy();
   });
 
   test("keeps the multiple choice exercise visible when attempt recording fails", async () => {

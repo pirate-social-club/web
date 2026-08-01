@@ -218,7 +218,7 @@ function Header({
         size="icon"
         variant="ghost"
       />
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center">
         <Type as="h1" className="sr-only">
           Study
         </Type>
@@ -232,12 +232,12 @@ function Header({
             role="progressbar"
           >
             <div
-              className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out motion-reduce:transition-none"
+              className="h-full rounded-full bg-success transition-[width] duration-300 ease-out motion-reduce:transition-none"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
         ) : null}
-        {trailing}
+        {trailing ? <div className={cn("shrink-0", lessonProgress && "-ml-2")}>{trailing}</div> : null}
       </div>
     </header>
   );

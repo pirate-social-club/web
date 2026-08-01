@@ -145,14 +145,14 @@ export function SongRewardOfferPill({
 }) {
   return (
     <span
+      aria-label={`Reward ${amountLabel}`}
       className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-primary/30 bg-primary-subtle px-3 py-1.5",
+        "inline-flex items-center whitespace-nowrap rounded-full border border-success/30 bg-background px-3 py-1.5 text-success shadow-sm",
         className,
       )}
     >
-      <Gift aria-hidden="true" className="size-4 text-primary" weight="fill" />
-      <Type as="span" variant="caption">
-        Earn {amountLabel}
+      <Type as="span" className="font-semibold text-current" variant="caption">
+        {amountLabel}
       </Type>
     </span>
   );

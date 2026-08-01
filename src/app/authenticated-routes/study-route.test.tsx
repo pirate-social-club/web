@@ -419,7 +419,9 @@ describe("StudyRoutePage", () => {
 
     const view = renderRoute();
 
-    await waitFor(() => expect(view.getByText("Earn $0.40")).toBeTruthy());
+    await waitFor(() => expect(view.getByLabelText("Reward $0.40")).toBeTruthy());
+    expect(view.getByText("$0.40")).toBeTruthy();
+    expect(view.queryByText("Earn $0.40")).toBeNull();
     expect(view.queryByText("Earn $0.40 today")).toBeNull();
   });
 

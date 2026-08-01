@@ -6,6 +6,11 @@ export type BuildVersionEnv = {
   HNS_PUBLIC_API_ORIGIN?: string;
   HNS_PUBLIC_APP_ORIGIN?: string;
   NODE_ENV?: string;
+  CF_VERSION_METADATA?: {
+    id: string;
+    tag: string;
+    timestamp: string;
+  };
 };
 
 export type BuildVersionService = "web" | "web-public";
@@ -17,6 +22,7 @@ export function buildVersionPayload(service: BuildVersionService, env: BuildVers
     git_sha: env.BUILD_GIT_SHA ?? null,
     git_ref: env.BUILD_GIT_REF ?? null,
     build_timestamp: env.BUILD_TIMESTAMP ?? null,
+    worker_version: env.CF_VERSION_METADATA ?? null,
     api_origin: env.HNS_PUBLIC_API_ORIGIN ?? null,
     app_origin: env.HNS_PUBLIC_APP_ORIGIN ?? null,
   };

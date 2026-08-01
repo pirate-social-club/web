@@ -8,4 +8,9 @@ export type Env = {
   HNS_PUBLIC_API_ORIGIN?: string;
   HNS_PUBLIC_APP_ORIGIN?: string;
   NODE_ENV?: string;
+  CF_VERSION_METADATA?: {
+    id: string;
+    tag: string;
+    timestamp: string;
+  };
 };

@@ -177,6 +177,7 @@ export function CommunityTelegramIntegrationPage({
   settings,
   studyMiniAppUrl,
   submitState,
+  webhookRefreshPending = false,
 }: CommunityTelegramIntegrationPageProps) {
   const [botToken, setBotToken] = React.useState("");
   const connected = settings.linkedChat.status === "connected";
@@ -244,7 +245,7 @@ export function CommunityTelegramIntegrationPage({
                 <div className="flex items-center gap-3">
                   <Type as="div" variant="caption">Webhook: {settings.bot.webhookStatus ?? "unknown"}</Type>
                   <Button
-                    disabled={saveDisabled}
+                    disabled={webhookRefreshPending}
                     onClick={onRefreshBotWebhook}
                     size="sm"
                     type="button"

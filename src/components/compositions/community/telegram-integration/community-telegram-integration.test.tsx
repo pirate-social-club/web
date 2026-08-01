@@ -86,4 +86,26 @@ describe("CommunityTelegramIntegrationPage", () => {
     expect(view.getByText(/bot owner, you can access messages and voice recordings/)).not.toBeNull();
     view.unmount();
   });
+
+  test("allows refreshing a connected bot when chat settings are pristine and no group chat is linked", () => {
+    const settings = createDefaultTelegramIntegrationSettings();
+    const view = render(
+      <CommunityTelegramIntegrationPage
+        saveDisabled
+        settings={{
+          ...settings,
+          bot: {
+            ...settings.bot,
+            status: "connected",
+            username: "TeacherBot",
+            webhookStatus: "active",
+          },
+        }}
+        submitState={{ kind: "idle" }}
+      />,
+    );
+
+    expect(view.getByRole("button", { name: "Refresh webhook" }).hasAttribute("disabled")).toBe(false);
+    view.unmount();
+  });
 });

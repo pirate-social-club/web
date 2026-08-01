@@ -269,6 +269,7 @@ export function useCommunityTelegramState({
     React.useState<CommunityTelegramIntegrationSettings>(() => createDefaultTelegramIntegrationSettings());
   const [loadingTelegram, setLoadingTelegram] = React.useState(false);
   const [savingTelegram, setSavingTelegram] = React.useState(false);
+  const [refreshingTelegramWebhook, setRefreshingTelegramWebhook] = React.useState(false);
   const [telegramSetupRefreshArmed, setTelegramSetupRefreshArmed] = React.useState(false);
   const [telegramLoadError, setTelegramLoadError] = React.useState<string | null>(null);
   const [telegramSaveError, setTelegramSaveError] = React.useState<string | null>(null);
@@ -695,11 +696,11 @@ export function useCommunityTelegramState({
   }, [api.communities, applySettingsResponse, community]);
 
   const handleRefreshTelegramBotWebhook = React.useCallback(() => {
-    if (!community) {
+    if (!community || refreshingTelegramWebhook) {
       return;
     }
     setTelegramSaveError(null);
-    setSavingTelegram(true);
+    setRefreshingTelegramWebhook(true);
     void Promise.all([
       api.communities.refreshTelegramBotWebhook(community.id),
       api.communities.getTelegramChatSettings(community.id),
@@ -718,9 +719,9 @@ export function useCommunityTelegramState({
         toast.error(message);
       })
       .finally(() => {
-        setSavingTelegram(false);
+        setRefreshingTelegramWebhook(false);
       });
-  }, [api.communities, applySettingsResponse, community]);
+  }, [api.communities, applySettingsResponse, community, refreshingTelegramWebhook]);
 
   const handleSaveTelegramChat = React.useCallback(() => {
     if (!community || savingTelegram || telegramSettings.linkedChat.status !== "connected") {
@@ -775,6 +776,7 @@ export function useCommunityTelegramState({
     handleSaveTelegramChat,
     handleSaveTelegramBotToken,
     loadingTelegram,
+    refreshingTelegramWebhook,
     savingTelegram,
     setTelegramSettings,
     telegramChannelSectionProps,

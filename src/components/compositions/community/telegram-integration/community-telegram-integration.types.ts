@@ -89,6 +89,7 @@ export interface CommunityTelegramIntegrationPageProps {
   onSave?: () => void;
   onSaveBotToken?: (token: string) => void;
   onSettingsChange?: (settings: CommunityTelegramIntegrationSettings) => void;
+  webhookRefreshPending?: boolean;
   saveDisabled?: boolean;
 }
 

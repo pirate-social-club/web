@@ -396,7 +396,6 @@ export function CommunityModerationIndexPage({
       </div>
     );
   }
-
   return (
     <CommunityModerationShell
       communityAvatarSrc={state.community?.avatar_ref ?? undefined}
@@ -1156,6 +1155,7 @@ export function CommunityModerationPage({
               settings={state.telegramSettings}
               studyMiniAppUrl={state.telegramJoinUrl ? new URL(`/tg/c/${encodeURIComponent(communityId)}`, state.telegramJoinUrl).toString() : null}
               submitState={state.telegramSubmitState}
+              webhookRefreshPending={state.refreshingTelegramWebhook}
             />
           );
     } else if (section === "handles") {

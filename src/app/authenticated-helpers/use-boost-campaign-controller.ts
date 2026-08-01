@@ -286,12 +286,16 @@ export interface BoostCampaignControllerInput {
   viewerIsAuthor: boolean;
 }
 
+export function supportsNationalityTierDraftPreview(capability: unknown): boolean {
+  return capability === "draft_only" || capability === "binding_preview";
+}
+
 export function useBoostCampaignController(input: BoostCampaignControllerInput) {
   const api = useApi();
   const { connectedWallets } = usePiratePrivyWallets({ enabled: input.authenticated && input.song });
   const { reconnectEthereumWallet } = usePiratePrivyRuntime();
   const [capabilities, setCapabilities] = React.useState<(RewardCampaignCapabilities & {
-    nationality_payout_tiers?: "unavailable" | "draft_only";
+    nationality_payout_tiers?: unknown;
   }) | null>(null);
   const [policyAllowed, setPolicyAllowed] = React.useState(true);
   const [campaign, setCampaign] = React.useState<RewardCampaign | null>(null);
@@ -479,7 +483,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   } : null, [capabilities]);
   const tiersPreviewAvailable = Boolean(
     nationalityTiersPreviewEnabled()
-    && capabilities?.nationality_payout_tiers === "draft_only"
+    && supportsNationalityTierDraftPreview(capabilities?.nationality_payout_tiers)
   );
   const parsedPayoutTiers = React.useMemo(() => payoutTiers.map((tier) => ({
     nationalities: tier.nationalities,

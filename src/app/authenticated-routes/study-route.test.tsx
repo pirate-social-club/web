@@ -4,7 +4,9 @@ import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { installDomGlobals } from "@/test/setup-dom";
+import { ApiProvider } from "@/lib/api";
 import { ApiClient, ApiError } from "@/lib/api/client";
+import { __resetSessionStoreForTests, clearSession, getAccessToken, setSession } from "@/lib/api/session-store";
 import type {
   ApiPublicRewardOffer,
   ApiRewardsSummaryResponse,
@@ -116,7 +118,6 @@ function choiceStudyPayload(overrides: { question: string }): SongStudyPayload {
 
 const calls: string[] = [];
 const submittedStudyAttempts: SongStudyAttemptRequest[] = [];
-let sessionValue: { accessToken: string } | null = { accessToken: "token" };
 let postResult: LocalizedPostResponse = songPost();
 let postError: unknown = null;
 let publicPostResult: LocalizedPostResponse = songPost({ title: "Public Study Song" });
@@ -139,7 +140,7 @@ let submitPostStudyAttemptResult: SongStudyAttemptResult = {
 
 const fakeApi = new ApiClient({
   baseUrl: "https://api.test",
-  getToken: () => sessionValue?.accessToken ?? null,
+  getToken: getAccessToken,
 });
 
 fakeApi.posts.get = async () => {
@@ -188,33 +189,6 @@ fakeApi.communities.submitPostStudyAttempt = async (_communityId, _postId, body)
   return submitPostStudyAttemptResult;
 };
 
-mock.module("@/lib/api", () => ({
-  ApiProvider: ({ children }: { children: React.ReactNode }) => children,
-  api: fakeApi,
-  useApi: () => fakeApi,
-  useSessionRevalidation: () => ({ revalidate: async () => {}, revalidated: null }),
-}));
-
-mock.module("@/lib/api/session-store", () => ({
-  __resetSessionStoreForTests: () => {
-    sessionValue = null;
-  },
-  clearSession: () => {
-    sessionValue = null;
-  },
-  getAccessToken: () => sessionValue?.accessToken ?? null,
-  getStoredSession: () => sessionValue,
-  setSession: (response: { access_token: string }) => {
-    sessionValue = { accessToken: response.access_token };
-    return sessionValue;
-  },
-  updateSessionOnboarding: () => {},
-  updateSessionProfile: () => {},
-  updateSessionUser: () => {},
-  useSession: () => sessionValue,
-  useSessionClearInProgress: () => false,
-}));
-
 mock.module("@/hooks/use-client-hydrated", () => ({
   useClientHydrated: () => true,
 }));
@@ -238,9 +212,16 @@ mock.module("@/hooks/use-route-content-locale", () => ({
 const { StudyRoutePage } = await import("./study-route");
 
 beforeEach(() => {
+  __resetSessionStoreForTests();
+  setSession({
+    access_token: "token",
+    user: {},
+    profile: {},
+    onboarding: {},
+    wallet_attachments: [],
+  } as unknown as Parameters<typeof setSession>[0]);
   calls.length = 0;
   submittedStudyAttempts.length = 0;
-  sessionValue = { accessToken: "token" };
   postResult = songPost();
   postError = null;
   publicPostResult = songPost({ title: "Public Study Song" });
@@ -264,7 +245,17 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  clearSession();
+  __resetSessionStoreForTests();
 });
+
+function renderRoute(props: { telegramMiniApp?: boolean } = {}) {
+  return render(
+    <ApiProvider client={fakeApi}>
+      <StudyRoutePage postId="pst_song" {...props} />
+    </ApiProvider>,
+  );
+}
 
 function studyLoadCount(): number {
   return calls.filter((entry) => entry === "communities.getPostStudy").length;
@@ -346,16 +337,16 @@ describe("StudyRoutePage", () => {
   test("offers age verification when the lesson requires proof", async () => {
     studyError = new ApiError("verification_required", "Age verification is required", 403);
 
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     expect(await waitFor(() => view.getByRole("button", { name: "Verify age" }))).toBeTruthy();
     expect(view.getByText("Age verification is required to view 18+ content.")).toBeTruthy();
   });
 
   test("requires authentication before loading study data", async () => {
-    sessionValue = null;
+    clearSession();
 
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("Sign in to study")).toBeTruthy());
     expect(view.queryByText("Study requires a Pirate account.")).toBeNull();
@@ -366,7 +357,7 @@ describe("StudyRoutePage", () => {
   test("does not fall back to public post load after auth errors", async () => {
     postError = new ApiError("auth_error", "auth expired", 401);
 
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("Sign in to study")).toBeTruthy());
     expect(view.queryByText("Public Study Song")).toBeNull();
@@ -376,7 +367,7 @@ describe("StudyRoutePage", () => {
   test("falls back to the public post read when the authenticated read 404s for non-members", async () => {
     postError = new ApiError("not_found", "Community not found", 404);
 
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
     const progress = view.getByRole("progressbar", { name: "Lesson progress" });
@@ -392,14 +383,14 @@ describe("StudyRoutePage", () => {
     postError = new ApiError("not_found", "Community not found", 404);
     publicPostError = new ApiError("not_found", "Post not found", 404);
 
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("Post not found")).toBeTruthy());
     expect(calls).toEqual(["posts.get", "publicPosts.get"]);
   });
 
   test("loads the server-authoritative study pack for authenticated users", async () => {
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
     expect(view.queryByText("Hello world")).toBeNull();
@@ -426,7 +417,7 @@ describe("StudyRoutePage", () => {
       min_score_bps: 8_500,
     };
 
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("Earn $0.40")).toBeTruthy());
     expect(view.queryByText("Earn $0.40 today")).toBeNull();
@@ -438,7 +429,7 @@ describe("StudyRoutePage", () => {
       exercises: [],
     });
 
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("You're caught up for this song.")).toBeTruthy());
     expect(calls).toEqual(["posts.get", "communities.getPostStudy"]);
@@ -457,7 +448,7 @@ describe("StudyRoutePage", () => {
       },
     });
 
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("You're caught up for this song. Review again in 10 min to keep going.")).toBeTruthy());
     expect(view.getByText("Check again")).toBeTruthy();
@@ -503,7 +494,7 @@ describe("StudyRoutePage", () => {
       ],
     });
 
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("Eligible prompt")).toBeTruthy());
     expect(view.queryByText("Exhausted prompt")).toBeNull();
@@ -518,7 +509,7 @@ describe("StudyRoutePage", () => {
       }],
     });
 
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("This lesson is complete.")).toBeTruthy());
     expect(view.queryByText("Study again")).toBeNull();
@@ -545,7 +536,7 @@ describe("StudyRoutePage", () => {
       ],
     });
 
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
     expect(view.queryByText("Learn this song line by line")).toBeNull();
@@ -564,7 +555,7 @@ describe("StudyRoutePage", () => {
     const originalVisibilityState = document.visibilityState;
 
     try {
-      const view = render(<StudyRoutePage postId="pst_song" telegramMiniApp />);
+      const view = renderRoute({ telegramMiniApp: true });
       await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
 
       Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
@@ -642,7 +633,7 @@ describe("StudyRoutePage", () => {
         ],
       });
 
-      const view = render(<StudyRoutePage postId="pst_song" />);
+      const view = renderRoute();
 
       await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
       fireEvent.click(view.getByText("Hello world").closest("button")!);
@@ -736,7 +727,7 @@ describe("StudyRoutePage", () => {
       ],
     });
 
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
     fireEvent.click(view.getByText("Hello world").closest("button")!);
@@ -771,7 +762,7 @@ describe("StudyRoutePage", () => {
       ],
     });
 
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
     fireEvent.click(view.getByText("Hello world").closest("button")!);
@@ -789,7 +780,7 @@ describe("StudyRoutePage", () => {
     const restoreRecorder = installFakeMediaRecorder();
 
     try {
-      const view = render(<StudyRoutePage postId="pst_song" />);
+      const view = renderRoute();
 
       await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
       await recordSayItBack(view);
@@ -818,7 +809,7 @@ describe("StudyRoutePage", () => {
     };
 
     try {
-      const view = render(<StudyRoutePage postId="pst_song" telegramMiniApp />);
+      const view = renderRoute({ telegramMiniApp: true });
       await waitFor(() => expect(view.getByText("Send voice message")).toBeTruthy());
       fireEvent.click(view.getByText("Send voice message").closest("button")!);
       await waitFor(() => expect(closeCalls).toBe(1));
@@ -838,7 +829,7 @@ describe("StudyRoutePage", () => {
     }).Telegram = { WebApp: {} };
 
     try {
-      const view = render(<StudyRoutePage postId="pst_song" telegramMiniApp />);
+      const view = renderRoute({ telegramMiniApp: true });
       await waitFor(() => expect(view.getByText("Send voice message")).toBeTruthy());
       fireEvent.click(view.getByText("Send voice message").closest("button")!);
 
@@ -872,7 +863,7 @@ describe("StudyRoutePage", () => {
     ]);
 
     try {
-      const view = render(<StudyRoutePage postId="pst_song" />);
+      const view = renderRoute();
 
       await waitFor(() => expect(view.getByText("Say the stale line")).toBeTruthy());
       await recordSayItBack(view);
@@ -897,7 +888,7 @@ describe("StudyRoutePage", () => {
     ]);
 
     try {
-      const view = render(<StudyRoutePage postId="pst_song" />);
+      const view = renderRoute();
 
       await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
       fireEvent.click(view.getByText("Hello world").closest("button")!);
@@ -921,7 +912,7 @@ describe("StudyRoutePage", () => {
     ]);
 
     try {
-      const view = render(<StudyRoutePage postId="pst_song" />);
+      const view = renderRoute();
 
       await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
       fireEvent.click(view.getByText("Hello world").closest("button")!);
@@ -965,7 +956,7 @@ describe("StudyRoutePage", () => {
     });
 
     try {
-      const view = render(<StudyRoutePage postId="pst_song" />);
+      const view = renderRoute();
       await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
 
       fireEvent.click(view.getByRole("button", { name: "Exit study" }));
@@ -1010,7 +1001,7 @@ describe("StudyRoutePage", () => {
     const restoreRecorder = installFakeMediaRecorder();
 
     try {
-      const view = render(<StudyRoutePage postId="pst_song" />);
+      const view = renderRoute();
 
       await waitFor(() => expect(view.getByText("First say-it-back line")).toBeTruthy());
       await recordSayItBack(view);
@@ -1034,7 +1025,7 @@ describe("StudyRoutePage", () => {
     const restoreRecorder = installFakeMediaRecorder();
 
     try {
-      const view = render(<StudyRoutePage postId="pst_song" />);
+      const view = renderRoute();
 
       await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
       await recordSayItBack(view);
@@ -1074,7 +1065,7 @@ describe("StudyRoutePage", () => {
     });
 
     try {
-      const view = render(<StudyRoutePage postId="pst_song" />);
+      const view = renderRoute();
 
       await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
       fireEvent.click(view.getByText("Record").closest("button")!);

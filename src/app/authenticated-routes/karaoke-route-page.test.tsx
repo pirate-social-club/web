@@ -1,10 +1,14 @@
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
-import type { LocalizedPostResponse } from "@pirate/api-contracts";
+import type { LocalizedPostResponse, SessionExchangeResponse } from "@pirate/api-contracts";
 
 import { installDomGlobals } from "@/test/setup-dom";
+import { ApiProvider } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
+import type { ApiClient } from "@/lib/api/client";
+import { __resetSessionStoreForTests, clearSession, setSession } from "@/lib/api/session-store";
+import { KaraokeRoutePage } from "./karaoke-route";
 
 installDomGlobals();
 Object.defineProperty(window, "location", {
@@ -24,6 +28,16 @@ Object.defineProperty(window, "ResizeObserver", {
   configurable: true,
   value: ResizeObserverStub,
 });
+Object.defineProperty(globalThis, "navigator", {
+  configurable: true,
+  value: new Proxy(globalThis.navigator, {
+    get(target, prop) {
+      if (prop === "languages") return ["en"];
+      if (prop === "language") return "en";
+      return Reflect.get(target, prop);
+    },
+  }),
+});
 
 type MediaElementStubPrototype = HTMLElement & {
   load?: () => void;
@@ -33,12 +47,6 @@ type MediaElementStubPrototype = HTMLElement & {
 const mediaElementPrototype = window.HTMLElement.prototype as MediaElementStubPrototype;
 const originalLoad = mediaElementPrototype.load;
 const originalPause = mediaElementPrototype.pause;
-
-const { mock } = await import("bun:test") as unknown as {
-  mock: {
-    module: (specifier: string, factory: () => unknown) => void;
-  };
-};
 
 type Deferred<T> = {
   promise: Promise<T>;
@@ -95,9 +103,6 @@ function songPost(overrides: {
 }
 
 const calls: string[] = [];
-let sessionValue: { accessToken?: string } | null = { accessToken: "token" };
-const sessionListeners = new Set<() => void>();
-const notifySessionListeners = () => sessionListeners.forEach((fn) => fn());
 let postResult: LocalizedPostResponse = songPost();
 let postError: unknown = null;
 let postDeferred: Deferred<LocalizedPostResponse> | null = null;
@@ -159,39 +164,30 @@ const fakeApi = {
   },
 };
 
-mock.module("@/lib/api", () => ({
-  api: fakeApi,
-  useApi: () => fakeApi,
-}));
+function setAuthenticatedSession(): void {
+  setSession({
+    access_token: "token",
+    user: {},
+    profile: {},
+    onboarding: {},
+    wallet_attachments: [],
+  } as unknown as SessionExchangeResponse);
+}
 
-mock.module("@/lib/api/session-store", () => ({
-  __resetSessionStoreForTests: () => { sessionValue = null; notifySessionListeners(); },
-  getAccessToken: () => sessionValue?.accessToken ?? null,
-  getSessionAccessTokenExpiryMs: () => null,
-  setSession: (response: { access_token?: string } | null) => {
-    sessionValue = response?.access_token ? { accessToken: response.access_token } : null;
-    notifySessionListeners();
-    return response;
-  },
-  updateSessionUser: () => {},
-  useSession: () => React.useSyncExternalStore(
-    (listener: () => void) => { sessionListeners.add(listener); return () => { sessionListeners.delete(listener); }; },
-    () => sessionValue,
-    () => null,
-  ),
-}));
-
-mock.module("@/hooks/use-route-content-locale", () => ({
-  useRouteContentLocale: () => "en",
-}));
-
-const { KaraokeRoutePage } = await import("./karaoke-route");
+function renderRoute() {
+  return render(
+    <ApiProvider client={fakeApi as unknown as ApiClient}>
+      <KaraokeRoutePage postId="pst_song" />
+    </ApiProvider>,
+  );
+}
 
 beforeEach(() => {
   mediaElementPrototype.load = () => undefined;
   mediaElementPrototype.pause = () => undefined;
   calls.length = 0;
-  sessionValue = { accessToken: "token" };
+  __resetSessionStoreForTests();
+  setAuthenticatedSession();
   postResult = songPost();
   postError = null;
   postDeferred = null;
@@ -206,13 +202,15 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  clearSession();
+  __resetSessionStoreForTests();
   mediaElementPrototype.load = originalLoad;
   mediaElementPrototype.pause = originalPause;
 });
 
 describe("KaraokeRoutePage", () => {
   test("starts the anonymous karaoke payload while post metadata is pending", async () => {
-    sessionValue = null;
+    clearSession();
     postDeferred = deferred<LocalizedPostResponse>();
     karaokeError = null;
     karaokeResult = {
@@ -221,7 +219,7 @@ describe("KaraokeRoutePage", () => {
       title: "Anonymous Karaoke",
     };
 
-    const view = render(<KaraokeRoutePage postId="pst_song" />);
+    const view = renderRoute();
     await waitFor(() => expect(calls).toContain("publicPosts.getKaraoke"));
     expect(calls).toEqual(["publicPosts.get", "publicPosts.getKaraoke"]);
 
@@ -232,7 +230,7 @@ describe("KaraokeRoutePage", () => {
   test("offers age verification when the authenticated payload requires proof", async () => {
     karaokeError = new ApiError("verification_required", "Age verification is required", 403);
 
-    const view = render(<KaraokeRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     expect(await waitFor(() => view.getByRole("button", { name: "Verify age" }))).toBeTruthy();
     expect(view.getByText("Age verification is required to view 18+ content.")).toBeTruthy();
@@ -252,7 +250,7 @@ describe("KaraokeRoutePage", () => {
       title: "API Karaoke",
     };
 
-    const view = render(<KaraokeRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.container.querySelector('[aria-label="API Karaoke"]')).toBeTruthy());
     expect(view.container.querySelector('[aria-label="API Karaoke"]')).toBeTruthy();
@@ -292,7 +290,7 @@ describe("KaraokeRoutePage", () => {
       title: "API Ref Karaoke",
     };
 
-    const view = render(<KaraokeRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.container.querySelector('[aria-label="API Ref Karaoke"]')).toBeTruthy());
     expect(view.container.querySelector('[aria-label="Ref Only Fallback"]')).toBeNull();
@@ -310,7 +308,7 @@ describe("KaraokeRoutePage", () => {
   test("falls back to post metadata when the dedicated payload is missing", async () => {
     karaokeError = new ApiError("not_found", "not found", 404);
 
-    const view = render(<KaraokeRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.container.querySelector('[aria-label="Fallback Karaoke"]')).toBeTruthy());
     expect(view.container.querySelector('[aria-label="Fallback Karaoke"]')).toBeTruthy();
@@ -329,7 +327,7 @@ describe("KaraokeRoutePage", () => {
       min_score_bps: 7_000,
     };
 
-    const view = render(<KaraokeRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(calls).toContain("rewards.getActiveCampaignForSong"));
     await waitFor(() => expect(view.container.querySelector('[aria-label="Fallback Karaoke"]')).toBeTruthy());
@@ -346,7 +344,7 @@ describe("KaraokeRoutePage", () => {
     };
     postResult = songPost({ presentation: null });
 
-    const view = render(<KaraokeRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => {
       expect(view.getByText("Karaoke data was returned but did not include usable timed lyrics and instrumental audio.")).toBeTruthy();
@@ -361,7 +359,7 @@ describe("KaraokeRoutePage", () => {
       },
     });
 
-    const view = render(<KaraokeRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => {
       expect(view.getByText("This song does not have an instrumental track for karaoke.")).toBeTruthy();
@@ -371,7 +369,7 @@ describe("KaraokeRoutePage", () => {
   test("shows errors from non-404 karaoke payload failures", async () => {
     karaokeError = new Error("upstream unavailable");
 
-    const view = render(<KaraokeRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => {
       expect(view.getByText("upstream unavailable")).toBeTruthy();
@@ -392,7 +390,7 @@ describe("KaraokeRoutePage", () => {
       },
     });
 
-    const view = render(<KaraokeRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("auth expired")).toBeTruthy());
     expect(view.container.querySelector('[aria-label="Public Karaoke"]')).toBeNull();
@@ -405,7 +403,7 @@ describe("KaraokeRoutePage", () => {
   test("does not finish rendering after unmounting during payload load", async () => {
     karaokeDeferred = deferred();
 
-    const view = render(<KaraokeRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(calls).toEqual([
       "posts.get",
@@ -450,7 +448,7 @@ describe("KaraokeRoutePage", () => {
     });
 
     try {
-      const view = render(<KaraokeRoutePage postId="pst_song" />);
+      const view = renderRoute();
       await waitFor(() => expect(view.container.querySelector('[aria-label="Fallback Karaoke"]')).toBeTruthy());
 
       fireEvent.click(view.getByLabelText("Exit karaoke"));

@@ -91,6 +91,51 @@ export const SayItBackIdle: Story = {
   ),
 };
 
+export const ProgressStart: Story = {
+  name: "Study / Progress — start",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      lessonProgress={{ resolvedCount: 0, totalCount: 8 }}
+      state={{ kind: "say_it_back", attemptNumber: 1, exercise: sayItBackExercise, phase: "idle" }}
+    />
+  ),
+};
+
+export const ProgressMidLesson: Story = {
+  name: "Study / Progress — mid-lesson",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      lessonProgress={{ resolvedCount: 4, totalCount: 8 }}
+      rewardSlot={<SongRewardOfferPill amountLabel="$0.40" />}
+      state={{ kind: "multiple_choice", attemptNumber: 1, exercise: multipleChoiceExercise }}
+    />
+  ),
+};
+
+export const ProgressRetryPending: Story = {
+  name: "Study / Progress — retry pending",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      lessonProgress={{ resolvedCount: 6, totalCount: 8 }}
+      state={{ kind: "say_it_back", attemptNumber: 1, exercise: sayItBackExercise, phase: "wrong" }}
+    />
+  ),
+};
+
+export const ProgressComplete: Story = {
+  name: "Study / Progress — complete",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      lessonProgress={{ resolvedCount: 8, totalCount: 8 }}
+      state={{ kind: "complete", correctCount: 7, scorePercent: 88, totalCount: 8 }}
+    />
+  ),
+};
+
 export const SayItBackRewardOffer: Story = {
   name: "Study / Say it back — reward offer",
   render: () => (

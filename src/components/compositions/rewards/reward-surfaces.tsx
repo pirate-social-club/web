@@ -145,14 +145,17 @@ export function SongRewardOfferPill({
 }) {
   return (
     <span
+      aria-label={`Reward ${amountLabel}`}
       className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-primary/30 bg-primary-subtle px-3 py-1.5",
+        // Rendered inside the progress capsule, so it carries no surface of its
+        // own — the capsule already provides one. `text-warning` is the app's
+        // money/reward gold, shared with the streak crown.
+        "inline-flex items-center whitespace-nowrap px-2.5 text-warning",
         className,
       )}
     >
-      <Gift aria-hidden="true" className="size-4 text-primary" weight="fill" />
-      <Type as="span" variant="caption">
-        Earn {amountLabel}
+      <Type as="span" className="font-semibold text-current" variant="caption">
+        {amountLabel}
       </Type>
     </span>
   );

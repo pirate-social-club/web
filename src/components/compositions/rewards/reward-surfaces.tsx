@@ -147,10 +147,10 @@ export function SongRewardOfferPill({
     <span
       aria-label={`Reward ${amountLabel}`}
       className={cn(
-        // Shares the progress track's `bg-muted` so the reward reads as the end
-        // cap of the bar rather than a separate chip. A border/shadow would only
-        // be needed to lift it off the page background, which it no longer uses.
-        "inline-flex items-center whitespace-nowrap rounded-full bg-muted px-3 py-1.5 text-success",
+        // Rendered inside the progress capsule, so it carries no surface of its
+        // own — the capsule already provides one. `text-warning` is the app's
+        // money/reward gold, shared with the streak crown.
+        "inline-flex items-center whitespace-nowrap px-2.5 text-warning",
         className,
       )}
     >

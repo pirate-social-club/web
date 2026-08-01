@@ -223,21 +223,27 @@ function Header({
           Study
         </Type>
         {lessonProgress ? (
-          <div
-            aria-label="Lesson progress"
-            aria-valuemax={totalCount}
-            aria-valuemin={0}
-            aria-valuenow={resolvedCount}
-            className="h-3 min-w-0 flex-1 overflow-hidden rounded-full bg-muted"
-            role="progressbar"
-          >
+          // One capsule holds the groove and the reward amount so the two read as
+          // a single connected control: the bar runs into the money it earns.
+          <div className="flex h-7 min-w-0 flex-1 items-center rounded-full bg-muted pl-1">
             <div
-              className="h-full rounded-full bg-success transition-[width] duration-300 ease-out motion-reduce:transition-none"
-              style={{ width: `${progressPercent}%` }}
-            />
+              aria-label="Lesson progress"
+              aria-valuemax={totalCount}
+              aria-valuemin={0}
+              aria-valuenow={resolvedCount}
+              className="h-3 min-w-0 flex-1 overflow-hidden rounded-full bg-background"
+              role="progressbar"
+            >
+              <div
+                className="h-full rounded-full bg-success transition-[width] duration-300 ease-out motion-reduce:transition-none"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            {trailing ? <div className="shrink-0">{trailing}</div> : <span className="pr-1" />}
           </div>
-        ) : null}
-        {trailing ? <div className={cn("shrink-0", lessonProgress && "ml-1.5")}>{trailing}</div> : null}
+        ) : (
+          trailing ? <div className="ml-auto shrink-0">{trailing}</div> : null
+        )}
       </div>
     </header>
   );

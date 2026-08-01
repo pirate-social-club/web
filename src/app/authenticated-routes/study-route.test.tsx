@@ -401,7 +401,7 @@ describe("StudyRoutePage", () => {
   test("renders a locked lesson without reading ready-state progress", async () => {
     studyResult = readyStudyPayload({ access: "locked" });
 
-    const view = render(<StudyRoutePage postId="pst_song" />);
+    const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("Study unlocks with the song")).toBeTruthy());
     expect(view.queryByRole("progressbar", { name: "Lesson progress" })).toBeNull();

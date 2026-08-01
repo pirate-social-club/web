@@ -159,6 +159,8 @@
     "videoPost": "视频帖子",
     "song": "歌曲",
     "songContent": {
+      "explicitContent": "露骨内容",
+      "explicitContentShort": "E",
       "buy": "购买",
       "buyForPrice": "以 {price} 购买",
       "buyDigitalMp3": "购买数字 MP3",

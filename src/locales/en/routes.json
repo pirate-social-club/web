@@ -159,6 +159,8 @@
     "videoPost": "Video post",
     "song": "Song",
     "songContent": {
+      "explicitContent": "Explicit content",
+      "explicitContentShort": "E",
       "buy": "Buy",
       "buyForPrice": "Buy for {price}",
       "buyDigitalMp3": "Buy Digital MP3",

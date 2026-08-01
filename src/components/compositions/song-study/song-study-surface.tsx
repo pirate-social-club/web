@@ -88,6 +88,10 @@ export type SongStudySurfaceState =
 export interface SongStudySurfaceProps {
   artworkSrc?: string;
   className?: string;
+  lessonProgress?: {
+    resolvedCount: number;
+    totalCount: number;
+  };
   onExit?: () => void;
   onKaraoke?: () => void;
   onOptionSelect?: (optionId: string) => void;
@@ -192,12 +196,18 @@ function ActivityFooter({
 }
 
 function Header({
+  lessonProgress,
   onExit,
   trailing,
 }: {
+  lessonProgress?: SongStudySurfaceProps["lessonProgress"];
   onExit?: () => void;
   trailing?: React.ReactNode;
 }) {
+  const totalCount = Math.max(0, lessonProgress?.totalCount ?? 0);
+  const resolvedCount = Math.max(0, Math.min(totalCount, lessonProgress?.resolvedCount ?? 0));
+  const progressPercent = totalCount > 0 ? (resolvedCount / totalCount) * 100 : 0;
+
   return (
     <header className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-border-soft px-4 py-2 sm:min-h-20 sm:px-6 sm:py-3">
       <Button
@@ -208,11 +218,32 @@ function Header({
         size="icon"
         variant="ghost"
       />
-      <div className="flex min-w-0 items-center justify-end">
+      <div className="flex min-w-0 items-center">
         <Type as="h1" className="sr-only">
           Study
         </Type>
-        {trailing}
+        {lessonProgress ? (
+          // One capsule holds the groove and the reward amount so the two read as
+          // a single connected control: the bar runs into the money it earns.
+          <div className="flex h-7 min-w-0 flex-1 items-center rounded-full bg-muted pl-1">
+            <div
+              aria-label="Lesson progress"
+              aria-valuemax={totalCount}
+              aria-valuemin={0}
+              aria-valuenow={resolvedCount}
+              className="h-3 min-w-0 flex-1 overflow-hidden rounded-full bg-background"
+              role="progressbar"
+            >
+              <div
+                className="h-full rounded-full bg-success transition-[width] duration-300 ease-out motion-reduce:transition-none"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            {trailing ? <div className="shrink-0">{trailing}</div> : <span className="pr-1" />}
+          </div>
+        ) : (
+          trailing ? <div className="ml-auto shrink-0">{trailing}</div> : null
+        )}
       </div>
     </header>
   );
@@ -597,6 +628,7 @@ function Body({
 
 export function SongStudySurface({
   className,
+  lessonProgress,
   onExit,
   onKaraoke,
   onOptionSelect,
@@ -626,7 +658,7 @@ export function SongStudySurface({
 
   return (
     <section className={cn("flex h-dvh w-full flex-col overflow-y-auto bg-background text-foreground", className)}>
-      <Header onExit={onExit} trailing={complete ? undefined : rewardSlot} />
+      <Header lessonProgress={lessonProgress} onExit={onExit} trailing={complete ? undefined : rewardSlot} />
       {complete && rewardSlot ? (
         <div className="mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6">
           {rewardSlot}

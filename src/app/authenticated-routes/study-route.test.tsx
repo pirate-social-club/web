@@ -370,6 +370,9 @@ describe("StudyRoutePage", () => {
     const view = renderRoute();
 
     await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
+    const progress = view.getByRole("progressbar", { name: "Lesson progress" });
+    expect(progress.getAttribute("aria-valuenow")).toBe("0");
+    expect(progress.getAttribute("aria-valuemax")).toBe("1");
     expect(view.queryByText("Hello world")).toBeNull();
     expect(view.queryByText("Learn this song line by line")).toBeNull();
     expect(view.queryByText("Community not found")).toBeNull();
@@ -395,6 +398,15 @@ describe("StudyRoutePage", () => {
     expect(calls).toEqual(["posts.get", "communities.getPostStudy"]);
   });
 
+  test("renders a locked lesson without reading ready-state progress", async () => {
+    studyResult = readyStudyPayload({ access: "locked" });
+
+    const view = renderRoute();
+
+    await waitFor(() => expect(view.getByText("Study unlocks with the song")).toBeTruthy());
+    expect(view.queryByRole("progressbar", { name: "Lesson progress" })).toBeNull();
+  });
+
   test("shows a compact reward pill for the active song campaign", async () => {
     rewardCampaignResult = {
       campaign: "rcp_study_offer",
@@ -407,7 +419,9 @@ describe("StudyRoutePage", () => {
 
     const view = renderRoute();
 
-    await waitFor(() => expect(view.getByText("Earn $0.40")).toBeTruthy());
+    await waitFor(() => expect(view.getByLabelText("Reward $0.40")).toBeTruthy());
+    expect(view.getByText("$0.40")).toBeTruthy();
+    expect(view.queryByText("Earn $0.40")).toBeNull();
     expect(view.queryByText("Earn $0.40 today")).toBeNull();
   });
 
@@ -1021,9 +1035,25 @@ describe("StudyRoutePage", () => {
       await waitFor(() => expect(view.getByText("Correct answer:")).toBeTruthy());
       expect(view.getByText("Hola mundo")).toBeTruthy();
       expect(view.getByText("Continue")).toBeTruthy();
+      expect(view.getByRole("progressbar", { name: "Lesson progress" }).getAttribute("aria-valuenow")).toBe("0");
       expect(view.queryByText(/You said/u)).toBeNull();
       expect(view.queryByText(/Missing:/u)).toBeNull();
       expect(view.queryByText(/Extra:/u)).toBeNull();
+
+      fireEvent.click(view.getByText("Continue").closest("button")!);
+      await waitFor(() => expect(view.getByText("Record")).toBeTruthy());
+      expect(view.getByRole("progressbar", { name: "Lesson progress" }).getAttribute("aria-valuenow")).toBe("0");
+
+      submitPostStudyAttemptResult = {
+        attempts_remaining: 0,
+        exercise_id: "ex_say",
+        object: "song_study_attempt_result",
+        outcome: "correct",
+      };
+      await recordSayItBack(view);
+
+      await waitFor(() => expect(view.getByText("Session complete")).toBeTruthy());
+      expect(view.getByRole("progressbar", { name: "Lesson progress" }).getAttribute("aria-valuenow")).toBe("1");
     } finally {
       restoreRecorder();
     }

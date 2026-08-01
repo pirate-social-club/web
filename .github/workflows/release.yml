@@ -954,6 +954,17 @@ jobs:
           script: |
             const productionFreshness = require(`${process.env.GITHUB_WORKSPACE}/web/scripts/ci/production-freshness.cjs`);
             await productionFreshness({ github, context, core });
+      # Fail before the first production mutation when the community shard
+      # Worker cannot serve the API commit this release is about to deploy.
+      # The pinned checkout is the authority; the live API's expected version
+      # is diagnostic only because it describes the currently deployed pair.
+      - name: Verify production community shard matches pinned API
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --health-url https://api.pirate.sc/health/provisioning
       - name: Apply production control-plane migrations
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: core

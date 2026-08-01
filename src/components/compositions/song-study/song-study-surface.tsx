@@ -237,7 +237,7 @@ function Header({
             />
           </div>
         ) : null}
-        {trailing ? <div className={cn("shrink-0", lessonProgress && "-ml-2")}>{trailing}</div> : null}
+        {trailing ? <div className={cn("shrink-0", lessonProgress && "ml-1.5")}>{trailing}</div> : null}
       </div>
     </header>
   );

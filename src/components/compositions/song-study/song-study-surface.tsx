@@ -54,6 +54,11 @@ export type SongStudySurfaceState =
   | {
     kind: "say_it_back";
     attemptNumber: number;
+    /**
+     * Attempts spent on this appearance of the card (not across the lesson).
+     * Bounds the in-place retry so a learner is never stuck on one line.
+     */
+    attemptsThisAppearance?: number;
     exercise: SongStudySayItBackExercise;
     guidance?: string;
     /** What speech-to-text heard on the last miss. Shown only while `phase` is "wrong". */

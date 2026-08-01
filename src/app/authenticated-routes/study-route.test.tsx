@@ -1067,6 +1067,45 @@ describe("StudyRoutePage", () => {
     }
   });
 
+  test("stops retrying in place after the second miss and leaves the card for review", async () => {
+    // The server still has an attempt left (lifetime budget is 3), but a single
+    // appearance is capped at two so the lesson moves on instead of looping.
+    submitPostStudyAttemptResult = {
+      attempts_remaining: 1,
+      exercise_id: "ex_say",
+      object: "song_study_attempt_result",
+      outcome: "incorrect",
+    };
+    const restoreRecorder = installFakeMediaRecorder();
+
+    try {
+      const view = renderRoute();
+
+      await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
+
+      // First miss: retry stays on this card.
+      await recordSayItBack(view);
+      await waitFor(() => expect(view.getByText("Not quite — try again")).toBeTruthy());
+      expect(view.getByText("Record")).toBeTruthy();
+
+      // Second miss: the appearance is spent even though the server would allow
+      // another attempt, so the learner is offered Continue, not another Record.
+      await recordSayItBack(view);
+      await waitFor(() => expect(view.getByText("Let's come back to this")).toBeTruthy());
+      expect(view.getByText("Continue")).toBeTruthy();
+      expect(view.queryByText("Not quite — try again")).toBeNull();
+
+      // And because an attempt remains, the card is requeued for later review
+      // rather than being resolved — progress must not advance.
+      fireEvent.click(view.getByText("Continue").closest("button")!);
+      await waitFor(() => expect(view.getByText("Record")).toBeTruthy());
+      expect(view.getByRole("progressbar", { name: "Lesson progress" }).getAttribute("aria-valuenow")).toBe("0");
+      expect(view.queryByText("Session complete")).toBeNull();
+    } finally {
+      restoreRecorder();
+    }
+  });
+
   test("surfaces a submit error and stays idle when voice recording is unavailable", async () => {
     const originalMediaDevices = navigator.mediaDevices;
     Object.defineProperty(navigator, "mediaDevices", {

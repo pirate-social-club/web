@@ -128,6 +128,14 @@ function toMultipleChoiceExercise(exercise: Extract<SongStudyExercise, { type: "
   };
 }
 
+/**
+ * Attempts a say-it-back card gets per appearance before the lesson moves on.
+ * The server's STUDY_SESSION_MAX_CARD_PRESENTATIONS (3) is the lifetime budget;
+ * this is the slice spent in one sitting, so a miss returns for later review
+ * rather than trapping the learner on a single line.
+ */
+const STUDY_MAX_ATTEMPTS_PER_APPEARANCE = 2;
+
 function exerciseSurface(exercise: SongStudyExercise, attemptNumber = Number(exercise.presentation_count ?? 0) + 1): SongStudySurfaceState {
   return exercise.type === "translation_choice"
     ? {
@@ -1029,11 +1037,13 @@ export function StudyRoutePage({
                   if (current.phase !== "ready" || current.surface.kind !== "say_it_back" || current.surface.exercise.id !== exercise.id) {
                     return current;
                   }
-                  // The card is spent only once the server says no attempts are
-                  // left; until then the learner retries this same prompt in
-                  // place (Duolingo-style) rather than being bounced onward.
-                  // The retry consumes the next attempt number, so bump it.
-                  const spent = (result.attempts_remaining ?? 0) <= 0;
+                  // Two attempts per appearance, then move on. The card is also
+                  // done if the server has no attempts left at all. Anything
+                  // more would loop the learner on one line; the requeue in
+                  // advanceLesson brings it back later for the third attempt.
+                  const attemptsUsed = current.surface.attemptsThisAppearance ?? 1;
+                  const spent = (result.attempts_remaining ?? 0) <= 0
+                    || attemptsUsed >= STUDY_MAX_ATTEMPTS_PER_APPEARANCE;
                   return {
                     ...current,
                     lastAttemptResult: result,
@@ -1042,6 +1052,7 @@ export function StudyRoutePage({
                       attemptNumber: spent
                         ? current.surface.attemptNumber
                         : current.surface.attemptNumber + 1,
+                      attemptsThisAppearance: attemptsUsed + 1,
                       heardTranscript: transcript,
                       phase: "wrong",
                       revealReference: spent,

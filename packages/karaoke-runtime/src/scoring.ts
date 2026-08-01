@@ -14,8 +14,10 @@ export const KARAOKE_LINE_WINDOW_TRAIL_MS = 800;
  *      soft scoring curve with a floor, and an explicit calibration verdict. When timing
  *      cannot be trusted it is replaced by a NEUTRAL value at full weight rather than
  *      dropped (dropping it renormalized text upward, which rewarded sabotaging timing).
+ * v5 = words ending in -ied derive their phones from the corresponding -y form plus D,
+ *      fixing approximations such as tried (T-R-AY-D) that previously invented IH-EH.
  */
-export const KARAOKE_SCORING_VERSION = 4;
+export const KARAOKE_SCORING_VERSION = 5;
 export const KARAOKE_TIMING_SCORING_ENABLED = true;
 
 export type KaraokeTimingTrend = "early" | "late" | "mixed" | "on_time";
@@ -724,6 +726,18 @@ function wordToApproxArpabet(raw: string): string[] {
     const lookup = CMU_FALLBACK_ARPABET[candidate];
     if (lookup) {
       return lookup;
+    }
+  }
+
+  // English consonant+y verbs form their past tense by replacing y with ied.
+  // Reuse the approximator's pronunciation of the corresponding -y form and
+  // append the past-tense D instead of reading "ied" as IH-EH-D. Besides the
+  // common try/tried class, this preserves the base vowel chosen for longer
+  // forms such as study/studied and apply/applied.
+  if (word.endsWith("ied") && word.length > 3) {
+    const basePhones = wordToApproxArpabet(`${word.slice(0, -3)}y`);
+    if (basePhones.length > 0) {
+      return [...basePhones, "D"];
     }
   }
 

@@ -159,6 +159,8 @@
     "videoPost": "منشور فيديو",
     "song": "أغنية",
     "songContent": {
+      "explicitContent": "محتوى صريح",
+      "explicitContentShort": "E",
       "buy": "شراء",
       "buyForPrice": "اشترِ مقابل {price}",
       "buyDigitalMp3": "شراء MP3 رقمي",

@@ -12,21 +12,26 @@ const ApiClientContext = React.createContext<ApiClient>(api);
 export function ApiProvider({
   baseUrl,
   initialHost,
+  client,
   children,
 }: {
   baseUrl?: string;
   initialHost?: string;
+  client?: ApiClient;
   children: React.ReactNode;
 }) {
-  const client = React.useMemo(() => {
+  const resolvedClient = React.useMemo(() => {
+    // An injected client owns its base URL; baseUrl and initialHost apply only
+    // when this provider constructs the client.
+    if (client) return client;
     const resolvedBaseUrl = baseUrl ?? resolveApiBaseUrl(initialHost);
     const c = new ApiClient({ baseUrl: resolvedBaseUrl, getToken: getAccessToken });
     return c;
-  }, [baseUrl, initialHost]);
+  }, [baseUrl, client, initialHost]);
 
   return React.createElement(
     ApiClientContext.Provider,
-    { value: client },
+    { value: resolvedClient },
     children,
   );
 }

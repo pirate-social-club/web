@@ -24,7 +24,7 @@ let postEligible = true;
 let firstQuoteExpired = false;
 let policyError: unknown = null;
 let policyBlocked = false;
-let nationalityTierCapability: "unavailable" | "draft_only" = "unavailable";
+let nationalityTierCapability: unknown = "unavailable";
 let nationalityTierPreview = false;
 let lastCreateBody: Record<string, unknown> | null = null;
 let campaignTiers: Array<{ amount_cents: number; nationalities: string[] }> = [];
@@ -269,6 +269,23 @@ beforeEach(() => {
 describe("useBoostCampaignController", () => {
   test("keeps nationality tiers structurally dark without both preview gates", async () => {
     nationalityTierCapability = "draft_only";
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    expect(view.result.current.sheetProps.payoutTiers).toBeUndefined();
+  });
+
+  test("preserves draft-tier affordances for the binding_preview capability", async () => {
+    nationalityTierCapability = "binding_preview";
+    nationalityTierPreview = true;
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    expect(view.result.current.sheetProps.payoutTiers).toEqual([]);
+    expect(view.result.current.sheetProps.onAddPayoutTier).toBeFunction();
+  });
+
+  test("fails closed for an unknown nationality-tier capability", async () => {
+    nationalityTierCapability = "future_unknown_state";
+    nationalityTierPreview = true;
     const view = renderHook(() => useBoostCampaignController(input()));
     await waitFor(() => expect(view.result.current.canBoost).toBe(true));
     expect(view.result.current.sheetProps.payoutTiers).toBeUndefined();

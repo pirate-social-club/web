@@ -484,6 +484,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "videoPost": "Video post",
         "song": "Song",
         "songContent": {
+          "explicitContent": "Explicit content",
+          "explicitContentShort": "E",
           "buy": "Buy",
           "buyForPrice": "Buy for {price}",
           "buyDigitalMp3": "Buy Digital MP3",
@@ -2747,6 +2749,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "videoPost": "منشور فيديو",
         "song": "أغنية",
         "songContent": {
+          "explicitContent": "محتوى صريح",
+          "explicitContentShort": "E",
           "buy": "شراء",
           "buyForPrice": "اشترِ مقابل {price}",
           "buyDigitalMp3": "شراء MP3 رقمي",
@@ -5010,6 +5014,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "videoPost": "视频帖子",
         "song": "歌曲",
         "songContent": {
+          "explicitContent": "露骨内容",
+          "explicitContentShort": "E",
           "buy": "购买",
           "buyForPrice": "以 {price} 购买",
           "buyDigitalMp3": "购买数字 MP3",

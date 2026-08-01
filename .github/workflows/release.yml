@@ -527,9 +527,8 @@ jobs:
       - name: Record schema scan start
         run: echo "SCHEMA_SCAN_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - name: Verify staging fleet satisfies pinned API schema requirements
-        # Increase REST-batch concurrency conservatively after two measured
-        # fleet scans completed with zero retries and no D1 errors. Roll back to
-        # 2 if transport metrics report retries or error code 7429.
+        # Keep REST-batch concurrency at 2 after repeated code 7429 overloads
+        # exhausted retries on the same staging shard at concurrency 3.
         # The gate reads the community-d1-shard pool + every live shard through
         # the D1 REST API, so it needs D1 READ across
         # community-d1-pool-* and community-d1-shard-pool-*. That is the isolated
@@ -547,7 +546,7 @@ jobs:
             --drift-policy core/db/known-community-migration-drifts.json \
             --canonical-baseline api/services/api/docs/attestations/community-schema/staging-canonical-baseline.json \
             --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
-            --concurrency 3
+            --concurrency 2
       # always(): a SLOW scan that then fails is exactly the sample we must not
       # drop. Never fails the job — an observability step must not be able to
       # block a release.

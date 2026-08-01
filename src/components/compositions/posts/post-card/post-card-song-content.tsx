@@ -744,6 +744,17 @@ export function SongPostContent({ content, className, previewMode }: SongPostCon
                 <Type as="span" className="max-w-full truncate font-semibold text-foreground sm:text-lg" variant="body-strong">
                   {content.title}
                 </Type>
+                {content.contentSafetyState === "sensitive" ? (
+                  <Type
+                    aria-label={song.explicitContent}
+                    as="span"
+                    className="shrink-0 border border-current px-1 text-muted-foreground"
+                    title={song.explicitContent}
+                    variant="caption"
+                  >
+                    {song.explicitContentShort}
+                  </Type>
+                ) : null}
                 {derivativeSummary ? <span aria-hidden="true" className="text-base leading-6 text-muted-foreground sm:text-lg">–</span> : null}
                 {derivativeSummary && derivativeHref ? (
                   <a

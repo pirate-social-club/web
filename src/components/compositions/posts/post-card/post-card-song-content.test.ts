@@ -205,6 +205,24 @@ describe("deriveSongUI", () => {
     expect(markup).not.toContain('role="img" aria-label="Public track"');
   });
 
+  test("labels sensitive songs as explicit without age-gating playback", () => {
+    const content = {
+      ...baseSong,
+      contentSafetyState: "sensitive" as const,
+    };
+    const ui = deriveSongUI(content);
+    const markup = renderToStaticMarkup(
+      React.createElement(UiLocaleProvider, { dir: "ltr", locale: "en" },
+        React.createElement(SongPostContent, { content }),
+      ),
+    );
+
+    expect(ui.ageGateRequiresProof).toBe(false);
+    expect(markup).toContain('aria-label="Explicit content"');
+    expect(markup).toContain(">E</span>");
+    expect(markup).not.toContain("Verify Age");
+  });
+
   test("keeps post captions outside the song player", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {

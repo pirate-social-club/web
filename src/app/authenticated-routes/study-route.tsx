@@ -41,6 +41,7 @@ import { updateSessionUser, useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useUiLocale } from "@/lib/ui-locale";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
+import { studyLessonProgress } from "./study-lesson-progress";
 
 type StudyRouteState =
   | { phase: "loading" }
@@ -1178,6 +1179,11 @@ export function StudyRoutePage({
     <SongStudySurface
       artworkSrc={pageArtwork(state.post, state.study)}
       className="h-dvh"
+      lessonProgress={studyLessonProgress({
+        exerciseIds: state.study.exercises.map((exercise) => exercise.id),
+        exerciseQueue: state.exerciseQueue,
+        totalCount: state.study.session?.served_count ?? state.study.exercises.length,
+      })}
       onExit={() => replaceRoute(returnPath ?? routeReturnPath(`/p/${encodeURIComponent(postId)}`))}
       onOptionSelect={handleOptionSelect}
       onPrimaryAction={handlePrimaryAction}

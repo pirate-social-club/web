@@ -379,6 +379,9 @@ describe("StudyRoutePage", () => {
     const view = render(<StudyRoutePage postId="pst_song" />);
 
     await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
+    const progress = view.getByRole("progressbar", { name: "Lesson progress" });
+    expect(progress.getAttribute("aria-valuenow")).toBe("0");
+    expect(progress.getAttribute("aria-valuemax")).toBe("1");
     expect(view.queryByText("Hello world")).toBeNull();
     expect(view.queryByText("Learn this song line by line")).toBeNull();
     expect(view.queryByText("Community not found")).toBeNull();
@@ -1030,6 +1033,7 @@ describe("StudyRoutePage", () => {
       await waitFor(() => expect(view.getByText("Correct answer:")).toBeTruthy());
       expect(view.getByText("Hola mundo")).toBeTruthy();
       expect(view.getByText("Continue")).toBeTruthy();
+      expect(view.getByRole("progressbar", { name: "Lesson progress" }).getAttribute("aria-valuenow")).toBe("0");
       expect(view.queryByText(/You said/u)).toBeNull();
       expect(view.queryByText(/Missing:/u)).toBeNull();
       expect(view.queryByText(/Extra:/u)).toBeNull();

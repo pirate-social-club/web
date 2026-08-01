@@ -1017,7 +1017,7 @@ describe("StudyRoutePage", () => {
     }
   });
 
-  test("shows the expected answer banner after a wrong say-it-back attempt", async () => {
+  test("retries a missed say-it-back in place while attempts remain", async () => {
     submitPostStudyAttemptResult = {
       attempts_remaining: 1,
       exercise_id: "ex_say",
@@ -1032,26 +1032,34 @@ describe("StudyRoutePage", () => {
       await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
       await recordSayItBack(view);
 
-      await waitFor(() => expect(view.getByText("Correct answer:")).toBeTruthy());
-      expect(view.getByText("Hola mundo")).toBeTruthy();
-      expect(view.getByText("Continue")).toBeTruthy();
+      // A retryable miss keeps the same prompt and offers another recording. It
+      // never echoes the expected answer, which is already the prompt above.
+      await waitFor(() => expect(view.getByText("Not quite — try again")).toBeTruthy());
+      expect(view.getByText("Heard: Hola mundo")).toBeTruthy();
+      expect(view.getByText("Record")).toBeTruthy();
+      expect(view.queryByText("Correct answer:")).toBeNull();
+      expect(view.queryByText("Continue")).toBeNull();
       expect(view.getByRole("progressbar", { name: "Lesson progress" }).getAttribute("aria-valuenow")).toBe("0");
       expect(view.queryByText(/You said/u)).toBeNull();
       expect(view.queryByText(/Missing:/u)).toBeNull();
       expect(view.queryByText(/Extra:/u)).toBeNull();
 
-      fireEvent.click(view.getByText("Continue").closest("button")!);
-      await waitFor(() => expect(view.getByText("Record")).toBeTruthy());
-      expect(view.getByRole("progressbar", { name: "Lesson progress" }).getAttribute("aria-valuenow")).toBe("0");
-
+      // Spending the last attempt resolves the card: now it offers Continue.
       submitPostStudyAttemptResult = {
         attempts_remaining: 0,
         exercise_id: "ex_say",
         object: "song_study_attempt_result",
-        outcome: "correct",
+        outcome: "incorrect",
       };
       await recordSayItBack(view);
 
+      await waitFor(() => expect(view.getByText("Let's come back to this")).toBeTruthy());
+      expect(view.getByText("Continue")).toBeTruthy();
+      expect(view.queryByText("Correct answer:")).toBeNull();
+
+      // With no attempts left the card is not requeued, so the lesson resolves
+      // it and moves on rather than bouncing the learner back to the same line.
+      fireEvent.click(view.getByText("Continue").closest("button")!);
       await waitFor(() => expect(view.getByText("Session complete")).toBeTruthy());
       expect(view.getByRole("progressbar", { name: "Lesson progress" }).getAttribute("aria-valuenow")).toBe("1");
     } finally {

@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  ArrowCounterClockwise,
   BookOpen,
   CheckCircle,
   Fire,
@@ -55,7 +56,10 @@ export type SongStudySurfaceState =
     attemptNumber: number;
     exercise: SongStudySayItBackExercise;
     guidance?: string;
+    /** What speech-to-text heard on the last miss. Shown only while `phase` is "wrong". */
+    heardTranscript?: string;
     phase: "idle" | "listening" | "checking" | "wrong";
+    /** True once the card is spent, so the miss is final rather than retryable. */
     revealReference?: boolean;
     submitError?: string;
   }
@@ -285,17 +289,41 @@ function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kin
         </Type>
       </div>
 
+      {/*
+        The prompt above IS the expected answer for say-it-back, so echoing it
+        back as "Correct answer:" says nothing the learner cannot already read.
+        The only new information is what speech-to-text actually heard, so that
+        is what a miss shows. A retryable miss stays muted; only a spent card
+        takes the destructive treatment, because red reads as final.
+      */}
       {state.phase === "wrong" ? (
-        <div className="rounded-[var(--radius-xl)] border border-destructive/30 bg-destructive/10 p-4">
+        <div
+          className={cn(
+            "rounded-[var(--radius-xl)] border p-4",
+            state.revealReference
+              ? "border-destructive/30 bg-destructive/10"
+              : "border-border-soft bg-muted",
+          )}
+        >
           <div className="flex items-center gap-3">
-            <XCircle className="size-6 shrink-0 text-destructive" weight="fill" />
+            {state.revealReference ? (
+              <XCircle className="size-6 shrink-0 text-destructive" weight="fill" />
+            ) : (
+              <ArrowCounterClockwise className="size-6 shrink-0 text-muted-foreground" weight="bold" />
+            )}
             <div className="min-w-0">
-              <Type as="p" className="text-destructive" variant="caption">
-                Correct answer:
+              <Type
+                as="p"
+                className={state.revealReference ? "text-destructive" : "text-muted-foreground"}
+                variant="caption"
+              >
+                {state.revealReference ? "Let's come back to this" : "Not quite — try again"}
               </Type>
-              <Type as="p" dir="auto" variant="body-strong">
-                {state.exercise.expected}
-              </Type>
+              {state.heardTranscript ? (
+                <Type as="p" className="text-muted-foreground" dir="auto" variant="body">
+                  {`Heard: ${state.heardTranscript}`}
+                </Type>
+              ) : null}
             </div>
           </div>
         </div>

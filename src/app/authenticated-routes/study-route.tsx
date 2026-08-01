@@ -846,9 +846,14 @@ export function StudyRoutePage({
       return;
     }
 
-    if (state.surface.kind === "say_it_back" && state.surface.phase === "idle") {
+    // A retryable miss behaves exactly like idle: the footer already reads
+    // "Record", so pressing it must start the recording rather than costing the
+    // learner an extra tap to clear the banner first.
+    if (state.surface.kind === "say_it_back"
+      && (state.surface.phase === "idle"
+        || (state.surface.phase === "wrong" && !state.surface.revealReference))) {
       unlockStudyFeedbackAudio();
-      const sayItBackSurface = state.surface;
+      const sayItBackSurface = { ...state.surface, heardTranscript: undefined };
       if (telegramMiniApp) {
         telegramVoiceHandoffPendingRef.current = true;
         setState({
@@ -1005,7 +1010,7 @@ export function StudyRoutePage({
                 transcript: transcription.text,
                 type: "say_it_back",
               }).then((result) => ({ result, transcript: transcription.text })))
-              .then(({ result }) => {
+              .then(({ result, transcript }) => {
                 divergenceRecoveryCountRef.current = 0;
                 playStudyFeedbackSound(result.outcome === "correct" ? "correct" : "incorrect");
                 if (result.outcome === "correct") {
@@ -1024,14 +1029,22 @@ export function StudyRoutePage({
                   if (current.phase !== "ready" || current.surface.kind !== "say_it_back" || current.surface.exercise.id !== exercise.id) {
                     return current;
                   }
+                  // The card is spent only once the server says no attempts are
+                  // left; until then the learner retries this same prompt in
+                  // place (Duolingo-style) rather than being bounced onward.
+                  // The retry consumes the next attempt number, so bump it.
+                  const spent = (result.attempts_remaining ?? 0) <= 0;
                   return {
                     ...current,
                     lastAttemptResult: result,
                     surface: {
                       ...current.surface,
-                      attemptNumber: current.surface.attemptNumber,
+                      attemptNumber: spent
+                        ? current.surface.attemptNumber
+                        : current.surface.attemptNumber + 1,
+                      heardTranscript: transcript,
                       phase: "wrong",
-                      revealReference: true,
+                      revealReference: spent,
                       submitError: undefined,
                     },
                   };
@@ -1091,18 +1104,9 @@ export function StudyRoutePage({
       return;
     }
 
+    // Only a spent card reaches here; a retryable miss is handled by the
+    // recording branch above.
     if (state.surface.kind === "say_it_back" && state.surface.phase === "wrong") {
-      if (!state.surface.revealReference) {
-        setState({
-          ...state,
-          surface: {
-            ...state.surface,
-            phase: "idle",
-            revealReference: false,
-          },
-        });
-        return;
-      }
       setState(advanceLesson(state, "wrong"));
       return;
     }

@@ -1037,6 +1037,21 @@ describe("StudyRoutePage", () => {
       expect(view.queryByText(/You said/u)).toBeNull();
       expect(view.queryByText(/Missing:/u)).toBeNull();
       expect(view.queryByText(/Extra:/u)).toBeNull();
+
+      fireEvent.click(view.getByText("Continue").closest("button")!);
+      await waitFor(() => expect(view.getByText("Record")).toBeTruthy());
+      expect(view.getByRole("progressbar", { name: "Lesson progress" }).getAttribute("aria-valuenow")).toBe("0");
+
+      submitPostStudyAttemptResult = {
+        attempts_remaining: 0,
+        exercise_id: "ex_say",
+        object: "song_study_attempt_result",
+        outcome: "correct",
+      };
+      await recordSayItBack(view);
+
+      await waitFor(() => expect(view.getByText("Session complete")).toBeTruthy());
+      expect(view.getByRole("progressbar", { name: "Lesson progress" }).getAttribute("aria-valuenow")).toBe("1");
     } finally {
       restoreRecorder();
     }

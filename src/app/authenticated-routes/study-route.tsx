@@ -1180,8 +1180,9 @@ export function StudyRoutePage({
       artworkSrc={pageArtwork(state.post, state.study)}
       className="h-dvh"
       lessonProgress={studyLessonProgress({
-        exerciseIds: state.study.exercises.map((exercise) => exercise.id),
         exerciseQueue: state.exerciseQueue,
+        // served_count includes cards resolved before a resumed route load, so
+        // returning learners correctly see an already-partially-filled bar.
         totalCount: state.study.session?.served_count ?? state.study.exercises.length,
       })}
       onExit={() => replaceRoute(returnPath ?? routeReturnPath(`/p/${encodeURIComponent(postId)}`))}

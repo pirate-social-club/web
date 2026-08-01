@@ -394,7 +394,7 @@ function walletRewardsSummary(input: {
         actionLabel: "Claim",
         amountLabel,
         assetLabel,
-        supportingLabel: "Practice a boosted song to earn.",
+        supportingLabel: "Available song rewards will appear here.",
       };
     }
     return {
@@ -423,7 +423,7 @@ function walletRewardsSummary(input: {
     assetLabel,
     supportingLabel: remainingCents > 0
       ? `Earn ${formatRewardBalanceCents(remainingCents)} more to claim.`
-      : "Practice a boosted song to earn.",
+      : "Available song rewards will appear here.",
   };
 }
 

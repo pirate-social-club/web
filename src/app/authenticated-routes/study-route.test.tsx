@@ -407,6 +407,15 @@ describe("StudyRoutePage", () => {
     expect(calls).toEqual(["posts.get", "communities.getPostStudy"]);
   });
 
+  test("renders a locked lesson without reading ready-state progress", async () => {
+    studyResult = readyStudyPayload({ access: "locked" });
+
+    const view = render(<StudyRoutePage postId="pst_song" />);
+
+    await waitFor(() => expect(view.getByText("Study unlocks with the song")).toBeTruthy());
+    expect(view.queryByRole("progressbar", { name: "Lesson progress" })).toBeNull();
+  });
+
   test("shows a compact reward pill for the active song campaign", async () => {
     rewardCampaignResult = {
       campaign: "rcp_study_offer",

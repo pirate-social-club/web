@@ -128,6 +128,14 @@ function toMultipleChoiceExercise(exercise: Extract<SongStudyExercise, { type: "
   };
 }
 
+/**
+ * Attempts a say-it-back card gets per appearance before the lesson moves on.
+ * The server's STUDY_SESSION_MAX_CARD_PRESENTATIONS (3) is the lifetime budget;
+ * this is the slice spent in one sitting, so a miss returns for later review
+ * rather than trapping the learner on a single line.
+ */
+const STUDY_MAX_ATTEMPTS_PER_APPEARANCE = 2;
+
 function exerciseSurface(exercise: SongStudyExercise, attemptNumber = Number(exercise.presentation_count ?? 0) + 1): SongStudySurfaceState {
   return exercise.type === "translation_choice"
     ? {
@@ -212,11 +220,15 @@ function advanceLesson(
     ?? state.correctCount + (firstPassCorrect ? 1 : 0);
   const remaining = state.exerciseQueue.slice(1);
   const shouldRequeue = outcome === "wrong"
+    // With nothing else left to show, requeueing would re-present the same card
+    // immediately — the loop the per-appearance cap exists to prevent. Let the
+    // lesson end instead; the card stays due and returns in a future session.
+    && remaining.length > 0
     && (state.lastAttemptResult?.attempts_remaining ?? 0) > 0
     && state.lastAttemptResult?.session?.status !== "completed";
   if (shouldRequeue) {
     // Keep two or three different prompts between a miss and its retry where
-    // the remaining lesson is large enough.
+    // the remaining lesson is large enough; at minimum one intervening prompt.
     remaining.splice(Math.min(3, remaining.length), 0, currentIndex);
   }
   const completed = (state.lastAttemptResult?.session?.status !== undefined
@@ -846,9 +858,14 @@ export function StudyRoutePage({
       return;
     }
 
-    if (state.surface.kind === "say_it_back" && state.surface.phase === "idle") {
+    // A retryable miss behaves exactly like idle: the footer already reads
+    // "Record", so pressing it must start the recording rather than costing the
+    // learner an extra tap to clear the banner first.
+    if (state.surface.kind === "say_it_back"
+      && (state.surface.phase === "idle"
+        || (state.surface.phase === "wrong" && !state.surface.revealReference))) {
       unlockStudyFeedbackAudio();
-      const sayItBackSurface = state.surface;
+      const sayItBackSurface = { ...state.surface, heardTranscript: undefined };
       if (telegramMiniApp) {
         telegramVoiceHandoffPendingRef.current = true;
         setState({
@@ -1005,7 +1022,7 @@ export function StudyRoutePage({
                 transcript: transcription.text,
                 type: "say_it_back",
               }).then((result) => ({ result, transcript: transcription.text })))
-              .then(({ result }) => {
+              .then(({ result, transcript }) => {
                 divergenceRecoveryCountRef.current = 0;
                 playStudyFeedbackSound(result.outcome === "correct" ? "correct" : "incorrect");
                 if (result.outcome === "correct") {
@@ -1024,15 +1041,31 @@ export function StudyRoutePage({
                   if (current.phase !== "ready" || current.surface.kind !== "say_it_back" || current.surface.exercise.id !== exercise.id) {
                     return current;
                   }
+                  // Two attempts per appearance, then move on. The card is also
+                  // done if the server has no attempts left at all. Anything
+                  // more would loop the learner on one line; the requeue in
+                  // advanceLesson brings it back later for the third attempt.
+                  const attemptsUsed = current.surface.attemptsThisAppearance ?? 1;
+                  const spent = (result.attempts_remaining ?? 0) <= 0
+                    || attemptsUsed >= STUDY_MAX_ATTEMPTS_PER_APPEARANCE;
                   return {
                     ...current,
                     lastAttemptResult: result,
                     surface: {
                       ...current.surface,
-                      attemptNumber: current.surface.attemptNumber,
+                      attemptNumber: spent
+                        ? current.surface.attemptNumber
+                        : current.surface.attemptNumber + 1,
+                      attemptsThisAppearance: attemptsUsed + 1,
+                      heardTranscript: transcript,
                       phase: "wrong",
-                      revealReference: true,
+                      revealReference: spent,
                       submitError: undefined,
+                      // Mirrors advanceLesson's requeue rule so the copy never
+                      // promises a return the lesson will not deliver.
+                      willReturn: (result.attempts_remaining ?? 0) > 0
+                        && current.exerciseQueue.length > 1
+                        && result.session?.status !== "completed",
                     },
                   };
                 });
@@ -1091,18 +1124,9 @@ export function StudyRoutePage({
       return;
     }
 
+    // Only a spent card reaches here; a retryable miss is handled by the
+    // recording branch above.
     if (state.surface.kind === "say_it_back" && state.surface.phase === "wrong") {
-      if (!state.surface.revealReference) {
-        setState({
-          ...state,
-          surface: {
-            ...state.surface,
-            phase: "idle",
-            revealReference: false,
-          },
-        });
-        return;
-      }
       setState(advanceLesson(state, "wrong"));
       return;
     }

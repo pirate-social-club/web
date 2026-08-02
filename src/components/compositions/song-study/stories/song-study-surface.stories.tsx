@@ -174,8 +174,9 @@ export const SayItBackWrongFirstAttempt: Story = {
       {...baseProps}
       state={{
         kind: "say_it_back",
-        attemptNumber: 1,
+        attemptNumber: 2,
         exercise: sayItBackExercise,
+        heardTranscript: "They tried to kiss me while they chased me around",
         phase: "wrong",
       }}
     />
@@ -204,8 +205,9 @@ export const SayItBackFinalWrongReveal: Story = {
       {...baseProps}
       state={{
         kind: "say_it_back",
-        attemptNumber: 2,
+        attemptNumber: 3,
         exercise: sayItBackExercise,
+        heardTranscript: "They tried to kiss me while they chased me around",
         phase: "wrong",
         revealReference: true,
       }}

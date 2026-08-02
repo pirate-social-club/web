@@ -11,6 +11,7 @@ afterEach(cleanup);
 
 function tiedEntry(userId: string, displayName: string): SongStreakLeaderboardEntry {
   return {
+    active_until_at: new Date(Date.now() + 86_400_000).toISOString(),
     best_streak: 1,
     current_streak: 1,
     identity: {
@@ -43,4 +44,28 @@ test("streak preview represents tied leaders without inventing a sole crown hold
 
   expect(view.getByText("2 people · 1-day streak")).toBeTruthy();
   expect(view.getAllByRole("img")).toHaveLength(2);
+});
+
+test("streak preview drops expired entries and hides when none remain active", () => {
+  const expired = {
+    ...tiedEntry("usr_ghost", "Ghost Singer"),
+    active_until_at: new Date(Date.now() - 60_000).toISOString(),
+  };
+
+  const hidden = render(
+    <SongStreakPreview
+      summary={{ entries: [expired], totalActiveStreaks: 1, viewer: null }}
+    />,
+  );
+  expect(hidden.container.textContent).toBe("");
+  cleanup();
+
+  const alive = tiedEntry("usr_luffy", "Monkey Luffy");
+  const view = render(
+    <SongStreakPreview
+      summary={{ entries: [expired, alive], totalActiveStreaks: 2, viewer: null }}
+    />,
+  );
+  expect(view.getByText("Monkey Luffy")).toBeTruthy();
+  expect(view.queryByText("Ghost Singer")).toBeNull();
 });

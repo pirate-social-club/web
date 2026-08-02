@@ -88,6 +88,8 @@ export type SongStudySurfaceState =
     kind: "complete";
     correctCount: number;
     nextReviewLabel?: string;
+    /** Pre-session streak, used only for the slot-number animation. */
+    previousStreak?: number;
     scorePercent: number;
     streak?: {
       currentStreak: number;
@@ -96,6 +98,7 @@ export type SongStudySurfaceState =
       studyCorrectCount: number;
       studyTargetCount: number;
     };
+    /** Fresh post-completion leaderboard (server-ranked); never the pre-session snapshot. */
     streakSummary?: SongStreakSummary;
     totalCount: number;
   };
@@ -418,43 +421,6 @@ function MultipleChoiceState({
   );
 }
 
-// Patch the viewer's leaderboard row with the just-earned streak so the top-3
-// count never contradicts the celebration card, then re-sort and re-rank the
-// board the same way the server does (current streak desc, best streak desc,
-// oldest streak start first, user id as final tiebreak; competition ranks
-// keyed on the current/best pair) so a viewer who just hit #1 renders at
-// rank 1 with the crown.
-function patchViewerEntry(
-  entries: SongStreakSummary["entries"],
-  streak: { currentStreak: number },
-): SongStreakSummary["entries"] {
-  const sorted = entries
-    .map((entry) =>
-      entry.is_viewer
-        ? {
-            ...entry,
-            current_streak: streak.currentStreak,
-            best_streak: Math.max(entry.best_streak, streak.currentStreak),
-          }
-        : entry,
-    )
-    .sort((a, b) =>
-      b.current_streak - a.current_streak
-      || b.best_streak - a.best_streak
-      || a.streak_started_date.localeCompare(b.streak_started_date)
-      || a.identity.user_id.localeCompare(b.identity.user_id),
-    );
-  let previousPair: string | undefined;
-  let previousRank = 0;
-  return sorted.map((entry, index) => {
-    const pair = `${entry.current_streak}:${entry.best_streak}`;
-    const rank = pair === previousPair ? previousRank : index + 1;
-    previousPair = pair;
-    previousRank = rank;
-    return { ...entry, rank };
-  });
-}
-
 function usePrefersReducedMotion(): boolean {
   const [reducedMotion, setReducedMotion] = React.useState(false);
 
@@ -470,12 +436,12 @@ function usePrefersReducedMotion(): boolean {
   return reducedMotion;
 }
 
-function previousStreakFromSummary(
+function previousStreakForAnimation(
   streak: { currentStreak: number } | undefined,
-  summary: SongStreakSummary | undefined,
+  previousStreak: number | undefined,
 ): number | undefined {
   if (!streak) return undefined;
-  const previous = summary?.viewer?.current_streak ?? streak.currentStreak - 1;
+  const previous = previousStreak ?? streak.currentStreak - 1;
   return Math.max(0, Math.min(previous, streak.currentStreak));
 }
 
@@ -588,14 +554,15 @@ function CompleteState({ state }: { state: Extract<SongStudySurfaceState, { kind
   const score = clampPercent(state.scorePercent);
   const streak = state.streak;
 
+  // Everything below renders fresh server data only: the leaderboard fetched
+  // after qualification. While it loads (or if it failed) the celebration
+  // stands alone — a stale pre-session snapshot is never shown.
   const summary = state.streakSummary;
-  const previousStreak = previousStreakFromSummary(streak, summary);
-  const summaryEntries = summary && streak
-    ? patchViewerEntry(summary.entries, streak)
-    : summary?.entries ?? [];
+  const previousStreak = previousStreakForAnimation(streak, state.previousStreak);
+  const summaryEntries = summary?.entries ?? [];
   const viewerVisible = summaryEntries.slice(0, 3).some((entry) => entry.is_viewer);
-  const showViewerRow = Boolean(streak && summary?.viewer && !viewerVisible);
-  const viewerPreviewRank = summaryEntries.slice(0, 3).length + 1;
+  const viewer = summary?.viewer;
+  const showViewerRow = Boolean(streak && viewer?.alive && viewer.qualified_today && !viewerVisible);
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-8 px-4 py-10 sm:px-6">
@@ -639,7 +606,7 @@ function CompleteState({ state }: { state: Extract<SongStudySurfaceState, { kind
             />
           ) : null}
           {showViewerRow && streak ? (
-            <ViewerLeaderboardRow currentStreak={streak.currentStreak} rank={viewerPreviewRank} />
+            <ViewerLeaderboardRow currentStreak={streak.currentStreak} rank={viewer?.rank ?? undefined} />
           ) : null}
         </div>
       ) : null}

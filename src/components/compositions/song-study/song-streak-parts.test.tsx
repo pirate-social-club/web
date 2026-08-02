@@ -11,6 +11,7 @@ afterEach(cleanup);
 
 test("streak rows render the profile avatar with the display name fallback", () => {
   const entry: SongStreakLeaderboardEntry = {
+    active_until_at: new Date(Date.now() + 86_400_000).toISOString(),
     best_streak: 4,
     current_streak: 3,
     identity: {

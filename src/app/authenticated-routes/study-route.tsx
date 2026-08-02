@@ -1064,7 +1064,8 @@ export function StudyRoutePage({
                       // Mirrors advanceLesson's requeue rule so the copy never
                       // promises a return the lesson will not deliver.
                       willReturn: (result.attempts_remaining ?? 0) > 0
-                        && current.exerciseQueue.length > 1,
+                        && current.exerciseQueue.length > 1
+                        && result.session?.status !== "completed",
                     },
                   };
                 });

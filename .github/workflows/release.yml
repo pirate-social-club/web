@@ -333,6 +333,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ github.token }}
         run: bun install --frozen-lockfile
+      - name: Install community shard dependencies
+        working-directory: api/services/community-d1-shard
+        run: bun install --frozen-lockfile
       - name: Install core dependencies
         working-directory: core
         run: npm ci
@@ -382,37 +385,16 @@ jobs:
               return;
             }
             core.setOutput("stale", "false");
-      - name: Deploy staging
+      - name: Verify staging community shard transition is safe
+        id: staging-shard-preflight
         if: steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: web
-        env:
-          API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          VITE_BASE_NETWORK: base-sepolia
-          VITE_EFP_ENVIRONMENT: testnet
-          VITE_GATE_TREE_BUILDER_ENABLED: "true"
-          VITE_PIRATE_APP_ENV: staging
-          VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
-          VITE_REWARDS_ENABLED: "true"
-          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
         run: |
-          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-            scripts/deploy-staging.sh
-          else
-            scripts/deploy-staging.sh --allow-non-main -m "GitHub Actions staging validation for ${GITHUB_REF_NAME} (${GITHUB_RUN_ID})"
-          fi
-      - name: Verify staging/prod metadata
-        if: steps.in-lane-freshness.outputs.stale == 'false'
-        working-directory: web
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: scripts/check-deployments.sh --scope staging --retry-for 30
-      - name: Smoke staging
-        if: steps.in-lane-freshness.outputs.stale == 'false'
-        working-directory: web
-        run: scripts/smoke-test.sh staging
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --environment staging \
+            --phase pre-deploy \
+            --health-url https://api-staging.pirate.sc/health/provisioning
       - name: Fetch staging control-plane migration secret
         if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: core
@@ -443,6 +425,70 @@ jobs:
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/bookings/migrations \
             --label bookings
+      - name: Refuse shard-changing non-main staging validation
+        if: github.ref_name != 'main' && steps.in-lane-freshness.outputs.stale == 'false' && steps.staging-shard-preflight.outputs.deploy_shard == 'true'
+        run: |
+          echo "::error::A non-main validation cannot mutate the shared staging shard Worker."
+          exit 1
+      - name: Deploy pinned staging community shard first
+        if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false' && steps.staging-shard-preflight.outputs.deploy_shard == 'true'
+        working-directory: api/services/community-d1-shard
+        env:
+          BUILD_GIT_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          BUILD_GIT_REF: pinned/${{ needs.release-inputs.outputs.api_sha }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: bun run deploy -- --env staging
+      - name: Verify bounded staging shard-first transition
+        if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false' && steps.staging-shard-preflight.outputs.deploy_shard == 'true'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --environment staging \
+            --phase transition \
+            --previous-source-version "${{ steps.staging-shard-preflight.outputs.previous_source_version }}" \
+            --health-url https://api-staging.pirate.sc/health/provisioning
+      - name: Deploy staging
+        if: steps.in-lane-freshness.outputs.stale == 'false'
+        working-directory: web
+        env:
+          API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          VITE_BASE_NETWORK: base-sepolia
+          VITE_EFP_ENVIRONMENT: testnet
+          VITE_GATE_TREE_BUILDER_ENABLED: "true"
+          VITE_PIRATE_APP_ENV: staging
+          VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
+          VITE_REWARDS_ENABLED: "true"
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            scripts/deploy-staging.sh
+          else
+            scripts/deploy-staging.sh --allow-non-main -m "GitHub Actions staging validation for ${GITHUB_REF_NAME} (${GITHUB_RUN_ID})"
+          fi
+      - name: Require exact staging community shard convergence
+        if: steps.in-lane-freshness.outputs.stale == 'false'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --environment staging \
+            --phase converged \
+            --health-url https://api-staging.pirate.sc/health/provisioning
+      - name: Verify staging/prod metadata
+        if: steps.in-lane-freshness.outputs.stale == 'false'
+        working-directory: web
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: scripts/check-deployments.sh --scope staging --retry-for 30
+      - name: Smoke staging
+        if: steps.in-lane-freshness.outputs.stale == 'false'
+        working-directory: web
+        run: scripts/smoke-test.sh staging
       - name: Apply multipart fixture D1 migrations
         # Keep D1 access isolated from the broader Worker deployment token.
         # Fixture migration failures must block promotion to production.
@@ -890,6 +936,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ github.token }}
         run: bun install --frozen-lockfile
+      - name: Install community shard dependencies
+        working-directory: api/services/community-d1-shard
+        run: bun install --frozen-lockfile
       - name: Install core dependencies
         working-directory: core
         run: npm ci
@@ -957,12 +1006,14 @@ jobs:
       # Worker cannot serve the API commit this release is about to deploy.
       # The pinned checkout is the authority; the live API's expected version
       # is diagnostic only because it describes the currently deployed pair.
-      - name: Verify production community shard matches pinned API
+      - name: Verify production community shard transition is safe
+        id: shard-preflight
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: web
         run: |
           node scripts/verify-community-shard-compatibility.mjs \
             --api-dir "$GITHUB_WORKSPACE/api" \
+            --phase pre-deploy \
             --health-url https://api.pirate.sc/health/provisioning
       - name: Apply production control-plane migrations
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'
@@ -984,6 +1035,24 @@ jobs:
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/bookings/migrations \
             --label bookings
+      - name: Deploy pinned production community shard first
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false' && steps.shard-preflight.outputs.deploy_shard == 'true'
+        working-directory: api/services/community-d1-shard
+        env:
+          BUILD_GIT_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          BUILD_GIT_REF: pinned/${{ needs.release-inputs.outputs.api_sha }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: bun run deploy -- --env production
+      - name: Verify bounded shard-first transition
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false' && steps.shard-preflight.outputs.deploy_shard == 'true'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --phase transition \
+            --previous-source-version "${{ steps.shard-preflight.outputs.previous_source_version }}" \
+            --health-url https://api.pirate.sc/health/provisioning
       - name: Deploy production
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: web
@@ -1011,6 +1080,14 @@ jobs:
           node scripts/verify-deployed-versions.mjs \
             https://pirate.sc/__version "$EXPECTED_WEB_SHA" \
             https://api.pirate.sc/__version "$EXPECTED_API_SHA"
+      - name: Require exact community shard convergence
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --phase converged \
+            --health-url https://api.pirate.sc/health/provisioning
       - name: Verify production multipart storage
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: web

@@ -333,6 +333,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ github.token }}
         run: bun install --frozen-lockfile
+      - name: Install community shard dependencies
+        working-directory: api/services/community-d1-shard
+        run: bun install --frozen-lockfile
       - name: Install core dependencies
         working-directory: core
         run: npm ci
@@ -382,6 +385,35 @@ jobs:
               return;
             }
             core.setOutput("stale", "false");
+      - name: Verify staging community shard transition is safe
+        id: staging-shard-preflight
+        if: steps.in-lane-freshness.outputs.stale == 'false'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --environment staging \
+            --phase pre-deploy \
+            --health-url https://api-staging.pirate.sc/health/provisioning
+      - name: Deploy pinned staging community shard first
+        if: steps.in-lane-freshness.outputs.stale == 'false' && steps.staging-shard-preflight.outputs.deploy_shard == 'true'
+        working-directory: api/services/community-d1-shard
+        env:
+          BUILD_GIT_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          BUILD_GIT_REF: pinned/${{ needs.release-inputs.outputs.api_sha }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: bun run deploy -- --env staging
+      - name: Verify bounded staging shard-first transition
+        if: steps.in-lane-freshness.outputs.stale == 'false' && steps.staging-shard-preflight.outputs.deploy_shard == 'true'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --environment staging \
+            --phase transition \
+            --previous-source-version "${{ steps.staging-shard-preflight.outputs.previous_source_version }}" \
+            --health-url https://api-staging.pirate.sc/health/provisioning
       - name: Deploy staging
         if: steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: web
@@ -402,6 +434,15 @@ jobs:
           else
             scripts/deploy-staging.sh --allow-non-main -m "GitHub Actions staging validation for ${GITHUB_REF_NAME} (${GITHUB_RUN_ID})"
           fi
+      - name: Require exact staging community shard convergence
+        if: steps.in-lane-freshness.outputs.stale == 'false'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --environment staging \
+            --phase converged \
+            --health-url https://api-staging.pirate.sc/health/provisioning
       - name: Verify staging/prod metadata
         if: steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: web
@@ -890,6 +931,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ github.token }}
         run: bun install --frozen-lockfile
+      - name: Install community shard dependencies
+        working-directory: api/services/community-d1-shard
+        run: bun install --frozen-lockfile
       - name: Install core dependencies
         working-directory: core
         run: npm ci
@@ -957,12 +1001,32 @@ jobs:
       # Worker cannot serve the API commit this release is about to deploy.
       # The pinned checkout is the authority; the live API's expected version
       # is diagnostic only because it describes the currently deployed pair.
-      - name: Verify production community shard matches pinned API
+      - name: Verify production community shard transition is safe
+        id: shard-preflight
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: web
         run: |
           node scripts/verify-community-shard-compatibility.mjs \
             --api-dir "$GITHUB_WORKSPACE/api" \
+            --phase pre-deploy \
+            --health-url https://api.pirate.sc/health/provisioning
+      - name: Deploy pinned production community shard first
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false' && steps.shard-preflight.outputs.deploy_shard == 'true'
+        working-directory: api/services/community-d1-shard
+        env:
+          BUILD_GIT_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          BUILD_GIT_REF: pinned/${{ needs.release-inputs.outputs.api_sha }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: bun run deploy -- --env production
+      - name: Verify bounded shard-first transition
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false' && steps.shard-preflight.outputs.deploy_shard == 'true'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --phase transition \
+            --previous-source-version "${{ steps.shard-preflight.outputs.previous_source_version }}" \
             --health-url https://api.pirate.sc/health/provisioning
       - name: Apply production control-plane migrations
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'
@@ -1011,6 +1075,14 @@ jobs:
           node scripts/verify-deployed-versions.mjs \
             https://pirate.sc/__version "$EXPECTED_WEB_SHA" \
             https://api.pirate.sc/__version "$EXPECTED_API_SHA"
+      - name: Require exact community shard convergence
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --phase converged \
+            --health-url https://api.pirate.sc/health/provisioning
       - name: Verify production multipart storage
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: web

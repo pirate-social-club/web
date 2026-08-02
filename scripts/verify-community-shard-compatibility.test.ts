@@ -59,6 +59,62 @@ describe("production community-shard compatibility preflight", () => {
       .toThrow(`Pinned API expects shard source version ${EXPECTED}`);
   });
 
+  test("pre-deploy accepts only a coherent previous pair and requests a shard deploy", () => {
+    const previous = "previous-shard.previous-shared";
+    const payload = healthyPayload(previous);
+    payload.expected_shard_source_version = previous;
+    expect(validateShardCompatibility(payload, EXPECTED, { phase: "pre-deploy" })).toMatchObject({
+      deployShard: true,
+      previousSourceVersion: previous,
+    });
+
+    payload.expected_shard_source_version = "unrelated-source";
+    expect(() => validateShardCompatibility(payload, EXPECTED, { phase: "pre-deploy" }))
+      .toThrow("not a coherent previous pair");
+  });
+
+  test("accepts only the explicit previous-to-pinned mismatch during transition", () => {
+    const previous = "previous-shard.previous-shared";
+    const payload = {
+      ...healthyPayload(EXPECTED),
+      ok: false,
+      error_code: "d1_shard_version_mismatch",
+      expected_shard_source_version: previous,
+    };
+    expect(validateShardCompatibility(payload, EXPECTED, {
+      phase: "transition",
+      previousSourceVersion: previous,
+    }).actualSourceVersion).toBe(EXPECTED);
+
+    payload.expected_shard_source_version = "older-than-previous";
+    expect(() => validateShardCompatibility(payload, EXPECTED, {
+      phase: "transition",
+      previousSourceVersion: previous,
+    })).toThrow("outside the bounded previous-to-pinned window");
+  });
+
+  test("transition verification accepts the expected 503 payload without retrying", async () => {
+    const previous = "previous-shard.previous-shared";
+    let attempts = 0;
+    const result = await verifyShardCompatibility({
+      apiDir: "/api",
+      execFile: gitExec as never,
+      phase: "transition",
+      previousSourceVersion: previous,
+      fetchImpl: async () => {
+        attempts += 1;
+        return Response.json({
+          ...healthyPayload(EXPECTED),
+          ok: false,
+          error_code: "d1_shard_version_mismatch",
+          expected_shard_source_version: previous,
+        }, { status: 503 });
+      },
+    });
+    expect(attempts).toBe(1);
+    expect(result.actualSourceVersion).toBe(EXPECTED);
+  });
+
   test("rejects an unhealthy attestation", () => {
     const payload = healthyPayload();
     payload.shard_attestation = { healthy: false, status: "mismatch" };
@@ -75,9 +131,15 @@ describe("production community-shard compatibility preflight", () => {
     expect(() => validateShardCompatibility(payload, EXPECTED)).toThrow("not production");
   });
 
+  test("accepts the explicitly selected staging environment", () => {
+    const payload = { ...healthyPayload(), environment: "staging" };
+    expect(validateShardCompatibility(payload, EXPECTED, { environment: "staging" }))
+      .toMatchObject({ actualSourceVersion: EXPECTED });
+  });
+
   test("rejects malformed health payloads", () => {
     expect(() => validateShardCompatibility({ ok: true, environment: "production" }, EXPECTED))
-      .toThrow("Shard attestation is not healthy");
+      .toThrow("missing shard_version.build.sourceVersion");
     expect(() => validateShardCompatibility(null, EXPECTED))
       .toThrow("malformed JSON payload");
   });

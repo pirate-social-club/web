@@ -440,7 +440,10 @@ export function VideoHomePage() {
     [hydrated],
   );
   const capabilityCache = React.useMemo(
-    () => new VideoSongCapabilityCache(capabilityLoader.cacheScope, capabilityLoader.load),
+    () => new VideoSongCapabilityCache(capabilityLoader.cacheScope, capabilityLoader.load, {
+      enrich: capabilityLoader.enrich,
+      onEnriched: () => setCapabilityRevision((current) => current + 1),
+    }),
     [capabilityLoader],
   );
   const bookingCache = React.useMemo(

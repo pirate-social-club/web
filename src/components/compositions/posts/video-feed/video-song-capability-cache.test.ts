@@ -40,7 +40,11 @@ describe("VideoSongCapabilityCache", () => {
   test("retries a bounded failure after the negative-cache TTL", async () => {
     let now = 1_000;
     const load = mock(async () => { throw new Error("missing"); });
-    const cache = new VideoSongCapabilityCache("viewer:1", load, 2, 30_000, () => now);
+    const cache = new VideoSongCapabilityCache("viewer:1", load, {
+      maxAttempts: 2,
+      negativeTtlMs: 30_000,
+      now: () => now,
+    });
 
     await cache.prefetch(["pst_missing"]);
     await cache.prefetch(["pst_missing"]);
@@ -70,5 +74,54 @@ describe("VideoSongCapabilityCache", () => {
     await cache.prefetch(["pst_song", "pst_song", "pst_song"]);
 
     expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  test("publishes capabilities before optional reward enrichment settles", async () => {
+    let resolveEnrichment: ((value: {
+      activeRewardCampaignId: string;
+      rewards: { study: { amountLabel: string } };
+    }) => void) | undefined;
+    const enrichmentPending = new Promise<{
+      activeRewardCampaignId: string;
+      rewards: { study: { amountLabel: string } };
+    }>((resolve) => {
+      resolveEnrichment = resolve;
+    });
+    const onEnriched = mock(() => undefined);
+    const cache = new VideoSongCapabilityCache("viewer:1", async (sourcePostId) => ({
+      activeRewardCampaignId: null,
+      learningGate: "allowed",
+      karaoke: "ready",
+      readMode: "public",
+      sourceCommunityId: "cmt_song",
+      sourcePostId,
+      study: "ready",
+      viewerIsAuthor: false,
+    }), {
+      enrich: () => enrichmentPending,
+      onEnriched,
+    });
+
+    await cache.prefetch(["pst_song"]);
+
+    expect(cache.get("pst_song")).toMatchObject({
+      activeRewardCampaignId: null,
+      karaoke: "ready",
+      study: "ready",
+    });
+    expect(onEnriched).not.toHaveBeenCalled();
+
+    resolveEnrichment?.({
+      activeRewardCampaignId: "rcp_song",
+      rewards: { study: { amountLabel: "$2" } },
+    });
+    await enrichmentPending;
+    await Promise.resolve();
+
+    expect(cache.get("pst_song")).toMatchObject({
+      activeRewardCampaignId: "rcp_song",
+      rewards: { study: { amountLabel: "$2" } },
+    });
+    expect(onEnriched).toHaveBeenCalledTimes(1);
   });
 });

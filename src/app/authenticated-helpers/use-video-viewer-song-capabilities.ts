@@ -5,6 +5,8 @@ import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { loadSongRoutePostWithReadMode } from "@/app/authenticated-helpers/load-song-route-post";
 import type {
+  VideoSongCapabilityEnrichment,
+  VideoSongCapabilityEnrichmentLoader,
   VideoSongCapabilityLoader,
   VideoSongCapabilityResolution,
 } from "@/components/compositions/posts/video-feed/video-song-capability-cache";
@@ -36,23 +38,23 @@ export function resolveVideoSongCapabilities({ post, readMode, rewardOffer, sour
   const ageBlocked = post.age_gate_viewer_state === "proof_required";
   const karaoke = capabilityStatus((post as LocalizedPostResponse & PostWithKaraokeCapability).karaoke_capability?.status);
   const study = capabilityStatus(post.study_capability?.status);
-  const rewardLabel = rewardOffer ? rewardCtaAmountLabel(rewardOffer.daily_reward_cents) : undefined;
   const artworkSrc = post.song_presentation?.cover_art_ref?.trim() || undefined;
+  const rewardEnrichment = rewardOffer
+    ? resolveVideoSongCapabilityRewards({
+        karaoke,
+        learningGate: ageBlocked ? "age_proof_required" : "allowed",
+        rewardOffer,
+        study,
+      })
+    : null;
   return {
-    activeRewardCampaignId: rewardOffer?.campaign ?? null,
+    activeRewardCampaignId: rewardEnrichment?.activeRewardCampaignId ?? null,
     artworkSrc,
     karaoke,
     karaokeHref: karaoke === "ready" ? `/p/${encodeURIComponent(sourcePostId)}/karaoke` : undefined,
     learningGate: ageBlocked ? "age_proof_required" : "allowed",
     readMode,
-    rewards: rewardLabel && !ageBlocked ? {
-      karaoke: karaoke === "ready" && rewardOffer?.eligible_activity !== "study"
-        ? { amountLabel: rewardLabel }
-        : undefined,
-      study: study === "ready" && rewardOffer?.eligible_activity !== "karaoke"
-        ? { amountLabel: rewardLabel }
-        : undefined,
-    } : undefined,
+    rewards: rewardEnrichment?.rewards,
     sourcePostId,
     sourceCommunityId: post.post.community ?? null,
     study,
@@ -61,8 +63,29 @@ export function resolveVideoSongCapabilities({ post, readMode, rewardOffer, sour
   };
 }
 
+export function resolveVideoSongCapabilityRewards({ karaoke, learningGate, rewardOffer, study }: {
+  karaoke: VideoFeedCapability;
+  learningGate: VideoSongCapabilityResolution["learningGate"];
+  rewardOffer: ApiPublicRewardOffer;
+  study: VideoFeedCapability;
+}): VideoSongCapabilityEnrichment {
+  const rewardLabel = rewardCtaAmountLabel(rewardOffer.daily_reward_cents);
+  return {
+    activeRewardCampaignId: rewardOffer.campaign,
+    rewards: rewardLabel && learningGate === "allowed" ? {
+      karaoke: karaoke === "ready" && rewardOffer.eligible_activity !== "study"
+        ? { amountLabel: rewardLabel }
+        : undefined,
+      study: study === "ready" && rewardOffer.eligible_activity !== "karaoke"
+        ? { amountLabel: rewardLabel }
+        : undefined,
+    } : undefined,
+  };
+}
+
 export interface VideoViewerSongCapabilities {
   cacheScope: string;
+  enrich: VideoSongCapabilityEnrichmentLoader;
   load: VideoSongCapabilityLoader;
 }
 
@@ -80,19 +103,29 @@ export function useVideoViewerSongCapabilities(contentLocale: string): VideoView
       hasAccessToken,
       postId: sourcePostId,
     });
-    const rewardOffer = loaded.post.post.community && loaded.post.age_gate_viewer_state !== "proof_required"
-      ? await api.rewards.getActiveCampaignForSong(loaded.post.post.community, sourcePostId).catch(() => null)
-      : null;
     return resolveVideoSongCapabilities({
       post: loaded.post,
       readMode: loaded.readMode,
-      rewardOffer,
       sourcePostId,
     });
   }, [api, contentLocale, hasAccessToken]);
 
+  const enrich = React.useCallback<VideoSongCapabilityEnrichmentLoader>(async (resolution) => {
+    if (!resolution.sourceCommunityId || resolution.learningGate !== "allowed") return null;
+    const rewardOffer = await api.rewards
+      .getActiveCampaignForSong(resolution.sourceCommunityId, resolution.sourcePostId)
+      .catch(() => null);
+    return rewardOffer ? resolveVideoSongCapabilityRewards({
+      karaoke: resolution.karaoke,
+      learningGate: resolution.learningGate,
+      rewardOffer,
+      study: resolution.study,
+    }) : null;
+  }, [api.rewards]);
+
   return React.useMemo(() => ({
     cacheScope: `${viewerIdentity}:${hasAccessToken ? "authenticated" : "public"}:${contentLocale}:${verificationScope}`,
+    enrich,
     load,
-  }), [contentLocale, hasAccessToken, load, verificationScope, viewerIdentity]);
+  }), [contentLocale, enrich, hasAccessToken, load, verificationScope, viewerIdentity]);
 }

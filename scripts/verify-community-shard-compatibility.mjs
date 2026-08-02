@@ -121,7 +121,9 @@ export async function verifyShardCompatibility({
 
   let response = null;
   let lastTransportError = null;
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
+  let lastTransitionError = null;
+  const maxAttempts = phase === "transition" ? 6 : 2;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       response = await fetchImpl(url, {
         cache: "no-store",
@@ -132,12 +134,31 @@ export async function verifyShardCompatibility({
         },
         signal: AbortSignal.timeout(timeoutMs),
       });
-      if (phase === "transition" || response.status < 500 || attempt === 2) break;
+      if (phase === "transition") {
+        try {
+          const payload = await response.json();
+          return {
+            cfRay: response.headers.get("cf-ray"),
+            environment,
+            expectedSourceVersion,
+            ...validateShardCompatibility(payload, expectedSourceVersion, {
+              environment,
+              phase,
+              previousSourceVersion,
+            }),
+          };
+        } catch (error) {
+          lastTransitionError = error;
+          if (attempt === maxAttempts) break;
+        }
+      } else if (response.status < 500 || attempt === maxAttempts) {
+        break;
+      }
     } catch (error) {
       lastTransportError = error;
-      if (attempt === 2) {
+      if (attempt === maxAttempts) {
         throw new Error(
-          `Unable to read production provisioning health after 2 attempts: ${error instanceof Error ? error.message : String(error)}`,
+          `Unable to read ${environment} provisioning health after ${maxAttempts} attempts: ${error instanceof Error ? error.message : String(error)}`,
           { cause: error },
         );
       }
@@ -145,11 +166,18 @@ export async function verifyShardCompatibility({
     await sleepImpl(retryDelayMs);
   }
 
+  if (phase === "transition" && lastTransitionError) {
+    throw new Error(
+      `Shard transition did not reach the bounded previous-to-pinned state after ${maxAttempts} attempts: ${lastTransitionError instanceof Error ? lastTransitionError.message : String(lastTransitionError)}`,
+      { cause: lastTransitionError },
+    );
+  }
+
   if (!response) {
     throw new Error("Unable to read production provisioning health", { cause: lastTransportError });
   }
-  if (!response.ok && phase !== "transition") {
-    throw new Error(`Production provisioning health returned HTTP ${response.status}`);
+  if (!response.ok) {
+    throw new Error(`${environment} provisioning health returned HTTP ${response.status}`);
   }
 
   let payload;

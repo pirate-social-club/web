@@ -93,7 +93,7 @@ describe("production community-shard compatibility preflight", () => {
     })).toThrow("outside the bounded previous-to-pinned window");
   });
 
-  test("transition verification accepts the expected 503 payload without retrying", async () => {
+  test("transition verification retries until the bounded mismatch is observable", async () => {
     const previous = "previous-shard.previous-shared";
     let attempts = 0;
     const result = await verifyShardCompatibility({
@@ -101,8 +101,16 @@ describe("production community-shard compatibility preflight", () => {
       execFile: gitExec as never,
       phase: "transition",
       previousSourceVersion: previous,
+      retryDelayMs: 0,
+      sleepImpl: async () => {},
       fetchImpl: async () => {
         attempts += 1;
+        if (attempts === 1) {
+          const old = "previous-shard.previous-shared";
+          const payload = healthyPayload(old);
+          payload.expected_shard_source_version = old;
+          return Response.json(payload);
+        }
         return Response.json({
           ...healthyPayload(EXPECTED),
           ok: false,
@@ -111,7 +119,7 @@ describe("production community-shard compatibility preflight", () => {
         }, { status: 503 });
       },
     });
-    expect(attempts).toBe(1);
+    expect(attempts).toBe(2);
     expect(result.actualSourceVersion).toBe(EXPECTED);
   });
 

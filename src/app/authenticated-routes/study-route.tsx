@@ -220,11 +220,15 @@ function advanceLesson(
     ?? state.correctCount + (firstPassCorrect ? 1 : 0);
   const remaining = state.exerciseQueue.slice(1);
   const shouldRequeue = outcome === "wrong"
+    // With nothing else left to show, requeueing would re-present the same card
+    // immediately — the loop the per-appearance cap exists to prevent. Let the
+    // lesson end instead; the card stays due and returns in a future session.
+    && remaining.length > 0
     && (state.lastAttemptResult?.attempts_remaining ?? 0) > 0
     && state.lastAttemptResult?.session?.status !== "completed";
   if (shouldRequeue) {
     // Keep two or three different prompts between a miss and its retry where
-    // the remaining lesson is large enough.
+    // the remaining lesson is large enough; at minimum one intervening prompt.
     remaining.splice(Math.min(3, remaining.length), 0, currentIndex);
   }
   const completed = (state.lastAttemptResult?.session?.status !== undefined
@@ -1057,6 +1061,10 @@ export function StudyRoutePage({
                       phase: "wrong",
                       revealReference: spent,
                       submitError: undefined,
+                      // Mirrors advanceLesson's requeue rule so the copy never
+                      // promises a return the lesson will not deliver.
+                      willReturn: (result.attempts_remaining ?? 0) > 0
+                        && current.exerciseQueue.length > 1,
                     },
                   };
                 });

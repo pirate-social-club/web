@@ -66,6 +66,12 @@ export type SongStudySurfaceState =
     phase: "idle" | "listening" | "checking" | "wrong";
     /** True once the card is spent, so the miss is final rather than retryable. */
     revealReference?: boolean;
+    /**
+     * Whether a spent card is coming back later in this lesson. Only meaningful
+     * alongside `revealReference` — it keeps the copy from promising a return
+     * that will not happen.
+     */
+    willReturn?: boolean;
     submitError?: string;
   }
   | {
@@ -322,7 +328,9 @@ function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kin
                 className={state.revealReference ? "text-destructive" : "text-muted-foreground"}
                 variant="caption"
               >
-                {state.revealReference ? "Let's come back to this" : "Not quite — try again"}
+                {state.revealReference
+                  ? state.willReturn ? "Let's come back to this" : "Let's keep going"
+                  : "Not quite — try again"}
               </Type>
               {state.heardTranscript ? (
                 <Type as="p" className="text-muted-foreground" dir="auto" variant="body">

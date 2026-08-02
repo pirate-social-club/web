@@ -240,6 +240,7 @@
       "ageVerificationCompleteError": "无法完成年龄验证。",
       "ageVerificationStartError": "无法启动年龄验证。",
       "ageVerificationRequired": "查看 18+ 内容需要验证年龄。",
+      "linkedSongAgeVerificationRequired": "使用此关联歌曲的跟唱或学习功能需要验证年龄。",
       "signInToBoost": "登录以推广这首歌。",
       "signInToComment": "登录以评论。",
       "connectWalletToVerifyAge": "连接钱包以验证年龄并查看 18+ 内容。",

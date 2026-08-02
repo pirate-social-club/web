@@ -240,6 +240,7 @@
       "ageVerificationCompleteError": "Could not complete age verification.",
       "ageVerificationStartError": "Could not start age verification.",
       "ageVerificationRequired": "Age verification is required to view 18+ content.",
+      "linkedSongAgeVerificationRequired": "Age verification is required to use Sing or Study for this linked song.",
       "signInToBoost": "Sign in to boost this song.",
       "signInToComment": "Sign in to comment.",
       "connectWalletToVerifyAge": "Connect your wallet to verify your age and view 18+ content.",

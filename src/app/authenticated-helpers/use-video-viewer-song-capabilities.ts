@@ -42,7 +42,7 @@ export function resolveVideoSongCapabilities({ post, readMode, rewardOffer, sour
     activeRewardCampaignId: rewardOffer?.campaign ?? null,
     artworkSrc,
     karaoke,
-    karaokeHref: karaoke === "ready" && !ageBlocked ? `/p/${encodeURIComponent(sourcePostId)}/karaoke` : undefined,
+    karaokeHref: karaoke === "ready" ? `/p/${encodeURIComponent(sourcePostId)}/karaoke` : undefined,
     learningGate: ageBlocked ? "age_proof_required" : "allowed",
     readMode,
     rewards: rewardLabel && !ageBlocked ? {
@@ -56,7 +56,7 @@ export function resolveVideoSongCapabilities({ post, readMode, rewardOffer, sour
     sourcePostId,
     sourceCommunityId: post.post.community ?? null,
     study,
-    studyHref: study === "ready" && !ageBlocked ? `/p/${encodeURIComponent(sourcePostId)}/study` : undefined,
+    studyHref: study === "ready" ? `/p/${encodeURIComponent(sourcePostId)}/study` : undefined,
     viewerIsAuthor: Boolean(post.viewer_is_author),
   };
 }

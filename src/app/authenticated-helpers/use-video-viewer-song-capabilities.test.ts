@@ -39,7 +39,10 @@ describe("resolveVideoSongCapabilities", () => {
     }).artworkSrc).toBeUndefined();
   });
 
-  test("preserves capabilities while gating age-restricted learning actions", () => {
+  test("keeps hrefs while flagging age-restricted learning actions", () => {
+    // The learning gate marks the linked song's Sing/Study access, not the post.
+    // Hrefs stay live: gated taps route to verification (feed handler or the
+    // deep link's own verification_required screen), never to a dead lock.
     expect(resolveVideoSongCapabilities({
       post: {
         age_gate_viewer_state: "proof_required",
@@ -51,10 +54,10 @@ describe("resolveVideoSongCapabilities", () => {
       sourcePostId: "pst_song",
     })).toMatchObject({
       karaoke: "ready",
-      karaokeHref: undefined,
+      karaokeHref: "/p/pst_song/karaoke",
       learningGate: "age_proof_required",
       study: "ready",
-      studyHref: undefined,
+      studyHref: "/p/pst_song/study",
     });
   });
 
@@ -92,7 +95,7 @@ describe("resolveVideoSongCapabilities", () => {
     }).rewards).toEqual({ karaoke: { amountLabel: "$2" }, study: undefined });
   });
 
-  test("does not advertise rewards when age proof hides the actions", () => {
+  test("does not advertise rewards while age proof is still required", () => {
     expect(resolveVideoSongCapabilities({
       post: {
         age_gate_viewer_state: "proof_required",

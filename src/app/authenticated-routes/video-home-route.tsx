@@ -1122,28 +1122,36 @@ export function VideoHomePage() {
     setPanelState(nextPanel);
   }, [entries, panelState]);
 
-  const onKaraoke = React.useCallback(
-    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.karaokeHref),
-    [launchSongAction],
-  );
-  const onSong = React.useCallback(
-    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.songHref),
-    [launchSongAction],
-  );
-  const onStudy = React.useCallback(
-    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.studyHref),
-    [launchSongAction],
-  );
-  const onVerifyAge = React.useCallback(() => {
+  // A linked song's age gate never labels the video itself: the rail keeps normal
+  // Study/Sing actions and the verification flow opens only when one is selected.
+  const verifyAgeForLinkedSong = React.useCallback(() => {
     if (!session) {
       requestAuth(routeCopy.connectWalletToVerifyAge);
       return;
     }
     void startAgeSelfVerification({
       requestedCapabilities: ["age_over_18"],
-      unavailableMessage: routeCopy.ageVerificationRequired,
+      unavailableMessage: routeCopy.linkedSongAgeVerificationRequired,
     });
-  }, [requestAuth, routeCopy.ageVerificationRequired, routeCopy.connectWalletToVerifyAge, session, startAgeSelfVerification]);
+  }, [requestAuth, routeCopy.linkedSongAgeVerificationRequired, routeCopy.connectWalletToVerifyAge, session, startAgeSelfVerification]);
+  const onKaraoke = React.useCallback(
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => {
+      if (item.learningGate === "age_proof_required") return verifyAgeForLinkedSong();
+      launchSongAction(item, playback, item.song?.karaokeHref);
+    },
+    [launchSongAction, verifyAgeForLinkedSong],
+  );
+  const onSong = React.useCallback(
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => launchSongAction(item, playback, item.song?.songHref),
+    [launchSongAction],
+  );
+  const onStudy = React.useCallback(
+    (item: VideoFeedItem, playback: VideoFeedPlaybackState) => {
+      if (item.learningGate === "age_proof_required") return verifyAgeForLinkedSong();
+      launchSongAction(item, playback, item.song?.studyHref);
+    },
+    [launchSongAction, verifyAgeForLinkedSong],
+  );
 
   const surface = resolveVideoHomeSurface({ error, itemCount: items.length, loading });
   if (surface === "loading") return <div className="grid min-h-dvh w-full place-items-center bg-background"><Spinner className="size-6" /></div>;
@@ -1161,7 +1169,7 @@ export function VideoHomePage() {
       {ageSelfPrompt ? (
         <SelfVerificationModal
           actionLabel={ageSelfPrompt.actionLabel}
-          description={ageSelfPrompt.description}
+          description={`${routeCopy.linkedSongAgeVerificationRequired}\n\n${ageSelfPrompt.description}`}
           error={ageSelfError}
           href={ageSelfPrompt.href}
           onOpenChange={handleAgeSelfModalOpenChange}
@@ -1247,7 +1255,6 @@ export function VideoHomePage() {
         onPublisherRelationship={onPublisherRelationship}
         onSong={onSong}
         onStudy={onStudy}
-        onVerifyAge={onVerifyAge}
         removeDownvoteLabel={copy.common.removeDownvote}
         previousVideoLabel={copy.common.previousVideo}
         soundOnLabel={copy.common.soundOn}

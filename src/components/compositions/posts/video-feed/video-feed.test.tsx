@@ -216,22 +216,27 @@ describe("VideoFeed", () => {
     }
   });
 
-  test("offers age verification without showing false Study or Sing locks", () => {
-    const calls: VideoFeedPlaybackState[] = [];
+  test("keeps normal Study and Sing actions when the linked song is age gated", () => {
+    const studyCalls: VideoFeedPlaybackState[] = [];
+    const singCalls: VideoFeedPlaybackState[] = [];
     const view = render(
       <VideoFeed
         items={[{ ...item, learningGate: "age_proof_required" }]}
-        onVerifyAge={(_item, state) => calls.push(state)}
+        onKaraoke={(_item, state) => singCalls.push(state)}
+        onStudy={(_item, state) => studyCalls.push(state)}
       />,
     );
 
+    // The gate belongs to the linked song's Sing/Study artifacts, not the video,
+    // so the rail must not label the post with a lock or a Verify age control.
+    expect(view.queryByRole("button", { name: "Verify age" })).toBeNull();
     expect(view.queryByRole("button", { name: "Study locked" })).toBeNull();
     expect(view.queryByRole("button", { name: "Sing locked" })).toBeNull();
-    expect(view.queryByRole("button", { name: "Study" })).toBeNull();
-    expect(view.queryByRole("button", { name: "Sing" })).toBeNull();
 
-    fireEvent.click(view.getByRole("button", { name: "Verify age" }));
-    expect(calls).toHaveLength(1);
+    fireEvent.click(view.getByRole("button", { name: "Study" }));
+    fireEvent.click(view.getByRole("button", { name: "Sing" }));
+    expect(studyCalls).toHaveLength(1);
+    expect(singCalls).toHaveLength(1);
   });
 
   test("tightens the gap between rail icons and their counts on mobile", () => {

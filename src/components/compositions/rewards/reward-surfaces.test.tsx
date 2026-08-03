@@ -8,6 +8,7 @@ import {
   CashoutSheet,
   displayedRewardQualificationStatus,
   RewardQualificationNotice,
+  REWARD_NATIONALITY_DISCLOSURE,
   rewardAmountLabel,
   rewardCtaAmountLabel,
   SongRewardOffer,
@@ -93,6 +94,11 @@ describe("reward surfaces", () => {
         state="confirm"
       />,
     )).toBe(true);
+  });
+
+  test("defines the passport-nationality and public-chain disclosure shown before verification", () => {
+    expect(REWARD_NATIONALITY_DISCLOSURE).toContain("passport nationality");
+    expect(REWARD_NATIONALITY_DISCLOSURE).toContain("public on-chain");
   });
 
   test("storybook file exports the required reward states", () => {

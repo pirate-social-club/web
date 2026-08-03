@@ -357,14 +357,23 @@ function CapabilityAction({
   icon,
   label,
   onClick,
+  reserveUnavailable,
   rewardLabel,
 }: {
   capability: VideoFeedCapability;
   icon: React.ReactNode;
   label: string;
   onClick?: () => void;
+  reserveUnavailable?: boolean;
   rewardLabel?: string;
 }) {
+  if (capability === "unknown" || (capability === "unavailable" && reserveUnavailable)) {
+    return (
+      <div aria-hidden="true" className="invisible" data-video-capability-slot={label.toLowerCase()}>
+        <VideoAction disabled icon={icon} label={label} value={label} />
+      </div>
+    );
+  }
   if (capability === "unavailable") return null;
   const stateLabel = capability === "locked"
     ? `${label} locked`
@@ -374,14 +383,16 @@ function CapabilityAction({
         ? `${label} unavailable`
         : label;
   return (
-    <VideoAction
-      disabled={capability !== "ready"}
-      icon={capability === "locked" ? <Lock className="size-6" weight="fill" /> : icon}
-      label={stateLabel}
-      onClick={onClick}
-      rewardLabel={rewardLabel}
-      value={capability === "processing" ? "Preparing" : label}
-    />
+    <div data-video-capability-slot={label.toLowerCase()}>
+      <VideoAction
+        disabled={capability !== "ready"}
+        icon={capability === "locked" ? <Lock className="size-6" weight="fill" /> : icon}
+        label={stateLabel}
+        onClick={onClick}
+        rewardLabel={rewardLabel}
+        value={capability === "processing" ? "Preparing" : label}
+      />
+    </div>
   );
 }
 
@@ -1150,8 +1161,8 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
           ) : null}
           {/* A linked song's age gate does not label the post itself: Study/Sing render
               normally and the tap handlers open the verification flow when required. */}
-          <CapabilityAction capability={item.study} icon={<BookOpen className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} rewardLabel={item.rewards?.study?.amountLabel} />
-          <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
+          <CapabilityAction capability={item.study} icon={<BookOpen className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Study" onClick={() => runPlaybackInteraction(onStudy)} reserveUnavailable={Boolean(item.song?.sourcePostId)} rewardLabel={item.rewards?.study?.amountLabel} />
+          <CapabilityAction capability={item.karaoke} icon={<MicrophoneStage className="size-6" data-video-icon-weight="fill" weight="fill" />} label="Sing" onClick={() => runPlaybackInteraction(onKaraoke)} reserveUnavailable={Boolean(item.song?.sourcePostId)} rewardLabel={item.rewards?.karaoke?.amountLabel} />
           <div className="hidden md:block">
             {item.shareActions?.length ? (
               <VideoShareSurface actions={item.shareActions}>

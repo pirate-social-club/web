@@ -20,9 +20,26 @@ export interface VideoSongCapabilityResolution {
   viewerIsAuthor: boolean;
 }
 
+export type VideoSongCapabilityEnrichment = Pick<
+  VideoSongCapabilityResolution,
+  "activeRewardCampaignId" | "rewards"
+>;
+
 export type VideoSongCapabilityLoader = (
   sourcePostId: string,
 ) => Promise<VideoSongCapabilityResolution>;
+
+export type VideoSongCapabilityEnrichmentLoader = (
+  resolution: VideoSongCapabilityResolution,
+) => Promise<VideoSongCapabilityEnrichment | null>;
+
+interface VideoSongCapabilityCacheOptions {
+  enrich?: VideoSongCapabilityEnrichmentLoader;
+  maxAttempts?: number;
+  negativeTtlMs?: number;
+  now?: () => number;
+  onEnriched?: () => void;
+}
 
 type CachedResolution = VideoSongCapabilityResolution | null;
 
@@ -36,9 +53,7 @@ export class VideoSongCapabilityCache {
   constructor(
     private readonly scope: string,
     private readonly load: VideoSongCapabilityLoader,
-    private readonly maxAttempts = 2,
-    private readonly negativeTtlMs = 30_000,
-    private readonly now = () => Date.now(),
+    private readonly options: VideoSongCapabilityCacheOptions = {},
   ) {}
 
   get(sourcePostId: string): CachedResolution | undefined {
@@ -67,28 +82,50 @@ export class VideoSongCapabilityCache {
   }
 
   private async loadWithBoundedRetries(sourcePostId: string): Promise<boolean> {
-    for (let attempt = 1; attempt <= this.maxAttempts; attempt += 1) {
+    const maxAttempts = this.options.maxAttempts ?? 2;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
         const resolution = await this.load(sourcePostId);
         const key = `${this.scope}:${sourcePostId}:${resolution.readMode}`;
         this.entries.set(key, resolution);
         this.resolvedKeyBySource.set(sourcePostId, key);
+        this.enrichInBackground(sourcePostId, key, resolution);
         return true;
       } catch {
-        if (attempt < this.maxAttempts) continue;
+        if (attempt < maxAttempts) continue;
       }
     }
 
     const key = `${this.scope}:${sourcePostId}:negative`;
     this.entries.set(key, null);
     this.resolvedKeyBySource.set(sourcePostId, key);
-    this.negativeExpiresAtBySource.set(sourcePostId, this.now() + this.negativeTtlMs);
+    this.negativeExpiresAtBySource.set(
+      sourcePostId,
+      (this.options.now?.() ?? Date.now()) + (this.options.negativeTtlMs ?? 30_000),
+    );
     return true;
+  }
+
+  private enrichInBackground(
+    sourcePostId: string,
+    key: string,
+    resolution: VideoSongCapabilityResolution,
+  ): void {
+    if (!this.options.enrich) return;
+    void this.options.enrich(resolution).then((enrichment) => {
+      if (!enrichment || this.resolvedKeyBySource.get(sourcePostId) !== key) return;
+      const current = this.entries.get(key);
+      if (!current) return;
+      this.entries.set(key, { ...current, ...enrichment });
+      this.options.onEnriched?.();
+    }).catch(() => {
+      // Reward decoration is optional and must never roll back resolved actions.
+    });
   }
 
   private expireNegativeResolution(sourcePostId: string): void {
     const expiresAt = this.negativeExpiresAtBySource.get(sourcePostId);
-    if (expiresAt === undefined || expiresAt > this.now()) return;
+    if (expiresAt === undefined || expiresAt > (this.options.now?.() ?? Date.now())) return;
     const key = this.resolvedKeyBySource.get(sourcePostId);
     if (key) this.entries.delete(key);
     this.resolvedKeyBySource.delete(sourcePostId);

@@ -195,7 +195,10 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
   const bookingRequestHostRef = React.useRef<string | null>(null);
   const bookingTimezone = React.useMemo(viewerTimezone, []);
   const capabilityCache = React.useMemo(
-    () => new VideoSongCapabilityCache(capabilityLoader.cacheScope, capabilityLoader.load),
+    () => new VideoSongCapabilityCache(capabilityLoader.cacheScope, capabilityLoader.load, {
+      enrich: capabilityLoader.enrich,
+      onEnriched: () => setCapabilityRevision((current) => current + 1),
+    }),
     [capabilityLoader],
   );
   const bookingCache = React.useMemo(

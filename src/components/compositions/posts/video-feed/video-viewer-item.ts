@@ -15,6 +15,7 @@ export function toVideoViewerItem(item: VideoViewerSource): VideoFeedItem | null
   const publisher = post.byline.author ?? post.byline.community;
   if (!publisher) return null;
   const linkedSong = content.upstreamAttributions?.find((source) => source.relationshipType === "references_song");
+  const linkedSongCapability = linkedSong?.sourcePostId ? "unknown" as const : "unavailable" as const;
 
   return {
     id: item.id,
@@ -23,7 +24,7 @@ export function toVideoViewerItem(item: VideoViewerSource): VideoFeedItem | null
     captionDir: content.captionDir,
     captionLang: content.captionLang,
     commentCount: post.engagement.commentCount,
-    karaoke: "unavailable",
+    karaoke: linkedSongCapability,
     likeCount: post.engagement.upvoteCount ?? Math.max(0, post.engagement.score),
     downvoted: post.engagement.viewerVote === "down",
     liked: post.engagement.viewerVote === "up",
@@ -47,7 +48,7 @@ export function toVideoViewerItem(item: VideoViewerSource): VideoFeedItem | null
       sourcePostId: linkedSong.sourcePostId,
       title: linkedSong.title,
     } : undefined,
-    study: "unavailable",
+    study: linkedSongCapability,
     viewerState: content.ageGateViewerState === "proof_required" ? "age_proof_required" : "allowed",
   };
 }

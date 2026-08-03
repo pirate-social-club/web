@@ -137,6 +137,37 @@ describe("VideoFeed", () => {
     const view = render(<VideoFeed items={[{ ...item, karaoke: "unavailable", study: "unavailable" }]} />);
     expect(view.queryByRole("button", { name: "Study" })).toBeNull();
     expect(view.queryByRole("button", { name: "Sing" })).toBeNull();
+    expect(view.container.querySelectorAll("[data-video-capability-slot]")).toHaveLength(0);
+  });
+
+  test("keeps linked-song rail slots stable while capabilities resolve", () => {
+    const linkedSong = { artist: "Artist", sourcePostId: "pst_song", title: "Song" };
+    const view = render(<VideoFeed items={[{
+      ...item,
+      karaoke: "unknown",
+      song: linkedSong,
+      study: "unknown",
+    }]} />);
+
+    const pendingSlots = [...view.container.querySelectorAll<HTMLElement>("[data-video-capability-slot]")];
+    expect(pendingSlots).toHaveLength(2);
+    expect(pendingSlots.every((slot) => slot.classList.contains("invisible"))).toBe(true);
+    expect(view.queryByRole("button", { name: "Study" })).toBeNull();
+    expect(view.queryByRole("button", { name: "Sing" })).toBeNull();
+
+    view.rerender(<VideoFeed items={[{
+      ...item,
+      karaoke: "ready",
+      song: linkedSong,
+      study: "unavailable",
+    }]} />);
+
+    const settledSlots = [...view.container.querySelectorAll<HTMLElement>("[data-video-capability-slot]")];
+    expect(settledSlots).toHaveLength(2);
+    expect(settledSlots[0]?.classList.contains("invisible")).toBe(true);
+    expect(settledSlots[1]?.classList.contains("invisible")).toBe(false);
+    expect(view.queryByRole("button", { name: "Study" })).toBeNull();
+    expect(view.getByRole("button", { name: "Sing" })).toBeTruthy();
   });
 
   test("renders canonical handles verbatim on an explicit dark media stage", () => {

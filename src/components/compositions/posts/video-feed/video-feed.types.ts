@@ -1,6 +1,6 @@
 import type { PostCardShareAction } from "@/components/compositions/posts/post-card/post-card.types";
 
-export type VideoFeedCapability = "ready" | "locked" | "processing" | "failed" | "unavailable";
+export type VideoFeedCapability = "unknown" | "ready" | "locked" | "processing" | "failed" | "unavailable";
 
 export interface VideoFeedItem {
   /** Server-stated booking availability for this item's publisher. */

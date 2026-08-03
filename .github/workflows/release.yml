@@ -437,7 +437,22 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
-        run: bunx wrangler@4.100.0 d1 migrations apply D1_POOL --remote
+        run: |
+          for attempt in 1 2 3 4; do
+            if output="$(bunx wrangler@4.100.0 d1 migrations apply D1_POOL --remote 2>&1)"; then
+              printf '%s\n' "$output"
+              exit 0
+            else
+              status=$?
+              printf '%s\n' "$output"
+              if [[ "$output" != *"code: 7429"* ]] || [[ "$attempt" -eq 4 ]]; then
+                exit "$status"
+              fi
+            fi
+            delay=$((attempt * 10))
+            echo "D1 pool migration received retryable 7429; retrying in ${delay}s (attempt ${attempt}/4)"
+            sleep "$delay"
+          done
       - name: Refuse shard-changing non-main staging validation
         if: github.ref_name != 'main' && steps.in-lane-freshness.outputs.stale == 'false' && steps.staging-shard-preflight.outputs.deploy_shard == 'true'
         run: |
@@ -1058,7 +1073,22 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
-        run: bunx wrangler@4.100.0 d1 migrations apply D1_POOL --remote --env production
+        run: |
+          for attempt in 1 2 3 4; do
+            if output="$(bunx wrangler@4.100.0 d1 migrations apply D1_POOL --remote --env production 2>&1)"; then
+              printf '%s\n' "$output"
+              exit 0
+            else
+              status=$?
+              printf '%s\n' "$output"
+              if [[ "$output" != *"code: 7429"* ]] || [[ "$attempt" -eq 4 ]]; then
+                exit "$status"
+              fi
+            fi
+            delay=$((attempt * 10))
+            echo "D1 pool migration received retryable 7429; retrying in ${delay}s (attempt ${attempt}/4)"
+            sleep "$delay"
+          done
       - name: Deploy pinned production community shard first
         if: steps.in-lane-freshness-prod.outputs.stale == 'false' && steps.shard-preflight.outputs.deploy_shard == 'true'
         working-directory: api/services/community-d1-shard

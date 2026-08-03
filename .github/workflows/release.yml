@@ -100,7 +100,6 @@ jobs:
             const proof = await github.graphql(`
               query($apiSha: GitObjectID!, $coreSha: GitObjectID!, $apiCoreRef: String!) {
                 api: repository(owner: "pirate-social-club", name: "api") {
-                  defaultBranchRef { target { oid } }
                   commit: object(oid: $apiSha) {
                     ... on Commit {
                       checkSuites(first: 100) {
@@ -143,18 +142,17 @@ jobs:
               coreSha,
               apiCoreRef: `${apiSha}:.github/ci-refs/core.sha`,
             });
-            const apiIsCurrentMain = proof.api?.defaultBranchRef?.target?.oid === apiSha;
-            const successfulApiRun = proof.api?.commit?.checkSuites?.nodes?.find((suite) => {
-              const run = suite.workflowRun;
-              const isMainPush = suite.branch?.name === "main" && run?.event === "push";
-              const isLandedMergeGroup = apiIsCurrentMain && run?.event === "merge_group";
-              return run?.workflow?.name === "api-ci" &&
-                (isMainPush || isLandedMergeGroup) &&
-                suite.conclusion === "SUCCESS";
-            });
+            const { pathToFileURL } = require("node:url");
+            const moduleUrl = pathToFileURL(
+              `${process.env.GITHUB_WORKSPACE}/web/scripts/ci/api-pin-proof.mjs`
+            ).href;
+            const { findSuccessfulApiMainPush } = await import(moduleUrl);
+            const successfulApiRun = findSuccessfulApiMainPush(
+              proof.api?.commit?.checkSuites?.nodes
+            );
             if (!successfulApiRun?.workflowRun) {
               core.setFailed(
-                `Pinned API commit ${apiSha} has neither a successful api-ci main push run nor a successful merge-group run for the current API main head.`
+                `Pinned API commit ${apiSha} has no successful completed api-ci main push run.`
               );
               return;
             }

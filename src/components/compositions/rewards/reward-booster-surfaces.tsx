@@ -360,10 +360,10 @@ export function BoostCampaignSheet({
             {payoutTiers != null ? (
               <section aria-labelledby={payoutTiersLabelId} ref={setTierPortalContainer}>
                 <Type as="span" className="mb-2 block text-muted-foreground" id={payoutTiersLabelId} variant="label">
-                  Payout by nationality
+                  Payout by passport nationality
                 </Type>
                 <Type as="p" className="mb-3 text-muted-foreground" variant="caption">
-                  Verified nationalities earn their tier's amount; everyone else earns the default.
+                  Verified passport nationalities earn their tier's amount; everyone else earns the default.
                 </Type>
                 <div className="space-y-3">
                   {payoutTiers.map((tier, index) => (
@@ -385,7 +385,7 @@ export function BoostCampaignSheet({
                         inputAriaLabel="Search countries"
                         noResultsLabel="No countries found"
                         onChange={(codes) => onPayoutTierNationalitiesChange?.(tier.id, codes)}
-                        placeholder="Countries in this tier"
+                        placeholder="Passport nationalities in this tier"
                         portalContainer={tierPortalContainer}
                         values={tier.nationalities}
                       />
@@ -414,7 +414,7 @@ export function BoostCampaignSheet({
                 <div className="mt-3 flex items-start gap-3 rounded-lg border border-border-soft bg-muted/30 p-4">
                   <ShieldWarning aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted-foreground" weight="fill" />
                   <Type as="p" className="text-muted-foreground" variant="body">
-                    Payout amounts are publicly visible on-chain and differ by tier.
+                    Reward amounts vary by passport nationality. Payout amounts are publicly visible on-chain and can reveal the recipient's tier.
                   </Type>
                 </div>
               </section>

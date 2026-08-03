@@ -1085,6 +1085,7 @@ export function CurrentUserWalletPage() {
           }}
           open={rewardsVerifyOpen}
           providers={rewardsSummary.cashout.verification_provider ? [rewardsSummary.cashout.verification_provider] : []}
+          showNationalityTierDisclosure={import.meta.env.VITE_REWARD_NATIONALITY_TIERS_PREVIEW === "true"}
           state={(selfLoading || veryRewardsLoading) && rewardsVerifyState !== "failure" && rewardsVerifyState !== "conflict"
             ? "pending"
             : rewardsVerifyState}

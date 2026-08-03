@@ -251,7 +251,7 @@ const TIER_US = { amountLabel: "5.00", id: "tier-us", nationalities: ["USA"] };
 test("without the payoutTiers prop the sheet renders exactly as before (dark default)", () => {
   const view = render(<BoostCampaignSheet {...composeProps()} />);
 
-  expect(view.queryByText("Payout by nationality")).toBeNull();
+  expect(view.queryByText("Payout by passport nationality")).toBeNull();
   expect(view.queryByText(/publicly visible on-chain/)).toBeNull();
   expect(view.getByText("Daily reward per learner")).toBeTruthy();
   expect(view.getByText("Up to 10 rewards")).toBeTruthy();
@@ -260,8 +260,8 @@ test("without the payoutTiers prop the sheet renders exactly as before (dark def
 test("an empty tier list shows the section with the privacy note and an add button", () => {
   const view = render(<BoostCampaignSheet {...composeProps({ payoutTiers: [] })} />);
 
-  expect(view.getByText("Payout by nationality")).toBeTruthy();
-  expect(view.getByText(/Payout amounts are publicly visible on-chain and differ by tier/)).toBeTruthy();
+  expect(view.getByText("Payout by passport nationality")).toBeTruthy();
+  expect(view.getByText(/Reward amounts vary by passport nationality/)).toBeTruthy();
   expect(view.getByText("Default daily reward")).toBeTruthy();
   expect(view.getByRole("button", { name: "Add a tier" })).toBeTruthy();
   // No rows yet: the count stays an untiered ceiling.

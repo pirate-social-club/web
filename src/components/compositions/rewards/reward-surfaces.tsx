@@ -42,6 +42,9 @@ export type CashoutSheetState =
   | "success"
   | "failure";
 
+export const REWARD_NATIONALITY_DISCLOSURE =
+  "Your reward amount may vary by passport nationality. Payout amounts are public on-chain and can reveal your reward tier.";
+
 export interface SongRewardOfferProps {
   amountLabel: string;
   className?: string;
@@ -82,6 +85,7 @@ export interface VerifyHumanSheetProps {
   onSelectProvider?: (provider: "self" | "very" | "zkpassport") => void;
   open: boolean;
   providers: readonly ("self" | "very" | "zkpassport")[];
+  showNationalityTierDisclosure?: boolean;
   state: VerifyHumanSheetState;
 }
 
@@ -281,6 +285,7 @@ export function VerifyHumanSheet({
   onSelectProvider,
   open,
   providers,
+  showNationalityTierDisclosure = false,
   state,
 }: VerifyHumanSheetProps) {
   const isTerminal = state === "success" || state === "failure" || state === "conflict";
@@ -315,6 +320,13 @@ export function VerifyHumanSheet({
 
         {state === "provider-selection" ? (
           <div className="mt-5 space-y-3">
+            {showNationalityTierDisclosure ? (
+              <div className="rounded-lg border border-border-soft bg-muted/30 p-4">
+                <Type as="p" className="text-muted-foreground" variant="body">
+                  {REWARD_NATIONALITY_DISCLOSURE}
+                </Type>
+              </div>
+            ) : null}
             {providers.includes("self") ? (
               <ProviderButton
                 icon={<QrCode aria-hidden="true" className="size-5" weight="bold" />}

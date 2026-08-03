@@ -427,6 +427,17 @@ jobs:
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/bookings/migrations \
             --label bookings
+      # The shard's pool metadata is D1, not the control plane. Apply its
+      # migrations before deploying a shard that may depend on new pool state.
+      # The isolated D1 token deliberately owns this mutation, not the Worker
+      # deploy token.
+      - name: Apply staging community shard-pool migrations
+        if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false'
+        working-directory: api/services/community-d1-shard
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: bunx wrangler@4.100.0 d1 migrations apply D1_POOL --remote
       - name: Refuse shard-changing non-main staging validation
         if: github.ref_name != 'main' && steps.in-lane-freshness.outputs.stale == 'false' && steps.staging-shard-preflight.outputs.deploy_shard == 'true'
         run: |
@@ -1039,6 +1050,15 @@ jobs:
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/bookings/migrations \
             --label bookings
+      # Keep the data-plane ordering identical to staging: all pool schema is
+      # ready before the shard source that uses it is deployed.
+      - name: Apply production community shard-pool migrations
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
+        working-directory: api/services/community-d1-shard
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: bunx wrangler@4.100.0 d1 migrations apply D1_POOL --remote --env production
       - name: Deploy pinned production community shard first
         if: steps.in-lane-freshness-prod.outputs.stale == 'false' && steps.shard-preflight.outputs.deploy_shard == 'true'
         working-directory: api/services/community-d1-shard

@@ -1366,9 +1366,6 @@ export function TelegramMiniAppCommunityPage({
       <div className="px-3 pb-8 pt-[calc(env(safe-area-inset-top)+1rem)]">
         <PublicCommunityRoutePage
           buildPostPath={buildTelegramCommunityPostPath}
-          buildStudyPath={(postId) =>
-            `/tg/c/${encodeURIComponent(communityId)}/p/${encodeURIComponent(postId)}/study`
-          }
           communityId={communityId}
           disableCanonicalRouteReplace
         />

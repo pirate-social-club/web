@@ -440,7 +440,8 @@ jobs:
           BUILD_GIT_REF: pinned/${{ needs.release-inputs.outputs.api_sha }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: bun run deploy -- --env staging
+        # The shard config's top level is staging; production is its only named env.
+        run: bun run deploy
       - name: Verify bounded staging shard-first transition
         if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false' && steps.staging-shard-preflight.outputs.deploy_shard == 'true'
         working-directory: web

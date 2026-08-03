@@ -28,6 +28,7 @@ import { formatCentsAsStartingUsd } from "@/components/compositions/bookings/fix
 import { IconButton } from "@/components/primitives/icon-button";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
 import type { VideoFeedCapability, VideoFeedItem } from "./video-feed.types";
 import { VideoShareSurface } from "./video-share-surface";
@@ -51,6 +52,8 @@ export interface VideoFeedProps {
   onActiveItemChange?: (item: VideoFeedItem, index: number) => void;
   onBook?: (item: VideoFeedItem, state: VideoFeedPlaybackState) => void;
   onComment?: (item: VideoFeedItem) => void;
+  /** Analytics hook fired when a slide falls back to no-cors playback after a media error. */
+  onVideoCorsFallback?: (item: VideoFeedItem, context: { srcHost: string | null }) => void;
   onBoost?: (item: VideoFeedItem) => void;
   onDownvote?: (item: VideoFeedItem) => void;
   onGateRequired?: (item: VideoFeedItem) => void;
@@ -146,6 +149,19 @@ export const VIDEO_FEED_LONG_PRESS_MOVE_THRESHOLD_PX = 10;
  */
 export const VIDEO_FEED_SLIDE_RENDER_WINDOW = 2;
 
+/**
+ * EXPERIMENTAL forward-prefetch budget. When the active index settles, the first bytes of the
+ * next video are fetched with a Range request purely to warm the HTTP cache, so a forward swipe
+ * does not start buffering from scratch. Server side is verified: api.pirate.sc (the source of
+ * every measured feed video) answers this range with 206 and
+ * `cache-control: public, max-age=31536000, immutable`, echoing ACAO per Origin (Vary: Origin) —
+ * which is why the feed <video> loads with crossOrigin="anonymous" to share the cache key. The
+ * remaining unknown is whether the browser media stack reuses cached 206s on swipe: expected to
+ * be a Chrome/Chromium win, unproven on Safari, whose media stack does not reliably share the
+ * fetch HTTP cache. Measure the warm-cache hit rate in production before keeping or raising this.
+ */
+export const VIDEO_FEED_PREFETCH_AHEAD_BYTES = 512 * 1024;
+
 export function didVideoLongPressMove(
   start: { x: number; y: number },
   current: { x: number; y: number },
@@ -211,6 +227,48 @@ export function shouldRenderVideoFeedSlide({
 /** Restore-effect runs tolerated before an unreachable initial item is given up on. */
 const VIDEO_FEED_RESTORE_MAX_ATTEMPTS = 10;
 
+/** Range header warming the first bytes of the next video, bounded by the prefetch budget. */
+export function videoFeedPrefetchRangeHeader(): string {
+  return `bytes=0-${VIDEO_FEED_PREFETCH_AHEAD_BYTES - 1}`;
+}
+
+/**
+ * The source eligible for the forward (N+1) prefetch, or null when prefetching is wrong here:
+ * no item or source, age-blocked media (its src is redacted everywhere else too), or a
+ * data-expensive connection where speculative downloads cost the viewer real bandwidth.
+ */
+export function videoFeedPrefetchAheadSrc({
+  effectiveType,
+  item,
+  saveData,
+}: {
+  effectiveType?: string;
+  item?: VideoFeedItem;
+  saveData?: boolean;
+}): string | null {
+  if (!item || item.viewerState === "age_proof_required") return null;
+  if (saveData) return null;
+  if (effectiveType === "slow-2g" || effectiveType === "2g") return null;
+  return item.media.src ?? null;
+}
+
+// Deep enough that a long session's prefetching stays repeat-free, bounded because a Set has no
+// eviction of its own: the oldest sources are front-trimmed in insertion order, and an evicted
+// source simply prefetches again on a later settle. Mirrors MAX_SESSION_SEEN_VIDEO_IDS.
+export const VIDEO_FEED_MAX_WARMED_SRCS = 500;
+
+/** Records a warmed source and trims in the same operation, so no caller can skip trimming. */
+export function recordWarmedVideoSrc(warmed: Set<string>, src: string): void {
+  warmed.add(src);
+  let overflow = warmed.size - VIDEO_FEED_MAX_WARMED_SRCS;
+  if (overflow <= 0) return;
+  for (const oldest of warmed) {
+    warmed.delete(oldest);
+    overflow -= 1;
+    if (overflow <= 0) return;
+  }
+}
+
 function readStoredMutedPreference(): boolean | null {
   if (typeof window === "undefined") return null;
   try {
@@ -227,6 +285,32 @@ function writeStoredMutedPreference(muted: boolean): void {
     window.localStorage.setItem(VIDEO_FEED_MUTED_PREFERENCE_KEY, String(muted));
   } catch {
     // Storage can be unavailable in private browsing; sound still works for the current feed.
+  }
+}
+
+/**
+ * Best-effort warm-up of the HTTP cache for the next slide. Draining a 206 lands the partial
+ * object in the cache; a server that ignores Range would stream the whole file, so its body is
+ * cancelled before it can blow past the byte budget. Resolves true only when the 206 body fully
+ * drained — the caller records completion, never the attempt. Tests stub `fetch` to observe calls.
+ */
+async function prefetchVideoFeedAhead(src: string, signal: AbortSignal): Promise<boolean> {
+  try {
+    const response = await fetch(src, {
+      headers: { Range: videoFeedPrefetchRangeHeader() },
+      // Low priority: warming the next slide must never compete with the active video.
+      priority: "low",
+      signal,
+    } as RequestInit);
+    if (response.status !== 206) {
+      await response.body?.cancel();
+      return false;
+    }
+    await response.arrayBuffer();
+    return true;
+  } catch {
+    // Aborted on unmount or simply offline: a hint, never a hard dependency.
+    return false;
   }
 }
 
@@ -480,9 +564,11 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   soundPromptEligible,
   tapForSoundLabel,
   muteVideoLabel,
+  videoCorsFallback,
   videoProgressLabel,
   initialPlaybackSeconds,
-}: Omit<VideoFeedProps, "downvoteLabel" | "followLabel" | "followingLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "muteVideoLabel" | "removeDownvoteLabel" | "soundOnLabel" | "tapForSoundLabel"> & {
+  onVideoCorsFallbackRequest,
+}: Omit<VideoFeedProps, "downvoteLabel" | "followLabel" | "followingLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "muteVideoLabel" | "onVideoCorsFallback" | "removeDownvoteLabel" | "soundOnLabel" | "tapForSoundLabel"> & {
   active: boolean;
   allowAutoplay: boolean;
   autoplayBlocked: boolean;
@@ -511,6 +597,10 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   tapForSoundLabel: string;
   videoProgressLabel: string;
   initialPlaybackSeconds?: number;
+  /** True once this item's media failed in cors mode: its video stays no-cors for the session. */
+  videoCorsFallback: boolean;
+  /** Returns true when the error triggered a no-cors remount, so it is not a playback failure yet. */
+  onVideoCorsFallbackRequest: (item: VideoFeedItem) => boolean;
 }) {
   React.useEffect(() => {
     onSlideRender?.(item.id);
@@ -682,7 +772,8 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
       }
       onAutoplayBlockedChange(item.id, failure === "autoplay_blocked");
     });
-  }, [active, allowAutoplay, autoplayBlocked, item.id, mediaMounted, onAutoplayBlockedChange, paused]);
+    // videoCorsFallback re-runs this on the no-cors remount so the retried video plays.
+  }, [active, allowAutoplay, autoplayBlocked, item.id, mediaMounted, onAutoplayBlockedChange, paused, videoCorsFallback]);
 
   const cancelLongPress = React.useCallback(() => {
     if (longPressTimerRef.current !== null) window.clearTimeout(longPressTimerRef.current);
@@ -727,7 +818,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
     if (video.readyState >= 1) restore();
     else video.addEventListener("loadedmetadata", restore, { once: true });
     return () => video.removeEventListener("loadedmetadata", restore);
-  }, [active, initialPlaybackSeconds]);
+  }, [active, initialPlaybackSeconds, videoCorsFallback]);
 
   const runInteraction = (action: ((item: VideoFeedItem) => void) | undefined) => {
     if (item.interactionGate === "membership_required") {
@@ -841,9 +932,18 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
         )}>
         {mediaMounted ? (
           <video
+            // A real remount (key) is the only way to refetch the media without cors after an
+            // ACAO-less host errors; flipping the attribute alone does not reload the source.
+            key={videoCorsFallback ? "no-cors" : "cors"}
             ref={videoRef}
             aria-label={item.song?.title ?? item.caption ?? "Video"}
             className={cn("size-full", item.media.orientation === "portrait" ? "object-cover" : "object-contain")}
+            // cors mode matches the Range prefetch's fetch: api.pirate.sc echoes ACAO with
+            // Vary: Origin, so a no-cors media load would key a different HTTP cache entry and
+            // the warmed bytes would never be reused. Matches post-card-video-content.tsx.
+            // Per item, a media error drops the attribute and retries no-cors (hosts without
+            // ACAO would otherwise show the poster forever).
+            crossOrigin={videoCorsFallback ? undefined : "anonymous"}
             style={{ transform: "translateY(calc(var(--feed-browser-occlusion) / -2))" }}
             loop
             muted={muted}
@@ -876,6 +976,10 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
               impression.previousPlaybackSeconds = currentTime;
             }}
             onError={() => {
+              // A media host without ACAO only fails in cors mode: remount this item's video
+              // without crossOrigin and let the retry play out before treating it as a playback
+              // failure. If the no-cors retry also errors, the impression reports once.
+              if (!videoCorsFallback && onVideoCorsFallbackRequest(item)) return;
               if (impressionRef.current) impressionRef.current.playbackError = true;
             }}
             onPlaying={() => {
@@ -1265,6 +1369,7 @@ export function VideoFeed({
   tapForSoundLabel = "Tap for sound",
   videoProgressLabel = "Video progress",
   onSlideRender,
+  onVideoCorsFallback,
   ...actions
 }: VideoFeedProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
@@ -1274,6 +1379,41 @@ export function VideoFeed({
   // arriving (its page may never load) and its pending render slot is released.
   const restoreAttemptsRef = React.useRef<{ count: number; itemId: string | null }>({ count: 0, itemId: null });
   const [givenUpRestoreItemId, setGivenUpRestoreItemId] = React.useState<string | null>(null);
+  // In-flight forward prefetches by source. A fetch is aborted only on unmount, or once its
+  // source is neither the N+1 target nor near the active slide — never merely because a swipe
+  // settled, since the video being warmed is usually the one that just became active.
+  const prefetchControllersRef = React.useRef(new Map<string, AbortController>());
+  // Sources whose 206 body fully drained into the HTTP cache. Failed or aborted fetches are
+  // never recorded here, so a later settle can retry them. Writes go through
+  // recordWarmedVideoSrc, which front-trims the oldest entries past VIDEO_FEED_MAX_WARMED_SRCS.
+  const warmedVideoSrcsRef = React.useRef(new Set<string>());
+  // Items whose media host answered without ACAO: their videos remount once without crossOrigin
+  // and stay no-cors for the session. Per item, so one ACAO-less host never downgrades the
+  // CORS/prefetch cache alignment for the rest of the feed. The ref mirrors membership
+  // synchronously because the slide's error handler needs the answer before React re-renders.
+  const corsFallbackItemIdsRef = React.useRef(new Set<string>());
+  const [corsFallbackItemIds, setCorsFallbackItemIds] = React.useState<ReadonlySet<string>>(() => new Set());
+  const requestVideoCorsFallback = React.useCallback((item: VideoFeedItem): boolean => {
+    if (corsFallbackItemIdsRef.current.has(item.id)) return false;
+    corsFallbackItemIdsRef.current.add(item.id);
+    setCorsFallbackItemIds(new Set(corsFallbackItemIdsRef.current));
+    let srcHost: string | null = null;
+    try {
+      srcHost = item.media.src ? new URL(item.media.src).host : null;
+    } catch {
+      srcHost = null;
+    }
+    if (onVideoCorsFallback) {
+      onVideoCorsFallback(item, { srcHost });
+    } else {
+      trackAnalyticsEvent({
+        eventName: "video_cors_fallback",
+        postId: item.id,
+        properties: { srcHost },
+      });
+    }
+    return true;
+  }, [onVideoCorsFallback]);
   const initialIndex = Math.max(0, items.findIndex((item) => item.id === initialItemId));
   const [activeIndex, setActiveIndex] = React.useState(initialIndex);
   const activeIndexRef = React.useRef(initialIndex);
@@ -1337,6 +1477,55 @@ export function VideoFeed({
       ? current
       : [activeItem.id, ...current.filter((id) => id !== activeItem.id)].slice(0, VIDEO_FEED_KEEP_ALIVE_MEDIA_COUNT));
   }, [activeIndex, items]);
+
+  // EXPERIMENTAL: warm the HTTP cache for the forward (N+1) slide once the active index settles.
+  // Backscrolls need nothing — kept-alive media survives — so this deliberately never looks at
+  // activeIndex - 1. See VIDEO_FEED_PREFETCH_AHEAD_BYTES for the measurement caveat.
+  const prefetchConnection = typeof navigator === "undefined"
+    ? undefined
+    : (navigator as Navigator & {
+      connection?: { effectiveType?: string; saveData?: boolean };
+    }).connection;
+  const prefetchAheadSrc = videoFeedPrefetchAheadSrc({
+    effectiveType: prefetchConnection?.effectiveType,
+    item: items[activeIndex + 1],
+    saveData: prefetchConnection?.saveData,
+  });
+
+  // Keyed on the resolved source, not on items identity: capability bumps must not re-run it,
+  // and in-flight or completed fetches for the same source are never duplicated.
+  React.useEffect(() => {
+    if (!prefetchAheadSrc) return;
+    if (warmedVideoSrcsRef.current.has(prefetchAheadSrc)) return;
+    if (prefetchControllersRef.current.has(prefetchAheadSrc)) return;
+    const controller = new AbortController();
+    prefetchControllersRef.current.set(prefetchAheadSrc, controller);
+    void prefetchVideoFeedAhead(prefetchAheadSrc, controller.signal).then((warmed) => {
+      prefetchControllersRef.current.delete(prefetchAheadSrc);
+      if (warmed) recordWarmedVideoSrc(warmedVideoSrcsRef.current, prefetchAheadSrc);
+    });
+  }, [prefetchAheadSrc]);
+
+  // Abort a prefetch only when its source is no longer the N+1 target AND falls outside the
+  // render window; the active slide's own warm-up always runs to completion.
+  React.useEffect(() => {
+    const controllers = prefetchControllersRef.current;
+    for (const [src, controller] of controllers) {
+      if (src === prefetchAheadSrc) continue;
+      const index = items.findIndex((item) => item.media.src === src);
+      if (index >= 0 && Math.abs(index - activeIndex) <= VIDEO_FEED_SLIDE_RENDER_WINDOW) continue;
+      controllers.delete(src);
+      controller.abort();
+    }
+  }, [activeIndex, items, prefetchAheadSrc]);
+
+  React.useEffect(() => {
+    const controllers = prefetchControllersRef.current;
+    return () => {
+      for (const controller of controllers.values()) controller.abort();
+      controllers.clear();
+    };
+  }, []);
 
   React.useLayoutEffect(() => {
     if (!initialItemId || restoredInitialItemIdRef.current === initialItemId) return;
@@ -1606,6 +1795,7 @@ export function VideoFeed({
               onMoveTo={moveTo}
               onToggleMute={toggleMute}
               onTogglePlayback={togglePlayback}
+              onVideoCorsFallbackRequest={requestVideoCorsFallback}
               muted={muted}
               preferenceMuted={preferenceMuted}
               paused={pausedItemIds.has(item.id) || externallyPausedItemId === item.id}
@@ -1614,6 +1804,7 @@ export function VideoFeed({
               soundOnLabel={soundOnLabel}
               soundPromptEligible={!hasShownSoundPromptRef.current}
               tapForSoundLabel={tapForSoundLabel}
+              videoCorsFallback={corsFallbackItemIds.has(item.id)}
               videoProgressLabel={videoProgressLabel}
             />
           ) : (

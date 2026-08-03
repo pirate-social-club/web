@@ -537,13 +537,15 @@ jobs:
   # API's declared community-template schema requirements? Nothing gated this
   # before, and it broke production twice (1124, 1127). This is schema
   # ATTESTATION across the whole fleet; the multipart test below is BEHAVIOURAL
-  # on one community. They catch different failures — keep both. Read-only.
+  # on one community. They catch different failures — keep both. The full scan
+  # remains authoritative while its fenced ledger publication runs in shadow.
   schema-gate:
     name: Community schema gate (staging fleet)
     needs: [release-inputs, staging-freshness]
     if: github.event_name != 'pull_request' && needs.staging-freshness.outputs.stale == 'false'
-    # The scan is strictly read-only, so a newer main push can safely cancel an
-    # obsolete in-flight scan instead of doubling D1 load for another ~20min.
+    # A newer main push can safely cancel an obsolete in-flight scan instead of
+    # doubling D1 load. Its ledger invalidation remains fail-closed, and the
+    # writer epoch prevents it from overwriting a newer scan's evidence.
     # Manual dispatches are deliberate and keep an independent group.
     concurrency:
       group: community-schema-gate-${{ github.event_name == 'push' && 'main' || github.run_id }}
@@ -610,7 +612,8 @@ jobs:
         # community-d1-pool-* and community-d1-shard-pool-*. That is the isolated
         # D1 token (CLOUDFLARE_D1_API_TOKEN), NOT the Worker-deploy token — D1
         # access is deliberately kept off the deploy token (see the multipart
-        # fixture step). Read-only: a token-scope gap fails safe, never mutates.
+        # fixture step). This token already applies pool migrations, so it has
+        # the D1 write scope needed for fenced ledger publication.
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
@@ -622,6 +625,7 @@ jobs:
             --drift-policy core/db/known-community-migration-drifts.json \
             --canonical-baseline api/services/api/docs/attestations/community-schema/staging-canonical-baseline.json \
             --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
+            --publish-attestations \
             --concurrency 2
       # always(): a SLOW scan that then fails is exactly the sample we must not
       # drop. Never fails the job — an observability step must not be able to
@@ -975,8 +979,9 @@ jobs:
       # Fresh check of the LIVE PRODUCTION fleet, immediately before migrations and
       # deploy. The staging schema-gate is a promotion gate; this is the real one —
       # the allocated prod fleet can change between then and now, so we re-attest it
-      # here rather than trust the earlier pass. Read-only. If any live prod shard
-      # is missing a required migration, we STOP before mutating or deploying.
+      # here rather than trust the earlier pass. It publishes only fenced ledger
+      # evidence; the full scan remains authoritative. If any live prod shard is
+      # missing a required migration, we STOP before migrations or deployment.
       - name: Verify production fleet satisfies pinned API schema requirements
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -992,6 +997,7 @@ jobs:
             --drift-policy core/db/known-community-migration-drifts.json \
             --canonical-baseline api/services/api/docs/attestations/community-schema/production-canonical-baseline.json \
             --manifest "$GITHUB_WORKSPACE/schema-gate-production.json" \
+            --publish-attestations \
             --concurrency 14
       - name: Upload production schema manifest
         if: always()

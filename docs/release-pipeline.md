@@ -67,6 +67,10 @@ requirements manifest from the pinned API (`api/services/api/community-schema-re
   shard into one request. The staging manifest must report
   `d1_query_transport: "rest_batch"` and includes logical batches, HTTP
   attempts, retries, cumulative attempt duration, and `errors_by_code`.
+- Each authoritative full scan invalidates the complete loaded pool roster,
+  then publishes its verdicts with allocation-generation and writer-epoch
+  fences. This is shadow evidence only: publication failures fail closed, and
+  no ledger result can make a release pass while the REST scan fails.
 - Staging currently runs at concurrency 3. This was raised only after two
   zero-retry concurrency-2 scans. If code `7429` or a sustained retry increase
   appears, first rule out overlapping scans and then restore concurrency 2;
@@ -172,14 +176,16 @@ A canary that fails is a signal to investigate, from its uploaded artifacts, on 
 
 ## Guards
 
-- **No workflow-wide release lock** — read-only validation may overlap. Only the
-  jobs that mutate shared environments are serialized.
+- **No workflow-wide release lock** — independent validation may overlap. The
+  schema writer prevents stale overlap with its writer epoch; environment
+  migrations and deploys remain serialized.
 - **`staging-promotion` and `production-deploy`** use
   `cancel-in-progress: false`. A run applying migrations or deploying is never
   killed midway; both lanes repeat freshness checks while holding their locks.
-- **`community-schema-gate-main`** is read-only and uses
-  `cancel-in-progress: true`, so a newer `main` push kills an obsolete fleet
-  scan instead of doubling D1 load.
+- **`community-schema-gate-main`** uses `cancel-in-progress: true`, so a newer
+  `main` push kills an obsolete fleet scan instead of doubling D1 load. A
+  cancelled scan can leave only invalid evidence; its epoch cannot overwrite a
+  newer scan's publication.
 - **`production-freshness`** — compares the run SHA to the live `main` tip
   immediately before deploying. If `main` has advanced and another live
   Release run can still reach production, this run defers. If no live successor

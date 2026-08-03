@@ -692,6 +692,14 @@ async function createGateBuilderCommunity(session: StoredSession, runId: string)
   return communityId.replace(/^com_/u, "");
 }
 
+async function archiveGateBuilderCommunity(session: StoredSession, communityId: string): Promise<void> {
+  await requestJson(`/communities/${encodeURIComponent(communityId)}/archive`, {
+    body: JSON.stringify({}),
+    headers: { authorization: `Bearer ${session.accessToken}` },
+    method: "POST",
+  });
+}
+
 async function chooseSelectOption(page: Page, triggerIndex: number, triggerName: string, optionName: string): Promise<void> {
   await page.getByRole("combobox", { name: triggerName }).nth(triggerIndex).click();
   await page.getByRole("option", { exact: true, name: optionName }).click();
@@ -1629,6 +1637,7 @@ test.describe("live staging integration", () => {
     const communityId = await createGateBuilderCommunity(session, runId);
     const authHeaders = { authorization: `Bearer ${session.accessToken}` };
 
+    try {
     await page.setViewportSize({ height: 900, width: 1440 });
     await installStoredSession(page, session);
     await page.goto(`/c/${pathSegment(communityId)}/mod/gates`);
@@ -1701,6 +1710,9 @@ test.describe("live staging integration", () => {
     await page.setViewportSize({ height: 844, width: 390 });
     await expect(page.getByText("Live summary", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    } finally {
+      await archiveGateBuilderCommunity(session, communityId);
+    }
   });
 
   test("uploads a public video through direct multipart in a real browser", async ({ page }, testInfo) => {

@@ -151,7 +151,7 @@ describe("VideoFeed", () => {
 
     const pendingSlots = [...view.container.querySelectorAll<HTMLElement>("[data-video-capability-slot]")];
     expect(pendingSlots).toHaveLength(2);
-    expect(pendingSlots.every((slot) => slot.classList.contains("invisible"))).toBe(true);
+    expect(pendingSlots.every((slot) => slot.dataset.videoCapabilitySlotState === "reserved")).toBe(true);
     expect(view.queryByRole("button", { name: "Study" })).toBeNull();
     expect(view.queryByRole("button", { name: "Sing" })).toBeNull();
 
@@ -162,12 +162,30 @@ describe("VideoFeed", () => {
       study: "unavailable",
     }]} />);
 
+    // The slot element survives the transition so the collapse can animate, but a
+    // confirmed-unavailable capability must not hold rail space open forever.
     const settledSlots = [...view.container.querySelectorAll<HTMLElement>("[data-video-capability-slot]")];
     expect(settledSlots).toHaveLength(2);
-    expect(settledSlots[0]?.classList.contains("invisible")).toBe(true);
-    expect(settledSlots[1]?.classList.contains("invisible")).toBe(false);
+    expect(settledSlots[0]?.dataset.videoCapabilitySlotState).toBe("collapsed");
+    expect(settledSlots[0]?.className).toContain("grid-rows-[0fr]");
+    expect(settledSlots[1]?.dataset.videoCapabilitySlotState).toBe("resolved");
     expect(view.queryByRole("button", { name: "Study" })).toBeNull();
     expect(view.getByRole("button", { name: "Sing" })).toBeTruthy();
+  });
+
+  test("collapses both linked-song slots when neither capability resolves", () => {
+    const linkedSong = { artist: "Artist", sourcePostId: "pst_song", title: "Song" };
+    const view = render(<VideoFeed items={[{
+      ...item,
+      karaoke: "unavailable",
+      song: linkedSong,
+      study: "unavailable",
+    }]} />);
+
+    const slots = [...view.container.querySelectorAll<HTMLElement>("[data-video-capability-slot]")];
+    expect(slots).toHaveLength(2);
+    expect(slots.every((slot) => slot.dataset.videoCapabilitySlotState === "collapsed")).toBe(true);
+    expect(slots.every((slot) => slot.className.includes("grid-rows-[0fr]"))).toBe(true);
   });
 
   test("renders canonical handles verbatim on an explicit dark media stage", () => {

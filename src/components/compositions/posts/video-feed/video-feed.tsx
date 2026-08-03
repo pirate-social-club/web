@@ -367,10 +367,23 @@ function CapabilityAction({
   reserveUnavailable?: boolean;
   rewardLabel?: string;
 }) {
-  if (capability === "unknown" || (capability === "unavailable" && reserveUnavailable)) {
+  // A linked song's capability is unknown until its post resolves, so the slot is
+  // reserved to keep the rail from reflowing. Once the answer is genuinely
+  // "unavailable" the slot collapses instead of leaving a permanent hole; the
+  // collapse is animated because adjacent prefetch usually settles it offscreen,
+  // but the active slide would otherwise snap.
+  const collapsed = capability === "unavailable" && reserveUnavailable;
+  if (capability === "unknown" || collapsed) {
     return (
-      <div aria-hidden="true" className="invisible" data-video-capability-slot={label.toLowerCase()}>
-        <VideoAction disabled icon={icon} label={label} value={label} />
+      <div
+        aria-hidden="true"
+        className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${collapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr]"}`}
+        data-video-capability-slot={label.toLowerCase()}
+        data-video-capability-slot-state={collapsed ? "collapsed" : "reserved"}
+      >
+        <div className="invisible overflow-hidden">
+          <VideoAction disabled icon={icon} label={label} value={label} />
+        </div>
       </div>
     );
   }
@@ -383,7 +396,7 @@ function CapabilityAction({
         ? `${label} unavailable`
         : label;
   return (
-    <div data-video-capability-slot={label.toLowerCase()}>
+    <div data-video-capability-slot={label.toLowerCase()} data-video-capability-slot-state="resolved">
       <VideoAction
         disabled={capability !== "ready"}
         icon={capability === "locked" ? <Lock className="size-6" weight="fill" /> : icon}

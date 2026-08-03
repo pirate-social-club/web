@@ -209,3 +209,101 @@ describe("production community-shard compatibility preflight", () => {
     expect(result.actualSourceVersion).toBe(EXPECTED);
   });
 });
+
+describe("shard transition propagation budget", () => {
+  const PREVIOUS = "previous-shard.previous-shared";
+
+  // Drives sleepImpl and nowImpl off one counter so elapsed time is exactly the
+  // sum of the sleeps the implementation asked for — no wall clock involved.
+  function fakeClock() {
+    let nowMs = 0;
+    return {
+      nowImpl: () => nowMs,
+      sleepImpl: async (delayMs: number) => {
+        nowMs += delayMs;
+      },
+      elapsedMs: () => nowMs,
+    };
+  }
+
+  function stillOnPrevious() {
+    const payload = healthyPayload(PREVIOUS);
+    payload.expected_shard_source_version = PREVIOUS;
+    return Response.json(payload);
+  }
+
+  function convergedOnPinned() {
+    return Response.json(healthyPayload(EXPECTED));
+  }
+
+  test("waits out a shard that has not propagated yet, well past the old 6-attempt cap", async () => {
+    const clock = fakeClock();
+    let attempts = 0;
+    const result = await verifyShardCompatibility({
+      apiDir: "/api",
+      execFile: gitExec as never,
+      phase: "transition",
+      previousSourceVersion: PREVIOUS,
+      retryDelayMs: 1_000,
+      nowImpl: clock.nowImpl,
+      sleepImpl: clock.sleepImpl,
+      fetchImpl: async () => {
+        attempts += 1;
+        // The old budget was 6 attempts / ~6s; this lands past both.
+        return attempts < 12 ? stillOnPrevious() : convergedOnPinned();
+      },
+    });
+
+    expect(attempts).toBe(12);
+    expect(result.actualSourceVersion).toBe(EXPECTED);
+    expect(clock.elapsedMs()).toBeGreaterThan(6_000);
+    expect(clock.elapsedMs()).toBeLessThanOrEqual(90_000);
+  });
+
+  test("backs off instead of hammering, and still bounds the wait at the budget", async () => {
+    const clock = fakeClock();
+    let attempts = 0;
+    await expect(verifyShardCompatibility({
+      apiDir: "/api",
+      execFile: gitExec as never,
+      phase: "transition",
+      previousSourceVersion: PREVIOUS,
+      retryDelayMs: 1_000,
+      transitionBudgetMs: 90_000,
+      nowImpl: clock.nowImpl,
+      sleepImpl: clock.sleepImpl,
+      fetchImpl: async () => {
+        attempts += 1;
+        return stillOnPrevious();
+      },
+    })).rejects.toThrow(/has not propagated yet/);
+
+    // Exponential backoff capped at 5s: a 90s budget costs ~20 probes, not 90.
+    expect(attempts).toBeLessThan(30);
+    expect(clock.elapsedMs()).toBeGreaterThanOrEqual(90_000);
+  });
+
+  test("fails fast on an unexpected version instead of spending the budget", async () => {
+    const clock = fakeClock();
+    let attempts = 0;
+    await expect(verifyShardCompatibility({
+      apiDir: "/api",
+      execFile: gitExec as never,
+      phase: "transition",
+      previousSourceVersion: PREVIOUS,
+      retryDelayMs: 1_000,
+      nowImpl: clock.nowImpl,
+      sleepImpl: clock.sleepImpl,
+      fetchImpl: async () => {
+        attempts += 1;
+        const payload = healthyPayload("some-unrelated-source.version");
+        payload.expected_shard_source_version = "some-unrelated-source.version";
+        return Response.json(payload);
+      },
+    })).rejects.toThrow(/outside the bounded previous-to-pinned window/);
+
+    // Waiting cannot turn an unexpected version into the pinned one.
+    expect(attempts).toBe(1);
+    expect(clock.elapsedMs()).toBe(0);
+  });
+});

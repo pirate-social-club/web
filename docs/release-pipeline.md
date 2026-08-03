@@ -94,6 +94,16 @@ GitHub snapshots the reusable workflow ref for each run attempt. If
 run. Re-running an old attempt continues to use the API workflow revision that
 GitHub resolved for that attempt.
 
+## API pin CI proof
+
+An API commit is pinnable only after a successful `api-ci` `push` run on API
+`main`. A merge-group run may let that push run reuse exact-SHA provenance, but
+it is not itself a release proof: accepting it only while the commit is the API
+main tip makes an existing Web pin expire when any later API commit lands.
+
+This rule keeps Web release inputs durable. Advancing API main cannot invalidate
+an already accepted pin, including when the advancing commit changes docs only.
+
 ## Community provisioning coverage
 
 Per-release tests use persistent staging fixtures and must not create communities. A loaded

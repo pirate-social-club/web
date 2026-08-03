@@ -290,6 +290,33 @@ describe("useBoostCampaignController", () => {
     expect(view.result.current.sheetProps.onAddPayoutTier).toBeFunction();
   });
 
+  test("enables tier composition and funding when the server capability is enabled", async () => {
+    nationalityTierCapability = "enabled";
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    expect(view.result.current.sheetProps.payoutTiers).toEqual([]);
+    act(() => view.result.current.sheetProps.onAddPayoutTier?.());
+    const tierId = view.result.current.sheetProps.payoutTiers?.[0]?.id;
+    act(() => {
+      view.result.current.sheetProps.onPayoutTierNationalitiesChange?.(tierId!, ["vnm"]);
+      view.result.current.sheetProps.onPayoutTierAmountChange?.(tierId!, "5.00");
+      view.result.current.openBoost();
+    });
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+
+    expect(calls.create).toBe(1);
+    expect(calls.quote).toBe(1);
+    expect(lastCreateBody).toMatchObject({
+      default_amount_cents: 100,
+      payout_tiers: [{ amount_cents: 500, nationalities: ["VNM"] }],
+    });
+    expect(lastQuoteBody).toMatchObject({
+      amount_cents: 1000,
+      reward_identity_provider: "self",
+    });
+  });
+
   test("fails closed for an unknown nationality-tier capability", async () => {
     nationalityTierCapability = "future_unknown_state";
     nationalityTierPreview = true;

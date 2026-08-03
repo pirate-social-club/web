@@ -43,6 +43,11 @@ export function validateShardCompatibility(
   const liveApiExpectedSourceVersion = typeof payload.expected_shard_source_version === "string"
     ? payload.expected_shard_source_version
     : null;
+  const resumablePreDeployTransition = phase === "pre-deploy"
+    && payload.ok === false
+    && payload.error_code === "d1_shard_version_mismatch"
+    && actualSourceVersion === expectedSourceVersion
+    && liveApiExpectedSourceVersion !== null;
 
   if (phase === "transition") {
     if (!previousSourceVersion) {
@@ -60,11 +65,13 @@ export function validateShardCompatibility(
         `Shard transition is outside the bounded previous-to-pinned window: previous=${previousSourceVersion}, pinned=${expectedSourceVersion}, live API expects=${liveApiExpectedSourceVersion ?? "not reported"}, shard serves=${actualSourceVersion}`,
       );
     }
-  } else if (payload.ok !== true) {
+  } else if (payload.ok !== true && !resumablePreDeployTransition) {
     throw new Error(`Provisioning health is not ok (received ${JSON.stringify(payload.ok)})`);
   }
 
-  if (phase !== "transition" && payload.shard_attestation?.healthy !== true) {
+  if (phase !== "transition"
+    && !resumablePreDeployTransition
+    && payload.shard_attestation?.healthy !== true) {
     throw new Error(
       `Shard attestation is not healthy (status ${JSON.stringify(payload.shard_attestation?.status ?? null)})`,
     );

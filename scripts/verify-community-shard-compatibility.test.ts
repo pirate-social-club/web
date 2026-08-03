@@ -73,6 +73,30 @@ describe("production community-shard compatibility preflight", () => {
       .toThrow("not a coherent previous pair");
   });
 
+  test("pre-deploy resumes after the pinned shard propagated ahead of the API", async () => {
+    const previous = "previous-shard.previous-shared";
+    const result = await verifyShardCompatibility({
+      apiDir: "/api",
+      execFile: gitExec as never,
+      phase: "pre-deploy",
+      retryDelayMs: 0,
+      sleepImpl: async () => {},
+      fetchImpl: async () => Response.json({
+        ...healthyPayload(EXPECTED),
+        ok: false,
+        error_code: "d1_shard_version_mismatch",
+        expected_shard_source_version: previous,
+        shard_attestation: undefined,
+      }, { status: 503 }),
+    });
+
+    expect(result).toMatchObject({
+      actualSourceVersion: EXPECTED,
+      deployShard: false,
+      liveApiExpectedSourceVersion: previous,
+    });
+  });
+
   test("accepts only the explicit previous-to-pinned mismatch during transition", () => {
     const previous = "previous-shard.previous-shared";
     const payload = {

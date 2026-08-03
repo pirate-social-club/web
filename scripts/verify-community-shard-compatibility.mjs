@@ -43,6 +43,12 @@ export function validateShardCompatibility(
   const liveApiExpectedSourceVersion = typeof payload.expected_shard_source_version === "string"
     ? payload.expected_shard_source_version
     : null;
+  const boundedPreDeployMismatch = phase === "pre-deploy"
+    && payload.ok === false
+    && payload.error_code === "d1_shard_version_mismatch"
+    && actualSourceVersion === expectedSourceVersion
+    && liveApiExpectedSourceVersion !== null
+    && liveApiExpectedSourceVersion !== expectedSourceVersion;
 
   if (phase === "transition") {
     if (!previousSourceVersion) {
@@ -60,11 +66,11 @@ export function validateShardCompatibility(
         `Shard transition is outside the bounded previous-to-pinned window: previous=${previousSourceVersion}, pinned=${expectedSourceVersion}, live API expects=${liveApiExpectedSourceVersion ?? "not reported"}, shard serves=${actualSourceVersion}`,
       );
     }
-  } else if (payload.ok !== true) {
+  } else if (!boundedPreDeployMismatch && payload.ok !== true) {
     throw new Error(`Provisioning health is not ok (received ${JSON.stringify(payload.ok)})`);
   }
 
-  if (phase !== "transition" && payload.shard_attestation?.healthy !== true) {
+  if (phase !== "transition" && !boundedPreDeployMismatch && payload.shard_attestation?.healthy !== true) {
     throw new Error(
       `Shard attestation is not healthy (status ${JSON.stringify(payload.shard_attestation?.status ?? null)})`,
     );
@@ -73,7 +79,7 @@ export function validateShardCompatibility(
   if (phase === "pre-deploy") {
     const coherentPrevious = liveApiExpectedSourceVersion !== null
       && actualSourceVersion === liveApiExpectedSourceVersion;
-    if (actualSourceVersion !== expectedSourceVersion && !coherentPrevious) {
+    if (actualSourceVersion !== expectedSourceVersion && !coherentPrevious && !boundedPreDeployMismatch) {
       throw new Error(
         `Production is not a coherent previous pair or the pinned source: pinned=${expectedSourceVersion}, live API expects=${liveApiExpectedSourceVersion ?? "not reported"}, shard serves=${actualSourceVersion}`,
       );
@@ -121,7 +127,7 @@ export async function verifyShardCompatibility({
 
   let response = null;
   let lastTransportError = null;
-  let lastTransitionError = null;
+  let lastCompatibilityError = null;
   const maxAttempts = phase === "transition" ? 6 : 2;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
@@ -134,7 +140,7 @@ export async function verifyShardCompatibility({
         },
         signal: AbortSignal.timeout(timeoutMs),
       });
-      if (phase === "transition") {
+      if (phase === "transition" || phase === "pre-deploy") {
         try {
           const payload = await response.json();
           return {
@@ -148,7 +154,7 @@ export async function verifyShardCompatibility({
             }),
           };
         } catch (error) {
-          lastTransitionError = error;
+          lastCompatibilityError = error;
           if (attempt === maxAttempts) break;
         }
       } else if (response.status < 500 || attempt === maxAttempts) {
@@ -166,10 +172,10 @@ export async function verifyShardCompatibility({
     await sleepImpl(retryDelayMs);
   }
 
-  if (phase === "transition" && lastTransitionError) {
+  if ((phase === "transition" || phase === "pre-deploy") && lastCompatibilityError) {
     throw new Error(
-      `Shard transition did not reach the bounded previous-to-pinned state after ${maxAttempts} attempts: ${lastTransitionError instanceof Error ? lastTransitionError.message : String(lastTransitionError)}`,
-      { cause: lastTransitionError },
+      `Shard ${phase} verification failed after ${maxAttempts} attempts: ${lastCompatibilityError instanceof Error ? lastCompatibilityError.message : String(lastCompatibilityError)}`,
+      { cause: lastCompatibilityError },
     );
   }
 

@@ -7,7 +7,11 @@ import type {
   RewardCampaignFundingQuote,
 } from "@pirate/api-contracts";
 
-import type { BoostCampaignSheetProps, BoostEligibleActivity } from "@/components/compositions/rewards/reward-booster-surfaces";
+import type {
+  BoostCampaignSheetProps,
+  BoostEligibleActivity,
+  BoostRewardIdentityProvider,
+} from "@/components/compositions/rewards/reward-booster-surfaces";
 import type { BoostPayoutTierDraft } from "@/components/compositions/rewards/reward-booster-surfaces";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { useApi } from "@/lib/api";
@@ -306,6 +310,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const [policyOpen, setPolicyOpen] = React.useState(false);
   const [sheetState, setSheetState] = React.useState<BoostCampaignSheetProps["state"]>("compose");
   const [eligibleActivity, setEligibleActivity] = React.useState<BoostEligibleActivity>("karaoke");
+  const [identityProvider, setIdentityProvider] = React.useState<BoostRewardIdentityProvider>("self");
   const [dailyRewardInput, setDailyRewardInput] = React.useState("1.00");
   const [budgetInput, setBudgetInput] = React.useState("10.00");
   const [payoutTiers, setPayoutTiers] = React.useState<BoostPayoutTierDraft[]>([]);
@@ -355,6 +360,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       }
       if (storedCampaign) {
         setEligibleActivity(storedCampaign.eligible_activity);
+        setIdentityProvider(storedCampaign.reward_identity_provider);
         setDailyRewardInput((storedCampaign.daily_reward_cents / 100).toFixed(2));
         const storedTiers = campaignPayoutTiers(storedCampaign);
         if (storedTiers.length > 0) {
@@ -513,6 +519,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       const now = Math.floor(Date.now() / 1_000);
       const createKeyStorage = createRequestStorageKey(input.communityId, input.postId);
       const tieredDraft = tiersPreviewAvailable && payoutTiers.length > 0;
+      const selectedProvider = existingCampaign?.reward_identity_provider ?? identityProvider;
       const targetCampaign = existingCampaign ?? await api.rewards.createCampaign({
         budget_cents: plan.budgetCents,
         community: input.communityId,
@@ -531,6 +538,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         milestone_30_cents: 0,
         min_score_bps: SCORE_THRESHOLD_BPS,
         post: input.postId,
+        reward_identity_provider: selectedProvider,
         reward_period_cap_cents: plan.dailyRewardCents,
         starts_at: now,
       });
@@ -545,6 +553,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       const nextQuote = await api.rewards.createFundingQuote(targetCampaign.id, {
         amount_cents: targetCampaign.budget_cents,
         idempotency_key: requestKey(quoteKeyStorage, "reward_quote"),
+        reward_identity_provider: targetCampaign.reward_identity_provider,
       });
       globalThis.localStorage?.removeItem(quoteKeyStorage);
       setQuote(nextQuote);
@@ -562,7 +571,13 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       createQuoteInFlight.current = false;
       setBusy(false);
     }
-  }, [api.rewards, capabilities, eligibleActivity, input.communityId, input.postId, parsedPayoutTiers, payoutTiers.length, plan, tiersPreviewAvailable]);
+  }, [api.rewards, capabilities, eligibleActivity, identityProvider, input.communityId, input.postId, parsedPayoutTiers, payoutTiers.length, plan, tiersPreviewAvailable]);
+
+  React.useEffect(() => {
+    if (tiersPreviewAvailable && payoutTiers.length > 0 && identityProvider === "very") {
+      setIdentityProvider("self");
+    }
+  }, [identityProvider, payoutTiers.length, tiersPreviewAvailable]);
 
   React.useEffect(() => {
     if (
@@ -844,6 +859,8 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         : undefined,
       eligibleActivity,
       eligibleActivities: capabilities?.eligible_activities,
+      identityProvider,
+      identityProviderLocked: campaign != null,
       endsAtLabel: campaign
         ? new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(new Date(campaign.ends_at * 1_000))
         : undefined,
@@ -875,6 +892,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       onConnectWallet: reconnectEthereumWallet ?? undefined,
       onDailyRewardChange: setDailyRewardInput,
       onEligibleActivityChange: setEligibleActivity,
+      onIdentityProviderChange: setIdentityProvider,
       onOpenChange: setSheetOpen,
       onRefresh: () => {
         if (campaign && quote && transactionHash) {

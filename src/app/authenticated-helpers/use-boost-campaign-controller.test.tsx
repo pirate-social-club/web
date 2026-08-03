@@ -27,11 +27,14 @@ let policyBlocked = false;
 let nationalityTierCapability: unknown = "unavailable";
 let nationalityTierPreview = false;
 let lastCreateBody: Record<string, unknown> | null = null;
+let lastQuoteBody: Record<string, unknown> | null = null;
 let campaignTiers: Array<{ amount_cents: number; nationalities: string[] }> = [];
+let campaignProvider: "self" | "zkpassport" | "very" = "self";
 
 const campaign = () => ({
   id: "rcp_test",
   object: "reward_campaign",
+  reward_identity_provider: campaignProvider,
   rewarder: "usr_test",
   community: "com_test",
   post: "pst_test",
@@ -102,6 +105,7 @@ const fakeApi = {
     createCampaign: async (body: { idempotency_key: string } & Record<string, unknown>) => {
       calls.create += 1;
       lastCreateBody = body;
+      campaignProvider = body.reward_identity_provider as typeof campaignProvider;
       createKeys.push(body.idempotency_key);
       if (createError) throw createError;
       return campaign();
@@ -111,8 +115,9 @@ const fakeApi = {
       if (getCampaignError) throw getCampaignError;
       return campaign();
     },
-    createFundingQuote: async (_campaignId: string, body: { idempotency_key: string }) => {
+    createFundingQuote: async (_campaignId: string, body: { idempotency_key: string } & Record<string, unknown>) => {
       calls.quote += 1;
+      lastQuoteBody = body;
       quoteKeys.push(body.idempotency_key);
       if (quoteError) throw quoteError;
       return quote();
@@ -259,7 +264,9 @@ beforeEach(() => {
   nationalityTierCapability = "unavailable";
   nationalityTierPreview = false;
   lastCreateBody = null;
+  lastQuoteBody = null;
   campaignTiers = [];
+  campaignProvider = "self";
   connectedWallets = [];
   reconnectEthereumWallet = null;
   reconnectCalls = 0;
@@ -371,6 +378,7 @@ describe("useBoostCampaignController", () => {
     const view = renderHook(() => useBoostCampaignController(input()));
     await waitFor(() => expect(view.result.current.canBoost).toBe(true));
     act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onIdentityProviderChange?.("zkpassport"));
     act(() => {
       view.result.current.sheetProps.onConfirm?.();
       view.result.current.sheetProps.onConfirm?.();
@@ -378,6 +386,9 @@ describe("useBoostCampaignController", () => {
     await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
     expect(calls.create).toBe(1);
     expect(calls.quote).toBe(1);
+    expect(lastCreateBody).toMatchObject({ reward_identity_provider: "zkpassport" });
+    expect(lastQuoteBody).toMatchObject({ reward_identity_provider: "zkpassport" });
+    expect(view.result.current.sheetProps.identityProviderLocked).toBe(true);
 
     await act(async () => view.result.current.sheetProps.onRetry?.());
     await waitFor(() => expect(calls.quote).toBe(2));

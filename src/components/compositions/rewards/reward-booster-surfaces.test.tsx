@@ -1,6 +1,6 @@
 import * as React from "react";
 import { expect, mock, test } from "bun:test";
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, within } from "@testing-library/react";
 
 import { installDomGlobals } from "@/test/setup-dom";
 installDomGlobals();
@@ -65,7 +65,8 @@ test("compose offers the exclusive activity enum as a radio group with explicit 
     />,
   );
 
-  expect(view.getAllByRole("radio")).toHaveLength(3);
+  const activityGroup = view.getByRole("radiogroup", { name: "People earn by" });
+  expect(within(activityGroup).getAllByRole("radio")).toHaveLength(3);
   expect(view.getByRole("radio", { name: "Karaoke" }).getAttribute("aria-checked")).toBe("true");
   expect(view.getByRole("radio", { name: "Study" }).getAttribute("aria-checked")).toBe("false");
 
@@ -87,6 +88,48 @@ test("compose radio group moves selection with arrow keys", () => {
   expect(selected).toBe("study");
   arrowKey(view.getByRole("radio", { name: "Karaoke" }), "ArrowUp");
   expect(selected).toBe("either");
+});
+
+test("provider choice is explicit, permanent copy is visible, and tiered pools exclude Very", () => {
+  let selected = "";
+  const view = render(
+    <BoostCampaignSheet
+      {...composeProps({
+        identityProvider: "self",
+        onIdentityProviderChange: (provider) => { selected = provider; },
+        payoutTiers: [],
+      })}
+    />,
+  );
+
+  const providerGroup = view.getByRole("radiogroup", {
+    name: "Identity provider — permanent for this song",
+  });
+  expect(within(providerGroup).getAllByRole("radio")).toHaveLength(3);
+  fireEvent.click(within(providerGroup).getByRole("radio", { name: "ZKPassport" }));
+  expect(selected).toBe("zkpassport");
+  arrowKey(within(providerGroup).getByRole("radio", { name: "Self" }), "ArrowDown");
+  expect(selected).toBe("zkpassport");
+
+  view.rerender(
+    <BoostCampaignSheet
+      {...composeProps({
+        identityProvider: "self",
+        payoutTiers: [{ id: "tier_vn", nationalities: ["VN"], amountLabel: "5.00" }],
+      })}
+    />,
+  );
+  expect(view.queryByRole("radio", { name: "Very" })).toBeNull();
+});
+
+test("persisted pool provider cannot be changed in the compose surface", () => {
+  const view = render(
+    <BoostCampaignSheet
+      {...composeProps({ identityProvider: "zkpassport", identityProviderLocked: true })}
+    />,
+  );
+  expect(view.getByRole("radio", { name: "Self" }).closest("button")?.disabled).toBe(true);
+  expect(view.getByRole("radio", { name: "ZKPassport" }).getAttribute("aria-checked")).toBe("true");
 });
 
 test("compose states the funding terms once, without restating the inputs", () => {

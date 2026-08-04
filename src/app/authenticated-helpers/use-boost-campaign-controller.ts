@@ -291,7 +291,7 @@ export interface BoostCampaignControllerInput {
 }
 
 export function supportsNationalityTierDraftPreview(capability: unknown): boolean {
-  return capability === "draft_only" || capability === "binding_preview";
+  return capability === "draft_only" || capability === "binding_preview" || capability === "enabled";
 }
 
 export function useBoostCampaignController(input: BoostCampaignControllerInput) {
@@ -487,9 +487,11 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     maxRewardCents: capabilities.max_reward_cents,
     minBudgetCents: capabilities.min_budget_cents,
   } : null, [capabilities]);
-  const tiersPreviewAvailable = Boolean(
+  const nationalityTierCapability = capabilities?.nationality_payout_tiers;
+  const tierFundingEnabled = nationalityTierCapability === "enabled";
+  const tiersPreviewAvailable = tierFundingEnabled || Boolean(
     nationalityTiersPreviewEnabled()
-    && supportsNationalityTierDraftPreview(capabilities?.nationality_payout_tiers)
+    && supportsNationalityTierDraftPreview(nationalityTierCapability)
   );
   const parsedPayoutTiers = React.useMemo(() => payoutTiers.map((tier) => ({
     nationalities: tier.nationalities,
@@ -545,7 +547,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       globalThis.localStorage?.removeItem(createKeyStorage);
       setCampaign(targetCampaign);
       globalThis.localStorage?.setItem(campaignStorageKey(input.communityId, input.postId), targetCampaign.id);
-      if (tieredDraft) {
+      if (tieredDraft && !tierFundingEnabled) {
         setSheetState("draft-preview");
         return;
       }
@@ -571,7 +573,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       createQuoteInFlight.current = false;
       setBusy(false);
     }
-  }, [api.rewards, capabilities, eligibleActivity, identityProvider, input.communityId, input.postId, parsedPayoutTiers, payoutTiers.length, plan, tiersPreviewAvailable]);
+  }, [api.rewards, capabilities, eligibleActivity, identityProvider, input.communityId, input.postId, parsedPayoutTiers, payoutTiers.length, plan, tierFundingEnabled, tiersPreviewAvailable]);
 
   React.useEffect(() => {
     if (tiersPreviewAvailable && payoutTiers.length > 0 && identityProvider === "very") {
@@ -790,7 +792,8 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     }
     if (campaign && ["scheduled", "active"].includes(campaign.status)) setSheetState("active");
     else if (sheetState === "funding-review") setSheetState("funding-review");
-    else if (campaignPayoutTiers(campaign).length > 0) setSheetState("draft-preview");
+    else if (campaignPayoutTiers(campaign).length > 0 && !tierFundingEnabled) setSheetState("draft-preview");
+    else if (campaignPayoutTiers(campaign).length > 0 && !quote) void createQuote(campaign);
     else if (!quote) {
       setErrorMessage(undefined);
       setSheetState("compose");
@@ -799,7 +802,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     else if (quote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(campaign);
     else setSheetState("quote");
     setSheetOpen(true);
-  }, [campaign, createQuote, input, quote, sheetState, transactionHash]);
+  }, [campaign, createQuote, input, quote, sheetState, tierFundingEnabled, transactionHash]);
 
   const updatePolicy = React.useCallback(async (allowed: boolean) => {
     if (!input.communityId || busy) return;

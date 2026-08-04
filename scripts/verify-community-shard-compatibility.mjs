@@ -5,6 +5,25 @@ import { pathToFileURL } from "node:url";
 const DEFAULT_HEALTH_URL = "https://api.pirate.sc/health/provisioning";
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_RETRY_DELAY_MS = 1_000;
+// A Workers deploy is not visible everywhere the instant wrangler returns. The
+// transition phase polls for the shard to flip, so it needs a budget measured
+// in "how long can propagation take", not a fixed attempt count. 6 attempts at
+// a flat 1s gave a ~6s window and cost a production release two failed attempts
+// on 2026-08-03 while every version reported was mutually consistent.
+const DEFAULT_TRANSITION_BUDGET_MS = 90_000;
+const MAX_RETRY_DELAY_MS = 5_000;
+
+// The shard and the live API both still reporting the PREVIOUS pair is not a
+// failure — it is the state before propagation lands, and the only cure is
+// waiting. Distinguishing it from a genuinely unexpected version matters in
+// both directions: without it the wait is wasted on states that will never
+// converge, and a real incompatibility burns the whole budget before failing.
+export class ShardPropagationPendingError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ShardPropagationPendingError";
+  }
+}
 
 function requiredString(value, label) {
   if (typeof value !== "string" || value.trim() === "") {
@@ -61,10 +80,16 @@ export function validateShardCompatibility(
       && payload.error_code === "d1_shard_version_mismatch"
       && actualSourceVersion === expectedSourceVersion
       && liveApiExpectedSourceVersion === previousSourceVersion;
+    // Nothing has moved yet: the shard still serves the previous source and the
+    // live API still expects it. Coherent, healthy, and simply not propagated.
+    const stillOnPrevious = actualSourceVersion === previousSourceVersion
+      && liveApiExpectedSourceVersion === previousSourceVersion;
     if (!exactConvergence && !boundedMismatch) {
-      throw new Error(
-        `Shard transition is outside the bounded previous-to-pinned window: previous=${previousSourceVersion}, pinned=${expectedSourceVersion}, live API expects=${liveApiExpectedSourceVersion ?? "not reported"}, shard serves=${actualSourceVersion}`,
-      );
+      const detail = `previous=${previousSourceVersion}, pinned=${expectedSourceVersion}, live API expects=${liveApiExpectedSourceVersion ?? "not reported"}, shard serves=${actualSourceVersion}`;
+      if (stillOnPrevious) {
+        throw new ShardPropagationPendingError(`Shard transition has not propagated yet: ${detail}`);
+      }
+      throw new Error(`Shard transition is outside the bounded previous-to-pinned window: ${detail}`);
     }
   } else if (!boundedPreDeployMismatch && payload.ok !== true) {
     throw new Error(`Provisioning health is not ok (received ${JSON.stringify(payload.ok)})`);
@@ -119,7 +144,9 @@ export async function verifyShardCompatibility({
   execFile = execFileSync,
   phase = "converged",
   previousSourceVersion = null,
+  transitionBudgetMs = DEFAULT_TRANSITION_BUDGET_MS,
   sleepImpl = (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)),
+  nowImpl = () => Date.now(),
 }) {
   const expectedSourceVersion = deriveShardSourceVersion(apiDir, execFile);
   const url = new URL(healthUrl);
@@ -128,8 +155,21 @@ export async function verifyShardCompatibility({
   let response = null;
   let lastTransportError = null;
   let lastCompatibilityError = null;
-  const maxAttempts = phase === "transition" ? 6 : 2;
+  // The transition phase waits out propagation, so it is bounded by elapsed time
+  // rather than a fixed count. Every other phase describes a state that should
+  // already be settled, and keeps its small count.
+  const isTransition = phase === "transition";
+  const startedAtMs = nowImpl();
+  const maxAttempts = isTransition ? Number.POSITIVE_INFINITY : 2;
+  const attemptsExhausted = (attempt) => (isTransition
+    ? nowImpl() - startedAtMs >= transitionBudgetMs
+    : attempt >= maxAttempts);
+  const describeBudget = (attempt) => (isTransition
+    ? `${attempt} attempts over ${Math.round((nowImpl() - startedAtMs) / 1000)}s`
+    : `${maxAttempts} attempts`);
+  let lastAttempt = 0;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    lastAttempt = attempt;
     try {
       response = await fetchImpl(url, {
         cache: "no-store",
@@ -155,26 +195,35 @@ export async function verifyShardCompatibility({
           };
         } catch (error) {
           lastCompatibilityError = error;
-          if (attempt === maxAttempts) break;
+          // Only propagation-pending states are worth waiting on. A version we
+          // never expected will not become expected, so fail immediately rather
+          // than spending the whole budget arriving at the same answer.
+          if (isTransition && !(error instanceof ShardPropagationPendingError)) break;
+          if (attemptsExhausted(attempt)) break;
         }
-      } else if (response.status < 500 || attempt === maxAttempts) {
+      } else if (response.status < 500 || attemptsExhausted(attempt)) {
         break;
       }
     } catch (error) {
       lastTransportError = error;
-      if (attempt === maxAttempts) {
+      if (attemptsExhausted(attempt)) {
         throw new Error(
-          `Unable to read ${environment} provisioning health after ${maxAttempts} attempts: ${error instanceof Error ? error.message : String(error)}`,
+          `Unable to read ${environment} provisioning health after ${describeBudget(attempt)}: ${error instanceof Error ? error.message : String(error)}`,
           { cause: error },
         );
       }
     }
-    await sleepImpl(retryDelayMs);
+    // Back off so a 90s budget is a handful of probes rather than 90 of them,
+    // while still reacting quickly when propagation lands early.
+    const delayMs = isTransition
+      ? Math.min(retryDelayMs * 2 ** (attempt - 1), MAX_RETRY_DELAY_MS)
+      : retryDelayMs;
+    await sleepImpl(delayMs);
   }
 
   if ((phase === "transition" || phase === "pre-deploy") && lastCompatibilityError) {
     throw new Error(
-      `Shard ${phase} verification failed after ${maxAttempts} attempts: ${lastCompatibilityError instanceof Error ? lastCompatibilityError.message : String(lastCompatibilityError)}`,
+      `Shard ${phase} verification failed after ${describeBudget(lastAttempt)}: ${lastCompatibilityError instanceof Error ? lastCompatibilityError.message : String(lastCompatibilityError)}`,
       { cause: lastCompatibilityError },
     );
   }

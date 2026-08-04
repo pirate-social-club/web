@@ -439,6 +439,7 @@ export function useCommunityInteractionGate({
       requirementStatuses={modalState.requirementStatuses}
       secondaryAction={modalState.secondaryAction}
       title={modalState.title}
+      verificationProviderActions={modalState.verificationProviderActions}
     />
   ) : null;
 

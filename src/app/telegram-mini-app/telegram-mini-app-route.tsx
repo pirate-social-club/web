@@ -24,6 +24,8 @@ import {
   getMissingCapabilitiesFromGateEvaluation,
   getGateFailureMessage,
   getVerificationPromptCopy,
+  type HumanVerificationProvider,
+  resolveAvailableHumanVerificationProviders,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 import { openExternalHref } from "@/lib/open-external-href";
@@ -823,7 +825,10 @@ export function TelegramMiniAppVerifyPage({
 
   const runAutoAction = React.useCallback(async (
     nextEligibility: ApiJoinEligibility,
-    options: { allowJoinAfterVerification?: boolean } = {},
+    options: {
+      allowJoinAfterVerification?: boolean;
+      selectedProvider?: HumanVerificationProvider;
+    } = {},
   ) => {
     const state = flowStateRef.current;
     const targetCommunityId = state.exchangeCommunityId ?? communityId;
@@ -940,7 +945,21 @@ export function TelegramMiniAppVerifyPage({
       return;
     }
 
-    const provider = resolveSuggestedVerificationProvider(nextEligibility);
+    const availableProviders = resolveAvailableHumanVerificationProviders(nextEligibility);
+    if (availableProviders.length > 1 && !options.selectedProvider) {
+      applyFlowAction({ providers: availableProviders, type: "choosingProviders" });
+      recordDebug("verification-provider:choices", { providers: availableProviders });
+      return;
+    }
+    if (options.selectedProvider && !availableProviders.includes(options.selectedProvider)) {
+      applyFlowAction({
+        canRetry: true,
+        message: "That verification provider is not accepted for this community requirement.",
+        type: "blocked",
+      });
+      return;
+    }
+    const provider = options.selectedProvider ?? resolveSuggestedVerificationProvider(nextEligibility);
     recordDebug("verification-provider:selected", { provider });
     if (!provider) {
       applyFlowAction({
@@ -1258,6 +1277,11 @@ export function TelegramMiniAppVerifyPage({
     <TelegramMiniAppVerifyView
       debugEvents={debugEnabled ? debugEvents : undefined}
       onOpenBoard={() => navigate(`/tg/c/${encodeURIComponent(resolvedCommunityId)}`)}
+      onChooseProvider={(provider) => {
+        const currentEligibility = flowStateRef.current.eligibility;
+        if (!currentEligibility) return;
+        void runAutoAction(currentEligibility, { selectedProvider: provider });
+      }}
       onOpenPendingLaunch={() => {
         if (!pendingLaunch) {
           return;

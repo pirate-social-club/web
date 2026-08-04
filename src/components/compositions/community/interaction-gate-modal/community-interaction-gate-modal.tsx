@@ -50,6 +50,7 @@ export interface CommunityInteractionGateModalProps {
   requirementStatuses?: CommunityGateRequirementStatus[];
   primaryAction?: CommunityInteractionGateAction | null;
   secondaryAction?: CommunityInteractionGateAction | null;
+  verificationProviderActions?: CommunityInteractionGateAction[];
 }
 
 type FormattedRequirementItem = {
@@ -105,6 +106,7 @@ export function CommunityInteractionGateModal({
   requirementStatuses,
   primaryAction,
   secondaryAction,
+  verificationProviderActions = [],
 }: CommunityInteractionGateModalProps) {
   const { locale } = useUiLocale();
   const isMobile = useIsMobile();
@@ -203,6 +205,14 @@ export function CommunityInteractionGateModal({
         {body ? (
           <div className="mt-6">
             {body}
+          </div>
+        ) : null}
+
+        {verificationProviderActions.length > 0 ? (
+          <div aria-label="Verification providers" className="mt-6 grid gap-2">
+            {verificationProviderActions.map((action) => (
+              <div key={action.label}>{renderAction(action, "secondary")}</div>
+            ))}
           </div>
         ) : null}
 

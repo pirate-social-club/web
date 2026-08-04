@@ -206,11 +206,16 @@ describe("createCommunityBlockedModalStateFactory", () => {
       suggested_verification_provider: "self",
     })));
 
-    expect(modal?.icon).toBe("self");
-    expect(modal?.primaryAction?.loading).toBe(true);
-    expect(modal?.secondaryAction?.label).toBe(interactionCopy.close);
+    expect(modal?.icon).toBeUndefined();
+    expect(modal?.primaryAction).toBeUndefined();
+    expect(modal?.verificationProviderActions?.map((action) => action.label)).toEqual([
+      "Verify with Self",
+      "Verify with ZKPassport",
+      "Verify with Very",
+    ]);
+    expect(modal?.verificationProviderActions?.[0]?.loading).toBe(true);
 
-    await modal?.primaryAction?.onClick?.();
+    await modal?.verificationProviderActions?.[0]?.onClick();
     expect(startedSelfForCommunityId).toBe("community-1");
   });
 

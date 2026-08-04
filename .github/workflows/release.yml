@@ -507,6 +507,7 @@ jobs:
             --api-dir "$GITHUB_WORKSPACE/api" \
             --environment staging \
             --phase converged \
+            --previous-source-version "${{ steps.staging-shard-preflight.outputs.previous_source_version }}" \
             --health-url https://api-staging.pirate.sc/health/provisioning
       - name: Verify staging/prod metadata
         if: steps.in-lane-freshness.outputs.stale == 'false'
@@ -1147,6 +1148,7 @@ jobs:
           node scripts/verify-community-shard-compatibility.mjs \
             --api-dir "$GITHUB_WORKSPACE/api" \
             --phase converged \
+            --previous-source-version "${{ steps.shard-preflight.outputs.previous_source_version }}" \
             --health-url https://api.pirate.sc/health/provisioning
       - name: Verify production multipart storage
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'

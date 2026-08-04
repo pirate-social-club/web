@@ -307,3 +307,91 @@ describe("shard transition propagation budget", () => {
     expect(clock.elapsedMs()).toBe(0);
   });
 });
+
+describe("post-deploy convergence propagation budget", () => {
+  const PREVIOUS = "previous-shard.previous-shared";
+
+  function fakeClock() {
+    let nowMs = 0;
+    return {
+      nowImpl: () => nowMs,
+      sleepImpl: async (delayMs: number) => {
+        nowMs += delayMs;
+      },
+      elapsedMs: () => nowMs,
+    };
+  }
+
+  test("waits through transient 503s after deploy", async () => {
+    const clock = fakeClock();
+    let attempts = 0;
+    const result = await verifyShardCompatibility({
+      apiDir: "/api",
+      execFile: gitExec as never,
+      phase: "converged",
+      previousSourceVersion: PREVIOUS,
+      retryDelayMs: 1_000,
+      nowImpl: clock.nowImpl,
+      sleepImpl: clock.sleepImpl,
+      fetchImpl: async () => {
+        attempts += 1;
+        return attempts < 4
+          ? new Response("unavailable", { status: 503 })
+          : Response.json(healthyPayload());
+      },
+    });
+
+    expect(attempts).toBe(4);
+    expect(result.actualSourceVersion).toBe(EXPECTED);
+    expect(clock.elapsedMs()).toBe(7_000);
+  });
+
+  test("waits for a coherent previous pair to converge", async () => {
+    const clock = fakeClock();
+    let attempts = 0;
+    const result = await verifyShardCompatibility({
+      apiDir: "/api",
+      execFile: gitExec as never,
+      phase: "converged",
+      previousSourceVersion: PREVIOUS,
+      retryDelayMs: 1_000,
+      nowImpl: clock.nowImpl,
+      sleepImpl: clock.sleepImpl,
+      fetchImpl: async () => {
+        attempts += 1;
+        if (attempts === 1) {
+          const payload = healthyPayload(PREVIOUS);
+          payload.expected_shard_source_version = PREVIOUS;
+          return Response.json(payload);
+        }
+        return Response.json(healthyPayload());
+      },
+    });
+
+    expect(attempts).toBe(2);
+    expect(result.actualSourceVersion).toBe(EXPECTED);
+  });
+
+  test("still fails immediately on a version outside the known window", async () => {
+    const clock = fakeClock();
+    let attempts = 0;
+    await expect(verifyShardCompatibility({
+      apiDir: "/api",
+      execFile: gitExec as never,
+      phase: "converged",
+      previousSourceVersion: PREVIOUS,
+      retryDelayMs: 1_000,
+      nowImpl: clock.nowImpl,
+      sleepImpl: clock.sleepImpl,
+      fetchImpl: async () => {
+        attempts += 1;
+        const payload = healthyPayload("unexpected-shard.unexpected-shared");
+        payload.expected_shard_source_version = "unexpected-shard.unexpected-shared";
+        return Response.json(payload);
+      },
+    })).rejects.toThrow(/expects shard source version/);
+
+    expect(attempts).toBe(1);
+    expect(clock.elapsedMs()).toBe(0);
+  });
+});

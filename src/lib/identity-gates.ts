@@ -657,8 +657,9 @@ export function resolveSuggestedVerificationProvider(
   eligibility: {
     membership_gate_summaries?: MembershipGateSummary[] | null;
     gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null;
+    missing_capabilities?: readonly string[] | null;
   },
-): VerificationProvider {
+): VerificationProvider | null {
   const legacyProvider = (eligibility as { suggested_verification_provider?: VerificationProvider | null }).suggested_verification_provider;
   if (legacyProvider) {
     return legacyProvider;
@@ -680,6 +681,23 @@ export function resolveSuggestedVerificationProvider(
   }
 
   if (missingCapabilities.includes("unique_human")) {
+    const requiredActionProviders = new Set<VerificationProvider>();
+    const visit = (action: RequiredActionNode): void => {
+      if (action.kind === "set") {
+        action.items?.forEach(visit);
+        return;
+      }
+      if (action.capability !== "unique_human") return;
+      const provider = (action as { provider?: unknown }).provider;
+      if (provider === "self" || provider === "very" || provider === "zkpassport") {
+        requiredActionProviders.add(provider);
+      }
+    };
+    ((eligibility.gate_evaluation?.required_action_set?.items ?? []) as RequiredActionNode[]).forEach(visit);
+    if (requiredActionProviders.size === 1) {
+      return Array.from(requiredActionProviders)[0] ?? null;
+    }
+
     const uniqueHumanGates = gateSummaries.filter((gate) => gate.gate_type === "unique_human");
     if (uniqueHumanGates.some((gate) => gate.accepted_providers?.includes("very") ?? false)) {
       return "very";
@@ -687,10 +705,13 @@ export function resolveSuggestedVerificationProvider(
     if (uniqueHumanGates.some((gate) => gate.accepted_providers?.includes("self") ?? false)) {
       return "self";
     }
-    return "very";
+    if (uniqueHumanGates.some((gate) => gate.accepted_providers?.includes("zkpassport") ?? false)) {
+      return "zkpassport";
+    }
+    return null;
   }
 
-  return "very";
+  return null;
 }
 
 export function hasZkPassportDocumentProviderOption(

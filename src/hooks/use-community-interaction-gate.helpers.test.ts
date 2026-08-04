@@ -273,6 +273,18 @@ describe("createDefaultBlockedModalState", () => {
     await modal?.primaryAction?.onClick?.();
     expect(startedProviders).toEqual(["zkpassport"]);
   });
+
+  test("does not invent a verification action when no provider is supported", () => {
+    const gateData = gate("verification_required", {
+      missing_capabilities: ["altcha_pow"],
+      gate_evaluation: null,
+    }, [altchaRequirement]);
+
+    const modal = createDefaultBlockedModalState(args(gateData));
+
+    expect(modal.icon).toBe("blocked");
+    expect(modal.primaryAction).toBeNull();
+  });
 });
 
 describe("gate requirement display state", () => {

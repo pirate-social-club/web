@@ -233,6 +233,37 @@ describe("resolveSuggestedVerificationProvider", () => {
       },
     })).toBe("self");
   });
+
+  test("does not invent an identity provider for ALTCHA-only requirements", () => {
+    expect(resolveSuggestedVerificationProvider({
+      membership_gate_summaries: [{ gate_type: "altcha_pow" }],
+      gate_evaluation: {
+        passed: false,
+        trace: { kind: "op", op: "and", passed: false, children: [] },
+        required_action_set: {
+          kind: "set",
+          mode: "all",
+          items: [{ kind: "action", provider: "altcha", capability: "altcha_pow", scope: "community_join" }],
+        },
+      },
+    })).toBeNull();
+  });
+
+  test("does not invent a Very provider for ambiguous unique-human requirements", () => {
+    expect(resolveSuggestedVerificationProvider({
+      membership_gate_summaries: [{ gate_type: "unique_human", accepted_providers: [] }],
+      gate_evaluation: null,
+      missing_capabilities: ["unique_human"],
+    })).toBeNull();
+  });
+
+  test("uses an explicitly accepted ZKPassport unique-human provider", () => {
+    expect(resolveSuggestedVerificationProvider({
+      membership_gate_summaries: [{ gate_type: "unique_human", accepted_providers: ["zkpassport"] }],
+      gate_evaluation: null,
+      missing_capabilities: ["unique_human"],
+    })).toBe("zkpassport");
+  });
 });
 
 describe("getSelfVerificationRequestForGates", () => {

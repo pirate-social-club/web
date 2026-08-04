@@ -484,6 +484,7 @@ jobs:
         working-directory: web
         env:
           API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          COMMUNITY_SCHEMA_POLICY_DIGEST: ${{ needs.schema-gate.outputs.policy_digest }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           VITE_BASE_NETWORK: base-sepolia
@@ -567,6 +568,8 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: read
+    outputs:
+      policy_digest: ${{ steps.schema-policy.outputs.digest }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -628,6 +631,12 @@ jobs:
             --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
             --publish-attestations \
             --concurrency 2
+      - name: Export authoritative staging schema-policy digest
+        id: schema-policy
+        shell: bash
+        run: |
+          digest="$(node -e 'const fs=require("node:fs");const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const d=String(m.effective_policy_digest||"");if(!/^[0-9a-f]{64}$/.test(d))process.exit(2);process.stdout.write(d)' "$GITHUB_WORKSPACE/schema-gate-staging.json")"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
       # always(): a SLOW scan that then fails is exactly the sample we must not
       # drop. Never fails the job — an observability step must not be able to
       # block a release.
@@ -1000,6 +1009,11 @@ jobs:
             --manifest "$GITHUB_WORKSPACE/schema-gate-production.json" \
             --publish-attestations \
             --concurrency 14
+      - name: Export authoritative production schema-policy digest
+        shell: bash
+        run: |
+          digest="$(node -e 'const fs=require("node:fs");const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const d=String(m.effective_policy_digest||"");if(!/^[0-9a-f]{64}$/.test(d))process.exit(2);process.stdout.write(d)' "$GITHUB_WORKSPACE/schema-gate-production.json")"
+          echo "COMMUNITY_SCHEMA_POLICY_DIGEST=$digest" >> "$GITHUB_ENV"
       - name: Upload production schema manifest
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

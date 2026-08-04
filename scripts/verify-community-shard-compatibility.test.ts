@@ -181,6 +181,7 @@ describe("production community-shard compatibility preflight", () => {
     await expect(verifyShardCompatibility({
       apiDir: "/api",
       execFile: gitExec as never,
+      phase: "pre-deploy",
       retryDelayMs: 0,
       sleepImpl: async () => {},
       fetchImpl: async () => {
@@ -305,5 +306,29 @@ describe("shard transition propagation budget", () => {
     // Waiting cannot turn an unexpected version into the pinned one.
     expect(attempts).toBe(1);
     expect(clock.elapsedMs()).toBe(0);
+  });
+
+  test("waits out a transient 5xx after deploy, then enforces converged compatibility", async () => {
+    const clock = fakeClock();
+    let attempts = 0;
+    const result = await verifyShardCompatibility({
+      apiDir: "/api",
+      execFile: gitExec as never,
+      phase: "converged",
+      retryDelayMs: 1_000,
+      nowImpl: clock.nowImpl,
+      sleepImpl: clock.sleepImpl,
+      fetchImpl: async () => {
+        attempts += 1;
+        return attempts < 12
+          ? new Response("unavailable", { status: 503 })
+          : convergedOnPinned();
+      },
+    });
+
+    expect(attempts).toBe(12);
+    expect(result.actualSourceVersion).toBe(EXPECTED);
+    expect(clock.elapsedMs()).toBeGreaterThan(6_000);
+    expect(clock.elapsedMs()).toBeLessThanOrEqual(90_000);
   });
 });

@@ -6,11 +6,11 @@ const DEFAULT_HEALTH_URL = "https://api.pirate.sc/health/provisioning";
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_RETRY_DELAY_MS = 1_000;
 // A Workers deploy is not visible everywhere the instant wrangler returns. The
-// transition phase polls for the shard to flip, so it needs a budget measured
-// in "how long can propagation take", not a fixed attempt count. 6 attempts at
-// a flat 1s gave a ~6s window and cost a production release two failed attempts
-// on 2026-08-03 while every version reported was mutually consistent.
-const DEFAULT_TRANSITION_BUDGET_MS = 90_000;
+// Transition and post-deploy convergence poll through Worker propagation, so
+// they need a budget measured in "how long can propagation take", not a fixed
+// attempt count. A flat 1s retry window caused release failures while every
+// version reported was mutually consistent.
+const DEFAULT_PROPAGATION_BUDGET_MS = 90_000;
 const MAX_RETRY_DELAY_MS = 5_000;
 
 // The shard and the live API both still reporting the PREVIOUS pair is not a
@@ -144,7 +144,7 @@ export async function verifyShardCompatibility({
   execFile = execFileSync,
   phase = "converged",
   previousSourceVersion = null,
-  transitionBudgetMs = DEFAULT_TRANSITION_BUDGET_MS,
+  transitionBudgetMs = DEFAULT_PROPAGATION_BUDGET_MS,
   sleepImpl = (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)),
   nowImpl = () => Date.now(),
 }) {
@@ -155,16 +155,17 @@ export async function verifyShardCompatibility({
   let response = null;
   let lastTransportError = null;
   let lastCompatibilityError = null;
-  // The transition phase waits out propagation, so it is bounded by elapsed time
-  // rather than a fixed count. Every other phase describes a state that should
-  // already be settled, and keeps its small count.
+  // A freshly deployed shard or API may report a transient 5xx before Workers
+  // propagation settles. Both phases after a shard deploy use an elapsed-time
+  // budget; a successful but incompatible response still fails immediately.
   const isTransition = phase === "transition";
+  const waitsForPropagation = isTransition || phase === "converged";
   const startedAtMs = nowImpl();
-  const maxAttempts = isTransition ? Number.POSITIVE_INFINITY : 2;
-  const attemptsExhausted = (attempt) => (isTransition
+  const maxAttempts = waitsForPropagation ? Number.POSITIVE_INFINITY : 2;
+  const attemptsExhausted = (attempt) => (waitsForPropagation
     ? nowImpl() - startedAtMs >= transitionBudgetMs
     : attempt >= maxAttempts);
-  const describeBudget = (attempt) => (isTransition
+  const describeBudget = (attempt) => (waitsForPropagation
     ? `${attempt} attempts over ${Math.round((nowImpl() - startedAtMs) / 1000)}s`
     : `${maxAttempts} attempts`);
   let lastAttempt = 0;
@@ -215,7 +216,7 @@ export async function verifyShardCompatibility({
     }
     // Back off so a 90s budget is a handful of probes rather than 90 of them,
     // while still reacting quickly when propagation lands early.
-    const delayMs = isTransition
+    const delayMs = waitsForPropagation
       ? Math.min(retryDelayMs * 2 ** (attempt - 1), MAX_RETRY_DELAY_MS)
       : retryDelayMs;
     await sleepImpl(delayMs);

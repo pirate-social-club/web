@@ -11,6 +11,13 @@ name: Production version gap
 # This job watches the only signal that cannot lie about it: what production is
 # actually serving, compared against main.
 #
+# The API pair is watched the same way in the `api-pin-gap` job below:
+# api.pirate.sc/__version against .github/release-refs/api.sha. The web pair
+# cannot see it — a manual CLI deploy can run API production ahead of the pin
+# with no Release run at all. On 2026-08-04 production served d8b8e83c9
+# (deployed 13:08:53Z by a manual lane) while the pin read a2179db59 for hours,
+# and nothing surfaced it.
+#
 # Detection is event-driven FIRST and scheduled second. Two independent
 # weaknesses make either alone insufficient:
 #
@@ -311,4 +318,188 @@ jobs:
         if: steps.gap.outcome == 'failure'
         run: |
           echo "::error::Production is not serving main (${{ steps.gap.outputs.kind }})."
+          exit 1
+
+  api-pin-gap:
+    name: API pin vs production
+    # The same signal for the API pair: what api.pirate.sc is serving against
+    # .github/release-refs/api.sha. Both directions are alarms and they are
+    # DIFFERENT alarms:
+    #
+    #   deployed NEWER than the pin — a manual deploy ran ahead; the pin file
+    #     now misleads anyone reading it to make a decision (the 2026-08-04
+    #     case: d8b8e83c9 live for hours while the pin read a2179db59).
+    #   deployed OLDER than the pin — the deploy lane is lagging or failed
+    #     silently; a merged change everyone believes is live is not.
+    #
+    # Alarm only, by construction: this job observes and opens a tracked issue,
+    # exactly like the web leg. Nothing in the Release lane is gated on this
+    # workflow, so a failing gap check can never hold a deploy hostage.
+    if: >-
+      github.event_name != 'workflow_run'
+      || (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main')
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      # Needed for the decision module and the pin file; the comparison itself
+      # still goes through the API, so this stays a shallow checkout.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Compare the API pin against API production
+        id: api-gap
+        continue-on-error: true
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        env:
+          API_VERSION_URL: https://api.pirate.sc/__version
+          API_PIN_PATH: .github/release-refs/api.sha
+        with:
+          # The compare runs against pirate-social-club/api, which the workflow
+          # token cannot see; RELEASE_GITHUB_TOKEN is the cross-repo read
+          # identity the release preflight already uses for this.
+          github-token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          script: |
+            const { readFile } = await import("node:fs/promises");
+            const { decideApiPinGap } = await import(
+              `${process.env.GITHUB_WORKSPACE}/scripts/ci/version-gap.mjs`
+            );
+            const url = process.env.API_VERSION_URL;
+
+            // Production being unreachable is its own alarm, and a different one
+            // from production being at the wrong commit — say which.
+            let served;
+            try {
+              const response = await fetch(url, { headers: { "user-agent": "prod-version-gap" } });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              served = await response.json();
+            } catch (error) {
+              core.setOutput("kind", "unreachable");
+              core.setOutput("detail", `Could not read ${url}: ${error.message}`);
+              core.setFailed(`API production version endpoint is unreachable: ${error.message}`);
+              return;
+            }
+
+            const prodSha = String(served.git_sha || "").trim();
+            const pinSha = (await readFile(`${process.env.GITHUB_WORKSPACE}/${process.env.API_PIN_PATH}`, "utf8")).trim();
+            if (!prodSha || !/^[0-9a-f]{40}$/.test(pinSha)) {
+              const detail = !prodSha
+                ? `${url} returned no git_sha: ${JSON.stringify(served)}`
+                : `${process.env.API_PIN_PATH} must contain one full lowercase commit SHA, got "${pinSha}"`;
+              core.setOutput("kind", "unreachable");
+              core.setOutput("detail", detail);
+              core.setFailed(detail);
+              return;
+            }
+
+            // /__version serves an abbreviated SHA, so compare by prefix before
+            // spending an API call. Otherwise ask the API repo how the deployed
+            // commit relates to the pin, base=pin, head=production.
+            let status = "identical";
+            let comparisonDetail = "production sha is a prefix of the pin; compare skipped";
+            if (!pinSha.startsWith(prodSha)) {
+              const comparison = await github.rest.repos.compareCommitsWithBasehead({
+                owner: "pirate-social-club",
+                repo: "api",
+                basehead: `${pinSha}...${prodSha}`,
+              });
+              status = comparison.data.status;
+              comparisonDetail =
+                `compare ${pinSha.slice(0, 7)}...${prodSha} reported status="${status}" `
+                + `ahead_by=${comparison.data.ahead_by} behind_by=${comparison.data.behind_by}`;
+            }
+
+            core.setOutput("detail", [
+              `api production: \`${prodSha}\` (built ${served.build_timestamp || "unknown"})`,
+              `release pin: \`${pinSha.slice(0, 7)}\` (${process.env.API_PIN_PATH})`,
+              comparisonDetail,
+            ].join("\n- "));
+
+            const decision = decideApiPinGap({ productionSha: prodSha, pinSha, compareStatus: status });
+            core.setOutput("kind", decision.kind);
+            if (decision.failed) core.setFailed(decision.message);
+            else core.notice(decision.message);
+
+      - name: Open or update the tracked API pin-gap issue
+        if: steps.api-gap.outcome == 'failure'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        env:
+          GAP_KIND: ${{ steps.api-gap.outputs.kind }}
+          GAP_DETAIL: ${{ steps.api-gap.outputs.detail }}
+        with:
+          script: |
+            const kind = process.env.GAP_KIND || "deployed_behind_pin";
+            const detail = process.env.GAP_DETAIL || "(no detail captured)";
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const title = kind === "unreachable"
+              ? "API production version endpoint is unreachable"
+              : kind === "deployed_ahead_of_pin"
+                ? "API production is ahead of the release pin"
+                : kind === "diverged"
+                  ? "API production has diverged from the release pin"
+                  : "API production is behind the release pin";
+            const guidance = {
+              deployed_ahead_of_pin: [
+                "A deploy ran AHEAD of the release pin — typically a manual CLI deploy lane.",
+                "`.github/release-refs/api.sha` no longer describes what is live, so anyone",
+                "reading it to make a decision is being misled. Establish what was deployed",
+                "and why, then either advance the pin to the deployed commit through the",
+                "normal pin-bump PR (green `api-ci` push run) or roll production back to the pin.",
+              ],
+              deployed_behind_pin: [
+                "The deploy lane is lagging or failed silently: the pin advanced on `main`",
+                "but API production never caught up, so a merged change everyone believes is",
+                "live is not. Check the most recent Release runs — a run whose conclusion is",
+                "`success` may still have SKIPPED the API deploy after being superseded. If",
+                "the pin bump's own release failed, re-run it or advance a new pin.",
+              ],
+              unreachable: [
+                "The API production version endpoint did not answer. Treat this as a possible",
+                "API production outage first and a monitoring failure second.",
+              ],
+              diverged: [
+                "API production and the release pin share no ancestry. Expect a manual deploy",
+                "off a branch, a force-push to API `main`, or a rolled-back pin. Establish",
+                "what is actually deployed before promoting anything else.",
+              ],
+            }[kind] || ["Unclassified API pin-gap failure."];
+
+            const body = [...guidance, "", detail, "", `Last run: ${runUrl}`].join("\n");
+
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: "prod-version-gap",
+              per_page: 20,
+            });
+            const match = existing.data.find((issue) => issue.title === title);
+            if (match) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body,
+                assignees: ["technohippi3"],
+              });
+              core.notice(`Updated tracked API pin-gap issue #${match.number}`);
+            } else {
+              const created = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ["prod-version-gap"],
+                assignees: ["technohippi3"],
+              });
+              core.notice(`Opened tracked API pin-gap issue #${created.data.number}`);
+            }
+
+      # The job status has to reflect reality too — a tracked issue nobody opens is
+      # the same failure mode this workflow exists to catch.
+      - name: Reflect API pin gap
+        if: steps.api-gap.outcome == 'failure'
+        run: |
+          echo "::error::API production is not at the pinned commit (${{ steps.api-gap.outputs.kind }})."
           exit 1

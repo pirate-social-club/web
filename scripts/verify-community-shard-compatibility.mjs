@@ -91,6 +91,17 @@ export function validateShardCompatibility(
       }
       throw new Error(`Shard transition is outside the bounded previous-to-pinned window: ${detail}`);
     }
+  } else if (phase === "converged" && previousSourceVersion) {
+    const exactConvergence = payload.ok === true
+      && actualSourceVersion === expectedSourceVersion
+      && liveApiExpectedSourceVersion === expectedSourceVersion;
+    const inPropagationWindow = [previousSourceVersion, expectedSourceVersion].includes(actualSourceVersion)
+      && [previousSourceVersion, expectedSourceVersion].includes(liveApiExpectedSourceVersion);
+    if (!exactConvergence && inPropagationWindow) {
+      throw new ShardPropagationPendingError(
+        `Shard convergence has not propagated yet: previous=${previousSourceVersion}, pinned=${expectedSourceVersion}, live API expects=${liveApiExpectedSourceVersion}, shard serves=${actualSourceVersion}`,
+      );
+    }
   } else if (!boundedPreDeployMismatch && payload.ok !== true) {
     throw new Error(`Provisioning health is not ok (received ${JSON.stringify(payload.ok)})`);
   }
@@ -155,16 +166,18 @@ export async function verifyShardCompatibility({
   let response = null;
   let lastTransportError = null;
   let lastCompatibilityError = null;
-  // The transition phase waits out propagation, so it is bounded by elapsed time
+  // Transition and post-deploy convergence wait out propagation, so they are bounded by elapsed time
   // rather than a fixed count. Every other phase describes a state that should
   // already be settled, and keeps its small count.
   const isTransition = phase === "transition";
+  const isConverging = phase === "converged" && previousSourceVersion !== null;
+  const isPropagationPhase = isTransition || isConverging;
   const startedAtMs = nowImpl();
-  const maxAttempts = isTransition ? Number.POSITIVE_INFINITY : 2;
-  const attemptsExhausted = (attempt) => (isTransition
+  const maxAttempts = isPropagationPhase ? Number.POSITIVE_INFINITY : 2;
+  const attemptsExhausted = (attempt) => (isPropagationPhase
     ? nowImpl() - startedAtMs >= transitionBudgetMs
     : attempt >= maxAttempts);
-  const describeBudget = (attempt) => (isTransition
+  const describeBudget = (attempt) => (isPropagationPhase
     ? `${attempt} attempts over ${Math.round((nowImpl() - startedAtMs) / 1000)}s`
     : `${maxAttempts} attempts`);
   let lastAttempt = 0;
@@ -180,7 +193,7 @@ export async function verifyShardCompatibility({
         },
         signal: AbortSignal.timeout(timeoutMs),
       });
-      if (phase === "transition" || phase === "pre-deploy") {
+      if (phase === "transition" || phase === "pre-deploy" || isConverging) {
         try {
           const payload = await response.json();
           return {
@@ -198,7 +211,9 @@ export async function verifyShardCompatibility({
           // Only propagation-pending states are worth waiting on. A version we
           // never expected will not become expected, so fail immediately rather
           // than spending the whole budget arriving at the same answer.
-          if (isTransition && !(error instanceof ShardPropagationPendingError)) break;
+          if (isPropagationPhase
+            && !(error instanceof ShardPropagationPendingError)
+            && response.status < 500) break;
           if (attemptsExhausted(attempt)) break;
         }
       } else if (response.status < 500 || attemptsExhausted(attempt)) {
@@ -215,13 +230,13 @@ export async function verifyShardCompatibility({
     }
     // Back off so a 90s budget is a handful of probes rather than 90 of them,
     // while still reacting quickly when propagation lands early.
-    const delayMs = isTransition
+    const delayMs = isPropagationPhase
       ? Math.min(retryDelayMs * 2 ** (attempt - 1), MAX_RETRY_DELAY_MS)
       : retryDelayMs;
     await sleepImpl(delayMs);
   }
 
-  if ((phase === "transition" || phase === "pre-deploy") && lastCompatibilityError) {
+  if ((phase === "transition" || phase === "pre-deploy" || isConverging) && lastCompatibilityError) {
     throw new Error(
       `Shard ${phase} verification failed after ${describeBudget(lastAttempt)}: ${lastCompatibilityError instanceof Error ? lastCompatibilityError.message : String(lastCompatibilityError)}`,
       { cause: lastCompatibilityError },

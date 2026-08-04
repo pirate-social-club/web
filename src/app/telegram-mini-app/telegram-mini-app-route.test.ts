@@ -212,6 +212,20 @@ describe("Telegram mini-app ALTCHA routing", () => {
 });
 
 describe("telegram verification view model", () => {
+  test("renders multi-provider requirements as a choice instead of progress", () => {
+    expect(resolveTelegramVerifyViewModel({
+      screen: {
+        kind: "choosing_provider",
+        providers: ["self", "zkpassport", "very"],
+      },
+    })).toEqual({
+      busy: false,
+      message: null,
+      showSpinner: false,
+      title: "Choose verification method",
+    });
+  });
+
   test("shows page-level progress while checking the Telegram session", () => {
     expect(resolveTelegramVerifyViewModel({ screen: { kind: "booting" } })).toMatchObject({
       busy: true,

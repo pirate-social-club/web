@@ -13,6 +13,7 @@ import { useCommunityFeedPosts } from "@/app/authenticated-data/community-feed-d
 import { type FeedSort } from "@/components/compositions/posts/feed/feed";
 import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
+import { CommunityJoinVerificationChooserModal } from "@/components/compositions/community/join-verification-chooser-modal/community-join-verification-chooser-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { ZkPassportVerificationModal } from "@/components/compositions/verification/zkpassport-verification-modal/zkpassport-verification-modal";
@@ -28,7 +29,15 @@ import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin"
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
-import { getJoinCtaLabel, getVerificationCapabilitiesForProvider, getVerificationRequirementsForGates, isJoinCtaActionable } from "@/lib/identity-gates";
+import {
+  getJoinCtaLabel,
+  getMissingCapabilitiesFromGateEvaluation,
+  getVerificationCapabilitiesForProvider,
+  getVerificationRequirementsForGates,
+  isJoinCtaActionable,
+  resolveAvailableHumanVerificationProviders,
+  type HumanVerificationProvider,
+} from "@/lib/identity-gates";
 import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
 import { useCommunityFollow } from "@/hooks/use-community-follow";
 import { useCommunityMembershipActions } from "@/hooks/use-community-membership-actions";
@@ -453,6 +462,7 @@ export function PublicCommunityRoutePage({
     selfModalOpen: joinSelfModalOpen,
     selfPrompt: joinSelfPrompt,
     startGateVerification,
+    startVerificationProvider,
     startSelfVerification,
     setAltchaPayload,
     veryLoading: joinVeryLoading,
@@ -467,6 +477,12 @@ export function PublicCommunityRoutePage({
     onJoined: markViewerJoined,
     refetchEligibility,
   });
+  const membershipProviderChoices = React.useMemo(
+    () => eligibility?.status === "verification_required"
+      ? resolveAvailableHumanVerificationProviders(eligibility)
+      : [],
+    [eligibility],
+  );
   const {
     handleClaimModalOpen,
     handleClaimModalOpenChange,
@@ -478,6 +494,8 @@ export function PublicCommunityRoutePage({
     joinRequestModalOpen,
     joinRequestSubmitting,
     proofOfWorkModalOpen,
+    setVerificationChooserModalOpen,
+    verificationChooserModalOpen,
     setProofOfWorkModalOpen,
   } = useCommunityMembershipActions({
     altchaPayload,
@@ -490,6 +508,7 @@ export function PublicCommunityRoutePage({
     handleClaimNamespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     handleClaimDismissal,
     handleJoin,
+    hasVerificationChoices: membershipProviderChoices.length > 1,
     onAuthRequired: () => {
       requestAuth("Connect your wallet to join communities.");
     },
@@ -498,6 +517,18 @@ export function PublicCommunityRoutePage({
     },
     sessionUserId: session?.user?.id,
   });
+  const handleChooseVerificationProvider = React.useCallback(async (
+    provider: HumanVerificationProvider,
+  ) => {
+    const result = await startVerificationProvider(provider, {
+      missingCapabilities: eligibility
+        ? getMissingCapabilitiesFromGateEvaluation(eligibility)
+        : null,
+      membershipGateSummaries: eligibility?.membership_gate_summaries ?? null,
+      showToastOnError: true,
+    });
+    if (result === "started") setVerificationChooserModalOpen(false);
+  }, [eligibility, setVerificationChooserModalOpen, startVerificationProvider]);
 
   React.useEffect(() => {
     if (joinError) toast.error(joinError);
@@ -752,6 +783,13 @@ export function PublicCommunityRoutePage({
         onSubmit={handleJoinRequestSubmit}
         open={joinRequestModalOpen}
         submitting={joinRequestSubmitting || joinLoading}
+      />
+      <CommunityJoinVerificationChooserModal
+        locale={locale}
+        onChooseProvider={handleChooseVerificationProvider}
+        onOpenChange={setVerificationChooserModalOpen}
+        open={verificationChooserModalOpen}
+        providerChoices={membershipProviderChoices}
       />
       {altchaRequired ? (
         <CommunityProofOfWorkModal

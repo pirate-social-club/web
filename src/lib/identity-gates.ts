@@ -13,6 +13,7 @@ import { getLocaleMessages } from "@/locales";
 
 type IdentityGateAudience = "public" | "admin";
 type VerificationProvider = "self" | "very" | "passport" | "zkpassport";
+export type HumanVerificationProvider = "self" | "very" | "zkpassport";
 type RequirementProviderContext = VerificationProvider | null;
 type MissingCapability = "unique_human" | "age_over_18" | "minimum_age" | "nationality" | "gender" | "wallet_score" | "altcha_pow";
 type RequiredActionNode = Omit<NonNullable<NonNullable<JoinEligibility["gate_evaluation"]>["required_action_set"]>["items"][number], "items"> & {
@@ -660,6 +661,20 @@ export function resolveSuggestedVerificationProvider(
     missing_capabilities?: readonly string[] | null;
   },
 ): VerificationProvider | null {
+  const availableHumanProviders = resolveAvailableHumanVerificationProviders(eligibility);
+  const preferredProvider = (eligibility as {
+    preferred_verification_provider?: HumanVerificationProvider | null;
+  }).preferred_verification_provider;
+  if (preferredProvider && availableHumanProviders.includes(preferredProvider)) {
+    return preferredProvider;
+  }
+  if (availableHumanProviders.length === 1) {
+    return availableHumanProviders[0] ?? null;
+  }
+  if (availableHumanProviders.length > 1) {
+    return null;
+  }
+
   const legacyProvider = (eligibility as { suggested_verification_provider?: VerificationProvider | null }).suggested_verification_provider;
   if (legacyProvider) {
     return legacyProvider;
@@ -712,6 +727,112 @@ export function resolveSuggestedVerificationProvider(
   }
 
   return null;
+}
+
+const HUMAN_VERIFICATION_PROVIDER_ORDER: HumanVerificationProvider[] = [
+  "self",
+  "zkpassport",
+  "very",
+];
+
+function defaultHumanProvidersForCapability(
+  capability: MissingCapability,
+): HumanVerificationProvider[] {
+  switch (capability) {
+    case "unique_human":
+      return [...HUMAN_VERIFICATION_PROVIDER_ORDER];
+    case "minimum_age":
+    case "nationality":
+    case "gender":
+      return ["self", "zkpassport"];
+    case "age_over_18":
+      return ["self"];
+    default:
+      return [];
+  }
+}
+
+function isHumanVerificationProvider(value: string): value is HumanVerificationProvider {
+  return value === "self" || value === "zkpassport" || value === "very";
+}
+
+function humanProvidersForCapability(input: {
+  capability: MissingCapability;
+  gateSummaries: MembershipGateSummary[];
+  requiredActionItems?: RequiredActionNode[];
+}): HumanVerificationProvider[] {
+  const defaults = defaultHumanProvidersForCapability(input.capability);
+  if (defaults.length === 0) return [];
+  const matchingGates = input.gateSummaries.filter((gate) => gate.gate_type === input.capability);
+  if (matchingGates.length === 0) {
+    const requiredActionProviders = new Set<HumanVerificationProvider>();
+    const visit = (action: RequiredActionNode): void => {
+      if (action.kind === "set") {
+        action.items?.forEach(visit);
+        return;
+      }
+      if (action.capability !== input.capability) return;
+      const provider = (action as { provider?: string }).provider;
+      if (provider && isHumanVerificationProvider(provider) && defaults.includes(provider)) {
+        requiredActionProviders.add(provider);
+      }
+    };
+    input.requiredActionItems?.forEach(visit);
+    if (requiredActionProviders.size > 0) {
+      return HUMAN_VERIFICATION_PROVIDER_ORDER.filter((provider) =>
+        requiredActionProviders.has(provider)
+      );
+    }
+    return defaults;
+  }
+
+  const accepted = new Set<HumanVerificationProvider>();
+  for (const gate of matchingGates) {
+    const gateProviders = gate.accepted_providers?.filter(isHumanVerificationProvider) ?? [];
+    for (const provider of gateProviders.length > 0 ? gateProviders : defaults) {
+      if (defaults.includes(provider)) accepted.add(provider);
+    }
+  }
+  return HUMAN_VERIFICATION_PROVIDER_ORDER.filter((provider) => accepted.has(provider));
+}
+
+export function resolveAvailableHumanVerificationProviders(
+  eligibility: {
+    membership_gate_summaries?: MembershipGateSummary[] | null;
+    gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null;
+    missing_capabilities?: readonly string[] | null;
+    preferred_verification_provider?: HumanVerificationProvider | null;
+  },
+): HumanVerificationProvider[] {
+  const gateSummaries = eligibility.membership_gate_summaries ?? [];
+  const requiredActionItems = (eligibility.gate_evaluation?.required_action_set?.items ?? []) as RequiredActionNode[];
+  const missingCapabilities = getMissingCapabilitiesFromGateEvaluation(eligibility)
+    .filter((capability) => defaultHumanProvidersForCapability(capability).length > 0);
+  const capabilities = missingCapabilities.length > 0
+    ? missingCapabilities
+    : gateSummaries.map((gate) => gate.gate_type).filter((gateType): gateType is MissingCapability =>
+      defaultHumanProvidersForCapability(gateType as MissingCapability).length > 0
+    );
+  if (capabilities.length === 0) return [];
+
+  let available = new Set(humanProvidersForCapability({
+    capability: capabilities[0],
+    gateSummaries,
+    requiredActionItems,
+  }));
+  for (const capability of capabilities.slice(1)) {
+    const providers = new Set(humanProvidersForCapability({
+      capability,
+      gateSummaries,
+      requiredActionItems,
+    }));
+    available = new Set([...available].filter((provider) => providers.has(provider)));
+  }
+
+  const ordered = HUMAN_VERIFICATION_PROVIDER_ORDER.filter((provider) => available.has(provider));
+  const preferred = eligibility.preferred_verification_provider;
+  if (!preferred || !ordered.includes(preferred)) return ordered;
+  return [preferred, ...ordered.filter((provider) => provider !== preferred)];
 }
 
 export function hasZkPassportDocumentProviderOption(

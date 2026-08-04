@@ -282,7 +282,7 @@ describe("useCommunityJoinVerification", () => {
     expect(selfStarts).toEqual([]);
   });
 
-  test("preserves the Telegram Self to ZKPassport substitution for a selected document branch", async () => {
+  test("requires an explicit provider choice for a multi-provider Telegram document branch", async () => {
     (window as Window & { Telegram?: { WebApp: object } }).Telegram = { WebApp: {} };
     const { result } = renderHook(() =>
       useCommunityJoinVerification({
@@ -294,11 +294,19 @@ describe("useCommunityJoinVerification", () => {
     );
 
     await act(async () => {
-      await result.current.startGateVerification({
+      expect(await result.current.startGateVerification({
         accepted_providers: ["self", "zkpassport"],
         gate_type: "nationality",
         required_values: ["GE"],
-      });
+      })).toBe("blocked");
+      expect(await result.current.startVerificationProvider("zkpassport", {
+        missingCapabilities: ["nationality"],
+        membershipGateSummaries: [{
+          accepted_providers: ["self", "zkpassport"],
+          gate_type: "nationality",
+          required_values: ["GE"],
+        }],
+      })).toBe("started");
     });
     delete (window as Window & { Telegram?: { WebApp: object } }).Telegram;
 

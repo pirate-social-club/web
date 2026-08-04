@@ -19,6 +19,8 @@ import {
   hasZkPassportDocumentProviderOption,
   hasAltchaProofAction,
   hasOnlyWalletGateRequirements,
+  type HumanVerificationProvider,
+  resolveAvailableHumanVerificationProviders,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 import { toast } from "@/components/primitives/sonner";
@@ -339,6 +341,35 @@ export function useCommunityJoinVerification({
     }
   }, [privyRuntime, walletSnapshot]);
 
+  const startVerificationProvider = React.useCallback(async (
+    provider: HumanVerificationProvider,
+    options: {
+      missingCapabilities?: string[] | null;
+      membershipGateSummaries?: ApiJoinEligibility["membership_gate_summaries"] | null;
+      showToastOnError?: boolean;
+    } = {},
+  ): Promise<"blocked" | "started"> => {
+    setJoinError(null);
+    if (provider === "very") {
+      const result = await startVeryVerification();
+      return result.started ? "started" : "blocked";
+    }
+    if (provider === "zkpassport") {
+      const result = await startZkPassportVerification({
+        missingCapabilities: options.missingCapabilities,
+        membershipGateSummaries: options.membershipGateSummaries,
+        showToastOnError: options.showToastOnError ?? true,
+      });
+      return result.started ? "started" : "blocked";
+    }
+    const result = await startSelfVerification({
+      missingCapabilities: options.missingCapabilities,
+      membershipGateSummaries: options.membershipGateSummaries,
+      showToastOnError: options.showToastOnError ?? true,
+    });
+    return result.started ? "started" : "blocked";
+  }, [startSelfVerification, startVeryVerification, startZkPassportVerification]);
+
   const startGateVerification = React.useCallback(async (
     gate: MembershipGateSummary,
   ): Promise<GateVerificationStartResult> => {
@@ -363,32 +394,22 @@ export function useCommunityJoinVerification({
       return result === "blocked" || result === "failed" ? "blocked" : "started";
     }
 
-    const acceptedProviders = gate.accepted_providers ?? [];
-    if (gate.gate_type === "unique_human" && acceptedProviders.includes("very")) {
-      const result = await startVeryVerification();
-      return result.started ? "started" : "blocked";
-    }
-
     const missingCapabilities = [getGateCapability(gate)];
     const membershipGateSummaries = [gate];
-    const useZkPassport = acceptedProviders.includes("zkpassport") &&
-      (isTelegramMiniAppRuntime() || !acceptedProviders.includes("self"));
-    if (useZkPassport) {
-      const result = await startZkPassportVerification({
-        missingCapabilities,
-        membershipGateSummaries,
-        showToastOnError: true,
-      });
-      return result.started ? "started" : "blocked";
+    const providers = resolveAvailableHumanVerificationProviders({
+      membership_gate_summaries: membershipGateSummaries,
+      missing_capabilities: missingCapabilities,
+    });
+    if (providers.length !== 1) {
+      setJoinError("Choose a supported verification provider to continue.");
+      return "blocked";
     }
-
-    const result = await startSelfVerification({
+    return startVerificationProvider(providers[0], {
       missingCapabilities,
       membershipGateSummaries,
       showToastOnError: true,
     });
-    return result.started ? "started" : "blocked";
-  }, [refreshPassportAndJoin, startSelfVerification, startVeryVerification, startWalletGateVerification, startZkPassportVerification]);
+  }, [refreshPassportAndJoin, startVerificationProvider, startWalletGateVerification]);
 
   React.useEffect(() => {
     if (!walletGateVerificationPending || !walletsReady) {
@@ -571,6 +592,7 @@ export function useCommunityJoinVerification({
     selfPrompt,
     startSelfVerification,
     startGateVerification,
+    startVerificationProvider,
     startZkPassportVerification,
     startVeryVerification,
     veryLoading,

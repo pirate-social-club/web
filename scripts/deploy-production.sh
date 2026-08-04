@@ -157,6 +157,11 @@ API_SHARD_SOURCE_VERSION="$(
     "$(git -C "$API_DIR" rev-parse HEAD:services/community-d1-shard)" \
     "$(git -C "$API_DIR" rev-parse HEAD:services/shared)"
 )"
+SCHEMA_POLICY_DIGEST="${COMMUNITY_SCHEMA_POLICY_DIGEST:-}"
+if [[ -n "$SCHEMA_POLICY_DIGEST" && ! "$SCHEMA_POLICY_DIGEST" =~ ^[0-9a-f]{64}$ ]]; then
+  echo "COMMUNITY_SCHEMA_POLICY_DIGEST must be empty or one lowercase SHA-256 digest" >&2
+  exit 1
+fi
 
 if [[ "$HOTFIX" != "1" ]]; then
   require_clean_release_source "$WEB_DIR" "web"
@@ -201,6 +206,7 @@ log "deploy api production"
   --var "BUILD_GIT_SHA:$API_SHA" \
   --var "BUILD_GIT_REF:$API_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" \
+  --var "COMMUNITY_SCHEMA_POLICY_DIGEST:$SCHEMA_POLICY_DIGEST" \
   --define "__PIRATE_BUILD_GIT_SHA__:\"$API_SHA\"" \
   --define "__PIRATE_BUILD_GIT_REF__:\"$API_REF\"" \
   --define "__PIRATE_BUILD_TIMESTAMP__:\"$BUILD_TIMESTAMP\"" \

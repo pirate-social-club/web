@@ -84,3 +84,65 @@ export function decide({
     message: `Production has been ${aheadBy} commit(s) behind for ${gapMinutes} min.`,
   };
 }
+
+/**
+ * Decides what to report for the API pair: what api.pirate.sc is serving against
+ * the pinned commit in .github/release-refs/api.sha.
+ *
+ * `compareStatus` is the GitHub compare in the API repo of base=pinSha,
+ * head=productionSha:
+ *   "identical" — production is exactly the pinned commit
+ *   "ahead"     — production is a descendant of the pin: a deploy ran AHEAD of
+ *                 the pin (a manual CLI lane), so the pin file now misleads
+ *                 anyone reading it to make a decision
+ *   "behind"    — production is an ancestor of the pin: the deploy lane is
+ *                 lagging or failed silently, and a merged change everyone
+ *                 believes is live is not
+ *   "diverged"  — neither contains the other; never normal
+ *
+ * The two gap directions have different causes and different responses, so they
+ * get distinct kinds and distinct labels. A check that only sees one of them is
+ * half a check.
+ */
+export function decideApiPinGap({ productionSha, pinSha, compareStatus }) {
+  if (!productionSha) {
+    return { kind: "unreachable", failed: true, message: "API production version endpoint returned no git_sha." };
+  }
+  if (!pinSha) {
+    return { kind: "unreachable", failed: true, message: "The API release pin (.github/release-refs/api.sha) is empty." };
+  }
+  // /__version serves an abbreviated SHA, so equality is a prefix test.
+  if (pinSha.startsWith(productionSha) || compareStatus === "identical") {
+    return { kind: "in_sync", failed: false, message: `API production is serving the pinned commit (${productionSha}).` };
+  }
+  if (compareStatus === "ahead") {
+    return {
+      kind: "deployed_ahead_of_pin",
+      failed: true,
+      message:
+        `API production ${productionSha} is NEWER than the release pin ${pinSha.slice(0, 7)}: ` +
+        "a manual deploy ran ahead of the pin, so the pin file no longer describes what is live.",
+    };
+  }
+  if (compareStatus === "behind") {
+    return {
+      kind: "deployed_behind_pin",
+      failed: true,
+      message:
+        `API production ${productionSha} is OLDER than the release pin ${pinSha.slice(0, 7)}: ` +
+        "the deploy lane is lagging or failed silently, and a merged change believed to be live is not.",
+    };
+  }
+  if (compareStatus === "diverged") {
+    return {
+      kind: "diverged",
+      failed: true,
+      message: `API production ${productionSha} and the release pin ${pinSha.slice(0, 7)} have diverged.`,
+    };
+  }
+  return {
+    kind: "unreachable",
+    failed: true,
+    message: `Could not establish how API production ${productionSha} relates to the release pin (${compareStatus}).`,
+  };
+}

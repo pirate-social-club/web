@@ -16,6 +16,7 @@ import {
   telegramVerifyWaitingMessage,
   telegramVerifyWaitingTitle,
   telegramVerifyTerminalMessage,
+  hasOnlyTelegramJoinAltchaRequirement,
 } from "./telegram-mini-app-route";
 
 describe("resolveTelegramMiniAppStartPath", () => {
@@ -189,6 +190,24 @@ describe("telegram verification launch copy", () => {
   test("labels explicit launch buttons by provider", () => {
     expect(telegramVerifyLaunchButtonLabel("self")).toBe("Open Self.xyz");
     expect(telegramVerifyLaunchButtonLabel("zkpassport")).toBe("Open ZKPassport");
+  });
+});
+
+describe("Telegram mini-app ALTCHA routing", () => {
+  test("runs the local proof path only when ALTCHA is the sole missing requirement", () => {
+    const altchaOnly = {
+      status: "verification_required",
+      missing_capabilities: ["altcha_pow"],
+      gate_evaluation: null,
+    } as Parameters<typeof hasOnlyTelegramJoinAltchaRequirement>[0];
+    const composite = {
+      status: "verification_required",
+      missing_capabilities: ["altcha_pow", "unique_human"],
+      gate_evaluation: null,
+    } as Parameters<typeof hasOnlyTelegramJoinAltchaRequirement>[0];
+
+    expect(hasOnlyTelegramJoinAltchaRequirement(altchaOnly)).toBe(true);
+    expect(hasOnlyTelegramJoinAltchaRequirement(composite)).toBe(false);
   });
 });
 

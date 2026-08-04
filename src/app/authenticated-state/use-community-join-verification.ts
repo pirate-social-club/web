@@ -487,8 +487,10 @@ export function useCommunityJoinVerification({
 	        return await refreshPassportAndJoin(eligibility);
 	      } else if (resolvedProvider === "zkpassport") {
 	        await startZkPassportVerification();
-	      } else {
+	      } else if (resolvedProvider === "self") {
 	        await startSelfVerification();
+	      } else {
+	        setJoinError("No supported verification provider is available for this community requirement.");
 	      }
 	      return "blocked";
     }
@@ -518,11 +520,13 @@ export function useCommunityJoinVerification({
               missingCapabilities: getMissingCapabilitiesFromGateEvaluation(details),
               membershipGateSummaries: details.membership_gate_summaries ?? null,
             });
-	          } else {
+	          } else if (resolvedProvider === "self") {
 	            await startSelfVerification({
               missingCapabilities: getMissingCapabilitiesFromGateEvaluation(details),
               membershipGateSummaries: details.membership_gate_summaries ?? null,
             });
+	          } else {
+	            setJoinError("No supported verification provider is available for this community requirement.");
           }
           return "blocked";
         }

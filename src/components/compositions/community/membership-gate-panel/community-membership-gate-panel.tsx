@@ -17,6 +17,7 @@ import { Spinner } from "@/components/primitives/spinner";
 import {
   formatGateRequirement,
   getGateFailureMessage,
+  getMissingCapabilitiesFromGateEvaluation,
   getJoinCtaLabel,
   hasOnlyWalletGateRequirements,
   isJoinSurfaceGate,
@@ -279,15 +280,20 @@ export function CommunityMembershipGatePanel({
     ? getPassportPrompt(eligibility, panelCopy)
     : null;
   const activePrompt = verificationPrompt ?? passportPrompt;
+  const suggestedProvider = eligibility?.status === "verification_required"
+    ? resolveSuggestedVerificationProvider(eligibility)
+    : null;
   const isVeryVerificationRequired =
     !activePrompt &&
     eligibility?.status === "verification_required" &&
-    resolveSuggestedVerificationProvider(eligibility) === "very";
+    suggestedProvider === "very";
+  const isProofOfWorkRequired = eligibility?.status === "verification_required"
+    && getMissingCapabilitiesFromGateEvaluation(eligibility).includes("altcha_pow");
   const eligibilityText = getEligibilityText(eligibility, joinSurfaceGates, resolvedLocale, panelCopy);
   const isInlineVerificationRequired =
     !activePrompt &&
     eligibility?.status === "verification_required" &&
-    !isVeryVerificationRequired;
+    suggestedProvider === "self";
   const title = isVeryVerificationRequired
     ? panelCopy.veryTitle
     : isInlineVerificationRequired
@@ -305,6 +311,7 @@ export function CommunityMembershipGatePanel({
   const showEligibilityAction =
     eligibility &&
     !activePrompt &&
+    (eligibility.status !== "verification_required" || suggestedProvider !== null || isProofOfWorkRequired) &&
     isJoinCtaActionable(eligibility) &&
     eligibility.status !== "gate_failed" &&
     eligibility.status !== "already_joined" &&
@@ -313,7 +320,7 @@ export function CommunityMembershipGatePanel({
   const panelIcon = getPanelIcon({
     eligibility,
     isInlineVerificationRequired,
-    isProofOfWorkRequired: false,
+    isProofOfWorkRequired,
     isVeryVerificationRequired,
     passportPrompt,
   });

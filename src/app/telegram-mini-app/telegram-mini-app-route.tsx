@@ -28,6 +28,7 @@ import {
 } from "@/lib/identity-gates";
 import { openExternalHref } from "@/lib/open-external-href";
 import { useUiLocale } from "@/lib/ui-locale";
+import { solveAltchaChallengeHeadless } from "@/lib/verification/altcha-headless";
 
 import {
   TelegramMiniAppVerifyView,
@@ -84,6 +85,12 @@ type TelegramWebAppBridge = {
     text_color?: string;
   };
 };
+
+export function hasOnlyTelegramJoinAltchaRequirement(eligibility: ApiJoinEligibility): boolean {
+  const missingCapabilities = getMissingCapabilitiesFromGateEvaluation(eligibility);
+  return missingCapabilities.length > 0
+    && missingCapabilities.every((capability) => capability === "altcha_pow");
+}
 
 type TelegramOnboardingExchangeResponse = Parameters<typeof setSession>[0] & {
   community: string;
@@ -896,8 +903,53 @@ export function TelegramMiniAppVerifyPage({
       return;
     }
 
+    if (hasOnlyTelegramJoinAltchaRequirement(nextEligibility)) {
+      applyFlowAction({ type: "checking" });
+      recordDebug("altcha:start", { communityId: targetCommunityId });
+      try {
+        const payload = await solveAltchaChallengeHeadless({
+          action: `community:${nextEligibility.community ?? targetCommunityId}`,
+          loadChallenge: api.verification.createAltchaChallenge,
+          scope: "community_join",
+        });
+        const result = await api.communities.join(targetCommunityId, undefined, { altchaPayload: payload });
+        const refreshedEligibility = await refetchEligibility();
+        recordDebug("altcha:result", {
+          eligibility: refreshedEligibility.status,
+          result: result.status,
+        });
+        if (result.status === "requested" || refreshedEligibility.status === "pending_request") {
+          applyFlowAction({ result: "pending_request", type: "done" });
+        } else if (result.status === "joined" || refreshedEligibility.status === "already_joined") {
+          applyFlowAction({ result: "joined", type: "done" });
+        } else {
+          applyFlowAction({
+            canRetry: true,
+            message: "More verification is required.",
+            type: "blocked",
+          });
+        }
+      } catch (error) {
+        applyFlowAction({
+          canRetry: true,
+          message: getErrorMessage(error, "Browser anti-bot check failed."),
+          type: "error",
+        });
+        recordDebug("altcha:error", { message: getErrorMessage(error, "Browser anti-bot check failed.") });
+      }
+      return;
+    }
+
     const provider = resolveSuggestedVerificationProvider(nextEligibility);
     recordDebug("verification-provider:selected", { provider });
+    if (!provider) {
+      applyFlowAction({
+        canRetry: true,
+        message: "No supported verification provider is available for this community requirement.",
+        type: "blocked",
+      });
+      return;
+    }
     if (provider === "passport") {
       await handleJoin();
       return;
@@ -986,11 +1038,14 @@ export function TelegramMiniAppVerifyPage({
     });
   }, [
     applyFlowAction,
+    api.communities,
+    api.verification.createAltchaChallenge,
     communityId,
     handleJoin,
     joinVerifiedCommunity,
     locale,
     recordDebug,
+    refetchEligibility,
     startSelfVerification,
     startVeryVerification,
     startZkPassportVerification,

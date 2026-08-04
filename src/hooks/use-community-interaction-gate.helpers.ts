@@ -565,6 +565,17 @@ export function createDefaultBlockedModalState({
           title: gatesPanel.passportPromptTitle,
         };
       }
+      if (!provider) {
+        return {
+          description: gatesPanel.defaultDescription,
+          icon: "blocked",
+          primaryAction: null,
+          ...getRequirementDisplayState(gate),
+          title: isVoteAction
+            ? interactionCopy.verifyToVoteTitle
+            : interactionCopy.verifyToReplyTitle,
+        };
+      }
       const verificationPrompt = getVerificationPromptCopy(
         provider,
         getVerificationCapabilitiesForProvider(gate.eligibility, provider),
@@ -761,7 +772,7 @@ export function createCommunityBlockedModalStateFactory(options: {
         return undefined;
       }
       const provider = resolveSuggestedVerificationProvider(gate.eligibility);
-      if (provider === "passport") {
+      if (provider === "passport" || !provider) {
         return undefined;
       }
 

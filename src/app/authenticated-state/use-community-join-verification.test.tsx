@@ -236,6 +236,31 @@ describe("useCommunityJoinVerification", () => {
     expect(zkPassportStarts).toEqual([]);
   });
 
+  test("does not fall back to Self when no verification provider is supported", async () => {
+    const unsupportedEligibility = {
+      ...eligibility("verification_required"),
+      missing_capabilities: ["unique_human"],
+      membership_gate_summaries: [{ gate_type: "unique_human", accepted_providers: [] }],
+    } as JoinEligibility;
+    const { result } = renderHook(() =>
+      useCommunityJoinVerification({
+        communityId: "com_unsupported",
+        eligibility: unsupportedEligibility,
+        locale: "en",
+        refetchEligibility: async () => unsupportedEligibility,
+      })
+    );
+
+    await act(async () => {
+      expect(await result.current.handleJoin()).toBe("blocked");
+    });
+
+    expect(selfStarts).toEqual([]);
+    expect(veryStarts).toEqual([]);
+    expect(zkPassportStarts).toEqual([]);
+    expect(result.current.joinError).toContain("No supported verification provider");
+  });
+
   test("launches the selected palm branch independently", async () => {
     const { result } = renderHook(() =>
       useCommunityJoinVerification({

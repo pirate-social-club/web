@@ -13,6 +13,8 @@ type AnalyticsEventName =
   | "video_viewer_opened"
   | "video_capability_selected"
   | "video_impression"
+  | "profile_follow_affordance_viewed"
+  | "profile_follow_clicked"
   | "community_viewed"
   | "community_follow_contract_drift"
   | "community_join_requested"

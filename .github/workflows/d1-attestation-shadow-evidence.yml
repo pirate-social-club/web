@@ -1,0 +1,90 @@
+name: D1 attestation shadow evidence
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  record:
+    if: >-
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find this attempt's staging manifest artifact
+        id: artifact
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const response = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: run.id,
+              per_page: 100,
+            });
+            const expected = `schema-gate-staging-${run.id}-${run.run_attempt}`;
+            const artifact = response.data.artifacts.find((entry) => entry.name === expected && !entry.expired);
+            core.setOutput("available", artifact ? "true" : "false");
+            if (artifact) core.setOutput("name", artifact.name);
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        if: steps.artifact.outputs.available == 'true'
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: steps.artifact.outputs.available == 'true'
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+          name: ${{ steps.artifact.outputs.name }}
+          path: evidence
+
+      - name: Record digest/state transition on the activation issue
+        if: steps.artifact.outputs.available == 'true'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        env:
+          ARTIFACT_NAME: ${{ steps.artifact.outputs.name }}
+        with:
+          script: |
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const { pathToFileURL } = require("node:url");
+            const moduleUrl = pathToFileURL(path.join(process.env.GITHUB_WORKSPACE, "scripts/ci/d1-attestation-evidence.mjs")).href;
+            const { evidenceComment, evidenceFromManifest, latestEvidence, shouldRecord } = await import(moduleUrl);
+            const manifest = JSON.parse(fs.readFileSync("evidence/schema-gate-staging.json", "utf8"));
+            const issueNumber = 960;
+            const issue = await github.rest.issues.get({ ...context.repo, issue_number: issueNumber });
+            const baselineMatch = issue.data.body?.match(/<!-- d1-attestation-baseline:(\{[^\n]+\}) -->/u);
+            if (!baselineMatch) throw new Error(`issue #${issueNumber} lacks the baseline marker`);
+            const baseline = JSON.parse(baselineMatch[1]);
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...context.repo,
+              issue_number: issueNumber,
+              per_page: 100,
+            });
+            const current = evidenceFromManifest(manifest, {
+              id: context.payload.workflow_run.id,
+              attempt: context.payload.workflow_run.run_attempt,
+              url: context.payload.workflow_run.html_url,
+              artifactName: process.env.ARTIFACT_NAME,
+            });
+            const latest = latestEvidence([issue.data.body, ...comments.map((comment) => comment.body)]);
+            if (!shouldRecord({ baselineDigest: baseline.staging_digest, latest, current })) {
+              core.notice("No D1 effective-policy/shadow-state transition to record.");
+              return;
+            }
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: issueNumber,
+              body: evidenceComment(current),
+            });
+

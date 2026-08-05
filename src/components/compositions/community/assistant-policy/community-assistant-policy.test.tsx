@@ -345,7 +345,7 @@ describe("CommunityAssistantPolicyPage", () => {
     const view = renderPolicy();
 
     expect(view.getByText("Telegram")).not.toBeNull();
-    fireEvent.click(view.getByRole("switch", { name: "Private bot DMs" }));
+    fireEvent.click(view.getByRole("switch", { name: "Answer study questions" }));
     expect(view.getLatestSettings().telegramPrivateAssistantEnabled).toBe(true);
 
     const previewCapInput = Array.from(view.container.querySelectorAll<HTMLInputElement>('input[type="number"]'))

@@ -421,14 +421,14 @@ function TelegramSection({
   return (
     <Section
       className="border-t border-border-soft pt-6 md:pt-8"
-      subtitle="Private bot DMs use public preview context for non-members and private assistant context for joined members."
+      subtitle="Controls what this community's bot does in private Telegram chats."
       title="Telegram"
     >
       <div className="border-y border-border-soft">
         <ToggleRow
           checked={settings.telegramPrivateAssistantEnabled}
-          description="Allow this community bot to answer private Telegram messages."
-          label="Private bot DMs"
+          description="Let learners ask about the line they are studying, in a private chat with the bot. Answers use the exercise and the learner's latest attempt."
+          label="Answer study questions"
           onCheckedChange={(telegramPrivateAssistantEnabled) => onChange({ telegramPrivateAssistantEnabled })}
         />
         <ToggleRow

@@ -78,6 +78,11 @@ requirements manifest from the pinned API (`api/services/api/community-schema-re
 - The long-term fleet-size-independent improvement is the approved attestation
   ledger. Until its fast path is separately reviewed and activated, the REST
   full scan remains the release authority.
+- Shadow transition evidence is recorded durably on
+  [web#960](https://github.com/pirate-social-club/web/issues/960) from both failed
+  and successful Release attempts. The trigger is an effective-policy digest or
+  shadow-decision change, not a migration path heuristic. See
+  [the activation runbook](runbooks/d1-attestation-fast-path-activation.md).
 
 ## API staging contract gate
 

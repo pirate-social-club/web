@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { findRecoverableNamespace } from "./community-namespace-verification-page";
+import {
+  findRecoverableNamespace,
+  isHnsNativeRoutingLive,
+} from "./community-namespace-verification-page";
 import type { ApiCommunityNamespaceAttachment } from "@/lib/api/client-api-types";
 
 const primary: ApiCommunityNamespaceAttachment = {
@@ -41,5 +44,26 @@ describe("findRecoverableNamespace", () => {
       attachedNamespaceVerificationId: "nv_old",
       namespaceAttachments: [{ ...primary, verification_status: "verified" }, mirror],
     })).toBeNull();
+  });
+});
+
+describe("isHnsNativeRoutingLive", () => {
+  test("does not treat ownership verification as live native routing", () => {
+    expect(isHnsNativeRoutingLive({ ...primary, verification_status: "verified" })).toBe(false);
+  });
+
+  test("requires the read-time routing projection", () => {
+    expect(isHnsNativeRoutingLive({
+      ...primary,
+      verification_status: "verified",
+      delegation: {
+        pirate_web_routing_allowed: true,
+        pirate_subdomain_issuance_allowed: true,
+        delegation_security: "secure",
+        observation_fresh: true,
+        routing_withheld_reason: null,
+        signature_expiry_warning: false,
+      },
+    })).toBe(true);
   });
 });

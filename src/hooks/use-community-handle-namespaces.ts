@@ -8,6 +8,12 @@ import type { HandleClaimNamespaceOption } from "@/components/compositions/commu
 
 type NamespaceApi = Pick<ApiClient["communities"], "listNamespaces">;
 
+function canIssueNames(namespace: ApiCommunityNamespaceAttachment): boolean {
+  return namespace.verification_status === "verified"
+    && (namespace.family === "spaces"
+      || namespace.delegation?.pirate_subdomain_issuance_allowed === true);
+}
+
 function toOption(namespace: ApiCommunityNamespaceAttachment): HandleClaimNamespaceOption {
   const suffix = namespace.family === "spaces"
     ? `@${namespace.root_label}`
@@ -16,7 +22,7 @@ function toOption(namespace: ApiCommunityNamespaceAttachment): HandleClaimNamesp
     namespaceVerification: namespace.namespace_verification,
     label: `${suffix} names${namespace.namespace_role === "primary" ? " (primary)" : ""}`,
     routeLabel: namespace.route_slug,
-    disabled: namespace.verification_status !== "verified",
+    disabled: !canIssueNames(namespace),
   };
 }
 
@@ -38,10 +44,10 @@ export function useCommunityHandleNamespaces(input: {
       if (cancelled) return;
       setNamespaces(response.namespaces);
       const primary = response.namespaces.find(
-        (namespace) => namespace.namespace_role === "primary" && namespace.verification_status === "verified",
+        (namespace) => namespace.namespace_role === "primary" && canIssueNames(namespace),
       );
       const firstVerified = response.namespaces.find(
-        (namespace) => namespace.verification_status === "verified",
+        canIssueNames,
       );
       setSelectedNamespaceVerification(
         (current) => current && response.namespaces.some(

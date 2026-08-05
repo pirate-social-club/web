@@ -1075,6 +1075,14 @@ export type ApiCommunityNamespaceAttachment = {
   root_label: string;
   route_slug: string;
   verification_status: "verified" | "stale" | "expired" | "disputed";
+  delegation?: {
+    pirate_web_routing_allowed: boolean;
+    pirate_subdomain_issuance_allowed: boolean;
+    delegation_security: "unknown" | "unsecured" | "pending" | "secure" | "bogus" | "drifted";
+    observation_fresh: boolean;
+    routing_withheld_reason: string | null;
+    signature_expiry_warning: boolean;
+  } | null;
 };
 
 export type ApiCommunityNamespaceListResponse = {

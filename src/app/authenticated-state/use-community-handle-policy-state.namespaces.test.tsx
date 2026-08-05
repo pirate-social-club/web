@@ -27,6 +27,14 @@ const primaryNamespace: ApiCommunityNamespaceAttachment = {
   root_label: "pokemon",
   route_slug: "pokemon",
   verification_status: "verified",
+  delegation: {
+    pirate_web_routing_allowed: true,
+    pirate_subdomain_issuance_allowed: true,
+    delegation_security: "secure",
+    observation_fresh: true,
+    routing_withheld_reason: null,
+    signature_expiry_warning: false,
+  },
 };
 
 const mirrorNamespace: ApiCommunityNamespaceAttachment = {

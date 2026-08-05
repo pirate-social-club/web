@@ -93,11 +93,11 @@ export function CommunityNamespaceVerificationPage({
   const hasAttachedNamespace = Boolean(
     attachedNamespaceVerificationId && attachedPrimary?.verification_status === "verified",
   );
-  const needsPrimaryRecovery = Boolean(attachedNamespaceVerificationId && !hasAttachedNamespace);
   const recoverableNamespace = findRecoverableNamespace({
     attachedNamespaceVerificationId,
     namespaceAttachments,
   });
+  const needsPrimaryRecovery = recoverableNamespace !== null;
   const [addingMirror, setAddingMirror] = React.useState(
     Boolean(attachedNamespaceVerificationId && activeSessionId),
   );
@@ -238,31 +238,41 @@ export function CommunityNamespaceVerificationPage({
 
   if (hasAttachedNamespace && !addingMirror) {
     const publicCommunityUrl = attachedRouteSlug ? `https://pirate.sc/c/${attachedRouteSlug}` : null;
-    const handshakeUrl = attachedRouteSlug ? `https://${attachedRouteSlug}/` : null;
+    const handshakeUrl = attachedRouteSlug
+      && isHnsNativeRoutingLive(attachedPrimary)
+      ? `https://${attachedRouteSlug}/`
+      : null;
+    const routingPending = attachedPrimary?.family === "hns" && !handshakeUrl;
 
     return (
       <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
-          <Type as="h1" variant="h1" className="md:text-4xl">Success!</Type>
+          <Type as="h1" variant="h1" className="md:text-4xl">
+            {handshakeUrl || attachedPrimary?.family === "spaces" ? "Success!" : "Ownership verified"}
+          </Type>
           {onBackClick ? <Button onClick={onBackClick} variant="outline">Finish verification</Button> : null}
         </div>
 
         <div className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card p-4 md:p-5">
           <div className="space-y-2">
-            {publicCommunityUrl && handshakeUrl ? (
+            {publicCommunityUrl ? (
               <div className="space-y-3">
                 <Type as="p" variant="body">
                   Your namespace is now available at{" "}
                   <a className="text-primary underline-offset-4 hover:underline" href={publicCommunityUrl}>
                     {publicCommunityUrl}
-                  </a>{" "}
-                  and{" "}
-                  <a className="text-primary underline-offset-4 hover:underline" href={handshakeUrl}>
-                    {handshakeUrl}
                   </a>
+                  {handshakeUrl ? <>{" "}and{" "}<a className="text-primary underline-offset-4 hover:underline" href={handshakeUrl}>{handshakeUrl}</a></> : null}
                   .
                 </Type>
-                <Type as="p" variant="body">
+                {routingPending ? (
+                  <FormNote tone="warning">
+                    {attachedPrimary?.delegation?.delegation_security === "unsecured"
+                      ? "Your Handshake delegation is live but not secure yet. DNSSEC DS records still need to be added before the native route can be enabled; contact Pirate support for the records while guided setup is being completed."
+                      : "Your ownership is verified. We are still checking the on-chain delegation and DNSSEC state; the native Handshake URL is not live yet."}
+                  </FormNote>
+                ) : null}
+                {handshakeUrl ? <Type as="p" variant="body">
                   To access your site on Handshake DNS, use{" "}
                   <a
                     className="text-primary underline-offset-4 hover:underline"
@@ -273,7 +283,7 @@ export function CommunityNamespaceVerificationPage({
                     Freedom Browser
                   </a>
                   .
-                </Type>
+                </Type> : null}
               </div>
             ) : (
               <FormNote>This community namespace is connected. There is nothing else to set up here.</FormNote>
@@ -475,4 +485,11 @@ export function findRecoverableNamespace(input: {
       && namespace.family === stalePrimary.family
       && namespace.root_label === stalePrimary.root_label,
   ) ?? null;
+}
+
+export function isHnsNativeRoutingLive(
+  namespace: ApiCommunityNamespaceAttachment | undefined,
+): boolean {
+  return namespace?.family === "hns"
+    && namespace.delegation?.pirate_web_routing_allowed === true;
 }

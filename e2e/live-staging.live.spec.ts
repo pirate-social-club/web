@@ -48,7 +48,7 @@ const storySmokeHostSubject = process.env.PIRATE_STORY_E2E_HOST_SUBJECT
 // fixture record and use the release gate's scoped admin impersonation headers;
 // display names are not an identity source.
 const gateContractCommunityId = (
-  process.env.PIRATE_GATE_CONTRACT_E2E_COMMUNITY_ID ?? "cmt_34976b020f7a41dd8a678354fae842f9"
+  process.env.PIRATE_GATE_CONTRACT_E2E_COMMUNITY_ID ?? "cmt_33b915567dad45dd9d22981627343985"
 ).replace(/^com_/u, "");
 // Dedicated staging fixture for the required handle-claim contract. Its shard
 // binding is reserved from provisioning/reclamation and its local namespace

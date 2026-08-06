@@ -105,9 +105,10 @@ export function useCommunityModerationState(communityId: string) {
 
       return toNamespaceSessionResult(result);
     },
-    onCompleteSession: async ({ namespaceVerificationSessionId, restartChallenge }) => {
+    onCompleteSession: async ({ namespaceVerificationSessionId, restartChallenge, acknowledgedResourceReplacement }) => {
       const result = await api.verification.completeNamespaceSession(namespaceVerificationSessionId, {
         restart_challenge: restartChallenge ?? null,
+        acknowledged_resource_replacement: acknowledgedResourceReplacement ?? null,
       });
 
       if (result.status === "verified" && result.namespace_verification) {
@@ -127,7 +128,7 @@ export function useCommunityModerationState(communityId: string) {
       }
 
       return {
-        status: result.status,
+        ...toNamespaceSessionResult(result),
         namespaceVerificationId: result.namespace_verification ?? null,
         failureReason: result.failure_reason ?? null,
       };

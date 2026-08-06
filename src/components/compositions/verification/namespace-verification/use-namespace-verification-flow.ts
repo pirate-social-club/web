@@ -21,6 +21,7 @@ import type {
   NamespaceVerificationCallbacks,
   NamespaceVerificationStartResult,
   NamespaceVerificationOperationClass,
+  HnsImportChallengePayload,
   SpacesChallengePayload,
 } from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
 
@@ -42,6 +43,8 @@ export type UseNamespaceVerificationFlowReturn = {
   sessionId: string | null;
   challengeTxtValue: string | null;
   challengePayload: SpacesChallengePayload | null;
+  hnsImportPayload: HnsImportChallengePayload | null;
+  replacementAcknowledged: boolean;
   signature: string;
   namespaceVerificationId: string | null;
   failureReason: string | null;
@@ -73,6 +76,7 @@ export type UseNamespaceVerificationFlowReturn = {
     setRootLabel: (value: string) => void;
     setActiveFamily: (family: NamespaceFamily) => void;
     setSignature: (value: string) => void;
+    setReplacementAcknowledged: (value: boolean) => void;
     start: () => void;
     verify: () => void;
     restart: () => void;
@@ -102,6 +106,9 @@ export function useNamespaceVerificationFlow({
   const [challengeTxtValue, setChallengeTxtValue] = React.useState<string | null>(null);
   const [challengePayload, setChallengePayload] =
     React.useState<SpacesChallengePayload | null>(null);
+  const [hnsImportPayload, setHnsImportPayload] =
+    React.useState<HnsImportChallengePayload | null>(null);
+  const [replacementAcknowledged, setReplacementAcknowledged] = React.useState(false);
   const [signature, setSignature] = React.useState("");
   const [namespaceVerificationId, setNamespaceVerificationId] =
     React.useState<string | null>(null);
@@ -141,6 +148,8 @@ export function useNamespaceVerificationFlow({
     setSessionId(null);
     setChallengeTxtValue(null);
     setChallengePayload(null);
+    setHnsImportPayload(null);
+    setReplacementAcknowledged(false);
     setSignature("");
     setOperationClass(null);
     setPirateDnsAuthorityVerified(null);
@@ -180,6 +189,7 @@ export function useNamespaceVerificationFlow({
           setSessionId,
           setChallengeTxtValue,
           setChallengePayload,
+          setHnsImportPayload,
           setActiveFamily,
           setRootLabel,
           setSignature,
@@ -295,11 +305,15 @@ export function useNamespaceVerificationFlow({
     >[0] = {
       namespaceVerificationSessionId: sessionId,
       family: activeFamily,
+      acknowledgedResourceReplacement: activeFamily === "hns" && hnsImportPayload
+        ? replacementAcknowledged
+        : undefined,
     };
 
     return callbacksRef.current
       .onCompleteSession(completeInput)
       .then((result) => {
+        if (result.hnsImportPayload) setHnsImportPayload(result.hnsImportPayload);
         if (result.status === "verified" && result.namespaceVerificationId) {
           setState("verified");
           setNamespaceVerificationId(result.namespaceVerificationId);
@@ -334,7 +348,7 @@ export function useNamespaceVerificationFlow({
           setCheckingSetup(false);
         }
       });
-  }, [activeFamily, sessionId]);
+  }, [activeFamily, hnsImportPayload, replacementAcknowledged, sessionId]);
 
   const restart = React.useCallback(() => {
     if (!sessionId) {
@@ -471,6 +485,8 @@ export function useNamespaceVerificationFlow({
     sessionId,
     challengeTxtValue,
     challengePayload,
+    hnsImportPayload,
+    replacementAcknowledged,
     signature,
     namespaceVerificationId,
     failureReason,
@@ -502,6 +518,7 @@ export function useNamespaceVerificationFlow({
       setRootLabel: setRootLabelInput,
       setActiveFamily: setActiveFamilyInput,
       setSignature,
+      setReplacementAcknowledged,
       start,
       verify,
       restart,

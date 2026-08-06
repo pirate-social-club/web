@@ -21,6 +21,9 @@ import {
 import { resolveProfileFollowRelationship } from "@/lib/follow/profile-follow-state";
 import { getWalletTransactionErrorMessage } from "@/lib/wallet-error-utils";
 import { useApi } from "@/lib/api";
+import { trackAnalyticsEvent } from "@/lib/analytics";
+
+export type ProfileFollowSurface = "profile" | "video_feed";
 
 function normalizeAddress(value: string | null | undefined): Address | null {
   if (!value) {
@@ -76,6 +79,7 @@ export function useProfileFollowState(
   targetWalletAddress: string | null | undefined,
   ownProfile: boolean,
   targetUserId?: string | null,
+  surface: ProfileFollowSurface = "profile",
 ): ProfileFollowState {
   const { locale } = useUiLocale();
   const copy = React.useMemo(() => getLocaleMessages(locale, "routes").profile, [locale]);
@@ -123,6 +127,7 @@ export function useProfileFollowState(
   const [followBusy, setFollowBusy] = React.useState(false);
   const [followUnavailable, setFollowUnavailable] = React.useState(false);
   const [targetNotApplicable, setTargetNotApplicable] = React.useState(!targetAddress);
+  const trackedAffordanceKeyRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     if (!viewerAddress || !targetAddress || ownProfile) {
@@ -259,6 +264,45 @@ export function useProfileFollowState(
     ? null
     : Math.max(0, followerCount + followerCountDelta);
 
+  React.useEffect(() => {
+    if (ownProfile || !targetUserId || !countsReady || !followReady) {
+      return;
+    }
+
+    const key = `${surface}:${targetUserId}`;
+    if (trackedAffordanceKeyRef.current === key) {
+      return;
+    }
+    trackedAffordanceKeyRef.current = key;
+
+    trackAnalyticsEvent({
+      eventName: "profile_follow_affordance_viewed",
+      properties: {
+        authenticated: Boolean(session),
+        state: targetNotApplicable
+          ? "not_applicable"
+          : followUnavailable
+            ? "unavailable"
+            : isFollowing
+              ? "following"
+              : "followable",
+        surface,
+        target_has_wallet: Boolean(targetAddress),
+      },
+    });
+  }, [
+    countsReady,
+    followReady,
+    followUnavailable,
+    isFollowing,
+    ownProfile,
+    session,
+    surface,
+    targetAddress,
+    targetNotApplicable,
+    targetUserId,
+  ]);
+
   const onToggleFollow = React.useCallback(() => {
     if (ownProfile || !targetAddress || !targetUserId || followUnavailable) {
       return;
@@ -267,6 +311,16 @@ export function useProfileFollowState(
     if (followBusy) {
       return;
     }
+
+    trackAnalyticsEvent({
+      eventName: "profile_follow_clicked",
+      properties: {
+        authenticated: Boolean(session),
+        availability: "available",
+        desired_following: !isFollowing,
+        surface,
+      },
+    });
 
     if (!session) {
       connect?.();
@@ -341,6 +395,7 @@ export function useProfileFollowState(
     ownProfile,
     session,
     sendSponsoredIntent,
+    surface,
     targetAddress,
     targetUserId,
     viewerAddress,

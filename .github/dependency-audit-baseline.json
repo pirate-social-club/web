@@ -19,7 +19,7 @@
       "reason": "rwsdk depends on decompress@4.2.1 and no patched release exists upstream. Carried over verbatim in effect from the inline `--ignore GHSA-mp2f-45pm-3cg9` that release.yml passed to `bun audit` before this file existed, so it changes no security posture: the advisory was already suppressed on the release path.",
       "risk_assessment": "UNVERIFIED — nobody has confirmed whether decompress can be reached with attacker-controlled archives in our build. The pre-existing suppression carried no such analysis either. Until an owner of the rwsdk build path assesses reachability and replaces this field, treat the exception as inherited, not justified.",
       "expires": "2026-10-01",
-      "tracking": "https://github.com/pirate-social-club/web/issues/new?title=decompress+advisory+review"
+      "tracking": "https://github.com/pirate-social-club/web/issues/940"
     }
   ]
 }

@@ -94,9 +94,13 @@ describe("completeCommunityJoinFromEligibility", () => {
       },
     });
 
-    expect(modal.modalState?.icon).toBe("self");
+    expect(modal.modalState?.verificationProviderActions?.map((action) => action.label)).toEqual([
+      "Verify with Self",
+      "Verify with ZKPassport",
+      "Verify with Very",
+    ]);
 
-    await modal.modalState?.primaryAction?.onClick?.();
+    await modal.modalState?.verificationProviderActions?.[0]?.onClick();
     expect(calls).toEqual([
       "cache:community-1:verification_required",
       "start:self",

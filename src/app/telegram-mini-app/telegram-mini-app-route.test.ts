@@ -16,6 +16,7 @@ import {
   telegramVerifyWaitingMessage,
   telegramVerifyWaitingTitle,
   telegramVerifyTerminalMessage,
+  hasOnlyTelegramJoinAltchaRequirement,
 } from "./telegram-mini-app-route";
 
 describe("resolveTelegramMiniAppStartPath", () => {
@@ -192,7 +193,39 @@ describe("telegram verification launch copy", () => {
   });
 });
 
+describe("Telegram mini-app ALTCHA routing", () => {
+  test("runs the local proof path only when ALTCHA is the sole missing requirement", () => {
+    const altchaOnly = {
+      status: "verification_required",
+      missing_capabilities: ["altcha_pow"],
+      gate_evaluation: null,
+    } as Parameters<typeof hasOnlyTelegramJoinAltchaRequirement>[0];
+    const composite = {
+      status: "verification_required",
+      missing_capabilities: ["altcha_pow", "unique_human"],
+      gate_evaluation: null,
+    } as Parameters<typeof hasOnlyTelegramJoinAltchaRequirement>[0];
+
+    expect(hasOnlyTelegramJoinAltchaRequirement(altchaOnly)).toBe(true);
+    expect(hasOnlyTelegramJoinAltchaRequirement(composite)).toBe(false);
+  });
+});
+
 describe("telegram verification view model", () => {
+  test("renders multi-provider requirements as a choice instead of progress", () => {
+    expect(resolveTelegramVerifyViewModel({
+      screen: {
+        kind: "choosing_provider",
+        providers: ["self", "zkpassport", "very"],
+      },
+    })).toEqual({
+      busy: false,
+      message: null,
+      showSpinner: false,
+      title: "Choose verification method",
+    });
+  });
+
   test("shows page-level progress while checking the Telegram session", () => {
     expect(resolveTelegramVerifyViewModel({ screen: { kind: "booting" } })).toMatchObject({
       busy: true,

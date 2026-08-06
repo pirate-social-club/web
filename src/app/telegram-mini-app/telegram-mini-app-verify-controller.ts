@@ -1,4 +1,5 @@
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
+import type { HumanVerificationProvider } from "@/lib/identity-gates";
 
 export type TelegramVerifyLaunchProvider = "self" | "very" | "zkpassport";
 type DeferredTelegramVerifyLaunchProvider = Exclude<TelegramVerifyLaunchProvider, "very">;
@@ -13,6 +14,7 @@ type TelegramVerifyDoneResult = "already_member" | "joined" | "pending_request";
 export type TelegramVerifyScreenState =
   | { kind: "idle" }
   | { kind: "booting" }
+  | { kind: "choosing_provider"; providers: HumanVerificationProvider[] }
   | { kind: "preparing"; provider: TelegramVerifyLaunchProvider }
   | { href: string; kind: "ready"; message: string; provider: DeferredTelegramVerifyLaunchProvider }
   | { href: string; kind: "external_started"; provider: DeferredTelegramVerifyLaunchProvider }
@@ -35,6 +37,7 @@ export type TelegramVerifyFlowAction =
   | { type: "bootStarted"; startedInThisBrowser: boolean }
   | { communityId: string; eligibility: ApiJoinEligibility; type: "exchangeResolved" }
   | { eligibility: ApiJoinEligibility; type: "eligibilityUpdated" }
+  | { providers: HumanVerificationProvider[]; type: "choosingProviders" }
   | { provider: TelegramVerifyLaunchProvider; type: "preparing" }
   | { href: string; message: string; provider: DeferredTelegramVerifyLaunchProvider; type: "ready" }
   | { type: "externalOpened" }
@@ -98,6 +101,11 @@ export function telegramVerifyReducer(
       return {
         ...state,
         eligibility: action.eligibility,
+      };
+    case "choosingProviders":
+      return {
+        ...state,
+        screen: { kind: "choosing_provider", providers: action.providers },
       };
     case "preparing":
       return {

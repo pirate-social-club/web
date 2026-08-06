@@ -290,7 +290,7 @@ function ProfilePublisherRelationship({
   targetUserId: string;
   targetWalletAddress: string;
 }) {
-  const follow = useProfileFollowState(targetWalletAddress, ownProfile, targetUserId);
+  const follow = useProfileFollowState(targetWalletAddress, ownProfile, targetUserId, "video_feed");
   if (ownProfile) return null;
   return (
     <PublisherRelationshipButton

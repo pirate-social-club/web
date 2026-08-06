@@ -206,11 +206,16 @@ describe("createCommunityBlockedModalStateFactory", () => {
       suggested_verification_provider: "self",
     })));
 
-    expect(modal?.icon).toBe("self");
-    expect(modal?.primaryAction?.loading).toBe(true);
-    expect(modal?.secondaryAction?.label).toBe(interactionCopy.close);
+    expect(modal?.icon).toBeUndefined();
+    expect(modal?.primaryAction).toBeUndefined();
+    expect(modal?.verificationProviderActions?.map((action) => action.label)).toEqual([
+      "Verify with Self",
+      "Verify with ZKPassport",
+      "Verify with Very",
+    ]);
+    expect(modal?.verificationProviderActions?.[0]?.loading).toBe(true);
 
-    await modal?.primaryAction?.onClick?.();
+    await modal?.verificationProviderActions?.[0]?.onClick();
     expect(startedSelfForCommunityId).toBe("community-1");
   });
 
@@ -272,6 +277,18 @@ describe("createDefaultBlockedModalState", () => {
     expect(modal?.primaryAction?.loading).toBe(true);
     await modal?.primaryAction?.onClick?.();
     expect(startedProviders).toEqual(["zkpassport"]);
+  });
+
+  test("does not invent a verification action when no provider is supported", () => {
+    const gateData = gate("verification_required", {
+      missing_capabilities: ["altcha_pow"],
+      gate_evaluation: null,
+    }, [altchaRequirement]);
+
+    const modal = createDefaultBlockedModalState(args(gateData));
+
+    expect(modal.icon).toBe("blocked");
+    expect(modal.primaryAction).toBeNull();
   });
 });
 

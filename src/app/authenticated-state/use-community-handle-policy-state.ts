@@ -277,7 +277,9 @@ export function useCommunityHandlePolicyState({
   const [handleStatusFilter, setHandleStatusFilter] = React.useState<HandleStatusFilter>("all");
 
   const verifiedNamespaces = React.useMemo(
-    () => (namespaces ?? []).filter((namespace) => namespace.verification_status === "verified"),
+    () => (namespaces ?? []).filter((namespace) => namespace.verification_status === "verified"
+      && (namespace.family === "spaces"
+        || namespace.delegation?.pirate_subdomain_issuance_allowed === true)),
     [namespaces],
   );
   const [selectedHandleNamespaceVerification, setSelectedHandleNamespaceVerification] =

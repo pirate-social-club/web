@@ -21,7 +21,8 @@ Production deploys should go through the Blacksmith GitHub Actions workflow in
 The release workflow:
 
 - verifies the pinned API/Core pair and migration classifications
-- cancels obsolete read-only staging schema scans
+- cancels obsolete staging schema scans; writer-epoch fencing keeps their
+  shadow-ledger invalidation fail-closed
 - verifies the live staging community fleet before deploying the pinned API
 - serializes and deploys staging with an in-lane freshness check
 - runs the deterministic Web release gate and blocking API-owned staging

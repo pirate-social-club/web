@@ -17,8 +17,10 @@ import { Spinner } from "@/components/primitives/spinner";
 import {
   formatGateRequirement,
   getGateFailureMessage,
+  getMissingCapabilitiesFromGateEvaluation,
   getJoinCtaLabel,
   hasOnlyWalletGateRequirements,
+  type HumanVerificationProvider,
   isJoinSurfaceGate,
   isJoinCtaActionable,
   resolveSuggestedVerificationProvider,
@@ -50,8 +52,16 @@ export interface CommunityMembershipGatePanelProps {
   verificationError?: string | null;
   locale?: string | null;
   onJoin?: () => void;
+  onChooseVerificationProvider?: (provider: HumanVerificationProvider) => void | Promise<void>;
   onCancelVerification?: () => void;
+  verificationProviderChoices?: HumanVerificationProvider[];
 }
+
+const PROVIDER_LABELS: Record<HumanVerificationProvider, string> = {
+  self: "Self",
+  very: "Very",
+  zkpassport: "ZKPassport",
+};
 
 export type RequirementGroupSummary = {
   mode: "all" | "any";
@@ -248,8 +258,10 @@ export function CommunityMembershipGatePanel({
   verificationLoading,
   verificationError,
   locale,
+  onChooseVerificationProvider,
   onJoin,
   onCancelVerification,
+  verificationProviderChoices = [],
 }: CommunityMembershipGatePanelProps) {
   const resolvedLocale = locale && isUiLocaleCode(locale) ? locale : "en";
   const gatesCopy = getLocaleMessages(resolvedLocale, "gates");
@@ -279,22 +291,34 @@ export function CommunityMembershipGatePanel({
     ? getPassportPrompt(eligibility, panelCopy)
     : null;
   const activePrompt = verificationPrompt ?? passportPrompt;
+  const showProviderChoices = !activePrompt
+    && eligibility?.status === "verification_required"
+    && verificationProviderChoices.length > 1;
+  const suggestedProvider = eligibility?.status === "verification_required"
+    ? resolveSuggestedVerificationProvider(eligibility)
+    : null;
   const isVeryVerificationRequired =
     !activePrompt &&
     eligibility?.status === "verification_required" &&
-    resolveSuggestedVerificationProvider(eligibility) === "very";
+    suggestedProvider === "very";
+  const isProofOfWorkRequired = eligibility?.status === "verification_required"
+    && getMissingCapabilitiesFromGateEvaluation(eligibility).includes("altcha_pow");
   const eligibilityText = getEligibilityText(eligibility, joinSurfaceGates, resolvedLocale, panelCopy);
   const isInlineVerificationRequired =
     !activePrompt &&
     eligibility?.status === "verification_required" &&
-    !isVeryVerificationRequired;
-  const title = isVeryVerificationRequired
+    suggestedProvider === "self";
+  const title = showProviderChoices
+    ? panelCopy.verificationRequiredTitle
+    : isVeryVerificationRequired
     ? panelCopy.veryTitle
     : isInlineVerificationRequired
       ? panelCopy.selfTitle
       : (activePrompt?.title ??
         (joinRequested ? panelCopy.pendingRequestTitle : eligibilityText.title));
-  const description = isVeryVerificationRequired
+  const description = showProviderChoices
+    ? panelCopy.verificationRequiredDescription
+    : isVeryVerificationRequired
     ? null
     : isInlineVerificationRequired
       ? panelCopy.selfDescription
@@ -305,6 +329,7 @@ export function CommunityMembershipGatePanel({
   const showEligibilityAction =
     eligibility &&
     !activePrompt &&
+    (eligibility.status !== "verification_required" || suggestedProvider !== null || isProofOfWorkRequired) &&
     isJoinCtaActionable(eligibility) &&
     eligibility.status !== "gate_failed" &&
     eligibility.status !== "already_joined" &&
@@ -313,12 +338,26 @@ export function CommunityMembershipGatePanel({
   const panelIcon = getPanelIcon({
     eligibility,
     isInlineVerificationRequired,
-    isProofOfWorkRequired: false,
+    isProofOfWorkRequired,
     isVeryVerificationRequired,
     passportPrompt,
   });
   const showRequirements = shouldShowMembershipRequirements(eligibility);
-  const action = showPromptAction ? (
+  const action = showProviderChoices ? (
+    <div className="grid w-full gap-2 md:w-auto md:min-w-56">
+      {verificationProviderChoices.map((provider) => (
+        <Button
+          className="h-12 w-full"
+          disabled={verificationLoading}
+          key={provider}
+          onClick={() => void onChooseVerificationProvider?.(provider)}
+          variant="secondary"
+        >
+          Verify with {PROVIDER_LABELS[provider]}
+        </Button>
+      ))}
+    </div>
+  ) : showPromptAction ? (
     <Button
       asChild
       className="h-14 w-full shrink-0 px-9 text-lg shadow-sm md:w-auto md:min-w-44"

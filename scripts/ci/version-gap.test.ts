@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   classifyRelease,
   decide,
+  decideApiPinGap,
   productionContainsRelease,
 } from "./version-gap.mjs";
 
@@ -119,5 +120,61 @@ describe("version gap decisions", () => {
 
   test("a missing production sha is unreachable, not healthy", () => {
     expect(decide({ ...BASE, productionSha: "" }).kind).toBe("unreachable");
+  });
+});
+
+describe("API pin gap decisions", () => {
+  // The API pair: api.pirate.sc/__version against .github/release-refs/api.sha.
+  // compareStatus is base=pin, head=production in the API repo.
+  const API_BASE = {
+    productionSha: "d8b8e83c9",
+    pinSha: "a2179db5900000000000000000000000000000000",
+    compareStatus: "ahead",
+  };
+
+  // ACCEPTANCE CASE, 2026-08-04: a manual CLI lane deployed d8b8e83c9 at
+  // 13:08:53Z while the pin read a2179db59, and nothing noticed for hours.
+  // This exact divergence must classify as deployed NEWER than the pin.
+  test("the 13:08Z divergence classifies as deployed ahead of the pin, labelled as a manual deploy", () => {
+    const result = decideApiPinGap(API_BASE);
+    expect(result.kind).toBe("deployed_ahead_of_pin");
+    expect(result.failed).toBe(true);
+    expect(result.message).toContain("NEWER");
+    expect(result.message).toContain("a manual deploy ran ahead of the pin");
+  });
+
+  test("production older than the pin is the deploy-lane-lagging label, not the manual-deploy one", () => {
+    const result = decideApiPinGap({ ...API_BASE, compareStatus: "behind" });
+    expect(result.kind).toBe("deployed_behind_pin");
+    expect(result.failed).toBe(true);
+    expect(result.message).toContain("OLDER");
+    expect(result.message).toContain("the deploy lane is lagging or failed silently");
+    expect(result.message).not.toContain("manual deploy");
+  });
+
+  test("production serving the pin is in sync", () => {
+    // Prefix equality: /__version serves an abbreviated SHA.
+    expect(
+      decideApiPinGap({ ...API_BASE, productionSha: "a2179db59", compareStatus: undefined }).kind,
+    ).toBe("in_sync");
+    // Full compare agreement for a non-prefix miss.
+    const identical = decideApiPinGap({ ...API_BASE, compareStatus: "identical" });
+    expect(identical.kind).toBe("in_sync");
+    expect(identical.failed).toBe(false);
+  });
+
+  test("a production commit sharing no ancestry with the pin is diverged", () => {
+    const result = decideApiPinGap({ ...API_BASE, compareStatus: "diverged" });
+    expect(result.kind).toBe("diverged");
+    expect(result.failed).toBe(true);
+  });
+
+  test("an unanswerable pair is unreachable, never silently healthy", () => {
+    expect(decideApiPinGap({ ...API_BASE, productionSha: "" }).kind).toBe("unreachable");
+    expect(decideApiPinGap({ ...API_BASE, pinSha: "" }).kind).toBe("unreachable");
+    // A missing/unexpected compare status means the relationship is unknown —
+    // that is an alarm, not a pass.
+    expect(decideApiPinGap({ ...API_BASE, compareStatus: undefined }).kind).toBe("unreachable");
+    expect(decideApiPinGap({ ...API_BASE, compareStatus: "unknown" }).kind).toBe("unreachable");
   });
 });

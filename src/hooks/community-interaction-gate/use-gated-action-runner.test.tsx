@@ -1200,11 +1200,12 @@ describe("useGatedActionRunner", () => {
     });
 
     expect(runner.pendingInteraction?.action).toBe("reply_post");
-    expect(runner.hook.result.current.modalState?.icon).toBe("self");
-    expect(runner.hook.result.current.modalState?.primaryAction?.label).toBe("Verify with ID");
+    expect(runner.hook.result.current.modalState?.verificationProviderActions?.map(
+      (action) => action.label,
+    )).toEqual(["Verify with Self", "Verify with ZKPassport", "Verify with Very"]);
 
     await act(async () => {
-      await runner.hook.result.current.modalState?.primaryAction?.onClick?.();
+      await runner.hook.result.current.modalState?.verificationProviderActions?.[0]?.onClick();
     });
     expect(runner.calls).toEqual(["load:community-1", "verify:self"]);
   });

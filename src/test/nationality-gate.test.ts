@@ -8,6 +8,7 @@ import {
   hasSelfDocumentFactVerificationRequest,
   isJoinCtaActionable,
   resolveSuggestedVerificationProvider,
+  resolveAvailableHumanVerificationProviders,
 } from "../lib/identity-gates";
 import type { MembershipGateSummary, JoinEligibility, GateFailureDetails, VerificationCapabilities } from "@pirate/api-contracts";
 
@@ -232,6 +233,77 @@ describe("resolveSuggestedVerificationProvider", () => {
         },
       },
     })).toBe("self");
+  });
+
+  test("does not invent an identity provider for ALTCHA-only requirements", () => {
+    expect(resolveSuggestedVerificationProvider({
+      membership_gate_summaries: [{ gate_type: "altcha_pow" }],
+      gate_evaluation: {
+        passed: false,
+        trace: { kind: "op", op: "and", passed: false, children: [] },
+        required_action_set: {
+          kind: "set",
+          mode: "all",
+          items: [{ kind: "action", provider: "altcha", capability: "altcha_pow", scope: "community_join" }],
+        },
+      },
+    })).toBeNull();
+  });
+
+  test("does not invent a Very provider for ambiguous unique-human requirements", () => {
+    const eligibility = {
+      membership_gate_summaries: [{ gate_type: "unique_human", accepted_providers: [] }],
+      gate_evaluation: null,
+      missing_capabilities: ["unique_human"],
+    } as const;
+    expect(resolveSuggestedVerificationProvider(eligibility)).toBeNull();
+    expect(resolveAvailableHumanVerificationProviders(eligibility))
+      .toEqual(["self", "zkpassport", "very"]);
+  });
+
+  test("uses an explicit community preference without changing available choices", () => {
+    const eligibility = {
+      membership_gate_summaries: [{ gate_type: "unique_human", accepted_providers: [] }],
+      gate_evaluation: null,
+      missing_capabilities: ["unique_human"],
+      preferred_verification_provider: "very",
+    } as const;
+    expect(resolveSuggestedVerificationProvider(eligibility)).toBe("very");
+    expect(resolveAvailableHumanVerificationProviders(eligibility))
+      .toEqual(["very", "self", "zkpassport"]);
+  });
+
+  test("offers both supported document providers instead of silently choosing Self", () => {
+    const eligibility = {
+      membership_gate_summaries: [{
+        gate_type: "nationality",
+        accepted_providers: ["self", "zkpassport"],
+      }],
+      gate_evaluation: null,
+      missing_capabilities: ["nationality"],
+    } as const;
+    expect(resolveSuggestedVerificationProvider(eligibility)).toBeNull();
+    expect(resolveAvailableHumanVerificationProviders(eligibility))
+      .toEqual(["self", "zkpassport"]);
+  });
+
+  test("intersects providers across required capabilities", () => {
+    expect(resolveAvailableHumanVerificationProviders({
+      membership_gate_summaries: [
+        { gate_type: "unique_human", accepted_providers: [] },
+        { gate_type: "nationality", accepted_providers: ["self", "zkpassport"] },
+      ],
+      gate_evaluation: null,
+      missing_capabilities: ["unique_human", "nationality"],
+    })).toEqual(["self", "zkpassport"]);
+  });
+
+  test("uses an explicitly accepted ZKPassport unique-human provider", () => {
+    expect(resolveSuggestedVerificationProvider({
+      membership_gate_summaries: [{ gate_type: "unique_human", accepted_providers: ["zkpassport"] }],
+      gate_evaluation: null,
+      missing_capabilities: ["unique_human"],
+    })).toBe("zkpassport");
   });
 });
 

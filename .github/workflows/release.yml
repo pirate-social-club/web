@@ -427,6 +427,32 @@ jobs:
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/bookings/migrations \
             --label bookings
+      # The shard's pool metadata is D1, not the control plane. Apply its
+      # migrations before deploying a shard that may depend on new pool state.
+      # The isolated D1 token deliberately owns this mutation, not the Worker
+      # deploy token.
+      - name: Apply staging community shard-pool migrations
+        if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false'
+        working-directory: api/services/community-d1-shard
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          for attempt in 1 2 3 4; do
+            if output="$(bunx wrangler@4.100.0 d1 migrations apply D1_POOL --remote 2>&1)"; then
+              printf '%s\n' "$output"
+              exit 0
+            else
+              status=$?
+              printf '%s\n' "$output"
+              if [[ "$output" != *"code: 7429"* ]] || [[ "$attempt" -eq 4 ]]; then
+                exit "$status"
+              fi
+            fi
+            delay=$((attempt * 10))
+            echo "D1 pool migration received retryable 7429; retrying in ${delay}s (attempt ${attempt}/4)"
+            sleep "$delay"
+          done
       - name: Refuse shard-changing non-main staging validation
         if: github.ref_name != 'main' && steps.in-lane-freshness.outputs.stale == 'false' && steps.staging-shard-preflight.outputs.deploy_shard == 'true'
         run: |
@@ -458,6 +484,7 @@ jobs:
         working-directory: web
         env:
           API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          COMMUNITY_SCHEMA_POLICY_DIGEST: ${{ needs.schema-gate.outputs.policy_digest }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           VITE_BASE_NETWORK: base-sepolia
@@ -481,6 +508,7 @@ jobs:
             --api-dir "$GITHUB_WORKSPACE/api" \
             --environment staging \
             --phase converged \
+            --previous-source-version "${{ steps.staging-shard-preflight.outputs.previous_source_version }}" \
             --health-url https://api-staging.pirate.sc/health/provisioning
       - name: Verify staging/prod metadata
         if: steps.in-lane-freshness.outputs.stale == 'false'
@@ -511,16 +539,19 @@ jobs:
   # API's declared community-template schema requirements? Nothing gated this
   # before, and it broke production twice (1124, 1127). This is schema
   # ATTESTATION across the whole fleet; the multipart test below is BEHAVIOURAL
-  # on one community. They catch different failures — keep both. Read-only.
+  # on one community. They catch different failures — keep both. The full scan
+  # remains authoritative while its fenced ledger publication runs in shadow.
   schema-gate:
     name: Community schema gate (staging fleet)
     needs: [release-inputs, staging-freshness]
     if: github.event_name != 'pull_request' && needs.staging-freshness.outputs.stale == 'false'
-    # The scan is strictly read-only, so a newer main push can safely cancel an
-    # obsolete in-flight scan instead of doubling D1 load for another ~20min.
-    # Manual dispatches are deliberate and keep an independent group.
+    # All staging scans share one writer lane. A manual validation used to get
+    # its own group, allowing it to invalidate the fleet attestation while a
+    # main scan was publishing; the generation fence correctly rejected both
+    # stale writers. Main still cancels obsolete scans, while a manual run
+    # queues behind the active writer instead of racing it.
     concurrency:
-      group: community-schema-gate-${{ github.event_name == 'push' && 'main' || github.run_id }}
+      group: community-schema-gate-staging
       cancel-in-progress: ${{ github.event_name == 'push' }}
     runs-on: blacksmith-2vcpu-ubuntu-2404
     # 25min, raised from 15 on 2026-07-22. The 15min ceiling sat INSIDE the
@@ -538,6 +569,8 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: read
+    outputs:
+      policy_digest: ${{ steps.schema-policy.outputs.digest }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -584,7 +617,8 @@ jobs:
         # community-d1-pool-* and community-d1-shard-pool-*. That is the isolated
         # D1 token (CLOUDFLARE_D1_API_TOKEN), NOT the Worker-deploy token — D1
         # access is deliberately kept off the deploy token (see the multipart
-        # fixture step). Read-only: a token-scope gap fails safe, never mutates.
+        # fixture step). This token already applies pool migrations, so it has
+        # the D1 write scope needed for fenced ledger publication.
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
@@ -596,7 +630,14 @@ jobs:
             --drift-policy core/db/known-community-migration-drifts.json \
             --canonical-baseline api/services/api/docs/attestations/community-schema/staging-canonical-baseline.json \
             --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
+            --publish-attestations \
             --concurrency 2
+      - name: Export authoritative staging schema-policy digest
+        id: schema-policy
+        shell: bash
+        run: |
+          digest="$(node -e 'const fs=require("node:fs");const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const d=String(m.effective_policy_digest||"");if(!/^[0-9a-f]{64}$/.test(d))process.exit(2);process.stdout.write(d)' "$GITHUB_WORKSPACE/schema-gate-staging.json")"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
       # always(): a SLOW scan that then fails is exactly the sample we must not
       # drop. Never fails the job — an observability step must not be able to
       # block a release.
@@ -949,8 +990,9 @@ jobs:
       # Fresh check of the LIVE PRODUCTION fleet, immediately before migrations and
       # deploy. The staging schema-gate is a promotion gate; this is the real one —
       # the allocated prod fleet can change between then and now, so we re-attest it
-      # here rather than trust the earlier pass. Read-only. If any live prod shard
-      # is missing a required migration, we STOP before mutating or deploying.
+      # here rather than trust the earlier pass. It publishes only fenced ledger
+      # evidence; the full scan remains authoritative. If any live prod shard is
+      # missing a required migration, we STOP before migrations or deployment.
       - name: Verify production fleet satisfies pinned API schema requirements
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -966,7 +1008,13 @@ jobs:
             --drift-policy core/db/known-community-migration-drifts.json \
             --canonical-baseline api/services/api/docs/attestations/community-schema/production-canonical-baseline.json \
             --manifest "$GITHUB_WORKSPACE/schema-gate-production.json" \
+            --publish-attestations \
             --concurrency 14
+      - name: Export authoritative production schema-policy digest
+        shell: bash
+        run: |
+          digest="$(node -e 'const fs=require("node:fs");const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const d=String(m.effective_policy_digest||"");if(!/^[0-9a-f]{64}$/.test(d))process.exit(2);process.stdout.write(d)' "$GITHUB_WORKSPACE/schema-gate-production.json")"
+          echo "COMMUNITY_SCHEMA_POLICY_DIGEST=$digest" >> "$GITHUB_ENV"
       - name: Upload production schema manifest
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -1039,6 +1087,30 @@ jobs:
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/bookings/migrations \
             --label bookings
+      # Keep the data-plane ordering identical to staging: all pool schema is
+      # ready before the shard source that uses it is deployed.
+      - name: Apply production community shard-pool migrations
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
+        working-directory: api/services/community-d1-shard
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          for attempt in 1 2 3 4; do
+            if output="$(bunx wrangler@4.100.0 d1 migrations apply D1_POOL --remote --env production 2>&1)"; then
+              printf '%s\n' "$output"
+              exit 0
+            else
+              status=$?
+              printf '%s\n' "$output"
+              if [[ "$output" != *"code: 7429"* ]] || [[ "$attempt" -eq 4 ]]; then
+                exit "$status"
+              fi
+            fi
+            delay=$((attempt * 10))
+            echo "D1 pool migration received retryable 7429; retrying in ${delay}s (attempt ${attempt}/4)"
+            sleep "$delay"
+          done
       - name: Deploy pinned production community shard first
         if: steps.in-lane-freshness-prod.outputs.stale == 'false' && steps.shard-preflight.outputs.deploy_shard == 'true'
         working-directory: api/services/community-d1-shard
@@ -1091,6 +1163,7 @@ jobs:
           node scripts/verify-community-shard-compatibility.mjs \
             --api-dir "$GITHUB_WORKSPACE/api" \
             --phase converged \
+            --previous-source-version "${{ steps.shard-preflight.outputs.previous_source_version }}" \
             --health-url https://api.pirate.sc/health/provisioning
       - name: Verify production multipart storage
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'

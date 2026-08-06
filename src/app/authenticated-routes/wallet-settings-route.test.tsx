@@ -423,10 +423,9 @@ describe("CurrentUserWalletPage rewards", () => {
     fireEvent.click(view.getByText("Claim"));
 
     expect(view.getByText("Verify once")).toBeTruthy();
-    expect(view.getByText("Verification failed")).toBeTruthy();
-    expect(view.queryByText("Self")).toBeNull();
-    expect(view.queryByText("Very")).toBeNull();
-    expect(view.queryByText("ZKPassport")).toBeNull();
+    expect(view.getByText("Self")).toBeTruthy();
+    expect(view.getByText("Very")).toBeTruthy();
+    expect(view.getByText("ZKPassport")).toBeTruthy();
   });
 
   test("explains how a verified user can reach the claim minimum", async () => {

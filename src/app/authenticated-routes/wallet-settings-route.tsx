@@ -26,6 +26,7 @@ import {
 } from "@/components/compositions/rewards/reward-surfaces";
 import { IdentityWalletSection } from "@/components/compositions/wallet/identity-wallet-section/identity-wallet-section";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
+import { ZkPassportVerificationModal } from "@/components/compositions/verification/zkpassport-verification-modal/zkpassport-verification-modal";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
 import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
@@ -40,6 +41,9 @@ import { useApi } from "@/lib/api";
 import { updateSessionIdentityWallet, useSession } from "@/lib/api/session-store";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
+import { useZkPassportVerification } from "@/lib/verification/use-zkpassport-verification";
+
+const REWARD_CASHOUT_VERIFICATION_PROVIDERS = ["self", "zkpassport", "very"] as const;
 
 const LazyRoyaltyClaimModal = React.lazy(async () => {
   const mod = await import("@/components/compositions/wallet/royalty-claim-modal/royalty-claim-modal");
@@ -488,6 +492,7 @@ export function CurrentUserWalletPage() {
   const [rewardsCashoutPollGeneration, setRewardsCashoutPollGeneration] = React.useState(0);
   const [rewardsVerifyOpen, setRewardsVerifyOpen] = React.useState(false);
   const [rewardsVerifyState, setRewardsVerifyState] = React.useState<VerifyHumanSheetState>("provider-selection");
+  const [rewardsZkPassportOpen, setRewardsZkPassportOpen] = React.useState(false);
   const [rewardsVerificationPolling, setRewardsVerificationPolling] = React.useState(false);
   const [royaltyClaimOpen, setRoyaltyClaimOpen] = React.useState(false);
   const [walletAction, setWalletAction] = React.useState<"receive" | "send" | null>(null);
@@ -742,12 +747,24 @@ export function CurrentUserWalletPage() {
     verificationIntent: null,
   });
 
+  const {
+    checkPendingVerification: checkRewardsZkPassport,
+    clearPendingVerification: clearRewardsZkPassport,
+    startVerification: startRewardsZkPassportVerification,
+    verificationError: rewardsZkPassportError,
+    verificationHref: rewardsZkPassportHref,
+    verificationLoading: rewardsZkPassportLoading,
+  } = useZkPassportVerification({
+    onVerified: handleRewardsVerified,
+    verificationIntent: null,
+  });
+
   React.useEffect(() => {
-    const message = selfError || veryRewardsError;
+    const message = selfError || veryRewardsError || rewardsZkPassportError;
     if (!message) return;
     setRewardsVerifyState(isIdentityConflictError(message) ? "conflict" : "failure");
     setRewardsVerifyOpen(true);
-  }, [selfError, veryRewardsError]);
+  }, [rewardsZkPassportError, selfError, veryRewardsError]);
 
   const handleRewardsVerifyProvider = React.useCallback(async (provider: "self" | "very" | "zkpassport") => {
     setRewardsVerifyState("pending");
@@ -769,8 +786,18 @@ export function CurrentUserWalletPage() {
       return;
     }
 
-    setRewardsVerifyState("failure");
-  }, [startSelfRewardsVerification, startVeryRewardsVerification]);
+    const result = await startRewardsZkPassportVerification({
+      deferOpen: true,
+      requestedCapabilities: ["unique_human"],
+      unavailableMessage: "ZKPassport verification is unavailable for rewards.",
+    });
+    if (result.started) {
+      setRewardsVerifyOpen(false);
+      setRewardsZkPassportOpen(true);
+    } else {
+      setRewardsVerifyState("failure");
+    }
+  }, [startRewardsZkPassportVerification, startSelfRewardsVerification, startVeryRewardsVerification]);
 
   const openRewardsCashoutForSummary = React.useCallback((summary: ApiRewardsSummaryResponse) => {
     if (!summary.cashout.eligible || summary.balance_cents <= 0) return;
@@ -994,11 +1021,8 @@ export function CurrentUserWalletPage() {
         void refreshRewardsSummary();
       },
       onVerify: () => {
-        const provider = rewardsSummary.cashout.verification_provider;
-        if (!provider) return;
-        setRewardsVerifyState("pending");
+        setRewardsVerifyState("provider-selection");
         setRewardsVerifyOpen(true);
-        void handleRewardsVerifyProvider(provider);
       },
       rewards: rewardsSummary,
       rewardsCashoutPending: rewardsCashoutPending || rewardsCashoutState === "pending",
@@ -1084,13 +1108,27 @@ export function CurrentUserWalletPage() {
             void handleRewardsVerifyProvider(provider);
           }}
           open={rewardsVerifyOpen}
-          providers={rewardsSummary.cashout.verification_provider ? [rewardsSummary.cashout.verification_provider] : []}
+          providers={[...REWARD_CASHOUT_VERIFICATION_PROVIDERS]}
           showNationalityTierDisclosure={import.meta.env.VITE_REWARD_NATIONALITY_TIERS_PREVIEW === "true"}
           state={(selfLoading || veryRewardsLoading) && rewardsVerifyState !== "failure" && rewardsVerifyState !== "conflict"
             ? "pending"
             : rewardsVerifyState}
         />
       ) : null}
+      <ZkPassportVerificationModal
+        actionLabel="Open ZKPassport"
+        checkLoading={rewardsZkPassportLoading}
+        description="Verify with ZKPassport to cash out rewards."
+        error={rewardsZkPassportError}
+        href={rewardsZkPassportHref}
+        onCheckPending={checkRewardsZkPassport}
+        onOpenChange={(open) => {
+          setRewardsZkPassportOpen(open);
+          if (!open) clearRewardsZkPassport();
+        }}
+        open={rewardsZkPassportOpen}
+        title="Verify with ZKPassport"
+      />
       {selfPrompt ? (
         <SelfVerificationModal
           actionLabel={selfPrompt.actionLabel}

@@ -236,6 +236,31 @@ describe("useCommunityJoinVerification", () => {
     expect(zkPassportStarts).toEqual([]);
   });
 
+  test("does not fall back to Self when no verification provider is supported", async () => {
+    const unsupportedEligibility = {
+      ...eligibility("verification_required"),
+      missing_capabilities: ["unique_human"],
+      membership_gate_summaries: [{ gate_type: "unique_human", accepted_providers: [] }],
+    } as JoinEligibility;
+    const { result } = renderHook(() =>
+      useCommunityJoinVerification({
+        communityId: "com_unsupported",
+        eligibility: unsupportedEligibility,
+        locale: "en",
+        refetchEligibility: async () => unsupportedEligibility,
+      })
+    );
+
+    await act(async () => {
+      expect(await result.current.handleJoin()).toBe("blocked");
+    });
+
+    expect(selfStarts).toEqual([]);
+    expect(veryStarts).toEqual([]);
+    expect(zkPassportStarts).toEqual([]);
+    expect(result.current.joinError).toContain("No supported verification provider");
+  });
+
   test("launches the selected palm branch independently", async () => {
     const { result } = renderHook(() =>
       useCommunityJoinVerification({
@@ -257,7 +282,7 @@ describe("useCommunityJoinVerification", () => {
     expect(selfStarts).toEqual([]);
   });
 
-  test("preserves the Telegram Self to ZKPassport substitution for a selected document branch", async () => {
+  test("requires an explicit provider choice for a multi-provider Telegram document branch", async () => {
     (window as Window & { Telegram?: { WebApp: object } }).Telegram = { WebApp: {} };
     const { result } = renderHook(() =>
       useCommunityJoinVerification({
@@ -269,11 +294,19 @@ describe("useCommunityJoinVerification", () => {
     );
 
     await act(async () => {
-      await result.current.startGateVerification({
+      expect(await result.current.startGateVerification({
         accepted_providers: ["self", "zkpassport"],
         gate_type: "nationality",
         required_values: ["GE"],
-      });
+      })).toBe("blocked");
+      expect(await result.current.startVerificationProvider("zkpassport", {
+        missingCapabilities: ["nationality"],
+        membershipGateSummaries: [{
+          accepted_providers: ["self", "zkpassport"],
+          gate_type: "nationality",
+          required_values: ["GE"],
+        }],
+      })).toBe("started");
     });
     delete (window as Window & { Telegram?: { WebApp: object } }).Telegram;
 

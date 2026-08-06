@@ -17,6 +17,8 @@ import {
   hasAltchaProofAction,
   getVerificationCapabilitiesForProvider,
   getVerificationPromptCopy,
+  type HumanVerificationProvider,
+  resolveAvailableHumanVerificationProviders,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 import { deriveGateStatuses } from "@/lib/community-gate-statuses";
@@ -26,6 +28,11 @@ import { openExternalHref } from "@/lib/open-external-href";
 import { type UiLocaleCode } from "@/lib/ui-locale-core";
 
 export type RouteKind = "community" | "home" | "post" | "public-community";
+const providerLabels: Record<HumanVerificationProvider, string> = {
+  self: "Self",
+  very: "Very",
+  zkpassport: "ZKPassport",
+};
 export type InteractionAction =
   | "vote_post"
   | "vote_comment"
@@ -77,6 +84,7 @@ export type ModalState = {
   requirementsMode?: "all" | "any";
   requirementStatuses?: CommunityGateRequirementStatus[];
   secondaryAction?: CommunityInteractionGateAction | null;
+  verificationProviderActions?: CommunityInteractionGateAction[];
   title: string;
 };
 
@@ -537,9 +545,28 @@ export function createDefaultBlockedModalState({
           ? "zh"
           : "en";
   const gatesPanel = getLocaleMessages(resolvedLocale, "gates").panel;
-
   switch (gate.eligibility.status) {
     case "verification_required": {
+      const providerChoices = resolveAvailableHumanVerificationProviders(gate.eligibility);
+      if (providerChoices.length > 1) {
+        return {
+          description: gatesPanel.verificationRequiredDescription,
+          title: gatesPanel.verificationRequiredTitle,
+          verificationProviderActions: providerChoices.map((provider) => ({
+            label: `Verify with ${providerLabels[provider]}`,
+            loading: defaultVerificationLoadingProvider === provider,
+            onClick: async () => {
+              if (startDefaultVerification) {
+                await startDefaultVerification({ gate, provider });
+                return;
+              }
+              closeModal();
+              openCommunity();
+            },
+          })),
+          ...getRequirementDisplayState(gate),
+        };
+      }
       const provider = resolveSuggestedVerificationProvider(gate.eligibility);
       if (provider === "passport") {
         const passportPrompt = getVerificationPromptCopy(
@@ -563,6 +590,17 @@ export function createDefaultBlockedModalState({
           secondaryAction: null,
           ...getRequirementDisplayState(gate),
           title: gatesPanel.passportPromptTitle,
+        };
+      }
+      if (!provider) {
+        return {
+          description: gatesPanel.defaultDescription,
+          icon: "blocked",
+          primaryAction: null,
+          ...getRequirementDisplayState(gate),
+          title: isVoteAction
+            ? interactionCopy.verifyToVoteTitle
+            : interactionCopy.verifyToReplyTitle,
         };
       }
       const verificationPrompt = getVerificationPromptCopy(
@@ -760,8 +798,41 @@ export function createCommunityBlockedModalStateFactory(options: {
       if (hasAltchaProofAction(gate.eligibility)) {
         return undefined;
       }
+      const providerChoices = resolveAvailableHumanVerificationProviders(gate.eligibility);
+      if (providerChoices.length > 1) {
+        const startProvider = async (provider: HumanVerificationProvider): Promise<void> => {
+          if (provider === "very") {
+            const result = await options.onStartVeryVerification?.();
+            if (result?.started) closeModal();
+            return;
+          }
+          if (provider === "zkpassport") {
+            const result = await options.onStartZkPassportVerification?.(gate);
+            if (result?.started) closeModal();
+            return;
+          }
+          const result = await options.onStartSelfVerification?.(gate);
+          if (!result?.started) return;
+          closeModal();
+          if (!result.openedModal && result.href) openExternalHref(result.href);
+        };
+        return {
+          description: gatesPanel.verificationRequiredDescription,
+          title: gatesPanel.verificationRequiredTitle,
+          verificationProviderActions: providerChoices.map((provider) => ({
+            label: `Verify with ${providerLabels[provider]}`,
+            loading: provider === "very"
+              ? options.veryLoading
+              : provider === "self"
+                ? options.selfLoading
+                : options.zkPassportLoading ?? false,
+            onClick: () => startProvider(provider),
+          })),
+          ...getRequirementDisplayState(gate),
+        };
+      }
       const provider = resolveSuggestedVerificationProvider(gate.eligibility);
-      if (provider === "passport") {
+      if (provider === "passport" || !provider) {
         return undefined;
       }
 

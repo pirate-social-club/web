@@ -82,6 +82,19 @@ describe("telegramVerifyReducer", () => {
     expect(isDelayedTelegramVerifyScreen(external.screen)).toBe(true);
   });
 
+  test("represents an explicit multi-provider choice without launching one", () => {
+    const choosing = telegramVerifyReducer(initialTelegramVerifyFlowState(), {
+      providers: ["self", "zkpassport", "very"],
+      type: "choosingProviders",
+    });
+
+    expect(choosing.screen).toEqual({
+      kind: "choosing_provider",
+      providers: ["self", "zkpassport", "very"],
+    });
+    expect(choosing.launchedVerification).toBe(false);
+  });
+
   test("externalOpened is a no-op outside ready screens", () => {
     const joining = telegramVerifyReducer(initialTelegramVerifyFlowState(), { type: "joining" });
     const next = telegramVerifyReducer(joining, { type: "externalOpened" });

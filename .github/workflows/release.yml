@@ -545,12 +545,13 @@ jobs:
     name: Community schema gate (staging fleet)
     needs: [release-inputs, staging-freshness]
     if: github.event_name != 'pull_request' && needs.staging-freshness.outputs.stale == 'false'
-    # A newer main push can safely cancel an obsolete in-flight scan instead of
-    # doubling D1 load. Its ledger invalidation remains fail-closed, and the
-    # writer epoch prevents it from overwriting a newer scan's evidence.
-    # Manual dispatches are deliberate and keep an independent group.
+    # All staging scans share one writer lane. A manual validation used to get
+    # its own group, allowing it to invalidate the fleet attestation while a
+    # main scan was publishing; the generation fence correctly rejected both
+    # stale writers. Main still cancels obsolete scans, while a manual run
+    # queues behind the active writer instead of racing it.
     concurrency:
-      group: community-schema-gate-${{ github.event_name == 'push' && 'main' || github.run_id }}
+      group: community-schema-gate-staging
       cancel-in-progress: ${{ github.event_name == 'push' }}
     runs-on: blacksmith-2vcpu-ubuntu-2404
     # 25min, raised from 15 on 2026-07-22. The 15min ceiling sat INSIDE the

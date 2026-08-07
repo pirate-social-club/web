@@ -153,6 +153,22 @@ jobs:
             AND status = 'failed'
           AND error_code LIKE '%502%';
           SELECT 'video_media_analysis_quarantined' AS action, changes() AS count;
+
+          UPDATE community_jobs
+          SET status = 'failed',
+              error_code = 'staging_manual_quarantine',
+              attempt_count = 8,
+              available_at = NULL,
+              updated_at = datetime('now')
+          WHERE job_id IN (
+                  'cjb_66f246362f4145d69e6a3e2f54014274',
+                  'cjb_53335290aa9841259b045133661c9e7d'
+                )
+            AND job_type = 'video_media_analysis'
+            AND status = 'failed'
+            AND attempt_count = 1
+            AND error_code LIKE '%502%';
+          SELECT 'additional_video_media_analysis_quarantined' AS action, changes() AS count;
           SQL
           )
           npx --yes wrangler@4.100.0 d1 execute "$DATABASE_NAME" --remote --json --command "$SQL"

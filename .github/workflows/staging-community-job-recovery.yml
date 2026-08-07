@@ -1,4 +1,5 @@
 name: Staging community job recovery
+# Repair reruns remain explicitly title-gated and staging-only.
 
 on:
   workflow_dispatch:

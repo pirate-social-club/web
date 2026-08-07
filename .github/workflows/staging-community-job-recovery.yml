@@ -120,8 +120,6 @@ jobs:
           export CLOUDFLARE_API_TOKEN="$D1_API_TOKEN"
 
           SQL=$(cat <<'SQL'
-          BEGIN TRANSACTION;
-
           UPDATE community_jobs
           SET status = 'failed',
               error_code = 'staging_model_decommissioned',
@@ -153,10 +151,8 @@ jobs:
           WHERE job_id = 'cjb_aeb5c24d14ca4164adb09814063517e2'
             AND job_type = 'video_media_analysis'
             AND status = 'failed'
-            AND error_code LIKE '%502%';
+          AND error_code LIKE '%502%';
           SELECT 'video_media_analysis_quarantined' AS action, changes() AS count;
-
-          COMMIT;
           SQL
           )
           npx --yes wrangler@4.100.0 d1 execute "$DATABASE_NAME" --remote --json --command "$SQL"

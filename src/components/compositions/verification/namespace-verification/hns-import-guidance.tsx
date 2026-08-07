@@ -80,7 +80,7 @@ export function HnsImportGuidance({
             onChange={(event) => onAcknowledgedChange(event.target.checked)}
             type="checkbox"
           />
-          <span className="text-sm text-foreground">
+          <span className="text-foreground">
             I understand this replaces the full on-chain resource, and I will publish every record shown above.
           </span>
         </label>

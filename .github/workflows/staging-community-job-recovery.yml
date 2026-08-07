@@ -128,42 +128,28 @@ jobs:
             AND status IN ('queued', 'failed');
           SELECT 'post_translation_materialize_terminalized' AS action, changes() AS count;
 
-          WITH target AS (
-            SELECT job_id
-            FROM community_jobs
-            WHERE job_type = 'song_preview_generate'
-              AND status IN ('queued', 'failed')
-              AND attempt_count = 5
-            ORDER BY created_at ASC, job_id ASC
-            LIMIT 1
-          )
           UPDATE community_jobs
           SET status = 'failed',
               error_code = 'staging_manual_quarantine',
               attempt_count = 8,
               available_at = NULL,
               updated_at = datetime('now')
-          WHERE job_id = (SELECT job_id FROM target);
+          WHERE job_id = 'cjb_92bb944edeb046f4a94698a48f384ef4'
+            AND job_type = 'song_preview_generate'
+            AND status = 'failed'
+            AND attempt_count = 5;
           SELECT 'song_preview_generate_quarantined' AS action, changes() AS count;
 
-          WITH target AS (
-            SELECT job_id
-            FROM community_jobs
-            WHERE job_type = 'video_media_analysis'
-              AND status IN ('queued', 'failed')
-              AND (COALESCE(error_code, '') LIKE '%502%'
-                   OR COALESCE(payload_json, '') LIKE '%502%'
-                   OR COALESCE(result_ref, '') LIKE '%502%')
-            ORDER BY created_at ASC, job_id ASC
-            LIMIT 1
-          )
           UPDATE community_jobs
           SET status = 'failed',
               error_code = 'staging_manual_quarantine',
               attempt_count = 8,
               available_at = NULL,
               updated_at = datetime('now')
-          WHERE job_id = (SELECT job_id FROM target);
+          WHERE job_id = 'cjb_aeb5c24d14ca4164adb09814063517e2'
+            AND job_type = 'video_media_analysis'
+            AND status = 'failed'
+            AND error_code LIKE '%502%';
           SELECT 'video_media_analysis_quarantined' AS action, changes() AS count;
 
           COMMIT;

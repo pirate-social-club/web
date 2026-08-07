@@ -15,6 +15,7 @@ import {
 import {
   NamespaceVerificationSpacesPanel,
 } from "@/components/compositions/verification/namespace-verification/namespace-verification-shared";
+import { HnsImportGuidance } from "@/components/compositions/verification/namespace-verification/hns-import-guidance";
 import {
   getHnsStatusMessage,
   getNamespaceVerificationFailureMessage,
@@ -174,7 +175,14 @@ export function CommunityNamespaceVerificationPage({
   const primaryFooterActions = (
     <>
       {flow.isDnsSetupRequired ? (
-        <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.actions.restart}>{mc.checkSetup}</Button>
+        <Button
+          className={primaryButtonClassName}
+          disabled={Boolean(flow.hnsImportPayload) && !flow.replacementAcknowledged && !flow.hnsImportPayload?.replacement_acknowledged_at}
+          loading={flow.isVerifying}
+          onClick={flow.hnsImportPayload ? flow.actions.verify : flow.actions.restart}
+        >
+          {mc.checkSetup}
+        </Button>
       ) : null}
       {flow.isChallengePending ? (
         <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.actions.verify}>{flow.isSpaces ? mc.checkSetup : mc.verifyAction}</Button>
@@ -273,7 +281,7 @@ export function CommunityNamespaceVerificationPage({
                   </FormNote>
                 ) : null}
                 {handshakeUrl ? <Type as="p" variant="body">
-                  To access your site on Handshake DNS, use{" "}
+                  This route is ready in HNS-aware browsers. Freedom resolves Handshake names; Denuo and other validating clients additionally verify the DNSSEC and DANE chain configured during import. Use{" "}
                   <a
                     className="text-primary underline-offset-4 hover:underline"
                     href="https://github.com/pirate-social-club/freedom-browser/releases"
@@ -282,8 +290,27 @@ export function CommunityNamespaceVerificationPage({
                   >
                     Freedom Browser
                   </a>
-                  .
+                  {" "}or another HNS/DANE-capable browser. Conventional browsers must use the pirate.sc route.
                 </Type> : null}
+                {attachedPrimary?.family === "hns" ? (
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <ClientReadiness
+                      label="Freedom"
+                      ready={attachedPrimary.delegation?.delegation_security === "unsecured" || attachedPrimary.delegation?.delegation_security === "secure"}
+                      waiting="Waiting for live NS delegation"
+                    />
+                    <ClientReadiness
+                      label="Denuo / DANE"
+                      ready={attachedPrimary.delegation?.delegation_security === "secure"}
+                      waiting="Waiting for DS, DNSSEC, and TLSA validation"
+                    />
+                    <ClientReadiness
+                      label="Pirate native route"
+                      ready={Boolean(handshakeUrl)}
+                      waiting="Waiting for secure observation and activation"
+                    />
+                  </div>
+                ) : null}
               </div>
             ) : (
               <FormNote>This community namespace is connected. There is nothing else to set up here.</FormNote>
@@ -397,7 +424,17 @@ export function CommunityNamespaceVerificationPage({
           </>
         ) : null}
 
-        {(flow.isDnsSetupRequired || flow.isChallengeReady || flow.isChallengePending || flow.isVerifying || flow.isFailed || flow.isExpired) && flow.isHns && flow.hnsMode ? (
+        {(flow.isDnsSetupRequired || flow.isChallengeReady || flow.isChallengePending || flow.isVerifying || flow.isFailed || flow.isExpired) && flow.isHns && flow.hnsImportPayload ? (
+          <HnsImportGuidance
+            acknowledged={flow.replacementAcknowledged}
+            busy={flow.busy}
+            onAcknowledgedChange={flow.actions.setReplacementAcknowledged}
+            payload={flow.hnsImportPayload}
+            rootLabel={flow.rootLabel}
+          />
+        ) : null}
+
+        {(flow.isDnsSetupRequired || flow.isChallengeReady || flow.isChallengePending || flow.isVerifying || flow.isFailed || flow.isExpired) && flow.isHns && flow.hnsMode && !flow.hnsImportPayload ? (
           <NamespaceVerificationHnsPanel
             challengePending={flow.isChallengePending}
             challengeTxtValue={flow.challengeTxtValue}
@@ -464,6 +501,15 @@ export function CommunityNamespaceVerificationPage({
         </div>
       ) : null}
     </section>
+  );
+}
+
+function ClientReadiness({ label, ready, waiting }: { label: string; ready: boolean; waiting: string }) {
+  return (
+    <div className="rounded-xl border border-border-soft p-3">
+      <Type as="div" variant="body-strong">{label}</Type>
+      <Type as="div" variant="caption">{ready ? "Ready" : waiting}</Type>
+    </div>
   );
 }
 

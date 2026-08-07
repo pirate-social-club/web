@@ -53,6 +53,8 @@ describe("resolveApiBaseUrl", () => {
 
   test("uses the HNS API origin for HNS app hosts", () => {
     expect(resolveApiBaseUrl("app.pirate")).toBe("https://api.pirate");
+    expect(resolveApiBaseUrl("app.dankmeme")).toBe("https://api.pirate");
+    expect(resolveApiBaseUrl("app.xn--pokmon-dva")).toBe("https://api.pirate");
   });
 
   test("joins relative paths against the resolved API origin", () => {

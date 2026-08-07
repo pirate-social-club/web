@@ -52,6 +52,27 @@ function createMockCallbacks(
   };
 }
 
+const hnsImportPayload = {
+  kind: "hns_import" as const,
+  publish_plan: {
+    version: "hns_import_publish_v1" as const,
+    replacement_semantics: "complete_resource" as const,
+    current_records: [],
+    preserved_records: [],
+    removed_conflicts: [],
+    added_records: [],
+    replacement_records: [{ type: "NS", ns: "ns1.pirate." }],
+    preserved_unknown_record_types: [],
+    acknowledgement_required: true as const,
+  },
+  observed_chain_anchor: {
+    network: "main",
+    height: 1_000,
+    block_hash: "ab".repeat(32),
+    median_time: 1_700_000_000,
+  },
+};
+
 describe("useNamespaceVerificationFlow", () => {
   test("initializes to idle state with defaults", () => {
     const { result } = renderHook(() =>
@@ -219,6 +240,52 @@ describe("useNamespaceVerificationFlow", () => {
 
     expect(result.current.state).toBe("dns_setup_required");
     expect(result.current.isDnsSetupRequired).toBe(true);
+  });
+
+  test("passes the complete-resource acknowledgement and retains HNS progress", async () => {
+    let completeInput: Parameters<NamespaceVerificationCallbacks["onCompleteSession"]>[0] | null = null;
+    const pendingPayload = {
+      ...hnsImportPayload,
+      replacement_acknowledged_at: "2026-08-06T00:00:00.000Z",
+      observation: {
+        state: "pending_tree_commit" as const,
+        current_height: 1_001,
+        target_tree_boundary: 1_008,
+      },
+    };
+    const { result } = renderHook(() => useNamespaceVerificationFlow({
+      callbacks: createMockCallbacks({
+        onStartSession: () => Promise.resolve(mockStartResult({
+          status: "dns_setup_required",
+          hnsImportPayload,
+        })),
+        onCompleteSession: (input) => {
+          completeInput = input;
+          return Promise.resolve(mockCompleteResult({
+            status: "challenge_pending",
+            namespaceVerificationId: null,
+            hnsImportPayload: pendingPayload,
+          }));
+        },
+      }),
+      enabled: true,
+    }));
+
+    act(() => result.current.actions.setRootLabel("myroot"));
+    await act(async () => result.current.actions.start());
+    act(() => result.current.actions.setReplacementAcknowledged(true));
+    await act(async () => result.current.actions.verify());
+
+    expect(completeInput).toEqual({
+      namespaceVerificationSessionId: "session-123",
+      family: "hns",
+      acknowledgedResourceReplacement: true,
+    });
+    expect(result.current.hnsImportPayload?.observation).toEqual({
+      state: "pending_tree_commit",
+      current_height: 1_001,
+      target_tree_boundary: 1_008,
+    });
   });
 
   test("check setup re-inspects dns setup and reports unchanged result", async () => {

@@ -15,6 +15,8 @@ on:
         description: Exact staging-only confirmation for repair
         required: true
         type: string
+  pull_request:
+    types: [opened, synchronize, edited]
 
 permissions:
   contents: read
@@ -32,9 +34,32 @@ jobs:
     steps:
       - name: Require the reviewed staging target
         env:
-          OPERATION: ${{ inputs.operation }}
-          CONFIRMATION: ${{ inputs.confirmation }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          INPUT_OPERATION: ${{ inputs.operation }}
+          INPUT_CONFIRMATION: ${{ inputs.confirmation }}
         run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            case "$PR_TITLE" in
+              "ops: inspect staging queue")
+                OPERATION=inventory
+                CONFIRMATION=READ_ONLY
+                ;;
+              "ops: execute staging repair")
+                OPERATION=repair
+                CONFIRMATION="RECOVER COMMUNITY D1 POOL 0176 STAGING"
+                ;;
+              *)
+                echo "::error::Pull request title must be an approved staging operation title."
+                exit 1
+                ;;
+            esac
+          else
+            OPERATION="$INPUT_OPERATION"
+            CONFIRMATION="$INPUT_CONFIRMATION"
+          fi
+          echo "OPERATION=$OPERATION" >> "$GITHUB_ENV"
+          echo "CONFIRMATION=$CONFIRMATION" >> "$GITHUB_ENV"
           test "$OPERATION" = inventory || test "$OPERATION" = repair
           if [ "$OPERATION" = repair ] && [ "$CONFIRMATION" != "RECOVER COMMUNITY D1 POOL 0176 STAGING" ]; then
             echo "::error::Repair requires the exact staging-only confirmation."
@@ -42,8 +67,6 @@ jobs:
           fi
 
       - name: Inventory or repair the exact D1 database
-        env:
-          OPERATION: ${{ inputs.operation }}
         run: |
           if [ "$OPERATION" = inventory ]; then
             SQL=$(cat <<'SQL'
@@ -149,7 +172,7 @@ jobs:
           bunx wrangler@4.100.0 d1 execute "$DATABASE_NAME" --remote --json --command "$SQL"
 
       - name: Verify the repair state
-        if: ${{ inputs.operation == 'repair' }}
+        if: ${{ env.OPERATION == 'repair' }}
         run: |
           SQL=$(cat <<'SQL'
           SELECT 'remaining_runnable' AS section, job_type, status, COUNT(*) AS count,

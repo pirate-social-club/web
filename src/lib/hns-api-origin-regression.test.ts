@@ -18,9 +18,16 @@ function withProductionEnv(run: () => void) {
 }
 
 describe("HNS API origin regression", () => {
-  test("uses the production API for app.pirate in client and discovery codepaths", () => {
+  test("HNS app hosts use the HNS API origin in client codepaths", () => {
     withProductionEnv(() => {
-      expect(resolveApiBaseUrl("app.pirate")).toBe("https://api.pirate.sc");
+      expect(resolveApiBaseUrl("app.pirate")).toBe("https://api.pirate");
+    });
+  });
+
+  test("discovery codepaths keep the ICANN API origin for HNS hosts", () => {
+    withProductionEnv(() => {
+      // Discovery documents are consumed on the ICANN internet, whose readers
+      // cannot resolve .pirate names; they must keep advertising api.pirate.sc.
       expect(resolveApiOriginFromHostname("app.pirate")).toBe("https://api.pirate.sc");
     });
   });

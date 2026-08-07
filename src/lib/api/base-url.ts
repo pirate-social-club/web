@@ -79,7 +79,11 @@ export function resolveApiBaseUrl(hostname?: string | null): string {
   }
 
   if (isHnsHostname(resolvedHostname)) {
-    return "https://api.pirate.sc";
+    // HNS visitors ride the HNS trust chain for the API as well: the .sc zone
+    // cannot anchor DNSSEC (the registry publishes no DS records), so a
+    // dual-root browser cannot produce timely authenticated ICANN evidence
+    // for api.pirate.sc, while api.pirate resolves and DANE-verifies natively.
+    return "https://api.pirate";
   }
 
   return resolveEnvironmentFallback();

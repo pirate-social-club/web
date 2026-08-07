@@ -674,10 +674,6 @@ jobs:
     # obsolescence, not a red test: the run that took the lane gates its own SHA.
     if: github.event_name != 'pull_request' && needs.staging.outputs.superseded != 'true'
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    # The live-browser Infisical identity is pinned to the staging environment.
-    # Keep this job's OIDC subject aligned with that identity before fetching
-    # SONG_PREVIEW_SHARED_SECRET below.
-    environment: staging
     timeout-minutes: 25
     permissions:
       contents: read

@@ -1,0 +1,171 @@
+name: Staging community job recovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Read-only inventory or the reviewed staging repair
+        required: true
+        type: choice
+        options:
+          - inventory
+          - repair
+        default: inventory
+      confirmation:
+        description: Exact staging-only confirmation for repair
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    name: Inventory or repair community D1 pool 0176 (staging only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+      DATABASE_NAME: community-d1-pool-0176-staging
+
+    steps:
+      - name: Require the reviewed staging target
+        env:
+          OPERATION: ${{ inputs.operation }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          test "$OPERATION" = inventory || test "$OPERATION" = repair
+          if [ "$OPERATION" = repair ] && [ "$CONFIRMATION" != "RECOVER COMMUNITY D1 POOL 0176 STAGING" ]; then
+            echo "::error::Repair requires the exact staging-only confirmation."
+            exit 1
+          fi
+
+      - name: Inventory or repair the exact D1 database
+        env:
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          if [ "$OPERATION" = inventory ]; then
+            SQL=$(cat <<'SQL'
+          SELECT 'schema' AS section, name, type, sql
+          FROM sqlite_master
+          WHERE name IN ('community_jobs', 'community_job_events')
+          ORDER BY type, name;
+
+          SELECT 'status_by_type' AS section, job_type, status, COUNT(*) AS count,
+                 MIN(created_at) AS oldest_created_at, MAX(updated_at) AS newest_updated_at
+          FROM community_jobs
+          GROUP BY job_type, status
+          ORDER BY oldest_created_at, job_type, status;
+
+          SELECT 'translation_errors' AS section, status, attempt_count, error_code, COUNT(*) AS count,
+                 MIN(created_at) AS oldest_created_at, MAX(updated_at) AS newest_updated_at
+          FROM community_jobs
+          WHERE job_type = 'post_translation_materialize'
+          GROUP BY status, attempt_count, error_code
+          ORDER BY oldest_created_at, status, attempt_count;
+
+          SELECT 'head_poison_candidates' AS section, job_id, job_type, subject_type, subject_id,
+                 status, attempt_count, error_code, available_at, created_at, updated_at
+          FROM community_jobs
+          WHERE (job_type = 'song_preview_generate' AND attempt_count = 5)
+             OR (job_type = 'video_media_analysis'
+                 AND (COALESCE(error_code, '') LIKE '%502%'
+                      OR COALESCE(payload_json, '') LIKE '%502%'
+                      OR COALESCE(result_ref, '') LIKE '%502%'))
+          ORDER BY created_at ASC, job_id ASC;
+
+          SELECT 'runnable_head' AS section, job_id, job_type, subject_type, subject_id,
+                 status, attempt_count, error_code, available_at, created_at, updated_at
+          FROM community_jobs
+          WHERE status IN ('queued', 'failed')
+            AND (available_at IS NULL OR available_at <= datetime('now'))
+            AND attempt_count < 8
+          ORDER BY created_at ASC, job_id ASC
+          LIMIT 20;
+          SQL
+            )
+            bunx wrangler@4.100.0 d1 execute "$DATABASE_NAME" --remote --json --command "$SQL"
+            exit 0
+          fi
+
+          echo "Setting the staging translation model before terminalizing its doomed queue."
+          printf '%s' 'google/gemini-2.5-flash-lite' | bunx wrangler@4.100.0 secret put OPENROUTER_TRANSLATION_MODEL --name pirate-api-staging
+
+          SQL=$(cat <<'SQL'
+          BEGIN TRANSACTION;
+
+          UPDATE community_jobs
+          SET status = 'failed',
+              error_code = 'staging_model_decommissioned',
+              attempt_count = CASE WHEN attempt_count < 8 THEN 8 ELSE attempt_count END,
+              available_at = NULL,
+              updated_at = datetime('now')
+          WHERE job_type = 'post_translation_materialize'
+            AND status IN ('queued', 'failed');
+          SELECT 'post_translation_materialize_terminalized' AS action, changes() AS count;
+
+          WITH target AS (
+            SELECT job_id
+            FROM community_jobs
+            WHERE job_type = 'song_preview_generate'
+              AND status IN ('queued', 'failed')
+              AND attempt_count = 5
+            ORDER BY created_at ASC, job_id ASC
+            LIMIT 1
+          )
+          UPDATE community_jobs
+          SET status = 'failed',
+              error_code = 'staging_manual_quarantine',
+              attempt_count = 8,
+              available_at = NULL,
+              updated_at = datetime('now')
+          WHERE job_id = (SELECT job_id FROM target);
+          SELECT 'song_preview_generate_quarantined' AS action, changes() AS count;
+
+          WITH target AS (
+            SELECT job_id
+            FROM community_jobs
+            WHERE job_type = 'video_media_analysis'
+              AND status IN ('queued', 'failed')
+              AND (COALESCE(error_code, '') LIKE '%502%'
+                   OR COALESCE(payload_json, '') LIKE '%502%'
+                   OR COALESCE(result_ref, '') LIKE '%502%')
+            ORDER BY created_at ASC, job_id ASC
+            LIMIT 1
+          )
+          UPDATE community_jobs
+          SET status = 'failed',
+              error_code = 'staging_manual_quarantine',
+              attempt_count = 8,
+              available_at = NULL,
+              updated_at = datetime('now')
+          WHERE job_id = (SELECT job_id FROM target);
+          SELECT 'video_media_analysis_quarantined' AS action, changes() AS count;
+
+          COMMIT;
+          SQL
+          )
+          bunx wrangler@4.100.0 d1 execute "$DATABASE_NAME" --remote --json --command "$SQL"
+
+      - name: Verify the repair state
+        if: ${{ inputs.operation == 'repair' }}
+        run: |
+          SQL=$(cat <<'SQL'
+          SELECT 'remaining_runnable' AS section, job_type, status, COUNT(*) AS count,
+                 MIN(created_at) AS oldest_created_at, MAX(updated_at) AS newest_updated_at
+          FROM community_jobs
+          WHERE status IN ('queued', 'failed')
+            AND (available_at IS NULL OR available_at <= datetime('now'))
+            AND attempt_count < 8
+          GROUP BY job_type, status
+          ORDER BY oldest_created_at, job_type, status;
+
+          SELECT 'translation_terminal_state' AS section, status, attempt_count, error_code, COUNT(*) AS count
+          FROM community_jobs
+          WHERE job_type = 'post_translation_materialize'
+          GROUP BY status, attempt_count, error_code
+          ORDER BY status, attempt_count, error_code;
+          SQL
+          )
+          bunx wrangler@4.100.0 d1 execute "$DATABASE_NAME" --remote --json --command "$SQL"

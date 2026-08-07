@@ -1,6 +1,9 @@
 import type { NamespaceFamily } from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
 
-const MAX_ROOT_LABEL_LENGTH = 62;
+const MAX_HNS_ROOT_LABEL_LENGTH = 63;
+const MAX_SPACES_ROOT_LABEL_LENGTH = 62;
+const HNS_ROOT_LABEL_BLACKLIST = new Set(["example", "invalid", "local", "localhost", "test"]);
+const HNS_ROOT_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9_-]{0,61}[a-z0-9])?$/u;
 
 export type NamespaceRootLabelResult =
   | {
@@ -122,20 +125,22 @@ function toAsciiRootLabel(value: string): string | null {
 }
 
 function isProtocolRootLabel(family: NamespaceFamily, value: string): boolean {
-  if (!value || value.length > MAX_ROOT_LABEL_LENGTH) {
+  if (family === "hns") {
+    return value.length <= MAX_HNS_ROOT_LABEL_LENGTH
+      && HNS_ROOT_LABEL_PATTERN.test(value)
+      && !HNS_ROOT_LABEL_BLACKLIST.has(value);
+  }
+
+  if (!value || value.length > MAX_SPACES_ROOT_LABEL_LENGTH) {
     return false;
   }
 
   const verifyRange = value.startsWith("xn--") && value.length > "xn--".length
     ? value.slice("xn--".length)
     : value;
-  const allowedPattern = family === "hns" && !value.startsWith("xn--")
-    ? /^[a-z0-9_-]+$/u
-    : /^[a-z0-9-]+$/u;
-
   return Boolean(verifyRange)
     && !verifyRange.startsWith("-")
     && !verifyRange.endsWith("-")
     && !verifyRange.includes("--")
-    && allowedPattern.test(verifyRange);
+    && /^[a-z0-9-]+$/u.test(verifyRange);
 }

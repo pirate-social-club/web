@@ -108,12 +108,12 @@ jobs:
           LIMIT 20;
           SQL
             )
-            bunx wrangler@4.100.0 d1 execute "$DATABASE_NAME" --remote --json --command "$SQL"
+            npx --yes wrangler@4.100.0 d1 execute "$DATABASE_NAME" --remote --json --command "$SQL"
             exit 0
           fi
 
           echo "Setting the staging translation model before terminalizing its doomed queue."
-          printf '%s' 'google/gemini-2.5-flash-lite' | bunx wrangler@4.100.0 secret put OPENROUTER_TRANSLATION_MODEL --name pirate-api-staging
+          printf '%s' 'google/gemini-2.5-flash-lite' | npx --yes wrangler@4.100.0 secret put OPENROUTER_TRANSLATION_MODEL --name pirate-api-staging
 
           SQL=$(cat <<'SQL'
           BEGIN TRANSACTION;
@@ -169,7 +169,7 @@ jobs:
           COMMIT;
           SQL
           )
-          bunx wrangler@4.100.0 d1 execute "$DATABASE_NAME" --remote --json --command "$SQL"
+          npx --yes wrangler@4.100.0 d1 execute "$DATABASE_NAME" --remote --json --command "$SQL"
 
       - name: Verify the repair state
         if: ${{ env.OPERATION == 'repair' }}
@@ -191,4 +191,4 @@ jobs:
           ORDER BY status, attempt_count, error_code;
           SQL
           )
-          bunx wrangler@4.100.0 d1 execute "$DATABASE_NAME" --remote --json --command "$SQL"
+          npx --yes wrangler@4.100.0 d1 execute "$DATABASE_NAME" --remote --json --command "$SQL"

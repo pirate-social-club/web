@@ -1716,7 +1716,12 @@ test.describe("live staging integration", () => {
   });
 
   test("uploads a public video through direct multipart in a real browser", async ({ page }, testInfo) => {
-    testInfo.setTimeout(15 * 60_000);
+    // The API verifies Filebase's post-complete object metadata through an
+    // eventual-consistency window. Keep the browser budget above the API's
+    // current ~17-minute worst case (15 minutes of HEAD retries plus the
+    // multipart completion request), otherwise a successful upload is reported
+    // as a client-side timeout.
+    testInfo.setTimeout(22 * 60_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
     const session = await createLiveSession(
@@ -1812,7 +1817,7 @@ test.describe("live staging integration", () => {
       return request.method().toUpperCase() === "POST"
         && url.origin === apiOrigin
         && /\/communities\/[^/]+\/song-artifact-uploads\/[^/]+\/sessions\/[^/]+\/complete$/u.test(url.pathname);
-    }, { timeout: 12 * 60_000 });
+    }, { timeout: 20 * 60_000 });
 
     await page.getByRole("button", { name: /^(publish|post)$/i }).click();
 

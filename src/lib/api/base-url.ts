@@ -37,7 +37,15 @@ function isHnsHostname(hostname: string): boolean {
     return true;
   }
 
-  return !hostname.includes(".") && /^[a-z0-9-]+$/u.test(hostname);
+  if (!hostname.includes(".")) {
+    return /^[a-z0-9-]+$/u.test(hostname);
+  }
+
+  // Imported HNS roots use the dashboard-compatible app.<root> origin.
+  // Keep other subdomains on their normal ICANN routing until a host is
+  // explicitly recognized as an HNS application origin.
+  const labels = hostname.split(".");
+  return labels.length === 2 && labels[0] === "app" && /^[a-z0-9-]+$/u.test(labels[1]);
 }
 
 function getBrowserHostname(): string {

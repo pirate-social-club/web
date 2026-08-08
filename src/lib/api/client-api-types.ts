@@ -46,6 +46,8 @@ export type SongStudyExercise = ContractSongStudyExercise & {
 
 export type SongStudyAttemptRequest = ContractSongStudyAttemptRequest & {
   session_id: string;
+  transcription_language_code?: string;
+  transcription_language_probability?: number;
 };
 
 export type SongStudyAttemptResult = ContractSongStudyAttemptResult & {

@@ -130,6 +130,9 @@ let rewardSummaryResult: ApiRewardsSummaryResponse | null = null;
 let privyConnectCalls = 0;
 let submitPostStudyAttemptError: unknown = null;
 let transcribeStudyAudioError: unknown = null;
+let transcribeStudyAudioResult: { text: string; language_code?: string | null; language_probability?: number | null } = {
+  text: "Hola mundo",
+};
 let telegramVoiceIntentError: unknown = null;
 let streakLeaderboardResult: SongStreakLeaderboard = {
   community_id: "cmt_study",
@@ -171,7 +174,7 @@ fakeApi.communities.getPostStudy = async () => {
 fakeApi.communities.transcribePostStudyAudio = async () => {
   calls.push("communities.transcribePostStudyAudio");
   if (transcribeStudyAudioError) throw transcribeStudyAudioError;
-  return { text: "Hola mundo" };
+  return transcribeStudyAudioResult as never;
 };
 fakeApi.communities.createPostStudyTelegramVoiceIntent = async (_communityId, _postId, body) => {
   calls.push(`communities.createPostStudyTelegramVoiceIntent:${body.exercise_id}`);
@@ -247,6 +250,7 @@ beforeEach(() => {
   privyConnectCalls = 0;
   submitPostStudyAttemptError = null;
   transcribeStudyAudioError = null;
+  transcribeStudyAudioResult = { text: "Hola mundo" };
   telegramVoiceIntentError = null;
   streakLeaderboardResult = {
     community_id: "cmt_study",
@@ -850,6 +854,27 @@ describe("StudyRoutePage", () => {
     await waitFor(() => expect(view.getByText("recording failed")).toBeTruthy());
     expect(view.getByText("Choose the translation")).toBeTruthy();
     expect(view.queryByText("Could not submit this study attempt.")).toBeNull();
+  });
+
+  test("forwards STT language metadata with a say-it-back attempt", async () => {
+    transcribeStudyAudioResult = {
+      language_code: "th",
+      language_probability: 0.99,
+      text: "ทดสอบ",
+    };
+    const restoreRecorder = installFakeMediaRecorder();
+    try {
+      const view = renderRoute();
+      await waitFor(() => expect(view.getAllByText("Say it back").length).toBeGreaterThan(0));
+      await recordSayItBack(view);
+      await waitFor(() => expect(submittedStudyAttempts.at(-1)?.transcription_language_code).toBe("th"));
+      expect(submittedStudyAttempts.at(-1)).toMatchObject({
+        transcription_language_code: "th",
+        transcription_language_probability: 0.99,
+      });
+    } finally {
+      restoreRecorder();
+    }
   });
 
   // A transient failure has to leave the learner on the card with a retry, because

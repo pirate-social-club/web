@@ -1,10 +1,40 @@
+import type { JoinEligibility, MembershipGateSummary } from "@pirate/api-contracts";
+
+import { canSatisfyGateWithAltchaOnly } from "@/lib/altcha-gate-path";
+
+export function requiresPostAltchaProof(input: {
+  eligibility: JoinEligibility | null;
+  gateMatchMode?: "all" | "any" | null;
+  hasCommunityPostingRole: boolean;
+  requirements: MembershipGateSummary[];
+}): boolean {
+  if (input.hasCommunityPostingRole || input.eligibility == null) return false;
+  const hasPow = input.requirements.some((gate) => gate.gate_type === "altcha_pow");
+  if (input.eligibility.status === "already_joined" && input.gateMatchMode === "all") {
+    return hasPow;
+  }
+  return canSatisfyGateWithAltchaOnly({
+    eligibility: input.eligibility,
+    gateMatchMode: input.gateMatchMode,
+    requirements: input.requirements,
+  });
+}
+
+export function canSendCreatePostRequest(input: {
+  canPost: boolean;
+  hasCommunityPostingRole: boolean;
+  hasOpenPowPostingAccess: boolean;
+  isAlreadyJoined: boolean;
+}): boolean {
+  return input.canPost
+    && (input.isAlreadyJoined || input.hasCommunityPostingRole || input.hasOpenPowPostingAccess);
+}
+
 export function canSubmitPostWithProofOfWork(input: {
-  hasPostingAccess: boolean;
   postAltchaPayload: string | null;
   postAltchaRequired: boolean;
 }): boolean {
-  return input.hasPostingAccess
-    && input.postAltchaRequired
+  return input.postAltchaRequired
     && Boolean(input.postAltchaPayload);
 }
 

@@ -471,6 +471,7 @@ async function main(): Promise<void> {
   });
   const communityId = communityCreate.community.community_id;
 
+  try {
   step("buyer joins community");
   await expectOkJson(`/communities/${communityId}/join`, {
     token: buyer.accessToken,
@@ -731,6 +732,13 @@ async function main(): Promise<void> {
     ciphertextAfterMatchesBefore: equalBytes(accessContentAfter.bytes, ciphertextBefore.bytes),
     decryptedMatchesOriginal: equalBytes(plaintext, primaryBytes),
   }, null, 2));
+  } finally {
+    step("archive community fixture");
+    await expectOkJson(`/communities/${communityId}/archive`, {
+      token: seller.accessToken,
+      json: {},
+    });
+  }
 }
 
 main().catch((error) => {

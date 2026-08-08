@@ -17,6 +17,8 @@ rtk bun run ui:audit
 
 Use `rtk bun run types:safe` instead of `rtk bun run types` for routine local verification. It uses the TypeScript 7 native preview compiler (`tsgo`) with incremental build info, bounded memory, and lower process priority so it is less likely to stall the machine. Use `rtk bun run types` only when exact uncapped CI parity is required.
 
+Do not use bare `rtk bun test` as the repository-wide gate. It collects Playwright specs and runs unit files in one shared process, while `.github/workflows/web-ci.yml` deliberately limits discovery to `src/` and `packages/` and isolates each test file across four shards. Run focused files locally with `rtk bun test path/to/file.test.ts`; rely on `web-ci` for the full unit/component suite.
+
 Use the already-running Storybook dev server for component story validation when available. Never run `rtk bun run build-storybook`, `storybook build`, or other Storybook production builds unless the user explicitly asks for that exact command; they are too heavy for routine agent validation and can freeze the machine. Avoid `rtk bun run build` by default; use the lighter Vite checks from the workspace instructions unless a full production build is required.
 
 ## Deployment
@@ -25,7 +27,25 @@ Production web deploys must go through the Blacksmith GitHub Actions release wor
 
 For production-ready changes, commit and push to the release branch, then use or instruct the user to use the `release.yml` workflow. Local verification should stay to focused tests, `rtk bun run types:safe`, and other cheap checks unless the user explicitly requests a local production build.
 
-The release workflow deploys staging first, runs HTTP smoke plus Playwright browser E2E against staging, runs the guarded live staging integration, applies staging community migrations, and only then deploys production. The live staging integration uses GitHub Actions variables for `AUTH_UPSTREAM_JWT_AUDIENCE` and `AUTH_UPSTREAM_JWT_ISSUER`, and a GitHub Actions secret for `AUTH_UPSTREAM_JWT_SHARED_SECRET`; the shared secret should be copied from Infisical staging `/services/api` when rotated.
+The release workflow first checks the pinned API/Core pair and the live community
+schema fleet, then deploys staging. The Web release gate and API-owned staging
+contract gate run in parallel; both block production. Production re-checks
+freshness and the production schema fleet immediately before deploying.
+
+Read [`docs/release-pipeline.md`](docs/release-pipeline.md) before changing or
+re-running the workflow. In particular:
+
+- Re-run a failed community-schema gate only when its SHA is still the current
+  `main` tip. An old re-run shares the cancellable schema-scan group and can
+  cancel the tip run.
+- A skipped production job is not a deployment. After success, inspect the
+  individual jobs and verify `https://pirate.sc/__version` and
+  `https://api.pirate.sc/__version`.
+- Before interpreting a cancelled run as supersession, confirm that the
+  `Release` workflow is enabled. A manually disabled workflow is an explicit
+  operator pause; re-enabling it does not replay missed pushes.
+- Do not push a no-op commit merely to retry or measure a gate. Let the next
+  natural release provide the sample unless a real deployment is required.
 
 ## Browser Automation
 

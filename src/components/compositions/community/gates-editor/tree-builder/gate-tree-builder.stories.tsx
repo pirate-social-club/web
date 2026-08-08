@@ -25,7 +25,7 @@ function InteractiveStory({
   initialValue: GateBuilderGroupDraft;
 }) {
   const [value, setValue] = React.useState(initialValue);
-  return <GateTreeBuilder capabilitySource={capabilitySource} value={value} onChange={setValue} />;
+  return <GateTreeBuilder capabilities={capabilitySource ? { collections: capabilitySource } : undefined} value={value} onChange={setValue} />;
 }
 
 const humanSelf = { kind: "rule", gate: { type: "unique_human", provider: "self" } } as const;

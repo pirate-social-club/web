@@ -4,6 +4,7 @@ import * as React from "react";
 import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
+import { loadSongRoutePost } from "@/app/authenticated-helpers/load-song-route-post";
 import {
   SongStreakLeaderboard,
   type SongStreakLeaderboardState,
@@ -14,7 +15,6 @@ import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
-import { isApiNotFoundError } from "@/lib/api/client";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -84,18 +84,6 @@ export function StreaksRoutePage({ postId }: { postId: string }) {
   React.useEffect(() => {
     let canceled = false;
 
-    async function loadPost(): Promise<LocalizedPostResponse> {
-      try {
-        return await api.posts.get(postId, { locale: contentLocale });
-      } catch (error) {
-        // Signed-in non-members of request-mode communities get a 404 from the
-        // authenticated read even for public posts; fall back to the public read
-        // so we can still show the song header.
-        if (!isApiNotFoundError(error)) throw error;
-        return await api.publicPosts.get(postId, { locale: contentLocale });
-      }
-    }
-
     async function loadLeaderboard() {
       if (!hydrated) return;
 
@@ -106,7 +94,7 @@ export function StreaksRoutePage({ postId }: { postId: string }) {
 
       setState({ phase: "loading" });
       try {
-        const post = await loadPost();
+        const post = await loadSongRoutePost({ api, contentLocale, hasAccessToken: true, postId });
         if (canceled) return;
 
         const header = {
@@ -154,6 +142,22 @@ export function StreaksRoutePage({ postId }: { postId: string }) {
       canceled = true;
     };
   }, [api, contentLocale, hydrated, postId, reloadKey, session?.accessToken]);
+
+  // Self-invalidate when the earliest displayed streak expires (active_until_at
+  // is owner-timezone based, so the server is the only clock that matters — a
+  // refetch at that instant re-reads eligibility).
+  const loadedEntries = state.phase === "ready" && state.state.kind === "ready" ? state.state.entries : null;
+  const loadedViewerExpiry = state.phase === "ready" && state.state.kind === "ready" ? state.state.viewer?.active_until_at : null;
+  React.useEffect(() => {
+    if (!loadedEntries) return;
+    const expiries = [...loadedEntries.map((entry) => entry.active_until_at), loadedViewerExpiry]
+      .filter((value): value is string => typeof value === "string" && Number.isFinite(Date.parse(value)))
+      .map((value) => Date.parse(value));
+    if (expiries.length === 0) return;
+    const delay = Math.max(0, Math.min(...expiries) - Date.now()) + 1500;
+    const timer = window.setTimeout(() => setReloadKey((key) => key + 1), delay);
+    return () => window.clearTimeout(timer);
+  }, [loadedEntries, loadedViewerExpiry]);
 
   if (!session?.accessToken || state.phase === "auth_required") {
     return <StreaksAuthRequiredMessage postId={postId} />;

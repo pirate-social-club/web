@@ -43,6 +43,9 @@ jobs:
       - name: Run UI hygiene checks
         run: node scripts/ui-audit.mjs
 
+      - name: Enforce oversized frontend file ratchets
+        run: node scripts/check-frontend-size-ratchet.mjs
+
       - name: Show iron-proxy egress summary
         uses: ironsh/iron-proxy-action/summary@fa1fd82ec32396d044deba7040a6db576bec927a
         if: always()

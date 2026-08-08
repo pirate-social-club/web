@@ -70,7 +70,11 @@ export function CurrentUserProfilePage() {
   }, []);
   logger.info("[profile-page] render", { hasProfile: !!profile, hasSession: !!session });
   const bookingCtaState = useOwnBookingCta(Boolean(session));
-  const followState = useProfileFollowState(profile?.primary_wallet_address ?? null, true);
+  const followState = useProfileFollowState(
+    profile?.primary_wallet_address ?? null,
+    true,
+    profile?.id ?? null,
+  );
   const profileHandleLabel = profile?.primary_public_handle?.label ?? profile?.global_handle?.label ?? null;
   const activity = useCurrentUserProfileActivity(profileHandleLabel, localeTag, Boolean(profile), activityTab);
   const handleFlow = useGlobalHandleFlow({
@@ -101,6 +105,7 @@ export function CurrentUserProfilePage() {
       {...baseProps}
       comments={activity.comments}
       activityError={activity.error}
+      activityLoading={activity.loading}
       defaultTab={activityTab}
       onActivityTabChange={setActivityTab}
       overviewItems={activity.overviewItems}
@@ -111,6 +116,7 @@ export function CurrentUserProfilePage() {
         navigate(isMobile ? "/settings" : buildSettingsPath("profile"));
       }}
       onBookingCta={() => navigate("/settings/bookings")}
+      onCommunitiesCta={() => navigate("/your-communities")}
       bookPanel={bookingCtaState ? (
         <ProfileBookTabPanel
           hostUserId={profile.id}
@@ -142,7 +148,6 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   const isMobile = useIsMobile();
   const walletAttachments = session?.walletAttachments ?? [];
   const { locale, setLocale } = useUiLocale();
-  const pageTitle = copy.settings.title;
   const sectionTitle = getSettingsSectionTitle(activeTab, copy);
   const syncedPrimaryWalletRef = React.useRef<string | null>(null);
   const profileFormResetProfileIdRef = React.useRef<string | null>(null);
@@ -202,6 +207,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     messages: {
       connectPrimaryWalletError: copy.settings.connectPrimaryWalletClaimName,
       chooseHandleError: copy.onboarding.errors.chooseHandle,
+      invalidHandleError: copy.settings.handleInvalidMessage,
       reconnectPrimaryWalletError: copy.settings.reconnectPrimaryWalletClaimName,
       renameFailedError: copy.onboarding.errors.renameFailed,
     },

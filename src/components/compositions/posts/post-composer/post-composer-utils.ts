@@ -1,4 +1,4 @@
-import type { AttachmentState, ComposerStep, ComposerTab, LiveComposerState } from "./post-composer.types";
+import type { ComposerStep, ComposerTab, LiveComposerState } from "./post-composer.types";
 
 export function isValidHttpUrl(value: string) {
   return normalizeHttpUrl(value) !== null;
@@ -45,20 +45,7 @@ export function normalizeHttpUrl(value: string) {
   return parse(`https://${trimmed}`);
 }
 
-export function getComposeCanAdvance({
-  attachment,
-  body,
-  title,
-}: {
-  attachment: AttachmentState;
-  body: string;
-  title: string;
-}) {
-  if (attachment?.kind === "link") return isValidHttpUrl(attachment.url);
-  return Boolean(title.trim() || body.trim() || attachment);
-}
-
-export function composerTabHasDetailsStep(mode: ComposerTab) {
+function composerTabHasDetailsStep(mode: ComposerTab) {
   return mode === "song" || mode === "video";
 }
 
@@ -77,7 +64,6 @@ export function getPreviousComposerStep(current: ComposerStep, mode: ComposerTab
 }
 
 export function canAdvanceComposerWriteStep({
-  body,
   imageUploadPresent,
   linkUrl,
   liveState,
@@ -113,7 +99,7 @@ export function canSubmitLiveRoomDraft(liveState: LiveComposerState, title: stri
   return liveState.performerAllocations.reduce((sum, allocation) => sum + allocation.sharePct, 0) === 100;
 }
 
-export function isValidLiveScheduleAt(scheduleAt: string | undefined): boolean {
+function isValidLiveScheduleAt(scheduleAt: string | undefined): boolean {
   const value = scheduleAt?.trim();
   if (!value) return false;
   return Number.isFinite(Date.parse(value));

@@ -17,22 +17,33 @@ async function openAndConfirmCashout(page: Page): Promise<void> {
   await expect(claim).toBeVisible({ timeout: 30_000 });
   await expect(claim).toBeEnabled();
   await claim.click();
-  await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Confirm claim" }).click();
 }
 
 test.describe("reward cashouts (mocked API)", () => {
-  test("renders rewards and a confirmed cashout using the server recipient", async ({ page }) => {
+  test("claims the full balance in one step and reports the server settlement", async ({ page }) => {
     const state = await installRewardFixture(page);
     await page.goto("/wallet");
 
-    await expect(page.getByText("Rewards").filter({ visible: true })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Rewards").filter({ visible: true }).first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText("$1.20").filter({ visible: true }).first()).toBeVisible();
-    await openAndConfirmCashout(page);
 
+    const claim = page.getByRole("button", { name: "Claim" }).filter({ visible: true }).last();
+    await expect(claim).toBeVisible({ timeout: 30_000 });
+    await claim.click();
+
+    // The simplified flow opens directly on confirmation with the full balance
+    // pre-filled. Guard the release gate against restoring the removed amount step.
     const claimSheet = page.getByLabel("Claim rewards");
-    await expect(claimSheet.getByText("Claim complete", { exact: true })).toBeVisible();
-    await expect(claimSheet.getByText("$1.20 USDC was sent to 0x9000...0009.", { exact: true })).toBeVisible();
+    await expect(claimSheet.getByLabel("Amount")).toHaveValue("1.20");
+    await expect(page.getByRole("button", { name: "Continue" })).toHaveCount(0);
+    await claimSheet.getByRole("button", { name: "Confirm claim" }).click();
+
+    await expect(claimSheet.getByText("$1.20 is in your wallet 🎉", { exact: true })).toBeVisible();
+    await expect(claimSheet.getByText("Reward sent successfully.", { exact: true })).toBeVisible();
+    await expect(claimSheet.getByRole("link", { name: "View on Basescan" }))
+      .toHaveAttribute("href", /0xbrowserreward$/u);
+    await expect(claimSheet.getByText("0xbrowserreward", { exact: true })).toBeHidden();
     expect(state.cashoutKeys).toHaveLength(1);
     await expectNoBrowserError(page);
   });
@@ -66,7 +77,7 @@ test.describe("reward cashouts (mocked API)", () => {
     await claimSheet.getByRole("button", { name: "Close", exact: true }).first().click();
 
     await openAndConfirmCashout(page);
-    await expect(page.getByLabel("Claim rewards").getByText("Claim complete", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Claim rewards").getByText("$1.20 is in your wallet 🎉", { exact: true })).toBeVisible();
     expect(state.cashoutKeys).toHaveLength(2);
     expect(state.cashoutKeys[1]).toBe(state.cashoutKeys[0]);
   });
@@ -89,7 +100,7 @@ test.describe("reward cashouts (mocked API)", () => {
     await expect(page.getByRole("button", { name: "Check status" })).toBeVisible();
     await expect.poll(() => state.statusReads).toBeGreaterThanOrEqual(1);
     await page.getByRole("button", { name: "Check status" }).click();
-    await expect(page.getByLabel("Claim rewards").getByText("Claim complete", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Claim rewards").getByText("$1.20 is in your wallet 🎉", { exact: true })).toBeVisible();
     expect(state.statusReads).toBeGreaterThanOrEqual(2);
   });
 

@@ -217,7 +217,7 @@ export function useCommunityFollow({
       setState({
         communityId: resultCommunityId,
         followerCount: normalizeFollowerCount(result.follower_count),
-        viewerFollowing: result.following,
+        viewerFollowing: nextFollowing,
       });
     } catch (error: unknown) {
       logger.warn("[community-follow] failed", {

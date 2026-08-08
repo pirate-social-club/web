@@ -33,8 +33,6 @@ function routeUsesMobileFooter(route: AppRoute): boolean {
     && route.kind !== "create-community"
     && route.kind !== "settings-index"
     && route.kind !== "settings"
-    && route.kind !== "community-moderation"
-    && route.kind !== "community-moderation-index"
     && route.kind !== "public-profile"
     && route.kind !== "public-agent"
     && route.kind !== "chat-target"
@@ -44,21 +42,31 @@ function routeUsesMobileFooter(route: AppRoute): boolean {
 
 function routeUsesMobileCreateAction(route: AppRoute): boolean {
   return route.kind === "home"
+    || route.kind === "community-feed"
     || route.kind === "popular";
 }
 
-function resolveMobileHeaderTitle({
+/**
+ * The media overlay drops the centre title so nothing sits on top of the video that isn't a
+ * control. Every other route keeps its title. Exported so the suppression stays under test.
+ */
+export function resolveMobileHeaderTitle({
   copy,
+  mediaOverlay = false,
   route,
   session,
 }: {
   copy: ShellMessages;
+  mediaOverlay?: boolean;
   route: AppRoute;
   session: ReturnType<typeof useSession>;
 }): string | null {
+  if (mediaOverlay) return null;
   switch (route.kind) {
     case "home":
       return "Pirate";
+    case "community-feed":
+      return copy.appSidebar.communityFeedLabel;
     case "popular":
       return copy.appSidebar.feedSortBestLabel;
     case "inbox":
@@ -94,19 +102,23 @@ function navigateBack(fallbackPath: string): void {
 
 export function AppShellHeader({
   copy,
+  mobileMediaOverlay = false,
+  onSearchClick,
   route,
   unreadChatCount = 0,
   unreadNotificationCount,
 }: {
   copy: ShellMessages;
+  mobileMediaOverlay?: boolean;
+  onSearchClick?: () => void;
   route: AppRoute;
   unreadChatCount?: number;
   unreadNotificationCount: number;
 }) {
   const session = useSession();
   const { connect } = usePiratePrivyRuntime();
-  const clientReady = useClientHydrated();
   const chatLauncher = useChatLauncher();
+  const clientReady = useClientHydrated();
   const avatarFallback = resolveSessionAvatarFallback(session, copy.appHeader.defaultAvatarFallback);
   const avatarSeed = session?.profile?.id;
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;
@@ -117,8 +129,6 @@ export function AppShellHeader({
   const isPublicProfileRoute = route.kind === "public-profile" || route.kind === "public-agent";
   const showMobileCreateAction = clientReady && !!session && routeUsesMobileCreateAction(route);
   const useAppSidebarTrigger = !mobileBackPath
-    && route.kind !== "community-moderation"
-    && route.kind !== "community-moderation-index"
     && !isPublicProfileRoute;
   const mobileHeaderAction = route.kind === "chat" ? (
     <IconButton aria-label="New message" onClick={() => navigate("/chat/new")} variant="ghost">
@@ -128,7 +138,7 @@ export function AppShellHeader({
   const mobileTrailingContent = mobileHeaderAction ?? (route.kind === "community" || isPublicProfileRoute || (clientReady && session && routeUsesMobileFooter(route) && !showMobileCreateAction)
     ? <div className="size-11" aria-hidden="true" />
     : undefined);
-  const mobileHeaderTitle = resolveMobileHeaderTitle({ copy, route, session });
+  const mobileHeaderTitle = resolveMobileHeaderTitle({ copy, mediaOverlay: mobileMediaOverlay, route, session });
   const isChatRoute = route.kind === "chat"
     || route.kind === "chat-new"
     || route.kind === "chat-conversation"
@@ -146,6 +156,11 @@ export function AppShellHeader({
     <AppHeader
       avatarFallback={avatarFallback}
       disableCreateAction={disableCreateAction}
+      // Desktop chrome lives in the media sidebar (brand, search, spine, account items), so
+      // the header is the mobile top bar only — this also keeps the brand logo from
+      // rendering twice, once in the sidebar header and once here.
+      className="md:hidden"
+      hideDesktopConnectAction
       hideMobileBrand
       labels={{
         backAriaLabel: copy.appHeader.backAriaLabel,
@@ -165,6 +180,7 @@ export function AppShellHeader({
           {mobileHeaderTitle}
         </Type>
       ) : undefined}
+      mobileAppearance={mobileMediaOverlay ? "media-overlay" : "default"}
       mobileTrailingContent={mobileTrailingContent}
       onBackClick={mobileBackPath ? () => navigate(mobileBackPath) : isPublicProfileRoute ? () => navigateBack("/") : undefined}
       onChatClick={handleChatClick}
@@ -173,7 +189,7 @@ export function AppShellHeader({
       onNotificationsClick={() => navigate("/inbox")}
       onConnectClick={() => connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
       onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
-      onSearchClick={() => showSearchUnavailable(copy.appHeader.searchUnavailableToast)}
+      onSearchClick={onSearchClick ?? (() => showSearchUnavailable(copy.appHeader.searchUnavailableToast))}
       onWalletClick={() => navigate("/wallet")}
       showCreateAction={clientReady && !!session}
       showChatAction={clientReady && !!session}
@@ -204,7 +220,6 @@ export function AppShellMobileNav({
 }) {
   const session = useSession();
   const { connect } = usePiratePrivyRuntime();
-  const clientReady = useClientHydrated();
   const avatarFallback = resolveSessionAvatarFallback(session, copy.appHeader.defaultAvatarFallback);
   const avatarSeed = session?.profile?.id;
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;

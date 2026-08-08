@@ -1,14 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
-import { Fire, Flag, House, Plus } from "@phosphor-icons/react";
+import { Flag, Plus } from "@phosphor-icons/react";
 
 import { AppHeader } from "@/components/compositions/app/app-shell-chrome/app-header";
 import { MobileFooterNav } from "@/components/compositions/app/app-shell-chrome/mobile-footer-nav";
 import { useUiLocale } from "@/lib/ui-locale";
-import { getLocaleMessages } from "@/locales";
+import { getLocaleMessages, type ShellMessages } from "@/locales";
 import { SidebarInset, SidebarProvider } from "@/components/compositions/system/sidebar/sidebar";
+import { Button } from "@/components/primitives/button";
+import { Type } from "@/components/primitives/type";
 
 import { AppSidebar } from "../app-sidebar";
+import { buildMediaSpineItems, MAX_SIDEBAR_RECENT_COMMUNITIES } from "@/app/shell/sidebar-sections";
 
 const meta = {
   title: "Compositions/App/AppSidebar",
@@ -29,6 +32,21 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+/** Mirrors the shipped media spine from app-shell, with a seeded monogram avatar for Profile. */
+function buildStorySpineItems(copy: ShellMessages) {
+  return buildMediaSpineItems(copy.appSidebar, {
+    avatarFallback: "story.pirate",
+    avatarSeed: "usr_story",
+    avatarSrc: null,
+    onProfileSelect: () => undefined,
+    onWalletSelect: () => undefined,
+    profileLabel: copy.mobileFooter.profileLabel,
+    unreadActivityCount: 12,
+    unreadChatCount: 1,
+    walletLabel: copy.mobileFooter.walletLabel,
+  });
+}
+
 function ShellChrome({ mobile = false }: { mobile?: boolean }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "shell");
@@ -36,25 +54,13 @@ function ShellChrome({ mobile = false }: { mobile?: boolean }) {
     ...section,
     defaultOpen: true,
   }));
-  const primaryItems = [
-    { id: "home", icon: House, label: copy.appSidebar.homeLabel },
-    { id: "popular", icon: Fire, label: copy.appSidebar.feedSortBestLabel },
-    {
-      id: "your-communities",
-      icon: Flag,
-      label: copy.appSidebar.yourCommunitiesLabel,
-    },
-    {
-      id: "create-community",
-      icon: Plus,
-      label: copy.appSidebar.createCommunityLabel,
-    },
-  ] as const;
+  const primaryItems = buildStorySpineItems(copy);
 
   if (mobile) {
     return (
       <SidebarProvider defaultOpen={false}>
         <AppSidebar
+          appearance="media"
           brandLabel={copy.appSidebar.brandLabel}
           homeAriaLabel={copy.appSidebar.homeAriaLabel}
           primaryItems={primaryItems}
@@ -107,6 +113,7 @@ function ShellChrome({ mobile = false }: { mobile?: boolean }) {
   return (
     <SidebarProvider>
       <AppSidebar
+        appearance="media"
         brandLabel={copy.appSidebar.brandLabel}
         homeAriaLabel={copy.appSidebar.homeAriaLabel}
         primaryItems={primaryItems}
@@ -115,17 +122,6 @@ function ShellChrome({ mobile = false }: { mobile?: boolean }) {
         sections={sections}
       />
       <SidebarInset className="min-h-screen">
-        <AppHeader
-          labels={{
-            createLabel: copy.appHeader.createLabel,
-            homeAriaLabel: copy.appHeader.homeAriaLabel,
-            notificationsAriaLabel: copy.appHeader.notificationsAriaLabel,
-            openNavigationAriaLabel: copy.appHeader.openNavigationAriaLabel,
-            profileAriaLabel: copy.appHeader.profileAriaLabel,
-            searchAriaLabel: copy.appHeader.searchAriaLabel,
-            searchPlaceholder: copy.appHeader.searchPlaceholder,
-          }}
-        />
         <main className="mx-auto w-full max-w-5xl px-6 py-8">
           <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-8">
             <div className="space-y-4">
@@ -140,8 +136,128 @@ function ShellChrome({ mobile = false }: { mobile?: boolean }) {
   );
 }
 
+function MediaShellReview({
+  collapsed = false,
+  contentRoute = false,
+  dockOpen = false,
+  moderationRoute = false,
+  populatedCommunities = false,
+  overflowingCommunities = false,
+}: {
+  collapsed?: boolean;
+  contentRoute?: boolean;
+  dockOpen?: boolean;
+  moderationRoute?: boolean;
+  overflowingCommunities?: boolean;
+  populatedCommunities?: boolean;
+}) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "shell");
+  const mediaSections = [{
+    action: { ariaLabel: copy.appSidebar.createCommunityLabel, icon: Plus, onSelect: () => undefined },
+    defaultOpen: true,
+    id: "communities",
+    items: [
+      { id: "your-communities", icon: Flag, label: copy.appSidebar.yourCommunitiesLabel },
+      ...(populatedCommunities ? [
+        { id: "c/pirate-radio", label: "c/pirate-radio" },
+        { id: "c/builders", label: "c/builders" },
+      ] : []),
+      ...(overflowingCommunities ? Array.from(
+        { length: MAX_SIDEBAR_RECENT_COMMUNITIES },
+        (_unused, index) => ({ id: `c/community-${index}`, label: `c/long-community-name-${index}` }),
+      ) : []),
+    ],
+    label: copy.appSidebar.sections.find((section) => section.id === "communities")?.label ?? "Communities",
+  }];
+
+  return (
+    <SidebarProvider defaultOpen={!collapsed}>
+      <AppSidebar
+        activeItemId="home"
+        appearance="media"
+        brandLabel={copy.appSidebar.brandLabel}
+        homeAriaLabel={copy.appSidebar.homeAriaLabel}
+        mediaAction={<Button className="w-full">{copy.appHeader.connectLabel}</Button>}
+        onHomeClick={() => undefined}
+        onSearchClick={() => undefined}
+        primaryItems={buildStorySpineItems(copy)}
+        searchLabel={copy.appHeader.searchPlaceholder}
+        sections={mediaSections}
+      />
+      <SidebarInset className={contentRoute ? "h-dvh min-h-0 overflow-hidden bg-background" : "h-dvh min-h-0 overflow-hidden bg-black"}>
+        <main className={contentRoute ? "min-h-0 flex-1 overflow-auto p-8" : dockOpen ? "grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_26rem]" : "min-h-0 flex-1"}>
+          {contentRoute ? (
+            <div className="mx-auto max-w-4xl space-y-5">
+              <Type as="h1" variant="h2">{moderationRoute ? "Moderator tools" : "Settings"}</Type>
+              <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-8">
+                <div className="h-6 w-40 rounded-full bg-muted" />
+                <div className={moderationRoute ? "mt-6 h-[75rem] rounded-[calc(var(--radius-xl)-0.5rem)] bg-muted/70" : "mt-6 h-48 rounded-[calc(var(--radius-xl)-0.5rem)] bg-muted/70"} />
+              </div>
+            </div>
+          ) : (
+            <div className="grid min-w-0 place-items-center p-6">
+              <div className="aspect-[9/16] h-[min(88dvh,50rem)] max-w-full rounded-[var(--radius-xl)] bg-gradient-to-b from-muted/50 to-muted" />
+            </div>
+          )}
+          {dockOpen ? (
+            <aside className="border-s border-border-soft bg-background p-6">
+              <Type as="h2" variant="h3">Comments</Type>
+              <div className="mt-6 space-y-4">
+                <div className="h-16 rounded-xl bg-muted" />
+                <div className="h-20 rounded-xl bg-muted" />
+                <div className="h-16 rounded-xl bg-muted" />
+              </div>
+            </aside>
+          ) : null}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+
 export const DesktopShell: Story = {
   render: () => <ShellChrome />,
+};
+
+export const MediaShellExpanded: Story = {
+  name: "Media shell / Expanded",
+  render: () => <MediaShellReview />,
+};
+
+export const UnifiedContentShell: Story = {
+  name: "Unified shell / Content route",
+  parameters: {
+    viewport: { defaultViewport: "desktop" },
+  },
+  render: () => <MediaShellReview contentRoute populatedCommunities />,
+};
+
+export const UnifiedModerationShell: Story = {
+  name: "Unified shell / Tall moderation route",
+  parameters: {
+    viewport: { defaultViewport: "desktop" },
+  },
+  render: () => <MediaShellReview contentRoute moderationRoute populatedCommunities />,
+};
+
+export const MediaShellCommunitiesOverflowing: Story = {
+  name: "Media shell / Communities at the cap",
+  render: () => <MediaShellReview overflowingCommunities populatedCommunities />,
+};
+export const MediaShellCollapsed: Story = {
+  name: "Media shell / Collapsed icon rail",
+  render: () => <MediaShellReview collapsed />,
+};
+
+export const MediaShellCommunities: Story = {
+  name: "Media shell / Communities populated",
+  render: () => <MediaShellReview populatedCommunities />,
+};
+
+export const MediaShellWithDock: Story = {
+  name: "Media shell / Comments dock open",
+  render: () => <MediaShellReview dockOpen populatedCommunities />,
 };
 
 export const DesktopShellArabic: Story = {

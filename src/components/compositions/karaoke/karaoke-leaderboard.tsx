@@ -1,4 +1,3 @@
-import * as React from "react";
 import {
   ArrowClockwise,
   CaretLeft,
@@ -9,6 +8,7 @@ import {
   WarningCircle,
 } from "@phosphor-icons/react";
 
+import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import type {
@@ -20,6 +20,11 @@ import { cn } from "@/lib/utils";
 export type KaraokeLeaderboardState =
   | { kind: "loading" }
   | { kind: "error"; message?: string }
+  | { kind: "ready"; leaderboard: KaraokeSongLeaderboard };
+
+export type KaraokeCompletionLeaderboardState =
+  | { kind: "loading" }
+  | { kind: "error" }
   | { kind: "ready"; leaderboard: KaraokeSongLeaderboard };
 
 export interface KaraokeLeaderboardProps {
@@ -37,29 +42,15 @@ function formatScore(score: number): string {
   return `${Math.round(score / 100)}%`;
 }
 
+function formatRank(rank: number, totalRanked: number): string {
+  return `Rank ${rank} of ${totalRanked}`;
+}
+
 function displayName(entry: KaraokeLeaderboardEntry): string {
   if (entry.identity.visibility === "anonymized") return "Former member";
   if (entry.identity.handle) return entry.identity.handle;
   if (entry.identity.display_name) return entry.identity.display_name;
   return "Anonymous singer";
-}
-
-function initials(entry: KaraokeLeaderboardEntry): string {
-  if (entry.identity.visibility === "anonymized") return "FM";
-  const source = entry.identity.display_name || entry.identity.handle || "?";
-  const parts = source.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-function avatarHue(entry: KaraokeLeaderboardEntry): number {
-  const source = entry.identity.handle || entry.identity.display_name || String(entry.rank);
-  let hash = 0;
-  for (let index = 0; index < source.length; index += 1) {
-    hash = (hash * 31 + source.charCodeAt(index)) % 360;
-  }
-  return hash;
 }
 
 function RankMarker({ rank }: { rank: number }) {
@@ -79,8 +70,14 @@ function RankMarker({ rank }: { rank: number }) {
   );
 }
 
-function EntryRow({ entry }: { entry: KaraokeLeaderboardEntry }) {
-  const hue = avatarHue(entry);
+function EntryRow({
+  entry,
+  totalRanked,
+}: {
+  entry: KaraokeLeaderboardEntry;
+  totalRanked: number;
+}) {
+  const label = displayName(entry);
   return (
     <li
       className={cn(
@@ -89,20 +86,20 @@ function EntryRow({ entry }: { entry: KaraokeLeaderboardEntry }) {
       )}
     >
       <RankMarker rank={entry.rank} />
-      <span
-        aria-hidden="true"
-        className="grid size-10 shrink-0 place-items-center rounded-full text-base font-semibold text-foreground"
-        style={{ backgroundColor: `oklch(0.45 0.09 ${hue})` }}
-      >
-        {initials(entry)}
-      </span>
+      <Avatar
+        className="size-10 border-0"
+        fallback={label}
+        fallbackSeed={entry.identity.handle ?? entry.identity.display_name ?? String(entry.rank)}
+        size="sm"
+        src={entry.identity.visibility === "visible" ? entry.identity.avatar_ref ?? undefined : undefined}
+      />
       <div className="min-w-0 flex-1">
         <Type as="p" className="truncate" variant="body-strong">
           {displayName(entry)}
           {entry.is_viewer ? <span className="text-muted-foreground"> · you</span> : null}
         </Type>
         <Type as="p" className="truncate text-muted-foreground" variant="caption">
-          Top {entry.top_percent}%
+          {formatRank(entry.rank, totalRanked)}
         </Type>
       </div>
       <span className="min-w-16 text-right text-lg font-semibold tabular-nums text-primary">
@@ -261,9 +258,9 @@ function ViewerStanding({
         You are #{leaderboard.viewer_rank} with {formatScore(leaderboard.viewer_best_score)}
       </Type>
       <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
-        {leaderboard.viewer_top_percent != null
-          ? `Top ${leaderboard.viewer_top_percent}% · ${leaderboard.viewer_eligible_attempt_count} eligible ${leaderboard.viewer_eligible_attempt_count === 1 ? "take" : "takes"}`
-          : `${leaderboard.viewer_eligible_attempt_count} eligible ${leaderboard.viewer_eligible_attempt_count === 1 ? "take" : "takes"}`}
+        {formatRank(leaderboard.viewer_rank, leaderboard.total_ranked)}
+        {" · "}
+        {leaderboard.viewer_eligible_attempt_count} eligible {leaderboard.viewer_eligible_attempt_count === 1 ? "take" : "takes"}
       </Type>
     </div>
   );
@@ -293,11 +290,81 @@ function ReadyState({
     <div className="mx-auto w-full max-w-2xl flex-1 space-y-4 px-4 py-6 sm:px-6">
       <ul className="space-y-2">
         {leaderboard.entries.map((entry) => (
-          <EntryRow entry={entry} key={`${entry.rank}:${entry.reached_at}:${entry.identity.handle ?? entry.identity.display_name ?? "anonymous"}`} />
+          <EntryRow
+            entry={entry}
+            key={`${entry.rank}:${entry.reached_at}:${entry.identity.handle ?? entry.identity.display_name ?? "anonymous"}`}
+            totalRanked={leaderboard.total_ranked}
+          />
         ))}
       </ul>
       {!viewerRankedInEntries ? <ViewerStanding leaderboard={leaderboard} onSing={onSing} /> : null}
     </div>
+  );
+}
+
+export function KaraokeCompletionLeaderboard({
+  onViewAll,
+  state,
+}: {
+  onViewAll?: () => void;
+  state: KaraokeCompletionLeaderboardState;
+}) {
+  const leaderboard = state.kind === "ready" ? state.leaderboard : null;
+  const entries = leaderboard?.entries.slice(0, 3) ?? [];
+  const viewerRankedInEntries = entries.some((entry) => entry.is_viewer);
+
+  return (
+    <section
+      aria-label="Karaoke leaderboard"
+      className="w-full rounded-[var(--radius-xl)] border border-border-soft bg-card/90 p-4 shadow-sm"
+    >
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <Type as="h2" variant="h4">
+          Leaderboard
+        </Type>
+        {onViewAll ? (
+          <Button onClick={onViewAll} size="sm" variant="ghost">
+            View all
+          </Button>
+        ) : null}
+      </div>
+      {state.kind === "loading" ? (
+        <div aria-busy="true" className="space-y-2">
+          {[0, 1].map((row) => (
+            <div className="h-16 animate-pulse rounded-[var(--radius-lg)] bg-muted" key={row} />
+          ))}
+        </div>
+      ) : null}
+      {state.kind === "error" ? (
+        <Type as="p" className="text-muted-foreground" variant="caption">
+          Scores are taking longer to update.
+        </Type>
+      ) : null}
+      {leaderboard ? (
+        <>
+          {entries.length > 0 ? (
+            <ul className="space-y-2">
+              {entries.map((entry) => (
+                <EntryRow
+                  entry={entry}
+                  key={`${entry.rank}:${entry.reached_at}:${entry.identity.handle ?? entry.identity.display_name ?? "anonymous"}`}
+                  totalRanked={leaderboard.total_ranked}
+                />
+              ))}
+            </ul>
+          ) : (
+            <Type as="p" className="text-muted-foreground" variant="caption">
+              No eligible scores yet.
+            </Type>
+          )}
+          {!viewerRankedInEntries ? (
+            <div className="mt-3">
+              <ViewerStanding leaderboard={leaderboard} />
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </section>
   );
 }
 

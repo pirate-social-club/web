@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import { UiLocaleProvider } from "@/lib/ui-locale";
+
 import { deriveSongUI, SongPostContent } from "./post-card-song-content";
 import type { SongContentSpec } from "./post-card.types";
 
@@ -137,7 +139,28 @@ describe("deriveSongUI", () => {
     );
 
     expect(markup).toContain('href="/songs/dark-dividend"');
-    expect(markup).toContain(">Remix of Dark Dividend</a>");
+    expect(markup).toContain(">Dark Dividend remix</a>");
+    expect(markup).not.toContain("Remix of Dark Dividend");
+  });
+
+  test("uses remix presentation instead of generic relationship copy", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          songMode: "remix",
+          upstreamAttributions: [{
+            assetId: "ast_midnight_waves",
+            relationshipType: "references_song",
+            title: "Midnight Waves",
+            artist: "The Sailors",
+          }],
+        },
+      }),
+    );
+
+    expect(markup).toContain("Midnight Waves remix");
+    expect(markup).not.toContain("References Midnight Waves");
   });
 
   test("requires age proof until the viewer is verified allowed", () => {
@@ -180,6 +203,24 @@ describe("deriveSongUI", () => {
     expect(markup).toContain('src="https://media.test/explicit-cover.jpg"');
     expect(markup).toContain("Verify Age");
     expect(markup).not.toContain('role="img" aria-label="Public track"');
+  });
+
+  test("labels sensitive songs as explicit without age-gating playback", () => {
+    const content = {
+      ...baseSong,
+      contentSafetyState: "sensitive" as const,
+    };
+    const ui = deriveSongUI(content);
+    const markup = renderToStaticMarkup(
+      React.createElement(UiLocaleProvider, { dir: "ltr", locale: "en" },
+        React.createElement(SongPostContent, { content }),
+      ),
+    );
+
+    expect(ui.ageGateRequiresProof).toBe(false);
+    expect(markup).toContain('aria-label="Explicit content"');
+    expect(markup).toContain(">E</span>");
+    expect(markup).not.toContain("Verify Age");
   });
 
   test("keeps post captions outside the song player", () => {
@@ -487,6 +528,24 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("disabled");
   });
 
+  test("renders composer-only song features as disabled buttons without status copy", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          karaoke: { previewOnly: true, status: "processing" },
+          study: { previewOnly: true, status: "processing" },
+        },
+      }),
+    );
+
+    expect(markup).toContain("Study");
+    expect(markup).toContain("Sing");
+    expect(markup).toContain("disabled");
+    expect(markup).not.toContain("will become available after publishing");
+    expect(markup).not.toContain("role=\"status\"");
+  });
+
   test("renders failed karaoke as a disabled Sing state without public failure detail", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
@@ -501,6 +560,8 @@ describe("deriveSongUI", () => {
 
     expect(markup).toContain("Study");
     expect(markup).toContain("Sing");
+    expect(markup).toContain("grid-cols-2");
+    expect(markup).not.toContain("sm:grid-cols-2");
     expect(markup).not.toContain("Sing unavailable");
     expect(markup).not.toContain("Sing setup failed");
     expect(markup).toContain("disabled");
@@ -526,5 +587,57 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("Sing");
     expect(markup).toContain("The ElevenLabs key did not work. Check it in Integrations.");
     expect(markup).toContain("disabled");
+  });
+
+  test("renders Mandarin song copy under the zh locale", () => {
+    const rewardMarkup = renderToStaticMarkup(
+      React.createElement(UiLocaleProvider, { dir: "ltr", locale: "zh" },
+        React.createElement(SongPostContent, {
+          content: {
+            ...baseSong,
+            karaoke: { rewardLabel: "$.10", status: "ready" },
+            onKaraoke: () => {},
+            onStudy: () => {},
+            study: { rewardLabel: "$.10", status: "ready" },
+          },
+        }),
+      ),
+    );
+
+    expect(rewardMarkup).toContain("学习 · 赚 $.10");
+    expect(rewardMarkup).toContain("跟唱 · 赚 $.10");
+
+    const buyMarkup = renderToStaticMarkup(
+      React.createElement(UiLocaleProvider, { dir: "ltr", locale: "zh" },
+        React.createElement(SongPostContent, {
+          content: {
+            ...baseSong,
+            accessMode: "locked",
+            listingMode: "listed",
+            listingStatus: "active",
+            onBuy: () => {},
+            priceLabel: "$3.99",
+          },
+        }),
+      ),
+    );
+
+    expect(buyMarkup).toContain("以 $3.99 购买");
+
+    const ageGateMarkup = renderToStaticMarkup(
+      React.createElement(UiLocaleProvider, { dir: "ltr", locale: "zh" },
+        React.createElement(SongPostContent, {
+          content: {
+            ...baseSong,
+            ageGatePolicy: "18_plus",
+            ageGateViewerState: "proof_required",
+            artworkSrc: "https://media.test/explicit-cover.jpg",
+            contentSafetyState: "adult",
+          },
+        }),
+      ),
+    );
+
+    expect(ageGateMarkup).toContain("验证年龄");
   });
 });

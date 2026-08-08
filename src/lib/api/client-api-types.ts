@@ -2,26 +2,67 @@ import type {
   Community,
   CommunityListing,
   CreateCommunityRequest,
-  GatePolicy,
   CreateCommunityListingRequest,
-  SongStudyAttemptRequest,
-  SongStudyAttemptResult,
-  SongStudyExercise,
-  SongStudyPayload,
+  GatePolicy,
+  RewardCampaignFundingQuote as ContractRewardCampaignFundingQuote,
+  RewardQualificationSummary as ContractRewardQualificationSummary,
+  SongStudyAttemptRequest as ContractSongStudyAttemptRequest,
+  SongStudyAttemptResult as ContractSongStudyAttemptResult,
+  SongStudyExercise as ContractSongStudyExercise,
+  SongStudyPayload as ContractSongStudyPayload,
   SongStudyTranscriptionResponse,
-  WalletIdentityPublicName,
-  WalletIdentityResponse,
 } from "@pirate/api-contracts";
 import type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
 export type ApiCreateCommunityRequest = CreateCommunityRequest;
-export type ApiCreateCommunityListingRequest = CreateCommunityListingRequest;
 export type {
-  SongStudyAttemptRequest,
-  SongStudyAttemptResult,
-  SongStudyExercise,
-  SongStudyPayload,
   SongStudyTranscriptionResponse,
+};
+
+// Transitional additive contract used while the coordinated API contract PR is
+// landing. Keep this structurally identical to the generated session schema so
+// web CI remains independently typecheckable against the current package.
+export type SongStudySessionSummary = {
+  completed_exercise_count: number;
+  due_count: number;
+  first_pass_correct_count: number;
+  id: string | null;
+  mastered_exercise_count: number;
+  max_presentations: number;
+  next_due_at?: number;
+  presentation_count: number;
+  qualified: boolean;
+  required_correct_count: number;
+  served_count: number;
+  status: "active" | "completed" | "caught_up" | "expired";
+  total_units: number;
+};
+
+export type SongStudyExercise = ContractSongStudyExercise & {
+  first_outcome: "correct" | "incorrect" | "revealed" | null;
+  mastered: boolean;
+  presentation_count: number;
+};
+
+export type SongStudyAttemptRequest = ContractSongStudyAttemptRequest & {
+  session_id: string;
+};
+
+export type SongStudyAttemptResult = ContractSongStudyAttemptResult & {
+  session?: SongStudySessionSummary;
+};
+
+export type SongStudyPayload = Omit<ContractSongStudyPayload, "exercises" | "session"> & {
+  exercises: SongStudyExercise[];
+  session?: SongStudySessionSummary;
+};
+
+export type TelegramStudyVoiceIntent = {
+  created: number;
+  expires_at: number;
+  id: string;
+  object: "telegram_study_voice_intent";
+  status: "pending";
 };
 
 export type ApiCommunityMediaUploadResponse = {
@@ -44,23 +85,29 @@ export type ApiProfileMediaUploadResponse = {
   storage_object_key: string;
 };
 
-export type ApiWalletIdentityPublicName = WalletIdentityPublicName;
-export type ApiWalletIdentityResponse = WalletIdentityResponse;
-
-export type ApiRewardVerificationState = "unverified" | "verified" | "conflict";
+type ApiRewardVerificationState = "unverified" | "verified" | "conflict";
 
 export type ApiPublicRewardOffer = {
+  campaign: string;
+  chain_id: number;
   eligible_activity: "study" | "karaoke" | "either";
   daily_reward_cents: number;
   ends_at: number;
+  min_score_bps: number;
 };
 
-export type ApiRewardEventKind =
+// Transitional additive status used while the coordinated Core/API contract
+// change lands. The API already returns operator_incident from confirmation.
+export type ApiRewardCampaignFundingConfirmation = Omit<ContractRewardCampaignFundingQuote, "status"> & {
+  status: ContractRewardCampaignFundingQuote["status"] | "operator_incident";
+};
+
+type ApiRewardEventKind =
   | "study_streak_day"
   | "study_streak_milestone_7"
   | "study_streak_milestone_30";
 
-export type ApiRewardEventSummary = {
+type ApiRewardEventSummary = {
   id: string;
   user_id: string;
   community_id: string;
@@ -71,14 +118,24 @@ export type ApiRewardEventSummary = {
   created_at: number;
 };
 
+export type ApiRewardQualificationSummary = ContractRewardQualificationSummary;
+
 export type ApiRewardsSummaryResponse = {
+  chain_id: number;
   balance_cents: number;
   today_earned_cents: number;
   recent_events: ApiRewardEventSummary[];
+  recent_qualifications: ApiRewardQualificationSummary[];
+  pending_verification: {
+    count: number;
+    conditional_cents: number;
+    earliest_expires_at: number | null;
+  };
   cashout: {
     eligible: boolean;
     min_cents: number;
     verification_state: ApiRewardVerificationState;
+    verification_provider: "self" | "very" | null;
   };
   latest_in_flight_cashout: ApiRewardCashoutResponse["payout"] | null;
 };
@@ -94,8 +151,10 @@ export type ApiRewardCashoutRequest = {
 };
 
 export type ApiRewardCashoutResponse = {
+  chain_id: number;
   payout: {
     id: string;
+    chain_id: number;
     amount_cents: number;
     recipient_address: string;
     status: "submitted" | "confirmed" | "failed";
@@ -122,7 +181,7 @@ export type ApiSongArtifactUploadCompleteRequest = {
   content_hash?: string | null;
 };
 
-export type ApiDerivativeSourceKind = "song" | "video";
+type ApiDerivativeSourceKind = "song" | "video";
 export type ApiDerivativeSourceQueryKind = ApiDerivativeSourceKind | "live";
 export type ApiDerivativeSourceScope = "community" | "global";
 
@@ -210,7 +269,7 @@ export type ApiCommunityVisualPolicyUpdateRequest = {
   visual_policy_settings: Omit<Community["visual_policy_settings"], "community" | "policy_origin">;
 };
 
-export type ApiDonationPartnerSummaryInput = {
+type ApiDonationPartnerSummaryInput = {
   donation_partner_id: string;
   display_name: string;
   provider: "endaoment";
@@ -243,19 +302,19 @@ export type CommunityListPostsOptions = {
   sort?: "best" | "new" | "top" | null;
 };
 
-export type ApiLiveRoomKind = "solo" | "duet";
-export type ApiLiveRoomStatus = "scheduled" | "live" | "ended" | "canceled";
-export type ApiLiveRoomAccessMode = "free" | "gated" | "paid";
-export type ApiLiveRoomVisibility = "public" | "unlisted";
-export type ApiLiveRoomSetlistStatus = "draft" | "ready" | "locked";
+type ApiLiveRoomKind = "solo" | "duet";
+type ApiLiveRoomStatus = "scheduled" | "live" | "ended" | "canceled";
+type ApiLiveRoomAccessMode = "free" | "gated" | "paid";
+type ApiLiveRoomVisibility = "public" | "unlisted";
+type ApiLiveRoomSetlistStatus = "draft" | "ready" | "locked";
 export type ApiLiveRoomRightsBasis = "original" | "licensed" | "cover" | "public_domain" | "unknown";
-export type ApiLiveRoomRightsStatus = "pending" | "ready" | "blocked";
-export type ApiLiveRoomGuestInviteStatus = "pending" | "accepted" | "revoked";
-export type ApiLiveRoomReplayDraftStatus = "not_recorded" | "processing" | "ready" | "review_pending" | "published" | "failed";
-export type ApiLiveRoomReplayAssetAccessMode = "free" | "included_with_ticket" | "paid";
-export type ApiLiveRoomReplayAssetPublicationStatus = "draft" | "published" | "failed";
+type ApiLiveRoomRightsStatus = "pending" | "ready" | "blocked";
+type ApiLiveRoomGuestInviteStatus = "pending" | "accepted" | "revoked";
+type ApiLiveRoomReplayDraftStatus = "not_recorded" | "processing" | "ready" | "review_pending" | "published" | "failed";
+type ApiLiveRoomReplayAssetAccessMode = "free" | "included_with_ticket" | "paid";
+type ApiLiveRoomReplayAssetPublicationStatus = "draft" | "published" | "failed";
 
-export type ApiLiveRoomAudienceGateSegment =
+type ApiLiveRoomAudienceGateSegment =
   | { type: "community_members" }
   | {
     type: "purchase_entitlement";
@@ -263,7 +322,7 @@ export type ApiLiveRoomAudienceGateSegment =
     target_refs: string[];
   };
 
-export type ApiLiveRoomAudienceGate = {
+type ApiLiveRoomAudienceGate = {
   version: 1;
   segments: ApiLiveRoomAudienceGateSegment[];
   match: "any";
@@ -466,7 +525,7 @@ export type ApiUpdateLiveRoomReplayDraftRequest = {
   }> | null;
 };
 
-export type ApiLiveRoomAccessDecisionReason =
+type ApiLiveRoomAccessDecisionReason =
   | "not_live"
   | "ended"
   | "canceled"
@@ -476,7 +535,7 @@ export type ApiLiveRoomAccessDecisionReason =
   | "gate_unsatisfied"
   | "allowed";
 
-export type ApiLiveRoomGateAccessPayload = {
+type ApiLiveRoomGateAccessPayload = {
   failed_segments: Array<
     | { type: "community_members" }
     | {
@@ -592,9 +651,9 @@ export type ApiCommunityMachineAccessPolicyUpdate = {
   included_surfaces?: Partial<ApiCommunityMachineAccessPolicy["included_surfaces"]>;
 };
 
-export type ApiTelegramLinkedChatLinkMode = "invite_link" | "join_request";
+type ApiTelegramLinkedChatLinkMode = "invite_link" | "join_request";
 
-export type ApiTelegramBotAdminStatus =
+type ApiTelegramBotAdminStatus =
   | "unknown"
   | "ready"
   | "missing"
@@ -623,7 +682,7 @@ export type ApiTelegramCommunityBot = {
   connected_at: number | null;
 };
 
-export type ApiTelegramLinkedChat = {
+type ApiTelegramLinkedChat = {
   id: string;
   object: "telegram_linked_chat";
   community: string;
@@ -647,14 +706,37 @@ export type ApiCommunityTelegramChatSettingsUpdate = {
   directory_visible?: boolean;
 };
 
-export type ApiAssistantContextMode = "live_sql" | "summary_cache" | "hybrid_vector";
-export type ApiAssistantActionMode = "answer_only" | "draft_only" | "confirmed_writes";
-export type ApiAssistantVoiceMode = "off" | "transcription_only" | "voice_replies" | "text_and_voice_replies";
-export type ApiAssistantSttProvider = "elevenlabs" | "mistral" | "openai" | "none";
-export type ApiAssistantTtsProvider = "elevenlabs" | "none";
-export type ApiAssistantRetentionMode = "per_user_private" | "community_visible_to_mods" | "ephemeral";
+export type ApiTelegramChannelPublicationMode = "off" | "from_now" | "recent_backfill";
 
-export type ApiAssistantProviderKeyStatus =
+export type ApiTelegramChannelDestination = {
+  id: string;
+  object: "telegram_channel_destination";
+  community: string;
+  title: string;
+  username: string | null;
+  bot_admin_status: "ready";
+  publication_mode: ApiTelegramChannelPublicationMode;
+  linked_at: number;
+};
+
+export type ApiTelegramChannelUnlinkResponse = {
+  id: string;
+  object: "telegram_channel_destination";
+  unlinked: true;
+};
+
+export type ApiTelegramChannelBackfillResponse = {
+  enqueued: number;
+};
+
+type ApiAssistantContextMode = "live_sql" | "summary_cache" | "hybrid_vector";
+type ApiAssistantActionMode = "answer_only" | "draft_only" | "confirmed_writes";
+type ApiAssistantVoiceMode = "off" | "transcription_only" | "voice_replies" | "text_and_voice_replies";
+type ApiAssistantSttProvider = "elevenlabs" | "mistral" | "openai" | "none";
+type ApiAssistantTtsProvider = "elevenlabs" | "none";
+type ApiAssistantRetentionMode = "per_user_private" | "community_visible_to_mods" | "ephemeral";
+
+type ApiAssistantProviderKeyStatus =
   | { kind: "missing" }
   | { kind: "connected"; last4: string; connectedAt?: string }
   | { kind: "invalid"; last4: string; message: string };
@@ -662,7 +744,7 @@ export type ApiAssistantProviderKeyStatus =
 export type ApiAssistantOpenRouterKeyStatus = ApiAssistantProviderKeyStatus;
 export type ApiAssistantElevenLabsKeyStatus = ApiAssistantProviderKeyStatus;
 
-export type ApiAssistantModelOption = {
+type ApiAssistantModelOption = {
   contextLength?: number;
   createdAt?: string;
   id: string;
@@ -672,7 +754,7 @@ export type ApiAssistantModelOption = {
   outputCostUsdPerMillionTokens?: number;
 };
 
-export type ApiAssistantContextSources = {
+type ApiAssistantContextSources = {
   communityProfile: boolean;
   rules: boolean;
   referenceLinks: boolean;
@@ -723,7 +805,7 @@ export type ApiCommunityAssistantPolicy = {
   updatedAt: string;
 };
 
-export type ApiCommunityAssistantPublicPolicy = {
+type ApiCommunityAssistantPublicPolicy = {
   object: "community_assistant_policy_public";
   community: string;
   enabled: boolean;
@@ -805,8 +887,6 @@ export type ApiCommunityStudyPolicy = {
 export type ApiCommunityStudyPolicyUpdate = {
   study_enabled: boolean;
 };
-
-export type ApiCommunityAssistantCredentialProvider = "openrouter" | "elevenlabs";
 
 export type ApiCommunityAssistantCredentialResponse =
   | {
@@ -952,7 +1032,7 @@ export type KaraokeSessionCreateApiResponse = {
   scoring_policy: unknown;
 };
 
-export type KaraokeLeaderboardIdentity = {
+type KaraokeLeaderboardIdentity = {
   visibility: "visible" | "anonymized";
   display_name: string | null;
   handle: string | null;
@@ -986,4 +1066,25 @@ export type KaraokeSongLeaderboard = {
   viewer_best_score: number | null;
   viewer_best_reached_at: string | null;
   viewer_eligible_attempt_count: number;
+};
+
+export type ApiCommunityNamespaceAttachment = {
+  namespace_verification: string;
+  namespace_role: "primary" | "mirror";
+  family: "hns" | "spaces";
+  root_label: string;
+  route_slug: string;
+  verification_status: "verified" | "stale" | "expired" | "disputed";
+  delegation?: {
+    pirate_web_routing_allowed: boolean;
+    pirate_subdomain_issuance_allowed: boolean;
+    delegation_security: "unknown" | "unsecured" | "pending" | "secure" | "bogus" | "drifted";
+    observation_fresh: boolean;
+    routing_withheld_reason: string | null;
+    signature_expiry_warning: boolean;
+  } | null;
+};
+
+export type ApiCommunityNamespaceListResponse = {
+  namespaces: ApiCommunityNamespaceAttachment[];
 };

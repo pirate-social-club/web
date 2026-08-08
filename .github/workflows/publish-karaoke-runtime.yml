@@ -232,9 +232,11 @@ jobs:
         working-directory: api/services/api
         run: |
           set -euo pipefail
-          # The API has no `types` script — the canonical typecheck is tsgo --noEmit.
+          # Use the API's installed TypeScript 7 toolchain through its canonical
+          # focused check. `bunx tsgo` incorrectly resolves a nonexistent npm
+          # package instead of the local TypeScript compiler.
           # HARD fail (no `|| true`): if the published runtime breaks API types, the
           # workflow fails. NOTE: API main must be typecheck-clean for this to pass
           # (the karaoke session-do.test.ts fixtures must include uncertainLineCount).
-          bunx tsgo --noEmit
+          bun run check
           bun test tests/lib/karaoke/ src/lib/posts/post-karaoke-service.test.ts

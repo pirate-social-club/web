@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Fire, Flag, House, Plus, Robot, TrendUp, type Icon } from "@phosphor-icons/react";
+import { Fire, Flag, House, MagnifyingGlass, Plus, TrendUp, type Icon } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
 import {
@@ -15,6 +15,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -31,17 +32,25 @@ import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import { VersionBadge } from "./version-badge";
 import { dispatchHomeFeedSortChange, getCurrentHomeFeedSort, HOME_FEED_SORT_CHANGE_EVENT, type HomeFeedSort } from "@/lib/home-feed-sort";
+import { PirateBrandMark } from "@/components/primitives/pirate-brand-mark";
+import { Type } from "@/components/primitives/type";
 
 type SidebarIcon = Icon;
 
 export interface AppSidebarPrimaryItem {
+  avatarFallback?: string;
+  avatarSeed?: string | null;
+  /** `undefined` renders the icon; a string or null renders the viewer's avatar (fallback when null). */
+  avatarSrc?: string | null;
+  /** Unread count overlaid on the item visual; 0 or undefined hides the badge. */
+  badgeCount?: number;
   id: string;
   icon: SidebarIcon;
   label: string;
   onSelect?: () => void;
 }
 
-export interface AppSidebarSectionItem {
+interface AppSidebarSectionItem {
   avatarSrc?: string | null;
   icon?: SidebarIcon;
   id: string;
@@ -50,6 +59,13 @@ export interface AppSidebarSectionItem {
 }
 
 export interface AppSidebarSection {
+  action?: {
+    ariaLabel: string;
+    icon: SidebarIcon;
+    onSelect: () => void;
+  };
+  /** Rendered in place of the item list when the section has no items. */
+  emptyLabel?: string;
   id: string;
   defaultOpen?: boolean;
   items: readonly AppSidebarSectionItem[];
@@ -61,15 +77,32 @@ const sectionLabelClassName =
 
 const topLevelRowClassName = "h-11 rounded-xl px-3.5 text-base font-medium";
 const nestedRowClassName = "h-11 rounded-xl px-3.5 text-base font-medium";
+// These destinations already have persistent, one-tap homes in the mobile footer.
+// Keep the drawer focused on search, feed controls, discovery, and communities.
+const mobileFooterItemIds = new Set(["home", "popular", "chat", "activity", "wallet", "profile"]);
+
+function formatUnreadCount(count: number): string {
+  return count > 99 ? "99+" : String(count);
+}
+
+function normalizeUnreadCount(count: number | undefined): number {
+  if (count === undefined || !Number.isFinite(count)) return 0;
+  return Math.max(0, Math.floor(count));
+}
 
 const DEFAULT_PRIMARY_ITEMS: readonly AppSidebarPrimaryItem[] = [
   { id: "home", icon: House, label: "Home" },
   { id: "popular", icon: Fire, label: "Popular" },
   { id: "your-communities", icon: Flag, label: "Your Communities" },
-  { id: "agents", icon: Robot, label: "Agents" },
   { id: "create-community", icon: Plus, label: "Create Community" },
 ];
 
+export function filterPrimaryItemsForLayout(
+  items: readonly AppSidebarPrimaryItem[],
+  isMobile: boolean,
+): readonly AppSidebarPrimaryItem[] {
+  return isMobile ? items.filter((item) => !mobileFooterItemIds.has(item.id)) : items;
+}
 
 
 function SidebarSectionBlock({
@@ -131,33 +164,62 @@ function SidebarSectionBlock({
           key={section.id}
           value={section.id}
         >
-          <AccordionTrigger className={sectionLabelClassName}>
-            {section.label}
-          </AccordionTrigger>
+          <div className="flex items-center">
+            {/* Symmetric vertical padding keeps the section action button (e.g. the
+                Communities "+") centered on the label text instead of the trigger's
+                otherwise asymmetric box. */}
+            <AccordionTrigger className={cn(sectionLabelClassName, "min-w-0 flex-1 py-2.5")}>
+              {section.label}
+            </AccordionTrigger>
+            {section.action ? (
+              <button
+                aria-label={section.action.ariaLabel}
+                className="me-2 grid size-9 shrink-0 place-items-center rounded-full text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                onClick={() => onItemSelect(section.action?.onSelect)}
+                type="button"
+              >
+                {React.createElement(section.action.icon, { className: "size-5", weight: "bold" })}
+              </button>
+            ) : null}
+          </div>
           <AccordionContent className="pb-0">
             <SidebarGroup className="gap-0 p-0">
               <SidebarGroupContent>
+                {/* A section can legitimately be empty (e.g. Communities before you
+                    join any). The header still carries its action button, so show a
+                    hint instead of an empty accordion body. */}
+                {section.items.length === 0 && section.emptyLabel ? (
+                  <Type as="p" className="px-3.5 pb-2 text-sidebar-foreground/50" variant="caption">
+                    {section.emptyLabel}
+                  </Type>
+                ) : null}
                 <SidebarMenu className="gap-1">
-                  {section.items.map((item) => (
-                    <SidebarMenuItem key={item.id}>
-                      <SidebarMenuButton
-                        className={nestedRowClassName}
-                        isActive={item.id === activeItemId}
-                        onClick={() => onItemSelect(item.onSelect)}
-                        tooltip={item.label}
-                      >
-                        {item.avatarSrc ? (
-                          <Avatar
-                            className="size-7 border-border-soft"
-                            fallback={item.label}
-                            size="xs"
-                            src={item.avatarSrc}
-                          />
-                        ) : null}
-                        <span>{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+
+                    return (
+                      <SidebarMenuItem key={item.id}>
+                        <SidebarMenuButton
+                          className={nestedRowClassName}
+                          isActive={item.id === activeItemId}
+                          onClick={() => onItemSelect(item.onSelect)}
+                          tooltip={item.label}
+                        >
+                          {item.avatarSrc ? (
+                            <Avatar
+                              className="size-7 border-border-soft"
+                              fallback={item.label}
+                              size="xs"
+                              src={item.avatarSrc}
+                            />
+                          ) : Icon ? (
+                            <Icon className="size-5" />
+                          ) : null}
+                          <span>{item.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -224,32 +286,40 @@ function SidebarResources({
 export interface AppSidebarProps
   extends Omit<React.ComponentProps<typeof Sidebar>, "side"> {
   activeItemId?: string;
+  appearance?: "default" | "media";
   brandLabel?: string;
   className?: string;
   codeItems?: readonly AppSidebarSectionItem[];
   codeLabel?: string;
   homeAriaLabel?: string;
+  mediaAction?: React.ReactNode;
   onHomeClick?: () => void;
   onNavigate?: (path: string) => void;
+  onSearchClick?: () => void;
   primaryItems?: readonly AppSidebarPrimaryItem[];
   resourceItems?: readonly AppSidebarSectionItem[];
   resourcesLabel?: string;
+  searchLabel?: string;
   sections?: readonly AppSidebarSection[];
   side?: UiPlacement;
 }
 
 export function AppSidebar({
   activeItemId = "home",
+  appearance = "default",
   brandLabel,
   className,
   codeItems,
   codeLabel,
   homeAriaLabel,
+  mediaAction,
   onHomeClick,
   onNavigate,
+  onSearchClick,
   primaryItems,
   resourceItems,
   resourcesLabel,
+  searchLabel = "Search",
   sections,
   side = "start",
   ...props
@@ -287,7 +357,15 @@ export function AppSidebar({
     window.addEventListener(HOME_FEED_SORT_CHANGE_EVENT, handleSortChange);
     return () => window.removeEventListener(HOME_FEED_SORT_CHANGE_EVENT, handleSortChange);
   }, []);
-  const resolvedPrimaryItems = (primaryItems ?? DEFAULT_PRIMARY_ITEMS).map((item) => {
+  const selectedPrimaryItems = primaryItems ?? DEFAULT_PRIMARY_ITEMS;
+  const resolvedPrimaryItems = selectedPrimaryItems.map((item) => {
+    if (primaryItems) {
+      if (item.id === "home" && onHomeClick && item.onSelect === undefined) {
+        return { ...item, onSelect: onHomeClick };
+      }
+      return item;
+    }
+
     let resolvedItem = item;
     if (item.id === "home") resolvedItem = { ...item, label: copy.appSidebar.homeLabel };
     if (item.id === "popular") resolvedItem = { ...item, label: copy.appSidebar.feedSortBestLabel };
@@ -297,9 +375,7 @@ export function AppSidebar({
     if (item.id === "home" && onHomeClick && item.onSelect === undefined) return { ...resolvedItem, onSelect: onHomeClick };
     return resolvedItem;
   });
-  const visiblePrimaryItems = isMobile
-    ? resolvedPrimaryItems.filter((item) => item.id !== "home" && item.id !== "popular")
-    : resolvedPrimaryItems;
+  const visiblePrimaryItems = filterPrimaryItemsForLayout(resolvedPrimaryItems, isMobile);
   const resolvedCodeItems = codeItems ?? copy.appSidebar.codeItems;
   const resolvedCodeLabel = codeLabel ?? copy.appSidebar.codeLabel;
   const resolvedSections = sections ?? copy.appSidebar.sections;
@@ -309,16 +385,63 @@ export function AppSidebar({
 
   return (
     <Sidebar
-      className={cn("w-[15.5rem] pt-0 md:top-[var(--header-height)] md:h-[calc(100svh-var(--header-height))]", className)}
+      className={cn(
+        "w-[15.5rem] pt-0",
+        appearance === "media"
+          ? "md:top-0 md:h-svh"
+          : "md:top-[var(--header-height)] md:h-[calc(100svh-var(--header-height))]",
+        className,
+      )}
       collapsible="icon"
       side={resolvedSide}
       {...props}
     >
+      {appearance === "media" ? (
+        <SidebarHeader className="hidden gap-3 border-b border-sidebar-border px-4 pb-4 pt-5 md:flex">
+          <button
+            aria-label={homeAriaLabel ?? copy.appSidebar.homeAriaLabel}
+            className="flex h-11 items-center gap-3 rounded-xl px-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:justify-center"
+            onClick={onHomeClick}
+            type="button"
+          >
+            <PirateBrandMark className="size-10 shrink-0" decorative={false} />
+            <Type as="span" className="font-display uppercase tracking-wide group-data-[collapsible=icon]:hidden" variant="h3">
+              {brandLabel ?? copy.appSidebar.brandLabel}
+            </Type>
+          </button>
+          <button
+            aria-label={searchLabel}
+            className="flex h-11 items-center gap-3 rounded-xl bg-sidebar-accent px-3.5 text-sidebar-foreground/70 hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+            onClick={onSearchClick}
+            type="button"
+          >
+            <MagnifyingGlass className="size-5 shrink-0" />
+            <span className="truncate group-data-[collapsible=icon]:hidden">{searchLabel}</span>
+          </button>
+        </SidebarHeader>
+      ) : null}
       <SidebarContent className="gap-3 overflow-y-auto px-0 pb-4 pt-3">
         {isMobile ? (
-          <SidebarGroup className="px-4 pt-1">
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-1">
+          <>
+            <SidebarGroup className="px-4 pt-1">
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className={topLevelRowClassName}
+                      onClick={() => handleItemSelect(onSearchClick)}
+                      tooltip={searchLabel}
+                    >
+                      <MagnifyingGlass className="size-5" />
+                      <span>{searchLabel}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            <SidebarGroup className="px-4 pt-1">
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-1">
                 {mobileHomeFeedSortItems.map((item) => {
                   const Icon = item.icon;
                   const active = item.id === homeFeedSort;
@@ -337,9 +460,10 @@ export function AppSidebar({
                     </SidebarMenuItem>
                   );
                 })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
         ) : null}
 
         <SidebarGroup className="px-4 pt-1">
@@ -352,10 +476,12 @@ export function AppSidebar({
                   : item.id === "home"
                     ? activeItemId === "home"
                     : item.id === activeItemId;
+                const badgeCount = normalizeUnreadCount(item.badgeCount);
 
                 return (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
+                      aria-label={badgeCount > 0 ? `${item.label}, ${badgeCount}` : undefined}
                       className={topLevelRowClassName}
                       isActive={active}
                       onClick={() => {
@@ -368,7 +494,27 @@ export function AppSidebar({
                       }}
                       tooltip={item.label}
                     >
-                      <Icon className="size-5" weight={active ? "fill" : "regular"} />
+                      <span className="relative inline-flex shrink-0">
+                        {item.avatarSrc !== undefined ? (
+                          <Avatar
+                            className="size-7 border-border-soft"
+                            fallback={item.avatarFallback ?? item.label}
+                            fallbackSeed={item.avatarSeed ?? undefined}
+                            size="xs"
+                            src={item.avatarSrc ?? undefined}
+                          />
+                        ) : (
+                          <Icon className="size-5" weight={active ? "fill" : "regular"} />
+                        )}
+                        {badgeCount > 0 ? (
+                          <span
+                            aria-hidden="true"
+                            className="notification-count-badge absolute -end-2 -top-2"
+                          >
+                            {formatUnreadCount(badgeCount)}
+                          </span>
+                        ) : null}
+                      </span>
                       <span>{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -377,6 +523,12 @@ export function AppSidebar({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {appearance === "media" && !isMobile && mediaAction ? (
+          <div className="px-4 group-data-[collapsible=icon]:hidden">
+            {mediaAction}
+          </div>
+        ) : null}
 
         <SidebarSectionBlock
           activeItemId={activeItemId}

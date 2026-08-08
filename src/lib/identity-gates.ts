@@ -7,17 +7,19 @@ import type {
   VerificationRequirement,
 } from "@pirate/api-contracts";
 import { getCountryDisplayName, normalizeCountryCode } from "@/lib/countries";
+import { formatAssetAmount } from "@/lib/asset-amount";
 import { isUiLocaleCode, type UiLocaleCode } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
 
 type IdentityGateAudience = "public" | "admin";
 type VerificationProvider = "self" | "very" | "passport" | "zkpassport";
+export type HumanVerificationProvider = "self" | "very" | "zkpassport";
 type RequirementProviderContext = VerificationProvider | null;
 type MissingCapability = "unique_human" | "age_over_18" | "minimum_age" | "nationality" | "gender" | "wallet_score" | "altcha_pow";
 type RequiredActionNode = Omit<NonNullable<NonNullable<JoinEligibility["gate_evaluation"]>["required_action_set"]>["items"][number], "items"> & {
   items?: RequiredActionNode[];
 };
-export type RequiredActionCapability = MissingCapability | "erc721_holding" | "erc721_inventory_match";
+export type RequiredActionCapability = MissingCapability | "erc721_holding" | "erc721_inventory_match" | "asset_balance";
 
 const SELF_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
   "unique_human",
@@ -29,6 +31,12 @@ const SELF_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
 const SELF_REQUESTED_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
   "unique_human",
   "age_over_18",
+  "nationality",
+  "gender",
+];
+const ZKPASSPORT_REQUESTED_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
+  "unique_human",
+  "minimum_age",
   "nationality",
   "gender",
 ];
@@ -61,20 +69,17 @@ function formatCountryName(code: string, locale: UiLocaleCode): string {
 }
 
 function shortenAddress(address: string): string {
-  if (address.length <= 10) {
-    return address;
-  }
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  return formatCompactAddress(address);
 }
 
-function formatInventoryAssetLabel(gate: MembershipGateSummary): string {
+function formatInventoryAssetLabel(gate: MembershipGateSummary, pluralize = false): string {
   if (gate.asset_filter_label?.trim()) {
     return gate.asset_filter_label.trim();
   }
   if (gate.asset_category === "watch") {
-    return "watch";
+    return pluralize && (gate.min_quantity ?? 1) !== 1 ? "watches" : "watch";
   }
-  return "card";
+  return pluralize && (gate.min_quantity ?? 1) !== 1 ? "cards" : "card";
 }
 
 function getVisibleSelfCapabilities(capabilities: MissingCapability[]): MissingCapability[] {
@@ -146,31 +151,28 @@ function isSelfRequestedCapability(capability: MissingCapability): capability is
   return SELF_REQUESTED_CAPABILITY_ORDER.some((candidate) => candidate === capability);
 }
 
+function isZkPassportRequestedCapability(capability: MissingCapability): capability is RequestedVerificationCapability {
+  return ZKPASSPORT_REQUESTED_CAPABILITY_ORDER.some((candidate) => candidate === capability);
+}
+
 function resolveUniqueHumanRequirementProvider(
   gate: MembershipGateSummary,
   provider: RequirementProviderContext,
-): "self" | "very" | null {
-  if (provider === "self" || provider === "very") {
+): "self" | "zkpassport" | "very" | null {
+  if (provider === "self" || provider === "zkpassport" || provider === "very") {
     return provider;
   }
   const acceptedProviders = gate.accepted_providers ?? [];
   if (acceptedProviders.length === 1) {
     const [acceptedProvider] = acceptedProviders;
-    if (acceptedProvider === "self" || acceptedProvider === "very") {
+    if (acceptedProvider === "self" || acceptedProvider === "zkpassport" || acceptedProvider === "very") {
       return acceptedProvider;
     }
   }
   return null;
 }
 
-export function getProofOfWorkGateRequirements(
-  gates: MembershipGateSummary[] | null | undefined,
-): MembershipGateSummary[] {
-  const proofOfWorkGates = (gates ?? []).filter((gate) => gate.gate_type === "altcha_pow");
-  return proofOfWorkGates.length > 0 ? proofOfWorkGates : [{ gate_type: "altcha_pow" }];
-}
-
-export function isJoinSurfaceGate(gate: Pick<MembershipGateSummary, "gate_type">): boolean {
+export function isJoinSurfaceGate(_gate: Pick<MembershipGateSummary, "gate_type">): boolean {
   return true;
 }
 
@@ -178,14 +180,43 @@ export function hasActionTimeCheck(gates: Array<Pick<MembershipGateSummary, "gat
   return (gates ?? []).some((gate) => gate.gate_type === "altcha_pow");
 }
 
+/**
+ * A community whose entire membership gate is proof-of-work admits non-member
+ * votes, comments and posts: each write carries its own action-scoped proof,
+ * so joining first proves nothing more (the API mirrors this predicate in
+ * open-participation.ts and auto-follows the actor instead). This also applies
+ * to mixed OR-trees when the PoW branch alone can satisfy the gate.
+ */
+export function isPowSatisfiableGate(
+  gates: Array<Pick<MembershipGateSummary, "gate_type">> | null | undefined,
+  matchMode?: "all" | "any" | null,
+): boolean {
+  const summaries = gates ?? [];
+  if (summaries.length === 0) {
+    return false;
+  }
+  // Summaries are the flattened atoms; match mode says how they combine. Any
+  // branch clears an "any" gate, so one altcha_pow makes it PoW-satisfiable;
+  // an "all" gate needs every atom to be PoW.
+  return matchMode === "any"
+    ? summaries.some((gate) => gate.gate_type === "altcha_pow")
+    : summaries.every((gate) => gate.gate_type === "altcha_pow");
+}
+
 export function formatGateRequirement(
   gate: MembershipGateSummary,
-  options?: { audience?: IdentityGateAudience; locale?: string | null; provider?: RequirementProviderContext },
+  options?: {
+    audience?: IdentityGateAudience;
+    locale?: string | null;
+    presentation?: "requirement" | "compact";
+    provider?: RequirementProviderContext;
+  },
 ): string {
   const audience = options?.audience ?? "public";
   const locale = resolveGateLocale(options?.locale);
   const provider = options?.provider ?? null;
   const copy = getLocaleMessages(locale, "gates").requirements;
+  const compact = options?.presentation === "compact" ? copy.compact : null;
 
   switch (gate.gate_type) {
     case "nationality": {
@@ -196,36 +227,54 @@ export function formatGateRequirement(
           return audience === "admin" ? `${country} (${value})` : country;
         });
         const countryLabel = joinWithAnd(countries, locale);
-        return copy.nationality.withValues.replace("{countryLabel}", countryLabel);
+        return (compact?.nationality.withValues ?? copy.nationality.withValues).replace("{countryLabel}", countryLabel);
       }
-      return copy.nationality.withoutValues;
+      return compact?.nationality.withoutValues ?? copy.nationality.withoutValues;
     }
     case "gender": {
+      if (compact) {
+        return gate.required_value
+          ? compact.gender.withValue.replace("{requiredValue}", gate.required_value)
+          : compact.gender.withoutValue;
+      }
       if (audience === "admin" && gate.required_value) {
         return copy.gender.adminWithValue.replace("{requiredValue}", gate.required_value);
       }
       return copy.gender.public;
     }
-    case "unique_human":
-      return resolveUniqueHumanRequirementProvider(gate, provider) === "very"
-        ? copy.uniqueHuman.very
-        : copy.uniqueHuman.self;
+    case "unique_human": {
+      const uniqueHumanProvider = resolveUniqueHumanRequirementProvider(gate, provider);
+      if (uniqueHumanProvider === "very") return copy.uniqueHuman.very;
+      if (uniqueHumanProvider === "self") return copy.uniqueHuman.self;
+      if (uniqueHumanProvider === "zkpassport") return copy.uniqueHuman.zkpassport;
+      return copy.uniqueHuman.any;
+    }
     case "age_over_18":
-      return copy.ageOver18;
+      return compact?.ageOver18 ?? copy.ageOver18;
     case "minimum_age": {
       const age = String(gate.required_minimum_age ?? 18);
-      return copy.minimumAge.replace("{age}", age);
+      return (compact?.minimumAge ?? copy.minimumAge).replace("{age}", age);
     }
     case "wallet_score": {
       if (typeof gate.minimum_score === "number") {
-        return copy.walletScore.withScore.replace("{minimumScore}", String(gate.minimum_score));
+        return (compact?.walletScore.withScore ?? copy.walletScore.withScore)
+          .replace("{minimumScore}", String(gate.minimum_score));
       }
-      return copy.walletScore.withoutScore;
+      return compact?.walletScore.withoutScore ?? copy.walletScore.withoutScore;
     }
     case "altcha_pow":
-      return copy.altchaPow;
+      return compact?.altchaPow ?? copy.altchaPow;
     case "erc721_holding": {
       const label = gate.contract_address ? shortenAddress(gate.contract_address) : null;
+      if (compact) {
+        const quantity = String(gate.min_quantity ?? 1);
+        const nftLabel = (gate.min_quantity ?? 1) === 1 ? "NFT" : "NFTs";
+        const template = label ? compact.erc721Holding.withLabel : compact.erc721Holding.withoutLabel;
+        return template
+          .replace("{quantity}", quantity)
+          .replace("{nftLabel}", nftLabel)
+          .replace("{label}", label ?? "");
+      }
       if (label) {
         return copy.erc721Holding.withLabel.replace("{label}", label);
       }
@@ -233,11 +282,24 @@ export function formatGateRequirement(
     }
     case "erc721_inventory_match": {
       const quantity = String(gate.min_quantity ?? 1);
-      const assetLabel = formatInventoryAssetLabel(gate);
-      return copy.erc721InventoryMatch.replace("{quantity}", quantity).replace("{assetLabel}", assetLabel);
+      const assetLabel = formatInventoryAssetLabel(gate, Boolean(compact));
+      return (compact?.erc721InventoryMatch ?? copy.erc721InventoryMatch)
+        .replace("{quantity}", quantity)
+        .replace("{assetLabel}", assetLabel);
+    }
+    case "asset_balance": {
+      if (gate.min_amount_atomic && typeof gate.asset_decimals === "number" && gate.asset_symbol) {
+        const amount = formatAssetAmount(gate.min_amount_atomic, gate.asset_decimals);
+        if (amount) {
+          return (compact?.assetBalance.withAmount ?? copy.assetBalance.withAmount)
+            .replace("{amount}", amount)
+            .replace("{symbol}", gate.asset_symbol);
+        }
+      }
+      return compact?.assetBalance.withoutAmount ?? copy.assetBalance.withoutAmount;
     }
     default:
-      return copy.fallback.replace("{gateType}", gate.gate_type);
+      return (compact?.fallback ?? copy.fallback).replace("{gateType}", gate.gate_type);
   }
 }
 
@@ -279,7 +341,9 @@ export function hasOnlyWalletGateRequirements(
 ): boolean {
   const capabilities = getRequiredActionCapabilities(input);
   return capabilities.length > 0 && capabilities.every((capability) =>
-    capability === "erc721_holding" || capability === "erc721_inventory_match"
+    capability === "erc721_holding"
+    || capability === "erc721_inventory_match"
+    || capability === "asset_balance"
   );
 }
 
@@ -297,7 +361,7 @@ export function getVerificationCapabilitiesForProvider(
     } else if (provider === "passport") {
       continue;
     } else if (provider === "zkpassport") {
-      if (capability === "minimum_age" || capability === "nationality" || capability === "gender") {
+      if (isZkPassportRequestedCapability(capability)) {
         uniqueCapabilities.add(capability);
       }
     } else if (isSelfRequestedCapability(capability)) {
@@ -311,11 +375,7 @@ export function getVerificationCapabilitiesForProvider(
     return [];
   }
   if (provider === "zkpassport") {
-    return SELF_CAPABILITY_ORDER.filter((capability) =>
-      capability === "minimum_age" || capability === "nationality" || capability === "gender"
-        ? uniqueCapabilities.has(capability)
-        : false
-    );
+    return ZKPASSPORT_REQUESTED_CAPABILITY_ORDER.filter((capability) => uniqueCapabilities.has(capability));
   }
   return Array.from(uniqueCapabilities);
 }
@@ -351,6 +411,7 @@ export function getMissingCapabilitiesFromGateEvaluation(
     }
     if (
       !action.capability
+      || action.capability === "asset_balance"
       || action.capability === "erc721_holding"
       || action.capability === "erc721_inventory_match"
     ) {
@@ -383,6 +444,7 @@ export function getRequiredActionCapabilities(
       || capability === "altcha_pow"
       || capability === "erc721_holding"
       || capability === "erc721_inventory_match"
+      || capability === "asset_balance"
     ) {
       capabilities.add(capability);
     }
@@ -395,32 +457,6 @@ export function hasAltchaProofAction(
   input: { gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null },
 ): boolean {
   return getRequiredActionCapabilities(input).includes("altcha_pow");
-}
-
-export function getAltchaProofScope(
-  input: { gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null },
-  fallback = "community_join",
-): string {
-  const actions = (input.gate_evaluation?.required_action_set?.items ?? []) as RequiredActionNode[];
-  const visit = (action: RequiredActionNode): string | null => {
-    if (action.kind === "set") {
-      for (const item of action.items ?? []) {
-        const scope = visit(item);
-        if (scope) return scope;
-      }
-      return null;
-    }
-    if (action.capability === "altcha_pow") {
-      return typeof action.scope === "string" && action.scope.trim() ? action.scope : fallback;
-    }
-    return null;
-  };
-
-  for (const action of actions) {
-    const scope = visit(action);
-    if (scope) return scope;
-  }
-  return fallback;
 }
 
 export function getVerificationRequirementsForGates(
@@ -622,8 +658,23 @@ export function resolveSuggestedVerificationProvider(
   eligibility: {
     membership_gate_summaries?: MembershipGateSummary[] | null;
     gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null;
+    missing_capabilities?: readonly string[] | null;
   },
-): VerificationProvider {
+): VerificationProvider | null {
+  const availableHumanProviders = resolveAvailableHumanVerificationProviders(eligibility);
+  const preferredProvider = (eligibility as {
+    preferred_verification_provider?: HumanVerificationProvider | null;
+  }).preferred_verification_provider;
+  if (preferredProvider && availableHumanProviders.includes(preferredProvider)) {
+    return preferredProvider;
+  }
+  if (availableHumanProviders.length === 1) {
+    return availableHumanProviders[0] ?? null;
+  }
+  if (availableHumanProviders.length > 1) {
+    return null;
+  }
+
   const legacyProvider = (eligibility as { suggested_verification_provider?: VerificationProvider | null }).suggested_verification_provider;
   if (legacyProvider) {
     return legacyProvider;
@@ -645,6 +696,23 @@ export function resolveSuggestedVerificationProvider(
   }
 
   if (missingCapabilities.includes("unique_human")) {
+    const requiredActionProviders = new Set<VerificationProvider>();
+    const visit = (action: RequiredActionNode): void => {
+      if (action.kind === "set") {
+        action.items?.forEach(visit);
+        return;
+      }
+      if (action.capability !== "unique_human") return;
+      const provider = (action as { provider?: unknown }).provider;
+      if (provider === "self" || provider === "very" || provider === "zkpassport") {
+        requiredActionProviders.add(provider);
+      }
+    };
+    ((eligibility.gate_evaluation?.required_action_set?.items ?? []) as RequiredActionNode[]).forEach(visit);
+    if (requiredActionProviders.size === 1) {
+      return Array.from(requiredActionProviders)[0] ?? null;
+    }
+
     const uniqueHumanGates = gateSummaries.filter((gate) => gate.gate_type === "unique_human");
     if (uniqueHumanGates.some((gate) => gate.accepted_providers?.includes("very") ?? false)) {
       return "very";
@@ -652,10 +720,119 @@ export function resolveSuggestedVerificationProvider(
     if (uniqueHumanGates.some((gate) => gate.accepted_providers?.includes("self") ?? false)) {
       return "self";
     }
-    return "very";
+    if (uniqueHumanGates.some((gate) => gate.accepted_providers?.includes("zkpassport") ?? false)) {
+      return "zkpassport";
+    }
+    return null;
   }
 
-  return "very";
+  return null;
+}
+
+const HUMAN_VERIFICATION_PROVIDER_ORDER: HumanVerificationProvider[] = [
+  "self",
+  "zkpassport",
+  "very",
+];
+
+function defaultHumanProvidersForCapability(
+  capability: MissingCapability,
+): HumanVerificationProvider[] {
+  switch (capability) {
+    case "unique_human":
+      return [...HUMAN_VERIFICATION_PROVIDER_ORDER];
+    case "minimum_age":
+    case "nationality":
+    case "gender":
+      return ["self", "zkpassport"];
+    case "age_over_18":
+      return ["self"];
+    default:
+      return [];
+  }
+}
+
+function isHumanVerificationProvider(value: string): value is HumanVerificationProvider {
+  return value === "self" || value === "zkpassport" || value === "very";
+}
+
+function humanProvidersForCapability(input: {
+  capability: MissingCapability;
+  gateSummaries: MembershipGateSummary[];
+  requiredActionItems?: RequiredActionNode[];
+}): HumanVerificationProvider[] {
+  const defaults = defaultHumanProvidersForCapability(input.capability);
+  if (defaults.length === 0) return [];
+  const matchingGates = input.gateSummaries.filter((gate) => gate.gate_type === input.capability);
+  if (matchingGates.length === 0) {
+    const requiredActionProviders = new Set<HumanVerificationProvider>();
+    const visit = (action: RequiredActionNode): void => {
+      if (action.kind === "set") {
+        action.items?.forEach(visit);
+        return;
+      }
+      if (action.capability !== input.capability) return;
+      const provider = (action as { provider?: string }).provider;
+      if (provider && isHumanVerificationProvider(provider) && defaults.includes(provider)) {
+        requiredActionProviders.add(provider);
+      }
+    };
+    input.requiredActionItems?.forEach(visit);
+    if (requiredActionProviders.size > 0) {
+      return HUMAN_VERIFICATION_PROVIDER_ORDER.filter((provider) =>
+        requiredActionProviders.has(provider)
+      );
+    }
+    return defaults;
+  }
+
+  const accepted = new Set<HumanVerificationProvider>();
+  for (const gate of matchingGates) {
+    const gateProviders = gate.accepted_providers?.filter(isHumanVerificationProvider) ?? [];
+    for (const provider of gateProviders.length > 0 ? gateProviders : defaults) {
+      if (defaults.includes(provider)) accepted.add(provider);
+    }
+  }
+  return HUMAN_VERIFICATION_PROVIDER_ORDER.filter((provider) => accepted.has(provider));
+}
+
+export function resolveAvailableHumanVerificationProviders(
+  eligibility: {
+    membership_gate_summaries?: MembershipGateSummary[] | null;
+    gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null;
+    missing_capabilities?: readonly string[] | null;
+    preferred_verification_provider?: HumanVerificationProvider | null;
+  },
+): HumanVerificationProvider[] {
+  const gateSummaries = eligibility.membership_gate_summaries ?? [];
+  const requiredActionItems = (eligibility.gate_evaluation?.required_action_set?.items ?? []) as RequiredActionNode[];
+  const missingCapabilities = getMissingCapabilitiesFromGateEvaluation(eligibility)
+    .filter((capability) => defaultHumanProvidersForCapability(capability).length > 0);
+  const capabilities = missingCapabilities.length > 0
+    ? missingCapabilities
+    : gateSummaries.map((gate) => gate.gate_type).filter((gateType): gateType is MissingCapability =>
+      defaultHumanProvidersForCapability(gateType as MissingCapability).length > 0
+    );
+  if (capabilities.length === 0) return [];
+
+  let available = new Set(humanProvidersForCapability({
+    capability: capabilities[0],
+    gateSummaries,
+    requiredActionItems,
+  }));
+  for (const capability of capabilities.slice(1)) {
+    const providers = new Set(humanProvidersForCapability({
+      capability,
+      gateSummaries,
+      requiredActionItems,
+    }));
+    available = new Set([...available].filter((provider) => providers.has(provider)));
+  }
+
+  const ordered = HUMAN_VERIFICATION_PROVIDER_ORDER.filter((provider) => available.has(provider));
+  const preferred = eligibility.preferred_verification_provider;
+  if (!preferred || !ordered.includes(preferred)) return ordered;
+  return [preferred, ...ordered.filter((provider) => provider !== preferred)];
 }
 
 export function hasZkPassportDocumentProviderOption(
@@ -807,9 +984,12 @@ export function getGateFailureMessage(
       return copy.tokenInventoryUnavailable;
     case "wallet_score_too_low":
       return copy.walletScoreTooLow;
+    case "asset_balance_too_low":
+      return copy.assetBalanceTooLow;
     case "banned":
       return copy.banned;
     default:
       return null;
   }
 }
+import { formatCompactAddress } from "@/lib/formatting/address";

@@ -21,4 +21,4 @@ export function formatHandle(label: string): string {
   return label ? `${label}${HANDLE_SUFFIX}` : "";
 }
 
-export { HANDLE_MIN_LENGTH, HANDLE_MAX_LENGTH };
+;

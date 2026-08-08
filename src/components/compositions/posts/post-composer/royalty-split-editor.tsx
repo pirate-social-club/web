@@ -63,7 +63,7 @@ export function RoyaltySplitEditor({
     .filter(Boolean);
   const hasDuplicateWallets = new Set(normalizedWallets).size !== normalizedWallets.length;
   const hasZeroShare = value.allocations.some((allocation) => allocation.sharePct <= 0);
-  const updateForSoloCreator = (nextCharityPct: number) => {
+  const updateForSoloCreator = React.useCallback((nextCharityPct: number) => {
     if (!singleCreatorOnly) return;
     const creator = value.allocations[0];
     if (!creator) return;
@@ -75,7 +75,7 @@ export function RoyaltySplitEditor({
         sharePct: nextCreatorSharePct,
       }],
     });
-  };
+  }, [onChange, singleCreatorOnly, value.allocations]);
   const updateCharityPct = (nextCharityPct: number) => {
     const clamped = Math.min(50, Math.max(0, nextCharityPct));
     onCharityContributionChange?.((current) => ({
@@ -98,8 +98,7 @@ export function RoyaltySplitEditor({
     updateForSoloCreator(charityPct);
     // Keep the solo row filled from the charity field. User-driven changes are
     // routed through updateCharityPct, so this only catches external state loads.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [charityPct, singleCreatorOnly]);
+  }, [charityPct, updateForSoloCreator]);
   React.useEffect(() => {
     if (!charityPartner || rawCharityPct === charityPct) return;
     onCharityContributionChange?.((current) => ({

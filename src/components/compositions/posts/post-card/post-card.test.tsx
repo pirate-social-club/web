@@ -1,7 +1,6 @@
 import "@/test/setup-runtime";
 
 import { describe, expect, mock, test } from "bun:test";
-import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import type { ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
@@ -193,6 +192,34 @@ describe("PostCard", () => {
     expect(mergedItems[1]?.icon).toBeTruthy();
   });
 
+  test("keeps Delete post at the bottom of song menus", () => {
+    const baseItems: PostCardMenuItem[] = [
+      { key: "view-story", label: "View on Story" },
+      { key: "delete", label: "Delete post", destructive: true },
+    ];
+    const song: SongContentSpec = {
+      type: "song",
+      accessMode: "public",
+      annotationsUrl: "https://genius.com/34172986",
+      downloadPolicy: "free_download",
+      onDownload: () => undefined,
+      title: "Author's song",
+    };
+
+    const mergedItems = mergePostCardMenuItems(baseItems, deriveSongHeaderMenuActions(song));
+
+    expect(mergedItems.map((item) => item.label)).toEqual([
+      "View on Story",
+      "View on Genius",
+      "Download original",
+      "Delete post",
+    ]);
+    expect(mergedItems.at(-1)).toMatchObject({
+      key: "delete",
+      destructive: true,
+    });
+  });
+
   test("moves song downloads into the header menu instead of visible offer rows", () => {
     const content: SongContentSpec = {
       type: "song",
@@ -355,6 +382,36 @@ describe("PostCard", () => {
     expect(markup).not.toContain("Read full post");
   });
 
+  test("keeps composer previews bounded and removes inert post chrome", () => {
+    const longBody = Array.from(
+      { length: 24 },
+      (_, index) => `Preview section ${index + 1}: Keep the composer review surface compact.`,
+    ).join("\n\n");
+
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/guide" },
+            timestampLabel: "now",
+          }}
+          content={{ type: "text", body: longBody }}
+          engagement={{ commentCount: 0, score: 0 }}
+          menuItems={[{ key: "copy", label: "Copy link" }]}
+          previewMode
+          shareActions={[{ key: "share", label: "Share" }]}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("max-h-96");
+    expect(markup).toContain("Show full post");
+    expect(markup).not.toContain("Copy link");
+    expect(markup).not.toContain('aria-label="Comments (0)"');
+    expect(markup).not.toContain(">Share</button>");
+  });
+
   test("renders live-room feed cards with watch and ticket states", () => {
     const liveMarkup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">
@@ -429,6 +486,32 @@ describe("PostCard", () => {
 
     expect(gatedMarkup).toContain("Verify access");
     expect(gatedMarkup).not.toContain("Watch live");
+  });
+
+  test("renders Mandarin live-room copy under the zh locale", () => {
+    const liveMarkup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="zh">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "allowed",
+            coverSrc: "https://media.test/live-cover.jpg",
+            liveRoomId: "lr_live_zh",
+            onWatch: () => undefined,
+            status: "live",
+            title: "Live concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(liveMarkup).toContain("观看直播");
   });
 
   test("renders buyer-gated live-room song purchase and unavailable ownership states", () => {

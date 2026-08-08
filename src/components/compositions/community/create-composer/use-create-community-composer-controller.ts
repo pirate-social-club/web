@@ -12,6 +12,16 @@ import { resolveCommunityAvatarSrc, resolveCommunityBannerSrc } from "@/lib/defa
 import { formatGateRequirement } from "@/lib/identity-gates";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { logger } from "@/lib/logger";
+import type { GateAtom } from "@pirate/api-contracts";
+import {
+  createEmptyGateBuilderDraft,
+  isGateBuilderDraftSavable,
+  parseGatePolicyToTreeDraft,
+  serializeGateBuilderTreeDraft,
+  type GateBuilderDraftNode,
+  type GateBuilderGroupDraft,
+} from "@/app/authenticated-helpers/community-gate-tree-draft";
+import { serializeIdentityGateDrafts } from "@/app/authenticated-helpers/community-gate-rule-serialization";
 
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
@@ -29,6 +39,18 @@ import type {
 
 const DEFAULT_MEMBERSHIP_MODE: CommunityMembershipMode = "gated";
 
+function findTreeGate(root: GateBuilderGroupDraft, predicate: (gate: GateAtom) => boolean): GateAtom | null {
+  const visit = (node: GateBuilderDraftNode): GateAtom | null => {
+    if (node.kind === "rule") return predicate(node.gate) ? node.gate : null;
+    for (const child of node.children) {
+      const match = visit(child);
+      if (match) return match;
+    }
+    return null;
+  };
+  return visit(root);
+}
+
 function getInvalidGateDraftReason(draft: IdentityGateDraft): string | null {
   if (draft.gateType === "erc721_holding") {
     return isAddress(draft.contractAddress.trim()) ? null : "invalid_erc721_contract";
@@ -42,10 +64,6 @@ function getInvalidGateDraftReason(draft: IdentityGateDraft): string | null {
       : "invalid_wallet_score";
   }
   return null;
-}
-
-function isValidGateDraft(draft: IdentityGateDraft): boolean {
-  return getInvalidGateDraftReason(draft) == null;
 }
 
 function summarizeGateDraftForLog(draft: IdentityGateDraft): Record<string, unknown> {
@@ -114,8 +132,6 @@ export function useCreateCommunityComposerController({
   creatorVerificationState,
   deferCreatorVerification = false,
   initialStep,
-  courtyardInventoryGroups,
-  courtyardInventoryLoading = false,
   onCreate,
 }: CreateCommunityComposerProps) {
   const isMobile = useIsMobile();
@@ -141,16 +157,27 @@ export function useCreateCommunityComposerController({
     gateDrafts,
   );
   const [activeGateMatchMode, setActiveGateMatchMode] = React.useState<CommunityGateMatchMode>(gateMatchMode);
+  const [activeGateTreeDraft, setActiveGateTreeDraft] = React.useState<GateBuilderGroupDraft>(() => (
+    gateDrafts.length > 0
+      ? parseGatePolicyToTreeDraft(serializeIdentityGateDrafts(gateDrafts, { mode: gateMatchMode }))
+      : createEmptyGateBuilderDraft()
+  ));
   const [submitting, setSubmitting] = React.useState(false);
 
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? false;
   const minimumAgeDraft = activeGateDrafts.find((d) => d.gateType === "minimum_age");
+  const treeMinimumAgeGate = findTreeGate(activeGateTreeDraft, (gate) => gate.type === "minimum_age");
+  const treeMinimumAge = treeMinimumAgeGate?.type === "minimum_age" ? treeMinimumAgeGate.minimum_age : undefined;
   const hasAdultMinimumAgeGate =
     activeMembershipMode === "gated"
-    && minimumAgeDraft != null
-    && Number.isInteger(minimumAgeDraft.minimumAge)
-    && minimumAgeDraft.minimumAge >= 18
-    && minimumAgeDraft.minimumAge <= 125;
+    && (typeof treeMinimumAge === "number"
+      ? Number.isInteger(treeMinimumAge)
+        && treeMinimumAge >= 18
+        && treeMinimumAge <= 125
+      : minimumAgeDraft != null
+        && Number.isInteger(minimumAgeDraft.minimumAge)
+        && minimumAgeDraft.minimumAge >= 18
+        && minimumAgeDraft.minimumAge <= 125);
   const effectiveDefaultAgeGatePolicy: CommunityDefaultAgeGatePolicy =
     hasAdultMinimumAgeGate ? "18_plus" : activeDefaultAgeGatePolicy;
 
@@ -159,7 +186,7 @@ export function useCreateCommunityComposerController({
   const creatorCanCreate = deferCreatorVerification || creatorAgeRequirementMet;
   const gateDraftsValid =
     activeMembershipMode !== "gated"
-    || (activeGateDrafts.length > 0 && activeGateDrafts.every(isValidGateDraft));
+    || isGateBuilderDraftSavable(activeGateTreeDraft);
   const invalidGateDrafts = React.useMemo(
     () => activeGateDrafts.reduce<Array<{ draft: ReturnType<typeof summarizeGateDraftForLog>; reason: string }>>((result, draft) => {
       const reason = getInvalidGateDraftReason(draft);
@@ -196,6 +223,7 @@ export function useCreateCommunityComposerController({
       anonymousIdentityScope: activeAnonymousScope,
       gateDrafts: activeMembershipMode === "gated" ? activeGateDrafts : [],
       gateMatchMode: activeGateMatchMode,
+      gatePolicy: activeMembershipMode === "gated" ? serializeGateBuilderTreeDraft(activeGateTreeDraft) : null,
     })
       .catch((error: unknown) => {
         toast.error(error instanceof Error ? error.message : cc.createError);
@@ -218,6 +246,7 @@ export function useCreateCommunityComposerController({
     activeAnonymousScope,
     activeGateDrafts,
     activeGateMatchMode,
+    activeGateTreeDraft,
     cc.createError,
   ]);
 
@@ -267,15 +296,15 @@ export function useCreateCommunityComposerController({
     if (activeMembershipMode == null) {
       reasons.push("membership_mode_required");
     }
-    if (activeMembershipMode === "gated" && activeGateDrafts.length === 0) {
+    if (activeMembershipMode === "gated" && serializeGateBuilderTreeDraft(activeGateTreeDraft) == null) {
       reasons.push("gated_membership_requires_gate");
     }
-    if (invalidGateDrafts.length > 0) {
-      reasons.push("invalid_gate_drafts");
+    if (activeMembershipMode === "gated" && !isGateBuilderDraftSavable(activeGateTreeDraft)) {
+      reasons.push("invalid_gate_tree");
     }
     return reasons;
   }, [
-    activeGateDrafts.length,
+    activeGateTreeDraft,
     activeMembershipMode,
     creatorAgeRequirementMet,
     deferCreatorVerification,
@@ -303,6 +332,7 @@ export function useCreateCommunityComposerController({
       activeStep,
       membershipMode: activeMembershipMode,
       gateDrafts: activeGateDrafts.map(summarizeGateDraftForLog),
+      gateTreeDraft: activeGateTreeDraft,
       gateMatchMode: activeGateMatchMode,
       gateDraftsValid,
       invalidGateDrafts,
@@ -320,6 +350,7 @@ export function useCreateCommunityComposerController({
     activeDefaultAgeGatePolicy,
     activeGateDrafts,
     activeGateMatchMode,
+    activeGateTreeDraft,
     activeMembershipMode,
     activeStep,
     canCreateCommunity,
@@ -337,12 +368,13 @@ export function useCreateCommunityComposerController({
       logger.warn("[create-community] blocked next click", {
         activeStep,
         accessStepBlockReasons: activeStep === 2 ? accessStepBlockReasons : [],
-        gateDrafts: activeGateDrafts.map(summarizeGateDraftForLog),
+      gateDrafts: activeGateDrafts.map(summarizeGateDraftForLog),
+      gateTreeDraft: activeGateTreeDraft,
       });
       return;
     }
     setActiveStep((s) => Math.min(s + 1, 3) as ComposerStep);
-  }, [accessStepBlockReasons, activeGateDrafts, activeStep, canProceed]);
+  }, [accessStepBlockReasons, activeGateDrafts, activeGateTreeDraft, activeStep, canProceed]);
 
   const membershipLabel = ({
     open: cc.membershipOpenLabel,
@@ -430,6 +462,7 @@ export function useCreateCommunityComposerController({
       creatorAgeOver18Verified,
       gateDrafts: activeGateDrafts,
       gateMatchMode: activeGateMatchMode,
+      gateTreeDraft: activeGateTreeDraft,
       gateDraftsValid,
       hasAdultMinimumAgeGate,
       setActiveAllowAnonymousIdentity,
@@ -437,6 +470,7 @@ export function useCreateCommunityComposerController({
       setActiveDefaultAgeGatePolicy,
       setActiveGateDrafts,
       setActiveGateMatchMode,
+      setActiveGateTreeDraft,
       setActiveMembershipMode,
     },
     basics: {

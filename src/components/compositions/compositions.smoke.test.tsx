@@ -188,6 +188,28 @@ describe("composition smoke tests", () => {
     expect((markup.match(/<svg/g) ?? []).length).toBe(1);
   });
 
+  test("renders media-overlay mobile chrome with a scrim", () => {
+    const markup = render(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <SidebarProvider>
+          <AppHeader
+            forceMobile
+            mobileAppearance="media-overlay"
+            onHomeClick={() => undefined}
+            showConnectAction
+            showProfileAction={false}
+          />
+        </SidebarProvider>
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain('data-appearance="media-overlay"');
+    expect(markup).toContain("from-black/75");
+    expect(markup).toContain("[&amp;_button[data-app-header-icon]]:text-white");
+    expect(markup).not.toContain("[&amp;_button]:text-white");
+    expect(markup).not.toContain("Connect");
+  });
+
   test("renders sidebar requirements as a minimal section", () => {
     const markup = render(
       <CommunitySidebar
@@ -283,8 +305,9 @@ describe("composition smoke tests", () => {
       />,
     );
 
-    expect(markup).toContain("Buy domain");
-    expect(markup).toContain("A .pirate name you can use or sell. Pay with Base USDC.");
+    expect(markup).toContain("Current handle");
+    expect(markup).toContain("Change your .pirate name");
+    expect(markup).toContain("Replace your active .pirate name. Paid changes use Base USDC.");
     expect(markup).toContain(".pirate");
   });
 

@@ -11,6 +11,7 @@ import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import { CommentCard } from "../../posts/post-thread/comment-card";
 import { PostCard } from "../../posts/post-card/post-card";
+import { PostCardSkeleton } from "../../posts/post-card/post-card-skeleton";
 export { WalletPanel } from "./profile-wallet-panel";
 import type {
   ProfileActivityItem,
@@ -25,6 +26,16 @@ function FeedEmptyState({ copy }: { copy: string }) {
     <Card className={cn("text-start px-5 py-8 text-base leading-7 text-muted-foreground", isMobile && "border-0 bg-transparent px-0 shadow-none")}>
       {copy}
     </Card>
+  );
+}
+
+function FeedSkeletonRows({ count = 3 }: { count?: number }) {
+  return (
+    <FeedStack>
+      {Array.from({ length: count }, (_, rowNumber) => (
+        <PostCardSkeleton key={`profile-activity-skeleton-${rowNumber}`} showMedia={rowNumber === 0} />
+      ))}
+    </FeedStack>
   );
 }
 
@@ -185,7 +196,7 @@ function ActivityRows({
         if (item.kind === "post") {
           return (
             <MobileFlatCard isLast={isLast} key={item.id}>
-              <PostCard className="border-b-0" {...item.post.post} />
+              <PostCard className="border-b-0" {...item.post.post} postId={item.post.postId} />
             </MobileFlatCard>
           );
         }
@@ -201,36 +212,42 @@ function ActivityRows({
 export function OverviewPanel({
   error,
   items,
+  loading = false,
   onNavigate,
 }: {
   error?: string | null;
   items: ProfileActivityItem[];
+  loading?: boolean;
   onNavigate?: (href: string) => void;
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").profile;
   if (error) return <FeedEmptyState copy={error} />;
+  if (loading) return <FeedSkeletonRows />;
   if (items.length === 0) return <FeedEmptyState copy={copy.emptyState} />;
   return <ActivityRows items={items} onNavigate={onNavigate} />;
 }
 
 export function PostsPanel({
   error,
+  loading = false,
   posts,
 }: {
   error?: string | null;
+  loading?: boolean;
   posts: NonNullable<ProfilePageProps["posts"]>;
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").profile;
   if (error) return <FeedEmptyState copy={error} />;
+  if (loading) return <FeedSkeletonRows />;
   if (posts.length === 0) return <FeedEmptyState copy={copy.emptyState} />;
 
   return (
     <FeedStack>
       {posts.map((post, index) => (
         <MobileFlatCard isLast={index === posts.length - 1} key={post.postId}>
-          <PostCard className="border-b-0" {...post.post} />
+          <PostCard className="border-b-0" {...post.post} postId={post.postId} />
         </MobileFlatCard>
       ))}
     </FeedStack>
@@ -240,10 +257,12 @@ export function PostsPanel({
 export function CommentsPanel({
   comments,
   error,
+  loading = false,
   onNavigate,
 }: {
   comments: NonNullable<ProfilePageProps["comments"]>;
   error?: string | null;
+  loading?: boolean;
   onNavigate?: (href: string) => void;
 }) {
   const { locale } = useUiLocale();
@@ -252,6 +271,10 @@ export function CommentsPanel({
 
   if (error) {
     return <FeedEmptyState copy={error} />;
+  }
+
+  if (loading) {
+    return <FeedSkeletonRows />;
   }
 
   if (comments.length === 0) {

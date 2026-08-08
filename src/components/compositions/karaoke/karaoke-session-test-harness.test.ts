@@ -62,7 +62,11 @@ function words(...values: Array<[string, number, number, number?]>): KaraokeReco
   }));
 }
 
-function client(sequence: number, event: Omit<KaraokeClientEvent, "attemptId" | "protocolVersion" | "sequence" | "sessionId">): FakeKaraokeTransportInput {
+type WithoutTransportEnvelope<T> = T extends unknown
+  ? Omit<T, "attemptId" | "protocolVersion" | "sequence" | "sessionId">
+  : never;
+
+function client(sequence: number, event: WithoutTransportEnvelope<KaraokeClientEvent>): FakeKaraokeTransportInput {
   return {
     event: {
       ...event,
@@ -75,7 +79,7 @@ function client(sequence: number, event: Omit<KaraokeClientEvent, "attemptId" | 
   };
 }
 
-function stt(sequence: number, event: Omit<KaraokeStreamingSttEvent, "attemptId" | "protocolVersion" | "sequence" | "sessionId">): FakeKaraokeTransportInput {
+function stt(sequence: number, event: WithoutTransportEnvelope<KaraokeStreamingSttEvent>): FakeKaraokeTransportInput {
   return {
     event: {
       ...event,
@@ -113,7 +117,7 @@ describe("fake karaoke transport", () => {
         scoringPolicy: {
           kind: "enabled",
           model: "fake-streaming-model",
-          provider: "fake",
+          provider: "openai",
           retention: "not_stored",
         },
         sessionId: "session-1",
@@ -169,7 +173,7 @@ describe("fake karaoke transport", () => {
       scoringPolicy: {
         kind: "enabled",
         model: "fake-streaming-model",
-        provider: "fake",
+        provider: "openai",
         retention: "not_stored",
       },
       sessionId: "session-1",

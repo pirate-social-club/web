@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-export interface RadioIndicatorProps extends React.ComponentProps<"span"> {
+interface RadioIndicatorProps extends React.ComponentProps<"span"> {
   checked?: boolean;
 }
 

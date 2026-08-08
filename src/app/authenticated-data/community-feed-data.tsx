@@ -16,7 +16,7 @@ type CommunityFeedLoader = (input: {
 
 const EMPTY_POSTS: ApiPost[] = [];
 
-export function communityFeedPostsQueryKey(communityId: string, locale: string, sort: FeedSort) {
+function communityFeedPostsQueryKey(communityId: string, locale: string, sort: FeedSort) {
   return ["community-feed-posts", communityId, locale, sort] as const;
 }
 

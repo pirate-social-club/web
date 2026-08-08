@@ -112,53 +112,6 @@ export function buildEndaomentOrgUrl(providerPartnerRef: string | null | undefin
   return `https://app.endaoment.org/orgs/${providerPartnerRef.trim()}`;
 }
 
-function extractRequiredValue(config: unknown): string | null {
-  if (!config || typeof config !== "object") {
-    return null;
-  }
-
-  const value = (config as Record<string, unknown>).required_value;
-  return typeof value === "string" ? value : null;
-}
-
-function extractRequiredValues(config: unknown): string[] {
-  if (!config || typeof config !== "object") {
-    return [];
-  }
-
-  const record = config as Record<string, unknown>;
-  const values = new Set<string>();
-  if (typeof record.required_value === "string") {
-    values.add(record.required_value);
-  }
-  if (Array.isArray(record.required_values)) {
-    for (const value of record.required_values) {
-      if (typeof value === "string") {
-        values.add(value);
-      }
-    }
-  }
-  return Array.from(values);
-}
-
-function extractMinimumAge(config: unknown): number | null {
-  if (!config || typeof config !== "object") {
-    return null;
-  }
-
-  const value = (config as Record<string, unknown>).minimum_age ?? (config as Record<string, unknown>).required_minimum_age;
-  return Number.isInteger(value) ? value as number : null;
-}
-
-function extractMinimumScore(config: unknown): number | null {
-  if (!config || typeof config !== "object") {
-    return null;
-  }
-
-  const value = (config as Record<string, unknown>).minimum_score;
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
 function extractDocumentProofProviders(atom: ReturnType<typeof flattenGatePolicyAtoms>[number]): DocumentProofProvider[] | undefined {
   const acceptedProviders = atom.accepted_providers;
   if (!Array.isArray(acceptedProviders)) {
@@ -166,57 +119,6 @@ function extractDocumentProofProviders(atom: ReturnType<typeof flattenGatePolicy
   }
   const providers = DEFAULT_DOCUMENT_PROOF_PROVIDERS.filter((provider) => acceptedProviders.includes(provider));
   return providers.length > 0 ? providers : undefined;
-}
-
-function extractContractAddress(config: unknown): string | null {
-  if (!config || typeof config !== "object") {
-    return null;
-  }
-
-  const value = (config as Record<string, unknown>).contract_address;
-  return typeof value === "string" ? value : null;
-}
-
-function extractCourtyardInventoryDraft(config: unknown): Omit<Extract<IdentityGateDraft, { gateType: "erc721_inventory_match" }>, "gateRuleId"> | null {
-  if (!config || typeof config !== "object") {
-    return null;
-  }
-
-  const record = config as Record<string, unknown>;
-  const contractAddress = typeof record.contract_address === "string" ? record.contract_address : null;
-  const minQuantity = Number.isInteger(record.min_quantity) ? record.min_quantity as number : null;
-  const rawMatch = record.match ?? record.asset_filter;
-  const assetFilter = rawMatch && typeof rawMatch === "object" && !Array.isArray(rawMatch)
-    ? rawMatch as Record<string, unknown>
-    : null;
-  const category = assetFilter?.category;
-  if (
-    !contractAddress
-    || record.inventory_provider !== "courtyard"
-    || minQuantity == null
-    || !assetFilter
-    || category !== "trading_card" && category !== "watch"
-  ) {
-    return null;
-  }
-
-  return createDefaultCourtyardInventoryDraft({
-    contractAddress,
-    minQuantity,
-    assetFilter: {
-      category,
-      franchise: typeof assetFilter.franchise === "string" ? assetFilter.franchise : undefined,
-      subject: typeof assetFilter.subject === "string" ? assetFilter.subject : undefined,
-      brand: typeof assetFilter.brand === "string" ? assetFilter.brand : undefined,
-      model: typeof assetFilter.model === "string" ? assetFilter.model : undefined,
-      reference: typeof assetFilter.reference === "string" ? assetFilter.reference : undefined,
-      set: typeof assetFilter.set === "string" ? assetFilter.set : undefined,
-      year: typeof assetFilter.year === "string" ? assetFilter.year : undefined,
-      grader: typeof assetFilter.grader === "string" ? assetFilter.grader : undefined,
-      grade: typeof assetFilter.grade === "string" ? assetFilter.grade : undefined,
-      condition: typeof assetFilter.condition === "string" ? assetFilter.condition : undefined,
-    },
-  });
 }
 
 export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDraft[] {

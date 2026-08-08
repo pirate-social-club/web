@@ -35,7 +35,7 @@ describe("create post derivative source search", () => {
     });
   });
 
-  test("uses local asset refs for remix source search results", () => {
+  test("uses canonical Story refs for globally searched remix sources", () => {
     const source: ApiDerivativeSource = {
       id: "asset_ast_source_song",
       object: "derivative_source",
@@ -51,7 +51,9 @@ describe("create post derivative source search", () => {
       creator_user: "usr_artist",
     };
 
-    expect(derivativeSourceToComposerReference(source).id).toBe("story:asset:asset_ast_source_song");
+    expect(derivativeSourceToComposerReference(source).id).toBe(
+      "story:ip:0x1111111111111111111111111111111111111111#licenseTermsId=17",
+    );
   });
 
   test("searches song sources for remixes and video uses-song declarations", () => {

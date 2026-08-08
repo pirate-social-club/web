@@ -4,10 +4,8 @@ import * as React from "react";
 
 import type { AppRoute } from "@/app/router";
 import { HomePage } from "./authenticated-routes/home-routes";
-import { toCommunityFeedItem, toHomeFeedItem, type HomeFeedEntry } from "./authenticated-helpers/post-presentation";
+import { toCommunityFeedItem, toHomeFeedItem } from "./authenticated-helpers/post-presentation";
 import { applyPostVote } from "./authenticated-helpers/post-vote";
-import { buildAssetListingRequest, resolveComposerSubmitState } from "./authenticated-helpers/asset-submit";
-import { buildSongPostRequest } from "./authenticated-helpers/song-submit";
 import {
   buildThreadCommentTreeFromItems,
   createThreadCommentNode,
@@ -39,6 +37,10 @@ const LazyYourCommunitiesPage = lazyRouteModule(
   () => import("./authenticated-routes/home-routes"),
   "YourCommunitiesPage",
 );
+const LazyVideoHomePage = lazyRouteModule(
+  () => import("./authenticated-routes/video-home-route"),
+  "VideoHomePage",
+);
 const LazyCreatePostPage = lazyRouteModule(
   () => import("./authenticated-routes/create-post-route"),
   "CreatePostPage",
@@ -67,10 +69,18 @@ const LazyCreateCommunityPage = lazyRouteModule(
   () => import("./authenticated-routes/create-community-route"),
   "CreateCommunityPage",
 );
+const LazyTelegramAccountLinkRoutePage = lazyRouteModule(
+  () => import("./authenticated-routes/telegram-account-link-route"),
+  "TelegramAccountLinkRoutePage",
+);
 const LazyPostPage = lazyRouteModule(() => import("./authenticated-routes/post-route"), "PostPage");
 const LazyLiveRoomRoutePage = lazyRouteModule(
   () => import("./authenticated-routes/live-room-route"),
   "LiveRoomRoutePage",
+);
+const LazyLiveIndexPage = lazyRouteModule(
+  () => import("./authenticated-routes/live-index-route"),
+  "LiveIndexPage",
 );
 const LazyReplayDraftRoutePage = lazyRouteModule(
   () => import("./authenticated-routes/replay-draft-route"),
@@ -155,22 +165,26 @@ const LazyNotFoundPage = lazyRouteModule(
 
 export {
   applyPostVote,
-  buildAssetListingRequest,
+
   buildThreadCommentTreeFromItems,
-  buildSongPostRequest,
+
   createThreadCommentNode,
   loadThreadCommentTree,
   mergeThreadCommentNodes,
-  resolveComposerSubmitState,
+
   toCommunityFeedItem,
   toHomeFeedItem,
 };
 
-export type { HomeFeedEntry, ThreadCommentNode };
+export type {  ThreadCommentNode };
 
-export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
+function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
   switch (route.kind) {
     case "home":
+      return <LazyVideoHomePage />;
+    case "live":
+      return <LazyLiveIndexPage />;
+    case "community-feed":
       return <HomePage />;
     case "popular":
       return <HomePage initialSort="best" />;
@@ -192,6 +206,8 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyCommunityPage communityId={route.communityId} isImportedRoot={route.isImportedRoot} />;
     case "create-community":
       return <LazyCreateCommunityPage />;
+    case "telegram-account-link":
+      return <LazyTelegramAccountLinkRoutePage />;
     case "post":
       return <LazyPostPage postId={route.postId} />;
     case "post-replay-draft":

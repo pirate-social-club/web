@@ -15,6 +15,7 @@ import {
 import {
   NamespaceVerificationSpacesPanel,
 } from "@/components/compositions/verification/namespace-verification/namespace-verification-shared";
+import { HnsImportGuidance } from "@/components/compositions/verification/namespace-verification/hns-import-guidance";
 import {
   getHnsStatusMessage,
   getNamespaceVerificationFailureMessage,
@@ -27,6 +28,7 @@ import type {
   NamespaceFamily,
 } from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
 import { Type } from "@/components/primitives/type";
+import type { ApiCommunityNamespaceAttachment } from "@/lib/api/client-api-types";
 
 const namespaceFamilyMeta: Record<NamespaceFamily, {
   externalExample: string;
@@ -49,11 +51,13 @@ export interface CommunityNamespaceVerificationPageProps {
   activeSessionId?: string | null;
   attachedNamespaceVerificationId?: string | null;
   attachedRouteSlug?: string | null;
+  namespaceAttachments?: ApiCommunityNamespaceAttachment[];
   callbacks: import("@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types").NamespaceVerificationCallbacks;
   initialFamily?: NamespaceFamily;
   initialRootLabel?: string;
   onBackClick?: () => void;
   onClearPendingSession?: () => Promise<void> | void;
+  onRestorePrimary?: (namespaceVerificationId: string) => Promise<void> | void;
   onSessionCleared?: () => void;
   onSessionStarted?: (sessionId: string) => void;
   onVerified?: (namespaceVerificationId: string) => void;
@@ -63,11 +67,13 @@ export function CommunityNamespaceVerificationPage({
   activeSessionId,
   attachedNamespaceVerificationId,
   attachedRouteSlug,
+  namespaceAttachments = [],
   callbacks,
   initialFamily,
   initialRootLabel = "",
   onBackClick,
   onClearPendingSession,
+  onRestorePrimary,
   onSessionCleared,
   onSessionStarted,
   onVerified,
@@ -81,7 +87,25 @@ export function CommunityNamespaceVerificationPage({
     spaces: { label: family.spacesLabel, rootInputLabel: family.spacesRootLabel },
   };
   const [clearingPending, setClearingPending] = React.useState(false);
-  const hasAttachedNamespace = Boolean(attachedNamespaceVerificationId);
+  const [restoringPrimary, setRestoringPrimary] = React.useState(false);
+  const attachedPrimary = namespaceAttachments.find(
+    (namespace) => namespace.namespace_role === "primary" && namespace.namespace_verification === attachedNamespaceVerificationId,
+  );
+  const hasAttachedNamespace = Boolean(
+    attachedNamespaceVerificationId && attachedPrimary?.verification_status === "verified",
+  );
+  const recoverableNamespace = findRecoverableNamespace({
+    attachedNamespaceVerificationId,
+    namespaceAttachments,
+  });
+  const needsPrimaryRecovery = recoverableNamespace !== null;
+  const [addingMirror, setAddingMirror] = React.useState(
+    Boolean(attachedNamespaceVerificationId && activeSessionId),
+  );
+
+  React.useEffect(() => {
+    if (hasAttachedNamespace && activeSessionId) setAddingMirror(true);
+  }, [activeSessionId, hasAttachedNamespace]);
 
   const handleClearPendingSession = React.useCallback(async () => {
     if (!onClearPendingSession || clearingPending) return;
@@ -93,6 +117,16 @@ export function CommunityNamespaceVerificationPage({
     }
   }, [clearingPending, onClearPendingSession]);
 
+  const handleRestorePrimary = React.useCallback(async () => {
+    if (!onRestorePrimary || !recoverableNamespace || restoringPrimary) return;
+    setRestoringPrimary(true);
+    try {
+      await onRestorePrimary(recoverableNamespace.namespace_verification);
+    } finally {
+      setRestoringPrimary(false);
+    }
+  }, [onRestorePrimary, recoverableNamespace, restoringPrimary]);
+
   const flow = useNamespaceVerificationFlow({
     callbacks,
     initialRootLabel,
@@ -101,7 +135,10 @@ export function CommunityNamespaceVerificationPage({
     enabled: true,
     onSessionStarted,
     onSessionCleared,
-    onVerified,
+    onVerified: (namespaceVerificationId) => {
+      setAddingMirror(false);
+      onVerified?.(namespaceVerificationId);
+    },
   });
 
   const meta = namespaceFamilyMeta[flow.activeFamily];
@@ -138,7 +175,14 @@ export function CommunityNamespaceVerificationPage({
   const primaryFooterActions = (
     <>
       {flow.isDnsSetupRequired ? (
-        <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.actions.restart}>{mc.checkSetup}</Button>
+        <Button
+          className={primaryButtonClassName}
+          disabled={Boolean(flow.hnsImportPayload) && !flow.replacementAcknowledged && !flow.hnsImportPayload?.replacement_acknowledged_at}
+          loading={flow.isVerifying}
+          onClick={flow.hnsImportPayload ? flow.actions.verify : flow.actions.restart}
+        >
+          {mc.checkSetup}
+        </Button>
       ) : null}
       {flow.isChallengePending ? (
         <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.actions.verify}>{flow.isSpaces ? mc.checkSetup : mc.verifyAction}</Button>
@@ -180,34 +224,64 @@ export function CommunityNamespaceVerificationPage({
     ? "warning"
     : "muted";
 
-  if (hasAttachedNamespace) {
+  if (needsPrimaryRecovery && recoverableNamespace && onRestorePrimary) {
+    const label = recoverableNamespace.family === "spaces"
+      ? `@${recoverableNamespace.root_label}`
+      : `.${recoverableNamespace.root_label}`;
+
+    return (
+      <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8">
+        <Type as="h1" variant="h1" className="md:text-4xl">Restore namespace</Type>
+        <div className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card p-4 md:p-5">
+          <FormNote tone="warning">
+            {label} is already verified and its signed DNS zone is serving. Restore this existing verification as the community&apos;s primary route; no DNS or wallet update is required.
+          </FormNote>
+          <Button loading={restoringPrimary} onClick={handleRestorePrimary}>
+            Restore as primary
+          </Button>
+        </div>
+      </section>
+    );
+  }
+
+  if (hasAttachedNamespace && !addingMirror) {
     const publicCommunityUrl = attachedRouteSlug ? `https://pirate.sc/c/${attachedRouteSlug}` : null;
-    const handshakeUrl = attachedRouteSlug ? `https://${attachedRouteSlug}/` : null;
+    const handshakeUrl = attachedRouteSlug
+      && isHnsNativeRoutingLive(attachedPrimary)
+      ? `https://${attachedRouteSlug}/`
+      : null;
+    const routingPending = attachedPrimary?.family === "hns" && !handshakeUrl;
 
     return (
       <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
-          <Type as="h1" variant="h1" className="md:text-4xl">Success!</Type>
+          <Type as="h1" variant="h1" className="md:text-4xl">
+            {handshakeUrl || attachedPrimary?.family === "spaces" ? "Success!" : "Ownership verified"}
+          </Type>
           {onBackClick ? <Button onClick={onBackClick} variant="outline">Finish verification</Button> : null}
         </div>
 
         <div className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card p-4 md:p-5">
           <div className="space-y-2">
-            {publicCommunityUrl && handshakeUrl ? (
+            {publicCommunityUrl ? (
               <div className="space-y-3">
                 <Type as="p" variant="body">
                   Your namespace is now available at{" "}
                   <a className="text-primary underline-offset-4 hover:underline" href={publicCommunityUrl}>
                     {publicCommunityUrl}
-                  </a>{" "}
-                  and{" "}
-                  <a className="text-primary underline-offset-4 hover:underline" href={handshakeUrl}>
-                    {handshakeUrl}
                   </a>
+                  {handshakeUrl ? <>{" "}and{" "}<a className="text-primary underline-offset-4 hover:underline" href={handshakeUrl}>{handshakeUrl}</a></> : null}
                   .
                 </Type>
-                <Type as="p" variant="body">
-                  To access your site on Handshake DNS, use{" "}
+                {routingPending ? (
+                  <FormNote tone="warning">
+                    {attachedPrimary?.delegation?.delegation_security === "unsecured"
+                      ? "Your Handshake delegation is live but not secure yet. DNSSEC DS records still need to be added before the native route can be enabled; contact Pirate support for the records while guided setup is being completed."
+                      : "Your ownership is verified. We are still checking the on-chain delegation and DNSSEC state; the native Handshake URL is not live yet."}
+                  </FormNote>
+                ) : null}
+                {handshakeUrl ? <Type as="p" variant="body">
+                  This route is ready in HNS-aware browsers. Freedom resolves Handshake names; Denuo and other validating clients additionally verify the DNSSEC and DANE chain configured during import. Use{" "}
                   <a
                     className="text-primary underline-offset-4 hover:underline"
                     href="https://github.com/pirate-social-club/freedom-browser/releases"
@@ -216,13 +290,51 @@ export function CommunityNamespaceVerificationPage({
                   >
                     Freedom Browser
                   </a>
-                  .
-                </Type>
+                  {" "}or another HNS/DANE-capable browser. Conventional browsers must use the pirate.sc route.
+                </Type> : null}
+                {attachedPrimary?.family === "hns" ? (
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <ClientReadiness
+                      label="Freedom"
+                      ready={attachedPrimary.delegation?.delegation_security === "unsecured" || attachedPrimary.delegation?.delegation_security === "secure"}
+                      waiting="Waiting for live NS delegation"
+                    />
+                    <ClientReadiness
+                      label="Denuo / DANE"
+                      ready={attachedPrimary.delegation?.delegation_security === "secure"}
+                      waiting="Waiting for DS, DNSSEC, and TLSA validation"
+                    />
+                    <ClientReadiness
+                      label="Pirate native route"
+                      ready={Boolean(handshakeUrl)}
+                      waiting="Waiting for secure observation and activation"
+                    />
+                  </div>
+                ) : null}
               </div>
             ) : (
               <FormNote>This community namespace is connected. There is nothing else to set up here.</FormNote>
             )}
           </div>
+
+          {namespaceAttachments.length ? (
+            <div className="space-y-2 border-t border-border-soft pt-4">
+              <Type as="h2" variant="body-strong">Attached name namespaces</Type>
+              {namespaceAttachments.map((namespace) => {
+                const label = namespace.family === "spaces"
+                  ? `@${namespace.root_label}`
+                  : `.${namespace.root_label}`;
+                return (
+                  <div className="flex items-center justify-between gap-3" key={namespace.namespace_verification}>
+                    <Type as="span" variant="body">{label}</Type>
+                    <Type as="span" variant="caption">
+                      {namespace.namespace_role === "primary" ? "Primary · community route" : "Mirror · names only"}
+                    </Type>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
 
           {activeSessionId ? (
             <div className="space-y-3 border-t border-border-soft pt-4">
@@ -232,6 +344,24 @@ export function CommunityNamespaceVerificationPage({
               <Button loading={clearingPending} onClick={handleClearPendingSession} variant="outline">
                 Clear pending verification
               </Button>
+            </div>
+          ) : null}
+
+          {!activeSessionId ? (
+            <div className="border-t border-border-soft pt-4">
+              <Button
+                onClick={() => {
+                  flow.actions.reset();
+                  flow.actions.setRootLabel("");
+                  setAddingMirror(true);
+                }}
+                variant="outline"
+              >
+                Attach another namespace
+              </Button>
+              <FormNote className="mt-2">
+                Additional namespaces provide member names only. They do not change this community&apos;s route.
+              </FormNote>
             </div>
           ) : null}
         </div>
@@ -249,6 +379,11 @@ export function CommunityNamespaceVerificationPage({
       </div>
 
       <div className="space-y-6">
+        {needsPrimaryRecovery ? (
+          <FormNote tone="warning">
+            This community has a previous namespace attachment, but it is no longer verified for routing. Verify the same name again to restore its signed DNS zone and public route.
+          </FormNote>
+        ) : null}
         {(flow.isIdle || flow.isStarting) && !flow.shouldShowResumeState ? (
           <>
             <div className="space-y-2">
@@ -289,7 +424,17 @@ export function CommunityNamespaceVerificationPage({
           </>
         ) : null}
 
-        {(flow.isDnsSetupRequired || flow.isChallengeReady || flow.isChallengePending || flow.isVerifying || flow.isFailed || flow.isExpired) && flow.isHns && flow.hnsMode ? (
+        {(flow.isDnsSetupRequired || flow.isChallengeReady || flow.isChallengePending || flow.isVerifying || flow.isFailed || flow.isExpired) && flow.isHns && flow.hnsImportPayload ? (
+          <HnsImportGuidance
+            acknowledged={flow.replacementAcknowledged}
+            busy={flow.busy}
+            onAcknowledgedChange={flow.actions.setReplacementAcknowledged}
+            payload={flow.hnsImportPayload}
+            rootLabel={flow.rootLabel}
+          />
+        ) : null}
+
+        {(flow.isDnsSetupRequired || flow.isChallengeReady || flow.isChallengePending || flow.isVerifying || flow.isFailed || flow.isExpired) && flow.isHns && flow.hnsMode && !flow.hnsImportPayload ? (
           <NamespaceVerificationHnsPanel
             challengePending={flow.isChallengePending}
             challengeTxtValue={flow.challengeTxtValue}
@@ -357,4 +502,40 @@ export function CommunityNamespaceVerificationPage({
       ) : null}
     </section>
   );
+}
+
+function ClientReadiness({ label, ready, waiting }: { label: string; ready: boolean; waiting: string }) {
+  return (
+    <div className="rounded-xl border border-border-soft p-3">
+      <Type as="div" variant="body-strong">{label}</Type>
+      <Type as="div" variant="caption">{ready ? "Ready" : waiting}</Type>
+    </div>
+  );
+}
+
+export function findRecoverableNamespace(input: {
+  attachedNamespaceVerificationId?: string | null;
+  namespaceAttachments: ApiCommunityNamespaceAttachment[];
+}): ApiCommunityNamespaceAttachment | null {
+  if (!input.attachedNamespaceVerificationId) return null;
+  const stalePrimary = input.namespaceAttachments.find(
+    (namespace) => namespace.namespace_role === "primary"
+      && namespace.namespace_verification === input.attachedNamespaceVerificationId
+      && namespace.verification_status !== "verified",
+  );
+  if (!stalePrimary) return null;
+
+  return input.namespaceAttachments.find(
+    (namespace) => namespace.namespace_role === "mirror"
+      && namespace.verification_status === "verified"
+      && namespace.family === stalePrimary.family
+      && namespace.root_label === stalePrimary.root_label,
+  ) ?? null;
+}
+
+export function isHnsNativeRoutingLive(
+  namespace: ApiCommunityNamespaceAttachment | undefined,
+): boolean {
+  return namespace?.family === "hns"
+    && namespace.delegation?.pirate_web_routing_allowed === true;
 }

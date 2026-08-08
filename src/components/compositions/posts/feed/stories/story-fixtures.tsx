@@ -1,4 +1,3 @@
-import * as React from "react";
 
 import { COMMUNITY_RECORDS, HOME_POSTS, YOUR_COMMUNITIES_POSTS } from "@/app/mocks";
 import { PillButton } from "@/components/primitives/pill-button";
@@ -6,8 +5,8 @@ import type { PostCardProps } from "@/components/compositions/posts/post-card/po
 import type { FeedItem, FeedSortOption } from "../feed";
 import { Type } from "@/components/primitives/type";
 import { Avatar } from "@/components/primitives/avatar";
-export { TopTimeRangeControl, topTimeRangeOptions } from "../feed";
-export function toFeedItems(posts: typeof HOME_POSTS): FeedItem[] {
+export { TopTimeRangeControl,  } from "../feed";
+function toFeedItems(posts: typeof HOME_POSTS): FeedItem[] {
   return posts.map((post) => ({
     id: post.postId,
     post,

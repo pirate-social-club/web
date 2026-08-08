@@ -23,7 +23,7 @@ import { SettingsSection } from "@/components/compositions/settings/settings-pag
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-export const BOOKING_DURATION_SECONDS = [900, 1800, 2700, 3600] as const;
+const BOOKING_DURATION_SECONDS = [900, 1800, 2700, 3600] as const;
 
 // Display-only formatter; persistence/validation lives in the container (mirrors
 // booking-host-settings-validation). Kept tiny + inline so this composition stays app-layer-free.
@@ -162,7 +162,6 @@ export function ProfileBookingsSection({
   onDeleteException,
   className,
 }: ProfileBookingsSectionProps) {
-  const isMobile = useIsMobile();
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").settings.booking;
   const removeLabel = copy.remove;
@@ -241,6 +240,10 @@ export function ProfileBookingsSection({
               <Type as="p" variant="caption" className="text-muted-foreground">
                 {!payoutReady ? copy.publishBlockedNote : bookable ? copy.bookableOnHint : copy.bookableOffHint}
               </Type>
+              {/* Bookable without any availability is invisible to bookers — say so explicitly. */}
+              {bookable && rules.length === 0 ? (
+                <FormNote tone="warning">{copy.bookableNoAvailability}</FormNote>
+              ) : null}
             </div>
             <Switch
               checked={bookable}

@@ -4,24 +4,24 @@ import type { ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types
 import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
 // Domain-aligned types from specs/domain/asset.md and specs/domain/post.md
-export type AccessMode = "public" | "locked";
-export type PublicationState = "draft" | "story_requested" | "story_published" | "story_failed";
-export type SongMode = "original" | "remix";
-export type RightsBasis = "none" | "original" | "derivative" | "attribution_only" | "licensed_performance";
-export type AnalysisState = "pending" | "allow" | "allow_with_required_reference" | "review_required" | "blocked";
-export type ContentSafetyState = "pending" | "safe" | "sensitive" | "adult";
-export type AgeGatePolicy = CommunityDefaultAgeGatePolicy;
+type AccessMode = "public" | "locked";
+type PublicationState = "draft" | "story_requested" | "story_published" | "story_failed";
+type SongMode = "original" | "remix";
+type RightsBasis = "none" | "original" | "derivative" | "attribution_only" | "licensed_performance";
+type AnalysisState = "pending" | "allow" | "allow_with_required_reference" | "review_required" | "blocked";
+type ContentSafetyState = "pending" | "safe" | "sensitive" | "adult";
+type AgeGatePolicy = CommunityDefaultAgeGatePolicy;
 
 // From specs/domain/marketplace.md
-export type ListingMode = "not_listed" | "listed";
-export type ListingStatus = "active" | "paused" | "sold_out" | "removed";
-export type VinylReleaseProvider = "elasticstage";
+type ListingMode = "not_listed" | "listed";
+type ListingStatus = "active" | "paused" | "sold_out" | "removed";
+type VinylReleaseProvider = "elasticstage";
 
 export type DownloadPolicy = "stream_only" | "free_download" | "purchased_download";
 export type StemKind = "instrumental" | "vocals" | "drums" | "bass" | "other";
 export type StemAccessPolicy = "inherit" | "free" | "purchasers_only" | "unavailable";
 
-export interface VinylReleaseSpec {
+interface VinylReleaseSpec {
   available: boolean;
   provider: VinylReleaseProvider;
   url?: string | null;
@@ -42,7 +42,7 @@ export interface SongStorageProof {
   encrypted?: boolean;
 }
 
-export interface SongStorageProofs {
+interface SongStorageProofs {
   original?: SongStorageProof;
   preview?: SongStorageProof;
   encryptedOriginal?: SongStorageProof;
@@ -57,10 +57,13 @@ export interface UpstreamAttribution {
   relationshipType: "remix_of" | "references_song" | "references_video" | "inspired_by" | "samples";
   title: string;
   artist?: string;
+  artistHref?: string;
   href?: string;
+  sourceCommunityId?: string;
+  sourcePostId?: string;
 }
 
-export type StoryRegistrationState = "registered" | "pending" | "failed";
+type StoryRegistrationState = "registered" | "pending" | "failed";
 
 export interface StoryRegistrationStatus {
   state: StoryRegistrationState;
@@ -73,12 +76,12 @@ export interface StoryLicenseNotice {
   description?: string;
 }
 
-export type VideoMode = "original" | "reaction" | "clip" | "remix";
-export type LiveRoomStatus = "scheduled" | "live" | "ended" | "canceled";
-export type LiveRoomKind = "solo" | "duet";
-export type LiveRoomAccessMode = "free" | "gated" | "paid";
-export type LiveRoomVisibility = "public" | "unlisted";
-export type LiveRoomAccessState =
+type VideoMode = "original" | "reaction" | "clip" | "remix";
+type LiveRoomStatus = "scheduled" | "live" | "ended" | "canceled";
+type LiveRoomKind = "solo" | "duet";
+type LiveRoomAccessMode = "free" | "gated" | "paid";
+type LiveRoomVisibility = "public" | "unlisted";
+type LiveRoomAccessState =
   | "allowed"
   | "gate_required"
   | "purchase_required"
@@ -86,10 +89,10 @@ export type LiveRoomAccessState =
   | "missing_listing"
   | "ended";
 
-export type LiveRoomReplayStatus = "none" | "processing" | "review_pending" | "published" | "failed";
+type LiveRoomReplayStatus = "none" | "processing" | "review_pending" | "published" | "failed";
 
-export type LiveRoomProducerRole = "host" | "guest" | null;
-export type LiveRoomRsvpState = "none" | "going";
+type LiveRoomProducerRole = "host" | "guest" | null;
+type LiveRoomRsvpState = "none" | "going";
 
 export type LiveRoomParticipant = {
   role: "host" | "guest";
@@ -155,8 +158,8 @@ export interface LiveRoomContentSpec {
 }
 
 // Spec-aligned song content (from specs/domain/post.md, asset.md, marketplace.md)
-export type SongStudyStatus = "unavailable" | "processing" | "ready" | "locked";
-export type SongFeatureCapabilityReasonCode =
+type SongStudyStatus = "unavailable" | "processing" | "ready" | "locked";
+type SongFeatureCapabilityReasonCode =
   | "lyrics_missing"
   | "lyrics_too_short"
   | "exercise_generation_failed"
@@ -178,8 +181,9 @@ export interface SongFeatureCapabilityReason {
   ownerAction: "none" | "manage_integrations" | "retry" | "edit_song" | "upload_instrumental" | "enable_karaoke" | "buy";
 }
 
-export interface SongStudyCapability {
+interface SongStudyCapability {
   status: SongStudyStatus;
+  previewOnly?: boolean;
   exerciseCount?: number;
   rewardLabel?: string;
   reason?: SongFeatureCapabilityReason;
@@ -187,11 +191,12 @@ export interface SongStudyCapability {
   targetLanguage?: string;
 }
 
-export type SongKaraokeStatus = "unavailable" | "processing" | "ready" | "failed";
-export interface SongKaraokeCapability {
+type SongKaraokeStatus = "unavailable" | "processing" | "ready" | "failed";
+interface SongKaraokeCapability {
   rewardLabel?: string;
   reason?: SongFeatureCapabilityReason;
   status: SongKaraokeStatus;
+  previewOnly?: boolean;
 }
 
 export interface SongContentSpec {
@@ -306,16 +311,16 @@ export interface VideoContentSpec {
   onVerifyAge?: () => void;
 }
 
-export type LinkSummaryStatus = "pending" | "ready" | "failed" | "unavailable" | "manual";
+type LinkSummaryStatus = "pending" | "ready" | "failed" | "unavailable" | "manual";
 
-export interface LinkSummaryContent {
+interface LinkSummaryContent {
   status?: LinkSummaryStatus | null;
   summaryParagraph?: string | null;
   shortSummary?: string | null;
   keyPoints?: string[];
 }
 
-export type CrosspostSourceStatus = "available" | "deleted" | "removed" | "unavailable";
+type CrosspostSourceStatus = "available" | "deleted" | "removed" | "unavailable";
 
 export interface CrosspostSourcePreview {
   status: CrosspostSourceStatus;
@@ -448,7 +453,7 @@ export type PostCardIdentity = {
   verificationStatus?: "unverified";
 };
 
-export type PostCardAgentAuthor = {
+type PostCardAgentAuthor = {
   label: string;
   href?: string;
   ownerLabel: string;
@@ -475,7 +480,10 @@ export type PostCardIdentityPresentation =
 
 export type PostCardEngagement = {
   score: number;
+  /** Positive reactions only. Unlike score, this never includes downvotes. */
+  upvoteCount?: number;
   viewerVote?: "up" | "down" | null;
+  voteBusy?: boolean;
   commentCount: number;
   saved?: boolean;
   unlock?: {
@@ -484,7 +492,7 @@ export type PostCardEngagement = {
   };
 };
 
-export type PostCardEventStatus = "scheduled" | "canceled" | "postponed" | "ended";
+type PostCardEventStatus = "scheduled" | "canceled" | "postponed" | "ended";
 
 export interface PostCardEventPlace {
   label: string;
@@ -510,7 +518,10 @@ export interface PostCardEvent {
 }
 
 export interface PostCardProps {
+  /** Canonical post identity used by app-level media experiences. */
+  postId?: string;
   viewContext?: PostCardViewContext;
+  previewMode?: boolean;
   identityPresentation?: PostCardIdentityPresentation;
   byline: PostCardByline;
   authorCommunityRole?: CommunityAuthorRole | null;
@@ -540,13 +551,14 @@ export interface PostCardProps {
   engagement: PostCardEngagement;
   menuItems?: PostCardMenuItem[];
   shareActions?: PostCardShareAction[];
-  onVote?: (direction: "up" | "down" | null) => void;
+  onVote?: (direction: "up" | "down" | null) => Promise<void> | void;
   voteAccess?: {
-    disabled?: boolean;
     label: string;
     onClick?: () => void;
   };
   onComment?: () => void;
+  /** Optional override for the shell-owned vertical viewer entry action. */
+  onOpenVideoViewer?: () => void;
   onShare?: () => void;
   onToggleOriginal?: () => void;
   onMenuAction?: (key: string) => void;

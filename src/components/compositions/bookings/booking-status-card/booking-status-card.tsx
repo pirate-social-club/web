@@ -1,4 +1,3 @@
-import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
 import { Card, CardContent } from "@/components/primitives/card";
@@ -8,7 +7,7 @@ import type { BookingState, IanaTz, IsoInstant } from "../view-models";
 
 import {
   formatBookingDate,
-  formatCentsAsUsd,
+  formatCentsAsUsdc,
   formatSlotDuration,
   formatSlotTime,
   formatTzLabel,
@@ -119,7 +118,7 @@ export function BookingStatusCard({
 
         <div className="flex items-center justify-between">
           <Type variant="caption">Total paid</Type>
-          <Type variant="body-strong">{formatCentsAsUsd(priceCents)}</Type>
+          <Type variant="body-strong">{formatCentsAsUsdc(priceCents)}</Type>
         </div>
 
         {showJoin ? (

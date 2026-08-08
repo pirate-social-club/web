@@ -9,7 +9,7 @@
 export const COURTYARD_POLYGON_REGISTRY = "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD";
 export const COURTYARD_MAINNET_REGISTRY = "0xd4ac3CE8e1E14CD60666D49AC34Ff2d2937cF6FA";
 
-export const INVENTORY_MATCH_KEYS = [
+const INVENTORY_MATCH_KEYS = [
   "category",
   "franchise",
   "subject",
@@ -23,8 +23,8 @@ export const INVENTORY_MATCH_KEYS = [
   "condition",
 ] as const;
 
-export const INVENTORY_CATEGORIES = ["trading_card", "watch"] as const;
-export const MAX_INVENTORY_MATCH_VALUES_PER_KEY = 10;
+const INVENTORY_CATEGORIES = ["trading_card", "watch"] as const;
+const MAX_INVENTORY_MATCH_VALUES_PER_KEY = 10;
 
 export type InventoryAssetMatchValidationError = {
   code:
@@ -71,7 +71,7 @@ export function normalizeInventoryText(value: unknown): string | null {
 }
 
 /** A value is one string, or 1..10 strings that stay unique after normalization. */
-export function normalizeInventoryMatchValue(value: unknown): string[] | null {
+function normalizeInventoryMatchValue(value: unknown): string[] | null {
   const values = Array.isArray(value) ? value : [value];
   if (values.length === 0 || values.length > MAX_INVENTORY_MATCH_VALUES_PER_KEY) {
     return null;
@@ -87,7 +87,7 @@ export function normalizeInventoryMatchValue(value: unknown): string[] | null {
   return normalizedValues;
 }
 
-export function isValidInventoryMatchValue(value: unknown): boolean {
+function isValidInventoryMatchValue(value: unknown): boolean {
   return normalizeInventoryMatchValue(value) != null;
 }
 

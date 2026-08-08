@@ -6,6 +6,7 @@ import type {
   CommunityHandlePaymentInstructions,
   CommunityHandleQuote,
   CommunityHandleQuoteRequest,
+  MembershipGateSummary,
 } from "@pirate/api-contracts";
 import type { Hex } from "viem";
 
@@ -16,7 +17,9 @@ import {
   executeHandleUsdcCheckout,
   findConnectedFundingWallet,
 } from "@/lib/commerce/routed-checkout";
+import { buildCommunitySidebarRequirements } from "@/lib/community-sidebar-helpers";
 import { getErrorMessage } from "@/lib/error-utils";
+import { useUiLocale } from "@/lib/ui-locale";
 import { getWalletTransactionErrorMessage } from "@/lib/wallet-error-utils";
 import type {
   HandleAvailability,
@@ -75,13 +78,36 @@ function mapPaymentInstructions(
   };
 }
 
-function mapQuoteToSearchResult(quote: CommunityHandleQuote): HandleSearchResult {
+function buildHandleClaimGateActions(
+  summaries: MembershipGateSummary[] | null | undefined,
+): Array<"self" | "wallet"> {
+  const actions = new Set<"self" | "wallet">();
+  for (const summary of summaries ?? []) {
+    if (summary.accepted_providers?.includes("self")) actions.add("self");
+    if (
+      summary.gate_type === "erc721_holding"
+      || summary.gate_type === "erc721_inventory_match"
+      || summary.gate_type === "asset_balance"
+    ) actions.add("wallet");
+  }
+  return [...actions];
+}
+
+function mapQuoteToSearchResult(quote: CommunityHandleQuote, locale?: string | null): HandleSearchResult {
+  const claimGate = quote.claim_gate;
   return {
-    availability: mapAvailability(quote.availability),
+    availability: quote.eligible ? mapAvailability(quote.availability) : "unavailable",
     priceCents: quote.price_cents,
     pricingTier: quote.pricing_tier ?? undefined,
     reason: quote.reason ?? undefined,
     paymentInstructions: mapPaymentInstructions(quote.payment_instructions),
+    claimGateSatisfied: claimGate ? claimGate.satisfied : undefined,
+    claimGateRequirements: claimGate && !claimGate.satisfied
+      ? buildCommunitySidebarRequirements({ gateSummaries: claimGate.summaries ?? null, locale })
+      : undefined,
+    claimGateActions: claimGate && !claimGate.satisfied
+      ? buildHandleClaimGateActions(claimGate.summaries)
+      : undefined,
   };
 }
 
@@ -106,21 +132,33 @@ function getClaimErrorMessage(error: unknown, fallback: string): string {
 export function useCommunityHandleClaimController(input: {
   api: CommunityHandleApi;
   communityId: string;
+  namespaceVerificationId?: string | null;
   connectedWallets: PirateConnectedEvmWallet[];
   primaryWalletAddress?: string | null;
   settlementWalletAttachmentId?: string | null;
   debounceMs?: number;
   executeCheckout?: ExecuteHandleCheckout;
 }) {
+  const { locale } = useUiLocale();
   const [phase, setPhase] = React.useState<HandleClaimPhase>("intro");
   const [searchValue, setSearchValue] = React.useState("");
   const [quote, setQuote] = React.useState<CommunityHandleQuote | null>(null);
   const [searchResult, setSearchResult] = React.useState<HandleSearchResult | undefined>();
   const [claimedHandle, setClaimedHandle] = React.useState<CommunityHandle | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [quoteRefreshKey, setQuoteRefreshKey] = React.useState(0);
   const sequenceRef = React.useRef(0);
   const executeCheckout = input.executeCheckout ?? executeHandleUsdcCheckout;
   const debounceMs = input.debounceMs ?? DEFAULT_QUOTE_DEBOUNCE_MS;
+
+  React.useEffect(() => {
+    sequenceRef.current += 1;
+    setQuote(null);
+    setSearchResult(undefined);
+    setClaimedHandle(null);
+    setError(null);
+    setPhase((current) => current === "intro" ? "intro" : "search");
+  }, [input.namespaceVerificationId]);
 
   const onSearchChange = React.useCallback((value: string) => {
     setSearchValue(value);
@@ -140,11 +178,16 @@ export function useCommunityHandleClaimController(input: {
 
     const timeout = window.setTimeout(() => {
       setPhase("quoting");
-      const body: CommunityHandleQuoteRequest = { desired_label: desiredLabel };
+      const body: CommunityHandleQuoteRequest = {
+        desired_label: desiredLabel,
+        ...(input.namespaceVerificationId
+          ? { namespace_verification: input.namespaceVerificationId }
+          : {}),
+      };
       void input.api.quoteHandle(input.communityId, body).then((nextQuote) => {
         if (sequence !== sequenceRef.current) return;
         setQuote(nextQuote);
-        setSearchResult(mapQuoteToSearchResult(nextQuote));
+        setSearchResult(mapQuoteToSearchResult(nextQuote, locale));
         setError(null);
         setPhase("confirm");
       }).catch((caught) => {
@@ -157,10 +200,15 @@ export function useCommunityHandleClaimController(input: {
     }, debounceMs);
 
     return () => window.clearTimeout(timeout);
-  }, [debounceMs, input.api, input.communityId, searchValue]);
+  }, [debounceMs, input.api, input.communityId, input.namespaceVerificationId, locale, quoteRefreshKey, searchValue]);
+
+  const refreshQuote = React.useCallback(() => {
+    if (!searchValue.trim() || phase === "processing") return;
+    setQuoteRefreshKey((current) => current + 1);
+  }, [phase, searchValue]);
 
   const onClaim = React.useCallback(async () => {
-    if (!quote || quote.availability !== "available" || phase === "processing") {
+    if (!quote || !quote.eligible || quote.availability !== "available" || phase === "processing") {
       return;
     }
 
@@ -227,12 +275,14 @@ export function useCommunityHandleClaimController(input: {
   return {
     claimedHandle,
     claimedLabel: claimedHandle?.label ?? null,
+    claimGateSummaries: quote?.claim_gate?.summaries ?? [],
     error,
     onClaim,
     onSearchChange,
     phase,
     processing: phase === "processing",
     quote,
+    refreshQuote,
     searchResult,
     searchValue,
   };

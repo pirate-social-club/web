@@ -3,9 +3,9 @@
 ## Shape
 
 ```
-release-inputs ──> schema-gate ──> staging ──> release-gate ──> production-freshness ──> production
-                                      └──────> api-staging-contract-gate ────┘
-                                                                           (production re-checks prod fleet)
+release-inputs ──> staging-freshness ──> schema-gate ──> staging ──┬─> release-gate ───────────┐
+                                                                  └─> api-contract-gate ──────┴─> production-freshness ──> production
+                                                                                                  (re-checks prod fleet)
 
 successful current Release ──workflow_run──> verify deployed SHA ──┬─> Story commerce canary ─┐
                                                                    └─> live browser canary ───┴─> canary alert
@@ -15,6 +15,10 @@ successful current Release ──workflow_run──> verify deployed SHA ──�
 deploy only after the live fleet satisfies its schema requirements, so an incompatible pin is
 caught before it reaches staging — not after. `production` and `production-freshness` still
 list it explicitly (it is transitively required through `staging`, but naming it is clearer).
+
+The latest measured natural release (`30450485117`, 2026-07-29) completed in
+14m52s. Treat that as a baseline, not a service-level promise: runner pickup,
+fleet growth, and live-contract latency vary.
 
 ## The one rule
 
@@ -59,6 +63,55 @@ requirements manifest from the pinned API (`api/services/api/community-schema-re
   feature-conditional, or explicitly deferred with a non-empty rationale. The comparison
   runs against the previous Web commit's Core pin on pull requests and main pushes, so a pin
   bump cannot silently introduce an unclassified shard migration.
+- The verifier uses the D1 REST query endpoint and batches both probes for a
+  shard into one request. The staging manifest must report
+  `d1_query_transport: "rest_batch"` and includes logical batches, HTTP
+  attempts, retries, cumulative attempt duration, and `errors_by_code`.
+- Each authoritative full scan invalidates the complete loaded pool roster,
+  then publishes its verdicts with allocation-generation and writer-epoch
+  fences. This is shadow evidence only: publication failures fail closed, and
+  no ledger result can make a release pass while the REST scan fails.
+- Staging currently runs at concurrency 3. This was raised only after two
+  zero-retry concurrency-2 scans. If code `7429` or a sustained retry increase
+  appears, first rule out overlapping scans and then restore concurrency 2;
+  never weaken the fail-closed result checks.
+- The long-term fleet-size-independent improvement is the approved attestation
+  ledger. Until its fast path is separately reviewed and activated, the REST
+  full scan remains the release authority.
+- Shadow transition evidence is recorded durably on
+  [web#960](https://github.com/pirate-social-club/web/issues/960) from both failed
+  and successful Release attempts. The trigger is an effective-policy digest or
+  shadow-decision change, not a migration path heuristic. See
+  [the activation runbook](runbooks/d1-attestation-fast-path-activation.md).
+
+## API staging contract gate
+
+The reusable API workflow first inventories the required tests, then runs
+exactly six live staging contracts in one Playwright process and exactly three
+mobile non-member contracts in a second process. The `--expected-count` checks
+are coverage guards: changing a title or grep without updating the inventory
+must fail rather than silently run fewer tests.
+
+Required release contracts use pinned, owned staging fixtures. In particular,
+the gate-identity contract rewrites its dedicated fixture to the expected
+idempotent policy before evaluating a new viewer; it must never call community
+provisioning. Fresh provisioning belongs only to the budgeted manual workflow
+described below.
+
+GitHub snapshots the reusable workflow ref for each run attempt. If
+`api/.github/workflows/staging-contract-gate.yml` changes, start a new Web push
+run. Re-running an old attempt continues to use the API workflow revision that
+GitHub resolved for that attempt.
+
+## API pin CI proof
+
+An API commit is pinnable only after a successful `api-ci` `push` run on API
+`main`. A merge-group run may let that push run reuse exact-SHA provenance, but
+it is not itself a release proof: accepting it only while the commit is the API
+main tip makes an existing Web pin expire when any later API commit lands.
+
+This rule keeps Web release inputs durable. Advancing API main cannot invalidate
+an already accepted pin, including when the advancing commit changes docs only.
 
 ## Community provisioning coverage
 
@@ -128,9 +181,49 @@ A canary that fails is a signal to investigate, from its uploaded artifacts, on 
 
 ## Guards
 
-- **`concurrency: release-${{ github.ref }}`** (`cancel-in-progress: false`) — releases serialize instead of racing. A run mid-migration is never killed.
-- **`production-freshness`** — compares the run SHA to the live `main` tip immediately before deploying. If `main` has advanced, production is **skipped** (not failed) and the newer run deploys. An older run can never overwrite a newer deployment.
+- **No workflow-wide release lock** — independent validation may overlap. The
+  schema writer prevents stale overlap with its writer epoch; environment
+  migrations and deploys remain serialized.
+- **`staging-promotion` and `production-deploy`** use
+  `cancel-in-progress: false`. A run applying migrations or deploying is never
+  killed midway; both lanes repeat freshness checks while holding their locks.
+- **`community-schema-gate-main`** uses `cancel-in-progress: true`, so a newer
+  `main` push kills an obsolete fleet scan instead of doubling D1 load. A
+  cancelled scan can leave only invalid evidence; its epoch cannot overwrite a
+  newer scan's publication.
+- **`production-freshness`** — compares the run SHA to the live `main` tip
+  immediately before deploying. If `main` has advanced and another live
+  Release run can still reach production, this run defers. If no live successor
+  remains, the already validated run may deploy only after proving that its SHA
+  is an ancestor of `main` and strictly advances the last successful production
+  deployment. API or ancestry uncertainty fails closed. This gives sustained
+  merge traffic a winner without allowing rollback or deploying an unvalidated
+  tip.
 - **`concurrency: release-canaries-*`** (`cancel-in-progress: true`) — observational canaries serialize separately. A newer completed release may replace an older canary run, but can never cancel or queue a production deploy.
+
+## Operating a release
+
+1. Monitor the run to a terminal state and inspect every individual job.
+2. A cancelled schema gate on an obsolete SHA is expected supersession. Do not
+   re-run it.
+3. Re-run a failed schema gate only if that run's SHA is still the current
+   `main` tip. Re-running an old attempt can cancel the tip run's scan.
+4. For a schema failure, download
+   `schema-gate-staging-<run-id>-<attempt>` and inspect
+   `d1_query_metrics`, shard statuses, quarantines, and the transport before
+   deciding whether the failure is schema drift, credentials, or D1 load.
+5. Never call a release deployed when `Deploy production` is skipped. After a
+   successful production job, directly verify the Web/API SHA pair at
+   `https://pirate.sc/__version` and
+   `https://api.pirate.sc/__version`.
+6. Do not push a no-op commit solely to gather timing data. Use natural releases
+   for observational performance samples.
+7. Treat a manually disabled `Release` workflow as an explicit operator pause,
+   not as supersession or a pipeline result. Record the incident or maintenance
+   reason and inspect active staging/production jobs before disabling it.
+   Re-enabling the workflow does not replay pushes received while it was
+   disabled; when deployment is required, dispatch `Release` from current
+   `main` with `deploy_production: true` and monitor that new run normally.
 
 ## Validating a change to release.yml
 

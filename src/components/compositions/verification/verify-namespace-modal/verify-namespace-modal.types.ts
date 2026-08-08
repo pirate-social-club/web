@@ -43,6 +43,39 @@ export type SpacesChallengePayload = {
   freedom_url: string;
 };
 
+export type HnsRawResourceRecord = Record<string, unknown>;
+
+export type HnsImportChallengePayload = {
+  kind: "hns_import";
+  publish_plan: {
+    version: "hns_import_publish_v1";
+    replacement_semantics: "complete_resource";
+    current_records: HnsRawResourceRecord[];
+    preserved_records: HnsRawResourceRecord[];
+    removed_conflicts: HnsRawResourceRecord[];
+    added_records: HnsRawResourceRecord[];
+    replacement_records: HnsRawResourceRecord[];
+    preserved_unknown_record_types: string[];
+    acknowledgement_required: true;
+  };
+  observed_chain_anchor: {
+    network: string;
+    height: number;
+    block_hash: string;
+    median_time: number;
+  };
+  update_observed_height?: number;
+  target_tree_boundary?: number;
+  replacement_acknowledged_at?: string;
+  observation?: {
+    state: "waiting_for_update" | "resource_mismatch" | "pending_tree_commit" | "delegation_not_secure" | "secure";
+    current_height: number;
+    target_tree_boundary?: number;
+    missing_records?: HnsRawResourceRecord[];
+    unexpected_records?: HnsRawResourceRecord[];
+  };
+};
+
 export type NamespaceVerificationStartResult = {
   namespaceVerificationSessionId: string;
   family: NamespaceFamily;
@@ -50,6 +83,7 @@ export type NamespaceVerificationStartResult = {
   challengeHost: string | null;
   challengeTxtValue: string | null;
   challengePayload: SpacesChallengePayload | null;
+  hnsImportPayload?: HnsImportChallengePayload | null;
   challengeExpiresAt: string | null;
   status: NamespaceVerificationStatus;
   operationClass: NamespaceVerificationOperationClass | null;
@@ -61,6 +95,7 @@ export type NamespaceVerificationCompleteResult = {
   status: NamespaceVerificationStatus;
   namespaceVerificationId: string | null;
   failureReason: string | null;
+  hnsImportPayload?: HnsImportChallengePayload | null;
 };
 
 export interface NamespaceVerificationCallbacks {
@@ -72,6 +107,7 @@ export interface NamespaceVerificationCallbacks {
     namespaceVerificationSessionId: string;
     family: NamespaceFamily;
     restartChallenge?: boolean;
+    acknowledgedResourceReplacement?: boolean;
   }) => Promise<NamespaceVerificationCompleteResult>;
   onGetSession: (input: {
     namespaceVerificationSessionId: string;

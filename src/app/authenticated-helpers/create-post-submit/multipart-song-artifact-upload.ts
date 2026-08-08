@@ -5,11 +5,20 @@ import type { SongArtifactUpload } from "@pirate/api-contracts";
 const DEFAULT_MULTIPART_UPLOAD_CONCURRENCY = 3;
 const DEFAULT_PART_RETRY_DELAYS_MS = [250, 1000, 4000] as const;
 
-class PermanentMultipartPartUploadError extends Error {}
+class PermanentMultipartPartUploadError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly providerCode: string | null,
+  ) {
+    super(message);
+    this.name = "PermanentMultipartPartUploadError";
+  }
+}
 
 type RetryableMultipartPartUploadError = Error & { retryAfterMs?: number | null };
 
-export type MultipartArtifactProgressReporter = (fraction: number) => void;
+type MultipartArtifactProgressReporter = (fraction: number) => void;
 
 export type MultipartArtifactUploadInput = {
   abortSession: (
@@ -28,6 +37,7 @@ export type MultipartArtifactUploadInput = {
   ) => Promise<SongArtifactUpload>;
   concurrency?: number;
   contentHashPromise: Promise<string>;
+  createIntent?: () => Promise<SongArtifactUpload>;
   file: File;
   getPartSignedUrl: (
     artifactUploadId: string,
@@ -37,6 +47,11 @@ export type MultipartArtifactUploadInput = {
   intent: SongArtifactUpload;
   onAbortError?: (error: unknown) => void;
   onProgress?: MultipartArtifactProgressReporter;
+  onSessionRestart?: (input: {
+    error: Error;
+    previousIntent: SongArtifactUpload;
+    providerCode: string | null;
+  }) => void;
   partUploadTimeoutMs: number;
   retryDelaysMs?: readonly number[];
 };
@@ -52,7 +67,13 @@ function uploadBlobWithProgress(input: {
   onProgress?: (loadedBytes: number) => void;
   timeoutMs: number;
   url: string;
-}): Promise<{ etag: string | null; retryAfterMs: number | null; status: number; statusText: string }> {
+}): Promise<{
+  etag: string | null;
+  providerCode: string | null;
+  retryAfterMs: number | null;
+  status: number;
+  statusText: string;
+}> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open(input.method, input.url);
@@ -69,6 +90,7 @@ function uploadBlobWithProgress(input: {
       input.onProgress?.(input.body.size);
       resolve({
         etag: xhr.getResponseHeader("ETag"),
+        providerCode: parseProviderErrorCode(xhr.responseText),
         retryAfterMs: parseRetryAfterMs(xhr.getResponseHeader("Retry-After")),
         status: xhr.status,
         statusText: xhr.statusText,
@@ -79,6 +101,12 @@ function uploadBlobWithProgress(input: {
     xhr.onabort = () => reject(new Error("Multipart part upload was aborted"));
     xhr.send(input.body);
   });
+}
+
+function parseProviderErrorCode(responseText: unknown): string | null {
+  if (typeof responseText !== "string") return null;
+  const code = responseText.match(/<Code>([^<]+)<\/Code>/iu)?.[1]?.trim();
+  return code && /^[a-z][a-z0-9]{0,63}$/iu.test(code) ? code : null;
 }
 
 function parseRetryAfterMs(value: string | null): number | null {
@@ -107,8 +135,11 @@ function getRetryAfterMs(error: unknown): number | null {
     : null;
 }
 
-export async function uploadMultipartSongArtifact(input: MultipartArtifactUploadInput): Promise<SongArtifactUpload> {
-  const session = input.intent.upload_session;
+async function uploadMultipartSession(
+  input: MultipartArtifactUploadInput,
+  intent: SongArtifactUpload,
+): Promise<SongArtifactUpload> {
+  const session = intent.upload_session;
   if (!session) {
     throw new Error(`${input.artifactLabel} upload did not return a multipart session.`);
   }
@@ -137,7 +168,7 @@ export async function uploadMultipartSongArtifact(input: MultipartArtifactUpload
 
     for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
       try {
-        const signed = await input.getPartSignedUrl(input.intent.id, uploadSession.id, partNumber);
+        const signed = await input.getPartSignedUrl(intent.id, uploadSession.id, partNumber);
         const response = await uploadBlobWithProgress({
           url: signed.url,
           method: "PUT",
@@ -147,9 +178,10 @@ export async function uploadMultipartSongArtifact(input: MultipartArtifactUpload
           timeoutMs: input.partUploadTimeoutMs,
         });
         if (response.status < 200 || response.status >= 300) {
-          const message = `${input.artifactLabel} part ${partNumber} upload failed with ${response.status}`;
+          const providerDetail = response.providerCode ? ` (${response.providerCode})` : "";
+          const message = `${input.artifactLabel} part ${partNumber} upload failed with ${response.status}${providerDetail}`;
           if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-            throw new PermanentMultipartPartUploadError(message);
+            throw new PermanentMultipartPartUploadError(message, response.status, response.providerCode);
           }
           throw Object.assign(new Error(message), { retryAfterMs: response.retryAfterMs });
         }
@@ -186,19 +218,46 @@ export async function uploadMultipartSongArtifact(input: MultipartArtifactUpload
 
   try {
     const workerCount = Math.min(input.concurrency ?? DEFAULT_MULTIPART_UPLOAD_CONCURRENCY, uploadSession.total_parts);
-    await Promise.all(Array.from({ length: workerCount }, () => worker()));
+    const workerResults = await Promise.allSettled(Array.from({ length: workerCount }, () => worker()));
+    const rejected = workerResults.find((result): result is PromiseRejectedResult => result.status === "rejected");
+    if (rejected) {
+      throw rejected.reason;
+    }
     const contentHash = await input.contentHashPromise;
-    return await input.completeSession(input.intent.id, uploadSession.id, {
+    return await input.completeSession(intent.id, uploadSession.id, {
       upload_id: uploadSession.upload_id,
       content_hash: `0x${contentHash}`,
       parts: [...parts].sort((a, b) => a.part_number - b.part_number),
     });
   } catch (error) {
     try {
-      await input.abortSession(input.intent.id, uploadSession.id);
+      await input.abortSession(intent.id, uploadSession.id);
     } catch (abortError) {
       input.onAbortError?.(abortError);
     }
     throw error;
+  }
+}
+
+export async function uploadMultipartSongArtifact(input: MultipartArtifactUploadInput): Promise<SongArtifactUpload> {
+  let intent = input.intent;
+  let restarted = false;
+
+  while (true) {
+    try {
+      return await uploadMultipartSession(input, intent);
+    } catch (error) {
+      const missingSession = error instanceof PermanentMultipartPartUploadError && error.status === 404;
+      if (restarted || !missingSession || !input.createIntent) {
+        throw error;
+      }
+      input.onSessionRestart?.({
+        error,
+        previousIntent: intent,
+        providerCode: error.providerCode,
+      });
+      intent = await input.createIntent();
+      restarted = true;
+    }
   }
 }

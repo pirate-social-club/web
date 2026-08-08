@@ -5,23 +5,26 @@ import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contra
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { MembershipGateSummary as ApiMembershipGateSummary } from "@pirate/api-contracts";
 import type { MembershipGateExpressionSummary as ApiMembershipGateExpressionSummary } from "@pirate/api-contracts";
-import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
-import type { CommunitySidebarGateItem, CommunitySidebarRoleHolder, CommunitySidebarRule } from "@/components/compositions/community/sidebar/community-sidebar.types";
+import type { CommunitySidebarGateItem, CommunitySidebarRule } from "@/components/compositions/community/sidebar/community-sidebar.types";
 import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
-import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
-import { hasActionTimeCheck, isJoinSurfaceGate } from "@/lib/identity-gates";
-import { flattenGatePolicyAtoms, getGatePolicyMatchMode } from "@/lib/gate-policy-utils";
+import { formatGateRequirement, hasActionTimeCheck, isJoinSurfaceGate } from "@/lib/identity-gates";
+import { flattenGatePolicyAtoms, getGatePolicyMatchMode, isFlatOrGateExpression } from "@/lib/gate-policy-utils";
 import { deriveGateStatuses } from "@/lib/community-gate-statuses";
 
 type SidebarGateSummary = Pick<
   ApiMembershipGateSummary,
   | "accepted_providers"
   | "asset_category"
+  | "asset_decimals"
   | "asset_filter_label"
+  | "asset_id"
+  | "asset_symbol"
   | "contract_address"
+  | "gate_id"
   | "gate_type"
+  | "min_amount_atomic"
   | "min_quantity"
   | "minimum_score"
   | "required_minimum_age"
@@ -38,38 +41,14 @@ function normalizeCommunityMembershipMode(mode: ApiCommunity["membership_mode"] 
   return mode === "request" ? "request" : "gated";
 }
 
-function getRequirementLocale(locale: string | null | undefined): "ar" | "zh" | "en" {
-  const normalized = String(locale ?? "").toLowerCase();
-  if (normalized.startsWith("ar")) return "ar";
-  if (normalized.startsWith("zh")) return "zh";
-  return "en";
-}
-
-function getCountryDisplayName(requiredValue: string, locale: string | null | undefined): string {
-  return getLocalizedCountryDisplayName(requiredValue, locale) ?? requiredValue;
-}
-
-function shortenAddress(address: string): string {
-  if (address.length <= 10) return address;
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
-
-function formatInventoryAssetLabel(input: {
-  assetFilterLabel?: string | null;
-  assetCategory?: string | null;
-  minQuantity?: number | null;
-}): string {
-  if (input.assetFilterLabel?.trim()) return input.assetFilterLabel.trim();
-  const plural = (input.minQuantity ?? 1) !== 1;
-  if (input.assetCategory === "watch") return plural ? "watches" : "watch";
-  return plural ? "cards" : "card";
-}
-
 function formatSidebarRequirement(input: {
   acceptedProviders?: ApiMembershipGateSummary["accepted_providers"];
   assetCategory?: string | null;
+  assetDecimals?: number | null;
   assetFilterLabel?: string | null;
+  assetSymbol?: string | null;
   gateType: string;
+  minAmountAtomic?: string | null;
   requiredValue?: string | null;
   requiredValues?: string[] | null;
   requiredMinimumAge?: number | null;
@@ -78,91 +57,21 @@ function formatSidebarRequirement(input: {
   minQuantity?: number | null;
   locale?: string | null;
 }): string | null {
-  const locale = getRequirementLocale(input.locale);
-
-  switch (input.gateType) {
-    case "nationality": {
-      const requiredValues = input.requiredValues?.length ? input.requiredValues : input.requiredValue ? [input.requiredValue] : [];
-      if (requiredValues.length === 0) {
-        if (locale === "ar") return "التحقق من الجنسية";
-        if (locale === "zh") return "国籍验证";
-        return "Nationality verification";
-      }
-      const countries = requiredValues.map((value) => getCountryDisplayName(value, input.locale)).join(", ");
-      if (locale === "ar") return `جنسية ${countries}`;
-      if (locale === "zh") return `${countries} 国籍`;
-      return `${countries} nationality`;
-    }
-    case "gender":
-      if (locale === "ar") {
-        return input.requiredValue
-          ? `علامة الجنس في الوثيقة ${input.requiredValue}`
-          : "علامة الجنس في الوثيقة";
-      }
-      if (locale === "zh") {
-        return input.requiredValue
-          ? `证件性别标记 ${input.requiredValue}`
-          : "证件性别标记";
-      }
-      return input.requiredValue
-        ? `Document sex marker ${input.requiredValue}`
-        : "Document sex marker";
-    case "age_over_18":
-      return "18+";
-    case "minimum_age":
-      return `${input.requiredMinimumAge ?? 18}+`;
-    case "unique_human": {
-      const acceptedProviders = input.acceptedProviders ?? [];
-      const isVeryOnly = acceptedProviders.length === 1 && acceptedProviders[0] === "very";
-      const isSelfOnly = acceptedProviders.length === 1 && acceptedProviders[0] === "self";
-      if (isVeryOnly) {
-        if (locale === "ar") return "فحص راحة اليد";
-        if (locale === "zh") return "掌纹扫描";
-        return "Palm scan";
-      }
-      if (isSelfOnly) {
-        if (locale === "ar") return "إثبات الهوية الخاص";
-        if (locale === "zh") return "私密身份证明";
-        return "Private ID proof";
-      }
-      if (locale === "ar") return "إثبات أنك إنسان";
-      if (locale === "zh") return "真人证明";
-      return "Human proof";
-    }
-    case "altcha_pow":
-      if (locale === "ar") return "إثبات العمل";
-      if (locale === "zh") return "工作量证明";
-      return "Proof of work";
-    case "wallet_score":
-      if (typeof input.minimumScore === "number") {
-        if (locale === "ar") return `درجة Passport ${input.minimumScore}+`;
-        if (locale === "zh") return `Passport 分数 ${input.minimumScore}+`;
-        return `Passport score ${input.minimumScore}+`;
-      }
-      if (locale === "ar") return "درجة Passport";
-      if (locale === "zh") return "Passport 分数";
-      return "Passport score";
-    case "erc721_holding": {
-      const label = input.contractAddress ? shortenAddress(input.contractAddress) : null;
-      if (label) {
-        if (locale === "ar") return `حاملو NFT على إيثريوم من ${label}`;
-        if (locale === "zh") return `来自 ${label} 的以太坊 NFT 持有者`;
-        return `Ethereum NFT from ${label}`;
-      }
-      if (locale === "ar") return "حاملو NFT على إيثريوم";
-      if (locale === "zh") return "以太坊 NFT 持有者";
-      return "Ethereum NFT holder";
-    }
-    case "erc721_inventory_match": {
-      const quantity = String(input.minQuantity ?? 1);
-      const assetLabel = formatInventoryAssetLabel(input);
-      if (locale === "ar") return `${quantity} مقتنيات Courtyard ${assetLabel}`;
-      if (locale === "zh") return `${quantity} Courtyard ${assetLabel}`;
-      return `${quantity} Courtyard ${assetLabel}`;
-    }
-    default:
-      return null;
-  }
+  return formatGateRequirement({
+    accepted_providers: input.acceptedProviders,
+    asset_category: input.assetCategory,
+    asset_decimals: input.assetDecimals,
+    asset_filter_label: input.assetFilterLabel,
+    asset_symbol: input.assetSymbol,
+    contract_address: input.contractAddress,
+    gate_type: input.gateType as ApiMembershipGateSummary["gate_type"],
+    min_amount_atomic: input.minAmountAtomic,
+    min_quantity: input.minQuantity,
+    minimum_score: input.minimumScore,
+    required_minimum_age: input.requiredMinimumAge,
+    required_value: input.requiredValue,
+    required_values: input.requiredValues,
+  }, { locale: input.locale, presentation: "compact" });
 }
 
 function formatGateExpressionLabel(
@@ -190,6 +99,9 @@ function formatGateExpressionLabel(
         acceptedProviders: node.gate.accepted_providers,
         assetCategory: node.gate.asset_category,
         assetFilterLabel: node.gate.asset_filter_label,
+        assetDecimals: node.gate.asset_decimals,
+        assetSymbol: node.gate.asset_symbol,
+        minAmountAtomic: node.gate.min_amount_atomic,
         contractAddress: node.gate.contract_address,
         gateType: node.gate.gate_type,
         minQuantity: node.gate.min_quantity,
@@ -257,6 +169,9 @@ export function buildCommunitySidebarRequirements(input: {
         acceptedProviders: gate.accepted_providers ?? null,
         assetCategory: gate.asset_category ?? null,
         assetFilterLabel: gate.asset_filter_label ?? null,
+        assetDecimals: gate.asset_decimals ?? null,
+        assetSymbol: gate.asset_symbol ?? null,
+        minAmountAtomic: gate.min_amount_atomic ?? null,
         gateType: gate.gate_type,
         contractAddress: gate.contract_address ?? null,
         minQuantity: gate.min_quantity ?? null,
@@ -290,11 +205,17 @@ function applyGateStatuses(
   items: CommunitySidebarGateItem[],
   eligibility: ApiJoinEligibility | null | undefined,
   gateMatchMode?: "all" | "any" | null,
+  traceExcludedIndexes: number[] = [],
 ): CommunitySidebarGateItem[] {
+  const excluded = new Set(traceExcludedIndexes);
   const statuses = deriveGateStatuses({
     eligibility,
     gateMatchMode,
-    requirements: items.map((item) => ({ gate_type: item.gateType as ApiMembershipGateSummary["gate_type"] })),
+    requirements: items.map((item, index) => ({
+      gate_type: item.gateType as ApiMembershipGateSummary["gate_type"],
+      gate_id: item.gateId ?? null,
+      trace_match: !excluded.has(index),
+    })),
   });
   return items.map((item, index) => ({ ...item, status: statuses[index] ?? "unknown" }));
 }
@@ -307,12 +228,14 @@ export function buildCommunitySidebarGateItems(input: {
   gateMatchMode?: "all" | "any" | null;
 }): CommunitySidebarGateItem[] {
   const items: CommunitySidebarGateItem[] = [];
-  const seenLabels = new Set<string>();
+  const seenRequirements = new Set<string>();
+  const traceExcludedIndexes: number[] = [];
 
   if (input.defaultAgeGatePolicy === "18_plus") {
     const label = formatSidebarRequirement({ gateType: "age_over_18", locale: input.locale });
     if (label) {
-      seenLabels.add(label);
+      seenRequirements.add(`label:${label}`);
+      traceExcludedIndexes.push(items.length);
       items.push({
         gateType: "age_over_18",
         label,
@@ -327,6 +250,9 @@ export function buildCommunitySidebarGateItems(input: {
       acceptedProviders: gate.accepted_providers ?? null,
       assetCategory: gate.asset_category ?? null,
       assetFilterLabel: gate.asset_filter_label ?? null,
+      assetDecimals: gate.asset_decimals ?? null,
+      assetSymbol: gate.asset_symbol ?? null,
+      minAmountAtomic: gate.min_amount_atomic ?? null,
       contractAddress: gate.contract_address ?? null,
       gateType: gate.gate_type,
       locale: input.locale,
@@ -336,9 +262,11 @@ export function buildCommunitySidebarGateItems(input: {
       requiredMinimumAge: gate.required_minimum_age ?? null,
       minimumScore: gate.minimum_score ?? null,
     });
-    if (label && !seenLabels.has(label)) {
-      seenLabels.add(label);
+    const requirementKey = gate.gate_id ? `id:${gate.gate_id}` : `label:${label}`;
+    if (label && !seenRequirements.has(requirementKey)) {
+      seenRequirements.add(requirementKey);
       items.push({
+        gateId: gate.gate_id ?? null,
         gateType: gate.gate_type,
         label,
         provider: resolveGateProvider(gate),
@@ -347,30 +275,68 @@ export function buildCommunitySidebarGateItems(input: {
     }
   }
 
-  return applyGateStatuses(items, input.eligibility, input.gateMatchMode);
+  return applyGateStatuses(items, input.eligibility, input.gateMatchMode, traceExcludedIndexes);
 }
 
-export function getCommunityGateSummaries(
+/**
+ * Indexes asset display metadata from API-built gate summaries by asset id.
+ *
+ * The authenticated sidebar projects its rows from raw `gate_policy` atoms, but
+ * an `asset_balance` atom carries only an id and an atomic amount — symbol and
+ * decimals live on the API summary. An asset id fully determines both (it is
+ * the server registry's key), so matching by id avoids depending on the two
+ * lists being ordered alike.
+ */
+function indexAssetDisplayByAssetId(
+  gateSummaries: ApiMembershipGateSummary[] | null | undefined,
+): Map<string, { symbol: string | null; decimals: number | null }> {
+  const byAssetId = new Map<string, { symbol: string | null; decimals: number | null }>();
+  for (const summary of gateSummaries ?? []) {
+    if (summary.gate_type !== "asset_balance" || !summary.asset_id) continue;
+    byAssetId.set(summary.asset_id, {
+      symbol: summary.asset_symbol ?? null,
+      decimals: typeof summary.asset_decimals === "number" ? summary.asset_decimals : null,
+    });
+  }
+  return byAssetId;
+}
+
+function getCommunityGateSummaries(
   community: ApiCommunity,
+  apiGateSummaries?: ApiMembershipGateSummary[] | null,
 ): SidebarGateSummary[] {
+  const assetDisplay = indexAssetDisplayByAssetId(apiGateSummaries);
   return flattenGatePolicyAtoms(community.gate_policy).map((atom) => ({
-    accepted_providers: "provider" in atom && (atom.provider === "self" || atom.provider === "very" || atom.provider === "passport")
+    accepted_providers: "provider" in atom && (atom.provider === "self" || atom.provider === "zkpassport" || atom.provider === "very" || atom.provider === "passport")
       ? [atom.provider]
       : null,
     asset_category: "asset_category" in atom ? (atom.asset_category as string | null | undefined) : null,
     asset_filter_label: "asset_filter_label" in atom ? (atom.asset_filter_label as string | null | undefined) : null,
     contract_address: "contract_address" in atom ? atom.contract_address : null,
+    gate_id: atom.gate_id ?? null,
     gate_type: atom.type as ApiMembershipGateSummary["gate_type"],
-    min_quantity: "min_quantity" in atom ? atom.min_quantity : null,
+    min_quantity: atom.type === "erc721_holding"
+      ? ("min_count" in atom && typeof atom.min_count === "number" ? atom.min_count : 1)
+      : "min_quantity" in atom ? atom.min_quantity : null,
     required_value: atom.type === "gender" ? atom.allowed?.[0] ?? null : atom.type === "nationality" && atom.allowed?.length === 1 ? atom.allowed[0] : null,
     required_values: atom.type === "nationality" && (atom.allowed?.length ?? 0) > 1 ? atom.allowed : atom.type === "gender" && (atom.allowed?.length ?? 0) > 1 ? atom.allowed : null,
     required_minimum_age: atom.type === "minimum_age" ? atom.minimum_age : null,
     minimum_score: atom.type === "wallet_score" ? atom.minimum_score : null,
+    asset_id: atom.type === "asset_balance" ? atom.asset_id ?? null : null,
+    min_amount_atomic: atom.type === "asset_balance" ? atom.min_amount_atomic ?? null : null,
+    asset_symbol: atom.type === "asset_balance" && atom.asset_id
+      ? assetDisplay.get(atom.asset_id)?.symbol ?? null
+      : null,
+    asset_decimals: atom.type === "asset_balance" && atom.asset_id
+      ? assetDisplay.get(atom.asset_id)?.decimals ?? null
+      : null,
   }));
 }
 
 export function buildCommunitySidebar(community: ApiCommunity, locale?: string | null, eligibility?: ApiJoinEligibility | null) {
-  const gateSummaries = getCommunityGateSummaries(community);
+  // The community payload has no API-built gate summaries, so asset display
+  // metadata is sourced from the eligibility readout when it has loaded.
+  const gateSummaries = getCommunityGateSummaries(community, eligibility?.membership_gate_summaries);
   const gateExpression = buildGateExpressionSummary(community.gate_policy, gateSummaries);
   const charityHref = community.donation_partner?.provider_partner_ref
     ? `https://app.endaoment.org/orgs/${community.donation_partner.provider_partner_ref}`
@@ -410,6 +376,8 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
       gateMatchMode: getGatePolicyMatchMode(community.gate_policy),
     }),
     gateExpressionLabel: formatGateExpressionLabel(gateExpression, locale),
+    showFlatGateOrMarkers: (community.default_age_gate_policy ?? "none") !== "18_plus"
+      && isFlatOrGateExpression(community.gate_policy?.expression),
     hasActionTimeCheck: hasActionTimeCheck(gateSummaries),
     requirementsMode: getGatePolicyMatchMode(community.gate_policy),
     referenceLinks: community.reference_links?.map((link) => ({
@@ -436,30 +404,6 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
     owner: undefined,
     moderators: [],
     rules: getCommunitySidebarRules(community),
-  };
-}
-
-export function buildCommunitySidebarRoleHolderFromProfile(profile: ApiProfile | null | undefined): CommunitySidebarRoleHolder | null {
-  if (!profile) {
-    return null;
-  }
-
-  const handle = profile.primary_public_handle?.label?.trim()
-    || profile.global_handle.label.trim();
-  const displayName = profile.display_name?.trim() || handle;
-  if (!handle || !displayName) {
-    return null;
-  }
-
-  return {
-    user: profile.id,
-    avatarSeed: profile.id,
-    avatarSrc: profile.avatar_ref ?? undefined,
-    displayName,
-    handle,
-    nationalityBadgeCountryCode: profile.nationality_badge_country ?? undefined,
-    nationalityBadgeLabel: profile.nationality_badge_country ?? undefined,
-    role: "owner" as const,
   };
 }
 
@@ -523,6 +467,8 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
       gateMatchMode: preview.gate_match_mode ?? null,
     }),
     gateExpressionLabel: formatGateExpressionLabel(preview.membership_gate_expression, locale),
+    showFlatGateOrMarkers: !preview.membership_gate_summaries.some((summary) => summary.gate_type === "age_over_18")
+      && isFlatOrGateExpression(preview.membership_gate_expression),
     hasActionTimeCheck: hasActionTimeCheck(preview.membership_gate_summaries),
     requirementsMode: preview.gate_match_mode ?? undefined,
     referenceLinks: preview.reference_links?.map((link) => ({
@@ -556,7 +502,7 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
   };
 }
 
-export function getCommunitySidebarRules(community: ApiCommunity | null): CommunitySidebarRule[] {
+function getCommunitySidebarRules(community: ApiCommunity | null): CommunitySidebarRule[] {
   return community?.community_profile?.rules?.map((rule) => ({
     body: resolveCommunityLocalizedText(
       community,

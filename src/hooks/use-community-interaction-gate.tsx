@@ -19,6 +19,8 @@ import type { VerificationIntent } from "@pirate/api-contracts";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { logger } from "@/lib/logger";
+import { solveAltchaChallengeHeadless } from "@/lib/verification/altcha-headless";
+import type { AltchaScope } from "@/lib/api/client-groups-core";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { useZkPassportVerification } from "@/lib/verification/use-zkpassport-verification";
@@ -40,7 +42,7 @@ import {
   type RouteKind,
 } from "./use-community-interaction-gate.helpers";
 
-export { resolveCommunityInteractionState } from "./use-community-interaction-gate.helpers";
+;
 
 const LazySelfVerificationModal = React.lazy(async () => {
   const mod = await import("@/components/compositions/verification/self-verification-modal/self-verification-modal");
@@ -187,7 +189,7 @@ export function useCommunityInteractionGate({
       setModalState((current) => current ? {
         ...current,
         body: buildAltchaBody({
-          action: `community:${pendingInteraction.communityId}`,
+          action: `community:${pendingInteraction.gate.eligibility.community || pendingInteraction.communityId}`,
           resetKey: nextResetKey,
           scope: "community_join",
         }),
@@ -213,15 +215,25 @@ export function useCommunityInteractionGate({
         invalidateCommunityGate,
         pendingInteraction,
       });
-    }, (error) => {
+    }, (error, nextResetKey) => {
+      setModalState((current) => current && pendingInteraction.altchaAction && pendingInteraction.altchaScope ? {
+        ...current,
+        body: buildAltchaBody({
+          action: pendingInteraction.altchaAction,
+          onVerified: completeAltchaAction,
+          resetKey: nextResetKey,
+          scope: pendingInteraction.altchaScope,
+        }),
+      } : current);
       logger.warn("[interaction-gate] action after browser check failed", {
         action: pendingInteraction.action,
         communityId: pendingInteraction.communityId,
         message: getErrorMessage(error, "Browser anti-bot check failed."),
         postId: pendingInteraction.postId,
       });
+      toast.error(getErrorMessage(error, "Browser anti-bot check failed."));
     });
-  }, [closeModal, completeAltchaActionWithPayload, invalidateCommunityGate]);
+  }, [buildAltchaBody, closeModal, completeAltchaActionWithPayload, invalidateCommunityGate]);
 
   const {
     startVerification: startVeryVerification,
@@ -348,6 +360,16 @@ export function useCommunityInteractionGate({
     return refreshedUser;
   }, [api.users]);
 
+  const solveActionAltcha = React.useCallback(
+    (input: { action: string; scope: AltchaScope }) =>
+      solveAltchaChallengeHeadless({
+        action: input.action,
+        loadChallenge: api.verification.createAltchaChallenge,
+        scope: input.scope,
+      }),
+    [api.verification.createAltchaChallenge],
+  );
+
   const runGatedCommunityAction = useGatedActionRunner({
     altchaLoading,
     buildAltchaBody,
@@ -375,6 +397,7 @@ export function useCommunityInteractionGate({
     setPendingInteraction: (pendingInteraction) => {
       pendingInteractionRef.current = pendingInteraction;
     },
+    solveActionAltcha,
     startDefaultVerification,
     startWalletConnection,
     walletConnectionLoading,
@@ -392,6 +415,7 @@ export function useCommunityInteractionGate({
       gateData: joinedGate,
       onAllowed: pendingInteraction.onAllowed,
       postId: pendingInteraction.postId,
+      requireMembership: pendingInteraction.requireMembership,
       resumeActionAfterJoin: pendingInteraction.resumeActionAfterJoin,
       voteValue: pendingInteraction.voteValue,
     });
@@ -415,6 +439,7 @@ export function useCommunityInteractionGate({
       requirementStatuses={modalState.requirementStatuses}
       secondaryAction={modalState.secondaryAction}
       title={modalState.title}
+      verificationProviderActions={modalState.verificationProviderActions}
     />
   ) : null;
 

@@ -4,6 +4,7 @@ import * as React from "react";
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
+import type { ApiCommunityNamespaceAttachment } from "@/lib/api/client-api-types";
 import { useSession } from "@/lib/api/session-store";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { NamespaceVerificationCallbacks } from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
@@ -27,11 +28,47 @@ import { useCommunityTelegramState } from "./use-community-telegram-state";
 import { useCommunityVisualPolicyState } from "./use-community-visual-policy-state";
 import { useCommunityHandlePolicyState } from "./use-community-handle-policy-state";
 
+export function namespaceRoleForCompletedVerification(input: {
+  currentNamespaceVerificationId: string | null | undefined;
+  completedNamespaceVerificationId: string;
+  attachments: ApiCommunityNamespaceAttachment[];
+}): "primary" | "mirror" {
+  if (!input.currentNamespaceVerificationId || input.completedNamespaceVerificationId === input.currentNamespaceVerificationId) {
+    return "primary";
+  }
+
+  const currentPrimary = input.attachments.find(
+    (attachment) => attachment.namespace_role === "primary"
+      && attachment.namespace_verification === input.currentNamespaceVerificationId,
+  );
+
+  // A rebuilt verification gets a new id. Promote it only when the current
+  // primary is explicitly present and no longer routable; otherwise preserve
+  // the normal mirror-attachment behavior.
+  return currentPrimary && currentPrimary.verification_status !== "verified"
+    ? "primary"
+    : "mirror";
+}
+
 export function useCommunityModerationState(communityId: string) {
   const api = useApi();
   const session = useSession();
   const { community, error, loading, setCommunity } = useCommunityRecord(communityId);
   const [activeNamespaceSessionId, setActiveNamespaceSessionId] = React.useState<string | null>(null);
+  const [namespaceAttachments, setNamespaceAttachments] = React.useState<ApiCommunityNamespaceAttachment[]>([]);
+
+  const refreshNamespaceAttachments = React.useCallback(async () => {
+    if (!community?.namespace_verification) {
+      setNamespaceAttachments([]);
+      return;
+    }
+    const response = await api.communities.listNamespaces(communityId);
+    setNamespaceAttachments(response.namespaces);
+  }, [api, community?.namespace_verification, communityId]);
+
+  React.useEffect(() => {
+    void refreshNamespaceAttachments().catch(() => setNamespaceAttachments([]));
+  }, [refreshNamespaceAttachments]);
 
   React.useEffect(() => {
     if (!community) {
@@ -68,19 +105,30 @@ export function useCommunityModerationState(communityId: string) {
 
       return toNamespaceSessionResult(result);
     },
-    onCompleteSession: async ({ namespaceVerificationSessionId, restartChallenge }) => {
+    onCompleteSession: async ({ namespaceVerificationSessionId, restartChallenge, acknowledgedResourceReplacement }) => {
       const result = await api.verification.completeNamespaceSession(namespaceVerificationSessionId, {
         restart_challenge: restartChallenge ?? null,
+        acknowledged_resource_replacement: acknowledgedResourceReplacement ?? null,
       });
 
       if (result.status === "verified" && result.namespace_verification) {
-        const updatedCommunity = await api.communities.attachNamespace(communityId, result.namespace_verification);
+        const namespaceRole = namespaceRoleForCompletedVerification({
+          currentNamespaceVerificationId: community?.namespace_verification,
+          completedNamespaceVerificationId: result.namespace_verification,
+          attachments: namespaceAttachments,
+        });
+        const updatedCommunity = await api.communities.attachNamespace(
+          communityId,
+          result.namespace_verification,
+          namespaceRole,
+        );
         setCommunity(updatedCommunity);
         setActiveNamespaceSessionId(null);
+        await refreshNamespaceAttachments();
       }
 
       return {
-        status: result.status,
+        ...toNamespaceSessionResult(result),
         namespaceVerificationId: result.namespace_verification ?? null,
         failureReason: result.failure_reason ?? null,
       };
@@ -89,7 +137,23 @@ export function useCommunityModerationState(communityId: string) {
       const result = await api.verification.getNamespaceSession(namespaceVerificationSessionId);
       return toNamespaceSessionResult(result);
     },
-  }), [api, communityId, setCommunity]);
+  }), [api, community?.namespace_verification, communityId, namespaceAttachments, refreshNamespaceAttachments, setCommunity]);
+
+  const restoreNamespacePrimary = React.useCallback(async (namespaceVerificationId: string) => {
+    try {
+      const updatedCommunity = await api.communities.attachNamespace(
+        communityId,
+        namespaceVerificationId,
+        "primary",
+      );
+      setCommunity(updatedCommunity);
+      setActiveNamespaceSessionId(null);
+      await refreshNamespaceAttachments();
+      toast.success("Namespace restored as the community route.");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not restore the namespace route."));
+    }
+  }, [api, communityId, refreshNamespaceAttachments, setCommunity]);
 
   const saveCommunity = React.useCallback(
     async (
@@ -134,6 +198,7 @@ export function useCommunityModerationState(communityId: string) {
   const handlePolicy = useCommunityHandlePolicyState({
     communityId: community?.id ?? null,
     enabled: Boolean(community?.namespace_verification),
+    namespaces: namespaceAttachments,
   });
 
   return {
@@ -142,7 +207,10 @@ export function useCommunityModerationState(communityId: string) {
     effectiveNamespaceSessionId,
     error,
     loading,
+    namespaceAttachments,
     namespaceVerificationCallbacks,
+    refreshNamespaceAttachments,
+    restoreNamespacePrimary,
     session,
     setActiveNamespaceSessionId,
     setCommunity,

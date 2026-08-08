@@ -17,7 +17,7 @@ export interface BookingProfile {
   created: number;
   updated: number;
 }
-export interface BookingProfileEmpty {
+interface BookingProfileEmpty {
   object: "booking_profile";
   exists: false;
   host: string;
@@ -119,6 +119,39 @@ export interface SlotsResponse {
   slots: ResolvedSlot[];
 }
 
+function isResolvedSlot(value: unknown): value is ResolvedSlot {
+  if (!value || typeof value !== "object") return false;
+  const slot = value as Record<string, unknown>;
+  return typeof slot.startUtc === "string"
+    && Number.isFinite(Date.parse(slot.startUtc))
+    && typeof slot.endUtc === "string"
+    && Number.isFinite(Date.parse(slot.endUtc))
+    && Date.parse(slot.endUtc) > Date.parse(slot.startUtc)
+    && typeof slot.priceCents === "number"
+    && Number.isSafeInteger(slot.priceCents)
+    && slot.priceCents >= 0
+    && typeof slot.available === "boolean";
+}
+
+/** Runtime guard for the untrusted availability response consumed by every booking surface. */
+export function parseSlotsResponse(value: unknown): SlotsResponse {
+  if (!value || typeof value !== "object") {
+    throw new TypeError("Invalid booking slots response");
+  }
+  const response = value as Record<string, unknown>;
+  if (
+    typeof response.host_timezone !== "string"
+    || response.host_timezone.trim().length === 0
+    || typeof response.viewer_timezone !== "string"
+    || response.viewer_timezone.trim().length === 0
+    || !Array.isArray(response.slots)
+    || !response.slots.every(isResolvedSlot)
+  ) {
+    throw new TypeError("Invalid booking slots response");
+  }
+  return response as unknown as SlotsResponse;
+}
+
 export interface BookingHold {
   hold_id: string;
   source_community_id: string | null;
@@ -149,6 +182,32 @@ export interface PaymentInstructions {
   hold_expires_at: string;
   wallet_attachment_required: boolean;
 }
+export type BookingPaymentResumeState =
+  | "payable"
+  | "confirmable"
+  | "finalizable"
+  | "booked"
+  | "refund_pending";
+export interface PendingBookingPaymentIntent {
+  hold_id: string;
+  payment_intent_id: string;
+  intent_status: "active" | "verifying" | "verified" | "verification_failed" | "consumed";
+  resume_state: BookingPaymentResumeState;
+  claimed_tx_ref: string | null;
+  wallet_attachment_id: string | null;
+  payment: PaymentInstructions;
+  quote_expires_at: string;
+  hold_expires_at: string;
+  host_user_id: string;
+  slot_start_utc: string;
+  slot_end_utc: string;
+  booking_id: string | null;
+}
+export interface PendingBookingPaymentIntentsResponse {
+  object: "list";
+  data: PendingBookingPaymentIntent[];
+  has_more: boolean;
+}
 export interface BookingQuote {
   hold_id: string;
   gross_cents: number;
@@ -163,24 +222,24 @@ export interface ConfirmHoldRequest {
   wallet_attachment_id: string;
 }
 
-export type BookingStatus =
+type BookingStatus =
   | "confirmed" | "live" | "completed" | "settled" | "refunded"
   | "no_show_host" | "no_show_booker" | "cancelled_by_host" | "cancelled_by_booker"
   | "cancelled_before_payment" | "expired_hold" | "disputed";
 
-export type BookingOutcome =
+type BookingOutcome =
   | "completed" | "no_show_host" | "no_show_booker"
   | "cancelled_by_host" | "cancelled_by_booker";
-export type BookingSettlementStatus = "pending" | "live" | "settling" | "settled" | "refunded" | "disputed";
+type BookingSettlementStatus = "pending" | "live" | "settling" | "settled" | "refunded" | "disputed";
 
-export interface BookingCounterparty {
+interface BookingCounterparty {
   user_id: string;
   public_handle: string | null;
   display_name: string | null;
   avatar_ref: string | null;
 }
 
-export interface Booking {
+interface Booking {
   booking_id: string;
   source_community_id: string | null;
   hold_id: string;
@@ -204,7 +263,7 @@ export interface Booking {
 export interface ConfirmHoldResponse { booking: Booking; already_confirmed: boolean }
 
 // Lifecycle action responses share a compact booking snapshot.
-export interface BookingSnapshot {
+interface BookingSnapshot {
   booking_id: string;
   status: BookingStatus;
   outcome: BookingOutcome | null;
@@ -248,7 +307,7 @@ export interface BookingView {
   viewer_role: "host" | "booker";
 }
 
-export interface AgoraBlock {
+interface AgoraBlock {
   app_id: string;
   channel: string;
   uid: number;

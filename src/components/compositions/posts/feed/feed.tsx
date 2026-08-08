@@ -14,10 +14,14 @@ import {
   SelectValue,
 } from "@/components/primitives/select";
 import { Spinner } from "@/components/primitives/spinner";
+import { Button } from "@/components/primitives/button";
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { FullBleedMobileListSection } from "@/components/compositions/app/page-shell";
 import { cn } from "@/lib/utils";
 import { Type } from "@/components/primitives/type";
+import { useBoostCampaignController } from "@/app/authenticated-helpers/use-boost-campaign-controller";
+import { BoostCampaignSheet } from "@/components/compositions/rewards/reward-booster-surfaces";
+import { useSession } from "@/lib/api/session-store";
 
 export type FeedSort = "best" | "new" | "top";
 
@@ -28,6 +32,13 @@ export interface FeedSortOption {
 
 export interface FeedItem {
   id: string;
+  booking?: {
+    basePriceCents: number;
+    currency: "USDC";
+    hasAvailableSlot: boolean;
+    hostUserId: string;
+    startingPriceCents: number | null;
+  };
   post: PostCardProps;
   postOriginal?: PostCardProps;
 }
@@ -53,6 +64,12 @@ export interface FeedProps {
   hideMobileHeaderControls?: boolean;
   loading?: boolean;
   loadingCount?: number;
+  loadingMore?: boolean;
+  hasMore?: boolean;
+  loadMoreError?: string | null;
+  loadMoreLabel?: string;
+  endMessage?: string;
+  onLoadMore?: () => void;
   aside?: React.ReactNode;
   className?: string;
   listClassName?: string;
@@ -64,7 +81,7 @@ export interface TopTimeRangeOption {
   value: string;
 }
 
-export const topTimeRangeOptions = [
+const topTimeRangeOptions = [
   { value: "hour", label: "This hour" },
   { value: "day", label: "Today" },
   { value: "week", label: "This week" },
@@ -74,6 +91,39 @@ export const topTimeRangeOptions = [
 ] satisfies readonly TopTimeRangeOption[];
 
 const EMPTY_FEED_SORT_OPTIONS: FeedSortOption[] = [];
+
+export function VideoViewerBoostBridge({
+  activeCampaignId,
+  communityId,
+  onAvailabilityChange,
+  postId,
+  viewerIsAuthor,
+}: {
+  activeCampaignId: string | null;
+  communityId: string;
+  onAvailabilityChange: (postId: string, canBoost: boolean, openBoost: () => void) => void;
+  postId: string;
+  viewerIsAuthor: boolean;
+}) {
+  const session = useSession();
+  const requestAuth = React.useCallback(() => undefined, []);
+  const controllerInput = React.useMemo(() => ({
+    activeCampaignId,
+    authenticated: Boolean(session?.accessToken),
+    communityId,
+    postId,
+    requestAuth,
+    song: true,
+    viewerIsAuthor,
+  }), [activeCampaignId, communityId, postId, requestAuth, session?.accessToken, viewerIsAuthor]);
+  const controller = useBoostCampaignController(controllerInput);
+
+  React.useEffect(() => {
+    onAvailabilityChange(postId, controller.canBoost, controller.openBoost);
+  }, [controller.canBoost, controller.openBoost, onAvailabilityChange, postId]);
+
+  return <BoostCampaignSheet {...controller.sheetProps} />;
+}
 
 export function TopTimeRangeControl({
   options = topTimeRangeOptions,
@@ -171,6 +221,12 @@ export function Feed({
   hideMobileHeaderControls = false,
   loading = false,
   loadingCount = 3,
+  loadingMore = false,
+  hasMore,
+  loadMoreError,
+  loadMoreLabel = "Load more",
+  endMessage = "You're all caught up.",
+  onLoadMore,
   aside,
   className,
   listClassName,
@@ -185,6 +241,17 @@ export function Feed({
   const showLoadingOnly = loading && !hasItems;
   const showLoadingTail = loading && hasItems;
   const [originalPostIds, setOriginalPostIds] = React.useState<Set<string>>(() => new Set());
+  const loadMoreSentinelRef = React.useRef<HTMLDivElement>(null);
+  const paginationEnabled = hasMore !== undefined && Boolean(onLoadMore);
+  React.useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel || !hasMore || loadingMore || !onLoadMore || typeof IntersectionObserver === "undefined") return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) onLoadMore();
+    }, { rootMargin: "600px 0px" });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, onLoadMore]);
 
   React.useEffect(() => {
     setOriginalPostIds((current) => {
@@ -298,6 +365,14 @@ export function Feed({
                 );
               })}
                 {showLoadingTail ? <FeedLoadingRows count={loadingCount} /> : null}
+                {paginationEnabled ? (
+                  <div className="flex flex-col items-center gap-2 border-t border-border-soft px-5 py-6" ref={loadMoreSentinelRef}>
+                    {loadingMore ? <Spinner className="size-5" /> : null}
+                    {loadMoreError ? <p className="text-center text-base text-destructive" role="alert">{loadMoreError}</p> : null}
+                    {hasMore && !loadingMore ? <Button onClick={onLoadMore} variant="secondary">{loadMoreLabel}</Button> : null}
+                    {!hasMore && !loadingMore ? <p className="text-base text-muted-foreground">{endMessage}</p> : null}
+                  </div>
+                ) : null}
               </div>
             </ListWrapper>
           ) : null}

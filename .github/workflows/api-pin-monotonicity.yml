@@ -1,0 +1,86 @@
+name: API Pin Policy
+
+on:
+  pull_request:
+    types:
+      - labeled
+      - opened
+      - reopened
+      - synchronize
+      - unlabeled
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  api-pin-monotonicity:
+    name: API pin monotonicity
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      contents: read
+    steps:
+      - name: Compare base and proposed pins
+        id: pins
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            async function readPin(ref) {
+              const response = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: ".github/release-refs/api.sha",
+                ref,
+              });
+              if (Array.isArray(response.data) || response.data.type !== "file" || !response.data.content) {
+                throw new Error(`Unable to read API release pin at ${ref}`);
+              }
+              const pin = Buffer.from(response.data.content, response.data.encoding ?? "base64").toString("utf8").trim();
+              if (!/^[0-9a-f]{40}$/.test(pin)) {
+                throw new Error(`API release pin at ${ref} must be one full lowercase commit SHA`);
+              }
+              return pin;
+            }
+
+            const basePin = await readPin(context.payload.pull_request.base.sha);
+            const proposedPin = await readPin(context.payload.pull_request.head.sha);
+            core.setOutput("base", basePin);
+            core.setOutput("proposed", proposedPin);
+            core.setOutput("changed", String(basePin !== proposedPin));
+            core.info(basePin === proposedPin
+              ? `API release pin is unchanged at ${proposedPin}.`
+              : `API release pin changes from ${basePin} to ${proposedPin}.`);
+      - name: Check out policy script
+        if: >-
+          steps.pins.outputs.changed == 'true'
+          && !contains(github.event.pull_request.labels.*.name, 'release-pin-rollback-approved')
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: web
+      - name: Check out API history
+        if: >-
+          steps.pins.outputs.changed == 'true'
+          && !contains(github.event.pull_request.labels.*.name, 'release-pin-rollback-approved')
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+          path: api
+          ref: ${{ steps.pins.outputs.proposed }}
+          repository: pirate-social-club/api
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - name: Reject API pin rollback
+        if: >-
+          steps.pins.outputs.changed == 'true'
+          && !contains(github.event.pull_request.labels.*.name, 'release-pin-rollback-approved')
+        working-directory: web
+        run: >-
+          node scripts/check-release-pin-ancestry.mjs
+          --repo ../api
+          --base "${{ steps.pins.outputs.base }}"
+          --proposed "${{ steps.pins.outputs.proposed }}"
+      - name: Acknowledge intentional API rollback
+        if: >-
+          steps.pins.outputs.changed == 'true'
+          && contains(github.event.pull_request.labels.*.name, 'release-pin-rollback-approved')
+        run: >-
+          echo "::warning::API pin ancestry check bypassed by the
+          release-pin-rollback-approved label for an intentional rollback."

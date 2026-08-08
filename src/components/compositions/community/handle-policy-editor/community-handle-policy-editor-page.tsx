@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Warning } from "@phosphor-icons/react";
+import { ArrowDown, ArrowUp, Plus, Warning, X } from "@phosphor-icons/react";
 import type { CommunityHandle } from "@pirate/api-contracts";
 
 import { CommunityModerationSaveFooter } from "@/components/compositions/community/moderation-shell/community-moderation-save-footer";
@@ -23,23 +23,160 @@ import {
 import { Switch } from "@/components/primitives/switch";
 import { Textarea } from "@/components/primitives/textarea";
 import { Type } from "@/components/primitives/type";
+import { getLocaleMessages } from "@/locales";
+import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
-import { parseSpecialPricesText, type HandlePolicyDraft, type HandlePricingMode, type HandleStatusFilter } from "@/app/authenticated-state/use-community-handle-policy-state";
+import { formatUsdCentsLabel } from "@/lib/formatting/currency";
+import {
+  MAX_LABEL_CLAIM_RULES,
+  isLabelClaimRuleDraftSavable,
+  parseSpecialPricesText,
+  type HandleLabelClaimRuleDraft,
+  type HandlePolicyDraft,
+  type HandlePricingMode,
+  type HandleStatusFilter,
+} from "@/app/authenticated-state/use-community-handle-policy-state";
+import { parseGatePolicyToTreeDraft } from "@/app/authenticated-helpers/community-gate-tree-draft";
+import { GateTreeBuilder } from "@/components/compositions/community/gates-editor/tree-builder/gate-tree-builder";
+import type { GateCapabilitySources } from "@/components/compositions/community/gates-editor/tree-builder/gate-capability-sources";
 
 const EMPTY_HANDLES: CommunityHandle[] = [];
+type RuleEditorCopy = ReturnType<typeof getLocaleMessages<"gates">>["handleClaims"]["ruleEditor"];
+
+function LabelClaimRuleCard({
+  capabilities,
+  copy,
+  disabled,
+  index,
+  onChange,
+  onMove,
+  onRemove,
+  rule,
+  ruleCount,
+}: {
+  capabilities?: GateCapabilitySources;
+  copy: RuleEditorCopy;
+  disabled: boolean;
+  index: number;
+  onChange: (rule: HandleLabelClaimRuleDraft) => void;
+  onMove: (direction: -1 | 1) => void;
+  onRemove: () => void;
+  rule: HandleLabelClaimRuleDraft;
+  ruleCount: number;
+}) {
+  const savable = isLabelClaimRuleDraftSavable(rule);
+  return (
+    <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/10 p-4">
+      <div className="flex items-center gap-2">
+        <Type as="h3" variant="body-strong" className="min-w-0 flex-1">
+          {copy.ruleTitle.replace("{number}", String(index + 1))}
+        </Type>
+        <Button
+          aria-label={copy.moveUp}
+          disabled={disabled || index === 0}
+          onClick={() => onMove(-1)}
+          size="icon"
+          variant="ghost"
+        >
+          <ArrowUp size={16} />
+        </Button>
+        <Button
+          aria-label={copy.moveDown}
+          disabled={disabled || index === ruleCount - 1}
+          onClick={() => onMove(1)}
+          size="icon"
+          variant="ghost"
+        >
+          <ArrowDown size={16} />
+        </Button>
+        <Button
+          aria-label={copy.remove}
+          disabled={disabled}
+          onClick={onRemove}
+          size="icon"
+          variant="ghost"
+        >
+          <X size={16} />
+        </Button>
+      </div>
+
+      <div className="flex flex-col gap-2 md:flex-row md:items-center">
+        <div className="w-full md:w-56 md:shrink-0">
+          <Select
+            value={rule.selectorType}
+            onValueChange={(selectorType) => {
+              if (selectorType === "exact" || selectorType === "any") {
+                onChange({ ...rule, selectorType });
+              }
+            }}
+          >
+            <SelectTrigger aria-label={copy.selectorLabel} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="exact">{copy.specificNames}</SelectItem>
+              <SelectItem value="any">{copy.allNames}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {rule.selectorType === "exact" ? (
+          <div className="min-w-0 flex-1">
+            <Input
+              aria-label={copy.namesLabel}
+              disabled={disabled}
+              onChange={(event) => onChange({ ...rule, labelsText: event.currentTarget.value })}
+              placeholder={copy.namesPlaceholder}
+              value={rule.labelsText}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      <GateTreeBuilder
+        capabilities={capabilities}
+        className="max-w-none p-0"
+        labelBindingEnabled
+        onChange={(gateTreeDraft) => onChange({ ...rule, gateTreeDraft })}
+        showHeader={false}
+        value={rule.gateTreeDraft}
+      />
+
+      {!savable ? (
+        <FormNote tone="warning">
+          {rule.selectorType === "exact"
+            ? copy.invalidExact
+            : copy.invalidAny}
+        </FormNote>
+      ) : null}
+    </div>
+  );
+}
+
+export interface HandlePolicyNamespaceOption {
+  value: string;
+  label: string;
+}
 
 export interface CommunityHandlePolicyEditorPageProps {
   className?: string;
+  capabilities?: GateCapabilitySources;
   draft: HandlePolicyDraft;
   hasChanges: boolean;
   hasNamespace: boolean;
   namespaceLabel?: string | null;
+  namespaceOptions?: HandlePolicyNamespaceOption[];
+  namespaceSuffix?: string | null;
+  policyConflict?: boolean;
+  onSelectNamespace?: (namespaceVerification: string) => void;
+  selectedNamespaceVerification?: string | null;
   handles?: CommunityHandle[];
   handlesLoading?: boolean;
   handleStatusFilter?: HandleStatusFilter;
   handleOpsLoading?: boolean;
   onDraftChange: (draft: HandlePolicyDraft) => void;
   onNavigateToNamespace?: () => void;
+  onLoadLatestPolicy?: () => void;
+  onOverwritePolicyConflict?: () => void;
   onReserveHandle?: (desiredLabel: string) => Promise<void> | void;
   onRevokeHandle?: (handleId: string) => Promise<void> | void;
   onStatusFilterChange?: (status: HandleStatusFilter) => void;
@@ -162,9 +299,8 @@ function MoneyInputRow({
   );
 }
 
-function formatCents(cents: number | null): string {
-  if (cents == null) return "$0.00";
-  return `$${(cents / 100).toFixed(2)}`;
+function formatCents(cents: number | null, locale: string): string {
+  return formatUsdCentsLabel(cents, locale) ?? "—";
 }
 
 function computePreviewPrice(label: string, draft: HandlePolicyDraft): { priceCents: number; tier: string } {
@@ -199,6 +335,7 @@ function computePreviewPrice(label: string, draft: HandlePolicyDraft): { priceCe
 
 export function CommunityHandlePolicyEditorPage({
   className,
+  capabilities,
   draft,
   hasChanges,
   hasNamespace,
@@ -207,15 +344,24 @@ export function CommunityHandlePolicyEditorPage({
   handleOpsLoading = false,
   handleStatusFilter = "all",
   namespaceLabel,
+  namespaceOptions,
+  namespaceSuffix,
+  onSelectNamespace,
+  selectedNamespaceVerification,
   onDraftChange,
   onNavigateToNamespace,
+  onLoadLatestPolicy,
+  onOverwritePolicyConflict,
   onReserveHandle,
   onRevokeHandle,
   onStatusFilterChange,
   onSave,
   saveDisabled = false,
   saveLoading = false,
+  policyConflict = false,
 }: CommunityHandlePolicyEditorPageProps) {
+  const { locale } = useUiLocale();
+  const ruleCopy = getLocaleMessages(locale, "gates").handleClaims.ruleEditor;
   const [previewInput, setPreviewInput] = React.useState("alex");
   const [reserveInput, setReserveInput] = React.useState("");
   const preview = computePreviewPrice(previewInput, draft);
@@ -269,6 +415,52 @@ export function CommunityHandlePolicyEditorPage({
         </div>
       ) : null}
 
+      {hasNamespace && namespaceOptions && namespaceOptions.length > 1 ? (
+        <div className="space-y-2 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 p-4">
+          <FormFieldLabel label="Namespace" />
+          <div className="w-full md:w-72">
+            <Select
+              value={selectedNamespaceVerification ?? undefined}
+              onValueChange={(value) => onSelectNamespace?.(value)}
+            >
+              <SelectTrigger aria-label="Namespace" className="h-11 w-full rounded-[var(--radius-lg)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {namespaceOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <FormNote tone="muted">
+            The policy, pricing, rules, and operations below apply only to the selected namespace.
+          </FormNote>
+        </div>
+      ) : null}
+
+      {policyConflict ? (
+        <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-warning/30 bg-warning/5 p-4 md:flex-row md:items-center">
+          <Warning className="size-5 shrink-0 text-warning" weight="bold" />
+          <div className="min-w-0 flex-1 space-y-1">
+            <Type as="p" variant="body-strong">This policy changed while you were editing.</Type>
+            <Type as="p" variant="caption">
+              Your draft is preserved. Load the latest policy or overwrite it with your draft.
+            </Type>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={saveLoading} onClick={onLoadLatestPolicy} size="sm" variant="secondary">
+              Load latest
+            </Button>
+            <Button disabled={saveLoading} onClick={onOverwritePolicyConflict} size="sm">
+              Overwrite with my draft
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <Section title="General">
         <div className="space-y-3">
           <SwitchRow
@@ -278,6 +470,107 @@ export function CommunityHandlePolicyEditorPage({
             label="Enable name claims"
             onCheckedChange={(checked) => update({ claimsEnabled: checked })}
           />
+        </div>
+      </Section>
+
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Who can claim">
+        <div className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <OptionCard
+              description="Anyone who can access this community may claim a name."
+              disabled={editorDisabled}
+              selected={draft.claimGateMode === "none"}
+              title="Community members"
+              onClick={() => update({ claimGateMode: "none" })}
+            />
+            <OptionCard
+              description="Require the community membership gate again when the name is claimed."
+              disabled={editorDisabled}
+              selected={draft.claimGateMode === "inherit_community"}
+              title="Community requirements"
+              onClick={() => update({ claimGateMode: "inherit_community" })}
+            />
+            <OptionCard
+              description="Set requirements that apply only to names in this namespace."
+              disabled={editorDisabled}
+              selected={draft.claimGateMode === "explicit"}
+              title="Custom requirements"
+              onClick={() => update({ claimGateMode: "explicit" })}
+            />
+          </div>
+
+          {draft.claimGateMode === "explicit" ? (
+            <GateTreeBuilder
+              capabilities={capabilities}
+              className="max-w-none p-0"
+              onChange={(claimGateTreeDraft) => update({ claimGateTreeDraft })}
+              showHeader={false}
+              value={draft.claimGateTreeDraft}
+            />
+          ) : null}
+
+          <FormNote tone="muted">
+            Eligibility is checked when a member claims the name. Holding requirements are non-consumptive: the same eligible asset may satisfy more than one namespace.
+          </FormNote>
+        </div>
+      </Section>
+
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title={ruleCopy.sectionTitle}>
+        <div className="space-y-4">
+          <Type as="p" variant="caption">
+            {ruleCopy.sectionDescription}
+          </Type>
+
+          {draft.labelClaimRules.map((rule, index) => (
+            <LabelClaimRuleCard
+              key={rule.key}
+              capabilities={capabilities}
+              copy={ruleCopy}
+              disabled={editorDisabled}
+              index={index}
+              onChange={(nextRule) => {
+                const labelClaimRules = draft.labelClaimRules.slice();
+                labelClaimRules[index] = nextRule;
+                update({ labelClaimRules });
+              }}
+              onMove={(direction) => {
+                const target = index + direction;
+                if (target < 0 || target >= draft.labelClaimRules.length) return;
+                const labelClaimRules = draft.labelClaimRules.slice();
+                const [moved] = labelClaimRules.splice(index, 1);
+                if (!moved) return;
+                labelClaimRules.splice(target, 0, moved);
+                update({ labelClaimRules });
+              }}
+              onRemove={() => {
+                update({ labelClaimRules: draft.labelClaimRules.filter((_, i) => i !== index) });
+              }}
+              rule={rule}
+              ruleCount={draft.labelClaimRules.length}
+            />
+          ))}
+
+          <Button
+            disabled={editorDisabled || draft.labelClaimRules.length >= MAX_LABEL_CLAIM_RULES}
+            leadingIcon={<Plus size={16} />}
+            onClick={() => {
+              update({
+                labelClaimRules: [
+                  ...draft.labelClaimRules,
+                  {
+                    key: globalThis.crypto.randomUUID(),
+                    selectorType: "exact",
+                    labelsText: "",
+                    gateTreeDraft: parseGatePolicyToTreeDraft(null),
+                  },
+                ],
+              });
+            }}
+            size="sm"
+            variant="outline"
+          >
+            {ruleCopy.add}
+          </Button>
         </div>
       </Section>
 
@@ -376,12 +669,12 @@ export function CommunityHandlePolicyEditorPage({
                 value={previewInput}
               />
               <span className="shrink-0 font-mono text-base text-muted-foreground">
-                @{namespaceLabel ?? "community"}
+                {namespaceSuffix ?? `@${namespaceLabel ?? "community"}`}
               </span>
             </div>
             <div className="flex items-center gap-2 text-base">
               <span className="text-muted-foreground">Price:</span>
-              <span className="font-medium">{formatCents(preview.priceCents)}</span>
+              <span className="font-medium">{formatCents(preview.priceCents, locale)}</span>
               {preview.tier ? (
                 <span className="text-muted-foreground">
                   {preview.tier}
@@ -474,7 +767,7 @@ export function CommunityHandlePolicyEditorPage({
                       <td className="px-4 py-3 font-mono">{handle.label}</td>
                       <td className="px-4 py-3">{handle.status}</td>
                       <td className="max-w-64 truncate px-4 py-3 font-mono">{handle.user}</td>
-                      <td className="px-4 py-3">{formatCents(handle.price_cents)}</td>
+                      <td className="px-4 py-3">{formatCents(handle.price_cents, locale)}</td>
                       <td className="px-4 py-3 text-right">
                         <Button
                           disabled={handleOpsLoading || handle.status === "revoked" || handle.status === "expired"}

@@ -1,4 +1,3 @@
-import * as React from "react";
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -23,8 +22,10 @@ function baseProfile(overrides: Partial<ProfileData> = {}): ProfileData {
   return { displayName: "Ada", handle: "@ada", viewerContext: "self", ...overrides };
 }
 
-function renderHero(profile: ProfileData, onBookingCta?: () => void): Document {
-  const html = renderToStaticMarkup(<ProfileHero profile={profile} onEditProfile={() => {}} onBookingCta={onBookingCta} />);
+function renderHero(profile: ProfileData, onBookingCta?: () => void, onCommunitiesCta?: () => void): Document {
+  const html = renderToStaticMarkup(
+    <ProfileHero profile={profile} onEditProfile={() => {}} onBookingCta={onBookingCta} onCommunitiesCta={onCommunitiesCta} />,
+  );
   return createTestDom(`<!DOCTYPE html><html><body>${html}</body></html>`).document as unknown as Document;
 }
 
@@ -55,5 +56,25 @@ describe("ProfileHero booking CTA", () => {
   test("CTA is hidden when the handler is missing even on a self profile", () => {
     const doc = renderHero(baseProfile({ viewerContext: "self", bookingCtaLabel: "Manage bookings" }), undefined);
     expect(hasText(doc, "Manage bookings")).toBe(false);
+  });
+});
+
+// /your-communities has no other entry point: the sidebar lists communities but
+// never links the page, and the settings index that also links it is unreachable
+// on desktop. This CTA is the one that has to survive.
+describe("ProfileHero communities CTA", () => {
+  test("self profile with a handler shows the communities CTA", () => {
+    const doc = renderHero(baseProfile({ viewerContext: "self" }), undefined, () => {});
+    expect(hasText(doc, "Your Communities")).toBe(true);
+  });
+
+  test("self profile without a handler shows no communities CTA", () => {
+    const doc = renderHero(baseProfile({ viewerContext: "self" }), undefined, undefined);
+    expect(hasText(doc, "Your Communities")).toBe(false);
+  });
+
+  test("public viewer never sees the communities CTA", () => {
+    const doc = renderHero(baseProfile({ viewerContext: "public" }), undefined, () => {});
+    expect(hasText(doc, "Your Communities")).toBe(false);
   });
 });

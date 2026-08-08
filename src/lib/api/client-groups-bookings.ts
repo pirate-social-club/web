@@ -1,4 +1,5 @@
 import { buildQueryPath, type ApiRequest } from "./client-internal";
+import { parseSlotsResponse } from "./bookings-types";
 import type {
   AttachSessionResponse,
   BookingCancellationPreview,
@@ -12,6 +13,7 @@ import type {
   CreateHoldRequest,
   HeartbeatRequest,
   NoShowBookingResponse,
+  PendingBookingPaymentIntentsResponse,
   SlotsResponse,
   StartSessionResponse,
 } from "./bookings-types";
@@ -25,10 +27,10 @@ export function createBookingsApi(request: ApiRequest) {
       hostUserId: string,
       params: { from?: string; to?: string; tz?: string } = {},
     ): Promise<SlotsResponse> =>
-      request<SlotsResponse>(buildQueryPath(
+      request<unknown>(buildQueryPath(
         `/bookings/hosts/${c(hostUserId)}/slots`,
         { from: params.from, to: params.to, tz: params.tz },
-      )),
+      )).then(parseSlotsResponse),
 
     createBookingHold: (hostUserId: string, body: CreateHoldRequest): Promise<{ hold: BookingHold }> =>
       request<{ hold: BookingHold }>(`/bookings/hosts/${c(hostUserId)}/holds`, { method: "POST", body: JSON.stringify(body) }),
@@ -36,6 +38,16 @@ export function createBookingsApi(request: ApiRequest) {
       request<{ quote: BookingQuote }>(`/bookings/holds/${c(holdId)}/quote`, { method: "POST" }),
     confirmBookingHold: (holdId: string, body: ConfirmHoldRequest): Promise<ConfirmHoldResponse> =>
       request<ConfirmHoldResponse>(`/bookings/holds/${c(holdId)}/confirm`, { method: "POST", body: JSON.stringify(body) }),
+    reportBookingPaymentSubmitted: (
+      holdId: string,
+      body: { tx_ref: string; wallet_attachment_id: string },
+    ): Promise<{ payment_intent_id: string; status: "recorded"; claimed_tx_ref: string }> =>
+      request(`/bookings/holds/${c(holdId)}/payment-submitted`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    listPendingBookingPaymentIntents: (): Promise<PendingBookingPaymentIntentsResponse> =>
+      request("/bookings/payment-intents/pending"),
 
     getBooking: (bookingId: string): Promise<{ booking: BookingView }> =>
       request<{ booking: BookingView }>(`/bookings/${c(bookingId)}`),

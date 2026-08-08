@@ -39,7 +39,7 @@ function hashParams(url: URL): URLSearchParams {
   return new URLSearchParams(rawParams.replace(/^\?/u, ""));
 }
 
-export function getSelfCallbackParam(url: URL, param: SelfCallbackParam): string | null {
+function getSelfCallbackParam(url: URL, param: SelfCallbackParam): string | null {
   return url.searchParams.get(param) ?? hashParams(url).get(param);
 }
 
@@ -110,14 +110,6 @@ function getSelfDisclosures(launch: SelfAppLaunch): SelfApp["disclosures"] {
     ...(launch.disclosures.excluded_countries?.length ? { excludedCountries: launch.disclosures.excluded_countries as SelfApp["disclosures"]["excludedCountries"] } : {}),
     ...(typeof launch.disclosures.minimum_age === "number" ? { minimumAge: launch.disclosures.minimum_age } : {}),
   };
-}
-
-export function getSelfVerificationApp(
-  launch: SelfAppLaunch | null | undefined,
-  options: { deeplinkCallback?: string | null } = {},
-): SelfApp | null {
-  const result = buildSelfVerificationLaunch(launch, options);
-  return result.selfApp;
 }
 
 export function buildSelfVerificationLaunch(

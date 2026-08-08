@@ -5,7 +5,7 @@ import type { WalletHubChainId, WalletHubChainSection } from "@/components/compo
 
 export type ProfilePageTab = "overview" | "posts" | "comments" | "wallet" | "book";
 
-export interface ProfileHeaderMetaItem {
+interface ProfileHeaderMetaItem {
   label: string;
   value: string;
 }
@@ -82,6 +82,7 @@ export interface ProfileData {
   followBusy?: boolean;
   followDisabled?: boolean;
   followLoading?: boolean;
+  followUnavailable?: boolean;
   onToggleFollow?: () => void;
 }
 
@@ -99,6 +100,8 @@ export interface ProfilePageProps {
   posts?: ProfilePostItem[];
   comments?: ProfileCommentItem[];
   activityError?: string | null;
+  /** True while the active activity tab (overview/posts/comments) is fetching; panels render skeletons instead of the empty state. */
+  activityLoading?: boolean;
   defaultTab?: ProfilePageTab;
   className?: string;
   onActivityTabChange?: (tab: Extract<ProfilePageTab, "overview" | "posts" | "comments">) => void;
@@ -106,6 +109,8 @@ export interface ProfilePageProps {
   onMessageProfile?: () => void;
   /** Invoked by the self-only booking CTA (navigates to /settings/bookings). */
   onBookingCta?: () => void;
+  /** Invoked by the self-only communities CTA (navigates to /your-communities). */
+  onCommunitiesCta?: () => void;
   /** Book-tab panel, built by the container (owner preview/manage or viewer availability + checkout). When provided, the Book tab shows. */
   bookPanel?: ReactNode;
 }

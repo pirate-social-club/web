@@ -91,7 +91,7 @@ export function useInteractionAltcha({
 
   const completeAltchaAction = React.useCallback(async (
     onActionAllowed: (context: InteractionAllowedContext) => Promise<void> | void,
-    onActionError: (error: unknown) => void,
+    onActionError: (error: unknown, resetKey: number) => void,
   ) => {
     if (completionLoadingRef.current) {
       return;
@@ -110,8 +110,9 @@ export function useInteractionAltcha({
       await onActionAllowed({ altchaPayload: payload });
     } catch (error: unknown) {
       altchaPayloadRef.current = null;
-      setAltchaResetKey((current) => current + 1);
-      onActionError(error);
+      const nextResetKey = Date.now();
+      setAltchaResetKey(nextResetKey);
+      onActionError(error, nextResetKey);
     } finally {
       completionLoadingRef.current = false;
       setAltchaLoading(false);

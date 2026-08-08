@@ -34,19 +34,34 @@ export const DEFAULT_SHARE_IMAGE_TYPE = "image/jpeg";
 export const DEFAULT_SHARE_IMAGE_WIDTH = 1200;
 export const DEFAULT_SHARE_IMAGE_HEIGHT = 630;
 const TRANSFORMED_SHARE_IMAGE_QUALITY = 80;
-const TRANSFORMED_SHARE_IMAGE_OPTIONS = [
-  `width=${DEFAULT_SHARE_IMAGE_WIDTH}`,
-  `height=${DEFAULT_SHARE_IMAGE_HEIGHT}`,
-  "fit=cover",
-  "format=jpeg",
-  `quality=${TRANSFORMED_SHARE_IMAGE_QUALITY}`,
-  "metadata=none",
-  "anim=false",
-].join(",");
-
+export type ShareImageTransformPreset = "landscape" | "square";
+const SHARE_IMAGE_TRANSFORM_PRESETS = {
+  landscape: {
+    fit: "cover",
+    height: DEFAULT_SHARE_IMAGE_HEIGHT,
+    width: DEFAULT_SHARE_IMAGE_WIDTH,
+  },
+  square: {
+    fit: "cover",
+    height: 1080,
+    width: 1080,
+  },
+} as const satisfies Record<ShareImageTransformPreset, {
+  fit: "cover";
+  height: number;
+  width: number;
+}>;
+// Must stay in sync with the pirate.sc zone's Image Transformations allowed-origins
+// list (Cloudflare dashboard → Images → Transformations). Sources on any other host
+// are served untransformed: /cdn-cgi/image/ rejects them with ERROR 9401.
+const TRANSFORMABLE_IMAGE_SOURCE_HOSTS = new Set([
+  "api.pirate.sc",
+  "psc.myfilebase.com",
+]);
 type ShareImageCandidate = {
   alt?: string | null;
   height?: number | null;
+  transformPreset?: ShareImageTransformPreset;
   transformable?: boolean;
   type?: string | null;
   url: string;
@@ -109,6 +124,7 @@ function resolvePublicShareImageCandidate(
     ? {
         alt: metadata?.alt ?? null,
         height: metadata?.height ?? null,
+        transformPreset: metadata?.transformPreset,
         transformable: metadata?.transformable ?? true,
         type: metadata?.type ?? null,
         url: imageUrl,
@@ -181,23 +197,54 @@ export function buildOpenGraphUrl(
   return url.toString();
 }
 
-export function buildCloudflareShareImageUrl(appOrigin: string, sourceUrl: string): string {
+export function buildCloudflareShareImageUrl(
+  appOrigin: string,
+  sourceUrl: string,
+  transformPreset: ShareImageTransformPreset = "landscape",
+): string {
   const source = new URL(sourceUrl);
   source.hash = "";
-  return `${appOrigin.replace(/\/+$/, "")}/cdn-cgi/image/${TRANSFORMED_SHARE_IMAGE_OPTIONS}/${source.toString()}`;
+  const transform = SHARE_IMAGE_TRANSFORM_PRESETS[transformPreset];
+  const options = [
+    `width=${transform.width}`,
+    `height=${transform.height}`,
+    `fit=${transform.fit}`,
+    "format=jpeg",
+    `quality=${TRANSFORMED_SHARE_IMAGE_QUALITY}`,
+    "metadata=none",
+    "anim=false",
+  ].join(",");
+  return `${appOrigin.replace(/\/+$/, "")}/cdn-cgi/image/${options}/${source.toString()}`;
+}
+
+function isTransformableImageSource(sourceUrl: string, appOrigin: string): boolean {
+  try {
+    const source = new URL(sourceUrl);
+    if (TRANSFORMABLE_IMAGE_SOURCE_HOSTS.has(source.hostname)) {
+      return true;
+    }
+    // Same-zone sources never need allowlisting in the transform config.
+    return source.hostname === new URL(appOrigin).hostname;
+  } catch {
+    return false;
+  }
 }
 
 function shareMetadataFromImageCandidate(appOrigin: string, image: ShareImageCandidate): Pick<
   SeoMetadata,
   "imageAlt" | "imageHeight" | "imageType" | "imageUrl" | "imageWidth"
 > {
-  const shouldTransform = image.transformable === true && shouldUseCloudflareImageTransform(appOrigin);
+  const shouldTransform = image.transformable === true
+    && shouldUseCloudflareImageTransform(appOrigin)
+    && isTransformableImageSource(image.url, appOrigin);
+  const transformPreset = image.transformPreset ?? "landscape";
+  const transform = SHARE_IMAGE_TRANSFORM_PRESETS[transformPreset];
   return {
     imageAlt: image.alt ?? null,
-    imageHeight: shouldTransform ? DEFAULT_SHARE_IMAGE_HEIGHT : image.height ?? null,
+    imageHeight: shouldTransform ? transform.height : image.height ?? null,
     imageType: shouldTransform ? DEFAULT_SHARE_IMAGE_TYPE : image.type ?? null,
-    imageUrl: shouldTransform ? buildCloudflareShareImageUrl(appOrigin, image.url) : image.url,
-    imageWidth: shouldTransform ? DEFAULT_SHARE_IMAGE_WIDTH : image.width ?? null,
+    imageUrl: shouldTransform ? buildCloudflareShareImageUrl(appOrigin, image.url, transformPreset) : image.url,
+    imageWidth: shouldTransform ? transform.width : image.width ?? null,
   };
 }
 
@@ -300,25 +347,29 @@ export function buildPostSeoMetadata(input: {
       ?? post.body
       ?? post.caption,
   );
-  const titleText = postTitleText ?? linkTitleText ?? copy.post.fallbackTitle;
+  const titleText = postTitleText ?? linkTitleText;
   const communityName = normalizeMetaText(community?.display_name);
   const contextTitle = communityName
     ? copy.post.titleInCommunity.replace("{name}", communityName)
     : copy.post.postOnPirate;
-  const imageAlt = `${titleText} on Pirate`;
+  // Untitled posts fall back to the community context as the card title; titled
+  // posts carry that context in the description instead so the post title stays
+  // the headline.
+  const title = titleText ?? contextTitle;
+  const imageAlt = `${titleText ?? copy.post.fallbackTitle} on Pirate`;
   const description = truncateMetaDescription(
     contentText
       ?? joinMetaParts([
-        postTitleText,
         mediaLabel,
+        titleText ? contextTitle : null,
       ])
-      ?? linkTitleText
-      ?? mediaLabel
+      ?? (titleText ? contextTitle : null)
       ?? copy.post.postOnPirate,
   ) ?? copy.post.postOnPirate;
   const image = firstPostMediaImageCandidate(post, input.appOrigin, imageAlt)
     ?? resolvePublicShareImageCandidate(input.postResponse.song_presentation?.cover_art_ref, input.appOrigin, {
       alt: imageAlt,
+      transformPreset: "square",
     })
     ?? firstPublicImageCandidate([
       post.link_og_image_url,
@@ -330,7 +381,7 @@ export function buildPostSeoMetadata(input: {
   return {
     description,
     ...shareMetadataFromImageCandidate(input.appOrigin, image),
-    title: contextTitle,
+    title,
     type: "article",
   };
 }

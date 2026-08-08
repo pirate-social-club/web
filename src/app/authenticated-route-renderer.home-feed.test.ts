@@ -116,6 +116,26 @@ describe("toHomeFeedItem", () => {
     expect(item.post.byline?.community?.label).toBe("c/alpha");
     expect(item.post.engagement?.commentCount).toBe(5);
     expect(item.post.engagement?.score).toBe(9);
+    expect(item.post.engagement?.upvoteCount).toBe(11);
+  });
+
+  test("maps raw booking discovery metadata without formatting it", () => {
+    const entry = createEntry();
+    entry.booking = {
+      base_price_cents: 3500,
+      currency: "USDC",
+      has_available_slot: true,
+      host_user_id: "usr_author",
+      starting_price_cents: 2500,
+    };
+
+    expect(toHomeFeedItem(entry, {}).booking).toEqual({
+      basePriceCents: 3500,
+      currency: "USDC",
+      hasAvailableSlot: true,
+      hostUserId: "usr_author",
+      startingPriceCents: 2500,
+    });
   });
 
   test("links home feed community bylines directly to canonical punycode routes", () => {

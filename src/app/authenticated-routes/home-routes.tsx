@@ -42,16 +42,13 @@ import { buildFeedSortOptions, buildTopTimeRangeOptions } from "@/lib/feed-sort-
 import { EmptyFeedState, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
 import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
+import { feedKeys } from "@/lib/query/keys";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { selectPostVoteGateData } from "@/hooks/use-community-interaction-gate.helpers";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
-
-function unixOrIsoMs(value: string | number): number {
-  return typeof value === "number" ? value * 1000 : Date.parse(value);
-}
 
 type UseHomeFeedInput = {
   activeSort: FeedSort;
@@ -63,8 +60,11 @@ type UseHomeFeedInput = {
 
 type HomeFeedQueryPayload = {
   feedEntries: ApiHomeFeedItem[];
+  nextCursor: string | null;
   topCommunities: ApiHomeFeedCommunitySummary[];
 };
+
+const EMPTY_HOME_FEED_PAYLOAD: HomeFeedQueryPayload = { feedEntries: [], nextCursor: null, topCommunities: [] };
 
 export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange }: UseHomeFeedInput) {
   const api = useApi();
@@ -77,21 +77,27 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     sort: activeSort,
     timeRange: activeSort === "top" ? topTimeRange : null,
   }), [activeSort, contentLocale, topTimeRange]);
-  const feedIdentityKey = `${feedRequest.sort}|${feedRequest.locale ?? ""}|${feedRequest.timeRange ?? ""}`;
+  const feedIdentityKey = `${sessionUserId ?? "anonymous"}|${feedRequest.sort}|${feedRequest.locale ?? ""}|${feedRequest.timeRange ?? ""}`;
   const homeFeedQueryKey = React.useMemo(
-    () => ["home-feed", feedRequest.locale, feedRequest.sort, feedRequest.timeRange] as const,
-    [feedRequest.locale, feedRequest.sort, feedRequest.timeRange],
+    () => feedKeys.home({
+      locale: feedRequest.locale,
+      sort: feedRequest.sort,
+      timeRange: feedRequest.timeRange,
+      userId: sessionUserId ?? null,
+    }),
+    [feedRequest.locale, feedRequest.sort, feedRequest.timeRange, sessionUserId],
   );
   const homeFeedQuery = useQuery<HomeFeedQueryPayload>({
     queryKey: homeFeedQueryKey,
-    queryFn: async () => ({ feedEntries: [], topCommunities: [] }),
+    queryFn: async () => EMPTY_HOME_FEED_PAYLOAD,
     enabled: false,
-    initialData: { feedEntries: [], topCommunities: [] },
+    initialData: EMPTY_HOME_FEED_PAYLOAD,
   });
   const feedEntries = homeFeedQuery.data.feedEntries;
+  const nextCursor = homeFeedQuery.data.nextCursor;
   const topCommunities = homeFeedQuery.data.topCommunities;
   const setHomeFeedPayload = React.useCallback((update: React.SetStateAction<HomeFeedQueryPayload>) => {
-    queryClient.setQueryData<HomeFeedQueryPayload>(homeFeedQueryKey, (current = { feedEntries: [], topCommunities: [] }) => (
+    queryClient.setQueryData<HomeFeedQueryPayload>(homeFeedQueryKey, (current = EMPTY_HOME_FEED_PAYLOAD) => (
       typeof update === "function"
         ? (update as (value: HomeFeedQueryPayload) => HomeFeedQueryPayload)(current)
         : update
@@ -113,11 +119,16 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
   const [liveRoomAccessById, setLiveRoomAccessById] = React.useState<Record<string, ApiLiveRoomAccessResponse | undefined>>({});
   const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
   const [error, setError] = React.useState<unknown>(null);
-  const [loading, setLoading] = React.useState(true);
-  // Identity of the feed currently rendered (sort / content locale / time
-  // range). Enrichment maps are only cleared when this changes; auth/session
-  // refreshes reuse the same feed identity so their enriched UI (avatars, buy
-  // buttons, live-room seats) is preserved and replaced in place, not blanked.
+  // The payload outlives the route in the query cache, so returning to the feed
+  // renders it on the first frame. Only a genuinely empty cache is a load.
+  const [loading, setLoading] = React.useState(() => homeFeedQuery.data.feedEntries.length === 0);
+  const [loadingMore, setLoadingMore] = React.useState(false);
+  const [loadMoreError, setLoadMoreError] = React.useState<unknown>(null);
+  const loadingMoreRef = React.useRef(false);
+  // Identity of the feed currently rendered (viewer / sort / content locale /
+  // time range). Token refreshes for the same viewer preserve enrichment, but
+  // an account switch clears purchases and other viewer-shaped maps alongside
+  // the viewer-keyed query payload.
   const feedIdentityRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
@@ -147,7 +158,11 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
       };
     }
 
-    setLoading(true);
+    // A cached feed stays on screen while it refreshes in place; only an empty
+    // cache falls back to the loading surface.
+    if ((queryClient.getQueryData<HomeFeedQueryPayload>(homeFeedQueryKey)?.feedEntries.length ?? 0) === 0) {
+      setLoading(true);
+    }
     setError(null);
 
     // Only wipe enrichment when the feed identity actually changed. On an
@@ -163,7 +178,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
       setLiveRoomAccessById({});
     }
 
-    const applyFeedResult = (result: Awaited<ReturnType<typeof api.feed.home>>) => {
+    const applyFeedResult = (result: Awaited<ReturnType<typeof api.feed.home>>, settled = true) => {
         if (cancelled) return;
 
         const nextFeedEntries = result.items;
@@ -175,9 +190,10 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
         });
         setHomeFeedPayload({
           feedEntries: nextFeedEntries,
+          nextCursor: result.next_cursor ?? null,
           topCommunities: result.top_communities,
         });
-        setLoading(false);
+        if (settled) setLoading(false);
 
         void loadProfilesByUserId(
           api,
@@ -283,7 +299,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     };
 
     const loadAuthenticatedFeed = () => api.feed.home(feedRequest)
-      .then(applyFeedResult)
+      .then((result) => applyFeedResult(result))
       .catch((nextError: unknown) => {
         if (cancelled) return;
         if ((nextError as { status?: number; code?: string }).status === 401 || (nextError as { code?: string }).code === "auth_error") {
@@ -296,7 +312,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
 
     void api.feed.publicHome(feedRequest)
       .then((result) => {
-        applyFeedResult(result);
+        applyFeedResult(result, !sessionUserId);
         if (sessionUserId) {
           void loadAuthenticatedFeed();
         }
@@ -314,7 +330,43 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     return () => {
       cancelled = true;
     };
-  }, [api, contentLocale, feedIdentityKey, feedRequest, hydrated, queryClient, sessionAccessToken, sessionProfile, sessionUserId, setHomeFeedPayload]);
+  }, [api, contentLocale, feedIdentityKey, feedRequest, homeFeedQueryKey, hydrated, queryClient, sessionAccessToken, sessionProfile, sessionUserId, setHomeFeedPayload]);
+
+  const loadMore = React.useCallback(async () => {
+    if (!nextCursor || loading || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const result = sessionUserId
+        ? await api.feed.home({ ...feedRequest, cursor: nextCursor })
+        : await api.feed.publicHome({ ...feedRequest, cursor: nextCursor });
+      seedPublicThreadQueriesFromFeed({ items: result.items, locale: contentLocale, queryClient, sort: "best" });
+      setHomeFeedPayload((current) => {
+        const seenPostIds = new Set(current.feedEntries.map((entry) => entry.post.post.id));
+        return {
+          feedEntries: [...current.feedEntries, ...result.items.filter((entry) => !seenPostIds.has(entry.post.post.id))],
+          nextCursor: result.next_cursor ?? null,
+          topCommunities: current.topCommunities,
+        };
+      });
+      const appendedAuthorIds = result.items.reduce<string[]>((ids, entry) => {
+        const userId = entry.post.post.identity_mode === "public" ? entry.post.post.author_user : null;
+        if (userId) ids.push(userId);
+        return ids;
+      }, []);
+      if (appendedAuthorIds.length > 0) {
+        void loadProfilesByUserId(api, appendedAuthorIds, authorProfiles)
+          .then((profiles) => setAuthorProfiles((current) => ({ ...current, ...profiles })))
+          .catch(() => undefined);
+      }
+    } catch (nextError) {
+      setLoadMoreError(nextError);
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [api, authorProfiles, contentLocale, feedRequest, loading, nextCursor, queryClient, sessionUserId, setHomeFeedPayload]);
 
   return {
     feedEntries,
@@ -329,11 +381,19 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     freedomDetected: freedomDetection.detected,
     error,
     loading,
+    loadingMore,
+    loadMore,
+    loadMoreError,
+    nextCursor,
   };
 }
 
-export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
+export function HomePage({ initialSort, videoFallbackReason }: {
+  initialSort?: FeedSort;
+  videoFallbackReason?: "empty" | "error";
+} = {}) {
   const api = useApi();
+  const queryClient = useQueryClient();
   const hydrated = useClientHydrated();
   const session = useSession();
   const { locale } = useUiLocale();
@@ -360,6 +420,10 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     freedomDetected,
     error,
     loading,
+    loadingMore,
+    loadMore,
+    loadMoreError,
+    nextCursor,
   } = useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
@@ -468,8 +532,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
     const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);
     if (!entry) return;
-    if (!direction) return;
-    const voteValue = toPostVoteValue(direction);
+    const voteValue = direction ? toPostVoteValue(direction) : "clear";
     const voteGateData = voteGateDataByPostId.get(postId) ?? null;
     try {
       await runGatedCommunityAction({
@@ -480,11 +543,14 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
           const previousPost = entry.post;
           await submitOptimisticPostVote({
             altchaPayload: context?.altchaPayload,
+            clearVote: api.posts.clearVote,
             direction,
+            locale: contentLocale,
             onApply: (nextValue) => setFeedEntries((current) => updateHomeFeedEntryPostVote(current, postId, nextValue)),
             onRollback: (restoredPost) => setFeedEntries((current) => current.map((currentEntry) => currentEntry.post.post.id === postId ? { ...currentEntry, post: restoredPost } : currentEntry)),
             postId,
             previousPost: previousPost ?? null,
+            queryClient,
             requestIdsRef: voteRequestIdsRef,
             vote: api.posts.vote,
           });
@@ -495,7 +561,22 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     } catch {
       // The optimistic submitter already rolled back and displayed the error.
     }
-  }, [api.posts.vote, feedEntries, runGatedCommunityAction, voteGateDataByPostId]);
+  }, [api.posts.clearVote, api.posts.vote, contentLocale, feedEntries, queryClient, runGatedCommunityAction, voteGateDataByPostId]);
+
+  const deletePost = React.useCallback(async (postId: string) => {
+    const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);
+    if (!entry) return;
+    if (typeof window !== "undefined" && !window.confirm("Delete this post?")) return;
+
+    const previousEntries = feedEntries;
+    setFeedEntries((current) => current.filter((candidate) => candidate.post.post.id !== postId));
+    try {
+      await api.posts.delete(entry.post.post.community, postId);
+    } catch (nextError) {
+      setFeedEntries(previousEntries);
+      toast.error(getErrorMessage(nextError, "Could not delete this post."));
+    }
+  }, [api.posts, feedEntries, setFeedEntries]);
 
   const cancelEvent = React.useCallback(async (postId: string) => {
     const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);
@@ -574,8 +655,9 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         } : undefined,
         onCancelEvent: () => void cancelEvent(entry.post.post.id),
         onComment: () => navigate(`/p/${entry.post.post.id}`),
+        onDelete: () => void deletePost(entry.post.post.id),
         onVerifyAge: handleVerifyAge,
-        onVote: (direction) => void voteOnPost(entry.post.post.id, direction),
+        onVote: async (direction) => await voteOnPost(entry.post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,
         showTranslationLabel: copy.common.showTranslation,
         viewerContentLocale: contentLocale,
@@ -621,6 +703,17 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         />
       ) : null}
       <StandardRoutePage size="rail" className="gap-6" frameClassName="md:pb-0">
+        {videoFallbackReason ? (
+          <div className="flex flex-col items-start gap-3 border-b border-border-soft pb-5">
+            <Type as="h1" variant="h3">
+              {videoFallbackReason === "error" ? copy.home.videoLoadError : copy.home.emptyVideoTitle}
+            </Type>
+            <Type className="text-muted-foreground" variant="body">
+              {videoFallbackReason === "error" ? copy.home.videoFallbackErrorBody : copy.home.emptyVideoBody}
+            </Type>
+            <Button onClick={() => navigate("/feed")} variant="secondary">{copy.home.communityFeedLabel}</Button>
+          </div>
+        ) : null}
         <Feed
           activeSort={activeSort}
           aside={(
@@ -650,6 +743,12 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
           fullBleedMobile
           listClassName="border-t-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
           loading={loading}
+          loadingMore={loadingMore}
+          hasMore={Boolean(nextCursor)}
+          loadMoreError={loadMoreError ? getErrorMessage(loadMoreError, copy.routeStatus.home.failure) : null}
+          loadMoreLabel={copy.common.loadMore}
+          endMessage={copy.common.feedEnd}
+          onLoadMore={loadMore}
           onSortChange={setActiveSort}
         />
       </StandardRoutePage>

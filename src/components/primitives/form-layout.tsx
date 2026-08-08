@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
-import { Type, typeVariants } from "./type";
+import { Type } from "./type";
 
 import { Label } from "./label";
 

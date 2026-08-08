@@ -93,6 +93,17 @@ describe("inventory match completeness (API parity)", () => {
 });
 
 describe("other atoms (API parity)", () => {
+  test("validates asset balances as positive atomic integer strings", () => {
+    const balance = (asset_id: unknown, min_amount_atomic: unknown) => ({
+      type: "asset_balance", asset_id, min_amount_atomic,
+    } as unknown as GateAtom);
+    expect(validateGateAtom(balance("eip155:1/slip44:60", "1000000000000000000"))).toBeNull();
+    expect(validateGateAtom(balance("", "1"))).toEqual({ code: "assetRequired" });
+    for (const amount of [0, "0", "01", "-1", "1.5", "1e18"]) {
+      expect(validateGateAtom(balance("eip155:1/slip44:60", amount))).toEqual({ code: "assetAmountInvalid" });
+    }
+  });
+
   test("rejects an invalid ERC-721 contract address", () => {
     expect(validateGateAtom({
       type: "erc721_holding",

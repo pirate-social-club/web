@@ -1,10 +1,10 @@
-import * as React from "react";
 import { Crown, Fire, Medal } from "@phosphor-icons/react";
 import type {
   SongStreakLeaderboardEntry,
   SongStreakViewerStanding,
 } from "@pirate/api-contracts";
 
+import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
@@ -15,27 +15,10 @@ import { cn } from "@/lib/utils";
 
 type LeaderboardIdentity = SongStreakLeaderboardEntry["identity"];
 
-export function streakDisplayName(identity: LeaderboardIdentity): string {
+function streakDisplayName(identity: LeaderboardIdentity): string {
   if (identity.handle) return identity.handle;
   if (identity.display_name) return identity.display_name;
   return "Anonymous learner";
-}
-
-function initials(identity: LeaderboardIdentity): string {
-  const source = identity.display_name || identity.handle || "?";
-  const parts = source.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-// Deterministic hue from the user id so avatars are stable without a network fetch.
-function avatarHue(userId: string): number {
-  let hash = 0;
-  for (let index = 0; index < userId.length; index += 1) {
-    hash = (hash * 31 + userId.charCodeAt(index)) % 360;
-  }
-  return hash;
 }
 
 function StreakBadge({ days, className }: { days: number; className?: string }) {
@@ -70,15 +53,14 @@ function StreakRankMarker({ rank }: { rank: number }) {
 }
 
 function StreakAvatar({ identity }: { identity: LeaderboardIdentity }) {
-  const hue = avatarHue(identity.user_id);
   return (
-    <span
-      aria-hidden="true"
-      className="grid size-10 shrink-0 place-items-center rounded-full text-base font-semibold text-foreground"
-      style={{ backgroundColor: `oklch(0.45 0.09 ${hue})` }}
-    >
-      {initials(identity)}
-    </span>
+    <Avatar
+      className="size-10 shrink-0 border-0"
+      fallback={streakDisplayName(identity)}
+      fallbackSeed={identity.user_id}
+      size="sm"
+      src={identity.avatar_ref ?? undefined}
+    />
   );
 }
 

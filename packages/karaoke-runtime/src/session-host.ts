@@ -37,6 +37,15 @@ export interface KaraokeStreamingSttAdapter {
   start(input: {
     attemptId: string;
     sessionId: string;
+    /**
+     * Sequence the adapter's STT envelope counter must resume FROM: the first
+     * event it emits is `initialSequence + 1`. The host rejects non-monotonic STT
+     * sequences and does not advance `lastSttSequence` on rejection, so an adapter
+     * that restarts its counter at 0 has every event refused until it climbs back
+     * past the pre-restart high-water mark. Both restart paths (same-host provider
+     * reconnect, fresh-DO restore) MUST pass the host's surviving counter.
+     */
+    initialSequence: number;
     onMessage: (message: KaraokeSttAdapterMessage) => Promise<void>;
     /**
      * Fired when the provider stream drops unexpectedly (network close/error, or
@@ -73,8 +82,40 @@ export interface KaraokeSessionHostRestoreOptions {
   lastSttSequence?: number | null;
 }
 
+/**
+ * Diagnostic record for a rejected transport envelope, emitted at the guard so the
+ * host reports the numbers a rejection turns on. SERVER-SIDE ONLY: this never
+ * reaches the client envelope, which carries `code` alone.
+ *
+ * Exists because a rejection is otherwise invisible — the guard's verdict is the
+ * whole story, and `previousSequence` vs `incomingSequence` is what distinguishes
+ * a counter RESET (incoming far below previous, e.g. 1 vs 87) from an ordinary
+ * late/duplicate frame (incoming just below previous).
+ */
+export interface KaraokeTransportGuardDiagnostic {
+  /** Which monotonic guard rejected: inbound client traffic, or the STT stream. */
+  channel: "client" | "stt";
+  code: KaraokeTransportError["code"];
+  /** Sequence on the rejected envelope. */
+  incomingSequence: number | null;
+  /** The guard's high-water mark at rejection time (null before the first accept). */
+  previousSequence: number | null;
+  /** Provider stream id, so a rejection can be tied to a specific STT restart. */
+  sttStreamGeneration: string | null;
+  sessionId: string;
+  attemptId: string;
+}
+
 export interface KaraokeSessionHostOptions {
   restore?: KaraokeSessionHostRestoreOptions;
+  /**
+   * Invoked once per rejected transport envelope. The host supplies only what it
+   * owns; the embedder enriches with runtime-level context (host lifecycle, socket
+   * identity) and performs the actual logging. Kept as a sink rather than a
+   * `console` call so this package stays runtime-agnostic and emits exactly one
+   * structured event per rejection.
+   */
+  onTransportGuardFailure?: (diagnostic: KaraokeTransportGuardDiagnostic) => void | Promise<void>;
   /** Epoch ms source (default Date.now). */
   now?: () => number;
   /** Timer hooks (default global setTimeout/clearTimeout) — injectable for tests. */
@@ -161,6 +202,9 @@ export class KaraokeSessionHost {
   private readonly setTimer: (callback: () => void, ms: number) => unknown;
   private readonly clearTimer: (handle: unknown) => void;
   private readonly persist: () => Promise<void>;
+  private readonly onTransportGuardFailure?: (
+    diagnostic: KaraokeTransportGuardDiagnostic,
+  ) => void | Promise<void>;
   private readonly commitAckTimeoutMs: number;
 
   constructor(
@@ -176,6 +220,7 @@ export class KaraokeSessionHost {
     this.setTimer = options.setTimer ?? ((cb, ms) => setTimeout(cb, ms));
     this.clearTimer = options.clearTimer ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
     this.persist = options.persist ?? (async () => undefined);
+    this.onTransportGuardFailure = options.onTransportGuardFailure;
     this.commitAckTimeoutMs = options.commitAckTimeoutMs ?? DEFAULT_COMMIT_ACK_TIMEOUT_MS;
   }
 
@@ -191,6 +236,31 @@ export class KaraokeSessionHost {
 
   private enqueueCommitTask(task: () => Promise<void>): void {
     this.commitChain = this.commitChain.then(task).catch(() => undefined);
+  }
+
+  /**
+   * Report a rejected envelope exactly once, at the guard. Never throws into the
+   * transport path: diagnostics must not be able to break scoring.
+   */
+  private async reportGuardFailure(
+    channel: "client" | "stt",
+    error: KaraokeTransportError,
+    previousSequence: number | null,
+  ): Promise<void> {
+    if (!this.onTransportGuardFailure) return;
+    try {
+      await this.onTransportGuardFailure({
+        attemptId: this.state.attemptId,
+        channel,
+        code: error.code,
+        incomingSequence: error.sequence ?? null,
+        previousSequence,
+        sessionId: this.state.sessionId,
+        sttStreamGeneration: this.sttAdapter.streamGeneration,
+      });
+    } catch {
+      // best-effort: a failing diagnostics sink must never affect the session
+    }
   }
 
   snapshot(): KaraokeSessionHostSnapshot {
@@ -209,6 +279,7 @@ export class KaraokeSessionHost {
       sessionId: this.state.sessionId,
     });
     if (envelopeError) {
+      await this.reportGuardFailure("client", envelopeError, this.lastClientSequence);
       await this.effectRunner.reportTransportError(envelopeError, this.state);
       return envelopeError;
     }
@@ -265,6 +336,11 @@ export class KaraokeSessionHost {
     try {
       await this.sttAdapter.start({
         attemptId: this.state.attemptId,
+        // Resume the STT envelope counter from the surviving high-water mark.
+        // This is the ONLY start() call site, so it covers the initial start, the
+        // provider-reconnect path (reconnectStt) and the restore path
+        // (resumeSttIfRecording) alike.
+        initialSequence: this.lastSttSequence ?? 0,
         onMessage: async (message) => {
           // Serialize message handling (incl. commit acks) on the commit chain.
           this.enqueueCommitTask(() => this.processAdapterMessage(message));
@@ -391,6 +467,7 @@ export class KaraokeSessionHost {
       sessionId: this.state.sessionId,
     });
     if (envelopeError) {
+      await this.reportGuardFailure("client", envelopeError, this.lastClientSequence);
       await this.effectRunner.reportTransportError(envelopeError, this.state);
       return envelopeError;
     }
@@ -441,6 +518,7 @@ export class KaraokeSessionHost {
       sessionId: this.state.sessionId,
     });
     if (envelopeError) {
+      await this.reportGuardFailure("stt", envelopeError, this.lastSttSequence);
       await this.effectRunner.reportTransportError(envelopeError, this.state);
       return envelopeError;
     }

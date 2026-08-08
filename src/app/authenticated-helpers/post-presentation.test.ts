@@ -4,6 +4,7 @@ import type { Asset, LocalizedPostResponse } from "@pirate/api-contracts";
 import {
   resolveLocalizedLinkTitle,
   toCommunityPostContent,
+  toCommunityFeedItem,
   toThreadPostCard,
 } from "@/app/authenticated-helpers/post-presentation";
 import { resolvePostCardHeadingTitle } from "@/app/authenticated-helpers/post-link-presentation";
@@ -228,6 +229,20 @@ function createSongAsset(overrides: Partial<Asset> = {}): Asset {
     ...overrides,
   };
 }
+
+describe("processing post status notices", () => {
+  test("shows the song preparation notice only for processing songs", () => {
+    const song = toCommunityFeedItem(createSongPost({ status: "processing" }), null, {});
+    const video = toCommunityFeedItem(createVideoPost({ status: "processing" }), null, {});
+
+    expect(song.post.statusNotice).toEqual({
+      tone: "neutral",
+      label: "Preparing song features",
+      message: "Visible only to you while we finish rights, lyrics, and audio checks.",
+    });
+    expect(video.post.statusNotice).toBeUndefined();
+  });
+});
 
 function createLiveRoomAccess(): ApiLiveRoomAccessResponse {
   return {
@@ -625,6 +640,39 @@ describe("post presentation videos", () => {
     if (content.type !== "video") return;
     expect(content.aspectRatio).toBe(9 / 16);
   });
+
+  test("maps a referenced song into published video card attribution", () => {
+    const post = createVideoPost({ rights_basis: "derivative" });
+    post.derivative_sources = [{
+      source_ref: "story:asset:asset_song",
+      title: "Midnight Signal",
+      kind: "song",
+      relationship_type: "references_song",
+      community: "com_cmt_songs",
+      asset: "asset_song",
+      source_post: "post_source_song",
+      story_ip: null,
+      story_license_terms: null,
+      creator_user: "usr_artist",
+      creator_handle: "artist.pirate",
+    }];
+
+    const content = toCommunityPostContent(post);
+
+    expect(content.type).toBe("video");
+    if (content.type !== "video") return;
+    expect(content.rightsBasis).toBe("derivative");
+    expect(content.upstreamAttributions).toEqual([{
+      assetId: "asset_song",
+      relationshipType: "references_song",
+      title: "Midnight Signal",
+      artist: "artist.pirate",
+      artistHref: "/u/artist.pirate",
+      href: "/p/post_source_song",
+      sourceCommunityId: "com_cmt_songs",
+      sourcePostId: "post_source_song",
+    }]);
+  });
 });
 
 describe("post presentation songs", () => {
@@ -824,6 +872,22 @@ describe("post presentation songs", () => {
     expect(card.content.karaokeHref).toBe("/p/pst_song/karaoke");
   });
 
+  test("maps campaign reward labels onto the song actions", () => {
+    const post = createSongPost();
+    post.karaoke_capability = { status: "ready" };
+    post.study_capability = { status: "ready" };
+
+    const card = toThreadPostCard(post, undefined, undefined, {
+      karaokeRewardLabel: "1.00 testnet USDC (Base Sepolia)",
+      studyRewardLabel: "1.00 testnet USDC (Base Sepolia)",
+    });
+
+    expect(card.content.type).toBe("song");
+    if (card.content.type !== "song") return;
+    expect(card.content.karaoke?.rewardLabel).toBe("1.00 testnet USDC (Base Sepolia)");
+    expect(card.content.study?.rewardLabel).toBe("1.00 testnet USDC (Base Sepolia)");
+  });
+
   test("maps derivative source summaries into song card content", () => {
     const post = createSongPost({
       rights_basis: "derivative",
@@ -856,7 +920,10 @@ describe("post presentation songs", () => {
         relationshipType: "remix_of",
         title: "Travel Guide",
         artist: "4dmonsterlobsters.pirate",
+        artistHref: "/u/4dmonsterlobsters.pirate",
         href: "/p/post_pst_original",
+        sourceCommunityId: "com_cmt_songs",
+        sourcePostId: "post_pst_original",
       },
     ]);
   });

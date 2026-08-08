@@ -1,4 +1,5 @@
 import type { WalletHubChainSection } from "../wallet-hub/wallet-hub.types";
+import { formatCompactAddress } from "@/lib/formatting/address";
 import type { WalletSendAsset } from "./wallet-send-sheet.types";
 
 export function parseDisplayNumber(value: string | null | undefined): number {
@@ -7,7 +8,7 @@ export function parseDisplayNumber(value: string | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export function parseFiatValue(value: string | null | undefined): number {
+function parseFiatValue(value: string | null | undefined): number {
   if (!value) return 0;
   const parsed = Number(value.replace(/[^0-9.-]/gu, ""));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -44,6 +45,5 @@ export function validateAmount(value: string, asset: WalletSendAsset | null): st
 }
 
 export function formatShortAddress(value: string): string {
-  if (value.length <= 16) return value;
-  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+  return formatCompactAddress(value, { truncateAt: 16 });
 }

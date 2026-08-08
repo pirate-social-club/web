@@ -8,6 +8,7 @@ import {
   hasSelfDocumentFactVerificationRequest,
   isJoinCtaActionable,
   resolveSuggestedVerificationProvider,
+  resolveAvailableHumanVerificationProviders,
 } from "../lib/identity-gates";
 import type { MembershipGateSummary, JoinEligibility, GateFailureDetails, VerificationCapabilities } from "@pirate/api-contracts";
 
@@ -38,8 +39,8 @@ describe("formatGateRequirement", () => {
 
   test("formats gate copy with regional locale tags", () => {
     const gate: MembershipGateSummary = { gate_type: "unique_human" };
-    expect(formatGateRequirement(gate, { locale: "ar-SA" })).toBe("يتطلب التحقق من أنك إنسان");
-    expect(formatGateRequirement(gate, { locale: "zh-CN" })).toBe("需要真人验证");
+    expect(formatGateRequirement(gate, { locale: "ar-SA" })).toBe("إثبات أنك إنسان");
+    expect(formatGateRequirement(gate, { locale: "zh-CN" })).toBe("真人证明");
   });
 
   test("formats nationality gate with country name and code for admin surfaces", () => {
@@ -54,7 +55,17 @@ describe("formatGateRequirement", () => {
 
   test("formats unique human gate without provider jargon", () => {
     const gate: MembershipGateSummary = { gate_type: "unique_human" };
-    expect(formatGateRequirement(gate)).toBe("Real person check");
+    expect(formatGateRequirement(gate)).toBe("Human proof");
+  });
+
+  test("formats Self unique human gate with the provider name", () => {
+    const gate: MembershipGateSummary = { accepted_providers: ["self"], gate_type: "unique_human" };
+    expect(formatGateRequirement(gate)).toBe("Self.xyz ID proof");
+  });
+
+  test("formats ZKPassport unique human gate distinctly", () => {
+    const gate: MembershipGateSummary = { accepted_providers: ["zkpassport"], gate_type: "unique_human" };
+    expect(formatGateRequirement(gate)).toBe("ZKPassport proof");
   });
 
   test("formats Very unique human gate as palm scan", () => {
@@ -85,7 +96,26 @@ describe("formatGateRequirement", () => {
 
   test("formats wallet score gate with threshold", () => {
     const gate: MembershipGateSummary = { gate_type: "wallet_score", minimum_score: 20 };
-    expect(formatGateRequirement(gate)).toBe("Passport Score 20+");
+    expect(formatGateRequirement(gate)).toBe("Passport.xyz score 20+");
+  });
+
+  test("keeps compact sidebar labels behind the shared formatter", () => {
+    expect(formatGateRequirement(
+      { gate_type: "altcha_pow" },
+      { presentation: "compact" },
+    )).toBe("Proof of work");
+    expect(formatGateRequirement(
+      { gate_type: "erc721_holding", min_quantity: 2, contract_address: "0x1111111111111111111111111111111111111111" },
+      { presentation: "compact" },
+    )).toBe("2 Ethereum NFTs from 0x1111...1111");
+    expect(formatGateRequirement(
+      { gate_type: "erc721_inventory_match", min_quantity: 3, asset_category: "trading_card" },
+      { presentation: "compact" },
+    )).toBe("3 Courtyard cards");
+    expect(formatGateRequirement(
+      { gate_type: "asset_balance" },
+      { presentation: "compact" },
+    )).toBe("Token balance required");
   });
 
 });
@@ -203,6 +233,77 @@ describe("resolveSuggestedVerificationProvider", () => {
         },
       },
     })).toBe("self");
+  });
+
+  test("does not invent an identity provider for ALTCHA-only requirements", () => {
+    expect(resolveSuggestedVerificationProvider({
+      membership_gate_summaries: [{ gate_type: "altcha_pow" }],
+      gate_evaluation: {
+        passed: false,
+        trace: { kind: "op", op: "and", passed: false, children: [] },
+        required_action_set: {
+          kind: "set",
+          mode: "all",
+          items: [{ kind: "action", provider: "altcha", capability: "altcha_pow", scope: "community_join" }],
+        },
+      },
+    })).toBeNull();
+  });
+
+  test("does not invent a Very provider for ambiguous unique-human requirements", () => {
+    const eligibility = {
+      membership_gate_summaries: [{ gate_type: "unique_human", accepted_providers: [] }],
+      gate_evaluation: null,
+      missing_capabilities: ["unique_human"],
+    } as const;
+    expect(resolveSuggestedVerificationProvider(eligibility)).toBeNull();
+    expect(resolveAvailableHumanVerificationProviders(eligibility))
+      .toEqual(["self", "zkpassport", "very"]);
+  });
+
+  test("uses an explicit community preference without changing available choices", () => {
+    const eligibility = {
+      membership_gate_summaries: [{ gate_type: "unique_human", accepted_providers: [] }],
+      gate_evaluation: null,
+      missing_capabilities: ["unique_human"],
+      preferred_verification_provider: "very",
+    } as const;
+    expect(resolveSuggestedVerificationProvider(eligibility)).toBe("very");
+    expect(resolveAvailableHumanVerificationProviders(eligibility))
+      .toEqual(["very", "self", "zkpassport"]);
+  });
+
+  test("offers both supported document providers instead of silently choosing Self", () => {
+    const eligibility = {
+      membership_gate_summaries: [{
+        gate_type: "nationality",
+        accepted_providers: ["self", "zkpassport"],
+      }],
+      gate_evaluation: null,
+      missing_capabilities: ["nationality"],
+    } as const;
+    expect(resolveSuggestedVerificationProvider(eligibility)).toBeNull();
+    expect(resolveAvailableHumanVerificationProviders(eligibility))
+      .toEqual(["self", "zkpassport"]);
+  });
+
+  test("intersects providers across required capabilities", () => {
+    expect(resolveAvailableHumanVerificationProviders({
+      membership_gate_summaries: [
+        { gate_type: "unique_human", accepted_providers: [] },
+        { gate_type: "nationality", accepted_providers: ["self", "zkpassport"] },
+      ],
+      gate_evaluation: null,
+      missing_capabilities: ["unique_human", "nationality"],
+    })).toEqual(["self", "zkpassport"]);
+  });
+
+  test("uses an explicitly accepted ZKPassport unique-human provider", () => {
+    expect(resolveSuggestedVerificationProvider({
+      membership_gate_summaries: [{ gate_type: "unique_human", accepted_providers: ["zkpassport"] }],
+      gate_evaluation: null,
+      missing_capabilities: ["unique_human"],
+    })).toBe("zkpassport");
   });
 });
 

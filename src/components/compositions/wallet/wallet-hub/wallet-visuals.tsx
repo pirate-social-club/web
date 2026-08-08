@@ -78,7 +78,7 @@ function LocalIcon({
   );
 }
 
-export function WalletIconFallback({ label, className }: { label: string; className?: string }) {
+function WalletIconFallback({ label, className }: { label: string; className?: string }) {
   return (
     <div className={cn("grid size-full place-items-center bg-muted text-base font-semibold text-foreground", className)}>
       {label.slice(0, 1).toUpperCase()}

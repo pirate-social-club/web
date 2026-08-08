@@ -193,7 +193,6 @@ export function CommunitySafetyPage({
   className,
   graphicContentPolicy,
   onAdultContentPolicyChange,
-  onBackClick,
   onCivilityPolicyChange,
   onGraphicContentPolicyChange,
   onProviderSettingsChange,

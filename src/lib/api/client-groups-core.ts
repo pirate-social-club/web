@@ -1,4 +1,7 @@
 import type {
+  AssetBalanceCapabilityListResponse,
+  NftGateCapabilitySourceListResponse,
+  NftGateFacetValuePage,
   HomeFeedResponse,
   HomeFeedSort,
   NamespaceVerification,
@@ -56,6 +59,23 @@ export function createAuthApi(request: ApiRequest) {
 export function createUsersApi(request: ApiRequest) {
   return {
     getMe: (): Promise<User> => request<User>("/users/me"),
+    createTelegramAccountLinkIntent: (
+      communityId: string,
+    ): Promise<{ expires_at: string; link_url: string }> =>
+      request<{ expires_at: string; link_url: string }>(
+        "/users/me/telegram-account-link-intents",
+        {
+          method: "POST",
+          body: JSON.stringify({ community_id: communityId }),
+        },
+      ),
+    consumeTelegramAccountLinkIntent: (
+      token: string,
+    ): Promise<{ linked: true }> =>
+      request<{ linked: true }>("/users/me/telegram-account-link-intents/consume", {
+        method: "POST",
+        body: JSON.stringify({ token }),
+      }),
     setIdentityWallet: (walletAttachmentId: string): Promise<User> =>
       request<User>("/users/me/identity-wallet", {
         method: "PUT",
@@ -82,6 +102,28 @@ export function createGeoApi(request: ApiRequest) {
         limit: input.limit,
         text: input.text,
       })),
+  };
+}
+
+export function createGateCapabilitiesApi(request: ApiRequest) {
+  return {
+    listAssets: (): Promise<AssetBalanceCapabilityListResponse> =>
+      request<AssetBalanceCapabilityListResponse>("/gate-capabilities/assets"),
+    listNftSources: (): Promise<NftGateCapabilitySourceListResponse> =>
+      request<NftGateCapabilitySourceListResponse>("/gate-capabilities/nft/sources"),
+    searchNftFacetValues: (
+      sourceId: string,
+      facetKey: string,
+      options?: { cursor?: string | null; limit?: number; query?: string },
+    ): Promise<NftGateFacetValuePage> =>
+      request<NftGateFacetValuePage>(buildQueryPath(
+        `/gate-capabilities/nft/sources/${encodeURIComponent(sourceId)}/facets/${encodeURIComponent(facetKey)}/values`,
+        {
+          cursor: options?.cursor,
+          limit: options?.limit,
+          q: options?.query,
+        },
+      )),
   };
 }
 
@@ -163,7 +205,10 @@ export function createVerificationApi(request: ApiRequest) {
       ),
     completeNamespaceSession: (
       namespaceVerificationSessionId: string,
-      input?: { restart_challenge?: boolean | null },
+      input?: {
+        restart_challenge?: boolean | null;
+        acknowledged_resource_replacement?: boolean | null;
+      },
     ): Promise<NamespaceVerificationSession> =>
       request<NamespaceVerificationSession>(
         `/namespace-verification-sessions/${encodeURIComponent(namespaceVerificationSessionId)}/complete`,
@@ -182,6 +227,22 @@ export function createVerificationApi(request: ApiRequest) {
 }
 
 export function createFeedApi(request: ApiRequest) {
+  const videoFeed = (
+    path: string,
+    opts?: {
+      cursor?: string | null;
+      locale?: string | null;
+      sort?: HomeFeedSort | null;
+      timeRange?: string | null;
+    },
+    tokenRequired?: boolean,
+  ): Promise<HomeFeedResponse> => request<HomeFeedResponse>(buildQueryPath(path, {
+    cursor: opts?.cursor,
+    locale: opts?.locale,
+    sort: opts?.sort,
+    time_range: opts?.timeRange,
+  }), tokenRequired === false ? { tokenRequired: false } : { tokenOptional: true });
+
   return {
     home: (
       opts?: {
@@ -213,5 +274,9 @@ export function createFeedApi(request: ApiRequest) {
         time_range: opts?.timeRange,
       }), { tokenRequired: false });
     },
+    videos: (opts?: Parameters<typeof videoFeed>[1]): Promise<HomeFeedResponse> =>
+      videoFeed("/feed/home/videos", opts),
+    publicVideos: (opts?: Parameters<typeof videoFeed>[1]): Promise<HomeFeedResponse> =>
+      videoFeed("/feed/home/videos/public", opts, false),
   };
 }

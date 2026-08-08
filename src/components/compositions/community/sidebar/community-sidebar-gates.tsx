@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import type { Icon } from "@phosphor-icons/react";
 import {
   Calendar,
@@ -62,6 +61,7 @@ function getGateIconConfig(
       };
     case "erc721_holding":
     case "erc721_inventory_match":
+    case "asset_balance":
       return {
         icon: CurrencyEth,
       };
@@ -72,7 +72,17 @@ function getGateIconConfig(
   }
 }
 
-function GateRow({ item, mode }: { item: CommunitySidebarGateItem; mode?: "all" | "any" }) {
+function GateRow({
+  item,
+  mode,
+  orLabel,
+  showOr = false,
+}: {
+  item: CommunitySidebarGateItem;
+  mode?: "all" | "any";
+  orLabel: string;
+  showOr?: boolean;
+}) {
   const { icon: IconComponent } = getGateIconConfig(
     item.gateType,
     item.provider,
@@ -83,7 +93,7 @@ function GateRow({ item, mode }: { item: CommunitySidebarGateItem; mode?: "all" 
       className={cn(
         "flex min-h-11 items-center gap-3",
         mode === "any"
-          ? "py-2"
+          ? "border-b border-border-soft/70 py-2 last:border-b-0"
           : "border-b border-border-soft/70 py-2.5 last:border-b-0",
       )}
     >
@@ -93,16 +103,17 @@ function GateRow({ item, mode }: { item: CommunitySidebarGateItem; mode?: "all" 
           weight="duotone"
         />
       </div>
-      <Type
-        as="span"
-        className="min-w-0 flex-1"
-        variant="body-strong"
-      >
-        {item.label}
-      </Type>
+      <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+        <Type as="span" className="block" variant="body-strong">{item.label}</Type>
+        {item.detail ? <Type as="span" className="block text-muted-foreground" variant="caption">{item.detail}</Type> : null}
+      </div>
       <div className="grid size-6 shrink-0 place-items-center">
         {item.status === "met" ? (
           <CheckCircle className="size-5 text-success" weight="fill" />
+        ) : showOr ? (
+          <Type as="span" className="text-sidebar-foreground/45" variant="caption">
+            {orLabel}
+          </Type>
         ) : mode === "any" ? (
           <span aria-hidden="true" className="size-5" />
         ) : (
@@ -118,6 +129,7 @@ export interface CommunitySidebarGatesProps {
   expressionLabel?: string | null;
   items: CommunitySidebarGateItem[];
   mode?: "all" | "any";
+  showFlatOrMarkers?: boolean;
 }
 
 export function CommunitySidebarGates({
@@ -125,6 +137,7 @@ export function CommunitySidebarGates({
   expressionLabel,
   items,
   mode,
+  showFlatOrMarkers = false,
 }: CommunitySidebarGatesProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "gates").sidebar;
@@ -146,9 +159,13 @@ export function CommunitySidebarGates({
 
       <div className="flex flex-col">
         {items.map((item, index) => (
-          <React.Fragment key={`${item.gateType}-${item.label}-${index}`}>
-            <GateRow item={item} mode={mode} />
-          </React.Fragment>
+          <GateRow
+            item={item}
+            key={`${item.gateType}-${item.label}-${index}`}
+            mode={mode}
+            orLabel={copy.orDivider}
+            showOr={showFlatOrMarkers && index < items.length - 1}
+          />
         ))}
       </div>
     </div>

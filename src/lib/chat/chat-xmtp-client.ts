@@ -46,15 +46,6 @@ export async function publishChatInboxId(api: ApiClient, inboxId: string | null 
   await api.profiles.publishXmtpInboxId(normalizedInboxId);
 }
 
-export async function registerChat(
-  session: StoredSession,
-  signerWallet: PirateConnectedEvmWallet,
-  cache: XmtpClientCache,
-): Promise<string | null> {
-  const { client } = await ensureXmtpClient(session, { allowRegistration: true, cache, signerWallet });
-  return typeof client.inboxId === "string" && client.inboxId.trim() ? client.inboxId.trim() : null;
-}
-
 export async function loadConversations(
   session: StoredSession,
   signerWallet: PirateConnectedEvmWallet,

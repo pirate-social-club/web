@@ -65,6 +65,7 @@ node - "$WEB_ORIGIN" "$API_ORIGIN" "$TARGET_LABEL" "$CREATE_COMMUNITY" <<'NODE'
 const [webOrigin, apiOrigin, targetLabel, createCommunityRaw] = process.argv.slice(2);
 const createCommunity = createCommunityRaw === "1";
 const FETCH_TIMEOUT_MS = 15000;
+const SMOKE_PROPAGATION_BUDGET_MS = Number(process.env.SMOKE_PROPAGATION_BUDGET_MS ?? 90000);
 
 async function fetchWithTimeout(url, options = {}) {
   const controller = new AbortController();
@@ -76,7 +77,7 @@ async function fetchWithTimeout(url, options = {}) {
   }
 }
 
-async function expectJson(url, expectedStatus = 200, options = {}) {
+async function expectJsonOnce(url, expectedStatus = 200, options = {}) {
   const response = await fetchWithTimeout(url, {
     ...options,
     headers: { accept: "application/json", ...(options.headers ?? {}) },
@@ -89,9 +90,41 @@ async function expectJson(url, expectedStatus = 200, options = {}) {
     throw new Error(`${url} returned non-JSON response with HTTP ${response.status}`);
   }
   if (response.status !== expectedStatus) {
-    throw new Error(`${url} expected HTTP ${expectedStatus}, got ${response.status}: ${raw.slice(0, 300)}`);
+    const error = new Error(`${url} expected HTTP ${expectedStatus}, got ${response.status}: ${raw.slice(0, 300)}`);
+    error.httpStatus = response.status;
+    throw error;
   }
   return { response, body };
+}
+
+// This smoke runs immediately after a deploy, so a 5xx or a dropped connection
+// is usually the deploy still landing rather than a broken release. Retry those
+// within a bounded window; anything else (4xx, non-JSON, a failed assertion on
+// the body) is a real answer and fails on the spot.
+//
+// On 2026-08-03 a single transient 503 from /health/provisioning failed a
+// production release attempt whose payload already carried the correct pinned
+// SHA. The next attempt passed unchanged.
+async function expectJson(url, expectedStatus = 200, options = {}) {
+  // Retry only idempotent probes. The community-creation POST must never be
+  // replayed on a 5xx: the write may well have landed, and a second attempt
+  // would create a second community in production.
+  const method = String(options.method ?? "GET").toUpperCase();
+  const idempotent = method === "GET" || method === "HEAD";
+  const deadline = Date.now() + SMOKE_PROPAGATION_BUDGET_MS;
+  let delayMs = 2_000;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await expectJsonOnce(url, expectedStatus, options);
+    } catch (error) {
+      const status = error?.httpStatus ?? null;
+      const retryable = idempotent && (status === null || status >= 500);
+      if (!retryable || Date.now() >= deadline) throw error;
+      console.warn(`smoke attempt ${attempt} for ${url} retryable (${status ?? "transport"}), retrying in ${delayMs}ms`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      delayMs = Math.min(delayMs * 2, 10_000);
+    }
+  }
 }
 
 function requireVersion(label, body) {

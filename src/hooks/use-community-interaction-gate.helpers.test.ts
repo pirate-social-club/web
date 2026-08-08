@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   altchaRequirement,
   gate,
+  gatesPanel,
   interactionCopy,
   uniqueHumanRequirement,
 } from "./community-interaction-gate/test-fixtures.test";
@@ -180,8 +181,10 @@ describe("createCommunityBlockedModalStateFactory", () => {
     })(args(gate("joinable")));
 
     expect(modal?.icon).toBe("join");
+    expect(modal?.description).toBe(gatesPanel.joinableDescription);
     expect(modal?.primaryAction?.label).toBe("Join");
     expect(modal?.primaryAction?.loading).toBe(true);
+    expect(modal?.requirements).toEqual([]);
 
     await modal?.primaryAction?.onClick?.();
     expect(calls).toEqual(["join:community-1", "invalidate:community-1"]);
@@ -203,11 +206,16 @@ describe("createCommunityBlockedModalStateFactory", () => {
       suggested_verification_provider: "self",
     })));
 
-    expect(modal?.icon).toBe("self");
-    expect(modal?.primaryAction?.loading).toBe(true);
-    expect(modal?.secondaryAction?.label).toBe(interactionCopy.close);
+    expect(modal?.icon).toBeUndefined();
+    expect(modal?.primaryAction).toBeUndefined();
+    expect(modal?.verificationProviderActions?.map((action) => action.label)).toEqual([
+      "Verify with Self",
+      "Verify with ZKPassport",
+      "Verify with Very",
+    ]);
+    expect(modal?.verificationProviderActions?.[0]?.loading).toBe(true);
 
-    await modal?.primaryAction?.onClick?.();
+    await modal?.verificationProviderActions?.[0]?.onClick();
     expect(startedSelfForCommunityId).toBe("community-1");
   });
 
@@ -238,6 +246,18 @@ describe("createCommunityBlockedModalStateFactory", () => {
 });
 
 describe("createDefaultBlockedModalState", () => {
+  test("keeps a joinable modal focused on joining instead of repeating gate options", () => {
+    const modal = createDefaultBlockedModalState({
+      ...args(gate("joinable", {}, [uniqueHumanRequirement, altchaRequirement], { gateMatchMode: "any" })),
+      defaultVerificationLoadingProvider: null,
+      startDefaultVerification: async () => ({ started: false }),
+    });
+
+    expect(modal.description).toBe(gatesPanel.joinableDescription);
+    expect(modal.title).toBe("Join to Vote");
+    expect(modal.requirements).toEqual([]);
+  });
+
   test("passes the real zkpassport provider to startDefaultVerification", async () => {
     const startedProviders: string[] = [];
     const gateData = gate("verification_required", {
@@ -257,6 +277,18 @@ describe("createDefaultBlockedModalState", () => {
     expect(modal?.primaryAction?.loading).toBe(true);
     await modal?.primaryAction?.onClick?.();
     expect(startedProviders).toEqual(["zkpassport"]);
+  });
+
+  test("does not invent a verification action when no provider is supported", () => {
+    const gateData = gate("verification_required", {
+      missing_capabilities: ["altcha_pow"],
+      gate_evaluation: null,
+    }, [altchaRequirement]);
+
+    const modal = createDefaultBlockedModalState(args(gateData));
+
+    expect(modal.icon).toBe("blocked");
+    expect(modal.primaryAction).toBeNull();
   });
 });
 
@@ -283,7 +315,7 @@ describe("gate requirement display state", () => {
     }]);
   });
 
-  test("groups required actions separately from OR alternatives", () => {
+  test("groups required actions without inferring status for leaves omitted from the trace", () => {
     const nationalityRequirement = { gate_type: "nationality" as const, required_value: "GE" };
     const gateData = gate("verification_required", {
       gate_evaluation: {
@@ -311,7 +343,7 @@ describe("gate requirement display state", () => {
       {
         mode: "all",
         requirements: [nationalityRequirement],
-        requirementStatuses: ["unmet"],
+        requirementStatuses: ["unknown"],
       },
       {
         mode: "any",
@@ -319,5 +351,35 @@ describe("gate requirement display state", () => {
         requirementStatuses: ["unknown", "unknown"],
       },
     ]);
+  });
+
+  test("joins same-type required actions to summaries by gate identity", () => {
+    const first = { gate_id: "balance-first", gate_type: "asset_balance" as const, asset_id: "asset:first", min_amount_atomic: "10" };
+    const second = { gate_id: "balance-second", gate_type: "asset_balance" as const, asset_id: "asset:second", min_amount_atomic: "20" };
+    const gateData = gate("verification_required", {
+      gate_evaluation: {
+        passed: false,
+        trace: {
+          kind: "op",
+          op: "or",
+          passed: false,
+          children: [
+            { kind: "gate", gate_id: "balance-first", gate_type: "asset_balance", outcome: "action_required", passed: false },
+            { kind: "gate", gate_id: "balance-second", gate_type: "asset_balance", outcome: "action_required", passed: false },
+          ],
+        },
+        required_action_set: {
+          kind: "set",
+          mode: "any",
+          items: [
+            { kind: "action", gate_id: "balance-second", provider: "wallet", capability: "asset_balance" },
+            { kind: "action", gate_id: "balance-first", provider: "wallet", capability: "asset_balance" },
+          ],
+        },
+      } as NonNullable<CommunityGateData["eligibility"]["gate_evaluation"]>,
+    }, [first, second]);
+
+    expect(getRequirementGroups(gateData)?.[0]?.requirements).toEqual([second, first]);
+    expect(getRequirementGroups(gateData)?.[0]?.requirementStatuses).toEqual(["unmet", "unmet"]);
   });
 });

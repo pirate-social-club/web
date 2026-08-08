@@ -20,7 +20,7 @@ const prefixInputVariants = cva(
   },
 );
 
-export interface PrefixInputProps extends Omit<React.ComponentProps<"input">, "size">, VariantProps<typeof prefixInputVariants> {
+interface PrefixInputProps extends Omit<React.ComponentProps<"input">, "size">, VariantProps<typeof prefixInputVariants> {
   prefix: string;
   prefixClassName?: string;
 }
@@ -40,4 +40,4 @@ function PrefixInput({ className, prefix, prefixClassName, ref, size, ...props }
   );
 }
 
-export { PrefixInput, prefixInputVariants };
+export { PrefixInput,  };

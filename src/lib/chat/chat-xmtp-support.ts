@@ -9,7 +9,7 @@ import { withTimeout } from "@/lib/promise-utils";
 import { resolveXmtpWalletAddress } from "./chat-xmtp-wallets";
 
 export {
-  getSessionWalletAddress,
+
   getSessionWalletAddresses,
   resolveXmtpSignerWallet,
   resolveXmtpWalletAddress,
@@ -49,7 +49,7 @@ export type XmtpModule = {
   };
 };
 
-export type XmtpAccountIdentifier = {
+type XmtpAccountIdentifier = {
   identifier?: unknown;
   identifierKind?: unknown;
 };
@@ -134,7 +134,7 @@ function warnXmtp(event: string, payload?: Record<string, unknown>) {
   logger.warn(`[chat:xmtp] ${event}`, payload ?? {});
 }
 
-export function formatErrorMessage(error: unknown): string {
+function formatErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error ?? "");
 }
 
@@ -180,7 +180,7 @@ export function isLikelyXmtpTabContentionError(error: unknown): boolean {
     || message.includes("busy");
 }
 
-export function createXmtpClientCache(): XmtpClientCache {
+function createXmtpClientCache(): XmtpClientCache {
   return {
     clientInstance: null,
     clientPromise: null,
@@ -207,7 +207,7 @@ export function resetXmtpClientCache(cache: XmtpClientCache): void {
   conversationCache.clear();
 }
 
-export async function loadXmtpModule(): Promise<XmtpModule> {
+async function loadXmtpModule(): Promise<XmtpModule> {
   if (!modulePromise) {
     logXmtp("module:load:start");
     modulePromise = import("@xmtp/browser-sdk")
@@ -447,15 +447,6 @@ export function getAllowedConsentStates(module: XmtpModule): unknown[] {
 }
 
 const XMTP_REGISTRATION_HINT_PREFIX = "pirate.xmtp.registered.v1";
-
-export function getXmtpRegistrationHint(walletAddress: string): boolean {
-  try {
-    return typeof window !== "undefined"
-      && window.localStorage.getItem(`${XMTP_REGISTRATION_HINT_PREFIX}:${walletAddress}`) === "1";
-  } catch {
-    return false;
-  }
-}
 
 export function setXmtpRegistrationHint(walletAddress: string): void {
   try {

@@ -11,7 +11,7 @@ export interface ModerationCasePostPreview {
   author_handle: string | null;
 }
 
-export interface ModerationCase {
+interface ModerationCase {
   moderation_case_id: string;
   community_id: string;
   post_id: string | null;
@@ -26,7 +26,7 @@ export interface ModerationCase {
   post: ModerationCasePostPreview | null;
 }
 
-export interface ModerationSignal {
+interface ModerationSignal {
   moderation_signal_id: string;
   community_id: string;
   post_id: string | null;
@@ -41,7 +41,7 @@ export interface ModerationSignal {
   created_at: string;
 }
 
-export interface UserReport {
+interface UserReport {
   user_report_id: string;
   community_id: string;
   post_id: string | null;
@@ -52,7 +52,7 @@ export interface UserReport {
   created_at: string;
 }
 
-export interface ModerationAction {
+interface ModerationAction {
   moderation_action_id: string;
   moderation_case_id: string;
   community_id: string;
@@ -101,7 +101,7 @@ export interface MediaAnalysisResult {
   updated_at: string;
 }
 
-export interface RightsReviewCase {
+interface RightsReviewCase {
   rights_review_case_id: string;
   subject_type: "asset" | "post" | "live_room" | "replay_asset";
   subject_id: string;

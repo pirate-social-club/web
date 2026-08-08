@@ -1,6 +1,4 @@
-export type OnboardingPhase = "import_karma" | "choose_name";
-
-export type VerificationState =
+type VerificationState =
   | "not_started"
   | "code_ready"
   | "checking"
@@ -8,9 +6,9 @@ export type VerificationState =
   | "failed"
   | "rate_limited";
 
-export type CodePlacementSurface = "profile" | "bio" | "about";
+type CodePlacementSurface = "profile" | "bio" | "about";
 
-export type ImportJobStatus =
+type ImportJobStatus =
   | "not_started"
   | "ready"
   | "queued"
@@ -20,7 +18,7 @@ export type ImportJobStatus =
   | "failed"
 ;
 
-export type HandleAvailability = "available" | "taken" | "manual_review";
+type HandleAvailability = "available" | "taken" | "manual_review";
 
 export interface RedditVerificationState {
   usernameValue: string;
@@ -55,34 +53,4 @@ export interface HandleSuggestion {
   source: "verified_reddit_username";
   availability: HandleAvailability;
   reason?: string;
-}
-
-export interface OnboardingActions {
-  primaryLabel?: string;
-  tertiaryLabel?: string;
-}
-
-export interface OnboardingCallbacks {
-  onUsernameChange: (value: string) => void;
-  onImportKarmaNext: () => void;
-  onImportKarmaSkip: () => void;
-  onHandleChange: (value: string) => void;
-  onGenerateHandle: () => void;
-  onChooseNameBack: () => void;
-  onChooseNameContinue: () => void;
-}
-
-export interface OnboardingRedditBootstrapProps {
-  generatedHandle: string;
-  canSkip: boolean;
-  busy?: boolean;
-  layout?: "card" | "mobile";
-  phaseError?: string | null;
-  phase: OnboardingPhase;
-  reddit: RedditVerificationState;
-  importJob: ImportJobState;
-  redditImportSummary?: RedditImportSummaryState | null;
-  handleSuggestion?: HandleSuggestion;
-  actions?: OnboardingActions;
-  callbacks?: OnboardingCallbacks;
 }

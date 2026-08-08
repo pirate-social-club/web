@@ -37,7 +37,15 @@ function isHnsHostname(hostname: string): boolean {
     return true;
   }
 
-  return !hostname.includes(".") && /^[a-z0-9-]+$/u.test(hostname);
+  if (!hostname.includes(".")) {
+    return /^[a-z0-9-]+$/u.test(hostname);
+  }
+
+  // Imported HNS roots use the dashboard-compatible app.<root> origin.
+  // Keep other subdomains on their normal ICANN routing until a host is
+  // explicitly recognized as an HNS application origin.
+  const labels = hostname.split(".");
+  return labels.length === 2 && labels[0] === "app" && /^[a-z0-9-]+$/u.test(labels[1]);
 }
 
 function getBrowserHostname(): string {
@@ -79,7 +87,11 @@ export function resolveApiBaseUrl(hostname?: string | null): string {
   }
 
   if (isHnsHostname(resolvedHostname)) {
-    return "https://api.pirate.sc";
+    // HNS visitors ride the HNS trust chain for the API as well: the .sc zone
+    // cannot anchor DNSSEC (the registry publishes no DS records), so a
+    // dual-root browser cannot produce timely authenticated ICANN evidence
+    // for api.pirate.sc, while api.pirate resolves and DANE-verifies natively.
+    return "https://api.pirate";
   }
 
   return resolveEnvironmentFallback();

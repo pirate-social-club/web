@@ -11,8 +11,8 @@ import { fiveChainSections, sharedWalletAddress } from "@/components/composition
 
 import {
   CashoutSheet,
-  SongRewardOffer,
-  StreakRewardEarned,
+  RewardQualificationNotice,
+  SongRewardOfferPill,
   VerifyHumanSheet,
   type CashoutSheetState,
   type VerifyHumanSheetState,
@@ -71,7 +71,7 @@ function RewardsWalletContext({
 }) {
   const [cashoutOpen, setCashoutOpen] = React.useState(Boolean(cashoutState));
   const [verifyOpen, setVerifyOpen] = React.useState(Boolean(verifyState));
-  const [amount, setAmount] = React.useState(rewardWallet.available);
+  const amount = rewardWallet.available;
 
   return (
     <StandardRoutePage size="rail">
@@ -79,12 +79,11 @@ function RewardsWalletContext({
         <WalletHub
           {...walletHubProps}
           rewardsSummary={{
-            actionLabel: verifyState ? "Verify" : cashoutState === "pending" ? "Pending" : "Claim",
+            actionLabel: cashoutState === "pending" ? "Pending" : "Claim",
             amountLabel: rewardWallet.balance,
             actionDisabled: cashoutState === "pending",
             onAction: verifyState ? () => setVerifyOpen(true) : () => setCashoutOpen(true),
             pending: cashoutState === "pending",
-            supportingLabel: verifyState ? "Verify once to claim." : undefined,
           }}
         />
       </div>
@@ -93,17 +92,17 @@ function RewardsWalletContext({
         availableLabel={rewardWallet.available}
         basescanUrl={rewardWallet.basescanUrl}
         minimumCashoutLabel={rewardAmounts.minimumCashout}
-        onAmountChange={setAmount}
         onOpenChange={setCashoutOpen}
         open={cashoutOpen}
         recipientLabel={rewardWallet.recipient}
-        state={cashoutState ?? "amount-entry"}
+        state={cashoutState ?? "confirm"}
         txHashLabel={cashoutState === "pending" || cashoutState === "success" ? rewardWallet.txHash : undefined}
       />
       <VerifyHumanSheet
         onOpenChange={setVerifyOpen}
         onSelectProvider={() => undefined}
         open={verifyOpen}
+        providers={["self"]}
         state={verifyState ?? "provider-selection"}
       />
     </StandardRoutePage>
@@ -115,8 +114,8 @@ export const WalletPageClaimReady: Story = {
   render: () => <RewardsWalletContext />,
 };
 
-export const WalletPageVerifyRequired: Story = {
-  name: "Wallet page / Verify required",
+export const WalletPagePendingVerification: Story = {
+  name: "Wallet page / Earned, verification on Claim",
   render: () => <RewardsWalletContext verifyState="provider-selection" />,
 };
 
@@ -131,13 +130,18 @@ export const StudyCompletionRewardPending: Story = {
     <StandardRoutePage size="rail">
       <div className="flex flex-col gap-4">
         <SongStudySurface
-          artistName="The Castaways"
           artworkSrc="https://picsum.photos/seed/pirate-study/160/160"
           onExit={() => undefined}
           onKaraoke={() => undefined}
           onPrimaryAction={() => undefined}
           onStudyAgain={() => undefined}
-          rewardSlot={<SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" />}
+          rewardSlot={(
+            <RewardQualificationNotice
+              amountLabel="$0.40"
+              expiresAt={Math.floor(Date.now() / 1000) + 6 * 86_400}
+              status="pending_verification"
+            />
+          )}
           state={{
             correctCount: 3,
             kind: "complete",
@@ -152,12 +156,6 @@ export const StudyCompletionRewardPending: Story = {
             },
             totalCount: 3,
           }}
-          title="Midnight Waves"
-        />
-        <StreakRewardEarned
-          amountLabel={rewardAmounts.daily}
-          milestoneLabel="7-day streak"
-          state="milestone-bonus"
         />
       </div>
     </StandardRoutePage>
@@ -169,20 +167,18 @@ export const StudyQuestionRewardMotivation: Story = {
   render: () => (
     <StandardRoutePage size="rail">
       <div className="flex flex-col gap-4">
-        <StreakRewardEarned amountLabel={rewardAmounts.daily} state="already-earned-today" />
         <SongStudySurface
-          artistName="The Castaways"
           artworkSrc="https://picsum.photos/seed/pirate-study/160/160"
           onExit={() => undefined}
           onKaraoke={() => undefined}
           onPrimaryAction={() => undefined}
           onStudyAgain={() => undefined}
+          rewardSlot={<SongRewardOfferPill amountLabel={rewardAmounts.daily} />}
           state={{
             attemptNumber: 1,
             exercise: studyExercise,
             kind: "multiple_choice",
           }}
-          title="Midnight Waves"
         />
       </div>
     </StandardRoutePage>

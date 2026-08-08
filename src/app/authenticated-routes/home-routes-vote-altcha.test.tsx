@@ -33,6 +33,11 @@ const ageVerificationRequests: Array<{
   unavailableMessage?: string;
 }> = [];
 
+type TestFeedApi = {
+  home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: CommunityPreview[] }>;
+  publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: CommunityPreview[] }>;
+};
+
 mock.module("@/hooks/use-client-hydrated", () => ({
   useClientHydrated: () => true,
 }));
@@ -89,6 +94,8 @@ mock.module("@/components/compositions/posts/feed/feed", () => ({
           onVerifyAge?: () => void;
           type?: string;
         };
+        menuItems?: Array<{ key: string }>;
+        onMenuAction?: (key: string) => void;
         onVote?: (direction: "up" | "down" | null) => void;
       };
     }>;
@@ -109,6 +116,24 @@ mock.module("@/components/compositions/posts/feed/feed", () => ({
             >
               Vote
             </button>
+            {item.post.menuItems?.some((menuItem) => menuItem.key === "delete") ? (
+              <button
+                data-testid={`home-delete-${index}`}
+                onClick={() => item.post.onMenuAction?.("delete")}
+                type="button"
+              >
+                Delete post
+              </button>
+            ) : null}
+            {item.post.menuItems?.some((menuItem) => menuItem.key === "remove") ? (
+              <button
+                data-testid={`home-remove-${index}`}
+                onClick={() => item.post.onMenuAction?.("remove")}
+                type="button"
+              >
+                Remove post
+              </button>
+            ) : null}
             {content?.type === "song" && content.ageGatePolicy === "18_plus" ? (
               <button
                 data-testid={`home-verify-age-${index}`}
@@ -242,11 +267,69 @@ beforeEach(() => {
 });
 
 describe("HomePage vote ALTCHA plumbing", () => {
-  test("enables age verification on age-gated home feed song cards", async () => {
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+  test("shows and executes Delete post for an authored home-feed post", async () => {
+    const deleteCalls: Array<{ communityId: string; postId: string }> = [];
+    const feedApi = api.feed as unknown as TestFeedApi;
+    const postsApi = api.posts as unknown as {
+      delete: (communityId: string, postId: string) => Promise<unknown>;
     };
+    const authoredPost = createFeedItem("post_pst_authored");
+    authoredPost.post.post.author_user = "usr_test";
+    authoredPost.post.post.identity_mode = "public";
+    authoredPost.post.viewer_is_author = true;
+    const feedResponse = {
+      items: [authoredPost],
+      top_communities: [],
+    };
+
+    feedApi.home = async () => feedResponse;
+    feedApi.publicHome = async () => feedResponse;
+    postsApi.delete = async (communityId, postId) => {
+      deleteCalls.push({ communityId, postId });
+      return undefined;
+    };
+    window.confirm = () => true;
+
+    const view = render(<HomePage initialSort="best" />, { wrapper });
+
+    await waitFor(() => expect(view.getByTestId("home-delete-0")).toBeTruthy());
+    await act(async () => {
+      fireEvent.click(view.getByTestId("home-delete-0"));
+    });
+
+    await waitFor(() => expect(deleteCalls).toEqual([{
+      communityId: "cmt_test",
+      postId: "post_pst_authored",
+    }]));
+    expect(view.queryByTestId("home-delete-0")).toBeNull();
+  });
+
+  test("keeps cross-community moderator Remove actions out of the home feed", async () => {
+    const preview = createPreview({
+      viewer_community_role: "owner",
+      viewer_membership_status: "member",
+    });
+    const feedApi = api.feed as unknown as TestFeedApi;
+    const moderatedPost = createFeedItem("post_pst_moderated", preview);
+    moderatedPost.post.post.author_user = "usr_other";
+    moderatedPost.post.post.identity_mode = "public";
+    moderatedPost.post.viewer_is_author = false;
+    const feedResponse = {
+      items: [moderatedPost],
+      top_communities: [],
+    };
+
+    feedApi.home = async () => feedResponse;
+    feedApi.publicHome = async () => feedResponse;
+
+    const view = render(<HomePage initialSort="best" />, { wrapper });
+
+    await waitFor(() => expect(view.getByTestId("home-vote-0")).toBeTruthy());
+    expect(view.queryByTestId("home-remove-0")).toBeNull();
+  });
+
+  test("enables age verification on age-gated home feed song cards", async () => {
+    const feedApi = api.feed as unknown as TestFeedApi;
     const ageGatedSong = createFeedItem("post_pst_explicit_song");
     ageGatedSong.post.post.post_type = "song";
     ageGatedSong.post.post.title = "Explicit song";
@@ -283,10 +366,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       postId: string;
       value: -1 | 1;
     }> = [];
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const postsApi = api.posts as unknown as {
       vote: (
         postId: string,
@@ -333,10 +413,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_membership_status: "not_member",
     });
     const voteCalls: string[] = [];
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const postsApi = api.posts as unknown as {
       vote: (postId: string, value: -1 | 1) => Promise<{ value: -1 | 1 }>;
     };
@@ -371,10 +448,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_community_role: null,
       viewer_membership_status: "member",
     });
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const postsApi = api.posts as unknown as {
       vote: (postId: string, value: -1 | 1) => Promise<{ value: -1 | 1 }>;
     };
@@ -403,10 +477,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_community_role: null,
       viewer_membership_status: "not_member",
     });
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const postsApi = api.posts as unknown as {
       vote: (postId: string, value: -1 | 1) => Promise<{ value: -1 | 1 }>;
     };
@@ -435,10 +506,7 @@ describe("HomePage vote ALTCHA plumbing", () => {
       viewer_community_role: null,
       viewer_membership_status: "banned",
     });
-    const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
-    };
+    const feedApi = api.feed as unknown as TestFeedApi;
     const postsApi = api.posts as unknown as {
       vote: () => Promise<{ value: -1 | 1 }>;
     };

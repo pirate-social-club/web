@@ -7,7 +7,6 @@ import {
 } from "@phosphor-icons/react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { CommunityAvatar } from "@/components/primitives/community-avatar";
-import { FormattedTextarea } from "@/components/primitives/formatted-textarea";
 import { FormFieldLabel } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { PillButton } from "@/components/primitives/pill-button";
@@ -392,92 +391,6 @@ export function LabeledTextarea({
         variant={variant}
         value={value}
       />
-    </div>
-  );
-}
-
-export function LabeledFormattedTextarea({
-  label,
-  placeholder,
-  value,
-  onChange,
-  className,
-}: {
-  label: string;
-  placeholder: string;
-  value: string;
-  onChange?: (value: string) => void;
-  className?: string;
-}) {
-  return (
-    <div>
-      <FieldLabel label={label} />
-      <FormattedTextarea
-        className={className}
-        onChange={onChange}
-        placeholder={placeholder}
-        value={value}
-      />
-    </div>
-  );
-}
-
-export function EditorChrome({
-  value,
-  onChange,
-  placeholder = "Write your post",
-  className,
-  variant = "default",
-}: {
-  value: string;
-  onChange?: (value: string) => void;
-  placeholder?: string;
-  className?: string;
-  variant?: "default" | "flat";
-}) {
-  return (
-    <Textarea
-      className={cn("min-h-44", className)}
-      onChange={(event) => onChange?.(event.target.value)}
-      placeholder={placeholder}
-      variant={variant}
-      value={value}
-    />
-  );
-}
-
-export function LinkPreviewCard({
-  domain,
-  title,
-  imageSrc,
-}: {
-  domain: string;
-  title?: string;
-  imageSrc?: string;
-}) {
-  return (
-    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border-soft bg-card">
-      <div
-        className={cn(
-          "grid min-h-16 items-stretch gap-3",
-          imageSrc ? "grid-cols-[minmax(0,7fr)_minmax(5rem,3fr)]" : "grid-cols-1",
-        )}
-      >
-        <div className="flex min-h-20 min-w-0 items-center px-4 py-3">
-          <div className="min-w-0 space-y-1">
-            {title ? <Type as="p" variant="body-strong" className="line-clamp-2 ">{title}</Type> : null}
-            <p className="truncate text-base text-muted-foreground">{domain}</p>
-          </div>
-        </div>
-        {imageSrc ? (
-          <img
-            alt=""
-            aria-hidden="true"
-            className="size-full min-h-20 object-cover"
-            src={imageSrc}
-          />
-        ) : null}
-      </div>
     </div>
   );
 }

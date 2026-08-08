@@ -43,7 +43,7 @@ export interface ProfileSummary {
 
 export type CreateCommunitySample = CreateCommunityComposerProps;
 
-export const CURRENT_USER_ID = "usr_01_suspicious_code";
+const CURRENT_USER_ID = "usr_01_suspicious_code";
 
 export const COMMUNITY_IDS = {
   builders: "gld_01_builders",

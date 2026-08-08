@@ -2,7 +2,7 @@ import type { Page, Route } from "@playwright/test";
 
 const pirateApiPattern = /https?:\/\/(?:api-staging\.pirate\.sc|api\.pirate\.sc|127\.0\.0\.1:8787)\/.*/u;
 
-export type RewardPayoutFixture = {
+type RewardPayoutFixture = {
   id: string;
   amount_cents: number;
   recipient_address: string;
@@ -44,6 +44,7 @@ export function createRewardMockState(overrides: Partial<RewardMockState> = {}):
 function summary(state: RewardMockState) {
   const inFlight = state.latestInFlight?.status === "submitted" ? state.latestInFlight : null;
   return {
+    chain_id: 84532,
     balance_cents: state.balanceCents,
     today_earned_cents: 30,
     recent_events: [],
@@ -51,6 +52,12 @@ function summary(state: RewardMockState) {
       eligible: state.balanceCents >= 100 && !inFlight,
       min_cents: 100,
       verification_state: "verified",
+      verification_provider: "self",
+    },
+    pending_verification: {
+      count: 0,
+      conditional_cents: 0,
+      earliest_expires_at: null,
     },
     latest_in_flight_cashout: inFlight,
   };
@@ -58,6 +65,7 @@ function summary(state: RewardMockState) {
 
 function cashoutResponse(state: RewardMockState) {
   return {
+    chain_id: 84532,
     payout: state.payout,
     balance_cents: state.payout.status === "submitted" ? Math.max(0, state.balanceCents - state.payout.amount_cents) : state.balanceCents,
   };

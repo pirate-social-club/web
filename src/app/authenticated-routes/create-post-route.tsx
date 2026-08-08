@@ -29,9 +29,12 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { toast } from "@/components/primitives/sonner";
 import {
   getGateFailureMessage,
+  getMissingCapabilitiesFromGateEvaluation,
   getSelfVerificationRequestForGates,
   hasSelfDocumentFactVerificationRequest,
+  type HumanVerificationProvider,
   isJoinSurfaceGate,
+  resolveAvailableHumanVerificationProviders,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 
@@ -345,19 +348,37 @@ export function CreatePostPage({
     joinError,
     joinLoading,
     joinRequested,
-    passportLoading,
     veryLoading: joinVeryLoading,
     selfError: joinSelfError,
     selfLoading: joinSelfLoading,
     selfModalOpen: joinSelfModalOpen,
     selfPrompt: joinSelfPrompt,
+    startVerificationProvider,
     setAltchaPayload,
+    zkPassportLoading: joinZkPassportLoading,
   } = useCommunityJoinVerification({
     communityId,
     eligibility: state.eligibility,
     locale,
     refetchEligibility: state.refetchEligibility,
   });
+  const joinProviderChoices = React.useMemo(
+    () => state.eligibility?.status === "verification_required"
+      ? resolveAvailableHumanVerificationProviders(state.eligibility)
+      : [],
+    [state.eligibility],
+  );
+  const handleChooseJoinProvider = React.useCallback(async (
+    provider: HumanVerificationProvider,
+  ) => {
+    await startVerificationProvider(provider, {
+      missingCapabilities: state.eligibility
+        ? getMissingCapabilitiesFromGateEvaluation(state.eligibility)
+        : null,
+      membershipGateSummaries: state.eligibility?.membership_gate_summaries ?? null,
+      showToastOnError: true,
+    });
+  }, [startVerificationProvider, state.eligibility]);
 
   const handleJoinRequestModalOpenChange = React.useCallback(
     (open: boolean) => {
@@ -469,7 +490,6 @@ export function CreatePostPage({
     }
 
     if (canSubmitPostWithProofOfWork({
-      hasPostingAccess,
       postAltchaPayload: state.postAltchaPayload,
       postAltchaRequired: state.postAltchaRequired,
     })) {
@@ -631,6 +651,7 @@ export function CreatePostPage({
   if (
     state.eligibility.status !== "already_joined" &&
     !state.isCommunityOwner &&
+    !state.postAltchaRequired &&
     hasJoinSurfaceGates
   ) {
     const joinPanel = (
@@ -650,7 +671,9 @@ export function CreatePostPage({
         joinRequested={joinRequested}
         locale={locale}
         verificationError={joinSelfError}
-        verificationLoading={joinSelfLoading}
+        verificationLoading={joinSelfLoading || joinVeryLoading || joinZkPassportLoading}
+        verificationProviderChoices={joinProviderChoices}
+        onChooseVerificationProvider={handleChooseJoinProvider}
         onJoin={handlePrimaryJoinAction}
       />
     );

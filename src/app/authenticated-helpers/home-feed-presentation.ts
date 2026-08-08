@@ -7,7 +7,6 @@ import { buildPublicProfilePathForProfile } from "@/lib/profile-routing";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import type { FeedItem } from "@/components/compositions/posts/feed/feed";
 import { buildPostCardTitleProps } from "@/components/compositions/posts/post-card/post-card-content-rules";
-import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { buildNationalityBadgeLabel } from "@/components/compositions/posts/post-card/post-card-nationality";
 
 import { formatRelativeTimestamp } from "@/lib/formatting/time";
@@ -35,8 +34,8 @@ import {
 } from "@/app/authenticated-helpers/post-translation-presentation";
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
 
-export type HomeFeedEntry = ApiHomeFeedItem;
 type HomeFeedPresentationEntry = {
+  booking?: ApiHomeFeedItem["booking"];
   community: ApiHomeFeedItem["community"] | ApiCommunityPreview;
   post: ApiPost;
 };
@@ -139,6 +138,7 @@ export function toHomeFeedItem(
       engagement: {
         commentCount: getPostCommentCount(postResponse),
         score: getPostScore(postResponse),
+        upvoteCount: postResponse.upvote_count,
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
       authorCommunityRole: postResponse.author_community_role ?? undefined,
@@ -158,6 +158,7 @@ export function toHomeFeedItem(
         if (key === "cancel-event") opts?.onCancelEvent?.();
       } : undefined,
       onVote: opts?.onVote,
+      postId,
       postHref: `/p/${postId}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
       ...titleProps,
@@ -183,6 +184,13 @@ export function toHomeFeedItem(
     : undefined;
 
   return {
+    booking: entry.booking ? {
+      basePriceCents: entry.booking.base_price_cents,
+      currency: entry.booking.currency,
+      hasAvailableSlot: entry.booking.has_available_slot,
+      hostUserId: entry.booking.host_user_id,
+      startingPriceCents: entry.booking.starting_price_cents,
+    } : undefined,
     id: postId,
     post: localizedPost,
     postOriginal: originalPost,

@@ -3,7 +3,11 @@ import type { JoinEligibility } from "@pirate/api-contracts";
 
 import {
   isJoinSurfaceGate,
+  isPowSatisfiableGate,
+  formatGateRequirement,
+  getGateFailureMessage,
   getJoinCtaLabel,
+  getVerificationCapabilitiesForProvider,
   isJoinCtaActionable,
 } from "./identity-gates";
 
@@ -37,7 +41,80 @@ describe("identity gate join CTA helpers", () => {
     expect(getJoinCtaLabel(eligibility, { locale: "en" })).toBe("Connect wallet");
   });
 
+  test("wallet-only balance requirements are actionable and display exact amounts", () => {
+    const eligibility = walletGateEligibility();
+    eligibility.gate_evaluation!.required_action_set!.items = [{
+      capability: "asset_balance",
+      kind: "capability",
+    }];
+
+    expect(getJoinCtaLabel(eligibility, { locale: "en" })).toBe("Connect wallet");
+    expect(formatGateRequirement({
+      asset_decimals: 18,
+      asset_id: "eip155:1/slip44:60",
+      asset_symbol: "ETH",
+      gate_type: "asset_balance",
+      min_amount_atomic: "500000000000000000",
+    }, { locale: "en" })).toBe("At least 0.5 ETH");
+  });
+
   test("proof-of-work requirements are visible before the action modal", () => {
     expect(isJoinSurfaceGate({ gate_type: "altcha_pow" })).toBe(true);
+  });
+
+  test("requests unique-human verification from ZKPassport-only gates", () => {
+    const eligibility = {
+      gate_evaluation: {
+        required_action_set: {
+          items: [{ capability: "unique_human", kind: "capability" }],
+          kind: "set",
+          mode: "all",
+        },
+      },
+    } as JoinEligibility;
+
+    expect(getVerificationCapabilitiesForProvider(eligibility, "zkpassport"))
+      .toEqual(["unique_human"]);
+  });
+
+  test("orders supported ZKPassport capabilities and excludes unsupported ones", () => {
+    const eligibility = {
+      gate_evaluation: {
+        required_action_set: {
+          items: [
+            { capability: "gender", kind: "capability" },
+            { capability: "age_over_18", kind: "capability" },
+            { capability: "nationality", kind: "capability" },
+            { capability: "unique_human", kind: "capability" },
+            { capability: "minimum_age", kind: "capability" },
+          ],
+          kind: "set",
+          mode: "all",
+        },
+      },
+    } as JoinEligibility;
+
+    expect(getVerificationCapabilitiesForProvider(eligibility, "zkpassport"))
+      .toEqual(["unique_human", "minimum_age", "nationality", "gender"]);
+  });
+
+  test("explains an insufficient balance instead of falling back to generic copy", () => {
+    // Before the API reported asset_balance_too_low this reached the default
+    // branch and rendered the generic "gate failed" description.
+    expect(getGateFailureMessage({ failure_reason: "asset_balance_too_low" }, { locale: "en" }))
+      .toBe("Your connected wallets do not hold enough of the required asset to join this community.");
+    expect(getGateFailureMessage({ failure_reason: "asset_balance_too_low" }, { locale: "ar" })).toBeTruthy();
+    expect(getGateFailureMessage({ failure_reason: "asset_balance_too_low" }, { locale: "zh" })).toBeTruthy();
+  });
+  test("a browser check alone satisfies an any-mode gate but not an all-mode one", () => {
+    const pow = { gate_type: "altcha_pow" } as const;
+    const human = { gate_type: "unique_human" } as const;
+    // The dankmeme shape: any one branch admits, and anyone clears the check.
+    expect(isPowSatisfiableGate([pow, human], "any")).toBe(true);
+    expect(isPowSatisfiableGate([pow], "all")).toBe(true);
+    expect(isPowSatisfiableGate([pow, human], "all")).toBe(false);
+    expect(isPowSatisfiableGate([human], "any")).toBe(false);
+    expect(isPowSatisfiableGate([], "any")).toBe(false);
+    expect(isPowSatisfiableGate(null)).toBe(false);
   });
 });

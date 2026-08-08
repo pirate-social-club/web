@@ -9,14 +9,14 @@ import { mockProfile, mockWalletAddress } from "./auth-session";
 // Everything is Base SEPOLIA / testnet — mirrors the current prod-testnet posture, so the checkout
 // screen must never surface mainnet chain/token/amount.
 
-export const BOOKING_TESTNET = {
+const BOOKING_TESTNET = {
   chainId: 84532,
   // Base Sepolia USDC + the settlement operator wallet (pay-in recipient), lowercased as served.
   tokenAddress: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
   recipientAddress: "0xbba024600cba5f375afdcec401f7dccb3d515829",
 } as const;
 
-export interface CapturedRequest {
+interface CapturedRequest {
   method: string;
   path: string;
   body: unknown;
@@ -29,11 +29,14 @@ export interface PaidBookingMockState {
   isBookable: boolean;
   isPublished: boolean;
   basePriceCents: number;
+  slotPriceCents: number;
   slotDurationSeconds: number;
   hostTimezone: string;
   // Recorded mutating calls, for assertions.
   captured: CapturedRequest[];
   managementBookingCancelled: boolean;
+  pendingPaymentIntents: unknown[];
+  resumedBookingId: string | null;
 }
 
 export function createPaidBookingMockState(overrides: Partial<PaidBookingMockState> = {}): PaidBookingMockState {
@@ -42,10 +45,13 @@ export function createPaidBookingMockState(overrides: Partial<PaidBookingMockSta
     isBookable: true,
     isPublished: true,
     basePriceCents: 5000,
+    slotPriceCents: 5000,
     slotDurationSeconds: 1800,
     hostTimezone: "UTC",
     captured: [],
     managementBookingCancelled: false,
+    pendingPaymentIntents: [],
+    resumedBookingId: null,
     ...overrides,
   };
 }
@@ -99,11 +105,11 @@ function availabilityRule() {
 function futureSlot(state: PaidBookingMockState) {
   const startUtc = "2099-01-05T10:00:00.000Z";
   const endUtc = "2099-01-05T10:30:00.000Z";
-  return { startUtc, endUtc, priceCents: state.basePriceCents, available: true };
+  return { startUtc, endUtc, priceCents: state.slotPriceCents, available: true };
 }
 
 function bookingQuote(holdId: string, state: PaidBookingMockState) {
-  const gross = state.basePriceCents;
+  const gross = state.slotPriceCents;
   const feeCents = Math.floor((gross * 1000 + 5000) / 10000);
   return {
     hold_id: holdId,
@@ -184,6 +190,9 @@ export async function installPaidBookingApiMocks(page: Page, state: PaidBookingM
   await page.route(/\/bookings\/hosts\/[^/]+\/slots(\?.*)?$/u, (route) =>
     route.fulfill(json({ host_timezone: state.hostTimezone, viewer_timezone: state.hostTimezone, slots: state.isBookable ? [futureSlot(state)] : [] })));
 
+  await page.route(/\/bookings\/payment-intents\/pending(\?.*)?$/u, (route) =>
+    route.fulfill(json({ object: "list", data: state.pendingPaymentIntents, has_more: false })));
+
   await page.route(/\/bookings\/hosts\/[^/]+\/holds(\?.*)?$/u, async (route) => {
     await record(state, route);
     const slot = futureSlot(state);
@@ -195,7 +204,7 @@ export async function installPaidBookingApiMocks(page: Page, state: PaidBookingM
         booker_user_id: mockProfile.id,
         slot_start_utc: slot.startUtc,
         slot_end_utc: slot.endUtc,
-        price_cents: state.basePriceCents,
+        price_cents: state.slotPriceCents,
         status: "active",
         expires_at_utc: soonIso(15),
       },
@@ -212,6 +221,12 @@ export async function installPaidBookingApiMocks(page: Page, state: PaidBookingM
   // hits confirm — otherwise the check is dead.
   await page.route(/\/bookings\/holds\/[^/]+\/confirm(\?.*)?$/u, async (route) => {
     await record(state, route);
+    if (state.resumedBookingId) {
+      return route.fulfill(json({
+        booking: { booking_id: state.resumedBookingId },
+        already_confirmed: false,
+      }));
+    }
     return route.fulfill(json({ error: "confirm is disabled in mocked smoke" }, 409));
   });
 

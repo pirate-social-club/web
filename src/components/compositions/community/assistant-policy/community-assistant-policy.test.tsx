@@ -262,6 +262,18 @@ describe("CommunityAssistantPolicyPage", () => {
     view.unmount();
   });
 
+  test("preserves a suggested question input when an earlier row is removed", async () => {
+    const view = renderPolicy();
+    const thirdInput = view.getByLabelText("Suggested question 3");
+
+    fireEvent.click(view.getByRole("button", { name: "Remove suggested question 2" }));
+
+    await waitFor(() => {
+      expect(view.getByLabelText("Suggested question 2")).toBe(thirdInput);
+    });
+    view.unmount();
+  });
+
   test("keeps locked context sources enabled", () => {
     const view = renderPolicy();
 
@@ -333,7 +345,7 @@ describe("CommunityAssistantPolicyPage", () => {
     const view = renderPolicy();
 
     expect(view.getByText("Telegram")).not.toBeNull();
-    fireEvent.click(view.getByRole("switch", { name: "Private bot DMs" }));
+    fireEvent.click(view.getByRole("switch", { name: "Answer study questions" }));
     expect(view.getLatestSettings().telegramPrivateAssistantEnabled).toBe(true);
 
     const previewCapInput = Array.from(view.container.querySelectorAll<HTMLInputElement>('input[type="number"]'))

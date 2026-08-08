@@ -63,4 +63,13 @@ describe("network config", () => {
     expect(config.story.chainId).toBe(1514);
     expect(config.efp.environment).toBe("mainnet");
   });
+
+  test("fails safe to Story Aeneid in production without an explicit override", () => {
+    const config = resolvePirateNetworkConfig(env({
+      VITE_PIRATE_APP_ENV: "prod",
+    }));
+
+    expect(config.story.network).toBe("story-aeneid");
+    expect(config.story.chainId).toBe(1315);
+  });
 });

@@ -3,10 +3,11 @@
 import * as React from "react";
 import { isAddress } from "viem";
 import type { MembershipRequestSummary } from "@pirate/api-contracts";
-
 import { navigate } from "@/app/router";
 import { CommunityDonationsEditorPage } from "@/components/compositions/community/donations-editor/community-donations-editor-page";
 import { CommunityGatesEditorPage } from "@/components/compositions/community/gates-editor/community-gates-editor-page";
+import { createApiCollectionCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/api-collection-capability-source";
+import { createApiAssetCapabilitySource } from "@/components/compositions/community/gates-editor/tree-builder/api-asset-capability-source";
 import { CommunityLabelsEditorPage } from "@/components/compositions/community/labels-editor/community-labels-editor-page";
 import { CommunityLinksEditorPage, createEmptyCommunityLinkEditorItem } from "@/components/compositions/community/links-editor/community-links-editor-page";
 import { CommunityMembershipRequestsPage } from "@/components/compositions/community/membership-requests-page/community-membership-requests-page";
@@ -390,14 +391,11 @@ export function CommunityModerationIndexPage({
       <div className="min-h-screen w-full bg-background text-foreground">
         <MobilePageHeader onBackClick={() => navigate(`/c/${communityId}`)} title={copy.moderation.index.title} />
         <section className="flex min-w-0 flex-1 flex-col py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
-          <div className="min-w-0">
-            {content}
-          </div>
+          <div className="min-w-0">{content}</div>
         </section>
       </div>
     );
   }
-
   return (
     <CommunityModerationShell
       communityAvatarSrc={state.community?.avatar_ref ?? undefined}
@@ -434,6 +432,13 @@ export function CommunityModerationPage({
   const [courtyardInventoryGroups, setCourtyardInventoryGroups] =
     React.useState<CourtyardWalletInventoryGroup[] | null | undefined>(undefined);
   const [courtyardInventoryLoading, setCourtyardInventoryLoading] = React.useState(false);
+  const gateCapabilities = React.useMemo(
+    () => ({
+      assets: createApiAssetCapabilitySource(api.gateCapabilities),
+      collections: createApiCollectionCapabilitySource(api.gateCapabilities),
+    }),
+    [api.gateCapabilities],
+  );
   const pricingLocalCountryCodes = React.useMemo(
     () => getNationalityGateCountryCodes(state.gateDrafts),
     [state.gateDrafts],
@@ -924,6 +929,7 @@ export function CommunityModerationPage({
           defaultAgeGatePolicy={state.defaultAgeGatePolicy}
           courtyardInventoryGroups={courtyardInventoryGroups}
           courtyardInventoryLoading={courtyardInventoryLoading}
+          capabilities={gateCapabilities}
           gateDrafts={state.gateDrafts}
           gateMatchMode={state.gateMatchMode}
           gateTreeDraft={state.gateTreeDraft}
@@ -1137,20 +1143,26 @@ export function CommunityModerationPage({
           )
           : (
             <CommunityTelegramIntegrationPage
+              channel={state.telegramChannelSectionProps}
               joinUrl={state.telegramJoinUrl}
               onConnectChat={state.handleConnectTelegramChat}
+              onRefreshBotWebhook={state.handleRefreshTelegramBotWebhook}
               onRevokeBot={state.handleRevokeTelegramBot}
               onSave={state.handleSaveTelegramChat}
               onSaveBotToken={state.handleSaveTelegramBotToken}
               onSettingsChange={state.setTelegramSettings}
               saveDisabled={telegramSaveDisabled}
               settings={state.telegramSettings}
+              studyMiniAppUrl={state.telegramJoinUrl ? new URL(`/tg/c/${encodeURIComponent(communityId)}`, state.telegramJoinUrl).toString() : null}
               submitState={state.telegramSubmitState}
+              webhookRefreshPending={state.refreshingTelegramWebhook}
             />
           );
     } else if (section === "handles") {
+      const handleClaimGateInvalid = state.draft.claimGateMode === "explicit"
+        && !isGateBuilderDraftSavable(state.draft.claimGateTreeDraft);
       setMobileSaveAction({
-        disabled: state.saving || !state.hasChanges || !state.community?.namespace_verification,
+        disabled: state.saving || Boolean(state.policyConflict) || !state.hasChanges || !state.community?.namespace_verification || handleClaimGateInvalid,
         loading: state.saving,
         onSave: state.handleSave,
       });
@@ -1166,6 +1178,7 @@ export function CommunityModerationPage({
       } else {
         content = (
           <CommunityHandlePolicyEditorPage
+            capabilities={gateCapabilities}
             draft={state.draft}
             handleOpsLoading={state.handleOpsLoading}
             handleStatusFilter={state.handleStatusFilter}
@@ -1173,14 +1186,14 @@ export function CommunityModerationPage({
             handlesLoading={state.handlesLoading}
             hasChanges={state.hasChanges}
             hasNamespace={Boolean(state.community?.namespace_verification)}
-            namespaceLabel={state.community?.route_slug ?? null}
+            {...state.handlePolicyEditorProps}
             onDraftChange={state.setDraft}
             onNavigateToNamespace={() => navigate(buildCommunityModerationPath(communityId, "namespace", state.community?.route_slug))}
             onReserveHandle={state.handleReserve}
             onRevokeHandle={state.handleRevoke}
             onSave={state.handleSave}
             onStatusFilterChange={state.setHandleStatusFilter}
-            saveDisabled={state.saving || !state.hasChanges}
+            saveDisabled={state.saving || Boolean(state.policyConflict) || !state.hasChanges || handleClaimGateInvalid}
             saveLoading={state.saving}
           />
         );
@@ -1196,7 +1209,6 @@ export function CommunityModerationPage({
           toast.error("Could not clear the saved namespace verification.");
         }
       };
-
       content = (
         <CommunityNamespaceVerificationPage
           activeSessionId={state.effectiveNamespaceSessionId}
@@ -1204,7 +1216,9 @@ export function CommunityModerationPage({
           attachedRouteSlug={state.community.route_slug ?? null}
           callbacks={state.namespaceVerificationCallbacks}
           initialRootLabel={state.community.route_slug ?? ""}
+          namespaceAttachments={state.namespaceAttachments}
           onClearPendingSession={clearPendingNamespaceSession}
+          onRestorePrimary={state.restoreNamespacePrimary}
           onBackClick={() => navigate(moderationIndexPath)}
           onSessionCleared={() => {
             void clearPendingNamespaceSession();
@@ -1214,7 +1228,6 @@ export function CommunityModerationPage({
       );
     }
   }
-
   if (isMobile) {
     return (
       <MobileModerationSectionLayout

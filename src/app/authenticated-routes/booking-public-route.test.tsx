@@ -1,8 +1,9 @@
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 
 import { installDomGlobals } from "@/test/setup-dom";
+import { UiLocaleProvider } from "@/lib/ui-locale";
 
 installDomGlobals();
 
@@ -46,12 +47,24 @@ afterEach(() => {
 });
 
 describe("BookingPublicPage (logged out)", () => {
+  test("renders the public booking copy in Arabic", async () => {
+    const { container } = render(
+      <UiLocaleProvider dir="rtl" locale="ar">
+        <BookingPublicPage communityId={null} hostUserId="usr_host" />
+      </UiLocaleProvider>,
+    );
+    await waitFor(() => {
+      expect(container.textContent).toContain("حجز جلسة");
+      expect(container.textContent).toContain("المواعيد المتاحة");
+    });
+  });
+
   // Tapping a slot while logged out must prompt sign-in (Privy connect), NOT route to checkout — that
   // route hits authenticated hold/quote APIs and dead-ends on "Authentication failed".
   test("a slot tap triggers sign-in and does not navigate to checkout", async () => {
     const { container } = render(<BookingPublicPage communityId={null} hostUserId="usr_host" />);
     const slot = await waitFor(() => {
-      const btn = [...container.querySelectorAll("button")].find((b) => /USDC/u.test(b.textContent ?? ""));
+      const btn = [...container.querySelectorAll("button")].find((b) => /\$50/u.test(b.textContent ?? ""));
       if (!btn) throw new Error("slot button not rendered yet");
       return btn as HTMLButtonElement;
     });
@@ -59,5 +72,22 @@ describe("BookingPublicPage (logged out)", () => {
     expect(connect).toHaveBeenCalledTimes(1);
     expect(navigate).not.toHaveBeenCalled();
     expect((document.body.textContent ?? "").includes("Authentication failed")).toBe(false);
+  });
+
+  test("signed-in checkout navigation carries only the authoritative slot bounds", async () => {
+    fakeSession = { accessToken: "tok" };
+    const { container } = render(<BookingPublicPage communityId={null} hostUserId="usr_host" />);
+    const slot = await waitFor(() => {
+      const btn = [...container.querySelectorAll("button")].find((b) => /\$50/u.test(b.textContent ?? ""));
+      if (!btn) throw new Error("slot button not rendered yet");
+      return btn as HTMLButtonElement;
+    });
+    fireEvent.click(slot);
+    expect(navigate).toHaveBeenCalledTimes(1);
+    const path = String(navigate.mock.calls[0]?.[0]);
+    const url = new URL(path, "https://pirate.test");
+    expect(url.searchParams.get("start")).toBe("2099-01-05T10:00:00.000Z");
+    expect(url.searchParams.get("end")).toBe("2099-01-05T10:30:00.000Z");
+    expect(url.searchParams.has("price")).toBe(false);
   });
 });

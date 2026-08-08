@@ -23,6 +23,14 @@ export type ThreadCommentNode = {
   hasLoadedReplies: boolean;
   loadingReplies: boolean;
   nextRepliesCursor: string | null;
+  /**
+   * True while the node exists only locally (created from the POST 201
+   * response) and no server list response has confirmed it yet. Absence from
+   * a single refetch must not drop these nodes — a stale/cached page or a
+   * membership-gated read can legitimately omit a comment that was just
+   * committed. The flag clears once the server returns the comment.
+   */
+  isLocalEcho?: boolean;
 };
 
 export const THREAD_COMMENT_PAGE_LIMIT = "100";
@@ -106,14 +114,8 @@ export function buildThreadCommentTreeFromItems(items: ApiCommentListItem[]): Th
     nodesByCommentId.set(getCommentId(item.comment), createThreadCommentNode(item));
   }
 
-  for (const item of items) {
-    const commentId = getCommentId(item.comment);
-    const node = nodesByCommentId.get(commentId);
-    if (!node) {
-      continue;
-    }
-
-    const parentCommentId = getParentCommentId(item.comment);
+  for (const [commentId, node] of nodesByCommentId) {
+    const parentCommentId = getParentCommentId(node.item.comment);
     const parent = parentCommentId ? nodesByCommentId.get(parentCommentId) : null;
     if (parent) {
       parent.children.push(node);
@@ -143,8 +145,9 @@ export function mergeThreadCommentNodes(
   nextNodes: ThreadCommentNode[],
 ): ThreadCommentNode[] {
   const previousByCommentId = new Map(previousNodes.map((node) => [node.item.comment.id, node] as const));
+  const nextByCommentId = new Set(nextNodes.map((node) => node.item.comment.id));
 
-  return nextNodes.map((node) => {
+  const merged = nextNodes.map((node) => {
     const previousNode = previousByCommentId.get(node.item.comment.id);
     if (!previousNode) {
       return node;
@@ -158,6 +161,13 @@ export function mergeThreadCommentNodes(
       nextRepliesCursor: previousNode.nextRepliesCursor,
     };
   });
+
+  // Additive reconciliation: absence from one response is not deletion (the
+  // page may be stale or access-gated). Only local echoes not yet confirmed
+  // by the server are preserved; server-confirmed nodes that disappear from a
+  // later response are dropped as before.
+  const unconfirmedEchoes = previousNodes.filter((node) => node.isLocalEcho && !nextByCommentId.has(node.item.comment.id));
+  return [...unconfirmedEchoes, ...merged];
 }
 
 function mergeThreadCommentNode(previousNode: ThreadCommentNode, nextNode: ThreadCommentNode): ThreadCommentNode {
@@ -168,6 +178,9 @@ function mergeThreadCommentNode(previousNode: ThreadCommentNode, nextNode: Threa
     hasLoadedReplies: previousNode.hasLoadedReplies || nextNode.hasLoadedReplies,
     loadingReplies: nextNode.loadingReplies,
     nextRepliesCursor: nextNode.nextRepliesCursor ?? previousNode.nextRepliesCursor,
+    // Spread alone keeps a stale isLocalEcho from previousNode (server nodes
+    // have no flag); confirmation by the server must clear it.
+    isLocalEcho: nextNode.isLocalEcho,
   };
 }
 
@@ -191,17 +204,34 @@ export function upsertThreadCommentNodes(
 async function listAllCommentPages(
   fetchPage: (cursor: string | null) => Promise<CommentPage>,
 ): Promise<ApiCommentListItem[]> {
-  const items: ApiCommentListItem[] = [];
+  const MAX_COMMENT_PAGES = 50;
+  const itemsByCommentId = new Map<string, ApiCommentListItem>();
+  const seenCursors = new Set<string>();
   let cursor: string | null = null;
 
-  while (true) {
+  for (let pageCount = 0; pageCount < MAX_COMMENT_PAGES; pageCount += 1) {
     const page = await fetchPage(cursor);
-    items.push(...page.items);
-    if (!page.next_cursor) {
-      return items;
+    for (const item of page.items) {
+      itemsByCommentId.set(getCommentId(item.comment), item);
     }
+    if (!page.next_cursor) {
+      return [...itemsByCommentId.values()];
+    }
+    if (seenCursors.has(page.next_cursor)) {
+      logger.warn("[post-thread] stopping comment pagination on repeated cursor", {
+        itemCount: itemsByCommentId.size,
+      });
+      return [...itemsByCommentId.values()];
+    }
+    seenCursors.add(page.next_cursor);
     cursor = page.next_cursor;
   }
+
+  logger.warn("[post-thread] stopping comment pagination at page cap", {
+    itemCount: itemsByCommentId.size,
+    maxPages: MAX_COMMENT_PAGES,
+  });
+  return [...itemsByCommentId.values()];
 }
 
 async function mapWithConcurrency<T, TResult>(
@@ -446,7 +476,7 @@ export function mapThreadCommentNode(
   labels: Parameters<typeof toThreadComment>[2],
   onLoadReplies: (commentId: string) => void,
   onReplySubmit?: (commentId: string, input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void>,
-  onVote?: (commentId: string, direction: "up" | "down") => void,
+  onVote?: (commentId: string, direction: "up" | "down") => Promise<void> | void,
   onDelete?: (commentId: string) => void,
 ): PostThreadComment {
   const loadMoreRepliesLabel = buildThreadMoreRepliesLabel(node, labels);
@@ -472,7 +502,7 @@ export function mapThreadCommentNode(
         ? async (input) => await onReplySubmit(node.item.comment.id, input)
         : undefined,
       onVote: onVote
-        ? (direction) => onVote(node.item.comment.id, direction)
+        ? async (direction) => await onVote(node.item.comment.id, direction)
         : undefined,
     },
     node.children.map((child) => mapThreadCommentNode(

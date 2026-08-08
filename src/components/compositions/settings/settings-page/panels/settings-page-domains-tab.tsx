@@ -20,6 +20,11 @@ import { Input } from "@/components/primitives/input";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { centsToUsd, formatUsdCompactLabel } from "@/lib/formatting/currency";
+import {
+  isCurrentGlobalHandleCandidate,
+  isFreeCleanupHandleQuote,
+  isValidGlobalHandleCandidate,
+} from "@/lib/global-handle-upgrade";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import { getLocaleMessages } from "@/locales";
@@ -79,15 +84,6 @@ function extractVerificationCode(hint: string | undefined): string | null {
     return match[1];
   }
   return hint.trim() || null;
-}
-
-function resolveTierLabel(tier: string): string {
-  switch (tier) {
-    case "generated": return "Auto-generated";
-    case "standard": return "Standard";
-    case "premium": return "Premium";
-    default: return tier;
-  }
 }
 
 function resolveDomainEligibilityLength(importedScore: number | null | undefined): string {
@@ -347,9 +343,7 @@ function ChooseNamePhase({
   onContinue: () => void;
   copy: OnboardingCopy;
 }) {
-  const displayValue = handleValue.endsWith(".pirate")
-    ? handleValue.slice(0, -7)
-    : handleValue;
+  const displayValue = handleValue.replace(/\.pirate$/iu, "");
   const canContinue = displayValue.trim().length > 0;
   const suggestionMessage = handleSuggestion?.availability === "available"
     ? copy.claimDomain.available
@@ -451,6 +445,7 @@ function BuyNamePhase({
   phaseError,
   quote,
   claimedHandle,
+  currentHandle,
   value,
   onBack,
   onChange,
@@ -466,6 +461,7 @@ function BuyNamePhase({
   phaseError?: string | null;
   quote?: HandleUpgradeQuoteResponse | null;
   claimedHandle?: string | null;
+  currentHandle: string;
   value: string;
   onBack?: () => void;
   onChange: (value: string) => void;
@@ -475,17 +471,17 @@ function BuyNamePhase({
   localeTag: string;
   copy: RoutesMessages["settings"];
 }) {
-  const displayValue = value.endsWith(".pirate") ? value.slice(0, -7) : value;
+  const displayValue = value.replace(/\.pirate$/iu, "");
+  const isCurrentName = isCurrentGlobalHandleCandidate(displayValue, currentHandle);
+  const isValidCandidate = isValidGlobalHandleCandidate(displayValue);
   const payable = Boolean(quote?.eligible && quote.quote && (quote.price_cents ?? 0) > 0);
-  const freeCleanupClaim = Boolean(
-    cleanupRenameAvailable
-    && quote?.eligible
-    && quote.pricing_tier === "base"
-    && quote.tier === "standard"
-    && displayValue.trim().length >= 8,
-  );
+  const freeCleanupClaim = isFreeCleanupHandleQuote({
+    cleanupRenameAvailable,
+    label: displayValue,
+    quote: quote ?? null,
+  });
   const priceLabel = formatUsdCompactLabel(centsToUsd(quote?.price_cents), localeTag) ?? "$0";
-  const showChecking = checking && !quote && displayValue.trim().length > 0;
+  const showChecking = checking && !quote && displayValue.trim().length > 0 && !isCurrentName;
   const hasBack = Boolean(onBack);
   const ctaLabel = freeCleanupClaim ? copy.freeRenameAction : copy.buyNamePayClaimAction;
 
@@ -493,10 +489,10 @@ function BuyNamePhase({
     <div className="space-y-6">
       <div className="space-y-3 text-start">
         <Type as="h2" variant="h2" className="min-w-0 leading-7 sm:leading-8">
-          {copy.buyNameTitle}
+          {cleanupRenameAvailable ? copy.freeRenameTitle : copy.domainsUpgradeTitle}
         </Type>
         <Type as="p" variant="body" className="w-full max-w-none leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-          {copy.buyNameSubtitle}
+          {cleanupRenameAvailable ? copy.freeRenameSubtitle : copy.buyNameSubtitle}
         </Type>
       </div>
 
@@ -529,7 +525,12 @@ function BuyNamePhase({
           ) : null}
         </div>
 
-        {showChecking ? (
+        {isCurrentName ? (
+          <FormNote className="inline-flex items-center gap-2">
+            <CheckCircle className="size-5 shrink-0 text-success" weight="fill" />
+            {formatMessage(copy.domainsCurrentName, { handle: currentHandle })}
+          </FormNote>
+        ) : showChecking ? (
           <FormNote className="inline-flex items-center gap-2">
             <Spinner className="size-4" />
             {copy.checkingAvailability}
@@ -567,7 +568,7 @@ function BuyNamePhase({
         ) : null}
         <Button
           className="h-14 w-full text-lg"
-          disabled={busy || displayValue.trim().length === 0 || (Boolean(quote) && !payable && !freeCleanupClaim)}
+          disabled={busy || isCurrentName || !isValidCandidate || (Boolean(quote) && !payable && !freeCleanupClaim)}
           loading={busy}
           onClick={payable || freeCleanupClaim ? onClaim : onQuote}
         >
@@ -579,6 +580,7 @@ function BuyNamePhase({
 }
 
 export function DomainsTab({
+  currentHandle,
   busy = false,
   phaseError = null,
   cleanupRenameAvailable = false,
@@ -648,25 +650,46 @@ export function DomainsTab({
   return (
     <div className="space-y-8">
       {phase === "buy_name" || phase === "options" ? (
-        <Card className="w-full overflow-hidden border-border bg-card shadow-none">
-          <CardContent className="p-5 sm:p-6">
-            <BuyNamePhase
-              busy={busy}
-              checking={buyNameChecking}
-              cleanupRenameAvailable={cleanupRenameAvailable}
-              claimedHandle={paidClaimedHandle}
-              onChange={onBuyNameChange ?? (() => {})}
-              onClaim={onBuyNameClaim ?? (() => {})}
-              onGenerate={onBuyNameGenerate}
-              onQuote={onBuyNameQuote ?? (() => {})}
-              localeTag={locale}
-              copy={settingsCopy}
-              phaseError={phaseError}
-              quote={paidQuote}
-              value={buyNameValue ?? ""}
-            />
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <Card className="w-full border-border bg-card shadow-none">
+            <CardContent className="flex items-center justify-between gap-4 p-5 sm:p-6">
+              <div className="min-w-0 space-y-1">
+                <Type as="p" variant="label" className="text-muted-foreground">
+                  {settingsCopy.currentHandleLabel}
+                </Type>
+                <Type as="p" className="truncate font-mono text-xl font-semibold" dir="ltr">
+                  {currentHandle}
+                </Type>
+              </div>
+              <CheckCircle
+                aria-label={formatMessage(settingsCopy.domainsCurrentName, { handle: currentHandle })}
+                className="size-7 shrink-0 text-success"
+                weight="fill"
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="w-full overflow-hidden border-border bg-card shadow-none">
+            <CardContent className="p-5 sm:p-6">
+              <BuyNamePhase
+                busy={busy}
+                checking={buyNameChecking}
+                cleanupRenameAvailable={cleanupRenameAvailable}
+                claimedHandle={paidClaimedHandle}
+                currentHandle={currentHandle}
+                onChange={onBuyNameChange ?? (() => {})}
+                onClaim={onBuyNameClaim ?? (() => {})}
+                onGenerate={onBuyNameGenerate}
+                onQuote={onBuyNameQuote ?? (() => {})}
+                localeTag={locale}
+                copy={settingsCopy}
+                phaseError={phaseError}
+                quote={paidQuote}
+                value={buyNameValue ?? ""}
+              />
+            </CardContent>
+          </Card>
+        </div>
       ) : null}
 
       {phase === "import_karma" || phase === "choose_name" ? (

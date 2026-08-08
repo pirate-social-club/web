@@ -231,6 +231,11 @@ describe("CommunityGatesEditorPage gate draft helpers", () => {
     expect(canAuthorCourtyardInventoryGate(null)).toBe(false);
     expect(canAuthorCourtyardInventoryGate([])).toBe(false);
     expect(canAuthorCourtyardInventoryGate([{
+      category: "trading_card",
+      count: 1,
+      displayLabel: "Pokemon",
+    }], false)).toBe(false);
+    expect(canAuthorCourtyardInventoryGate([{
       category: "watch",
       brand: "rolex",
       displayLabel: "Rolex",

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
   submitOptimisticPostVote,
@@ -9,6 +10,7 @@ import {
   updateCommunityPostVote,
   type PostVoteOptions,
   type PostVoteValue,
+  type ClearPostVote,
 } from "@/app/authenticated-helpers/post-vote";
 import type {
   CommunityGateData,
@@ -32,21 +34,26 @@ export interface UseCommunityVoteActionOptions {
   buildBlockedModalState?: RunGatedCommunityActionParams["buildBlockedModalState"];
   communityId?: string | null;
   gateData?: CommunityGateData | null;
+  locale: string;
   posts: ApiPost[];
   runGatedCommunityAction: RunGatedCommunityAction;
   setPosts: React.Dispatch<React.SetStateAction<ApiPost[]>>;
   vote: VotePost;
+  clearVote: ClearPostVote;
 }
 
 export function useCommunityVoteAction({
   buildBlockedModalState,
+  clearVote,
   communityId,
   gateData,
+  locale,
   posts,
   runGatedCommunityAction,
   setPosts,
   vote,
 }: UseCommunityVoteActionOptions) {
+  const queryClient = useQueryClient();
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
 
   return React.useCallback(
@@ -59,16 +66,12 @@ export function useCommunityVoteAction({
       if (!previousPost) {
         return;
       }
-      if (!direction) {
-        return;
-      }
-
       const resolvedCommunityId = communityId ?? previousPost.post.community;
       if (!resolvedCommunityId) {
         return;
       }
 
-      const voteValue = toPostVoteValue(direction);
+      const voteValue = direction ? toPostVoteValue(direction) : "clear";
       try {
         await runGatedCommunityAction({
           action: "vote_post",
@@ -78,7 +81,9 @@ export function useCommunityVoteAction({
           onAllowed: async (context) => {
             await submitOptimisticPostVote({
               altchaPayload: context?.altchaPayload,
+              clearVote,
               direction,
+              locale,
               onApply: (nextValue) =>
                 setPosts((current) =>
                   updateCommunityPostVote(current, postId, nextValue),
@@ -91,6 +96,7 @@ export function useCommunityVoteAction({
                 ),
               postId,
               previousPost,
+              queryClient,
               requestIdsRef: voteRequestIdsRef,
               vote,
             });
@@ -105,9 +111,12 @@ export function useCommunityVoteAction({
     },
     [
       buildBlockedModalState,
+      clearVote,
       communityId,
       gateData,
+      locale,
       posts,
+      queryClient,
       runGatedCommunityAction,
       setPosts,
       vote,

@@ -20,6 +20,7 @@ import { ResponsiveOptionSelect } from "@/components/compositions/system/respons
 import { IconButton } from "@/components/primitives/icon-button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { buildAnonymousLabel } from "@/lib/anonymous-label";
+import { isPowSatisfiableGate } from "@/lib/identity-gates";
 import { useApi } from "@/lib/api";
 import { resolveApiBaseUrl } from "@/lib/api/base-url";
 import { buildCommunityPath } from "@/lib/community-routing";
@@ -36,7 +37,7 @@ import { useRouteMessages } from "@/hooks/use-route-messages";
 import { getErrorMessage } from "@/lib/error-utils";
 import { getProfileHandleLabel } from "@/lib/profile-routing";
 import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
-import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
+import { buildPurchaseSuccessMessage, useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
 import { useSongCommerceState, useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
 import { loadLiveRoomReplayPlayback } from "@/app/authenticated-helpers/live-room-replay-playback";
 import { takeStoryLicenseReuseNotice, type StoryLicenseReuseNotice } from "@/app/authenticated-helpers/story-license-reuse-notice";
@@ -45,9 +46,13 @@ import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import { toast } from "@/components/primitives/sonner";
+import { rewardCtaAmountLabel } from "@/components/compositions/rewards/reward-surfaces";
+import { BoostCampaignSheet, SongRewardPolicySheet } from "@/components/compositions/rewards/reward-booster-surfaces";
 import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
 import { logger } from "@/lib/logger";
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
+import { useBoostCampaignController } from "@/app/authenticated-helpers/use-boost-campaign-controller";
+import { useActiveSongRewardOffer } from "@/app/authenticated-helpers/use-active-song-reward-offer";
 
 function closeMobileThread(fallbackPath: string) {
   if (typeof window !== "undefined" && window.history.length > 1) {
@@ -155,7 +160,8 @@ export function PostPage({
   const isMobile = useIsMobile();
   const { locale } = useUiLocale();
   const { copy } = useRouteMessages();
-  const pageTitle = copy.routeStatus.post.title ?? "Post";
+  const routeCopy = copy.post.route;
+  const pageTitle = copy.routeStatus.post.title ?? copy.post.fallbackTitle;
   const contentLocale = useRouteContentLocale();
   const translationLabels = React.useMemo(() => ({
     cancelReplyLabel: copy.common.cancelReply,
@@ -169,11 +175,16 @@ export function PostPage({
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, requestCommentAccess, requestVoteAccess, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, requestVoteAccess, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const activeLiveRoomId = post?.post.anchor_live_room ?? null;
   const activeAssetId = post?.post.asset ?? null;
   const activeAssetPostType = post?.post.post_type ?? null;
   const [threadAsset, setThreadAsset] = React.useState<ApiAsset | null>(null);
+  const [rewardOffer, refreshRewardOffer] = useActiveSongRewardOffer({
+    communityId: post?.post.community,
+    postId: post?.post.id,
+    song: post?.post.post_type === "song",
+  });
   const [liveRoomAccess, setLiveRoomAccess] = React.useState<ApiLiveRoomAccessResponse | null>(null);
   const [liveViewerSession, setLiveViewerSession] = React.useState<ApiLiveRoomViewerAttachResponse | null>(null);
   const [liveViewerOpen, setLiveViewerOpen] = React.useState(false);
@@ -226,7 +237,7 @@ export function PostPage({
     selfPrompt: ageSelfPrompt,
     startVerification: startAgeSelfVerification,
   } = useSelfVerification({
-    completeErrorMessage: "Could not complete age verification.",
+    completeErrorMessage: routeCopy.ageVerificationCompleteError,
     locale,
     onVerified: async () => {
       if (session) {
@@ -235,7 +246,7 @@ export function PostPage({
       }
       markAgeGateVerified();
     },
-    startErrorMessage: "Could not start age verification.",
+    startErrorMessage: routeCopy.ageVerificationStartError,
     storageKey: `pirate_pending_self_age_gate:${postId}`,
     verificationIntent: "community_join",
   });
@@ -266,16 +277,34 @@ export function PostPage({
     toast.error(authRuntime.loadError ?? fallbackMessage);
   }, [authRuntime.connect, authRuntime.loadError, postId, copy.publicProfile.openInPirate]);
 
+  const boostController = useBoostCampaignController({
+    activeCampaignId: rewardOffer?.campaign ?? null,
+    authenticated: Boolean(session?.accessToken),
+    communityId: community?.id ?? null,
+    onCampaignActivated: refreshRewardOffer,
+    postId,
+    requestAuth: () => requestAuth(routeCopy.signInToBoost),
+    song: post?.post.post_type === "song",
+    viewerIsAuthor: Boolean(post?.viewer_is_author),
+  });
+
+  const handleReplyIntent = React.useCallback(() => {
+    if (session?.accessToken) return;
+    // `connect()` is also the signal that mounts Privy on deferred-auth routes.
+    // Waiting for Privy to be ready here deadlocks the first auth intent.
+    requestAuth(routeCopy.signInToComment);
+  }, [requestAuth, routeCopy.signInToComment, session?.accessToken]);
+
   const handleVerifyAge = React.useCallback(() => {
     if (!session) {
-      requestAuth("Connect your wallet to verify your age and view 18+ content.");
+      requestAuth(routeCopy.connectWalletToVerifyAge);
       return;
     }
     void startAgeSelfVerification({
       requestedCapabilities: ["age_over_18"],
-      unavailableMessage: "Age verification is required to view 18+ content.",
+      unavailableMessage: routeCopy.ageVerificationRequired,
     });
-  }, [session, requestAuth, startAgeSelfVerification]);
+  }, [session, requestAuth, routeCopy.connectWalletToVerifyAge, routeCopy.ageVerificationRequired, startAgeSelfVerification]);
 
   React.useEffect(() => {
     const communityId = community?.id;
@@ -307,7 +336,7 @@ export function PostPage({
           logger.warn("[post-route] asset status load failed", {
             assetId: activeAssetId,
             communityId,
-            error: getErrorMessage(assetError, "Could not load asset status."),
+            error: getErrorMessage(assetError, routeCopy.assetStatusLoadFailed),
             postId,
           });
         }
@@ -316,7 +345,7 @@ export function PostPage({
     return () => {
       cancelled = true;
     };
-  }, [activeAssetId, activeAssetPostType, api.communities, community?.id, postId, session?.accessToken]);
+  }, [activeAssetId, activeAssetPostType, api.communities, community?.id, postId, routeCopy.assetStatusLoadFailed, session?.accessToken]);
 
   const refreshLiveRoomAccess = React.useCallback(async () => {
     if (!community?.id || !activeLiveRoomId) {
@@ -338,7 +367,7 @@ export function PostPage({
           const publicAccess = await loadPublicAccess();
           logger.warn("[post-route] authenticated live room access failed; using public access fallback", {
             communityId: community.id,
-            error: getErrorMessage(accessError, "Could not load live room access."),
+            error: getErrorMessage(accessError, routeCopy.liveRoomAccessLoadFailed),
             liveRoomId: activeLiveRoomId,
             postId,
           });
@@ -347,25 +376,25 @@ export function PostPage({
         } catch (publicAccessError) {
           setLiveRoomAccess(null);
           if (!isApiNotFoundError(publicAccessError)) {
-            toast.error(getErrorMessage(publicAccessError, "Could not load live room access."));
+            toast.error(getErrorMessage(publicAccessError, routeCopy.liveRoomAccessLoadFailed));
           }
           logger.warn("[post-route] live room access failed", {
-            authenticatedError: getErrorMessage(accessError, "Could not load live room access."),
+            authenticatedError: getErrorMessage(accessError, routeCopy.liveRoomAccessLoadFailed),
             communityId: community.id,
             liveRoomId: activeLiveRoomId,
             postId,
-            publicError: getErrorMessage(publicAccessError, "Could not load live room access."),
+            publicError: getErrorMessage(publicAccessError, routeCopy.liveRoomAccessLoadFailed),
           });
           return null;
         }
       }
       setLiveRoomAccess(null);
       if (!isApiNotFoundError(accessError)) {
-        toast.error(getErrorMessage(accessError, "Could not load live room access."));
+        toast.error(getErrorMessage(accessError, routeCopy.liveRoomAccessLoadFailed));
       }
       return null;
     }
-  }, [activeLiveRoomId, api.communities, api.publicCommunities, community?.id, postId, session?.accessToken]);
+  }, [activeLiveRoomId, api.communities, api.publicCommunities, community?.id, postId, routeCopy.liveRoomAccessLoadFailed, session?.accessToken]);
 
   React.useEffect(() => {
     void refreshLiveRoomAccess();
@@ -475,10 +504,10 @@ export function PostPage({
       assetLabel,
       communityId: nextCommunityId,
       listing,
-      successMessage: ({ settlement, titleText: nextTitle }) => `${nextTitle} unlocked for $${(settlement.purchase_price_cents / 100).toFixed(2)}.`,
+      successMessage: ({ settlement, titleText: nextTitle }) => buildPurchaseSuccessMessage({ kind: "unlocked", locale, priceCents: settlement.purchase_price_cents, titleText: nextTitle }),
       titleText,
     });
-  }, [buySong]);
+  }, [buySong, locale]);
 
   const handleBuyLiveTicket = React.useCallback(async (
     listing: ApiCommunityListing,
@@ -486,60 +515,61 @@ export function PostPage({
     nextCommunityId: string,
   ) => {
     if (!session?.accessToken) {
-      requestAuth("Connect your wallet to buy a ticket for this live room.");
+      requestAuth(routeCopy.connectWalletToBuyTicket);
       return;
     }
     await buySong({
       assetLabel: "ticket",
       communityId: nextCommunityId,
       listing,
-      successMessage: ({ settlement, titleText: nextTitle }) => `${nextTitle} ticket purchased for $${(settlement.purchase_price_cents / 100).toFixed(2)}.`,
+      successMessage: ({ settlement, titleText: nextTitle }) => buildPurchaseSuccessMessage({ kind: "ticket", locale, priceCents: settlement.purchase_price_cents, titleText: nextTitle }),
       titleText,
     });
-  }, [buySong, requestAuth, session?.accessToken]);
+  }, [buySong, locale, requestAuth, routeCopy.connectWalletToBuyTicket, session?.accessToken]);
   const handleBuyReplay = React.useCallback(async (
     listing: ApiCommunityListing,
     titleText: string,
     nextCommunityId: string,
   ) => {
     if (!session?.accessToken) {
-      requestAuth("Connect your wallet to buy this replay.");
+      requestAuth(routeCopy.connectWalletToBuyReplay);
       return;
     }
     await buySong({
       assetLabel: "replay",
       communityId: nextCommunityId,
       listing,
-      successMessage: ({ settlement, titleText: nextTitle }) => `${nextTitle} replay purchased for $${(settlement.purchase_price_cents / 100).toFixed(2)}.`,
+      successMessage: ({ settlement, titleText: nextTitle }) => buildPurchaseSuccessMessage({ kind: "replay", locale, priceCents: settlement.purchase_price_cents, titleText: nextTitle }),
       titleText,
     });
-  }, [buySong, requestAuth, session?.accessToken]);
+  }, [buySong, locale, requestAuth, routeCopy.connectWalletToBuyReplay, session?.accessToken]);
   const handlePromptLiveTicketAuth = React.useCallback(() => {
-    requestAuth("Connect your wallet to buy a ticket for this live room.");
-  }, [requestAuth]);
+    requestAuth(routeCopy.connectWalletToBuyTicket);
+  }, [requestAuth, routeCopy.connectWalletToBuyTicket]);
   const handleOpenKaraoke = React.useCallback(() => {
     if (!hasSession) {
-      requestAuth("Connect your wallet to use karaoke.");
+      requestAuth(routeCopy.connectWalletToUseKaraoke);
       return;
     }
     navigate(`/p/${encodeURIComponent(postId)}/karaoke`);
-  }, [hasSession, postId, requestAuth]);
+  }, [hasSession, postId, requestAuth, routeCopy.connectWalletToUseKaraoke]);
   const handleOpenStudy = React.useCallback(() => {
     if (!hasSession) {
-      requestAuth("Connect your wallet to study this song.");
+      requestAuth(routeCopy.connectWalletToStudy);
       return;
     }
-    navigate(`/p/${encodeURIComponent(postId)}/study`);
-  }, [hasSession, postId, requestAuth]);
-
+    const communityId = post?.post.community;
+    navigate(telegramMiniApp && communityId
+      ? `/tg/c/${encodeURIComponent(communityId)}/p/${encodeURIComponent(postId)}/study`
+      : `/p/${encodeURIComponent(postId)}/study`);
+  }, [hasSession, post?.post.community, postId, requestAuth, routeCopy.connectWalletToStudy, telegramMiniApp]);
   const handleOpenStreaks = React.useCallback(() => {
     if (!hasSession) {
-      requestAuth("Connect your wallet to see this song's streak leaderboard.");
+      requestAuth(routeCopy.connectWalletToSeeStreaks);
       return;
     }
     navigate(`/p/${encodeURIComponent(postId)}/streaks`);
-  }, [hasSession, postId, requestAuth]);
-
+  }, [hasSession, postId, requestAuth, routeCopy.connectWalletToSeeStreaks]);
   const openReplayBlob = React.useCallback((blob: Blob, title: string) => {
     if (typeof window === "undefined") return;
     const objectUrl = URL.createObjectURL(blob);
@@ -557,7 +587,6 @@ export function PostPage({
     });
     setReplayPlayerOpen(true);
   }, []);
-
   const handleWatchReplay = React.useCallback(async () => {
     if (!community?.id || !activeLiveRoomId) return;
 
@@ -574,34 +603,34 @@ export function PostPage({
         const listing = playback.replayListing
           ?? (playback.replayAsset ? listingsByReplayAssetId[playback.replayAsset] : undefined);
         if (listing) {
-          await handleBuyReplay(listing, liveRoomAccess?.room.title ?? post?.post.title ?? "Replay", community.id);
+          await handleBuyReplay(listing, liveRoomAccess?.room.title ?? post?.post.title ?? routeCopy.replayFallbackTitle, community.id);
         } else {
-          toast.error("Purchase setup is incomplete for this replay.");
+          toast.error(routeCopy.replayPurchaseSetupIncomplete);
         }
         return;
       }
       if (playback.kind === "delivery_pending") {
-        toast.error("This replay is still being prepared.");
+        toast.error(routeCopy.replayDeliveryPending);
         return;
       }
       if (playback.kind === "not_published") {
-        toast.error("This replay has not been published yet.");
+        toast.error(routeCopy.replayNotPublished);
         return;
       }
       if (playback.kind === "wallet_required") {
         authRuntime.reconnectEthereumWallet?.();
         authRuntime.connect?.();
-        toast.error("Connect a wallet to unlock this replay.");
+        toast.error(routeCopy.connectWalletToUnlockReplay);
         return;
       }
       if (playback.kind !== "ready") {
-        toast.error("This replay is not available.");
+        toast.error(routeCopy.replayUnavailable);
         return;
       }
-      const replayTitle = liveRoomAccess?.room.title ?? post?.post.title ?? "Replay";
+      const replayTitle = liveRoomAccess?.room.title ?? post?.post.title ?? routeCopy.replayFallbackTitle;
       openReplayBlob(playback.blob, replayTitle);
     } catch (watchError) {
-      toast.error(getErrorMessage(watchError, "Could not watch this replay."));
+      toast.error(getErrorMessage(watchError, routeCopy.replayWatchFailed));
     }
   }, [
     activeLiveRoomId,
@@ -616,6 +645,13 @@ export function PostPage({
     openReplayBlob,
     post?.post.title,
     requestAuth,
+    routeCopy.connectWalletToUnlockReplay,
+    routeCopy.replayDeliveryPending,
+    routeCopy.replayFallbackTitle,
+    routeCopy.replayNotPublished,
+    routeCopy.replayPurchaseSetupIncomplete,
+    routeCopy.replayUnavailable,
+    routeCopy.replayWatchFailed,
     session?.accessToken,
   ]);
 
@@ -636,26 +672,26 @@ export function PostPage({
       if (!access.access.allowed) {
         if (access.access.decision_reason === "purchase_required") {
           if (!session?.accessToken) {
-            requestAuth("Connect your wallet to buy a ticket for this live room.");
+            requestAuth(routeCopy.connectWalletToBuyTicket);
             return;
           }
           const listing = listingsByLiveRoomId[activeLiveRoomId];
           if (listing) {
             await handleBuyLiveTicket(listing, access.room.title, community.id);
           } else {
-            toast.error("Ticket setup is incomplete for this live room.");
+            toast.error(routeCopy.ticketSetupIncomplete);
           }
           return;
         }
         if (access.access.decision_reason === "not_live") {
-          toast.error("This live room is not live yet.");
+          toast.error(routeCopy.liveRoomNotLiveYet);
           return;
         }
         if (access.access.decision_reason === "membership_required") {
-          requestAuth("Connect your wallet to verify community access for this live room.");
+          requestAuth(routeCopy.connectWalletToVerifyCommunityAccess);
           return;
         }
-        toast.error("This live room is not available.");
+        toast.error(routeCopy.liveRoomUnavailable);
         return;
       }
 
@@ -669,7 +705,7 @@ export function PostPage({
           if (access.room.access_mode === "free" && access.room.visibility === "public") {
             logger.warn("[post-route] authenticated viewer attach failed; retrying public viewer attach", {
               communityId: community.id,
-              error: getErrorMessage(authenticatedAttachError, "Could not join this live room."),
+              error: getErrorMessage(authenticatedAttachError, routeCopy.liveRoomJoinFailed),
               liveRoomId: activeLiveRoomId,
               postId,
             });
@@ -684,7 +720,7 @@ export function PostPage({
       }
       setLiveRoomAccess({ room: attach.room, access: attach.access });
     } catch (attachError) {
-      toast.error(getErrorMessage(attachError, "Could not join this live room."));
+      toast.error(getErrorMessage(attachError, routeCopy.liveRoomJoinFailed));
       await refreshLiveRoomAccess();
     } finally {
       liveViewerAttachInFlightRef.current = false;
@@ -701,6 +737,12 @@ export function PostPage({
     postId,
     refreshLiveRoomAccess,
     requestAuth,
+    routeCopy.connectWalletToBuyTicket,
+    routeCopy.connectWalletToVerifyCommunityAccess,
+    routeCopy.liveRoomJoinFailed,
+    routeCopy.liveRoomNotLiveYet,
+    routeCopy.liveRoomUnavailable,
+    routeCopy.ticketSetupIncomplete,
     session?.accessToken,
   ]);
 
@@ -716,7 +758,7 @@ export function PostPage({
   const handleAcceptLiveRoomGuestInvite = React.useCallback(async () => {
     if (!community?.id || !activeLiveRoomId) return;
     if (!session?.accessToken) {
-      requestAuth("Connect your wallet to accept this producer invite.");
+      requestAuth(routeCopy.connectWalletToAcceptInvite);
       return;
     }
     if (liveRoomGuestInviteAcceptInFlightRef.current) return;
@@ -724,10 +766,10 @@ export function PostPage({
     liveRoomGuestInviteAcceptInFlightRef.current = true;
     try {
       await api.communities.acceptLiveRoomGuestInvite(community.id, activeLiveRoomId);
-      toast.success("Producer invite accepted.");
+      toast.success(routeCopy.producerInviteAccepted);
       await refreshLiveRoomAccess();
     } catch (acceptError) {
-      toast.error(getErrorMessage(acceptError, "Could not accept this producer invite."));
+      toast.error(getErrorMessage(acceptError, routeCopy.producerInviteAcceptFailed));
       await refreshLiveRoomAccess();
     } finally {
       liveRoomGuestInviteAcceptInFlightRef.current = false;
@@ -738,6 +780,9 @@ export function PostPage({
     community?.id,
     refreshLiveRoomAccess,
     requestAuth,
+    routeCopy.connectWalletToAcceptInvite,
+    routeCopy.producerInviteAcceptFailed,
+    routeCopy.producerInviteAccepted,
     session?.accessToken,
   ]);
 
@@ -817,11 +862,11 @@ export function PostPage({
       setLiveRoomAccess({ room: renewed.room, access: renewed.access });
       return renewed;
     } catch (renewError) {
-      toast.error(getErrorMessage(renewError, "Could not renew live room access."));
+      toast.error(getErrorMessage(renewError, routeCopy.liveRoomRenewFailed));
       await refreshLiveRoomAccess();
       return null;
     }
-  }, [activeLiveRoomId, api.communities, api.publicCommunities, community?.id, refreshLiveRoomAccess, session?.accessToken]);
+  }, [activeLiveRoomId, api.communities, api.publicCommunities, community?.id, refreshLiveRoomAccess, routeCopy.liveRoomRenewFailed, session?.accessToken]);
 
   const diagnosticLiveRoom = liveRoomAccess?.room ?? null;
   const diagnosticGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;
@@ -941,11 +986,15 @@ export function PostPage({
   const threadLiveRoomPurchase = threadLiveRoomId ? purchasesByLiveRoomId[threadLiveRoomId] : undefined;
   const unauthenticatedLiveTicketRequired = !session?.accessToken
     && liveRoomAccess?.access.decision_reason === "purchase_required";
+  const rewardLabel = rewardOffer
+    ? rewardCtaAmountLabel(rewardOffer.daily_reward_cents)
+    : undefined;
   const songOptions = (post.post.post_type === "song" || post.post.post_type === "video") && community && threadAssetId
     ? {
       currentUserId: session?.user?.id,
       asset: threadAsset,
       listing: threadListing,
+      karaokeRewardLabel: rewardOffer?.eligible_activity !== "study" ? rewardLabel : undefined,
       onBuy: threadListing ? () => void handleBuySong(
         threadListing,
         post.post.title ?? (post.post.post_type === "video" ? "video" : "song"),
@@ -958,12 +1007,13 @@ export function PostPage({
       playback: songPlayback,
       purchase: threadPurchase,
       storyLicenseNotice: storyLicenseReuseNotice ?? undefined,
+      studyRewardLabel: rewardOffer?.eligible_activity !== "karaoke" ? rewardLabel : undefined,
     }
     : undefined;
   const liveRoom = liveRoomAccess?.room ?? null;
   const eventStore = liveRoom?.store_url
     ? {
-      label: liveRoom.store_label?.trim() || copy.community.storeLabel || "Store",
+      label: liveRoom.store_label?.trim() || copy.community.storeLabel || routeCopy.storeFallbackLabel,
       url: liveRoom.store_url,
     }
     : null;
@@ -999,7 +1049,7 @@ export function PostPage({
       onAcceptGuestInvite: handleAcceptLiveRoomGuestInvite,
       onBuy: threadLiveRoomListing ? () => void handleBuyLiveTicket(
         threadLiveRoomListing,
-        liveRoomAccess?.room.title ?? post.post.title ?? "Live room",
+        liveRoomAccess?.room.title ?? post.post.title ?? routeCopy.liveRoomFallbackTitle,
         community.id,
       ) : unauthenticatedLiveTicketRequired ? handlePromptLiveTicketAuth : undefined,
       onReviewReplay: viewerIsLiveRoomHost
@@ -1027,7 +1077,10 @@ export function PostPage({
   const viewerMustJoin = Boolean(
     session
     && community?.viewer_membership_status === "not_member"
-    && community.viewer_community_role == null,
+    && community.viewer_community_role == null
+    // A gate a browser check alone can satisfy accepts non-member votes, so
+    // show the real vote control instead of a join CTA.
+    && !isPowSatisfiableGate(community.membership_gate_summaries, community.gate_match_mode),
   );
   const viewerMembershipResolving = Boolean(
     session
@@ -1035,38 +1088,44 @@ export function PostPage({
     && community?.viewer_membership_status == null,
   );
   const localizedPostCard = toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
+    canBoost: boostController.canBoost,
+    canManageRewardSettings: boostController.canManagePolicy,
     canModeratePost: viewerCanModerateCommunity(session?.user?.id, community),
     commentCountOverride: commentCount,
     liveRoom: liveRoomOptions,
     onCancelEvent: cancelEvent,
+    onBoost: boostController.openBoost,
     onDelete: deletePost,
     onRemove: removePost,
+    onRewardSettings: boostController.openPolicy,
     onVerifyAge: handleVerifyAge,
     onVote: voteOnPost,
+    voteBusy: viewerMembershipResolving,
     voteAccess: viewerMustJoin
       ? { label: copy.common.joinToVote, onClick: requestVoteAccess }
-      : viewerMembershipResolving
-        ? { disabled: true, label: copy.common.checkingVoteAccess }
-        : undefined,
+      : undefined,
     showOriginalLabel: copy.common.showOriginal,
     showTranslationLabel: copy.common.showTranslation,
     viewerContentLocale: contentLocale,
   });
   const originalPostCard = shouldShowOriginalPost(post)
     ? toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
+      canBoost: boostController.canBoost,
+      canManageRewardSettings: boostController.canManagePolicy,
       canModeratePost: viewerCanModerateCommunity(session?.user?.id, community),
       commentCountOverride: commentCount,
       liveRoom: liveRoomOptions,
       onCancelEvent: cancelEvent,
+      onBoost: boostController.openBoost,
       onDelete: deletePost,
       onRemove: removePost,
+      onRewardSettings: boostController.openPolicy,
       onVerifyAge: handleVerifyAge,
       onVote: voteOnPost,
+      voteBusy: viewerMembershipResolving,
       voteAccess: viewerMustJoin
         ? { label: copy.common.joinToVote, onClick: requestVoteAccess }
-        : viewerMembershipResolving
-          ? { disabled: true, label: copy.common.checkingVoteAccess }
-          : undefined,
+        : undefined,
       preferOriginalText: true,
       showOriginalLabel: copy.common.showOriginal,
       showTranslationLabel: copy.common.showTranslation,
@@ -1086,7 +1145,7 @@ export function PostPage({
     { label: copy.common.newTab, value: "new" as const },
     { label: copy.common.topTab, value: "top" as const },
   ];
-  const publicReplyLabel = session?.profile ? getProfileHandleLabel(session.profile) : "Public";
+  const publicReplyLabel = session?.profile ? getProfileHandleLabel(session.profile) : routeCopy.publicLabel;
   const replyAnonymousScope: "community_stable" | "thread_stable" = community?.anonymous_identity_scope === "community_stable"
     ? "community_stable"
     : "thread_stable";
@@ -1097,7 +1156,7 @@ export function PostPage({
         scope: replyAnonymousScope,
         userId: session.user.id,
       })
-    : "Anonymous";
+    : routeCopy.anonymousLabel;
   const replyIdentity: PostThreadReplyIdentity | undefined = session
     ? {
         allowAnonymousIdentity: community?.allow_anonymous_identity === true,
@@ -1108,10 +1167,10 @@ export function PostPage({
     : undefined;
   const mobileCommentSortAction = (
     <ResponsiveOptionSelect
-      ariaLabel="Sort comments"
+      ariaLabel={routeCopy.sortComments}
       drawerTitle={copy.common.commentsHeading}
       mobileTrigger={(
-        <IconButton aria-label="Sort comments" variant="ghost">
+        <IconButton aria-label={routeCopy.sortComments} variant="ghost">
           <SlidersHorizontal className="size-6" weight="bold" />
         </IconButton>
       )}
@@ -1122,6 +1181,8 @@ export function PostPage({
   );
   const threadBody = (
     <>
+      <BoostCampaignSheet {...boostController.sheetProps} />
+      <SongRewardPolicySheet {...boostController.policySheetProps} />
       {gateModal}
       {ageSelfPrompt ? (
         <SelfVerificationModal
@@ -1143,14 +1204,14 @@ export function PostPage({
         onOpenChange={handleReplayPlayerOpenChange}
         open={replayPlayerOpen}
         sourceUrl={replayPlayer?.sourceUrl ?? null}
-        title={replayPlayer?.title ?? liveRoomAccess?.room.title ?? post.post.title ?? "Replay"}
+        title={replayPlayer?.title ?? liveRoomAccess?.room.title ?? post.post.title ?? routeCopy.replayFallbackTitle}
       />
       <LiveRoomViewerModal
         attachResponse={liveViewerSession}
         onOpenChange={setLiveViewerOpen}
         onRenew={handleRenewLiveRoomViewer}
         open={liveViewerOpen}
-        title={liveViewerSession?.room.title ?? liveRoomAccess?.room.title ?? post.post.title ?? "Live room"}
+        title={liveViewerSession?.room.title ?? liveRoomAccess?.room.title ?? post.post.title ?? routeCopy.liveRoomFallbackTitle}
       />
       <ContentRailShell
         rail={!isMobile && (eventStore || threadSidebarProps) ? (
@@ -1187,19 +1248,15 @@ export function PostPage({
           commentsHeadingLang={contentLocale === "ar" ? "ar" : undefined}
           emptyCommentsLabel={threadPartial ? copy.common.loadingReplies : copy.common.noComments}
           onCommentSortChange={setCommentSort}
-          onRootReplyBlocked={viewerMustJoin ? requestCommentAccess : undefined}
-          onRootReplySubmit={viewerMustJoin ? undefined : createTopLevelComment}
+          onReplyIntent={handleReplyIntent}
+          onRootReplySubmit={createTopLevelComment}
           post={localizedPostCard}
           postOriginal={originalPostCard}
           replyIdentity={replyIdentity}
           comments={comments}
           rootReplyActionLabel={copy.common.replyAction}
           rootReplyCancelLabel={copy.common.cancelReply}
-          rootReplyBlockedLabel={viewerMustJoin ? copy.common.joinToComment : undefined}
-          rootReplyDisabled={viewerMembershipResolving}
-          rootReplyPlaceholder={viewerMembershipResolving
-            ? copy.common.checkingCommentAccess
-            : copy.common.replyPlaceholder}
+          rootReplyPlaceholder={copy.common.replyPlaceholder}
           rootReplySubmitLabel={copy.common.submitReply}
         />
       </ContentRailShell>

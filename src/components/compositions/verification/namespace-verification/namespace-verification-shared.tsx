@@ -15,6 +15,7 @@ import type {
   NamespaceVerificationModalState,
   NamespaceVerificationOperationClass,
   NamespaceVerificationStartResult,
+  HnsImportChallengePayload,
   SpacesChallengePayload,
 } from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
 
@@ -22,6 +23,7 @@ type NamespaceSessionStateSetters = {
   setSessionId: React.Dispatch<React.SetStateAction<string | null>>;
   setChallengeTxtValue: React.Dispatch<React.SetStateAction<string | null>>;
   setChallengePayload: React.Dispatch<React.SetStateAction<SpacesChallengePayload | null>>;
+  setHnsImportPayload: React.Dispatch<React.SetStateAction<HnsImportChallengePayload | null>>;
   setActiveFamily: React.Dispatch<React.SetStateAction<NamespaceFamily>>;
   setRootLabel: React.Dispatch<React.SetStateAction<string>>;
   setSignature: React.Dispatch<React.SetStateAction<string>>;
@@ -40,6 +42,7 @@ export function applyNamespaceSessionResult(
   setters.setSessionId(result.namespaceVerificationSessionId);
   setters.setChallengeTxtValue(result.challengeTxtValue);
   setters.setChallengePayload(result.challengePayload);
+  setters.setHnsImportPayload(result.hnsImportPayload ?? null);
   setters.setActiveFamily(result.family);
   setters.setRootLabel(result.rootLabel);
   setters.setSignature("");

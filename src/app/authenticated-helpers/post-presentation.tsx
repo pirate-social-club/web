@@ -39,36 +39,36 @@ import { buildPostMenu, resolvePostStoryPortalHref } from "@/app/authenticated-h
 
 export type HomeFeedEntry = ApiHomeFeedItem;
 export { toHomeFeedItem } from "@/app/authenticated-helpers/home-feed-presentation";
-export type { PostVoteValue } from "@/app/authenticated-helpers/post-vote";
+;
 
 export { toCommunityPostContent } from "@/app/authenticated-helpers/post-content-presentation";
 export {
-  formatQualifierLabel,
+
   getPostCommentCount,
-  resolveAgentAuthor,
+
   resolveAnonymousComposerDescription,
   resolveAnonymousComposerLabel,
   resolveCommentAuthorAvatarSeed,
   resolveCommentAuthorLabel,
-  resolvePostAuthorAvatarSeed,
-  resolvePostAuthorLabel,
-  resolvePostQualifierLabels,
-  resolvePublicAuthorFallback,
+
+
+
+
   resolvePublicIdentityLabel,
   toCommentViewerVote,
-  toViewerVote,
+
 } from "@/app/authenticated-helpers/post-identity-presentation";
 export { resolveLocalizedLinkTitle } from "@/app/authenticated-helpers/post-link-presentation";
 export type {
-  LiveRoomPresentationOptions,
+
   PostPresentationOptions,
   SongPresentationOptions,
 } from "@/app/authenticated-helpers/post-presentation-types";
 export {
-  canShowOriginalToggle,
-  resolveTranslatedTextPresentation,
+
+
   shouldShowOriginalPost,
-  withTranslationToggleProps,
+
 } from "@/app/authenticated-helpers/post-translation-presentation";
 
 function openExternalUrl(url: string) {
@@ -102,11 +102,15 @@ export function toCommunityFeedItem(
     upstreamAssetRefs: post.upstream_asset_refs,
   });
   const { hasPostMenu, postMenuItems } = buildPostMenu({
+    canBoost: opts?.canBoost,
+    canManageRewardSettings: opts?.canManageRewardSettings,
     canModeratePost: opts?.canModeratePost,
     eventStatus: toPostCardEvent(post)?.status ?? null,
     onCancelEvent: opts?.onCancelEvent,
+    onBoost: opts?.onBoost,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
+    onRewardSettings: opts?.onRewardSettings,
     post,
     storyPortalHref,
     viewerIsAuthor: postResponse.viewer_is_author,
@@ -116,7 +120,7 @@ export function toCommunityFeedItem(
   const isPublished = post.status === "published";
   const isProcessing = post.status === "processing";
   const isFailed = post.status === "failed";
-  const statusNotice = isProcessing && post.post_type !== "song"
+  const statusNotice = isProcessing && post.post_type === "song"
     ? {
         tone: "neutral" as const,
         label: "Preparing song features",
@@ -173,6 +177,7 @@ export function toCommunityFeedItem(
       engagement: {
         commentCount: getPostCommentCount(postResponse),
         score: postResponse.upvote_count - postResponse.downvote_count,
+        upvoteCount: postResponse.upvote_count,
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
       authorCommunityRole: postResponse.author_community_role ?? undefined,
@@ -187,12 +192,15 @@ export function toCommunityFeedItem(
       menuItems: hasPostMenu ? postMenuItems : undefined,
       shareActions: isPublished ? buildPostShareActions(post) : undefined,
       onMenuAction: hasPostMenu ? (key) => {
+        if (key === "boost") opts?.onBoost?.();
+        if (key === "reward-settings") opts?.onRewardSettings?.();
         if (key === "view-story" && storyPortalHref) openExternalUrl(storyPortalHref);
         if (key === "delete") opts?.onDelete?.();
         if (key === "remove") opts?.onRemove?.();
         if (key === "cancel-event") opts?.onCancelEvent?.();
       } : undefined,
       onVote: isPublished ? opts?.onVote : undefined,
+      postId: post.id,
       postHref: isPublished ? `/p/${post.id}` : undefined,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
       ...(isPublished ? titleProps : { ...titleProps, titleHref: undefined }),
@@ -245,11 +253,15 @@ export function toThreadPostCard(
     upstreamAssetRefs: post.upstream_asset_refs,
   });
   const { hasPostMenu, postMenuItems } = buildPostMenu({
+    canBoost: opts?.canBoost,
+    canManageRewardSettings: opts?.canManageRewardSettings,
     canModeratePost: opts?.canModeratePost,
     eventStatus: toPostCardEvent(post)?.status ?? null,
     onCancelEvent: opts?.onCancelEvent,
+    onBoost: opts?.onBoost,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
+    onRewardSettings: opts?.onRewardSettings,
     post,
     storyPortalHref,
     viewerIsAuthor: postResponse.viewer_is_author,
@@ -311,7 +323,9 @@ export function toThreadPostCard(
     engagement: {
       commentCount: opts?.commentCountOverride ?? getPostCommentCount(postResponse),
       score: postResponse.upvote_count - postResponse.downvote_count,
+      upvoteCount: postResponse.upvote_count,
       viewerVote: toViewerVote(postResponse.viewer_vote),
+      voteBusy: opts?.voteBusy,
     },
     authorCommunityRole: postResponse.author_community_role ?? undefined,
     event: toPostCardEvent(post),
@@ -324,6 +338,8 @@ export function toThreadPostCard(
     menuItems: hasPostMenu ? postMenuItems : undefined,
     shareActions: buildPostShareActions(post),
     onMenuAction: hasPostMenu ? (key) => {
+      if (key === "boost") opts?.onBoost?.();
+      if (key === "reward-settings") opts?.onRewardSettings?.();
       if (key === "view-story" && storyPortalHref) openExternalUrl(storyPortalHref);
       if (key === "delete") opts?.onDelete?.();
       if (key === "remove") opts?.onRemove?.();
@@ -331,6 +347,7 @@ export function toThreadPostCard(
     } : undefined,
     onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
     voteAccess: post.status === "deleted" || post.status === "removed" ? undefined : opts?.voteAccess,
+    postId: post.id,
     postHref: undefined,
     qualifierLabels: resolvePostQualifierLabels(postResponse),
     ...titleProps,

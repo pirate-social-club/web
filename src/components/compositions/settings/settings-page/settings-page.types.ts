@@ -20,7 +20,7 @@ export interface SettingsHandle {
   verificationState: "verified" | "unverified" | "stale";
 }
 
-export interface SettingsLocaleOption {
+interface SettingsLocaleOption {
   label: string;
   value: string;
 }

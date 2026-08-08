@@ -3,6 +3,7 @@
 import * as React from "react";
 import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
+import { loadSongRoutePost } from "@/app/authenticated-helpers/load-song-route-post";
 import { LiveRoomViewerSurface } from "@/components/compositions/posts/live-room-viewer/live-room-viewer-modal";
 import { isApiAuthError } from "@/lib/api/client";
 import { useApi } from "@/lib/api";
@@ -81,17 +82,6 @@ export function LiveRoomRoutePage({ postId }: { postId: string }) {
   React.useEffect(() => {
     let canceled = false;
 
-    async function loadPost(): Promise<LocalizedPostResponse> {
-      if (session?.accessToken) {
-        try {
-          return await api.posts.get(postId, { locale: contentLocale });
-        } catch (error) {
-          if (!isApiAuthError(error)) throw error;
-        }
-      }
-      return await api.publicPosts.get(postId, { locale: contentLocale });
-    }
-
     async function loadAccess(communityId: string, liveRoomId: string): Promise<ApiLiveRoomAccessResponse> {
       if (session?.accessToken) {
         try {
@@ -117,7 +107,12 @@ export function LiveRoomRoutePage({ postId }: { postId: string }) {
     async function loadLiveRoom() {
       setState({ phase: "loading" });
       try {
-        const post = await loadPost();
+        const post = await loadSongRoutePost({
+          api,
+          contentLocale,
+          hasAccessToken: Boolean(session?.accessToken),
+          postId,
+        });
         if (canceled) return;
 
         const communityId = post.post.community;

@@ -3,7 +3,7 @@
 type CommunityLocalizedTextItem = {
   field_key: string;
   translated_value?: string | null;
-  translation_state: "ready" | "pending" | "same_language" | "policy_blocked";
+  translation_state: "ready" | "pending" | "failed" | "same_language" | "policy_blocked";
 };
 
 type CommunityLocalizedText = {

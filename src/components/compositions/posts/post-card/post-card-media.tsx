@@ -5,6 +5,10 @@ import { Button } from "@/components/primitives/button";
 import { FormattedText } from "@/components/primitives/formatted-text";
 import { Type } from "@/components/primitives/type";
 import { CrosspostSourcePreviewCard } from "../crosspost-source-preview-card";
+import {
+  getMediaAspectRatioStyle,
+  getVideoPreviewFrameClassName,
+} from "../video-preview-layout";
 import { logger } from "@/lib/logger";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -26,8 +30,20 @@ const LazyVideoPostContent = React.lazy(async () => {
   return { default: module.VideoPostContent };
 });
 
-function VideoPostContentFallback({ className }: { className?: string }) {
-  return <div className={cn("aspect-video w-full rounded-lg bg-muted", className)} aria-busy="true" />;
+function VideoPostContentFallback({ aspectRatio, className }: { aspectRatio?: number; className?: string }) {
+  const aspectRatioStyle = getMediaAspectRatioStyle(aspectRatio);
+  return (
+    <div
+      aria-busy="true"
+      className={cn(
+        "rounded-lg bg-muted",
+        getVideoPreviewFrameClassName(aspectRatio),
+        !aspectRatioStyle && "aspect-video",
+        className,
+      )}
+      style={aspectRatioStyle}
+    />
+  );
 }
 
 class LazyPostMediaErrorBoundary extends React.Component<
@@ -219,24 +235,28 @@ export interface PostCardMediaProps {
   content: PostCardContent;
   className?: string;
   postHref?: string;
+  onOpenVideoViewer?: () => void;
   viewContext?: PostCardViewContext;
+  previewMode?: boolean;
 }
 
 function TextPostContent({
   className,
   content,
   postHref,
+  previewMode,
   viewContext,
 }: {
   className?: string;
   content: TextContent;
   postHref?: string;
+  previewMode?: boolean;
   viewContext?: PostCardViewContext;
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
   const [expanded, setExpanded] = React.useState(false);
-  const shouldCollapse = shouldCollapseTextPreview(content, viewContext);
+  const shouldCollapse = shouldCollapseTextPreview(content, previewMode ? "home" : viewContext);
   const isCollapsed = shouldCollapse && !expanded;
   const formattedText = (
     <FormattedText
@@ -289,12 +309,12 @@ function TextPostContent({
   );
 }
 
-export function PostCardMedia({ content, className, postHref, viewContext }: PostCardMediaProps) {
+export function PostCardMedia({ content, className, onOpenVideoViewer, postHref, previewMode, viewContext }: PostCardMediaProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
   switch (content.type) {
     case "text":
-      return <TextPostContent className={className} content={content} postHref={postHref} viewContext={viewContext} />;
+      return <TextPostContent className={className} content={content} postHref={postHref} previewMode={previewMode} viewContext={viewContext} />;
     case "image": {
       const isAgeGated = content.ageGatePolicy === "18_plus" && content.contentSafetyState === "adult";
       const ageGateRequiresProof = isAgeGated && content.ageGateViewerState !== "verified_allowed";
@@ -308,11 +328,18 @@ export function PostCardMedia({ content, className, postHref, viewContext }: Pos
                 role="img"
                 style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
               />
-            ) : (
+            ) : content.src.trim() ? (
               <img
                 alt={content.alt}
                 className="w-full object-cover"
                 src={content.src}
+                style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
+              />
+            ) : (
+              <div
+                aria-label={content.alt}
+                className="min-h-64 w-full bg-muted"
+                role="img"
                 style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
               />
             )}
@@ -344,11 +371,11 @@ export function PostCardMedia({ content, className, postHref, viewContext }: Pos
     case "video":
       return (
         <LazyPostMediaErrorBoundary
-          fallback={<VideoPostContentFallback className={className} />}
+          fallback={<VideoPostContentFallback aspectRatio={content.aspectRatio} className={className} />}
           resetKey={`video:${content.src}`}
         >
-          <React.Suspense fallback={<VideoPostContentFallback className={className} />}>
-            <LazyVideoPostContent content={content} className={className} />
+          <React.Suspense fallback={<VideoPostContentFallback aspectRatio={content.aspectRatio} className={className} />}>
+            <LazyVideoPostContent content={content} className={className} onOpenVideoViewer={onOpenVideoViewer} previewMode={previewMode} />
           </React.Suspense>
         </LazyPostMediaErrorBoundary>
       );
@@ -387,7 +414,7 @@ export function PostCardMedia({ content, className, postHref, viewContext }: Pos
         </div>
       );
     case "song":
-      return <SongPostContent content={content} className={className} />;
+      return <SongPostContent content={content} className={className} previewMode={previewMode} />;
     case "live_room":
       return <LiveRoomPostContent content={content} className={className} viewContext={viewContext} />;
   }

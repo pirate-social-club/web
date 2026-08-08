@@ -4,6 +4,7 @@ import {
   installAuthenticatedApiMocks,
   installMockSession,
 } from "./fixtures/api-mocks";
+import { createSolvableAltchaChallenge } from "./fixtures/altcha-challenge";
 import { expectNoBrowserError } from "./fixtures/e2e-helpers";
 import {
   createMockPostResponse,
@@ -108,13 +109,10 @@ async function fulfillPowVoteRoute(
 
   if (method === "GET" && path === "/verification/altcha/challenge") {
     captures.challengeUrls.push(url);
-    await route.fulfill(jsonResponse({
-      algorithm: "SHA-256",
-      challenge: "deadbeef",
-      maxnumber: 100000,
-      salt: "00",
-      signature: "00",
-    }));
+    await route.fulfill(jsonResponse(await createSolvableAltchaChallenge({
+      action: url.searchParams.get("action") ?? "",
+      scope: url.searchParams.get("scope") ?? "",
+    })));
     return;
   }
 
@@ -140,7 +138,7 @@ async function installPowVoteFixture(
 }
 
 test.describe("proof-of-work vote gate", () => {
-  test("auto-submits a post permalink upvote after ALTCHA verification", async ({ page }) => {
+  test("submits a post permalink upvote with a headless proof, no modal", async ({ page }) => {
     const captures = {
       challengeUrls: [] as URL[],
       voteRequests: [] as VoteRequest[],
@@ -158,35 +156,25 @@ test.describe("proof-of-work vote gate", () => {
 
     await upvoteButton.click();
 
-    expect(captures.voteRequests).toHaveLength(0);
-    await expect(score).toHaveText("8");
-
-    const dialog = page.getByRole("dialog", { name: /browser anti-bot check required/i });
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("button", { name: /^continue$/i })).toHaveCount(0);
-    await expect(dialog.getByRole("button", { name: /^(submit|post|publish)$/i })).toHaveCount(0);
-    await expect(dialog.locator("[class*='grid-cols-2']")).toHaveCount(0);
-
-    const widget = page.locator("altcha-widget");
-    await widget.waitFor({ state: "attached" });
+    // Proof-of-work is computation, not user input: it is solved in the
+    // background and the vote lands without any browser-check dialog.
+    await expect.poll(() => captures.voteRequests.length).toBe(1);
+    await expect(score).toHaveText("9");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.locator("altcha-widget")).toHaveCount(0);
 
     expect(captures.challengeUrls).toHaveLength(1);
     expect(captures.challengeUrls[0]?.pathname).toBe("/verification/altcha/challenge");
     expect(captures.challengeUrls[0]?.searchParams.get("scope")).toBe("vote");
     expect(captures.challengeUrls[0]?.searchParams.get("action")).toBe(`post:${mockFeedPostId}:1`);
 
-    await widget.evaluate((element) => {
-      element.dispatchEvent(new CustomEvent("verified", {
-        bubbles: true,
-        detail: { payload: "e2e-vote-proof" },
-      }));
-    });
-
-    await expect.poll(() => captures.voteRequests.length).toBe(1);
     expect(captures.voteRequests[0]?.body).toEqual({ value: 1 });
-    expect(captures.voteRequests[0]?.altchaHeader).toBe("e2e-vote-proof");
-    await expect(dialog).toBeHidden();
-    await expect(score).toHaveText("9");
+    // The solved payload is a base64 challenge+solution envelope.
+    const header = captures.voteRequests[0]?.altchaHeader ?? "";
+    expect(header.length).toBeGreaterThan(0);
+    const decoded = JSON.parse(atob(header)) as { challenge?: unknown; solution?: unknown };
+    expect(decoded.challenge).toBeTruthy();
+    expect(decoded.solution).toBeTruthy();
 
     await expectNoBrowserError(page);
   });

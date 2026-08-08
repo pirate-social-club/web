@@ -6,11 +6,13 @@ import { installDomGlobals } from "@/test/setup-dom";
 
 import {
   CashoutSheet,
-  SongRewardBadge,
+  displayedRewardQualificationStatus,
+  RewardQualificationNotice,
+  REWARD_NATIONALITY_DISCLOSURE,
+  rewardAmountLabel,
+  rewardCtaAmountLabel,
   SongRewardOffer,
-  StreakRewardEarned,
   VerifyHumanSheet,
-  WalletRewardsCard,
 } from "./reward-surfaces";
 import * as RewardStories from "./stories/reward-surfaces.stories";
 
@@ -31,41 +33,57 @@ Object.defineProperty(window, "matchMedia", {
 });
 
 describe("reward surfaces", () => {
-  test("renders song and streak reward copy", () => {
+  test("renders offer and server-owned qualification states", () => {
     const view = render(
       <div>
-        <SongRewardBadge amountLabel="$0.10" />
-        <SongRewardOffer amountLabel="$0.40 USDC" eligibleActivity="either" />
-        <StreakRewardEarned amountLabel="$0.10" state="earned-today" />
-        <StreakRewardEarned activityKind="karaoke" amountLabel="$0.10" state="earned-today" />
+        <SongRewardOffer
+          amountLabel="$0.40 USDC"
+          eligibleActivity="either"
+          minScoreBps={7250}
+        />
+        <SongRewardOffer
+          amountLabel="$0.40 USDC"
+          eligibleActivity="karaoke"
+          minScoreBps={7000}
+        />
+        <RewardQualificationNotice amountLabel="$0.10" status="checking" />
+        <RewardQualificationNotice amountLabel="$0.10" status="credited" />
+        <RewardQualificationNotice amountLabel="$0.10" status="delayed" testMode />
+        <RewardQualificationNotice amountLabel="$0.10" outcomeReason="score" status="unavailable" />
       </div>,
     );
 
-    expect(view.getByText("Earn $0.10/day")).toBeTruthy();
-    expect(view.getByText("Earn $0.40 USDC")).toBeTruthy();
-    expect(view.getByText("Complete a study set or karaoke pass · once per UTC day")).toBeTruthy();
-    expect(view.getAllByText("$0.10 reward pending").length).toBe(2);
-    expect(view.getByText("Today's karaoke pass qualified. Reward credit updates after confirmation.")).toBeTruthy();
+    expect(view.getAllByText("Earn $0.40 USDC today").length).toBe(2);
+    expect(view.getAllByText("Reward").length).toBe(2);
+    expect(view.getByText(/Complete a study set or score at least 72.5% in Karaoke/u)).toBeTruthy();
+    expect(view.getByText(/Score at least 70% in Karaoke/u)).toBeTruthy();
+    expect(view.getByText("Checking your $0.10 reward…")).toBeTruthy();
+    expect(view.getByText("+$0.10 🎉")).toBeTruthy();
+    expect(view.getByText("Still checking your reward")).toBeTruthy();
+    expect(view.getByText("Test reward — no cash value.")).toBeTruthy();
+    expect(view.getByText("Your score was below the reward target.")).toBeTruthy();
   });
 
-  test("renders wallet cashout and verification states", () => {
-    const view = render(
-      <WalletRewardsCard
-        availableLabel="$1.40"
-        balanceLabel="$1.70"
-        earnedTodayLabel="$0.30"
-        minimumCashoutLabel="$1.00"
-        onVerify={() => {}}
-        state="verify-required"
-      />,
-    );
+  test("uses plain dollar labels on every settlement chain", () => {
+    expect(rewardAmountLabel(100, 8453)).toBe("$1");
+    expect(rewardAmountLabel(100, 84532)).toBe("$1");
+    expect(rewardAmountLabel(100, 1)).toBe("$1");
+  });
 
-    expect(view.getByText("Rewards")).toBeTruthy();
-    expect(view.getByRole("button", { name: "Verify" })).toBeTruthy();
+  test("formats compact reward amounts for action labels", () => {
+    expect(rewardCtaAmountLabel(100)).toBe("$1");
+    expect(rewardCtaAmountLabel(10)).toBe("$0.10");
+  });
+
+  test("degrades a missing or stuck checking projection after polling times out", () => {
+    expect(displayedRewardQualificationStatus(null, true)).toBe("delayed");
+    expect(displayedRewardQualificationStatus("checking", true)).toBe("delayed");
+    expect(displayedRewardQualificationStatus("pending_verification", true)).toBe("pending_verification");
+    expect(displayedRewardQualificationStatus("credited", true)).toBe("credited");
   });
 
   test("exports verification and cashout sheet elements", () => {
-    expect(React.isValidElement(<VerifyHumanSheet open state="provider-selection" />)).toBe(true);
+    expect(React.isValidElement(<VerifyHumanSheet open providers={["self"]} state="provider-selection" />)).toBe(true);
     expect(React.isValidElement(
       <CashoutSheet
         amountLabel="$1.40"
@@ -78,12 +96,15 @@ describe("reward surfaces", () => {
     )).toBe(true);
   });
 
+  test("defines the passport-nationality and public-chain disclosure shown before verification", () => {
+    expect(REWARD_NATIONALITY_DISCLOSURE).toContain("passport nationality");
+    expect(REWARD_NATIONALITY_DISCLOSURE).toContain("public on-chain");
+  });
+
   test("storybook file exports the required reward states", () => {
-    expect(RewardStories.SongRewardBadgeDefault).toBeTruthy();
-    expect(RewardStories.SongRewardOfferEither).toBeTruthy();
-    expect(RewardStories.WalletRewardsCashoutReady).toBeTruthy();
-    expect(RewardStories.VerifyHumanConflict).toBeTruthy();
-    expect(RewardStories.CashoutSuccess).toBeTruthy();
-    expect(Object.values(RewardStories).filter((story) => typeof story === "object" && story !== null && "render" in story).length).toBe(32);
+    expect(RewardStories.Offer).toBeTruthy();
+    expect(RewardStories.QualificationStates).toBeTruthy();
+    expect(RewardStories.VerificationPending).toBeTruthy();
+    expect(RewardStories.CashoutPending).toBeTruthy();
   });
 });

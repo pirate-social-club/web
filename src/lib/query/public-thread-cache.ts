@@ -76,3 +76,19 @@ export function seedPublicThreadQueriesFromFeed(input: {
     );
   }
 }
+
+export function updateCachedPublicThreadPost(input: {
+  locale: string | null;
+  postId: string;
+  queryClient: QueryClient;
+  update: (post: LocalizedPostResponse) => LocalizedPostResponse;
+}): void {
+  for (const sort of ["best", "new", "top"] as const) {
+    input.queryClient.setQueryData<PublicThreadQueryData>(
+      postKeys.publicThread({ postId: input.postId, locale: input.locale, sort }),
+      (current) => current
+        ? { ...current, post: input.update(current.post) }
+        : current,
+    );
+  }
+}

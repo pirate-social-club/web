@@ -11,14 +11,18 @@ import type {
 
 installDomGlobals();
 
-class FakeApiError extends Error {}
+class FakeApiError extends Error {
+  details: Record<string, unknown> | null = null;
+}
 
 const calls: string[] = [];
+const toastErrors: string[] = [];
 let ruleStore: AvailabilityRule[] = [];
 let exceptionStore: AvailabilityException[] = [];
 let priceRuleStore: PriceRule[] = [];
 let profileResponse: BookingProfileResponse = { object: "booking_profile", exists: false, host: "usr_self" };
 let appWalletAddress: string | null = "0xAppWallet0000000000000000000000000000beef";
+let updateError: unknown = null;
 
 function rule(id: string): AvailabilityRule {
   return { object: "availability_rule", id, by_weekday: [1], start_local: "09:00", end_local: "17:00", slot_duration_seconds: 1800, effective_from: null, effective_until: null, created: 0, updated: 0 };
@@ -33,7 +37,7 @@ const fakeApi = {
     listAvailabilityRules: async () => ({ data: ruleStore }),
     listAvailabilityExceptions: async () => ({ data: exceptionStore }),
     listPriceRules: async () => ({ data: priceRuleStore }),
-    updateBookingProfile: async (body: unknown) => { calls.push("updateBookingProfile"); updateArgs.push(body); return profileResponse; },
+    updateBookingProfile: async (body: unknown) => { calls.push("updateBookingProfile"); if (updateError) throw updateError; updateArgs.push(body); return profileResponse; },
     publishBookingProfile: async () => { calls.push("publishBookingProfile"); return { object: "booking_profile", host: "usr_self", is_published: true } as unknown as BookingProfileResponse; },
     unpublishBookingProfile: async () => { calls.push("unpublishBookingProfile"); return { object: "booking_profile", host: "usr_self", is_published: false } as unknown as BookingProfileResponse; },
     createAvailabilityRule: async (body: unknown) => { calls.push("createAvailabilityRule"); createRuleArgs.push(body); ruleStore = [...ruleStore, rule("bar_new")]; return rule("bar_new"); },
@@ -48,7 +52,7 @@ const fakeApi = {
 mock.module("@/lib/api", () => ({ useApi: () => fakeApi }));
 mock.module("@/lib/api/client", () => ({ ApiError: FakeApiError }));
 mock.module("@/lib/api/session-store", () => ({ useSession: () => ({ profile: { primary_wallet_address: appWalletAddress } }) }));
-mock.module("@/components/primitives/sonner", () => ({ toast: { success: () => {}, error: () => {} } }));
+mock.module("@/components/primitives/sonner", () => ({ toast: { success: () => {}, error: (message: string) => { toastErrors.push(message); } } }));
 
 const { useBookingHostSettings } = await import("./use-booking-host-settings");
 
@@ -61,6 +65,7 @@ async function mountLoaded() {
 describe("useBookingHostSettings", () => {
   beforeEach(() => {
     calls.length = 0;
+    toastErrors.length = 0;
     updateArgs.length = 0;
     createRuleArgs.length = 0;
     ruleStore = [];
@@ -68,6 +73,7 @@ describe("useBookingHostSettings", () => {
     priceRuleStore = [];
     profileResponse = { object: "booking_profile", exists: false, host: "usr_self" };
     appWalletAddress = "0xAppWallet0000000000000000000000000000beef";
+    updateError = null;
   });
 
   test("payoutReady reflects the app wallet (no separate payout field)", async () => {
@@ -112,6 +118,7 @@ describe("useBookingHostSettings", () => {
 
   test("toggling Bookable persists then publishes; toggling again unpublishes", async () => {
     const { result } = await mountLoaded();
+    act(() => result.current.sectionProps.onValuesChange({ priceUsd: "50.00" }));
     await act(async () => { await result.current.sectionProps.onToggleBookable?.(); });
     expect(calls).toContain("updateBookingProfile"); // persisted before publish (no save-order footgun)
     expect(calls).toContain("publishBookingProfile");
@@ -121,5 +128,42 @@ describe("useBookingHostSettings", () => {
     await act(async () => { await result.current.sectionProps.onToggleBookable?.(); });
     expect(calls).toContain("unpublishBookingProfile");
     expect(result.current.sectionProps.bookable).toBe(false);
+  });
+
+  test("publishing with an empty price is blocked client-side with an inline error", async () => {
+    const { result } = await mountLoaded();
+    await act(async () => { await result.current.sectionProps.onToggleBookable?.(); });
+    expect(calls).not.toContain("publishBookingProfile");
+    expect(result.current.sectionProps.bookable).toBe(false);
+    expect(result.current.sectionProps.basePriceError).toBeTruthy();
+  });
+
+  test("publishing with a zero price is blocked client-side (server rejects base_price_cents <= 0)", async () => {
+    const { result } = await mountLoaded();
+    act(() => result.current.sectionProps.onValuesChange({ priceUsd: "0.00" }));
+    await act(async () => { await result.current.sectionProps.onToggleBookable?.(); });
+    expect(calls).not.toContain("publishBookingProfile");
+    expect(result.current.sectionProps.bookable).toBe(false);
+    expect(result.current.sectionProps.basePriceError).toBeTruthy();
+  });
+
+  test("a transient empty price skips auto-save silently (no request, no nag)", async () => {
+    const { result } = await mountLoaded();
+    act(() => result.current.sectionProps.onValuesChange({ timezone: "Europe/Vienna" }));
+    await new Promise((r) => setTimeout(r, 1000)); // let the debounce fire
+    expect(calls).not.toContain("updateBookingProfile");
+    expect(result.current.sectionProps.basePriceError).toBeNull();
+  });
+
+  test("a server validation failure surfaces the specific field error, not a generic toast", async () => {
+    const failure = new FakeApiError("Request failed with status 400");
+    failure.details = { fields: [{ field: "base_price_cents", reason: "must be a positive integer (cents)" }] };
+    updateError = failure;
+    const { result } = await mountLoaded();
+    act(() => result.current.sectionProps.onValuesChange({ priceUsd: "50.00" }));
+    await act(async () => { await result.current.sectionProps.onToggleBookable?.(); });
+    expect(calls).not.toContain("publishBookingProfile");
+    expect(toastErrors).toContain("base_price_cents: must be a positive integer (cents)");
+    expect(result.current.sectionProps.basePriceError).toBe("must be a positive integer (cents)");
   });
 });

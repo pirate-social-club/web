@@ -13,7 +13,7 @@ import { openExternalHref } from "@/lib/open-external-href";
 
 type ZkPassportDocumentCapability = Extract<
   VerificationSession["requested_capabilities"][number],
-  "minimum_age" | "nationality" | "gender"
+  "minimum_age" | "nationality" | "gender" | "unique_human"
 >;
 
 type ZkPassportRequestResult = {
@@ -26,7 +26,7 @@ type ZkPassportRequestResult = {
 
 type VerificationIntentInput = VerificationIntent | null | (() => VerificationIntent | null);
 
-const ZKPASSPORT_CAPABILITIES = new Set(["minimum_age", "nationality", "gender"]);
+const ZKPASSPORT_CAPABILITIES = new Set(["minimum_age", "nationality", "gender", "unique_human"]);
 
 function isZkPassportCapability(value: unknown): value is ZkPassportDocumentCapability {
   return typeof value === "string" && ZKPASSPORT_CAPABILITIES.has(value);

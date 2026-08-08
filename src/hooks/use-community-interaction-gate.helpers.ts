@@ -9,6 +9,7 @@ import type {
   CommunityGateRequirementGroup,
   CommunityGateRequirementStatus,
 } from "@/components/compositions/community/gate-requirements.types";
+import type { AltchaScope } from "@/lib/api/client-groups-core";
 import {
   getJoinCtaLabel,
   getGateFailureMessage,
@@ -16,6 +17,8 @@ import {
   hasAltchaProofAction,
   getVerificationCapabilitiesForProvider,
   getVerificationPromptCopy,
+  type HumanVerificationProvider,
+  resolveAvailableHumanVerificationProviders,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 import { deriveGateStatuses } from "@/lib/community-gate-statuses";
@@ -25,6 +28,11 @@ import { openExternalHref } from "@/lib/open-external-href";
 import { type UiLocaleCode } from "@/lib/ui-locale-core";
 
 export type RouteKind = "community" | "home" | "post" | "public-community";
+const providerLabels: Record<HumanVerificationProvider, string> = {
+  self: "Self",
+  very: "Very",
+  zkpassport: "ZKPassport",
+};
 export type InteractionAction =
   | "vote_post"
   | "vote_comment"
@@ -41,7 +49,7 @@ export type CommunityGateData = {
   preview: Pick<
     CommunityPreview,
     "id" | "display_name" | "membership_gate_summaries" | "viewer_community_role"
-  >;
+  > & { viewer_following?: CommunityPreview["viewer_following"] };
 };
 
 type PostViewerGateState = {
@@ -76,6 +84,7 @@ export type ModalState = {
   requirementsMode?: "all" | "any";
   requirementStatuses?: CommunityGateRequirementStatus[];
   secondaryAction?: CommunityInteractionGateAction | null;
+  verificationProviderActions?: CommunityInteractionGateAction[];
   title: string;
 };
 
@@ -99,13 +108,17 @@ export type BuildBlockedModalStateArgs = {
 
 export type PendingInteraction = {
   action: InteractionAction;
+  altchaAction?: string;
+  altchaScope?: AltchaScope;
   commentId?: string;
   communityId: string;
   gate: CommunityGateData;
   onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
   postId?: string;
+  /** Whether this specific write must create/retain community membership. */
+  requireMembership?: boolean;
   resumeActionAfterJoin?: boolean;
-  voteValue?: -1 | 1;
+  voteValue?: -1 | 1 | "clear";
 };
 
 export type RunGatedCommunityActionParams = {
@@ -123,9 +136,11 @@ export type RunGatedCommunityActionParams = {
   gateData?: CommunityGateData;
   onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
   postId?: string;
+  /** Force the membership flow after the API identifies a members-only thread. */
+  requireMembership?: boolean;
   resolveGateData?: () => Promise<CommunityGateData>;
   resumeActionAfterJoin?: boolean;
-  voteValue?: -1 | 1;
+  voteValue?: -1 | 1 | "clear";
 };
 
 function buildPrewarmedJoinEligibility(
@@ -303,7 +318,7 @@ function getFailedGateRequirements(
 }
 
 function getPassportPromptDescription(
-  gate: CommunityGateData,
+  _gate: CommunityGateData,
   fallback: string,
   options: { locale: string },
 ): string {
@@ -348,6 +363,7 @@ function gateMatchesRequiredAction(
   action: RequiredActionNode,
 ): boolean {
   if (action.kind !== "action") return false;
+  if (action.gate_id && gate.gate_id) return action.gate_id === gate.gate_id;
   switch (action.capability) {
     case "minimum_age":
       return gate.gate_type === "minimum_age" || gate.gate_type === "age_over_18";
@@ -365,6 +381,8 @@ function gateMatchesRequiredAction(
       return gate.gate_type === "erc721_holding";
     case "erc721_inventory_match":
       return gate.gate_type === "erc721_inventory_match";
+    case "asset_balance":
+      return gate.gate_type === "asset_balance";
     default:
       return false;
   }
@@ -498,24 +516,6 @@ export function getRequirementDisplayState(
   };
 }
 
-function getJoinableDescription(
-  gate: CommunityGateData,
-  action: InteractionAction,
-  fallback: string,
-  options: { locale: string },
-): string {
-  const normalized = options.locale.toLowerCase();
-  if (normalized.startsWith("ar") || normalized.startsWith("zh"))
-    return fallback;
-
-  const taskLabel = getInteractionTaskLabel(action, options);
-  if (gate.preview.membership_gate_summaries.length > 0) {
-    return `You meet this community's requirements. Join to ${taskLabel}.`;
-  }
-
-  return fallback;
-}
-
 function isNftGateFailure(gate: CommunityGateData): boolean {
   return gate.eligibility.status === "gate_failed"
     && (
@@ -545,9 +545,28 @@ export function createDefaultBlockedModalState({
           ? "zh"
           : "en";
   const gatesPanel = getLocaleMessages(resolvedLocale, "gates").panel;
-
   switch (gate.eligibility.status) {
     case "verification_required": {
+      const providerChoices = resolveAvailableHumanVerificationProviders(gate.eligibility);
+      if (providerChoices.length > 1) {
+        return {
+          description: gatesPanel.verificationRequiredDescription,
+          title: gatesPanel.verificationRequiredTitle,
+          verificationProviderActions: providerChoices.map((provider) => ({
+            label: `Verify with ${providerLabels[provider]}`,
+            loading: defaultVerificationLoadingProvider === provider,
+            onClick: async () => {
+              if (startDefaultVerification) {
+                await startDefaultVerification({ gate, provider });
+                return;
+              }
+              closeModal();
+              openCommunity();
+            },
+          })),
+          ...getRequirementDisplayState(gate),
+        };
+      }
       const provider = resolveSuggestedVerificationProvider(gate.eligibility);
       if (provider === "passport") {
         const passportPrompt = getVerificationPromptCopy(
@@ -571,6 +590,17 @@ export function createDefaultBlockedModalState({
           secondaryAction: null,
           ...getRequirementDisplayState(gate),
           title: gatesPanel.passportPromptTitle,
+        };
+      }
+      if (!provider) {
+        return {
+          description: gatesPanel.defaultDescription,
+          icon: "blocked",
+          primaryAction: null,
+          ...getRequirementDisplayState(gate),
+          title: isVoteAction
+            ? interactionCopy.verifyToVoteTitle
+            : interactionCopy.verifyToReplyTitle,
         };
       }
       const verificationPrompt = getVerificationPromptCopy(
@@ -617,9 +647,7 @@ export function createDefaultBlockedModalState({
       return {
         description:
           gate.eligibility.status === "joinable"
-            ? getJoinableDescription(gate, action, defaultDescription, {
-                locale: interactionCopy.locale,
-              })
+            ? gatesPanel.joinableDescription
             : getRequestableDescription(gate, action, defaultDescription, {
                 locale: interactionCopy.locale,
               }),
@@ -633,7 +661,9 @@ export function createDefaultBlockedModalState({
             openCommunity();
           },
         },
-        ...getRequirementDisplayState(gate),
+        ...(gate.eligibility.status === "joinable"
+          ? { requirements: [] }
+          : getRequirementDisplayState(gate)),
         title:
           getJoinGateTitle(action, { locale: interactionCopy.locale }) ??
           interpolateMessage(
@@ -700,11 +730,18 @@ export function createDefaultBlockedModalState({
 }
 
 export function resolveCommunityInteractionState(input: {
+  action: InteractionAction;
   eligibility: JoinEligibility | null | undefined;
   hasSession: boolean;
+  requireMembership?: boolean;
 }): "allowed" | "auth" | Exclude<JoinEligibility["status"], "already_joined"> {
   if (!input.hasSession) {
     return "auth";
+  }
+
+  const isReplyAction = input.action === "reply_post" || input.action === "reply_comment";
+  if (isReplyAction && !input.requireMembership) {
+    return "allowed";
   }
 
   if (!input.eligibility) {
@@ -739,6 +776,16 @@ export function createCommunityBlockedModalStateFactory(options: {
   invalidateCommunityGate?: (communityId: string) => void;
   includeVerificationCloseAction?: boolean;
 }) {
+  const resolvedLocale: UiLocaleCode =
+    options.interactionCopy.locale === "pseudo"
+      ? "pseudo"
+      : options.interactionCopy.locale === "ar"
+        ? "ar"
+        : options.interactionCopy.locale === "zh"
+          ? "zh"
+          : "en";
+  const gatesPanel = getLocaleMessages(resolvedLocale, "gates").panel;
+
   return function buildBlockedModalState({
     action,
     closeModal,
@@ -751,8 +798,41 @@ export function createCommunityBlockedModalStateFactory(options: {
       if (hasAltchaProofAction(gate.eligibility)) {
         return undefined;
       }
+      const providerChoices = resolveAvailableHumanVerificationProviders(gate.eligibility);
+      if (providerChoices.length > 1) {
+        const startProvider = async (provider: HumanVerificationProvider): Promise<void> => {
+          if (provider === "very") {
+            const result = await options.onStartVeryVerification?.();
+            if (result?.started) closeModal();
+            return;
+          }
+          if (provider === "zkpassport") {
+            const result = await options.onStartZkPassportVerification?.(gate);
+            if (result?.started) closeModal();
+            return;
+          }
+          const result = await options.onStartSelfVerification?.(gate);
+          if (!result?.started) return;
+          closeModal();
+          if (!result.openedModal && result.href) openExternalHref(result.href);
+        };
+        return {
+          description: gatesPanel.verificationRequiredDescription,
+          title: gatesPanel.verificationRequiredTitle,
+          verificationProviderActions: providerChoices.map((provider) => ({
+            label: `Verify with ${providerLabels[provider]}`,
+            loading: provider === "very"
+              ? options.veryLoading
+              : provider === "self"
+                ? options.selfLoading
+                : options.zkPassportLoading ?? false,
+            onClick: () => startProvider(provider),
+          })),
+          ...getRequirementDisplayState(gate),
+        };
+      }
       const provider = resolveSuggestedVerificationProvider(gate.eligibility);
-      if (provider === "passport") {
+      if (provider === "passport" || !provider) {
         return undefined;
       }
 
@@ -831,12 +911,7 @@ export function createCommunityBlockedModalStateFactory(options: {
         locale: options.interactionCopy.locale,
       });
       return {
-        description: (isVoteAction
-          ? options.interactionCopy.joinToVoteDescription
-          : options.interactionCopy.joinToReplyDescription
-        )
-          .replace("{joinLabel}", ctaLabel)
-          .replace("{communityName}", gate.preview.display_name),
+        description: gatesPanel.joinableDescription,
         icon: "join",
         primaryAction: {
           label: ctaLabel,
@@ -847,7 +922,7 @@ export function createCommunityBlockedModalStateFactory(options: {
             closeModal();
           },
         },
-        ...getRequirementDisplayState(gate),
+        requirements: [],
         title: (isVoteAction
           ? options.interactionCopy.joinToVoteTitle
           : options.interactionCopy.joinToReplyTitle

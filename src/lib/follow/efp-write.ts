@@ -1,7 +1,16 @@
 "use client";
 
-import { encodeFunctionData, type Address } from "viem";
+import {
+  createPublicClient,
+  createWalletClient,
+  custom,
+  http,
+  type Address,
+  type Hex,
+} from "viem";
+import { base, mainnet, optimism } from "viem/chains";
 
+import type { PreparedProfileFollowWrite } from "@/lib/api/client-groups-public";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 import type {
@@ -9,170 +18,130 @@ import type {
   PirateSponsoredIntentSender,
 } from "@/lib/pirate-sponsored-intent";
 
-import { fetchProfileLists, getListStorageLocation, resolvePrimaryListStorageForAddress } from "./efp-read";
-import {
-  buildFollowTransactions as buildSharedFollowTransactions,
-  buildSponsoredFollowIntent,
-  normalizeAddress,
-  submitTransaction,
-  type FollowWriteTransaction,
-} from "./efp-shared";
-
 interface SubmitFollowActionOptions {
+  prepared: PreparedProfileFollowWrite;
   sendSponsoredIntent?: PirateSponsoredIntentSender | null;
-}
-
-type EfpConfig = ReturnType<typeof getPirateNetworkConfig>["efp"];
-
-function getPrimaryListRecordsAddress(efp: EfpConfig): Address {
-  const recordsAddress = efp.listRecordsByChain[efp.primaryListChainId];
-  if (!recordsAddress) {
-    throw new Error(`Missing EFP list-records deployment for chain ${efp.primaryListChainId}.`);
-  }
-
-  return recordsAddress;
-}
-
-function buildFollowTransactions(
-  viewerAddress: Address,
-  targetAddress: Address,
-  existingStorage: { chainId: number; slot: bigint } | undefined,
-  followed: boolean,
-  efp = getPirateNetworkConfig().efp,
-): FollowWriteTransaction[] {
-  return buildSharedFollowTransactions({
-    existingStorage,
-    followed,
-    listMinter: efp.listMinter,
-    listRecordsAddress: getPrimaryListRecordsAddress(efp),
-    listRecordsByChain: efp.listRecordsByChain,
-    primaryListChainId: efp.primaryListChainId,
-    targetAddress,
-    viewerAddress,
-  });
 }
 
 function isEmbeddedPrivyWallet(wallet: PirateConnectedEvmWallet): boolean {
   return wallet.walletClientType === "privy" || wallet.walletClientType === "privy-v2";
 }
 
-function canSponsorFollowTransaction(transaction: FollowWriteTransaction, efp = getPirateNetworkConfig().efp): boolean {
-  return efp.environment === "testnet" && transaction.chainId === efp.primaryListChainId;
+function chainForId(chainId: number) {
+  if (chainId === base.id) return base;
+  if (chainId === optimism.id) return optimism;
+  if (chainId === mainnet.id) return mainnet;
+  throw new Error(`Unsupported EFP chain (${chainId}).`);
 }
 
-async function submitSponsoredTransaction(
+async function submitUserPaidTransaction(
   wallet: PirateConnectedEvmWallet,
   viewerAddress: Address,
-  targetAddress: Address,
-  followed: boolean,
-  transaction: FollowWriteTransaction,
-  sendSponsoredIntent: PirateSponsoredIntentSender,
+  transaction: { chain_id: number; data: Hex; to: Address },
 ): Promise<Address> {
-  const { efp } = getPirateNetworkConfig();
-  if (!canSponsorFollowTransaction(transaction)) {
-    throw new Error("Sponsored follows only support primary-chain EFP lists.");
-  }
-
-  return await sendSponsoredIntent({
-    chainId: transaction.chainId,
-    intent: buildSponsoredFollowIntent(transaction, targetAddress, followed) as PirateSponsoredIntent,
-    transaction: {
-      data: encodeFunctionData({
-        abi: transaction.abi,
-        args: transaction.args,
-        functionName: transaction.functionName,
-      } as never),
-      to: transaction.address,
-    },
-    ...(wallet.id ? { privyWalletId: wallet.id } : {}),
-    walletAddress: viewerAddress,
+  const chain = chainForId(transaction.chain_id);
+  await wallet.switchChain(transaction.chain_id);
+  const provider = await wallet.getEthereumProvider();
+  const walletClient = createWalletClient({
+    account: viewerAddress,
+    chain,
+    transport: custom(provider as never),
   });
+  const hash = await walletClient.sendTransaction({
+    account: viewerAddress,
+    chain,
+    data: transaction.data,
+    to: transaction.to,
+  });
+  const rpcUrl = getPirateNetworkConfig().efp.rpcUrlsByChainId[transaction.chain_id]
+    ?? chain.rpcUrls.default.http[0];
+  const receipt = await createPublicClient({
+    chain,
+    transport: http(rpcUrl),
+  }).waitForTransactionReceipt({ hash, timeout: 90_000 });
+  if (receipt.status !== "success") throw new Error("EFP transaction reverted on-chain.");
+  return hash;
+}
+
+function relayIntent(
+  transactionIndex: number,
+  transactionCount: number,
+  followed: boolean,
+  targetAddress: Address,
+): PirateSponsoredIntent {
+  if (transactionCount === 2 && transactionIndex === 1) {
+    return { type: "pirate.follow.mint-primary-list", slot: "server-prepared" };
+  }
+  return {
+    type: transactionCount === 2
+      ? "pirate.follow.create-list-records"
+      : "pirate.follow.apply",
+    followed,
+    slot: "server-prepared",
+    targetAddress,
+  };
 }
 
 export async function submitFollowAction(
   wallet: PirateConnectedEvmWallet,
   params: { followed: boolean; targetAddress: string },
-  options?: SubmitFollowActionOptions,
-): Promise<{ txHash: Address }> {
-  const { efp } = getPirateNetworkConfig();
-  const viewerAddress = normalizeAddress(wallet.address);
-  const targetAddress = normalizeAddress(params.targetAddress);
-
-  if (!viewerAddress) {
-    throw new Error("Connected wallet is unavailable.");
+  options: SubmitFollowActionOptions,
+): Promise<{
+  txHash: Address;
+  consistency: "already_reflected" | "accepted_not_yet_reflected";
+  transactionHashes: `0x${string}`[];
+  needsConfirmation: boolean;
+}> {
+  if (options.prepared.consistency.status === "already_reflected") {
+    return {
+      txHash: "0x0000000000000000000000000000000000000000",
+      consistency: "already_reflected",
+      transactionHashes: [],
+      needsConfirmation: false,
+    };
   }
-
-  if (!targetAddress) {
-    throw new Error("Invalid target wallet.");
-  }
-
-  if (viewerAddress === targetAddress) {
-    throw new Error("Cannot follow yourself.");
-  }
-
-  let storage: { chainId: number; slot: bigint } | undefined;
-  if (efp.environment === "testnet") {
-    try {
-      const resolved = await resolvePrimaryListStorageForAddress(viewerAddress);
-      storage = resolved ? { chainId: resolved.chainId, slot: resolved.slot } : undefined;
-    } catch {
-      throw new Error("Unable to load your follow list right now.");
-    }
-  } else {
-    let primaryList: string | null = null;
-    try {
-      const lists = await fetchProfileLists(viewerAddress);
-      primaryList =
-        typeof lists.primary_list === "string" && lists.primary_list.trim().length > 0
-          ? lists.primary_list.trim()
-          : null;
-    } catch {
-      throw new Error("Unable to load your follow list right now.");
-    }
-
-    storage = primaryList
-      ? await getListStorageLocation(primaryList)
-      : undefined;
-  }
-
-  const transactions = buildFollowTransactions(
-    viewerAddress,
-    targetAddress,
-    storage,
-    params.followed,
-  );
-
+  const viewerAddress = wallet.address.toLowerCase() as Address;
+  const targetAddress = params.targetAddress.toLowerCase() as Address;
   let txHash: Address | undefined;
-  for (const transaction of transactions) {
+  const transactionHashes: `0x${string}`[] = [];
+  let needsConfirmation = false;
+
+  for (const [localIndex, transaction] of options.prepared.transactions.entries()) {
+    const transactionIndex = options.prepared.transaction_index_offset + localIndex;
     if (
-      options?.sendSponsoredIntent
+      options.prepared.sponsorship.eligible
+      && options.prepared.intent_id
+      && options.sendSponsoredIntent
       && isEmbeddedPrivyWallet(wallet)
-      && canSponsorFollowTransaction(transaction)
+      && transaction.chain_id === base.id
     ) {
-      txHash = await submitSponsoredTransaction(
-        wallet,
-        viewerAddress,
-        targetAddress,
-        params.followed,
-        transaction,
-        options.sendSponsoredIntent,
-      );
-      continue;
+      txHash = await options.sendSponsoredIntent({
+        chainId: transaction.chain_id,
+        intentId: options.prepared.intent_id,
+        transactionIndex,
+        intent: relayIntent(
+          transactionIndex,
+          options.prepared.prepared_transaction_count,
+          params.followed,
+          targetAddress,
+        ),
+        transaction: { data: transaction.data, to: transaction.to },
+        ...(wallet.id ? { privyWalletId: wallet.id } : {}),
+        walletAddress: viewerAddress,
+      });
+    } else {
+      txHash = await submitUserPaidTransaction(wallet, viewerAddress, transaction);
+      needsConfirmation = true;
     }
-
-    txHash = await submitTransaction(wallet, viewerAddress, transaction);
+    transactionHashes.push(txHash as `0x${string}`);
   }
-
-  if (!txHash) {
-    throw new Error("Follow transaction was not submitted.");
-  }
-
-  return { txHash };
+  if (!txHash) throw new Error("Follow transaction was not submitted.");
+  return {
+    txHash,
+    consistency: "accepted_not_yet_reflected",
+    transactionHashes,
+    needsConfirmation,
+  };
 }
 
-export const __testOnly = {
-  buildFollowTransactions,
-  buildSponsoredFollowIntent,
-  canSponsorFollowTransaction,
-  isEmbeddedPrivyWallet,
-};
+export const __testOnly = { isEmbeddedPrivyWallet, relayIntent };

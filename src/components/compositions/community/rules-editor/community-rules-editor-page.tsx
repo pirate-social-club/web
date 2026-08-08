@@ -20,7 +20,7 @@ export interface RuleDraft {
   reportReason: string;
 }
 
-export function createEmptyRuleDraft(): RuleDraft {
+function createEmptyRuleDraft(): RuleDraft {
   return {
     id: `draft-${Math.random().toString(36).slice(2, 10)}`,
     existingRuleId: null,
@@ -50,7 +50,6 @@ function RuleRow({
   onRemove: () => void;
   rule: RuleDraft;
 }) {
-  const isEmpty = !rule.title.trim() && !rule.body.trim();
   return (
     <div className="flex items-start gap-4 rounded-[var(--radius-xl)] border border-border-soft bg-card px-4 py-3">
       <span className="shrink-0 pt-1 tabular-nums text-muted-foreground/60">{index + 1}</span>

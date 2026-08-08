@@ -59,6 +59,17 @@ export default defineConfig(() => ({
   environments: {
     ssr: {},
   },
+  build: {
+    rolldownOptions: {
+      checks: {
+        // Privy's published bundles contain misplaced PURE comments. Rolldown
+        // already ignores those annotations, but rendering each diagnostic
+        // dumps enormous single-line dependency sources and can make the
+        // production build process exit before deployment.
+        invalidAnnotation: false,
+      },
+    },
+  },
   plugins: [
     ...(enableClientWorkerShim ? [clientWorkerShimPlugin] : []),
     privyServerAliasPlugin,

@@ -163,7 +163,7 @@ function findAgentSkill(name: string): AgentSkillDefinition | null {
   return AGENT_SKILLS.find((skill) => skill.name === name) ?? null;
 }
 
-export async function buildAgentSkillsIndexResponse(input: URL | string): Promise<Response> {
+export async function buildAgentSkillsIndexResponse(_input: URL | string): Promise<Response> {
   const skills = await Promise.all(AGENT_SKILLS.map(async (skill) => ({
     name: skill.name,
     type: "skill-md",

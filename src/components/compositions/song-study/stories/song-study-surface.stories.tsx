@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
+import { SongRewardOfferPill } from "@/components/compositions/rewards/reward-surfaces";
+
 import {
   SongStudySurface,
   type SongStudyMultipleChoiceExercise,
@@ -18,13 +20,11 @@ import {
 const artworkSrc = "https://picsum.photos/seed/pirate-study/160/160";
 
 const baseProps = {
-  artistName: "The Castaways",
   artworkSrc,
   onExit: () => undefined,
   onKaraoke: () => undefined,
   onPrimaryAction: () => undefined,
   onStudyAgain: () => undefined,
-  title: "Midnight Waves",
 };
 
 const sayItBackExercise: SongStudySayItBackExercise = {
@@ -91,6 +91,67 @@ export const SayItBackIdle: Story = {
   ),
 };
 
+export const ProgressStart: Story = {
+  name: "Study / Progress — start",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      lessonProgress={{ resolvedCount: 0, totalCount: 8 }}
+      state={{ kind: "say_it_back", attemptNumber: 1, exercise: sayItBackExercise, phase: "idle" }}
+    />
+  ),
+};
+
+export const ProgressMidLesson: Story = {
+  name: "Study / Progress — mid-lesson",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      lessonProgress={{ resolvedCount: 4, totalCount: 8 }}
+      rewardSlot={<SongRewardOfferPill amountLabel="$0.40" />}
+      state={{ kind: "multiple_choice", attemptNumber: 1, exercise: multipleChoiceExercise }}
+    />
+  ),
+};
+
+export const ProgressRetryPending: Story = {
+  name: "Study / Progress — retry pending",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      lessonProgress={{ resolvedCount: 6, totalCount: 8 }}
+      state={{ kind: "say_it_back", attemptNumber: 1, exercise: sayItBackExercise, phase: "wrong" }}
+    />
+  ),
+};
+
+export const ProgressComplete: Story = {
+  name: "Study / Progress — complete",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      lessonProgress={{ resolvedCount: 8, totalCount: 8 }}
+      state={{ kind: "complete", correctCount: 7, scorePercent: 88, totalCount: 8 }}
+    />
+  ),
+};
+
+export const SayItBackRewardOffer: Story = {
+  name: "Study / Say it back — reward offer",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      rewardSlot={<SongRewardOfferPill amountLabel="$0.40" />}
+      state={{
+        kind: "say_it_back",
+        attemptNumber: 1,
+        exercise: sayItBackExercise,
+        phase: "idle",
+      }}
+    />
+  ),
+};
+
 export const SayItBackListening: Story = {
   name: "Study / Say it back — listening",
   render: () => (
@@ -101,7 +162,6 @@ export const SayItBackListening: Story = {
         attemptNumber: 1,
         exercise: sayItBackExercise,
         phase: "listening",
-        transcript: "Hold on till…",
       }}
     />
   ),
@@ -114,14 +174,10 @@ export const SayItBackWrongFirstAttempt: Story = {
       {...baseProps}
       state={{
         kind: "say_it_back",
-        attemptNumber: 1,
+        attemptNumber: 2,
         exercise: sayItBackExercise,
-        feedback: {
-          missing: ["till", "light"],
-          extra: ["to", "line"],
-        },
+        heardTranscript: "They tried to kiss me while they chased me around",
         phase: "wrong",
-        transcript: "Hold on to the morning line",
       }}
     />
   ),
@@ -136,12 +192,7 @@ export const SayItBackSecondAttempt: Story = {
         kind: "say_it_back",
         attemptNumber: 2,
         exercise: sayItBackExercise,
-        feedback: {
-          missing: ["till", "light"],
-          extra: ["to", "line"],
-        },
         phase: "idle",
-        transcript: "Hold on to the morning line",
       }}
     />
   ),
@@ -154,31 +205,11 @@ export const SayItBackFinalWrongReveal: Story = {
       {...baseProps}
       state={{
         kind: "say_it_back",
-        attemptNumber: 2,
+        attemptNumber: 3,
         exercise: sayItBackExercise,
-        feedback: {
-          missing: ["till", "light"],
-          extra: ["to", "line"],
-        },
+        heardTranscript: "They tried to kiss me while they chased me around",
         phase: "wrong",
         revealReference: true,
-        transcript: "Hold on to the morning line",
-      }}
-    />
-  ),
-};
-
-export const SayItBackCorrect: Story = {
-  name: "Study / Say it back — correct",
-  render: () => (
-    <SongStudySurface
-      {...baseProps}
-      state={{
-        kind: "say_it_back",
-        attemptNumber: 1,
-        exercise: sayItBackExercise,
-        phase: "correct",
-        transcript: "Hold on till the morning light",
       }}
     />
   ),
@@ -447,6 +478,36 @@ export const CompleteStaleViewerRowPatched: Story = {
               : entry,
           ),
           { ...viewerRankedLockedIn, current_streak: 14 },
+          boardEntries.length,
+        ),
+        totalCount: 3,
+      }}
+    />
+  ),
+};
+
+export const CompleteViewerNewFirst: Story = {
+  name: "Study / Complete — viewer new #1",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      state={{
+        kind: "complete",
+        correctCount: 3,
+        nextReviewLabel: "tomorrow",
+        scorePercent: 100,
+        streak: {
+          currentStreak: 22,
+          qualifiedToday: true,
+          studyAttemptsToday: 10,
+          studyCorrectCount: 10,
+          studyTargetCount: 10,
+        },
+        streakSummary: summary(
+          boardEntries.map((entry, index) =>
+            index === 2 ? { ...entry, is_viewer: true } : entry,
+          ),
+          viewerRankedLockedIn,
           boardEntries.length,
         ),
         totalCount: 3,

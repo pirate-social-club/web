@@ -10,7 +10,6 @@ import { FormNote } from "@/components/primitives/form-layout";
 import { logger } from "@/lib/logger";
 import type { SubmitProgress } from "./post-composer.types";
 
-import { anonymousEligibleTabs } from "./post-composer-config";
 import { submitProgressFraction } from "./submit-progress-fraction";
 import {
   canAdvanceComposerWriteStep,
@@ -92,23 +91,6 @@ function submitButtonContent(
   if (!progress) return fallback;
   if (progress.phase === "done") return progress.label;
   return "Posting...";
-}
-
-export function shouldShowIdentity(controller: PostComposerController) {
-  const { commerce, identity, tabs } = controller;
-
-  if (!identity.identity) {
-    return false;
-  }
-
-  return (
-    Boolean(identity.identity.agentLabel)
-    || (
-      Boolean(identity.identity.allowAnonymousIdentity)
-      && anonymousEligibleTabs.includes(tabs.activeTab)
-      && !(tabs.activeTab === "video" && commerce.monetizationState.visible)
-    )
-  );
 }
 
 export function PostComposerDesktopFooter({

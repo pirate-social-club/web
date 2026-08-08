@@ -3,12 +3,14 @@ import { Lock, ShareFat } from "@phosphor-icons/react";
 
 import { triggerNavigationTapHaptic, triggerShareSuccessHaptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { ActionMenu } from "@/components/primitives/action-menu";
 import { VotePill } from "@/components/primitives/vote-pill";
 import { CommentPill } from "@/components/primitives/comment-pill";
 import type { PostCardEngagement, PostCardShareAction } from "./post-card.types";
 
-export interface UnlockAction {
+interface UnlockAction {
   label: string;
   onClick: () => void;
 }
@@ -17,9 +19,8 @@ export interface PostCardEngagementBarProps {
   engagement: PostCardEngagement;
   unlock?: UnlockAction;
   shareActions?: PostCardShareAction[];
-  onVote?: (direction: "up" | "down" | null) => void;
+  onVote?: (direction: "up" | "down" | null) => Promise<void> | void;
   voteAccess?: {
-    disabled?: boolean;
     label: string;
     onClick?: () => void;
   };
@@ -36,6 +37,8 @@ function SharePillMenu({
   actions: PostCardShareAction[];
   onFallbackShare?: () => void;
 }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes");
   const hasMenu = actions.length > 0;
   const handleFallbackShare = React.useCallback(() => {
     if (!onFallbackShare) return;
@@ -45,10 +48,10 @@ function SharePillMenu({
   }, [onFallbackShare]);
   const handleAction = React.useCallback((key: string) => {
     const action = actions.find((item) => item.key === key);
-    if (!action || action.disabled) return;
+    if (!action || action.disabled || !action.onSelect) return;
 
     triggerShareSuccessHaptic();
-    void action.onSelect?.();
+    void action.onSelect();
   }, [actions]);
 
   const button = (
@@ -59,7 +62,7 @@ function SharePillMenu({
       type="button"
     >
       <ShareFat className="size-[23px]" />
-      Share
+      {copy.post.engagement.share}
     </button>
   );
 
@@ -72,9 +75,9 @@ function SharePillMenu({
       align="start"
       contentClassName="min-w-40"
       items={actions}
-      label="Share"
+      label={copy.post.engagement.share}
       onAction={handleAction}
-      title="Share"
+      title={copy.post.engagement.share}
       trigger={button}
     />
   );
@@ -91,7 +94,7 @@ export function PostCardEngagementBar({
   compact = false,
   className,
 }: PostCardEngagementBarProps) {
-  const { score, viewerVote, commentCount } = engagement;
+  const { score, viewerVote, voteBusy, commentCount } = engagement;
   const handleUnlock = React.useCallback(() => {
     if (!unlock) return;
 
@@ -120,9 +123,8 @@ export function PostCardEngagementBar({
     >
       {voteAccess ? (
         <button
-          className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-border-soft bg-background px-4 text-base font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground disabled:cursor-wait disabled:opacity-60"
+          className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-border-soft bg-background px-4 text-base font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground"
           data-post-card-interactive="true"
-          disabled={voteAccess.disabled}
           onClick={voteAccess.onClick}
           type="button"
         >
@@ -131,6 +133,8 @@ export function PostCardEngagementBar({
         </button>
       ) : (
         <VotePill
+          allowClear
+          busy={voteBusy}
           className="shrink-0 justify-center"
           score={score}
           viewerVote={viewerVote}

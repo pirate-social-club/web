@@ -20,7 +20,7 @@ const textareaVariants = cva(
   },
 );
 
-export interface TextareaProps
+interface TextareaProps
   extends React.ComponentProps<"textarea">,
     VariantProps<typeof textareaVariants> {}
 
@@ -35,4 +35,4 @@ function Textarea({ className, ref, variant, ...props }: TextareaProps) {
   );
 }
 
-export { Textarea, textareaVariants };
+export { Textarea,  };

@@ -232,7 +232,7 @@ describe("CreateCommunityComposer", () => {
     expect(next?.props.disabled).toBe(false);
   });
 
-  test("renders and submits document sex marker gates", () => {
+  test("mounts the tree builder and submits document sex marker gates", () => {
     let submitted: Parameters<NonNullable<CreateCommunityComposerProps["onCreate"]>>[0] | null = null;
     const genderGate: IdentityGateDraft = {
       gateType: "gender",
@@ -262,13 +262,9 @@ describe("CreateCommunityComposer", () => {
       },
     });
 
-    const genderOption = findElement(
+    const treeEditor = findElement(
       accessTree,
-      (element) => element.props.title === "Document sex marker (verified ID)",
-    );
-    const fMarkerOption = findElement(
-      accessTree,
-      (element) => element.props.title === "F marker",
+      (element) => element.props.useGateTreeBuilder === true,
     );
     const next = findElement(
       accessTree,
@@ -284,13 +280,12 @@ describe("CreateCommunityComposer", () => {
 
     (createButton.props.onClick as (() => void) | undefined)?.();
 
-    expect(genderOption === null).toBe(false);
-    expect(fMarkerOption === null).toBe(false);
+    expect(treeEditor === null).toBe(false);
     expect(next?.props.disabled).toBe(false);
     expect((submitted as unknown as { gateDrafts?: IdentityGateDraft[] } | null)?.gateDrafts).toEqual([genderGate]);
   });
 
-  test("renders and submits palm scan gates", () => {
+  test("mounts the tree builder and submits palm scan gates", () => {
     let submitted: Parameters<NonNullable<CreateCommunityComposerProps["onCreate"]>>[0] | null = null;
     const palmScanGate: IdentityGateDraft = {
       gateType: "unique_human",
@@ -319,13 +314,9 @@ describe("CreateCommunityComposer", () => {
       },
     });
 
-    const palmScanOption = findElement(
+    const treeEditor = findElement(
       accessTree,
-      (element) => element.props.title === "Palm scan (Very)",
-    );
-    const fallbackOption = findElement(
-      accessTree,
-      (element) => element.props.title === "Allow browser check instead of palm scan",
+      (element) => element.props.useGateTreeBuilder === true,
     );
     const next = findElement(
       accessTree,
@@ -341,8 +332,7 @@ describe("CreateCommunityComposer", () => {
 
     (createButton.props.onClick as (() => void) | undefined)?.();
 
-    expect(palmScanOption === null).toBe(false);
-    expect(fallbackOption === null).toBe(false);
+    expect(treeEditor === null).toBe(false);
     expect(next?.props.disabled).toBe(false);
     expect((submitted as unknown as { gateDrafts?: IdentityGateDraft[] } | null)?.gateDrafts).toEqual([palmScanGate]);
   });
@@ -417,6 +407,13 @@ describe("CreateCommunityComposer", () => {
       displayName: "Vinyl Club",
       gateDrafts: [minimumAgeGate],
       gateMatchMode: "all",
+      gatePolicy: {
+        version: 1,
+        expression: {
+          op: "gate",
+          gate: { type: "minimum_age", provider: "self", minimum_age: 21 },
+        },
+      },
       membershipMode: "gated",
     });
   });

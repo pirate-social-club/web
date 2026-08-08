@@ -73,6 +73,7 @@ class ReconnectAdapter implements KaraokeStreamingSttAdapter {
   async start(input: {
     attemptId: string
     sessionId: string
+    initialSequence: number
     onMessage: (m: KaraokeSttAdapterMessage) => Promise<void>
     onUnexpectedClose?: () => void
     onTerminalError?: (code: string) => void
@@ -84,10 +85,34 @@ class ReconnectAdapter implements KaraokeStreamingSttAdapter {
     }
     this.startCount += 1
     this.streamGeneration = `gen-${this.startCount}`
+    // Seed from the host on EVERY start, like the real emitter. Carrying our own
+    // counter across re-opens instead would make this fake strictly more
+    // monotonic than production and hide the reset defect.
+    this.sttSeq = input.initialSequence
     this.onMessage = input.onMessage
     this.onUnexpectedClose = input.onUnexpectedClose ?? null
     this.onTerminalError = input.onTerminalError ?? null
     this.inFlight = null
+  }
+
+  /** Emit a final with a self-assigned sequence, as the real emitter does. */
+  async emitFinal(words: KaraokeRecognizedWord[], commit?: { commitId: string; coverageMs: number; streamGeneration: string }): Promise<number> {
+    if (!this.onMessage) throw new Error("adapter not started")
+    this.sttSeq += 1
+    await this.onMessage({
+      commit,
+      event: {
+        attemptId: "a",
+        deliveredAtAudioMs: this.submittedFrontierMs,
+        protocolVersion: PV,
+        sequence: this.sttSeq,
+        sessionId: "s",
+        text: words.map((w) => w.text).join(" "),
+        type: "stt_final",
+        words,
+      },
+    })
+    return this.sttSeq
   }
   async sendPcm16(frame: KaraokeClientBinaryFrame): Promise<void> {
     this.frames.push(frame)
@@ -190,6 +215,47 @@ describe("KaraokeSessionHost reconnect", () => {
     // Grading survives: audio after the reconnect is forwarded to the new stream.
     await host.handleAudioFrame(audioFrame(1300))
     expect(adapter.frames.at(-1)?.songEndMs).toBe(1300)
+  })
+
+  test("resumes the STT sequence across a provider reconnect, so grading survives", async () => {
+    const adapter = new ReconnectAdapter()
+    const clock = new FakeClock()
+    const { effectRunner, host } = setup(adapter, clock)
+
+    await host.handleClientEvent(client({ startedAtAudioMs: 0, type: "start" }))
+    await host.handleAudioFrame(audioFrame(400))
+
+    // Build a high-water mark before the drop, as a real stream's partials do.
+    for (let i = 0; i < 5; i += 1) {
+      await adapter.emitFinal([{ confidence: 0.9, endMs: 400, startMs: 0, text: "hold" }])
+    }
+    await host.drainCommitChain()
+    expect(effectRunner.relayedSttEvents.length).toBe(5)
+    expect(effectRunner.transportErrors).toEqual([])
+
+    adapter.triggerUnexpectedClose()
+    await pumpReconnect(clock, host)
+    expect(adapter.startCount).toBe(2)
+
+    // The fresh stream must continue at N+1, not restart at 1. Before the
+    // initialSequence contract this emitted sequence 1 against lastSttSequence 5,
+    // which the host rejected WITHOUT advancing its counter — suppressing this
+    // and every later event for the rest of the attempt.
+    const resumed = await adapter.emitFinal([{ confidence: 0.9, endMs: 1600, startMs: 1200, text: "almost" }])
+    await host.drainCommitChain()
+    expect(resumed).toBe(6)
+
+    // Relayed, not rejected — and the host's counter actually advanced.
+    expect(effectRunner.transportErrors).toEqual([])
+    expect(effectRunner.relayedSttEvents.length).toBe(6)
+    expect(effectRunner.relayedSttEvents.at(-1)?.sequence).toBe(6)
+    expect(host.snapshot().lastSttSequence).toBe(6)
+
+    // And it keeps flowing afterwards (the defect suppressed the whole tail).
+    await adapter.emitFinal([{ confidence: 0.9, endMs: 1700, startMs: 1600, text: "home" }])
+    await host.drainCommitChain()
+    expect(effectRunner.transportErrors).toEqual([])
+    expect(host.snapshot().lastSttSequence).toBe(7)
   })
 
   test("does not reconnect on intentional close (finish)", async () => {

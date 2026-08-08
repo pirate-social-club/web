@@ -1,4 +1,4 @@
-import { getContract, type GetContractReturnType, type PublicClient, type WalletClient, type Client } from "viem";
+import { getContract, type PublicClient, type WalletClient, type Client } from "viem";
 import { dkgAbi } from "./abis/dkg.js";
 import { cdrAbi } from "./abis/cdr.js";
 import { contractAddresses, type Network } from "./addresses.js";

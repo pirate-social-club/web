@@ -35,6 +35,7 @@ export interface ActionMenuProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onAction?: (key: string) => void;
+  mobilePresentation?: "default" | "gesture";
 }
 
 export function ActionMenu({
@@ -48,6 +49,7 @@ export function ActionMenu({
   open,
   onOpenChange,
   onAction,
+  mobilePresentation = "default",
 }: ActionMenuProps) {
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -75,16 +77,21 @@ export function ActionMenu({
   );
 
   if (isMobile) {
+    const gesturePresentation = mobilePresentation === "gesture";
     return (
       <Sheet open={resolvedOpen} onOpenChange={handleOpenChange}>
         <SheetTrigger asChild>
           {triggerElement}
         </SheetTrigger>
-        <SheetContent side="bottom" className="rounded-t-[var(--radius-xl)] px-0 pb-6 pt-4">
-          <SheetHeader className="px-4 text-start">
+        <SheetContent
+          side="bottom"
+          className="rounded-t-[var(--radius-xl)] px-0 pb-6 pt-4"
+          hideCloseButton={gesturePresentation}
+        >
+          <SheetHeader className={cn("px-4 text-start", gesturePresentation && "sr-only")}>
             <SheetTitle className="text-base leading-snug">{title}</SheetTitle>
           </SheetHeader>
-          <div className="mt-4">
+          <div className={gesturePresentation ? "mt-0" : "mt-4"}>
             {items.map((item, index) => (
               <React.Fragment key={item.key}>
                 {item.separatorBefore && index > 0 ? <div className="my-2 h-px bg-border" /> : null}

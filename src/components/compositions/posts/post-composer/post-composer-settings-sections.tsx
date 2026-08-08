@@ -26,7 +26,7 @@ import type {
   RegionalPricingPreview,
 } from "./post-composer.types";
 
-export type PostComposerSettingsSectionsCopy = {
+type PostComposerSettingsSectionsCopy = {
   postAsTitle: string;
   publicIdentityDescription: string;
   anonymousIdentityDescription: string;
@@ -130,34 +130,6 @@ function normalizeSecondsInput(value: string): string {
   const digits = value.replace(/\D/g, "");
   if (!digits) return "";
   return String(Math.min(Number.parseInt(digits, 10), 86_400));
-}
-
-export function PostComposerSettingsRow({
-  icon,
-  label,
-  onClick,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  value: string;
-}) {
-  return (
-    <button
-      className="flex min-h-16 w-full items-center gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4 text-start"
-      onClick={onClick}
-      type="button"
-    >
-      <span className="text-muted-foreground">{icon}</span>
-      <Type as="span" variant="body-strong" className="min-w-0 flex-1 truncate">
-        {label}
-      </Type>
-      <Type as="span" variant="body" className="truncate text-muted-foreground">
-        {value}
-      </Type>
-    </button>
-  );
 }
 
 function OptionRow({

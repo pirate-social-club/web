@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import type { Icon } from "@phosphor-icons/react";
 import {
   DiscordLogo,

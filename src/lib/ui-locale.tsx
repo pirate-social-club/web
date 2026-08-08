@@ -41,7 +41,7 @@ function readStoredUiLocale(): UiLocaleCode | null {
 
 export function UiLocaleProvider({
   children,
-  dir,
+  dir: _dir,
   locale,
 }: React.PropsWithChildren<{
   dir: UiDirection;

@@ -13,6 +13,7 @@ import { useCommunityFeedPosts } from "@/app/authenticated-data/community-feed-d
 import { type FeedSort } from "@/components/compositions/posts/feed/feed";
 import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
+import { CommunityJoinVerificationChooserModal } from "@/components/compositions/community/join-verification-chooser-modal/community-join-verification-chooser-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { ZkPassportVerificationModal } from "@/components/compositions/verification/zkpassport-verification-modal/zkpassport-verification-modal";
@@ -28,10 +29,19 @@ import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin"
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
-import { getJoinCtaLabel, getVerificationCapabilitiesForProvider, getVerificationRequirementsForGates, isJoinCtaActionable } from "@/lib/identity-gates";
+import {
+  getJoinCtaLabel,
+  getMissingCapabilitiesFromGateEvaluation,
+  getVerificationCapabilitiesForProvider,
+  getVerificationRequirementsForGates,
+  isJoinCtaActionable,
+  resolveAvailableHumanVerificationProviders,
+  type HumanVerificationProvider,
+} from "@/lib/identity-gates";
 import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
 import { useCommunityFollow } from "@/hooks/use-community-follow";
 import { useCommunityMembershipActions } from "@/hooks/use-community-membership-actions";
+import { useCommunityHandleNamespaces } from "@/hooks/use-community-handle-namespaces";
 import { useCommunityVoteAction } from "@/hooks/use-community-vote-action";
 import { forgetKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
@@ -250,15 +260,24 @@ export function PublicCommunityRoutePage({
   const { connectedWallets } = usePiratePrivyWallets({
     enabled: Boolean(session?.user?.id),
   });
+  const handleClaimCommunityId = preview?.id ?? communityId;
+  const handleNamespaces = useCommunityHandleNamespaces({
+    api: api.communities,
+    communityId: handleClaimCommunityId,
+    enabled: Boolean(session?.accessToken),
+  });
   const handleClaim = useCommunityHandleClaimController({
     api: api.communities,
     communityId: preview?.id ?? communityId,
+    namespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     connectedWallets,
     primaryWalletAddress: session?.profile.primary_wallet_address,
     settlementWalletAttachmentId: session?.user.primary_wallet_attachment,
   });
-  const handleClaimCommunityId = preview?.id ?? communityId;
-  const handleClaimDismissal = useCommunityHandleClaimDismissal(handleClaimCommunityId);
+  const handleClaimDismissal = useCommunityHandleClaimDismissal(
+    handleClaimCommunityId,
+    handleNamespaces.selectedNamespaceVerification,
+  );
   const {
     startVerification: startVeryVerification,
     verificationLoading: veryLoading,
@@ -442,6 +461,9 @@ export function PublicCommunityRoutePage({
     selfLoading: joinSelfLoading,
     selfModalOpen: joinSelfModalOpen,
     selfPrompt: joinSelfPrompt,
+    startGateVerification,
+    startVerificationProvider,
+    startSelfVerification,
     setAltchaPayload,
     veryLoading: joinVeryLoading,
     zkPassportError: joinZkPassportError,
@@ -455,6 +477,12 @@ export function PublicCommunityRoutePage({
     onJoined: markViewerJoined,
     refetchEligibility,
   });
+  const membershipProviderChoices = React.useMemo(
+    () => eligibility?.status === "verification_required"
+      ? resolveAvailableHumanVerificationProviders(eligibility)
+      : [],
+    [eligibility],
+  );
   const {
     handleClaimModalOpen,
     handleClaimModalOpenChange,
@@ -466,6 +494,8 @@ export function PublicCommunityRoutePage({
     joinRequestModalOpen,
     joinRequestSubmitting,
     proofOfWorkModalOpen,
+    setVerificationChooserModalOpen,
+    verificationChooserModalOpen,
     setProofOfWorkModalOpen,
   } = useCommunityMembershipActions({
     altchaPayload,
@@ -475,8 +505,10 @@ export function PublicCommunityRoutePage({
     handleClaim,
     handleClaimApi: api.communities,
     handleClaimCommunityId,
+    handleClaimNamespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     handleClaimDismissal,
     handleJoin,
+    hasVerificationChoices: membershipProviderChoices.length > 1,
     onAuthRequired: () => {
       requestAuth("Connect your wallet to join communities.");
     },
@@ -485,6 +517,18 @@ export function PublicCommunityRoutePage({
     },
     sessionUserId: session?.user?.id,
   });
+  const handleChooseVerificationProvider = React.useCallback(async (
+    provider: HumanVerificationProvider,
+  ) => {
+    const result = await startVerificationProvider(provider, {
+      missingCapabilities: eligibility
+        ? getMissingCapabilitiesFromGateEvaluation(eligibility)
+        : null,
+      membershipGateSummaries: eligibility?.membership_gate_summaries ?? null,
+      showToastOnError: true,
+    });
+    if (result === "started") setVerificationChooserModalOpen(false);
+  }, [eligibility, setVerificationChooserModalOpen, startVerificationProvider]);
 
   React.useEffect(() => {
     if (joinError) toast.error(joinError);
@@ -589,6 +633,7 @@ export function PublicCommunityRoutePage({
   );
 
   const voteOnPost = useCommunityVoteAction({
+    clearVote: api.posts.clearVote,
     buildBlockedModalState: buildBlockedModalState ?? undefined,
     communityId: preview?.id ?? communityId,
     gateData: preview && eligibility
@@ -603,6 +648,7 @@ export function PublicCommunityRoutePage({
           },
         }
       : null,
+    locale: contentLocale,
     posts,
     runGatedCommunityAction,
     setPosts,
@@ -658,7 +704,6 @@ export function PublicCommunityRoutePage({
   const viewerIsMember = preview.viewer_membership_status === "member" || eligibility?.status === "already_joined";
   const canCreatePost = Boolean(session?.user?.id) && viewerIsMember;
   const communityCreatePostPath = `${buildCommunityPath(preview.id, preview.route_slug ?? communityId)}/submit`;
-
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
       {!viewerIsMember && !membershipLoading ? (
@@ -702,11 +747,29 @@ export function PublicCommunityRoutePage({
         communityHandle={communityHandleLabel}
         communityName={preview.display_name}
         communityRouteLabel={routeLabel}
+        namespaceOptions={handleNamespaces.namespaceOptions}
+        onNamespaceChange={handleNamespaces.setSelectedNamespaceVerification}
+        selectedNamespaceVerification={handleNamespaces.selectedNamespaceVerification}
         error={handleClaim.error}
         onClaim={handleClaim.onClaim}
+        onClaimGateRecheck={handleClaim.refreshQuote}
         onNotNow={handleClaimNotNow}
         onOpenChange={handleClaimModalOpenChange}
         onSearchChange={handleClaim.onSearchChange}
+        onSelfVerificationClick={() => {
+          void startSelfVerification({
+            membershipGateSummaries: handleClaim.claimGateSummaries,
+            showToastOnError: true,
+          });
+        }}
+        onWalletConnectionClick={() => {
+          const gate = handleClaim.claimGateSummaries.find((summary) =>
+            summary.gate_type === "erc721_holding"
+            || summary.gate_type === "erc721_inventory_match"
+            || summary.gate_type === "asset_balance"
+          );
+          if (gate) void startGateVerification(gate);
+        }}
         open={handleClaimModalOpen}
         phase={handleClaim.phase}
         processing={handleClaim.processing}
@@ -720,6 +783,13 @@ export function PublicCommunityRoutePage({
         onSubmit={handleJoinRequestSubmit}
         open={joinRequestModalOpen}
         submitting={joinRequestSubmitting || joinLoading}
+      />
+      <CommunityJoinVerificationChooserModal
+        locale={locale}
+        onChooseProvider={handleChooseVerificationProvider}
+        onOpenChange={setVerificationChooserModalOpen}
+        open={verificationChooserModalOpen}
+        providerChoices={membershipProviderChoices}
       />
       {altchaRequired ? (
         <CommunityProofOfWorkModal
@@ -824,7 +894,7 @@ export function PublicCommunityRoutePage({
             onComment: () => navigate(buildPostPath?.(post.post.id) ?? `/p/${post.post.id}`),
             onCancelEvent: () => void cancelEvent(post.post.id),
             onVerifyAge: handleVerifyAge,
-            onVote: (direction) => void voteOnPost(post.post.id, direction),
+            onVote: async (direction) => await voteOnPost(post.post.id, direction),
             postHref: buildPostPath?.(post.post.id),
             showOriginalLabel: copy.common.showOriginal,
             showTranslationLabel: copy.common.showTranslation,

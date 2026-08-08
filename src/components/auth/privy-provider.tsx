@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { defineChain } from "viem";
+import { defineChain, type Chain } from "viem";
 import {
   base,
   baseSepolia,
@@ -69,6 +69,12 @@ type PrivyWalletDemandContextValue = {
 
 const REFRESH_WINDOW_MS = 5 * 60 * 1000;
 
+export function resolvePrivyBaseChains(baseChain: Chain): Chain[] {
+  return baseChain.id === baseSepolia.id
+    ? [baseChain]
+    : [baseChain, baseSepolia];
+}
+
 const PrivyRuntimeContext = React.createContext<PrivyRuntimeState>({
   busy: false,
   connect: null,
@@ -88,21 +94,17 @@ const PrivyWalletDemandContext = React.createContext<PrivyWalletDemandContextVal
   retainWalletSync: () => () => undefined,
 });
 
-export function getPrivyAppId(): string | null {
+function getPrivyAppId(): string | null {
   return readViteEnv("VITE_PRIVY_APP_ID");
 }
 
-export function getPrivyClientId(): string | null {
+function getPrivyClientId(): string | null {
   const appEnvironment = readViteEnv("VITE_PIRATE_APP_ENV")?.toLowerCase();
   if (appEnvironment && appEnvironment !== "prod" && appEnvironment !== "production") {
     return null;
   }
 
   return readViteEnv("VITE_PRIVY_CLIENT_ID");
-}
-
-export function isPrivyConfigured(): boolean {
-  return getPrivyAppId() !== null;
 }
 
 export function usePiratePrivyRuntime(): PrivyRuntimeState {
@@ -195,7 +197,12 @@ export function PirateAuthProvider({
 
     return {
       defaultChain: baseChain,
-      supportedChains: [baseChain, ethereumChain, optimismChain, storyChain],
+      supportedChains: [
+        ...resolvePrivyBaseChains(baseChain),
+        ethereumChain,
+        optimismChain,
+        storyChain,
+      ],
     };
   }, [networkConfig]);
 

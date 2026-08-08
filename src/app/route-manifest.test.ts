@@ -16,6 +16,8 @@ interface RouteManifestEntry {
 const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { kind: "home", domain: "authenticated", testPaths: [{ pathname: "/" }], serverRouteExpected: true },
   { kind: "popular", domain: "authenticated", testPaths: [{ pathname: "/popular" }], serverRouteExpected: true },
+  { kind: "community-feed", domain: "authenticated", testPaths: [{ pathname: "/feed" }], serverRouteExpected: true },
+  { kind: "live", domain: "authenticated", testPaths: [{ pathname: "/live" }], serverRouteExpected: true },
   { kind: "public-profile", domain: "public", testPaths: [{ pathname: "/u/test-handle" }, { pathname: "/", hostname: "test.pirate" }], serverRouteExpected: true },
   { kind: "public-agent", domain: "public", testPaths: [{ pathname: "/a/test-agent" }, { pathname: "/", hostname: "test.clawitzer" }], serverRouteExpected: true },
   { kind: "your-communities", domain: "authenticated", testPaths: [{ pathname: "/your-communities" }], serverRouteExpected: true },
@@ -50,6 +52,7 @@ const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { kind: "me", domain: "authenticated", testPaths: [{ pathname: "/me" }], serverRouteExpected: true },
   { kind: "onboarding", domain: "authenticated", testPaths: [{ pathname: "/onboarding" }], serverRouteExpected: true },
   { kind: "authorize-device", domain: "authenticated", testPaths: [{ pathname: "/authorize-device" }], serverRouteExpected: true },
+  { kind: "telegram-account-link", domain: "authenticated", testPaths: [{ pathname: "/telegram/account-link" }], serverRouteExpected: true },
   { kind: "telegram-mini-app", domain: "telegram", testPaths: [{ pathname: "/tg" }], serverRouteExpected: true },
   { kind: "telegram-exchange", domain: "telegram", testPaths: [{ pathname: "/tg/exchange" }], serverRouteExpected: true },
   { kind: "telegram-self-return", domain: "telegram", testPaths: [{ pathname: "/tg/self-return" }, { pathname: "/tg/self-return/com_test" }], serverRouteExpected: true },
@@ -57,12 +60,15 @@ const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { kind: "telegram-verify", domain: "telegram", testPaths: [{ pathname: "/tg/verify/com_test" }], serverRouteExpected: true },
   { kind: "telegram-community", domain: "telegram", testPaths: [{ pathname: "/tg/c/com_test" }], serverRouteExpected: true },
   { kind: "telegram-post", domain: "telegram", testPaths: [{ pathname: "/tg/p/pst_test" }], serverRouteExpected: true },
+  { kind: "telegram-study", domain: "telegram", testPaths: [{ pathname: "/tg/c/com_test/p/pst_test/study" }], serverRouteExpected: true },
   { kind: "not-found", domain: "authenticated", testPaths: [{ pathname: "/nonexistent-manifest-test" }], serverRouteExpected: false },
 ];
 
 const _KIND_COVERAGE: { [K in AppRoute["kind"]]: true } = {
   home: true,
+  live: true,
   popular: true,
+  "community-feed": true,
   "public-profile": true,
   "public-agent": true,
   "your-communities": true,
@@ -97,6 +103,7 @@ const _KIND_COVERAGE: { [K in AppRoute["kind"]]: true } = {
   me: true,
   onboarding: true,
   "authorize-device": true,
+  "telegram-account-link": true,
   "telegram-mini-app": true,
   "telegram-exchange": true,
   "telegram-self-return": true,
@@ -104,6 +111,7 @@ const _KIND_COVERAGE: { [K in AppRoute["kind"]]: true } = {
   "telegram-verify": true,
   "telegram-community": true,
   "telegram-post": true,
+  "telegram-study": true,
   "not-found": true,
 };
 void _KIND_COVERAGE;
@@ -111,7 +119,9 @@ void _KIND_COVERAGE;
 const EXPECTED_DOMAIN_KINDS: Record<RouteRenderingDomain, readonly AppRoute["kind"][]> = {
   authenticated: [
     "home",
+    "live",
     "popular",
+    "community-feed",
     "your-communities",
     "wallet",
     "booking-host-settings",
@@ -137,6 +147,7 @@ const EXPECTED_DOMAIN_KINDS: Record<RouteRenderingDomain, readonly AppRoute["kin
     "me",
     "onboarding",
     "authorize-device",
+    "telegram-account-link",
     "not-found",
     "post-karaoke-leaderboard",
     "post-study",
@@ -160,6 +171,7 @@ const EXPECTED_DOMAIN_KINDS: Record<RouteRenderingDomain, readonly AppRoute["kin
     "telegram-verify",
     "telegram-community",
     "telegram-post",
+    "telegram-study",
   ],
 };
 

@@ -3,13 +3,18 @@ import { getAccessToken } from "@/lib/api/session-store";
 import { getAnalyticsIdentity } from "@/lib/analytics-identity";
 import { logger } from "@/lib/logger";
 
-export type AnalyticsEventName =
+type AnalyticsEventName =
   | "page_viewed"
   | "auth_started"
   | "reddit_verification_started"
   | "handle_claim_started"
   | "handle_claim_failed"
   | "home_feed_viewed"
+  | "video_viewer_opened"
+  | "video_capability_selected"
+  | "video_impression"
+  | "profile_follow_affordance_viewed"
+  | "profile_follow_clicked"
   | "community_viewed"
   | "community_follow_contract_drift"
   | "community_join_requested"
@@ -37,6 +42,7 @@ type AnalyticsProperties = Record<string, string | number | boolean | null | und
 
 type TrackAnalyticsEventInput = {
   eventName: AnalyticsEventName;
+  eventId?: string;
   communityId?: string | null;
   postId?: string | null;
   commentId?: string | null;
@@ -81,6 +87,7 @@ export function trackAnalyticsEvent(input: TrackAnalyticsEventInput): void {
 
   void fetch(resolveApiUrl("/analytics/events", window.location.hostname), {
     body: JSON.stringify({
+      event_id: input.eventId ?? `evt_${crypto.randomUUID().replaceAll("-", "")}`,
       event_name: input.eventName,
       session_id: identity.sessionId,
       anonymous_id: identity.anonymousId,

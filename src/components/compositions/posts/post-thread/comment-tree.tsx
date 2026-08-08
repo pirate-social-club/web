@@ -97,6 +97,7 @@ interface CommentTreeNodeProps {
   depth: number;
   maxDepth: number;
   nodeKey: string;
+  onReplyIntent?: () => void;
   onToggleCollapsed: (key: string) => void;
   replyIdentity?: PostThreadReplyIdentity;
 }
@@ -107,6 +108,7 @@ function CommentTreeNode({
   depth,
   maxDepth,
   nodeKey,
+  onReplyIntent,
   onToggleCollapsed,
   replyIdentity,
   onReplyRequest,
@@ -204,6 +206,7 @@ function CommentTreeNode({
           submitReplyLabel={comment.submitReplyLabel}
           onReplySubmit={comment.onReplySubmit}
           onReplyRequest={onReplyRequest ? () => onReplyRequest(comment) : undefined}
+          onReplyIntent={onReplyIntent}
           replyIdentity={replyIdentity}
           avatarClassName={depth > 0 ? MOBILE_NESTED_AVATAR_CLASS_NAME : undefined}
         />
@@ -220,6 +223,7 @@ function CommentTreeNode({
                   key={childKey}
                   maxDepth={maxDepth}
                   nodeKey={childKey}
+                  onReplyIntent={onReplyIntent}
                   onToggleCollapsed={onToggleCollapsed}
                   replyIdentity={replyIdentity}
                   onReplyRequest={onReplyRequest}
@@ -253,6 +257,7 @@ export interface CommentTreeProps {
   comments: PostThreadComment[];
   className?: string;
   maxDepth?: number;
+  onReplyIntent?: () => void;
   onReplyRequest?: (comment: PostThreadComment) => void;
   replyIdentity?: PostThreadReplyIdentity;
 }
@@ -261,6 +266,7 @@ export function CommentTree({
   comments,
   className,
   maxDepth = DEFAULT_MAX_COMMENT_DEPTH,
+  onReplyIntent,
   onReplyRequest,
   replyIdentity,
 }: CommentTreeProps) {
@@ -313,6 +319,7 @@ export function CommentTree({
             key={nodeKey}
             maxDepth={maxDepth}
             nodeKey={nodeKey}
+            onReplyIntent={onReplyIntent}
             onToggleCollapsed={handleToggleCollapsed}
             replyIdentity={replyIdentity}
             onReplyRequest={onReplyRequest}

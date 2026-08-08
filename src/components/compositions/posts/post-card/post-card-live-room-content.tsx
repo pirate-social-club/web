@@ -7,6 +7,9 @@ import { LiveRoomViewerSurface } from "@/components/compositions/posts/live-room
 import { Type } from "@/components/primitives/type";
 import { resolveResourceHref } from "@/lib/resource-links";
 import { cn } from "@/lib/utils";
+import { interpolateMessage } from "@/lib/route-messages";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { postCardType } from "./post-card.styles";
 import type { LiveRoomContentSpec, LiveRoomParticipant, PostCardViewContext } from "./post-card.types";
 
@@ -33,14 +36,15 @@ function priceLabel(content: LiveRoomContentSpec): string | null {
   return content.regionalPriceLabel ?? content.priceLabel ?? null;
 }
 
-function timeLabel(content: LiveRoomContentSpec): string | null {
+function timeLabel(content: LiveRoomContentSpec, copy: { canceled: string; ended: string; endedAgo: string; startsAt: string }): string | null {
   if (content.status === "live") return null;
-  if (content.status === "canceled") return "Canceled";
+  if (content.status === "canceled") return copy.canceled;
   if (content.status === "ended") {
-    if (!content.endedAtLabel) return "Ended";
-    return /\bago$/u.test(content.endedAtLabel) ? `Ended ${content.endedAtLabel}` : `Ended ${content.endedAtLabel} ago`;
+    if (!content.endedAtLabel) return copy.ended;
+    if (content.endedAtLabel.endsWith("ago")) return `${copy.ended} ${content.endedAtLabel}`;
+    return interpolateMessage(copy.endedAgo, { time: content.endedAtLabel });
   }
-  return content.startsAtLabel ? `Starts ${content.startsAtLabel}` : null;
+  return content.startsAtLabel ? interpolateMessage(copy.startsAt, { time: content.startsAtLabel }) : null;
 }
 
 function hasReplaySurface(content: LiveRoomContentSpec): boolean {
@@ -48,25 +52,25 @@ function hasReplaySurface(content: LiveRoomContentSpec): boolean {
     && Boolean(content.replayStatus && content.replayStatus !== "none");
 }
 
-function participantsLabel(participants: LiveRoomParticipant[] | undefined): string | null {
+function participantsLabel(participants: LiveRoomParticipant[] | undefined, copy: { host: string; with: string }): string | null {
   if (!participants || participants.length === 0) return null;
   const guests = participants.filter((p) => p.role === "guest");
   if (guests.length === 0) return null;
   const host = participants.find((p) => p.role === "host");
-  const hostLabel = host?.label ?? "Host";
+  const hostLabel = host?.label ?? copy.host;
   const extraCount = guests.length - 1;
   if (extraCount > 0) return `${hostLabel} with ${guests[0].label} + ${extraCount}`;
   return `${hostLabel} with ${guests[0].label}`;
 }
 
-function ParticipantAvatars({ participants }: { participants: LiveRoomParticipant[] }) {
+function ParticipantAvatars({ participants, copy }: { participants: LiveRoomParticipant[]; copy: { hostedBy: string; with: string } }) {
   const guests = participants.filter((p) => p.role === "guest");
   if (guests.length === 0) return null;
   const host = participants.find((p) => p.role === "host");
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Type as="span" variant="body" className="text-muted-foreground">
-        Hosted by
+        {copy.hostedBy}
       </Type>
       {host ? (
         <span className="inline-flex items-center gap-1.5">
@@ -77,7 +81,7 @@ function ParticipantAvatars({ participants }: { participants: LiveRoomParticipan
         </span>
       ) : null}
       <Type as="span" variant="body" className="text-muted-foreground">
-        with
+        {copy.with}
       </Type>
       {guests.slice(0, 3).map((guest, i) => (
         <React.Fragment key={guest.label + i}>
@@ -99,7 +103,7 @@ function ParticipantAvatars({ participants }: { participants: LiveRoomParticipan
   );
 }
 
-function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
+function deriveLiveRoomUi(content: LiveRoomContentSpec, copy: Record<string, string>): LiveRoomUiState {
   const ageProofRequired = content.ageGatePolicy === "18_plus"
     && content.contentSafetyState === "adult"
     && content.ageGateViewerState !== "verified_allowed";
@@ -114,11 +118,11 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
       if (content.accessMode === "paid" && !content.hasEntitlement) {
         return {
           kind: "needs_ticket",
-          cta: price ? `Buy ${price}` : "Buy",
+          cta: price ? interpolateMessage(copy.buyForPrice, { price }) : copy.buy,
           onClick: content.onBuy,
         };
       }
-      return { kind: "can_watch_replay", cta: "Watch replay", onClick: content.onWatch };
+      return { kind: "can_watch_replay", cta: copy.watchReplay, onClick: content.onWatch };
     }
     if (content.replayStatus === "processing") {
       return { kind: "replay_processing" };
@@ -135,7 +139,7 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
   if (ageProofRequired) {
     return {
       kind: "needs_verification",
-      cta: "Verify to attend",
+      cta: copy.verifyToAttend,
       onClick: content.onVerifyAge,
     };
   }
@@ -148,7 +152,7 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
     if (content.onGatePurchase) {
       return {
         kind: "needs_owned_song",
-        cta: content.gatePurchaseLabel ? `Buy song to watch · ${content.gatePurchaseLabel}` : "Buy song to watch",
+        cta: content.gatePurchaseLabel ? interpolateMessage(copy.buySongToWatchForPrice, { price: content.gatePurchaseLabel }) : copy.buySongToWatch,
         onClick: content.onGatePurchase,
       };
     }
@@ -157,7 +161,7 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
     }
     return {
       kind: "needs_access",
-      cta: "Verify access",
+      cta: copy.verifyAccess,
       onClick: content.onWatch,
     };
   }
@@ -165,14 +169,14 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
   if (content.accessState === "purchase_required" || (content.accessMode === "paid" && !content.hasEntitlement)) {
     return {
       kind: "needs_ticket",
-      cta: price ? `Get ticket ${price}` : "Get ticket",
+      cta: price ? interpolateMessage(copy.getTicketForPrice, { price }) : copy.getTicket,
       onClick: content.onBuy,
     };
   }
 
   if (content.accessMode === "paid" && content.hasEntitlement) {
     if (content.status === "live") {
-      return { kind: "can_watch", cta: "Watch live", onClick: content.onWatch };
+      return { kind: "can_watch", cta: copy.watchLive, onClick: content.onWatch };
     }
     return { kind: "has_ticket" };
   }
@@ -184,7 +188,7 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
     && (content.accessState === "waiting" || content.accessState === "allowed" || !content.accessState)
   ) {
     if (content.rsvpState === "going") return { kind: "rsvped" };
-    if (content.onRsvp) return { kind: "can_rsvp", cta: "RSVP", onClick: content.onRsvp };
+    if (content.onRsvp) return { kind: "can_rsvp", cta: copy.rsvp, onClick: content.onRsvp };
   }
 
   if (content.status === "live" && !content.accessState && !content.producerRole) {
@@ -192,7 +196,7 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
   }
 
   if (content.status === "live") {
-    return { kind: "can_watch", cta: "Watch live", onClick: content.onWatch };
+    return { kind: "can_watch", cta: copy.watchLive, onClick: content.onWatch };
   }
 
   return { kind: "scheduled" };
@@ -279,10 +283,12 @@ function ProducerControls({
   buttonClassName,
   className,
   content,
+  copy,
 }: {
   buttonClassName?: string;
   className?: string;
   content: LiveRoomContentSpec;
+  copy: Record<string, string>;
 }) {
   if (!content.producerRole) return null;
   const isHost = content.producerRole === "host";
@@ -295,15 +301,15 @@ function ProducerControls({
         {content.onAcceptGuestInvite ? (
           <Button className={buttonClassName} onClick={content.onAcceptGuestInvite} size="sm">
             <Check className="size-4" weight="bold" />
-            Accept invite
+            {copy.acceptInvite}
           </Button>
         ) : content.anchorPostHref ? (
           <Button asChild className={buttonClassName} size="sm">
-            <a href={content.anchorPostHref}>Open invite</a>
+            <a href={content.anchorPostHref}>{copy.openInvite}</a>
           </Button>
         ) : null}
         <p className="text-base text-muted-foreground">
-          Accept the producer invite before broadcasting.
+          {copy.producerInviteHint}
         </p>
       </div>
     );
@@ -312,7 +318,7 @@ function ProducerControls({
   if (content.producerRole === "guest" && content.guestInviteStatus === "revoked") {
     return (
       <p className="text-base text-muted-foreground">
-        This producer invite has been revoked.
+        {copy.producerInviteRevoked}
       </p>
     );
   }
@@ -323,7 +329,7 @@ function ProducerControls({
         <Button asChild className={buttonClassName} size="sm">
           <a href={content.freedomHref} rel="noreferrer" target="_blank">
             <Broadcast className="size-4" weight="bold" />
-            {isHost ? "Start broadcast" : "Open producer room"}
+            {isHost ? copy.startBroadcast : copy.openProducerRoom}
           </a>
         </Button>
       ) : null}
@@ -354,13 +360,16 @@ export function LiveRoomPostContent({
   content: LiveRoomContentSpec;
   viewContext?: PostCardViewContext;
 }) {
-  const ui = deriveLiveRoomUi(content);
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes");
+  const liveRoom = copy.post.liveRoom;
+  const ui = deriveLiveRoomUi(content, liveRoom);
   const ageProofRequired = content.ageGatePolicy === "18_plus"
     && content.contentSafetyState === "adult"
     && content.ageGateViewerState !== "verified_allowed";
   const inPostPage = viewContext === "post";
   const eventHref = inPostPage ? undefined : content.concertHref;
-  const time = timeLabel(content);
+  const time = timeLabel(content, liveRoom);
   const replaySurface = hasReplaySurface(content);
   const feedMeta = [time, content.replayDurationLabel].filter(Boolean).join(" · ");
   const postPageTime = inPostPage && content.status === "live" ? null : time;
@@ -400,7 +409,7 @@ export function LiveRoomPostContent({
             </Type>
           </div>
           {showProducerPrimaryControl ? (
-            <ProducerControls content={content} />
+            <ProducerControls content={content} copy={liveRoom} />
           ) : showPrimaryCta ? (
             <Button
               className="h-11 shrink-0 px-5 md:self-start"
@@ -415,7 +424,7 @@ export function LiveRoomPostContent({
         </div>
 
         {content.participants && content.participants.length > 0 ? (
-          <ParticipantAvatars participants={content.participants} />
+          <ParticipantAvatars copy={liveRoom} participants={content.participants} />
         ) : null}
 
         {showPostPageMeta ? (
@@ -529,13 +538,13 @@ export function LiveRoomPostContent({
             <Button asChild size="sm" variant="outline">
               <a href={content.agentPurchaseUrl}>
                 <Robot className="size-4" weight="duotone" />
-                {content.agentPurchaseLabel ?? "Agent checkout"}
+                {content.agentPurchaseLabel ?? liveRoom.agentCheckout}
               </a>
             </Button>
           ) : null}
         </div>
 
-        {showProducerPrimaryControl ? null : <ProducerControls content={content} />}
+        {showProducerPrimaryControl ? null : <ProducerControls content={content} copy={liveRoom} />}
       </div>
     );
   }
@@ -573,9 +582,9 @@ export function LiveRoomPostContent({
           </p>
         ) : null}
 
-        {participantsLabel(content.participants) ? (
+        {participantsLabel(content.participants, liveRoom) ? (
           <p className={cn("mt-0.5 text-muted-foreground", postCardType.meta)}>
-            {participantsLabel(content.participants)}
+            {participantsLabel(content.participants, liveRoom)}
           </p>
         ) : null}
 
@@ -587,7 +596,7 @@ export function LiveRoomPostContent({
       </div>
 
       {showProducerPrimaryControl ? (
-        <ProducerControls buttonClassName="h-11 w-full px-5" className="w-full" content={content} />
+        <ProducerControls buttonClassName="h-11 w-full px-5" className="w-full" content={content} copy={liveRoom} />
       ) : showPrimaryCta ? (
         <Button
           asChild={!ui.onClick && Boolean(content.concertHref)}
@@ -611,7 +620,7 @@ export function LiveRoomPostContent({
           href={content.agentPurchaseUrl}
         >
           <Robot className="size-4" weight="duotone" />
-          {content.agentPurchaseLabel ?? "Agent checkout"}
+          {content.agentPurchaseLabel ?? liveRoom.agentCheckout}
         </a>
       ) : null}
     </div>

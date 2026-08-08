@@ -1370,9 +1370,10 @@ describe("PostComposer monetization", () => {
     expect(content.type).toBe("song");
     expect(content.type === "song" ? content.caption : undefined).toBeUndefined();
     expect(previewCard.props.viewContext).toBe("post");
+    expect(previewCard.props.previewMode).toBe(true);
     expect((previewCard.props.byline as PostCardProps["byline"]).timestampLabel).toBe("now");
-    expect((previewCard.props.menuItems as NonNullable<PostCardProps["menuItems"]>).length).toBeGreaterThan(0);
-    expect((previewCard.props.shareActions as NonNullable<PostCardProps["shareActions"]>).length).toBeGreaterThan(0);
+    expect(previewCard.props.menuItems).toBeUndefined();
+    expect(previewCard.props.shareActions).toBeUndefined();
   });
 
   test("uses the stored video aspect ratio in the publish preview", () => {
@@ -1400,6 +1401,49 @@ describe("PostComposer monetization", () => {
     const content = previewCard.props.content as PostCardProps["content"];
     expect(content.type).toBe("video");
     expect(content.type === "video" ? content.aspectRatio : undefined).toBe(9 / 16);
+  });
+
+  test("shows the selected source song in the video publish preview", () => {
+    const tree = renderComposer({
+      availableTabs: ["video"],
+      clubName: "Lane1",
+      composerStep: "publish",
+      derivativeStep: {
+        visible: true,
+        trigger: "uses_song",
+        references: [{
+          id: "story:asset:source-song",
+          title: "Midnight Signal",
+          subtitle: "artist.pirate",
+        }],
+        sourceTermsAccepted: true,
+      },
+      mode: "video",
+      titleValue: "Dance clip",
+      video: {
+        primaryVideoLabel: "dance.mp4",
+        primaryVideoUpload: new File(["video"], "dance.mp4", { type: "video/mp4" }),
+      },
+    });
+
+    const previewCard = findElement(
+      tree,
+      (element) => typeof element.type !== "string" && element.type.name === "PostCard",
+    );
+    if (!previewCard) {
+      throw new Error("Missing preview post card");
+    }
+
+    const content = previewCard.props.content as PostCardProps["content"];
+    expect(content).toMatchObject({
+      type: "video",
+      upstreamAttributions: [{
+        assetId: "story:asset:source-song",
+        relationshipType: "references_song",
+        title: "Midnight Signal",
+        artist: "artist.pirate",
+      }],
+    });
   });
 
   test("renders live publish preview as the live post page surface", () => {
@@ -1819,6 +1863,7 @@ describe("PostComposer monetization", () => {
     const previewVideoClassName = String(previewVideo?.props.className ?? "");
 
     expect(previewContainerClassName).toContain("max-w-[22rem]");
+    expect(previewVideo?.props.muted).not.toBe(true);
     expect(previewContainerClassName).not.toContain("aspect-video");
     expect(previewContainer?.props.style).toEqual({ aspectRatio: 9 / 16 });
     expect(previewVideoClassName).toContain("object-contain");

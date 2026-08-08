@@ -225,6 +225,20 @@ describe("public profile host routing", () => {
     });
   });
 
+  test("matches the community card feed route", () => {
+    expectJson(matchRoute("/feed"), {
+      kind: "community-feed",
+      path: "/feed",
+    });
+  });
+
+  test("matches the live discovery route", () => {
+    expectJson(matchRoute("/live"), {
+      kind: "live",
+      path: "/live",
+    });
+  });
+
   test("matches advertise as an authenticated app route", () => {
     expectJson(matchRoute("/advertise"), {
       kind: "advertise",
@@ -342,6 +356,19 @@ describe("public profile host routing", () => {
       kind: "telegram-post",
       path: "/tg/p/pst_cf89c73fe60641debd05c939252a870c",
       postId: "pst_cf89c73fe60641debd05c939252a870c",
+    });
+    expectJson(matchRoute("/tg/c/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c/p/pst_cf89c73fe60641debd05c939252a870c/study"), {
+      kind: "telegram-study",
+      path: "/tg/c/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c/p/pst_cf89c73fe60641debd05c939252a870c/study",
+      communityId: "com_cmt_58a12a18213c4bf4a1e6b9343dc3702c",
+      postId: "pst_cf89c73fe60641debd05c939252a870c",
+    });
+  });
+
+  test("matches the external Telegram account-link route", () => {
+    expect(matchRoute("/telegram/account-link")).toEqual({
+      kind: "telegram-account-link",
+      path: "/telegram/account-link",
     });
   });
 });

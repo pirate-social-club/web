@@ -92,7 +92,7 @@ async function discoverRoutes(): Promise<DiscoveredRoutes> {
 
 async function expectAppShell(page: Page): Promise<void> {
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.locator("body")).toContainText(/PIRATE|Home|Popular|Connect|Sign in|Sign In/u);
+  await expect(page.locator("body")).toContainText(/PIRATE|For You|Explore|Connect|Sign in|Sign In/u);
   await expect(page.locator("body")).not.toContainText(browserErrorPattern);
 }
 
@@ -109,28 +109,28 @@ test.describe("unauthenticated staging smoke", () => {
   test("home feed renders the app shell", async ({ page }) => {
     await page.goto("/");
     await expectAppShell(page);
-    await expect(page.getByRole("button", { name: /^home$/i }).first()).toBeVisible();
-    await expect(page.getByRole("button", { name: /^popular$/i }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /^for you$/i }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /^explore$/i }).first()).toBeVisible();
   });
 
-  test("popular feed renders", async ({ page }) => {
-    await page.goto("/popular");
+  test("community feed renders", async ({ page }) => {
+    await page.goto("/feed");
     await expectAppShell(page);
-    await expect(page).toHaveURL(/\/popular$/u);
+    await expect(page).toHaveURL(/\/feed$/u);
   });
 
   test("desktop navigation exposes primary routes", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/");
     await expectAppShell(page);
-    await expect(page.getByText("Home", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Popular", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("For You", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Explore", { exact: true }).first()).toBeVisible();
   });
 
   test("mobile viewport exposes core footer navigation", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
-    await expectAppShell(page);
+    await expectRouteRendered(page);
     await expect(page.getByRole("navigation", { name: /primary/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /^home$/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /wallet/i })).toBeVisible();

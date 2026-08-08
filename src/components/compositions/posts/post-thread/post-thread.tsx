@@ -32,6 +32,7 @@ export function PostThread({
   rootReplyBlockedLabel,
   rootReplyDisabled = false,
   onRootReplyBlocked,
+  onReplyIntent,
   onRootReplySubmit,
   replyIdentity,
   commentSort,
@@ -49,6 +50,7 @@ export function PostThread({
   const [rootReplyIdentityMode, setRootReplyIdentityMode] = React.useState<PostThreadIdentityMode>("public");
   const [rootReplyBusy, setRootReplyBusy] = React.useState(false);
   const rootReplyContainerRef = React.useRef<HTMLDivElement>(null);
+  const rootReplyPointerActiveRef = React.useRef(false);
   const isMobile = useIsMobile();
 
   const [mobileReplyTarget, setMobileReplyTarget] = React.useState<{
@@ -63,6 +65,8 @@ export function PostThread({
   const [mobileReplyAttachment, setMobileReplyAttachment] = React.useState<PostThreadReplyAttachment | null>(null);
   const [mobileReplyIdentityMode, setMobileReplyIdentityMode] = React.useState<PostThreadIdentityMode>("public");
   const [mobileReplyBusy, setMobileReplyBusy] = React.useState(false);
+  const rootReplyBusyRef = React.useRef(false);
+  const mobileReplyBusyRef = React.useRef(false);
 
   React.useEffect(() => {
     if (rootReplyOpen && rootReplyContainerRef.current) {
@@ -88,9 +92,10 @@ export function PostThread({
 
   const handleRootReplySubmit = React.useCallback(async () => {
     const trimmed = rootReplyBody.trim();
-    if (!canSubmitRootReply || !onRootReplySubmit) {
+    if (!canSubmitRootReply || !onRootReplySubmit || rootReplyBusyRef.current) {
       return;
     }
+    rootReplyBusyRef.current = true;
     try {
       setRootReplyBusy(true);
       const result = await onRootReplySubmit({
@@ -108,15 +113,17 @@ export function PostThread({
       setRootReplyIdentityMode("public");
       setRootReplyOpen(false);
     } finally {
+      rootReplyBusyRef.current = false;
       setRootReplyBusy(false);
     }
   }, [canSubmitRootReply, onRootReplySubmit, replyIdentity?.anonymousScope, rootReplyAttachment, rootReplyBody, rootReplyIdentityMode]);
 
   const handleMobileReplySubmit = React.useCallback(async () => {
     const trimmed = mobileReplyBody.trim();
-    if (!canSubmitMobileReply || !mobileReplyTarget) {
+    if (!canSubmitMobileReply || !mobileReplyTarget || mobileReplyBusyRef.current) {
       return;
     }
+    mobileReplyBusyRef.current = true;
     try {
       setMobileReplyBusy(true);
       const result = await mobileReplyTarget.onSubmit({
@@ -134,6 +141,7 @@ export function PostThread({
       setMobileReplyIdentityMode("public");
       setMobileReplyTarget(null);
     } finally {
+      mobileReplyBusyRef.current = false;
       setMobileReplyBusy(false);
     }
   }, [canSubmitMobileReply, mobileReplyAttachment, mobileReplyBody, mobileReplyIdentityMode, mobileReplyTarget, replyIdentity?.anonymousScope]);
@@ -219,6 +227,8 @@ export function PostThread({
                 aria-label={rootReplyActionLabel ?? copy.common.replyAction}
                 className="h-12 w-full rounded-full border border-border-soft bg-background px-4 text-base text-foreground shadow-sm outline-none transition-[color,box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-border focus-visible:ring-1 focus-visible:ring-border-soft"
                 onClick={() => {
+                  rootReplyPointerActiveRef.current = false;
+                  onReplyIntent?.();
                   if (isMobile) {
                     openMobileRootReply();
                   } else {
@@ -226,11 +236,21 @@ export function PostThread({
                   }
                 }}
                 onFocus={() => {
+                  if (rootReplyPointerActiveRef.current) return;
                   if (isMobile) {
                     openMobileRootReply();
                   } else {
                     setRootReplyOpen(true);
                   }
+                }}
+                onPointerCancel={() => {
+                  rootReplyPointerActiveRef.current = false;
+                }}
+                onPointerDown={() => {
+                  rootReplyPointerActiveRef.current = true;
+                }}
+                onPointerUp={() => {
+                  rootReplyPointerActiveRef.current = false;
                 }}
                 placeholder={resolvedRootReplyPlaceholder}
                 readOnly
@@ -305,6 +325,7 @@ export function PostThread({
             className="px-4"
             comments={items}
             onReplyRequest={isMobile ? handleCommentReplyRequest : undefined}
+            onReplyIntent={onReplyIntent}
             replyIdentity={replyIdentity}
           />
         ) : (

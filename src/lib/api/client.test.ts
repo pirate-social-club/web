@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
+import { withFetchMockGlobal } from "@/test/fetch-mock";
 import { ApiClient, ApiError } from "./client";
+
+withFetchMockGlobal((globalThis) => {
 
 const originalFetch = globalThis.fetch;
 
@@ -18,6 +21,131 @@ test("preserves an explicit retryable false from an API error response", async (
       (error: unknown) => {
         expect(error).toBeInstanceOf(ApiError);
         expect(error).toMatchObject({ retryable: false, retryableExplicit: true, status: 503 });
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("captures request_id from error bodies and falls back to the x-request-id header", async () => {
+  globalThis.fetch = async () => Response.json({
+    code: "internal_error",
+    message: "Internal server error",
+    retryable: true,
+    request_id: "body-req-id",
+  }, { status: 500, headers: { "x-request-id": "header-req-id" } });
+
+  try {
+    const client = new ApiClient({ baseUrl: "http://pirate.test", getToken: () => null });
+    await client.publicPosts.getKaraoke("pst_test").then(
+      () => { throw new Error("Expected request to fail"); },
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ApiError);
+        expect(error).toMatchObject({ requestId: "body-req-id", status: 500 });
+      },
+    );
+
+    globalThis.fetch = async () => new Response("not json", {
+      status: 500,
+      headers: { "x-request-id": "header-req-id" },
+    });
+    await client.publicPosts.getKaraoke("pst_test").then(
+      () => { throw new Error("Expected request to fail"); },
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ApiError);
+        expect(error).toMatchObject({ requestId: "header-req-id", status: 500 });
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("loads profile follow state with optional viewer authentication", async () => {
+  let request: Request | null = null;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    request = input instanceof Request ? input : new Request(input, init);
+    return Response.json({
+      object: "profile_follow_state",
+      target_user_id: "usr_target",
+      target_wallet: { status: "available", address: "0x0000000000000000000000000000000000000001" },
+      relationship: { status: "current", viewer_follows: false },
+      counts: { status: "current", follower_count: 12, following_count: 34 },
+      projection: {
+        availability: "current",
+        revision: "17",
+        indexed_through_block: [{ chain_id: 8453, block_number: "49181298" }],
+      },
+    });
+  };
+
+  try {
+    const client = new ApiClient({
+      baseUrl: "http://pirate.test",
+      getToken: () => "session-token",
+    });
+    const state = await client.profiles.getFollowState("usr/target");
+    const capturedRequest = requireRequest(request);
+    expect(capturedRequest.url).toBe("http://pirate.test/profiles/usr%2Ftarget/follow-state");
+    expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+    expect(state.counts).toEqual({
+      status: "current",
+      follower_count: 12,
+      following_count: 34,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("prepares profile follow writes with server idempotency", async () => {
+  let request: Request | null = null;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    request = input instanceof Request ? input : new Request(input, init);
+    return Response.json({
+      object: "profile_follow_write",
+      intent_id: "efw_test",
+      target_user_id: "usr_target",
+      desired_following: true,
+      consistency: { status: "accepted_not_yet_reflected" },
+      sponsorship: { eligible: true, reserved_transaction_count: 0 },
+      transactions: [],
+      expires_at: "2026-07-28T00:10:00.000Z",
+    });
+  };
+  try {
+    const client = new ApiClient({
+      baseUrl: "http://pirate.test",
+      getToken: () => "session-token",
+    });
+    await client.profiles.prepareFollowWrite("usr/target", true, "idem-follow-1");
+    const capturedRequest = requireRequest(request);
+    expect(capturedRequest.url).toBe("http://pirate.test/profiles/usr%2Ftarget/follow");
+    expect(capturedRequest.method).toBe("POST");
+    expect(capturedRequest.headers.get("idempotency-key")).toBe("idem-follow-1");
+    expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("captures per-field validation errors from { error, fields } bodies into details", async () => {
+  globalThis.fetch = async () => Response.json({
+    error: "validation_failed",
+    fields: [{ field: "base_price_cents", reason: "must be a positive integer (cents)" }],
+  }, { status: 400 });
+
+  try {
+    const client = new ApiClient({ baseUrl: "http://pirate.test", getToken: () => null });
+    await client.publicPosts.getKaraoke("pst_test").then(
+      () => { throw new Error("Expected request to fail"); },
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ApiError);
+        expect(error).toMatchObject({ code: "validation_failed", status: 400 });
+        expect((error as ApiError).details).toMatchObject({
+          fields: [{ field: "base_price_cents", reason: "must be a positive integer (cents)" }],
+        });
       },
     );
   } finally {
@@ -413,6 +541,63 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("lists namespaces and scopes handle reads to a selected namespace", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      return request.url.endsWith("/namespaces")
+        ? Response.json({ namespaces: [] })
+        : Response.json({ handle: null });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.listNamespaces("cmt_test");
+      await client.communities.getMyHandle("cmt_test", {
+        namespaceVerification: "nv_charizard",
+      });
+
+      expect(requests.map((request) => request.url)).toEqual([
+        "http://pirate.test/communities/cmt_test/namespaces",
+        "http://pirate.test/communities/cmt_test/handles/me?namespace_verification=nv_charizard",
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("attaches a verified mirror namespace without changing the primary compatibility default", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      return Response.json({ id: "cmt_test", route_slug: "dankmeme" });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.attachNamespace("cmt_test", "nv_somethingelse", "mirror");
+
+      expect(requests).toHaveLength(1);
+      expect(requests[0]?.url).toBe("http://pirate.test/communities/cmt_test/namespace");
+      expect(await requests[0]?.json()).toEqual({
+        namespace_verification: "nv_somethingelse",
+        namespace_role: "mirror",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("calls community Telegram chat settings endpoints", async () => {
     const requests: Request[] = [];
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -464,6 +649,64 @@ describe("ApiClient media uploads", () => {
         directory_visible: false,
         link_mode: "invite_link",
       });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("calls community Telegram broadcast channel endpoints", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+
+      if (request.url.endsWith("/setup-intents")) {
+        return Response.json({
+          id: "tsi_channel",
+          object: "telegram_setup_intent",
+          community: "cmt_test",
+          status: "pending",
+          expires_at: 1_777_000_600,
+          bot_start_parameter: "tgchan_test",
+          bot_deep_link: "https://t.me/pirate_bot?start=tgchan_test",
+        });
+      }
+
+      if (request.url.endsWith("/unlink")) {
+        return Response.json({
+          id: "tcd_test",
+          object: "telegram_channel_destination",
+          unlinked: true,
+        });
+      }
+
+      if (request.url.endsWith("/backfill")) {
+        return Response.json({ enqueued: 20 }, { status: 202 });
+      }
+
+      return Response.json(null);
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      const destination = await client.communities.getTelegramChannel("cmt_test");
+      await client.communities.createTelegramChannelSetupIntent("cmt_test");
+      await client.communities.backfillTelegramChannel("cmt_test", { limit: 20 });
+      await client.communities.unlinkTelegramChannel("cmt_test");
+
+      expect(destination).toBeNull();
+      expect(requests.map((request) => `${request.method} ${request.url}`)).toEqual([
+        "GET http://pirate.test/communities/cmt_test/telegram-channel",
+        "POST http://pirate.test/communities/cmt_test/telegram-channel/setup-intents",
+        "POST http://pirate.test/communities/cmt_test/telegram-channel/backfill",
+        "POST http://pirate.test/communities/cmt_test/telegram-channel/unlink",
+      ]);
+      expect(requests.every((request) => request.headers.get("authorization") === "Bearer session-token")).toBe(true);
+      expect(await requests[2]!.json()).toEqual({ limit: 20 });
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -1068,6 +1311,32 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("loads authenticated and public video feeds from dedicated endpoints", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      return Response.json({ items: [], next_cursor: null, top_communities: [] });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.feed.videos({ cursor: "v1:1000:25", locale: "en" });
+      await client.feed.publicVideos({ locale: "en" });
+
+      expect(requests[0]?.url).toBe("http://pirate.test/feed/home/videos?cursor=v1%3A1000%3A25&locale=en");
+      expect(requests[0]?.headers.get("authorization")).toBe("Bearer session-token");
+      expect(requests[1]?.url).toBe("http://pirate.test/feed/home/videos/public?locale=en");
+      expect(requests[1]?.headers.get("authorization")).toBe(null);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("loads public communities without auth headers", async () => {
     const requests: Request[] = [];
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -1256,6 +1525,7 @@ describe("ApiClient media uploads", () => {
         body: "Top level",
       }, { altchaPayload: "comment-proof" });
       await client.posts.vote("pst_test", 1, { altchaPayload: "post-vote-proof" });
+      await client.posts.clearVote("pst_test", { altchaPayload: "post-clear-proof" });
       await client.comments.vote("cmt_vote", -1, { altchaPayload: "comment-vote-proof" });
       await client.comments.createReply("cmt_reply", {
         body: "Reply body",
@@ -1266,9 +1536,11 @@ describe("ApiClient media uploads", () => {
       expect(requests[1]?.headers.get("x-pirate-altcha")).toBe("post-proof");
       expect(requests[2]?.headers.get("x-pirate-altcha")).toBe("comment-proof");
       expect(requests[3]?.headers.get("x-pirate-altcha")).toBe("post-vote-proof");
-      expect(requests[4]?.headers.get("x-pirate-altcha")).toBe("comment-vote-proof");
-      expect(requests[5]?.headers.has("x-pirate-altcha")).toBe(false);
+      expect(requests[4]?.headers.get("x-pirate-altcha")).toBe("post-clear-proof");
+      expect(requests[4]?.url).toEndWith("/posts/pst_test/clear_vote");
+      expect(requests[5]?.headers.get("x-pirate-altcha")).toBe("comment-vote-proof");
       expect(requests[6]?.headers.has("x-pirate-altcha")).toBe(false);
+      expect(requests[7]?.headers.has("x-pirate-altcha")).toBe(false);
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -1700,4 +1972,5 @@ describe("ApiClient media uploads", () => {
       globalThis.fetch = originalFetch;
     }
   });
+});
 });

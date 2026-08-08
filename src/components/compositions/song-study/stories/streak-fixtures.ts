@@ -22,6 +22,7 @@ export function makeEntry(
     total_qualified_days: overrides.currentStreak + 5,
     streak_started_date: "2026-06-24",
     last_qualified_date: "2026-07-06",
+    active_until_at: "2099-01-01T00:00:00.000Z",
     is_viewer: overrides.isViewer ?? false,
   };
 }

@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  ArrowCounterClockwise,
   BookOpen,
   CheckCircle,
   Fire,
@@ -21,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { SongStreakEntryList } from "./song-streak-parts";
 import type { SongStreakSummary } from "./song-streak-preview";
 
-export interface SongStudyOption {
+interface SongStudyOption {
   id: string;
   text: string;
 }
@@ -33,12 +34,6 @@ export interface SongStudySayItBackExercise {
   prompt: string;
   translation?: string;
   expected: string;
-}
-
-export interface SongStudySayItBackFeedback {
-  extra?: string[];
-  matched?: string[];
-  missing?: string[];
 }
 
 export interface SongStudyMultipleChoiceExercise {
@@ -59,11 +54,25 @@ export type SongStudySurfaceState =
   | {
     kind: "say_it_back";
     attemptNumber: number;
+    /**
+     * Attempts spent on this appearance of the card (not across the lesson).
+     * Bounds the in-place retry so a learner is never stuck on one line.
+     */
+    attemptsThisAppearance?: number;
     exercise: SongStudySayItBackExercise;
-    feedback?: SongStudySayItBackFeedback;
-    phase: "idle" | "listening" | "checking" | "wrong" | "correct";
+    guidance?: string;
+    /** What speech-to-text heard on the last miss. Shown only while `phase` is "wrong". */
+    heardTranscript?: string;
+    phase: "idle" | "listening" | "checking" | "wrong";
+    /** True once the card is spent, so the miss is final rather than retryable. */
     revealReference?: boolean;
-    transcript?: string;
+    /**
+     * Whether a spent card is coming back later in this lesson. Only meaningful
+     * alongside `revealReference` — it keeps the copy from promising a return
+     * that will not happen.
+     */
+    willReturn?: boolean;
+    submitError?: string;
   }
   | {
     kind: "multiple_choice";
@@ -79,6 +88,8 @@ export type SongStudySurfaceState =
     kind: "complete";
     correctCount: number;
     nextReviewLabel?: string;
+    /** Pre-session streak, used only for the slot-number animation. */
+    previousStreak?: number;
     scorePercent: number;
     streak?: {
       currentStreak: number;
@@ -87,37 +98,43 @@ export type SongStudySurfaceState =
       studyCorrectCount: number;
       studyTargetCount: number;
     };
+    /** Fresh post-completion leaderboard (server-ranked); never the pre-session snapshot. */
     streakSummary?: SongStreakSummary;
     totalCount: number;
   };
 
 export interface SongStudySurfaceProps {
-  artistName?: string;
   artworkSrc?: string;
   className?: string;
+  lessonProgress?: {
+    resolvedCount: number;
+    totalCount: number;
+  };
   onExit?: () => void;
   onKaraoke?: () => void;
   onOptionSelect?: (optionId: string) => void;
   onPrimaryAction?: () => void;
   onStudyAgain?: () => void;
   rewardSlot?: React.ReactNode;
+  sayItBackIdleLabel?: string;
   state: SongStudySurfaceState;
-  title: string;
 }
 
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function primaryActionLabel(state: SongStudySurfaceState): string | undefined {
+function primaryActionLabel(
+  state: SongStudySurfaceState,
+  sayItBackIdleLabel?: string,
+): string | undefined {
   switch (state.kind) {
     case "locked":
       return state.priceLabel ? `Buy ${state.priceLabel}` : "Buy";
     case "say_it_back":
-      if (state.phase === "correct") return "Continue";
       if (state.phase === "wrong") return state.revealReference ? "Continue" : "Record";
       if (state.phase === "checking") return "Checking…";
-      return state.phase === "listening" ? "Stop" : "Record";
+      return state.phase === "listening" ? "Stop" : sayItBackIdleLabel ?? "Record";
     case "multiple_choice":
       if (state.submitting) return "Checking…";
       if (state.result === "wrong" && state.canRetry) return "Try again";
@@ -125,6 +142,16 @@ function primaryActionLabel(state: SongStudySurfaceState): string | undefined {
     case "complete":
       return undefined;
   }
+}
+
+function primaryActionVariant(state: SongStudySurfaceState): "default" | "destructive" | "secondary" {
+  if (state.kind === "say_it_back") {
+    if (state.phase === "listening") return "secondary";
+    if (state.phase === "wrong") return "destructive";
+    return "default";
+  }
+  if (state.kind === "multiple_choice" && state.result === "wrong") return "destructive";
+  return "default";
 }
 
 function primaryActionIcon(state: SongStudySurfaceState): React.ReactNode {
@@ -147,6 +174,7 @@ function ActivityFooter({
   primaryDisabled,
   primaryIcon,
   primaryLabel,
+  primaryVariant = "default",
   secondaryIcon,
   secondaryLabel,
   onPrimaryAction,
@@ -155,6 +183,7 @@ function ActivityFooter({
   primaryDisabled?: boolean;
   primaryIcon?: React.ReactNode;
   primaryLabel?: string;
+  primaryVariant?: "default" | "destructive" | "secondary";
   secondaryIcon?: React.ReactNode;
   secondaryLabel?: string;
   onPrimaryAction?: () => void;
@@ -165,7 +194,7 @@ function ActivityFooter({
   return (
     <footer className="sticky bottom-0 z-10 border-t border-border-soft bg-background/95 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 backdrop-blur-xl sm:px-6">
       <div className={cn("mx-auto grid w-full max-w-3xl gap-3", secondaryLabel && "sm:grid-cols-2")}>
-        <Button className="w-full" disabled={primaryDisabled} leadingIcon={primaryIcon} onClick={onPrimaryAction} size="lg">
+        <Button className="w-full" disabled={primaryDisabled} leadingIcon={primaryIcon} onClick={onPrimaryAction} size="lg" variant={primaryVariant}>
           {primaryLabel}
         </Button>
         {secondaryLabel ? (
@@ -185,14 +214,18 @@ function ActivityFooter({
 }
 
 function Header({
-  artistName,
+  lessonProgress,
   onExit,
-  title,
+  trailing,
 }: {
-  artistName?: string;
+  lessonProgress?: SongStudySurfaceProps["lessonProgress"];
   onExit?: () => void;
-  title: string;
+  trailing?: React.ReactNode;
 }) {
+  const totalCount = Math.max(0, lessonProgress?.totalCount ?? 0);
+  const resolvedCount = Math.max(0, Math.min(totalCount, lessonProgress?.resolvedCount ?? 0));
+  const progressPercent = totalCount > 0 ? (resolvedCount / totalCount) * 100 : 0;
+
   return (
     <header className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-border-soft px-4 py-2 sm:min-h-20 sm:px-6 sm:py-3">
       <Button
@@ -203,15 +236,32 @@ function Header({
         size="icon"
         variant="ghost"
       />
-      <div className="min-w-0">
-        <Type as="h1" className="truncate" variant="h3">
-          {title}
+      <div className="flex min-w-0 items-center">
+        <Type as="h1" className="sr-only">
+          Study
         </Type>
-        {artistName ? (
-          <Type as="p" className="hidden truncate text-muted-foreground sm:block" variant="caption">
-            {artistName}
-          </Type>
-        ) : null}
+        {lessonProgress ? (
+          // One capsule holds the groove and the reward amount so the two read as
+          // a single connected control: the bar runs into the money it earns.
+          <div className="flex h-7 min-w-0 flex-1 items-center rounded-full bg-muted pl-1">
+            <div
+              aria-label="Lesson progress"
+              aria-valuemax={totalCount}
+              aria-valuemin={0}
+              aria-valuenow={resolvedCount}
+              className="h-3 min-w-0 flex-1 overflow-hidden rounded-full bg-background"
+              role="progressbar"
+            >
+              <div
+                className="h-full rounded-full bg-success transition-[width] duration-300 ease-out motion-reduce:transition-none"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            {trailing ? <div className="shrink-0">{trailing}</div> : <span className="pr-1" />}
+          </div>
+        ) : (
+          trailing ? <div className="ml-auto shrink-0">{trailing}</div> : null
+        )}
       </div>
     </header>
   );
@@ -241,10 +291,6 @@ function LockedState({ state }: { state: Extract<SongStudySurfaceState, { kind: 
 }
 
 function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kind: "say_it_back" }> }) {
-  const isWrong = state.phase === "wrong";
-  const isCorrect = state.phase === "correct";
-  const showStatus = isWrong || isCorrect;
-
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-4 py-10 sm:px-6">
       <div className="rounded-[var(--radius-2xl)] border border-border-soft bg-card p-6 shadow-sm sm:p-8">
@@ -257,30 +303,56 @@ function SayItBackState({ state }: { state: Extract<SongStudySurfaceState, { kin
         </Type>
       </div>
 
-      {showStatus ? (
+      {/*
+        The prompt above IS the expected answer for say-it-back, so echoing it
+        back as "Correct answer:" says nothing the learner cannot already read.
+        The only new information is what speech-to-text actually heard, so that
+        is what a miss shows. A retryable miss stays muted; only a spent card
+        takes the destructive treatment, because red reads as final.
+      */}
+      {state.phase === "wrong" ? (
         <div
           className={cn(
             "rounded-[var(--radius-xl)] border p-4",
-            isWrong && "border-destructive/30 bg-destructive/10",
-            isCorrect && "border-success/30 bg-success/10",
+            state.revealReference
+              ? "border-destructive/30 bg-destructive/10"
+              : "border-border-soft bg-muted",
           )}
         >
           <div className="flex items-center gap-3">
-            {isCorrect ? (
-              <CheckCircle className="size-6 text-success" weight="fill" />
-            ) : isWrong ? (
-              <XCircle className="size-6 text-destructive" weight="fill" />
+            {state.revealReference ? (
+              <XCircle className="size-6 shrink-0 text-destructive" weight="fill" />
             ) : (
-              <Microphone className="size-6 animate-pulse text-primary" weight="fill" />
+              <ArrowCounterClockwise className="size-6 shrink-0 text-muted-foreground" weight="bold" />
             )}
-            <Type as="p" className="min-w-0 truncate text-muted-foreground" dir="auto" variant="body-strong">
-              <span className={cn(isCorrect && "text-success", isWrong && "text-destructive")}>
-                {isCorrect ? "Correct." : "Incorrect."}
-              </span>
-              {state.transcript ? ` You said, "${state.transcript}"` : null}
-            </Type>
+            <div className="min-w-0">
+              <Type
+                as="p"
+                className={state.revealReference ? "text-destructive" : "text-muted-foreground"}
+                variant="caption"
+              >
+                {state.revealReference
+                  ? state.willReturn ? "Let's come back to this" : "Let's keep going"
+                  : "Not quite — try again"}
+              </Type>
+              {state.heardTranscript ? (
+                <Type as="p" className="text-muted-foreground" dir="auto" variant="body">
+                  {`Heard: ${state.heardTranscript}`}
+                </Type>
+              ) : null}
+            </div>
           </div>
         </div>
+      ) : null}
+      {state.submitError ? (
+        <Type as="p" className="text-destructive" role="alert" variant="caption">
+          {state.submitError}
+        </Type>
+      ) : null}
+      {state.guidance ? (
+        <Type as="p" className="text-muted-foreground" role="status" variant="body">
+          {state.guidance}
+        </Type>
       ) : null}
     </div>
   );
@@ -349,24 +421,6 @@ function MultipleChoiceState({
   );
 }
 
-// Patch the viewer's leaderboard row with the just-earned streak so the top-3
-// count never contradicts the celebration card. Rank/order stay load-time stale
-// by design; only the visible fire count is refreshed.
-function patchViewerEntry(
-  entries: SongStreakSummary["entries"],
-  streak: { currentStreak: number },
-): SongStreakSummary["entries"] {
-  return entries.map((entry) =>
-    entry.is_viewer
-      ? {
-          ...entry,
-          current_streak: streak.currentStreak,
-          best_streak: Math.max(entry.best_streak, streak.currentStreak),
-        }
-      : entry,
-  );
-}
-
 function usePrefersReducedMotion(): boolean {
   const [reducedMotion, setReducedMotion] = React.useState(false);
 
@@ -382,12 +436,12 @@ function usePrefersReducedMotion(): boolean {
   return reducedMotion;
 }
 
-function previousStreakFromSummary(
+function previousStreakForAnimation(
   streak: { currentStreak: number } | undefined,
-  summary: SongStreakSummary | undefined,
+  previousStreak: number | undefined,
 ): number | undefined {
   if (!streak) return undefined;
-  const previous = summary?.viewer?.current_streak ?? streak.currentStreak - 1;
+  const previous = previousStreak ?? streak.currentStreak - 1;
   return Math.max(0, Math.min(previous, streak.currentStreak));
 }
 
@@ -500,14 +554,15 @@ function CompleteState({ state }: { state: Extract<SongStudySurfaceState, { kind
   const score = clampPercent(state.scorePercent);
   const streak = state.streak;
 
+  // Everything below renders fresh server data only: the leaderboard fetched
+  // after qualification. While it loads (or if it failed) the celebration
+  // stands alone — a stale pre-session snapshot is never shown.
   const summary = state.streakSummary;
-  const previousStreak = previousStreakFromSummary(streak, summary);
-  const summaryEntries = summary && streak
-    ? patchViewerEntry(summary.entries, streak)
-    : summary?.entries ?? [];
+  const previousStreak = previousStreakForAnimation(streak, state.previousStreak);
+  const summaryEntries = summary?.entries ?? [];
   const viewerVisible = summaryEntries.slice(0, 3).some((entry) => entry.is_viewer);
-  const showViewerRow = Boolean(streak && summary?.viewer && !viewerVisible);
-  const viewerPreviewRank = summaryEntries.slice(0, 3).length + 1;
+  const viewer = summary?.viewer;
+  const showViewerRow = Boolean(streak && viewer?.alive && viewer.qualified_today && !viewerVisible);
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-8 px-4 py-10 sm:px-6">
@@ -524,7 +579,12 @@ function CompleteState({ state }: { state: Extract<SongStudySurfaceState, { kind
           {streak?.qualifiedToday ? "Your streak" : "Session complete"}
         </Type>
         {streak?.qualifiedToday && previousStreak !== undefined ? (
-          <StreakSlotNumber currentStreak={streak.currentStreak} previousStreak={previousStreak} />
+          <>
+            <StreakSlotNumber currentStreak={streak.currentStreak} previousStreak={previousStreak} />
+            <Type as="p" className="mt-3 font-semibold text-foreground" variant="body">
+              {`${score}% first-pass score`}
+            </Type>
+          </>
         ) : (
           <Type as="h2" className="mt-1 text-7xl font-bold leading-none sm:text-8xl">
             {`${score}%`}
@@ -546,7 +606,7 @@ function CompleteState({ state }: { state: Extract<SongStudySurfaceState, { kind
             />
           ) : null}
           {showViewerRow && streak ? (
-            <ViewerLeaderboardRow currentStreak={streak.currentStreak} rank={viewerPreviewRank} />
+            <ViewerLeaderboardRow currentStreak={streak.currentStreak} rank={viewer?.rank ?? undefined} />
           ) : null}
         </div>
       ) : null}
@@ -575,16 +635,16 @@ function Body({
 }
 
 export function SongStudySurface({
-  artistName,
   className,
+  lessonProgress,
   onExit,
   onKaraoke,
   onOptionSelect,
   onPrimaryAction,
   onStudyAgain,
   rewardSlot,
+  sayItBackIdleLabel,
   state,
-  title,
 }: SongStudySurfaceProps) {
   const complete = state.kind === "complete";
   const primaryLabel = complete
@@ -593,7 +653,7 @@ export function SongStudySurface({
       : onKaraoke
         ? "Karaoke"
         : undefined
-    : primaryActionLabel(state);
+    : primaryActionLabel(state, sayItBackIdleLabel);
   const primaryAction = complete ? onStudyAgain ?? onKaraoke : onPrimaryAction;
   const primaryIcon = complete
     ? onStudyAgain
@@ -606,8 +666,8 @@ export function SongStudySurface({
 
   return (
     <section className={cn("flex h-dvh w-full flex-col overflow-y-auto bg-background text-foreground", className)}>
-      <Header artistName={artistName} onExit={onExit} title={title} />
-      {rewardSlot ? (
+      <Header lessonProgress={lessonProgress} onExit={onExit} trailing={complete ? undefined : rewardSlot} />
+      {complete && rewardSlot ? (
         <div className="mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6">
           {rewardSlot}
         </div>
@@ -617,6 +677,7 @@ export function SongStudySurface({
         primaryDisabled={primaryActionDisabled(state)}
         primaryIcon={primaryIcon}
         primaryLabel={primaryLabel}
+        primaryVariant={primaryActionVariant(state)}
         secondaryIcon={<Microphone className="size-5" weight="fill" />}
         secondaryLabel={secondaryLabel}
         onPrimaryAction={primaryAction}

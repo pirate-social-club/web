@@ -1,8 +1,11 @@
 "use client";
 
 import * as React from "react";
-import type { GateFailureDetails as ApiGateFailureDetails } from "@pirate/api-contracts";
-import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
+import type {
+  GateFailureDetails as ApiGateFailureDetails,
+  JoinEligibility as ApiJoinEligibility,
+  MembershipGateSummary,
+} from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
 import { type ApiError } from "@/lib/api/client";
@@ -16,6 +19,8 @@ import {
   hasZkPassportDocumentProviderOption,
   hasAltchaProofAction,
   hasOnlyWalletGateRequirements,
+  type HumanVerificationProvider,
+  resolveAvailableHumanVerificationProviders,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 import { toast } from "@/components/primitives/sonner";
@@ -62,12 +67,13 @@ type JoinAttemptOptions = {
 };
 
 type JoinAttemptResult = "blocked" | "failed" | "joined" | "requested";
+type GateVerificationStartResult = "altcha" | "blocked" | "started";
 
 const SELF_CAPABILITIES = ["unique_human", "age_over_18", "minimum_age", "nationality", "gender"] as const;
 type SelfCapability = typeof SELF_CAPABILITIES[number];
 const ZKPASSPORT_CAPABILITIES = ["minimum_age", "nationality", "gender"] as const;
 type ZkPassportCapability = typeof ZKPASSPORT_CAPABILITIES[number];
-const WALLET_GATE_UNMET_MESSAGE = "That wallet still does not hold the required NFT. Connect the wallet that holds it, then try again.";
+const WALLET_GATE_UNMET_MESSAGE = "That wallet still does not meet this community's wallet requirement. Connect another wallet, then try again.";
 
 function isSelfCapability(value: string): value is SelfCapability {
   return (SELF_CAPABILITIES as readonly string[]).includes(value);
@@ -81,6 +87,10 @@ function isTelegramMiniAppRuntime(): boolean {
   return typeof window !== "undefined" && Boolean((window as Window & {
     Telegram?: { WebApp?: unknown };
   }).Telegram?.WebApp);
+}
+
+function getGateCapability(gate: MembershipGateSummary): string {
+  return gate.gate_type === "age_over_18" ? "minimum_age" : gate.gate_type;
 }
 
 export function useCommunityJoinVerification({
@@ -98,7 +108,11 @@ export function useCommunityJoinVerification({
 	  const [passportLoading, setPassportLoading] = React.useState(false);
   const [altchaPayload, setAltchaPayload] = React.useState<string | null>(null);
   const altchaRequired = eligibility ? hasAltchaProofAction(eligibility) : false;
-  const walletGateRequired = eligibility?.status === "verification_required" && hasOnlyWalletGateRequirements(eligibility);
+  const walletGateRequired = eligibility?.status === "verification_required" &&
+    (eligibility.membership_gate_summaries ?? []).some((gate) =>
+      gate.gate_type === "erc721_holding" || gate.gate_type === "erc721_inventory_match"
+      || gate.gate_type === "asset_balance"
+    );
   const privyRuntime = usePiratePrivyRuntime();
   const { connectedWallets, walletsReady } = usePiratePrivyWallets({ enabled: walletGateRequired });
   const walletSnapshot = React.useMemo(
@@ -283,11 +297,18 @@ export function useCommunityJoinVerification({
 	      const gateFailureMessage = updatedEligibility.status === "gate_failed"
 	        ? getGateFailureMessage(updatedEligibility, { locale })
 	        : null;
-	      setJoinError(gateFailureMessage ?? getVerificationPromptCopy(
-	        "passport",
-	        getPassportPromptCapabilities(details ?? updatedEligibility),
-	        { locale },
-	      ).description);
+	      const scoreStatus = refreshed.wallet_score_status ?? updatedEligibility.wallet_score_status ?? null;
+	      const scoreMessage = scoreStatus?.current_score_decimal != null && scoreStatus.required_score_decimal != null
+	        ? `Your wallet score is ${scoreStatus.current_score_decimal}; this community requires ${scoreStatus.required_score_decimal}.`
+	        : null;
+	      const message = [gateFailureMessage, scoreMessage].filter(Boolean).join(" ")
+	        || getVerificationPromptCopy(
+	          "passport",
+	          getPassportPromptCapabilities(details ?? updatedEligibility),
+	          { locale },
+	        ).description;
+	      setJoinError(message);
+	      toast.error(message);
 	      return "blocked";
 	    } catch (error: unknown) {
 	      const apiError = error as ApiError;
@@ -299,6 +320,96 @@ export function useCommunityJoinVerification({
 	      setPassportLoading(false);
 	    }
 	  }, [api, communityId, locale, onJoined, refetchEligibility]);
+
+  const startWalletGateVerification = React.useCallback((): "blocked" | "failed" | "started" => {
+    if (!privyRuntime.configured || !privyRuntime.connect) {
+      setJoinError("Connect a wallet that meets this community's requirement from wallet settings, then try again.");
+      return "blocked";
+    }
+    walletGateStartSnapshotRef.current = walletSnapshot;
+    setWalletGateVerificationPending(true);
+    try {
+      privyRuntime.connect();
+      return "started";
+    } catch (error: unknown) {
+      setWalletGateVerificationPending(false);
+      const apiError = error as ApiError;
+      const message = apiError?.message ?? "Could not open wallet connection.";
+      setJoinError(message);
+      toast.error(message);
+      return "failed";
+    }
+  }, [privyRuntime, walletSnapshot]);
+
+  const startVerificationProvider = React.useCallback(async (
+    provider: HumanVerificationProvider,
+    options: {
+      missingCapabilities?: string[] | null;
+      membershipGateSummaries?: ApiJoinEligibility["membership_gate_summaries"] | null;
+      showToastOnError?: boolean;
+    } = {},
+  ): Promise<"blocked" | "started"> => {
+    setJoinError(null);
+    if (provider === "very") {
+      const result = await startVeryVerification();
+      return result.started ? "started" : "blocked";
+    }
+    if (provider === "zkpassport") {
+      const result = await startZkPassportVerification({
+        missingCapabilities: options.missingCapabilities,
+        membershipGateSummaries: options.membershipGateSummaries,
+        showToastOnError: options.showToastOnError ?? true,
+      });
+      return result.started ? "started" : "blocked";
+    }
+    const result = await startSelfVerification({
+      missingCapabilities: options.missingCapabilities,
+      membershipGateSummaries: options.membershipGateSummaries,
+      showToastOnError: options.showToastOnError ?? true,
+    });
+    return result.started ? "started" : "blocked";
+  }, [startSelfVerification, startVeryVerification, startZkPassportVerification]);
+
+  const startGateVerification = React.useCallback(async (
+    gate: MembershipGateSummary,
+  ): Promise<GateVerificationStartResult> => {
+    setJoinError(null);
+    if (gate.gate_type === "altcha_pow") {
+      return "altcha";
+    }
+    if (
+      gate.gate_type === "erc721_holding"
+      || gate.gate_type === "erc721_inventory_match"
+      || gate.gate_type === "asset_balance"
+    ) {
+      return startWalletGateVerification() === "started" ? "started" : "blocked";
+    }
+    if (gate.gate_type === "wallet_score") {
+      const result = await refreshPassportAndJoin({
+        failure_reason: null,
+        gate_evaluation: null,
+        membership_gate_summaries: [gate],
+        wallet_score_status: null,
+      });
+      return result === "blocked" || result === "failed" ? "blocked" : "started";
+    }
+
+    const missingCapabilities = [getGateCapability(gate)];
+    const membershipGateSummaries = [gate];
+    const providers = resolveAvailableHumanVerificationProviders({
+      membership_gate_summaries: membershipGateSummaries,
+      missing_capabilities: missingCapabilities,
+    });
+    if (providers.length !== 1) {
+      setJoinError("Choose a supported verification provider to continue.");
+      return "blocked";
+    }
+    return startVerificationProvider(providers[0], {
+      missingCapabilities,
+      membershipGateSummaries,
+      showToastOnError: true,
+    });
+  }, [refreshPassportAndJoin, startVerificationProvider, startWalletGateVerification]);
 
   React.useEffect(() => {
     if (!walletGateVerificationPending || !walletsReady) {
@@ -312,9 +423,10 @@ export function useCommunityJoinVerification({
       try {
         const updatedEligibility = await refetchEligibility();
         const joinResult = await joinIfEligible(updatedEligibility);
-        if (joinResult === "blocked" && updatedEligibility.status === "verification_required" && hasOnlyWalletGateRequirements(updatedEligibility)) {
-          setJoinError(WALLET_GATE_UNMET_MESSAGE);
-          toast.error(WALLET_GATE_UNMET_MESSAGE);
+        if (joinResult === "blocked" && updatedEligibility.status === "verification_required") {
+          const message = getGateFailureMessage(updatedEligibility, { locale }) ?? WALLET_GATE_UNMET_MESSAGE;
+          setJoinError(message);
+          toast.error(message);
         }
       } catch (error: unknown) {
         const apiError = error as ApiError;
@@ -327,6 +439,7 @@ export function useCommunityJoinVerification({
     })();
   }, [
     joinIfEligible,
+    locale,
     refetchEligibility,
     walletGateVerificationPending,
     walletSnapshot,
@@ -357,23 +470,7 @@ export function useCommunityJoinVerification({
     if (eligibility?.status === "verification_required") {
       setJoinLoading(false);
       if (hasOnlyWalletGateRequirements(eligibility)) {
-        if (!privyRuntime.configured || !privyRuntime.connect) {
-          setJoinError("Connect the wallet that holds the required NFT from wallet settings, then try again.");
-          return "blocked";
-        }
-        walletGateStartSnapshotRef.current = walletSnapshot;
-        setWalletGateVerificationPending(true);
-        try {
-          privyRuntime.connect();
-        } catch (error: unknown) {
-          setWalletGateVerificationPending(false);
-          const apiError = error as ApiError;
-          const message = apiError?.message ?? "Could not open wallet connection.";
-          setJoinError(message);
-          toast.error(message);
-          return "failed";
-        }
-        return "blocked";
+        return startWalletGateVerification() === "failed" ? "failed" : "blocked";
       }
       if (altchaRequired) {
         if (!resolvedAltchaPayload) {
@@ -411,8 +508,10 @@ export function useCommunityJoinVerification({
 	        return await refreshPassportAndJoin(eligibility);
 	      } else if (resolvedProvider === "zkpassport") {
 	        await startZkPassportVerification();
-	      } else {
+	      } else if (resolvedProvider === "self") {
 	        await startSelfVerification();
+	      } else {
+	        setJoinError("No supported verification provider is available for this community requirement.");
 	      }
 	      return "blocked";
     }
@@ -442,11 +541,13 @@ export function useCommunityJoinVerification({
               missingCapabilities: getMissingCapabilitiesFromGateEvaluation(details),
               membershipGateSummaries: details.membership_gate_summaries ?? null,
             });
-	          } else {
+	          } else if (resolvedProvider === "self") {
 	            await startSelfVerification({
               missingCapabilities: getMissingCapabilitiesFromGateEvaluation(details),
               membershipGateSummaries: details.membership_gate_summaries ?? null,
             });
+	          } else {
+	            setJoinError("No supported verification provider is available for this community requirement.");
           }
           return "blocked";
         }
@@ -464,11 +565,13 @@ export function useCommunityJoinVerification({
     } finally {
       setJoinLoading(false);
     }
-	  }, [altchaPayload, altchaRequired, api, communityId, eligibility, locale, onJoined, privyRuntime, refetchEligibility, refreshPassportAndJoin, startSelfVerification, startVeryVerification, startZkPassportVerification, walletSnapshot]);
+	  }, [altchaPayload, altchaRequired, api, communityId, eligibility, locale, onJoined, refetchEligibility, refreshPassportAndJoin, startSelfVerification, startVeryVerification, startWalletGateVerification, startZkPassportVerification]);
 
   return {
     handleJoin,
-    altchaAction: `community:${communityId}`,
+    // The API binds the join proof to the canonical public community id, so the
+    // challenge action must use the server-reported id, not the route segment.
+    altchaAction: `community:${eligibility?.community ?? communityId}`,
     altchaPayload,
     altchaRequired,
     altchaScope: "community_join" as const,
@@ -488,6 +591,8 @@ export function useCommunityJoinVerification({
     selfModalOpen,
     selfPrompt,
     startSelfVerification,
+    startGateVerification,
+    startVerificationProvider,
     startZkPassportVerification,
     startVeryVerification,
     veryLoading,

@@ -26,11 +26,9 @@ import {
   SidebarSideContext,
   type SidebarContextProps,
   useSidebar,
-  useSidebarSide,
 } from "./sidebar.shared";
 import {
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -250,7 +248,7 @@ function Sidebar({
 export {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
+
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -264,5 +262,5 @@ export {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
-  useSidebarSide,
+
 };

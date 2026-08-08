@@ -2,7 +2,7 @@ import type { CommunityAuthorRole, PostCardProps } from "@/components/compositio
 
 export type PostThreadAuthorMode = "human" | "agent";
 export type PostThreadIdentityMode = "public" | "anonymous";
-export type PostThreadAnonymousScope = "community_stable" | "thread_stable";
+type PostThreadAnonymousScope = "community_stable" | "thread_stable";
 export type PostThreadSubmitResult = "blocked" | "submitted";
 export type CommentSort = "best" | "new" | "top";
 
@@ -73,7 +73,7 @@ export interface PostThreadComment {
   onLoadMoreReplies?: () => void;
   onDelete?: () => void;
   onReplySubmit?: (input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
-  onVote?: (direction: "up" | "down") => void;
+  onVote?: (direction: "up" | "down") => Promise<void> | void;
   children?: PostThreadComment[];
 }
 
@@ -94,6 +94,7 @@ export interface PostThreadProps {
   rootReplyBlockedLabel?: string;
   rootReplyDisabled?: boolean;
   onRootReplyBlocked?: () => Promise<void> | void;
+  onReplyIntent?: () => void;
   onRootReplySubmit?: (input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
   replyIdentity?: PostThreadReplyIdentity;
   commentSort?: CommentSort;

@@ -1,4 +1,3 @@
-import * as React from "react";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 
@@ -117,8 +116,9 @@ function buildKaraoke(): SongKaraokePayload {
 
 interface ApiCallLog {
   authGet: string[];
+  communityKaraoke: string[];
   publicGet: string[];
-  karaoke: string[];
+  publicKaraoke: string[];
 }
 
 function installApiSpies(log: ApiCallLog, authGetBehavior: (postId: string) => Promise<LocalizedPostResponse>): void {
@@ -133,14 +133,19 @@ function installApiSpies(log: ApiCallLog, authGetBehavior: (postId: string) => P
   (api.publicPosts as unknown as {
     getKaraoke: (postId: string, opts?: unknown) => Promise<SongKaraokePayload>;
   }).getKaraoke = async (postId) => {
-    log.karaoke.push(postId);
+    log.publicKaraoke.push(postId);
     return buildKaraoke();
   };
   (api.communities as unknown as {
     getPostKaraoke: (communityId: string, postId: string, opts?: unknown) => Promise<SongKaraokePayload>;
-  }).getPostKaraoke = async () => {
-    throw new Error("community-scoped karaoke payload should not load on the post karaoke route");
+  }).getPostKaraoke = async (_communityId, postId) => {
+    log.communityKaraoke.push(postId);
+    return buildKaraoke();
   };
+  api.communities.getPostKaraokeLeaderboard = async () => ({
+    entries: [],
+    viewer_eligible_attempt_count: 0,
+  } as never);
   api.rewards.getActiveCampaignForSong = async () => {
     throw new ApiError("not_found", "not found", 404);
   };
@@ -150,6 +155,7 @@ const originalPostsGet = api.posts.get;
 const originalPublicPostsGet = api.publicPosts.get;
 const originalPublicPostsGetKaraoke = api.publicPosts.getKaraoke;
 const originalGetPostKaraoke = api.communities.getPostKaraoke;
+const originalGetPostKaraokeLeaderboard = api.communities.getPostKaraokeLeaderboard;
 const originalGetActiveCampaignForSong = api.rewards.getActiveCampaignForSong;
 
 beforeEach(() => {
@@ -186,6 +192,7 @@ afterEach(() => {
   api.publicPosts.get = originalPublicPostsGet;
   api.publicPosts.getKaraoke = originalPublicPostsGetKaraoke;
   api.communities.getPostKaraoke = originalGetPostKaraoke;
+  api.communities.getPostKaraokeLeaderboard = originalGetPostKaraokeLeaderboard;
   api.rewards.getActiveCampaignForSong = originalGetActiveCampaignForSong;
   mediaElementPrototype.load = originalLoad;
   mediaElementPrototype.play = originalPlay;
@@ -207,14 +214,15 @@ function signIn(): void {
 
 describe("KaraokeRoutePage", () => {
   test("logged-out viewer loads karaoke via the public read", async () => {
-    const log: ApiCallLog = { authGet: [], publicGet: [], karaoke: [] };
+    const log: ApiCallLog = { authGet: [], communityKaraoke: [], publicGet: [], publicKaraoke: [] };
     installApiSpies(log, async () => {
       throw new Error("authenticated read should not run for a logged-out viewer");
     });
 
     const view = render(<KaraokeRoutePage postId={POST_ID} />);
 
-    await waitFor(() => expect(log.karaoke).toContain(POST_ID));
+    await waitFor(() => expect(log.publicKaraoke).toContain(POST_ID));
+    expect(log.communityKaraoke).toEqual([]);
     // No authenticated read attempted; the public read served the post.
     expect(log.authGet).toEqual([]);
     expect(log.publicGet).toContain(POST_ID);
@@ -224,7 +232,7 @@ describe("KaraokeRoutePage", () => {
   });
 
   test("logged-out viewer gets a Sing CTA that opens auth instead of a dead-end", async () => {
-    const log: ApiCallLog = { authGet: [], publicGet: [], karaoke: [] };
+    const log: ApiCallLog = { authGet: [], communityKaraoke: [], publicGet: [], publicKaraoke: [] };
     installApiSpies(log, async () => {
       throw new Error("authenticated read should not run for a logged-out viewer");
     });
@@ -237,7 +245,7 @@ describe("KaraokeRoutePage", () => {
   });
 
   test("Sing CTA is replaced by the scoring Start panel once a session is established", async () => {
-    const log: ApiCallLog = { authGet: [], publicGet: [], karaoke: [] };
+    const log: ApiCallLog = { authGet: [], communityKaraoke: [], publicGet: [], publicKaraoke: [] };
     // Authenticated read succeeds post-sign-in so the route reaches a scorable,
     // community-backed payload (the precondition for scoring to enable).
     installApiSpies(log, async () => buildPost());
@@ -258,9 +266,9 @@ describe("KaraokeRoutePage", () => {
     expect(view.queryByText("Log in to karaoke")).toBeNull();
   });
 
-  test("logged-in non-member falls back from an authenticated 404 to the public read", async () => {
+  test("logged-in non-member uses public post metadata but authenticated karaoke", async () => {
     signIn();
-    const log: ApiCallLog = { authGet: [], publicGet: [], karaoke: [] };
+    const log: ApiCallLog = { authGet: [], communityKaraoke: [], publicGet: [], publicKaraoke: [] };
     installApiSpies(log, async () => {
       // Authenticated post reads require community membership; non-members get
       // not_found: Community not found.
@@ -269,7 +277,8 @@ describe("KaraokeRoutePage", () => {
 
     const view = render(<KaraokeRoutePage postId={POST_ID} />);
 
-    await waitFor(() => expect(log.karaoke).toContain(POST_ID));
+    await waitFor(() => expect(log.communityKaraoke).toContain(POST_ID));
+    expect(log.publicKaraoke).toEqual([]);
     // Authenticated read attempted first, then fell back to the public read.
     expect(log.authGet).toContain(POST_ID);
     expect(log.publicGet).toContain(POST_ID);

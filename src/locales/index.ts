@@ -1,14 +1,13 @@
 import type { UiLocaleCode } from "@/lib/ui-locale";
 import {
   GENERATED_LOCALE_CATALOGS,
-  LOCALE_NAMESPACES,
   type GeneratedLocaleCatalogs,
   type LocaleNamespace,
   type RealLocaleCode,
 } from "./generated";
 
-export { LOCALE_NAMESPACES } from "./generated";
-export type { LocaleNamespace, RealLocaleCode } from "./generated";
+;
+export type { LocaleNamespace,  } from "./generated";
 
 type WidenLocaleMessages<T> = T extends string
   ? string

@@ -9,7 +9,7 @@ import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
 export type AttendanceReportingHealth = "healthy" | "retrying" | "degraded";
-export type BookingSessionControlsState = "in-session" | "ready-to-settle" | "settling" | "settled";
+type BookingSessionControlsState = "in-session" | "ready-to-settle" | "settling" | "settled";
 
 export interface BookingSessionControlsProps {
   state: BookingSessionControlsState;
@@ -23,13 +23,13 @@ export interface BookingSessionControlsProps {
   copy?: Partial<BookingSessionControlsCopy>;
 }
 
-export interface BookingSessionControlsCopy {
+interface BookingSessionControlsCopy {
   attendanceInterrupted: string; attendanceRetrying: string; degradedDetail: string; retryingDetail: string;
   sessionWith: string; paymentUnlocks: string; leave: string; sessionEnded: string; attendanceDetermines: string;
   finish: string; report: string; checking: string; checkingDetail: string; confirmed: string; confirmedDetail: string;
 }
 
-export const defaultBookingSessionControlsCopy: BookingSessionControlsCopy = {
+const defaultBookingSessionControlsCopy: BookingSessionControlsCopy = {
   attendanceInterrupted: "Attendance reporting interrupted", attendanceRetrying: "Reconnecting attendance reporting",
   degradedDetail: "Stay in the session while we retry. Your video call can continue.", retryingDetail: "Your presence is being retried automatically.",
   sessionWith: "Session with {name}", paymentUnlocks: "Payment actions unlock after the scheduled session ends.", leave: "Leave session",

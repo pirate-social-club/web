@@ -1,10 +1,8 @@
 import type { PlaybackState, PostCardContent, StemKind } from "@/components/compositions/posts/post-card/post-card.types";
 
-import type { AttachmentState, LinkPreviewState, LiveComposerState, VideoDetailsState } from "./post-composer.types";
+import type { AttachmentState, DerivativeStepState, LinkPreviewState, LiveComposerState, VideoDetailsState } from "./post-composer.types";
 import type { LiveRoomParticipant } from "@/components/compositions/posts/post-card/post-card.types";
-
-const fallbackImageSrc = "https://picsum.photos/seed/post-composer-image-preview/720/720";
-const fallbackVideoSrc = "https://www.w3schools.com/html/mov_bbb.mp4";
+import { buildPublicProfilePath } from "@/lib/profile-routing";
 
 type SongPreviewStem = {
   kind: StemKind;
@@ -33,6 +31,7 @@ export function buildPostComposerPreviewContent({
   access,
   attachment,
   body,
+  derivativeStep,
   linkPreview,
   price,
   vinylReleaseUrl,
@@ -53,6 +52,7 @@ export function buildPostComposerPreviewContent({
   access: "free" | "paid";
   attachment: AttachmentState;
   body: string;
+  derivativeStep?: DerivativeStepState;
   linkPreview?: LinkPreviewState;
   liveCoverSrc?: string;
   liveState?: LiveComposerState;
@@ -88,16 +88,19 @@ export function buildPostComposerPreviewContent({
   if (attachment.kind === "image") {
     return {
       type: "image",
-      src: attachment.previewUrl ?? fallbackImageSrc,
+      src: attachment.previewUrl ?? "",
       alt: title || "Post image",
       caption: bodyText || undefined,
     };
   }
 
   if (attachment.kind === "video") {
+    const songReferences = derivativeStep?.visible && derivativeStep.trigger === "uses_song"
+      ? derivativeStep.references ?? []
+      : [];
     return {
       type: "video",
-      src: attachment.previewUrl ?? fallbackVideoSrc,
+      src: attachment.previewUrl ?? "",
       aspectRatio: attachment.aspectRatio,
       posterSrc: videoPosterSrc ?? videoDetails?.thumbnail?.previewUrl,
       title: title || "Video",
@@ -106,8 +109,19 @@ export function buildPostComposerPreviewContent({
       listingMode: access === "paid" ? "listed" : "not_listed",
       listingStatus: access === "paid" ? "active" : undefined,
       priceLabel: access === "paid" ? priceLabel : undefined,
-      hasEntitlement: true,
+      hasEntitlement: access === "free",
+      onBuy: access === "paid" ? () => undefined : undefined,
       playbackState: "idle",
+      rightsBasis: songReferences.length ? "derivative" : undefined,
+      upstreamAttributions: songReferences.length
+        ? songReferences.map((reference) => ({
+            assetId: reference.id,
+            relationshipType: "references_song" as const,
+            title: reference.title,
+            artist: reference.subtitle,
+            artistHref: reference.subtitle ? buildPublicProfilePath(reference.subtitle) : undefined,
+          }))
+        : undefined,
     };
   }
 

@@ -122,6 +122,9 @@ function RewardsSummaryCard({
       <Type as="div" variant="h1" className="mt-0.5 text-4xl font-semibold leading-tight">
         {rewardsSummary.amountLabel}
       </Type>
+      <Type as="div" variant="caption" className="mt-1 text-muted-foreground">
+        {rewardsSummary.assetLabel}
+      </Type>
       {rewardsSummary.supportingLabel ? (
         <Type as="div" variant="caption" className="mt-1 text-muted-foreground">
           {rewardsSummary.supportingLabel}
@@ -300,7 +303,6 @@ export function MobileWalletHub({
   walletAddress,
   walletActionsPending = false,
   chainSections,
-  recentActivity,
 }: {
   claimLoading?: boolean;
   claimableWipWei?: string;
@@ -367,6 +369,9 @@ export function MobileWalletHub({
                 </Type>
                 <Type as="div" variant="h1" className="mt-0.5 text-4xl font-semibold leading-tight">
                   {rewardsSummary.amountLabel}
+                </Type>
+                <Type as="div" variant="caption" className="mt-1 text-muted-foreground">
+                  {rewardsSummary.assetLabel}
                 </Type>
                 {rewardsSummary.supportingLabel ? (
                   <Type as="div" variant="caption" className="mt-1 text-muted-foreground">

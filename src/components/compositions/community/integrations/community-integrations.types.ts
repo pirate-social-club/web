@@ -1,6 +1,6 @@
 import type { CommunityAssistantPolicySettings } from "../assistant-policy/community-assistant-policy.types";
 
-export type CommunityIntegrationsSettings = Pick<
+type CommunityIntegrationsSettings = Pick<
   CommunityAssistantPolicySettings,
   "elevenLabsKeyStatus" | "openRouterKeyStatus"
 >;

@@ -8,14 +8,21 @@ import type {
 } from "@pirate/api-contracts";
 
 type JoinAttemptOptions = {
+  altchaPayload?: string | null;
   note?: string | null;
 };
 
 type JoinAttemptResult = "blocked" | "failed" | "joined" | "requested";
 
 type CommunityHandleClaimApi = {
-  getHandleStatus: (communityId: string) => Promise<CommunityHandleStatusResponse>;
-  getMyHandle: (communityId: string) => Promise<CommunityHandleMeResponse>;
+  getHandleStatus: (
+    communityId: string,
+    selector?: { namespaceVerification?: string | null },
+  ) => Promise<CommunityHandleStatusResponse>;
+  getMyHandle: (
+    communityId: string,
+    selector?: { namespaceVerification?: string | null },
+  ) => Promise<CommunityHandleMeResponse>;
 };
 
 type CommunityHandleClaimDismissal = {
@@ -35,8 +42,10 @@ export interface UseCommunityMembershipActionsOptions {
   handleClaim: CommunityHandleClaimState;
   handleClaimApi: CommunityHandleClaimApi;
   handleClaimCommunityId: string;
+  handleClaimNamespaceVerificationId?: string | null;
   handleClaimDismissal: CommunityHandleClaimDismissal;
   handleJoin: (options?: JoinAttemptOptions) => Promise<JoinAttemptResult>;
+  hasVerificationChoices?: boolean;
   invalidateCommunityGate?: (communityId: string) => void;
   onAuthRequired?: () => void;
   onHandleClaimCheckError?: (error: unknown) => void;
@@ -49,12 +58,16 @@ export interface CommunityMembershipActions {
   handleClaimNotNow: () => void;
   handleJoinRequestModalOpenChange: (open: boolean) => void;
   handleJoinRequestSubmit: (note: string) => Promise<void>;
+  handleProofOfWorkVerified: (payload: string) => Promise<void>;
   handlePrimaryJoinAction: () => Promise<void>;
   joinRequestError: string | null;
   joinRequestModalOpen: boolean;
   joinRequestSubmitting: boolean;
   proofOfWorkModalOpen: boolean;
+  proofOfWorkRetryKey: number;
   setProofOfWorkModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setVerificationChooserModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  verificationChooserModalOpen: boolean;
 }
 
 export function useCommunityMembershipActions({
@@ -65,8 +78,10 @@ export function useCommunityMembershipActions({
   handleClaim,
   handleClaimApi,
   handleClaimCommunityId,
+  handleClaimNamespaceVerificationId,
   handleClaimDismissal,
   handleJoin,
+  hasVerificationChoices = false,
   invalidateCommunityGate,
   onAuthRequired,
   onHandleClaimCheckError,
@@ -76,6 +91,8 @@ export function useCommunityMembershipActions({
   const [joinRequestSubmitting, setJoinRequestSubmitting] = React.useState(false);
   const [joinRequestError, setJoinRequestError] = React.useState<string | null>(null);
   const [proofOfWorkModalOpen, setProofOfWorkModalOpen] = React.useState(false);
+  const [proofOfWorkRetryKey, setProofOfWorkRetryKey] = React.useState(0);
+  const [verificationChooserModalOpen, setVerificationChooserModalOpen] = React.useState(false);
   const [handleClaimModalOpen, setHandleClaimModalOpen] = React.useState(false);
   const previousEligibilityStatusRef = React.useRef<ApiJoinEligibility["status"] | null>(
     eligibility?.status ?? null,
@@ -87,11 +104,14 @@ export function useCommunityMembershipActions({
     }
 
     try {
-      const status = await handleClaimApi.getHandleStatus(handleClaimCommunityId);
+      const selector = {
+        namespaceVerification: handleClaimNamespaceVerificationId,
+      };
+      const status = await handleClaimApi.getHandleStatus(handleClaimCommunityId, selector);
       if (!status.available) {
         return;
       }
-      const current = await handleClaimApi.getMyHandle(handleClaimCommunityId);
+      const current = await handleClaimApi.getMyHandle(handleClaimCommunityId, selector);
       if (!current.handle) {
         setHandleClaimModalOpen(true);
       }
@@ -101,6 +121,7 @@ export function useCommunityMembershipActions({
   }, [
     handleClaimApi,
     handleClaimCommunityId,
+    handleClaimNamespaceVerificationId,
     handleClaimDismissal,
     onHandleClaimCheckError,
     sessionUserId,
@@ -131,6 +152,24 @@ export function useCommunityMembershipActions({
     setJoinRequestModalOpen(true);
   }, []);
 
+  const submitProofOfWork = React.useCallback(async (payload: string) => {
+    const result = await handleJoin({ altchaPayload: payload });
+    if (result === "joined" || result === "requested") {
+      setProofOfWorkModalOpen(false);
+      if (result === "joined") {
+        await maybeOpenHandleClaimModal();
+      }
+      return;
+    }
+    if (result === "failed") {
+      setProofOfWorkRetryKey((current) => current + 1);
+    }
+  }, [handleJoin, maybeOpenHandleClaimModal]);
+
+  const handleProofOfWorkVerified = React.useCallback(async (payload: string) => {
+    await submitProofOfWork(payload);
+  }, [submitProofOfWork]);
+
   const handlePrimaryJoinAction = React.useCallback(async () => {
     if (!sessionUserId && onAuthRequired) {
       onAuthRequired();
@@ -141,7 +180,15 @@ export function useCommunityMembershipActions({
       openJoinRequestModal();
       return;
     }
-    if (altchaRequired && !altchaPayload) {
+    if (altchaRequired && altchaPayload) {
+      await submitProofOfWork(altchaPayload);
+      return;
+    }
+    if (hasVerificationChoices) {
+      setVerificationChooserModalOpen(true);
+      return;
+    }
+    if (altchaRequired) {
       setProofOfWorkModalOpen(true);
       return;
     }
@@ -154,10 +201,12 @@ export function useCommunityMembershipActions({
     altchaRequired,
     eligibility?.status,
     handleJoin,
+    hasVerificationChoices,
     maybeOpenHandleClaimModal,
     onAuthRequired,
     openJoinRequestModal,
     sessionUserId,
+    submitProofOfWork,
   ]);
 
   const handleJoinRequestSubmit = React.useCallback(async (note: string) => {
@@ -203,12 +252,16 @@ export function useCommunityMembershipActions({
       handleClaimNotNow,
       handleJoinRequestModalOpenChange,
       handleJoinRequestSubmit,
+      handleProofOfWorkVerified,
       handlePrimaryJoinAction,
       joinRequestError,
       joinRequestModalOpen,
       joinRequestSubmitting,
       proofOfWorkModalOpen,
+      proofOfWorkRetryKey,
       setProofOfWorkModalOpen,
+      setVerificationChooserModalOpen,
+      verificationChooserModalOpen,
     }),
     [
       handleClaimModalOpen,
@@ -216,11 +269,14 @@ export function useCommunityMembershipActions({
       handleClaimNotNow,
       handleJoinRequestModalOpenChange,
       handleJoinRequestSubmit,
+      handleProofOfWorkVerified,
       handlePrimaryJoinAction,
       joinRequestError,
       joinRequestModalOpen,
       joinRequestSubmitting,
       proofOfWorkModalOpen,
+      proofOfWorkRetryKey,
+      verificationChooserModalOpen,
     ],
   );
 }

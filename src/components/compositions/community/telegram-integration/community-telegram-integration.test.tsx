@@ -1,7 +1,6 @@
 import "@/test/setup-runtime";
 
 import { afterEach, describe, expect, test } from "bun:test";
-import * as React from "react";
 
 import { CommunityTelegramIntegrationPage } from "./community-telegram-integration";
 import { createDefaultTelegramIntegrationSettings } from "./community-telegram-integration.types";
@@ -59,6 +58,54 @@ describe("CommunityTelegramIntegrationPage", () => {
 
     expect(view.getByText(joinUrl)).not.toBeNull();
     expect(view.getByRole("img", { name: "Telegram join QR code" })).not.toBeNull();
+    view.unmount();
+  });
+
+  test("shows BotFather named Mini App instructions for a connected community bot", () => {
+    const settings = createDefaultTelegramIntegrationSettings();
+    const studyMiniAppUrl = "https://pirate.sc/tg/c/com_cmt_test";
+    const view = render(
+      <CommunityTelegramIntegrationPage
+        settings={{
+          ...settings,
+          bot: {
+            ...settings.bot,
+            status: "connected",
+            username: "TeacherBot",
+            webhookStatus: "active",
+          },
+        }}
+        studyMiniAppUrl={studyMiniAppUrl}
+        submitState={{ kind: "idle" }}
+      />,
+    );
+
+    expect(view.getByText("Register this bot's Study Mini App")).not.toBeNull();
+    expect(view.getByText(studyMiniAppUrl)).not.toBeNull();
+    expect(view.getByText(/menu button automatically/)).not.toBeNull();
+    expect(view.getByText(/bot owner, you can access messages and voice recordings/)).not.toBeNull();
+    view.unmount();
+  });
+
+  test("allows refreshing a connected bot when chat settings are pristine and no group chat is linked", () => {
+    const settings = createDefaultTelegramIntegrationSettings();
+    const view = render(
+      <CommunityTelegramIntegrationPage
+        saveDisabled
+        settings={{
+          ...settings,
+          bot: {
+            ...settings.bot,
+            status: "connected",
+            username: "TeacherBot",
+            webhookStatus: "active",
+          },
+        }}
+        submitState={{ kind: "idle" }}
+      />,
+    );
+
+    expect(view.getByRole("button", { name: "Refresh webhook" }).hasAttribute("disabled")).toBe(false);
     view.unmount();
   });
 });

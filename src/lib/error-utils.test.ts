@@ -35,4 +35,28 @@ describe("getErrorMessage", () => {
     expect(getErrorMessage(new Error("Failed to fetch user profile"), fallback)).toBe("Failed to fetch user profile");
     expect(getErrorMessage(new Error("Network routing table is full"), fallback)).toBe("Network routing table is full");
   });
+
+  test("appends a reference to unexpected server failures that carry a request id", () => {
+    const error = Object.assign(new Error("Internal server error"), {
+      status: 500,
+      requestId: "8f3a2b1c9d0e4f5a",
+    });
+
+    expect(getErrorMessage(error, "Fallback")).toBe("Internal server error (ref: 8f3a2b1c9d0e4f5a)");
+  });
+
+  test("does not append references to expected 4xx rejections", () => {
+    const error = Object.assign(new Error("Join this community to comment"), {
+      status: 403,
+      requestId: "8f3a2b1c9d0e4f5a",
+    });
+
+    expect(getErrorMessage(error, "Fallback")).toBe("Join this community to comment");
+  });
+
+  test("omits the reference when a server failure has no request id", () => {
+    const error = Object.assign(new Error("Internal server error"), { status: 500 });
+
+    expect(getErrorMessage(error, "Fallback")).toBe("Internal server error");
+  });
 });

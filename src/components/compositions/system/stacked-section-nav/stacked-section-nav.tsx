@@ -1,20 +1,19 @@
 "use client";
 
-import * as React from "react";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 
 import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 
-export interface StackedSectionNavItem {
+interface StackedSectionNavItem {
   active?: boolean;
   label: string;
   description?: string;
   onSelect?: () => void;
 }
 
-export interface StackedSectionNavSection {
+interface StackedSectionNavSection {
   items: StackedSectionNavItem[];
   label: string;
 }

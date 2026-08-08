@@ -5,6 +5,9 @@ import {
   readTelegramMiniAppStartParam,
   resolveTelegramMiniAppStartPath,
   buildTelegramStartAppHref,
+  buildTelegramCommunityPostPath,
+  buildTelegramStudyStartParam,
+  loadTelegramPostCommunityId,
   resolveTelegramBotUsername,
   resolveTelegramVerifyViewModel,
   telegramVerifyLaunchButtonLabel,
@@ -13,6 +16,7 @@ import {
   telegramVerifyWaitingMessage,
   telegramVerifyWaitingTitle,
   telegramVerifyTerminalMessage,
+  hasOnlyTelegramJoinAltchaRequirement,
 } from "./telegram-mini-app-route";
 
 describe("resolveTelegramMiniAppStartPath", () => {
@@ -40,6 +44,23 @@ describe("resolveTelegramMiniAppStartPath", () => {
     );
   });
 
+  test("round-trips study links with underscore-bearing public IDs", () => {
+    const communityId = "com_cmt_58a12a18213c4bf4a1e6b9343dc3702c";
+    const postId = "pst_cf89c73fe60641debd05c939252a870c";
+    const startParam = buildTelegramStudyStartParam(communityId, postId);
+
+    expect(startParam).toBe(`s_${communityId.length}_${communityId}${postId}`);
+    expect(resolveTelegramMiniAppStartPath(startParam)).toBe(
+      `/tg/c/${communityId}/p/${postId}/study`,
+    );
+  });
+
+  test("rejects malformed study start params", () => {
+    expect(resolveTelegramMiniAppStartPath("s_0_compst_test")).toBeNull();
+    expect(resolveTelegramMiniAppStartPath("s_999_com_testpst_test")).toBeNull();
+    expect(buildTelegramStudyStartParam("com test", "pst_test")).toBeNull();
+  });
+
   test("encodes target payloads without interpreting HNS or space handles", () => {
     expect(resolveTelegramMiniAppStartPath("c_@xn--i77hd")).toBe("/tg/c/%40xn--i77hd");
   });
@@ -49,6 +70,27 @@ describe("resolveTelegramMiniAppStartPath", () => {
     expect(resolveTelegramMiniAppStartPath("")).toBeNull();
     expect(resolveTelegramMiniAppStartPath("community_com_1")).toBeNull();
     expect(resolveTelegramMiniAppStartPath("c_")).toBeNull();
+  });
+});
+
+describe("buildTelegramCommunityPostPath", () => {
+  test("keeps community feed posts inside the Telegram post route", () => {
+    expect(buildTelegramCommunityPostPath("pst_song_with_underscores")).toBe(
+      "/tg/p/pst_song_with_underscores",
+    );
+  });
+});
+
+describe("loadTelegramPostCommunityId", () => {
+  test("derives the community needed for Telegram session exchange from the public post", async () => {
+    const calls: string[] = [];
+    await expect(loadTelegramPostCommunityId({
+      get: async (postId) => {
+        calls.push(postId);
+        return { post: { community: "com_sovereign" } };
+      },
+    }, "pst_deep_link")).resolves.toBe("com_sovereign");
+    expect(calls).toEqual(["pst_deep_link"]);
   });
 });
 
@@ -151,7 +193,39 @@ describe("telegram verification launch copy", () => {
   });
 });
 
+describe("Telegram mini-app ALTCHA routing", () => {
+  test("runs the local proof path only when ALTCHA is the sole missing requirement", () => {
+    const altchaOnly = {
+      status: "verification_required",
+      missing_capabilities: ["altcha_pow"],
+      gate_evaluation: null,
+    } as Parameters<typeof hasOnlyTelegramJoinAltchaRequirement>[0];
+    const composite = {
+      status: "verification_required",
+      missing_capabilities: ["altcha_pow", "unique_human"],
+      gate_evaluation: null,
+    } as Parameters<typeof hasOnlyTelegramJoinAltchaRequirement>[0];
+
+    expect(hasOnlyTelegramJoinAltchaRequirement(altchaOnly)).toBe(true);
+    expect(hasOnlyTelegramJoinAltchaRequirement(composite)).toBe(false);
+  });
+});
+
 describe("telegram verification view model", () => {
+  test("renders multi-provider requirements as a choice instead of progress", () => {
+    expect(resolveTelegramVerifyViewModel({
+      screen: {
+        kind: "choosing_provider",
+        providers: ["self", "zkpassport", "very"],
+      },
+    })).toEqual({
+      busy: false,
+      message: null,
+      showSpinner: false,
+      title: "Choose verification method",
+    });
+  });
+
   test("shows page-level progress while checking the Telegram session", () => {
     expect(resolveTelegramVerifyViewModel({ screen: { kind: "booting" } })).toMatchObject({
       busy: true,

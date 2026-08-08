@@ -1,7 +1,5 @@
 "use client";
 
-import { getErrorMessage } from "@/lib/error-utils";
-import { getAssistantConversation } from "@/lib/chat/chat-assistant-client";
 import type { ChatConversation } from "@/lib/chat/chat-types";
 
 export function sortConversations(conversations: readonly ChatConversation[]): ChatConversation[] {
@@ -43,8 +41,4 @@ export function buildVisibleConversations({
   conversations: readonly ChatConversation[];
 }): ChatConversation[] {
   return [...conversations];
-}
-
-export function assistantConversationForAvailability(): ChatConversation {
-  return getAssistantConversation();
 }

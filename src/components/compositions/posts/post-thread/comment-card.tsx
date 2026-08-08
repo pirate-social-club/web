@@ -65,7 +65,7 @@ export interface CommentCardProps {
   canDelete?: boolean;
   deleteActionLabel?: string;
   onDelete?: () => void;
-  onVote?: (direction: "up" | "down") => void;
+  onVote?: (direction: "up" | "down") => Promise<void> | void;
   showOriginalLabel?: string;
   showTranslationLabel?: string;
   replyActionLabel?: string;
@@ -80,6 +80,7 @@ export interface CommentCardProps {
     identityMode?: PostThreadIdentityMode;
   }) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
   onReplyRequest?: () => void;
+  onReplyIntent?: () => void;
   replyIdentity?: PostThreadReplyIdentity;
   avatarClassName?: string;
   className?: string;
@@ -113,6 +114,7 @@ export function CommentCard({
   submitReplyLabel,
   onReplySubmit,
   onReplyRequest,
+  onReplyIntent,
   replyIdentity,
   avatarClassName,
   className,
@@ -125,6 +127,7 @@ export function CommentCard({
   const [replyAttachment, setReplyAttachment] = React.useState<PostThreadReplyAttachment | null>(null);
   const [replyIdentityMode, setReplyIdentityMode] = React.useState<PostThreadIdentityMode>("public");
   const [replyBusy, setReplyBusy] = React.useState(false);
+  const replyBusyRef = React.useRef(false);
   const replyContainerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -149,15 +152,16 @@ export function CommentCard({
   const canSubmitReply = Boolean(replyBody.trim() || replyAttachment);
   const handleVote = React.useCallback((direction: "up" | "down" | null) => {
     if (direction) {
-      onVote?.(direction);
+      return onVote?.(direction);
     }
   }, [onVote]);
 
   const handleReplySubmit = React.useCallback(async () => {
     const trimmed = replyBody.trim();
-    if (!canSubmitReply || !onReplySubmit) {
+    if (!canSubmitReply || !onReplySubmit || replyBusyRef.current) {
       return;
     }
+    replyBusyRef.current = true;
     try {
       setReplyBusy(true);
       const result = await onReplySubmit({
@@ -175,6 +179,7 @@ export function CommentCard({
       setReplyIdentityMode("public");
       setReplyOpen(false);
     } finally {
+      replyBusyRef.current = false;
       setReplyBusy(false);
     }
   }, [canSubmitReply, onReplySubmit, replyAttachment, replyBody, replyIdentity?.anonymousScope, replyIdentityMode]);
@@ -267,6 +272,7 @@ export function CommentCard({
               className="inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-muted-foreground transition-colors hover:bg-muted-foreground/10 hover:text-foreground"
               onClick={() => {
                 triggerCommentTapHaptic();
+                onReplyIntent?.();
                 if (onReplyRequest) {
                   onReplyRequest();
                 } else {

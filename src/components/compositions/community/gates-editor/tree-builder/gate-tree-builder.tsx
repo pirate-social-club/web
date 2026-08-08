@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { GateAtom, GateExpression } from "@pirate/api-contracts";
+import type { GateAtom } from "@pirate/api-contracts";
 import { Plus, Trash, X } from "@phosphor-icons/react";
 
 import { NationalityMultiPicker } from "@/components/compositions/community/create-composer/nationality-picker";
@@ -19,6 +19,7 @@ import {
 import {
   captchaAloneAdmits,
   gateAssetMinimum,
+  withGateAssetMinimum,
   GATE_POLICY_MAX_ATOMS,
   GATE_POLICY_MAX_DEPTH,
   getGateBuilderBudget,
@@ -43,24 +44,40 @@ import {
 import { Chip } from "@/components/primitives/chip";
 import { validateGateAtom } from "@/lib/gate-atom-validation";
 import type { GateAtomValidationError } from "@/lib/gate-atom-validation";
+import { normalizeInventoryText } from "@/lib/gate-inventory-validation";
 import { interpolateMessage } from "@/lib/route-messages";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
+import { formatAssetAmount, parseAssetAmount } from "@/lib/asset-amount";
 import { getLocaleMessages } from "@/locales";
 import type {
   AssetSourceDescriptor,
   CollectionCapabilitySource,
   FacetValueSuggestion,
+  InventoryFacetMatch,
+  InventoryFacetValue,
 } from "./collection-capability-source";
 import { replaceEditableFacet } from "./collection-capability-source";
+import type { GateCapabilitySources } from "./gate-capability-sources";
+import type { AssetCapabilityDescriptor, AssetCapabilitySource } from "./asset-capability-source";
 
 export type GateTreeBuilderProps = {
-  capabilitySource?: CollectionCapabilitySource;
+  capabilities?: GateCapabilitySources;
   className?: string;
+  /**
+   * When true (per-name claim rules), facet value pickers offer a "claimed name"
+   * binding that serializes as the literal {label} placeholder, resolved by the
+   * API against the name being claimed.
+   */
+  labelBindingEnabled?: boolean;
   onChange: (value: GateBuilderGroupDraft) => void;
   showHeader?: boolean;
   value: GateBuilderGroupDraft;
 };
+
+const GATE_LABEL_BINDING_PLACEHOLDER = "{label}";
+
+const LabelBindingContext = React.createContext(false);
 
 type TreeBuilderCopy = ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
 
@@ -70,6 +87,7 @@ function validationMessage(copy: TreeBuilderCopy, error: GateAtomValidationError
 
 type RuleKind =
   | "altcha_pow"
+  | "asset_balance"
   | "erc721_holding"
   | "gender"
   | "minimum_age"
@@ -106,7 +124,7 @@ function RuleToken({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function GateTreeBuilder({ capabilitySource, className, onChange, showHeader = true, value }: GateTreeBuilderProps) {
+export function GateTreeBuilder({ capabilities, className, labelBindingEnabled = false, onChange, showHeader = true, value }: GateTreeBuilderProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "gates").treeBuilder;
   const policy = serializeGateBuilderTreeDraft(value);
@@ -128,15 +146,6 @@ export function GateTreeBuilder({ capabilitySource, className, onChange, showHea
         <h1 className="text-3xl font-semibold tracking-normal">{copy.title}</h1>
       ) : null}
 
-      <div className="rounded-[var(--radius-lg)] border border-border bg-card p-4">
-        <div className="mb-2 text-base font-semibold uppercase tracking-wide text-muted-foreground">{copy.liveSummaryTitle}</div>
-        {policy ? (
-          <GateSummaryTree copy={copy} expression={policy.expression as GateExpression} isRoot />
-        ) : (
-          <p className="text-base leading-7 text-muted-foreground">{copy.emptySummary}</p>
-        )}
-      </div>
-
       {shouldShowComplexityWarning ? (
         <div className="rounded-[var(--radius-lg)] border border-warning/40 bg-warning/10 p-3 text-base text-warning">
           {addRuleDisabled || addGroupDisabled
@@ -154,53 +163,18 @@ export function GateTreeBuilder({ capabilitySource, className, onChange, showHea
         </div>
       ) : null}
 
-      <GateGroupEditor addGroupDisabled={addGroupDisabled} addRuleDisabled={addRuleDisabled} capabilitySource={capabilitySource} copy={copy} group={value} isRoot onChange={applyValidChange} />
+      <LabelBindingContext.Provider value={labelBindingEnabled}>
+        <GateGroupEditor addGroupDisabled={addGroupDisabled} addRuleDisabled={addRuleDisabled} capabilities={capabilities} copy={copy} group={value} isRoot onChange={applyValidChange} />
+      </LabelBindingContext.Provider>
 
     </section>
-  );
-}
-
-/**
- * Renders the expression as an indented ALL-of / ANY-of checklist.
- *
- * A flat sentence ("a and (b or c or d)") collapses the tree into parentheses and stops being
- * readable past one level of nesting.
- */
-function GateSummaryTree({ copy, expression, isRoot = false }: {
-  copy: TreeBuilderCopy;
-  expression: GateExpression;
-  isRoot?: boolean;
-}) {
-  const node = expression as { children?: GateExpression[]; gate?: GateAtom; op: string };
-
-  if (node.op === "gate" && node.gate) {
-    return <span className="text-base leading-7">{describeGate(node.gate)}</span>;
-  }
-
-  const children = node.children ?? [];
-  const groupLabel = node.op === "or" ? copy.summaryAnyOf : copy.summaryAllOf;
-
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-baseline gap-2 text-base">
-        {isRoot ? <span className="text-muted-foreground">{copy.summaryIntro}</span> : null}
-        <span className="font-semibold uppercase tracking-wide text-foreground">{groupLabel}</span>
-      </div>
-      <ul className="flex list-none flex-col gap-1 border-s border-border-soft ps-4">
-        {children.map((child, index) => (
-          <li className="text-base leading-7" key={index}>
-            <GateSummaryTree copy={copy} expression={child} />
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 
 function GateGroupEditor({
   addGroupDisabled,
   addRuleDisabled,
-  capabilitySource,
+  capabilities,
   copy,
   group,
   isRoot = false,
@@ -209,7 +183,7 @@ function GateGroupEditor({
 }: {
   addGroupDisabled: boolean;
   addRuleDisabled: boolean;
-  capabilitySource?: CollectionCapabilitySource;
+  capabilities?: GateCapabilitySources;
   copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
   group: GateBuilderGroupDraft;
   isRoot?: boolean;
@@ -253,7 +227,7 @@ function GateGroupEditor({
           <GateGroupEditor
             addGroupDisabled={addGroupDisabled}
             addRuleDisabled={addRuleDisabled}
-            capabilitySource={capabilitySource}
+            capabilities={capabilities}
             copy={copy}
             group={child}
             key={index}
@@ -262,7 +236,7 @@ function GateGroupEditor({
           />
         ) : (
           <GateRuleRow
-            capabilitySource={capabilitySource}
+            capabilities={capabilities}
             copy={copy}
             key={index}
             onChange={(updated) => updateChild(index, updated)}
@@ -275,13 +249,14 @@ function GateGroupEditor({
   );
 }
 
-function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
-  capabilitySource?: CollectionCapabilitySource;
+function GateRuleRow({ capabilities, copy, onChange, onRemove, rule }: {
+  capabilities?: GateCapabilitySources;
   copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
   onChange: (value: GateBuilderRuleDraft) => void;
   onRemove: () => void;
   rule: GateBuilderRuleDraft;
 }) {
+  const capabilitySource = capabilities?.collections;
   const kind = getRuleKind(rule.gate);
   const operator = operatorLabel(copy, rule.gate);
   const hasOperator = operator != null;
@@ -346,6 +321,18 @@ function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
     </Button>
   );
 
+  if (kind === "asset_balance") {
+    return (
+      <AssetBalanceRuleEditor
+        actions={removeButton}
+        capabilitySource={capabilities?.assets}
+        copy={copy}
+        gate={rule.gate}
+        onChange={(gate) => onChange({ ...rule, gate: preserveGateIdentity(rule.gate, gate) })}
+      />
+    );
+  }
+
   if (kind === "erc721_holding") {
     return (
       <div className={cn(RULE_CARD, "flex flex-col gap-1", invalidCard)}>
@@ -356,7 +343,7 @@ function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
           gate={rule.gate}
           kindSelect={<RuleKindSelect copy={copy} value={kind} onChange={(nextKind) => onChange({ ...rule, gate: defaultGateForKind(nextKind) })} />}
           operator={operator ?? copy.operators.holdsOneFrom}
-          onChange={(gate) => onChange({ ...rule, gate })}
+          onChange={(gate) => onChange({ ...rule, gate: preserveGateIdentity(rule.gate, gate) })}
         />
         {errorLine}
       </div>
@@ -371,7 +358,7 @@ function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
         </div>
         {hasOperator ? <RuleToken>{operator}</RuleToken> : null}
         <div className="min-w-0 flex-1">
-          <RuleValueEditor capabilitySource={capabilitySource} copy={copy} gate={rule.gate} onChange={(gate) => onChange({ ...rule, gate })} />
+          <RuleValueEditor capabilitySource={capabilitySource} copy={copy} gate={rule.gate} onChange={(gate) => onChange({ ...rule, gate: preserveGateIdentity(rule.gate, gate) })} />
         </div>
         {removeButton}
       </div>
@@ -380,7 +367,128 @@ function GateRuleRow({ capabilitySource, copy, onChange, onRemove, rule }: {
   );
 }
 
-function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
+function AssetBalanceRuleEditor({ actions, capabilitySource, copy, gate, onChange }: {
+  actions: React.ReactNode;
+  capabilitySource?: AssetCapabilitySource;
+  copy: TreeBuilderCopy;
+  gate: GateAtom;
+  onChange: (gate: GateAtom) => void;
+}) {
+  const [assets, setAssets] = React.useState<AssetCapabilityDescriptor[] | null>(null);
+  const [loadFailed, setLoadFailed] = React.useState(false);
+  const selected = assets?.find((asset) => asset.assetId === gate.asset_id) ?? null;
+  const formatted = selected && typeof gate.min_amount_atomic === "string"
+    ? formatAssetAmount(gate.min_amount_atomic, selected.decimals)
+    : null;
+  const [amount, setAmount] = React.useState(formatted ?? "");
+
+  React.useEffect(() => {
+    let active = true;
+    setAssets(null);
+    setLoadFailed(false);
+    if (!capabilitySource) {
+      setLoadFailed(true);
+      return () => { active = false; };
+    }
+    void capabilitySource.listAssets()
+      .then((nextAssets) => {
+        if (!active) return;
+        setAssets(nextAssets);
+      })
+      .catch(() => {
+        if (!active) return;
+        setLoadFailed(true);
+      });
+    return () => { active = false; };
+  }, [capabilitySource]);
+
+  React.useEffect(() => {
+    if (formatted != null) setAmount(formatted);
+  }, [formatted]);
+
+  React.useEffect(() => {
+    if (!assets?.length || gate.asset_id) return;
+    const first = assets[0];
+    const parsed = parseAssetAmount("1", first.decimals);
+    if (parsed.ok) {
+      onChange({ type: "asset_balance", asset_id: first.assetId, min_amount_atomic: parsed.atomic });
+    }
+  }, [assets, gate.asset_id, onChange]);
+
+  const updateAmount = (nextAmount: string, asset: AssetCapabilityDescriptor) => {
+    setAmount(nextAmount);
+    const parsed = parseAssetAmount(nextAmount, asset.decimals);
+    onChange({
+      type: "asset_balance",
+      asset_id: asset.assetId,
+      min_amount_atomic: parsed.ok ? parsed.atomic : "",
+    });
+  };
+
+  if (loadFailed || (assets && !selected)) {
+    return (
+      <div className={cn(RULE_CARD, "flex items-center gap-2 px-3")}>
+        <div className="min-w-0 flex-1">
+          <div className="text-base font-medium">{copy.requirementTypes.assetBalance}</div>
+          <div className="truncate text-base text-muted-foreground">
+            {interpolateMessage(copy.assets.unavailableReadOnly, { asset: gate.asset_id ?? copy.assets.unknownAsset })}
+          </div>
+        </div>
+        {actions}
+      </div>
+    );
+  }
+
+  if (!assets || !selected) {
+    return (
+      <div className={cn(RULE_CARD, "flex items-center gap-2 px-3 text-base text-muted-foreground")}>
+        <span className="flex-1">{copy.assets.loading}</span>
+        {actions}
+      </div>
+    );
+  }
+
+  const parsedAmount = parseAssetAmount(amount, selected.decimals);
+  const amountError = parsedAmount.ok
+    ? null
+    : parsedAmount.error === "precision"
+      ? interpolateMessage(copy.assets.precisionError, { decimals: String(selected.decimals) })
+      : copy.assets.amountError;
+
+  return (
+    <div className={cn(RULE_CARD, "flex flex-col gap-1", amountError && "border-destructive/50")}>
+      <div className={RULE_LINE}>
+        <div className={RULE_KIND_COL}>
+          <RuleKindSelect copy={copy} value="asset_balance" onChange={(nextKind) => onChange(defaultGateForKind(nextKind))} />
+        </div>
+        <RuleToken>{copy.operators.holdsAtLeast}</RuleToken>
+        <Input
+          aria-label={copy.inputs.minimumAssetBalance}
+          className="max-w-48"
+          inputMode="decimal"
+          onInput={(event) => updateAmount(event.currentTarget.value, selected)}
+          value={amount}
+        />
+        <Select
+          value={selected.assetId}
+          onValueChange={(assetId: string) => {
+            const nextAsset = assets.find((asset) => asset.assetId === assetId);
+            if (nextAsset) updateAmount(amount, nextAsset);
+          }}
+        >
+          <SelectTrigger aria-label={copy.inputs.asset}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {assets.map((asset) => <SelectItem key={asset.assetId} value={asset.assetId}>{asset.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {actions}
+      </div>
+      {amountError ? <p className="text-base text-destructive" role="alert">{amountError}</p> : null}
+    </div>
+  );
+}
+
+function RuleValueEditor({ capabilitySource: _capabilitySource, copy, gate, onChange }: {
   capabilitySource?: CollectionCapabilitySource;
   copy: ReturnType<typeof getLocaleMessages<"gates">>["treeBuilder"];
   gate: GateAtom;
@@ -397,6 +505,14 @@ function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
             onClick={() => onChange({ type: "unique_human", provider: "self" })}
           >
             {copy.providers.self}
+          </Chip>
+          <Chip
+            aria-pressed={gate.provider === "zkpassport"}
+            className="h-11 px-4"
+            variant={gate.provider === "zkpassport" ? "active" : "outline"}
+            onClick={() => onChange({ type: "unique_human", provider: "zkpassport" })}
+          >
+            {copy.providers.zkpassport}
           </Chip>
           <Chip
             aria-pressed={gate.provider === "very"}
@@ -444,6 +560,7 @@ function RuleValueEditor({ capabilitySource, copy, gate, onChange }: {
       );
     case "erc721_holding":
     case "erc721_inventory_match":
+    case "asset_balance":
       return null;
     case "minimum_age":
       return (
@@ -517,7 +634,7 @@ function NftHoldingEditor({
     };
   }, [capabilitySource]);
 
-  const match = isInventoryMatchGate(gate) ? normalizeStringMatch(gate.match) : {};
+  const match = isInventoryMatchGate(gate) ? inventoryFacetMatch(gate.match) : {};
   const selectedSource = sources.find((source) => sourceMatchesGate(source, gate, match));
   const traitKeys = selectedSource?.traitFiltersSupported
     ? Array.from(new Set([
@@ -526,15 +643,59 @@ function NftHoldingEditor({
     ]))
     : [];
 
+  // A persisted inventory atom is meaningful only through the source descriptor that owns its
+  // fixed match and provider semantics. If that source is missing (including while loading or on
+  // provider failure), converting edits into a plain holding atom would silently discard traits.
+  if (isInventoryMatchGate(gate) && !selectedSource) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className={cn(RULE_LINE, "gap-2")}>
+          <RuleToken>{copy.requirementTypes.nftHolding}</RuleToken>
+          <RuleToken>{copy.operators.holds}</RuleToken>
+          <Input
+            aria-label={copy.inputs.minimumNftQuantity}
+            className="w-20 shrink-0"
+            disabled
+            value={gateAssetMinimum(gate)}
+          />
+          <RuleToken>{copy.operators.from}</RuleToken>
+          <Input
+            aria-label={copy.inputs.nftContractAddress}
+            className="min-w-0 flex-1"
+            disabled
+            value={getGateContractAddress(gate)}
+          />
+          {actions}
+        </div>
+        <p className="text-base text-muted-foreground">{copy.unsupportedAtom}</p>
+      </div>
+    );
+  }
+
   if (!capabilitySource) {
+    const quantity = gateAssetMinimum(gate);
     return (
       <div className={cn(RULE_LINE, "gap-2")}>
         <div className={RULE_KIND_COL}>{kindSelect}</div>
         <RuleToken>{operator}</RuleToken>
+        <Input
+          aria-label={copy.inputs.minimumNftQuantity}
+          className="w-20 shrink-0"
+          max={100}
+          min={1}
+          onChange={(event) => onChange(withGateAssetMinimum({
+            type: "erc721_holding",
+            chain_namespace: "eip155:1",
+            contract_address: getGateContractAddress(gate),
+          }, Number.parseInt(event.currentTarget.value || "1", 10)))}
+          type="number"
+          value={quantity}
+        />
+        <RuleToken>{copy.operators.from}</RuleToken>
         <div className="min-w-0 flex-1">
           <Input
             aria-label={copy.inputs.nftContractAddress}
-            onChange={(event) => onChange({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: event.currentTarget.value })}
+            onChange={(event) => onChange(withGateAssetMinimum({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: event.currentTarget.value }, quantity))}
             value={getGateContractAddress(gate)}
           />
         </div>
@@ -557,27 +718,38 @@ function NftHoldingEditor({
       } as GateAtom);
       return;
     }
-    onChange({
+    onChange(withGateAssetMinimum({
       type: "erc721_holding",
       chain_namespace: source.chainNamespace,
       contract_address: source.contractAddress,
-    });
+    }, isInventoryMatchGate(gate) ? gate.min_quantity ?? 1 : gateAssetMinimum(gate)));
   };
 
   const pasteAddress = (contractAddress: string) => {
-    onChange({ type: "erc721_holding", chain_namespace: "eip155:1", contract_address: contractAddress });
+    onChange(withGateAssetMinimum({
+      type: "erc721_holding",
+      chain_namespace: "eip155:1",
+      contract_address: contractAddress,
+    }, gateAssetMinimum(gate)));
   };
 
-  const updateFacet = (facetKey: string, value: string) => {
+  const updateFacet = (facetKey: string, values: string[]) => {
     if (!selectedSource?.inventoryProvider) return;
     setPendingFacetKeys((current) => current.filter((key) => key !== facetKey));
+    const nextMatch = { ...selectedSource.fixedMatch, ...match };
+    const value = serializeFacetSelection(values, selectedSource.maxValuesPerFacet);
+    if (value == null) {
+      delete nextMatch[facetKey];
+    } else {
+      nextMatch[facetKey] = value;
+    }
     onChange({
       type: "erc721_inventory_match",
       provider: selectedSource.inventoryProvider,
       chain_namespace: selectedSource.chainNamespace,
       contract_address: selectedSource.contractAddress,
       min_quantity: isInventoryMatchGate(gate) ? gate.min_quantity ?? 1 : 1,
-      match: { ...selectedSource.fixedMatch, ...match, [facetKey]: value },
+      match: nextMatch,
     } as GateAtom);
   };
 
@@ -602,11 +774,11 @@ function NftHoldingEditor({
         } as GateAtom);
         return;
       }
-      onChange({
+      onChange(withGateAssetMinimum({
         type: "erc721_holding",
         chain_namespace: selectedSource.chainNamespace,
         contract_address: selectedSource.contractAddress,
-      });
+      }, gateAssetMinimum(gate)));
       return;
     }
     onChange({
@@ -636,14 +808,16 @@ function NftHoldingEditor({
   const addableFacetKeys = selectedSource?.traitFiltersSupported
     ? selectedSource.facetKeys.filter((key) => !(key in match) && !(key in (selectedSource.fixedMatch ?? {})) && !pendingFacetKeys.includes(key))
     : [];
-  const currentQuantity = isInventoryMatchGate(gate) ? gate.min_quantity ?? 1 : 1;
-  const quantitySupported = selectedSource?.minQuantitySupported === true && isInventoryMatchGate(gate);
+  const currentQuantity = gateAssetMinimum(gate);
+  const quantitySupported = gate.type === "erc721_holding"
+    || (selectedSource?.minQuantitySupported === true && isInventoryMatchGate(gate));
   const updateQuantity = (quantity: number) => {
-    if (!selectedSource?.inventoryProvider || !isInventoryMatchGate(gate)) return;
-    onChange({
-      ...gate,
-      min_quantity: Math.min(100, Math.max(1, quantity)),
-    } as GateAtom);
+    const nextQuantity = Math.min(100, Math.max(1, quantity));
+    if (gate.type === "erc721_holding") {
+      onChange(withGateAssetMinimum(gate, nextQuantity));
+    } else if (selectedSource?.inventoryProvider && isInventoryMatchGate(gate)) {
+      onChange({ ...gate, min_quantity: nextQuantity } as GateAtom);
+    }
   };
 
   return (
@@ -747,9 +921,9 @@ function NftHoldingEditor({
                   facetLabel={formatSourceFacetKey(selectedSource, facetKey)}
                   copy={copy}
                   maxValues={selectedSource.maxValuesPerFacet}
-                  onChange={(value) => updateFacet(facetKey, value)}
+                  onChange={(values) => updateFacet(facetKey, values)}
                   source={selectedSource}
-                  value={match[facetKey] ? [{ value: match[facetKey]! }] : []}
+                  value={facetValueSuggestions(match[facetKey])}
                 />
               </div>
               <Button aria-label={copy.sources.removeAttribute} className="ms-auto shrink-0 md:ms-0" size="icon" variant="ghost" onClick={() => removeFacet(facetKey)}>
@@ -789,42 +963,65 @@ function FacetValuePicker({
   facetKey: string;
   facetLabel: string;
   maxValues: number;
-  onChange: (value: string) => void;
+  onChange: (values: string[]) => void;
   source: AssetSourceDescriptor;
   value: FacetValueSuggestion[];
 }) {
+  const labelBindingEnabled = React.useContext(LabelBindingContext);
   const [options, setOptions] = React.useState<FacetValueSuggestion[]>([]);
   const [optionsLoadFailed, setOptionsLoadFailed] = React.useState(false);
+  const [optionsLoading, setOptionsLoading] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const [retryAttempt, setRetryAttempt] = React.useState(0);
+  const requestGenerationRef = React.useRef(0);
+  const bindingLabel = copy.sources.claimedNameOption;
+  const bindingSelected = value.some((option) => option.value === GATE_LABEL_BINDING_PLACEHOLDER);
+  const bindingVisible = labelBindingEnabled
+    && !bindingSelected
+    && (query.trim().length === 0 || bindingLabel.toLowerCase().includes(query.trim().toLowerCase()));
+  const visibleOptions = bindingVisible
+    ? [{ value: GATE_LABEL_BINDING_PLACEHOLDER }, ...options.filter((option) => option.value !== GATE_LABEL_BINDING_PLACEHOLDER)]
+    : options;
   React.useEffect(() => {
+    const generation = ++requestGenerationRef.current;
     let cancelled = false;
-    setOptionsLoadFailed(false);
-    void capabilitySource.searchFacetValues(source.id, facetKey, "")
-      .then((suggestions) => {
-        if (!cancelled) {
-          setOptions(suggestions);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setOptions([]);
-          setOptionsLoadFailed(true);
-        }
-      });
+    const timeoutId = globalThis.setTimeout(() => {
+      setOptionsLoadFailed(false);
+      setOptionsLoading(true);
+      void capabilitySource.searchFacetValues(source.id, facetKey, query)
+        .then((suggestions) => {
+          if (!cancelled && requestGenerationRef.current === generation) {
+            setOptions(suggestions);
+          }
+        })
+        .catch(() => {
+          if (!cancelled && requestGenerationRef.current === generation) {
+            setOptions([]);
+            setOptionsLoadFailed(true);
+          }
+        })
+        .finally(() => {
+          if (!cancelled && requestGenerationRef.current === generation) {
+            setOptionsLoading(false);
+          }
+        });
+    }, query ? 250 : 0);
     return () => {
       cancelled = true;
+      globalThis.clearTimeout(timeoutId);
     };
-  }, [capabilitySource, facetKey, source.id]);
+  }, [capabilitySource, facetKey, query, retryAttempt, source.id]);
 
   return (
     <Combobox<FacetValueSuggestion, true>
       multiple
       autoHighlight
-      items={options}
-      itemToStringLabel={(option) => option.value}
+      items={visibleOptions}
+      itemToStringLabel={(option) => option.value === GATE_LABEL_BINDING_PLACEHOLDER ? bindingLabel : option.value}
       itemToStringValue={(option) => option.value}
+      onInputValueChange={setQuery}
       onValueChange={(nextValue) => {
-        const selected = nextValue.slice(-Math.max(1, maxValues))[0];
-        onChange(selected?.value ?? "");
+        onChange(nextValue.slice(0, facetSelectionLimit(maxValues)).map((option) => option.value));
       }}
       value={value.filter((option) => option.value.length > 0)}
     >
@@ -833,7 +1030,9 @@ function FacetValuePicker({
           {(selectedOptions) => (
             <>
               {selectedOptions.map((option: FacetValueSuggestion) => (
-                <ComboboxChip className={CHIPS_CHIP} key={option.value}>{option.value}</ComboboxChip>
+                <ComboboxChip className={CHIPS_CHIP} key={option.value}>
+                  {option.value === GATE_LABEL_BINDING_PLACEHOLDER ? bindingLabel : option.value}
+                </ComboboxChip>
               ))}
               <ComboboxChipsInput
                 aria-label={interpolateMessage(copy.sources.searchFacet, { facet: facetLabel })}
@@ -845,13 +1044,26 @@ function FacetValuePicker({
         </ComboboxValue>
       </ComboboxChips>
       <ComboboxContent>
-        <ComboboxEmpty>{optionsLoadFailed ? copy.sources.facetLoadError : copy.sources.noValues}</ComboboxEmpty>
+        <ComboboxEmpty>
+          {optionsLoadFailed ? (
+            <span className="flex items-center justify-between gap-3">
+              <span>{copy.sources.facetLoadError}</span>
+              <Button size="sm" variant="ghost" onClick={() => setRetryAttempt((attempt) => attempt + 1)}>
+                {copy.sources.retry}
+              </Button>
+            </span>
+          ) : optionsLoading ? copy.sources.facetLoading : copy.sources.noValues}
+        </ComboboxEmpty>
         <ComboboxList className="py-0">
           {(option) => (
             <ComboboxItem key={option.value} value={option}>
               <div className="flex w-full items-center justify-between gap-4">
-                <span className="text-base font-medium">{option.value}</span>
-                {option.approximateCount != null ? (
+                <span className="text-base font-medium">
+                  {option.value === GATE_LABEL_BINDING_PLACEHOLDER ? bindingLabel : option.value}
+                </span>
+                {option.value === GATE_LABEL_BINDING_PLACEHOLDER ? (
+                  <span className="text-base text-muted-foreground">{copy.sources.claimedNameHint}</span>
+                ) : option.approximateCount != null ? (
                   <span className="text-base text-muted-foreground">
                     {interpolateMessage(copy.sources.matches, { count: option.approximateCount.toLocaleString() })}
                   </span>
@@ -865,7 +1077,7 @@ function FacetValuePicker({
   );
 }
 
-function sourceMatchesGate(source: AssetSourceDescriptor, gate: GateAtom, match: Record<string, string>) {
+function sourceMatchesGate(source: AssetSourceDescriptor, gate: GateAtom, match: InventoryFacetMatch) {
   if (
     source.chainNamespace !== getGateChainNamespace(gate)
     || source.contractAddress.toLowerCase() !== getGateContractAddress(gate).toLowerCase()
@@ -878,7 +1090,7 @@ function sourceMatchesGate(source: AssetSourceDescriptor, gate: GateAtom, match:
   if (!isInventoryMatchGate(gate)) {
     return false;
   }
-  return Object.entries(source.fixedMatch ?? {}).every(([key, value]) => match[key] === value);
+  return Object.entries(source.fixedMatch ?? {}).every(([key, value]) => facetValuesEqual(match[key], value));
 }
 
 function formatSourceFacetKey(source: AssetSourceDescriptor, key: string) {
@@ -913,6 +1125,7 @@ function RuleKindSelect({ copy, onChange, value }: {
         <SelectItem value="unique_human">{copy.requirementTypes.humanVerification}</SelectItem>
         <SelectItem value="altcha_pow">{copy.requirementTypes.browserChallenge}</SelectItem>
         <SelectItem value="wallet_score">{copy.requirementTypes.passportScore}</SelectItem>
+        <SelectItem value="asset_balance">{copy.requirementTypes.assetBalance}</SelectItem>
         <SelectItem value="erc721_holding">{copy.requirementTypes.nftHolding}</SelectItem>
         <SelectItem value="gender">{copy.requirementTypes.documentSexMarker}</SelectItem>
         <SelectItem value="nationality">{copy.requirementTypes.nationality}</SelectItem>
@@ -923,28 +1136,39 @@ function RuleKindSelect({ copy, onChange, value }: {
 }
 
 function defaultRule(): GateBuilderRuleDraft {
-  return { kind: "rule", gate: { type: "unique_human", provider: "self" } };
+  return { kind: "rule", gate: { gate_id: createGateId(), type: "unique_human", provider: "self" } };
 }
 
 function defaultGateForKind(kind: RuleKind): GateAtom {
+  const identity = { gate_id: createGateId() };
   switch (kind) {
     case "altcha_pow":
-      return { type: "altcha_pow" };
+      return { ...identity, type: "altcha_pow" };
     case "erc721_holding":
-      return { type: "erc721_holding", chain_namespace: "eip155:1", contract_address: DEFAULT_CONTRACT };
+      return { ...identity, type: "erc721_holding", chain_namespace: "eip155:1", contract_address: DEFAULT_CONTRACT };
+    case "asset_balance":
+      return { ...identity, type: "asset_balance", asset_id: "", min_amount_atomic: "" };
     case "minimum_age":
-      return { type: "minimum_age", provider: "self", minimum_age: 18 };
+      return { ...identity, type: "minimum_age", provider: "self", minimum_age: 18 };
     case "gender":
-      return { type: "gender", provider: "self", accepted_providers: ["self", "zkpassport"], allowed: ["F"] };
+      return { ...identity, type: "gender", provider: "self", accepted_providers: ["self", "zkpassport"], allowed: ["F"] };
     case "nationality":
-      return { type: "nationality", provider: "self", accepted_providers: ["self", "zkpassport"], allowed: [] };
+      return { ...identity, type: "nationality", provider: "self", accepted_providers: ["self", "zkpassport"], allowed: [] };
     case "wallet_score":
-      return { type: "wallet_score", provider: "passport", minimum_score: 20 };
+      return { ...identity, type: "wallet_score", provider: "passport", minimum_score: 20 };
     case "unique_human":
     case "unknown":
     default:
-      return { type: "unique_human", provider: "self" };
+      return { ...identity, type: "unique_human", provider: "self" };
   }
+}
+
+function createGateId(): string {
+  return `gate_${crypto.randomUUID().replaceAll("-", "")}`;
+}
+
+function preserveGateIdentity(current: GateAtom, next: GateAtom): GateAtom {
+  return current.gate_id ? { ...next, gate_id: current.gate_id } : next;
 }
 
 function getRuleKind(gate: GateAtom): RuleKind {
@@ -952,6 +1176,7 @@ function getRuleKind(gate: GateAtom): RuleKind {
     case "erc721_inventory_match":
       return "erc721_holding";
     case "altcha_pow":
+    case "asset_balance":
     case "erc721_holding":
     case "gender":
     case "minimum_age":
@@ -972,6 +1197,8 @@ function operatorLabel(copy: ReturnType<typeof getLocaleMessages<"gates">>["tree
       return null;
     case "wallet_score":
       return copy.operators.atLeast;
+    case "asset_balance":
+      return copy.operators.holdsAtLeast;
     case "erc721_holding":
     case "erc721_inventory_match":
       return copy.operators.holdsOneFrom;
@@ -984,35 +1211,6 @@ function operatorLabel(copy: ReturnType<typeof getLocaleMessages<"gates">>["tree
     default:
       return copy.operators.matches;
   }
-}
-
-function describeGate(gate: GateAtom): string {
-  switch (gate.type) {
-    case "unique_human":
-      return gate.provider === "very" ? "prove human with Very palm scan" : "prove human with Self.xyz";
-    case "altcha_pow":
-      return "complete browser challenge";
-    case "wallet_score":
-      return `have Passport score at least ${gate.minimum_score ?? 0}`;
-    case "erc721_holding":
-      return `hold at least ${gateAssetMinimum(gate)} NFT${gateAssetMinimum(gate) === 1 ? "" : "s"} from ${shortAddress(gate.contract_address ?? "")}`;
-    case "nationality":
-      return gate.allowed?.length
-        ? `prove nationality ${gate.allowed.join("/")}`
-        : "prove any verified nationality";
-    case "gender":
-      return `match document sex marker ${gate.allowed?.[0] ?? "(choose marker)"}`;
-    case "minimum_age":
-      return `prove age at least ${gate.minimum_age ?? 18}`;
-    case "erc721_inventory_match":
-      return `hold ${courtyardInventorySummary(gate)}`;
-    default:
-      return "satisfy an unrecognized requirement";
-  }
-}
-
-function shortAddress(value: string): string {
-  return value.length > 12 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value || "(contract)";
 }
 
 function isCourtyardInventoryMatchGate(gate: GateAtom): gate is GateAtom & {
@@ -1047,14 +1245,54 @@ function getGateContractAddress(gate: GateAtom): string {
   return "";
 }
 
-function normalizeStringMatch(match: Record<string, unknown> | undefined): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(match ?? {})
-      .flatMap(([key, value]) => {
-        const stringValue = stringifyFacetValue(value);
-        return stringValue == null || stringValue.trim().length === 0 ? [] : [[key, stringValue]];
-      }),
-  );
+function inventoryFacetMatch(match: Record<string, unknown> | undefined): InventoryFacetMatch {
+  const result: InventoryFacetMatch = {};
+  for (const [key, value] of Object.entries(match ?? {})) {
+    if (typeof value === "string" && value.length > 0) {
+      result[key] = value;
+    } else if (Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === "string")) {
+      result[key] = [...value];
+    }
+  }
+  return result;
+}
+
+function facetSelectionLimit(maxValues: number): number {
+  return Math.min(10, Math.max(1, Math.trunc(maxValues)));
+}
+
+/**
+ * Values loaded from a policy retain their scalar/array boundaries and original spelling until
+ * this facet is edited. Changed selections are trimmed, NFC-normalized, and deduplicated using
+ * the API's comparison normalization. A single selection stays scalar for backwards compatibility.
+ */
+export function serializeFacetSelection(values: string[], maxValues: number): InventoryFacetValue | null {
+  const selected: string[] = [];
+  const identities = new Set<string>();
+  for (const rawValue of values) {
+    const value = rawValue.trim().normalize("NFC");
+    const identity = normalizeInventoryText(value);
+    if (!identity || identities.has(identity)) continue;
+    identities.add(identity);
+    selected.push(value);
+    if (selected.length === facetSelectionLimit(maxValues)) break;
+  }
+  if (selected.length === 0) return null;
+  return selected.length === 1 ? selected[0]! : selected;
+}
+
+function facetValueSuggestions(value: InventoryFacetValue | undefined): FacetValueSuggestion[] {
+  if (value == null) return [];
+  return (Array.isArray(value) ? value : [value]).map((item) => ({ value: item }));
+}
+
+function facetValuesEqual(left: InventoryFacetValue | undefined, right: InventoryFacetValue): boolean {
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left) && Array.isArray(right)
+      && left.length === right.length
+      && left.every((value, index) => value === right[index]);
+  }
+  return left === right;
 }
 
 function courtyardInventorySummary(gate: GateAtom & { match?: Record<string, unknown>; min_quantity?: number }): string {

@@ -1,5 +1,32 @@
 {
   "requirements": {
+    "compact": {
+      "nationality": {
+        "withValues": "{countryLabel} 国籍",
+        "withoutValues": "国籍验证"
+      },
+      "gender": {
+        "withValue": "证件性别标记 {requiredValue}",
+        "withoutValue": "证件性别标记"
+      },
+      "ageOver18": "18+",
+      "minimumAge": "{age}+",
+      "walletScore": {
+        "withScore": "Passport.xyz 分数 {minimumScore}+",
+        "withoutScore": "Passport.xyz 分数"
+      },
+      "altchaPow": "工作量证明",
+      "erc721Holding": {
+        "withLabel": "{quantity} 个来自 {label} 的以太坊 NFT",
+        "withoutLabel": "{quantity} 个以太坊 NFT"
+      },
+      "erc721InventoryMatch": "{quantity} Courtyard {assetLabel}",
+      "assetBalance": {
+        "withAmount": "至少 {amount} {symbol}",
+        "withoutAmount": "需要代币余额"
+      },
+      "fallback": "{gateType}"
+    },
     "nationality": {
       "withValues": "需要国籍验证：{countryLabel}",
       "withoutValues": "需要国籍验证"
@@ -9,14 +36,16 @@
       "adminWithValue": "需要证件性别标记 {requiredValue}"
     },
     "uniqueHuman": {
-      "very": "需要掌纹扫描",
-      "self": "需要真人验证"
+      "very": "掌纹扫描",
+      "self": "Self.xyz 身份证明",
+      "zkpassport": "ZKPassport 证明",
+      "any": "真人证明"
     },
     "ageOver18": "需要 18+ 验证",
     "minimumAge": "需要 {age}+ 验证",
     "walletScore": {
-      "withScore": "需要 Passport 分数 {minimumScore}+",
-      "withoutScore": "需要 Passport 分数"
+      "withScore": "需要 Passport.xyz 分数 {minimumScore}+",
+      "withoutScore": "需要 Passport.xyz 分数"
     },
     "altchaPow": "需要工作量证明检查",
     "erc721Holding": {
@@ -24,6 +53,10 @@
       "withoutLabel": "需要持有以太坊 NFT"
     },
     "erc721InventoryMatch": "需要 {quantity} 个 Courtyard 藏品：{assetLabel}",
+    "assetBalance": {
+      "withAmount": "至少 {amount} {symbol}",
+      "withoutAmount": "代币余额"
+    },
     "fallback": "需要 {gateType} 验证"
   },
   "joinCta": {
@@ -85,9 +118,13 @@
     "passportPromptTitle": "需要更高分数",
     "passportPromptDescription": "你是真人吗？提高你的钱包分数后再试。",
     "passportPromptActionLabel": "访问 Passport.xyz",
-    "powOnlyTitle": "需要浏览器检查",
-    "powOnlyDescription": "完成快速工作量证明检查以继续。",
-    "powSkipNote": "已验证用户可以跳过此检查。"
+    "powOnlyTitle": "快速浏览器检查",
+    "powOnlyDescription": "自动运行，只需片刻。",
+    "powSkipNote": "已验证用户可以跳过此检查。",
+    "requirementSummaryAll": "完成{requirements}。",
+    "requirementSummaryAny": "满足以下任一项即可：{requirements}。",
+    "requirementSummaryMixed": "完成{requiredRequirements}，并满足以下任一项：{alternativeRequirements}。",
+    "requirementSummaryAnyGroups": "请分别从以下每组中满足一项：{requirements}。"
   },
   "modal": {
     "anyTitle": "选择一种方式继续",
@@ -150,18 +187,21 @@
       "humanVerification": "Human verification",
       "browserChallenge": "Browser challenge",
       "passportScore": "Passport score",
+      "assetBalance": "代币余额",
       "nftHolding": "NFT holding",
       "documentSexMarker": "Document sex marker",
       "nationality": "Nationality",
       "minimumAge": "Minimum age"
     },
     "providers": {
-      "self": "Self.xyz",
-      "very": "Very palm scan"
+      "self": "ID check (Self)",
+      "zkpassport": "ID check (ZKPassport)",
+      "very": "Palm scan (Very)"
     },
     "operators": {
       "provenBy": "proven by",
       "atLeast": "at least",
+      "holdsAtLeast": "持有至少",
       "holdsOneFrom": "holds ≥ 1 from",
       "holds": "holds ≥",
       "from": "from",
@@ -176,6 +216,8 @@
       "requirementType": "Requirement type",
       "humanVerificationProvider": "Human verification provider",
       "minimumPassportScore": "Minimum Passport score",
+      "asset": "资产",
+      "minimumAssetBalance": "最低代币余额",
       "nftContractAddress": "NFT contract address",
       "minimumNftQuantity": "Minimum NFT quantity",
       "minimumAge": "Minimum age",
@@ -192,12 +234,25 @@
       "addAttribute": "添加属性筛选条件",
       "searchFacet": "搜索{facet}",
       "facetLoadError": "无法加载选项。",
+      "facetLoading": "正在加载选项…",
+      "retry": "重试",
       "noValues": "未找到选项。",
-      "matches": "{count} 个匹配项"
+      "matches": "{count} 个匹配项",
+      "claimedNameOption": "使用所认领的名称",
+      "claimedNameHint": "匹配正在认领的名称"
+    },
+    "assets": {
+      "loading": "正在加载支持的资产…",
+      "unknownAsset": "未知资产",
+      "unavailableReadOnly": "此编辑器无法使用 {asset}。该要求将以只读方式保留。",
+      "amountError": "请使用普通十进制格式输入大于零的金额。",
+      "precisionError": "此资产最多支持 {decimals} 位小数。"
     },
     "validation": {
       "acceptedProvidersEmpty": "接受的验证提供商不能为空。",
       "acceptedProvidersUnsupported": "接受的验证提供商必须是 Self 或 ZKPassport。",
+      "assetAmountInvalid": "请输入大于零的有效代币金额。",
+      "assetRequired": "请选择支持的资产。",
       "collectibleChainUnsupported": "藏品规则必须使用支持的区块链。",
       "collectibleProviderUnsupported": "藏品规则必须使用支持的库存提供商。",
       "contractAddressInvalid": "请输入有效的合约地址。",
@@ -225,6 +280,28 @@
       "inventoryWatchIdentityRequired": "腕表规则需要品牌或型号筛选条件。"
     }
   },
+  "handleClaims": {
+    "requires": "领取此名称需要：",
+    "verifyWithSelf": "使用 Self 验证",
+    "connectWallet": "连接钱包",
+    "checkAgain": "重新检查",
+    "ruleEditor": {
+      "sectionTitle": "按名称设置要求",
+      "sectionDescription": "为特定名称设置独立的领取要求——例如，只有持有喷火龙卡牌的人才能领取“charizard”。规则按从上到下的顺序检查；首个匹配规则会取代命名空间要求。在卡牌要求中选择“使用领取的名称”，即可匹配用户正在领取的名称。",
+      "ruleTitle": "规则 {number}",
+      "moveUp": "上移规则",
+      "moveDown": "下移规则",
+      "remove": "删除规则",
+      "selectorLabel": "此规则适用的名称",
+      "specificNames": "指定名称",
+      "allNames": "所有名称",
+      "namesLabel": "此规则适用的名称",
+      "namesPlaceholder": "charizard, gengar",
+      "invalidExact": "请至少列出一个有效名称（小写字母、数字和连字符），并完成要求设置。",
+      "invalidAny": "请先完成要求设置再保存。",
+      "add": "添加名称规则"
+    }
+  },
   "gateFailure": {
     "nationalityMismatch": "你的身份验证结果不符合该社区要求。",
     "genderMismatch": "你的证件验证结果不符合该社区规则。",
@@ -235,6 +312,7 @@
     "erc721InventoryMatchRequired": "连接持有所需 Courtyard 藏品的钱包即可加入。",
     "tokenInventoryUnavailable": "暂时无法检查 Courtyard 藏品。",
     "walletScoreTooLow": "你的 Passport 分数不符合该社区要求。",
+    "assetBalanceTooLow": "你已连接的钱包持有的所需资产不足，无法加入该社区。",
     "banned": "你没有资格加入这个社区。"
   }
 }

@@ -5,29 +5,56 @@
 Production deploys should go through the Blacksmith GitHub Actions workflow in
 `.github/workflows/release.yml`.
 
-> **⚠️ Known blocker (web prod auto-deploy broken since ~2026-06-05):** the Release
-> workflow fails at *Deploy staging → Install API dependencies* because
-> `api/services/api/package.json` pins `@pirate-social-club/karaoke-runtime` to a `file:` path
-> into the `web-karaoke-rel` dev worktree, which CI does not check out (CI only fetches
-> `web`, `api`, `core`). Prod is stuck at the Jun-5 build until the canonical home for
-> `@pirate-social-club/karaoke-runtime` is decided. Do **not** manual-bypass `wrangler deploy` for
-> web prod — it skips the release gates. See pirate-social-club/web#39.
+> **Release safety:** do not manually deploy Web production with
+> `wrangler deploy`. Production must advance through `Release`, which enforces
+> release-input compatibility, fleet-schema attestation, staging smoke,
+> API-owned live contracts, migration, freshness, and production verification.
+> Read [`release-pipeline.md`](release-pipeline.md) for the current topology and
+> incident rules.
+>
+> The former karaoke-runtime install blocker is resolved: the API uses
+> `file:../../../web/packages/karaoke-runtime`, and the workflow checks out `web`,
+> `api`, and `core` as sibling directories so that cross-repository file dependencies
+> resolve during `bun install`. Treat the current Release run and its individual job
+> results as the authoritative deployment status.
 
 The release workflow:
 
-- deploys staging
-- verifies staging/production metadata
-- runs the existing HTTP smoke check
-- installs Chromium for Playwright
-- runs the blocking browser E2E suite against `https://staging.pirate.sc`
-- runs the non-blocking live staging browser integration
-- applies staging community migrations
-- deploys production only after the staging job succeeds
+- verifies the pinned API/Core pair and migration classifications
+- cancels obsolete staging schema scans; writer-epoch fencing keeps their
+  shadow-ledger invalidation fail-closed
+- verifies the live staging community fleet before deploying the pinned API
+- serializes and deploys staging with an in-lane freshness check
+- runs the deterministic Web release gate and blocking API-owned staging
+  contract gate in parallel
+- re-checks the current `main` tip and production schema fleet
+- serializes the production deploy, applies control-plane migrations, and
+  verifies production release metadata
 
-The blocking browser suite is deterministic and uses mocked authenticated API
-responses where needed. The live staging integration uses real staging services:
-it exchanges a JWT-based session, creates a real staging post, and adds a real
-comment in the seeded `MCP Guest Comment Smoke` community.
+The Web browser suite is deterministic and uses mocked authenticated API
+responses where needed. The API-owned contract gate uses real staging services
+and persistent fixtures. It inventories the selected tests before executing
+exactly six live contracts and three mobile non-member contracts.
+
+A successful aggregate workflow is not sufficient evidence by itself. Inspect
+the individual `Deploy production` job, then verify:
+
+```bash
+rtk curl -sS https://pirate.sc/__version
+rtk curl -sS https://api.pirate.sc/__version
+```
+
+If production was skipped because a live successor existed, that successor is
+responsible for deployment. If no live successor remains, the validated older
+run may deploy only when it is still on `main`'s ancestry and moves production
+forward. The freshness decision fails closed when run, deployment, or ancestry
+state cannot be established.
+
+A manually disabled `Release` workflow is an operator pause, not a successful
+or superseded release. Re-enabling it does not replay pushes received while it
+was disabled. To deploy the current tip after a pause, dispatch `Release` from
+`main` with `deploy_production: true`, then inspect the production job and both
+version endpoints as usual.
 
 Required GitHub Actions variables for the live staging check:
 

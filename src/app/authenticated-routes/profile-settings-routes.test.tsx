@@ -1,4 +1,3 @@
-import * as React from "react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import type { ProfileActivityResponse } from "@pirate/api-contracts";

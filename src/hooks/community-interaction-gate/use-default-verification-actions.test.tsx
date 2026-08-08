@@ -339,6 +339,41 @@ describe("useDefaultVerificationActions", () => {
     expect(actions.errors).toEqual([]);
   });
 
+  test("starts ZKPassport verification for a ZKPassport-only unique-human gate", async () => {
+    const actions = renderDefaultVerificationActions({
+      startZkPassportVerificationFlow: async (input) => {
+        actions.zkPassportCalls.push(input);
+        return { href: "https://zkpassport.id/r", started: true };
+      },
+    });
+    const zkPassportGate = gate("verification_required", {
+      membership_gate_summaries: [{
+        accepted_providers: ["zkpassport"],
+        gate_type: "unique_human",
+      }],
+      missing_capabilities: ["unique_human"],
+    }, [{
+      accepted_providers: ["zkpassport"],
+      gate_type: "unique_human",
+    }]);
+
+    await act(async () => {
+      const result = await actions.hook.result.current.startDefaultVerification({
+        gate: zkPassportGate,
+        provider: "zkpassport",
+      });
+      expect(result).toEqual({ started: true });
+    });
+
+    expect(actions.zkPassportCalls).toEqual([{
+      requestedCapabilities: ["unique_human"],
+      unavailableMessage: "This community is missing the ZKPassport verification details needed to continue.",
+      verificationRequirements: [],
+    }]);
+    expect(actions.calls).toEqual(["close"]);
+    expect(actions.errors).toEqual([]);
+  });
+
   test("reports missing ZKPassport verification details without starting a session", async () => {
     const emptyGate = gate("verification_required", {
       membership_gate_summaries: [],

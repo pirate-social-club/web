@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
-import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
+import type { JoinEligibility as ApiJoinEligibility, MembershipGateSummary } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 import { Plus } from "@phosphor-icons/react";
 
@@ -19,8 +19,8 @@ import {
   formatCommunityRouteLabel,
 } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
-import { CommunityMembershipGatePanel } from "@/components/compositions/community/membership-gate-panel/community-membership-gate-panel";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
+import { CommunityJoinVerificationChooserModal } from "@/components/compositions/community/join-verification-chooser-modal/community-join-verification-chooser-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
 import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
@@ -29,7 +29,13 @@ import { CommunityProofOfWorkModal } from "@/components/compositions/community/p
 import { Button } from "@/components/primitives/button";
 import { IconButton } from "@/components/primitives/icon-button";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getJoinCtaLabel, getMissingCapabilitiesFromGateEvaluation, isJoinCtaActionable, isJoinSurfaceGate } from "@/lib/identity-gates";
+import {
+  getJoinCtaLabel,
+  getMissingCapabilitiesFromGateEvaluation,
+  isJoinCtaActionable,
+  resolveAvailableHumanVerificationProviders,
+  type HumanVerificationProvider,
+} from "@/lib/identity-gates";
 import { createCommunityBlockedModalStateFactory, getRequirementGroups } from "@/hooks/use-community-interaction-gate.helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -40,7 +46,6 @@ import {
   buildCommunityPreviewSidebar,
   buildCommunitySidebar,
   buildCommunitySidebarRequirements,
-  getNamespaceActionLabel,
 } from "@/app/authenticated-helpers/community-sidebar-helpers";
 import {
   buildCommunityModerationEntryPath,
@@ -50,6 +55,7 @@ import { buildLiveRoomParticipants } from "@/app/authenticated-helpers/post-live
 import { toCommunityFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { processingPostPollDelayMs, shouldContinueProcessingPostPolling } from "@/app/authenticated-helpers/processing-post-polling";
 import { useCommunityMembershipActions } from "@/hooks/use-community-membership-actions";
+import { useCommunityHandleNamespaces } from "@/hooks/use-community-handle-namespaces";
 import { useCommunityVoteAction } from "@/hooks/use-community-vote-action";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
@@ -59,6 +65,10 @@ import {
   RouteLoadFailureState,
 } from "@/app/authenticated-helpers/route-shell";
 import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
+import {
+  useBoostCampaignController,
+  useBoostMenuEligibility,
+} from "@/app/authenticated-helpers/use-boost-campaign-controller";
 import { useCommunityHandleClaimController } from "@/app/authenticated-helpers/community-handle-claim";
 import {
   useSongCommerceState,
@@ -78,6 +88,7 @@ import {
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
+import { BoostCampaignSheet, SongRewardPolicySheet } from "@/components/compositions/rewards/reward-booster-surfaces";
 
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
 
@@ -144,6 +155,15 @@ export function CommunityPage({
     refetchPosts,
     setPosts,
   } = useCommunityPageData(communityId, contentLocale, activeSort);
+  const boostEligiblePostIds = useBoostMenuEligibility({
+    authenticated: Boolean(session?.accessToken),
+    postIds: React.useMemo(
+      () => posts
+        .filter((post) => post.post.status === "published" && post.post.post_type === "song")
+        .map((post) => post.post.id),
+      [posts],
+    ),
+  });
   const ownsCommunity =
     session?.user?.id === community?.created_by_user;
   const canModerateCommunity = viewerCanModerateCommunity(session?.user?.id, preview);
@@ -167,6 +187,36 @@ export function CommunityPage({
     refreshSongCommerce,
   });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
+  const [boostTarget, setBoostTarget] = React.useState<{
+    postId: string;
+    viewerIsAuthor: boolean;
+  } | null>(null);
+  const [pendingBoostAction, setPendingBoostAction] = React.useState<"boost" | "policy" | null>(null);
+  const boostController = useBoostCampaignController({
+    activeCampaignId: null,
+    authenticated: Boolean(session?.accessToken),
+    communityId: community?.id ?? communityId,
+    postId: boostTarget?.postId ?? "",
+    requestAuth: () => toast.error("Sign in to boost this song."),
+    song: Boolean(boostTarget),
+    viewerIsAuthor: Boolean(boostTarget?.viewerIsAuthor),
+  });
+  React.useEffect(() => {
+    if (pendingBoostAction === "boost" && boostController.canBoost) {
+      boostController.openBoost();
+      setPendingBoostAction(null);
+    }
+    if (pendingBoostAction === "policy" && boostController.canManagePolicy) {
+      boostController.openPolicy();
+      setPendingBoostAction(null);
+    }
+  }, [
+    boostController.canBoost,
+    boostController.canManagePolicy,
+    boostController.openBoost,
+    boostController.openPolicy,
+    pendingBoostAction,
+  ]);
   const [liveRoomAccessById, setLiveRoomAccessById] = React.useState<Record<string, ApiLiveRoomAccessResponse | undefined>>({});
   const [liveRoomParticipantProfiles, setLiveRoomParticipantProfiles] = React.useState<Record<string, ApiProfile | null>>({});
   const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
@@ -278,13 +328,14 @@ export function CommunityPage({
     handleSelfQrSuccess,
     joinError,
     joinLoading,
-    joinRequested,
     passportLoading,
     selfError,
     selfLoading,
     selfModalOpen,
     selfPrompt,
     startSelfVerification,
+    startGateVerification,
+    startVerificationProvider,
     startVeryVerification,
     startZkPassportVerification,
     setAltchaPayload,
@@ -345,27 +396,72 @@ export function CommunityPage({
   const { connectedWallets } = usePiratePrivyWallets({
     enabled: Boolean(session?.user?.id),
   });
+  const handleClaimCommunityId = previewCommunityId ?? community?.id ?? communityId;
+  const handleNamespaces = useCommunityHandleNamespaces({
+    api: api.communities,
+    communityId: handleClaimCommunityId,
+    enabled: Boolean(session?.accessToken),
+  });
   const handleClaim = useCommunityHandleClaimController({
     api: api.communities,
     communityId: previewCommunityId ?? communityId,
+    namespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     connectedWallets,
     primaryWalletAddress: session?.profile.primary_wallet_address,
     settlementWalletAttachmentId: session?.user.primary_wallet_attachment,
   });
-  const handleClaimCommunityId = previewCommunityId ?? community?.id ?? communityId;
-  const handleClaimDismissal = useCommunityHandleClaimDismissal(handleClaimCommunityId);
+  const handleClaimDismissal = useCommunityHandleClaimDismissal(
+    handleClaimCommunityId,
+    handleNamespaces.selectedNamespaceVerification,
+  );
+  const voteGateData = React.useMemo(
+    () => preview && eligibility
+      ? {
+          eligibility,
+          gateMatchMode: preview.gate_match_mode ?? null,
+          preview: {
+            id: preview.id,
+            display_name: preview.display_name,
+            membership_gate_summaries: preview.membership_gate_summaries,
+            viewer_community_role: preview.viewer_community_role ?? null,
+            viewer_following: preview.viewer_following ?? false,
+          },
+        }
+      : null,
+    [eligibility, preview],
+  );
+  const membershipRequirementGroups = React.useMemo(
+    () => voteGateData ? getRequirementGroups(voteGateData) : undefined,
+    [voteGateData],
+  );
+  const membershipRequirementChoices = React.useMemo(
+    () => membershipRequirementGroups
+      ?.find((group) => group.mode === "any" && group.requirements.length > 1)
+      ?.requirements ?? [],
+    [membershipRequirementGroups],
+  );
+  const membershipProviderChoices = React.useMemo(
+    () => eligibility?.status === "verification_required" && membershipRequirementChoices.length <= 1
+      ? resolveAvailableHumanVerificationProviders(eligibility)
+      : [],
+    [eligibility, membershipRequirementChoices.length],
+  );
   const {
     handleClaimModalOpen,
     handleClaimModalOpenChange,
     handleClaimNotNow,
     handleJoinRequestModalOpenChange,
     handleJoinRequestSubmit,
+    handleProofOfWorkVerified,
     handlePrimaryJoinAction,
     joinRequestError,
     joinRequestModalOpen,
     joinRequestSubmitting,
     proofOfWorkModalOpen,
+    proofOfWorkRetryKey,
     setProofOfWorkModalOpen,
+    setVerificationChooserModalOpen,
+    verificationChooserModalOpen,
   } = useCommunityMembershipActions({
     altchaPayload,
     altchaRequired,
@@ -374,14 +470,42 @@ export function CommunityPage({
     handleClaim,
     handleClaimApi: api.communities,
     handleClaimCommunityId,
+    handleClaimNamespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     handleClaimDismissal,
     handleJoin,
+    hasVerificationChoices:
+      membershipRequirementChoices.length > 1 || membershipProviderChoices.length > 1,
     invalidateCommunityGate,
     onHandleClaimCheckError: (error) => {
       toast.error(getErrorMessage(error, "Could not check community names."));
     },
     sessionUserId: session?.user?.id,
   });
+  const handleChooseJoinRequirement = React.useCallback(async (gate: MembershipGateSummary) => {
+    // Keep the chooser open (with the chosen row loading) until the selected
+    // flow has actually launched, and keep it open when the attempt could not
+    // start or did not qualify so the remaining options stay reachable.
+    const result = await startGateVerification(gate);
+    if (result === "blocked") {
+      return;
+    }
+    setVerificationChooserModalOpen(false);
+    if (result === "altcha") {
+      setProofOfWorkModalOpen(true);
+    }
+  }, [setProofOfWorkModalOpen, setVerificationChooserModalOpen, startGateVerification]);
+  const handleChooseVerificationProvider = React.useCallback(async (
+    provider: HumanVerificationProvider,
+  ) => {
+    const result = await startVerificationProvider(provider, {
+      missingCapabilities: eligibility
+        ? getMissingCapabilitiesFromGateEvaluation(eligibility)
+        : null,
+      membershipGateSummaries: eligibility?.membership_gate_summaries ?? null,
+      showToastOnError: true,
+    });
+    if (result === "started") setVerificationChooserModalOpen(false);
+  }, [eligibility, setVerificationChooserModalOpen, startVerificationProvider]);
 
   React.useEffect(() => {
     if (isImportedRoot) return;
@@ -533,38 +657,31 @@ export function CommunityPage({
     ],
   );
 
-  const voteGateData = React.useMemo(
-    () => preview && eligibility
-      ? {
-          eligibility,
-          gateMatchMode: preview.gate_match_mode ?? null,
-          preview: {
-            id: preview.id,
-            display_name: preview.display_name,
-            membership_gate_summaries: preview.membership_gate_summaries,
-            viewer_community_role: preview.viewer_community_role ?? null,
-          },
-        }
-      : null,
-    [
-      eligibility,
-      preview,
-    ],
-  );
-  const membershipRequirementGroups = React.useMemo(
-    () => voteGateData ? getRequirementGroups(voteGateData) : undefined,
-    [voteGateData],
-  );
-  const hasJoinSurfaceGates = preview?.membership_gate_summaries.some(isJoinSurfaceGate) ?? false;
   const voteOnPost = useCommunityVoteAction({
     buildBlockedModalState,
+    clearVote: api.posts.clearVote,
     communityId,
     gateData: voteGateData,
+    locale: contentLocale,
     posts,
     runGatedCommunityAction,
     setPosts,
     vote: api.posts.vote,
   });
+
+  const deletePost = React.useCallback(async (postId: string) => {
+    if (typeof window !== "undefined" && !window.confirm("Delete this post?")) return;
+
+    const previousPosts = posts;
+    const targetPost = posts.find((postResponse) => postResponse.post.id === postId);
+    setPosts((current) => current.filter((postResponse) => postResponse.post.id !== postId));
+    try {
+      await api.posts.delete(targetPost?.post.community ?? communityId, postId);
+    } catch (nextError) {
+      setPosts(previousPosts);
+      toast.error(getErrorMessage(nextError, "Could not delete this post."));
+    }
+  }, [api.posts, communityId, posts, setPosts]);
 
   const removePost = React.useCallback(async (postId: string) => {
     if (typeof window !== "undefined" && !window.confirm("Remove this post?")) return;
@@ -764,10 +881,27 @@ export function CommunityPage({
         onVerifyAge: handleVerifyAge,
         onComment: () => navigate(`/p/${post.post.id}`),
         onCancelEvent: () => void cancelEvent(post.post.id),
+        canBoost: boostEligiblePostIds.has(post.post.id),
+        canManageRewardSettings: Boolean(post.viewer_is_author && boostEligiblePostIds.has(post.post.id)),
+        onBoost: () => {
+          setBoostTarget({
+            postId: post.post.id,
+            viewerIsAuthor: Boolean(post.viewer_is_author),
+          });
+          setPendingBoostAction("boost");
+        },
+        onDelete: () => void deletePost(post.post.id),
         onRemove: () => void removePost(post.post.id),
+        onRewardSettings: () => {
+          setBoostTarget({
+            postId: post.post.id,
+            viewerIsAuthor: Boolean(post.viewer_is_author),
+          });
+          setPendingBoostAction("policy");
+        },
         onRetryPublish: () => void retryPublish(post.post.id),
         canModeratePost: canModeratePosts,
-        onVote: (direction) => void voteOnPost(post.post.id, direction),
+        onVote: async (direction) => await voteOnPost(post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,
         showTranslationLabel: copy.common.showTranslation,
         viewerContentLocale: contentLocale,
@@ -847,17 +981,37 @@ export function CommunityPage({
     <>
       {gateModal}
       {purchaseModal}
+      <BoostCampaignSheet {...boostController.sheetProps} />
+      <SongRewardPolicySheet {...boostController.policySheetProps} />
       <HandleClaimModal
         claimedLabel={handleClaim.claimedLabel ?? undefined}
         communityHandle={communityHandleLabel}
         communityName={communityTitle}
         communityRouteLabel={routeLabel}
+        namespaceOptions={handleNamespaces.namespaceOptions}
+        onNamespaceChange={handleNamespaces.setSelectedNamespaceVerification}
+        selectedNamespaceVerification={handleNamespaces.selectedNamespaceVerification}
         error={handleClaim.error}
         forceMobile={isMobileWeb}
         onClaim={handleClaim.onClaim}
+        onClaimGateRecheck={handleClaim.refreshQuote}
         onNotNow={handleClaimNotNow}
         onOpenChange={handleClaimModalOpenChange}
         onSearchChange={handleClaim.onSearchChange}
+        onSelfVerificationClick={() => {
+          void startSelfVerification({
+            membershipGateSummaries: handleClaim.claimGateSummaries,
+            showToastOnError: true,
+          });
+        }}
+        onWalletConnectionClick={() => {
+          const gate = handleClaim.claimGateSummaries.find((summary) =>
+            summary.gate_type === "erc721_holding"
+            || summary.gate_type === "erc721_inventory_match"
+            || summary.gate_type === "asset_balance"
+          );
+          if (gate) void startGateVerification(gate);
+        }}
         open={handleClaimModalOpen}
         phase={handleClaim.phase}
         processing={handleClaim.processing}
@@ -872,19 +1026,30 @@ export function CommunityPage({
         open={joinRequestModalOpen}
         submitting={joinRequestSubmitting || joinLoading}
       />
+      <CommunityJoinVerificationChooserModal
+        choices={membershipProviderChoices.length > 1 ? [] : membershipRequirementChoices}
+        locale={locale}
+        onChoose={handleChooseJoinRequirement}
+        onChooseProvider={handleChooseVerificationProvider}
+        onOpenChange={setVerificationChooserModalOpen}
+        open={verificationChooserModalOpen}
+        providerChoices={membershipProviderChoices}
+      />
       {altchaRequired ? (
         <CommunityProofOfWorkModal
           action={altchaAction}
           continueDisabled={!altchaPayload}
           continueLoading={joinLoading}
+          error={joinError}
           locale={locale}
           onContinue={async () => {
-            setProofOfWorkModalOpen(false);
             await handlePrimaryJoinAction();
           }}
           onOpenChange={setProofOfWorkModalOpen}
           onPayloadChange={setAltchaPayload}
+          onVerified={handleProofOfWorkVerified}
           open={proofOfWorkModalOpen}
+          retryKey={proofOfWorkRetryKey}
           requirements={preview?.membership_gate_summaries}
           requirementsMode={preview?.gate_match_mode ?? null}
           scope={altchaScope}
@@ -930,27 +1095,6 @@ export function CommunityPage({
         />
       ) : null}
       <section className="flex min-w-0 flex-1 flex-col gap-6">
-        {hasJoinSurfaceGates && !canCreatePost ? (
-          <CommunityMembershipGatePanel
-            eligibility={eligibility}
-            gates={preview.membership_gate_summaries}
-            joinError={
-              joinError ??
-              (eligibility?.status === "gate_failed" &&
-              eligibility.failure_reason
-                ? getGateFailureMessage(eligibility, { locale })
-                : null)
-            }
-            joinLoading={joinLoading}
-            joinRequested={joinRequested}
-            locale={locale}
-            mode={preview.gate_match_mode ?? null}
-            requirementGroups={membershipRequirementGroups}
-            verificationError={selfError}
-            verificationLoading={selfLoading}
-            onJoin={handlePrimaryJoinAction}
-          />
-        ) : null}
         <CommunityPageShell
           activeSort={activeSort}
           avatarSrc={communityAvatarRef ?? undefined}

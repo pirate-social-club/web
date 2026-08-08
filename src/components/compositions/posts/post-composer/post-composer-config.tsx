@@ -9,28 +9,17 @@ import {
 } from "@phosphor-icons/react";
 import type {
   AttachmentKind,
-  AttachmentState,
   CharityContributionState,
   ComposerAudienceState,
   ComposerEventState,
   ComposerTab,
-  LiveAccessMode,
   LiveComposerState,
-  LiveRoomKind,
-  LiveVisibility,
   AssetLicensePresetId,
   AssetLicenseState,
   AssetRoyaltySplitState,
   SongComposerState,
   VideoComposerState,
 } from "./post-composer.types";
-
-export function deriveComposerMode(attachment: AttachmentState): ComposerTab {
-  if (!attachment) return "text";
-  return attachment.kind;
-}
-
-export const attachmentKinds: AttachmentKind[] = ["link", "image", "video", "song", "live"];
 
 export const tabMeta: Record<ComposerTab, { label: string; icon: React.ReactNode }> = {
   text: { label: "Text", icon: <TextT className="size-5" /> },
@@ -55,22 +44,6 @@ export const attachmentActions: Array<{
 
 export const defaultTabs: ComposerTab[] = ["text", "image", "video", "link", "song", "live"];
 export const anonymousEligibleTabs: ComposerTab[] = ["text", "image", "video", "link", "song", "live"];
-
-export const roomKindOptions: { value: LiveRoomKind; label: string }[] = [
-  { value: "solo", label: "Solo" },
-  { value: "duet", label: "Duet" },
-];
-
-export const accessModeOptions: { value: LiveAccessMode; label: string }[] = [
-  { value: "free", label: "Free" },
-  { value: "gated", label: "Gated" },
-  { value: "paid", label: "Paid" },
-];
-
-export const visibilityOptions: { value: LiveVisibility; label: string }[] = [
-  { value: "public", label: "Public" },
-  { value: "unlisted", label: "Unlisted" },
-];
 
 export const noneLanguageValue = "__none__";
 

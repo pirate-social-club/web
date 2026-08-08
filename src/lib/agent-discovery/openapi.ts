@@ -1,6 +1,6 @@
 import { getDiscoveryContext, jsonResponse } from "./shared";
 
-export function buildOpenApiDocument(input: URL | string): Record<string, unknown> {
+function buildOpenApiDocument(input: URL | string): Record<string, unknown> {
   const ctx = getDiscoveryContext(input);
 
   return {

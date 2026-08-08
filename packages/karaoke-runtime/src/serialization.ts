@@ -2,6 +2,8 @@ import {
   type KaraokeLineScore,
   type KaraokeRecognizedWord,
   type KaraokeSessionSummary,
+  type KaraokeTimingCalibration,
+  type KaraokeTimingCalibrationReason,
   type ScorableKaraokeLine,
   type ScorableKaraokeWord,
 } from "./scoring";
@@ -375,6 +377,11 @@ function deserializeLineScore(value: unknown, path: string, knownLineIds: Readon
         score.timingScore = {
           matchedWordCount: ts.matchedWordCount,
           meanAbsDeltaMs: ts.meanAbsDeltaMs,
+          // Snapshots written before v4 carry only the means. Falling back to
+          // them keeps an in-flight session resumable across the deploy instead
+          // of dropping its timing evidence.
+          medianAbsDeltaMs: isFiniteNumber(ts.medianAbsDeltaMs) ? ts.medianAbsDeltaMs : ts.meanAbsDeltaMs,
+          medianSignedDeltaMs: isFiniteNumber(ts.medianSignedDeltaMs) ? ts.medianSignedDeltaMs : ts.signedMeanDeltaMs,
           score: ts.score,
           signedMeanDeltaMs: ts.signedMeanDeltaMs,
           timingTrend: trend,
@@ -383,6 +390,46 @@ function deserializeLineScore(value: unknown, path: string, knownLineIds: Readon
     }
   }
   return score;
+}
+
+const TIMING_CALIBRATION_REASONS: readonly KaraokeTimingCalibrationReason[] = [
+  "insufficient_evidence",
+  "offset_out_of_range",
+  "incoherent_residuals",
+];
+
+/**
+ * Tolerant by design: a snapshot written before v4 has no calibration block, and
+ * a resumed session must not fail to deserialize over a diagnostic. Absent or
+ * malformed input reads as "uncalibrated, not enough evidence", which is the
+ * safe interpretation — timing then contributes its neutral value rather than a
+ * value we cannot vouch for.
+ */
+function deserializeTimingCalibration(value: unknown): KaraokeTimingCalibration {
+  const fallback: KaraokeTimingCalibration = {
+    matchedWordCount: 0,
+    measuredLineCount: 0,
+    offsetMs: 0,
+    rawOffsetMs: 0,
+    reason: "insufficient_evidence",
+    residualSpreadMs: 0,
+    state: "uncalibrated",
+  };
+  if (!isPlainRecord(value)) {
+    return fallback;
+  }
+  const state = value.state === "calibrated" ? "calibrated" : "uncalibrated";
+  const reason = TIMING_CALIBRATION_REASONS.find((candidate) => candidate === value.reason) ?? null;
+
+  return {
+    matchedWordCount: isFiniteNumber(value.matchedWordCount) ? value.matchedWordCount : 0,
+    measuredLineCount: isFiniteNumber(value.measuredLineCount) ? value.measuredLineCount : 0,
+    offsetMs: isFiniteNumber(value.offsetMs) ? value.offsetMs : 0,
+    rawOffsetMs: isFiniteNumber(value.rawOffsetMs) ? value.rawOffsetMs : 0,
+    reason: state === "calibrated" ? null : reason ?? "insufficient_evidence",
+    residualSpreadMs: isFiniteNumber(value.residualSpreadMs) ? value.residualSpreadMs : 0,
+    state,
+  };
 }
 
 export function serializeKaraokeScoringPolicy(policy: StoredKaraokeSessionPolicy): JsonKaraokeScoringPolicy {
@@ -470,6 +517,37 @@ function validateStateShape(
       confidenceMean: isFiniteNumber(state.summary.confidenceMean) ? state.summary.confidenceMean : null,
       finalScore: isFiniteNumber(state.summary.finalScore) ? state.summary.finalScore : 0,
       lineCount: isFiniteNumber(state.summary.lineCount) ? state.summary.lineCount : 0,
+      lineDiagnostics: Array.isArray(state.summary.lineDiagnostics)
+        ? state.summary.lineDiagnostics.flatMap((value) => {
+          if (!isPlainRecord(value)
+            || typeof value.lineId !== "string"
+            || typeof value.finalizedReason !== "string"
+            || !isFiniteNumber(value.recognizedWordCount)
+            || !isFiniteNumber(value.score)
+            || !isFiniteNumber(value.textScore)) {
+            return [];
+          }
+          const finalizedReason = value.finalizedReason;
+          if (finalizedReason !== "line_end"
+            && finalizedReason !== "asr_final"
+            && finalizedReason !== "timeout"
+            && finalizedReason !== "seek"
+            && finalizedReason !== "session_end"
+            && finalizedReason !== "provider_failed") {
+            return [];
+          }
+          return [{
+            confidenceScore: isFiniteNumber(value.confidenceScore) ? value.confidenceScore : null,
+            finalizedReason,
+            lineId: value.lineId,
+            medianSignedDeltaMs: isFiniteNumber(value.medianSignedDeltaMs) ? value.medianSignedDeltaMs : null,
+            recognizedWordCount: value.recognizedWordCount,
+            score: value.score,
+            textScore: value.textScore,
+            timingScore: isFiniteNumber(value.timingScore) ? value.timingScore : null,
+          }];
+        })
+        : [],
       lowConfidenceLineCount: isFiniteNumber(state.summary.lowConfidenceLineCount) ? state.summary.lowConfidenceLineCount : 0,
       lyricsScore: isFiniteNumber(state.summary.lyricsScore) ? state.summary.lyricsScore : 0,
       missedWords: Array.isArray(state.summary.missedWords)
@@ -482,6 +560,7 @@ function validateStateShape(
       strongestLines: Array.isArray(state.summary.strongestLines)
         ? state.summary.strongestLines.map((l, i) => deserializeLineScore(l, `${statePath}.summary.strongestLines[${i}]`, knownLineIds))
         : [],
+      timingCalibration: deserializeTimingCalibration(state.summary.timingCalibration),
       timingScore: isFiniteNumber(state.summary.timingScore) ? state.summary.timingScore : null,
       timingTrend: state.summary.timingTrend === "early" || state.summary.timingTrend === "late" || state.summary.timingTrend === "mixed" || state.summary.timingTrend === "on_time"
         ? state.summary.timingTrend

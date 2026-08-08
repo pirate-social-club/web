@@ -44,15 +44,17 @@ describe("resolveApiBaseUrl", () => {
 
   test("does not use bare HNS community roots as API origins", () => {
     withBrowserHostname("dankmeme", () => {
-      expect(resolveApiBaseUrl()).toBe("https://api.pirate.sc");
+      expect(resolveApiBaseUrl()).toBe("https://api.pirate");
     });
     withBrowserHostname("xn--pokmon-dva", () => {
-      expect(resolveApiBaseUrl()).toBe("https://api.pirate.sc");
+      expect(resolveApiBaseUrl()).toBe("https://api.pirate");
     });
   });
 
-  test("uses the production API for HNS app hosts", () => {
-    expect(resolveApiBaseUrl("app.pirate")).toBe("https://api.pirate.sc");
+  test("uses the HNS API origin for HNS app hosts", () => {
+    expect(resolveApiBaseUrl("app.pirate")).toBe("https://api.pirate");
+    expect(resolveApiBaseUrl("app.dankmeme")).toBe("https://api.pirate");
+    expect(resolveApiBaseUrl("app.xn--pokmon-dva")).toBe("https://api.pirate");
   });
 
   test("joins relative paths against the resolved API origin", () => {

@@ -8,6 +8,7 @@ import type {
 
 import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
 import { PostPage } from "@/app/authenticated-routes";
+import { StudyRoutePage } from "@/app/authenticated-routes/study-route";
 import { PublicCommunityRoutePage } from "@/app/public-community-route";
 import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
@@ -23,13 +24,15 @@ import {
   getMissingCapabilitiesFromGateEvaluation,
   getGateFailureMessage,
   getVerificationPromptCopy,
+  type HumanVerificationProvider,
+  resolveAvailableHumanVerificationProviders,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 import { openExternalHref } from "@/lib/open-external-href";
 import { useUiLocale } from "@/lib/ui-locale";
+import { solveAltchaChallengeHeadless } from "@/lib/verification/altcha-headless";
 
 import {
-  TelegramMiniAppSelfReturnView,
   TelegramMiniAppVerifyView,
   telegramVerifyReadyMessage,
 } from "./telegram-mini-app-verify-view";
@@ -44,10 +47,8 @@ import {
 } from "./telegram-mini-app-verify-controller";
 
 export {
-  TelegramMiniAppSelfReturnView,
-  TelegramMiniAppVerifyView,
   telegramVerifyLaunchButtonLabel,
-  telegramVerifyPreparingMessage,
+
   telegramVerifyReadyMessage,
   telegramVerifyReadyTitle,
   resolveTelegramVerifyViewModel,
@@ -55,7 +56,7 @@ export {
   telegramVerifyWaitingTitle,
 } from "./telegram-mini-app-verify-view";
 export type {
-  PendingTelegramVerificationLaunch,
+
   TelegramVerifyLaunchProvider,
   TelegramVerifyScreenState,
 } from "./telegram-mini-app-verify-controller";
@@ -86,6 +87,12 @@ type TelegramWebAppBridge = {
     text_color?: string;
   };
 };
+
+export function hasOnlyTelegramJoinAltchaRequirement(eligibility: ApiJoinEligibility): boolean {
+  const missingCapabilities = getMissingCapabilitiesFromGateEvaluation(eligibility);
+  return missingCapabilities.length > 0
+    && missingCapabilities.every((capability) => capability === "altcha_pow");
+}
 
 type TelegramOnboardingExchangeResponse = Parameters<typeof setSession>[0] & {
   community: string;
@@ -146,6 +153,18 @@ export function resolveTelegramMiniAppStartPath(startParam: string | null | unde
 
   const kind = value.slice(0, separatorIndex);
   const target = value.slice(separatorIndex + 1);
+  if (kind === "s") {
+    const lengthSeparatorIndex = target.indexOf("_");
+    if (lengthSeparatorIndex <= 0) return null;
+    const communityLengthText = target.slice(0, lengthSeparatorIndex);
+    if (!/^[1-9][0-9]{0,2}$/u.test(communityLengthText)) return null;
+    const payload = target.slice(lengthSeparatorIndex + 1);
+    const communityLength = Number(communityLengthText);
+    if (payload.length <= communityLength) return null;
+    const communityId = payload.slice(0, communityLength);
+    const postId = payload.slice(communityLength);
+    return `/tg/c/${encodeURIComponent(communityId)}/p/${encodeURIComponent(postId)}/study`;
+  }
   if (kind === "c" || kind === "join") {
     return `/tg/c/${encodeURIComponent(target)}`;
   }
@@ -156,6 +175,21 @@ export function resolveTelegramMiniAppStartPath(startParam: string | null | unde
     return `/tg/p/${encodeURIComponent(target)}`;
   }
   return null;
+}
+
+export function buildTelegramStudyStartParam(communityId: string, postId: string): string | null {
+  const community = communityId.trim();
+  const post = postId.trim();
+  if (
+    !community
+    || !post
+    || !/^[A-Za-z0-9_-]+$/u.test(community)
+    || !/^[A-Za-z0-9_-]+$/u.test(post)
+  ) {
+    return null;
+  }
+  const value = `s_${community.length}_${community}${post}`;
+  return value.length <= 512 ? value : null;
 }
 
 export function readTelegramMiniAppStartParam(input: {
@@ -791,7 +825,10 @@ export function TelegramMiniAppVerifyPage({
 
   const runAutoAction = React.useCallback(async (
     nextEligibility: ApiJoinEligibility,
-    options: { allowJoinAfterVerification?: boolean } = {},
+    options: {
+      allowJoinAfterVerification?: boolean;
+      selectedProvider?: HumanVerificationProvider;
+    } = {},
   ) => {
     const state = flowStateRef.current;
     const targetCommunityId = state.exchangeCommunityId ?? communityId;
@@ -871,8 +908,67 @@ export function TelegramMiniAppVerifyPage({
       return;
     }
 
-    const provider = resolveSuggestedVerificationProvider(nextEligibility);
+    if (hasOnlyTelegramJoinAltchaRequirement(nextEligibility)) {
+      applyFlowAction({ type: "checking" });
+      recordDebug("altcha:start", { communityId: targetCommunityId });
+      try {
+        const payload = await solveAltchaChallengeHeadless({
+          action: `community:${nextEligibility.community ?? targetCommunityId}`,
+          loadChallenge: api.verification.createAltchaChallenge,
+          scope: "community_join",
+        });
+        const result = await api.communities.join(targetCommunityId, undefined, { altchaPayload: payload });
+        const refreshedEligibility = await refetchEligibility();
+        recordDebug("altcha:result", {
+          eligibility: refreshedEligibility.status,
+          result: result.status,
+        });
+        if (result.status === "requested" || refreshedEligibility.status === "pending_request") {
+          applyFlowAction({ result: "pending_request", type: "done" });
+        } else if (result.status === "joined" || refreshedEligibility.status === "already_joined") {
+          applyFlowAction({ result: "joined", type: "done" });
+        } else {
+          applyFlowAction({
+            canRetry: true,
+            message: "More verification is required.",
+            type: "blocked",
+          });
+        }
+      } catch (error) {
+        applyFlowAction({
+          canRetry: true,
+          message: getErrorMessage(error, "Browser anti-bot check failed."),
+          type: "error",
+        });
+        recordDebug("altcha:error", { message: getErrorMessage(error, "Browser anti-bot check failed.") });
+      }
+      return;
+    }
+
+    const availableProviders = resolveAvailableHumanVerificationProviders(nextEligibility);
+    if (availableProviders.length > 1 && !options.selectedProvider) {
+      applyFlowAction({ providers: availableProviders, type: "choosingProviders" });
+      recordDebug("verification-provider:choices", { providers: availableProviders });
+      return;
+    }
+    if (options.selectedProvider && !availableProviders.includes(options.selectedProvider)) {
+      applyFlowAction({
+        canRetry: true,
+        message: "That verification provider is not accepted for this community requirement.",
+        type: "blocked",
+      });
+      return;
+    }
+    const provider = options.selectedProvider ?? resolveSuggestedVerificationProvider(nextEligibility);
     recordDebug("verification-provider:selected", { provider });
+    if (!provider) {
+      applyFlowAction({
+        canRetry: true,
+        message: "No supported verification provider is available for this community requirement.",
+        type: "blocked",
+      });
+      return;
+    }
     if (provider === "passport") {
       await handleJoin();
       return;
@@ -961,11 +1057,14 @@ export function TelegramMiniAppVerifyPage({
     });
   }, [
     applyFlowAction,
+    api.communities,
+    api.verification.createAltchaChallenge,
     communityId,
     handleJoin,
     joinVerifiedCommunity,
     locale,
     recordDebug,
+    refetchEligibility,
     startSelfVerification,
     startVeryVerification,
     startZkPassportVerification,
@@ -1178,6 +1277,11 @@ export function TelegramMiniAppVerifyPage({
     <TelegramMiniAppVerifyView
       debugEvents={debugEnabled ? debugEvents : undefined}
       onOpenBoard={() => navigate(`/tg/c/${encodeURIComponent(resolvedCommunityId)}`)}
+      onChooseProvider={(provider) => {
+        const currentEligibility = flowStateRef.current.eligibility;
+        if (!currentEligibility) return;
+        void runAutoAction(currentEligibility, { selectedProvider: provider });
+      }}
       onOpenPendingLaunch={() => {
         if (!pendingLaunch) {
           return;
@@ -1242,7 +1346,10 @@ export function TelegramMiniAppSelfReturnPage({
   );
 }
 
-function useTelegramMiniAppSessionExchange(communityId: string): TelegramMiniAppSessionExchangeState {
+function useTelegramMiniAppSessionExchange(
+  communityId: string,
+  context: "default" | "study" = "default",
+): TelegramMiniAppSessionExchangeState {
   const [state, setState] = React.useState<TelegramMiniAppSessionExchangeState>({ kind: "checking" });
 
   React.useEffect(() => {
@@ -1265,7 +1372,11 @@ function useTelegramMiniAppSessionExchange(communityId: string): TelegramMiniApp
     void fetch(resolveApiUrl("/telegram/session/auto-exchange"), {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ community_id: communityId, init_data: initData }),
+      body: JSON.stringify({
+        community_id: communityId,
+        context,
+        init_data: initData,
+      }),
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -1287,7 +1398,7 @@ function useTelegramMiniAppSessionExchange(communityId: string): TelegramMiniApp
       });
 
     return () => controller.abort();
-  }, [communityId]);
+  }, [communityId, context]);
 
   return state;
 }
@@ -1333,7 +1444,7 @@ export function TelegramMiniAppCommunityPage({
     <TelegramMiniAppShell showBackButton>
       <div className="px-3 pb-8 pt-[calc(env(safe-area-inset-top)+1rem)]">
         <PublicCommunityRoutePage
-          buildPostPath={(postId) => `/tg/p/${encodeURIComponent(postId)}`}
+          buildPostPath={buildTelegramCommunityPostPath}
           communityId={communityId}
           disableCanonicalRouteReplace
         />
@@ -1342,14 +1453,215 @@ export function TelegramMiniAppCommunityPage({
   );
 }
 
+export function buildTelegramCommunityPostPath(postId: string): string {
+  return `/tg/p/${encodeURIComponent(postId)}`;
+}
+
 export function TelegramMiniAppPostPage({
   postId,
 }: {
   postId: string;
 }) {
+  const api = useApi();
+  const [communityState, setCommunityState] = React.useState<
+    { kind: "loading" } | { kind: "ready"; communityId: string } | { kind: "error"; message: string }
+  >({ kind: "loading" });
+
+  React.useEffect(() => {
+    const controller = new AbortController();
+    setCommunityState({ kind: "loading" });
+    void loadTelegramPostCommunityId(api.publicPosts, postId)
+      .then((communityId) => {
+        if (controller.signal.aborted) return;
+        setCommunityState({ kind: "ready", communityId });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setCommunityState({
+          kind: "error",
+          message: getErrorMessage(error, "Could not open this post."),
+        });
+      });
+    return () => controller.abort();
+  }, [api.publicPosts, postId]);
+
+  if (communityState.kind === "loading") {
+    return (
+      <TelegramMiniAppShell backPath="/tg" showBackButton>
+        <div className="flex min-h-[70svh] items-center justify-center px-4">
+          <Spinner className="size-9 text-muted-foreground" />
+        </div>
+      </TelegramMiniAppShell>
+    );
+  }
+  if (communityState.kind === "error") {
+    return (
+      <TelegramMiniAppShell backPath="/tg" showBackButton>
+        <div className="px-4 py-6 text-center">
+          <Type as="h1" variant="h2">Could not open this post</Type>
+          <Type as="p" className="mt-3 text-muted-foreground" variant="body">
+            {communityState.message}
+          </Type>
+        </div>
+      </TelegramMiniAppShell>
+    );
+  }
   return (
-    <TelegramMiniAppShell backPath="/tg" showBackButton>
+    <TelegramMiniAppPostWithSession
+      communityId={communityState.communityId}
+      postId={postId}
+    />
+  );
+}
+
+export async function loadTelegramPostCommunityId(
+  publicPosts: { get: (postId: string) => Promise<{ post: { community: string } }> },
+  postId: string,
+): Promise<string> {
+  const post = await publicPosts.get(postId);
+  return post.post.community;
+}
+
+function TelegramMiniAppPostWithSession({
+  communityId,
+  postId,
+}: {
+  communityId: string;
+  postId: string;
+}) {
+  const sessionExchange = useTelegramMiniAppSessionExchange(communityId);
+  if (sessionExchange.kind === "checking") {
+    return (
+      <TelegramMiniAppShell backPath={`/tg/c/${encodeURIComponent(communityId)}`} showBackButton>
+        <div className="flex min-h-[70svh] items-center justify-center px-4">
+          <Spinner className="size-9 text-muted-foreground" />
+        </div>
+      </TelegramMiniAppShell>
+    );
+  }
+  if (sessionExchange.kind === "error") {
+    return (
+      <TelegramMiniAppShell backPath={`/tg/c/${encodeURIComponent(communityId)}`} showBackButton>
+        <div className="px-4 py-6 text-center">
+          <Type as="h1" variant="h2">Could not verify Telegram</Type>
+          <Type as="p" className="mt-3 text-muted-foreground" variant="body">
+            {sessionExchange.message}
+          </Type>
+        </div>
+      </TelegramMiniAppShell>
+    );
+  }
+  return (
+    <TelegramMiniAppShell backPath={`/tg/c/${encodeURIComponent(communityId)}`} showBackButton>
       <PostPage postId={postId} telegramMiniApp />
     </TelegramMiniAppShell>
+  );
+}
+
+export function TelegramMiniAppStudyPage({
+  communityId,
+  postId,
+}: {
+  communityId: string;
+  postId: string;
+}) {
+  const sessionExchange = useTelegramMiniAppSessionExchange(communityId, "study");
+  const communityPath = `/tg/c/${encodeURIComponent(communityId)}`;
+
+  if (sessionExchange.kind === "checking") {
+    return (
+      <TelegramMiniAppShell backPath={communityPath} showBackButton>
+        <div className="flex min-h-[70svh] items-center justify-center px-4">
+          <Spinner className="size-9 text-muted-foreground" />
+        </div>
+      </TelegramMiniAppShell>
+    );
+  }
+
+  if (sessionExchange.kind === "error") {
+    return (
+      <TelegramMiniAppShell backPath={communityPath} showBackButton>
+        <div className="px-4 py-6">
+          <PageContainer size="narrow">
+            <section className="flex min-h-[70svh] flex-col justify-center gap-6 text-center">
+              <div className="space-y-3">
+                <Type as="h1" variant="h2">Could not open study</Type>
+                <Type as="p" className="text-muted-foreground" variant="body">
+                  {sessionExchange.message}
+                </Type>
+              </div>
+              <Button onClick={() => navigate(communityPath)} variant="secondary">
+                Open community
+              </Button>
+            </section>
+          </PageContainer>
+        </div>
+      </TelegramMiniAppShell>
+    );
+  }
+
+  return (
+    <TelegramMiniAppShell backPath={communityPath} showBackButton>
+      <TelegramAccountLinkOffer communityId={communityId} />
+      <StudyRoutePage
+        postId={postId}
+        returnPath={communityPath}
+        telegramMiniApp
+      />
+    </TelegramMiniAppShell>
+  );
+}
+
+function TelegramAccountLinkOffer({ communityId }: { communityId: string }) {
+  const api = useApi();
+  const [state, setState] = React.useState<
+    { kind: "idle" } | { kind: "opening" } | { kind: "opened" } | { kind: "error"; message: string }
+  >({ kind: "idle" });
+
+  const openLink = React.useCallback(() => {
+    if (state.kind === "opening") return;
+    setState({ kind: "opening" });
+    void api.users.createTelegramAccountLinkIntent(communityId)
+      .then(({ link_url: linkUrl }) => {
+        setState({ kind: "opened" });
+        openExternalHref(linkUrl);
+      })
+      .catch((error: unknown) => {
+        setState({
+          kind: "error",
+          message: getErrorMessage(error, "Could not start account linking."),
+        });
+      });
+  }, [api.users, communityId, state.kind]);
+
+  return (
+    <div className="px-4 pt-4">
+      <PageContainer size="narrow">
+        <section className="rounded-[var(--radius-xl)] border border-border bg-muted/40 p-4">
+          <Type as="h2" variant="h4">Already use Pirate on the web?</Type>
+          <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
+            Link before studying to keep one streak and review history.
+          </Type>
+          <Button
+            className="mt-3 w-full"
+            disabled={state.kind === "opening" || state.kind === "opened"}
+            onClick={openLink}
+            size="sm"
+            variant="secondary"
+          >
+            {state.kind === "opening"
+              ? "Opening…"
+              : state.kind === "opened"
+                ? "Finish linking in your browser"
+                : "Link existing Pirate account"}
+          </Button>
+          {state.kind === "error" ? (
+            <Type as="p" className="mt-2 text-destructive" variant="caption">
+              {state.message}
+            </Type>
+          ) : null}
+        </section>
+      </PageContainer>
+    </div>
   );
 }

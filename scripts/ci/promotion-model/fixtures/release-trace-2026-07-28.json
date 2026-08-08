@@ -1,0 +1,699 @@
+{
+  "_source": "captured verbatim from the GitHub Actions API; DO NOT EDIT. Expected outcomes live in the tests, never here.",
+  "_captured_at": "2026-07-28",
+  "_repo": "pirate-social-club/web",
+  "runs": [
+{
+      "conclusion": "success",
+      "created_at": "2026-07-28T07:36:51Z",
+      "event": "push",
+      "head_branch": "main",
+      "head_sha": "44c7d2caa6f8680a1339a06f669d6ae445ac16a3",
+      "id": 30339084213,
+      "run_started_at": "2026-07-28T07:36:51Z",
+      "status": "completed",
+      "updated_at": "2026-07-28T07:52:29Z",
+      "jobs": [
+            {
+                  "completed_at": "2026-07-28T07:37:16Z",
+                  "conclusion": "success",
+                  "name": "Verify release inputs",
+                  "started_at": "2026-07-28T07:37:02Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:51:56Z",
+                  "conclusion": "success",
+                  "name": "Community schema gate (staging fleet)",
+                  "started_at": "2026-07-28T07:37:28Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:37:38Z",
+                  "conclusion": "success",
+                  "name": "Check staging freshness",
+                  "started_at": "2026-07-28T07:37:28Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:37:16Z",
+                  "conclusion": "skipped",
+                  "name": "Gate builder moderator round trip",
+                  "started_at": "2026-07-28T07:37:17Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:52:28Z",
+                  "conclusion": "success",
+                  "name": "Deploy staging",
+                  "started_at": "2026-07-28T07:52:04Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:52:28Z",
+                  "conclusion": "skipped",
+                  "name": "API staging contract gate",
+                  "started_at": "2026-07-28T07:52:29Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:52:28Z",
+                  "conclusion": "skipped",
+                  "name": "Release gate",
+                  "started_at": "2026-07-28T07:52:29Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:52:28Z",
+                  "conclusion": "skipped",
+                  "name": "Check release freshness",
+                  "started_at": "2026-07-28T07:52:29Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:52:29Z",
+                  "conclusion": "skipped",
+                  "name": "Deploy production",
+                  "started_at": "2026-07-28T07:52:29Z",
+                  "status": "completed"
+            }
+      ]
+}
+    ,
+{
+      "conclusion": "success",
+      "created_at": "2026-07-28T07:41:19Z",
+      "event": "pull_request",
+      "head_branch": "rewards-lit-network-diagnostic-release",
+      "head_sha": "14aa5597e4e6e6ccffd36cb24fa6007757baf829",
+      "id": 30339363114,
+      "run_started_at": "2026-07-28T07:41:19Z",
+      "status": "completed",
+      "updated_at": "2026-07-28T07:41:43Z",
+      "jobs": [
+            {
+                  "completed_at": "2026-07-28T07:41:42Z",
+                  "conclusion": "success",
+                  "name": "Verify release inputs",
+                  "started_at": "2026-07-28T07:41:28Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:41:42Z",
+                  "conclusion": "skipped",
+                  "name": "Check staging freshness",
+                  "started_at": "2026-07-28T07:41:42Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:41:42Z",
+                  "conclusion": "skipped",
+                  "name": "Community schema gate (staging fleet)",
+                  "started_at": "2026-07-28T07:41:42Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:41:42Z",
+                  "conclusion": "skipped",
+                  "name": "Gate builder moderator round trip",
+                  "started_at": "2026-07-28T07:41:42Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:41:42Z",
+                  "conclusion": "skipped",
+                  "name": "Deploy staging",
+                  "started_at": "2026-07-28T07:41:42Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:41:42Z",
+                  "conclusion": "skipped",
+                  "name": "Release gate",
+                  "started_at": "2026-07-28T07:41:43Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:41:42Z",
+                  "conclusion": "skipped",
+                  "name": "API staging contract gate",
+                  "started_at": "2026-07-28T07:41:43Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:41:42Z",
+                  "conclusion": "skipped",
+                  "name": "Check release freshness",
+                  "started_at": "2026-07-28T07:41:43Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:41:43Z",
+                  "conclusion": "skipped",
+                  "name": "Deploy production",
+                  "started_at": "2026-07-28T07:41:43Z",
+                  "status": "completed"
+            }
+      ]
+}
+    ,
+{
+      "conclusion": "success",
+      "created_at": "2026-07-28T07:43:14Z",
+      "event": "pull_request",
+      "head_branch": "chore/pin-api-efp-sponsorship",
+      "head_sha": "95454b3d527fa26d9be9b3d5e9efbe1ba992b87f",
+      "id": 30339487376,
+      "run_started_at": "2026-07-28T07:43:14Z",
+      "status": "completed",
+      "updated_at": "2026-07-28T07:43:38Z",
+      "jobs": [
+            {
+                  "completed_at": "2026-07-28T07:43:37Z",
+                  "conclusion": "success",
+                  "name": "Verify release inputs",
+                  "started_at": "2026-07-28T07:43:23Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:37Z",
+                  "conclusion": "skipped",
+                  "name": "Gate builder moderator round trip",
+                  "started_at": "2026-07-28T07:43:38Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:37Z",
+                  "conclusion": "skipped",
+                  "name": "Community schema gate (staging fleet)",
+                  "started_at": "2026-07-28T07:43:38Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:37Z",
+                  "conclusion": "skipped",
+                  "name": "Check staging freshness",
+                  "started_at": "2026-07-28T07:43:38Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:38Z",
+                  "conclusion": "skipped",
+                  "name": "API staging contract gate",
+                  "started_at": "2026-07-28T07:43:38Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:38Z",
+                  "conclusion": "skipped",
+                  "name": "Deploy staging",
+                  "started_at": "2026-07-28T07:43:38Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:38Z",
+                  "conclusion": "skipped",
+                  "name": "Release gate",
+                  "started_at": "2026-07-28T07:43:38Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:38Z",
+                  "conclusion": "skipped",
+                  "name": "Check release freshness",
+                  "started_at": "2026-07-28T07:43:38Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:38Z",
+                  "conclusion": "skipped",
+                  "name": "Deploy production",
+                  "started_at": "2026-07-28T07:43:38Z",
+                  "status": "completed"
+            }
+      ]
+}
+    ,
+{
+      "conclusion": "success",
+      "created_at": "2026-07-28T07:43:19Z",
+      "event": "pull_request",
+      "head_branch": "rewards-lit-network-diagnostic-release",
+      "head_sha": "4d7c1f1acbb7885f579d111e1d63fceb4cef4da4",
+      "id": 30339492614,
+      "run_started_at": "2026-07-28T07:43:19Z",
+      "status": "completed",
+      "updated_at": "2026-07-28T07:43:49Z",
+      "jobs": [
+            {
+                  "completed_at": "2026-07-28T07:43:48Z",
+                  "conclusion": "success",
+                  "name": "Verify release inputs",
+                  "started_at": "2026-07-28T07:43:33Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:48Z",
+                  "conclusion": "skipped",
+                  "name": "Check staging freshness",
+                  "started_at": "2026-07-28T07:43:48Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:48Z",
+                  "conclusion": "skipped",
+                  "name": "Gate builder moderator round trip",
+                  "started_at": "2026-07-28T07:43:48Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:48Z",
+                  "conclusion": "skipped",
+                  "name": "Community schema gate (staging fleet)",
+                  "started_at": "2026-07-28T07:43:48Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:48Z",
+                  "conclusion": "skipped",
+                  "name": "Deploy staging",
+                  "started_at": "2026-07-28T07:43:48Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:48Z",
+                  "conclusion": "skipped",
+                  "name": "API staging contract gate",
+                  "started_at": "2026-07-28T07:43:48Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:48Z",
+                  "conclusion": "skipped",
+                  "name": "Release gate",
+                  "started_at": "2026-07-28T07:43:48Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:48Z",
+                  "conclusion": "skipped",
+                  "name": "Check release freshness",
+                  "started_at": "2026-07-28T07:43:48Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:43:48Z",
+                  "conclusion": "skipped",
+                  "name": "Deploy production",
+                  "started_at": "2026-07-28T07:43:49Z",
+                  "status": "completed"
+            }
+      ]
+}
+    ,
+{
+      "conclusion": "success",
+      "created_at": "2026-07-28T07:44:57Z",
+      "event": "push",
+      "head_branch": "main",
+      "head_sha": "4168d8e7b160912dd7abd2805e2d63824a4379ac",
+      "id": 30339595573,
+      "run_started_at": "2026-07-28T07:44:57Z",
+      "status": "completed",
+      "updated_at": "2026-07-28T07:59:28Z",
+      "jobs": [
+            {
+                  "completed_at": "2026-07-28T07:45:23Z",
+                  "conclusion": "success",
+                  "name": "Verify release inputs",
+                  "started_at": "2026-07-28T07:45:09Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:59:27Z",
+                  "conclusion": "success",
+                  "name": "Community schema gate (staging fleet)",
+                  "started_at": "2026-07-28T07:45:33Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:45:44Z",
+                  "conclusion": "success",
+                  "name": "Check staging freshness",
+                  "started_at": "2026-07-28T07:45:33Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:45:23Z",
+                  "conclusion": "skipped",
+                  "name": "Gate builder moderator round trip",
+                  "started_at": "2026-07-28T07:45:23Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:59:27Z",
+                  "conclusion": "skipped",
+                  "name": "Deploy staging",
+                  "started_at": "2026-07-28T07:59:27Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:59:27Z",
+                  "conclusion": "skipped",
+                  "name": "API staging contract gate",
+                  "started_at": "2026-07-28T07:59:27Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:59:27Z",
+                  "conclusion": "skipped",
+                  "name": "Check release freshness",
+                  "started_at": "2026-07-28T07:59:27Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:59:27Z",
+                  "conclusion": "skipped",
+                  "name": "Release gate",
+                  "started_at": "2026-07-28T07:59:27Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:59:27Z",
+                  "conclusion": "skipped",
+                  "name": "Deploy production",
+                  "started_at": "2026-07-28T07:59:28Z",
+                  "status": "completed"
+            }
+      ]
+}
+    ,
+{
+      "conclusion": "success",
+      "created_at": "2026-07-28T07:45:31Z",
+      "event": "push",
+      "head_branch": "main",
+      "head_sha": "8cd1295b80e3b8cfcbec3f4c81e3654a17630521",
+      "id": 30339634120,
+      "run_started_at": "2026-07-28T07:45:31Z",
+      "status": "completed",
+      "updated_at": "2026-07-28T08:00:01Z",
+      "jobs": [
+            {
+                  "completed_at": "2026-07-28T07:45:55Z",
+                  "conclusion": "success",
+                  "name": "Verify release inputs",
+                  "started_at": "2026-07-28T07:45:41Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:59:25Z",
+                  "conclusion": "success",
+                  "name": "Community schema gate (staging fleet)",
+                  "started_at": "2026-07-28T07:46:06Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:46:16Z",
+                  "conclusion": "success",
+                  "name": "Check staging freshness",
+                  "started_at": "2026-07-28T07:46:06Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:45:55Z",
+                  "conclusion": "skipped",
+                  "name": "Gate builder moderator round trip",
+                  "started_at": "2026-07-28T07:45:56Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:00:00Z",
+                  "conclusion": "success",
+                  "name": "Deploy staging",
+                  "started_at": "2026-07-28T07:59:35Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:00:00Z",
+                  "conclusion": "skipped",
+                  "name": "Release gate",
+                  "started_at": "2026-07-28T08:00:01Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:00:00Z",
+                  "conclusion": "skipped",
+                  "name": "API staging contract gate",
+                  "started_at": "2026-07-28T08:00:01Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:00:01Z",
+                  "conclusion": "skipped",
+                  "name": "Check release freshness",
+                  "started_at": "2026-07-28T08:00:01Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:00:01Z",
+                  "conclusion": "skipped",
+                  "name": "Deploy production",
+                  "started_at": "2026-07-28T08:00:01Z",
+                  "status": "completed"
+            }
+      ]
+}
+    ,
+{
+      "conclusion": "success",
+      "created_at": "2026-07-28T07:52:50Z",
+      "event": "push",
+      "head_branch": "main",
+      "head_sha": "71b2bd16707927a408525b3efb40f00f35387e9f",
+      "id": 30340106941,
+      "run_started_at": "2026-07-28T07:52:50Z",
+      "status": "completed",
+      "updated_at": "2026-07-28T08:09:42Z",
+      "jobs": [
+            {
+                  "completed_at": "2026-07-28T07:53:18Z",
+                  "conclusion": "success",
+                  "name": "Verify release inputs",
+                  "started_at": "2026-07-28T07:53:04Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:53:37Z",
+                  "conclusion": "success",
+                  "name": "Check staging freshness",
+                  "started_at": "2026-07-28T07:53:27Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:09:05Z",
+                  "conclusion": "success",
+                  "name": "Community schema gate (staging fleet)",
+                  "started_at": "2026-07-28T07:53:28Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:53:18Z",
+                  "conclusion": "skipped",
+                  "name": "Gate builder moderator round trip",
+                  "started_at": "2026-07-28T07:53:19Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:09:40Z",
+                  "conclusion": "success",
+                  "name": "Deploy staging",
+                  "started_at": "2026-07-28T08:09:17Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:09:41Z",
+                  "conclusion": "skipped",
+                  "name": "Release gate",
+                  "started_at": "2026-07-28T08:09:41Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:09:41Z",
+                  "conclusion": "skipped",
+                  "name": "API staging contract gate",
+                  "started_at": "2026-07-28T08:09:41Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:09:41Z",
+                  "conclusion": "skipped",
+                  "name": "Check release freshness",
+                  "started_at": "2026-07-28T08:09:41Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:09:41Z",
+                  "conclusion": "skipped",
+                  "name": "Deploy production",
+                  "started_at": "2026-07-28T08:09:41Z",
+                  "status": "completed"
+            }
+      ]
+}
+    ,
+{
+      "conclusion": "success",
+      "created_at": "2026-07-28T07:56:18Z",
+      "event": "push",
+      "head_branch": "main",
+      "head_sha": "d3d3522eb59918da8eb4acbc01cb6a7a73d44fb2",
+      "id": 30340334744,
+      "run_started_at": "2026-07-28T07:56:18Z",
+      "status": "completed",
+      "updated_at": "2026-07-28T08:17:29Z",
+      "jobs": [
+            {
+                  "completed_at": "2026-07-28T07:56:44Z",
+                  "conclusion": "success",
+                  "name": "Verify release inputs",
+                  "started_at": "2026-07-28T07:56:30Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:10:44Z",
+                  "conclusion": "success",
+                  "name": "Community schema gate (staging fleet)",
+                  "started_at": "2026-07-28T07:56:55Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:57:07Z",
+                  "conclusion": "success",
+                  "name": "Check staging freshness",
+                  "started_at": "2026-07-28T07:56:56Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T07:56:44Z",
+                  "conclusion": "skipped",
+                  "name": "Gate builder moderator round trip",
+                  "started_at": "2026-07-28T07:56:45Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:12:22Z",
+                  "conclusion": "success",
+                  "name": "Deploy staging",
+                  "started_at": "2026-07-28T08:10:55Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:14:12Z",
+                  "conclusion": "success",
+                  "name": "Release gate",
+                  "started_at": "2026-07-28T08:12:31Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:17:08Z",
+                  "conclusion": "success",
+                  "name": "API staging contract gate / Required staging API contracts",
+                  "started_at": "2026-07-28T08:12:32Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:17:29Z",
+                  "conclusion": "success",
+                  "name": "Check release freshness",
+                  "started_at": "2026-07-28T08:17:18Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:17:29Z",
+                  "conclusion": "skipped",
+                  "name": "Deploy production",
+                  "started_at": "2026-07-28T08:17:29Z",
+                  "status": "completed"
+            }
+      ]
+}
+    ,
+{
+      "conclusion": "success",
+      "created_at": "2026-07-28T08:12:41Z",
+      "event": "push",
+      "head_branch": "main",
+      "head_sha": "9de6252b6e973ce12aaec327cb668137a7e9d1cc",
+      "id": 30341460455,
+      "run_started_at": "2026-07-28T08:12:41Z",
+      "status": "completed",
+      "updated_at": "2026-07-28T08:37:04Z",
+      "jobs": [
+            {
+                  "completed_at": "2026-07-28T08:13:05Z",
+                  "conclusion": "success",
+                  "name": "Verify release inputs",
+                  "started_at": "2026-07-28T08:12:51Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:27:55Z",
+                  "conclusion": "success",
+                  "name": "Community schema gate (staging fleet)",
+                  "started_at": "2026-07-28T08:13:21Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:13:31Z",
+                  "conclusion": "success",
+                  "name": "Check staging freshness",
+                  "started_at": "2026-07-28T08:13:21Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:13:05Z",
+                  "conclusion": "skipped",
+                  "name": "Gate builder moderator round trip",
+                  "started_at": "2026-07-28T08:13:06Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:29:22Z",
+                  "conclusion": "success",
+                  "name": "Deploy staging",
+                  "started_at": "2026-07-28T08:28:04Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:31:20Z",
+                  "conclusion": "success",
+                  "name": "Release gate",
+                  "started_at": "2026-07-28T08:29:34Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:34:13Z",
+                  "conclusion": "success",
+                  "name": "API staging contract gate / Required staging API contracts",
+                  "started_at": "2026-07-28T08:29:33Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:34:34Z",
+                  "conclusion": "success",
+                  "name": "Check release freshness",
+                  "started_at": "2026-07-28T08:34:24Z",
+                  "status": "completed"
+            },
+            {
+                  "completed_at": "2026-07-28T08:37:03Z",
+                  "conclusion": "success",
+                  "name": "Deploy production",
+                  "started_at": "2026-07-28T08:34:46Z",
+                  "status": "completed"
+            }
+      ]
+}
+  ]
+}

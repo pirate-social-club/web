@@ -5,7 +5,7 @@ export interface CommunityStudyPolicySettings {
   updatedAt: string | null;
 }
 
-export type CommunityStudyPolicySubmitState =
+type CommunityStudyPolicySubmitState =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "saving" }

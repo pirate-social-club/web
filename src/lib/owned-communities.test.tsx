@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { ApiProvider } from "@/lib/api";
 import { __resetSessionStoreForTests, setSession } from "@/lib/api/session-store";
+import { createFetchMock } from "@/test/fetch-mock";
 import { createTestDom } from "@/test/setup-dom";
 import {
   __resetKnownCommunitiesForTests,
@@ -78,7 +79,7 @@ describe("owned communities hooks", () => {
     rememberKnownCommunity({ communityId: "cmt_flaky", displayName: "Flaky" });
 
     const requests: string[] = [];
-    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    globalThis.fetch = createFetchMock(async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const request = input instanceof Request ? input : new Request(input, init);
       const pathname = new URL(request.url).pathname;
       requests.push(pathname);
@@ -99,7 +100,7 @@ describe("owned communities hooks", () => {
       }
 
       throw new Error(`Unexpected request: ${pathname}`);
-    };
+    });
 
     try {
       const { result } = renderHook(() => useRecentCommunities(), { wrapper });
@@ -146,7 +147,7 @@ describe("owned communities hooks", () => {
     rememberKnownCommunity({ communityId: "cmt_dead", displayName: "Dead" });
 
     const requests: string[] = [];
-    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    globalThis.fetch = createFetchMock(async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const request = input instanceof Request ? input : new Request(input, init);
       const url = new URL(request.url);
       requests.push(url.pathname);
@@ -194,7 +195,7 @@ describe("owned communities hooks", () => {
       }
 
       throw new Error(`Unexpected request: ${url.pathname}`);
-    };
+    });
 
     try {
       const { result } = renderHook(() => useSidebarCommunities(), { wrapper });
@@ -225,7 +226,7 @@ describe("owned communities hooks", () => {
       wallet_attachments: [],
     });
 
-    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    globalThis.fetch = createFetchMock(async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const request = input instanceof Request ? input : new Request(input, init);
       const url = new URL(request.url);
 
@@ -271,7 +272,7 @@ describe("owned communities hooks", () => {
       }
 
       throw new Error(`Unexpected request: ${url.pathname}`);
-    };
+    });
 
     try {
       const { result } = renderHook(() => useSidebarCommunities(), { wrapper });
@@ -296,7 +297,7 @@ describe("owned communities hooks", () => {
     installDom();
     rememberKnownCommunity({ communityId: "cmt_legacy", displayName: "Legacy" });
 
-    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    globalThis.fetch = createFetchMock(async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const request = input instanceof Request ? input : new Request(input, init);
       const pathname = new URL(request.url).pathname;
 
@@ -310,7 +311,7 @@ describe("owned communities hooks", () => {
       }
 
       throw new Error(`Unexpected request: ${pathname}`);
-    };
+    });
 
     try {
       const { result } = renderHook(() => useRecentCommunities(), { wrapper });

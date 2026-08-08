@@ -1,6 +1,7 @@
 import {
   createAuthApi,
   createFeedApi,
+  createGateCapabilitiesApi,
   createGeoApi,
   createOnboardingApi,
   createUsersApi,
@@ -31,14 +32,12 @@ import {
   createRoyaltiesApi,
 } from "./client-groups-system";
 import type {
-  ApiRequest,
   ApiRequestInit,
   JsonErrorResponse,
   RefreshAuthCallback,
 } from "./client-internal";
 import { xhrUploadFetch } from "./client-xhr-upload";
 import { getAnalyticsIdentity } from "../analytics-identity";
-import { getErrorMessage } from "../error-utils";
 import { logger } from "../logger";
 
 export class ApiError extends Error {
@@ -47,6 +46,7 @@ export class ApiError extends Error {
   readonly retryable: boolean;
   readonly retryableExplicit: boolean;
   readonly details: Record<string, unknown> | null;
+  readonly requestId: string | null;
 
   constructor(
     code: string,
@@ -54,6 +54,7 @@ export class ApiError extends Error {
     status: number,
     retryable?: boolean,
     details: Record<string, unknown> | null = null,
+    requestId: string | null = null,
   ) {
     super(message);
     this.name = "ApiError";
@@ -62,6 +63,7 @@ export class ApiError extends Error {
     this.retryable = retryable ?? false;
     this.retryableExplicit = retryable !== undefined;
     this.details = details;
+    this.requestId = requestId;
   }
 }
 
@@ -71,6 +73,10 @@ export function isApiAuthError(error: unknown): error is ApiError {
 
 export function isApiNotFoundError(error: unknown): error is ApiError {
   return error instanceof ApiError && error.status === 404;
+}
+
+export function isApiVerificationRequiredError(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.code === "verification_required";
 }
 
 export const DEFAULT_BASE_URL = "http://127.0.0.1:8787";
@@ -89,6 +95,7 @@ export class ApiClient {
   readonly verification = createVerificationApi(this.request.bind(this));
   readonly feed = createFeedApi(this.request.bind(this));
   readonly geo = createGeoApi(this.request.bind(this));
+  readonly gateCapabilities = createGateCapabilitiesApi(this.request.bind(this));
   readonly communities = {
     ...createCommunitiesApi(this.request.bind(this)),
     ...createCommunityContentApi(this.request.bind(this)),
@@ -290,17 +297,23 @@ export class ApiClient {
       let code = "internal_error";
       let message = `Request failed with status ${res.status}`;
       let retryable: boolean | undefined;
+      let requestId = res.headers.get("x-request-id");
 
       try {
-        const body: JsonErrorResponse & { details?: unknown; error?: string; preview?: unknown } = await res.json();
+        const body: JsonErrorResponse & { details?: unknown; error?: string; fields?: unknown; preview?: unknown } = await res.json();
         if (body.code) code = body.code;
         else if (typeof body.error === "string") code = body.error; // routes that return { error: reason }
         if (body.message) message = body.message;
         if (typeof body.retryable === "boolean") retryable = body.retryable;
+        if (typeof body.request_id === "string" && body.request_id) requestId = body.request_id;
         let parsedDetails =
           body.details && typeof body.details === "object"
             ? (body.details as Record<string, unknown>)
             : null;
+        if (Array.isArray(body.fields)) {
+          // Routes that return { error: "validation_failed", fields: [{ field, reason }] }
+          parsedDetails = { ...(parsedDetails ?? {}), fields: body.fields };
+        }
         if ("preview" in body && body.preview && typeof body.preview === "object") {
           parsedDetails = { ...(parsedDetails ?? {}), preview: body.preview };
         }
@@ -345,8 +358,9 @@ export class ApiClient {
           code,
           message,
           retryable,
+          requestId,
         });
-        throw new ApiError(code, message, res.status, retryable, parsedDetails);
+        throw new ApiError(code, message, res.status, retryable, parsedDetails, requestId);
       } catch (error) {
         if (error instanceof ApiError) {
           throw error;
@@ -358,8 +372,9 @@ export class ApiClient {
           code,
           message,
           retryable,
+          requestId,
         });
-        throw new ApiError(code, message, res.status, retryable);
+        throw new ApiError(code, message, res.status, retryable, null, requestId);
       }
     }
 
@@ -375,4 +390,4 @@ export class ApiClient {
   }
 }
 
-export type { ApiRequest };
+;

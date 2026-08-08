@@ -385,6 +385,16 @@ async function createCommunity(apiBase: string, host: Session, runId: string): P
   return id.replace(/^com_/u, "");
 }
 
+async function archiveCommunity(apiBase: string, communityId: string, host: Session): Promise<void> {
+  await api({
+    apiBase,
+    body: {},
+    method: "POST",
+    path: `/communities/${encodeURIComponent(communityId)}/archive`,
+    token: host.accessToken,
+  });
+}
+
 function configuredCommunityId(): string {
   return (optionalEnv("PIRATE_STORY_E2E_COMMUNITY_ID") ?? DEFAULT_STORY_E2E_COMMUNITY_ID).replace(/^com_/u, "");
 }
@@ -1178,6 +1188,7 @@ async function main(): Promise<void> {
     mode: communityMode,
   };
   try {
+  try {
     await joinCommunity(apiBase, communityId, communityHost, author);
   } catch (error) {
     if (createFreshCommunity || !isMissingCommunityError(error, communityId)) throw error;
@@ -1478,6 +1489,9 @@ async function main(): Promise<void> {
     ciphertext: ciphertextBefore,
     expectedPlaintext: derivativeBytes,
   });
+  } finally {
+    if (createFreshCommunity) await archiveCommunity(apiBase, communityId, communityHost);
+  }
 }
 
 main()

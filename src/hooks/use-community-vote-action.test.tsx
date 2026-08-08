@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { act, renderHook } from "@testing-library/react";
 import * as React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type {
   JoinEligibility,
   LocalizedPostResponse as ApiPost,
@@ -63,11 +64,19 @@ function renderVoteHarness(options: {
     value: 1 | -1,
     options?: { altchaPayload?: string | null | undefined },
   ) => Promise<{ value: 1 | -1 }>;
+  clearVote?: (
+    postId: string,
+    options?: { altchaPayload?: string | null | undefined },
+  ) => Promise<{ value: null }>;
 } = {}) {
   const gatedCalls: RunGatedCommunityActionParams[] = [];
   const voteCalls: Array<{
     postId: string;
     value: 1 | -1;
+    options?: { altchaPayload?: string | null | undefined };
+  }> = [];
+  const clearVoteCalls: Array<{
+    postId: string;
     options?: { altchaPayload?: string | null | undefined };
   }> = [];
   const runGatedCommunityAction = options.runGatedCommunityAction ?? (async (params) => {
@@ -79,22 +88,34 @@ function renderVoteHarness(options: {
     voteCalls.push(voteOptions ? { postId, value, options: voteOptions } : { postId, value });
     return { value };
   });
+  const clearVote = options.clearVote ?? (async (postId, clearOptions) => {
+    clearVoteCalls.push(clearOptions ? { postId, options: clearOptions } : { postId });
+    return { value: null };
+  });
+  const queryClient = new QueryClient();
 
   const hook = renderHook(() => {
     const [posts, setPosts] = React.useState<ApiPost[]>(options.posts ?? [createPost()]);
     const voteOnPost = useCommunityVoteAction({
       buildBlockedModalState: options.buildBlockedModalState,
       communityId: options.communityId,
+      clearVote,
       gateData: options.gateData,
+      locale: "en",
       posts,
       runGatedCommunityAction,
       setPosts,
       vote,
     });
     return { posts, voteOnPost };
+  }, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
   });
 
   return {
+    clearVoteCalls,
     gatedCalls,
     hook,
     voteCalls,
@@ -153,16 +174,20 @@ describe("useCommunityVoteAction", () => {
     expect(gatedCalls[0]?.voteValue).toBe(1);
   });
 
-  test("does nothing for null vote direction", async () => {
-    const { gatedCalls, hook, voteCalls } = renderVoteHarness();
+  test("clears the selected vote for a null direction", async () => {
+    const { clearVoteCalls, gatedCalls, hook, voteCalls } = renderVoteHarness({
+      posts: [createPost({ upvote_count: 1, viewer_vote: 1 })],
+    });
 
     await act(async () => {
       await hook.result.current.voteOnPost("pst_test", null);
     });
 
-    expect(gatedCalls).toHaveLength(0);
+    expect(gatedCalls[0]?.voteValue).toBe("clear");
+    expect(clearVoteCalls).toEqual([{ postId: "pst_test" }]);
     expect(voteCalls).toHaveLength(0);
     expect(hook.result.current.posts[0]?.viewer_vote).toBe(null);
+    expect(hook.result.current.posts[0]?.upvote_count).toBe(0);
   });
 
   test("does nothing when required gate data is explicitly unavailable", async () => {

@@ -105,7 +105,7 @@ function PostsPanel({ posts }: { posts: PublicProfileProps["posts"] }) {
     <FeedStack>
       {posts.map((item) => (
         <Card className="overflow-hidden" key={item.postId}>
-          <PostCard className="border-b-0" {...item.post} />
+          <PostCard className="border-b-0" {...item.post} postId={item.postId} />
         </Card>
       ))}
     </FeedStack>
@@ -139,7 +139,7 @@ function VideosPanel({ videos }: { videos: PublicProfileProps["videos"] }) {
     <FeedStack>
       {videos.map((item) => (
         <Card className="overflow-hidden" key={item.videoId}>
-          <PostCard className="border-b-0" {...item.post} />
+          <PostCard className="border-b-0" {...item.post} postId={item.videoId} />
         </Card>
       ))}
     </FeedStack>

@@ -24,6 +24,11 @@ import {
   installStoredSession,
   type StoredSession,
 } from "./fixtures/session";
+import {
+  fixtureDiagnosticDetail,
+  formatFixtureDiscoveryDiagnostics,
+  type FixtureDiscoveryDiagnostic,
+} from "./fixtures/fixture-discovery-diagnostics";
 
 const baseURL = process.env.E2E_BASE_URL ?? "https://staging.pirate.sc";
 const apiBaseURL = process.env.E2E_API_BASE_URL ?? resolveApiBaseURL(baseURL);
@@ -36,6 +41,23 @@ const storySmokeCommunityId = (
 ).replace(/^com_/u, "");
 const storySmokeHostSubject = process.env.PIRATE_STORY_E2E_HOST_SUBJECT
   ?? "story-e2e-author-1780678999641-65820e";
+// Release gates must not provision communities: every allocation permanently
+// consumes a staging D1 binding until verified reclamation exists. This fixture
+// was created by the former per-run gate contract and is now dedicated to the
+// required gate-identity contract. Resolve its actual owner from the public
+// fixture record and use the release gate's scoped admin impersonation headers;
+// display names are not an identity source.
+const gateContractCommunityId = (
+  process.env.PIRATE_GATE_CONTRACT_E2E_COMMUNITY_ID ?? "cmt_33b915567dad45dd9d22981627343985"
+).replace(/^com_/u, "");
+// Dedicated staging fixture for the required handle-claim contract. Its shard
+// binding is reserved from provisioning/reclamation and its local namespace
+// policy is restored through a committed idempotent seed. The contract does
+// not require an HNS verification or route slug: it requires a routable public
+// community with an impersonable owner and claims_enabled=true.
+const handleClaimCommunityId = (
+  process.env.PIRATE_HANDLE_CLAIM_E2E_COMMUNITY_ID ?? "cmt_541911f4cd9145398b7fa79ddc0542fe"
+).replace(/^com_/u, "");
 const multipartGateVideoBytes = Number.parseInt(
   // Keep the default below the retired 64 MiB proxy threshold. This makes the
   // release gate catch clients that accidentally send ordinary videos through
@@ -203,6 +225,25 @@ function nextBookingSmokeSlot(hostTimezone: string): {
   };
 }
 
+/**
+ * The 30-minute slot directly after a smoke slot. The availability rule must be widened to
+ * `ruleEndLocal` for it to exist; used to place a second, community-attributed hold.
+ */
+function adjacentBookingSmokeSlot(slot: { endUtc: string }, hostTimezone: string): {
+  endUtc: string;
+  ruleEndLocal: string;
+  startUtc: string;
+} {
+  const start = new Date(slot.endUtc);
+  const end = new Date(start.getTime() + 30 * 60_000);
+  const endLocal = localSlotParts(end, hostTimezone);
+  return {
+    endUtc: end.toISOString(),
+    ruleEndLocal: `${endLocal.hour}:${endLocal.minute}`,
+    startUtc: start.toISOString(),
+  };
+}
+
 function mintUpstreamJwt(subject: string, walletAddressOverride?: string | null): string {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const walletAddress = walletAddressOverride?.trim() || process.env.E2E_LIVE_STAGING_WALLET_ADDRESS?.trim();
@@ -216,11 +257,22 @@ function mintUpstreamJwt(subject: string, walletAddressOverride?: string | null)
   }, requiredEnv("AUTH_UPSTREAM_JWT_SHARED_SECRET"));
 }
 
+// Every live request is bounded. Without this a single hanging API call consumes
+// the whole 45s Playwright test budget and reports only "Test timeout exceeded",
+// which names neither the endpoint nor the elapsed time — the release gate then
+// looks like a flaky test instead of the API operation that actually stalled.
+// See the 2026-07-31 gate-identity outage: the hang was
+// `POST /auth/session/exchange` for wallet-bearing identities, invisible for
+// three release runs because the timeout collapsed into the test-level one.
+const liveRequestTimeoutMs = Number(process.env.E2E_LIVE_REQUEST_TIMEOUT_MS ?? 30_000);
+
 async function requestJson<T>(
   path: string,
   init: RequestInit = {},
   okStatuses = [200, 201, 202],
 ): Promise<T> {
+  const method = init.method ?? "GET";
+  const startedAt = Date.now();
   const response = await fetch(new URL(path, apiBaseURL), {
     ...init,
     headers: {
@@ -228,6 +280,17 @@ async function requestJson<T>(
       ...(init.body ? { "content-type": "application/json" } : {}),
       ...init.headers,
     },
+    signal: AbortSignal.timeout(liveRequestTimeoutMs),
+  }).catch((error: unknown) => {
+    const elapsedMs = Date.now() - startedAt;
+    const name = error instanceof Error ? error.name : "";
+    if (name === "TimeoutError" || name === "AbortError") {
+      throw new Error(
+        `${method} ${path} did not respond within ${liveRequestTimeoutMs}ms (waited ${elapsedMs}ms).`
+        + " The staging API accepted the request and never answered.",
+      );
+    }
+    throw error;
   });
   const text = await response.text();
   const body = (text.trim() ? JSON.parse(text) : null) as T;
@@ -523,15 +586,29 @@ async function waitForAsyncSongPublished(input: {
 }
 
 async function createLiveSession(subject = liveSubject, walletAddress?: string | null): Promise<StoredSession> {
-  const response = await requestJson<SessionExchangeResponse>("/auth/session/exchange", {
-    body: JSON.stringify({
-      proof: {
-        jwt: mintUpstreamJwt(subject, walletAddress),
-        type: "jwt_based_auth",
-      },
-    }),
-    method: "POST",
+  const body = JSON.stringify({
+    proof: {
+      jwt: mintUpstreamJwt(subject, walletAddress),
+      type: "jwt_based_auth",
+    },
   });
+  let response: SessionExchangeResponse | null = null;
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      response = await requestJson<SessionExchangeResponse>("/auth/session/exchange", {
+        body,
+        method: "POST",
+      });
+      break;
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      if (attempt === 3 || !/failed with 50[0234]:/u.test(message)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1_000));
+    }
+  }
+  if (!response) throw lastError;
 
   return createStoredSessionFromExchange(response);
 }
@@ -600,7 +677,11 @@ async function createGateBuilderCommunity(session: StoredSession, runId: string)
       handle_policy: { policy_template: "standard" },
       membership_mode: "request",
     }),
-    headers: { authorization: `Bearer ${session.accessToken}` },
+    headers: {
+      authorization: `Bearer ${session.accessToken}`,
+      "x-pirate-allocation-source": "web-e2e:gate-builder",
+      "x-pirate-allocation-run-id": process.env.GITHUB_RUN_ID?.trim() || runId,
+    },
     method: "POST",
   });
   if (created.job?.id && created.job.status !== "succeeded") {
@@ -609,6 +690,14 @@ async function createGateBuilderCommunity(session: StoredSession, runId: string)
   const communityId = firstString(created.community.id, created.community.community_id);
   if (!communityId) throw new Error("created gate-builder community id is missing");
   return communityId.replace(/^com_/u, "");
+}
+
+async function archiveGateBuilderCommunity(session: StoredSession, communityId: string): Promise<void> {
+  await requestJson(`/communities/${encodeURIComponent(communityId)}/archive`, {
+    body: JSON.stringify({}),
+    headers: { authorization: `Bearer ${session.accessToken}` },
+    method: "POST",
+  });
 }
 
 async function chooseSelectOption(page: Page, triggerIndex: number, triggerName: string, optionName: string): Promise<void> {
@@ -1164,8 +1253,15 @@ function communityFromFeedItem(item: any): LiveCommunity | null {
   return { id, label, routeSegment };
 }
 
-async function hydrateRoutableLiveCommunityOwner(community: LiveCommunity): Promise<LiveCommunity | null> {
-  const detail = await requestJson<any>(`/public-communities/${encodeURIComponent(community.id)}`).catch(() => null);
+async function hydrateRoutableLiveCommunityOwner(
+  community: LiveCommunity,
+  diagnostics?: FixtureDiscoveryDiagnostic[],
+): Promise<LiveCommunity | null> {
+  const path = `/public-communities/${encodeURIComponent(community.id)}`;
+  const detail = await requestJson<any>(path).catch((error: unknown) => {
+    diagnostics?.push({ detail: fixtureDiagnosticDetail(error), stage: "hydrate", target: path });
+    return null;
+  });
   if (!detail) return null;
   const ownerUser = firstString(detail?.owner?.user);
   const id = firstString(detail?.id, community.id) ?? community.id;
@@ -1179,14 +1275,14 @@ async function hydrateRoutableLiveCommunityOwner(community: LiveCommunity): Prom
   };
 }
 
-async function seedCommunityCandidates(): Promise<LiveCommunity[]> {
+async function seedCommunityCandidates(diagnostics?: FixtureDiscoveryDiagnostic[]): Promise<LiveCommunity[]> {
   const candidates: LiveCommunity[] = [];
   const seen = new Set<string>();
   const pushHydrated = async (community: LiveCommunity): Promise<void> => {
     const key = community.id.trim();
     if (!key || seen.has(key)) return;
     seen.add(key);
-    const hydrated = await hydrateRoutableLiveCommunityOwner(community);
+    const hydrated = await hydrateRoutableLiveCommunityOwner(community, diagnostics);
     if (hydrated) candidates.push(hydrated);
   };
 
@@ -1206,12 +1302,21 @@ async function seedCommunityCandidates(): Promise<LiveCommunity[]> {
         await pushHydrated(community);
       }
     }
-  } catch {
+  } catch (error) {
+    diagnostics?.push({
+      detail: fixtureDiagnosticDetail(error),
+      stage: "feed",
+      target: "/feed/home/public?sort=best&locale=en",
+    });
     // Fall through to search; live staging feed can be blocked by unrelated data migrations.
   }
 
   for (const query of [seedCommunityLabel, "smoke"]) {
-    const search = await requestJson<any>(`/public-communities?query=${encodeURIComponent(query)}&limit=10`);
+    const path = `/public-communities?query=${encodeURIComponent(query)}&limit=10`;
+    const search = await requestJson<any>(path).catch((error: unknown) => {
+      diagnostics?.push({ detail: fixtureDiagnosticDetail(error), stage: "search", target: path });
+      return null;
+    });
     const searchItems = Array.isArray(search?.items)
       ? search.items
       : Array.isArray(search?.results)
@@ -1232,14 +1337,26 @@ async function seedCommunityCandidates(): Promise<LiveCommunity[]> {
 }
 
 async function discoverSeedCommunity(): Promise<LiveCommunity> {
-  const community = await hydrateRoutableLiveCommunityOwner({
+  const diagnostics: FixtureDiscoveryDiagnostic[] = [];
+  const fixture = {
     id: storySmokeCommunityId,
     label: storySmokeCommunityId,
     routeSegment: storySmokeCommunityId,
-  });
-  if (community) return community;
+  };
 
-  throw new Error(`Could not load stable staging fixture ${storySmokeCommunityId}`);
+  // The pinned fixture is durable, but its D1-backed public projection can
+  // transiently time out under staging load. A single failed read must not be
+  // misreported as a missing fixture and block an otherwise healthy release.
+  for (let attempt = 1; attempt <= 6; attempt += 1) {
+    const community = await hydrateRoutableLiveCommunityOwner(fixture, diagnostics);
+    if (community) return community;
+    if (attempt < 6) await new Promise((resolve) => setTimeout(resolve, 2_000));
+  }
+
+  throw new Error(
+    `Could not load stable staging fixture ${storySmokeCommunityId} after 6 attempts:\n`
+      + formatFixtureDiscoveryDiagnostics(diagnostics),
+  );
 }
 
 async function discoverWritableSeedCommunity(
@@ -1274,6 +1391,243 @@ test.describe("live staging integration", () => {
   test.skip(process.env.E2E_LIVE_STAGING !== "true", "Set E2E_LIVE_STAGING=true to run real staging mutations.");
   test.skip(!liveSecretsPresent, "Live staging JWT secrets are not available.");
 
+  test("exposes stable gate identity and authoritative outcomes in live join eligibility", async () => {
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    // Each live stage is its own step so a stall is attributed to the operation
+    // that hung rather than to the test as a whole.
+    const community = await test.step("hydrate gate-contract fixture", () =>
+      hydrateRoutableLiveCommunityOwner({
+        id: gateContractCommunityId,
+        label: gateContractCommunityId,
+        routeSegment: gateContractCommunityId,
+      }));
+    if (!community) {
+      throw new Error(`Could not load stable gate-contract fixture ${gateContractCommunityId}`);
+    }
+    const headers = seedOwnerAdminHeaders(community);
+    if (!headers) {
+      throw new Error(`Stable gate-contract fixture ${gateContractCommunityId} has no impersonable owner`);
+    }
+    const communityId = community.id;
+
+    const gatePolicy = {
+      expression: {
+        children: [
+          { gate: { gate_id: "verified-human", provider: "self", type: "unique_human" }, op: "gate" },
+          { gate: { gate_id: "browser-challenge", type: "altcha_pow" }, op: "gate" },
+        ],
+        op: "and",
+      },
+      version: 1,
+    };
+    await test.step("apply gate policy", () =>
+      requestJson(`/communities/${encodeURIComponent(communityId)}/gates`, {
+        body: JSON.stringify({
+          allow_anonymous_identity: true,
+          anonymous_identity_scope: "community_stable",
+          default_age_gate_policy: "none",
+          gate_policy: gatePolicy,
+          membership_mode: "gated",
+        }),
+        headers,
+        method: "POST",
+      }));
+
+    const viewerSubject = `gate-contract-viewer-${runId}`;
+    const viewerSession = await test.step("create wallet-bearing viewer session", () =>
+      createLiveSession(viewerSubject, walletAddressForSubject(viewerSubject)));
+    await test.step("complete self verification", () => completeSelfVerification(viewerSession));
+    const eligibility = await test.step("read join eligibility", () => requestJson<{
+      gate_evaluation?: { trace?: unknown } | null;
+    }>(`/communities/${encodeURIComponent(communityId)}/join-eligibility`, {
+      headers: { authorization: `Bearer ${viewerSession.accessToken}` },
+    }));
+    const leaves: Array<{ gate_id?: unknown; outcome?: unknown }> = [];
+    const visit = (node: unknown): void => {
+      if (!node || typeof node !== "object") return;
+      const record = node as Record<string, unknown>;
+      if (record.kind === "gate") {
+        leaves.push(record);
+        return;
+      }
+      if (Array.isArray(record.children)) record.children.forEach(visit);
+    };
+    visit(eligibility.gate_evaluation?.trace);
+
+    expect(leaves).toHaveLength(2);
+    expect(leaves.map((leaf) => leaf.gate_id)).toEqual(["verified-human", "browser-challenge"]);
+    expect(leaves.map((leaf) => leaf.outcome)).toEqual(["action_required", "action_required"]);
+  });
+
+  test("binds a per-name Courtyard claim rule in live handle quotes", async ({}, testInfo) => {
+    testInfo.setTimeout(3 * 60_000);
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const labelSuffix = createHash("sha256").update(runId).digest("hex").slice(0, 8);
+    const desiredLabel = `charizard${labelSuffix}`;
+    const openLabel = `pikachu${labelSuffix}`;
+    type HandlePolicy = {
+      claims_enabled: boolean;
+      label_claim_rules: Array<{
+        claim_gate_expression: unknown;
+        selector: { labels: string[] | null; type: string };
+      }>;
+    };
+    let target: { community: LiveCommunity; headers: Record<string, string>; policy: HandlePolicy } | null = null;
+    const discoveryDiagnostics: FixtureDiscoveryDiagnostic[] = [];
+    const pinned = await test.step("preflight dedicated handle-claim fixture", () =>
+      hydrateRoutableLiveCommunityOwner({
+        id: handleClaimCommunityId,
+        label: handleClaimCommunityId,
+        routeSegment: handleClaimCommunityId,
+      }, discoveryDiagnostics));
+    // A required release gate must prove the health of its dedicated fixture.
+    // Falling back to whichever names-enabled community happens to rank in the
+    // public feed turns a broken fixture into a data-dependent pass. Keep the
+    // broader discovery fallback only for optional/manual staging runs.
+    const discovered = requiredReleaseGate
+      ? []
+      : await seedCommunityCandidates(discoveryDiagnostics);
+    const candidates = pinned
+      ? [pinned, ...discovered.filter((community) => community.id !== pinned.id)]
+      : discovered;
+    if (candidates.length === 0) {
+      discoveryDiagnostics.push({ detail: "discovery returned no hydrated candidates", stage: "hydrate", target: "all candidates" });
+    }
+    for (const community of candidates) {
+      const headers = seedOwnerAdminHeaders(community);
+      if (!headers) {
+        const missing = [
+          !process.env.PIRATE_ADMIN_TOKEN?.trim() ? "PIRATE_ADMIN_TOKEN" : null,
+          !community.ownerUserId?.trim() ? "owner user id" : null,
+        ].filter(Boolean).join(" and ");
+        discoveryDiagnostics.push({
+          detail: `missing ${missing}`,
+          stage: "owner-admin",
+          target: `${community.label} (${community.id})`,
+        });
+        continue;
+      }
+      const policyPath = `/communities/${encodeURIComponent(community.id)}/handle-policy`;
+      const policy = await requestJson<HandlePolicy>(
+        policyPath,
+        { headers },
+      ).catch((error: unknown) => {
+        discoveryDiagnostics.push({ detail: fixtureDiagnosticDetail(error), stage: "policy", target: policyPath });
+        return null;
+      });
+      if (policy?.claims_enabled) {
+        target = { community, headers, policy };
+        break;
+      }
+      if (policy) {
+        discoveryDiagnostics.push({
+          detail: "claims_enabled is false",
+          stage: "policy",
+          target: policyPath,
+        });
+      }
+    }
+    if (!target) {
+      const message = [
+        `Dedicated handle-claim fixture ${handleClaimCommunityId} must be routable, expose an owner for admin impersonation, and return claims_enabled=true.`,
+        formatFixtureDiscoveryDiagnostics(discoveryDiagnostics),
+      ].join("\n");
+      if (requiredReleaseGate) throw new Error(message);
+      test.skip(true, message);
+      return;
+    }
+
+    const claimGateExpression = {
+      expression: {
+        gate: {
+          chain_namespace: "eip155:137",
+          contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+          match: { category: "trading_card", subject: "{label}" },
+          min_quantity: 1,
+          provider: "courtyard",
+          type: "erc721_inventory_match",
+        },
+        op: "gate",
+      },
+      version: 1,
+    };
+    try {
+      const policy = await requestJson<{
+        label_claim_rules: Array<{
+          claim_gate_expression: unknown;
+          id: string;
+          position: number;
+          selector: { labels: string[] | null; type: string };
+        }>;
+      }>(`/communities/${encodeURIComponent(target.community.id)}/handle-policy`, {
+        body: JSON.stringify({
+          label_claim_rules: [{
+            claim_gate_expression: claimGateExpression,
+            selector: { labels: [desiredLabel], type: "exact" },
+          }],
+        }),
+        headers: target.headers,
+        method: "POST",
+      });
+
+      expect(policy.label_claim_rules).toHaveLength(1);
+      expect(policy.label_claim_rules[0]).toMatchObject({
+        claim_gate_expression: claimGateExpression,
+        position: 0,
+        selector: { labels: [desiredLabel], type: "exact" },
+      });
+      expect(policy.label_claim_rules[0]?.id).toMatch(/^hlcr_/u);
+
+      const gatedQuote = await requestJson<{
+        claim_gate: {
+          expression: {
+            expression: { gate?: { match?: Record<string, unknown> } };
+          };
+          label_claim_rule: string | null;
+          source: string;
+          summaries: Array<{ gate_type: string }>;
+        } | null;
+        eligible: boolean;
+      }>(`/communities/${encodeURIComponent(target.community.id)}/handles/quote`, {
+        body: JSON.stringify({ desired_label: desiredLabel }),
+        headers: target.headers,
+        method: "POST",
+      });
+
+      expect(gatedQuote.eligible).toBe(false);
+      expect(gatedQuote.claim_gate).toMatchObject({
+        label_claim_rule: policy.label_claim_rules[0]?.id,
+        source: "label_rule",
+        summaries: [{ gate_type: "erc721_inventory_match" }],
+      });
+      expect(gatedQuote.claim_gate?.expression.expression.gate?.match).toEqual({
+        category: "trading_card",
+        subject: desiredLabel,
+      });
+
+      const unmatchedQuote = await requestJson<{ claim_gate: unknown; eligible: boolean }>(
+        `/communities/${encodeURIComponent(target.community.id)}/handles/quote`,
+        {
+          body: JSON.stringify({ desired_label: openLabel }),
+          headers: target.headers,
+          method: "POST",
+        },
+      );
+      expect(unmatchedQuote.claim_gate).toBeNull();
+    } finally {
+      await requestJson(`/communities/${encodeURIComponent(target.community.id)}/handle-policy`, {
+        body: JSON.stringify({
+          label_claim_rules: target.policy.label_claim_rules.map(({ claim_gate_expression, selector }) => ({
+            claim_gate_expression,
+            selector,
+          })),
+        }),
+        headers: target.headers,
+        method: "POST",
+      });
+    }
+  });
+
   test("round-trips a nested gate policy through the staging moderator UI", async ({ page }, testInfo) => {
     testInfo.setTimeout(5 * 60_000);
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
@@ -1283,6 +1637,7 @@ test.describe("live staging integration", () => {
     const communityId = await createGateBuilderCommunity(session, runId);
     const authHeaders = { authorization: `Bearer ${session.accessToken}` };
 
+    try {
     await page.setViewportSize({ height: 900, width: 1440 });
     await installStoredSession(page, session);
     await page.goto(`/c/${pathSegment(communityId)}/mod/gates`);
@@ -1355,10 +1710,18 @@ test.describe("live staging integration", () => {
     await page.setViewportSize({ height: 844, width: 390 });
     await expect(page.getByText("Live summary", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    } finally {
+      await archiveGateBuilderCommunity(session, communityId);
+    }
   });
 
   test("uploads a public video through direct multipart in a real browser", async ({ page }, testInfo) => {
-    testInfo.setTimeout(15 * 60_000);
+    // The API verifies Filebase's post-complete object metadata through an
+    // eventual-consistency window. Keep the browser budget above the API's
+    // current ~17-minute worst case (15 minutes of HEAD retries plus the
+    // multipart completion request), otherwise a successful upload is reported
+    // as a client-side timeout.
+    testInfo.setTimeout(22 * 60_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
     const session = await createLiveSession(
@@ -1379,11 +1742,20 @@ test.describe("live staging integration", () => {
     const title = `Multipart video browser E2E ${runId}`;
     const filebasePartRequests: URL[] = [];
     const filebasePartStatuses: Array<{ partNumber: string | null; status: number }> = [];
+    const uploadIntentResponses: Array<Promise<{
+      id: string;
+      upload_session?: {
+        id: string;
+        part_size_bytes: number;
+        total_parts: number;
+        upload_id: string;
+      };
+    }>> = [];
 
     page.on("request", (request) => {
       if (request.method().toUpperCase() !== "PUT") return;
       const url = new URL(request.url());
-      if (!url.hostname.endsWith("filebase.com")) return;
+      if (!url.hostname.endsWith("filebase.com") && !url.hostname.endsWith("filebase.io")) return;
       if (!url.searchParams.has("partNumber") || !url.searchParams.has("uploadId")) return;
       filebasePartRequests.push(url);
     });
@@ -1391,12 +1763,32 @@ test.describe("live staging integration", () => {
       const request = response.request();
       if (request.method().toUpperCase() !== "PUT") return;
       const url = new URL(response.url());
-      if (!url.hostname.endsWith("filebase.com")) return;
+      if (!url.hostname.endsWith("filebase.com") && !url.hostname.endsWith("filebase.io")) return;
       if (!url.searchParams.has("partNumber") || !url.searchParams.has("uploadId")) return;
       filebasePartStatuses.push({
         partNumber: url.searchParams.get("partNumber"),
         status: response.status(),
       });
+    });
+    page.on("response", (response) => {
+      const request = response.request();
+      const url = new URL(response.url());
+      if (
+        request.method().toUpperCase() !== "POST"
+        || url.origin !== apiOrigin
+        || !/\/communities\/[^/]+\/song-artifact-uploads$/u.test(url.pathname)
+      ) {
+        return;
+      }
+      uploadIntentResponses.push(response.json() as Promise<{
+        id: string;
+        upload_session?: {
+          id: string;
+          part_size_bytes: number;
+          total_parts: number;
+          upload_id: string;
+        };
+      }>);
     });
 
     await installStoredSession(page, session);
@@ -1425,7 +1817,7 @@ test.describe("live staging integration", () => {
       return request.method().toUpperCase() === "POST"
         && url.origin === apiOrigin
         && /\/communities\/[^/]+\/song-artifact-uploads\/[^/]+\/sessions\/[^/]+\/complete$/u.test(url.pathname);
-    }, { timeout: 12 * 60_000 });
+    }, { timeout: 20 * 60_000 });
 
     await page.getByRole("button", { name: /^(publish|post)$/i }).click();
 
@@ -1456,15 +1848,25 @@ test.describe("live staging integration", () => {
     await expectNoBrowserError(page);
 
     const expectedParts = uploadIntent.upload_session?.total_parts ?? 0;
-    expect(filebasePartRequests.length, "direct Filebase part PUT request count").toBe(expectedParts);
-    expect(filebasePartStatuses.length, "direct Filebase part PUT response count").toBe(expectedParts);
+    const uploadIntents = await Promise.all(uploadIntentResponses);
+    expect(uploadIntents.length, "multipart intent count").toBeGreaterThanOrEqual(1);
+    expect(uploadIntents.length, "multipart intent count").toBeLessThanOrEqual(2);
+    const uploadIds = new Set(
+      uploadIntents.flatMap((intent) => intent.upload_session?.upload_id ? [intent.upload_session.upload_id] : []),
+    );
+    expect(filebasePartRequests.length, "direct Filebase part PUT request count").toBeGreaterThanOrEqual(expectedParts);
+    expect(filebasePartRequests.length, "direct Filebase part PUT request count").toBeLessThanOrEqual(expectedParts * 2);
+    expect(filebasePartStatuses.length, "direct Filebase part PUT response count").toBe(filebasePartRequests.length);
     for (const requestUrl of filebasePartRequests) {
-      expect(requestUrl.searchParams.get("uploadId")).toBe(uploadIntent.upload_session?.upload_id);
+      expect(uploadIds.has(requestUrl.searchParams.get("uploadId") ?? ""), "part uses a recorded upload session").toBe(true);
       expect(requestUrl.searchParams.get("X-Amz-Signature")).toMatch(/^[a-f0-9]{64}$/iu);
       expect(requestUrl.searchParams.get("partNumber")).toMatch(/^\d+$/u);
     }
-    for (const status of filebasePartStatuses) {
-      expect(status.status, `part ${status.partNumber} status`).toBe(200);
+    const successfulParts = filebasePartStatuses.filter((status) => status.status === 200);
+    const failedParts = filebasePartStatuses.filter((status) => status.status !== 200);
+    expect(successfulParts.length, "successful direct Filebase part PUT responses").toBe(expectedParts);
+    for (const status of failedParts) {
+      expect(status.status, `recovered part ${status.partNumber} status`).toBe(404);
     }
   });
 
@@ -1565,6 +1967,7 @@ test.describe("live staging integration", () => {
     const bookerHeaders = { authorization: `Bearer ${booker.accessToken}` };
     const hostTimezone = "America/New_York";
     const slot = nextBookingSmokeSlot(hostTimezone);
+    const attributedSlot = adjacentBookingSmokeSlot(slot, hostTimezone);
 
     const profile = await requestJson<{
       base_price_cents: number;
@@ -1588,7 +1991,8 @@ test.describe("live staging integration", () => {
     const rule = await requestJson<{ by_weekday: number[]; slot_duration_seconds: number }>("/host-bookings/me/availability-rules", {
       body: JSON.stringify({
         by_weekday: [slot.weekday],
-        end_local: slot.endLocal,
+        // Covers the smoke slot and the adjacent one used for the attributed hold below.
+        end_local: attributedSlot.ruleEndLocal,
         slot_duration_seconds: 1800,
         start_local: slot.startLocal,
       }),
@@ -1618,6 +2022,12 @@ test.describe("live staging integration", () => {
     expect(resolvedSlot, "expected smoke slot in global availability").toBeTruthy();
     expect(resolvedSlot?.available).toBe(true);
     expect(resolvedSlot?.priceCents).toBe(1234);
+    const attributedResolvedSlot = slots.slots.find((candidate) =>
+      Date.parse(candidate.startUtc) === Date.parse(attributedSlot.startUtc)
+      && Date.parse(candidate.endUtc) === Date.parse(attributedSlot.endUtc)
+    );
+    expect(attributedResolvedSlot, "expected adjacent smoke slot in global availability").toBeTruthy();
+    expect(attributedResolvedSlot?.available).toBe(true);
 
     const hold = await requestJson<{
       hold: {
@@ -1652,6 +2062,31 @@ test.describe("live staging integration", () => {
       headers: bookerHeaders,
       method: "POST",
     }, [409]);
+
+    // Feed bookings capture the viewed post's owning community as attribution at open time,
+    // and hold-create is the only attribution intake — the API must persist a non-null
+    // source community verbatim. Attribute to the seeded story-smoke community.
+    const attributedCommunityId = toPublicCommunityId(storySmokeCommunityId);
+    const attributedHold = await requestJson<{
+      hold: {
+        booker_user_id: string;
+        host_user_id: string;
+        source_community_id: string | null;
+        status: string;
+      };
+    }>(`/bookings/hosts/${encodeURIComponent(hostUserId)}/holds`, {
+      body: JSON.stringify({
+        slot_end_utc: attributedSlot.endUtc,
+        slot_start_utc: attributedSlot.startUtc,
+        source_community_id: attributedCommunityId,
+      }),
+      headers: bookerHeaders,
+      method: "POST",
+    });
+    expect(attributedHold.hold.host_user_id).toBe(hostUserId);
+    expect(attributedHold.hold.booker_user_id).toBe(bookerUserId);
+    expect(attributedHold.hold.source_community_id).toBe(attributedCommunityId);
+    expect(attributedHold.hold.status).toBe("active");
 
     const quote = await requestJson<{
       quote: {

@@ -4,9 +4,11 @@ import { afterEach, describe, expect, test } from "bun:test";
 import * as React from "react";
 
 import type { GateBuilderGroupDraft } from "@/app/authenticated-helpers/community-gate-tree-draft";
+import { withGateAssetMinimum } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import { UiLocaleProvider } from "@/lib/ui-locale";
 import type { CollectionCapabilitySource } from "./collection-capability-source";
-import { GateTreeBuilder } from "./gate-tree-builder";
+import type { AssetCapabilitySource } from "./asset-capability-source";
+import { GateTreeBuilder, serializeFacetSelection } from "./gate-tree-builder";
 
 for (const key of ["Event", "HTMLInputElement", "Node"] as const) {
   Object.defineProperty(globalThis, key, {
@@ -42,7 +44,7 @@ const humanRule = {
 
 function renderBuilder(
   initialValue: GateBuilderGroupDraft = { kind: "group", op: "and", children: [] },
-  options: { capabilitySource?: CollectionCapabilitySource; locale?: "ar" | "en" | "zh" } = {},
+  options: { assetCapabilitySource?: AssetCapabilitySource; capabilitySource?: CollectionCapabilitySource; locale?: "ar" | "en" | "zh" } = {},
 ) {
   let latestValue = initialValue;
   window.localStorage.setItem("pirate_ui_locale", options.locale ?? "en");
@@ -53,7 +55,7 @@ function renderBuilder(
     return (
       <UiLocaleProvider dir={locale === "ar" ? "rtl" : "ltr"} locale={locale}>
         <GateTreeBuilder
-          capabilitySource={options.capabilitySource}
+          capabilities={{ assets: options.assetCapabilitySource, collections: options.capabilitySource }}
           onChange={(nextValue) => {
             latestValue = nextValue;
             setValue(nextValue);
@@ -71,11 +73,82 @@ function renderBuilder(
 }
 
 describe("GateTreeBuilder", () => {
+  test("uses task-first verification labels without a duplicate live summary", () => {
+    const view = renderBuilder({
+      kind: "group",
+      op: "or",
+      children: [
+        humanRule,
+        { kind: "rule", gate: { type: "unique_human", provider: "zkpassport" } },
+        { kind: "rule", gate: { type: "unique_human", provider: "very" } },
+      ],
+    });
+
+    expect(view.getAllByText("ID check (Self)")).toHaveLength(3);
+    expect(view.getAllByText("ID check (ZKPassport)")).toHaveLength(3);
+    expect(view.getAllByText("Palm scan (Very)")).toHaveLength(3);
+    expect(view.queryByText("Live summary")).toBeNull();
+  });
+
+  test("edits a loaded asset balance using capability decimals", async () => {
+    const assetCapabilitySource: AssetCapabilitySource = {
+      listAssets: async () => [{
+        assetId: "eip155:1/slip44:60",
+        label: "ETH on Ethereum",
+        chainNamespace: "eip155:1",
+        standard: "native",
+        symbol: "ETH",
+        decimals: 18,
+      }],
+    };
+    const view = renderBuilder({
+      kind: "group",
+      op: "and",
+      children: [{ kind: "rule", gate: {
+        gate_id: "balance-stable",
+        type: "asset_balance",
+        asset_id: "eip155:1/slip44:60",
+        min_amount_atomic: "500000000000000000",
+      } }],
+    } as GateBuilderGroupDraft, { assetCapabilitySource });
+
+    const amount = await view.findByRole("textbox", { name: "Minimum token balance" });
+    expect(amount.getAttribute("value")).toBe("0.5");
+    fireEvent.input(amount, { target: { value: "10" } });
+    await view.findByDisplayValue("10");
+    expect((view.getLatestValue().children[0] as { gate: { min_amount_atomic: string } }).gate.min_amount_atomic)
+      .toBe("10000000000000000000");
+    expect((view.getLatestValue().children[0] as { gate: { gate_id: string } }).gate.gate_id)
+      .toBe("balance-stable");
+  });
+
+  test("preserves a retired or unavailable asset read-only", async () => {
+    const assetCapabilitySource: AssetCapabilitySource = { listAssets: async () => [] };
+    const initialValue = {
+      kind: "group",
+      op: "and",
+      children: [{ kind: "rule", gate: {
+        type: "asset_balance",
+        asset_id: "eip155:1/slip44:60",
+        min_amount_atomic: "500000000000000000",
+      } }],
+    } as GateBuilderGroupDraft;
+    const view = renderBuilder(initialValue, { assetCapabilitySource });
+
+    await view.findByText(/preserved read-only/);
+    expect(view.queryByRole("textbox", { name: "Minimum token balance" })).toBeNull();
+    expect(view.getLatestValue()).toEqual(initialValue);
+  });
+
   test("adds and removes a requirement through rendered controls", () => {
     const view = renderBuilder();
 
     fireEvent.click(view.getByRole("button", { name: "Rule" }));
-    expect(view.getLatestValue().children).toEqual([humanRule]);
+    expect(view.getLatestValue().children).toHaveLength(1);
+    const added = view.getLatestValue().children[0];
+    expect(added).toMatchObject(humanRule);
+    if (added?.kind !== "rule") throw new Error("expected rule");
+    expect(added.gate.gate_id).toMatch(/^gate_[a-f0-9]{32}$/);
     expect(view.getByRole("combobox", { name: "Requirement type" })).not.toBeNull();
 
     fireEvent.click(view.getByRole("button", { name: "Remove requirement" }));
@@ -119,6 +192,148 @@ describe("GateTreeBuilder", () => {
     expect((await view.findByRole("alert")).textContent)
       .toContain("无法加载系列");
   });
+
+  test("keeps an inventory atom read-only when its capability source cannot be resolved", async () => {
+    const capabilitySource: CollectionCapabilitySource = {
+      estimateMatchCount: async () => null,
+      listTrustedSources: async () => [],
+      probeContract: async () => null,
+      searchFacetValues: async () => [],
+    };
+    const initialValue = {
+      kind: "group",
+      op: "and",
+      children: [{
+        kind: "rule",
+        gate: {
+          type: "erc721_inventory_match",
+          provider: "courtyard",
+          chain_namespace: "eip155:137",
+          contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+          min_quantity: 2,
+          match: { category: "trading_card", subject: ["Charizard", "Gengar"] },
+        },
+      }],
+    } as unknown as GateBuilderGroupDraft;
+    const view = renderBuilder(initialValue, { capabilitySource });
+
+    const quantity = await view.findByRole("textbox", { name: "Minimum NFT quantity" });
+    const contract = view.getByRole("textbox", { name: "NFT contract address" });
+    expect(quantity.hasAttribute("disabled")).toBe(true);
+    expect(contract.hasAttribute("disabled")).toBe(true);
+    expect(view.queryByRole("combobox", { name: "Search collections" })).toBeNull();
+    expect(view.getLatestValue()).toEqual(initialValue);
+  });
+
+  test("renders a plain ERC-721 collection quantity", async () => {
+    const capabilitySource: CollectionCapabilitySource = {
+      estimateMatchCount: async () => null,
+      listTrustedSources: async () => [],
+      probeContract: async () => null,
+      searchFacetValues: async () => [],
+    };
+    const view = renderBuilder({
+      kind: "group",
+      op: "and",
+      children: [{
+        kind: "rule",
+        gate: {
+          type: "erc721_holding",
+          chain_namespace: "eip155:1",
+          contract_address: "0x0000000000000000000000000000000000000001",
+          min_count: 10,
+        },
+      }],
+    } as GateBuilderGroupDraft, { capabilitySource });
+
+    const input = await view.findByRole("spinbutton", { name: "Minimum NFT quantity" });
+    expect(input.getAttribute("value")).toBe("10");
+    expect(input.hasAttribute("disabled")).toBe(false);
+  });
+
+  test("updates ERC-721 collection quantities without dropping the atom", () => {
+    expect(withGateAssetMinimum({
+      type: "erc721_holding",
+      chain_namespace: "eip155:1",
+      contract_address: "0x0000000000000000000000000000000000000001",
+    }, 10)).toMatchObject({
+      type: "erc721_holding",
+      contract_address: "0x0000000000000000000000000000000000000001",
+      min_count: 10,
+    });
+  });
+
+  test("preserves a loaded multi-value facet when another inventory field changes", async () => {
+    const capabilitySource: CollectionCapabilitySource = {
+      estimateMatchCount: async () => null,
+      listTrustedSources: async () => [{
+        id: "courtyard-cards",
+        label: "Courtyard graded cards",
+        chainNamespace: "eip155:137",
+        contractAddress: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+        standard: "erc721",
+        traitFiltersSupported: true,
+        facetKeys: ["franchise", "subject", "grade"],
+        maxValuesPerFacet: 10,
+        inventoryProvider: "courtyard",
+        fixedMatch: { category: "trading_card" },
+        minQuantitySupported: true,
+      }],
+      probeContract: async () => null,
+      searchFacetValues: async () => [
+        { value: "Charizard" },
+        { value: "Gengar" },
+      ],
+    };
+    const view = renderBuilder({
+      kind: "group",
+      op: "and",
+      children: [{
+        kind: "rule",
+        gate: {
+          type: "erc721_inventory_match",
+          provider: "courtyard",
+          chain_namespace: "eip155:137",
+          contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+          min_quantity: 1,
+          match: {
+            category: "trading_card",
+            subject: ["Charizard", "Gengar"],
+          },
+        },
+      }],
+    } as unknown as GateBuilderGroupDraft, { capabilitySource });
+
+    await view.findByText("Courtyard graded cards");
+    expect(view.getAllByText("Charizard").length).toBeGreaterThan(0);
+    expect(view.getAllByText("Gengar").length).toBeGreaterThan(0);
+
+    fireEvent.change(view.getByRole("spinbutton", { name: "Minimum NFT quantity" }), {
+      target: { value: "2" },
+    });
+    const rule = view.getLatestValue().children[0] as { gate: { match: Record<string, unknown> } };
+    expect(rule.gate.match.subject).toEqual(["Charizard", "Gengar"]);
+  });
+
+});
+
+describe("inventory facet selection serialization", () => {
+  test("uses a scalar for one selection and an array for multiple selections", () => {
+    expect(serializeFacetSelection(["Charizard"], 10)).toBe("Charizard");
+    expect(serializeFacetSelection(["Charizard", "Gengar"], 10))
+      .toEqual(["Charizard", "Gengar"]);
+  });
+
+  test("does not confuse a comma-bearing scalar with a multi-value selection", () => {
+    expect(serializeFacetSelection(["Charizard,Gengar"], 10)).toBe("Charizard,Gengar");
+    expect(serializeFacetSelection(["Charizard", "Gengar"], 10))
+      .not.toEqual("Charizard,Gengar");
+  });
+
+  test("normalizes changed values, deduplicates like the API, and honors the cap", () => {
+    const values = [" Charizard ", "charizard", ...Array.from({ length: 12 }, (_, index) => `Card ${index}`)];
+    expect(serializeFacetSelection(values, 3)).toEqual(["Charizard", "Card 0", "Card 1"]);
+  });
 });
 
 describe("GateTreeBuilder rule validation", () => {
@@ -139,8 +354,7 @@ describe("GateTreeBuilder rule validation", () => {
   }) as unknown as GateBuilderGroupDraft;
 
   test("shows an inline error on an incomplete Courtyard rule rendered read-only", () => {
-    // No capability source is wired in the real app, so this rule takes the read-only branch.
-    // It must still explain why it blocks saving, rather than failing silently.
+    // An unresolved inventory source stays read-only and must still explain why the atom is invalid.
     const view = renderBuilder(courtyardRule({ category: "trading_card" }));
 
     expect(view.getByRole("alert").textContent).toContain("Add at least one attribute filter");

@@ -24,6 +24,22 @@ async function installBookingFixture(page: Page, overrides: Partial<PaidBookingM
 
 const HOST = "usr_host_e2e";
 const SLOT_QUERY = "start=2099-01-05T10:00:00.000Z&end=2099-01-05T10:30:00.000Z&price=5000";
+function bookingPaymentForResume() {
+  return {
+    payment_intent_id: "bpi_hold_resumed_e2e",
+    version: 2,
+    chain_id: 84532,
+    token_address: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+    token_decimals: 6,
+    token_symbol: "USDC",
+    recipient_address: "0xbba024600cba5f375afdcec401f7dccb3d515829",
+    amount_atomic: "50000000",
+    gross_cents: 5000,
+    quote_expires_at: "2099-01-05T10:15:00.000Z",
+    hold_expires_at: "2099-01-05T10:15:00.000Z",
+    wallet_attachment_required: true,
+  };
+}
 
 test.describe("paid bookings UI (mocked API)", () => {
   test("Settings surfaces a Bookings entry that opens /settings/bookings", async ({ page }) => {
@@ -84,7 +100,7 @@ test.describe("paid bookings UI (mocked API)", () => {
     await installBookingFixture(page);
     await page.goto(`/book/${HOST}`);
     await expect(page.getByRole("heading", { name: "Book a session" })).toBeVisible({ timeout: 30_000 });
-    const slot = page.getByRole("button", { name: /USDC/u }).first();
+    const slot = page.getByRole("button", { name: /\$50/u }).first();
     await expect(slot).toBeVisible();
     await slot.click();
     await expect(page).toHaveURL(new RegExp(`/book/${HOST}/checkout\\?`, "u"));
@@ -122,6 +138,39 @@ test.describe("paid bookings UI (mocked API)", () => {
     await expectNoBrowserError(page);
   });
 
+  test("checkout resumes a server-recorded payment without creating another hold", async ({ page }) => {
+    const resumedBookingId = "booking_resumed_e2e";
+    const state = await installBookingFixture(page, {
+      resumedBookingId,
+      pendingPaymentIntents: [{
+        hold_id: "hold_resumed_e2e",
+        payment_intent_id: "bpi_hold_resumed_e2e",
+        intent_status: "verifying",
+        resume_state: "confirmable",
+        claimed_tx_ref: "0xserverstored",
+        wallet_attachment_id: "wal_mock_primary",
+        payment: bookingPaymentForResume(),
+        quote_expires_at: "2099-01-05T10:15:00.000Z",
+        hold_expires_at: "2099-01-05T10:15:00.000Z",
+        host_user_id: HOST,
+        slot_start_utc: "2099-01-05T10:00:00.000Z",
+        slot_end_utc: "2099-01-05T10:30:00.000Z",
+        booking_id: null,
+      }],
+    });
+    await page.goto(`/book/${HOST}/checkout?${SLOT_QUERY}`);
+    await expect(page.getByText("Booking confirmed. Your session is reserved and you will receive details shortly."))
+      .toBeVisible({ timeout: 30_000 });
+
+    const confirmation = state.captured.find((request) => request.path.endsWith("/hold_resumed_e2e/confirm"));
+    expect(confirmation?.body).toEqual({
+      funding_tx_ref: "0xserverstored",
+      wallet_attachment_id: "wal_mock_primary",
+    });
+    expect(state.captured.some((request) => /\/bookings\/hosts\/[^/]+\/holds$/u.test(request.path))).toBe(false);
+    await expectNoBrowserError(page);
+  });
+
   test("management renders the approved counterparty card", async ({ page }) => {
     await installBookingFixture(page);
     await page.goto("/bookings?role=booker");
@@ -129,6 +178,30 @@ test.describe("paid bookings UI (mocked API)", () => {
     await expect(page.getByText("tutor.pirate")).toBeVisible();
     await expect(page.getByText("50.00 USDC")).toBeVisible();
     await expect(page.getByRole("button", { name: "Cancel booking" })).toBeVisible();
+    await expectNoBrowserError(page);
+  });
+
+  test("management surfaces a server-recorded payment resume card", async ({ page }) => {
+    await installBookingFixture(page, {
+      pendingPaymentIntents: [{
+        hold_id: "hold_resumed_e2e",
+        payment_intent_id: "bpi_hold_resumed_e2e",
+        intent_status: "verifying",
+        resume_state: "confirmable",
+        claimed_tx_ref: "0xserverstored",
+        wallet_attachment_id: "wal_mock_primary",
+        payment: bookingPaymentForResume(),
+        quote_expires_at: "2099-01-05T10:15:00.000Z",
+        hold_expires_at: "2099-01-05T10:15:00.000Z",
+        host_user_id: HOST,
+        slot_start_utc: "2099-01-05T10:00:00.000Z",
+        slot_end_utc: "2099-01-05T10:30:00.000Z",
+        booking_id: null,
+      }],
+    });
+    await page.goto("/bookings?role=booker");
+    await expect(page.getByText("Payment in progress")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Resume payment" })).toBeVisible();
     await expectNoBrowserError(page);
   });
 

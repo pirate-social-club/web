@@ -30,10 +30,10 @@ import { PageContainer } from "@/components/primitives/layout-shell";
 import { Separator } from "@/components/primitives/separator";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
-import { getPirateNetworkConfig } from "@/lib/network-config";
 import { getLocaleMessages } from "@/locales";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
+import { formatCompactAddress as compactAddress } from "@/lib/formatting/address";
 
 const EMPTY_ROYALTY_ACTIVITY_ITEMS: RoyaltyActivityItem[] = [];
 import { trackAnalyticsEvent } from "@/lib/analytics";
@@ -109,12 +109,7 @@ function formatWipAmount(wei: string): string {
 function formatCompactAddress(address: string | null | undefined): string | null {
   if (!address || !isAddress(address)) return null;
   const normalized = getAddress(address);
-  return `${normalized.slice(0, 6)}...${normalized.slice(-4)}`;
-}
-
-function formatCompactHash(hash: string | null | undefined): string | null {
-  if (!hash?.startsWith("0x") || hash.length < 14) return null;
-  return `${hash.slice(0, 6)}...${hash.slice(-4)}`;
+  return compactAddress(normalized);
 }
 
 function formatRelativeShort(value: string | number): string {
@@ -140,15 +135,6 @@ function formatRelativeShort(value: string | number): string {
   }
 
   return future ? "now" : "now";
-}
-
-function txHref(txHash: string | null | undefined, chainId = getPirateNetworkConfig().story.chainId): string | null {
-  if (!txHash?.startsWith("0x")) return null;
-  const config = getPirateNetworkConfig();
-  const explorerUrl = chainId === config.story.chainId
-    ? config.story.explorerUrl
-    : config.story.explorerUrl;
-  return `${explorerUrl.replace(/\/$/u, "")}/tx/${txHash}`;
 }
 
 function getMembershipReviewCount(task: UserTask): number | null {

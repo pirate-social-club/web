@@ -32,8 +32,10 @@ import type {
   SongStudyAttemptResult,
   SongStudyPayload,
   SongStudyTranscriptionResponse,
+  TelegramStudyVoiceIntent,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
+import { deviceTimezone } from "@/lib/device-timezone";
 
 const ALTCHA_HEADER = "x-pirate-altcha";
 
@@ -64,6 +66,12 @@ export function createPostsApi(request: ApiRequest) {
         body: JSON.stringify({ value }),
         headers: altchaHeaders(options),
       }),
+    clearVote: (postId: string, options?: AltchaRequestOptions): Promise<{ post: string; value: null }> =>
+      request<{ post: string; value: null }>(`/posts/${encodeURIComponent(postId)}/clear_vote`, {
+        method: "POST",
+        body: JSON.stringify({}),
+        headers: altchaHeaders(options),
+      }),
     delete: (communityId: string, postId: string): Promise<DeletedPostResponse> =>
       request<DeletedPostResponse>(
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/delete`,
@@ -87,7 +95,14 @@ export function createPostsApi(request: ApiRequest) {
     ): Promise<KaraokeSessionCreateApiResponse> =>
       request<KaraokeSessionCreateApiResponse>(
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/karaoke/sessions`,
-        { method: "POST", headers: { "Idempotency-Key": idempotencyKey }, signal },
+        {
+          method: "POST",
+          // Device timezone lets the server pin the singer's own streak day
+          // boundary when the take qualifies. Optional server-side.
+          body: JSON.stringify({ timezone: deviceTimezone() }),
+          headers: { "Idempotency-Key": idempotencyKey },
+          signal,
+        },
       ),
   };
 }
@@ -125,8 +140,8 @@ export function createCommentsApi(request: ApiRequest) {
       commentId: string,
       body: CreateCommentRequest,
       options?: AltchaRequestOptions,
-    ): Promise<void> =>
-      request(`/comments/${encodeURIComponent(commentId)}/replies`, {
+    ): Promise<Comment> =>
+      request<Comment>(`/comments/${encodeURIComponent(commentId)}/replies`, {
         method: "POST",
         body: JSON.stringify(body),
         headers: altchaHeaders(options),
@@ -196,6 +211,15 @@ export function createCommunityContentApi(request: ApiRequest) {
     ): Promise<SongStudyAttemptResult> =>
       request<SongStudyAttemptResult>(
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/study/attempts`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    createPostStudyTelegramVoiceIntent: (
+      communityId: string,
+      postId: string,
+      body: { exercise_id: string; target_language?: string | null },
+    ): Promise<TelegramStudyVoiceIntent> =>
+      request<TelegramStudyVoiceIntent>(
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/study/telegram_voice_intents`,
         { method: "POST", body: JSON.stringify(body) },
       ),
     transcribePostStudyAudio: (
@@ -276,8 +300,8 @@ export function createCommunityContentApi(request: ApiRequest) {
       postId: string,
       body: CreateCommentRequest,
       options?: AltchaRequestOptions,
-    ): Promise<void> =>
-      request(
+    ): Promise<Comment> =>
+      request<Comment>(
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/comments`,
         { method: "POST", body: JSON.stringify(body), headers: altchaHeaders(options) },
       ),

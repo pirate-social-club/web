@@ -22,6 +22,8 @@ export type SongPresentationOptions = {
   playback?: SongPlaybackController;
   storyLicenseNotice?: Extract<PostCardProps["content"], { type: "song" }>["storyLicenseNotice"];
   storyNetwork?: PirateStoryNetwork;
+  karaokeRewardLabel?: string;
+  studyRewardLabel?: string;
   onBuy?: () => void;
   onKaraoke?: () => void;
   onStudy?: () => void;
@@ -53,12 +55,17 @@ export type PostPresentationOptions = {
   liveRoom?: LiveRoomPresentationOptions;
   onVerifyAge?: () => void;
   onVote?: PostCardProps["onVote"];
+  voteBusy?: boolean;
   voteAccess?: PostCardProps["voteAccess"];
   onComment?: PostCardProps["onComment"];
   onDelete?: () => void;
   onRemove?: () => void;
   onCancelEvent?: () => void;
   onRetryPublish?: () => void;
+  onBoost?: () => void;
+  onRewardSettings?: () => void;
+  canBoost?: boolean;
+  canManageRewardSettings?: boolean;
   postHref?: string;
   canModeratePost?: boolean;
   preferOriginalText?: boolean;

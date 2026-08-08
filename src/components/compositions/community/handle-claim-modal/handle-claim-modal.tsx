@@ -20,9 +20,18 @@ import {
 import { Button } from "@/components/primitives/button";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/primitives/select";
 import { Type, typeVariants } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
+import { formatUsdCentsLabel } from "@/lib/formatting/currency";
 
 import type {
   HandleClaimModalProps,
@@ -30,8 +39,8 @@ import type {
   HandleSearchResult,
 } from "./handle-claim-modal.types";
 
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+function formatCents(cents: number, locale: string): string {
+  return formatUsdCentsLabel(cents, locale) ?? "Price unavailable";
 }
 
 function isActionEnabled(
@@ -48,31 +57,50 @@ function isActionEnabled(
 function resolvePrimaryLabel(
   phase: HandleClaimPhase,
   result: HandleSearchResult | undefined,
+  locale: string,
 ): string {
   if (phase === "success") return "Done";
   if (phase === "processing") return "Claiming…";
   if (!result || result.availability !== "available") return "Claim";
   if (result.priceCents === null || result.priceCents === 0) return "Claim for free";
-  return `Claim for ${formatCents(result.priceCents)}`;
+  return `Claim for ${formatCents(result.priceCents, locale)}`;
 }
 
-function resolveCommunityRouteLabel(
+export function resolveCommunityHandleSuffix(
   communityHandle: string,
   communityRouteLabel: string | null | undefined,
 ): string {
-  const normalized = communityRouteLabel?.trim().replace(/^\/+/u, "");
-  if (normalized) {
-    return normalized.toLowerCase().startsWith("c/")
-      ? `/${normalized}`
-      : `/c/${normalized}`;
-  }
-  return `/c/${communityHandle}`;
+  const normalizedRoute = communityRouteLabel?.trim().replace(/^\/+|\/+$/gu, "");
+  const routeRoot = normalizedRoute?.toLowerCase().startsWith("c/")
+    ? normalizedRoute.slice(2)
+    : normalizedRoute;
+  const rawRoot = routeRoot || communityHandle;
+  const isSpaces = rawRoot.startsWith("@");
+  const root = rawRoot.replace(/^@/u, "") || communityHandle.replace(/^@/u, "");
+  return `${isSpaces ? "@" : "."}${root}`;
+}
+
+function stripCommunityHandleSuffix(value: string, suffix: string): string {
+  return value.toLowerCase().endsWith(suffix.toLowerCase())
+    ? value.slice(0, -suffix.length)
+    : value;
+}
+
+export function resolveQualifiedCommunityHandle(value: string, suffix: string): string {
+  const label = stripCommunityHandleSuffix(value.trim(), suffix);
+  return label ? `${label}${suffix}` : suffix;
 }
 
 function SearchResultFeedback({
+  copy,
+  onClaimGateAction,
+  onClaimGateRecheck,
   phase,
   result,
 }: {
+  copy: ReturnType<typeof getLocaleMessages<"gates">>["handleClaims"];
+  onClaimGateAction?: (action: "self" | "wallet") => void;
+  onClaimGateRecheck?: () => void;
   phase: HandleClaimPhase;
   result: HandleSearchResult | undefined;
 }) {
@@ -141,6 +169,43 @@ function SearchResultFeedback({
     );
   }
 
+  if (result.claimGateSatisfied === false && (result.claimGateRequirements?.length ?? 0) > 0) {
+    return (
+      <div className="space-y-1">
+        <FormNote className="inline-flex items-center gap-2" tone="warning">
+          <Prohibit className="size-4" weight="bold" />
+          {copy.requires}
+        </FormNote>
+        <ul className="ms-6 list-disc space-y-0.5">
+          {result.claimGateRequirements?.map((requirement) => (
+            <li className={cn(typeVariants({ variant: "caption" }))} key={requirement}>
+              {requirement}
+            </li>
+          ))}
+        </ul>
+        {(result.claimGateActions?.length ?? 0) > 0 || onClaimGateRecheck ? (
+          <div className="ms-6 flex flex-wrap gap-2 pt-2">
+            {result.claimGateActions?.map((action) => (
+              <Button
+                key={action}
+                onClick={() => onClaimGateAction?.(action)}
+                size="sm"
+                variant="outline"
+              >
+                {action === "self" ? copy.verifyWithSelf : copy.connectWallet}
+              </Button>
+            ))}
+            {onClaimGateRecheck ? (
+              <Button onClick={onClaimGateRecheck} size="sm" variant="secondary">
+                {copy.checkAgain}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <FormNote className="inline-flex items-center gap-2" tone="warning">
       <X className="size-4" weight="bold" />
@@ -154,31 +219,45 @@ export function HandleClaimModal({
   onOpenChange,
   communityHandle,
   communityRouteLabel,
+  namespaceOptions = [],
+  selectedNamespaceVerification,
+  onNamespaceChange,
   phase,
   searchValue,
   onSearchChange,
   searchResult,
-  confirmedDiscountPercent,
   selfVerificationSavingsPercent,
   onSelfVerificationClick,
+  onWalletConnectionClick,
+  onClaimGateRecheck,
   onClaim,
   onNotNow,
-  processing = false,
   error,
   claimedLabel,
   forceMobile,
-  benefits = ["Accessible in Freedom Browser", "Share for payments", "Sell it"],
+  benefits = [],
   walletBalanceCents,
   onAddFunds,
 }: HandleClaimModalProps) {
-  const { dir } = useUiLocale();
+  const { locale } = useUiLocale();
+  const claimGateCopy = React.useMemo(
+    () => getLocaleMessages(locale, "gates").handleClaims,
+    [locale],
+  );
   const isSuccess = phase === "success";
   const isProcessing = phase === "processing";
-  const showInput = !isSuccess;
   const showNotNow = !isSuccess && !isProcessing;
-  const successCommunityLabel = resolveCommunityRouteLabel(
+  const selectedNamespace = namespaceOptions.find(
+    (option) => option.namespaceVerification === selectedNamespaceVerification,
+  );
+  const effectiveRouteLabel = selectedNamespace?.routeLabel ?? communityRouteLabel;
+  const communityHandleSuffix = resolveCommunityHandleSuffix(
     communityHandle,
-    communityRouteLabel,
+    effectiveRouteLabel,
+  );
+  const qualifiedClaimedLabel = resolveQualifiedCommunityHandle(
+    claimedLabel ?? searchValue,
+    communityHandleSuffix,
   );
 
   const priceCents = searchResult?.priceCents ?? 0;
@@ -192,8 +271,8 @@ export function HandleClaimModal({
     : isActionEnabled(phase, searchResult);
 
   const primaryLabel = isInsufficientFunds
-    ? `Add ${formatCents(shortfallCents)}`
-    : resolvePrimaryLabel(phase, searchResult);
+    ? `Add ${formatCents(shortfallCents, locale)}`
+    : resolvePrimaryLabel(phase, searchResult, locale);
 
   const hasSelfVerificationNudge =
     typeof selfVerificationSavingsPercent === "number" &&
@@ -202,13 +281,10 @@ export function HandleClaimModal({
     ? `Save up to ${selfVerificationSavingsPercent}% with Self.xyz`
     : null;
 
-  const displayValue = searchValue.endsWith(`@${communityHandle}`)
-    ? searchValue.slice(0, -communityHandle.length - 1)
-    : searchValue;
+  const displayValue = stripCommunityHandleSuffix(searchValue, communityHandleSuffix);
 
   const handleInputChange = (value: string) => {
-    const base = value.replace(new RegExp(`@${communityHandle}$`, "i"), "");
-    onSearchChange(base);
+    onSearchChange(stripCommunityHandleSuffix(value, communityHandleSuffix));
   };
 
   const handlePrimaryClick = () => {
@@ -226,7 +302,7 @@ export function HandleClaimModal({
         <StandardModalHeader
           description={
             isSuccess
-              ? `Claimed! Your name is ready to use in ${successCommunityLabel}.`
+              ? `Claim recorded for ${qualifiedClaimedLabel}.`
               : `Choose a name in this community.`
           }
           icon={
@@ -260,7 +336,7 @@ export function HandleClaimModal({
               <div className="flex items-center gap-3 rounded-lg border border-border-soft bg-muted/30 p-4">
                 <Check className="size-5 shrink-0 text-foreground" weight="bold" />
                 <Type as="p" className="min-w-0 font-mono text-lg" variant="body-strong">
-                  {claimedLabel ?? searchValue}
+                  {qualifiedClaimedLabel}
                 </Type>
               </div>
 
@@ -273,6 +349,29 @@ export function HandleClaimModal({
             </div>
           ) : (
             <>
+              {namespaceOptions.length > 1 && selectedNamespaceVerification && onNamespaceChange ? (
+                <Select
+                  disabled={isProcessing}
+                  onValueChange={onNamespaceChange}
+                  value={selectedNamespaceVerification}
+                >
+                  <SelectTrigger aria-label="Name namespace" className="h-12 rounded-[var(--radius-lg)]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {namespaceOptions.map((option) => (
+                      <SelectItem
+                        disabled={option.disabled}
+                        key={option.namespaceVerification}
+                        value={option.namespaceVerification}
+                      >
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
+
               <div className="space-y-3">
                 <div
                   className="flex h-16 items-center gap-2 rounded-full border border-input bg-background px-5 shadow-sm focus-within:border-border focus-within:ring-1 focus-within:ring-border-soft"
@@ -288,11 +387,20 @@ export function HandleClaimModal({
                     value={displayValue}
                   />
                   <span className="shrink-0 font-mono text-lg text-muted-foreground">
-                    @{communityHandle}
+                    {communityHandleSuffix}
                   </span>
                 </div>
 
-                <SearchResultFeedback phase={phase} result={searchResult} />
+                <SearchResultFeedback
+                  copy={claimGateCopy}
+                  onClaimGateAction={(action) => {
+                    if (action === "self") onSelfVerificationClick?.();
+                    if (action === "wallet") onWalletConnectionClick?.();
+                  }}
+                  onClaimGateRecheck={onClaimGateRecheck}
+                  phase={phase}
+                  result={searchResult}
+                />
               </div>
 
               {searchResult && searchResult.availability === "available" && selfVerificationLabel && onSelfVerificationClick ? (
@@ -313,7 +421,7 @@ export function HandleClaimModal({
 
               {isInsufficientFunds ? (
                 <FormNote tone="warning">
-                  You need {formatCents(shortfallCents)} more to claim this name.
+                  You need {formatCents(shortfallCents, locale)} more to claim this name.
                 </FormNote>
               ) : null}
 

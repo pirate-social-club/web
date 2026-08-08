@@ -3,43 +3,54 @@
 import * as React from "react";
 import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
-import { navigate } from "@/app/router";
+import { navigate, replaceRoute } from "@/app/router";
+import { routeReturnPath } from "@/app/authenticated-helpers/video-viewer-return-state";
+import { loadSongRoutePost } from "@/app/authenticated-helpers/load-song-route-post";
 import {
   SongStudySurface,
   type SongStudyMultipleChoiceExercise,
   type SongStudySayItBackExercise,
   type SongStudySurfaceState,
 } from "@/components/compositions/song-study/song-study-surface";
-import type { SongStreakSummary } from "@/components/compositions/song-study/song-streak-preview";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
+import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import {
+  displayedRewardQualificationStatus,
+  RewardQualificationNotice,
   rewardAmountLabel,
-  SongRewardOffer,
+  SongRewardOfferPill,
 } from "@/components/compositions/rewards/reward-surfaces";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
+import { useRouteMessages } from "@/hooks/use-route-messages";
 import { toStreakSummary } from "@/app/authenticated-helpers/post-media-presentation";
-import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
+import { ApiError, isApiAuthError, isApiVerificationRequiredError } from "@/lib/api/client";
+import { deviceTimezone } from "@/lib/device-timezone";
 import type {
   ApiPublicRewardOffer,
+  ApiRewardQualificationSummary,
   SongStudyAttemptResult,
   SongStudyExercise,
   SongStudyPayload,
 } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
-import { useSession } from "@/lib/api/session-store";
+import { updateSessionUser, useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
+import { useUiLocale } from "@/lib/ui-locale";
+import { useSelfVerification } from "@/lib/verification/use-self-verification";
+import { studyLessonProgress } from "./study-lesson-progress";
 
 type StudyRouteState =
   | { phase: "loading" }
   | { phase: "auth_required" }
   | {
       correctCount: number;
-      exerciseIndex: number;
+      exerciseQueue: number[];
       lastAttemptResult?: SongStudyAttemptResult;
+      presentationCounts: Record<string, number>;
       phase: "ready";
       post: LocalizedPostResponse;
       rewardOffer: ApiPublicRewardOffer | null;
@@ -54,6 +65,7 @@ type StudyRouteState =
       surface: SongStudySurfaceState;
     }
   | { actionLabel?: string; message: string; phase: "blocked"; title: string }
+  | { message: string; phase: "verification_required"; title: string }
   | { phase: "error"; message: string; title: string };
 
 type ReadyStudyRouteState = Extract<StudyRouteState, { phase: "ready" }>;
@@ -116,16 +128,24 @@ function toMultipleChoiceExercise(exercise: Extract<SongStudyExercise, { type: "
   };
 }
 
-function exerciseSurface(exercise: SongStudyExercise): SongStudySurfaceState {
+/**
+ * Attempts a say-it-back card gets per appearance before the lesson moves on.
+ * The server's STUDY_SESSION_MAX_CARD_PRESENTATIONS (3) is the lifetime budget;
+ * this is the slice spent in one sitting, so a miss returns for later review
+ * rather than trapping the learner on a single line.
+ */
+const STUDY_MAX_ATTEMPTS_PER_APPEARANCE = 2;
+
+function exerciseSurface(exercise: SongStudyExercise, attemptNumber = Number(exercise.presentation_count ?? 0) + 1): SongStudySurfaceState {
   return exercise.type === "translation_choice"
     ? {
         kind: "multiple_choice",
-        attemptNumber: 1,
+        attemptNumber,
         exercise: toMultipleChoiceExercise(exercise),
       }
     : {
         kind: "say_it_back",
-        attemptNumber: 1,
+        attemptNumber,
         exercise: toSayItBackExercise(exercise),
         phase: "idle",
       };
@@ -156,7 +176,7 @@ function caughtUpMessage(study: SongStudyPayload): string {
 function completeSurface(input: {
   correctCount: number;
   lastAttemptResult?: SongStudyAttemptResult;
-  streakSummary?: SongStreakSummary;
+  previousStreak?: number;
   totalCount: number;
 }): SongStudySurfaceState {
   const progress = input.lastAttemptResult?.study_progress;
@@ -164,6 +184,7 @@ function completeSurface(input: {
     kind: "complete",
     correctCount: input.correctCount,
     nextReviewLabel: formatNextReviewLabel(progress?.next_due_at),
+    previousStreak: input.previousStreak,
     scorePercent: input.totalCount > 0 ? (input.correctCount / input.totalCount) * 100 : 0,
     ...(progress
       ? {
@@ -176,14 +197,95 @@ function completeSurface(input: {
           },
         }
       : {}),
-    streakSummary: input.streakSummary,
     totalCount: input.totalCount,
   };
 }
 
-function makeAttemptIdempotencyKey(exerciseId: string, attemptNumber: number): string {
+function advanceLesson(
+  state: ReadyStudyRouteState,
+  outcome: "correct" | "wrong",
+): ReadyStudyRouteState {
+  const currentIndex = state.exerciseQueue[0];
+  if (currentIndex === undefined) return state;
+  const currentExercise = state.study.exercises[currentIndex]!;
+  const attemptNumber = state.surface.kind === "multiple_choice" || state.surface.kind === "say_it_back"
+    ? state.surface.attemptNumber
+    : 0;
+  const presentationCounts = {
+    ...state.presentationCounts,
+    [currentExercise.id]: Math.max(state.presentationCounts[currentExercise.id] ?? 0, attemptNumber),
+  };
+  const firstPassCorrect = outcome === "correct" && attemptNumber === 1;
+  const correctCount = state.lastAttemptResult?.session?.first_pass_correct_count
+    ?? state.correctCount + (firstPassCorrect ? 1 : 0);
+  const remaining = state.exerciseQueue.slice(1);
+  const shouldRequeue = outcome === "wrong"
+    // With nothing else left to show, requeueing would re-present the same card
+    // immediately — the loop the per-appearance cap exists to prevent. Let the
+    // lesson end instead; the card stays due and returns in a future session.
+    && remaining.length > 0
+    && (state.lastAttemptResult?.attempts_remaining ?? 0) > 0
+    && state.lastAttemptResult?.session?.status !== "completed";
+  if (shouldRequeue) {
+    // Keep two or three different prompts between a miss and its retry where
+    // the remaining lesson is large enough; at minimum one intervening prompt.
+    remaining.splice(Math.min(3, remaining.length), 0, currentIndex);
+  }
+  const completed = (state.lastAttemptResult?.session?.status !== undefined
+    && state.lastAttemptResult.session.status !== "active") || remaining.length === 0;
+  const nextIndex = remaining[0];
+  return {
+    ...state,
+    correctCount,
+    exerciseQueue: remaining,
+    presentationCounts,
+    surface: completed || nextIndex === undefined
+      ? completeSurface({
+          correctCount,
+          lastAttemptResult: state.lastAttemptResult,
+          // Only the slot-number animation may read the pre-session snapshot.
+          previousStreak: toStreakSummary(state.post)?.viewer?.current_streak,
+          totalCount: state.study.session?.served_count ?? state.study.exercises.length,
+        })
+      : exerciseSurface(
+          state.study.exercises[nextIndex]!,
+          (presentationCounts[state.study.exercises[nextIndex]!.id] ?? 0) + 1,
+        ),
+  };
+}
+
+// A rejected attempt with one of these statuses means our cached view of the session
+// diverged from the server's: the card is spent, it is already mastered, the attempt
+// number no longer lines up, or the idempotency key was replayed with a different
+// payload. Re-sending the identical attempt can only fail the same way, so the only
+// recovery is to re-read the session and rebuild from server truth.
+const STUDY_ATTEMPT_DIVERGENCE_STATUSES = new Set([400, 404, 409]);
+
+// Recovering silently is safe in both directions: if the rejected attempt was in fact
+// recorded server-side (a lost response), the reload shows the advanced state; if it
+// was never recorded, the same card comes back at the same attempt number and the
+// cached idempotency key is still unused. Either way we never claim a wrong outcome.
+const STUDY_ATTEMPT_DIVERGENCE_RECOVERY_LIMIT = 2;
+
+function isStudyAttemptDivergence(error: unknown): boolean {
+  return error instanceof ApiError && STUDY_ATTEMPT_DIVERGENCE_STATUSES.has(error.status);
+}
+
+// Distinguishes a transcription failure from an attempt rejection: only the latter
+// means our session view is stale, and only the latter should trigger a reload.
+class StudyTranscriptionFailure extends Error {
+  readonly originalError: unknown;
+
+  constructor(originalError: unknown) {
+    super("Study transcription failed");
+    this.name = "StudyTranscriptionFailure";
+    this.originalError = originalError;
+  }
+}
+
+function makeAttemptIdempotencyKey(sessionId: string, exerciseId: string, attemptNumber: number): string {
   const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  return `study:${exerciseId}:${attemptNumber}:${random}`;
+  return `study:${sessionId}:${exerciseId}:${attemptNumber}:${random}`;
 }
 
 function getStudyFeedbackAudioContext(): StudyFeedbackAudioState | null {
@@ -272,12 +374,14 @@ function StudyRouteMessage({
   onAction,
   message,
   postId,
+  returnPath,
   title,
 }: {
   actionLabel?: string;
   message: string;
   onAction?: () => void;
   postId: string;
+  returnPath?: string;
   title: string;
 }) {
   return (
@@ -294,7 +398,7 @@ function StudyRouteMessage({
             {actionLabel}
           </Button>
         ) : null}
-        <Button onClick={() => navigate(`/p/${encodeURIComponent(postId)}`)} variant="secondary">
+        <Button onClick={() => navigate(returnPath ?? `/p/${encodeURIComponent(postId)}`)} variant="secondary">
           Open post
         </Button>
       </div>
@@ -302,7 +406,15 @@ function StudyRouteMessage({
   );
 }
 
-function StudyAuthRequiredMessage({ postId }: { postId: string }) {
+function StudyAuthRequiredMessage({
+  postId,
+  returnPath,
+  telegramMiniApp,
+}: {
+  postId: string;
+  returnPath?: string;
+  telegramMiniApp?: boolean;
+}) {
   const { busy, configured, connect, loadError } = usePiratePrivyRuntime();
 
   return (
@@ -311,17 +423,22 @@ function StudyAuthRequiredMessage({ postId }: { postId: string }) {
         <Type as="h1" variant="h3">
           Sign in to study
         </Type>
-        {configured && connect ? (
+        {!telegramMiniApp && configured && connect ? (
           <Button loading={busy} onClick={connect}>
             Sign in
           </Button>
         ) : null}
-        {loadError ? (
+        {!telegramMiniApp && loadError ? (
           <Type as="p" className="text-muted-foreground" variant="caption">
             Authentication is unavailable right now.
           </Type>
         ) : null}
-        <Button onClick={() => navigate(`/p/${encodeURIComponent(postId)}`)} variant="secondary">
+        {telegramMiniApp ? (
+          <Type as="p" className="text-muted-foreground" variant="body">
+            Reopen study from this community&apos;s Telegram bot.
+          </Type>
+        ) : null}
+        <Button onClick={() => navigate(returnPath ?? `/p/${encodeURIComponent(postId)}`)} variant="secondary">
           Open post
         </Button>
       </div>
@@ -329,25 +446,139 @@ function StudyAuthRequiredMessage({ postId }: { postId: string }) {
   );
 }
 
-export function StudyRoutePage({ postId }: { postId: string }) {
+export function StudyRoutePage({
+  postId,
+  returnPath,
+  telegramMiniApp = false,
+}: {
+  postId: string;
+  returnPath?: string;
+  telegramMiniApp?: boolean;
+}) {
   const api = useApi();
   const session = useSession();
+  const { locale } = useUiLocale();
+  const { copy } = useRouteMessages();
+  const routeCopy = copy.post.route;
   const hydrated = useClientHydrated();
   const { configured, loaded } = usePiratePrivyRuntime();
   const contentLocale = useRouteContentLocale();
   const [state, setState] = React.useState<StudyRouteState>({ phase: "loading" });
+  const [rewardQualification, setRewardQualification] = React.useState<ApiRewardQualificationSummary | null>(null);
+  const [rewardCheckDelayed, setRewardCheckDelayed] = React.useState(false);
   const [reloadKey, setReloadKey] = React.useState(0);
+  const {
+    handleModalOpenChange: handleAgeSelfModalOpenChange,
+    handleSelfQrError: handleAgeSelfQrError,
+    handleSelfQrSuccess: handleAgeSelfQrSuccess,
+    selfError: ageSelfError,
+    selfModalOpen: ageSelfModalOpen,
+    selfPrompt: ageSelfPrompt,
+    startVerification: startAgeSelfVerification,
+  } = useSelfVerification({
+    completeErrorMessage: routeCopy.ageVerificationCompleteError,
+    locale,
+    onVerified: async () => {
+      updateSessionUser(await api.users.getMe());
+      setReloadKey((value) => value + 1);
+    },
+    startErrorMessage: routeCopy.ageVerificationStartError,
+    storageKey: `pirate_pending_self_age_gate:study:${postId}`,
+    verificationIntent: "community_join",
+  });
   const recorderRef = React.useRef<MediaRecorder | null>(null);
   const recordingChunksRef = React.useRef<BlobPart[]>([]);
   const recordingStreamRef = React.useRef<MediaStream | null>(null);
   const pendingMultipleChoiceAttemptRef = React.useRef<string | null>(null);
+  const multipleChoiceAdvanceTimeoutRef = React.useRef<number | null>(null);
+  const attemptIdempotencyKeysRef = React.useRef(new Map<string, string>());
+  const telegramVoiceHandoffTimeoutRef = React.useRef<number | null>(null);
+  const telegramVoiceHandoffPendingRef = React.useRef(false);
+
+  const divergenceRecoveryCountRef = React.useRef(0);
+
+  // Returns false when recovery is not available (or has already been tried too many
+  // times), so the caller falls back to a visible inline error rather than reloading
+  // forever against a server that keeps rejecting whatever it just handed us.
+  const recoverFromDivergedAttempt = React.useCallback(() => {
+    if (divergenceRecoveryCountRef.current >= STUDY_ATTEMPT_DIVERGENCE_RECOVERY_LIMIT) {
+      return false;
+    }
+    divergenceRecoveryCountRef.current += 1;
+    setState({ phase: "loading" });
+    setReloadKey((value) => value + 1);
+    return true;
+  }, []);
+
+  const attemptIdempotencyKey = React.useCallback((sessionId: string, exerciseId: string, attemptNumber: number) => {
+    const logicalAttempt = `${sessionId}:${exerciseId}:${attemptNumber}`;
+    const existing = attemptIdempotencyKeysRef.current.get(logicalAttempt);
+    if (existing) return existing;
+    const created = makeAttemptIdempotencyKey(sessionId, exerciseId, attemptNumber);
+    attemptIdempotencyKeysRef.current.set(logicalAttempt, created);
+    return created;
+  }, []);
 
   const stopRecordingStream = React.useCallback(() => {
     recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
     recordingStreamRef.current = null;
   }, []);
 
+  // The completion screen never shows the pre-session streak snapshot: once the
+  // session completes with a streak, fetch the server-ranked leaderboard and
+  // keep it fresh as displayed streaks expire (active_until_at, owner timezone).
+  const completionActive = state.phase === "ready" && state.surface.kind === "complete" && Boolean(state.surface.streak);
+  const completionPostCommunity = state.phase === "ready" ? state.post.post.community : null;
+  const completionPostId = state.phase === "ready" ? state.post.post.id : null;
+  React.useEffect(() => {
+    if (!completionActive || !completionPostCommunity || !completionPostId) return;
+    const community = completionPostCommunity;
+    const completedPostId = completionPostId;
+    let canceled = false;
+    let timer: number | null = null;
+
+    const load = async () => {
+      try {
+        const board = await api.communities.getPostStreakLeaderboard(community, completedPostId, { limit: 3 });
+        if (canceled) return;
+        setState((current) => current.phase === "ready" && current.surface.kind === "complete"
+          ? {
+              ...current,
+              surface: {
+                ...current.surface,
+                streakSummary: {
+                  entries: board.entries,
+                  totalActiveStreaks: board.total_active_streaks,
+                  viewer: board.viewer,
+                },
+              },
+            }
+          : current);
+        const expiries = [...board.entries.map((entry) => entry.active_until_at), board.viewer?.active_until_at]
+          .filter((value): value is string => typeof value === "string" && Number.isFinite(Date.parse(value)))
+          .map((value) => Date.parse(value));
+        if (!canceled && expiries.length > 0) {
+          const delay = Math.max(0, Math.min(...expiries) - Date.now()) + 1500;
+          timer = window.setTimeout(() => void load(), delay);
+        }
+      } catch {
+        // The celebration still stands on the attempt response; the list stays hidden.
+      }
+    };
+    void load();
+    return () => {
+      canceled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [api, completionActive, completionPostCommunity, completionPostId]);
+
   React.useEffect(() => () => {
+    if (telegramVoiceHandoffTimeoutRef.current !== null) {
+      window.clearTimeout(telegramVoiceHandoffTimeoutRef.current);
+    }
+    if (multipleChoiceAdvanceTimeoutRef.current !== null) {
+      window.clearTimeout(multipleChoiceAdvanceTimeoutRef.current);
+    }
     if (recorderRef.current?.state === "recording") {
       recorderRef.current.stop();
     }
@@ -355,21 +586,58 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   }, [stopRecordingStream]);
 
   React.useEffect(() => {
-    let canceled = false;
-
-    async function loadPost(): Promise<LocalizedPostResponse> {
-      try {
-        return await api.posts.get(postId, { locale: contentLocale });
-      } catch (error) {
-        // Logged-in non-members of request-mode communities get a 404
-        // (not_found: "Community not found") from the authenticated read even
-        // for public posts. The study payload endpoint serves publicly readable
-        // posts to signed-in non-members, so fall back to the public read
-        // instead of surfacing the 404.
-        if (!isApiNotFoundError(error)) throw error;
-        return await api.publicPosts.get(postId, { locale: contentLocale });
+    if (!telegramMiniApp) return;
+    let wasHidden = document.visibilityState === "hidden";
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        wasHidden = true;
+        return;
       }
-    }
+      if (!wasHidden) return;
+      wasHidden = false;
+      if (telegramVoiceHandoffPendingRef.current) {
+        telegramVoiceHandoffPendingRef.current = false;
+        setReloadKey((value) => value + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [telegramMiniApp]);
+
+  const studyComplete = state.phase === "ready" && state.surface.kind === "complete";
+  const completedRewardOffer = state.phase === "ready" ? state.rewardOffer : null;
+  React.useEffect(() => {
+    if (telegramMiniApp || !studyComplete || !completedRewardOffer || !session?.accessToken) return;
+    let cancelled = false;
+    let timeout: number | undefined;
+    let attempt = 0;
+    const poll = async () => {
+      const summary = await api.rewards.getSummary().catch(() => null);
+      if (cancelled) return;
+      const qualification = summary?.recent_qualifications?.find((item) =>
+        item.post_id === postId && item.qualification_basis === "study"
+      ) ?? null;
+      if (qualification) {
+        setRewardQualification(qualification);
+        if (qualification.status !== "checking") return;
+      }
+      if (attempt < 5) {
+        timeout = window.setTimeout(() => { void poll(); }, 1_500 * 2 ** attempt++);
+      } else {
+        setRewardCheckDelayed(true);
+      }
+    };
+    setRewardQualification(null);
+    setRewardCheckDelayed(false);
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
+  }, [api, completedRewardOffer, postId, session?.accessToken, studyComplete, telegramMiniApp]);
+
+  React.useEffect(() => {
+    let canceled = false;
 
     async function loadStudy() {
       if (!hydrated) {
@@ -383,7 +651,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
 
       setState({ phase: "loading" });
       try {
-        const post = await loadPost();
+        const post = await loadSongRoutePost({ api, contentLocale, hasAccessToken: true, postId });
         if (canceled) return;
 
         if (post.post.post_type !== "song") {
@@ -399,7 +667,9 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           api.communities.getPostStudy(post.post.community, post.post.id, {
             targetLanguage: contentLocale,
           }),
-          api.rewards.getActiveCampaignForSong(post.post.community, post.post.id).catch(() => null),
+          telegramMiniApp
+            ? Promise.resolve(null)
+            : api.rewards.getActiveCampaignForSong(post.post.community, post.post.id).catch(() => null),
         ]);
         if (canceled) return;
 
@@ -432,7 +702,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           return;
         }
 
-        if (study.exercises.length === 0) {
+        if (study.exercises.length === 0 || !study.session?.id) {
           const hasNextDue = Boolean(study.session?.next_due_at);
           setState({
             actionLabel: hasNextDue ? "Check again" : undefined,
@@ -443,18 +713,41 @@ export function StudyRoutePage({ postId }: { postId: string }) {
           return;
         }
 
+        const exerciseQueue = study.exercises.flatMap((exercise, index) => (
+          exercise.mastered
+          || Number(exercise.presentation_count ?? 0) >= Math.max(1, exercise.max_attempts || 1)
+            ? []
+            : [index]
+        ));
+        const presentationCounts = Object.fromEntries(
+          study.exercises.map((exercise) => [exercise.id, Number(exercise.presentation_count ?? 0)]),
+        );
+        const firstIndex = exerciseQueue[0];
+        if (firstIndex === undefined) {
+          setState({
+            phase: "blocked",
+            title: pageTitle(post, study),
+            message: "This lesson is complete.",
+          });
+          return;
+        }
         setState({
-          correctCount: 0,
-          exerciseIndex: 0,
+          correctCount: study.session.first_pass_correct_count,
+          exerciseQueue,
           phase: "ready",
           post,
+          presentationCounts,
           rewardOffer,
           study,
-          surface: exerciseSurface(study.exercises[0]!),
+          surface: exerciseSurface(study.exercises[firstIndex]!),
         });
         preloadStudyFeedbackSounds();
       } catch (error) {
         if (canceled) return;
+        if (isApiVerificationRequiredError(error)) {
+          setState({ phase: "verification_required", title: "Study", message: routeCopy.ageVerificationRequired });
+          return;
+        }
         if (isApiAuthError(error)) {
           setState({ phase: "auth_required" });
           return;
@@ -472,7 +765,34 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     return () => {
       canceled = true;
     };
-  }, [api, contentLocale, hydrated, postId, reloadKey, session?.accessToken]);
+  }, [api, contentLocale, hydrated, postId, reloadKey, routeCopy.ageVerificationRequired, session?.accessToken, telegramMiniApp]);
+
+  const handleVerifyAge = React.useCallback(() => {
+    void startAgeSelfVerification({
+      requestedCapabilities: ["age_over_18"],
+      unavailableMessage: routeCopy.ageVerificationRequired,
+    });
+  }, [routeCopy.ageVerificationRequired, startAgeSelfVerification]);
+
+  // Auto-advance after a correct multiple choice answer: the green highlight
+  // stays on the selected option briefly, then the lesson moves on without a
+  // "correct" banner. The pending timeout is cleared on unmount and before a
+  // new one is scheduled, and it no-ops when the state has already moved on
+  // (another exercise, a completed surface, or a manual Continue).
+  const scheduleMultipleChoiceAdvance = React.useCallback((exerciseId: string) => {
+    if (multipleChoiceAdvanceTimeoutRef.current !== null) {
+      window.clearTimeout(multipleChoiceAdvanceTimeoutRef.current);
+    }
+    multipleChoiceAdvanceTimeoutRef.current = window.setTimeout(() => {
+      multipleChoiceAdvanceTimeoutRef.current = null;
+      setState((current) => current.phase === "ready"
+        && current.surface.kind === "multiple_choice"
+        && current.surface.exercise.id === exerciseId
+        && current.surface.result === "correct"
+        ? advanceLesson(current, "correct")
+        : current);
+    }, 700);
+  }, []);
 
   const submitMultipleChoiceAttempt = React.useCallback((
     readyState: ReadyStudyRouteState,
@@ -486,6 +806,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     pendingMultipleChoiceAttemptRef.current = pendingKey;
 
     const exercise = surface.exercise;
+    const studySessionId = readyState.study.session?.id;
+    if (!studySessionId) return;
     setState((current) => {
       if (
         current.phase !== "ready"
@@ -511,12 +833,16 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     void api.communities.submitPostStudyAttempt(readyState.post.post.community, readyState.post.post.id, {
       attempt_number: surface.attemptNumber,
       exercise_id: exercise.id,
-      idempotency_key: makeAttemptIdempotencyKey(exercise.id, surface.attemptNumber),
+      idempotency_key: attemptIdempotencyKey(studySessionId, exercise.id, surface.attemptNumber),
+      session_id: studySessionId,
       selected_option_id: selectedOptionId,
-      target_language: readyState.study.target_language ?? undefined,
+      timezone: deviceTimezone(),
       type: "translation_choice",
     }).then((result) => {
       pendingMultipleChoiceAttemptRef.current = null;
+      // A landed attempt proves we are back in step with the server; spend the
+      // recovery budget again only if we drift a second time.
+      divergenceRecoveryCountRef.current = 0;
       playStudyFeedbackSound(result.outcome === "correct" ? "correct" : "incorrect");
       setState((current) => {
         if (current.phase !== "ready" || current.surface.kind !== "multiple_choice" || current.surface.exercise.id !== exercise.id) {
@@ -531,14 +857,20 @@ export function StudyRoutePage({ postId }: { postId: string }) {
               ...current.surface.exercise,
               correctOptionId: result.correct_option_id ?? current.surface.exercise.correctOptionId,
             },
-            canRetry: result.outcome !== "correct" && result.attempts_remaining > 0,
+            canRetry: false,
             result: result.outcome === "correct" ? "correct" : "wrong",
             submitting: false,
           },
         };
       });
+      if (result.outcome === "correct") {
+        scheduleMultipleChoiceAdvance(exercise.id);
+      }
     }).catch((error) => {
       pendingMultipleChoiceAttemptRef.current = null;
+      if (isStudyAttemptDivergence(error) && recoverFromDivergedAttempt()) {
+        return;
+      }
       setState((current) => {
         if (current.phase !== "ready" || current.surface.kind !== "multiple_choice" || current.surface.exercise.id !== exercise.id) {
           return current;
@@ -554,7 +886,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
         };
       });
     });
-  }, [api]);
+  }, [api, attemptIdempotencyKey, recoverFromDivergedAttempt, scheduleMultipleChoiceAdvance]);
 
   const handlePrimaryAction = React.useCallback(() => {
     if (state.phase === "locked") {
@@ -566,35 +898,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
 
     if (state.surface.kind === "multiple_choice") {
       if (state.surface.result) {
-        if (state.surface.result === "wrong" && state.surface.canRetry) {
-          setState({
-            ...state,
-            surface: {
-              ...state.surface,
-              attemptNumber: state.surface.attemptNumber + 1,
-              canRetry: false,
-              result: undefined,
-              selectedOptionId: undefined,
-            },
-          });
-          return;
-        }
-        const nextCorrectCount = state.correctCount + (state.surface.result === "correct" ? 1 : 0);
-        const nextIndex = state.exerciseIndex + 1;
-        const nextExercise = state.study.exercises[nextIndex] ?? null;
-        setState({
-          ...state,
-          correctCount: nextCorrectCount,
-          exerciseIndex: nextIndex,
-          surface: nextExercise
-            ? exerciseSurface(nextExercise)
-            : completeSurface({
-                correctCount: nextCorrectCount,
-                lastAttemptResult: state.lastAttemptResult,
-                streakSummary: toStreakSummary(state.post),
-                totalCount: state.study.exercises.length,
-              }),
-        });
+        setState(advanceLesson(state, state.surface.result));
         return;
       }
 
@@ -604,16 +908,76 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       return;
     }
 
-    if (state.surface.kind === "say_it_back" && state.surface.phase === "idle") {
+    // A retryable miss behaves exactly like idle: the footer already reads
+    // "Record", so pressing it must start the recording rather than costing the
+    // learner an extra tap to clear the banner first.
+    if (state.surface.kind === "say_it_back"
+      && (state.surface.phase === "idle"
+        || (state.surface.phase === "wrong" && !state.surface.revealReference))) {
       unlockStudyFeedbackAudio();
-      const sayItBackSurface = state.surface;
+      const sayItBackSurface = { ...state.surface, heardTranscript: undefined };
+      if (telegramMiniApp) {
+        telegramVoiceHandoffPendingRef.current = true;
+        setState({
+          ...state,
+          surface: {
+            ...sayItBackSurface,
+            guidance: "I’ll send the line to this bot’s chat. Reply there with a Telegram voice message.",
+            phase: "checking",
+            submitError: undefined,
+          },
+        });
+        void api.communities.createPostStudyTelegramVoiceIntent(
+          state.post.post.community,
+          state.post.post.id,
+          {
+            exercise_id: sayItBackSurface.exercise.id,
+            target_language: state.study.target_language,
+          },
+        ).then(() => {
+          const close = (window as Window & {
+            Telegram?: { WebApp?: { close?: () => void } };
+          }).Telegram?.WebApp?.close;
+          close?.();
+          telegramVoiceHandoffTimeoutRef.current = window.setTimeout(() => {
+            setState((current) => current.phase === "ready"
+              && current.surface.kind === "say_it_back"
+              && current.surface.exercise.id === sayItBackSurface.exercise.id
+              && current.surface.phase === "checking"
+              ? {
+                  ...current,
+                  surface: {
+                    ...current.surface,
+                    guidance: "Check your chat with this community’s bot and reply with a voice message. You can close this window now.",
+                    phase: "idle",
+                  },
+                }
+              : current);
+          }, 1_000);
+        }).catch((error) => {
+          telegramVoiceHandoffPendingRef.current = false;
+          setState((current) => current.phase === "ready"
+            && current.surface.kind === "say_it_back"
+            && current.surface.exercise.id === sayItBackSurface.exercise.id
+            ? {
+                ...current,
+                surface: {
+                  ...current.surface,
+                  phase: "idle",
+                  submitError: getErrorMessage(error, "Could not open the Telegram voice exercise."),
+                },
+              }
+            : current);
+        });
+        return;
+      }
       if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
         setState({
           ...state,
           surface: {
             ...state.surface,
-            phase: "wrong",
-            transcript: "Voice recording is not available in this browser.",
+            phase: "idle",
+            submitError: "Voice recording is not available in this browser.",
           },
         });
         return;
@@ -643,8 +1007,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                   ...current,
                   surface: {
                     ...current.surface,
-                    phase: "wrong",
-                    transcript: "Could not record audio.",
+                    phase: "idle",
+                    submitError: "Could not record audio.",
                   },
                 }
               : current);
@@ -660,8 +1024,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                     ...current,
                     surface: {
                       ...current.surface,
-                      phase: "wrong",
-                      transcript: "No audio was recorded.",
+                      phase: "idle",
+                      submitError: "No audio was recorded.",
                     },
                   }
                 : current);
@@ -674,14 +1038,19 @@ export function StudyRoutePage({ postId }: { postId: string }) {
                     ...current,
                     surface: {
                       ...current.surface,
-                      phase: "wrong",
-                      transcript: "No audio was recorded.",
+                      phase: "idle",
+                      submitError: "No audio was recorded.",
                     },
                   }
                 : current);
               return;
             }
             const exercise = sayItBackSurface.exercise;
+            const studySessionId = state.study.session?.id;
+            if (!studySessionId) {
+              setState({ phase: "error", title: pageTitle(state.post, state.study), message: "Study session expired. Reopen the lesson." });
+              return;
+            }
             setState((current) => current.phase === "ready" && current.surface.kind === "say_it_back" && current.surface.exercise.id === exercise.id
               ? {
                   ...current,
@@ -693,42 +1062,86 @@ export function StudyRoutePage({ postId }: { postId: string }) {
               : current);
             void api.communities.transcribePostStudyAudio(state.post.post.community, state.post.post.id, {
               file: new File([blob], "study-say-it-back.webm", { type }),
+            }).catch((error) => {
+              throw new StudyTranscriptionFailure(error);
             }).then((transcription) => api.communities.submitPostStudyAttempt(state.post.post.community, state.post.post.id, {
                 attempt_number: sayItBackSurface.attemptNumber,
                 exercise_id: exercise.id,
-                idempotency_key: makeAttemptIdempotencyKey(exercise.id, sayItBackSurface.attemptNumber),
-                target_language: state.study.target_language ?? undefined,
+                idempotency_key: attemptIdempotencyKey(studySessionId, exercise.id, sayItBackSurface.attemptNumber),
+                session_id: studySessionId,
+                timezone: deviceTimezone(),
                 transcript: transcription.text,
                 type: "say_it_back",
               }).then((result) => ({ result, transcript: transcription.text })))
               .then(({ result, transcript }) => {
+                divergenceRecoveryCountRef.current = 0;
                 playStudyFeedbackSound(result.outcome === "correct" ? "correct" : "incorrect");
+                if (result.outcome === "correct") {
+                  // No "correct" banner: the feedback sound already confirms the
+                  // hit, so advance straight to the next exercise. The fresh
+                  // result must be in place for advanceLesson's completion and
+                  // first-pass bookkeeping.
+                  setState((current) => current.phase === "ready"
+                    && current.surface.kind === "say_it_back"
+                    && current.surface.exercise.id === exercise.id
+                    ? advanceLesson({ ...current, lastAttemptResult: result }, "correct")
+                    : current);
+                  return;
+                }
                 setState((current) => {
                   if (current.phase !== "ready" || current.surface.kind !== "say_it_back" || current.surface.exercise.id !== exercise.id) {
                     return current;
                   }
-                  const correct = result.outcome === "correct";
-                  const attemptsUsed = result.attempts_remaining <= 0;
+                  // Two attempts per appearance, then move on. The card is also
+                  // done if the server has no attempts left at all. Anything
+                  // more would loop the learner on one line; the requeue in
+                  // advanceLesson brings it back later for the third attempt.
+                  const attemptsUsed = current.surface.attemptsThisAppearance ?? 1;
+                  const spent = (result.attempts_remaining ?? 0) <= 0
+                    || attemptsUsed >= STUDY_MAX_ATTEMPTS_PER_APPEARANCE;
                   return {
                     ...current,
                     lastAttemptResult: result,
                     surface: {
                       ...current.surface,
-                      attemptNumber: current.surface.attemptNumber,
-                      feedback: result.feedback,
-                      phase: correct ? "correct" : "wrong",
-                      revealReference: !correct && (attemptsUsed || result.outcome === "revealed"),
-                      transcript,
+                      attemptNumber: spent
+                        ? current.surface.attemptNumber
+                        : current.surface.attemptNumber + 1,
+                      attemptsThisAppearance: attemptsUsed + 1,
+                      heardTranscript: transcript,
+                      phase: "wrong",
+                      revealReference: spent,
+                      submitError: undefined,
+                      // Mirrors advanceLesson's requeue rule so the copy never
+                      // promises a return the lesson will not deliver.
+                      willReturn: (result.attempts_remaining ?? 0) > 0
+                        && current.exerciseQueue.length > 1
+                        && result.session?.status !== "completed",
                     },
                   };
                 });
               })
               .catch((error) => {
-                setState({
-                  phase: "error",
-                  title: pageTitle(state.post, state.study),
-                  message: getErrorMessage(error, "Could not transcribe this study attempt."),
-                });
+                const transcriptionFailed = error instanceof StudyTranscriptionFailure;
+                const cause = transcriptionFailed ? error.originalError : error;
+                if (!transcriptionFailed && isStudyAttemptDivergence(cause) && recoverFromDivergedAttempt()) {
+                  return;
+                }
+                const fallback = transcriptionFailed
+                  ? "Could not transcribe this study attempt. Try again."
+                  : "Could not submit this study attempt. Try again.";
+                setState((current) => current.phase === "ready"
+                  && current.surface.kind === "say_it_back"
+                  && current.surface.exercise.id === exercise.id
+                  ? {
+                      ...current,
+                      surface: {
+                        ...current.surface,
+                        phase: "idle",
+                        submitError: getErrorMessage(cause, fallback),
+                      },
+                    }
+                  : current);
               });
           };
           recorder.start();
@@ -737,6 +1150,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
             surface: {
               ...sayItBackSurface,
               phase: "listening",
+              submitError: undefined,
             },
           });
         } catch (error) {
@@ -745,8 +1159,8 @@ export function StudyRoutePage({ postId }: { postId: string }) {
             ...state,
             surface: {
               ...sayItBackSurface,
-              phase: "wrong",
-              transcript: getErrorMessage(error, "Could not start microphone."),
+              phase: "idle",
+              submitError: getErrorMessage(error, "Could not start microphone."),
             },
           });
         }
@@ -761,55 +1175,13 @@ export function StudyRoutePage({ postId }: { postId: string }) {
       return;
     }
 
+    // Only a spent card reaches here; a retryable miss is handled by the
+    // recording branch above.
     if (state.surface.kind === "say_it_back" && state.surface.phase === "wrong") {
-      if (state.surface.attemptNumber < state.surface.exercise.maxAttempts && !state.surface.revealReference) {
-        setState({
-          ...state,
-          surface: {
-            ...state.surface,
-            attemptNumber: state.surface.attemptNumber + 1,
-            feedback: undefined,
-            phase: "idle",
-            revealReference: false,
-            transcript: undefined,
-          },
-        });
-        return;
-      }
-      setState({
-        ...state,
-        exerciseIndex: state.exerciseIndex + 1,
-        surface: state.study.exercises[state.exerciseIndex + 1]
-          ? exerciseSurface(state.study.exercises[state.exerciseIndex + 1]!)
-          : completeSurface({
-              correctCount: state.correctCount,
-              lastAttemptResult: state.lastAttemptResult,
-              streakSummary: toStreakSummary(state.post),
-              totalCount: state.study.exercises.length,
-            }),
-      });
+      setState(advanceLesson(state, "wrong"));
       return;
     }
-
-    if (state.surface.kind === "say_it_back" && state.surface.phase === "correct") {
-      const nextCorrectCount = state.correctCount + 1;
-      const nextIndex = state.exerciseIndex + 1;
-      const nextExercise = state.study.exercises[nextIndex] ?? null;
-      setState({
-        ...state,
-        correctCount: nextCorrectCount,
-        exerciseIndex: nextIndex,
-        surface: nextExercise
-          ? exerciseSurface(nextExercise)
-          : completeSurface({
-              correctCount: nextCorrectCount,
-              lastAttemptResult: state.lastAttemptResult,
-              streakSummary: toStreakSummary(state.post),
-              totalCount: state.study.exercises.length,
-            }),
-      });
-    }
-  }, [postId, state, stopRecordingStream, submitMultipleChoiceAttempt]);
+  }, [api, attemptIdempotencyKey, postId, recoverFromDivergedAttempt, state, stopRecordingStream, submitMultipleChoiceAttempt, telegramMiniApp]);
 
   const handleOptionSelect = React.useCallback((optionId: string) => {
     if (state.phase !== "ready" || state.surface.kind !== "multiple_choice" || state.surface.result || state.surface.submitting) {
@@ -818,7 +1190,7 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     submitMultipleChoiceAttempt(state, state.surface, optionId);
   }, [state, submitMultipleChoiceAttempt]);
 
-  if (!hydrated || (configured && !loaded)) {
+  if (!hydrated || (!telegramMiniApp && configured && !loaded)) {
     return (
       <div className="flex h-dvh min-h-screen w-full items-center justify-center bg-background text-foreground">
         <Spinner className="size-8 text-muted-foreground" />
@@ -827,7 +1199,13 @@ export function StudyRoutePage({ postId }: { postId: string }) {
   }
 
   if (!session?.accessToken || state.phase === "auth_required") {
-    return <StudyAuthRequiredMessage postId={postId} />;
+    return (
+      <StudyAuthRequiredMessage
+        postId={postId}
+        returnPath={returnPath}
+        telegramMiniApp={telegramMiniApp}
+      />
+    );
   }
 
   if (state.phase === "loading") {
@@ -838,34 +1216,78 @@ export function StudyRoutePage({ postId }: { postId: string }) {
     );
   }
 
-  if (state.phase === "blocked" || state.phase === "error") {
+  if (state.phase === "blocked" || state.phase === "error" || state.phase === "verification_required") {
     return (
-      <StudyRouteMessage
-        actionLabel={state.phase === "blocked" ? state.actionLabel : undefined}
-        message={state.message}
-        onAction={state.phase === "blocked" && state.actionLabel ? () => setReloadKey((value) => value + 1) : undefined}
-        postId={postId}
-        title={state.title}
-      />
+      <>
+        <StudyRouteMessage
+          actionLabel={state.phase === "verification_required" ? "Verify age" : state.phase === "blocked" ? state.actionLabel : undefined}
+          message={state.message}
+          onAction={state.phase === "verification_required"
+            ? handleVerifyAge
+            : state.phase === "blocked" && state.actionLabel
+              ? () => setReloadKey((value) => value + 1)
+              : undefined}
+          postId={postId}
+          returnPath={returnPath}
+          title={state.title}
+        />
+        {ageSelfPrompt ? (
+          <SelfVerificationModal
+            actionLabel={ageSelfPrompt.actionLabel}
+            description={ageSelfPrompt.description}
+            error={ageSelfError}
+            href={ageSelfPrompt.href}
+            onOpenChange={handleAgeSelfModalOpenChange}
+            onQrError={handleAgeSelfQrError}
+            onQrSuccess={handleAgeSelfQrSuccess}
+            open={ageSelfModalOpen}
+            selfApp={ageSelfPrompt.selfApp}
+            title={ageSelfPrompt.title}
+          />
+        ) : null}
+      </>
     );
   }
 
+
   return (
     <SongStudySurface
-      artistName={undefined}
       artworkSrc={pageArtwork(state.post, state.study)}
       className="h-dvh"
-      onExit={() => navigate(`/p/${encodeURIComponent(postId)}`)}
+      lessonProgress={state.phase === "ready"
+        ? studyLessonProgress({
+            exerciseQueue: state.exerciseQueue,
+            // served_count includes cards resolved before a resumed route load, so
+            // returning learners correctly see an already-partially-filled bar.
+            totalCount: state.study.session?.served_count ?? state.study.exercises.length,
+          })
+        : undefined}
+      onExit={() => replaceRoute(returnPath ?? routeReturnPath(`/p/${encodeURIComponent(postId)}`))}
       onOptionSelect={handleOptionSelect}
       onPrimaryAction={handlePrimaryAction}
-      rewardSlot={state.rewardOffer && state.rewardOffer.eligible_activity !== "karaoke" ? (
-        <SongRewardOffer
-          amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents)}
-          eligibleActivity={state.rewardOffer.eligible_activity}
-        />
+      onKaraoke={!telegramMiniApp && state.surface.kind === "complete"
+        ? () => navigate(`/p/${encodeURIComponent(postId)}/karaoke`)
+        : undefined}
+      onStudyAgain={state.surface.kind === "complete"
+        ? () => setReloadKey((value) => value + 1)
+        : undefined}
+      rewardSlot={!telegramMiniApp && state.rewardOffer && state.rewardOffer.eligible_activity !== "karaoke" ? (
+        state.surface.kind === "complete" ? (
+          <RewardQualificationNotice
+            amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
+            expiresAt={rewardQualification?.expires_at}
+            outcomeReason={rewardQualification?.outcome_reason}
+            status={displayedRewardQualificationStatus(rewardQualification?.status, rewardCheckDelayed)}
+            testMode={state.rewardOffer.chain_id === 84532}
+          />
+        ) : (
+          <SongRewardOfferPill
+            amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
+          />
+        )
       ) : undefined}
+      sayItBackIdleLabel={telegramMiniApp ? "Send voice message" : undefined}
       state={state.surface}
-      title={pageTitle(state.post, state.study)}
     />
   );
 }

@@ -4,6 +4,8 @@ import * as React from "react";
 import { ArrowSquareOut, DownloadSimple, Lock, ShoppingCart } from "@phosphor-icons/react";
 
 import { navigate } from "@/app/router";
+import { useVideoExperience } from "@/app/video-experience/video-experience-context";
+import { toVideoViewerItem } from "@/components/compositions/posts/video-feed/video-viewer-item";
 import { Button } from "@/components/primitives/button";
 import { FormattedText } from "@/components/primitives/formatted-text";
 import { Type } from "@/components/primitives/type";
@@ -141,12 +143,14 @@ export function mergePostCardMenuItems(
   menuItems: PostCardMenuItem[] | undefined,
   derivedActions: DerivedSongMenuAction[],
 ): PostCardMenuItem[] {
+  const regularMenuItems = (menuItems ?? []).filter((item) => item.key !== "delete");
+  const deleteMenuItems = (menuItems ?? []).filter((item) => item.key === "delete");
   const metadataItems = derivedActions
     .filter((action) => action.category === "metadata")
     .map((action) => action.item);
   const downloadActions = derivedActions.filter((action) => action.category === "download");
   const firstDownloadNeedsSeparator = downloadActions.length > 0
-    && (Boolean(menuItems?.length) || metadataItems.length > 0);
+    && (regularMenuItems.length > 0 || metadataItems.length > 0);
   const downloadItems = downloadActions.map((action, index) => ({
     ...action.item,
     icon: action.item.icon ?? <DownloadSimple className="size-4" />,
@@ -154,9 +158,10 @@ export function mergePostCardMenuItems(
   }));
 
   return [
-    ...(menuItems ?? []),
+    ...regularMenuItems,
     ...metadataItems,
     ...downloadItems,
+    ...deleteMenuItems,
   ];
 }
 
@@ -312,7 +317,9 @@ function normalizeUrlForComparison(url: string | undefined): string | null {
   }
 }
 export function PostCard({
+  postId,
   viewContext = "home",
+  previewMode = false,
   identityPresentation,
   authorCommunityRole,
   authorNationalityBadgeCountry,
@@ -337,12 +344,14 @@ export function PostCard({
   onVote,
   voteAccess,
   onComment,
+  onOpenVideoViewer,
   onShare,
   onToggleOriginal,
   onMenuAction,
   className,
 }: PostCardProps) {
   const { locale } = useUiLocale();
+  const videoExperience = useVideoExperience();
   const effectiveTitleHref = titleHref ?? postHref;
   const sourceLanguageLabel = formatSourceLanguage(sourceLanguage, locale);
   const canToggleOriginal = Boolean(
@@ -386,7 +395,7 @@ export function PostCard({
   const unlock = content.type === "song" || content.type === "video" ? undefined : engagement.unlock;
   const songCommerce = deriveSongCommerce(content);
   const songHeaderMenuActions = deriveSongHeaderMenuActions(content);
-  const effectiveMenuItems = mergePostCardMenuItems(menuItems, songHeaderMenuActions);
+  const effectiveMenuItems = previewMode ? [] : mergePostCardMenuItems(menuItems, songHeaderMenuActions);
   const handleMenuAction = (key: string) => {
     const derivedAction = songHeaderMenuActions.find((action) => action.item.key === key);
     if (derivedAction) {
@@ -400,6 +409,38 @@ export function PostCard({
   const shouldShowEventUrl = event
     ? normalizeUrlForComparison(event.eventUrl) !== normalizeUrlForComparison(content.type === "link" ? content.href : undefined)
     : true;
+  const globalVideoItem = React.useMemo(
+    () => postId && !previewMode
+      ? toVideoViewerItem({
+          id: postId,
+          post: {
+            byline,
+            content,
+            engagement,
+            onComment,
+            onShare,
+            onVote,
+            postId,
+            shareActions,
+            voteAccess,
+          },
+        })
+      : null,
+    [byline, content, engagement, onComment, onShare, onVote, postId, previewMode, shareActions, voteAccess],
+  );
+  const effectiveOpenVideoViewer = onOpenVideoViewer ?? (
+    videoExperience && globalVideoItem
+      ? () => videoExperience.openVideo({
+          actions: {
+            onComment,
+            onVote,
+            onVoteAccess: voteAccess?.onClick,
+          },
+          item: globalVideoItem,
+          source: viewContext,
+        })
+      : undefined
+  );
 
   return (
     <article
@@ -420,7 +461,7 @@ export function PostCard({
         }
       } : undefined}
       role={postHref ? "link" : undefined}
-      style={{
+      style={previewMode ? undefined : {
         containIntrinsicSize: "560px",
         contentVisibility: "auto",
       }}
@@ -477,9 +518,8 @@ export function PostCard({
         ) : null}
 
         {titleElement}
-        {event ? <PostCardEventBlock event={event} showEventUrl={shouldShowEventUrl} /> : null}
-        <SongCaptionBeforeMedia content={content} />
-        <PostCardMedia content={content} postHref={postHref} viewContext={viewContext} />
+        {/* Translation attribution sits directly below the title: it describes the
+            translated text fields, not the media or actions that follow. */}
         {canToggleOriginal ? (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-start">
             <Type as="span" variant="caption" className="text-muted-foreground">
@@ -495,8 +535,11 @@ export function PostCard({
             </Button>
           </div>
         ) : null}
+        {event ? <PostCardEventBlock event={event} showEventUrl={shouldShowEventUrl} /> : null}
+        <SongCaptionBeforeMedia content={content} />
+        <PostCardMedia content={content} onOpenVideoViewer={effectiveOpenVideoViewer} postHref={postHref} previewMode={previewMode} viewContext={viewContext} />
 
-        {songCommerce ? (
+        {!previewMode && songCommerce ? (
           <div className="flex flex-col gap-2 pt-0.5 sm:flex-row sm:items-center sm:gap-1.5">
             <PostCardEngagementBar
               compact
@@ -511,7 +554,7 @@ export function PostCard({
             <div className="hidden flex-1 sm:block" />
             <FooterCommerce commerce={songCommerce} />
           </div>
-        ) : (
+        ) : !previewMode ? (
           <PostCardEngagementBar
             engagement={engagement}
             unlock={unlock ? { label: unlock.label, onClick: unlock.onBuy } : undefined}
@@ -521,7 +564,7 @@ export function PostCard({
             onComment={onComment}
             onShare={onShare}
           />
-        )}
+        ) : null}
       </div>
     </article>
   );

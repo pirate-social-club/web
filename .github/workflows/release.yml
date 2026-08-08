@@ -5,6 +5,12 @@ on:
     branches:
       - main
   pull_request:
+    types:
+      - labeled
+      - opened
+      - reopened
+      - synchronize
+      - unlabeled
     paths:
       - .github/workflows/release.yml
       - .github/release-refs/**
@@ -21,13 +27,26 @@ on:
         description: Optional deployed API SHA for the focused gate-builder verification
         required: false
         type: string
+      deploy_production:
+        description: Deploy the validated current main commit to production
+        required: false
+        default: false
+        type: boolean
 
-# Serialize releases per ref. cancel-in-progress stays false so a run that is
-# already applying migrations or deploying production is never killed midway;
-# staleness is handled by the production-freshness job instead.
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
+# NO workflow-level concurrency. Serializing the whole workflow per ref made every
+# merge queue behind the previous release end-to-end; with a ~20min release and a
+# push every ~10min the queue never drained (runs observed waiting 70min, then
+# getting cancelled unrun because GitHub keeps only one pending run per group).
+#
+# Serialization now sits on the two jobs that actually MUTATE a shared
+# environment, so validation runs overlap freely but deployments never do:
+#   staging     -> concurrency: staging-promotion
+#   production  -> concurrency: production-deploy
+#
+# Both keep cancel-in-progress: false — a run applying migrations or deploying
+# production must never be killed midway. Staleness is handled by terminating
+# superseded runs BEFORE they enter a lane (staging-freshness / production-
+# freshness), and by re-asserting the deployed SHAs around each staging gate.
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -123,11 +142,13 @@ jobs:
               coreSha,
               apiCoreRef: `${apiSha}:.github/ci-refs/core.sha`,
             });
-            const successfulApiRun = proof.api?.commit?.checkSuites?.nodes?.find((suite) =>
-              suite.branch?.name === "main" &&
-              suite.workflowRun?.workflow?.name === "api-ci" &&
-              suite.workflowRun.event === "push" &&
-              suite.conclusion === "SUCCESS"
+            const { pathToFileURL } = require("node:url");
+            const moduleUrl = pathToFileURL(
+              `${process.env.GITHUB_WORKSPACE}/web/scripts/ci/api-pin-proof.mjs`
+            ).href;
+            const { findSuccessfulApiMainPush } = await import(moduleUrl);
+            const successfulApiRun = findSuccessfulApiMainPush(
+              proof.api?.commit?.checkSuites?.nodes
             );
             if (!successfulApiRun?.workflowRun) {
               core.setFailed(
@@ -196,6 +217,56 @@ jobs:
               coreSha: process.env.CORE_SHA,
             });
 
+  # Cheap QUEUE FILTER, not a guarantee. Drops runs that are already superseded
+  # when they start, so they never occupy schema-gate or the staging lane and
+  # never add latency for the runs behind them.
+  #
+  # This check is NOT what makes "an older run cannot deploy" true. It runs
+  # before schema-gate's ~10min fleet scan, so main can advance afterwards, and
+  # nothing orders lane acquisition against it. The authoritative check is
+  # in-lane-freshness inside the staging job, taken with the lock held
+  # immediately before the first mutation. Keep both: this one saves queue time,
+  # that one is the correctness boundary.
+  #
+  # workflow_dispatch is exempt — a manual staging run on a release/* branch is
+  # deliberate and has no "tip" to compare against.
+  staging-freshness:
+    name: Check staging freshness
+    needs: [release-inputs]
+    if: github.event_name != 'pull_request'
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      contents: read
+    outputs:
+      stale: ${{ steps.check.outputs.stale }}
+    steps:
+      - name: Compare run SHA against current main tip
+        id: check
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            if (context.eventName !== "push" || context.ref !== "refs/heads/main") {
+              core.setOutput("stale", "false");
+              core.notice("Not a push to main; staging promotion proceeds.");
+              return;
+            }
+            const { data: ref } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+            const tip = ref.object.sha;
+            if (tip !== context.sha) {
+              core.setOutput("stale", "true");
+              core.warning(
+                `Skipping staging promotion: main has advanced to ${tip}, but this run built ${context.sha}. ` +
+                `The release for ${tip} promotes instead.`
+              );
+              return;
+            }
+            core.setOutput("stale", "false");
+            core.notice(`Run SHA ${context.sha} is the current main tip; entering the staging promotion lane.`);
+
   # Deploy staging and bring its schema up to date. Nothing here talks to a
   # third-party chain or drives a browser: this is the shortest path to a staging
   # environment that the release gate can then exercise.
@@ -205,13 +276,25 @@ jobs:
     # after the live fleet satisfies its schema requirements". Deploying the
     # pinned API to staging before that check is the exact failure this prevents.
     # The gate reads the existing fleet and needs nothing from this deploy.
-    needs: [release-inputs, schema-gate]
-    if: github.event_name != 'pull_request'
+    needs: [release-inputs, schema-gate, staging-freshness]
+    if: github.event_name != 'pull_request' && needs.staging-freshness.outputs.stale == 'false'
+    # The staging promotion lane. Staging is a single shared environment: two runs
+    # deploying different commits into it concurrently would let an older run
+    # overwrite newer state while the newer run's gates are mid-flight, producing
+    # gate results for a SHA that is no longer deployed. This lock makes the
+    # deploy itself exclusive; the gates below re-assert the deployed SHAs so a
+    # trampled window is detected rather than silently passed.
+    concurrency:
+      group: staging-promotion
+      cancel-in-progress: false
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 30
     permissions:
       contents: read
       id-token: write
+      packages: read
+    outputs:
+      superseded: ${{ steps.in-lane-freshness.outputs.stale }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -244,33 +327,164 @@ jobs:
       - name: Install web dependencies
         working-directory: web
         run: bun install --frozen-lockfile
-      - name: Audit web dependencies
-        working-directory: web
-        # rwsdk currently depends on decompress@4.2.1; no patched decompress release
-        # exists yet. Keep the audit strict while ignoring only that upstream advisory.
-        run: bun audit --audit-level=high --ignore GHSA-mp2f-45pm-3cg9
       - name: Install shared dependencies
         working-directory: api/services/shared
         run: bun install --frozen-lockfile
-      - name: Audit shared dependencies
-        working-directory: api/services/shared
-        run: bun audit --audit-level=high
       - name: Install API dependencies
         working-directory: api/services/api
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
         run: bun install --frozen-lockfile
-      - name: Audit API dependencies
-        working-directory: api/services/api
-        run: bun audit --audit-level=high
+      - name: Install community shard dependencies
+        working-directory: api/services/community-d1-shard
+        run: bun install --frozen-lockfile
       - name: Install core dependencies
         working-directory: core
         run: npm ci
-      - name: Audit core dependencies
+      # Re-evaluate high-and-above advisories immediately before deployment.
+      # The same job is required on pull requests, but advisory publication is a
+      # time-varying input: a finding published after merge must still stop the
+      # release. Exceptions are explicit, bounded, and expiry-enforced here.
+      - name: Audit dependencies for unaccepted high advisories
+        working-directory: web
+        run: |
+          node scripts/ci/dependency-audit.mjs \
+            --mode scheduled \
+            --baseline .github/dependency-audit-baseline.json \
+            --target .:bun \
+            --target ../api/services/shared:bun \
+            --target ../api/services/api:bun \
+            --target ../core:npm
+      # IN-LANE freshness. The staging-freshness job is only a cheap queue filter:
+      # it runs before schema-gate's ~10min fleet scan, so main can advance while
+      # this run is still waiting, and the early check cannot prove the run is
+      # current by the time it actually holds the lane. Nothing orders lane
+      # acquisition against that check either. So re-check HERE — after the lock
+      # is held, immediately before the first mutation — and gate every mutating
+      # step below on the result. This is the check that actually enforces "an
+      # older run never overwrites newer staging state".
+      - name: Re-check freshness inside the staging lane
+        id: in-lane-freshness
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            if (context.eventName !== "push" || context.ref !== "refs/heads/main") {
+              core.setOutput("stale", "false");
+              return;
+            }
+            const { data: ref } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+            const tip = ref.object.sha;
+            if (tip !== context.sha) {
+              core.setOutput("stale", "true");
+              core.notice(
+                `Superseded: main advanced to ${tip} while this run (${context.sha}) waited for the ` +
+                `staging lane. Skipping deploy and migrations; the release for ${tip} promotes instead.`
+              );
+              return;
+            }
+            core.setOutput("stale", "false");
+      - name: Verify staging community shard transition is safe
+        id: staging-shard-preflight
+        if: steps.in-lane-freshness.outputs.stale == 'false'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --environment staging \
+            --phase pre-deploy \
+            --health-url https://api-staging.pirate.sc/health/provisioning
+      - name: Fetch staging control-plane migration secret
+        if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: core
-        run: npm audit --audit-level=high
+        env:
+          INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_ENV: staging
+          INFISICAL_SECRET_PATH: /services/control-plane
+          SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
+        run: scripts/ci/fetch-infisical-secrets.sh
+      - name: Apply staging control-plane migrations
+        if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false'
+        working-directory: core
+        run: |
+          test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
+          export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
+          bun scripts/control-plane/apply-postgres-migrations.ts \
+            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
+            --migrations db/control-plane/migrations \
+            --label control-plane
+      - name: Apply staging bookings migrations
+        if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false'
+        working-directory: core
+        run: |
+          test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
+          export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
+          bun scripts/control-plane/apply-postgres-migrations.ts \
+            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
+            --migrations db/bookings/migrations \
+            --label bookings
+      # The shard's pool metadata is D1, not the control plane. Apply its
+      # migrations before deploying a shard that may depend on new pool state.
+      # The isolated D1 token deliberately owns this mutation, not the Worker
+      # deploy token.
+      - name: Apply staging community shard-pool migrations
+        if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false'
+        working-directory: api/services/community-d1-shard
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          for attempt in 1 2 3 4; do
+            if output="$(bunx wrangler@4.100.0 d1 migrations apply D1_POOL --remote 2>&1)"; then
+              printf '%s\n' "$output"
+              exit 0
+            else
+              status=$?
+              printf '%s\n' "$output"
+              if [[ "$output" != *"code: 7429"* ]] || [[ "$attempt" -eq 4 ]]; then
+                exit "$status"
+              fi
+            fi
+            delay=$((attempt * 10))
+            echo "D1 pool migration received retryable 7429; retrying in ${delay}s (attempt ${attempt}/4)"
+            sleep "$delay"
+          done
+      - name: Refuse shard-changing non-main staging validation
+        if: github.ref_name != 'main' && steps.in-lane-freshness.outputs.stale == 'false' && steps.staging-shard-preflight.outputs.deploy_shard == 'true'
+        run: |
+          echo "::error::A non-main validation cannot mutate the shared staging shard Worker."
+          exit 1
+      - name: Deploy pinned staging community shard first
+        if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false' && steps.staging-shard-preflight.outputs.deploy_shard == 'true'
+        working-directory: api/services/community-d1-shard
+        env:
+          BUILD_GIT_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          BUILD_GIT_REF: pinned/${{ needs.release-inputs.outputs.api_sha }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        # Staging is the top-level Wrangler configuration; only production is a
+        # named environment in the pinned shard config.
+        run: bun run deploy
+      - name: Verify bounded staging shard-first transition
+        if: github.ref_name == 'main' && steps.in-lane-freshness.outputs.stale == 'false' && steps.staging-shard-preflight.outputs.deploy_shard == 'true'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --environment staging \
+            --phase transition \
+            --previous-source-version "${{ steps.staging-shard-preflight.outputs.previous_source_version }}" \
+            --health-url https://api-staging.pirate.sc/health/provisioning
       - name: Deploy staging
+        if: steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: web
         env:
           API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          COMMUNITY_SCHEMA_POLICY_DIGEST: ${{ needs.schema-gate.outputs.policy_digest }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           VITE_BASE_NETWORK: base-sepolia
@@ -286,48 +500,31 @@ jobs:
           else
             scripts/deploy-staging.sh --allow-non-main -m "GitHub Actions staging validation for ${GITHUB_REF_NAME} (${GITHUB_RUN_ID})"
           fi
+      - name: Require exact staging community shard convergence
+        if: steps.in-lane-freshness.outputs.stale == 'false'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --environment staging \
+            --phase converged \
+            --previous-source-version "${{ steps.staging-shard-preflight.outputs.previous_source_version }}" \
+            --health-url https://api-staging.pirate.sc/health/provisioning
       - name: Verify staging/prod metadata
+        if: steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: web
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: scripts/check-deployments.sh --scope staging --retry-for 30
       - name: Smoke staging
+        if: steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: web
         run: scripts/smoke-test.sh staging
-      - name: Fetch staging control-plane migration secret
-        if: github.ref_name == 'main'
-        working-directory: core
-        env:
-          INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
-          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
-          INFISICAL_ENV: staging
-          INFISICAL_SECRET_PATH: /services/control-plane
-          SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
-        run: scripts/ci/fetch-infisical-secrets.sh
-      - name: Apply staging control-plane migrations
-        if: github.ref_name == 'main'
-        working-directory: core
-        run: |
-          test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
-          export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
-          bun scripts/control-plane/apply-postgres-migrations.ts \
-            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
-            --migrations db/control-plane/migrations \
-            --label control-plane
-      - name: Apply staging bookings migrations
-        if: github.ref_name == 'main'
-        working-directory: core
-        run: |
-          test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
-          export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
-          bun scripts/control-plane/apply-postgres-migrations.ts \
-            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
-            --migrations db/bookings/migrations \
-            --label bookings
       - name: Apply multipart fixture D1 migrations
         # Keep D1 access isolated from the broader Worker deployment token.
         # Fixture migration failures must block promotion to production.
+        if: steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: web
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -342,15 +539,38 @@ jobs:
   # API's declared community-template schema requirements? Nothing gated this
   # before, and it broke production twice (1124, 1127). This is schema
   # ATTESTATION across the whole fleet; the multipart test below is BEHAVIOURAL
-  # on one community. They catch different failures — keep both. Read-only.
+  # on one community. They catch different failures — keep both. The full scan
+  # remains authoritative while its fenced ledger publication runs in shadow.
   schema-gate:
     name: Community schema gate (staging fleet)
-    needs: [release-inputs]
-    if: github.event_name != 'pull_request'
+    needs: [release-inputs, staging-freshness]
+    if: github.event_name != 'pull_request' && needs.staging-freshness.outputs.stale == 'false'
+    # All staging scans share one writer lane. A manual validation used to get
+    # its own group, allowing it to invalidate the fleet attestation while a
+    # main scan was publishing; the generation fence correctly rejected both
+    # stale writers. Main still cancels obsolete scans, while a manual run
+    # queues behind the active writer instead of racing it.
+    concurrency:
+      group: community-schema-gate-staging
+      cancel-in-progress: ${{ github.event_name == 'push' }}
     runs-on: blacksmith-2vcpu-ubuntu-2404
-    timeout-minutes: 15
+    # 25min, raised from 15 on 2026-07-22. The 15min ceiling sat INSIDE the
+    # healthy scan's natural variance, so the runner killed a fail-closed check
+    # before it could return a verdict. Measured on consecutive main pushes:
+    # 12m26s, 12m47s, 14m44s, 14m59s (all success) — then run 29947790771 took
+    # 15m20s and was killed mid-scan, leaving main undeployed. A timed-out job
+    # reports as `cancelled`, which reads like supersession, so this failure mode
+    # is expensive to diagnose and easy to misattribute.
+    #
+    # This is CONTAINMENT, not headroom to grow into: it buys a verdict, it does
+    # not fix the 12-15min scan latency, which still scales with fleet size. The
+    # attestation fast-path is the real fix. Watch the duration recorded in the
+    # job summary below — if it climbs toward 25, raise the fast-path, not this.
+    timeout-minutes: 25
     permissions:
       contents: read
+    outputs:
+      policy_digest: ${{ steps.schema-policy.outputs.digest }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -384,13 +604,21 @@ jobs:
           echo "Probing read access to community-d1-shard-pool-staging..."
           bunx wrangler@4.100.0 d1 execute community-d1-shard-pool-staging \
             --remote --json --command "SELECT COUNT(*) AS n FROM d1_pool" 2>&1 || true
+      # Fleet-scan duration is the input that invalidated the old ceiling, so make
+      # it a first-class number instead of something you reconstruct from job
+      # timestamps during an incident. Fleet growth shows up here first.
+      - name: Record schema scan start
+        run: echo "SCHEMA_SCAN_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - name: Verify staging fleet satisfies pinned API schema requirements
-        # The gate reads the community-d1-shard pool + every live shard via
-        # `wrangler d1 execute --remote`, so it needs D1 READ across
+        # Keep REST-batch concurrency at 2 after repeated code 7429 overloads
+        # exhausted retries on the same staging shard at concurrency 3.
+        # The gate reads the community-d1-shard pool + every live shard through
+        # the D1 REST API, so it needs D1 READ across
         # community-d1-pool-* and community-d1-shard-pool-*. That is the isolated
         # D1 token (CLOUDFLARE_D1_API_TOKEN), NOT the Worker-deploy token — D1
         # access is deliberately kept off the deploy token (see the multipart
-        # fixture step). Read-only: a token-scope gap fails safe, never mutates.
+        # fixture step). This token already applies pool migrations, so it has
+        # the D1 write scope needed for fenced ledger publication.
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
@@ -399,8 +627,32 @@ jobs:
             --requirements api/services/api/community-schema-requirements.json \
             --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
             --migrations-dir core/db/community-template/migrations \
+            --drift-policy core/db/known-community-migration-drifts.json \
+            --canonical-baseline api/services/api/docs/attestations/community-schema/staging-canonical-baseline.json \
             --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
-            --concurrency 14
+            --publish-attestations \
+            --concurrency 2
+      - name: Export authoritative staging schema-policy digest
+        id: schema-policy
+        shell: bash
+        run: |
+          digest="$(node -e 'const fs=require("node:fs");const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const d=String(m.effective_policy_digest||"");if(!/^[0-9a-f]{64}$/.test(d))process.exit(2);process.stdout.write(d)' "$GITHUB_WORKSPACE/schema-gate-staging.json")"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+      # always(): a SLOW scan that then fails is exactly the sample we must not
+      # drop. Never fails the job — an observability step must not be able to
+      # block a release.
+      - name: Report schema scan duration
+        if: always()
+        continue-on-error: true
+        run: |
+          elapsed=$(( $(date +%s) - ${SCHEMA_SCAN_STARTED_AT:-$(date +%s)} ))
+          budget=$(( 25 * 60 ))
+          printf 'Schema fleet scan: %dm%02ds (job ceiling %dm, %d%% used)\n' \
+            "$(( elapsed / 60 ))" "$(( elapsed % 60 ))" "$(( budget / 60 ))" \
+            "$(( elapsed * 100 / budget ))" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$elapsed" -gt $(( budget * 70 / 100 )) ]; then
+            echo "::warning::Schema fleet scan used ${elapsed}s of the ${budget}s ceiling (>70%). Fleet growth is eroding the margin — pursue the attestation fast-path before raising the timeout again."
+          fi
       - name: Upload staging schema manifest
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -416,7 +668,11 @@ jobs:
   release-gate:
     name: Release gate
     needs: [release-inputs, staging]
-    if: github.event_name != 'pull_request'
+    # Skip rather than fail when staging was superseded. The SHA assertions below
+    # would fail closed anyway, which is safe but indistinguishable from a real
+    # regression in the flake statistics. A superseded run is expected
+    # obsolescence, not a red test: the run that took the lane gates its own SHA.
+    if: github.event_name != 'pull_request' && needs.staging.outputs.superseded != 'true'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 25
     permissions:
@@ -451,6 +707,20 @@ jobs:
       - name: Install Playwright browser
         working-directory: web
         run: bunx playwright install --with-deps chromium
+      # Bind this gate to the exact SHAs this run deployed. Without the workflow
+      # -level lock, another run can enter the staging promotion lane the moment
+      # ours releases it, so "staging deployed OK" is no longer proof that our
+      # build is what we are about to exercise.
+      - name: Require this run's staging artifacts
+        id: require-staging-artifacts
+        working-directory: web
+        env:
+          EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          EXPECTED_WEB_SHA: ${{ github.sha }}
+        run: |
+          node scripts/verify-deployed-versions.mjs \
+            https://staging.pirate.sc/__version "$EXPECTED_WEB_SHA" \
+            https://api-staging.pirate.sc/__version "$EXPECTED_API_SHA"
       - name: Browser smoke staging
         timeout-minutes: 10
         working-directory: web
@@ -458,6 +728,31 @@ jobs:
           E2E_BASE_URL: https://staging.pirate.sc
           E2E_API_BASE_URL: https://api-staging.pirate.sc
         run: bun run test:e2e
+      # ...and re-assert AFTER. If staging was redeployed mid-gate, these results
+      # describe a build that is no longer there: fail rather than promote on
+      # evidence gathered against someone else's SHA. The superseding run has its
+      # own gate, so failing here loses no coverage.
+      - name: Re-verify staging artifacts were not replaced mid-gate
+        # Must run even when the smoke FAILED — that is precisely when the answer
+        # matters. Without it a smoke failure is ambiguous: real product
+        # regression, or another run redeploying staging mid-gate with the failure
+        # an artifact of trampling. Scoped to !cancelled() plus a successful
+        # pre-assertion rather than always(), so it stays quiet when setup or the
+        # pre-assertion already failed and there is nothing meaningful to compare.
+        if: ${{ !cancelled() && steps.require-staging-artifacts.outcome == 'success' }}
+        working-directory: web
+        env:
+          EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          EXPECTED_WEB_SHA: ${{ github.sha }}
+          # A MISMATCH here is terminal (staging was replaced) — fail immediately.
+          # A transport failure is NOT: it says nothing about what is deployed, so
+          # it must still retry. Setting ATTEMPTS=1 conflated the two and failed a
+          # green run on one `fetch failed` (run 29937199404), blocking production.
+          VERIFY_DEPLOYED_FAIL_FAST_ON_MISMATCH: "1"
+        run: |
+          node scripts/verify-deployed-versions.mjs \
+            https://staging.pirate.sc/__version "$EXPECTED_WEB_SHA" \
+            https://api-staging.pirate.sc/__version "$EXPECTED_API_SHA"
       - name: Fetch staging song preview container health secret
         working-directory: core
         env:
@@ -529,7 +824,9 @@ jobs:
           EXPECTED_API_SHA: ${{ inputs.expected_staging_api_sha }}
           EXPECTED_WEB_SHA: ${{ inputs.expected_staging_web_sha }}
         run: |
-          node -e 'Promise.all([["https://staging.pirate.sc/__version",process.env.EXPECTED_WEB_SHA],["https://api-staging.pirate.sc/__version",process.env.EXPECTED_API_SHA]].map(async ([url,sha])=>{const body=await fetch(url).then(r=>r.json());if(!String(body.git_sha).startsWith(sha.slice(0,7)))throw new Error(`${url} expected ${sha}, got ${body.git_sha}`)}))'
+          node scripts/verify-deployed-versions.mjs \
+            https://staging.pirate.sc/__version "$EXPECTED_WEB_SHA" \
+            https://api-staging.pirate.sc/__version "$EXPECTED_API_SHA"
       - name: Fetch staging moderator browser verification secret
         working-directory: core
         env:
@@ -571,62 +868,75 @@ jobs:
   api-staging-contract-gate:
     name: API staging contract gate
     needs: [release-inputs, staging]
-    if: github.event_name != 'pull_request'
+    # Same reasoning as release-gate: a superseded run has nothing of its own
+    # deployed to staging, so gating it against staging proves nothing.
+    if: github.event_name != 'pull_request' && needs.staging.outputs.superseded != 'true'
     permissions:
       contents: read
       id-token: write
+    # GitHub snapshots this reusable-workflow ref per run attempt. If the API
+    # gate workflow changes, start a new push run; rerunning an older attempt
+    # continues to use its previously resolved API workflow commit.
     uses: pirate-social-club/api/.github/workflows/staging-contract-gate.yml@main
     with:
       api_sha: ${{ needs.release-inputs.outputs.api_sha }}
       core_ref: ${{ needs.release-inputs.outputs.core_sha }}
       web_ref: ${{ github.sha }}
+    secrets:
+      AUTH_UPSTREAM_JWT_SHARED_SECRET: ${{ secrets.AUTH_UPSTREAM_JWT_SHARED_SECRET }}
+      PIRATE_ADMIN_TOKEN: ${{ secrets.PIRATE_ADMIN_TOKEN }}
 
   # Guard against an older run overwriting a newer production deployment. Checked
   # as late as possible — after the blocking gate, immediately before deploying.
   production-freshness:
     name: Check release freshness
     needs: [api-staging-contract-gate, release-gate, schema-gate]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_production))
     runs-on: blacksmith-2vcpu-ubuntu-2404
     permissions:
+      actions: read
       contents: read
+      deployments: read
     outputs:
       stale: ${{ steps.check.outputs.stale }}
     steps:
-      - name: Compare run SHA against current main tip
+      # See scripts/ci/production-freshness.cjs — the decision lives in a file
+      # so it can be unit tested (scripts/ci/production-freshness.test.ts).
+      # This job checks out the repo only to load that module; the authenticated
+      # client still comes from actions/github-script.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Deploy only when no live successor will
         id: check
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           script: |
-            const { data: ref } = await github.rest.git.getRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: "heads/main",
-            });
-            const tip = ref.object.sha;
-            if (tip !== context.sha) {
-              core.setOutput("stale", "true");
-              core.warning(
-                `Skipping production deploy: main has advanced to ${tip}, but this run built ${context.sha}. ` +
-                `The release for ${tip} deploys instead.`
-              );
-              return;
-            }
-            core.setOutput("stale", "false");
-            core.notice(`Run SHA ${context.sha} is the current main tip; proceeding to production.`);
+            const productionFreshness = require(`${process.env.GITHUB_WORKSPACE}/scripts/ci/production-freshness.cjs`);
+            await productionFreshness({ github, context, core });
 
   production:
     name: Deploy production
     needs: [api-staging-contract-gate, release-inputs, release-gate, schema-gate, production-freshness]
-    # Only deploy production on a push to main. This keeps workflow_dispatch on
-    # any branch (e.g. release/* validation) staging-only, so a manual dispatch
-    # can never push an unmerged branch to production.
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.production-freshness.outputs.stale == 'false'
+    # Manual production deploys remain default-off and can only deploy the
+    # validated current main tip after the same freshness and staging gates.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_production)) && needs.production-freshness.outputs.stale == 'false'
+    # The production deploy lane. This job applies migrations and deploys prod:
+    # it must be exclusive, and it must NEVER be cancelled midway — an
+    # interrupted migration is the one failure here that is not recoverable by
+    # re-running. Staleness is handled by production-freshness above, which
+    # rejects superseded runs before they reach this lock — but only when a live
+    # successor is actually going to deploy, so that a burst of merges cannot
+    # leave every run deferring to the next (#729).
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
     runs-on: blacksmith-4vcpu-ubuntu-2404
     environment: production
     permissions:
+      actions: read
       contents: read
+      deployments: read
       id-token: write
+      packages: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -659,34 +969,30 @@ jobs:
       - name: Install web dependencies
         working-directory: web
         run: bun install --frozen-lockfile
-      - name: Audit web dependencies
-        working-directory: web
-        # rwsdk currently depends on decompress@4.2.1; no patched decompress release
-        # exists yet. Keep the audit strict while ignoring only that upstream advisory.
-        run: bun audit --audit-level=high --ignore GHSA-mp2f-45pm-3cg9
+      # No dependency audit here. The staging job in THIS SAME RUN already audited
+      # the identical web/api/core SHAs, and production cannot be reached without
+      # it. Running the same audit twice doubled our exposure to a time-varying
+      # external input for no additional signal.
       - name: Install shared dependencies
         working-directory: api/services/shared
         run: bun install --frozen-lockfile
-      - name: Audit shared dependencies
-        working-directory: api/services/shared
-        run: bun audit --audit-level=high
       - name: Install API dependencies
         working-directory: api/services/api
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
         run: bun install --frozen-lockfile
-      - name: Audit API dependencies
-        working-directory: api/services/api
-        run: bun audit --audit-level=high
+      - name: Install community shard dependencies
+        working-directory: api/services/community-d1-shard
+        run: bun install --frozen-lockfile
       - name: Install core dependencies
         working-directory: core
         run: npm ci
-      - name: Audit core dependencies
-        working-directory: core
-        run: npm audit --audit-level=high
       # Fresh check of the LIVE PRODUCTION fleet, immediately before migrations and
       # deploy. The staging schema-gate is a promotion gate; this is the real one —
       # the allocated prod fleet can change between then and now, so we re-attest it
-      # here rather than trust the earlier pass. Read-only. If any live prod shard
-      # is missing a required migration, we STOP before mutating or deploying.
+      # here rather than trust the earlier pass. It publishes only fenced ledger
+      # evidence; the full scan remains authoritative. If any live prod shard is
+      # missing a required migration, we STOP before migrations or deployment.
       - name: Verify production fleet satisfies pinned API schema requirements
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -699,8 +1005,16 @@ jobs:
             --requirements api/services/api/community-schema-requirements.json \
             --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
             --migrations-dir core/db/community-template/migrations \
+            --drift-policy core/db/known-community-migration-drifts.json \
+            --canonical-baseline api/services/api/docs/attestations/community-schema/production-canonical-baseline.json \
             --manifest "$GITHUB_WORKSPACE/schema-gate-production.json" \
+            --publish-attestations \
             --concurrency 14
+      - name: Export authoritative production schema-policy digest
+        shell: bash
+        run: |
+          digest="$(node -e 'const fs=require("node:fs");const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const d=String(m.effective_policy_digest||"");if(!/^[0-9a-f]{64}$/.test(d))process.exit(2);process.stdout.write(d)' "$GITHUB_WORKSPACE/schema-gate-production.json")"
+          echo "COMMUNITY_SCHEMA_POLICY_DIGEST=$digest" >> "$GITHUB_ENV"
       - name: Upload production schema manifest
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -727,7 +1041,34 @@ jobs:
           INFISICAL_SECRET_PATH: /services/control-plane
           SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
         run: scripts/ci/fetch-infisical-secrets.sh
+      # IN-LANE freshness, mirroring the staging lane. production-freshness runs
+      # before this job acquires the production-deploy lock, and nothing orders
+      # lock acquisition against that check — so between the two, main can
+      # advance and another run can finish deploying. Re-check with the lock
+      # held, immediately before the first mutation. Everything below that
+      # mutates production is gated on this result, not the earlier job.
+      - name: Re-check freshness inside the production lane
+        id: in-lane-freshness-prod
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            const productionFreshness = require(`${process.env.GITHUB_WORKSPACE}/web/scripts/ci/production-freshness.cjs`);
+            await productionFreshness({ github, context, core });
+      # Fail before the first production mutation when the community shard
+      # Worker cannot serve the API commit this release is about to deploy.
+      # The pinned checkout is the authority; the live API's expected version
+      # is diagnostic only because it describes the currently deployed pair.
+      - name: Verify production community shard transition is safe
+        id: shard-preflight
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --phase pre-deploy \
+            --health-url https://api.pirate.sc/health/provisioning
       - name: Apply production control-plane migrations
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: core
         run: |
           test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
@@ -737,6 +1078,7 @@ jobs:
             --migrations db/control-plane/migrations \
             --label control-plane
       - name: Apply production bookings migrations
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: core
         run: |
           test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
@@ -745,7 +1087,50 @@ jobs:
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/bookings/migrations \
             --label bookings
+      # Keep the data-plane ordering identical to staging: all pool schema is
+      # ready before the shard source that uses it is deployed.
+      - name: Apply production community shard-pool migrations
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
+        working-directory: api/services/community-d1-shard
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          for attempt in 1 2 3 4; do
+            if output="$(bunx wrangler@4.100.0 d1 migrations apply D1_POOL --remote --env production 2>&1)"; then
+              printf '%s\n' "$output"
+              exit 0
+            else
+              status=$?
+              printf '%s\n' "$output"
+              if [[ "$output" != *"code: 7429"* ]] || [[ "$attempt" -eq 4 ]]; then
+                exit "$status"
+              fi
+            fi
+            delay=$((attempt * 10))
+            echo "D1 pool migration received retryable 7429; retrying in ${delay}s (attempt ${attempt}/4)"
+            sleep "$delay"
+          done
+      - name: Deploy pinned production community shard first
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false' && steps.shard-preflight.outputs.deploy_shard == 'true'
+        working-directory: api/services/community-d1-shard
+        env:
+          BUILD_GIT_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          BUILD_GIT_REF: pinned/${{ needs.release-inputs.outputs.api_sha }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: bun run deploy -- --env production
+      - name: Verify bounded shard-first transition
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false' && steps.shard-preflight.outputs.deploy_shard == 'true'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --phase transition \
+            --previous-source-version "${{ steps.shard-preflight.outputs.previous_source_version }}" \
+            --health-url https://api.pirate.sc/health/provisioning
       - name: Deploy production
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: web
         env:
           API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
@@ -753,9 +1138,42 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           VITE_BASE_NETWORK: ${{ vars.VITE_BASE_NETWORK }}
           VITE_EFP_ENVIRONMENT: ${{ vars.VITE_EFP_ENVIRONMENT }}
+          VITE_GATE_TREE_BUILDER_ENABLED: "true"
           VITE_PIRATE_APP_ENV: ${{ vars.VITE_PIRATE_APP_ENV || 'prod' }}
           VITE_ASYNC_SONG_PUBLISH_ENABLED: ${{ vars.VITE_ASYNC_SONG_PUBLISH_ENABLED || 'false' }}
           VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
           VITE_PRIVY_CLIENT_ID: ${{ vars.VITE_PRIVY_CLIENT_ID }}
+          VITE_REWARDS_ENABLED: "true"
           VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
         run: scripts/deploy-production.sh --confirm-production --skip-tests
+      - name: Verify production release metadata
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
+        working-directory: web
+        env:
+          EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          EXPECTED_WEB_SHA: ${{ github.sha }}
+        run: |
+          node scripts/verify-deployed-versions.mjs \
+            https://pirate.sc/__version "$EXPECTED_WEB_SHA" \
+            https://api.pirate.sc/__version "$EXPECTED_API_SHA"
+      - name: Require exact community shard convergence
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
+        working-directory: web
+        run: |
+          node scripts/verify-community-shard-compatibility.mjs \
+            --api-dir "$GITHUB_WORKSPACE/api" \
+            --phase converged \
+            --previous-source-version "${{ steps.shard-preflight.outputs.previous_source_version }}" \
+            --health-url https://api.pirate.sc/health/provisioning
+      - name: Verify production multipart storage
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
+        working-directory: web
+        env:
+          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.PRODUCTION_MULTIPART_CANARY_AUTH_AUDIENCE }}
+          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.PRODUCTION_MULTIPART_CANARY_AUTH_ISSUER }}
+          AUTH_UPSTREAM_JWT_SHARED_SECRET: ${{ secrets.PRODUCTION_MULTIPART_CANARY_AUTH_SECRET }}
+          PIRATE_MULTIPART_CANARY_API_BASE_URL: https://api.pirate.sc
+          PIRATE_MULTIPART_CANARY_COMMUNITY_ID: ${{ vars.PRODUCTION_MULTIPART_CANARY_COMMUNITY_ID }}
+          PIRATE_MULTIPART_CANARY_CONFIRM_PRODUCTION: RUN_PRODUCTION_MULTIPART_CANARY
+          PIRATE_MULTIPART_CANARY_SUBJECT: ${{ vars.PRODUCTION_MULTIPART_CANARY_SUBJECT }}
+        run: bun scripts/live-production-multipart-canary.ts

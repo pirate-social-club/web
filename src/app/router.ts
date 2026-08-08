@@ -14,6 +14,8 @@ import { extractPublicProfileHost } from "@/lib/public-host";
 
 export type AppRoute =
   | { kind: "home"; path: "/" }
+  | { kind: "live"; path: "/live" }
+  | { kind: "community-feed"; path: "/feed" }
   | { kind: "popular"; path: "/popular" }
   | { kind: "public-profile"; path: string; handleLabel: string; hostSuffix?: string | null }
   | { kind: "public-agent"; path: string; handleLabel: string; hostSuffix?: string | null }
@@ -49,6 +51,7 @@ export type AppRoute =
   | { kind: "me"; path: "/me" }
   | { kind: "onboarding"; path: "/onboarding" }
   | { kind: "authorize-device"; path: "/authorize-device" }
+  | { kind: "telegram-account-link"; path: "/telegram/account-link" }
   | { kind: "telegram-mini-app"; path: "/tg" }
   | { kind: "telegram-exchange"; path: "/tg/exchange" }
   | { kind: "telegram-self-return"; path: string; communityId?: string | null }
@@ -56,6 +59,7 @@ export type AppRoute =
   | { kind: "telegram-verify"; path: string; communityId: string }
   | { kind: "telegram-community"; path: string; communityId: string }
   | { kind: "telegram-post"; path: string; postId: string }
+  | { kind: "telegram-study"; path: string; communityId: string; postId: string }
   | { kind: "not-found"; path: string };
 
 const NAVIGATION_EVENT = "pirate:navigate";
@@ -111,12 +115,24 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
     return { kind: "popular", path: "/popular" };
   }
 
+  if (normalized === "/feed") {
+    return { kind: "community-feed", path: "/feed" };
+  }
+
+  if (normalized === "/live") {
+    return { kind: "live", path: "/live" };
+  }
+
   if (normalized === "/your-communities") {
     return { kind: "your-communities", path: normalized };
   }
 
   if (normalized === "/wallet") {
     return { kind: "wallet", path: normalized };
+  }
+
+  if (normalized === "/telegram/account-link") {
+    return { kind: "telegram-account-link", path: normalized };
   }
 
   if (normalized === "/settings") {
@@ -172,6 +188,21 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   }
 
   const segments = normalized.split("/").filter(Boolean);
+
+  if (
+    segments.length === 6
+    && segments[0] === "tg"
+    && segments[1] === "c"
+    && segments[3] === "p"
+    && segments[5] === "study"
+  ) {
+    return {
+      kind: "telegram-study",
+      path: normalized,
+      communityId: decodeURIComponent(segments[2]),
+      postId: decodeURIComponent(segments[4]),
+    };
+  }
 
   if (segments.length === 2 && segments[0] === "settings" && segments[1] === "wallet") {
     return { kind: "wallet", path: "/wallet" };
@@ -525,13 +556,9 @@ export function resolveHydrationPathname(input: {
 }
 
 function getCurrentRoute(): AppRoute {
-  let pathname = normalizePathname(window.location.pathname);
+  const windowPathname = normalizePathname(window.location.pathname);
   const hostname = window.location.hostname.toLowerCase();
-  const canonicalPathname = canonicalizeRoutePathname(pathname, hostname);
-  if (canonicalPathname !== pathname) {
-    replaceCurrentPathname(canonicalPathname);
-    pathname = canonicalPathname;
-  }
+  const pathname = canonicalizeRoutePathname(windowPathname, hostname);
 
   if (pathname === cachedPathname && hostname === cachedHostname) {
     return cachedRoute;
@@ -580,6 +607,26 @@ export function navigate(path: string): void {
   window.dispatchEvent(new Event(NAVIGATION_EVENT));
 }
 
+/**
+ * Sidebar-style navigation: navigates to the path, but when the path is the
+ * current location it reloads the page instead of silently doing nothing, so
+ * clicking the active entry acts as a refresh.
+ */
+export function navigateOrReload(path: string): void {
+  const nextUrl = new URL(path, window.location.origin);
+  const nextPath = normalizePathname(nextUrl.pathname);
+  const nextHref = `${nextPath}${nextUrl.search}${nextUrl.hash}`;
+  const currentPath = normalizePathname(window.location.pathname);
+  const currentHref = `${currentPath}${window.location.search}${window.location.hash}`;
+
+  if (currentHref === nextHref) {
+    window.location.reload();
+    return;
+  }
+
+  navigate(path);
+}
+
 export function replaceRoute(path: string): void {
   const nextUrl = new URL(path, window.location.origin);
   const nextPath = normalizePathname(nextUrl.pathname);
@@ -617,9 +664,6 @@ export function useRoute(
         }),
         window.location.hostname,
       );
-      if (cachedPathname !== normalizePathname(window.location.pathname)) {
-        replaceCurrentPathname(cachedPathname);
-      }
       cachedHostname = window.location.hostname.toLowerCase();
       cachedRoute = matchRouteWithImportedRootCommunity(cachedPathname, cachedHostname, rootCommunityId);
       return cachedRoute;
@@ -631,12 +675,24 @@ export function useRoute(
         ? { kind: "community" as const, path: "/", communityId: rootCommunityId, isImportedRoot: true }
         : HOME_ROUTE;
   }, [importedRootCommunityId, initialHostname, initialPathname]);
+  const hydrationPathname = cachedPathname;
 
   const liveRoute = React.useSyncExternalStore(
     subscribeToNavigation,
     getCurrentRoute,
     () => initialRoute,
   );
+
+  React.useEffect(() => {
+    const windowPathname = normalizePathname(window.location.pathname);
+    const canonicalPathname = canonicalizeRoutePathname(
+      hydrationPathname,
+      window.location.hostname,
+    );
+    if (canonicalPathname !== windowPathname) {
+      replaceCurrentPathname(canonicalPathname);
+    }
+  }, [hydrationPathname, liveRoute]);
 
   return liveRoute;
 }

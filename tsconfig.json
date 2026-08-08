@@ -15,7 +15,10 @@
     "isolatedModules": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "strict": true,
     "skipLibCheck": true
-  }
+  },
+  "exclude": ["worktrees"]
 }

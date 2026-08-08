@@ -118,6 +118,7 @@ mock.module("@/components/compositions/wallet/wallet-hub/wallet-hub", () => ({
       actionDisabled?: boolean;
       actionLabel: string;
       amountLabel: string;
+      assetLabel: string;
       onAction?: () => void;
       supportingLabel?: string;
     };
@@ -127,6 +128,7 @@ mock.module("@/components/compositions/wallet/wallet-hub/wallet-hub", () => ({
         <section>
           <div>Rewards</div>
           <div>{rewardsSummary.amountLabel}</div>
+          <div>{rewardsSummary.assetLabel}</div>
           {rewardsSummary.supportingLabel ? <div>{rewardsSummary.supportingLabel}</div> : null}
           <button disabled={rewardsSummary.actionDisabled} onClick={rewardsSummary.onAction} type="button">
             {rewardsSummary.actionLabel}
@@ -168,8 +170,10 @@ beforeEach(() => {
   fakeApi = {
     rewards: {
       cashOut: mock(async () => ({
+        chain_id: 84532,
         payout: {
           id: "rpe_test",
+          chain_id: 84532,
           amount_cents: 120,
           recipient_address: "0x9000000000000000000000000000000000000009",
           status: "confirmed",
@@ -179,8 +183,10 @@ beforeEach(() => {
         balance_cents: 0,
       })),
       getCashout: mock(async () => ({
+        chain_id: 84532,
         payout: {
           id: "rpe_test",
+          chain_id: 84532,
           amount_cents: 120,
           recipient_address: "0x1000000000000000000000000000000000000001",
           status: "confirmed",
@@ -190,13 +196,21 @@ beforeEach(() => {
         balance_cents: 0,
       })),
       getSummary: mock(async () => ({
+        chain_id: 84532,
         balance_cents: 120,
         today_earned_cents: 30,
         recent_events: [],
+        recent_qualifications: [],
+        pending_verification: {
+          count: 0,
+          conditional_cents: 0,
+          earliest_expires_at: null,
+        },
         cashout: {
           eligible: true,
           min_cents: 100,
           verification_state: "verified",
+          verification_provider: "self",
         },
         latest_in_flight_cashout: null,
       })),
@@ -231,21 +245,31 @@ describe("CurrentUserWalletPage rewards", () => {
       expect(fakeApi.rewards.getSummary).toHaveBeenCalled();
       expect(view.getByText("Rewards")).toBeTruthy();
       expect(view.getAllByText("$1.20").length).toBeGreaterThan(0);
+      expect(view.getByText("Test rewards — no cash value")).toBeTruthy();
     });
   });
 
   test("recovers a submitted cashout from the rewards summary after a lost POST response", async () => {
     fakeApi.rewards.getSummary.mockImplementationOnce(async () => ({
+      chain_id: 84532,
       balance_cents: 20,
       today_earned_cents: 30,
       recent_events: [],
+      recent_qualifications: [],
+      pending_verification: {
+        count: 0,
+        conditional_cents: 0,
+        earliest_expires_at: null,
+      },
       cashout: {
         eligible: false,
         min_cents: 100,
         verification_state: "verified" as const,
+        verification_provider: "self" as const,
       },
       latest_in_flight_cashout: {
         id: "rpe_recovered",
+        chain_id: 84532,
         amount_cents: 100,
         recipient_address: "0x8000000000000000000000000000000000000008",
         status: "submitted" as const,
@@ -282,8 +306,7 @@ describe("CurrentUserWalletPage rewards", () => {
     });
     fireEvent.click(view.getByText("Claim"));
     expect(view.getByText("Claim rewards")).toBeTruthy();
-    expect(view.getByDisplayValue("$1.20")).toBeTruthy();
-    fireEvent.click(view.getByText("Continue"));
+    expect(view.getByDisplayValue("1.20")).toBeTruthy();
     expect(view.getByText("Confirm claim")).toBeTruthy();
     fireEvent.click(view.getByText("Confirm claim"));
 
@@ -307,8 +330,8 @@ describe("CurrentUserWalletPage rewards", () => {
       wallet_address: walletAddress,
     });
     await waitFor(() => {
-      expect(view.getByText("Claim complete")).toBeTruthy();
-      expect(view.getByText("$1.20 USDC was sent to 0x9000...0009.")).toBeTruthy();
+      expect(view.getByText("$1.20 is in your wallet 🎉")).toBeTruthy();
+      expect(view.getByText("Reward sent successfully.")).toBeTruthy();
     });
     await waitFor(() => {
       expect(fakeApi.rewards.getSummary.mock.calls.length).toBeGreaterThanOrEqual(2);
@@ -333,13 +356,11 @@ describe("CurrentUserWalletPage rewards", () => {
     await waitFor(() => expect(view.getByText("Claim")).toBeTruthy());
 
     fireEvent.click(view.getByText("Claim"));
-    fireEvent.click(view.getByText("Continue"));
     fireEvent.click(view.getByText("Confirm claim"));
     await waitFor(() => expect(view.getByText("Transfer failed")).toBeTruthy());
     fireEvent.click(view.getByText("Close"));
 
     fireEvent.click(view.getByText("Claim"));
-    fireEvent.click(view.getByText("Continue"));
     fireEvent.click(view.getByText("Confirm claim"));
     await waitFor(() => expect(fakeApi.rewards.cashOut.mock.calls).toHaveLength(2));
 
@@ -363,7 +384,6 @@ describe("CurrentUserWalletPage rewards", () => {
     await waitFor(() => expect(view.getByText("Claim")).toBeTruthy());
 
     fireEvent.click(view.getByText("Claim"));
-    fireEvent.click(view.getByText("Continue"));
     fireEvent.click(view.getByText("Confirm claim"));
 
     await waitFor(() => {
@@ -373,29 +393,66 @@ describe("CurrentUserWalletPage rewards", () => {
     expect(view.queryByText("Pending")).toBeNull();
   });
 
-  test("opens the rewards verification provider sheet when claim needs verification", async () => {
+  test("shows conditional rewards and keeps Claim as the verification entry point", async () => {
     fakeApi.rewards.getSummary = mock(async () => ({
-      balance_cents: 120,
-      today_earned_cents: 30,
+      chain_id: 84532,
+      balance_cents: 0,
+      today_earned_cents: 0,
       recent_events: [],
+      recent_qualifications: [],
+      pending_verification: {
+        count: 1,
+        conditional_cents: 100,
+        earliest_expires_at: 1_774_521_600,
+      },
       cashout: {
         eligible: false,
         min_cents: 100,
         verification_state: "unverified",
+        verification_provider: "self",
       },
       latest_in_flight_cashout: null,
     }));
     const view = render(<CurrentUserWalletPage />);
 
     await waitFor(() => {
-      expect(view.getByText("Verify")).toBeTruthy();
+      expect(view.getByText("$1.00")).toBeTruthy();
+      expect(view.getByText("Claim")).toBeTruthy();
     });
-    fireEvent.click(view.getByText("Verify"));
+    expect(view.queryByText("Verify with Self to earn and transfer.")).toBeNull();
+    fireEvent.click(view.getByText("Claim"));
 
     expect(view.getByText("Verify once")).toBeTruthy();
     expect(view.getByText("Self")).toBeTruthy();
     expect(view.getByText("Very")).toBeTruthy();
     expect(view.getByText("ZKPassport")).toBeTruthy();
+  });
+
+  test("explains how a verified user can reach the claim minimum", async () => {
+    fakeApi.rewards.getSummary = mock(async () => ({
+      chain_id: 84532,
+      balance_cents: 0,
+      today_earned_cents: 0,
+      recent_events: [],
+      recent_qualifications: [],
+      pending_verification: {
+        count: 0,
+        conditional_cents: 0,
+        earliest_expires_at: null,
+      },
+      cashout: {
+        eligible: false,
+        min_cents: 100,
+        verification_state: "verified",
+        verification_provider: "self",
+      },
+      latest_in_flight_cashout: null,
+    }));
+    const view = render(<CurrentUserWalletPage />);
+
+    await waitFor(() => expect(view.getByText("$0.00")).toBeTruthy());
+    expect(view.getByText("Earn $1.00 more to claim.")).toBeTruthy();
+    expect(view.getByText("Test rewards — no cash value")).toBeTruthy();
   });
 
   test("does not request or render rewards when the flag is disabled", async () => {

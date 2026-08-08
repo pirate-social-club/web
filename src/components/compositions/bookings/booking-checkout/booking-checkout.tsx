@@ -6,9 +6,9 @@ import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import type { BookingQuotePreview, IanaTz } from "../view-models";
 
-import { formatCentsAsUsd } from "../fixtures/bookings-format";
+import { formatCentsAsUsdc } from "../fixtures/bookings-format";
 
-export type CheckoutPhase = "holding" | "pending" | "conflict";
+type CheckoutPhase = "holding" | "pending" | "conflict";
 
 export interface BookingCheckoutProps {
   quote: BookingQuotePreview;
@@ -30,7 +30,6 @@ function formatCountdown(secondsRemaining: number): string {
 
 export function BookingCheckout({
   quote,
-  viewerTimezone,
   phase,
   holdExpiresAtUtc,
   nowUtc,
@@ -75,7 +74,7 @@ export function BookingCheckout({
           </div>
           <div className="flex items-center justify-between">
             <Type variant="body">Total</Type>
-            <Type variant="body-strong">{formatCentsAsUsd(quote.grossCents)}</Type>
+            <Type variant="body-strong">{formatCentsAsUsdc(quote.grossCents)}</Type>
           </div>
         </CardContent>
       </Card>
@@ -89,7 +88,7 @@ export function BookingCheckout({
         <div className="flex flex-col gap-1">
           <Type variant="label">Complete your payment</Type>
           <Type variant="caption">
-            Pay {formatCentsAsUsd(quote.grossCents)} with USDC to confirm your session.
+            Pay {formatCentsAsUsdc(quote.grossCents)} to confirm your session.
           </Type>
         </div>
 
@@ -105,7 +104,7 @@ export function BookingCheckout({
         </div>
 
         <Button className="w-full" onClick={onPay} size="lg">
-          Pay {formatCentsAsUsd(quote.grossCents)}
+          Pay {formatCentsAsUsdc(quote.grossCents)}
         </Button>
 
         {onReleaseHold ? (

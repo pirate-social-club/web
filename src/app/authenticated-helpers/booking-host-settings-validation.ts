@@ -6,11 +6,7 @@ export function usdToCents(usd: string): number {
   return Math.round(Number.parseFloat(usd || "0") * 100);
 }
 
-export function isValidMoneyInput(value: string): boolean {
-  const cents = usdToCents(value);
-  return Number.isInteger(cents) && cents >= 0;
-}
-
+// The server rejects base_price_cents <= 0, so this is the only money gate the settings UI needs.
 export function isValidPositiveMoneyInput(value: string): boolean {
   const cents = usdToCents(value);
   return Number.isInteger(cents) && cents > 0;

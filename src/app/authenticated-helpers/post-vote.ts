@@ -3,15 +3,21 @@
 import * as React from "react";
 import type { HomeFeedItem as ApiHomeFeedItem } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
+import type { QueryClient } from "@tanstack/react-query";
 
 import { toast } from "@/components/primitives/sonner";
 
 import { getErrorMessage } from "@/lib/error-utils";
+import { updateCachedPublicThreadPost } from "@/lib/query/public-thread-cache";
 
 export type PostVoteValue = -1 | 1;
 export type PostVoteOptions = {
   altchaPayload?: string | null | undefined;
 };
+export type ClearPostVote = (
+  postId: string,
+  options?: PostVoteOptions,
+) => Promise<{ value: null }>;
 
 export function toPostVoteValue(direction: "up" | "down"): PostVoteValue {
   return direction === "up" ? 1 : -1;
@@ -89,49 +95,72 @@ export function updateCommunityPostVote(
 
 export async function submitOptimisticPostVote({
   altchaPayload,
+  clearVote,
   direction,
+  locale,
   onApply,
   onRollback,
   postId,
   previousPost,
+  queryClient,
   requestIdsRef,
   vote,
 }: {
   altchaPayload?: string | null;
+  clearVote: ClearPostVote;
+  locale: string | null;
   postId: string;
   direction: "up" | "down" | null;
   previousPost: ApiPost | null;
+  queryClient: QueryClient;
   requestIdsRef: React.MutableRefObject<Record<string, number>>;
   vote: (postId: string, value: PostVoteValue, options?: PostVoteOptions) => Promise<{ value: PostVoteValue }>;
-  onApply: (nextValue: PostVoteValue) => void;
+  onApply: (nextValue: PostVoteValue | null) => void;
   onRollback: (previousPost: ApiPost) => void;
 }) {
-  if (!direction || !previousPost) {
+  if (!previousPost) {
     return;
   }
 
-  const nextValue = toPostVoteValue(direction);
+  const nextValue = direction ? toPostVoteValue(direction) : null;
   const requestId = (requestIdsRef.current[postId] ?? 0) + 1;
   requestIdsRef.current[postId] = requestId;
 
+  updateCachedPublicThreadPost({
+    locale,
+    postId,
+    queryClient,
+    update: (current) => applyPostVote(current, nextValue),
+  });
   onApply(nextValue);
 
   try {
-    const response = await vote(
-      postId,
-      nextValue,
-      altchaPayload ? { altchaPayload } : undefined,
-    );
+    const options = altchaPayload ? { altchaPayload } : undefined;
+    const response = nextValue === null
+      ? await clearVote(postId, options)
+      : await vote(postId, nextValue, options);
     if (requestIdsRef.current[postId] !== requestId) {
       return;
     }
 
+    updateCachedPublicThreadPost({
+      locale,
+      postId,
+      queryClient,
+      update: (current) => applyPostVote(current, response.value),
+    });
     onApply(response.value);
   } catch (nextError) {
     if (requestIdsRef.current[postId] !== requestId) {
       return;
     }
 
+    updateCachedPublicThreadPost({
+      locale,
+      postId,
+      queryClient,
+      update: () => previousPost,
+    });
     onRollback(previousPost);
     toast.error(getErrorMessage(nextError, "Could not update this vote."));
     throw nextError;

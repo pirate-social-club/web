@@ -13,14 +13,16 @@ import type { InventoryAssetMatchValidationError } from "./gate-inventory-valida
  * accepts, which would block a moderator from saving a legitimate rule. Both directions matter.
  */
 
-export const MIN_AGE = 18;
-export const MAX_AGE = 125;
-export const DOCUMENT_PROOF_PROVIDERS = ["self", "zkpassport"] as const;
+const MIN_AGE = 18;
+const MAX_AGE = 125;
+const DOCUMENT_PROOF_PROVIDERS = ["self", "zkpassport"] as const;
 
 export type GateAtomValidationError = InventoryAssetMatchValidationError | {
   code:
     | "acceptedProvidersEmpty"
     | "acceptedProvidersUnsupported"
+    | "assetAmountInvalid"
+    | "assetRequired"
     | "collectibleChainUnsupported"
     | "collectibleProviderUnsupported"
     | "contractAddressInvalid"
@@ -63,7 +65,7 @@ function isValidCountryCode(value: unknown): boolean {
  * acceptance behaviour matches. Deliberately NOT viem's `isAddress`, whose strict mode rejects a
  * non-checksummed mixed-case address the API accepts — that would block legitimate rules.
  */
-export function normalizeContractAddress(value: unknown): string | null {
+function normalizeContractAddress(value: unknown): string | null {
   if (typeof value !== "string" || value.trim().length === 0) {
     return null;
   }
@@ -96,7 +98,7 @@ export function validateGateAtom(gate: GateAtom): GateAtomValidationError | null
       return null;
 
     case "unique_human":
-      return atom.provider === "self" || atom.provider === "very"
+      return atom.provider === "self" || atom.provider === "zkpassport" || atom.provider === "very"
         ? null
         : { code: "humanProviderRequired" };
 
@@ -161,6 +163,21 @@ export function validateGateAtom(gate: GateAtom): GateAtomValidationError | null
       const minCount = atom.min_count;
       if (minCount != null && (!Number.isInteger(minCount) || (minCount as number) < 1 || (minCount as number) > 100)) {
         return { code: "quantityRange" };
+      }
+      return null;
+    }
+
+    case "asset_balance": {
+      if (typeof atom.asset_id !== "string" || atom.asset_id.trim().length === 0) {
+        return { code: "assetRequired" };
+      }
+      if (typeof atom.min_amount_atomic !== "string" || !/^[1-9]\d*$/.test(atom.min_amount_atomic)) {
+        return { code: "assetAmountInvalid" };
+      }
+      try {
+        BigInt(atom.min_amount_atomic);
+      } catch {
+        return { code: "assetAmountInvalid" };
       }
       return null;
     }

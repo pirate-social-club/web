@@ -13,6 +13,7 @@ import {
   getMissingCapabilitiesFromGateEvaluation,
   hasAltchaProofAction,
 } from "@/lib/identity-gates";
+import { canSatisfyGateWithAltchaOnly } from "@/lib/altcha-gate-path";
 import { logger } from "@/lib/logger";
 import {
   createDefaultBlockedModalState,
@@ -45,10 +46,6 @@ type GatedActionRunnerCopy = InteractionGateCopy & {
 type VerificationCapabilities = User["verification_capabilities"];
 
 const PRE_POW_SESSION_REFRESH_TIMEOUT_MS = 2_000;
-
-type RequiredActionNode = Omit<NonNullable<NonNullable<CommunityGateData["eligibility"]["gate_evaluation"]>["required_action_set"]>["items"][number], "items"> & {
-  items?: RequiredActionNode[];
-};
 
 function resolveGateMessagesLocale(locale: string): "ar" | "en" | "pseudo" | "zh" {
   if (locale === "pseudo") return "pseudo";
@@ -158,6 +155,7 @@ function satisfiesNonPowGate(
       return value != null && (allowed.length === 0 || allowed.includes(value));
     }
     case "altcha_pow":
+    case "asset_balance":
     case "erc721_holding":
     case "erc721_inventory_match":
       return false;
@@ -172,6 +170,9 @@ function requiresActionAltchaProof(
   const hasPowFallback = requirements.some((summary) => summary.gate_type === "altcha_pow");
   if (!hasPowFallback) {
     return false;
+  }
+  if (gate.eligibility.status === "already_joined" && gate.gateMatchMode === "all") {
+    return true;
   }
 
   return !requirements.some((summary) =>
@@ -190,6 +191,7 @@ function isRefreshableNonPowGate(summary: MembershipGateSummary): boolean {
     case "gender":
       return true;
     case "altcha_pow":
+    case "asset_balance":
     case "erc721_holding":
     case "erc721_inventory_match":
       return false;
@@ -212,15 +214,24 @@ function getAltchaActionConfig(input: {
   gate: CommunityGateData;
   postId?: string;
   sessionUser?: Pick<User, "verification_capabilities"> | null;
-  voteValue?: -1 | 1;
+  voteValue?: -1 | 1 | "clear";
 }): { actionRef: string; scope: AltchaScope } | null {
-  if (!requiresActionAltchaProof(input.gate, input.sessionUser)) {
+  const isVote = input.action === "vote_post" || input.action === "vote_comment";
+  // A non-member who already satisfies another branch is "joinable", but an
+  // ALTCHA-only path still lets the API accept a vote without joining.
+  const shouldOpenParticipateInsteadOfJoin = isVote
+    && input.gate.eligibility.status === "joinable"
+    && canSatisfyWithAltchaOnly(input.gate);
+  if (
+    !shouldOpenParticipateInsteadOfJoin
+    && !requiresActionAltchaProof(input.gate, input.sessionUser)
+  ) {
     return null;
   }
-  if (input.action === "vote_post" && input.postId && input.voteValue) {
+  if (input.action === "vote_post" && input.postId && input.voteValue != null) {
     return { actionRef: `post:${input.postId}:${input.voteValue}`, scope: "vote" };
   }
-  if (input.action === "vote_comment" && input.commentId && input.voteValue) {
+  if (input.action === "vote_comment" && input.commentId && input.voteValue != null) {
     return { actionRef: `comment:${input.commentId}:${input.voteValue}`, scope: "vote" };
   }
   if (input.action === "reply_post" && input.postId) {
@@ -232,42 +243,12 @@ function getAltchaActionConfig(input: {
   return null;
 }
 
-function actionNodeHasAltchaOnlyPath(action: RequiredActionNode): boolean {
-  if (action.kind !== "set") {
-    return action.capability === "altcha_pow";
-  }
-
-  const items = action.items ?? [];
-  if (items.length === 0) {
-    return false;
-  }
-
-  if (action.mode === "any") {
-    return items.some(actionNodeHasAltchaOnlyPath);
-  }
-
-  return items.every(actionNodeHasAltchaOnlyPath);
-}
-
 function canSatisfyWithAltchaOnly(gate: CommunityGateData): boolean {
-  const actionSet = gate.eligibility.gate_evaluation?.required_action_set as RequiredActionNode | null | undefined;
-  if (actionSet) {
-    return actionNodeHasAltchaOnlyPath(actionSet);
-  }
-
-  const missingCapabilities = getMissingCapabilitiesFromGateEvaluation(gate.eligibility);
-  if (missingCapabilities.length > 0) {
-    return missingCapabilities.every((capability) => capability === "altcha_pow");
-  }
-
-  const requirements = gate.preview.membership_gate_summaries;
-  const hasAltcha = requirements.some((summary) => summary.gate_type === "altcha_pow");
-  if (!hasAltcha) {
-    return false;
-  }
-
-  return requirements.every((summary) => summary.gate_type === "altcha_pow")
-    || gate.gateMatchMode === "any";
+  return canSatisfyGateWithAltchaOnly({
+    eligibility: gate.eligibility,
+    gateMatchMode: gate.gateMatchMode,
+    requirements: gate.preview.membership_gate_summaries,
+  });
 }
 
 export function useGatedActionRunner({
@@ -293,6 +274,8 @@ export function useGatedActionRunner({
   setPendingInteraction,
   showError,
   showInfo,
+  showSuccess,
+  solveActionAltcha,
   startDefaultVerification,
   startWalletConnection,
   walletConnectionLoading,
@@ -324,10 +307,14 @@ export function useGatedActionRunner({
   setPendingInteraction: (pendingInteraction: PendingInteraction | null) => void;
   showError?: (message: string) => void;
   showInfo?: (message: string, options?: ToastInfoOptions) => void;
+  showSuccess?: (message: string) => void;
+  solveActionAltcha?: ((input: { action: string; scope: AltchaScope }) => Promise<string>) | null;
   startDefaultVerification: NonNullable<BuildBlockedModalStateArgs["startDefaultVerification"]>;
   startWalletConnection?: NonNullable<BuildBlockedModalStateArgs["startWalletConnection"]>;
   walletConnectionLoading?: boolean;
 }) {
+  const knownViewerFollowingRef = React.useRef(new Map<string, boolean>());
+
   return React.useCallback(async ({
     action,
     buildBlockedModalState,
@@ -336,6 +323,7 @@ export function useGatedActionRunner({
     onAllowed,
     postId,
     commentId,
+    requireMembership,
     resolveGateData,
     resumeActionAfterJoin,
     voteValue,
@@ -420,33 +408,126 @@ export function useGatedActionRunner({
     }
 
     const state = resolveCommunityInteractionState({
+      action,
       eligibility: gate.eligibility,
       hasSession,
+      requireMembership,
     });
 
     const actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId, sessionUser, voteValue });
-    // An action-bound proof can only authorize a write for an existing member.
-    // Non-members whose join gate is satisfiable with ALTCHA must first take
-    // the community_join path below, which creates membership and then
-    // re-enters this runner for the original action.
-    const shouldUseActionAltcha = actionAltchaConfig && state === "allowed";
+    const isPublicReply = (action === "reply_post" || action === "reply_comment")
+      && !requireMembership;
+    const shouldUsePublicReplyAltcha = isPublicReply
+      && state === "verification_required"
+      && canSatisfyWithAltchaOnly(gate);
+    // Where a browser check alone satisfies the gate, the API admits the
+    // non-member write on its action-bound proof, skips the join entirely and
+    // subscribes the actor as a follower instead.
+    const shouldUseOpenPowParticipation = (
+      state === "verification_required" || state === "joinable"
+    )
+      && requireMembership !== true
+      && canSatisfyWithAltchaOnly(gate);
+    const followingCacheKey = `${sessionAccessToken ?? "anon"}:${communityId}`;
+    const viewerWasFollowing = knownViewerFollowingRef.current.get(followingCacheKey)
+      ?? gate.preview.viewer_following
+      ?? false;
+    // Public replies satisfy a PoW membership policy as an action-bound
+    // comment_create proof. They must never take the community_join path.
+    const shouldUseActionAltcha = actionAltchaConfig
+      && (state === "allowed" || shouldUsePublicReplyAltcha || shouldUseOpenPowParticipation);
     if (shouldUseActionAltcha) {
       let allowedCompleted = false;
+      let allowedInFlight: Promise<void> | null = null;
       const guardedOnAllowed: PendingInteraction["onAllowed"] = async (context) => {
         if (allowedCompleted) {
           return;
         }
-        allowedCompleted = true;
-        await onAllowed(context);
+        if (allowedInFlight) {
+          try {
+            await allowedInFlight;
+            return;
+          } catch {
+            // The current invocation can retry after the earlier attempt fails.
+          }
+        }
+        const attempt = Promise.resolve(onAllowed(context));
+        allowedInFlight = attempt;
+        try {
+          await attempt;
+          allowedCompleted = true;
+        } finally {
+          if (allowedInFlight === attempt) {
+            allowedInFlight = null;
+          }
+        }
       };
+      if (solveActionAltcha) {
+        // Solve the proof invisibly — PoW needs computation, not user input.
+        // Only proof acquisition failures fall through to the visible widget.
+        // Once the write starts, retrying it through the modal can duplicate an
+        // action that already committed before a later bookkeeping failure.
+        let payload: string | null = null;
+        try {
+          payload = await solveActionAltcha({
+            action: actionAltchaConfig.actionRef,
+            scope: actionAltchaConfig.scope,
+          });
+        } catch (error) {
+          logger.warn("[interaction-gate] headless proof-of-work attempt failed", {
+            ...logBase,
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+        if (payload !== null) {
+          try {
+            await guardedOnAllowed({ altchaPayload: payload });
+          } catch (error) {
+            if (isMembershipRequiredWriteRejection(error)) {
+              invalidateCommunityGate(communityId);
+            }
+            throw error;
+          }
+          logger.info("[interaction-gate] allowed", {
+            ...logBase,
+            eligibilityStatus: gate.eligibility.status,
+            reason: "headless_pow",
+          });
+          if (shouldUseOpenPowParticipation) {
+            try {
+              invalidateCommunityGate(communityId);
+              if (!viewerWasFollowing) {
+                const refreshedGate = await loadCommunityGate(communityId);
+                const viewerIsFollowing = refreshedGate.preview.viewer_following === true;
+                knownViewerFollowingRef.current.set(followingCacheKey, viewerIsFollowing);
+                if (viewerIsFollowing) {
+                  const notifySuccess = showSuccess ?? toast.success;
+                  notifySuccess(interactionCopy.nowFollowingCommunity.replace("{community}", gate.preview.display_name));
+                }
+              }
+            } catch (error) {
+              // The write already committed. Follow-cache refresh and toast
+              // failures must not reopen verification or retry the write.
+              logger.warn("[interaction-gate] post-write bookkeeping failed", {
+                ...logBase,
+                message: error instanceof Error ? error.message : String(error),
+              });
+            }
+          }
+          return "allowed";
+        }
+      }
       const copy = proofOfWorkModalCopy(gate, interactionCopy.locale);
       setPendingInteraction({
         action,
+        altchaAction: actionAltchaConfig.actionRef,
+        altchaScope: actionAltchaConfig.scope,
         commentId,
         communityId,
         gate,
         onAllowed: guardedOnAllowed,
         postId,
+        requireMembership: requireMembership === true,
         resumeActionAfterJoin,
         voteValue,
       });
@@ -485,9 +566,9 @@ export function useGatedActionRunner({
               eligibilityStatus: gate.eligibility.status,
               reason: "refreshed_verification_capabilities",
             });
+            await guardedOnAllowed();
             setPendingInteraction(null);
             closeModal();
-            await guardedOnAllowed();
           })
           .catch((error) => {
             logger.warn("[interaction-gate] session refresh before action proof failed", {
@@ -526,6 +607,7 @@ export function useGatedActionRunner({
       gate,
       onAllowed,
       postId,
+      requireMembership: requireMembership === true,
       resumeActionAfterJoin,
       voteValue,
     });
@@ -553,7 +635,7 @@ export function useGatedActionRunner({
         ? (() => {
             const copy = proofOfWorkModalCopy(gate, interactionCopy.locale);
             const body = buildAltchaBody({
-              action: `community:${communityId}`,
+              action: `community:${gate.eligibility.community || gate.preview.id}`,
               scope: "community_join",
             });
             const hasPowFallback = hasRefreshablePowFallback(gate);
@@ -620,6 +702,8 @@ export function useGatedActionRunner({
     setPendingInteraction,
     showError,
     showInfo,
+    showSuccess,
+    solveActionAltcha,
     startDefaultVerification,
     startWalletConnection,
     walletConnectionLoading,

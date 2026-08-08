@@ -24,7 +24,6 @@ export function CommunityHero({
   communityId,
   displayName,
   routeLabel,
-  routeVerified = false,
 }: CommunityHeroProps) {
   const resolvedBannerSrc = React.useMemo(
     () => resolveCommunityBannerSrc({ bannerSrc, communityId, displayName }),

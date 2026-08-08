@@ -16,7 +16,7 @@ function viewerTimezone(): string {
 }
 
 function checkoutPathForSlot(hostUserId: string, slot: ResolvedSlot): string {
-  const q = new URLSearchParams({ start: slot.startUtc, end: slot.endUtc, price: String(slot.priceCents) });
+  const q = new URLSearchParams({ start: slot.startUtc, end: slot.endUtc });
   return `/book/${encodeURIComponent(hostUserId)}/checkout?${q.toString()}`;
 }
 
@@ -46,7 +46,7 @@ export function ProfileBookTabPanel({
     (min, s) => (s.available && s.priceCents < min ? s.priceCents : min),
     Number.POSITIVE_INFINITY,
   );
-  const basePriceCents = Number.isFinite(cheapest) ? cheapest : 0;
+  const startingPriceCents = Number.isFinite(cheapest) ? cheapest : 0;
 
   // Logged-out tap → open the sign-in modal instead of following the anchor to a checkout that would
   // 401. Signed-in taps fall through to the href (checkout).
@@ -62,7 +62,7 @@ export function ProfileBookTabPanel({
       <ProfileBookPanel
         mode="owner"
         configured={owner.configured}
-        basePriceCents={basePriceCents}
+        basePriceCents={startingPriceCents}
         slots={slots}
         loading={loading}
         viewerTimezone={tz as IanaTz}
@@ -74,7 +74,7 @@ export function ProfileBookTabPanel({
   return (
     <ProfileBookPanel
       mode="viewer"
-      basePriceCents={basePriceCents}
+      startingPriceCents={startingPriceCents}
       slots={slots}
       loading={loading}
       viewerTimezone={tz as IanaTz}

@@ -1,8 +1,11 @@
 "use client";
 
-import type { SpacesChallengePayload } from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
+import type {
+  HnsImportChallengePayload,
+  SpacesChallengePayload,
+} from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
 
-export function toSpacesChallengePayload(value: Record<string, unknown> | null | undefined): SpacesChallengePayload | null {
+function toSpacesChallengePayload(value: Record<string, unknown> | null | undefined): SpacesChallengePayload | null {
   if (!value) return null;
   if (
     value.kind !== "fabric_txt_publish" ||
@@ -33,6 +36,22 @@ export function toSpacesChallengePayload(value: Record<string, unknown> | null |
   };
 }
 
+function toHnsImportChallengePayload(value: Record<string, unknown> | null | undefined): HnsImportChallengePayload | null {
+  if (!value || value.kind !== "hns_import") return null;
+  const plan = value.publish_plan;
+  const anchor = value.observed_chain_anchor;
+  if (!plan || typeof plan !== "object" || !anchor || typeof anchor !== "object") return null;
+  const typedPlan = plan as Record<string, unknown>;
+  const typedAnchor = anchor as Record<string, unknown>;
+  if (
+    typedPlan.version !== "hns_import_publish_v1" ||
+    typedPlan.replacement_semantics !== "complete_resource" ||
+    !Array.isArray(typedPlan.replacement_records) ||
+    !Number.isSafeInteger(typedAnchor.height)
+  ) return null;
+  return value as HnsImportChallengePayload;
+}
+
 export function toNamespaceSessionResult(result: {
   id: string;
   family: "hns" | "spaces";
@@ -57,6 +76,7 @@ export function toNamespaceSessionResult(result: {
     challengeHost: result.challenge_host ?? null,
     challengeTxtValue: result.challenge_txt_value ?? null,
     challengePayload: toSpacesChallengePayload(result.challenge_payload),
+    hnsImportPayload: toHnsImportChallengePayload(result.challenge_payload),
     challengeExpiresAt,
     status: result.status,
     operationClass: result.operation_class ?? null,

@@ -144,8 +144,26 @@ export const AttachedNamespace: Story = {
   render: () => (
     <CommunityNamespaceVerificationPage
       attachedNamespaceVerificationId="nvs_abc123"
-      attachedRouteSlug="@xx"
+      attachedRouteSlug="infinity"
       callbacks={mockNamespaceCallbacks}
+      namespaceAttachments={[
+        {
+          namespace_verification: "nvs_abc123",
+          namespace_role: "primary",
+          family: "hns",
+          root_label: "infinity",
+          route_slug: "infinity",
+          verification_status: "verified",
+        },
+        {
+          namespace_verification: "nvs_def456",
+          namespace_role: "mirror",
+          family: "spaces",
+          root_label: "infinity-friends",
+          route_slug: "infinity-friends",
+          verification_status: "verified",
+        },
+      ]}
       onBackClick={() => undefined}
     />
   ),

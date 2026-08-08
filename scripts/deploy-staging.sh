@@ -84,6 +84,16 @@ WEB_REF="$(repo_ref "$WEB_DIR")"
 API_SHA="$(repo_sha "$API_DIR")"
 API_REF="$(repo_ref "$API_DIR")"
 BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+API_SHARD_SOURCE_VERSION="$(
+  printf '%s.%s' \
+    "$(git -C "$API_DIR" rev-parse HEAD:services/community-d1-shard)" \
+    "$(git -C "$API_DIR" rev-parse HEAD:services/shared)"
+)"
+SCHEMA_POLICY_DIGEST="${COMMUNITY_SCHEMA_POLICY_DIGEST:-}"
+if [[ -n "$SCHEMA_POLICY_DIGEST" && ! "$SCHEMA_POLICY_DIGEST" =~ ^[0-9a-f]{64}$ ]]; then
+  echo "COMMUNITY_SCHEMA_POLICY_DIGEST must be empty or one lowercase SHA-256 digest" >&2
+  exit 1
+fi
 
 WEB_ORIGIN="${WEB_ORIGIN:-https://staging.pirate.sc}"
 API_ORIGIN="${API_ORIGIN:-https://api-staging.pirate.sc}"
@@ -265,9 +275,11 @@ log "deploy api staging worker"
   --var "BUILD_GIT_SHA:$API_SHA" \
   --var "BUILD_GIT_REF:$API_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" \
+  --var "COMMUNITY_SCHEMA_POLICY_DIGEST:$SCHEMA_POLICY_DIGEST" \
   --define "__PIRATE_BUILD_GIT_SHA__:\"$API_SHA\"" \
   --define "__PIRATE_BUILD_GIT_REF__:\"$API_REF\"" \
-  --define "__PIRATE_BUILD_TIMESTAMP__:\"$BUILD_TIMESTAMP\"")
+  --define "__PIRATE_BUILD_TIMESTAMP__:\"$BUILD_TIMESTAMP\"" \
+  --define "__PIRATE_COMMUNITY_D1_SHARD_SOURCE_VERSION__:\"$API_SHARD_SOURCE_VERSION\"")
 
 log "smoke checks"
 check_status "$WEB_ORIGIN/" "200"

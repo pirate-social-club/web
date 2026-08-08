@@ -1,4 +1,3 @@
-import * as React from "react";
 
 import { Card, CardContent } from "@/components/primitives/card";
 import { Separator } from "@/components/primitives/separator";
@@ -6,7 +5,7 @@ import { Type } from "@/components/primitives/type";
 import type { BookingQuotePreview, IanaTz } from "../view-models";
 
 import {
-  formatCentsAsUsd,
+  formatCentsAsUsdc,
   formatBookingDate,
   formatSlotDuration,
   formatSlotTime,
@@ -40,15 +39,15 @@ export function BookingSummary({ quote, viewerTimezone, className }: BookingSumm
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <Type variant="body">Session price</Type>
-            <Type variant="body-strong">{formatCentsAsUsd(grossCents)}</Type>
+            <Type variant="body-strong">{formatCentsAsUsdc(grossCents)}</Type>
           </div>
           <div className="flex items-center justify-between">
             <Type variant="body">Platform fee (10%)</Type>
-            <Type variant="body">{formatCentsAsUsd(platformFeeCents)}</Type>
+            <Type variant="body">{formatCentsAsUsdc(platformFeeCents)}</Type>
           </div>
           <div className="flex items-center justify-between">
             <Type variant="caption">Host receives</Type>
-            <Type variant="caption">{formatCentsAsUsd(hostPayoutCents)}</Type>
+            <Type variant="caption">{formatCentsAsUsdc(hostPayoutCents)}</Type>
           </div>
         </div>
 
@@ -57,7 +56,7 @@ export function BookingSummary({ quote, viewerTimezone, className }: BookingSumm
         <div className="flex items-center justify-between">
           <Type variant="label">Total</Type>
           <Type as="span" variant="h3">
-            {formatCentsAsUsd(grossCents)}
+            {formatCentsAsUsdc(grossCents)}
           </Type>
         </div>
 

@@ -7,7 +7,7 @@
 export type IanaTz = string; // e.g. "Europe/Vienna"
 export type IsoInstant = string; // RFC3339 UTC, e.g. "2026-06-22T14:00:00Z"
 export type Cents = number;
-export type Bps = number;
+type Bps = number;
 
 export type BookingState =
   | "hold"
@@ -33,7 +33,7 @@ export interface ResolvedSlot {
   available: boolean;
 }
 
-export interface BookingAllocation {
+interface BookingAllocation {
   legs: Array<{
     recipientType: "host" | "platform_fee";
     shareBps: Bps;

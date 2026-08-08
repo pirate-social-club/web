@@ -7,10 +7,10 @@ import {
   defaultBookingPolicy,
   noExceptions,
   viennaWeekdayRule,
-  weekdayPremiumPricing,
   type AvailabilityRule,
 } from "@pirate/bookings-domain/test";
 
+import type { IsoInstant, ResolvedSlot } from "../view-models";
 import { AvailabilityCalendar } from "../availability-calendar/availability-calendar";
 
 const meta = {
@@ -25,86 +25,119 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-function buildViennaWeek() {
+function slot(startUtc: string, endUtc: string, priceCents = 5000, available = true): ResolvedSlot {
+  return { startUtc, endUtc, priceCents, available } as ResolvedSlot;
+}
+
+/** Uniform 30-min $50 slots across three days. */
+const UNIFORM_WEEK: ResolvedSlot[] = [
+  slot("2026-09-21T09:00:00.000Z", "2026-09-21T09:30:00.000Z"),
+  slot("2026-09-21T10:00:00.000Z", "2026-09-21T10:30:00.000Z"),
+  slot("2026-09-21T11:00:00.000Z", "2026-09-21T11:30:00.000Z", 5000, false),
+  slot("2026-09-22T14:00:00.000Z", "2026-09-22T14:30:00.000Z"),
+  slot("2026-09-22T15:00:00.000Z", "2026-09-22T15:30:00.000Z"),
+  slot("2026-09-23T16:00:00.000Z", "2026-09-23T16:30:00.000Z"),
+];
+
+/** Same shape but with genuinely mixed prices → per-chip captions. */
+const MIXED_WEEK: ResolvedSlot[] = UNIFORM_WEEK.map((s, index) => ({
+  ...s,
+  priceCents: index % 2 === 0 ? 3500 : 7500,
+}));
+
+/** Simulates the feed dock: fixed height, so the strip/footer regions and list scroll show. */
+function DockFrame({ children }: React.PropsWithChildren) {
+  return (
+    <div className="mx-auto flex h-[32rem] max-w-sm flex-col border border-border-soft bg-card p-4">
+      {children}
+    </div>
+  );
+}
+
+const demoGetSlotHref = (s: ResolvedSlot) =>
+  `/book/usr_host/checkout?start=${encodeURIComponent(s.startUtc)}`;
+
+export const UniformSlotsNoCaptions: Story = {
+  render: () => (
+    <DockFrame>
+      <AvailabilityCalendar
+        slots={UNIFORM_WEEK}
+        viewerTimezone="Europe/Vienna"
+        getSlotHref={demoGetSlotHref}
+        onSelectSlot={() => {}}
+      />
+    </DockFrame>
+  ),
+};
+
+export const MixedPricingCaptions: Story = {
+  render: () => (
+    <DockFrame>
+      <AvailabilityCalendar
+        slots={MIXED_WEEK}
+        viewerTimezone="Europe/Vienna"
+        getSlotHref={demoGetSlotHref}
+        onSelectSlot={() => {}}
+      />
+    </DockFrame>
+  ),
+};
+
+export const SelectedConfirmFooter: Story = {
+  render: () => {
+    const [selected, setSelected] = React.useState<IsoInstant | undefined>(
+      "2026-09-21T10:00:00.000Z" as IsoInstant,
+    );
+    return (
+      <DockFrame>
+        <AvailabilityCalendar
+          slots={UNIFORM_WEEK}
+          viewerTimezone="Europe/Vienna"
+          selectedStartUtc={selected}
+          getSlotHref={demoGetSlotHref}
+          onSelectSlot={(s) => setSelected(s.startUtc)}
+        />
+      </DockFrame>
+    );
+  },
+};
+
+export const OwnerReadOnlyPreview: Story = {
+  render: () => (
+    <DockFrame>
+      <AvailabilityCalendar slots={UNIFORM_WEEK} viewerTimezone="Europe/Vienna" />
+    </DockFrame>
+  ),
+};
+
+function buildViennaFortnight() {
   return resolveSlots({
     rules: [viennaWeekdayRule],
     exceptions: noExceptions,
     existingBusyUtc: [],
     windowStartUtc: "2026-06-29T00:00:00Z",
-    windowEndUtc: "2026-07-03T23:59:59Z",
+    windowEndUtc: "2026-07-10T23:59:59Z",
     hostTimezone: "Europe/Vienna",
     viewerTimezone: "Europe/Vienna",
     policy: defaultBookingPolicy,
     nowUtc: "2026-06-22T00:00:00Z",
-    priceRules: weekdayPremiumPricing,
+    priceRules: [],
     basePriceCents: basePrice5000,
   });
 }
 
-function buildViennaWeekViewerNY() {
-  return resolveSlots({
-    rules: [viennaWeekdayRule],
-    exceptions: noExceptions,
-    existingBusyUtc: [],
-    windowStartUtc: "2026-06-29T00:00:00Z",
-    windowEndUtc: "2026-07-03T23:59:59Z",
-    hostTimezone: "Europe/Vienna",
-    viewerTimezone: "America/New_York",
-    policy: defaultBookingPolicy,
-    nowUtc: "2026-06-22T00:00:00Z",
-    priceRules: weekdayPremiumPricing,
-    basePriceCents: basePrice5000,
-  });
-}
-
-export const PopulatedWeek: Story = {
+export const DaySwitching: Story = {
   render: () => {
-    const slots = React.useMemo(buildViennaWeek, []);
+    const slots = React.useMemo(buildViennaFortnight, []);
     return (
-      <div className="mx-auto max-w-2xl p-4">
-        <AvailabilityCalendar slots={slots} viewerTimezone="Europe/Vienna" />
-      </div>
-    );
-  },
-};
-
-export const VariablePricing: Story = {
-  render: () => {
-    const slots = React.useMemo(buildViennaWeek, []);
-    return (
-      <div className="mx-auto max-w-2xl p-4">
-        <AvailabilityCalendar slots={slots} viewerTimezone="Europe/Vienna" />
-      </div>
-    );
-  },
-};
-
-export const ViewerInNewYork: Story = {
-  render: () => {
-    const slots = React.useMemo(buildViennaWeekViewerNY, []);
-    return (
-      <div className="mx-auto max-w-2xl p-4">
-        <AvailabilityCalendar slots={slots} viewerTimezone="America/New_York" />
-      </div>
-    );
-  },
-};
-
-export const Empty: Story = {
-  render: () => (
-    <div className="mx-auto max-w-2xl p-4">
-      <AvailabilityCalendar slots={[]} viewerTimezone="Europe/Vienna" />
-    </div>
-  ),
-};
-
-export const Mobile: Story = {
-  render: () => {
-    const slots = React.useMemo(buildViennaWeek, []);
-    return (
-      <div className="mx-auto max-w-sm p-4">
-        <AvailabilityCalendar slots={slots} viewerTimezone="Europe/Vienna" />
-      </div>
+      <DockFrame>
+        <AvailabilityCalendar
+          slots={slots}
+          viewerTimezone="Europe/Vienna"
+          getSlotHref={demoGetSlotHref}
+          onSelectSlot={() => {}}
+        />
+      </DockFrame>
     );
   },
 };
@@ -137,9 +170,22 @@ export const FallBackDstDisambiguation: Story = {
   render: () => {
     const slots = React.useMemo(buildFallBackWeek, []);
     return (
-      <div className="mx-auto max-w-2xl p-4">
-        <AvailabilityCalendar slots={slots} viewerTimezone="Europe/Vienna" />
-      </div>
+      <DockFrame>
+        <AvailabilityCalendar
+          slots={slots}
+          viewerTimezone="Europe/Vienna"
+          getSlotHref={demoGetSlotHref}
+          onSelectSlot={() => {}}
+        />
+      </DockFrame>
     );
   },
+};
+
+export const Empty: Story = {
+  render: () => (
+    <DockFrame>
+      <AvailabilityCalendar slots={[]} viewerTimezone="Europe/Vienna" />
+    </DockFrame>
+  ),
 };

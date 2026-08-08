@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { act, render, waitFor } from "@testing-library/react";
-import * as React from "react";
 
 import type { StoredSession } from "@/lib/api/session-store";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
@@ -88,7 +87,11 @@ mock.module("@/app/router", () => ({
   navigate: () => undefined,
 }));
 
-const { PrivyAuthBridge } = await import("./privy-auth-bridge");
+const {
+  PrivyAuthBridge,
+  buildPrivyAuthorizationRequest,
+  resolvePrivyWalletId,
+} = await import("./privy-auth-bridge");
 
 const embeddedWallet: PirateConnectedEvmWallet = {
   address: EMBEDDED_ADDRESS,
@@ -105,6 +108,46 @@ afterEach(() => {
 });
 
 describe("PrivyAuthBridge embedded wallet recovery", () => {
+  test("resolves an embedded wallet id from the authenticated Privy user", () => {
+    expect(resolvePrivyWalletId({
+      linkedAccounts: [{
+        address: EMBEDDED_ADDRESS.toUpperCase(),
+        id: "wallet_from_user",
+        type: "wallet",
+      }],
+    }, EMBEDDED_ADDRESS)).toBe("wallet_from_user");
+    expect(resolvePrivyWalletId(null, EMBEDDED_ADDRESS, "wallet_explicit")).toBe("wallet_explicit");
+  });
+
+  test("binds expiry and a deterministic request id into the Privy authorization", () => {
+    const now = 1_800_000_000_000;
+    const request = {
+      chainId: 8453,
+      intentId: `efw_${"b".repeat(32)}`,
+      transactionIndex: 0,
+      intent: {
+        type: "pirate.follow.apply" as const,
+        followed: true,
+        slot: "server-prepared",
+        targetAddress: `0x${"2".repeat(40)}` as `0x${string}`,
+      },
+      transaction: {
+        data: "0x1234" as `0x${string}`,
+        to: `0x${"3".repeat(40)}` as `0x${string}`,
+      },
+      walletAddress: EMBEDDED_ADDRESS as `0x${string}`,
+    };
+    const authorization = buildPrivyAuthorizationRequest(request, "wallet-id", now);
+    expect(authorization.requestExpiry).toBe(String(now + 30 * 60 * 1000));
+    expect(authorization.payload.headers["privy-request-expiry"]).toBe(
+      authorization.requestExpiry,
+    );
+    expect(authorization.payload.headers["privy-idempotency-key"]).toBe(
+      `${request.intentId}-0`,
+    );
+    expect(authorization.payload.body.reference_id).toBe(`${request.intentId}-0`);
+  });
+
   test("performs only the bounded number of silent exchanges", async () => {
     fakeSession = makeSession(false);
     render(

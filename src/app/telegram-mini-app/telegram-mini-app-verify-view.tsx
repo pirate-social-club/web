@@ -8,10 +8,10 @@ import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 
 import type {
-  PendingTelegramVerificationLaunch,
   TelegramVerifyLaunchProvider,
   TelegramVerifyScreenState,
 } from "./telegram-mini-app-verify-controller";
+import type { HumanVerificationProvider } from "@/lib/identity-gates";
 
 export type TelegramVerifyViewModel = {
   busy: boolean;
@@ -20,7 +20,7 @@ export type TelegramVerifyViewModel = {
   title: string;
 };
 
-export function telegramVerifyPreparingMessage(provider: TelegramVerifyLaunchProvider): string {
+function telegramVerifyPreparingMessage(provider: TelegramVerifyLaunchProvider): string {
   switch (provider) {
     case "zkpassport":
       return "Opening ZKPassport";
@@ -44,7 +44,7 @@ export function telegramVerifyReadyTitle(provider?: TelegramVerifyLaunchProvider
   }
 }
 
-export function telegramVerifyWaitingTitle(provider?: TelegramVerifyLaunchProvider | null): string {
+export function telegramVerifyWaitingTitle(): string {
   return "Waiting for verification";
 }
 
@@ -74,12 +74,14 @@ export function telegramVerifyWaitingMessage(provider?: TelegramVerifyLaunchProv
   }
 }
 
-export function telegramVerifyLaunchButtonLabel(provider: PendingTelegramVerificationLaunch["provider"]): string {
+export function telegramVerifyLaunchButtonLabel(provider: TelegramVerifyLaunchProvider): string {
   switch (provider) {
     case "zkpassport":
       return "Open ZKPassport";
     case "self":
       return "Open Self.xyz";
+    case "very":
+      return "Open Very";
   }
 }
 
@@ -111,6 +113,13 @@ export function resolveTelegramVerifyViewModel({
         message: null,
         showSpinner,
         title: "Checking account",
+      };
+    case "choosing_provider":
+      return {
+        busy: false,
+        message: null,
+        showSpinner: false,
+        title: "Choose verification method",
       };
     case "preparing":
       return {
@@ -145,7 +154,7 @@ export function resolveTelegramVerifyViewModel({
         busy,
         message: null,
         showSpinner,
-        title: telegramVerifyWaitingTitle(screen.provider),
+        title: telegramVerifyWaitingTitle(),
       };
     case "done":
       return {
@@ -191,6 +200,7 @@ export function TelegramMiniAppVerifyView({
   debugEvents,
   onOpenBoard,
   onOpenPendingLaunch,
+  onChooseProvider,
   onRetry,
   providerBusy = false,
   screen,
@@ -199,6 +209,7 @@ export function TelegramMiniAppVerifyView({
   debugEvents?: Array<{ at: string; data?: Record<string, unknown>; label: string }>;
   onOpenBoard?: () => void;
   onOpenPendingLaunch?: () => void;
+  onChooseProvider?: (provider: HumanVerificationProvider) => void;
   onRetry?: () => void;
   providerBusy?: boolean;
   screen: TelegramVerifyScreenState;
@@ -237,6 +248,11 @@ export function TelegramMiniAppVerifyView({
                 ) : null}
               </div>
               <div className="mt-5 flex min-h-11 flex-wrap items-center justify-center gap-3">
+                {screen.kind === "choosing_provider" ? screen.providers.map((provider) => (
+                  <Button key={provider} onClick={() => onChooseProvider?.(provider)} variant="secondary">
+                    {telegramVerifyLaunchButtonLabel(provider)}
+                  </Button>
+                )) : null}
                 {pendingLaunch ? (
                   <Button onClick={onOpenPendingLaunch}>
                     {telegramVerifyLaunchButtonLabel(pendingLaunch.provider)}

@@ -96,6 +96,39 @@ describe("AltchaPowWidget", () => {
     expect(challengeLoader).toHaveBeenCalledTimes(1);
   });
 
+  test("requests one fresh challenge when the external retry key changes", async () => {
+    const challengeLoader = mock(async () => ({
+      algorithm: "SHA-256",
+      challenge: "challenge",
+      maxnumber: 100,
+      salt: "salt",
+      signature: "signature",
+    }));
+
+    const { rerender } = render(
+      <AltchaPowWidget
+        action="community:com_test"
+        challengeLoader={challengeLoader}
+        onPayloadChange={() => undefined}
+        retryKey={0}
+        scope="community_join"
+      />,
+    );
+
+    await waitFor(() => expect(challengeLoader).toHaveBeenCalledTimes(1));
+    rerender(
+      <AltchaPowWidget
+        action="community:com_test"
+        challengeLoader={challengeLoader}
+        onPayloadChange={() => undefined}
+        retryKey={1}
+        scope="community_join"
+      />,
+    );
+
+    await waitFor(() => expect(challengeLoader).toHaveBeenCalledTimes(2));
+  });
+
   test("reports a solved proof once when ALTCHA emits verified events", async () => {
     const challengeLoader = mock(async () => ({
       algorithm: "SHA-256",

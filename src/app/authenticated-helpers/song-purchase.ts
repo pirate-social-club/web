@@ -9,126 +9,68 @@ import type {
 } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
-import type { ApiClient } from "@/lib/api/client";
+import type { CommunityPurchaseSettlementResult } from "@/lib/api/client-groups-community-commerce";
 import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyWallets } from "@/components/auth/privy-provider";
-import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { DEFAULT_STORY_CHECKOUT_ROUTE, executeRoutedStoryCheckout, findConnectedFundingWallet } from "@/lib/commerce/routed-checkout";
 import { getErrorMessage } from "@/lib/error-utils";
 import { toast } from "@/components/primitives/sonner";
 import { SongPurchaseModal } from "@/components/compositions/wallet/song-purchase-modal/song-purchase-modal";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
-import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
+import { centsToUsd, formatUsdCentsLabel, formatUsdLabel } from "@/lib/formatting/currency";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 
-type CommunitiesApi = Pick<
-  ApiClient["communities"],
-  "createPurchaseQuote" | "failPurchase" | "settlePurchase"
->;
-
 type PurchaseAssetLabel = "song" | "video" | "ticket" | "replay" | "asset";
+type PurchaseSuccessKind = "replay" | "ticket" | "unlocked";
 
-export type SongPurchaseSuccessMessage = (params: {
+const SETTLEMENT_POLL_ATTEMPTS = 60;
+
+export function buildPurchaseSuccessMessage({
+  kind,
+  locale,
+  priceCents,
+  titleText,
+}: {
+  kind: PurchaseSuccessKind;
+  locale: string;
+  priceCents: number | null | undefined;
+  titleText: string;
+}): string {
+  const priceLabel = formatUsdCentsLabel(priceCents, locale);
+  const action = kind === "unlocked" ? "unlocked" : `${kind} purchased`;
+  return priceLabel ? `${titleText} ${action} for ${priceLabel}.` : `${titleText} ${action}.`;
+}
+
+function settlementPollDelayMs(attempt: number): number {
+  return Math.min(1_000 * (2 ** Math.min(attempt, 3)), 8_000);
+}
+
+function isPendingPurchaseSettlement(
+  result: CommunityPurchaseSettlementResult,
+): result is Extract<CommunityPurchaseSettlementResult, { object: "community_purchase_settlement_pending" }> {
+  return result.object === "community_purchase_settlement_pending";
+}
+
+export async function waitForPurchaseSettlement(params: {
+  settle: () => Promise<CommunityPurchaseSettlementResult>;
+  wait?: (delayMs: number) => Promise<void>;
+  maxAttempts?: number;
+}): Promise<CommunityPurchaseSettlement> {
+  const wait = params.wait ?? ((delayMs: number) => new Promise((resolve) => setTimeout(resolve, delayMs)));
+  const maxAttempts = params.maxAttempts ?? SETTLEMENT_POLL_ATTEMPTS;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const result = await params.settle();
+    if (!isPendingPurchaseSettlement(result)) return result;
+    if (attempt + 1 < maxAttempts) await wait(settlementPollDelayMs(attempt));
+  }
+  throw new Error("Your purchase is still processing. Try again in a moment.");
+}
+
+type SongPurchaseSuccessMessage = (params: {
   settlement: CommunityPurchaseSettlement;
   titleText: string;
 }) => string;
-
-export async function executeSongPurchase(params: {
-  assetLabel?: PurchaseAssetLabel;
-  communities: CommunitiesApi;
-  communityId: string;
-  connectedWallets: PirateConnectedEvmWallet[];
-  listing: ApiCommunityListing;
-  onError: (message: string) => void;
-  onSuccess: (message: string) => void;
-  primaryWalletAddress?: string | null;
-  refreshSongCommerce: () => Promise<void> | void;
-  settlementWalletAttachmentId?: string | null;
-  successMessage: SongPurchaseSuccessMessage;
-  titleText: string;
-}) {
-  const assetLabel = params.assetLabel ?? "song";
-  if (!params.settlementWalletAttachmentId) {
-    params.onError(`Connect a primary wallet before buying this ${assetLabel}.`);
-    return;
-  }
-
-  let quoteId: string | null = null;
-  let fundingTxRef: string | null = null;
-  try {
-    const fundingWallet = findConnectedFundingWallet({
-      connectedWallets: params.connectedWallets,
-      primaryWalletAddress: params.primaryWalletAddress,
-    });
-    if (!fundingWallet) {
-      params.onError(`Connect your primary wallet before buying this ${assetLabel}.`);
-      return;
-    }
-
-    const quote = await params.communities.createPurchaseQuote(params.communityId, {
-      listing: params.listing.id,
-      ...DEFAULT_STORY_CHECKOUT_ROUTE,
-    });
-    quoteId = quote.id;
-    fundingTxRef = await executeRoutedStoryCheckout({
-      quote,
-      wallet: fundingWallet,
-    });
-    const settlement = await params.communities.settlePurchase(params.communityId, {
-      quote: quote.id,
-      settlement_wallet_attachment: params.settlementWalletAttachmentId,
-      funding_tx_ref: fundingTxRef,
-      settlement_tx_ref: fundingTxRef,
-    });
-    await params.refreshSongCommerce();
-    params.onSuccess(params.successMessage({ settlement, titleText: params.titleText }));
-  } catch (error) {
-    if (quoteId && !fundingTxRef) {
-      await params.communities.failPurchase(params.communityId, { quote: quoteId }).catch(() => undefined);
-    }
-    params.onError(getErrorMessage(error, `Could not unlock this ${assetLabel}.`));
-  }
-}
-
-export function useSongPurchase({
-  commerceEnabled,
-  refreshSongCommerce,
-}: {
-  commerceEnabled: boolean;
-  refreshSongCommerce: () => Promise<void> | void;
-}) {
-  const api = useApi();
-  const session = useSession();
-  const { connectedWallets } = usePiratePrivyWallets({ enabled: commerceEnabled });
-
-  return React.useCallback((params: {
-    assetLabel?: PurchaseAssetLabel;
-    communityId: string;
-    listing: ApiCommunityListing;
-    successMessage: SongPurchaseSuccessMessage;
-    titleText: string;
-  }) => executeSongPurchase({
-    assetLabel: params.assetLabel,
-    communities: api.communities,
-    communityId: params.communityId,
-    connectedWallets,
-    listing: params.listing,
-    onError: toast.error,
-    onSuccess: toast.success,
-    primaryWalletAddress: session?.profile.primary_wallet_address,
-    refreshSongCommerce,
-    settlementWalletAttachmentId: session?.user.primary_wallet_attachment,
-    successMessage: params.successMessage,
-    titleText: params.titleText,
-  }), [
-    api.communities,
-    connectedWallets,
-    refreshSongCommerce,
-    session?.profile.primary_wallet_address,
-    session?.user.primary_wallet_attachment,
-  ]);
-}
 
 type PendingSongPurchase = {
   assetLabel?: PurchaseAssetLabel;
@@ -139,6 +81,7 @@ type PendingSongPurchase = {
 };
 
 type QuotedSongPurchase = PendingSongPurchase & {
+  fundingTxRef?: string | null;
   maxSelfDiscountPercent: number | null;
   quote: CommunityPurchaseQuote;
 };
@@ -238,6 +181,7 @@ export function useSongPurchaseFlow({
   const closePurchaseModal = React.useCallback((open: boolean) => {
     if (open) return;
     if (purchaseProcessing) return;
+    if (pendingPurchase?.fundingTxRef) return;
     const quoteToFail = pendingPurchase;
     setPendingPurchase(null);
     setPurchaseError(null);
@@ -307,17 +251,23 @@ export function useSongPurchaseFlow({
 
     setPurchaseProcessing(true);
     setPurchaseError(null);
-    let fundingTxRef: string | null = null;
+    let fundingTxRef: string | null = pendingPurchase.fundingTxRef ?? null;
     try {
-      fundingTxRef = await executeRoutedStoryCheckout({
-        quote: pendingPurchase.quote,
-        wallet: fundingWallet,
-      });
-      const settlement = await api.communities.settlePurchase(pendingPurchase.communityId, {
+      if (!fundingTxRef) {
+        fundingTxRef = await executeRoutedStoryCheckout({
+          quote: pendingPurchase.quote,
+          wallet: fundingWallet,
+        });
+        setPendingPurchase((current) => current ? { ...current, fundingTxRef } : current);
+      }
+      const settlementBody = {
         quote: pendingPurchase.quote.id,
         settlement_wallet_attachment: session.user.primary_wallet_attachment,
         funding_tx_ref: fundingTxRef,
         settlement_tx_ref: fundingTxRef,
+      };
+      const settlement = await waitForPurchaseSettlement({
+        settle: () => api.communities.settlePurchase(pendingPurchase.communityId, settlementBody),
       });
       await refreshSongCommerce();
       toast.success(pendingPurchase.successMessage({ settlement, titleText: pendingPurchase.titleText }));

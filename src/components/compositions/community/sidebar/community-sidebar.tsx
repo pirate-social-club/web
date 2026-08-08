@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { ShoppingBag } from "@phosphor-icons/react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -92,6 +91,7 @@ function CommunitySidebarSections({
   requirementsMode,
   gates,
   gateExpressionLabel,
+  showFlatGateOrMarkers,
   hasActionTimeCheck,
   referenceLinks,
   rules,
@@ -111,6 +111,7 @@ function CommunitySidebarSections({
   | "requirementsMode"
   | "gates"
   | "gateExpressionLabel"
+  | "showFlatGateOrMarkers"
   | "hasActionTimeCheck"
   | "referenceLinks"
   | "rules"
@@ -216,11 +217,12 @@ function CommunitySidebarSections({
             <AccordionTrigger className={SECTION_LABEL}>
               {gateTitle}
             </AccordionTrigger>
-            <AccordionContent className="pb-0">
+            <AccordionContent className="pb-0 [&>div]:pb-0">
               <CommunitySidebarGates
                 expressionLabel={gateExpressionLabel}
                 items={gates}
                 mode={requirementsMode}
+                showFlatOrMarkers={showFlatGateOrMarkers}
               />
             </AccordionContent>
           </AccordionItem>
@@ -231,7 +233,7 @@ function CommunitySidebarSections({
             <AccordionTrigger className={SECTION_LABEL}>
               {gateTitle}
             </AccordionTrigger>
-            <AccordionContent className="pb-0">
+            <AccordionContent className="pb-0 [&>div]:pb-0">
               <CommunitySidebarRequirements
                 items={activeRequirements}
                 mode={requirementsMode}
@@ -298,6 +300,7 @@ export function CommunitySidebarDetails({
   requirementsMode,
   gates,
   gateExpressionLabel,
+  showFlatGateOrMarkers,
   hasActionTimeCheck,
   referenceLinks,
   rules,
@@ -317,6 +320,7 @@ export function CommunitySidebarDetails({
   | "requirementsMode"
   | "gates"
   | "gateExpressionLabel"
+  | "showFlatGateOrMarkers"
   | "hasActionTimeCheck"
   | "referenceLinks"
   | "rules"
@@ -339,6 +343,7 @@ export function CommunitySidebarDetails({
           requirementsMode={requirementsMode}
           gates={gates}
           gateExpressionLabel={gateExpressionLabel}
+          showFlatGateOrMarkers={showFlatGateOrMarkers}
           hasActionTimeCheck={hasActionTimeCheck}
           rules={rules}
           store={store}
@@ -365,6 +370,7 @@ export function CommunitySidebar({
   requirementsMode,
   gates,
   gateExpressionLabel,
+  showFlatGateOrMarkers,
   hasActionTimeCheck,
   referenceLinks,
   rules,
@@ -403,6 +409,7 @@ export function CommunitySidebar({
         requirementsMode={requirementsMode}
         gates={gates}
         gateExpressionLabel={gateExpressionLabel}
+        showFlatGateOrMarkers={showFlatGateOrMarkers}
         hasActionTimeCheck={hasActionTimeCheck}
         rules={rules}
         store={store}

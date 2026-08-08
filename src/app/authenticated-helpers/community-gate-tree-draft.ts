@@ -123,7 +123,7 @@ export function gatePolicyHasUnsupportedExpressionNodes(policy: GatePolicy | nul
   return expressionHasUnsupportedNodes(policy.expression as RecursiveGateExpression | Record<string, unknown>);
 }
 
-export function evaluateGateExpression(
+function evaluateGateExpression(
   expression: GateExpression,
   satisfies: (gate: GateAtom) => boolean,
 ): boolean {
@@ -152,6 +152,17 @@ export function gateAssetMinimum(gate: GateAtom): number {
     return typeof minCount === "number" ? minCount : 1;
   }
   return 0;
+}
+
+export function withGateAssetMinimum(gate: GateAtom, quantity: number): GateAtom {
+  const nextQuantity = Math.min(100, Math.max(1, Math.trunc(quantity)));
+  if (gate.type === "erc721_inventory_match") {
+    return { ...gate, min_quantity: nextQuantity };
+  }
+  if (gate.type === "erc721_holding") {
+    return { ...gate, min_count: nextQuantity } as GateAtom;
+  }
+  return gate;
 }
 
 function expressionToDraftNode(expression: RecursiveGateExpression | Record<string, unknown>): GateBuilderDraftNode | null {

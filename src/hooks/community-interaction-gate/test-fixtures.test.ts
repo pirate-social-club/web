@@ -70,18 +70,21 @@ export function gate(
   status: JoinEligibility["status"] = "verification_required",
   overrides: Partial<JoinEligibility> = {},
   requirements: MembershipGateSummary[] = [uniqueHumanRequirement],
-  options: { gateMatchMode?: "all" | "any" | null } = {},
+  options: {
+    gateMatchMode?: "all" | "any" | null;
+    viewerFollowing?: boolean;
+  } = {},
 ): CommunityGateData {
   return {
     eligibility: eligibility(status, {
       membership_gate_summaries: requirements,
       ...overrides,
     }, requirements),
-    gateMatchMode: options.gateMatchMode ?? null,
     preview: {
       id: "community-1",
       display_name: "Test Community",
       membership_gate_summaries: requirements,
+      viewer_following: options.viewerFollowing,
     },
     gateMatchMode: options.gateMatchMode ?? null,
   };

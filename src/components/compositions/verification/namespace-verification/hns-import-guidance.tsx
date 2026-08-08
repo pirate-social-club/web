@@ -204,7 +204,7 @@ function StatusBlock({
 
 function StatusPill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="shrink-0 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+    <span className="shrink-0 rounded-full bg-warning/10 px-2 py-0.5 text-base font-medium text-warning">
       {children}
     </span>
   );
@@ -230,11 +230,11 @@ function HnsRecordRow({
       <Type as="span" className="w-16 shrink-0 truncate text-muted-foreground" variant="caption">{view.type}</Type>
       {tag ? <StatusPill>{tag}</StatusPill> : null}
       {view.kind === "standard" ? (
-        <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-sm leading-6 text-foreground select-all">
+        <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-base leading-6 text-foreground select-all">
           {view.value}
         </code>
       ) : (
-        <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-sm leading-6 text-muted-foreground">
+        <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-base leading-6 text-muted-foreground">
           {view.detail}
         </code>
       )}

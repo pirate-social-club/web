@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Check, Copy } from "@phosphor-icons/react";
+import { Check, CheckCircle, Clock, Copy, WarningCircle } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Type } from "@/components/primitives/type";
 import { useResettableTimeout } from "@/hooks/use-resettable-timeout";
+import { cn } from "@/lib/utils";
 import type {
   HnsImportChallengePayload,
   HnsRawResourceRecord,
@@ -14,33 +15,54 @@ import type {
 
 type ImportStage = "publish" | "watch" | "commit" | "compare" | "observe" | "done";
 
-export function formatHnsResourceRecord(record: HnsRawResourceRecord): string {
+// Record types that form-based publishers (e.g. Bob Wallet's record editor:
+// type dropdown + single value input) can represent exactly.
+const HNS_FORM_TYPES = new Set(["NS", "TXT", "DS", "GLUE4", "GLUE6", "SYNTH4", "SYNTH6"]);
+
+export type HnsRecordView =
+  | { kind: "standard"; type: string; value: string }
+  | { kind: "advanced"; type: string; detail: string };
+
+// Per-field value accepted by form-based publishers for a supported type.
+export function copyableHnsRecordValue(record: HnsRawResourceRecord): string {
   const type = typeof record.type === "string" ? record.type : "UNKNOWN";
-  if (type === "NS") return `NS  ${String(record.ns ?? "")}`;
-  if (type === "TXT" && Array.isArray(record.txt)) {
-    return record.txt.length > 1
-      ? `TXT  ${JSON.stringify(record.txt)} (${record.txt.length} chunks)`
-      : `TXT  ${String(record.txt[0] ?? "")}`;
+  if (type === "NS") return String(record.ns ?? "");
+  if (type === "TXT" && Array.isArray(record.txt) && record.txt.length === 1) {
+    return String(record.txt[0] ?? "");
   }
   if (type === "DS") {
-    return `DS  ${String(record.keyTag ?? "")} ${String(record.algorithm ?? "")} ${String(record.digestType ?? "")} ${String(record.digest ?? "")}`;
+    return `${String(record.keyTag ?? "")} ${String(record.algorithm ?? "")} ${String(record.digestType ?? "")} ${String(record.digest ?? "")}`;
+  }
+  if ((type === "GLUE4" || type === "GLUE6") && record.ns != null) {
+    return `${String(record.ns)} ${String(record.address ?? "")}`;
+  }
+  if ((type === "SYNTH4" || type === "SYNTH6") && record.address != null) {
+    return String(record.address);
   }
   return JSON.stringify(record);
 }
 
-export function copyableHnsResourceRecord(record: HnsRawResourceRecord): string {
+// How a record can honestly be presented: a fixed type label plus the exact
+// value to enter, or an unsupported record that no publishing form can edit
+// safely (unknown types, multi-chunk TXT).
+export function describeHnsRecord(record: HnsRawResourceRecord): HnsRecordView {
   const type = typeof record.type === "string" ? record.type : "UNKNOWN";
   if (type === "TXT" && Array.isArray(record.txt) && record.txt.length > 1) {
-    return JSON.stringify(record);
+    return { kind: "advanced", type, detail: `TXT (${record.txt.length} chunks)` };
   }
-  if (type !== "NS" && type !== "TXT" && type !== "DS") {
-    return JSON.stringify(record);
+  if (HNS_FORM_TYPES.has(type)) {
+    return { kind: "standard", type, value: copyableHnsRecordValue(record) };
   }
-  return formatHnsResourceRecord(record);
+  return { kind: "advanced", type, detail: `${type} record` };
 }
 
-export function formatHnsResourceRecords(records: HnsRawResourceRecord[]): string {
-  return records.map(copyableHnsResourceRecord).join("\n");
+// Unsupported records cannot be recreated in Bob Wallet, and a Handshake
+// UPDATE replaces the whole resource, so self-service publishing would drop
+// or alter them. The publish step must be blocked, not annotated.
+export function hnsImportHasUnsupportedRecords(payload: HnsImportChallengePayload): boolean {
+  return payload.publish_plan.replacement_records.some(
+    (record) => describeHnsRecord(record).kind === "advanced",
+  );
 }
 
 function approximateBoundaryEta(currentHeight: number, targetHeight: number): string {
@@ -64,7 +86,7 @@ function currentStage(payload: HnsImportChallengePayload): ImportStage {
 
 export function getHnsImportActionLabel(payload: HnsImportChallengePayload): string {
   return currentStage(payload) === "publish"
-    ? "I published all records — check the chain"
+    ? "I published all records, check the chain"
     : "Check status";
 }
 
@@ -75,82 +97,58 @@ export function hnsImportNeedsPublishAcknowledgement(payload: HnsImportChallenge
 export function HnsImportGuidance({
   expired = false,
   payload,
-  rootLabel,
+  restartError = null,
 }: {
   expired?: boolean;
   payload: HnsImportChallengePayload;
-  rootLabel: string;
+  restartError?: string | null;
 }) {
   const observation = payload.observation;
   const plan = payload.publish_plan;
   const target = observation?.target_tree_boundary ?? payload.target_tree_boundary;
   const stage = currentStage(payload);
-  const phase = stage === "publish" ? 1 : 2;
+  const blocked = stage === "publish" && hnsImportHasUnsupportedRecords(payload);
 
   return (
     <div className="space-y-5 rounded-[var(--radius-2xl)] border border-border-soft bg-card p-4 md:p-5">
-      <div className="space-y-1">
-        <Type as="h2" variant="body-strong">Connect .{rootLabel}</Type>
-        <Type as="p" className="text-muted-foreground" variant="body">
-          Publish one complete on-chain UPDATE. Then Pirate checks the chain and delegation.
-        </Type>
-      </div>
-
-      <PhaseProgress expired={expired} phase={phase} />
-
       {expired ? (
-        <div className="space-y-2">
-          <Type as="h3" variant="body-strong">This setup session expired</Type>
-          <FormNote tone="warning">
-            Start again before publishing. A new session creates a fresh ownership proof and complete replacement resource.
-          </FormNote>
-        </div>
+        <StatusBlock title="Session expired" tone="action">
+          Generate a fresh list before publishing.
+        </StatusBlock>
       ) : null}
 
-      {!expired && stage === "publish" ? (
+      {restartError ? <FormNote tone="warning">{restartError}</FormNote> : null}
+
+      {!expired && stage === "publish" && blocked ? (
+        <StatusBlock title="Unsupported records" tone="action">
+          This name contains records that Bob Wallet cannot preserve. Contact support before publishing an update.
+        </StatusBlock>
+      ) : null}
+
+      {!expired && stage === "publish" && !blocked ? (
         <div className="space-y-4">
-          <Type as="h3" variant="body-strong">Publish the UPDATE</Type>
-          <Type as="p" variant="body">
-            In the wallet or registrar that holds <strong>{rootLabel}</strong>, publish every record below together. This list includes your existing records so nothing is lost.
-          </Type>
-
-          <ResourceRecordList records={plan.replacement_records} title="Complete replacement resource" />
-
-          <FormNote tone="warning">
-            Handshake UPDATEs replace the entire resource; they do not merge records. Publish the complete list, not only the new records.
-          </FormNote>
+          <Type as="h3" variant="body-strong">Publish these records</Type>
+          <ResourceRecordList records={plan.replacement_records} />
         </div>
       ) : null}
 
       {!expired && stage === "watch" ? (
-        <div className="space-y-2">
-          <Type as="h3" variant="body-strong">Waiting for the UPDATE</Type>
-          <FormNote>
-            Click <strong>Check status</strong> after the transaction is mined. Pirate does not refresh this page automatically.
-          </FormNote>
-        </div>
+        <StatusBlock title="Update not confirmed yet">
+          Check again after it confirms.
+        </StatusBlock>
       ) : null}
 
       {!expired && stage === "commit" && target != null && observation ? (
-        <div className="space-y-2">
-          <Type as="h3" variant="body-strong">UPDATE mined — waiting for the tree commit</Type>
-          <Type as="p" variant="body">
-            Current height <strong>{observation.current_height.toLocaleString()}</strong> · target block <strong>{target.toLocaleString()}</strong>
-          </Type>
-          <FormNote>
-            Estimated {approximateBoundaryEta(observation.current_height, target)}. Handshake commits resource changes every 36 blocks, so this can take from a few minutes to about 6 hours. Click <strong>Check status</strong> after the target block.
-          </FormNote>
-        </div>
+        <StatusBlock title="Transaction confirmed">
+          Handshake is finalizing the update. Check again in {approximateBoundaryEta(observation.current_height, target)}.
+        </StatusBlock>
       ) : null}
 
       {!expired && stage === "compare" ? (
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Type as="h3" variant="body-strong">The committed resource does not match</Type>
-            <FormNote tone="warning">
-              The UPDATE was committed, but it is missing or contains different records. Repair it with one complete replacement UPDATE—never a partial delta.
-            </FormNote>
-          </div>
+          <StatusBlock title="Published records don't match" tone="action">
+            Publish the full list again as one update. A partial fix won&apos;t work.
+          </StatusBlock>
           <ResourceMismatchList
             expected={plan.replacement_records}
             missing={observation?.missing_records ?? []}
@@ -160,64 +158,99 @@ export function HnsImportGuidance({
       ) : null}
 
       {!expired && stage === "observe" ? (
-        <div className="space-y-2">
-          <Type as="h3" variant="body-strong">Records match — checking the delegation</Type>
-          <FormNote tone="warning">
-            The resource is committed, but the secure delegation is not valid yet. Keep the complete NS, TXT, and both DS records in place, then click <strong>Check status</strong> again.
-          </FormNote>
-        </div>
+        <StatusBlock title="Records confirmed">
+          Secure delegation isn&apos;t available yet.
+        </StatusBlock>
       ) : null}
 
       {!expired && stage === "done" ? (
-        <div className="space-y-2">
-          <Type as="h3" variant="body-strong">Name connected</Type>
-          <FormNote>The complete resource is committed and the secure delegation has been observed.</FormNote>
-        </div>
+        <StatusBlock title="Setup complete" tone="done" />
       ) : null}
     </div>
   );
 }
 
-function PhaseProgress({ expired, phase }: { expired: boolean; phase: 1 | 2 }) {
+function StatusBlock({
+  children,
+  title,
+  tone = "waiting",
+}: {
+  children?: React.ReactNode;
+  title: string;
+  tone?: "waiting" | "action" | "done";
+}) {
+  const Icon = tone === "action" ? WarningCircle : tone === "done" ? CheckCircle : Clock;
   return (
-    <div aria-label="Import progress" role="group">
-      <div className="mb-2 flex items-baseline justify-between gap-3">
-        <Type as="span" variant="caption">{expired ? "Session expired" : `Phase ${phase} of 2`}</Type>
-        {!expired ? <Type as="span" className="text-muted-foreground" variant="caption">{phase === 1 ? "Publish UPDATE" : "Check the chain"}</Type> : null}
+    <div className="space-y-2" data-tone={tone}>
+      <div className="flex items-center gap-2">
+        <Icon
+          aria-hidden
+          className={cn(
+            "size-5 shrink-0",
+            tone === "action" && "text-warning",
+            tone === "done" && "text-success",
+            tone === "waiting" && "text-muted-foreground",
+          )}
+          weight="fill"
+        />
+        <Type as="h3" variant="body-strong">{title}</Type>
       </div>
-      <div aria-hidden="true" className="flex gap-1">
-        <span className={expired ? "h-1.5 flex-1 rounded-full bg-border-soft" : "h-1.5 flex-1 rounded-full bg-primary"} />
-        <span className={!expired && phase === 2 ? "h-1.5 flex-1 rounded-full bg-primary" : "h-1.5 flex-1 rounded-full bg-border-soft"} />
-      </div>
+      {children ? (
+        <FormNote tone={tone === "action" ? "warning" : "muted"}>{children}</FormNote>
+      ) : null}
     </div>
   );
 }
 
-function ResourceRecordList({
-  records,
-  title,
-}: {
-  records: HnsRawResourceRecord[];
-  title: string;
-}) {
+function StatusPill({ children }: { children: React.ReactNode }) {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <Type as="h4" variant="caption">{title}</Type>
-        <CopyButton label="Copy all records" value={formatHnsResourceRecords(records)} />
-      </div>
-      <div className="overflow-hidden rounded-xl border border-border-soft">
-        {records.map((record, index) => {
-          const formatted = formatHnsResourceRecord(record);
-          return (
-            <div className="flex items-start gap-2 border-b border-border-soft bg-background px-3 py-2.5 last:border-b-0" key={`${formatted}-${index}`}>
-              <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-sm leading-6 text-foreground select-all">
-                {formatted}
-              </code>
-            </div>
-          );
-        })}
-      </div>
+    <span className="shrink-0 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+      {children}
+    </span>
+  );
+}
+
+function HnsRecordRow({
+  record,
+  tag,
+  tone = "default",
+}: {
+  record: HnsRawResourceRecord;
+  tag?: "Missing" | "Unexpected";
+  tone?: "default" | "warning";
+}) {
+  const view = describeHnsRecord(record);
+  const copyable = view.kind === "standard" && tag !== "Unexpected";
+
+  return (
+    <div className={cn(
+      "flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0",
+      tone === "warning" ? "border-warning/30 bg-warning/5" : "border-border-soft bg-background",
+    )}>
+      <Type as="span" className="w-16 shrink-0 truncate text-muted-foreground" variant="caption">{view.type}</Type>
+      {tag ? <StatusPill>{tag}</StatusPill> : null}
+      {view.kind === "standard" ? (
+        <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-sm leading-6 text-foreground select-all">
+          {view.value}
+        </code>
+      ) : (
+        <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-sm leading-6 text-muted-foreground">
+          {view.detail}
+        </code>
+      )}
+      {copyable && view.kind === "standard" ? (
+        <CopyButton label={`Copy ${view.type} value`} value={view.value} />
+      ) : null}
+    </div>
+  );
+}
+
+function ResourceRecordList({ records }: { records: HnsRawResourceRecord[] }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border-soft">
+      {records.map((record, index) => (
+        <HnsRecordRow key={`${JSON.stringify(record)}-${index}`} record={record} />
+      ))}
     </div>
   );
 }
@@ -233,32 +266,22 @@ function ResourceMismatchList({
 }) {
   const missingKeys = new Set(missing.map((record) => JSON.stringify(record)));
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <Type as="h4" variant="caption">Complete replacement with differences</Type>
-        <CopyButton label="Copy all records" value={formatHnsResourceRecords(expected)} />
-      </div>
-      <div className="overflow-hidden rounded-xl border border-warning/50">
-        {expected.map((record, index) => {
-          const formatted = formatHnsResourceRecord(record);
-          const isMissing = missingKeys.has(JSON.stringify(record));
-          return (
-            <div className="flex items-start gap-3 border-b border-border-soft bg-background px-3 py-2.5 last:border-b-0" key={`expected-${formatted}-${index}`}>
-              <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-sm leading-6 text-foreground select-all">{formatted}</code>
-              {isMissing ? <Type as="span" className="shrink-0 text-warning" variant="caption">Missing</Type> : null}
-            </div>
-          );
-        })}
-        {unexpected.map((record, index) => {
-          const formatted = formatHnsResourceRecord(record);
-          return (
-            <div className="flex items-start gap-3 border-t border-warning/30 bg-warning/5 px-3 py-2.5" key={`unexpected-${formatted}-${index}`}>
-              <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-sm leading-6 text-foreground select-all">{formatted}</code>
-              <Type as="span" className="shrink-0 text-warning" variant="caption">Unexpected</Type>
-            </div>
-          );
-        })}
-      </div>
+    <div className="overflow-hidden rounded-xl border border-warning/50">
+      {expected.map((record, index) => (
+        <HnsRecordRow
+          key={`expected-${JSON.stringify(record)}-${index}`}
+          record={record}
+          tag={missingKeys.has(JSON.stringify(record)) ? "Missing" : undefined}
+        />
+      ))}
+      {unexpected.map((record, index) => (
+        <HnsRecordRow
+          key={`unexpected-${JSON.stringify(record)}-${index}`}
+          record={record}
+          tag="Unexpected"
+          tone="warning"
+        />
+      ))}
     </div>
   );
 }
@@ -276,12 +299,12 @@ function CopyButton({ label, value }: { label: string; value: string }) {
   return (
     <Button
       aria-label={copied ? "Copied" : label}
+      className="size-8 shrink-0"
       onClick={handleCopy}
-      size="sm"
+      size="icon"
       variant="secondary"
     >
       {copied ? <Check aria-hidden="true" className="size-4" /> : <Copy aria-hidden="true" className="size-4" />}
-      {copied ? "Copied" : "Copy all"}
     </Button>
   );
 }

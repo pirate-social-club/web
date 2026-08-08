@@ -180,6 +180,209 @@ export const HnsImportPublishAction: Story = {
   ),
 };
 
+// Full-context HNS import states: the real page, real footer action, and the
+// payload a session resume would return for each observation state.
+function hnsImportStateCallbacks(
+  importPayload: HnsImportChallengePayload,
+  status: NamespaceVerificationStatus = "dns_setup_required",
+): NamespaceVerificationCallbacks {
+  return {
+    ...mockNamespaceCallbacks,
+    onGetSession: async () => ({
+      ...hnsSession(status),
+      hnsImportPayload: importPayload,
+    }),
+  };
+}
+
+const hnsImportAcknowledgedPayload: HnsImportChallengePayload = {
+  ...hnsImportPayload,
+  replacement_acknowledged_at: "2026-08-08T12:00:00.000Z",
+};
+
+const refreshedHnsImportPayload: HnsImportChallengePayload = {
+  ...hnsImportPayload,
+  publish_plan: {
+    ...hnsImportPayload.publish_plan,
+    added_records: hnsImportPayload.publish_plan.added_records.map((record) => (
+      record.type === "TXT"
+        ? { type: "TXT", txt: ["pirate-verification=nch_refreshed_fixture"] }
+        : record
+    )),
+    replacement_records: hnsImportPayload.publish_plan.replacement_records.map((record) => (
+      record.type === "TXT"
+        ? { type: "TXT", txt: ["pirate-verification=nch_refreshed_fixture"] }
+        : record
+    )),
+  },
+  observed_chain_anchor: {
+    ...hnsImportPayload.observed_chain_anchor,
+    height: 342_468,
+    block_hash: "11refreshedblockhash",
+  },
+};
+
+function renderHnsImportState(
+  importPayload: HnsImportChallengePayload,
+  status: NamespaceVerificationStatus = "dns_setup_required",
+) {
+  return () => (
+    <CommunityNamespaceVerificationPage
+      activeSessionId="nvs_fixture_import"
+      callbacks={hnsImportStateCallbacks(importPayload, status)}
+      initialRootLabel="fixture-root"
+    />
+  );
+}
+
+export const HnsImportPublish: Story = {
+  name: "HNS import — Publish these records",
+  render: renderHnsImportState(hnsImportPayload),
+};
+
+export const HnsImportNotConfirmed: Story = {
+  name: "HNS import — Update not confirmed yet",
+  render: renderHnsImportState(hnsImportAcknowledgedPayload),
+};
+
+export const HnsImportFinalizing: Story = {
+  name: "HNS import — Transaction confirmed",
+  render: renderHnsImportState({
+    ...hnsImportAcknowledgedPayload,
+    update_observed_height: 342_433,
+    target_tree_boundary: 342_468,
+    observation: {
+      state: "pending_tree_commit",
+      current_height: 342_440,
+      target_tree_boundary: 342_468,
+    },
+  }),
+};
+
+export const HnsImportMismatch: Story = {
+  name: "HNS import — Published records don't match",
+  render: renderHnsImportState({
+    ...hnsImportAcknowledgedPayload,
+    update_observed_height: 342_433,
+    observation: {
+      state: "resource_mismatch",
+      current_height: 342_468,
+      missing_records: [hnsImportPayload.publish_plan.replacement_records[3], hnsImportPayload.publish_plan.replacement_records[4]],
+      unexpected_records: [{ type: "NS", ns: "old-nameserver.invalid." }],
+    },
+  }),
+};
+
+export const HnsImportDelegationPending: Story = {
+  name: "HNS import — Records confirmed",
+  render: renderHnsImportState({
+    ...hnsImportAcknowledgedPayload,
+    update_observed_height: 342_433,
+    observation: {
+      state: "delegation_not_secure",
+      current_height: 342_470,
+    },
+  }),
+};
+
+export const HnsImportExpiredRecovery: Story = {
+  name: "HNS import — Expired recovery succeeds",
+  play: async ({ canvasElement }) => {
+    const action = await findButton(canvasElement, "Get a new record list");
+    action.click();
+    await findText(canvasElement, "nch_refreshed_fixture");
+    if (canvasElement.textContent?.includes("Session expired")) {
+      throw new Error("Expired state remained after recovery");
+    }
+  },
+  render: () => {
+    let recovered = false;
+    const callbacks: NamespaceVerificationCallbacks = {
+      ...mockNamespaceCallbacks,
+      onCompleteSession: async (input) => {
+        if (!input.restartChallenge) throw new Error("Expected restart challenge request");
+        recovered = true;
+        return {
+          status: "challenge_required",
+          namespaceVerificationId: null,
+          failureReason: null,
+          hnsImportPayload: refreshedHnsImportPayload,
+        };
+      },
+      onGetSession: async () => ({
+        ...hnsSession(recovered ? "challenge_required" : "expired"),
+        hnsImportPayload: recovered ? refreshedHnsImportPayload : hnsImportAcknowledgedPayload,
+      }),
+    };
+    return (
+      <CommunityNamespaceVerificationPage
+        activeSessionId="nvs_fixture_import"
+        callbacks={callbacks}
+        initialRootLabel="fixture-root"
+      />
+    );
+  },
+};
+
+export const HnsImportExpiredRecoveryFailure: Story = {
+  name: "HNS import — Expired recovery fails",
+  play: async ({ canvasElement }) => {
+    const action = await findButton(canvasElement, "Get a new record list");
+    action.click();
+    await findText(canvasElement, "Verifier contract is unavailable");
+    await findText(canvasElement, "Session expired");
+  },
+  render: () => (
+    <CommunityNamespaceVerificationPage
+      activeSessionId="nvs_fixture_import"
+      callbacks={{
+        ...mockNamespaceCallbacks,
+        onCompleteSession: async (input) => {
+          if (!input.restartChallenge) throw new Error("Expected restart challenge request");
+          throw new Error("Verifier contract is unavailable");
+        },
+        onGetSession: async () => ({
+          ...hnsSession("expired"),
+          hnsImportPayload: hnsImportAcknowledgedPayload,
+        }),
+      }}
+      initialRootLabel="fixture-root"
+    />
+  ),
+};
+
+export const HnsImportUnsupportedBlocked: Story = {
+  name: "HNS import — Unsupported records (blocked)",
+  render: renderHnsImportState({
+    ...hnsImportPayload,
+    publish_plan: {
+      ...hnsImportPayload.publish_plan,
+      replacement_records: [
+        ...hnsImportPayload.publish_plan.replacement_records,
+        { type: "TXT", txt: ["chunked-proof-a", "chunked-proof-b"] },
+      ],
+    },
+  }),
+};
+
+async function findButton(canvasElement: HTMLElement, label: string): Promise<HTMLButtonElement> {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const button = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"))
+      .find((candidate) => candidate.textContent?.includes(label));
+    if (button) return button;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`Button not found: ${label}`);
+}
+
+async function findText(canvasElement: HTMLElement, text: string): Promise<void> {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if (canvasElement.textContent?.includes(text)) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`Text not found: ${text}`);
+}
+
 export const CheckingRecords: Story = {
   name: "HNS — Checking",
   render: () => (

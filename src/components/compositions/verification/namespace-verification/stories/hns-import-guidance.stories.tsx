@@ -1,12 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import * as React from "react";
 
 import {
-  getHnsImportActionLabel,
   HnsImportGuidance,
 } from "@/components/compositions/verification/namespace-verification/hns-import-guidance";
 import type { HnsImportChallengePayload } from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
-import { Button } from "@/components/primitives/button";
 
 const replacementRecords = [
   { type: "NS", ns: "ns1.pirate." },
@@ -27,7 +24,7 @@ const basePayload: HnsImportChallengePayload = {
     removed_conflicts: [],
     added_records: replacementRecords.slice(0, 5),
     replacement_records: replacementRecords,
-    preserved_unknown_record_types: ["SYNTH4"],
+    preserved_unknown_record_types: [],
     acknowledgement_required: true,
   },
   observed_chain_anchor: {
@@ -42,12 +39,16 @@ const basePayload: HnsImportChallengePayload = {
   },
 };
 
+const acknowledgedPayload: HnsImportChallengePayload = {
+  ...basePayload,
+  replacement_acknowledged_at: "2026-08-08T12:00:00.000Z",
+};
+
 const meta = {
   title: "Compositions/Verification/HNS Import Guidance",
   component: HnsImportGuidance,
   args: {
     payload: basePayload,
-    rootLabel: "fixture-root",
   },
   parameters: {
     layout: "padded",
@@ -59,59 +60,37 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const PublishCompleteResource: Story = {
-  name: "Phase 1 — Publish complete resource",
+  name: "Publish these records",
 };
 
-function AcknowledgementInteractionStory() {
-  const [payload, setPayload] = React.useState(basePayload);
-
-  return (
-    <div className="space-y-4">
-      <HnsImportGuidance
-        payload={payload}
-        rootLabel="fixture-root"
-      />
-      <div className="flex justify-end">
-        <Button
-          onClick={() => setPayload({
-            ...payload,
-            replacement_acknowledged_at: "2026-08-08T12:00:00.000Z",
-          })}
-        >
-          {getHnsImportActionLabel(payload)}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-export const AcknowledgeAndCheckChain: Story = {
-  name: "Phase 1 — Publish action interaction",
-  play: async ({ canvasElement }) => {
-    const action = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"))
-      .find((button) => button.textContent?.includes("I published all records"));
-    action?.click();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  },
-  render: () => <AcknowledgementInteractionStory />,
-};
-
-export const WatchingForMinedUpdate: Story = {
-  name: "Phase 2 — Waiting for mined UPDATE",
+export const PublishBlockedUnsupportedRecords: Story = {
+  name: "Unsupported records (blocked)",
   args: {
     payload: {
       ...basePayload,
-      replacement_acknowledged_at: "2026-08-08T12:00:00.000Z",
+      publish_plan: {
+        ...basePayload.publish_plan,
+        replacement_records: [
+          ...replacementRecords,
+          { type: "TXT", txt: ["chunked-proof-a", "chunked-proof-b"] },
+        ],
+      },
     },
   },
 };
 
+export const WatchingForMinedUpdate: Story = {
+  name: "Update not confirmed yet",
+  args: {
+    payload: acknowledgedPayload,
+  },
+};
+
 export const PendingTreeCommit: Story = {
-  name: "Phase 2 — Pending tree commit",
+  name: "Transaction confirmed",
   args: {
     payload: {
-      ...basePayload,
-      replacement_acknowledged_at: "2026-08-08T12:00:00.000Z",
+      ...acknowledgedPayload,
       update_observed_height: 342_433,
       target_tree_boundary: 342_468,
       observation: {
@@ -124,11 +103,10 @@ export const PendingTreeCommit: Story = {
 };
 
 export const ResourceMismatch: Story = {
-  name: "Phase 2 — Resource mismatch",
+  name: "Published records don't match",
   args: {
     payload: {
-      ...basePayload,
-      replacement_acknowledged_at: "2026-08-08T12:00:00.000Z",
+      ...acknowledgedPayload,
       update_observed_height: 342_433,
       observation: {
         state: "resource_mismatch",
@@ -141,11 +119,10 @@ export const ResourceMismatch: Story = {
 };
 
 export const DelegationNotSecure: Story = {
-  name: "Phase 2 — Delegation not secure",
+  name: "Records confirmed",
   args: {
     payload: {
-      ...basePayload,
-      replacement_acknowledged_at: "2026-08-08T12:00:00.000Z",
+      ...acknowledgedPayload,
       update_observed_height: 342_433,
       observation: {
         state: "delegation_not_secure",
@@ -156,23 +133,15 @@ export const DelegationNotSecure: Story = {
 };
 
 export const Secure: Story = {
-  name: "Phase 2 — Secure",
+  name: "Setup complete",
   args: {
     payload: {
-      ...basePayload,
-      replacement_acknowledged_at: "2026-08-08T12:00:00.000Z",
+      ...acknowledgedPayload,
       update_observed_height: 342_433,
       observation: {
         state: "secure",
         current_height: 342_470,
       },
     },
-  },
-};
-
-export const Expired: Story = {
-  name: "Expired session",
-  args: {
-    expired: true,
   },
 };

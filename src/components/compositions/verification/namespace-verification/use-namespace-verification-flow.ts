@@ -47,6 +47,7 @@ export type UseNamespaceVerificationFlowReturn = {
   signature: string;
   namespaceVerificationId: string | null;
   failureReason: string | null;
+  restartError: string | null;
   lastCheckStatus: "dns_setup_required" | null;
   operationClass: NamespaceVerificationOperationClass | null;
   pirateDnsAuthorityVerified: boolean | null;
@@ -111,6 +112,7 @@ export function useNamespaceVerificationFlow({
   const [namespaceVerificationId, setNamespaceVerificationId] =
     React.useState<string | null>(null);
   const [failureReason, setFailureReason] = React.useState<string | null>(null);
+  const [restartError, setRestartError] = React.useState<string | null>(null);
   const [lastCheckStatus, setLastCheckStatus] =
     React.useState<UseNamespaceVerificationFlowReturn["lastCheckStatus"]>(null);
   const [checkingSetup, setCheckingSetup] = React.useState(false);
@@ -152,6 +154,7 @@ export function useNamespaceVerificationFlow({
     setPirateDnsAuthorityVerified(null);
     setSetupNameservers(null);
     setCheckingSetup(false);
+    setRestartError(null);
   }, []);
 
   const setRootLabelInput = React.useCallback((value: string) => {
@@ -175,6 +178,7 @@ export function useNamespaceVerificationFlow({
     resetChallengeState();
     setNamespaceVerificationId(null);
     setFailureReason(null);
+    setRestartError(null);
     setLastCheckStatus(null);
   }, [handleSessionCleared, initialFamily, initialRootLabel, resetChallengeState]);
 
@@ -390,12 +394,14 @@ export function useNamespaceVerificationFlow({
     }
 
     const isSetupCheck = stateRef.current === "dns_setup_required";
-    if (isSetupCheck) {
+    const isExpiredRestart = stateRef.current === "expired";
+    if (isSetupCheck || isExpiredRestart) {
       setCheckingSetup(true);
     } else {
       setState("starting");
     }
     setFailureReason(null);
+    setRestartError(null);
     setLastCheckStatus(null);
 
     return callbacksRef.current
@@ -409,6 +415,27 @@ export function useNamespaceVerificationFlow({
           setState("expired");
           return;
         }
+        if (activeFamily === "hns") {
+          if (isExpiredRestart && (!result.hnsImportPayload || result.hnsImportPayload.kind !== "hns_import")) {
+            throw new Error("Restart response did not include a Handshake record list");
+          }
+          if (result.hnsImportPayload?.kind === "hns_import") {
+            setHnsImportPayload(result.hnsImportPayload);
+          }
+        }
+        setFailureReason(result.failureReason);
+        if (result.status === "dns_setup_required") {
+          setState("dns_setup_required");
+        } else if (result.status === "challenge_pending") {
+          setState("challenge_pending");
+        } else if (result.status === "verified") {
+          setState("verified");
+          setNamespaceVerificationId(result.namespaceVerificationId);
+        } else if (result.status === "failed" || result.status === "disputed") {
+          setState("failed");
+        } else {
+          setState("challenge_ready");
+        }
         return callbacksRef.current
           .onGetSession({ namespaceVerificationSessionId: sessionId })
           .then((sessionResult) => {
@@ -418,10 +445,7 @@ export function useNamespaceVerificationFlow({
             }
           })
           .catch((error: unknown) => {
-            if (!isSetupCheck) {
-              setState("idle");
-              resetChallengeState();
-            }
+            setRestartError(error instanceof Error ? error.message : "Could not refresh the recovered record list");
             toast.error(
               error instanceof Error
                 ? error.message
@@ -430,7 +454,10 @@ export function useNamespaceVerificationFlow({
           });
       })
       .catch((error: unknown) => {
-        if (!isSetupCheck) {
+        if (isExpiredRestart) {
+          setState("expired");
+          setRestartError(error instanceof Error ? error.message : "Could not get a new record list");
+        } else if (!isSetupCheck) {
           setState("failed");
         }
         toast.error(
@@ -440,7 +467,7 @@ export function useNamespaceVerificationFlow({
         );
       })
       .finally(() => {
-        if (isSetupCheck) {
+        if (isSetupCheck || isExpiredRestart) {
           setCheckingSetup(false);
         }
       });
@@ -489,6 +516,7 @@ export function useNamespaceVerificationFlow({
     signature,
     namespaceVerificationId,
     failureReason,
+    restartError,
     lastCheckStatus,
     operationClass,
     pirateDnsAuthorityVerified,

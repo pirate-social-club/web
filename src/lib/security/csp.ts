@@ -81,6 +81,7 @@ export function buildContentSecurityPolicy(
       "https://explorer-api.walletconnect.com",
       "https://api.coingecko.com",
       "https://s3.filebase.com",
+      "https://s3.filebase.io",
       "https://mainnet.base.org",
       "https://sepolia.base.org",
       "https://eth.merkle.io",

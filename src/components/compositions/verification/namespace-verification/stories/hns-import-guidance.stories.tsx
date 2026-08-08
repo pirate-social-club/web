@@ -102,6 +102,23 @@ export const PendingTreeCommit: Story = {
   },
 };
 
+export const VerifierUnavailable: Story = {
+  name: "Status check unavailable",
+  args: {
+    failureReason: "provider_unavailable",
+    payload: {
+      ...acknowledgedPayload,
+      update_observed_height: 342_433,
+      target_tree_boundary: 342_468,
+      observation: {
+        state: "pending_tree_commit",
+        current_height: 342_440,
+        target_tree_boundary: 342_468,
+      },
+    },
+  },
+};
+
 export const ResourceMismatch: Story = {
   name: "Published records don't match",
   args: {

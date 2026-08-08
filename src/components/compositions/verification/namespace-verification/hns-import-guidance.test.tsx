@@ -174,6 +174,30 @@ describe("HnsImportGuidance", () => {
     expect(markup).not.toContain("tree commit");
   });
 
+  test("provider outage replaces stale commit progress with a retryable status", () => {
+    const markup = renderToStaticMarkup(
+      <HnsImportGuidance
+        failureReason="provider_unavailable"
+        payload={{
+          ...acknowledgedPayload,
+          update_observed_height: 342_433,
+          target_tree_boundary: 342_468,
+          observation: {
+            state: "pending_tree_commit",
+            current_height: 342_440,
+            target_tree_boundary: 342_468,
+          },
+        }}
+      />,
+    );
+
+    expect(markup).toContain("Status check unavailable");
+    expect(markup).toContain("Try again in a moment.");
+    expect(markup).not.toContain("Transaction confirmed");
+    expect(markup).not.toContain("Handshake is finalizing");
+    expect(markup).not.toContain("about 5 hours");
+  });
+
   test("delegation state reports the observation without claiming a cause", () => {
     const markup = renderToStaticMarkup(
       <HnsImportGuidance

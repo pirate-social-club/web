@@ -96,10 +96,12 @@ export function hnsImportNeedsPublishAcknowledgement(payload: HnsImportChallenge
 
 export function HnsImportGuidance({
   expired = false,
+  failureReason = null,
   payload,
   restartError = null,
 }: {
   expired?: boolean;
+  failureReason?: string | null;
   payload: HnsImportChallengePayload;
   restartError?: string | null;
 }) {
@@ -108,6 +110,7 @@ export function HnsImportGuidance({
   const target = observation?.target_tree_boundary ?? payload.target_tree_boundary;
   const stage = currentStage(payload);
   const blocked = stage === "publish" && hnsImportHasUnsupportedRecords(payload);
+  const verifierUnavailable = failureReason === "provider_unavailable";
 
   return (
     <div className="space-y-5 rounded-[var(--radius-2xl)] border border-border-soft bg-card p-4 md:p-5">
@@ -119,32 +122,38 @@ export function HnsImportGuidance({
 
       {restartError ? <FormNote tone="warning">{restartError}</FormNote> : null}
 
-      {!expired && stage === "publish" && blocked ? (
+      {!expired && verifierUnavailable ? (
+        <StatusBlock title="Status check unavailable" tone="action">
+          Try again in a moment.
+        </StatusBlock>
+      ) : null}
+
+      {!expired && !verifierUnavailable && stage === "publish" && blocked ? (
         <StatusBlock title="Unsupported records" tone="action">
           This name contains records that Bob Wallet cannot preserve. Contact support before publishing an update.
         </StatusBlock>
       ) : null}
 
-      {!expired && stage === "publish" && !blocked ? (
+      {!expired && !verifierUnavailable && stage === "publish" && !blocked ? (
         <div className="space-y-4">
           <Type as="h3" variant="body-strong">Publish these records</Type>
           <ResourceRecordList records={plan.replacement_records} />
         </div>
       ) : null}
 
-      {!expired && stage === "watch" ? (
+      {!expired && !verifierUnavailable && stage === "watch" ? (
         <StatusBlock title="Update not confirmed yet">
           Check again after it confirms.
         </StatusBlock>
       ) : null}
 
-      {!expired && stage === "commit" && target != null && observation ? (
+      {!expired && !verifierUnavailable && stage === "commit" && target != null && observation ? (
         <StatusBlock title="Transaction confirmed">
           Handshake is finalizing the update. Check again in {approximateBoundaryEta(observation.current_height, target)}.
         </StatusBlock>
       ) : null}
 
-      {!expired && stage === "compare" ? (
+      {!expired && !verifierUnavailable && stage === "compare" ? (
         <div className="space-y-4">
           <StatusBlock title="Published records don't match" tone="action">
             Publish the full list again as one update. A partial fix won&apos;t work.
@@ -157,13 +166,13 @@ export function HnsImportGuidance({
         </div>
       ) : null}
 
-      {!expired && stage === "observe" ? (
+      {!expired && !verifierUnavailable && stage === "observe" ? (
         <StatusBlock title="Records confirmed">
           Secure delegation isn&apos;t available yet.
         </StatusBlock>
       ) : null}
 
-      {!expired && stage === "done" ? (
+      {!expired && !verifierUnavailable && stage === "done" ? (
         <StatusBlock title="Setup complete" tone="done" />
       ) : null}
     </div>

@@ -50,6 +50,7 @@ import { getLocaleMessages } from "@/locales";
 import { applySecurityHeaders } from "@/lib/security/csp";
 import { buildVersionResponse, type BuildVersionEnv } from "@/lib/build-version";
 import { telegramCommunityJoinRedirect } from "@/lib/telegram-join-redirect";
+import { applyImmutableBuildAssetCacheHeader } from "@/lib/immutable-build-asset";
 import {
   buildAgentSeoMetadata,
   buildOpenGraphUrl,
@@ -584,7 +585,10 @@ export default {
       return buildWebBotAuthDirectoryResponse(request, env as WebBotAuthEnv);
     }
 
-    const response = await app.fetch(request, env, cf);
+    const response = applyImmutableBuildAssetCacheHeader(
+      request,
+      await app.fetch(request, env, cf),
+    );
     if (!markdownRequested(request)) {
       return response;
     }

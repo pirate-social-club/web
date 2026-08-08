@@ -1,4 +1,5 @@
 import { DEFAULT_BASE_URL } from "./client";
+import { HNS_API_ORIGIN, isHnsHostname, isLocalHostname } from "./hns-hostname";
 
 function readExplicitApiBaseUrl(): string | null {
   const value = import.meta.env.VITE_PIRATE_API_BASE_URL;
@@ -16,36 +17,6 @@ function resolveEnvironmentFallback(): string {
   }
 
   return DEFAULT_BASE_URL;
-}
-
-function isLocalHostname(hostname: string): boolean {
-  return (
-    !hostname
-    || hostname === "localhost"
-    || hostname.endsWith(".localhost")
-    || hostname === "127.0.0.1"
-    || hostname.startsWith("127.")
-  );
-}
-
-function isHnsHostname(hostname: string): boolean {
-  if (!hostname || isLocalHostname(hostname)) {
-    return false;
-  }
-
-  if (hostname.endsWith(".pirate")) {
-    return true;
-  }
-
-  if (!hostname.includes(".")) {
-    return /^[a-z0-9-]+$/u.test(hostname);
-  }
-
-  // Imported HNS roots use the dashboard-compatible app.<root> origin.
-  // Keep other subdomains on their normal ICANN routing until a host is
-  // explicitly recognized as an HNS application origin.
-  const labels = hostname.split(".");
-  return labels.length === 2 && labels[0] === "app" && /^[a-z0-9-]+$/u.test(labels[1]);
 }
 
 function getBrowserHostname(): string {
@@ -87,11 +58,9 @@ export function resolveApiBaseUrl(hostname?: string | null): string {
   }
 
   if (isHnsHostname(resolvedHostname)) {
-    // HNS visitors ride the HNS trust chain for the API as well: the .sc zone
-    // cannot anchor DNSSEC (the registry publishes no DS records), so a
-    // dual-root browser cannot produce timely authenticated ICANN evidence
-    // for api.pirate.sc, while api.pirate resolves and DANE-verifies natively.
-    return "https://api.pirate";
+    // HNS visitors ride the HNS trust chain for the API as well; see
+    // HNS_API_ORIGIN for why api.pirate.sc cannot serve them.
+    return HNS_API_ORIGIN;
   }
 
   return resolveEnvironmentFallback();

@@ -38,6 +38,7 @@ import {
   resolveForwardedCommunityRouteSegment,
   type HnsForwardedOriginEnv,
 } from "@/lib/hns-forwarded-origin";
+import { resolveBrowserReachableApiOrigin } from "@/lib/api/hns-hostname";
 import {
   resolveLocaleDirection,
   resolveLocaleLanguageTag,
@@ -441,7 +442,11 @@ const app = defineApp<AppRequestInfo>([
     ctx.dir = resolveLocaleDirection(locale);
     ctx.homeFeedPreloadUrl = route.kind === "home"
       ? buildHomeFeedPreloadUrl(
-        discovery.apiOrigin,
+        // The bootstrap script runs in the visitor's browser, so it must use
+        // the API origin reachable from the effective host: HNS visitors
+        // cannot validate api.pirate.sc and need api.pirate here, while the
+        // worker's own server-side lookups keep discovery.apiOrigin.
+        resolveBrowserReachableApiOrigin(url.hostname, discovery.apiOrigin),
         resolveViewerContentLocale({
           uiLocale: locale,
           browserLocales: acceptLanguageTags(request.headers.get("accept-language")),

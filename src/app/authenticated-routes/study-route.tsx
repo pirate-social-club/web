@@ -1071,6 +1071,12 @@ export function StudyRoutePage({
                 session_id: studySessionId,
                 timezone: deviceTimezone(),
                 transcript: transcription.text,
+                ...(transcription.language_code
+                  ? { transcription_language_code: transcription.language_code }
+                  : {}),
+                ...(transcription.language_probability == null
+                  ? {}
+                  : { transcription_language_probability: transcription.language_probability }),
                 type: "say_it_back",
               }).then((result) => ({ result, transcript: transcription.text })))
               .then(({ result, transcript }) => {

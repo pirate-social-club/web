@@ -392,7 +392,8 @@ function walletRewardsSummary(input: {
     };
   }
   if (input.rewards.cashout.verification_state !== "verified") {
-    if (input.rewards.pending_verification.conditional_cents <= 0) {
+    const creditedBalanceCanCashOut = input.rewards.balance_cents >= input.rewards.cashout.min_cents;
+    if (!creditedBalanceCanCashOut && input.rewards.pending_verification.conditional_cents <= 0) {
       return {
         actionDisabled: true,
         actionLabel: "Claim",
@@ -406,7 +407,9 @@ function walletRewardsSummary(input: {
       amountLabel,
       assetLabel,
       onAction: input.onVerify,
-      supportingLabel: pendingRewardDeadline(input.rewards.pending_verification.earliest_expires_at),
+      supportingLabel: creditedBalanceCanCashOut
+        ? "Verify to transfer your reward."
+        : pendingRewardDeadline(input.rewards.pending_verification.earliest_expires_at),
     };
   }
   if (input.rewards.pending_verification.conditional_cents > 0) {

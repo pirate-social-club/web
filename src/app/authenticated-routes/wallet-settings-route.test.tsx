@@ -428,6 +428,40 @@ describe("CurrentUserWalletPage rewards", () => {
     expect(view.getByText("ZKPassport")).toBeTruthy();
   });
 
+  test("keeps Claim as the re-verification entry point for a credited balance", async () => {
+    fakeApi.rewards.getSummary = mock(async () => ({
+      chain_id: 8453,
+      balance_cents: 100,
+      today_earned_cents: 100,
+      recent_events: [],
+      recent_qualifications: [],
+      pending_verification: {
+        count: 0,
+        conditional_cents: 0,
+        earliest_expires_at: null,
+      },
+      cashout: {
+        eligible: false,
+        min_cents: 100,
+        verification_state: "unverified",
+        verification_provider: "self",
+      },
+      latest_in_flight_cashout: null,
+    }));
+    const view = render(<CurrentUserWalletPage />);
+
+    await waitFor(() => {
+      expect(view.getByText("$1.00")).toBeTruthy();
+      expect(view.getByText("Verify to transfer your reward.")).toBeTruthy();
+    });
+    fireEvent.click(view.getByText("Claim"));
+
+    expect(view.getByText("Verify once")).toBeTruthy();
+    expect(view.getByText("Self")).toBeTruthy();
+    expect(view.getByText("Very")).toBeTruthy();
+    expect(view.getByText("ZKPassport")).toBeTruthy();
+  });
+
   test("explains how a verified user can reach the claim minimum", async () => {
     fakeApi.rewards.getSummary = mock(async () => ({
       chain_id: 84532,

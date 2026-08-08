@@ -448,6 +448,7 @@ export function CommunityNamespaceVerificationPage({
         {(flow.isDnsSetupRequired || flow.isChallengeReady || flow.isChallengePending || flow.isVerifying || flow.isFailed || flow.isExpired) && flow.isHns && flow.hnsImportPayload ? (
           <HnsImportGuidance
             expired={flow.isExpired}
+            failureReason={flow.failureReason}
             payload={flow.hnsImportPayload}
             restartError={flow.restartError}
           />

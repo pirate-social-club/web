@@ -15,7 +15,12 @@ import {
 import {
   NamespaceVerificationSpacesPanel,
 } from "@/components/compositions/verification/namespace-verification/namespace-verification-shared";
-import { HnsImportGuidance } from "@/components/compositions/verification/namespace-verification/hns-import-guidance";
+import {
+  getHnsImportActionLabel,
+  HnsImportGuidance,
+  hnsImportHasUnsupportedRecords,
+  hnsImportNeedsPublishAcknowledgement,
+} from "@/components/compositions/verification/namespace-verification/hns-import-guidance";
 import {
   getHnsStatusMessage,
   getNamespaceVerificationFailureMessage,
@@ -154,6 +159,18 @@ export function CommunityNamespaceVerificationPage({
   ) && !flow.isVerified;
   const primaryButtonClassName = cn(isMobile && "w-full");
   const secondaryButtonClassName = cn(isMobile && "w-full");
+  const hnsImportActionLabel = flow.hnsImportPayload
+    ? getHnsImportActionLabel(flow.hnsImportPayload)
+    : null;
+  const runHnsImportAction = flow.hnsImportPayload
+    && hnsImportNeedsPublishAcknowledgement(flow.hnsImportPayload)
+    ? flow.actions.verifyPublishedUpdate
+    : flow.actions.verify;
+  // Unsupported records would be dropped by self-service publishing, so the
+  // publish action is hidden entirely until support intervenes.
+  const hnsImportBlocked = Boolean(flow.hnsImportPayload
+    && hnsImportNeedsPublishAcknowledgement(flow.hnsImportPayload)
+    && hnsImportHasUnsupportedRecords(flow.hnsImportPayload));
   const canChooseDifferentNamespace = (
     flow.isDnsSetupRequired ||
     flow.isChallengePending ||
@@ -174,25 +191,29 @@ export function CommunityNamespaceVerificationPage({
   ) : null;
   const primaryFooterActions = (
     <>
-      {flow.isDnsSetupRequired ? (
+      {flow.isDnsSetupRequired && !hnsImportBlocked ? (
         <Button
           className={primaryButtonClassName}
-          disabled={Boolean(flow.hnsImportPayload) && !flow.replacementAcknowledged && !flow.hnsImportPayload?.replacement_acknowledged_at}
           loading={flow.isVerifying}
-          onClick={flow.hnsImportPayload ? flow.actions.verify : flow.actions.restart}
+          onClick={flow.hnsImportPayload ? runHnsImportAction : flow.actions.restart}
         >
-          {mc.checkSetup}
+          {hnsImportActionLabel ?? mc.checkSetup}
         </Button>
       ) : null}
-      {flow.isChallengePending ? (
-        <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.actions.verify}>{flow.isSpaces ? mc.checkSetup : mc.verifyAction}</Button>
+      {flow.isChallengePending && !hnsImportBlocked ? (
+        <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.hnsImportPayload ? runHnsImportAction : flow.actions.verify}>{hnsImportActionLabel ?? (flow.isSpaces ? mc.checkSetup : mc.verifyAction)}</Button>
       ) : null}
       {(flow.isFailed || flow.isExpired) ? (
         <>
-          {flow.isFailed && flow.isHns ? (
-            <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.actions.verify}>{mc.checkAgain}</Button>
+          {flow.isExpired && flow.isHns ? (
+            <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.actions.restart}>
+              Get a new record list
+            </Button>
           ) : null}
-          {flow.isFailed && flow.isHns ? null : (
+          {flow.isFailed && flow.isHns && !hnsImportBlocked ? (
+            <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.hnsImportPayload ? runHnsImportAction : flow.actions.verify}>{hnsImportActionLabel ?? mc.checkAgain}</Button>
+          ) : null}
+          {flow.isHns ? null : (
             <Button className={primaryButtonClassName} onClick={flow.actions.restart}>{flow.isHns ? mc.getChallenge : mc.newChallenge}</Button>
           )}
         </>
@@ -202,9 +223,9 @@ export function CommunityNamespaceVerificationPage({
           {flow.isHns ? mc.continueLabel : mc.getChallenge}
         </Button>
       ) : null}
-      {(flow.isChallengeReady || flow.isVerifying) ? (
-        <Button className={primaryButtonClassName} disabled={!flow.canSubmitSignature} loading={flow.isVerifying} onClick={flow.actions.verify}>
-          {flow.isSpaces ? mc.checkSetup : mc.verifyAction}
+      {(flow.isChallengeReady || flow.isVerifying) && !flow.isExpired && !hnsImportBlocked ? (
+        <Button className={primaryButtonClassName} disabled={!flow.canSubmitSignature} loading={flow.isVerifying} onClick={flow.hnsImportPayload ? runHnsImportAction : flow.actions.verify}>
+          {hnsImportActionLabel ?? (flow.isSpaces ? mc.checkSetup : mc.verifyAction)}
         </Button>
       ) : null}
     </>
@@ -426,11 +447,9 @@ export function CommunityNamespaceVerificationPage({
 
         {(flow.isDnsSetupRequired || flow.isChallengeReady || flow.isChallengePending || flow.isVerifying || flow.isFailed || flow.isExpired) && flow.isHns && flow.hnsImportPayload ? (
           <HnsImportGuidance
-            acknowledged={flow.replacementAcknowledged}
-            busy={flow.busy}
-            onAcknowledgedChange={flow.actions.setReplacementAcknowledged}
+            expired={flow.isExpired}
             payload={flow.hnsImportPayload}
-            rootLabel={flow.rootLabel}
+            restartError={flow.restartError}
           />
         ) : null}
 

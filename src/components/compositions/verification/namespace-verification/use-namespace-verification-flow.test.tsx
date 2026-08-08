@@ -242,7 +242,7 @@ describe("useNamespaceVerificationFlow", () => {
     expect(result.current.isDnsSetupRequired).toBe(true);
   });
 
-  test("passes the complete-resource acknowledgement and retains HNS progress", async () => {
+  test("one publish action acknowledges the complete replacement and submits it", async () => {
     let completeInput: Parameters<NamespaceVerificationCallbacks["onCompleteSession"]>[0] | null = null;
     const pendingPayload = {
       ...hnsImportPayload,
@@ -273,8 +273,7 @@ describe("useNamespaceVerificationFlow", () => {
 
     act(() => result.current.actions.setRootLabel("myroot"));
     await act(async () => result.current.actions.start());
-    act(() => result.current.actions.setReplacementAcknowledged(true));
-    await act(async () => result.current.actions.verify());
+    await act(async () => result.current.actions.verifyPublishedUpdate());
 
     expect(completeInput).toEqual({
       namespaceVerificationSessionId: "session-123",
@@ -477,6 +476,80 @@ describe("useNamespaceVerificationFlow", () => {
 
     expect(result.current.state).toBe("expired");
     expect(result.current.isExpired).toBe(true);
+  });
+
+  test("expired HNS restart replaces the payload and exits expired state", async () => {
+    const freshPayload = {
+      ...hnsImportPayload,
+      publish_plan: {
+        ...hnsImportPayload.publish_plan,
+        replacement_records: [{ type: "TXT", txt: ["pirate-verification=nch_fresh"] }],
+      },
+    };
+    let restarted = false;
+    let completeInput: Parameters<NamespaceVerificationCallbacks["onCompleteSession"]>[0] | null = null;
+    const { result } = renderHook(() => useNamespaceVerificationFlow({
+      activeSessionId: "session-expired-hns",
+      callbacks: createMockCallbacks({
+        onCompleteSession: async (input) => {
+          completeInput = input;
+          restarted = true;
+          return mockCompleteResult({
+            status: "challenge_required",
+            namespaceVerificationId: null,
+            hnsImportPayload: freshPayload,
+          });
+        },
+        onGetSession: async () => {
+          if (restarted) throw new Error("Status reconciliation unavailable");
+          return mockStartResult({
+            namespaceVerificationSessionId: "session-expired-hns",
+            status: "expired",
+            hnsImportPayload,
+          });
+        },
+      }),
+      enabled: true,
+    }));
+
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(result.current.isExpired).toBe(true);
+    expect(result.current.hnsImportPayload).toBe(hnsImportPayload);
+
+    await act(async () => { await result.current.actions.restart(); });
+
+    expect(completeInput).toMatchObject({
+      namespaceVerificationSessionId: "session-expired-hns",
+      family: "hns",
+      restartChallenge: true,
+    });
+    expect(result.current.isExpired).toBe(false);
+    expect(result.current.isChallengeReady).toBe(true);
+    expect(result.current.hnsImportPayload).toBe(freshPayload);
+    expect(result.current.restartError).toBe("Status reconciliation unavailable");
+  });
+
+  test("expired HNS restart failure preserves the payload and typed error", async () => {
+    const { result } = renderHook(() => useNamespaceVerificationFlow({
+      activeSessionId: "session-expired-hns",
+      callbacks: createMockCallbacks({
+        onCompleteSession: async () => { throw new Error("Verifier contract is unavailable"); },
+        onGetSession: async () => mockStartResult({
+          namespaceVerificationSessionId: "session-expired-hns",
+          status: "expired",
+          hnsImportPayload,
+        }),
+      }),
+      enabled: true,
+    }));
+
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const previousPayload = result.current.hnsImportPayload;
+    await act(async () => { await result.current.actions.restart(); });
+
+    expect(result.current.isExpired).toBe(true);
+    expect(result.current.hnsImportPayload).toBe(previousPayload);
+    expect(result.current.restartError).toBe("Verifier contract is unavailable");
   });
 
   test("verify returns failed with failureReason", async () => {

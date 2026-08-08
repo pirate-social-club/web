@@ -1755,7 +1755,7 @@ test.describe("live staging integration", () => {
     page.on("request", (request) => {
       if (request.method().toUpperCase() !== "PUT") return;
       const url = new URL(request.url());
-      if (!url.hostname.endsWith("filebase.com")) return;
+      if (!url.hostname.endsWith("filebase.com") && !url.hostname.endsWith("filebase.io")) return;
       if (!url.searchParams.has("partNumber") || !url.searchParams.has("uploadId")) return;
       filebasePartRequests.push(url);
     });
@@ -1763,7 +1763,7 @@ test.describe("live staging integration", () => {
       const request = response.request();
       if (request.method().toUpperCase() !== "PUT") return;
       const url = new URL(response.url());
-      if (!url.hostname.endsWith("filebase.com")) return;
+      if (!url.hostname.endsWith("filebase.com") && !url.hostname.endsWith("filebase.io")) return;
       if (!url.searchParams.has("partNumber") || !url.searchParams.has("uploadId")) return;
       filebasePartStatuses.push({
         partNumber: url.searchParams.get("partNumber"),

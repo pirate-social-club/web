@@ -44,7 +44,6 @@ export type UseNamespaceVerificationFlowReturn = {
   challengeTxtValue: string | null;
   challengePayload: SpacesChallengePayload | null;
   hnsImportPayload: HnsImportChallengePayload | null;
-  replacementAcknowledged: boolean;
   signature: string;
   namespaceVerificationId: string | null;
   failureReason: string | null;
@@ -76,9 +75,9 @@ export type UseNamespaceVerificationFlowReturn = {
     setRootLabel: (value: string) => void;
     setActiveFamily: (family: NamespaceFamily) => void;
     setSignature: (value: string) => void;
-    setReplacementAcknowledged: (value: boolean) => void;
     start: () => void;
     verify: () => void;
+    verifyPublishedUpdate: () => void;
     restart: () => void;
     reset: () => void;
   };
@@ -108,7 +107,6 @@ export function useNamespaceVerificationFlow({
     React.useState<SpacesChallengePayload | null>(null);
   const [hnsImportPayload, setHnsImportPayload] =
     React.useState<HnsImportChallengePayload | null>(null);
-  const [replacementAcknowledged, setReplacementAcknowledged] = React.useState(false);
   const [signature, setSignature] = React.useState("");
   const [namespaceVerificationId, setNamespaceVerificationId] =
     React.useState<string | null>(null);
@@ -149,7 +147,6 @@ export function useNamespaceVerificationFlow({
     setChallengeTxtValue(null);
     setChallengePayload(null);
     setHnsImportPayload(null);
-    setReplacementAcknowledged(false);
     setSignature("");
     setOperationClass(null);
     setPirateDnsAuthorityVerified(null);
@@ -288,7 +285,7 @@ export function useNamespaceVerificationFlow({
       });
   }, [activeFamily, applySessionResult, rootLabelResult]);
 
-  const verify = React.useCallback(() => {
+  const verifySession = React.useCallback((replacementAcknowledgementOverride?: boolean) => {
     if (!sessionId) return Promise.resolve();
 
     const isSetupCheck = stateRef.current === "dns_setup_required";
@@ -306,7 +303,7 @@ export function useNamespaceVerificationFlow({
       namespaceVerificationSessionId: sessionId,
       family: activeFamily,
       acknowledgedResourceReplacement: activeFamily === "hns" && hnsImportPayload
-        ? replacementAcknowledged
+        ? replacementAcknowledgementOverride ?? false
         : undefined,
     };
 
@@ -348,7 +345,10 @@ export function useNamespaceVerificationFlow({
           setCheckingSetup(false);
         }
       });
-  }, [activeFamily, hnsImportPayload, replacementAcknowledged, sessionId]);
+  }, [activeFamily, hnsImportPayload, sessionId]);
+
+  const verify = React.useCallback(() => verifySession(), [verifySession]);
+  const verifyPublishedUpdate = React.useCallback(() => verifySession(true), [verifySession]);
 
   const restart = React.useCallback(() => {
     if (!sessionId) {
@@ -486,7 +486,6 @@ export function useNamespaceVerificationFlow({
     challengeTxtValue,
     challengePayload,
     hnsImportPayload,
-    replacementAcknowledged,
     signature,
     namespaceVerificationId,
     failureReason,
@@ -518,9 +517,9 @@ export function useNamespaceVerificationFlow({
       setRootLabel: setRootLabelInput,
       setActiveFamily: setActiveFamilyInput,
       setSignature,
-      setReplacementAcknowledged,
       start,
       verify,
+      verifyPublishedUpdate,
       restart,
       reset,
     },

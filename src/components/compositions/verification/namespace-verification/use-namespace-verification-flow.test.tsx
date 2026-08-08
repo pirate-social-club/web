@@ -242,7 +242,7 @@ describe("useNamespaceVerificationFlow", () => {
     expect(result.current.isDnsSetupRequired).toBe(true);
   });
 
-  test("passes the complete-resource acknowledgement and retains HNS progress", async () => {
+  test("one publish action acknowledges the complete replacement and submits it", async () => {
     let completeInput: Parameters<NamespaceVerificationCallbacks["onCompleteSession"]>[0] | null = null;
     const pendingPayload = {
       ...hnsImportPayload,
@@ -273,8 +273,7 @@ describe("useNamespaceVerificationFlow", () => {
 
     act(() => result.current.actions.setRootLabel("myroot"));
     await act(async () => result.current.actions.start());
-    act(() => result.current.actions.setReplacementAcknowledged(true));
-    await act(async () => result.current.actions.verify());
+    await act(async () => result.current.actions.verifyPublishedUpdate());
 
     expect(completeInput).toEqual({
       namespaceVerificationSessionId: "session-123",

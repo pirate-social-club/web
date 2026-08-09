@@ -93,7 +93,13 @@ export function CommunityModerationGuard({
     }
 
     if (isApiNotFoundError(error)) {
-      return <NotFoundRouteState path={window.location.pathname} />;
+      return (
+        <NotFoundRouteState
+          description="This community doesn't exist, or your current account can't manage it. If it was created under a different account, switch accounts and try again."
+          path={window.location.pathname}
+          title="Community unavailable"
+        />
+      );
     }
 
     return (

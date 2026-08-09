@@ -281,13 +281,121 @@ export function CommunityNamespaceVerificationPage({
       && isHnsNativeRoutingLive(attachedPrimary)
       ? `https://${attachedRouteSlug}/`
       : null;
-    const routingPending = attachedPrimary?.family === "hns" && !handshakeUrl;
+
+    if (attachedPrimary?.family === "hns") {
+      const recordsComplete = attachedPrimary.hns_setup_status === "setup_complete"
+        || attachedPrimary.hns_setup_status === "import_complete";
+      const delegationSecure = attachedPrimary.delegation?.delegation_security === "secure";
+      const state = needsHnsImportUpgrade ? "recovery" : handshakeUrl ? "live" : "pending";
+      const title = state === "recovery"
+        ? "HNS setup incomplete"
+        : state === "pending"
+          ? "HNS setup pending"
+          : "HNS route live";
+
+      return (
+        <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
+            <Type as="h1" variant="h1" className="md:text-4xl">{title}</Type>
+            {onBackClick ? <Button onClick={onBackClick} variant="outline">Back to moderation</Button> : null}
+          </div>
+
+          <div className="space-y-5 rounded-[var(--radius-2xl)] border border-border-soft bg-card p-4 md:p-5">
+            {state === "recovery" ? (
+              <>
+                <div className="space-y-2">
+                  <Type as="h2" variant="body-strong">Secure routing still needs an HNS update</Type>
+                  <Type as="p" variant="body">
+                    You proved ownership, but this root still needs Pirate&apos;s nameserver and DNSSEC records before its native route can be enabled. Your existing community route stays available during setup.
+                  </Type>
+                </div>
+                <HnsSetupProgress
+                  delegationSecure={false}
+                  nativeRouteLive={false}
+                  recordsComplete={false}
+                />
+                <Button onClick={handleHnsImportUpgrade}>Generate HNS records</Button>
+              </>
+            ) : state === "pending" ? (
+              <>
+                <div className="space-y-2">
+                  <Type as="h2" variant="body-strong">Waiting for secure native routing</Type>
+                  <Type as="p" variant="body">
+                    {delegationSecure
+                      ? "The secure delegation is visible. Pirate is completing its routing checks."
+                      : "Pirate is waiting for the published HNS records and secure delegation to become visible on-chain."}
+                  </Type>
+                </div>
+                <HnsSetupProgress
+                  delegationSecure={delegationSecure}
+                  nativeRouteLive={false}
+                  recordsComplete={recordsComplete}
+                />
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Type as="h2" variant="body-strong">Your HNS route is ready</Type>
+                  <Type as="p" variant="body">
+                    This community is available at{" "}
+                    {publicCommunityUrl ? <a className="text-primary underline-offset-4 hover:underline" href={publicCommunityUrl}>{publicCommunityUrl}</a> : "its Pirate route"}
+                    {handshakeUrl ? <>{" "}and{" "}<a className="text-primary underline-offset-4 hover:underline" href={handshakeUrl}>{handshakeUrl}</a></> : null}.
+                  </Type>
+                </div>
+                <HnsSetupProgress delegationSecure nativeRouteLive recordsComplete />
+
+                {namespaceAttachments.length ? (
+                  <div className="space-y-2 border-t border-border-soft pt-4">
+                    <Type as="h2" variant="body-strong">Attached name namespaces</Type>
+                    {namespaceAttachments.map((namespace) => (
+                      <div className="flex items-center justify-between gap-3" key={namespace.namespace_verification}>
+                        <Type as="span" variant="body">{namespace.family === "spaces" ? `@${namespace.root_label}` : `.${namespace.root_label}`}</Type>
+                        <Type as="span" variant="caption">
+                          {namespace.namespace_role === "primary" ? "Primary · community route" : "Mirror · names only"}
+                        </Type>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {activeSessionId ? (
+                  <div className="space-y-3 border-t border-border-soft pt-4">
+                    <FormNote tone="warning">
+                      There is also a pending namespace verification for this community. Clear it before attaching another namespace.
+                    </FormNote>
+                    <Button loading={clearingPending} onClick={handleClearPendingSession} variant="outline">
+                      Clear pending verification
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="border-t border-border-soft pt-4">
+                    <Button
+                      onClick={() => {
+                        flow.actions.reset();
+                        flow.actions.setRootLabel("");
+                        setAddingMirror(true);
+                      }}
+                      variant="outline"
+                    >
+                      Attach another namespace
+                    </Button>
+                    <FormNote className="mt-2">
+                      Additional namespaces provide member names only. They do not change this community&apos;s route.
+                    </FormNote>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+      );
+    }
 
     return (
       <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
           <Type as="h1" variant="h1" className="md:text-4xl">
-            {handshakeUrl || attachedPrimary?.family === "spaces" ? "Success!" : "Ownership verified"}
+            Success!
           </Type>
           {onBackClick ? <Button onClick={onBackClick} variant="outline">Finish verification</Button> : null}
         </div>
@@ -301,56 +409,8 @@ export function CommunityNamespaceVerificationPage({
                   <a className="text-primary underline-offset-4 hover:underline" href={publicCommunityUrl}>
                     {publicCommunityUrl}
                   </a>
-                  {handshakeUrl ? <>{" "}and{" "}<a className="text-primary underline-offset-4 hover:underline" href={handshakeUrl}>{handshakeUrl}</a></> : null}
                   .
                 </Type>
-                {needsHnsImportUpgrade ? (
-                  <div className="space-y-3">
-                    <FormNote tone="warning">
-                      This approval predates signed HNS resource import. Complete the import to generate the exact resource replacement, including Pirate NS records and both required DS digests. Those records anchor the Pirate-served DNSSEC and TLSA chain. The current community route remains attached until the replacement is verified.
-                    </FormNote>
-                    <Button onClick={handleHnsImportUpgrade}>
-                      Complete HNS setup
-                    </Button>
-                  </div>
-                ) : routingPending ? (
-                  <FormNote tone="warning">
-                    {attachedPrimary?.delegation?.delegation_security === "unsecured"
-                      ? "Your Handshake delegation is live but not secure yet. DNSSEC DS records still need to be added before the native route can be enabled; contact Pirate support for the records while guided setup is being completed."
-                      : "Your ownership is verified. We are still checking the on-chain delegation and DNSSEC state; the native Handshake URL is not live yet."}
-                  </FormNote>
-                ) : null}
-                {handshakeUrl ? <Type as="p" variant="body">
-                  This route is ready in HNS-aware browsers. Freedom resolves Handshake names; Denuo and other validating clients additionally verify the DNSSEC and DANE chain configured during import. Use{" "}
-                  <a
-                    className="text-primary underline-offset-4 hover:underline"
-                    href="https://github.com/pirate-social-club/freedom-browser/releases"
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    Freedom Browser
-                  </a>
-                  {" "}or another HNS/DANE-capable browser. Conventional browsers must use the pirate.sc route.
-                </Type> : null}
-                {attachedPrimary?.family === "hns" ? (
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    <ClientReadiness
-                      label="Freedom"
-                      ready={attachedPrimary.delegation?.delegation_security === "unsecured" || attachedPrimary.delegation?.delegation_security === "secure"}
-                      waiting="Waiting for live NS delegation"
-                    />
-                    <ClientReadiness
-                      label="Denuo / DANE"
-                      ready={attachedPrimary.delegation?.delegation_security === "secure"}
-                      waiting="Waiting for DS, DNSSEC, and TLSA validation"
-                    />
-                    <ClientReadiness
-                      label="Pirate native route"
-                      ready={Boolean(handshakeUrl)}
-                      waiting="Waiting for secure observation and activation"
-                    />
-                  </div>
-                ) : null}
               </div>
             ) : (
               <FormNote>This community namespace is connected. There is nothing else to set up here.</FormNote>
@@ -543,11 +603,36 @@ export function CommunityNamespaceVerificationPage({
   );
 }
 
-function ClientReadiness({ label, ready, waiting }: { label: string; ready: boolean; waiting: string }) {
+function HnsSetupProgress({
+  delegationSecure,
+  nativeRouteLive,
+  recordsComplete,
+}: {
+  delegationSecure: boolean;
+  nativeRouteLive: boolean;
+  recordsComplete: boolean;
+}) {
+  const steps = [
+    { label: "Ownership verified", complete: true },
+    { label: "Publish Pirate HNS records", complete: recordsComplete },
+    { label: "Confirm secure delegation", complete: delegationSecure },
+    { label: "Enable native route", complete: nativeRouteLive },
+  ];
+  const firstIncomplete = steps.findIndex((step) => !step.complete);
+
   return (
-    <div className="rounded-xl border border-border-soft p-3">
-      <Type as="div" variant="body-strong">{label}</Type>
-      <Type as="div" variant="caption">{ready ? "Ready" : waiting}</Type>
+    <div aria-label="HNS setup progress" className="overflow-hidden rounded-xl border border-border-soft">
+      {steps.map((step, index) => {
+        const status = step.complete ? "Done" : index === firstIncomplete ? "Next" : "Waiting";
+        return (
+          <div className="flex items-center justify-between gap-4 border-b border-border-soft px-3 py-3 last:border-b-0" key={step.label}>
+            <Type as="span" variant="body">{step.label}</Type>
+            <Type as="span" className={cn(step.complete && "text-success", index === firstIncomplete && "text-warning")} variant="caption">
+              {status}
+            </Type>
+          </div>
+        );
+      })}
     </div>
   );
 }

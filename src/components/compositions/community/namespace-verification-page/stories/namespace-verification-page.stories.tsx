@@ -427,8 +427,8 @@ export const TxtMismatch: Story = {
   ),
 };
 
-export const AttachedNamespace: Story = {
-  name: "Connected",
+export const LegacyImportRequired: Story = {
+  name: "HNS — Legacy setup required",
   render: () => (
     <CommunityNamespaceVerificationPage
       attachedNamespaceVerificationId="nvs_abc123"
@@ -442,6 +442,83 @@ export const AttachedNamespace: Story = {
           root_label: "infinity",
           route_slug: "infinity",
           verification_status: "verified",
+          hns_setup_status: "legacy_import_required",
+          delegation: {
+            pirate_web_routing_allowed: false,
+            pirate_subdomain_issuance_allowed: false,
+            delegation_security: "unsecured",
+            observation_fresh: true,
+            routing_withheld_reason: "delegation_not_secure",
+            signature_expiry_warning: false,
+            canonical_routing_eligible: false,
+            routing_hard_denied: false,
+          },
+        },
+      ]}
+      onBackClick={() => undefined}
+    />
+  ),
+};
+
+export const RoutingPending: Story = {
+  name: "HNS — Routing pending",
+  render: () => (
+    <CommunityNamespaceVerificationPage
+      attachedNamespaceVerificationId="nvs_abc123"
+      attachedRouteSlug="infinity"
+      callbacks={mockNamespaceCallbacks}
+      namespaceAttachments={[
+        {
+          namespace_verification: "nvs_abc123",
+          namespace_role: "primary",
+          family: "hns",
+          root_label: "infinity",
+          route_slug: "infinity",
+          verification_status: "verified",
+          hns_setup_status: "setup_complete",
+          delegation: {
+            pirate_web_routing_allowed: false,
+            pirate_subdomain_issuance_allowed: true,
+            delegation_security: "secure",
+            observation_fresh: true,
+            routing_withheld_reason: "canonical_activation_pending",
+            signature_expiry_warning: false,
+            canonical_routing_eligible: false,
+            routing_hard_denied: false,
+          },
+        },
+      ]}
+      onBackClick={() => undefined}
+    />
+  ),
+};
+
+export const Live: Story = {
+  name: "HNS — Live",
+  render: () => (
+    <CommunityNamespaceVerificationPage
+      attachedNamespaceVerificationId="nvs_abc123"
+      attachedRouteSlug="infinity"
+      callbacks={mockNamespaceCallbacks}
+      namespaceAttachments={[
+        {
+          namespace_verification: "nvs_abc123",
+          namespace_role: "primary",
+          family: "hns",
+          root_label: "infinity",
+          route_slug: "infinity",
+          verification_status: "verified",
+          hns_setup_status: "setup_complete",
+          delegation: {
+            pirate_web_routing_allowed: true,
+            pirate_subdomain_issuance_allowed: true,
+            delegation_security: "secure",
+            observation_fresh: true,
+            routing_withheld_reason: null,
+            signature_expiry_warning: false,
+            canonical_routing_eligible: true,
+            routing_hard_denied: false,
+          },
         },
         {
           namespace_verification: "nvs_def456",

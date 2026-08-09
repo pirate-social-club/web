@@ -136,7 +136,12 @@ export function HnsImportGuidance({
 
       {!expired && !verifierUnavailable && stage === "publish" && !blocked ? (
         <div className="space-y-4">
-          <Type as="h3" variant="body-strong">Publish these records</Type>
+          <div className="space-y-2">
+            <Type as="h3" variant="body-strong">Publish these records</Type>
+            <Type as="p" variant="body">
+              Your HNS wallet replaces the complete resource. Publish this entire list in one update; publishing only some records can remove records that are already live.
+            </Type>
+          </div>
           <ResourceRecordList records={plan.replacement_records} />
         </div>
       ) : null}

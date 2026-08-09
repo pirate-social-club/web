@@ -286,12 +286,32 @@ export function CommunityNamespaceVerificationPage({
       const recordsComplete = attachedPrimary.hns_setup_status === "setup_complete"
         || attachedPrimary.hns_setup_status === "import_complete";
       const delegationSecure = attachedPrimary.delegation?.delegation_security === "secure";
-      const state = needsHnsImportUpgrade ? "recovery" : handshakeUrl ? "live" : "pending";
+      const delegationSecurity = attachedPrimary.delegation?.delegation_security;
+      const delegationNeedsAttention = attachedPrimary.delegation?.observation_fresh === false
+        || delegationSecurity === "bogus"
+        || delegationSecurity === "drifted"
+        || attachedPrimary.delegation?.routing_hard_denied === true;
+      const state = needsHnsImportUpgrade
+        ? "recovery"
+        : handshakeUrl
+          ? "live"
+          : delegationNeedsAttention
+            ? "attention"
+            : "pending";
       const title = state === "recovery"
         ? "HNS setup incomplete"
+        : state === "attention"
+          ? "HNS delegation needs attention"
         : state === "pending"
           ? "HNS setup pending"
           : "HNS route live";
+      const attentionMessage = attachedPrimary.delegation?.routing_hard_denied === true
+        ? "Pirate has blocked native routing for this root. Contact Pirate support before publishing another HNS update."
+        : attachedPrimary.delegation?.observation_fresh === false
+          ? "Pirate's latest delegation check is stale, so native routing cannot advance. Check again later; if this persists, contact Pirate support."
+          : delegationSecurity === "drifted"
+            ? "The live HNS delegation no longer matches Pirate's expected nameserver or DNSSEC records. Review the complete record set and contact Pirate support before publishing another update."
+            : "Pirate cannot validate the published DNSSEC chain. Review the complete HNS record set and contact Pirate support before publishing another update.";
 
       return (
         <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8">
@@ -300,7 +320,13 @@ export function CommunityNamespaceVerificationPage({
             {onBackClick ? <Button onClick={onBackClick} variant="outline">Back to moderation</Button> : null}
           </div>
 
-          <div className="space-y-5 rounded-[var(--radius-2xl)] border border-border-soft bg-card p-4 md:p-5">
+          <HnsSetupProgress
+            delegationSecure={state === "live" || delegationSecure}
+            nativeRouteLive={state === "live"}
+            recordsComplete={state === "live" || recordsComplete}
+          />
+
+          <div aria-label="HNS setup details" className="space-y-5 rounded-[var(--radius-2xl)] border border-border-soft bg-card p-4 md:p-5">
             {state === "recovery" ? (
               <>
                 <div className="space-y-2">
@@ -309,13 +335,13 @@ export function CommunityNamespaceVerificationPage({
                     You proved ownership, but this root still needs Pirate&apos;s nameserver and DNSSEC records before its native route can be enabled. Your existing community route stays available during setup.
                   </Type>
                 </div>
-                <HnsSetupProgress
-                  delegationSecure={false}
-                  nativeRouteLive={false}
-                  recordsComplete={false}
-                />
                 <Button onClick={handleHnsImportUpgrade}>Generate HNS records</Button>
               </>
+            ) : state === "attention" ? (
+              <div className="space-y-3">
+                <Type as="h2" variant="body-strong">Secure routing cannot advance</Type>
+                <FormNote tone="warning">{attentionMessage}</FormNote>
+              </div>
             ) : state === "pending" ? (
               <>
                 <div className="space-y-2">
@@ -326,11 +352,6 @@ export function CommunityNamespaceVerificationPage({
                       : "Pirate is waiting for the published HNS records and secure delegation to become visible on-chain."}
                   </Type>
                 </div>
-                <HnsSetupProgress
-                  delegationSecure={delegationSecure}
-                  nativeRouteLive={false}
-                  recordsComplete={recordsComplete}
-                />
               </>
             ) : (
               <>
@@ -342,7 +363,6 @@ export function CommunityNamespaceVerificationPage({
                     {handshakeUrl ? <>{" "}and{" "}<a className="text-primary underline-offset-4 hover:underline" href={handshakeUrl}>{handshakeUrl}</a></> : null}.
                   </Type>
                 </div>
-                <HnsSetupProgress delegationSecure nativeRouteLive recordsComplete />
 
                 {namespaceAttachments.length ? (
                   <div className="space-y-2 border-t border-border-soft pt-4">

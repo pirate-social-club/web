@@ -251,6 +251,57 @@ describe("CommunityNamespaceVerificationPage legacy HNS import", () => {
     expect(view.getByRole("heading", { name: "HNS setup pending" })).toBeTruthy();
     expect(view.getByText("Enable native route")).toBeTruthy();
     expect(view.queryByText("Attached name namespaces")).toBeNull();
+    expect(view.getByLabelText("HNS setup progress").nextElementSibling).toBe(
+      view.getByLabelText("HNS setup details"),
+    );
+  });
+
+  test("makes drifted and stale delegations actionable", () => {
+    const attentionPrimary: ApiCommunityNamespaceAttachment = {
+      namespace_verification: "nv_attention",
+      namespace_role: "primary",
+      family: "hns",
+      root_label: "fixture-root",
+      route_slug: "fixture-root",
+      verification_status: "verified",
+      hns_setup_status: "setup_complete",
+      delegation: {
+        pirate_web_routing_allowed: false,
+        pirate_subdomain_issuance_allowed: false,
+        delegation_security: "drifted",
+        observation_fresh: true,
+        routing_withheld_reason: "delegation_drifted",
+        signature_expiry_warning: false,
+        canonical_routing_eligible: false,
+        routing_hard_denied: false,
+      },
+    };
+    const renderPage = (primary: ApiCommunityNamespaceAttachment) => (
+      <CommunityNamespaceVerificationPage
+        attachedNamespaceVerificationId="nv_attention"
+        attachedRouteSlug="fixture-root"
+        callbacks={callbacks}
+        namespaceAttachments={[primary]}
+      />
+    );
+    const view = render(renderPage(attentionPrimary));
+
+    expect(view.getByRole("heading", { name: "HNS delegation needs attention" })).toBeTruthy();
+    expect(view.getByText(/no longer matches Pirate's expected nameserver or DNSSEC records/u)).toBeTruthy();
+    expect(view.getByText(/contact Pirate support/u)).toBeTruthy();
+
+    view.rerender(renderPage({
+      ...attentionPrimary,
+      delegation: {
+        ...attentionPrimary.delegation!,
+        delegation_security: "pending",
+        observation_fresh: false,
+        routing_withheld_reason: "observation_stale",
+      },
+    }));
+
+    expect(view.getByText(/latest delegation check is stale/u)).toBeTruthy();
+    expect(view.getByText(/if this persists, contact Pirate support/u)).toBeTruthy();
   });
 
   test("shows attachment management only after the native route is live", () => {

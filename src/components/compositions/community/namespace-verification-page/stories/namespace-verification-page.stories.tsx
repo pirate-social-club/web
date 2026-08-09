@@ -493,6 +493,39 @@ export const RoutingPending: Story = {
   ),
 };
 
+export const DelegationAttention: Story = {
+  name: "HNS — Delegation needs attention",
+  render: () => (
+    <CommunityNamespaceVerificationPage
+      attachedNamespaceVerificationId="nvs_abc123"
+      attachedRouteSlug="infinity"
+      callbacks={mockNamespaceCallbacks}
+      namespaceAttachments={[
+        {
+          namespace_verification: "nvs_abc123",
+          namespace_role: "primary",
+          family: "hns",
+          root_label: "infinity",
+          route_slug: "infinity",
+          verification_status: "verified",
+          hns_setup_status: "setup_complete",
+          delegation: {
+            pirate_web_routing_allowed: false,
+            pirate_subdomain_issuance_allowed: false,
+            delegation_security: "drifted",
+            observation_fresh: true,
+            routing_withheld_reason: "delegation_drifted",
+            signature_expiry_warning: false,
+            canonical_routing_eligible: false,
+            routing_hard_denied: false,
+          },
+        },
+      ]}
+      onBackClick={() => undefined}
+    />
+  ),
+};
+
 export const Live: Story = {
   name: "HNS — Live",
   render: () => (

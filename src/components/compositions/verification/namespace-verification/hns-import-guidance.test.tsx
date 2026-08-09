@@ -95,7 +95,7 @@ describe("HnsImportGuidance", () => {
     expect(hnsImportNeedsPublishAcknowledgement(acknowledgedPayload)).toBe(false);
   });
 
-  test("publish step is a title and centered per-record copy rows, nothing else", () => {
+  test("publish step warns that the complete resource must be replaced in one update", () => {
     const markup = renderToStaticMarkup(
       <HnsImportGuidance
         payload={payload}
@@ -103,6 +103,8 @@ describe("HnsImportGuidance", () => {
     );
 
     expect(markup).toContain("Publish these records");
+    expect(markup).toContain("Publish this entire list in one update");
+    expect(markup).toContain("publishing only some records can remove records that are already live");
     expect(markup).toContain("198.51.100.23");
     expect(markup.match(/Copy \w+ value/g)).toHaveLength(records.length);
     expect(markup).not.toContain("·");

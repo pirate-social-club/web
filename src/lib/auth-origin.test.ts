@@ -16,6 +16,11 @@ describe("isCanonicalAuthOrigin", () => {
     expect(isCanonicalAuthOrigin("app.pirate")).toBe(true);
   });
 
+  test("returns true for activated wallet-enabled HNS app origins", () => {
+    expect(isCanonicalAuthOrigin("app.dankmeme")).toBe(true);
+    expect(isCanonicalAuthOrigin("app.jazleeuw")).toBe(true);
+  });
+
   test("returns true for staging.pirate.sc and subdomains", () => {
     expect(isCanonicalAuthOrigin("staging.pirate.sc")).toBe(true);
     expect(isCanonicalAuthOrigin("dev.staging.pirate.sc")).toBe(true);
@@ -39,6 +44,7 @@ describe("isCanonicalAuthOrigin", () => {
 
   test("returns false for arbitrary origins", () => {
     expect(isCanonicalAuthOrigin("example.com")).toBe(false);
+    expect(isCanonicalAuthOrigin("app.unactivated-root")).toBe(false);
     expect(isCanonicalAuthOrigin("")).toBe(false);
   });
 });

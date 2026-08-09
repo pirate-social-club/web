@@ -31,6 +31,8 @@ import { useCommunityHandlePolicyState } from "./use-community-handle-policy-sta
 export function namespaceRoleForCompletedVerification(input: {
   currentNamespaceVerificationId: string | null | undefined;
   completedNamespaceVerificationId: string;
+  completedFamily: "hns" | "spaces";
+  completedRootLabel: string;
   attachments: ApiCommunityNamespaceAttachment[];
 }): "primary" | "mirror" {
   if (!input.currentNamespaceVerificationId || input.completedNamespaceVerificationId === input.currentNamespaceVerificationId) {
@@ -42,10 +44,14 @@ export function namespaceRoleForCompletedVerification(input: {
       && attachment.namespace_verification === input.currentNamespaceVerificationId,
   );
 
-  // A rebuilt verification gets a new id. Promote it only when the current
-  // primary is explicitly present and no longer routable; otherwise preserve
-  // the normal mirror-attachment behavior.
-  return currentPrimary && currentPrimary.verification_status !== "verified"
+  // A signed HNS import creates a new verification id. Promote a same-root
+  // rebuild even while its legacy predecessor remains valid so the old proof
+  // stays attached until the replacement is accepted atomically.
+  const replacesSameHnsRoot = currentPrimary
+    && input.completedFamily === "hns"
+    && currentPrimary.family === "hns"
+    && currentPrimary.root_label === input.completedRootLabel;
+  return currentPrimary && (replacesSameHnsRoot || currentPrimary.verification_status !== "verified")
     ? "primary"
     : "mirror";
 }
@@ -115,6 +121,8 @@ export function useCommunityModerationState(communityId: string) {
         const namespaceRole = namespaceRoleForCompletedVerification({
           currentNamespaceVerificationId: community?.namespace_verification,
           completedNamespaceVerificationId: result.namespace_verification,
+          completedFamily: result.family,
+          completedRootLabel: result.normalized_root_label ?? result.submitted_root_label,
           attachments: namespaceAttachments,
         });
         const updatedCommunity = await api.communities.attachNamespace(

@@ -104,6 +104,8 @@ export function CommunityNamespaceVerificationPage({
     namespaceAttachments,
   });
   const needsPrimaryRecovery = recoverableNamespace !== null;
+  const needsHnsImportUpgrade = attachedPrimary?.family === "hns"
+    && attachedPrimary.hns_setup_status === "legacy_import_required";
   const [addingMirror, setAddingMirror] = React.useState(
     Boolean(attachedNamespaceVerificationId && activeSessionId),
   );
@@ -145,6 +147,14 @@ export function CommunityNamespaceVerificationPage({
       onVerified?.(namespaceVerificationId);
     },
   });
+
+  const handleHnsImportUpgrade = React.useCallback(() => {
+    if (!attachedPrimary || attachedPrimary.family !== "hns") return;
+    flow.actions.reset();
+    flow.actions.setActiveFamily("hns");
+    flow.actions.setRootLabel(attachedPrimary.root_label);
+    setAddingMirror(true);
+  }, [attachedPrimary, flow.actions]);
 
   const meta = namespaceFamilyMeta[flow.activeFamily];
   const hasFooterActions = (
@@ -294,7 +304,16 @@ export function CommunityNamespaceVerificationPage({
                   {handshakeUrl ? <>{" "}and{" "}<a className="text-primary underline-offset-4 hover:underline" href={handshakeUrl}>{handshakeUrl}</a></> : null}
                   .
                 </Type>
-                {routingPending ? (
+                {needsHnsImportUpgrade ? (
+                  <div className="space-y-3">
+                    <FormNote tone="warning">
+                      This approval predates signed HNS resource import. Complete the import to generate the exact resource replacement, including Pirate NS records and both required DS digests. Those records anchor the Pirate-served DNSSEC and TLSA chain. The current community route remains attached until the replacement is verified.
+                    </FormNote>
+                    <Button onClick={handleHnsImportUpgrade}>
+                      Complete HNS setup
+                    </Button>
+                  </div>
+                ) : routingPending ? (
                   <FormNote tone="warning">
                     {attachedPrimary?.delegation?.delegation_security === "unsecured"
                       ? "Your Handshake delegation is live but not secure yet. DNSSEC DS records still need to be added before the native route can be enabled; contact Pirate support for the records while guided setup is being completed."
@@ -557,5 +576,7 @@ export function isHnsNativeRoutingLive(
   namespace: ApiCommunityNamespaceAttachment | undefined,
 ): boolean {
   return namespace?.family === "hns"
-    && namespace.delegation?.pirate_web_routing_allowed === true;
+    && namespace.delegation?.pirate_web_routing_allowed === true
+    && namespace.delegation?.canonical_routing_eligible === true
+    && namespace.delegation?.routing_hard_denied !== true;
 }

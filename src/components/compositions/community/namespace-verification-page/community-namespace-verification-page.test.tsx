@@ -8,6 +8,7 @@ import type {
   NamespaceVerificationCallbacks,
   NamespaceVerificationStartResult,
 } from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
+import type { ApiCommunityNamespaceAttachment } from "@/lib/api/client-api-types";
 
 installDomGlobals();
 window.matchMedia = (() => ({
@@ -173,5 +174,42 @@ describe("CommunityNamespaceVerificationPage expired HNS recovery", () => {
       txt: ["chunk-one", "chunk-two"],
     });
     expect(view.queryByRole("button", { name: /I published all records/u })).toBeNull();
+  });
+});
+
+describe("CommunityNamespaceVerificationPage legacy HNS import", () => {
+  test("offers the signed import and preselects the attached root", async () => {
+    const callbacks: NamespaceVerificationCallbacks = {
+      onStartSession: async () => session("challenge_required", payload("pirate-verification=nch_upgrade")),
+      onCompleteSession: async () => ({
+        status: "challenge_pending",
+        namespaceVerificationId: null,
+        failureReason: null,
+      }),
+      onGetSession: async () => session("challenge_required", payload("pirate-verification=nch_upgrade")),
+    };
+    const legacyPrimary: ApiCommunityNamespaceAttachment = {
+      namespace_verification: "nv_legacy",
+      namespace_role: "primary",
+      family: "hns",
+      root_label: "fixture-root",
+      route_slug: "fixture-root",
+      verification_status: "verified",
+      hns_setup_status: "legacy_import_required",
+      delegation: null,
+    };
+    const view = render(
+      <CommunityNamespaceVerificationPage
+        attachedNamespaceVerificationId="nv_legacy"
+        attachedRouteSlug="fixture-root"
+        callbacks={callbacks}
+        namespaceAttachments={[legacyPrimary]}
+      />,
+    );
+
+    fireEvent.click(view.getByRole("button", { name: "Complete HNS setup" }));
+
+    expect(view.getByDisplayValue("fixture-root")).toBeTruthy();
+    expect(view.getByText("Connect Name")).toBeTruthy();
   });
 });

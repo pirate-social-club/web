@@ -16,6 +16,8 @@ describe("namespaceRoleForCompletedVerification", () => {
     expect(namespaceRoleForCompletedVerification({
       currentNamespaceVerificationId: "nv_old",
       completedNamespaceVerificationId: "nv_rebuilt",
+      completedFamily: "hns",
+      completedRootLabel: "dankmeme",
       attachments: [stalePrimary],
     })).toBe("primary");
   });
@@ -24,6 +26,8 @@ describe("namespaceRoleForCompletedVerification", () => {
     expect(namespaceRoleForCompletedVerification({
       currentNamespaceVerificationId: "nv_old",
       completedNamespaceVerificationId: "nv_other",
+      completedFamily: "hns",
+      completedRootLabel: "other",
       attachments: [{ ...stalePrimary, verification_status: "verified" }],
     })).toBe("mirror");
   });
@@ -32,7 +36,29 @@ describe("namespaceRoleForCompletedVerification", () => {
     expect(namespaceRoleForCompletedVerification({
       currentNamespaceVerificationId: "nv_old",
       completedNamespaceVerificationId: "nv_rebuilt",
+      completedFamily: "hns",
+      completedRootLabel: "dankmeme",
       attachments: [],
+    })).toBe("mirror");
+  });
+
+  test("promotes a signed import for the same root while the legacy primary is still verified", () => {
+    expect(namespaceRoleForCompletedVerification({
+      currentNamespaceVerificationId: "nv_old",
+      completedNamespaceVerificationId: "nv_imported",
+      completedFamily: "hns",
+      completedRootLabel: "dankmeme",
+      attachments: [{ ...stalePrimary, verification_status: "verified" }],
+    })).toBe("primary");
+  });
+
+  test("does not change same-root Spaces replacement behavior", () => {
+    expect(namespaceRoleForCompletedVerification({
+      currentNamespaceVerificationId: "nv_old",
+      completedNamespaceVerificationId: "nv_other",
+      completedFamily: "spaces",
+      completedRootLabel: "dankmeme",
+      attachments: [{ ...stalePrimary, family: "spaces", verification_status: "verified" }],
     })).toBe("mirror");
   });
 });

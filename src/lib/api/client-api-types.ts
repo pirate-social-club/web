@@ -1077,7 +1077,7 @@ export type ApiCommunityNamespaceAttachment = {
   root_label: string;
   route_slug: string;
   verification_status: "verified" | "stale" | "expired" | "disputed";
-  hns_setup_status?: "legacy_import_required" | "import_complete" | null;
+  hns_setup_status?: "legacy_import_required" | "setup_complete" | "import_complete" | null;
   delegation?: {
     pirate_web_routing_allowed: boolean;
     pirate_subdomain_issuance_allowed: boolean;

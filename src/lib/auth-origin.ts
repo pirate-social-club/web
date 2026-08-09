@@ -2,6 +2,8 @@ const CANONICAL_AUTH_HOSTNAMES = new Set([
   "pirate.sc",
   "www.pirate.sc",
   "app.pirate",
+  "app.dankmeme",
+  "app.jazleeuw",
   "staging.pirate.sc",
   "localhost",
   "127.0.0.1",
@@ -11,9 +13,10 @@ const CANONICAL_AUTH_HOSTNAMES = new Set([
  * Returns true if the given hostname (or current window.location.hostname)
  * is a canonical interactive app origin where Privy auth is expected to work.
  *
- * Custom namespace origins (HNS roots, profile hosts, Spaces-resolved URLs)
- * are NOT canonical auth origins and should show a "Open in Pirate" CTA
- * instead of attempting Privy connect.
+ * Wallet-enabled app.<root> origins are listed explicitly after the root has
+ * passed secure activation and the same origin is registered with Privy.
+ * Other namespace, profile, and Spaces-resolved origins show an "Open in
+ * Pirate" CTA instead of attempting Privy connect.
  */
 export function isCanonicalAuthOrigin(hostname?: string): boolean {
   const host = (hostname ?? (typeof window !== "undefined" ? window.location.hostname : ""))

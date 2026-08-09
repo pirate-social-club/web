@@ -63,7 +63,26 @@ describe("isHnsNativeRoutingLive", () => {
         observation_fresh: true,
         routing_withheld_reason: null,
         signature_expiry_warning: false,
+        canonical_routing_eligible: true,
+        routing_hard_denied: false,
       },
     })).toBe(true);
+  });
+
+  test("withholds native routing until the root passes canonical activation", () => {
+    expect(isHnsNativeRoutingLive({
+      ...primary,
+      verification_status: "verified",
+      delegation: {
+        pirate_web_routing_allowed: true,
+        pirate_subdomain_issuance_allowed: true,
+        delegation_security: "secure",
+        observation_fresh: true,
+        routing_withheld_reason: null,
+        signature_expiry_warning: false,
+        canonical_routing_eligible: false,
+        routing_hard_denied: false,
+      },
+    })).toBe(false);
   });
 });

@@ -160,6 +160,7 @@ export type ApiRewardCashoutResponse = {
     amount_cents: number;
     recipient_address: string;
     status: "submitted" | "confirmed" | "failed";
+    settlement_stage: "reserved" | "signed" | "broadcast" | "needs_review" | "confirmed" | "failed";
     settlement_ref: string | null;
     failure_reason: string | null;
   };

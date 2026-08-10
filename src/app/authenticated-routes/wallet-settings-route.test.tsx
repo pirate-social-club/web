@@ -177,6 +177,7 @@ beforeEach(() => {
           amount_cents: 120,
           recipient_address: "0x9000000000000000000000000000000000000009",
           status: "confirmed",
+          settlement_stage: "confirmed",
           settlement_ref: "0xrewardtx",
           failure_reason: null,
         },
@@ -190,6 +191,7 @@ beforeEach(() => {
           amount_cents: 120,
           recipient_address: "0x1000000000000000000000000000000000000001",
           status: "confirmed",
+          settlement_stage: "confirmed",
           settlement_ref: "0xrewardtx",
           failure_reason: null,
         },
@@ -273,6 +275,7 @@ describe("CurrentUserWalletPage rewards", () => {
         amount_cents: 100,
         recipient_address: "0x8000000000000000000000000000000000000008",
         status: "submitted" as const,
+        settlement_stage: "signed" as const,
         settlement_ref: "0xrecovering",
         failure_reason: null,
       },
@@ -302,13 +305,9 @@ describe("CurrentUserWalletPage rewards", () => {
     const view = render(<CurrentUserWalletPage />);
 
     await waitFor(() => {
-      expect(view.getByText("Claim")).toBeTruthy();
+      expect(view.getByText("Claim $1.20")).toBeTruthy();
     });
-    fireEvent.click(view.getByText("Claim"));
-    expect(view.getByText("Claim rewards")).toBeTruthy();
-    expect(view.getByDisplayValue("1.20")).toBeTruthy();
-    expect(view.getByText("Confirm claim")).toBeTruthy();
-    fireEvent.click(view.getByText("Confirm claim"));
+    fireEvent.click(view.getByText("Claim $1.20"));
 
     await waitFor(() => {
       expect(fakeApi.rewards.cashOut).toHaveBeenCalled();
@@ -347,21 +346,20 @@ describe("CurrentUserWalletPage rewards", () => {
           amount_cents: 120,
           recipient_address: "0x1000000000000000000000000000000000000001",
           status: "confirmed" as const,
+          settlement_stage: "confirmed" as const,
           settlement_ref: "0xrewardtx",
           failure_reason: null,
         },
         balance_cents: 0,
       }));
     const view = render(<CurrentUserWalletPage />);
-    await waitFor(() => expect(view.getByText("Claim")).toBeTruthy());
+    await waitFor(() => expect(view.getByText("Claim $1.20")).toBeTruthy());
 
-    fireEvent.click(view.getByText("Claim"));
-    fireEvent.click(view.getByText("Confirm claim"));
+    fireEvent.click(view.getByText("Claim $1.20"));
     await waitFor(() => expect(view.getByText("Transfer failed")).toBeTruthy());
     fireEvent.click(view.getByText("Close"));
 
-    fireEvent.click(view.getByText("Claim"));
-    fireEvent.click(view.getByText("Confirm claim"));
+    fireEvent.click(view.getByText("Claim $1.20"));
     await waitFor(() => expect(fakeApi.rewards.cashOut.mock.calls).toHaveLength(2));
 
     expect(fakeApi.rewards.cashOut.mock.calls[0]?.[0].idempotency_key)
@@ -375,16 +373,16 @@ describe("CurrentUserWalletPage rewards", () => {
         amount_cents: 120,
         recipient_address: "0x1000000000000000000000000000000000000001",
         status: "failed" as const,
+        settlement_stage: "failed" as const,
         settlement_ref: null,
         failure_reason: "Transfer replaced before confirmation.",
       },
       balance_cents: 120,
     }));
     const view = render(<CurrentUserWalletPage />);
-    await waitFor(() => expect(view.getByText("Claim")).toBeTruthy());
+    await waitFor(() => expect(view.getByText("Claim $1.20")).toBeTruthy());
 
-    fireEvent.click(view.getByText("Claim"));
-    fireEvent.click(view.getByText("Confirm claim"));
+    fireEvent.click(view.getByText("Claim $1.20"));
 
     await waitFor(() => {
       expect(view.getByText("Transfer failed")).toBeTruthy();

@@ -4,7 +4,27 @@ import * as React from "react";
 
 import { installDomGlobals } from "@/test/setup-dom";
 
-import {
+const { window } = installDomGlobals();
+
+const { mock } = await import("bun:test") as unknown as {
+  mock: {
+    module: (specifier: string, factory: () => unknown) => void;
+  };
+};
+
+// The assertions exercise settlement content and links. Render the shell inline
+// because Radix portals dispatch custom events that linkedom cannot deliver.
+mock.module("@/components/compositions/system/modal/modal", () => ({
+  Modal: ({ children, open }: { children: React.ReactNode; open: boolean }) =>
+    open ? <div>{children}</div> : null,
+  ModalContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ModalDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
+  ModalFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ModalHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ModalTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
+}));
+
+const {
   CashoutSheet,
   displayedRewardQualificationStatus,
   RewardQualificationNotice,
@@ -13,10 +33,8 @@ import {
   rewardCtaAmountLabel,
   SongRewardOffer,
   VerifyHumanSheet,
-} from "./reward-surfaces";
-import * as RewardStories from "./stories/reward-surfaces.stories";
-
-const { window } = installDomGlobals();
+} = await import("./reward-surfaces");
+const RewardStories = await import("./stories/reward-surfaces.stories");
 
 Object.defineProperty(window, "getComputedStyle", {
   configurable: true,
@@ -87,13 +105,42 @@ describe("reward surfaces", () => {
     expect(React.isValidElement(
       <CashoutSheet
         amountLabel="$1.40"
-        availableLabel="$1.40"
-        minimumCashoutLabel="$1.00"
         open
-        recipientLabel="0xc74e...7abc"
-        state="confirm"
+        state="reserved"
       />,
     )).toBe(true);
+  });
+
+  test("shows a signed hash without claiming it is visible on Base", () => {
+    const hash = "0x4b6c9f0a8d3e2c1b7a6d5e4f3c2b1a0987654321abcdef1234567890abcdef12";
+    const view = render(
+      <CashoutSheet amountLabel="$1.00" forceMobile={false} open state="signed" txHashLabel={hash} />,
+    );
+
+    expect(view.getByText("Transaction signed")).toBeTruthy();
+    expect(view.getByText(hash)).toBeTruthy();
+    expect(view.getByText("Not yet visible on Base.")).toBeTruthy();
+    expect(view.queryByText("View on Basescan")).toBeNull();
+    view.unmount();
+  });
+
+  test("links a broadcast transaction to Basescan", () => {
+    const hash = "0x4b6c9f0a8d3e2c1b7a6d5e4f3c2b1a0987654321abcdef1234567890abcdef12";
+    const basescanUrl = `https://basescan.org/tx/${hash}`;
+    const view = render(
+      <CashoutSheet
+        amountLabel="$1.00"
+        basescanUrl={basescanUrl}
+        forceMobile={false}
+        open
+        state="broadcast"
+        txHashLabel={hash}
+      />,
+    );
+
+    expect(view.getByText("Sent to Base")).toBeTruthy();
+    expect(view.getByRole("link", { name: /View on Basescan/u }).getAttribute("href")).toBe(basescanUrl);
+    view.unmount();
   });
 
   test("defines the passport-nationality and public-chain disclosure shown before verification", () => {

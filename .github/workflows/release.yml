@@ -1177,3 +1177,12 @@ jobs:
           PIRATE_MULTIPART_CANARY_CONFIRM_PRODUCTION: RUN_PRODUCTION_MULTIPART_CANARY
           PIRATE_MULTIPART_CANARY_SUBJECT: ${{ vars.PRODUCTION_MULTIPART_CANARY_SUBJECT }}
         run: bun scripts/live-production-multipart-canary.ts
+      - name: Verify sovereign HNS production context
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false'
+        working-directory: web
+        env:
+          HNS_PROBE_COMMUNITY_ID: com_cmt_59f2f958990e4d619f28409a9956a58c
+          HNS_PROBE_GATEWAY_IP: 94.103.168.161
+          HNS_PROBE_ROOT: dankmeme
+          HNS_PROBE_ROUTE_SLUG: dankmeme
+        run: scripts/ci/probe-sovereign-context.sh

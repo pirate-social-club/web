@@ -5,6 +5,11 @@ export type PrivyLoginMethodState = {
   originReady: boolean;
 };
 
+export type PrivyLoginMethodsAndOrder = {
+  primary: [PrivyLoginMethod, ...PrivyLoginMethod[]];
+  overflow: PrivyLoginMethod[];
+};
+
 const LOGIN_METHODS_WITHOUT_PASSKEY: PrivyLoginMethod[] = [
   "wallet",
   "email",
@@ -23,6 +28,20 @@ export function resolvePrivyLoginMethods(hostname: string): PrivyLoginMethod[] {
   return supportsPiratePasskey
     ? [...LOGIN_METHODS_WITHOUT_PASSKEY, "passkey"]
     : [...LOGIN_METHODS_WITHOUT_PASSKEY];
+}
+
+export function resolvePrivyLoginMethodsAndOrder(
+  loginMethods: PrivyLoginMethod[],
+): PrivyLoginMethodsAndOrder {
+  const [firstMethod, ...remainingMethods] = loginMethods;
+  if (!firstMethod) {
+    throw new Error("Privy login methods cannot be empty");
+  }
+
+  return {
+    primary: [firstMethod, ...remainingMethods.slice(0, 3)],
+    overflow: remainingMethods.slice(3),
+  };
 }
 
 export function resolvePrivyLoginMethodState(

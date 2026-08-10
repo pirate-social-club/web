@@ -19,7 +19,30 @@ Use `rtk bun run types:safe` instead of `rtk bun run types` for routine local ve
 
 Do not use bare `rtk bun test` as the repository-wide gate. It collects Playwright specs and runs unit files in one shared process, while `.github/workflows/web-ci.yml` deliberately limits discovery to `src/` and `packages/` and isolates each test file across four shards. Run focused files locally with `rtk bun test path/to/file.test.ts`; rely on `web-ci` for the full unit/component suite.
 
-Use the already-running Storybook dev server for component story validation when available. Never run `rtk bun run build-storybook`, `storybook build`, or other Storybook production builds unless the user explicitly asks for that exact command; they are too heavy for routine agent validation and can freeze the machine. Avoid `rtk bun run build` by default; use the lighter Vite checks from the workspace instructions unless a full production build is required.
+Do not start, restart, build, or use Storybook on this workstation. This applies
+to full and focused discovery and to foreground, background, detached, or
+supervised processes. Focused discovery improves startup scope but focused
+runs have still retained 3–5 GB RSS and caused system-wide OOM. If Storybook is
+already running, stop its exact process and launcher and verify port 6006 is
+closed; do not move it to another port.
+
+For Storybook verification, push the intended ref and run the remote artifact
+workflow:
+
+```bash
+rtk gh workflow run storybook-artifact.yml --ref <pushed-ref> -f storybook_only=components/primitives
+```
+
+Monitor the run to completion and download its `storybook-static-<run-id>`
+artifact. Leave `storybook_only` empty for the full catalog. The input takes a
+path relative to `src/` (for example `components/compositions/wallet`). This
+remote workflow is the only normal Storybook build path for agents.
+
+Routine local story verification is source review plus focused component tests,
+`rtk bun run types:safe`, and `rtk bun run ui:audit`. Avoid `rtk bun run build`
+unless a full production build is explicitly required.
+
+Value-import `@web3icons/react` icons via per-icon subpaths (`@web3icons/react/icons/tokens/TokenBTC`), never the package root barrel — the barrel alone produced a ~31 MB prebundle (~38 MB source map) during Storybook startup. Root type-only imports are safe because Vite erases them before dependency scanning.
 
 ## Deployment
 
@@ -52,11 +75,11 @@ re-running the workflow. In particular:
 - Use `agent-browser` only when visual/browser verification is needed and code inspection or unit tests are insufficient.
 - Keep at most one `agent-browser` session active for this repo. Do not open multiple tabs/sessions or run `agent-browser` commands in parallel.
 - Serialize all open/wait/snapshot/screenshot/click actions. Take one snapshot or screenshot after the page is loaded, then inspect code locally before deciding whether another browser action is necessary.
-- Before starting a dev server, Storybook, or browser session, check existing processes with `rtk ps -ef` or `rtk pgrep -af "storybook|vite|wrangler|next|6006|5173|8787"`.
-- If the desired dev server or Storybook is already running, use the existing URL. Do not start a second instance, and do not switch to an alternate port just because the default port is occupied, unless the user explicitly asks for a separate server.
-- Never run Storybook production builds for browser or story verification. Use the running Storybook dev server only.
-- Do not run browser automation while a build, full typecheck, Storybook build, or other heavy command is running unless the user explicitly asks for that tradeoff.
-- Stop any dev server or browser session started for the task when it is no longer needed.
+- Before starting a permitted dev server or browser session, check existing processes with `rtk ps -ef` or `rtk pgrep -af "storybook|vite|wrangler|next|6006|5173|8787"`.
+- Never use a locally running Storybook. Stop its exact process and launcher, verify port 6006 is closed, and use the remote artifact workflow.
+- If another desired dev server is already running, use the existing URL. Do not start a second instance or switch ports merely because the default port is occupied unless the user explicitly asks for a separate server.
+- Do not run browser automation while any permitted build, full typecheck, or other heavy command is running unless the user explicitly asks for that tradeoff.
+- Stop any permitted dev server or browser session started for the task when it is no longer needed. Never detach it or leave it for another agent session.
 
 ## UI Rules
 

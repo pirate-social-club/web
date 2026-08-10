@@ -1,20 +1,22 @@
 "use client";
 
-import {
-  NetworkBase,
-  NetworkBitcoin,
-  NetworkEthereum,
-  NetworkOptimism,
-  NetworkTempo,
-  TokenBTC,
-  TokenDAI,
-  TokenETH,
-  TokenLINK,
-  TokenSOL,
-  TokenUSDC,
-  TokenUSDT,
-  type IconComponent,
-} from "@web3icons/react";
+// Import icon implementations via per-icon subpaths. A root value import
+// forces Vite's dep optimizer to process ~2,000 icon modules (a ~31 MB
+// prebundle with a ~38 MB source map), which previously OOM-crashed Storybook.
+// The shared component type remains type-only and is erased before dep scanning.
+import type { IconComponent } from "@web3icons/react";
+import NetworkBase from "@web3icons/react/icons/networks/NetworkBase";
+import NetworkBitcoin from "@web3icons/react/icons/networks/NetworkBitcoin";
+import NetworkEthereum from "@web3icons/react/icons/networks/NetworkEthereum";
+import NetworkOptimism from "@web3icons/react/icons/networks/NetworkOptimism";
+import NetworkTempo from "@web3icons/react/icons/networks/NetworkTempo";
+import TokenBTC from "@web3icons/react/icons/tokens/TokenBTC";
+import TokenDAI from "@web3icons/react/icons/tokens/TokenDAI";
+import TokenETH from "@web3icons/react/icons/tokens/TokenETH";
+import TokenLINK from "@web3icons/react/icons/tokens/TokenLINK";
+import TokenSOL from "@web3icons/react/icons/tokens/TokenSOL";
+import TokenUSDC from "@web3icons/react/icons/tokens/TokenUSDC";
+import TokenUSDT from "@web3icons/react/icons/tokens/TokenUSDT";
 
 import { BadgedCircle } from "@/components/primitives/badged-circle";
 import cosmosIconUrl from "@/assets/wallet-icons/cosmos.png";

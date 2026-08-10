@@ -400,20 +400,9 @@ export function CashoutSheet({
     void navigator.clipboard.writeText(txHashLabel);
   }, [txHashLabel]);
   const isPending = state === "reserved" || state === "signed" || state === "broadcast";
-  const pendingCopy = {
-    reserved: {
-      title: `Preparing your ${amountLabel} claim`,
-      description: "Your reward is reserved while the transaction is prepared.",
-    },
-    signed: {
-      title: "Transaction signed",
-      description: "It has not been observed on Base yet.",
-    },
-    broadcast: {
-      title: "Sent to Base",
-      description: "Waiting for network confirmation.",
-    },
-  } as const;
+  const pendingTitle = state === "broadcast"
+    ? "Sent — waiting for confirmation"
+    : "Sending…";
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
       <ModalContent
@@ -426,9 +415,7 @@ export function CashoutSheet({
         <div className={cn("mx-auto mb-4 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/60", !forceMobile && "md:hidden")} aria-hidden="true" />
         <ModalHeader className="text-start">
           <ModalTitle>Claim rewards</ModalTitle>
-          <ModalDescription className="text-muted-foreground">
-            Sends rewards to your wallet.
-          </ModalDescription>
+          <ModalDescription className="sr-only">Track your reward transfer.</ModalDescription>
         </ModalHeader>
 
         {isPending ? (
@@ -436,10 +423,7 @@ export function CashoutSheet({
             <HourglassMedium aria-hidden="true" className="size-5 animate-pulse text-primary" weight="bold" />
             <div>
               <Type as="div" variant="body-strong">
-                {pendingCopy[state].title}
-              </Type>
-              <Type as="div" className="text-muted-foreground" variant="body">
-                {pendingCopy[state].description}
+                {pendingTitle}
               </Type>
             </div>
           </div>
@@ -452,9 +436,6 @@ export function CashoutSheet({
               <div>
                 <Type as="div" variant="body-strong">
                   {amountLabel} is in your wallet 🎉
-                </Type>
-                <Type as="div" className="mt-1 text-muted-foreground" variant="body">
-                  Reward sent successfully.
                 </Type>
               </div>
             </div>

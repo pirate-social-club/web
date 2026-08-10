@@ -10,12 +10,14 @@ import { Button } from "./button";
 import { inputVariants } from "./input";
 
 type CopyFieldProps = React.ComponentProps<"div"> & {
+  /** Accessible name for the copied value, used by the copy button. */
+  copyLabel?: string;
   value: string;
   /** Preserve the full value on screen instead of truncating it to one line. */
   wrap?: boolean;
 };
 
-function CopyField({ className, ref, value, wrap = false, ...props }: CopyFieldProps) {
+function CopyField({ className, copyLabel = "value", ref, value, wrap = false, ...props }: CopyFieldProps) {
   const [copied, setCopied] = React.useState(false);
   const { schedule: scheduleCopiedReset } = useResettableTimeout();
 
@@ -44,7 +46,7 @@ function CopyField({ className, ref, value, wrap = false, ...props }: CopyFieldP
         {value}
       </div>
       <Button
-        aria-label={copied ? "Copied" : "Copy value"}
+        aria-label={copied ? `${copyLabel} copied` : `Copy ${copyLabel}`}
         className="size-9 shrink-0"
         onClick={handleCopy}
         size="icon"

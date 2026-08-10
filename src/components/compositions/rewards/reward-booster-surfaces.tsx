@@ -178,8 +178,8 @@ function FundingTransaction({
         Transaction
       </Type>
       <CopyField
-        aria-label="Funding transaction hash"
         className="h-auto min-h-16 items-start py-3"
+        copyLabel="transaction hash"
         value={transactionHash}
         wrap
       />

@@ -218,7 +218,7 @@ test("a submitted payment exposes the full copyable hash and BaseScan link", asy
   expect(hash.className).toContain("break-all");
   expect(hash.className).not.toContain("truncate");
   await act(async () => {
-    fireEvent.click(view.getByRole("button", { name: "Copy value" }));
+    fireEvent.click(view.getByRole("button", { name: "Copy transaction hash" }));
     await Promise.resolve();
   });
   expect(copied).toEqual([TRANSACTION_HASH]);

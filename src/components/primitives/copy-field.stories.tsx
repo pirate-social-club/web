@@ -32,6 +32,14 @@ export const WalletAddress: Story = {
   },
 };
 
+export const WrappedHash: Story = {
+  args: {
+    copyLabel: "transaction hash",
+    value: "0xc91d0158c1361deb3c07c8245b3a3d962f06d39176b6c8e7b286ed352bf6eb1b",
+    wrap: true,
+  },
+};
+
 export const LongCommand: Story = {
   args: {
     value: "bun run agents:openclaw:challenge --api-url http://127.0.0.1:8787 --token eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0 --wait",

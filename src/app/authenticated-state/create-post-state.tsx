@@ -1150,7 +1150,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           }),
         });
         reportProgress("done");
-        navigate(buildCommunityPath(community.id, community.route_slug));
+        navigate(`${buildCommunityPath(community.id, community.route_slug)}/threads`);
         return;
       }
       if ((publishedPostType === "song" || publishedPostType === "video") && result?.status === "published") {

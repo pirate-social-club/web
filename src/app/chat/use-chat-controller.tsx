@@ -58,7 +58,9 @@ import {
   getAllowedConsentStates,
   isLikelyXmtpTabContentionError,
   resetXmtpClientCache,
+  resolveXmtpMessageStream,
   XmtpRegistrationRequiredError,
+  type XmtpMessageStream,
   type XmtpMessage,
 } from "@/lib/chat/chat-xmtp-support";
 import type {
@@ -552,7 +554,7 @@ export function useChatController({
   React.useEffect(() => {
     if (!session || !xmtpReady || !xmtpSignerWallet) return;
     let cancelled = false;
-    let stream: { return?: () => Promise<unknown> | unknown } | null = null;
+    let stream: XmtpMessageStream | null = null;
 
     void (async () => {
       try {
@@ -569,7 +571,7 @@ export function useChatController({
           topic: client?.conversations?.topic ?? null,
         });
 
-        stream = await client.conversations.streamAllMessages({
+        const streamPromise = client.conversations.streamAllMessages({
           consentStates: getAllowedConsentStates(module),
           onValue: (message: XmtpMessage) => {
             const conversationId = String(message?.conversationId ?? message?.conversation?.id ?? "");
@@ -625,6 +627,13 @@ export function useChatController({
             logger.warn("[chat] stream:callback-error", streamError);
           },
         });
+        await resolveXmtpMessageStream(
+          streamPromise,
+          () => cancelled,
+          (nextStream) => {
+            stream = nextStream;
+          },
+        );
       } catch (streamError) {
         logger.warn("[chat] stream:error", streamError);
         // Streaming is best effort; route loads and manual sync still work.
@@ -635,7 +644,7 @@ export function useChatController({
       cancelled = true;
       void stream?.return?.();
     };
-  }, [loadThread, refreshList, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
+  }, [refreshList, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
 
   React.useEffect(() => {
     if (routeConversationId) {

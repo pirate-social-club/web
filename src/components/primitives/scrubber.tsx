@@ -73,7 +73,7 @@ export function Scrubber({
       {bubbleVisible ? (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-[calc(50%+0.75rem)] z-20 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs font-medium tabular-nums text-background shadow-md"
+          className="pointer-events-none absolute bottom-[calc(50%+0.75rem)] z-20 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-sm font-medium tabular-nums text-background shadow-md"
           style={{ left: `clamp(2.25rem, ${progressPercent}%, calc(100% - 2.25rem))` }}
         >
           {valueLabel}

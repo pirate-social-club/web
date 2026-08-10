@@ -12,6 +12,13 @@ Authentication (Privy connect / wallet login / session refresh) is attempted **o
 - `https://staging.pirate.sc` and subdomains — for staging/testing
 - `localhost`, `127.0.0.1`, `*.localhost` — for local development
 
+The bounded direct-wallet pilot also permits individually activated
+`https://app.<root>` origins after each exact origin is registered with Privy.
+These unrelated origins share the production Privy app and user base, but not
+browser storage or the `pirate.sc` passkey RP ID. They therefore offer wallet,
+email, and social login while omitting passkey login. This exception is not the
+scalable custom-origin wallet architecture.
+
 ## 2. Custom namespace origins (public / read-first)
 
 The following origins are **public-readable by default**. The full app SPA may load, but authenticated/write/wallet actions are gated:

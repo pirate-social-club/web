@@ -13,9 +13,8 @@ import {
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import {
-  resolvePrivyGlobalDisablePasskeys,
+  resolvePrivyLoginConfig,
   resolvePrivyLoginMethodState,
-  resolvePrivyLoginMethodsAndOrder,
   type PrivyLoginMethod,
 } from "@/lib/auth/privy-login-methods";
 import type {
@@ -170,12 +169,8 @@ export function PirateAuthProvider({
     () => resolvePrivyLoginMethodState(loginHostname),
     [loginHostname],
   );
-  const loginMethodsAndOrder = React.useMemo(
-    () => resolvePrivyLoginMethodsAndOrder(loginMethods),
-    [loginMethods],
-  );
-  const globalDisablePasskeys = React.useMemo(
-    () => resolvePrivyGlobalDisablePasskeys(loginMethods),
+  const privyLoginConfig = React.useMemo(
+    () => resolvePrivyLoginConfig(loginMethods),
     [loginMethods],
   );
   // Most routes keep Privy mounted so existing Privy auth can refresh Pirate sessions.
@@ -235,11 +230,10 @@ export function PirateAuthProvider({
       showWalletLoginFirst: false,
       walletList: ["detected_ethereum_wallets", "metamask", "coinbase_wallet", "wallet_connect"],
     },
-    loginMethods,
-    loginMethodsAndOrder,
-    // Privy v3 renders its standalone passkey link from app-level state rather
-    // than the runtime login subset, so custom origins must disable that path.
-    globalDisablePasskeys,
+    // The ordered-login component ignores this flag. Keep Privy's standard
+    // landing component so the runtime subset and standalone-link suppression
+    // both apply on custom origins.
+    ...privyLoginConfig,
     embeddedWallets: {
       ethereum: {
         // Email-first onboarding: every authenticated user should have a wallet-backed identity
@@ -252,7 +246,7 @@ export function PirateAuthProvider({
     },
     defaultChain: supportedChains.defaultChain,
     supportedChains: supportedChains.supportedChains,
-  }), [globalDisablePasskeys, loginMethods, loginMethodsAndOrder, supportedChains.defaultChain, supportedChains.supportedChains]);
+  }), [privyLoginConfig, supportedChains.defaultChain, supportedChains.supportedChains]);
 
   const unloadPrivy = React.useCallback(() => {
     setPendingConnect(false);

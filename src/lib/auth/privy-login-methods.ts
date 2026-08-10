@@ -5,11 +5,6 @@ export type PrivyLoginMethodState = {
   originReady: boolean;
 };
 
-export type PrivyLoginMethodsAndOrder = {
-  primary: [PrivyLoginMethod, ...PrivyLoginMethod[]];
-  overflow: PrivyLoginMethod[];
-};
-
 const LOGIN_METHODS_WITHOUT_PASSKEY: PrivyLoginMethod[] = [
   "wallet",
   "email",
@@ -30,24 +25,13 @@ export function resolvePrivyLoginMethods(hostname: string): PrivyLoginMethod[] {
     : [...LOGIN_METHODS_WITHOUT_PASSKEY];
 }
 
-export function resolvePrivyLoginMethodsAndOrder(
+export function resolvePrivyLoginConfig(
   loginMethods: PrivyLoginMethod[],
-): PrivyLoginMethodsAndOrder {
-  const [firstMethod, ...remainingMethods] = loginMethods;
-  if (!firstMethod) {
-    throw new Error("Privy login methods cannot be empty");
-  }
-
+): { loginMethods: PrivyLoginMethod[]; globalDisablePasskeys: boolean } {
   return {
-    primary: [firstMethod, ...remainingMethods.slice(0, 3)],
-    overflow: remainingMethods.slice(3),
+    loginMethods,
+    globalDisablePasskeys: !loginMethods.includes("passkey"),
   };
-}
-
-export function resolvePrivyGlobalDisablePasskeys(
-  loginMethods: PrivyLoginMethod[],
-): boolean {
-  return !loginMethods.includes("passkey");
 }
 
 export function resolvePrivyLoginMethodState(

@@ -30,6 +30,7 @@ import {
   buildSitemapResponse,
   buildWebBotAuthDirectoryResponse,
   getDiscoveryContext,
+  resolveRouteDiscoveryContext,
   markdownRequested,
   type WebBotAuthEnv,
 } from "@/lib/agent-discovery";
@@ -466,11 +467,16 @@ const app = defineApp<AppRequestInfo>([
       url.hostname,
       forwardedCommunityRoot,
     );
+    const routeDiscovery = resolveRouteDiscoveryContext({
+      discovery,
+      postId: route.kind === "post" ? route.postId : null,
+      sovereignPresentation: forwardedCommunityRoot !== null,
+    });
     const expectsEntitySeoMetadata = shouldAlwaysResolveEntitySeo(route);
 
     ctx.effectiveUrl = effectiveUrl;
-    ctx.appOrigin = discovery.appOrigin;
-    ctx.canonicalUrl = discovery.canonicalUrl;
+    ctx.appOrigin = routeDiscovery.appOrigin;
+    ctx.canonicalUrl = routeDiscovery.canonicalUrl;
     ctx.expectsEntitySeoMetadata = expectsEntitySeoMetadata;
     ctx.locale = locale;
     ctx.dir = resolveLocaleDirection(locale);
@@ -489,7 +495,7 @@ const app = defineApp<AppRequestInfo>([
       )
       : undefined;
     ctx.homeFeedScopeKey = route.kind === "community-videos" ? route.communityId : "global";
-    ctx.isIndexable = discovery.isIndexable;
+    ctx.isIndexable = routeDiscovery.isIndexable;
     const mustVerifySovereignPost = Boolean(
       route.sovereignCommunityId && "postId" in route,
     );
@@ -530,7 +536,7 @@ const app = defineApp<AppRequestInfo>([
       ? {
           ...seoResolution.metadata,
           url: buildOpenGraphUrl(
-            discovery.canonicalUrl,
+            routeDiscovery.canonicalUrl,
             locale,
             hasLocaleOverride,
             resolveSharePreviewQueryValue(url),
@@ -541,7 +547,7 @@ const app = defineApp<AppRequestInfo>([
       response.headers.set("cache-control", "no-store");
     }
     ctx.theme = parseThemeCookie(request.headers.get("cookie"));
-    applyDiscoveryHeaders(response.headers, discovery);
+    applyDiscoveryHeaders(response.headers, routeDiscovery);
     applySecurityHeaders(response.headers, rw.nonce, {
       dev: import.meta.env.DEV,
       reportOnly: import.meta.env.VITE_CSP_REPORT_ONLY === "true",

@@ -10,6 +10,7 @@ import {
   buildWebBotAuthDirectoryResponse,
   getDiscoveryContext,
   resolveApiOriginFromHostname,
+  resolveRouteDiscoveryContext,
 } from "./agent-discovery";
 
 const WEB_BOT_AUTH_PRIVATE_JWK = JSON.stringify({
@@ -27,6 +28,23 @@ function base64ToArrayBuffer(value: string): ArrayBuffer {
 }
 
 describe("agent discovery origins", () => {
+  test("canonicalizes post presentations and excludes sovereign origins from indexing", () => {
+    const discovery = getDiscoveryContext("https://app.community-root/p/post_test");
+    const resolved = resolveRouteDiscoveryContext({
+      discovery,
+      postId: "post_test",
+      sovereignPresentation: true,
+    });
+
+    expect(resolved.canonicalUrl).toBe("https://pirate.sc/p/post_test");
+    expect(resolved.isIndexable).toBe(false);
+    expect(resolveRouteDiscoveryContext({
+      discovery: getDiscoveryContext("https://pirate.sc/p/post_test"),
+      postId: "post_test",
+      sovereignPresentation: false,
+    }).isIndexable).toBe(true);
+  });
+
   test("uses production API origin for the HNS app host", () => {
     expect(resolveApiOriginFromHostname("app.pirate")).toBe("https://api.pirate.sc");
     expect(getDiscoveryContext("https://app.pirate/c/crew").apiOrigin).toBe("https://api.pirate.sc");

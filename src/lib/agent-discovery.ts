@@ -10,6 +10,7 @@ export {
 
   getDiscoveryContext,
   resolveApiOriginFromHostname,
+  resolveRouteDiscoveryContext,
 
 } from "./agent-discovery/shared";
 export {

@@ -79,24 +79,21 @@ function RewardsWalletContext({
         <WalletHub
           {...walletHubProps}
           rewardsSummary={{
-            actionLabel: cashoutState === "pending" ? "Pending" : "Claim",
+            actionLabel: cashoutState ? "Pending" : `Claim ${rewardWallet.available}`,
             amountLabel: rewardWallet.balance,
-            actionDisabled: cashoutState === "pending",
+            actionDisabled: Boolean(cashoutState),
             onAction: verifyState ? () => setVerifyOpen(true) : () => setCashoutOpen(true),
-            pending: cashoutState === "pending",
+            pending: Boolean(cashoutState),
           }}
         />
       </div>
       <CashoutSheet
         amountLabel={amount}
-        availableLabel={rewardWallet.available}
-        basescanUrl={rewardWallet.basescanUrl}
-        minimumCashoutLabel={rewardAmounts.minimumCashout}
+        basescanUrl={cashoutState === "broadcast" || cashoutState === "confirmed" ? rewardWallet.basescanUrl : undefined}
         onOpenChange={setCashoutOpen}
         open={cashoutOpen}
-        recipientLabel={rewardWallet.recipient}
-        state={cashoutState ?? "confirm"}
-        txHashLabel={cashoutState === "pending" || cashoutState === "success" ? rewardWallet.txHash : undefined}
+        state={cashoutState ?? "reserved"}
+        txHashLabel={cashoutState && cashoutState !== "reserved" && cashoutState !== "failed" ? rewardWallet.txHash : undefined}
       />
       <VerifyHumanSheet
         onOpenChange={setVerifyOpen}
@@ -120,8 +117,13 @@ export const WalletPagePendingVerification: Story = {
 };
 
 export const WalletPageClaimPending: Story = {
-  name: "Wallet page / Claim pending",
-  render: () => <RewardsWalletContext cashoutState="pending" />,
+  name: "Wallet page / Claim signed",
+  render: () => <RewardsWalletContext cashoutState="signed" />,
+};
+
+export const WalletPageClaimBroadcast: Story = {
+  name: "Wallet page / Claim broadcast",
+  render: () => <RewardsWalletContext cashoutState="broadcast" />,
 };
 
 export const StudyCompletionRewardPending: Story = {

@@ -6,6 +6,7 @@ import {
   CheckCircle,
   Clock,
   Confetti,
+  Copy,
   Fingerprint,
   Gift,
   HourglassMedium,
@@ -24,7 +25,6 @@ import {
 } from "@/components/compositions/system/modal/modal";
 import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
-import { Input } from "@/components/primitives/input";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
@@ -37,10 +37,12 @@ export type VerifyHumanSheetState =
   | "conflict";
 
 export type CashoutSheetState =
-  | "confirm"
-  | "pending"
-  | "success"
-  | "failure";
+  | "reserved"
+  | "signed"
+  | "broadcast"
+  | "needs_review"
+  | "confirmed"
+  | "failed";
 
 export const REWARD_NATIONALITY_DISCLOSURE =
   "Your reward amount may vary by passport nationality. Payout amounts are public on-chain and can reveal your reward tier.";
@@ -91,16 +93,12 @@ export interface VerifyHumanSheetProps {
 
 export interface CashoutSheetProps {
   amountLabel: string;
-  availableLabel: string;
   basescanUrl?: string;
   errorMessage?: string;
   forceMobile?: boolean;
-  minimumCashoutLabel: string;
-  onConfirm?: () => void;
   onOpenChange?: (open: boolean) => void;
   onRefresh?: () => void;
   open: boolean;
-  recipientLabel: string;
   state: CashoutSheetState;
   txHashLabel?: string;
 }
@@ -233,15 +231,6 @@ export function RewardQualificationNotice({
         </Type>
       ) : null}
     </Card>
-  );
-}
-
-function RewardSummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 border-b border-border-soft py-3 last:border-b-0">
-      <Type as="div" className="text-muted-foreground" variant="body">{label}</Type>
-      <Type as="div" className="tabular-nums" variant="body-strong">{value}</Type>
-    </div>
   );
 }
 
@@ -397,19 +386,34 @@ export function VerifyHumanSheet({
 
 export function CashoutSheet({
   amountLabel,
-  availableLabel,
   basescanUrl,
   errorMessage,
   forceMobile,
-  minimumCashoutLabel,
-  onConfirm,
   onOpenChange,
   onRefresh,
   open,
-  recipientLabel,
   state,
   txHashLabel,
 }: CashoutSheetProps) {
+  const copyTransactionHash = React.useCallback(() => {
+    if (!txHashLabel) return;
+    void navigator.clipboard.writeText(txHashLabel);
+  }, [txHashLabel]);
+  const isPending = state === "reserved" || state === "signed" || state === "broadcast";
+  const pendingCopy = {
+    reserved: {
+      title: `Preparing your ${amountLabel} claim`,
+      description: "Your reward is reserved while the transaction is prepared.",
+    },
+    signed: {
+      title: "Transaction signed",
+      description: "It has not been observed on Base yet.",
+    },
+    broadcast: {
+      title: "Sent to Base",
+      description: "Waiting for network confirmation.",
+    },
+  } as const;
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
       <ModalContent
@@ -427,42 +431,21 @@ export function CashoutSheet({
           </ModalDescription>
         </ModalHeader>
 
-        {state === "confirm" ? (
-          <div className="mt-5 space-y-4">
-            <label className="block" htmlFor="reward-cashout-amount">
-              <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
-                Amount
-              </Type>
-              <Input
-                id="reward-cashout-amount"
-                inputMode="decimal"
-                readOnly
-                value={amountLabel}
-              />
-            </label>
-            <div className="rounded-lg border border-border-soft px-4">
-              <RewardSummaryRow label="Available" value={availableLabel} />
-              <RewardSummaryRow label="Minimum" value={minimumCashoutLabel} />
-              <RewardSummaryRow label="Recipient" value={recipientLabel} />
-            </div>
-          </div>
-        ) : null}
-
-        {state === "pending" ? (
+        {isPending ? (
           <div className="mt-6 flex items-center gap-3 rounded-lg border border-border-soft p-4">
             <HourglassMedium aria-hidden="true" className="size-5 animate-pulse text-primary" weight="bold" />
             <div>
               <Type as="div" variant="body-strong">
-                Sending your {amountLabel}…
+                {pendingCopy[state].title}
               </Type>
-              <Type as="div" className="text-muted-foreground" variant="caption">
-                Usually under a minute.
+              <Type as="div" className="text-muted-foreground" variant="body">
+                {pendingCopy[state].description}
               </Type>
             </div>
           </div>
         ) : null}
 
-        {state === "success" ? (
+        {state === "confirmed" ? (
           <div className="mt-6 rounded-lg border border-border-soft p-4">
             <div className="flex items-start gap-3">
               <CheckCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" weight="fill" />
@@ -475,18 +458,10 @@ export function CashoutSheet({
                 </Type>
               </div>
             </div>
-            {basescanUrl ? (
-              <Button asChild className="mt-4 h-11 w-full" variant="outline">
-                <a href={basescanUrl} rel="noreferrer" target="_blank">
-                  View on Basescan
-                  <ArrowSquareOut aria-hidden="true" className="size-4" weight="bold" />
-                </a>
-              </Button>
-            ) : null}
           </div>
         ) : null}
 
-        {state === "failure" ? (
+        {state === "failed" ? (
           <div className="mt-6 flex items-start gap-3 rounded-lg border border-border-soft p-4">
             <WarningCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-destructive" weight="fill" />
             <div>
@@ -500,27 +475,55 @@ export function CashoutSheet({
           </div>
         ) : null}
 
+        {state === "needs_review" ? (
+          <div className="mt-6 flex items-start gap-3 rounded-lg border border-border-soft p-4">
+            <WarningCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-warning" weight="fill" />
+            <div>
+              <Type as="div" variant="body-strong">
+                Transfer needs review
+              </Type>
+              <Type as="div" className="mt-1 text-muted-foreground" variant="body">
+                {errorMessage ?? "Your reward remains reserved while the transaction is checked."}
+              </Type>
+            </div>
+          </div>
+        ) : null}
+
         {txHashLabel ? (
-          <details className="mt-4 rounded-lg bg-muted px-3 py-2 text-muted-foreground">
-            <summary className="cursor-pointer font-medium">Details</summary>
-            <Type as="div" className="mt-2 truncate font-mono" variant="caption">{txHashLabel}</Type>
-          </details>
+          <div className="mt-4 rounded-lg bg-muted p-4">
+            <div className="flex items-center justify-between gap-3">
+              <Type as="div" className="text-muted-foreground" variant="label">
+                Transaction hash
+              </Type>
+              <Button aria-label="Copy transaction hash" className="shrink-0 rounded-full" onClick={copyTransactionHash} size="icon" type="button" variant="secondary">
+                <Copy aria-hidden="true" className="size-4" weight="bold" />
+              </Button>
+            </div>
+            <Type as="div" className="mt-3 break-all" variant="caption">{txHashLabel}</Type>
+            {basescanUrl ? (
+              <Button asChild className="mt-4 h-11 w-full" variant="outline">
+                <a href={basescanUrl} rel="noreferrer" target="_blank">
+                  View on Basescan
+                  <ArrowSquareOut aria-hidden="true" className="size-4" weight="bold" />
+                </a>
+              </Button>
+            ) : (
+              <Type as="div" className="mt-3 text-muted-foreground" variant="caption">
+                Not yet visible on Base.
+              </Type>
+            )}
+          </div>
         ) : null}
 
         <ModalFooter className="mt-6">
-          {state === "confirm" ? (
-            <Button className="h-12 w-full" onClick={onConfirm}>
-              Confirm claim
-            </Button>
-          ) : null}
-          {state === "pending" ? (
+          {(isPending || state === "needs_review") && onRefresh ? (
             <Button className="h-12 w-full" onClick={onRefresh} variant="outline">
               Check status
             </Button>
           ) : null}
-          {state === "success" || state === "failure" ? (
-            <Button className="h-12 w-full" onClick={() => onOpenChange?.(false)} variant={state === "success" ? "default" : "outline"}>
-              {state === "success" ? "Done" : "Close"}
+          {state === "confirmed" || state === "failed" ? (
+            <Button className="h-12 w-full" onClick={() => onOpenChange?.(false)} variant={state === "confirmed" ? "default" : "outline"}>
+              {state === "confirmed" ? "Done" : "Close"}
             </Button>
           ) : null}
         </ModalFooter>

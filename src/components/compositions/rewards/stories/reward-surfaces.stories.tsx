@@ -54,12 +54,9 @@ export const CashoutPending: Story = {
   render: () => (
     <CashoutSheet
       amountLabel="$1"
-      availableLabel="$1"
       forceMobile
-      minimumCashoutLabel="$1"
       open
-      recipientLabel="your Pirate wallet"
-      state="pending"
+      state="signed"
     />
   ),
 };

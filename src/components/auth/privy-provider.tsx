@@ -21,7 +21,7 @@ import {
   useSession,
 } from "@/lib/api/session-store";
 import { trackAnalyticsEvent } from "@/lib/analytics";
-import { resolvePrivyLoginMethods } from "@/lib/auth/privy-login-methods";
+import { resolvePrivyLoginMethodState } from "@/lib/auth/privy-login-methods";
 import { logger } from "@/lib/logger";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 import { readViteEnv } from "@/lib/vite-env";
@@ -158,10 +158,15 @@ export function PirateAuthProvider({
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [privyAuthenticated, setPrivyAuthenticated] = React.useState(false);
   const [privyReady, setPrivyReady] = React.useState(false);
+  const [loginHostname, setLoginHostname] = React.useState<string | null>(null);
   const shouldLoadWalletSync = walletSyncDemand > 0;
+  const { loginMethods, originReady } = React.useMemo(
+    () => resolvePrivyLoginMethodState(loginHostname),
+    [loginHostname],
+  );
   // Most routes keep Privy mounted so existing Privy auth can refresh Pirate sessions.
   // Some unauthenticated entry points should not open or bootstrap auth until asked.
-  const shouldLoadPrivy = !!appId && (
+  const shouldLoadPrivy = !!appId && originReady && (
     !deferPrivyUntilConnect
     || pendingConnect
     || connectMountRequested
@@ -207,13 +212,6 @@ export function PirateAuthProvider({
     };
   }, [networkConfig]);
 
-  const loginMethods = React.useMemo(
-    () => resolvePrivyLoginMethods(
-      typeof window === "undefined" ? "" : window.location.hostname,
-    ),
-    [],
-  );
-
   const privyConfig = React.useMemo(() => ({
     appearance: {
       accentColor: "#d97706",
@@ -257,6 +255,10 @@ export function PirateAuthProvider({
       released = true;
       setWalletSyncDemand((current) => Math.max(0, current - 1));
     };
+  }, []);
+
+  React.useEffect(() => {
+    setLoginHostname(window.location.hostname);
   }, []);
 
   React.useEffect(() => {

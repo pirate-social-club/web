@@ -1,6 +1,6 @@
 import * as React from "react";
 import { expect, mock, test } from "bun:test";
-import { fireEvent, render, within } from "@testing-library/react";
+import { act, fireEvent, render, within } from "@testing-library/react";
 
 import { installDomGlobals } from "@/test/setup-dom";
 installDomGlobals();
@@ -39,6 +39,8 @@ mock.module("@/components/compositions/system/modal/modal", () => ({
 
 const { BoostCampaignSheet, SongRewardPolicySheet } = await import("./reward-booster-surfaces");
 type SheetProps = import("./reward-booster-surfaces").BoostCampaignSheetProps;
+const TRANSACTION_HASH = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const TRANSACTION_URL = `https://basescan.org/tx/${TRANSACTION_HASH}`;
 
 function composeProps(overrides: Partial<SheetProps> = {}): SheetProps {
   return {
@@ -157,7 +159,7 @@ test("quote hides payment infrastructure, shows the formatted reward, and offers
   expect(view.queryByText(/0x3333/i)).toBeNull();
   expect(view.getByText("$1.00")).toBeTruthy();
   expect(view.getByText(/A different wallet is connected/)).toBeTruthy();
-  expect(view.getByText("Pay $10.00").closest("button")?.disabled).toBe(true);
+  expect(view.getByText("Approve payment").closest("button")?.disabled).toBe(true);
 
   fireEvent.click(view.getByRole("button", { name: "Connect Pirate Wallet" }));
   expect(connectCalls).toBe(1);
@@ -186,39 +188,82 @@ test("compose stays visually stable while funding is prepared", () => {
   expect(view.getAllByText("Review funding").at(-1)?.closest("button")?.disabled).toBe(true);
 });
 
-test("confirming describes the wait in plain language", () => {
+test("wallet approval is distinct from a submitted payment", () => {
   const view = render(<BoostCampaignSheet {...composeProps({ state: "confirming" })} />);
 
-  expect(view.getByText(/once the network confirms the transfer/)).toBeTruthy();
-  expect(view.queryByText(/safe block/)).toBeNull();
+  expect(view.getByText("Approve payment")).toBeTruthy();
+  expect(view.getByText("Confirm the payment in your wallet.")).toBeTruthy();
+  expect(view.queryByLabelText("Funding transaction")).toBeNull();
+  expect(view.queryByText("Check status")).toBeNull();
 });
 
-test("awaiting finality says the transfer is safe and blocks duplicate status checks", () => {
-  const view = render(
-    <BoostCampaignSheet {...composeProps({ busy: true, state: "awaiting-finality" })} />,
-  );
-
-  expect(view.getByText(/Your transfer is safe/)).toBeTruthy();
-  expect(view.getByText(/Do not send again/)).toBeTruthy();
-  expect(view.getByText("Check status").closest("button")?.disabled).toBe(true);
-  expect(view.queryByText("Funding failed")).toBeNull();
-});
-
-test("live bounty labels metrics plainly", () => {
+test("a submitted payment exposes the full copyable hash and BaseScan link", async () => {
+  const copied: string[] = [];
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText: async (value: string) => { copied.push(value); } },
+  });
   const view = render(
     <BoostCampaignSheet
       {...composeProps({
-        eligibleActivity: "either",
-        endsAtLabel: "31 Jul",
-        fundedLabel: "$10.00",
-        remainingLabel: "$7.00",
-        rewardsPaidLabel: "$3.00",
-        state: "active",
+        explorerTxUrl: TRANSACTION_URL,
+        state: "confirming",
+        transactionHash: TRANSACTION_HASH,
       })}
     />,
   );
 
-  expect(view.getByText(/People can earn \$1\.00 for a study set or karaoke pass/)).toBeTruthy();
+  expect(view.getByText("Payment sent")).toBeTruthy();
+  const hash = view.getByText(TRANSACTION_HASH);
+  expect(hash.className).toContain("break-all");
+  expect(hash.className).not.toContain("truncate");
+  await act(async () => {
+    fireEvent.click(view.getByRole("button", { name: "Copy transaction hash" }));
+    await Promise.resolve();
+  });
+  expect(copied).toEqual([TRANSACTION_HASH]);
+  expect(view.getByRole("link", { name: /View on BaseScan/ }).getAttribute("href")).toBe(TRANSACTION_URL);
+});
+
+test("activating keeps the transaction visible and makes status refresh secondary", () => {
+  const view = render(
+    <BoostCampaignSheet
+      {...composeProps({
+        busy: true,
+        explorerTxUrl: TRANSACTION_URL,
+        state: "awaiting-finality",
+        transactionHash: TRANSACTION_HASH,
+      })}
+    />,
+  );
+
+  expect(view.getByText("Activating bounty…")).toBeTruthy();
+  expect(view.getByText(/Your payment is on Base\. The bounty will activate automatically/)).toBeTruthy();
+  expect(view.getByText(/Do not send again/)).toBeTruthy();
+  expect(view.getByText("Check status").closest("button")?.disabled).toBe(true);
+  expect(view.getByText(TRANSACTION_HASH)).toBeTruthy();
+  expect(view.queryByText("Funding failed")).toBeNull();
+});
+
+test("live Study bounty keeps the transaction visible and uses Study activity copy", () => {
+  const view = render(
+    <BoostCampaignSheet
+      {...composeProps({
+        eligibleActivity: "study",
+        endsAtLabel: "31 Jul",
+        explorerTxUrl: TRANSACTION_URL,
+        fundedLabel: "$10.00",
+        remainingLabel: "$7.00",
+        rewardsPaidLabel: "$3.00",
+        state: "active",
+        transactionHash: TRANSACTION_HASH,
+      })}
+    />,
+  );
+
+  expect(view.getByText(/People can earn \$1\.00 for a study set/)).toBeTruthy();
+  expect(view.queryByText(/karaoke pass/)).toBeNull();
+  expect(view.getByText(TRANSACTION_HASH)).toBeTruthy();
   expect(view.getByText("Earned")).toBeTruthy();
   expect(view.getByText("Each")).toBeTruthy();
   expect(view.queryByText("Paid out")).toBeNull();
@@ -259,16 +304,18 @@ test("terminal funding review exposes the transaction and support reference with
     <BoostCampaignSheet
       {...composeProps({
         errorMessage: "Funds were received, but the campaign was not activated.",
-        explorerTxUrl: "https://sepolia.basescan.org/tx/0x1234",
+        explorerTxUrl: TRANSACTION_URL,
         onRetry: () => { throw new Error("must not render"); },
         state: "funding-review",
         supportReference: "rfq_support",
+        transactionHash: TRANSACTION_HASH,
       })}
     />,
   );
   expect(view.getByText("Campaign not activated")).toBeTruthy();
   expect(view.getByText("rfq_support")).toBeTruthy();
-  expect(view.getByText("View funding transaction")).toBeTruthy();
+  expect(view.getByText(TRANSACTION_HASH)).toBeTruthy();
+  expect(view.getByText("View on BaseScan")).toBeTruthy();
   expect(view.queryByText("Retry confirmation")).toBeNull();
 });
 

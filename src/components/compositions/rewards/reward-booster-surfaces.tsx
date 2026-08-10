@@ -78,6 +78,8 @@ export interface BoostCampaignSheetProps {
   errorMessage?: string;
   /** Funding-transaction link on the settlement chain's explorer (Base or Base Sepolia). */
   explorerTxUrl?: string;
+  /** Full funding-transaction hash, available as soon as the wallet submits it. */
+  transactionHash?: string;
   endsAtLabel?: string;
   forceMobile?: boolean;
   fundingAmountLabel?: string;
@@ -163,6 +165,36 @@ function CampaignSummaryRow({ label, value }: { label: string; value: string }) 
   );
 }
 
+function FundingTransaction({
+  explorerTxUrl,
+  transactionHash,
+}: {
+  explorerTxUrl?: string;
+  transactionHash: string;
+}) {
+  return (
+    <section className="mt-4 rounded-lg border border-border-soft p-4" aria-label="Funding transaction">
+      <Type as="div" className="mb-2 text-muted-foreground" variant="label">
+        Transaction
+      </Type>
+      <CopyField
+        className="h-auto min-h-16 items-start py-3"
+        copyLabel="transaction hash"
+        value={transactionHash}
+        wrap
+      />
+      {explorerTxUrl ? (
+        <Button asChild className="mt-3 h-10 w-full" variant="outline">
+          <a href={explorerTxUrl} rel="noreferrer" target="_blank">
+            View on BaseScan
+            <ArrowSquareOut aria-hidden="true" className="size-4" weight="bold" />
+          </a>
+        </Button>
+      ) : null}
+    </section>
+  );
+}
+
 function MoneyInput({
   describedBy,
   id,
@@ -237,6 +269,7 @@ export function BoostCampaignSheet({
   remainingLabel,
   state,
   supportReference,
+  transactionHash,
   walletMismatch,
   walletMismatchReason = "no-wallet",
 }: BoostCampaignSheetProps) {
@@ -574,10 +607,12 @@ export function BoostCampaignSheet({
             <HourglassMedium aria-hidden="true" className="size-5 animate-pulse text-primary" weight="bold" />
             <div>
               <Type as="div" variant="body-strong">
-                Confirming your funding
+                {transactionHash ? "Payment sent" : "Approve payment"}
               </Type>
               <Type as="div" className="text-muted-foreground" variant="caption">
-                The boost activates once the network confirms the transfer.
+                {transactionHash
+                  ? "Your payment is on Base. The bounty will activate automatically. Do not send again."
+                  : "Confirm the payment in your wallet."}
               </Type>
             </div>
           </div>
@@ -588,10 +623,10 @@ export function BoostCampaignSheet({
             <HourglassMedium aria-hidden="true" className="size-5 animate-pulse text-primary" weight="bold" />
             <div>
               <Type as="div" variant="body-strong">
-                Funding submitted
+                Activating bounty…
               </Type>
               <Type as="div" className="text-muted-foreground" variant="caption">
-                Your transfer is safe while the network reaches finality. Do not send again.
+                Your payment is on Base. The bounty will activate automatically. Do not send again.
               </Type>
             </div>
           </div>
@@ -625,14 +660,6 @@ export function BoostCampaignSheet({
                   </div>
                 ))}
               </dl>
-            ) : null}
-            {explorerTxUrl ? (
-              <Button asChild className="mt-4 h-11 w-full" variant="outline">
-                <a href={explorerTxUrl} rel="noreferrer" target="_blank">
-                  View funding transaction
-                  <ArrowSquareOut aria-hidden="true" className="size-4" weight="bold" />
-                </a>
-              </Button>
             ) : null}
           </div>
         ) : null}
@@ -672,15 +699,11 @@ export function BoostCampaignSheet({
                 <CopyField value={supportReference} />
               </div>
             ) : null}
-            {explorerTxUrl ? (
-              <Button asChild className="mt-4 h-11 w-full" variant="outline">
-                <a href={explorerTxUrl} rel="noreferrer" target="_blank">
-                  View funding transaction
-                  <ArrowSquareOut aria-hidden="true" className="size-4" weight="bold" />
-                </a>
-              </Button>
-            ) : null}
           </div>
+        ) : null}
+
+        {transactionHash && ["confirming", "awaiting-finality", "active", "funding-review"].includes(state) ? (
+          <FundingTransaction explorerTxUrl={explorerTxUrl} transactionHash={transactionHash} />
         ) : null}
 
         <ModalFooter className="mt-6">
@@ -691,7 +714,7 @@ export function BoostCampaignSheet({
           ) : null}
           {state === "quote" ? (
             <Button className="h-12 w-full" disabled={Boolean(walletMismatch) || busy} onClick={onConfirm}>
-              Pay {fundingAmountLabel}
+              Approve payment
             </Button>
           ) : null}
           {state === "draft-preview" ? (
@@ -699,8 +722,8 @@ export function BoostCampaignSheet({
               Done
             </Button>
           ) : null}
-          {state === "confirming" || state === "awaiting-finality" ? (
-            <Button className="h-12 w-full" disabled={busy} onClick={onRefresh} variant="outline">
+          {(state === "confirming" || state === "awaiting-finality") && transactionHash ? (
+            <Button className="h-10 w-full" disabled={busy} onClick={onRefresh} variant="ghost">
               Check status
             </Button>
           ) : null}

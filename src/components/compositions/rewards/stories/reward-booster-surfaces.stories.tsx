@@ -22,6 +22,8 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+const TRANSACTION_HASH = "0xc91d0158c1361deb3c07c8245b3a3d962f06d39176b6c8e7b286ed352bf6eb1b";
+const TRANSACTION_URL = `https://basescan.org/tx/${TRANSACTION_HASH}`;
 
 const base: BoostCampaignSheetProps = {
   budgetDisplayLabel: "$10",
@@ -84,8 +86,30 @@ export const PayWalletMissing: Story = {
   ),
 };
 
-export const Confirming: Story = {
+export const ApprovePayment: Story = {
   render: () => <BoostCampaignSheet {...base} state="confirming" />,
+};
+
+export const SubmittedHashKnown: Story = {
+  render: () => (
+    <BoostCampaignSheet
+      {...base}
+      explorerTxUrl={TRANSACTION_URL}
+      state="confirming"
+      transactionHash={TRANSACTION_HASH}
+    />
+  ),
+};
+
+export const Activating: Story = {
+  render: () => (
+    <BoostCampaignSheet
+      {...base}
+      explorerTxUrl={TRANSACTION_URL}
+      state="awaiting-finality"
+      transactionHash={TRANSACTION_HASH}
+    />
+  ),
 };
 
 export const FundingFailed: Story = {
@@ -98,27 +122,31 @@ export const FundingFailed: Story = {
   ),
 };
 
-export const FundingReview: Story = {
+export const TerminalReview: Story = {
   render: () => (
     <BoostCampaignSheet
       {...base}
       errorMessage="Funds were received, but the campaign was not activated. Refund or support review is required; do not send again."
-      explorerTxUrl="https://sepolia.basescan.org/tx/0x1234"
+      explorerTxUrl={TRANSACTION_URL}
       state="funding-review"
       supportReference="rfq_01JEXAMPLE"
+      transactionHash={TRANSACTION_HASH}
     />
   ),
 };
 
-export const Live: Story = {
+export const ActiveStudy: Story = {
   render: () => (
     <BoostCampaignSheet
       {...base}
+      eligibleActivity="study"
       endsAtLabel="31 Jul"
+      explorerTxUrl={TRANSACTION_URL}
       fundedLabel="$10"
       remainingLabel="$7"
       rewardsPaidLabel="$3"
       state="active"
+      transactionHash={TRANSACTION_HASH}
     />
   ),
 };

@@ -120,6 +120,34 @@ export const Mobile: Story = {
   ),
 };
 
+export const Bounties: Story = {
+  args: {
+    rewardsSummary: {
+      actionLabel: "Claim $1.00",
+      amountLabel: "$1.00",
+      assetLabel: "",
+      onAction: () => alert("Claim bounty clicked"),
+    },
+  },
+  render: (args) => (
+    <StandardRoutePage size="rail">
+      <WalletHub {...args} />
+    </StandardRoutePage>
+  ),
+};
+
+export const BountiesMobile: Story = {
+  args: Bounties.args,
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: (args) => (
+    <StandardRoutePage size="rail">
+      <WalletHub {...args} />
+    </StandardRoutePage>
+  ),
+};
+
 function WalletHubWithSheets({ forceMobile = false }: { forceMobile?: boolean }) {
   const [walletAction, setWalletAction] = React.useState<"send" | "receive" | null>(null);
 

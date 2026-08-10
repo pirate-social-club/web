@@ -241,7 +241,7 @@ export function boostFundingErrorMessage(
     case "wallet-unavailable":
       return "Your wallet is not connected. Reconnect your Pirate Wallet, then try again. No payment was sent.";
     case "insufficient-usdc":
-      return "Your wallet does not have enough USDC to fund this boost. No payment was sent.";
+      return "Your wallet does not have enough USDC to fund this bounty. No payment was sent.";
     case "insufficient-gas":
       return "Your wallet does not have enough ETH for network fees. No payment was sent.";
     case "rpc-failure":
@@ -310,10 +310,12 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const [policyOpen, setPolicyOpen] = React.useState(false);
   const [sheetState, setSheetState] = React.useState<BoostCampaignSheetProps["state"]>("compose");
   const [eligibleActivity, setEligibleActivity] = React.useState<BoostEligibleActivity>("karaoke");
-  const [identityProvider, setIdentityProvider] = React.useState<BoostRewardIdentityProvider>("self");
+  const [identityProvider, setIdentityProvider] = React.useState<BoostRewardIdentityProvider>("very");
   const [dailyRewardInput, setDailyRewardInput] = React.useState("1.00");
   const [budgetInput, setBudgetInput] = React.useState("10.00");
   const [payoutTiers, setPayoutTiers] = React.useState<BoostPayoutTierDraft[]>([]);
+  const [nationalityPricingEnabled, setNationalityPricingEnabled] = React.useState(false);
+  const [reviewAttempted, setReviewAttempted] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | undefined>();
   const [terminalCode, setTerminalCode] = React.useState<string | null>(null);
@@ -364,6 +366,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         setDailyRewardInput((storedCampaign.daily_reward_cents / 100).toFixed(2));
         const storedTiers = campaignPayoutTiers(storedCampaign);
         if (storedTiers.length > 0) {
+          setNationalityPricingEnabled(true);
           setPayoutTiers(storedTiers.map((tier, index) => ({
             id: `stored_payout_tier_${index}`,
             nationalities: tier.nationalities,
@@ -502,15 +505,23 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       dailyRewardInput,
       budgetInput,
       limits,
-      tiersPreviewAvailable ? parsedPayoutTiers : undefined,
+      tiersPreviewAvailable && nationalityPricingEnabled ? parsedPayoutTiers : undefined,
     ) : null,
-    [budgetInput, dailyRewardInput, limits, parsedPayoutTiers, tiersPreviewAvailable],
+    [budgetInput, dailyRewardInput, limits, nationalityPricingEnabled, parsedPayoutTiers, tiersPreviewAvailable],
   );
   const fundingWallet = quote ? findConnectedFundingWallet({
     connectedWallets,
     primaryWalletAddress: quote.sender_address,
   }) : null;
   const walletMismatch = Boolean(quote && !fundingWallet);
+  const completionRangeLabel = React.useMemo(() => {
+    if (!nationalityPricingEnabled || !plan?.tiered || plan.budgetCents == null || plan.rewardCount == null) return undefined;
+    const amounts = [plan.dailyRewardCents, ...parsedPayoutTiers.map((tier) => tier.amountCents)]
+      .filter((amount): amount is number => amount != null && amount > 0);
+    if (amounts.length === 0) return undefined;
+    const upper = Math.floor(plan.budgetCents / Math.min(...amounts));
+    return `${plan.rewardCount.toLocaleString("en")}–${upper.toLocaleString("en")} completions`;
+  }, [nationalityPricingEnabled, parsedPayoutTiers, plan]);
 
   const createQuote = React.useCallback(async (existingCampaign?: RewardCampaign | null) => {
     if (createQuoteInFlight.current || !input.communityId || !capabilities || !plan?.valid || plan.budgetCents == null || plan.dailyRewardCents == null) return;
@@ -520,8 +531,8 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     try {
       const now = Math.floor(Date.now() / 1_000);
       const createKeyStorage = createRequestStorageKey(input.communityId, input.postId);
-      const tieredDraft = tiersPreviewAvailable && payoutTiers.length > 0;
-      const selectedProvider = existingCampaign?.reward_identity_provider ?? identityProvider;
+      const tieredDraft = tiersPreviewAvailable && nationalityPricingEnabled && payoutTiers.length > 0;
+      const selectedProvider = existingCampaign?.reward_identity_provider ?? (tieredDraft ? "self" : "very");
       const targetCampaign = existingCampaign ?? await api.rewards.createCampaign({
         budget_cents: plan.budgetCents,
         community: input.communityId,
@@ -567,19 +578,18 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       });
       setSheetState("quote");
     } catch (error) {
-      setErrorMessage(boostFundingErrorMessage(error, "Could not prepare reward funding."));
+      setErrorMessage(boostFundingErrorMessage(error, "Could not prepare bounty funding."));
       setSheetState("failed");
     } finally {
       createQuoteInFlight.current = false;
       setBusy(false);
     }
-  }, [api.rewards, capabilities, eligibleActivity, identityProvider, input.communityId, input.postId, parsedPayoutTiers, payoutTiers.length, plan, tierFundingEnabled, tiersPreviewAvailable]);
+  }, [api.rewards, capabilities, eligibleActivity, identityProvider, input.communityId, input.postId, nationalityPricingEnabled, parsedPayoutTiers, payoutTiers.length, plan, tierFundingEnabled, tiersPreviewAvailable]);
 
   React.useEffect(() => {
-    if (tiersPreviewAvailable && payoutTiers.length > 0 && identityProvider === "very") {
-      setIdentityProvider("self");
-    }
-  }, [identityProvider, payoutTiers.length, tiersPreviewAvailable]);
+    if (campaign) return;
+    setIdentityProvider(tiersPreviewAvailable && nationalityPricingEnabled ? "self" : "very");
+  }, [campaign, nationalityPricingEnabled, tiersPreviewAvailable]);
 
   React.useEffect(() => {
     if (
@@ -761,7 +771,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       } else {
         setErrorMessage(boostFundingErrorMessage(
           error,
-          "Could not submit reward funding.",
+          "Could not submit bounty funding.",
           {
             networkLabel: getPirateNetworkConfig().base.label,
             submitted: false,
@@ -781,9 +791,13 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
 
   const handleConfirm = React.useCallback(() => {
     if (busy || hasCampaignConflict || thirdPartyBlocked || activityUnavailable) return;
+    if (sheetState === "compose") {
+      setReviewAttempted(true);
+      if (nationalityPricingEnabled && payoutTiers.length === 0) return;
+    }
     if (sheetState === "compose") void createQuote(campaign?.status === "draft" ? campaign : null);
     if (sheetState === "quote") void sendFunding();
-  }, [activityUnavailable, busy, campaign, createQuote, hasCampaignConflict, sendFunding, sheetState, thirdPartyBlocked]);
+  }, [activityUnavailable, busy, campaign, createQuote, hasCampaignConflict, nationalityPricingEnabled, payoutTiers.length, sendFunding, sheetState, thirdPartyBlocked]);
 
   const openBoost = React.useCallback(() => {
     if (!input.authenticated) {
@@ -814,7 +828,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       });
       setPolicyAllowed(policy.third_party_rewards === "allowed");
     } catch (error) {
-      setPolicyError(getErrorMessage(error, "Could not update reward settings."));
+      setPolicyError(getErrorMessage(error, "Could not update bounty settings."));
     } finally {
       setBusy(false);
     }
@@ -823,9 +837,9 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const explorerBase = getPirateNetworkConfig().base.explorerUrl.replace(/\/$/u, "");
   const rewardCount = plan?.rewardCount ?? 0;
   const availabilityProblem = hasCampaignConflict
-      ? "This song already has a live boost. Adding funds to it is not available here yet."
+      ? "This song already has a live bounty. Adding funds to it is not available here yet."
     : thirdPartyBlocked
-      ? "The song owner is not accepting boosts from other people."
+      ? "The song owner is not accepting bounties from other people."
       : undefined;
 
   return {
@@ -856,6 +870,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       budgetDisplayLabel: formatUsdLabel((plan?.budgetCents ?? 0) / 100) ?? "$0.00",
       budgetLabel: budgetInput,
       budgetPresets: ["$5.00", "$10.00", "$25.00"],
+      completionRangeLabel,
       dailyRewardLabel: dailyRewardInput,
       dailyRewardDisplayLabel: plan?.dailyRewardCents != null
         ? formatUsdLabel(plan.dailyRewardCents / 100) ?? undefined
@@ -863,7 +878,6 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       eligibleActivity,
       eligibleActivities: capabilities?.eligible_activities,
       identityProvider,
-      identityProviderLocked: campaign != null,
       endsAtLabel: campaign
         ? new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(new Date(campaign.ends_at * 1_000))
         : undefined,
@@ -875,7 +889,12 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       fundedLabel: campaign ? formatUsdLabel(campaign.funded_cents / 100) ?? undefined : undefined,
       onBudgetChange: setBudgetInput,
       ...(tiersPreviewAvailable ? {
+        nationalityPricingEnabled,
         payoutTiers,
+        onNationalityPricingEnabledChange: (enabled: boolean) => {
+          setNationalityPricingEnabled(enabled);
+          setReviewAttempted(false);
+        },
         onAddPayoutTier: () => setPayoutTiers((tiers) => [
           ...tiers,
           { id: idempotencyKey("payout_tier"), nationalities: [], amountLabel: "" },
@@ -895,7 +914,6 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       onConnectWallet: reconnectEthereumWallet ?? undefined,
       onDailyRewardChange: setDailyRewardInput,
       onEligibleActivityChange: setEligibleActivity,
-      onIdentityProviderChange: setIdentityProvider,
       onOpenChange: setSheetOpen,
       onRefresh: () => {
         if (campaign && quote && transactionHash) {
@@ -924,9 +942,11 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       },
       open: sheetOpen,
       planProblem: availabilityProblem ?? (activityUnavailable
-        ? "This reward activity is unavailable right now."
+        ? "This bounty activity is unavailable right now."
+        : reviewAttempted && nationalityPricingEnabled && payoutTiers.length === 0
+          ? "Add at least one country amount."
         : !capabilities
-        ? "Reward funding is unavailable right now."
+        ? "Bounty funding is unavailable right now."
         : plan?.problem
           ? boostPlanProblemLabel(plan.problem, limits!)
           : undefined),

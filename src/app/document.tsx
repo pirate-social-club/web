@@ -90,6 +90,7 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
     <html
       className={theme === "light" ? undefined : "dark"}
       data-theme={theme}
+      data-hns-wallet-interactive={ctx.walletInteractive ? "1" : undefined}
       dir={dir}
       lang={resolveLocaleLanguageTag(locale)}
       suppressHydrationWarning

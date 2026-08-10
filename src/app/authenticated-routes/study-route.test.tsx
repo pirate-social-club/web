@@ -9,7 +9,6 @@ import { ApiClient, ApiError } from "@/lib/api/client";
 import { __resetSessionStoreForTests, clearSession, getAccessToken, setSession } from "@/lib/api/session-store";
 import type {
   ApiPublicRewardOffer,
-  ApiRewardsSummaryResponse,
   SongStreakLeaderboard,
   SongStudyAttemptRequest,
   SongStudyAttemptResult,
@@ -126,9 +125,9 @@ let publicPostError: unknown = null;
 let studyResult: SongStudyPayload = readyStudyPayload();
 let studyError: unknown = null;
 let rewardCampaignResult: ApiPublicRewardOffer | null = null;
-let rewardSummaryResult: ApiRewardsSummaryResponse | null = null;
 let privyConnectCalls = 0;
 let submitPostStudyAttemptError: unknown = null;
+let submitPostStudyAttemptPromise: Promise<SongStudyAttemptResult> | null = null;
 let transcribeStudyAudioError: unknown = null;
 let transcribeStudyAudioResult: { text: string; language_code?: string | null; language_probability?: number | null } = {
   text: "Hola mundo",
@@ -192,13 +191,14 @@ fakeApi.rewards.getActiveCampaignForSong = async () => {
   return rewardCampaignResult;
 };
 fakeApi.rewards.getSummary = async () => {
-  if (!rewardSummaryResult) throw new ApiError("not_found", "Reward summary not configured", 404);
-  return rewardSummaryResult;
+  calls.push("rewards.getSummary");
+  throw new ApiError("server_error", "Study completion must not fetch the reward summary", 500);
 };
 fakeApi.communities.submitPostStudyAttempt = async (_communityId, _postId, body) => {
   submittedStudyAttempts.push(body);
   calls.push(`communities.submitPostStudyAttempt:${body.type}:${body.type === "translation_choice" ? body.selected_option_id : ""}`);
   if (submitPostStudyAttemptError) throw submitPostStudyAttemptError;
+  if (submitPostStudyAttemptPromise) return submitPostStudyAttemptPromise;
   return submitPostStudyAttemptResult;
 };
 fakeApi.communities.getPostStreakLeaderboard = async () => {
@@ -246,9 +246,9 @@ beforeEach(() => {
   studyResult = readyStudyPayload();
   studyError = null;
   rewardCampaignResult = null;
-  rewardSummaryResult = null;
   privyConnectCalls = 0;
   submitPostStudyAttemptError = null;
+  submitPostStudyAttemptPromise = null;
   transcribeStudyAudioError = null;
   transcribeStudyAudioResult = { text: "Hola mundo" };
   telegramVoiceIntentError = null;
@@ -446,7 +446,7 @@ describe("StudyRoutePage", () => {
 
     const view = renderRoute();
 
-    await waitFor(() => expect(view.getByLabelText("Reward $0.40")).toBeTruthy());
+    await waitFor(() => expect(view.getByLabelText("Bounty $0.40")).toBeTruthy());
     expect(view.getByText("$0.40")).toBeTruthy();
     expect(view.queryByText("Earn $0.40")).toBeNull();
     expect(view.queryByText("Earn $0.40 today")).toBeNull();
@@ -678,7 +678,7 @@ describe("StudyRoutePage", () => {
     }
   });
 
-  test("renders server-owned streak progress on completion", async () => {
+  test("finishes after the durable attempt response without checking the bounty outcome", async () => {
     rewardCampaignResult = {
       campaign: "rcp_study_progress",
       chain_id: 84532,
@@ -687,40 +687,6 @@ describe("StudyRoutePage", () => {
       ends_at: Math.floor(Date.now() / 1000) + 86_400,
       min_score_bps: 7_000,
     };
-    rewardSummaryResult = {
-      balance_cents: 40,
-      cashout: {
-        eligible: false,
-        min_cents: 100,
-        verification_provider: "self",
-        verification_state: "verified",
-      },
-      chain_id: 84532,
-      latest_in_flight_cashout: null,
-      pending_verification: {
-        conditional_cents: 0,
-        count: 0,
-        earliest_expires_at: null,
-      },
-      recent_events: [],
-      recent_qualifications: [{
-        amount_cents: 40,
-        community_id: "cmt_study",
-        created_at: 1,
-        credited_reward_event_id: "rew_study",
-        expires_at: Math.floor(Date.now() / 1000) + 86_400,
-        id: "rpq_study",
-        outcome_reason: null,
-        post_id: "pst_song",
-        qualification_basis: "study",
-        reward_campaign_id: "rcp_study",
-        reward_period_key: "2026-07-23",
-        reward_qualification_event_id: "rqe_study",
-        status: "credited",
-        updated_at: 2,
-      }],
-      today_earned_cents: 40,
-    };
     submitPostStudyAttemptResult = {
       attempts_remaining: 0,
       correct_option_id: "option_correct",
@@ -728,6 +694,15 @@ describe("StudyRoutePage", () => {
       next_review_hint: "good",
       object: "song_study_attempt_result",
       outcome: "correct",
+      session: {
+        ...readyStudyPayload().session!,
+        completed_exercise_count: 1,
+        first_pass_correct_count: 1,
+        mastered_exercise_count: 1,
+        presentation_count: 1,
+        qualified: true,
+        status: "completed",
+      },
       study_progress: {
         current_streak: 4,
         next_due_at: Math.floor(Date.now() / 1000) + 86_400,
@@ -804,19 +779,44 @@ describe("StudyRoutePage", () => {
         },
       ],
     });
+    let resolveFinalAttempt!: (result: SongStudyAttemptResult) => void;
+    submitPostStudyAttemptPromise = new Promise((resolve) => {
+      resolveFinalAttempt = resolve;
+    });
 
     const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
+    expect(view.getByLabelText("Bounty $0.40")).toBeTruthy();
     fireEvent.click(view.getByText("Hello world").closest("button")!);
+
+    await waitFor(() => expect(submittedStudyAttempts).toHaveLength(1));
+    expect(view.queryByText("Your streak")).toBeNull();
+    expect(view.queryByText("Session complete")).toBeNull();
+    expect(calls).not.toContain("rewards.getSummary");
+
+    resolveFinalAttempt(submitPostStudyAttemptResult);
     await waitFor(() => expect(view.getByText("Continue")).toBeTruthy());
     fireEvent.click(view.getByText("Continue").closest("button")!);
 
     await waitFor(() => expect(view.getByText("Your streak")).toBeTruthy());
     expect(view.getByLabelText("4 day streak")).toBeTruthy();
     expect(view.getByText("1/1")).toBeTruthy();
-    await waitFor(() => expect(view.getByText("+$0.40 🎉")).toBeTruthy());
-    expect(view.getByText("Test reward — no cash value.")).toBeTruthy();
+    expect(view.getByRole("button", { name: "Exit study" })).toBeTruthy();
+    expect(view.getByRole("button", { name: "Study again" })).toBeTruthy();
+    expect(view.getByRole("button", { name: "Karaoke" })).toBeTruthy();
+    expect(view.queryByLabelText("Bounty $0.40")).toBeNull();
+    expect(view.queryByText(/Checking your/u)).toBeNull();
+    expect(view.queryByText("Still checking your reward")).toBeNull();
+    expect(view.queryByText("$0.40 pending")).toBeNull();
+    expect(view.queryByText("+$0.40 🎉")).toBeNull();
+    expect(view.queryByText("Reward expired")).toBeNull();
+    expect(view.queryByText("No reward this time")).toBeNull();
+    expect(view.queryByText("Today's rewards have all been claimed.")).toBeNull();
+    expect(view.queryByText("You already got this song's reward today.")).toBeNull();
+    expect(view.queryByText("You can leave this screen. The result will appear in your Wallet.")).toBeNull();
+    expect(calls).not.toContain("rewards.getSummary");
+    expect(calls.filter((call) => call.startsWith("communities.submitPostStudyAttempt:"))).toHaveLength(1);
 
     // The completion list comes from a fresh leaderboard fetch — server ranks,
     // never the pre-session snapshot riding on the post payload.

@@ -40,6 +40,7 @@ import {
   resolveEffectiveRequestUrl,
   resolveForwardedCommunityRouteSegment,
   resolveForwardedCommunityRouteSlug,
+  resolveForwardedWalletInteractive,
   type HnsForwardedOriginEnv,
 } from "@/lib/hns-forwarded-origin";
 import { resolveBrowserReachableApiOrigin } from "@/lib/api/hns-hostname";
@@ -505,6 +506,7 @@ const app = defineApp<AppRequestInfo>([
         route.kind === "community-videos" ? route.communityId : null,
       )
       : undefined;
+    ctx.walletInteractive = resolveForwardedWalletInteractive(request);
     ctx.homeFeedScopeKey = route.kind === "community-videos" ? route.communityId : "global";
     ctx.isIndexable = routeDiscovery.isIndexable;
     const mustVerifySovereignPost = Boolean(

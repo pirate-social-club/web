@@ -251,3 +251,10 @@ export function resolveForwardedCommunityRouteSlug(request: Request): string | n
   }
   return normalized;
 }
+
+export function resolveForwardedWalletInteractive(
+  request: Request,
+): boolean {
+  return isTrustedForwarder(request)
+    && request.headers.get("x-pirate-hns-wallet-interactive")?.trim() === "1";
+}

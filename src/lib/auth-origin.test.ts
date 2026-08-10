@@ -21,6 +21,12 @@ describe("isCanonicalAuthOrigin", () => {
     expect(isCanonicalAuthOrigin("app.jazleeuw")).toBe(true);
   });
 
+  test("accepts a dynamically authorized imported HNS app origin", () => {
+    expect(isCanonicalAuthOrigin("app.new-root", true)).toBe(true);
+    expect(isCanonicalAuthOrigin("app.new-root", false)).toBe(false);
+    expect(isCanonicalAuthOrigin("profile.new-root", true)).toBe(false);
+  });
+
   test("returns true for staging.pirate.sc and subdomains", () => {
     expect(isCanonicalAuthOrigin("staging.pirate.sc")).toBe(true);
     expect(isCanonicalAuthOrigin("dev.staging.pirate.sc")).toBe(true);

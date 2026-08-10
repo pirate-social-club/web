@@ -47,9 +47,10 @@ function composeProps(overrides: Partial<SheetProps> = {}): SheetProps {
     dailyRewardDisplayLabel: "$1.00",
     dailyRewardLabel: "1.00",
     eligibleActivity: "karaoke",
+    identityProvider: "very",
     onOpenChange: () => undefined,
     open: true,
-    rewardCountLabel: "10 rewards",
+    rewardCountLabel: "10 completions",
     state: "compose",
     ...overrides,
   };
@@ -70,7 +71,7 @@ test("compose offers the exclusive activity enum as a radio group with explicit 
   expect(view.getByRole("radio", { name: "Karaoke" }).getAttribute("aria-checked")).toBe("true");
   expect(view.getByRole("radio", { name: "Study" }).getAttribute("aria-checked")).toBe("false");
 
-  fireEvent.click(view.getByRole("radio", { name: "Karaoke or study" }));
+  fireEvent.click(view.getByRole("radio", { name: "Either" }));
   expect(selected).toBe("either");
 });
 
@@ -90,57 +91,49 @@ test("compose radio group moves selection with arrow keys", () => {
   expect(selected).toBe("either");
 });
 
-test("provider choice is explicit, permanent copy is visible, and tiered pools exclude Very", () => {
-  let selected = "";
+test("provider stays out of setup and is summarized without becoming selectable", () => {
   const view = render(
     <BoostCampaignSheet
       {...composeProps({
-        identityProvider: "self",
-        onIdentityProviderChange: (provider) => { selected = provider; },
+        identityProvider: "very",
         payoutTiers: [],
       })}
     />,
   );
-
-  const providerGroup = view.getByRole("radiogroup", {
-    name: "Identity provider — permanent for this song",
-  });
-  expect(within(providerGroup).getAllByRole("radio")).toHaveLength(3);
-  fireEvent.click(within(providerGroup).getByRole("radio", { name: "ZKPassport" }));
-  expect(selected).toBe("zkpassport");
-  arrowKey(within(providerGroup).getByRole("radio", { name: "Self" }), "ArrowDown");
-  expect(selected).toBe("zkpassport");
+  expect(view.queryByText("Who can earn")).toBeNull();
+  expect(view.queryByText("Palm check")).toBeNull();
+  expect(view.queryByRole("radio", { name: "Very" })).toBeNull();
 
   view.rerender(
     <BoostCampaignSheet
       {...composeProps({
         identityProvider: "self",
         payoutTiers: [{ id: "tier_vn", nationalities: ["VN"], amountLabel: "5.00" }],
+        state: "quote",
       })}
     />,
   );
-  expect(view.queryByRole("radio", { name: "Very" })).toBeNull();
+  expect(view.getByText("Passport check · Self")).toBeTruthy();
 });
 
-test("persisted pool provider cannot be changed in the compose surface", () => {
+test("persisted bounty provider remains visible without becoming selectable", () => {
   const view = render(
     <BoostCampaignSheet
-      {...composeProps({ identityProvider: "zkpassport", identityProviderLocked: true })}
+      {...composeProps({ identityProvider: "zkpassport", state: "quote" })}
     />,
   );
-  expect(view.getByRole("radio", { name: "Self" }).closest("button")?.disabled).toBe(true);
-  expect(view.getByRole("radio", { name: "ZKPassport" }).getAttribute("aria-checked")).toBe("true");
+  expect(view.getByText("Passport check · ZKPassport")).toBeTruthy();
+  expect(view.queryByRole("radio", { name: "ZKPassport" })).toBeNull();
 });
 
 test("compose states the funding terms once, without restating the inputs", () => {
   const view = render(<BoostCampaignSheet {...composeProps()} />);
 
-  expect(view.getByText(/You pay \$10\.00 now\. The reward and budget lock after payment/)).toBeTruthy();
+  expect(view.getByText(/You pay \$10\.00 now\. Bounty terms lock after payment/)).toBeTruthy();
   expect(view.getByText(/can't be withdrawn/)).toBeTruthy();
-  expect(view.getByText("Pays for")).toBeTruthy();
-  expect(view.getByText("Up to 10 rewards")).toBeTruthy();
+  expect(view.queryByText("Pays for")).toBeNull();
   expect(view.queryByText(/Qualifies by/)).toBeNull();
-  expect(view.queryByText(/One reward per person/)).toBeNull();
+  expect(view.queryByText(/One bounty per person/)).toBeNull();
   expect(view.queryByText(/Unused money cannot be withdrawn/)).toBeNull();
   expect(view.queryByText(/cannot be changed after you pay/)).toBeNull();
   expect(view.queryByText(/refund whatever is left/i)).toBeNull();
@@ -211,7 +204,7 @@ test("awaiting finality says the transfer is safe and blocks duplicate status ch
   expect(view.queryByText("Funding failed")).toBeNull();
 });
 
-test("live boost labels metrics plainly", () => {
+test("live bounty labels metrics plainly", () => {
   const view = render(
     <BoostCampaignSheet
       {...composeProps({
@@ -225,7 +218,7 @@ test("live boost labels metrics plainly", () => {
     />,
   );
 
-  expect(view.getByText(/People can now earn \$1\.00 for a study set or karaoke pass/)).toBeTruthy();
+  expect(view.getByText(/People can earn \$1\.00 for a study set or karaoke pass/)).toBeTruthy();
   expect(view.getByText("Earned")).toBeTruthy();
   expect(view.getByText("Each")).toBeTruthy();
   expect(view.queryByText("Paid out")).toBeNull();
@@ -243,9 +236,9 @@ test("owner policy toggles via a switch and only warns while blocking", () => {
     />,
   );
 
-  const toggle = view.getByRole("switch", { name: "Allow others to boost this song" });
+  const toggle = view.getByRole("switch", { name: "Allow others to fund bounties" });
   expect(toggle.getAttribute("aria-checked")).toBe("true");
-  expect(view.queryByText(/Campaign funding is not returned/)).toBeNull();
+  expect(view.queryByText(/Funding is not returned/)).toBeNull();
 
   fireEvent.click(toggle);
   expect(next).toBe(false);
@@ -258,7 +251,7 @@ test("owner policy toggles via a switch and only warns while blocking", () => {
     />,
   );
   expect(view.getByRole("switch").getAttribute("aria-checked")).toBe("false");
-  expect(view.getByText(/Campaign funding is not returned/)).toBeTruthy();
+  expect(view.getByText(/Funding is not returned/)).toBeTruthy();
 });
 
 test("terminal funding review exposes the transaction and support reference without a retry", () => {
@@ -282,7 +275,7 @@ test("terminal funding review exposes the transaction and support reference with
 test("funding review falls back to plain-language copy", () => {
   const view = render(<BoostCampaignSheet {...composeProps({ state: "funding-review" })} />);
 
-  expect(view.getByText(/Funds arrived, but the boost didn't activate/)).toBeTruthy();
+  expect(view.getByText(/Funds arrived, but the bounty didn't activate/)).toBeTruthy();
   expect(view.queryByText(/terminal funding state/)).toBeNull();
 });
 
@@ -294,42 +287,45 @@ const TIER_US = { amountLabel: "5.00", id: "tier-us", nationalities: ["USA"] };
 test("without the payoutTiers prop the sheet renders exactly as before (dark default)", () => {
   const view = render(<BoostCampaignSheet {...composeProps()} />);
 
-  expect(view.queryByText("Payout by passport nationality")).toBeNull();
-  expect(view.queryByText(/publicly visible on-chain/)).toBeNull();
-  expect(view.getByText("Daily reward per learner")).toBeTruthy();
-  expect(view.getByText("Up to 10 rewards")).toBeTruthy();
+  expect(view.queryByText("Countries")).toBeNull();
+  expect(view.queryByText(/public on-chain/)).toBeNull();
+  expect(view.getByText("Bounty per learner")).toBeTruthy();
 });
 
-test("an empty tier list shows the section with the privacy note and an add button", () => {
-  const view = render(<BoostCampaignSheet {...composeProps({ payoutTiers: [] })} />);
+test("nationality pricing starts with a schedule and no invalid blank country row", () => {
+  const view = render(
+    <BoostCampaignSheet {...composeProps({ nationalityPricingEnabled: true, payoutTiers: [] })} />,
+  );
 
-  expect(view.getByText("Payout by passport nationality")).toBeTruthy();
-  expect(view.getByText(/Reward amounts vary by passport nationality/)).toBeTruthy();
-  expect(view.getByText("Default daily reward")).toBeTruthy();
-  expect(view.getByRole("button", { name: "Add a tier" })).toBeTruthy();
-  // No rows yet: the count stays an untiered ceiling.
-  expect(view.getByText("Up to 10 rewards")).toBeTruthy();
+  expect(view.getByText("A passport is required.")).toBeTruthy();
+  expect(view.queryByText("Countries")).toBeNull();
+  expect(view.queryByText("Amount")).toBeNull();
+  expect(view.getByText("Everyone else")).toBeTruthy();
+  expect(view.getByRole("button", { name: "Add countries" })).toBeTruthy();
+  expect(view.queryByRole("combobox")).toBeNull();
+  expect(view.queryByText(/public on Base/)).toBeNull();
 });
 
-test("tiered compose shows the worst-case floor, never a blend", () => {
+test("tiered compose shows the payout schedule and live budget range", () => {
   const view = render(
     <BoostCampaignSheet
       {...composeProps({
         budgetDisplayLabel: "$25.00",
         budgetLabel: "25.00",
+        completionRangeLabel: "5–50 completions",
         maxClaimDisplayLabel: "$5.00",
         payoutTiers: [TIER_VN, TIER_US],
-        rewardCountLabel: "5 rewards",
+        rewardCountLabel: "5 completions",
       })}
     />,
   );
 
-  expect(view.getByText("At least 5 rewards")).toBeTruthy();
-  expect(view.queryByText(/Up to 5 rewards/)).toBeNull();
-  // The direction flip ("up to" → "at least") always carries its explanation.
-  expect(view.getByText(/Worst case assumes the top tier \(\$5\.00\) on every claim/)).toBeTruthy();
-  expect(view.getByText("Tier 1")).toBeTruthy();
-  expect(view.getByText("Tier 2")).toBeTruthy();
+  expect(view.getByText(/\$25\.00 funds about 5–50 completions/)).toBeTruthy();
+  expect(view.getByText("Countries")).toBeTruthy();
+  expect(view.getByText("Amount")).toBeTruthy();
+  expect(view.getByRole("textbox", { name: "Country group 1 bounty $" })).toBeTruthy();
+  expect(view.getByRole("textbox", { name: "Country group 2 bounty $" })).toBeTruthy();
+  expect(view.queryByText(/Tier 1/)).toBeNull();
 });
 
 test("add and remove tier emit intents; the owner mints and owns row ids", () => {
@@ -345,10 +341,10 @@ test("add and remove tier emit intents; the owner mints and owns row ids", () =>
     />,
   );
 
-  fireEvent.click(view.getByRole("button", { name: "Add a tier" }));
+  fireEvent.click(view.getByRole("button", { name: "Add countries" }));
   expect(added).toBe(1);
 
-  fireEvent.click(view.getByRole("button", { name: "Remove tier 2" }));
+  fireEvent.click(view.getByRole("button", { name: "Remove country group 2" }));
   expect(removedId).toBe("tier-us");
 });
 
@@ -362,7 +358,9 @@ test("add tier is disabled at the tier cap", () => {
     />,
   );
 
-  expect(view.getByRole("button", { name: "Add a tier" }).closest("button")?.disabled).toBe(true);
+  expect(
+    view.getByRole("button", { name: "Add countries" }).closest("button")?.disabled,
+  ).toBe(true);
 });
 
 test("tiered quote shows the range and the guaranteed floor", () => {
@@ -371,7 +369,7 @@ test("tiered quote shows the range and the guaranteed floor", () => {
       {...composeProps({
         fundingAmountLabel: "$25.00",
         payoutTiers: [TIER_VN, TIER_US],
-        rewardCountLabel: "5 rewards",
+        rewardCountLabel: "5 completions",
         state: "quote",
         tierRangeLabel: "$0.50–$5.00 by nationality",
       })}
@@ -379,7 +377,7 @@ test("tiered quote shows the range and the guaranteed floor", () => {
   );
 
   expect(view.getByText("$0.50–$5.00 by nationality")).toBeTruthy();
-  expect(view.getByText("At least 5 rewards")).toBeTruthy();
+  expect(view.getByText("At least 5 completions")).toBeTruthy();
 });
 
 test("draft preview confirms persistence without offering payment", () => {

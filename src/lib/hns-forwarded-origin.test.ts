@@ -6,6 +6,7 @@ import {
   resolveEffectiveRequestUrl,
   resolveForwardedCommunityRouteSegment,
   resolveForwardedCommunityRouteSlug,
+  resolveForwardedWalletInteractive,
   type HnsForwardedOriginEnv,
 } from "./hns-forwarded-origin";
 
@@ -111,10 +112,12 @@ describe("HNS forwarded origin", () => {
       "x-pirate-hns-root": "xn--pokmon-dva",
       "x-pirate-hns-community-id": "com_cmt_public_namespace_test",
       "x-pirate-hns-community-route": "xn--pokmon-dva",
+      "x-pirate-hns-wallet-interactive": "1",
     }));
     expect(result.rejection).toBe(null);
     expect(resolveForwardedCommunityRouteSegment(result.request)).toBe("com_cmt_public_namespace_test");
     expect(resolveForwardedCommunityRouteSlug(result.request)).toBe("xn--pokmon-dva");
+    expect(resolveForwardedWalletInteractive(result.request)).toBe(true);
   });
 
   test("matches the gateway's fixed interoperability vector", async () => {
@@ -225,6 +228,7 @@ describe("HNS forwarded origin", () => {
       "x-pirate-hns-host": "xn--pokmon-dva",
       "x-pirate-hns-trusted-forwarder": "1",
       "x-pirate-hns-forwarder-token": "legacy-secret",
+      "x-pirate-hns-wallet-interactive": "1",
     });
     input.headers.set("x-pirate-hns-forwarder-signature", "v1=".padEnd(67, "0"));
     const result = await authenticate(input);
@@ -234,5 +238,6 @@ describe("HNS forwarded origin", () => {
     expect(result.request.headers.has("x-pirate-hns-forwarder-signature")).toBe(false);
     expect(result.request.headers.has("x-pirate-hns-forwarder-timestamp")).toBe(false);
     expect(result.request.headers.has("x-pirate-hns-forwarder-path")).toBe(false);
+    expect(resolveForwardedWalletInteractive(result.request)).toBe(false);
   });
 });

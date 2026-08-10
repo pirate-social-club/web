@@ -117,19 +117,11 @@ function RewardsSummaryCard({
   return (
     <Card className="flex flex-col justify-center rounded-2xl border-border bg-card p-5 shadow-none md:p-6">
       <Type as="div" variant="body" className="text-muted-foreground">
-        Rewards
+        Bounties
       </Type>
       <Type as="div" variant="h1" className="mt-0.5 text-4xl font-semibold leading-tight">
         {rewardsSummary.amountLabel}
       </Type>
-      <Type as="div" variant="caption" className="mt-1 text-muted-foreground">
-        {rewardsSummary.assetLabel}
-      </Type>
-      {rewardsSummary.supportingLabel ? (
-        <Type as="div" variant="caption" className="mt-1 text-muted-foreground">
-          {rewardsSummary.supportingLabel}
-        </Type>
-      ) : null}
       <Button
         className="mt-4 h-12 w-full"
         disabled={rewardsSummary.actionDisabled}
@@ -365,19 +357,11 @@ export function MobileWalletHub({
             {rewardsSummary ? (
               <div className="border-t border-border py-4">
                   <Type as="div" variant="body" className="text-muted-foreground">
-                  Rewards
+                  Bounties
                 </Type>
                 <Type as="div" variant="h1" className="mt-0.5 text-4xl font-semibold leading-tight">
                   {rewardsSummary.amountLabel}
                 </Type>
-                <Type as="div" variant="caption" className="mt-1 text-muted-foreground">
-                  {rewardsSummary.assetLabel}
-                </Type>
-                {rewardsSummary.supportingLabel ? (
-                  <Type as="div" variant="caption" className="mt-1 text-muted-foreground">
-                    {rewardsSummary.supportingLabel}
-                  </Type>
-                ) : null}
                 <Button
                   className="mt-4 h-14 w-full"
                   disabled={rewardsSummary.actionDisabled}

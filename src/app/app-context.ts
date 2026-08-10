@@ -29,4 +29,5 @@ export type AppContext = {
   seoMetadata?: SeoMetadata | null;
   sovereignRouteMismatch?: boolean;
   theme?: ThemeMode;
+  walletInteractive?: boolean;
 };

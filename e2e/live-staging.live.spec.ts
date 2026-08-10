@@ -1257,22 +1257,46 @@ async function hydrateRoutableLiveCommunityOwner(
   community: LiveCommunity,
   diagnostics?: FixtureDiscoveryDiagnostic[],
 ): Promise<LiveCommunity | null> {
-  const path = `/public-communities/${encodeURIComponent(community.id)}`;
+  // Stable staging fixtures are mutable, while public community details are
+  // cached at the edge. Use a unique query so release gates never impersonate
+  // an owner from a stale pre-repair response.
+  const cacheBust = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const path = `/public-communities/${encodeURIComponent(community.id)}?e2e_cache_bust=${cacheBust}`;
   const detail = await requestJson<any>(path).catch((error: unknown) => {
     diagnostics?.push({ detail: fixtureDiagnosticDetail(error), stage: "hydrate", target: path });
     return null;
   });
   if (!detail) return null;
   const ownerUser = firstString(detail?.owner?.user);
+  if (!ownerUser) {
+    diagnostics?.push({
+      detail: "public projection did not include an owner user id",
+      stage: "hydrate-owner",
+      target: path,
+    });
+    return null;
+  }
   const id = firstString(detail?.id, community.id) ?? community.id;
   return {
     // Public responses expose `com_<internal id>`, while authenticated
     // `/communities/:id` mutation routes require the internal id.
     id: rawPublicId(id, "com"),
     label: firstString(detail?.display_name, community.label) ?? community.label,
-    ownerUserId: ownerUser ? rawPublicUserId(ownerUser) : community.ownerUserId ?? null,
+    ownerUserId: rawPublicUserId(ownerUser),
     routeSegment: firstString(detail?.route_slug, community.routeSegment, detail?.id, community.id) ?? community.routeSegment,
   };
+}
+
+async function hydrateDedicatedLiveCommunityOwner(
+  community: LiveCommunity,
+  diagnostics: FixtureDiscoveryDiagnostic[],
+): Promise<LiveCommunity | null> {
+  for (let attempt = 1; attempt <= 6; attempt += 1) {
+    const hydrated = await hydrateRoutableLiveCommunityOwner(community, diagnostics);
+    if (hydrated?.ownerUserId) return hydrated;
+    if (attempt < 6) await new Promise((resolve) => setTimeout(resolve, 2_000));
+  }
+  return null;
 }
 
 async function seedCommunityCandidates(diagnostics?: FixtureDiscoveryDiagnostic[]): Promise<LiveCommunity[]> {
@@ -1393,16 +1417,20 @@ test.describe("live staging integration", () => {
 
   test("exposes stable gate identity and authoritative outcomes in live join eligibility", async () => {
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const diagnostics: FixtureDiscoveryDiagnostic[] = [];
     // Each live stage is its own step so a stall is attributed to the operation
     // that hung rather than to the test as a whole.
     const community = await test.step("hydrate gate-contract fixture", () =>
-      hydrateRoutableLiveCommunityOwner({
+      hydrateDedicatedLiveCommunityOwner({
         id: gateContractCommunityId,
         label: gateContractCommunityId,
         routeSegment: gateContractCommunityId,
-      }));
+      }, diagnostics));
     if (!community) {
-      throw new Error(`Could not load stable gate-contract fixture ${gateContractCommunityId}`);
+      throw new Error(
+        `Could not load stable gate-contract fixture ${gateContractCommunityId} with an impersonable owner:\n`
+          + formatFixtureDiscoveryDiagnostics(diagnostics),
+      );
     }
     const headers = seedOwnerAdminHeaders(community);
     if (!headers) {
@@ -1475,7 +1503,7 @@ test.describe("live staging integration", () => {
     let target: { community: LiveCommunity; headers: Record<string, string>; policy: HandlePolicy } | null = null;
     const discoveryDiagnostics: FixtureDiscoveryDiagnostic[] = [];
     const pinned = await test.step("preflight dedicated handle-claim fixture", () =>
-      hydrateRoutableLiveCommunityOwner({
+      hydrateDedicatedLiveCommunityOwner({
         id: handleClaimCommunityId,
         label: handleClaimCommunityId,
         routeSegment: handleClaimCommunityId,

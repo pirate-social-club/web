@@ -71,10 +71,10 @@ requirements manifest from the pinned API (`api/services/api/community-schema-re
   then publishes its verdicts with allocation-generation and writer-epoch
   fences. This is shadow evidence only: publication failures fail closed, and
   no ledger result can make a release pass while the REST scan fails.
-- Staging currently runs at concurrency 3. This was raised only after two
-  zero-retry concurrency-2 scans. If code `7429` or a sustained retry increase
-  appears, first rule out overlapping scans and then restore concurrency 2;
-  never weaken the fail-closed result checks.
+- Staging currently runs at concurrency 1 after code `7429` exhausted retries
+  at concurrency 2. Raise it only after two zero-retry concurrency-1 scans. If
+  code `7429` or a sustained retry increase reappears, first rule out
+  overlapping scans; never weaken the fail-closed result checks.
 - The long-term fleet-size-independent improvement is the approved attestation
   ledger. Until its fast path is separately reviewed and activated, the REST
   full scan remains the release authority.

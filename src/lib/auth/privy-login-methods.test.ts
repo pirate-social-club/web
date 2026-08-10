@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { resolvePrivyLoginMethods } from "./privy-login-methods";
+import {
+  resolvePrivyLoginMethods,
+  resolvePrivyLoginMethodState,
+} from "./privy-login-methods";
 
 describe("resolvePrivyLoginMethods", () => {
   test("offers passkey login on the Pirate RP and its subdomains", () => {
@@ -25,5 +28,17 @@ describe("resolvePrivyLoginMethods", () => {
     expect(resolvePrivyLoginMethods("app.pirate")).not.toContain("passkey");
     expect(resolvePrivyLoginMethods("pirate.sc.example")).not.toContain("passkey");
     expect(resolvePrivyLoginMethods("")).not.toContain("passkey");
+  });
+
+  test("does not mount Privy with server-rendered fallback methods", () => {
+    expect(resolvePrivyLoginMethodState(null)).toEqual({
+      loginMethods: ["wallet", "email", "google", "twitter"],
+      originReady: false,
+    });
+
+    expect(resolvePrivyLoginMethodState("app.community-root")).toEqual({
+      loginMethods: ["wallet", "email", "google", "twitter"],
+      originReady: true,
+    });
   });
 });

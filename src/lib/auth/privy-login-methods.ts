@@ -1,5 +1,10 @@
 export type PrivyLoginMethod = "wallet" | "email" | "google" | "twitter" | "passkey";
 
+export type PrivyLoginMethodState = {
+  loginMethods: PrivyLoginMethod[];
+  originReady: boolean;
+};
+
 const LOGIN_METHODS_WITHOUT_PASSKEY: PrivyLoginMethod[] = [
   "wallet",
   "email",
@@ -18,4 +23,13 @@ export function resolvePrivyLoginMethods(hostname: string): PrivyLoginMethod[] {
   return supportsPiratePasskey
     ? [...LOGIN_METHODS_WITHOUT_PASSKEY, "passkey"]
     : [...LOGIN_METHODS_WITHOUT_PASSKEY];
+}
+
+export function resolvePrivyLoginMethodState(
+  hostname: string | null,
+): PrivyLoginMethodState {
+  return {
+    loginMethods: resolvePrivyLoginMethods(hostname ?? ""),
+    originReady: hostname !== null,
+  };
 }

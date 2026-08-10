@@ -16,8 +16,6 @@ import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import {
-  displayedRewardQualificationStatus,
-  RewardQualificationNotice,
   rewardAmountLabel,
   SongRewardOfferPill,
 } from "@/components/compositions/rewards/reward-surfaces";
@@ -31,7 +29,6 @@ import { ApiError, isApiAuthError, isApiVerificationRequiredError } from "@/lib/
 import { deviceTimezone } from "@/lib/device-timezone";
 import type {
   ApiPublicRewardOffer,
-  ApiRewardQualificationSummary,
   SongStudyAttemptResult,
   SongStudyExercise,
   SongStudyPayload,
@@ -464,8 +461,6 @@ export function StudyRoutePage({
   const { configured, loaded } = usePiratePrivyRuntime();
   const contentLocale = useRouteContentLocale();
   const [state, setState] = React.useState<StudyRouteState>({ phase: "loading" });
-  const [rewardQualification, setRewardQualification] = React.useState<ApiRewardQualificationSummary | null>(null);
-  const [rewardCheckDelayed, setRewardCheckDelayed] = React.useState(false);
   const [reloadKey, setReloadKey] = React.useState(0);
   const {
     handleModalOpenChange: handleAgeSelfModalOpenChange,
@@ -603,38 +598,6 @@ export function StudyRoutePage({
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [telegramMiniApp]);
-
-  const studyComplete = state.phase === "ready" && state.surface.kind === "complete";
-  const completedRewardOffer = state.phase === "ready" ? state.rewardOffer : null;
-  React.useEffect(() => {
-    if (telegramMiniApp || !studyComplete || !completedRewardOffer || !session?.accessToken) return;
-    let cancelled = false;
-    let timeout: number | undefined;
-    let attempt = 0;
-    const poll = async () => {
-      const summary = await api.rewards.getSummary().catch(() => null);
-      if (cancelled) return;
-      const qualification = summary?.recent_qualifications?.find((item) =>
-        item.post_id === postId && item.qualification_basis === "study"
-      ) ?? null;
-      if (qualification) {
-        setRewardQualification(qualification);
-        if (qualification.status !== "checking") return;
-      }
-      if (attempt < 5) {
-        timeout = window.setTimeout(() => { void poll(); }, 1_500 * 2 ** attempt++);
-      } else {
-        setRewardCheckDelayed(true);
-      }
-    };
-    setRewardQualification(null);
-    setRewardCheckDelayed(false);
-    void poll();
-    return () => {
-      cancelled = true;
-      if (timeout !== undefined) window.clearTimeout(timeout);
-    };
-  }, [api, completedRewardOffer, postId, session?.accessToken, studyComplete, telegramMiniApp]);
 
   React.useEffect(() => {
     let canceled = false;
@@ -1277,21 +1240,14 @@ export function StudyRoutePage({
       onStudyAgain={state.surface.kind === "complete"
         ? () => setReloadKey((value) => value + 1)
         : undefined}
-      rewardSlot={!telegramMiniApp && state.rewardOffer && state.rewardOffer.eligible_activity !== "karaoke" ? (
-        state.surface.kind === "complete" ? (
-          <RewardQualificationNotice
-            amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
-            expiresAt={rewardQualification?.expires_at}
-            outcomeReason={rewardQualification?.outcome_reason}
-            status={displayedRewardQualificationStatus(rewardQualification?.status, rewardCheckDelayed)}
-            testMode={state.rewardOffer.chain_id === 84532}
-          />
-        ) : (
+      rewardSlot={!telegramMiniApp
+        && state.surface.kind !== "complete"
+        && state.rewardOffer
+        && state.rewardOffer.eligible_activity !== "karaoke" ? (
           <SongRewardOfferPill
             amountLabel={rewardAmountLabel(state.rewardOffer.daily_reward_cents, state.rewardOffer.chain_id)}
           />
-        )
-      ) : undefined}
+        ) : undefined}
       sayItBackIdleLabel={telegramMiniApp ? "Send voice message" : undefined}
       state={state.surface}
     />

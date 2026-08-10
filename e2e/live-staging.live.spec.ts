@@ -1257,7 +1257,11 @@ async function hydrateRoutableLiveCommunityOwner(
   community: LiveCommunity,
   diagnostics?: FixtureDiscoveryDiagnostic[],
 ): Promise<LiveCommunity | null> {
-  const path = `/public-communities/${encodeURIComponent(community.id)}`;
+  // Stable staging fixtures are mutable, while public community details are
+  // cached at the edge. Use a unique query so release gates never impersonate
+  // an owner from a stale pre-repair response.
+  const cacheBust = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const path = `/public-communities/${encodeURIComponent(community.id)}?e2e_cache_bust=${cacheBust}`;
   const detail = await requestJson<any>(path).catch((error: unknown) => {
     diagnostics?.push({ detail: fixtureDiagnosticDetail(error), stage: "hydrate", target: path });
     return null;

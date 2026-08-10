@@ -317,7 +317,7 @@ describe("KaraokeRoutePage", () => {
     });
   });
 
-  test("shows the plain-dollar reward offer inside the karaoke surface", async () => {
+  test("shows the plain-dollar bounty offer inside the karaoke surface", async () => {
     rewardOfferResult = {
       campaign: "rcp_karaoke_offer",
       chain_id: 84532,
@@ -331,7 +331,7 @@ describe("KaraokeRoutePage", () => {
 
     await waitFor(() => expect(calls).toContain("rewards.getActiveCampaignForSong"));
     await waitFor(() => expect(view.container.querySelector('[aria-label="Fallback Karaoke"]')).toBeTruthy());
-    expect(view.getByText("Reward")).toBeTruthy();
+    expect(view.getByText("Bounty")).toBeTruthy();
     expect(view.getByText("Earn $1 today")).toBeTruthy();
     expect(view.getByText(/Score at least 70%/u)).toBeTruthy();
   });

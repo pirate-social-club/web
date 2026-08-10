@@ -11,7 +11,6 @@ import { fiveChainSections, sharedWalletAddress } from "@/components/composition
 
 import {
   CashoutSheet,
-  RewardQualificationNotice,
   SongRewardOfferPill,
   VerifyHumanSheet,
   type CashoutSheetState,
@@ -20,7 +19,7 @@ import {
 import { rewardAmounts, rewardWallet } from "./reward-flow-fixtures";
 
 const meta = {
-  title: "Compositions/Rewards/In Context",
+  title: "Compositions/Bounties/In Context",
   parameters: {
     layout: "fullscreen",
   },
@@ -39,7 +38,7 @@ const walletHubProps = {
   onViewActivity: () => undefined,
   recentActivity: [
     { id: "act-1", title: "Midnight Waves sold", amount: "+$6.20 WIP", timestamp: "6m" },
-    { id: "act-2", title: "Reward claim confirmed", amount: "+$1.00 USDC", timestamp: "1h" },
+    { id: "act-2", title: "Bounty claim confirmed", amount: "+$1.00 USDC", timestamp: "1h" },
     { id: "act-3", title: "Basement Session sold", amount: "+$4.00 WIP", timestamp: "2h" },
   ],
   totalBalanceUsd: "$27,912.37",
@@ -62,7 +61,7 @@ const studyExercise: SongStudyMultipleChoiceExercise = {
   question: "Choose the best translation.",
 };
 
-function RewardsWalletContext({
+function BountiesWalletContext({
   cashoutState,
   verifyState,
 }: {
@@ -108,26 +107,26 @@ function RewardsWalletContext({
 
 export const WalletPageClaimReady: Story = {
   name: "Wallet page / Claim ready",
-  render: () => <RewardsWalletContext />,
+  render: () => <BountiesWalletContext />,
 };
 
 export const WalletPagePendingVerification: Story = {
   name: "Wallet page / Earned, verification on Claim",
-  render: () => <RewardsWalletContext verifyState="provider-selection" />,
+  render: () => <BountiesWalletContext verifyState="provider-selection" />,
 };
 
 export const WalletPageClaimPending: Story = {
   name: "Wallet page / Claim signed",
-  render: () => <RewardsWalletContext cashoutState="signed" />,
+  render: () => <BountiesWalletContext cashoutState="signed" />,
 };
 
 export const WalletPageClaimBroadcast: Story = {
   name: "Wallet page / Claim broadcast",
-  render: () => <RewardsWalletContext cashoutState="broadcast" />,
+  render: () => <BountiesWalletContext cashoutState="broadcast" />,
 };
 
-export const StudyCompletionRewardPending: Story = {
-  name: "Study completion / Reward pending",
+export const StudyCompletionImmediate: Story = {
+  name: "Study completion / Immediate",
   render: () => (
     <StandardRoutePage size="rail">
       <div className="flex flex-col gap-4">
@@ -137,13 +136,6 @@ export const StudyCompletionRewardPending: Story = {
           onKaraoke={() => undefined}
           onPrimaryAction={() => undefined}
           onStudyAgain={() => undefined}
-          rewardSlot={(
-            <RewardQualificationNotice
-              amountLabel="$0.40"
-              expiresAt={Math.floor(Date.now() / 1000) + 6 * 86_400}
-              status="pending_verification"
-            />
-          )}
           state={{
             correctCount: 3,
             kind: "complete",
@@ -164,8 +156,8 @@ export const StudyCompletionRewardPending: Story = {
   ),
 };
 
-export const StudyQuestionRewardMotivation: Story = {
-  name: "Study question / Reward motivation",
+export const StudyQuestionBountyMotivation: Story = {
+  name: "Study question / Bounty motivation",
   render: () => (
     <StandardRoutePage size="rail">
       <div className="flex flex-col gap-4">

@@ -75,7 +75,6 @@ export interface BoostCampaignSheetProps {
   eligibleActivity: BoostEligibleActivity;
   eligibleActivities?: BoostEligibleActivity[];
   identityProvider?: BoostRewardIdentityProvider;
-  identityProviderLocked?: boolean;
   errorMessage?: string;
   /** Funding-transaction link on the settlement chain's explorer (Base or Base Sepolia). */
   explorerTxUrl?: string;
@@ -90,6 +89,9 @@ export interface BoostCampaignSheetProps {
    * both its local preview flag and the server capability allow it.
    */
   payoutTiers?: BoostPayoutTierDraft[];
+  /** Whether this draft pays by verified passport nationality. */
+  nationalityPricingEnabled?: boolean;
+  onNationalityPricingEnabledChange?: (enabled: boolean) => void;
   /** Cap on tier rows; defaults to boost-plan's MAX_PAYOUT_TIERS. */
   maxPayoutTiers?: number;
   onAddPayoutTier?: () => void;
@@ -100,13 +102,14 @@ export interface BoostCampaignSheetProps {
   maxClaimDisplayLabel?: string;
   /** Range summary for the quote state when tiered (e.g. "$0.50–$5.00 by nationality"). */
   tierRangeLabel?: string;
+  /** Live budget yield for tiered bounties (e.g. "5–25 completions"). */
+  completionRangeLabel?: string;
   onBudgetChange?: (value: string) => void;
   onConfirm?: () => void;
   /** Recovery action offered when the pinned funding wallet is not connected. */
   onConnectWallet?: () => void;
   onDailyRewardChange?: (value: string) => void;
   onEligibleActivityChange?: (value: BoostEligibleActivity) => void;
-  onIdentityProviderChange?: (value: BoostRewardIdentityProvider) => void;
   onOpenChange?: (open: boolean) => void;
   onRefresh?: () => void;
   onRetry?: () => void;
@@ -140,11 +143,11 @@ const ACTIVITY_LABEL = {
   either: "a study set or karaoke pass",
 } satisfies Record<BoostEligibleActivity, string>;
 
-/** Radio-card titles for the exclusive eligible-activity enum; "or" keeps OR semantics explicit. */
+/** Radio-card titles for the exclusive eligible-activity enum. */
 const ACTIVITY_TITLE = {
   karaoke: "Karaoke",
   study: "Study",
-  either: "Karaoke or study",
+  either: "Either",
 } satisfies Record<BoostEligibleActivity, string>;
 
 function CampaignSummaryRow({ label, value }: { label: string; value: string }) {
@@ -202,7 +205,6 @@ export function BoostCampaignSheet({
   eligibleActivity,
   eligibleActivities = ["karaoke", "study", "either"],
   identityProvider = "self",
-  identityProviderLocked = false,
   endsAtLabel,
   errorMessage,
   explorerTxUrl,
@@ -210,19 +212,20 @@ export function BoostCampaignSheet({
   fundingAmountLabel,
   fundedLabel,
   payoutTiers,
+  nationalityPricingEnabled,
+  onNationalityPricingEnabledChange,
   maxPayoutTiers = MAX_PAYOUT_TIERS,
   onAddPayoutTier,
   onRemovePayoutTier,
   onPayoutTierNationalitiesChange,
   onPayoutTierAmountChange,
-  maxClaimDisplayLabel,
   tierRangeLabel,
+  completionRangeLabel,
   onBudgetChange,
   onConfirm,
   onConnectWallet,
   onDailyRewardChange,
   onEligibleActivityChange,
-  onIdentityProviderChange,
   onOpenChange,
   onRefresh,
   onRetry,
@@ -238,19 +241,25 @@ export function BoostCampaignSheet({
   walletMismatchReason = "no-wallet",
 }: BoostCampaignSheetProps) {
   const activityLabelId = React.useId();
-  const providerLabelId = React.useId();
   const rewardDisplay = dailyRewardDisplayLabel ?? dailyRewardLabel;
   // The tier section renders only when the owner passes `payoutTiers` (even as
   // []); `tiered` (at least one row) flips budget math to worst-case display.
-  const showPayoutTiers = payoutTiers != null;
-  const tiered = showPayoutTiers && payoutTiers.length > 0;
-  const identityProviders: Array<{ label: string; value: BoostRewardIdentityProvider }> = tiered
-    ? [{ label: "Self", value: "self" }, { label: "ZKPassport", value: "zkpassport" }]
-    : [
-        { label: "Self", value: "self" },
-        { label: "ZKPassport", value: "zkpassport" },
-        { label: "Very", value: "very" },
-      ];
+  const nationalityPricingAvailable = payoutTiers != null;
+  const payoutTierRows = payoutTiers ?? [];
+  const tiered = nationalityPricingEnabled ?? (
+    nationalityPricingAvailable && payoutTierRows.length > 0
+  );
+  const showPayoutTiers = nationalityPricingAvailable && tiered;
+  const identityProviderLabel = {
+    self: "Passport check",
+    very: "Palm check",
+    zkpassport: "Passport check",
+  }[identityProvider];
+  const identityProviderBrand = {
+    self: "Self",
+    very: "Very",
+    zkpassport: "ZKPassport",
+  }[identityProvider];
   const payoutTiersLabelId = React.useId();
   // The sheet renders inside a modal dialog, whose focus trap suppresses
   // anything portaled to document.body — so the country dropdown portals into
@@ -273,22 +282,6 @@ export function BoostCampaignSheet({
     document.getElementById(`${activityLabelId}-${next}`)?.focus();
   };
 
-  const handleProviderKeyDown = (event: React.KeyboardEvent, index: number) => {
-    if (identityProviderLocked) return;
-    const lastIndex = identityProviders.length - 1;
-    let nextIndex: number | null = null;
-    if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-      nextIndex = index === lastIndex ? 0 : index + 1;
-    } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-      nextIndex = index === 0 ? lastIndex : index - 1;
-    }
-    if (nextIndex == null) return;
-    event.preventDefault();
-    const next = identityProviders[nextIndex];
-    onIdentityProviderChange?.(next.value);
-    document.getElementById(`${providerLabelId}-${next.value}`)?.focus();
-  };
-
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
       <ModalContent
@@ -300,9 +293,9 @@ export function BoostCampaignSheet({
       >
         <div className={cn("mx-auto mb-4 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/60", !forceMobile && "md:hidden")} aria-hidden="true" />
         <ModalHeader className="text-start">
-          <ModalTitle>Boost this song</ModalTitle>
-          <ModalDescription className="text-muted-foreground">
-            Put up rewards for people who practice this song.
+          <ModalTitle>Create a bounty</ModalTitle>
+          <ModalDescription className="sr-only">
+            Fund a bounty for people who practice this song.
           </ModalDescription>
         </ModalHeader>
 
@@ -348,57 +341,116 @@ export function BoostCampaignSheet({
                 })}
               </div>
             </div>
-            <div>
-              <Type as="span" className="mb-2 block text-muted-foreground" id={providerLabelId} variant="label">
-                Identity provider — permanent for this song
-              </Type>
-              <div aria-labelledby={providerLabelId} className="grid gap-2" role="radiogroup">
-                {identityProviders.map((provider, index) => {
-                  const selected = identityProvider === provider.value;
-                  return (
-                    <button
-                      aria-checked={selected}
-                      className={cn(
-                        "flex h-11 items-center gap-3 rounded-lg border px-4 text-start transition-colors",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                        selected ? "border-primary/40 bg-primary-subtle" : "border-border-soft",
-                      )}
-                      disabled={identityProviderLocked}
-                      id={`${providerLabelId}-${provider.value}`}
-                      key={provider.value}
-                      onClick={() => onIdentityProviderChange?.(provider.value)}
-                      onKeyDown={(event) => handleProviderKeyDown(event, index)}
-                      role="radio"
-                      tabIndex={selected ? 0 : -1}
-                      type="button"
-                    >
-                      <span
-                        aria-hidden="true"
+            {nationalityPricingAvailable ? (
+              <div>
+                <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
+                  Bounty amount
+                </Type>
+                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Bounty amount">
+                  {([
+                    { enabled: false, label: "Same for everyone" },
+                    { enabled: true, label: "Varies by nationality" },
+                  ] as const).map((option) => {
+                    const selected = tiered === option.enabled;
+                    return (
+                      <button
+                        aria-checked={selected}
                         className={cn(
-                          "flex size-4 shrink-0 items-center justify-center rounded-full border",
-                          selected ? "border-primary" : "border-muted-foreground/50",
+                          "min-h-11 rounded-lg border px-3 py-2 text-start transition-colors",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                          selected ? "border-primary/40 bg-primary-subtle" : "border-border-soft",
                         )}
+                        key={option.label}
+                        onClick={() => onNationalityPricingEnabledChange?.(option.enabled)}
+                        role="radio"
+                        type="button"
                       >
-                        {selected ? <span className="size-2 rounded-full bg-primary" /> : null}
-                      </span>
-                      <Type as="span" variant="body">
-                        {provider.label}
-                      </Type>
-                    </button>
-                  );
-                })}
+                        <Type as="span" variant="body">{option.label}</Type>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-            <label className="block" htmlFor="boost-daily-reward">
-              <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
-                {showPayoutTiers ? "Default daily reward" : "Daily reward per learner"}
+            ) : null}
+            {tiered ? (
+              <Type as="p" className="text-muted-foreground" variant="caption">
+                A passport is required.
               </Type>
-              <MoneyInput
-                id="boost-daily-reward"
-                onChange={onDailyRewardChange}
-                value={dailyRewardLabel}
-              />
-            </label>
+            ) : null}
+
+            {!tiered ? (
+              <label className="block" htmlFor="boost-daily-reward">
+                <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
+                  Bounty per learner
+                </Type>
+                <MoneyInput id="boost-daily-reward" onChange={onDailyRewardChange} value={dailyRewardLabel} />
+              </label>
+            ) : null}
+
+            {showPayoutTiers ? (
+              <section aria-labelledby={payoutTiersLabelId} ref={setTierPortalContainer}>
+                <Type as="span" className="sr-only" id={payoutTiersLabelId}>Country payouts</Type>
+                {payoutTierRows.length > 0 ? (
+                  <div className="mb-2 grid grid-cols-[minmax(0,1fr)_8rem_2.5rem] gap-2 px-1">
+                    <Type as="span" className="text-muted-foreground" variant="label">
+                      Countries
+                    </Type>
+                    <Type as="span" className="text-muted-foreground" variant="label">
+                      Amount
+                    </Type>
+                  </div>
+                ) : null}
+                <div className="space-y-2">
+                  {payoutTierRows.map((tier, index) => (
+                    <div className="grid grid-cols-[minmax(0,1fr)_8rem_2.5rem] items-center gap-2" key={tier.id}>
+                      <NationalityMultiPicker
+                        inputAriaLabel={`Search countries for payout group ${index + 1}`}
+                        noResultsLabel="No countries found"
+                        onChange={(codes) => onPayoutTierNationalitiesChange?.(tier.id, codes)}
+                        placeholder="Choose countries"
+                        portalContainer={tierPortalContainer}
+                        values={tier.nationalities}
+                      />
+                      <label className="block" htmlFor={`boost-tier-amount-${tier.id}`}>
+                        <Type as="span" className="sr-only">
+                          Country group {index + 1} bounty
+                        </Type>
+                        <MoneyInput
+                          id={`boost-tier-amount-${tier.id}`}
+                          onChange={(value) => onPayoutTierAmountChange?.(tier.id, value)}
+                          value={tier.amountLabel}
+                        />
+                      </label>
+                      <IconButton
+                        aria-label={`Remove country group ${index + 1}`}
+                        onClick={() => onRemovePayoutTier?.(tier.id)}
+                        size="sm"
+                        variant="ghost"
+                      >
+                        <X aria-hidden="true" className="size-5" weight="bold" />
+                      </IconButton>
+                    </div>
+                  ))}
+                  <Button
+                    className="h-10 w-full"
+                    disabled={payoutTierRows.length >= maxPayoutTiers}
+                    onClick={onAddPayoutTier}
+                    type="button"
+                    variant="outline"
+                  >
+                    Add countries
+                  </Button>
+                  <div className="grid grid-cols-[minmax(0,1fr)_8rem_2.5rem] items-center gap-2 border-t border-border-soft pt-2">
+                    <Type as="span" variant="body">Everyone else</Type>
+                    <label className="block" htmlFor="boost-daily-reward">
+                      <Type as="span" className="sr-only">Everyone else bounty</Type>
+                      <MoneyInput id="boost-daily-reward" onChange={onDailyRewardChange} value={dailyRewardLabel} />
+                    </label>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
             <div>
               <label className="block" htmlFor="boost-budget">
                 <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
@@ -412,6 +464,11 @@ export function BoostCampaignSheet({
                   value={budgetLabel}
                 />
               </label>
+              {tiered && completionRangeLabel ? (
+                <Type as="p" className="mt-2 text-muted-foreground" variant="caption">
+                  {budgetDisplayLabel} funds about {completionRangeLabel}, depending on who claims.
+                </Type>
+              ) : null}
               {budgetPresets?.length ? (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {budgetPresets.map((preset) => (
@@ -429,69 +486,6 @@ export function BoostCampaignSheet({
               ) : null}
             </div>
 
-            {payoutTiers != null ? (
-              <section aria-labelledby={payoutTiersLabelId} ref={setTierPortalContainer}>
-                <Type as="span" className="mb-2 block text-muted-foreground" id={payoutTiersLabelId} variant="label">
-                  Payout by passport nationality
-                </Type>
-                <Type as="p" className="mb-3 text-muted-foreground" variant="caption">
-                  Verified passport nationalities earn their tier's amount; everyone else earns the default.
-                </Type>
-                <div className="space-y-3">
-                  {payoutTiers.map((tier, index) => (
-                    <div className="space-y-2 rounded-lg border border-border-soft p-3" key={tier.id}>
-                      <div className="flex items-center justify-between gap-2">
-                        <Type as="span" className="text-muted-foreground" variant="label">
-                          Tier {index + 1}
-                        </Type>
-                        <IconButton
-                          aria-label={`Remove tier ${index + 1}`}
-                          onClick={() => onRemovePayoutTier?.(tier.id)}
-                          size="sm"
-                          variant="ghost"
-                        >
-                          <X aria-hidden="true" className="size-5" weight="bold" />
-                        </IconButton>
-                      </div>
-                      <NationalityMultiPicker
-                        inputAriaLabel="Search countries"
-                        noResultsLabel="No countries found"
-                        onChange={(codes) => onPayoutTierNationalitiesChange?.(tier.id, codes)}
-                        placeholder="Passport nationalities in this tier"
-                        portalContainer={tierPortalContainer}
-                        values={tier.nationalities}
-                      />
-                      <label className="block" htmlFor={`boost-tier-amount-${tier.id}`}>
-                        <Type as="span" className="sr-only">
-                          Tier {index + 1} amount
-                        </Type>
-                        <MoneyInput
-                          id={`boost-tier-amount-${tier.id}`}
-                          onChange={(value) => onPayoutTierAmountChange?.(tier.id, value)}
-                          value={tier.amountLabel}
-                        />
-                      </label>
-                    </div>
-                  ))}
-                  <Button
-                    className="h-10 w-full"
-                    disabled={payoutTiers.length >= maxPayoutTiers}
-                    onClick={onAddPayoutTier}
-                    type="button"
-                    variant="outline"
-                  >
-                    Add a tier
-                  </Button>
-                </div>
-                <div className="mt-3 flex items-start gap-3 rounded-lg border border-border-soft bg-muted/30 p-4">
-                  <ShieldWarning aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted-foreground" weight="fill" />
-                  <Type as="p" className="text-muted-foreground" variant="body">
-                    Reward amounts vary by passport nationality. Payout amounts are publicly visible on-chain and can reveal the recipient's tier.
-                  </Type>
-                </div>
-              </section>
-            ) : null}
-
             {planProblem ? (
               <div
                 className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4"
@@ -503,23 +497,9 @@ export function BoostCampaignSheet({
                 </Type>
               </div>
             ) : (
-              <>
-                <div className="rounded-lg border border-border-soft px-4">
-                  {/* Untiered: `Up to` — a ceiling, since zero is possible if nobody
-                      practises. Tiered: `At least` — a guaranteed floor, because loss
-                      bounds assume the top tier amount on every claim. */}
-                  <CampaignSummaryRow
-                    label="Pays for"
-                    value={tiered ? `At least ${rewardCountLabel}` : `Up to ${rewardCountLabel}`}
-                  />
-                </div>
-
-                <Type as="p" className="text-muted-foreground" variant="caption">
-                  {tiered
-                    ? `Worst case assumes the top tier${maxClaimDisplayLabel ? ` (${maxClaimDisplayLabel})` : ""} on every claim. You pay ${budgetDisplayLabel} now. The reward and budget lock after payment, and unused funds can't be withdrawn.`
-                    : `You pay ${budgetDisplayLabel} now. The reward and budget lock after payment, and unused funds can't be withdrawn.`}
-                </Type>
-              </>
+              <Type as="p" className="text-muted-foreground" variant="caption">
+                You pay {budgetDisplayLabel} now. Bounty terms lock after payment; unused funds can't be withdrawn.
+              </Type>
             )}
           </div>
         ) : null}
@@ -537,14 +517,23 @@ export function BoostCampaignSheet({
 
             <div className="rounded-lg border border-border-soft px-4">
               <CampaignSummaryRow
-                label="Reward per day"
+                label="Bounty per day"
                 value={tiered && tierRangeLabel ? tierRangeLabel : rewardDisplay}
               />
               <CampaignSummaryRow
                 label="Pays for"
                 value={tiered ? `At least ${rewardCountLabel}` : `Up to ${rewardCountLabel}`}
               />
+              <CampaignSummaryRow
+                label="Claimant check"
+                value={`${identityProviderLabel} · ${identityProviderBrand}`}
+              />
             </div>
+            {tiered ? (
+              <Type as="p" className="text-muted-foreground" variant="caption">
+                Payments are public on Base. Amounts differ by tier, so a payment can reveal which tier someone matched.
+              </Type>
+            ) : null}
 
             {walletMismatch ? (
               <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
@@ -552,8 +541,8 @@ export function BoostCampaignSheet({
                   <WarningCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-destructive" weight="fill" />
                   <Type as="p" className="text-destructive" variant="body">
                     {walletMismatchReason === "different-wallet"
-                      ? "A different wallet is connected. This boost can only be paid from your Pirate Wallet."
-                      : "Connect your Pirate Wallet to pay. This boost was prepared for that wallet."}
+                      ? "A different wallet is connected. This bounty can only be paid from your Pirate Wallet."
+                      : "Connect your Pirate Wallet to pay. This bounty was prepared for that wallet."}
                   </Type>
                 </div>
                 {onConnectWallet ? (
@@ -614,10 +603,10 @@ export function BoostCampaignSheet({
               <CheckCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" weight="fill" />
               <div>
                 <Type as="div" variant="body-strong">
-                  Boost is live
+                  Bounty is live
                 </Type>
                 <Type as="div" className="mt-1 text-muted-foreground" variant="body">
-                  People can now earn {rewardDisplay} for {ACTIVITY_LABEL[eligibleActivity]}.
+                  People can earn {rewardDisplay} for {ACTIVITY_LABEL[eligibleActivity]}.
                 </Type>
               </div>
             </div>
@@ -656,7 +645,7 @@ export function BoostCampaignSheet({
                 Funding failed
               </Type>
               <Type as="div" className="mt-1 text-muted-foreground" variant="body">
-                {errorMessage ?? "We could not start the boost. No payment was sent."}
+                {errorMessage ?? "We could not create the bounty. No payment was sent."}
               </Type>
             </div>
           </div>
@@ -671,7 +660,7 @@ export function BoostCampaignSheet({
                   Campaign not activated
                 </Type>
                 <Type as="div" className="mt-1 text-muted-foreground" variant="body">
-                  {errorMessage ?? "Funds arrived, but the boost didn't activate. Don't send again; we'll review or refund."}
+                  {errorMessage ?? "Funds arrived, but the bounty didn't activate. Don't send again; we'll review or refund."}
                 </Type>
               </div>
             </div>
@@ -754,15 +743,15 @@ export function SongRewardPolicySheet({
     <Modal onOpenChange={onOpenChange} open={open}>
       <ModalContent className="w-[min(100%-2rem,32rem)] max-w-[32rem]">
         <ModalHeader className="text-start">
-          <ModalTitle>Reward settings</ModalTitle>
+          <ModalTitle>Bounty settings</ModalTitle>
           <ModalDescription>
-            Choose whether other people can fund practice rewards for this song.
+            Choose whether other people can fund bounties for this song.
           </ModalDescription>
         </ModalHeader>
         <div className="mt-5 rounded-lg border border-border-soft p-4">
           <div className="flex items-center justify-between gap-4">
             <Type as="div" id={policyLabelId} variant="body-strong">
-              Allow others to boost this song
+              Allow others to fund bounties
             </Type>
             <Switch
               aria-labelledby={policyLabelId}
@@ -773,7 +762,7 @@ export function SongRewardPolicySheet({
           </div>
           {!allowThirdPartyRewards ? (
             <Type as="p" className="mt-2 text-muted-foreground" variant="body">
-              Blocking pauses third-party reward campaigns. Campaign funding is not returned.
+              Blocking pauses third-party bounties. Funding is not returned.
             </Type>
           ) : null}
         </div>

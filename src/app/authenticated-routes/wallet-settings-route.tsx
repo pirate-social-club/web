@@ -309,12 +309,12 @@ function formatRewardBalanceCents(cents: number): string {
 
 function rewardAssetLabel(chainId: number): string {
   if (chainId === 8453) return "";
-  if (chainId === 84532) return "Test rewards — no cash value";
-  return "Dollar rewards";
+  if (chainId === 84532) return "Test bounties — no cash value";
+  return "Dollar bounties";
 }
 
 function pendingRewardDeadline(expiresAt: number | null): string {
-  if (expiresAt == null) return "Verify to claim this reward.";
+  if (expiresAt == null) return "Verify to claim this bounty.";
   const days = Math.max(1, Math.ceil((expiresAt * 1_000 - Date.now()) / 86_400_000));
   return `Verify within ${days} ${days === 1 ? "day" : "days"} to claim.`;
 }
@@ -395,7 +395,7 @@ function walletRewardsSummary(input: {
         actionLabel: "Claim",
         amountLabel,
         assetLabel,
-        supportingLabel: "Available song rewards will appear here.",
+        supportingLabel: "Available bounties will appear here.",
       };
     }
     return {
@@ -404,7 +404,7 @@ function walletRewardsSummary(input: {
       assetLabel,
       onAction: input.onVerify,
       supportingLabel: creditedBalanceCanCashOut
-        ? "Verify to transfer your reward."
+        ? "Verify to transfer your bounty."
         : pendingRewardDeadline(input.rewards.pending_verification.earliest_expires_at),
     };
   }
@@ -415,7 +415,7 @@ function walletRewardsSummary(input: {
       amountLabel,
       assetLabel,
       pending: true,
-      supportingLabel: "Getting your reward ready — check back in a minute.",
+      supportingLabel: "Getting your bounty ready.",
     };
   }
   const remainingCents = Math.max(0, input.rewards.cashout.min_cents - input.rewards.balance_cents);
@@ -426,7 +426,7 @@ function walletRewardsSummary(input: {
     assetLabel,
     supportingLabel: remainingCents > 0
       ? `Earn ${formatRewardBalanceCents(remainingCents)} more to claim.`
-      : "Available song rewards will appear here.",
+      : "Available bounties will appear here.",
   };
 }
 
@@ -717,7 +717,7 @@ export function CurrentUserWalletPage() {
   const handleRewardsVerified = React.useCallback(async () => {
     setRewardsVerifyState("success");
     setRewardsVerifyOpen(false);
-    toast.success("Rewards verification complete.");
+    toast.success("Bounty verification complete.");
     setRewardsVerificationPolling(true);
   }, []);
 
@@ -731,7 +731,7 @@ export function CurrentUserWalletPage() {
     selfPrompt,
     startVerification: startSelfRewardsVerification,
   } = useSelfVerification({
-    completeErrorMessage: "Rewards verification failed",
+    completeErrorMessage: "Bounty verification failed",
     locale: "en",
     onVerified: handleRewardsVerified,
     startErrorMessage: "Could not start Self verification",
@@ -773,7 +773,7 @@ export function CurrentUserWalletPage() {
     if (provider === "self") {
       const result = await startSelfRewardsVerification({
         requestedCapabilities: ["unique_human"],
-        unavailableMessage: "Self verification is unavailable for rewards.",
+        unavailableMessage: "Self verification is unavailable for bounties.",
       });
       if (result.started) {
         setRewardsVerifyOpen(false);
@@ -791,7 +791,7 @@ export function CurrentUserWalletPage() {
     const result = await startRewardsZkPassportVerification({
       deferOpen: true,
       requestedCapabilities: ["unique_human"],
-      unavailableMessage: "ZKPassport verification is unavailable for rewards.",
+      unavailableMessage: "ZKPassport verification is unavailable for bounties.",
     });
     if (result.started) {
       setRewardsVerifyOpen(false);
@@ -806,7 +806,7 @@ export function CurrentUserWalletPage() {
     setRewardsCashoutTxHash(result.payout.settlement_ref);
     setRewardsCashoutState(result.payout.settlement_stage);
     if (result.payout.status === "failed") {
-      setRewardsCashoutErrorMessage(result.payout.failure_reason || "The reward transfer failed. Your reward balance is available to try again.");
+      setRewardsCashoutErrorMessage(result.payout.failure_reason || "The bounty transfer failed. Your bounty balance is available to try again.");
       setRewardsCashoutAttempt(null);
       storeRewardsCashoutAttempt(null);
       return;
@@ -858,14 +858,14 @@ export function CurrentUserWalletPage() {
           : null,
       });
       applyCashoutResult(result);
-      if (result.payout.status === "failed") toast.error(result.payout.failure_reason || "Reward claim failed.");
-      else if (result.payout.status === "confirmed") toast.success("Reward claim complete.");
+      if (result.payout.status === "failed") toast.error(result.payout.failure_reason || "Bounty claim failed.");
+      else if (result.payout.status === "confirmed") toast.success("Bounty claim complete.");
       await refreshRewardsSummary();
     } catch (error) {
       logger.debug("[wallet] rewards cashout failed", error);
       setRewardsCashoutState("failed");
-      setRewardsCashoutErrorMessage("The reward claim could not be submitted. Try again in a moment.");
-      toast.error("Reward claim failed. Try again in a moment.");
+      setRewardsCashoutErrorMessage("The bounty claim could not be submitted. Try again in a moment.");
+      toast.error("Bounty claim failed. Try again in a moment.");
     } finally {
       rewardsCashoutInFlightRef.current = false;
       setRewardsCashoutPending(false);
@@ -902,7 +902,7 @@ export function CurrentUserWalletPage() {
         return;
       }
       setRewardsVerificationPolling(false);
-      toast.info("Verification is complete. Your reward is still being prepared.");
+      toast.info("Verification is complete. Your bounty is still being prepared.");
     };
     timeout = window.setTimeout(() => { void poll(); }, delays[attempt++]);
     return () => {
@@ -1086,7 +1086,7 @@ export function CurrentUserWalletPage() {
       <ZkPassportVerificationModal
         actionLabel="Open ZKPassport"
         checkLoading={rewardsZkPassportLoading}
-        description="Verify with ZKPassport to cash out rewards."
+        description="Verify with ZKPassport to claim bounties."
         error={rewardsZkPassportError}
         href={rewardsZkPassportHref}
         onCheckPending={checkRewardsZkPassport}

@@ -281,7 +281,7 @@ test.describe("async song publish with mocked API", () => {
     await page.getByRole("button", { name: /^continue$/i }).click();
     await page.getByRole("button", { name: /^publish$/i }).click();
 
-    await expect(page).toHaveURL(new RegExp(`/c/${mockCommunityPreview.route_slug}$`, "u"));
+    await expect(page).toHaveURL(new RegExp(`/c/${mockCommunityPreview.route_slug}/threads$`, "u"));
     const failedFlowPost = page.locator("article").filter({ hasText: "Async E2E Song" }).first();
 
     await expect(page.getByText("Matched audio requires derivative rights and a reference")).toBeVisible({ timeout: 30_000 });
@@ -330,7 +330,7 @@ test.describe("async song publish with mocked API", () => {
     await page.getByRole("button", { name: /^continue$/i }).click();
     await page.getByRole("button", { name: /^publish$/i }).click();
 
-    await expect(page).toHaveURL(new RegExp(`/c/${mockCommunityPreview.route_slug}$`, "u"));
+    await expect(page).toHaveURL(new RegExp(`/c/${mockCommunityPreview.route_slug}/threads$`, "u"));
     const publishedFlowPost = page.locator("article").filter({ hasText: "Async E2E Song" }).first();
     await expect(publishedFlowPost.getByTestId("post-status-notice")).toHaveCount(0, { timeout: 30_000 });
     await expect(page.getByRole("link", { name: "Async E2E Song", exact: true })).toBeVisible({ timeout: 30_000 });

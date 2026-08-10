@@ -4,6 +4,7 @@ import {
   authenticateHnsForwarderRequest,
   resolveEffectiveRequestUrl,
   resolveForwardedCommunityRouteSegment,
+  resolveForwardedWalletInteractive,
 } from "./hns-forwarded-origin";
 
 function request(headers: Record<string, string>): Request {
@@ -80,12 +81,14 @@ describe("HNS forwarded origin", () => {
       "x-pirate-hns-forwarder-token": "shared-secret",
       "x-pirate-hns-host": "xn--pokmon-dva",
       "x-pirate-hns-community-id": "com_cmt_public_namespace_test",
+      "x-pirate-hns-wallet-interactive": "1",
     }), {
       HNS_FORWARDER_AUTH_TOKEN: "shared-secret",
     });
 
     expect(resolveEffectiveRequestUrl(authenticated)).toBe("https://xn--pokmon-dva/c/crew?sort=top");
     expect(resolveForwardedCommunityRouteSegment(authenticated)).toBe("com_cmt_public_namespace_test");
+    expect(resolveForwardedWalletInteractive(authenticated)).toBe(true);
     expect(authenticated.headers.has("x-pirate-hns-forwarder-token")).toBe(false);
   });
 
@@ -95,12 +98,14 @@ describe("HNS forwarded origin", () => {
       "x-pirate-hns-forwarder-token": "wrong-secret",
       "x-pirate-hns-host": "xn--pokmon-dva",
       "x-pirate-hns-community-id": "com_cmt_public_namespace_test",
+      "x-pirate-hns-wallet-interactive": "1",
     }), {
       HNS_FORWARDER_AUTH_TOKEN: "shared-secret",
     });
 
     expect(resolveEffectiveRequestUrl(unauthenticated)).toBe("https://pirate.sc/c/crew?sort=top");
     expect(resolveForwardedCommunityRouteSegment(unauthenticated)).toBe(null);
+    expect(resolveForwardedWalletInteractive(unauthenticated)).toBe(false);
     expect(unauthenticated.headers.has("x-pirate-hns-trusted-forwarder")).toBe(false);
   });
 });

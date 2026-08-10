@@ -25,4 +25,5 @@ export type AppContext = {
   locale?: UiLocaleCode;
   seoMetadata?: SeoMetadata | null;
   theme?: ThemeMode;
+  walletInteractive?: boolean;
 };

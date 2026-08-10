@@ -13,18 +13,25 @@ const CANONICAL_AUTH_HOSTNAMES = new Set([
  * Returns true if the given hostname (or current window.location.hostname)
  * is a canonical interactive app origin where Privy auth is expected to work.
  *
- * Wallet-enabled app.<root> origins are listed explicitly after the root has
- * passed secure activation and the same origin is registered with Privy.
- * Other namespace, profile, and Spaces-resolved origins show an "Open in
- * Pirate" CTA instead of attempting Privy connect.
+ * During the authority rollout, established app.<root> origins remain listed
+ * explicitly while new origins require the gateway's trusted interactive
+ * marker. Other namespace, profile, and Spaces-resolved origins show an
+ * "Open in Pirate" CTA instead of attempting Privy connect.
  */
-export function isCanonicalAuthOrigin(hostname?: string): boolean {
+export function isCanonicalAuthOrigin(hostname?: string, walletInteractive?: boolean): boolean {
   const host = (hostname ?? (typeof window !== "undefined" ? window.location.hostname : ""))
     .trim()
     .toLowerCase()
     .replace(/\.+$/u, "");
 
   if (CANONICAL_AUTH_HOSTNAMES.has(host)) return true;
+  if (
+    /^app\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u.test(host)
+    && (walletInteractive ?? (
+      typeof document !== "undefined"
+      && document.documentElement.dataset.hnsWalletInteractive === "1"
+    ))
+  ) return true;
   if (host.endsWith(".localhost")) return true;
   if (host.endsWith(".staging.pirate.sc")) return true;
   return false;

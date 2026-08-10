@@ -23,6 +23,7 @@ import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { getErrorMessage } from "@/lib/error-utils";
+import { loadCommunityPreviewWithRetry } from "@/lib/community-preview-retry";
 import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
@@ -111,7 +112,7 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
       source: hasSession ? "authenticated" : "public",
     });
 
-    const previewRequest = hasSession
+    const previewRequest = loadCommunityPreviewWithRetry(() => hasSession
       ? api.communities.preview(communityId, { locale: localeTag })
         .catch((nextError: unknown) => {
           if (!isApiAuthError(nextError)) {
@@ -122,7 +123,7 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
           });
           return api.publicCommunities.get(communityId, { locale: localeTag });
         })
-      : api.publicCommunities.get(communityId, { locale: localeTag });
+      : api.publicCommunities.get(communityId, { locale: localeTag }));
 
     void previewRequest
       .then((previewResult) => {

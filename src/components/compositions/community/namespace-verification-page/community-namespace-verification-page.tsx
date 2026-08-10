@@ -62,6 +62,7 @@ export interface CommunityNamespaceVerificationPageProps {
   initialRootLabel?: string;
   onBackClick?: () => void;
   onClearPendingSession?: () => Promise<void> | void;
+  onRefreshNamespaces?: () => Promise<void>;
   onRestorePrimary?: (namespaceVerificationId: string) => Promise<void> | void;
   onSessionCleared?: () => void;
   onSessionStarted?: (sessionId: string) => void;
@@ -78,6 +79,7 @@ export function CommunityNamespaceVerificationPage({
   initialRootLabel = "",
   onBackClick,
   onClearPendingSession,
+  onRefreshNamespaces,
   onRestorePrimary,
   onSessionCleared,
   onSessionStarted,
@@ -92,6 +94,8 @@ export function CommunityNamespaceVerificationPage({
     spaces: { label: family.spacesLabel, rootInputLabel: family.spacesRootLabel },
   };
   const [clearingPending, setClearingPending] = React.useState(false);
+  const [refreshingNamespaces, setRefreshingNamespaces] = React.useState(false);
+  const [namespaceRefreshFailed, setNamespaceRefreshFailed] = React.useState(false);
   const [restoringPrimary, setRestoringPrimary] = React.useState(false);
   const attachedPrimary = namespaceAttachments.find(
     (namespace) => namespace.namespace_role === "primary" && namespace.namespace_verification === attachedNamespaceVerificationId,
@@ -133,6 +137,19 @@ export function CommunityNamespaceVerificationPage({
       setRestoringPrimary(false);
     }
   }, [onRestorePrimary, recoverableNamespace, restoringPrimary]);
+
+  const handleRefreshNamespaces = React.useCallback(async () => {
+    if (!onRefreshNamespaces || refreshingNamespaces) return;
+    setRefreshingNamespaces(true);
+    setNamespaceRefreshFailed(false);
+    try {
+      await onRefreshNamespaces();
+    } catch {
+      setNamespaceRefreshFailed(true);
+    } finally {
+      setRefreshingNamespaces(false);
+    }
+  }, [onRefreshNamespaces, refreshingNamespaces]);
 
   const flow = useNamespaceVerificationFlow({
     callbacks,
@@ -308,7 +325,7 @@ export function CommunityNamespaceVerificationPage({
       const attentionMessage = attachedPrimary.delegation?.routing_hard_denied === true
         ? "Pirate has blocked native routing for this root. Contact Pirate support before publishing another HNS update."
         : attachedPrimary.delegation?.observation_fresh === false
-          ? "Pirate's latest delegation check is stale, so native routing cannot advance. Check again later; if this persists, contact Pirate support."
+          ? "Pirate's latest delegation check is stale, so native routing cannot advance. Select Check status to load the latest result."
           : delegationSecurity === "drifted"
             ? "The live HNS delegation no longer matches Pirate's expected nameserver or DNSSEC records. Review the complete record set and contact Pirate support before publishing another update."
             : "Pirate cannot validate the published DNSSEC chain. Review the complete HNS record set and contact Pirate support before publishing another update.";
@@ -341,6 +358,14 @@ export function CommunityNamespaceVerificationPage({
               <div className="space-y-3">
                 <Type as="h2" variant="body-strong">Secure routing cannot advance</Type>
                 <FormNote tone="warning">{attentionMessage}</FormNote>
+                {attachedPrimary.delegation?.observation_fresh === false && onRefreshNamespaces ? (
+                  <Button loading={refreshingNamespaces} onClick={handleRefreshNamespaces} variant="outline">
+                    Check status
+                  </Button>
+                ) : null}
+                {namespaceRefreshFailed ? (
+                  <FormNote tone="warning">Could not load the latest delegation status. Try again.</FormNote>
+                ) : null}
               </div>
             ) : state === "pending" ? (
               <>
@@ -352,6 +377,14 @@ export function CommunityNamespaceVerificationPage({
                       : "Pirate is waiting for the published HNS records and secure delegation to become visible on-chain."}
                   </Type>
                 </div>
+                {onRefreshNamespaces ? (
+                  <Button loading={refreshingNamespaces} onClick={handleRefreshNamespaces} variant="outline">
+                    Check status
+                  </Button>
+                ) : null}
+                {namespaceRefreshFailed ? (
+                  <FormNote tone="warning">Could not load the latest delegation status. Try again.</FormNote>
+                ) : null}
               </>
             ) : (
               <>

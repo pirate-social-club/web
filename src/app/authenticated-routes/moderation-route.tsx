@@ -43,7 +43,6 @@ import type { CourtyardWalletInventoryGroup } from "@/lib/courtyard-inventory-ga
 import { isValidCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
-
 import { CommunityModerationGuard, getCommunityModerationTitle } from "@/app/authenticated-helpers/moderation-route-helpers";
 import { isGateBuilderDraftSavable } from "@/app/authenticated-helpers/community-gate-tree-draft";
 import {
@@ -1218,6 +1217,7 @@ export function CommunityModerationPage({
           initialRootLabel={state.community.route_slug ?? ""}
           namespaceAttachments={state.namespaceAttachments}
           onClearPendingSession={clearPendingNamespaceSession}
+          onRefreshNamespaces={state.refreshNamespaceAttachments}
           onRestorePrimary={state.restoreNamespacePrimary}
           onBackClick={() => navigate(moderationIndexPath)}
           onSessionCleared={() => {

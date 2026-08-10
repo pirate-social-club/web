@@ -62,7 +62,7 @@ export function Toaster() {
           success:
             "!border-success/20 !bg-surface-toast-success !text-foreground",
           toast:
-            "!max-h-[min(60vh,20rem)] !max-w-[calc(100vw-2rem)] !overflow-y-auto !rounded-[var(--radius-xl)] !border !shadow-[var(--shadow-lg)] !backdrop-blur-md sm:!max-w-96",
+            "!max-h-[min(60vh,20rem)] !max-w-[calc(100vw-2rem)] !overflow-visible !rounded-[var(--radius-xl)] !border !shadow-[var(--shadow-lg)] !backdrop-blur-md sm:!max-w-96 [&_[data-content]]:!max-h-[inherit] [&_[data-content]]:!overflow-y-auto",
           title: "!break-words !text-base !font-semibold !text-foreground",
           warning:
             "!border-warning/20 !bg-surface-toast-warning !text-foreground",

@@ -6,6 +6,7 @@ import type { AppContext, SeoMetadata, ThemeMode } from "@/app/app-context";
 import { COMMUNITY_MODERATION_SECTIONS, SETTINGS_SECTIONS } from "@/app/route-definitions";
 import { LegalDocumentPage } from "@/components/legal/legal-document-page";
 import { Document } from "@/app/document";
+import { communityLandingRedirectResponse } from "@/app/community-landing-redirect";
 import { matchRoute, matchRouteWithImportedRootCommunity } from "@/app/router";
 import { isPostOutsideSovereignScope } from "@/app/sovereign-route-scope";
 import { PRIVACY_POLICY_SOURCE } from "@/legal/privacy-policy";
@@ -517,19 +518,9 @@ const app = defineApp<AppRequestInfo>([
       ? { identifier: route.communityId, preview: seoResolution.communityPreview }
       : null;
     if (route.kind === "community-landing" && seoResolution.communityPreview) {
-      const routeSegment = seoResolution.communityPreview.route_slug || seoResolution.communityPreview.id;
-      const surface = seoResolution.communityPreview.default_surface === "videos" ? "videos" : "threads";
-      const redirectUrl = new URL(effectiveUrl);
-      redirectUrl.pathname = `/c/${encodeURIComponent(routeSegment)}/${surface}`;
-      const hasQuery = redirectUrl.search.length > 0;
-      return new Response(null, {
-        headers: {
-          "cache-control": hasQuery ? "no-store" : "public, max-age=0, must-revalidate",
-          "cdn-cache-control": hasQuery ? "no-store" : "public, max-age=600, stale-while-revalidate=3600",
-          ...(!hasQuery ? { "cache-tag": `community:${seoResolution.communityPreview.id}` } : {}),
-          location: redirectUrl.toString(),
-        },
-        status: 302,
+      return communityLandingRedirectResponse({
+        effectiveUrl,
+        preview: seoResolution.communityPreview,
       });
     }
     ctx.seoMetadata = seoResolution.metadata

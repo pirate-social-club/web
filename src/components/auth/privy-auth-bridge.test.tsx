@@ -15,7 +15,9 @@ const { mock } = await import("bun:test") as unknown as {
 
 const EMBEDDED_ADDRESS = "0x1111111111111111111111111111111111111111";
 let exchangeCalls = 0;
-let fakeSession: StoredSession;
+let fakeSession: StoredSession | null;
+let fakeAuthenticated = true;
+let loginCalls: Array<{ loginMethods?: string[] } | undefined> = [];
 
 function makeSession(attached = false): StoredSession {
   return {
@@ -41,10 +43,10 @@ const fakeApi = {
       exchangeCalls += 1;
       return {
         access_token: "header.payload.signature",
-        onboarding: fakeSession.onboarding,
-        profile: fakeSession.profile,
-        user: fakeSession.user,
-        wallet_attachments: fakeSession.walletAttachments,
+        onboarding: fakeSession!.onboarding,
+        profile: fakeSession!.profile,
+        user: fakeSession!.user,
+        wallet_attachments: fakeSession!.walletAttachments,
       };
     },
   },
@@ -73,11 +75,13 @@ mock.module("@privy-io/react-auth", () => ({
   useMigrateWallets: () => ({ migrate: async () => undefined }),
   useModalStatus: () => ({ isOpen: false }),
   usePrivy: () => ({
-    authenticated: true,
+    authenticated: fakeAuthenticated,
     connectWallet: () => undefined,
     getAccessToken: async () => "privy-access-token",
     linkWallet: () => undefined,
-    login: () => undefined,
+    login: (options?: { loginMethods?: string[] }) => {
+      loginCalls.push(options);
+    },
     logout: async () => undefined,
     ready: true,
   }),
@@ -104,10 +108,33 @@ const embeddedWallet: PirateConnectedEvmWallet = {
 afterEach(() => {
   document.body.replaceChildren();
   exchangeCalls = 0;
+  fakeAuthenticated = true;
+  loginCalls = [];
   fakeSession = makeSession(false);
 });
 
 describe("PrivyAuthBridge embedded wallet recovery", () => {
+  test("opens login with the origin-scoped login methods", async () => {
+    fakeSession = null;
+    fakeAuthenticated = false;
+    let connect: (() => void) | null = null;
+    render(
+      <PrivyAuthBridge
+        loginMethods={["wallet", "email", "google", "twitter"]}
+        onConnectReady={(nextConnect) => {
+          connect = nextConnect;
+        }}
+      />,
+    );
+
+    await waitFor(() => expect(connect).not.toBeNull());
+    act(() => connect?.());
+
+    expect(loginCalls).toEqual([{
+      loginMethods: ["wallet", "email", "google", "twitter"],
+    }]);
+  });
+
   test("resolves an embedded wallet id from the authenticated Privy user", () => {
     expect(resolvePrivyWalletId({
       linkedAccounts: [{

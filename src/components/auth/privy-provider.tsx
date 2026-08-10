@@ -12,6 +12,7 @@ import {
 } from "viem/chains";
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
+import type { PrivyLoginMethod } from "@/lib/auth/privy-login-methods";
 import type {
   PirateSponsoredIntentRequest,
   PirateSponsoredIntentSender,
@@ -34,6 +35,7 @@ type PrivyProviderComponent = React.ComponentType<{
 }>;
 type PrivyAuthBridgeComponent = React.ComponentType<{
   connectedWallets?: PirateConnectedEvmWallet[];
+  loginMethods?: PrivyLoginMethod[];
   onAuthenticatedChange?: (authenticated: boolean) => void;
   onBusyChange?: (busy: boolean) => void;
   onConnectReady?: (connect: (() => void) | null) => void;
@@ -488,6 +490,7 @@ export function PirateAuthProvider({
         >
           <BridgeComponent
             connectedWallets={connectedWallets}
+            loginMethods={loginMethods}
             onAuthenticatedChange={setPrivyAuthenticated}
             onBusyChange={setBusy}
             onConnectReady={handleConnectReady}

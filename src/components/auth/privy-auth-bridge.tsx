@@ -23,6 +23,7 @@ import {
 } from "@/lib/api/session-store";
 import { logger } from "@/lib/logger";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
+import type { PrivyLoginMethod } from "@/lib/auth/privy-login-methods";
 import { toast } from "@/components/primitives/sonner";
 import type {
   PirateSponsoredIntentRequest,
@@ -45,6 +46,7 @@ const PRIVY_REQUEST_TTL_MS = 30 * 60 * 1000;
 export interface PrivyAuthBridgeProps {
   connectedWallets?: PirateConnectedEvmWallet[];
   embeddedWalletReconcileDelaysMs?: readonly number[];
+  loginMethods?: PrivyLoginMethod[];
   onAuthenticatedChange?: (authenticated: boolean) => void;
   onBusyChange?: (busy: boolean) => void;
   onConnectReady?: (connect: (() => void) | null) => void;
@@ -141,6 +143,7 @@ export function buildPrivyAuthorizationRequest(
 export function PrivyAuthBridge({
   connectedWallets = [],
   embeddedWalletReconcileDelaysMs,
+  loginMethods,
   onAuthenticatedChange,
   onBusyChange,
   onConnectReady,
@@ -173,6 +176,14 @@ export function PrivyAuthBridge({
   const linkEthereumWallet = React.useCallback(() => {
     linkWallet({ walletChainType: "ethereum-only" });
   }, [linkWallet]);
+  const loginWithAllowedMethods = React.useCallback(() => {
+    if (loginMethods) {
+      login({ loginMethods });
+      return;
+    }
+
+    login();
+  }, [login, loginMethods]);
   const sendSponsoredIntent = React.useCallback(async (
     request: PirateSponsoredIntentRequest,
   ): Promise<`0x${string}`> => {
@@ -223,7 +234,7 @@ export function PrivyAuthBridge({
     busy: false,
     connectWallet: connectEthereumWallet as (() => void) | null,
     linkWallet: linkEthereumWallet as (() => void) | null,
-    login: login as (() => void) | null,
+    login: loginWithAllowedMethods as (() => void) | null,
     session: false,
   });
 
@@ -235,7 +246,7 @@ export function PrivyAuthBridge({
     busy,
     connectWallet: connectEthereumWallet as (() => void) | null,
     linkWallet: linkEthereumWallet as (() => void) | null,
-    login: login as (() => void) | null,
+    login: loginWithAllowedMethods as (() => void) | null,
     session: !!session,
   };
 

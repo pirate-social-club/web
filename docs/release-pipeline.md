@@ -28,7 +28,8 @@ The blocking `release-gate` and API-owned `api-staging-contract-gate` contain on
 and control:
 
 - `release-gate`: the app boots and serves (`smoke-test.sh`, `test:e2e` browser smoke), and the
-  song-preview container is healthy
+  song-preview container is healthy; plausible unsigned and malformed HNS forwarding context from
+  a non-gateway source cannot acquire a forwarded host, community route, or wallet interactivity
 - `api-staging-contract-gate`: auth works and a community follow round-trips, a global booking hold
   quotes, one controlled direct-multipart upload completes, and a real post/comment round-trips
 
@@ -40,6 +41,11 @@ so a slow canary cannot hold or delay the next release. Failures raise a trackin
 (`canary-failure` label) and upload artifacts; setup or SHA-verification failures alert as blind
 canaries rather than passing silently. Stale completed releases are skipped without alerting, and
 a new `main` push cancels the older canary before its staging target can change underneath it.
+
+The independent `HNS forwarder boundary` workflow repeats the same GET-only negative probe against
+production every hour. It needs no credentials and mutates no state. This scheduled measurement is
+deliberately redundant with the blocking staging release check because source-IP and credential
+drift can occur between releases.
 
 ## Community schema gate
 

@@ -330,7 +330,6 @@ describe("CurrentUserWalletPage rewards", () => {
     });
     await waitFor(() => {
       expect(view.getByText("$1.20 is in your wallet 🎉")).toBeTruthy();
-      expect(view.getByText("Reward sent successfully.")).toBeTruthy();
     });
     await waitFor(() => {
       expect(fakeApi.rewards.getSummary.mock.calls.length).toBeGreaterThanOrEqual(2);

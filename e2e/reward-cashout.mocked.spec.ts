@@ -37,7 +37,6 @@ test.describe("reward cashouts (mocked API)", () => {
     await expect(claimSheet.getByRole("button", { name: "Confirm claim" })).toHaveCount(0);
 
     await expect(claimSheet.getByText("$1.20 is in your wallet 🎉", { exact: true })).toBeVisible();
-    await expect(claimSheet.getByText("Reward sent successfully.", { exact: true })).toBeVisible();
     await expect(claimSheet.getByRole("link", { name: "View on Basescan" }))
       .toHaveAttribute("href", /0xbrowserreward$/u);
     await expect(claimSheet.getByText("0xbrowserreward", { exact: true })).toBeVisible();

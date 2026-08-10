@@ -111,15 +111,17 @@ describe("reward surfaces", () => {
     )).toBe(true);
   });
 
-  test("shows a signed hash without claiming it is visible on Base", () => {
+  test("shows a signed hash under the user-facing sending state", () => {
     const hash = "0x4b6c9f0a8d3e2c1b7a6d5e4f3c2b1a0987654321abcdef1234567890abcdef12";
     const view = render(
       <CashoutSheet amountLabel="$1.00" forceMobile={false} open state="signed" txHashLabel={hash} />,
     );
 
-    expect(view.getByText("Transaction signed")).toBeTruthy();
+    expect(view.getByText("Sending…")).toBeTruthy();
     expect(view.getByText(hash)).toBeTruthy();
     expect(view.getByText("Not yet visible on Base.")).toBeTruthy();
+    expect(view.queryByText("Transaction signed")).toBeNull();
+    expect(view.queryByText("It has not been observed on Base yet.")).toBeNull();
     expect(view.queryByText("View on Basescan")).toBeNull();
     view.unmount();
   });
@@ -138,7 +140,7 @@ describe("reward surfaces", () => {
       />,
     );
 
-    expect(view.getByText("Sent to Base")).toBeTruthy();
+    expect(view.getByText("Sent — waiting for confirmation")).toBeTruthy();
     expect(view.getByRole("link", { name: /View on Basescan/u }).getAttribute("href")).toBe(basescanUrl);
     view.unmount();
   });

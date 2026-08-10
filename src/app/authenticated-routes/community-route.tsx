@@ -19,6 +19,7 @@ import {
   formatCommunityRouteLabel,
 } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
+import { CommunitySurfaceSwitch } from "@/app/community-surface-switch";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { CommunityJoinVerificationChooserModal } from "@/components/compositions/community/join-verification-chooser-modal/community-join-verification-chooser-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
@@ -122,9 +123,11 @@ function viewerCanModerateCommunity(
 
 export function CommunityPage({
   communityId,
+  importedRootHostname,
   isImportedRoot = false,
 }: {
   communityId: string;
+  importedRootHostname?: string;
   isImportedRoot?: boolean;
 }) {
   const api = useApi();
@@ -514,6 +517,7 @@ export function CommunityPage({
     replaceWithCanonicalCommunityRoute(
       canonicalCommunityId,
       community?.route_slug ?? preview?.route_slug,
+      "threads",
     );
   }, [community?.id, community?.route_slug, isImportedRoot, preview?.id, preview?.route_slug]);
 
@@ -911,6 +915,12 @@ export function CommunityPage({
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
+      <CommunitySurfaceSwitch
+        active="threads"
+        communityId={community?.id ?? preview.id}
+        importedRootHostname={importedRootHostname}
+        routeSlug={community?.route_slug ?? preview.route_slug}
+      />
       {ownsCommunity ? (
         <Button
           onClick={() => navigate(moderationEntryPath)}

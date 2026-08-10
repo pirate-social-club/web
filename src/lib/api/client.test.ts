@@ -654,6 +654,59 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("updates constrained community presentation settings", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      return Response.json({
+        branding: {
+          accent_color: "#6D5DFC",
+          header_style: "compact",
+          tagline: "Video first",
+          theme: "dark",
+        },
+        community: "cmt_test",
+        default_surface: "videos",
+        id: "cmt_test",
+        object: "community_presentation",
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.updatePresentation("cmt_test", {
+        branding: {
+          accent_color: "#6D5DFC",
+          header_style: "compact",
+          tagline: "Video first",
+          theme: "dark",
+        },
+        default_surface: "videos",
+      });
+
+      expect(requests.map((request) => `${request.method} ${request.url}`)).toEqual([
+        "POST http://pirate.test/communities/cmt_test/presentation",
+      ]);
+      expect(requests[0]?.headers.get("authorization")).toBe("Bearer session-token");
+      expect(await requests[0]?.json()).toEqual({
+        branding: {
+          accent_color: "#6D5DFC",
+          header_style: "compact",
+          tagline: "Video first",
+          theme: "dark",
+        },
+        default_surface: "videos",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("calls community Telegram broadcast channel endpoints", async () => {
     const requests: Request[] = [];
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -1371,6 +1424,11 @@ describe("ApiClient media uploads", () => {
       });
 
       const community = await client.publicCommunities.get("captain-club");
+      await client.publicCommunities.listVideos("captain-club", {
+        cursor: "v2:1000:25",
+        locale: "en-US",
+        sort: "best",
+      });
       await client.publicCommunities.listPosts("captain-club", {
         locale: "en-US",
         sort: "top",
@@ -1379,8 +1437,10 @@ describe("ApiClient media uploads", () => {
       expect(requests[0]?.method).toBe("GET");
       expect(requests[0]?.url).toBe("http://pirate.test/public-communities/captain-club");
       expect(requests[0]?.headers.get("authorization")).toBe(null);
-      expect(requests[1]?.url).toBe("http://pirate.test/public-communities/captain-club/posts?locale=en-US&sort=top");
+      expect(requests[1]?.url).toBe("http://pirate.test/public-communities/captain-club/feed/videos?cursor=v2%3A1000%3A25&locale=en-US&sort=best");
       expect(requests[1]?.headers.get("authorization")).toBe(null);
+      expect(requests[2]?.url).toBe("http://pirate.test/public-communities/captain-club/posts?locale=en-US&sort=top");
+      expect(requests[2]?.headers.get("authorization")).toBe(null);
       expect(community.display_name).toBe("Captain Club");
     } finally {
       globalThis.fetch = originalFetch;

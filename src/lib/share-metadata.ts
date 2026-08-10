@@ -18,6 +18,8 @@ export type PublicPostResponse = LocalizedPostResponse & {
 
 const ROUTE_KINDS_WITH_ENTITY_SEO = new Set([
   "community",
+  "community-landing",
+  "community-videos",
   "crosspost",
   "live-room",
   "post",

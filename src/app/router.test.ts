@@ -32,6 +32,7 @@ describe("public profile host routing", () => {
   test("ignores reserved or nested subdomains", () => {
     expect(extractPublicProfileHost("api.pirate")).toBe(null);
     expect(extractPublicProfileHost("app.pirate")).toBe(null);
+    expect(extractPublicProfileHost("home.pirate")).toBe(null);
     expect(extractPublicProfileHost("captain.dev.pirate")).toBe(null);
     expect(extractPublicProfileHost("localhost")).toBe(null);
   });
@@ -427,11 +428,54 @@ describe("matchRouteWithImportedRootCommunity", () => {
       "xn--pokmon-dva",
       "com_cmt_public_namespace_test",
     ), {
+      kind: "community-videos",
+      path: "/",
+      communityId: "com_cmt_public_namespace_test",
+      isImportedRoot: true,
+      importedRootHostname: "xn--pokmon-dva",
+      sovereignCommunityId: "com_cmt_public_namespace_test",
+    });
+  });
+
+  test("maps app imported-root requests to threads and rejects other subdomains", () => {
+    expectJson(matchRouteWithImportedRootCommunity(
+      "/",
+      "app.xn--pokmon-dva",
+      "com_cmt_public_namespace_test",
+    ), {
       kind: "community",
       path: "/",
       communityId: "com_cmt_public_namespace_test",
       isImportedRoot: true,
+      importedRootHostname: "xn--pokmon-dva",
       sovereignCommunityId: "com_cmt_public_namespace_test",
+    });
+    expectJson(matchRouteWithImportedRootCommunity(
+      "/",
+      "other.xn--pokmon-dva",
+      "com_cmt_public_namespace_test",
+    ), {
+      kind: "not-found",
+      path: "/",
+      sovereignCommunityId: "com_cmt_public_namespace_test",
+    });
+  });
+
+  test("matches explicit canonical community surfaces and preserves bare landing", () => {
+    expectJson(matchRoute("/c/community/videos", "pirate.sc"), {
+      kind: "community-videos",
+      path: "/c/community/videos",
+      communityId: "community",
+    });
+    expectJson(matchRoute("/c/community/threads", "pirate.sc"), {
+      kind: "community",
+      path: "/c/community/threads",
+      communityId: "community",
+    });
+    expectJson(matchRoute("/c/community", "pirate.sc"), {
+      kind: "community-landing",
+      path: "/c/community",
+      communityId: "community",
     });
   });
 

@@ -414,6 +414,27 @@ describe("share metadata", () => {
     expect(markup).not.toContain('as="fetch"');
   });
 
+  test("scopes the pre-hydration video request to the sovereign community", () => {
+    const markup = renderToStaticMarkup(
+      <Document
+        ctx={{
+          canonicalUrl: "https://community-root/",
+          homeFeedPreloadUrl: "https://api.pirate/public-communities/com_test/feed/videos?locale=en&sort=best",
+          homeFeedScopeKey: "com_test",
+          isIndexable: false,
+          locale: "en",
+          seoMetadata: null,
+        }}
+        rw={{ nonce: "nonce" } as never}
+      >
+        <main />
+      </Document>,
+    );
+
+    expect(markup).toContain("/public-communities/com_test/feed/videos?locale=en&sort=best");
+    expect(markup).toContain('scopeKey=\"com_test\"');
+  });
+
   test("does not render a generic social card for entity routes when SEO lookup misses", () => {
     const markup = renderToStaticMarkup(
       <Document

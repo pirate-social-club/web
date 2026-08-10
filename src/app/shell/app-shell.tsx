@@ -43,6 +43,11 @@ import { resolveSessionAvatarFallback } from "./session-avatar";
 import { useShellMobileLayout } from "./use-shell-mobile-layout";
 import { GlobalVideoExperienceProvider } from "@/app/video-experience/video-experience-provider";
 import { SovereignRouteBoundary } from "@/app/sovereign-route-boundary";
+import {
+  InitialPublicCommunityProvider,
+  type InitialPublicCommunity,
+  usePublicCommunityQuery,
+} from "@/lib/query/public-community-query";
 
 const LazyAuthenticatedRouteRenderer = React.lazy(async () => {
   const mod = await import("@/app/authenticated-route-renderer");
@@ -112,7 +117,7 @@ function AnalyticsRouteTracker({ route }: { route: AppRoute }) {
 
     if (route.kind === "home" || route.kind === "community-feed" || route.kind === "popular") {
       trackAnalyticsEvent({ eventName: "home_feed_viewed" });
-    } else if (route.kind === "community") {
+    } else if (route.kind === "community" || route.kind === "community-videos" || route.kind === "community-landing") {
       trackAnalyticsEvent({
         eventName: "community_viewed",
         communityId: route.communityId,
@@ -155,6 +160,7 @@ function NotificationShell({
   session: ReturnType<typeof useSession>;
 }) {
   const isMobileLayout = useShellMobileLayout();
+  const { locale } = useUiLocale();
   const { connect } = usePiratePrivyRuntime();
   // SSR and the first hydration render see a null session even for signed-in viewers, so gating
   // the Connect CTA on the session alone flashes it for people who already have one. Wait for
@@ -194,6 +200,12 @@ function NotificationShell({
     walletLabel: copy.mobileFooter.walletLabel,
   });
   const resourceItems = buildResourceItems(copy.appSidebar);
+  const presentationCommunityId = route.kind === "community"
+    || route.kind === "community-videos"
+    || route.kind === "community-landing"
+    ? route.communityId
+    : null;
+  const presentation = usePublicCommunityQuery(presentationCommunityId, locale).data;
   const [searchOpen, setSearchOpen] = React.useState(false);
   const isChatRoute = route.kind === "chat"
     || route.kind === "chat-target"
@@ -203,7 +215,7 @@ function NotificationShell({
   const useStandaloneRouteShell = usesStandaloneRouteShell(route, isMobileLayout);
   // Temporary: migrated routes own their own page shell padding.
   // Remove this once all routes are converted.
-  const isMigratedRoute = route.kind === "home" || route.kind === "community-feed" || route.kind === "popular" || route.kind === "wallet";
+  const isMigratedRoute = route.kind === "home" || route.kind === "community-videos" || route.kind === "community-feed" || route.kind === "popular" || route.kind === "wallet";
   const mediaSections = buildMediaSections(copy.appSidebar, sections);
   useNotificationBadges(unreadNotificationCount);
 
@@ -239,7 +251,9 @@ function NotificationShell({
               <AppSidebar
                 activeItemId={activeSidebarItem(route)}
                 appearance="media"
-                brandLabel={copy.appSidebar.brandLabel}
+                brandAccentColor={presentation?.branding.accent_color}
+                brandImageSrc={presentationCommunityId ? presentation?.avatar_ref ?? null : undefined}
+                brandLabel={presentation?.display_name ?? copy.appSidebar.brandLabel}
                 homeAriaLabel={copy.appSidebar.homeAriaLabel}
                 mediaAction={clientReady && !session ? (
                   <Button
@@ -269,7 +283,7 @@ function NotificationShell({
               <SidebarInset className="min-h-0">
                 <AppShellHeader
                   copy={copy}
-                  mobileMediaOverlay={route.kind === "home"}
+                  mobileMediaOverlay={route.kind === "home" || route.kind === "community-videos"}
                   onSearchClick={() => setSearchOpen(true)}
                   route={route}
                   unreadChatCount={unreadChatCount}
@@ -284,7 +298,10 @@ function NotificationShell({
                 >
                   <React.Suspense fallback={<RouteContentFallback route={route} />}>
                     {isPublicRoute
-                      || (route.kind === "community" && (route.isImportedRoot || !session))
+                      || (
+                        (route.kind === "community" || route.kind === "community-videos" || route.kind === "community-landing")
+                        && (!session || ("isImportedRoot" in route && route.isImportedRoot))
+                      )
                       || (route.kind === "post" && !session)
                       ? <LazyPublicRouteRenderer route={route} />
                       : <LazyAuthenticatedRouteRenderer route={route} />}
@@ -309,10 +326,12 @@ function NotificationShell({
 export function PirateAppShell({
   initialHost,
   initialImportedRootCommunityId,
+  initialPublicCommunity,
   initialPath,
 }: {
   initialHost?: string;
   initialImportedRootCommunityId?: string | null;
+  initialPublicCommunity?: InitialPublicCommunity | null;
   initialPath?: string;
 }) {
   const { locale } = useUiLocale();
@@ -330,6 +349,8 @@ export function PirateAppShell({
       || route.kind === "community-feed"
       || route.kind === "popular"
       || route.kind === "community"
+      || route.kind === "community-videos"
+      || route.kind === "community-landing"
       || route.kind === "wallet"
       || route.kind === "post"
       || route.kind === "live-room"
@@ -344,6 +365,7 @@ export function PirateAppShell({
     >
       <PirateQueryProvider>
         <ApiProvider initialHost={initialHost}>
+          <InitialPublicCommunityProvider value={initialPublicCommunity}>
           <GlobalVideoExperienceProvider>
             <AnalyticsRouteTracker route={route} />
             <SovereignRouteBoundary route={route}>
@@ -391,6 +413,7 @@ export function PirateAppShell({
             )}
             </SovereignRouteBoundary>
           </GlobalVideoExperienceProvider>
+          </InitialPublicCommunityProvider>
         </ApiProvider>
       </PirateQueryProvider>
     </RootErrorBoundary>

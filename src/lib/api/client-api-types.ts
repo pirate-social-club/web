@@ -635,6 +635,7 @@ export type ApiCommunityMachineAccessPolicy = {
     thread_bodies: boolean;
     top_comments: boolean;
     events: boolean;
+    video_feed: boolean;
   };
   allowed_uses: {
     summarization: true;

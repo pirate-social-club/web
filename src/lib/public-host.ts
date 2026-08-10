@@ -4,6 +4,7 @@ const RESERVED_PUBLIC_PROFILE_HOSTS = new Set([
   "api-staging",
   "spaces",
   "app",
+  "home",
   "admin",
   "assets",
   "static",

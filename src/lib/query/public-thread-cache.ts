@@ -29,6 +29,8 @@ function communityPreviewFromHomeFeedItem(item: HomeFeedItem): CommunityPreview 
     localized_text: null,
     avatar_ref: item.community.avatar_ref ?? null,
     banner_ref: null,
+    branding: item.community.branding,
+    default_surface: item.community.default_surface,
     membership_mode: "request",
     allow_anonymous_identity: true,
     anonymous_identity_scope: null,

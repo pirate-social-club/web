@@ -28,7 +28,9 @@ type BaseAppRoute =
   | { kind: "create-post-global"; path: "/submit" }
   | { kind: "community-moderation-index"; path: string; communityId: string }
   | { kind: "community-moderation"; path: string; communityId: string; section: CommunityModerationSectionName }
-  | { kind: "community"; path: string; communityId: string; isImportedRoot?: boolean }
+  | { kind: "community-landing"; path: string; communityId: string }
+  | { kind: "community-videos"; path: string; communityId: string; isImportedRoot?: boolean; importedRootHostname?: string }
+  | { kind: "community"; path: string; communityId: string; isImportedRoot?: boolean; importedRootHostname?: string }
   | { kind: "booking-public"; path: string; communityId: string | null; hostUserId: string }
   | { kind: "booking-checkout"; path: string; communityId: string | null; hostUserId: string }
   | { kind: "booking-management"; path: string; sourceCommunityId?: string | null; role: "host" | "booker" }
@@ -371,9 +373,25 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
     };
   }
 
-  if (segments.length === 2 && segments[0] === "c") {
+  if (segments.length === 3 && segments[0] === "c" && segments[2] === "videos") {
+    return {
+      kind: "community-videos",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  if (segments.length === 3 && segments[0] === "c" && segments[2] === "threads") {
     return {
       kind: "community",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  if (segments.length === 2 && segments[0] === "c") {
+    return {
+      kind: "community-landing",
       path: normalized,
       communityId: decodeURIComponent(segments[1]),
     };
@@ -486,12 +504,29 @@ export function matchRouteWithImportedRootCommunity(
   importedRootCommunityId: string | null,
 ): AppRoute {
   const normalized = normalizePathname(pathname);
+  const importedRootHostname = hostname?.trim().toLowerCase().replace(/\.+$/u, "") ?? "";
+  const importedRootLabels = importedRootHostname.split(".").filter(Boolean);
+  const importedRootSurface = importedRootLabels.length === 1
+    ? "apex"
+    : importedRootLabels.length === 2 && importedRootLabels[0] === "app"
+      ? "app"
+      : "unsupported";
+  if (importedRootCommunityId && importedRootSurface === "unsupported") {
+    return {
+      kind: "not-found",
+      path: normalized,
+      sovereignCommunityId: importedRootCommunityId,
+    };
+  }
   if (normalized === "/" && importedRootCommunityId) {
     return {
-      kind: "community",
+      kind: importedRootSurface === "app" ? "community" : "community-videos",
       path: "/",
       communityId: importedRootCommunityId,
       isImportedRoot: true,
+      importedRootHostname: importedRootSurface === "app"
+        ? importedRootLabels.slice(1).join(".")
+        : importedRootHostname,
       sovereignCommunityId: importedRootCommunityId,
     };
   }
@@ -511,6 +546,8 @@ export function canonicalizeRoutePathname(pathname: string, hostname?: string): 
 function getCanonicalCommunityRoutePathname(route: AppRoute): string | null {
   if (
     route.kind !== "community" &&
+    route.kind !== "community-landing" &&
+    route.kind !== "community-videos" &&
     route.kind !== "create-post" &&
     route.kind !== "community-moderation-index" &&
     route.kind !== "community-moderation"
@@ -532,6 +569,12 @@ function getCanonicalCommunityRoutePathname(route: AppRoute): string | null {
   }
   if (route.kind === "community-moderation") {
     return `${communityPath}/mod/${route.section}`;
+  }
+  if (route.kind === "community-videos") {
+    return `${communityPath}/videos`;
+  }
+  if (route.kind === "community" && route.path.endsWith("/threads")) {
+    return `${communityPath}/threads`;
   }
 
   return communityPath;

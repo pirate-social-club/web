@@ -468,6 +468,7 @@ export function CreatePostPage({
             id: state.community.id,
             display_name: state.community.display_name,
             membership_gate_summaries: state.eligibility.membership_gate_summaries,
+            viewer_community_role: state.community.viewer_community_role ?? null,
           },
         })
       : undefined,
@@ -811,7 +812,7 @@ export function CreatePostPage({
       title={selfPrompt.title}
     />
   ) : null;
-  const postProofOfWorkRequirements = state.community?.membership_gate_summaries.filter((gate) => gate.gate_type === "altcha_pow");
+  const postProofOfWorkRequirements = state.community?.membership_gate_summaries.filter((gate: { gate_type: string }) => gate.gate_type === "altcha_pow");
   const postProofOfWorkRequirementStatuses = postProofOfWorkRequirements?.map(() =>
     state.postAltchaPayload ? "met" as const : "unmet" as const
   );

@@ -41,6 +41,10 @@ const LazyVideoHomePage = lazyRouteModule(
   () => import("./authenticated-routes/video-home-route"),
   "VideoHomePage",
 );
+const LazyCommunityLandingRoutePage = lazyRouteModule(
+  () => import("./community-landing-route"),
+  "CommunityLandingRoutePage",
+);
 const LazyCreatePostPage = lazyRouteModule(
   () => import("./authenticated-routes/create-post-route"),
   "CreatePostPage",
@@ -182,6 +186,10 @@ function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
   switch (route.kind) {
     case "home":
       return <LazyVideoHomePage />;
+    case "community-videos":
+      return <LazyVideoHomePage communityId={route.communityId} importedRootHostname={route.importedRootHostname} />;
+    case "community-landing":
+      return <LazyCommunityLandingRoutePage communityId={route.communityId} />;
     case "live":
       return <LazyLiveIndexPage />;
     case "community-feed":
@@ -203,7 +211,7 @@ function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
     case "community-moderation":
       return <LazyCommunityModerationPage communityId={route.communityId} section={route.section} />;
     case "community":
-      return <LazyCommunityPage communityId={route.communityId} isImportedRoot={route.isImportedRoot} />;
+      return <LazyCommunityPage communityId={route.communityId} importedRootHostname={route.importedRootHostname} isImportedRoot={route.isImportedRoot} />;
     case "create-community":
       return <LazyCreateCommunityPage />;
     case "telegram-account-link":

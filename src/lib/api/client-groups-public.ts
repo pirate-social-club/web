@@ -2,6 +2,8 @@ import type {
   CommentListResponse,
   CommunityPreview,
   GlobalHandle,
+  HomeFeedResponse,
+  HomeFeedSort,
   LocalizedPostResponse,
   ProfileActivityResponse,
   Profile,
@@ -273,6 +275,26 @@ export function createPublicCommunitiesApi(request: ApiRequest) {
         request,
         `/public-communities/${encodeURIComponent(communityId)}`,
         { locale: opts?.locale },
+      );
+    },
+    listVideos: (
+      communityId: string,
+      opts?: {
+        cursor?: string | null;
+        locale?: string | null;
+        sort?: HomeFeedSort | null;
+        timeRange?: string | null;
+      },
+    ): Promise<HomeFeedResponse> => {
+      return publicGet<HomeFeedResponse>(
+        request,
+        `/public-communities/${encodeURIComponent(communityId)}/feed/videos`,
+        {
+          cursor: opts?.cursor,
+          locale: opts?.locale,
+          sort: opts?.sort,
+          time_range: opts?.timeRange,
+        },
       );
     },
     listPosts: (

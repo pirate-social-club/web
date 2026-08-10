@@ -723,12 +723,16 @@ export function CommunityModerationPage({
       });
       content = (
         <CommunityProfileEditorPage
+          accentColor={state.profileAccentColor}
           avatarSrc={state.profileAvatarRemoved ? undefined : (state.community.avatar_ref ?? undefined)}
           bannerSrc={state.profileBannerRemoved ? undefined : (state.community.banner_ref ?? undefined)}
           countryCode={state.profileCountryCode}
           description={state.profileDescription}
           displayName={state.profileDisplayName}
           displayNameError={state.profileDisplayNameError}
+          defaultSurface={state.profileDefaultSurface}
+          headerStyle={state.profileHeaderStyle}
+          onAccentColorChange={state.setProfileAccentColor}
           onAvatarRemove={() => {
             state.setProfileAvatarFile(null);
             state.setProfileAvatarRemoved(true);
@@ -753,15 +757,21 @@ export function CommunityModerationPage({
           onCountryCodeChange={state.setProfileCountryCode}
           onDescriptionChange={state.setProfileDescription}
           onDisplayNameChange={state.setProfileDisplayName}
+          onDefaultSurfaceChange={state.setProfileDefaultSurface}
+          onHeaderStyleChange={state.setProfileHeaderStyle}
           onSave={state.handleSaveProfile}
           onStoreLabelChange={state.setProfileStoreLabel}
           onStoreUrlChange={state.setProfileStoreUrl}
+          onTaglineChange={state.setProfileTagline}
+          onThemeChange={state.setProfileTheme}
           pendingAvatarLabel={state.profileAvatarFile?.name}
           pendingBannerLabel={state.profileBannerFile?.name}
           saveDisabled={state.savingProfile || !state.profileHasChanges}
           saveLoading={state.savingProfile}
           storeLabel={state.profileStoreLabel}
           storeUrl={state.profileStoreUrl}
+          tagline={state.profileTagline}
+          theme={state.profileTheme}
         />
       );
     } else if (section === "rules") {

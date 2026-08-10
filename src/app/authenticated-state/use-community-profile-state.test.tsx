@@ -2,7 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { installDomGlobals } from "@/test/setup-dom";
 import type * as React from "react";
-import type { Community as ApiCommunity } from "@pirate/api-contracts";
+import type {
+  Community as ApiCommunity,
+  CommunityPresentation,
+  CommunityPresentationPatch,
+} from "@pirate/api-contracts";
 
 import { api } from "@/lib/api";
 
@@ -25,6 +29,13 @@ function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
     id: "community-1",
     object: "community",
     display_name: "Test Community",
+    branding: {
+      accent_color: null,
+      header_style: "standard",
+      tagline: null,
+      theme: "system",
+    },
+    default_surface: "threads",
     description: "Original description",
     avatar_ref: "avatar-1",
     banner_ref: "banner-1",
@@ -35,11 +46,13 @@ function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
 function installCommunityApiMocks() {
   const calls = {
     update: [] as Array<{ communityId: string; body: UpdateCommunityBody }>,
+    updatePresentation: [] as Array<{ communityId: string; body: CommunityPresentationPatch }>,
     uploadMedia: [] as Array<{ kind: "avatar" | "banner"; file: File }>,
   };
 
   const communities = api.communities as unknown as {
     update: (communityId: string, body: UpdateCommunityBody) => Promise<ApiCommunity>;
+    updatePresentation: (communityId: string, body: CommunityPresentationPatch) => Promise<CommunityPresentation>;
     uploadMedia: (input: { kind: "avatar" | "banner"; file: File }) => Promise<{ media_ref: string }>;
   };
 
@@ -55,6 +68,21 @@ function installCommunityApiMocks() {
       avatar_ref: body.avatar_ref,
       banner_ref: body.banner_ref,
     });
+  };
+  communities.updatePresentation = async (communityId, body) => {
+    calls.updatePresentation.push({ communityId, body });
+    return {
+      branding: {
+        accent_color: body.branding?.accent_color ?? null,
+        header_style: body.branding?.header_style ?? "standard",
+        tagline: body.branding?.tagline ?? null,
+        theme: body.branding?.theme ?? "system",
+      },
+      community: communityId,
+      default_surface: body.default_surface ?? "threads",
+      id: communityId,
+      object: "community_presentation",
+    };
   };
 
   return calls;
@@ -151,6 +179,7 @@ describe("useCommunityProfileState", () => {
         store_url: null,
       },
     }]);
+    expect(calls.updatePresentation).toHaveLength(1);
     expect(updatedCommunities[0]?.display_name).toBe("Updated Community");
     expect(result.current.profileAvatarRemoved).toBe(true);
     expect(result.current.savingProfile).toBe(false);

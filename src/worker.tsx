@@ -122,8 +122,17 @@ function buildPublicApiUrl(apiOrigin: string, path: string, locale: UiLocaleCode
   return url.toString();
 }
 
-function buildHomeFeedPreloadUrl(apiOrigin: string, contentLocale: string): string {
-  const url = new URL("/feed/home/videos/public", apiOrigin);
+function buildHomeFeedPreloadUrl(
+  apiOrigin: string,
+  contentLocale: string,
+  communityId?: string | null,
+): string {
+  const url = new URL(
+    communityId
+      ? `/public-communities/${encodeURIComponent(communityId)}/feed/videos`
+      : "/feed/home/videos/public",
+    apiOrigin,
+  );
   url.searchParams.set("locale", contentLocale);
   url.searchParams.set("sort", "best");
   return url.toString();
@@ -156,16 +165,26 @@ async function resolveRouteSeoMetadata(input: {
   locale: UiLocaleCode;
   route: ReturnType<typeof matchRoute>;
   signal?: AbortSignal;
-}): Promise<{ metadata: SeoMetadata | null; sovereignMismatch: boolean }> {
+}): Promise<{
+  communityPreview?: PublicCommunityPreviewResponse | null;
+  metadata: SeoMetadata | null;
+  sovereignMismatch: boolean;
+}> {
   try {
-    if (input.route.kind === "community" || input.route.kind === "telegram-community") {
+    if (
+      input.route.kind === "community"
+      || input.route.kind === "community-landing"
+      || input.route.kind === "community-videos"
+      || input.route.kind === "telegram-community"
+    ) {
       const preview = await fetchPublicJson<PublicCommunityPreviewResponse>(
         input.apiOrigin,
-        `/public-communities/${encodeURIComponent(input.route.communityId)}?preview=seo`,
+        `/public-communities/${encodeURIComponent(input.route.communityId)}${input.route.kind === "community-landing" ? "" : "?preview=seo"}`,
         input.locale,
         input.signal,
       );
       return {
+        communityPreview: preview,
         metadata: buildCommunitySeoMetadata({
           appOrigin: input.appOrigin,
           locale: input.locale,
@@ -255,7 +274,11 @@ async function resolveRouteSeoMetadataWithinBudget(input: {
   appOrigin: string;
   locale: UiLocaleCode;
   route: ReturnType<typeof matchRoute>;
-}): Promise<{ metadata: SeoMetadata | null; sovereignMismatch: boolean }> {
+}): Promise<{
+  communityPreview?: PublicCommunityPreviewResponse | null;
+  metadata: SeoMetadata | null;
+  sovereignMismatch: boolean;
+}> {
   const controller = new AbortController();
   let timedOut = false;
   const metadataPromise = resolveRouteSeoMetadata({
@@ -263,11 +286,15 @@ async function resolveRouteSeoMetadataWithinBudget(input: {
     signal: controller.signal,
   });
   let timeout: ReturnType<typeof setTimeout> | null = null;
-  const timeoutPromise = new Promise<{ metadata: null; sovereignMismatch: false }>((resolve) => {
+  const timeoutPromise = new Promise<{
+    communityPreview: null;
+    metadata: null;
+    sovereignMismatch: false;
+  }>((resolve) => {
     timeout = setTimeout(() => {
       timedOut = true;
       controller.abort();
-      resolve({ metadata: null, sovereignMismatch: false });
+      resolve({ communityPreview: null, metadata: null, sovereignMismatch: false });
     }, SEO_METADATA_TIMEOUT_MS);
   });
   try {
@@ -299,6 +326,7 @@ function AppRoutePage(requestInfo: AppRequestInfo) {
       initialImportedRootCommunityId={importedRootCommunityId}
       initialLocale={requestInfo.ctx.locale}
       initialPath={url.pathname}
+      initialPublicCommunity={requestInfo.ctx.initialPublicCommunity}
     />
   );
 }
@@ -446,7 +474,7 @@ const app = defineApp<AppRequestInfo>([
     ctx.expectsEntitySeoMetadata = expectsEntitySeoMetadata;
     ctx.locale = locale;
     ctx.dir = resolveLocaleDirection(locale);
-    ctx.homeFeedPreloadUrl = route.kind === "home"
+    ctx.homeFeedPreloadUrl = route.kind === "home" || route.kind === "community-videos"
       ? buildHomeFeedPreloadUrl(
         // The bootstrap script runs in the visitor's browser, so it must use
         // the API origin reachable from the effective host: HNS visitors
@@ -457,8 +485,10 @@ const app = defineApp<AppRequestInfo>([
           uiLocale: locale,
           browserLocales: acceptLanguageTags(request.headers.get("accept-language")),
         }),
+        route.kind === "community-videos" ? route.communityId : null,
       )
       : undefined;
+    ctx.homeFeedScopeKey = route.kind === "community-videos" ? route.communityId : "global";
     ctx.isIndexable = discovery.isIndexable;
     const mustVerifySovereignPost = Boolean(
       route.sovereignCommunityId && "postId" in route,
@@ -470,8 +500,32 @@ const app = defineApp<AppRequestInfo>([
         locale,
         route,
       })
-      : { metadata: null, sovereignMismatch: false };
+      : { communityPreview: null, metadata: null, sovereignMismatch: false };
     ctx.sovereignRouteMismatch = seoResolution.sovereignMismatch;
+    ctx.initialPublicCommunity = seoResolution.communityPreview && (
+      route.kind === "community"
+      || route.kind === "community-landing"
+      || route.kind === "community-videos"
+      || route.kind === "telegram-community"
+    )
+      ? { identifier: route.communityId, preview: seoResolution.communityPreview }
+      : null;
+    if (route.kind === "community-landing" && seoResolution.communityPreview) {
+      const routeSegment = seoResolution.communityPreview.route_slug || seoResolution.communityPreview.id;
+      const surface = seoResolution.communityPreview.default_surface === "videos" ? "videos" : "threads";
+      const redirectUrl = new URL(effectiveUrl);
+      redirectUrl.pathname = `/c/${encodeURIComponent(routeSegment)}/${surface}`;
+      const hasQuery = redirectUrl.search.length > 0;
+      return new Response(null, {
+        headers: {
+          "cache-control": hasQuery ? "no-store" : "public, max-age=0, must-revalidate",
+          "cdn-cache-control": hasQuery ? "no-store" : "public, max-age=600, stale-while-revalidate=3600",
+          ...(!hasQuery ? { "cache-tag": `community:${seoResolution.communityPreview.id}` } : {}),
+          location: redirectUrl.toString(),
+        },
+        status: 302,
+      });
+    }
     ctx.seoMetadata = seoResolution.metadata
       ? {
           ...seoResolution.metadata,
@@ -551,6 +605,8 @@ const app = defineApp<AppRequestInfo>([
     ...COMMUNITY_MODERATION_SECTIONS.map((section) =>
       route(`/c/:communityId/mod/${section}`, AppRoutePage)
     ),
+    route("/c/:communityId/videos", AppRoutePage),
+    route("/c/:communityId/threads", AppRoutePage),
     route("/c/:communityId", AppRoutePage),
     route("/p/:postId/crosspost", AppRoutePage),
     route("/p/:postId/live", AppRoutePage),

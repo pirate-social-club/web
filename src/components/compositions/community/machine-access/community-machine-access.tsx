@@ -124,6 +124,12 @@ export function CommunityMachineAccessPage({
               onCheckedChange={(checked) => updateSurface(row.key, checked)}
             />
           ))}
+          <SurfaceRow
+            checked={settings.includedSurfaces.videoFeed}
+            id="machine-access-videoFeed"
+            label="Sovereign video feed"
+            onCheckedChange={(checked) => updateSurface("videoFeed", checked)}
+          />
         </div>
       </section>
 

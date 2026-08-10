@@ -44,7 +44,7 @@ function resolvePrimarySessionWallet(session: StoredSession | null): Address | n
     return profileWallet;
   }
 
-  const primaryAttachment = session?.walletAttachments.find((attachment) => attachment.is_primary);
+  const primaryAttachment = session?.walletAttachments.find((attachment: { is_primary: boolean }) => attachment.is_primary);
   const primaryWallet = normalizeAddress(primaryAttachment?.wallet_address);
   if (primaryWallet) {
     return primaryWallet;

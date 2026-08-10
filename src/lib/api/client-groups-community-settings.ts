@@ -1,6 +1,8 @@
 import type {
   Community,
   CommunityMoneyPolicy,
+  CommunityPresentation,
+  CommunityPresentationPatch,
   CommunityPricingPolicy,
   UpdateCommunityMoneyPolicyRequest,
   UpdateCommunityPricingPolicyRequest,
@@ -45,6 +47,14 @@ export function createCommunitySettingsApi(request: ApiRequest) {
   return {
     update: (communityId: string, body: ApiUpdateCommunityRequest): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    updatePresentation: (
+      communityId: string,
+      body: CommunityPresentationPatch,
+    ): Promise<CommunityPresentation> =>
+      request<CommunityPresentation>(`/communities/${encodeURIComponent(communityId)}/presentation`, {
         method: "POST",
         body: JSON.stringify(body),
       }),

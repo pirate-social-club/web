@@ -7,13 +7,19 @@ import { PostPage } from "@/app/authenticated-routes";
 import { PublicAgentRoutePage } from "@/app/public-agent-route";
 import { PublicCommunityRoutePage } from "@/app/public-community-route";
 import { PublicProfileRoutePage } from "@/app/public-profile-route";
+import { CommunityLandingRoutePage } from "@/app/community-landing-route";
+import { VideoHomePage } from "@/app/authenticated-routes/video-home-route";
 
 function renderPublicRoute(
-  route: Extract<AppRoute, { kind: "public-profile" | "public-agent" | "community" | "post" }>,
+  route: Extract<AppRoute, { kind: "public-profile" | "public-agent" | "community-landing" | "community-videos" | "community" | "post" }>,
 ): React.ReactNode {
   switch (route.kind) {
+    case "community-landing":
+      return <CommunityLandingRoutePage communityId={route.communityId} />;
+    case "community-videos":
+      return <VideoHomePage communityId={route.communityId} importedRootHostname={route.importedRootHostname} />;
     case "community":
-      return <PublicCommunityRoutePage communityId={route.communityId} isImportedRoot={route.isImportedRoot} />;
+      return <PublicCommunityRoutePage communityId={route.communityId} importedRootHostname={route.importedRootHostname} isImportedRoot={route.isImportedRoot} />;
     case "post":
       return <PostPage postId={route.postId} />;
     case "public-profile":
@@ -44,7 +50,7 @@ function renderPublicRoute(
 export function PublicRouteRenderer({
   route,
 }: {
-  route: Extract<AppRoute, { kind: "public-profile" | "public-agent" | "community" | "post" }>;
+  route: Extract<AppRoute, { kind: "public-profile" | "public-agent" | "community-landing" | "community-videos" | "community" | "post" }>;
 }) {
   return <>{renderPublicRoute(route)}</>;
 }

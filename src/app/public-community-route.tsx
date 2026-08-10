@@ -28,6 +28,7 @@ import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
+import { CommunitySurfaceSwitch } from "@/app/community-surface-switch";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import {
   getJoinCtaLabel,
@@ -227,11 +228,13 @@ export function PublicCommunityRoutePage({
   buildPostPath,
   communityId,
   disableCanonicalRouteReplace = false,
+  importedRootHostname,
   isImportedRoot = false,
 }: {
   buildPostPath?: (postId: string) => string;
   communityId: string;
   disableCanonicalRouteReplace?: boolean;
+  importedRootHostname?: string;
   isImportedRoot?: boolean;
 }) {
   const api = useApi();
@@ -352,7 +355,7 @@ export function PublicCommunityRoutePage({
     if (disableCanonicalRouteReplace) return;
     if (isImportedRoot) return;
     if (!preview?.id) return;
-    replaceWithCanonicalCommunityRoute(preview.id, preview.route_slug);
+    replaceWithCanonicalCommunityRoute(preview.id, preview.route_slug, "threads");
   }, [disableCanonicalRouteReplace, isImportedRoot, preview?.id, preview?.route_slug]);
 
   React.useEffect(() => {
@@ -706,6 +709,12 @@ export function PublicCommunityRoutePage({
   const communityCreatePostPath = `${buildCommunityPath(preview.id, preview.route_slug ?? communityId)}/submit`;
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
+      <CommunitySurfaceSwitch
+        active="threads"
+        communityId={preview.id}
+        importedRootHostname={importedRootHostname}
+        routeSlug={preview.route_slug}
+      />
       {!viewerIsMember && !membershipLoading ? (
         <Button
           className={FOLLOW_BUTTON_CLASS_NAME}

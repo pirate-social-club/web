@@ -21,7 +21,7 @@ export function getEmbeddedWalletReconcileKey(
 
   const embeddedAddress = embeddedWallet.address.toLowerCase();
   const alreadyAttached = session.walletAttachments.some(
-    (attachment) => attachment.wallet_address.toLowerCase() === embeddedAddress,
+    (attachment: { wallet_address: string }) => attachment.wallet_address.toLowerCase() === embeddedAddress,
   );
   if (alreadyAttached) return null;
 

@@ -22,6 +22,11 @@ export function useCommunityProfileState({
   const [profileStoreUrl, setProfileStoreUrl] = React.useState("");
   const [profileStoreLabel, setProfileStoreLabel] = React.useState("");
   const [profileCountryCode, setProfileCountryCode] = React.useState("");
+  const [profileAccentColor, setProfileAccentColor] = React.useState("");
+  const [profileTagline, setProfileTagline] = React.useState("");
+  const [profileTheme, setProfileTheme] = React.useState<"system" | "light" | "dark">("system");
+  const [profileHeaderStyle, setProfileHeaderStyle] = React.useState<"standard" | "compact" | "immersive">("standard");
+  const [profileDefaultSurface, setProfileDefaultSurface] = React.useState<"threads" | "videos">("threads");
   const [profileAvatarFile, setProfileAvatarFile] = React.useState<File | null>(null);
   const [profileBannerFile, setProfileBannerFile] = React.useState<File | null>(null);
   const [profileAvatarRemoved, setProfileAvatarRemoved] = React.useState(false);
@@ -39,6 +44,11 @@ export function useCommunityProfileState({
     setProfileStoreUrl(community.store_url ?? "");
     setProfileStoreLabel(community.store_label ?? "");
     setProfileCountryCode(normalizeCommunityCountryCode(community.country_code));
+    setProfileAccentColor(community.branding.accent_color ?? "");
+    setProfileTagline(community.branding.tagline ?? "");
+    setProfileTheme(community.branding.theme);
+    setProfileHeaderStyle(community.branding.header_style);
+    setProfileDefaultSurface(community.default_surface);
     setProfileAvatarFile(null);
     setProfileBannerFile(null);
     setProfileAvatarRemoved(community.avatar_ref == null);
@@ -52,6 +62,11 @@ export function useCommunityProfileState({
     || profileStoreUrl.trim() !== (community.store_url ?? "")
     || profileStoreLabel.trim() !== (community.store_label ?? "")
     || normalizeCommunityCountryCode(profileCountryCode) !== normalizeCommunityCountryCode(community.country_code)
+    || profileAccentColor.trim() !== (community.branding.accent_color ?? "")
+    || profileTagline.trim() !== (community.branding.tagline ?? "")
+    || profileTheme !== community.branding.theme
+    || profileHeaderStyle !== community.branding.header_style
+    || profileDefaultSurface !== community.default_surface
     || profileAvatarFile !== null
     || profileBannerFile !== null
     || (profileAvatarRemoved && community.avatar_ref != null)
@@ -88,7 +103,20 @@ export function useCommunityProfileState({
         store_label: profileStoreLabel.trim() || null,
         country_code: normalizeCommunityCountryCode(profileCountryCode) || null,
       });
-      setCommunity(updatedCommunity);
+      const presentation = await api.communities.updatePresentation(community.id, {
+        branding: {
+          accent_color: profileAccentColor.trim() || null,
+          header_style: profileHeaderStyle,
+          tagline: profileTagline.trim() || null,
+          theme: profileTheme,
+        },
+        default_surface: profileDefaultSurface,
+      });
+      setCommunity({
+        ...updatedCommunity,
+        branding: presentation.branding,
+        default_surface: presentation.default_surface,
+      });
       setProfileAvatarFile(null);
       setProfileBannerFile(null);
       setProfileAvatarRemoved(updatedCommunity.avatar_ref == null);
@@ -109,6 +137,11 @@ export function useCommunityProfileState({
     profileDescription,
     profileDisplayName,
     profileCountryCode,
+    profileAccentColor,
+    profileDefaultSurface,
+    profileHeaderStyle,
+    profileTagline,
+    profileTheme,
     profileStoreLabel,
     profileStoreUrl,
     savingProfile,
@@ -122,6 +155,11 @@ export function useCommunityProfileState({
     profileBannerFile,
     profileBannerRemoved,
     profileCountryCode,
+    profileAccentColor,
+    profileDefaultSurface,
+    profileHeaderStyle,
+    profileTagline,
+    profileTheme,
     profileDescription,
     profileDisplayName,
     profileDisplayNameError,
@@ -134,6 +172,11 @@ export function useCommunityProfileState({
     setProfileBannerFile,
     setProfileBannerRemoved,
     setProfileCountryCode,
+    setProfileAccentColor,
+    setProfileDefaultSurface,
+    setProfileHeaderStyle,
+    setProfileTagline,
+    setProfileTheme,
     setProfileDescription,
     setProfileDisplayName,
     setProfileDisplayNameError,

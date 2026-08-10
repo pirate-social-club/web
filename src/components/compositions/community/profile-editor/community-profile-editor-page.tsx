@@ -17,6 +17,13 @@ import {
   ComboboxList,
 } from "@/components/primitives/combobox";
 import { Textarea } from "@/components/primitives/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/primitives/select";
 import { COUNTRIES, countryCodeToFlag, getCountryName } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 import { defaultRouteCopy } from "../../system/route-copy-defaults";
@@ -141,6 +148,7 @@ function MediaControlCard({
 }
 
 export interface CommunityProfileEditorPageProps {
+  accentColor?: string;
   avatarSrc?: string;
   bannerSrc?: string;
   className?: string;
@@ -148,6 +156,8 @@ export interface CommunityProfileEditorPageProps {
   description: string;
   displayName: string;
   displayNameError?: string;
+  defaultSurface?: "threads" | "videos";
+  headerStyle?: "standard" | "compact" | "immersive";
   onAvatarRemove?: () => void;
   onAvatarSelect?: (file: File | null) => void;
   onBackClick?: () => void;
@@ -156,18 +166,26 @@ export interface CommunityProfileEditorPageProps {
   onCountryCodeChange?: (value: string) => void;
   onDescriptionChange?: (value: string) => void;
   onDisplayNameChange?: (value: string) => void;
+  onAccentColorChange?: (value: string) => void;
+  onDefaultSurfaceChange?: (value: "threads" | "videos") => void;
+  onHeaderStyleChange?: (value: "standard" | "compact" | "immersive") => void;
   onSave?: () => void;
   onStoreLabelChange?: (value: string) => void;
   onStoreUrlChange?: (value: string) => void;
+  onTaglineChange?: (value: string) => void;
+  onThemeChange?: (value: "system" | "light" | "dark") => void;
   pendingAvatarLabel?: string;
   pendingBannerLabel?: string;
   saveDisabled?: boolean;
   saveLoading?: boolean;
   storeLabel?: string;
   storeUrl?: string;
+  tagline?: string;
+  theme?: "system" | "light" | "dark";
 }
 
 export function CommunityProfileEditorPage({
+  accentColor = "",
   avatarSrc,
   bannerSrc,
   className,
@@ -175,6 +193,8 @@ export function CommunityProfileEditorPage({
   description,
   displayName,
   displayNameError,
+  defaultSurface = "threads",
+  headerStyle = "standard",
   onAvatarRemove,
   onAvatarSelect,
   onBackClick,
@@ -183,15 +203,22 @@ export function CommunityProfileEditorPage({
   onCountryCodeChange,
   onDescriptionChange,
   onDisplayNameChange,
+  onAccentColorChange,
+  onDefaultSurfaceChange,
+  onHeaderStyleChange,
   onSave,
   onStoreLabelChange,
   onStoreUrlChange,
+  onTaglineChange,
+  onThemeChange,
   pendingAvatarLabel,
   pendingBannerLabel,
   saveDisabled,
   saveLoading,
   storeLabel = "",
   storeUrl = "",
+  tagline = "",
+  theme = "system",
 }: CommunityProfileEditorPageProps) {
   const copy = defaultRouteCopy;
   const mc = copy.moderation.profile;
@@ -256,6 +283,71 @@ export function CommunityProfileEditorPage({
             title={mc.coverTitle}
           />
         </div>
+        <Card className="grid gap-5 border-border bg-card p-5 shadow-none md:grid-cols-2">
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-base font-medium text-foreground" htmlFor="community-profile-tagline">
+              Tagline
+            </label>
+            <Input
+              id="community-profile-tagline"
+              maxLength={120}
+              onChange={(event) => onTaglineChange?.(event.target.value)}
+              placeholder="A short description for community chrome"
+              value={tagline}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-base font-medium text-foreground" htmlFor="community-profile-accent-color">
+              Accent color
+            </label>
+            <Input
+              id="community-profile-accent-color"
+              onChange={(event) => onAccentColorChange?.(event.target.value)}
+              placeholder="#6d5dfc"
+              value={accentColor}
+            />
+            <FormNote>Use a hex color with enough contrast. Leave blank for the platform default.</FormNote>
+          </div>
+          <div className="space-y-2">
+            <label className="text-base font-medium text-foreground" htmlFor="community-profile-default-surface">
+              Default community surface
+            </label>
+            <Select value={defaultSurface} onValueChange={(value) => onDefaultSurfaceChange?.(value as "threads" | "videos")}>
+              <SelectTrigger id="community-profile-default-surface"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="videos">Videos</SelectItem>
+                <SelectItem value="threads">Threads</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormNote>Controls where the bare community URL redirects. Videos requires the video-feed surface to be enabled.</FormNote>
+          </div>
+          <div className="space-y-2">
+            <label className="text-base font-medium text-foreground" htmlFor="community-profile-theme">
+              Theme
+            </label>
+            <Select value={theme} onValueChange={(value) => onThemeChange?.(value as "system" | "light" | "dark")}>
+              <SelectTrigger id="community-profile-theme"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="system">System</SelectItem>
+                <SelectItem value="light">Light</SelectItem>
+                <SelectItem value="dark">Dark</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-base font-medium text-foreground" htmlFor="community-profile-header-style">
+              Header style
+            </label>
+            <Select value={headerStyle} onValueChange={(value) => onHeaderStyleChange?.(value as "standard" | "compact" | "immersive")}>
+              <SelectTrigger id="community-profile-header-style"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="standard">Standard</SelectItem>
+                <SelectItem value="compact">Compact</SelectItem>
+                <SelectItem value="immersive">Immersive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </Card>
       </section>
 
       <section className="space-y-4">

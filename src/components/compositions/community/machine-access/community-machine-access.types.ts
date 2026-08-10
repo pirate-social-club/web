@@ -4,7 +4,8 @@ export type MachineAccessSurface =
   | "threadCards"
   | "threadBodies"
   | "topComments"
-  | "events";
+  | "events"
+  | "videoFeed";
 
 export interface CommunityMachineAccessSettings {
   policyOrigin: "default" | "explicit";
@@ -38,6 +39,7 @@ export function createDefaultMachineAccessSettings(): CommunityMachineAccessSett
       threadBodies: true,
       topComments: true,
       events: true,
+      videoFeed: true,
     },
     topCommentsLimit: 10,
     anonymousRateTier: "low",

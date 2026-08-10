@@ -1,7 +1,11 @@
 import { replaceRoute } from "@/app/router";
 import { buildCanonicalCommunityRoutePathname } from "@/lib/community-routing";
 
-export function replaceWithCanonicalCommunityRoute(communityId: string, routeSlug?: string | null): void {
+export function replaceWithCanonicalCommunityRoute(
+  communityId: string,
+  routeSlug?: string | null,
+  surface?: "threads" | "videos",
+): void {
   if (typeof window === "undefined") return;
 
   const nextPathname = buildCanonicalCommunityRoutePathname(
@@ -11,5 +15,8 @@ export function replaceWithCanonicalCommunityRoute(communityId: string, routeSlu
   );
   if (!nextPathname) return;
 
-  replaceRoute(`${nextPathname}${window.location.search}${window.location.hash}`);
+  const surfacePathname = surface && !nextPathname.endsWith(`/${surface}`)
+    ? `${nextPathname}/${surface}`
+    : nextPathname;
+  replaceRoute(`${surfacePathname}${window.location.search}${window.location.hash}`);
 }

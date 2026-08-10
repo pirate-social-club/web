@@ -50,6 +50,107 @@ permissions:
   contents: read
 
 jobs:
+  sovereign-context:
+    name: Sovereign HNS production context
+    if: >-
+      github.event_name != 'workflow_run'
+      || (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main')
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Probe the sovereign apex and app origin
+        id: probe
+        continue-on-error: true
+        env:
+          HNS_PROBE_COMMUNITY_ID: com_cmt_59f2f958990e4d619f28409a9956a58c
+          HNS_PROBE_GATEWAY_IP: 94.103.168.161
+          HNS_PROBE_ROOT: dankmeme
+          HNS_PROBE_ROUTE_SLUG: dankmeme
+        run: |
+          set +e
+          output="$(scripts/ci/probe-sovereign-context.sh 2>&1)"
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          {
+            echo 'detail<<EOF'
+            printf '%s\n' "$output"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          exit "$status"
+
+      - name: Reconcile the sovereign-context incident
+        if: always()
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        env:
+          PROBE_DETAIL: ${{ steps.probe.outputs.detail }}
+          PROBE_OUTCOME: ${{ steps.probe.outcome }}
+        with:
+          script: |
+            const title = "Sovereign HNS production context is unavailable";
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100,
+            });
+            const match = existing.find((issue) => issue.title === title);
+            if (process.env.PROBE_OUTCOME === "success") {
+              if (match) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: match.number,
+                  body: `Recovered in ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}.`,
+                });
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: match.number,
+                  state: "closed",
+                });
+              }
+              return;
+            }
+
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              "The external HNS probe did not observe the activated community context.",
+              "Treat this as a sovereign-origin outage even if canonical pirate.sc remains healthy.",
+              "",
+              "```",
+              process.env.PROBE_DETAIL || "No probe detail was captured.",
+              "```",
+              "",
+              `Last run: ${runUrl}`,
+            ].join("\n");
+            if (match) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
+
+      - name: Reflect sovereign-context failure
+        if: steps.probe.outcome == 'failure'
+        run: |
+          echo "::error::Sovereign HNS production context probe failed."
+          exit 1
+
   version-gap:
     name: Main vs production
     # PR-triggered Release runs legitimately skip every deploy job (the lanes are

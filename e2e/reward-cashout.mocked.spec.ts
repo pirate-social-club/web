@@ -12,12 +12,11 @@ async function installRewardFixture(page: Page, overrides: Partial<RewardMockSta
   return state;
 }
 
-async function openAndConfirmCashout(page: Page): Promise<void> {
-  const claim = page.getByRole("button", { name: "Claim" }).filter({ visible: true }).last();
+async function claimFullBalance(page: Page): Promise<void> {
+  const claim = page.getByRole("button", { name: /^Claim \$/u }).filter({ visible: true }).last();
   await expect(claim).toBeVisible({ timeout: 30_000 });
   await expect(claim).toBeEnabled();
   await claim.click();
-  await page.getByRole("button", { name: "Confirm claim" }).click();
 }
 
 test.describe("reward cashouts (mocked API)", () => {
@@ -28,22 +27,20 @@ test.describe("reward cashouts (mocked API)", () => {
     await expect(page.getByText("Rewards").filter({ visible: true }).first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText("$1.20").filter({ visible: true }).first()).toBeVisible();
 
-    const claim = page.getByRole("button", { name: "Claim" }).filter({ visible: true }).last();
-    await expect(claim).toBeVisible({ timeout: 30_000 });
-    await claim.click();
+    await claimFullBalance(page);
 
-    // The simplified flow opens directly on confirmation with the full balance
-    // pre-filled. Guard the release gate against restoring the removed amount step.
+    // Claiming transfers the full balance in one deliberate click. Guard the
+    // release gate against restoring the redundant amount and confirmation steps.
     const claimSheet = page.getByLabel("Claim rewards");
-    await expect(claimSheet.getByLabel("Amount")).toHaveValue("1.20");
+    await expect(claimSheet.getByLabel("Amount")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Continue" })).toHaveCount(0);
-    await claimSheet.getByRole("button", { name: "Confirm claim" }).click();
+    await expect(claimSheet.getByRole("button", { name: "Confirm claim" })).toHaveCount(0);
 
     await expect(claimSheet.getByText("$1.20 is in your wallet 🎉", { exact: true })).toBeVisible();
     await expect(claimSheet.getByText("Reward sent successfully.", { exact: true })).toBeVisible();
     await expect(claimSheet.getByRole("link", { name: "View on Basescan" }))
       .toHaveAttribute("href", /0xbrowserreward$/u);
-    await expect(claimSheet.getByText("0xbrowserreward", { exact: true })).toBeHidden();
+    await expect(claimSheet.getByText("0xbrowserreward", { exact: true })).toBeVisible();
     expect(state.cashoutKeys).toHaveLength(1);
     await expectNoBrowserError(page);
   });
@@ -60,7 +57,7 @@ test.describe("reward cashouts (mocked API)", () => {
       },
     });
     await page.goto("/wallet");
-    await openAndConfirmCashout(page);
+    await claimFullBalance(page);
 
     const claimSheet = page.getByLabel("Claim rewards");
     await expect(claimSheet.getByText("Transfer failed", { exact: true })).toBeVisible();
@@ -71,12 +68,12 @@ test.describe("reward cashouts (mocked API)", () => {
   test("reuses one idempotency key after an ambiguous network failure", async ({ page }) => {
     const state = await installRewardFixture(page, { failFirstCashoutRequest: true });
     await page.goto("/wallet");
-    await openAndConfirmCashout(page);
+    await claimFullBalance(page);
     const claimSheet = page.getByLabel("Claim rewards");
     await expect(claimSheet.getByText("Transfer failed", { exact: true })).toBeVisible();
     await claimSheet.getByRole("button", { name: "Close", exact: true }).first().click();
 
-    await openAndConfirmCashout(page);
+    await claimFullBalance(page);
     await expect(page.getByLabel("Claim rewards").getByText("$1.20 is in your wallet 🎉", { exact: true })).toBeVisible();
     expect(state.cashoutKeys).toHaveLength(2);
     expect(state.cashoutKeys[1]).toBe(state.cashoutKeys[0]);
@@ -95,7 +92,7 @@ test.describe("reward cashouts (mocked API)", () => {
       submittedReadsBeforeTerminal: 1,
     });
     await page.goto("/wallet");
-    await openAndConfirmCashout(page);
+    await claimFullBalance(page);
 
     await expect(page.getByRole("button", { name: "Check status" })).toBeVisible();
     await expect.poll(() => state.statusReads).toBeGreaterThanOrEqual(1);

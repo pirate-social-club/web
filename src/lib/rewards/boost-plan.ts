@@ -173,8 +173,8 @@ export function boostPlanProblemLabel(
     : "";
 
   return {
-    "daily-reward-missing": "Enter a reward amount.",
-    "daily-reward-too-large": `A reward can be at most ${maxReward} per person, per day.`,
+    "daily-reward-missing": "Enter a bounty amount.",
+    "daily-reward-too-large": `A bounty can be at most ${maxReward} per person, per day.`,
     "tier-count-exceeded": `You can add at most ${MAX_PAYOUT_TIERS} tiers.`,
     "tier-country-missing": "Choose at least one country for every tier.",
     "tier-country-duplicated": "Each country can appear in only one tier.",
@@ -184,11 +184,11 @@ export function boostPlanProblemLabel(
     "budget-missing": "Enter a budget.",
     "budget-below-minimum": `The budget must be at least ${min}.`,
     "budget-above-maximum": `The budget can be at most ${max}.`,
-    "budget-below-one-reward": "The budget must cover at least one reward.",
+    "budget-below-one-reward": "The budget must cover at least one bounty.",
   }[problem];
 }
 
-/** "Up to N rewards" — never a bare count, because zero is possible if nobody practises. */
+/** "Up to N completions" — never a bare count, because zero is possible if nobody practises. */
 export function boostRewardCountLabel(rewardCount: number): string {
-  return rewardCount === 1 ? "1 reward" : `${rewardCount.toLocaleString("en")} rewards`;
+  return rewardCount === 1 ? "1 completion" : `${rewardCount.toLocaleString("en")} completions`;
 }

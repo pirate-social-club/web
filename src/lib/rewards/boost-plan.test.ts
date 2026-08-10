@@ -218,8 +218,8 @@ describe("boostPlanProblemLabel for tier problems", () => {
 
 describe("boostRewardCountLabel", () => {
   test("pluralises and groups thousands", () => {
-    expect(boostRewardCountLabel(1)).toBe("1 reward");
-    expect(boostRewardCountLabel(250)).toBe("250 rewards");
-    expect(boostRewardCountLabel(1_000)).toBe("1,000 rewards");
+    expect(boostRewardCountLabel(1)).toBe("1 completion");
+    expect(boostRewardCountLabel(250)).toBe("250 completions");
+    expect(boostRewardCountLabel(1_000)).toBe("1,000 completions");
   });
 });

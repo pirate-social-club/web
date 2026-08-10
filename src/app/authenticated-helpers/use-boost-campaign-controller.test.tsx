@@ -190,7 +190,7 @@ test("distinguishes gas-fee failures from USDC balance failures", () => {
 
   expect(classifyBoostFundingError(new Error("transfer amount exceeds balance"))).toBe("insufficient-usdc");
   expect(boostFundingErrorMessage(new Error("transfer amount exceeds balance"), "fallback")).toBe(
-    "Your wallet does not have enough USDC to fund this boost. No payment was sent.",
+    "Your wallet does not have enough USDC to fund this bounty. No payment was sent.",
   );
 });
 
@@ -288,6 +288,7 @@ describe("useBoostCampaignController", () => {
     await waitFor(() => expect(view.result.current.canBoost).toBe(true));
     expect(view.result.current.sheetProps.payoutTiers).toEqual([]);
     expect(view.result.current.sheetProps.onAddPayoutTier).toBeFunction();
+    expect(view.result.current.sheetProps.onNationalityPricingEnabledChange).toBeFunction();
   });
 
   test("enables tier composition and funding when the server capability is enabled", async () => {
@@ -295,6 +296,7 @@ describe("useBoostCampaignController", () => {
     const view = renderHook(() => useBoostCampaignController(input()));
     await waitFor(() => expect(view.result.current.canBoost).toBe(true));
     expect(view.result.current.sheetProps.payoutTiers).toEqual([]);
+    act(() => view.result.current.sheetProps.onNationalityPricingEnabledChange?.(true));
     act(() => view.result.current.sheetProps.onAddPayoutTier?.());
     const tierId = view.result.current.sheetProps.payoutTiers?.[0]?.id;
     act(() => {
@@ -330,6 +332,7 @@ describe("useBoostCampaignController", () => {
     nationalityTierPreview = true;
     const view = renderHook(() => useBoostCampaignController(input()));
     await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.sheetProps.onNationalityPricingEnabledChange?.(true));
     act(() => view.result.current.sheetProps.onAddPayoutTier?.());
     const tierId = view.result.current.sheetProps.payoutTiers?.[0]?.id;
     expect(tierId).toBeDefined();
@@ -405,7 +408,6 @@ describe("useBoostCampaignController", () => {
     const view = renderHook(() => useBoostCampaignController(input()));
     await waitFor(() => expect(view.result.current.canBoost).toBe(true));
     act(() => view.result.current.openBoost());
-    act(() => view.result.current.sheetProps.onIdentityProviderChange?.("zkpassport"));
     act(() => {
       view.result.current.sheetProps.onConfirm?.();
       view.result.current.sheetProps.onConfirm?.();
@@ -413,9 +415,8 @@ describe("useBoostCampaignController", () => {
     await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
     expect(calls.create).toBe(1);
     expect(calls.quote).toBe(1);
-    expect(lastCreateBody).toMatchObject({ reward_identity_provider: "zkpassport" });
-    expect(lastQuoteBody).toMatchObject({ reward_identity_provider: "zkpassport" });
-    expect(view.result.current.sheetProps.identityProviderLocked).toBe(true);
+    expect(lastCreateBody).toMatchObject({ reward_identity_provider: "very" });
+    expect(lastQuoteBody).toMatchObject({ reward_identity_provider: "very" });
 
     await act(async () => view.result.current.sheetProps.onRetry?.());
     await waitFor(() => expect(calls.quote).toBe(2));
@@ -514,7 +515,7 @@ describe("useBoostCampaignController", () => {
     const view = renderHook(() => useBoostCampaignController({ ...input(), activeCampaignId: "rcp_active" }));
     await waitFor(() => expect(view.result.current.canBoost).toBe(true));
     act(() => view.result.current.openBoost());
-    expect(view.result.current.sheetProps.planProblem).toContain("already has a live boost");
+    expect(view.result.current.sheetProps.planProblem).toContain("already has a live bounty");
     view.result.current.sheetProps.onConfirm?.();
     expect(calls.create).toBe(0);
   });

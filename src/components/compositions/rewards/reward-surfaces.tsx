@@ -45,7 +45,7 @@ export type CashoutSheetState =
   | "failed";
 
 export const REWARD_NATIONALITY_DISCLOSURE =
-  "Your reward amount may vary by passport nationality. Payout amounts are public on-chain and can reveal your reward tier.";
+  "Your verified nationality sets the bounty amount. Payouts are public on-chain and can reveal your tier.";
 
 export interface SongRewardOfferProps {
   amountLabel: string;
@@ -124,7 +124,7 @@ export function SongRewardOffer({
         </div>
         <div className="min-w-0 flex-1">
           <Type as="div" className="text-muted-foreground" variant="overline">
-            Reward
+            Bounty
           </Type>
           <Type as="div" variant="h3">
             Earn {amountLabel} today
@@ -147,7 +147,7 @@ export function SongRewardOfferPill({
 }) {
   return (
     <span
-      aria-label={`Reward ${amountLabel}`}
+      aria-label={`Bounty ${amountLabel}`}
       className={cn(
         // Rendered inside the progress capsule, so it carries no surface of its
         // own — the capsule already provides one. `text-warning` is the app's
@@ -175,22 +175,22 @@ export function RewardQualificationNotice({
     ? null
     : Math.max(1, Math.ceil((expiresAt * 1_000 - Date.now()) / 86_400_000));
   const unavailableCopy = {
-    budget_unavailable: "Today's rewards have all been claimed.",
-    campaign_ended: "This boost has ended.",
-    identity_duplicate: "You already got this song's reward today.",
-    owner_blocked: "Rewards are unavailable for this song.",
-    score: "Your score was below the reward target.",
-    verification_window_expired: "The time to claim this reward ended.",
+    budget_unavailable: "Today's bounties have all been claimed.",
+    campaign_ended: "This bounty has ended.",
+    identity_duplicate: "You already earned this song's bounty today.",
+    owner_blocked: "Bounties are unavailable for this song.",
+    score: "Your score was below the bounty target.",
+    verification_window_expired: "The time to claim this bounty ended.",
   }[outcomeReason ?? "campaign_ended"];
   const content = {
     checking: {
       icon: <HourglassMedium aria-hidden="true" className="size-6 text-primary" weight="duotone" />,
-      title: `Checking your ${amountLabel} reward…`,
+      title: `Checking your ${amountLabel} bounty…`,
       body: "This usually takes less than a minute.",
     },
     delayed: {
       icon: <Clock aria-hidden="true" className="size-6 text-primary" weight="duotone" />,
-      title: "Still checking your reward",
+      title: "Still checking your bounty",
       body: "You can leave this screen. The result will appear in your Wallet.",
     },
     pending_verification: {
@@ -203,16 +203,16 @@ export function RewardQualificationNotice({
     credited: {
       icon: <Confetti aria-hidden="true" className="size-6 text-primary" weight="fill" />,
       title: `+${amountLabel} 🎉`,
-      body: "Added to your rewards.",
+      body: "Added to your bounties.",
     },
     expired: {
       icon: <Clock aria-hidden="true" className="size-6 text-muted-foreground" weight="bold" />,
-      title: "Reward expired",
+      title: "Bounty expired",
       body: unavailableCopy,
     },
     unavailable: {
       icon: <WarningCircle aria-hidden="true" className="size-6 text-muted-foreground" weight="fill" />,
-      title: "No reward this time",
+      title: "No bounty this time",
       body: unavailableCopy,
     },
   } satisfies Record<RewardQualificationNoticeProps["status"], { body: string; icon: React.ReactNode; title: string }>;
@@ -227,7 +227,7 @@ export function RewardQualificationNotice({
       <Type as="p" className="mt-1 text-muted-foreground" variant="caption">{selected.body}</Type>
       {testMode ? (
         <Type as="p" className="mt-2 text-muted-foreground" variant="caption">
-          Test reward — no cash value.
+          Test bounty — no cash value.
         </Type>
       ) : null}
     </Card>
@@ -290,9 +290,9 @@ export function VerifyHumanSheet({
       >
         <div className={cn("mx-auto mb-4 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/60", !forceMobile && "md:hidden")} aria-hidden="true" />
         <ModalHeader className="text-start">
-          <ModalTitle>Verify once</ModalTitle>
-          <ModalDescription className="text-muted-foreground">
-            One person, one rewards account. Pirate does not see your ID.
+          <ModalTitle>Verify identity</ModalTitle>
+          <ModalDescription className="sr-only">
+            Verify to claim bounties.
           </ModalDescription>
         </ModalHeader>
 
@@ -366,7 +366,7 @@ export function VerifyHumanSheet({
                 {state === "conflict" ? "Identity already linked" : null}
               </Type>
               <Type as="div" className="mt-1 text-muted-foreground" variant="body">
-                {state === "success" ? "You can claim rewards from this account." : null}
+                {state === "success" ? "You can claim bounties from this account." : null}
                 {state === "failure" ? "We could not verify you. Close this message and try again." : null}
                 {state === "conflict" ? "This proof is already connected to another Pirate account. Use that account or contact support." : null}
               </Type>
@@ -414,8 +414,8 @@ export function CashoutSheet({
       >
         <div className={cn("mx-auto mb-4 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/60", !forceMobile && "md:hidden")} aria-hidden="true" />
         <ModalHeader className="text-start">
-          <ModalTitle>Claim rewards</ModalTitle>
-          <ModalDescription className="sr-only">Track your reward transfer.</ModalDescription>
+          <ModalTitle>Claim bounty</ModalTitle>
+          <ModalDescription className="sr-only">Track your bounty transfer.</ModalDescription>
         </ModalHeader>
 
         {isPending ? (
@@ -464,7 +464,7 @@ export function CashoutSheet({
                 Transfer needs review
               </Type>
               <Type as="div" className="mt-1 text-muted-foreground" variant="body">
-                {errorMessage ?? "Your reward remains reserved while the transaction is checked."}
+                {errorMessage ?? "Your bounty remains reserved while the transaction is checked."}
               </Type>
             </div>
           </div>

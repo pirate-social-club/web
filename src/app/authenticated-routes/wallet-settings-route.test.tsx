@@ -126,10 +126,8 @@ mock.module("@/components/compositions/wallet/wallet-hub/wallet-hub", () => ({
     <div data-testid="wallet-hub">
       {rewardsSummary ? (
         <section>
-          <div>Rewards</div>
+          <div>Bounties</div>
           <div>{rewardsSummary.amountLabel}</div>
-          <div>{rewardsSummary.assetLabel}</div>
-          {rewardsSummary.supportingLabel ? <div>{rewardsSummary.supportingLabel}</div> : null}
           <button disabled={rewardsSummary.actionDisabled} onClick={rewardsSummary.onAction} type="button">
             {rewardsSummary.actionLabel}
           </button>
@@ -245,9 +243,9 @@ describe("CurrentUserWalletPage rewards", () => {
 
     await waitFor(() => {
       expect(fakeApi.rewards.getSummary).toHaveBeenCalled();
-      expect(view.getByText("Rewards")).toBeTruthy();
+      expect(view.getByText("Bounties")).toBeTruthy();
       expect(view.getAllByText("$1.20").length).toBeGreaterThan(0);
-      expect(view.getByText("Test rewards — no cash value")).toBeTruthy();
+      expect(view.queryByText("Test bounties — no cash value")).toBeNull();
     });
   });
 
@@ -419,7 +417,7 @@ describe("CurrentUserWalletPage rewards", () => {
     expect(view.queryByText("Verify with Self to earn and transfer.")).toBeNull();
     fireEvent.click(view.getByText("Claim"));
 
-    expect(view.getByText("Verify once")).toBeTruthy();
+    expect(view.getByText("Verify identity")).toBeTruthy();
     expect(view.getByText("Self")).toBeTruthy();
     expect(view.getByText("Very")).toBeTruthy();
     expect(view.getByText("ZKPassport")).toBeTruthy();
@@ -447,13 +445,11 @@ describe("CurrentUserWalletPage rewards", () => {
     }));
     const view = render(<CurrentUserWalletPage />);
 
-    await waitFor(() => {
-      expect(view.getByText("$1.00")).toBeTruthy();
-      expect(view.getByText("Verify to transfer your reward.")).toBeTruthy();
-    });
+    await waitFor(() => expect(view.getByText("$1.00")).toBeTruthy());
+    expect(view.queryByText("Verify to transfer your bounty.")).toBeNull();
     fireEvent.click(view.getByText("Claim"));
 
-    expect(view.getByText("Verify once")).toBeTruthy();
+    expect(view.getByText("Verify identity")).toBeTruthy();
     expect(view.getByText("Self")).toBeTruthy();
     expect(view.getByText("Very")).toBeTruthy();
     expect(view.getByText("ZKPassport")).toBeTruthy();
@@ -482,8 +478,8 @@ describe("CurrentUserWalletPage rewards", () => {
     const view = render(<CurrentUserWalletPage />);
 
     await waitFor(() => expect(view.getByText("$0.00")).toBeTruthy());
-    expect(view.getByText("Earn $1.00 more to claim.")).toBeTruthy();
-    expect(view.getByText("Test rewards — no cash value")).toBeTruthy();
+    expect(view.queryByText("Earn $1.00 more to claim.")).toBeNull();
+    expect(view.getByText("Claim").closest("button")?.disabled).toBe(true);
   });
 
   test("does not request or render rewards when the flag is disabled", async () => {
@@ -494,6 +490,6 @@ describe("CurrentUserWalletPage rewards", () => {
       expect(fakeApi.royalties.listClaimable).toHaveBeenCalled();
     });
     expect(fakeApi.rewards.getSummary).not.toHaveBeenCalled();
-    expect(view.queryByText("Rewards")).toBeNull();
+    expect(view.queryByText("Bounties")).toBeNull();
   });
 });

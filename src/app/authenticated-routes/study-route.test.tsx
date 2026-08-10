@@ -446,7 +446,7 @@ describe("StudyRoutePage", () => {
 
     const view = renderRoute();
 
-    await waitFor(() => expect(view.getByLabelText("Reward $0.40")).toBeTruthy());
+    await waitFor(() => expect(view.getByLabelText("Bounty $0.40")).toBeTruthy());
     expect(view.getByText("$0.40")).toBeTruthy();
     expect(view.queryByText("Earn $0.40")).toBeNull();
     expect(view.queryByText("Earn $0.40 today")).toBeNull();
@@ -787,7 +787,7 @@ describe("StudyRoutePage", () => {
     const view = renderRoute();
 
     await waitFor(() => expect(view.getByText("Choose the translation")).toBeTruthy());
-    expect(view.getByLabelText("Reward $0.40")).toBeTruthy();
+    expect(view.getByLabelText("Bounty $0.40")).toBeTruthy();
     fireEvent.click(view.getByText("Hello world").closest("button")!);
 
     await waitFor(() => expect(submittedStudyAttempts).toHaveLength(1));
@@ -805,7 +805,7 @@ describe("StudyRoutePage", () => {
     expect(view.getByRole("button", { name: "Exit study" })).toBeTruthy();
     expect(view.getByRole("button", { name: "Study again" })).toBeTruthy();
     expect(view.getByRole("button", { name: "Karaoke" })).toBeTruthy();
-    expect(view.queryByLabelText("Reward $0.40")).toBeNull();
+    expect(view.queryByLabelText("Bounty $0.40")).toBeNull();
     expect(view.queryByText(/Checking your/u)).toBeNull();
     expect(view.queryByText("Still checking your reward")).toBeNull();
     expect(view.queryByText("$0.40 pending")).toBeNull();

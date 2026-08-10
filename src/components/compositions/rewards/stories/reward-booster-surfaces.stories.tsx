@@ -16,7 +16,7 @@ import {
 } from "@/lib/rewards/boost-plan";
 
 const meta = {
-  title: "Compositions/Rewards/Booster",
+  title: "Compositions/Bounties/Create",
   parameters: { layout: "fullscreen" },
 } satisfies Meta;
 
@@ -29,14 +29,15 @@ const base: BoostCampaignSheetProps = {
   dailyRewardDisplayLabel: "$1.00",
   dailyRewardLabel: "1.00",
   eligibleActivity: "either",
+  identityProvider: "very",
   fundingAmountLabel: "$10",
   open: true,
-  rewardCountLabel: "10 rewards",
+  rewardCountLabel: "10 completions",
   state: "compose",
 };
 
 export const Setup: Story = {
-  render: () => <BoostCampaignSheet {...base} />,
+  render: () => <TieredBoostStory initialTiers={[]} />,
 };
 
 export const SetupInvalid: Story = {
@@ -45,8 +46,8 @@ export const SetupInvalid: Story = {
       {...base}
       budgetDisplayLabel="$0.50"
       budgetLabel="0.50"
-      planProblem="The budget must cover at least one reward."
-      rewardCountLabel="0 rewards"
+      planProblem="The budget must cover at least one bounty."
+      rewardCountLabel="0 completions"
     />
   ),
 };
@@ -152,15 +153,16 @@ function TieredBoostStory({ initialTiers }: { initialTiers: BoostPayoutTierDraft
   const [dailyRewardLabel, setDailyRewardLabel] = React.useState("1.00");
   const [budgetLabel, setBudgetLabel] = React.useState("25.00");
   const [tiers, setTiers] = React.useState<BoostPayoutTierDraft[]>(initialTiers);
+  const [nationalityPricingEnabled, setNationalityPricingEnabled] = React.useState(initialTiers.length > 0);
 
   const plan = resolveDailyAccrualPlan(
     dailyRewardLabel,
     budgetLabel,
     TIERED_LIMITS,
-    tiers.map((tier) => ({
+    nationalityPricingEnabled ? tiers.map((tier) => ({
       amountCents: usdToCents(parseUsdInput(tier.amountLabel)),
       nationalities: tier.nationalities,
-    })),
+    })) : undefined,
   );
 
   const claimAmounts = [
@@ -170,17 +172,26 @@ function TieredBoostStory({ initialTiers }: { initialTiers: BoostPayoutTierDraft
   const tierRangeLabel = plan.tiered && claimAmounts.length > 1
     ? `${formatUsdLabel(Math.min(...claimAmounts) / 100)}–${formatUsdLabel(Math.max(...claimAmounts) / 100)} by nationality`
     : undefined;
+  const completionRangeLabel = plan.tiered
+    && plan.budgetCents != null
+    && plan.rewardCount != null
+    && claimAmounts.length > 0
+    ? `${plan.rewardCount.toLocaleString("en")}–${Math.floor(plan.budgetCents / Math.min(...claimAmounts)).toLocaleString("en")} completions`
+    : undefined;
 
   return (
     <BoostCampaignSheet
       budgetDisplayLabel={formatUsdLabel((plan.budgetCents ?? 0) / 100) ?? "$0.00"}
       budgetLabel={budgetLabel}
+      completionRangeLabel={completionRangeLabel}
       dailyRewardDisplayLabel={formatUsdLabel((plan.dailyRewardCents ?? 0) / 100) ?? undefined}
       dailyRewardLabel={dailyRewardLabel}
       eligibleActivity="either"
+      identityProvider={nationalityPricingEnabled ? "self" : "very"}
       fundingAmountLabel={formatUsdLabel((plan.budgetCents ?? 0) / 100) ?? undefined}
       maxClaimDisplayLabel={formatUsdLabel((plan.maxClaimCents ?? 0) / 100) ?? undefined}
       maxPayoutTiers={MAX_PAYOUT_TIERS}
+      nationalityPricingEnabled={nationalityPricingEnabled}
       onAddPayoutTier={() =>
         setTiers((current) => [
           ...current,
@@ -188,6 +199,9 @@ function TieredBoostStory({ initialTiers }: { initialTiers: BoostPayoutTierDraft
         ])}
       onBudgetChange={setBudgetLabel}
       onDailyRewardChange={setDailyRewardLabel}
+      onNationalityPricingEnabledChange={(enabled) => {
+        setNationalityPricingEnabled(enabled);
+      }}
       onPayoutTierAmountChange={(tierId, amountLabel) =>
         setTiers((current) =>
           current.map((tier) => (tier.id === tierId ? { ...tier, amountLabel } : tier)))}

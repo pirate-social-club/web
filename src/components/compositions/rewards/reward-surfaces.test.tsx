@@ -72,14 +72,14 @@ describe("reward surfaces", () => {
     );
 
     expect(view.getAllByText("Earn $0.40 USDC today").length).toBe(2);
-    expect(view.getAllByText("Reward").length).toBe(2);
+    expect(view.getAllByText("Bounty").length).toBe(2);
     expect(view.getByText(/Complete a study set or score at least 72.5% in Karaoke/u)).toBeTruthy();
     expect(view.getByText(/Score at least 70% in Karaoke/u)).toBeTruthy();
-    expect(view.getByText("Checking your $0.10 reward…")).toBeTruthy();
+    expect(view.getByText("Checking your $0.10 bounty…")).toBeTruthy();
     expect(view.getByText("+$0.10 🎉")).toBeTruthy();
-    expect(view.getByText("Still checking your reward")).toBeTruthy();
-    expect(view.getByText("Test reward — no cash value.")).toBeTruthy();
-    expect(view.getByText("Your score was below the reward target.")).toBeTruthy();
+    expect(view.getByText("Still checking your bounty")).toBeTruthy();
+    expect(view.getByText("Test bounty — no cash value.")).toBeTruthy();
+    expect(view.getByText("Your score was below the bounty target.")).toBeTruthy();
   });
 
   test("uses plain dollar labels on every settlement chain", () => {
@@ -146,7 +146,7 @@ describe("reward surfaces", () => {
   });
 
   test("defines the passport-nationality and public-chain disclosure shown before verification", () => {
-    expect(REWARD_NATIONALITY_DISCLOSURE).toContain("passport nationality");
+    expect(REWARD_NATIONALITY_DISCLOSURE).toContain("verified nationality");
     expect(REWARD_NATIONALITY_DISCLOSURE).toContain("public on-chain");
   });
 

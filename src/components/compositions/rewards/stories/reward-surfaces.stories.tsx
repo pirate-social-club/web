@@ -10,7 +10,7 @@ import {
 } from "../reward-surfaces";
 
 const meta = {
-  title: "Compositions/Rewards/Surfaces",
+  title: "Compositions/Bounties/Surfaces",
   parameters: { layout: "fullscreen" },
 } satisfies Meta;
 

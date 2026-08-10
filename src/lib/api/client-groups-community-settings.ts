@@ -1,12 +1,14 @@
 import type {
   Community,
   CommunityMoneyPolicy,
-  CommunityPresentation,
-  CommunityPresentationPatch,
   CommunityPricingPolicy,
   UpdateCommunityMoneyPolicyRequest,
   UpdateCommunityPricingPolicyRequest,
 } from "@pirate/api-contracts";
+import type {
+  CommunityPresentation,
+  CommunityPresentationPatch,
+} from "@/lib/community-presentation-contract";
 
 import type {
   ApiCommunityDonationPolicyResponse,

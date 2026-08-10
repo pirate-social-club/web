@@ -23,6 +23,7 @@ import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { resolveLocaleDirection } from "@/lib/ui-locale-core";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
+import { readCommunityPresentation } from "@/lib/community-presentation-contract";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
 
 import { AppShellHeader, AppShellMobileNav } from "./app-shell-header";
@@ -251,7 +252,7 @@ function NotificationShell({
               <AppSidebar
                 activeItemId={activeSidebarItem(route)}
                 appearance="media"
-                brandAccentColor={presentation?.branding?.accent_color}
+                brandAccentColor={readCommunityPresentation(presentation).branding.accent_color}
                 brandImageSrc={presentationCommunityId ? presentation?.avatar_ref ?? null : undefined}
                 brandLabel={presentation?.display_name ?? copy.appSidebar.brandLabel}
                 homeAriaLabel={copy.appSidebar.homeAriaLabel}

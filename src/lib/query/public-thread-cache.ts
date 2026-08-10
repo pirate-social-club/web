@@ -8,6 +8,7 @@ import type { QueryClient } from "@tanstack/react-query";
 
 import { postKeys } from "./keys";
 import type { ThreadCommentNode } from "@/app/authenticated-state/thread-state";
+import { readCommunityPresentation } from "@/lib/community-presentation-contract";
 
 export type PublicThreadQueryData = {
   post: LocalizedPostResponse;
@@ -19,6 +20,7 @@ export type PublicThreadQueryData = {
 };
 
 function communityPreviewFromHomeFeedItem(item: HomeFeedItem): CommunityPreview {
+  const presentation = readCommunityPresentation(item.community);
   return {
     id: item.community.id,
     object: "community_preview",
@@ -29,8 +31,8 @@ function communityPreviewFromHomeFeedItem(item: HomeFeedItem): CommunityPreview 
     localized_text: null,
     avatar_ref: item.community.avatar_ref ?? null,
     banner_ref: null,
-    branding: item.community.branding,
-    default_surface: item.community.default_surface,
+    branding: presentation.branding,
+    default_surface: presentation.default_surface,
     membership_mode: "request",
     allow_anonymous_identity: true,
     anonymous_identity_scope: null,
@@ -49,7 +51,7 @@ function communityPreviewFromHomeFeedItem(item: HomeFeedItem): CommunityPreview 
     viewer_membership_status: null,
     viewer_following: null,
     created: item.post.post.created,
-  };
+  } as CommunityPreview;
 }
 
 export function seedPublicThreadQueriesFromFeed(input: {

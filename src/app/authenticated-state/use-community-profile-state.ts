@@ -8,13 +8,7 @@ import { useApi } from "@/lib/api";
 
 import { getErrorMessage } from "@/lib/error-utils";
 import { normalizeCommunityCountryCode } from "@/lib/geo-country";
-
-const DEFAULT_COMMUNITY_BRANDING = {
-  accent_color: null,
-  header_style: "standard" as const,
-  tagline: null,
-  theme: "system" as const,
-};
+import { readCommunityPresentation } from "@/lib/community-presentation-contract";
 
 export function useCommunityProfileState({
   community,
@@ -52,13 +46,13 @@ export function useCommunityProfileState({
     setProfileStoreUrl(community.store_url ?? "");
     setProfileStoreLabel(community.store_label ?? "");
     setProfileCountryCode(normalizeCommunityCountryCode(community.country_code));
-    const branding = community.branding ?? DEFAULT_COMMUNITY_BRANDING;
+    const { branding, default_surface, video_feed_enabled } = readCommunityPresentation(community);
     setProfileAccentColor(branding.accent_color ?? "");
     setProfileTagline(branding.tagline ?? "");
     setProfileTheme(branding.theme);
     setProfileHeaderStyle(branding.header_style);
-    setProfileDefaultSurface(community.default_surface ?? "threads");
-    setProfileVideoFeedEnabled(community.video_feed_enabled ?? true);
+    setProfileDefaultSurface(default_surface);
+    setProfileVideoFeedEnabled(video_feed_enabled);
     setProfileAvatarFile(null);
     setProfileBannerFile(null);
     setProfileAvatarRemoved(community.avatar_ref == null);
@@ -66,18 +60,19 @@ export function useCommunityProfileState({
     setProfileDisplayNameError(undefined);
   }, [community]);
 
+  const storedPresentation = readCommunityPresentation(community);
   const profileHasChanges = community == null ? false : (
     profileDisplayName.trim() !== community.display_name.trim()
     || profileDescription !== (community.description ?? "")
     || profileStoreUrl.trim() !== (community.store_url ?? "")
     || profileStoreLabel.trim() !== (community.store_label ?? "")
     || normalizeCommunityCountryCode(profileCountryCode) !== normalizeCommunityCountryCode(community.country_code)
-    || profileAccentColor.trim() !== (community.branding?.accent_color ?? "")
-    || profileTagline.trim() !== (community.branding?.tagline ?? "")
-    || profileTheme !== (community.branding?.theme ?? "system")
-    || profileHeaderStyle !== (community.branding?.header_style ?? "standard")
-    || profileDefaultSurface !== (community.default_surface ?? "threads")
-    || profileVideoFeedEnabled !== (community.video_feed_enabled ?? true)
+    || profileAccentColor.trim() !== (storedPresentation.branding.accent_color ?? "")
+    || profileTagline.trim() !== (storedPresentation.branding.tagline ?? "")
+    || profileTheme !== storedPresentation.branding.theme
+    || profileHeaderStyle !== storedPresentation.branding.header_style
+    || profileDefaultSurface !== storedPresentation.default_surface
+    || profileVideoFeedEnabled !== storedPresentation.video_feed_enabled
     || profileAvatarFile !== null
     || profileBannerFile !== null
     || (profileAvatarRemoved && community.avatar_ref != null)
@@ -129,7 +124,7 @@ export function useCommunityProfileState({
         branding: presentation.branding,
         default_surface: presentation.default_surface,
         video_feed_enabled: presentation.video_feed_enabled,
-      });
+      } as ApiCommunity);
       setProfileAvatarFile(null);
       setProfileBannerFile(null);
       setProfileAvatarRemoved(updatedCommunity.avatar_ref == null);

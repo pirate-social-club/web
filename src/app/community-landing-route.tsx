@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { readCommunityPresentation } from "@/lib/community-presentation-contract";
 
 import { replaceRoute } from "@/app/router";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "@/app/public-route-states";
@@ -14,7 +15,7 @@ export function CommunityLandingRoutePage({ communityId }: { communityId: string
   React.useEffect(() => {
     if (!community.data || typeof window === "undefined") return;
     const routeSegment = community.data.route_slug || community.data.id;
-    const surface = community.data.default_surface === "videos" ? "videos" : "threads";
+    const surface = readCommunityPresentation(community.data).default_surface;
     replaceRoute(
       `/c/${encodeURIComponent(routeSegment)}/${surface}${window.location.search}${window.location.hash}`,
     );

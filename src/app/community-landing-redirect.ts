@@ -1,11 +1,12 @@
 import type { CommunityPreview } from "@pirate/api-contracts";
+import { readCommunityPresentation } from "@/lib/community-presentation-contract";
 
 export function communityLandingRedirectResponse(input: {
   effectiveUrl: string;
   preview: CommunityPreview;
 }): Response {
   const routeSegment = input.preview.route_slug || input.preview.id;
-  const surface = input.preview.default_surface === "videos" ? "videos" : "threads";
+  const surface = readCommunityPresentation(input.preview).default_surface;
   const redirectUrl = new URL(input.effectiveUrl);
   redirectUrl.pathname = `/c/${encodeURIComponent(routeSegment)}/${surface}`;
   const hasQuery = redirectUrl.search.length > 0;

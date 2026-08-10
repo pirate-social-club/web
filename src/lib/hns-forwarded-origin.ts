@@ -125,3 +125,11 @@ export function resolveForwardedCommunityRouteSegment(
 
   return normalized;
 }
+
+export function resolveForwardedWalletInteractive(
+  request: Request,
+  env: HnsForwardedOriginEnv = {},
+): boolean {
+  return isTrustedForwarder(request, env)
+    && request.headers.get("x-pirate-hns-wallet-interactive")?.trim() === "1";
+}

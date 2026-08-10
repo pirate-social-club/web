@@ -36,6 +36,7 @@ import {
   authenticateHnsForwarderRequest,
   resolveEffectiveRequestUrl,
   resolveForwardedCommunityRouteSegment,
+  resolveForwardedWalletInteractive,
   type HnsForwardedOriginEnv,
 } from "@/lib/hns-forwarded-origin";
 import { resolveBrowserReachableApiOrigin } from "@/lib/api/hns-hostname";
@@ -453,6 +454,7 @@ const app = defineApp<AppRequestInfo>([
         }),
       )
       : undefined;
+    ctx.walletInteractive = resolveForwardedWalletInteractive(request);
     ctx.isIndexable = discovery.isIndexable;
     const seoMetadata = shouldResolveSeoMetadata(request, route)
       ? await resolveRouteSeoMetadataWithinBudget({

@@ -504,4 +504,24 @@ describe("matchRouteWithImportedRootCommunity", () => {
       sovereignCommunityId: "com_cmt_public_namespace_test",
     });
   });
+
+  test("rejects every non-post deep route on sovereign origins", () => {
+    for (const pathname of [
+      "/c/other-community",
+      "/c/other-community/threads",
+      "/u/other-handle",
+      "/live",
+      "/popular",
+    ]) {
+      expectJson(matchRouteWithImportedRootCommunity(
+        pathname,
+        "xn--pokmon-dva",
+        "com_cmt_public_namespace_test",
+      ), {
+        kind: "not-found",
+        path: pathname,
+        sovereignCommunityId: "com_cmt_public_namespace_test",
+      });
+    }
+  });
 });

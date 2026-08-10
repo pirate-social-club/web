@@ -9,6 +9,13 @@ import { useApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-utils";
 import { normalizeCommunityCountryCode } from "@/lib/geo-country";
 
+const DEFAULT_COMMUNITY_BRANDING = {
+  accent_color: null,
+  header_style: "standard" as const,
+  tagline: null,
+  theme: "system" as const,
+};
+
 export function useCommunityProfileState({
   community,
   setCommunity,
@@ -27,6 +34,7 @@ export function useCommunityProfileState({
   const [profileTheme, setProfileTheme] = React.useState<"system" | "light" | "dark">("system");
   const [profileHeaderStyle, setProfileHeaderStyle] = React.useState<"standard" | "compact" | "immersive">("standard");
   const [profileDefaultSurface, setProfileDefaultSurface] = React.useState<"threads" | "videos">("threads");
+  const [profileVideoFeedEnabled, setProfileVideoFeedEnabled] = React.useState(true);
   const [profileAvatarFile, setProfileAvatarFile] = React.useState<File | null>(null);
   const [profileBannerFile, setProfileBannerFile] = React.useState<File | null>(null);
   const [profileAvatarRemoved, setProfileAvatarRemoved] = React.useState(false);
@@ -44,11 +52,13 @@ export function useCommunityProfileState({
     setProfileStoreUrl(community.store_url ?? "");
     setProfileStoreLabel(community.store_label ?? "");
     setProfileCountryCode(normalizeCommunityCountryCode(community.country_code));
-    setProfileAccentColor(community.branding.accent_color ?? "");
-    setProfileTagline(community.branding.tagline ?? "");
-    setProfileTheme(community.branding.theme);
-    setProfileHeaderStyle(community.branding.header_style);
-    setProfileDefaultSurface(community.default_surface);
+    const branding = community.branding ?? DEFAULT_COMMUNITY_BRANDING;
+    setProfileAccentColor(branding.accent_color ?? "");
+    setProfileTagline(branding.tagline ?? "");
+    setProfileTheme(branding.theme);
+    setProfileHeaderStyle(branding.header_style);
+    setProfileDefaultSurface(community.default_surface ?? "threads");
+    setProfileVideoFeedEnabled(community.video_feed_enabled ?? true);
     setProfileAvatarFile(null);
     setProfileBannerFile(null);
     setProfileAvatarRemoved(community.avatar_ref == null);
@@ -62,11 +72,12 @@ export function useCommunityProfileState({
     || profileStoreUrl.trim() !== (community.store_url ?? "")
     || profileStoreLabel.trim() !== (community.store_label ?? "")
     || normalizeCommunityCountryCode(profileCountryCode) !== normalizeCommunityCountryCode(community.country_code)
-    || profileAccentColor.trim() !== (community.branding.accent_color ?? "")
-    || profileTagline.trim() !== (community.branding.tagline ?? "")
-    || profileTheme !== community.branding.theme
-    || profileHeaderStyle !== community.branding.header_style
-    || profileDefaultSurface !== community.default_surface
+    || profileAccentColor.trim() !== (community.branding?.accent_color ?? "")
+    || profileTagline.trim() !== (community.branding?.tagline ?? "")
+    || profileTheme !== (community.branding?.theme ?? "system")
+    || profileHeaderStyle !== (community.branding?.header_style ?? "standard")
+    || profileDefaultSurface !== (community.default_surface ?? "threads")
+    || profileVideoFeedEnabled !== (community.video_feed_enabled ?? true)
     || profileAvatarFile !== null
     || profileBannerFile !== null
     || (profileAvatarRemoved && community.avatar_ref != null)
@@ -111,11 +122,13 @@ export function useCommunityProfileState({
           theme: profileTheme,
         },
         default_surface: profileDefaultSurface,
+        video_feed_enabled: profileVideoFeedEnabled,
       });
       setCommunity({
         ...updatedCommunity,
         branding: presentation.branding,
         default_surface: presentation.default_surface,
+        video_feed_enabled: presentation.video_feed_enabled,
       });
       setProfileAvatarFile(null);
       setProfileBannerFile(null);
@@ -142,6 +155,7 @@ export function useCommunityProfileState({
     profileHeaderStyle,
     profileTagline,
     profileTheme,
+    profileVideoFeedEnabled,
     profileStoreLabel,
     profileStoreUrl,
     savingProfile,
@@ -160,6 +174,7 @@ export function useCommunityProfileState({
     profileHeaderStyle,
     profileTagline,
     profileTheme,
+    profileVideoFeedEnabled,
     profileDescription,
     profileDisplayName,
     profileDisplayNameError,
@@ -177,6 +192,10 @@ export function useCommunityProfileState({
     setProfileHeaderStyle,
     setProfileTagline,
     setProfileTheme,
+    setProfileVideoFeedEnabled: (enabled: boolean) => {
+      setProfileVideoFeedEnabled(enabled);
+      if (!enabled) setProfileDefaultSurface("threads");
+    },
     setProfileDescription,
     setProfileDisplayName,
     setProfileDisplayNameError,

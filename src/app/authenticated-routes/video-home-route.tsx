@@ -384,7 +384,7 @@ export function VideoHomePage({
     () => feedKeys.homeVideos({
       communityId,
       locale: contentLocale,
-      userId: session?.user.id ?? null,
+      userId: communityId ? null : (session?.user.id ?? null),
     }),
     [communityId, contentLocale, session?.user.id],
   );
@@ -394,9 +394,7 @@ export function VideoHomePage({
     sort?: "best" | "new" | "top" | null;
     timeRange?: string | null;
   }) => communityId
-    ? session?.accessToken
-      ? api.communities.listVideos(communityId, opts)
-      : api.publicCommunities.listVideos(communityId, opts)
+    ? api.publicCommunities.listVideos(communityId, opts)
     : session?.accessToken
       ? api.feed.videos(opts)
       : api.feed.publicVideos(opts), [api, communityId, session?.accessToken]);
@@ -640,12 +638,13 @@ export function VideoHomePage({
       }
     };
 
-    const bootstrapKey = `${communityId ?? "global"}:${Boolean(session?.accessToken)}:${contentLocale}`;
+    const bootstrapAuthenticated = communityId ? false : Boolean(session?.accessToken);
+    const bootstrapKey = `${communityId ?? "global"}:${bootstrapAuthenticated}:${contentLocale}`;
     if (bootstrapRequestRef.current?.key !== bootstrapKey) {
       bootstrapRequestRef.current = {
         key: bootstrapKey,
         request: consumeHomeVideoFeedBootstrap({
-          authenticated: Boolean(session?.accessToken),
+          authenticated: bootstrapAuthenticated,
           locale: contentLocale,
           scopeKey: communityId ?? "global",
         }),

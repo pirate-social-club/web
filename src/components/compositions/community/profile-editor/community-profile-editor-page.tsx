@@ -8,6 +8,7 @@ import { Card } from "@/components/primitives/card";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Type } from "@/components/primitives/type";
 import { Input } from "@/components/primitives/input";
+import { Checkbox } from "@/components/primitives/checkbox";
 import {
   Combobox,
   ComboboxContent,
@@ -157,6 +158,7 @@ export interface CommunityProfileEditorPageProps {
   displayName: string;
   displayNameError?: string;
   defaultSurface?: "threads" | "videos";
+  videoFeedEnabled?: boolean;
   headerStyle?: "standard" | "compact" | "immersive";
   onAvatarRemove?: () => void;
   onAvatarSelect?: (file: File | null) => void;
@@ -168,6 +170,7 @@ export interface CommunityProfileEditorPageProps {
   onDisplayNameChange?: (value: string) => void;
   onAccentColorChange?: (value: string) => void;
   onDefaultSurfaceChange?: (value: "threads" | "videos") => void;
+  onVideoFeedEnabledChange?: (value: boolean) => void;
   onHeaderStyleChange?: (value: "standard" | "compact" | "immersive") => void;
   onSave?: () => void;
   onStoreLabelChange?: (value: string) => void;
@@ -194,6 +197,7 @@ export function CommunityProfileEditorPage({
   displayName,
   displayNameError,
   defaultSurface = "threads",
+  videoFeedEnabled = true,
   headerStyle = "standard",
   onAvatarRemove,
   onAvatarSelect,
@@ -205,6 +209,7 @@ export function CommunityProfileEditorPage({
   onDisplayNameChange,
   onAccentColorChange,
   onDefaultSurfaceChange,
+  onVideoFeedEnabledChange,
   onHeaderStyleChange,
   onSave,
   onStoreLabelChange,
@@ -284,6 +289,19 @@ export function CommunityProfileEditorPage({
           />
         </div>
         <Card className="grid gap-5 border-border bg-card p-5 shadow-none md:grid-cols-2">
+          <div className="flex items-center gap-3 md:col-span-2">
+            <Checkbox
+              checked={videoFeedEnabled}
+              id="community-profile-video-feed-enabled"
+              onCheckedChange={(checked) => onVideoFeedEnabledChange?.(checked === true)}
+            />
+            <div>
+              <label className="text-base font-medium text-foreground" htmlFor="community-profile-video-feed-enabled">
+                Enable community video feed
+              </label>
+              <FormNote>This controls the public video surface, independently of bot and machine-access settings.</FormNote>
+            </div>
+          </div>
           <div className="space-y-2 md:col-span-2">
             <label className="text-base font-medium text-foreground" htmlFor="community-profile-tagline">
               Tagline
@@ -315,11 +333,11 @@ export function CommunityProfileEditorPage({
             <Select value={defaultSurface} onValueChange={(value) => onDefaultSurfaceChange?.(value as "threads" | "videos")}>
               <SelectTrigger id="community-profile-default-surface"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="videos">Videos</SelectItem>
+                <SelectItem disabled={!videoFeedEnabled} value="videos">Videos</SelectItem>
                 <SelectItem value="threads">Threads</SelectItem>
               </SelectContent>
             </Select>
-            <FormNote>Controls where the bare community URL redirects. Videos requires the video-feed surface to be enabled.</FormNote>
+            <FormNote>Controls where the bare community URL redirects.</FormNote>
           </div>
           <div className="space-y-2">
             <label className="text-base font-medium text-foreground" htmlFor="community-profile-theme">

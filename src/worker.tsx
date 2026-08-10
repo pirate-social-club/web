@@ -8,7 +8,7 @@ import { LegalDocumentPage } from "@/components/legal/legal-document-page";
 import { Document } from "@/app/document";
 import { communityLandingRedirectResponse } from "@/app/community-landing-redirect";
 import { matchRoute, matchRouteWithImportedRootCommunity } from "@/app/router";
-import { isPostOutsideSovereignScope } from "@/app/sovereign-route-scope";
+import { isPostOutsideSovereignScope, mustFailClosedOnSovereignScopeError } from "@/app/sovereign-route-scope";
 import { PRIVACY_POLICY_SOURCE } from "@/legal/privacy-policy";
 import { TERMS_OF_SERVICE_SOURCE } from "@/legal/terms-of-service";
 import { ACCOUNT_DELETION_SOURCE } from "@/legal/account-deletion";
@@ -172,6 +172,7 @@ async function resolveRouteSeoMetadata(input: {
   metadata: SeoMetadata | null;
   sovereignMismatch: boolean;
 }> {
+  const mustVerifySovereignPost = mustFailClosedOnSovereignScopeError(input.route);
   try {
     if (
       input.route.kind === "community"
@@ -265,7 +266,7 @@ async function resolveRouteSeoMetadata(input: {
       };
     }
   } catch {
-    return { metadata: null, sovereignMismatch: false };
+    return { metadata: null, sovereignMismatch: mustVerifySovereignPost };
   }
 
   return { metadata: null, sovereignMismatch: false };
@@ -291,12 +292,16 @@ async function resolveRouteSeoMetadataWithinBudget(input: {
   const timeoutPromise = new Promise<{
     communityPreview: null;
     metadata: null;
-    sovereignMismatch: false;
+    sovereignMismatch: boolean;
   }>((resolve) => {
     timeout = setTimeout(() => {
       timedOut = true;
       controller.abort();
-      resolve({ communityPreview: null, metadata: null, sovereignMismatch: false });
+      resolve({
+        communityPreview: null,
+        metadata: null,
+        sovereignMismatch: mustFailClosedOnSovereignScopeError(input.route),
+      });
     }, SEO_METADATA_TIMEOUT_MS);
   });
   try {

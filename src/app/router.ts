@@ -532,9 +532,9 @@ export function matchRouteWithImportedRootCommunity(
   }
 
   const route = matchRoute(normalized, hostname);
-  return importedRootCommunityId
-    ? { ...route, sovereignCommunityId: importedRootCommunityId }
-    : route;
+  if (!importedRootCommunityId) return route;
+  if ("postId" in route) return { ...route, sovereignCommunityId: importedRootCommunityId };
+  return { kind: "not-found", path: normalized, sovereignCommunityId: importedRootCommunityId };
 }
 
 export function canonicalizeRoutePathname(pathname: string, hostname?: string): string {

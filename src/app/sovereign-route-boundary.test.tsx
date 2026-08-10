@@ -12,6 +12,7 @@ mock.module("@/app/authenticated-helpers/route-shell", () => ({
 }));
 
 import { SovereignRouteBoundary } from "@/app/sovereign-route-boundary";
+import { mustFailClosedOnSovereignScopeError } from "@/app/sovereign-route-scope";
 import { ApiProvider } from "@/lib/api";
 import type { ApiClient } from "@/lib/api/client";
 
@@ -53,6 +54,14 @@ function renderBoundary(input: {
 }
 
 describe("SovereignRouteBoundary", () => {
+  test("fails closed when server-side post scope verification errors or times out", () => {
+    expect(mustFailClosedOnSovereignScopeError({
+      kind: "post",
+      path: "/p/pst_test",
+      postId: "pst_test",
+      sovereignCommunityId: "com_expected",
+    })).toBe(true);
+  });
   test("renders a post that belongs to the forwarded community", async () => {
     const { reads, view } = renderBoundary({
       community: "com_expected",

@@ -47,6 +47,7 @@ function signedRequest(
   const headers = new Headers({
     "cf-connecting-ip": "173.199.93.117",
     ...forwardedHeaders,
+    "x-pirate-hns-forwarder-path": "/c/crew?sort=top",
     "x-pirate-hns-forwarder-timestamp": timestamp,
   });
   const host = headers.get("x-pirate-hns-host") ?? "";
@@ -112,6 +113,35 @@ describe("HNS forwarded origin", () => {
     }));
     expect(result.rejection).toBe(null);
     expect(resolveForwardedCommunityRouteSegment(result.request)).toBe("com_cmt_public_namespace_test");
+  });
+
+  test("matches the gateway's fixed interoperability vector", async () => {
+    const input = signedRequest({
+      "x-pirate-hns-host": "xn--pokmon-dva",
+      "x-pirate-hns-root": "xn--pokmon-dva",
+      "x-pirate-hns-community-id": "com_cmt_public_namespace_test",
+      "x-pirate-hns-community-route": "xn--pokmon-dva",
+    });
+    expect(input.headers.get("x-pirate-hns-forwarder-signature")).toBe(
+      "v1=e42b921d8029a9067fcc230b039d8513727ca88ad2b0253a39263b220154b9a3",
+    );
+    expect((await authenticate(input)).rejection).toBe(null);
+  });
+
+  test("accepts the legacy token from a trusted source during rollout", async () => {
+    const result = await authenticate(request({
+      "cf-connecting-ip": "173.199.93.117",
+      "x-pirate-hns-host": "xn--pokmon-dva",
+      "x-pirate-hns-forwarder-token": "legacy-rollout-token",
+    }), { HNS_FORWARDER_AUTH_TOKEN: "legacy-rollout-token" });
+    expect(result.rejection).toBe(null);
+    expect(resolveEffectiveRequestUrl(result.request)).toBe("https://xn--pokmon-dva/c/crew?sort=top");
+  });
+
+  test("rejects path normalization differences", async () => {
+    const input = signedRequest({ "x-pirate-hns-host": "xn--pokmon-dva" });
+    input.headers.set("x-pirate-hns-forwarder-path", "/c/crew/?sort=top");
+    expect((await authenticate(input)).rejection).toBe("authentication");
   });
 
   test("rejects a missing, malformed, or mismatched signature from the trusted ingress", async () => {
@@ -189,5 +219,6 @@ describe("HNS forwarded origin", () => {
     expect(result.request.headers.has("x-pirate-hns-forwarder-token")).toBe(false);
     expect(result.request.headers.has("x-pirate-hns-forwarder-signature")).toBe(false);
     expect(result.request.headers.has("x-pirate-hns-forwarder-timestamp")).toBe(false);
+    expect(result.request.headers.has("x-pirate-hns-forwarder-path")).toBe(false);
   });
 });

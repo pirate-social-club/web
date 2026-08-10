@@ -1,8 +1,6 @@
 import type {
   Community,
   CommunityCreateAcceptedResponse,
-  HomeFeedResponse,
-  HomeFeedSort,
   LocalizedPostResponse,
 } from "@pirate/api-contracts";
 
@@ -57,25 +55,6 @@ export function createCommunitiesApi(request: ApiRequest) {
       return request<Community>(buildQueryPath(
         `/communities/${encodeURIComponent(communityId)}`,
         { locale: opts?.locale },
-      ));
-    },
-    listVideos: (
-      communityId: string,
-      opts?: {
-        cursor?: string | null;
-        locale?: string | null;
-        sort?: HomeFeedSort | null;
-        timeRange?: string | null;
-      },
-    ): Promise<HomeFeedResponse> => {
-      return request<HomeFeedResponse>(buildQueryPath(
-        `/communities/${encodeURIComponent(communityId)}/feed/videos`,
-        {
-          cursor: opts?.cursor,
-          locale: opts?.locale,
-          sort: opts?.sort,
-          time_range: opts?.timeRange,
-        },
       ));
     },
     attachNamespace: (

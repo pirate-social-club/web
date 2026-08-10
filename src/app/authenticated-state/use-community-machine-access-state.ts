@@ -26,7 +26,6 @@ function policyToSettings(policy: ApiCommunityMachineAccessPolicy): CommunityMac
       threadBodies: policy.included_surfaces.thread_bodies,
       topComments: policy.included_surfaces.top_comments,
       events: policy.included_surfaces.events,
-      videoFeed: policy.included_surfaces.video_feed,
     },
     topCommentsLimit: policy.operational_limits.top_comments_limit,
     anonymousRateTier: policy.operational_limits.anonymous_rate_tier,
@@ -43,7 +42,6 @@ function settingsToPolicyUpdate(settings: CommunityMachineAccessSettings): ApiCo
       thread_bodies: settings.includedSurfaces.threadBodies,
       top_comments: settings.includedSurfaces.topComments,
       events: settings.includedSurfaces.events,
-      video_feed: settings.includedSurfaces.videoFeed,
     },
   };
 }

@@ -4,6 +4,7 @@ const TRUSTED_FORWARDER_HEADER = "x-pirate-hns-trusted-forwarder";
 const FORWARDER_TOKEN_HEADER = "x-pirate-hns-forwarder-token";
 const FORWARDER_SIGNATURE_HEADER = "x-pirate-hns-forwarder-signature";
 const FORWARDER_TIMESTAMP_HEADER = "x-pirate-hns-forwarder-timestamp";
+const FORWARDER_PATH_HEADER = "x-pirate-hns-forwarder-path";
 const FORWARDER_SIGNATURE_VERSION = "v1";
 const DEFAULT_MAX_CLOCK_SKEW_SECONDS = 300;
 const MAX_CONFIGURABLE_CLOCK_SKEW_SECONDS = 3_600;
@@ -15,6 +16,7 @@ export type HnsForwardedOriginEnv = {
   HNS_FORWARDER_HMAC_KEY?: string;
   HNS_FORWARDER_HMAC_PREVIOUS_KEY?: string;
   HNS_FORWARDER_MAX_CLOCK_SKEW_SECONDS?: string;
+  HNS_FORWARDER_AUTH_TOKEN?: string;
 };
 
 export type HnsForwarderAuthenticationResult = {
@@ -62,20 +64,31 @@ function firstHeaderValue(value: string | null): string {
 function canonicalizeForwarderContext(input: {
   request: Request;
   host: string;
+  pathAndQuery: string;
   timestamp: string;
 }): string {
-  const url = new URL(input.request.url);
   return JSON.stringify([
     "pirate-hns-forwarder-v1",
     input.timestamp,
     input.request.method.toUpperCase(),
     input.host,
-    `${url.pathname}${url.search}`,
+    input.pathAndQuery,
     firstHeaderValue(input.request.headers.get("x-pirate-hns-root")),
     firstHeaderValue(input.request.headers.get("x-pirate-hns-community-id")),
     firstHeaderValue(input.request.headers.get("x-pirate-hns-community-route")),
     firstHeaderValue(input.request.headers.get("x-pirate-hns-subdomain")),
   ]);
+}
+
+function timingSafeEqualText(left: string, right: string): boolean {
+  const leftBytes = encoder.encode(left);
+  const rightBytes = encoder.encode(right);
+  const length = Math.max(leftBytes.byteLength, rightBytes.byteLength);
+  let mismatch = leftBytes.byteLength ^ rightBytes.byteLength;
+  for (let index = 0; index < length; index += 1) {
+    mismatch |= (leftBytes[index] ?? 0) ^ (rightBytes[index] ?? 0);
+  }
+  return mismatch === 0;
 }
 
 function parseClockSkewSeconds(env: HnsForwardedOriginEnv): number {
@@ -125,11 +138,14 @@ export async function authenticateHnsForwarderRequest(
   const forwardedHost = normalizeHost(rawForwardedHost);
   const signature = signatureBytes(firstHeaderValue(headers.get(FORWARDER_SIGNATURE_HEADER)));
   const timestamp = firstHeaderValue(headers.get(FORWARDER_TIMESTAMP_HEADER));
+  const pathAndQuery = firstHeaderValue(headers.get(FORWARDER_PATH_HEADER));
+  const forwardedToken = firstHeaderValue(headers.get(FORWARDER_TOKEN_HEADER));
 
   headers.delete(TRUSTED_FORWARDER_HEADER);
   headers.delete(FORWARDER_TOKEN_HEADER);
   headers.delete(FORWARDER_SIGNATURE_HEADER);
   headers.delete(FORWARDER_TIMESTAMP_HEADER);
+  headers.delete(FORWARDER_PATH_HEADER);
 
   const sanitizedRequest = () => new Request(request, { headers });
   if (!rawForwardedHost || !isTrustedForwarderSource(request, env)) {
@@ -138,33 +154,35 @@ export async function authenticateHnsForwarderRequest(
 
   const currentKey = env.HNS_FORWARDER_HMAC_KEY?.trim() ?? "";
   const previousKey = env.HNS_FORWARDER_HMAC_PREVIOUS_KEY?.trim() ?? "";
-  if (!isValidHmacKey(currentKey) || (previousKey && !isValidHmacKey(previousKey))) {
+  const configuredToken = env.HNS_FORWARDER_AUTH_TOKEN?.trim() ?? "";
+  const hmacConfigured = isValidHmacKey(currentKey) && (!previousKey || isValidHmacKey(previousKey));
+  if (!hmacConfigured && !configuredToken) {
     return { rejection: "configuration", request: sanitizedRequest() };
   }
 
+  const legacyVerified = !!configuredToken && !!forwardedToken && timingSafeEqualText(forwardedToken, configuredToken);
   const timestampSeconds = Number(timestamp);
   const nowSeconds = Math.floor(nowMs / 1_000);
-  if (
-    !forwardedHost
-    || !signature
-    || !/^\d+$/u.test(timestamp)
-    || !Number.isSafeInteger(timestampSeconds)
-    || Math.abs(nowSeconds - timestampSeconds) > parseClockSkewSeconds(env)
-  ) {
-    return { rejection: "authentication", request: sanitizedRequest() };
-  }
-
-  const canonical = canonicalizeForwarderContext({ request, host: forwardedHost, timestamp });
-  const candidateKeys = previousKey ? [currentKey, previousKey] : [currentKey];
+  const hmacEnvelopeValid = hmacConfigured
+    && !!forwardedHost
+    && !!signature
+    && pathAndQuery.startsWith("/")
+    && /^\d+$/u.test(timestamp)
+    && Number.isSafeInteger(timestampSeconds)
+    && Math.abs(nowSeconds - timestampSeconds) <= parseClockSkewSeconds(env);
   let verified = false;
-  for (const secret of candidateKeys) {
-    if (await verifyForwarderSignature({ canonical, secret, signature })) {
-      verified = true;
-      break;
+  if (hmacEnvelopeValid && forwardedHost && signature) {
+    const canonical = canonicalizeForwarderContext({ request, host: forwardedHost, pathAndQuery, timestamp });
+    const candidateKeys = previousKey ? [currentKey, previousKey] : [currentKey];
+    for (const secret of candidateKeys) {
+      if (await verifyForwarderSignature({ canonical, secret, signature })) {
+        verified = true;
+        break;
+      }
     }
   }
 
-  if (!verified) {
+  if (!verified && !legacyVerified) {
     return { rejection: "authentication", request: sanitizedRequest() };
   }
 

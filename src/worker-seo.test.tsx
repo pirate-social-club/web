@@ -432,8 +432,7 @@ describe("share metadata", () => {
     );
 
     expect(markup).toContain("/public-communities/com_test/feed/videos?locale=en&sort=best");
-    expect(markup).toContain("/communities/com_test/feed/videos?locale=en&sort=best");
-    expect(markup).toContain("fetch(withToken?authenticatedUrl:publicUrl");
+    expect(markup).toContain("var viewerNeutral=true");
     expect(markup).toContain('scopeKey=\"com_test\"');
   });
 

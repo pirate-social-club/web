@@ -13,3 +13,7 @@ export function isPostOutsideSovereignScope(
     && postCommunityId !== route.sovereignCommunityId,
   );
 }
+
+export function mustFailClosedOnSovereignScopeError(route: AppRoute): boolean {
+  return Boolean(route.sovereignCommunityId && getRoutePostId(route));
+}

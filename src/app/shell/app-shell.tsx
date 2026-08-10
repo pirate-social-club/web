@@ -251,7 +251,7 @@ function NotificationShell({
               <AppSidebar
                 activeItemId={activeSidebarItem(route)}
                 appearance="media"
-                brandAccentColor={presentation?.branding.accent_color}
+                brandAccentColor={presentation?.branding?.accent_color}
                 brandImageSrc={presentationCommunityId ? presentation?.avatar_ref ?? null : undefined}
                 brandLabel={presentation?.display_name ?? copy.appSidebar.brandLabel}
                 homeAriaLabel={copy.appSidebar.homeAriaLabel}

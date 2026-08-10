@@ -254,7 +254,9 @@ function NotificationShell({
                 appearance="media"
                 brandAccentColor={readCommunityPresentation(presentation).branding.accent_color}
                 brandImageSrc={presentationCommunityId ? presentation?.avatar_ref ?? null : undefined}
-                brandLabel={presentation?.display_name ?? copy.appSidebar.brandLabel}
+                brandLabel={presentationCommunityId
+                  ? presentation?.display_name ?? "Community"
+                  : copy.appSidebar.brandLabel}
                 homeAriaLabel={copy.appSidebar.homeAriaLabel}
                 mediaAction={clientReady && !session ? (
                   <Button

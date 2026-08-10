@@ -73,6 +73,9 @@ export function resolveCreatePostPath(route: AppRoute): string | null {
 
 export function resolveMobileBackPath(route: AppRoute): string | null {
   if (route.kind === "community") {
+    // The sovereign thread origin's root is already its top-level destination.
+    // Rendering a back arrow to the same "/" path creates a no-op for direct visitors.
+    if (route.isImportedRoot && route.path === "/") return null;
     return "/";
   }
 

@@ -306,6 +306,11 @@ export interface AppSidebarProps
   side?: UiPlacement;
 }
 
+export function communityBrandInitial(label: string | null | undefined): string {
+  const first = Array.from(label?.trim() ?? "")[0];
+  return first?.toLocaleUpperCase() ?? "C";
+}
+
 export function AppSidebar({
   activeItemId = "home",
   appearance = "default",
@@ -416,6 +421,11 @@ export function AppSidebar({
                 <Avatar
                   className="size-full"
                   fallback={brandLabel ?? copy.appSidebar.brandLabel}
+                  fallbackIcon={(
+                    <Type as="span" variant="label">
+                      {communityBrandInitial(brandLabel)}
+                    </Type>
+                  )}
                   src={brandImageSrc ?? undefined}
                 />
               </span>

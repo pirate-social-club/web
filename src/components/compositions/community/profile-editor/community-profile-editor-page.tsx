@@ -333,7 +333,7 @@ export function CommunityProfileEditorPage({
             <Select value={defaultSurface} onValueChange={(value) => onDefaultSurfaceChange?.(value as "threads" | "videos")}>
               <SelectTrigger id="community-profile-default-surface"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem disabled={!videoFeedEnabled} value="videos">Videos</SelectItem>
+                <SelectItem disabled={!videoFeedEnabled} value="videos">Reels</SelectItem>
                 <SelectItem value="threads">Threads</SelectItem>
               </SelectContent>
             </Select>

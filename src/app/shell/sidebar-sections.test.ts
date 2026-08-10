@@ -12,8 +12,29 @@ import {
   buildVideoPrimaryItems,
   MAX_SIDEBAR_RECENT_COMMUNITIES,
   resolveCreatePostPath,
+  resolveMobileBackPath,
   usesStandaloneRouteShell,
 } from "./sidebar-sections";
+
+describe("resolveMobileBackPath", () => {
+  test("does not render a no-op back control on a sovereign thread root", () => {
+    expect(resolveMobileBackPath({
+      kind: "community",
+      path: "/",
+      communityId: "com_sovereign",
+      importedRootHostname: "community-root",
+      isImportedRoot: true,
+    })).toBeNull();
+  });
+
+  test("keeps canonical community threads connected to global home", () => {
+    expect(resolveMobileBackPath({
+      kind: "community",
+      path: "/c/community/threads",
+      communityId: "com_community",
+    })).toBe("/");
+  });
+});
 
 describe("resolveCreatePostPath", () => {
   test("canonicalizes emoji community handles for submit routes", () => {

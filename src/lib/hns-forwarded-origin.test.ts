@@ -47,7 +47,7 @@ function signedRequest(
 ): Request {
   const timestamp = String(options.timestamp ?? TIMESTAMP_SECONDS);
   const headers = new Headers({
-    "cf-connecting-ip": "173.199.93.117",
+    "cf-connecting-ip": "94.103.168.161",
     ...forwardedHeaders,
     "x-pirate-hns-forwarder-path": "/c/crew?sort=top",
     "x-pirate-hns-forwarder-timestamp": timestamp,
@@ -99,7 +99,7 @@ describe("HNS forwarded origin", () => {
 
   test("does not expand generic forwarded-host beyond signed HNS context", async () => {
     const result = await authenticate(request({
-      "cf-connecting-ip": "173.199.93.117",
+      "cf-connecting-ip": "94.103.168.161",
       "x-forwarded-host": "xn--pokmon-dva",
     }));
     expect(result.rejection).toBe(null);
@@ -135,7 +135,7 @@ describe("HNS forwarded origin", () => {
 
   test("accepts the legacy token from a trusted source during rollout", async () => {
     const result = await authenticate(request({
-      "cf-connecting-ip": "173.199.93.117",
+      "cf-connecting-ip": "94.103.168.161",
       "x-pirate-hns-host": "xn--pokmon-dva",
       "x-pirate-hns-forwarder-token": "legacy-rollout-token",
     }), { HNS_FORWARDER_AUTH_TOKEN: "legacy-rollout-token" });

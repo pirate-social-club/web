@@ -1,4 +1,4 @@
-const DEFAULT_TRUSTED_HNS_FORWARDER_IPS = ["173.199.93.117"];
+const DEFAULT_TRUSTED_HNS_FORWARDER_IPS = ["94.103.168.161"];
 const HNS_APP_HOSTS = new Set(["app.pirate"]);
 const TRUSTED_FORWARDER_HEADER = "x-pirate-hns-trusted-forwarder";
 const FORWARDER_TOKEN_HEADER = "x-pirate-hns-forwarder-token";

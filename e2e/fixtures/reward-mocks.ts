@@ -7,9 +7,23 @@ type RewardPayoutFixture = {
   amount_cents: number;
   recipient_address: string;
   status: "submitted" | "confirmed" | "failed";
+  settlement_stage?: "reserved" | "signed" | "broadcast" | "needs_review" | "confirmed" | "failed";
   settlement_ref: string | null;
   failure_reason: string | null;
 };
+
+function payoutResponse(payout: RewardPayoutFixture) {
+  const settlementStage = payout.settlement_stage ?? (
+    payout.status === "confirmed"
+      ? "confirmed"
+      : payout.status === "failed"
+        ? "failed"
+        : payout.settlement_ref
+          ? "broadcast"
+          : "reserved"
+  );
+  return { ...payout, settlement_stage: settlementStage };
+}
 
 export type RewardMockState = {
   balanceCents: number;
@@ -42,7 +56,9 @@ export function createRewardMockState(overrides: Partial<RewardMockState> = {}):
 }
 
 function summary(state: RewardMockState) {
-  const inFlight = state.latestInFlight?.status === "submitted" ? state.latestInFlight : null;
+  const inFlight = state.latestInFlight?.status === "submitted"
+    ? payoutResponse(state.latestInFlight)
+    : null;
   return {
     chain_id: 84532,
     balance_cents: state.balanceCents,
@@ -66,7 +82,7 @@ function summary(state: RewardMockState) {
 function cashoutResponse(state: RewardMockState) {
   return {
     chain_id: 84532,
-    payout: state.payout,
+    payout: payoutResponse(state.payout),
     balance_cents: state.payout.status === "submitted" ? Math.max(0, state.balanceCents - state.payout.amount_cents) : state.balanceCents,
   };
 }

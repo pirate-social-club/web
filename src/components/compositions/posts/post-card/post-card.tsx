@@ -406,6 +406,14 @@ export function PostCard({
     onMenuAction?.(key);
   };
   const isClickable = Boolean(postHref);
+  // Clicks that end a drag (scrubber seek released off-track, text selection)
+  // land on a common ancestor, so the interactive-element guard cannot see
+  // them. Treat any press that moved past a small threshold as a drag, not a
+  // card click. Only the primary pointer is tracked: secondary touches neither
+  // overwrite its position nor clear it when they cancel, and a cancelled
+  // primary gesture produces no click, so clear its state on pointercancel
+  // rather than letting it go stale.
+  const cardPointerDown = React.useRef<{ pointerId: number; x: number; y: number } | null>(null);
   const shouldShowEventUrl = event
     ? normalizeUrlForComparison(event.eventUrl) !== normalizeUrlForComparison(content.type === "link" ? content.href : undefined)
     : true;
@@ -449,7 +457,22 @@ export function PostCard({
         isClickable && "cursor-pointer hover:bg-muted/20 focus-visible:bg-muted/20",
         className,
       )}
+      onPointerDown={postHref ? (event) => {
+        if (event.isPrimary) {
+          cardPointerDown.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+        }
+      } : undefined}
+      onPointerCancel={postHref ? (event) => {
+        if (cardPointerDown.current?.pointerId === event.pointerId) {
+          cardPointerDown.current = null;
+        }
+      } : undefined}
       onClick={postHref ? (event) => {
+        const down = cardPointerDown.current;
+        cardPointerDown.current = null;
+        if (down && Math.hypot(event.clientX - down.x, event.clientY - down.y) > 6) {
+          return;
+        }
         if (shouldHandleCardNavigation(event)) {
           navigate(postHref);
         }

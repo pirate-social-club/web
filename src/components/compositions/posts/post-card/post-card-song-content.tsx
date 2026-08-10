@@ -701,11 +701,11 @@ export function SongPostContent({ content, className, previewMode }: SongPostCon
       <div>
         <div
           className={cn(
-            "grid items-center gap-3 py-1",
+            "grid items-start gap-x-3 gap-y-2 py-1",
             verifyAgeButton ? "grid-cols-[auto_minmax(0,1fr)_auto]" : "grid-cols-[auto_minmax(0,1fr)]",
           )}
         >
-          <div className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted sm:size-24">
+          <div className="relative row-start-1 grid size-20 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted sm:row-span-2 sm:size-24 sm:self-center">
             {ui.showAgeGatedArtwork ? (
               <>
                 {content.artworkSrc ? (
@@ -738,7 +738,7 @@ export function SongPostContent({ content, className, previewMode }: SongPostCon
             )}
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="col-start-2 row-start-1 min-w-0 self-center sm:self-end">
             <div className="min-w-0">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0 leading-tight">
                 <Type as="span" className="max-w-full truncate font-semibold text-foreground sm:text-lg" variant="body-strong">
@@ -776,31 +776,36 @@ export function SongPostContent({ content, className, previewMode }: SongPostCon
               ) : null}
             </div>
 
-            {!ui.ageGateRequiresProof ? (
-              <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[2.75rem_auto] gap-x-3">
-                {playButton ? (
-                  <div className="row-start-1 flex shrink-0 items-center">
-                    {playButton}
-                  </div>
-                ) : null}
-                <div className="col-start-2 row-start-1 flex min-w-0 items-center">
-                  <Scrubber
-                    ariaLabel={song.trackPosition}
-                    className={!canSeek ? "opacity-100" : undefined}
-                    disabled={!canSeek}
-                    max={scrubberDurationMs}
-                    onChange={(next) => onSeek?.(Math.min(next, scrubberDurationMs))}
-                    showThumb
-                    value={scrubberProgressMs}
-                  />
-                </div>
-                <div className={cn("col-start-2 row-start-2 flex items-center justify-between tabular-nums text-muted-foreground", postCardType.meta)}>
-                  <span>{formatTime(scrubberProgressMs)}</span>
-                  <span>{durationDisplayLabel}</span>
-                </div>
-              </div>
-            ) : null}
           </div>
+
+          {!ui.ageGateRequiresProof ? (
+            <div className="col-span-full row-start-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[2.75rem_auto] gap-x-3 sm:col-span-1 sm:col-start-2 sm:self-start">
+              {playButton ? (
+                <div className="row-start-1 flex shrink-0 items-center">
+                  {playButton}
+                </div>
+              ) : null}
+              <div className="col-start-2 row-start-1 flex min-w-0 items-center" data-post-card-interactive="true">
+                <Scrubber
+                  ariaLabel={song.trackPosition}
+                  ariaValueText={`${formatTime(scrubberProgressMs)} / ${durationDisplayLabel}`}
+                  className={cn("h-full", !canSeek && "opacity-100")}
+                  disabled={!canSeek}
+                  max={scrubberDurationMs}
+                  onChange={(next) => onSeek?.(Math.min(next, scrubberDurationMs))}
+                  showThumb
+                  showValueBubble
+                  step={1000}
+                  value={scrubberProgressMs}
+                  valueLabel={formatTime(scrubberProgressMs)}
+                />
+              </div>
+              <div className={cn("col-start-2 row-start-2 flex items-center justify-between tabular-nums text-muted-foreground", postCardType.meta)}>
+                <span>{formatTime(scrubberProgressMs)}</span>
+                <span>{durationDisplayLabel}</span>
+              </div>
+            </div>
+          ) : null}
 
           {verifyAgeButton ? (
             <div className="flex shrink-0 items-center justify-end">

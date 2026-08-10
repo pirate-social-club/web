@@ -16,9 +16,11 @@ describe("isCanonicalAuthOrigin", () => {
     expect(isCanonicalAuthOrigin("app.pirate")).toBe(true);
   });
 
-  test("returns true for activated wallet-enabled HNS app origins", () => {
-    expect(isCanonicalAuthOrigin("app.dankmeme")).toBe(true);
-    expect(isCanonicalAuthOrigin("app.jazleeuw")).toBe(true);
+  test("requires dynamic authority for established HNS app origins", () => {
+    expect(isCanonicalAuthOrigin("app.dankmeme")).toBe(false);
+    expect(isCanonicalAuthOrigin("app.jazleeuw")).toBe(false);
+    expect(isCanonicalAuthOrigin("app.dankmeme", true)).toBe(true);
+    expect(isCanonicalAuthOrigin("app.jazleeuw", true)).toBe(true);
   });
 
   test("accepts a dynamically authorized imported HNS app origin", () => {

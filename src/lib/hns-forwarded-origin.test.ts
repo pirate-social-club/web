@@ -144,6 +144,18 @@ describe("HNS forwarded origin", () => {
     expect((await authenticate(input)).rejection).toBe("authentication");
   });
 
+  test("rejects a valid captured envelope replayed against a different request path", async () => {
+    const captured = signedRequest({
+      "x-pirate-hns-host": "xn--pokmon-dva",
+      "x-pirate-hns-forwarder-token": "legacy-rollout-token",
+    });
+    const replay = new Request("https://pirate.sc/settings", { headers: captured.headers });
+    expect((await authenticate(replay, {
+      HNS_FORWARDER_AUTH_TOKEN: "legacy-rollout-token",
+      HNS_FORWARDER_HMAC_KEY: FORWARDER_HMAC_KEY,
+    })).rejection).toBe("authentication");
+  });
+
   test("rejects a missing, malformed, or mismatched signature from the trusted ingress", async () => {
     const missing = signedRequest({ "x-pirate-hns-host": "xn--pokmon-dva" });
     missing.headers.delete("x-pirate-hns-forwarder-signature");

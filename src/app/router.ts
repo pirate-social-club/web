@@ -534,6 +534,39 @@ export function matchRouteWithImportedRootCommunity(
   const route = matchRoute(normalized, hostname);
   if (!importedRootCommunityId) return route;
   if ("postId" in route) return { ...route, sovereignCommunityId: importedRootCommunityId };
+  if (importedRootSurface === "app") {
+    if (route.kind === "create-post-global") {
+      return {
+        kind: "create-post",
+        path: route.path,
+        communityId: importedRootCommunityId,
+        sovereignCommunityId: importedRootCommunityId,
+      };
+    }
+    if ("communityId" in route) {
+      if (route.communityId !== null && route.communityId !== importedRootCommunityId) {
+        return { kind: "not-found", path: normalized, sovereignCommunityId: importedRootCommunityId };
+      }
+      return {
+        ...route,
+        communityId: route.communityId ?? importedRootCommunityId,
+        sovereignCommunityId: importedRootCommunityId,
+      };
+    }
+    if (
+      route.kind !== "home"
+      && route.kind !== "live"
+      && route.kind !== "community-feed"
+      && route.kind !== "popular"
+      && route.kind !== "public-profile"
+      && route.kind !== "public-agent"
+      && route.kind !== "your-communities"
+      && route.kind !== "create-community"
+      && route.kind !== "not-found"
+    ) {
+      return { ...route, sovereignCommunityId: importedRootCommunityId };
+    }
+  }
   return { kind: "not-found", path: normalized, sovereignCommunityId: importedRootCommunityId };
 }
 

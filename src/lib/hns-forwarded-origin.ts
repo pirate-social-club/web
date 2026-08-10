@@ -139,7 +139,12 @@ export async function authenticateHnsForwarderRequest(
   const signature = signatureBytes(firstHeaderValue(headers.get(FORWARDER_SIGNATURE_HEADER)));
   const timestamp = firstHeaderValue(headers.get(FORWARDER_TIMESTAMP_HEADER));
   const pathAndQuery = firstHeaderValue(headers.get(FORWARDER_PATH_HEADER));
+  const requestUrl = new URL(request.url);
+  const actualPathAndQuery = `${requestUrl.pathname}${requestUrl.search}`;
   const forwardedToken = firstHeaderValue(headers.get(FORWARDER_TOKEN_HEADER));
+  const signedEnvelopePresent = headers.has(FORWARDER_SIGNATURE_HEADER)
+    || headers.has(FORWARDER_TIMESTAMP_HEADER)
+    || headers.has(FORWARDER_PATH_HEADER);
 
   headers.delete(TRUSTED_FORWARDER_HEADER);
   headers.delete(FORWARDER_TOKEN_HEADER);
@@ -167,6 +172,7 @@ export async function authenticateHnsForwarderRequest(
     && !!forwardedHost
     && !!signature
     && pathAndQuery.startsWith("/")
+    && pathAndQuery === actualPathAndQuery
     && /^\d+$/u.test(timestamp)
     && Number.isSafeInteger(timestampSeconds)
     && Math.abs(nowSeconds - timestampSeconds) <= parseClockSkewSeconds(env);
@@ -182,7 +188,12 @@ export async function authenticateHnsForwarderRequest(
     }
   }
 
-  if (!verified && !legacyVerified) {
+  // During the compatibility window, an old gateway may send only the legacy
+  // token. Once any signed-envelope header is present, however, it must verify
+  // completely; otherwise a bad or replayed HMAC could silently downgrade to
+  // the bearer token that is dual-emitted alongside it.
+  const authenticated = signedEnvelopePresent ? verified : legacyVerified;
+  if (!authenticated) {
     return { rejection: "authentication", request: sanitizedRequest() };
   }
 

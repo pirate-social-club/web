@@ -524,4 +524,48 @@ describe("matchRouteWithImportedRootCommunity", () => {
       });
     }
   });
+
+  test("keeps the app origin functional while binding community actions to its sovereign scope", () => {
+    const communityId = "com_cmt_public_namespace_test";
+    for (const pathname of ["/wallet", "/settings", "/settings/bookings", "/bookings"]) {
+      expect(matchRouteWithImportedRootCommunity(
+        pathname,
+        "app.xn--pokmon-dva",
+        communityId,
+      )).toMatchObject({ path: pathname, sovereignCommunityId: communityId });
+    }
+
+    expectJson(matchRouteWithImportedRootCommunity(
+      "/submit",
+      "app.xn--pokmon-dva",
+      communityId,
+    ), {
+      kind: "create-post",
+      path: "/submit",
+      communityId,
+      sovereignCommunityId: communityId,
+    });
+    expectJson(matchRouteWithImportedRootCommunity(
+      `/c/${communityId}/mod`,
+      "app.xn--pokmon-dva",
+      communityId,
+    ), {
+      kind: "community-moderation-index",
+      path: `/c/${communityId}/mod`,
+      communityId,
+      sovereignCommunityId: communityId,
+    });
+  });
+
+  test("rejects foreign community routes on the app origin", () => {
+    expectJson(matchRouteWithImportedRootCommunity(
+      "/c/com_foreign/mod",
+      "app.xn--pokmon-dva",
+      "com_expected",
+    ), {
+      kind: "not-found",
+      path: "/c/com_foreign/mod",
+      sovereignCommunityId: "com_expected",
+    });
+  });
 });

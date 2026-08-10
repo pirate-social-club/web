@@ -513,7 +513,9 @@ const app = defineApp<AppRequestInfo>([
         route,
       })
       : { communityPreview: null, metadata: null, sovereignMismatch: false };
-    ctx.sovereignRouteMismatch = seoResolution.sovereignMismatch;
+    ctx.sovereignRouteMismatch = seoResolution.sovereignMismatch || Boolean(
+      forwardedCommunityRoot && route.kind === "not-found",
+    );
     ctx.initialPublicCommunity = seoResolution.communityPreview && (
       route.kind === "community"
       || route.kind === "community-landing"

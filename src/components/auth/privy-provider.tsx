@@ -13,6 +13,7 @@ import {
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import {
+  resolvePrivyGlobalDisablePasskeys,
   resolvePrivyLoginMethodState,
   resolvePrivyLoginMethodsAndOrder,
   type PrivyLoginMethod,
@@ -173,6 +174,10 @@ export function PirateAuthProvider({
     () => resolvePrivyLoginMethodsAndOrder(loginMethods),
     [loginMethods],
   );
+  const globalDisablePasskeys = React.useMemo(
+    () => resolvePrivyGlobalDisablePasskeys(loginMethods),
+    [loginMethods],
+  );
   // Most routes keep Privy mounted so existing Privy auth can refresh Pirate sessions.
   // Some unauthenticated entry points should not open or bootstrap auth until asked.
   const shouldLoadPrivy = !!appId && originReady && (
@@ -232,6 +237,9 @@ export function PirateAuthProvider({
     },
     loginMethods,
     loginMethodsAndOrder,
+    // Privy v3 renders its standalone passkey link from app-level state rather
+    // than the runtime login subset, so custom origins must disable that path.
+    globalDisablePasskeys,
     embeddedWallets: {
       ethereum: {
         // Email-first onboarding: every authenticated user should have a wallet-backed identity
@@ -244,7 +252,7 @@ export function PirateAuthProvider({
     },
     defaultChain: supportedChains.defaultChain,
     supportedChains: supportedChains.supportedChains,
-  }), [loginMethods, loginMethodsAndOrder, supportedChains.defaultChain, supportedChains.supportedChains]);
+  }), [globalDisablePasskeys, loginMethods, loginMethodsAndOrder, supportedChains.defaultChain, supportedChains.supportedChains]);
 
   const unloadPrivy = React.useCallback(() => {
     setPendingConnect(false);

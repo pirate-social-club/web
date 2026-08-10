@@ -219,7 +219,8 @@ describe("CommunityNamespaceVerificationPage legacy HNS import", () => {
     expect(view.getByText("Connect Name")).toBeTruthy();
   });
 
-  test("shows secure setup waiting for native route activation", () => {
+  test("shows secure setup waiting for native route activation", async () => {
+    let refreshCount = 0;
     const pendingPrimary: ApiCommunityNamespaceAttachment = {
       namespace_verification: "nv_pending",
       namespace_role: "primary",
@@ -245,6 +246,9 @@ describe("CommunityNamespaceVerificationPage legacy HNS import", () => {
         attachedRouteSlug="fixture-root"
         callbacks={callbacks}
         namespaceAttachments={[pendingPrimary]}
+        onRefreshNamespaces={async () => {
+          refreshCount += 1;
+        }}
       />,
     );
 
@@ -254,9 +258,11 @@ describe("CommunityNamespaceVerificationPage legacy HNS import", () => {
     expect(view.getByLabelText("HNS setup progress").nextElementSibling).toBe(
       view.getByLabelText("HNS setup details"),
     );
+    fireEvent.click(view.getByRole("button", { name: "Check status" }));
+    await waitFor(() => expect(refreshCount).toBe(1));
   });
 
-  test("makes drifted and stale delegations actionable", () => {
+  test("makes drifted and stale delegations actionable", async () => {
     const attentionPrimary: ApiCommunityNamespaceAttachment = {
       namespace_verification: "nv_attention",
       namespace_role: "primary",
@@ -276,12 +282,16 @@ describe("CommunityNamespaceVerificationPage legacy HNS import", () => {
         routing_hard_denied: false,
       },
     };
+    let refreshCount = 0;
     const renderPage = (primary: ApiCommunityNamespaceAttachment) => (
       <CommunityNamespaceVerificationPage
         attachedNamespaceVerificationId="nv_attention"
         attachedRouteSlug="fixture-root"
         callbacks={callbacks}
         namespaceAttachments={[primary]}
+        onRefreshNamespaces={async () => {
+          refreshCount += 1;
+        }}
       />
     );
     const view = render(renderPage(attentionPrimary));
@@ -301,7 +311,8 @@ describe("CommunityNamespaceVerificationPage legacy HNS import", () => {
     }));
 
     expect(view.getByText(/latest delegation check is stale/u)).toBeTruthy();
-    expect(view.getByText(/if this persists, contact Pirate support/u)).toBeTruthy();
+    fireEvent.click(view.getByRole("button", { name: "Check status" }));
+    await waitFor(() => expect(refreshCount).toBe(1));
   });
 
   test("shows attachment management only after the native route is live", () => {

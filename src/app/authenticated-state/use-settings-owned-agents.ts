@@ -72,8 +72,8 @@ export function useSettingsOwnedAgents({
       const result = await api.agents.list();
       if (input?.cancelled?.()) return;
       const items = result.items.map(mapApiUserAgentToOwnedAgent);
-      const statuses = items.map((agent) => agent.status).join(",") || "none";
-      logger.info(`[settings:agents] loaded count=${items.length} active=${items.filter((agent) => agent.status === "active").length} statuses=${statuses}`);
+      const statuses = items.map((agent: SettingsPageProps["agents"]["items"][number]) => agent.status).join(",") || "none";
+      logger.info(`[settings:agents] loaded count=${items.length} active=${items.filter((agent: SettingsPageProps["agents"]["items"][number]) => agent.status === "active").length} statuses=${statuses}`);
       setOwnedAgents(items);
       return items;
     } finally {
@@ -225,7 +225,7 @@ export function useSettingsOwnedAgents({
       }
       void loadOwnedAgents()
         .then(async (items) => {
-          const activeAgent = items?.find((agent) => agent.status === "active");
+          const activeAgent = items?.find((agent: SettingsPageProps["agents"]["items"][number]) => agent.status === "active");
           if (activeAgent && pendingPairingHandleRef.current?.trim()) {
             const pendingHandle = pendingPairingHandleRef.current.trim();
             await handleUpdateAgentHandle(activeAgent.agentId, pendingHandle);

@@ -125,7 +125,7 @@ export function renderPublicProfilePage({
   const createdCommunitiesMarkup = communities.length
     ? communities
         .map(
-          (community) =>
+          (community: PublicProfileResolution["created_communities"][number]) =>
             `<a class="community-link" href="${appOrigin}${buildCommunityPath(community.community, community.route_slug ?? null)}">${escapeHtml(community.display_name)}</a>`,
         )
         .join("")

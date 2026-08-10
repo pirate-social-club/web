@@ -25,6 +25,9 @@ REQUIRED_API_PRODUCTION_SECRETS=(
   MUSIC_PURCHASE_STORY_SETTLEMENT_PRIVATE_KEY
   STORY_ROYALTY_SPG_NFT_CONTRACT
 )
+REQUIRED_WEB_PRODUCTION_SECRETS=(
+  HNS_FORWARDER_HMAC_KEY
+)
 
 HOTFIX=0
 HOTFIX_REASON=""
@@ -140,6 +143,24 @@ console.log(`API production secrets present: ${required.join(", ")}`);
 NODE
 }
 
+check_web_production_secrets() {
+  local secrets_json
+  secrets_json="$(cd "$WEB_DIR" && "$WEB_WRANGLER" secret list --format json)"
+
+  node - "$secrets_json" "${REQUIRED_WEB_PRODUCTION_SECRETS[*]}" <<'NODE'
+const [rawSecrets = "[]", requiredRaw = ""] = process.argv.slice(2);
+const required = requiredRaw.split(/\s+/).filter(Boolean);
+const listedSecrets = JSON.parse(rawSecrets);
+const available = new Set(listedSecrets.map((entry) => entry?.name).filter(Boolean));
+const missing = required.filter((name) => !available.has(name));
+if (missing.length > 0) {
+  console.error(`Missing Web production secrets: ${missing.join(", ")}`);
+  process.exit(1);
+}
+console.log(`Web production secrets present: ${required.join(", ")}`);
+NODE
+}
+
 require_command bun
 require_command curl
 require_command git
@@ -194,6 +215,9 @@ fi
 
 log "check api production secrets"
 check_api_production_secrets
+
+log "check web production secrets"
+check_web_production_secrets
 
 if [[ "$SKIP_BUILD" != "1" ]]; then
   log "build web production bundle"

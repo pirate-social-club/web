@@ -138,6 +138,19 @@ contains a production client id.
 GitHub Actions reads these values from `VITE_PRIVY_APP_ID` and, for production
 only, `VITE_PRIVY_CLIENT_ID` repository or organization secrets/variables.
 
+Required main Web Worker production secret:
+
+```bash
+HNS_FORWARDER_HMAC_KEY
+```
+
+The release script checks this binding before deploying. During the initial
+gateway compatibility window, `HNS_FORWARDER_AUTH_TOKEN` may also be present;
+it is deliberately optional so its scheduled removal does not require a code
+change. `HNS_FORWARDER_HMAC_PREVIOUS_KEY` is optional during key rotation.
+Trusted ingress IPs and maximum clock skew are non-secret values declared in
+`wrangler.jsonc` and reflected in the generated Worker environment types.
+
 Required API staging secrets:
 
 ```bash

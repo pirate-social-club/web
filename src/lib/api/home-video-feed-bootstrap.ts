@@ -8,6 +8,7 @@ interface HomeVideoFeedBootstrapResult {
 interface HomeVideoFeedBootstrap {
   authenticated: boolean;
   locale: string;
+  scopeKey: string;
   promise: Promise<HomeVideoFeedBootstrapResult>;
 }
 
@@ -20,6 +21,7 @@ declare global {
 export function consumeHomeVideoFeedBootstrap(input: {
   authenticated: boolean;
   locale: string;
+  scopeKey?: string;
 }): Promise<HomeFeedResponse> | null {
   if (typeof window === "undefined") return null;
   const bootstrap = window.__pirateHomeVideoFeedBootstrap;
@@ -28,6 +30,7 @@ export function consumeHomeVideoFeedBootstrap(input: {
     !bootstrap
     || bootstrap.authenticated !== input.authenticated
     || bootstrap.locale !== input.locale
+    || bootstrap.scopeKey !== (input.scopeKey ?? "global")
   ) {
     return null;
   }

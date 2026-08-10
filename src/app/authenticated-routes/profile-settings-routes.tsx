@@ -303,7 +303,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   React.useEffect(() => {
     if (!profile || activeTab !== "profile") return;
     const primaryWalletAttachmentId = session?.user.primary_wallet_attachment ?? null;
-    const hasEthereumWallet = walletAttachments.some((wallet) => wallet.chain_namespace === "eip155:1");
+    const hasEthereumWallet = walletAttachments.some((wallet: { chain_namespace: string }) => wallet.chain_namespace === "eip155:1");
     if (!primaryWalletAttachmentId || !hasEthereumWallet) return;
 
     const syncKey = `${profile.id}:${primaryWalletAttachmentId}`;

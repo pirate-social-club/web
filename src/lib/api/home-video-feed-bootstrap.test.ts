@@ -16,6 +16,7 @@ describe("consumeHomeVideoFeedBootstrap", () => {
     window.__pirateHomeVideoFeedBootstrap = {
       authenticated: true,
       locale: "en",
+      scopeKey: "global",
       promise: Promise.resolve({ ok: true, response }),
     };
 
@@ -33,6 +34,7 @@ describe("consumeHomeVideoFeedBootstrap", () => {
     window.__pirateHomeVideoFeedBootstrap = {
       authenticated: false,
       locale: "es",
+      scopeKey: "global",
       promise: Promise.resolve({ ok: true, response }),
     };
     expect(consumeHomeVideoFeedBootstrap({
@@ -43,6 +45,7 @@ describe("consumeHomeVideoFeedBootstrap", () => {
     window.__pirateHomeVideoFeedBootstrap = {
       authenticated: true,
       locale: "en",
+      scopeKey: "global",
       promise: Promise.resolve({ ok: false }),
     };
     await expect(consumeHomeVideoFeedBootstrap({

@@ -12,7 +12,7 @@ import {
 } from "@/lib/community-routing";
 import { extractPublicProfileHost } from "@/lib/public-host";
 
-export type AppRoute =
+type BaseAppRoute =
   | { kind: "home"; path: "/" }
   | { kind: "live"; path: "/live" }
   | { kind: "community-feed"; path: "/feed" }
@@ -28,7 +28,9 @@ export type AppRoute =
   | { kind: "create-post-global"; path: "/submit" }
   | { kind: "community-moderation-index"; path: string; communityId: string }
   | { kind: "community-moderation"; path: string; communityId: string; section: CommunityModerationSectionName }
-  | { kind: "community"; path: string; communityId: string; isImportedRoot?: boolean }
+  | { kind: "community-landing"; path: string; communityId: string }
+  | { kind: "community-videos"; path: string; communityId: string; isImportedRoot?: boolean; importedRootHostname?: string }
+  | { kind: "community"; path: string; communityId: string; isImportedRoot?: boolean; importedRootHostname?: string }
   | { kind: "booking-public"; path: string; communityId: string | null; hostUserId: string }
   | { kind: "booking-checkout"; path: string; communityId: string | null; hostUserId: string }
   | { kind: "booking-management"; path: string; sourceCommunityId?: string | null; role: "host" | "booker" }
@@ -62,12 +64,18 @@ export type AppRoute =
   | { kind: "telegram-study"; path: string; communityId: string; postId: string }
   | { kind: "not-found"; path: string };
 
+export type AppRoute = BaseAppRoute & {
+  /** Community scope asserted by an authenticated HNS forwarder. */
+  sovereignCommunityId?: string;
+};
+
 const NAVIGATION_EVENT = "pirate:navigate";
 const HOME_ROUTE: AppRoute = { kind: "home", path: "/" };
 let cachedPathname = "/";
 let cachedHostname = "";
 let cachedRoute: AppRoute = HOME_ROUTE;
 let cachedImportedRootCommunityId: string | null = null;
+let cachedImportedRootCommunityRoute: string | null = null;
 
 type NavigationGuard = (navigation: { currentHref: string; nextHref: string }) => boolean;
 const navigationGuards = new Set<NavigationGuard>();
@@ -366,9 +374,25 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
     };
   }
 
-  if (segments.length === 2 && segments[0] === "c") {
+  if (segments.length === 3 && segments[0] === "c" && segments[2] === "videos") {
+    return {
+      kind: "community-videos",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  if (segments.length === 3 && segments[0] === "c" && segments[2] === "threads") {
     return {
       kind: "community",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  if (segments.length === 2 && segments[0] === "c") {
+    return {
+      kind: "community-landing",
       path: normalized,
       communityId: decodeURIComponent(segments[1]),
     };
@@ -479,18 +503,80 @@ export function matchRouteWithImportedRootCommunity(
   pathname: string,
   hostname: string | undefined,
   importedRootCommunityId: string | null,
+  importedRootCommunityRoute: string | null = null,
 ): AppRoute {
   const normalized = normalizePathname(pathname);
+  const importedRootHostname = hostname?.trim().toLowerCase().replace(/\.+$/u, "") ?? "";
+  const importedRootLabels = importedRootHostname.split(".").filter(Boolean);
+  const importedRootSurface = importedRootLabels.length === 1
+    ? "apex"
+    : importedRootLabels.length === 2 && importedRootLabels[0] === "app"
+      ? "app"
+      : "unsupported";
+  if (importedRootCommunityId && importedRootSurface === "unsupported") {
+    return {
+      kind: "not-found",
+      path: normalized,
+      sovereignCommunityId: importedRootCommunityId,
+    };
+  }
   if (normalized === "/" && importedRootCommunityId) {
     return {
-      kind: "community",
+      kind: importedRootSurface === "app" ? "community" : "community-videos",
       path: "/",
       communityId: importedRootCommunityId,
       isImportedRoot: true,
+      importedRootHostname: importedRootSurface === "app"
+        ? importedRootLabels.slice(1).join(".")
+        : importedRootHostname,
+      sovereignCommunityId: importedRootCommunityId,
     };
   }
 
-  return matchRoute(normalized, hostname);
+  const route = matchRoute(normalized, hostname);
+  if (!importedRootCommunityId) return route;
+  if ("postId" in route) return { ...route, sovereignCommunityId: importedRootCommunityId };
+  if (importedRootSurface === "app") {
+    if (route.kind === "create-post-global") {
+      return {
+        kind: "create-post",
+        path: route.path,
+        communityId: importedRootCommunityId,
+        sovereignCommunityId: importedRootCommunityId,
+      };
+    }
+    if ("communityId" in route) {
+      const acceptedCommunitySegments = new Set([
+        importedRootCommunityId,
+        importedRootCommunityRoute?.trim() || null,
+      ].filter((value): value is string => Boolean(value)));
+      if (
+        typeof route.communityId === "string"
+        && !acceptedCommunitySegments.has(route.communityId)
+      ) {
+        return { kind: "not-found", path: normalized, sovereignCommunityId: importedRootCommunityId };
+      }
+      return {
+        ...route,
+        communityId: route.communityId ?? importedRootCommunityId,
+        sovereignCommunityId: importedRootCommunityId,
+      };
+    }
+    if (
+      route.kind !== "home"
+      && route.kind !== "live"
+      && route.kind !== "community-feed"
+      && route.kind !== "popular"
+      && route.kind !== "public-profile"
+      && route.kind !== "public-agent"
+      && route.kind !== "your-communities"
+      && route.kind !== "create-community"
+      && route.kind !== "not-found"
+    ) {
+      return { ...route, sovereignCommunityId: importedRootCommunityId };
+    }
+  }
+  return { kind: "not-found", path: normalized, sovereignCommunityId: importedRootCommunityId };
 }
 
 export function canonicalizeRoutePathname(pathname: string, hostname?: string): string {
@@ -502,6 +588,8 @@ export function canonicalizeRoutePathname(pathname: string, hostname?: string): 
 function getCanonicalCommunityRoutePathname(route: AppRoute): string | null {
   if (
     route.kind !== "community" &&
+    route.kind !== "community-landing" &&
+    route.kind !== "community-videos" &&
     route.kind !== "create-post" &&
     route.kind !== "community-moderation-index" &&
     route.kind !== "community-moderation"
@@ -523,6 +611,12 @@ function getCanonicalCommunityRoutePathname(route: AppRoute): string | null {
   }
   if (route.kind === "community-moderation") {
     return `${communityPath}/mod/${route.section}`;
+  }
+  if (route.kind === "community-videos") {
+    return `${communityPath}/videos`;
+  }
+  if (route.kind === "community" && route.path.endsWith("/threads")) {
+    return `${communityPath}/threads`;
   }
 
   return communityPath;
@@ -566,7 +660,12 @@ function getCurrentRoute(): AppRoute {
 
   cachedPathname = pathname;
   cachedHostname = hostname;
-  cachedRoute = matchRouteWithImportedRootCommunity(pathname, hostname, cachedImportedRootCommunityId);
+  cachedRoute = matchRouteWithImportedRootCommunity(
+    pathname,
+    hostname,
+    cachedImportedRootCommunityId,
+    cachedImportedRootCommunityRoute,
+  );
 
   return cachedRoute;
 }
@@ -650,10 +749,13 @@ export function useRoute(
   initialPathname?: string,
   initialHostname?: string,
   importedRootCommunityId?: string | null,
+  importedRootCommunityRoute?: string | null,
 ): AppRoute {
   const initialRoute = React.useMemo(() => {
     const rootCommunityId = importedRootCommunityId?.trim() || null;
+    const rootCommunityRoute = importedRootCommunityRoute?.trim() || null;
     cachedImportedRootCommunityId = rootCommunityId;
+    cachedImportedRootCommunityRoute = rootCommunityRoute;
     if (typeof window !== "undefined") {
       cachedPathname = canonicalizeRoutePathname(
         resolveHydrationPathname({
@@ -665,16 +767,21 @@ export function useRoute(
         window.location.hostname,
       );
       cachedHostname = window.location.hostname.toLowerCase();
-      cachedRoute = matchRouteWithImportedRootCommunity(cachedPathname, cachedHostname, rootCommunityId);
+      cachedRoute = matchRouteWithImportedRootCommunity(
+        cachedPathname,
+        cachedHostname,
+        rootCommunityId,
+        rootCommunityRoute,
+      );
       return cachedRoute;
     }
 
     return initialPathname
-      ? matchRouteWithImportedRootCommunity(initialPathname, initialHostname, rootCommunityId)
+      ? matchRouteWithImportedRootCommunity(initialPathname, initialHostname, rootCommunityId, rootCommunityRoute)
       : rootCommunityId
-        ? { kind: "community" as const, path: "/", communityId: rootCommunityId, isImportedRoot: true }
+        ? matchRouteWithImportedRootCommunity("/", initialHostname, rootCommunityId, rootCommunityRoute)
         : HOME_ROUTE;
-  }, [importedRootCommunityId, initialHostname, initialPathname]);
+  }, [importedRootCommunityId, importedRootCommunityRoute, initialHostname, initialPathname]);
   const hydrationPathname = cachedPathname;
 
   const liveRoute = React.useSyncExternalStore(

@@ -36,7 +36,7 @@ function summarizeConnectedWalletAddresses(wallets: readonly PirateConnectedEvmW
 }
 
 function summarizeSessionWallets(session: StoredSession | null) {
-  return (session?.walletAttachments ?? []).map((wallet) => ({
+  return (session?.walletAttachments ?? []).map((wallet: { wallet_address?: string | null; chain_namespace?: string | null; is_primary?: boolean | null }) => ({
     address: wallet.wallet_address ?? null,
     chainNamespace: wallet.chain_namespace ?? null,
     isPrimary: wallet.is_primary ?? null,

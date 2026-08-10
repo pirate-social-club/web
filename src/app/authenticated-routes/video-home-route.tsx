@@ -11,6 +11,8 @@ import {
   updateHomeFeedEntryPostVote,
 } from "@/app/authenticated-helpers/post-vote";
 import { navigate } from "@/app/router";
+import { CommunitySurfaceSwitch } from "@/app/community-surface-switch";
+import { PublicRouteMessageState } from "@/app/public-route-states";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
 import { useVideoViewerSongCapabilities } from "@/app/authenticated-helpers/use-video-viewer-song-capabilities";
@@ -75,6 +77,7 @@ import { updateSessionUser, useSession } from "@/lib/api/session-store";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { interpolateMessage } from "@/lib/route-messages";
 import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
+import { usePublicCommunityQuery } from "@/lib/query/public-community-query";
 import { videoImpressionAnalyticsProperties } from "@/lib/video-impression-analytics";
 import { useUiLocale } from "@/lib/ui-locale";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
@@ -340,13 +343,20 @@ export function resolveVideoPublisherRelationship(input: {
   };
 }
 
-export function VideoHomePage() {
+export function VideoHomePage({
+  communityId = null,
+  importedRootHostname,
+}: {
+  communityId?: string | null;
+  importedRootHostname?: string;
+} = {}) {
   const api = useApi();
   const queryClient = useQueryClient();
   const hydrated = useClientHydrated();
   const session = useSession();
   const { locale } = useUiLocale();
   const contentLocale = useRouteContentLocale();
+  const publicCommunityQuery = usePublicCommunityQuery(communityId, contentLocale);
   const { copy, localeTag } = useRouteMessages();
   const requestAuth = useRequestAuth();
   const routeCopy = copy.post.route;
@@ -371,9 +381,23 @@ export function VideoHomePage() {
   });
   const capabilityLoader = useVideoViewerSongCapabilities(contentLocale);
   const homeVideoQueryKey = React.useMemo(
-    () => feedKeys.homeVideos({ locale: contentLocale, userId: session?.user.id ?? null }),
-    [contentLocale, session?.user.id],
+    () => feedKeys.homeVideos({
+      communityId,
+      locale: contentLocale,
+      userId: communityId ? null : (session?.user.id ?? null),
+    }),
+    [communityId, contentLocale, session?.user.id],
   );
+  const loadFeedPage = React.useCallback((opts?: {
+    cursor?: string | null;
+    locale?: string | null;
+    sort?: "best" | "new" | "top" | null;
+    timeRange?: string | null;
+  }) => communityId
+    ? api.publicCommunities.listVideos(communityId, opts)
+    : session?.accessToken
+      ? api.feed.videos(opts)
+      : api.feed.publicVideos(opts), [api, communityId, session?.accessToken]);
   const homeVideoQuery = useQuery<HomeVideoFeedPayload>({
     queryKey: homeVideoQueryKey,
     queryFn: async () => EMPTY_HOME_VIDEO_FEED_PAYLOAD,
@@ -551,7 +575,7 @@ export function VideoHomePage() {
     loadingMoreRef.current = false;
     let cancelled = false;
     setError(null);
-    const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
+    const request = loadFeedPage;
 
     // A fresh correlation id per mount: the restored entries were fetched under
     // an id this component no longer holds, and the id is client-generated with
@@ -614,13 +638,15 @@ export function VideoHomePage() {
       }
     };
 
-    const bootstrapKey = `${Boolean(session?.accessToken)}:${contentLocale}`;
+    const bootstrapAuthenticated = communityId ? false : Boolean(session?.accessToken);
+    const bootstrapKey = `${communityId ?? "global"}:${bootstrapAuthenticated}:${contentLocale}`;
     if (bootstrapRequestRef.current?.key !== bootstrapKey) {
       bootstrapRequestRef.current = {
         key: bootstrapKey,
         request: consumeHomeVideoFeedBootstrap({
-          authenticated: Boolean(session?.accessToken),
+          authenticated: bootstrapAuthenticated,
           locale: contentLocale,
+          scopeKey: communityId ?? "global",
         }),
       };
     }
@@ -679,7 +705,7 @@ export function VideoHomePage() {
       cancelled = true;
       if (feedGenerationRef.current === generation) feedGenerationRef.current += 1;
     };
-  }, [api, contentLocale, homeVideoQueryKey, hydrated, queryClient, session?.accessToken, setHomeVideoPayload]);
+  }, [communityId, contentLocale, homeVideoQueryKey, hydrated, loadFeedPage, queryClient, session?.accessToken, setHomeVideoPayload]);
 
   React.useEffect(() => {
     const userIds = entries.flatMap((entry) => {
@@ -843,8 +869,7 @@ export function VideoHomePage() {
     setLoadMoreError(null);
     const generation = feedGenerationRef.current;
     try {
-      const request = session?.accessToken ? api.feed.videos : api.feed.publicVideos;
-      const response = await request({ cursor: nextCursor, locale: contentLocale, sort: "best" });
+      const response = await loadFeedPage({ cursor: nextCursor, locale: contentLocale, sort: "best" });
       if (generation !== feedGenerationRef.current) return;
       const unseenItems = takeUnseenSessionVideos(response.items, (entry) => entry.post.post.id);
       seedPublicThreadQueriesFromFeed({
@@ -871,7 +896,7 @@ export function VideoHomePage() {
     } finally {
       if (generation === feedGenerationRef.current) loadingMoreRef.current = false;
     }
-  }, [api, contentLocale, nextCursor, queryClient, session?.accessToken, setHomeVideoPayload]);
+  }, [contentLocale, loadFeedPage, nextCursor, queryClient, setHomeVideoPayload]);
 
   const resumePagination = React.useCallback(() => {
     if (!pausedPaginationCursor) return;
@@ -1158,8 +1183,40 @@ export function VideoHomePage() {
 
   const surface = resolveVideoHomeSurface({ error, itemCount: items.length, loading });
   if (surface === "loading") return <div className="grid min-h-dvh w-full place-items-center bg-background"><Spinner className="size-6" /></div>;
-  if (surface === "community-feed-error") return <HomePage videoFallbackReason="error" />;
-  if (surface === "community-feed-empty") return <HomePage videoFallbackReason="empty" />;
+  if (surface === "community-feed-error") {
+    if (!communityId) return <HomePage videoFallbackReason="error" />;
+    return (
+      <div className="flex min-h-dvh w-full flex-col items-center bg-background pt-5">
+        <CommunitySurfaceSwitch
+          active="videos"
+          communityId={communityId}
+          importedRootHostname={importedRootHostname}
+          routeSlug={publicCommunityQuery.data?.route_slug}
+        />
+        <PublicRouteMessageState
+          description="This community's video feed could not be loaded. Its threads are still available."
+          title="Video feed unavailable"
+        />
+      </div>
+    );
+  }
+  if (surface === "community-feed-empty") {
+    if (!communityId) return <HomePage videoFallbackReason="empty" />;
+    return (
+      <div className="flex min-h-dvh w-full flex-col items-center bg-background pt-5">
+        <CommunitySurfaceSwitch
+          active="videos"
+          communityId={communityId}
+          importedRootHostname={importedRootHostname}
+          routeSlug={publicCommunityQuery.data?.route_slug}
+        />
+        <PublicRouteMessageState
+          description="This community has not published any videos yet."
+          title="No videos yet"
+        />
+      </div>
+    );
+  }
 
   const commentsPanelCount = commentsPanelCommentCount(items, panelState, commentsAddedByPostId);
   const commentsPanelTitle = commentsPanelCount > 0
@@ -1231,6 +1288,15 @@ export function VideoHomePage() {
         ) : undefined}
       >
         <div className={VIDEO_FEED_STAGE_CLASS} ref={feedFocusRef} tabIndex={-1}>
+      {communityId ? (
+        <CommunitySurfaceSwitch
+          active="videos"
+          className="absolute left-1/2 top-[max(1rem,env(safe-area-inset-top))] z-30 -translate-x-1/2"
+          communityId={communityId}
+          importedRootHostname={importedRootHostname}
+          routeSlug={publicCommunityQuery.data?.route_slug}
+        />
+      ) : null}
       <VideoFeed
         externallyPausedItemId={panelState.kind === "booking" ? panelState.itemId : undefined}
         className="h-full"

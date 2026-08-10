@@ -19,6 +19,7 @@ import type { ExtractedVideoPosterFrame } from "@/components/compositions/posts/
 import { buildAssetListingRequest, buildRoyaltyAllocationRequests } from "@/app/authenticated-helpers/asset-submit";
 import { logger } from "@/lib/logger";
 import { sha256File } from "./file-hash";
+import { assertProgressiveMp4Layout } from "./progressive-mp4";
 import type { SubmitProgressReporter } from "./progress";
 import { uploadMultipartSongArtifact } from "./multipart-song-artifact-upload";
 
@@ -218,6 +219,7 @@ export async function uploadVideoArtifact({
   if (!getArtifactUploadPartSignedUrl || !completeArtifactUploadSession || !abortArtifactUploadSession) {
     throw new Error("Video upload support is not configured.");
   }
+  await assertProgressiveMp4Layout(file);
   const contentHashPromise = sha256File(file);
   const createIntent = () => createArtifactUpload(communityId, {
     artifact_kind: "primary_video",

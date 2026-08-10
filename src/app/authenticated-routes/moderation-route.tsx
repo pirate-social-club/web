@@ -15,7 +15,7 @@ import { CommunityModerationIndexPage as CommunityModerationIndexPageView } from
 import { CommunityModerationQueuePage, type ModerationQueueCaseItem } from "@/components/compositions/community/moderation-queue-page/community-moderation-queue-page";
 import { CommunityModerationShell } from "@/components/compositions/community/moderation-shell/community-moderation-shell";
 import { CommunityRightsReviewQueuePage, type RightsReviewQueueItem } from "@/components/compositions/community/rights-review-queue-page/community-rights-review-queue-page";
-import { CommunityProfileEditorPage } from "@/components/compositions/community/profile-editor/community-profile-editor-page";
+import { CommunityProfileEditorRoute } from "@/app/authenticated-routes/community-profile-editor-route";
 import { CommunityNamespaceVerificationPage } from "@/components/compositions/community/namespace-verification-page/community-namespace-verification-page";
 import { CommunityPricingEditorPage } from "@/components/compositions/community/pricing-editor/community-pricing-editor-page";
 import { CommunityRulesEditorPage } from "@/components/compositions/community/rules-editor/community-rules-editor-page";
@@ -721,49 +721,7 @@ export function CommunityModerationPage({
         loading: state.savingProfile,
         onSave: state.handleSaveProfile,
       });
-      content = (
-        <CommunityProfileEditorPage
-          avatarSrc={state.profileAvatarRemoved ? undefined : (state.community.avatar_ref ?? undefined)}
-          bannerSrc={state.profileBannerRemoved ? undefined : (state.community.banner_ref ?? undefined)}
-          countryCode={state.profileCountryCode}
-          description={state.profileDescription}
-          displayName={state.profileDisplayName}
-          displayNameError={state.profileDisplayNameError}
-          onAvatarRemove={() => {
-            state.setProfileAvatarFile(null);
-            state.setProfileAvatarRemoved(true);
-          }}
-          onAvatarSelect={(file) => {
-            state.setProfileAvatarFile(file);
-            if (file) {
-              state.setProfileAvatarRemoved(false);
-            }
-          }}
-          onBackClick={isMobile ? () => navigate(moderationIndexPath) : undefined}
-          onBannerRemove={() => {
-            state.setProfileBannerFile(null);
-            state.setProfileBannerRemoved(true);
-          }}
-          onBannerSelect={(file) => {
-            state.setProfileBannerFile(file);
-            if (file) {
-              state.setProfileBannerRemoved(false);
-            }
-          }}
-          onCountryCodeChange={state.setProfileCountryCode}
-          onDescriptionChange={state.setProfileDescription}
-          onDisplayNameChange={state.setProfileDisplayName}
-          onSave={state.handleSaveProfile}
-          onStoreLabelChange={state.setProfileStoreLabel}
-          onStoreUrlChange={state.setProfileStoreUrl}
-          pendingAvatarLabel={state.profileAvatarFile?.name}
-          pendingBannerLabel={state.profileBannerFile?.name}
-          saveDisabled={state.savingProfile || !state.profileHasChanges}
-          saveLoading={state.savingProfile}
-          storeLabel={state.profileStoreLabel}
-          storeUrl={state.profileStoreUrl}
-        />
-      );
+      content = <CommunityProfileEditorRoute backPath={moderationIndexPath} mobile={isMobile} state={state} />;
     } else if (section === "rules") {
       setMobileSaveAction({
         disabled: state.rules.length === 0 || state.savingRules,

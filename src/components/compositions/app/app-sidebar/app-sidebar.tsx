@@ -287,6 +287,8 @@ export interface AppSidebarProps
   extends Omit<React.ComponentProps<typeof Sidebar>, "side"> {
   activeItemId?: string;
   appearance?: "default" | "media";
+  brandAccentColor?: string | null;
+  brandImageSrc?: string | null;
   brandLabel?: string;
   className?: string;
   codeItems?: readonly AppSidebarSectionItem[];
@@ -307,6 +309,8 @@ export interface AppSidebarProps
 export function AppSidebar({
   activeItemId = "home",
   appearance = "default",
+  brandAccentColor,
+  brandImageSrc,
   brandLabel,
   className,
   codeItems,
@@ -404,7 +408,20 @@ export function AppSidebar({
             onClick={onHomeClick}
             type="button"
           >
-            <PirateBrandMark className="size-10 shrink-0" decorative={false} />
+            {brandImageSrc !== undefined ? (
+              <span
+                className="size-10 shrink-0 rounded-full border-2"
+                style={brandAccentColor ? { borderColor: brandAccentColor } : undefined}
+              >
+                <Avatar
+                  className="size-full"
+                  fallback={brandLabel ?? copy.appSidebar.brandLabel}
+                  src={brandImageSrc ?? undefined}
+                />
+              </span>
+            ) : (
+              <PirateBrandMark className="size-10 shrink-0" decorative={false} />
+            )}
             <Type as="span" className="font-display uppercase tracking-wide group-data-[collapsible=icon]:hidden" variant="h3">
               {brandLabel ?? copy.appSidebar.brandLabel}
             </Type>

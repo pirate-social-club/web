@@ -74,6 +74,20 @@ export function getDiscoveryContext(input: URL | string): DiscoveryContext {
   };
 }
 
+export function resolveRouteDiscoveryContext(input: {
+  discovery: DiscoveryContext;
+  postId?: string | null;
+  sovereignPresentation: boolean;
+}): DiscoveryContext {
+  return {
+    ...input.discovery,
+    canonicalUrl: input.postId
+      ? `https://pirate.sc/p/${encodeURIComponent(input.postId)}`
+      : input.discovery.canonicalUrl,
+    isIndexable: input.sovereignPresentation ? false : input.discovery.isIndexable,
+  };
+}
+
 export function absoluteUrl(origin: string, path: string): string {
   return new URL(path, origin).toString();
 }

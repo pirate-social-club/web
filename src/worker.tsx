@@ -6,7 +6,9 @@ import type { AppContext, SeoMetadata, ThemeMode } from "@/app/app-context";
 import { COMMUNITY_MODERATION_SECTIONS, SETTINGS_SECTIONS } from "@/app/route-definitions";
 import { LegalDocumentPage } from "@/components/legal/legal-document-page";
 import { Document } from "@/app/document";
-import { matchRoute } from "@/app/router";
+import { communityLandingRedirectResponse } from "@/app/community-landing-redirect";
+import { matchRoute, matchRouteWithImportedRootCommunity } from "@/app/router";
+import { isPostOutsideSovereignScope, mustFailClosedOnSovereignScopeError } from "@/app/sovereign-route-scope";
 import { PRIVACY_POLICY_SOURCE } from "@/legal/privacy-policy";
 import { TERMS_OF_SERVICE_SOURCE } from "@/legal/terms-of-service";
 import { ACCOUNT_DELETION_SOURCE } from "@/legal/account-deletion";
@@ -29,6 +31,7 @@ import {
   buildSitemapResponse,
   buildWebBotAuthDirectoryResponse,
   getDiscoveryContext,
+  resolveRouteDiscoveryContext,
   markdownRequested,
   type WebBotAuthEnv,
 } from "@/lib/agent-discovery";
@@ -36,6 +39,7 @@ import {
   authenticateHnsForwarderRequest,
   resolveEffectiveRequestUrl,
   resolveForwardedCommunityRouteSegment,
+  resolveForwardedCommunityRouteSlug,
   resolveForwardedWalletInteractive,
   type HnsForwardedOriginEnv,
 } from "@/lib/hns-forwarded-origin";
@@ -122,8 +126,17 @@ function buildPublicApiUrl(apiOrigin: string, path: string, locale: UiLocaleCode
   return url.toString();
 }
 
-function buildHomeFeedPreloadUrl(apiOrigin: string, contentLocale: string): string {
-  const url = new URL("/feed/home/videos/public", apiOrigin);
+function buildHomeFeedPreloadUrl(
+  apiOrigin: string,
+  contentLocale: string,
+  communityId?: string | null,
+): string {
+  const url = new URL(
+    communityId
+      ? `/public-communities/${encodeURIComponent(communityId)}/feed/videos`
+      : "/feed/home/videos/public",
+    apiOrigin,
+  );
   url.searchParams.set("locale", contentLocale);
   url.searchParams.set("sort", "best");
   return url.toString();
@@ -156,38 +169,46 @@ async function resolveRouteSeoMetadata(input: {
   locale: UiLocaleCode;
   route: ReturnType<typeof matchRoute>;
   signal?: AbortSignal;
-}): Promise<SeoMetadata | null> {
+}): Promise<{
+  communityPreview?: PublicCommunityPreviewResponse | null;
+  metadata: SeoMetadata | null;
+  sovereignMismatch: boolean;
+}> {
+  const mustVerifySovereignPost = mustFailClosedOnSovereignScopeError(input.route);
   try {
-    if (input.route.kind === "community" || input.route.kind === "telegram-community") {
+    if (
+      input.route.kind === "community"
+      || input.route.kind === "community-landing"
+      || input.route.kind === "community-videos"
+      || input.route.kind === "telegram-community"
+    ) {
       const preview = await fetchPublicJson<PublicCommunityPreviewResponse>(
         input.apiOrigin,
-        `/public-communities/${encodeURIComponent(input.route.communityId)}?preview=seo`,
+        `/public-communities/${encodeURIComponent(input.route.communityId)}${input.route.kind === "community-landing" ? "" : "?preview=seo"}`,
         input.locale,
         input.signal,
       );
-      return buildCommunitySeoMetadata({
-        appOrigin: input.appOrigin,
-        locale: input.locale,
-        preview,
-      });
+      return {
+        communityPreview: preview,
+        metadata: buildCommunitySeoMetadata({
+          appOrigin: input.appOrigin,
+          locale: input.locale,
+          preview,
+        }),
+        sovereignMismatch: false,
+      };
     }
 
-    if (
-      input.route.kind === "post"
-      || input.route.kind === "telegram-post"
-      || input.route.kind === "live-room"
-      || input.route.kind === "post-replay-draft"
-      || input.route.kind === "post-karaoke"
-      || input.route.kind === "post-study"
-      || input.route.kind === "post-streaks"
-      || input.route.kind === "crosspost"
-    ) {
+    if ("postId" in input.route) {
       const postResponse = await fetchPublicJson<PublicPostResponse>(
         input.apiOrigin,
         `/public-posts/${encodeURIComponent(input.route.postId)}`,
         input.locale,
         input.signal,
       );
+      if (isPostOutsideSovereignScope(input.route, postResponse.post.community)) {
+        return { metadata: null, sovereignMismatch: true };
+      }
       let community: PublicCommunityPreviewResponse | null = postResponse.community ?? null;
       const communityId = postResponse.post.community;
       if (!community && communityId) {
@@ -202,12 +223,15 @@ async function resolveRouteSeoMetadata(input: {
           community = null;
         }
       }
-      return buildPostSeoMetadata({
-        appOrigin: input.appOrigin,
-        community,
-        locale: input.locale,
-        postResponse,
-      });
+      return {
+        metadata: buildPostSeoMetadata({
+          appOrigin: input.appOrigin,
+          community,
+          locale: input.locale,
+          postResponse,
+        }),
+        sovereignMismatch: false,
+      };
     }
 
     if (input.route.kind === "public-profile") {
@@ -217,11 +241,14 @@ async function resolveRouteSeoMetadata(input: {
         input.locale,
         input.signal,
       );
-      return buildProfileSeoMetadata({
-        appOrigin: input.appOrigin,
-        locale: input.locale,
-        resolution,
-      });
+      return {
+        metadata: buildProfileSeoMetadata({
+          appOrigin: input.appOrigin,
+          locale: input.locale,
+          resolution,
+        }),
+        sovereignMismatch: false,
+      };
     }
 
     if (input.route.kind === "public-agent") {
@@ -231,17 +258,20 @@ async function resolveRouteSeoMetadata(input: {
         input.locale,
         input.signal,
       );
-      return buildAgentSeoMetadata({
-        appOrigin: input.appOrigin,
-        locale: input.locale,
-        resolution,
-      });
+      return {
+        metadata: buildAgentSeoMetadata({
+          appOrigin: input.appOrigin,
+          locale: input.locale,
+          resolution,
+        }),
+        sovereignMismatch: false,
+      };
     }
   } catch {
-    return null;
+    return { metadata: null, sovereignMismatch: mustVerifySovereignPost };
   }
 
-  return null;
+  return { metadata: null, sovereignMismatch: false };
 }
 
 async function resolveRouteSeoMetadataWithinBudget(input: {
@@ -249,7 +279,11 @@ async function resolveRouteSeoMetadataWithinBudget(input: {
   appOrigin: string;
   locale: UiLocaleCode;
   route: ReturnType<typeof matchRoute>;
-}): Promise<SeoMetadata | null> {
+}): Promise<{
+  communityPreview?: PublicCommunityPreviewResponse | null;
+  metadata: SeoMetadata | null;
+  sovereignMismatch: boolean;
+}> {
   const controller = new AbortController();
   let timedOut = false;
   const metadataPromise = resolveRouteSeoMetadata({
@@ -257,11 +291,19 @@ async function resolveRouteSeoMetadataWithinBudget(input: {
     signal: controller.signal,
   });
   let timeout: ReturnType<typeof setTimeout> | null = null;
-  const timeoutPromise = new Promise<null>((resolve) => {
+  const timeoutPromise = new Promise<{
+    communityPreview: null;
+    metadata: null;
+    sovereignMismatch: boolean;
+  }>((resolve) => {
     timeout = setTimeout(() => {
       timedOut = true;
       controller.abort();
-      resolve(null);
+      resolve({
+        communityPreview: null,
+        metadata: null,
+        sovereignMismatch: mustFailClosedOnSovereignScopeError(input.route),
+      });
     }, SEO_METADATA_TIMEOUT_MS);
   });
   try {
@@ -277,18 +319,25 @@ async function resolveRouteSeoMetadataWithinBudget(input: {
 }
 
 function AppRoutePage(requestInfo: AppRequestInfo) {
+  if (requestInfo.ctx.sovereignRouteMismatch) {
+    return new Response("Not found", {
+      headers: { "cache-control": "no-store", "content-type": "text/plain; charset=utf-8" },
+      status: 404,
+    });
+  }
   const url = new URL(requestInfo.ctx.effectiveUrl ?? requestInfo.request.url);
-  const importedRootCommunityId = url.pathname === "/"
-    ? resolveForwardedCommunityRouteSegment(requestInfo.request)
-    : null;
+  const importedRootCommunityId = resolveForwardedCommunityRouteSegment(requestInfo.request);
+  const importedRootCommunityRoute = resolveForwardedCommunityRouteSlug(requestInfo.request);
 
   return (
     <PirateApp
       initialDir={requestInfo.ctx.dir}
       initialHost={url.hostname}
       initialImportedRootCommunityId={importedRootCommunityId}
+      initialImportedRootCommunityRoute={importedRootCommunityRoute}
       initialLocale={requestInfo.ctx.locale}
       initialPath={url.pathname}
+      initialPublicCommunity={requestInfo.ctx.initialPublicCommunity}
     />
   );
 }
@@ -422,26 +471,28 @@ const app = defineApp<AppRequestInfo>([
     const discovery = getDiscoveryContext(effectiveUrl);
     const hasLocaleOverride = resolveLocaleQueryOverride(url) !== null;
     const locale = resolveRequestUiLocale(url, request.headers.get("accept-language"));
-    const forwardedCommunityRoot = url.pathname === "/"
-      ? resolveForwardedCommunityRouteSegment(request)
-      : null;
-    const route = forwardedCommunityRoot
-      ? {
-          kind: "community" as const,
-          path: "/" as const,
-          communityId: forwardedCommunityRoot,
-          isImportedRoot: true,
-        }
-      : matchRoute(url.pathname, url.hostname);
+    const forwardedCommunityRoot = resolveForwardedCommunityRouteSegment(request);
+    const forwardedCommunityRoute = resolveForwardedCommunityRouteSlug(request);
+    const route = matchRouteWithImportedRootCommunity(
+      url.pathname,
+      url.hostname,
+      forwardedCommunityRoot,
+      forwardedCommunityRoute,
+    );
+    const routeDiscovery = resolveRouteDiscoveryContext({
+      discovery,
+      postId: route.kind === "post" ? route.postId : null,
+      sovereignPresentation: forwardedCommunityRoot !== null,
+    });
     const expectsEntitySeoMetadata = shouldAlwaysResolveEntitySeo(route);
 
     ctx.effectiveUrl = effectiveUrl;
-    ctx.appOrigin = discovery.appOrigin;
-    ctx.canonicalUrl = discovery.canonicalUrl;
+    ctx.appOrigin = routeDiscovery.appOrigin;
+    ctx.canonicalUrl = routeDiscovery.canonicalUrl;
     ctx.expectsEntitySeoMetadata = expectsEntitySeoMetadata;
     ctx.locale = locale;
     ctx.dir = resolveLocaleDirection(locale);
-    ctx.homeFeedPreloadUrl = route.kind === "home"
+    ctx.homeFeedPreloadUrl = route.kind === "home" || route.kind === "community-videos"
       ? buildHomeFeedPreloadUrl(
         // The bootstrap script runs in the visitor's browser, so it must use
         // the API origin reachable from the effective host: HNS visitors
@@ -452,23 +503,45 @@ const app = defineApp<AppRequestInfo>([
           uiLocale: locale,
           browserLocales: acceptLanguageTags(request.headers.get("accept-language")),
         }),
+        route.kind === "community-videos" ? route.communityId : null,
       )
       : undefined;
     ctx.walletInteractive = resolveForwardedWalletInteractive(request);
-    ctx.isIndexable = discovery.isIndexable;
-    const seoMetadata = shouldResolveSeoMetadata(request, route)
+    ctx.homeFeedScopeKey = route.kind === "community-videos" ? route.communityId : "global";
+    ctx.isIndexable = routeDiscovery.isIndexable;
+    const mustVerifySovereignPost = Boolean(
+      route.sovereignCommunityId && "postId" in route,
+    );
+    const seoResolution = shouldResolveSeoMetadata(request, route) || mustVerifySovereignPost
       ? await resolveRouteSeoMetadataWithinBudget({
         apiOrigin: discovery.apiOrigin,
         appOrigin: discovery.appOrigin,
         locale,
         route,
       })
+      : { communityPreview: null, metadata: null, sovereignMismatch: false };
+    ctx.sovereignRouteMismatch = seoResolution.sovereignMismatch || Boolean(
+      forwardedCommunityRoot && route.kind === "not-found",
+    );
+    ctx.initialPublicCommunity = seoResolution.communityPreview && (
+      route.kind === "community"
+      || route.kind === "community-landing"
+      || route.kind === "community-videos"
+      || route.kind === "telegram-community"
+    )
+      ? { identifier: route.communityId, preview: seoResolution.communityPreview }
       : null;
-    ctx.seoMetadata = seoMetadata
+    if (route.kind === "community-landing" && seoResolution.communityPreview) {
+      return communityLandingRedirectResponse({
+        effectiveUrl,
+        preview: seoResolution.communityPreview,
+      });
+    }
+    ctx.seoMetadata = seoResolution.metadata
       ? {
-          ...seoMetadata,
+          ...seoResolution.metadata,
           url: buildOpenGraphUrl(
-            discovery.canonicalUrl,
+            routeDiscovery.canonicalUrl,
             locale,
             hasLocaleOverride,
             resolveSharePreviewQueryValue(url),
@@ -479,7 +552,7 @@ const app = defineApp<AppRequestInfo>([
       response.headers.set("cache-control", "no-store");
     }
     ctx.theme = parseThemeCookie(request.headers.get("cookie"));
-    applyDiscoveryHeaders(response.headers, discovery);
+    applyDiscoveryHeaders(response.headers, routeDiscovery);
     applySecurityHeaders(response.headers, rw.nonce, {
       dev: import.meta.env.DEV,
       reportOnly: import.meta.env.VITE_CSP_REPORT_ONLY === "true",
@@ -543,6 +616,8 @@ const app = defineApp<AppRequestInfo>([
     ...COMMUNITY_MODERATION_SECTIONS.map((section) =>
       route(`/c/:communityId/mod/${section}`, AppRoutePage)
     ),
+    route("/c/:communityId/videos", AppRoutePage),
+    route("/c/:communityId/threads", AppRoutePage),
     route("/c/:communityId", AppRoutePage),
     route("/p/:postId/crosspost", AppRoutePage),
     route("/p/:postId/live", AppRoutePage),
@@ -576,7 +651,22 @@ const app = defineApp<AppRequestInfo>([
 
 export default {
   async fetch(request: Request, env: Env, cf: AppRequestInfo["cf"]) {
-    request = await authenticateHnsForwarderRequest(request, env as HnsForwardedOriginEnv);
+    const forwarderAuthentication = await authenticateHnsForwarderRequest(
+      request,
+      env as HnsForwardedOriginEnv,
+    );
+    request = forwarderAuthentication.request;
+    if (forwarderAuthentication.rejection) {
+      return new Response(
+        forwarderAuthentication.rejection === "configuration"
+          ? "HNS forwarder authentication is not configured."
+          : "HNS forwarder authentication failed.",
+        {
+          status: forwarderAuthentication.rejection === "configuration" ? 503 : 403,
+          headers: { "content-type": "text/plain; charset=utf-8" },
+        },
+      );
+    }
     const initialEffectiveUrl = resolveEffectiveRequestUrl(request);
     const initialPathname = new URL(initialEffectiveUrl).pathname;
     if (initialPathname === "/__version") {

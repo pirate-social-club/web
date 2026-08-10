@@ -1,4 +1,5 @@
 import type { UiDirection, UiLocaleCode } from "@/lib/ui-locale-core";
+import type { CommunityPreview } from "@pirate/api-contracts";
 
 export type ThemeMode = "dark" | "light" | "system";
 
@@ -21,9 +22,12 @@ export type AppContext = {
   effectiveUrl?: string;
   expectsEntitySeoMetadata?: boolean;
   homeFeedPreloadUrl?: string;
+  homeFeedScopeKey?: string;
   isIndexable?: boolean;
+  initialPublicCommunity?: { identifier: string; preview: CommunityPreview } | null;
   locale?: UiLocaleCode;
   seoMetadata?: SeoMetadata | null;
+  sovereignRouteMismatch?: boolean;
   theme?: ThemeMode;
   walletInteractive?: boolean;
 };

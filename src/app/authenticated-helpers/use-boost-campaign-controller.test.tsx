@@ -13,8 +13,10 @@ let connectedWallets: Array<{ address: string }> = [];
 let reconnectEthereumWallet: (() => void) | null = null;
 let reconnectCalls = 0;
 let campaignStatus = "draft";
+let campaignEligibleActivity: "study" | "karaoke" | "either" = "karaoke";
 let confirmStatus = "confirmed";
 let confirmError: unknown = null;
+let confirmGate: Promise<void> | null = null;
 let createError: unknown = null;
 let getCampaignError: unknown = null;
 let quoteError: unknown = null;
@@ -41,7 +43,7 @@ const campaign = () => ({
   song_artifact_bundle: "sab_test",
   song_owner: "usr_owner",
   status: campaignStatus,
-  eligible_activity: "karaoke",
+  eligible_activity: campaignEligibleActivity,
   min_score_bps: 7000,
   daily_reward_cents: 100,
   payout_tiers: campaignTiers,
@@ -124,6 +126,8 @@ const fakeApi = {
     },
     confirmFundingQuote: async () => {
       calls.confirm += 1;
+      const gate = confirmGate;
+      if (gate) await gate;
       if (confirmError) throw confirmError;
       if (confirmStatus === "confirmed") campaignStatus = "active";
       return { ...quote(), status: confirmStatus };
@@ -250,8 +254,10 @@ beforeEach(() => {
   createKeys.length = 0;
   quoteKeys.length = 0;
   campaignStatus = "draft";
+  campaignEligibleActivity = "karaoke";
   confirmStatus = "confirmed";
   confirmError = null;
+  confirmGate = null;
   createError = null;
   getCampaignError = null;
   quoteError = null;
@@ -580,24 +586,50 @@ describe("useBoostCampaignController", () => {
     expect(calls.confirm).toBe(2);
   });
 
-  test("recovers a submitted transfer after reload and only retries confirmation", async () => {
+  test("recovered funding confirms immediately, resumes bounded polling, and cannot send again", async () => {
     connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
-    confirmError = new Error("confirmation timed out");
-    const firstView = renderHook(() => useBoostCampaignController(input()));
-    await waitFor(() => expect(firstView.result.current.canBoost).toBe(true));
-    act(() => firstView.result.current.openBoost());
-    act(() => firstView.result.current.sheetProps.onConfirm?.());
-    await waitFor(() => expect(firstView.result.current.sheetProps.state).toBe("quote"));
-    act(() => firstView.result.current.sheetProps.onConfirm?.());
-    await waitFor(() => expect(firstView.result.current.sheetProps.state).toBe("awaiting-finality"));
-    firstView.unmount();
+    const transactionHash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    localStorage.setItem("pirate_reward_pending_funding:com_test:pst_test", JSON.stringify({
+      campaignId: "rcp_test",
+      quote: quote(),
+      transactionHash,
+    }));
+    confirmStatus = "confirming";
+    let poll: (() => void) | undefined;
+    let pollRegistrations = 0;
+    const originalSetInterval = window.setInterval;
+    window.setInterval = ((callback: TimerHandler, delay?: number) => {
+      if (delay === 10_000) {
+        poll = callback as () => void;
+        pollRegistrations += 1;
+        return 71;
+      }
+      return originalSetInterval(callback, delay);
+    }) as typeof window.setInterval;
+    try {
+      const view = renderHook(() => useBoostCampaignController(input()));
+      await waitFor(() => expect(calls.confirm).toBe(1));
+      expect(view.result.current.sheetProps.state).toBe("awaiting-finality");
+      expect(view.result.current.sheetProps.transactionHash).toBe(transactionHash);
+      expect(pollRegistrations).toBe(1);
+      expect(calls.transfer).toBe(0);
 
-    confirmError = null;
-    const restoredView = renderHook(() => useBoostCampaignController(input()));
-    // Recovery confirms the persisted hash immediately; no sheet interaction.
-    await waitFor(() => expect(restoredView.result.current.sheetProps.state).toBe("active"));
-    expect(calls.transfer).toBe(1);
-    expect(calls.confirm).toBe(2);
+      act(() => {
+        view.result.current.sheetProps.onOpenChange?.(false);
+        view.result.current.openBoost();
+        view.result.current.sheetProps.onConfirm?.();
+      });
+      expect(view.result.current.sheetProps.state).toBe("awaiting-finality");
+      expect(calls.transfer).toBe(0);
+
+      confirmStatus = "confirmed";
+      act(() => poll?.());
+      await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
+      expect(calls.confirm).toBe(2);
+      expect(calls.transfer).toBe(0);
+    } finally {
+      window.setInterval = originalSetInterval;
+    }
   });
 
   test("reuses persisted create and quote idempotency keys after lost responses", async () => {
@@ -675,7 +707,7 @@ describe("useBoostCampaignController", () => {
     expect(view.result.current.sheetProps.errorMessage).toBeUndefined();
   });
 
-  test("automatically rechecks recovered finality after the submitted-funding sheet closes", async () => {
+  test("polling reaches active without a click, stays single-flight, and cleans up on transition", async () => {
     connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
     confirmStatus = "confirming";
     let activated = 0;
@@ -688,29 +720,86 @@ describe("useBoostCampaignController", () => {
     act(() => view.result.current.sheetProps.onConfirm?.());
     await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
     let poll: (() => void) | undefined;
+    let releaseConfirmation: (() => void) | undefined;
+    const scheduledTimers: number[] = [];
+    const clearedTimers: number[] = [];
     const originalSetInterval = window.setInterval;
+    const originalClearInterval = window.clearInterval;
     window.setInterval = ((callback: TimerHandler, delay?: number) => {
       if (delay === 10_000) {
         poll = callback as () => void;
-        return 1;
+        const timer = 73 + scheduledTimers.length;
+        scheduledTimers.push(timer);
+        return timer;
       }
       return originalSetInterval(callback, delay);
     }) as typeof window.setInterval;
+    window.clearInterval = ((timer?: number) => {
+      if (timer != null && scheduledTimers.includes(timer)) {
+        clearedTimers.push(timer);
+        return;
+      }
+      originalClearInterval(timer);
+    }) as typeof window.clearInterval;
     try {
       act(() => view.result.current.sheetProps.onConfirm?.());
       await waitFor(() => expect(view.result.current.sheetProps.state).toBe("awaiting-finality"));
       expect(poll).toBeDefined();
       act(() => view.result.current.sheetProps.onOpenChange?.(false));
       confirmStatus = "confirmed";
-      await act(async () => poll?.());
+      confirmGate = new Promise<void>((resolve) => { releaseConfirmation = resolve; });
+      act(() => {
+        poll?.();
+        poll?.();
+      });
+      await waitFor(() => expect(calls.confirm).toBe(2));
+      expect(view.result.current.sheetProps.state).toBe("awaiting-finality");
+      expect(calls.confirm).toBe(2);
+      act(() => releaseConfirmation?.());
       await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
+      expect(scheduledTimers.length).toBeGreaterThan(0);
+      expect(clearedTimers.toSorted()).toEqual(scheduledTimers.toSorted());
     } finally {
       window.setInterval = originalSetInterval;
+      window.clearInterval = originalClearInterval;
     }
 
     expect(calls.transfer).toBe(1);
     expect(calls.confirm).toBe(2);
     expect(activated).toBe(1);
+  });
+
+  test("awaiting-finality polling timer is cleaned up on unmount", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    confirmStatus = "confirming";
+    const clearedTimers: number[] = [];
+    const originalSetInterval = window.setInterval;
+    const originalClearInterval = window.clearInterval;
+    window.setInterval = ((callback: TimerHandler, delay?: number) => {
+      if (delay === 10_000) return 79;
+      return originalSetInterval(callback, delay);
+    }) as typeof window.setInterval;
+    window.clearInterval = ((timer?: number) => {
+      if (timer === 79) {
+        clearedTimers.push(timer);
+        return;
+      }
+      originalClearInterval(timer);
+    }) as typeof window.clearInterval;
+    try {
+      const view = renderHook(() => useBoostCampaignController(input()));
+      await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+      act(() => view.result.current.openBoost());
+      act(() => view.result.current.sheetProps.onConfirm?.());
+      await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+      act(() => view.result.current.sheetProps.onConfirm?.());
+      await waitFor(() => expect(view.result.current.sheetProps.state).toBe("awaiting-finality"));
+      view.unmount();
+      expect(clearedTimers).toEqual([79]);
+    } finally {
+      window.setInterval = originalSetInterval;
+      window.clearInterval = originalClearInterval;
+    }
   });
 
   test("a transient exhausted read remains pending instead of becoming a failure", async () => {
@@ -761,6 +850,13 @@ describe("useBoostCampaignController", () => {
     expect(view.result.current.sheetProps.canRestartFunding).toBe(false);
     expect(view.result.current.sheetProps.errorMessage).toContain("support review");
     expect(calls.confirm).toBe(1);
+    act(() => {
+      view.result.current.sheetProps.onConfirm?.();
+      view.result.current.sheetProps.onRefresh?.();
+      view.result.current.sheetProps.onRetry?.();
+    });
+    expect(calls.confirm).toBe(1);
+    expect(calls.transfer).toBe(1);
   });
 
   test("rehydrates the funding transaction from the server campaign resource", async () => {
@@ -772,6 +868,21 @@ describe("useBoostCampaignController", () => {
     expect(view.result.current.sheetProps.explorerTxUrl).toContain(
       "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     );
+    expect(view.result.current.sheetProps.transactionHash).toBe(
+      "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    );
+  });
+
+  test("persisted Study activity remains authoritative over the local draft", async () => {
+    campaignEligibleActivity = "study";
+    campaignStatus = "active";
+    localStorage.setItem("pirate_reward_campaign:com_test:pst_test", "rcp_test");
+    const view = renderHook(() => useBoostCampaignController(input()));
+
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
+    expect(view.result.current.sheetProps.eligibleActivity).toBe("study");
+    act(() => view.result.current.sheetProps.onEligibleActivityChange?.("karaoke"));
+    expect(view.result.current.sheetProps.eligibleActivity).toBe("study");
   });
 
   test("server activation clears a stale terminal browser record", async () => {
@@ -838,16 +949,21 @@ describe("useBoostCampaignController", () => {
 
   test("an ended campaign does not prevent funding a new campaign", async () => {
     campaignStatus = "ended";
+    campaignEligibleActivity = "study";
     localStorage.setItem("pirate_reward_campaign:com_test:pst_test", "rcp_ended");
     const view = renderHook(() => useBoostCampaignController(input()));
 
     await waitFor(() => expect(view.result.current.canBoost).toBe(true));
     act(() => view.result.current.openBoost());
+    expect(view.result.current.sheetProps.state).toBe("compose");
+    act(() => view.result.current.sheetProps.onEligibleActivityChange?.("karaoke"));
+    expect(view.result.current.sheetProps.eligibleActivity).toBe("karaoke");
     act(() => view.result.current.sheetProps.onConfirm?.());
 
     await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
     expect(calls.create).toBe(1);
     expect(calls.quote).toBe(1);
+    expect(lastCreateBody?.eligible_activity).toBe("karaoke");
   });
 });
 

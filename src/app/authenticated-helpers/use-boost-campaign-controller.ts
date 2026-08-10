@@ -664,7 +664,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     confirmFundingInFlight.current = true;
     setBusy(true);
     setErrorMessage(undefined);
-    setSheetState("confirming");
+    setSheetState((current) => current === "awaiting-finality" ? current : "confirming");
     try {
       const funding = await api.rewards.confirmFundingQuote(
         targetCampaign.id,
@@ -787,7 +787,12 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
 
   const hasCampaignConflict = Boolean(input.activeCampaignId) || blocksNewCampaign(campaign);
   const thirdPartyBlocked = !input.viewerIsAuthor && !policyAllowed;
-  const activityUnavailable = Boolean(capabilities && !capabilities.eligible_activities.includes(eligibleActivity));
+  const authoritativeEligibleActivity = sheetState === "compose"
+    ? eligibleActivity
+    : campaign?.eligible_activity ?? eligibleActivity;
+  const activityUnavailable = Boolean(
+    capabilities && !capabilities.eligible_activities.includes(authoritativeEligibleActivity),
+  );
 
   const handleConfirm = React.useCallback(() => {
     if (busy || hasCampaignConflict || thirdPartyBlocked || activityUnavailable) return;
@@ -875,7 +880,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       dailyRewardDisplayLabel: plan?.dailyRewardCents != null
         ? formatUsdLabel(plan.dailyRewardCents / 100) ?? undefined
         : undefined,
-      eligibleActivity,
+      eligibleActivity: authoritativeEligibleActivity,
       eligibleActivities: capabilities?.eligible_activities,
       identityProvider,
       endsAtLabel: campaign
@@ -916,6 +921,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       onEligibleActivityChange: setEligibleActivity,
       onOpenChange: setSheetOpen,
       onRefresh: () => {
+        if (sheetState === "funding-review") return;
         if (campaign && quote && transactionHash) {
           void confirmSubmittedFunding(campaign, quote, transactionHash);
           return;
@@ -934,6 +940,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
           void createQuote(campaign);
           return;
         }
+        if (sheetState === "funding-review") return;
         if (campaign && quote && transactionHash) {
           void confirmSubmittedFunding(campaign, quote, transactionHash);
           return;
@@ -956,6 +963,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       retryLabel: transactionHash ? "Check funding" : "Start again",
       state: sheetState,
       supportReference,
+      transactionHash: transactionHash ?? campaignFundingTxHash(campaign) ?? undefined,
       walletMismatch,
       walletMismatchReason: connectedWallets.length > 0 ? "different-wallet" : "no-wallet",
     } satisfies BoostCampaignSheetProps,

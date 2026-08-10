@@ -11,9 +11,11 @@ import { inputVariants } from "./input";
 
 type CopyFieldProps = React.ComponentProps<"div"> & {
   value: string;
+  /** Preserve the full value on screen instead of truncating it to one line. */
+  wrap?: boolean;
 };
 
-function CopyField({ className, ref, value, ...props }: CopyFieldProps) {
+function CopyField({ className, ref, value, wrap = false, ...props }: CopyFieldProps) {
   const [copied, setCopied] = React.useState(false);
   const { schedule: scheduleCopiedReset } = useResettableTimeout();
 
@@ -33,7 +35,12 @@ function CopyField({ className, ref, value, ...props }: CopyFieldProps) {
       ref={ref}
       {...props}
     >
-      <div className="min-w-0 flex-1 truncate font-mono text-base text-foreground select-all">
+      <div
+        className={cn(
+          "min-w-0 flex-1 font-mono text-base text-foreground select-all",
+          wrap ? "break-all whitespace-normal" : "truncate",
+        )}
+      >
         {value}
       </div>
       <Button

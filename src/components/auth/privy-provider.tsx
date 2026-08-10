@@ -12,7 +12,11 @@ import {
 } from "viem/chains";
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
-import type { PrivyLoginMethod } from "@/lib/auth/privy-login-methods";
+import {
+  resolvePrivyLoginMethodState,
+  resolvePrivyLoginMethodsAndOrder,
+  type PrivyLoginMethod,
+} from "@/lib/auth/privy-login-methods";
 import type {
   PirateSponsoredIntentRequest,
   PirateSponsoredIntentSender,
@@ -22,7 +26,6 @@ import {
   useSession,
 } from "@/lib/api/session-store";
 import { trackAnalyticsEvent } from "@/lib/analytics";
-import { resolvePrivyLoginMethodState } from "@/lib/auth/privy-login-methods";
 import { logger } from "@/lib/logger";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 import { readViteEnv } from "@/lib/vite-env";
@@ -166,6 +169,10 @@ export function PirateAuthProvider({
     () => resolvePrivyLoginMethodState(loginHostname),
     [loginHostname],
   );
+  const loginMethodsAndOrder = React.useMemo(
+    () => resolvePrivyLoginMethodsAndOrder(loginMethods),
+    [loginMethods],
+  );
   // Most routes keep Privy mounted so existing Privy auth can refresh Pirate sessions.
   // Some unauthenticated entry points should not open or bootstrap auth until asked.
   const shouldLoadPrivy = !!appId && originReady && (
@@ -224,6 +231,7 @@ export function PirateAuthProvider({
       walletList: ["detected_ethereum_wallets", "metamask", "coinbase_wallet", "wallet_connect"],
     },
     loginMethods,
+    loginMethodsAndOrder,
     embeddedWallets: {
       ethereum: {
         // Email-first onboarding: every authenticated user should have a wallet-backed identity
@@ -236,7 +244,7 @@ export function PirateAuthProvider({
     },
     defaultChain: supportedChains.defaultChain,
     supportedChains: supportedChains.supportedChains,
-  }), [loginMethods, supportedChains.defaultChain, supportedChains.supportedChains]);
+  }), [loginMethods, loginMethodsAndOrder, supportedChains.defaultChain, supportedChains.supportedChains]);
 
   const unloadPrivy = React.useCallback(() => {
     setPendingConnect(false);

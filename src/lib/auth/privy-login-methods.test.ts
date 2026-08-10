@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  resolvePrivyLoginMethodsAndOrder,
   resolvePrivyLoginMethods,
   resolvePrivyLoginMethodState,
 } from "./privy-login-methods";
@@ -39,6 +40,17 @@ describe("resolvePrivyLoginMethods", () => {
     expect(resolvePrivyLoginMethodState("app.community-root")).toEqual({
       loginMethods: ["wallet", "email", "google", "twitter"],
       originReady: true,
+    });
+  });
+
+  test("keeps passkey only in the canonical ordered login configuration", () => {
+    expect(resolvePrivyLoginMethodsAndOrder(resolvePrivyLoginMethods("pirate.sc"))).toEqual({
+      primary: ["wallet", "email", "google", "twitter"],
+      overflow: ["passkey"],
+    });
+    expect(resolvePrivyLoginMethodsAndOrder(resolvePrivyLoginMethods("app.community-root"))).toEqual({
+      primary: ["wallet", "email", "google", "twitter"],
+      overflow: [],
     });
   });
 });

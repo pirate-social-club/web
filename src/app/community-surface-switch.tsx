@@ -5,6 +5,10 @@ import { cn } from "@/lib/utils";
 
 export type CommunitySurface = "threads" | "videos";
 
+export function communitySurfaceLabel(surface: CommunitySurface): string {
+  return surface === "videos" ? "Reels" : "Threads";
+}
+
 export function communitySurfaceHrefs(input: {
   communityId: string;
   importedRootHostname?: string | null;
@@ -60,7 +64,7 @@ export function CommunitySurfaceSwitch({
           href={hrefs[surface]}
           key={surface}
         >
-          {surface === "videos" ? "Videos" : "Threads"}
+          {communitySurfaceLabel(surface)}
         </a>
       ))}
     </nav>

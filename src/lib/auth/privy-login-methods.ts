@@ -44,6 +44,12 @@ export function resolvePrivyLoginMethodsAndOrder(
   };
 }
 
+export function resolvePrivyGlobalDisablePasskeys(
+  loginMethods: PrivyLoginMethod[],
+): boolean {
+  return !loginMethods.includes("passkey");
+}
+
 export function resolvePrivyLoginMethodState(
   hostname: string | null,
 ): PrivyLoginMethodState {

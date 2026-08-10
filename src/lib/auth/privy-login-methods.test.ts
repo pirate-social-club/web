@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  resolvePrivyGlobalDisablePasskeys,
   resolvePrivyLoginMethodsAndOrder,
   resolvePrivyLoginMethods,
   resolvePrivyLoginMethodState,
@@ -52,5 +53,10 @@ describe("resolvePrivyLoginMethods", () => {
       primary: ["wallet", "email", "google", "twitter"],
       overflow: [],
     });
+  });
+
+  test("disables Privy's standalone passkey link outside the Pirate RP", () => {
+    expect(resolvePrivyGlobalDisablePasskeys(resolvePrivyLoginMethods("pirate.sc"))).toBe(false);
+    expect(resolvePrivyGlobalDisablePasskeys(resolvePrivyLoginMethods("app.community-root"))).toBe(true);
   });
 });

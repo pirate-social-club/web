@@ -12,6 +12,8 @@ import {
 
 const FORWARDER_HMAC_KEY = "test-forwarder-hmac-key-with-32-bytes";
 const PREVIOUS_FORWARDER_HMAC_KEY = "previous-forwarder-hmac-key-32-bytes";
+const TRUSTED_FORWARDER_IP = "94.103.168.161";
+const RETIRED_FORWARDER_IP = "173.199.93.117";
 const TIMESTAMP_SECONDS = 1_770_000_000;
 const NOW_MS = TIMESTAMP_SECONDS * 1_000;
 const env: HnsForwardedOriginEnv = {
@@ -47,7 +49,7 @@ function signedRequest(
 ): Request {
   const timestamp = String(options.timestamp ?? TIMESTAMP_SECONDS);
   const headers = new Headers({
-    "cf-connecting-ip": "94.103.168.161",
+    "cf-connecting-ip": TRUSTED_FORWARDER_IP,
     ...forwardedHeaders,
     "x-pirate-hns-forwarder-path": "/c/crew?sort=top",
     "x-pirate-hns-forwarder-timestamp": timestamp,
@@ -83,6 +85,14 @@ describe("HNS forwarded origin", () => {
     expect(resolveEffectiveRequestUrl(result.request)).toBe("https://pirate.sc/c/crew?sort=top");
   });
 
+  test("does not trust the retired gateway source address", async () => {
+    const input = signedRequest({ "x-pirate-hns-host": "app.pirate" });
+    input.headers.set("cf-connecting-ip", RETIRED_FORWARDER_IP);
+    const result = await authenticate(input);
+    expect(result.rejection).toBe(null);
+    expect(resolveEffectiveRequestUrl(result.request)).toBe("https://pirate.sc/c/crew?sort=top");
+  });
+
   test("uses signed first-party profiles, imported roots, and imported subdomains", async () => {
     for (const host of ["captain.pirate", "xn--pokmon-dva", "v.xn--pokmon-dva"]) {
       const result = await authenticate(signedRequest({ "x-pirate-hns-host": host }));
@@ -99,7 +109,7 @@ describe("HNS forwarded origin", () => {
 
   test("does not expand generic forwarded-host beyond signed HNS context", async () => {
     const result = await authenticate(request({
-      "cf-connecting-ip": "94.103.168.161",
+      "cf-connecting-ip": TRUSTED_FORWARDER_IP,
       "x-forwarded-host": "xn--pokmon-dva",
     }));
     expect(result.rejection).toBe(null);
@@ -135,7 +145,7 @@ describe("HNS forwarded origin", () => {
 
   test("accepts the legacy token from a trusted source during rollout", async () => {
     const result = await authenticate(request({
-      "cf-connecting-ip": "94.103.168.161",
+      "cf-connecting-ip": TRUSTED_FORWARDER_IP,
       "x-pirate-hns-host": "xn--pokmon-dva",
       "x-pirate-hns-forwarder-token": "legacy-rollout-token",
     }), { HNS_FORWARDER_AUTH_TOKEN: "legacy-rollout-token" });

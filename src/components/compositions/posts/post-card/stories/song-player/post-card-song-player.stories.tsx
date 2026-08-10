@@ -9,7 +9,7 @@ const meta = {
   parameters: {
     layout: "centered",
   },
-} satisfies Meta<typeof PostCard>;
+} satisfies Meta<typeof SongPostContent>;
 
 export default meta;
 

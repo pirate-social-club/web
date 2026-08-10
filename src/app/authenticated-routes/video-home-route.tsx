@@ -384,7 +384,7 @@ export function VideoHomePage({
     () => feedKeys.homeVideos({
       communityId,
       locale: contentLocale,
-      userId: communityId ? null : session?.user.id ?? null,
+      userId: session?.user.id ?? null,
     }),
     [communityId, contentLocale, session?.user.id],
   );
@@ -394,7 +394,9 @@ export function VideoHomePage({
     sort?: "best" | "new" | "top" | null;
     timeRange?: string | null;
   }) => communityId
-    ? api.publicCommunities.listVideos(communityId, opts)
+    ? session?.accessToken
+      ? api.communities.listVideos(communityId, opts)
+      : api.publicCommunities.listVideos(communityId, opts)
     : session?.accessToken
       ? api.feed.videos(opts)
       : api.feed.publicVideos(opts), [api, communityId, session?.accessToken]);

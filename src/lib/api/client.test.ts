@@ -1447,13 +1447,11 @@ describe("ApiClient media uploads", () => {
     }
   });
 
-  test("loads authenticated community posts with locale and sort params", async () => {
-    let request: Request | null = null;
+  test("loads authenticated community feeds with locale and sort params", async () => {
+    const requests: Request[] = [];
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-      request = input instanceof Request ? input : new Request(input, init);
-      return Response.json({
-        items: [],
-      });
+      requests.push(input instanceof Request ? input : new Request(input, init));
+      return Response.json({ items: [], next_cursor: null, top_communities: [] });
     };
 
     try {
@@ -1468,11 +1466,17 @@ describe("ApiClient media uploads", () => {
         locale: "nl",
         sort: "top",
       });
+      await client.communities.listVideos("cmt_test", {
+        cursor: "v2:1000:25",
+        locale: "nl",
+        sort: "best",
+      });
 
-      const capturedRequest = requireRequest(request);
-      expect(capturedRequest.method).toBe("GET");
-      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/posts?has_event=true&limit=100&locale=nl&sort=top");
-      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+      expect(requests[0]?.method).toBe("GET");
+      expect(requests[0]?.url).toBe("http://pirate.test/communities/cmt_test/posts?has_event=true&limit=100&locale=nl&sort=top");
+      expect(requests[0]?.headers.get("authorization")).toBe("Bearer session-token");
+      expect(requests[1]?.url).toBe("http://pirate.test/communities/cmt_test/feed/videos?cursor=v2%3A1000%3A25&locale=nl&sort=best");
+      expect(requests[1]?.headers.get("authorization")).toBe("Bearer session-token");
     } finally {
       globalThis.fetch = originalFetch;
     }

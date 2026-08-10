@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 
+import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
 interface ScrubberProps {
@@ -71,13 +72,14 @@ export function Scrubber({
         )}
       />
       {bubbleVisible ? (
-        <span
+        <Type
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-[calc(50%+0.75rem)] z-20 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 font-medium tabular-nums text-background shadow-md"
+          className="pointer-events-none absolute bottom-[calc(50%+0.75rem)] z-20 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 tabular-nums text-background shadow-md"
           style={{ left: `clamp(2.25rem, ${progressPercent}%, calc(100% - 2.25rem))` }}
+          variant="label"
         >
           {valueLabel}
-        </span>
+        </Type>
       ) : null}
     </SliderPrimitive.Root>
   );

@@ -29,6 +29,16 @@ const config: StorybookConfig = {
       },
     },
   },
+  viteFinal: async (viteConfig) => ({
+    ...viteConfig,
+    server: {
+      ...viteConfig.server,
+      watch: {
+        ...(viteConfig.server?.watch ?? {}),
+        ignored: ["**/.tmp/**", "**/worktrees/**"],
+      },
+    },
+  }),
 };
 
 export default config;

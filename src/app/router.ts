@@ -75,6 +75,7 @@ let cachedPathname = "/";
 let cachedHostname = "";
 let cachedRoute: AppRoute = HOME_ROUTE;
 let cachedImportedRootCommunityId: string | null = null;
+let cachedImportedRootCommunityRoute: string | null = null;
 
 type NavigationGuard = (navigation: { currentHref: string; nextHref: string }) => boolean;
 const navigationGuards = new Set<NavigationGuard>();
@@ -502,6 +503,7 @@ export function matchRouteWithImportedRootCommunity(
   pathname: string,
   hostname: string | undefined,
   importedRootCommunityId: string | null,
+  importedRootCommunityRoute: string | null = null,
 ): AppRoute {
   const normalized = normalizePathname(pathname);
   const importedRootHostname = hostname?.trim().toLowerCase().replace(/\.+$/u, "") ?? "";
@@ -544,7 +546,14 @@ export function matchRouteWithImportedRootCommunity(
       };
     }
     if ("communityId" in route) {
-      if (route.communityId !== null && route.communityId !== importedRootCommunityId) {
+      const acceptedCommunitySegments = new Set([
+        importedRootCommunityId,
+        importedRootCommunityRoute?.trim() || null,
+      ].filter((value): value is string => Boolean(value)));
+      if (
+        typeof route.communityId === "string"
+        && !acceptedCommunitySegments.has(route.communityId)
+      ) {
         return { kind: "not-found", path: normalized, sovereignCommunityId: importedRootCommunityId };
       }
       return {
@@ -651,7 +660,12 @@ function getCurrentRoute(): AppRoute {
 
   cachedPathname = pathname;
   cachedHostname = hostname;
-  cachedRoute = matchRouteWithImportedRootCommunity(pathname, hostname, cachedImportedRootCommunityId);
+  cachedRoute = matchRouteWithImportedRootCommunity(
+    pathname,
+    hostname,
+    cachedImportedRootCommunityId,
+    cachedImportedRootCommunityRoute,
+  );
 
   return cachedRoute;
 }
@@ -735,10 +749,13 @@ export function useRoute(
   initialPathname?: string,
   initialHostname?: string,
   importedRootCommunityId?: string | null,
+  importedRootCommunityRoute?: string | null,
 ): AppRoute {
   const initialRoute = React.useMemo(() => {
     const rootCommunityId = importedRootCommunityId?.trim() || null;
+    const rootCommunityRoute = importedRootCommunityRoute?.trim() || null;
     cachedImportedRootCommunityId = rootCommunityId;
+    cachedImportedRootCommunityRoute = rootCommunityRoute;
     if (typeof window !== "undefined") {
       cachedPathname = canonicalizeRoutePathname(
         resolveHydrationPathname({
@@ -750,16 +767,21 @@ export function useRoute(
         window.location.hostname,
       );
       cachedHostname = window.location.hostname.toLowerCase();
-      cachedRoute = matchRouteWithImportedRootCommunity(cachedPathname, cachedHostname, rootCommunityId);
+      cachedRoute = matchRouteWithImportedRootCommunity(
+        cachedPathname,
+        cachedHostname,
+        rootCommunityId,
+        rootCommunityRoute,
+      );
       return cachedRoute;
     }
 
     return initialPathname
-      ? matchRouteWithImportedRootCommunity(initialPathname, initialHostname, rootCommunityId)
+      ? matchRouteWithImportedRootCommunity(initialPathname, initialHostname, rootCommunityId, rootCommunityRoute)
       : rootCommunityId
-        ? matchRouteWithImportedRootCommunity("/", initialHostname, rootCommunityId)
+        ? matchRouteWithImportedRootCommunity("/", initialHostname, rootCommunityId, rootCommunityRoute)
         : HOME_ROUTE;
-  }, [importedRootCommunityId, initialHostname, initialPathname]);
+  }, [importedRootCommunityId, importedRootCommunityRoute, initialHostname, initialPathname]);
   const hydrationPathname = cachedPathname;
 
   const liveRoute = React.useSyncExternalStore(

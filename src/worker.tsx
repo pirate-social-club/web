@@ -39,6 +39,7 @@ import {
   authenticateHnsForwarderRequest,
   resolveEffectiveRequestUrl,
   resolveForwardedCommunityRouteSegment,
+  resolveForwardedCommunityRouteSlug,
   type HnsForwardedOriginEnv,
 } from "@/lib/hns-forwarded-origin";
 import { resolveBrowserReachableApiOrigin } from "@/lib/api/hns-hostname";
@@ -325,12 +326,14 @@ function AppRoutePage(requestInfo: AppRequestInfo) {
   }
   const url = new URL(requestInfo.ctx.effectiveUrl ?? requestInfo.request.url);
   const importedRootCommunityId = resolveForwardedCommunityRouteSegment(requestInfo.request);
+  const importedRootCommunityRoute = resolveForwardedCommunityRouteSlug(requestInfo.request);
 
   return (
     <PirateApp
       initialDir={requestInfo.ctx.dir}
       initialHost={url.hostname}
       initialImportedRootCommunityId={importedRootCommunityId}
+      initialImportedRootCommunityRoute={importedRootCommunityRoute}
       initialLocale={requestInfo.ctx.locale}
       initialPath={url.pathname}
       initialPublicCommunity={requestInfo.ctx.initialPublicCommunity}
@@ -468,10 +471,12 @@ const app = defineApp<AppRequestInfo>([
     const hasLocaleOverride = resolveLocaleQueryOverride(url) !== null;
     const locale = resolveRequestUiLocale(url, request.headers.get("accept-language"));
     const forwardedCommunityRoot = resolveForwardedCommunityRouteSegment(request);
+    const forwardedCommunityRoute = resolveForwardedCommunityRouteSlug(request);
     const route = matchRouteWithImportedRootCommunity(
       url.pathname,
       url.hostname,
       forwardedCommunityRoot,
+      forwardedCommunityRoute,
     );
     const routeDiscovery = resolveRouteDiscoveryContext({
       discovery,

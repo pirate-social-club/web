@@ -327,16 +327,23 @@ function NotificationShell({
 export function PirateAppShell({
   initialHost,
   initialImportedRootCommunityId,
+  initialImportedRootCommunityRoute,
   initialPublicCommunity,
   initialPath,
 }: {
   initialHost?: string;
   initialImportedRootCommunityId?: string | null;
+  initialImportedRootCommunityRoute?: string | null;
   initialPublicCommunity?: InitialPublicCommunity | null;
   initialPath?: string;
 }) {
   const { locale } = useUiLocale();
-  const route = useRoute(initialPath, initialHost, initialImportedRootCommunityId);
+  const route = useRoute(
+    initialPath,
+    initialHost,
+    initialImportedRootCommunityId,
+    initialImportedRootCommunityRoute,
+  );
   const session = useSession();
   const effectiveLocale = locale;
   const effectiveDir = resolveLocaleDirection(effectiveLocale);

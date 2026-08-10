@@ -242,3 +242,12 @@ export function resolveForwardedCommunityRouteSegment(
 
   return normalized;
 }
+
+export function resolveForwardedCommunityRouteSlug(request: Request): string | null {
+  const normalized = request.headers.get("x-pirate-hns-community-route")
+    ?.split(",")[0]?.trim() ?? "";
+  if (!normalized || !isTrustedForwarder(request)) {
+    return null;
+  }
+  return normalized;
+}

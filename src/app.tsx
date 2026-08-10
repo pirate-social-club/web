@@ -9,6 +9,7 @@ export function PirateApp({
   initialDir = "ltr",
   initialHost,
   initialImportedRootCommunityId,
+  initialImportedRootCommunityRoute,
   initialLocale = "en",
   initialPublicCommunity,
   initialPath,
@@ -16,6 +17,7 @@ export function PirateApp({
   initialDir?: UiDirection;
   initialHost?: string;
   initialImportedRootCommunityId?: string | null;
+  initialImportedRootCommunityRoute?: string | null;
   initialLocale?: UiLocaleCode;
   initialPublicCommunity?: InitialPublicCommunity | null;
   initialPath?: string;
@@ -25,6 +27,7 @@ export function PirateApp({
       <PirateAppShell
         initialHost={initialHost}
         initialImportedRootCommunityId={initialImportedRootCommunityId}
+        initialImportedRootCommunityRoute={initialImportedRootCommunityRoute}
         initialPublicCommunity={initialPublicCommunity}
         initialPath={initialPath}
       />

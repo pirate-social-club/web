@@ -527,11 +527,28 @@ describe("matchRouteWithImportedRootCommunity", () => {
 
   test("keeps the app origin functional while binding community actions to its sovereign scope", () => {
     const communityId = "com_cmt_public_namespace_test";
+    const communityRoute = "crew";
     for (const pathname of ["/wallet", "/settings", "/settings/bookings", "/bookings"]) {
       expect(matchRouteWithImportedRootCommunity(
         pathname,
         "app.xn--pokmon-dva",
         communityId,
+        communityRoute,
+      )).toMatchObject({ path: pathname, sovereignCommunityId: communityId });
+    }
+
+    for (const pathname of [
+      "/c/crew/mod",
+      "/c/crew/submit",
+      "/c/crew/bookings",
+      "/c/crew/threads",
+      "/c/crew/videos",
+    ]) {
+      expect(matchRouteWithImportedRootCommunity(
+        pathname,
+        "app.xn--pokmon-dva",
+        communityId,
+        communityRoute,
       )).toMatchObject({ path: pathname, sovereignCommunityId: communityId });
     }
 
@@ -539,6 +556,7 @@ describe("matchRouteWithImportedRootCommunity", () => {
       "/submit",
       "app.xn--pokmon-dva",
       communityId,
+      communityRoute,
     ), {
       kind: "create-post",
       path: "/submit",
@@ -546,13 +564,14 @@ describe("matchRouteWithImportedRootCommunity", () => {
       sovereignCommunityId: communityId,
     });
     expectJson(matchRouteWithImportedRootCommunity(
-      `/c/${communityId}/mod`,
+      "/c/crew/mod",
       "app.xn--pokmon-dva",
       communityId,
+      communityRoute,
     ), {
       kind: "community-moderation-index",
-      path: `/c/${communityId}/mod`,
-      communityId,
+      path: "/c/crew/mod",
+      communityId: communityRoute,
       sovereignCommunityId: communityId,
     });
   });
@@ -562,6 +581,7 @@ describe("matchRouteWithImportedRootCommunity", () => {
       "/c/com_foreign/mod",
       "app.xn--pokmon-dva",
       "com_expected",
+      "expected-route",
     ), {
       kind: "not-found",
       path: "/c/com_foreign/mod",

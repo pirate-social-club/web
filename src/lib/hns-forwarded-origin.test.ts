@@ -5,6 +5,7 @@ import {
   authenticateHnsForwarderRequest,
   resolveEffectiveRequestUrl,
   resolveForwardedCommunityRouteSegment,
+  resolveForwardedCommunityRouteSlug,
   type HnsForwardedOriginEnv,
 } from "./hns-forwarded-origin";
 
@@ -113,6 +114,7 @@ describe("HNS forwarded origin", () => {
     }));
     expect(result.rejection).toBe(null);
     expect(resolveForwardedCommunityRouteSegment(result.request)).toBe("com_cmt_public_namespace_test");
+    expect(resolveForwardedCommunityRouteSlug(result.request)).toBe("xn--pokmon-dva");
   });
 
   test("matches the gateway's fixed interoperability vector", async () => {

@@ -21,6 +21,7 @@ import {
   useSession,
 } from "@/lib/api/session-store";
 import { trackAnalyticsEvent } from "@/lib/analytics";
+import { resolvePrivyLoginMethods } from "@/lib/auth/privy-login-methods";
 import { logger } from "@/lib/logger";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 import { readViteEnv } from "@/lib/vite-env";
@@ -206,6 +207,13 @@ export function PirateAuthProvider({
     };
   }, [networkConfig]);
 
+  const loginMethods = React.useMemo(
+    () => resolvePrivyLoginMethods(
+      typeof window === "undefined" ? "" : window.location.hostname,
+    ),
+    [],
+  );
+
   const privyConfig = React.useMemo(() => ({
     appearance: {
       accentColor: "#d97706",
@@ -215,7 +223,7 @@ export function PirateAuthProvider({
       showWalletLoginFirst: false,
       walletList: ["detected_ethereum_wallets", "metamask", "coinbase_wallet", "wallet_connect"],
     },
-    loginMethods: ["wallet", "email", "google", "twitter", "passkey"],
+    loginMethods,
     embeddedWallets: {
       ethereum: {
         // Email-first onboarding: every authenticated user should have a wallet-backed identity
@@ -228,7 +236,7 @@ export function PirateAuthProvider({
     },
     defaultChain: supportedChains.defaultChain,
     supportedChains: supportedChains.supportedChains,
-  }), [supportedChains.defaultChain, supportedChains.supportedChains]);
+  }), [loginMethods, supportedChains.defaultChain, supportedChains.supportedChains]);
 
   const unloadPrivy = React.useCallback(() => {
     setPendingConnect(false);

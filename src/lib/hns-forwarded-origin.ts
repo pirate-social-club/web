@@ -2,10 +2,24 @@ const DEFAULT_TRUSTED_HNS_FORWARDER_IPS = ["173.199.93.117"];
 const HNS_APP_HOSTS = new Set(["app.pirate"]);
 const TRUSTED_FORWARDER_HEADER = "x-pirate-hns-trusted-forwarder";
 const FORWARDER_TOKEN_HEADER = "x-pirate-hns-forwarder-token";
+const FORWARDER_SIGNATURE_HEADER = "x-pirate-hns-forwarder-signature";
+const FORWARDER_TIMESTAMP_HEADER = "x-pirate-hns-forwarder-timestamp";
+const FORWARDER_SIGNATURE_VERSION = "v1";
+const DEFAULT_MAX_CLOCK_SKEW_SECONDS = 300;
+const MAX_CONFIGURABLE_CLOCK_SKEW_SECONDS = 3_600;
+const MIN_FORWARDER_HMAC_KEY_BYTES = 32;
+const encoder = new TextEncoder();
 
 export type HnsForwardedOriginEnv = {
   HNS_FORWARDER_TRUSTED_IPS?: string;
-  HNS_FORWARDER_AUTH_TOKEN?: string;
+  HNS_FORWARDER_HMAC_KEY?: string;
+  HNS_FORWARDER_HMAC_PREVIOUS_KEY?: string;
+  HNS_FORWARDER_MAX_CLOCK_SKEW_SECONDS?: string;
+};
+
+export type HnsForwarderAuthenticationResult = {
+  rejection: "authentication" | "configuration" | null;
+  request: Request;
 };
 
 function normalizeHost(value: string | null): string | null {
@@ -32,55 +46,130 @@ function parseTrustedIps(env: HnsForwardedOriginEnv): Set<string> {
   return new Set(configured && configured.length > 0 ? configured : DEFAULT_TRUSTED_HNS_FORWARDER_IPS);
 }
 
-function isTrustedForwarder(request: Request, env: HnsForwardedOriginEnv): boolean {
-  if (request.headers.get(TRUSTED_FORWARDER_HEADER) === "1") {
-    return true;
-  }
-
+function isTrustedForwarderSource(request: Request, env: HnsForwardedOriginEnv): boolean {
   const connectingIp = request.headers.get("cf-connecting-ip")?.trim();
   return !!connectingIp && parseTrustedIps(env).has(connectingIp);
 }
 
-async function secretsMatch(provided: string, expected: string): Promise<boolean> {
-  const encoder = new TextEncoder();
-  const [providedHash, expectedHash] = await Promise.all([
-    crypto.subtle.digest("SHA-256", encoder.encode(provided)),
-    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
-  ]);
-  const workerSubtle = crypto.subtle as SubtleCrypto & {
-    timingSafeEqual?: (first: ArrayBuffer, second: ArrayBuffer) => boolean;
-  };
-  if (typeof workerSubtle.timingSafeEqual === "function") {
-    return workerSubtle.timingSafeEqual(providedHash, expectedHash);
-  }
+function isTrustedForwarder(request: Request): boolean {
+  return request.headers.get(TRUSTED_FORWARDER_HEADER) === "1";
+}
 
-  // Bun's Web Crypto implementation does not expose the Workers extension used
-  // above, so keep local tests on the same fixed-length, non-short-circuit path.
-  const providedBytes = new Uint8Array(providedHash);
-  const expectedBytes = new Uint8Array(expectedHash);
-  let mismatch = 0;
-  for (let index = 0; index < providedBytes.length; index += 1) {
-    mismatch |= providedBytes[index]! ^ expectedBytes[index]!;
+function firstHeaderValue(value: string | null): string {
+  return value?.split(",")[0]?.trim() ?? "";
+}
+
+function canonicalizeForwarderContext(input: {
+  request: Request;
+  host: string;
+  timestamp: string;
+}): string {
+  const url = new URL(input.request.url);
+  return JSON.stringify([
+    "pirate-hns-forwarder-v1",
+    input.timestamp,
+    input.request.method.toUpperCase(),
+    input.host,
+    `${url.pathname}${url.search}`,
+    firstHeaderValue(input.request.headers.get("x-pirate-hns-root")),
+    firstHeaderValue(input.request.headers.get("x-pirate-hns-community-id")),
+    firstHeaderValue(input.request.headers.get("x-pirate-hns-community-route")),
+    firstHeaderValue(input.request.headers.get("x-pirate-hns-subdomain")),
+  ]);
+}
+
+function parseClockSkewSeconds(env: HnsForwardedOriginEnv): number {
+  const configured = Number(env.HNS_FORWARDER_MAX_CLOCK_SKEW_SECONDS);
+  if (!Number.isInteger(configured) || configured < 1) {
+    return DEFAULT_MAX_CLOCK_SKEW_SECONDS;
   }
-  return mismatch === 0;
+  return Math.min(configured, MAX_CONFIGURABLE_CLOCK_SKEW_SECONDS);
+}
+
+function isValidHmacKey(value: string): boolean {
+  return encoder.encode(value).byteLength >= MIN_FORWARDER_HMAC_KEY_BYTES;
+}
+
+function signatureBytes(value: string): Uint8Array<ArrayBuffer> | null {
+  const match = value.match(new RegExp(`^${FORWARDER_SIGNATURE_VERSION}=([0-9a-f]{64})$`, "u"));
+  if (!match?.[1]) return null;
+  const bytes = new Uint8Array(32);
+  for (let index = 0; index < bytes.length; index += 1) {
+    bytes[index] = Number.parseInt(match[1].slice(index * 2, index * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+async function verifyForwarderSignature(input: {
+  canonical: string;
+  secret: string;
+  signature: Uint8Array<ArrayBuffer>;
+}): Promise<boolean> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(input.secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["verify"],
+  );
+  return crypto.subtle.verify("HMAC", key, input.signature, encoder.encode(input.canonical));
 }
 
 export async function authenticateHnsForwarderRequest(
   request: Request,
   env: HnsForwardedOriginEnv = {},
-): Promise<Request> {
+  nowMs: number = Date.now(),
+): Promise<HnsForwarderAuthenticationResult> {
   const headers = new Headers(request.headers);
-  const token = env.HNS_FORWARDER_AUTH_TOKEN?.trim();
-  const forwardedToken = headers.get(FORWARDER_TOKEN_HEADER)?.trim();
+  const rawForwardedHost = headers.get("x-pirate-hns-host");
+  const forwardedHost = normalizeHost(rawForwardedHost);
+  const signature = signatureBytes(firstHeaderValue(headers.get(FORWARDER_SIGNATURE_HEADER)));
+  const timestamp = firstHeaderValue(headers.get(FORWARDER_TIMESTAMP_HEADER));
 
   headers.delete(TRUSTED_FORWARDER_HEADER);
   headers.delete(FORWARDER_TOKEN_HEADER);
+  headers.delete(FORWARDER_SIGNATURE_HEADER);
+  headers.delete(FORWARDER_TIMESTAMP_HEADER);
 
-  if (token && forwardedToken && await secretsMatch(forwardedToken, token)) {
-    headers.set(TRUSTED_FORWARDER_HEADER, "1");
+  const sanitizedRequest = () => new Request(request, { headers });
+  if (!rawForwardedHost || !isTrustedForwarderSource(request, env)) {
+    return { rejection: null, request: sanitizedRequest() };
   }
 
-  return new Request(request, { headers });
+  const currentKey = env.HNS_FORWARDER_HMAC_KEY?.trim() ?? "";
+  const previousKey = env.HNS_FORWARDER_HMAC_PREVIOUS_KEY?.trim() ?? "";
+  if (!isValidHmacKey(currentKey) || (previousKey && !isValidHmacKey(previousKey))) {
+    return { rejection: "configuration", request: sanitizedRequest() };
+  }
+
+  const timestampSeconds = Number(timestamp);
+  const nowSeconds = Math.floor(nowMs / 1_000);
+  if (
+    !forwardedHost
+    || !signature
+    || !/^\d+$/u.test(timestamp)
+    || !Number.isSafeInteger(timestampSeconds)
+    || Math.abs(nowSeconds - timestampSeconds) > parseClockSkewSeconds(env)
+  ) {
+    return { rejection: "authentication", request: sanitizedRequest() };
+  }
+
+  const canonical = canonicalizeForwarderContext({ request, host: forwardedHost, timestamp });
+  const candidateKeys = previousKey ? [currentKey, previousKey] : [currentKey];
+  let verified = false;
+  for (const secret of candidateKeys) {
+    if (await verifyForwarderSignature({ canonical, secret, signature })) {
+      verified = true;
+      break;
+    }
+  }
+
+  if (!verified) {
+    return { rejection: "authentication", request: sanitizedRequest() };
+  }
+
+  headers.set(TRUSTED_FORWARDER_HEADER, "1");
+  return { rejection: null, request: sanitizedRequest() };
 }
 
 function isTrustedForwardedHnsHost(hostname: string): boolean {
@@ -92,7 +181,7 @@ function isTrustedForwardedHnsHost(hostname: string): boolean {
     .test(hostname);
 }
 
-export function resolveEffectiveRequestUrl(request: Request, env: HnsForwardedOriginEnv = {}): string {
+export function resolveEffectiveRequestUrl(request: Request): string {
   const url = new URL(request.url);
   const pirateHnsHost = normalizeHost(request.headers.get("x-pirate-hns-host"));
   const fallbackForwardedHost = normalizeHost(request.headers.get("x-forwarded-host"));
@@ -102,7 +191,7 @@ export function resolveEffectiveRequestUrl(request: Request, env: HnsForwardedOr
     ? isTrustedForwardedHnsHost(pirateHnsHost)
     : !!fallbackForwardedHost && HNS_APP_HOSTS.has(fallbackForwardedHost);
 
-  if (!forwardedHost || !hostAllowed || !isTrustedForwarder(request, env)) {
+  if (!forwardedHost || !hostAllowed || !isTrustedForwarder(request)) {
     return url.toString();
   }
 
@@ -114,12 +203,11 @@ export function resolveEffectiveRequestUrl(request: Request, env: HnsForwardedOr
 
 export function resolveForwardedCommunityRouteSegment(
   request: Request,
-  env: HnsForwardedOriginEnv = {},
 ): string | null {
   const routeSegment = request.headers.get("x-pirate-hns-community-id")
     ?? request.headers.get("x-pirate-hns-community-route");
   const normalized = routeSegment?.split(",")[0]?.trim() ?? "";
-  if (!normalized || !isTrustedForwarder(request, env)) {
+  if (!normalized || !isTrustedForwarder(request)) {
     return null;
   }
 

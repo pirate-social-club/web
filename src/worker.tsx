@@ -6,7 +6,8 @@ import type { AppContext, SeoMetadata, ThemeMode } from "@/app/app-context";
 import { COMMUNITY_MODERATION_SECTIONS, SETTINGS_SECTIONS } from "@/app/route-definitions";
 import { LegalDocumentPage } from "@/components/legal/legal-document-page";
 import { Document } from "@/app/document";
-import { matchRoute } from "@/app/router";
+import { matchRoute, matchRouteWithImportedRootCommunity } from "@/app/router";
+import { isPostOutsideSovereignScope } from "@/app/sovereign-route-scope";
 import { PRIVACY_POLICY_SOURCE } from "@/legal/privacy-policy";
 import { TERMS_OF_SERVICE_SOURCE } from "@/legal/terms-of-service";
 import { ACCOUNT_DELETION_SOURCE } from "@/legal/account-deletion";
@@ -155,7 +156,7 @@ async function resolveRouteSeoMetadata(input: {
   locale: UiLocaleCode;
   route: ReturnType<typeof matchRoute>;
   signal?: AbortSignal;
-}): Promise<SeoMetadata | null> {
+}): Promise<{ metadata: SeoMetadata | null; sovereignMismatch: boolean }> {
   try {
     if (input.route.kind === "community" || input.route.kind === "telegram-community") {
       const preview = await fetchPublicJson<PublicCommunityPreviewResponse>(
@@ -164,29 +165,26 @@ async function resolveRouteSeoMetadata(input: {
         input.locale,
         input.signal,
       );
-      return buildCommunitySeoMetadata({
-        appOrigin: input.appOrigin,
-        locale: input.locale,
-        preview,
-      });
+      return {
+        metadata: buildCommunitySeoMetadata({
+          appOrigin: input.appOrigin,
+          locale: input.locale,
+          preview,
+        }),
+        sovereignMismatch: false,
+      };
     }
 
-    if (
-      input.route.kind === "post"
-      || input.route.kind === "telegram-post"
-      || input.route.kind === "live-room"
-      || input.route.kind === "post-replay-draft"
-      || input.route.kind === "post-karaoke"
-      || input.route.kind === "post-study"
-      || input.route.kind === "post-streaks"
-      || input.route.kind === "crosspost"
-    ) {
+    if ("postId" in input.route) {
       const postResponse = await fetchPublicJson<PublicPostResponse>(
         input.apiOrigin,
         `/public-posts/${encodeURIComponent(input.route.postId)}`,
         input.locale,
         input.signal,
       );
+      if (isPostOutsideSovereignScope(input.route, postResponse.post.community)) {
+        return { metadata: null, sovereignMismatch: true };
+      }
       let community: PublicCommunityPreviewResponse | null = postResponse.community ?? null;
       const communityId = postResponse.post.community;
       if (!community && communityId) {
@@ -201,12 +199,15 @@ async function resolveRouteSeoMetadata(input: {
           community = null;
         }
       }
-      return buildPostSeoMetadata({
-        appOrigin: input.appOrigin,
-        community,
-        locale: input.locale,
-        postResponse,
-      });
+      return {
+        metadata: buildPostSeoMetadata({
+          appOrigin: input.appOrigin,
+          community,
+          locale: input.locale,
+          postResponse,
+        }),
+        sovereignMismatch: false,
+      };
     }
 
     if (input.route.kind === "public-profile") {
@@ -216,11 +217,14 @@ async function resolveRouteSeoMetadata(input: {
         input.locale,
         input.signal,
       );
-      return buildProfileSeoMetadata({
-        appOrigin: input.appOrigin,
-        locale: input.locale,
-        resolution,
-      });
+      return {
+        metadata: buildProfileSeoMetadata({
+          appOrigin: input.appOrigin,
+          locale: input.locale,
+          resolution,
+        }),
+        sovereignMismatch: false,
+      };
     }
 
     if (input.route.kind === "public-agent") {
@@ -230,17 +234,20 @@ async function resolveRouteSeoMetadata(input: {
         input.locale,
         input.signal,
       );
-      return buildAgentSeoMetadata({
-        appOrigin: input.appOrigin,
-        locale: input.locale,
-        resolution,
-      });
+      return {
+        metadata: buildAgentSeoMetadata({
+          appOrigin: input.appOrigin,
+          locale: input.locale,
+          resolution,
+        }),
+        sovereignMismatch: false,
+      };
     }
   } catch {
-    return null;
+    return { metadata: null, sovereignMismatch: false };
   }
 
-  return null;
+  return { metadata: null, sovereignMismatch: false };
 }
 
 async function resolveRouteSeoMetadataWithinBudget(input: {
@@ -248,7 +255,7 @@ async function resolveRouteSeoMetadataWithinBudget(input: {
   appOrigin: string;
   locale: UiLocaleCode;
   route: ReturnType<typeof matchRoute>;
-}): Promise<SeoMetadata | null> {
+}): Promise<{ metadata: SeoMetadata | null; sovereignMismatch: boolean }> {
   const controller = new AbortController();
   let timedOut = false;
   const metadataPromise = resolveRouteSeoMetadata({
@@ -256,11 +263,11 @@ async function resolveRouteSeoMetadataWithinBudget(input: {
     signal: controller.signal,
   });
   let timeout: ReturnType<typeof setTimeout> | null = null;
-  const timeoutPromise = new Promise<null>((resolve) => {
+  const timeoutPromise = new Promise<{ metadata: null; sovereignMismatch: false }>((resolve) => {
     timeout = setTimeout(() => {
       timedOut = true;
       controller.abort();
-      resolve(null);
+      resolve({ metadata: null, sovereignMismatch: false });
     }, SEO_METADATA_TIMEOUT_MS);
   });
   try {
@@ -276,10 +283,14 @@ async function resolveRouteSeoMetadataWithinBudget(input: {
 }
 
 function AppRoutePage(requestInfo: AppRequestInfo) {
+  if (requestInfo.ctx.sovereignRouteMismatch) {
+    return new Response("Not found", {
+      headers: { "cache-control": "no-store", "content-type": "text/plain; charset=utf-8" },
+      status: 404,
+    });
+  }
   const url = new URL(requestInfo.ctx.effectiveUrl ?? requestInfo.request.url);
-  const importedRootCommunityId = url.pathname === "/"
-    ? resolveForwardedCommunityRouteSegment(requestInfo.request)
-    : null;
+  const importedRootCommunityId = resolveForwardedCommunityRouteSegment(requestInfo.request);
 
   return (
     <PirateApp
@@ -421,17 +432,12 @@ const app = defineApp<AppRequestInfo>([
     const discovery = getDiscoveryContext(effectiveUrl);
     const hasLocaleOverride = resolveLocaleQueryOverride(url) !== null;
     const locale = resolveRequestUiLocale(url, request.headers.get("accept-language"));
-    const forwardedCommunityRoot = url.pathname === "/"
-      ? resolveForwardedCommunityRouteSegment(request)
-      : null;
-    const route = forwardedCommunityRoot
-      ? {
-          kind: "community" as const,
-          path: "/" as const,
-          communityId: forwardedCommunityRoot,
-          isImportedRoot: true,
-        }
-      : matchRoute(url.pathname, url.hostname);
+    const forwardedCommunityRoot = resolveForwardedCommunityRouteSegment(request);
+    const route = matchRouteWithImportedRootCommunity(
+      url.pathname,
+      url.hostname,
+      forwardedCommunityRoot,
+    );
     const expectsEntitySeoMetadata = shouldAlwaysResolveEntitySeo(route);
 
     ctx.effectiveUrl = effectiveUrl;
@@ -454,17 +460,21 @@ const app = defineApp<AppRequestInfo>([
       )
       : undefined;
     ctx.isIndexable = discovery.isIndexable;
-    const seoMetadata = shouldResolveSeoMetadata(request, route)
+    const mustVerifySovereignPost = Boolean(
+      route.sovereignCommunityId && "postId" in route,
+    );
+    const seoResolution = shouldResolveSeoMetadata(request, route) || mustVerifySovereignPost
       ? await resolveRouteSeoMetadataWithinBudget({
         apiOrigin: discovery.apiOrigin,
         appOrigin: discovery.appOrigin,
         locale,
         route,
       })
-      : null;
-    ctx.seoMetadata = seoMetadata
+      : { metadata: null, sovereignMismatch: false };
+    ctx.sovereignRouteMismatch = seoResolution.sovereignMismatch;
+    ctx.seoMetadata = seoResolution.metadata
       ? {
-          ...seoMetadata,
+          ...seoResolution.metadata,
           url: buildOpenGraphUrl(
             discovery.canonicalUrl,
             locale,
@@ -574,7 +584,22 @@ const app = defineApp<AppRequestInfo>([
 
 export default {
   async fetch(request: Request, env: Env, cf: AppRequestInfo["cf"]) {
-    request = await authenticateHnsForwarderRequest(request, env as HnsForwardedOriginEnv);
+    const forwarderAuthentication = await authenticateHnsForwarderRequest(
+      request,
+      env as HnsForwardedOriginEnv,
+    );
+    request = forwarderAuthentication.request;
+    if (forwarderAuthentication.rejection) {
+      return new Response(
+        forwarderAuthentication.rejection === "configuration"
+          ? "HNS forwarder authentication is not configured."
+          : "HNS forwarder authentication failed.",
+        {
+          status: forwarderAuthentication.rejection === "configuration" ? 503 : 403,
+          headers: { "content-type": "text/plain; charset=utf-8" },
+        },
+      );
+    }
     const initialEffectiveUrl = resolveEffectiveRequestUrl(request);
     const initialPathname = new URL(initialEffectiveUrl).pathname;
     if (initialPathname === "/__version") {

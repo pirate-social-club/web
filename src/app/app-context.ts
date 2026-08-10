@@ -24,5 +24,6 @@ export type AppContext = {
   isIndexable?: boolean;
   locale?: UiLocaleCode;
   seoMetadata?: SeoMetadata | null;
+  sovereignRouteMismatch?: boolean;
   theme?: ThemeMode;
 };

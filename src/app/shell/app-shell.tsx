@@ -42,6 +42,7 @@ import {
 import { resolveSessionAvatarFallback } from "./session-avatar";
 import { useShellMobileLayout } from "./use-shell-mobile-layout";
 import { GlobalVideoExperienceProvider } from "@/app/video-experience/video-experience-provider";
+import { SovereignRouteBoundary } from "@/app/sovereign-route-boundary";
 
 const LazyAuthenticatedRouteRenderer = React.lazy(async () => {
   const mod = await import("@/app/authenticated-route-renderer");
@@ -345,6 +346,7 @@ export function PirateAppShell({
         <ApiProvider initialHost={initialHost}>
           <GlobalVideoExperienceProvider>
             <AnalyticsRouteTracker route={route} />
+            <SovereignRouteBoundary route={route}>
             {useStandalonePublicProfileShell ? (
               <>
                 <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
@@ -387,6 +389,7 @@ export function PirateAppShell({
                 </SessionRevalidator>
               </PirateAuthProvider>
             )}
+            </SovereignRouteBoundary>
           </GlobalVideoExperienceProvider>
         </ApiProvider>
       </PirateQueryProvider>

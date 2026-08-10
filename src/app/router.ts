@@ -12,7 +12,7 @@ import {
 } from "@/lib/community-routing";
 import { extractPublicProfileHost } from "@/lib/public-host";
 
-export type AppRoute =
+type BaseAppRoute =
   | { kind: "home"; path: "/" }
   | { kind: "live"; path: "/live" }
   | { kind: "community-feed"; path: "/feed" }
@@ -61,6 +61,11 @@ export type AppRoute =
   | { kind: "telegram-post"; path: string; postId: string }
   | { kind: "telegram-study"; path: string; communityId: string; postId: string }
   | { kind: "not-found"; path: string };
+
+export type AppRoute = BaseAppRoute & {
+  /** Community scope asserted by an authenticated HNS forwarder. */
+  sovereignCommunityId?: string;
+};
 
 const NAVIGATION_EVENT = "pirate:navigate";
 const HOME_ROUTE: AppRoute = { kind: "home", path: "/" };
@@ -487,10 +492,14 @@ export function matchRouteWithImportedRootCommunity(
       path: "/",
       communityId: importedRootCommunityId,
       isImportedRoot: true,
+      sovereignCommunityId: importedRootCommunityId,
     };
   }
 
-  return matchRoute(normalized, hostname);
+  const route = matchRoute(normalized, hostname);
+  return importedRootCommunityId
+    ? { ...route, sovereignCommunityId: importedRootCommunityId }
+    : route;
 }
 
 export function canonicalizeRoutePathname(pathname: string, hostname?: string): string {
@@ -672,7 +681,7 @@ export function useRoute(
     return initialPathname
       ? matchRouteWithImportedRootCommunity(initialPathname, initialHostname, rootCommunityId)
       : rootCommunityId
-        ? { kind: "community" as const, path: "/", communityId: rootCommunityId, isImportedRoot: true }
+        ? matchRouteWithImportedRootCommunity("/", initialHostname, rootCommunityId)
         : HOME_ROUTE;
   }, [importedRootCommunityId, initialHostname, initialPathname]);
   const hydrationPathname = cachedPathname;

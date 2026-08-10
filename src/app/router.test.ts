@@ -431,6 +431,7 @@ describe("matchRouteWithImportedRootCommunity", () => {
       path: "/",
       communityId: "com_cmt_public_namespace_test",
       isImportedRoot: true,
+      sovereignCommunityId: "com_cmt_public_namespace_test",
     });
   });
 
@@ -443,6 +444,20 @@ describe("matchRouteWithImportedRootCommunity", () => {
       kind: "post",
       path: "/p/post-1",
       postId: "post-1",
+      sovereignCommunityId: "com_cmt_public_namespace_test",
+    });
+  });
+
+  test("scopes post subroutes on imported HNS roots", () => {
+    expectJson(matchRouteWithImportedRootCommunity(
+      "/p/post-1/karaoke",
+      "xn--pokmon-dva",
+      "com_cmt_public_namespace_test",
+    ), {
+      kind: "post-karaoke",
+      path: "/p/post-1/karaoke",
+      postId: "post-1",
+      sovereignCommunityId: "com_cmt_public_namespace_test",
     });
   });
 });

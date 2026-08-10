@@ -19,15 +19,26 @@ Use `rtk bun run types:safe` instead of `rtk bun run types` for routine local ve
 
 Do not use bare `rtk bun test` as the repository-wide gate. It collects Playwright specs and runs unit files in one shared process, while `.github/workflows/web-ci.yml` deliberately limits discovery to `src/` and `packages/` and isolates each test file across four shards. Run focused files locally with `rtk bun test path/to/file.test.ts`; rely on `web-ci` for the full unit/component suite.
 
-Do not start, restart, build, or use Storybook on this workstation. This applies
-to full and focused discovery and to foreground, background, detached, or
-supervised processes. Focused discovery improves startup scope but focused
-runs have still retained 3–5 GB RSS and caused system-wide OOM. If Storybook is
-already running, stop its exact process and launcher and verify port 6006 is
-closed; do not move it to another port.
+Storybook is safe to run locally after the watcher exclusions in
+`.storybook/main.ts`. Those exclusions must stay in `viteFinal`: Storybook's
+Vite builder can replace `server.watch` after loading the standalone Vite
+config, which previously caused Vite to watch the hundreds of nested checkouts
+under `.tmp/` and `worktrees/` and retain 3–5 GB RSS.
 
-For Storybook verification, push the intended ref and run the remote artifact
-workflow:
+Use focused discovery for routine component work:
+
+```bash
+rtk env STORYBOOK_ONLY=components/primitives bun run storybook
+```
+
+The path is relative to `src/`. Use `rtk bun run storybook` when the full local
+catalog is genuinely useful. Keep one foreground instance on port 6006, never
+detach or auto-restart it, and stop it when verification is complete. Before
+starting, verify port 6006 is free and avoid overlapping Storybook with builds,
+broad checks, or other heavy processes.
+
+For a shareable static catalog or CI-parity build, push the intended ref and
+run the optional remote artifact workflow:
 
 ```bash
 rtk gh workflow run storybook-artifact.yml --ref <pushed-ref> -f storybook_only=components/primitives
@@ -36,9 +47,9 @@ rtk gh workflow run storybook-artifact.yml --ref <pushed-ref> -f storybook_only=
 Monitor the run to completion and download its `storybook-static-<run-id>`
 artifact. Leave `storybook_only` empty for the full catalog. The input takes a
 path relative to `src/` (for example `components/compositions/wallet`). This
-remote workflow is the only normal Storybook build path for agents.
+remote workflow is a fallback, not a prerequisite for local Storybook use.
 
-Routine local story verification is source review plus focused component tests,
+Supplement story verification with focused component tests,
 `rtk bun run types:safe`, and `rtk bun run ui:audit`. Avoid `rtk bun run build`
 unless a full production build is explicitly required.
 
@@ -76,7 +87,7 @@ re-running the workflow. In particular:
 - Keep at most one `agent-browser` session active for this repo. Do not open multiple tabs/sessions or run `agent-browser` commands in parallel.
 - Serialize all open/wait/snapshot/screenshot/click actions. Take one snapshot or screenshot after the page is loaded, then inspect code locally before deciding whether another browser action is necessary.
 - Before starting a permitted dev server or browser session, check existing processes with `rtk ps -ef` or `rtk pgrep -af "storybook|vite|wrangler|next|6006|5173|8787"`.
-- Never use a locally running Storybook. Stop its exact process and launcher, verify port 6006 is closed, and use the remote artifact workflow.
+- Local Storybook is permitted under the Storybook rules above. Use only one browser session, and close both the session and Storybook when verification is complete.
 - If another desired dev server is already running, use the existing URL. Do not start a second instance or switch ports merely because the default port is occupied unless the user explicitly asks for a separate server.
 - Do not run browser automation while any permitted build, full typecheck, or other heavy command is running unless the user explicitly asks for that tradeoff.
 - Stop any permitted dev server or browser session started for the task when it is no longer needed. Never detach it or leave it for another agent session.

@@ -1920,7 +1920,7 @@ test.describe("live staging integration", () => {
       expect(previewBefore.viewer_following).toBe(false);
 
       await installStoredSession(page, follower);
-      await page.goto(`/c/${pathSegment(community.routeSegment)}`);
+      await page.goto(`/c/${pathSegment(community.routeSegment)}/threads`);
 
       const followButton = page.getByTestId("community-follow-button").first();
       await expect(followButton).toBeVisible({ timeout: 30_000 });

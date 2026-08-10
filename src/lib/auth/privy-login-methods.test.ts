@@ -1,8 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  resolvePrivyGlobalDisablePasskeys,
-  resolvePrivyLoginMethodsAndOrder,
+  resolvePrivyLoginConfig,
   resolvePrivyLoginMethods,
   resolvePrivyLoginMethodState,
 } from "./privy-login-methods";
@@ -44,19 +43,14 @@ describe("resolvePrivyLoginMethods", () => {
     });
   });
 
-  test("keeps passkey only in the canonical ordered login configuration", () => {
-    expect(resolvePrivyLoginMethodsAndOrder(resolvePrivyLoginMethods("pirate.sc"))).toEqual({
-      primary: ["wallet", "email", "google", "twitter"],
-      overflow: ["passkey"],
+  test("uses the standard landing config and disables its passkey link outside the Pirate RP", () => {
+    expect(resolvePrivyLoginConfig(resolvePrivyLoginMethods("pirate.sc"))).toEqual({
+      loginMethods: ["wallet", "email", "google", "twitter", "passkey"],
+      globalDisablePasskeys: false,
     });
-    expect(resolvePrivyLoginMethodsAndOrder(resolvePrivyLoginMethods("app.community-root"))).toEqual({
-      primary: ["wallet", "email", "google", "twitter"],
-      overflow: [],
+    expect(resolvePrivyLoginConfig(resolvePrivyLoginMethods("app.community-root"))).toEqual({
+      loginMethods: ["wallet", "email", "google", "twitter"],
+      globalDisablePasskeys: true,
     });
-  });
-
-  test("disables Privy's standalone passkey link outside the Pirate RP", () => {
-    expect(resolvePrivyGlobalDisablePasskeys(resolvePrivyLoginMethods("pirate.sc"))).toBe(false);
-    expect(resolvePrivyGlobalDisablePasskeys(resolvePrivyLoginMethods("app.community-root"))).toBe(true);
   });
 });

@@ -164,6 +164,17 @@ async function fulfillPirateApiRoute(route: Route, state: { commentCreated: bool
     return;
   }
 
+  if (
+    method === "GET"
+    && (
+      path === `/public-communities/${encodeURIComponent(mockCommunityId)}`
+      || path === `/public-communities/${encodeURIComponent(mockCommunityPreview.route_slug)}`
+    )
+  ) {
+    await route.fulfill(jsonResponse(mockCommunityPreview));
+    return;
+  }
+
   if (method === "GET" && path === `/communities/${encodeURIComponent(mockCommunityId)}/join-eligibility`) {
     await route.fulfill(jsonResponse(mockJoinEligibility));
     return;

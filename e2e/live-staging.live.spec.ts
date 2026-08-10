@@ -1960,9 +1960,7 @@ test.describe("live staging integration", () => {
       expect(previewAfter.follower_count).toBeGreaterThanOrEqual(1);
 
       await page.reload();
-      const reloadedFollowButton = page.getByTestId("community-follow-button").first();
-      await expect(reloadedFollowButton).toBeVisible({ timeout: 30_000 });
-      await expect(reloadedFollowButton).toHaveAttribute("data-state", "following", { timeout: 30_000 });
+      await expect(followButton).toHaveAttribute("data-state", "following", { timeout: 30_000 });
       const previewAfterReload = await waitForCommunityPreview(publicCommunityId, followerHeaders);
       expect(previewAfterReload.viewer_following).toBe(true);
       expect(previewAfterReload.follower_count).toBeGreaterThanOrEqual(1);

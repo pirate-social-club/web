@@ -37,6 +37,14 @@ export type SongPlaybackDescriptor = {
   assetId: string;
 });
 
+type SongPlaybackProgressStore = {
+  getSnapshot: () => {
+    durationMs?: number;
+    progressMs: number;
+  };
+  subscribe: (listener: () => void) => () => void;
+};
+
 export type SongPlaybackController = {
   getPlaybackState: (trackKey: string) => SongContentSpec["playbackState"];
   getPlaybackProgress: (trackKey: string) => {
@@ -44,6 +52,7 @@ export type SongPlaybackController = {
     progressMs: number;
   };
   subscribePlaybackProgress: (trackKey: string, listener: () => void) => () => void;
+  getPlaybackProgressStore: (trackKey: string) => SongPlaybackProgressStore;
   getAssetSourceState: (assetKey: string) => {
     playbackState: SongContentSpec["playbackState"];
     src?: string;
@@ -183,6 +192,7 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     progressMs: number;
   }>>({});
   const trackProgressListenersRef = React.useRef(new Map<string, Set<() => void>>());
+  const trackProgressStoresRef = React.useRef(new Map<string, SongPlaybackProgressStore>());
 
   const publishTrackProgress = React.useCallback((trackKey: string, progress: {
     durationMs?: number;
@@ -424,6 +434,20 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     };
   }, []);
 
+  const getPlaybackProgressStore = React.useCallback((trackKey: string): SongPlaybackProgressStore => {
+    const existing = trackProgressStoresRef.current.get(trackKey);
+    if (existing) {
+      return existing;
+    }
+
+    const store: SongPlaybackProgressStore = {
+      getSnapshot: () => getPlaybackProgress(trackKey),
+      subscribe: (listener) => subscribePlaybackProgress(trackKey, listener),
+    };
+    trackProgressStoresRef.current.set(trackKey, store);
+    return store;
+  }, [getPlaybackProgress, subscribePlaybackProgress]);
+
   const getAssetSourceState = React.useCallback((assetKey: string) => (
     assetSourceStates[assetKey] ?? { playbackState: "idle" as const }
   ), [assetSourceStates]);
@@ -460,6 +484,7 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
   return React.useMemo(() => ({
     getAssetSourceState,
     getPlaybackProgress,
+    getPlaybackProgressStore,
     getPlaybackState,
     loadAssetSource,
     pauseTrack,
@@ -469,6 +494,7 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
   }), [
     getAssetSourceState,
     getPlaybackProgress,
+    getPlaybackProgressStore,
     getPlaybackState,
     loadAssetSource,
     pauseTrack,

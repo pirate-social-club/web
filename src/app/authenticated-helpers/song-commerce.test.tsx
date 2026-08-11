@@ -81,6 +81,7 @@ describe("useSongPlayback", () => {
 
     const activeController = hook.result.current;
     const projectionsBeforeProgress = projectionCount;
+    const progressStore = activeController.getPlaybackProgressStore("track_1");
     let progressNotifications = 0;
     const unsubscribe = activeController.subscribePlaybackProgress("track_1", () => {
       progressNotifications += 1;
@@ -93,6 +94,7 @@ describe("useSongPlayback", () => {
 
     expect(hook.result.current).toBe(activeController);
     expect(projectionCount).toBe(projectionsBeforeProgress);
+    expect(activeController.getPlaybackProgressStore("track_1")).toBe(progressStore);
     expect(activeController.getPlaybackProgress("track_1")).toEqual({
       durationMs: 120_000,
       progressMs: 2_500,

@@ -98,7 +98,9 @@ test("outside-Home video keeps comments history and exact Study return state", a
   await page.getByRole("button", { name: "Play Cross-surface video" }).click();
   await expect(page).toHaveURL(new RegExp(`[?&]video=${mockFeedPostId}(?:&|$)`, "u"));
 
-  await page.getByRole("button", { name: /comments/i }).click();
+  const videoViewer = page.getByRole("dialog", { name: "Video viewer" });
+  await expect(videoViewer).toBeVisible();
+  await videoViewer.getByRole("button", { name: /comments/i }).click();
   await expect(page.getByRole("heading", { name: /comments/i })).toBeVisible();
   await page.goBack();
   await expect(page.getByRole("heading", { name: /comments/i })).toHaveCount(0);

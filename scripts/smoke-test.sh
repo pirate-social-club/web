@@ -73,6 +73,7 @@ const { validateMatchingReleaseAttestations, validateVersionPayload } = await im
 const createCommunity = createCommunityRaw === "1";
 const FETCH_TIMEOUT_MS = 15000;
 const SMOKE_PROPAGATION_BUDGET_MS = Number(process.env.SMOKE_PROPAGATION_BUDGET_MS ?? 90000);
+let cacheBustCounter = 0;
 
 async function fetchWithTimeout(url, options = {}) {
   const controller = new AbortController();
@@ -85,9 +86,19 @@ async function fetchWithTimeout(url, options = {}) {
 }
 
 async function expectJsonOnce(url, expectedStatus = 200, options = {}) {
-  const response = await fetchWithTimeout(url, {
-    ...options,
-    headers: { accept: "application/json", ...(options.headers ?? {}) },
+  const { validateBody, ...fetchOptions } = options;
+  const method = String(fetchOptions.method ?? "GET").toUpperCase();
+  const idempotent = method === "GET" || method === "HEAD";
+  const requestUrl = new URL(url);
+  const headers = { accept: "application/json", ...(fetchOptions.headers ?? {}) };
+  if (idempotent) {
+    requestUrl.searchParams.set("release_verify", `${Date.now()}-${++cacheBustCounter}`);
+    headers["cache-control"] = "no-cache, no-store, max-age=0";
+    headers.pragma = "no-cache";
+  }
+  const response = await fetchWithTimeout(requestUrl, {
+    ...fetchOptions,
+    headers,
   });
   const raw = await response.text();
   let body = null;
@@ -97,10 +108,11 @@ async function expectJsonOnce(url, expectedStatus = 200, options = {}) {
     throw new Error(`${url} returned non-JSON response with HTTP ${response.status}`);
   }
   if (response.status !== expectedStatus) {
-    const error = new Error(`${url} expected HTTP ${expectedStatus}, got ${response.status}: ${raw.slice(0, 300)}`);
+    const error = new Error(`${requestUrl} expected HTTP ${expectedStatus}, got ${response.status}: ${raw.slice(0, 300)}`);
     error.httpStatus = response.status;
     throw error;
   }
+  validateBody?.(body);
   return { response, body };
 }
 
@@ -145,23 +157,40 @@ function requireVersion(label, body, service) {
   }
 }
 
+async function expectReleasePair() {
+  const deadline = Date.now() + SMOKE_PROPAGATION_BUDGET_MS;
+  let delayMs = 2_000;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      const webVersion = await expectJson(`${webOrigin}/__version`, 200, {
+        validateBody: (body) => requireVersion("web", body, "web"),
+      });
+      const apiVersion = await expectJson(`${apiOrigin}/__version`, 200, {
+        validateBody: (body) => requireVersion("api", body, "api"),
+      });
+      const pairFailures = validateMatchingReleaseAttestations([
+        { label: "web", body: webVersion.body },
+        { label: "api", body: apiVersion.body },
+      ]);
+      if (pairFailures.length > 0) {
+        throw new Error(`release attestation mismatch: ${pairFailures.join("; ")}`);
+      }
+      return { webVersion, apiVersion };
+    } catch (error) {
+      if (Date.now() >= deadline) throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`release pair attempt ${attempt} did not converge (${message}), retrying in ${delayMs}ms`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      delayMs = Math.min(delayMs * 2, 10_000);
+    }
+  }
+}
+
 console.log(`smoke target: ${targetLabel}`);
 
-const webVersion = await expectJson(`${webOrigin}/__version`);
-requireVersion("web", webVersion.body, "web");
+const { webVersion, apiVersion } = await expectReleasePair();
 console.log(`web version: ${webVersion.body.git_sha}`);
-
-const apiVersion = await expectJson(`${apiOrigin}/__version`);
-requireVersion("api", apiVersion.body, "api");
 console.log(`api version: ${apiVersion.body.git_sha}`);
-
-const pairFailures = validateMatchingReleaseAttestations([
-  { label: "web", body: webVersion.body },
-  { label: "api", body: apiVersion.body },
-]);
-if (pairFailures.length > 0) {
-  throw new Error(`release attestation mismatch: ${pairFailures.join("; ")}`);
-}
 
 await expectJson(`${apiOrigin}/health`);
 console.log("api health: ok");

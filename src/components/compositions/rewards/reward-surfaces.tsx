@@ -87,6 +87,7 @@ export interface VerifyHumanSheetProps {
   onSelectProvider?: (provider: "self" | "very" | "zkpassport") => void;
   open: boolean;
   providers: readonly ("self" | "very" | "zkpassport")[];
+  selectedProvider?: "self" | "very" | "zkpassport" | null;
   showNationalityTierDisclosure?: boolean;
   state: VerifyHumanSheetState;
 }
@@ -274,6 +275,7 @@ export function VerifyHumanSheet({
   onSelectProvider,
   open,
   providers,
+  selectedProvider = null,
   showNationalityTierDisclosure = false,
   state,
 }: VerifyHumanSheetProps) {
@@ -345,7 +347,10 @@ export function VerifyHumanSheet({
             <HourglassMedium aria-hidden="true" className="size-5 animate-pulse text-primary" weight="bold" />
             <div>
               <Type as="div" variant="body-strong">
-                {providers[0] === "self" ? "Waiting for the Self app…" : "Waiting for verification…"}
+                {selectedProvider === "self" ? "Waiting for the Self app…" : null}
+                {selectedProvider === "very" ? "Waiting for Very…" : null}
+                {selectedProvider === "zkpassport" ? "Waiting for ZKPassport…" : null}
+                {selectedProvider === null ? "Waiting for verification…" : null}
               </Type>
               <Type as="div" className="text-muted-foreground" variant="caption">
                 Finish the check on your phone.

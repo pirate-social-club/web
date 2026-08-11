@@ -327,7 +327,7 @@ export function useNamespaceVerificationFlow({
           setLastCheckStatus("dns_setup_required");
         } else if (result.status === "challenge_pending") {
           setState("challenge_pending");
-          setFailureReason(null);
+          setFailureReason(result.failureReason);
           setLastCheckStatus(null);
         } else if (result.status === "expired") {
           setState("expired");

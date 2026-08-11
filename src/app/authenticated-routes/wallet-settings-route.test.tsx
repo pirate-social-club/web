@@ -1,6 +1,6 @@
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 
 import { installDomGlobals } from "@/test/setup-dom";
 
@@ -87,6 +87,17 @@ let fakeConnectedWallets: Array<{
   switchChain: () => Promise<void>;
   walletClientType: string;
 }> = [];
+let fakeVeryOnVerified: (() => Promise<void> | void) | undefined;
+let veryStartedWithoutPirateModal = false;
+const fakeStartSelfVerification = mock(async () => ({ started: true }));
+const fakeStartVeryVerification = mock(async () => {
+  veryStartedWithoutPirateModal = !document.body.textContent?.includes("Verify identity");
+  return { started: true };
+});
+const fakeStartZkPassportVerification = mock(async () => ({ started: true }));
+const fakeToastError = mock(() => undefined);
+const fakeToastInfo = mock(() => undefined);
+const fakeToastSuccess = mock(() => undefined);
 const originalRewardsFlag = import.meta.env.VITE_REWARDS_ENABLED;
 
 mock.module("@/lib/api", () => ({ useApi: () => fakeApi }));
@@ -112,6 +123,45 @@ mock.module("@/components/auth/privy-provider", () => ({
 mock.module("@privy-io/react-auth", () => ({
   useCreateWallet: () => ({ createWallet: async () => undefined }),
 }));
+mock.module("@/components/primitives/sonner", () => ({
+  toast: {
+    error: fakeToastError,
+    info: fakeToastInfo,
+    success: fakeToastSuccess,
+  },
+}));
+mock.module("@/lib/verification/use-self-verification", () => ({
+  useSelfVerification: () => ({
+    handleModalOpenChange: () => undefined,
+    handleSelfQrError: () => undefined,
+    handleSelfQrSuccess: () => undefined,
+    selfError: null,
+    selfLoading: false,
+    selfModalOpen: false,
+    selfPrompt: null,
+    startVerification: fakeStartSelfVerification,
+  }),
+}));
+mock.module("@/lib/verification/use-very-verification", () => ({
+  useVeryVerification: (input: { onVerified?: () => Promise<void> | void }) => {
+    fakeVeryOnVerified = input.onVerified;
+    return {
+      startVerification: fakeStartVeryVerification,
+      verificationError: null,
+      verificationLoading: false,
+    };
+  },
+}));
+mock.module("@/lib/verification/use-zkpassport-verification", () => ({
+  useZkPassportVerification: () => ({
+    checkPendingVerification: async () => undefined,
+    clearPendingVerification: () => undefined,
+    startVerification: fakeStartZkPassportVerification,
+    verificationError: null,
+    verificationHref: null,
+    verificationLoading: false,
+  }),
+}));
 mock.module("@/components/compositions/wallet/wallet-hub/wallet-hub", () => ({
   WalletHub: ({ rewardsSummary }: {
     rewardsSummary?: {
@@ -131,6 +181,7 @@ mock.module("@/components/compositions/wallet/wallet-hub/wallet-hub", () => ({
           <button disabled={rewardsSummary.actionDisabled} onClick={rewardsSummary.onAction} type="button">
             {rewardsSummary.actionLabel}
           </button>
+          <div data-label={rewardsSummary.supportingLabel} data-testid="rewards-supporting-label" />
         </section>
       ) : null}
     </div>
@@ -165,6 +216,14 @@ beforeEach(() => {
     getPrivyAccessToken: null,
   };
   fakeConnectedWallets = [];
+  fakeVeryOnVerified = undefined;
+  veryStartedWithoutPirateModal = false;
+  fakeStartSelfVerification.mockClear();
+  fakeStartVeryVerification.mockClear();
+  fakeStartZkPassportVerification.mockClear();
+  fakeToastError.mockClear();
+  fakeToastInfo.mockClear();
+  fakeToastSuccess.mockClear();
   fakeApi = {
     rewards: {
       cashOut: mock(async () => ({
@@ -421,6 +480,87 @@ describe("CurrentUserWalletPage rewards", () => {
     expect(view.getByText("Self")).toBeTruthy();
     expect(view.getByText("Very")).toBeTruthy();
     expect(view.getByText("ZKPassport")).toBeTruthy();
+  });
+
+  test("launches a pending Very bounty directly and settles verification only once", async () => {
+    const pendingSummary = {
+      chain_id: 84532,
+      balance_cents: 0,
+      today_earned_cents: 0,
+      recent_events: [],
+      recent_qualifications: [],
+      pending_verification: {
+        count: 1,
+        conditional_cents: 100,
+        earliest_expires_at: 1_774_521_600,
+      },
+      cashout: {
+        eligible: false,
+        min_cents: 100,
+        verification_state: "unverified" as const,
+        verification_provider: "very" as const,
+      },
+      latest_in_flight_cashout: null,
+    };
+    const creditedSummary = {
+      ...pendingSummary,
+      balance_cents: 100,
+      pending_verification: {
+        count: 0,
+        conditional_cents: 0,
+        earliest_expires_at: null,
+      },
+      cashout: {
+        ...pendingSummary.cashout,
+        eligible: true,
+        verification_state: "verified" as const,
+      },
+    };
+    let summaryRequest = 0;
+    let resolveCreditRefresh: ((summary: typeof creditedSummary) => void) | undefined;
+    fakeApi.rewards.getSummary = mock(() => {
+      summaryRequest += 1;
+      if (summaryRequest === 1) return Promise.resolve(pendingSummary);
+      if (summaryRequest === 2) {
+        return new Promise<typeof creditedSummary>((resolve) => {
+          resolveCreditRefresh = resolve;
+        });
+      }
+      return Promise.resolve(creditedSummary);
+    });
+    const view = render(<CurrentUserWalletPage />);
+
+    await waitFor(() => expect(view.getByText("Claim")).toBeTruthy());
+    fireEvent.click(view.getByText("Claim"));
+
+    await waitFor(() => expect(fakeStartVeryVerification).toHaveBeenCalledTimes(1));
+    expect(veryStartedWithoutPirateModal).toBe(true);
+    expect(view.queryByText("Verify identity")).toBeNull();
+    expect(view.queryByText("Self")).toBeNull();
+    expect(view.queryByText("ZKPassport")).toBeNull();
+    expect(view.queryByText(/Self app/u)).toBeNull();
+
+    await act(async () => {
+      await fakeVeryOnVerified?.();
+      await fakeVeryOnVerified?.();
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId("rewards-supporting-label").getAttribute("data-label"))
+        .toBe("Getting your bounty ready.");
+      expect(resolveCreditRefresh).toBeDefined();
+    });
+    expect(fakeToastSuccess).toHaveBeenCalledTimes(1);
+    expect(fakeToastSuccess).toHaveBeenCalledWith("Bounty verification complete.");
+    expect(fakeToastInfo).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveCreditRefresh?.(creditedSummary);
+    });
+
+    await waitFor(() => expect(fakeApi.rewards.cashOut).toHaveBeenCalledTimes(1));
+    expect(fakeToastSuccess).toHaveBeenCalledTimes(1);
+    expect(fakeToastInfo).not.toHaveBeenCalled();
   });
 
   test("keeps Claim as the re-verification entry point for a credited balance", async () => {

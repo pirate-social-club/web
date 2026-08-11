@@ -22,7 +22,7 @@ export type {
 // Transitional additive contract used while the coordinated API contract PR is
 // landing. Keep this structurally identical to the generated session schema so
 // web CI remains independently typecheckable against the current package.
-export type SongStudySessionSummary = {
+type SongStudySessionSummary = {
   completed_exercise_count: number;
   due_count: number;
   first_pass_correct_count: number;
@@ -710,7 +710,7 @@ export type ApiCommunityTelegramChatSettingsUpdate = {
   directory_visible?: boolean;
 };
 
-export type ApiTelegramChannelPublicationMode = "off" | "from_now" | "recent_backfill";
+type ApiTelegramChannelPublicationMode = "off" | "from_now" | "recent_backfill";
 
 export type ApiTelegramChannelDestination = {
   id: string;

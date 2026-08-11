@@ -599,6 +599,11 @@ export const GENERATED_LOCALE_CATALOGS = {
           "sortComments": "Sort comments"
         }
       },
+      "communitySurface": {
+        "ariaLabel": "Community views",
+        "threads": "Threads",
+        "watch": "Watch"
+      },
       "community": {
         "aboutTab": "About",
         "charityLabel": "Charity",
@@ -2865,6 +2870,11 @@ export const GENERATED_LOCALE_CATALOGS = {
           "sortComments": "فرز التعليقات"
         }
       },
+      "communitySurface": {
+        "ariaLabel": "واجهات المجتمع",
+        "threads": "النقاشات",
+        "watch": "المشاهدة"
+      },
       "community": {
         "aboutTab": "حول",
         "charityLabel": "الجهة الخيرية",
@@ -5130,6 +5140,11 @@ export const GENERATED_LOCALE_CATALOGS = {
           "anonymousLabel": "匿名",
           "sortComments": "排序评论"
         }
+      },
+      "communitySurface": {
+        "ariaLabel": "社区视图",
+        "threads": "讨论",
+        "watch": "观看"
       },
       "community": {
         "aboutTab": "关于",

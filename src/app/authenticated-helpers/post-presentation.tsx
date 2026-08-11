@@ -2,7 +2,6 @@
 
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contracts";
-import type { HomeFeedItem as ApiHomeFeedItem } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
@@ -37,9 +36,7 @@ import {
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
 import { buildPostMenu, resolvePostStoryPortalHref } from "@/app/authenticated-helpers/post-menu-presentation";
 
-export type HomeFeedEntry = ApiHomeFeedItem;
 export { toHomeFeedItem } from "@/app/authenticated-helpers/home-feed-presentation";
-;
 
 export { toCommunityPostContent } from "@/app/authenticated-helpers/post-content-presentation";
 export {

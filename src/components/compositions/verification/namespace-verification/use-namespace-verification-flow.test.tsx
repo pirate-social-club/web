@@ -592,6 +592,48 @@ describe("useNamespaceVerificationFlow", () => {
     expect(result.current.failureReason).toBe("dns_lookup_failed");
   });
 
+  test("challenge pending preserves a transient provider failure and import progress", async () => {
+    const pendingPayload = {
+      ...hnsImportPayload,
+      observation: {
+        state: "waiting_for_update" as const,
+        current_height: 1_001,
+      },
+    };
+    const { result } = renderHook(() =>
+      useNamespaceVerificationFlow({
+        callbacks: createMockCallbacks({
+          onStartSession: () =>
+            Promise.resolve(
+              mockStartResult({
+                status: "challenge_required",
+                namespaceVerificationSessionId: "session-provider-unavailable",
+                hnsImportPayload,
+              }),
+            ),
+          onCompleteSession: () =>
+            Promise.resolve(
+              mockCompleteResult({
+                status: "challenge_pending",
+                namespaceVerificationId: null,
+                failureReason: "provider_unavailable",
+                hnsImportPayload: pendingPayload,
+              }),
+            ),
+        }),
+        enabled: true,
+      }),
+    );
+
+    act(() => result.current.actions.setRootLabel("myroot"));
+    await act(async () => result.current.actions.start());
+    await act(async () => result.current.actions.verify());
+
+    expect(result.current.state).toBe("challenge_pending");
+    expect(result.current.failureReason).toBe("provider_unavailable");
+    expect(result.current.hnsImportPayload).toBe(pendingPayload);
+  });
+
   test("restart with sessionId refreshes challenge via onCompleteSession + onGetSession", async () => {
     const { result } = renderHook(() =>
       useNamespaceVerificationFlow({

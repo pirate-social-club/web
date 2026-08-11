@@ -1,7 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   "ignore": [
-    "worktrees/**",
     "src/lib/auth/privy-react-auth.ssr.tsx",
     "src/lib/dotenv-browser-shim.ts",
     "src/lib/rwsdk-router.client.ts",
@@ -9,7 +8,10 @@
     "src/vendor/**"
   ],
   "ignoreBinaries": [
-    "scripts/community/repair-community-migration-ledger.ts",
+    "core/scripts/community/apply-dance-start-cue-evidence-d1-migration.ts",
+    "core/scripts/community/apply-post-age-gate-provenance-d1-migration.ts",
+    "core/scripts/community/verify-community-schema-requirements.ts",
+    "scripts/control-plane/inspect-control-plane-migration-ledger.ts",
     "scripts/control-plane/apply-postgres-migrations.ts",
     "scripts/deploy-production.sh",
     "scripts/deploy-public.sh",
@@ -20,15 +22,19 @@
     "tailwindcss",
     "tw-animate-css"
   ],
+  "ignoreIssues": {
+    // Mock modules expose reusable fixture types even when the app does not import every type.
+    "src/app/mocks/types.ts": ["types"]
+  },
   "workspaces": {
     ".": {
       "entry": [
         "vite.config.ts",
-        "vite.desktop.config.ts",
         "src/worker-public.ts",
         "src/client.tsx",
         "src/desktop-standalone.tsx",
         "src/components/compositions/karaoke/capture/karaoke-capture-processor.ts",
+        "src/**/*.test.{ts,tsx}",
         "e2e/**/*.spec.ts",
         "scripts/**/*.{mjs,ts}"
       ],
@@ -41,11 +47,11 @@
       "vite": false
     },
     "packages/bookings-domain": {
-      "entry": ["src/index.ts", "src/test.ts", "scripts/**/*.ts"],
+      "entry": ["scripts/**/*.ts"],
       "project": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"]
     },
     "packages/karaoke-runtime": {
-      "entry": ["src/index.ts", "src/provenance.ts", "src/test.ts", "scripts/**/*.ts"],
+      "entry": ["scripts/**/*.ts"],
       "project": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"]
     }
   }

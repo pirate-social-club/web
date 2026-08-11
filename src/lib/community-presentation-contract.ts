@@ -5,7 +5,7 @@ export type CommunityBranding = {
   theme: "system" | "light" | "dark";
 };
 
-export type CommunityBrandingPatch = Partial<CommunityBranding>;
+type CommunityBrandingPatch = Partial<CommunityBranding>;
 
 export type CommunityPresentation = {
   branding: CommunityBranding;
@@ -22,7 +22,7 @@ export type CommunityPresentationPatch = {
   video_feed_enabled?: boolean;
 };
 
-export const DEFAULT_COMMUNITY_BRANDING: CommunityBranding = {
+const DEFAULT_COMMUNITY_BRANDING: CommunityBranding = {
   accent_color: null,
   header_style: "standard",
   tagline: null,

@@ -111,6 +111,20 @@ describe("reward surfaces", () => {
     )).toBe(true);
   });
 
+  test("uses the selected verification provider for pending copy", () => {
+    const view = render(
+      <VerifyHumanSheet
+        open
+        providers={["self", "very"]}
+        selectedProvider="very"
+        state="pending"
+      />,
+    );
+
+    expect(view.getByText("Waiting for Very…")).toBeTruthy();
+    expect(view.queryByText(/Self app/u)).toBeNull();
+  });
+
   test("shows a signed hash under the user-facing sending state", () => {
     const hash = "0x4b6c9f0a8d3e2c1b7a6d5e4f3c2b1a0987654321abcdef1234567890abcdef12";
     const view = render(

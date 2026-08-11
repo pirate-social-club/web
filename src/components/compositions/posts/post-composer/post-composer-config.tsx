@@ -4,7 +4,6 @@ import {
   Link,
   Microphone,
   MusicNotes,
-  TextT,
   VideoCamera,
 } from "@phosphor-icons/react";
 import type {
@@ -14,21 +13,11 @@ import type {
   ComposerEventState,
   ComposerTab,
   LiveComposerState,
-  AssetLicensePresetId,
   AssetLicenseState,
   AssetRoyaltySplitState,
   SongComposerState,
   VideoComposerState,
 } from "./post-composer.types";
-
-export const tabMeta: Record<ComposerTab, { label: string; icon: React.ReactNode }> = {
-  text: { label: "Text", icon: <TextT className="size-5" /> },
-  image: { label: "Image", icon: <ImageIcon className="size-5" /> },
-  video: { label: "Video", icon: <VideoCamera className="size-5" /> },
-  link: { label: "Link", icon: <Link className="size-5" /> },
-  song: { label: "Song", icon: <MusicNotes className="size-5" /> },
-  live: { label: "Live", icon: <Microphone className="size-5" /> },
-};
 
 export const attachmentActions: Array<{
   kind: AttachmentKind;
@@ -64,12 +53,6 @@ export const songLanguageOptions = [
   "Korean",
   "Portuguese",
 ] as const;
-
-export const assetLicensePresetIds: AssetLicensePresetId[] = [
-  "non-commercial",
-  "commercial-use",
-  "commercial-remix",
-];
 
 export function defaultSongState(song?: SongComposerState): SongComposerState {
   return {

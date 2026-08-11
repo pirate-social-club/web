@@ -57,6 +57,11 @@ jobs:
         working-directory: api/services/efp-shared
         run: bun install --frozen-lockfile
 
+      - name: Audit dead code and dependency declarations
+        run: |
+          bun run deadcode:audit
+          bun run deps:audit
+
       - name: Typecheck web
         run: bun run types
 

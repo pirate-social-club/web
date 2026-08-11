@@ -44,6 +44,7 @@ import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { useZkPassportVerification } from "@/lib/verification/use-zkpassport-verification";
 
 const REWARD_CASHOUT_VERIFICATION_PROVIDERS = ["self", "zkpassport", "very"] as const;
+type RewardVerificationProvider = typeof REWARD_CASHOUT_VERIFICATION_PROVIDERS[number];
 
 const LazyRoyaltyClaimModal = React.lazy(async () => {
   const mod = await import("@/components/compositions/wallet/royalty-claim-modal/royalty-claim-modal");
@@ -375,7 +376,7 @@ function walletRewardsSummary(input: {
       amountLabel,
       assetLabel,
       pending: true,
-      supportingLabel: "Waiting for verification on your phone.",
+      supportingLabel: "Getting your bounty ready.",
     };
   }
   if (input.rewards.cashout.eligible) {
@@ -492,8 +493,11 @@ export function CurrentUserWalletPage() {
   const rewardsCashoutInFlightRef = React.useRef(false);
   const [rewardsVerifyOpen, setRewardsVerifyOpen] = React.useState(false);
   const [rewardsVerifyState, setRewardsVerifyState] = React.useState<VerifyHumanSheetState>("provider-selection");
+  const [rewardsSelectedProvider, setRewardsSelectedProvider] = React.useState<RewardVerificationProvider | null>(null);
+  const [rewardsProviderLaunch, setRewardsProviderLaunch] = React.useState<RewardVerificationProvider | null>(null);
   const [rewardsZkPassportOpen, setRewardsZkPassportOpen] = React.useState(false);
   const [rewardsVerificationPolling, setRewardsVerificationPolling] = React.useState(false);
+  const rewardsVerificationSettledRef = React.useRef(false);
   const [royaltyClaimOpen, setRoyaltyClaimOpen] = React.useState(false);
   const [walletAction, setWalletAction] = React.useState<"receive" | "send" | null>(null);
   const { schedule: scheduleClaimableRefresh } = useResettableTimeout();
@@ -715,6 +719,8 @@ export function CurrentUserWalletPage() {
   }, [api, rewardsEnabled]);
 
   const handleRewardsVerified = React.useCallback(async () => {
+    if (rewardsVerificationSettledRef.current) return;
+    rewardsVerificationSettledRef.current = true;
     setRewardsVerifyState("success");
     setRewardsVerifyOpen(false);
     toast.success("Bounty verification complete.");
@@ -768,38 +774,48 @@ export function CurrentUserWalletPage() {
     setRewardsVerifyOpen(true);
   }, [rewardsZkPassportError, selfError, veryRewardsError]);
 
-  const handleRewardsVerifyProvider = React.useCallback(async (provider: "self" | "very" | "zkpassport") => {
+  const handleRewardsVerifyProvider = React.useCallback((provider: RewardVerificationProvider) => {
+    rewardsVerificationSettledRef.current = false;
+    setRewardsSelectedProvider(provider);
     setRewardsVerifyState("pending");
-    if (provider === "self") {
-      const result = await startSelfRewardsVerification({
-        requestedCapabilities: ["unique_human"],
-        unavailableMessage: "Self verification is unavailable for bounties.",
-      });
-      if (result.started) {
-        setRewardsVerifyOpen(false);
-      }
-      return;
-    }
-    if (provider === "very") {
-      const result = await startVeryRewardsVerification();
-      if (!result.started) {
-        setRewardsVerifyState("failure");
-      }
-      return;
-    }
+    setRewardsVerifyOpen(false);
+    setRewardsProviderLaunch(provider);
+  }, []);
 
-    const result = await startRewardsZkPassportVerification({
-      deferOpen: true,
-      requestedCapabilities: ["unique_human"],
-      unavailableMessage: "ZKPassport verification is unavailable for bounties.",
-    });
-    if (result.started) {
-      setRewardsVerifyOpen(false);
-      setRewardsZkPassportOpen(true);
-    } else {
-      setRewardsVerifyState("failure");
-    }
-  }, [startRewardsZkPassportVerification, startSelfRewardsVerification, startVeryRewardsVerification]);
+  React.useEffect(() => {
+    if (rewardsProviderLaunch === null) return;
+    const provider = rewardsProviderLaunch;
+    setRewardsProviderLaunch(null);
+
+    void (async () => {
+      if (provider === "self") {
+        const result = await startSelfRewardsVerification({
+          requestedCapabilities: ["unique_human"],
+          unavailableMessage: "Self verification is unavailable for bounties.",
+        });
+        if (!result.started) setRewardsVerifyState("failure");
+        return;
+      }
+      if (provider === "very") {
+        const result = await startVeryRewardsVerification();
+        if (!result.started) setRewardsVerifyState("failure");
+        return;
+      }
+
+      const result = await startRewardsZkPassportVerification({
+        deferOpen: true,
+        requestedCapabilities: ["unique_human"],
+        unavailableMessage: "ZKPassport verification is unavailable for bounties.",
+      });
+      if (result.started) setRewardsZkPassportOpen(true);
+      else setRewardsVerifyState("failure");
+    })();
+  }, [
+    rewardsProviderLaunch,
+    startRewardsZkPassportVerification,
+    startSelfRewardsVerification,
+    startVeryRewardsVerification,
+  ]);
 
   const applyCashoutResult = React.useCallback((result: ApiRewardCashoutResponse) => {
     setRewardsCashoutAmountLabel(formatRewardCents(result.payout.amount_cents, result.chain_id));
@@ -826,8 +842,12 @@ export function CurrentUserWalletPage() {
     setRewardsCashoutErrorMessage(null);
   }, []);
 
-  const handleRewardsCashout = React.useCallback(async (summary: ApiRewardsSummaryResponse) => {
+  const handleRewardsCashout = React.useCallback(async (
+    summary: ApiRewardsSummaryResponse,
+    options: { notify?: boolean } = {},
+  ) => {
     if (!summary.cashout.eligible || summary.balance_cents <= 0 || rewardsCashoutInFlightRef.current) return;
+    const notify = options.notify !== false;
     const amountCents = summary.balance_cents;
     rewardsCashoutInFlightRef.current = true;
     setRewardsCashoutPending(true);
@@ -858,14 +878,14 @@ export function CurrentUserWalletPage() {
           : null,
       });
       applyCashoutResult(result);
-      if (result.payout.status === "failed") toast.error(result.payout.failure_reason || "Bounty claim failed.");
-      else if (result.payout.status === "confirmed") toast.success("Bounty claim complete.");
+      if (notify && result.payout.status === "failed") toast.error(result.payout.failure_reason || "Bounty claim failed.");
+      else if (notify && result.payout.status === "confirmed") toast.success("Bounty claim complete.");
       await refreshRewardsSummary();
     } catch (error) {
       logger.debug("[wallet] rewards cashout failed", error);
       setRewardsCashoutState("failed");
       setRewardsCashoutErrorMessage("The bounty claim could not be submitted. Try again in a moment.");
-      toast.error("Bounty claim failed. Try again in a moment.");
+      if (notify) toast.error("Bounty claim failed. Try again in a moment.");
     } finally {
       rewardsCashoutInFlightRef.current = false;
       setRewardsCashoutPending(false);
@@ -894,15 +914,11 @@ export function CurrentUserWalletPage() {
       if (cancelled) return;
       if (summary && summary.pending_verification.conditional_cents <= 0) {
         setRewardsVerificationPolling(false);
-        void handleRewardsCashout(summary);
+        void handleRewardsCashout(summary, { notify: false });
         return;
       }
-      if (attempt < delays.length) {
-        timeout = window.setTimeout(() => { void poll(); }, delays[attempt++]);
-        return;
-      }
-      setRewardsVerificationPolling(false);
-      toast.info("Verification is complete. Your bounty is still being prepared.");
+      const delay = delays[Math.min(attempt++, delays.length - 1)] ?? 30_000;
+      timeout = window.setTimeout(() => { void poll(); }, delay);
     };
     timeout = window.setTimeout(() => { void poll(); }, delays[attempt++]);
     return () => {
@@ -992,6 +1008,13 @@ export function CurrentUserWalletPage() {
         void refreshRewardsSummary();
       },
       onVerify: () => {
+        const provider = rewardsSummary.cashout.verification_provider;
+        if (provider === "very" && rewardsSummary.pending_verification.conditional_cents > 0) {
+          handleRewardsVerifyProvider("very");
+          return;
+        }
+        rewardsVerificationSettledRef.current = false;
+        setRewardsSelectedProvider(null);
         setRewardsVerifyState("provider-selection");
         setRewardsVerifyOpen(true);
       },
@@ -1077,6 +1100,7 @@ export function CurrentUserWalletPage() {
           }}
           open={rewardsVerifyOpen}
           providers={[...REWARD_CASHOUT_VERIFICATION_PROVIDERS]}
+          selectedProvider={rewardsSelectedProvider}
           showNationalityTierDisclosure={import.meta.env.VITE_REWARD_NATIONALITY_TIERS_PREVIEW === "true"}
           state={(selfLoading || veryRewardsLoading) && rewardsVerifyState !== "failure" && rewardsVerifyState !== "conflict"
             ? "pending"

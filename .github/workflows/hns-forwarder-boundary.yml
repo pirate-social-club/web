@@ -1,0 +1,33 @@
+name: HNS forwarder boundary
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/hns-forwarder-boundary.yml
+      - scripts/ci/verify-hns-forwarder-boundary.mjs
+      - scripts/ci/verify-hns-forwarder-boundary.test.ts
+
+concurrency:
+  group: hns-forwarder-boundary-${{ github.event_name == 'schedule' && 'scheduled' || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  probe:
+    name: Reject forged HNS context
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Verify production rejects forged HNS context
+        run: node scripts/ci/verify-hns-forwarder-boundary.mjs --origin https://pirate.sc

@@ -288,12 +288,14 @@ export interface AppSidebarProps
   activeItemId?: string;
   appearance?: "default" | "media";
   brandAccentColor?: string | null;
+  brandAction?: React.ReactNode;
   brandImageSrc?: string | null;
   brandLabel?: string;
   className?: string;
   codeItems?: readonly AppSidebarSectionItem[];
   codeLabel?: string;
   homeAriaLabel?: string;
+  isSovereignOrigin?: boolean;
   mediaAction?: React.ReactNode;
   onHomeClick?: () => void;
   onNavigate?: (path: string) => void;
@@ -306,16 +308,23 @@ export interface AppSidebarProps
   side?: UiPlacement;
 }
 
+export function communityBrandInitial(label: string | null | undefined): string {
+  const first = Array.from(label?.trim() ?? "")[0];
+  return first?.toLocaleUpperCase() ?? "C";
+}
+
 export function AppSidebar({
   activeItemId = "home",
   appearance = "default",
   brandAccentColor,
+  brandAction,
   brandImageSrc,
   brandLabel,
   className,
   codeItems,
   codeLabel,
   homeAriaLabel,
+  isSovereignOrigin = false,
   mediaAction,
   onHomeClick,
   onNavigate,
@@ -405,10 +414,12 @@ export function AppSidebar({
           <button
             aria-label={homeAriaLabel ?? copy.appSidebar.homeAriaLabel}
             className="flex h-11 items-center gap-3 rounded-xl px-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:justify-center"
+            data-brand-label={brandLabel ?? copy.appSidebar.brandLabel}
+            data-brand-scope={isSovereignOrigin ? "community" : "pirate"}
             onClick={onHomeClick}
             type="button"
           >
-            {brandImageSrc !== undefined ? (
+            {isSovereignOrigin ? (
               <span
                 className="size-10 shrink-0 rounded-full border-2"
                 style={brandAccentColor ? { borderColor: brandAccentColor } : undefined}
@@ -416,6 +427,11 @@ export function AppSidebar({
                 <Avatar
                   className="size-full"
                   fallback={brandLabel ?? copy.appSidebar.brandLabel}
+                  fallbackIcon={(
+                    <Type as="span" variant="label">
+                      {communityBrandInitial(brandLabel)}
+                    </Type>
+                  )}
                   src={brandImageSrc ?? undefined}
                 />
               </span>
@@ -426,6 +442,7 @@ export function AppSidebar({
               {brandLabel ?? copy.appSidebar.brandLabel}
             </Type>
           </button>
+          {brandAction}
           <button
             aria-label={searchLabel}
             className="flex h-11 items-center gap-3 rounded-xl bg-sidebar-accent px-3.5 text-sidebar-foreground/70 hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"

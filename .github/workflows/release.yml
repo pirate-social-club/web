@@ -14,6 +14,8 @@ on:
     paths:
       - .github/workflows/release.yml
       - .github/release-refs/**
+      - scripts/ci/verify-hns-forwarder-boundary.mjs
+      - scripts/ci/verify-hns-forwarder-boundary.test.ts
       - scripts/deploy-staging.sh
       - scripts/deploy-production.sh
       - scripts/lib/release-source.sh
@@ -721,6 +723,9 @@ jobs:
           node scripts/verify-deployed-versions.mjs \
             https://staging.pirate.sc/__version "$EXPECTED_WEB_SHA" \
             https://api-staging.pirate.sc/__version "$EXPECTED_API_SHA"
+      - name: Reject forged HNS forwarding context
+        working-directory: web
+        run: node scripts/ci/verify-hns-forwarder-boundary.mjs --origin https://staging.pirate.sc
       - name: Browser smoke staging
         timeout-minutes: 10
         working-directory: web

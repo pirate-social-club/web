@@ -1,5 +1,8 @@
 const VERSION_SHA_PATTERN = /^([0-9a-f]{7,40})(?:$|-)/i;
 const REQUIRED_FIELDS = ["service", "environment", "git_sha", "git_ref", "build_timestamp"];
+const ATTESTATION_FIELDS = ["release_id", "build_id", "web_sha", "api_sha", "core_sha"];
+const FULL_SHA_PATTERN = /^[0-9a-f]{40}$/;
+const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
 
 export function field(body, name) {
   return body && typeof body === "object" && name in body ? body[name] : null;
@@ -53,6 +56,12 @@ export function validateVersionPayload(body, expected = {}) {
       failures.push(`${name} is missing`);
     }
   }
+  for (const name of ATTESTATION_FIELDS) {
+    const value = field(body, name);
+    if (typeof value !== "string" || value.length === 0) {
+      failures.push(`${name} is missing`);
+    }
+  }
 
   const service = field(body, "service");
   const environment = field(body, "environment");
@@ -67,6 +76,23 @@ export function validateVersionPayload(body, expected = {}) {
   }
   if (gitSha && !parseVersionSha(gitSha)) {
     failures.push(`git_sha is malformed: ${display(gitSha)}`);
+  }
+  if (field(body, "release_id") && !DIGEST_PATTERN.test(field(body, "release_id"))) {
+    failures.push(`release_id is malformed: ${display(field(body, "release_id"))}`);
+  }
+  for (const name of ["web_sha", "api_sha", "core_sha"]) {
+    const value = field(body, name);
+    if (value && !FULL_SHA_PATTERN.test(value)) {
+      failures.push(`${name} is malformed: ${display(value)}`);
+    }
+  }
+  const ownAttestedSha = service === "web"
+    ? field(body, "web_sha")
+    : service === "api"
+      ? field(body, "api_sha")
+      : null;
+  if (ownAttestedSha && !versionShasMatch(ownAttestedSha, gitSha)) {
+    failures.push(`git_sha=${display(gitSha)} does not match ${service}_sha=${display(ownAttestedSha)}`);
   }
   if (expected.gitSha && !versionShasMatch(expected.gitSha, gitSha)) {
     failures.push(`expected git_sha=${expected.gitSha}, got ${display(gitSha)}`);
@@ -84,6 +110,27 @@ export function validateVersionPayload(body, expected = {}) {
       gitRef: field(body, "git_ref"),
       buildTimestamp: field(body, "build_timestamp"),
       operatorGitSha: operatorSha,
+      releaseId: field(body, "release_id"),
+      buildId: field(body, "build_id"),
+      webSha: field(body, "web_sha"),
+      apiSha: field(body, "api_sha"),
+      coreSha: field(body, "core_sha"),
     },
   };
+}
+
+export function validateMatchingReleaseAttestations(entries) {
+  if (entries.length < 2) return [];
+  const failures = [];
+  const [first, ...rest] = entries;
+  for (const entry of rest) {
+    for (const name of ATTESTATION_FIELDS) {
+      const expected = field(first.body, name);
+      const actual = field(entry.body, name);
+      if (expected !== actual) {
+        failures.push(`${entry.label} ${name}=${display(actual)} does not match ${first.label} ${name}=${display(expected)}`);
+      }
+    }
+  }
+  return failures;
 }

@@ -9,7 +9,10 @@ const TARGET = {
   environment: "production",
 };
 
-function okResponse(sha: string) {
+function okResponse(sha: string, overrides: Record<string, unknown> = {}) {
+  const webSha = sha === "abc1234deff00d"
+    ? sha.padEnd(40, "0")
+    : "abc1234" + "0".repeat(33);
   return {
     ok: true,
     json: async () => ({
@@ -18,6 +21,12 @@ function okResponse(sha: string) {
       git_sha: sha,
       git_ref: "main",
       build_timestamp: "2026-08-11T11:23:15Z",
+      release_id: "d".repeat(64),
+      build_id: "build-123",
+      web_sha: webSha,
+      api_sha: "b".repeat(40),
+      core_sha: "c".repeat(40),
+      ...overrides,
     }),
   };
 }
@@ -122,5 +131,22 @@ describe("verifyDeployedVersions retry policy", () => {
       },
     })).rejects.toThrow(/service is missing/u);
     expect(calls).toBe(1);
+  });
+
+  test("rejects individually valid endpoints from different builds", async () => {
+    const apiTarget = {
+      expectedSha: "b".repeat(40),
+      url: "https://api.example.test/__version",
+      service: "api",
+      environment: "production",
+    };
+    await expect(verifyDeployedVersions([TARGET, apiTarget], {
+      attempts: 1,
+      delayMs: 0,
+      failFastOnMismatch: true,
+      fetchImpl: async (url: URL) => String(url).includes("api.example.test")
+        ? okResponse("b".repeat(40), { service: "api", build_id: "other-build" })
+        : okResponse("abc1234deff00d"),
+    })).rejects.toThrow(/build_id=other-build/u);
   });
 });

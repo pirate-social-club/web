@@ -112,6 +112,7 @@ const [
 const {
   field,
   nestedField,
+  validateMatchingReleaseAttestations,
   validateVersionPayload,
 } = await import(pathToFileURL(`${rootDir}/scripts/lib/deployment-attestation.mjs`).href);
 const strict = strictRaw !== "0";
@@ -195,6 +196,14 @@ function collectFailures(results) {
       operatorGitSha: result.target.service === "api" ? expectedOperatorSha || undefined : undefined,
     });
     for (const failure of validation.failures) failures.push(`${id}: ${failure}`);
+  }
+  for (const deployEnv of ["production", "staging"]) {
+    const environmentResults = results.filter((result) => result.target.deployEnv === deployEnv && result.body);
+    const pairFailures = validateMatchingReleaseAttestations(environmentResults.map((result) => ({
+      label: result.target.id,
+      body: result.body,
+    })));
+    failures.push(...pairFailures);
   }
   return failures;
 }

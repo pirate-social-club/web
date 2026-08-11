@@ -67,7 +67,7 @@ node --input-type=module - "$ROOT_DIR" "$WEB_ORIGIN" "$API_ORIGIN" "$TARGET_LABE
 import { pathToFileURL } from "node:url";
 
 const [rootDir, webOrigin, apiOrigin, targetLabel, createCommunityRaw] = process.argv.slice(2);
-const { validateVersionPayload } = await import(
+const { validateMatchingReleaseAttestations, validateVersionPayload } = await import(
   pathToFileURL(`${rootDir}/scripts/lib/deployment-attestation.mjs`).href
 );
 const createCommunity = createCommunityRaw === "1";
@@ -150,6 +150,14 @@ console.log(`web version: ${webVersion.body.git_sha}`);
 const apiVersion = await expectJson(`${apiOrigin}/__version`);
 requireVersion("api", apiVersion.body, "api");
 console.log(`api version: ${apiVersion.body.git_sha}`);
+
+const pairFailures = validateMatchingReleaseAttestations([
+  { label: "web", body: webVersion.body },
+  { label: "api", body: apiVersion.body },
+]);
+if (pairFailures.length > 0) {
+  throw new Error(`release attestation mismatch: ${pairFailures.join("; ")}`);
+}
 
 await expectJson(`${apiOrigin}/health`);
 console.log("api health: ok");

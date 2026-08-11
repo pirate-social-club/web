@@ -2,6 +2,7 @@ import { pathToFileURL } from "node:url";
 
 import {
   targetIdentityFromUrl,
+  validateMatchingReleaseAttestations,
   validateVersionPayload,
 } from "./lib/deployment-attestation.mjs";
 
@@ -67,7 +68,7 @@ async function readVersion(target, attempt, fetchImpl) {
       `${target.url} ${validation.failures.join("; ")}`,
     );
   }
-  return validation.metadata.gitSha;
+  return { body, gitSha: validation.metadata.gitSha };
 }
 
 export async function verifyDeployedVersions(targets, {
@@ -86,10 +87,20 @@ export async function verifyDeployedVersions(targets, {
     for (let index = 0; index < results.length; index += 1) {
       const result = results[index];
       if (result.status === "fulfilled") {
-        console.log(`verified ${targets[index].url}: ${result.value}`);
+        console.log(`verified ${targets[index].url}: ${result.value.gitSha}`);
       } else {
         if (result.reason instanceof VersionMismatchError) mismatched = true;
         lastErrors.push(result.reason instanceof Error ? result.reason.message : String(result.reason));
+      }
+    }
+    if (lastErrors.length === 0) {
+      const pairFailures = validateMatchingReleaseAttestations(results.map((result, index) => ({
+        label: targets[index].url,
+        body: result.value.body,
+      })));
+      if (pairFailures.length > 0) {
+        mismatched = true;
+        lastErrors.push(...pairFailures);
       }
     }
     if (lastErrors.length === 0) return;

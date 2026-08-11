@@ -53,7 +53,7 @@ export function createPostSubmissionFingerprint(value: unknown): string {
   return JSON.stringify(stableFingerprintValue(value));
 }
 
-export function createPostSubmissionDraftFingerprint(
+function createPostSubmissionDraftFingerprint(
   communityId: string,
   draft: CreatePostDraftState,
 ): string {
@@ -82,7 +82,7 @@ export function createPostSubmissionDraftFingerprint(
   });
 }
 
-export function ensureCreatePostSubmissionOperationForDraft(
+function ensureCreatePostSubmissionOperationForDraft(
   current: CreatePostSubmissionOperation | null,
   communityId: string,
   draft: CreatePostDraftState,

@@ -429,6 +429,10 @@ export function HomePage({ initialSort, videoFallbackReason }: {
   } = useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
+  const feedItemProjectionCacheRef = React.useRef(new Map<string, {
+    dependencies: readonly unknown[];
+    item: ReturnType<typeof toHomeFeedItem>;
+  }>());
   const authRuntime = usePiratePrivyRuntime();
   const {
     handleModalOpenChange: handleAgeSelfModalOpenChange,
@@ -598,7 +602,15 @@ export function HomePage({ initialSort, videoFallbackReason }: {
       toast.error(getErrorMessage(nextError, "Could not cancel this event."));
     }
   }, [api.posts, feedEntries, setFeedEntries]);
-  const feedItems = React.useMemo(() => feedEntries.map((entry) => {
+  const feedItems = React.useMemo(() => {
+    const activePostIds = new Set(feedEntries.map((entry) => entry.post.post.id));
+    for (const postId of feedItemProjectionCacheRef.current.keys()) {
+      if (!activePostIds.has(postId)) {
+        feedItemProjectionCacheRef.current.delete(postId);
+      }
+    }
+
+    return feedEntries.map((entry) => {
     const assetId = entry.post.post.asset ?? undefined;
     const liveRoomId = entry.post.post.anchor_live_room ?? undefined;
     const liveRoomAccess = liveRoomId ? liveRoomAccessById[liveRoomId] : undefined;
@@ -626,7 +638,48 @@ export function HomePage({ initialSort, videoFallbackReason }: {
         seat: liveRoomSeat,
       })
       : undefined;
-    return toHomeFeedItem(
+    const isMediaPost = entry.post.post.post_type === "song" || entry.post.post.post_type === "video";
+    const playbackStates = entry.post.post.post_type === "song" ? [
+      songPlayback.getPlaybackState(`public:${entry.post.post.id}`),
+      songPlayback.getPlaybackState(`preview:${entry.post.post.id}`),
+      assetId ? songPlayback.getPlaybackState(`asset:${assetId}`) : "idle",
+    ] : [];
+    const assetSourceState = entry.post.post.post_type === "video" && assetId
+      ? songPlayback.getAssetSourceState(`video-asset:${assetId}`)
+      : undefined;
+    const dependencies = [
+      entry,
+      authorProfiles,
+      cancelEvent,
+      contentLocale,
+      copy.common.showOriginal,
+      copy.common.showTranslation,
+      deletePost,
+      freedomDetected,
+      handleVerifyAge,
+      listingsByAssetId[assetId ?? ""],
+      listingsByLiveRoomId[liveRoomId ?? ""],
+      liveRoomAccess,
+      localeTag,
+      purchasesByAssetId[assetId ?? ""],
+      purchasesByLiveRoomId[liveRoomId ?? ""],
+      session?.user?.id,
+      voteOnPost,
+      liveRoomFreedomHref,
+      liveRoomSeat,
+      liveRoomGuestInviteStatus,
+      isMediaPost,
+      ...playbackStates,
+      assetSourceState?.playbackState,
+      assetSourceState?.src,
+    ] as const;
+    const cached = feedItemProjectionCacheRef.current.get(entry.post.post.id);
+    if (cached && cached.dependencies.length === dependencies.length
+      && cached.dependencies.every((dependency, index) => Object.is(dependency, dependencies[index]))) {
+      return cached.item;
+    }
+
+    const item = toHomeFeedItem(
       entry,
       authorProfiles,
       entry.post.post.post_type === "song" || entry.post.post.post_type === "video"
@@ -667,7 +720,10 @@ export function HomePage({ initialSort, videoFallbackReason }: {
         viewerContentLocale: contentLocale,
       },
     );
-  }), [
+    feedItemProjectionCacheRef.current.set(entry.post.post.id, { dependencies, item });
+    return item;
+  });
+  }, [
     authorProfiles,
     cancelEvent,
     contentLocale,

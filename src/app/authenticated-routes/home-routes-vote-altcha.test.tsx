@@ -32,6 +32,31 @@ const ageVerificationRequests: Array<{
   requestedCapabilities?: string[];
   unavailableMessage?: string;
 }> = [];
+let latestFeedItems: Array<{ id: string; post: unknown }> = [];
+
+function captureLatestFeedItems<T extends { id: string; post: unknown }>(items: T[]): T[] {
+  latestFeedItems = items;
+  return items;
+}
+
+const mockRunGatedCommunityAction = async (params: RunGatedCommunityActionParams) => {
+  gateCalls.push(params);
+  if (params.gateData?.eligibility.status === "banned") {
+    return "blocked" as const;
+  }
+  await params.onAllowed({ altchaPayload: "home-proof" });
+  return "allowed" as const;
+};
+const mockPrewarmCommunityGate = (communityId: string, gateData: NonNullable<RunGatedCommunityActionParams["gateData"]>) => {
+  prewarmCalls.push({ communityId, gateData });
+};
+const mockStartSelfVerification = async (options: {
+  requestedCapabilities?: string[];
+  unavailableMessage?: string;
+}) => {
+  ageVerificationRequests.push(options);
+  return { href: null, openedModal: false, started: true };
+};
 
 type TestFeedApi = {
   home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: CommunityPreview[] }>;
@@ -45,22 +70,26 @@ mock.module("@/hooks/use-client-hydrated", () => ({
 mock.module("@/hooks/use-community-interaction-gate", () => ({
   useCommunityInteractionGate: () => ({
     gateModal: null,
-    prewarmCommunityGate: (communityId: string, gateData: NonNullable<RunGatedCommunityActionParams["gateData"]>) => {
-      prewarmCalls.push({ communityId, gateData });
-    },
-    runGatedCommunityAction: async (params: RunGatedCommunityActionParams) => {
-      gateCalls.push(params);
-      if (params.gateData?.eligibility.status === "banned") {
-        return "blocked";
-      }
-      await params.onAllowed({ altchaPayload: "home-proof" });
-      return "allowed";
-    },
+    prewarmCommunityGate: mockPrewarmCommunityGate,
+    runGatedCommunityAction: mockRunGatedCommunityAction,
   }),
 }));
 
 mock.module("@/app/authenticated-helpers/song-commerce", () => ({
-  useSongPlayback: () => ({}),
+  useSongPlayback: () => ({
+    getAssetSourceState: () => ({ playbackState: "idle" }),
+    getPlaybackProgress: () => ({ progressMs: 0 }),
+    getPlaybackProgressStore: () => ({
+      getSnapshot: () => ({ progressMs: 0 }),
+      subscribe: () => () => {},
+    }),
+    getPlaybackState: () => "idle",
+    loadAssetSource: async () => null,
+    pauseTrack: () => undefined,
+    playTrack: async () => undefined,
+    seekTrack: async () => undefined,
+    subscribePlaybackProgress: () => () => {},
+  }),
 }));
 
 mock.module("@/lib/verification/use-self-verification", () => ({
@@ -71,13 +100,7 @@ mock.module("@/lib/verification/use-self-verification", () => ({
     selfError: null,
     selfModalOpen: false,
     selfPrompt: null,
-    startVerification: async (options: {
-      requestedCapabilities?: string[];
-      unavailableMessage?: string;
-    }) => {
-      ageVerificationRequests.push(options);
-      return { href: null, openedModal: false, started: true };
-    },
+    startVerification: mockStartSelfVerification,
   }),
 }));
 
@@ -101,7 +124,7 @@ mock.module("@/components/compositions/posts/feed/feed", () => ({
     }>;
   }) => (
     <div>
-      {items.map((item, index) => {
+      {captureLatestFeedItems(items).map((item, index) => {
         const content = item.post.content;
         const verifyAge = content?.ageGatePolicy === "18_plus"
           && content.ageGateViewerState !== "verified_allowed"
@@ -256,6 +279,7 @@ beforeEach(() => {
   gateCalls.length = 0;
   prewarmCalls.length = 0;
   ageVerificationRequests.length = 0;
+  latestFeedItems = [];
   __resetSessionStoreForTests();
   setSession({
     access_token: "test-token",
@@ -267,6 +291,28 @@ beforeEach(() => {
 });
 
 describe("HomePage vote ALTCHA plumbing", () => {
+  test("reuses home feed item projections across an unrelated parent render", async () => {
+    const feedApi = api.feed as unknown as TestFeedApi;
+    const feedResponse = {
+      items: [createFeedItem("post_pst_first"), createFeedItem("post_pst_second")],
+      top_communities: [],
+    };
+
+    feedApi.home = async () => feedResponse;
+    feedApi.publicHome = async () => feedResponse;
+
+    const view = render(<HomePage initialSort="best" />, { wrapper });
+    await waitFor(() => expect(latestFeedItems).toHaveLength(2));
+    const initialItems = latestFeedItems;
+
+    await act(async () => {
+      view.rerender(<HomePage initialSort="best" />);
+    });
+
+    expect(latestFeedItems[0]).toBe(initialItems[0]);
+    expect(latestFeedItems[1]).toBe(initialItems[1]);
+  });
+
   test("shows and executes Delete post for an authored home-feed post", async () => {
     const deleteCalls: Array<{ communityId: string; postId: string }> = [];
     const feedApi = api.feed as unknown as TestFeedApi;

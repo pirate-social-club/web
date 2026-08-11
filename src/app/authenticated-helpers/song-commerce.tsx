@@ -37,6 +37,14 @@ export type SongPlaybackDescriptor = {
   assetId: string;
 });
 
+type SongPlaybackProgressStore = {
+  getSnapshot: () => {
+    durationMs?: number;
+    progressMs: number;
+  };
+  subscribe: (listener: () => void) => () => void;
+};
+
 export type SongPlaybackController = {
   getPlaybackState: (trackKey: string) => SongContentSpec["playbackState"];
   getPlaybackProgress: (trackKey: string) => {
@@ -44,6 +52,7 @@ export type SongPlaybackController = {
     progressMs: number;
   };
   subscribePlaybackProgress: (trackKey: string, listener: () => void) => () => void;
+  getPlaybackProgressStore: (trackKey: string) => SongPlaybackProgressStore;
   getAssetSourceState: (assetKey: string) => {
     playbackState: SongContentSpec["playbackState"];
     src?: string;
@@ -168,6 +177,10 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
   const api = useApi();
   const { connect } = usePiratePrivyRuntime();
   const { connectedWallets } = usePiratePrivyWallets();
+  const accessTokenRef = React.useRef(accessToken);
+  const communitiesApiRef = React.useRef(api.communities);
+  const connectRef = React.useRef(connect);
+  const connectedWalletsRef = React.useRef(connectedWallets);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const objectUrlsRef = React.useRef(new Map<string, string>());
   const activeTrackKeyRef = React.useRef<string | null>(null);
@@ -183,6 +196,12 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     progressMs: number;
   }>>({});
   const trackProgressListenersRef = React.useRef(new Map<string, Set<() => void>>());
+  const trackProgressStoresRef = React.useRef(new Map<string, SongPlaybackProgressStore>());
+
+  accessTokenRef.current = accessToken;
+  communitiesApiRef.current = api.communities;
+  connectRef.current = connect;
+  connectedWalletsRef.current = connectedWallets;
 
   const publishTrackProgress = React.useCallback((trackKey: string, progress: {
     durationMs?: number;
@@ -197,9 +216,10 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     }
   }, []);
 
-  React.useEffect(() => {
-    activeTrackKeyRef.current = activeTrackKey;
-  }, [activeTrackKey]);
+  const updateActiveTrackKey = React.useCallback((nextTrackKey: string | null) => {
+    activeTrackKeyRef.current = nextTrackKey;
+    setActiveTrackKey(nextTrackKey);
+  }, []);
 
   React.useEffect(() => {
     const audio = new Audio();
@@ -215,7 +235,7 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     };
     const handleEnded = () => {
       setIsPlaying(false);
-      setActiveTrackKey(null);
+      updateActiveTrackKey(null);
     };
     const handleWaiting = () => {
       if (activeTrackKeyRef.current) {
@@ -264,13 +284,13 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
       objectUrls.clear();
       audioRef.current = null;
     };
-  }, [publishTrackProgress]);
+  }, [publishTrackProgress, updateActiveTrackKey]);
 
   const fetchTrackBlob = React.useCallback(async (descriptor: SongPlaybackDescriptor): Promise<Blob> => {
     if (descriptor.kind === "source") {
       const response = await fetch(resolveApiUrl(descriptor.sourcePath), {
-        headers: descriptor.requiresAuth && accessToken
-          ? { Authorization: `Bearer ${accessToken}` }
+        headers: descriptor.requiresAuth && accessTokenRef.current
+          ? { Authorization: `Bearer ${accessTokenRef.current}` }
           : undefined,
       });
 
@@ -281,7 +301,7 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
       return await response.blob();
     }
 
-    const access = await api.communities.resolveAssetAccess(descriptor.communityId, descriptor.assetId);
+    const access = await communitiesApiRef.current.resolveAssetAccess(descriptor.communityId, descriptor.assetId);
     if (!access.access_granted) {
       if (access.decision_reason === "purchase_required") {
         throw new Error(`Purchase required to play ${descriptor.title}.`);
@@ -291,7 +311,9 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
 
     if (access.delivery_kind === "primary_content_ref" && access.delivery_ref) {
       const response = await fetch(resolveApiUrl(access.delivery_ref), {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+        headers: accessTokenRef.current
+          ? { Authorization: `Bearer ${accessTokenRef.current}` }
+          : undefined,
       });
       if (!response.ok) {
         throw new Error(`Could not load ${descriptor.title}`);
@@ -300,20 +322,20 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     }
 
     if (access.delivery_kind === "story_cdr_ref" && access.story_cdr_access) {
-      if (!connectedWallets[0]) {
-        connect?.();
+      if (!connectedWalletsRef.current[0]) {
+        connectRef.current?.();
         throw new Error("Connect a wallet to unlock Story CDR playback.");
       }
       const { readStoryCdrAsset } = await loadStoryCdrBrowser();
       return await readStoryCdrAsset({
         access: access.story_cdr_access,
-        accessToken,
-        wallet: connectedWallets[0],
+        accessToken: accessTokenRef.current,
+        wallet: connectedWalletsRef.current[0],
       });
     }
 
     throw new Error(`Could not load ${descriptor.title}`);
-  }, [accessToken, api.communities, connect, connectedWallets]);
+  }, []);
 
   const loadTrackUrl = React.useCallback(async (descriptor: SongPlaybackDescriptor): Promise<string> => {
     const existing = objectUrlsRef.current.get(descriptor.key);
@@ -333,7 +355,7 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     }
 
     try {
-      setActiveTrackKey(descriptor.key);
+      updateActiveTrackKey(descriptor.key);
       setBufferingTrackKey(descriptor.key);
       const sourceUrl = await loadTrackUrl(descriptor);
       if (audio.src !== sourceUrl) {
@@ -345,10 +367,10 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
       await audio.play();
     } catch (error) {
       setBufferingTrackKey(null);
-      setActiveTrackKey(null);
+      updateActiveTrackKey(null);
       toast.error(getErrorMessage(error, `Could not play ${descriptor.title}.`));
     }
-  }, [loadTrackUrl, publishTrackProgress]);
+  }, [loadTrackUrl, publishTrackProgress, updateActiveTrackKey]);
 
   const loadAssetSource = React.useCallback(async (descriptor: AssetSourceDescriptor): Promise<string | null> => {
     const existing = objectUrlsRef.current.get(descriptor.key);
@@ -389,12 +411,12 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
   }, [loadTrackUrl]);
 
   const pauseTrack = React.useCallback((trackKey: string) => {
-    if (activeTrackKey !== trackKey) {
+    if (activeTrackKeyRef.current !== trackKey) {
       return;
     }
 
     audioRef.current?.pause();
-  }, [activeTrackKey]);
+  }, []);
 
   const getPlaybackState = React.useCallback((trackKey: string): SongContentSpec["playbackState"] => {
     if (bufferingTrackKey === trackKey) {
@@ -420,9 +442,24 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
       listeners.delete(listener);
       if (listeners.size === 0) {
         trackProgressListenersRef.current.delete(trackKey);
+        trackProgressStoresRef.current.delete(trackKey);
       }
     };
   }, []);
+
+  const getPlaybackProgressStore = React.useCallback((trackKey: string): SongPlaybackProgressStore => {
+    const existing = trackProgressStoresRef.current.get(trackKey);
+    if (existing) {
+      return existing;
+    }
+
+    const store: SongPlaybackProgressStore = {
+      getSnapshot: () => getPlaybackProgress(trackKey),
+      subscribe: (listener) => subscribePlaybackProgress(trackKey, listener),
+    };
+    trackProgressStoresRef.current.set(trackKey, store);
+    return store;
+  }, [getPlaybackProgress, subscribePlaybackProgress]);
 
   const getAssetSourceState = React.useCallback((assetKey: string) => (
     assetSourceStates[assetKey] ?? { playbackState: "idle" as const }
@@ -435,7 +472,7 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     }
 
     try {
-      setActiveTrackKey(descriptor.key);
+      updateActiveTrackKey(descriptor.key);
       const sourceUrl = await loadTrackUrl(descriptor);
       if (audio.src !== sourceUrl) {
         audio.src = sourceUrl;
@@ -455,11 +492,12 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     } catch (error) {
       toast.error(getErrorMessage(error, `Could not seek ${descriptor.title}.`));
     }
-  }, [loadTrackUrl, publishTrackProgress]);
+  }, [loadTrackUrl, publishTrackProgress, updateActiveTrackKey]);
 
   return React.useMemo(() => ({
     getAssetSourceState,
     getPlaybackProgress,
+    getPlaybackProgressStore,
     getPlaybackState,
     loadAssetSource,
     pauseTrack,
@@ -469,6 +507,7 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
   }), [
     getAssetSourceState,
     getPlaybackProgress,
+    getPlaybackProgressStore,
     getPlaybackState,
     loadAssetSource,
     pauseTrack,

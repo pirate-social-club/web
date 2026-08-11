@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { act, render, renderHook } from "@testing-library/react";
 
 let audio: FakeAudio;
+let fetchCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
 const originalAudio = globalThis.Audio;
 const originalFetch = globalThis.fetch;
 const originalCreateObjectUrl = URL.createObjectURL;
@@ -37,12 +38,16 @@ import { SongPostContent } from "@/components/compositions/posts/post-card/post-
 
 beforeEach(() => {
   audio = new FakeAudio();
+  fetchCalls = [];
   globalThis.Audio = class {
     constructor() {
       return audio;
     }
   } as typeof Audio;
-  globalThis.fetch = mock(async () => new Response(new Blob(["audio"]), { status: 200 })) as typeof fetch;
+  globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+    fetchCalls.push({ input, init });
+    return new Response(new Blob(["audio"]), { status: 200 });
+  }) as typeof fetch;
   URL.createObjectURL = mock(() => "blob:track_1");
   globalThis.ResizeObserver = class {
     disconnect() {}
@@ -60,6 +65,33 @@ afterEach(() => {
 });
 
 describe("useSongPlayback", () => {
+  test("keeps command callbacks stable while reading refreshed auth state", async () => {
+    const hook = renderHook(({ accessToken }: { accessToken: string | null }) => useSongPlayback(accessToken), {
+      initialProps: { accessToken: "old-token" },
+    });
+    const initialController = hook.result.current;
+    const descriptor = {
+      key: "track_auth_refresh",
+      kind: "source" as const,
+      requiresAuth: true,
+      sourcePath: "/audio/track_auth_refresh",
+      title: "Track",
+    };
+
+    await act(async () => {
+      hook.rerender({ accessToken: "new-token" });
+    });
+    expect(hook.result.current).toBe(initialController);
+
+    await act(async () => {
+      await initialController.playTrack(descriptor);
+    });
+
+    expect(fetchCalls[0]?.init).toMatchObject({
+      headers: { Authorization: "Bearer new-token" },
+    });
+  });
+
   test("publishes progress without changing the controller identity", async () => {
     let projectionCount = 0;
     const hook = renderHook(() => {
@@ -81,6 +113,7 @@ describe("useSongPlayback", () => {
 
     const activeController = hook.result.current;
     const projectionsBeforeProgress = projectionCount;
+    const progressStore = activeController.getPlaybackProgressStore("track_1");
     let progressNotifications = 0;
     const unsubscribe = activeController.subscribePlaybackProgress("track_1", () => {
       progressNotifications += 1;
@@ -93,6 +126,7 @@ describe("useSongPlayback", () => {
 
     expect(hook.result.current).toBe(activeController);
     expect(projectionCount).toBe(projectionsBeforeProgress);
+    expect(activeController.getPlaybackProgressStore("track_1")).toBe(progressStore);
     expect(activeController.getPlaybackProgress("track_1")).toEqual({
       durationMs: 120_000,
       progressMs: 2_500,

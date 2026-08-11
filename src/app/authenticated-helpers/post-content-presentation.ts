@@ -66,10 +66,7 @@ export function toCommunityPostContent(
 
   switch (post.post_type) {
     case "crosspost": {
-      const source = post.crosspost_source as (typeof post.crosspost_source & {
-        content_safety_state?: "pending" | "safe" | "sensitive" | "adult" | null;
-        age_gate_policy?: "none" | "18_plus" | null;
-      });
+      const source = post.crosspost_source;
       return {
         type: "crosspost",
         source: {

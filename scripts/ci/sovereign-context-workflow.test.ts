@@ -38,8 +38,8 @@ describe("sovereign production context workflow", () => {
   });
 
   test("fetches the namespace inventory from the exact API route and checks HTTP status", () => {
-    expect(sovereignProbe).toMatch(/"https:\/\/api\.pirate\.sc\/public-namespaces"\s*$/m);
-    expect(sovereignProbe).not.toMatch(/"https:\/\/api\.pirate\.sc\/public-namespaces\/"\s*$/m);
+    expect(sovereignProbe).toContain('"https://api.pirate.sc/public-namespaces")');
+    expect(sovereignProbe).not.toContain('"https://api.pirate.sc/public-namespaces/")');
     expect(sovereignProbe).toContain("--write-out '%{http_code}'");
     expect(sovereignProbe).toContain('if [[ "$namespace_status" != "200" ]]');
   });

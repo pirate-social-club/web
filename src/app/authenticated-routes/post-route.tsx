@@ -175,7 +175,7 @@ export function PostPage({
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, requestVoteAccess, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, requestVoteAccess, refreshProcessingPost, processingTimedOut, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const activeLiveRoomId = post?.post.anchor_live_room ?? null;
   const activeAssetId = post?.post.asset ?? null;
   const activeAssetPostType = post?.post.post_type ?? null;
@@ -1096,10 +1096,10 @@ export function PostPage({
     onCancelEvent: cancelEvent,
     onBoost: boostController.openBoost,
     onDelete: deletePost,
-    onRemove: removePost,
+    onRemove: removePost, onRefreshProcessing: refreshProcessingPost,
     onRewardSettings: boostController.openPolicy,
     onVerifyAge: handleVerifyAge,
-    onVote: voteOnPost,
+    onVote: voteOnPost, processingTimedOut,
     voteBusy: viewerMembershipResolving,
     voteAccess: viewerMustJoin
       ? { label: copy.common.joinToVote, onClick: requestVoteAccess }
@@ -1118,10 +1118,10 @@ export function PostPage({
       onCancelEvent: cancelEvent,
       onBoost: boostController.openBoost,
       onDelete: deletePost,
-      onRemove: removePost,
+      onRemove: removePost, onRefreshProcessing: refreshProcessingPost,
       onRewardSettings: boostController.openPolicy,
       onVerifyAge: handleVerifyAge,
-      onVote: voteOnPost,
+      onVote: voteOnPost, processingTimedOut,
       voteBusy: viewerMembershipResolving,
       voteAccess: viewerMustJoin
         ? { label: copy.common.joinToVote, onClick: requestVoteAccess }

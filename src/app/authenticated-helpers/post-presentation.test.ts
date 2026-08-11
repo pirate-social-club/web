@@ -242,6 +242,41 @@ describe("processing post status notices", () => {
     });
     expect(video.post.statusNotice).toBeUndefined();
   });
+
+  test("shows a durable notice after processing polling times out", () => {
+    const refreshCalls: string[] = [];
+    const song = toCommunityFeedItem(
+      createSongPost({ status: "processing" }),
+      null,
+      {},
+      undefined,
+      {
+        onRefreshProcessing: () => refreshCalls.push("refresh"),
+        processingTimedOut: true,
+      },
+    );
+
+    expect(song.post.statusNotice).toEqual({
+      tone: "neutral",
+      label: "Still processing",
+      message: "This is taking longer than expected. Your post is safe; check again or reload later.",
+      action: {
+        label: "Check status",
+        onClick: expect.any(Function),
+      },
+    });
+    song.post.statusNotice?.action?.onClick();
+    expect(refreshCalls).toEqual(["refresh"]);
+
+    const thread = toThreadPostCard(
+      createSongPost({ status: "processing" }),
+      null,
+      undefined,
+      undefined,
+      { processingTimedOut: true },
+    );
+    expect(thread.statusNotice?.label).toBe("Still processing");
+  });
 });
 
 function createLiveRoomAccess(): ApiLiveRoomAccessResponse {

@@ -42,6 +42,7 @@ export const ImageUploadingActivity: Story = {
     <PostComposer
       {...baseComposer}
       composerStep="publish"
+      mode="image"
       submit={submitting({
         phase: "uploading_media",
         label: "Uploading image",
@@ -62,6 +63,7 @@ export const TextPublishingActivity: Story = {
     <PostComposer
       {...baseComposer}
       composerStep="publish"
+      mode="text"
       submit={submitting({
         phase: "publishing_post",
         label: "Publishing",
@@ -81,6 +83,7 @@ export const SongPendingBundleActivity: Story = {
     <PostComposer
       {...baseComposer}
       composerStep="publish"
+      mode="song"
       submit={submitting({
         phase: "checking_registration",
         label: "Checking registration",
@@ -100,6 +103,7 @@ export const SongPipelineCounter: Story = {
     <PostComposer
       {...baseComposer}
       composerStep="publish"
+      mode="song"
       submit={submitting({
         phase: "processing_media",
         label: "Analyzing song",
@@ -120,6 +124,7 @@ export const VideoUploadingWithPercent: Story = {
     <PostComposer
       {...baseComposer}
       composerStep="publish"
+      mode="video"
       submit={submitting({
         phase: "uploading_media",
         label: "Uploading video",

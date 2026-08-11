@@ -52,6 +52,7 @@ export type LiveRoomPresentationOptions = {
 
 export type PostPresentationOptions = {
   commentCountOverride?: number;
+  processingTimedOut?: boolean;
   liveRoom?: LiveRoomPresentationOptions;
   onVerifyAge?: () => void;
   onVote?: PostCardProps["onVote"];
@@ -61,6 +62,7 @@ export type PostPresentationOptions = {
   onDelete?: () => void;
   onRemove?: () => void;
   onCancelEvent?: () => void;
+  onRefreshProcessing?: () => void;
   onRetryPublish?: () => void;
   onBoost?: () => void;
   onRewardSettings?: () => void;

@@ -256,6 +256,7 @@ export function LiveTabContent({
                 onClick={() => onLiveChange({
                   ...live,
                   accessMode: opt.value,
+                  visibility: opt.value === "paid" ? "public" : live.visibility,
                   audienceGateMode: opt.value === "gated" ? live.audienceGateMode ?? "community_members" : live.audienceGateMode,
                 })}
               >
@@ -272,6 +273,7 @@ export function LiveTabContent({
               { value: "unlisted" as const, label: copy.live.visibilityUnlisted },
             ]).map((opt) => (
               <Chip
+                disabled={live.accessMode === "paid" && opt.value === "unlisted"}
                 key={opt.value}
                 variant={live.visibility === opt.value ? "selected" : "default"}
                 onClick={() => onLiveChange({ ...live, visibility: opt.value })}

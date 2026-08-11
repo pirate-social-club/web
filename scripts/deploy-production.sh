@@ -32,7 +32,6 @@ REQUIRED_WEB_PRODUCTION_SECRETS=(
 HOTFIX=0
 HOTFIX_REASON=""
 SKIP_TESTS=0
-SKIP_BUILD=0
 CONFIRM_PRODUCTION=0
 
 usage() {
@@ -45,7 +44,6 @@ Options:
   --hotfix -m "reason"      Allow dirty/non-main deploy with auditable metadata suffix.
   -m, --message "reason"    Required with --hotfix.
   --skip-tests              Skip focused predeploy tests.
-  --skip-build              Skip web production build.
   --confirm-production      Required for any production deploy.
   -h, --help                Show this help.
 EOF
@@ -67,10 +65,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-tests)
       SKIP_TESTS=1
-      shift
-      ;;
-    --skip-build)
-      SKIP_BUILD=1
       shift
       ;;
     --confirm-production)
@@ -117,6 +111,24 @@ require_file() {
     printf 'Missing required executable: %s\n' "$file" >&2
     exit 1
   fi
+}
+
+read_web_build_field() {
+  node -e '
+    const fs = require("node:fs");
+    const [path, field] = process.argv.slice(1);
+    const value = field.split(".").reduce((current, part) => current?.[part], JSON.parse(fs.readFileSync(path, "utf8")));
+    if (typeof value !== "string" || !value) process.exit(2);
+    process.stdout.write(value);
+  ' "$WEB_DIR/dist/build-info.json" "$1"
+}
+
+read_json_field() {
+  node -e '
+    const [raw, field] = process.argv.slice(1);
+    const value = field.split(".").reduce((current, part) => current?.[part], JSON.parse(raw));
+    if (value != null) process.stdout.write(String(value));
+  ' "$1" "$2"
 }
 
 check_api_production_secrets() {
@@ -169,9 +181,12 @@ require_file "$WEB_WRANGLER"
 require_file "$API_WRANGLER"
 
 WEB_SHA="$(repo_sha "$WEB_DIR")"
+WEB_FULL_SHA="$(git -C "$WEB_DIR" rev-parse HEAD)"
 WEB_REF="$(repo_ref "$WEB_DIR")"
 API_SHA="$(repo_sha "$API_DIR")"
+API_FULL_SHA="$(git -C "$API_DIR" rev-parse HEAD)"
 API_REF="$(repo_ref "$API_DIR")"
+CORE_RELEASE_SHA="$(tr -d '[:space:]' < "$WEB_DIR/.github/release-refs/core.sha")"
 BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 API_SHARD_SOURCE_VERSION="$(
   printf '%s.%s' \
@@ -191,9 +206,6 @@ if [[ "$HOTFIX" != "1" ]]; then
     API_REF="pinned/$API_RELEASE_SHA"
   fi
 else
-  SAFE_SUFFIX="$(printf '%s' "$HOTFIX_REASON" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//' | cut -c1-40)"
-  WEB_SHA="${WEB_SHA}-hotfix-${SAFE_SUFFIX:-manual}"
-  API_SHA="${API_SHA}-hotfix-${SAFE_SUFFIX:-manual}"
   log "hotfix deploy"
   printf 'reason: %s\n' "$HOTFIX_REASON"
   printf 'web status:\n%s\n' "$(repo_status "$WEB_DIR")"
@@ -219,10 +231,23 @@ check_api_production_secrets
 log "check web production secrets"
 check_web_production_secrets
 
-if [[ "$SKIP_BUILD" != "1" ]]; then
-  log "build web production bundle"
-  (cd "$WEB_DIR" && bun run build:prod)
-fi
+log "build web production bundle"
+(cd "$WEB_DIR" && \
+  PIRATE_BUILD_API_SHA="$API_FULL_SHA" \
+  PIRATE_BUILD_CORE_SHA="$CORE_RELEASE_SHA" \
+  PIRATE_BUILD_HOTFIX_REASON="$HOTFIX_REASON" \
+  bun run build:prod)
+
+log "verify web artifact provenance"
+(cd "$WEB_DIR" && bun run scripts/build-provenance.ts verify-dist \
+  "$WEB_FULL_SHA" "$API_FULL_SHA" "$CORE_RELEASE_SHA")
+RELEASE_ID="$(read_web_build_field releaseId)"
+BUILD_ID="$(read_web_build_field buildId)"
+API_SOURCE_JSON="$(cd "$WEB_DIR" && bun run scripts/build-provenance.ts inspect-source "$API_DIR" "$HOTFIX_REASON")"
+API_SOURCE_STATE="$(read_json_field "$API_SOURCE_JSON" sourceState)"
+API_DEPLOY_REASON_SLUG="$(read_json_field "$API_SOURCE_JSON" deployReasonSlug)"
+API_HOTFIX_REASON_SLUG="$(read_json_field "$API_SOURCE_JSON" hotfix.reasonSlug)"
+API_PATCH_SHA256="$(read_json_field "$API_SOURCE_JSON" hotfix.patchSha256)"
 
 log "deploy api production"
 (cd "$API_DIR" && "$API_WRANGLER" deploy \
@@ -230,10 +255,28 @@ log "deploy api production"
   --var "BUILD_GIT_SHA:$API_SHA" \
   --var "BUILD_GIT_REF:$API_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" \
+  --var "BUILD_RELEASE_ID:$RELEASE_ID" \
+  --var "BUILD_ID:$BUILD_ID" \
+  --var "BUILD_WEB_SHA:$WEB_FULL_SHA" \
+  --var "BUILD_API_SHA:$API_FULL_SHA" \
+  --var "BUILD_CORE_SHA:$CORE_RELEASE_SHA" \
+  --var "BUILD_SOURCE_STATE:$API_SOURCE_STATE" \
+  --var "BUILD_DEPLOY_REASON_SLUG:$API_DEPLOY_REASON_SLUG" \
+  --var "BUILD_HOTFIX_REASON_SLUG:$API_HOTFIX_REASON_SLUG" \
+  --var "BUILD_PATCH_SHA256:$API_PATCH_SHA256" \
   --var "COMMUNITY_SCHEMA_POLICY_DIGEST:$SCHEMA_POLICY_DIGEST" \
   --define "__PIRATE_BUILD_GIT_SHA__:\"$API_SHA\"" \
   --define "__PIRATE_BUILD_GIT_REF__:\"$API_REF\"" \
   --define "__PIRATE_BUILD_TIMESTAMP__:\"$BUILD_TIMESTAMP\"" \
+  --define "__PIRATE_BUILD_RELEASE_ID__:\"$RELEASE_ID\"" \
+  --define "__PIRATE_BUILD_ID__:\"$BUILD_ID\"" \
+  --define "__PIRATE_BUILD_WEB_SHA__:\"$WEB_FULL_SHA\"" \
+  --define "__PIRATE_BUILD_API_SHA__:\"$API_FULL_SHA\"" \
+  --define "__PIRATE_BUILD_CORE_SHA__:\"$CORE_RELEASE_SHA\"" \
+  --define "__PIRATE_BUILD_SOURCE_STATE__:\"$API_SOURCE_STATE\"" \
+  --define "__PIRATE_BUILD_DEPLOY_REASON_SLUG__:\"$API_DEPLOY_REASON_SLUG\"" \
+  --define "__PIRATE_BUILD_HOTFIX_REASON_SLUG__:\"$API_HOTFIX_REASON_SLUG\"" \
+  --define "__PIRATE_BUILD_PATCH_SHA256__:\"$API_PATCH_SHA256\"" \
   --define "__PIRATE_COMMUNITY_D1_SHARD_SOURCE_VERSION__:\"$API_SHARD_SOURCE_VERSION\"")
 
 log "deploy web production"
@@ -255,11 +298,12 @@ log "deploy web public production worker"
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
 
 log "verify production"
-"$ROOT_DIR/scripts/smoke-test.sh" prod
+EXPECTED_RELEASE_ID="$RELEASE_ID" "$ROOT_DIR/scripts/smoke-test.sh" prod
 "$ROOT_DIR/scripts/check-deployments.sh" \
   --scope prod \
   --expected-web-sha "$WEB_SHA" \
   --expected-api-sha "$API_SHA" \
+  --expected-release-id "$RELEASE_ID" \
   --retry-for 120
 
 log "production deploy complete"

@@ -1,5 +1,11 @@
 import { pathToFileURL } from "node:url";
 
+import {
+  targetIdentityFromUrl,
+  validateMatchingReleaseAttestations,
+  validateVersionPayload,
+} from "./lib/deployment-attestation.mjs";
+
 const DEFAULT_ATTEMPTS = 12;
 const DEFAULT_DELAY_MS = 5_000;
 
@@ -18,7 +24,7 @@ function parseTargets(args) {
     if (!url || !expectedSha) {
       throw new Error("Every version URL must have an expected SHA");
     }
-    targets.push({ expectedSha, url });
+    targets.push({ expectedSha, url, ...targetIdentityFromUrl(url) });
   }
   return targets;
 }
@@ -37,7 +43,7 @@ export class VersionMismatchError extends Error {
   }
 }
 
-async function readVersion(target, attempt, fetchImpl) {
+async function readVersion(target, attempt, fetchImpl, expectedReleaseId) {
   const url = new URL(target.url);
   url.searchParams.set("release_verify", `${Date.now()}-${attempt}`);
   const response = await fetchImpl(url, {
@@ -52,13 +58,18 @@ async function readVersion(target, attempt, fetchImpl) {
     throw new Error(`${target.url} returned HTTP ${response.status}`);
   }
   const body = await response.json();
-  const actualSha = String(body?.git_sha ?? "");
-  if (!actualSha.startsWith(target.expectedSha.slice(0, 7))) {
+  const validation = validateVersionPayload(body, {
+    service: target.service,
+    environment: target.environment,
+    gitSha: target.expectedSha,
+    releaseId: expectedReleaseId,
+  });
+  if (validation.failures.length > 0) {
     throw new VersionMismatchError(
-      `${target.url} expected ${target.expectedSha}, got ${actualSha || "missing git_sha"}`,
+      `${target.url} ${validation.failures.join("; ")}`,
     );
   }
-  return actualSha;
+  return { body, gitSha: validation.metadata.gitSha };
 }
 
 export async function verifyDeployedVersions(targets, {
@@ -66,21 +77,35 @@ export async function verifyDeployedVersions(targets, {
   delayMs = DEFAULT_DELAY_MS,
   failFastOnMismatch = false,
   fetchImpl = fetch,
+  expectedReleaseId,
 } = {}) {
+  if (!/^[0-9a-f]{64}$/.test(expectedReleaseId ?? "")) {
+    throw new Error("expectedReleaseId must be one lowercase SHA-256 digest");
+  }
   let lastErrors = [];
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     const results = await Promise.allSettled(
-      targets.map((target) => readVersion(target, attempt, fetchImpl)),
+      targets.map((target) => readVersion(target, attempt, fetchImpl, expectedReleaseId)),
     );
     lastErrors = [];
     let mismatched = false;
     for (let index = 0; index < results.length; index += 1) {
       const result = results[index];
       if (result.status === "fulfilled") {
-        console.log(`verified ${targets[index].url}: ${result.value}`);
+        console.log(`verified ${targets[index].url}: ${result.value.gitSha}`);
       } else {
         if (result.reason instanceof VersionMismatchError) mismatched = true;
         lastErrors.push(result.reason instanceof Error ? result.reason.message : String(result.reason));
+      }
+    }
+    if (lastErrors.length === 0) {
+      const pairFailures = validateMatchingReleaseAttestations(results.map((result, index) => ({
+        label: targets[index].url,
+        body: result.value.body,
+      })));
+      if (pairFailures.length > 0) {
+        mismatched = true;
+        lastErrors.push(...pairFailures);
       }
     }
     if (lastErrors.length === 0) return;
@@ -117,5 +142,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     attempts: positiveIntFromEnv("VERIFY_DEPLOYED_ATTEMPTS", DEFAULT_ATTEMPTS),
     delayMs: positiveIntFromEnv("VERIFY_DEPLOYED_DELAY_MS", DEFAULT_DELAY_MS),
     failFastOnMismatch: process.env.VERIFY_DEPLOYED_FAIL_FAST_ON_MISMATCH === "1",
+    expectedReleaseId: process.env.EXPECTED_RELEASE_ID,
   });
 }

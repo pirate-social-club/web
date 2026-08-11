@@ -80,9 +80,12 @@ if [[ "$ALLOW_NON_MAIN" == "1" && -z "$ALLOW_REASON" ]]; then
 fi
 
 WEB_SHA="$(repo_sha "$WEB_DIR")"
+WEB_FULL_SHA="$(git -C "$WEB_DIR" rev-parse HEAD)"
 WEB_REF="$(repo_ref "$WEB_DIR")"
 API_SHA="$(repo_sha "$API_DIR")"
+API_FULL_SHA="$(git -C "$API_DIR" rev-parse HEAD)"
 API_REF="$(repo_ref "$API_DIR")"
+CORE_RELEASE_SHA="$(tr -d '[:space:]' < "$WEB_DIR/.github/release-refs/core.sha")"
 BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 API_SHARD_SOURCE_VERSION="$(
   printf '%s.%s' \
@@ -117,6 +120,24 @@ require_file() {
     printf 'Missing required executable: %s\n' "$file" >&2
     exit 1
   fi
+}
+
+read_web_build_field() {
+  node -e '
+    const fs = require("node:fs");
+    const [path, field] = process.argv.slice(1);
+    const value = field.split(".").reduce((current, part) => current?.[part], JSON.parse(fs.readFileSync(path, "utf8")));
+    if (typeof value !== "string" || !value) process.exit(2);
+    process.stdout.write(value);
+  ' "$WEB_DIR/dist/build-info.json" "$1"
+}
+
+read_json_field() {
+  node -e '
+    const [raw, field] = process.argv.slice(1);
+    const value = field.split(".").reduce((current, part) => current?.[part], JSON.parse(raw));
+    if (value != null) process.stdout.write(String(value));
+  ' "$1" "$2"
 }
 
 check_json_field() {
@@ -229,9 +250,6 @@ if [[ "$ALLOW_NON_MAIN" != "1" ]]; then
     API_REF="pinned/$API_RELEASE_SHA"
   fi
 else
-  SAFE_SUFFIX="$(printf '%s' "$ALLOW_REASON" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//' | cut -c1-40)"
-  WEB_SHA="${WEB_SHA}-non-main-${SAFE_SUFFIX:-manual}"
-  API_SHA="${API_SHA}-non-main-${SAFE_SUFFIX:-manual}"
   log "non-main staging deploy"
   printf 'reason: %s\n' "$ALLOW_REASON"
   printf 'web status:\n%s\n' "$(repo_status "$WEB_DIR")"
@@ -247,7 +265,22 @@ printf 'api: %s (%s)\n' "$API_SHA" "$API_REF"
 printf 'timestamp: %s\n' "$BUILD_TIMESTAMP"
 
 log "build web staging bundle"
-(cd "$WEB_DIR" && bun run build:staging)
+(cd "$WEB_DIR" && \
+  PIRATE_BUILD_API_SHA="$API_FULL_SHA" \
+  PIRATE_BUILD_CORE_SHA="$CORE_RELEASE_SHA" \
+  PIRATE_BUILD_HOTFIX_REASON="$ALLOW_REASON" \
+  bun run build:staging)
+
+log "verify web artifact provenance"
+(cd "$WEB_DIR" && bun run scripts/build-provenance.ts verify-dist \
+  "$WEB_FULL_SHA" "$API_FULL_SHA" "$CORE_RELEASE_SHA")
+RELEASE_ID="$(read_web_build_field releaseId)"
+BUILD_ID="$(read_web_build_field buildId)"
+API_SOURCE_JSON="$(cd "$WEB_DIR" && bun run scripts/build-provenance.ts inspect-source "$API_DIR" "$ALLOW_REASON")"
+API_SOURCE_STATE="$(read_json_field "$API_SOURCE_JSON" sourceState)"
+API_DEPLOY_REASON_SLUG="$(read_json_field "$API_SOURCE_JSON" deployReasonSlug)"
+API_HOTFIX_REASON_SLUG="$(read_json_field "$API_SOURCE_JSON" hotfix.reasonSlug)"
+API_PATCH_SHA256="$(read_json_field "$API_SOURCE_JSON" hotfix.patchSha256)"
 
 log "deploy web staging worker"
 (cd "$WEB_DIR" && "$WEB_WRANGLER" deploy dist/worker/index.js \
@@ -275,10 +308,28 @@ log "deploy api staging worker"
   --var "BUILD_GIT_SHA:$API_SHA" \
   --var "BUILD_GIT_REF:$API_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" \
+  --var "BUILD_RELEASE_ID:$RELEASE_ID" \
+  --var "BUILD_ID:$BUILD_ID" \
+  --var "BUILD_WEB_SHA:$WEB_FULL_SHA" \
+  --var "BUILD_API_SHA:$API_FULL_SHA" \
+  --var "BUILD_CORE_SHA:$CORE_RELEASE_SHA" \
+  --var "BUILD_SOURCE_STATE:$API_SOURCE_STATE" \
+  --var "BUILD_DEPLOY_REASON_SLUG:$API_DEPLOY_REASON_SLUG" \
+  --var "BUILD_HOTFIX_REASON_SLUG:$API_HOTFIX_REASON_SLUG" \
+  --var "BUILD_PATCH_SHA256:$API_PATCH_SHA256" \
   --var "COMMUNITY_SCHEMA_POLICY_DIGEST:$SCHEMA_POLICY_DIGEST" \
   --define "__PIRATE_BUILD_GIT_SHA__:\"$API_SHA\"" \
   --define "__PIRATE_BUILD_GIT_REF__:\"$API_REF\"" \
   --define "__PIRATE_BUILD_TIMESTAMP__:\"$BUILD_TIMESTAMP\"" \
+  --define "__PIRATE_BUILD_RELEASE_ID__:\"$RELEASE_ID\"" \
+  --define "__PIRATE_BUILD_ID__:\"$BUILD_ID\"" \
+  --define "__PIRATE_BUILD_WEB_SHA__:\"$WEB_FULL_SHA\"" \
+  --define "__PIRATE_BUILD_API_SHA__:\"$API_FULL_SHA\"" \
+  --define "__PIRATE_BUILD_CORE_SHA__:\"$CORE_RELEASE_SHA\"" \
+  --define "__PIRATE_BUILD_SOURCE_STATE__:\"$API_SOURCE_STATE\"" \
+  --define "__PIRATE_BUILD_DEPLOY_REASON_SLUG__:\"$API_DEPLOY_REASON_SLUG\"" \
+  --define "__PIRATE_BUILD_HOTFIX_REASON_SLUG__:\"$API_HOTFIX_REASON_SLUG\"" \
+  --define "__PIRATE_BUILD_PATCH_SHA256__:\"$API_PATCH_SHA256\"" \
   --define "__PIRATE_COMMUNITY_D1_SHARD_SOURCE_VERSION__:\"$API_SHARD_SOURCE_VERSION\"")
 
 log "smoke checks"

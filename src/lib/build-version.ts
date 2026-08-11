@@ -1,3 +1,9 @@
+import embeddedBuildInfo from "../../build-info.json" with { type: "json" };
+
+const buildInfo = embeddedBuildInfo as Omit<typeof embeddedBuildInfo, "hotfix"> & {
+  hotfix: null | { reasonSlug: string; patchSha256: string };
+};
+
 export type BuildVersionEnv = {
   BUILD_GIT_REF?: string;
   BUILD_GIT_SHA?: string;
@@ -14,9 +20,22 @@ export function buildVersionPayload(service: BuildVersionService, env: BuildVers
   return {
     service,
     environment: env.DEPLOY_ENV ?? env.NODE_ENV ?? null,
-    git_sha: env.BUILD_GIT_SHA ?? null,
+    git_sha: buildInfo.webSha,
     git_ref: env.BUILD_GIT_REF ?? null,
-    build_timestamp: env.BUILD_TIMESTAMP ?? null,
+    build_timestamp: buildInfo.builtAt,
+    release_id: buildInfo.releaseId,
+    build_id: buildInfo.buildId,
+    web_sha: buildInfo.webSha,
+    api_sha: buildInfo.apiSha,
+    core_sha: buildInfo.coreSha,
+    deploy_reason_slug: buildInfo.deployReasonSlug,
+    source_state: buildInfo.sourceState,
+    hotfix: buildInfo.hotfix === null
+      ? null
+      : {
+          reason_slug: buildInfo.hotfix.reasonSlug,
+          patch_sha256: buildInfo.hotfix.patchSha256,
+        },
     api_origin: env.HNS_PUBLIC_API_ORIGIN ?? null,
     app_origin: env.HNS_PUBLIC_APP_ORIGIN ?? null,
   };

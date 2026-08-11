@@ -25,8 +25,8 @@ describe("version gap decisions", () => {
   });
 
   test("recognises when production already contains a release commit", () => {
-    expect(productionContainsRelease({ releaseHeadSha: "aaaaaaabbbb", productionSha: "aaaaaaa", compareStatus: "behind" }))
-      .toBe(true); // prefix equality wins regardless of compare
+    expect(productionContainsRelease({ releaseHeadSha: "a".repeat(40), productionSha: "a".repeat(40), compareStatus: "behind" }))
+      .toBe(true); // exact equality wins regardless of compare
     expect(productionContainsRelease({ releaseHeadSha: "ddddddd", productionSha: "aaaaaaa", compareStatus: "ahead" }))
       .toBe(true);
     expect(productionContainsRelease({ releaseHeadSha: "ddddddd", productionSha: "aaaaaaa", compareStatus: "behind" }))
@@ -38,7 +38,8 @@ describe("version gap decisions", () => {
   });
 
   test("reports production serving the tip as healthy", () => {
-    expect(decide({ ...BASE, tipSha: "aaaaaaabbbbbbb" }).kind).toBe("healthy");
+    expect(decide({ ...BASE, tipSha: BASE.productionSha }).kind).toBe("healthy");
+    expect(decide({ ...BASE, tipSha: `${BASE.productionSha}${"b".repeat(33)}` }).kind).toBe("healthy");
   });
 
   test("reports a non-ancestor production as diverged", () => {
@@ -153,11 +154,13 @@ describe("API pin gap decisions", () => {
   });
 
   test("production serving the pin is in sync", () => {
-    // Prefix equality: /__version serves an abbreviated SHA.
     expect(
-      decideApiPinGap({ ...API_BASE, productionSha: "a2179db59", compareStatus: undefined }).kind,
+      decideApiPinGap({ ...API_BASE, productionSha: API_BASE.pinSha, compareStatus: undefined }).kind,
     ).toBe("in_sync");
-    // Full compare agreement for a non-prefix miss.
+    expect(
+      decideApiPinGap({ ...API_BASE, productionSha: API_BASE.pinSha.slice(0, 7), compareStatus: undefined }).kind,
+    ).toBe("in_sync");
+    // Full compare agreement is also accepted.
     const identical = decideApiPinGap({ ...API_BASE, compareStatus: "identical" });
     expect(identical.kind).toBe("in_sync");
     expect(identical.failed).toBe(false);

@@ -9,7 +9,7 @@ repo_ref() {
 }
 
 repo_sha() {
-  git -C "$1" rev-parse --short HEAD
+  git -C "$1" rev-parse HEAD
 }
 
 require_clean_release_source() {

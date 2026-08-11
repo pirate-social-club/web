@@ -8,16 +8,18 @@ on:
         required: true
         type: choice
         options:
+          - staging-audit
           - staging-canary
           - staging-fleet
+          - production-audit
           - production-canary
           - production-fleet
       database_name:
         description: Exact D1 database name for a canary target
         required: false
         type: string
-      execute_confirmation:
-        description: Type APPLY 1154 TO STAGING or APPLY 1154 TO PRODUCTION
+      confirmation:
+        description: Type AUDIT/APPLY 1154 TO STAGING/PRODUCTION as appropriate
         required: true
         type: string
       concurrency:
@@ -48,7 +50,7 @@ jobs:
         with:
           path: web
 
-      - name: Resolve pinned API and reviewed Core runner
+      - name: Resolve pinned API and Core revisions
         id: refs
         working-directory: web
         shell: bash
@@ -78,22 +80,28 @@ jobs:
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
 
-      - name: Validate destructive target
+      - name: Validate target and reviewed migration
         shell: bash
         env:
           TARGET: ${{ inputs.target }}
           DATABASE_NAME: ${{ inputs.database_name }}
-          CONFIRMATION: ${{ inputs.execute_confirmation }}
+          CONFIRMATION: ${{ inputs.confirmation }}
         run: |
           if [[ "$TARGET" == production-* ]]; then
-            expected="APPLY 1154 TO PRODUCTION"
+            environment_name="PRODUCTION"
             database_pattern='^community-d1-pool-[0-9]{4}-prod$'
           else
-            expected="APPLY 1154 TO STAGING"
+            environment_name="STAGING"
             database_pattern='^community-d1-pool-[0-9]{4}-staging$'
           fi
+          if [[ "$TARGET" == *-audit ]]; then
+            action="AUDIT"
+          else
+            action="APPLY"
+          fi
+          expected="$action 1154 TO $environment_name"
           if [[ "$CONFIRMATION" != "$expected" ]]; then
-            echo "::error::Execution confirmation must be exactly: $expected"
+            echo "::error::Confirmation must be exactly: $expected"
             exit 1
           fi
           if [[ "$TARGET" == *-canary ]]; then
@@ -105,8 +113,10 @@ jobs:
             echo "::error::database_name is only valid for canary targets"
             exit 1
           fi
+          test -f core/db/community-template/migrations/1154_commerce_integer_money.sql
+          test -f core/scripts/community/apply-commerce-integer-money-d1-migration.ts
 
-      - name: Apply migration with resumable fleet runner
+      - name: Audit or apply migration with resumable fleet runner
         shell: bash
         env:
           TARGET: ${{ inputs.target }}
@@ -120,11 +130,9 @@ jobs:
             --wrangler-config api/services/community-d1-shard/wrangler.jsonc
             --migrations-dir core/db/community-template/migrations
             --quarantines core/scripts/community/community-shard-quarantines.json
-            --manifest migration-output/execution-manifest.json
+            --manifest migration-output/manifest.json
             --resume-file migration-output/resume.json
             --concurrency "$MIGRATION_CONCURRENCY"
-            --confirm-time-travel
-            --execute
           )
           if [[ "$TARGET" == production-* ]]; then
             args+=(--prod)
@@ -132,9 +140,13 @@ jobs:
           if [[ "$TARGET" == *-canary ]]; then
             args+=(--only "$DATABASE_NAME")
           fi
+          if [[ "$TARGET" != *-audit ]]; then
+            args+=(--confirm-time-travel --execute)
+          fi
           bun core/scripts/community/apply-commerce-integer-money-d1-migration.ts "${args[@]}"
 
       - name: Verify final target state read-only
+        if: ${{ !endsWith(inputs.target, '-audit') }}
         shell: bash
         env:
           TARGET: ${{ inputs.target }}

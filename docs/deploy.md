@@ -31,6 +31,22 @@ The release workflow:
 - serializes the production deploy, applies control-plane migrations, and
   verifies production release metadata
 
+### Community commerce integer-money migration
+
+Before releasing an API pin that requires
+`1154_commerce_integer_money.sql`, run the manually dispatched
+`Commerce integer-money fleet migration` workflow in this order:
+
+1. staging audit, canary, then fleet;
+2. production audit, canary, then fleet;
+3. the normal `Release` workflow.
+
+Use the audit manifest to select an allocated, loaded canary. Keep its migration
+artifact with the release evidence. The runner is resumable and fail-closed: it
+never touches blank pool databases or quarantined shards, and a partial table
+rebuild requires operator review rather than automatic replay. Do not replace
+this sequence with raw `wrangler d1 execute` writes.
+
 The Web browser suite is deterministic and uses mocked authenticated API
 responses where needed. The API-owned contract gate uses real staging services
 and persistent fixtures. It inventories the selected tests before executing

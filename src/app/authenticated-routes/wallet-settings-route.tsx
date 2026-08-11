@@ -79,6 +79,7 @@ const EMPTY_REWARDS_SUMMARY: ApiRewardsSummaryResponse = {
     count: 0,
     conditional_cents: 0,
     earliest_expires_at: null,
+    provider_requirements: [],
   },
   cashout: {
     eligible: false,
@@ -376,7 +377,7 @@ function walletRewardsSummary(input: {
       amountLabel,
       assetLabel,
       pending: true,
-      supportingLabel: "Getting your bounty ready.",
+      supportingLabel: `Getting your ${formatRewardBalanceCents(input.rewards.pending_verification.conditional_cents)} bounty ready.`,
     };
   }
   if (input.rewards.cashout.eligible) {
@@ -416,7 +417,7 @@ function walletRewardsSummary(input: {
       amountLabel,
       assetLabel,
       pending: true,
-      supportingLabel: "Getting your bounty ready.",
+      supportingLabel: `Getting your ${formatRewardBalanceCents(input.rewards.pending_verification.conditional_cents)} bounty ready.`,
     };
   }
   const remainingCents = Math.max(0, input.rewards.cashout.min_cents - input.rewards.balance_cents);
@@ -723,7 +724,7 @@ export function CurrentUserWalletPage() {
     rewardsVerificationSettledRef.current = true;
     setRewardsVerifyState("success");
     setRewardsVerifyOpen(false);
-    toast.success("Bounty verification complete.");
+    toast.success("Identity verified.");
     setRewardsVerificationPolling(true);
   }, []);
 
@@ -914,7 +915,6 @@ export function CurrentUserWalletPage() {
       if (cancelled) return;
       if (summary && summary.pending_verification.conditional_cents <= 0) {
         setRewardsVerificationPolling(false);
-        void handleRewardsCashout(summary, { notify: false });
         return;
       }
       const delay = delays[Math.min(attempt++, delays.length - 1)] ?? 30_000;
@@ -925,7 +925,7 @@ export function CurrentUserWalletPage() {
       cancelled = true;
       if (timeout !== undefined) window.clearTimeout(timeout);
     };
-  }, [handleRewardsCashout, refreshRewardsSummary, rewardsVerificationPolling]);
+  }, [refreshRewardsSummary, rewardsVerificationPolling]);
 
   React.useEffect(() => {
     const cashoutId = rewardsCashoutAttempt?.cashoutId;
@@ -940,18 +940,22 @@ export function CurrentUserWalletPage() {
         if (!cancelled) {
           applyCashoutResult(result);
           if (result.payout.status !== "submitted") await refreshRewardsSummary();
-          else if (attempt < delays.length) {
-            timeout = window.setTimeout(() => { void poll(); }, delays[attempt++]);
-          } else {
-            setRewardsCashoutErrorMessage("This transfer is still processing. Check its status again when you are ready.");
+          else {
+            if (attempt >= delays.length) {
+              setRewardsCashoutErrorMessage("This transfer is still in progress. It is safe to leave Wallet and return later; do not claim again.");
+            }
+            const delay = delays[Math.min(attempt++, delays.length - 1)] ?? 60_000;
+            timeout = window.setTimeout(() => { void poll(); }, delay);
           }
         }
       } catch (error) {
         logger.debug("[wallet] failed to refresh reward cashout", error);
-        if (!cancelled && attempt < delays.length) {
-          timeout = window.setTimeout(() => { void poll(); }, delays[attempt++]);
-        } else if (!cancelled) {
-          setRewardsCashoutErrorMessage("Status refresh paused after repeated failures. Check again when you are ready.");
+        if (!cancelled) {
+          if (attempt >= delays.length) {
+            setRewardsCashoutErrorMessage("Wallet could not refresh this transfer yet. Polling will continue; do not claim again.");
+          }
+          const delay = delays[Math.min(attempt++, delays.length - 1)] ?? 60_000;
+          timeout = window.setTimeout(() => { void poll(); }, delay);
         }
       }
     };
@@ -1008,9 +1012,9 @@ export function CurrentUserWalletPage() {
         void refreshRewardsSummary();
       },
       onVerify: () => {
-        const provider = rewardsSummary.cashout.verification_provider;
-        if (provider === "very" && rewardsSummary.pending_verification.conditional_cents > 0) {
-          handleRewardsVerifyProvider("very");
+        const requirements = rewardsSummary.pending_verification.provider_requirements;
+        if (requirements.length === 1) {
+          handleRewardsVerifyProvider(requirements[0]!.provider);
           return;
         }
         rewardsVerificationSettledRef.current = false;
@@ -1099,7 +1103,15 @@ export function CurrentUserWalletPage() {
             void handleRewardsVerifyProvider(provider);
           }}
           open={rewardsVerifyOpen}
-          providers={[...REWARD_CASHOUT_VERIFICATION_PROVIDERS]}
+          providerAmountLabels={Object.fromEntries(
+            rewardsSummary.pending_verification.provider_requirements.map((requirement) => [
+              requirement.provider,
+              formatRewardBalanceCents(requirement.conditional_cents),
+            ]),
+          )}
+          providers={rewardsSummary.pending_verification.provider_requirements.length > 1
+            ? rewardsSummary.pending_verification.provider_requirements.map((requirement) => requirement.provider)
+            : [...REWARD_CASHOUT_VERIFICATION_PROVIDERS]}
           selectedProvider={rewardsSelectedProvider}
           showNationalityTierDisclosure={import.meta.env.VITE_REWARD_NATIONALITY_TIERS_PREVIEW === "true"}
           state={(selfLoading || veryRewardsLoading) && rewardsVerifyState !== "failure" && rewardsVerifyState !== "conflict"

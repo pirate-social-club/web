@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import * as React from "react";
 
 import { installDomGlobals } from "@/test/setup-dom";
@@ -49,6 +49,8 @@ Object.defineProperty(window, "matchMedia", {
     removeEventListener: () => undefined,
   }),
 });
+
+let copiedTransactionHash: string | null = null;
 
 describe("reward surfaces", () => {
   test("renders offer and server-owned qualification states", () => {
@@ -128,16 +130,39 @@ describe("reward surfaces", () => {
   test("shows a signed hash under the user-facing sending state", () => {
     const hash = "0x4b6c9f0a8d3e2c1b7a6d5e4f3c2b1a0987654321abcdef1234567890abcdef12";
     const view = render(
-      <CashoutSheet amountLabel="$1.00" forceMobile={false} open state="signed" txHashLabel={hash} />,
+      <CashoutSheet
+        amountLabel="$1.00"
+        forceMobile={false}
+        onCopyTransactionHash={(value) => {
+          copiedTransactionHash = value;
+        }}
+        open
+        state="signed"
+        txHashLabel={hash}
+      />,
     );
 
-    expect(view.getByText("Sending…")).toBeTruthy();
+    expect(view.getByText("Preparing transfer")).toBeTruthy();
     expect(view.getByText(hash)).toBeTruthy();
     expect(view.getByText("Not yet visible on Base.")).toBeTruthy();
     expect(view.queryByText("Transaction signed")).toBeNull();
     expect(view.queryByText("It has not been observed on Base yet.")).toBeNull();
     expect(view.queryByText("View on Basescan")).toBeNull();
+    fireEvent.click(view.getByRole("button", { name: "Copy transaction hash" }));
+    expect(copiedTransactionHash).toBe(hash);
     view.unmount();
+  });
+
+  test("distinguishes preparation and confirmation states", () => {
+    const view = render(
+      <div>
+        <CashoutSheet amountLabel="$1.00" forceMobile={false} open state="reserved" />
+        <CashoutSheet amountLabel="$1.00" forceMobile={false} open state="confirmed" />
+      </div>,
+    );
+
+    expect(view.getByText("Preparing transfer")).toBeTruthy();
+    expect(view.getByText("$1.00 is in your wallet 🎉")).toBeTruthy();
   });
 
   test("links a broadcast transaction to Basescan", () => {

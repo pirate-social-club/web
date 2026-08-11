@@ -610,11 +610,25 @@ function SongOfferRows({
   );
 }
 
+const EMPTY_PROGRESS = { progressMs: 0 } as const;
+const EMPTY_PROGRESS_SNAPSHOT = () => EMPTY_PROGRESS;
+const NOOP_PROGRESS_SUBSCRIBE = () => () => {};
+
 export function SongPostContent({ content, className, previewMode }: SongPostContentProps) {
+  const liveProgress = React.useSyncExternalStore(
+    content.progressStore?.subscribe ?? NOOP_PROGRESS_SUBSCRIBE,
+    content.progressStore?.getSnapshot ?? EMPTY_PROGRESS_SNAPSHOT,
+    content.progressStore?.getSnapshot ?? EMPTY_PROGRESS_SNAPSHOT,
+  );
+  const resolvedContent = content.progressStore ? {
+    ...content,
+    durationMs: content.durationMs ?? liveProgress.durationMs,
+    progressMs: liveProgress.progressMs,
+  } : content;
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes");
   const song = copy.post.songContent;
-  const ui = deriveSongUI(content);
+  const ui = deriveSongUI(resolvedContent);
   const {
     progressMs,
     upstreamAttributions,
@@ -622,7 +636,7 @@ export function SongPostContent({ content, className, previewMode }: SongPostCon
     onPause,
     onSeek,
     onVerifyAge,
-  } = content;
+  } = resolvedContent;
 
   const previewSeconds = Math.max(1, Math.round((ui.previewMaxMs ?? defaultPreviewDurationMs) / 1000));
   const controlButtonClassName = "relative border-transparent bg-transparent shadow-none before:absolute before:inset-0 before:rounded-full before:bg-primary before:shadow-sm hover:bg-transparent hover:before:bg-primary/90";

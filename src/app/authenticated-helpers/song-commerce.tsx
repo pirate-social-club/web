@@ -17,6 +17,7 @@ import { toast } from "@/components/primitives/sonner";
 import { getErrorMessage } from "@/lib/error-utils";
 
 let storyCdrBrowserModulePromise: Promise<typeof import("@/lib/story/cdr-browser")> | null = null;
+const EMPTY_TRACK_PROGRESS = { progressMs: 0 } as const;
 
 async function loadStoryCdrBrowser() {
   storyCdrBrowserModulePromise ??= import("@/lib/story/cdr-browser");
@@ -42,6 +43,7 @@ export type SongPlaybackController = {
     durationMs?: number;
     progressMs: number;
   };
+  subscribePlaybackProgress: (trackKey: string, listener: () => void) => () => void;
   getAssetSourceState: (assetKey: string) => {
     playbackState: SongContentSpec["playbackState"];
     src?: string;
@@ -176,10 +178,24 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     playbackState: SongContentSpec["playbackState"];
     src?: string;
   }>>({});
-  const [trackProgress, setTrackProgress] = React.useState<Record<string, {
+  const trackProgressRef = React.useRef<Record<string, {
     durationMs?: number;
     progressMs: number;
   }>>({});
+  const trackProgressListenersRef = React.useRef(new Map<string, Set<() => void>>());
+
+  const publishTrackProgress = React.useCallback((trackKey: string, progress: {
+    durationMs?: number;
+    progressMs: number;
+  }) => {
+    trackProgressRef.current = {
+      ...trackProgressRef.current,
+      [trackKey]: progress,
+    };
+    for (const listener of trackProgressListenersRef.current.get(trackKey) ?? []) {
+      listener();
+    }
+  }, []);
 
   React.useEffect(() => {
     activeTrackKeyRef.current = activeTrackKey;
@@ -215,13 +231,10 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
       const durationMs = Number.isFinite(audio.duration) && audio.duration > 0
         ? Math.round(audio.duration * 1000)
         : undefined;
-      setTrackProgress((current) => ({
-        ...current,
-        [activeTrackKey]: {
-          durationMs,
-          progressMs: Math.round(audio.currentTime * 1000),
-        },
-      }));
+      publishTrackProgress(activeTrackKey, {
+        durationMs,
+        progressMs: Math.round(audio.currentTime * 1000),
+      });
     };
 
     audio.addEventListener("play", handlePlay);
@@ -251,7 +264,7 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
       objectUrls.clear();
       audioRef.current = null;
     };
-  }, []);
+  }, [publishTrackProgress]);
 
   const fetchTrackBlob = React.useCallback(async (descriptor: SongPlaybackDescriptor): Promise<Blob> => {
     if (descriptor.kind === "source") {
@@ -326,17 +339,16 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
       if (audio.src !== sourceUrl) {
         audio.src = sourceUrl;
       }
-      setTrackProgress((current) => ({
-        ...current,
-        [descriptor.key]: current[descriptor.key] ?? { progressMs: 0 },
-      }));
+      if (!trackProgressRef.current[descriptor.key]) {
+        publishTrackProgress(descriptor.key, { progressMs: 0 });
+      }
       await audio.play();
     } catch (error) {
       setBufferingTrackKey(null);
       setActiveTrackKey(null);
       toast.error(getErrorMessage(error, `Could not play ${descriptor.title}.`));
     }
-  }, [loadTrackUrl]);
+  }, [loadTrackUrl, publishTrackProgress]);
 
   const loadAssetSource = React.useCallback(async (descriptor: AssetSourceDescriptor): Promise<string | null> => {
     const existing = objectUrlsRef.current.get(descriptor.key);
@@ -397,8 +409,20 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
   }, [activeTrackKey, bufferingTrackKey, isPlaying]);
 
   const getPlaybackProgress = React.useCallback((trackKey: string) => (
-    trackProgress[trackKey] ?? { progressMs: 0 }
-  ), [trackProgress]);
+    trackProgressRef.current[trackKey] ?? EMPTY_TRACK_PROGRESS
+  ), []);
+
+  const subscribePlaybackProgress = React.useCallback((trackKey: string, listener: () => void) => {
+    const listeners = trackProgressListenersRef.current.get(trackKey) ?? new Set<() => void>();
+    listeners.add(listener);
+    trackProgressListenersRef.current.set(trackKey, listeners);
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size === 0) {
+        trackProgressListenersRef.current.delete(trackKey);
+      }
+    };
+  }, []);
 
   const getAssetSourceState = React.useCallback((assetKey: string) => (
     assetSourceStates[assetKey] ?? { playbackState: "idle" as const }
@@ -424,19 +448,16 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
           audio.currentTime = nextSeconds;
         }, { once: true });
       }
-      setTrackProgress((current) => ({
-        ...current,
-        [descriptor.key]: {
-          durationMs: current[descriptor.key]?.durationMs,
-          progressMs: Math.max(0, Math.round(progressMs)),
-        },
-      }));
+      publishTrackProgress(descriptor.key, {
+        durationMs: trackProgressRef.current[descriptor.key]?.durationMs,
+        progressMs: Math.max(0, Math.round(progressMs)),
+      });
     } catch (error) {
       toast.error(getErrorMessage(error, `Could not seek ${descriptor.title}.`));
     }
-  }, [loadTrackUrl]);
+  }, [loadTrackUrl, publishTrackProgress]);
 
-  return {
+  return React.useMemo(() => ({
     getAssetSourceState,
     getPlaybackProgress,
     getPlaybackState,
@@ -444,5 +465,15 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     pauseTrack,
     playTrack,
     seekTrack,
-  };
+    subscribePlaybackProgress,
+  }), [
+    getAssetSourceState,
+    getPlaybackProgress,
+    getPlaybackState,
+    loadAssetSource,
+    pauseTrack,
+    playTrack,
+    seekTrack,
+    subscribePlaybackProgress,
+  ]);
 }

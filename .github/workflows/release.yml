@@ -932,11 +932,18 @@ jobs:
       AUTH_UPSTREAM_JWT_SHARED_SECRET: ${{ secrets.AUTH_UPSTREAM_JWT_SHARED_SECRET }}
       PIRATE_ADMIN_TOKEN: ${{ secrets.PIRATE_ADMIN_TOKEN }}
 
+  hns-forwarder-negative-probe:
+    name: HNS forged-context gate
+    needs: [release-inputs]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/hns-forwarder-negative-probe.yml
+
   # Guard against an older run overwriting a newer production deployment. Checked
   # as late as possible — after the blocking gate, immediately before deploying.
   production-freshness:
     name: Check release freshness
-    needs: [api-staging-contract-gate, release-gate, schema-gate]
+    needs: [api-staging-contract-gate, hns-forwarder-negative-probe, release-gate, schema-gate]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_production))
     runs-on: blacksmith-2vcpu-ubuntu-2404
     permissions:
@@ -961,7 +968,7 @@ jobs:
 
   production:
     name: Deploy production
-    needs: [api-staging-contract-gate, release-inputs, release-gate, schema-gate, production-freshness]
+    needs: [api-staging-contract-gate, hns-forwarder-negative-probe, release-inputs, release-gate, schema-gate, production-freshness]
     # Manual production deploys remain default-off and can only deploy the
     # validated current main tip after the same freshness and staging gates.
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_production)) && needs.production-freshness.outputs.stale == 'false'

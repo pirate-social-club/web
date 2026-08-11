@@ -598,7 +598,7 @@ export function HomePage({ initialSort, videoFallbackReason }: {
       toast.error(getErrorMessage(nextError, "Could not cancel this event."));
     }
   }, [api.posts, feedEntries, setFeedEntries]);
-  const feedItems = feedEntries.map((entry) => {
+  const feedItems = React.useMemo(() => feedEntries.map((entry) => {
     const assetId = entry.post.post.asset ?? undefined;
     const liveRoomId = entry.post.post.anchor_live_room ?? undefined;
     const liveRoomAccess = liveRoomId ? liveRoomAccessById[liveRoomId] : undefined;
@@ -667,7 +667,26 @@ export function HomePage({ initialSort, videoFallbackReason }: {
         viewerContentLocale: contentLocale,
       },
     );
-  });
+  }), [
+    authorProfiles,
+    cancelEvent,
+    contentLocale,
+    copy.common.showOriginal,
+    copy.common.showTranslation,
+    deletePost,
+    feedEntries,
+    freedomDetected,
+    handleVerifyAge,
+    listingsByAssetId,
+    listingsByLiveRoomId,
+    liveRoomAccessById,
+    localeTag,
+    purchasesByAssetId,
+    purchasesByLiveRoomId,
+    session?.user?.id,
+    songPlayback,
+    voteOnPost,
+  ]);
   const popularCommunities = React.useMemo((): PopularCommunityItem[] => {
     return topCommunities
       .map((community) => {

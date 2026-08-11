@@ -674,6 +674,10 @@ export function toSongPostContent(
     onVerifyAge: input.onVerifyAge,
     playbackState,
     progressMs: playbackProgress?.progressMs,
+    progressStore: playbackDescriptor && playback ? {
+      getSnapshot: () => playback.getPlaybackProgress(playbackDescriptor.key),
+      subscribe: (listener) => playback.subscribePlaybackProgress(playbackDescriptor.key, listener),
+    } : undefined,
     annotationsUrl: post.song_annotations_url ?? undefined,
     caption: input.resolvedCaption,
     captionDir: input.captionDir,

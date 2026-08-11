@@ -216,6 +216,10 @@ export interface SongContentSpec {
   // Playback axis
   playbackState?: PlaybackState;
   progressMs?: number;
+  progressStore?: {
+    getSnapshot: () => { durationMs?: number; progressMs: number };
+    subscribe: (listener: () => void) => () => void;
+  };
 
   // Domain axis - from specs/domain/asset.md and post.md
   accessMode: AccessMode;

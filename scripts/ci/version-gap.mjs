@@ -6,9 +6,8 @@ export const RELEASE_FAILED = "release_failed";
 export const NOT_DEPLOYED = "not_deployed";
 export const DEPLOYED = "deployed";
 
-function sameCommitDuringFullShaRollout(expectedSha, productionSha) {
-  if (expectedSha === productionSha) return true;
-  return /^[0-9a-f]{7}$/.test(productionSha) && expectedSha.startsWith(productionSha);
+function sameCommit(expectedSha, productionSha) {
+  return expectedSha === productionSha;
 }
 
 export function classifyRelease({ runConclusion, productionConclusion }) {
@@ -26,7 +25,7 @@ export function classifyRelease({ runConclusion, productionConclusion }) {
  */
 export function productionContainsRelease({ releaseHeadSha, productionSha, compareStatus }) {
   if (!releaseHeadSha || !productionSha) return false;
-  if (sameCommitDuringFullShaRollout(releaseHeadSha, productionSha)) return true;
+  if (sameCommit(releaseHeadSha, productionSha)) return true;
   return compareStatus === "identical" || compareStatus === "ahead";
 }
 
@@ -53,7 +52,7 @@ export function decide({
   if (!productionSha) {
     return { kind: "unreachable", failed: true, message: "Production version endpoint returned no git_sha." };
   }
-  if (sameCommitDuringFullShaRollout(tipSha, productionSha)) {
+  if (sameCommit(tipSha, productionSha)) {
     return { kind: "healthy", failed: false, message: `Production is serving main's tip (${productionSha}).` };
   }
   if (compareStatus !== "ahead") {
@@ -115,7 +114,7 @@ export function decideApiPinGap({ productionSha, pinSha, compareStatus }) {
   if (!pinSha) {
     return { kind: "unreachable", failed: true, message: "The API release pin (.github/release-refs/api.sha) is empty." };
   }
-  if (sameCommitDuringFullShaRollout(pinSha, productionSha) || compareStatus === "identical") {
+  if (sameCommit(pinSha, productionSha) || compareStatus === "identical") {
     return { kind: "in_sync", failed: false, message: `API production is serving the pinned commit (${productionSha}).` };
   }
   if (compareStatus === "ahead") {

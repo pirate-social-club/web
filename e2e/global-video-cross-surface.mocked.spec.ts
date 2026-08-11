@@ -98,7 +98,9 @@ test("outside-Home video keeps comments history and exact Study return state", a
   await page.getByRole("button", { name: "Play Cross-surface video" }).click();
   await expect(page).toHaveURL(new RegExp(`[?&]video=${mockFeedPostId}(?:&|$)`, "u"));
 
-  await page.getByRole("button", { name: /comments/i }).click();
+  const viewer = page.getByRole("dialog", { name: "Video viewer" });
+  await expect(viewer).toBeVisible();
+  await viewer.getByRole("button", { name: /comments/i }).click();
   await expect(page.getByRole("heading", { name: /comments/i })).toBeVisible();
   await page.goBack();
   await expect(page.getByRole("heading", { name: /comments/i })).toHaveCount(0);
@@ -134,7 +136,7 @@ test("outside-Home video keeps comments history and exact Study return state", a
 
   await page.goto(returnState!.returnPath);
   await expect(page).toHaveURL(new RegExp(`[?&]video=${mockFeedPostId}(?:&|$)`, "u"));
-  await expect(page.getByRole("dialog", { name: "Video viewer" })).toBeVisible();
+  await expect(viewer).toBeVisible();
 
   await expectNoBrowserError(page);
 });

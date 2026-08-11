@@ -1,18 +1,24 @@
 import { describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 
 import { verifyDeployedVersions, VersionMismatchError } from "./verify-deployed-versions.mjs";
 
 const TARGET = {
-  expectedSha: "abc1234def",
+  expectedSha: "a".repeat(40),
   url: "https://example.test/__version",
   service: "web",
   environment: "production",
 };
 
 function okResponse(sha: string, overrides: Record<string, unknown> = {}) {
-  const webSha = sha === "abc1234deff00d"
-    ? sha.padEnd(40, "0")
-    : "abc1234" + "0".repeat(33);
+  const webSha = sha;
+  const apiSha = "b".repeat(40);
+  const coreSha = "c".repeat(40);
+  const releaseId = createHash("sha256").update(JSON.stringify({
+    apiSha,
+    coreSha,
+    webSha,
+  })).digest("hex");
   return {
     ok: true,
     json: async () => ({
@@ -21,11 +27,13 @@ function okResponse(sha: string, overrides: Record<string, unknown> = {}) {
       git_sha: sha,
       git_ref: "main",
       build_timestamp: "2026-08-11T11:23:15Z",
-      release_id: "d".repeat(64),
+      release_id: releaseId,
       build_id: "build-123",
       web_sha: webSha,
-      api_sha: "b".repeat(40),
-      core_sha: "c".repeat(40),
+      api_sha: apiSha,
+      core_sha: coreSha,
+      source_state: "clean",
+      hotfix: null,
       ...overrides,
     }),
   };
@@ -35,7 +43,7 @@ describe("verifyDeployedVersions retry policy", () => {
   test("passes when the deployed SHA matches", async () => {
     let calls = 0;
     await verifyDeployedVersions([TARGET], {
-      fetchImpl: async () => { calls += 1; return okResponse("abc1234deff00d"); },
+      fetchImpl: async () => { calls += 1; return okResponse("a".repeat(40)); },
     });
     expect(calls).toBe(1);
   });
@@ -51,7 +59,7 @@ describe("verifyDeployedVersions retry policy", () => {
       fetchImpl: async () => {
         calls += 1;
         if (calls < 3) throw new TypeError("fetch failed");
-        return okResponse("abc1234deff00d");
+        return okResponse("a".repeat(40));
       },
     });
     expect(calls).toBe(3);
@@ -65,7 +73,7 @@ describe("verifyDeployedVersions retry policy", () => {
       failFastOnMismatch: true,
       fetchImpl: async () => {
         calls += 1;
-        return calls < 2 ? { ok: false, status: 503 } : okResponse("abc1234deff00d");
+        return calls < 2 ? { ok: false, status: 503 } : okResponse("a".repeat(40));
       },
     });
     expect(calls).toBe(2);
@@ -79,8 +87,8 @@ describe("verifyDeployedVersions retry policy", () => {
       attempts: 5,
       delayMs: 0,
       failFastOnMismatch: true,
-      fetchImpl: async () => { calls += 1; return okResponse("9999999other"); },
-    })).rejects.toThrow(/expected git_sha=abc1234def/u);
+      fetchImpl: async () => { calls += 1; return okResponse("9".repeat(40)); },
+    })).rejects.toThrow(new RegExp(`expected git_sha=${"a".repeat(40)}`, "u"));
     expect(calls).toBe(1);
   });
 
@@ -93,7 +101,7 @@ describe("verifyDeployedVersions retry policy", () => {
       delayMs: 0,
       fetchImpl: async () => {
         calls += 1;
-        return calls < 3 ? okResponse("9999999other") : okResponse("abc1234deff00d");
+        return calls < 3 ? okResponse("9".repeat(40)) : okResponse("a".repeat(40));
       },
     });
     expect(calls).toBe(3);
@@ -113,7 +121,7 @@ describe("verifyDeployedVersions retry policy", () => {
     await verifyDeployedVersions([TARGET], {
       attempts: 1,
       delayMs: 0,
-      fetchImpl: async () => okResponse("9999999other"),
+      fetchImpl: async () => okResponse("9".repeat(40)),
     }).catch((error: unknown) => { captured = error; });
     expect(captured).toBeInstanceOf(Error);
     expect(new VersionMismatchError("x")).toBeInstanceOf(VersionMismatchError);
@@ -127,7 +135,7 @@ describe("verifyDeployedVersions retry policy", () => {
       failFastOnMismatch: true,
       fetchImpl: async () => {
         calls += 1;
-        return { ok: true, json: async () => ({ git_sha: "abc1234def" }) };
+        return { ok: true, json: async () => ({ git_sha: "a".repeat(40) }) };
       },
     })).rejects.toThrow(/service is missing/u);
     expect(calls).toBe(1);
@@ -146,7 +154,7 @@ describe("verifyDeployedVersions retry policy", () => {
       failFastOnMismatch: true,
       fetchImpl: async (url: URL) => String(url).includes("api.example.test")
         ? okResponse("b".repeat(40), { service: "api", build_id: "other-build" })
-        : okResponse("abc1234deff00d"),
+        : okResponse("a".repeat(40)),
     })).rejects.toThrow(/build_id=other-build/u);
   });
 });

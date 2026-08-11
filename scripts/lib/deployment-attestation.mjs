@@ -1,8 +1,11 @@
-const VERSION_SHA_PATTERN = /^([0-9a-f]{7,40})(?:$|-)/i;
+import { createHash } from "node:crypto";
+
 const REQUIRED_FIELDS = ["service", "environment", "git_sha", "git_ref", "build_timestamp"];
 const ATTESTATION_FIELDS = ["release_id", "build_id", "web_sha", "api_sha", "core_sha"];
 const FULL_SHA_PATTERN = /^[0-9a-f]{40}$/;
 const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
+const HOTFIX_REASON_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const PLACEHOLDERS = new Set(["null", "placeholder", "string", "unknown", "undefined"]);
 
 export function field(body, name) {
   return body && typeof body === "object" && name in body ? body[name] : null;
@@ -16,19 +19,16 @@ export function nestedField(body, path) {
 }
 
 export function parseVersionSha(value) {
-  if (typeof value !== "string") return null;
-  const match = value.match(VERSION_SHA_PATTERN);
-  if (!match) return null;
-  return { sha: match[1], suffix: value.slice(match[1].length) || null };
+  return typeof value === "string" && FULL_SHA_PATTERN.test(value)
+    ? { sha: value, suffix: null }
+    : null;
 }
 
 export function versionShasMatch(expected, actual) {
   const expectedVersion = parseVersionSha(expected);
   const actualVersion = parseVersionSha(actual);
   if (!expectedVersion || !actualVersion) return false;
-  if (expectedVersion.sha === actualVersion.sha) return true;
-  return expectedVersion.sha.startsWith(actualVersion.sha)
-    || actualVersion.sha.startsWith(expectedVersion.sha);
+  return expectedVersion.sha === actualVersion.sha;
 }
 
 export function targetIdentityFromUrl(value) {
@@ -44,6 +44,20 @@ function display(value) {
   return value == null || value === "" ? "-" : String(value);
 }
 
+function isPlaceholder(value) {
+  return typeof value === "string" && PLACEHOLDERS.has(value.trim().toLowerCase());
+}
+
+function expectedReleaseId(body) {
+  return createHash("sha256")
+    .update(JSON.stringify({
+      apiSha: field(body, "api_sha"),
+      coreSha: field(body, "core_sha"),
+      webSha: field(body, "web_sha"),
+    }))
+    .digest("hex");
+}
+
 export function validateVersionPayload(body, expected = {}) {
   const failures = [];
   if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -54,12 +68,16 @@ export function validateVersionPayload(body, expected = {}) {
     const value = field(body, name);
     if (typeof value !== "string" || value.length === 0) {
       failures.push(`${name} is missing`);
+    } else if (isPlaceholder(value)) {
+      failures.push(`${name} is a placeholder`);
     }
   }
   for (const name of ATTESTATION_FIELDS) {
     const value = field(body, name);
     if (typeof value !== "string" || value.length === 0) {
       failures.push(`${name} is missing`);
+    } else if (isPlaceholder(value)) {
+      failures.push(`${name} is a placeholder`);
     }
   }
 
@@ -67,6 +85,8 @@ export function validateVersionPayload(body, expected = {}) {
   const environment = field(body, "environment");
   const gitSha = field(body, "git_sha");
   const operatorSha = nestedField(body, "operator.git_sha");
+  const sourceState = field(body, "source_state");
+  const hotfix = field(body, "hotfix");
 
   if (expected.service && service !== expected.service) {
     failures.push(`expected service=${expected.service}, got ${display(service)}`);
@@ -77,6 +97,9 @@ export function validateVersionPayload(body, expected = {}) {
   if (gitSha && !parseVersionSha(gitSha)) {
     failures.push(`git_sha is malformed: ${display(gitSha)}`);
   }
+  if (field(body, "build_timestamp") && !Number.isFinite(Date.parse(field(body, "build_timestamp")))) {
+    failures.push(`build_timestamp is malformed: ${display(field(body, "build_timestamp"))}`);
+  }
   if (field(body, "release_id") && !DIGEST_PATTERN.test(field(body, "release_id"))) {
     failures.push(`release_id is malformed: ${display(field(body, "release_id"))}`);
   }
@@ -84,6 +107,36 @@ export function validateVersionPayload(body, expected = {}) {
     const value = field(body, name);
     if (value && !FULL_SHA_PATTERN.test(value)) {
       failures.push(`${name} is malformed: ${display(value)}`);
+    }
+  }
+  if (
+    DIGEST_PATTERN.test(field(body, "release_id"))
+    && ["web_sha", "api_sha", "core_sha"].every((name) => FULL_SHA_PATTERN.test(field(body, name)))
+    && field(body, "release_id") !== expectedReleaseId(body)
+  ) {
+    failures.push("release_id does not match the attested release triple");
+  }
+  if (sourceState !== "clean" && sourceState !== "dirty") {
+    failures.push(sourceState == null || sourceState === ""
+      ? "source_state is missing"
+      : `source_state is malformed: ${display(sourceState)}`);
+  }
+  if (!("hotfix" in body)) {
+    failures.push("hotfix is missing");
+  } else if (sourceState === "clean" && hotfix !== null) {
+    failures.push("clean source_state requires hotfix=null");
+  } else if (sourceState === "dirty") {
+    if (!hotfix || typeof hotfix !== "object" || Array.isArray(hotfix)) {
+      failures.push("dirty source_state requires hotfix metadata");
+    } else {
+      const reasonSlug = field(hotfix, "reason_slug");
+      const patchSha256 = field(hotfix, "patch_sha256");
+      if (typeof reasonSlug !== "string" || !HOTFIX_REASON_PATTERN.test(reasonSlug) || isPlaceholder(reasonSlug)) {
+        failures.push(`hotfix.reason_slug is malformed: ${display(reasonSlug)}`);
+      }
+      if (typeof patchSha256 !== "string" || !DIGEST_PATTERN.test(patchSha256)) {
+        failures.push(`hotfix.patch_sha256 is malformed: ${display(patchSha256)}`);
+      }
     }
   }
   const ownAttestedSha = service === "web"
@@ -115,6 +168,8 @@ export function validateVersionPayload(body, expected = {}) {
       webSha: field(body, "web_sha"),
       apiSha: field(body, "api_sha"),
       coreSha: field(body, "core_sha"),
+      sourceState,
+      hotfix,
     },
   };
 }

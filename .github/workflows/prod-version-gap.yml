@@ -237,10 +237,10 @@ jobs:
             }
 
             const prodSha = String(served.git_sha || "").trim();
-            if (!prodSha) {
+            if (!/^[0-9a-f]{40}$/.test(prodSha)) {
               core.setOutput("kind", "unreachable");
-              core.setOutput("detail", `${url} returned no git_sha: ${JSON.stringify(served)}`);
-              core.setFailed("Production version endpoint returned no git_sha.");
+              core.setOutput("detail", `${url} returned a malformed git_sha: ${JSON.stringify(served)}`);
+              core.setFailed("Production version endpoint did not return an exact lowercase 40-character git_sha.");
               return;
             }
 
@@ -251,8 +251,7 @@ jobs:
             });
             const tipSha = branch.data.commit.sha;
 
-            // /__version serves an abbreviated SHA, so compare by prefix.
-            if (tipSha.startsWith(prodSha)) {
+            if (tipSha === prodSha) {
               core.setOutput("kind", "healthy");
               core.notice(`Production is serving main's tip (${prodSha}).`);
               return;
@@ -297,7 +296,7 @@ jobs:
             let containedInProduction = false;
             if (releaseHeadSha && (releaseOutcome === "release_failed" || releaseOutcome === "not_deployed")) {
               let containmentStatus = "unknown";
-              if (!releaseHeadSha.startsWith(prodSha)) {
+              if (releaseHeadSha !== prodSha) {
                 const containment = await github.rest.repos.compareCommitsWithBasehead({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -484,9 +483,9 @@ jobs:
 
             const prodSha = String(served.git_sha || "").trim();
             const pinSha = (await readFile(`${process.env.GITHUB_WORKSPACE}/${process.env.API_PIN_PATH}`, "utf8")).trim();
-            if (!prodSha || !/^[0-9a-f]{40}$/.test(pinSha)) {
-              const detail = !prodSha
-                ? `${url} returned no git_sha: ${JSON.stringify(served)}`
+            if (!/^[0-9a-f]{40}$/.test(prodSha) || !/^[0-9a-f]{40}$/.test(pinSha)) {
+              const detail = !/^[0-9a-f]{40}$/.test(prodSha)
+                ? `${url} returned a malformed git_sha: ${JSON.stringify(served)}`
                 : `${process.env.API_PIN_PATH} must contain one full lowercase commit SHA, got "${pinSha}"`;
               core.setOutput("kind", "unreachable");
               core.setOutput("detail", detail);
@@ -494,12 +493,11 @@ jobs:
               return;
             }
 
-            // /__version serves an abbreviated SHA, so compare by prefix before
-            // spending an API call. Otherwise ask the API repo how the deployed
-            // commit relates to the pin, base=pin, head=production.
+            // Exact equality needs no API call. Otherwise ask the API repo how
+            // the deployed commit relates to the pin, base=pin, head=production.
             let status = "identical";
-            let comparisonDetail = "production sha is a prefix of the pin; compare skipped";
-            if (!pinSha.startsWith(prodSha)) {
+            let comparisonDetail = "production sha exactly matches the pin; compare skipped";
+            if (pinSha !== prodSha) {
               const comparison = await github.rest.repos.compareCommitsWithBasehead({
                 owner: "pirate-social-club",
                 repo: "api",

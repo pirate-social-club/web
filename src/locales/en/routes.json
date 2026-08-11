@@ -543,6 +543,7 @@
       "audienceGatePurchaseEntitlementEmpty": "Select catalog songs in the setlist before using buyer access.",
       "visibilityPublic": "Public",
       "visibilityUnlisted": "Unlisted",
+      "paidVisibilityNote": "Paid livestreams must be public. Select Public to continue.",
       "scheduleForLater": "Schedule for later",
       "startTime": "Start time",
       "startTimeNote": "Required for scheduled live events.",

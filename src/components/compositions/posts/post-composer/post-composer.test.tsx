@@ -1808,6 +1808,81 @@ describe("PostComposer monetization", () => {
     expect(nextLiveState).toMatchObject({ scheduleAt: "2026-05-23T21:30", scheduleForLater: true });
   });
 
+  test("keeps an unlisted choice visible when paid access is selected and explains the public requirement", () => {
+    let nextLiveState: PostComposerProps["live"];
+    const tree = LiveTabContent({
+      copy: {
+        buttons: {},
+        fields: {},
+        live: {
+          access: "Access",
+          accessFree: "Free",
+          accessGated: "Gated",
+          accessPaid: "Paid",
+          paidVisibilityNote: "Paid livestreams must be public. Select Public to continue.",
+          visibility: "Visibility",
+          visibilityPublic: "Public",
+          visibilityUnlisted: "Unlisted",
+        },
+        placeholders: {},
+        upload: {},
+      },
+      live: {
+        accessMode: "free",
+        performerAllocations: [{ role: "host", sharePct: 100, userId: "usr_host" }],
+        roomKind: "solo",
+        setlistItems: [],
+        setlistStatus: "draft",
+        visibility: "unlisted",
+      },
+      onLiveChange: (next) => {
+        nextLiveState = next;
+      },
+    });
+
+    const paidChip = findElement(
+      tree,
+      (element) => typeof element.type === "function"
+        && element.type.name === "Chip"
+        && element.props.children === "Paid",
+    );
+    if (!paidChip) throw new Error("Missing paid access chip");
+    (paidChip.props.onClick as (() => void) | undefined)?.();
+    expect(nextLiveState).toMatchObject({ accessMode: "paid", visibility: "unlisted" });
+
+    if (!nextLiveState) throw new Error("Paid access did not update live state");
+    const paidTree = LiveTabContent({
+      copy: {
+        buttons: {},
+        fields: {},
+        live: {
+          access: "Access",
+          accessFree: "Free",
+          accessGated: "Gated",
+          accessPaid: "Paid",
+          paidVisibilityNote: "Paid livestreams must be public. Select Public to continue.",
+          visibility: "Visibility",
+          visibilityPublic: "Public",
+          visibilityUnlisted: "Unlisted",
+        },
+        placeholders: {},
+        upload: {},
+      },
+      live: nextLiveState,
+      onLiveChange: (next) => {
+        nextLiveState = next;
+      },
+    });
+    const unlistedChip = findElement(
+      paidTree,
+      (element) => typeof element.type === "function"
+        && element.type.name === "Chip"
+        && element.props.children === "Unlisted",
+    );
+    expect(unlistedChip?.props.disabled).toBe(true);
+    expect(findElement(paidTree, (element) => element.props.children === "Paid livestreams must be public. Select Public to continue.")).not.toBeNull();
+  });
+
   test("does not force image attachment previews into a square crop", () => {
     const tree = PostComposerAttachmentCard({
       attachment: {

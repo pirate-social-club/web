@@ -1,4 +1,5 @@
 import type { ComposerStep, ComposerTab, LiveComposerState } from "./post-composer.types";
+import { isLiveVisibilityAllowedForAccess } from "./post-composer-invariants";
 
 export function isValidHttpUrl(value: string) {
   return normalizeHttpUrl(value) !== null;
@@ -91,6 +92,7 @@ export function canAdvanceComposerWriteStep({
 
 export function canSubmitLiveRoomDraft(liveState: LiveComposerState, title: string): boolean {
   if (!title.trim()) return false;
+  if (!isLiveVisibilityAllowedForAccess(liveState)) return false;
   if (liveState.scheduleForLater && !isValidLiveScheduleAt(liveState.scheduleAt)) return false;
   if (liveState.roomKind === "duet" && !liveState.guestUserId?.trim()) return false;
   if (liveState.setlistItems.length === 0) return false;

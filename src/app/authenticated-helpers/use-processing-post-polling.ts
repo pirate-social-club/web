@@ -56,6 +56,7 @@ export function useProcessingPostPolling(input: {
   }, [postId, postStatus, refreshPost]);
 
   const refreshProcessingPost = React.useCallback(async () => {
+    // A timed-out post gets one explicit refresh; do not restart the bounded poll.
     try {
       await refreshPost();
     } catch (error) {

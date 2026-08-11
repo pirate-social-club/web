@@ -3,7 +3,7 @@ import * as BunTest from "bun:test";
 import type { LiveComposerState } from "./post-composer.types";
 import {
   deriveLiveStateForRoomKindChange,
-  normalizeLiveStateForAccess,
+  isLiveVisibilityAllowedForAccess,
   shouldClearSelectedQualifiers,
   shouldForcePublicIdentityForAuthor,
   shouldForcePublicIdentityForTab,
@@ -24,12 +24,19 @@ function liveState(overrides: Partial<LiveComposerState> = {}): LiveComposerStat
 }
 
 describe("post composer invariants", () => {
-  test("forces paid live rooms to public visibility", () => {
-    expect(normalizeLiveStateForAccess({
+  test("rejects paid live rooms that are still unlisted without mutating the choice", () => {
+    const state = {
       ...liveState(),
       accessMode: "paid",
       visibility: "unlisted",
-    }).visibility).toBe("public");
+    } as const;
+
+    expect(isLiveVisibilityAllowedForAccess(state)).toBe(false);
+    expect(state.visibility).toBe("unlisted");
+    expect(isLiveVisibilityAllowedForAccess({
+      ...state,
+      visibility: "public",
+    })).toBe(true);
   });
 
   test("allows anonymous identity on asset and live tabs", () => {

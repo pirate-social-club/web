@@ -543,6 +543,7 @@
       "audienceGatePurchaseEntitlementEmpty": "使用买家访问权限前，请先在歌单中选择曲库歌曲。",
       "visibilityPublic": "公开",
       "visibilityUnlisted": "不公开",
+      "paidVisibilityNote": "付费直播必须公开。请选择“公开”以继续。",
       "scheduleForLater": "稍后安排",
       "startTime": "开始时间",
       "startTimeNote": "定时直播活动必填。",

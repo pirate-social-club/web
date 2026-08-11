@@ -4,11 +4,6 @@ import type { HumanVerificationProvider } from "@/lib/identity-gates";
 export type TelegramVerifyLaunchProvider = "self" | "very" | "zkpassport";
 type DeferredTelegramVerifyLaunchProvider = Exclude<TelegramVerifyLaunchProvider, "very">;
 
-export type PendingTelegramVerificationLaunch = {
-  href: string;
-  provider: DeferredTelegramVerifyLaunchProvider;
-};
-
 type TelegramVerifyDoneResult = "already_member" | "joined" | "pending_request";
 
 export type TelegramVerifyScreenState =

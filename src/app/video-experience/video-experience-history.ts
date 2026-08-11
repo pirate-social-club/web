@@ -1,6 +1,6 @@
 import type { FeedPanelState } from "@/components/compositions/posts/feed-side-panel/feed-side-panel";
 
-export const VIDEO_EXPERIENCE_QUERY_PARAM = "video";
+const VIDEO_EXPERIENCE_QUERY_PARAM = "video";
 export const VIDEO_EXPERIENCE_HISTORY_KEY = "pirateVideoViewer";
 
 export function videoIdFromLocation(location: Pick<Location, "href">): string | null {

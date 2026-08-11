@@ -33,7 +33,7 @@ type CommunityTelegramIntegrationSubmitState =
   | { kind: "saving" }
   | { kind: "error"; message: string };
 
-export type TelegramChannelPublicationMode = "off" | "from_now" | "recent_backfill";
+type TelegramChannelPublicationMode = "off" | "from_now" | "recent_backfill";
 
 export interface TelegramBroadcastChannelInfo {
   title: string;

@@ -33,11 +33,11 @@ export type AssetLicensePresetId = "non-commercial" | "commercial-use" | "commer
 
 export type LiveRoomKind = "solo" | "duet";
 
-export type LiveAccessMode = "free" | "gated" | "paid";
+type LiveAccessMode = "free" | "gated" | "paid";
 
 type LiveAudienceGateMode = "community_members" | "purchase_entitlement";
 
-export type LiveVisibility = "public" | "unlisted";
+type LiveVisibility = "public" | "unlisted";
 
 export type PostAudience = "public" | "members_only";
 export type AuthorAgeGatePolicy = "none" | "18_plus";

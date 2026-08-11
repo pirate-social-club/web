@@ -290,7 +290,7 @@ export interface BoostCampaignControllerInput {
   viewerIsAuthor: boolean;
 }
 
-export function supportsNationalityTierDraftPreview(capability: unknown): boolean {
+function supportsNationalityTierDraftPreview(capability: unknown): boolean {
   return capability === "draft_only" || capability === "binding_preview" || capability === "enabled";
 }
 

@@ -8,7 +8,7 @@ type PostReader = {
 
 type SongRoutePostApi = { posts: PostReader; publicPosts: PostReader };
 
-export type SongRoutePostReadMode = "authenticated" | "public";
+type SongRoutePostReadMode = "authenticated" | "public";
 
 export interface LoadedSongRoutePost {
   post: LocalizedPostResponse;

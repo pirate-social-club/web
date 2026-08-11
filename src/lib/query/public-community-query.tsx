@@ -27,7 +27,7 @@ export function InitialPublicCommunityProvider({
   );
 }
 
-export function publicCommunityQueryKey(communityId: string | null, locale: string | null) {
+function publicCommunityQueryKey(communityId: string | null, locale: string | null) {
   return ["public-community", communityId, locale ?? null] as const;
 }
 

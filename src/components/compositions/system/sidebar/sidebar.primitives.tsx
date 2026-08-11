@@ -94,17 +94,6 @@ export function SidebarHeader({ className, ref, ...props }: React.ComponentProps
   );
 }
 
-export function SidebarFooter({ className, ref, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      ref={ref}
-      data-sidebar="footer"
-      className={cn("flex flex-col gap-3 p-4", className)}
-      {...props}
-    />
-  );
-}
-
 export function SidebarSeparator({ className, ref, ...props }: React.ComponentProps<typeof Separator>) {
   return (
     <Separator

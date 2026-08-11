@@ -63,7 +63,7 @@ export function resolveVideoSongCapabilities({ post, readMode, rewardOffer, sour
   };
 }
 
-export function resolveVideoSongCapabilityRewards({ karaoke, learningGate, rewardOffer, study }: {
+function resolveVideoSongCapabilityRewards({ karaoke, learningGate, rewardOffer, study }: {
   karaoke: VideoFeedCapability;
   learningGate: VideoSongCapabilityResolution["learningGate"];
   rewardOffer: ApiPublicRewardOffer;

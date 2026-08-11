@@ -529,13 +529,3 @@ export function getCommunityActionLabel(status: ApiJoinEligibility["status"]): s
   if (status === "gate_failed") return "Not eligible";
   return "Join";
 }
-
-export function getNamespaceActionLabel(community: ApiCommunity): string | null {
-  if (community.namespace_verification) {
-    return null;
-  }
-
-  return community.pending_namespace_verification_session
-    ? "Resume verification"
-    : "Verify namespace";
-}

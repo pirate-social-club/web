@@ -24,6 +24,7 @@ export function buildVersionPayload(service: BuildVersionService, env: BuildVers
     web_sha: buildInfo.webSha,
     api_sha: buildInfo.apiSha,
     core_sha: buildInfo.coreSha,
+    deploy_reason_slug: buildInfo.deployReasonSlug,
     source_state: buildInfo.sourceState,
     hotfix: buildInfo.hotfix === null
       ? null

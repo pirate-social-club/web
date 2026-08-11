@@ -10,13 +10,14 @@ const sourcePath = resolve(rootDir, "build-info.json");
 const distPath = resolve(rootDir, "dist", "build-info.json");
 
 export type WebBuildProvenance = {
-  schemaVersion: 2;
+  schemaVersion: 3;
   releaseId: string;
   buildId: string;
   builtAt: string;
   webSha: string;
   apiSha: string;
   coreSha: string;
+  deployReasonSlug: string | null;
   sourceState: "clean" | "dirty";
   hotfix: null | {
     reasonSlug: string;
@@ -57,21 +58,26 @@ function worktreePatchSha256(repoRoot: string): string {
   return hash.digest("hex");
 }
 
-export function inspectSourceState(repoRoot: string, reason?: string): Pick<WebBuildProvenance, "sourceState" | "hotfix"> {
+export function inspectSourceState(
+  repoRoot: string,
+  reason?: string,
+): Pick<WebBuildProvenance, "deployReasonSlug" | "sourceState" | "hotfix"> {
   const dirty = execFileSync(
     "git",
     ["status", "--porcelain", "--untracked-files=all"],
     { cwd: repoRoot, encoding: "utf8" },
   ).trim().length > 0;
+  const deployReasonSlug = reason?.trim() ? reasonSlug(reason) : null;
   return dirty
     ? {
+        deployReasonSlug,
         sourceState: "dirty",
         hotfix: {
-          reasonSlug: reasonSlug(reason),
+          reasonSlug: deployReasonSlug ?? "local-build",
           patchSha256: worktreePatchSha256(repoRoot),
         },
       }
-    : { sourceState: "clean", hotfix: null };
+    : { deployReasonSlug, sourceState: "clean", hotfix: null };
 }
 
 function releaseIdFor(webSha: string, apiSha: string, coreSha: string): string {
@@ -116,7 +122,7 @@ export function createBuildProvenance(
   const source = inspectSourceState(repoRoot, options.hotfixReason);
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     releaseId,
     buildId: options.buildId ?? randomUUID(),
     builtAt: options.builtAt ?? new Date().toISOString(),
@@ -127,9 +133,24 @@ export function createBuildProvenance(
   };
 }
 
+export function createPlaceholderBuildProvenance(): WebBuildProvenance {
+  return {
+    schemaVersion: 3,
+    releaseId: "unavailable",
+    buildId: "postinstall-placeholder",
+    builtAt: new Date().toISOString(),
+    webSha: "unavailable",
+    apiSha: "unavailable",
+    coreSha: "unavailable",
+    deployReasonSlug: null,
+    sourceState: "clean",
+    hotfix: null,
+  };
+}
+
 export function parseBuildProvenance(raw: string): WebBuildProvenance {
   const value = JSON.parse(raw) as Partial<WebBuildProvenance>;
-  if (value.schemaVersion !== 2) throw new Error("build provenance schemaVersion must be 2");
+  if (value.schemaVersion !== 3) throw new Error("build provenance schemaVersion must be 3");
   for (const [field, sha] of [
     ["webSha", value.webSha],
     ["apiSha", value.apiSha],
@@ -151,6 +172,12 @@ export function parseBuildProvenance(raw: string): WebBuildProvenance {
   }
   if (value.sourceState !== "clean" && value.sourceState !== "dirty") {
     throw new Error("build provenance sourceState must be clean or dirty");
+  }
+  if (value.deployReasonSlug !== null && (
+    typeof value.deployReasonSlug !== "string"
+    || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value.deployReasonSlug)
+  )) {
+    throw new Error("build provenance deployReasonSlug must be null or normalized");
   }
   if (value.sourceState === "clean" && value.hotfix !== null) {
     throw new Error("clean build provenance must not contain hotfix metadata");
@@ -177,6 +204,7 @@ export function writeBuildProvenance(path: string, provenance: WebBuildProvenanc
 export function assertDistBuildProvenance(
   expected: Pick<WebBuildProvenance, "webSha" | "apiSha" | "coreSha">,
   path = distPath,
+  bundlePath = resolve(dirname(path), "worker", "index.js"),
 ): WebBuildProvenance {
   const actual = parseBuildProvenance(readFileSync(path, "utf8"));
   for (const field of ["webSha", "apiSha", "coreSha"] as const) {
@@ -184,17 +212,28 @@ export function assertDistBuildProvenance(
       throw new Error(`dist build provenance ${field} mismatch: expected ${expected[field]}, got ${actual[field]}`);
     }
   }
+  if (!readFileSync(bundlePath, "utf8").includes(actual.releaseId)) {
+    throw new Error(`dist worker bundle does not embed releaseId ${actual.releaseId}`);
+  }
   return actual;
 }
 
 function main(args: string[]): void {
   const command = args[0] ?? "generate";
   if (command === "generate") {
-    const provenance = createBuildProvenance(rootDir, {
-      apiSha: process.env.PIRATE_BUILD_API_SHA,
-      coreSha: process.env.PIRATE_BUILD_CORE_SHA,
-      hotfixReason: process.env.PIRATE_BUILD_HOTFIX_REASON,
-    });
+    const allowPlaceholder = args.includes("--allow-placeholder");
+    let provenance: WebBuildProvenance;
+    try {
+      provenance = createBuildProvenance(rootDir, {
+        apiSha: process.env.PIRATE_BUILD_API_SHA,
+        coreSha: process.env.PIRATE_BUILD_CORE_SHA,
+        hotfixReason: process.env.PIRATE_BUILD_HOTFIX_REASON,
+      });
+    } catch (error) {
+      if (!allowPlaceholder) throw error;
+      provenance = createPlaceholderBuildProvenance();
+      console.warn(`[web] using non-release build provenance: ${error instanceof Error ? error.message : String(error)}`);
+    }
     writeBuildProvenance(sourcePath, provenance);
     console.info(`[web] build-info.json -> ${provenance.webSha.slice(0, 12)} (${provenance.buildId})`);
     return;

@@ -19,6 +19,7 @@ describe("release attestation wiring", () => {
       expect(script).toContain("__PIRATE_BUILD_API_SHA__");
       expect(script).toContain("__PIRATE_BUILD_CORE_SHA__");
       expect(script).toContain("__PIRATE_BUILD_SOURCE_STATE__");
+      expect(script).toContain("__PIRATE_BUILD_DEPLOY_REASON_SLUG__");
       expect(script).toContain("__PIRATE_BUILD_HOTFIX_REASON_SLUG__");
       expect(script).toContain("__PIRATE_BUILD_PATCH_SHA256__");
     }
@@ -28,6 +29,11 @@ describe("release attestation wiring", () => {
     expect(packageJson.scripts?.["build:staging"]).toContain("bun run build:provenance");
     expect(packageJson.scripts?.["build:staging"]).toContain("bun run build:provenance:emit");
     expect(stagingDeploy).toContain("verify-dist");
+  });
+
+  test("allows only postinstall to fall back to non-release provenance", () => {
+    expect(packageJson.scripts?.postinstall).toContain("--allow-placeholder");
+    expect(packageJson.scripts?.["build:provenance"]).not.toContain("--allow-placeholder");
   });
 
   test("keeps full commit identity separate from hotfix content", () => {

@@ -37,6 +37,7 @@ describe("buildVersionPayload", () => {
     expect(payload.web_sha).toMatch(/^[0-9a-f]{40}$/);
     expect(payload.api_sha).toMatch(/^[0-9a-f]{40}$/);
     expect(payload.core_sha).toMatch(/^[0-9a-f]{40}$/);
+    expect(payload.deploy_reason_slug === null || typeof payload.deploy_reason_slug === "string").toBe(true);
     expect(["clean", "dirty"]).toContain(payload.source_state);
     if (payload.source_state === "clean") expect(payload.hotfix).toBeNull();
     expect(payload.api_origin).toBeNull();

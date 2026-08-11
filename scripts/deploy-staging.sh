@@ -278,6 +278,7 @@ RELEASE_ID="$(read_web_build_field releaseId)"
 BUILD_ID="$(read_web_build_field buildId)"
 API_SOURCE_JSON="$(cd "$WEB_DIR" && bun run scripts/build-provenance.ts inspect-source "$API_DIR" "$ALLOW_REASON")"
 API_SOURCE_STATE="$(read_json_field "$API_SOURCE_JSON" sourceState)"
+API_DEPLOY_REASON_SLUG="$(read_json_field "$API_SOURCE_JSON" deployReasonSlug)"
 API_HOTFIX_REASON_SLUG="$(read_json_field "$API_SOURCE_JSON" hotfix.reasonSlug)"
 API_PATCH_SHA256="$(read_json_field "$API_SOURCE_JSON" hotfix.patchSha256)"
 
@@ -313,6 +314,7 @@ log "deploy api staging worker"
   --var "BUILD_API_SHA:$API_FULL_SHA" \
   --var "BUILD_CORE_SHA:$CORE_RELEASE_SHA" \
   --var "BUILD_SOURCE_STATE:$API_SOURCE_STATE" \
+  --var "BUILD_DEPLOY_REASON_SLUG:$API_DEPLOY_REASON_SLUG" \
   --var "BUILD_HOTFIX_REASON_SLUG:$API_HOTFIX_REASON_SLUG" \
   --var "BUILD_PATCH_SHA256:$API_PATCH_SHA256" \
   --var "COMMUNITY_SCHEMA_POLICY_DIGEST:$SCHEMA_POLICY_DIGEST" \
@@ -325,6 +327,7 @@ log "deploy api staging worker"
   --define "__PIRATE_BUILD_API_SHA__:\"$API_FULL_SHA\"" \
   --define "__PIRATE_BUILD_CORE_SHA__:\"$CORE_RELEASE_SHA\"" \
   --define "__PIRATE_BUILD_SOURCE_STATE__:\"$API_SOURCE_STATE\"" \
+  --define "__PIRATE_BUILD_DEPLOY_REASON_SLUG__:\"$API_DEPLOY_REASON_SLUG\"" \
   --define "__PIRATE_BUILD_HOTFIX_REASON_SLUG__:\"$API_HOTFIX_REASON_SLUG\"" \
   --define "__PIRATE_BUILD_PATCH_SHA256__:\"$API_PATCH_SHA256\"" \
   --define "__PIRATE_COMMUNITY_D1_SHARD_SOURCE_VERSION__:\"$API_SHARD_SOURCE_VERSION\"")

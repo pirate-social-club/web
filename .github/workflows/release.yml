@@ -813,8 +813,8 @@ jobs:
     needs: [release-inputs]
     if: >-
       github.event_name == 'workflow_dispatch'
-      && inputs.expected_staging_web_sha != ''
-      && inputs.expected_staging_api_sha != ''
+      && inputs.expected_staging_web_sha
+      && inputs.expected_staging_api_sha
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15
     permissions:

@@ -35,4 +35,13 @@ describe("release workflow triggers", () => {
     expect(pushTrigger).not.toContain("paths:");
     expect(pushTrigger).not.toContain("paths-ignore:");
   });
+
+  test("the focused gate-builder check is opt-in on both SHA inputs", () => {
+    const start = source.indexOf("gate-builder-staging-verification:");
+    const end = source.indexOf("\n  release-gate:", start);
+    const gateBuilder = source.slice(start, end);
+
+    expect(gateBuilder).toMatch(/github\.event_name == 'workflow_dispatch'/u);
+    expect(gateBuilder).toMatch(/&& inputs\.expected_staging_web_sha\s*\n\s*&& inputs\.expected_staging_api_sha/u);
+  });
 });

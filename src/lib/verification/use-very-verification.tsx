@@ -46,6 +46,7 @@ export function useVeryVerification(input: {
   // The Very widget exposes no close/dismiss callback, so track settlement
   // ourselves and treat overlay removal without success/error as a dismissal.
   const widgetSettledRef = React.useRef(false);
+  const completionSettledRef = React.useRef(false);
   const widgetObserverRef = React.useRef<MutationObserver | null>(null);
 
   const clearMobileTimers = React.useCallback(() => {
@@ -91,6 +92,8 @@ export function useVeryVerification(input: {
   }, [api, onVerified]);
 
   const completeVeryProof = React.useCallback(async (result: VerificationSession, proof: string) => {
+    if (completionSettledRef.current) return;
+    completionSettledRef.current = true;
     try {
       logger.info("[very-verification] proof valid, completing session", {
         verificationSessionId: result.id,
@@ -100,10 +103,16 @@ export function useVeryVerification(input: {
         verificationSessionId: completedSession.id,
         status: completedSession.status,
       });
-      await refreshOnboardingStatus(completedSession);
-      setVerificationSessionId(null);
-      setVerificationHref(null);
-      setVerificationError(null);
+      if (completedSession.status === "verified") {
+        await refreshOnboardingStatus(completedSession);
+        setVerificationSessionId(null);
+        setVerificationHref(null);
+        setVerificationError(null);
+      } else if (completedSession.status === "failed" || completedSession.status === "expired") {
+        setVerificationError(completedSession.failure_reason || "Very verification did not complete");
+        setVerificationSessionId(null);
+        setVerificationHref(null);
+      }
     } catch (error: unknown) {
       setVerificationError(getErrorMessage(error, "Could not complete Very verification"));
     } finally {
@@ -133,6 +142,7 @@ export function useVeryVerification(input: {
       query: JSON.stringify(launch.query),
       verifyUrl: launch.verify_url,
       onSuccess: async (proof: string) => {
+        if (widgetSettledRef.current) return;
         widgetSettledRef.current = true;
         await completeVeryProof(result, proof);
       },
@@ -251,6 +261,7 @@ export function useVeryVerification(input: {
   }, [cleanupWidget, openVeryWidget, startVeryMobilePolling]);
 
   const startVerification = React.useCallback(async () => {
+    completionSettledRef.current = false;
     setVerificationLoading(true);
     setVerificationError(null);
     setVerificationHref(null);

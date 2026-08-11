@@ -87,6 +87,7 @@ export interface VerifyHumanSheetProps {
   onSelectProvider?: (provider: "self" | "very" | "zkpassport") => void;
   open: boolean;
   providers: readonly ("self" | "very" | "zkpassport")[];
+  providerAmountLabels?: Partial<Record<"self" | "very" | "zkpassport", string>>;
   selectedProvider?: "self" | "very" | "zkpassport" | null;
   showNationalityTierDisclosure?: boolean;
   state: VerifyHumanSheetState;
@@ -98,6 +99,7 @@ export interface CashoutSheetProps {
   errorMessage?: string;
   forceMobile?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onCopyTransactionHash?: (txHash: string) => void;
   onRefresh?: () => void;
   open: boolean;
   state: CashoutSheetState;
@@ -276,6 +278,7 @@ export function VerifyHumanSheet({
   onSelectProvider,
   open,
   providers,
+  providerAmountLabels,
   selectedProvider = null,
   showNationalityTierDisclosure = false,
   state,
@@ -323,6 +326,7 @@ export function VerifyHumanSheet({
               <ProviderButton
                 icon={<QrCode aria-hidden="true" className="size-5" weight="bold" />}
                 label="Self"
+                description={providerAmountLabels?.self ? `Unlocks ${providerAmountLabels.self}` : undefined}
                 onClick={() => onSelectProvider?.("self")}
               />
             ) : null}
@@ -330,6 +334,7 @@ export function VerifyHumanSheet({
               <ProviderButton
                 icon={<Fingerprint aria-hidden="true" className="size-5" weight="bold" />}
                 label="Very"
+                description={providerAmountLabels?.very ? `Unlocks ${providerAmountLabels.very}` : undefined}
                 onClick={() => onSelectProvider?.("very")}
               />
             ) : null}
@@ -337,6 +342,7 @@ export function VerifyHumanSheet({
               <ProviderButton
                 icon={<ShieldCheck aria-hidden="true" className="size-5" weight="bold" />}
                 label="ZKPassport"
+                description={providerAmountLabels?.zkpassport ? `Unlocks ${providerAmountLabels.zkpassport}` : undefined}
                 onClick={() => onSelectProvider?.("zkpassport")}
               />
             ) : null}
@@ -395,6 +401,7 @@ export function CashoutSheet({
   basescanUrl,
   errorMessage,
   forceMobile,
+  onCopyTransactionHash,
   onOpenChange,
   onRefresh,
   open,
@@ -403,12 +410,16 @@ export function CashoutSheet({
 }: CashoutSheetProps) {
   const copyTransactionHash = React.useCallback(() => {
     if (!txHashLabel) return;
+    if (onCopyTransactionHash) {
+      onCopyTransactionHash(txHashLabel);
+      return;
+    }
     void navigator.clipboard.writeText(txHashLabel);
-  }, [txHashLabel]);
+  }, [onCopyTransactionHash, txHashLabel]);
   const isPending = state === "reserved" || state === "signed" || state === "broadcast";
   const pendingTitle = state === "broadcast"
     ? "Sent — waiting for confirmation"
-    : "Sending…";
+    : "Preparing transfer";
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
       <ModalContent
@@ -431,6 +442,11 @@ export function CashoutSheet({
               <Type as="div" variant="body-strong">
                 {pendingTitle}
               </Type>
+              {errorMessage ? (
+                <Type as="div" className="mt-1 text-muted-foreground" variant="body">
+                  {errorMessage}
+                </Type>
+              ) : null}
             </div>
           </div>
         ) : null}

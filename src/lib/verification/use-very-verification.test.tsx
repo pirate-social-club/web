@@ -51,6 +51,8 @@ type VeryWidgetConfig = {
 let lastWidgetConfig: VeryWidgetConfig | null = null;
 let overlay: HTMLElement | null = null;
 const widgetDestroyCalls: number[] = [];
+let completeSessionCalls = 0;
+let completionStatus: "pending" | "verified" | "failed" | "expired" = "verified";
 
 function removeOverlay() {
   overlay?.parentNode?.removeChild(overlay);
@@ -97,7 +99,14 @@ mock.module("@/lib/api", () => ({
       }),
     },
     verification: {
-      completeSession: async () => ({ ...verificationSession, status: "verified" }),
+      completeSession: async () => {
+        completeSessionCalls += 1;
+        return {
+          ...verificationSession,
+          failure_reason: completionStatus === "failed" ? "Proof rejected" : null,
+          status: completionStatus,
+        };
+      },
       startSession: async () => verificationSession,
     },
   }),
@@ -121,6 +130,8 @@ beforeEach(() => {
   FakeMutationObserver.reset();
   lastWidgetConfig = null;
   widgetDestroyCalls.length = 0;
+  completeSessionCalls = 0;
+  completionStatus = "verified";
   removeOverlay();
 });
 
@@ -153,7 +164,7 @@ describe("useVeryVerification", () => {
     expect(result.current.verificationError).toBe(null);
   });
 
-  test("does not treat the success teardown as a dismissal", async () => {
+  test("settles duplicate widget success callbacks exactly once", async () => {
     let verifiedCalls = 0;
     const { result } = renderHook(() =>
       useVeryVerification({
@@ -172,11 +183,40 @@ describe("useVeryVerification", () => {
 
     await act(async () => {
       await lastWidgetConfig?.onSuccess?.("proof");
+      await lastWidgetConfig?.onSuccess?.("proof");
     });
     FakeMutationObserver.instances.forEach((observer) => observer.trigger());
 
     expect(verifiedCalls).toBe(1);
+    expect(completeSessionCalls).toBe(1);
     expect(result.current.verificationLoading).toBe(false);
     expect(result.current.verificationError).toBe(null);
+  });
+
+  test("does not report success for pending or failed completion responses", async () => {
+    for (const status of ["pending", "failed"] as const) {
+      completionStatus = status;
+      let verifiedCalls = 0;
+      const hook = renderHook(() =>
+        useVeryVerification({
+          onVerified: () => {
+            verifiedCalls += 1;
+          },
+          verificationIntent: "community_join",
+          verified: false,
+        })
+      );
+
+      await act(async () => {
+        await hook.result.current.startVerification();
+        await lastWidgetConfig?.onSuccess?.("proof");
+      });
+
+      expect(verifiedCalls).toBe(0);
+      expect(hook.result.current.verificationState).toBe(status === "pending" ? "pending" : "not_started");
+      if (status === "pending") expect(hook.result.current.verificationError).toBe(null);
+      else expect(hook.result.current.verificationError).toBe("Proof rejected");
+      hook.unmount();
+    }
   });
 });

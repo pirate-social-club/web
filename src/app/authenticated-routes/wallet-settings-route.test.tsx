@@ -264,6 +264,7 @@ beforeEach(() => {
           count: 0,
           conditional_cents: 0,
           earliest_expires_at: null,
+          provider_requirements: [],
         },
         cashout: {
           eligible: true,
@@ -319,6 +320,7 @@ describe("CurrentUserWalletPage rewards", () => {
         count: 0,
         conditional_cents: 0,
         earliest_expires_at: null,
+        provider_requirements: [],
       },
       cashout: {
         eligible: false,
@@ -447,7 +449,7 @@ describe("CurrentUserWalletPage rewards", () => {
     expect(view.queryByText("Pending")).toBeNull();
   });
 
-  test("shows conditional rewards and keeps Claim as the verification entry point", async () => {
+  test("offers only required providers and shows the amount each unlocks", async () => {
     fakeApi.rewards.getSummary = mock(async () => ({
       chain_id: 84532,
       balance_cents: 0,
@@ -455,9 +457,13 @@ describe("CurrentUserWalletPage rewards", () => {
       recent_events: [],
       recent_qualifications: [],
       pending_verification: {
-        count: 1,
+        count: 2,
         conditional_cents: 100,
         earliest_expires_at: 1_774_521_600,
+        provider_requirements: [
+          { provider: "self" as const, count: 1, conditional_cents: 40, earliest_expires_at: 1_774_521_600 },
+          { provider: "zkpassport" as const, count: 1, conditional_cents: 60, earliest_expires_at: 1_774_521_600 },
+        ],
       },
       cashout: {
         eligible: false,
@@ -478,8 +484,10 @@ describe("CurrentUserWalletPage rewards", () => {
 
     expect(view.getByText("Verify identity")).toBeTruthy();
     expect(view.getByText("Self")).toBeTruthy();
-    expect(view.getByText("Very")).toBeTruthy();
     expect(view.getByText("ZKPassport")).toBeTruthy();
+    expect(view.queryByText("Very")).toBeNull();
+    expect(view.getByText("Unlocks $0.40")).toBeTruthy();
+    expect(view.getByText("Unlocks $0.60")).toBeTruthy();
   });
 
   test("launches a pending Very bounty directly and settles verification only once", async () => {
@@ -493,12 +501,18 @@ describe("CurrentUserWalletPage rewards", () => {
         count: 1,
         conditional_cents: 100,
         earliest_expires_at: 1_774_521_600,
+        provider_requirements: [{
+          provider: "very" as const,
+          count: 1,
+          conditional_cents: 100,
+          earliest_expires_at: 1_774_521_600,
+        }],
       },
       cashout: {
         eligible: false,
         min_cents: 100,
         verification_state: "unverified" as const,
-        verification_provider: "very" as const,
+        verification_provider: null,
       },
       latest_in_flight_cashout: null,
     };
@@ -509,11 +523,13 @@ describe("CurrentUserWalletPage rewards", () => {
         count: 0,
         conditional_cents: 0,
         earliest_expires_at: null,
+        provider_requirements: [],
       },
       cashout: {
         ...pendingSummary.cashout,
         eligible: true,
         verification_state: "verified" as const,
+        verification_provider: "very" as const,
       },
     };
     let summaryRequest = 0;
@@ -547,18 +563,19 @@ describe("CurrentUserWalletPage rewards", () => {
 
     await waitFor(() => {
       expect(view.getByTestId("rewards-supporting-label").getAttribute("data-label"))
-        .toBe("Getting your bounty ready.");
+        .toBe("Getting your $1.00 bounty ready.");
       expect(resolveCreditRefresh).toBeDefined();
     });
     expect(fakeToastSuccess).toHaveBeenCalledTimes(1);
-    expect(fakeToastSuccess).toHaveBeenCalledWith("Bounty verification complete.");
+    expect(fakeToastSuccess).toHaveBeenCalledWith("Identity verified.");
     expect(fakeToastInfo).not.toHaveBeenCalled();
 
     await act(async () => {
       resolveCreditRefresh?.(creditedSummary);
     });
 
-    await waitFor(() => expect(fakeApi.rewards.cashOut).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(view.getByText("Claim $1.00")).toBeTruthy());
+    expect(fakeApi.rewards.cashOut).not.toHaveBeenCalled();
     expect(fakeToastSuccess).toHaveBeenCalledTimes(1);
     expect(fakeToastInfo).not.toHaveBeenCalled();
   });
@@ -574,6 +591,7 @@ describe("CurrentUserWalletPage rewards", () => {
         count: 0,
         conditional_cents: 0,
         earliest_expires_at: null,
+        provider_requirements: [],
       },
       cashout: {
         eligible: false,
@@ -606,6 +624,7 @@ describe("CurrentUserWalletPage rewards", () => {
         count: 0,
         conditional_cents: 0,
         earliest_expires_at: null,
+        provider_requirements: [],
       },
       cashout: {
         eligible: false,

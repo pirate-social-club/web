@@ -77,7 +77,7 @@ api_header_value() {
   printf '%s\t%s' "$status" "$allow_origin"
 }
 
-curl \
+if ! namespace_status="$(curl \
   --silent \
   --show-error \
   --connect-timeout 10 \
@@ -86,7 +86,16 @@ curl \
   --retry-all-errors \
   --retry-delay 1 \
   --output "$namespace_file" \
-  "https://api.pirate.sc/public-namespaces"
+  --write-out '%{http_code}' \
+  "https://api.pirate.sc/public-namespaces")"; then
+  echo "public namespace inventory request failed: transport error" >&2
+  exit 1
+fi
+
+if [[ "$namespace_status" != "200" ]]; then
+  echo "public namespace inventory request failed: HTTP ${namespace_status}" >&2
+  exit 1
+fi
 
 mapfile -t namespace_rows < <(node - "$namespace_file" <<'NODE'
 const fs = require("node:fs");

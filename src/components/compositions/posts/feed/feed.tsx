@@ -207,6 +207,34 @@ function FeedLoadingState() {
   );
 }
 
+const FeedPostRow = React.memo(function FeedPostRow({
+  isLast,
+  isViewingOriginal,
+  item,
+  onToggleOriginal,
+}: {
+  isLast: boolean;
+  isViewingOriginal: boolean;
+  item: FeedItem;
+  onToggleOriginal: (postId: string) => void;
+}) {
+  const activePost = isViewingOriginal && item.postOriginal ? item.postOriginal : item.post;
+  const { className: postClassName, ...post } = activePost;
+  const handleToggleOriginal = React.useCallback(
+    () => onToggleOriginal(item.id),
+    [item.id, onToggleOriginal],
+  );
+
+  return (
+    <PostCard
+      {...post}
+      className={cn(isLast ? "border-b-0" : undefined, postClassName)}
+      isViewingOriginal={isViewingOriginal}
+      onToggleOriginal={item.postOriginal ? handleToggleOriginal : post.onToggleOriginal}
+    />
+  );
+});
+
 export function Feed({
   eyebrow,
   title,
@@ -241,6 +269,17 @@ export function Feed({
   const showLoadingOnly = loading && !hasItems;
   const showLoadingTail = loading && hasItems;
   const [originalPostIds, setOriginalPostIds] = React.useState<Set<string>>(() => new Set());
+  const toggleOriginalPost = React.useCallback((postId: string) => {
+    setOriginalPostIds((current) => {
+      const next = new Set(current);
+      if (next.has(postId)) {
+        next.delete(postId);
+      } else {
+        next.add(postId);
+      }
+      return next;
+    });
+  }, []);
   const loadMoreSentinelRef = React.useRef<HTMLDivElement>(null);
   const paginationEnabled = hasMore !== undefined && Boolean(onLoadMore);
   React.useEffect(() => {
@@ -339,31 +378,15 @@ export function Feed({
           {hasItems ? (
             <ListWrapper>
               <div className={cn("overflow-hidden border-y border-border-soft animate-in fade-in-0 duration-200 md:rounded-[var(--radius-2xl)] md:border md:bg-card", listClassName)}>
-                {items.map((item, index) => {
-                const isViewingOriginal = Boolean(item.postOriginal && originalPostIds.has(item.id));
-                const activePost = isViewingOriginal && item.postOriginal ? item.postOriginal : item.post;
-                const { className: postClassName, ...post } = activePost;
-
-                return (
-                  <PostCard
-                    {...post}
-                    className={cn(index === items.length - 1 ? "border-b-0" : undefined, postClassName)}
-                    isViewingOriginal={isViewingOriginal}
+                {items.map((item, index) => (
+                  <FeedPostRow
+                    isLast={index === items.length - 1}
+                    isViewingOriginal={Boolean(item.postOriginal && originalPostIds.has(item.id))}
+                    item={item}
                     key={item.id}
-                    onToggleOriginal={item.postOriginal
-                      ? () => setOriginalPostIds((current) => {
-                        const next = new Set(current);
-                        if (next.has(item.id)) {
-                          next.delete(item.id);
-                        } else {
-                          next.add(item.id);
-                        }
-                        return next;
-                      })
-                      : post.onToggleOriginal}
+                    onToggleOriginal={toggleOriginalPost}
                   />
-                );
-              })}
+                ))}
                 {showLoadingTail ? <FeedLoadingRows count={loadingCount} /> : null}
                 {paginationEnabled ? (
                   <div className="flex flex-col items-center gap-2 border-t border-border-soft px-5 py-6" ref={loadMoreSentinelRef}>

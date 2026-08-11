@@ -63,6 +63,11 @@ import { sameUserId } from "@/app/authenticated-helpers/user-id";
 import { upsertCommunityFeedPostCache } from "@/app/authenticated-data/community-feed-data";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { canSendCreatePostRequest, requiresPostAltchaProof } from "@/app/authenticated-helpers/create-post-verification";
+import {
+  createPostSubmissionFingerprint,
+  ensureCreatePostSubmissionOperation,
+  type CreatePostSubmissionOperation,
+} from "@/app/authenticated-helpers/create-post-submission-operation";
 
 export function isPublicAudienceAllowed(community: ApiCommunity | ApiCommunityPreview | null): boolean {
   if (!community) {
@@ -124,6 +129,15 @@ export function derivativeSourceToComposerReference(
     upstreamRoyaltyPct: source.commercial_rev_share_pct,
     parentIpId: source.story_ip,
     licenseTermsId: source.story_license_terms,
+  };
+}
+
+export function derivativeSourceToLiveComposerReference(
+  source: ApiDerivativeSource,
+): ComposerReference {
+  return {
+    ...derivativeSourceToComposerReference(source),
+    id: `story:asset:${source.asset}`,
   };
 }
 
@@ -307,6 +321,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     submitProgress: null as SubmitProgress | null,
     loading: true,
   });
+  const submissionOperationRef = React.useRef<CreatePostSubmissionOperation | null>(null);
   const { actions: draftActions, state: draft } = useCreatePostDraftState(initialDraft);
   const {
     audience,
@@ -500,7 +515,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     void api.communities.listDerivativeSources(communityId, buildLiveDerivativeSourceSearchOptions())
       .then((result) => {
         if (cancelled) return;
-        const trackOptions = result.items.map((source) => derivativeSourceToComposerReference(source));
+        const trackOptions = result.items.map((source) => derivativeSourceToLiveComposerReference(source));
         setLiveState((current) => ({ ...current, trackOptions }));
       })
       .catch((error: unknown) => {
@@ -907,6 +922,34 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       const eventRequest = composerMode === "song" || composerMode === "live"
         ? undefined
         : buildCreatePostEventRequest(event);
+      const {
+        imageUploadLabel: _imageUploadLabel,
+        linkPreview: _linkPreview,
+        pendingSongBundleId: _pendingSongBundleId,
+        submitError: _submitError,
+        ...submissionDraft
+      } = draft;
+      const { trackOptions: _trackOptions, ...submittedLiveState } = submissionDraft.liveState;
+      const {
+        query: _derivativeQuery,
+        searchError: _derivativeSearchError,
+        searchLoading: _derivativeSearchLoading,
+        searchResults: _derivativeSearchResults,
+        ...submittedDerivativeStep
+      } = submissionDraft.derivativeStep ?? {};
+      const operationFingerprint = createPostSubmissionFingerprint({
+        communityId,
+        draft: {
+          ...submissionDraft,
+          derivativeStep: submittedDerivativeStep,
+          liveState: submittedLiveState,
+        },
+      });
+      const submissionOperation = ensureCreatePostSubmissionOperation(
+        submissionOperationRef.current,
+        operationFingerprint,
+      );
+      submissionOperationRef.current = submissionOperation;
 
       if (composerMode === "song") {
         logger.info("[create-post] delegating to song submit", {
@@ -929,6 +972,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           anonymousScope,
           disclosedQualifierIds,
           identityMode: resolvedIdentityMode,
+          idempotencyKey: submissionOperation.idempotencyKey,
           paidSongPriceUsd: paidAssetPriceUsd,
           pendingSongBundleId,
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
@@ -963,7 +1007,11 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           anonymousScope,
           disclosedQualifierIds,
           identityMode: resolvedIdentityMode,
+          idempotencyKey: submissionOperation.idempotencyKey,
           liveState,
+          onCoverUploaded: (uploadedCover) => {
+            submissionOperation.liveCoverUpload = uploadedCover;
+          },
           paidLiveRoomPriceUsd: paidAssetPriceUsd,
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
           publishLiveRoom: api.communities.publishLiveRoom,
@@ -971,6 +1019,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           reportProgress,
           resolveProfileByHandle: api.publicProfiles.getByHandle,
           title,
+          uploadedCover: submissionOperation.liveCoverUpload,
           uploadMedia: api.communities.uploadMedia,
         });
         logger.info("[create-post] live room created", {
@@ -1023,7 +1072,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
             anonymousScope,
             disclosedQualifierIds,
             ageGatePolicy,
-            idempotencyKey: crypto.randomUUID(),
+            idempotencyKey: submissionOperation.idempotencyKey,
             identityMode: resolvedIdentityMode,
             visibility: audience.visibility,
           }),
@@ -1032,9 +1081,13 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           createPost: api.communities.createPost,
           event: eventRequest,
           file: imageUpload,
+          onImageUploaded: (uploadedImage) => {
+            submissionOperation.imageUpload = uploadedImage;
+          },
           reportProgress,
           signAgentAuthoredBody,
           title,
+          uploadedImage: submissionOperation.imageUpload,
           uploadMedia: api.communities.uploadMedia,
         });
         reportProgress("publish_post");
@@ -1051,7 +1104,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
             anonymousScope,
             disclosedQualifierIds,
             ageGatePolicy,
-            idempotencyKey: crypto.randomUUID(),
+            idempotencyKey: submissionOperation.idempotencyKey,
             identityMode: resolvedIdentityMode,
             visibility: audience.visibility,
           }),
@@ -1062,7 +1115,6 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           abortArtifactUploadSession: api.communities.abortArtifactUploadSession,
           completeArtifactUploadSession: api.communities.completeArtifactUploadSession,
           createArtifactUpload: api.communities.createArtifactUpload,
-          createListing: api.communities.createListing,
           createPost: api.communities.createPost,
           derivativeStep,
           event: eventRequest,
@@ -1070,6 +1122,12 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           getArtifactUploadPartSignedUrl: api.communities.getArtifactUploadPartSignedUrl,
           license,
           monetized: monetizationState.visible,
+          onPosterUploaded: (preparedPoster) => {
+            submissionOperation.videoPosterUpload = preparedPoster;
+          },
+          onVideoUploaded: (uploadedVideo) => {
+            submissionOperation.videoUpload = uploadedVideo;
+          },
           paidAssetPriceUsd,
           posterFrameMaxWidth: MAX_VIDEO_POSTER_FRAME_WIDTH,
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
@@ -1078,6 +1136,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           royaltySplit,
           signAgentAuthoredBody,
           title,
+          preparedPoster: submissionOperation.videoPosterUpload,
+          uploadedVideo: submissionOperation.videoUpload,
           uploadArtifactContent: api.communities.uploadArtifactContent,
           uploadMedia: api.communities.uploadMedia,
           videoState,
@@ -1096,7 +1156,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
             anonymousScope,
             disclosedQualifierIds,
             ageGatePolicy,
-            idempotencyKey: crypto.randomUUID(),
+            idempotencyKey: submissionOperation.idempotencyKey,
             identityMode: resolvedIdentityMode,
             visibility: audience.visibility,
           }),
@@ -1118,7 +1178,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
             anonymousScope,
             disclosedQualifierIds,
             ageGatePolicy,
-            idempotencyKey: crypto.randomUUID(),
+            idempotencyKey: submissionOperation.idempotencyKey,
             identityMode: resolvedIdentityMode,
             visibility: audience.visibility,
           }),
@@ -1132,6 +1192,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       }
 
       setPageState((current) => ({ ...current, postAltchaPayload: null }));
+      submissionOperationRef.current = null;
       logger.info("[create-post] publish completed", {
         postId: publishedPostId ?? result?.id,
         postType: publishedPostType,
@@ -1216,7 +1277,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       setPageState((current) => ({ ...current, submitting: false }));
     }
   }, [
-    api, audience, ageGatePolicy, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, contentLocale, derivativeStep, eligibility?.status, event, hasCommunityPostingRole, hasOpenPowPostingAccess,
+    api, audience, ageGatePolicy, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, contentLocale, derivativeStep, draft, eligibility?.status, event, hasCommunityPostingRole, hasOpenPowPostingAccess,
     identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, paidLiveRoomMode, pendingSongBundleId, postAltchaPayload, postAltchaRequestOptions, postAltchaRequired, pricingPolicy?.regional_pricing_enabled, royaltySplit,
     queryClient, selectedQualifierIds, session?.user.id, setPendingSongBundleId, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     videoState,

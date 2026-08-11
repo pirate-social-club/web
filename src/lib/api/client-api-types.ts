@@ -332,6 +332,7 @@ type ApiLiveRoomAudienceGate = {
 };
 
 export type ApiCreateLiveRoomRequest = {
+  idempotency_key?: string | null;
   title?: string | null;
   description?: string | null;
   identity_mode?: "public" | "anonymous" | null;

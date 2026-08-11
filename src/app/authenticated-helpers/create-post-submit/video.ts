@@ -1,8 +1,6 @@
 "use client";
 
 import type {
-  CommunityListing,
-  CreateCommunityListingRequest,
   CreateSongArtifactUploadRequest,
   Post as ApiCreatedPost,
   SongArtifactUpload,
@@ -41,11 +39,6 @@ type CreatePost = (
   options?: AltchaRequestOptions,
 ) => Promise<ApiCreatedPost>;
 
-type CreateListing = (
-  communityId: string,
-  request: CreateCommunityListingRequest,
-) => Promise<CommunityListing>;
-
 type CreateArtifactUpload = (
   communityId: string,
   request: CreateSongArtifactUploadRequest,
@@ -82,10 +75,15 @@ type AbortArtifactUploadSession = (
   sessionId: string,
 ) => Promise<void>;
 
-type UploadedPosterMedia = {
+export type UploadedPosterMedia = {
   media_ref: string;
   mime_type: string;
   size_bytes: number;
+};
+
+export type PreparedVideoPosterUpload = {
+  frame: ExtractedVideoPosterFrame & { file: File };
+  uploaded: UploadedPosterMedia;
 };
 
 type UploadPosterMedia = (
@@ -279,7 +277,6 @@ export async function submitVideoPost({
   completeArtifactUploadSession,
   communityId,
   createArtifactUpload,
-  createListing,
   createPost,
   derivativeStep,
   event,
@@ -287,6 +284,8 @@ export async function submitVideoPost({
   getArtifactUploadPartSignedUrl,
   license,
   monetized,
+  onPosterUploaded,
+  onVideoUploaded,
   paidAssetPriceUsd,
   posterFrameMaxWidth,
   pricingPolicyRegionalPricingEnabled,
@@ -295,6 +294,8 @@ export async function submitVideoPost({
   royaltySplit,
   signAgentAuthoredBody,
   title,
+  preparedPoster: existingPreparedPoster,
+  uploadedVideo: existingUploadedVideo,
   uploadArtifactContent,
   uploadMedia,
   videoState,
@@ -309,7 +310,6 @@ export async function submitVideoPost({
   completeArtifactUploadSession?: CompleteArtifactUploadSession;
   communityId: string;
   createArtifactUpload: CreateArtifactUpload;
-  createListing: CreateListing;
   createPost: CreatePost;
   derivativeStep?: DerivativeStepState;
   event?: CreatePostEventRequest;
@@ -317,6 +317,8 @@ export async function submitVideoPost({
   getArtifactUploadPartSignedUrl?: GetArtifactUploadPartSignedUrl;
   license?: AssetLicenseState;
   monetized: boolean;
+  onPosterUploaded?: (preparedPoster: PreparedVideoPosterUpload) => void;
+  onVideoUploaded?: (uploadedVideo: SongArtifactUpload) => void;
   paidAssetPriceUsd: number | null;
   posterFrameMaxWidth?: number;
   pricingPolicyRegionalPricingEnabled: boolean;
@@ -325,6 +327,8 @@ export async function submitVideoPost({
   royaltySplit?: AssetRoyaltySplitState;
   signAgentAuthoredBody: SignAgentAuthoredBody;
   title: string;
+  preparedPoster?: PreparedVideoPosterUpload | null;
+  uploadedVideo?: SongArtifactUpload | null;
   uploadArtifactContent: UploadArtifactContent;
   uploadMedia: UploadPosterMedia;
   videoState: VideoComposerState;
@@ -337,7 +341,7 @@ export async function submitVideoPost({
   // upload's byte reports would then snap it backward.
   reportProgress?.("upload_video", "0%");
   const [uploadedVideo, posterFrame] = await Promise.all([
-    uploadVideoArtifact({
+    existingUploadedVideo ?? uploadVideoArtifact({
       abortArtifactUploadSession,
       communityId,
       completeArtifactUploadSession,
@@ -348,21 +352,49 @@ export async function submitVideoPost({
       uploadArtifactContent,
       videoState,
     }),
-    extractPosterFrameFile(
+    existingPreparedPoster?.frame ?? extractPosterFrameFile(
       file,
       videoState.posterFrameSeconds,
       { maxWidth: posterFrameMaxWidth },
     ),
   ]);
+  if (!existingUploadedVideo) {
+    onVideoUploaded?.(uploadedVideo);
+  }
   reportProgress?.("extract_poster");
-  reportProgress?.("upload_poster", "0%");
-  const uploadedPoster = await uploadMedia({
-    kind: "post_image",
-    file: posterFrame.file,
-    onProgress: (fraction) => {
-      reportProgress?.("upload_poster", `${Math.round(fraction * 100)}%`);
-    },
-  });
+  let uploadedPoster = existingPreparedPoster?.uploaded ?? null;
+  if (!uploadedPoster) {
+    reportProgress?.("upload_poster", "0%");
+    uploadedPoster = await uploadMedia({
+      kind: "post_image",
+      file: posterFrame.file,
+      onProgress: (fraction) => {
+        reportProgress?.("upload_poster", `${Math.round(fraction * 100)}%`);
+      },
+    });
+    onPosterUploaded?.({ frame: posterFrame, uploaded: uploadedPoster });
+  }
+  if (monetized) {
+    reportProgress?.("create_listing");
+  }
+  const listingDraftWithPlaceholder = monetized
+    ? buildAssetListingRequest({
+        assetId: "asset_pending",
+        paidSongPriceUsd: paidAssetPriceUsd,
+        pricingPolicyRegionalPricingEnabled,
+        regionalPricingEnabled,
+        charityContributionPct,
+        charityPartnerId,
+      })
+    : null;
+  if (monetized && !listingDraftWithPlaceholder) {
+    throw new Error("The paid video listing payload could not be created.");
+  }
+  const listingDraft = (() => {
+    if (!listingDraftWithPlaceholder) return undefined;
+    const { asset: _asset, ...draft } = listingDraftWithPlaceholder;
+    return draft;
+  })();
   const request = buildVideoPostRequest({
     baseRequest,
     caption,
@@ -377,8 +409,9 @@ export async function submitVideoPost({
     uploadedPoster,
     uploadedVideo,
   });
+  request.listing_draft = listingDraft;
   reportProgress?.("publish_post");
-  const post = await createPost(
+  return await createPost(
     communityId,
     await signIfAgent({
       authorMode,
@@ -389,25 +422,4 @@ export async function submitVideoPost({
     altchaOptions,
   );
 
-  if (!monetized) {
-    return post;
-  }
-
-  if (!post.asset) {
-    throw new Error("The video published, but the paid asset was not created.");
-  }
-  const listingRequest = buildAssetListingRequest({
-    assetId: post.asset,
-    paidSongPriceUsd: paidAssetPriceUsd,
-    pricingPolicyRegionalPricingEnabled,
-    regionalPricingEnabled,
-    charityContributionPct,
-    charityPartnerId,
-  });
-  if (!listingRequest) {
-    throw new Error("The video published, but the paid listing payload was not created.");
-  }
-  reportProgress?.("create_listing");
-  await createListing(communityId, listingRequest);
-  return post;
 }

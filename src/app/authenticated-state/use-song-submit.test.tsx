@@ -141,6 +141,7 @@ function submitInput(overrides: Partial<Parameters<ReturnType<typeof useSongSubm
     charityContribution: { percentagePct: 0 },
     charityPartner: null,
     derivativeStep: undefined,
+    idempotencyKey: "submit_operation_1",
     license: { presetId: "non-commercial" as const },
     lyrics: "lyrics",
     monetizationState: {
@@ -270,6 +271,7 @@ describe("useSongSubmit", () => {
     expect((songArtifactBundleBodies[0] as { analysis_mode?: unknown }).analysis_mode).toBe("deferred");
     expect(createPostBodies).toHaveLength(1);
     expect((createPostBodies[0] as { publish_mode?: unknown }).publish_mode).toBe("async");
+    expect((createPostBodies[0] as { idempotency_key?: unknown }).idempotency_key).toBe("submit_operation_1");
     expect((createPostBodies[0] as { listing_draft?: unknown }).listing_draft).toBeUndefined();
     expect(progressEvents).toEqual([
       "validating",

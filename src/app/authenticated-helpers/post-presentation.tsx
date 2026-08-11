@@ -76,6 +76,40 @@ function openExternalUrl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
+function resolvePostStatusNotice(
+  post: ApiPost["post"],
+  opts?: PostPresentationOptions,
+): PostCardProps["statusNotice"] {
+  if (post.status === "processing" && opts?.processingTimedOut) {
+    return {
+      tone: "neutral",
+      label: "Still processing",
+      message: "This is taking longer than expected. Your post is safe; check again or reload later.",
+      action: opts.onRefreshProcessing
+        ? { label: "Check status", onClick: opts.onRefreshProcessing }
+        : undefined,
+    };
+  }
+  if (post.status === "processing" && post.post_type === "song") {
+    return {
+      tone: "neutral",
+      label: "Preparing song features",
+      message: "Visible only to you while we finish rights, lyrics, and audio checks.",
+    };
+  }
+  if (post.status === "failed") {
+    return {
+      tone: "destructive",
+      label: "Publish failed",
+      message: post.publish_failure_message ?? "This post could not be published.",
+      action: post.publish_failure_retryable && opts?.onRetryPublish
+        ? { label: "Try again", onClick: opts.onRetryPublish }
+        : undefined,
+    };
+  }
+  return undefined;
+}
+
 type PostPresentationCommunity =
   | Pick<ApiCommunity, "avatar_ref" | "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
   | Pick<ApiCommunityPreview, "avatar_ref" | "id" | "display_name" | "karaoke_enabled" | "namespace_verification" | "route_slug">
@@ -118,27 +152,7 @@ export function toCommunityFeedItem(
   const isDeleted = post.status === "deleted";
   const isRemoved = post.status === "removed";
   const isPublished = post.status === "published";
-  const isProcessing = post.status === "processing";
-  const isFailed = post.status === "failed";
-  const statusNotice = isProcessing && post.post_type === "song"
-    ? {
-        tone: "neutral" as const,
-        label: "Preparing song features",
-        message: "Visible only to you while we finish rights, lyrics, and audio checks.",
-      }
-    : isFailed
-      ? {
-          tone: "destructive" as const,
-          label: "Publish failed",
-          message: post.publish_failure_message ?? "This post could not be published.",
-          action: post.publish_failure_retryable && opts?.onRetryPublish
-            ? {
-                label: "Try again",
-                onClick: opts.onRetryPublish,
-              }
-            : undefined,
-        }
-      : undefined;
+  const statusNotice = resolvePostStatusNotice(post, opts);
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
   const content = toCommunityPostContent(postResponseWithCommunity, songOptions, { ...opts, embedMode: "official" });
   const heading = resolvePostCardHeadingTitle({
@@ -350,6 +364,7 @@ export function toThreadPostCard(
     postId: post.id,
     postHref: undefined,
     qualifierLabels: resolvePostQualifierLabels(postResponse),
+    statusNotice: resolvePostStatusNotice(post, opts),
     ...titleProps,
     titleHref: undefined,
     viewContext: "post",

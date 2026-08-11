@@ -53,6 +53,7 @@ import { logger } from "@/lib/logger";
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
 import { useBoostCampaignController } from "@/app/authenticated-helpers/use-boost-campaign-controller";
 import { useActiveSongRewardOffer } from "@/app/authenticated-helpers/use-active-song-reward-offer";
+import { processingPostPollDelayMs, shouldContinueProcessingPostPolling } from "@/app/authenticated-helpers/processing-post-polling";
 
 function closeMobileThread(fallbackPath: string) {
   if (typeof window !== "undefined" && window.history.length > 1) {
@@ -175,7 +176,7 @@ export function PostPage({
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, requestVoteAccess, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, requestVoteAccess, refreshPost, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const activeLiveRoomId = post?.post.anchor_live_room ?? null;
   const activeAssetId = post?.post.asset ?? null;
   const activeAssetPostType = post?.post.post_type ?? null;
@@ -196,6 +197,7 @@ export function PostPage({
   const [replayPlayerOpen, setReplayPlayerOpen] = React.useState(false);
   const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
   const [storyLicenseReuseNotice, setStoryLicenseReuseNotice] = React.useState<StoryLicenseReuseNotice | null>(null);
+  const [processingTimedOut, setProcessingTimedOut] = React.useState(false);
   const autoWatchAttemptedRef = React.useRef(false);
   const inlineLiveViewerAttemptedRef = React.useRef<string | null>(null);
   const liveViewerAttachInFlightRef = React.useRef(false);
@@ -205,6 +207,49 @@ export function PostPage({
   React.useEffect(() => {
     setStoryLicenseReuseNotice(takeStoryLicenseReuseNotice(postId));
   }, [postId]);
+  React.useEffect(() => {
+    if (post?.post.status !== "processing") {
+      setProcessingTimedOut(false);
+      return undefined;
+    }
+
+    const startedAt = Date.now();
+    let cancelled = false;
+    let timeoutId: number | null = null;
+    setProcessingTimedOut(false);
+    const tick = async () => {
+      try {
+        await refreshPost();
+      } catch (refreshError) {
+        logger.warn("[post-route] processing post refresh failed", {
+          error: refreshError,
+          postId,
+        });
+      }
+      if (cancelled) return;
+      const elapsedMs = Date.now() - startedAt;
+      if (!shouldContinueProcessingPostPolling(elapsedMs)) {
+        setProcessingTimedOut(true);
+        return;
+      }
+      timeoutId = window.setTimeout(() => {
+        void tick();
+      }, processingPostPollDelayMs(elapsedMs));
+    };
+    void tick();
+    return () => {
+      cancelled = true;
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+    };
+  }, [post?.post.status, postId, refreshPost]);
+
+  const handleRefreshProcessingPost = React.useCallback(async () => {
+    try {
+      await refreshPost();
+    } catch (refreshError) {
+      toast.error(getErrorMessage(refreshError, "Could not refresh this post."));
+    }
+  }, [refreshPost]);
   React.useEffect(() => () => {
     for (const url of replayObjectUrlsRef.current) {
       URL.revokeObjectURL(url);
@@ -1097,9 +1142,11 @@ export function PostPage({
     onBoost: boostController.openBoost,
     onDelete: deletePost,
     onRemove: removePost,
+    onRefreshProcessing: () => void handleRefreshProcessingPost(),
     onRewardSettings: boostController.openPolicy,
     onVerifyAge: handleVerifyAge,
     onVote: voteOnPost,
+    processingTimedOut,
     voteBusy: viewerMembershipResolving,
     voteAccess: viewerMustJoin
       ? { label: copy.common.joinToVote, onClick: requestVoteAccess }
@@ -1119,9 +1166,11 @@ export function PostPage({
       onBoost: boostController.openBoost,
       onDelete: deletePost,
       onRemove: removePost,
+      onRefreshProcessing: () => void handleRefreshProcessingPost(),
       onRewardSettings: boostController.openPolicy,
       onVerifyAge: handleVerifyAge,
       onVote: voteOnPost,
+      processingTimedOut,
       voteBusy: viewerMembershipResolving,
       voteAccess: viewerMustJoin
         ? { label: copy.common.joinToVote, onClick: requestVoteAccess }

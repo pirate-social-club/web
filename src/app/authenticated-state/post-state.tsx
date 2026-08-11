@@ -238,6 +238,14 @@ export function usePost(
   const [error, setError] = React.useState<unknown>(null);
   const [loading, setLoading] = React.useState(true);
   const [threadPartial, setThreadPartial] = React.useState(false);
+  const refreshPost = React.useCallback(async () => {
+    const refreshed = hasSession
+      ? await api.posts.get(postId, { locale })
+      : await api.publicPosts.get(postId, { locale });
+    const normalized = normalizePostResponse(refreshed);
+    setPost(normalized);
+    return normalized;
+  }, [api.posts, api.publicPosts, hasSession, locale, postId]);
   const [readMode, setReadMode] = React.useState<PostReadMode>(hasSession ? "authenticated" : "public");
   const [commentSort, setCommentSort] = React.useState<"best" | "new" | "top">("best");
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
@@ -888,6 +896,7 @@ export function usePost(
     createTopLevelComment,
     requestCommentAccess,
     requestVoteAccess,
+    refreshPost,
     cancelEvent,
     deletePost,
     removePost,

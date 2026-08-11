@@ -77,7 +77,9 @@ api_header_value() {
   printf '%s\t%s' "$status" "$allow_origin"
 }
 
-curl \
+namespace_endpoint="https://api.pirate.sc/public-namespaces"
+namespace_status=""
+if ! namespace_status="$(curl \
   --silent \
   --show-error \
   --connect-timeout 10 \
@@ -86,7 +88,18 @@ curl \
   --retry-all-errors \
   --retry-delay 1 \
   --output "$namespace_file" \
-  "https://api.pirate.sc/public-namespaces"
+  --write-out '%{http_code}' \
+  "$namespace_endpoint")"; then
+  namespace_excerpt="$(tr '\r\n' '  ' < "$namespace_file" | cut -c1-240)"
+  echo "public namespace inventory request failed: status=${namespace_status:-unknown} body=${namespace_excerpt:-<empty>}" >&2
+  exit 1
+fi
+
+if [[ ! "$namespace_status" =~ ^2[0-9]{2}$ ]]; then
+  namespace_excerpt="$(tr '\r\n' '  ' < "$namespace_file" | cut -c1-240)"
+  echo "public namespace inventory request failed: status=${namespace_status} body=${namespace_excerpt:-<empty>}" >&2
+  exit 1
+fi
 
 mapfile -t namespace_rows < <(node - "$namespace_file" <<'NODE'
 const fs = require("node:fs");
@@ -103,7 +116,8 @@ NODE
 )
 
 if (( ${#namespace_rows[@]} == 0 )); then
-  echo "public namespace inventory is empty" >&2
+  namespace_excerpt="$(tr '\r\n' '  ' < "$namespace_file" | cut -c1-240)"
+  echo "public namespace inventory is empty: status=${namespace_status} body=${namespace_excerpt:-<empty>}" >&2
   exit 1
 fi
 

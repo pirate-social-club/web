@@ -1166,24 +1166,33 @@ export function CommunityModerationPage({
           toast.error("Could not clear the saved namespace verification.");
         }
       };
-      content = (
-        <CommunityNamespaceVerificationPage
-          activeSessionId={state.effectiveNamespaceSessionId}
-          attachedNamespaceVerificationId={state.community.namespace_verification ?? null}
-          attachedRouteSlug={state.community.route_slug ?? null}
-          callbacks={state.namespaceVerificationCallbacks}
-          initialRootLabel={state.community.route_slug ?? ""}
-          namespaceAttachments={state.namespaceAttachments}
-          onClearPendingSession={clearPendingNamespaceSession}
-          onRefreshNamespaces={state.refreshNamespaceAttachments}
-          onRestorePrimary={state.restoreNamespacePrimary}
-          onBackClick={() => navigate(moderationIndexPath)}
-          onSessionCleared={() => {
-            void clearPendingNamespaceSession();
-          }}
-          onSessionStarted={state.setActiveNamespaceSessionId}
-        />
-      );
+      content = state.namespaceAttachmentsLoading
+        ? <FullPageSpinner />
+        : state.namespaceAttachmentsError
+          ? (
+            <RouteLoadFailureState
+              description="Could not load this community's attached namespaces."
+              title="Namespace"
+            />
+          )
+          : (
+            <CommunityNamespaceVerificationPage
+              activeSessionId={state.effectiveNamespaceSessionId}
+              attachedNamespaceVerificationId={state.community.namespace_verification ?? null}
+              attachedRouteSlug={state.community.route_slug ?? null}
+              callbacks={state.namespaceVerificationCallbacks}
+              initialRootLabel={state.community.route_slug ?? ""}
+              namespaceAttachments={state.namespaceAttachments}
+              onClearPendingSession={clearPendingNamespaceSession}
+              onRefreshNamespaces={state.refreshNamespaceAttachments}
+              onRestorePrimary={state.restoreNamespacePrimary}
+              onBackClick={() => navigate(moderationIndexPath)}
+              onSessionCleared={() => {
+                void clearPendingNamespaceSession();
+              }}
+              onSessionStarted={state.setActiveNamespaceSessionId}
+            />
+          );
     }
   }
   if (isMobile) {

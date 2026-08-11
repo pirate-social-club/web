@@ -27,6 +27,7 @@ import { useCommunitySafetyState } from "./use-community-safety-state";
 import { useCommunityTelegramState } from "./use-community-telegram-state";
 import { useCommunityVisualPolicyState } from "./use-community-visual-policy-state";
 import { useCommunityHandlePolicyState } from "./use-community-handle-policy-state";
+import { namespaceAttachmentLoadState } from "./namespace-attachment-load-state";
 
 export function namespaceRoleForCompletedVerification(input: {
   currentNamespaceVerificationId: string | null | undefined;
@@ -62,14 +63,30 @@ export function useCommunityModerationState(communityId: string) {
   const { community, error, loading, setCommunity } = useCommunityRecord(communityId);
   const [activeNamespaceSessionId, setActiveNamespaceSessionId] = React.useState<string | null>(null);
   const [namespaceAttachments, setNamespaceAttachments] = React.useState<ApiCommunityNamespaceAttachment[]>([]);
+  const [resolvedNamespaceVerificationId, setResolvedNamespaceVerificationId] = React.useState<string | null>(null);
+  const [namespaceAttachmentErrorVerificationId, setNamespaceAttachmentErrorVerificationId] = React.useState<string | null>(null);
+  const namespaceAttachmentsRequestIdRef = React.useRef(0);
 
   const refreshNamespaceAttachments = React.useCallback(async () => {
-    if (!community?.namespace_verification) {
+    const requestId = ++namespaceAttachmentsRequestIdRef.current;
+    const namespaceVerificationId = community?.namespace_verification ?? null;
+    if (!namespaceVerificationId) {
       setNamespaceAttachments([]);
+      setResolvedNamespaceVerificationId(null);
+      setNamespaceAttachmentErrorVerificationId(null);
       return;
     }
-    const response = await api.communities.listNamespaces(communityId);
-    setNamespaceAttachments(response.namespaces);
+    setNamespaceAttachmentErrorVerificationId((current) => current === namespaceVerificationId ? null : current);
+    try {
+      const response = await api.communities.listNamespaces(communityId);
+      if (requestId !== namespaceAttachmentsRequestIdRef.current) return;
+      setNamespaceAttachments(response.namespaces);
+      setResolvedNamespaceVerificationId(namespaceVerificationId);
+    } catch (error) {
+      if (requestId !== namespaceAttachmentsRequestIdRef.current) throw error;
+      setNamespaceAttachmentErrorVerificationId(namespaceVerificationId);
+      throw error;
+    }
   }, [api, community?.namespace_verification, communityId]);
 
   React.useEffect(() => {
@@ -94,6 +111,11 @@ export function useCommunityModerationState(communityId: string) {
   }, [community?.pending_namespace_verification_session]);
 
   const effectiveNamespaceSessionId = activeNamespaceSessionId ?? community?.pending_namespace_verification_session ?? null;
+  const namespaceAttachmentsState = namespaceAttachmentLoadState({
+    currentVerificationId: community?.namespace_verification,
+    errorVerificationId: namespaceAttachmentErrorVerificationId,
+    resolvedVerificationId: resolvedNamespaceVerificationId,
+  });
 
   const namespaceVerificationCallbacks = React.useMemo<NamespaceVerificationCallbacks>(() => ({
     onStartSession: async ({ family, rootLabel }) => {
@@ -216,6 +238,8 @@ export function useCommunityModerationState(communityId: string) {
     error,
     loading,
     namespaceAttachments,
+    namespaceAttachmentsError: namespaceAttachmentsState === "error",
+    namespaceAttachmentsLoading: namespaceAttachmentsState === "loading",
     namespaceVerificationCallbacks,
     refreshNamespaceAttachments,
     restoreNamespacePrimary,

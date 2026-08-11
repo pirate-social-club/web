@@ -66,12 +66,10 @@ export function createBookingsApi(request: ApiRequest) {
 
     getBookingCancellationPreview: (bookingId: string): Promise<BookingCancellationPreview> =>
       request<BookingCancellationPreview>(`/bookings/${c(bookingId)}/cancellation-preview`),
-    cancelBooking: (bookingId: string, expectedRefundCents?: number): Promise<CancelBookingResponse> =>
+    cancelBooking: (bookingId: string, expectedRefundCents: number): Promise<CancelBookingResponse> =>
       request<CancelBookingResponse>(`/bookings/${c(bookingId)}/cancel`, {
         method: "POST",
-        ...(expectedRefundCents === undefined
-          ? {}
-          : { body: JSON.stringify({ expected_refund_cents: expectedRefundCents }) }),
+        body: JSON.stringify({ expected_refund_cents: expectedRefundCents }),
       }),
     completeBooking: (bookingId: string): Promise<CompleteBookingResponse> =>
       request<CompleteBookingResponse>(`/bookings/${c(bookingId)}/complete`, { method: "POST" }),

@@ -35,4 +35,14 @@ describe("sovereign production context workflow", () => {
       step.name === "Reflect sovereign-context failure"
     ))).toBe(true);
   });
+
+  test("fails closed when namespace inventory is not HTTP 200", () => {
+    const probe = readFileSync("scripts/ci/probe-sovereign-context.sh", "utf8");
+
+    expect(probe).toContain('namespace_status="$(curl');
+    expect(probe).toContain("--write-out '%{http_code}'");
+    expect(probe).toContain('if [[ "$namespace_status" != "200" ]]');
+    expect(probe).toContain('"https://api.pirate.sc/public-namespaces")"');
+    expect(probe).not.toContain('"https://api.pirate.sc/public-namespaces/"');
+  });
 });

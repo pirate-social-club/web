@@ -12,6 +12,7 @@ import {
   type SignAgentAuthoredBody,
 } from "./base";
 import type { SubmitProgressReporter } from "./progress";
+import { assertPostImageFile } from "./post-image-file";
 
 type AltchaRequestOptions = {
   altchaPayload?: string | null;
@@ -23,7 +24,7 @@ type CreatePost = (
   options?: AltchaRequestOptions,
 ) => Promise<ApiCreatedPost>;
 
-type UploadedImageMedia = {
+export type UploadedImageMedia = {
   media_ref: string;
   mime_type: string;
   size_bytes: number;
@@ -69,9 +70,11 @@ export async function submitImagePost({
   createPost,
   event,
   file,
+  onImageUploaded,
   reportProgress,
   signAgentAuthoredBody,
   title,
+  uploadedImage: existingUploadedImage,
   uploadMedia,
 }: {
   altchaOptions?: AltchaRequestOptions;
@@ -82,23 +85,30 @@ export async function submitImagePost({
   createPost: CreatePost;
   event?: CreatePostEventRequest;
   file: File | null;
+  onImageUploaded?: (uploadedImage: UploadedImageMedia) => void;
   reportProgress?: SubmitProgressReporter;
   signAgentAuthoredBody: SignAgentAuthoredBody;
   title: string;
+  uploadedImage?: UploadedImageMedia | null;
   uploadMedia: UploadImageMedia;
 }): Promise<ApiCreatedPost> {
   if (!file) {
     throw new Error("Choose an image before creating this post.");
   }
+  assertPostImageFile(file);
 
-  reportProgress?.("prepare_media");
-  const uploadedImage = await uploadMedia({
-    kind: "post_image",
-    file,
-    onProgress: (fraction) => {
-      reportProgress?.("prepare_media", `${Math.round(fraction * 100)}%`);
-    },
-  });
+  let uploadedImage = existingUploadedImage ?? null;
+  if (!uploadedImage) {
+    reportProgress?.("prepare_media");
+    uploadedImage = await uploadMedia({
+      kind: "post_image",
+      file,
+      onProgress: (fraction) => {
+        reportProgress?.("prepare_media", `${Math.round(fraction * 100)}%`);
+      },
+    });
+    onImageUploaded?.(uploadedImage);
+  }
   const request = buildImagePostRequest({
     baseRequest,
     caption,

@@ -247,4 +247,32 @@ describe("image create-post submit helpers", () => {
       authorship_mode: "user_agent",
     }]);
   });
+
+  test("submitImagePost reuses an uploaded image on retry", async () => {
+    const file = new File(["image"], "image.png", { type: "image/png" });
+    const uploadedImage = {
+      media_ref: "media_cached",
+      mime_type: "image/png",
+      size_bytes: file.size,
+    };
+    let uploadCalls = 0;
+
+    await submitImagePost({
+      authorMode: "human",
+      baseRequest: createBaseRequest(),
+      caption: "",
+      communityId: "com_test",
+      createPost: async () => createPost(),
+      file,
+      signAgentAuthoredBody: async (_path, request) => request,
+      title: "Image",
+      uploadedImage,
+      uploadMedia: async () => {
+        uploadCalls += 1;
+        return uploadedImage;
+      },
+    });
+
+    expect(uploadCalls).toBe(0);
+  });
 });

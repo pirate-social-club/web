@@ -16,8 +16,9 @@ import type {
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import { buildLiveRoomListingRequest } from "@/app/authenticated-helpers/asset-submit";
 import type { SubmitProgressReporter } from "./progress";
+import { assertPostImageFile } from "./post-image-file";
 
-type UploadedLiveCoverMedia = {
+export type UploadedLiveCoverMedia = {
   media_ref: string;
 };
 
@@ -160,6 +161,7 @@ export function buildLiveRoomRequest(input: {
   disclosedQualifierIds?: string[];
   hostUserId: string;
   identityMode?: IdentityMode;
+  idempotencyKey?: string;
   liveState: LiveComposerState;
   resolvedGuestUserId?: string | null;
   title: string;
@@ -178,6 +180,7 @@ export function buildLiveRoomRequest(input: {
     description: input.description.trim() || undefined,
     disclosed_qualifier_ids: identityMode === "anonymous" ? input.disclosedQualifierIds : undefined,
     identity_mode: identityMode,
+    idempotency_key: input.idempotencyKey,
     room_kind: input.liveState.roomKind,
     access_mode: input.liveState.accessMode,
     visibility: input.liveState.visibility,
@@ -215,7 +218,9 @@ export async function submitLiveRoom({
   disclosedQualifierIds,
   hostUserId,
   identityMode,
+  idempotencyKey,
   liveState,
+  onCoverUploaded,
   paidLiveRoomPriceUsd,
   pricingPolicyRegionalPricingEnabled,
   publishLiveRoom,
@@ -223,6 +228,7 @@ export async function submitLiveRoom({
   reportProgress,
   resolveProfileByHandle,
   title,
+  uploadedCover: existingUploadedCover,
   uploadMedia,
 }: {
   anonymousScope?: AnonymousIdentityScope;
@@ -232,7 +238,9 @@ export async function submitLiveRoom({
   disclosedQualifierIds?: string[];
   hostUserId: string | null | undefined;
   identityMode: IdentityMode;
+  idempotencyKey: string;
   liveState: LiveComposerState;
+  onCoverUploaded?: (uploadedCover: UploadedLiveCoverMedia) => void;
   paidLiveRoomPriceUsd: number | null;
   pricingPolicyRegionalPricingEnabled: boolean;
   publishLiveRoom: PublishLiveRoom;
@@ -240,10 +248,14 @@ export async function submitLiveRoom({
   reportProgress?: SubmitProgressReporter;
   resolveProfileByHandle?: ResolvePublicProfileByHandle;
   title: string;
+  uploadedCover?: UploadedLiveCoverMedia | null;
   uploadMedia: UploadLiveCoverMedia;
 }): Promise<ApiLiveRoom> {
   if (!hostUserId) {
     throw new Error("Sign in before creating a live room.");
+  }
+  if (liveState.coverUpload) {
+    assertPostImageFile(liveState.coverUpload);
   }
 
   const resolvedGuestUserId = liveState.roomKind === "duet"
@@ -253,28 +265,31 @@ export async function submitLiveRoom({
     })
     : null;
 
-  let coverRef: string | null = null;
+  let uploadedCover = existingUploadedCover ?? null;
   if (liveState.coverUpload) {
-    // Report the media step right before the actual upload, not before the call —
-    // otherwise the button jumps to "Publishing" while the cover is still uploading.
-    reportProgress?.("prepare_media");
-    const uploadedCover = await uploadMedia({
-      kind: "post_image",
-      file: liveState.coverUpload,
-      onProgress: (fraction) => {
-        reportProgress?.("prepare_media", `${Math.round(fraction * 100)}%`);
-      },
-    });
-    coverRef = uploadedCover.media_ref;
+    if (!uploadedCover) {
+      // Report the media step right before the actual upload, not before the call —
+      // otherwise the button jumps to "Publishing" while the cover is still uploading.
+      reportProgress?.("prepare_media");
+      uploadedCover = await uploadMedia({
+        kind: "post_image",
+        file: liveState.coverUpload,
+        onProgress: (fraction) => {
+          reportProgress?.("prepare_media", `${Math.round(fraction * 100)}%`);
+        },
+      });
+      onCoverUploaded?.(uploadedCover);
+    }
   }
 
   const roomRequest = buildLiveRoomRequest({
     anonymousScope,
-    coverRef,
+    coverRef: uploadedCover?.media_ref ?? null,
     description,
     disclosedQualifierIds,
     hostUserId,
     identityMode,
+    idempotencyKey,
     liveState,
     resolvedGuestUserId,
     title,

@@ -1,7 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import type {
-  CommunityListing,
-  CreateCommunityListingRequest,
   CreatePostRequest,
   CreateSongArtifactUploadRequest,
   Post as ApiCreatedPost,
@@ -84,23 +82,6 @@ function createPost(overrides: Partial<ApiCreatedPost> = {}): ApiCreatedPost {
     visibility: "public",
     ...overrides,
   } as ApiCreatedPost;
-}
-
-function createListing(overrides: Partial<CommunityListing> = {}): CommunityListing {
-  return {
-    id: "lst_video",
-    object: "community_listing",
-    community: "com_test",
-    asset: "ast_video",
-    live_room: null,
-    listing_mode: "fixed_price",
-    status: "active",
-    price_cents: 500,
-    regional_pricing_enabled: true,
-    created_by_user: "usr_test",
-    created: 1,
-    ...overrides,
-  };
 }
 
 describe("video create-post submit helpers", () => {
@@ -528,7 +509,6 @@ describe("video create-post submit helpers", () => {
       options: unknown;
       request: CreatePostRequest;
     }> = [];
-    const createListingCalls: CreateCommunityListingRequest[] = [];
     const posterExtractCalls: Array<{
       file: File;
       frameSeconds: string | undefined;
@@ -543,10 +523,6 @@ describe("video create-post submit helpers", () => {
       caption: "Video caption",
       communityId: "com_test",
       ...multipartVideoUploadStubs(),
-      createListing: async (_communityId, request) => {
-        createListingCalls.push(request);
-        return createListing();
-      },
       createPost: async (communityId, request, options) => {
         createPostCalls.push({ communityId, options, request });
         return createPost({ id: "pst_uploaded_video" });
@@ -635,7 +611,6 @@ describe("video create-post submit helpers", () => {
         }],
       },
     }]);
-    expect(createListingCalls).toEqual([]);
   });
 
   test("submitVideoPost sends selected derivative song refs", async () => {
@@ -648,7 +623,6 @@ describe("video create-post submit helpers", () => {
       caption: "",
       communityId: "com_test",
       ...multipartVideoUploadStubs(),
-      createListing: async () => createListing(),
       createPost: async (_communityId, request) => {
         createPostCalls.push(request);
         return createPost();
@@ -688,12 +662,9 @@ describe("video create-post submit helpers", () => {
     expect(createPostCalls[0]?.upstream_asset_refs).toEqual(["story:asset:ast_source_song"]);
   });
 
-  test("submitVideoPost creates a paid listing for monetized videos", async () => {
+  test("submitVideoPost sends a server-owned listing draft for monetized videos", async () => {
     const file = createVideoFile();
-    const createListingCalls: Array<{
-      communityId: string;
-      request: CreateCommunityListingRequest;
-    }> = [];
+    const createPostCalls: CreatePostRequest[] = [];
     const progressEvents: string[] = [];
 
     await submitVideoPost({
@@ -704,11 +675,10 @@ describe("video create-post submit helpers", () => {
       charityPartnerId: "charity_test",
       communityId: "com_test",
       ...multipartVideoUploadStubs(),
-      createListing: async (communityId, request) => {
-        createListingCalls.push({ communityId, request });
-        return createListing();
+      createPost: async (_communityId, request) => {
+        createPostCalls.push(request);
+        return createPost({ asset: "ast_video" });
       },
-      createPost: async () => createPost({ asset: "ast_video" }),
       extractPosterFrameFile: async () => ({
         dataUrl: "data:image/jpeg;base64,cG9zdGVy",
         file: createPosterFile(),
@@ -742,20 +712,16 @@ describe("video create-post submit helpers", () => {
       "upload_video",
       "extract_poster",
       "upload_poster",
-      "publish_post",
       "create_listing",
+      "publish_post",
     ]);
-    expect(createListingCalls).toEqual([{
-      communityId: "com_test",
-      request: {
-        asset: "ast_video",
-        price_cents: 500,
-        regional_pricing_enabled: true,
-        donation_partner: "charity_test",
-        donation_share_bps: 1000,
-        status: "active",
-      },
-    }]);
+    expect(createPostCalls[0]?.listing_draft).toEqual({
+      price_cents: 500,
+      regional_pricing_enabled: true,
+      donation_partner: "charity_test",
+      donation_share_bps: 1000,
+      status: "active",
+    });
   });
 
   test("submitVideoPost rejects missing video files before side effects", async () => {
@@ -769,10 +735,6 @@ describe("video create-post submit helpers", () => {
       createArtifactUpload: async () => {
         calls.push("createArtifactUpload");
         return createArtifact();
-      },
-      createListing: async () => {
-        calls.push("createListing");
-        return createListing();
       },
       createPost: async () => {
         calls.push("createPost");
@@ -812,20 +774,19 @@ describe("video create-post submit helpers", () => {
     expect(calls).toEqual([]);
   });
 
-  test("submitVideoPost rejects monetized posts without an asset", async () => {
-    const createListingCalls: CreateCommunityListingRequest[] = [];
+  test("submitVideoPost leaves paid asset and listing creation to the post endpoint", async () => {
+    const createPostCalls: CreatePostRequest[] = [];
 
-    await expect(submitVideoPost({
+    await submitVideoPost({
       authorMode: "human",
       baseRequest: createBaseRequest(),
       caption: "",
       communityId: "com_test",
       ...multipartVideoUploadStubs(),
-      createListing: async (_communityId, request) => {
-        createListingCalls.push(request);
-        return createListing();
+      createPost: async (_communityId, request) => {
+        createPostCalls.push(request);
+        return createPost({ asset: null });
       },
-      createPost: async () => createPost({ asset: null }),
       extractPosterFrameFile: async () => ({
         dataUrl: "data:image/jpeg;base64,cG9zdGVy",
         file: createPosterFile(),
@@ -848,9 +809,9 @@ describe("video create-post submit helpers", () => {
       videoState: {
         primaryVideoUpload: createVideoFile(),
       },
-    })).rejects.toThrow("The video published, but the paid asset was not created.");
+    });
 
-    expect(createListingCalls).toEqual([]);
+    expect(createPostCalls[0]?.listing_draft?.price_cents).toBe(500);
   });
 
   test("submitVideoPost signs agent-authored video posts", async () => {
@@ -863,7 +824,6 @@ describe("video create-post submit helpers", () => {
       caption: "",
       communityId: "com_test",
       ...multipartVideoUploadStubs(),
-      createListing: async () => createListing(),
       createPost: async (_communityId, request) => {
         createPostRequests.push(request);
         return createPost({ id: "pst_agent_video" });
@@ -932,5 +892,48 @@ describe("video create-post submit helpers", () => {
       agent_id: "agent_test",
       authorship_mode: "user_agent",
     }]);
+  });
+
+  test("submitVideoPost reuses uploaded video and poster outputs on retry", async () => {
+    const uploadedVideo = createArtifact();
+    const posterFrame = {
+      dataUrl: "data:image/jpeg;base64,cG9zdGVy",
+      file: createPosterFile(),
+      frameMs: 0,
+      height: 720,
+      width: 1280,
+    };
+    const uploadedPoster = {
+      media_ref: "poster_cached",
+      mime_type: "image/jpeg",
+      size_bytes: posterFrame.file.size,
+    };
+
+    await submitVideoPost({
+      authorMode: "human",
+      baseRequest: createBaseRequest(),
+      caption: "",
+      communityId: "com_test",
+      ...multipartVideoUploadStubs(),
+      createPost: async () => createPost(),
+      extractPosterFrameFile: async () => {
+        throw new Error("poster extraction should not run");
+      },
+      monetized: false,
+      paidAssetPriceUsd: null,
+      preparedPoster: { frame: posterFrame, uploaded: uploadedPoster },
+      pricingPolicyRegionalPricingEnabled: false,
+      regionalPricingEnabled: false,
+      signAgentAuthoredBody: async (_path, request) => request,
+      title: "Video",
+      uploadedVideo,
+      uploadArtifactContent: async () => {
+        throw new Error("artifact upload should not run");
+      },
+      uploadMedia: async () => {
+        throw new Error("poster upload should not run");
+      },
+      videoState: { primaryVideoUpload: createVideoFile() },
+    });
   });
 });

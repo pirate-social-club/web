@@ -143,6 +143,79 @@ describe("toKaraokeStageLines", () => {
     expect(line.tokens?.map((token) => token.trailing)).toEqual(["", " ", ""]);
   });
 
+  test("preserves canonical spacing around quoted phrases and parentheticals", () => {
+    const [line] = toKaraokeStageLines([
+      {
+        id: "punctuation",
+        text: "Lead \"quoted words\" (aside) end",
+        start_ms: 0,
+        end_ms: 3_000,
+        words: [
+          { text: "Lead", start_ms: 0, end_ms: 300 },
+          { text: "\"quoted", start_ms: 300, end_ms: 700 },
+          { text: "words\"", start_ms: 700, end_ms: 1_200 },
+          { text: "(aside)", start_ms: 1_200, end_ms: 1_800 },
+          { text: "end", start_ms: 1_800, end_ms: 3_000 },
+        ],
+      },
+    ]);
+
+    expect(line.tokens?.map((token) => token.trailing)).toEqual([" ", " ", " ", " ", ""]);
+    expect(line.tokens?.map((token) => `${token.text}${token.trailing}`).join(""))
+      .toBe("Lead \"quoted words\" (aside) end");
+  });
+
+  test("uses canonical lyric characters while retaining provider timings", () => {
+    const [line] = toKaraokeStageLines([
+      {
+        id: "lookalike",
+        text: "Every word",
+        start_ms: 0,
+        end_ms: 1_600,
+        words: [
+          { text: "Evеry", start_ms: 0, end_ms: 800 },
+          { text: "word", start_ms: 800, end_ms: 1_600 },
+        ],
+      },
+    ]);
+
+    expect(line.tokens).toEqual([
+      { endMs: 800, startMs: 0, text: "Every", trailing: " " },
+      { endMs: 1_600, startMs: 800, text: "word", trailing: "" },
+    ]);
+  });
+
+  test("folds the same Cyrillic lookalikes as ingestion", () => {
+    const [line] = toKaraokeStageLines([
+      {
+        id: "line-lookalike-y",
+        start_ms: 0,
+        end_ms: 500,
+        text: "you",
+        words: [{ start_ms: 0, end_ms: 500, text: "уou" }],
+      },
+    ]);
+
+    expect(line?.tokens).toEqual([{ startMs: 0, endMs: 500, text: "you", trailing: "" }]);
+  });
+
+  test("preserves CJK tokens through canonical alignment", () => {
+    const [line] = toKaraokeStageLines([
+      {
+        id: "cjk-canonical",
+        text: "海风",
+        start_ms: 0,
+        end_ms: 1_000,
+        words: [
+          { text: "海", start_ms: 0, end_ms: 500 },
+          { text: "风", start_ms: 500, end_ms: 1_000 },
+        ],
+      },
+    ]);
+
+    expect(line.tokens?.map((token) => token.trailing)).toEqual(["", ""]);
+  });
+
   test("groups token-stream alignment output into lyric lines", () => {
     const lines = toKaraokeStageLines([
       { text: "[Intro]", start: 0.1, end: 10.34 },

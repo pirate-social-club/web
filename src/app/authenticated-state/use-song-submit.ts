@@ -111,6 +111,7 @@ type SongSubmitInput = {
   derivativeStep: DerivativeStepState | undefined;
   disclosedQualifierIds?: string[];
   identityMode: "public" | "anonymous";
+  idempotencyKey: string;
   license: AssetLicenseState;
   lyrics: string;
   monetizationState: MonetizationState;
@@ -367,6 +368,7 @@ export function useSongSubmit({
     derivativeStep,
     disclosedQualifierIds,
     identityMode,
+    idempotencyKey,
     license,
     lyrics,
     monetizationState,
@@ -538,7 +540,7 @@ export function useSongSubmit({
         anonymousScope,
         disclosedQualifierIds,
         ageGatePolicy,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey,
         identityMode,
         visibility: audience.visibility,
       }),

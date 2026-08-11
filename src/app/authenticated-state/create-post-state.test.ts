@@ -3,7 +3,9 @@ import { describe, expect, test } from "bun:test";
 import {
   buildDerivativeSourceSearchOptions,
   buildLiveDerivativeSourceSearchOptions,
+  buildLiveRoomRequest,
   derivativeSourceToComposerReference,
+  derivativeSourceToLiveComposerReference,
   shouldSearchDerivativeSongSources,
 } from "./create-post-state";
 import type { ApiDerivativeSource } from "@/lib/api/client-api-types";
@@ -54,6 +56,28 @@ describe("create post derivative source search", () => {
     expect(derivativeSourceToComposerReference(source).id).toBe(
       "story:ip:0x1111111111111111111111111111111111111111#licenseTermsId=17",
     );
+    expect(derivativeSourceToLiveComposerReference(source).id).toBe(
+      "story:asset:asset_ast_source_song",
+    );
+    const liveReference = derivativeSourceToLiveComposerReference(source);
+    expect(buildLiveRoomRequest({
+      hostUserId: "usr_host",
+      idempotencyKey: "live_submit_operation",
+      description: "",
+      liveState: {
+        roomKind: "solo",
+        accessMode: "free",
+        visibility: "public",
+        setlistStatus: "ready",
+        performerAllocations: [{ role: "host", userId: "usr_host", sharePct: 100 }],
+        setlistItems: [{
+          declaredTrackId: liveReference.id,
+          titleText: liveReference.title,
+          performanceKind: "original",
+        }],
+      },
+      title: "Live room",
+    }).setlist?.items?.[0]?.source_asset_ref).toBe("story:asset:asset_ast_source_song");
   });
 
   test("searches song sources for remixes and video uses-song declarations", () => {

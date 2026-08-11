@@ -840,6 +840,8 @@ export function VideoHomePage({
     [authorProfiles, contentLocale, copy.common.showOriginal, copy.common.showTranslation, copy.home.videoPublisherJoin, copy.home.videoPublisherJoined, entries, joinedCommunityIds, session?.user.id],
   );
   const items = React.useMemo(() => pageItems.map((item) => {
+    // Capability cache entries mutate in place; the revision invalidates this derived view.
+    void capabilityRevision;
     const sourcePostId = item.song?.sourcePostId;
     const resolution = sourcePostId ? capabilityCache.get(sourcePostId) : undefined;
     if (!resolution) return item;
@@ -970,7 +972,7 @@ export function VideoHomePage({
     } catch {
       // The shared optimistic submitter already rolled back and displayed the error.
     }
-  }, [api.posts.clearVote, api.posts.vote, contentLocale, entries, queryClient, requestAuth, runGatedCommunityAction, session?.accessToken, voteGateDataByPostId]);
+  }, [api.posts.clearVote, api.posts.vote, contentLocale, entries, queryClient, requestAuth, runGatedCommunityAction, session?.accessToken, setEntries, voteGateDataByPostId]);
 
   const onLike = React.useCallback((item: VideoFeedItem) => {
     const direction = entries.find((candidate) => candidate.post.post.id === item.id)?.post.viewer_vote === 1

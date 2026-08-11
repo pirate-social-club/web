@@ -197,7 +197,7 @@ export function useXmtpSetup({
   }, [
     authBroken,
     clientHydrated,
-    connectedWallets.length,
+    connectedWallets,
     mode.kind,
     privyRuntime.configured,
     privyRuntime.connect,
@@ -259,10 +259,11 @@ export function useXmtpSetup({
       });
   }, [publishInboxBestEffort, session, xmtpClientCache, xmtpSignerWallet]);
 
+  const reconnectEthereumWallet = privyRuntime.reconnectEthereumWallet;
   const handleReconnectEthereumWallet = React.useCallback(() => {
     logMissingXmtpSigner("reconnect-ethereum-wallet-click", { force: true });
-    privyRuntime.reconnectEthereumWallet?.();
-  }, [logMissingXmtpSigner, privyRuntime.reconnectEthereumWallet]);
+    reconnectEthereumWallet?.();
+  }, [logMissingXmtpSigner, reconnectEthereumWallet]);
 
   React.useEffect(() => () => {
     setupRequestRef.current += 1;

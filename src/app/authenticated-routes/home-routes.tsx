@@ -330,6 +330,8 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     return () => {
       cancelled = true;
     };
+  // This effect populates authorProfiles; profile updates must not restart the feed request.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, contentLocale, feedIdentityKey, feedRequest, homeFeedQueryKey, hydrated, queryClient, sessionAccessToken, sessionProfile, sessionUserId, setHomeFeedPayload]);
 
   const loadMore = React.useCallback(async () => {
@@ -482,6 +484,8 @@ export function HomePage({ initialSort, videoFallbackReason }: {
     setCurrentHomeFeedSort(activeSort);
   }, [activeSort]);
 
+  const authConnect = authRuntime.connect;
+  const authLoadError = authRuntime.loadError;
   const requestAuth = React.useCallback((fallbackMessage: string) => {
     if (!isCanonicalAuthOrigin()) {
       const canonicalUrl = buildCanonicalAuthUrl("/");
@@ -496,13 +500,13 @@ export function HomePage({ initialSort, videoFallbackReason }: {
       return;
     }
 
-    if (authRuntime.connect) {
-      authRuntime.connect();
+    if (authConnect) {
+      authConnect();
       return;
     }
 
-    toast.error(authRuntime.loadError ?? fallbackMessage);
-  }, [authRuntime.connect, authRuntime.loadError, copy.publicProfile.openInPirate]);
+    toast.error(authLoadError ?? fallbackMessage);
+  }, [authConnect, authLoadError, copy.publicProfile.openInPirate]);
 
   const handleVerifyAge = React.useCallback(() => {
     if (!session) {
@@ -561,7 +565,7 @@ export function HomePage({ initialSort, videoFallbackReason }: {
     } catch {
       // The optimistic submitter already rolled back and displayed the error.
     }
-  }, [api.posts.clearVote, api.posts.vote, contentLocale, feedEntries, queryClient, runGatedCommunityAction, voteGateDataByPostId]);
+  }, [api.posts.clearVote, api.posts.vote, contentLocale, feedEntries, queryClient, runGatedCommunityAction, setFeedEntries, voteGateDataByPostId]);
 
   const deletePost = React.useCallback(async (postId: string) => {
     const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);

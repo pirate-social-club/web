@@ -175,7 +175,7 @@ export function PostPage({
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, requestVoteAccess, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, requestVoteAccess, refreshProcessingPost, processingTimedOut, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const activeLiveRoomId = post?.post.anchor_live_room ?? null;
   const activeAssetId = post?.post.asset ?? null;
   const activeAssetPostType = post?.post.post_type ?? null;
@@ -255,6 +255,7 @@ export function PostPage({
     enabled: Boolean(session?.accessToken && activeLiveRoomId),
   });
 
+  const { connect: authConnect, loadError: authLoadError } = authRuntime;
   const requestAuth = React.useCallback((fallbackMessage: string) => {
     if (!isCanonicalAuthOrigin()) {
       const canonicalUrl = buildCanonicalAuthUrl(`/p/${postId}`);
@@ -269,13 +270,13 @@ export function PostPage({
       return;
     }
 
-    if (authRuntime.connect) {
-      authRuntime.connect();
+    if (authConnect) {
+      authConnect();
       return;
     }
 
-    toast.error(authRuntime.loadError ?? fallbackMessage);
-  }, [authRuntime.connect, authRuntime.loadError, postId, copy.publicProfile.openInPirate]);
+    toast.error(authLoadError ?? fallbackMessage);
+  }, [authConnect, authLoadError, postId, copy.publicProfile.openInPirate]);
 
   const boostController = useBoostCampaignController({
     activeCampaignId: rewardOffer?.campaign ?? null,
@@ -644,7 +645,6 @@ export function PostPage({
     liveRoomAccess?.room.title,
     openReplayBlob,
     post?.post.title,
-    requestAuth,
     routeCopy.connectWalletToUnlockReplay,
     routeCopy.replayDeliveryPending,
     routeCopy.replayFallbackTitle,
@@ -1096,10 +1096,10 @@ export function PostPage({
     onCancelEvent: cancelEvent,
     onBoost: boostController.openBoost,
     onDelete: deletePost,
-    onRemove: removePost,
+    onRemove: removePost, onRefreshProcessing: refreshProcessingPost,
     onRewardSettings: boostController.openPolicy,
     onVerifyAge: handleVerifyAge,
-    onVote: voteOnPost,
+    onVote: voteOnPost, processingTimedOut,
     voteBusy: viewerMembershipResolving,
     voteAccess: viewerMustJoin
       ? { label: copy.common.joinToVote, onClick: requestVoteAccess }
@@ -1118,10 +1118,10 @@ export function PostPage({
       onCancelEvent: cancelEvent,
       onBoost: boostController.openBoost,
       onDelete: deletePost,
-      onRemove: removePost,
+      onRemove: removePost, onRefreshProcessing: refreshProcessingPost,
       onRewardSettings: boostController.openPolicy,
       onVerifyAge: handleVerifyAge,
-      onVote: voteOnPost,
+      onVote: voteOnPost, processingTimedOut,
       voteBusy: viewerMembershipResolving,
       voteAccess: viewerMustJoin
         ? { label: copy.common.joinToVote, onClick: requestVoteAccess }

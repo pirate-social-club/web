@@ -93,13 +93,13 @@ describe("promotion shadow workflow ingestion", () => {
       coreSha: "core",
       store,
     });
-    expect(report).toMatchObject({ attempts: 3, observations: 1, duplicates: 0 });
+    expect(report).toMatchObject({ attempts: 3, observations: 2, duplicates: 0 });
     expect(store.attempts.map((entry: any) => entry.result)).toEqual([
       "pass",
       "fail",
       "inconclusive",
     ]);
-    expect(store.observations.map((entry: any) => entry.observation)).toEqual(["skipped"]);
+    expect(store.observations.map((entry: any) => entry.observation)).toEqual(["skipped", "absent"]);
     expect(store.attempts.every((entry: any) => entry.sourceRunAttempt === 2)).toBe(true);
   });
 

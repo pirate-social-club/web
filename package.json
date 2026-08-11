@@ -19,7 +19,7 @@
     "dev:init": "rw-scripts dev-init",
     "build": "bun run locales:generate && bun run worklet:build && vite build",
     "build:prod": "bun run build:provenance && bun run env:check:prod && bun run build -- --mode production --minify false --sourcemap false && bun run build:provenance:emit",
-    "build:staging": "VITE_PRIVY_CLIENT_ID= bun run env:check:staging && VITE_PRIVY_CLIENT_ID= bun run build -- --mode staging --minify false --sourcemap false",
+    "build:staging": "bun run build:provenance && VITE_PRIVY_CLIENT_ID= bun run env:check:staging && VITE_PRIVY_CLIENT_ID= bun run build -- --mode staging --minify false --sourcemap false && bun run build:provenance:emit",
     "build:desktop-shell": "bun run locales:generate && bun run worklet:build && vite build --config vite.desktop.config.ts",
     "preview": "bun run locales:generate && bun run worklet:build && vite preview",
     "worklet:build": "node ./scripts/build-karaoke-worklet.mjs",

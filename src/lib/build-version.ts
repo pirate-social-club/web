@@ -19,8 +19,11 @@ export function buildVersionPayload(service: BuildVersionService, env: BuildVers
     git_sha: env.BUILD_GIT_SHA ?? null,
     git_ref: env.BUILD_GIT_REF ?? null,
     build_timestamp: env.BUILD_TIMESTAMP ?? null,
-    artifact_git_sha: buildInfo.webSha,
+    release_id: buildInfo.releaseId,
     build_id: buildInfo.buildId,
+    web_sha: buildInfo.webSha,
+    api_sha: buildInfo.apiSha,
+    core_sha: buildInfo.coreSha,
     api_origin: env.HNS_PUBLIC_API_ORIGIN ?? null,
     app_origin: env.HNS_PUBLIC_APP_ORIGIN ?? null,
   };

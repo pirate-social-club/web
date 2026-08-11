@@ -80,9 +80,12 @@ if [[ "$ALLOW_NON_MAIN" == "1" && -z "$ALLOW_REASON" ]]; then
 fi
 
 WEB_SHA="$(repo_sha "$WEB_DIR")"
+WEB_FULL_SHA="$(git -C "$WEB_DIR" rev-parse HEAD)"
 WEB_REF="$(repo_ref "$WEB_DIR")"
 API_SHA="$(repo_sha "$API_DIR")"
+API_FULL_SHA="$(git -C "$API_DIR" rev-parse HEAD)"
 API_REF="$(repo_ref "$API_DIR")"
+CORE_RELEASE_SHA="$(tr -d '[:space:]' < "$WEB_DIR/.github/release-refs/core.sha")"
 BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 API_SHARD_SOURCE_VERSION="$(
   printf '%s.%s' \
@@ -117,6 +120,16 @@ require_file() {
     printf 'Missing required executable: %s\n' "$file" >&2
     exit 1
   fi
+}
+
+read_web_build_field() {
+  node -e '
+    const fs = require("node:fs");
+    const [path, field] = process.argv.slice(1);
+    const value = JSON.parse(fs.readFileSync(path, "utf8"))[field];
+    if (typeof value !== "string" || !value) process.exit(2);
+    process.stdout.write(value);
+  ' "$WEB_DIR/dist/build-info.json" "$1"
 }
 
 check_json_field() {
@@ -247,7 +260,16 @@ printf 'api: %s (%s)\n' "$API_SHA" "$API_REF"
 printf 'timestamp: %s\n' "$BUILD_TIMESTAMP"
 
 log "build web staging bundle"
-(cd "$WEB_DIR" && bun run build:staging)
+(cd "$WEB_DIR" && \
+  PIRATE_BUILD_API_SHA="$API_FULL_SHA" \
+  PIRATE_BUILD_CORE_SHA="$CORE_RELEASE_SHA" \
+  bun run build:staging)
+
+log "verify web artifact provenance"
+(cd "$WEB_DIR" && bun run scripts/build-provenance.ts verify-dist \
+  "$WEB_FULL_SHA" "$API_FULL_SHA" "$CORE_RELEASE_SHA")
+RELEASE_ID="$(read_web_build_field releaseId)"
+BUILD_ID="$(read_web_build_field buildId)"
 
 log "deploy web staging worker"
 (cd "$WEB_DIR" && "$WEB_WRANGLER" deploy dist/worker/index.js \
@@ -275,10 +297,20 @@ log "deploy api staging worker"
   --var "BUILD_GIT_SHA:$API_SHA" \
   --var "BUILD_GIT_REF:$API_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" \
+  --var "BUILD_RELEASE_ID:$RELEASE_ID" \
+  --var "BUILD_ID:$BUILD_ID" \
+  --var "BUILD_WEB_SHA:$WEB_FULL_SHA" \
+  --var "BUILD_API_SHA:$API_FULL_SHA" \
+  --var "BUILD_CORE_SHA:$CORE_RELEASE_SHA" \
   --var "COMMUNITY_SCHEMA_POLICY_DIGEST:$SCHEMA_POLICY_DIGEST" \
   --define "__PIRATE_BUILD_GIT_SHA__:\"$API_SHA\"" \
   --define "__PIRATE_BUILD_GIT_REF__:\"$API_REF\"" \
   --define "__PIRATE_BUILD_TIMESTAMP__:\"$BUILD_TIMESTAMP\"" \
+  --define "__PIRATE_BUILD_RELEASE_ID__:\"$RELEASE_ID\"" \
+  --define "__PIRATE_BUILD_ID__:\"$BUILD_ID\"" \
+  --define "__PIRATE_BUILD_WEB_SHA__:\"$WEB_FULL_SHA\"" \
+  --define "__PIRATE_BUILD_API_SHA__:\"$API_FULL_SHA\"" \
+  --define "__PIRATE_BUILD_CORE_SHA__:\"$CORE_RELEASE_SHA\"" \
   --define "__PIRATE_COMMUNITY_D1_SHARD_SOURCE_VERSION__:\"$API_SHARD_SOURCE_VERSION\"")
 
 log "smoke checks"

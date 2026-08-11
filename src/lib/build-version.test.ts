@@ -32,7 +32,12 @@ describe("buildVersionPayload", () => {
   test("surfaces provenance embedded by the build", () => {
     const payload = buildVersionPayload("web", {});
 
-    expect(payload.artifact_git_sha).toMatch(/^[0-9a-f]{40}$/);
+    expect(payload.release_id).toMatch(/^[0-9a-f]{64}$/);
     expect(payload.build_id.length).toBeGreaterThan(0);
+    expect(payload.web_sha).toMatch(/^[0-9a-f]{40}$/);
+    expect(payload.api_sha).toMatch(/^[0-9a-f]{40}$/);
+    expect(payload.core_sha).toMatch(/^[0-9a-f]{40}$/);
+    expect(payload.api_origin).toBeNull();
+    expect(payload.app_origin).toBeNull();
   });
 });

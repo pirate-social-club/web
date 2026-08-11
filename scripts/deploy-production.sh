@@ -113,6 +113,16 @@ require_file() {
   fi
 }
 
+read_web_build_field() {
+  node -e '
+    const fs = require("node:fs");
+    const [path, field] = process.argv.slice(1);
+    const value = JSON.parse(fs.readFileSync(path, "utf8"))[field];
+    if (typeof value !== "string" || !value) process.exit(2);
+    process.stdout.write(value);
+  ' "$WEB_DIR/dist/build-info.json" "$1"
+}
+
 check_api_production_secrets() {
   local secrets_json
   secrets_json="$(cd "$API_DIR" && "$API_WRANGLER" secret list --env production --format json)"
@@ -225,6 +235,8 @@ log "build web production bundle"
 log "verify web artifact provenance"
 (cd "$WEB_DIR" && bun run scripts/build-provenance.ts verify-dist \
   "$WEB_FULL_SHA" "$API_FULL_SHA" "$CORE_RELEASE_SHA")
+RELEASE_ID="$(read_web_build_field releaseId)"
+BUILD_ID="$(read_web_build_field buildId)"
 
 log "deploy api production"
 (cd "$API_DIR" && "$API_WRANGLER" deploy \
@@ -232,10 +244,20 @@ log "deploy api production"
   --var "BUILD_GIT_SHA:$API_SHA" \
   --var "BUILD_GIT_REF:$API_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" \
+  --var "BUILD_RELEASE_ID:$RELEASE_ID" \
+  --var "BUILD_ID:$BUILD_ID" \
+  --var "BUILD_WEB_SHA:$WEB_FULL_SHA" \
+  --var "BUILD_API_SHA:$API_FULL_SHA" \
+  --var "BUILD_CORE_SHA:$CORE_RELEASE_SHA" \
   --var "COMMUNITY_SCHEMA_POLICY_DIGEST:$SCHEMA_POLICY_DIGEST" \
   --define "__PIRATE_BUILD_GIT_SHA__:\"$API_SHA\"" \
   --define "__PIRATE_BUILD_GIT_REF__:\"$API_REF\"" \
   --define "__PIRATE_BUILD_TIMESTAMP__:\"$BUILD_TIMESTAMP\"" \
+  --define "__PIRATE_BUILD_RELEASE_ID__:\"$RELEASE_ID\"" \
+  --define "__PIRATE_BUILD_ID__:\"$BUILD_ID\"" \
+  --define "__PIRATE_BUILD_WEB_SHA__:\"$WEB_FULL_SHA\"" \
+  --define "__PIRATE_BUILD_API_SHA__:\"$API_FULL_SHA\"" \
+  --define "__PIRATE_BUILD_CORE_SHA__:\"$CORE_RELEASE_SHA\"" \
   --define "__PIRATE_COMMUNITY_D1_SHARD_SOURCE_VERSION__:\"$API_SHARD_SOURCE_VERSION\"")
 
 log "deploy web production"

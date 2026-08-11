@@ -152,7 +152,7 @@ function LabelClaimRuleCard({
   );
 }
 
-export interface HandlePolicyNamespaceOption {
+interface HandlePolicyNamespaceOption {
   value: string;
   label: string;
 }

@@ -274,6 +274,11 @@
       "sortComments": "فرز التعليقات"
     }
   },
+  "communitySurface": {
+    "ariaLabel": "واجهات المجتمع",
+    "threads": "النقاشات",
+    "watch": "المشاهدة"
+  },
   "community": {
     "aboutTab": "حول",
     "charityLabel": "الجهة الخيرية",

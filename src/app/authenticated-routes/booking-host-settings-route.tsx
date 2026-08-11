@@ -18,31 +18,33 @@ export function BookingHostSettingsPage(): React.ReactElement {
   const session = useSession();
   const profile = session?.profile ?? null;
 
-  if (!profile) {
-    return <AuthRequiredRouteState description={copy.routeStatus.settings.auth} title="Booking settings" />;
-  }
-
-  return <BookingHostSettingsContent />;
+  return (
+    <StandardRoutePage size="rail">
+      {profile ? (
+        <BookingHostSettingsContent />
+      ) : (
+        <AuthRequiredRouteState description={copy.routeStatus.settings.auth} title="Booking settings" />
+      )}
+    </StandardRoutePage>
+  );
 }
 
 function BookingHostSettingsContent(): React.ReactElement {
   const { loading, sectionProps } = useBookingHostSettings();
 
   return (
-    <StandardRoutePage size="rail">
-      <div className="mx-auto max-w-2xl space-y-8 p-6">
-        <div className="space-y-1">
-          <Type as="h1" variant="h2">Booking settings</Type>
-          <Type variant="caption" className="text-muted-foreground">
-            Configure your paid 1:1 sessions. You can also manage these from Settings → Profile.
-          </Type>
-        </div>
-        {loading ? (
-          <Type variant="body">Loading booking settings…</Type>
-        ) : (
-          <ProfileBookingsSection {...sectionProps} />
-        )}
+    <div className="mx-auto max-w-2xl space-y-8 p-6">
+      <div className="space-y-1">
+        <Type as="h1" variant="h2">Booking settings</Type>
+        <Type variant="caption" className="text-muted-foreground">
+          Configure your paid 1:1 sessions. You can also manage these from Settings → Profile.
+        </Type>
       </div>
-    </StandardRoutePage>
+      {loading ? (
+        <Type variant="body">Loading booking settings…</Type>
+      ) : (
+        <ProfileBookingsSection {...sectionProps} />
+      )}
+    </div>
   );
 }

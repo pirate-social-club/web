@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { verifySovereignHtml } from "./sovereign-context.mjs";
+import { verifyBrandScopes, verifySovereignHtml } from "./sovereign-context.mjs";
 
 const input = {
   communityId: "com_cmt_sovereign_probe",
@@ -42,5 +42,37 @@ describe("sovereign production context", () => {
       "global video feed bootstrap is present",
       "thread-feed bootstrap is present on the sovereign apex",
     ]);
+  });
+});
+
+describe("sovereign presentation scope", () => {
+  const sovereignBrand = '<button data-brand-label="Dank Meme" data-brand-scope="community">D</button>';
+  const pirateBrand = '<button data-brand-label="PIRATE" data-brand-scope="pirate">Pirate</button>';
+
+  test("accepts community branding only on the sovereign origin", () => {
+    expect(verifyBrandScopes(sovereignBrand, pirateBrand)).toEqual({
+      errors: [],
+      sovereignBrandLabel: "Dank Meme",
+    });
+  });
+
+  test("rejects canonical community rebranding", () => {
+    expect(verifyBrandScopes(sovereignBrand, sovereignBrand)).toEqual({
+      errors: [
+        "missing Pirate brand on the canonical community page",
+        "community brand replaced Pirate on the canonical community page",
+      ],
+      sovereignBrandLabel: "Dank Meme",
+    });
+  });
+
+  test("rejects Pirate branding on the sovereign origin", () => {
+    expect(verifyBrandScopes(pirateBrand, pirateBrand)).toEqual({
+      errors: [
+        "missing sovereign community brand",
+        "Pirate brand is present on the sovereign apex",
+      ],
+      sovereignBrandLabel: null,
+    });
   });
 });

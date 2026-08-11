@@ -7,5 +7,4 @@ export {
   getCommunityActionLabel,
 
 
-  getNamespaceActionLabel,
 } from "@/lib/community-sidebar-helpers";

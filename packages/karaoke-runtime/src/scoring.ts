@@ -143,7 +143,7 @@ export interface KaraokeLineScore {
   uncertain: boolean;
 }
 
-export interface KaraokeLineDiagnostic {
+interface KaraokeLineDiagnostic {
   lineId: string;
   finalizedReason: KaraokeLineBucket["finalizedReason"];
   recognizedWordCount: number;

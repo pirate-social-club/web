@@ -86,7 +86,7 @@ curl \
   --retry-all-errors \
   --retry-delay 1 \
   --output "$namespace_file" \
-  "https://api.pirate.sc/public-namespaces/"
+  "https://api.pirate.sc/public-namespaces"
 
 mapfile -t namespace_rows < <(node - "$namespace_file" <<'NODE'
 const fs = require("node:fs");

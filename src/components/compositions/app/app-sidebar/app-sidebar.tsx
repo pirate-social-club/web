@@ -414,6 +414,7 @@ export function AppSidebar({
           <button
             aria-label={homeAriaLabel ?? copy.appSidebar.homeAriaLabel}
             className="flex h-11 items-center gap-3 rounded-xl px-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:justify-center"
+            // These attributes are consumed by the production sovereign-context probe.
             data-brand-label={brandLabel ?? copy.appSidebar.brandLabel}
             data-brand-scope={isSovereignOrigin ? "community" : "pirate"}
             onClick={onHomeClick}

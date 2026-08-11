@@ -10,13 +10,27 @@ describe("buildVersionPayload", () => {
       BUILD_TIMESTAMP: "2026-05-13T00:00:00Z",
       DEPLOY_ENV: "staging",
       NODE_ENV: "production",
+      CF_VERSION_METADATA: {
+        id: "worker-version-id",
+        tag: "worker-version-tag",
+        timestamp: "2026-05-13T00:00:01Z",
+      },
     })).toMatchObject({
       service: "web",
       environment: "staging",
       git_sha: "abc123",
       git_ref: "main",
       build_timestamp: "2026-05-13T00:00:00Z",
+      worker_version: {
+        id: "worker-version-id",
+        tag: "worker-version-tag",
+        timestamp: "2026-05-13T00:00:01Z",
+      },
     });
+  });
+
+  test("reports null worker metadata outside a versioned Worker deployment", () => {
+    expect(buildVersionPayload("web", {})).toMatchObject({ worker_version: null });
   });
 
   test("prevents caches from serving stale deployment metadata", () => {

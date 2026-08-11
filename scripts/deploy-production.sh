@@ -32,7 +32,6 @@ REQUIRED_WEB_PRODUCTION_SECRETS=(
 HOTFIX=0
 HOTFIX_REASON=""
 SKIP_TESTS=0
-SKIP_BUILD=0
 CONFIRM_PRODUCTION=0
 
 usage() {
@@ -45,7 +44,6 @@ Options:
   --hotfix -m "reason"      Allow dirty/non-main deploy with auditable metadata suffix.
   -m, --message "reason"    Required with --hotfix.
   --skip-tests              Skip focused predeploy tests.
-  --skip-build              Skip web production build.
   --confirm-production      Required for any production deploy.
   -h, --help                Show this help.
 EOF
@@ -67,10 +65,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-tests)
       SKIP_TESTS=1
-      shift
-      ;;
-    --skip-build)
-      SKIP_BUILD=1
       shift
       ;;
     --confirm-production)
@@ -169,9 +163,12 @@ require_file "$WEB_WRANGLER"
 require_file "$API_WRANGLER"
 
 WEB_SHA="$(repo_sha "$WEB_DIR")"
+WEB_FULL_SHA="$(git -C "$WEB_DIR" rev-parse HEAD)"
 WEB_REF="$(repo_ref "$WEB_DIR")"
 API_SHA="$(repo_sha "$API_DIR")"
+API_FULL_SHA="$(git -C "$API_DIR" rev-parse HEAD)"
 API_REF="$(repo_ref "$API_DIR")"
+CORE_RELEASE_SHA="$(tr -d '[:space:]' < "$WEB_DIR/.github/release-refs/core.sha")"
 BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 API_SHARD_SOURCE_VERSION="$(
   printf '%s.%s' \
@@ -219,10 +216,15 @@ check_api_production_secrets
 log "check web production secrets"
 check_web_production_secrets
 
-if [[ "$SKIP_BUILD" != "1" ]]; then
-  log "build web production bundle"
-  (cd "$WEB_DIR" && bun run build:prod)
-fi
+log "build web production bundle"
+(cd "$WEB_DIR" && \
+  PIRATE_BUILD_API_SHA="$API_FULL_SHA" \
+  PIRATE_BUILD_CORE_SHA="$CORE_RELEASE_SHA" \
+  bun run build:prod)
+
+log "verify web artifact provenance"
+(cd "$WEB_DIR" && bun run scripts/build-provenance.ts verify-dist \
+  "$WEB_FULL_SHA" "$API_FULL_SHA" "$CORE_RELEASE_SHA")
 
 log "deploy api production"
 (cd "$API_DIR" && "$API_WRANGLER" deploy \

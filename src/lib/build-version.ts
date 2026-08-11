@@ -1,3 +1,5 @@
+import buildInfo from "../../build-info.json" with { type: "json" };
+
 export type BuildVersionEnv = {
   BUILD_GIT_REF?: string;
   BUILD_GIT_SHA?: string;
@@ -17,6 +19,8 @@ export function buildVersionPayload(service: BuildVersionService, env: BuildVers
     git_sha: env.BUILD_GIT_SHA ?? null,
     git_ref: env.BUILD_GIT_REF ?? null,
     build_timestamp: env.BUILD_TIMESTAMP ?? null,
+    artifact_git_sha: buildInfo.webSha,
+    build_id: buildInfo.buildId,
     api_origin: env.HNS_PUBLIC_API_ORIGIN ?? null,
     app_origin: env.HNS_PUBLIC_APP_ORIGIN ?? null,
   };

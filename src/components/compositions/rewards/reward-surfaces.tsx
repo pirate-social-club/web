@@ -524,7 +524,7 @@ export function CashoutSheet({
               Check status
             </Button>
           ) : null}
-          {state === "confirmed" || state === "failed" ? (
+          {state === "confirmed" || state === "failed" || (state === "needs_review" && !onRefresh) ? (
             <Button className="h-12 w-full" onClick={() => onOpenChange?.(false)} variant={state === "confirmed" ? "default" : "outline"}>
               {state === "confirmed" ? "Done" : "Close"}
             </Button>

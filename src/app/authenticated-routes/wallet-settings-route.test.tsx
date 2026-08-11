@@ -395,33 +395,19 @@ describe("CurrentUserWalletPage rewards", () => {
     });
   });
 
-  test("reuses the same cashout idempotency key after an ambiguous request failure", async () => {
+  test("keeps an ambiguous cashout reserved without inviting or issuing another claim", async () => {
     fakeApi.rewards.cashOut
-      .mockImplementationOnce(async () => { throw new Error("connection lost"); })
-      .mockImplementationOnce(async () => ({
-        payout: {
-          id: "rpe_retry",
-          amount_cents: 120,
-          recipient_address: "0x1000000000000000000000000000000000000001",
-          status: "confirmed" as const,
-          settlement_stage: "confirmed" as const,
-          settlement_ref: "0xrewardtx",
-          failure_reason: null,
-        },
-        balance_cents: 0,
-      }));
+      .mockImplementationOnce(async () => { throw new Error("connection lost"); });
     const view = render(<CurrentUserWalletPage />);
     await waitFor(() => expect(view.getByText("Claim $1.20")).toBeTruthy());
 
     fireEvent.click(view.getByText("Claim $1.20"));
-    await waitFor(() => expect(view.getByText("Transfer failed")).toBeTruthy());
+    await waitFor(() => expect(view.getByText("Transfer needs review")).toBeTruthy());
+    expect(view.getByText("Wallet could not confirm whether the transfer started. Do not claim again; return later to check this transfer.")).toBeTruthy();
     fireEvent.click(view.getByText("Close"));
 
-    fireEvent.click(view.getByText("Claim $1.20"));
-    await waitFor(() => expect(fakeApi.rewards.cashOut.mock.calls).toHaveLength(2));
-
-    expect(fakeApi.rewards.cashOut.mock.calls[0]?.[0].idempotency_key)
-      .toBe(fakeApi.rewards.cashOut.mock.calls[1]?.[0].idempotency_key);
+    expect(view.getByText("Pending")).toBeTruthy();
+    expect(fakeApi.rewards.cashOut.mock.calls).toHaveLength(1);
   });
 
   test("renders the server failure reason instead of treating a failed payout as pending", async () => {

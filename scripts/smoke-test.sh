@@ -64,6 +64,7 @@ if [[ "$CREATE_COMMUNITY" == "1" && "$TARGET_LABEL" == "production" && "$CONFIRM
 fi
 
 node --input-type=module - "$ROOT_DIR" "$WEB_ORIGIN" "$API_ORIGIN" "$TARGET_LABEL" "$CREATE_COMMUNITY" <<'NODE'
+import { appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 const [rootDir, webOrigin, apiOrigin, targetLabel, createCommunityRaw] = process.argv.slice(2);
@@ -73,7 +74,17 @@ const { validateMatchingReleaseAttestations, validateVersionPayload } = await im
 const createCommunity = createCommunityRaw === "1";
 const FETCH_TIMEOUT_MS = 15000;
 const SMOKE_PROPAGATION_BUDGET_MS = Number(process.env.SMOKE_PROPAGATION_BUDGET_MS ?? 90000);
+const SMOKE_EVIDENCE_FILE = process.env.SMOKE_EVIDENCE_FILE?.trim() || null;
 let cacheBustCounter = 0;
+
+function recordVersionEvidence(requestUrl, entry) {
+  if (!SMOKE_EVIDENCE_FILE || requestUrl.pathname !== "/__version") return;
+  appendFileSync(SMOKE_EVIDENCE_FILE, `${JSON.stringify({
+    observed_at: new Date().toISOString(),
+    request_url: requestUrl.toString(),
+    ...entry,
+  })}\n`);
+}
 
 async function fetchWithTimeout(url, options = {}) {
   const controller = new AbortController();
@@ -96,11 +107,20 @@ async function expectJsonOnce(url, expectedStatus = 200, options = {}) {
     headers["cache-control"] = "no-cache, no-store, max-age=0";
     headers.pragma = "no-cache";
   }
-  const response = await fetchWithTimeout(requestUrl, {
-    ...fetchOptions,
-    headers,
-  });
+  let response;
+  try {
+    response = await fetchWithTimeout(requestUrl, {
+      ...fetchOptions,
+      headers,
+    });
+  } catch (error) {
+    recordVersionEvidence(requestUrl, {
+      transport_error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
   const raw = await response.text();
+  recordVersionEvidence(requestUrl, { body_raw: raw, http_status: response.status });
   let body = null;
   try {
     body = raw ? JSON.parse(raw) : null;

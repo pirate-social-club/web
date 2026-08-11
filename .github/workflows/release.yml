@@ -543,7 +543,16 @@ jobs:
         working-directory: web
         env:
           EXPECTED_RELEASE_ID: ${{ needs.release-inputs.outputs.release_id }}
+          SMOKE_EVIDENCE_FILE: ${{ github.workspace }}/smoke-evidence-staging.jsonl
         run: scripts/smoke-test.sh staging
+      - name: Upload staging smoke evidence
+        if: always() && steps.in-lane-freshness.outputs.stale == 'false'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: smoke-evidence-staging-${{ github.run_id }}-${{ github.run_attempt }}
+          path: smoke-evidence-staging.jsonl
+          if-no-files-found: error
+          retention-days: 14
       - name: Apply multipart fixture D1 migrations
         # Keep D1 access isolated from the broader Worker deployment token.
         # Fixture migration failures must block promotion to production.
@@ -1198,7 +1207,16 @@ jobs:
           VITE_PRIVY_CLIENT_ID: ${{ vars.VITE_PRIVY_CLIENT_ID }}
           VITE_REWARDS_ENABLED: "true"
           VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+          SMOKE_EVIDENCE_FILE: ${{ github.workspace }}/smoke-evidence-production.jsonl
         run: scripts/deploy-production.sh --confirm-production --skip-tests
+      - name: Upload production smoke evidence
+        if: always() && steps.in-lane-freshness-prod.outputs.stale == 'false'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: smoke-evidence-production-${{ github.run_id }}-${{ github.run_attempt }}
+          path: smoke-evidence-production.jsonl
+          if-no-files-found: error
+          retention-days: 14
       - name: Verify production release metadata
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: web

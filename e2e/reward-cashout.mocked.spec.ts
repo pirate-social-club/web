@@ -64,18 +64,17 @@ test.describe("reward cashouts (mocked API)", () => {
     await expect(page.getByText("Pending")).toHaveCount(0);
   });
 
-  test("reuses one idempotency key after an ambiguous network failure", async ({ page }) => {
+  test("does not invite a second claim after an ambiguous network failure", async ({ page }) => {
     const state = await installRewardFixture(page, { failFirstCashoutRequest: true });
     await page.goto("/wallet");
     await claimFullBalance(page);
     const claimSheet = page.getByLabel("Claim bounty");
-    await expect(claimSheet.getByText("Transfer failed", { exact: true })).toBeVisible();
+    await expect(claimSheet.getByText("Transfer needs review", { exact: true })).toBeVisible();
+    await expect(claimSheet.getByText(/Do not claim again/u)).toBeVisible();
     await claimSheet.getByRole("button", { name: "Close", exact: true }).first().click();
 
-    await claimFullBalance(page);
-    await expect(page.getByLabel("Claim bounty").getByText("$1.20 is in your wallet 🎉", { exact: true })).toBeVisible();
-    expect(state.cashoutKeys).toHaveLength(2);
-    expect(state.cashoutKeys[1]).toBe(state.cashoutKeys[0]);
+    await expect(page.getByRole("button", { name: "Pending" })).toBeVisible();
+    expect(state.cashoutKeys).toHaveLength(1);
   });
 
   test("manually refreshes a submitted payout and reaches confirmation", async ({ page }) => {

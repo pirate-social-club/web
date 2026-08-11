@@ -44,4 +44,11 @@ describe("release workflow triggers", () => {
     expect(gateBuilder).toMatch(/github\.event_name == 'workflow_dispatch'/u);
     expect(gateBuilder).toMatch(/&& inputs\.expected_staging_web_sha\s*\n\s*&& inputs\.expected_staging_api_sha/u);
   });
+
+  test("preserves raw version responses from staging and production smoke", () => {
+    expect(source).toContain("SMOKE_EVIDENCE_FILE: ${{ github.workspace }}/smoke-evidence-staging.jsonl");
+    expect(source).toContain("name: smoke-evidence-staging-${{ github.run_id }}-${{ github.run_attempt }}");
+    expect(source).toContain("SMOKE_EVIDENCE_FILE: ${{ github.workspace }}/smoke-evidence-production.jsonl");
+    expect(source).toContain("name: smoke-evidence-production-${{ github.run_id }}-${{ github.run_attempt }}");
+  });
 });

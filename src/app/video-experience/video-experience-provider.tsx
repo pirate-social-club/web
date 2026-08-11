@@ -47,7 +47,13 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
 
   return (
     <VideoExperienceContext.Provider value={contextValue}>
-      {children}
+      <div
+        aria-hidden={activated || undefined}
+        inert={activated || undefined}
+        style={{ display: "contents" }}
+      >
+        {children}
+      </div>
       {activated ? (
         <React.Suspense fallback={(
           <div

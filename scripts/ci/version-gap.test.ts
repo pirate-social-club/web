@@ -39,6 +39,7 @@ describe("version gap decisions", () => {
 
   test("reports production serving the tip as healthy", () => {
     expect(decide({ ...BASE, tipSha: BASE.productionSha }).kind).toBe("healthy");
+    expect(decide({ ...BASE, tipSha: `${BASE.productionSha}${"b".repeat(33)}` }).kind).toBe("healthy");
   });
 
   test("reports a non-ancestor production as diverged", () => {
@@ -155,6 +156,9 @@ describe("API pin gap decisions", () => {
   test("production serving the pin is in sync", () => {
     expect(
       decideApiPinGap({ ...API_BASE, productionSha: API_BASE.pinSha, compareStatus: undefined }).kind,
+    ).toBe("in_sync");
+    expect(
+      decideApiPinGap({ ...API_BASE, productionSha: API_BASE.pinSha.slice(0, 7), compareStatus: undefined }).kind,
     ).toBe("in_sync");
     // Full compare agreement is also accepted.
     const identical = decideApiPinGap({ ...API_BASE, compareStatus: "identical" });

@@ -43,7 +43,7 @@ export class VersionMismatchError extends Error {
   }
 }
 
-async function readVersion(target, attempt, fetchImpl) {
+async function readVersion(target, attempt, fetchImpl, expectedReleaseId) {
   const url = new URL(target.url);
   url.searchParams.set("release_verify", `${Date.now()}-${attempt}`);
   const response = await fetchImpl(url, {
@@ -62,6 +62,7 @@ async function readVersion(target, attempt, fetchImpl) {
     service: target.service,
     environment: target.environment,
     gitSha: target.expectedSha,
+    releaseId: expectedReleaseId,
   });
   if (validation.failures.length > 0) {
     throw new VersionMismatchError(
@@ -76,11 +77,15 @@ export async function verifyDeployedVersions(targets, {
   delayMs = DEFAULT_DELAY_MS,
   failFastOnMismatch = false,
   fetchImpl = fetch,
+  expectedReleaseId,
 } = {}) {
+  if (!/^[0-9a-f]{64}$/.test(expectedReleaseId ?? "")) {
+    throw new Error("expectedReleaseId must be one lowercase SHA-256 digest");
+  }
   let lastErrors = [];
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     const results = await Promise.allSettled(
-      targets.map((target) => readVersion(target, attempt, fetchImpl)),
+      targets.map((target) => readVersion(target, attempt, fetchImpl, expectedReleaseId)),
     );
     lastErrors = [];
     let mismatched = false;
@@ -137,5 +142,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     attempts: positiveIntFromEnv("VERIFY_DEPLOYED_ATTEMPTS", DEFAULT_ATTEMPTS),
     delayMs: positiveIntFromEnv("VERIFY_DEPLOYED_DELAY_MS", DEFAULT_DELAY_MS),
     failFastOnMismatch: process.env.VERIFY_DEPLOYED_FAIL_FAST_ON_MISMATCH === "1",
+    expectedReleaseId: process.env.EXPECTED_RELEASE_ID,
   });
 }

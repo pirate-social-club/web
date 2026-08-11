@@ -7,13 +7,14 @@ EXPECTED_SHA=""
 EXPECTED_WEB_SHA=""
 EXPECTED_API_SHA=""
 EXPECTED_OPERATOR_SHA=""
+EXPECTED_RELEASE_ID="${EXPECTED_RELEASE_ID:-}"
 STRICT=1
 SCOPE="all"
 RETRY_FOR_SECONDS=0
 
 usage() {
   cat <<'EOF'
-Usage: scripts/check-deployments.sh [--scope all|prod|staging] [--expected-sha SHA] [--expected-web-sha SHA] [--expected-api-sha SHA] [--expected-operator-sha SHA] [--retry-for SECONDS] [--no-strict]
+Usage: scripts/check-deployments.sh [--scope all|prod|staging] [--expected-sha SHA] [--expected-web-sha SHA] [--expected-api-sha SHA] [--expected-release-id DIGEST] [--expected-operator-sha SHA] [--retry-for SECONDS] [--no-strict]
 
 Checks deployed web/API version metadata across production and staging.
 
@@ -22,6 +23,8 @@ Options:
   --expected-sha SHA      Require every target git_sha to match SHA. Useful for monorepos.
   --expected-web-sha SHA  Require web targets to match SHA.
   --expected-api-sha SHA  Require API targets to match SHA.
+  --expected-release-id DIGEST
+                          Require every target to attest the selected release ID.
   --expected-operator-sha SHA
                           Require API targets' operator.git_sha to match SHA.
   --retry-for SECONDS     Retry strict metadata checks for transient edge propagation.
@@ -72,6 +75,14 @@ while [[ $# -gt 0 ]]; do
       fi
       shift 2
       ;;
+    --expected-release-id)
+      EXPECTED_RELEASE_ID="${2:-}"
+      if ! [[ "$EXPECTED_RELEASE_ID" =~ ^[0-9a-f]{64}$ ]]; then
+        printf 'Invalid value for --expected-release-id\n' >&2
+        exit 2
+      fi
+      shift 2
+      ;;
     --retry-for)
       RETRY_FOR_SECONDS="${2:-}"
       if ! [[ "$RETRY_FOR_SECONDS" =~ ^[0-9]+$ ]]; then
@@ -96,7 +107,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-node --input-type=module - "$ROOT_DIR" "$EXPECTED_SHA" "$EXPECTED_WEB_SHA" "$EXPECTED_API_SHA" "$EXPECTED_OPERATOR_SHA" "$STRICT" "$SCOPE" "$RETRY_FOR_SECONDS" <<'NODE'
+node --input-type=module - "$ROOT_DIR" "$EXPECTED_SHA" "$EXPECTED_WEB_SHA" "$EXPECTED_API_SHA" "$EXPECTED_OPERATOR_SHA" "$EXPECTED_RELEASE_ID" "$STRICT" "$SCOPE" "$RETRY_FOR_SECONDS" <<'NODE'
 import { pathToFileURL } from "node:url";
 
 const [
@@ -105,6 +116,7 @@ const [
   expectedWebSha,
   expectedApiSha,
   expectedOperatorSha,
+  expectedReleaseId,
   strictRaw,
   scopeRaw,
   retryForSecondsRaw,
@@ -194,6 +206,7 @@ function collectFailures(results) {
       environment: result.target.deployEnv,
       gitSha: expectedSha || serviceExpectedSha || undefined,
       operatorGitSha: result.target.service === "api" ? expectedOperatorSha || undefined : undefined,
+      releaseId: expectedReleaseId || undefined,
     });
     for (const failure of validation.failures) failures.push(`${id}: ${failure}`);
   }

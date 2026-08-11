@@ -89,6 +89,13 @@ describe("deployment attestation policy", () => {
       .toContain("release_id does not match the attested release triple");
   });
 
+  test("requires the release ID selected by the release authority", () => {
+    const body = payload();
+    expect(validateVersionPayload(body, { releaseId: body.release_id }).failures).toEqual([]);
+    expect(validateVersionPayload(body, { releaseId: "f".repeat(64) }).failures)
+      .toContain(`expected release_id=${"f".repeat(64)}, got ${body.release_id}`);
+  });
+
   test("rejects endpoints that do not report one release tuple", () => {
     expect(validateMatchingReleaseAttestations([
       { label: "web", body: payload() },

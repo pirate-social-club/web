@@ -9,6 +9,13 @@ const TARGET = {
   service: "web",
   environment: "production",
 };
+const RELEASE_ID = createHash("sha256").update(JSON.stringify({
+  apiSha: "b".repeat(40),
+  coreSha: "c".repeat(40),
+  webSha: "a".repeat(40),
+})).digest("hex");
+
+const VERIFY_OPTIONS = { expectedReleaseId: RELEASE_ID };
 
 function okResponse(sha: string, overrides: Record<string, unknown> = {}) {
   const webSha = sha;
@@ -43,6 +50,7 @@ describe("verifyDeployedVersions retry policy", () => {
   test("passes when the deployed SHA matches", async () => {
     let calls = 0;
     await verifyDeployedVersions([TARGET], {
+      ...VERIFY_OPTIONS,
       fetchImpl: async () => { calls += 1; return okResponse("a".repeat(40)); },
     });
     expect(calls).toBe(1);
@@ -53,6 +61,7 @@ describe("verifyDeployedVersions retry policy", () => {
   test("retries a transport failure even when failFastOnMismatch is set", async () => {
     let calls = 0;
     await verifyDeployedVersions([TARGET], {
+      ...VERIFY_OPTIONS,
       attempts: 3,
       delayMs: 0,
       failFastOnMismatch: true,
@@ -68,6 +77,7 @@ describe("verifyDeployedVersions retry policy", () => {
   test("retries a 5xx even when failFastOnMismatch is set", async () => {
     let calls = 0;
     await verifyDeployedVersions([TARGET], {
+      ...VERIFY_OPTIONS,
       attempts: 2,
       delayMs: 0,
       failFastOnMismatch: true,
@@ -84,6 +94,7 @@ describe("verifyDeployedVersions retry policy", () => {
   test("stops immediately on a mismatch when failFastOnMismatch is set", async () => {
     let calls = 0;
     await expect(verifyDeployedVersions([TARGET], {
+      ...VERIFY_OPTIONS,
       attempts: 5,
       delayMs: 0,
       failFastOnMismatch: true,
@@ -97,6 +108,7 @@ describe("verifyDeployedVersions retry policy", () => {
   test("retries a mismatch when failFastOnMismatch is not set", async () => {
     let calls = 0;
     await verifyDeployedVersions([TARGET], {
+      ...VERIFY_OPTIONS,
       attempts: 3,
       delayMs: 0,
       fetchImpl: async () => {
@@ -109,6 +121,7 @@ describe("verifyDeployedVersions retry policy", () => {
 
   test("exhausting attempts on transport failure still fails", async () => {
     await expect(verifyDeployedVersions([TARGET], {
+      ...VERIFY_OPTIONS,
       attempts: 2,
       delayMs: 0,
       failFastOnMismatch: true,
@@ -119,6 +132,7 @@ describe("verifyDeployedVersions retry policy", () => {
   test("classifies a mismatch as VersionMismatchError, not a generic Error", async () => {
     let captured: unknown;
     await verifyDeployedVersions([TARGET], {
+      ...VERIFY_OPTIONS,
       attempts: 1,
       delayMs: 0,
       fetchImpl: async () => okResponse("9".repeat(40)),
@@ -130,6 +144,7 @@ describe("verifyDeployedVersions retry policy", () => {
   test("classifies an invalid payload as a mismatch", async () => {
     let calls = 0;
     await expect(verifyDeployedVersions([TARGET], {
+      ...VERIFY_OPTIONS,
       attempts: 3,
       delayMs: 0,
       failFastOnMismatch: true,
@@ -149,11 +164,17 @@ describe("verifyDeployedVersions retry policy", () => {
       environment: "production",
     };
     await expect(verifyDeployedVersions([TARGET, apiTarget], {
+      ...VERIFY_OPTIONS,
       attempts: 1,
       delayMs: 0,
       failFastOnMismatch: true,
       fetchImpl: async (url: URL) => String(url).includes("api.example.test")
-        ? okResponse("b".repeat(40), { service: "api", build_id: "other-build" })
+        ? okResponse("b".repeat(40), {
+            service: "api",
+            build_id: "other-build",
+            web_sha: "a".repeat(40),
+            release_id: RELEASE_ID,
+          })
         : okResponse("a".repeat(40)),
     })).rejects.toThrow(/build_id=other-build/u);
   });

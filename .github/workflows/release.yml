@@ -63,6 +63,7 @@ jobs:
     outputs:
       api_sha: ${{ steps.api_ref.outputs.sha }}
       core_sha: ${{ steps.core_ref.outputs.sha }}
+      release_id: ${{ steps.release_id.outputs.value }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -89,6 +90,23 @@ jobs:
             exit 1
           fi
           echo "sha=$core_sha" >> "$GITHUB_OUTPUT"
+      - name: Compute authoritative release ID
+        id: release_id
+        working-directory: web
+        env:
+          WEB_SHA: ${{ github.sha }}
+          API_SHA: ${{ steps.api_ref.outputs.sha }}
+          CORE_SHA: ${{ steps.core_ref.outputs.sha }}
+        run: |
+          node --input-type=module -e '
+            import { createHash } from "node:crypto";
+            import { appendFileSync } from "node:fs";
+            const { API_SHA: apiSha, CORE_SHA: coreSha, WEB_SHA: webSha } = process.env;
+            const value = createHash("sha256")
+              .update(JSON.stringify({ apiSha, coreSha, webSha }))
+              .digest("hex");
+            appendFileSync(process.env.GITHUB_OUTPUT, `value=${value}\n`);
+          '
       - name: Require compatible green API/Core pair
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         env:
@@ -518,10 +536,13 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          EXPECTED_RELEASE_ID: ${{ needs.release-inputs.outputs.release_id }}
         run: scripts/check-deployments.sh --scope staging --retry-for 30
       - name: Smoke staging
         if: steps.in-lane-freshness.outputs.stale == 'false'
         working-directory: web
+        env:
+          EXPECTED_RELEASE_ID: ${{ needs.release-inputs.outputs.release_id }}
         run: scripts/smoke-test.sh staging
       - name: Apply multipart fixture D1 migrations
         # Keep D1 access isolated from the broader Worker deployment token.
@@ -718,6 +739,7 @@ jobs:
         working-directory: web
         env:
           EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          EXPECTED_RELEASE_ID: ${{ needs.release-inputs.outputs.release_id }}
           EXPECTED_WEB_SHA: ${{ github.sha }}
         run: |
           node scripts/verify-deployed-versions.mjs \
@@ -748,6 +770,7 @@ jobs:
         working-directory: web
         env:
           EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          EXPECTED_RELEASE_ID: ${{ needs.release-inputs.outputs.release_id }}
           EXPECTED_WEB_SHA: ${{ github.sha }}
           # A MISMATCH here is terminal (staging was replaced) — fail immediately.
           # A transport failure is NOT: it says nothing about what is deployed, so
@@ -827,6 +850,7 @@ jobs:
         working-directory: web
         env:
           EXPECTED_API_SHA: ${{ inputs.expected_staging_api_sha }}
+          EXPECTED_RELEASE_ID: ${{ needs.release-inputs.outputs.release_id }}
           EXPECTED_WEB_SHA: ${{ inputs.expected_staging_web_sha }}
         run: |
           node scripts/verify-deployed-versions.mjs \
@@ -1156,6 +1180,7 @@ jobs:
         working-directory: web
         env:
           EXPECTED_API_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          EXPECTED_RELEASE_ID: ${{ needs.release-inputs.outputs.release_id }}
           EXPECTED_WEB_SHA: ${{ github.sha }}
         run: |
           node scripts/verify-deployed-versions.mjs \

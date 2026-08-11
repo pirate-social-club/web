@@ -103,6 +103,9 @@ export function validateVersionPayload(body, expected = {}) {
   if (field(body, "release_id") && !DIGEST_PATTERN.test(field(body, "release_id"))) {
     failures.push(`release_id is malformed: ${display(field(body, "release_id"))}`);
   }
+  if (expected.releaseId && field(body, "release_id") !== expected.releaseId) {
+    failures.push(`expected release_id=${expected.releaseId}, got ${display(field(body, "release_id"))}`);
+  }
   for (const name of ["web_sha", "api_sha", "core_sha"]) {
     const value = field(body, name);
     if (value && !FULL_SHA_PATTERN.test(value)) {
@@ -120,6 +123,14 @@ export function validateVersionPayload(body, expected = {}) {
     failures.push(sourceState == null || sourceState === ""
       ? "source_state is missing"
       : `source_state is malformed: ${display(sourceState)}`);
+  }
+  const deployReasonSlug = field(body, "deploy_reason_slug");
+  if (deployReasonSlug != null && (
+    typeof deployReasonSlug !== "string"
+    || !HOTFIX_REASON_PATTERN.test(deployReasonSlug)
+    || isPlaceholder(deployReasonSlug)
+  )) {
+    failures.push(`deploy_reason_slug is malformed: ${display(deployReasonSlug)}`);
   }
   if (!("hotfix" in body)) {
     failures.push("hotfix is missing");
@@ -170,6 +181,7 @@ export function validateVersionPayload(body, expected = {}) {
       coreSha: field(body, "core_sha"),
       sourceState,
       hotfix,
+      deployReasonSlug,
     },
   };
 }

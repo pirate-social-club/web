@@ -135,7 +135,11 @@ async function expectJson(url, expectedStatus = 200, options = {}) {
 }
 
 function requireVersion(label, body, service) {
-  const validation = validateVersionPayload(body, { service, environment: targetLabel });
+  const validation = validateVersionPayload(body, {
+    service,
+    environment: targetLabel,
+    releaseId: process.env.EXPECTED_RELEASE_ID || undefined,
+  });
   if (validation.failures.length > 0) {
     throw new Error(`${label} version invalid: ${validation.failures.join("; ")}`);
   }

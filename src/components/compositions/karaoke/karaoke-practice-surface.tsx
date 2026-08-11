@@ -39,7 +39,7 @@ export interface KaraokePracticeSurfaceProps {
   scoringStatus?: KaraokeScoringStatus | null;
   /** Optional per-line rating pop rendered on the lyric stage. */
   rating?: KaraokeLineRating | null;
-  /** Optional campaign offer shown above the lyric stage. */
+  /** Compact campaign amount shown in the header. */
   rewardSlot?: React.ReactNode;
   /** Footer content for the pre-performance scoring flow (Start button, connect
    *  status). The end-of-take RESULT does not go here — see `centerContent`. Pass
@@ -148,24 +148,24 @@ export function KaraokePracticeSurface({
       <div aria-atomic="true" aria-live="polite" className="sr-only">
         {lineLabel}
       </div>
-      <header className="flex items-center gap-3 border-b border-border-soft px-4 py-2.5 sm:px-6">
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border-soft px-4 py-2.5 sm:px-6">
         <Button
           aria-label="Exit karaoke"
-          className="size-10 px-0"
+          className="size-10 justify-self-start px-0"
           leadingIcon={<CaretLeft className="size-5" weight="bold" />}
           onClick={onExit}
           size="icon"
           variant="ghost"
         />
 
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex items-center justify-center">
           {showScore ? (
             <div className="flex flex-col items-center leading-none">
               <Type as="span" className="tabular-nums" variant="h3">
                 {runningScore ?? 0}
               </Type>
               <Type as="span" className="text-muted-foreground" variant="caption">
-                Provisional
+                pts
               </Type>
               {comboCount >= 2 ? (
                 <Type as="span" className="text-success" variant="caption">
@@ -176,9 +176,10 @@ export function KaraokePracticeSurface({
           ) : null}
         </div>
 
-        {/* Top-right: transient connect/reconnect status only — never the score.
-            min-w-10 balances the back button so the centered score stays centered. */}
-        <div className="flex h-10 min-w-10 shrink-0 items-center justify-end gap-1.5">
+        {/* The bounty and transient connection state share the trailing column.
+            Equal outer grid columns keep the live score centered in the viewport. */}
+        <div className="flex h-10 min-w-10 items-center justify-end gap-1.5 justify-self-end">
+          {rewardSlot}
           {connecting || reconnecting ? (
             <>
               <Spinner className="size-4" />
@@ -191,14 +192,6 @@ export function KaraokePracticeSurface({
           ) : null}
         </div>
       </header>
-
-      {rewardSlot ? (
-        <div className="border-b border-border-soft px-4 py-4 sm:px-6">
-          <div className="mx-auto w-full max-w-3xl">
-            {rewardSlot}
-          </div>
-        </div>
-      ) : null}
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {artworkSrc ? (

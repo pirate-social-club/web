@@ -16,6 +16,8 @@ export interface KaraokeScoringPanelProps {
   onViewScores?: () => void;
   /** False while the instrumental is still loading (start is disabled). */
   canStart: boolean;
+  /** Concise bounty requirements shown beside the Start action. */
+  rewardGoalLabel?: string;
   className?: string;
 }
 
@@ -46,11 +48,16 @@ function micErrorMessage(error: { code: string; message?: string }): string {
  * and on-stage rating pops are the live feedback, and the footer stays empty
  * (no layout shift mid-performance; transient status lives in the header).
  */
-export function KaraokeScoringPanel({ canStart, className, onRestart, onStart, onViewScores, state }: KaraokeScoringPanelProps) {
+export function KaraokeScoringPanel({ canStart, className, onRestart, onStart, onViewScores, rewardGoalLabel, state }: KaraokeScoringPanelProps) {
   if (state.status === "idle" || state.status === "requesting-mic" || state.status === "connecting") {
     const connecting = state.status !== "idle";
     return (
       <div className={cn("flex w-full flex-col items-center gap-4", className)}>
+        {rewardGoalLabel ? (
+          <Type as="p" className="text-center text-warning" variant="body-strong">
+            {rewardGoalLabel}
+          </Type>
+        ) : null}
         <Button
           className="w-full"
           disabled={!canStart || connecting}

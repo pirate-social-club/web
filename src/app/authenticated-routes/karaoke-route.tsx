@@ -12,7 +12,7 @@ import {
 import {
   displayedRewardQualificationStatus,
   RewardQualificationNotice,
-  SongRewardOffer,
+  SongRewardOfferPill,
   rewardAmountLabel,
 } from "@/components/compositions/rewards/reward-surfaces";
 import { toKaraokeStageLines } from "@/components/compositions/karaoke/lyric-transform";
@@ -243,9 +243,28 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
   const needsAuth = Boolean(communityId && !session?.accessToken && scorableLines.length > 0);
   const rewardOffer = state.phase === "ready" ? state.rewardOffer : null;
   const karaokeEnded = scoring.state?.status === "ended";
+  const endedSummary = scoring.state?.status === "ended" ? scoring.state.summary : null;
+  const effectiveRewardScoreBps = rewardOffer
+    ? Math.max(7_000, rewardOffer.min_score_bps)
+    : 7_000;
+  const localRewardRequirementsMissed = Boolean(endedSummary && (
+    Math.round(endedSummary.finalScore * 10_000) < effectiveRewardScoreBps
+    || (typeof endedSummary.scoredLineCount === "number" && endedSummary.scoredLineCount < 5)
+    || (
+      typeof endedSummary.lineCount === "number"
+      && typeof endedSummary.scoredLineCount === "number"
+      && endedSummary.lineCount > 0
+      && Math.floor((endedSummary.scoredLineCount * 10_000) / endedSummary.lineCount) < 8_500
+    )
+  ));
 
   React.useEffect(() => {
     if (!karaokeEnded || !rewardOffer || !session?.accessToken) return;
+    if (localRewardRequirementsMissed) {
+      setRewardQualification(null);
+      setRewardCheckDelayed(false);
+      return;
+    }
     let cancelled = false;
     let timeout: number | undefined;
     let attempt = 0;
@@ -272,7 +291,7 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
       cancelled = true;
       if (timeout !== undefined) window.clearTimeout(timeout);
     };
-  }, [api, karaokeEnded, postId, rewardOffer, session?.accessToken]);
+  }, [api, karaokeEnded, localRewardRequirementsMissed, postId, rewardOffer, session?.accessToken]);
 
   React.useEffect(() => {
     if (!communityId || !session?.accessToken) {
@@ -396,18 +415,21 @@ export function KaraokeRoutePage({ postId }: { postId: string }) {
           <RewardQualificationNotice
             amountLabel={rewardAmountLabel(rewardOffer.daily_reward_cents, rewardOffer.chain_id)}
             expiresAt={rewardQualification?.expires_at}
-            outcomeReason={rewardQualification?.outcome_reason}
-            status={displayedRewardQualificationStatus(rewardQualification?.status, rewardCheckDelayed)}
+            outcomeReason={localRewardRequirementsMissed ? "requirements" : rewardQualification?.outcome_reason}
+            status={localRewardRequirementsMissed
+              ? "unavailable"
+              : displayedRewardQualificationStatus(rewardQualification?.status, rewardCheckDelayed)}
             testMode={rewardOffer.chain_id === 84532}
           />
         ) : (
-          <SongRewardOffer
+          <SongRewardOfferPill
             amountLabel={rewardAmountLabel(rewardOffer.daily_reward_cents, rewardOffer.chain_id)}
-            eligibleActivity={rewardOffer.eligible_activity}
-            minScoreBps={rewardOffer.min_score_bps}
           />
         )
       ) : undefined}
+      rewardGoalLabel={rewardOffer
+        ? `Finish · Sing 85%+ · Score ${Number((effectiveRewardScoreBps / 100).toFixed(2))}%+ · Win ${rewardAmountLabel(rewardOffer.daily_reward_cents, rewardOffer.chain_id)}`
+        : undefined}
       scoring={scoring}
       showSignInCta={needsAuth}
       signInBusy={authBusy}

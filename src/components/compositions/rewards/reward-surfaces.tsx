@@ -58,7 +58,7 @@ export interface RewardQualificationNoticeProps {
   amountLabel: string;
   className?: string;
   expiresAt?: number | null;
-  outcomeReason?: "campaign_ended" | "budget_unavailable" | "identity_duplicate" | "owner_blocked" | "score" | "verification_window_expired" | null;
+  outcomeReason?: "campaign_ended" | "budget_unavailable" | "identity_duplicate" | "owner_blocked" | "requirements" | "score" | "verification_window_expired" | null;
   status: "checking" | "delayed" | "pending_verification" | "credited" | "expired" | "unavailable";
   testMode?: boolean;
 }
@@ -179,6 +179,7 @@ export function RewardQualificationNotice({
     campaign_ended: "This bounty has ended.",
     identity_duplicate: "You already earned this song's bounty today.",
     owner_blocked: "Bounties are unavailable for this song.",
+    requirements: "This take didn't meet the bounty requirements.",
     score: "Your score was below the bounty target.",
     verification_window_expired: "The time to claim this bounty ended.",
   }[outcomeReason ?? "campaign_ended"];

@@ -86,4 +86,26 @@ describe("KaraokeScoringPanel ended state", () => {
     expect(view.getByText("Start")).toBeTruthy();
     expect(view.queryByText("Sing again")).toBeNull();
   });
+
+  test("shows the complete bounty target before the take", () => {
+    const state = {
+      error: null,
+      latestLineId: null,
+      lineScores: [],
+      micError: null,
+      partialTranscript: "",
+      phase: "idle",
+      status: "idle",
+      summary: null,
+    } as unknown as KaraokeScoringState;
+    const view = render(
+      <KaraokeScoringPanel
+        canStart
+        onStart={noop}
+        rewardGoalLabel="Finish · Sing 85%+ · Score 70%+ · Win $1"
+        state={state}
+      />,
+    );
+    expect(view.getByText("Finish · Sing 85%+ · Score 70%+ · Win $1")).toBeTruthy();
+  });
 });

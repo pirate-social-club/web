@@ -9,6 +9,7 @@
   ],
   "ignoreBinaries": [
     "core/scripts/community/apply-commerce-integer-money-d1-migration.ts",
+    "core/scripts/community/apply-listings-asset-unique-index-d1-migration.ts",
     "core/scripts/community/apply-dance-start-cue-evidence-d1-migration.ts",
     "core/scripts/community/apply-post-age-gate-provenance-d1-migration.ts",
     "core/scripts/community/verify-community-schema-requirements.ts",

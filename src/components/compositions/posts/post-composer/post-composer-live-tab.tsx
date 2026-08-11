@@ -9,6 +9,7 @@ import { Switch } from "@/components/primitives/switch";
 import { Type } from "@/components/primitives/type";
 import { UploadField, FieldLabel } from "./post-composer-fields";
 import { SetlistItemRow, dedupeReferences, buildManualReference } from "./post-composer-references";
+import { isLiveVisibilityAllowedForAccess } from "./post-composer-invariants";
 import type { ComposerReference, LiveComposerState } from "./post-composer.types";
 
 function scheduleInputValue(scheduleAt: string | undefined) {
@@ -256,7 +257,6 @@ export function LiveTabContent({
                 onClick={() => onLiveChange({
                   ...live,
                   accessMode: opt.value,
-                  visibility: opt.value === "paid" ? "public" : live.visibility,
                   audienceGateMode: opt.value === "gated" ? live.audienceGateMode ?? "community_members" : live.audienceGateMode,
                 })}
               >
@@ -282,6 +282,11 @@ export function LiveTabContent({
               </Chip>
             ))}
           </div>
+          {live.accessMode === "paid" && !isLiveVisibilityAllowedForAccess(live) ? (
+            <FormNote className="mt-2">
+              {copy.live.paidVisibilityNote ?? "Paid livestreams must be public. Select Public to continue."}
+            </FormNote>
+          ) : null}
         </div>
       </div>
 

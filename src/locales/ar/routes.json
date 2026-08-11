@@ -543,6 +543,7 @@
       "audienceGatePurchaseEntitlementEmpty": "اختر أغاني الكتالوج في قائمة العروض قبل استخدام وصول المشترين.",
       "visibilityPublic": "عام",
       "visibilityUnlisted": "غير مدرج",
+      "paidVisibilityNote": "يجب أن تكون البثوث المباشرة المدفوعة عامة. اختر «عام» للمتابعة.",
       "scheduleForLater": "جدولة لوقت لاحق",
       "startTime": "وقت البدء",
       "startTimeNote": "مطلوب للأحداث المباشرة المجدولة.",

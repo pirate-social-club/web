@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   canAdvanceComposerWriteStep,
+  canSubmitLiveRoomDraft,
   normalizeHttpUrl,
 } from "./post-composer-utils";
 
@@ -36,5 +37,19 @@ describe("post composer link URLs", () => {
       title: "",
       videoUploadPresent: false,
     })).toBe(false);
+  });
+
+  test("blocks paid live drafts until the author explicitly selects public visibility", () => {
+    const draft = {
+      accessMode: "paid" as const,
+      performerAllocations: [{ role: "host" as const, sharePct: 100, userId: "host-1" }],
+      roomKind: "solo" as const,
+      setlistItems: [{ performanceKind: "unknown" as const, titleText: "A song" }],
+      setlistStatus: "ready" as const,
+      visibility: "unlisted" as const,
+    };
+
+    expect(canSubmitLiveRoomDraft(draft, "Live set")).toBe(false);
+    expect(canSubmitLiveRoomDraft({ ...draft, visibility: "public" }, "Live set")).toBe(true);
   });
 });

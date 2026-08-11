@@ -93,10 +93,8 @@ export function deriveLiveStateForRoomKindChange({
   return null;
 }
 
-export function normalizeLiveStateForAccess(current: LiveComposerState): LiveComposerState {
-  if (current.accessMode !== "paid" || current.visibility === "public") {
-    return current;
-  }
-
-  return { ...current, visibility: "public" };
+export function isLiveVisibilityAllowedForAccess(
+  current: Pick<LiveComposerState, "accessMode" | "visibility">,
+): boolean {
+  return current.accessMode !== "paid" || current.visibility === "public";
 }

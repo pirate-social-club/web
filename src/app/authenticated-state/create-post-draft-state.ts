@@ -30,7 +30,6 @@ import type {
   SongMode,
   VideoComposerState,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
-import { normalizeLiveStateForAccess } from "@/components/compositions/posts/post-composer/post-composer-invariants";
 
 export type CreatePostDraftState = {
   audience: ComposerAudienceState;
@@ -187,7 +186,7 @@ function createPostDraftReducer(state: CreatePostDraftState, action: DraftAction
     case "setLiveState":
       return {
         ...state,
-        liveState: normalizeLiveStateForAccess(resolveSetState(state.liveState, action.value)),
+        liveState: resolveSetState(state.liveState, action.value),
       };
     case "setLicense":
       return { ...state, license: resolveSetState(state.license, action.value) };
@@ -223,10 +222,7 @@ export function useCreatePostDraftState(initial?: Partial<CreatePostDraftState>)
     initial,
     (initialArg) => {
       const initialState = { ...createInitialDraftState(), ...initialArg };
-      return {
-        ...initialState,
-        liveState: normalizeLiveStateForAccess(initialState.liveState),
-      };
+      return initialState;
     },
   );
 

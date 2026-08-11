@@ -1,5 +1,10 @@
 import { pathToFileURL } from "node:url";
 
+import {
+  targetIdentityFromUrl,
+  validateVersionPayload,
+} from "./lib/deployment-attestation.mjs";
+
 const DEFAULT_ATTEMPTS = 12;
 const DEFAULT_DELAY_MS = 5_000;
 
@@ -18,7 +23,7 @@ function parseTargets(args) {
     if (!url || !expectedSha) {
       throw new Error("Every version URL must have an expected SHA");
     }
-    targets.push({ expectedSha, url });
+    targets.push({ expectedSha, url, ...targetIdentityFromUrl(url) });
   }
   return targets;
 }
@@ -52,13 +57,17 @@ async function readVersion(target, attempt, fetchImpl) {
     throw new Error(`${target.url} returned HTTP ${response.status}`);
   }
   const body = await response.json();
-  const actualSha = String(body?.git_sha ?? "");
-  if (!actualSha.startsWith(target.expectedSha.slice(0, 7))) {
+  const validation = validateVersionPayload(body, {
+    service: target.service,
+    environment: target.environment,
+    gitSha: target.expectedSha,
+  });
+  if (validation.failures.length > 0) {
     throw new VersionMismatchError(
-      `${target.url} expected ${target.expectedSha}, got ${actualSha || "missing git_sha"}`,
+      `${target.url} ${validation.failures.join("; ")}`,
     );
   }
-  return actualSha;
+  return validation.metadata.gitSha;
 }
 
 export async function verifyDeployedVersions(targets, {

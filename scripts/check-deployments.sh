@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 EXPECTED_SHA=""
 EXPECTED_WEB_SHA=""
 EXPECTED_API_SHA=""
@@ -94,8 +96,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-node - "$EXPECTED_SHA" "$EXPECTED_WEB_SHA" "$EXPECTED_API_SHA" "$EXPECTED_OPERATOR_SHA" "$STRICT" "$SCOPE" "$RETRY_FOR_SECONDS" <<'NODE'
+node --input-type=module - "$ROOT_DIR" "$EXPECTED_SHA" "$EXPECTED_WEB_SHA" "$EXPECTED_API_SHA" "$EXPECTED_OPERATOR_SHA" "$STRICT" "$SCOPE" "$RETRY_FOR_SECONDS" <<'NODE'
+import { pathToFileURL } from "node:url";
+
 const [
+  rootDir,
   expectedSha,
   expectedWebSha,
   expectedApiSha,
@@ -104,6 +109,11 @@ const [
   scopeRaw,
   retryForSecondsRaw,
 ] = process.argv.slice(2);
+const {
+  field,
+  nestedField,
+  validateVersionPayload,
+} = await import(pathToFileURL(`${rootDir}/scripts/lib/deployment-attestation.mjs`).href);
 const strict = strictRaw !== "0";
 const scope = scopeRaw === "production" ? "prod" : scopeRaw;
 const retryForMs = Number(retryForSecondsRaw || 0) * 1000;
@@ -155,27 +165,6 @@ async function fetchVersion(target) {
   }
 }
 
-function field(body, name) {
-  return body && typeof body === "object" && name in body ? body[name] : null;
-}
-
-function nestedField(body, path) {
-  return path.split(".").reduce((current, part) => {
-    if (!current || typeof current !== "object") return null;
-    return part in current ? current[part] : null;
-  }, body);
-}
-
-function shasMatch(expected, actual) {
-  if (!expected || !actual) return false;
-  const expectedText = String(expected).match(/^([0-9a-f]{7,40})(?:$|-)/i)?.[1] ?? "";
-  const actualText = String(actual).match(/^([0-9a-f]{7,40})(?:$|-)/i)?.[1] ?? "";
-  if (!expectedText || !actualText) return false;
-  if (expectedText === actualText) return true;
-  if (Math.min(expectedText.length, actualText.length) < 7) return false;
-  return expectedText.startsWith(actualText) || actualText.startsWith(expectedText);
-}
-
 function buildRows(results) {
   return results.map((result) => ({
   target: result.target.id,
@@ -197,29 +186,15 @@ function collectFailures(results) {
   for (const result of results) {
     const body = result.body;
     const id = result.target.id;
-    const service = field(body, "service");
-    const environment = field(body, "environment");
-    const gitSha = field(body, "git_sha");
-    const gitRef = field(body, "git_ref");
-    const buildTimestamp = field(body, "build_timestamp");
-    const operatorSha = nestedField(body, "operator.git_sha");
-
     if (!result.ok) failures.push(`${id}: ${result.error ?? "request failed"} (${result.status})`);
-    if (service !== result.target.service) failures.push(`${id}: expected service=${result.target.service}, got ${text(service)}`);
-    if (environment !== result.target.deployEnv) failures.push(`${id}: expected environment=${result.target.deployEnv}, got ${text(environment)}`);
-    if (!gitSha) failures.push(`${id}: git_sha is missing`);
-    if (!gitRef) failures.push(`${id}: git_ref is missing`);
-    if (!buildTimestamp) failures.push(`${id}: build_timestamp is missing`);
-    if (expectedSha && !shasMatch(expectedSha, gitSha)) failures.push(`${id}: expected git_sha=${expectedSha}, got ${text(gitSha)}`);
-    if (expectedWebSha && result.target.service === "web" && !shasMatch(expectedWebSha, gitSha)) {
-      failures.push(`${id}: expected web git_sha=${expectedWebSha}, got ${text(gitSha)}`);
-    }
-    if (expectedApiSha && result.target.service === "api" && !shasMatch(expectedApiSha, gitSha)) {
-      failures.push(`${id}: expected api git_sha=${expectedApiSha}, got ${text(gitSha)}`);
-    }
-    if (expectedOperatorSha && result.target.service === "api" && !shasMatch(expectedOperatorSha, operatorSha)) {
-      failures.push(`${id}: expected operator git_sha=${expectedOperatorSha}, got ${text(operatorSha)}`);
-    }
+    const serviceExpectedSha = result.target.service === "web" ? expectedWebSha : expectedApiSha;
+    const validation = validateVersionPayload(body, {
+      service: result.target.service,
+      environment: result.target.deployEnv,
+      gitSha: expectedSha || serviceExpectedSha || undefined,
+      operatorGitSha: result.target.service === "api" ? expectedOperatorSha || undefined : undefined,
+    });
+    for (const failure of validation.failures) failures.push(`${id}: ${failure}`);
   }
   return failures;
 }

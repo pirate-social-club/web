@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 TARGET="${1:-staging}"
 CREATE_COMMUNITY=0
 CONFIRM_PRODUCTION=0
@@ -61,8 +63,13 @@ if [[ "$CREATE_COMMUNITY" == "1" && "$TARGET_LABEL" == "production" && "$CONFIRM
   exit 2
 fi
 
-node - "$WEB_ORIGIN" "$API_ORIGIN" "$TARGET_LABEL" "$CREATE_COMMUNITY" <<'NODE'
-const [webOrigin, apiOrigin, targetLabel, createCommunityRaw] = process.argv.slice(2);
+node --input-type=module - "$ROOT_DIR" "$WEB_ORIGIN" "$API_ORIGIN" "$TARGET_LABEL" "$CREATE_COMMUNITY" <<'NODE'
+import { pathToFileURL } from "node:url";
+
+const [rootDir, webOrigin, apiOrigin, targetLabel, createCommunityRaw] = process.argv.slice(2);
+const { validateVersionPayload } = await import(
+  pathToFileURL(`${rootDir}/scripts/lib/deployment-attestation.mjs`).href
+);
 const createCommunity = createCommunityRaw === "1";
 const FETCH_TIMEOUT_MS = 15000;
 const SMOKE_PROPAGATION_BUDGET_MS = Number(process.env.SMOKE_PROPAGATION_BUDGET_MS ?? 90000);
@@ -127,20 +134,21 @@ async function expectJson(url, expectedStatus = 200, options = {}) {
   }
 }
 
-function requireVersion(label, body) {
-  for (const key of ["service", "environment", "git_sha", "git_ref", "build_timestamp"]) {
-    if (!body?.[key]) throw new Error(`${label} version missing ${key}`);
+function requireVersion(label, body, service) {
+  const validation = validateVersionPayload(body, { service, environment: targetLabel });
+  if (validation.failures.length > 0) {
+    throw new Error(`${label} version invalid: ${validation.failures.join("; ")}`);
   }
 }
 
 console.log(`smoke target: ${targetLabel}`);
 
 const webVersion = await expectJson(`${webOrigin}/__version`);
-requireVersion("web", webVersion.body);
+requireVersion("web", webVersion.body, "web");
 console.log(`web version: ${webVersion.body.git_sha}`);
 
 const apiVersion = await expectJson(`${apiOrigin}/__version`);
-requireVersion("api", apiVersion.body);
+requireVersion("api", apiVersion.body, "api");
 console.log(`api version: ${apiVersion.body.git_sha}`);
 
 await expectJson(`${apiOrigin}/health`);

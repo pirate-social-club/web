@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { Asset as ApiAsset, Community as ApiCommunity, CommunityPreview as ApiCommunityPreview, SongArtifactBundle as ApiSongArtifactBundle, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
+import type { Asset as ApiAsset, Community as ApiCommunity, CommunityPreview as ApiCommunityPreview, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { Post as ApiCreatedPost } from "@pirate/api-contracts";
@@ -22,13 +22,13 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { toast } from "@/components/primitives/sonner";
 import type {
   CommunityCharityPartner,
-  ComposerReference,
   ComposerAudienceState,
   LiveComposerState,
   RegionalPricingPreview,
   SubmitProgress,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
-import type { ApiDerivativeSource } from "@/lib/api/client-api-types";
+import { derivativeSourceToComposerReference, derivativeSourceToLiveComposerReference } from "@/app/authenticated-helpers/post-composer-references";
+export { derivativeSourceToComposerReference, derivativeSourceToLiveComposerReference, songArtifactBundleToComposerReference } from "@/app/authenticated-helpers/post-composer-references";
 import { canSubmitLiveRoomDraft, isValidHttpUrl, normalizeHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
 import { extractVideoPosterFrameFile } from "@/components/compositions/posts/post-composer/video-poster-frame";
 import { useCreatePostDraftState, type CreatePostDraftState } from "./create-post-draft-state";
@@ -63,11 +63,7 @@ import { sameUserId } from "@/app/authenticated-helpers/user-id";
 import { upsertCommunityFeedPostCache } from "@/app/authenticated-data/community-feed-data";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { canSendCreatePostRequest, requiresPostAltchaProof } from "@/app/authenticated-helpers/create-post-verification";
-import {
-  createPostSubmissionFingerprint,
-  ensureCreatePostSubmissionOperation,
-  type CreatePostSubmissionOperation,
-} from "@/app/authenticated-helpers/create-post-submission-operation";
+import { getCreatePostSubmissionOperation, type CreatePostSubmissionOperation } from "@/app/authenticated-helpers/create-post-submission-operation";
 
 export function isPublicAudienceAllowed(community: ApiCommunity | ApiCommunityPreview | null): boolean {
   if (!community) {
@@ -108,37 +104,6 @@ function viewerHasCommunityPostingRole(
     if (!sameUserId(viewerUserId, roleHolder.user)) return false;
     return roleHolder.role === "owner" || roleHolder.role === "admin" || roleHolder.role === "moderator";
   });
-}
-
-export function songArtifactBundleToComposerReference(bundle: ApiSongArtifactBundle): ComposerReference {
-  return {
-    id: bundle.id,
-    title: bundle.title,
-    subtitle: bundle.creator_user,
-  };
-}
-
-export function derivativeSourceToComposerReference(
-  source: ApiDerivativeSource,
-): ComposerReference {
-  return {
-    id: source.source_ref,
-    title: source.title,
-    subtitle: source.creator_handle ?? source.creator_display_name ?? undefined,
-    licensePreset: source.license_preset,
-    upstreamRoyaltyPct: source.commercial_rev_share_pct,
-    parentIpId: source.story_ip,
-    licenseTermsId: source.story_license_terms,
-  };
-}
-
-export function derivativeSourceToLiveComposerReference(
-  source: ApiDerivativeSource,
-): ComposerReference {
-  return {
-    ...derivativeSourceToComposerReference(source),
-    id: `story:asset:${source.asset}`,
-  };
 }
 
 function createdPostToLocalizedFeedItem(input: {
@@ -922,33 +887,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       const eventRequest = composerMode === "song" || composerMode === "live"
         ? undefined
         : buildCreatePostEventRequest(event);
-      const {
-        imageUploadLabel: _imageUploadLabel,
-        linkPreview: _linkPreview,
-        pendingSongBundleId: _pendingSongBundleId,
-        submitError: _submitError,
-        ...submissionDraft
-      } = draft;
-      const { trackOptions: _trackOptions, ...submittedLiveState } = submissionDraft.liveState;
-      const {
-        query: _derivativeQuery,
-        searchError: _derivativeSearchError,
-        searchLoading: _derivativeSearchLoading,
-        searchResults: _derivativeSearchResults,
-        ...submittedDerivativeStep
-      } = submissionDraft.derivativeStep ?? {};
-      const operationFingerprint = createPostSubmissionFingerprint({
-        communityId,
-        draft: {
-          ...submissionDraft,
-          derivativeStep: submittedDerivativeStep,
-          liveState: submittedLiveState,
-        },
-      });
-      const submissionOperation = ensureCreatePostSubmissionOperation(
-        submissionOperationRef.current,
-        operationFingerprint,
-      );
+      const submissionOperation = getCreatePostSubmissionOperation(submissionOperationRef.current, communityId, draft);
       submissionOperationRef.current = submissionOperation;
 
       if (composerMode === "song") {

@@ -22,6 +22,7 @@ import { applyPostVote, submitOptimisticPostVote, toPostVoteValue } from "@/app/
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { selectPostVoteGateData } from "@/hooks/use-community-interaction-gate.helpers";
 import { getErrorMessage } from "@/lib/error-utils";
+import { useProcessingPostPolling } from "@/app/authenticated-helpers/use-processing-post-polling";
 import {
   buildThreadCommentTreeFromItems,
   collectCommentAuthorUserIds,
@@ -246,6 +247,11 @@ export function usePost(
     setPost(normalized);
     return normalized;
   }, [api.posts, api.publicPosts, hasSession, locale, postId]);
+  const { processingTimedOut, refreshProcessingPost } = useProcessingPostPolling({
+    postId,
+    postStatus: post?.post.status,
+    refreshPost,
+  });
   const [readMode, setReadMode] = React.useState<PostReadMode>(hasSession ? "authenticated" : "public");
   const [commentSort, setCommentSort] = React.useState<"best" | "new" | "top">("best");
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
@@ -897,6 +903,8 @@ export function usePost(
     requestCommentAccess,
     requestVoteAccess,
     refreshPost,
+    refreshProcessingPost,
+    processingTimedOut,
     cancelEvent,
     deletePost,
     removePost,

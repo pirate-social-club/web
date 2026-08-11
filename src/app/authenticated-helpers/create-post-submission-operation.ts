@@ -1,5 +1,6 @@
 import type { SongArtifactUpload } from "@pirate/api-contracts";
 
+import type { CreatePostDraftState } from "@/app/authenticated-state/create-post-draft-state";
 import type { UploadedImageMedia } from "./create-post-submit/image";
 import type { UploadedLiveCoverMedia } from "./create-post-submit/live";
 import type { PreparedVideoPosterUpload } from "./create-post-submit/video";
@@ -50,6 +51,54 @@ function stableFingerprintValue(value: unknown): unknown {
 
 export function createPostSubmissionFingerprint(value: unknown): string {
   return JSON.stringify(stableFingerprintValue(value));
+}
+
+export function createPostSubmissionDraftFingerprint(
+  communityId: string,
+  draft: CreatePostDraftState,
+): string {
+  const {
+    imageUploadLabel: _imageUploadLabel,
+    linkPreview: _linkPreview,
+    pendingSongBundleId: _pendingSongBundleId,
+    submitError: _submitError,
+    ...submissionDraft
+  } = draft;
+  const { trackOptions: _trackOptions, ...submittedLiveState } = submissionDraft.liveState;
+  const {
+    query: _derivativeQuery,
+    searchError: _derivativeSearchError,
+    searchLoading: _derivativeSearchLoading,
+    searchResults: _derivativeSearchResults,
+    ...submittedDerivativeStep
+  } = submissionDraft.derivativeStep ?? {};
+  return createPostSubmissionFingerprint({
+    communityId,
+    draft: {
+      ...submissionDraft,
+      derivativeStep: submittedDerivativeStep,
+      liveState: submittedLiveState,
+    },
+  });
+}
+
+export function ensureCreatePostSubmissionOperationForDraft(
+  current: CreatePostSubmissionOperation | null,
+  communityId: string,
+  draft: CreatePostDraftState,
+): CreatePostSubmissionOperation {
+  return ensureCreatePostSubmissionOperation(
+    current,
+    createPostSubmissionDraftFingerprint(communityId, draft),
+  );
+}
+
+export function getCreatePostSubmissionOperation(
+  current: CreatePostSubmissionOperation | null,
+  communityId: string,
+  draft: CreatePostDraftState,
+): CreatePostSubmissionOperation {
+  return ensureCreatePostSubmissionOperationForDraft(current, communityId, draft);
 }
 
 export function ensureCreatePostSubmissionOperation(

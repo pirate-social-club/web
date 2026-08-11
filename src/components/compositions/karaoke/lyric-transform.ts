@@ -132,7 +132,86 @@ function shouldUseWordSpacing(lineText: string): boolean {
 }
 
 function shouldJoinToPrevious(text: string): boolean {
-  return /^[!"'),.:;?\]}’]/.test(text);
+  return /^[!"'),.:;?\]}’”]/u.test(text);
+}
+
+const LATIN_LOOKALIKE_FOLD: Readonly<Record<string, string>> = {
+  "А": "A",
+  "В": "B",
+  "Е": "E",
+  "К": "K",
+  "М": "M",
+  "Н": "H",
+  "О": "O",
+  "Р": "P",
+  "С": "C",
+  "Т": "T",
+  "Х": "X",
+  "а": "a",
+  "е": "e",
+  "о": "o",
+  "р": "p",
+  "с": "c",
+  "х": "x",
+  "у": "y",
+};
+
+function foldLatinLookalikes(text: string): string {
+  return [...text]
+    .map((character) => LATIN_LOOKALIKE_FOLD[character] ?? character)
+    .join("");
+}
+
+function findCanonicalTokenStart(lineText: string, tokenText: string, fromIndex: number): number {
+  const exactIndex = lineText.indexOf(tokenText, fromIndex);
+  if (exactIndex >= 0) {
+    return exactIndex;
+  }
+
+  const foldedToken = foldLatinLookalikes(tokenText);
+  for (let index = fromIndex; index + tokenText.length <= lineText.length; index += 1) {
+    const candidate = lineText.slice(index, index + tokenText.length);
+    if (foldLatinLookalikes(candidate) === foldedToken) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function alignTokensToCanonicalLine(
+  lineText: string,
+  tokens: readonly KaraokeStageToken[],
+): KaraokeStageToken[] | null {
+  const spans: Array<{ end: number; start: number }> = [];
+  let cursor = 0;
+
+  for (const token of tokens) {
+    const start = findCanonicalTokenStart(lineText, token.text, cursor);
+    if (start < 0) {
+      return null;
+    }
+    const end = start + token.text.length;
+    spans.push({ end, start });
+    cursor = end;
+  }
+
+  return tokens.map((token, index) => {
+    const span = spans[index];
+    const nextSpan = spans[index + 1];
+    if (!span) {
+      return token;
+    }
+
+    return {
+      ...token,
+      // The source lyric is canonical for visible/scorable text. Alignment
+      // providers contribute timing only; this also removes mixed-script
+      // lookalikes without changing legitimate non-Latin lyrics.
+      text: lineText.slice(span.start, span.end),
+      trailing: nextSpan ? lineText.slice(span.end, nextSpan.start) : "",
+    };
+  });
 }
 
 function isSectionMarker(text: string): boolean {
@@ -184,6 +263,11 @@ function normalizeWords(
 
   if (tokens.length === 0) {
     return [];
+  }
+
+  const canonicalTokens = alignTokensToCanonicalLine(lineText, tokens);
+  if (canonicalTokens) {
+    return canonicalTokens;
   }
 
   return tokens.map((token, index) => ({

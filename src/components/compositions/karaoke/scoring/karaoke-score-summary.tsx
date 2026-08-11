@@ -49,7 +49,13 @@ function percent(score: number): number {
 // Keep the metric tile parallel with Lyrics and Lines. Directional feedback is
 // a sentence below the tiles so singers do not have to decode "ahead" or
 // "behind" relative to the backing track.
-function timingGuidance(trend: KaraokeScoreSummaryProps["timingTrend"]): string | null {
+function timingGuidance(
+  trend: KaraokeScoreSummaryProps["timingTrend"],
+  timingScore: number,
+): string | null {
+  // Word-boundary timestamps are not precise enough to justify directional
+  // coaching when the measured timing is already effectively perfect.
+  if (timingScore >= 0.95) return "Right on time.";
   switch (trend) {
     case "early":
       return "You sang a little early. Try coming in later.";
@@ -103,7 +109,7 @@ export function KaraokeScoreSummary({
   const showLines = typeof lineCount === "number" && typeof scoredLineCount === "number";
   const showMetrics = typeof timingScore === "number" || typeof lyricsScore === "number" || showLines;
   const timingFeedback = typeof timingScore === "number" && !timingCalibrationUnavailable
-    ? timingGuidance(timingTrend)
+    ? timingGuidance(timingTrend, timingScore)
     : null;
   return (
     <div className={cn("flex w-full flex-col items-center gap-6 text-center", className)}>
@@ -112,7 +118,7 @@ export function KaraokeScoreSummary({
           Your score
         </Type>
         <Type as="p" className="tabular-nums leading-none" variant="display">
-          {percent(finalScore)}
+          {percent(finalScore)}%
         </Type>
       </div>
       {showMetrics ? (

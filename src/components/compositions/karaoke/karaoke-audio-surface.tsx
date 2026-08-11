@@ -34,6 +34,7 @@ export interface KaraokeAudioSurfaceProps {
   initialTimeMs?: number;
   instrumentalAudioUrl?: string;
   leaderboardSlot?: React.ReactNode;
+  rewardGoalLabel?: string;
   lines: KaraokeStageLine[];
   rewardSlot?: React.ReactNode;
   onComplete?: (summary: KaraokePracticeCompleteSummary) => void;
@@ -88,6 +89,7 @@ export function KaraokeAudioSurface({
   onTimingOffsetReset,
   onViewScores,
   rewardSlot,
+  rewardGoalLabel,
   scoring,
   showSignInCta = false,
   signInBusy = false,
@@ -437,6 +439,7 @@ export function KaraokeAudioSurface({
       onRestart={restartScoring}
       onStart={startScoring}
       onViewScores={onViewScores}
+      rewardGoalLabel={rewardGoalLabel}
       state={scoring.state}
     />
   ) : null;
@@ -459,6 +462,7 @@ export function KaraokeAudioSurface({
         timingTrend={endedSummary.timingTrend}
         uncertainLineCount={endedSummary.uncertainLineCount}
       />
+      {rewardSlot}
       {leaderboardSlot}
     </div>
   ) : null;
@@ -489,7 +493,7 @@ export function KaraokeAudioSurface({
         centerContent={centerContent}
         footerContent={footerContent}
         rating={feedback.rating}
-        rewardSlot={rewardSlot}
+        rewardSlot={endedSummary ? undefined : rewardSlot}
         runningScore={feedback.runningScore}
         scoringStatus={scoringStatus}
         title={title}

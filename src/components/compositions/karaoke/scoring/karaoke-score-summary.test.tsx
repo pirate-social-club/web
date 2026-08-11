@@ -11,7 +11,7 @@ describe("KaraokeScoreSummary", () => {
   test("renders the final score as a 0-100 value", () => {
     const view = render(<KaraokeScoreSummary finalScore={0.86} />);
     expect(view.getByText("Your score")).toBeTruthy();
-    expect(view.getByText("86")).toBeTruthy();
+    expect(view.getByText("86%")).toBeTruthy();
   });
 
   test("renders compact performance metrics when supplied", () => {
@@ -79,5 +79,11 @@ describe("KaraokeScoreSummary", () => {
     const onTime = render(<KaraokeScoreSummary finalScore={0.9} timingScore={0.97} timingTrend="on_time" />);
     expect(onTime.getByText("Timing")).toBeTruthy();
     expect(onTime.getByText("Right on time.")).toBeTruthy();
+  });
+
+  test("does not give directional advice within timestamp uncertainty", () => {
+    const view = render(<KaraokeScoreSummary finalScore={0.96} timingScore={0.96} timingTrend="early" />);
+    expect(view.getByText("Right on time.")).toBeTruthy();
+    expect(view.queryByText("You sang a little early. Try coming in later.")).toBeNull();
   });
 });

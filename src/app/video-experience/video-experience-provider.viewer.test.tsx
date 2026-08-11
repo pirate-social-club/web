@@ -162,6 +162,7 @@ Object.defineProperty(window, "history", {
 
 // Imported after the mocks so the provider binds to them.
 import { GlobalVideoExperienceProvider } from "./video-experience-provider";
+import { VideoExperienceOverlay } from "./video-experience-overlay";
 
 let capturedOpenVideo: ((seed: VideoExperienceSeed) => void) | null = null;
 
@@ -242,6 +243,7 @@ beforeEach(() => {
   gatedActionImpl = (args) => {
     args.onAllowed?.();
   };
+  Object.defineProperty(window.history, "state", { configurable: true, value: null, writable: true });
 });
 
 afterEach(cleanup);
@@ -316,6 +318,25 @@ describe("viewer identity boundary", () => {
     });
 
     expect(currentItem()).toMatchObject({ likeCount: 5, liked: false });
+  });
+});
+
+describe("viewer history restoration", () => {
+  test("restores the comments panel when the lazy overlay remounts", async () => {
+    const seed = seedVideo("pst_1", "explore");
+    Object.defineProperty(window.history, "state", {
+      configurable: true,
+      value: { pirateGlobalVideoComments: { itemId: seed.item.id, postId: seed.item.id } },
+      writable: true,
+    });
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <VideoExperienceOverlay request={{ id: 1, seed }} />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => expect(latestCommentsPanelProps?.postId).toBe(seed.item.id));
   });
 });
 

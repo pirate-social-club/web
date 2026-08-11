@@ -356,6 +356,7 @@ export function VideoExperienceOverlay({ request }: { request: VideoExperienceOp
     const syncPanel = (event: PopStateEvent) => {
       setPanelState(globalVideoPanelFromHistoryState(event.state));
     };
+    setPanelState(globalVideoPanelFromHistoryState(window.history.state));
     window.addEventListener("popstate", syncPanel);
     return () => window.removeEventListener("popstate", syncPanel);
   }, []);

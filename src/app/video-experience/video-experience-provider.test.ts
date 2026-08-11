@@ -4,7 +4,7 @@ import { describe, expect, test } from "bun:test";
 
 import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/video-feed.types";
 
-import { mergeSeededVideoItems } from "./video-experience-provider";
+import { mergeSeededVideoItems } from "./merge-seeded-video-items";
 
 function video(id: string): VideoFeedItem {
   return {

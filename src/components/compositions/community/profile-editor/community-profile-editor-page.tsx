@@ -27,6 +27,8 @@ import {
 } from "@/components/primitives/select";
 import { COUNTRIES, countryCodeToFlag, getCountryName } from "@/lib/countries";
 import { cn } from "@/lib/utils";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { defaultRouteCopy } from "../../system/route-copy-defaults";
 
 function formatCountryOption(code: string): string {
@@ -226,6 +228,8 @@ export function CommunityProfileEditorPage({
   theme = "system",
 }: CommunityProfileEditorPageProps) {
   const copy = defaultRouteCopy;
+  const { locale } = useUiLocale();
+  const surfaceCopy = getLocaleMessages(locale, "routes").communitySurface;
   const mc = copy.moderation.profile;
   const [pendingAvatarFile, setPendingAvatarFile] = React.useState<File | null>(null);
   const [pendingBannerFile, setPendingBannerFile] = React.useState<File | null>(null);
@@ -333,8 +337,8 @@ export function CommunityProfileEditorPage({
             <Select value={defaultSurface} onValueChange={(value) => onDefaultSurfaceChange?.(value as "threads" | "videos")}>
               <SelectTrigger id="community-profile-default-surface"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem disabled={!videoFeedEnabled} value="videos">Reels</SelectItem>
-                <SelectItem value="threads">Threads</SelectItem>
+                <SelectItem disabled={!videoFeedEnabled} value="videos">{surfaceCopy.watch}</SelectItem>
+                <SelectItem value="threads">{surfaceCopy.threads}</SelectItem>
               </SelectContent>
             </Select>
             <FormNote>Controls where the bare community URL redirects.</FormNote>

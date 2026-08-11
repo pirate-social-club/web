@@ -274,6 +274,11 @@
       "sortComments": "Sort comments"
     }
   },
+  "communitySurface": {
+    "ariaLabel": "Community views",
+    "threads": "Threads",
+    "watch": "Watch"
+  },
   "community": {
     "aboutTab": "About",
     "charityLabel": "Charity",

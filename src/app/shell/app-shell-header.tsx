@@ -102,16 +102,20 @@ function navigateBack(fallbackPath: string): void {
 
 export function AppShellHeader({
   copy,
+  isSovereignOrigin = false,
   mobileMediaOverlay = false,
   onSearchClick,
   route,
+  sovereignSurfaceAction,
   unreadChatCount = 0,
   unreadNotificationCount,
 }: {
   copy: ShellMessages;
+  isSovereignOrigin?: boolean;
   mobileMediaOverlay?: boolean;
   onSearchClick?: () => void;
   route: AppRoute;
+  sovereignSurfaceAction?: React.ReactNode;
   unreadChatCount?: number;
   unreadNotificationCount: number;
 }) {
@@ -135,7 +139,7 @@ export function AppShellHeader({
       <Plus className="size-6" weight="bold" />
     </IconButton>
   ) : undefined;
-  const mobileTrailingContent = mobileHeaderAction ?? (route.kind === "community" || isPublicProfileRoute || (clientReady && session && routeUsesMobileFooter(route) && !showMobileCreateAction)
+  const mobileTrailingContent = sovereignSurfaceAction ?? mobileHeaderAction ?? (route.kind === "community" || isPublicProfileRoute || (clientReady && session && routeUsesMobileFooter(route) && !showMobileCreateAction)
     ? <div className="size-11" aria-hidden="true" />
     : undefined);
   const mobileHeaderTitle = resolveMobileHeaderTitle({ copy, mediaOverlay: mobileMediaOverlay, route, session });
@@ -161,6 +165,7 @@ export function AppShellHeader({
       // rendering twice, once in the sidebar header and once here.
       className="md:hidden"
       hideDesktopConnectAction
+      hideBrand={isSovereignOrigin}
       hideMobileBrand
       labels={{
         backAriaLabel: copy.appHeader.backAriaLabel,

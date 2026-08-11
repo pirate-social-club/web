@@ -16,10 +16,11 @@ export function useProcessingPostPolling(input: {
   processingTimedOut: boolean;
   refreshProcessingPost: () => Promise<void>;
 } {
+  const { postId, postStatus, refreshPost } = input;
   const [processingTimedOut, setProcessingTimedOut] = React.useState(false);
 
   React.useEffect(() => {
-    if (input.postStatus !== "processing") {
+    if (postStatus !== "processing") {
       setProcessingTimedOut(false);
       return undefined;
     }
@@ -30,11 +31,11 @@ export function useProcessingPostPolling(input: {
     setProcessingTimedOut(false);
     const tick = async () => {
       try {
-        await input.refreshPost();
+        await refreshPost();
       } catch (error) {
         logger.warn("[post-processing] refresh failed", {
           error,
-          postId: input.postId,
+          postId,
         });
       }
       if (cancelled) return;
@@ -52,15 +53,15 @@ export function useProcessingPostPolling(input: {
       cancelled = true;
       if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
-  }, [input.postId, input.postStatus, input.refreshPost]);
+  }, [postId, postStatus, refreshPost]);
 
   const refreshProcessingPost = React.useCallback(async () => {
     try {
-      await input.refreshPost();
+      await refreshPost();
     } catch (error) {
       toast.error(getErrorMessage(error, "Could not refresh this post."));
     }
-  }, [input.refreshPost]);
+  }, [refreshPost]);
 
   return { processingTimedOut, refreshProcessingPost };
 }

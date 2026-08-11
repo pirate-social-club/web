@@ -586,6 +586,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
 
   React.useEffect(() => {
     if (!impressionVisible) return;
+    const video = videoRef.current;
     impressionRef.current = {
       autoplayBlocked: false,
       eventId: impressionIdentity.eventId,
@@ -593,7 +594,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
       muted,
       playbackError: false,
       playbackStarted: false,
-      previousPlaybackSeconds: videoRef.current?.currentTime ?? 0,
+      previousPlaybackSeconds: video?.currentTime ?? 0,
       replayCount: 0,
       slideEntrySequence: impressionIdentity.slideEntrySequence,
       soundOnAtAnyPoint: !muted,
@@ -605,7 +606,6 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
       const impression = impressionRef.current;
       impressionRef.current = null;
       if (!impression) return;
-      const video = videoRef.current;
       const durationSeconds = Number.isFinite(video?.duration) && (video?.duration ?? 0) > 0
         ? video!.duration
         : 0;
@@ -633,6 +633,8 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
         soundOnAtAnyPoint: impression.soundOnAtAnyPoint,
       });
     };
+  // A slide impression is keyed by item.id and updates muted state in the following effect.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [impressionIdentity, impressionVisible, item.id, itemPosition, onImpression]);
 
   React.useEffect(() => {
@@ -1541,6 +1543,8 @@ export function VideoFeed({
   React.useEffect(() => {
     const activeItem = items[activeIndex];
     if (activeItem) actions.onActiveItemChange?.(activeItem, activeIndex);
+  // The actions container is recreated; only this callback participates in active-item reporting.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actions.onActiveItemChange, activeIndex, items]);
 
   if (items.length === 0) {

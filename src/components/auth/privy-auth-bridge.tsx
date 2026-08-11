@@ -506,7 +506,7 @@ export function PrivyAuthBridge({
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [authenticated, isInRetryCooldown, ready, session, sessionClearInProgress]);
+  }, [authenticated, busy, exchangeRequested, isInRetryCooldown, ready, session, sessionClearInProgress]);
 
   React.useEffect(() => {
     if (!ready) {

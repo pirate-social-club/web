@@ -415,7 +415,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       });
 
     return () => { cancelled = true; };
-  }, [api, communityId, session?.accessToken]);
+  }, [api, communityId, session?.accessToken, setSubmitError]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -458,7 +458,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       clearPendingSongBundle();
       setSubmitError(null);
     }
-  }, [clearPendingSongBundle, songBundleInputFingerprint]);
+  }, [clearPendingSongBundle, setSubmitError, songBundleInputFingerprint]);
 
   React.useEffect(() => {
     if (!community) return;
@@ -560,8 +560,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       cancelled = true;
       clearTimeout(timeout);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- Results update derivativeStep; only search identity fields restart the request.
   }, [api, communityId, composerMode, derivativeStep?.query, derivativeStep?.trigger, derivativeStep?.visible, setDerivativeStep, songMode]);
-
   React.useEffect(() => {
     resetCharityContribution();
   }, [communityId, resetCharityContribution]);
@@ -587,7 +587,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
 
       return next;
     });
-  }, [community, copy.audience.publicDisabledReason]);
+  }, [community, copy.audience.publicDisabledReason, setAudience]);
 
   React.useEffect(() => {
     setMonetizationState((prev) => ({
@@ -595,7 +595,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       regionalPricingAvailable: pricingPolicy?.regional_pricing_enabled === true,
       regionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true ? prev.regionalPricingEnabled ?? false : false,
     }));
-  }, [pricingPolicy?.regional_pricing_enabled]);
+  }, [pricingPolicy?.regional_pricing_enabled, setMonetizationState]);
 
   const regionalPricingPreview = React.useMemo<RegionalPricingPreview | null>(() => {
     if (pricingPolicy?.regional_pricing_enabled !== true) return null;
@@ -709,13 +709,13 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
 
   React.useEffect(() => {
     if (!community?.allow_anonymous_identity) setIdentityMode("public");
-  }, [community?.allow_anonymous_identity]);
+  }, [community?.allow_anonymous_identity, setIdentityMode]);
 
   React.useEffect(() => {
     if (!availableAgent && authorMode === "agent") {
       setAuthorMode("human");
     }
-  }, [authorMode, availableAgent]);
+  }, [authorMode, availableAgent, setAuthorMode]);
 
   React.useEffect(() => {
     if (!availableIdentityQualifiers.length) {
@@ -724,7 +724,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     }
     const allowedQualifierIds = new Set(availableIdentityQualifiers.map((qualifier) => qualifier.qualifierId));
     setSelectedQualifierIds((current) => current.filter((qualifierId) => allowedQualifierIds.has(qualifierId)));
-  }, [availableIdentityQualifiers]);
+  }, [availableIdentityQualifiers, setSelectedQualifierIds]);
 
   const canSubmitText = title.trim().length > 0;
   const canSubmitSong = Boolean(songState.primaryAudioUpload && songState.title?.trim());
@@ -794,8 +794,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const hasCommunityPostingRole = viewerHasCommunityPostingRole(session?.user.id, community, communityOwnerUserId);
   const postAltchaRequired = requiresPostAltchaProof({ eligibility, gateMatchMode: community?.gate_match_mode, hasCommunityPostingRole, requirements: community?.membership_gate_summaries ?? [] });
   const hasOpenPowPostingAccess = postAltchaRequired && Boolean(postAltchaPayload);
-  const postAltchaRequestOptions = postAltchaPayload ? { altchaPayload: postAltchaPayload } : undefined;
   const handleSubmit = React.useCallback(async () => {
+    const postAltchaRequestOptions = postAltchaPayload ? { altchaPayload: postAltchaPayload } : undefined;
     logger.info("[create-post] publish clicked", {
       canPost: submitState.canPost,
       communityId,
@@ -1217,7 +1217,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     }
   }, [
     api, audience, ageGatePolicy, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, contentLocale, derivativeStep, draft, eligibility?.status, event, hasCommunityPostingRole, hasOpenPowPostingAccess,
-    identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, paidLiveRoomMode, pendingSongBundleId, postAltchaPayload, postAltchaRequestOptions, postAltchaRequired, pricingPolicy?.regional_pricing_enabled, royaltySplit,
+    identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, paidLiveRoomMode, pendingSongBundleId, postAltchaPayload, postAltchaRequired, pricingPolicy?.regional_pricing_enabled, royaltySplit,
     queryClient, selectedQualifierIds, session?.user.id, setPendingSongBundleId, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     videoState,
     warnIfStoryRegistrationIncomplete,

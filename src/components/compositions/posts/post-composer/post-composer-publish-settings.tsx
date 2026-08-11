@@ -432,6 +432,7 @@ export function PostComposerPublishSettings({
       ? current
       : { ...current, primaryVideoAspectRatio: detectedVideoAspectRatio });
   }, [
+    controller.media,
     controller.media.updateVideoState,
     controller.media.videoState.primaryVideoAspectRatio,
     detectedVideoAspectRatio,

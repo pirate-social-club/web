@@ -308,7 +308,6 @@ export function useCreateCommunityComposerController({
     activeMembershipMode,
     creatorAgeRequirementMet,
     deferCreatorVerification,
-    invalidGateDrafts,
   ]);
 
   const nextDisabledReason = React.useMemo(() => {

@@ -613,13 +613,13 @@ export function DomainsTab({
   const settingsCopy = routeCopy.settings;
   const [internalPhase, setInternalPhase] = React.useState<DomainsTabPhase>("buy_name");
   const phase = controlledPhase ?? internalPhase;
-  const setPhase = (next: DomainsTabPhase) => {
+  const setPhase = React.useCallback((next: DomainsTabPhase) => {
     if (controlledPhase !== undefined) {
       onPhaseChange?.(next);
     } else {
       setInternalPhase(next);
     }
-  };
+  }, [controlledPhase, onPhaseChange]);
 
   const importSucceeded = importJob.status === "succeeded" || importJob.status === "partial_success";
   const importDone = phase === "import_karma" && importSucceeded;
@@ -628,7 +628,7 @@ export function DomainsTab({
     if (importDone && controlledPhase === undefined) {
       setPhase("choose_name");
     }
-  }, [importDone]);
+  }, [controlledPhase, importDone, setPhase]);
 
   const importedDomainEligibility = resolveDomainEligibilityLength(redditImportSummary?.importedRedditScore);
   const importedDoneSubtitle = formatMessage(copy.redditImport.doneSubtitle, {

@@ -298,11 +298,12 @@ log "deploy web public production worker"
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
 
 log "verify production"
-"$ROOT_DIR/scripts/smoke-test.sh" prod
+EXPECTED_RELEASE_ID="$RELEASE_ID" "$ROOT_DIR/scripts/smoke-test.sh" prod
 "$ROOT_DIR/scripts/check-deployments.sh" \
   --scope prod \
   --expected-web-sha "$WEB_SHA" \
   --expected-api-sha "$API_SHA" \
+  --expected-release-id "$RELEASE_ID" \
   --retry-for 120
 
 log "production deploy complete"

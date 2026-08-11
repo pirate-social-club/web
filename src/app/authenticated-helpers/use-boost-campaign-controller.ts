@@ -290,7 +290,7 @@ export interface BoostCampaignControllerInput {
   viewerIsAuthor: boolean;
 }
 
-export function supportsNationalityTierDraftPreview(capability: unknown): boolean {
+function supportsNationalityTierDraftPreview(capability: unknown): boolean {
   return capability === "draft_only" || capability === "binding_preview" || capability === "enabled";
 }
 
@@ -584,7 +584,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       createQuoteInFlight.current = false;
       setBusy(false);
     }
-  }, [api.rewards, capabilities, eligibleActivity, identityProvider, input.communityId, input.postId, nationalityPricingEnabled, parsedPayoutTiers, payoutTiers.length, plan, tierFundingEnabled, tiersPreviewAvailable]);
+  }, [api.rewards, capabilities, eligibleActivity, input.communityId, input.postId, nationalityPricingEnabled, parsedPayoutTiers, payoutTiers.length, plan, tierFundingEnabled, tiersPreviewAvailable]);
 
   React.useEffect(() => {
     if (campaign) return;
@@ -624,6 +624,8 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     }
     setSheetState("awaiting-finality");
     return false;
+  // The input container is recreated by callers; these listed members are the complete callback inputs.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api.rewards, input.communityId, input.onCampaignActivated, input.postId]);
 
   const applyTerminalFunding = React.useCallback((

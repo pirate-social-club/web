@@ -19,7 +19,7 @@ import {
   formatCommunityRouteLabel,
 } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
-import { CommunitySurfaceSwitch } from "@/app/community-surface-switch";
+import { CommunitySurfaceNavigation } from "@/app/community-surface-navigation";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { CommunityJoinVerificationChooserModal } from "@/components/compositions/community/join-verification-chooser-modal/community-join-verification-chooser-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
@@ -213,6 +213,8 @@ export function CommunityPage({
       boostController.openPolicy();
       setPendingBoostAction(null);
     }
+  // The controller object is recreated; only the listed capabilities and actions drive this handoff.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     boostController.canBoost,
     boostController.canManagePolicy,
@@ -234,30 +236,37 @@ export function CommunityPage({
     [posts],
   );
   const processingPostIdsKey = React.useMemo(() => processingPostIds.join("\n"), [processingPostIds]);
+  const [timedOutProcessingPostIds, setTimedOutProcessingPostIds] = React.useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const refreshProcessingPosts = React.useCallback(async (postIds: string[]) => {
+    const refreshed = await Promise.all(postIds.map(async (postId) => {
+      try {
+        return await api.posts.get(postId, { locale: contentLocale });
+      } catch (error) {
+        logger.warn("[community-route] processing post refresh failed", {
+          error,
+          postId,
+        });
+        return null;
+      }
+    }));
+    const byId = new Map(refreshed.filter((item) => item != null).map((item) => [item.post.id, item]));
+    if (byId.size === 0) return;
+    setPosts((current) => current.map((postResponse) => byId.get(postResponse.post.id) ?? postResponse));
+  }, [api.posts, contentLocale, setPosts]);
 
   React.useEffect(() => {
+    const activeProcessingPostIds = new Set(processingPostIdsKey ? processingPostIdsKey.split("\n") : []);
+    setTimedOutProcessingPostIds((current) => {
+      const retained = new Set(Array.from(current).filter((postId) => activeProcessingPostIds.has(postId)));
+      return retained.size === current.size ? current : retained;
+    });
     if (!processingPostIdsKey) return undefined;
     const postIds = processingPostIdsKey.split("\n");
     const startedAt = Date.now();
     let cancelled = false;
     let timeoutId: number | null = null;
-    const refreshProcessingPosts = async () => {
-      const refreshed = await Promise.all(postIds.map(async (postId) => {
-        try {
-          return await api.posts.get(postId, { locale: contentLocale });
-        } catch (error) {
-          logger.warn("[community-route] processing post refresh failed", {
-            error,
-            postId,
-          });
-          return null;
-        }
-      }));
-      if (cancelled) return;
-      const byId = new Map(refreshed.filter((item) => item != null).map((item) => [item.post.id, item]));
-      if (byId.size === 0) return;
-      setPosts((current) => current.map((postResponse) => byId.get(postResponse.post.id) ?? postResponse));
-    };
     const scheduleNext = () => {
       if (cancelled) return;
       const elapsedMs = Date.now() - startedAt;
@@ -266,6 +275,7 @@ export function CommunityPage({
           elapsedMs,
           postIds,
         });
+        setTimedOutProcessingPostIds((current) => new Set([...current, ...postIds]));
         return;
       }
       timeoutId = window.setTimeout(() => {
@@ -273,7 +283,8 @@ export function CommunityPage({
       }, processingPostPollDelayMs(elapsedMs));
     };
     const tick = async () => {
-      await refreshProcessingPosts();
+      await refreshProcessingPosts(postIds);
+      if (cancelled) return;
       scheduleNext();
     };
     void tick();
@@ -283,7 +294,7 @@ export function CommunityPage({
         window.clearTimeout(timeoutId);
       }
     };
-  }, [api.posts, contentLocale, processingPostIdsKey, setPosts]);
+  }, [processingPostIdsKey, refreshProcessingPosts]);
 
   React.useEffect(() => {
     let attempts = 0;
@@ -904,6 +915,8 @@ export function CommunityPage({
           setPendingBoostAction("policy");
         },
         onRetryPublish: () => void retryPublish(post.post.id),
+        onRefreshProcessing: () => void refreshProcessingPosts([post.post.id]),
+        processingTimedOut: timedOutProcessingPostIds.has(post.post.id),
         canModeratePost: canModeratePosts,
         onVote: async (direction) => await voteOnPost(post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,
@@ -915,12 +928,14 @@ export function CommunityPage({
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
-      <CommunitySurfaceSwitch
-        active="threads"
-        communityId={community?.id ?? preview.id}
-        importedRootHostname={importedRootHostname}
-        routeSlug={community?.route_slug ?? preview.route_slug}
-      />
+      {isImportedRoot ? (
+        <CommunitySurfaceNavigation
+          active="threads"
+          communityId={community?.id ?? preview.id}
+          importedRootHostname={importedRootHostname}
+          routeSlug={community?.route_slug ?? preview.route_slug}
+        />
+      ) : null}
       {ownsCommunity ? (
         <Button
           onClick={() => navigate(moderationEntryPath)}
@@ -986,6 +1001,13 @@ export function CommunityPage({
   const communityTitle = community?.display_name ?? preview.display_name;
   const communityAvatarRef = community?.avatar_ref ?? preview.avatar_ref;
   const communityBannerRef = community?.banner_ref ?? preview.banner_ref;
+  const surfaceNavigation = !isImportedRoot ? (
+    <CommunitySurfaceNavigation
+      active="threads"
+      communityId={community?.id ?? preview.id}
+      routeSlug={community?.route_slug ?? preview.route_slug}
+    />
+  ) : null;
 
   return (
     <>
@@ -1114,6 +1136,7 @@ export function CommunityPage({
           headerAction={headerAction}
           items={feedItems}
           mobileHeaderAction={mobileHeaderAction}
+          navigation={surfaceNavigation}
           onSortChange={setActiveSort}
           routeLabel={routeLabel}
           routeVerified={Boolean(community?.namespace_verification)}

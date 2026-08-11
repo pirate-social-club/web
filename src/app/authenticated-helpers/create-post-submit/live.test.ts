@@ -336,6 +336,7 @@ describe("live create-post submit helpers", () => {
 
     const result = await submitLiveRoom({
       communityId: "com_test",
+      idempotencyKey: "live_submit_operation",
       createLiveRoom: async (communityId, request) => {
         createLiveRoomCalls.push({ communityId, request });
         return createLiveRoom({ id: "liv_free", anchor_post: "pst_free_anchor" });
@@ -379,6 +380,7 @@ describe("live create-post submit helpers", () => {
         description: "Room body",
         disclosed_qualifier_ids: undefined,
         identity_mode: "public",
+        idempotency_key: "live_submit_operation",
         room_kind: "solo",
         access_mode: "free",
         visibility: "public",
@@ -410,6 +412,7 @@ describe("live create-post submit helpers", () => {
 
     await submitLiveRoom({
       communityId: "com_test",
+      idempotencyKey: "live_submit_operation",
       createLiveRoom: async () => {
         timeline.push("create");
         return createLiveRoom({ anchor_post: "pst_free_anchor" });
@@ -454,6 +457,7 @@ describe("live create-post submit helpers", () => {
 
     await submitLiveRoom({
       communityId: "com_test",
+      idempotencyKey: "live_submit_operation",
       createLiveRoom: async () => {
         timeline.push("create");
         return createLiveRoom();
@@ -503,6 +507,7 @@ describe("live create-post submit helpers", () => {
 
     await submitLiveRoom({
       communityId: "com_test",
+      idempotencyKey: "live_submit_operation",
       createLiveRoom: async () => createLiveRoom(),
       description: "",
       hostUserId: "usr_host",
@@ -554,6 +559,7 @@ describe("live create-post submit helpers", () => {
 
     await submitLiveRoom({
       communityId: "com_test",
+      idempotencyKey: "live_submit_operation",
       createLiveRoom: async (_communityId, request) => {
         createLiveRoomCalls.push(request);
         return createLiveRoom();
@@ -593,6 +599,7 @@ describe("live create-post submit helpers", () => {
           description: undefined,
           disclosed_qualifier_ids: undefined,
           identity_mode: "public",
+          idempotency_key: "live_submit_operation",
           room_kind: "solo",
           access_mode: "paid",
           visibility: "public",
@@ -628,6 +635,7 @@ describe("live create-post submit helpers", () => {
 
     await expect(submitLiveRoom({
       communityId: "com_test",
+      idempotencyKey: "live_submit_operation",
       createLiveRoom: async () => {
         calls.push("createLiveRoom");
         return createLiveRoom();
@@ -669,6 +677,7 @@ describe("live create-post submit helpers", () => {
 
     await expect(submitLiveRoom({
       communityId: "com_test",
+      idempotencyKey: "live_submit_operation",
       createLiveRoom: async () => createLiveRoom(),
       description: "",
       hostUserId: "usr_host",
@@ -696,5 +705,42 @@ describe("live create-post submit helpers", () => {
     })).rejects.toThrow("Build a paid listing payload before publishing this live room.");
 
     expect(publishLiveRoomCalls).toEqual([]);
+  });
+
+  test("submitLiveRoom reuses an uploaded cover on retry", async () => {
+    let uploadCalls = 0;
+
+    await submitLiveRoom({
+      communityId: "com_test",
+      createLiveRoom: async () => createLiveRoom(),
+      description: "",
+      hostUserId: "usr_host",
+      idempotencyKey: "live_submit_operation",
+      identityMode: "public",
+      liveState: {
+        roomKind: "solo",
+        accessMode: "free",
+        visibility: "public",
+        coverUpload: createCoverFile(),
+        setlistStatus: "ready",
+        performerAllocations: [{ role: "host", userId: "", sharePct: 100 }],
+        setlistItems: [{ titleText: "Song", performanceKind: "original" }],
+      },
+      paidLiveRoomPriceUsd: null,
+      pricingPolicyRegionalPricingEnabled: false,
+      publishLiveRoom: async () => ({
+        room: createLiveRoom(),
+        listing: {} as ApiPublishLiveRoomResponse["listing"],
+      }),
+      regionalPricingEnabled: false,
+      title: "Room",
+      uploadedCover: { media_ref: "media_cached_cover" },
+      uploadMedia: async () => {
+        uploadCalls += 1;
+        return { media_ref: "media_new_cover" };
+      },
+    });
+
+    expect(uploadCalls).toBe(0);
   });
 });

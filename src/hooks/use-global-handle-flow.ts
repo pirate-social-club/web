@@ -96,8 +96,9 @@ export function useGlobalHandleFlow({
       });
   }, [api, copy.handleCheckFailed, copy.handleInvalidMessage, copy.handleUnavailableMessage, isNoop, isValidSyntax, normalized]);
 
+  const freeRenameAvailable = state.kind === "available" && state.freeRenameRemaining;
   const submitRename = React.useCallback(async () => {
-    if (isNoop || !isValidSyntax || state.kind !== "available" || !state.freeRenameRemaining) return;
+    if (isNoop || !isValidSyntax || !freeRenameAvailable) return;
 
     setState({ kind: "saving" });
     try {
@@ -123,11 +124,11 @@ export function useGlobalHandleFlow({
     copy.handleRenameUnavailableMessage,
     copy.handleRetryLaterMessage,
     copy.handleTakenMessage,
+    freeRenameAvailable,
     isNoop,
     isValidSyntax,
     normalized,
     onRenamed,
-    state.kind,
   ]);
 
   const resetState = React.useCallback(() => {

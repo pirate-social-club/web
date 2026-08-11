@@ -232,7 +232,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [enabled, api, onboardingStatus, refreshRedditImportBenefits]);
+  }, [enabled, api, onboardingStatus, refreshRedditImportBenefits, setPhase]);
 
   const handleImportKarmaNext = React.useCallback(() => {
     if (busy) return;
@@ -306,19 +306,19 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
     }
 
     setBusy(false);
-  }, [busy, api, importJob.status, redditUsername, redditVerification, refreshRedditImportBenefits]);
+  }, [busy, api, importJob.status, redditUsername, redditVerification, refreshRedditImportBenefits, setPhase]);
 
   const handleSkipRedditImport = React.useCallback(() => {
     if (busy) return;
     setError(null);
     setPhase("options");
-  }, [busy]);
+  }, [busy, setPhase]);
 
   const handleChooseNameBack = React.useCallback(() => {
     if (busy) return;
     setError(null);
     setPhase("options");
-  }, [busy]);
+  }, [busy, setPhase]);
 
   const handleChooseNameContinue = React.useCallback(() => {
     if (busy) return;
@@ -372,7 +372,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
         setError(e instanceof Error ? e.message : messages.renameFailedError);
       })
       .finally(() => setBusy(false));
-  }, [busy, api, generatedHandle, messages, onboardingStatus, redditImportSummary, session?.profile?.global_handle?.label]);
+  }, [busy, api, generatedHandle, messages, onboardingStatus, redditImportSummary, session?.profile?.global_handle?.label, setPhase]);
 
   const handleGenerateHandle = React.useCallback(() => {
     const sourceUsername = (redditImportSummary?.redditUsername

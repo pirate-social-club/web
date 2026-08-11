@@ -9,7 +9,7 @@ import {
   videoSubmitProgressSteps,
 } from "@/app/authenticated-helpers/create-post-submit/progress-steps";
 
-import type { SubmitProgress } from "../../post-composer.types";
+import type { ComposerTab, SubmitProgress } from "../../post-composer.types";
 import { PostComposer } from "../../post-composer";
 import { baseComposer, composerDecorator, composerParameters } from "../story-helpers";
 
@@ -55,9 +55,15 @@ function stepsForScenario(scenario: Scenario): SubmitProgressStep[] {
   }
 }
 
+function modeForScenario(scenario: Scenario): ComposerTab {
+  if (scenario.startsWith("song")) return "song";
+  if (scenario.startsWith("video")) return "video";
+  if (scenario.startsWith("live")) return "live";
+  return scenario;
+}
+
 // A frame is one reporter emission: a step key plus optional live detail. Upload
-// steps get a few percentage sub-frames to mimic real byte progress (which today
-// only video actually reports).
+// steps get a few percentage sub-frames to mimic real byte progress.
 type Frame = { key: string; detail?: string };
 
 // Only steps that actually report byte-progress in production play a "%" fill:
@@ -116,6 +122,7 @@ function FlowDemo({ scenario, intervalMs }: { scenario: Scenario; intervalMs: nu
     <PostComposer
       {...baseComposer}
       composerStep="publish"
+      mode={modeForScenario(scenario)}
       submit={{
         ...baseComposer.submit,
         canPost: true,

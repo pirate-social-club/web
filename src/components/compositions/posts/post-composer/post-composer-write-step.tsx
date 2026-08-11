@@ -198,6 +198,7 @@ function useWriteStepController(controller: PostComposerController) {
       ? current
       : { ...current, primaryVideoAspectRatio: detectedVideoAspectRatio });
   }, [
+    controller.media,
     controller.media.updateVideoState,
     controller.media.videoState.primaryVideoAspectRatio,
     detectedVideoAspectRatio,

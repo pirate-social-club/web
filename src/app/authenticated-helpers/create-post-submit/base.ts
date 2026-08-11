@@ -1,5 +1,7 @@
 "use client";
 
+import type { CreateCommunityListingRequest } from "@pirate/api-contracts";
+
 import type {
   AnonymousIdentityScope,
   AuthorMode,
@@ -58,6 +60,7 @@ type CreatePostSharedRequestFields = BasePostRequestFields & {
     share_bps: number;
   }> | null;
   upstream_asset_refs?: string[] | null;
+  listing_draft?: Omit<CreateCommunityListingRequest, "asset"> | null;
 };
 
 export type CreatePostRequestWithEvent = CreatePostSharedRequestFields & {

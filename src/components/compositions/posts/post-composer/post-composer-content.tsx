@@ -54,7 +54,7 @@ export function VideoFramePicker({
     if (Number.isFinite(seekTo)) {
       video.currentTime = seekTo;
     }
-  }, [objectUrl, selectedSeconds]);
+  }, [frameSeconds, objectUrl, selectedSeconds]);
 
   return (
     <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-background p-4">

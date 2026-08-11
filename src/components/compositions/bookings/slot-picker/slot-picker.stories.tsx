@@ -56,31 +56,37 @@ function buildWithConflict() {
   });
 }
 
+function DefaultStory() {
+  const slots = React.useMemo(buildOneDay, []);
+  return <SlotPicker slots={slots} viewerTimezone="Europe/Vienna" />;
+}
+
 export const Default: Story = {
-  render: () => {
-    const slots = React.useMemo(buildOneDay, []);
-    return <SlotPicker slots={slots} viewerTimezone="Europe/Vienna" />;
-  },
+  render: () => <DefaultStory />,
 };
 
+function WithConflictStory() {
+  const slots = React.useMemo(buildWithConflict, []);
+  return <SlotPicker slots={slots} viewerTimezone="Europe/Vienna" />;
+}
+
 export const WithConflict: Story = {
-  render: () => {
-    const slots = React.useMemo(buildWithConflict, []);
-    return <SlotPicker slots={slots} viewerTimezone="Europe/Vienna" />;
-  },
+  render: () => <WithConflictStory />,
 };
 
 export const Empty: Story = {
   render: () => <SlotPicker slots={[]} viewerTimezone="Europe/Vienna" />,
 };
 
+function MobileStory() {
+  const slots = React.useMemo(buildOneDay, []);
+  return (
+    <div className="mx-auto max-w-sm">
+      <SlotPicker slots={slots} viewerTimezone="Europe/Vienna" />
+    </div>
+  );
+}
+
 export const Mobile: Story = {
-  render: () => {
-    const slots = React.useMemo(buildOneDay, []);
-    return (
-      <div className="mx-auto max-w-sm">
-        <SlotPicker slots={slots} viewerTimezone="Europe/Vienna" />
-      </div>
-    );
-  },
+  render: () => <MobileStory />,
 };

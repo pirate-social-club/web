@@ -38,6 +38,7 @@ export interface CommunityPageShellProps {
   items: FeedItem[];
   loading?: boolean;
   mobileHeaderAction?: React.ReactNode;
+  navigation?: React.ReactNode;
   onSortChange?: (sort: FeedSort) => void;
   routeLabel?: string | null;
   routeVerified?: boolean;
@@ -58,6 +59,7 @@ export function CommunityPageShell({
   items,
   loading = false,
   mobileHeaderAction,
+  navigation,
   onSortChange,
   routeLabel,
   routeVerified,
@@ -115,6 +117,7 @@ export function CommunityPageShell({
       <section className={cn("mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-4", className)}>
         {mobileHeaderActions}
         <div className="min-w-0">{hero}</div>
+        {navigation ? <div className="min-w-0">{navigation}</div> : null}
         <div className="flex flex-col gap-3">
           <FlatTabBar columns={2}>
             <FlatTabButton active={mobileView === "feed"} onClick={() => setMobileView("feed")}>
@@ -166,6 +169,7 @@ export function CommunityPageShell({
       header={hero}
       rail={<CommunitySidebar {...sidebar} />}
     >
+      {navigation}
       <Feed
         activeSort={activeSort}
         availableSorts={availableSorts}

@@ -339,6 +339,8 @@ export function LiveRoomViewerSurface({
         void client.leave().catch(() => undefined);
       }
     };
+  // The transport object is recreated; only connection fields should tear down and rejoin the room.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agora?.app_id, agora?.channel, agora?.configured, agora?.token, agora?.uid, open]);
 
   React.useEffect(() => {
@@ -391,6 +393,8 @@ export function LiveRoomViewerSurface({
       canceled = true;
       window.clearTimeout(timeout);
     };
+  // Logging metadata on the transport object must not reschedule token renewal.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agora?.configured, agora?.uid, onRenew, open, tokenExpiresAt]);
 
   const handleToggleFullscreen = React.useCallback(() => {

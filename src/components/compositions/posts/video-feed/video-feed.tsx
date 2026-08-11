@@ -95,7 +95,7 @@ export interface VideoFeedImpression {
   soundOnAtAnyPoint: boolean;
 }
 
-export type VideoFeedImpressionExitReason =
+type VideoFeedImpressionExitReason =
   | "autoplay_blocked"
   | "playback_error"
   | "route_unmount"
@@ -129,22 +129,22 @@ export function classifyVideoPlayRejection(
   return "playback_error";
 }
 
-export const VIDEO_FEED_MUTED_PREFERENCE_KEY = "pirate.video-feed.muted";
+const VIDEO_FEED_MUTED_PREFERENCE_KEY = "pirate.video-feed.muted";
 
 /**
  * Recently viewed slides keep their media element mounted so scrolling back does not re-download
  * or re-buffer. The cap is deliberately small: mobile Safari only tolerates a handful of live
  * video decoders at once, and kept slides are paused, so they cost memory rather than CPU.
  */
-export const VIDEO_FEED_KEEP_ALIVE_MEDIA_COUNT = 4;
-export const VIDEO_FEED_LONG_PRESS_MS = 500;
-export const VIDEO_FEED_LONG_PRESS_MOVE_THRESHOLD_PX = 10;
+const VIDEO_FEED_KEEP_ALIVE_MEDIA_COUNT = 4;
+const VIDEO_FEED_LONG_PRESS_MS = 500;
+const VIDEO_FEED_LONG_PRESS_MOVE_THRESHOLD_PX = 10;
 
 /**
  * Only slides within this distance of the settled index render their shell content; every spacer
  * div stays mounted either way so scroll height, snap points, and index math are preserved.
  */
-export const VIDEO_FEED_SLIDE_RENDER_WINDOW = 2;
+const VIDEO_FEED_SLIDE_RENDER_WINDOW = 2;
 
 export function didVideoLongPressMove(
   start: { x: number; y: number },
@@ -586,6 +586,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
 
   React.useEffect(() => {
     if (!impressionVisible) return;
+    const video = videoRef.current;
     impressionRef.current = {
       autoplayBlocked: false,
       eventId: impressionIdentity.eventId,
@@ -593,7 +594,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
       muted,
       playbackError: false,
       playbackStarted: false,
-      previousPlaybackSeconds: videoRef.current?.currentTime ?? 0,
+      previousPlaybackSeconds: video?.currentTime ?? 0,
       replayCount: 0,
       slideEntrySequence: impressionIdentity.slideEntrySequence,
       soundOnAtAnyPoint: !muted,
@@ -605,7 +606,6 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
       const impression = impressionRef.current;
       impressionRef.current = null;
       if (!impression) return;
-      const video = videoRef.current;
       const durationSeconds = Number.isFinite(video?.duration) && (video?.duration ?? 0) > 0
         ? video!.duration
         : 0;
@@ -633,6 +633,8 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
         soundOnAtAnyPoint: impression.soundOnAtAnyPoint,
       });
     };
+  // A slide impression is keyed by item.id and updates muted state in the following effect.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [impressionIdentity, impressionVisible, item.id, itemPosition, onImpression]);
 
   React.useEffect(() => {
@@ -1541,6 +1543,8 @@ export function VideoFeed({
   React.useEffect(() => {
     const activeItem = items[activeIndex];
     if (activeItem) actions.onActiveItemChange?.(activeItem, activeIndex);
+  // The actions container is recreated; only this callback participates in active-item reporting.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actions.onActiveItemChange, activeIndex, items]);
 
   if (items.length === 0) {

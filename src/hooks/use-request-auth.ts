@@ -14,16 +14,18 @@ import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin"
  */
 export function useRequestAuth(): (message: string) => void {
   const authRuntime = usePiratePrivyRuntime();
+  const authConnect = authRuntime.connect;
+  const authLoadError = authRuntime.loadError;
   return React.useCallback((message: string) => {
     if (!isCanonicalAuthOrigin()) {
       const canonicalUrl = buildCanonicalAuthUrl();
       toast.error(message, { action: { label: "Open in Pirate", onClick: () => { window.location.href = canonicalUrl; } } });
       return;
     }
-    if (authRuntime.connect) {
-      authRuntime.connect();
+    if (authConnect) {
+      authConnect();
       return;
     }
-    toast.error(authRuntime.loadError ?? message);
-  }, [authRuntime.connect, authRuntime.loadError]);
+    toast.error(authLoadError ?? message);
+  }, [authConnect, authLoadError]);
 }

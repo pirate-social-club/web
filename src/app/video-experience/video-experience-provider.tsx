@@ -526,6 +526,8 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
     }));
   }, [itemOverrides, rankedItems, seed]);
   const items = React.useMemo(() => baseItems.map((item) => {
+    // Capability cache entries mutate in place; the revision invalidates this derived view.
+    void capabilityRevision;
     const sourcePostId = item.song?.sourcePostId;
     const resolution = sourcePostId ? capabilityCache.get(sourcePostId) : undefined;
     const resolvedItem = resolution ? {

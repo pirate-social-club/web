@@ -472,7 +472,6 @@ export function PirateAuthProvider({
     loadedSponsoredIntentSender,
     loadError,
     pendingConnect,
-    connectMountRequested,
     privyAuthenticated,
     privyReady,
     shouldLoadPrivy,

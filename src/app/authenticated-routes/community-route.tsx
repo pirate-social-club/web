@@ -213,6 +213,8 @@ export function CommunityPage({
       boostController.openPolicy();
       setPendingBoostAction(null);
     }
+  // The controller object is recreated; only the listed capabilities and actions drive this handoff.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     boostController.canBoost,
     boostController.canManagePolicy,

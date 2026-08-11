@@ -386,6 +386,8 @@ export function PublicCommunityRoutePage({
     return () => { cancelled = true; };
   }, [api.communities, preview?.id, session]);
 
+  const authConnect = authRuntime.connect;
+  const authLoadError = authRuntime.loadError;
   const requestAuth = React.useCallback((fallbackMessage: string) => {
     if (!isCanonicalAuthOrigin()) {
       const canonicalUrl = buildCanonicalAuthUrl(
@@ -402,13 +404,13 @@ export function PublicCommunityRoutePage({
       return;
     }
 
-    if (authRuntime.connect) {
-      authRuntime.connect();
+    if (authConnect) {
+      authConnect();
       return;
     }
 
-    toast.error(authRuntime.loadError ?? fallbackMessage);
-  }, [authRuntime.connect, authRuntime.loadError, communityId, copy.publicProfile.openInPirate, preview]);
+    toast.error(authLoadError ?? fallbackMessage);
+  }, [authConnect, authLoadError, communityId, copy.publicProfile.openInPirate, preview]);
 
   const {
     followerCount,

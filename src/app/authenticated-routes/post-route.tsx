@@ -255,6 +255,7 @@ export function PostPage({
     enabled: Boolean(session?.accessToken && activeLiveRoomId),
   });
 
+  const { connect: authConnect, loadError: authLoadError } = authRuntime;
   const requestAuth = React.useCallback((fallbackMessage: string) => {
     if (!isCanonicalAuthOrigin()) {
       const canonicalUrl = buildCanonicalAuthUrl(`/p/${postId}`);
@@ -269,13 +270,13 @@ export function PostPage({
       return;
     }
 
-    if (authRuntime.connect) {
-      authRuntime.connect();
+    if (authConnect) {
+      authConnect();
       return;
     }
 
-    toast.error(authRuntime.loadError ?? fallbackMessage);
-  }, [authRuntime.connect, authRuntime.loadError, postId, copy.publicProfile.openInPirate]);
+    toast.error(authLoadError ?? fallbackMessage);
+  }, [authConnect, authLoadError, postId, copy.publicProfile.openInPirate]);
 
   const boostController = useBoostCampaignController({
     activeCampaignId: rewardOffer?.campaign ?? null,
@@ -644,7 +645,6 @@ export function PostPage({
     liveRoomAccess?.room.title,
     openReplayBlob,
     post?.post.title,
-    requestAuth,
     routeCopy.connectWalletToUnlockReplay,
     routeCopy.replayDeliveryPending,
     routeCopy.replayFallbackTitle,

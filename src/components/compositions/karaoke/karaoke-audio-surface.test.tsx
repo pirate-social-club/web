@@ -155,7 +155,6 @@ describe("KaraokeAudioSurface", () => {
           start: () => onStart?.(),
           stop: () => undefined,
         }),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [],
       );
       const scoring = React.useMemo<UseKaraokeScoringResult>(

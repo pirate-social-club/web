@@ -187,6 +187,7 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
 
   React.useEffect(() => {
     const audio = new Audio();
+    const objectUrls = objectUrlsRef.current;
     audioRef.current = audio;
 
     const handlePlay = () => {
@@ -244,10 +245,10 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
       audio.removeEventListener("loadedmetadata", updateProgress);
       audio.removeEventListener("seeked", updateProgress);
       audio.removeEventListener("timeupdate", updateProgress);
-      for (const url of objectUrlsRef.current.values()) {
+      for (const url of objectUrls.values()) {
         URL.revokeObjectURL(url);
       }
-      objectUrlsRef.current.clear();
+      objectUrls.clear();
       audioRef.current = null;
     };
   }, []);

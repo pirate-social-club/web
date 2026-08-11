@@ -57,13 +57,17 @@ jobs:
         working-directory: api/services/efp-shared
         run: bun install --frozen-lockfile
 
-      - name: Audit dead code and dependency declarations
-        run: |
-          bun run deadcode:audit
-          bun run deps:audit
-
       - name: Typecheck web
         run: bun run types
+
+      - name: Audit dead code
+        run: bun run deadcode:audit
+
+      - name: Audit dependency declarations
+        run: bun run deps:audit
+
+      - name: Lint React hooks
+        run: bun run lint:hooks
 
   unit-tests:
     name: unit-tests (${{ matrix.shard }}/4)

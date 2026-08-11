@@ -131,7 +131,7 @@ export function FeedCommentsPanel({
     } finally {
       setSubmitting(false);
     }
-  }, [body, copy.home.videoCommentAuthRequired, createTopLevelComment, onCommentAdded, postId, requestAuth, session?.accessToken, submitting]);
+  }, [body, copy.home.videoCommentAuthRequired, createTopLevelComment, onCommentAdded, postId, requestAuth, session?.accessToken, submitting, updateBody]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">

@@ -571,7 +571,7 @@ export function usePostComposerController(props: PostComposerProps) {
     })) {
       setSelectedQualifierIdsWithCallback([]);
     }
-  }, [authorMode, identity?.allowQualifiersOnAnonymousPosts, identityMode, selectedQualifierIds.length, setSelectedQualifierIdsWithCallback]);
+  }, [authorMode, identity, identity?.allowQualifiersOnAnonymousPosts, identityMode, selectedQualifierIds.length, setSelectedQualifierIdsWithCallback]);
 
   const derivativeSearchResults = React.useMemo(
     () => deriveDerivativeSearchResults(derivativeState),

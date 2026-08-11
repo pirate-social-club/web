@@ -83,23 +83,25 @@ export const MixedPricingCaptions: Story = {
   ),
 };
 
+function SelectedConfirmFooterStory() {
+  const [selected, setSelected] = React.useState<IsoInstant | undefined>(
+    "2026-09-21T10:00:00.000Z" as IsoInstant,
+  );
+  return (
+    <DockFrame>
+      <AvailabilityCalendar
+        slots={UNIFORM_WEEK}
+        viewerTimezone="Europe/Vienna"
+        selectedStartUtc={selected}
+        getSlotHref={demoGetSlotHref}
+        onSelectSlot={(s) => setSelected(s.startUtc)}
+      />
+    </DockFrame>
+  );
+}
+
 export const SelectedConfirmFooter: Story = {
-  render: () => {
-    const [selected, setSelected] = React.useState<IsoInstant | undefined>(
-      "2026-09-21T10:00:00.000Z" as IsoInstant,
-    );
-    return (
-      <DockFrame>
-        <AvailabilityCalendar
-          slots={UNIFORM_WEEK}
-          viewerTimezone="Europe/Vienna"
-          selectedStartUtc={selected}
-          getSlotHref={demoGetSlotHref}
-          onSelectSlot={(s) => setSelected(s.startUtc)}
-        />
-      </DockFrame>
-    );
-  },
+  render: () => <SelectedConfirmFooterStory />,
 };
 
 export const OwnerReadOnlyPreview: Story = {
@@ -126,20 +128,22 @@ function buildViennaFortnight() {
   });
 }
 
+function DaySwitchingStory() {
+  const slots = React.useMemo(buildViennaFortnight, []);
+  return (
+    <DockFrame>
+      <AvailabilityCalendar
+        slots={slots}
+        viewerTimezone="Europe/Vienna"
+        getSlotHref={demoGetSlotHref}
+        onSelectSlot={() => {}}
+      />
+    </DockFrame>
+  );
+}
+
 export const DaySwitching: Story = {
-  render: () => {
-    const slots = React.useMemo(buildViennaFortnight, []);
-    return (
-      <DockFrame>
-        <AvailabilityCalendar
-          slots={slots}
-          viewerTimezone="Europe/Vienna"
-          getSlotHref={demoGetSlotHref}
-          onSelectSlot={() => {}}
-        />
-      </DockFrame>
-    );
-  },
+  render: () => <DaySwitchingStory />,
 };
 
 const fallBackRule: AvailabilityRule = {
@@ -166,20 +170,22 @@ function buildFallBackWeek() {
   });
 }
 
+function FallBackDstDisambiguationStory() {
+  const slots = React.useMemo(buildFallBackWeek, []);
+  return (
+    <DockFrame>
+      <AvailabilityCalendar
+        slots={slots}
+        viewerTimezone="Europe/Vienna"
+        getSlotHref={demoGetSlotHref}
+        onSelectSlot={() => {}}
+      />
+    </DockFrame>
+  );
+}
+
 export const FallBackDstDisambiguation: Story = {
-  render: () => {
-    const slots = React.useMemo(buildFallBackWeek, []);
-    return (
-      <DockFrame>
-        <AvailabilityCalendar
-          slots={slots}
-          viewerTimezone="Europe/Vienna"
-          getSlotHref={demoGetSlotHref}
-          onSelectSlot={() => {}}
-        />
-      </DockFrame>
-    );
-  },
+  render: () => <FallBackDstDisambiguationStory />,
 };
 
 export const Empty: Story = {

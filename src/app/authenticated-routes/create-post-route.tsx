@@ -535,14 +535,10 @@ export function CreatePostPage({
     }
   }, [
     api,
+    state,
     startSelfVerification,
     startVeryPostVerification,
-    state.community?.membership_gate_summaries,
-    state.handleSubmit,
-    state.postAltchaPayload,
-    state.postAltchaRequired,
     hasPostingAccess,
-    state.isCommunityOwner,
     verifyRequiredDescription,
   ]);
 

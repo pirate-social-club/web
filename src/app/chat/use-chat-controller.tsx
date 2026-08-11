@@ -376,7 +376,7 @@ export function useChatController({
     } finally {
       setListLoading(false);
     }
-  }, [api, getAssistantConversations, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
+  }, [api, chat.couldNotLoadConversations, chat.errorChatInAnotherTab, getAssistantConversations, session, setXmtpSetupPhase, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
 
   React.useEffect(() => {
     activeConversationIdRef.current = activeConversation?.id ?? activeConversationId;
@@ -410,7 +410,7 @@ export function useChatController({
     } finally {
       setRouteBusy(false);
     }
-  }, [api, chatNavigation, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
+  }, [api, chat.couldNotOpenChat, chat.errorChatInAnotherTab, chatNavigation, session, setXmtpSetupPhase, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
 
   const loadThread = React.useCallback(async (conversationId: string) => {
     if (!session) {
@@ -543,7 +543,7 @@ export function useChatController({
     } finally {
       setRouteBusy(false);
     }
-  }, [api, buildAssistantClientContext, chat.couldNotLoadConversation, getAssistantConversations, recentCommunities, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
+  }, [api, buildAssistantClientContext, chat.conversationNotFound, chat.couldNotLoadBedsheet, chat.couldNotLoadConversation, chat.errorChatInAnotherTab, getAssistantConversations, recentCommunities, session, setXmtpSetupPhase, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
 
   React.useEffect(() => {
     void refreshList();
@@ -635,7 +635,7 @@ export function useChatController({
       cancelled = true;
       void stream?.return?.();
     };
-  }, [loadThread, refreshList, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
+  }, [chat.notificationNewMessage, loadThread, refreshList, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
 
   React.useEffect(() => {
     if (routeConversationId) {
@@ -725,7 +725,7 @@ export function useChatController({
     void sendTask.finally(() => {
       if (sendQueueRef.current === sendTask) setSending(false);
     });
-  }, [activeConversation, api, buildAssistantClientContext, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
+  }, [activeConversation, api, buildAssistantClientContext, chat.couldNotLoadBedsheet, chat.couldNotSendMessage, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
 
   const handleSendAudio = React.useCallback(async (file: File): Promise<void> => {
     const conversation = activeConversation;

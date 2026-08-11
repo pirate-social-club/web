@@ -132,12 +132,18 @@ export type ApiRewardsSummaryResponse = {
     count: number;
     conditional_cents: number;
     earliest_expires_at: number | null;
+    provider_requirements: Array<{
+      provider: "self" | "very" | "zkpassport";
+      count: number;
+      conditional_cents: number;
+      earliest_expires_at: number | null;
+    }>;
   };
   cashout: {
     eligible: boolean;
     min_cents: number;
     verification_state: ApiRewardVerificationState;
-    verification_provider: "self" | "very" | null;
+    verification_provider: "self" | "very" | "zkpassport" | null;
   };
   latest_in_flight_cashout: ApiRewardCashoutResponse["payout"] | null;
 };

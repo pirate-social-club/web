@@ -4,6 +4,7 @@ import { parse } from "yaml";
 
 const release = parse(readFileSync(".github/workflows/release.yml", "utf8"));
 const observer = parse(readFileSync(".github/workflows/prod-version-gap.yml", "utf8"));
+const sovereignProbe = readFileSync("scripts/ci/probe-sovereign-context.sh", "utf8");
 
 describe("sovereign production context workflow", () => {
   test("runs after the production deploy checks", () => {
@@ -34,5 +35,12 @@ describe("sovereign production context workflow", () => {
     expect(job.steps.some((step: { name?: string }) => (
       step.name === "Reflect sovereign-context failure"
     ))).toBe(true);
+  });
+
+  test("fetches the namespace inventory from the exact API route and checks HTTP status", () => {
+    expect(sovereignProbe).toMatch(/"https:\/\/api\.pirate\.sc\/public-namespaces"\s*$/m);
+    expect(sovereignProbe).not.toMatch(/"https:\/\/api\.pirate\.sc\/public-namespaces\/"\s*$/m);
+    expect(sovereignProbe).toContain("--write-out '%{http_code}'");
+    expect(sovereignProbe).toContain('if [[ "$namespace_status" != "200" ]]');
   });
 });

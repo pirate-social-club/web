@@ -29,7 +29,7 @@ import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
-import { CommunitySurfaceSwitch } from "@/app/community-surface-switch";
+import { CommunitySurfaceNavigation } from "@/app/community-surface-navigation";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import {
   getJoinCtaLabel,
@@ -710,12 +710,14 @@ export function PublicCommunityRoutePage({
   const communityCreatePostPath = `${buildCommunityPath(preview.id, preview.route_slug ?? communityId)}/submit`;
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
-      <CommunitySurfaceSwitch
-        active="threads"
-        communityId={preview.id}
-        importedRootHostname={importedRootHostname}
-        routeSlug={preview.route_slug}
-      />
+      {isImportedRoot ? (
+        <CommunitySurfaceNavigation
+          active="threads"
+          communityId={preview.id}
+          importedRootHostname={importedRootHostname}
+          routeSlug={preview.route_slug}
+        />
+      ) : null}
       {!viewerIsMember && !membershipLoading ? (
         <Button
           className={FOLLOW_BUTTON_CLASS_NAME}
@@ -748,6 +750,13 @@ export function PublicCommunityRoutePage({
       ) : null}
     </div>
   );
+  const surfaceNavigation = !isImportedRoot ? (
+    <CommunitySurfaceNavigation
+      active="threads"
+      communityId={preview.id}
+      routeSlug={preview.route_slug}
+    />
+  ) : null;
 
   return (
     <>
@@ -911,6 +920,7 @@ export function PublicCommunityRoutePage({
             viewerContentLocale: contentLocale,
           },
         ))}
+        navigation={surfaceNavigation}
         loading={postsLoading}
         onSortChange={setActiveSort}
         routeLabel={routeLabel}

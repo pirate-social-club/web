@@ -39,12 +39,14 @@ import {
   buildMediaSpineItems,
   buildResourceItems,
   buildSidebarSections,
+  isSovereignCommunityRoute,
   usesStandaloneRouteShell,
 } from "./sidebar-sections";
 import { resolveSessionAvatarFallback } from "./session-avatar";
 import { useShellMobileLayout } from "./use-shell-mobile-layout";
 import { GlobalVideoExperienceProvider } from "@/app/video-experience/video-experience-provider";
 import { SovereignRouteBoundary } from "@/app/sovereign-route-boundary";
+import { CommunitySurfaceNavigation } from "@/app/community-surface-navigation";
 import {
   InitialPublicCommunityProvider,
   type InitialPublicCommunity,
@@ -202,12 +204,20 @@ function NotificationShell({
     walletLabel: copy.mobileFooter.walletLabel,
   });
   const resourceItems = buildResourceItems(copy.appSidebar);
-  const presentationCommunityId = route.kind === "community"
-    || route.kind === "community-videos"
-    || route.kind === "community-landing"
-    ? route.communityId
-    : null;
+  const isSovereignOrigin = isSovereignCommunityRoute(route);
+  const presentationCommunityId = isSovereignCommunityRoute(route) ? route.communityId : null;
   const presentation = usePublicCommunityQuery(presentationCommunityId, locale).data;
+  const sovereignVideoNavigation = isSovereignOrigin
+    && route.kind === "community-videos"
+    && route.importedRootHostname
+    ? (
+        <CommunitySurfaceNavigation
+          active="videos"
+          communityId={route.communityId}
+          importedRootHostname={route.importedRootHostname}
+        />
+      )
+    : null;
   const [searchOpen, setSearchOpen] = React.useState(false);
   const isChatRoute = route.kind === "chat"
     || route.kind === "chat-target"
@@ -254,11 +264,13 @@ function NotificationShell({
                 activeItemId={activeSidebarItem(route)}
                 appearance="media"
                 brandAccentColor={readCommunityPresentation(presentation).branding.accent_color}
-                brandImageSrc={presentationCommunityId ? presentation?.avatar_ref ?? null : undefined}
-                brandLabel={presentationCommunityId
+                brandAction={sovereignVideoNavigation}
+                brandImageSrc={presentation?.avatar_ref ?? null}
+                brandLabel={isSovereignOrigin
                   ? presentation?.display_name ?? "Community"
                   : copy.appSidebar.brandLabel}
                 homeAriaLabel={copy.appSidebar.homeAriaLabel}
+                isSovereignOrigin={isSovereignOrigin}
                 mediaAction={clientReady && !session ? (
                   <Button
                     className="w-full"
@@ -287,9 +299,13 @@ function NotificationShell({
               <SidebarInset className="min-h-0">
                 <AppShellHeader
                   copy={copy}
-                  mobileMediaOverlay={route.kind === "home" || route.kind === "community-videos"}
+                  isSovereignOrigin={isSovereignOrigin}
+                  mobileMediaOverlay={route.kind === "home" || (
+                    route.kind === "community-videos" && isSovereignOrigin
+                  )}
                   onSearchClick={() => setSearchOpen(true)}
                   route={route}
+                  sovereignSurfaceAction={sovereignVideoNavigation}
                   unreadChatCount={unreadChatCount}
                   unreadNotificationCount={unreadNotificationCount}
                 />

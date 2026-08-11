@@ -11,7 +11,7 @@ import {
   updateHomeFeedEntryPostVote,
 } from "@/app/authenticated-helpers/post-vote";
 import { navigate } from "@/app/router";
-import { CommunitySurfaceSwitch } from "@/app/community-surface-switch";
+import { CommunitySurfaceNavigation } from "@/app/community-surface-navigation";
 import { PublicRouteMessageState } from "@/app/public-route-states";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
@@ -81,6 +81,7 @@ import { usePublicCommunityQuery } from "@/lib/query/public-community-query";
 import { videoImpressionAnalyticsProperties } from "@/lib/video-impression-analytics";
 import { useUiLocale } from "@/lib/ui-locale";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
+import { cn } from "@/lib/utils";
 import { HomePage } from "./home-routes";
 
 export type VideoHomeSurface = "loading" | "video" | "community-feed-empty" | "community-feed-error";
@@ -1182,17 +1183,20 @@ export function VideoHomePage({
   );
 
   const surface = resolveVideoHomeSurface({ error, itemCount: items.length, loading });
+  const canonicalCommunitySurface = Boolean(communityId && !importedRootHostname);
   if (surface === "loading") return <div className="grid min-h-dvh w-full place-items-center bg-background"><Spinner className="size-6" /></div>;
   if (surface === "community-feed-error") {
     if (!communityId) return <HomePage videoFallbackReason="error" />;
     return (
       <div className="flex min-h-dvh w-full flex-col items-center bg-background pt-5">
-        <CommunitySurfaceSwitch
-          active="videos"
-          communityId={communityId}
-          importedRootHostname={importedRootHostname}
-          routeSlug={publicCommunityQuery.data?.route_slug}
-        />
+        {!importedRootHostname ? (
+          <CommunitySurfaceNavigation
+            active="videos"
+            className="w-full px-3 pt-[calc(env(safe-area-inset-top)+4rem)] md:px-5 md:pt-0 lg:px-8"
+            communityId={communityId}
+            routeSlug={publicCommunityQuery.data?.route_slug}
+          />
+        ) : null}
         <PublicRouteMessageState
           description="This community's video feed could not be loaded. Its threads are still available."
           title="Video feed unavailable"
@@ -1204,12 +1208,14 @@ export function VideoHomePage({
     if (!communityId) return <HomePage videoFallbackReason="empty" />;
     return (
       <div className="flex min-h-dvh w-full flex-col items-center bg-background pt-5">
-        <CommunitySurfaceSwitch
-          active="videos"
-          communityId={communityId}
-          importedRootHostname={importedRootHostname}
-          routeSlug={publicCommunityQuery.data?.route_slug}
-        />
+        {!importedRootHostname ? (
+          <CommunitySurfaceNavigation
+            active="videos"
+            className="w-full px-3 pt-[calc(env(safe-area-inset-top)+4rem)] md:px-5 md:pt-0 lg:px-8"
+            communityId={communityId}
+            routeSlug={publicCommunityQuery.data?.route_slug}
+          />
+        ) : null}
         <PublicRouteMessageState
           description="This community has not published any videos yet."
           title="No videos yet"
@@ -1224,7 +1230,10 @@ export function VideoHomePage({
     : copy.common.commentsHeading;
 
   return (
-    <div className="min-h-0 w-full flex-1 bg-background">
+    <div className={cn(
+      "min-h-0 w-full flex-1 bg-background",
+      canonicalCommunitySurface && "flex h-lvh flex-col md:h-dvh",
+    )}>
       {gateModal}
       {ageSelfPrompt ? (
         <SelfVerificationModal
@@ -1240,8 +1249,16 @@ export function VideoHomePage({
           title={ageSelfPrompt.title}
         />
       ) : null}
+      {canonicalCommunitySurface && communityId ? (
+        <CommunitySurfaceNavigation
+          active="videos"
+          className="shrink-0 px-3 pt-[calc(env(safe-area-inset-top)+4rem)] md:px-5 md:pt-0 lg:px-8"
+          communityId={communityId}
+          routeSlug={publicCommunityQuery.data?.route_slug}
+        />
+      ) : null}
       <FeedPanelLayout
-        className={VIDEO_FEED_VIEWPORT_CLASS}
+        className={canonicalCommunitySurface ? "min-h-0 flex-1" : VIDEO_FEED_VIEWPORT_CLASS}
         panel={panelState.kind === "comments" ? (
           <FeedSidePanel
             closeLabel={copy.common.close}
@@ -1288,15 +1305,6 @@ export function VideoHomePage({
         ) : undefined}
       >
         <div className={VIDEO_FEED_STAGE_CLASS} ref={feedFocusRef} tabIndex={-1}>
-      {communityId ? (
-        <CommunitySurfaceSwitch
-          active="videos"
-          className="absolute left-1/2 top-[max(1rem,env(safe-area-inset-top))] z-30 -translate-x-1/2"
-          communityId={communityId}
-          importedRootHostname={importedRootHostname}
-          routeSlug={publicCommunityQuery.data?.route_slug}
-        />
-      ) : null}
       <VideoFeed
         externallyPausedItemId={panelState.kind === "booking" ? panelState.itemId : undefined}
         className="h-full"

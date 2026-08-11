@@ -274,6 +274,11 @@
       "sortComments": "排序评论"
     }
   },
+  "communitySurface": {
+    "ariaLabel": "社区视图",
+    "threads": "讨论",
+    "watch": "观看"
+  },
   "community": {
     "aboutTab": "关于",
     "charityLabel": "慈善机构",

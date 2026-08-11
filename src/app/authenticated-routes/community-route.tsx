@@ -19,7 +19,7 @@ import {
   formatCommunityRouteLabel,
 } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
-import { CommunitySurfaceSwitch } from "@/app/community-surface-switch";
+import { CommunitySurfaceNavigation } from "@/app/community-surface-navigation";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { CommunityJoinVerificationChooserModal } from "@/components/compositions/community/join-verification-chooser-modal/community-join-verification-chooser-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
@@ -915,12 +915,14 @@ export function CommunityPage({
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
-      <CommunitySurfaceSwitch
-        active="threads"
-        communityId={community?.id ?? preview.id}
-        importedRootHostname={importedRootHostname}
-        routeSlug={community?.route_slug ?? preview.route_slug}
-      />
+      {isImportedRoot ? (
+        <CommunitySurfaceNavigation
+          active="threads"
+          communityId={community?.id ?? preview.id}
+          importedRootHostname={importedRootHostname}
+          routeSlug={community?.route_slug ?? preview.route_slug}
+        />
+      ) : null}
       {ownsCommunity ? (
         <Button
           onClick={() => navigate(moderationEntryPath)}
@@ -986,6 +988,13 @@ export function CommunityPage({
   const communityTitle = community?.display_name ?? preview.display_name;
   const communityAvatarRef = community?.avatar_ref ?? preview.avatar_ref;
   const communityBannerRef = community?.banner_ref ?? preview.banner_ref;
+  const surfaceNavigation = !isImportedRoot ? (
+    <CommunitySurfaceNavigation
+      active="threads"
+      communityId={community?.id ?? preview.id}
+      routeSlug={community?.route_slug ?? preview.route_slug}
+    />
+  ) : null;
 
   return (
     <>
@@ -1114,6 +1123,7 @@ export function CommunityPage({
           headerAction={headerAction}
           items={feedItems}
           mobileHeaderAction={mobileHeaderAction}
+          navigation={surfaceNavigation}
           onSortChange={setActiveSort}
           routeLabel={routeLabel}
           routeVerified={Boolean(community?.namespace_verification)}

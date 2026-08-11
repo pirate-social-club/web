@@ -54,6 +54,18 @@ const resourceIcons = {
   "terms-of-service": Scroll,
 } satisfies Record<ResourceLinkId, typeof House>;
 
+export function isSovereignCommunityRoute(
+  route: AppRoute,
+): route is AppRoute & {
+  communityId: string;
+  isImportedRoot: true;
+  kind: "community" | "community-videos";
+} {
+  return (
+    route.kind === "community" || route.kind === "community-videos"
+  ) && route.isImportedRoot === true;
+}
+
 export function resolveCreatePostPath(route: AppRoute): string | null {
   if (route.kind === "community") {
     const routeSegment = route.path.replace(/^\/c\//u, "").replace(/\/+$/u, "");

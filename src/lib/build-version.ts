@@ -1,4 +1,8 @@
-import buildInfo from "../../build-info.json" with { type: "json" };
+import embeddedBuildInfo from "../../build-info.json" with { type: "json" };
+
+const buildInfo = embeddedBuildInfo as Omit<typeof embeddedBuildInfo, "hotfix"> & {
+  hotfix: null | { reasonSlug: string; patchSha256: string };
+};
 
 export type BuildVersionEnv = {
   BUILD_GIT_REF?: string;

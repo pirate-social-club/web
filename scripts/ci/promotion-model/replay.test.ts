@@ -81,9 +81,15 @@ describe("2026-07-28 starvation trace", () => {
   });
 
   test("the policy is the workflow's own production needs, not a narrowed set", () => {
-    expect(GATE_POLICY_VERSION).toBe(1);
+    expect(GATE_POLICY_VERSION).toBe(2);
     const ids = REQUIRED_GATES.map((gate) => gate.id).sort();
-    expect(ids).toEqual(["api_staging_contract_gate", "release_gate", "release_inputs", "schema_gate"]);
+    expect(ids).toEqual([
+      "api_staging_contract_gate",
+      "hns_forwarder_negative_probe",
+      "release_gate",
+      "release_inputs",
+      "schema_gate",
+    ]);
     // Implied gates are reported, never separately required.
     expect(IMPLIED_GATES.map((gate) => gate.id).sort()).toEqual(["staging_deploy", "staging_freshness"]);
   });

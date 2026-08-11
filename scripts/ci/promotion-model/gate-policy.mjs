@@ -2,8 +2,8 @@
 //
 // `.github/workflows/release.yml` declares the production job's dependencies:
 //
-//   needs: [api-staging-contract-gate, release-inputs, release-gate,
-//           schema-gate, production-freshness]
+//   needs: [api-staging-contract-gate, hns-forwarder-negative-probe,
+//           release-inputs, release-gate, schema-gate, production-freshness]
 //
 // Those are the pipeline's own definition of "validated enough to deploy".
 // `production-freshness` is excluded because the promoter replaces it — it is a
@@ -13,7 +13,7 @@
 // model exists to test, so the policy is fixed here and versioned, and any gate
 // it names that is skipped or absent leaves the candidate UNSATISFIED.
 
-export const GATE_POLICY_VERSION = 1;
+export const GATE_POLICY_VERSION = 2;
 
 // Workflow job id -> observable job-name prefix. GitHub reports a job from a
 // reusable workflow as "Parent / Child", so the prefix is what the trace can be
@@ -23,6 +23,7 @@ export const WORKFLOW_JOB_IDS = {
   release_inputs: "release-inputs",
   schema_gate: "schema-gate",
   api_staging_contract_gate: "api-staging-contract-gate",
+  hns_forwarder_negative_probe: "hns-forwarder-negative-probe",
   release_gate: "release-gate",
 };
 
@@ -35,6 +36,7 @@ export const REQUIRED_GATES = [
   { id: "release_inputs", version: 1, jobName: "Verify release inputs" },
   { id: "schema_gate", version: 1, jobName: "Community schema gate (staging fleet)" },
   { id: "api_staging_contract_gate", version: 1, jobName: "API staging contract gate" },
+  { id: "hns_forwarder_negative_probe", version: 1, jobName: "HNS forged-context gate" },
   { id: "release_gate", version: 1, jobName: "Release gate" },
 ];
 

@@ -6,6 +6,7 @@ const root = resolve(import.meta.dir, "..");
 const productionDeploy = readFileSync(resolve(root, "scripts/deploy-production.sh"), "utf8");
 const stagingDeploy = readFileSync(resolve(root, "scripts/deploy-staging.sh"), "utf8");
 const releaseSource = readFileSync(resolve(root, "scripts/lib/release-source.sh"), "utf8");
+const releaseWorkflow = readFileSync(resolve(root, ".github/workflows/release.yml"), "utf8");
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as {
   scripts?: Record<string, string>;
 };
@@ -34,6 +35,18 @@ describe("release attestation wiring", () => {
   test("allows only postinstall to fall back to non-release provenance", () => {
     expect(packageJson.scripts?.postinstall).toContain("--allow-placeholder");
     expect(packageJson.scripts?.["build:provenance"]).not.toContain("--allow-placeholder");
+  });
+
+  test("derives manual staging authority from the explicitly deployed SHAs", () => {
+    const manualGate = releaseWorkflow.slice(
+      releaseWorkflow.indexOf("gate-builder-staging-verification:"),
+      releaseWorkflow.indexOf("api-staging-contract-gate:"),
+    );
+    expect(manualGate).toContain("WEB_SHA: ${{ inputs.expected_staging_web_sha }}");
+    expect(manualGate).toContain("API_SHA: ${{ inputs.expected_staging_api_sha }}");
+    expect(manualGate).toContain("CORE_SHA: ${{ needs.release-inputs.outputs.core_sha }}");
+    expect(manualGate).toContain("EXPECTED_RELEASE_ID: ${{ steps.expected_deployed_release.outputs.value }}");
+    expect(manualGate).not.toContain("EXPECTED_RELEASE_ID: ${{ needs.release-inputs.outputs.release_id }}");
   });
 
   test("keeps full commit identity separate from hotfix content", () => {

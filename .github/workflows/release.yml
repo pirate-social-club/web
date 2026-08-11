@@ -846,11 +846,28 @@ jobs:
       - name: Install Playwright browser
         working-directory: web
         run: bunx playwright install --with-deps chromium
+      - name: Compute expected deployed release ID
+        id: expected_deployed_release
+        working-directory: web
+        env:
+          WEB_SHA: ${{ inputs.expected_staging_web_sha }}
+          API_SHA: ${{ inputs.expected_staging_api_sha }}
+          CORE_SHA: ${{ needs.release-inputs.outputs.core_sha }}
+        run: |
+          node --input-type=module -e '
+            import { createHash } from "node:crypto";
+            import { appendFileSync } from "node:fs";
+            const { API_SHA: apiSha, CORE_SHA: coreSha, WEB_SHA: webSha } = process.env;
+            const value = createHash("sha256")
+              .update(JSON.stringify({ apiSha, coreSha, webSha }))
+              .digest("hex");
+            appendFileSync(process.env.GITHUB_OUTPUT, `value=${value}\n`);
+          '
       - name: Require this run's staging artifacts
         working-directory: web
         env:
           EXPECTED_API_SHA: ${{ inputs.expected_staging_api_sha }}
-          EXPECTED_RELEASE_ID: ${{ needs.release-inputs.outputs.release_id }}
+          EXPECTED_RELEASE_ID: ${{ steps.expected_deployed_release.outputs.value }}
           EXPECTED_WEB_SHA: ${{ inputs.expected_staging_web_sha }}
         run: |
           node scripts/verify-deployed-versions.mjs \

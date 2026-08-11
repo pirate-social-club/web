@@ -1,7 +1,7 @@
 import "@/test/setup-runtime";
 
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import type { VideoExperienceSeed } from "@/app/video-experience/video-experience-context";
@@ -228,6 +228,7 @@ async function openVideo(seed: VideoExperienceSeed) {
   await act(async () => {
     capturedOpenVideo?.(seed);
   });
+  await waitFor(() => expect(latestVideoFeedProps).not.toBeNull());
 }
 
 beforeEach(() => {

@@ -333,6 +333,9 @@ export interface CrosspostSourcePreview {
   postHref?: string;
   thumbnailAlt?: string;
   thumbnailSrc?: string;
+  contentSafetyState?: "pending" | "safe" | "sensitive" | "adult";
+  ageGatePolicy?: "none" | "18_plus";
+  ageGateViewerState?: "proof_required" | "verified_allowed";
   mediaPreview?: SongContentSpec | VideoContentSpec;
 }
 

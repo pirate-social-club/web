@@ -6,6 +6,51 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { PostCardMedia } from "./post-card-media";
 
 describe("PostCardMedia", () => {
+  test("does not fetch an adult crosspost thumbnail before age verification", () => {
+    const markup = renderToStaticMarkup(
+      <PostCardMedia
+        content={{
+          type: "crosspost",
+          source: {
+            status: "available",
+            communityLabel: "c/source",
+            title: "Adult source",
+            thumbnailSrc: "https://example.test/adult-crosspost.jpg",
+            contentSafetyState: "adult",
+            ageGatePolicy: "18_plus",
+            ageGateViewerState: "proof_required",
+          },
+        }}
+      />,
+    );
+
+    expect(markup).not.toContain("<img");
+    expect(markup).not.toContain("https://example.test/adult-crosspost.jpg");
+    expect(markup).toContain("Adult source");
+  });
+
+  test("renders an adult crosspost thumbnail for a verified viewer", () => {
+    const markup = renderToStaticMarkup(
+      <PostCardMedia
+        content={{
+          type: "crosspost",
+          source: {
+            status: "available",
+            communityLabel: "c/source",
+            title: "Adult source",
+            thumbnailSrc: "https://example.test/adult-crosspost.jpg",
+            contentSafetyState: "adult",
+            ageGatePolicy: "18_plus",
+            ageGateViewerState: "verified_allowed",
+          },
+        }}
+      />,
+    );
+
+    expect(markup).toContain("<img");
+    expect(markup).toContain("https://example.test/adult-crosspost.jpg");
+  });
+
   test("renders song content eagerly instead of a lazy fallback", () => {
     const markup = renderToStaticMarkup(
       <PostCardMedia

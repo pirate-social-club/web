@@ -66,7 +66,10 @@ export function toCommunityPostContent(
 
   switch (post.post_type) {
     case "crosspost": {
-      const source = post.crosspost_source;
+      const source = post.crosspost_source as (typeof post.crosspost_source & {
+        content_safety_state?: "pending" | "safe" | "sensitive" | "adult" | null;
+        age_gate_policy?: "none" | "18_plus" | null;
+      });
       return {
         type: "crosspost",
         source: {
@@ -80,6 +83,9 @@ export function toCommunityPostContent(
           postType: source?.post_type ?? undefined,
           thumbnailAlt: source?.title ?? undefined,
           thumbnailSrc: source?.thumbnail_ref ?? undefined,
+          contentSafetyState: source?.content_safety_state ?? undefined,
+          ageGatePolicy: source?.age_gate_policy ?? undefined,
+          ageGateViewerState: postResponse.age_gate_viewer_state ?? undefined,
           title: source?.title ?? undefined,
         },
       };

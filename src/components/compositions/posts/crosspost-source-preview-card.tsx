@@ -123,6 +123,9 @@ export function CrosspostSourcePreviewCard({
   source: CrosspostSourcePreview;
 }) {
   const isAvailable = source.status === "available";
+  const thumbnailRequiresProof = source.contentSafetyState === "adult"
+    && source.ageGatePolicy === "18_plus"
+    && source.ageGateViewerState !== "verified_allowed";
   const statusLabel = sourceStatusLabel(source.status);
   const sourceMeta = source.authorLabel
     ? `${source.communityLabel} · ${source.authorLabel}`
@@ -177,7 +180,7 @@ export function CrosspostSourcePreviewCard({
       prefixLabel="Crossposted from"
       statusLabel={statusLabel}
       thumbnailAlt={source.thumbnailAlt}
-      thumbnailSrc={source.thumbnailSrc}
+      thumbnailSrc={thumbnailRequiresProof ? undefined : source.thumbnailSrc}
       title={source.title}
     />
   );

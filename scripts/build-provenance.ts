@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, readFileSync, readlinkSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -10,14 +10,69 @@ const sourcePath = resolve(rootDir, "build-info.json");
 const distPath = resolve(rootDir, "dist", "build-info.json");
 
 export type WebBuildProvenance = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   releaseId: string;
   buildId: string;
   builtAt: string;
   webSha: string;
   apiSha: string;
   coreSha: string;
+  sourceState: "clean" | "dirty";
+  hotfix: null | {
+    reasonSlug: string;
+    patchSha256: string;
+  };
 };
+
+function reasonSlug(value: string | undefined): string {
+  return (value ?? "local-build")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40) || "local-build";
+}
+
+function worktreePatchSha256(repoRoot: string): string {
+  const hash = createHash("sha256");
+  hash.update("tracked\0");
+  hash.update(execFileSync("git", ["diff", "--binary", "--no-ext-diff", "HEAD"], {
+    cwd: repoRoot,
+    maxBuffer: 64 * 1024 * 1024,
+  }));
+  const untracked = execFileSync(
+    "git",
+    ["ls-files", "--others", "--exclude-standard", "-z"],
+    { cwd: repoRoot, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+  ).split("\0").filter(Boolean).sort();
+  for (const path of untracked) {
+    const absolutePath = resolve(repoRoot, path);
+    hash.update("untracked\0");
+    hash.update(path);
+    hash.update("\0");
+    hash.update(lstatSync(absolutePath).isSymbolicLink()
+      ? `symlink:${readlinkSync(absolutePath)}`
+      : readFileSync(absolutePath));
+    hash.update("\0");
+  }
+  return hash.digest("hex");
+}
+
+export function inspectSourceState(repoRoot: string, reason?: string): Pick<WebBuildProvenance, "sourceState" | "hotfix"> {
+  const dirty = execFileSync(
+    "git",
+    ["status", "--porcelain", "--untracked-files=all"],
+    { cwd: repoRoot, encoding: "utf8" },
+  ).trim().length > 0;
+  return dirty
+    ? {
+        sourceState: "dirty",
+        hotfix: {
+          reasonSlug: reasonSlug(reason),
+          patchSha256: worktreePatchSha256(repoRoot),
+        },
+      }
+    : { sourceState: "clean", hotfix: null };
+}
 
 function releaseIdFor(webSha: string, apiSha: string, coreSha: string): string {
   return createHash("sha256")
@@ -39,7 +94,13 @@ function readPinnedSha(repoRoot: string, relativePath: string, label: string): s
 
 export function createBuildProvenance(
   repoRoot: string,
-  options: { apiSha?: string; buildId?: string; builtAt?: string; coreSha?: string } = {},
+  options: {
+    apiSha?: string;
+    buildId?: string;
+    builtAt?: string;
+    coreSha?: string;
+    hotfixReason?: string;
+  } = {},
 ): WebBuildProvenance {
   const webSha = requireFullSha(
     execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }),
@@ -52,21 +113,23 @@ export function createBuildProvenance(
     ? requireFullSha(options.coreSha, "Core build SHA")
     : readPinnedSha(repoRoot, ".github/release-refs/core.sha", "Core release pin");
   const releaseId = releaseIdFor(webSha, apiSha, coreSha);
+  const source = inspectSourceState(repoRoot, options.hotfixReason);
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     releaseId,
     buildId: options.buildId ?? randomUUID(),
     builtAt: options.builtAt ?? new Date().toISOString(),
     webSha,
     apiSha,
     coreSha,
+    ...source,
   };
 }
 
 export function parseBuildProvenance(raw: string): WebBuildProvenance {
   const value = JSON.parse(raw) as Partial<WebBuildProvenance>;
-  if (value.schemaVersion !== 1) throw new Error("build provenance schemaVersion must be 1");
+  if (value.schemaVersion !== 2) throw new Error("build provenance schemaVersion must be 2");
   for (const [field, sha] of [
     ["webSha", value.webSha],
     ["apiSha", value.apiSha],
@@ -85,6 +148,23 @@ export function parseBuildProvenance(raw: string): WebBuildProvenance {
   }
   if (!value.builtAt || !Number.isFinite(Date.parse(value.builtAt))) {
     throw new Error("build provenance builtAt must be an ISO timestamp");
+  }
+  if (value.sourceState !== "clean" && value.sourceState !== "dirty") {
+    throw new Error("build provenance sourceState must be clean or dirty");
+  }
+  if (value.sourceState === "clean" && value.hotfix !== null) {
+    throw new Error("clean build provenance must not contain hotfix metadata");
+  }
+  if (value.sourceState === "dirty") {
+    if (!value.hotfix || typeof value.hotfix !== "object") {
+      throw new Error("dirty build provenance requires hotfix metadata");
+    }
+    if (!value.hotfix.reasonSlug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value.hotfix.reasonSlug)) {
+      throw new Error("dirty build provenance requires a normalized hotfix reasonSlug");
+    }
+    if (!/^[0-9a-f]{64}$/.test(value.hotfix.patchSha256)) {
+      throw new Error("dirty build provenance requires a lowercase patch SHA-256 digest");
+    }
   }
   return value as WebBuildProvenance;
 }
@@ -113,6 +193,7 @@ function main(args: string[]): void {
     const provenance = createBuildProvenance(rootDir, {
       apiSha: process.env.PIRATE_BUILD_API_SHA,
       coreSha: process.env.PIRATE_BUILD_CORE_SHA,
+      hotfixReason: process.env.PIRATE_BUILD_HOTFIX_REASON,
     });
     writeBuildProvenance(sourcePath, provenance);
     console.info(`[web] build-info.json -> ${provenance.webSha.slice(0, 12)} (${provenance.buildId})`);
@@ -132,6 +213,12 @@ function main(args: string[]): void {
       coreSha: requireFullSha(coreSha ?? "", "expected Core SHA"),
     });
     console.info(`[web] verified dist provenance ${provenance.buildId}`);
+    return;
+  }
+  if (command === "inspect-source") {
+    const [repoRoot, reason] = args.slice(1);
+    if (!repoRoot) throw new Error("inspect-source requires a repository path");
+    process.stdout.write(JSON.stringify(inspectSourceState(resolve(repoRoot), reason)));
     return;
   }
   throw new Error(`unknown build provenance command: ${command}`);

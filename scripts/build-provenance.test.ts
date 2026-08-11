@@ -8,6 +8,7 @@ import { resolve } from "node:path";
 import {
   assertDistBuildProvenance,
   createBuildProvenance,
+  inspectSourceState,
   parseBuildProvenance,
   writeBuildProvenance,
 } from "./build-provenance";
@@ -27,6 +28,7 @@ function fixtureRepo(): { root: string; webSha: string } {
   writeFileSync(resolve(root, ".github", "release-refs", "api.sha"), `${API_SHA}\n`);
   writeFileSync(resolve(root, ".github", "release-refs", "core.sha"), `${CORE_SHA}\n`);
   execFileSync("git", ["init", "-q"], { cwd: root });
+  execFileSync("git", ["add", "."], { cwd: root });
   execFileSync("git", ["-c", "user.email=operator@example.test", "-c", "user.name=operator", "commit", "--allow-empty", "-qm", "fixture"], { cwd: root });
   const webSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
   return { root, webSha };
@@ -41,11 +43,13 @@ describe("web build provenance", () => {
     });
 
     expect(provenance).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       buildId: "build-fixture",
       webSha: fixture.webSha,
       apiSha: API_SHA,
       coreSha: CORE_SHA,
+      sourceState: "clean",
+      hotfix: null,
     });
     expect(provenance.releaseId).toMatch(/^[0-9a-f]{64}$/);
   });
@@ -55,13 +59,15 @@ describe("web build provenance", () => {
     const staleWebSha = "9".repeat(40);
     const path = resolve(mkdtempSync(resolve(tmpdir(), "web-dist-provenance-")), "build-info.json");
     writeBuildProvenance(path, {
-      schemaVersion: 1,
+      schemaVersion: 2,
       releaseId: releaseId(staleWebSha),
       buildId: "stale-build",
       builtAt: "2026-08-11T11:23:15.000Z",
       webSha: staleWebSha,
       apiSha: API_SHA,
       coreSha: CORE_SHA,
+      sourceState: "clean",
+      hotfix: null,
     });
 
     expect(() => assertDistBuildProvenance({ webSha, apiSha: API_SHA, coreSha: CORE_SHA }, path))
@@ -70,13 +76,28 @@ describe("web build provenance", () => {
 
   test("rejects abbreviated SHAs in the artifact stamp", () => {
     expect(() => parseBuildProvenance(JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: 2,
       releaseId: "4".repeat(64),
       buildId: "bad-build",
       builtAt: "2026-08-11T11:23:15.000Z",
       webSha: "1234567",
       apiSha: API_SHA,
       coreSha: CORE_SHA,
+      sourceState: "clean",
+      hotfix: null,
     }))).toThrow(/webSha must contain one full lowercase commit SHA/);
+  });
+
+  test("content-addresses dirty tracked and untracked source", () => {
+    const fixture = fixtureRepo();
+    writeFileSync(resolve(fixture.root, "incident.txt"), "first state\n");
+    const first = inspectSourceState(fixture.root, "Urgent repair");
+    writeFileSync(resolve(fixture.root, "incident.txt"), "second state\n");
+    const second = inspectSourceState(fixture.root, "Urgent repair");
+
+    expect(first.sourceState).toBe("dirty");
+    expect(first.hotfix?.reasonSlug).toBe("urgent-repair");
+    expect(first.hotfix?.patchSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(second.hotfix?.patchSha256).not.toBe(first.hotfix?.patchSha256);
   });
 });

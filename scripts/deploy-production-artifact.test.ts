@@ -30,5 +30,6 @@ describe("production Web artifact provenance", () => {
     expect(deployScript).toContain("$WEB_FULL_SHA");
     expect(deployScript).toContain("$API_FULL_SHA");
     expect(deployScript).toContain("$CORE_RELEASE_SHA");
+    expect(deployScript).toContain("PIRATE_BUILD_HOTFIX_REASON");
   });
 });

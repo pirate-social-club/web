@@ -126,10 +126,18 @@ read_web_build_field() {
   node -e '
     const fs = require("node:fs");
     const [path, field] = process.argv.slice(1);
-    const value = JSON.parse(fs.readFileSync(path, "utf8"))[field];
+    const value = field.split(".").reduce((current, part) => current?.[part], JSON.parse(fs.readFileSync(path, "utf8")));
     if (typeof value !== "string" || !value) process.exit(2);
     process.stdout.write(value);
   ' "$WEB_DIR/dist/build-info.json" "$1"
+}
+
+read_json_field() {
+  node -e '
+    const [raw, field] = process.argv.slice(1);
+    const value = field.split(".").reduce((current, part) => current?.[part], JSON.parse(raw));
+    if (value != null) process.stdout.write(String(value));
+  ' "$1" "$2"
 }
 
 check_json_field() {
@@ -242,9 +250,6 @@ if [[ "$ALLOW_NON_MAIN" != "1" ]]; then
     API_REF="pinned/$API_RELEASE_SHA"
   fi
 else
-  SAFE_SUFFIX="$(printf '%s' "$ALLOW_REASON" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//' | cut -c1-40)"
-  WEB_SHA="${WEB_SHA}-non-main-${SAFE_SUFFIX:-manual}"
-  API_SHA="${API_SHA}-non-main-${SAFE_SUFFIX:-manual}"
   log "non-main staging deploy"
   printf 'reason: %s\n' "$ALLOW_REASON"
   printf 'web status:\n%s\n' "$(repo_status "$WEB_DIR")"
@@ -263,6 +268,7 @@ log "build web staging bundle"
 (cd "$WEB_DIR" && \
   PIRATE_BUILD_API_SHA="$API_FULL_SHA" \
   PIRATE_BUILD_CORE_SHA="$CORE_RELEASE_SHA" \
+  PIRATE_BUILD_HOTFIX_REASON="$ALLOW_REASON" \
   bun run build:staging)
 
 log "verify web artifact provenance"
@@ -270,6 +276,10 @@ log "verify web artifact provenance"
   "$WEB_FULL_SHA" "$API_FULL_SHA" "$CORE_RELEASE_SHA")
 RELEASE_ID="$(read_web_build_field releaseId)"
 BUILD_ID="$(read_web_build_field buildId)"
+API_SOURCE_JSON="$(cd "$WEB_DIR" && bun run scripts/build-provenance.ts inspect-source "$API_DIR" "$ALLOW_REASON")"
+API_SOURCE_STATE="$(read_json_field "$API_SOURCE_JSON" sourceState)"
+API_HOTFIX_REASON_SLUG="$(read_json_field "$API_SOURCE_JSON" hotfix.reasonSlug)"
+API_PATCH_SHA256="$(read_json_field "$API_SOURCE_JSON" hotfix.patchSha256)"
 
 log "deploy web staging worker"
 (cd "$WEB_DIR" && "$WEB_WRANGLER" deploy dist/worker/index.js \
@@ -302,6 +312,9 @@ log "deploy api staging worker"
   --var "BUILD_WEB_SHA:$WEB_FULL_SHA" \
   --var "BUILD_API_SHA:$API_FULL_SHA" \
   --var "BUILD_CORE_SHA:$CORE_RELEASE_SHA" \
+  --var "BUILD_SOURCE_STATE:$API_SOURCE_STATE" \
+  --var "BUILD_HOTFIX_REASON_SLUG:$API_HOTFIX_REASON_SLUG" \
+  --var "BUILD_PATCH_SHA256:$API_PATCH_SHA256" \
   --var "COMMUNITY_SCHEMA_POLICY_DIGEST:$SCHEMA_POLICY_DIGEST" \
   --define "__PIRATE_BUILD_GIT_SHA__:\"$API_SHA\"" \
   --define "__PIRATE_BUILD_GIT_REF__:\"$API_REF\"" \
@@ -311,6 +324,9 @@ log "deploy api staging worker"
   --define "__PIRATE_BUILD_WEB_SHA__:\"$WEB_FULL_SHA\"" \
   --define "__PIRATE_BUILD_API_SHA__:\"$API_FULL_SHA\"" \
   --define "__PIRATE_BUILD_CORE_SHA__:\"$CORE_RELEASE_SHA\"" \
+  --define "__PIRATE_BUILD_SOURCE_STATE__:\"$API_SOURCE_STATE\"" \
+  --define "__PIRATE_BUILD_HOTFIX_REASON_SLUG__:\"$API_HOTFIX_REASON_SLUG\"" \
+  --define "__PIRATE_BUILD_PATCH_SHA256__:\"$API_PATCH_SHA256\"" \
   --define "__PIRATE_COMMUNITY_D1_SHARD_SOURCE_VERSION__:\"$API_SHARD_SOURCE_VERSION\"")
 
 log "smoke checks"

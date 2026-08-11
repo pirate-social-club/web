@@ -80,6 +80,9 @@ export function toCommunityPostContent(
           postType: source?.post_type ?? undefined,
           thumbnailAlt: source?.title ?? undefined,
           thumbnailSrc: source?.thumbnail_ref ?? undefined,
+          contentSafetyState: source?.content_safety_state ?? undefined,
+          ageGatePolicy: source?.age_gate_policy ?? undefined,
+          ageGateViewerState: postResponse.age_gate_viewer_state ?? undefined,
           title: source?.title ?? undefined,
         },
       };

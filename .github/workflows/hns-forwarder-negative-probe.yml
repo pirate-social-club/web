@@ -1,0 +1,21 @@
+name: HNS forwarder negative probe
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Reject forged HNS gateway context
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Require forged context to remain non-interactive and unscoped
+        run: bun scripts/verify-hns-forwarder-negative.ts

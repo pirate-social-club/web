@@ -74,6 +74,7 @@ function summary(state: RewardMockState) {
       count: 0,
       conditional_cents: 0,
       earliest_expires_at: null,
+      provider_requirements: [],
     },
     latest_in_flight_cashout: inFlight,
   };

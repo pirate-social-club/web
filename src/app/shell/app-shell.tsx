@@ -27,6 +27,7 @@ import { readCommunityPresentation } from "@/lib/community-presentation-contract
 import { getLocaleMessages, type ShellMessages } from "@/locales";
 
 import { AppShellHeader, AppShellMobileNav } from "./app-shell-header";
+import { routeOwnsContentSpacing } from "./app-shell-route-spacing";
 import { AppSearchDialog } from "./app-search-dialog";
 import { DesktopChatWidgetProvider } from "./desktop-chat-widget";
 import { RootErrorBoundary } from "./root-error-boundary";
@@ -214,9 +215,9 @@ function NotificationShell({
     || route.kind === "chat-new";
   const isPublicRoute = route.kind === "public-profile" || route.kind === "public-agent";
   const useStandaloneRouteShell = usesStandaloneRouteShell(route, isMobileLayout);
-  // Temporary: migrated routes own their own page shell padding.
+  // Temporary: these routes own their own page shell padding.
   // Remove this once all routes are converted.
-  const isMigratedRoute = route.kind === "home" || route.kind === "community-videos" || route.kind === "community-feed" || route.kind === "popular" || route.kind === "wallet";
+  const routeOwnsSpacing = routeOwnsContentSpacing(route);
   const mediaSections = buildMediaSections(copy.appSidebar, sections);
   useNotificationBadges(unreadNotificationCount);
 
@@ -295,7 +296,7 @@ function NotificationShell({
                 <main
                   className={cn(
                     "flex min-h-0 w-full flex-1",
-                    !isMigratedRoute && "px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.5rem)] md:px-5 md:pb-8 md:pt-6 lg:px-8",
+                    !routeOwnsSpacing && "px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.5rem)] md:px-5 md:pb-8 md:pt-6 lg:px-8",
                     isChatRoute && "md:overflow-hidden",
                   )}
                 >

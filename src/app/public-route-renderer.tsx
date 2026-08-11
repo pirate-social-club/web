@@ -27,6 +27,7 @@ function renderPublicRoute(
         <PublicProfileRoutePage
           handleLabel={route.handleLabel}
           hostSuffix={route.hostSuffix}
+          key={route.path}
         />
       );
     case "public-agent":

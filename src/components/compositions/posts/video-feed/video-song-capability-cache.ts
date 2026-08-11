@@ -1,6 +1,6 @@
 import type { VideoFeedCapability } from "./video-feed.types";
 
-export type VideoSongCapabilityReadMode = "authenticated" | "public";
+type VideoSongCapabilityReadMode = "authenticated" | "public";
 
 export interface VideoSongCapabilityResolution {
   activeRewardCampaignId: string | null;

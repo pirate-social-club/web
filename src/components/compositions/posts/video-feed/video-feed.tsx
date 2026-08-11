@@ -95,7 +95,7 @@ export interface VideoFeedImpression {
   soundOnAtAnyPoint: boolean;
 }
 
-export type VideoFeedImpressionExitReason =
+type VideoFeedImpressionExitReason =
   | "autoplay_blocked"
   | "playback_error"
   | "route_unmount"
@@ -129,22 +129,22 @@ export function classifyVideoPlayRejection(
   return "playback_error";
 }
 
-export const VIDEO_FEED_MUTED_PREFERENCE_KEY = "pirate.video-feed.muted";
+const VIDEO_FEED_MUTED_PREFERENCE_KEY = "pirate.video-feed.muted";
 
 /**
  * Recently viewed slides keep their media element mounted so scrolling back does not re-download
  * or re-buffer. The cap is deliberately small: mobile Safari only tolerates a handful of live
  * video decoders at once, and kept slides are paused, so they cost memory rather than CPU.
  */
-export const VIDEO_FEED_KEEP_ALIVE_MEDIA_COUNT = 4;
-export const VIDEO_FEED_LONG_PRESS_MS = 500;
-export const VIDEO_FEED_LONG_PRESS_MOVE_THRESHOLD_PX = 10;
+const VIDEO_FEED_KEEP_ALIVE_MEDIA_COUNT = 4;
+const VIDEO_FEED_LONG_PRESS_MS = 500;
+const VIDEO_FEED_LONG_PRESS_MOVE_THRESHOLD_PX = 10;
 
 /**
  * Only slides within this distance of the settled index render their shell content; every spacer
  * div stays mounted either way so scroll height, snap points, and index math are preserved.
  */
-export const VIDEO_FEED_SLIDE_RENDER_WINDOW = 2;
+const VIDEO_FEED_SLIDE_RENDER_WINDOW = 2;
 
 export function didVideoLongPressMove(
   start: { x: number; y: number },

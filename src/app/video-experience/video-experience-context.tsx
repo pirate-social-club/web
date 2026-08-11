@@ -4,7 +4,7 @@ import * as React from "react";
 
 import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/video-feed.types";
 
-export interface VideoExperienceSeedActions {
+interface VideoExperienceSeedActions {
   onComment?: () => void;
   onVote?: (direction: "up" | "down" | null) => Promise<void> | void;
   onVoteAccess?: () => void;

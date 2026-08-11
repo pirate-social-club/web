@@ -168,7 +168,7 @@ export interface CreateHoldRequest {
   slot_end_utc: string;
   source_community_id?: string | null;
 }
-export interface PaymentInstructions {
+interface PaymentInstructions {
   payment_intent_id: string;
   version: number;
   chain_id: number;

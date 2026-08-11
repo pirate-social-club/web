@@ -49,7 +49,17 @@ export function GlobalVideoExperienceProvider({ children }: { children: React.Re
     <VideoExperienceContext.Provider value={contextValue}>
       {children}
       {activated ? (
-        <React.Suspense fallback={null}>
+        <React.Suspense fallback={(
+          <div
+            aria-label="Loading video viewer"
+            aria-live="polite"
+            aria-modal="true"
+            className="fixed inset-0 z-50 grid place-items-center bg-black text-white"
+            role="dialog"
+          >
+            Loading video…
+          </div>
+        )}>
           <LazyVideoExperienceOverlay request={request} />
         </React.Suspense>
       ) : null}

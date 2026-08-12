@@ -135,23 +135,12 @@ const STUDY_MAX_ATTEMPTS_PER_APPEARANCE = 2;
 
 function exerciseSurface(exercise: SongStudyExercise, attemptNumber = Number(exercise.presentation_count ?? 0) + 1): SongStudySurfaceState {
   if (exercise.type === "translation_choice") {
-    return {
-      kind: "multiple_choice",
-      attemptNumber,
-      exercise: toMultipleChoiceExercise(exercise),
-    };
+    return { kind: "multiple_choice", attemptNumber, exercise: toMultipleChoiceExercise(exercise) };
   }
   if (exercise.type === "say_it_back") {
-    return {
-      kind: "say_it_back",
-      attemptNumber,
-      exercise: toSayItBackExercise(exercise),
-      phase: "idle",
-    };
+    return { kind: "say_it_back", attemptNumber, exercise: toSayItBackExercise(exercise), phase: "idle" };
   }
-  // The API is deployed with fill-blank disabled before the Web renderer lands.
-  // Fail closed if that contract is violated instead of mis-serving a cloze card
-  // as a say-it-back exercise.
+  // The API is flag-off until its Web renderer lands; fail closed if violated.
   throw new Error(`Unsupported study exercise type: ${exercise.type}`);
 }
 

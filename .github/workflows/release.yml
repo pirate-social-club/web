@@ -1225,7 +1225,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: asset-inventory-production-${{ github.run_id }}-${{ github.run_attempt }}
-          path: web/dist/asset-inventory.json
+          path: |
+            web/dist/asset-inventory.json
+            web/dist/client/.vite/manifest.json
           if-no-files-found: error
           # Consecutive-release overlap is measured from these artifacts. Keep
           # them well beyond the normal 14-day diagnostic evidence window.

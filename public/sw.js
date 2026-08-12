@@ -1,10 +1,11 @@
 const CACHE_PREFIX = "pirate-pwa-";
 const BUILD_RELEASE = "__PIRATE_BUILD_ID__";
-const IMMUTABLE_CACHE_NAME = `${CACHE_PREFIX}assets-v4-${BUILD_RELEASE}`;
+const CURRENT_ASSET_URLS = "__PIRATE_ASSET_MANIFEST__";
+const IMMUTABLE_CACHE_NAME = `${CACHE_PREFIX}assets-v5`;
 const RUNTIME_CACHE_NAME = `${CACHE_PREFIX}runtime-v3`;
 const ACTIVE_CACHE_NAMES = new Set([IMMUTABLE_CACHE_NAME, RUNTIME_CACHE_NAME]);
-const MAX_IMMUTABLE_ENTRIES = 640;
 const MAX_RUNTIME_ENTRIES = 64;
+const ASSET_MANIFEST_KEY = "/__pirate_asset_manifest__";
 const STATIC_EXTENSIONS = new Set([
   ".js",
   ".css",
@@ -47,17 +48,53 @@ self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
+async function readPreviousAssetManifest(cache) {
+  try {
+    const response = await cache.match(ASSET_MANIFEST_KEY);
+    if (!response) return null;
+    const urls = await response.json();
+    if (!Array.isArray(urls) || urls.some((url) => typeof url !== "string" || !url.startsWith("/assets/"))) {
+      return null;
+    }
+    return urls;
+  } catch {
+    return null;
+  }
+}
+
+async function activateCaches() {
+  const names = await caches.keys();
+  const immutable = await caches.open(IMMUTABLE_CACHE_NAME);
+  const previousAssetUrls = await readPreviousAssetManifest(immutable);
+
+  for (const name of names.filter((name) => name.startsWith(`${CACHE_PREFIX}assets-v4-`))) {
+    const oldCache = await caches.open(name);
+    for (const request of await oldCache.keys()) {
+      const response = await oldCache.match(request);
+      if (response) await immutable.put(request, response);
+    }
+  }
+
+  if (previousAssetUrls) {
+    const retained = new Set([...CURRENT_ASSET_URLS, ...previousAssetUrls]);
+    for (const request of await immutable.keys()) {
+      const pathname = new URL(request.url).pathname;
+      if (pathname.startsWith("/assets/") && !retained.has(pathname)) {
+        await immutable.delete(request);
+      }
+    }
+  }
+
+  await immutable.put(ASSET_MANIFEST_KEY, new Response(JSON.stringify(CURRENT_ASSET_URLS), {
+    headers: { "content-type": "application/json" },
+  }));
+  await Promise.all(names.flatMap((name) =>
+    name.startsWith(CACHE_PREFIX) && !ACTIVE_CACHE_NAMES.has(name) ? [caches.delete(name)] : []));
+  await self.clients.claim();
+}
+
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(
-        names.flatMap((name) =>
-          name.startsWith(CACHE_PREFIX) && !ACTIVE_CACHE_NAMES.has(name)
-            ? [caches.delete(name)]
-            : []),
-      ),
-    ).then(() => self.clients.claim()),
-  );
+  event.waitUntil(activateCaches());
 });
 
 async function cacheResponse(cacheName, request, response, maxEntries) {
@@ -100,7 +137,6 @@ self.addEventListener("fetch", (event) => {
             IMMUTABLE_CACHE_NAME,
             request,
             response,
-            MAX_IMMUTABLE_ENTRIES,
           );
           return response;
         });

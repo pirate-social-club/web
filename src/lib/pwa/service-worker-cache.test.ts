@@ -17,6 +17,10 @@ class FakeResponse {
   clone() {
     return new FakeResponse(this.body, this.status);
   }
+
+  async json() {
+    return JSON.parse(this.body);
+  }
 }
 
 type CacheEntry = { request: FakeRequest; response: FakeResponse };
@@ -33,11 +37,17 @@ function createHarness() {
       entries = new Map();
       stores.set(name, entries);
     }
+    const requestUrl = (request: FakeRequest | string) =>
+      typeof request === "string" ? new URL(request, "https://pirate.sc").href : request.url;
     return {
-      match: async (request: FakeRequest) => entries?.get(request.url)?.response,
-      put: async (request: FakeRequest, response: FakeResponse) => {
+      match: async (request: FakeRequest | string) => entries?.get(requestUrl(request))?.response,
+      put: async (request: FakeRequest | string, response: FakeResponse) => {
         if (rejectCacheWrites) throw new Error("quota exhausted");
-        entries?.set(request.url, { request, response });
+        const url = requestUrl(request);
+        entries?.set(url, {
+          request: typeof request === "string" ? { method: "GET", mode: "cors", url } : request,
+          response,
+        });
       },
       keys: async () => [...(entries?.values() ?? [])].map(({ request }) => request),
       delete: async (request: FakeRequest) => entries?.delete(request.url) ?? false,
@@ -56,11 +66,16 @@ function createHarness() {
     skipWaiting: () => {},
     clients: { claim: async () => {} },
   };
-  const source = readFileSync(join(import.meta.dir, "../../../public/sw.js"), "utf8");
-  new Function("self", "caches", "fetch", source)(
+  const source = readFileSync(join(import.meta.dir, "../../../public/sw.js"), "utf8")
+    .replace('"__PIRATE_ASSET_MANIFEST__"', JSON.stringify([
+      "/assets/current.js",
+      "/assets/shared.js",
+    ]));
+  new Function("self", "caches", "fetch", "Response", source)(
     self,
     caches,
     (request: FakeRequest) => fetcher(request),
+    FakeResponse,
   );
 
   return {
@@ -136,14 +151,14 @@ describe("service worker static caching", () => {
     expect((await harness.fetch("https://pirate.sc/mascots/mascot-67.svg")).status).toBe(200);
   });
 
-  test("serves immutable assets cache-first and bounds old content hashes", async () => {
+  test("serves immutable assets cache-first without an undersized count cap", async () => {
     for (let index = 0; index < 644; index += 1) {
       await harness.fetch(`https://pirate.sc/assets/chunk-${index}.js`);
     }
     const immutable = [...harness.stores.entries()]
-      .find(([name]) => name.startsWith("pirate-pwa-assets-v4-"))?.[1];
-    expect(immutable?.size).toBe(640);
-    expect(immutable?.has("https://pirate.sc/assets/chunk-0.js")).toBe(false);
+      .find(([name]) => name === "pirate-pwa-assets-v5")?.[1];
+    expect(immutable?.size).toBe(644);
+    expect(immutable?.has("https://pirate.sc/assets/chunk-0.js")).toBe(true);
 
     let networkCalls = 0;
     harness.setFetcher(async () => {
@@ -154,10 +169,14 @@ describe("service worker static caching", () => {
     expect(networkCalls).toBe(0);
   });
 
-  test("activation removes older immutable release cohorts only", async () => {
+  test("activation copies the old release cohort forward before deleting it", async () => {
     harness.stores.set("pirate-pwa-assets-v3", new Map());
-    harness.stores.set("pirate-pwa-assets-v4-older-release", new Map());
-    harness.stores.set("pirate-pwa-assets-v4-__PIRATE_BUILD_ID__", new Map());
+    harness.stores.set("pirate-pwa-assets-v4-older-release", new Map([
+      ["https://pirate.sc/assets/legacy.js", {
+        request: { method: "GET", mode: "cors", url: "https://pirate.sc/assets/legacy.js" },
+        response: new FakeResponse("old-legacy"),
+      }],
+    ]));
     harness.stores.set("pirate-pwa-runtime-v3", new Map());
     harness.stores.set("unrelated-cache", new Map());
 
@@ -166,9 +185,34 @@ describe("service worker static caching", () => {
     const names = [...harness.stores.keys()];
     expect(names).toContain("pirate-pwa-runtime-v3");
     expect(names).toContain("unrelated-cache");
-    expect(names).toContain("pirate-pwa-assets-v4-__PIRATE_BUILD_ID__");
+    expect(names).toContain("pirate-pwa-assets-v5");
     expect(names).not.toContain("pirate-pwa-assets-v3");
     expect(names).not.toContain("pirate-pwa-assets-v4-older-release");
+    expect(harness.stores.get("pirate-pwa-assets-v5")?.has("https://pirate.sc/assets/legacy.js")).toBe(true);
+  });
+
+  test("retains current and previous manifests while pruning older assets", async () => {
+    const entries = new Map<string, CacheEntry>();
+    const add = (url: string, body: string) => entries.set(url, {
+      request: { method: "GET", mode: "cors", url },
+      response: new FakeResponse(body),
+    });
+    add("https://pirate.sc/__pirate_asset_manifest__", JSON.stringify([
+      "/assets/previous.js",
+      "/assets/shared.js",
+    ]));
+    add("https://pirate.sc/assets/previous.js", "previous");
+    add("https://pirate.sc/assets/shared.js", "shared");
+    add("https://pirate.sc/assets/current.js", "current");
+    add("https://pirate.sc/assets/stale.js", "stale");
+    harness.stores.set("pirate-pwa-assets-v5", entries);
+
+    await harness.activate();
+
+    expect(entries.has("https://pirate.sc/assets/previous.js")).toBe(true);
+    expect(entries.has("https://pirate.sc/assets/shared.js")).toBe(true);
+    expect(entries.has("https://pirate.sc/assets/current.js")).toBe(true);
+    expect(entries.has("https://pirate.sc/assets/stale.js")).toBe(false);
   });
 
   test("does not reject a successful response when a cache write fails", async () => {

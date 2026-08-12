@@ -9,6 +9,7 @@ import {
   getJoinCtaLabel,
   getVerificationCapabilitiesForProvider,
   isJoinCtaActionable,
+  normalizeRequestedVerificationCapabilities,
 } from "./identity-gates";
 
 function walletGateEligibility(): JoinEligibility {
@@ -96,6 +97,17 @@ describe("identity gate join CTA helpers", () => {
 
     expect(getVerificationCapabilitiesForProvider(eligibility, "zkpassport"))
       .toEqual(["unique_human", "minimum_age", "nationality", "gender"]);
+  });
+
+  test("uses one provider vocabulary for planning and launch-boundary normalization", () => {
+    const input = ["gender", "minimum_age", "unique_human", "age_over_18", "nationality"];
+
+    expect(normalizeRequestedVerificationCapabilities("self", input))
+      .toEqual(["unique_human", "age_over_18", "nationality", "gender"]);
+    expect(normalizeRequestedVerificationCapabilities("zkpassport", input))
+      .toEqual(["unique_human", "minimum_age", "nationality", "gender"]);
+    expect(normalizeRequestedVerificationCapabilities("very", input))
+      .toEqual(["unique_human"]);
   });
 
   test("explains an insufficient balance instead of falling back to generic copy", () => {

@@ -282,6 +282,118 @@ describe("useCommunityJoinVerification", () => {
     expect(selfStarts).toEqual([]);
   });
 
+  test("starts a pure ZKPassport humanity gate with unique_human", async () => {
+    const pureZkPassportHumanityEligibility = {
+      ...eligibility("verification_required"),
+      membership_gate_summaries: [{
+        accepted_providers: ["zkpassport"],
+        gate_type: "unique_human",
+      }],
+      missing_capabilities: ["unique_human"],
+    } as JoinEligibility;
+    const { result } = renderHook(() =>
+      useCommunityJoinVerification({
+        communityId: "com_zkpassport_humanity",
+        eligibility: pureZkPassportHumanityEligibility,
+        locale: "en",
+        refetchEligibility: async () => pureZkPassportHumanityEligibility,
+      })
+    );
+
+    await act(async () => {
+      expect(await result.current.handleJoin()).toBe("blocked");
+    });
+
+    expect(zkPassportStarts).toEqual([expect.objectContaining({
+      requestedCapabilities: ["unique_human"],
+      verificationRequirements: [],
+    })]);
+    expect(selfStarts).toEqual([]);
+    expect(veryStarts).toEqual([]);
+  });
+
+  test("starts eligibility-driven legacy age-over-18 verification with Self", async () => {
+    const legacyAgeEligibility = {
+      ...eligibility("verification_required"),
+      membership_gate_summaries: [{
+        accepted_providers: ["self"],
+        gate_type: "age_over_18",
+      }],
+      missing_capabilities: ["age_over_18"],
+    } as JoinEligibility;
+    const { result } = renderHook(() =>
+      useCommunityJoinVerification({
+        communityId: "com_legacy_age",
+        eligibility: legacyAgeEligibility,
+        locale: "en",
+        refetchEligibility: async () => legacyAgeEligibility,
+      })
+    );
+
+    await act(async () => {
+      expect(await result.current.handleJoin()).toBe("blocked");
+    });
+
+    expect(selfStarts).toEqual([expect.objectContaining({
+      requestedCapabilities: ["age_over_18"],
+      verificationRequirements: [],
+    })]);
+    expect(zkPassportStarts).toEqual([]);
+    expect(veryStarts).toEqual([]);
+  });
+
+  test("represents Self minimum age as a requirement, not a requested capability", async () => {
+    const { result } = renderHook(() =>
+      useCommunityJoinVerification({
+        communityId: "com_self_minimum_age",
+        eligibility: eligibility("verification_required"),
+        locale: "en",
+        refetchEligibility: async () => eligibility("verification_required"),
+      })
+    );
+
+    await act(async () => {
+      expect(await result.current.startVerificationProvider("self", {
+        missingCapabilities: ["minimum_age"],
+        membershipGateSummaries: [{
+          accepted_providers: ["self"],
+          gate_type: "minimum_age",
+          required_minimum_age: 21,
+        }],
+      })).toBe("started");
+    });
+
+    expect(selfStarts).toEqual([expect.objectContaining({
+      requestedCapabilities: [],
+      verificationRequirements: [{ minimum_age: 21, proof_type: "minimum_age" }],
+    })]);
+    expect(zkPassportStarts).toEqual([]);
+  });
+
+  test("keeps legacy age-over-18 intact on the selected-gate path", async () => {
+    const { result } = renderHook(() =>
+      useCommunityJoinVerification({
+        communityId: "com_selected_legacy_age",
+        eligibility: eligibility("verification_required"),
+        locale: "en",
+        refetchEligibility: async () => eligibility("verification_required"),
+      })
+    );
+
+    await act(async () => {
+      expect(await result.current.startGateVerification({
+        accepted_providers: ["self"],
+        gate_type: "age_over_18",
+      })).toBe("started");
+    });
+
+    expect(selfStarts).toEqual([expect.objectContaining({
+      requestedCapabilities: ["age_over_18"],
+      verificationRequirements: [],
+    })]);
+    expect(zkPassportStarts).toEqual([]);
+  });
+
   test("requires an explicit provider choice for a multi-provider Telegram document branch", async () => {
     (window as Window & { Telegram?: { WebApp: object } }).Telegram = { WebApp: {} };
     const { result } = renderHook(() =>

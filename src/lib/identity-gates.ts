@@ -28,18 +28,14 @@ const SELF_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
   "nationality",
   "gender",
 ];
-const SELF_REQUESTED_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
-  "unique_human",
-  "age_over_18",
-  "nationality",
-  "gender",
-];
-const ZKPASSPORT_REQUESTED_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
-  "unique_human",
-  "minimum_age",
-  "nationality",
-  "gender",
-];
+const REQUESTED_CAPABILITY_ORDER_BY_PROVIDER: Record<
+  HumanVerificationProvider,
+  readonly RequestedVerificationCapability[]
+> = {
+  self: ["unique_human", "age_over_18", "nationality", "gender"],
+  very: ["unique_human"],
+  zkpassport: ["unique_human", "minimum_age", "nationality", "gender"],
+};
 
 function resolveGateLocale(locale: string | null | undefined): UiLocaleCode {
   const normalized = String(locale ?? "").toLowerCase();
@@ -147,12 +143,20 @@ function hasSelfDocumentCapability(capabilities: MissingCapability[]): boolean {
   );
 }
 
-function isSelfRequestedCapability(capability: MissingCapability): capability is RequestedVerificationCapability {
-  return SELF_REQUESTED_CAPABILITY_ORDER.some((candidate) => candidate === capability);
-}
-
-function isZkPassportRequestedCapability(capability: MissingCapability): capability is RequestedVerificationCapability {
-  return ZKPASSPORT_REQUESTED_CAPABILITY_ORDER.some((candidate) => candidate === capability);
+/**
+ * Canonical requested-capability vocabulary for interactive human providers.
+ * Gate planners use it to build requests; launch hooks use it defensively at
+ * their API boundary. Provider-specific verification requirements remain
+ * separate because minimum-age thresholds and nationality predicates carry
+ * values rather than just capability names.
+ */
+export function normalizeRequestedVerificationCapabilities(
+  provider: HumanVerificationProvider,
+  capabilities: readonly unknown[],
+): RequestedVerificationCapability[] {
+  const requested = new Set(capabilities.filter((capability): capability is string => typeof capability === "string"));
+  return REQUESTED_CAPABILITY_ORDER_BY_PROVIDER[provider]
+    .filter((capability) => requested.has(capability));
 }
 
 function resolveUniqueHumanRequirementProvider(
@@ -352,32 +356,10 @@ export function getVerificationCapabilitiesForProvider(
   provider: VerificationProvider,
 ): RequestedVerificationCapability[] {
   const missingCapabilities = getMissingCapabilitiesFromGateEvaluation(eligibility);
-  const uniqueCapabilities = new Set<RequestedVerificationCapability>();
-  for (const capability of missingCapabilities) {
-    if (provider === "very") {
-      if (capability === "unique_human") {
-        uniqueCapabilities.add(capability);
-      }
-    } else if (provider === "passport") {
-      continue;
-    } else if (provider === "zkpassport") {
-      if (isZkPassportRequestedCapability(capability)) {
-        uniqueCapabilities.add(capability);
-      }
-    } else if (isSelfRequestedCapability(capability)) {
-      uniqueCapabilities.add(capability);
-    }
-  }
-  if (provider === "self") {
-    return SELF_REQUESTED_CAPABILITY_ORDER.filter((capability) => uniqueCapabilities.has(capability));
-  }
   if (provider === "passport") {
     return [];
   }
-  if (provider === "zkpassport") {
-    return ZKPASSPORT_REQUESTED_CAPABILITY_ORDER.filter((capability) => uniqueCapabilities.has(capability));
-  }
-  return Array.from(uniqueCapabilities);
+  return normalizeRequestedVerificationCapabilities(provider, missingCapabilities);
 }
 
 export function getPassportPromptCapabilities(
@@ -641,7 +623,7 @@ export function getSelfVerificationRequestForGates(input: {
   }
 
   return {
-    requestedCapabilities: SELF_REQUESTED_CAPABILITY_ORDER.filter((capability) => requestedCapabilities.has(capability)),
+    requestedCapabilities: normalizeRequestedVerificationCapabilities("self", Array.from(requestedCapabilities)),
     verificationRequirements,
   };
 }

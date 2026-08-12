@@ -303,11 +303,6 @@ function NotificationShell({
                   )}
                   onSearchClick={() => setSearchOpen(true)}
                   route={route}
-                  sovereignCommunityHref={sovereignAppOrigin ? `${sovereignAppOrigin}/` : undefined}
-                  sovereignCommunityImageSrc={presentation?.avatar_ref}
-                  sovereignCommunityLabel={sovereignAppOrigin
-                    ? presentation?.display_name ?? "Community"
-                    : undefined}
                   sovereignInteractiveOrigin={sovereignAppOrigin}
                   unreadChatCount={unreadChatCount}
                   unreadNotificationCount={unreadNotificationCount}

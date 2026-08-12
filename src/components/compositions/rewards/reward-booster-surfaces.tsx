@@ -84,6 +84,7 @@ export interface BoostCampaignSheetProps {
   eligibleActivity: BoostEligibleActivity;
   eligibleActivities?: BoostEligibleActivity[];
   identityProvider?: BoostRewardIdentityProvider;
+  identityProviderChoices?: BoostRewardIdentityProvider[];
   errorMessage?: string;
   /** Funding-transaction link on the settlement chain's explorer (Base or Base Sepolia). */
   explorerTxUrl?: string;
@@ -121,6 +122,7 @@ export interface BoostCampaignSheetProps {
   onConnectWallet?: () => void;
   onDailyRewardChange?: (value: string) => void;
   onEligibleActivityChange?: (value: BoostEligibleActivity) => void;
+  onIdentityProviderChange?: (value: BoostRewardIdentityProvider) => void;
   onOpenChange?: (open: boolean) => void;
   onRefresh?: () => void;
   onRetry?: () => void;
@@ -174,6 +176,7 @@ export function BoostCampaignSheet({
   eligibleActivity,
   eligibleActivities = ["karaoke", "study", "either"],
   identityProvider = "self",
+  identityProviderChoices = [],
   endsAtLabel,
   errorMessage,
   explorerTxUrl,
@@ -195,6 +198,7 @@ export function BoostCampaignSheet({
   onConnectWallet,
   onDailyRewardChange,
   onEligibleActivityChange,
+  onIdentityProviderChange,
   onOpenChange,
   onRefresh,
   onRetry,
@@ -211,6 +215,7 @@ export function BoostCampaignSheet({
   walletMismatchReason = "no-wallet",
 }: BoostCampaignSheetProps) {
   const activityLabelId = React.useId();
+  const identityProviderLabelId = React.useId();
   const rewardDisplay = dailyRewardDisplayLabel ?? dailyRewardLabel;
   // The tier section renders only when the owner passes `payoutTiers` (even as
   // []); `tiered` (at least one row) flips budget math to worst-case display.
@@ -230,6 +235,11 @@ export function BoostCampaignSheet({
     very: "Very",
     zkpassport: "ZKPassport",
   }[identityProvider];
+  const identityProviderBrands = {
+    self: "Self",
+    very: "Very",
+    zkpassport: "ZKPassport",
+  } satisfies Record<BoostRewardIdentityProvider, string>;
   const payoutTiersLabelId = React.useId();
   // The sheet renders inside a modal dialog, whose focus trap suppresses
   // anything portaled to document.body — so the country dropdown portals into
@@ -250,6 +260,21 @@ export function BoostCampaignSheet({
     const next = eligibleActivities[nextIndex];
     onEligibleActivityChange?.(next);
     document.getElementById(`${activityLabelId}-${next}`)?.focus();
+  };
+
+  const handleIdentityProviderKeyDown = (event: React.KeyboardEvent, index: number) => {
+    const lastIndex = identityProviderChoices.length - 1;
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+      nextIndex = index === lastIndex ? 0 : index + 1;
+    } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+      nextIndex = index === 0 ? lastIndex : index - 1;
+    }
+    if (nextIndex == null) return;
+    event.preventDefault();
+    const next = identityProviderChoices[nextIndex];
+    onIdentityProviderChange?.(next);
+    document.getElementById(`${identityProviderLabelId}-${next}`)?.focus();
   };
 
   return (
@@ -336,6 +361,46 @@ export function BoostCampaignSheet({
                         type="button"
                       >
                         <Type as="span" variant="body">{option.label}</Type>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            {identityProviderChoices.length > 0 ? (
+              <div>
+                <Type as="span" className="mb-2 block text-muted-foreground" id={identityProviderLabelId} variant="label">
+                  Claimant check
+                </Type>
+                <div aria-labelledby={identityProviderLabelId} className="grid gap-2" role="radiogroup">
+                  {identityProviderChoices.map((provider, index) => {
+                    const selected = identityProvider === provider;
+                    return (
+                      <button
+                        aria-checked={selected}
+                        className={cn(
+                          "flex h-11 items-center gap-3 rounded-lg border px-4 text-start transition-colors",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                          selected ? "border-primary/40 bg-primary-subtle" : "border-border-soft",
+                        )}
+                        id={`${identityProviderLabelId}-${provider}`}
+                        key={provider}
+                        onClick={() => onIdentityProviderChange?.(provider)}
+                        onKeyDown={(event) => handleIdentityProviderKeyDown(event, index)}
+                        role="radio"
+                        tabIndex={selected ? 0 : -1}
+                        type="button"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "flex size-4 shrink-0 items-center justify-center rounded-full border",
+                            selected ? "border-primary" : "border-muted-foreground/50",
+                          )}
+                        >
+                          {selected ? <span className="size-2 rounded-full bg-primary" /> : null}
+                        </span>
+                        <Type as="span" variant="body">{identityProviderBrands[provider]}</Type>
                       </button>
                     );
                   })}

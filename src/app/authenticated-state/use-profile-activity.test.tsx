@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type {
   CommunityPreview,
   LocalizedPostResponse,
@@ -104,6 +104,26 @@ function makePost(): LocalizedPostResponse {
   } as LocalizedPostResponse;
 }
 
+function makeActivityResponse(postId: string): ProfileActivityResponse {
+  const post = makePost();
+  post.post.id = postId;
+  post.post.post = postId;
+  return {
+    comments: [],
+    has_more: false,
+    next_cursor: null,
+    object: "profile_activity",
+    overview_items: [],
+    posts: [{
+      community,
+      created: 1_782_000_000,
+      kind: "post",
+      post,
+    }],
+    tab: "posts",
+  } as ProfileActivityResponse;
+}
+
 describe("usePublicProfileActivity", () => {
   beforeEach(() => {
     fakeSession = null;
@@ -160,5 +180,38 @@ describe("usePublicProfileActivity", () => {
       {},
     );
     expect(result.current.posts[0]?.post.byline?.author?.avatarSrc).toBe("https://example.test/profile-avatar.png");
+  });
+
+  test("does not apply a previous profile response after switching handles", async () => {
+    let resolveFirst: ((value: ProfileActivityResponse) => void) | undefined;
+    let resolveSecond: ((value: ProfileActivityResponse) => void) | undefined;
+    fakeApi.publicProfiles.getActivity = mock((handle: string) => new Promise<ProfileActivityResponse>((resolve) => {
+      if (handle === "first-profile") {
+        resolveFirst = resolve;
+      } else {
+        resolveSecond = resolve;
+      }
+    }));
+
+    const view = renderHook(({ handle }: { handle: string }) => usePublicProfileActivity(handle, "en", "posts"), {
+      initialProps: { handle: "first-profile" },
+    });
+    await waitFor(() => expect(fakeApi.publicProfiles.getActivity).toHaveBeenCalledWith("first-profile", expect.any(Object)));
+
+    await act(async () => {
+      view.rerender({ handle: "second-profile" });
+    });
+    expect(view.result.current.posts).toEqual([]);
+    expect(view.result.current.loading).toBe(true);
+
+    await act(async () => {
+      resolveFirst?.(makeActivityResponse("post_from_first_profile"));
+    });
+    expect(view.result.current.posts).toEqual([]);
+
+    await act(async () => {
+      resolveSecond?.(makeActivityResponse("post_from_second_profile"));
+    });
+    await waitFor(() => expect(view.result.current.posts[0]?.post.postId).toBe("post_from_second_profile"));
   });
 });

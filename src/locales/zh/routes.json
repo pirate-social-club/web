@@ -276,6 +276,7 @@
   },
   "communitySurface": {
     "ariaLabel": "社区视图",
+    "openApp": "打开应用",
     "threads": "讨论",
     "watch": "观看"
   },

@@ -28,10 +28,13 @@ import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
-import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization"; import { CommunitySurfaceNavigation } from "@/app/community-surface-navigation";
+import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
+import {
+  CommunitySurfaceNavigation,
+  SovereignOpenAppAction,
+} from "@/app/community-surface-navigation";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import {
-  getJoinCtaLabel,
   getMissingCapabilitiesFromGateEvaluation,
   getVerificationCapabilitiesForProvider,
   getVerificationRequirementsForGates,
@@ -51,7 +54,7 @@ import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { useZkPassportVerification } from "@/lib/verification/use-zkpassport-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
-import { PublicRouteMessageState } from "./public-route-states";
+import { PublicCommunityErrorState, PublicCommunityNotFound, resolvePublicCommunityJoinActionLabel } from "./public-community-route-support";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { useCommunityHandleClaimController } from "@/app/authenticated-helpers/community-handle-claim";
 import { buildCommunityPreviewSidebar } from "@/lib/community-sidebar-helpers";
@@ -198,40 +201,18 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
   };
 }
 
-function PublicCommunityNotFound({ communityId }: { communityId: string }) {
-  const { locale } = useUiLocale();
-  const copy = getLocaleMessages(locale, "routes").publicCommunity;
-  return (
-    <PublicRouteMessageState
-      description={copy.notFoundDescription.replace("{communityId}", communityId)}
-      title={copy.notFoundTitle}
-    />
-  );
-}
-
-function PublicCommunityErrorState({ description }: { description: string }) {
-  const { locale } = useUiLocale();
-  const copy = getLocaleMessages(locale, "routes").publicCommunity;
-  return <PublicRouteMessageState description={description} title={copy.errorTitle} />;
-}
-
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
-
-export function resolvePublicCommunityJoinActionLabel(
-  eligibility: ApiJoinEligibility | null,
-  locale: string,
-): string {
-  return getJoinCtaLabel(eligibility ?? ({ status: "joinable" } as ApiJoinEligibility), { locale });
-}
 
 export function PublicCommunityRoutePage({
   buildPostPath,
   communityId,
-  disableCanonicalRouteReplace = false, isImportedRoot = false, importedRootHostname,
+  disableCanonicalRouteReplace = false,
+  importedRootHostname, isImportedRoot = false, showSovereignOpenAppAction = false,
 }: {
   buildPostPath?: (postId: string) => string;
   communityId: string;
-  disableCanonicalRouteReplace?: boolean; importedRootHostname?: string; isImportedRoot?: boolean;
+  disableCanonicalRouteReplace?: boolean; importedRootHostname?: string;
+  isImportedRoot?: boolean; showSovereignOpenAppAction?: boolean;
 }) {
   const api = useApi();
   const session = useSession();
@@ -705,8 +686,14 @@ export function PublicCommunityRoutePage({
   const viewerIsMember = preview.viewer_membership_status === "member" || eligibility?.status === "already_joined";
   const canCreatePost = Boolean(session?.user?.id) && viewerIsMember;
   const communityCreatePostPath = `${buildCommunityPath(preview.id, preview.route_slug ?? communityId)}/submit`;
+  const communityCreatePostHref = isImportedRoot && importedRootHostname
+    ? `https://app.${importedRootHostname}/submit`
+    : communityCreatePostPath;
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
+      {showSovereignOpenAppAction && importedRootHostname ? (
+        <SovereignOpenAppAction importedRootHostname={importedRootHostname} />
+      ) : null}
       {!viewerIsMember && !membershipLoading ? (
         <Button
           className={FOLLOW_BUTTON_CLASS_NAME}
@@ -732,7 +719,13 @@ export function PublicCommunityRoutePage({
       {canCreatePost ? (
         <Button
           leadingIcon={<Plus className="size-5" />}
-          onClick={() => navigate(communityCreatePostPath)}
+          onClick={() => {
+            if (isImportedRoot) {
+              window.location.assign(communityCreatePostHref);
+              return;
+            }
+            navigate(communityCreatePostHref);
+          }}
         >
           {copy.community.createPostLabel}
         </Button>
@@ -902,7 +895,14 @@ export function PublicCommunityRoutePage({
             viewerContentLocale: contentLocale,
           },
         ))}
-        loading={postsLoading} navigation={<CommunitySurfaceNavigation active="threads" communityId={preview.id} importedRootHostname={isImportedRoot ? importedRootHostname : undefined} routeSlug={preview.route_slug} />}
+        loading={postsLoading}
+        navigation={!isImportedRoot ? (
+          <CommunitySurfaceNavigation
+            active="threads"
+            communityId={preview.id}
+            routeSlug={preview.route_slug}
+          />
+        ) : null}
         onSortChange={setActiveSort}
         routeLabel={routeLabel}
         sidebar={{

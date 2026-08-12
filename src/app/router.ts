@@ -522,7 +522,7 @@ export function matchRouteWithImportedRootCommunity(
   }
   if (normalized === "/" && importedRootCommunityId) {
     return {
-      kind: importedRootSurface === "app" ? "community" : "community-videos",
+      kind: importedRootSurface === "app" ? "community-videos" : "community",
       path: "/",
       communityId: importedRootCommunityId,
       isImportedRoot: true,

@@ -601,6 +601,7 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "communitySurface": {
         "ariaLabel": "Community views",
+        "openApp": "Open app",
         "threads": "Threads",
         "watch": "Watch"
       },
@@ -2873,6 +2874,7 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "communitySurface": {
         "ariaLabel": "واجهات المجتمع",
+        "openApp": "افتح التطبيق",
         "threads": "النقاشات",
         "watch": "المشاهدة"
       },
@@ -5145,6 +5147,7 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "communitySurface": {
         "ariaLabel": "社区视图",
+        "openApp": "打开应用",
         "threads": "讨论",
         "watch": "观看"
       },

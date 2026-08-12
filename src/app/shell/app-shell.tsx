@@ -40,6 +40,7 @@ import {
   buildResourceItems,
   buildSidebarSections,
   isSovereignCommunityRoute,
+  resolveSovereignOrigins,
   usesStandaloneRouteShell,
 } from "./sidebar-sections";
 import { resolveSessionAvatarFallback } from "./session-avatar";
@@ -176,9 +177,9 @@ function NotificationShell({
   const codeItems = buildCodeItems(copy.appSidebar);
   const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities, isMobileLayout);
   const isSovereignOrigin = isSovereignCommunityRoute(route);
-  const sovereignAppOrigin = route.kind === "community-videos" && route.importedRootHostname
-    ? `https://app.${route.importedRootHostname}`
-    : null;
+  const sovereignOrigins = resolveSovereignOrigins(route);
+  const sovereignRootOrigin = sovereignOrigins?.root ?? null;
+  const sovereignAppOrigin = sovereignOrigins?.app ?? null;
   const navigateAccountPath = (path: "/me" | "/wallet") => {
     if (sovereignAppOrigin) {
       window.location.assign(`${sovereignAppOrigin}${path}`);
@@ -262,7 +263,7 @@ function NotificationShell({
                 activeItemId={activeSidebarItem(route)}
                 appearance="media"
                 brandAccentColor={readCommunityPresentation(presentation).branding.accent_color}
-                brandHref={sovereignAppOrigin ? `${sovereignAppOrigin}/` : undefined}
+                brandHref={sovereignRootOrigin ? `${sovereignRootOrigin}/` : undefined}
                 brandImageSrc={presentation?.avatar_ref ?? null}
                 brandLabel={isSovereignOrigin
                   ? presentation?.display_name ?? "Community"

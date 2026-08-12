@@ -1,4 +1,5 @@
 import { matchRoute } from "@/app/router";
+import { encodeCommunityRouteSegment } from "@/lib/community-routing";
 
 import type { DiscoveryContext } from "./types";
 
@@ -77,12 +78,16 @@ export function getDiscoveryContext(input: URL | string): DiscoveryContext {
 export function resolveRouteDiscoveryContext(input: {
   discovery: DiscoveryContext;
   postId?: string | null;
+  sovereignCommunityRoute?: string | null;
   sovereignPresentation: boolean;
 }): DiscoveryContext {
+  const sovereignCommunityRoute = input.sovereignCommunityRoute?.trim();
   return {
     ...input.discovery,
     canonicalUrl: input.postId
       ? `https://pirate.sc/p/${encodeURIComponent(input.postId)}`
+      : input.sovereignPresentation && sovereignCommunityRoute
+        ? `https://pirate.sc/c/${encodeCommunityRouteSegment(sovereignCommunityRoute)}`
       : input.discovery.canonicalUrl,
     isIndexable: input.sovereignPresentation ? false : input.discovery.isIndexable,
   };

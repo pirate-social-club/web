@@ -14,6 +14,7 @@ import {
   MAX_SIDEBAR_RECENT_COMMUNITIES,
   resolveCreatePostPath,
   resolveMobileBackPath,
+  resolveSovereignOrigins,
   usesStandaloneRouteShell,
 } from "./sidebar-sections";
 
@@ -39,8 +40,25 @@ describe("isSovereignCommunityRoute", () => {
   });
 });
 
+describe("resolveSovereignOrigins", () => {
+  test("keeps community identity at the root and interaction on app", () => {
+    for (const kind of ["community", "community-videos"] as const) {
+      expect(resolveSovereignOrigins({
+        kind,
+        path: "/",
+        communityId: "com_sovereign",
+        importedRootHostname: "community-root",
+        isImportedRoot: true,
+      })).toEqual({
+        app: "https://app.community-root",
+        root: "https://community-root",
+      });
+    }
+  });
+});
+
 describe("resolveMobileBackPath", () => {
-  test("does not render a no-op back control on a sovereign thread root", () => {
+  test("does not render a no-op back control on a sovereign community root", () => {
     expect(resolveMobileBackPath({
       kind: "community",
       path: "/",

@@ -231,6 +231,23 @@ A canary that fails is a signal to investigate, from its uploaded artifacts, on 
    disabled; when deployment is required, dispatch `Release` from current
    `main` with `deploy_production: true` and monitor that new run normally.
 
+## Production asset inventories
+
+Every production build inventories all files emitted below `dist/client/assets`,
+including lazy route and client-reference chunks rather than only the statically
+reachable entry graph. After deployment, the production job records each
+asset's negotiated content encoding and actual encoded response bytes. The
+result is uploaded as
+`asset-inventory-production-<run-id>-<attempt>` for 90 days.
+
+Edge measurement is observational and cannot make a successful deployment fail.
+A partial artifact records per-asset failures and leaves the encoded-byte total
+unset. Raw sizes and content hashes are produced during the build and remain
+available even when the edge probe is unavailable. Compare two complete
+inventories by both filename count and encoded bytes before changing immutable
+cache retention. Browser request counts do not establish native-gateway
+crossings; those require gateway-side evidence.
+
 ## Validating a change to release.yml
 
 ```sh

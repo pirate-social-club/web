@@ -20,6 +20,17 @@ describe("production Web artifact provenance", () => {
     expect(packageJson.scripts?.["build:prod"]).toContain("bun run build:provenance");
     expect(packageJson.scripts?.["build:prod"]).toContain("bun run build:service-worker");
     expect(packageJson.scripts?.["build:prod"]).toContain("bun run build:provenance:emit");
+    expect(packageJson.scripts?.["build:prod"]).toContain("bun run build:asset-inventory");
+    expect(packageJson.scripts?.["build:staging"]).toContain("bun run build:asset-inventory");
+  });
+
+  test("measures and durably uploads the production asset inventory without blocking deploy", () => {
+    expect(releaseWorkflow).toContain("id: deploy-production");
+    expect(releaseWorkflow).toContain("bun run scripts/asset-inventory.ts measure-edge");
+    expect(releaseWorkflow).toContain("continue-on-error: true");
+    expect(releaseWorkflow).toContain("name: asset-inventory-production-${{ github.run_id }}-${{ github.run_attempt }}");
+    expect(releaseWorkflow).toContain("path: web/dist/asset-inventory.json");
+    expect(releaseWorkflow).toContain("retention-days: 90");
   });
 
   test("checks the dist stamp before the first service deploy", () => {

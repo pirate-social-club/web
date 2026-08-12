@@ -1192,6 +1192,7 @@ jobs:
             --previous-source-version "${{ steps.shard-preflight.outputs.previous_source_version }}" \
             --health-url https://api.pirate.sc/health/provisioning
       - name: Deploy production
+        id: deploy-production
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: web
         env:
@@ -1209,6 +1210,26 @@ jobs:
           VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
           SMOKE_EVIDENCE_FILE: ${{ github.workspace }}/smoke-evidence-production.jsonl
         run: scripts/deploy-production.sh --confirm-production --skip-tests
+      # Observability only: the build inventory is already complete and durable
+      # even if an edge request fails. Never turn a successful deploy red because
+      # a post-deploy compression measurement was temporarily unavailable.
+      - name: Measure production asset transfer sizes
+        if: steps.deploy-production.outcome == 'success'
+        continue-on-error: true
+        working-directory: web
+        run: >-
+          bun run scripts/asset-inventory.ts measure-edge
+          --origin https://pirate.sc
+      - name: Upload production asset inventory
+        if: always() && steps.deploy-production.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: asset-inventory-production-${{ github.run_id }}-${{ github.run_attempt }}
+          path: web/dist/asset-inventory.json
+          if-no-files-found: error
+          # Consecutive-release overlap is measured from these artifacts. Keep
+          # them well beyond the normal 14-day diagnostic evidence window.
+          retention-days: 90
       - name: Upload production smoke evidence
         if: always() && steps.in-lane-freshness-prod.outputs.stale == 'false'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

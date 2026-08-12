@@ -22,10 +22,6 @@ on:
         description: Full-fleet audit run used to select the canary
         required: false
         type: string
-      expected_attempt_rows:
-        description: Canary song_study_attempt count from that audit artifact
-        required: false
-        type: string
       confirmation:
         description: Type AUDIT/APPLY 1156 TO STAGING/PRODUCTION as appropriate
         required: true
@@ -41,6 +37,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: song-study-fill-blank-${{ inputs.target }}
@@ -93,7 +90,6 @@ jobs:
           TARGET: ${{ inputs.target }}
           DATABASE_NAME: ${{ inputs.database_name }}
           AUDIT_RUN_ID: ${{ inputs.audit_run_id }}
-          EXPECTED_ATTEMPT_ROWS: ${{ inputs.expected_attempt_rows }}
           CONFIRMATION: ${{ inputs.confirmation }}
         run: |
           if [[ "$TARGET" == production-* ]]; then
@@ -118,14 +114,52 @@ jobs:
               echo "::error::Canary target requires the numeric full-fleet audit run ID used for selection"
               exit 1
             fi
-            if [[ ! "$EXPECTED_ATTEMPT_ROWS" =~ ^[0-9]+$ ]]; then
-              echo "::error::Canary target requires the song_study_attempt count from that audit artifact"
-              exit 1
-            fi
-          elif [[ -n "$DATABASE_NAME" || -n "$AUDIT_RUN_ID" || -n "$EXPECTED_ATTEMPT_ROWS" ]]; then
+          elif [[ -n "$DATABASE_NAME" || -n "$AUDIT_RUN_ID" ]]; then
             echo "::error::database_name and canary evidence inputs are only valid for canary targets"
             exit 1
           fi
+
+      - name: Resolve referenced full-fleet audit artifact
+        if: ${{ endsWith(inputs.target, '-canary') }}
+        id: audit
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        env:
+          TARGET: ${{ inputs.target }}
+          AUDIT_RUN_ID: ${{ inputs.audit_run_id }}
+        with:
+          github-token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          script: |
+            const runId = Number(process.env.AUDIT_RUN_ID);
+            const { owner, repo } = context.repo;
+            const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+            if (run.conclusion !== "success") {
+              core.setFailed(`Referenced audit run ${runId} did not conclude successfully.`);
+              return;
+            }
+            if (!run.path?.startsWith(".github/workflows/song-study-fill-blank-fleet-migration.yml")) {
+              core.setFailed(`Referenced run ${runId} is not the fill-blank fleet workflow.`);
+              return;
+            }
+            const auditTarget = process.env.TARGET.replace(/-canary$/, "-audit");
+            const expectedPrefix = `song-study-fill-blank-${auditTarget}-${runId}-`;
+            const response = await github.rest.actions.listWorkflowRunArtifacts({ owner, repo, run_id: runId, per_page: 100 });
+            const matches = response.data.artifacts.filter(
+              (artifact) => artifact.name.startsWith(expectedPrefix) && !artifact.expired,
+            );
+            if (matches.length !== 1) {
+              core.setFailed(`Referenced run ${runId} has ${matches.length} current ${auditTarget} artifact(s); expected exactly one.`);
+              return;
+            }
+            core.setOutput("artifact_name", matches[0].name);
+
+      - name: Download referenced full-fleet audit
+        if: ${{ endsWith(inputs.target, '-canary') }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          github-token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          run-id: ${{ inputs.audit_run_id }}
+          name: ${{ steps.audit.outputs.artifact_name }}
+          path: audit-evidence
 
       - name: Validate reviewed migration and runner are pinned
         shell: bash
@@ -133,14 +167,13 @@ jobs:
           test -f "$GITHUB_WORKSPACE/core/db/community-template/migrations/1156_song_study_fill_blank.sql"
           test -f "$GITHUB_WORKSPACE/core/scripts/community/apply-song-study-fill-blank-d1-migration.ts"
 
-      - name: Read-only canary preflight and volume match
+      - name: Read-only canary preflight against audit evidence
         if: ${{ endsWith(inputs.target, '-canary') }}
         shell: bash
         env:
           TARGET: ${{ inputs.target }}
           DATABASE_NAME: ${{ inputs.database_name }}
           AUDIT_RUN_ID: ${{ inputs.audit_run_id }}
-          EXPECTED_ATTEMPT_ROWS: ${{ inputs.expected_attempt_rows }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
         run: |
@@ -155,16 +188,32 @@ jobs:
           )
           if [[ "$TARGET" == production-* ]]; then args+=(--prod); fi
           bun core/scripts/community/apply-song-study-fill-blank-d1-migration.ts "${args[@]}"
+          expected_fleet="${TARGET%-canary}"
+          jq -e \
+            --arg fleet "$expected_fleet" \
+            --arg database_name "$DATABASE_NAME" \
+            --slurpfile preflight migration-output/canary-preflight.json \
+            '.fleet == $fleet
+              and .migration == "1156_song_study_fill_blank.sql"
+              and .checksum == $preflight[0].checksum
+              and .executed == false
+              and .is_full_verification == true
+              and ([.shards[] | select(.database_name == $database_name and .row_counts.song_study_attempt != null)] | length == 1)' \
+            audit-evidence/manifest.json >/dev/null
+          audited_rows=$(jq -r --arg database_name "$DATABASE_NAME" \
+            '.shards[] | select(.database_name == $database_name) | .row_counts.song_study_attempt' \
+            audit-evidence/manifest.json)
           actual_rows=$(jq -r '.shards[0].row_counts.song_study_attempt' migration-output/canary-preflight.json)
-          if [[ "$actual_rows" != "$EXPECTED_ATTEMPT_ROWS" ]]; then
-            echo "::error::Canary volume changed or does not match audit run $AUDIT_RUN_ID: expected $EXPECTED_ATTEMPT_ROWS, observed $actual_rows"
+          if (( actual_rows < audited_rows )); then
+            echo "::error::Canary volume shrank since audit run $AUDIT_RUN_ID: audited $audited_rows, observed $actual_rows"
             exit 1
           fi
           jq -n \
             --arg audit_run_id "$AUDIT_RUN_ID" \
             --arg database_name "$DATABASE_NAME" \
+            --argjson audited_attempt_rows "$audited_rows" \
             --argjson attempt_rows "$actual_rows" \
-            '{audit_run_id: $audit_run_id, database_name: $database_name, attempt_rows: $attempt_rows}' \
+            '{audit_run_id: $audit_run_id, database_name: $database_name, audited_attempt_rows: $audited_attempt_rows, preflight_attempt_rows: $attempt_rows}' \
             > migration-output/canary-selection.json
 
       - name: Audit or apply migration with resumable fleet runner
@@ -216,31 +265,10 @@ jobs:
         if: ${{ !endsWith(inputs.target, '-audit') }}
         shell: bash
         run: |
-          jq -n \
-            --slurpfile before migration-output/manifest.json \
-            --slurpfile after migration-output/verification-manifest.json \
-            '[
-              $before[0].shards[]
-              | select(.row_counts != null)
-              | . as $before_shard
-              | $after[0].shards[]
-              | select(.database_name == $before_shard.database_name)
-              | select(
-                  .row_counts.song_study_attempt != $before_shard.row_counts.song_study_attempt
-                  or .row_counts.song_study_review_state != $before_shard.row_counts.song_study_review_state
-                )
-              | {
-                  database_name,
-                  before: $before_shard.row_counts,
-                  after: .row_counts
-                }
-            ]' > migration-output/row-count-mismatches.json
-          mismatch_count=$(jq 'length' migration-output/row-count-mismatches.json)
-          if [[ "$mismatch_count" != "0" ]]; then
-            cat migration-output/row-count-mismatches.json
-            echo "::error::$mismatch_count shard(s) changed attempt/review row counts during rebuild"
-            exit 1
-          fi
+          bun web/scripts/song-study-fill-blank-row-counts.ts \
+            migration-output/manifest.json \
+            migration-output/verification-manifest.json \
+            migration-output/row-count-comparison.json
 
       - name: Upload migration record
         if: always()

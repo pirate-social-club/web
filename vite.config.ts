@@ -61,6 +61,7 @@ export default defineConfig(() => ({
     ssr: {},
   },
   build: {
+    manifest: true,
     modulePreload: {
       resolveDependencies: (_url, dependencies) => resolveInitialModulePreloadDependencies(dependencies),
     },

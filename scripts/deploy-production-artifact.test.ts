@@ -29,7 +29,8 @@ describe("production Web artifact provenance", () => {
     expect(releaseWorkflow).toContain("bun run scripts/asset-inventory.ts measure-edge");
     expect(releaseWorkflow).toContain("continue-on-error: true");
     expect(releaseWorkflow).toContain("name: asset-inventory-production-${{ github.run_id }}-${{ github.run_attempt }}");
-    expect(releaseWorkflow).toContain("path: web/dist/asset-inventory.json");
+    expect(releaseWorkflow).toContain("web/dist/asset-inventory.json");
+    expect(releaseWorkflow).toContain("web/dist/client/.vite/manifest.json");
     expect(releaseWorkflow).toContain("retention-days: 90");
   });
 

@@ -21,6 +21,8 @@ export interface VideoFeedItem {
     handle: string;
     /** Canonical profile or community destination for both publisher identity affordances. */
     href?: string;
+    /** The destination leaves a sovereign origin for the canonical Pirate profile. */
+    external?: boolean;
     kind: "community" | "profile";
     relationship?:
       | {

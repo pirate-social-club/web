@@ -1,30 +1,6 @@
-import type { Cents, IanaTz, IsoInstant, ResolvedSlot } from "../view-models";
+import { formatCentsAsUsd } from "@/lib/formatting/currency";
 
-export function formatCentsAsUsd(cents: Cents): string {
-  const dollars = cents / 100;
-  const hasFractionalDollars = cents % 100 !== 0;
-  return new Intl.NumberFormat("en", {
-    currency: "USD",
-    minimumFractionDigits: hasFractionalDollars ? 2 : 0,
-    maximumFractionDigits: hasFractionalDollars ? 2 : 0,
-    style: "currency",
-  }).format(dollars);
-}
-
-export function formatCentsAsStartingUsd(cents: Cents): string {
-  const hasFractionalDollars = cents % 100 !== 0;
-  const dollars = new Intl.NumberFormat("en", {
-    currency: "USD",
-    minimumFractionDigits: hasFractionalDollars ? 2 : 0,
-    maximumFractionDigits: hasFractionalDollars ? 2 : 0,
-    style: "currency",
-  }).format(cents / 100);
-  return `${dollars}+`;
-}
-
-export function formatCentsAsUsdc(cents: Cents): string {
-  return `${(cents / 100).toFixed(2)} USDC`;
-}
+import type { IanaTz, IsoInstant, ResolvedSlot } from "./view-models";
 
 export function formatSlotTime(startUtc: IsoInstant, viewerTz: IanaTz): string {
   return new Intl.DateTimeFormat("en", {
@@ -45,21 +21,18 @@ export function formatSlotDuration(startUtc: IsoInstant, endUtc: IsoInstant): st
 }
 
 export function formatTzLabel(tz: IanaTz): string {
-  // e.g. "America/New_York" → "New York"
   const parts = tz.split("/");
   return parts[parts.length - 1].replace(/_/g, " ");
 }
 
 export function formatTzAbbrev(utcIso: IsoInstant, tz: IanaTz): string {
-  // Disambiguates the fall-back repeated hour by appending the timezone abbreviation.
-  // Output is environment-dependent: full-ICU runtimes may return "CEST"/"CET",
-  // while Node/workerd SSR returns "GMT+2"/"GMT+1". Both are distinct, which is all
-  // that's required — tests must assert the two labels differ, not a literal string.
+  // Full-ICU runtimes may return abbreviations while SSR returns GMT offsets;
+  // either form still distinguishes repeated hours during a DST transition.
   const parts = new Intl.DateTimeFormat("en", {
     timeZone: tz,
     timeZoneName: "short",
   }).formatToParts(new Date(utcIso));
-  return parts.find((p) => p.type === "timeZoneName")?.value ?? "";
+  return parts.find((part) => part.type === "timeZoneName")?.value ?? "";
 }
 
 export function formatBookingDate(startUtc: IsoInstant, viewerTz: IanaTz): string {
@@ -88,16 +61,12 @@ export function formatDayPillDay(startUtc: IsoInstant, viewerTz: IanaTz): string
 export interface SlotUniformity {
   sameDuration: boolean;
   samePrice: boolean;
-  /** Shared duration label (e.g. "15 min") when every slot has the same length, else null. */
+  /** Shared duration label when all slots have the same length. */
   durationLabel: string | null;
-  /** Shared price label (e.g. "$50") when every slot costs the same, else null. */
+  /** Shared price label when all slots have the same price. */
   priceLabel: string | null;
 }
 
-/**
- * Whether the slot set is uniform enough to state duration/price once instead of per slot.
- * Slot chips stay time-only when uniform; the labels here feed a single header/summary line.
- */
 export function getSlotUniformity(slots: ResolvedSlot[]): SlotUniformity {
   const first = slots[0];
   if (!first) {

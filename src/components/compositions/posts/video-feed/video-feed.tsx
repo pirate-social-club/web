@@ -22,15 +22,15 @@ import {
   SpeakerSlash,
 } from "@phosphor-icons/react";
 
-import { Avatar } from "@/components/primitives/avatar";
 import { ActionMenu } from "@/components/primitives/action-menu";
-import { formatCentsAsStartingUsd } from "@/components/compositions/bookings/fixtures/bookings-format";
+import { formatCentsAsStartingUsd } from "@/lib/formatting/currency";
 import { IconButton } from "@/components/primitives/icon-button";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
 import type { VideoFeedCapability, VideoFeedItem } from "./video-feed.types";
 import { VideoShareSurface } from "./video-share-surface";
+import { VideoPublisherAvatar, VideoPublisherByline } from "./video-publisher-identity";
 
 export interface VideoFeedProps {
   /** Item paused by an external feed surface. Clearing this resumes its prior playback position. */
@@ -38,6 +38,7 @@ export interface VideoFeedProps {
   className?: string;
   downvoteLabel?: string;
   followLabel?: string;
+  openPublisherInPirateLabel?: string;
   followingLabel?: string;
   initialItemId?: string;
   initialMuted?: boolean;
@@ -445,6 +446,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   autoplayBlocked,
   downvoteLabel,
   followLabel,
+  openPublisherInPirateLabel,
   followingLabel,
   impressionVisible,
   impressionIdentity,
@@ -482,12 +484,13 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
   muteVideoLabel,
   videoProgressLabel,
   initialPlaybackSeconds,
-}: Omit<VideoFeedProps, "downvoteLabel" | "followLabel" | "followingLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "muteVideoLabel" | "removeDownvoteLabel" | "soundOnLabel" | "tapForSoundLabel"> & {
+}: Omit<VideoFeedProps, "downvoteLabel" | "followLabel" | "followingLabel" | "initialItemId" | "initialMuted" | "initialPaused" | "initialPlaybackSeconds" | "items" | "muteVideoLabel" | "openPublisherInPirateLabel" | "removeDownvoteLabel" | "soundOnLabel" | "tapForSoundLabel"> & {
   active: boolean;
   allowAutoplay: boolean;
   autoplayBlocked: boolean;
   downvoteLabel: string;
   followLabel: string;
+  openPublisherInPirateLabel?: string;
   followingLabel: string;
   impressionVisible: boolean;
   impressionIdentity: VideoFeedImpressionIdentity;
@@ -982,20 +985,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-5 pb-[calc(var(--feed-chrome-bottom)+1.25rem)] pt-24 text-white">
           {/* The 4.5rem reserve clears the overlaid rail on mobile; on md+ the rail is out of frame. */}
           <div className="pointer-events-auto max-w-[calc(100%-4.5rem)] space-y-2 md:max-w-none">
-            <div className="flex items-center gap-2">
-              {item.publisher.href ? (
-                <a
-                  className="rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                  href={item.publisher.href}
-                >
-                  <Type as="span" className="text-inherit" variant="body-strong">
-                    {item.publisher.handle}
-                  </Type>
-                </a>
-              ) : (
-                <Type variant="body-strong">{item.publisher.handle}</Type>
-              )}
-            </div>
+            <div className="flex items-center gap-2"><VideoPublisherByline openPublisherInPirateLabel={openPublisherInPirateLabel} publisher={item.publisher} /></div>
             {displayedCaption ? (
               <Type
                 className="line-clamp-2"
@@ -1084,36 +1074,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
         </div>
 
         <div className="absolute bottom-[calc(var(--feed-chrome-bottom)+1.25rem)] right-3 z-10 flex flex-col items-center gap-3 md:static">
-          {/* Missing images deliberately use Avatar's canonical generated ghost. */}
-          {item.publisher.href ? (
-            <a className="rounded-full shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" href={item.publisher.href}>
-              <span
-                aria-label={`Publisher ${item.publisher.handle}`}
-                className="block rounded-full ring-2 ring-white"
-                data-video-publisher-avatar
-                role="img"
-              >
-                <Avatar
-                  fallback={item.publisher.handle}
-                  size="md"
-                  src={item.publisher.avatarSrc}
-                />
-              </span>
-            </a>
-          ) : (
-            <div
-              aria-label={`Publisher ${item.publisher.handle}`}
-              className="rounded-full shadow-md ring-2 ring-white"
-              data-video-publisher-avatar
-              role="img"
-            >
-            <Avatar
-              fallback={item.publisher.handle}
-              size="md"
-              src={item.publisher.avatarSrc}
-            />
-            </div>
-          )}
+          <VideoPublisherAvatar openPublisherInPirateLabel={openPublisherInPirateLabel} publisher={item.publisher} />
           {item.publisher.relationship?.kind === "follow" ? (
             <div className="-mt-5 size-6" data-video-publisher-relationship-slot>
               {active ? (
@@ -1250,6 +1211,7 @@ export function VideoFeed({
   className,
   downvoteLabel = "Downvote",
   followLabel = "Follow",
+  openPublisherInPirateLabel,
   followingLabel = "Following",
   feedRequestId,
   initialItemId,
@@ -1594,6 +1556,7 @@ export function VideoFeed({
               autoplayBlocked={autoplayBlockedItemIds.has(item.id)}
               downvoteLabel={downvoteLabel}
               followLabel={followLabel}
+              openPublisherInPirateLabel={openPublisherInPirateLabel}
               followingLabel={followingLabel}
               item={item}
               itemPosition={index}

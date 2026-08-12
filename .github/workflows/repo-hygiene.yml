@@ -43,6 +43,9 @@ jobs:
       - name: Run UI hygiene checks
         run: node scripts/ui-audit.mjs
 
+      - name: Enforce frontend module boundaries
+        run: node scripts/boundary-audit.mjs
+
       - name: Enforce oversized frontend file ratchets
         run: node scripts/check-frontend-size-ratchet.mjs
 

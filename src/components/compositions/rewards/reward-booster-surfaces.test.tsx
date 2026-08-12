@@ -77,6 +77,52 @@ test("compose offers the exclusive activity enum as a radio group with explicit 
   expect(selected).toBe("either");
 });
 
+test("compose supports suffix token amounts without assuming two decimals", () => {
+  const view = render(
+    <BoostCampaignSheet
+      {...composeProps({
+        budgetDisplayLabel: "2500 $COMMUNITY",
+        budgetInputAdornment: { label: "$COMMUNITY", placement: "suffix" },
+        budgetLabel: "2500",
+        dailyRewardDisplayLabel: "25.123456789012345678 $COMMUNITY",
+        dailyRewardLabel: "25.123456789012345678",
+        rewardInputAdornment: { label: "$COMMUNITY", placement: "suffix" },
+      })}
+    />,
+  );
+
+  expect(view.getAllByText("$COMMUNITY")).toHaveLength(2);
+  expect((view.getByRole("textbox", { name: "Bounty per learner $COMMUNITY" }) as HTMLInputElement).value).toBe("25.123456789012345678");
+  expect((view.getByRole("textbox", { name: "Total budget $COMMUNITY" }) as HTMLInputElement).value).toBe("2500");
+});
+
+test("top-up keeps objective, bounty, and end date immutable", () => {
+  const view = render(
+    <BoostCampaignSheet
+      {...composeProps({
+        budgetPresets: ["$10.00", "$25.00", "$50.00"],
+        dailyRewardDisplayLabel: "$0.40 USDC",
+        eligibleActivity: "study",
+        endsAtLabel: "30 Sep",
+        fundedLabel: "$20.00 USDC",
+        remainingLabel: "$8.20 USDC",
+        state: "top_up",
+      })}
+    />,
+  );
+
+  expect(view.getByText("Fund bounty")).toBeTruthy();
+  expect(view.getByText("$0.40 USDC")).toBeTruthy();
+  expect(view.getByText("$20.00 USDC")).toBeTruthy();
+  expect(view.getByText("$8.20 USDC")).toBeTruthy();
+  expect(view.getByText("30 Sep")).toBeTruthy();
+  expect(view.getByRole("button", { name: "$10.00" })).toBeTruthy();
+  expect(view.getByRole("button", { name: "$25.00" })).toBeTruthy();
+  expect(view.getByRole("button", { name: "$50.00" })).toBeTruthy();
+  expect(view.getByText("Funding adds rewards without changing the bounty terms or end date.")).toBeTruthy();
+  expect(view.queryByRole("radiogroup", { name: "People earn by" })).toBeNull();
+});
+
 test("compose radio group moves selection with arrow keys", () => {
   let selected = "";
   const view = render(

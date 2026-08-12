@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
+import { resolveInitialModulePreloadDependencies } from "./src/lib/performance/initial-module-preload";
 import tailwindcss from "@tailwindcss/vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { redwood } from "rwsdk/vite";
@@ -60,6 +61,9 @@ export default defineConfig(() => ({
     ssr: {},
   },
   build: {
+    modulePreload: {
+      resolveDependencies: (_url, dependencies) => resolveInitialModulePreloadDependencies(dependencies),
+    },
     rolldownOptions: {
       checks: {
         // Privy's published bundles contain misplaced PURE comments. Rolldown

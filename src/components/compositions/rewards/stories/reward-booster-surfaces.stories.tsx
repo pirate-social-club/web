@@ -2,11 +2,16 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import {
+  BoostAmountInput,
   BoostCampaignSheet,
   SongRewardPolicySheet,
   type BoostCampaignSheetProps,
   type BoostPayoutTierDraft,
 } from "../reward-booster-surfaces";
+import { StandardRoutePage } from "@/components/compositions/app/page-shell";
+import { Card } from "@/components/primitives/card";
+import { Input } from "@/components/primitives/input";
+import { Type } from "@/components/primitives/type";
 import { formatUsdLabel, parseUsdInput, usdToCents } from "@/lib/formatting/currency";
 import {
   boostPlanProblemLabel,
@@ -14,6 +19,7 @@ import {
   MAX_PAYOUT_TIERS,
   resolveDailyAccrualPlan,
 } from "@/lib/rewards/boost-plan";
+import { atomicAmountProblemLabel, parseAtomicAmountInput } from "@/lib/formatting/token-amount";
 
 const meta = {
   title: "Compositions/Bounties/Create",
@@ -147,6 +153,150 @@ export const ActiveStudy: Story = {
       rewardsPaidLabel="$3"
       state="active"
       transactionHash={TRANSACTION_HASH}
+    />
+  ),
+};
+
+export const FundExhaustedStudyBounty: Story = {
+  render: () => (
+    <BoostCampaignSheet
+      {...base}
+      budgetDisplayLabel="$25.00"
+      budgetLabel="25.00"
+      budgetPresets={["$10.00", "$25.00", "$50.00"]}
+      dailyRewardDisplayLabel="$0.40 USDC"
+      dailyRewardLabel="0.40"
+      eligibleActivities={["study"]}
+      eligibleActivity="study"
+      endsAtLabel="30 Sep"
+      fundingAmountLabel="$25.00"
+      fundedLabel="$20.00 USDC"
+      remainingLabel="$8.20 USDC"
+      rewardCountLabel="62 completions"
+      state="top_up"
+    />
+  ),
+};
+
+function CommunityTokenSetupStory({
+  symbol = "$COMMUNITY",
+  symbolProblem,
+}: {
+  symbol?: string;
+  symbolProblem?: string;
+}) {
+  const [reward, setReward] = React.useState("25.123456789012345678");
+  const [budget, setBudget] = React.useState("2500");
+  const rewardResult = parseAtomicAmountInput(reward, 18);
+  const budgetResult = parseAtomicAmountInput(budget, 18);
+  const problem = !rewardResult.ok
+    ? atomicAmountProblemLabel(rewardResult.problem, 18)
+    : !budgetResult.ok
+      ? atomicAmountProblemLabel(budgetResult.problem, 18)
+      : undefined;
+  const rewardCount = rewardResult.ok && budgetResult.ok
+    ? BigInt(budgetResult.atomic) / BigInt(rewardResult.atomic)
+    : 0n;
+
+  return (
+    <BoostCampaignSheet
+      {...base}
+      budgetDisplayLabel={`${budget || "0"} ${symbol}`}
+      budgetInputAdornment={{ label: symbol, placement: "suffix" }}
+      budgetLabel={budget}
+      dailyRewardDisplayLabel={`${reward || "0"} ${symbol}`}
+      dailyRewardLabel={reward}
+      eligibleActivities={["study", "karaoke"]}
+      eligibleActivity="study"
+      onBudgetChange={setBudget}
+      onDailyRewardChange={setReward}
+      planProblem={symbolProblem ?? problem}
+      rewardCountLabel={`${rewardCount.toString()} completions`}
+      rewardInputAdornment={{ label: symbol, placement: "suffix" }}
+      state="compose"
+    />
+  );
+}
+
+export const CommunityToken18Decimals: Story = {
+  render: () => <CommunityTokenSetupStory />,
+};
+
+export const CommunityTokenUnadmittedLongSymbol: Story = {
+  render: () => (
+    <CommunityTokenSetupStory
+      symbol="$INTERNATIONALCOMMUNITYTOKEN"
+      symbolProblem="This token's symbol is too long for the community reward registry."
+    />
+  ),
+};
+
+function AmountInputComparisonStory() {
+  const [value, setValue] = React.useState("25.123456789012345678");
+  return (
+    <StandardRoutePage size="rail">
+      <Card className="mx-auto grid w-full max-w-2xl gap-5 p-6 shadow-none sm:grid-cols-2">
+        <label className="block" htmlFor="comparison-standard-input">
+          <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
+            Standard input
+          </Type>
+          <Input id="comparison-standard-input" value="25.00" readOnly />
+        </label>
+        <label className="block" htmlFor="comparison-reward-input">
+          <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
+            Reward amount input
+          </Type>
+          <BoostAmountInput
+            adornment={{ label: "$COMMUNITY", placement: "suffix" }}
+            id="comparison-reward-input"
+            onChange={setValue}
+            value={value}
+          />
+        </label>
+      </Card>
+    </StandardRoutePage>
+  );
+}
+
+export const AmountInputPrimitiveComparison: Story = {
+  render: () => <AmountInputComparisonStory />,
+};
+
+export const CommunityTokenMalformedAmount: Story = {
+  render: () => {
+    const result = parseAtomicAmountInput("1.2.3", 18);
+    return (
+      <BoostCampaignSheet
+        {...base}
+        budgetDisplayLabel="2,500 $COMMUNITY"
+        budgetInputAdornment={{ label: "$COMMUNITY", placement: "suffix" }}
+        budgetLabel="2500"
+        dailyRewardDisplayLabel="1.2.3 $COMMUNITY"
+        dailyRewardLabel="1.2.3"
+        eligibleActivities={["study", "karaoke"]}
+        eligibleActivity="study"
+        planProblem={result.ok ? undefined : atomicAmountProblemLabel(result.problem, 18)}
+        rewardCountLabel="0 completions"
+        rewardInputAdornment={{ label: "$COMMUNITY", placement: "suffix" }}
+        state="compose"
+      />
+    );
+  },
+};
+
+export const MegapotTicketSetup: Story = {
+  render: () => (
+    <BoostCampaignSheet
+      {...base}
+      budgetDisplayLabel="$25.00 USDC"
+      budgetLabel="25.00"
+      dailyRewardDisplayLabel="1 Megapot ticket"
+      dailyRewardLabel="1"
+      eligibleActivities={["karaoke"]}
+      eligibleActivity="karaoke"
+      rewardCountLabel="about 25 completions"
+      rewardInputAdornment={{ label: "ticket", placement: "suffix" }}
+      state="compose"
     />
   ),
 };

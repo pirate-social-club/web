@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import type { ResolvedSlot } from "@/components/compositions/bookings/view-models";
 
 import { installDomGlobals } from "@/test/setup-dom";
 
@@ -44,5 +45,43 @@ describe("useHostAvailability", () => {
     expect(listBookingSlots).not.toHaveBeenCalled();
     expect(disabled.current.loading).toBe(false);
     expect(noHost.current.loading).toBe(false);
+  });
+
+  test("drops the previous host result while switching hosts mid-request", async () => {
+    let resolveFirst: ((value: { slots: ResolvedSlot[] }) => void) | undefined;
+    let resolveSecond: ((value: { slots: ResolvedSlot[] }) => void) | undefined;
+    listBookingSlots = mock((hostUserId: string) => new Promise<{ slots: ResolvedSlot[] }>((resolve) => {
+      if (hostUserId === "usr_first") {
+        resolveFirst = resolve;
+      } else {
+        resolveSecond = resolve;
+      }
+    }));
+    fakeApi = { bookings: { listBookingSlots } };
+
+    const view = renderHook(({ hostUserId }: { hostUserId: string }) => useHostAvailability(hostUserId, true), {
+      initialProps: { hostUserId: "usr_first" },
+    });
+    await waitFor(() => expect(listBookingSlots).toHaveBeenCalledWith("usr_first", expect.any(Object)));
+
+    await act(async () => {
+      view.rerender({ hostUserId: "usr_second" });
+    });
+    expect(view.result.current.loading).toBe(true);
+    expect(view.result.current.slots).toEqual([]);
+
+    await act(async () => {
+      resolveFirst?.({
+        slots: [{ startUtc: "2099-01-05T10:00:00.000Z", endUtc: "2099-01-05T10:30:00.000Z", priceCents: 5000, available: true }],
+      });
+    });
+    expect(view.result.current.slots).toEqual([]);
+
+    await act(async () => {
+      resolveSecond?.({
+        slots: [{ startUtc: "2099-01-06T10:00:00.000Z", endUtc: "2099-01-06T10:30:00.000Z", priceCents: 7000, available: true }],
+      });
+    });
+    await waitFor(() => expect(view.result.current.slots[0]?.startUtc).toBe("2099-01-06T10:00:00.000Z"));
   });
 });

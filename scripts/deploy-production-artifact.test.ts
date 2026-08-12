@@ -18,6 +18,7 @@ describe("production Web artifact provenance", () => {
 
   test("generates and emits the in-artifact stamp as part of build:prod", () => {
     expect(packageJson.scripts?.["build:prod"]).toContain("bun run build:provenance");
+    expect(packageJson.scripts?.["build:prod"]).toContain("bun run build:service-worker");
     expect(packageJson.scripts?.["build:prod"]).toContain("bun run build:provenance:emit");
   });
 

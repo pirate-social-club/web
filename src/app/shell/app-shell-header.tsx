@@ -106,7 +106,7 @@ export function AppShellHeader({
   mobileMediaOverlay = false,
   onSearchClick,
   route,
-  sovereignSurfaceAction,
+  sovereignInteractiveOrigin,
   unreadChatCount = 0,
   unreadNotificationCount,
 }: {
@@ -115,7 +115,7 @@ export function AppShellHeader({
   mobileMediaOverlay?: boolean;
   onSearchClick?: () => void;
   route: AppRoute;
-  sovereignSurfaceAction?: React.ReactNode;
+  sovereignInteractiveOrigin?: string | null;
   unreadChatCount?: number;
   unreadNotificationCount: number;
 }) {
@@ -139,7 +139,7 @@ export function AppShellHeader({
       <Plus className="size-6" weight="bold" />
     </IconButton>
   ) : undefined;
-  const mobileTrailingContent = sovereignSurfaceAction ?? mobileHeaderAction ?? (route.kind === "community" || isPublicProfileRoute || (clientReady && session && routeUsesMobileFooter(route) && !showMobileCreateAction)
+  const mobileTrailingContent = mobileHeaderAction ?? (route.kind === "community" || isPublicProfileRoute || (clientReady && session && routeUsesMobileFooter(route) && !showMobileCreateAction)
     ? <div className="size-11" aria-hidden="true" />
     : undefined);
   const mobileHeaderTitle = resolveMobileHeaderTitle({ copy, mediaOverlay: mobileMediaOverlay, route, session });
@@ -193,9 +193,15 @@ export function AppShellHeader({
       onHomeClick={() => navigate("/")}
       onNotificationsClick={() => navigate("/inbox")}
       onConnectClick={() => connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
-      onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
+      onProfileClick={() => session
+        ? sovereignInteractiveOrigin
+          ? window.location.assign(`${sovereignInteractiveOrigin}/me`)
+          : navigate("/me")
+        : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
       onSearchClick={onSearchClick ?? (() => showSearchUnavailable(copy.appHeader.searchUnavailableToast))}
-      onWalletClick={() => navigate("/wallet")}
+      onWalletClick={() => sovereignInteractiveOrigin
+        ? window.location.assign(`${sovereignInteractiveOrigin}/wallet`)
+        : navigate("/wallet")}
       showCreateAction={clientReady && !!session}
       showChatAction={clientReady && !!session}
       showMobileCreateAction={showMobileCreateAction}

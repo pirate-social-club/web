@@ -288,7 +288,7 @@ export interface AppSidebarProps
   activeItemId?: string;
   appearance?: "default" | "media";
   brandAccentColor?: string | null;
-  brandAction?: React.ReactNode;
+  brandHref?: string;
   brandImageSrc?: string | null;
   brandLabel?: string;
   className?: string;
@@ -317,7 +317,7 @@ export function AppSidebar({
   activeItemId = "home",
   appearance = "default",
   brandAccentColor,
-  brandAction,
+  brandHref,
   brandImageSrc,
   brandLabel,
   className,
@@ -395,6 +395,32 @@ export function AppSidebar({
   const resolvedResourceItems = resourceItems ?? copy.appSidebar.resourceItems;
   const resolvedResourcesLabel = resourcesLabel ?? copy.appSidebar.resourcesLabel;
   const resolvedSide = resolveDirectionalSide(side, dir);
+  const brandIdentity = (
+    <>
+      {isSovereignOrigin ? (
+        <span
+          className="size-10 shrink-0 rounded-full border-2"
+          style={brandAccentColor ? { borderColor: brandAccentColor } : undefined}
+        >
+          <Avatar
+            className="size-full"
+            fallback={brandLabel ?? copy.appSidebar.brandLabel}
+            fallbackIcon={(
+              <Type as="span" variant="label">
+                {communityBrandInitial(brandLabel)}
+              </Type>
+            )}
+            src={brandImageSrc ?? undefined}
+          />
+        </span>
+      ) : (
+        <PirateBrandMark className="size-10 shrink-0" decorative={false} />
+      )}
+      <Type as="span" className="font-display uppercase tracking-wide group-data-[collapsible=icon]:hidden" variant="h3">
+        {brandLabel ?? copy.appSidebar.brandLabel}
+      </Type>
+    </>
+  );
 
   return (
     <Sidebar
@@ -411,38 +437,29 @@ export function AppSidebar({
     >
       {appearance === "media" ? (
         <SidebarHeader className="hidden gap-3 border-b border-sidebar-border px-4 pb-4 pt-5 md:flex">
-          <button
-            aria-label={homeAriaLabel ?? copy.appSidebar.homeAriaLabel}
-            className="flex h-11 items-center gap-3 rounded-xl px-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:justify-center"
-            data-brand-label={brandLabel ?? copy.appSidebar.brandLabel}
-            data-brand-scope={isSovereignOrigin ? "community" : "pirate"}
-            onClick={onHomeClick}
-            type="button"
-          >
-            {isSovereignOrigin ? (
-              <span
-                className="size-10 shrink-0 rounded-full border-2"
-                style={brandAccentColor ? { borderColor: brandAccentColor } : undefined}
-              >
-                <Avatar
-                  className="size-full"
-                  fallback={brandLabel ?? copy.appSidebar.brandLabel}
-                  fallbackIcon={(
-                    <Type as="span" variant="label">
-                      {communityBrandInitial(brandLabel)}
-                    </Type>
-                  )}
-                  src={brandImageSrc ?? undefined}
-                />
-              </span>
-            ) : (
-              <PirateBrandMark className="size-10 shrink-0" decorative={false} />
-            )}
-            <Type as="span" className="font-display uppercase tracking-wide group-data-[collapsible=icon]:hidden" variant="h3">
-              {brandLabel ?? copy.appSidebar.brandLabel}
-            </Type>
-          </button>
-          {brandAction}
+          {/* The sovereign production probe consumes data-brand-* as a presentation-scope contract. */}
+          {brandHref ? (
+            <a
+              aria-label={brandLabel ?? copy.appSidebar.brandLabel}
+              className="flex h-11 items-center gap-3 rounded-xl px-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:justify-center"
+              data-brand-label={brandLabel ?? copy.appSidebar.brandLabel}
+              data-brand-scope={isSovereignOrigin ? "community" : "pirate"}
+              href={brandHref}
+            >
+              {brandIdentity}
+            </a>
+          ) : (
+            <button
+              aria-label={homeAriaLabel ?? copy.appSidebar.homeAriaLabel}
+              className="flex h-11 items-center gap-3 rounded-xl px-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:justify-center"
+              data-brand-label={brandLabel ?? copy.appSidebar.brandLabel}
+              data-brand-scope={isSovereignOrigin ? "community" : "pirate"}
+              onClick={onHomeClick}
+              type="button"
+            >
+              {brandIdentity}
+            </button>
+          )}
           <button
             aria-label={searchLabel}
             className="flex h-11 items-center gap-3 rounded-xl bg-sidebar-accent px-3.5 text-sidebar-foreground/70 hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"

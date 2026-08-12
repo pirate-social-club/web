@@ -18,8 +18,7 @@ import {
   buildCommunityPath,
   formatCommunityRouteLabel,
 } from "@/lib/community-routing";
-import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
-import { CommunitySurfaceNavigation } from "@/app/community-surface-navigation";
+import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization"; import { CommunitySurfaceNavigation } from "@/app/community-surface-navigation";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { CommunityJoinVerificationChooserModal } from "@/components/compositions/community/join-verification-chooser-modal/community-join-verification-chooser-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
@@ -123,11 +122,9 @@ function viewerCanModerateCommunity(
 
 export function CommunityPage({
   communityId,
-  importedRootHostname,
   isImportedRoot = false,
 }: {
   communityId: string;
-  importedRootHostname?: string;
   isImportedRoot?: boolean;
 }) {
   const api = useApi();
@@ -928,14 +925,6 @@ export function CommunityPage({
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
-      {isImportedRoot ? (
-        <CommunitySurfaceNavigation
-          active="threads"
-          communityId={community?.id ?? preview.id}
-          importedRootHostname={importedRootHostname}
-          routeSlug={community?.route_slug ?? preview.route_slug}
-        />
-      ) : null}
       {ownsCommunity ? (
         <Button
           onClick={() => navigate(moderationEntryPath)}
@@ -1001,14 +990,6 @@ export function CommunityPage({
   const communityTitle = community?.display_name ?? preview.display_name;
   const communityAvatarRef = community?.avatar_ref ?? preview.avatar_ref;
   const communityBannerRef = community?.banner_ref ?? preview.banner_ref;
-  const surfaceNavigation = !isImportedRoot ? (
-    <CommunitySurfaceNavigation
-      active="threads"
-      communityId={community?.id ?? preview.id}
-      routeSlug={community?.route_slug ?? preview.route_slug}
-    />
-  ) : null;
-
   return (
     <>
       {gateModal}
@@ -1135,8 +1116,7 @@ export function CommunityPage({
           communityId={community?.id ?? preview.id}
           headerAction={headerAction}
           items={feedItems}
-          mobileHeaderAction={mobileHeaderAction}
-          navigation={surfaceNavigation}
+          mobileHeaderAction={mobileHeaderAction} navigation={<CommunitySurfaceNavigation active="threads" communityId={community?.id ?? preview.id} routeSlug={community?.route_slug ?? preview.route_slug} />}
           onSortChange={setActiveSort}
           routeLabel={routeLabel}
           routeVerified={Boolean(community?.namespace_verification)}

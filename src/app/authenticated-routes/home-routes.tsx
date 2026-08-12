@@ -30,10 +30,11 @@ import { Type } from "@/components/primitives/type";
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { buildLiveRoomFreedomHref } from "@/app/authenticated-helpers/live-room-launch";
 import { resolveHomeFeedCommunityId } from "@/app/authenticated-helpers/home-feed-presentation";
+import { selectRelevantHomeFeedProfiles } from "@/app/authenticated-helpers/home-feed-profile-selection";
 import { buildLiveRoomParticipants } from "@/app/authenticated-helpers/post-live-room-participants";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
-import { submitOptimisticPostVote, toPostVoteValue, updateHomeFeedEntryPostVote } from "@/app/authenticated-helpers/post-vote";
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
+import { useHomeFeedPostActions } from "@/app/authenticated-helpers/use-home-feed-post-actions";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
@@ -428,7 +429,6 @@ export function HomePage({ initialSort, videoFallbackReason }: {
     nextCursor,
   } = useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
-  const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const feedItemProjectionCacheRef = React.useRef(new Map<string, {
     dependencies: readonly unknown[];
     item: ReturnType<typeof toHomeFeedItem>;
@@ -537,71 +537,15 @@ export function HomePage({ initialSort, videoFallbackReason }: {
 
   const needsPostingVerification = !!session && session.onboarding.unique_human_verification_status !== "verified";
 
-  const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
-    const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);
-    if (!entry) return;
-    const voteValue = direction ? toPostVoteValue(direction) : "clear";
-    const voteGateData = voteGateDataByPostId.get(postId) ?? null;
-    try {
-      await runGatedCommunityAction({
-        action: "vote_post",
-        communityId: voteGateData?.preview.id ?? entry.community.id,
-        ...(voteGateData ? { gateData: voteGateData } : {}),
-        onAllowed: async (context) => {
-          const previousPost = entry.post;
-          await submitOptimisticPostVote({
-            altchaPayload: context?.altchaPayload,
-            clearVote: api.posts.clearVote,
-            direction,
-            locale: contentLocale,
-            onApply: (nextValue) => setFeedEntries((current) => updateHomeFeedEntryPostVote(current, postId, nextValue)),
-            onRollback: (restoredPost) => setFeedEntries((current) => current.map((currentEntry) => currentEntry.post.post.id === postId ? { ...currentEntry, post: restoredPost } : currentEntry)),
-            postId,
-            previousPost: previousPost ?? null,
-            queryClient,
-            requestIdsRef: voteRequestIdsRef,
-            vote: api.posts.vote,
-          });
-        },
-        postId,
-        voteValue,
-      });
-    } catch {
-      // The optimistic submitter already rolled back and displayed the error.
-    }
-  }, [api.posts.clearVote, api.posts.vote, contentLocale, feedEntries, queryClient, runGatedCommunityAction, setFeedEntries, voteGateDataByPostId]);
-
-  const deletePost = React.useCallback(async (postId: string) => {
-    const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);
-    if (!entry) return;
-    if (typeof window !== "undefined" && !window.confirm("Delete this post?")) return;
-
-    const previousEntries = feedEntries;
-    setFeedEntries((current) => current.filter((candidate) => candidate.post.post.id !== postId));
-    try {
-      await api.posts.delete(entry.post.post.community, postId);
-    } catch (nextError) {
-      setFeedEntries(previousEntries);
-      toast.error(getErrorMessage(nextError, "Could not delete this post."));
-    }
-  }, [api.posts, feedEntries, setFeedEntries]);
-
-  const cancelEvent = React.useCallback(async (postId: string) => {
-    const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);
-    if (!entry) return;
-    if (typeof window !== "undefined" && !window.confirm("Cancel this event?")) return;
-
-    const previousEntries = feedEntries;
-    try {
-      const updated = await api.posts.cancelEvent(entry.post.post.community, postId);
-      setFeedEntries((current) => current.map((candidate) => (
-        candidate.post.post.id === postId ? { ...candidate, post: updated } : candidate
-      )));
-    } catch (nextError) {
-      setFeedEntries(previousEntries);
-      toast.error(getErrorMessage(nextError, "Could not cancel this event."));
-    }
-  }, [api.posts, feedEntries, setFeedEntries]);
+  const { cancelEvent, deletePost, voteOnPost } = useHomeFeedPostActions({
+    api,
+    contentLocale,
+    feedEntries,
+    queryClient,
+    runGatedCommunityAction,
+    setFeedEntries,
+    voteGateDataByPostId,
+  });
   const feedItems = React.useMemo(() => {
     const activePostIds = new Set(feedEntries.map((entry) => entry.post.post.id));
     for (const postId of feedItemProjectionCacheRef.current.keys()) {
@@ -614,13 +558,7 @@ export function HomePage({ initialSort, videoFallbackReason }: {
     const assetId = entry.post.post.asset ?? undefined;
     const liveRoomId = entry.post.post.anchor_live_room ?? undefined;
     const liveRoomAccess = liveRoomId ? liveRoomAccessById[liveRoomId] : undefined;
-    const liveRoomParticipants = buildLiveRoomParticipants({
-      liveRoom: liveRoomAccess?.room,
-      postAnonymousLabel: entry.post.post.anonymous_label,
-      postAuthorUserId: entry.post.post.author_user,
-      postIdentityMode: entry.post.post.identity_mode,
-      profilesByUserId: authorProfiles,
-    });
+    const relevantProfiles = selectRelevantHomeFeedProfiles(entry, liveRoomAccess, authorProfiles);
     const liveRoomGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;
     const viewerIsLiveRoomHost = sameUserId(session?.user?.id, liveRoomAccess?.room.host_user)
       || Boolean(liveRoomId && sameUserId(session?.user?.id, entry.post.post.author_user));
@@ -649,7 +587,7 @@ export function HomePage({ initialSort, videoFallbackReason }: {
       : undefined;
     const dependencies = [
       entry,
-      authorProfiles,
+      ...relevantProfiles.map(([, profile]) => profile),
       cancelEvent,
       contentLocale,
       copy.common.showOriginal,
@@ -679,9 +617,17 @@ export function HomePage({ initialSort, videoFallbackReason }: {
       return cached.item;
     }
 
+    const relevantProfilesByUserId = Object.fromEntries(relevantProfiles);
+    const liveRoomParticipants = buildLiveRoomParticipants({
+      liveRoom: liveRoomAccess?.room,
+      postAnonymousLabel: entry.post.post.anonymous_label,
+      postAuthorUserId: entry.post.post.author_user,
+      postIdentityMode: entry.post.post.identity_mode,
+      profilesByUserId: relevantProfilesByUserId,
+    });
     const item = toHomeFeedItem(
       entry,
-      authorProfiles,
+      relevantProfilesByUserId,
       entry.post.post.post_type === "song" || entry.post.post.post_type === "video"
         ? {
           currentUserId: session?.user?.id,

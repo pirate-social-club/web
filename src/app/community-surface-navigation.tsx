@@ -5,6 +5,8 @@ import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
+import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
+import { usePublicCommunityQuery } from "@/lib/query/public-community-query";
 
 export type CommunitySurface = "threads" | "videos";
 
@@ -14,10 +16,9 @@ export function communitySurfaceHrefs(input: {
   routeSlug?: string | null;
 }): Record<CommunitySurface, string> {
   if (input.importedRootHostname) {
-    const root = input.importedRootHostname;
     return {
-      threads: `https://app.${root}/`,
-      videos: `https://${root}/`,
+      threads: `https://app.${input.importedRootHostname}/`,
+      videos: `https://${input.importedRootHostname}/`,
     };
   }
 
@@ -28,6 +29,11 @@ export function communitySurfaceHrefs(input: {
   };
 }
 
+/**
+ * Canonical community pages get a normal two-item view navigation. Imported app
+ * origins get one contextual link back to their sovereign video homepage; this
+ * is deliberately not a segmented cross-origin toggle.
+ */
 export function CommunitySurfaceNavigation({
   active,
   className,
@@ -54,7 +60,7 @@ export function CommunitySurfaceNavigation({
     return (
       <nav aria-label={copy.ariaLabel} className={className} data-surface-navigation="sovereign">
         <a
-          className="inline-flex h-11 items-center rounded-[var(--radius-lg)] border border-border-soft bg-background/90 px-4 shadow-sm backdrop-blur transition-colors hover:bg-muted"
+          className="inline-flex h-10 items-center rounded-[var(--radius-lg)] border border-border-soft bg-background/90 px-4 shadow-sm backdrop-blur transition-colors hover:bg-muted"
           href={hrefs[destination]}
         >
           <Type as="span" variant="label">{labels[destination]}</Type>
@@ -66,10 +72,7 @@ export function CommunitySurfaceNavigation({
   return (
     <nav
       aria-label={copy.ariaLabel}
-      className={cn(
-        "flex min-w-0 items-center gap-6 border-b border-border-soft",
-        className,
-      )}
+      className={cn("flex min-w-0 items-center gap-6 border-b border-border-soft", className)}
       data-surface-navigation="canonical"
     >
       {(["videos", "threads"] as const).map((surface) => (
@@ -89,4 +92,33 @@ export function CommunitySurfaceNavigation({
       ))}
     </nav>
   );
+}
+
+function CommunityVideoSurfaceNavigation({
+  className,
+  communityId,
+}: {
+  className?: string;
+  communityId: string;
+}) {
+  const contentLocale = useRouteContentLocale();
+  const preview = usePublicCommunityQuery(communityId, contentLocale).data;
+  return (
+    <CommunitySurfaceNavigation
+      active="videos"
+      className={className}
+      communityId={communityId}
+      routeSlug={preview?.route_slug}
+    />
+  );
+}
+
+export function communityVideoSurfaceNavigation(
+  enabled: boolean,
+  communityId: string | null,
+  className: string,
+) {
+  return enabled && communityId
+    ? <CommunityVideoSurfaceNavigation className={className} communityId={communityId} />
+    : null;
 }

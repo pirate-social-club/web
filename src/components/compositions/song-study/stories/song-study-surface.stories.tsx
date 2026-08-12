@@ -4,6 +4,7 @@ import { SongRewardOfferPill } from "@/components/compositions/rewards/reward-su
 
 import {
   SongStudySurface,
+  type SongStudyFillBlankExercise,
   type SongStudyMultipleChoiceExercise,
   type SongStudySayItBackExercise,
 } from "../song-study-surface";
@@ -48,6 +49,24 @@ const multipleChoiceExercise: SongStudyMultipleChoiceExercise = {
     { id: "correct", text: "Derivamos hacia donde va la corriente" },
     { id: "distractor-2", text: "Esperamos hasta que el viento cambie" },
     { id: "distractor-3", text: "Bailamos mientras sube la marea" },
+  ],
+};
+
+const fillBlankExercise: SongStudyFillBlankExercise = {
+  id: "line-7-fill-blank",
+  prompt: "Fill in the lyric.",
+  segments: [
+    { kind: "text", text: "We " },
+    { id: "blank_1", kind: "blank" },
+    { kind: "text", text: " where the " },
+    { id: "blank_2", kind: "blank" },
+    { kind: "text", text: " goes" },
+  ],
+  tokens: [
+    { id: "token_1", text: "current" },
+    { id: "token_2", text: "morning" },
+    { id: "token_3", text: "drift" },
+    { id: "token_4", text: "wait" },
   ],
 };
 
@@ -224,6 +243,41 @@ export const MultipleChoiceUnanswered: Story = {
         kind: "multiple_choice",
         attemptNumber: 1,
         exercise: multipleChoiceExercise,
+      }}
+    />
+  ),
+};
+
+export const FillBlankInProgress: Story = {
+  name: "Study / Fill blank — in progress",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      state={{
+        kind: "fill_blank",
+        attemptNumber: 1,
+        exercise: fillBlankExercise,
+        selectedTokenIds: ["token_3"],
+      }}
+    />
+  ),
+};
+
+export const FillBlankWrongReveal: Story = {
+  name: "Study / Fill blank — wrong reveal",
+  render: () => (
+    <SongStudySurface
+      {...baseProps}
+      state={{
+        kind: "fill_blank",
+        attemptNumber: 1,
+        correctPlacements: [
+          { blank_id: "blank_1", token_id: "token_3" },
+          { blank_id: "blank_2", token_id: "token_1" },
+        ],
+        exercise: fillBlankExercise,
+        result: "wrong",
+        selectedTokenIds: ["token_4", "token_1"],
       }}
     />
   ),

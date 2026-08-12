@@ -101,6 +101,10 @@ function blocksNewCampaign(campaign: RewardCampaign | null): boolean {
   ].includes(campaign.status);
 }
 
+function acceptsCampaignTopUp(campaign: RewardCampaign | null): campaign is RewardCampaign {
+  return campaign != null && ["scheduled", "active", "exhausted"].includes(campaign.status);
+}
+
 function campaignFundingTxHash(campaign: RewardCampaign | null): string | null {
   return (campaign as (RewardCampaign & { funding_tx_hash?: string | null }) | null)
     ?.funding_tx_hash ?? null;
@@ -201,27 +205,56 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     const storedCampaignId = terminal?.campaignId ?? pending?.campaignId
       ?? globalThis.localStorage?.getItem(campaignStorageKey(input.communityId, input.postId))
       ?? input.activeCampaignId;
+    const loadCampaign = async (): Promise<{ campaign: RewardCampaign | null; missingStored: boolean }> => {
+      let missingStored = false;
+      if (storedCampaignId) {
+        try {
+          const storedCampaign = await api.rewards.getCampaign(storedCampaignId);
+          if (!["ended", "canceled"].includes(storedCampaign.status)) {
+            return { campaign: storedCampaign, missingStored };
+          }
+          try {
+            return {
+              campaign: await api.rewards.getCampaignForSong(input.communityId!, input.postId),
+              missingStored,
+            };
+          } catch (error: unknown) {
+            if (isApiNotFoundError(error)) return { campaign: storedCampaign, missingStored };
+            throw error;
+          }
+        } catch (error: unknown) {
+          if (!isApiNotFoundError(error)) throw error;
+          missingStored = true;
+        }
+      }
+      try {
+        return {
+          campaign: await api.rewards.getCampaignForSong(input.communityId!, input.postId),
+          missingStored,
+        };
+      } catch (error: unknown) {
+        if (isApiNotFoundError(error)) return { campaign: null, missingStored };
+        throw error;
+      }
+    };
     void Promise.all([
       api.rewards.getCampaignCapabilities(input.postId),
-      storedCampaignId
-        ? api.rewards.getCampaign(storedCampaignId).then(
-          (nextCampaign) => ({ campaign: nextCampaign, missing: false }),
-          (error: unknown) => {
-            if (isApiNotFoundError(error)) return { campaign: null, missing: true };
-            throw error;
-          },
-        )
-        : Promise.resolve({ campaign: null, missing: false }),
+      loadCampaign(),
     ]).then(([nextCapabilities, storedCampaignResult]) => {
       if (cancelled) return;
       const storedCampaign = storedCampaignResult.campaign;
       setCapabilities(nextCapabilities);
       setCampaign(storedCampaign);
-      if (storedCampaignId && storedCampaignResult.missing) {
+      if (storedCampaignResult.missingStored) {
         globalThis.localStorage?.removeItem(campaignStorageKey(input.communityId!, input.postId));
         globalThis.localStorage?.removeItem(pendingFundingStorageKey(input.communityId!, input.postId));
         globalThis.localStorage?.removeItem(terminalFundingStorageKey(input.communityId!, input.postId));
-        return;
+      }
+      if (storedCampaign) {
+        globalThis.localStorage?.setItem(
+          campaignStorageKey(input.communityId!, input.postId),
+          storedCampaign.id,
+        );
       }
       if (storedCampaign) {
         setEligibleActivity(storedCampaign.eligible_activity);
@@ -240,16 +273,18 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       }
       const serverTransactionHash = campaignFundingTxHash(storedCampaign);
       const serverFunded = Boolean(storedCampaign && storedCampaign.funded_cents > 0);
-      if (
-        storedCampaign
+      const terminalAlreadyReflectedByServer = Boolean(
+        terminal
+        && storedCampaign?.id === terminal.campaignId
         && serverFunded
         && ["scheduled", "active"].includes(storedCampaign.status)
-      ) {
-        globalThis.localStorage?.removeItem(pendingFundingStorageKey(input.communityId!, input.postId));
+        && serverTransactionHash === terminal.transactionHash,
+      );
+      if (terminalAlreadyReflectedByServer) {
         globalThis.localStorage?.removeItem(terminalFundingStorageKey(input.communityId!, input.postId));
         dispatchFundingWorkflow({
           type: "activated",
-          transactionHash: serverTransactionHash ?? pending?.transactionHash ?? terminal?.transactionHash ?? null,
+          transactionHash: serverTransactionHash,
         });
       } else if (terminal && storedCampaign?.id === terminal.campaignId) {
         dispatchFundingWorkflow({
@@ -322,6 +357,15 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
             status: pending.quote.expires_at <= Math.floor(Date.now() / 1_000) ? "compose" : "quote",
           });
         }
+      } else if (
+        storedCampaign
+        && serverFunded
+        && ["scheduled", "active"].includes(storedCampaign.status)
+      ) {
+        dispatchFundingWorkflow({
+          type: "activated",
+          transactionHash: serverTransactionHash,
+        });
       }
     }).catch(() => {
       if (!cancelled) setCapabilities(null);
@@ -438,7 +482,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       }
       const quoteKeyStorage = quoteRequestStorageKey(targetCampaign.id);
       const nextQuote = await api.rewards.createFundingQuote(targetCampaign.id, {
-        amount_cents: targetCampaign.budget_cents,
+        amount_cents: existingCampaign ? plan.budgetCents : targetCampaign.budget_cents,
         idempotency_key: requestKey(quoteKeyStorage, "reward_quote"),
         reward_identity_provider: targetCampaign.reward_identity_provider,
       });
@@ -680,13 +724,17 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     }
   }, [campaign, confirmSubmittedFunding, createQuote, fundingWallet, input.communityId, input.postId, quote]);
 
-  const hasCampaignConflict = Boolean(input.activeCampaignId) || blocksNewCampaign(campaign);
+  const campaignAcceptsTopUp = acceptsCampaignTopUp(campaign);
+  const hasCampaignConflict = (Boolean(input.activeCampaignId) || blocksNewCampaign(campaign))
+    && !campaignAcceptsTopUp;
   const thirdPartyBlocked = !input.viewerIsAuthor && !policyAllowed;
   const authoritativeEligibleActivity = sheetState === "compose"
     ? eligibleActivity
     : campaign?.eligible_activity ?? eligibleActivity;
   const activityUnavailable = Boolean(
-    capabilities && !capabilities.eligible_activities.includes(authoritativeEligibleActivity),
+    !campaign
+    && capabilities
+    && !capabilities.eligible_activities.includes(authoritativeEligibleActivity),
   );
 
   const handleConfirm = React.useCallback(() => {
@@ -696,6 +744,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       if (nationalityPricingEnabled && payoutTiers.length === 0) return;
     }
     if (sheetState === "compose") void createQuote(campaign?.status === "draft" ? campaign : null);
+    if (sheetState === "top_up") void createQuote(campaign);
     if (sheetState === "quote") void sendFunding();
   }, [activityUnavailable, busy, campaign, createQuote, hasCampaignConflict, nationalityPricingEnabled, payoutTiers.length, sendFunding, sheetState, thirdPartyBlocked]);
 
@@ -704,14 +753,23 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       input.requestAuth();
       return;
     }
-    if (campaign && ["scheduled", "active"].includes(campaign.status)) {
-      dispatchFundingWorkflow({
-        type: "activated",
-        transactionHash: transactionHash ?? campaignFundingTxHash(campaign),
-      });
-    }
-    else if (sheetState === "funding-review") {
+    if (sheetState === "funding-review") {
       // Terminal review is intentionally sticky until an explicit retry is allowed.
+    }
+    else if (
+      quote
+      && transactionHash
+      && ["confirming", "awaiting-finality"].includes(sheetState)
+    ) {
+      dispatchFundingWorkflow({ type: "awaiting-finality", transactionHash });
+    }
+    else if (quote && sheetState === "quote") {
+      if (quote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(campaign);
+      else dispatchFundingWorkflow({ type: "show", status: "quote" });
+    }
+    else if (campaignAcceptsTopUp) {
+      setQuote(null);
+      dispatchFundingWorkflow({ type: "show", status: "top_up" });
     }
     else if (campaignPayoutTiers(campaign).length > 0 && !tierFundingEnabled) {
       dispatchFundingWorkflow({ type: "show", status: "draft-preview" });
@@ -720,13 +778,10 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     else if (!quote) {
       dispatchFundingWorkflow({ type: "restart" });
     }
-    else if (transactionHash) {
-      dispatchFundingWorkflow({ type: "awaiting-finality", transactionHash });
-    }
     else if (quote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(campaign);
     else dispatchFundingWorkflow({ type: "show", status: "quote" });
     setSheetOpen(true);
-  }, [campaign, createQuote, input, quote, sheetState, tierFundingEnabled, transactionHash]);
+  }, [campaign, campaignAcceptsTopUp, createQuote, input, quote, sheetState, tierFundingEnabled, transactionHash]);
 
   const updatePolicy = React.useCallback(async (allowed: boolean) => {
     if (!input.communityId || policyUpdateInFlight.current) return;
@@ -788,7 +843,9 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       canRestartFunding: terminalCode === "funding_failed",
       budgetDisplayLabel: formatUsdLabel((plan?.budgetCents ?? 0) / 100) ?? "$0.00",
       budgetLabel: budgetInput,
-      budgetPresets: ["$5.00", "$10.00", "$25.00"],
+      budgetPresets: sheetState === "top_up"
+        ? ["$10.00", "$25.00", "$50.00"]
+        : ["$5.00", "$10.00", "$25.00"],
       completionRangeLabel,
       dailyRewardLabel: dailyRewardInput,
       dailyRewardDisplayLabel: plan?.dailyRewardCents != null

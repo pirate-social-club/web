@@ -137,6 +137,13 @@ export function createRewardsApi(request: ApiRequest) {
         method: "POST",
         body: JSON.stringify(input),
       }),
+    getCampaignForSong: (communityId: string, postId: string): Promise<RewardCampaign> =>
+      request<RewardCampaign>(
+        buildQueryPath("/reward_campaigns", {
+          community_id: communityId,
+          post_id: postId,
+        }),
+      ),
     getCampaign: (campaignId: string): Promise<RewardCampaign> =>
       request<RewardCampaign>(`/reward_campaigns/${encodeURIComponent(campaignId)}`),
 

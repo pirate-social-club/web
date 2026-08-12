@@ -28,6 +28,7 @@ export type AppContext = {
   locale?: UiLocaleCode;
   seoMetadata?: SeoMetadata | null;
   sovereignRouteMismatch?: boolean;
+  surfaceNavigationHref?: string;
   theme?: ThemeMode;
   walletInteractive?: boolean;
 };

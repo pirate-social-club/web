@@ -9,8 +9,11 @@ set -euo pipefail
 html_file="$(mktemp)"
 app_html_file="$(mktemp)"
 canonical_html_file="$(mktemp)"
+canonical_threads_html_file="$(mktemp)"
+inventory_apex_html_file="$(mktemp)"
+inventory_app_html_file="$(mktemp)"
 namespace_file="$(mktemp)"
-trap 'rm -f "$html_file" "$app_html_file" "$canonical_html_file" "$namespace_file"' EXIT
+trap 'rm -f "$html_file" "$app_html_file" "$canonical_html_file" "$canonical_threads_html_file" "$inventory_apex_html_file" "$inventory_app_html_file" "$namespace_file"' EXIT
 
 # Public PKI cannot validate a DANE-only HNS certificate. --insecure disables
 # only that mismatched trust model; --resolve still exercises the real Caddy →
@@ -107,7 +110,7 @@ for (const namespace of body.namespaces ?? []) {
   const community = namespace.community ?? {};
   const id = typeof community.id === "string" ? community.id.trim() : "";
   const slug = typeof community.route_slug === "string" ? community.route_slug.trim() : "";
-  if (root && id && slug) process.stdout.write(`${root}\t${id}\t${slug}\n`);
+  if (root && id && slug) process.stdout.write(`${root}\t${id}\t${slug}\t${encodeURIComponent(slug)}\n`);
 }
 NODE
 )
@@ -119,14 +122,14 @@ fi
 
 inventory_has_probe_root=false
 for row in "${namespace_rows[@]}"; do
-  IFS=$'\t' read -r root community_id route_slug <<< "$row"
+  IFS=$'\t' read -r root community_id route_slug encoded_route_slug <<< "$row"
   if [[ "$root" == "$HNS_PROBE_ROOT" && "$community_id" == "$HNS_PROBE_COMMUNITY_ID" ]]; then
     inventory_has_probe_root=true
   fi
 
-  root_apex_status="$(request_status "$root" "/" /dev/null)"
+  root_apex_status="$(request_status "$root" "/" "$inventory_apex_html_file")"
   app_host="app.${root}"
-  app_status="$(request_status "$app_host" "/" /dev/null)"
+  app_status="$(request_status "$app_host" "/" "$inventory_app_html_file")"
   apex_cors="$(api_header_value "https://${root}" "/public-communities/${community_id}/feed/videos")"
   app_cors="$(api_header_value "https://${app_host}" "/public-communities/${community_id}/feed/videos")"
   apex_cors_status="${apex_cors%%$'\t'*}"
@@ -140,8 +143,24 @@ for row in "${namespace_rows[@]}"; do
     echo "HNS root parity failed: root=${root} apex=${root_apex_status} app=${app_status} apex_cors=${apex_cors_status}/${apex_cors_origin:-none} app_cors=${app_cors_status}/${app_cors_origin:-none}" >&2
     exit 1
   fi
-  printf 'root=%s apex=%s app=%s apex_cors=%s app_cors=%s\n' \
-    "$root" "$root_apex_status" "$app_status" "$apex_cors_origin" "$app_cors_origin"
+
+  canonical_threads_status="$(public_request_status "/c/${encoded_route_slug}/threads" "$canonical_threads_html_file")"
+  canonical_videos_status="$(public_request_status "/c/${encoded_route_slug}/videos" "$canonical_html_file")"
+  if [[ "$canonical_threads_status" != "200" || "$canonical_videos_status" != "200" ]]; then
+    echo "surface navigation source failed: community_id=${community_id} threads=${canonical_threads_status} videos=${canonical_videos_status}" >&2
+    exit 1
+  fi
+  node scripts/ci/sovereign-context.mjs \
+    --navigation-only \
+    --html "$inventory_apex_html_file" \
+    --app-html "$inventory_app_html_file" \
+    --canonical-html "$canonical_html_file" \
+    --canonical-threads-html "$canonical_threads_html_file" \
+    --root "$root" \
+    --community-id "$community_id" \
+    --route-slug "$route_slug"
+  printf 'community_id=%s apex=%s app=%s cors=ok navigation=ok\n' \
+    "$community_id" "$root_apex_status" "$app_status"
 done
 
 if [[ "$inventory_has_probe_root" != true ]]; then

@@ -43,4 +43,11 @@ describe("sovereign production context workflow", () => {
     expect(sovereignProbe).toContain("--write-out '%{http_code}'");
     expect(sovereignProbe).toContain('if [[ "$namespace_status" != "200" ]]');
   });
+
+  test("checks all four reciprocal navigation edges for every activated root", () => {
+    expect(sovereignProbe).toContain('"/c/${encoded_route_slug}/threads"');
+    expect(sovereignProbe).toContain('"/c/${encoded_route_slug}/videos"');
+    expect(sovereignProbe).toContain("--navigation-only");
+    expect(sovereignProbe).toContain("--canonical-threads-html");
+  });
 });

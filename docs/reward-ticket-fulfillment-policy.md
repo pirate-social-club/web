@@ -60,9 +60,21 @@ state and evidence allow a worker to resume without buying a duplicate ticket.
 | `reserved` | Hold the full ceiling | Purchase is queued |
 | `submitted` | Keep the full ceiling reserved | Transaction awaits confirmation |
 | `confirmed` | Move actual cost to fulfilled and release the delta | Ticket was delivered |
-| `failed` | Release the full reservation | Terminal failure; safe to retry |
+| `failed` | Release the full reservation | Terminal failure; a retry starts with price admission |
 | `reservation_expired` | Release the full reservation | Work did not start before its claim expired |
 | `needs_review` | Keep the full reservation | Outcome is uncertain and must be reconciled |
+
+`needs_review` is a leased reconciliation state, not a permanent outcome. Each
+effect has a finite `review_deadline_at`, a `next_reconcile_at`, and an attempt
+count. Automated reconciliation must move it to `confirmed` when chain evidence
+proves delivery or to `failed` when evidence proves the purchase did not land.
+A deadline breach pages the operator and creates an owned resolution item; the
+operator records the deciding evidence and completes one of those same terminal
+edges. If the chain outcome is still ambiguous, the campaign enters
+`operational_hold`, the reservation remains protected, and the incident stays
+open rather than silently consuming availability. The numeric retry cadence,
+review SLA, and escalation threshold are release-blocking parameters for step 5.
+There is no close-without-resolution or evidence-free release action.
 
 A confirmed effect records the transaction hash, ticket identifier, actual
 atomic payment, actual cents cost, block evidence, and confirmation status.

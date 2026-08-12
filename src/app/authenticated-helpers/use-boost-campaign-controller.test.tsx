@@ -6,7 +6,7 @@ import { ApiError } from "@/lib/api/client";
 
 installDomGlobals();
 
-const calls = { campaignRead: 0, confirm: 0, create: 0, quote: 0, transfer: 0 };
+const calls = { campaignRead: 0, confirm: 0, create: 0, policyUpdate: 0, quote: 0, transfer: 0 };
 const createKeys: string[] = [];
 const quoteKeys: string[] = [];
 let connectedWallets: Array<{ address: string }> = [];
@@ -18,6 +18,7 @@ let confirmStatus = "confirmed";
 let confirmError: unknown = null;
 let confirmGate: Promise<void> | null = null;
 let createError: unknown = null;
+let createGate: Promise<void> | null = null;
 let getCampaignError: unknown = null;
 let quoteError: unknown = null;
 let transferError: unknown = null;
@@ -25,6 +26,7 @@ let transferFailAfterSubmit = false;
 let postEligible = true;
 let firstQuoteExpired = false;
 let policyError: unknown = null;
+let policyUpdateGate: Promise<void> | null = null;
 let policyBlocked = false;
 let nationalityTierCapability: unknown = "unavailable";
 let nationalityTierPreview = false;
@@ -101,11 +103,14 @@ const fakeApi = {
       if (policyError) throw policyError;
       return { third_party_rewards: policyBlocked ? "blocked" : "allowed" };
     },
-    updateSongOwnerPolicy: async (_community: string, _post: string, input: { third_party_rewards: string }) => ({
-      third_party_rewards: input.third_party_rewards,
-    }),
+    updateSongOwnerPolicy: async (_community: string, _post: string, input: { third_party_rewards: string }) => {
+      calls.policyUpdate += 1;
+      if (policyUpdateGate) await policyUpdateGate;
+      return { third_party_rewards: input.third_party_rewards };
+    },
     createCampaign: async (body: { idempotency_key: string } & Record<string, unknown>) => {
       calls.create += 1;
+      if (createGate) await createGate;
       lastCreateBody = body;
       campaignProvider = body.reward_identity_provider as typeof campaignProvider;
       createKeys.push(body.idempotency_key);
@@ -163,11 +168,13 @@ mock.module("@/lib/commerce/routed-checkout", () => ({
 }));
 
 const {
-  boostFundingErrorMessage,
-  classifyBoostFundingError,
   useBoostCampaignController,
   useBoostMenuEligibility,
 } = await import("./use-boost-campaign-controller");
+const {
+  boostFundingErrorMessage,
+  classifyBoostFundingError,
+} = await import("./boost-funding-errors");
 
 test("turns wallet chain mismatch internals into actionable funding copy", () => {
   const error = new Error(
@@ -249,6 +256,7 @@ beforeEach(() => {
   calls.confirm = 0;
   calls.campaignRead = 0;
   calls.create = 0;
+  calls.policyUpdate = 0;
   calls.quote = 0;
   calls.transfer = 0;
   createKeys.length = 0;
@@ -259,6 +267,7 @@ beforeEach(() => {
   confirmError = null;
   confirmGate = null;
   createError = null;
+  createGate = null;
   getCampaignError = null;
   quoteError = null;
   transferError = null;
@@ -266,6 +275,7 @@ beforeEach(() => {
   postEligible = true;
   firstQuoteExpired = false;
   policyError = null;
+  policyUpdateGate = null;
   policyBlocked = false;
   nationalityTierCapability = "unavailable";
   nationalityTierPreview = false;
@@ -408,6 +418,64 @@ describe("useBoostCampaignController", () => {
     // sticky and also gates the funding confirm CTA via thirdPartyBlocked.
     await waitFor(() => expect(view.result.current.policySheetProps.allowThirdPartyRewards).toBe(true));
     await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+  });
+
+  test("keeps policy updates and campaign funding independently busy", async () => {
+    let releasePolicyUpdate: (() => void) | undefined;
+    let releaseCampaignCreate: (() => void) | undefined;
+    policyUpdateGate = new Promise<void>((resolve) => { releasePolicyUpdate = resolve; });
+    createGate = new Promise<void>((resolve) => { releaseCampaignCreate = resolve; });
+    const view = renderHook(() => useBoostCampaignController({
+      ...input(),
+      viewerIsAuthor: true,
+    }));
+    await waitFor(() => expect(view.result.current.canManagePolicy).toBe(true));
+
+    act(() => {
+      view.result.current.policySheetProps.onAllowThirdPartyRewardsChange(false);
+      view.result.current.policySheetProps.onAllowThirdPartyRewardsChange(false);
+    });
+    await waitFor(() => expect(view.result.current.policySheetProps.busy).toBe(true));
+    expect(calls.policyUpdate).toBe(1);
+    expect(view.result.current.sheetProps.busy).toBe(false);
+
+    act(() => {
+      view.result.current.openBoost();
+      view.result.current.sheetProps.onConfirm?.();
+    });
+    await waitFor(() => expect(calls.create).toBe(1));
+    expect(view.result.current.sheetProps.busy).toBe(true);
+    expect(view.result.current.policySheetProps.busy).toBe(true);
+
+    await act(async () => releaseCampaignCreate?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    expect(view.result.current.sheetProps.busy).toBe(false);
+    expect(view.result.current.policySheetProps.busy).toBe(true);
+
+    await act(async () => releasePolicyUpdate?.());
+    await waitFor(() => expect(view.result.current.policySheetProps.busy).toBe(false));
+    expect(view.result.current.policySheetProps.allowThirdPartyRewards).toBe(false);
+    expect(calls.policyUpdate).toBe(1);
+  });
+
+  test("ignores a policy update that completes after the post changes", async () => {
+    let releasePolicyUpdate: (() => void) | undefined;
+    policyUpdateGate = new Promise<void>((resolve) => { releasePolicyUpdate = resolve; });
+    const view = renderHook(
+      (props: ReturnType<typeof input>) => useBoostCampaignController(props),
+      { initialProps: { ...input(), viewerIsAuthor: true } },
+    );
+    await waitFor(() => expect(view.result.current.canManagePolicy).toBe(true));
+
+    act(() => view.result.current.policySheetProps.onAllowThirdPartyRewardsChange(false));
+    await waitFor(() => expect(view.result.current.policySheetProps.busy).toBe(true));
+    view.rerender({ ...input(), postId: "pst_test_2", viewerIsAuthor: true });
+    await waitFor(() => expect(view.result.current.policySheetProps.busy).toBe(false));
+    await waitFor(() => expect(view.result.current.policySheetProps.allowThirdPartyRewards).toBe(true));
+
+    await act(async () => releasePolicyUpdate?.());
+    expect(view.result.current.policySheetProps.allowThirdPartyRewards).toBe(true);
+    expect(view.result.current.policySheetProps.errorMessage).toBeUndefined();
   });
 
   test("creates once and re-quotes the existing draft campaign", async () => {

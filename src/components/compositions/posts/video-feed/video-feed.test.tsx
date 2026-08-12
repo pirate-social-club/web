@@ -224,6 +224,19 @@ describe("VideoFeed", () => {
     expect(view.queryByRole("button", { name: /Open .* by/u })).toBeNull();
   });
 
+  test("marks sovereign creator links as opening in Pirate", () => {
+    const view = render(<VideoFeed
+      openPublisherInPirateLabel="Open in Pirate"
+      items={[{
+        ...item,
+        publisher: { ...item.publisher, href: "https://pirate.sc/u/creator", kind: "profile", external: true },
+      }]}
+    />);
+
+    expect(view.getAllByRole("link", { name: /Open in Pirate/u })).toHaveLength(2);
+    expect(view.container.querySelectorAll('[data-publisher-external="true"]')).toHaveLength(2);
+  });
+
   test("presents translated caption direction and toggles back to the authored caption", () => {
     const view = render(<VideoFeed items={[{
       ...item,

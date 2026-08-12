@@ -11,11 +11,10 @@ import {
   updateHomeFeedEntryPostVote,
 } from "@/app/authenticated-helpers/post-vote";
 import { navigate } from "@/app/router";
-import { PublicRouteMessageState } from "@/app/public-route-states";
+import { communityVideoSurfaceNavigation } from "@/app/community-surface-navigation"; import { PublicRouteMessageState } from "@/app/public-route-states";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
-import { resolveVideoPublisherHref } from "@/app/authenticated-helpers/video-publisher-href";
-import { useVideoViewerSongCapabilities } from "@/app/authenticated-helpers/use-video-viewer-song-capabilities";
+import { resolveVideoPublisher } from "@/app/authenticated-helpers/video-publisher-href"; import { useVideoViewerSongCapabilities } from "@/app/authenticated-helpers/use-video-viewer-song-capabilities";
 import {
   currentRelativePath,
   readVideoViewerReturnState,
@@ -807,7 +806,7 @@ export function VideoHomePage({
           shareActions,
           publisher: {
             ...video.publisher,
-            href: resolveVideoPublisherHref({
+            ...resolveVideoPublisher({
               href: item.post.byline.author?.href,
               importedRootHostname,
               kind: "profile",
@@ -823,7 +822,7 @@ export function VideoHomePage({
           publisher: {
             avatarSrc: item.post.byline.community?.avatarSrc,
             handle: item.post.byline.community?.label ?? video.publisher.handle,
-            href: resolveVideoPublisherHref({
+            ...resolveVideoPublisher({
               href: item.post.byline.community?.href,
               importedRootHostname,
               kind: "community",
@@ -1200,6 +1199,7 @@ export function VideoHomePage({
     if (!communityId) return <HomePage videoFallbackReason="error" />;
     return (
       <div className="flex min-h-dvh w-full flex-col items-center bg-background pt-5">
+        {communityVideoSurfaceNavigation(Boolean(communityId && !importedRootHostname), communityId, "w-full px-3 pt-[calc(env(safe-area-inset-top)+4rem)] md:px-5 md:pt-0 lg:px-8")}
         <PublicRouteMessageState
           description="This community's video feed could not be loaded. Its threads are still available."
           title="Video feed unavailable"
@@ -1211,6 +1211,7 @@ export function VideoHomePage({
     if (!communityId) return <HomePage videoFallbackReason="empty" />;
     return (
       <div className="flex min-h-dvh w-full flex-col items-center bg-background pt-5">
+        {communityVideoSurfaceNavigation(Boolean(communityId && !importedRootHostname), communityId, "w-full px-3 pt-[calc(env(safe-area-inset-top)+4rem)] md:px-5 md:pt-0 lg:px-8")}
         <PublicRouteMessageState
           description="This community has not published any videos yet."
           title="No videos yet"
@@ -1225,9 +1226,7 @@ export function VideoHomePage({
     : copy.common.commentsHeading;
 
   return (
-    <div className={cn(
-      "min-h-0 w-full flex-1 bg-background",
-    )}>
+    <div className={cn("min-h-0 w-full flex-1 bg-background", Boolean(communityId && !importedRootHostname) && "flex h-lvh flex-col md:h-dvh")}>
       {gateModal}
       {ageSelfPrompt ? (
         <SelfVerificationModal
@@ -1243,8 +1242,9 @@ export function VideoHomePage({
           title={ageSelfPrompt.title}
         />
       ) : null}
+      {communityVideoSurfaceNavigation(Boolean(communityId && !importedRootHostname), communityId, "shrink-0 px-3 pt-[calc(env(safe-area-inset-top)+4rem)] md:px-5 md:pt-0 lg:px-8")}
       <FeedPanelLayout
-        className={VIDEO_FEED_VIEWPORT_CLASS}
+        className={Boolean(communityId && !importedRootHostname) ? "min-h-0 flex-1" : VIDEO_FEED_VIEWPORT_CLASS}
         panel={panelState.kind === "comments" ? (
           <FeedSidePanel
             closeLabel={copy.common.close}
@@ -1296,7 +1296,7 @@ export function VideoHomePage({
         className="h-full"
         downvoteLabel={copy.common.downvote}
         followLabel={copy.home.videoPublisherFollow}
-        followingLabel={copy.home.videoPublisherFollowing}
+        followingLabel={copy.home.videoPublisherFollowing} openPublisherInPirateLabel={copy.publicProfile.openInPirate}
         feedRequestId={feedRequestIdRef.current ?? undefined}
         initialItemId={restored?.itemId}
         initialMuted={restored?.muted}

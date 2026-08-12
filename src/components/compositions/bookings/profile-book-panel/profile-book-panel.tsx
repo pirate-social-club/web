@@ -5,14 +5,14 @@ import * as React from "react";
 import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import { Type } from "@/components/primitives/type";
+import { formatCentsAsStartingUsd } from "@/lib/formatting/currency";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import {
-  formatCentsAsStartingUsd,
   formatTzLabel,
   getSlotUniformity,
-} from "@/components/compositions/bookings/fixtures/bookings-format";
+} from "@/components/compositions/bookings/booking-format";
 
 import { AvailabilityCalendar } from "@/components/compositions/bookings/availability-calendar/availability-calendar";
 import type { IanaTz, ResolvedSlot } from "@/components/compositions/bookings/view-models";

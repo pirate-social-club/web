@@ -1,13 +1,13 @@
 
 import { Type } from "@/components/primitives/type";
+import { formatCentsAsUsdc } from "@/lib/formatting/currency";
 import { cn } from "@/lib/utils";
 import type { IanaTz, ResolvedSlot } from "../view-models";
 
 import {
-  formatCentsAsUsdc,
   formatSlotDuration,
   formatSlotTime,
-} from "../fixtures/bookings-format";
+} from "../booking-format";
 
 export interface SlotPickerProps {
   slots: ResolvedSlot[];

@@ -16,8 +16,7 @@ import { FormNote } from "@/components/primitives/form-layout";
 import { Separator } from "@/components/primitives/separator";
 import { Type } from "@/components/primitives/type";
 import type { BookingCancellationPreview } from "@/lib/api/bookings-types";
-
-import { formatCentsAsUsdc } from "../fixtures/bookings-format";
+import { formatCentsAsUsdc } from "@/lib/formatting/currency";
 
 export type BookingCancellationDialogState = "ready" | "submitting" | "terms-changed" | "error";
 

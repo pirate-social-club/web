@@ -3,6 +3,7 @@ const IMMUTABLE_CACHE_NAME = `${CACHE_PREFIX}assets-v3`;
 const RUNTIME_CACHE_NAME = `${CACHE_PREFIX}runtime-v3`;
 const ACTIVE_CACHE_NAMES = new Set([IMMUTABLE_CACHE_NAME, RUNTIME_CACHE_NAME]);
 const MAX_IMMUTABLE_ENTRIES = 256;
+const MAX_RUNTIME_ENTRIES = 64;
 const STATIC_EXTENSIONS = new Set([
   ".js",
   ".css",
@@ -109,7 +110,13 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     fetch(request).then((response) => {
-      cacheSuccessfulResponse(event, RUNTIME_CACHE_NAME, request, response);
+      cacheSuccessfulResponse(
+        event,
+        RUNTIME_CACHE_NAME,
+        request,
+        response,
+        MAX_RUNTIME_ENTRIES,
+      );
       return response;
     }).catch(async (error) => {
       const cached = await caches.open(RUNTIME_CACHE_NAME).then((cache) => cache.match(request));

@@ -111,6 +111,20 @@ describe("service worker static caching", () => {
     expect((await harness.fetch(url)).body).toBe(`network:${url}`);
   });
 
+  test("bounds runtime static files while preserving recent offline entries", async () => {
+    for (let index = 0; index < 68; index += 1) {
+      await harness.fetch(`https://pirate.sc/mascots/mascot-${index}.svg`);
+    }
+    const runtime = harness.stores.get("pirate-pwa-runtime-v3");
+    expect(runtime?.size).toBe(64);
+    expect(runtime?.has("https://pirate.sc/mascots/mascot-0.svg")).toBe(false);
+
+    harness.setFetcher(async () => {
+      throw new Error("offline");
+    });
+    expect((await harness.fetch("https://pirate.sc/mascots/mascot-67.svg")).status).toBe(200);
+  });
+
   test("serves immutable assets cache-first and bounds old content hashes", async () => {
     for (let index = 0; index < 260; index += 1) {
       await harness.fetch(`https://pirate.sc/assets/chunk-${index}.js`);

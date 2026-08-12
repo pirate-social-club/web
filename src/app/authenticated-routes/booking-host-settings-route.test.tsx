@@ -64,21 +64,23 @@ afterEach(() => {
 
 describe("BookingHostSettingsPage", () => {
   test("requires auth before loading host booking settings", () => {
-    const { getAllByText, getByText, queryByText } = render(<BookingHostSettingsPage />);
+    const { container, getAllByText, getByText, queryByText } = render(<BookingHostSettingsPage />);
 
     expect(getAllByText("Sign in").length).toBeGreaterThan(0);
     expect(getByText("Sign in to manage settings.")).toBeTruthy();
     expect(queryByText("Loading booking settings…")).toBeNull();
     expect(bookingHookCalls).toBe(0);
+    expect(container.querySelector('[data-route-spacing-owner="standard"]')).toBeTruthy();
   });
 
   test("loads booking settings for an authenticated profile", () => {
     sessionValue = { profile: { id: "usr_route" } };
 
-    const { getByText, queryByText } = render(<BookingHostSettingsPage />);
+    const { container, getByText, queryByText } = render(<BookingHostSettingsPage />);
 
     expect(getByText("Loading booking settings…")).toBeTruthy();
     expect(queryByText("Sign in to manage settings.")).toBeNull();
     expect(bookingHookCalls).toBe(1);
+    expect(container.querySelector('[data-route-spacing-owner="standard"]')).toBeTruthy();
   });
 });

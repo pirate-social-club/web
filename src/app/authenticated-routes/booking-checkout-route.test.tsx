@@ -38,7 +38,9 @@ mock.module("@/lib/auth-origin", () => ({
 mock.module("@/components/primitives/sonner", () => ({ toast: { error: () => {} } }));
 mock.module("@/app/router", () => ({ navigate: () => {} }));
 mock.module("@/components/compositions/app/page-shell", () => ({
-  StandardRoutePage: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  StandardRoutePage: ({ children }: { children: React.ReactNode }) => (
+    <div data-route-spacing-owner="standard">{children}</div>
+  ),
 }));
 // Pay-time only; stub so importing the route never pulls the on-chain transfer stack into the test.
 mock.module("@/lib/commerce/routed-checkout", () => ({
@@ -154,6 +156,7 @@ describe("BookingCheckoutPage", () => {
       expect(document.body.textContent).toContain("在课程开始至少 24 小时前取消可获得全额退款");
       expect(document.body.textContent).toContain("付款将保留至课程完成");
     });
+    expect(document.querySelector('[data-route-spacing-owner="standard"]')).toBeTruthy();
   });
 
   // Regression for the first-render expiry race: a freshly quoted hold with a FUTURE expiry must land on

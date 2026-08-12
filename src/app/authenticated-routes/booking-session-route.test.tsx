@@ -114,6 +114,8 @@ describe("BookingSessionPage", () => {
 
     await view.findByTestId("booking-video-stage");
 
+    expect(view.container.querySelector('[data-route-spacing-owner="standard"]')).toBeTruthy();
+
     expect(fakeApi.bookings.getBooking).toHaveBeenCalledWith("bkg_route");
     expect(fakeApi.bookings.startBookingSession).toHaveBeenCalledWith("bkg_route");
     expect(fakeApi.bookings.attachBookingSession).toHaveBeenCalledWith("bkg_route");

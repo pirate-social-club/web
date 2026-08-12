@@ -48,6 +48,26 @@ describe("AppSidebar spine badges", () => {
   });
 });
 
+describe("AppSidebar sovereign brand", () => {
+  test("uses the community identity as a real cross-origin link", () => {
+    const markup = renderToStaticMarkup(
+      <SidebarProvider>
+        <AppSidebar
+          appearance="media"
+          brandHref="https://app.community-root/"
+          brandLabel="Community"
+          isSovereignOrigin
+          primaryItems={[]}
+        />
+      </SidebarProvider>,
+    );
+
+    expect(markup).toContain('href="https://app.community-root/"');
+    expect(markup).toContain('data-brand-scope="community"');
+    expect(markup).not.toContain('data-surface-navigation');
+  });
+});
+
 describe("AppSidebar sections", () => {
   function renderSections(sections: AppSidebarSection[]) {
     return renderToStaticMarkup(

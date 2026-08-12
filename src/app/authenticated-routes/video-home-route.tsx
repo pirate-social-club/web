@@ -11,10 +11,10 @@ import {
   updateHomeFeedEntryPostVote,
 } from "@/app/authenticated-helpers/post-vote";
 import { navigate } from "@/app/router";
-import { CommunitySurfaceNavigation } from "@/app/community-surface-navigation";
 import { PublicRouteMessageState } from "@/app/public-route-states";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
+import { resolveVideoPublisherHref } from "@/app/authenticated-helpers/video-publisher-href";
 import { useVideoViewerSongCapabilities } from "@/app/authenticated-helpers/use-video-viewer-song-capabilities";
 import {
   currentRelativePath,
@@ -77,7 +77,6 @@ import { updateSessionUser, useSession } from "@/lib/api/session-store";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { interpolateMessage } from "@/lib/route-messages";
 import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
-import { usePublicCommunityQuery } from "@/lib/query/public-community-query";
 import { videoImpressionAnalyticsProperties } from "@/lib/video-impression-analytics";
 import { useUiLocale } from "@/lib/ui-locale";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
@@ -91,6 +90,7 @@ type CachedPageItem = {
   contentLocale: string;
   entry: ApiHomeFeedItem;
   item: VideoFeedItem | null;
+  importedRootHostname?: string;
   joinedLocally: boolean;
   showOriginalLabel: string;
   showTranslationLabel: string;
@@ -357,7 +357,6 @@ export function VideoHomePage({
   const session = useSession();
   const { locale } = useUiLocale();
   const contentLocale = useRouteContentLocale();
-  const publicCommunityQuery = usePublicCommunityQuery(communityId, contentLocale);
   const { copy, localeTag } = useRouteMessages();
   const requestAuth = useRequestAuth();
   const routeCopy = copy.post.route;
@@ -738,6 +737,7 @@ export function VideoHomePage({
         && cached.entry === entry
         && cached.authorProfile === authorProfile
         && cached.contentLocale === contentLocale
+        && cached.importedRootHostname === importedRootHostname
         && cached.joinedLocally === joinedLocally
         && cached.showOriginalLabel === copy.common.showOriginal
         && cached.showTranslationLabel === copy.common.showTranslation
@@ -757,6 +757,7 @@ export function VideoHomePage({
           contentLocale,
           entry,
           item: null,
+          importedRootHostname,
           joinedLocally,
           showOriginalLabel: copy.common.showOriginal,
           showTranslationLabel: copy.common.showTranslation,
@@ -806,7 +807,11 @@ export function VideoHomePage({
           shareActions,
           publisher: {
             ...video.publisher,
-            href: item.post.byline.author?.href,
+            href: resolveVideoPublisherHref({
+              href: item.post.byline.author?.href,
+              importedRootHostname,
+              kind: "profile",
+            }),
             kind: "profile" as const,
             relationship,
           },
@@ -818,7 +823,11 @@ export function VideoHomePage({
           publisher: {
             avatarSrc: item.post.byline.community?.avatarSrc,
             handle: item.post.byline.community?.label ?? video.publisher.handle,
-            href: item.post.byline.community?.href,
+            href: resolveVideoPublisherHref({
+              href: item.post.byline.community?.href,
+              importedRootHostname,
+              kind: "community",
+            }),
             kind: "community" as const,
             relationship,
           },
@@ -828,6 +837,7 @@ export function VideoHomePage({
         contentLocale,
         entry,
         item: pageItem,
+        importedRootHostname,
         joinedLocally,
         showOriginalLabel: copy.common.showOriginal,
         showTranslationLabel: copy.common.showTranslation,
@@ -837,7 +847,7 @@ export function VideoHomePage({
       });
       return [pageItem];
     }),
-    [authorProfiles, contentLocale, copy.common.showOriginal, copy.common.showTranslation, copy.home.videoPublisherJoin, copy.home.videoPublisherJoined, entries, joinedCommunityIds, session?.user.id],
+    [authorProfiles, contentLocale, copy.common.showOriginal, copy.common.showTranslation, copy.home.videoPublisherJoin, copy.home.videoPublisherJoined, entries, importedRootHostname, joinedCommunityIds, session?.user.id],
   );
   const items = React.useMemo(() => pageItems.map((item) => {
     // Capability cache entries mutate in place; the revision invalidates this derived view.
@@ -1185,20 +1195,11 @@ export function VideoHomePage({
   );
 
   const surface = resolveVideoHomeSurface({ error, itemCount: items.length, loading });
-  const canonicalCommunitySurface = Boolean(communityId && !importedRootHostname);
   if (surface === "loading") return <div className="grid min-h-dvh w-full place-items-center bg-background"><Spinner className="size-6" /></div>;
   if (surface === "community-feed-error") {
     if (!communityId) return <HomePage videoFallbackReason="error" />;
     return (
       <div className="flex min-h-dvh w-full flex-col items-center bg-background pt-5">
-        {!importedRootHostname ? (
-          <CommunitySurfaceNavigation
-            active="videos"
-            className="w-full px-3 pt-[calc(env(safe-area-inset-top)+4rem)] md:px-5 md:pt-0 lg:px-8"
-            communityId={communityId}
-            routeSlug={publicCommunityQuery.data?.route_slug}
-          />
-        ) : null}
         <PublicRouteMessageState
           description="This community's video feed could not be loaded. Its threads are still available."
           title="Video feed unavailable"
@@ -1210,14 +1211,6 @@ export function VideoHomePage({
     if (!communityId) return <HomePage videoFallbackReason="empty" />;
     return (
       <div className="flex min-h-dvh w-full flex-col items-center bg-background pt-5">
-        {!importedRootHostname ? (
-          <CommunitySurfaceNavigation
-            active="videos"
-            className="w-full px-3 pt-[calc(env(safe-area-inset-top)+4rem)] md:px-5 md:pt-0 lg:px-8"
-            communityId={communityId}
-            routeSlug={publicCommunityQuery.data?.route_slug}
-          />
-        ) : null}
         <PublicRouteMessageState
           description="This community has not published any videos yet."
           title="No videos yet"
@@ -1234,7 +1227,6 @@ export function VideoHomePage({
   return (
     <div className={cn(
       "min-h-0 w-full flex-1 bg-background",
-      canonicalCommunitySurface && "flex h-lvh flex-col md:h-dvh",
     )}>
       {gateModal}
       {ageSelfPrompt ? (
@@ -1251,16 +1243,8 @@ export function VideoHomePage({
           title={ageSelfPrompt.title}
         />
       ) : null}
-      {canonicalCommunitySurface && communityId ? (
-        <CommunitySurfaceNavigation
-          active="videos"
-          className="shrink-0 px-3 pt-[calc(env(safe-area-inset-top)+4rem)] md:px-5 md:pt-0 lg:px-8"
-          communityId={communityId}
-          routeSlug={publicCommunityQuery.data?.route_slug}
-        />
-      ) : null}
       <FeedPanelLayout
-        className={canonicalCommunitySurface ? "min-h-0 flex-1" : VIDEO_FEED_VIEWPORT_CLASS}
+        className={VIDEO_FEED_VIEWPORT_CLASS}
         panel={panelState.kind === "comments" ? (
           <FeedSidePanel
             closeLabel={copy.common.close}

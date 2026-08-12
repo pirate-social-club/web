@@ -46,7 +46,6 @@ import { resolveSessionAvatarFallback } from "./session-avatar";
 import { useShellMobileLayout } from "./use-shell-mobile-layout";
 import { GlobalVideoExperienceProvider } from "@/app/video-experience/video-experience-provider";
 import { SovereignRouteBoundary } from "@/app/sovereign-route-boundary";
-import { CommunitySurfaceNavigation } from "@/app/community-surface-navigation";
 import {
   InitialPublicCommunityProvider,
   type InitialPublicCommunity,
@@ -176,6 +175,17 @@ function NotificationShell({
   const { moderatedCommunities, recentCommunities } = useSidebarCommunities();
   const codeItems = buildCodeItems(copy.appSidebar);
   const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities, isMobileLayout);
+  const isSovereignOrigin = isSovereignCommunityRoute(route);
+  const sovereignAppOrigin = route.kind === "community-videos" && route.importedRootHostname
+    ? `https://app.${route.importedRootHostname}`
+    : null;
+  const navigateAccountPath = (path: "/me" | "/wallet") => {
+    if (sovereignAppOrigin) {
+      window.location.assign(`${sovereignAppOrigin}${path}`);
+      return;
+    }
+    navigateOrReload(path);
+  };
   // Profile and Wallet used to live in the desktop header; with the headerless media
   // layout they belong in the sidebar spine instead. Profile anchors the bottom of the
   // spine, below Wallet and Upload, and shows the signed-in viewer's real avatar
@@ -188,7 +198,7 @@ function NotificationShell({
     avatarSrc: clientReady && session ? session.profile?.avatar_ref ?? null : undefined,
     onProfileSelect: () => {
       if (session) {
-        navigateOrReload("/me");
+        navigateAccountPath("/me");
         return;
       }
       if (connect) {
@@ -197,27 +207,15 @@ function NotificationShell({
       }
       toast.info(copy.appHeader.connectUnavailableToast);
     },
-    onWalletSelect: () => navigateOrReload("/wallet"),
+    onWalletSelect: () => navigateAccountPath("/wallet"),
     profileLabel: copy.mobileFooter.profileLabel,
     unreadActivityCount: clientReady && session ? unreadNotificationCount : 0,
     unreadChatCount: clientReady && session ? unreadChatCount : 0,
     walletLabel: copy.mobileFooter.walletLabel,
   });
   const resourceItems = buildResourceItems(copy.appSidebar);
-  const isSovereignOrigin = isSovereignCommunityRoute(route);
   const presentationCommunityId = isSovereignCommunityRoute(route) ? route.communityId : null;
   const presentation = usePublicCommunityQuery(presentationCommunityId, locale).data;
-  const sovereignVideoNavigation = isSovereignOrigin
-    && route.kind === "community-videos"
-    && route.importedRootHostname
-    ? (
-        <CommunitySurfaceNavigation
-          active="videos"
-          communityId={route.communityId}
-          importedRootHostname={route.importedRootHostname}
-        />
-      )
-    : null;
   const [searchOpen, setSearchOpen] = React.useState(false);
   const isChatRoute = route.kind === "chat"
     || route.kind === "chat-target"
@@ -264,7 +262,7 @@ function NotificationShell({
                 activeItemId={activeSidebarItem(route)}
                 appearance="media"
                 brandAccentColor={readCommunityPresentation(presentation).branding.accent_color}
-                brandAction={sovereignVideoNavigation}
+                brandHref={sovereignAppOrigin ? `${sovereignAppOrigin}/` : undefined}
                 brandImageSrc={presentation?.avatar_ref ?? null}
                 brandLabel={isSovereignOrigin
                   ? presentation?.display_name ?? "Community"
@@ -305,7 +303,12 @@ function NotificationShell({
                   )}
                   onSearchClick={() => setSearchOpen(true)}
                   route={route}
-                  sovereignSurfaceAction={sovereignVideoNavigation}
+                  sovereignCommunityHref={sovereignAppOrigin ? `${sovereignAppOrigin}/` : undefined}
+                  sovereignCommunityImageSrc={presentation?.avatar_ref}
+                  sovereignCommunityLabel={sovereignAppOrigin
+                    ? presentation?.display_name ?? "Community"
+                    : undefined}
+                  sovereignInteractiveOrigin={sovereignAppOrigin}
                   unreadChatCount={unreadChatCount}
                   unreadNotificationCount={unreadNotificationCount}
                 />

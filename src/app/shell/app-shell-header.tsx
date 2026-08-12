@@ -5,6 +5,7 @@ import type { AppRoute } from "@/app/router";
 import { navigate } from "@/app/router";
 import { AppHeader } from "@/components/compositions/app/app-shell-chrome/app-header";
 import { MobileFooterNav } from "@/components/compositions/app/app-shell-chrome/mobile-footer-nav";
+import { Avatar } from "@/components/primitives/avatar";
 import { IconButton } from "@/components/primitives/icon-button";
 import { toast } from "@/components/primitives/sonner";
 import { Type } from "@/components/primitives/type";
@@ -106,7 +107,10 @@ export function AppShellHeader({
   mobileMediaOverlay = false,
   onSearchClick,
   route,
-  sovereignSurfaceAction,
+  sovereignCommunityHref,
+  sovereignCommunityImageSrc,
+  sovereignCommunityLabel,
+  sovereignInteractiveOrigin,
   unreadChatCount = 0,
   unreadNotificationCount,
 }: {
@@ -115,7 +119,10 @@ export function AppShellHeader({
   mobileMediaOverlay?: boolean;
   onSearchClick?: () => void;
   route: AppRoute;
-  sovereignSurfaceAction?: React.ReactNode;
+  sovereignCommunityHref?: string;
+  sovereignCommunityImageSrc?: string | null;
+  sovereignCommunityLabel?: string;
+  sovereignInteractiveOrigin?: string | null;
   unreadChatCount?: number;
   unreadNotificationCount: number;
 }) {
@@ -139,7 +146,7 @@ export function AppShellHeader({
       <Plus className="size-6" weight="bold" />
     </IconButton>
   ) : undefined;
-  const mobileTrailingContent = sovereignSurfaceAction ?? mobileHeaderAction ?? (route.kind === "community" || isPublicProfileRoute || (clientReady && session && routeUsesMobileFooter(route) && !showMobileCreateAction)
+  const mobileTrailingContent = mobileHeaderAction ?? (route.kind === "community" || isPublicProfileRoute || (clientReady && session && routeUsesMobileFooter(route) && !showMobileCreateAction)
     ? <div className="size-11" aria-hidden="true" />
     : undefined);
   const mobileHeaderTitle = resolveMobileHeaderTitle({ copy, mediaOverlay: mobileMediaOverlay, route, session });
@@ -180,7 +187,21 @@ export function AppShellHeader({
         searchPlaceholder: copy.appHeader.searchPlaceholder,
         walletAriaLabel: copy.appHeader.walletAriaLabel,
       }}
-      mobileCenterContent={mobileHeaderTitle ? (
+      mobileCenterContent={sovereignCommunityHref && sovereignCommunityLabel ? (
+        <a
+          className="inline-flex max-w-full items-center gap-2 rounded-full p-1 text-white drop-shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          href={sovereignCommunityHref}
+        >
+          <Avatar
+            className="size-9 shrink-0"
+            fallback={sovereignCommunityLabel}
+            src={sovereignCommunityImageSrc ?? undefined}
+          />
+          <Type as="span" className="truncate" variant="label">
+            {sovereignCommunityLabel}
+          </Type>
+        </a>
+      ) : mobileHeaderTitle ? (
         <Type as="div" variant="h4" className="max-w-full truncate text-center">
           {mobileHeaderTitle}
         </Type>
@@ -193,9 +214,15 @@ export function AppShellHeader({
       onHomeClick={() => navigate("/")}
       onNotificationsClick={() => navigate("/inbox")}
       onConnectClick={() => connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
-      onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
+      onProfileClick={() => session
+        ? sovereignInteractiveOrigin
+          ? window.location.assign(`${sovereignInteractiveOrigin}/me`)
+          : navigate("/me")
+        : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
       onSearchClick={onSearchClick ?? (() => showSearchUnavailable(copy.appHeader.searchUnavailableToast))}
-      onWalletClick={() => navigate("/wallet")}
+      onWalletClick={() => sovereignInteractiveOrigin
+        ? window.location.assign(`${sovereignInteractiveOrigin}/wallet`)
+        : navigate("/wallet")}
       showCreateAction={clientReady && !!session}
       showChatAction={clientReady && !!session}
       showMobileCreateAction={showMobileCreateAction}

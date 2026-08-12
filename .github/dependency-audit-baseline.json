@@ -25,8 +25,8 @@
       "advisory": "GHSA-jmr9-qjv8-65gv",
       "package": "extract-zip",
       "severity": "high",
-      "reason": "rwsdk depends on @puppeteer/browsers 2.x, whose archive installer requires extract-zip@2.0.1; the advisory has no patched extract-zip release. The maintained @puppeteer/browsers 3.x line removes this dependency, but adopting it requires the planned rwsdk upgrade rather than an unsafe transitive major-version override.",
-      "risk_assessment": "Reachability is limited to rwsdk's E2E browser installer. Application source does not import this installer, release browser smoke uses a separately provisioned Playwright browser, and dependency installation does not execute extract-zip. The vulnerable path is therefore not exposed to user-controlled archives in the deployed application or current release workflow.",
+      "reason": "rwsdk's browser installer pins extract-zip@2.0.1 and no patched upstream release exists. The transitive package is locally patched to reject absolute and out-of-root symlink targets before creating the link; a generated malicious-archive regression test pins that behavior.",
+      "risk_assessment": "Reachability is limited to the build-time rwsdk browser downloader, not the deployed Worker or browser bundle. The local patch also closes the published traversal primitive if that build path later receives an attacker-controlled archive. Remove this exception and patch when the tracked framework upgrade removes extract-zip.",
       "expires": "2026-09-01",
       "tracking": "https://github.com/pirate-social-club/web/issues/1192"
     }

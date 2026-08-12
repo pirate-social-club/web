@@ -23,7 +23,6 @@ import {
   formatGateRequirement,
   getMissingCapabilitiesFromGateEvaluation,
   getGateFailureMessage,
-  getVerificationPromptCopy,
   type HumanVerificationProvider,
   resolveAvailableHumanVerificationProviders,
   resolveSuggestedVerificationProvider,
@@ -36,6 +35,11 @@ import {
   TelegramMiniAppVerifyView,
   telegramVerifyReadyMessage,
 } from "./telegram-mini-app-verify-view";
+import {
+  launchTelegramSelfVerification,
+  launchTelegramZkPassportVerification,
+  telegramVerifySelfReadyMessage,
+} from "./telegram-verification-planning";
 import {
   initialTelegramVerifyFlowState,
   telegramVerifyReducer,
@@ -664,21 +668,6 @@ function telegramVerifyBlockedMessage(eligibility: ApiJoinEligibility, locale: s
   }
 }
 
-function telegramVerifySelfReadyMessage(
-  eligibility: Pick<ApiJoinEligibility, "membership_gate_summaries" | "missing_capabilities" | "gate_evaluation">,
-  locale: string,
-): string {
-  const prompt = getVerificationPromptCopy("self", getMissingCapabilitiesFromGateEvaluation(eligibility), {
-    locale,
-    membershipGateSummaries: eligibility.membership_gate_summaries,
-  });
-  const requirement = prompt.description.match(/requires you to prove (.+?) before joining\./u)?.[1];
-  if (requirement) {
-    return `Prove ${requirement} anonymously with Self.xyz.`;
-  }
-  return "Verify anonymously with Self.xyz.";
-}
-
 export function telegramVerifyTerminalMessage(
   eligibility: ApiJoinEligibility,
   locale: string,
@@ -982,11 +971,9 @@ export function TelegramMiniAppVerifyPage({
 
     if (provider === "zkpassport") {
       recordDebug("zkpassport:start");
-      const result = await startZkPassportVerification({
-        deferOpen: true,
-        membershipGateSummaries: nextEligibility.membership_gate_summaries,
-        missingCapabilities: nextEligibility.missing_capabilities,
-        showToastOnError: false,
+      const result = await launchTelegramZkPassportVerification({
+        eligibility: nextEligibility,
+        startVerification: startZkPassportVerification,
       });
       recordDebug("zkpassport:result", {
         hasHref: Boolean(result.href),
@@ -1027,12 +1014,10 @@ export function TelegramMiniAppVerifyPage({
     }
 
     recordDebug("self:start", { communityId: targetCommunityId });
-    const result = await startSelfVerification({
-      deeplinkCallbackBaseHref: buildTelegramSelfReturnHref(targetCommunityId),
-      membershipGateSummaries: nextEligibility.membership_gate_summaries,
-      missingCapabilities: nextEligibility.missing_capabilities,
-      showToastOnError: false,
-      skipModal: true,
+    const result = await launchTelegramSelfVerification({
+      callbackBaseHref: buildTelegramSelfReturnHref(targetCommunityId),
+      eligibility: nextEligibility,
+      startVerification: startSelfVerification,
     });
     recordDebug("self:result", {
       error: result.error ?? null,

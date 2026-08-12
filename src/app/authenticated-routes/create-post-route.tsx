@@ -29,7 +29,6 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { toast } from "@/components/primitives/sonner";
 import {
   getGateFailureMessage,
-  getMissingCapabilitiesFromGateEvaluation,
   getSelfVerificationRequestForGates,
   hasSelfDocumentFactVerificationRequest,
   type HumanVerificationProvider,
@@ -372,10 +371,7 @@ export function CreatePostPage({
     provider: HumanVerificationProvider,
   ) => {
     await startVerificationProvider(provider, {
-      missingCapabilities: state.eligibility
-        ? getMissingCapabilitiesFromGateEvaluation(state.eligibility)
-        : null,
-      membershipGateSummaries: state.eligibility?.membership_gate_summaries ?? null,
+      verificationPlanningInput: state.eligibility,
       showToastOnError: true,
     });
   }, [startVerificationProvider, state.eligibility]);

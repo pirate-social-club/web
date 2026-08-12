@@ -28,18 +28,14 @@ const SELF_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
   "nationality",
   "gender",
 ];
-const SELF_REQUESTED_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
-  "unique_human",
-  "age_over_18",
-  "nationality",
-  "gender",
-];
-const ZKPASSPORT_REQUESTED_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
-  "unique_human",
-  "minimum_age",
-  "nationality",
-  "gender",
-];
+const REQUESTED_CAPABILITY_ORDER_BY_PROVIDER: Record<
+  HumanVerificationProvider,
+  readonly RequestedVerificationCapability[]
+> = {
+  self: ["unique_human", "age_over_18", "nationality", "gender"],
+  very: ["unique_human"],
+  zkpassport: ["unique_human", "minimum_age", "nationality", "gender"],
+};
 
 function resolveGateLocale(locale: string | null | undefined): UiLocaleCode {
   const normalized = String(locale ?? "").toLowerCase();
@@ -147,12 +143,203 @@ function hasSelfDocumentCapability(capabilities: MissingCapability[]): boolean {
   );
 }
 
-function isSelfRequestedCapability(capability: MissingCapability): capability is RequestedVerificationCapability {
-  return SELF_REQUESTED_CAPABILITY_ORDER.some((candidate) => candidate === capability);
+/**
+ * Canonical requested-capability vocabulary for interactive human providers.
+ * Gate planners use it to build requests; launch hooks use it defensively at
+ * their API boundary. Provider-specific verification requirements remain
+ * separate because minimum-age thresholds and nationality predicates carry
+ * values rather than just capability names.
+ */
+export function normalizeRequestedVerificationCapabilities(
+  provider: HumanVerificationProvider,
+  capabilities: readonly unknown[],
+): RequestedVerificationCapability[] {
+  const requested = new Set(capabilities.filter((capability): capability is string => typeof capability === "string"));
+  return REQUESTED_CAPABILITY_ORDER_BY_PROVIDER[provider]
+    .filter((capability) => requested.has(capability));
 }
 
-function isZkPassportRequestedCapability(capability: MissingCapability): capability is RequestedVerificationCapability {
-  return ZKPASSPORT_REQUESTED_CAPABILITY_ORDER.some((candidate) => candidate === capability);
+type HumanVerificationPlanningInput = {
+  membership_gate_summaries?: MembershipGateSummary[] | null;
+  gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null;
+  missing_capabilities?: readonly string[] | null;
+};
+
+type HumanVerificationActionPlan = {
+  actionCount: number;
+  complete: boolean;
+  disclosureCost: number;
+  rawCapabilities: MissingCapability[];
+  verificationRequirements: VerificationRequirement[];
+};
+
+const HUMAN_CAPABILITY_DISCLOSURE_COST: Record<
+  Extract<MissingCapability, RequestedVerificationCapability>,
+  number
+> = {
+  unique_human: 1,
+  age_over_18: 2,
+  minimum_age: 2,
+  nationality: 3,
+  gender: 3,
+};
+
+function isHumanVerificationCapability(
+  capability: unknown,
+): capability is Extract<MissingCapability, RequestedVerificationCapability> {
+  return capability === "unique_human"
+    || capability === "age_over_18"
+    || capability === "minimum_age"
+    || capability === "nationality"
+    || capability === "gender";
+}
+
+function getHumanProvidersForAction(action: RequiredActionNode): HumanVerificationProvider[] {
+  if (!isHumanVerificationCapability(action.capability)) return [];
+  const defaults = defaultHumanProvidersForCapability(action.capability);
+  const acceptedProviders = ((action as { accepted_providers?: readonly string[] | null }).accepted_providers ?? [])
+    .filter(isHumanVerificationProvider)
+    .filter((provider) => defaults.includes(provider));
+  if (acceptedProviders.length > 0) {
+    const accepted = new Set(acceptedProviders);
+    return HUMAN_VERIFICATION_PROVIDER_ORDER.filter((provider) => accepted.has(provider));
+  }
+
+  const provider = (action as { provider?: string }).provider;
+  if (provider && isHumanVerificationProvider(provider) && defaults.includes(provider)) {
+    return [provider];
+  }
+  return defaults;
+}
+
+function getActionVerificationRequirements(action: RequiredActionNode): VerificationRequirement[] {
+  if (action.capability === "minimum_age") {
+    const requiredAge = (action as { required_age?: unknown }).required_age;
+    return typeof requiredAge === "number" && Number.isInteger(requiredAge)
+      ? [{ proof_type: "minimum_age", minimum_age: requiredAge }]
+      : [];
+  }
+  if (action.capability === "nationality") {
+    const requiredValues = ((action as { allowed_countries?: unknown }).allowed_countries ?? []) as unknown[];
+    const normalizedValues = requiredValues
+      .filter((value): value is string => typeof value === "string")
+      .flatMap((value) => {
+        const normalized = normalizeCountryCode(value);
+        return normalized ? [normalized.alpha3] : [];
+      })
+      .filter((value, index, values) => values.indexOf(value) === index);
+    return normalizedValues.length > 0
+      ? [{ proof_type: "nationality", required_values: normalizedValues }]
+      : [];
+  }
+  return [];
+}
+
+function mergeVerificationRequirements(
+  requirements: VerificationRequirement[],
+): VerificationRequirement[] {
+  const minimumAges = requirements.flatMap((requirement) =>
+    requirement.proof_type === "minimum_age" && Number.isInteger(requirement.minimum_age)
+      ? [requirement.minimum_age as number]
+      : []
+  );
+  const nationalities = requirements.flatMap((requirement) =>
+    requirement.proof_type === "nationality" ? requirement.required_values ?? [] : []
+  ).filter((value, index, values) => values.indexOf(value) === index);
+  const merged: VerificationRequirement[] = [];
+  if (minimumAges.length > 0) {
+    merged.push({ proof_type: "minimum_age", minimum_age: Math.max(...minimumAges) });
+  }
+  if (nationalities.length > 0) {
+    merged.push({ proof_type: "nationality", required_values: nationalities });
+  }
+  return merged;
+}
+
+function compareHumanVerificationPlans(
+  left: HumanVerificationActionPlan,
+  right: HumanVerificationActionPlan,
+): number {
+  if (left.complete !== right.complete) return left.complete ? -1 : 1;
+  if (left.disclosureCost !== right.disclosureCost) {
+    return left.disclosureCost - right.disclosureCost;
+  }
+  return left.actionCount - right.actionCount;
+}
+
+function planHumanVerificationActionNode(
+  action: RequiredActionNode,
+  provider: HumanVerificationProvider,
+): HumanVerificationActionPlan | null {
+  if (action.kind !== "set") {
+    if (
+      !isHumanVerificationCapability(action.capability)
+      || !getHumanProvidersForAction(action).includes(provider)
+    ) {
+      return null;
+    }
+    return {
+      actionCount: 1,
+      complete: true,
+      disclosureCost: HUMAN_CAPABILITY_DISCLOSURE_COST[action.capability],
+      rawCapabilities: [action.capability],
+      verificationRequirements: getActionVerificationRequirements(action),
+    };
+  }
+
+  const items = (action.items ?? []) as RequiredActionNode[];
+  const childPlans = items.map((item) => planHumanVerificationActionNode(item, provider));
+  const actionablePlans = childPlans.filter((plan): plan is HumanVerificationActionPlan => plan != null);
+  if (actionablePlans.length === 0) return null;
+
+  if (action.mode === "any") {
+    return actionablePlans.reduce((best, candidate) =>
+      compareHumanVerificationPlans(candidate, best) < 0 ? candidate : best
+    );
+  }
+
+  return {
+    actionCount: actionablePlans.reduce((total, plan) => total + plan.actionCount, 0),
+    complete: childPlans.every((plan) => plan?.complete === true),
+    disclosureCost: actionablePlans.reduce((total, plan) => total + plan.disclosureCost, 0),
+    rawCapabilities: actionablePlans.flatMap((plan) => plan.rawCapabilities),
+    verificationRequirements: actionablePlans.flatMap((plan) => plan.verificationRequirements),
+  };
+}
+
+/**
+ * Plans one provider's next verification ceremony without flattening `any`
+ * alternatives. `all` branches collect every action that provider can satisfy;
+ * remaining providers are handled after eligibility is refreshed.
+ */
+export function getHumanVerificationRequestForProvider(
+  eligibility: HumanVerificationPlanningInput,
+  provider: HumanVerificationProvider,
+): {
+  requestedCapabilities: RequestedVerificationCapability[];
+  verificationRequirements: VerificationRequirement[];
+} {
+  const requiredActionSet = eligibility.gate_evaluation?.required_action_set as RequiredActionNode | null | undefined;
+  if (requiredActionSet?.kind === "set" && (requiredActionSet.items?.length ?? 0) > 0) {
+    const plan = planHumanVerificationActionNode(requiredActionSet, provider);
+    return {
+      requestedCapabilities: normalizeRequestedVerificationCapabilities(
+        provider,
+        plan?.rawCapabilities ?? [],
+      ),
+      verificationRequirements: mergeVerificationRequirements(
+        plan?.verificationRequirements ?? [],
+      ),
+    };
+  }
+
+  const missingCapabilities = getMissingCapabilitiesFromGateEvaluation(eligibility);
+  const requestedCapabilities = normalizeRequestedVerificationCapabilities(provider, missingCapabilities);
+  const requested = new Set(missingCapabilities);
+  const verificationRequirements = getVerificationRequirementsForGates(
+    eligibility.membership_gate_summaries,
+  ).filter((requirement) => requested.has(requirement.proof_type));
+  return { requestedCapabilities, verificationRequirements };
 }
 
 function resolveUniqueHumanRequirementProvider(
@@ -348,36 +535,13 @@ export function hasOnlyWalletGateRequirements(
 }
 
 export function getVerificationCapabilitiesForProvider(
-  eligibility: Pick<JoinEligibility, "gate_evaluation">,
+  eligibility: HumanVerificationPlanningInput,
   provider: VerificationProvider,
 ): RequestedVerificationCapability[] {
-  const missingCapabilities = getMissingCapabilitiesFromGateEvaluation(eligibility);
-  const uniqueCapabilities = new Set<RequestedVerificationCapability>();
-  for (const capability of missingCapabilities) {
-    if (provider === "very") {
-      if (capability === "unique_human") {
-        uniqueCapabilities.add(capability);
-      }
-    } else if (provider === "passport") {
-      continue;
-    } else if (provider === "zkpassport") {
-      if (isZkPassportRequestedCapability(capability)) {
-        uniqueCapabilities.add(capability);
-      }
-    } else if (isSelfRequestedCapability(capability)) {
-      uniqueCapabilities.add(capability);
-    }
-  }
-  if (provider === "self") {
-    return SELF_REQUESTED_CAPABILITY_ORDER.filter((capability) => uniqueCapabilities.has(capability));
-  }
   if (provider === "passport") {
     return [];
   }
-  if (provider === "zkpassport") {
-    return ZKPASSPORT_REQUESTED_CAPABILITY_ORDER.filter((capability) => uniqueCapabilities.has(capability));
-  }
-  return Array.from(uniqueCapabilities);
+  return getHumanVerificationRequestForProvider(eligibility, provider).requestedCapabilities;
 }
 
 export function getPassportPromptCapabilities(
@@ -459,7 +623,7 @@ export function hasAltchaProofAction(
   return getRequiredActionCapabilities(input).includes("altcha_pow");
 }
 
-export function getVerificationRequirementsForGates(
+function getVerificationRequirementsForGates(
   gates: MembershipGateSummary[] | null | undefined,
 ): VerificationRequirement[] {
   const requirements: VerificationRequirement[] = [];
@@ -641,7 +805,7 @@ export function getSelfVerificationRequestForGates(input: {
   }
 
   return {
-    requestedCapabilities: SELF_REQUESTED_CAPABILITY_ORDER.filter((capability) => requestedCapabilities.has(capability)),
+    requestedCapabilities: normalizeRequestedVerificationCapabilities("self", Array.from(requestedCapabilities)),
     verificationRequirements,
   };
 }
@@ -806,6 +970,17 @@ export function resolveAvailableHumanVerificationProviders(
 ): HumanVerificationProvider[] {
   const gateSummaries = eligibility.membership_gate_summaries ?? [];
   const requiredActionItems = (eligibility.gate_evaluation?.required_action_set?.items ?? []) as RequiredActionNode[];
+  if (requiredActionItems.length > 0) {
+    const available = HUMAN_VERIFICATION_PROVIDER_ORDER.filter((provider) => {
+      const request = getHumanVerificationRequestForProvider(eligibility, provider);
+      return request.requestedCapabilities.length > 0
+        || request.verificationRequirements.length > 0;
+    });
+    const preferred = eligibility.preferred_verification_provider;
+    if (!preferred || !available.includes(preferred)) return available;
+    return [preferred, ...available.filter((provider) => provider !== preferred)];
+  }
+
   const missingCapabilities = getMissingCapabilitiesFromGateEvaluation(eligibility)
     .filter((capability) => defaultHumanProvidersForCapability(capability).length > 0);
   const capabilities = missingCapabilities.length > 0

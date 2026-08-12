@@ -9,12 +9,8 @@ import type {
 
 import { useApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-utils";
+import { normalizeRequestedVerificationCapabilities } from "@/lib/identity-gates";
 import { openExternalHref } from "@/lib/open-external-href";
-
-type ZkPassportDocumentCapability = Extract<
-  VerificationSession["requested_capabilities"][number],
-  "minimum_age" | "nationality" | "gender" | "unique_human"
->;
 
 type ZkPassportRequestResult = {
   url: string;
@@ -25,12 +21,6 @@ type ZkPassportRequestResult = {
 };
 
 type VerificationIntentInput = VerificationIntent | null | (() => VerificationIntent | null);
-
-const ZKPASSPORT_CAPABILITIES = new Set(["minimum_age", "nationality", "gender", "unique_human"]);
-
-function isZkPassportCapability(value: unknown): value is ZkPassportDocumentCapability {
-  return typeof value === "string" && ZKPASSPORT_CAPABILITIES.has(value);
-}
 
 function requiredMinimumAge(requirements: readonly VerificationRequirement[]): number | null {
   const ages: number[] = [];
@@ -169,7 +159,7 @@ export function useZkPassportVerification(input: {
     unavailableMessage: string;
     verificationRequirements?: VerificationRequirement[] | null;
   }): Promise<{ error?: string; href?: string | null; started: boolean }> => {
-    const requestedCapabilities = options.requestedCapabilities.filter(isZkPassportCapability);
+    const requestedCapabilities = normalizeRequestedVerificationCapabilities("zkpassport", options.requestedCapabilities);
     const verificationRequirements = options.verificationRequirements ?? [];
     if (requestedCapabilities.length === 0 && verificationRequirements.length === 0) {
       setVerificationError(options.unavailableMessage);

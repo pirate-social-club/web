@@ -10,7 +10,10 @@ import type { SelfApp } from "@selfxyz/sdk-common";
 
 import { useApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-utils";
-import { getVerificationPromptCopy } from "@/lib/identity-gates";
+import {
+  getVerificationPromptCopy,
+  normalizeRequestedVerificationCapabilities,
+} from "@/lib/identity-gates";
 import { isMobileDeviceRuntime } from "@/lib/platform-detection";
 import {
   buildSelfVerificationLaunch,
@@ -36,20 +39,7 @@ type SelfPrompt = {
 
 type VerificationIntentInput = VerificationIntent | null | (() => VerificationIntent | null);
 
-const SELF_REQUESTED_CAPABILITIES = new Set([
-  "unique_human",
-  "age_over_18",
-  "nationality",
-  "gender",
-]);
-
 const SELF_LAUNCH_UNAVAILABLE_MESSAGE = "Could not create Self verification link.";
-
-function isSelfRequestedCapability(
-  value: unknown,
-): value is VerificationSession["requested_capabilities"][number] {
-  return typeof value === "string" && SELF_REQUESTED_CAPABILITIES.has(value);
-}
 
 function readPendingSelfVerificationSession(storageKey: string): PendingSelfVerificationSession | null {
   if (typeof window === "undefined") {
@@ -72,9 +62,7 @@ function readPendingSelfVerificationSession(storageKey: string): PendingSelfVeri
 
     return {
       verificationSessionId: parsed.verificationSessionId,
-      requestedCapabilities: parsed.requestedCapabilities.filter((capability): capability is VerificationSession["requested_capabilities"][number] =>
-        isSelfRequestedCapability(capability)
-      ),
+      requestedCapabilities: normalizeRequestedVerificationCapabilities("self", parsed.requestedCapabilities),
     };
   } catch {
     return null;
@@ -138,9 +126,7 @@ export function useSelfVerification(input: {
     verificationRequirements?: VerificationRequirement[] | null;
     skipModal?: boolean;
   }): Promise<{ error?: string; started: boolean; href?: string | null; openedModal?: boolean }> => {
-    const nextRequestedCapabilities = options.requestedCapabilities.filter((capability): capability is VerificationSession["requested_capabilities"][number] =>
-      isSelfRequestedCapability(capability)
-    );
+    const nextRequestedCapabilities = normalizeRequestedVerificationCapabilities("self", options.requestedCapabilities);
     const nextVerificationRequirements = options.verificationRequirements ?? [];
 
     if (nextRequestedCapabilities.length === 0 && nextVerificationRequirements.length === 0) {

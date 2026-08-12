@@ -6,9 +6,12 @@ import {
   isPowSatisfiableGate,
   formatGateRequirement,
   getGateFailureMessage,
+  getHumanVerificationRequestForProvider,
   getJoinCtaLabel,
   getVerificationCapabilitiesForProvider,
   isJoinCtaActionable,
+  normalizeRequestedVerificationCapabilities,
+  resolveAvailableHumanVerificationProviders,
 } from "./identity-gates";
 
 function walletGateEligibility(): JoinEligibility {
@@ -96,6 +99,160 @@ describe("identity gate join CTA helpers", () => {
 
     expect(getVerificationCapabilitiesForProvider(eligibility, "zkpassport"))
       .toEqual(["unique_human", "minimum_age", "nationality", "gender"]);
+  });
+
+  test("uses one provider vocabulary for planning and launch-boundary normalization", () => {
+    const input = ["gender", "minimum_age", "unique_human", "age_over_18", "nationality"];
+
+    expect(normalizeRequestedVerificationCapabilities("self", input))
+      .toEqual(["unique_human", "age_over_18", "nationality", "gender"]);
+    expect(normalizeRequestedVerificationCapabilities("zkpassport", input))
+      .toEqual(["unique_human", "minimum_age", "nationality", "gender"]);
+    expect(normalizeRequestedVerificationCapabilities("very", input))
+      .toEqual(["unique_human"]);
+  });
+
+  test("keeps mixed-provider any branches available", () => {
+    const eligibility = {
+      gate_evaluation: {
+        required_action_set: {
+          items: [
+            {
+              accepted_providers: ["self"],
+              allowed_countries: ["USA"],
+              capability: "nationality",
+              kind: "action",
+              provider: "self",
+            },
+            {
+              capability: "unique_human",
+              kind: "action",
+              provider: "very",
+            },
+          ],
+          kind: "set",
+          mode: "any",
+        },
+      },
+    } as JoinEligibility;
+
+    expect(resolveAvailableHumanVerificationProviders(eligibility))
+      .toEqual(["self", "very"]);
+    expect(getHumanVerificationRequestForProvider(eligibility, "self"))
+      .toEqual({
+        requestedCapabilities: ["nationality"],
+        verificationRequirements: [{ proof_type: "nationality", required_values: ["USA"] }],
+      });
+    expect(getHumanVerificationRequestForProvider(eligibility, "very"))
+      .toEqual({
+        requestedCapabilities: ["unique_human"],
+        verificationRequirements: [],
+      });
+  });
+
+  test("keeps heterogeneous all branches sequentially actionable", () => {
+    const eligibility = {
+      gate_evaluation: {
+        required_action_set: {
+          items: [
+            {
+              accepted_providers: ["self"],
+              allowed_countries: ["USA"],
+              capability: "nationality",
+              kind: "action",
+              provider: "self",
+            },
+            {
+              capability: "unique_human",
+              kind: "action",
+              provider: "very",
+            },
+          ],
+          kind: "set",
+          mode: "all",
+        },
+      },
+    } as JoinEligibility;
+
+    expect(resolveAvailableHumanVerificationProviders(eligibility))
+      .toEqual(["self", "very"]);
+    expect(getVerificationCapabilitiesForProvider(eligibility, "self"))
+      .toEqual(["nationality"]);
+    expect(getVerificationCapabilitiesForProvider(eligibility, "very"))
+      .toEqual(["unique_human"]);
+  });
+
+  test("selects one any branch without requesting unrelated disclosures", () => {
+    const eligibility = {
+      gate_evaluation: {
+        required_action_set: {
+          items: [
+            {
+              accepted_providers: ["self"],
+              allowed_countries: ["USA"],
+              capability: "nationality",
+              kind: "action",
+              provider: "self",
+            },
+            {
+              capability: "unique_human",
+              kind: "action",
+              provider: "self",
+            },
+          ],
+          kind: "set",
+          mode: "any",
+        },
+      },
+    } as JoinEligibility;
+
+    expect(getHumanVerificationRequestForProvider(eligibility, "self"))
+      .toEqual({
+        requestedCapabilities: ["unique_human"],
+        verificationRequirements: [],
+      });
+  });
+
+  test("prefers a complete nested alternative over a partial branch", () => {
+    const eligibility = {
+      gate_evaluation: {
+        required_action_set: {
+          items: [
+            {
+              items: [
+                {
+                  accepted_providers: ["self"],
+                  allowed_countries: ["USA"],
+                  capability: "nationality",
+                  kind: "action",
+                  provider: "self",
+                },
+                {
+                  capability: "unique_human",
+                  kind: "action",
+                  provider: "very",
+                },
+              ],
+              kind: "set",
+              mode: "all",
+            },
+            {
+              capability: "unique_human",
+              kind: "action",
+              provider: "self",
+            },
+          ],
+          kind: "set",
+          mode: "any",
+        },
+      },
+    } as JoinEligibility;
+
+    expect(getHumanVerificationRequestForProvider(eligibility, "self"))
+      .toEqual({
+        requestedCapabilities: ["unique_human"],
+        verificationRequirements: [],
+      });
   });
 
   test("explains an insufficient balance instead of falling back to generic copy", () => {

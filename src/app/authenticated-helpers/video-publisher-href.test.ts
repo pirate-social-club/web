@@ -18,11 +18,19 @@ describe("resolveVideoPublisherHref", () => {
     })).toBe("https://pirate.sc/u/creator.pirate");
   });
 
-  test("sends sovereign community identities to the community root", () => {
+  test("keeps sovereign community identities on the app origin and selects threads", () => {
     expect(resolveVideoPublisherHref({
       href: "/c/community",
       importedRootHostname: "community-root",
       kind: "community",
-    })).toBe("https://community-root/");
+    })).toBe("/c/community/threads");
+  });
+
+  test("preserves an explicit sovereign community thread route", () => {
+    expect(resolveVideoPublisherHref({
+      href: "/c/@xn--t77hga/threads?sort=top#new",
+      importedRootHostname: "community-root",
+      kind: "community",
+    })).toBe("/c/@xn--t77hga/threads?sort=top#new");
   });
 });

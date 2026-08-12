@@ -8,6 +8,7 @@ import { LegalDocumentPage } from "@/components/legal/legal-document-page";
 import { Document } from "@/app/document";
 import { communityLandingRedirectResponse } from "@/app/community-landing-redirect";
 import { matchRoute, matchRouteWithImportedRootCommunity } from "@/app/router";
+import { resolveSovereignApexRedirect } from "@/app/sovereign-origin-redirect";
 import { resolveSurfaceNavigationHref } from "@/app/surface-navigation-contract";
 import { isPostOutsideSovereignScope, mustFailClosedOnSovereignScopeError } from "@/app/sovereign-route-scope";
 import { PRIVACY_POLICY_SOURCE } from "@/legal/privacy-policy";
@@ -474,6 +475,20 @@ const app = defineApp<AppRequestInfo>([
     const locale = resolveRequestUiLocale(url, request.headers.get("accept-language"));
     const forwardedCommunityRoot = resolveForwardedCommunityRouteSegment(request);
     const forwardedCommunityRoute = resolveForwardedCommunityRouteSlug(request);
+    const sovereignApexRedirect = resolveSovereignApexRedirect({
+      communityId: forwardedCommunityRoot,
+      communityRoute: forwardedCommunityRoute,
+      effectiveUrl,
+    });
+    if (sovereignApexRedirect) {
+      return new Response(null, {
+        headers: {
+          "cache-control": "no-store",
+          location: sovereignApexRedirect,
+        },
+        status: 307,
+      });
+    }
     const route = matchRouteWithImportedRootCommunity(
       url.pathname,
       url.hostname,

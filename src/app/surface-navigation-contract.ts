@@ -1,4 +1,5 @@
 import type { AppRoute } from "@/app/router";
+import { encodeCommunityRouteSegment } from "@/lib/community-routing";
 
 function replaceTrailingSurface(path: string, from: "threads" | "videos", to: "threads" | "videos"): string | null {
   const suffix = `/${from}`;
@@ -11,15 +12,11 @@ function replaceTrailingSurface(path: string, from: "threads" | "videos", to: "t
  * routes without downloading a browser in the release lane.
  */
 export function resolveSurfaceNavigationHref(route: AppRoute): string | undefined {
-  if (
-    (route.kind === "community" || route.kind === "community-videos")
-    && route.isImportedRoot
-    && route.importedRootHostname
-    && route.path === "/"
-  ) {
-    return route.kind === "community"
-      ? `https://app.${route.importedRootHostname}/`
-      : `https://${route.importedRootHostname}/`;
+  if ((route.kind === "community" || route.kind === "community-videos") && route.isImportedRoot) {
+    if (route.kind === "community") return "/";
+    if (route.path !== "/") return replaceTrailingSurface(route.path, "videos", "threads") ?? undefined;
+    const routeSegment = route.importedRootCommunityRoute || route.communityId;
+    return `/c/${encodeCommunityRouteSegment(routeSegment)}/threads`;
   }
 
   if (route.kind === "community") {

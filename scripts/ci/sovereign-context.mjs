@@ -13,14 +13,14 @@ function surfaceNavigationFromHtml(html) {
 
 export function verifySurfaceNavigationContracts(input) {
   const expected = {
-    apex: `https://app.${input.root}/`,
-    app: `https://${input.root}/`,
+    appThreads: "/",
+    appVideos: `/c/${encodeURIComponent(input.routeSlug).replace(/^%40/u, "@")}/threads`,
     canonicalThreads: `/c/${encodeURIComponent(input.routeSlug)}/videos`,
     canonicalVideos: `/c/${encodeURIComponent(input.routeSlug)}/threads`,
   };
   const actual = {
-    apex: surfaceNavigationFromHtml(input.apexHtml),
-    app: surfaceNavigationFromHtml(input.appHtml),
+    appThreads: surfaceNavigationFromHtml(input.appThreadsHtml),
+    appVideos: surfaceNavigationFromHtml(input.appVideosHtml),
     canonicalThreads: surfaceNavigationFromHtml(input.canonicalThreadsHtml),
     canonicalVideos: surfaceNavigationFromHtml(input.canonicalVideosHtml),
   };
@@ -32,8 +32,8 @@ export function verifySurfaceNavigationContracts(input) {
   return { actual, errors };
 }
 
-export function verifySovereignHtml(apexHtml, appHtml, input) {
-  const apexCanonical = canonicalFromHtml(apexHtml);
+export function verifySovereignHtml(appThreadsHtml, appHtml, input) {
+  const threadsCanonical = canonicalFromHtml(appThreadsHtml);
   const appCanonical = canonicalFromHtml(appHtml);
   const expectedCanonical = `https://pirate.sc/c/${encodeURIComponent(input.routeSlug)}`;
   const scopedFeedPath = `/public-communities/${input.communityId}/feed/videos`;
@@ -47,19 +47,19 @@ export function verifySovereignHtml(apexHtml, appHtml, input) {
     ? appHtml.slice(scriptBodyStart, scriptEnd)
     : "";
 
-  if (apexCanonical !== expectedCanonical) {
-    errors.push(`apex canonical=${JSON.stringify(apexCanonical)} expected=${JSON.stringify(expectedCanonical)}`);
+  if (threadsCanonical !== expectedCanonical) {
+    errors.push(`app threads canonical=${JSON.stringify(threadsCanonical)} expected=${JSON.stringify(expectedCanonical)}`);
   }
   if (appCanonical !== expectedCanonical) {
     errors.push(`app canonical=${JSON.stringify(appCanonical)} expected=${JSON.stringify(expectedCanonical)}`);
   }
-  for (const [surface, html] of [["apex", apexHtml], ["app", appHtml]]) {
+  for (const [surface, html] of [["app threads", appThreadsHtml], ["app videos", appHtml]]) {
     if (!html.includes('<meta name="robots" content="noindex, nofollow"')) {
       errors.push(`missing noindex metadata on sovereign ${surface}`);
     }
   }
-  if (apexHtml.includes(bootstrapMarker)) {
-    errors.push("video bootstrap is present on the sovereign community apex");
+  if (appThreadsHtml.includes(bootstrapMarker)) {
+    errors.push("video bootstrap is present on the sovereign thread route");
   }
   if (!bootstrap) {
     errors.push("missing home-video bootstrap script on app origin");
@@ -73,12 +73,12 @@ export function verifySovereignHtml(apexHtml, appHtml, input) {
     errors.push("thread-feed bootstrap is present on the sovereign video app");
   }
 
-  return { apexCanonical, appCanonical, errors, scopedFeedPath };
+  return { appCanonical, errors, scopedFeedPath, threadsCanonical };
 }
 
-export function verifyBrandScopes(sovereignHtml, appHtml, canonicalHtml) {
+export function verifyBrandScopes(appThreadsHtml, appHtml, canonicalHtml) {
   const errors = [];
-  const sovereignBrandLabel = sovereignHtml.match(
+  const sovereignBrandLabel = appThreadsHtml.match(
     /data-brand-label="([^"]+)" data-brand-scope="community"/u,
   )?.[1] ?? null;
 
@@ -87,8 +87,8 @@ export function verifyBrandScopes(sovereignHtml, appHtml, canonicalHtml) {
   } else if (sovereignBrandLabel.trim().toLowerCase() === "pirate") {
     errors.push("sovereign community brand uses the Pirate label");
   }
-  if (sovereignHtml.includes('data-brand-scope="pirate"')) {
-    errors.push("Pirate brand is present on the sovereign apex");
+  if (appThreadsHtml.includes('data-brand-scope="pirate"')) {
+    errors.push("Pirate brand is present on the sovereign thread route");
   }
   if (!appHtml.includes('data-brand-scope="community"')) {
     errors.push("missing community brand on the sovereign app");
@@ -124,7 +124,7 @@ async function main() {
     throw new Error("usage: sovereign-context.mjs --html <path> --app-html <path> --canonical-html <path> --root <root> --community-id <id> --route-slug <slug>");
   }
 
-  const sovereignHtml = await readFile(htmlPath, "utf8");
+  const appThreadsHtml = await readFile(htmlPath, "utf8");
   const appHtml = await readFile(appHtmlPath, "utf8");
   const canonicalHtml = await readFile(canonicalHtmlPath, "utf8");
   const canonicalThreadsHtml = canonicalThreadsPath
@@ -135,8 +135,8 @@ async function main() {
       throw new Error("--canonical-threads-html is required with --navigation-only");
     }
     const navigation = verifySurfaceNavigationContracts({
-      apexHtml: sovereignHtml,
-      appHtml,
+      appThreadsHtml,
+      appVideosHtml: appHtml,
       canonicalThreadsHtml,
       canonicalVideosHtml: canonicalHtml,
       root,
@@ -146,16 +146,16 @@ async function main() {
     console.log(JSON.stringify({ community_id: communityId, status: "navigation-ok" }));
     return;
   }
-  const result = verifySovereignHtml(sovereignHtml, appHtml, { root, communityId, routeSlug });
-  const brandResult = verifyBrandScopes(sovereignHtml, appHtml, canonicalHtml);
+  const result = verifySovereignHtml(appThreadsHtml, appHtml, { root, communityId, routeSlug });
+  const brandResult = verifyBrandScopes(appThreadsHtml, appHtml, canonicalHtml);
   const errors = [...result.errors, ...brandResult.errors];
   if (errors.length > 0) {
     throw new Error(errors.join("; "));
   }
   console.log(JSON.stringify({
     brand_label: brandResult.sovereignBrandLabel,
-    apex_canonical: result.apexCanonical,
     app_canonical: result.appCanonical,
+    app_threads_canonical: result.threadsCanonical,
     community_id: communityId,
     scoped_feed: result.scopedFeedPath,
     status: "ok",

@@ -40,6 +40,16 @@ request_status() {
     "https://${host}${path}"
 }
 
+request_redirect_status() {
+  local host="$1"
+  local path="$2"
+  curl "${curl_args[@]}" \
+    --resolve "${host}:443:${HNS_PROBE_GATEWAY_IP}" \
+    --output /dev/null \
+    --write-out $'%{http_code}\t%{redirect_url}' \
+    "https://${host}${path}"
+}
+
 public_request_status() {
   local path="$1"
   local output="$2"
@@ -110,7 +120,7 @@ for (const namespace of body.namespaces ?? []) {
   const community = namespace.community ?? {};
   const id = typeof community.id === "string" ? community.id.trim() : "";
   const slug = typeof community.route_slug === "string" ? community.route_slug.trim() : "";
-  if (root && id && slug) process.stdout.write(`${root}\t${id}\t${slug}\t${encodeURIComponent(slug)}\n`);
+  if (root && id && slug) process.stdout.write(`${root}\t${id}\t${slug}\t${encodeURIComponent(slug).replace(/^%40/u, "@")}\n`);
 }
 NODE
 )
@@ -127,20 +137,21 @@ for row in "${namespace_rows[@]}"; do
     inventory_has_probe_root=true
   fi
 
-  root_apex_status="$(request_status "$root" "/" "$inventory_apex_html_file")"
+  root_apex_redirect="$(request_redirect_status "$root" "/")"
+  root_apex_status="${root_apex_redirect%%$'\t'*}"
+  root_apex_location="${root_apex_redirect#*$'\t'}"
   app_host="app.${root}"
   app_status="$(request_status "$app_host" "/" "$inventory_app_html_file")"
-  apex_cors="$(api_header_value "https://${root}" "/public-communities/${community_id}/feed/videos")"
+  app_threads_status="$(request_status "$app_host" "/c/${encoded_route_slug}/threads" "$inventory_apex_html_file")"
   app_cors="$(api_header_value "https://${app_host}" "/public-communities/${community_id}/feed/videos")"
-  apex_cors_status="${apex_cors%%$'\t'*}"
-  apex_cors_origin="${apex_cors#*$'\t'}"
   app_cors_status="${app_cors%%$'\t'*}"
   app_cors_origin="${app_cors#*$'\t'}"
+  expected_apex_location="https://${app_host}/c/${encoded_route_slug}/threads"
 
-  if [[ "$root_apex_status" != "200" || "$app_status" != "200" \
-    || "$apex_cors_status" != "200" || "$apex_cors_origin" != "https://${root}" \
+  if [[ "$root_apex_status" != "307" || "$root_apex_location" != "$expected_apex_location" \
+    || "$app_status" != "200" || "$app_threads_status" != "200" \
     || "$app_cors_status" != "200" || "$app_cors_origin" != "https://${app_host}" ]]; then
-    echo "HNS root parity failed: root=${root} apex=${root_apex_status} app=${app_status} apex_cors=${apex_cors_status}/${apex_cors_origin:-none} app_cors=${app_cors_status}/${app_cors_origin:-none}" >&2
+    echo "HNS app routing failed: root=${root} apex=${root_apex_status}/${root_apex_location:-none} app=${app_status} threads=${app_threads_status} app_cors=${app_cors_status}/${app_cors_origin:-none}" >&2
     exit 1
   fi
 
@@ -159,8 +170,8 @@ for row in "${namespace_rows[@]}"; do
     --root "$root" \
     --community-id "$community_id" \
     --route-slug "$route_slug"
-  printf 'community_id=%s apex=%s app=%s cors=ok navigation=ok\n' \
-    "$community_id" "$root_apex_status" "$app_status"
+  printf 'community_id=%s apex_redirect=%s app=%s threads=%s cors=ok navigation=ok\n' \
+    "$community_id" "$root_apex_status" "$app_status" "$app_threads_status"
 done
 
 if [[ "$inventory_has_probe_root" != true ]]; then
@@ -178,9 +189,13 @@ for unknown_origin in "https://hns-probe-unknown-root" "https://app.hns-probe-un
   fi
 done
 
-apex_status="$(request_status "$HNS_PROBE_ROOT" "/" "$html_file")"
-if [[ "$apex_status" != "200" ]]; then
-  echo "sovereign apex returned HTTP ${apex_status}" >&2
+encoded_probe_route_slug="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]).replace(/^%40/u, "@"))' "$HNS_PROBE_ROUTE_SLUG")"
+apex_redirect="$(request_redirect_status "$HNS_PROBE_ROOT" "/")"
+apex_status="${apex_redirect%%$'\t'*}"
+apex_location="${apex_redirect#*$'\t'}"
+expected_apex_location="https://app.${HNS_PROBE_ROOT}/c/${encoded_probe_route_slug}/threads"
+if [[ "$apex_status" != "307" || "$apex_location" != "$expected_apex_location" ]]; then
+  echo "sovereign apex redirect failed: status=${apex_status} location=${apex_location:-none}" >&2
   exit 1
 fi
 
@@ -188,6 +203,12 @@ app_host="app.${HNS_PROBE_ROOT}"
 app_status="$(request_status "$app_host" "/" "$app_html_file")"
 if [[ "$app_status" != "200" ]]; then
   echo "sovereign app returned HTTP ${app_status}" >&2
+  exit 1
+fi
+
+app_threads_status="$(request_status "$app_host" "/c/${encoded_probe_route_slug}/threads" "$html_file")"
+if [[ "$app_threads_status" != "200" ]]; then
+  echo "sovereign app threads returned HTTP ${app_threads_status}" >&2
   exit 1
 fi
 
@@ -214,5 +235,5 @@ if [[ "$own_status" != "200" || "$foreign_status" != "404" || "$wallet_status" !
   exit 1
 fi
 
-printf '{"status":"ok","root":"%s","apex":%s,"app":%s,"canonical":%s,"app_own":%s,"app_foreign":%s,"wallet":%s}\n' \
-  "$HNS_PROBE_ROOT" "$apex_status" "$app_status" "$canonical_status" "$own_status" "$foreign_status" "$wallet_status"
+printf '{"status":"ok","root":"%s","apex_redirect":%s,"app":%s,"app_threads":%s,"canonical":%s,"app_own":%s,"app_foreign":%s,"wallet":%s}\n' \
+  "$HNS_PROBE_ROOT" "$apex_status" "$app_status" "$app_threads_status" "$canonical_status" "$own_status" "$foreign_status" "$wallet_status"

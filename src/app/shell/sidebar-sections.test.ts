@@ -41,7 +41,7 @@ describe("isSovereignCommunityRoute", () => {
 });
 
 describe("resolveSovereignOrigins", () => {
-  test("keeps community identity at the root and interaction on app", () => {
+  test("keeps community identity and interaction on the app origin", () => {
     for (const kind of ["community", "community-videos"] as const) {
       expect(resolveSovereignOrigins({
         kind,
@@ -51,21 +51,20 @@ describe("resolveSovereignOrigins", () => {
         isImportedRoot: true,
       })).toEqual({
         app: "https://app.community-root",
-        root: "https://community-root",
       });
     }
   });
 });
 
 describe("resolveMobileBackPath", () => {
-  test("does not render a no-op back control on a sovereign community root", () => {
+  test("returns from sovereign community threads to the video app root", () => {
     expect(resolveMobileBackPath({
       kind: "community",
-      path: "/",
+      path: "/c/community-route/threads",
       communityId: "com_sovereign",
       importedRootHostname: "community-root",
       isImportedRoot: true,
-    })).toBeNull();
+    })).toBe("/");
   });
 
   test("keeps canonical community threads connected to global home", () => {

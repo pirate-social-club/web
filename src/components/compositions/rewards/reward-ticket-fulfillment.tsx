@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowSquareOut,
   CheckCircle,
   Clock,
   HourglassMedium,
@@ -25,6 +26,7 @@ export type TicketFulfillmentState =
 
 export interface RewardTicketFulfillmentProps {
   className?: string;
+  explorerTxUrl?: string;
   fundingAdjustmentLabel?: string;
   onAction?: () => void;
   priceCeilingLabel?: string;
@@ -87,6 +89,7 @@ function StateIcon({ state }: { state: TicketFulfillmentState }) {
 
 export function RewardTicketFulfillment({
   className,
+  explorerTxUrl,
   fundingAdjustmentLabel,
   onAction,
   priceCeilingLabel,
@@ -118,10 +121,20 @@ export function RewardTicketFulfillment({
               {fundingAdjustmentLabel}
             </Type>
           ) : null}
-          {transactionLabel && ["submitted", "needs_review"].includes(state) ? (
-            <Type as="p" className="mt-2 break-all text-muted-foreground" variant="caption">
-              {transactionLabel}
-            </Type>
+          {transactionLabel && ["submitted", "confirmed", "needs_review"].includes(state) ? (
+            <div className="mt-2">
+              <Type as="p" className="break-all text-muted-foreground" variant="caption">
+                {transactionLabel}
+              </Type>
+              {explorerTxUrl ? (
+                <Button asChild className="mt-2 h-10 w-full" variant="outline">
+                  <a href={explorerTxUrl} rel="noreferrer" target="_blank">
+                    View on BaseScan
+                    <ArrowSquareOut aria-hidden className="size-4" weight="bold" />
+                  </a>
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>

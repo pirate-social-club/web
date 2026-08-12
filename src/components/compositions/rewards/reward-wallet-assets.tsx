@@ -115,7 +115,7 @@ function ticketActionLabel(holding: MegapotTicketHolding): string | null {
 
 function TicketHoldingRow({ holding }: { holding: MegapotTicketHolding }) {
   const actionLabel = ticketActionLabel(holding);
-  const disabled = holding.actionDisabled || holding.state === "claiming" || holding.state === "claimed" || holding.state === "no_win";
+  const disabled = holding.actionDisabled || holding.state === "claiming" || holding.state === "claimed";
   return (
     <div
       aria-label={`${holding.ticketLabel} Megapot reward`}

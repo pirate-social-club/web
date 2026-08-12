@@ -23,14 +23,18 @@ test("confirmed purchase exposes the delivered ticket and released reserve", () 
   let calls = 0;
   const view = render(
     <RewardTicketFulfillment
+      explorerTxUrl="https://basescan.org/tx/0xabc"
       fundingAdjustmentLabel="$0.10 USDC returned to this bounty's available funding."
       onAction={() => { calls += 1; }}
       state="confirmed"
       ticketLabel="Megapot ticket #1042"
+      transactionLabel="0xabc"
     />,
   );
   expect(view.getByText("Megapot ticket #1042")).toBeTruthy();
   expect(view.getByText(/returned to this bounty/)).toBeTruthy();
+  expect(view.getByText("0xabc")).toBeTruthy();
+  expect(view.getByRole("link", { name: "View on BaseScan" }).getAttribute("href")).toBe("https://basescan.org/tx/0xabc");
   fireEvent.click(view.getByRole("button", { name: "View ticket" }));
   expect(calls).toBe(1);
 });

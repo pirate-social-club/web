@@ -10,6 +10,8 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+const TRANSACTION_HASH = "0xc91d0158c1361deb3c07c8245b3a3d962f06d39176b6c8e7b286ed352bf6eb1b";
+const TRANSACTION_URL = `https://basescan.org/tx/${TRANSACTION_HASH}`;
 
 function Frame(props: RewardTicketFulfillmentProps) {
   return (
@@ -43,7 +45,14 @@ export const Submitted: Story = {
 };
 
 export const DeliveredAtReservedPrice: Story = {
-  render: () => <Frame state="confirmed" ticketLabel="Megapot ticket #1042" />,
+  render: () => (
+    <Frame
+      explorerTxUrl={TRANSACTION_URL}
+      state="confirmed"
+      ticketLabel="Megapot ticket #1042"
+      transactionLabel={TRANSACTION_HASH}
+    />
+  ),
 };
 
 export const DeliveredBelowReservedPrice: Story = {

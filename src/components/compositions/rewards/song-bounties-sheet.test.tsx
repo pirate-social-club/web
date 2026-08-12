@@ -109,6 +109,7 @@ test("legacy Either bounty can be revived through the same funding action", () =
     />,
   );
 
+  expect(view.getByText("Out of funds. Add funding to reopen these slots.")).toBeTruthy();
   fireEvent.click(view.getByRole("button", { name: "Fund" }));
   expect(actions).toEqual(["either:fund"]);
 });

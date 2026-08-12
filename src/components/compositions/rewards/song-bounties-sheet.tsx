@@ -244,12 +244,15 @@ function LegacyEitherCard({
   };
   const action = slotAction(syntheticSlot, capabilities);
   const pauseCopy = claimsPausedCopy(syntheticSlot);
+  const lifecycleCopy = bounty.status === "exhausted"
+    ? "Out of funds. Add funding to reopen these slots."
+    : lifecycleStatusCopy(syntheticSlot);
   return (
     <Card aria-label="Study or Karaoke legacy bounty" className="rounded-xl border-primary/30 bg-primary-subtle p-4 shadow-none">
       <Type as="div" variant="h4">Study or Karaoke</Type>
       <Type as="div" className="mt-2 break-words" variant="body-strong">{bounty.rewardLabel}</Type>
       <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
-        {lifecycleStatusCopy(syntheticSlot)}
+        {lifecycleCopy}
       </Type>
       {pauseCopy ? (
         <Type as="p" className="mt-1 text-warning" variant="caption">{pauseCopy}</Type>

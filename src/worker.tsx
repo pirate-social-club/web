@@ -556,6 +556,7 @@ const app = defineApp<AppRequestInfo>([
       return communityLandingRedirectResponse({
         effectiveUrl,
         preview: seoResolution.communityPreview,
+        sovereignPresentation: forwardedCommunityRoot !== null,
       });
     }
     ctx.seoMetadata = seoResolution.metadata

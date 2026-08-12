@@ -33,6 +33,7 @@ describe("community landing redirect", () => {
     const response = communityLandingRedirectResponse({
       effectiveUrl: "https://pirate.sc/c/test-community",
       preview: preview("videos"),
+      sovereignPresentation: false,
     });
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("https://pirate.sc/c/test-community/threads");
@@ -44,9 +45,22 @@ describe("community landing redirect", () => {
     const response = communityLandingRedirectResponse({
       effectiveUrl: "https://pirate.sc/c/test-community?ref=share",
       preview: preview("threads"),
+      sovereignPresentation: false,
     });
     expect(response.headers.get("location")).toBe("https://pirate.sc/c/test-community/threads?ref=share");
     expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("cache-tag")).toBeNull();
+  });
+
+  test("never shares sovereign redirects through the rewritten upstream URL cache key", () => {
+    const response = communityLandingRedirectResponse({
+      effectiveUrl: "https://baddie/",
+      preview: preview("threads"),
+      sovereignPresentation: true,
+    });
+    expect(response.headers.get("location")).toBe("https://baddie/c/test-community/threads");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("cdn-cache-control")).toBe("no-store");
     expect(response.headers.get("cache-tag")).toBeNull();
   });
 });

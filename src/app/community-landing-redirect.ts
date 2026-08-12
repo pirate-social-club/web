@@ -8,15 +8,16 @@ export function communityLandingPath(preview: CommunityPreview): string {
 export function communityLandingRedirectResponse(input: {
   effectiveUrl: string;
   preview: CommunityPreview;
+  sovereignPresentation: boolean;
 }): Response {
   const redirectUrl = new URL(input.effectiveUrl);
   redirectUrl.pathname = communityLandingPath(input.preview);
-  const hasQuery = redirectUrl.search.length > 0;
+  const cacheable = !input.sovereignPresentation && redirectUrl.search.length === 0;
   return new Response(null, {
     headers: {
-      "cache-control": hasQuery ? "no-store" : "public, max-age=0, must-revalidate",
-      "cdn-cache-control": hasQuery ? "no-store" : "public, max-age=600, stale-while-revalidate=3600",
-      ...(!hasQuery ? { "cache-tag": `community:${input.preview.id}` } : {}),
+      "cache-control": cacheable ? "public, max-age=0, must-revalidate" : "no-store",
+      "cdn-cache-control": cacheable ? "public, max-age=600, stale-while-revalidate=3600" : "no-store",
+      ...(cacheable ? { "cache-tag": `community:${input.preview.id}` } : {}),
       location: redirectUrl.toString(),
     },
     status: 302,

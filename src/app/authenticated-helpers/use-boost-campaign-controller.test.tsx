@@ -478,6 +478,32 @@ describe("useBoostCampaignController", () => {
     expect(view.result.current.policySheetProps.errorMessage).toBeUndefined();
   });
 
+  test("ignores funding preparation that completes after the post changes", async () => {
+    let releaseCampaignCreate: (() => void) | undefined;
+    createGate = new Promise<void>((resolve) => { releaseCampaignCreate = resolve; });
+    const view = renderHook(
+      (props: ReturnType<typeof input>) => useBoostCampaignController(props),
+      { initialProps: input() },
+    );
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+
+    act(() => {
+      view.result.current.openBoost();
+      view.result.current.sheetProps.onConfirm?.();
+    });
+    await waitFor(() => expect(calls.create).toBe(1));
+    expect(view.result.current.sheetProps.busy).toBe(true);
+
+    view.rerender({ ...input(), postId: "pst_test_2" });
+    await waitFor(() => expect(view.result.current.sheetProps.busy).toBe(false));
+    expect(view.result.current.sheetProps.state).toBe("compose");
+
+    await act(async () => releaseCampaignCreate?.());
+    expect(calls.quote).toBe(0);
+    expect(view.result.current.sheetProps.state).toBe("compose");
+    expect(view.result.current.sheetProps.transactionHash).toBeUndefined();
+  });
+
   test("creates once and re-quotes the existing draft campaign", async () => {
     const view = renderHook(() => useBoostCampaignController(input()));
     await waitFor(() => expect(view.result.current.canBoost).toBe(true));

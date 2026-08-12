@@ -32,48 +32,34 @@ import {
   resolveDailyAccrualPlan,
 } from "@/lib/rewards/boost-plan";
 import {
+  INITIAL_BOOST_FUNDING_WORKFLOW_STATE,
+  reduceBoostFundingWorkflow,
+} from "./boost-funding-workflow";
+import {
   INITIAL_BOOST_POLICY_WORKFLOW_STATE,
   reduceBoostPolicyWorkflow,
 } from "./boost-policy-workflow";
 import { boostFundingErrorMessage } from "./boost-funding-errors";
+import {
+  boostIdempotencyKey,
+  campaignStorageKey,
+  createRequestStorageKey,
+  pendingFundingStorageKey,
+  quoteRequestStorageKey,
+  readPendingFunding,
+  readTerminalFunding,
+  requestKey,
+  TERMINAL_FUNDING_CODES,
+  terminalFundingMessage,
+  terminalFundingStorageKey,
+  type TerminalFunding,
+  writePendingFunding,
+} from "./boost-funding-recovery";
 
 const SCORE_THRESHOLD_BPS = 7_000;
-const CAMPAIGN_STORAGE_PREFIX = "pirate_reward_campaign:";
-const PENDING_FUNDING_STORAGE_PREFIX = "pirate_reward_pending_funding:";
-const TERMINAL_FUNDING_STORAGE_PREFIX = "pirate_reward_terminal_funding:";
-const CREATE_KEY_STORAGE_PREFIX = "pirate_reward_create_key:";
-const QUOTE_KEY_STORAGE_PREFIX = "pirate_reward_quote_key:";
 const FUNDING_FINALITY_POLL_INTERVAL_MS = 10_000;
 function nationalityTiersPreviewEnabled(): boolean {
   return readViteEnv("VITE_REWARD_NATIONALITY_TIERS_PREVIEW") === "true";
-}
-
-const TERMINAL_FUNDING_CODES = new Set([
-  "funding_failed",
-  "funding_operator_incident",
-  "funding_refund_pending",
-  "funding_quote_expired",
-  "funding_confirmed_after_quote_expiry",
-  "funding_quote_already_claimed",
-  "one_live",
-  "conflict",
-  "funding_transaction_already_consumed",
-  "funding_transaction_mismatch",
-]);
-
-interface PendingFunding {
-  campaignId: string;
-  quote: RewardCampaignFundingQuote;
-  transactionHash: string | null;
-}
-
-interface TerminalFunding {
-  campaignId: string;
-  code: string;
-  fundingId?: string;
-  message: string;
-  quoteId: string;
-  transactionHash: string;
 }
 
 export function useBoostMenuEligibility(input: {
@@ -107,79 +93,6 @@ export function useBoostMenuEligibility(input: {
   }, [api.rewards, input.authenticated, postIdsKey]);
 
   return eligiblePostIds;
-}
-
-function idempotencyKey(prefix: string): string {
-  return `${prefix}_${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`}`;
-}
-
-function campaignStorageKey(communityId: string, postId: string): string {
-  return `${CAMPAIGN_STORAGE_PREFIX}${communityId}:${postId}`;
-}
-
-function pendingFundingStorageKey(communityId: string, postId: string): string {
-  return `${PENDING_FUNDING_STORAGE_PREFIX}${communityId}:${postId}`;
-}
-
-function terminalFundingStorageKey(communityId: string, postId: string): string {
-  return `${TERMINAL_FUNDING_STORAGE_PREFIX}${communityId}:${postId}`;
-}
-
-function requestKey(storageKey: string, prefix: string): string {
-  const existing = globalThis.localStorage?.getItem(storageKey);
-  if (existing) return existing;
-  const created = idempotencyKey(prefix);
-  globalThis.localStorage?.setItem(storageKey, created);
-  return created;
-}
-
-function createRequestStorageKey(communityId: string, postId: string): string {
-  return `${CREATE_KEY_STORAGE_PREFIX}${communityId}:${postId}`;
-}
-
-function quoteRequestStorageKey(campaignId: string): string {
-  return `${QUOTE_KEY_STORAGE_PREFIX}${campaignId}`;
-}
-
-function readTerminalFunding(communityId: string, postId: string): TerminalFunding | null {
-  try {
-    const value = globalThis.localStorage?.getItem(terminalFundingStorageKey(communityId, postId));
-    return value ? JSON.parse(value) as TerminalFunding : null;
-  } catch {
-    return null;
-  }
-}
-
-function readPendingFunding(communityId: string, postId: string): PendingFunding | null {
-  try {
-    const value = globalThis.localStorage?.getItem(pendingFundingStorageKey(communityId, postId));
-    return value ? JSON.parse(value) as PendingFunding : null;
-  } catch {
-    return null;
-  }
-}
-
-function writePendingFunding(communityId: string, postId: string, pending: PendingFunding): void {
-  globalThis.localStorage?.setItem(pendingFundingStorageKey(communityId, postId), JSON.stringify(pending));
-}
-
-function terminalFundingMessage(code: string): string {
-  if (code === "funding_failed") {
-    return "This transaction failed on-chain. No funds were received. Start a new funding attempt.";
-  }
-  if (code === "funding_operator_incident") {
-    return "Funding needs support review. Do not send again.";
-  }
-  if (code === "funding_refund_pending") {
-    return "Funds were received, but the campaign was not activated. A refund is pending; do not send again.";
-  }
-  if (code === "funding_refunded" || code === "funding_quote_already_claimed") {
-    return "Funding was refunded or already entered refund handling. The campaign was not activated.";
-  }
-  if (code === "funding_transaction_already_consumed" || code === "funding_transaction_mismatch") {
-    return "This transaction could not fund this campaign. Support review is required; do not send again.";
-  }
-  return "Funds were received, but the campaign was not activated. Refund or support review is required; do not send again.";
 }
 
 function blocksNewCampaign(campaign: RewardCampaign | null): boolean {
@@ -231,11 +144,8 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const [policyAllowed, setPolicyAllowed] = React.useState(true);
   const [campaign, setCampaign] = React.useState<RewardCampaign | null>(null);
   const [quote, setQuote] = React.useState<RewardCampaignFundingQuote | null>(null);
-  const [transactionHash, setTransactionHash] = React.useState<string | null>(null);
-  const [supportReference, setSupportReference] = React.useState<string | undefined>();
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [policyOpen, setPolicyOpen] = React.useState(false);
-  const [sheetState, setSheetState] = React.useState<BoostCampaignSheetProps["state"]>("compose");
   const [eligibleActivity, setEligibleActivity] = React.useState<BoostEligibleActivity>("karaoke");
   const [identityProvider, setIdentityProvider] = React.useState<BoostRewardIdentityProvider>("very");
   const [dailyRewardInput, setDailyRewardInput] = React.useState("1.00");
@@ -243,9 +153,18 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const [payoutTiers, setPayoutTiers] = React.useState<BoostPayoutTierDraft[]>([]);
   const [nationalityPricingEnabled, setNationalityPricingEnabled] = React.useState(false);
   const [reviewAttempted, setReviewAttempted] = React.useState(false);
-  const [busy, setBusy] = React.useState(false);
-  const [errorMessage, setErrorMessage] = React.useState<string | undefined>();
-  const [terminalCode, setTerminalCode] = React.useState<string | null>(null);
+  const [fundingWorkflow, dispatchFundingWorkflow] = React.useReducer(
+    reduceBoostFundingWorkflow,
+    INITIAL_BOOST_FUNDING_WORKFLOW_STATE,
+  );
+  const {
+    busy,
+    errorMessage,
+    status: sheetState,
+    supportReference,
+    terminalCode,
+    transactionHash,
+  } = fundingWorkflow;
   const [policyWorkflow, dispatchPolicyWorkflow] = React.useReducer(
     reduceBoostPolicyWorkflow,
     INITIAL_BOOST_POLICY_WORKFLOW_STATE,
@@ -256,6 +175,15 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const confirmFundingInFlight = React.useRef(false);
   const policyUpdateInFlight = React.useRef(false);
   const recoveredFundingConfirm = React.useRef(false);
+  const fundingOwnerKey = `${input.communityId ?? ""}:${input.postId}`;
+  const fundingOwnerKeyRef = React.useRef(fundingOwnerKey);
+  if (fundingOwnerKeyRef.current !== fundingOwnerKey) {
+    fundingOwnerKeyRef.current = fundingOwnerKey;
+    createQuoteInFlight.current = false;
+    sendFundingInFlight.current = false;
+    confirmFundingInFlight.current = false;
+    recoveredFundingConfirm.current = false;
+  }
   const policyOwnerKey = `${input.communityId ?? ""}:${input.postId}`;
   const policyOwnerKeyRef = React.useRef(policyOwnerKey);
   if (policyOwnerKeyRef.current !== policyOwnerKey) {
@@ -266,6 +194,10 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   React.useEffect(() => {
     dispatchPolicyWorkflow({ type: "owner-changed" });
   }, [policyOwnerKey]);
+
+  React.useEffect(() => {
+    dispatchFundingWorkflow({ type: "owner-changed" });
+  }, [fundingOwnerKey]);
 
   React.useEffect(() => {
     if (!input.authenticated || !input.song || !input.communityId) {
@@ -313,7 +245,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
             nationalities: tier.nationalities,
             amountLabel: (tier.amount_cents / 100).toFixed(2),
           })));
-          setSheetState("draft-preview");
+          dispatchFundingWorkflow({ type: "show", status: "draft-preview" });
         }
       }
       const serverTransactionHash = campaignFundingTxHash(storedCampaign);
@@ -325,16 +257,18 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       ) {
         globalThis.localStorage?.removeItem(pendingFundingStorageKey(input.communityId!, input.postId));
         globalThis.localStorage?.removeItem(terminalFundingStorageKey(input.communityId!, input.postId));
-        setTransactionHash(serverTransactionHash ?? pending?.transactionHash ?? terminal?.transactionHash ?? null);
-        setTerminalCode(null);
-        setErrorMessage(undefined);
-        setSheetState("active");
+        dispatchFundingWorkflow({
+          type: "activated",
+          transactionHash: serverTransactionHash ?? pending?.transactionHash ?? terminal?.transactionHash ?? null,
+        });
       } else if (terminal && storedCampaign?.id === terminal.campaignId) {
-        setTransactionHash(terminal.transactionHash);
-        setSupportReference(terminal.quoteId);
-        setErrorMessage(terminal.message);
-        setTerminalCode(terminal.code);
-        setSheetState("funding-review");
+        dispatchFundingWorkflow({
+          type: "review-required",
+          code: terminal.code,
+          message: terminal.message,
+          supportReference: terminal.quoteId,
+          transactionHash: terminal.transactionHash,
+        });
         const fundingId = terminal.fundingId ?? terminal.quoteId.split(" / ")[0];
         void api.rewards.confirmFundingQuote(storedCampaign.id, fundingId, {
           tx_hash: terminal.transactionHash,
@@ -344,11 +278,11 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
             const refreshed = await api.rewards.getCampaign(storedCampaign.id);
             if (cancelled) return;
             setCampaign(refreshed);
-            setTransactionHash(campaignFundingTxHash(refreshed) ?? terminal.transactionHash);
             globalThis.localStorage?.removeItem(terminalFundingStorageKey(input.communityId!, input.postId));
-            setTerminalCode(null);
-            setErrorMessage(undefined);
-            setSheetState("active");
+            dispatchFundingWorkflow({
+              type: "activated",
+              transactionHash: campaignFundingTxHash(refreshed) ?? terminal.transactionHash,
+            });
             return;
           }
           const statusCode = funding.status === "failed"
@@ -366,8 +300,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
             terminalFundingStorageKey(input.communityId!, input.postId),
             JSON.stringify(refreshedTerminal),
           );
-          setTerminalCode(statusCode);
-          setErrorMessage(message);
+          dispatchFundingWorkflow({ type: "review-updated", code: statusCode, message });
         }).catch((error: unknown) => {
           if (cancelled || !(error instanceof ApiError)) return;
           if (error.code === "funding_quote_already_claimed") {
@@ -382,19 +315,22 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
               terminalFundingStorageKey(input.communityId!, input.postId),
               JSON.stringify(refreshedTerminal),
             );
-            setTerminalCode("funding_refunded");
-            setErrorMessage(message);
+            dispatchFundingWorkflow({ type: "review-updated", code: "funding_refunded", message });
           }
         });
       } else if (pending && storedCampaign?.id === pending.campaignId) {
         setQuote(pending.quote);
-        setTransactionHash(pending.transactionHash);
         if (pending.transactionHash) {
-          setErrorMessage(undefined);
-          setSheetState("awaiting-finality");
+          dispatchFundingWorkflow({
+            type: "awaiting-finality",
+            transactionHash: pending.transactionHash,
+          });
           recoveredFundingConfirm.current = true;
         } else {
-          setSheetState(pending.quote.expires_at <= Math.floor(Date.now() / 1_000) ? "compose" : "quote");
+          dispatchFundingWorkflow({
+            type: "show",
+            status: pending.quote.expires_at <= Math.floor(Date.now() / 1_000) ? "compose" : "quote",
+          });
         }
       }
     }).catch(() => {
@@ -466,9 +402,9 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
 
   const createQuote = React.useCallback(async (existingCampaign?: RewardCampaign | null) => {
     if (createQuoteInFlight.current || !input.communityId || !capabilities || !plan?.valid || plan.budgetCents == null || plan.dailyRewardCents == null) return;
+    const requestOwnerKey = fundingOwnerKeyRef.current;
     createQuoteInFlight.current = true;
-    setBusy(true);
-    setErrorMessage(undefined);
+    dispatchFundingWorkflow({ type: "operation-started" });
     try {
       const now = Math.floor(Date.now() / 1_000);
       const createKeyStorage = createRequestStorageKey(input.communityId, input.postId);
@@ -496,11 +432,12 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         reward_period_cap_cents: plan.dailyRewardCents,
         starts_at: now,
       });
+      if (fundingOwnerKeyRef.current !== requestOwnerKey) return;
       globalThis.localStorage?.removeItem(createKeyStorage);
       setCampaign(targetCampaign);
       globalThis.localStorage?.setItem(campaignStorageKey(input.communityId, input.postId), targetCampaign.id);
       if (tieredDraft && !tierFundingEnabled) {
-        setSheetState("draft-preview");
+        dispatchFundingWorkflow({ type: "show", status: "draft-preview" });
         return;
       }
       const quoteKeyStorage = quoteRequestStorageKey(targetCampaign.id);
@@ -509,21 +446,26 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         idempotency_key: requestKey(quoteKeyStorage, "reward_quote"),
         reward_identity_provider: targetCampaign.reward_identity_provider,
       });
+      if (fundingOwnerKeyRef.current !== requestOwnerKey) return;
       globalThis.localStorage?.removeItem(quoteKeyStorage);
       setQuote(nextQuote);
-      setTransactionHash(nextQuote.tx_hash ?? null);
       writePendingFunding(input.communityId, input.postId, {
         campaignId: targetCampaign.id,
         quote: nextQuote,
         transactionHash: nextQuote.tx_hash ?? null,
       });
-      setSheetState("quote");
+      dispatchFundingWorkflow({ type: "quote-ready", transactionHash: nextQuote.tx_hash ?? null });
     } catch (error) {
-      setErrorMessage(boostFundingErrorMessage(error, "Could not prepare bounty funding."));
-      setSheetState("failed");
+      if (fundingOwnerKeyRef.current !== requestOwnerKey) return;
+      dispatchFundingWorkflow({
+        type: "failed",
+        message: boostFundingErrorMessage(error, "Could not prepare bounty funding."),
+      });
     } finally {
-      createQuoteInFlight.current = false;
-      setBusy(false);
+      if (fundingOwnerKeyRef.current === requestOwnerKey) {
+        createQuoteInFlight.current = false;
+        dispatchFundingWorkflow({ type: "operation-finished" });
+      }
     }
   }, [api.rewards, capabilities, eligibleActivity, input.communityId, input.postId, nationalityPricingEnabled, parsedPayoutTiers, payoutTiers.length, plan, tierFundingEnabled, tiersPreviewAvailable]);
 
@@ -545,10 +487,14 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   }, [campaign, createQuote, nowSeconds, quote, sheetOpen, sheetState, transactionHash]);
 
   const refreshCampaign = React.useCallback(async (campaignId: string) => {
+    const requestOwnerKey = fundingOwnerKeyRef.current;
     const nextCampaign = await api.rewards.getCampaign(campaignId);
+    if (fundingOwnerKeyRef.current !== requestOwnerKey) return false;
     setCampaign(nextCampaign);
     const serverTransactionHash = campaignFundingTxHash(nextCampaign);
-    if (serverTransactionHash) setTransactionHash(serverTransactionHash);
+    if (serverTransactionHash) {
+      dispatchFundingWorkflow({ type: "transaction-recorded", transactionHash: serverTransactionHash });
+    }
     if (
       nextCampaign.funded_cents > 0
       && ["scheduled", "active"].includes(nextCampaign.status)
@@ -557,13 +503,11 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         globalThis.localStorage?.removeItem(pendingFundingStorageKey(input.communityId, input.postId));
         globalThis.localStorage?.removeItem(terminalFundingStorageKey(input.communityId, input.postId));
       }
-      setTerminalCode(null);
-      setErrorMessage(undefined);
-      setSheetState("active");
+      dispatchFundingWorkflow({ type: "activated", transactionHash: serverTransactionHash });
       input.onCampaignActivated?.();
       return true;
     }
-    setSheetState("awaiting-finality");
+    dispatchFundingWorkflow({ type: "awaiting-finality" });
     return false;
   // The input container is recreated by callers; these listed members are the complete callback inputs.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -591,11 +535,14 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         terminalFundingStorageKey(input.communityId, input.postId),
         JSON.stringify(terminal),
       );
-      setSupportReference(terminal.quoteId);
     }
-    setTerminalCode(code);
-    setErrorMessage(message);
-    setSheetState("funding-review");
+    dispatchFundingWorkflow({
+      type: "review-required",
+      code,
+      message,
+      supportReference: requestId ? `${targetQuote.id} / ${requestId}` : targetQuote.id,
+      transactionHash: hash,
+    });
   }, [input.communityId, input.postId]);
 
   const confirmSubmittedFunding = React.useCallback(async (
@@ -604,18 +551,18 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     hash: string,
   ) => {
     if (confirmFundingInFlight.current) return;
+    const requestOwnerKey = fundingOwnerKeyRef.current;
     confirmFundingInFlight.current = true;
-    setBusy(true);
-    setErrorMessage(undefined);
-    setSheetState((current) => current === "awaiting-finality" ? current : "confirming");
+    dispatchFundingWorkflow({ type: "confirmation-started" });
     try {
       const funding = await api.rewards.confirmFundingQuote(
         targetCampaign.id,
         targetQuote.id,
         { tx_hash: hash },
       );
+      if (fundingOwnerKeyRef.current !== requestOwnerKey) return;
       if (funding.status === "confirming" || funding.status === "quoted") {
-        setSheetState("awaiting-finality");
+        dispatchFundingWorkflow({ type: "awaiting-finality", transactionHash: hash });
         return;
       }
       if (funding.status === "failed") {
@@ -636,6 +583,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       }
       await refreshCampaign(targetCampaign.id);
     } catch (error) {
+      if (fundingOwnerKeyRef.current !== requestOwnerKey) return;
       const code = error instanceof ApiError ? error.code : "";
       if ((TERMINAL_FUNDING_CODES.has(code) || code === "funding_refunded") && input.communityId) {
         applyTerminalFunding(
@@ -647,11 +595,12 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         );
         return;
       }
-      setErrorMessage(undefined);
-      setSheetState("awaiting-finality");
+      dispatchFundingWorkflow({ type: "awaiting-finality", transactionHash: hash });
     } finally {
-      confirmFundingInFlight.current = false;
-      setBusy(false);
+      if (fundingOwnerKeyRef.current === requestOwnerKey) {
+        confirmFundingInFlight.current = false;
+        dispatchFundingWorkflow({ type: "operation-finished" });
+      }
     }
   }, [api.rewards, applyTerminalFunding, input.communityId, refreshCampaign]);
 
@@ -679,14 +628,13 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     if (sendFundingInFlight.current || !quote || !campaign || !fundingWallet) {
       return;
     }
+    const requestOwnerKey = fundingOwnerKeyRef.current;
     if (quote.expires_at <= Math.floor(Date.now() / 1_000)) {
       void createQuote(campaign);
       return;
     }
     sendFundingInFlight.current = true;
-    setBusy(true);
-    setErrorMessage(undefined);
-    setSheetState("confirming");
+    dispatchFundingWorkflow({ type: "operation-started", status: "confirming" });
     // Local mirror of the submitted hash: the catch below must know whether a
     // transaction exists to choose between "retry safely" and "check status".
     let submittedHash: string | null = null;
@@ -696,7 +644,8 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         wallet: fundingWallet,
         onSubmitted: (submitted) => {
           submittedHash = submitted;
-          setTransactionHash(submitted);
+          if (fundingOwnerKeyRef.current !== requestOwnerKey) return;
+          dispatchFundingWorkflow({ type: "transaction-submitted", transactionHash: submitted });
           if (input.communityId) {
             writePendingFunding(input.communityId, input.postId, {
               campaignId: campaign.id,
@@ -706,25 +655,30 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
           }
         },
       });
+      if (fundingOwnerKeyRef.current !== requestOwnerKey) return;
       await confirmSubmittedFunding(campaign, quote, hash);
     } catch (error) {
+      if (fundingOwnerKeyRef.current !== requestOwnerKey) return;
       if (submittedHash) {
-        setErrorMessage(undefined);
-        setSheetState("awaiting-finality");
+        dispatchFundingWorkflow({ type: "awaiting-finality", transactionHash: submittedHash });
       } else {
-        setErrorMessage(boostFundingErrorMessage(
-          error,
-          "Could not submit bounty funding.",
-          {
-            networkLabel: getPirateNetworkConfig().base.label,
-            submitted: false,
-          },
-        ));
-        setSheetState("failed");
+        dispatchFundingWorkflow({
+          type: "failed",
+          message: boostFundingErrorMessage(
+            error,
+            "Could not submit bounty funding.",
+            {
+              networkLabel: getPirateNetworkConfig().base.label,
+              submitted: false,
+            },
+          ),
+        });
       }
     } finally {
-      sendFundingInFlight.current = false;
-      setBusy(false);
+      if (fundingOwnerKeyRef.current === requestOwnerKey) {
+        sendFundingInFlight.current = false;
+        dispatchFundingWorkflow({ type: "operation-finished" });
+      }
     }
   }, [campaign, confirmSubmittedFunding, createQuote, fundingWallet, input.communityId, input.postId, quote]);
 
@@ -752,17 +706,27 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       input.requestAuth();
       return;
     }
-    if (campaign && ["scheduled", "active"].includes(campaign.status)) setSheetState("active");
-    else if (sheetState === "funding-review") setSheetState("funding-review");
-    else if (campaignPayoutTiers(campaign).length > 0 && !tierFundingEnabled) setSheetState("draft-preview");
+    if (campaign && ["scheduled", "active"].includes(campaign.status)) {
+      dispatchFundingWorkflow({
+        type: "activated",
+        transactionHash: transactionHash ?? campaignFundingTxHash(campaign),
+      });
+    }
+    else if (sheetState === "funding-review") {
+      // Terminal review is intentionally sticky until an explicit retry is allowed.
+    }
+    else if (campaignPayoutTiers(campaign).length > 0 && !tierFundingEnabled) {
+      dispatchFundingWorkflow({ type: "show", status: "draft-preview" });
+    }
     else if (campaignPayoutTiers(campaign).length > 0 && !quote) void createQuote(campaign);
     else if (!quote) {
-      setErrorMessage(undefined);
-      setSheetState("compose");
+      dispatchFundingWorkflow({ type: "restart" });
     }
-    else if (transactionHash) setSheetState("awaiting-finality");
+    else if (transactionHash) {
+      dispatchFundingWorkflow({ type: "awaiting-finality", transactionHash });
+    }
     else if (quote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(campaign);
-    else setSheetState("quote");
+    else dispatchFundingWorkflow({ type: "show", status: "quote" });
     setSheetOpen(true);
   }, [campaign, createQuote, input, quote, sheetState, tierFundingEnabled, transactionHash]);
 
@@ -854,7 +818,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         },
         onAddPayoutTier: () => setPayoutTiers((tiers) => [
           ...tiers,
-          { id: idempotencyKey("payout_tier"), nationalities: [], amountLabel: "" },
+          { id: boostIdempotencyKey("payout_tier"), nationalities: [], amountLabel: "" },
         ]),
         onRemovePayoutTier: (tierId: string) => setPayoutTiers((tiers) => tiers.filter((tier) => tier.id !== tierId)),
         onPayoutTierNationalitiesChange: (tierId: string, nationalities: string[]) => setPayoutTiers((tiers) => tiers.map(
@@ -878,17 +842,19 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
           void confirmSubmittedFunding(campaign, quote, transactionHash);
           return;
         }
-        if (campaign) void refreshCampaign(campaign.id).catch(() => setSheetState("awaiting-finality"));
+        if (campaign) {
+          void refreshCampaign(campaign.id).catch(() => {
+            dispatchFundingWorkflow({ type: "awaiting-finality" });
+          });
+        }
       },
       onRetry: () => {
         if (sheetState === "funding-review" && terminalCode === "funding_failed") {
           if (input.communityId) {
             globalThis.localStorage?.removeItem(terminalFundingStorageKey(input.communityId, input.postId));
           }
-          setTerminalCode(null);
-          setTransactionHash(null);
           setQuote(null);
-          setErrorMessage(undefined);
+          dispatchFundingWorkflow({ type: "restart" });
           void createQuote(campaign);
           return;
         }

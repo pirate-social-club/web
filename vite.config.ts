@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
+import { resolveInitialModulePreloadDependencies } from "./src/lib/performance/initial-module-preload";
 import tailwindcss from "@tailwindcss/vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { redwood } from "rwsdk/vite";
@@ -61,12 +62,7 @@ export default defineConfig(() => ({
   },
   build: {
     modulePreload: {
-      resolveDependencies: (_url, dependencies) => dependencies.filter((dependency) =>
-        !dependency.includes("self-verification-modal-")
-        && !dependency.includes("zkpassport-verification-modal-")
-        && !dependency.includes("altcha-pow-widget-")
-        && !dependency.includes("video-experience-overlay-")
-      ),
+      resolveDependencies: (_url, dependencies) => resolveInitialModulePreloadDependencies(dependencies),
     },
     rolldownOptions: {
       checks: {

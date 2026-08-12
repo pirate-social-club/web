@@ -1,138 +1,362 @@
-# Reward ticket fulfillment policy
+# Reward ticket pool policy
 
-Date: 2026-08-12
+Date: 2026-08-13
 
 ## Status
 
-This is the locked planning basis for Megapot ticket rewards. The Storybook
-components render the intended states but are not connected to production
-controllers or backend contracts yet.
+This is the authoritative planning basis for Megapot rewards. It supersedes the
+per-qualification, direct-to-earner ticket policy previously stored at this
+path.
 
-## Campaign terms
+Megapot is a daily pooled reward attached to a song. The platform holds one or
+more tickets for a drawing and credits any winnings across the verified people
+who qualified by singing that song during the drawing's entry period.
 
-A ticket campaign has `reward_kind = "megapot_ticket"` and an immutable
-`max_ticket_cents` ceiling. The ceiling is an economic term, so it must be part
-of the canonical terms payload covered by `terms_hash`. Two otherwise identical
-campaigns with different ceilings must produce different hashes.
+The reward Storybook artifact is already on `main`, but its ticket fulfillment
+and wallet stories still model user-owned tickets and user-initiated claims.
+Those parts are superseded by this policy, remain unconnected to production
+controllers, and must not be used as an implementation contract.
 
-The ceiling is set when the campaign is created and is never repriced in place.
-A funder who wants a different ceiling creates a new campaign after the current
-one reaches a terminal state.
+## Product contract
 
-## Quote and qualification policy
+- Any eligible song may have a ticket pool alongside its Study and Karaoke
+  bounties.
+- A pool funds `tickets_per_drawing` tickets for each drawing while it has
+  enough available budget and at least one qualifying singer.
+- A verified person receives at most one beneficiary position for a song and
+  drawing, regardless of how many qualifying attempts they submit.
+- If any ticket assigned to that song and drawing wins, v1 divides the total
+  net USDC claim proceeds equally across that drawing's frozen beneficiaries.
+- V2 may weight that same frozen set by streak, using streak values snapshotted
+  before the drawing resolves.
+- A person does not own a ticket and does not call Megapot to claim. Their
+  allocated winnings become an in-app USDC balance backed by the custody
+  account until cashout.
+- Zero beneficiaries means no purchase, no reservation, and no spend for that
+  drawing.
 
-The application maintains a durable cached ticket-price quote. Refreshing or
-verifying that quote happens outside the qualification database transaction,
-using the repository's existing claim-token and compare-and-set pattern for
-RPC-backed verification.
+Lower participation on a funded song intentionally means a larger potential
+share for each singer if the pool wins. This is an attention-allocation
+mechanic: it gives people a reason to discover under-sung funded music. It is
+not a separate random draw among singers, so Chainlink VRF and a winner-selection
+beacon are not part of v1.
 
-A fresh cached quote is only an admission check:
+## Protocol assumptions
 
-- If the current ticket price is at or below `max_ticket_cents`, qualification
-  may proceed.
-- If the price exceeds `max_ticket_cents`, qualification is blocked and no
-  reservation is created.
-- If the quote is missing or stale, qualification is blocked and no reservation
-  is created.
+The integration documentation reviewed on 2026-08-13 states:
 
-Every admitted qualification reserves exactly `max_ticket_cents`. The cached
-or live ticket price never sizes the reservation. This protects an admitted
-fulfillment from ordinary price movement below the funder's accepted ceiling.
+- tickets cost 1 USDC and the protocol draws daily;
+- a purchase is bound to the current drawing and does not roll forward;
+- a purchase can send ticket NFTs to a specified recipient and accepts at most
+  10 tickets per transaction;
+- the jackpot exposes 12 payout tiers, including partial-match payouts; and
+- only the ticket holder can claim its winnings.
 
-The cache record must preserve enough evidence to audit admission, including
-the chain, ticket product or drawing, payment token, quoted atomic and cents
-amounts, observation time, and expiry time. The exact cache TTL and freshness
-alert threshold must be selected before implementation.
+These are integration assumptions, not constants to hardcode. Before shipping,
+verify the live contracts, ABIs, addresses, drawing schedule, ticket price,
+number limits, payout tiers, ownership rules, and claim behavior. Runtime copy
+must use live prize and drawing data.
 
-Quote freshness is operational health, not only a UI state. Monitoring and an
-alarm for stale or missing quotes ship with the first ticket-reward release so
-a dead price feed cannot silently reduce qualifications to zero while general
-service health remains green.
+## Separation from cash bounties and ERC-20 rewards
 
-## Fulfillment state machine
+The ticket pool is a parallel song overlay, not a `reward_kind` inside the
+Study/Karaoke slot identity. It must not occupy or block either objective slot.
+A qualifying performance may independently earn a cash or community-token
+bounty and enter the song's ticket pool.
 
-Every qualification creates one retry-safe fulfillment effect with a stable
-idempotency key. Chain RPC work occurs outside database transactions. Durable
-state and evidence allow a worker to resume without buying a duplicate ticket.
+The pool is a separate logical entity with its own identity, terms, budget,
+purchase effects, drawings, beneficiary snapshots, claims, and allocations.
+Implementation may reuse proven reward funding and reconciliation machinery,
+but must not overload a cash campaign row in a way that reintroduces slot
+conflicts.
 
-| State | Reservation behavior | User meaning |
+Megapot ticket purchases and winnings use USDC. Community-selected ERC-20
+assets remain a separate registry and atomic-accounting project. The ticket
+pool neither solves nor blocks that work. Its atomic USDC winnings ledger is a
+narrow custody requirement, not a generic multi-asset abstraction.
+
+## Pool identity and immutable terms
+
+V1 permits one non-terminal ticket pool per `(community_id, post_id)`. Ended or
+canceled pools release that identity. Exhausted pools remain discoverable and
+may be revived by an authorized top-up.
+
+The immutable terms payload includes at least:
+
+- community and song identity;
+- qualifying activity and score threshold;
+- identity-verification requirements;
+- `tickets_per_drawing`;
+- `max_ticket_cents`;
+- entry cutoff policy and drawing association policy;
+- beneficiary algorithm version (`equal_v1` initially); and
+- referral and source-attribution policy.
+
+Every economically meaningful term, including `max_ticket_cents` and
+`tickets_per_drawing`, is covered by `terms_hash`. Terms are never repriced or
+reweighted in place. A materially different offer requires a new pool after
+the current one reaches a terminal state.
+
+Third-party funding policy applies to pool creation and top-up in the same way
+as cash bounties: an owner opt-out blocks other funders, not the song owner.
+
+## Drawing period and daily loop
+
+The period key is derived from the Megapot chain, contract, and drawing ID—not
+from a loosely interpreted calendar date. Product copy may say "today" only
+when the drawing schedule and local display timezone make that accurate.
+
+Each drawing follows this sequence:
+
+1. **Entry.** Accept one qualifying beneficiary position per verified reward
+   identity for the song and drawing until the published cutoff.
+2. **Freeze.** At cutoff, freeze the canonical beneficiary list. If the list is
+   empty, close the period without spending.
+3. **Commit.** Publish a commitment to the frozen list before the drawing can
+   resolve.
+4. **Reserve.** If the cached price is fresh, within the ceiling, and the pool
+   can fund the full ceiling reservation, reserve
+   `tickets_per_drawing * max_ticket_cents`.
+5. **Purchase.** Buy the configured ticket count for the current drawing with
+   the custody account as recipient, batching transactions when required.
+6. **Confirm.** Record ticket IDs, drawing ID, actual cost, transaction and
+   block evidence, and release the unused reservation delta.
+7. **Sweep.** After the drawing resolves, inspect every held ticket for a
+   payout tier.
+8. **Claim.** The custody account claims all winning tickets with retry-safe,
+   reconciled effects.
+9. **Allocate.** Aggregate the net USDC proceeds for the song and drawing,
+   compute the beneficiary allocations, and atomically credit them once.
+
+The cutoff must leave enough time for purchase confirmation before the drawing.
+A performance arriving after cutoff enters the next eligible drawing rather
+than mutating the committed set.
+
+## Beneficiary commitment
+
+The commitment is load-bearing because the platform learns the ticket outcome
+before it distributes winnings. An internal timestamp is insufficient proof.
+
+For each song and drawing, canonicalize and hash at least:
+
+- pool ID and drawing ID;
+- ordered reward identity IDs or privacy-preserving stable commitments;
+- qualification evidence references;
+- algorithm version; and
+- for v2, the frozen streak weight for every beneficiary.
+
+Before the Megapot drawing resolves, publish an externally timestamped batch
+root covering every pool snapshot for that drawing. Store the inclusion proof
+with each snapshot. Anyone auditing a payout must be able to reconstruct the
+root and confirm that beneficiaries and weights were fixed before the outcome
+was known.
+
+This commitment protects the beneficiary set; it does not choose a winner.
+Every committed beneficiary shares every net win according to the committed
+algorithm.
+
+## Price admission and purchase reservation
+
+Maintain a durable cached ticket-price quote. Refresh and verification happen
+outside database transactions using the repository's existing leased claim and
+compare-and-set pattern for RPC-backed work.
+
+The quote is an admission check only:
+
+- fresh price at or below `max_ticket_cents`: the drawing may proceed;
+- price above the ceiling: no reservation or purchase; and
+- quote missing or stale: no reservation or purchase.
+
+The reservation is always
+`tickets_per_drawing * max_ticket_cents`; the quote never sizes it. A confirmed
+purchase converts actual cost to fulfilled spend and returns the delta to pool
+availability.
+
+The cached record preserves chain, contract, drawing, payment token, quoted
+atomic and cents amounts, observation time, expiry, and evidence. Quote TTL and
+alarm thresholds are release-blocking parameters. A stale or missing feed must
+page operationally rather than silently produce days with no tickets.
+
+## Ticket custody
+
+Tickets are held by a dedicated custody account, separate from the purchase
+operator and reward treasury. The purchase call names the custody account as
+ticket recipient; only that account claims winnings.
+
+The custody design assumes an unexpected top-tier payout. It requires:
+
+- multisig-controlled recovery and governance from day one;
+- narrowly allowlisted purchase, ticket-inspection, and claim operations;
+- separation of submitter authority from recovery authority;
+- durable ticket inventory reconciliation by drawing;
+- balance and liability reconciliation after every claim and credit batch; and
+- an incident path for a lost, paused, or ambiguous transaction.
+
+Key loss is not recoverable through application bookkeeping when the protocol
+requires the ticket holder to claim. Custody readiness is therefore a release
+gate, not a follow-up hardening task.
+
+## Purchase and claim effects
+
+Every purchase and claim uses a stable idempotency key and durable chain
+evidence. RPC work occurs outside database transactions.
+
+Purchase effects use:
+
+| State | Reservation behavior | Meaning |
 | --- | --- | --- |
 | `reserved` | Hold the full ceiling | Purchase is queued |
 | `submitted` | Keep the full ceiling reserved | Transaction awaits confirmation |
-| `confirmed` | Move actual cost to fulfilled and release the delta | Ticket was delivered |
-| `failed` | Release the full reservation | Terminal failure; a retry starts with price admission |
-| `reservation_expired` | Release the full reservation | Work did not start before its claim expired |
+| `confirmed` | Move actual cost to fulfilled and release the delta | Tickets are held for this drawing |
+| `failed` | Release the full reservation | Proven terminal failure; re-entry repeats admission |
+| `reservation_expired` | Release the full reservation | Work did not start before its lease expired |
 | `needs_review` | Keep the full reservation | Outcome is uncertain and must be reconciled |
 
-`needs_review` is a leased reconciliation state, not a permanent outcome. Each
-effect has a finite `review_deadline_at`, a `next_reconcile_at`, and an attempt
-count. Automated reconciliation must move it to `confirmed` when chain evidence
-proves delivery or to `failed` when evidence proves the purchase did not land.
-A deadline breach pages the operator and creates an owned resolution item; the
-operator records the deciding evidence and completes one of those same terminal
-edges. If the chain outcome is still ambiguous, the campaign enters
-`operational_hold`, the reservation remains protected, and the incident stays
-open rather than silently consuming availability. The numeric retry cadence,
-review SLA, and escalation threshold are release-blocking parameters for step 5.
-There is no close-without-resolution or evidence-free release action.
+`needs_review` is leased, bounded work. Each effect has a review deadline, next
+reconciliation time, and attempt count. Evidence moves it to `confirmed` or
+`failed`. A deadline breach creates an owned operational item. If the outcome
+remains ambiguous, the pool enters `operational_hold` and preserves the
+reservation. There is no evidence-free release or close action.
 
-A confirmed effect records the transaction hash, ticket identifier, actual
-atomic payment, actual cents cost, block evidence, and confirmation status.
-Reorg handling follows the same confirmation and reconciliation discipline as
-existing on-chain funding receipts.
+Claim effects separately track `detected`, `submitted`, `confirmed`, `failed`,
+and `needs_review`. Confirmation records the exact atomic USDC received. A
+unique claim key and unique allocation-batch key prevent repeated sweeps from
+claiming or crediting the same proceeds twice.
 
-## Accounting policy
+The drawing sweep is recurring operational health. A freshness alarm ships
+with v1 so winning tickets cannot remain silently unclaimed.
 
-Ticket delivery is not a user cash liability. Add `fulfilled_cents` to the
-campaign accounting model and preserve these invariants:
+## Accounting
+
+Purchase budget and pool winnings are distinct ledgers.
+
+### Purchase budget
+
+Funders' USDC pays for tickets. Ticket purchases are not user cash liabilities.
+The ticket-pool budget preserves:
 
 ```text
-reserved_cents + credited_cents + fulfilled_cents + refunded_cents <= funded_cents
-paid_cents <= credited_cents
+reserved_cents + fulfilled_cents + refunded_cents <= funded_cents
 ```
 
-On confirmation, remove the full ceiling from `reserved_cents`, add the actual
-ticket cost to `fulfilled_cents`, and return the difference to the campaign's
-available funding. A price decrease therefore restores more availability; a
-price increase within the ceiling restores less. A terminal failure or expired
-reservation releases the entire ceiling. `needs_review` retains it.
+On confirmation, remove the full ceiling reservation, add actual ticket cost
+to `fulfilled_cents`, and return the delta to available funding. Terminal
+failure and reservation expiry release the full ceiling. `needs_review` retains
+it.
 
-The schema migration is incomplete until every reader of the existing counters
-understands `fulfilled_cents`. This includes, at minimum:
+This invariant belongs to the ticket-pool ledger. Reusing existing campaign
+counter code requires auditing all safety, refund, solvency, top-up, retirement,
+rehearsal, availability, visibility, reconciliation, and monitoring readers so
+fulfilled spend can never look refundable or retirable.
 
-- Core migrations and audit views for campaign safety, refund execution,
-  solvency observations, top-up budget checks, funding retirements, and
-  rehearsal fixtures (`0134`, `0135`, `0149`, `0150`, `0159`, `0160`, `0192`,
-  `0195`, and `0202`).
-- API availability, lifecycle and retirement gates, the campaign reconciler,
-  campaign creation and serialization, visibility, solvency monitoring and
-  gates, read services, rehearsal code, song-practice reconciliation, service
-  contracts, generated API contracts, and their fixtures and tests.
-- Cashout and paid-liability readers, which must be audited and explicitly keep
-  cash-only semantics where appropriate rather than accidentally treating a
-  fulfilled ticket as withdrawable cash.
+### Winnings liability
 
-The migration window must assert old and new counter projections agree for
-cash campaigns before the new invariant becomes authoritative.
+Claimed winnings come from Megapot, not funders. They never enter
+`funded_cents`, pool availability, or cash-bounty solvency calculations.
+
+USDC has atomic precision below one cent, while the current reward balance is
+cents-authoritative. Equal division can therefore produce valid sub-cent
+shares. V1 must add an atomic-USDC liability and allocation path; it must not
+round a beneficiary to zero, report a pool as a zero-dollar win, or silently
+retain dust as platform revenue.
+
+For net proceeds `P` atomic units and `N` beneficiaries, allocate `P / N` to
+each canonical beneficiary and distribute the `P % N` one-unit remainder in
+canonical snapshot order. The allocation sum must equal the exact net amount
+received.
+
+Each allocation records asset, atomic amount, derived cents when exactly
+representable, claim evidence, pool, drawing, snapshot commitment, algorithm
+version, and idempotency key. The existing wallet and cashout experience may
+present the resulting USDC balance, but its backend contract must preserve
+atomic amounts through aggregation and settlement.
+
+Custody solvency must continuously reconcile:
+
+```text
+claimed USDC - cashed-out USDC = outstanding atomic beneficiary liabilities
+```
+
+Protocol referral earnings and other platform revenue are separate from net
+claim proceeds allocated to beneficiaries. The product must disclose any
+protocol-level deduction or win-share that affects the net receipt.
+
+## V1 and v2 distribution
+
+V1 uses `equal_v1`: everyone in the committed beneficiary set receives an
+equal atomic share, with deterministic remainder handling as defined above.
+The relevant live product number is the current beneficiary count or projected
+share denominator—not a claimed probability of winning.
+
+V2 may introduce `streak_weighted_v2`. It must define the weight formula as an
+immutable, versioned policy and commit every beneficiary's weight before the
+drawing resolves. It must not compute weights after learning the payout.
+
+Changing from equal to streak-weighted allocation does not mutate existing
+pool terms or prior snapshots. It requires a new term version or successor
+pool and new Storybook review.
+
+## Product and Storybook impact
+
+The discovery mechanic requires a browsable funded-song surface. Each song
+shows the current drawing, tickets assigned, entry cutoff, current beneficiary
+count, and pool funding state. Under-sung funded songs should be discoverable
+without promising a fixed share before cutoff.
+
+The existing Storybook artifacts need a dedicated correction pass:
+
+- replace per-qualification delivery states with entry-open, entered,
+  cutoff/frozen, tickets-confirmed, drawing-pending, no-win, winnings-detected,
+  claim-pending, credited, and operational-review states;
+- remove copy saying a ticket belongs to the singer's wallet;
+- remove the user's `Claim winnings` action and user-owned
+  `MegapotTicketHolding` model;
+- represent winnings as atomic-USDC balance credits with pool/drawing evidence;
+- add a ticket-pool card independent of the Study and Karaoke slots; and
+- cover zero beneficiaries, stale price, insufficient budget, purchase
+  failure, snapshot-commit failure, delayed drawing, sweep stale, small-tier
+  dust allocation, multiple winning tickets, and a top-tier win.
+
+Until that pass lands, the deployed but unreferenced ticket compositions are
+historical review artifacts only.
+
+## Release-blocking decisions and gates
+
+Before backend implementation begins, settle and record:
+
+- the precise entry cutoff and confirmation lead time relative to each drawing;
+- the public append-only commitment channel and proof format;
+- custody account implementation and recovery policy;
+- cached-price TTL, sweep freshness threshold, and reconciliation SLA;
+- beneficiary treatment after account deletion or identity revocation;
+- the minimum cashout threshold without a minimum recorded credit;
+- referral wallet and win-share disclosure policy; and
+- pool cancellation and final-drawing behavior.
+
+V1 does not require VRF or a random-selection service. It does require live
+contract verification, custody readiness, public pre-draw beneficiary
+commitments, atomic-USDC liability accounting, idempotent claim and credit
+effects, and price/sweep freshness alarms.
 
 ## Delivery order
 
-1. Commit the Storybook cleanup and this policy.
-2. Merge the inert Storybook review artifact.
-3. Land claim hardening and the first-time-claimant acceptance check.
-4. Wire multi-funder top-up into the merged `top_up` sheet state.
-5. Implement the cached-price, fulfillment-effect, freshness-alarm, and
-   `fulfilled_cents` backend contract together.
-6. Add Study and Karaoke objective slots and then move claim uniqueness to the
+Already complete:
+
+1. Merge the inert Storybook review artifact.
+2. Land claim hardening and the first-time-claimant acceptance check.
+
+Next:
+
+1. Correct this policy on `main`.
+2. Finish the permanent-pool resolver and multi-funder top-up controller,
+   including removal of the live-bounty UI blocker.
+3. Rework and review the ticket-facing Storybook surfaces for the pooled model.
+4. Turn the release-blocking decisions above into an implementation spec.
+5. Implement ticket-pool funding, drawing periods, commitments, purchases,
+   custody, sweeps, claims, atomic allocations, cashout integration, and
+   operational alarms together.
+6. Add Study and Karaoke objective slots, then move claim uniqueness to the
    objective-scoped boundary.
 
-Claim hardening remains a prerequisite for the objective-scoped claim change.
-ERC-20 registry and atomic-accounting work remains a separate later project;
-community-token campaigns must not be inferred from this USDC ticket rail.
-
-## Storybook infrastructure note
-
-The Storybook Vite configuration deduplicates `react` and `react-dom` for the
-entire catalog. This prevents isolated worktrees from loading two React
-instances. Because the setting is repository-wide rather than reward-specific,
-the pull request must disclose it and include an unrelated-story smoke result.
+Claim hardening remains a prerequisite for objective-scoped claims. ERC-20
+registry and generic multi-asset accounting remain a later, separate project.

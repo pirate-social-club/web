@@ -25,6 +25,14 @@ function isStaticAsset(url) {
   }
 }
 
+function isImmutableAsset(url) {
+  try {
+    return new URL(url).pathname.startsWith("/assets/");
+  } catch {
+    return false;
+  }
+}
+
 function isNavigationRequest(request) {
   return request.mode === "navigate";
 }
@@ -52,15 +60,19 @@ self.addEventListener("fetch", (event) => {
 
   if (!isStaticAsset(request.url)) return;
 
-  event.respondWith(
-    fetch(request).then((response) => {
-      if (!response || response.status !== 200) return response;
-      const clone = response.clone();
-      caches.open(CACHE_NAME).then((cache) => {
-        cache.put(request, clone);
-      });
-      return response;
-    })
-      .catch(() => caches.match(request)),
-  );
+  if (isImmutableAsset(request.url)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (!response || response.status !== 200) return response;
+          event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone())));
+          return response;
+        });
+      }),
+    );
+    return;
+  }
+
+  event.respondWith(fetch(request).catch(() => caches.match(request)));
 });

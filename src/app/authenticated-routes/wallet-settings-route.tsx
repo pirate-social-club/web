@@ -21,7 +21,6 @@ import { WalletHub } from "@/components/compositions/wallet/wallet-hub/wallet-hu
 import {
   CashoutSheet,
   VerifyHumanSheet,
-  type CashoutSheetState,
   type VerifyHumanSheetState,
 } from "@/components/compositions/rewards/reward-surfaces";
 import { IdentityWalletSection } from "@/components/compositions/wallet/identity-wallet-section/identity-wallet-section";
@@ -42,6 +41,20 @@ import { updateSessionIdentityWallet, useSession } from "@/lib/api/session-store
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { useZkPassportVerification } from "@/lib/verification/use-zkpassport-verification";
+import {
+  initialRewardsCashoutWorkflowState,
+  loadRewardsCashoutAttempt,
+  reduceRewardsCashoutWorkflow,
+  storeRewardsCashoutAttempt,
+} from "./wallet-rewards-cashout-workflow";
+import {
+  baseTxUrl,
+  formatRewardBalanceCents,
+  formatRewardCents,
+  isIdentityConflictError,
+  pendingRewardDeadline,
+  rewardAssetLabel,
+} from "./wallet-rewards-format";
 
 const REWARD_CASHOUT_VERIFICATION_PROVIDERS = ["self", "zkpassport", "very"] as const;
 type RewardVerificationProvider = typeof REWARD_CASHOUT_VERIFICATION_PROVIDERS[number];
@@ -89,35 +102,6 @@ const EMPTY_REWARDS_SUMMARY: ApiRewardsSummaryResponse = {
   },
   latest_in_flight_cashout: null,
 };
-
-const REWARDS_CASHOUT_ATTEMPT_KEY = "pirate_rewards_cashout_attempt";
-
-type RewardsCashoutAttempt = {
-  amountCents: number;
-  cashoutId?: string;
-  idempotencyKey: string;
-};
-
-function loadRewardsCashoutAttempt(): RewardsCashoutAttempt | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(REWARDS_CASHOUT_ATTEMPT_KEY) ?? "null") as Partial<RewardsCashoutAttempt> | null;
-    if (!parsed || !Number.isSafeInteger(parsed.amountCents) || Number(parsed.amountCents) <= 0 || typeof parsed.idempotencyKey !== "string") return null;
-    return {
-      amountCents: Number(parsed.amountCents),
-      cashoutId: typeof parsed.cashoutId === "string" ? parsed.cashoutId : undefined,
-      idempotencyKey: parsed.idempotencyKey,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function storeRewardsCashoutAttempt(attempt: RewardsCashoutAttempt | null): void {
-  if (typeof window === "undefined") return;
-  if (attempt) window.localStorage.setItem(REWARDS_CASHOUT_ATTEMPT_KEY, JSON.stringify(attempt));
-  else window.localStorage.removeItem(REWARDS_CASHOUT_ATTEMPT_KEY);
-}
 
 type WalletBalanceChain = {
   chainId: WalletHubChainId;
@@ -300,42 +284,6 @@ function formatNativeBalance(balance: bigint, decimals = 18): string {
   return trimmedFraction ? `${whole}.${trimmedFraction}` : whole;
 }
 
-function formatRewardCents(cents: number, chainId: number): string {
-  void chainId;
-  return formatRewardBalanceCents(cents);
-}
-
-function formatRewardBalanceCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
-
-function rewardAssetLabel(chainId: number): string {
-  if (chainId === 8453) return "";
-  if (chainId === 84532) return "Test bounties — no cash value";
-  return "Dollar bounties";
-}
-
-function pendingRewardDeadline(expiresAt: number | null): string {
-  if (expiresAt == null) return "Verify to claim this bounty.";
-  const days = Math.max(1, Math.ceil((expiresAt * 1_000 - Date.now()) / 86_400_000));
-  return `Verify within ${days} ${days === 1 ? "day" : "days"} to claim.`;
-}
-
-function baseTxUrl(
-  txHash: string | null,
-  stage: CashoutSheetState,
-): string | undefined {
-  if (!txHash || (stage !== "broadcast" && stage !== "confirmed")) return undefined;
-  const explorerUrl = getPirateNetworkConfig().base.explorerUrl.replace(/\/$/u, "");
-  return `${explorerUrl}/tx/${txHash}`;
-}
-
-function isIdentityConflictError(message: string | null): boolean {
-  if (!message) return false;
-  const normalized = message.toLowerCase();
-  return normalized.includes("already linked") || normalized.includes("different account");
-}
-
 function walletRewardsSummary(input: {
   loading: boolean;
   onMoveToWallet: () => void;
@@ -483,13 +431,22 @@ export function CurrentUserWalletPage() {
   const [rewardsSummary, setRewardsSummary] = React.useState<ApiRewardsSummaryResponse>(EMPTY_REWARDS_SUMMARY);
   const [rewardsLoading, setRewardsLoading] = React.useState(false);
   const [rewardsError, setRewardsError] = React.useState(false);
-  const [rewardsCashoutPending, setRewardsCashoutPending] = React.useState(false);
+  const [rewardsCashoutWorkflow, dispatchRewardsCashout] = React.useReducer(
+    reduceRewardsCashoutWorkflow,
+    undefined,
+    () => initialRewardsCashoutWorkflowState(loadRewardsCashoutAttempt()),
+  );
+  const {
+    amountLabel: rewardsCashoutAmountLabel,
+    attempt: rewardsCashoutAttempt,
+    errorMessage: rewardsCashoutErrorMessage,
+    pending: rewardsCashoutPending,
+    sheetState: rewardsCashoutState,
+    transactionHash: rewardsCashoutTxHash,
+  } = rewardsCashoutWorkflow;
+  const rewardsCashoutAttemptRef = React.useRef(rewardsCashoutAttempt);
+  rewardsCashoutAttemptRef.current = rewardsCashoutAttempt;
   const [rewardsCashoutOpen, setRewardsCashoutOpen] = React.useState(false);
-  const [rewardsCashoutState, setRewardsCashoutState] = React.useState<CashoutSheetState>("reserved");
-  const [rewardsCashoutAmountLabel, setRewardsCashoutAmountLabel] = React.useState("$0.00");
-  const [rewardsCashoutTxHash, setRewardsCashoutTxHash] = React.useState<string | null>(null);
-  const [rewardsCashoutErrorMessage, setRewardsCashoutErrorMessage] = React.useState<string | null>(null);
-  const [rewardsCashoutAttempt, setRewardsCashoutAttempt] = React.useState<RewardsCashoutAttempt | null>(loadRewardsCashoutAttempt);
   const [rewardsCashoutPollGeneration, setRewardsCashoutPollGeneration] = React.useState(0);
   const rewardsCashoutInFlightRef = React.useRef(false);
   const [rewardsVerifyOpen, setRewardsVerifyOpen] = React.useState(false);
@@ -695,18 +652,24 @@ export function CurrentUserWalletPage() {
       setRewardsSummary(summary);
       if (summary.latest_in_flight_cashout) {
         const payout = summary.latest_in_flight_cashout;
-        setRewardsCashoutAmountLabel(formatRewardCents(payout.amount_cents, summary.chain_id));
-        setRewardsCashoutTxHash(payout.settlement_ref);
-        setRewardsCashoutState(payout.settlement_stage);
-        setRewardsCashoutAttempt((current) => {
-          if (current?.cashoutId === payout.id) return current;
-          const recovered = {
-            amountCents: payout.amount_cents,
-            cashoutId: payout.id,
-            idempotencyKey: `recovered:${payout.id}`,
-          };
+        const currentAttempt = rewardsCashoutAttemptRef.current;
+        const recovered = currentAttempt?.cashoutId === payout.id
+          ? currentAttempt
+          : {
+              amountCents: payout.amount_cents,
+              cashoutId: payout.id,
+              idempotencyKey: `recovered:${payout.id}`,
+            };
+        if (recovered !== currentAttempt) {
           storeRewardsCashoutAttempt(recovered);
-          return recovered;
+        }
+        rewardsCashoutAttemptRef.current = recovered;
+        dispatchRewardsCashout({
+          type: "result-received",
+          sheetState: payout.settlement_stage,
+          amountLabel: formatRewardCents(payout.amount_cents, summary.chain_id),
+          transactionHash: payout.settlement_ref,
+          attempt: recovered,
         });
       }
       return summary;
@@ -819,28 +782,45 @@ export function CurrentUserWalletPage() {
   ]);
 
   const applyCashoutResult = React.useCallback((result: ApiRewardCashoutResponse) => {
-    setRewardsCashoutAmountLabel(formatRewardCents(result.payout.amount_cents, result.chain_id));
-    setRewardsCashoutTxHash(result.payout.settlement_ref);
-    setRewardsCashoutState(result.payout.settlement_stage);
+    const amountLabel = formatRewardCents(result.payout.amount_cents, result.chain_id);
     if (result.payout.status === "failed") {
-      setRewardsCashoutErrorMessage(result.payout.failure_reason || "The bounty transfer failed. Your bounty balance is available to try again.");
-      setRewardsCashoutAttempt(null);
       storeRewardsCashoutAttempt(null);
+      rewardsCashoutAttemptRef.current = null;
+      dispatchRewardsCashout({
+        type: "result-received",
+        sheetState: "failed",
+        amountLabel,
+        transactionHash: result.payout.settlement_ref,
+        errorMessage: result.payout.failure_reason || "The bounty transfer failed. Your bounty balance is available to try again.",
+        attempt: null,
+      });
       return;
     }
     if (result.payout.status === "confirmed") {
-      setRewardsCashoutAttempt(null);
       storeRewardsCashoutAttempt(null);
+      rewardsCashoutAttemptRef.current = null;
+      dispatchRewardsCashout({
+        type: "result-received",
+        sheetState: "confirmed",
+        amountLabel,
+        transactionHash: result.payout.settlement_ref,
+        attempt: null,
+      });
       return;
     }
-    setRewardsCashoutAttempt((current) => {
-      const attempt = current
-        ? { ...current, amountCents: result.payout.amount_cents, cashoutId: result.payout.id }
+    const currentAttempt = rewardsCashoutAttemptRef.current;
+    const attempt = currentAttempt
+        ? { ...currentAttempt, amountCents: result.payout.amount_cents, cashoutId: result.payout.id }
         : { amountCents: result.payout.amount_cents, cashoutId: result.payout.id, idempotencyKey: `recovered:${result.payout.id}` };
-      storeRewardsCashoutAttempt(attempt);
-      return attempt;
+    storeRewardsCashoutAttempt(attempt);
+    rewardsCashoutAttemptRef.current = attempt;
+    dispatchRewardsCashout({
+      type: "result-received",
+      sheetState: result.payout.settlement_stage,
+      amountLabel,
+      transactionHash: result.payout.settlement_ref,
+      attempt,
     });
-    setRewardsCashoutErrorMessage(null);
   }, []);
 
   const handleRewardsCashout = React.useCallback(async (
@@ -851,19 +831,20 @@ export function CurrentUserWalletPage() {
     const notify = options.notify !== false;
     const amountCents = summary.balance_cents;
     rewardsCashoutInFlightRef.current = true;
-    setRewardsCashoutPending(true);
-    setRewardsCashoutAmountLabel(formatRewardCents(amountCents, summary.chain_id));
-    setRewardsCashoutTxHash(null);
-    setRewardsCashoutState("reserved");
     setRewardsCashoutOpen(true);
     setRewardsError(false);
-    setRewardsCashoutErrorMessage(null);
     try {
-      const attempt = rewardsCashoutAttempt?.amountCents === amountCents
-        ? rewardsCashoutAttempt
+      const currentAttempt = rewardsCashoutAttemptRef.current;
+      const attempt = currentAttempt?.amountCents === amountCents
+        ? currentAttempt
         : { amountCents, idempotencyKey: `wallet-rewards:${Date.now()}:${crypto.randomUUID()}` };
-      setRewardsCashoutAttempt(attempt);
+      rewardsCashoutAttemptRef.current = attempt;
       storeRewardsCashoutAttempt(attempt);
+      dispatchRewardsCashout({
+        type: "submission-started",
+        amountLabel: formatRewardCents(amountCents, summary.chain_id),
+        attempt,
+      });
       const privyAccessToken = walletAddress && getPrivyAccessToken
         ? await getPrivyAccessToken()
         : null;
@@ -884,18 +865,19 @@ export function CurrentUserWalletPage() {
       await refreshRewardsSummary();
     } catch (error) {
       logger.debug("[wallet] rewards cashout failed", error);
-      setRewardsCashoutState("needs_review");
-      setRewardsCashoutErrorMessage("Wallet could not confirm whether the transfer started. Do not claim again; return later to check this transfer.");
+      dispatchRewardsCashout({
+        type: "submission-ambiguous",
+        message: "Wallet could not confirm whether the transfer started. Do not claim again; return later to check this transfer.",
+      });
       if (notify) toast.error("Transfer status is unclear. Do not claim again.");
     } finally {
       rewardsCashoutInFlightRef.current = false;
-      setRewardsCashoutPending(false);
+      dispatchRewardsCashout({ type: "operation-finished" });
     }
   }, [
     api,
     applyCashoutResult,
     refreshRewardsSummary,
-    rewardsCashoutAttempt,
     getPrivyAccessToken,
     walletAddress,
   ]);
@@ -942,7 +924,10 @@ export function CurrentUserWalletPage() {
           if (result.payout.status !== "submitted") await refreshRewardsSummary();
           else {
             if (attempt >= delays.length) {
-              setRewardsCashoutErrorMessage("This transfer is still in progress. It is safe to leave Wallet and return later; do not claim again.");
+              dispatchRewardsCashout({
+                type: "poll-message",
+                message: "This transfer is still in progress. It is safe to leave Wallet and return later; do not claim again.",
+              });
             }
             const delay = delays[Math.min(attempt++, delays.length - 1)] ?? 60_000;
             timeout = window.setTimeout(() => { void poll(); }, delay);
@@ -952,7 +937,10 @@ export function CurrentUserWalletPage() {
         logger.debug("[wallet] failed to refresh reward cashout", error);
         if (!cancelled) {
           if (attempt >= delays.length) {
-            setRewardsCashoutErrorMessage("Wallet could not refresh this transfer yet. Polling will continue; do not claim again.");
+            dispatchRewardsCashout({
+              type: "poll-message",
+              message: "Wallet could not refresh this transfer yet. Polling will continue; do not claim again.",
+            });
           }
           const delay = delays[Math.min(attempt++, delays.length - 1)] ?? 60_000;
           timeout = window.setTimeout(() => { void poll(); }, delay);
@@ -1087,7 +1075,7 @@ export function CurrentUserWalletPage() {
           }}
           onRefresh={rewardsCashoutAttempt?.cashoutId
             ? () => {
-                setRewardsCashoutErrorMessage(null);
+                dispatchRewardsCashout({ type: "clear-message" });
                 setRewardsCashoutPollGeneration((generation) => generation + 1);
               }
             : undefined}

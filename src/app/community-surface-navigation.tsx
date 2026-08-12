@@ -27,9 +27,9 @@ export function communitySurfaceHrefs(input: {
 }
 
 /**
- * Canonical community pages get a normal two-item view navigation. Sovereign
- * origins deliberately do not use this control: their apex is the community
- * identity and app.<root> is the video application.
+ * Community routes get a normal two-item view navigation. On sovereign HNS
+ * origins, app.<root>/ is the video feed and /c/<slug>/threads is the community
+ * page; the raw apex redirects to that app-origin thread route before render.
  */
 export function CommunitySurfaceNavigation({
   active,

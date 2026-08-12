@@ -6,7 +6,7 @@ import { ApiError } from "@/lib/api/client";
 
 installDomGlobals();
 
-const calls = { campaignRead: 0, confirm: 0, create: 0, policyUpdate: 0, quote: 0, transfer: 0 };
+const calls = { campaignRead: 0, confirm: 0, create: 0, policyUpdate: 0, poolRead: 0, quote: 0, transfer: 0 };
 const createKeys: string[] = [];
 const quoteKeys: string[] = [];
 let connectedWallets: Array<{ address: string }> = [];
@@ -28,6 +28,8 @@ let firstQuoteExpired = false;
 let policyError: unknown = null;
 let policyUpdateGate: Promise<void> | null = null;
 let policyBlocked = false;
+let poolCampaignAvailable = false;
+let poolCampaignStatus: string | null = null;
 let nationalityTierCapability: unknown = "unavailable";
 let flatIdentityProviders: unknown = ["self", "zkpassport", "very"];
 let nationalityTierIdentityProviders: unknown = ["self", "zkpassport"];
@@ -125,6 +127,21 @@ const fakeApi = {
       calls.campaignRead += 1;
       if (getCampaignError) throw getCampaignError;
       return campaign();
+    },
+    getCampaignForSong: async () => {
+      calls.poolRead += 1;
+      if (!poolCampaignAvailable) throw new ApiError("not_found", "missing", 404);
+      const resolved = campaign();
+      const status = poolCampaignStatus ?? resolved.status;
+      return {
+        ...resolved,
+        id: "rcp_pool",
+        status,
+        funded_cents: ["active", "exhausted"].includes(status) ? 1000 : 0,
+        funding_tx_hash: ["active", "exhausted"].includes(status)
+          ? "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          : null,
+      };
     },
     createFundingQuote: async (_campaignId: string, body: { idempotency_key: string } & Record<string, unknown>) => {
       calls.quote += 1;
@@ -261,6 +278,7 @@ beforeEach(() => {
   calls.campaignRead = 0;
   calls.create = 0;
   calls.policyUpdate = 0;
+  calls.poolRead = 0;
   calls.quote = 0;
   calls.transfer = 0;
   createKeys.length = 0;
@@ -281,6 +299,8 @@ beforeEach(() => {
   policyError = null;
   policyUpdateGate = null;
   policyBlocked = false;
+  poolCampaignAvailable = false;
+  poolCampaignStatus = null;
   nationalityTierCapability = "unavailable";
   flatIdentityProviders = ["self", "zkpassport", "very"];
   nationalityTierIdentityProviders = ["self", "zkpassport"];
@@ -657,13 +677,111 @@ describe("useBoostCampaignController", () => {
     expect(calls.transfer).toBe(1);
   });
 
-  test("keeps Boost discoverable while explaining that an active campaign blocks another", async () => {
+  test("opens an active campaign as an immutable top-up and quotes only the added amount", async () => {
+    campaignStatus = "active";
     const view = renderHook(() => useBoostCampaignController({ ...input(), activeCampaignId: "rcp_active" }));
     await waitFor(() => expect(view.result.current.canBoost).toBe(true));
     act(() => view.result.current.openBoost());
-    expect(view.result.current.sheetProps.planProblem).toContain("already has a live bounty");
-    view.result.current.sheetProps.onConfirm?.();
+    expect(view.result.current.sheetProps.state).toBe("top_up");
+    expect(view.result.current.sheetProps.planProblem).toBeUndefined();
+    expect(view.result.current.sheetProps.budgetPresets).toEqual(["$10.00", "$25.00", "$50.00"]);
+    act(() => view.result.current.sheetProps.onBudgetChange?.("25.00"));
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+
     expect(calls.create).toBe(0);
+    expect(calls.quote).toBe(1);
+    expect(lastQuoteBody).toMatchObject({
+      amount_cents: 2500,
+      reward_identity_provider: "self",
+    });
+  });
+
+  test("accepts a contribution while another funding effect is confirming", async () => {
+    campaignStatus = "funding_confirming";
+    const view = renderHook(() => useBoostCampaignController({
+      ...input(),
+      activeCampaignId: "rcp_funding_confirming",
+    }));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+
+    expect(view.result.current.sheetProps.state).toBe("top_up");
+    expect(view.result.current.sheetProps.planProblem).toBeUndefined();
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    expect(calls.create).toBe(0);
+    expect(calls.quote).toBe(1);
+  });
+
+  test("explains an actual paused-pool hold without the obsolete top-up blocker", async () => {
+    campaignStatus = "paused";
+    const view = renderHook(() => useBoostCampaignController({
+      ...input(),
+      activeCampaignId: "rcp_paused",
+    }));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+
+    expect(view.result.current.sheetProps.planProblem).toBe(
+      "This bounty is paused and cannot accept new funding.",
+    );
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    expect(calls.create).toBe(0);
+    expect(calls.quote).toBe(0);
+  });
+
+  test("blocks a third-party top-up when the song-owner policy is disabled", async () => {
+    campaignStatus = "active";
+    policyBlocked = true;
+    const view = renderHook(() => useBoostCampaignController({ ...input(), activeCampaignId: "rcp_active" }));
+    await waitFor(() => expect(view.result.current.policySheetProps.allowThirdPartyRewards).toBe(false));
+    act(() => view.result.current.openBoost());
+
+    expect(view.result.current.sheetProps.state).toBe("top_up");
+    expect(view.result.current.sheetProps.planProblem).toBe(
+      "The song owner is not accepting bounties from other people.",
+    );
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    expect(calls.quote).toBe(0);
+  });
+
+  test("lets the song owner prepare a top-up when third-party funding is disabled", async () => {
+    campaignStatus = "active";
+    policyBlocked = true;
+    const view = renderHook(() => useBoostCampaignController({
+      ...input(),
+      activeCampaignId: "rcp_active",
+      viewerIsAuthor: true,
+    }));
+    await waitFor(() => expect(view.result.current.policySheetProps.allowThirdPartyRewards).toBe(false));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+
+    expect(calls.create).toBe(0);
+    expect(calls.quote).toBe(1);
+  });
+
+  test("discovers and revives an exhausted pool without browser-local campaign history", async () => {
+    connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    campaignStatus = "exhausted";
+    poolCampaignAvailable = true;
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    expect(view.result.current.sheetProps.state).toBe("top_up");
+
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
+
+    expect(calls.create).toBe(0);
+    expect(calls.poolRead).toBe(1);
+    expect(calls.quote).toBe(1);
+    expect(calls.transfer).toBe(1);
+    expect(calls.confirm).toBe(1);
   });
 
   test("sends from the pinned wallet, confirms the hash, and reaches active", async () => {
@@ -685,7 +803,7 @@ describe("useBoostCampaignController", () => {
     expect(calls.confirm).toBe(1);
     act(() => view.result.current.sheetProps.onOpenChange?.(false));
     act(() => view.result.current.openBoost());
-    expect(view.result.current.sheetProps.state).toBe("active");
+    expect(view.result.current.sheetProps.state).toBe("top_up");
     expect(calls.transfer).toBe(1);
   });
 
@@ -728,6 +846,7 @@ describe("useBoostCampaignController", () => {
 
   test("recovered funding confirms immediately, resumes bounded polling, and cannot send again", async () => {
     connectedWallets = [{ address: "0x2222222222222222222222222222222222222222" }];
+    campaignStatus = "active";
     const transactionHash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     localStorage.setItem("pirate_reward_pending_funding:com_test:pst_test", JSON.stringify({
       campaignId: "rcp_test",
@@ -1042,6 +1161,25 @@ describe("useBoostCampaignController", () => {
     expect(calls.confirm).toBe(0);
   });
 
+  test("an active campaign keeps terminal review for a different top-up transaction", async () => {
+    campaignStatus = "active";
+    confirmStatus = "failed";
+    const terminalKey = "pirate_reward_terminal_funding:com_test:pst_test";
+    localStorage.setItem(terminalKey, JSON.stringify({
+      campaignId: "rcp_test",
+      code: "funding_failed",
+      fundingId: "rfq_top_up",
+      message: "review top-up",
+      quoteId: "rfq_top_up",
+      transactionHash: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    }));
+    const view = renderHook(() => useBoostCampaignController(input()));
+
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("funding-review"));
+    expect(localStorage.getItem(terminalKey)).not.toBeNull();
+    expect(calls.confirm).toBe(1);
+  });
+
   test("a transient campaign hydration failure preserves every recovery record", async () => {
     const pendingKey = "pirate_reward_pending_funding:com_test:pst_test";
     const campaignKey = "pirate_reward_campaign:com_test:pst_test";
@@ -1104,6 +1242,20 @@ describe("useBoostCampaignController", () => {
     expect(calls.create).toBe(1);
     expect(calls.quote).toBe(1);
     expect(lastCreateBody?.eligible_activity).toBe("karaoke");
+  });
+
+  test("replaces a locally stored ended campaign with the current permanent pool", async () => {
+    campaignStatus = "ended";
+    poolCampaignAvailable = true;
+    poolCampaignStatus = "active";
+    localStorage.setItem("pirate_reward_campaign:com_test:pst_test", "rcp_ended");
+    const view = renderHook(() => useBoostCampaignController(input()));
+
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+    expect(view.result.current.sheetProps.state).toBe("top_up");
+    expect(localStorage.getItem("pirate_reward_campaign:com_test:pst_test")).toBe("rcp_pool");
+    expect(calls.poolRead).toBe(1);
   });
 });
 

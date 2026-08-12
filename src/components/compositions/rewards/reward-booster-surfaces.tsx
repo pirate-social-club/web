@@ -22,7 +22,7 @@ import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import { CopyField } from "@/components/primitives/copy-field";
 import { IconButton } from "@/components/primitives/icon-button";
-import { Input } from "@/components/primitives/input";
+import { Input, inputVariants } from "@/components/primitives/input";
 import { Switch } from "@/components/primitives/switch";
 import { Type } from "@/components/primitives/type";
 import { NationalityMultiPicker } from "@/components/compositions/community/create-composer/nationality-picker";
@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 
 type BoostCampaignSheetState =
   | "compose"
+  | "top_up"
   | "draft-preview"
   | "quote"
   | "confirming"
@@ -49,9 +50,14 @@ type BoostCampaignSheetState =
 export type BoostEligibleActivity = "study" | "karaoke" | "either";
 export type BoostRewardIdentityProvider = "self" | "zkpassport" | "very";
 
+export interface BoostAmountInputAdornment {
+  label: string;
+  placement: "prefix" | "suffix";
+}
+
 /**
  * One row of the dark nationality-tier preview: a set of ISO-3166 alpha-3
- * nationalities and the raw USD amount input for that tier. The sheet never
+ * nationalities and the raw amount input for that tier. The sheet never
  * mints `id`s — the owner (story, or the controller once Phase 1 lands) creates
  * rows so tests and stories stay deterministic.
  */
@@ -62,6 +68,7 @@ export interface BoostPayoutTierDraft {
 }
 
 export interface BoostCampaignSheetProps {
+  budgetInputAdornment?: BoostAmountInputAdornment;
   busy?: boolean;
   /** A terminal transaction failed without moving funds, so a fresh quote is safe. */
   canRestartFunding?: boolean;
@@ -72,6 +79,7 @@ export interface BoostCampaignSheetProps {
   dailyRewardLabel: string;
   /** Formatted reward for review/live surfaces (e.g. "$1.00"); inputs keep the raw `dailyRewardLabel`. */
   dailyRewardDisplayLabel?: string;
+  rewardInputAdornment?: BoostAmountInputAdornment;
   eligibleActivity: BoostEligibleActivity;
   eligibleActivities?: BoostEligibleActivity[];
   identityProvider?: BoostRewardIdentityProvider;
@@ -195,13 +203,15 @@ function FundingTransaction({
   );
 }
 
-function MoneyInput({
+export function BoostAmountInput({
+  adornment,
   describedBy,
   id,
   invalid,
   onChange,
   value,
 }: {
+  adornment: BoostAmountInputAdornment;
   describedBy?: string;
   id: string;
   invalid?: boolean;
@@ -209,24 +219,42 @@ function MoneyInput({
   value: string;
 }) {
   return (
-    <div className="relative">
-      <Type as="span" className="pointer-events-none absolute inset-y-0 left-4 z-10 flex items-center text-muted-foreground" variant="body">
-        $
-      </Type>
+    <div
+      className={cn(
+        inputVariants({ size: "default" }),
+        "h-auto min-h-11 flex-wrap items-center py-0 focus-within:border-border focus-within:ring-1 focus-within:ring-border-soft",
+      )}
+    >
+      {adornment.placement === "prefix" ? (
+        <Type as="span" className="pointer-events-none shrink-0 pe-2 text-muted-foreground" variant="body">
+          {adornment.label}
+        </Type>
+      ) : null}
       <Input
         aria-describedby={describedBy}
         aria-invalid={invalid}
-        className="pl-8"
+        className="h-10 min-w-32 flex-1"
         id={id}
         inputMode="decimal"
         onChange={(event) => onChange?.(event.target.value)}
         value={value}
+        variant="flat"
       />
+      {adornment.placement === "suffix" ? (
+        <Type
+          as="span"
+          className="pointer-events-none min-w-0 max-w-full break-all ps-2 text-end text-muted-foreground"
+          variant="body"
+        >
+          {adornment.label}
+        </Type>
+      ) : null}
     </div>
   );
 }
 
 export function BoostCampaignSheet({
+  budgetInputAdornment = { label: "$", placement: "prefix" },
   busy,
   budgetDisplayLabel,
   budgetLabel,
@@ -234,6 +262,7 @@ export function BoostCampaignSheet({
   canRestartFunding,
   dailyRewardLabel,
   dailyRewardDisplayLabel,
+  rewardInputAdornment = { label: "$", placement: "prefix" },
   eligibleActivity,
   eligibleActivities = ["karaoke", "study", "either"],
   identityProvider = "self",
@@ -326,7 +355,7 @@ export function BoostCampaignSheet({
       >
         <div className={cn("mx-auto mb-4 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/60", !forceMobile && "md:hidden")} aria-hidden="true" />
         <ModalHeader className="text-start">
-          <ModalTitle>Create a bounty</ModalTitle>
+          <ModalTitle>{state === "top_up" ? "Fund bounty" : "Create a bounty"}</ModalTitle>
           <ModalDescription className="sr-only">
             Fund a bounty for people who practice this song.
           </ModalDescription>
@@ -416,7 +445,7 @@ export function BoostCampaignSheet({
                 <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
                   Bounty per learner
                 </Type>
-                <MoneyInput id="boost-daily-reward" onChange={onDailyRewardChange} value={dailyRewardLabel} />
+                <BoostAmountInput adornment={rewardInputAdornment} id="boost-daily-reward" onChange={onDailyRewardChange} value={dailyRewardLabel} />
               </label>
             ) : null}
 
@@ -448,7 +477,8 @@ export function BoostCampaignSheet({
                         <Type as="span" className="sr-only">
                           Country group {index + 1} bounty
                         </Type>
-                        <MoneyInput
+                        <BoostAmountInput
+                          adornment={rewardInputAdornment}
                           id={`boost-tier-amount-${tier.id}`}
                           onChange={(value) => onPayoutTierAmountChange?.(tier.id, value)}
                           value={tier.amountLabel}
@@ -477,7 +507,7 @@ export function BoostCampaignSheet({
                     <Type as="span" variant="body">Everyone else</Type>
                     <label className="block" htmlFor="boost-daily-reward">
                       <Type as="span" className="sr-only">Everyone else bounty</Type>
-                      <MoneyInput id="boost-daily-reward" onChange={onDailyRewardChange} value={dailyRewardLabel} />
+                      <BoostAmountInput adornment={rewardInputAdornment} id="boost-daily-reward" onChange={onDailyRewardChange} value={dailyRewardLabel} />
                     </label>
                   </div>
                 </div>
@@ -489,7 +519,8 @@ export function BoostCampaignSheet({
                 <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
                   Total budget
                 </Type>
-                <MoneyInput
+                <BoostAmountInput
+                  adornment={budgetInputAdornment}
                   describedBy={planProblem ? "boost-plan-problem" : undefined}
                   id="boost-budget"
                   invalid={Boolean(planProblem)}
@@ -534,6 +565,51 @@ export function BoostCampaignSheet({
                 You pay {budgetDisplayLabel} now. Bounty terms lock after payment; unused funds can't be withdrawn.
               </Type>
             )}
+          </div>
+        ) : null}
+
+        {state === "top_up" ? (
+          <div className="mt-5 space-y-4">
+            <div className="rounded-lg border border-border-soft px-4">
+              <CampaignSummaryRow label="Activity" value={ACTIVITY_TITLE[eligibleActivity]} />
+              <CampaignSummaryRow label="Bounty" value={rewardDisplay} />
+              {fundedLabel ? <CampaignSummaryRow label="Funded" value={fundedLabel} /> : null}
+              {remainingLabel ? <CampaignSummaryRow label="Remaining" value={remainingLabel} /> : null}
+              {endsAtLabel ? <CampaignSummaryRow label="Ends" value={endsAtLabel} /> : null}
+            </div>
+            <div>
+              <label className="block" htmlFor="boost-top-up-budget">
+                <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
+                  Add funding
+                </Type>
+                <BoostAmountInput
+                  adornment={budgetInputAdornment}
+                  describedBy={planProblem ? "boost-plan-problem" : undefined}
+                  id="boost-top-up-budget"
+                  invalid={Boolean(planProblem)}
+                  onChange={onBudgetChange}
+                  value={budgetLabel}
+                />
+              </label>
+              {budgetPresets?.length ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {budgetPresets.map((preset) => (
+                    <Button
+                      className="h-9"
+                      key={preset}
+                      onClick={() => onBudgetChange?.(preset)}
+                      type="button"
+                      variant={preset === budgetLabel ? "secondary" : "outline"}
+                    >
+                      {preset}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <Type as="p" className="text-muted-foreground" variant="caption">
+              Funding adds rewards without changing the bounty terms or end date.
+            </Type>
           </div>
         ) : null}
 
@@ -708,6 +784,11 @@ export function BoostCampaignSheet({
 
         <ModalFooter className="mt-6">
           {state === "compose" ? (
+            <Button className="h-12 w-full" disabled={Boolean(planProblem) || busy} onClick={onConfirm}>
+              Review funding
+            </Button>
+          ) : null}
+          {state === "top_up" ? (
             <Button className="h-12 w-full" disabled={Boolean(planProblem) || busy} onClick={onConfirm}>
               Review funding
             </Button>

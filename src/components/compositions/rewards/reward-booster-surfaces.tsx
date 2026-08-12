@@ -32,6 +32,7 @@ import {
   CampaignSummaryRow,
   FundingTransaction,
 } from "./boost-campaign-sheet-parts";
+import { RewardRadioCardGroup } from "./reward-radio-card-group";
 
 export { BoostAmountInput } from "./boost-campaign-sheet-parts";
 
@@ -214,8 +215,6 @@ export function BoostCampaignSheet({
   walletMismatch,
   walletMismatchReason = "no-wallet",
 }: BoostCampaignSheetProps) {
-  const activityLabelId = React.useId();
-  const identityProviderLabelId = React.useId();
   const rewardDisplay = dailyRewardDisplayLabel ?? dailyRewardLabel;
   // The tier section renders only when the owner passes `payoutTiers` (even as
   // []); `tiered` (at least one row) flips budget math to worst-case display.
@@ -247,36 +246,6 @@ export function BoostCampaignSheet({
   // the render that mounts the picker.
   const [tierPortalContainer, setTierPortalContainer] = React.useState<HTMLElement | null>(null);
 
-  const handleActivityKeyDown = (event: React.KeyboardEvent, index: number) => {
-    const lastIndex = eligibleActivities.length - 1;
-    let nextIndex: number | null = null;
-    if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-      nextIndex = index === lastIndex ? 0 : index + 1;
-    } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-      nextIndex = index === 0 ? lastIndex : index - 1;
-    }
-    if (nextIndex == null) return;
-    event.preventDefault();
-    const next = eligibleActivities[nextIndex];
-    onEligibleActivityChange?.(next);
-    document.getElementById(`${activityLabelId}-${next}`)?.focus();
-  };
-
-  const handleIdentityProviderKeyDown = (event: React.KeyboardEvent, index: number) => {
-    const lastIndex = identityProviderChoices.length - 1;
-    let nextIndex: number | null = null;
-    if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-      nextIndex = index === lastIndex ? 0 : index + 1;
-    } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-      nextIndex = index === 0 ? lastIndex : index - 1;
-    }
-    if (nextIndex == null) return;
-    event.preventDefault();
-    const next = identityProviderChoices[nextIndex];
-    onIdentityProviderChange?.(next);
-    document.getElementById(`${identityProviderLabelId}-${next}`)?.focus();
-  };
-
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
       <ModalContent
@@ -296,46 +265,13 @@ export function BoostCampaignSheet({
 
         {state === "compose" ? (
           <div className="mt-5 space-y-4">
-            <div>
-              <Type as="span" className="mb-2 block text-muted-foreground" id={activityLabelId} variant="label">
-                People earn by
-              </Type>
-              <div aria-labelledby={activityLabelId} className="grid gap-2" role="radiogroup">
-                {eligibleActivities.map((activity, index) => {
-                  const selected = eligibleActivity === activity;
-                  return (
-                    <button
-                      aria-checked={selected}
-                      className={cn(
-                        "flex h-11 items-center gap-3 rounded-lg border px-4 text-start transition-colors",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                        selected ? "border-primary/40 bg-primary-subtle" : "border-border-soft",
-                      )}
-                      id={`${activityLabelId}-${activity}`}
-                      key={activity}
-                      onClick={() => onEligibleActivityChange?.(activity)}
-                      onKeyDown={(event) => handleActivityKeyDown(event, index)}
-                      role="radio"
-                      tabIndex={selected ? 0 : -1}
-                      type="button"
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          "flex size-4 shrink-0 items-center justify-center rounded-full border",
-                          selected ? "border-primary" : "border-muted-foreground/50",
-                        )}
-                      >
-                        {selected ? <span className="size-2 rounded-full bg-primary" /> : null}
-                      </span>
-                      <Type as="span" variant="body">
-                        {ACTIVITY_TITLE[activity]}
-                      </Type>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <RewardRadioCardGroup
+              label="People earn by"
+              labels={ACTIVITY_TITLE}
+              onChange={onEligibleActivityChange}
+              options={eligibleActivities}
+              value={eligibleActivity}
+            />
             {nationalityPricingAvailable ? (
               <div>
                 <Type as="span" className="mb-2 block text-muted-foreground" variant="label">
@@ -368,44 +304,13 @@ export function BoostCampaignSheet({
               </div>
             ) : null}
             {identityProviderChoices.length > 0 ? (
-              <div>
-                <Type as="span" className="mb-2 block text-muted-foreground" id={identityProviderLabelId} variant="label">
-                  Claimant check
-                </Type>
-                <div aria-labelledby={identityProviderLabelId} className="grid gap-2" role="radiogroup">
-                  {identityProviderChoices.map((provider, index) => {
-                    const selected = identityProvider === provider;
-                    return (
-                      <button
-                        aria-checked={selected}
-                        className={cn(
-                          "flex h-11 items-center gap-3 rounded-lg border px-4 text-start transition-colors",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                          selected ? "border-primary/40 bg-primary-subtle" : "border-border-soft",
-                        )}
-                        id={`${identityProviderLabelId}-${provider}`}
-                        key={provider}
-                        onClick={() => onIdentityProviderChange?.(provider)}
-                        onKeyDown={(event) => handleIdentityProviderKeyDown(event, index)}
-                        role="radio"
-                        tabIndex={selected ? 0 : -1}
-                        type="button"
-                      >
-                        <span
-                          aria-hidden="true"
-                          className={cn(
-                            "flex size-4 shrink-0 items-center justify-center rounded-full border",
-                            selected ? "border-primary" : "border-muted-foreground/50",
-                          )}
-                        >
-                          {selected ? <span className="size-2 rounded-full bg-primary" /> : null}
-                        </span>
-                        <Type as="span" variant="body">{identityProviderBrands[provider]}</Type>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <RewardRadioCardGroup
+                label="Claimant check"
+                labels={identityProviderBrands}
+                onChange={onIdentityProviderChange}
+                options={identityProviderChoices}
+                value={identityProvider}
+              />
             ) : null}
             {tiered ? (
               <Type as="p" className="text-muted-foreground" variant="caption">

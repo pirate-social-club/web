@@ -1,18 +1,15 @@
 "use client";
-
 import * as React from "react";
 import type {
   RewardCampaign,
-  RewardCampaignCapabilities,
   RewardCampaignFundingQuote,
 } from "@pirate/api-contracts";
-
 import type {
   BoostCampaignSheetProps,
   BoostEligibleActivity,
+  BoostPayoutTierDraft,
   BoostRewardIdentityProvider,
 } from "@/components/compositions/rewards/reward-booster-surfaces";
-import type { BoostPayoutTierDraft } from "@/components/compositions/rewards/reward-booster-surfaces";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { useApi } from "@/lib/api";
 import { ApiError, isApiNotFoundError } from "@/lib/api/client";
@@ -21,9 +18,7 @@ import {
   findConnectedFundingWallet,
   resolveRewardFundingTransferInput,
 } from "@/lib/commerce/routed-checkout";
-import { formatUsdLabel } from "@/lib/formatting/currency";
-import { parseUsdInput, usdToCents } from "@/lib/formatting/currency";
-import { readViteEnv } from "@/lib/vite-env";
+import { formatUsdLabel, parseUsdInput, usdToCents } from "@/lib/formatting/currency";
 import { getErrorMessage } from "@/lib/error-utils";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 import {
@@ -41,6 +36,12 @@ import {
 } from "./boost-policy-workflow";
 import { boostFundingErrorMessage } from "./boost-funding-errors";
 import {
+  nationalityTiersPreviewEnabled,
+  rewardIdentityProviderChoices,
+  supportsNationalityTierDraftPreview,
+  type RewardCampaignCapabilitiesWithProviderChoices,
+} from "./boost-reward-provider-policy";
+import {
   boostIdempotencyKey,
   campaignStorageKey,
   createRequestStorageKey,
@@ -55,13 +56,8 @@ import {
   type TerminalFunding,
   writePendingFunding,
 } from "./boost-funding-recovery";
-
 const SCORE_THRESHOLD_BPS = 7_000;
 const FUNDING_FINALITY_POLL_INTERVAL_MS = 10_000;
-function nationalityTiersPreviewEnabled(): boolean {
-  return readViteEnv("VITE_REWARD_NATIONALITY_TIERS_PREVIEW") === "true";
-}
-
 export function useBoostMenuEligibility(input: {
   authenticated: boolean;
   postIds: readonly string[];
@@ -130,30 +126,11 @@ export interface BoostCampaignControllerInput {
   viewerIsAuthor: boolean;
 }
 
-function supportsNationalityTierDraftPreview(capability: unknown): boolean {
-  return capability === "draft_only" || capability === "binding_preview" || capability === "enabled";
-}
-
-function rewardIdentityProviderChoices(
-  value: unknown,
-  fallback: BoostRewardIdentityProvider,
-): BoostRewardIdentityProvider[] {
-  if (!Array.isArray(value)) return [fallback];
-  const providers = value.filter((provider): provider is BoostRewardIdentityProvider => (
-    provider === "self" || provider === "zkpassport" || provider === "very"
-  ));
-  return providers.length > 0 ? [...new Set(providers)] : [fallback];
-}
-
 export function useBoostCampaignController(input: BoostCampaignControllerInput) {
   const api = useApi();
   const { connectedWallets } = usePiratePrivyWallets({ enabled: input.authenticated && input.song });
   const { reconnectEthereumWallet } = usePiratePrivyRuntime();
-  const [capabilities, setCapabilities] = React.useState<(RewardCampaignCapabilities & {
-    nationality_payout_tiers?: unknown;
-    flat_identity_providers?: unknown;
-    nationality_tier_identity_providers?: unknown;
-  }) | null>(null);
+  const [capabilities, setCapabilities] = React.useState<RewardCampaignCapabilitiesWithProviderChoices | null>(null);
   const [policyAllowed, setPolicyAllowed] = React.useState(true);
   const [campaign, setCampaign] = React.useState<RewardCampaign | null>(null);
   const [quote, setQuote] = React.useState<RewardCampaignFundingQuote | null>(null);

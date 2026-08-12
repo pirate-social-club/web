@@ -35,7 +35,6 @@ import {
 } from "@/app/community-surface-navigation";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import {
-  getJoinCtaLabel,
   getMissingCapabilitiesFromGateEvaluation,
   getVerificationCapabilitiesForProvider,
   getVerificationRequirementsForGates,
@@ -55,7 +54,7 @@ import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { useZkPassportVerification } from "@/lib/verification/use-zkpassport-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
-import { PublicRouteMessageState } from "./public-route-states";
+import { PublicCommunityErrorState, PublicCommunityNotFound, resolvePublicCommunityJoinActionLabel } from "./public-community-route-support";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { useCommunityHandleClaimController } from "@/app/authenticated-helpers/community-handle-claim";
 import { buildCommunityPreviewSidebar } from "@/lib/community-sidebar-helpers";
@@ -202,46 +201,18 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
   };
 }
 
-function PublicCommunityNotFound({ communityId }: { communityId: string }) {
-  const { locale } = useUiLocale();
-  const copy = getLocaleMessages(locale, "routes").publicCommunity;
-  return (
-    <PublicRouteMessageState
-      description={copy.notFoundDescription.replace("{communityId}", communityId)}
-      title={copy.notFoundTitle}
-    />
-  );
-}
-
-function PublicCommunityErrorState({ description }: { description: string }) {
-  const { locale } = useUiLocale();
-  const copy = getLocaleMessages(locale, "routes").publicCommunity;
-  return <PublicRouteMessageState description={description} title={copy.errorTitle} />;
-}
-
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
-
-export function resolvePublicCommunityJoinActionLabel(
-  eligibility: ApiJoinEligibility | null,
-  locale: string,
-): string {
-  return getJoinCtaLabel(eligibility ?? ({ status: "joinable" } as ApiJoinEligibility), { locale });
-}
 
 export function PublicCommunityRoutePage({
   buildPostPath,
   communityId,
   disableCanonicalRouteReplace = false,
-  importedRootHostname,
-  isImportedRoot = false,
-  showSovereignOpenAppAction = false,
+  importedRootHostname, isImportedRoot = false, showSovereignOpenAppAction = false,
 }: {
   buildPostPath?: (postId: string) => string;
   communityId: string;
-  disableCanonicalRouteReplace?: boolean;
-  importedRootHostname?: string;
-  isImportedRoot?: boolean;
-  showSovereignOpenAppAction?: boolean;
+  disableCanonicalRouteReplace?: boolean; importedRootHostname?: string;
+  isImportedRoot?: boolean; showSovereignOpenAppAction?: boolean;
 }) {
   const api = useApi();
   const session = useSession();

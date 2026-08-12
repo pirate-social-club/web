@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { JoinEligibility } from "@pirate/api-contracts";
 
-import { resolvePublicCommunityJoinActionLabel } from "./public-community-route";
+import { resolvePublicCommunityJoinActionLabel } from "./public-community-route-support";
 
 describe("resolvePublicCommunityJoinActionLabel", () => {
   test("uses localized default join text before eligibility loads", () => {

@@ -18,11 +18,7 @@ import {
   buildCommunityPath,
   formatCommunityRouteLabel,
 } from "@/lib/community-routing";
-import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
-import {
-  CommunitySurfaceNavigation,
-  SovereignOpenAppAction,
-} from "@/app/community-surface-navigation";
+import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization"; import { CommunitySurfaceNavigation } from "@/app/community-surface-navigation";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { CommunityJoinVerificationChooserModal } from "@/components/compositions/community/join-verification-chooser-modal/community-join-verification-chooser-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
@@ -126,14 +122,10 @@ function viewerCanModerateCommunity(
 
 export function CommunityPage({
   communityId,
-  importedRootHostname,
   isImportedRoot = false,
-  showSovereignOpenAppAction = false,
 }: {
   communityId: string;
-  importedRootHostname?: string;
   isImportedRoot?: boolean;
-  showSovereignOpenAppAction?: boolean;
 }) {
   const api = useApi();
   const session = useSession();
@@ -933,9 +925,6 @@ export function CommunityPage({
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
-      {showSovereignOpenAppAction && importedRootHostname ? (
-        <SovereignOpenAppAction importedRootHostname={importedRootHostname} />
-      ) : null}
       {ownsCommunity ? (
         <Button
           onClick={() => navigate(moderationEntryPath)}
@@ -1127,14 +1116,7 @@ export function CommunityPage({
           communityId={community?.id ?? preview.id}
           headerAction={headerAction}
           items={feedItems}
-          mobileHeaderAction={mobileHeaderAction}
-          navigation={!isImportedRoot ? (
-            <CommunitySurfaceNavigation
-              active="threads"
-              communityId={community?.id ?? preview.id}
-              routeSlug={community?.route_slug ?? preview.route_slug}
-            />
-          ) : null}
+          mobileHeaderAction={mobileHeaderAction} navigation={<CommunitySurfaceNavigation active="threads" communityId={community?.id ?? preview.id} routeSlug={community?.route_slug ?? preview.route_slug} />}
           onSortChange={setActiveSort}
           routeLabel={routeLabel}
           routeVerified={Boolean(community?.namespace_verification)}

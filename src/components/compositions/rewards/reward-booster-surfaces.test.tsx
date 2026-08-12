@@ -139,23 +139,28 @@ test("compose radio group moves selection with arrow keys", () => {
   expect(selected).toBe("either");
 });
 
-test("provider stays out of setup and is summarized without becoming selectable", () => {
+test("creator can select an allowed claimant verification provider", () => {
+  let selected = "";
   const view = render(
     <BoostCampaignSheet
       {...composeProps({
         identityProvider: "very",
+        identityProviderChoices: ["self", "zkpassport", "very"],
+        onIdentityProviderChange: (provider) => { selected = provider; },
         payoutTiers: [],
       })}
     />,
   );
-  expect(view.queryByText("Who can earn")).toBeNull();
-  expect(view.queryByText("Palm check")).toBeNull();
-  expect(view.queryByRole("radio", { name: "Very" })).toBeNull();
+  expect(view.getByText("Claimant check")).toBeTruthy();
+  expect(view.getByRole("radio", { name: "Very" }).getAttribute("aria-checked")).toBe("true");
+  view.getByRole("radio", { name: "ZKPassport" }).click();
+  expect(selected).toBe("zkpassport");
 
   view.rerender(
     <BoostCampaignSheet
       {...composeProps({
         identityProvider: "self",
+        identityProviderChoices: [],
         payoutTiers: [{ id: "tier_vn", nationalities: ["VN"], amountLabel: "5.00" }],
         state: "quote",
       })}

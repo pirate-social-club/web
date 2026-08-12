@@ -29,6 +29,8 @@ let policyError: unknown = null;
 let policyUpdateGate: Promise<void> | null = null;
 let policyBlocked = false;
 let nationalityTierCapability: unknown = "unavailable";
+let flatIdentityProviders: unknown = ["self", "zkpassport", "very"];
+let nationalityTierIdentityProviders: unknown = ["self", "zkpassport"];
 let nationalityTierPreview = false;
 let lastCreateBody: Record<string, unknown> | null = null;
 let lastQuoteBody: Record<string, unknown> | null = null;
@@ -96,6 +98,8 @@ const fakeApi = {
       default_duration_seconds: 604_800,
       eligible_activities: ["study", "karaoke", "either"],
       nationality_payout_tiers: nationalityTierCapability,
+      flat_identity_providers: flatIdentityProviders,
+      nationality_tier_identity_providers: nationalityTierIdentityProviders,
       chain_id: 84532,
       token_address: "0x1111111111111111111111111111111111111111",
     }),
@@ -278,6 +282,8 @@ beforeEach(() => {
   policyUpdateGate = null;
   policyBlocked = false;
   nationalityTierCapability = "unavailable";
+  flatIdentityProviders = ["self", "zkpassport", "very"];
+  nationalityTierIdentityProviders = ["self", "zkpassport"];
   nationalityTierPreview = false;
   lastCreateBody = null;
   lastQuoteBody = null;
@@ -333,6 +339,46 @@ describe("useBoostCampaignController", () => {
       amount_cents: 1000,
       reward_identity_provider: "self",
     });
+  });
+
+  test("creates a nationality-tiered campaign with the creator-selected ZKPassport provider", async () => {
+    nationalityTierCapability = "enabled";
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.sheetProps.onNationalityPricingEnabledChange?.(true));
+    await waitFor(() => expect(view.result.current.sheetProps.identityProviderChoices).toEqual(["self", "zkpassport"]));
+    act(() => view.result.current.sheetProps.onIdentityProviderChange?.("zkpassport"));
+    act(() => view.result.current.sheetProps.onAddPayoutTier?.());
+    const tierId = view.result.current.sheetProps.payoutTiers?.[0]?.id;
+    act(() => {
+      view.result.current.sheetProps.onPayoutTierNationalitiesChange?.(tierId!, ["usa"]);
+      view.result.current.sheetProps.onPayoutTierAmountChange?.(tierId!, "5.00");
+      view.result.current.openBoost();
+    });
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+
+    expect(lastCreateBody).toMatchObject({
+      reward_identity_provider: "zkpassport",
+      payout_tiers: [{ amount_cents: 500, nationalities: ["USA"] }],
+    });
+    expect(lastQuoteBody).toMatchObject({ reward_identity_provider: "zkpassport" });
+  });
+
+  test("creates a flat campaign with the creator-selected provider", async () => {
+    const view = renderHook(() => useBoostCampaignController(input()));
+    await waitFor(() => expect(view.result.current.sheetProps.identityProviderChoices).toEqual([
+      "self",
+      "zkpassport",
+      "very",
+    ]));
+    act(() => view.result.current.sheetProps.onIdentityProviderChange?.("self"));
+    act(() => view.result.current.openBoost());
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+
+    expect(lastCreateBody).toMatchObject({ reward_identity_provider: "self" });
+    expect(lastQuoteBody).toMatchObject({ reward_identity_provider: "self" });
   });
 
   test("fails closed for an unknown nationality-tier capability", async () => {

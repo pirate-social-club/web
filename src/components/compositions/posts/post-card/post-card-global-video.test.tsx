@@ -13,8 +13,9 @@ import { PostCard } from "./post-card";
 afterEach(cleanup);
 
 describe("PostCard global video entry", () => {
-  test("opens the shell experience immediately from hydrated card data", async () => {
+  test("plays community videos inline without leaving the thread feed", async () => {
     const opened: VideoExperienceSeed[] = [];
+    let inlinePlayCount = 0;
     const view = render(
       <VideoExperienceContext.Provider value={{ openVideo: (seed) => opened.push(seed) }}>
         <PostCard
@@ -23,8 +24,10 @@ describe("PostCard global video entry", () => {
             accessMode: "public",
             aspectRatio: 9 / 16,
             caption: "Seeded from the community feed.",
+            onPlay: () => { inlinePlayCount += 1; },
             posterSrc: "https://media.test/poster.webp",
             src: "https://media.test/video.mp4",
+            title: "Community video",
             type: "video",
           }}
           engagement={{ commentCount: 3, score: 7, upvoteCount: 9 }}
@@ -34,12 +37,39 @@ describe("PostCard global video entry", () => {
       </VideoExperienceContext.Provider>,
     );
 
+    fireEvent.click(await view.findByRole("button", { name: "Play Community video" }));
+
+    expect(opened).toEqual([]);
+    expect(inlinePlayCount).toBe(1);
+  });
+
+  test("opens the shell experience from non-community cards", async () => {
+    const opened: VideoExperienceSeed[] = [];
+    const view = render(
+      <VideoExperienceContext.Provider value={{ openVideo: (seed) => opened.push(seed) }}>
+        <PostCard
+          byline={{ author: { kind: "user", label: "artist" }, timestampLabel: "now" }}
+          content={{
+            accessMode: "public",
+            aspectRatio: 9 / 16,
+            caption: "Seeded from the home feed.",
+            posterSrc: "https://media.test/poster.webp",
+            src: "https://media.test/video.mp4",
+            type: "video",
+          }}
+          engagement={{ commentCount: 3, score: 7, upvoteCount: 9 }}
+          postId="pst_seed"
+          viewContext="home"
+        />
+      </VideoExperienceContext.Provider>,
+    );
+
     fireEvent.click(await view.findByRole("button", { name: "Play video" }));
 
     expect(opened).toHaveLength(1);
-    expect(opened[0]?.source).toBe("community");
+    expect(opened[0]?.source).toBe("home");
     expect(opened[0]?.item).toMatchObject({
-      caption: "Seeded from the community feed.",
+      caption: "Seeded from the home feed.",
       id: "pst_seed",
       likeCount: 9,
       media: { src: "https://media.test/video.mp4" },

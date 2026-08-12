@@ -437,7 +437,7 @@ export function PostCard({
     [byline, content, engagement, onComment, onShare, onVote, postId, previewMode, shareActions, voteAccess],
   );
   const effectiveOpenVideoViewer = onOpenVideoViewer ?? (
-    videoExperience && globalVideoItem
+    viewContext !== "community" && videoExperience && globalVideoItem
       ? () => videoExperience.openVideo({
           actions: {
             onComment,

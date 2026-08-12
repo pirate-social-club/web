@@ -10,9 +10,15 @@ import { sortCommunityFeedPosts } from "@/app/authenticated-helpers/feed-sorting
 
 type CommunityFeedLoader = (input: {
   communityId: string;
+  cursor: string | null;
   locale: string;
   sort: FeedSort;
-}) => Promise<{ items: ApiPost[] }>;
+}) => Promise<{ items: ApiPost[]; next_cursor: string | null }>;
+
+type CommunityFeedPage = {
+  items: ApiPost[];
+  next_cursor: string | null;
+};
 
 const EMPTY_POSTS: ApiPost[] = [];
 
@@ -28,12 +34,15 @@ export function upsertCommunityFeedPostCache(input: {
 }): void {
   const sorts: FeedSort[] = ["best", "new", "top"];
   for (const sort of sorts) {
-    input.queryClient.setQueryData<ApiPost[]>(
+    input.queryClient.setQueryData<CommunityFeedPage>(
       communityFeedPostsQueryKey(input.communityId, input.locale, sort),
-      (current = []) => [
-        input.post,
-        ...current.filter((item) => item.post.id !== input.post.post.id),
-      ],
+      (current) => ({
+        items: [
+          input.post,
+          ...(current?.items ?? []).filter((item) => item.post.id !== input.post.post.id),
+        ],
+        next_cursor: current?.next_cursor ?? null,
+      }),
     );
   }
 }
@@ -46,33 +55,81 @@ export function useCommunityFeedPosts(input: {
 }) {
   const { communityId, locale, sort, loadPosts } = input;
   const queryClient = useQueryClient();
+  const loadingMoreRef = React.useRef(false);
+  const [loadMoreError, setLoadMoreError] = React.useState<unknown>(null);
+  const [loadingMore, setLoadingMore] = React.useState(false);
   const queryKey = React.useMemo(
     () => communityFeedPostsQueryKey(communityId, locale, sort),
     [communityId, locale, sort],
   );
+  const activeQueryKeyRef = React.useRef(queryKey);
+  activeQueryKeyRef.current = queryKey;
 
   const query = useQuery({
     queryKey,
-    queryFn: async () => {
-      const response = await loadPosts({ communityId, locale, sort });
-      return response.items;
-    },
+    queryFn: () => loadPosts({ communityId, cursor: null, locale, sort }),
   });
 
-  const rawPosts = query.data ?? EMPTY_POSTS;
+  React.useEffect(() => {
+    loadingMoreRef.current = false;
+    setLoadMoreError(null);
+    setLoadingMore(false);
+  }, [communityId, locale, sort]);
+
+  const rawPosts = query.data?.items ?? EMPTY_POSTS;
 
   const posts = React.useMemo(() => sortCommunityFeedPosts(rawPosts, sort), [rawPosts, sort]);
   const setPosts = React.useCallback((update: React.SetStateAction<ApiPost[]>) => {
-    queryClient.setQueryData<ApiPost[]>(queryKey, (current = []) => (
-      typeof update === "function"
-        ? (update as (value: ApiPost[]) => ApiPost[])(current)
-        : update
-    ));
+    queryClient.setQueryData<CommunityFeedPage>(queryKey, (current) => ({
+      items: typeof update === "function"
+        ? (update as (value: ApiPost[]) => ApiPost[])(current?.items ?? [])
+        : update,
+      next_cursor: current?.next_cursor ?? null,
+    }));
   }, [queryClient, queryKey]);
+
+  const loadMore = React.useCallback(async () => {
+    const current = queryClient.getQueryData<CommunityFeedPage>(queryKey);
+    const cursor = current?.next_cursor;
+    if (!cursor || loadingMoreRef.current) return;
+
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const next = await loadPosts({ communityId, cursor, locale, sort });
+      queryClient.setQueryData<CommunityFeedPage>(queryKey, (latest) => {
+        if (!latest || latest.next_cursor !== cursor) return latest;
+        const seen = new Set(latest.items.map((item) => item.post.id));
+        const uniqueNextItems = next.items.filter((item) => {
+          if (seen.has(item.post.id)) return false;
+          seen.add(item.post.id);
+          return true;
+        });
+        return {
+          items: [...latest.items, ...uniqueNextItems],
+          next_cursor: next.next_cursor,
+        };
+      });
+    } catch (error) {
+      if (activeQueryKeyRef.current === queryKey) {
+        setLoadMoreError(error);
+      }
+    } finally {
+      if (activeQueryKeyRef.current === queryKey) {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      }
+    }
+  }, [communityId, loadPosts, locale, queryClient, queryKey, sort]);
 
   return {
     error: query.error,
+    hasMore: Boolean(query.data?.next_cursor),
+    loadMore,
+    loadMoreError,
     loading: query.isPending,
+    loadingMore,
     posts,
     rawPosts,
     refetchPosts: query.refetch,

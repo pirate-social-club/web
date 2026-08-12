@@ -300,8 +300,8 @@ export function createPublicCommunitiesApi(request: ApiRequest) {
     listPosts: (
       communityId: string,
       opts?: CommunityListPostsOptions,
-    ): Promise<{ items: LocalizedPostResponse[] }> => {
-      return publicGet<{ items: LocalizedPostResponse[] }>(
+    ): Promise<{ items: LocalizedPostResponse[]; next_cursor: string | null }> => {
+      return publicGet<{ items: LocalizedPostResponse[]; next_cursor: string | null }>(
         request,
         `/public-communities/${encodeURIComponent(communityId)}/posts`,
         {

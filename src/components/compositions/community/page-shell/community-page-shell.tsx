@@ -35,11 +35,16 @@ export interface CommunityPageShellProps {
   controls?: React.ReactNode;
   emptyState?: FeedEmptyState;
   headerAction?: React.ReactNode;
+  hasMore?: boolean;
   items: FeedItem[];
   loading?: boolean;
+  loadingMore?: boolean;
+  loadMoreError?: string | null;
+  loadMoreLabel?: string;
   mobileHeaderAction?: React.ReactNode;
   navigation?: React.ReactNode;
   onSortChange?: (sort: FeedSort) => void;
+  onLoadMore?: () => void;
   routeLabel?: string | null;
   routeVerified?: boolean;
   sidebar: CommunitySidebarProps;
@@ -56,11 +61,16 @@ export function CommunityPageShell({
   controls,
   emptyState,
   headerAction,
+  hasMore,
   items,
   loading = false,
+  loadingMore,
+  loadMoreError,
+  loadMoreLabel,
   mobileHeaderAction,
   navigation,
   onSortChange,
+  onLoadMore,
   routeLabel,
   routeVerified,
   sidebar,
@@ -134,8 +144,13 @@ export function CommunityPageShell({
                 controls={controls}
                 emptyState={emptyState}
                 items={items}
+                hasMore={hasMore}
                 listClassName="-mx-3 border-t-0 md:mx-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
                 loading={loading}
+                loadingMore={loadingMore}
+                loadMoreError={loadMoreError}
+                loadMoreLabel={loadMoreLabel}
+                onLoadMore={onLoadMore}
                 onSortChange={onSortChange}
               />
             </div>
@@ -176,8 +191,13 @@ export function CommunityPageShell({
         controls={controls}
         emptyState={emptyState}
         items={items}
+        hasMore={hasMore}
         listClassName="-mx-3 border-t-0 md:mx-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
         loading={loading}
+        loadingMore={loadingMore}
+        loadMoreError={loadMoreError}
+        loadMoreLabel={loadMoreLabel}
+        onLoadMore={onLoadMore}
         onSortChange={onSortChange}
       />
     </ContentRailShell>

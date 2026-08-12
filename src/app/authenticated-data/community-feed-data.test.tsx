@@ -69,7 +69,7 @@ describe("useCommunityFeedPosts", () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
-    const loadPosts = () => new Promise<{ items: LocalizedPostResponse[] }>(() => {});
+    const loadPosts = () => new Promise<{ items: LocalizedPostResponse[]; next_cursor: string | null }>(() => {});
 
     const { result, rerender } = renderHook(() => useCommunityFeedPosts({
       communityId: "cmt_test",
@@ -94,8 +94,14 @@ describe("useCommunityFeedPosts", () => {
     });
     const existing = createPostResponse("pst_existing", 10);
     const pending = createPostResponse("pst_pending", 20);
-    queryClient.setQueryData<LocalizedPostResponse[]>(["community-feed-posts", "cmt_test", "en", "best"], [existing]);
-    queryClient.setQueryData<LocalizedPostResponse[]>(["community-feed-posts", "cmt_test", "en", "new"], [pending, existing]);
+    queryClient.setQueryData(["community-feed-posts", "cmt_test", "en", "best"], {
+      items: [existing],
+      next_cursor: "next-best",
+    });
+    queryClient.setQueryData(["community-feed-posts", "cmt_test", "en", "new"], {
+      items: [pending, existing],
+      next_cursor: null,
+    });
 
     upsertCommunityFeedPostCache({
       queryClient,
@@ -104,24 +110,30 @@ describe("useCommunityFeedPosts", () => {
       post: pending,
     });
 
-    expect(queryClient.getQueryData<LocalizedPostResponse[]>([
+    expect(queryClient.getQueryData<{ items: LocalizedPostResponse[]; next_cursor: string | null }>([
       "community-feed-posts",
       "cmt_test",
       "en",
       "best",
-    ])?.map((item) => item.post.id)).toEqual(["pst_pending", "pst_existing"]);
-    expect(queryClient.getQueryData<LocalizedPostResponse[]>([
+    ])?.items.map((item) => item.post.id)).toEqual(["pst_pending", "pst_existing"]);
+    expect(queryClient.getQueryData<{ items: LocalizedPostResponse[]; next_cursor: string | null }>([
       "community-feed-posts",
       "cmt_test",
       "en",
       "new",
-    ])?.map((item) => item.post.id)).toEqual(["pst_pending", "pst_existing"]);
-    expect(queryClient.getQueryData<LocalizedPostResponse[]>([
+    ])?.items.map((item) => item.post.id)).toEqual(["pst_pending", "pst_existing"]);
+    expect(queryClient.getQueryData<{ items: LocalizedPostResponse[]; next_cursor: string | null }>([
       "community-feed-posts",
       "cmt_test",
       "en",
       "top",
-    ])?.map((item) => item.post.id)).toEqual(["pst_pending"]);
+    ])?.items.map((item) => item.post.id)).toEqual(["pst_pending"]);
+    expect(queryClient.getQueryData<{ items: LocalizedPostResponse[]; next_cursor: string | null }>([
+      "community-feed-posts",
+      "cmt_test",
+      "en",
+      "best",
+    ])?.next_cursor).toBe("next-best");
   });
 
   test("loads posts through React Query and exposes cache-backed optimistic updates", async () => {
@@ -130,7 +142,7 @@ describe("useCommunityFeedPosts", () => {
     });
     const first = createPostResponse("pst_first", 10);
     const second = createPostResponse("pst_second", 20);
-    const loadPosts = async () => ({ items: [first] });
+    const loadPosts = async () => ({ items: [first], next_cursor: null });
 
     const { result } = renderHook(() => useCommunityFeedPosts({
       communityId: "cmt_test",
@@ -152,12 +164,12 @@ describe("useCommunityFeedPosts", () => {
     await waitFor(() => {
       expect(result.current.rawPosts.map((item) => item.post.id)).toEqual(["pst_second", "pst_first"]);
     });
-    expect(queryClient.getQueryData<LocalizedPostResponse[]>([
+    expect(queryClient.getQueryData<{ items: LocalizedPostResponse[]; next_cursor: string | null }>([
       "community-feed-posts",
       "cmt_test",
       "en",
       "new",
-    ])?.map((item) => item.post.id)).toEqual(["pst_second", "pst_first"]);
+    ])?.items.map((item) => item.post.id)).toEqual(["pst_second", "pst_first"]);
 
     await act(async () => {
       await result.current.refetchPosts();
@@ -166,5 +178,39 @@ describe("useCommunityFeedPosts", () => {
     await waitFor(() => {
       expect(result.current.rawPosts.map((item) => item.post.id)).toEqual(["pst_first"]);
     });
+  });
+
+  test("appends cursor pages without duplicating posts", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const first = createPostResponse("pst_first", 20);
+    const second = createPostResponse("pst_second", 10);
+    const cursors: Array<string | null> = [];
+    const loadPosts = async ({ cursor }: { cursor: string | null }) => {
+      cursors.push(cursor);
+      return cursor
+        ? { items: [first, second], next_cursor: null }
+        : { items: [first], next_cursor: "next-page" };
+    };
+
+    const { result } = renderHook(() => useCommunityFeedPosts({
+      communityId: "cmt_test",
+      locale: "en",
+      sort: "best",
+      loadPosts,
+    }), { wrapper: wrapperWithClient(queryClient) });
+
+    await waitFor(() => {
+      expect(result.current.hasMore).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.loadMore();
+    });
+
+    expect(cursors).toEqual([null, "next-page"]);
+    expect(result.current.rawPosts.map((item) => item.post.id)).toEqual(["pst_first", "pst_second"]);
+    expect(result.current.hasMore).toBe(false);
   });
 });

@@ -11,6 +11,7 @@ import { useSession } from "@/lib/api/session-store";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import type { FeedSort } from "@/components/compositions/posts/feed/feed";
+import { normalizeUserId } from "@/app/authenticated-helpers/user-id";
 
 import { useCommunityFeedPosts } from "./community-feed-data";
 
@@ -19,9 +20,15 @@ export async function loadProfilesByUserId(
   userIds: readonly string[],
   fallbackProfilesByUserId: Record<string, ApiProfile | null | undefined> = {},
 ): Promise<Record<string, ApiProfile | null>> {
-  const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
+  const normalizedFallbackProfiles = Object.fromEntries(
+    Object.entries(fallbackProfilesByUserId).flatMap(([userId, profile]) => {
+      const normalizedUserId = normalizeUserId(userId);
+      return normalizedUserId ? [[normalizedUserId, profile] as const] : [];
+    }),
+  );
+  const uniqueUserIds = [...new Set(userIds.map(normalizeUserId).filter((userId): userId is string => Boolean(userId)))];
   const profileEntries = await Promise.all(uniqueUserIds.map(async (userId) => {
-    const fallbackProfile = fallbackProfilesByUserId[userId];
+    const fallbackProfile = normalizedFallbackProfiles[userId];
     if (fallbackProfile) {
       return [userId, fallbackProfile] as const;
     }

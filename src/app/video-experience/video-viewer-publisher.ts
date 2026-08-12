@@ -1,4 +1,5 @@
 import type { VideoFeedItem } from "@/components/compositions/posts/video-feed/video-feed.types";
+import { sameUserId } from "@/app/authenticated-helpers/user-id";
 
 type ViewerGateState = {
   viewer_community_role?: string | null;
@@ -28,7 +29,7 @@ export function videoViewerPublisherRelationship(input: {
   if (input.identityMode === "public" && input.authorUserId) {
     return input.authorWalletAddress ? {
       kind: "follow",
-      ownProfile: input.authorUserId === input.currentUserId,
+      ownProfile: sameUserId(input.authorUserId, input.currentUserId),
       targetUserId: input.authorUserId,
       targetWalletAddress: input.authorWalletAddress,
     } : undefined;

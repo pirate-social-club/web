@@ -7,6 +7,7 @@ import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { getErrorMessage } from "@/lib/error-utils";
 import { NotFoundRouteState } from "@/app/authenticated-helpers/route-shell";
 import type { CommunityModerationSection } from "@/app/authenticated-helpers/moderation-helpers";
+import { sameUserId } from "@/app/authenticated-helpers/user-id";
 import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState, StackPageShell, StatusCard } from "@/app/authenticated-helpers/route-shell";
 
 export function getCommunityModerationTitle(
@@ -114,7 +115,7 @@ export function CommunityModerationGuard({
     return <RouteLoadFailureState description={incompleteDescription} title={showInlineTitle ? title : ""} />;
   }
 
-  if (session?.user?.id !== community.created_by_user) {
+  if (!sameUserId(session?.user?.id, community.created_by_user)) {
     return (
       <StackPageShell title={showInlineTitle ? title : ""}>
         <StatusCard

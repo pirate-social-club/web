@@ -7,28 +7,28 @@ import { selectRelevantHomeFeedProfiles } from "./home-feed-profile-selection";
 describe("selectRelevantHomeFeedProfiles", () => {
   test("excludes unrelated profile updates from a post projection", () => {
     const entry = {
-      post: { post: { author_user: "author" } },
+      post: { post: { author_user: "usr_usr_author" } },
     } as unknown as HomeFeedItem;
     const liveRoomAccess = {
       room: {
-        host_user: "host",
-        guest_user: "guest",
-        performer_allocations: [{ role: "guest", user: "performer" }],
+        host_user: "usr_host",
+        guest_user: "usr_usr_guest",
+        performer_allocations: [{ role: "guest", user: "usr_performer" }],
       },
     } as unknown as ApiLiveRoomAccessResponse;
     const profiles = {
-      author: { user: "author" } as Profile,
-      host: { user: "host" } as Profile,
-      guest: null,
-      performer: { user: "performer" } as Profile,
-      unrelated: { user: "unrelated" } as Profile,
+      usr_author: { user: "usr_author" } as Profile,
+      usr_host: { user: "usr_host" } as Profile,
+      usr_guest: null,
+      usr_performer: { user: "usr_performer" } as Profile,
+      usr_unrelated: { user: "usr_unrelated" } as Profile,
     };
 
     expect(selectRelevantHomeFeedProfiles(entry, liveRoomAccess, profiles)).toEqual([
-      ["author", profiles.author],
-      ["host", profiles.host],
-      ["guest", null],
-      ["performer", profiles.performer],
+      ["usr_author", profiles.usr_author],
+      ["usr_host", profiles.usr_host],
+      ["usr_guest", null],
+      ["usr_performer", profiles.usr_performer],
     ]);
   });
 });

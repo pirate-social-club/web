@@ -33,6 +33,7 @@ import {
   withTranslationToggleProps,
 } from "@/app/authenticated-helpers/post-translation-presentation";
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
+import { normalizeUserId } from "@/app/authenticated-helpers/user-id";
 
 type HomeFeedPresentationEntry = {
   booking?: ApiHomeFeedItem["booking"];
@@ -73,7 +74,8 @@ export function toHomeFeedItem(
   const { post } = postResponse;
   const communityId = resolveHomeFeedCommunityId(community);
   const postId = post.id ?? (post as typeof post & { post?: string }).post ?? "";
-  const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
+  const authorUserId = normalizeUserId(post.author_user);
+  const authorProfile = authorUserId ? authorProfiles[authorUserId] ?? undefined : undefined;
   const event = toPostCardEvent(post);
   const storyPortalHref = resolvePostStoryPortalHref({
     asset: postResponse.asset_story ?? (post as typeof post & { asset_story?: NonNullable<ApiPost["asset_story"]> | null }).asset_story,

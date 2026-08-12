@@ -14,6 +14,7 @@ import { useSession } from "@/lib/api/session-store";
 import { useRequestAuth } from "@/hooks/use-request-auth";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { interpolateMessage } from "@/lib/route-messages";
+import { sameUserId } from "@/app/authenticated-helpers/user-id";
 import {
   executeUsdcTransfer,
   findConnectedFundingWallet,
@@ -86,8 +87,8 @@ function pendingIntentForCheckout(
   hostUserId: string,
   slotStart: string,
 ): PendingBookingPaymentIntent | null {
-  return intents.find((intent) => intent.host_user_id === hostUserId && intent.slot_start_utc === slotStart)
-    ?? intents.find((intent) => intent.host_user_id === hostUserId)
+  return intents.find((intent) => sameUserId(intent.host_user_id, hostUserId) && intent.slot_start_utc === slotStart)
+    ?? intents.find((intent) => sameUserId(intent.host_user_id, hostUserId))
     ?? intents.find((intent) => intent.resume_state !== "payable")
     ?? null;
 }

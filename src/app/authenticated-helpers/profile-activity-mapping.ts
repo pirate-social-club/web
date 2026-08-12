@@ -23,6 +23,7 @@ import {
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import { formatRelativeTimestamp } from "@/lib/formatting/time";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
+import { normalizeUserId } from "@/app/authenticated-helpers/user-id";
 
 export const PROFILE_ACTIVITY_PAGE_LIMIT = 25;
 
@@ -121,7 +122,8 @@ function mapProfileActivityComment(
   const rootPostId = item.thread_root_post.post.id;
   const body = item.comment.translated_body ?? comment.body ?? "";
   const authorHandle = publicAuthorHandle(item.comment);
-  const authorProfile = comment.author_user ? authorProfiles[comment.author_user] ?? null : null;
+  const authorUserId = normalizeUserId(comment.author_user);
+  const authorProfile = authorUserId ? authorProfiles[authorUserId] ?? null : null;
   return {
     authorAvatarSeed: resolveCommentAuthorAvatarSeed(comment, authorProfile),
     authorAvatarSrc: comment.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,

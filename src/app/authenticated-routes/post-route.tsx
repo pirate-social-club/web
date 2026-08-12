@@ -50,7 +50,7 @@ import { rewardCtaAmountLabel } from "@/components/compositions/rewards/reward-s
 import { BoostCampaignSheet, SongRewardPolicySheet } from "@/components/compositions/rewards/reward-booster-surfaces";
 import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
 import { logger } from "@/lib/logger";
-import { sameUserId } from "@/app/authenticated-helpers/user-id";
+import { normalizeUserId, sameUserId } from "@/app/authenticated-helpers/user-id";
 import { useBoostCampaignController } from "@/app/authenticated-helpers/use-boost-campaign-controller";
 import { useActiveSongRewardOffer } from "@/app/authenticated-helpers/use-active-song-reward-offer";
 
@@ -451,15 +451,15 @@ export function PostPage({
   }, [postId]);
 
   React.useEffect(() => {
-    const guestUserId = liveRoomAccess?.room?.guest_user;
+    const normalizedGuestUserId = normalizeUserId(liveRoomAccess?.room?.guest_user);
     if (
-      !guestUserId
-      || guestUserId === post?.post.author_user
-      || Object.prototype.hasOwnProperty.call(authorProfilesByUserId, guestUserId)
+      !normalizedGuestUserId
+      || sameUserId(normalizedGuestUserId, post?.post.author_user)
+      || Object.prototype.hasOwnProperty.call(authorProfilesByUserId, normalizedGuestUserId)
     ) return;
 
     let cancelled = false;
-    void loadProfilesByUserId(api, [guestUserId], authorProfilesByUserId)
+    void loadProfilesByUserId(api, [normalizedGuestUserId], authorProfilesByUserId)
       .then((profiles) => {
         if (!cancelled) {
           setAuthorProfilesByUserId((current) => ({ ...current, ...profiles }));

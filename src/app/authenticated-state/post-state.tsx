@@ -16,6 +16,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { postKeys } from "@/lib/query/keys";
 import type { PublicThreadQueryData } from "@/lib/query/public-thread-cache";
 import { toast } from "@/components/primitives/sonner";
+import { normalizeUserId } from "@/app/authenticated-helpers/user-id";
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { applyPostVote, submitOptimisticPostVote, toPostVoteValue } from "@/app/authenticated-helpers/post-vote";
@@ -320,11 +321,8 @@ export function usePost(
     setCommunity(data.community);
     setCommentNodes((current) => isSamePost ? mergeThreadCommentNodes(current, data.comments) : data.comments);
     setAuthorProfilesByUserId((current) => ({ ...current, ...data.authorProfiles }));
-    setAuthorProfile(
-      nextPost.post.identity_mode === "public" && nextPost.post.author_user
-        ? data.authorProfiles[nextPost.post.author_user] ?? null
-        : null,
-    );
+    const authorUserId = nextPost.post.identity_mode === "public" ? normalizeUserId(nextPost.post.author_user) : null;
+    setAuthorProfile(authorUserId ? data.authorProfiles[authorUserId] ?? null : null);
     setReadMode("public");
     setThreadPartial(data.partial);
     setLoading(false);
@@ -724,14 +722,15 @@ export function usePost(
         )
           .then((authorProfilesByUserId) => {
             if (cancelled) return;
-            if (p.post.identity_mode === "public" && p.post.author_user && !authorProfilesByUserId[p.post.author_user]) {
+            const authorUserId = p.post.identity_mode === "public" ? normalizeUserId(p.post.author_user) : null;
+            if (authorUserId && !authorProfilesByUserId[authorUserId]) {
               logger.warn("[post-route] author handle fallback", {
                 postId: p.post.id,
                 readMode: nextReadMode,
                 userId: p.post.author_user,
               });
             }
-            setAuthorProfile(p.post.identity_mode === "public" && p.post.author_user ? authorProfilesByUserId[p.post.author_user] ?? null : null);
+            setAuthorProfile(authorUserId ? authorProfilesByUserId[authorUserId] ?? null : null);
             setAuthorProfilesByUserId((current) => ({ ...current, ...authorProfilesByUserId }));
           })
           .catch((nextError: unknown) => {

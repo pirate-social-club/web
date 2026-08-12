@@ -307,6 +307,17 @@ describe("resolveVideoPublisherRelationship", () => {
     })).toBeUndefined();
   });
 
+  test("recognizes the current publisher across repeated prefixes", () => {
+    expect(resolveVideoPublisherRelationship({
+      authorUserId: "usr_workspace_owner",
+      authorWalletAddress: "0x0000000000000000000000000000000000000001",
+      currentUserId: "usr_usr_workspace_owner",
+      identityMode: "public",
+      joinedLabel: "Joined community",
+      joinLabel: "Join community",
+    })).toMatchObject({ ownProfile: true });
+  });
+
   test("reflects server or optimistic community membership", () => {
     expect(resolveVideoPublisherRelationship({
       identityMode: "anonymous",

@@ -67,10 +67,7 @@ import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { useRequestAuth } from "@/hooks/use-request-auth";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
-import {
-  createDefaultBlockedModalState,
-  selectPostVoteGateData,
-} from "@/hooks/use-community-interaction-gate.helpers";
+import { createDefaultBlockedModalState, selectPostVoteGateData } from "@/hooks/use-community-interaction-gate.helpers";
 import { useApi } from "@/lib/api";
 import { updateSessionUser, useSession } from "@/lib/api/session-store";
 import { trackAnalyticsEvent } from "@/lib/analytics";
@@ -80,6 +77,7 @@ import { videoImpressionAnalyticsProperties } from "@/lib/video-impression-analy
 import { useUiLocale } from "@/lib/ui-locale";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { cn } from "@/lib/utils";
+import { normalizeUserId, sameUserId } from "@/app/authenticated-helpers/user-id";
 import { HomePage } from "./home-routes";
 
 export type VideoHomeSurface = "loading" | "video" | "community-feed-empty" | "community-feed-error";
@@ -327,7 +325,7 @@ export function resolveVideoPublisherRelationship(input: {
   if (input.identityMode === "public" && input.authorUserId) {
     return input.authorWalletAddress ? {
       kind: "follow",
-      ownProfile: input.authorUserId === input.currentUserId,
+      ownProfile: sameUserId(input.authorUserId, input.currentUserId),
       targetUserId: input.authorUserId,
       targetWalletAddress: input.authorWalletAddress,
     } : undefined;
@@ -709,7 +707,8 @@ export function VideoHomePage({
   React.useEffect(() => {
     const userIds = entries.flatMap((entry) => {
       const post = entry.post.post;
-      return post.identity_mode === "public" && post.author_user ? [post.author_user] : [];
+      const authorUserId = post.identity_mode === "public" ? normalizeUserId(post.author_user) : null;
+      return authorUserId ? [authorUserId] : [];
     });
     const knownProfiles = authorProfilesRef.current;
     const missingUserIds = [...new Set(userIds)].filter((userId) => !(userId in knownProfiles));
@@ -728,7 +727,8 @@ export function VideoHomePage({
   const pageItems = React.useMemo<VideoFeedItem[]>(
     () => entries.flatMap((entry): VideoFeedItem[] => {
       const post = entry.post.post;
-      const authorProfile = post.author_user ? authorProfiles[post.author_user] : null;
+      const authorUserId = normalizeUserId(post.author_user);
+      const authorProfile = authorUserId ? authorProfiles[authorUserId] : null;
       const joinedLocally = joinedCommunityIds.has(entry.community.id);
       const cached = pageItemCacheRef.current.get(post.id);
       if (
@@ -740,7 +740,7 @@ export function VideoHomePage({
         && cached.joinedLocally === joinedLocally
         && cached.showOriginalLabel === copy.common.showOriginal
         && cached.showTranslationLabel === copy.common.showTranslation
-        && cached.userId === session?.user.id
+        && normalizeUserId(cached.userId) === normalizeUserId(session?.user.id)
         && cached.videoPublisherJoin === copy.home.videoPublisherJoin
         && cached.videoPublisherJoined === copy.home.videoPublisherJoined
       ) return cached.item ? [cached.item] : [];
@@ -1054,16 +1054,16 @@ export function VideoHomePage({
     setBookingLoading(true);
     void bookingCache.ensure(hostUserId)
       .then((slots) => {
-        if (bookingRequestHostRef.current === hostUserId) setBookingSlots(slots);
+        if (sameUserId(bookingRequestHostRef.current, hostUserId)) setBookingSlots(slots);
       })
       .catch(() => {
-        if (bookingRequestHostRef.current === hostUserId) {
+        if (sameUserId(bookingRequestHostRef.current, hostUserId)) {
           setBookingSlots([]);
           setBookingError(true);
         }
       })
       .finally(() => {
-        if (bookingRequestHostRef.current === hostUserId) setBookingLoading(false);
+        if (sameUserId(bookingRequestHostRef.current, hostUserId)) setBookingLoading(false);
       });
   }, [bookingCache]);
 

@@ -247,6 +247,28 @@ describe("toHomeFeedItem", () => {
     expect(item.post.byline?.author?.href).toBe("/u/blackbeard.eth");
   });
 
+  test("canonicalizes profile keys across repeated user prefixes", async () => {
+    const profile = createAuthorProfile({ display_name: "Workspace owner" });
+    let profileRequests = 0;
+    const api = {
+      profiles: {
+        getByUserId: async () => {
+          profileRequests += 1;
+          return profile;
+        },
+      },
+    } as unknown as Parameters<typeof loadProfilesByUserId>[0];
+
+    const profiles = await loadProfilesByUserId(
+      api,
+      ["usr_usr_workspace_owner", "usr_workspace_owner"],
+      { usr_workspace_owner: profile },
+    );
+
+    expect(profiles).toEqual({ usr_workspace_owner: profile });
+    expect(profileRequests).toBe(0);
+  });
+
   test("passes through an onVote handler when the container provides one", () => {
     const onVote = () => undefined;
 

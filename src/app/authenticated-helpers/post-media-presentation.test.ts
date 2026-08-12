@@ -134,6 +134,23 @@ describe("toStudyCapability", () => {
 });
 
 describe("toSongPostContent", () => {
+  test("grants author entitlement across repeated user prefixes", () => {
+    const base = songPost();
+    const content = toSongPostContent({
+      ...base,
+      post: {
+        ...base.post,
+        access_mode: "locked",
+        asset: "asset_song",
+        author_user: "usr_workspace_owner",
+      },
+    } as ApiPost, {
+      currentUserId: "usr_usr_workspace_owner",
+    }, { title: "Test Song" });
+
+    expect(content.hasEntitlement).toBe(true);
+  });
+
   test("wires onStudy only when study is ready", () => {
     const onStudy = () => {};
     const ready = toSongPostContent({

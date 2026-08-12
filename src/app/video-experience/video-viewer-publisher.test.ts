@@ -30,6 +30,17 @@ describe("videoViewerPublisherRelationship", () => {
     })).toMatchObject({ ownProfile: true });
   });
 
+  test("marks the author's own profile across repeated prefixes", () => {
+    expect(videoViewerPublisherRelationship({
+      authorUserId: "usr_workspace_owner",
+      authorWalletAddress: "0xabc",
+      currentUserId: "usr_usr_workspace_owner",
+      identityMode: "public",
+      joinedLabel: "Joined",
+      joinLabel: "Join",
+    })).toMatchObject({ ownProfile: true });
+  });
+
   test("hides the follow relationship when the wallet is unresolved", () => {
     expect(videoViewerPublisherRelationship({
       authorUserId: "user-author",

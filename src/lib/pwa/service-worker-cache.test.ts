@@ -65,6 +65,17 @@ function createHarness() {
 
   return {
     stores,
+    async activate() {
+      const listener = listeners.get("activate");
+      if (!listener) throw new Error("activate listener was not registered");
+      const waits: Promise<unknown>[] = [];
+      listener({
+        waitUntil(value: Promise<unknown>) {
+          waits.push(value);
+        },
+      });
+      await Promise.all(waits);
+    },
     setFetcher(next: typeof fetcher) {
       fetcher = next;
     },
@@ -111,11 +122,26 @@ describe("service worker static caching", () => {
     expect((await harness.fetch(url)).body).toBe(`network:${url}`);
   });
 
+  test("bounds runtime static files while preserving recent offline entries", async () => {
+    for (let index = 0; index < 68; index += 1) {
+      await harness.fetch(`https://pirate.sc/mascots/mascot-${index}.svg`);
+    }
+    const runtime = harness.stores.get("pirate-pwa-runtime-v3");
+    expect(runtime?.size).toBe(64);
+    expect(runtime?.has("https://pirate.sc/mascots/mascot-0.svg")).toBe(false);
+
+    harness.setFetcher(async () => {
+      throw new Error("offline");
+    });
+    expect((await harness.fetch("https://pirate.sc/mascots/mascot-67.svg")).status).toBe(200);
+  });
+
   test("serves immutable assets cache-first and bounds old content hashes", async () => {
     for (let index = 0; index < 260; index += 1) {
       await harness.fetch(`https://pirate.sc/assets/chunk-${index}.js`);
     }
-    const immutable = harness.stores.get("pirate-pwa-assets-v3");
+    const immutable = [...harness.stores.entries()]
+      .find(([name]) => name.startsWith("pirate-pwa-assets-v4-"))?.[1];
     expect(immutable?.size).toBe(256);
     expect(immutable?.has("https://pirate.sc/assets/chunk-0.js")).toBe(false);
 
@@ -126,6 +152,23 @@ describe("service worker static caching", () => {
     });
     expect((await harness.fetch("https://pirate.sc/assets/chunk-259.js")).status).toBe(200);
     expect(networkCalls).toBe(0);
+  });
+
+  test("activation removes older immutable release cohorts only", async () => {
+    harness.stores.set("pirate-pwa-assets-v3", new Map());
+    harness.stores.set("pirate-pwa-assets-v4-older-release", new Map());
+    harness.stores.set("pirate-pwa-assets-v4-__PIRATE_BUILD_ID__", new Map());
+    harness.stores.set("pirate-pwa-runtime-v3", new Map());
+    harness.stores.set("unrelated-cache", new Map());
+
+    await harness.activate();
+
+    const names = [...harness.stores.keys()];
+    expect(names).toContain("pirate-pwa-runtime-v3");
+    expect(names).toContain("unrelated-cache");
+    expect(names).toContain("pirate-pwa-assets-v4-__PIRATE_BUILD_ID__");
+    expect(names).not.toContain("pirate-pwa-assets-v3");
+    expect(names).not.toContain("pirate-pwa-assets-v4-older-release");
   });
 
   test("does not reject a successful response when a cache write fails", async () => {

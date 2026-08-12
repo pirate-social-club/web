@@ -28,6 +28,7 @@ describe("release attestation wiring", () => {
 
   test("staging also creates and emits provenance during its build", () => {
     expect(packageJson.scripts?.["build:staging"]).toContain("bun run build:provenance");
+    expect(packageJson.scripts?.["build:staging"]).toContain("bun run build:service-worker");
     expect(packageJson.scripts?.["build:staging"]).toContain("bun run build:provenance:emit");
     expect(stagingDeploy).toContain("verify-dist");
   });

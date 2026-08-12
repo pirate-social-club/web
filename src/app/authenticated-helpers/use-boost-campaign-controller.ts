@@ -34,6 +34,14 @@ import {
   INITIAL_BOOST_POLICY_WORKFLOW_STATE,
   reduceBoostPolicyWorkflow,
 } from "./boost-policy-workflow";
+import {
+  acceptsCampaignTopUp,
+  blocksNewCampaign,
+  campaignContributionProblem,
+  campaignFundingTxHash,
+  campaignPayoutTiers,
+} from "./boost-campaign-resource";
+import type { BoostCampaignControllerInput } from "./boost-campaign-controller-types";
 import { boostFundingErrorMessage } from "./boost-funding-errors";
 import {
   nationalityTiersPreviewEnabled,
@@ -56,95 +64,10 @@ import {
   type TerminalFunding,
   writePendingFunding,
 } from "./boost-funding-recovery";
+export type { BoostCampaignControllerInput } from "./boost-campaign-controller-types";
+export { useBoostMenuEligibility } from "./use-boost-menu-eligibility";
 const SCORE_THRESHOLD_BPS = 7_000;
 const FUNDING_FINALITY_POLL_INTERVAL_MS = 10_000;
-export function useBoostMenuEligibility(input: {
-  authenticated: boolean;
-  postIds: readonly string[];
-}): ReadonlySet<string> {
-  const api = useApi();
-  const postIdsKey = [...new Set(input.postIds.filter(Boolean))].sort().join(",");
-  const [eligiblePostIds, setEligiblePostIds] = React.useState<ReadonlySet<string>>(() => new Set());
-
-  React.useEffect(() => {
-    if (!input.authenticated || !postIdsKey) {
-      setEligiblePostIds(new Set());
-      return;
-    }
-
-    let cancelled = false;
-    const postIds = postIdsKey.split(",");
-    void Promise.all(postIds.map(async (postId) => {
-      try {
-        const capabilities = await api.rewards.getCampaignCapabilities(postId);
-        return capabilities.enabled && capabilities.post_eligible ? postId : null;
-      } catch {
-        return null;
-      }
-    })).then((results) => {
-      if (!cancelled) setEligiblePostIds(new Set(results.filter((postId): postId is string => Boolean(postId))));
-    });
-
-    return () => { cancelled = true; };
-  }, [api.rewards, input.authenticated, postIdsKey]);
-
-  return eligiblePostIds;
-}
-
-function blocksNewCampaign(campaign: RewardCampaign | null): boolean {
-  return campaign != null && [
-    "scheduled",
-    "active",
-    "paused",
-    "operational_hold",
-    "exhausted",
-  ].includes(campaign.status);
-}
-
-function acceptsCampaignTopUp(campaign: RewardCampaign | null): campaign is RewardCampaign {
-  return campaign != null && [
-    "funding_quoted",
-    "funding_confirming",
-    "scheduled",
-    "active",
-    "exhausted",
-  ].includes(campaign.status);
-}
-
-function campaignContributionProblem(campaign: RewardCampaign | null): string {
-  if (campaign?.status === "paused") {
-    return "This bounty is paused and cannot accept new funding.";
-  }
-  if (campaign?.status === "operational_hold") {
-    return "This bounty is under review and cannot accept new funding.";
-  }
-  return "This bounty cannot accept new funding in its current state.";
-}
-
-function campaignFundingTxHash(campaign: RewardCampaign | null): string | null {
-  return (campaign as (RewardCampaign & { funding_tx_hash?: string | null }) | null)
-    ?.funding_tx_hash ?? null;
-}
-
-function campaignPayoutTiers(campaign: RewardCampaign | null): Array<{
-  amount_cents: number;
-  nationalities: string[];
-}> {
-  return (campaign as (RewardCampaign & {
-    payout_tiers?: Array<{ amount_cents: number; nationalities: string[] }>;
-  }) | null)?.payout_tiers ?? [];
-}
-
-export interface BoostCampaignControllerInput {
-  activeCampaignId: string | null;
-  authenticated: boolean;
-  communityId: string | null;
-  onCampaignActivated?: () => void;
-  postId: string;
-  requestAuth: () => void;
-  song: boolean;
-  viewerIsAuthor: boolean;
-}
 
 export function useBoostCampaignController(input: BoostCampaignControllerInput) {
   const api = useApi();

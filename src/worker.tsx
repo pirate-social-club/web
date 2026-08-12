@@ -482,6 +482,10 @@ const app = defineApp<AppRequestInfo>([
     const routeDiscovery = resolveRouteDiscoveryContext({
       discovery,
       postId: route.kind === "post" ? route.postId : null,
+      sovereignCommunityRoute:
+        route.kind === "community" || route.kind === "community-videos"
+          ? forwardedCommunityRoute ?? forwardedCommunityRoot
+          : null,
       sovereignPresentation: forwardedCommunityRoot !== null,
     });
     const expectsEntitySeoMetadata = shouldAlwaysResolveEntitySeo(route);

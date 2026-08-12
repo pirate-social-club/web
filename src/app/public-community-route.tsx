@@ -28,7 +28,11 @@ import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
-import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization"; import { CommunitySurfaceNavigation } from "@/app/community-surface-navigation";
+import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
+import {
+  CommunitySurfaceNavigation,
+  SovereignOpenAppAction,
+} from "@/app/community-surface-navigation";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import {
   getJoinCtaLabel,
@@ -227,11 +231,17 @@ export function resolvePublicCommunityJoinActionLabel(
 export function PublicCommunityRoutePage({
   buildPostPath,
   communityId,
-  disableCanonicalRouteReplace = false, isImportedRoot = false, importedRootHostname,
+  disableCanonicalRouteReplace = false,
+  importedRootHostname,
+  isImportedRoot = false,
+  showSovereignOpenAppAction = false,
 }: {
   buildPostPath?: (postId: string) => string;
   communityId: string;
-  disableCanonicalRouteReplace?: boolean; importedRootHostname?: string; isImportedRoot?: boolean;
+  disableCanonicalRouteReplace?: boolean;
+  importedRootHostname?: string;
+  isImportedRoot?: boolean;
+  showSovereignOpenAppAction?: boolean;
 }) {
   const api = useApi();
   const session = useSession();
@@ -705,8 +715,14 @@ export function PublicCommunityRoutePage({
   const viewerIsMember = preview.viewer_membership_status === "member" || eligibility?.status === "already_joined";
   const canCreatePost = Boolean(session?.user?.id) && viewerIsMember;
   const communityCreatePostPath = `${buildCommunityPath(preview.id, preview.route_slug ?? communityId)}/submit`;
+  const communityCreatePostHref = isImportedRoot && importedRootHostname
+    ? `https://app.${importedRootHostname}/submit`
+    : communityCreatePostPath;
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
+      {showSovereignOpenAppAction && importedRootHostname ? (
+        <SovereignOpenAppAction importedRootHostname={importedRootHostname} />
+      ) : null}
       {!viewerIsMember && !membershipLoading ? (
         <Button
           className={FOLLOW_BUTTON_CLASS_NAME}
@@ -732,7 +748,13 @@ export function PublicCommunityRoutePage({
       {canCreatePost ? (
         <Button
           leadingIcon={<Plus className="size-5" />}
-          onClick={() => navigate(communityCreatePostPath)}
+          onClick={() => {
+            if (isImportedRoot) {
+              window.location.assign(communityCreatePostHref);
+              return;
+            }
+            navigate(communityCreatePostHref);
+          }}
         >
           {copy.community.createPostLabel}
         </Button>
@@ -902,7 +924,14 @@ export function PublicCommunityRoutePage({
             viewerContentLocale: contentLocale,
           },
         ))}
-        loading={postsLoading} navigation={<CommunitySurfaceNavigation active="threads" communityId={preview.id} importedRootHostname={isImportedRoot ? importedRootHostname : undefined} routeSlug={preview.route_slug} />}
+        loading={postsLoading}
+        navigation={!isImportedRoot ? (
+          <CommunitySurfaceNavigation
+            active="threads"
+            communityId={preview.id}
+            routeSlug={preview.route_slug}
+          />
+        ) : null}
         onSortChange={setActiveSort}
         routeLabel={routeLabel}
         sidebar={{

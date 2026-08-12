@@ -422,13 +422,13 @@ describe("resolveHydrationPathname", () => {
 });
 
 describe("matchRouteWithImportedRootCommunity", () => {
-  test("maps imported HNS root requests to the resolved community without changing the path", () => {
+  test("maps an imported HNS apex to the resolved community page without changing the path", () => {
     expectJson(matchRouteWithImportedRootCommunity(
       "/",
       "xn--pokmon-dva",
       "com_cmt_public_namespace_test",
     ), {
-      kind: "community-videos",
+      kind: "community",
       path: "/",
       communityId: "com_cmt_public_namespace_test",
       isImportedRoot: true,
@@ -437,13 +437,13 @@ describe("matchRouteWithImportedRootCommunity", () => {
     });
   });
 
-  test("maps app imported-root requests to threads and rejects other subdomains", () => {
+  test("maps app imported-root requests to videos and rejects other subdomains", () => {
     expectJson(matchRouteWithImportedRootCommunity(
       "/",
       "app.xn--pokmon-dva",
       "com_cmt_public_namespace_test",
     ), {
-      kind: "community",
+      kind: "community-videos",
       path: "/",
       communityId: "com_cmt_public_namespace_test",
       isImportedRoot: true,
@@ -505,9 +505,21 @@ describe("matchRouteWithImportedRootCommunity", () => {
     });
   });
 
-  test("rejects every non-post deep route on sovereign origins", () => {
+  test("keeps the sovereign apex limited to its community page and scoped posts", () => {
+    expect(matchRouteWithImportedRootCommunity(
+      "/p/post-1",
+      "xn--pokmon-dva",
+      "com_cmt_public_namespace_test",
+      "crew",
+    ).kind).toBe("post");
+
     for (const pathname of [
-      "/c/other-community",
+      "/wallet",
+      "/settings",
+      "/submit",
+      "/c/crew/mod",
+      "/c/crew/threads",
+      "/c/crew/videos",
       "/c/other-community/threads",
       "/u/other-handle",
       "/live",
@@ -525,31 +537,27 @@ describe("matchRouteWithImportedRootCommunity", () => {
     }
   });
 
-  test("keeps the app origin functional while binding community actions to its sovereign scope", () => {
+  test("keeps the video app functional while binding community actions to its sovereign scope", () => {
     const communityId = "com_cmt_public_namespace_test";
     const communityRoute = "crew";
-    for (const pathname of ["/wallet", "/settings", "/settings/bookings", "/bookings"]) {
+    const appRoutes = [
+      ["/wallet", "wallet"],
+      ["/settings", "settings-index"],
+      ["/settings/bookings", "booking-host-settings"],
+      ["/bookings", "booking-management"],
+      ["/c/crew/mod", "community-moderation-index"],
+      ["/c/crew/submit", "create-post"],
+      ["/c/crew/bookings", "booking-management"],
+      ["/c/crew/threads", "community"],
+      ["/c/crew/videos", "community-videos"],
+    ] as const;
+    for (const [pathname, kind] of appRoutes) {
       expect(matchRouteWithImportedRootCommunity(
         pathname,
         "app.xn--pokmon-dva",
         communityId,
         communityRoute,
-      )).toMatchObject({ path: pathname, sovereignCommunityId: communityId });
-    }
-
-    for (const pathname of [
-      "/c/crew/mod",
-      "/c/crew/submit",
-      "/c/crew/bookings",
-      "/c/crew/threads",
-      "/c/crew/videos",
-    ]) {
-      expect(matchRouteWithImportedRootCommunity(
-        pathname,
-        "app.xn--pokmon-dva",
-        communityId,
-        communityRoute,
-      )).toMatchObject({ path: pathname, sovereignCommunityId: communityId });
+      )).toMatchObject({ kind, path: pathname, sovereignCommunityId: communityId });
     }
 
     expectJson(matchRouteWithImportedRootCommunity(
@@ -587,5 +595,27 @@ describe("matchRouteWithImportedRootCommunity", () => {
       path: "/c/com_foreign/mod",
       sovereignCommunityId: "com_expected",
     });
+  });
+
+  test("rejects global surfaces on the sovereign app origin", () => {
+    for (const pathname of [
+      "/live",
+      "/popular",
+      "/feed",
+      "/u/other-handle",
+      "/communities/new",
+      "/your-communities",
+    ]) {
+      expectJson(matchRouteWithImportedRootCommunity(
+        pathname,
+        "app.xn--pokmon-dva",
+        "com_expected",
+        "expected-route",
+      ), {
+        kind: "not-found",
+        path: pathname,
+        sovereignCommunityId: "com_expected",
+      });
+    }
   });
 });

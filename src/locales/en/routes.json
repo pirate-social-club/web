@@ -276,6 +276,7 @@
   },
   "communitySurface": {
     "ariaLabel": "Community views",
+    "openApp": "Open app",
     "threads": "Threads",
     "watch": "Watch"
   },

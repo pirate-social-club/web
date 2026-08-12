@@ -45,6 +45,27 @@ describe("agent discovery origins", () => {
     }).isIndexable).toBe(true);
   });
 
+  test("canonicalizes a sovereign community presentation to its Pirate community route", () => {
+    const resolved = resolveRouteDiscoveryContext({
+      discovery: getDiscoveryContext("https://community-root/"),
+      sovereignCommunityRoute: "community-route",
+      sovereignPresentation: true,
+    });
+
+    expect(resolved.canonicalUrl).toBe("https://pirate.sc/c/community-route");
+    expect(resolved.isIndexable).toBe(false);
+  });
+
+  test("canonicalizes an IDN sovereign route before publishing its Pirate canonical", () => {
+    const resolved = resolveRouteDiscoveryContext({
+      discovery: getDiscoveryContext("https://community-root/"),
+      sovereignCommunityRoute: "@🇵🇸",
+      sovereignPresentation: true,
+    });
+
+    expect(resolved.canonicalUrl).toBe("https://pirate.sc/c/@xn--t77hga");
+  });
+
   test("uses production API origin for the HNS app host", () => {
     expect(resolveApiOriginFromHostname("app.pirate")).toBe("https://api.pirate.sc");
     expect(getDiscoveryContext("https://app.pirate/c/crew").apiOrigin).toBe("https://api.pirate.sc");

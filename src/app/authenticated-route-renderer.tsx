@@ -211,7 +211,14 @@ function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
     case "community-moderation":
       return <LazyCommunityModerationPage communityId={route.communityId} section={route.section} />;
     case "community":
-      return <LazyCommunityPage communityId={route.communityId} isImportedRoot={route.isImportedRoot} />;
+      return (
+        <LazyCommunityPage
+          communityId={route.communityId}
+          importedRootHostname={route.importedRootHostname}
+          isImportedRoot={route.isImportedRoot}
+          showSovereignOpenAppAction={route.isImportedRoot && route.path === "/"}
+        />
+      );
     case "create-community":
       return <LazyCreateCommunityPage />;
     case "telegram-account-link":

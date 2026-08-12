@@ -18,11 +18,11 @@ describe("resolveVideoPublisherHref", () => {
     })).toBe("https://pirate.sc/u/creator.pirate");
   });
 
-  test("sends sovereign community identities to the threads origin", () => {
+  test("sends sovereign community identities to the community root", () => {
     expect(resolveVideoPublisherHref({
       href: "/c/community",
       importedRootHostname: "community-root",
       kind: "community",
-    })).toBe("https://app.community-root/");
+    })).toBe("https://community-root/");
   });
 });

@@ -414,11 +414,11 @@ describe("share metadata", () => {
     expect(markup).not.toContain('as="fetch"');
   });
 
-  test("scopes the pre-hydration video request to the sovereign community", () => {
+  test("scopes the app-origin pre-hydration video request to the sovereign community", () => {
     const markup = renderToStaticMarkup(
       <Document
         ctx={{
-          canonicalUrl: "https://community-root/",
+          canonicalUrl: "https://pirate.sc/c/community-route",
           homeFeedPreloadUrl: "https://api.pirate/public-communities/com_test/feed/videos?locale=en&sort=best",
           homeFeedScopeKey: "com_test",
           isIndexable: false,
@@ -434,6 +434,8 @@ describe("share metadata", () => {
     expect(markup).toContain("/public-communities/com_test/feed/videos?locale=en&sort=best");
     expect(markup).toContain("var viewerNeutral=true");
     expect(markup).toContain('scopeKey=\"com_test\"');
+    expect(markup).toContain('<link rel="canonical" href="https://pirate.sc/c/community-route"');
+    expect(markup).toContain('<meta name="robots" content="noindex, nofollow"');
   });
 
   test("does not render a generic social card for entity routes when SEO lookup misses", () => {

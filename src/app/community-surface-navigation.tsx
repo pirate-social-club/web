@@ -1,6 +1,7 @@
 "use client";
 
 import { buildCommunityPath } from "@/lib/community-routing";
+import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
@@ -10,18 +11,14 @@ import { usePublicCommunityQuery } from "@/lib/query/public-community-query";
 
 export type CommunitySurface = "threads" | "videos";
 
+export function sovereignAppHref(importedRootHostname: string): string {
+  return `https://app.${importedRootHostname}/`;
+}
+
 export function communitySurfaceHrefs(input: {
   communityId: string;
-  importedRootHostname?: string | null;
   routeSlug?: string | null;
 }): Record<CommunitySurface, string> {
-  if (input.importedRootHostname) {
-    return {
-      threads: `https://app.${input.importedRootHostname}/`,
-      videos: `https://${input.importedRootHostname}/`,
-    };
-  }
-
   const base = buildCommunityPath(input.communityId, input.routeSlug);
   return {
     threads: `${base}/threads`,
@@ -30,44 +27,28 @@ export function communitySurfaceHrefs(input: {
 }
 
 /**
- * Canonical community pages get a normal two-item view navigation. Imported app
- * origins get one contextual link back to their sovereign video homepage; this
- * is deliberately not a segmented cross-origin toggle.
+ * Canonical community pages get a normal two-item view navigation. Sovereign
+ * origins deliberately do not use this control: their apex is the community
+ * identity and app.<root> is the video application.
  */
 export function CommunitySurfaceNavigation({
   active,
   className,
   communityId,
-  importedRootHostname,
   routeSlug,
 }: {
   active: CommunitySurface;
   className?: string;
   communityId: string;
-  importedRootHostname?: string | null;
   routeSlug?: string | null;
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").communitySurface;
-  const hrefs = communitySurfaceHrefs({ communityId, importedRootHostname, routeSlug });
+  const hrefs = communitySurfaceHrefs({ communityId, routeSlug });
   const labels: Record<CommunitySurface, string> = {
     threads: copy.threads,
     videos: copy.watch,
   };
-
-  if (importedRootHostname) {
-    const destination: CommunitySurface = active === "videos" ? "threads" : "videos";
-    return (
-      <nav aria-label={copy.ariaLabel} className={className} data-surface-navigation="sovereign">
-        <a
-          className="inline-flex h-10 items-center rounded-[var(--radius-lg)] border border-border-soft bg-background/90 px-4 shadow-sm backdrop-blur transition-colors hover:bg-muted"
-          href={hrefs[destination]}
-        >
-          <Type as="span" variant="label">{labels[destination]}</Type>
-        </a>
-      </nav>
-    );
-  }
 
   return (
     <nav
@@ -91,6 +72,22 @@ export function CommunitySurfaceNavigation({
         </a>
       ))}
     </nav>
+  );
+}
+
+export function SovereignOpenAppAction({
+  importedRootHostname,
+}: {
+  importedRootHostname: string;
+}) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").communitySurface;
+  return (
+    // The sovereign observer uses this stable attribute when it verifies
+    // reciprocal navigation in a hydrated browser.
+    <Button asChild data-surface-navigation="sovereign">
+      <a href={sovereignAppHref(importedRootHostname)}>{copy.openApp}</a>
+    </Button>
   );
 }
 

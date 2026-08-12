@@ -7,9 +7,10 @@ set -euo pipefail
 : "${HNS_PROBE_ROUTE_SLUG:?HNS_PROBE_ROUTE_SLUG is required}"
 
 html_file="$(mktemp)"
+app_html_file="$(mktemp)"
 canonical_html_file="$(mktemp)"
 namespace_file="$(mktemp)"
-trap 'rm -f "$html_file" "$canonical_html_file" "$namespace_file"' EXIT
+trap 'rm -f "$html_file" "$app_html_file" "$canonical_html_file" "$namespace_file"' EXIT
 
 # Public PKI cannot validate a DANE-only HNS certificate. --insecure disables
 # only that mismatched trust model; --resolve still exercises the real Caddy →
@@ -164,6 +165,13 @@ if [[ "$apex_status" != "200" ]]; then
   exit 1
 fi
 
+app_host="app.${HNS_PROBE_ROOT}"
+app_status="$(request_status "$app_host" "/" "$app_html_file")"
+if [[ "$app_status" != "200" ]]; then
+  echo "sovereign app returned HTTP ${app_status}" >&2
+  exit 1
+fi
+
 canonical_status="$(public_request_status "/c/${HNS_PROBE_ROUTE_SLUG}/videos" "$canonical_html_file")"
 if [[ "$canonical_status" != "200" ]]; then
   echo "canonical community video page returned HTTP ${canonical_status}" >&2
@@ -172,11 +180,12 @@ fi
 
 node scripts/ci/sovereign-context.mjs \
   --html "$html_file" \
+  --app-html "$app_html_file" \
   --canonical-html "$canonical_html_file" \
   --root "$HNS_PROBE_ROOT" \
-  --community-id "$HNS_PROBE_COMMUNITY_ID"
+  --community-id "$HNS_PROBE_COMMUNITY_ID" \
+  --route-slug "$HNS_PROBE_ROUTE_SLUG"
 
-app_host="app.${HNS_PROBE_ROOT}"
 own_status="$(request_status "$app_host" "/c/${HNS_PROBE_ROUTE_SLUG}/mod" /dev/null)"
 foreign_status="$(request_status "$app_host" "/c/not-the-sovereign-community/threads" /dev/null)"
 wallet_status="$(request_status "$app_host" "/wallet" /dev/null)"
@@ -186,5 +195,5 @@ if [[ "$own_status" != "200" || "$foreign_status" != "404" || "$wallet_status" !
   exit 1
 fi
 
-printf '{"status":"ok","root":"%s","apex":%s,"canonical":%s,"app_own":%s,"app_foreign":%s,"wallet":%s}\n' \
-  "$HNS_PROBE_ROOT" "$apex_status" "$canonical_status" "$own_status" "$foreign_status" "$wallet_status"
+printf '{"status":"ok","root":"%s","apex":%s,"app":%s,"canonical":%s,"app_own":%s,"app_foreign":%s,"wallet":%s}\n' \
+  "$HNS_PROBE_ROOT" "$apex_status" "$app_status" "$canonical_status" "$own_status" "$foreign_status" "$wallet_status"

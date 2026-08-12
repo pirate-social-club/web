@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { communitySurfaceHrefs } from "./community-surface-navigation";
+import { communitySurfaceHrefs, sovereignAppHref } from "./community-surface-navigation";
 
 describe("community surface navigation", () => {
   test("keeps canonical threads and Watch views reciprocal", () => {
@@ -13,13 +13,8 @@ describe("community surface navigation", () => {
     });
   });
 
-  test("connects an imported app origin back to its sovereign video root", () => {
-    expect(communitySurfaceHrefs({
-      communityId: "com_cmt_test",
-      importedRootHostname: "test-community",
-    })).toEqual({
-      threads: "https://app.test-community/",
-      videos: "https://test-community/",
-    });
+  test("opens the sovereign video application from the community root", () => {
+    expect(sovereignAppHref("community-root")).toBe("https://app.community-root/");
   });
+
 });

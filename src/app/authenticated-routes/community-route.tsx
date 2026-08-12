@@ -31,7 +31,6 @@ import { IconButton } from "@/components/primitives/icon-button";
 import { toast } from "@/components/primitives/sonner";
 import {
   getJoinCtaLabel,
-  getMissingCapabilitiesFromGateEvaluation,
   isJoinCtaActionable,
   resolveAvailableHumanVerificationProviders,
   type HumanVerificationProvider,
@@ -509,14 +508,10 @@ export function CommunityPage({
     provider: HumanVerificationProvider,
   ) => {
     const result = await startVerificationProvider(provider, {
-      missingCapabilities: eligibility
-        ? getMissingCapabilitiesFromGateEvaluation(eligibility)
-        : null,
-      membershipGateSummaries: eligibility?.membership_gate_summaries ?? null,
       showToastOnError: true,
     });
     if (result === "started") setVerificationChooserModalOpen(false);
-  }, [eligibility, setVerificationChooserModalOpen, startVerificationProvider]);
+  }, [setVerificationChooserModalOpen, startVerificationProvider]);
 
   React.useEffect(() => {
     if (isImportedRoot) return;
@@ -631,9 +626,7 @@ export function CommunityPage({
         onStartSelfVerification: async (gate) => {
           const result = await startSelfVerification({
             showToastOnError: true,
-            missingCapabilities: getMissingCapabilitiesFromGateEvaluation(gate.eligibility),
-            membershipGateSummaries:
-              gate.eligibility.membership_gate_summaries,
+            verificationPlanningInput: gate.eligibility,
             skipModal: true,
           });
           return {
@@ -645,9 +638,7 @@ export function CommunityPage({
         onStartZkPassportVerification: async (gate) => {
           const result = await startZkPassportVerification({
             showToastOnError: true,
-            missingCapabilities: getMissingCapabilitiesFromGateEvaluation(gate.eligibility),
-            membershipGateSummaries:
-              gate.eligibility.membership_gate_summaries,
+            verificationPlanningInput: gate.eligibility,
           });
           return { started: result.started };
         },

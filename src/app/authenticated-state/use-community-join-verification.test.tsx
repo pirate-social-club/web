@@ -370,6 +370,56 @@ describe("useCommunityJoinVerification", () => {
     expect(zkPassportStarts).toEqual([]);
   });
 
+  test("plans an interaction from its action tree instead of route-level eligibility", async () => {
+    const { result } = renderHook(() =>
+      useCommunityJoinVerification({
+        communityId: "com_interaction_any",
+        eligibility: eligibility("verification_required"),
+        locale: "en",
+        refetchEligibility: async () => eligibility("verification_required"),
+      })
+    );
+    const interactionEligibility = {
+      ...eligibility("verification_required"),
+      gate_evaluation: {
+        required_action_set: {
+          items: [
+            {
+              accepted_providers: ["self"],
+              allowed_countries: ["USA"],
+              capability: "nationality",
+              kind: "action",
+              provider: "self",
+            },
+            {
+              capability: "unique_human",
+              kind: "action",
+              provider: "self",
+            },
+          ],
+          kind: "set",
+          mode: "any",
+        },
+      },
+      membership_gate_summaries: [
+        { accepted_providers: ["self"], gate_type: "nationality", required_value: "US" },
+        { accepted_providers: ["self"], gate_type: "unique_human" },
+      ],
+      missing_capabilities: ["nationality", "unique_human"],
+    } as JoinEligibility;
+
+    await act(async () => {
+      expect(await result.current.startVerificationProvider("self", {
+        verificationPlanningInput: interactionEligibility,
+      })).toBe("started");
+    });
+
+    expect(selfStarts).toEqual([expect.objectContaining({
+      requestedCapabilities: ["unique_human"],
+      verificationRequirements: [],
+    })]);
+  });
+
   test("keeps legacy age-over-18 intact on the selected-gate path", async () => {
     const { result } = renderHook(() =>
       useCommunityJoinVerification({

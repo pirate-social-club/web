@@ -11,8 +11,7 @@ import type {
 
 import { getErrorMessage } from "@/lib/error-utils";
 import {
-  getVerificationCapabilitiesForProvider,
-  getVerificationRequirementsForGates,
+  getHumanVerificationRequestForProvider,
 } from "@/lib/identity-gates";
 import {
   completeCommunityJoinFromEligibility,
@@ -126,10 +125,8 @@ export function useDefaultVerificationActions({
     }
 
     if (provider === "zkpassport") {
-      const requestedCapabilities = getVerificationCapabilitiesForProvider(gate.eligibility, "zkpassport");
-      const verificationRequirements = getVerificationRequirementsForGates(
-        gate.eligibility.membership_gate_summaries,
-      );
+      const { requestedCapabilities, verificationRequirements } =
+        getHumanVerificationRequestForProvider(gate.eligibility, "zkpassport");
       if (requestedCapabilities.length === 0 && verificationRequirements.length === 0) {
         showError(ZKPASSPORT_VERIFICATION_UNAVAILABLE_MESSAGE);
         return { started: false };
@@ -149,10 +146,8 @@ export function useDefaultVerificationActions({
       return { started: result.started };
     }
 
-    const requestedCapabilities = getVerificationCapabilitiesForProvider(gate.eligibility, "self");
-    const verificationRequirements = getVerificationRequirementsForGates(
-      gate.eligibility.membership_gate_summaries,
-    );
+    const { requestedCapabilities, verificationRequirements } =
+      getHumanVerificationRequestForProvider(gate.eligibility, "self");
     if (requestedCapabilities.length === 0 && verificationRequirements.length === 0) {
       showError(SELF_VERIFICATION_UNAVAILABLE_MESSAGE);
       return { started: false };

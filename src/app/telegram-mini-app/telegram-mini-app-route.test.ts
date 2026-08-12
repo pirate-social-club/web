@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 
 import {
   readTelegramMiniAppInitData,
@@ -18,6 +19,11 @@ import {
   telegramVerifyTerminalMessage,
   hasOnlyTelegramJoinAltchaRequirement,
 } from "./telegram-mini-app-route";
+import {
+  launchTelegramSelfVerification,
+  launchTelegramZkPassportVerification,
+  telegramVerifySelfReadyMessage,
+} from "./telegram-verification-planning";
 
 describe("resolveTelegramMiniAppStartPath", () => {
   test("routes community public IDs from Telegram start params", () => {
@@ -208,6 +214,78 @@ describe("Telegram mini-app ALTCHA routing", () => {
 
     expect(hasOnlyTelegramJoinAltchaRequirement(altchaOnly)).toBe(true);
     expect(hasOnlyTelegramJoinAltchaRequirement(composite)).toBe(false);
+  });
+});
+
+describe("Telegram verification planning", () => {
+  const anyModeEligibility = (): ApiJoinEligibility => ({
+    gate_evaluation: {
+      required_action_set: {
+        items: [
+          {
+            accepted_providers: ["self"],
+            allowed_countries: ["USA"],
+            capability: "nationality",
+            kind: "action",
+            provider: "self",
+          },
+          {
+            capability: "unique_human",
+            kind: "action",
+            provider: "self",
+          },
+        ],
+        kind: "set",
+        mode: "any",
+      },
+    },
+    membership_gate_summaries: [
+      { accepted_providers: ["self"], gate_type: "nationality", required_value: "US" },
+      { accepted_providers: ["self"], gate_type: "unique_human" },
+    ],
+    missing_capabilities: ["nationality", "unique_human"],
+    status: "verification_required",
+  } as ApiJoinEligibility);
+
+  test("passes the full action tree to both Telegram verification starters", async () => {
+    const eligibility = anyModeEligibility();
+    const selfCalls: unknown[] = [];
+    const zkPassportCalls: unknown[] = [];
+
+    await launchTelegramSelfVerification({
+      callbackBaseHref: "https://pirate.sc/tg/self-return",
+      eligibility,
+      startVerification: async (options) => {
+        selfCalls.push(options);
+        return { started: true };
+      },
+    });
+    await launchTelegramZkPassportVerification({
+      eligibility,
+      startVerification: async (options) => {
+        zkPassportCalls.push(options);
+        return { started: true };
+      },
+    });
+
+    expect(selfCalls).toEqual([{
+      deeplinkCallbackBaseHref: "https://pirate.sc/tg/self-return",
+      showToastOnError: false,
+      skipModal: true,
+      verificationPlanningInput: eligibility,
+    }]);
+    expect(zkPassportCalls).toEqual([{
+      deferOpen: true,
+      showToastOnError: false,
+      verificationPlanningInput: eligibility,
+    }]);
+  });
+
+  test("describes the selected branch instead of every flattened alternative", () => {
+    const message = telegramVerifySelfReadyMessage(anyModeEligibility(), "en");
+
+    expect(message).toBe("Verify anonymously with Self.xyz.");
+    expect(message).not.toContain("nationality");
   });
 });
 

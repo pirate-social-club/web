@@ -310,6 +310,56 @@ describe("useDefaultVerificationActions", () => {
     expect(actions.calls).toEqual(["close", "href:self://verify"]);
   });
 
+  test("starts only the selected Self branch of an any-mode action set", async () => {
+    const actions = renderDefaultVerificationActions({
+      startSelfVerificationFlow: async (input) => {
+        actions.selfCalls.push(input);
+        return { href: "self://verify", started: true };
+      },
+    });
+    const selfGate = gate("verification_required", {
+      gate_evaluation: {
+        required_action_set: {
+          items: [
+            {
+              accepted_providers: ["self"],
+              allowed_countries: ["USA"],
+              capability: "nationality",
+              kind: "action",
+              provider: "self",
+            },
+            {
+              capability: "unique_human",
+              kind: "action",
+              provider: "self",
+            },
+          ],
+          kind: "set",
+          mode: "any",
+        },
+      } as JoinEligibility["gate_evaluation"],
+      membership_gate_summaries: [
+        { accepted_providers: ["self"], gate_type: "nationality", required_value: "US" },
+        { accepted_providers: ["self"], gate_type: "unique_human" },
+      ],
+      missing_capabilities: ["nationality", "unique_human"],
+    });
+
+    await act(async () => {
+      await actions.hook.result.current.startDefaultVerification({
+        gate: selfGate,
+        provider: "self",
+      });
+    });
+
+    expect(actions.selfCalls).toEqual([{
+      requestedCapabilities: ["unique_human"],
+      unavailableMessage: SELF_VERIFICATION_UNAVAILABLE_MESSAGE,
+      verificationRequirements: [],
+      skipModal: true,
+    }]);
+  });
+
   test("starts ZKPassport verification instead of a passport score refresh", async () => {
     const actions = renderDefaultVerificationActions({
       startZkPassportVerificationFlow: async (input) => {

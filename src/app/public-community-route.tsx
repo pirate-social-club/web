@@ -35,9 +35,7 @@ import {
 } from "@/app/community-surface-navigation";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import {
-  getMissingCapabilitiesFromGateEvaluation,
-  getVerificationCapabilitiesForProvider,
-  getVerificationRequirementsForGates,
+  getHumanVerificationRequestForProvider,
   isJoinCtaActionable,
   resolveAvailableHumanVerificationProviders,
   type HumanVerificationProvider,
@@ -503,14 +501,10 @@ export function PublicCommunityRoutePage({
     provider: HumanVerificationProvider,
   ) => {
     const result = await startVerificationProvider(provider, {
-      missingCapabilities: eligibility
-        ? getMissingCapabilitiesFromGateEvaluation(eligibility)
-        : null,
-      membershipGateSummaries: eligibility?.membership_gate_summaries ?? null,
       showToastOnError: true,
     });
     if (result === "started") setVerificationChooserModalOpen(false);
-  }, [eligibility, setVerificationChooserModalOpen, startVerificationProvider]);
+  }, [setVerificationChooserModalOpen, startVerificationProvider]);
 
   React.useEffect(() => {
     if (joinError) toast.error(joinError);
@@ -533,13 +527,8 @@ export function PublicCommunityRoutePage({
         selfLoading,
         onStartVeryVerification: startVeryVerification,
         onStartSelfVerification: async (gate) => {
-          const requestedCapabilities = getVerificationCapabilitiesForProvider(
-            gate.eligibility,
-            "self",
-          );
-          const verificationRequirements = getVerificationRequirementsForGates(
-            gate.eligibility.membership_gate_summaries,
-          );
+          const { requestedCapabilities, verificationRequirements } =
+            getHumanVerificationRequestForProvider(gate.eligibility, "self");
           if (
             requestedCapabilities.length === 0 &&
             verificationRequirements.length === 0
@@ -566,13 +555,8 @@ export function PublicCommunityRoutePage({
         },
         zkPassportLoading,
         onStartZkPassportVerification: async (gate) => {
-          const requestedCapabilities = getVerificationCapabilitiesForProvider(
-            gate.eligibility,
-            "zkpassport",
-          );
-          const verificationRequirements = getVerificationRequirementsForGates(
-            gate.eligibility.membership_gate_summaries,
-          );
+          const { requestedCapabilities, verificationRequirements } =
+            getHumanVerificationRequestForProvider(gate.eligibility, "zkpassport");
           const unavailableMessage =
             "This community is missing the ZKPassport verification details needed to continue.";
           if (

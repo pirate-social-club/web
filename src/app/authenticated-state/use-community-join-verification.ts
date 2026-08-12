@@ -12,15 +12,13 @@ import { type ApiError } from "@/lib/api/client";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import {
   getGateFailureMessage,
+  getHumanVerificationRequestForProvider,
   getPassportPromptCapabilities,
   getVerificationPromptCopy,
-  getVerificationRequirementsForGates,
-  getMissingCapabilitiesFromGateEvaluation,
   hasZkPassportDocumentProviderOption,
   hasAltchaProofAction,
   hasOnlyWalletGateRequirements,
   type HumanVerificationProvider,
-  normalizeRequestedVerificationCapabilities,
   resolveAvailableHumanVerificationProviders,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
@@ -35,6 +33,7 @@ type SelfVerificationOptions = {
   showToastOnError?: boolean;
   missingCapabilities?: string[] | null;
   membershipGateSummaries?: ApiJoinEligibility["membership_gate_summaries"] | null;
+  verificationPlanningInput?: VerificationPlanningInput | null;
   skipModal?: boolean;
 };
 
@@ -43,6 +42,12 @@ type ZkPassportVerificationOptions = {
   showToastOnError?: boolean;
   missingCapabilities?: string[] | null;
   membershipGateSummaries?: ApiJoinEligibility["membership_gate_summaries"] | null;
+  verificationPlanningInput?: VerificationPlanningInput | null;
+};
+type VerificationPlanningInput = {
+  gate_evaluation?: ApiJoinEligibility["gate_evaluation"] | ApiGateFailureDetails["gate_evaluation"] | null;
+  membership_gate_summaries?: ApiJoinEligibility["membership_gate_summaries"] | null;
+  missing_capabilities?: readonly string[] | null;
 };
 
 type SelfVerificationStartResult = {
@@ -182,12 +187,19 @@ export function useCommunityJoinVerification({
     showToastOnError = false,
     missingCapabilities,
     membershipGateSummaries,
+    verificationPlanningInput,
     skipModal,
   }: SelfVerificationOptions = {}): Promise<SelfVerificationStartResult> => {
-    const rawCapabilities = missingCapabilities ?? (eligibility ? getMissingCapabilitiesFromGateEvaluation(eligibility) : []);
-    const activeGateSummaries = membershipGateSummaries ?? eligibility?.membership_gate_summaries ?? [];
-    const verificationRequirements = getVerificationRequirementsForGates(activeGateSummaries);
-    const requestedCapabilities = normalizeRequestedVerificationCapabilities("self", rawCapabilities);
+    const planningInput = verificationPlanningInput
+      ?? (missingCapabilities != null || membershipGateSummaries != null
+        ? {
+            membership_gate_summaries: membershipGateSummaries ?? null,
+            missing_capabilities: missingCapabilities ?? [],
+          }
+        : eligibility);
+    const { requestedCapabilities, verificationRequirements } = planningInput
+      ? getHumanVerificationRequestForProvider(planningInput, "self")
+      : { requestedCapabilities: [], verificationRequirements: [] };
 
     if (requestedCapabilities.length === 0 && verificationRequirements.length === 0) {
       const message = "This community is missing the Self verification details needed to continue.";
@@ -216,11 +228,18 @@ export function useCommunityJoinVerification({
     showToastOnError = false,
     missingCapabilities,
     membershipGateSummaries,
+    verificationPlanningInput,
   }: ZkPassportVerificationOptions = {}): Promise<{ error?: string; href?: string | null; started: boolean }> => {
-    const rawCapabilities = missingCapabilities ?? (eligibility ? getMissingCapabilitiesFromGateEvaluation(eligibility) : []);
-    const activeGateSummaries = membershipGateSummaries ?? eligibility?.membership_gate_summaries ?? [];
-    const verificationRequirements = getVerificationRequirementsForGates(activeGateSummaries);
-    const requestedCapabilities = normalizeRequestedVerificationCapabilities("zkpassport", rawCapabilities);
+    const planningInput = verificationPlanningInput
+      ?? (missingCapabilities != null || membershipGateSummaries != null
+        ? {
+            membership_gate_summaries: membershipGateSummaries ?? null,
+            missing_capabilities: missingCapabilities ?? [],
+          }
+        : eligibility);
+    const { requestedCapabilities, verificationRequirements } = planningInput
+      ? getHumanVerificationRequestForProvider(planningInput, "zkpassport")
+      : { requestedCapabilities: [], verificationRequirements: [] };
 
     if (requestedCapabilities.length === 0 && verificationRequirements.length === 0) {
       const message = "This community is missing the ZKPassport verification details needed to continue.";
@@ -326,6 +345,7 @@ export function useCommunityJoinVerification({
     options: {
       missingCapabilities?: string[] | null;
       membershipGateSummaries?: ApiJoinEligibility["membership_gate_summaries"] | null;
+      verificationPlanningInput?: VerificationPlanningInput | null;
       showToastOnError?: boolean;
     } = {},
   ): Promise<"blocked" | "started"> => {
@@ -338,6 +358,7 @@ export function useCommunityJoinVerification({
       const result = await startZkPassportVerification({
         missingCapabilities: options.missingCapabilities,
         membershipGateSummaries: options.membershipGateSummaries,
+        verificationPlanningInput: options.verificationPlanningInput,
         showToastOnError: options.showToastOnError ?? true,
       });
       return result.started ? "started" : "blocked";
@@ -345,6 +366,7 @@ export function useCommunityJoinVerification({
     const result = await startSelfVerification({
       missingCapabilities: options.missingCapabilities,
       membershipGateSummaries: options.membershipGateSummaries,
+      verificationPlanningInput: options.verificationPlanningInput,
       showToastOnError: options.showToastOnError ?? true,
     });
     return result.started ? "started" : "blocked";
@@ -518,14 +540,12 @@ export function useCommunityJoinVerification({
 	            return await refreshPassportAndJoin(details);
 	          } else if (resolvedProvider === "zkpassport") {
 	            await startZkPassportVerification({
-              missingCapabilities: getMissingCapabilitiesFromGateEvaluation(details),
-              membershipGateSummaries: details.membership_gate_summaries ?? null,
-            });
+              verificationPlanningInput: details,
+	            });
 	          } else if (resolvedProvider === "self") {
 	            await startSelfVerification({
-              missingCapabilities: getMissingCapabilitiesFromGateEvaluation(details),
-              membershipGateSummaries: details.membership_gate_summaries ?? null,
-            });
+              verificationPlanningInput: details,
+	            });
 	          } else {
 	            setJoinError("No supported verification provider is available for this community requirement.");
           }

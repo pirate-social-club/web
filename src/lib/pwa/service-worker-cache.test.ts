@@ -137,12 +137,12 @@ describe("service worker static caching", () => {
   });
 
   test("serves immutable assets cache-first and bounds old content hashes", async () => {
-    for (let index = 0; index < 260; index += 1) {
+    for (let index = 0; index < 644; index += 1) {
       await harness.fetch(`https://pirate.sc/assets/chunk-${index}.js`);
     }
     const immutable = [...harness.stores.entries()]
       .find(([name]) => name.startsWith("pirate-pwa-assets-v4-"))?.[1];
-    expect(immutable?.size).toBe(256);
+    expect(immutable?.size).toBe(640);
     expect(immutable?.has("https://pirate.sc/assets/chunk-0.js")).toBe(false);
 
     let networkCalls = 0;
@@ -150,7 +150,7 @@ describe("service worker static caching", () => {
       networkCalls += 1;
       throw new Error("immutable assets should be served from cache");
     });
-    expect((await harness.fetch("https://pirate.sc/assets/chunk-259.js")).status).toBe(200);
+    expect((await harness.fetch("https://pirate.sc/assets/chunk-643.js")).status).toBe(200);
     expect(networkCalls).toBe(0);
   });
 

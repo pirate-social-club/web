@@ -12,7 +12,7 @@ import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import { Type } from "@/components/primitives/type";
 
-export interface FungibleRewardHolding {
+interface FungibleRewardHolding {
   actionDisabled?: boolean;
   actionLabel: string;
   amountLabel: string;
@@ -24,7 +24,7 @@ export interface FungibleRewardHolding {
   supportingLabel?: string;
 }
 
-export interface MegapotTicketHolding {
+interface MegapotTicketHolding {
   actionDisabled?: boolean;
   actionLabel?: string;
   drawingLabel: string;

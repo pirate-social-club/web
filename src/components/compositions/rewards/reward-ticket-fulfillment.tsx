@@ -14,7 +14,7 @@ import { Card } from "@/components/primitives/card";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
-export type TicketFulfillmentState =
+type TicketFulfillmentState =
   | "price_stale"
   | "price_blocked"
   | "reserved"

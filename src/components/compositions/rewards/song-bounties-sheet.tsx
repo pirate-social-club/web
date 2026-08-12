@@ -21,24 +21,24 @@ import { Card } from "@/components/primitives/card";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
-export type BountyObjective = "study" | "karaoke";
+type BountyObjective = "study" | "karaoke";
 
-export type SongBountyLifecycleStatus =
+type SongBountyLifecycleStatus =
   | "empty"
   | "active"
   | "exhausted"
   | "funding_confirming"
   | "operational_hold";
 
-export type SongBountyClaimsPausedReason = "price_stale" | "price_ceiling";
+type SongBountyClaimsPausedReason = "price_stale" | "price_ceiling";
 
-export interface SongBountyCapabilities {
+interface SongBountyCapabilities {
   canCreate: boolean;
   canFund: boolean;
   reason?: string;
 }
 
-export interface SongBountySlot {
+interface SongBountySlot {
   claimsPausedReason?: SongBountyClaimsPausedReason;
   objective: BountyObjective;
   status: SongBountyLifecycleStatus;
@@ -48,7 +48,7 @@ export interface SongBountySlot {
   viewerStatusLabel?: string;
 }
 
-export interface LegacyEitherBounty {
+interface LegacyEitherBounty {
   claimsPausedReason?: SongBountyClaimsPausedReason;
   rewardLabel: string;
   status: Exclude<SongBountyLifecycleStatus, "empty">;

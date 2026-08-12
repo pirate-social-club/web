@@ -42,6 +42,7 @@ describe("Song Study fill-blank fleet workflow", () => {
     expect(workflow).toContain("migration-output/row-count-comparison.json");
     expect(workflow).toContain("retention-days: 30");
     expect(knip).toContain("core/scripts/community/apply-song-study-fill-blank-d1-migration.ts");
+    expect(knip).toContain("web/scripts/song-study-fill-blank-row-counts.ts");
   });
 
   test("caps fleet concurrency at eight", () => {

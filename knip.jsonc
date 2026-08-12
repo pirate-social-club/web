@@ -14,6 +14,7 @@
     "core/scripts/community/apply-dance-start-cue-evidence-d1-migration.ts",
     "core/scripts/community/apply-post-age-gate-provenance-d1-migration.ts",
     "core/scripts/community/verify-community-schema-requirements.ts",
+    "web/scripts/song-study-fill-blank-row-counts.ts",
     "scripts/control-plane/inspect-control-plane-migration-ledger.ts",
     "scripts/control-plane/apply-postgres-migrations.ts",
     "scripts/deploy-production.sh",

@@ -3,21 +3,23 @@ import { describe, expect, test } from "bun:test";
 import { resolveSurfaceNavigationHref } from "@/app/surface-navigation-contract";
 
 describe("resolveSurfaceNavigationHref", () => {
-  test("links the sovereign community front door and video app reciprocally", () => {
+  test("links sovereign app video and thread routes reciprocally", () => {
     expect(resolveSurfaceNavigationHref({
       kind: "community",
-      path: "/",
+      path: "/c/community-route/threads",
       communityId: "community_test",
+      importedRootCommunityRoute: "community-route",
       importedRootHostname: "community-root",
       isImportedRoot: true,
-    })).toBe("https://app.community-root/");
+    })).toBe("/");
     expect(resolveSurfaceNavigationHref({
       kind: "community-videos",
       path: "/",
       communityId: "community_test",
+      importedRootCommunityRoute: "community-route",
       importedRootHostname: "community-root",
       isImportedRoot: true,
-    })).toBe("https://community-root/");
+    })).toBe("/c/community-route/threads");
   });
 
   test("links canonical community surfaces reciprocally", () => {

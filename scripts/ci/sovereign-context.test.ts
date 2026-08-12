@@ -12,7 +12,7 @@ const input = {
   routeSlug: "community-route",
 };
 
-function apexPage(extra = "") {
+function appThreadsPage(extra = "") {
   return [
     '<link rel="canonical" href="https://pirate.sc/c/community-route">',
     '<meta name="robots" content="noindex, nofollow">',
@@ -32,11 +32,11 @@ function appPage(extra = "") {
 }
 
 describe("sovereign production context", () => {
-  test("accepts the community apex and scoped app video bootstrap", () => {
-    expect(verifySovereignHtml(apexPage(), appPage(), input)).toMatchObject({
-      apexCanonical: "https://pirate.sc/c/community-route",
+  test("accepts app thread and scoped video surfaces", () => {
+    expect(verifySovereignHtml(appThreadsPage(), appPage(), input)).toMatchObject({
       appCanonical: "https://pirate.sc/c/community-route",
       errors: [],
+      threadsCanonical: "https://pirate.sc/c/community-route",
     });
   });
 
@@ -47,24 +47,24 @@ describe("sovereign production context", () => {
       input,
     );
     expect(result.errors).toEqual([
-      'apex canonical="https://community-root/" expected="https://pirate.sc/c/community-route"',
+      'app threads canonical="https://community-root/" expected="https://pirate.sc/c/community-route"',
       'app canonical="https://app.community-root/" expected="https://pirate.sc/c/community-route"',
-      "missing noindex metadata on sovereign apex",
-      "missing noindex metadata on sovereign app",
+      "missing noindex metadata on sovereign app threads",
+      "missing noindex metadata on sovereign app videos",
       "missing home-video bootstrap script on app origin",
     ]);
   });
 
-  test("rejects the old apex-video mapping", () => {
-    const result = verifySovereignHtml(appPage(), apexPage(), input);
+  test("rejects a video bootstrap on the app thread route", () => {
+    const result = verifySovereignHtml(appPage(), appThreadsPage(), input);
     expect(result.errors).toEqual([
-      "video bootstrap is present on the sovereign community apex",
+      "video bootstrap is present on the sovereign thread route",
       "missing home-video bootstrap script on app origin",
     ]);
   });
 
   test("rejects global and thread-feed bootstraps on the app", () => {
-    const result = verifySovereignHtml(apexPage(), appPage([
+    const result = verifySovereignHtml(appThreadsPage(), appPage([
       "/feed/home/videos/public",
       "/public-communities/com_cmt_sovereign_probe/posts",
     ].join("\n")), input);
@@ -100,7 +100,7 @@ describe("sovereign presentation scope", () => {
     expect(verifyBrandScopes(pirateBrand, pirateBrand, pirateBrand)).toEqual({
       errors: [
         "missing sovereign community brand",
-        "Pirate brand is present on the sovereign apex",
+        "Pirate brand is present on the sovereign thread route",
         "missing community brand on the sovereign app",
         "Pirate brand is present on the sovereign app",
       ],
@@ -116,8 +116,8 @@ describe("surface navigation contracts", () => {
 
   test("accepts reciprocal sovereign and canonical destinations", () => {
     expect(verifySurfaceNavigationContracts({
-      apexHtml: navigation("https://app.community-root/"),
-      appHtml: navigation("https://community-root/"),
+      appThreadsHtml: navigation("/"),
+      appVideosHtml: navigation("/c/community-route/threads"),
       canonicalThreadsHtml: navigation("/c/community-route/videos"),
       canonicalVideosHtml: navigation("/c/community-route/threads"),
       root: input.root,
@@ -127,8 +127,8 @@ describe("surface navigation contracts", () => {
 
   test("rejects missing and one-way destinations", () => {
     expect(verifySurfaceNavigationContracts({
-      apexHtml: navigation("https://app.community-root/"),
-      appHtml: "",
+      appThreadsHtml: navigation("/"),
+      appVideosHtml: "",
       canonicalThreadsHtml: navigation("/c/community-route/threads"),
       canonicalVideosHtml: navigation("/c/community-route/videos"),
       root: input.root,

@@ -24,7 +24,7 @@ function renderPublicRoute(
           communityId={route.communityId}
           importedRootHostname={route.importedRootHostname}
           isImportedRoot={route.isImportedRoot}
-          showSovereignOpenAppAction={route.isImportedRoot && route.path === "/"}
+          showSovereignOpenAppAction={route.isImportedRoot}
         />
       );
     case "post":

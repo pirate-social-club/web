@@ -68,12 +68,10 @@ export function isSovereignCommunityRoute(
 
 export function resolveSovereignOrigins(route: AppRoute): {
   app: string;
-  root: string;
 } | null {
   if (!isSovereignCommunityRoute(route) || !route.importedRootHostname) return null;
   return {
     app: `https://app.${route.importedRootHostname}`,
-    root: `https://${route.importedRootHostname}`,
   };
 }
 
@@ -96,9 +94,6 @@ export function resolveCreatePostPath(route: AppRoute): string | null {
 
 export function resolveMobileBackPath(route: AppRoute): string | null {
   if (route.kind === "community") {
-    // The sovereign community apex is already its top-level destination.
-    // Rendering a back arrow to the same "/" path creates a no-op for direct visitors.
-    if (route.isImportedRoot && route.path === "/") return null;
     return "/";
   }
 

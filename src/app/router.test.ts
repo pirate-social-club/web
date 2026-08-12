@@ -402,37 +402,34 @@ describe("canonicalizeRoutePathname", () => {
 });
 
 describe("resolveHydrationPathname", () => {
-  test("keeps imported HNS root hydration on the server-resolved community route", () => {
+  test("keeps imported HNS app hydration on the server-resolved community route", () => {
     expect(resolveHydrationPathname({
-      initialHostname: "xn--pokmon-dva",
+      initialHostname: "app.xn--pokmon-dva",
       initialPathname: "/c/xn--pokmon-dva",
-      windowHostname: "xn--pokmon-dva",
+      windowHostname: "app.xn--pokmon-dva",
       windowPathname: "/",
     })).toBe("/c/xn--pokmon-dva");
   });
 
   test("keeps explicit browser paths instead of replacing them with the initial route", () => {
     expect(resolveHydrationPathname({
-      initialHostname: "xn--pokmon-dva",
+      initialHostname: "app.xn--pokmon-dva",
       initialPathname: "/c/xn--pokmon-dva",
-      windowHostname: "xn--pokmon-dva",
+      windowHostname: "app.xn--pokmon-dva",
       windowPathname: "/p/post-1",
     })).toBe("/p/post-1");
   });
 });
 
 describe("matchRouteWithImportedRootCommunity", () => {
-  test("maps an imported HNS apex to the resolved community page without changing the path", () => {
+  test("rejects an imported HNS apex so the server can redirect it", () => {
     expectJson(matchRouteWithImportedRootCommunity(
       "/",
       "xn--pokmon-dva",
       "com_cmt_public_namespace_test",
     ), {
-      kind: "community",
+      kind: "not-found",
       path: "/",
-      communityId: "com_cmt_public_namespace_test",
-      isImportedRoot: true,
-      importedRootHostname: "xn--pokmon-dva",
       sovereignCommunityId: "com_cmt_public_namespace_test",
     });
   });
@@ -479,10 +476,10 @@ describe("matchRouteWithImportedRootCommunity", () => {
     });
   });
 
-  test("keeps explicit paths on imported HNS roots", () => {
+  test("keeps explicit paths on imported HNS app origins", () => {
     expectJson(matchRouteWithImportedRootCommunity(
       "/p/post-1",
-      "xn--pokmon-dva",
+      "app.xn--pokmon-dva",
       "com_cmt_public_namespace_test",
     ), {
       kind: "post",
@@ -492,10 +489,10 @@ describe("matchRouteWithImportedRootCommunity", () => {
     });
   });
 
-  test("scopes post subroutes on imported HNS roots", () => {
+  test("scopes post subroutes on imported HNS app origins", () => {
     expectJson(matchRouteWithImportedRootCommunity(
       "/p/post-1/karaoke",
-      "xn--pokmon-dva",
+      "app.xn--pokmon-dva",
       "com_cmt_public_namespace_test",
     ), {
       kind: "post-karaoke",
@@ -505,15 +502,10 @@ describe("matchRouteWithImportedRootCommunity", () => {
     });
   });
 
-  test("keeps the sovereign apex limited to its community page and scoped posts", () => {
-    expect(matchRouteWithImportedRootCommunity(
-      "/p/post-1",
-      "xn--pokmon-dva",
-      "com_cmt_public_namespace_test",
-      "crew",
-    ).kind).toBe("post");
-
+  test("does not render application routes on the raw HNS apex", () => {
     for (const pathname of [
+      "/",
+      "/p/post-1",
       "/wallet",
       "/settings",
       "/submit",
@@ -529,6 +521,7 @@ describe("matchRouteWithImportedRootCommunity", () => {
         pathname,
         "xn--pokmon-dva",
         "com_cmt_public_namespace_test",
+        "crew",
       ), {
         kind: "not-found",
         path: pathname,
@@ -552,12 +545,20 @@ describe("matchRouteWithImportedRootCommunity", () => {
       ["/c/crew/videos", "community-videos"],
     ] as const;
     for (const [pathname, kind] of appRoutes) {
-      expect(matchRouteWithImportedRootCommunity(
+      const resolved = matchRouteWithImportedRootCommunity(
         pathname,
         "app.xn--pokmon-dva",
         communityId,
         communityRoute,
-      )).toMatchObject({ kind, path: pathname, sovereignCommunityId: communityId });
+      );
+      expect(resolved).toMatchObject({ kind, path: pathname, sovereignCommunityId: communityId });
+      if (kind === "community" || kind === "community-videos") {
+        expect(resolved).toMatchObject({
+          importedRootCommunityRoute: communityRoute,
+          importedRootHostname: "xn--pokmon-dva",
+          isImportedRoot: true,
+        });
+      }
     }
 
     expectJson(matchRouteWithImportedRootCommunity(

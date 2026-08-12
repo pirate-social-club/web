@@ -29,8 +29,8 @@ type BaseAppRoute =
   | { kind: "community-moderation-index"; path: string; communityId: string }
   | { kind: "community-moderation"; path: string; communityId: string; section: CommunityModerationSectionName }
   | { kind: "community-landing"; path: string; communityId: string }
-  | { kind: "community-videos"; path: string; communityId: string; isImportedRoot?: boolean; importedRootHostname?: string }
-  | { kind: "community"; path: string; communityId: string; isImportedRoot?: boolean; importedRootHostname?: string }
+  | { kind: "community-videos"; path: string; communityId: string; isImportedRoot?: boolean; importedRootHostname?: string; importedRootCommunityRoute?: string }
+  | { kind: "community"; path: string; communityId: string; isImportedRoot?: boolean; importedRootHostname?: string; importedRootCommunityRoute?: string }
   | { kind: "booking-public"; path: string; communityId: string | null; hostUserId: string }
   | { kind: "booking-checkout"; path: string; communityId: string | null; hostUserId: string }
   | { kind: "booking-management"; path: string; sourceCommunityId?: string | null; role: "host" | "booker" }
@@ -508,27 +508,25 @@ export function matchRouteWithImportedRootCommunity(
   const normalized = normalizePathname(pathname);
   const importedRootHostname = hostname?.trim().toLowerCase().replace(/\.+$/u, "") ?? "";
   const importedRootLabels = importedRootHostname.split(".").filter(Boolean);
-  const importedRootSurface = importedRootLabels.length === 1
-    ? "apex"
-    : importedRootLabels.length === 2 && importedRootLabels[0] === "app"
-      ? "app"
-      : "unsupported";
-  if (importedRootCommunityId && importedRootSurface === "unsupported") {
+  const isImportedApp = importedRootLabels.length === 2 && importedRootLabels[0] === "app";
+  if (importedRootCommunityId && !isImportedApp) {
     return {
       kind: "not-found",
       path: normalized,
       sovereignCommunityId: importedRootCommunityId,
     };
   }
+  const importedRootContext = {
+    isImportedRoot: true as const,
+    importedRootCommunityRoute: importedRootCommunityRoute?.trim() || undefined,
+    importedRootHostname: importedRootLabels.slice(1).join("."),
+  };
   if (normalized === "/" && importedRootCommunityId) {
     return {
-      kind: importedRootSurface === "app" ? "community-videos" : "community",
+      kind: "community-videos",
       path: "/",
       communityId: importedRootCommunityId,
-      isImportedRoot: true,
-      importedRootHostname: importedRootSurface === "app"
-        ? importedRootLabels.slice(1).join(".")
-        : importedRootHostname,
+      ...importedRootContext,
       sovereignCommunityId: importedRootCommunityId,
     };
   }
@@ -536,7 +534,7 @@ export function matchRouteWithImportedRootCommunity(
   const route = matchRoute(normalized, hostname);
   if (!importedRootCommunityId) return route;
   if ("postId" in route) return { ...route, sovereignCommunityId: importedRootCommunityId };
-  if (importedRootSurface === "app") {
+  if (isImportedApp) {
     if (route.kind === "create-post-global") {
       return {
         kind: "create-post",
@@ -559,6 +557,7 @@ export function matchRouteWithImportedRootCommunity(
       return {
         ...route,
         communityId: route.communityId ?? importedRootCommunityId,
+        ...(route.kind === "community" || route.kind === "community-videos" ? importedRootContext : {}),
         sovereignCommunityId: importedRootCommunityId,
       };
     }

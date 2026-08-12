@@ -22,7 +22,9 @@ mock.module("@/lib/auth-origin", () => ({ isCanonicalAuthOrigin: () => true, bui
 mock.module("@/components/primitives/sonner", () => ({ toast: { error: () => {} } }));
 mock.module("@/app/router", () => ({ navigate }));
 mock.module("@/components/compositions/app/page-shell", () => ({
-  StandardRoutePage: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  StandardRoutePage: ({ children }: { children: React.ReactNode }) => (
+    <div data-route-spacing-owner="standard">{children}</div>
+  ),
 }));
 
 const { BookingPublicPage } = await import("./booking-public-route");
@@ -57,6 +59,7 @@ describe("BookingPublicPage (logged out)", () => {
       expect(container.textContent).toContain("حجز جلسة");
       expect(container.textContent).toContain("المواعيد المتاحة");
     });
+    expect(container.querySelector('[data-route-spacing-owner="standard"]')).toBeTruthy();
   });
 
   // Tapping a slot while logged out must prompt sign-in (Privy connect), NOT route to checkout — that

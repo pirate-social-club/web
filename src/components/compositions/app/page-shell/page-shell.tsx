@@ -31,6 +31,7 @@ export function StandardRoutePage({
 }: StandardRoutePageProps) {
   return (
     <div
+      data-route-spacing-owner="standard"
       className={cn(
         "flex min-h-0 w-full flex-1 flex-col",
         "pt-[calc(env(safe-area-inset-top)+4.5rem)] pb-24 md:pt-6 md:pb-8",

@@ -148,7 +148,11 @@ export function CommunityPage({
     preview,
     eligibility,
     error,
+    hasMore,
+    loadMore,
+    loadMoreError,
     loading,
+    loadingMore,
     posts,
     refetchEligibility,
     refetchPosts,
@@ -1105,8 +1109,13 @@ export function CommunityPage({
           bannerSrc={communityBannerRef ?? undefined}
           communityId={community?.id ?? preview.id}
           headerAction={headerAction}
+          hasMore={hasMore}
           items={feedItems}
+          loadingMore={loadingMore}
+          loadMoreError={loadMoreError ? getErrorMessage(loadMoreError, "Could not load more posts.") : null}
+          loadMoreLabel={copy.common.loadMore}
           mobileHeaderAction={mobileHeaderAction} navigation={<CommunitySurfaceNavigation active="threads" communityId={community?.id ?? preview.id} routeSlug={community?.route_slug ?? preview.route_slug} />}
+          onLoadMore={() => void loadMore()}
           onSortChange={setActiveSort}
           routeLabel={routeLabel}
           routeVerified={Boolean(community?.namespace_verification)}

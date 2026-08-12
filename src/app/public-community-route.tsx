@@ -79,19 +79,25 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
     setPreviewLoading(true);
   }, [communityId, localeTag]);
 
-  const loadPosts = React.useCallback(async ({ communityId: nextCommunityId, locale, sort }: {
+  const loadPosts = React.useCallback(async ({ communityId: nextCommunityId, cursor, locale, sort }: {
     communityId: string;
+    cursor: string | null;
     locale: string;
     sort: FeedSort;
   }) => api.publicCommunities.listPosts(nextCommunityId, {
-    limit: "100",
+    cursor,
+    limit: "20",
     locale,
     sort,
   }), [api]);
 
   const {
     error: postsError,
+    hasMore,
+    loadMore,
+    loadMoreError,
     loading: postsLoading,
+    loadingMore,
     posts,
     setPosts,
   } = useCommunityFeedPosts({
@@ -190,7 +196,11 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
   return {
     authorProfiles,
     error: previewError ?? postsError,
+    hasMore,
+    loadMore,
+    loadMoreError,
     loading: previewLoading || postsLoading,
+    loadingMore,
     postsLoading,
     posts,
     preview,
@@ -226,7 +236,10 @@ export function PublicCommunityRoutePage({
   }), [locale]);
   const [activeSort, setActiveSort] = React.useState<FeedSort>("best");
   const hasSession = Boolean(session?.accessToken);
-  const { authorProfiles, error, posts, postsLoading, preview, previewLoading, setPosts } = usePublicCommunityPageData(communityId, contentLocale, activeSort, hasSession);
+  const {
+    authorProfiles, error, hasMore, loadMore, loadMoreError, loadingMore,
+    posts, postsLoading, preview, previewLoading, setPosts,
+  } = usePublicCommunityPageData(communityId, contentLocale, activeSort, hasSession);
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
   const [memberCount, setMemberCount] = React.useState<number | null>(null);
@@ -857,6 +870,7 @@ export function PublicCommunityRoutePage({
           ),
         }}
         headerAction={headerAction}
+        hasMore={hasMore}
         items={posts.map((post) => toCommunityFeedItem(
           post,
           preview,
@@ -880,6 +894,9 @@ export function PublicCommunityRoutePage({
           },
         ))}
         loading={postsLoading}
+        loadingMore={loadingMore}
+        loadMoreError={loadMoreError ? getErrorMessage(loadMoreError, "Could not load more posts.") : null}
+        loadMoreLabel={copy.common.loadMore}
         navigation={!isImportedRoot ? (
           <CommunitySurfaceNavigation
             active="threads"
@@ -888,6 +905,7 @@ export function PublicCommunityRoutePage({
           />
         ) : null}
         onSortChange={setActiveSort}
+        onLoadMore={() => void loadMore()}
         routeLabel={routeLabel}
         sidebar={{
           ...buildCommunityPreviewSidebar(preview, locale),

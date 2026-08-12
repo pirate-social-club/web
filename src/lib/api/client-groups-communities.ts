@@ -168,8 +168,8 @@ export function createCommunitiesApi(request: ApiRequest) {
     listPosts: (
       communityId: string,
       opts?: CommunityListPostsOptions,
-    ): Promise<{ items: LocalizedPostResponse[] }> => {
-      return request<{ items: LocalizedPostResponse[] }>(buildQueryPath(
+    ): Promise<{ items: LocalizedPostResponse[]; next_cursor: string | null }> => {
+      return request<{ items: LocalizedPostResponse[]; next_cursor: string | null }>(buildQueryPath(
         `/communities/${encodeURIComponent(communityId)}/posts`,
         {
           cursor: opts?.cursor,

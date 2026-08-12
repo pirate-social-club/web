@@ -71,17 +71,19 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
     setMetadataError(null);
   }, [communityId, contentLocale]);
 
-  const loadPosts = React.useCallback(async ({ communityId: nextCommunityId, locale, sort }: {
+  const loadPosts = React.useCallback(async ({ communityId: nextCommunityId, cursor, locale, sort }: {
     communityId: string;
+    cursor: string | null;
     locale: string;
     sort: FeedSort;
   }) => {
     const feedPromise = api.communities.listPosts(nextCommunityId, {
-      limit: "100",
+      cursor,
+      limit: "20",
       locale,
       sort,
     });
-    if (!session?.accessToken) {
+    if (!session?.accessToken || cursor) {
       return feedPromise;
     }
     const [feed, pending] = await Promise.all([
@@ -107,7 +109,11 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
 
   const {
     error: postsError,
+    hasMore,
+    loadMore,
+    loadMoreError,
     loading: postsLoading,
+    loadingMore,
     posts,
     rawPosts,
     refetchPosts,
@@ -218,7 +224,11 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
     preview,
     eligibility,
     error: metadataError ?? postsError,
+    hasMore,
+    loadMore,
+    loadMoreError,
     loading: metadataLoading || postsLoading,
+    loadingMore,
     posts,
     refetchPosts,
     replaceCommunity,

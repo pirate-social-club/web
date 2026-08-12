@@ -27,12 +27,59 @@ function relative(filePath) {
   return path.relative(projectRoot, filePath);
 }
 
-function collectImportStatements(code) {
+export function collectImportStatements(code) {
   return [...code.matchAll(/import\s+(type\s+)?[\s\S]*?\sfrom\s+["']([^"']+)["'];?/g)].map((match) => ({
     isTypeOnly: match[1] === "type ",
     source: match[2],
     statement: match[0],
   }));
+}
+
+export function collectModuleSources(code) {
+  const sources = new Set(collectImportStatements(code).map((statement) => statement.source));
+  const additionalPatterns = [
+    /import\s*["']([^"']+)["']/gu,
+    /import\s*\(\s*["']([^"']+)["']\s*\)/gu,
+    /export\s+(?:type\s+)?(?:\*|\{[\s\S]*?\})\s+from\s+["']([^"']+)["']/gu,
+  ];
+  for (const pattern of additionalPatterns) {
+    for (const match of code.matchAll(pattern)) {
+      sources.add(match[1]);
+    }
+  }
+  return [...sources];
+}
+
+export function isTestOrStoryFile(filePath) {
+  const normalized = filePath.split(path.sep).join("/");
+  return /\.(?:test|spec|stories)\.[cm]?[jt]sx?$/u.test(normalized)
+    || /(?:^|\/)(?:__tests__|test|tests|stories)(?:\/|$)/u.test(normalized);
+}
+
+function importsFixtureModule(source) {
+  return source.split("/").includes("fixtures");
+}
+
+export function checkNoProductionFixtureImports(rootDir = srcDir) {
+  const offenders = [];
+
+  for (const filePath of walk(rootDir)) {
+    if (!filePath.endsWith(".ts") && !filePath.endsWith(".tsx")) continue;
+    if (isTestOrStoryFile(filePath)) continue;
+
+    const code = fs.readFileSync(filePath, "utf8");
+    for (const source of collectModuleSources(code)) {
+      if (importsFixtureModule(source)) {
+        offenders.push(`${path.relative(rootDir, filePath)} -> ${source}`);
+      }
+    }
+  }
+
+  return {
+    label: "layers/no-production-fixture-imports",
+    passed: offenders.length === 0,
+    details: offenders.sort(),
+  };
 }
 
 function checkNoValueRwsdkImport(moduleName) {
@@ -104,28 +151,35 @@ function checkDocumentRwsdkImportsAreTypeOnly() {
   };
 }
 
-const checks = [
-  checkNoValueRwsdkImport("rwsdk/worker"),
-  checkNoValueRwsdkImport("rwsdk/router"),
-  checkPublicRouteIsolation(),
-  checkDocumentRwsdkImportsAreTypeOnly(),
-];
+export function runBoundaryAudit() {
+  const checks = [
+    checkNoValueRwsdkImport("rwsdk/worker"),
+    checkNoValueRwsdkImport("rwsdk/router"),
+    checkPublicRouteIsolation(),
+    checkDocumentRwsdkImportsAreTypeOnly(),
+    checkNoProductionFixtureImports(),
+  ];
 
-const failures = checks.filter((check) => !check.passed);
+  const failures = checks.filter((check) => !check.passed);
 
-if (failures.length === 0) {
-  console.log("boundary:audit passed");
-  for (const check of checks) {
-    console.log(`- ${check.label}`);
+  if (failures.length === 0) {
+    console.log("boundary:audit passed");
+    for (const check of checks) {
+      console.log(`- ${check.label}`);
+    }
+    return true;
   }
-  process.exit(0);
+
+  console.error("boundary:audit failed");
+  for (const failure of failures) {
+    console.error(`- ${failure.label}`);
+    for (const detail of failure.details) {
+      console.error(`  ${detail}`);
+    }
+  }
+  return false;
 }
 
-console.error("boundary:audit failed");
-for (const failure of failures) {
-  console.error(`- ${failure.label}`);
-  for (const detail of failure.details) {
-    console.error(`  ${detail}`);
-  }
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  process.exit(runBoundaryAudit() ? 0 : 1);
 }
-process.exit(1);

@@ -2,14 +2,14 @@
 import { Avatar } from "@/components/primitives/avatar";
 import { Card, CardContent } from "@/components/primitives/card";
 import { Type } from "@/components/primitives/type";
+import { formatCentsAsUsdc } from "@/lib/formatting/currency";
 import { cn } from "@/lib/utils";
 import type { BookingState, IanaTz, IsoInstant } from "../view-models";
 
 import {
   formatBookingDate,
-  formatCentsAsUsdc,
   formatSlotTime,
-} from "../fixtures/bookings-format";
+} from "../booking-format";
 
 export interface BookingListItem {
   id: string;

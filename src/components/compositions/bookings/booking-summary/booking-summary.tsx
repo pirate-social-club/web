@@ -2,15 +2,15 @@
 import { Card, CardContent } from "@/components/primitives/card";
 import { Separator } from "@/components/primitives/separator";
 import { Type } from "@/components/primitives/type";
+import { formatCentsAsUsdc } from "@/lib/formatting/currency";
 import type { BookingQuotePreview, IanaTz } from "../view-models";
 
 import {
-  formatCentsAsUsdc,
   formatBookingDate,
   formatSlotDuration,
   formatSlotTime,
   formatTzLabel,
-} from "../fixtures/bookings-format";
+} from "../booking-format";
 
 export interface BookingSummaryProps {
   quote: BookingQuotePreview;

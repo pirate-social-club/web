@@ -24,7 +24,7 @@ import {
 
 import { Avatar } from "@/components/primitives/avatar";
 import { ActionMenu } from "@/components/primitives/action-menu";
-import { formatCentsAsStartingUsd } from "@/components/compositions/bookings/fixtures/bookings-format";
+import { formatCentsAsStartingUsd } from "@/lib/formatting/currency";
 import { IconButton } from "@/components/primitives/icon-button";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";

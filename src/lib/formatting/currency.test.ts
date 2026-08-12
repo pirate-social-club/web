@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { formatUsdCentsLabel } from "./currency";
+import {
+  formatCentsAsStartingUsd,
+  formatCentsAsUsd,
+  formatCentsAsUsdc,
+  formatUsdCentsLabel,
+} from "./currency";
 
 describe("formatUsdCentsLabel", () => {
   test("preserves exact cent precision", () => {
@@ -16,5 +21,14 @@ describe("formatUsdCentsLabel", () => {
   test("rejects absent and non-finite values", () => {
     expect(formatUsdCentsLabel(null)).toBeUndefined();
     expect(formatUsdCentsLabel(Number.NaN)).toBeUndefined();
+  });
+});
+
+describe("compact cent labels", () => {
+  test("preserves the booking currency labels", () => {
+    expect(formatCentsAsUsd(5_000)).toBe("$50");
+    expect(formatCentsAsUsd(5_050)).toBe("$50.50");
+    expect(formatCentsAsStartingUsd(5_000)).toBe("$50+");
+    expect(formatCentsAsUsdc(5_000)).toBe("50.00 USDC");
   });
 });

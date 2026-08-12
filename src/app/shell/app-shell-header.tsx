@@ -5,7 +5,6 @@ import type { AppRoute } from "@/app/router";
 import { navigate } from "@/app/router";
 import { AppHeader } from "@/components/compositions/app/app-shell-chrome/app-header";
 import { MobileFooterNav } from "@/components/compositions/app/app-shell-chrome/mobile-footer-nav";
-import { Avatar } from "@/components/primitives/avatar";
 import { IconButton } from "@/components/primitives/icon-button";
 import { toast } from "@/components/primitives/sonner";
 import { Type } from "@/components/primitives/type";
@@ -107,9 +106,6 @@ export function AppShellHeader({
   mobileMediaOverlay = false,
   onSearchClick,
   route,
-  sovereignCommunityHref,
-  sovereignCommunityImageSrc,
-  sovereignCommunityLabel,
   sovereignInteractiveOrigin,
   unreadChatCount = 0,
   unreadNotificationCount,
@@ -119,9 +115,6 @@ export function AppShellHeader({
   mobileMediaOverlay?: boolean;
   onSearchClick?: () => void;
   route: AppRoute;
-  sovereignCommunityHref?: string;
-  sovereignCommunityImageSrc?: string | null;
-  sovereignCommunityLabel?: string;
   sovereignInteractiveOrigin?: string | null;
   unreadChatCount?: number;
   unreadNotificationCount: number;
@@ -187,21 +180,7 @@ export function AppShellHeader({
         searchPlaceholder: copy.appHeader.searchPlaceholder,
         walletAriaLabel: copy.appHeader.walletAriaLabel,
       }}
-      mobileCenterContent={sovereignCommunityHref && sovereignCommunityLabel ? (
-        <a
-          className="inline-flex max-w-full items-center gap-2 rounded-full p-1 text-white drop-shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-          href={sovereignCommunityHref}
-        >
-          <Avatar
-            className="size-9 shrink-0"
-            fallback={sovereignCommunityLabel}
-            src={sovereignCommunityImageSrc ?? undefined}
-          />
-          <Type as="span" className="truncate" variant="label">
-            {sovereignCommunityLabel}
-          </Type>
-        </a>
-      ) : mobileHeaderTitle ? (
+      mobileCenterContent={mobileHeaderTitle ? (
         <Type as="div" variant="h4" className="max-w-full truncate text-center">
           {mobileHeaderTitle}
         </Type>

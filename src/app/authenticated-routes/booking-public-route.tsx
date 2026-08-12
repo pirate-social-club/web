@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { navigate } from "@/app/router";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
-import { formatCentsAsUsd } from "@/components/compositions/bookings/fixtures/bookings-format";
+import { formatCentsAsUsd } from "@/lib/formatting/currency";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { useApi } from "@/lib/api";

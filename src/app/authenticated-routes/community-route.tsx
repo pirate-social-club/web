@@ -18,7 +18,7 @@ import {
   buildCommunityPath,
   formatCommunityRouteLabel,
 } from "@/lib/community-routing";
-import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
+import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization"; import { CommunitySurfaceNavigation } from "@/app/community-surface-navigation";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { CommunityJoinVerificationChooserModal } from "@/components/compositions/community/join-verification-chooser-modal/community-join-verification-chooser-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
@@ -990,7 +990,6 @@ export function CommunityPage({
   const communityTitle = community?.display_name ?? preview.display_name;
   const communityAvatarRef = community?.avatar_ref ?? preview.avatar_ref;
   const communityBannerRef = community?.banner_ref ?? preview.banner_ref;
-
   return (
     <>
       {gateModal}
@@ -1117,7 +1116,7 @@ export function CommunityPage({
           communityId={community?.id ?? preview.id}
           headerAction={headerAction}
           items={feedItems}
-          mobileHeaderAction={mobileHeaderAction}
+          mobileHeaderAction={mobileHeaderAction} navigation={<CommunitySurfaceNavigation active="threads" communityId={community?.id ?? preview.id} routeSlug={community?.route_slug ?? preview.route_slug} />}
           onSortChange={setActiveSort}
           routeLabel={routeLabel}
           routeVerified={Boolean(community?.namespace_verification)}

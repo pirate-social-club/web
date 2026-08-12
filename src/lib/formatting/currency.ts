@@ -57,6 +57,18 @@ export function formatUsdCentsLabel(
   return formatUsdLabel(centsToUsd(value), localeTag);
 }
 
+export function formatCentsAsUsd(cents: number): string {
+  return formatUsdCompactLabel(cents / 100, "en") ?? "$0";
+}
+
+export function formatCentsAsStartingUsd(cents: number): string {
+  return `${formatCentsAsUsd(cents)}+`;
+}
+
+export function formatCentsAsUsdc(cents: number): string {
+  return `${(cents / 100).toFixed(2)} USDC`;
+}
+
 export function parseUsdInput(value: string | null | undefined): number | null {
   if (!value) {
     return null;

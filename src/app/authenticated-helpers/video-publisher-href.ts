@@ -14,3 +14,14 @@ export function resolveVideoPublisherHref(input: {
   if (input.kind === "community") return `https://app.${input.importedRootHostname}/`;
   return new URL(input.href, "https://pirate.sc").toString();
 }
+
+export function resolveVideoPublisher(input: {
+  href?: string;
+  importedRootHostname?: string;
+  kind: VideoFeedItem["publisher"]["kind"];
+}) {
+  return {
+    external: input.kind === "profile" && Boolean(input.importedRootHostname),
+    href: resolveVideoPublisherHref(input),
+  };
+}

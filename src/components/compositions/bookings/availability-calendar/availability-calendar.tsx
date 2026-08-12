@@ -3,6 +3,7 @@ import * as React from "react";
 import { Button } from "@/components/primitives/button";
 import { Card, CardContent } from "@/components/primitives/card";
 import { Type } from "@/components/primitives/type";
+import { formatCentsAsUsd } from "@/lib/formatting/currency";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
@@ -10,14 +11,13 @@ import type { IanaTz, IsoInstant, ResolvedSlot } from "../view-models";
 
 import {
   formatBookingDate,
-  formatCentsAsUsd,
   formatDayPillDay,
   formatDayPillWeekday,
   formatSlotDuration,
   formatSlotTime,
   formatTzAbbrev,
   getSlotUniformity,
-} from "../fixtures/bookings-format";
+} from "../booking-format";
 
 export interface AvailabilityCalendarProps {
   slots: ResolvedSlot[];

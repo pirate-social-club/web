@@ -20,7 +20,7 @@ export const FRONTEND_FILE_LIMITS = new Map([
   ["src/app/authenticated-routes/wallet-settings-route.tsx", 1200],
   ["src/app/authenticated-routes/community-route.tsx", 1161],
   ["src/app/video-experience/video-experience-overlay.tsx", 984],
-  ["src/app/authenticated-helpers/use-boost-campaign-controller.ts", 973],
+  ["src/app/authenticated-helpers/use-boost-campaign-controller.ts", 923],
   ["src/app/authenticated-routes/home-routes.tsx", 890],
   ["src/components/compositions/community/gates-editor/community-gates-editor-page.tsx", 939],
   ["src/app/authenticated-routes/create-post-route.tsx", 927],

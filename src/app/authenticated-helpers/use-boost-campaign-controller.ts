@@ -31,6 +31,11 @@ import {
   boostRewardCountLabel,
   resolveDailyAccrualPlan,
 } from "@/lib/rewards/boost-plan";
+import {
+  INITIAL_BOOST_POLICY_WORKFLOW_STATE,
+  reduceBoostPolicyWorkflow,
+} from "./boost-policy-workflow";
+import { boostFundingErrorMessage } from "./boost-funding-errors";
 
 const SCORE_THRESHOLD_BPS = 7_000;
 const CAMPAIGN_STORAGE_PREFIX = "pirate_reward_campaign:";
@@ -177,84 +182,6 @@ function terminalFundingMessage(code: string): string {
   return "Funds were received, but the campaign was not activated. Refund or support review is required; do not send again.";
 }
 
-export type BoostFundingErrorKind =
-  | "wrong-network"
-  | "user-rejected"
-  | "wallet-unavailable"
-  | "insufficient-usdc"
-  | "insufficient-gas"
-  | "rpc-failure"
-  | "unknown";
-
-function rawErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return typeof error === "string" ? error : "";
-}
-
-/**
- * Bucket wallet/provider/transport failures so the booster never shows raw Viem
- * or EIP-1193 internals. Match on the raw message (not getErrorMessage, which
- * can blank network errors) and keep the order: more specific causes first. Gas
- * errors precede token-balance errors because Viem's InsufficientFundsError
- * ("gas * gasFee + value ... exceeds the balance") mentions both.
- */
-export function classifyBoostFundingError(error: unknown): BoostFundingErrorKind {
-  const message = rawErrorMessage(error);
-  if (/current chain of the wallet/i.test(message) && /target chain for the transaction/i.test(message)) {
-    return "wrong-network";
-  }
-  if (/user (rejected|denied)|rejected the (request|transaction)/i.test(message)) {
-    return "user-rejected";
-  }
-  if (/insufficient funds|gas \s*\*|intrinsic gas/i.test(message)) {
-    return "insufficient-gas";
-  }
-  if (/insufficient|exceeds (the )?balance/i.test(message)) {
-    return "insufficient-usdc";
-  }
-  if (/no (connected|available) wallet|wallet (is )?(not connected|unavailable|disconnected)|ethereum provider is not available/i.test(message)) {
-    return "wallet-unavailable";
-  }
-  if (/failed to fetch|fetch failed|network error|timed? ?out|econn(reset|refused)|http request failed|\b50[23]\b|rate limit/i.test(message)) {
-    return "rpc-failure";
-  }
-  return "unknown";
-}
-
-export interface BoostFundingErrorContext {
-  /** Settlement-chain label for wrong-network copy (e.g. "Base Sepolia"); tracks the active network config. */
-  networkLabel?: string;
-  /** True once the wallet returned a tx hash; a transport failure after that is a status check, not a safe re-send. */
-  submitted?: boolean;
-}
-
-export function boostFundingErrorMessage(
-  error: unknown,
-  fallback: string,
-  context: BoostFundingErrorContext = {},
-): string {
-  switch (classifyBoostFundingError(error)) {
-    case "wrong-network":
-      return `Switch your wallet to ${context.networkLabel ?? "the required network"}, then try again. No payment was sent.`;
-    case "user-rejected":
-      return "You canceled the payment in your wallet. No payment was sent.";
-    case "wallet-unavailable":
-      return "Your wallet is not connected. Reconnect your Pirate Wallet, then try again. No payment was sent.";
-    case "insufficient-usdc":
-      return "Your wallet does not have enough USDC to fund this bounty. No payment was sent.";
-    case "insufficient-gas":
-      return "Your wallet does not have enough ETH for network fees. No payment was sent.";
-    case "rpc-failure":
-      return context.submitted
-        ? "The network did not respond after your transfer was sent. Check status; do not send again."
-        : "The network did not respond. No payment was sent; try again.";
-    default:
-      // Unknown provider errors must not leak engineering internals to the sheet;
-      // API errors carry server-vetted copy and may pass through.
-      return error instanceof ApiError ? getErrorMessage(error, fallback) : fallback;
-  }
-}
-
 function blocksNewCampaign(campaign: RewardCampaign | null): boolean {
   return campaign != null && [
     "scheduled",
@@ -319,12 +246,26 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const [busy, setBusy] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | undefined>();
   const [terminalCode, setTerminalCode] = React.useState<string | null>(null);
-  const [policyError, setPolicyError] = React.useState<string | undefined>();
+  const [policyWorkflow, dispatchPolicyWorkflow] = React.useReducer(
+    reduceBoostPolicyWorkflow,
+    INITIAL_BOOST_POLICY_WORKFLOW_STATE,
+  );
   const [nowSeconds, setNowSeconds] = React.useState(() => Math.floor(Date.now() / 1_000));
   const createQuoteInFlight = React.useRef(false);
   const sendFundingInFlight = React.useRef(false);
   const confirmFundingInFlight = React.useRef(false);
+  const policyUpdateInFlight = React.useRef(false);
   const recoveredFundingConfirm = React.useRef(false);
+  const policyOwnerKey = `${input.communityId ?? ""}:${input.postId}`;
+  const policyOwnerKeyRef = React.useRef(policyOwnerKey);
+  if (policyOwnerKeyRef.current !== policyOwnerKey) {
+    policyOwnerKeyRef.current = policyOwnerKey;
+    policyUpdateInFlight.current = false;
+  }
+
+  React.useEffect(() => {
+    dispatchPolicyWorkflow({ type: "owner-changed" });
+  }, [policyOwnerKey]);
 
   React.useEffect(() => {
     if (!input.authenticated || !input.song || !input.communityId) {
@@ -826,20 +767,29 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   }, [campaign, createQuote, input, quote, sheetState, tierFundingEnabled, transactionHash]);
 
   const updatePolicy = React.useCallback(async (allowed: boolean) => {
-    if (!input.communityId || busy) return;
-    setBusy(true);
-    setPolicyError(undefined);
+    if (!input.communityId || policyUpdateInFlight.current) return;
+    const requestOwnerKey = policyOwnerKeyRef.current;
+    policyUpdateInFlight.current = true;
+    dispatchPolicyWorkflow({ type: "update-started" });
     try {
       const policy = await api.rewards.updateSongOwnerPolicy(input.communityId, input.postId, {
         third_party_rewards: allowed ? "allowed" : "blocked",
       });
+      if (policyOwnerKeyRef.current !== requestOwnerKey) return;
       setPolicyAllowed(policy.third_party_rewards === "allowed");
+      dispatchPolicyWorkflow({ type: "update-succeeded" });
     } catch (error) {
-      setPolicyError(getErrorMessage(error, "Could not update bounty settings."));
+      if (policyOwnerKeyRef.current !== requestOwnerKey) return;
+      dispatchPolicyWorkflow({
+        type: "update-failed",
+        message: getErrorMessage(error, "Could not update bounty settings."),
+      });
     } finally {
-      setBusy(false);
+      if (policyOwnerKeyRef.current === requestOwnerKey) {
+        policyUpdateInFlight.current = false;
+      }
     }
-  }, [api.rewards, busy, input.communityId, input.postId]);
+  }, [api.rewards, input.communityId, input.postId]);
 
   const explorerBase = getPirateNetworkConfig().base.explorerUrl.replace(/\/$/u, "");
   const rewardCount = plan?.rewardCount ?? 0;
@@ -865,8 +815,8 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     openPolicy: () => setPolicyOpen(true),
     policySheetProps: {
       allowThirdPartyRewards: policyAllowed,
-      busy,
-      errorMessage: policyError,
+      busy: policyWorkflow.status === "updating",
+      errorMessage: policyWorkflow.status === "failed" ? policyWorkflow.message : undefined,
       onAllowThirdPartyRewardsChange: (allowed: boolean) => void updatePolicy(allowed),
       onOpenChange: setPolicyOpen,
       open: policyOpen,

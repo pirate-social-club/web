@@ -5,9 +5,8 @@ import { Button } from "@/components/primitives/button";
 import { Card, CardContent } from "@/components/primitives/card";
 import { Separator } from "@/components/primitives/separator";
 import { Type } from "@/components/primitives/type";
+import { formatCentsAsUsdc } from "@/lib/formatting/currency";
 import { cn } from "@/lib/utils";
-
-import { formatCentsAsUsdc } from "../fixtures/bookings-format";
 
 export interface HostBookingPageProps {
   name: string;

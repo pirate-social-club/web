@@ -60,6 +60,14 @@ export default defineConfig(() => ({
     ssr: {},
   },
   build: {
+    modulePreload: {
+      resolveDependencies: (_url, dependencies) => dependencies.filter((dependency) =>
+        !dependency.includes("self-verification-modal-")
+        && !dependency.includes("zkpassport-verification-modal-")
+        && !dependency.includes("altcha-pow-widget-")
+        && !dependency.includes("video-experience-overlay-")
+      ),
+    },
     rolldownOptions: {
       checks: {
         // Privy's published bundles contain misplaced PURE comments. Rolldown

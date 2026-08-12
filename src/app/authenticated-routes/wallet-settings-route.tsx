@@ -884,9 +884,9 @@ export function CurrentUserWalletPage() {
       await refreshRewardsSummary();
     } catch (error) {
       logger.debug("[wallet] rewards cashout failed", error);
-      setRewardsCashoutState("failed");
-      setRewardsCashoutErrorMessage("The bounty claim could not be submitted. Try again in a moment.");
-      if (notify) toast.error("Bounty claim failed. Try again in a moment.");
+      setRewardsCashoutState("needs_review");
+      setRewardsCashoutErrorMessage("Wallet could not confirm whether the transfer started. Do not claim again; return later to check this transfer.");
+      if (notify) toast.error("Transfer status is unclear. Do not claim again.");
     } finally {
       rewardsCashoutInFlightRef.current = false;
       setRewardsCashoutPending(false);
@@ -1024,7 +1024,7 @@ export function CurrentUserWalletPage() {
       },
       rewards: rewardsSummary,
       rewardsCashoutPending: rewardsCashoutPending || (
-        Boolean(rewardsCashoutAttempt?.cashoutId)
+        Boolean(rewardsCashoutAttempt)
         && rewardsCashoutState !== "confirmed"
         && rewardsCashoutState !== "failed"
       ),

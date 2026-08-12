@@ -1671,7 +1671,8 @@ test.describe("live staging integration", () => {
     await page.goto(`/c/${pathSegment(communityId)}/mod/gates`);
     await expect(page.getByRole("heading", { name: "Access and gates" })).toBeVisible({ timeout: 30_000 });
     await page.getByRole("button", { name: "Automatic after passing gates" }).click();
-    await expect(page.getByText("Live summary", { exact: true })).toBeVisible();
+    await expect(page.getByText("Live summary", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: "Group match mode" }).first()).toBeVisible();
 
     await page.getByRole("button", { exact: true, name: "Rule" }).first().click();
     await page.getByRole("button", { exact: true, name: "Group" }).first().click();
@@ -1736,7 +1737,8 @@ test.describe("live staging integration", () => {
     await expect(saveButton).toBeDisabled();
 
     await page.setViewportSize({ height: 844, width: 390 });
-    await expect(page.getByText("Live summary", { exact: true })).toBeVisible();
+    await expect(page.getByText("Live summary", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: "Group match mode" }).first()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     } finally {
       await archiveGateBuilderCommunity(session, communityId);

@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dir, "..");
 const deployScript = readFileSync(resolve(root, "scripts/deploy-production.sh"), "utf8");
 const releaseWorkflow = readFileSync(resolve(root, ".github/workflows/release.yml"), "utf8");
+const smokeScript = readFileSync(resolve(root, "scripts/smoke-test.sh"), "utf8");
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as {
   scripts?: Record<string, string>;
 };
@@ -32,5 +33,15 @@ describe("production Web artifact provenance", () => {
     expect(deployScript).toContain("$API_FULL_SHA");
     expect(deployScript).toContain("$CORE_RELEASE_SHA");
     expect(deployScript).toContain("PIRATE_BUILD_HOTFIX_REASON");
+  });
+
+  test("records complete raw version responses before validating release metadata", () => {
+    const recordIndex = smokeScript.indexOf("recordVersionEvidence(requestUrl, { body_raw: raw");
+    const parseIndex = smokeScript.indexOf("body = raw ? JSON.parse(raw) : null");
+
+    expect(recordIndex).toBeGreaterThan(0);
+    expect(parseIndex).toBeGreaterThan(recordIndex);
+    expect(smokeScript).toContain('requestUrl.pathname !== "/__version"');
+    expect(smokeScript).not.toContain("body_raw: raw.slice");
   });
 });

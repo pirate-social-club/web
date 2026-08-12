@@ -697,6 +697,40 @@ describe("useBoostCampaignController", () => {
     });
   });
 
+  test("accepts a contribution while another funding effect is confirming", async () => {
+    campaignStatus = "funding_confirming";
+    const view = renderHook(() => useBoostCampaignController({
+      ...input(),
+      activeCampaignId: "rcp_funding_confirming",
+    }));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+
+    expect(view.result.current.sheetProps.state).toBe("top_up");
+    expect(view.result.current.sheetProps.planProblem).toBeUndefined();
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    await waitFor(() => expect(view.result.current.sheetProps.state).toBe("quote"));
+    expect(calls.create).toBe(0);
+    expect(calls.quote).toBe(1);
+  });
+
+  test("explains an actual paused-pool hold without the obsolete top-up blocker", async () => {
+    campaignStatus = "paused";
+    const view = renderHook(() => useBoostCampaignController({
+      ...input(),
+      activeCampaignId: "rcp_paused",
+    }));
+    await waitFor(() => expect(view.result.current.canBoost).toBe(true));
+    act(() => view.result.current.openBoost());
+
+    expect(view.result.current.sheetProps.planProblem).toBe(
+      "This bounty is paused and cannot accept new funding.",
+    );
+    act(() => view.result.current.sheetProps.onConfirm?.());
+    expect(calls.create).toBe(0);
+    expect(calls.quote).toBe(0);
+  });
+
   test("blocks a third-party top-up when the song-owner policy is disabled", async () => {
     campaignStatus = "active";
     policyBlocked = true;

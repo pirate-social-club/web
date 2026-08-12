@@ -102,7 +102,23 @@ function blocksNewCampaign(campaign: RewardCampaign | null): boolean {
 }
 
 function acceptsCampaignTopUp(campaign: RewardCampaign | null): campaign is RewardCampaign {
-  return campaign != null && ["scheduled", "active", "exhausted"].includes(campaign.status);
+  return campaign != null && [
+    "funding_quoted",
+    "funding_confirming",
+    "scheduled",
+    "active",
+    "exhausted",
+  ].includes(campaign.status);
+}
+
+function campaignContributionProblem(campaign: RewardCampaign | null): string {
+  if (campaign?.status === "paused") {
+    return "This bounty is paused and cannot accept new funding.";
+  }
+  if (campaign?.status === "operational_hold") {
+    return "This bounty is under review and cannot accept new funding.";
+  }
+  return "This bounty cannot accept new funding in its current state.";
 }
 
 function campaignFundingTxHash(campaign: RewardCampaign | null): string | null {
@@ -811,7 +827,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const explorerBase = getPirateNetworkConfig().base.explorerUrl.replace(/\/$/u, "");
   const rewardCount = plan?.rewardCount ?? 0;
   const availabilityProblem = hasCampaignConflict
-      ? "This song already has a live bounty. Adding funds to it is not available here yet."
+      ? campaignContributionProblem(campaign)
     : thirdPartyBlocked
       ? "The song owner is not accepting bounties from other people."
       : undefined;

@@ -564,6 +564,16 @@ describe("StudyRoutePage", () => {
         },
       ],
     });
+    submitPostStudyAttemptResult = {
+      ...submitPostStudyAttemptResult,
+      lesson: {
+        completion_reason: "all_resolved",
+        next: null,
+        resolved_count: 1,
+        session_revision: 4,
+        total_count: 1,
+      },
+    };
 
     const view = renderRoute();
 
@@ -576,7 +586,85 @@ describe("StudyRoutePage", () => {
     await waitFor(() => expect(calls).toContain("communities.submitPostStudyAttempt:translation_choice:option_correct"));
     expect(submittedStudyAttempts.at(-1)).toMatchObject({ session_id: "sts_test" });
     expect(submittedStudyAttempts.at(-1)).not.toHaveProperty("target_language");
+    expect(submittedStudyAttempts.at(-1)).not.toHaveProperty("session_revision");
     await waitFor(() => expect(view.getByText("Continue")).toBeTruthy());
+  });
+
+  test("submits ordered fill-blank placements and follows the authoritative lesson", async () => {
+    const fillExercise = {
+      first_outcome: null,
+      id: "ex_fill",
+      line_id: "line_1",
+      line_index: 0,
+      mastered: false,
+      max_attempts: 3,
+      presentation_count: 0,
+      prompt_text: "Fill in the lyric.",
+      segments: [
+        { kind: "text" as const, text: "We " },
+        { id: "blank_1", kind: "blank" as const },
+        { kind: "text" as const, text: " together" },
+      ],
+      tokens: [
+        { id: "token_1", text: "sing" },
+        { id: "token_2", text: "wait" },
+      ],
+      type: "fill_blank" as const,
+    };
+    studyResult = readyStudyPayload({
+      exercises: [fillExercise],
+      lesson: {
+        completion_reason: null,
+        next: {
+          attempts_this_appearance: 0,
+          exercise_id: fillExercise.id,
+          is_reappearance: false,
+          presentation_number: 1,
+          prompt: fillExercise,
+          type: "fill_blank",
+        },
+        resolved_count: 0,
+        session_revision: 7,
+        total_count: 1,
+      },
+    });
+    submitPostStudyAttemptResult = {
+      attempts_remaining: 2,
+      correct_placements: [{ blank_id: "blank_1", token_id: "token_1" }],
+      exercise_id: fillExercise.id,
+      lesson: {
+        completion_reason: "all_resolved",
+        next: null,
+        resolved_count: 1,
+        session_revision: 8,
+        total_count: 1,
+      },
+      object: "song_study_attempt_result",
+      outcome: "correct",
+      session: {
+        ...readyStudyPayload().session!,
+        completed_exercise_count: 1,
+        first_pass_correct_count: 1,
+        presentation_count: 1,
+        qualified: false,
+        status: "completed",
+      },
+    };
+
+    const view = renderRoute();
+    await waitFor(() => expect(view.getByText("Fill in the lyric.")).toBeTruthy());
+    fireEvent.click(view.getByRole("button", { name: "sing" }));
+    fireEvent.click(view.getByRole("button", { name: "Check" }));
+
+    await waitFor(() => expect(submittedStudyAttempts).toHaveLength(1));
+    expect(submittedStudyAttempts[0]).toMatchObject({
+      placements: [{ blank_id: "blank_1", token_id: "token_1" }],
+      session_revision: 7,
+      type: "fill_blank",
+    });
+    await waitFor(() => expect(view.getByRole("button", { name: "Continue" })).toBeTruthy());
+    fireEvent.click(view.getByRole("button", { name: "Continue" }));
+    await waitFor(() => expect(view.getByText("Session complete")).toBeTruthy());
   });
 
   test("does not rebuild a multiple choice session after an unrelated app switch", async () => {
@@ -1124,6 +1212,13 @@ describe("StudyRoutePage", () => {
     submitPostStudyAttemptResult = {
       attempts_remaining: 1,
       exercise_id: "ex_say",
+      lesson: {
+        completion_reason: "all_resolved",
+        next: null,
+        resolved_count: 1,
+        session_revision: 4,
+        total_count: 1,
+      },
       object: "song_study_attempt_result",
       outcome: "incorrect",
     };
@@ -1138,6 +1233,7 @@ describe("StudyRoutePage", () => {
       // A retryable miss keeps the same prompt and offers another recording. It
       // never echoes the expected answer, which is already the prompt above.
       await waitFor(() => expect(view.getByText("Not quite — try again")).toBeTruthy());
+      expect(submittedStudyAttempts.at(-1)).not.toHaveProperty("session_revision");
       expect(view.getByText("Heard: Hola mundo")).toBeTruthy();
       expect(view.getByText("Record")).toBeTruthy();
       expect(view.queryByText("Correct answer:")).toBeNull();

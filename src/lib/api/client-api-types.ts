@@ -38,24 +38,60 @@ type SongStudySessionSummary = {
   total_units: number;
 };
 
-export type SongStudyExercise = ContractSongStudyExercise & {
+type SongStudyExerciseProgress = {
   first_outcome: "correct" | "incorrect" | "revealed" | null;
   mastered: boolean;
   presentation_count: number;
 };
 
-export type SongStudyAttemptRequest = ContractSongStudyAttemptRequest & {
-  session_id: string;
-  transcription_language_code?: string;
-  transcription_language_probability?: number;
+type SongStudyFillBlankExercise = SongStudyExerciseProgress & {
+  id: string;
+  line_id: string;
+  line_index: number;
+  max_attempts: number;
+  prompt_text: string;
+  segments: Array<{ kind: "text"; text: string } | { id: string; kind: "blank" }>;
+  tokens: Array<{ id: string; text: string }>;
+  type: "fill_blank";
 };
 
-export type SongStudyAttemptResult = ContractSongStudyAttemptResult & {
+export type SongStudyExercise = (ContractSongStudyExercise & SongStudyExerciseProgress) | SongStudyFillBlankExercise;
+
+type SongStudyLessonState = {
+  completion_reason: "all_resolved" | "presentation_budget" | null;
+  next: null | {
+    attempts_this_appearance: number;
+    exercise_id: string;
+    is_reappearance: boolean;
+    presentation_number: number;
+    prompt: SongStudyExercise;
+    retry_in_place: boolean;
+    type: SongStudyExercise["type"];
+  };
+  resolved_count: number;
+  serving_index: number;
+  session_revision: number;
+  total_count: number;
+};
+
+export type SongStudyAttemptRequest = Omit<ContractSongStudyAttemptRequest, "type"> & {
+  placements?: Array<{ blank_id: string; token_id: string }>;
+  session_id: string;
+  session_revision?: number;
+  transcription_language_code?: string;
+  transcription_language_probability?: number;
+  type: SongStudyExercise["type"];
+};
+
+export type SongStudyAttemptResult = Omit<ContractSongStudyAttemptResult, "lesson"> & {
+  correct_placements?: Array<{ blank_id: string; token_id: string }>;
+  lesson?: SongStudyLessonState;
   session?: SongStudySessionSummary;
 };
 
-export type SongStudyPayload = Omit<ContractSongStudyPayload, "exercises" | "session"> & {
+export type SongStudyPayload = Omit<ContractSongStudyPayload, "exercises" | "lesson" | "session"> & {
   exercises: SongStudyExercise[];
+  lesson?: SongStudyLessonState;
   session?: SongStudySessionSummary;
 };
 

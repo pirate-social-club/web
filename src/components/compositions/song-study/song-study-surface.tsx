@@ -20,105 +20,16 @@ import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
 import { SongStreakEntryList } from "./song-streak-parts";
-import type { SongStreakSummary } from "./song-streak-preview";
+import { SongStudyFillBlankState } from "./song-study-fill-blank-state";
+import type { SongStudySurfaceProps, SongStudySurfaceState } from "./song-study-surface-types";
 
-interface SongStudyOption {
-  id: string;
-  text: string;
-}
-
-export interface SongStudySayItBackExercise {
-  id: string;
-  lineNumber: number;
-  maxAttempts: number;
-  prompt: string;
-  translation?: string;
-  expected: string;
-}
-
-export interface SongStudyMultipleChoiceExercise {
-  id: string;
-  lineNumber: number;
-  maxAttempts: number;
-  prompt: string;
-  question: string;
-  options: SongStudyOption[];
-  correctOptionId: string;
-}
-
-export type SongStudySurfaceState =
-  | {
-    kind: "locked";
-    priceLabel?: string;
-  }
-  | {
-    kind: "say_it_back";
-    attemptNumber: number;
-    /**
-     * Attempts spent on this appearance of the card (not across the lesson).
-     * Bounds the in-place retry so a learner is never stuck on one line.
-     */
-    attemptsThisAppearance?: number;
-    exercise: SongStudySayItBackExercise;
-    guidance?: string;
-    /** What speech-to-text heard on the last miss. Shown only while `phase` is "wrong". */
-    heardTranscript?: string;
-    phase: "idle" | "listening" | "checking" | "wrong";
-    /** True once the card is spent, so the miss is final rather than retryable. */
-    revealReference?: boolean;
-    /**
-     * Whether a spent card is coming back later in this lesson. Only meaningful
-     * alongside `revealReference` — it keeps the copy from promising a return
-     * that will not happen.
-     */
-    willReturn?: boolean;
-    submitError?: string;
-  }
-  | {
-    kind: "multiple_choice";
-    attemptNumber: number;
-    canRetry?: boolean;
-    exercise: SongStudyMultipleChoiceExercise;
-    result?: "correct" | "wrong";
-    selectedOptionId?: string;
-    submitError?: string;
-    submitting?: boolean;
-  }
-  | {
-    kind: "complete";
-    correctCount: number;
-    nextReviewLabel?: string;
-    /** Pre-session streak, used only for the slot-number animation. */
-    previousStreak?: number;
-    scorePercent: number;
-    streak?: {
-      currentStreak: number;
-      qualifiedToday: boolean;
-      studyAttemptsToday: number;
-      studyCorrectCount: number;
-      studyTargetCount: number;
-    };
-    /** Fresh post-completion leaderboard (server-ranked); never the pre-session snapshot. */
-    streakSummary?: SongStreakSummary;
-    totalCount: number;
-  };
-
-export interface SongStudySurfaceProps {
-  artworkSrc?: string;
-  className?: string;
-  lessonProgress?: {
-    resolvedCount: number;
-    totalCount: number;
-  };
-  onExit?: () => void;
-  onKaraoke?: () => void;
-  onOptionSelect?: (optionId: string) => void;
-  onPrimaryAction?: () => void;
-  onStudyAgain?: () => void;
-  rewardSlot?: React.ReactNode;
-  sayItBackIdleLabel?: string;
-  state: SongStudySurfaceState;
-}
+export type {
+  SongStudyFillBlankExercise,
+  SongStudyMultipleChoiceExercise,
+  SongStudySayItBackExercise,
+  SongStudySurfaceProps,
+  SongStudySurfaceState,
+} from "./song-study-surface-types";
 
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -139,6 +50,13 @@ function primaryActionLabel(
       if (state.submitting) return "Checking…";
       if (state.result === "wrong" && state.canRetry) return "Try again";
       return state.result ? "Continue" : undefined;
+    case "fill_blank":
+      if (state.submitting) return "Checking…";
+      if (state.result === "wrong" && !state.correctPlacements) return "Try again";
+      if (state.result) return "Continue";
+      return state.selectedTokenIds.length === state.exercise.segments.filter((segment) => segment.kind === "blank").length
+        ? "Check"
+        : undefined;
     case "complete":
       return undefined;
   }
@@ -150,7 +68,7 @@ function primaryActionVariant(state: SongStudySurfaceState): "default" | "destru
     if (state.phase === "wrong") return "destructive";
     return "default";
   }
-  if (state.kind === "multiple_choice" && state.result === "wrong") return "destructive";
+  if ((state.kind === "multiple_choice" || state.kind === "fill_blank") && state.result === "wrong") return "destructive";
   return "default";
 }
 
@@ -165,7 +83,7 @@ function primaryActionIcon(state: SongStudySurfaceState): React.ReactNode {
 }
 
 function primaryActionDisabled(state: SongStudySurfaceState): boolean {
-  if (state.kind === "multiple_choice") return Boolean(state.submitting);
+  if (state.kind === "multiple_choice" || state.kind === "fill_blank") return Boolean(state.submitting);
   if (state.kind === "say_it_back") return state.phase === "checking";
   return false;
 }
@@ -616,10 +534,16 @@ function CompleteState({ state }: { state: Extract<SongStudySurfaceState, { kind
 }
 
 function Body({
+  onFillBlankClear,
+  onFillBlankTokenSelect,
+  onFillBlankUndo,
   onOptionSelect,
   state,
 }: {
   onOptionSelect?: (optionId: string) => void;
+  onFillBlankClear?: () => void;
+  onFillBlankTokenSelect?: (tokenId: string) => void;
+  onFillBlankUndo?: () => void;
   state: SongStudySurfaceState;
 }) {
   switch (state.kind) {
@@ -629,6 +553,8 @@ function Body({
       return <SayItBackState state={state} />;
     case "multiple_choice":
       return <MultipleChoiceState onOptionSelect={onOptionSelect} state={state} />;
+    case "fill_blank":
+      return <SongStudyFillBlankState onClear={onFillBlankClear} onTokenSelect={onFillBlankTokenSelect} onUndo={onFillBlankUndo} state={state} />;
     case "complete":
       return <CompleteState state={state} />;
   }
@@ -639,6 +565,9 @@ export function SongStudySurface({
   lessonProgress,
   onExit,
   onKaraoke,
+  onFillBlankClear,
+  onFillBlankTokenSelect,
+  onFillBlankUndo,
   onOptionSelect,
   onPrimaryAction,
   onStudyAgain,
@@ -672,7 +601,13 @@ export function SongStudySurface({
           {rewardSlot}
         </div>
       ) : null}
-      <Body onOptionSelect={onOptionSelect} state={state} />
+      <Body
+        onFillBlankClear={onFillBlankClear}
+        onFillBlankTokenSelect={onFillBlankTokenSelect}
+        onFillBlankUndo={onFillBlankUndo}
+        onOptionSelect={onOptionSelect}
+        state={state}
+      />
       <ActivityFooter
         primaryDisabled={primaryActionDisabled(state)}
         primaryIcon={primaryIcon}

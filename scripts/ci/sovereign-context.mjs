@@ -5,6 +5,33 @@ function canonicalFromHtml(html) {
   return html.match(/<link rel="canonical" href="([^"]+)"/u)?.[1] ?? null;
 }
 
+function surfaceNavigationFromHtml(html) {
+  return html.match(
+    /<link data-surface-navigation-contract="true" href="([^"]+)" rel="alternate"/u,
+  )?.[1] ?? null;
+}
+
+export function verifySurfaceNavigationContracts(input) {
+  const expected = {
+    apex: `https://app.${input.root}/`,
+    app: `https://${input.root}/`,
+    canonicalThreads: `/c/${encodeURIComponent(input.routeSlug)}/videos`,
+    canonicalVideos: `/c/${encodeURIComponent(input.routeSlug)}/threads`,
+  };
+  const actual = {
+    apex: surfaceNavigationFromHtml(input.apexHtml),
+    app: surfaceNavigationFromHtml(input.appHtml),
+    canonicalThreads: surfaceNavigationFromHtml(input.canonicalThreadsHtml),
+    canonicalVideos: surfaceNavigationFromHtml(input.canonicalVideosHtml),
+  };
+  const errors = Object.entries(expected).flatMap(([surface, href]) =>
+    actual[surface] === href
+      ? []
+      : [`${surface} navigation=${JSON.stringify(actual[surface])} expected=${JSON.stringify(href)}`]
+  );
+  return { actual, errors };
+}
+
 export function verifySovereignHtml(apexHtml, appHtml, input) {
   const apexCanonical = canonicalFromHtml(apexHtml);
   const appCanonical = canonicalFromHtml(appHtml);
@@ -91,6 +118,8 @@ async function main() {
   const root = argument("--root");
   const communityId = argument("--community-id");
   const routeSlug = argument("--route-slug");
+  const canonicalThreadsPath = argument("--canonical-threads-html");
+  const navigationOnly = process.argv.includes("--navigation-only");
   if (!htmlPath || !appHtmlPath || !canonicalHtmlPath || !root || !communityId || !routeSlug) {
     throw new Error("usage: sovereign-context.mjs --html <path> --app-html <path> --canonical-html <path> --root <root> --community-id <id> --route-slug <slug>");
   }
@@ -98,6 +127,25 @@ async function main() {
   const sovereignHtml = await readFile(htmlPath, "utf8");
   const appHtml = await readFile(appHtmlPath, "utf8");
   const canonicalHtml = await readFile(canonicalHtmlPath, "utf8");
+  const canonicalThreadsHtml = canonicalThreadsPath
+    ? await readFile(canonicalThreadsPath, "utf8")
+    : null;
+  if (navigationOnly) {
+    if (!canonicalThreadsHtml) {
+      throw new Error("--canonical-threads-html is required with --navigation-only");
+    }
+    const navigation = verifySurfaceNavigationContracts({
+      apexHtml: sovereignHtml,
+      appHtml,
+      canonicalThreadsHtml,
+      canonicalVideosHtml: canonicalHtml,
+      root,
+      routeSlug,
+    });
+    if (navigation.errors.length > 0) throw new Error(navigation.errors.join("; "));
+    console.log(JSON.stringify({ community_id: communityId, status: "navigation-ok" }));
+    return;
+  }
   const result = verifySovereignHtml(sovereignHtml, appHtml, { root, communityId, routeSlug });
   const brandResult = verifyBrandScopes(sovereignHtml, appHtml, canonicalHtml);
   const errors = [...result.errors, ...brandResult.errors];

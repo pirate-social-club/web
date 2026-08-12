@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { verifyBrandScopes, verifySovereignHtml } from "./sovereign-context.mjs";
+import {
+  verifyBrandScopes,
+  verifySovereignHtml,
+  verifySurfaceNavigationContracts,
+} from "./sovereign-context.mjs";
 
 const input = {
   communityId: "com_cmt_sovereign_probe",
@@ -102,5 +106,33 @@ describe("sovereign presentation scope", () => {
       ],
       sovereignBrandLabel: null,
     });
+  });
+});
+
+describe("surface navigation contracts", () => {
+  const navigation = (href: string) => (
+    `<link data-surface-navigation-contract="true" href="${href}" rel="alternate"/>`
+  );
+
+  test("accepts reciprocal sovereign and canonical destinations", () => {
+    expect(verifySurfaceNavigationContracts({
+      apexHtml: navigation("https://app.community-root/"),
+      appHtml: navigation("https://community-root/"),
+      canonicalThreadsHtml: navigation("/c/community-route/videos"),
+      canonicalVideosHtml: navigation("/c/community-route/threads"),
+      root: input.root,
+      routeSlug: input.routeSlug,
+    }).errors).toEqual([]);
+  });
+
+  test("rejects missing and one-way destinations", () => {
+    expect(verifySurfaceNavigationContracts({
+      apexHtml: navigation("https://app.community-root/"),
+      appHtml: "",
+      canonicalThreadsHtml: navigation("/c/community-route/threads"),
+      canonicalVideosHtml: navigation("/c/community-route/videos"),
+      root: input.root,
+      routeSlug: input.routeSlug,
+    }).errors).toHaveLength(3);
   });
 });

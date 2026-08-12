@@ -130,6 +130,15 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
         {shouldRenderSocialMetadata && pageImageUrl ? <meta name="twitter:image:src" content={pageImageUrl} /> : null}
         {shouldRenderSocialMetadata && pageImageUrl ? <meta name="twitter:image:alt" content={pageImageAlt} /> : null}
         {canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
+        {ctx.surfaceNavigationHref ? (
+          // Production probes consume this route-derived contract because the
+          // visible navigation is hydrated client-side.
+          <link
+            data-surface-navigation-contract="true"
+            href={ctx.surfaceNavigationHref}
+            rel="alternate"
+          />
+        ) : null}
         {shouldRenderSocialMetadata && pageImageUrl ? <link rel="image_src" href={pageImageUrl} /> : null}
         {!ctx.isIndexable ? <meta name="robots" content="noindex, nofollow" /> : null}
         <link rel="stylesheet" href={stylesUrl} />

@@ -8,6 +8,7 @@ import { LegalDocumentPage } from "@/components/legal/legal-document-page";
 import { Document } from "@/app/document";
 import { communityLandingRedirectResponse } from "@/app/community-landing-redirect";
 import { matchRoute, matchRouteWithImportedRootCommunity } from "@/app/router";
+import { resolveSurfaceNavigationHref } from "@/app/surface-navigation-contract";
 import { isPostOutsideSovereignScope, mustFailClosedOnSovereignScopeError } from "@/app/sovereign-route-scope";
 import { PRIVACY_POLICY_SOURCE } from "@/legal/privacy-policy";
 import { TERMS_OF_SERVICE_SOURCE } from "@/legal/terms-of-service";
@@ -513,6 +514,7 @@ const app = defineApp<AppRequestInfo>([
     ctx.walletInteractive = resolveForwardedWalletInteractive(request);
     ctx.homeFeedScopeKey = route.kind === "community-videos" ? route.communityId : "global";
     ctx.isIndexable = routeDiscovery.isIndexable;
+    ctx.surfaceNavigationHref = resolveSurfaceNavigationHref(route);
     const mustVerifySovereignPost = Boolean(
       route.sovereignCommunityId && "postId" in route,
     );

@@ -19,7 +19,7 @@ function renderPublicRoute(
     case "community-videos":
       return <VideoHomePage communityId={route.communityId} importedRootHostname={route.importedRootHostname} />;
     case "community":
-      return <PublicCommunityRoutePage communityId={route.communityId} importedRootHostname={route.importedRootHostname} isImportedRoot={route.isImportedRoot} />;
+      return <PublicCommunityRoutePage communityId={route.communityId} isImportedRoot={route.isImportedRoot} />;
     case "post":
       return <PostPage postId={route.postId} />;
     case "public-profile":

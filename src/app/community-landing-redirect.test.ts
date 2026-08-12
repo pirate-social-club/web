@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { CommunityPreview } from "@pirate/api-contracts";
 
-import { communityLandingRedirectResponse } from "./community-landing-redirect";
+import { communityLandingPath, communityLandingRedirectResponse } from "./community-landing-redirect";
 
 function preview(defaultSurface: "threads" | "videos"): CommunityPreview {
   return {
@@ -24,13 +24,18 @@ function preview(defaultSurface: "threads" | "videos"): CommunityPreview {
 }
 
 describe("community landing redirect", () => {
+  test("keeps the canonical bare community route threads-first", () => {
+    expect(communityLandingPath(preview("videos"))).toBe("/c/test-community/threads");
+    expect(communityLandingPath(preview("threads"))).toBe("/c/test-community/threads");
+  });
+
   test("tags a queryless 302 for cross-layer community purge", () => {
     const response = communityLandingRedirectResponse({
       effectiveUrl: "https://pirate.sc/c/test-community",
       preview: preview("videos"),
     });
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("https://pirate.sc/c/test-community/videos");
+    expect(response.headers.get("location")).toBe("https://pirate.sc/c/test-community/threads");
     expect(response.headers.get("cache-tag")).toBe("community:com_cmt_test");
     expect(response.headers.get("cdn-cache-control")).toContain("max-age=600");
   });

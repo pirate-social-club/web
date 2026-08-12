@@ -1,6 +1,7 @@
 import type { HomeFeedItem, Profile } from "@pirate/api-contracts";
 
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
+import { normalizeUserId } from "@/app/authenticated-helpers/user-id";
 
 export function selectRelevantHomeFeedProfiles(
   entry: HomeFeedItem,
@@ -9,7 +10,7 @@ export function selectRelevantHomeFeedProfiles(
 ): ReadonlyArray<readonly [string, Profile | null]> {
   const userIds = new Set<string>();
   const addUserId = (userId: string | null | undefined) => {
-    const normalizedUserId = userId?.trim();
+    const normalizedUserId = normalizeUserId(userId);
     if (normalizedUserId) userIds.add(normalizedUserId);
   };
 

@@ -5,10 +5,7 @@ import type {
 } from "@pirate/api-contracts";
 
 import type { PostCardProps, SongContentSpec, SongFeatureCapabilityReason, SongStorageProof, StoryRegistrationStatus, UpstreamAttribution } from "@/components/compositions/posts/post-card/post-card.types";
-import type {
-  AssetSourceDescriptor,
-  SongPlaybackDescriptor,
-} from "@/app/authenticated-helpers/song-commerce";
+import type { AssetSourceDescriptor, SongPlaybackDescriptor } from "@/app/authenticated-helpers/song-commerce";
 import type { SongPresentationOptions } from "@/app/authenticated-helpers/post-presentation-types";
 import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
 import { resolveApiUrl } from "@/lib/api/base-url";
@@ -17,6 +14,7 @@ import { buildStoryExplorerIpAssetUrl } from "@/lib/story/story-portal";
 import { toast } from "@/components/primitives/sonner";
 import { normalizeMediaAspectRatio } from "@/components/compositions/posts/video-preview-layout";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
+import { sameUserId } from "@/app/authenticated-helpers/user-id";
 
 type StoryRoyaltyAsset = NonNullable<SongPresentationOptions["asset"]>;
 type VinylReleaseCarrier = Pick<ApiCommunityListing | ApiCommunityPurchase, "vinyl_release_provider" | "vinyl_release_url">;
@@ -335,7 +333,7 @@ function toSongPlaybackDescriptor(
   const { post } = postResponse;
   const songTitle = postResponse.song_presentation?.title ?? post.song_title ?? post.title ?? "song";
   const mediaRef = post.media_refs?.[0]?.storage_ref ?? null;
-  const viewerOwnsPost = Boolean(input.currentUserId && post.author_user === input.currentUserId);
+  const viewerOwnsPost = sameUserId(post.author_user, input.currentUserId);
   const isLocked = (post.access_mode ?? "public") === "locked";
   const hasFullAccess = !isLocked || viewerOwnsPost || Boolean(input.purchase);
 
@@ -403,7 +401,7 @@ function toVideoAssetSourceDescriptor(
   },
 ): AssetSourceDescriptor | null {
   const { post } = postResponse;
-  const viewerOwnsPost = Boolean(input.currentUserId && post.author_user === input.currentUserId);
+  const viewerOwnsPost = sameUserId(post.author_user, input.currentUserId);
   const isLocked = (post.access_mode ?? "public") === "locked";
   const hasFullAccess = isLocked && (viewerOwnsPost || Boolean(input.purchase));
 
@@ -455,7 +453,7 @@ export function toVideoPostContent(
     durationMs: primaryMedia?.duration_ms ?? undefined,
     hasEntitlement: accessMode === "public"
       || Boolean(purchase)
-      || Boolean(songOptions?.currentUserId && post.author_user === songOptions.currentUserId),
+      || sameUserId(post.author_user, songOptions?.currentUserId),
     listingMode: listing ? "listed" : "not_listed",
     listingStatus: listing?.status === "active"
       ? "active"
@@ -570,7 +568,7 @@ export function toSongPostContent(
   const accessMode = post.access_mode ?? "public";
   const hasEntitlement = accessMode === "public"
     || Boolean(purchase)
-    || Boolean(songOptions?.currentUserId && post.author_user === songOptions.currentUserId);
+    || sameUserId(post.author_user, songOptions?.currentUserId);
   const downloadableAudio = normalizeDownloadableAudio(postResponse);
   const downloadableOriginal = downloadableAudio.get("original");
   const downloadableStems: SongContentSpec["stems"] = [];

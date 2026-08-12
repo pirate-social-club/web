@@ -7,6 +7,7 @@ import type {
 import type { LiveRoomPresentationOptions } from "@/app/authenticated-helpers/post-presentation-types";
 import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
 import { formatRelativeTimestamp } from "@/lib/formatting/time";
+import { sameUserId } from "@/app/authenticated-helpers/user-id";
 
 function formatLiveRoomTimestampLabel(value: number | null | undefined): string | undefined {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return undefined;
@@ -74,7 +75,7 @@ export function toLiveRoomPostContent(
   const purchaseGateSegment = liveAccess?.gate ? firstPurchaseGateSegment(liveAccess.gate) : undefined;
   const gatePurchaseListing = purchaseGateSegment?.purchasable_listings?.[0];
   const accessMode = liveRoom?.access_mode ?? liveAccess?.access_mode ?? (listing ? "paid" : "free");
-  const viewerOwnsPost = Boolean(input.liveRoom?.currentUserId && post.author_user === input.liveRoom.currentUserId);
+  const viewerOwnsPost = sameUserId(post.author_user, input.liveRoom?.currentUserId);
   const coverSrc = renderableImageRef(liveRoom?.cover_ref)
     ?? renderableImageRef(input.primaryMedia?.poster_ref)
     ?? renderableImageRef(input.primaryMedia?.storage_ref);

@@ -93,6 +93,25 @@ describe("buildLiveRoomParticipants", () => {
     });
   });
 
+  test("canonicalizes participant IDs for profile lookup and deduplication", () => {
+    expect(buildLiveRoomParticipants({
+      liveRoom: {
+        host_user: "usr_usr_workspace_owner",
+        guest_user: "usr_reviewer",
+        performer_allocations: [
+          { user: "usr_workspace_owner", role: "host" },
+        ],
+      },
+      profilesByUserId: {
+        usr_workspace_owner: profile("workspace-owner.pirate"),
+        usr_reviewer: profile("reviewer.pirate"),
+      },
+    })?.map((participant) => participant.label)).toEqual([
+      "workspace-owner.pirate",
+      "reviewer.pirate",
+    ]);
+  });
+
   test("uses the anchor post pseudonym for an anonymous host", () => {
     expect(buildLiveRoomParticipants({
       authorProfile: profile("public-host.pirate", "host.jpg"),

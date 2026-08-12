@@ -1,10 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type {
-  HomeFeedItem as ApiHomeFeedItem,
-  Profile as ApiProfile,
-} from "@pirate/api-contracts";
+import type { HomeFeedItem as ApiHomeFeedItem, Profile as ApiProfile } from "@pirate/api-contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { toHomeFeedItem, toThreadPostCard } from "@/app/authenticated-helpers/post-presentation";
@@ -16,9 +13,7 @@ import {
 import { VideoBookingAvailabilityCache } from "@/app/authenticated-helpers/video-booking-availability-cache";
 import { useVideoViewerSongCapabilities } from "@/app/authenticated-helpers/use-video-viewer-song-capabilities";
 import { navigate } from "@/app/router";
-import {
-  type VideoExperienceSeed,
-} from "@/app/video-experience/video-experience-context";
+import type { VideoExperienceSeed } from "@/app/video-experience/video-experience-context";
 import {
   globalVideoCommentsHistoryState,
   globalVideoPanelFromHistoryState,
@@ -29,6 +24,7 @@ import {
   videoIdFromLocation,
 } from "@/app/video-experience/video-experience-history";
 import { videoViewerPublisherRelationship } from "@/app/video-experience/video-viewer-publisher";
+import { normalizeUserId, sameUserId } from "@/app/authenticated-helpers/user-id";
 import {
   compactCount,
   VideoFeed,
@@ -401,7 +397,8 @@ export function VideoExperienceOverlay({ request }: { request: VideoExperienceOp
   React.useEffect(() => {
     const userIds = homeVideoQuery.data.entries.flatMap((entry) => {
       const post = entry.post.post;
-      return post.identity_mode === "public" && post.author_user ? [post.author_user] : [];
+      const authorUserId = post.identity_mode === "public" ? normalizeUserId(post.author_user) : null;
+      return authorUserId ? [authorUserId] : [];
     });
     const missing = [...new Set(userIds)].filter((userId) => !(userId in authorProfiles));
     if (missing.length === 0) return;
@@ -418,6 +415,7 @@ export function VideoExperienceOverlay({ request }: { request: VideoExperienceOp
     const request = session?.accessToken ? api.posts.get : api.publicPosts.get;
     void request(seed.item.id, { locale: contentLocale }).then(async (response) => {
       const post = response.post;
+      const authorUserId = normalizeUserId(post.author_user);
       const authorProfilesForSeed = post.identity_mode === "public" && post.author_user
         ? await loadProfilesByUserId(api, [post.author_user], authorProfiles)
         : {};
@@ -437,8 +435,8 @@ export function VideoExperienceOverlay({ request }: { request: VideoExperienceOp
             ...seed.item.publisher,
             relationship: videoViewerPublisherRelationship({
               authorUserId: post.author_user,
-              authorWalletAddress: post.author_user
-                ? authorProfilesForSeed[post.author_user]?.primary_wallet_address
+              authorWalletAddress: authorUserId
+                ? authorProfilesForSeed[authorUserId]?.primary_wallet_address
                 : undefined,
               community: response.community,
               currentUserId: session?.user.id,
@@ -480,7 +478,8 @@ export function VideoExperienceOverlay({ request }: { request: VideoExperienceOp
           viewer_membership_status?: "member" | "not_member" | "banned" | null;
         } | null;
       };
-      const authorProfile = post.author_user ? authorProfiles[post.author_user] : null;
+      const authorUserId = normalizeUserId(post.author_user);
+      const authorProfile = authorUserId ? authorProfiles[authorUserId] : null;
       return [{
         ...item,
         communityId: entry.community.id,
@@ -758,16 +757,16 @@ export function VideoExperienceOverlay({ request }: { request: VideoExperienceOp
     setBookingLoading(true);
     void bookingCache.ensure(hostUserId)
       .then((slots) => {
-        if (bookingRequestHostRef.current === hostUserId) setBookingSlots(slots);
+        if (sameUserId(bookingRequestHostRef.current, hostUserId)) setBookingSlots(slots);
       })
       .catch(() => {
-        if (bookingRequestHostRef.current === hostUserId) {
+        if (sameUserId(bookingRequestHostRef.current, hostUserId)) {
           setBookingSlots([]);
           setBookingError(true);
         }
       })
       .finally(() => {
-        if (bookingRequestHostRef.current === hostUserId) setBookingLoading(false);
+        if (sameUserId(bookingRequestHostRef.current, hostUserId)) setBookingLoading(false);
       });
   }, [bookingCache]);
 

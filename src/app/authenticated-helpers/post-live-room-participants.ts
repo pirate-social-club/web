@@ -6,6 +6,7 @@ import {
   resolvePublicAuthorFallback,
   resolvePublicIdentityLabel,
 } from "@/app/authenticated-helpers/post-identity-presentation";
+import { normalizeUserId, sameUserId } from "@/app/authenticated-helpers/user-id";
 
 type ProfileSummary = Pick<ApiProfile, "avatar_ref" | "display_name" | "global_handle" | "primary_public_handle">;
 
@@ -65,16 +66,19 @@ export function buildLiveRoomParticipants({
   const seenUserIds = new Set<string>();
 
   function profileForUser(userId: string | null | undefined) {
-    if (!userId) return null;
-    return userId === postAuthorUserId && authorProfile ? authorProfile : profilesByUserId[userId] ?? null;
+    const normalizedUserId = normalizeUserId(userId);
+    if (!normalizedUserId) return null;
+    return sameUserId(normalizedUserId, postAuthorUserId) && authorProfile
+      ? authorProfile
+      : profilesByUserId[normalizedUserId] ?? null;
   }
 
   function addParticipant(role: LiveRoomParticipant["role"], userId: string | null | undefined) {
-    const normalizedUserId = userId?.trim();
+    const normalizedUserId = normalizeUserId(userId);
     if (!normalizedUserId || seenUserIds.has(normalizedUserId)) return;
     const isAnonymousHost = role === "host"
       && postIdentityMode === "anonymous"
-      && normalizedUserId === postAuthorUserId?.trim()
+      && sameUserId(normalizedUserId, postAuthorUserId)
       && Boolean(postAnonymousLabel?.trim());
     const participant = participantFromUser(
       role,

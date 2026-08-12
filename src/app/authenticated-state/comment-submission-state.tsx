@@ -17,6 +17,7 @@ import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import type { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { isMembershipRequiredWriteRejection } from "@/hooks/community-interaction-gate/membership-write-rejection";
 import { getErrorMessage } from "@/lib/error-utils";
+import { normalizeUserId, sameUserId } from "@/app/authenticated-helpers/user-id";
 import {
   buildThreadCommentTreeFromItems,
   collectCommentAuthorUserIds,
@@ -154,8 +155,9 @@ export function useCommentSubmission(input: {
         hasLoadedReplies: true,
       }));
     });
-    if (session?.profile && created.identity_mode === "public" && created.author_user === session.user.id) {
-      setAuthorProfilesByUserId((current) => ({ ...current, [session.user.id]: session.profile }));
+    const sessionUserId = normalizeUserId(session?.user.id);
+    if (session?.profile && sessionUserId && created.identity_mode === "public" && sameUserId(created.author_user, sessionUserId)) {
+      setAuthorProfilesByUserId((current) => ({ ...current, [sessionUserId]: session.profile }));
     }
   }, [locale, session?.profile, session?.user?.id, setAuthorProfilesByUserId, setCommentNodes]);
 

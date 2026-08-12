@@ -121,7 +121,7 @@ function createdPostToLocalizedFeedItem(input: {
     like_count: 0,
     comment_count: 0,
     viewer_vote: null,
-    viewer_is_author: Boolean(input.currentUserId && input.post.author_user === input.currentUserId),
+    viewer_is_author: sameUserId(input.post.author_user, input.currentUserId),
     viewer_reaction_kinds: [],
     resolved_locale: input.contentLocale,
     translation_state: "same_language",

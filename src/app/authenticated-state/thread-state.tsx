@@ -16,6 +16,7 @@ import type {
 import { getErrorMessage } from "@/lib/error-utils";
 import { formatRelativeTimestamp } from "@/lib/formatting/time";
 import { resolveCommentAuthorAvatarSeed, resolveCommentAuthorLabel, toCommentViewerVote } from "@/app/authenticated-helpers/post-presentation";
+import { normalizeUserId } from "@/app/authenticated-helpers/user-id";
 
 export type ThreadCommentNode = {
   item: ApiCommentListItem;
@@ -388,7 +389,8 @@ export function toThreadComment(
   children?: PostThreadComment[],
 ): PostThreadComment {
   const { comment } = item;
-  const authorProfile = comment.author_user ? authorProfiles[comment.author_user] : null;
+  const authorUserId = normalizeUserId(comment.author_user);
+  const authorProfile = authorUserId ? authorProfiles[authorUserId] : null;
   const authorLabel = resolveCommentAuthorLabel(comment, authorProfile);
   const defaultBody = item.translated_body ?? comment.body ?? "";
   const originalBody = item.translation_state === "ready" && item.translated_body && item.translated_body !== comment.body

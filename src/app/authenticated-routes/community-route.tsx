@@ -163,8 +163,7 @@ export function CommunityPage({
       [posts],
     ),
   });
-  const ownsCommunity =
-    session?.user?.id === community?.created_by_user;
+  const ownsCommunity = sameUserId(session?.user?.id, community?.created_by_user);
   const canModerateCommunity = viewerCanModerateCommunity(session?.user?.id, preview);
   const viewerIsMember =
     eligibility?.status === "already_joined"

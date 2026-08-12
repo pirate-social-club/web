@@ -20,6 +20,15 @@
       "risk_assessment": "UNVERIFIED — nobody has confirmed whether decompress can be reached with attacker-controlled archives in our build. The pre-existing suppression carried no such analysis either. Until an owner of the rwsdk build path assesses reachability and replaces this field, treat the exception as inherited, not justified.",
       "expires": "2026-10-01",
       "tracking": "https://github.com/pirate-social-club/web/issues/940"
+    },
+    {
+      "advisory": "GHSA-jmr9-qjv8-65gv",
+      "package": "extract-zip",
+      "severity": "high",
+      "reason": "rwsdk@1.3.0-canary.4 depends on @puppeteer/browsers@2.13.0, whose browser installer depends on extract-zip@2.0.1; no patched extract-zip release exists. The Web release must remain deployable while the upstream dependency path is tracked and replaced or patched.",
+      "risk_assessment": "The vulnerable extraction function is reachable only when the explicit @puppeteer/browsers installer unpacks a downloaded browser archive. Web and the packaged rwsdk source do not import or invoke puppeteer, @puppeteer/browsers, or extract-zip; @puppeteer/browsers has no install lifecycle script; and the Worker runtime does not download or unpack browser archives. Therefore the affected code is installed build tooling but is not executed by Web build, deploy, or runtime paths. Reassess immediately if any of those paths begin installing browsers or accepting archive input.",
+      "expires": "2026-09-12",
+      "tracking": "https://github.com/pirate-social-club/web/issues/1193"
     }
   ]
 }

@@ -90,6 +90,7 @@ type CachedPageItem = {
   contentLocale: string;
   entry: ApiHomeFeedItem;
   item: VideoFeedItem | null;
+  importedRootHostname?: string;
   joinedLocally: boolean;
   showOriginalLabel: string;
   showTranslationLabel: string;
@@ -736,6 +737,7 @@ export function VideoHomePage({
         && cached.entry === entry
         && cached.authorProfile === authorProfile
         && cached.contentLocale === contentLocale
+        && cached.importedRootHostname === importedRootHostname
         && cached.joinedLocally === joinedLocally
         && cached.showOriginalLabel === copy.common.showOriginal
         && cached.showTranslationLabel === copy.common.showTranslation
@@ -755,6 +757,7 @@ export function VideoHomePage({
           contentLocale,
           entry,
           item: null,
+          importedRootHostname,
           joinedLocally,
           showOriginalLabel: copy.common.showOriginal,
           showTranslationLabel: copy.common.showTranslation,
@@ -834,6 +837,7 @@ export function VideoHomePage({
         contentLocale,
         entry,
         item: pageItem,
+        importedRootHostname,
         joinedLocally,
         showOriginalLabel: copy.common.showOriginal,
         showTranslationLabel: copy.common.showTranslation,
@@ -843,7 +847,7 @@ export function VideoHomePage({
       });
       return [pageItem];
     }),
-    [authorProfiles, contentLocale, copy.common.showOriginal, copy.common.showTranslation, copy.home.videoPublisherJoin, copy.home.videoPublisherJoined, entries, joinedCommunityIds, session?.user.id],
+    [authorProfiles, contentLocale, copy.common.showOriginal, copy.common.showTranslation, copy.home.videoPublisherJoin, copy.home.videoPublisherJoined, entries, importedRootHostname, joinedCommunityIds, session?.user.id],
   );
   const items = React.useMemo(() => pageItems.map((item) => {
     // Capability cache entries mutate in place; the revision invalidates this derived view.

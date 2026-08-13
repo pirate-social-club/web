@@ -34,7 +34,7 @@ jobs:
       # The repair implementation is owned by Core. Keep this one-time
       # workflow pinned to the reviewed Core commit instead of changing Web's
       # runtime release pin just to run maintenance.
-      REPAIR_CORE_SHA: 5d66b345669ab6299312959b34abebcf690ac0e6
+      REPAIR_CORE_SHA: 4f6e68ed0ee5ff0ef33b39b2d3c4f055d704c9b9
     steps:
       - name: Require main branch dispatch
         shell: bash

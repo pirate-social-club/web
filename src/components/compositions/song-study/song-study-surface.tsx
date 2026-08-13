@@ -52,7 +52,6 @@ function primaryActionLabel(
       return state.result ? "Continue" : undefined;
     case "fill_blank":
       if (state.submitting) return "Checking…";
-      if (state.result === "wrong" && !state.correctPlacements) return "Try again";
       if (state.result) return "Continue";
       return state.selectedTokenIds.length === state.exercise.segments.filter((segment) => segment.kind === "blank").length
         ? "Check"

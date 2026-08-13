@@ -939,6 +939,7 @@ jobs:
       web_ref: ${{ github.sha }}
     secrets:
       AUTH_UPSTREAM_JWT_SHARED_SECRET: ${{ secrets.AUTH_UPSTREAM_JWT_SHARED_SECRET }}
+      PIRATE_ADMIN_TOKEN: ${{ secrets.PIRATE_ADMIN_TOKEN }}
 
   hns-forwarder-negative-probe:
     name: HNS forged-context gate

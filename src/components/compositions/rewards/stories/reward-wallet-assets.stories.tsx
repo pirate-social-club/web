@@ -1,7 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
-import { RewardWalletAssets, type RewardHolding } from "../reward-wallet-assets";
+import {
+  RewardWalletAssets,
+  type RewardHolding,
+  type TicketPoolWinningsCredit,
+} from "../reward-wallet-assets";
 
 const meta = {
   title: "Compositions/Bounties/Wallet Assets",
@@ -13,11 +17,17 @@ type Story = StoryObj<typeof meta>;
 
 const noop = () => undefined;
 
-function Frame({ holdings }: { holdings: RewardHolding[] }) {
+function Frame({
+  holdings,
+  poolCredits = [],
+}: {
+  holdings: RewardHolding[];
+  poolCredits?: TicketPoolWinningsCredit[];
+}) {
   return (
     <StandardRoutePage size="rail">
       <div className="mx-auto w-full max-w-2xl py-8">
-        <RewardWalletAssets holdings={holdings} />
+        <RewardWalletAssets holdings={holdings} poolCredits={poolCredits} />
       </div>
     </StandardRoutePage>
   );
@@ -25,8 +35,8 @@ function Frame({ holdings }: { holdings: RewardHolding[] }) {
 
 const groupedHoldings: RewardHolding[] = [
   {
-    actionLabel: "Claim",
-    amountLabel: "12.40 USDC",
+    actionLabel: "Cash out USDC",
+    amountLabel: "12.403333 USDC",
     assetLabel: "USDC on Base",
     id: "usdc",
     kind: "fungible",
@@ -34,7 +44,7 @@ const groupedHoldings: RewardHolding[] = [
     state: "ready",
   },
   {
-    actionLabel: "Claim",
+    actionLabel: "Cash out $COMMUNITY",
     amountLabel: "25 $COMMUNITY",
     assetLabel: "Community reward token",
     id: "community",
@@ -42,75 +52,72 @@ const groupedHoldings: RewardHolding[] = [
     onAction: noop,
     state: "ready",
   },
-  {
-    drawingLabel: "Drawing 141",
-    id: "ticket-1042",
-    kind: "megapot_ticket",
-    onAction: noop,
-    state: "delivered",
-    ticketLabel: "Megapot ticket #1042",
-  },
 ];
+
+const creditedPoolWin: TicketPoolWinningsCredit = {
+  allocationLabel: "Equal allocation · 3,333 atomic USDC",
+  amountLabel: "0.003333 USDC",
+  drawingLabel: "Drawing 7,709",
+  id: "pool-credit-7709",
+  songLabel: "Under-sung song",
+  state: "credited",
+};
 
 export const GroupedByAsset: Story = {
   render: () => <Frame holdings={groupedHoldings} />,
 };
 
-export const WinningTicket: Story = {
+export const PoolWinningsCredited: Story = {
+  render: () => <Frame holdings={groupedHoldings} poolCredits={[creditedPoolWin]} />,
+};
+
+export const SubCentPoolCredit: Story = {
   render: () => (
     <Frame
-      holdings={[
-        ...groupedHoldings.slice(0, 2),
-        {
-          drawingLabel: "Drawing 140",
-          id: "ticket-1099",
-          kind: "megapot_ticket",
-          onAction: noop,
-          state: "winner",
-          ticketLabel: "Megapot ticket #1099",
-          winningsLabel: "5.00 USDC",
-        },
-      ]}
+      holdings={[groupedHoldings[0]]}
+      poolCredits={[creditedPoolWin]}
     />
   ),
 };
 
-export const WinningAmountPending: Story = {
+export const CustodyClaimPending: Story = {
   render: () => (
     <Frame
-      holdings={[{
-        drawingLabel: "Drawing 140",
-        id: "ticket-1099",
-        kind: "megapot_ticket",
-        onAction: noop,
-        state: "winner",
-        ticketLabel: "Megapot ticket #1099",
+      holdings={[groupedHoldings[0]]}
+      poolCredits={[{
+        allocationLabel: "Equal allocation across 12 committed singers",
+        amountLabel: "5.00 USDC gross",
+        drawingLabel: "Drawing 7,710",
+        id: "pool-credit-pending",
+        songLabel: "Under-sung song",
+        state: "claim_pending",
       }]}
     />
   ),
 };
 
-export const LosingTicket: Story = {
+export const PoolAllocationNeedsReview: Story = {
   render: () => (
     <Frame
-      holdings={[{
-        drawingLabel: "Drawing 139",
-        id: "ticket-1001",
-        kind: "megapot_ticket",
-        state: "no_win",
-        ticketLabel: "Megapot ticket #1001",
+      holdings={groupedHoldings}
+      poolCredits={[{
+        allocationLabel: "Committed beneficiary set · credit not posted",
+        drawingLabel: "Drawing 7,710",
+        id: "pool-credit-review",
+        songLabel: "Under-sung song",
+        state: "needs_review",
       }]}
     />
   ),
 };
 
-export const ClaimsInProgress: Story = {
+export const CashoutInProgress: Story = {
   render: () => (
     <Frame
       holdings={[
         {
-          actionLabel: "Claiming",
-          amountLabel: "12.40 USDC",
+          actionLabel: "Cashing out",
+          amountLabel: "12.403333 USDC",
           assetLabel: "USDC on Base",
           id: "usdc",
           kind: "fungible",
@@ -118,15 +125,7 @@ export const ClaimsInProgress: Story = {
           state: "pending",
           supportingLabel: "Transfer submitted",
         },
-        {
-          drawingLabel: "Drawing 140",
-          id: "ticket-1099",
-          kind: "megapot_ticket",
-          onAction: noop,
-          state: "claiming",
-          ticketLabel: "Megapot ticket #1099",
-          winningsLabel: "5.00 USDC",
-        },
+        groupedHoldings[1],
       ]}
     />
   ),
@@ -137,13 +136,13 @@ export const LongCommunityToken: Story = {
     <Frame
       holdings={[
         {
-          actionLabel: "Claim",
+          actionLabel: "Cash out",
           amountLabel: "25.123456789012345678 $INTERNATIONALCOMMUNITYTOKEN",
-          assetLabel: "Community reward token",
+          assetLabel: "Community reward token · not admitted",
           id: "long-community-token",
           kind: "fungible",
           onAction: noop,
-          state: "ready",
+          state: "needs_review",
         },
       ]}
     />
@@ -156,5 +155,5 @@ export const Empty: Story = {
 
 export const Mobile: Story = {
   parameters: { viewport: { defaultViewport: "mobile1" } },
-  render: () => <Frame holdings={groupedHoldings} />,
+  render: () => <Frame holdings={groupedHoldings} poolCredits={[creditedPoolWin]} />,
 };

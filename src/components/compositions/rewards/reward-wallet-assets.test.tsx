@@ -1,27 +1,28 @@
 import * as React from "react";
-import { expect, test } from "bun:test";
-import { fireEvent, render } from "@testing-library/react";
+import { afterEach, expect, test } from "bun:test";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 
 import { installDomGlobals } from "@/test/setup-dom";
 import { RewardWalletAssets } from "./reward-wallet-assets";
 
 installDomGlobals();
+afterEach(cleanup);
 
-test("keeps fungible rewards separate and gives each asset its own claim", () => {
+test("keeps fungible rewards separate and gives each asset its own cashout", () => {
   const actions: string[] = [];
   const view = render(
     <RewardWalletAssets
       holdings={[
         {
-          actionLabel: "Claim USDC",
-          amountLabel: "12.40 USDC",
+          actionLabel: "Cash out USDC",
+          amountLabel: "12.403333 USDC",
           assetLabel: "USDC on Base",
           id: "usdc",
           kind: "fungible",
           onAction: () => actions.push("usdc"),
         },
         {
-          actionLabel: "Claim $COMMUNITY",
+          actionLabel: "Cash out $COMMUNITY",
           amountLabel: "25 $COMMUNITY",
           assetLabel: "Community reward token",
           id: "community",
@@ -33,32 +34,35 @@ test("keeps fungible rewards separate and gives each asset its own claim", () =>
   );
 
   expect(view.queryByText(/total/i)).toBeNull();
-  fireEvent.click(view.getByRole("button", { name: "Claim USDC" }));
-  fireEvent.click(view.getByRole("button", { name: "Claim $COMMUNITY" }));
+  fireEvent.click(view.getByRole("button", { name: "Cash out USDC" }));
+  fireEvent.click(view.getByRole("button", { name: "Cash out $COMMUNITY" }));
   expect(actions).toEqual(["usdc", "community"]);
 });
 
-test("winning ticket exposes claimWinnings action independently", () => {
-  let calls = 0;
+test("pool win is credited as USDC evidence and never exposes a ticket claim", () => {
   const view = render(
     <RewardWalletAssets
-      holdings={[
-        {
-          drawingLabel: "Drawing 140",
-          id: "ticket-1099",
-          kind: "megapot_ticket",
-          onAction: () => { calls += 1; },
-          state: "winner",
-          ticketLabel: "Megapot ticket #1099",
-          winningsLabel: "5.00 USDC",
-        },
-      ]}
+      holdings={[{
+        actionLabel: "Cash out",
+        amountLabel: "12.403333 USDC",
+        assetLabel: "USDC on Base",
+        id: "usdc",
+        kind: "fungible",
+      }]}
+      poolCredits={[{
+        allocationLabel: "Equal allocation · 3,333 atomic USDC",
+        amountLabel: "0.003333 USDC",
+        drawingLabel: "Drawing 7,709",
+        id: "credit-7709",
+        songLabel: "Under-sung song",
+        state: "credited",
+      }]}
     />,
   );
 
-  expect(view.getByText("Drawing 140 · Won 5.00 USDC")).toBeTruthy();
-  fireEvent.click(view.getByRole("button", { name: "Claim winnings" }));
-  expect(calls).toBe(1);
+  expect(view.getByText("Drawing 7,709 · 0.003333 USDC credited")).toBeTruthy();
+  expect(view.queryByRole("button", { name: /claim winnings/i })).toBeNull();
+  expect(view.queryByText(/ticket #/i)).toBeNull();
 });
 
 test("long 18-decimal community-token amount remains complete", () => {
@@ -66,7 +70,7 @@ test("long 18-decimal community-token amount remains complete", () => {
   const view = render(
     <RewardWalletAssets
       holdings={[{
-        actionLabel: "Claim",
+        actionLabel: "Cash out",
         amountLabel: amount,
         assetLabel: "Community reward token",
         id: "community",
@@ -74,56 +78,42 @@ test("long 18-decimal community-token amount remains complete", () => {
       }]}
     />,
   );
-
   expect(view.getByText(amount)).toBeTruthy();
 });
 
-test("winner without a known amount does not render a malformed currency claim", () => {
+test("pending custody claim does not inflate the available USDC balance", () => {
   const view = render(
     <RewardWalletAssets
       holdings={[{
-        drawingLabel: "Drawing 140",
-        id: "ticket-1099",
-        kind: "megapot_ticket",
-        state: "winner",
-        ticketLabel: "Megapot ticket #1099",
-      }]}
-    />,
-  );
-
-  expect(view.getByText("Drawing 140 · Winning amount pending")).toBeTruthy();
-  expect(view.queryByText("Won USDC")).toBeNull();
-});
-
-test("closed losing ticket is terminal and has no action", () => {
-  const view = render(
-    <RewardWalletAssets
-      holdings={[{
-        drawingLabel: "Drawing 139",
-        id: "ticket-1001",
-        kind: "megapot_ticket",
-        state: "no_win",
-        ticketLabel: "Megapot ticket #1001",
-      }]}
-    />,
-  );
-
-  expect(view.getByText("Drawing 139 · Drawing closed · No winnings")).toBeTruthy();
-  expect(view.queryByRole("button")).toBeNull();
-});
-
-test("wallet rows expose their labels as named groups", () => {
-  const view = render(
-    <RewardWalletAssets
-      holdings={[{
-        actionLabel: "Claim",
+        actionLabel: "Cash out",
         amountLabel: "12.40 USDC",
         assetLabel: "USDC on Base",
         id: "usdc",
         kind: "fungible",
       }]}
+      poolCredits={[{
+        allocationLabel: "12 committed singers",
+        amountLabel: "5.00 USDC gross",
+        drawingLabel: "Drawing 7,709",
+        id: "credit-pending",
+        songLabel: "Under-sung song",
+        state: "claim_pending",
+      }]}
     />,
   );
+  expect(view.getByText("12.40 USDC")).toBeTruthy();
+  expect(view.getByText("Drawing 7,709 · 5.00 USDC gross awaiting claim")).toBeTruthy();
+});
 
+test("wallet rows expose named groups", () => {
+  const view = render(
+    <RewardWalletAssets holdings={[{
+      actionLabel: "Cash out",
+      amountLabel: "12.40 USDC",
+      assetLabel: "USDC on Base",
+      id: "usdc",
+      kind: "fungible",
+    }]} />,
+  );
   expect(view.getByRole("group", { name: "USDC on Base bounty balance" })).toBeTruthy();
 });

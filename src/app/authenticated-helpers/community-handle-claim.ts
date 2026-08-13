@@ -21,8 +21,10 @@ import { buildCommunitySidebarRequirements } from "@/lib/community-sidebar-helpe
 import { getErrorMessage } from "@/lib/error-utils";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getWalletTransactionErrorMessage } from "@/lib/wallet-error-utils";
+import { solveAltchaChallengeHeadless } from "@/lib/verification/altcha-headless";
 import type {
   HandleAvailability,
+  HandleClaimGateAction,
   HandleClaimPhase,
   HandlePaymentInstructions,
   HandleSearchResult,
@@ -80,10 +82,13 @@ function mapPaymentInstructions(
 
 function buildHandleClaimGateActions(
   summaries: MembershipGateSummary[] | null | undefined,
-): Array<"self" | "wallet"> {
-  const actions = new Set<"self" | "wallet">();
+): HandleClaimGateAction[] {
+  const actions = new Set<HandleClaimGateAction>();
   for (const summary of summaries ?? []) {
     if (summary.accepted_providers?.includes("self")) actions.add("self");
+    if (summary.accepted_providers?.includes("very")) actions.add("very");
+    if (summary.accepted_providers?.includes("zkpassport")) actions.add("zkpassport");
+    if (summary.gate_type === "altcha_pow") actions.add("pow");
     if (
       summary.gate_type === "erc721_holding"
       || summary.gate_type === "erc721_inventory_match"
@@ -138,6 +143,7 @@ export function useCommunityHandleClaimController(input: {
   settlementWalletAttachmentId?: string | null;
   debounceMs?: number;
   executeCheckout?: ExecuteHandleCheckout;
+  createAltchaChallenge?: ApiClient["verification"]["createAltchaChallenge"];
 }) {
   const { locale } = useUiLocale();
   const [phase, setPhase] = React.useState<HandleClaimPhase>("intro");
@@ -148,6 +154,12 @@ export function useCommunityHandleClaimController(input: {
   const [error, setError] = React.useState<string | null>(null);
   const [quoteRefreshKey, setQuoteRefreshKey] = React.useState(0);
   const sequenceRef = React.useRef(0);
+  const claimIntentRef = React.useRef<string | null>(null);
+  const submittedFundingRef = React.useRef<{
+    claimIntent: string | null;
+    quoteId: string;
+    txRef: Hex;
+  } | null>(null);
   const executeCheckout = input.executeCheckout ?? executeHandleUsdcCheckout;
   const debounceMs = input.debounceMs ?? DEFAULT_QUOTE_DEBOUNCE_MS;
 
@@ -157,6 +169,8 @@ export function useCommunityHandleClaimController(input: {
     setSearchResult(undefined);
     setClaimedHandle(null);
     setError(null);
+    claimIntentRef.current = null;
+    submittedFundingRef.current = null;
     setPhase((current) => current === "intro" ? "intro" : "search");
   }, [input.namespaceVerificationId]);
 
@@ -166,6 +180,8 @@ export function useCommunityHandleClaimController(input: {
     setSearchResult(undefined);
     setClaimedHandle(null);
     setError(null);
+    claimIntentRef.current = null;
+    submittedFundingRef.current = null;
     setPhase(value.trim() ? "search" : "intro");
   }, []);
 
@@ -183,10 +199,12 @@ export function useCommunityHandleClaimController(input: {
         ...(input.namespaceVerificationId
           ? { namespace_verification: input.namespaceVerificationId }
           : {}),
+        ...(claimIntentRef.current ? { claim_intent: claimIntentRef.current } : {}),
       };
       void input.api.quoteHandle(input.communityId, body).then((nextQuote) => {
         if (sequence !== sequenceRef.current) return;
         setQuote(nextQuote);
+        claimIntentRef.current = nextQuote.claim_intent ?? null;
         setSearchResult(mapQuoteToSearchResult(nextQuote, locale));
         setError(null);
         setPhase("confirm");
@@ -207,6 +225,39 @@ export function useCommunityHandleClaimController(input: {
     setQuoteRefreshKey((current) => current + 1);
   }, [phase, searchValue]);
 
+  const completeProofOfWorkGate = React.useCallback(async () => {
+    const intentId = quote?.claim_intent ?? claimIntentRef.current;
+    const desiredLabel = searchValue.trim();
+    if (!intentId || !desiredLabel || !input.createAltchaChallenge) {
+      setError("Could not start the proof-of-work check for this name.");
+      return;
+    }
+    setError(null);
+    setPhase("quoting");
+    try {
+      const payload = await solveAltchaChallengeHeadless({
+        action: `handle-claim-intent:${intentId}`,
+        loadChallenge: input.createAltchaChallenge,
+        scope: "namespace_handle_claim",
+      });
+      const nextQuote = await input.api.quoteHandle(input.communityId, {
+        desired_label: desiredLabel,
+        ...(input.namespaceVerificationId
+          ? { namespace_verification: input.namespaceVerificationId }
+          : {}),
+        claim_intent: intentId,
+        altcha: payload,
+      });
+      setQuote(nextQuote);
+      claimIntentRef.current = nextQuote.claim_intent ?? intentId;
+      setSearchResult(mapQuoteToSearchResult(nextQuote, locale));
+      setPhase(nextQuote.eligible ? "confirm" : "search");
+    } catch (caught) {
+      setError(getErrorMessage(caught, "Could not complete the proof-of-work check."));
+      setPhase("search");
+    }
+  }, [input.api, input.communityId, input.createAltchaChallenge, input.namespaceVerificationId, locale, quote?.claim_intent, searchValue]);
+
   const onClaim = React.useCallback(async () => {
     if (!quote || !quote.eligible || quote.availability !== "available" || phase === "processing") {
       return;
@@ -214,7 +265,12 @@ export function useCommunityHandleClaimController(input: {
 
     setPhase("processing");
     setError(null);
-    let fundingTxRef: Hex | null = null;
+    const reusableFunding = submittedFundingRef.current;
+    let fundingTxRef: Hex | null = reusableFunding
+      && reusableFunding.quoteId === quote.id
+      && reusableFunding.claimIntent === (quote.claim_intent ?? null)
+      ? reusableFunding.txRef
+      : null;
     try {
       if ((quote.price_cents ?? 0) > 0) {
         if (!quote.payment_instructions) {
@@ -230,20 +286,30 @@ export function useCommunityHandleClaimController(input: {
         if (!fundingWallet) {
           throw new Error("Connect your primary wallet before claiming this name.");
         }
-        fundingTxRef = await executeCheckout({
-          paymentInstructions: quote.payment_instructions,
-          wallet: fundingWallet,
-        });
+        if (!fundingTxRef) {
+          fundingTxRef = await executeCheckout({
+            paymentInstructions: quote.payment_instructions,
+            wallet: fundingWallet,
+          });
+          submittedFundingRef.current = {
+            claimIntent: quote.claim_intent ?? null,
+            quoteId: quote.id,
+            txRef: fundingTxRef,
+          };
+        }
       }
 
       const handle = await input.api.claimHandle(input.communityId, {
         quote: quote.id,
+        ...(quote.claim_intent ? { claim_intent: quote.claim_intent } : {}),
+        ...(quote.action_authorization ? { action_authorization: quote.action_authorization } : {}),
         ...(input.settlementWalletAttachmentId && fundingTxRef
           ? { settlement_wallet_attachment: input.settlementWalletAttachmentId }
           : {}),
         ...(fundingTxRef ? { funding_tx_ref: fundingTxRef, settlement_tx_ref: fundingTxRef } : {}),
       });
       setClaimedHandle(handle);
+      submittedFundingRef.current = null;
       setPhase("success");
     } catch (caught) {
       const details = conflictDetails(caught);
@@ -276,6 +342,7 @@ export function useCommunityHandleClaimController(input: {
     claimedHandle,
     claimedLabel: claimedHandle?.label ?? null,
     claimGateSummaries: quote?.claim_gate?.summaries ?? [],
+    completeProofOfWorkGate,
     error,
     onClaim,
     onSearchChange,

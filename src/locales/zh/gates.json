@@ -283,6 +283,9 @@
   "handleClaims": {
     "requires": "领取此名称需要：",
     "verifyWithSelf": "使用 Self 验证",
+    "verifyWithVery": "使用 Very.org 验证",
+    "verifyWithZkPassport": "使用 ZKPassport 验证",
+    "completeProofOfWork": "完成浏览器检查",
     "connectWallet": "连接钱包",
     "checkAgain": "重新检查",
     "ruleEditor": {

@@ -259,6 +259,7 @@ export function PublicCommunityRoutePage({
   });
   const handleClaim = useCommunityHandleClaimController({
     api: api.communities,
+    createAltchaChallenge: api.verification.createAltchaChallenge,
     communityId: preview?.id ?? communityId,
     namespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     connectedWallets,
@@ -744,11 +745,18 @@ export function PublicCommunityRoutePage({
         error={handleClaim.error}
         onClaim={handleClaim.onClaim}
         onClaimGateRecheck={handleClaim.refreshQuote}
+        onProofOfWorkClick={() => void handleClaim.completeProofOfWorkGate()}
         onNotNow={handleClaimNotNow}
         onOpenChange={handleClaimModalOpenChange}
         onSearchChange={handleClaim.onSearchChange}
         onSelfVerificationClick={() => {
           void startSelfVerification({
+            membershipGateSummaries: handleClaim.claimGateSummaries,
+            showToastOnError: true,
+          });
+        }}
+        onVerificationProviderClick={(provider) => {
+          void startVerificationProvider(provider, {
             membershipGateSummaries: handleClaim.claimGateSummaries,
             showToastOnError: true,
           });

@@ -25,8 +25,21 @@ plan:
 
       # This package has no runtime dependencies. Keep the authoritative gate
       # hermetic and source-focused; hosted CI retains native typechecking.
+      "$bun_runtime" run scripts/build-provenance.ts
       echo '==> test (source-only)'
-      timeout --foreground 20m "$bun_runtime" run test
+      timeout --foreground 15m "$bun_runtime" test \
+        tests/binary-codec.test.ts \
+        tests/build-provenance.test.ts \
+        tests/commit-scheduler.test.ts \
+        tests/exports.test.ts \
+        tests/reducer-watermark.test.ts \
+        tests/scoring-normalization.test.ts \
+        tests/scoring-offset.test.ts \
+        tests/scoring-phonetic-stream.test.ts \
+        tests/scoring-summary.test.ts \
+        tests/scoring-timing-alignment.test.ts \
+        tests/serialization.test.ts \
+        tests/transport.test.ts
       echo '<== test (source-only)'
       echo '==> lint:imports (source-only)'
       timeout --foreground 5m "$bun_runtime" run lint:imports

@@ -21,7 +21,21 @@ describe("sovereign production context workflow", () => {
     expect(probeIndex).toBeGreaterThan(deployIndex);
     expect(probeIndex).toBeGreaterThan(multipartIndex);
     expect(steps[probeIndex].run).toContain("probe-sovereign-context.sh");
-    expect(steps[probeIndex].env.HNS_PROBE_ALLOW_EMPTY_INVENTORY).toBe("true");
+    expect(steps[probeIndex].env.HNS_PROBE_ALLOW_EMPTY_INVENTORY).toBeUndefined();
+    expect(steps[probeIndex].env.HNS_PROBE_MANUAL_OVERRIDE).toContain("inputs.hns_probe_override");
+    expect(steps[probeIndex].env.HNS_PROBE_MANUAL_OVERRIDE_REASON).toContain("inputs.hns_probe_override_reason");
+    expect(steps[probeIndex].run).toContain("HNS probe override requires hns_probe_override_reason");
+    expect(steps[probeIndex].run).toContain("reason must be a single line");
+    expect(steps[probeIndex].run).toContain("GITHUB_STEP_SUMMARY");
+  });
+
+  test("keeps the HNS override opt-in and reasoned", () => {
+    const inputs = release.on.workflow_dispatch.inputs;
+    expect(inputs.hns_probe_override.default).toBe(false);
+    expect(inputs.hns_probe_override.type).toBe("boolean");
+    expect(inputs.hns_probe_override_reason.required).toBe(false);
+    expect(inputs.hns_probe_override_reason.type).toBe("string");
+    expect(inputs.hns_probe_override_reason.description).toContain("incident or ticket");
   });
 
   test("keeps an event-driven and scheduled external observer", () => {
@@ -48,6 +62,8 @@ describe("sovereign production context workflow", () => {
     expect(sovereignProbe).not.toContain('"https://api.pirate.sc/public-namespaces/")');
     expect(sovereignProbe).toContain("--write-out '%{http_code}'");
     expect(sovereignProbe).toContain('if [[ "$namespace_status" != "200" ]]');
+    expect(sovereignProbe).not.toContain("HNS_PROBE_ALLOW_EMPTY_INVENTORY");
+    expect(sovereignProbe).toContain("validating the pinned imported-root routing fixture directly");
   });
 
   test("checks all four reciprocal navigation edges for every activated root", () => {

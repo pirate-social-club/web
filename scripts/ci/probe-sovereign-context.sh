@@ -143,17 +143,15 @@ for (const namespace of body.namespaces ?? []) {
 NODE
 )
 
-if (( ${#namespace_rows[@]} == 0 )); then
-  if [[ "${HNS_PROBE_ALLOW_EMPTY_INVENTORY:-false}" == "true" ]]; then
-    echo "public namespace inventory is empty; no activated HNS root is available for this release probe" >&2
-    exit 0
-  fi
-  echo "public namespace inventory is empty" >&2
-  exit 1
-fi
-
 inventory_has_probe_root=false
-for row in "${namespace_rows[@]}"; do
+# When the inventory is empty, the pinned imported-root assertions below are
+# still fail-closed because the gateway resolves the root through
+# /public-namespaces/:root before proxying apex or app.<root>. Keep that
+# dependency explicit if gateway routing changes in the future.
+if (( ${#namespace_rows[@]} == 0 )); then
+  echo "public namespace inventory is empty; validating the pinned imported-root routing fixture directly" >&2
+else
+  for row in "${namespace_rows[@]}"; do
   IFS=$'\t' read -r root community_id route_slug encoded_route_slug <<< "$row"
   if [[ "$root" == "$HNS_PROBE_ROOT" && "$community_id" == "$HNS_PROBE_COMMUNITY_ID" ]]; then
     inventory_has_probe_root=true
@@ -204,11 +202,12 @@ for row in "${namespace_rows[@]}"; do
     "$community_id" "$root_apex_status" "$root_apex_cache_control" "$root_apex_cdn_cache_control" \
     "${root_apex_cache_tag:-none}" "${root_apex_cf_cache_status:-none}" "${root_apex_age:-none}" \
     "${root_apex_cf_ray:-none}" "$app_status" "$app_threads_status"
-done
+  done
 
-if [[ "$inventory_has_probe_root" != true ]]; then
-  echo "pinned probe root is missing from the activated namespace inventory" >&2
-  exit 1
+  if [[ "$inventory_has_probe_root" != true ]]; then
+    echo "pinned probe root is missing from the activated namespace inventory" >&2
+    exit 1
+  fi
 fi
 
 for unknown_origin in "https://hns-probe-unknown-root" "https://app.hns-probe-unknown-root"; do

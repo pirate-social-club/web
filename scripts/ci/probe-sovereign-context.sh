@@ -44,7 +44,7 @@ request_status() {
 request_redirect_status() {
   local host="$1"
   local path="$2"
-  local headers_file="$3"
+  local headers_file="${3:-/dev/null}"
   curl "${curl_args[@]}" \
     --resolve "${host}:443:${HNS_PROBE_GATEWAY_IP}" \
     --dump-header "$headers_file" \

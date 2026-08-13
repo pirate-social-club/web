@@ -1,0 +1,188 @@
+name: Provider identity evidence repair
+
+on:
+  workflow_dispatch:
+    inputs:
+      decision_ref:
+        description: Reviewed decision/reference for this one-shot repair
+        required: true
+        type: string
+      mode:
+        description: Dry-run first; execute only after reviewing the uploaded snapshot
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - execute
+
+concurrency:
+  group: provider-identity-evidence-repair-production
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Reconcile provider identity evidence (read-only or approved write)
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
+    # This must match the Web production identity's Infisical OIDC subject.
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      # The repair implementation is owned by Core. Keep this one-time
+      # workflow pinned to the reviewed Core commit instead of changing Web's
+      # runtime release pin just to run maintenance.
+      REPAIR_CORE_SHA: 5d66b345669ab6299312959b34abebcf690ac0e6
+    steps:
+      - name: Require main branch dispatch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Dispatch this repair from Web main only."
+            exit 1
+          fi
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: web
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/core
+          ref: ${{ env.REPAIR_CORE_SHA }}
+          path: core
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+
+      - name: Validate reviewed inputs and Web identity
+        shell: bash
+        env:
+          DECISION_REF: ${{ inputs.decision_ref }}
+          INFISICAL_IDENTITY_ID: ${{ vars.INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID }}
+        run: |
+          set -euo pipefail
+          [[ "$DECISION_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{2,159}$ ]] || {
+            echo "::error::decision_ref has an invalid format"
+            exit 1
+          }
+          [[ "$INFISICAL_IDENTITY_ID" =~ ^[0-9a-fA-F-]{36}$ ]] || {
+            echo "::error::INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID must be a UUID"
+            exit 1
+          }
+
+      - name: Fetch production control-plane credential through Web OIDC
+        id: fetch_secrets
+        working-directory: core
+        env:
+          INFISICAL_IDENTITY_ID: ${{ vars.INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID }}
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_ENV: prod
+          INFISICAL_SECRET_PATH: /services/api
+          SECRET_NAMES: CONTROL_PLANE_DATABASE_URL
+        run: scripts/ci/fetch-infisical-secrets.sh
+
+      - name: Normalize database URL for Bun
+        id: normalize_url
+        if: steps.fetch_secrets.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="$(node -e "const raw=process.env.CONTROL_PLANE_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
+          {
+            echo "CONTROL_PLANE_DATABASE_URL_BUN<<EOF"
+            echo "$url"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Run read-only before audit
+        id: before_audit
+        if: steps.normalize_url.outcome == 'success'
+        working-directory: core
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/control-plane/audit-provider-identity-evidence.ts \
+            --database-url-env CONTROL_PLANE_DATABASE_URL_BUN \
+            > "$GITHUB_WORKSPACE/provider-identity-evidence-before.json"
+
+      - name: Run reviewed reconciliation
+        if: steps.before_audit.outcome == 'success'
+        working-directory: core
+        env:
+          DECISION_REF: ${{ inputs.decision_ref }}
+          REPAIR_MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          args=(
+            scripts/control-plane/provider-identity-evidence-repair.ts
+            --database-url-env CONTROL_PLANE_DATABASE_URL_BUN
+            --audit-before-file "$GITHUB_WORKSPACE/provider-identity-evidence-before.json"
+            --snapshot-file "$GITHUB_WORKSPACE/provider-identity-evidence-repair-snapshot.json"
+            --decision-ref "$DECISION_REF"
+          )
+          if [[ "$REPAIR_MODE" == "execute" ]]; then
+            args+=(--execute --confirm-repair provider-identity-evidence)
+          fi
+          bun "${args[@]}"
+
+      - name: Run read-only after audit
+        if: always() && steps.before_audit.outcome == 'success'
+        working-directory: core
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/control-plane/audit-provider-identity-evidence.ts \
+            --database-url-env CONTROL_PLANE_DATABASE_URL_BUN \
+            > "$GITHUB_WORKSPACE/provider-identity-evidence-after.json"
+
+      - name: Require clean post-repair audit
+        if: always() && inputs.mode == 'execute' && steps.before_audit.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - "$GITHUB_WORKSPACE/provider-identity-evidence-after.json" <<'NODE'
+          const fs = require("node:fs");
+          const report = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const sum = (rows, key) => rows.reduce((total, row) => total + Number(row[key] ?? 0), 0);
+          const duplicate = report.duplicate_active_attestations ?? [];
+          const crossProvider = report.cross_provider_document_values ?? [];
+          const documentLinks = report.document_nullifier_links ?? [];
+          const uniqueHumanLinks = report.unique_human_nullifier_links ?? [];
+          const lifecycle = report.lifecycle_anomalies ?? [];
+          const failures = {
+            duplicate_groups: sum(duplicate, "duplicate_groups"),
+            duplicate_rows: sum(duplicate, "duplicate_rows"),
+            conflicting_groups: sum(duplicate, "conflicting_groups"),
+            cross_provider_conflicts: sum(crossProvider, "conflicting_value_users"),
+            document_unbound: sum(documentLinks, "unbound"),
+            document_dangling: sum(documentLinks, "dangling"),
+            document_inactive: sum(documentLinks, "inactive_nullifier"),
+            document_mismatch: sum(documentLinks, "ownership_or_provider_mismatch"),
+            unique_human_missing: sum(uniqueHumanLinks, "missing_nullifier"),
+            unique_human_inactive: sum(uniqueHumanLinks, "inactive_nullifier"),
+            unique_human_mismatch: sum(uniqueHumanLinks, "ownership_or_provider_mismatch"),
+            accepted_past_expiry: sum(lifecycle, "accepted_past_expiry"),
+          };
+          const nonzero = Object.fromEntries(Object.entries(failures).filter(([, value]) => value !== 0));
+          if (Object.keys(nonzero).length > 0) {
+            console.error("Post-repair audit is not clean:", JSON.stringify(nonzero));
+            process.exit(1);
+          }
+          console.log("Post-repair audit is clean: all constraint-readiness counts are zero.");
+          NODE
+
+      - name: Upload repair evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: provider-identity-evidence-repair-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            provider-identity-evidence-before.json
+            provider-identity-evidence-after.json
+            provider-identity-evidence-repair-snapshot.json
+          if-no-files-found: warn
+          retention-days: 14

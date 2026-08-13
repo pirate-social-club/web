@@ -1,6 +1,9 @@
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
-import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
+import type {
+  CrosspostSourcePreview,
+  PostCardProps,
+} from "@/components/compositions/posts/post-card/post-card.types";
 import { buildCommunityPath } from "@/lib/community-routing";
 import type {
   LiveRoomPresentationOptions,
@@ -14,6 +17,19 @@ import {
   toVideoPostContent,
 } from "@/app/authenticated-helpers/post-media-presentation";
 import { resolveTranslatedTextPresentation } from "@/app/authenticated-helpers/post-translation-presentation";
+
+function renderableCrosspostSourcePostType(
+  value: unknown,
+): CrosspostSourcePreview["postType"] {
+  return value === "text"
+    || value === "image"
+    || value === "video"
+    || value === "link"
+    || value === "song"
+    || value === "live_room"
+    ? value
+    : undefined;
+}
 
 export function toCommunityPostContent(
   postResponse: ApiPost,
@@ -77,7 +93,7 @@ export function toCommunityPostContent(
           communityHref: source?.community ? buildCommunityPath(source.community, source.community_route_slug ?? undefined) : undefined,
           authorLabel: source?.author_label ?? undefined,
           postHref: source?.post ? `/p/${source.post}` : undefined,
-          postType: source?.post_type ?? undefined,
+          postType: renderableCrosspostSourcePostType(source?.post_type),
           thumbnailAlt: source?.title ?? undefined,
           thumbnailSrc: source?.thumbnail_ref ?? undefined,
           contentSafetyState: source?.content_safety_state ?? undefined,

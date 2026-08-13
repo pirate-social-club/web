@@ -34,7 +34,7 @@ jobs:
       # The repair implementation is owned by Core. Keep this one-time
       # workflow pinned to the reviewed Core commit instead of changing Web's
       # runtime release pin just to run maintenance.
-      REPAIR_CORE_SHA: 5d66b345669ab6299312959b34abebcf690ac0e6
+      REPAIR_CORE_SHA: 4f6e68ed0ee5ff0ef33b39b2d3c4f055d704c9b9
     steps:
       - name: Require main branch dispatch
         shell: bash
@@ -149,6 +149,12 @@ jobs:
           const report = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
           const sum = (rows, key) => rows.reduce((total, row) => total + Number(row[key] ?? 0), 0);
           const duplicate = report.duplicate_active_attestations ?? [];
+          const sessionRows = report.duplicate_session_attestations ?? [];
+          if (sessionRows.some((row) => typeof row.status !== "string")) {
+            console.error("Session-duplicate audit rows must include lifecycle status.");
+            process.exit(1);
+          }
+          const sessionDuplicates = sessionRows.filter((row) => row.status === "accepted");
           const crossProvider = report.cross_provider_document_values ?? [];
           const documentLinks = report.document_nullifier_links ?? [];
           const uniqueHumanLinks = report.unique_human_nullifier_links ?? [];
@@ -157,6 +163,8 @@ jobs:
             duplicate_groups: sum(duplicate, "duplicate_groups"),
             duplicate_rows: sum(duplicate, "duplicate_rows"),
             conflicting_groups: sum(duplicate, "conflicting_groups"),
+            duplicate_session_groups: sum(sessionDuplicates, "duplicate_session_groups"),
+            duplicate_session_rows: sum(sessionDuplicates, "duplicate_rows"),
             cross_provider_conflicts: sum(crossProvider, "conflicting_value_users"),
             document_unbound: sum(documentLinks, "unbound"),
             document_dangling: sum(documentLinks, "dangling"),
@@ -165,7 +173,9 @@ jobs:
             unique_human_missing: sum(uniqueHumanLinks, "missing_nullifier"),
             unique_human_inactive: sum(uniqueHumanLinks, "inactive_nullifier"),
             unique_human_mismatch: sum(uniqueHumanLinks, "ownership_or_provider_mismatch"),
+            accepted_without_verified_at: sum(lifecycle, "accepted_without_verified_at"),
             accepted_past_expiry: sum(lifecycle, "accepted_past_expiry"),
+            revoked_without_revoked_at: sum(lifecycle, "revoked_without_revoked_at"),
           };
           const nonzero = Object.fromEntries(Object.entries(failures).filter(([, value]) => value !== 0));
           if (Object.keys(nonzero).length > 0) {

@@ -69,7 +69,15 @@ plan:
 
       import_bun_cache karaoke-runtime
       cd /ci/src/packages/karaoke-runtime
-      "$bun" install --frozen-lockfile --ignore-scripts --prefer-offline --cache-dir "$cache"
-      "$bun" run test
-      "$bun" run types
-      "$bun" run lint:imports
+      echo '==> bun install'
+      timeout --foreground 15m "$bun" install --frozen-lockfile --ignore-scripts --prefer-offline --cache-dir "$cache"
+      echo '<== bun install'
+      echo '==> test'
+      timeout --foreground 20m "$bun" run test
+      echo '<== test'
+      echo '==> types'
+      timeout --foreground 15m "$bun" run types
+      echo '<== types'
+      echo '==> lint:imports'
+      timeout --foreground 5m "$bun" run lint:imports
+      echo '<== lint:imports'

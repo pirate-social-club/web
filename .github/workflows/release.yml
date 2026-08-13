@@ -655,15 +655,30 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
         run: |
-          bun core/scripts/community/verify-community-schema-requirements.ts \
-            --requirements api/services/api/community-schema-requirements.json \
-            --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
-            --migrations-dir core/db/community-template/migrations \
-            --drift-policy core/db/known-community-migration-drifts.json \
-            --canonical-baseline api/services/api/docs/attestations/community-schema/staging-canonical-baseline.json \
-            --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
-            --publish-attestations \
-            --concurrency 1
+          set +e
+          attempt=1
+          while true; do
+            log_path="$GITHUB_WORKSPACE/schema-gate-attempt-${attempt}.log"
+            bun core/scripts/community/verify-community-schema-requirements.ts \
+              --requirements api/services/api/community-schema-requirements.json \
+              --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
+              --migrations-dir core/db/community-template/migrations \
+              --drift-policy core/db/known-community-migration-drifts.json \
+              --canonical-baseline api/services/api/docs/attestations/community-schema/staging-canonical-baseline.json \
+              --manifest "$GITHUB_WORKSPACE/schema-gate-staging.json" \
+              --publish-attestations \
+              --concurrency 1 2>&1 | tee "$log_path"
+            status=${PIPESTATUS[0]}
+            if [ "$status" -eq 0 ]; then
+              break
+            fi
+            if [ "$attempt" -ge 2 ] || ! grep -Eiq 'code[=:][[:space:]]*(7009|7500)' "$log_path"; then
+              exit "$status"
+            fi
+            echo "::warning::Transient D1 upstream error detected; retrying the schema gate once."
+            sleep 15
+            attempt=$((attempt + 1))
+          done
       - name: Export authoritative staging schema-policy digest
         id: schema-policy
         shell: bash

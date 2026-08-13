@@ -12,8 +12,35 @@ export type HnsForwarderNegativeProbeOptions = {
   apiBaseUrl: string;
   fetchImpl?: FetchLike;
   rootLabel: string;
+  sleepImpl?: (milliseconds: number) => Promise<void>;
   webBaseUrl: string;
 };
+
+const PUBLIC_NAMESPACE_ATTEMPTS = 4;
+const PUBLIC_NAMESPACE_RETRY_DELAY_MS = 1_000;
+
+function retryableNamespaceStatus(status: number): boolean {
+  return status === 404 || status === 429 || status >= 500;
+}
+
+async function fetchPublicNamespace(
+  fetchImpl: FetchLike,
+  namespaceUrl: URL,
+  sleepImpl: (milliseconds: number) => Promise<void>,
+): Promise<Response> {
+  let response: Response | null = null;
+  for (let attempt = 1; attempt <= PUBLIC_NAMESPACE_ATTEMPTS; attempt += 1) {
+    response = await fetchImpl(namespaceUrl, {
+      headers: { accept: "application/json" },
+      method: "GET",
+    });
+    if (response.ok || !retryableNamespaceStatus(response.status)) return response;
+    if (attempt < PUBLIC_NAMESPACE_ATTEMPTS) {
+      await sleepImpl(PUBLIC_NAMESPACE_RETRY_DELAY_MS * attempt);
+    }
+  }
+  return response as Response;
+}
 
 function requiredString(value: unknown, label: string): string {
   if (typeof value !== "string" || !value.trim()) {
@@ -65,10 +92,11 @@ export async function verifyHnsForwarderNegativeProbe(
     `/public-namespaces/${encodeURIComponent(options.rootLabel)}`,
     options.apiBaseUrl,
   );
-  const namespaceResponse = await fetchImpl(namespaceUrl, {
-    headers: { accept: "application/json" },
-    method: "GET",
-  });
+  const namespaceResponse = await fetchPublicNamespace(
+    fetchImpl,
+    namespaceUrl,
+    options.sleepImpl ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds))),
+  );
   if (!namespaceResponse.ok) {
     throw new Error(`public namespace lookup returned HTTP ${namespaceResponse.status}`);
   }

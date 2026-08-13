@@ -42,6 +42,47 @@ function fetchFixture(malformedStatus: 200 | 403 = 403): typeof fetch {
 }
 
 describe("HNS forwarder negative probe", () => {
+  test("retries a transient missing public namespace before exercising forged requests", async () => {
+    const sleepCalls: number[] = [];
+    let namespaceCalls = 0;
+    const fixture = fetchFixture();
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/public-namespaces/")) {
+        namespaceCalls += 1;
+        if (namespaceCalls < 3) return new Response("missing", { status: 404 });
+      }
+      return fixture(input, init);
+    }) as typeof fetch;
+
+    await expect(verifyHnsForwarderNegativeProbe({
+      apiBaseUrl: "https://api.pirate.sc",
+      fetchImpl,
+      rootLabel,
+      sleepImpl: async (milliseconds) => { sleepCalls.push(milliseconds); },
+      webBaseUrl: "https://pirate.sc",
+    })).resolves.toEqual({ malformedStatus: 403, unsignedStatus: 200 });
+
+    expect(namespaceCalls).toBe(3);
+    expect(sleepCalls).toEqual([1_000, 2_000]);
+  });
+
+  test("bounds retries when the public namespace remains missing", async () => {
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls += 1;
+      return new Response("missing", { status: 404 });
+    }) as typeof fetch;
+
+    await expect(verifyHnsForwarderNegativeProbe({
+      apiBaseUrl: "https://api.pirate.sc",
+      fetchImpl,
+      rootLabel,
+      sleepImpl: async () => undefined,
+      webBaseUrl: "https://pirate.sc",
+    })).rejects.toThrow("public namespace lookup returned HTTP 404");
+    expect(calls).toBe(4);
+  });
+
   test("requires unsigned client context to remain canonical and malformed HMAC to fail closed", async () => {
     await expect(verifyHnsForwarderNegativeProbe({
       apiBaseUrl: "https://api.pirate.sc",

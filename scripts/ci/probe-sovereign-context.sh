@@ -13,8 +13,9 @@ canonical_threads_html_file="$(mktemp)"
 inventory_apex_html_file="$(mktemp)"
 inventory_app_html_file="$(mktemp)"
 inventory_apex_headers_file="$(mktemp)"
+apex_redirect_headers_file="$(mktemp)"
 namespace_file="$(mktemp)"
-trap 'rm -f "$html_file" "$app_html_file" "$canonical_html_file" "$canonical_threads_html_file" "$inventory_apex_html_file" "$inventory_app_html_file" "$inventory_apex_headers_file" "$namespace_file"' EXIT
+trap 'rm -f "$html_file" "$app_html_file" "$canonical_html_file" "$canonical_threads_html_file" "$inventory_apex_html_file" "$inventory_app_html_file" "$inventory_apex_headers_file" "$apex_redirect_headers_file" "$namespace_file"' EXIT
 
 # Public PKI cannot validate a DANE-only HNS certificate. --insecure disables
 # only that mismatched trust model; --resolve still exercises the real Caddy →
@@ -221,7 +222,7 @@ for unknown_origin in "https://hns-probe-unknown-root" "https://app.hns-probe-un
 done
 
 encoded_probe_route_slug="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]).replace(/^%40/u, "@"))' "$HNS_PROBE_ROUTE_SLUG")"
-apex_redirect="$(request_redirect_status "$HNS_PROBE_ROOT" "/")"
+apex_redirect="$(request_redirect_status "$HNS_PROBE_ROOT" "/" "$apex_redirect_headers_file")"
 apex_status="${apex_redirect%%$'\t'*}"
 apex_location="${apex_redirect#*$'\t'}"
 expected_apex_location="https://app.${HNS_PROBE_ROOT}/c/${encoded_probe_route_slug}/threads"

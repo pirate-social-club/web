@@ -57,6 +57,31 @@ describe("sovereign production context workflow", () => {
     expect(sovereignProbe).toContain("--canonical-threads-html");
   });
 
+  // `request_redirect_status` binds `$3` to a headers file. The script runs under
+  // `set -u`, so a call site that omits it aborts the probe with "unbound variable"
+  // instead of asserting anything — which silently disarms this security control
+  // until someone reads the job's step detail.
+  test("passes a headers file to every redirect probe call", () => {
+    const invocations = [...sovereignProbe.matchAll(/request_redirect_status((?:\s+"[^"]*")+)/gu)];
+
+    expect(invocations.length).toBeGreaterThanOrEqual(2);
+    for (const [, args] of invocations) {
+      expect(args.match(/"[^"]*"/gu)).toHaveLength(3);
+    }
+  });
+
+  // Every mktemp'd file must be removed on exit; a probe that leaks temp files on
+  // the 6-hour cron accumulates them on the runner.
+  test("cleans up every temporary file it creates", () => {
+    const created = [...sovereignProbe.matchAll(/^(\w+)="\$\(mktemp\)"$/gmu)].map(([, name]) => name);
+    const trapLine = sovereignProbe.split("\n").find((line) => line.startsWith("trap "));
+
+    expect(created.length).toBeGreaterThan(0);
+    for (const name of created) {
+      expect(trapLine).toContain(`"$${name}"`);
+    }
+  });
+
   test("fails when a sovereign redirect becomes cacheable", () => {
     expect(probe).toContain('root_apex_cache_control" != "no-store"');
     expect(probe).toContain('root_apex_cdn_cache_control" != "no-store"');

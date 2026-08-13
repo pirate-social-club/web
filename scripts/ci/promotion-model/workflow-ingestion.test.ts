@@ -6,6 +6,12 @@ import {
   type ObservedWorkflowRun,
 } from "./workflow-ingestion";
 
+function gateName(id: string): string {
+  const gate = REQUIRED_GATES.find((candidate) => candidate.id === id);
+  if (!gate) throw new Error(`missing test gate: ${id}`);
+  return gate.jobName;
+}
+
 const RUN: ObservedWorkflowRun = {
   id: 123,
   run_attempt: 2,
@@ -55,7 +61,7 @@ describe("promotion shadow workflow ingestion", () => {
     const jobs = [
       {
         id: 1,
-        name: REQUIRED_GATES[0].jobName,
+        name: gateName("release_inputs"),
         status: "completed",
         conclusion: "success",
         started_at: "2026-07-29T11:55:00Z",
@@ -63,7 +69,7 @@ describe("promotion shadow workflow ingestion", () => {
       },
       {
         id: 2,
-        name: REQUIRED_GATES[1].jobName,
+        name: gateName("schema_gate"),
         status: "completed",
         conclusion: "failure",
         started_at: "2026-07-29T11:56:00Z",
@@ -71,7 +77,7 @@ describe("promotion shadow workflow ingestion", () => {
       },
       {
         id: 3,
-        name: `${REQUIRED_GATES[2].jobName} / Required staging API contracts`,
+        name: `${gateName("api_staging_contract_gate")} / Required staging API contracts`,
         status: "completed",
         conclusion: "timed_out",
         started_at: "2026-07-29T11:57:00Z",
@@ -79,7 +85,7 @@ describe("promotion shadow workflow ingestion", () => {
       },
       {
         id: 4,
-        name: REQUIRED_GATES[3].jobName,
+        name: gateName("hns_forwarder_negative_probe"),
         status: "completed",
         conclusion: "skipped",
         started_at: "2026-07-29T11:59:00Z",
@@ -93,13 +99,13 @@ describe("promotion shadow workflow ingestion", () => {
       coreSha: "core",
       store,
     });
-    expect(report).toMatchObject({ attempts: 3, observations: 2, duplicates: 0 });
+    expect(report).toMatchObject({ attempts: 3, observations: 3, duplicates: 0 });
     expect(store.attempts.map((entry: any) => entry.result)).toEqual([
       "pass",
       "fail",
       "inconclusive",
     ]);
-    expect(store.observations.map((entry: any) => entry.observation)).toEqual(["skipped", "absent"]);
+    expect(store.observations.map((entry: any) => entry.observation)).toEqual(["absent", "skipped", "absent"]);
     expect(store.attempts.every((entry: any) => entry.sourceRunAttempt === 2)).toBe(true);
   });
 

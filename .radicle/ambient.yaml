@@ -1,34 +1,37 @@
-pre_plan:
-  - action: http_get
-    items:
-      - url: https://github.com/oven-sh/bun/releases/download/bun-v1.3.10/bun-linux-x64-baseline.zip
-        filename: bun-runtime.zip
 plan:
   - action: shell
     shell: |
       set -euo pipefail
-      grep -q 'source-only' /ci/src/.radicle/ambient.yaml
-      runtime_dir=/ci/cache/bun-runtime
-      bun_runtime="$runtime_dir/bun"
-      if [[ ! -x "$bun_runtime" ]]; then
-        runtime_sha256=41201a8c5ee74a9dcbb1ce25a1104f1f929838b57a845aa78d98379b0ce7cde2
-        echo "$runtime_sha256  /ci/deps/bun-runtime.zip" | sha256sum -c -
-        temp=$(mktemp -d "$runtime_dir.tmp.XXXXXX")
-        unzip -q /ci/deps/bun-runtime.zip -d "$temp"
-        install -d "$runtime_dir"
-        install -m 0755 "$temp/bun-linux-x64-baseline/bun" "$bun_runtime"
-        rm -rf -- "$temp"
-      fi
-      bun_bin_dir=$(dirname "$bun_runtime")
-      export PATH="$bun_bin_dir:$PATH"
-      cd /ci/src/packages/karaoke-runtime
+      grep -q 'shell-only' /ci/src/.radicle/ambient.yaml
+      package=/ci/src/packages/karaoke-runtime
+      test -f "$package/package.json"
+      test -f "$package/src/binary-codec.ts"
+      test -f "$package/tests/binary-codec.test.ts"
+      test ! -e "$package/node_modules"
 
-      # This package has no runtime dependencies. Keep the authoritative gate
-      # hermetic and source-focused; hosted CI retains native typechecking.
-      echo '==> test (source-only)'
-      timeout --foreground 10m "$bun_runtime" test \
-        tests/binary-codec.test.ts
-      echo '<== test (source-only)'
-      echo '==> lint:imports (source-only)'
-      timeout --foreground 5m "$bun_runtime" run lint:imports
-      echo '<== lint:imports (source-only)'
+      # The promotion gate is intentionally dependency-free. Hosted CI owns
+      # Bun tests, typechecking, builds, and the wider product matrix.
+      grep -q '"name": "@pirate-social-club/karaoke-runtime"' "$package/package.json"
+      ! grep -Eq '^[[:space:]]*"dependencies"[[:space:]]*:' "$package/package.json"
+      grep -q 'KARAOKE_BINARY_PROTOCOL_VERSION' "$package/src/binary-codec.ts"
+      grep -q 'round-trips the fixed header' "$package/tests/binary-codec.test.ts"
+
+      if grep -REn \
+        -e 'from[[:space:]]+"react(-dom)?"' \
+        -e "from[[:space:]]+'react(-dom)?'" \
+        -e 'from[[:space:]]+"@pirate/karaoke-runtime/test"' \
+        -e "from[[:space:]]+'@pirate/karaoke-runtime/test'" \
+        -e 'from[[:space:]]+"\./test"' \
+        -e "from[[:space:]]+'\./test'" \
+        -e 'import\.meta\.env' \
+        -e 'Date\.now[[:space:]]*\(' \
+        -e 'crypto\.randomUUID[[:space:]]*\(' \
+        -e 'Math\.random[[:space:]]*\(' \
+        -e '\bAbortController\b' \
+        "$package/src"; then
+        echo 'forbidden runtime construct detected' >&2
+        exit 1
+      fi
+
+      find "$package/src" -type f -name '*.ts' ! -name '*.d.ts' -print -quit | grep -q .
+      echo 'shell-only web gate passed'

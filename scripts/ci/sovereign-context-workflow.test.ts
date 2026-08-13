@@ -64,4 +64,8 @@ describe("sovereign production context workflow", () => {
     expect(probe).toContain('root_apex_cf_cache_status');
     expect(probe).toContain('root_apex_cf_ray');
   });
+
+  test("allows the final redirect probe to omit a headers output path", () => {
+    expect(probe).toContain('local headers_file="${3:-/dev/null}"');
+  });
 });

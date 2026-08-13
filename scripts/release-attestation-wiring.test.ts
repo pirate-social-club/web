@@ -50,6 +50,19 @@ describe("release attestation wiring", () => {
     expect(manualGate).not.toContain("EXPECTED_RELEASE_ID: ${{ needs.release-inputs.outputs.release_id }}");
   });
 
+  test("passes both staging contract-gate credentials to the reusable workflow", () => {
+    const contractGate = releaseWorkflow.slice(
+      releaseWorkflow.indexOf("api-staging-contract-gate:"),
+      releaseWorkflow.indexOf("hns-forwarder-negative-probe:"),
+    );
+    expect(contractGate).toContain(
+      "AUTH_UPSTREAM_JWT_SHARED_SECRET: ${{ secrets.AUTH_UPSTREAM_JWT_SHARED_SECRET }}",
+    );
+    expect(contractGate).toContain(
+      "PIRATE_ADMIN_TOKEN: ${{ secrets.PIRATE_ADMIN_TOKEN }}",
+    );
+  });
+
   test("keeps full commit identity separate from hotfix content", () => {
     expect(releaseSource).toContain('git -C "$1" rev-parse HEAD');
     expect(releaseSource).not.toContain("rev-parse --short HEAD");

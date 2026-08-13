@@ -19,3 +19,14 @@ export function resolveSovereignApexRedirect(input: {
   }
   return target.toString();
 }
+
+export function sovereignApexRedirectResponse(location: string): Response {
+  return new Response(null, {
+    headers: {
+      "cache-control": "no-store",
+      "cdn-cache-control": "no-store",
+      location,
+    },
+    status: 307,
+  });
+}

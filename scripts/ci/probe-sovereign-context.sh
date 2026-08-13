@@ -12,8 +12,9 @@ canonical_html_file="$(mktemp)"
 canonical_threads_html_file="$(mktemp)"
 inventory_apex_html_file="$(mktemp)"
 inventory_app_html_file="$(mktemp)"
+inventory_apex_headers_file="$(mktemp)"
 namespace_file="$(mktemp)"
-trap 'rm -f "$html_file" "$app_html_file" "$canonical_html_file" "$canonical_threads_html_file" "$inventory_apex_html_file" "$inventory_app_html_file" "$namespace_file"' EXIT
+trap 'rm -f "$html_file" "$app_html_file" "$canonical_html_file" "$canonical_threads_html_file" "$inventory_apex_html_file" "$inventory_app_html_file" "$inventory_apex_headers_file" "$namespace_file"' EXIT
 
 # Public PKI cannot validate a DANE-only HNS certificate. --insecure disables
 # only that mismatched trust model; --resolve still exercises the real Caddy →
@@ -43,11 +44,27 @@ request_status() {
 request_redirect_status() {
   local host="$1"
   local path="$2"
+  local headers_file="$3"
   curl "${curl_args[@]}" \
     --resolve "${host}:443:${HNS_PROBE_GATEWAY_IP}" \
+    --dump-header "$headers_file" \
     --output /dev/null \
     --write-out $'%{http_code}\t%{redirect_url}' \
     "https://${host}${path}"
+}
+
+response_header_value() {
+  local headers_file="$1"
+  local header_name="$2"
+  awk -v header_name="$header_name" '
+    BEGIN { IGNORECASE=1 }
+    $0 ~ "^" header_name ":" {
+      sub(/^[^:]*:[[:space:]]*/, "");
+      gsub(/\r/, "");
+      value=$0
+    }
+    END { print value }
+  ' "$headers_file"
 }
 
 public_request_status() {
@@ -137,9 +154,15 @@ for row in "${namespace_rows[@]}"; do
     inventory_has_probe_root=true
   fi
 
-  root_apex_redirect="$(request_redirect_status "$root" "/")"
+  root_apex_redirect="$(request_redirect_status "$root" "/" "$inventory_apex_headers_file")"
   root_apex_status="${root_apex_redirect%%$'\t'*}"
   root_apex_location="${root_apex_redirect#*$'\t'}"
+  root_apex_cache_control="$(response_header_value "$inventory_apex_headers_file" "cache-control")"
+  root_apex_cdn_cache_control="$(response_header_value "$inventory_apex_headers_file" "cdn-cache-control")"
+  root_apex_cache_tag="$(response_header_value "$inventory_apex_headers_file" "cache-tag")"
+  root_apex_cf_cache_status="$(response_header_value "$inventory_apex_headers_file" "cf-cache-status")"
+  root_apex_age="$(response_header_value "$inventory_apex_headers_file" "age")"
+  root_apex_cf_ray="$(response_header_value "$inventory_apex_headers_file" "cf-ray")"
   app_host="app.${root}"
   app_status="$(request_status "$app_host" "/" "$inventory_app_html_file")"
   app_threads_status="$(request_status "$app_host" "/c/${encoded_route_slug}/threads" "$inventory_apex_html_file")"
@@ -149,9 +172,11 @@ for row in "${namespace_rows[@]}"; do
   expected_apex_location="https://${app_host}/c/${encoded_route_slug}/threads"
 
   if [[ "$root_apex_status" != "307" || "$root_apex_location" != "$expected_apex_location" \
+    || "$root_apex_cache_control" != "no-store" || "$root_apex_cdn_cache_control" != "no-store" \
+    || -n "$root_apex_cache_tag" \
     || "$app_status" != "200" || "$app_threads_status" != "200" \
     || "$app_cors_status" != "200" || "$app_cors_origin" != "https://${app_host}" ]]; then
-    echo "HNS app routing failed: root=${root} apex=${root_apex_status}/${root_apex_location:-none} app=${app_status} threads=${app_threads_status} app_cors=${app_cors_status}/${app_cors_origin:-none}" >&2
+    echo "HNS app routing failed: root=${root} apex=${root_apex_status}/${root_apex_location:-none} cache_control=${root_apex_cache_control:-none} cdn_cache_control=${root_apex_cdn_cache_control:-none} cache_tag=${root_apex_cache_tag:-none} cf_cache_status=${root_apex_cf_cache_status:-none} age=${root_apex_age:-none} cf_ray=${root_apex_cf_ray:-none} app=${app_status} threads=${app_threads_status} app_cors=${app_cors_status}/${app_cors_origin:-none}" >&2
     exit 1
   fi
 
@@ -170,8 +195,10 @@ for row in "${namespace_rows[@]}"; do
     --root "$root" \
     --community-id "$community_id" \
     --route-slug "$route_slug"
-  printf 'community_id=%s apex_redirect=%s app=%s threads=%s cors=ok navigation=ok\n' \
-    "$community_id" "$root_apex_status" "$app_status" "$app_threads_status"
+  printf 'community_id=%s apex_redirect=%s cache_control=%s cdn_cache_control=%s cache_tag=%s cf_cache_status=%s age=%s cf_ray=%s app=%s threads=%s cors=ok navigation=ok\n' \
+    "$community_id" "$root_apex_status" "$root_apex_cache_control" "$root_apex_cdn_cache_control" \
+    "${root_apex_cache_tag:-none}" "${root_apex_cf_cache_status:-none}" "${root_apex_age:-none}" \
+    "${root_apex_cf_ray:-none}" "$app_status" "$app_threads_status"
 done
 
 if [[ "$inventory_has_probe_root" != true ]]; then

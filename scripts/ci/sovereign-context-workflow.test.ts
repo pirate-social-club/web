@@ -4,6 +4,7 @@ import { parse } from "yaml";
 
 const release = parse(readFileSync(".github/workflows/release.yml", "utf8"));
 const observer = parse(readFileSync(".github/workflows/prod-version-gap.yml", "utf8"));
+const probe = readFileSync("scripts/ci/probe-sovereign-context.sh", "utf8");
 const sovereignProbe = readFileSync("scripts/ci/probe-sovereign-context.sh", "utf8");
 
 describe("sovereign production context workflow", () => {
@@ -49,5 +50,13 @@ describe("sovereign production context workflow", () => {
     expect(sovereignProbe).toContain('"/c/${encoded_route_slug}/videos"');
     expect(sovereignProbe).toContain("--navigation-only");
     expect(sovereignProbe).toContain("--canonical-threads-html");
+  });
+
+  test("fails when a sovereign redirect becomes cacheable", () => {
+    expect(probe).toContain('root_apex_cache_control" != "no-store"');
+    expect(probe).toContain('root_apex_cdn_cache_control" != "no-store"');
+    expect(probe).toContain('-n "$root_apex_cache_tag"');
+    expect(probe).toContain('root_apex_cf_cache_status');
+    expect(probe).toContain('root_apex_cf_ray');
   });
 });

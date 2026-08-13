@@ -8,7 +8,10 @@ import { LegalDocumentPage } from "@/components/legal/legal-document-page";
 import { Document } from "@/app/document";
 import { communityLandingRedirectResponse } from "@/app/community-landing-redirect";
 import { matchRoute, matchRouteWithImportedRootCommunity } from "@/app/router";
-import { resolveSovereignApexRedirect } from "@/app/sovereign-origin-redirect";
+import {
+  resolveSovereignApexRedirect,
+  sovereignApexRedirectResponse,
+} from "@/app/sovereign-origin-redirect";
 import { resolveSurfaceNavigationHref } from "@/app/surface-navigation-contract";
 import { isPostOutsideSovereignScope, mustFailClosedOnSovereignScopeError } from "@/app/sovereign-route-scope";
 import { PRIVACY_POLICY_SOURCE } from "@/legal/privacy-policy";
@@ -481,13 +484,7 @@ const app = defineApp<AppRequestInfo>([
       effectiveUrl,
     });
     if (sovereignApexRedirect) {
-      return new Response(null, {
-        headers: {
-          "cache-control": "no-store",
-          location: sovereignApexRedirect,
-        },
-        status: 307,
-      });
+      return sovereignApexRedirectResponse(sovereignApexRedirect);
     }
     const route = matchRouteWithImportedRootCommunity(
       url.pathname,

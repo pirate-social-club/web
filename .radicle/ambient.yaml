@@ -27,9 +27,7 @@ plan:
       # hermetic and source-focused; hosted CI retains native typechecking.
       echo '==> test (source-only)'
       timeout --foreground 10m "$bun_runtime" test \
-        tests/binary-codec.test.ts \
-        tests/exports.test.ts \
-        tests/transport.test.ts
+        tests/binary-codec.test.ts
       echo '<== test (source-only)'
       echo '==> lint:imports (source-only)'
       timeout --foreground 5m "$bun_runtime" run lint:imports

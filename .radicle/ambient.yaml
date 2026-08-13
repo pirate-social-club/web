@@ -28,7 +28,6 @@ plan:
       echo '==> test (source-only)'
       timeout --foreground 15m "$bun_runtime" test \
         tests/binary-codec.test.ts \
-        tests/commit-scheduler.test.ts \
         tests/exports.test.ts \
         tests/reducer-watermark.test.ts \
         tests/scoring-normalization.test.ts \

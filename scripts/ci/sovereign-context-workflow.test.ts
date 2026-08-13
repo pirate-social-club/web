@@ -57,6 +57,12 @@ describe("sovereign production context workflow", () => {
     expect(sovereignProbe).toContain("--canonical-threads-html");
   });
 
+  test("supplies headers storage to the pinned redirect probe", () => {
+    expect(sovereignProbe).toContain(
+      'request_redirect_status "$HNS_PROBE_ROOT" "/" "$probe_apex_headers_file"',
+    );
+  });
+
   test("fails when a sovereign redirect becomes cacheable", () => {
     expect(probe).toContain('root_apex_cache_control" != "no-store"');
     expect(probe).toContain('root_apex_cdn_cache_control" != "no-store"');

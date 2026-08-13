@@ -139,6 +139,42 @@ jobs:
             --database-url-env CONTROL_PLANE_DATABASE_URL_BUN \
             > "$GITHUB_WORKSPACE/provider-identity-evidence-after.json"
 
+      - name: Require clean post-repair audit
+        if: always() && inputs.mode == 'execute' && steps.before_audit.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - "$GITHUB_WORKSPACE/provider-identity-evidence-after.json" <<'NODE'
+          const fs = require("node:fs");
+          const report = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const sum = (rows, key) => rows.reduce((total, row) => total + Number(row[key] ?? 0), 0);
+          const duplicate = report.duplicate_active_attestations ?? [];
+          const crossProvider = report.cross_provider_document_values ?? [];
+          const documentLinks = report.document_nullifier_links ?? [];
+          const uniqueHumanLinks = report.unique_human_nullifier_links ?? [];
+          const lifecycle = report.lifecycle_anomalies ?? [];
+          const failures = {
+            duplicate_groups: sum(duplicate, "duplicate_groups"),
+            duplicate_rows: sum(duplicate, "duplicate_rows"),
+            conflicting_groups: sum(duplicate, "conflicting_groups"),
+            cross_provider_conflicts: sum(crossProvider, "conflicting_value_users"),
+            document_unbound: sum(documentLinks, "unbound"),
+            document_dangling: sum(documentLinks, "dangling"),
+            document_inactive: sum(documentLinks, "inactive_nullifier"),
+            document_mismatch: sum(documentLinks, "ownership_or_provider_mismatch"),
+            unique_human_missing: sum(uniqueHumanLinks, "missing_nullifier"),
+            unique_human_inactive: sum(uniqueHumanLinks, "inactive_nullifier"),
+            unique_human_mismatch: sum(uniqueHumanLinks, "ownership_or_provider_mismatch"),
+            accepted_past_expiry: sum(lifecycle, "accepted_past_expiry"),
+          };
+          const nonzero = Object.fromEntries(Object.entries(failures).filter(([, value]) => value !== 0));
+          if (Object.keys(nonzero).length > 0) {
+            console.error("Post-repair audit is not clean:", JSON.stringify(nonzero));
+            process.exit(1);
+          }
+          console.log("Post-repair audit is clean: all constraint-readiness counts are zero.");
+          NODE
+
       - name: Upload repair evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

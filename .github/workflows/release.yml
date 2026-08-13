@@ -932,6 +932,21 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # The verifier host is external to the staging deployment. Run its read-only
+  # contract probe as soon as release inputs are known, rather than making it
+  # wait behind the staging promotion lane.
+  api-hns-verifier-contract:
+    name: HNS verifier contract gate
+    needs: [release-inputs]
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      id-token: write
+    uses: pirate-social-club/api/.github/workflows/hns-verifier-contract-gate.yml@main
+    with:
+      api_sha: ${{ needs.release-inputs.outputs.api_sha }}
+      core_ref: ${{ needs.release-inputs.outputs.core_sha }}
+
   # The contract definitions and runner live in the API repository. This job
   # verifies the deployed SHA before testing, so an older staging Worker can
   # never satisfy a newer API release gate.
@@ -974,7 +989,7 @@ jobs:
   # as late as possible — after the blocking gate, immediately before deploying.
   production-freshness:
     name: Check release freshness
-    needs: [api-staging-contract-gate, hns-forwarder-negative-probe, release-gate, schema-gate]
+    needs: [api-hns-verifier-contract, api-staging-contract-gate, hns-forwarder-negative-probe, release-gate, schema-gate]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_production))
     runs-on: blacksmith-2vcpu-ubuntu-2404
     permissions:
@@ -999,7 +1014,7 @@ jobs:
 
   production:
     name: Deploy production
-    needs: [api-staging-contract-gate, hns-forwarder-negative-probe, release-inputs, release-gate, schema-gate, production-freshness]
+    needs: [api-hns-verifier-contract, api-staging-contract-gate, hns-forwarder-negative-probe, release-inputs, release-gate, schema-gate, production-freshness]
     # Manual production deploys remain default-off and can only deploy the
     # validated current main tip after the same freshness and staging gates.
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_production)) && needs.production-freshness.outputs.stale == 'false'

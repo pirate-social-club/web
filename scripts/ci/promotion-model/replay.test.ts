@@ -81,11 +81,12 @@ describe("2026-07-28 starvation trace", () => {
   });
 
   test("the policy is the workflow's own production needs, not a narrowed set", () => {
-    expect(GATE_POLICY_VERSION).toBe(2);
+    expect(GATE_POLICY_VERSION).toBe(3);
     const ids = REQUIRED_GATES.map((gate) => gate.id).sort();
     expect(ids).toEqual([
       "api_staging_contract_gate",
       "hns_forwarder_negative_probe",
+      "hns_verifier_contract",
       "release_gate",
       "release_inputs",
       "schema_gate",

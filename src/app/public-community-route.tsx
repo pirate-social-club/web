@@ -54,7 +54,10 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { PublicCommunityErrorState, PublicCommunityNotFound, resolvePublicCommunityJoinActionLabel } from "./public-community-route-support";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
-import { useCommunityHandleClaimController } from "@/app/authenticated-helpers/community-handle-claim";
+import {
+  useCommunityHandleClaimController,
+  useHandleClaimModalActionHandlers,
+} from "@/app/authenticated-helpers/community-handle-claim";
 import { buildCommunityPreviewSidebar } from "@/lib/community-sidebar-helpers";
 import { buildFeedSortOptions } from "@/lib/feed-sort-options";
 import { CommunityRouteLoadingState } from "./route-loading-states";
@@ -259,6 +262,7 @@ export function PublicCommunityRoutePage({
   });
   const handleClaim = useCommunityHandleClaimController({
     api: api.communities,
+    createAltchaChallenge: api.verification.createAltchaChallenge,
     communityId: preview?.id ?? communityId,
     namespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     connectedWallets,
@@ -469,6 +473,13 @@ export function PublicCommunityRoutePage({
     locale,
     onJoined: markViewerJoined,
     refetchEligibility,
+  });
+  const handleClaimModalActions = useHandleClaimModalActionHandlers({
+    claimGateSummaries: handleClaim.claimGateSummaries,
+    completeProofOfWorkGate: handleClaim.completeProofOfWorkGate,
+    startGateVerification,
+    startSelfVerification,
+    startVerificationProvider,
   });
   const membershipProviderChoices = React.useMemo(
     () => eligibility?.status === "verification_required"
@@ -744,23 +755,10 @@ export function PublicCommunityRoutePage({
         error={handleClaim.error}
         onClaim={handleClaim.onClaim}
         onClaimGateRecheck={handleClaim.refreshQuote}
+        {...handleClaimModalActions}
         onNotNow={handleClaimNotNow}
         onOpenChange={handleClaimModalOpenChange}
         onSearchChange={handleClaim.onSearchChange}
-        onSelfVerificationClick={() => {
-          void startSelfVerification({
-            membershipGateSummaries: handleClaim.claimGateSummaries,
-            showToastOnError: true,
-          });
-        }}
-        onWalletConnectionClick={() => {
-          const gate = handleClaim.claimGateSummaries.find((summary) =>
-            summary.gate_type === "erc721_holding"
-            || summary.gate_type === "erc721_inventory_match"
-            || summary.gate_type === "asset_balance"
-          );
-          if (gate) void startGateVerification(gate);
-        }}
         open={handleClaimModalOpen}
         phase={handleClaim.phase}
         processing={handleClaim.processing}

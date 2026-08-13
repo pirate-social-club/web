@@ -6,6 +6,8 @@ import type {
   CommunityHandleQuote,
 } from "@pirate/api-contracts";
 import type { Hex } from "viem";
+import { createChallenge } from "altcha-lib";
+import { deriveKey as nodePbkdf2DeriveKey } from "altcha-lib/algorithms/pbkdf2";
 
 import { ApiError } from "@/lib/api/client";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
@@ -115,6 +117,84 @@ describe("useCommunityHandleClaimController", () => {
     expect(claimBodies).toEqual([{ quote: "hcq_test" }]);
     expect(result.current.phase).toBe("success");
     expect(result.current.claimedLabel).toBe("amira");
+  });
+
+  test("binds free-handle proof of work to its intent and submits the authorization", async () => {
+    const quoteBodies: unknown[] = [];
+    const claimBodies: unknown[] = [];
+    const challengeLoads: unknown[] = [];
+    const challenge = await createChallenge({
+      algorithm: "PBKDF2/SHA-256",
+      cost: 2,
+      data: {
+        action: "handle-claim-intent:hci_free",
+        actor: "usr_test",
+        scope: "namespace_handle_claim",
+      },
+      deriveKey: nodePbkdf2DeriveKey,
+      hmacSignatureSecret: "test-secret",
+      maxNumber: 25,
+      number: 7,
+    } as Parameters<typeof createChallenge>[0]);
+    const api = {
+      quoteHandle: async (_communityId: string, body: unknown) => {
+        quoteBodies.push(body);
+        if (quoteBodies.length === 1) {
+          return createQuote({
+            eligible: false,
+            availability: "available",
+            claim_intent: "hci_free",
+            claim_gate: {
+              source: "namespace",
+              satisfied: false,
+              label_claim_rule: null,
+              expression: { version: 1, expression: { gate_id: "pow", type: "altcha_pow" } },
+              summaries: [{ gate_id: "pow", gate_type: "altcha_pow" }],
+            },
+          });
+        }
+        return createQuote({
+          claim_intent: "hci_free",
+          action_authorization: "hcaa_free",
+        });
+      },
+      claimHandle: async (_communityId: string, body: unknown) => {
+        claimBodies.push(body);
+        return createHandle();
+      },
+    };
+
+    const { result } = renderHook(() => useCommunityHandleClaimController({
+      api,
+      communityId: "cmt_test",
+      connectedWallets: [],
+      debounceMs: 0,
+      createAltchaChallenge: async (input) => {
+        challengeLoads.push(input);
+        return challenge as unknown as Record<string, unknown>;
+      },
+    }));
+
+    act(() => result.current.onSearchChange("amira"));
+    await waitFor(() => expect(result.current.searchResult?.claimGateActions).toEqual(["pow"]));
+    await act(async () => await result.current.completeProofOfWorkGate());
+    await waitFor(() => expect(result.current.quote?.action_authorization).toBe("hcaa_free"));
+    await act(async () => await result.current.onClaim());
+
+    expect(challengeLoads).toEqual([{
+      action: "handle-claim-intent:hci_free",
+      scope: "namespace_handle_claim",
+    }]);
+    expect(quoteBodies[1]).toMatchObject({
+      desired_label: "amira",
+      claim_intent: "hci_free",
+      altcha: expect.any(String),
+    });
+    expect(claimBodies).toEqual([{
+      quote: "hcq_test",
+      claim_intent: "hci_free",
+      action_authorization: "hcaa_free",
+    }]);
   });
 
   test("binds quotes to the selected namespace", async () => {
@@ -306,6 +386,8 @@ describe("useCommunityHandleClaimController", () => {
 
   test("shows a retry-specific error when server funding confirmation times out", async () => {
     const instructions = createPaymentInstructions();
+    let checkoutCalls = 0;
+    const claimBodies: unknown[] = [];
     const api = {
       quoteHandle: async () => createQuote({
         price_cents: 500,
@@ -313,7 +395,8 @@ describe("useCommunityHandleClaimController", () => {
         pricing_tier: "standard",
         payment_instructions: instructions,
       }),
-      claimHandle: async () => {
+      claimHandle: async (_communityId: string, body: unknown) => {
+        claimBodies.push(body);
         throw new ApiError(
           "funding_confirmation_timeout",
           "Funding transaction confirmation timed out",
@@ -334,7 +417,10 @@ describe("useCommunityHandleClaimController", () => {
       primaryWalletAddress: "0x1000000000000000000000000000000000000001",
       settlementWalletAttachmentId: "wa_test",
       debounceMs: 0,
-      executeCheckout: async () => "0xfunded" as Hex,
+      executeCheckout: async () => {
+        checkoutCalls += 1;
+        return "0xfunded" as Hex;
+      },
     }));
 
     act(() => result.current.onSearchChange("amira"));
@@ -346,6 +432,13 @@ describe("useCommunityHandleClaimController", () => {
 
     expect(result.current.phase).toBe("confirm");
     expect(result.current.error).toBe("We could not confirm your payment in time. Try claiming again with the same transaction.");
+
+    await act(async () => {
+      await result.current.onClaim();
+    });
+    expect(checkoutCalls).toBe(1);
+    expect(claimBodies).toHaveLength(2);
+    expect(claimBodies[0]).toEqual(claimBodies[1]);
   });
 
   test("debounces quote requests while typing", async () => {
@@ -389,7 +482,7 @@ describe("useCommunityHandleClaimController", () => {
             satisfied: false,
             label_claim_rule: "hlcr_test",
             summaries: [
-              { gate_type: "unique_human", accepted_providers: ["self"] },
+              { gate_type: "unique_human", accepted_providers: ["self", "very", "zkpassport"] },
               { gate_type: "erc721_inventory_match", inventory_provider: "courtyard" },
             ],
           },
@@ -408,7 +501,12 @@ describe("useCommunityHandleClaimController", () => {
     act(() => result.current.onSearchChange("charizard"));
     await waitFor(() => expect(quoteCalls).toBe(1));
 
-    expect(result.current.searchResult?.claimGateActions).toEqual(["self", "wallet"]);
+    expect(result.current.searchResult?.claimGateActions).toEqual([
+      "self",
+      "very",
+      "zkpassport",
+      "wallet",
+    ]);
     expect(result.current.claimGateSummaries.map((summary) => summary.gate_type)).toEqual([
       "unique_human",
       "erc721_inventory_match",

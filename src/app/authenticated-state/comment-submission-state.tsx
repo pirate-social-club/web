@@ -285,6 +285,7 @@ export function useCommentSubmission(input: {
         await runGatedCommunityAction({
           action: "reply_post",
           communityId,
+          enforceGate: true,
           onAllowed: () => undefined,
           postId: nextPostId,
         });
@@ -381,6 +382,7 @@ export function useCommentSubmission(input: {
           action: "reply_comment",
           commentId,
           communityId,
+          enforceGate: true,
           onAllowed: () => undefined,
           postId: post.post.id,
         });

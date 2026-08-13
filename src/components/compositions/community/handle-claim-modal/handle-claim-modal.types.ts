@@ -24,6 +24,8 @@ export interface HandlePaymentInstructions {
   amountDisplay: string;
 }
 
+export type HandleClaimGateAction = "self" | "very" | "zkpassport" | "pow" | "wallet";
+
 export interface HandleSearchResult {
   availability: HandleAvailability;
   priceCents: number | null;
@@ -35,7 +37,7 @@ export interface HandleSearchResult {
   /** Human-readable requirement labels for an unsatisfied claim gate. */
   claimGateRequirements?: string[];
   /** Available completion actions derived from the unsatisfied gate summaries. */
-  claimGateActions?: Array<"self" | "wallet">;
+  claimGateActions?: HandleClaimGateAction[];
 }
 
 export interface HandleClaimNamespaceOption {
@@ -61,6 +63,8 @@ export interface HandleClaimModalProps {
   confirmedDiscountPercent?: number | null;
   selfVerificationSavingsPercent?: number | null;
   onSelfVerificationClick?: () => void;
+  onVerificationProviderClick?: (provider: "self" | "very" | "zkpassport") => void;
+  onProofOfWorkClick?: () => void;
   onWalletConnectionClick?: () => void;
   onClaimGateRecheck?: () => void;
   onClaim: () => void;

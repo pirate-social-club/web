@@ -34,7 +34,8 @@ export type AltchaScope =
   | "community_join"
   | "post_create"
   | "comment_create"
-  | "vote";
+  | "vote"
+  | "namespace_handle_claim";
 
 export type AltchaChallenge = Record<string, unknown>;
 

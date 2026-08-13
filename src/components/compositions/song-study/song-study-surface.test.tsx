@@ -39,7 +39,7 @@ test("renders a fill-blank word bank without embedding correctness", () => {
   expect(view.queryByRole("button", { name: "Check" })).toBeNull();
 });
 
-test("offers another try after a retryable fill-blank miss", () => {
+test("continues after a retryable fill-blank miss that is requeued later", () => {
   const view = render(
     <SongStudySurface
       state={{
@@ -57,5 +57,5 @@ test("offers another try after a retryable fill-blank miss", () => {
     />,
   );
 
-  expect(view.getByRole("button", { name: "Try again" })).toBeTruthy();
+  expect(view.getByRole("button", { name: "Continue" })).toBeTruthy();
 });

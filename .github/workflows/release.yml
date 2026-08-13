@@ -34,6 +34,15 @@ on:
         required: false
         default: false
         type: boolean
+      hns_probe_override:
+        description: Emergency-only override for a failing post-deploy HNS routing probe
+        required: false
+        default: false
+        type: boolean
+      hns_probe_override_reason:
+        description: Required incident or ticket reference and rationale when overriding the HNS probe
+        required: false
+        type: string
 
 # NO workflow-level concurrency. Serializing the whole workflow per ref made every
 # merge queue behind the previous release end-to-end; with a ~20min release and a
@@ -1317,8 +1326,43 @@ jobs:
           HNS_PROBE_GATEWAY_IP: 94.103.168.161
           HNS_PROBE_ROOT: dankmeme
           HNS_PROBE_ROUTE_SLUG: dankmeme
-          # Production may legitimately have no activated HNS roots while the
-          # feature is dormant. Keep the scheduled observer strict; this
-          # release check is vacuously satisfied until a root exists.
-          HNS_PROBE_ALLOW_EMPTY_INVENTORY: "true"
-        run: scripts/ci/probe-sovereign-context.sh
+          HNS_PROBE_MANUAL_OVERRIDE: ${{ inputs.hns_probe_override || false }}
+          HNS_PROBE_MANUAL_OVERRIDE_REASON: ${{ inputs.hns_probe_override_reason || '' }}
+        run: |
+          if [[ "${HNS_PROBE_MANUAL_OVERRIDE:-false}" != "true" ]]; then
+            scripts/ci/probe-sovereign-context.sh
+            exit $?
+          fi
+
+          if [[ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]]; then
+            echo "::error::HNS probe override is available only through workflow_dispatch"
+            exit 1
+          fi
+          if [[ -z "${HNS_PROBE_MANUAL_OVERRIDE_REASON:-}" ]]; then
+            echo "::error::HNS probe override requires hns_probe_override_reason"
+            exit 1
+          fi
+          if [[ "${HNS_PROBE_MANUAL_OVERRIDE_REASON}" == *$'\n'* || "${HNS_PROBE_MANUAL_OVERRIDE_REASON}" == *$'\r'* ]]; then
+            echo "::error::HNS probe override reason must be a single line"
+            exit 1
+          fi
+
+          echo "::warning::HNS production routing probe override requested"
+          echo "Override reason: ${HNS_PROBE_MANUAL_OVERRIDE_REASON}"
+          {
+            echo "### HNS probe manual override"
+            echo
+            echo "The post-deploy sovereign routing probe was explicitly overridden."
+            echo
+            echo "Reason: ${HNS_PROBE_MANUAL_OVERRIDE_REASON}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          set +e
+          scripts/ci/probe-sovereign-context.sh
+          probe_status=$?
+          set -e
+          if (( probe_status == 0 )); then
+            echo "::notice::HNS probe passed under an explicit manual-override run"
+          else
+            echo "::warning::HNS probe failed with status ${probe_status}; continuing only because the override was explicit and recorded"
+          fi

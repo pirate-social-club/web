@@ -143,6 +143,10 @@ NODE
 )
 
 if (( ${#namespace_rows[@]} == 0 )); then
+  if [[ "${HNS_PROBE_ALLOW_EMPTY_INVENTORY:-false}" == "true" ]]; then
+    echo "public namespace inventory is empty; no activated HNS root is available for this release probe" >&2
+    exit 0
+  fi
   echo "public namespace inventory is empty" >&2
   exit 1
 fi

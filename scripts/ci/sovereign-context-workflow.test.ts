@@ -21,6 +21,7 @@ describe("sovereign production context workflow", () => {
     expect(probeIndex).toBeGreaterThan(deployIndex);
     expect(probeIndex).toBeGreaterThan(multipartIndex);
     expect(steps[probeIndex].run).toContain("probe-sovereign-context.sh");
+    expect(steps[probeIndex].env.HNS_PROBE_ALLOW_EMPTY_INVENTORY).toBe("true");
   });
 
   test("keeps an event-driven and scheduled external observer", () => {
@@ -36,6 +37,10 @@ describe("sovereign production context workflow", () => {
     expect(job.steps.some((step: { name?: string }) => (
       step.name === "Reflect sovereign-context failure"
     ))).toBe(true);
+    const observerProbe = job.steps.find((step: { name?: string }) => (
+      step.name === "Probe the sovereign apex and app origin"
+    ));
+    expect(observerProbe?.env?.HNS_PROBE_ALLOW_EMPTY_INVENTORY).toBeUndefined();
   });
 
   test("fetches the namespace inventory from the exact API route and checks HTTP status", () => {

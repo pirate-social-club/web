@@ -1302,4 +1302,8 @@ jobs:
           HNS_PROBE_GATEWAY_IP: 94.103.168.161
           HNS_PROBE_ROOT: dankmeme
           HNS_PROBE_ROUTE_SLUG: dankmeme
+          # Production may legitimately have no activated HNS roots while the
+          # feature is dormant. Keep the scheduled observer strict; this
+          # release check is vacuously satisfied until a root exists.
+          HNS_PROBE_ALLOW_EMPTY_INVENTORY: "true"
         run: scripts/ci/probe-sovereign-context.sh

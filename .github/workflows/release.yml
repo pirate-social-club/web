@@ -52,6 +52,10 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # This is the release authority for the API flag with the same name. Keep it
+  # false until migration 1157 is fleet-attested and the first writer consumes
+  # this exact flag; do not introduce an independent runtime toggle.
+  GENERIC_DIGITAL_GOODS_ENABLED: ${{ vars.GENERIC_DIGITAL_GOODS_ENABLED || 'false' }}
 
 jobs:
   release-inputs:
@@ -655,7 +659,17 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
         run: |
+          schema_feature_args=()
+          case "$GENERIC_DIGITAL_GOODS_ENABLED" in
+            true) schema_feature_args+=(--features generic_digital_goods) ;;
+            false) ;;
+            *)
+              echo "::error::GENERIC_DIGITAL_GOODS_ENABLED must be exactly true or false"
+              exit 1
+              ;;
+          esac
           bun core/scripts/community/verify-community-schema-requirements.ts \
+            "${schema_feature_args[@]}" \
             --requirements api/services/api/community-schema-requirements.json \
             --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
             --migrations-dir core/db/community-template/migrations \
@@ -1061,8 +1075,18 @@ jobs:
           # token (D1 access is deliberately kept off the deploy token).
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
         run: |
+          schema_feature_args=()
+          case "$GENERIC_DIGITAL_GOODS_ENABLED" in
+            true) schema_feature_args+=(--features generic_digital_goods) ;;
+            false) ;;
+            *)
+              echo "::error::GENERIC_DIGITAL_GOODS_ENABLED must be exactly true or false"
+              exit 1
+              ;;
+          esac
           bun core/scripts/community/verify-community-schema-requirements.ts \
             --prod \
+            "${schema_feature_args[@]}" \
             --requirements api/services/api/community-schema-requirements.json \
             --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
             --migrations-dir core/db/community-template/migrations \

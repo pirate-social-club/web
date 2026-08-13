@@ -58,4 +58,13 @@ describe("release attestation wiring", () => {
     expect(stagingDeploy).not.toContain('WEB_SHA="${WEB_SHA}-non-main-');
     expect(stagingDeploy).not.toContain('API_SHA="${API_SHA}-non-main-');
   });
+
+  test("activates the generic-goods schema requirement from the release flag in both fleet scans", () => {
+    expect(releaseWorkflow).toContain(
+      "GENERIC_DIGITAL_GOODS_ENABLED: ${{ vars.GENERIC_DIGITAL_GOODS_ENABLED || 'false' }}",
+    );
+    expect(releaseWorkflow.match(/true\) schema_feature_args\+=\(--features generic_digital_goods\)/g)).toHaveLength(2);
+    expect(releaseWorkflow.match(/GENERIC_DIGITAL_GOODS_ENABLED must be exactly true or false/g)).toHaveLength(2);
+    expect(releaseWorkflow.match(/"\$\{schema_feature_args\[@\]\}"/g)).toHaveLength(2);
+  });
 });

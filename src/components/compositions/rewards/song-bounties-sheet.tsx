@@ -23,22 +23,22 @@ import { Card } from "@/components/primitives/card";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
-export type BountyObjective = "study" | "karaoke";
+type BountyObjective = "study" | "karaoke";
 
-export type SongBountyLifecycleStatus =
+type SongBountyLifecycleStatus =
   | "empty"
   | "active"
   | "exhausted"
   | "funding_confirming"
   | "operational_hold";
 
-export interface SongBountyCapabilities {
+interface SongBountyCapabilities {
   canCreate: boolean;
   canFund: boolean;
   reason?: string;
 }
 
-export interface SongBountySlot {
+interface SongBountySlot {
   objective: BountyObjective;
   status: SongBountyLifecycleStatus;
   rewardLabel?: string;
@@ -46,13 +46,13 @@ export interface SongBountySlot {
   viewerStatusLabel?: string;
 }
 
-export interface LegacyEitherBounty {
+interface LegacyEitherBounty {
   rewardLabel: string;
   status: Exclude<SongBountyLifecycleStatus, "empty">;
   remainingLabel?: string;
 }
 
-export type SongTicketPoolStatus =
+type SongTicketPoolStatus =
   | "entry_open"
   | "cutoff_frozen"
   | "purchase_pending"
@@ -60,7 +60,7 @@ export type SongTicketPoolStatus =
   | "exhausted"
   | "operational_hold";
 
-export interface SongTicketPool {
+interface SongTicketPool {
   beneficiaryCountLabel?: string;
   cutoffLabel?: string;
   drawingLabel: string;

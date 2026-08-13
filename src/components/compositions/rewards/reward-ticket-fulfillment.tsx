@@ -15,7 +15,7 @@ import { Card } from "@/components/primitives/card";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
-export type TicketPoolPhase =
+type TicketPoolPhase =
   | "entry_open"
   | "entered"
   | "closed_no_entries"
@@ -30,7 +30,7 @@ export type TicketPoolPhase =
   | "credited"
   | "operational_review";
 
-export type TicketPoolIssue =
+type TicketPoolIssue =
   | "price_stale"
   | "price_ceiling"
   | "insufficient_budget"

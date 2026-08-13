@@ -37,6 +37,45 @@ type ExecuteHandleCheckout = (params: {
   wallet: PirateConnectedEvmWallet;
 }) => Promise<Hex>;
 
+type HandleClaimVerificationOptions = {
+  membershipGateSummaries?: MembershipGateSummary[] | null;
+  showToastOnError?: boolean;
+};
+
+export function useHandleClaimModalActionHandlers(input: {
+  claimGateSummaries: MembershipGateSummary[];
+  completeProofOfWorkGate: () => void | Promise<void>;
+  startGateVerification: (gate: MembershipGateSummary) => unknown;
+  startSelfVerification: (options: HandleClaimVerificationOptions) => unknown;
+  startVerificationProvider: (
+    provider: "self" | "very" | "zkpassport",
+    options: HandleClaimVerificationOptions,
+  ) => unknown;
+}) {
+  const membershipGateSummaries = input.claimGateSummaries;
+  return React.useMemo(() => ({
+    onProofOfWorkClick: () => void input.completeProofOfWorkGate(),
+    onSelfVerificationClick: () => void input.startSelfVerification({
+      membershipGateSummaries,
+      showToastOnError: true,
+    }),
+    onVerificationProviderClick: (provider: "self" | "very" | "zkpassport") => {
+      void input.startVerificationProvider(provider, {
+        membershipGateSummaries,
+        showToastOnError: true,
+      });
+    },
+    onWalletConnectionClick: () => {
+      const gate = membershipGateSummaries.find((summary) =>
+        summary.gate_type === "erc721_holding"
+        || summary.gate_type === "erc721_inventory_match"
+        || summary.gate_type === "asset_balance",
+      );
+      if (gate) void input.startGateVerification(gate);
+    },
+  }), [input, membershipGateSummaries]);
+}
+
 const DEFAULT_QUOTE_DEBOUNCE_MS = 450;
 
 function mapAvailability(value: CommunityHandleQuote["availability"] | string | null | undefined): HandleAvailability {

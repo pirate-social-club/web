@@ -125,8 +125,11 @@ jobs:
         run: |
           test -f core/db/community-template/migrations/1157_community_handle_claim_intents.sql
           test -f core/scripts/community/apply-community-handle-claim-intents-d1-migration.ts
+          test -f core/scripts/community/repair-community-handle-claim-intents-d1.ts
 
       - name: Audit or apply migration with resumable fleet runner
+        id: apply
+        continue-on-error: ${{ !endsWith(inputs.target, '-audit') }}
         shell: bash
         env:
           TARGET: ${{ inputs.target }}
@@ -154,8 +157,38 @@ jobs:
           fi
           bun core/scripts/community/apply-community-handle-claim-intents-d1-migration.ts "${args[@]}"
 
-      - name: Verify final target state read-only
+      - name: Repair partial 1157 states without replaying existing ALTERs
         if: ${{ !endsWith(inputs.target, '-audit') }}
+        continue-on-error: true
+        shell: bash
+        env:
+          TARGET: ${{ inputs.target }}
+          DATABASE_NAME: ${{ inputs.database_name }}
+          MIGRATION_CONCURRENCY: ${{ inputs.concurrency }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          args=(
+            --wrangler-config api/services/community-d1-shard/wrangler.jsonc
+            --migrations-dir core/db/community-template/migrations
+            --quarantines core/scripts/community/community-shard-quarantines.json
+            --manifest migration-output/partial-repair-manifest.json
+            --resume-file migration-output/resume.txt
+            --partial-only
+            --concurrency "$MIGRATION_CONCURRENCY"
+            --confirm-time-travel
+            --execute
+          )
+          if [[ "$TARGET" == production-* ]]; then
+            args+=(--prod)
+          fi
+          if [[ "$TARGET" == *-canary ]]; then
+            args+=(--only "$DATABASE_NAME")
+          fi
+          bun core/scripts/community/repair-community-handle-claim-intents-d1.ts "${args[@]}"
+
+      - name: Verify final target state read-only
+        if: ${{ !endsWith(inputs.target, '-audit') && always() }}
         shell: bash
         env:
           TARGET: ${{ inputs.target }}

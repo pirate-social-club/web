@@ -1,0 +1,67 @@
+name: Staging posts idempotency column repair
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type REPAIR POSTS IDEMPOTENCY TO STAGING
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-posts-idempotency-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 120
+    environment: staging
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with: { path: web }
+      - name: Resolve pinned refs
+        id: refs
+        working-directory: web
+        run: |
+          echo "api_sha=$(<.github/release-refs/api.sha)" >> "$GITHUB_OUTPUT"
+          echo "core_sha=a82c242e3ef6368974677b0c8fa724e2f7ab777a" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/api
+          ref: ${{ steps.refs.outputs.api_sha }}
+          path: api
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/core
+          ref: ${{ steps.refs.outputs.core_sha }}
+          path: core
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Validate confirmation
+        env: { CONFIRMATION: ${{ inputs.confirmation }} }
+        run: test "$CONFIRMATION" = 'REPAIR POSTS IDEMPOTENCY TO STAGING'
+      - name: Apply measured additive repair
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          mkdir -p repair-output
+          bun core/scripts/community/repair-staging-posts-idempotency-body-hash.ts \
+            --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
+            --migrations-dir core/db/community-template/migrations \
+            --only community-d1-pool-0001-staging,community-d1-pool-0003-staging,community-d1-pool-0004-staging,community-d1-pool-0006-staging,community-d1-pool-0008-staging,community-d1-pool-0009-staging,community-d1-pool-0010-staging,community-d1-pool-0012-staging,cmty-d1-fixture-staging \
+            --manifest repair-output/manifest.json \
+            --execute --confirm-time-travel
+      - name: Upload repair evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: staging-posts-idempotency-repair-${{ github.run_id }}
+          path: repair-output
+          if-no-files-found: warn
+          retention-days: 30

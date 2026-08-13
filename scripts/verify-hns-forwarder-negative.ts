@@ -9,6 +9,7 @@ type PublicNamespace = {
 };
 
 export type HnsForwarderNegativeProbeOptions = {
+  allowMissingNamespace?: boolean;
   apiBaseUrl: string;
   fetchImpl?: FetchLike;
   rootLabel: string;
@@ -69,13 +70,22 @@ export async function verifyHnsForwarderNegativeProbe(
     headers: { accept: "application/json" },
     method: "GET",
   });
-  if (!namespaceResponse.ok) {
+  const useSyntheticContext = !namespaceResponse.ok
+    && namespaceResponse.status === 404
+    && options.allowMissingNamespace;
+  if (!namespaceResponse.ok && !useSyntheticContext) {
     throw new Error(`public namespace lookup returned HTTP ${namespaceResponse.status}`);
   }
 
-  const namespace = await namespaceResponse.json() as PublicNamespace;
-  const rootLabel = requiredString(namespace.root_label, "public namespace root_label");
-  const communityId = requiredString(namespace.community?.id, "public namespace community.id");
+  const namespace = !useSyntheticContext
+    ? await namespaceResponse.json() as PublicNamespace
+    : null;
+  const rootLabel = namespace
+    ? requiredString(namespace.root_label, "public namespace root_label")
+    : options.rootLabel;
+  const communityId = namespace
+    ? requiredString(namespace.community?.id, "public namespace community.id")
+    : `cmt_hns_forwarder_negative_${options.rootLabel}`;
   if (rootLabel !== options.rootLabel) {
     throw new Error(`public namespace root mismatch: expected ${options.rootLabel}, received ${rootLabel}`);
   }
@@ -122,6 +132,7 @@ export async function verifyHnsForwarderNegativeProbe(
 if (import.meta.main) {
   const result = await verifyHnsForwarderNegativeProbe({
     apiBaseUrl: process.env.HNS_FORWARDER_NEGATIVE_API_BASE_URL ?? "https://api.pirate.sc",
+    allowMissingNamespace: process.env.HNS_FORWARDER_NEGATIVE_ALLOW_ABSENT_NAMESPACE === "true",
     rootLabel: process.env.HNS_FORWARDER_NEGATIVE_ROOT ?? "dankmeme",
     webBaseUrl: process.env.HNS_FORWARDER_NEGATIVE_WEB_BASE_URL ?? "https://pirate.sc",
   });

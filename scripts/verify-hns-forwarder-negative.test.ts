@@ -41,6 +41,24 @@ function fetchFixture(malformedStatus: 200 | 403 = 403): typeof fetch {
   }) as typeof fetch;
 }
 
+function fetchAbsentNamespaceFixture(): typeof fetch {
+  let calls = 0;
+  return (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls += 1;
+    if (calls === 1) {
+      expect(String(input)).toBe("https://api.pirate.sc/public-namespaces/dankmeme");
+      return new Response("Namespace not found", { status: 404 });
+    }
+
+    expect(String(input)).toBe("https://pirate.sc/");
+    const headers = new Headers(init?.headers);
+    expect(headers.get("x-pirate-hns-community-id")).toBe("cmt_hns_forwarder_negative_dankmeme");
+    expect(headers.get("x-pirate-hns-root")).toBe(rootLabel);
+    if (calls === 2) return new Response(canonicalBody(), { status: 200 });
+    return new Response("HNS forwarder authentication failed.", { status: 403 });
+  }) as typeof fetch;
+}
+
 describe("HNS forwarder negative probe", () => {
   test("requires unsigned client context to remain canonical and malformed HMAC to fail closed", async () => {
     await expect(verifyHnsForwarderNegativeProbe({
@@ -79,5 +97,36 @@ describe("HNS forwarder negative probe", () => {
       rootLabel,
       webBaseUrl: "https://pirate.sc",
     })).rejects.toThrow("adopted forged wallet interactivity");
+  });
+
+  test("can exercise rejection with a synthetic context when the registry is empty", async () => {
+    await expect(verifyHnsForwarderNegativeProbe({
+      allowMissingNamespace: true,
+      apiBaseUrl: "https://api.pirate.sc",
+      fetchImpl: fetchAbsentNamespaceFixture(),
+      rootLabel,
+      webBaseUrl: "https://pirate.sc",
+    })).resolves.toEqual({ malformedStatus: 403, unsignedStatus: 200 });
+  });
+
+  test("still fails on an absent namespace by default", async () => {
+    const fetchImpl = (async () => new Response("Namespace not found", { status: 404 })) as typeof fetch;
+    await expect(verifyHnsForwarderNegativeProbe({
+      apiBaseUrl: "https://api.pirate.sc",
+      fetchImpl,
+      rootLabel,
+      webBaseUrl: "https://pirate.sc",
+    })).rejects.toThrow("public namespace lookup returned HTTP 404");
+  });
+
+  test("does not hide a registry outage behind the synthetic context", async () => {
+    const fetchImpl = (async () => new Response("upstream unavailable", { status: 503 })) as typeof fetch;
+    await expect(verifyHnsForwarderNegativeProbe({
+      allowMissingNamespace: true,
+      apiBaseUrl: "https://api.pirate.sc",
+      fetchImpl,
+      rootLabel,
+      webBaseUrl: "https://pirate.sc",
+    })).rejects.toThrow("public namespace lookup returned HTTP 503");
   });
 });

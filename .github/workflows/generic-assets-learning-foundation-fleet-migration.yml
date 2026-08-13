@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           echo "api_sha=$(<.github/release-refs/api.sha)" >> "$GITHUB_OUTPUT"
-          echo "core_sha=1f8b82c7cf96ac2978d1cc47fd16b0a74b7b289e" >> "$GITHUB_OUTPUT"
+          echo "core_sha=f612296f23969af429c8400ec24c10c438d1bcbf" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:

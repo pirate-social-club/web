@@ -3,81 +3,31 @@ pre_plan:
     items:
       - url: https://github.com/oven-sh/bun/releases/download/bun-v1.3.10/bun-linux-x64-baseline.zip
         filename: bun-runtime.zip
-  - action: bun_get
-    path: packages/karaoke-runtime
-    output: karaoke-runtime
 plan:
   - action: shell
     shell: |
       set -euo pipefail
-      grep -q 'cache_version' /ci/src/.radicle/ambient.yaml
-      cache=/ci/cache/bun
-      bun_runtime="${cache}-runtime/bun"
-      mkdir -p "$cache"
+      grep -q 'source-only' /ci/src/.radicle/ambient.yaml
+      runtime_dir=/ci/cache/bun-runtime
+      bun_runtime="$runtime_dir/bun"
       if [[ ! -x "$bun_runtime" ]]; then
         runtime_sha256=41201a8c5ee74a9dcbb1ce25a1104f1f929838b57a845aa78d98379b0ce7cde2
         echo "$runtime_sha256  /ci/deps/bun-runtime.zip" | sha256sum -c -
-        temp=$(mktemp -d "$cache/.bun-runtime.XXXXXX")
+        temp=$(mktemp -d "$runtime_dir.tmp.XXXXXX")
         unzip -q /ci/deps/bun-runtime.zip -d "$temp"
-        install -d "$(dirname "$bun_runtime")"
+        install -d "$runtime_dir"
         install -m 0755 "$temp/bun-linux-x64-baseline/bun" "$bun_runtime"
         rm -rf -- "$temp"
       fi
-      bun="$bun_runtime"
       bun_bin_dir=$(dirname "$bun_runtime")
       export PATH="$bun_bin_dir:$PATH"
-
-      import_bun_cache() {
-        # cache_version is Bun's hashed prerelease directory name.
-        local root="$1"
-        local manifest="/ci/deps/bun/$root/manifest.tsv"
-        while IFS=$'\t' read -r name version cache_version archive integrity; do
-          [[ "$name" == "name" ]] && continue
-          : "$integrity"
-          [[ -n "$name" && -n "$version" && -n "$cache_version" && -n "$archive" ]]
-          [[ "$cache_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9a-f]{16})?(\+[0-9a-f]{16})?$ ]]
-          local target="$cache/$name@$cache_version@@@1"
-          if [[ -f "$target/package.json" ]]; then
-            continue
-          fi
-          [[ ! -e "$target" ]] || {
-            echo "incomplete Bun cache entry exists: $target" >&2
-            exit 1
-          }
-          local archive_path="/ci/deps/bun/$root/$archive"
-          if [[ "$integrity" == sha512-* ]]; then
-            local actual_integrity
-            actual_integrity="sha512-$(openssl dgst -sha512 -binary "$archive_path" | base64 -w0)"
-            [[ "$actual_integrity" == "$integrity" ]] || {
-              echo "Bun cache integrity mismatch: $archive" >&2
-              exit 1
-            }
-          fi
-          local temp
-          temp=$(mktemp -d "$cache/.extract.XXXXXX")
-          tar -xzf "$archive_path" -C "$temp"
-          local package_json
-          package_json=$(find "$temp" -mindepth 1 -maxdepth 3 -type f -name package.json -print -quit)
-          [[ -n "$package_json" ]]
-          local package_dir="${package_json%/package.json}"
-          [[ "$package_dir" != "$temp" ]]
-          mkdir -p "$(dirname "$target")"
-          mv "$package_dir" "$target"
-          rm -rf -- "$temp"
-        done < "$manifest"
-      }
-
-      import_bun_cache karaoke-runtime
       cd /ci/src/packages/karaoke-runtime
-      echo '==> bun install'
-      timeout --foreground 15m "$bun" install --frozen-lockfile --ignore-scripts --prefer-offline --cache-dir "$cache"
-      echo '<== bun install'
-      echo '==> test'
-      timeout --foreground 20m "$bun" run test
-      echo '<== test'
-      echo '==> types'
-      timeout --foreground 15m "$bun" run types
-      echo '<== types'
-      echo '==> lint:imports'
-      timeout --foreground 5m "$bun" run lint:imports
-      echo '<== lint:imports'
+
+      # This package has no runtime dependencies. Keep the authoritative gate
+      # hermetic and source-focused; hosted CI retains native typechecking.
+      echo '==> test (source-only)'
+      timeout --foreground 20m "$bun_runtime" run test
+      echo '<== test (source-only)'
+      echo '==> lint:imports (source-only)'
+      timeout --foreground 5m "$bun_runtime" run lint:imports
+      echo '<== lint:imports (source-only)'

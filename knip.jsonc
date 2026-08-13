@@ -14,6 +14,7 @@
     "core/scripts/community/apply-dance-start-cue-evidence-d1-migration.ts",
     "core/scripts/community/apply-post-age-gate-provenance-d1-migration.ts",
     "core/scripts/community/apply-community-handle-claim-intents-d1-migration.ts",
+    "core/scripts/community/repair-community-handle-claim-intents-d1.ts",
     "core/scripts/community/verify-community-schema-requirements.ts",
     "scripts/control-plane/audit-provider-identity-evidence.ts",
     "web/scripts/song-study-fill-blank-row-counts.ts",

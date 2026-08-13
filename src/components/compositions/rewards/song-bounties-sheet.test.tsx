@@ -1,10 +1,11 @@
 import * as React from "react";
-import { expect, mock, test } from "bun:test";
-import { fireEvent, render } from "@testing-library/react";
+import { afterEach, expect, mock, test } from "bun:test";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 
 import { installDomGlobals } from "@/test/setup-dom";
 
 installDomGlobals();
+afterEach(cleanup);
 
 mock.module("@/components/compositions/system/modal/modal", () => ({
   Modal: ({ children, open }: { children: React.ReactNode; open: boolean }) => open ? <div>{children}</div> : null,
@@ -17,65 +18,107 @@ mock.module("@/components/compositions/system/modal/modal", () => ({
 const { SongBountiesSheet } = await import("./song-bounties-sheet");
 const capabilities = { canCreate: true, canFund: true };
 
-test("renders stable Study and Karaoke slots when no bounties exist", () => {
+test("renders ticket pool independently from stable Study and Karaoke slots", () => {
   const view = render(<SongBountiesSheet capabilities={capabilities} open slots={[]} />);
 
+  expect(view.getByLabelText("Daily Megapot ticket pool")).toBeTruthy();
   expect(view.getByLabelText("Study bounty slot")).toBeTruthy();
   expect(view.getByLabelText("Karaoke bounty slot")).toBeTruthy();
   expect(view.getAllByText("No bounty yet.")).toHaveLength(2);
+  expect(view.getByRole("button", { name: "Create ticket pool" })).toBeTruthy();
   expect(view.getAllByRole("button", { name: "Create" })).toHaveLength(2);
 });
 
-test("treats exhausted funding as the only recovery action", () => {
-  const actions: string[] = [];
+test("cash-slot top-up remains independent from ticket-pool funding", () => {
+  const slotActions: string[] = [];
+  const poolActions: string[] = [];
   const view = render(
     <SongBountiesSheet
       capabilities={capabilities}
-      onSlotAction={(objective, action) => actions.push(`${objective}:${action}`)}
+      onSlotAction={(objective, action) => slotActions.push(`${objective}:${action}`)}
+      onTicketPoolAction={(action) => poolActions.push(action)}
       open
       slots={[{ objective: "study", rewardLabel: "$0.40 USDC", status: "exhausted" }]}
+      ticketPool={{
+        beneficiaryCountLabel: "4 singers included",
+        drawingLabel: "Drawing 7,710 · Base Sepolia",
+        status: "entry_open",
+        ticketCountLabel: "3 pool tickets",
+      }}
     />,
   );
 
   expect(view.getByText("Out of funds. Add funding to reopen this slot.")).toBeTruthy();
   fireEvent.click(view.getByLabelText("Study bounty slot").querySelector("button")!);
-  expect(actions).toEqual(["study:fund"]);
+  fireEvent.click(view.getByRole("button", { name: "Fund pool" }));
+  expect(slotActions).toEqual(["study:fund"]);
+  expect(poolActions).toEqual(["fund"]);
 });
 
-test("shows occupied non-payable states without offering funding", () => {
+test("ticket pool explains shared winnings without claiming user ticket ownership", () => {
+  const view = render(
+    <SongBountiesSheet
+      capabilities={capabilities}
+      open
+      slots={[
+        { objective: "study", rewardLabel: "25 $COMMUNITY", status: "active" },
+        { objective: "karaoke", rewardLabel: "$0.40 USDC", status: "active" },
+      ]}
+      ticketPool={{
+        beneficiaryCountLabel: "1 singer included",
+        cutoffLabel: "Entries close in 24 minutes",
+        drawingLabel: "Drawing 7,710 · Base Sepolia",
+        status: "entry_open",
+        ticketCountLabel: "1 pool ticket",
+        viewerEntered: true,
+      }}
+    />,
+  );
+
+  expect(view.getByText(/every verified singer today shares any USDC winnings/i)).toBeTruthy();
+  expect(view.getByText("You're included once in today's beneficiary set.")).toBeTruthy();
+  expect(view.queryByText(/your ticket/i)).toBeNull();
+  expect(view.queryByRole("button", { name: /claim winnings/i })).toBeNull();
+});
+
+test("shows occupied cash states without offering cash-slot funding", () => {
   const view = render(
     <SongBountiesSheet
       capabilities={capabilities}
       open
       slots={[
         { objective: "study", rewardLabel: "25 $COMMUNITY", status: "funding_confirming" },
-        { objective: "karaoke", rewardLabel: "1 Megapot ticket", status: "operational_hold" },
+        { objective: "karaoke", rewardLabel: "$0.40 USDC", status: "operational_hold" },
       ]}
     />,
   );
 
   expect(view.getByRole("button", { name: "Confirming" }).hasAttribute("disabled")).toBe(true);
   expect(view.getByRole("button", { name: "On hold" }).hasAttribute("disabled")).toBe(true);
-  expect(view.queryByRole("button", { name: "Fund" })).toBeNull();
 });
 
-test("legacy Either bounty occupies both objective slots", () => {
+test("legacy Either bounty occupies both cash slots while the ticket pool remains visible", () => {
   const view = render(
     <SongBountiesSheet
       capabilities={capabilities}
       legacyEither={{ rewardLabel: "$1.00 USDC", status: "active" }}
       open
       slots={[]}
+      ticketPool={{
+        drawingLabel: "Drawing 7,710",
+        status: "drawing_pending",
+        ticketCountLabel: "2 pool tickets",
+      }}
     />,
   );
 
+  expect(view.getByLabelText("Daily Megapot ticket pool")).toBeTruthy();
   expect(view.getByLabelText("Study or Karaoke legacy bounty")).toBeTruthy();
   expect(view.getAllByText("Occupied")).toHaveLength(2);
-  expect(view.queryByRole("button", { name: "Create" })).toBeNull();
   expect(view.getByRole("button", { name: "Fund" })).toBeTruthy();
 });
 
-test("resolved third-party capabilities disable actions without blocking the owner view", () => {
+test("resolved third-party capabilities disable all creation without blocking the owner view", () => {
   const thirdPartyView = render(
     <SongBountiesSheet
       capabilities={{
@@ -89,12 +132,12 @@ test("resolved third-party capabilities disable actions without blocking the own
   );
 
   expect(thirdPartyView.getByText("The song owner is not accepting third-party funding.")).toBeTruthy();
-  expect(thirdPartyView.getAllByRole("button", { name: "Unavailable" })).toHaveLength(2);
+  expect(thirdPartyView.getAllByRole("button", { name: "Unavailable" })).toHaveLength(3);
   thirdPartyView.unmount();
 
   const ownerView = render(<SongBountiesSheet capabilities={capabilities} open slots={[]} />);
+  expect(ownerView.getByRole("button", { name: "Create ticket pool" })).toBeTruthy();
   expect(ownerView.getAllByRole("button", { name: "Create" })).toHaveLength(2);
-  expect(ownerView.queryByText("The song owner is not accepting third-party funding.")).toBeNull();
 });
 
 test("legacy Either bounty can be revived through the same funding action", () => {
@@ -114,23 +157,24 @@ test("legacy Either bounty can be revived through the same funding action", () =
   expect(actions).toEqual(["either:fund"]);
 });
 
-test("claim pause reasons remain independent from lifecycle", () => {
+test("exhausted ticket pool keeps cash bounties active and offers only pool funding", () => {
+  const actions: string[] = [];
   const view = render(
     <SongBountiesSheet
       capabilities={capabilities}
+      onTicketPoolAction={(action) => actions.push(action)}
       open
-      slots={[
-        {
-          claimsPausedReason: "price_stale",
-          objective: "karaoke",
-          rewardLabel: "1 Megapot ticket",
-          status: "exhausted",
-        },
-      ]}
+      slots={[{ objective: "study", rewardLabel: "$0.40 USDC", status: "active" }]}
+      ticketPool={{
+        drawingLabel: "Next eligible drawing",
+        status: "exhausted",
+        ticketCountLabel: "0 funded tickets remaining",
+      }}
     />,
   );
 
-  expect(view.getByText("Out of funds. Add funding to reopen this slot.")).toBeTruthy();
-  expect(view.getByText("Ticket price unavailable. New claims are paused.")).toBeTruthy();
-  expect(view.getByRole("button", { name: "Fund" })).toBeTruthy();
+  expect(view.getByText("No funded tickets remain. Add funding for a future drawing.")).toBeTruthy();
+  expect(view.getByText("Open for claims.")).toBeTruthy();
+  fireEvent.click(view.getByRole("button", { name: "Fund pool" }));
+  expect(actions).toEqual(["fund"]);
 });

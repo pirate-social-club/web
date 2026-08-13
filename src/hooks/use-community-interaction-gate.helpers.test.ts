@@ -12,6 +12,7 @@ import {
   createDefaultBlockedModalState,
   getRequirementGroups,
   getRequirementStatuses,
+  resolveCommunityInteractionState,
   selectPostVoteGateData,
   type BuildBlockedModalStateArgs,
   type CommunityGateData,
@@ -64,6 +65,26 @@ function postWithViewerGateState(input: {
     },
   } as LocalizedPostResponse;
 }
+
+describe("resolveCommunityInteractionState", () => {
+  test("authoritative recovery does not short-circuit a public reply gate", () => {
+    const eligibility = gate("verification_required").eligibility;
+
+    expect(resolveCommunityInteractionState({
+      action: "reply_post",
+      eligibility,
+      hasSession: true,
+      requireMembership: false,
+    })).toBe("allowed");
+    expect(resolveCommunityInteractionState({
+      action: "reply_post",
+      eligibility,
+      enforceGate: true,
+      hasSession: true,
+      requireMembership: false,
+    })).toBe("verification_required");
+  });
+});
 
 describe("selectPostVoteGateData", () => {
   test("returns an already-joined gate for community staff", () => {

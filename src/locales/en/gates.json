@@ -283,6 +283,9 @@
   "handleClaims": {
     "requires": "This name requires:",
     "verifyWithSelf": "Verify with Self",
+    "verifyWithVery": "Verify with Very.org",
+    "verifyWithZkPassport": "Verify with ZKPassport",
+    "completeProofOfWork": "Complete browser check",
     "connectWallet": "Connect wallet",
     "checkAgain": "Check again",
     "ruleEditor": {

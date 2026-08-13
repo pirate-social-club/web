@@ -290,6 +290,9 @@ export const GENERATED_LOCALE_CATALOGS = {
       "handleClaims": {
         "requires": "This name requires:",
         "verifyWithSelf": "Verify with Self",
+        "verifyWithVery": "Verify with Very.org",
+        "verifyWithZkPassport": "Verify with ZKPassport",
+        "completeProofOfWork": "Complete browser check",
         "connectWallet": "Connect wallet",
         "checkAgain": "Check again",
         "ruleEditor": {
@@ -2563,6 +2566,9 @@ export const GENERATED_LOCALE_CATALOGS = {
       "handleClaims": {
         "requires": "يتطلب هذا الاسم:",
         "verifyWithSelf": "تحقق باستخدام Self",
+        "verifyWithVery": "تحقق باستخدام Very.org",
+        "verifyWithZkPassport": "تحقق باستخدام ZKPassport",
+        "completeProofOfWork": "أكمل فحص المتصفح",
         "connectWallet": "اربط المحفظة",
         "checkAgain": "تحقق مرة أخرى",
         "ruleEditor": {
@@ -4836,6 +4842,9 @@ export const GENERATED_LOCALE_CATALOGS = {
       "handleClaims": {
         "requires": "领取此名称需要：",
         "verifyWithSelf": "使用 Self 验证",
+        "verifyWithVery": "使用 Very.org 验证",
+        "verifyWithZkPassport": "使用 ZKPassport 验证",
+        "completeProofOfWork": "完成浏览器检查",
         "connectWallet": "连接钱包",
         "checkAgain": "重新检查",
         "ruleEditor": {

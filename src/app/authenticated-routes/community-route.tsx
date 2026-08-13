@@ -68,7 +68,10 @@ import {
   useBoostCampaignController,
   useBoostMenuEligibility,
 } from "@/app/authenticated-helpers/use-boost-campaign-controller";
-import { useCommunityHandleClaimController } from "@/app/authenticated-helpers/community-handle-claim";
+import {
+  useCommunityHandleClaimController,
+  useHandleClaimModalActionHandlers,
+} from "@/app/authenticated-helpers/community-handle-claim";
 import {
   useSongCommerceState,
   useSongPlayback,
@@ -417,11 +420,19 @@ export function CommunityPage({
   });
   const handleClaim = useCommunityHandleClaimController({
     api: api.communities,
+    createAltchaChallenge: api.verification.createAltchaChallenge,
     communityId: previewCommunityId ?? communityId,
     namespaceVerificationId: handleNamespaces.selectedNamespaceVerification,
     connectedWallets,
     primaryWalletAddress: session?.profile.primary_wallet_address,
     settlementWalletAttachmentId: session?.user.primary_wallet_attachment,
+  });
+  const handleClaimModalActions = useHandleClaimModalActionHandlers({
+    claimGateSummaries: handleClaim.claimGateSummaries,
+    completeProofOfWorkGate: handleClaim.completeProofOfWorkGate,
+    startGateVerification,
+    startSelfVerification,
+    startVerificationProvider,
   });
   const handleClaimDismissal = useCommunityHandleClaimDismissal(
     handleClaimCommunityId,
@@ -1002,23 +1013,10 @@ export function CommunityPage({
         forceMobile={isMobileWeb}
         onClaim={handleClaim.onClaim}
         onClaimGateRecheck={handleClaim.refreshQuote}
+        {...handleClaimModalActions}
         onNotNow={handleClaimNotNow}
         onOpenChange={handleClaimModalOpenChange}
         onSearchChange={handleClaim.onSearchChange}
-        onSelfVerificationClick={() => {
-          void startSelfVerification({
-            membershipGateSummaries: handleClaim.claimGateSummaries,
-            showToastOnError: true,
-          });
-        }}
-        onWalletConnectionClick={() => {
-          const gate = handleClaim.claimGateSummaries.find((summary) =>
-            summary.gate_type === "erc721_holding"
-            || summary.gate_type === "erc721_inventory_match"
-            || summary.gate_type === "asset_balance"
-          );
-          if (gate) void startGateVerification(gate);
-        }}
         open={handleClaimModalOpen}
         phase={handleClaim.phase}
         processing={handleClaim.processing}

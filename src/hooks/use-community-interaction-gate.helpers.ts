@@ -123,6 +123,8 @@ export type PendingInteraction = {
 
 export type RunGatedCommunityActionParams = {
   action: InteractionAction;
+  /** Re-evaluate a public reply after the API authoritatively rejected it. */
+  enforceGate?: boolean;
   /**
    * Optional route-owned modal override.
    * Return `undefined` to let the default gate modal render, `null` when the
@@ -732,6 +734,7 @@ export function createDefaultBlockedModalState({
 export function resolveCommunityInteractionState(input: {
   action: InteractionAction;
   eligibility: JoinEligibility | null | undefined;
+  enforceGate?: boolean;
   hasSession: boolean;
   requireMembership?: boolean;
 }): "allowed" | "auth" | Exclude<JoinEligibility["status"], "already_joined"> {
@@ -740,7 +743,7 @@ export function resolveCommunityInteractionState(input: {
   }
 
   const isReplyAction = input.action === "reply_post" || input.action === "reply_comment";
-  if (isReplyAction && !input.requireMembership) {
+  if (isReplyAction && !input.requireMembership && !input.enforceGate) {
     return "allowed";
   }
 

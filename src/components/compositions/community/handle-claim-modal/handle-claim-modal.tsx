@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { formatUsdCentsLabel } from "@/lib/formatting/currency";
 
 import type {
+  HandleClaimGateAction,
   HandleClaimModalProps,
   HandleClaimPhase,
   HandleSearchResult,
@@ -99,7 +100,7 @@ function SearchResultFeedback({
   result,
 }: {
   copy: ReturnType<typeof getLocaleMessages<"gates">>["handleClaims"];
-  onClaimGateAction?: (action: "self" | "wallet") => void;
+  onClaimGateAction?: (action: HandleClaimGateAction) => void;
   onClaimGateRecheck?: () => void;
   phase: HandleClaimPhase;
   result: HandleSearchResult | undefined;
@@ -192,7 +193,15 @@ function SearchResultFeedback({
                 size="sm"
                 variant="outline"
               >
-                {action === "self" ? copy.verifyWithSelf : copy.connectWallet}
+                {action === "self"
+                  ? copy.verifyWithSelf
+                  : action === "very"
+                    ? copy.verifyWithVery
+                    : action === "zkpassport"
+                      ? copy.verifyWithZkPassport
+                      : action === "pow"
+                        ? copy.completeProofOfWork
+                      : copy.connectWallet}
               </Button>
             ))}
             {onClaimGateRecheck ? (
@@ -228,6 +237,8 @@ export function HandleClaimModal({
   searchResult,
   selfVerificationSavingsPercent,
   onSelfVerificationClick,
+  onVerificationProviderClick,
+  onProofOfWorkClick,
   onWalletConnectionClick,
   onClaimGateRecheck,
   onClaim,
@@ -394,7 +405,10 @@ export function HandleClaimModal({
                 <SearchResultFeedback
                   copy={claimGateCopy}
                   onClaimGateAction={(action) => {
-                    if (action === "self") onSelfVerificationClick?.();
+                    if (action === "self" || action === "very" || action === "zkpassport") {
+                      onVerificationProviderClick?.(action);
+                    }
+                    if (action === "pow") onProofOfWorkClick?.();
                     if (action === "wallet") onWalletConnectionClick?.();
                   }}
                   onClaimGateRecheck={onClaimGateRecheck}

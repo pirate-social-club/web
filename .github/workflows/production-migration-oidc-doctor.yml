@@ -191,3 +191,26 @@ jobs:
             echo ""
             echo "This workflow is read-only; it does not apply migrations or deploy."
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Audit provider identity evidence (read-only)
+        working-directory: core
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
+          bun scripts/control-plane/audit-provider-identity-evidence.ts \
+            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
+            | tee "$GITHUB_WORKSPACE/provider-identity-evidence-audit.json"
+          {
+            echo ""
+            echo "## Provider identity evidence audit"
+            echo ""
+            echo "The aggregate-only report is attached as a workflow artifact."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload provider identity evidence audit
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: provider-identity-evidence-audit-${{ github.run_id }}-${{ github.run_attempt }}
+          path: provider-identity-evidence-audit.json
+          if-no-files-found: warn
+          retention-days: 14

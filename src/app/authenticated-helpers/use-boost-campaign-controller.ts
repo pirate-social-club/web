@@ -42,6 +42,7 @@ import {
 } from "./boost-campaign-resource";
 import type { BoostCampaignControllerInput } from "./boost-campaign-controller-types";
 import { boostFundingErrorMessage } from "./boost-funding-errors";
+import { useBoostCampaignOpen } from "./use-boost-campaign-open";
 import { useSongBountiesController } from "./use-song-bounties-controller";
 import { useSongOwnerPolicyUpdate } from "./use-song-owner-policy-update";
 import {
@@ -71,7 +72,6 @@ const SCORE_THRESHOLD_BPS = 7_000;
 const FUNDING_FINALITY_POLL_INTERVAL_MS = 10_000;
 type BountyObjective = "study" | "karaoke";
 type BountyCampaignSlots = Record<BountyObjective, RewardCampaign | null>;
-
 export function useBoostCampaignController(input: BoostCampaignControllerInput) {
   const api = useApi();
   const { connectedWallets } = usePiratePrivyWallets({ enabled: input.authenticated && input.song });
@@ -680,7 +680,6 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       }
     }
   }, [campaign, confirmSubmittedFunding, createQuote, fundingWallet, input.communityId, input.postId, quote]);
-
   const campaignAcceptsTopUp = acceptsCampaignTopUp(campaign);
   const hasCampaignConflict = (Boolean(input.activeCampaignId) || blocksNewCampaign(campaign))
     && !campaignAcceptsTopUp;
@@ -693,7 +692,6 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     && capabilities
     && !capabilities.eligible_activities.includes(authoritativeEligibleActivity),
   );
-
   const handleConfirm = React.useCallback(() => {
     if (busy || hasCampaignConflict || thirdPartyBlocked || activityUnavailable) return;
     if (sheetState === "compose") {
@@ -704,50 +702,22 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     if (sheetState === "top_up") void createQuote(campaign);
     if (sheetState === "quote") void sendFunding();
   }, [activityUnavailable, busy, campaign, createQuote, hasCampaignConflict, nationalityPricingEnabled, payoutTiers.length, sendFunding, sheetState, thirdPartyBlocked]);
-
-  const openBoost = React.useCallback((objective?: BountyObjective) => {
-    if (!input.authenticated) {
-      input.requestAuth();
-      return;
-    }
-    const targetCampaign = objective ? campaignSlots[objective] : campaign;
-    const targetQuote = targetCampaign && quote?.campaign === targetCampaign.id ? quote : null;
-    const targetCampaignAcceptsTopUp = acceptsCampaignTopUp(targetCampaign);
-    if (quote && !targetQuote) setQuote(null);
-    if (objective) {
-      setEligibleActivity(objective);
-      setCampaign(targetCampaign);
-    }
-    if (sheetState === "funding-review") {
-      // Terminal review is intentionally sticky until an explicit retry is allowed.
-    }
-    else if (
-        targetQuote
-        && transactionHash
-        && ["confirming", "awaiting-finality"].includes(sheetState)
-    ) {
-      dispatchFundingWorkflow({ type: "awaiting-finality", transactionHash });
-    }
-    else if (targetQuote && sheetState === "quote") {
-      if (targetQuote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(targetCampaign);
-      else dispatchFundingWorkflow({ type: "show", status: "quote" });
-    }
-    else if (targetCampaignAcceptsTopUp) {
-      setQuote(null);
-      dispatchFundingWorkflow({ type: "show", status: "top_up" });
-    }
-    else if (campaignPayoutTiers(targetCampaign).length > 0 && !tierFundingEnabled) {
-      dispatchFundingWorkflow({ type: "show", status: "draft-preview" });
-    }
-    else if (campaignPayoutTiers(targetCampaign).length > 0 && !targetQuote) void createQuote(targetCampaign);
-    else if (!targetQuote) {
-      dispatchFundingWorkflow({ type: "restart" });
-    }
-    else if (targetQuote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(targetCampaign);
-    else dispatchFundingWorkflow({ type: "show", status: "quote" });
-    setSheetOpen(true);
-  }, [campaign, campaignSlots, createQuote, input, quote, sheetState, tierFundingEnabled, transactionHash]);
-
+  const openBoost = useBoostCampaignOpen({
+    authenticated: input.authenticated,
+    campaign,
+    campaignSlots,
+    createQuote,
+    dispatchFundingWorkflow,
+    quote,
+    requestAuth: input.requestAuth,
+    setCampaign,
+    setEligibleActivity,
+    setQuote,
+    setSheetOpen,
+    sheetState,
+    tierFundingEnabled,
+    transactionHash,
+  });
   const updatePolicy = useSongOwnerPolicyUpdate({
     api,
     communityId: input.communityId,

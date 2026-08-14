@@ -119,11 +119,12 @@ export function deriveSongBountyPresentation(input: SongBountyPresentationInput)
   });
   const legacyCampaign = [input.campaigns?.study, input.campaigns?.karaoke, campaign]
     .find((candidate): candidate is RewardCampaign => Boolean(candidate?.eligible_activity === "either"));
-  const legacyEither: LegacyEitherBounty | undefined = legacyCampaign
+  const legacyStatus = legacyCampaign ? songBountyLifecycleStatus(legacyCampaign.status) : undefined;
+  const legacyEither: LegacyEitherBounty | undefined = legacyCampaign && legacyStatus && legacyStatus !== "empty"
     ? {
         remainingLabel: formatUsdCentsLabel(legacyCampaign.remaining_cents) ?? undefined,
         rewardLabel: campaignRewardLabel(legacyCampaign),
-        status: songBountyLifecycleStatus(legacyCampaign.status) === "empty" ? "active" : songBountyLifecycleStatus(legacyCampaign.status),
+        status: legacyStatus,
       }
     : undefined;
   return {

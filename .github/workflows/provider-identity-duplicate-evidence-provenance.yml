@@ -117,7 +117,7 @@ jobs:
                  AND g.source_verification_session_id IS NOT DISTINCT FROM a.source_verification_session_id
                  AND g.source_identity_nullifier_id IS NOT DISTINCT FROM a.source_identity_nullifier_id
                 WHERE a.status = 'accepted'
-                ORDER BY a.created_at, a.attestation_id
+                ORDER BY a.created_at, a.user_attestation_id
               `;
 
               // Which columns anywhere in the schema reference an attestation id.

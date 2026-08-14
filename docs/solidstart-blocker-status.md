@@ -34,8 +34,10 @@ are closed: reactive Solid 2 props throughout, corrected Dialog accessible names
 a new AlertDialog component, a ConfirmDialog pattern with no toaster coupling,
 contrast fixes in both themes (0 axe violations on the open Dialog story), the
 target hierarchy and story naming policy, autodocs and populated Controls, the
-maintained `class-variance-authority` recipe, and 57 passing focused tests plus an
-SSR smoke check. Caveats: the `storybook test` CLI is absent from storybook 10.5.8
+maintained `class-variance-authority` recipe, and 58 passing focused tests plus an
+SSR smoke check. A follow-up review's two code defects (foreground/solid token
+split, loading dominance) are fixed and its remaining items are recorded in the
+findings file. Caveats: the `storybook test` CLI is absent from storybook 10.5.8
 core for this renderer (play assertions run in Vitest instead), a small Kobalte
 2.0.0-alpha.0 `bun patch` fixes a Solid 2 owned-scope write crash, several alpha
 behavior mismatches are encoded in tests, and Corvu stays gated on a Solid

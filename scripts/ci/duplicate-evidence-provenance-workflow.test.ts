@@ -43,7 +43,7 @@ describe("duplicate-evidence provenance audit workflow", () => {
     expect(source).toContain("SHA256(a.user_id::bytea)");
     expect(source).toContain("AS user_digest");
 
-    const start = source.lastIndexOf("SELECT a.attestation_id");
+    const start = source.lastIndexOf("SELECT a.user_attestation_id");
     const projection = source.slice(start, source.indexOf("FROM user_attestations a", start));
     expect(start).toBeGreaterThan(-1);
     expect(projection).not.toContain("a.user_id,");

@@ -1,19 +1,21 @@
 # SolidStart Phase B: Storybook components — findings
 
-Status: **pass-with-caveats** (second review closed)  
+Status: **pass-with-caveats** (Gate 0 and Batch 1 complete)  
 Date: 2026-08-14  
 Repository: `solid-storybook-poc` (Storybook on port 6007; package name
 `pirate-solid-design-system`)
 
 ## Verdict
 
-Gate 0 (repair and normalize the existing batch) is complete with caveats. The nine
-surfaces — Button, Input, TextField, Dialog, AlertDialog, DropdownMenu, ActionMenu,
-Toast/Toaster, ConfirmDialog — live in the target hierarchy under `src/components/`
-and `src/patterns/`, all audit blockers from the 2026-08-14 pass are closed, 58
-focused tests pass, the SSR smoke check passes, and the static Storybook build
-succeeds. The catalog has 0 axe violations on the open Dialog and open ActionMenu
-stories in dark and light themes.
+Gate 0 (repair and normalize the existing batch) and Batch 1 (shell
+foundations) are complete with caveats. The nine Gate 0 surfaces plus the
+Batch 1 additions — Type, IconButton, Label, Separator, Skeleton, Spinner,
+Tooltip, Card, LayoutShell, and six Foundations docs — live in the target
+hierarchy under `src/components/`, `src/patterns/`, and
+`src/stories/foundations/`. All audit blockers from the 2026-08-14 passes are
+closed, 90 focused tests pass, the SSR smoke check passes, and the static
+Storybook build succeeds. The catalog has 0 axe violations on the open Dialog
+and open ActionMenu stories in dark and light themes.
 
 A follow-up review found two code defects and several documentation/contract
 gaps; both defects are fixed and everything else is recorded here and in the
@@ -137,16 +139,51 @@ The local PoC `cva` was replaced with the maintained `class-variance-authority`
 
 ## SSR results
 
-`renderToString` smoke checks pass for all nine surfaces under node resolution
+`renderToString` smoke checks pass for all surfaces under node resolution
 (no module-scope `window`/`document` in design-system code). The Kobalte
 dependency chain (`@solid-primitives/platform`) is SSR-safe only when
 `@solidjs/web` resolves to the server build, hence the dedicated node project.
 
-## Open items (Batch 1+)
+## Batch 1 — shell foundations (complete, 2026-08-14)
 
-- Port the React Storybook locale/direction controls and add explicit
-  mobile/RTL stories where layout changes (Dialog/ConfirmDialog footers).
-- Batch 1 foundation: tokens docs, Type, IconButton, Label, Separator,
-  Skeleton, Spinner, Tooltip, Card, LayoutShell.
+Delivered and committed:
+
+- **Foundations docs** (`src/stories/foundations/*.mdx`, sidebar section
+  `Foundations`): Color (with the solid/text token-role split), Typography,
+  Spacing & Sizing, Radius & Elevation, Icons, Motion (reduced-motion policy).
+- **Components**: `Type` (all text surfaces, 10 variants + `as`),
+  `IconButton` (Button visual language at icon size, `active`, loading),
+  `Label` (native label + tone), `Separator` (Kobalte), `Skeleton`
+  (surface-skeleton token, reduced-motion aware), `Spinner` (`role=status`,
+  localized label, `decorative` mode for embedded use), `Tooltip` (Kobalte,
+  hover/focus/Escape), `Card` compound parts.
+- **Pattern**: `LayoutShell` (`CardShell`, `PageContainer` with size classes
+  and gutter tokens; `--page-gutter-*` and `--header-height` tokens added).
+- **Toolbars**: locale (en/ar/pseudo) and direction (auto/ltr/rtl) globals
+  joined the theme toolbar; the decorator sets `dir`/`lang` on the preview
+  document. Story-level `globals` verified in-browser (`RightToLeft` stories
+  render `dir=rtl lang=ar`). Mobile stories use the core viewport toolbar
+  (`defaultViewport: mobile1`).
+- **Mobile/RTL stories** for Dialog, AlertDialog, and ConfirmDialog.
+- **Motion**: `motion-reduce:*` pairs added to Button, Skeleton, and Spinner.
+
+New alpha mismatches recorded: `Separator` dropped the 0.13 `decorative`
+option entirely (the wrapper adds `role="none"` itself); embedding a
+`role=status` spinner inside a labeled button changed its accessible name, so
+the spinner gained a `decorative` mode — a rule now: embedded progress
+indicators are decorative, standalone ones carry the status role.
+
+Verification: 90 focused tests pass (19 files, stable across repeated runs),
+`tsc` clean, static Storybook build succeeds, and the sidebar/foundations
+order, MDX rendering, RTL rendering, and theme decorator were checked in a
+real browser.
+
+## Open items (Batch 2+)
+
+- Batch 2 feed/media: Avatar, BadgedCircle, CommunityAvatar,
+  MediaControlButton, Scrubber, Waveform, Sheet, Tabs, Chip, VotePill,
+  CommentPill, PillButton — classify wrappers as Patterns before porting.
 - Re-check the Kobalte patch and recorded mismatches against each new alpha.
 - Consider a web-side contrast audit of `--primary`/`--destructive` parity.
+- Tooltip and other overlay open-state visuals were verified in jsdom and
+  via the a11y addon; a headed-browser hover pass is a nice-to-have.

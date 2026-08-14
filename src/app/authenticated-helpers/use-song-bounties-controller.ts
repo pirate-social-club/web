@@ -43,7 +43,7 @@ export function useSongBountiesController(input: UseSongBountiesControllerInput)
     if (action === "view") return;
     if (objective !== "either") setEligibleActivity(objective);
     setOpen(false);
-    openBoost();
+    openBoost(objective === "either" ? undefined : objective);
   }, [openBoost, setEligibleActivity]);
   return {
     bountiesSheetProps: {

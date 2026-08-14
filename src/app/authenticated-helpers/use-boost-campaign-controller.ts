@@ -69,6 +69,8 @@ export type { BoostCampaignControllerInput } from "./boost-campaign-controller-t
 export { useBoostMenuEligibility } from "./use-boost-menu-eligibility";
 const SCORE_THRESHOLD_BPS = 7_000;
 const FUNDING_FINALITY_POLL_INTERVAL_MS = 10_000;
+type BountyObjective = "study" | "karaoke";
+type BountyCampaignSlots = Record<BountyObjective, RewardCampaign | null>;
 
 export function useBoostCampaignController(input: BoostCampaignControllerInput) {
   const api = useApi();
@@ -77,6 +79,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const [capabilities, setCapabilities] = React.useState<RewardCampaignCapabilitiesWithProviderChoices | null>(null);
   const [policyAllowed, setPolicyAllowed] = React.useState(true);
   const [campaign, setCampaign] = React.useState<RewardCampaign | null>(null);
+  const [campaignSlots, setCampaignSlots] = React.useState<BountyCampaignSlots>({ study: null, karaoke: null });
   const [campaignResolved, setCampaignResolved] = React.useState(false);
   const [quote, setQuote] = React.useState<RewardCampaignFundingQuote | null>(null);
   const [sheetOpen, setSheetOpen] = React.useState(false);
@@ -130,6 +133,7 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     if (!input.authenticated || !input.song || !input.communityId) {
       setCapabilities(null);
       setCampaign(null);
+      setCampaignSlots({ study: null, karaoke: null });
       setCampaignResolved(true);
       return;
     }
@@ -172,12 +176,26 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
         throw error;
       }
     };
+    const loadSlot = async (objective: BountyObjective): Promise<RewardCampaign | null> => {
+      try {
+        const slot = await api.rewards.getCampaignForSong(input.communityId!, input.postId, objective);
+        // An older API may ignore the query parameter. Do not let that make one
+        // legacy campaign appear in both objective slots.
+        return slot.eligible_activity === objective || slot.eligible_activity === "either" ? slot : null;
+      } catch (error: unknown) {
+        if (isApiNotFoundError(error)) return null;
+        throw error;
+      }
+    };
     void Promise.all([
       api.rewards.getCampaignCapabilities(input.postId),
       loadCampaign(),
-    ]).then(([nextCapabilities, storedCampaignResult]) => {
+      loadSlot("study"),
+      loadSlot("karaoke"),
+    ]).then(([nextCapabilities, storedCampaignResult, studyCampaign, karaokeCampaign]) => {
       if (cancelled) return;
       const storedCampaign = storedCampaignResult.campaign;
+      setCampaignSlots({ study: studyCampaign, karaoke: karaokeCampaign });
       setCapabilities(nextCapabilities);
       setCampaign(storedCampaign);
       setCampaignResolved(true);
@@ -687,10 +705,16 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     if (sheetState === "quote") void sendFunding();
   }, [activityUnavailable, busy, campaign, createQuote, hasCampaignConflict, nationalityPricingEnabled, payoutTiers.length, sendFunding, sheetState, thirdPartyBlocked]);
 
-  const openBoost = React.useCallback(() => {
+  const openBoost = React.useCallback((objective?: BountyObjective) => {
     if (!input.authenticated) {
       input.requestAuth();
       return;
+    }
+    const targetCampaign = objective ? campaignSlots[objective] : campaign;
+    const targetCampaignAcceptsTopUp = acceptsCampaignTopUp(targetCampaign);
+    if (objective) {
+      setEligibleActivity(objective);
+      setCampaign(targetCampaign);
     }
     if (sheetState === "funding-review") {
       // Terminal review is intentionally sticky until an explicit retry is allowed.
@@ -703,24 +727,24 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       dispatchFundingWorkflow({ type: "awaiting-finality", transactionHash });
     }
     else if (quote && sheetState === "quote") {
-      if (quote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(campaign);
+      if (quote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(targetCampaign);
       else dispatchFundingWorkflow({ type: "show", status: "quote" });
     }
-    else if (campaignAcceptsTopUp) {
+    else if (targetCampaignAcceptsTopUp) {
       setQuote(null);
       dispatchFundingWorkflow({ type: "show", status: "top_up" });
     }
-    else if (campaignPayoutTiers(campaign).length > 0 && !tierFundingEnabled) {
+    else if (campaignPayoutTiers(targetCampaign).length > 0 && !tierFundingEnabled) {
       dispatchFundingWorkflow({ type: "show", status: "draft-preview" });
     }
-    else if (campaignPayoutTiers(campaign).length > 0 && !quote) void createQuote(campaign);
+    else if (campaignPayoutTiers(targetCampaign).length > 0 && !quote) void createQuote(targetCampaign);
     else if (!quote) {
       dispatchFundingWorkflow({ type: "restart" });
     }
-    else if (quote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(campaign);
+    else if (quote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(targetCampaign);
     else dispatchFundingWorkflow({ type: "show", status: "quote" });
     setSheetOpen(true);
-  }, [campaign, campaignAcceptsTopUp, createQuote, input, quote, sheetState, tierFundingEnabled, transactionHash]);
+  }, [campaign, campaignSlots, createQuote, input, quote, sheetState, tierFundingEnabled, transactionHash]);
 
   const updatePolicy = useSongOwnerPolicyUpdate({
     api,
@@ -741,7 +765,12 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
   const { bountiesSheetProps, openBounties } = useSongBountiesController({
     authenticated: input.authenticated,
     campaign,
+    campaigns: campaignSlots,
     campaignAcceptsTopUp,
+    campaignAcceptsTopUpByObjective: {
+      study: acceptsCampaignTopUp(campaignSlots.study),
+      karaoke: acceptsCampaignTopUp(campaignSlots.karaoke),
+    },
     campaignResolved,
     canBrowseBounties,
     capabilities,

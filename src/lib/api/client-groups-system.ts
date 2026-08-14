@@ -91,11 +91,12 @@ export function createRoyaltiesApi(request: ApiRequest) {
 
 export function createRewardsApi(request: ApiRequest) {
   return {
-    getActiveCampaignForSong: (communityId: string, postId: string): Promise<ApiPublicRewardOffer> =>
+    getActiveCampaignForSong: (communityId: string, postId: string, objective?: "study" | "karaoke"): Promise<ApiPublicRewardOffer> =>
       request<ApiPublicRewardOffer>(
         buildQueryPath("/public/reward_campaigns", {
           community_id: communityId,
           post_id: postId,
+          objective,
         }),
         { tokenRequired: false },
       ),
@@ -137,11 +138,12 @@ export function createRewardsApi(request: ApiRequest) {
         method: "POST",
         body: JSON.stringify(input),
       }),
-    getCampaignForSong: (communityId: string, postId: string): Promise<RewardCampaign> =>
+    getCampaignForSong: (communityId: string, postId: string, objective?: "study" | "karaoke"): Promise<RewardCampaign> =>
       request<RewardCampaign>(
         buildQueryPath("/reward_campaigns", {
           community_id: communityId,
           post_id: postId,
+          objective,
         }),
       ),
     getCampaign: (campaignId: string): Promise<RewardCampaign> =>

@@ -778,7 +778,7 @@ describe("useBoostCampaignController", () => {
     await waitFor(() => expect(view.result.current.sheetProps.state).toBe("active"));
 
     expect(calls.create).toBe(0);
-    expect(calls.poolRead).toBe(1);
+    expect(calls.poolRead).toBe(3);
     expect(calls.quote).toBe(1);
     expect(calls.transfer).toBe(1);
     expect(calls.confirm).toBe(1);
@@ -1255,7 +1255,7 @@ describe("useBoostCampaignController", () => {
     act(() => view.result.current.openBoost());
     expect(view.result.current.sheetProps.state).toBe("top_up");
     expect(localStorage.getItem("pirate_reward_campaign:com_test:pst_test")).toBe("rcp_pool");
-    expect(calls.poolRead).toBe(1);
+    expect(calls.poolRead).toBe(3);
   });
 });
 

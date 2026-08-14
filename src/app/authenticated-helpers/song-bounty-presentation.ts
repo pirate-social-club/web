@@ -15,8 +15,10 @@ type CapabilityInput = { eligible_activities: readonly string[] } | null;
 
 interface SongBountyPresentationInput {
   campaign: RewardCampaign | null;
+  campaigns?: Partial<Record<BountyObjective, RewardCampaign | null>>;
   capabilities: CapabilityInput;
   campaignAcceptsTopUp: boolean;
+  campaignAcceptsTopUpByObjective?: Partial<Record<BountyObjective, boolean>>;
   campaignResolved: boolean;
   canBrowseBounties: boolean;
   thirdPartyBlocked: boolean;
@@ -68,28 +70,42 @@ function campaignRewardLabel(campaign: RewardCampaign): string {
 
 export function deriveSongBountyPresentation(input: SongBountyPresentationInput): SongBountyPresentation {
   const { campaign, capabilities } = input;
-  const campaignOccupiesSlots = Boolean(campaign && !["ended", "canceled"].includes(campaign.status));
-  const campaignStatus = campaign ? songBountyLifecycleStatus(campaign.status) : "empty";
-  const canFundCampaign = Boolean(input.canBrowseBounties && input.campaignAcceptsTopUp && !input.thirdPartyBlocked);
+  const campaignForObjective = (objective: BountyObjective): RewardCampaign | null => {
+    const slotCampaign = input.campaigns?.[objective];
+    if (slotCampaign !== undefined) return slotCampaign;
+    return campaign?.eligible_activity === objective || campaign?.eligible_activity === "either" ? campaign : null;
+  };
+  const canFundCampaign = Boolean(input.canBrowseBounties && !input.thirdPartyBlocked && (
+    input.campaignAcceptsTopUp
+      || Object.values(input.campaignAcceptsTopUpByObjective ?? {}).some(Boolean)
+  ));
   const canCreateObjective = (objective: BountyObjective) => Boolean(
     input.canBrowseBounties
-      && !campaignOccupiesSlots
+      && !campaignForObjective(objective)
       && capabilities?.eligible_activities.includes(objective),
   );
   const slots = (["study", "karaoke"] as const).map((objective) => {
-    if (campaignOccupiesSlots && campaign?.eligible_activity === objective) {
+    const objectiveCampaign = campaignForObjective(objective);
+    const campaignOccupiesSlot = Boolean(objectiveCampaign && !["ended", "canceled"].includes(objectiveCampaign.status));
+    const campaignStatus = objectiveCampaign ? songBountyLifecycleStatus(objectiveCampaign.status) : "empty";
+    const objectiveCanFund = input.campaignAcceptsTopUpByObjective?.[objective] ?? input.campaignAcceptsTopUp;
+    if (campaignOccupiesSlot && objectiveCampaign) {
       return {
         canCreate: false,
-        canFund: canFundCampaign,
+        canFund: Boolean(input.canBrowseBounties && objectiveCanFund && !input.thirdPartyBlocked),
         objective,
-        remainingLabel: formatUsdCentsLabel(campaign.remaining_cents) ?? undefined,
-        rewardLabel: campaignRewardLabel(campaign),
+        remainingLabel: formatUsdCentsLabel(objectiveCampaign.remaining_cents) ?? undefined,
+        rewardLabel: campaignRewardLabel(objectiveCampaign),
         status: campaignStatus,
       } satisfies SongBountySlot;
     }
     const canCreate = canCreateObjective(objective);
-    const actionDisabledReason = campaignOccupiesSlots && campaign
-      ? `A ${campaign.eligible_activity === "either" ? "Study or Karaoke" : campaign.eligible_activity} bounty already occupies this song. A separate ${objective} bounty is not available yet.`
+    const occupiedObjective = (["study", "karaoke"] as const).find((candidate) => {
+      const candidateCampaign = campaignForObjective(candidate);
+      return Boolean(candidateCampaign && !["ended", "canceled"].includes(candidateCampaign.status));
+    });
+    const actionDisabledReason = occupiedObjective
+      ? `A ${occupiedObjective} bounty already occupies this song. A separate ${objective} bounty is not available yet.`
       : !canCreate
         ? `${objective[0].toUpperCase()}${objective.slice(1)} bounties are not eligible for this song right now.`
         : undefined;
@@ -101,16 +117,18 @@ export function deriveSongBountyPresentation(input: SongBountyPresentationInput)
       status: "empty" as const,
     } satisfies SongBountySlot;
   });
-  const legacyEither: LegacyEitherBounty | undefined = campaignOccupiesSlots && campaign?.eligible_activity === "either"
+  const legacyCampaign = [input.campaigns?.study, input.campaigns?.karaoke, campaign]
+    .find((candidate): candidate is RewardCampaign => Boolean(candidate?.eligible_activity === "either"));
+  const legacyEither: LegacyEitherBounty | undefined = legacyCampaign
     ? {
-        remainingLabel: formatUsdCentsLabel(campaign.remaining_cents) ?? undefined,
-        rewardLabel: campaignRewardLabel(campaign),
-        status: campaignStatus === "empty" ? "active" : campaignStatus,
+        remainingLabel: formatUsdCentsLabel(legacyCampaign.remaining_cents) ?? undefined,
+        rewardLabel: campaignRewardLabel(legacyCampaign),
+        status: songBountyLifecycleStatus(legacyCampaign.status) === "empty" ? "active" : songBountyLifecycleStatus(legacyCampaign.status),
       }
     : undefined;
   return {
     capabilities: {
-      canCreate: input.canBrowseBounties && !campaignOccupiesSlots,
+      canCreate: input.canBrowseBounties && slots.some((slot) => slot.canCreate),
       canFund: canFundCampaign,
       reason: !input.campaignResolved
         ? "Loading bounties…"

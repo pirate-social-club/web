@@ -184,14 +184,32 @@ Verification: 92 focused tests pass (19 files, stable across repeated runs),
 order, MDX rendering, RTL rendering, and theme decorator were checked in a
 real browser.
 
-## Batch 2 coordination
+## Batch 2 ownership (resolved 2026-08-14)
 
-Batch 2 (feed/media) stays **paused** until ownership of
-`src/patterns/engagement/vertical-feed` in the Solid repo is explicit. A
-concurrent lane is actively writing that pattern in the shared checkout;
-its uncommitted files currently carry the only two `tsc` errors in the
-repository (raw `aria-pressed` booleans on native buttons), which is that
-lane's in-flight work, not a catalog regression.
+Batch 2 (feed/media) is unpaused under an explicit ownership split:
+
+- The engagement lane owns `src/patterns/engagement/vertical-feed/**` in the
+  Solid repo through completion and API handoff.
+- The Storybook lane treats `VerticalFeed` as an external consumer and does
+  not edit that directory. The engagement lane's uncommitted files (including
+  the VerticalFeed SSR case in `scripts/ssr-check.test.tsx`) must not be
+  modified or staged by the Storybook lane.
+- The Storybook lane proceeds with the independent Batch 2 primitives:
+  Avatar, BadgedCircle, CommunityAvatar, MediaControlButton, Scrubber,
+  Waveform, Sheet, Tabs, Chip, VotePill, CommentPill, and PillButton.
+- Integration stories involving VerticalFeed wait until its owner publishes a
+  stable component API.
+- Shared files (tokens, icons, exports, fixtures, package configuration)
+  require coordination before either lane edits them; proposed edits are
+  recorded before they are made.
+
+Coordination item for the engagement lane: fix the native `aria-pressed`
+values in `vertical-feed` and run its own focused type verification
+(`rtk bun run check` in the Solid repo). Those errors blocked a clean
+repository-wide TypeScript signal even though Batch 1 itself is sound.
+Observed 2026-08-14: the uncommitted working tree now carries string-valued
+`aria-pressed` and `bun run check` is clean; the remaining ask is the lane's
+own focused verification and commit before handoff.
 
 ## Open items (Batch 2+)
 

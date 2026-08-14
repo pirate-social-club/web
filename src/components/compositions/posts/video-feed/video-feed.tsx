@@ -796,7 +796,7 @@ const VideoFeedSlide = React.memo(function VideoFeedSlide({
       separatorBefore: Boolean(item.shareActions?.length || onShare),
     }] : []),
     ...(item.boostEligibility === "eligible"
-      ? [{ key: "boost", label: "Boost this song", icon: <CurrencyDollar className="size-5" weight="bold" /> }]
+      ? [{ key: "boost", label: "View bounties", icon: <CurrencyDollar className="size-5" weight="bold" /> }]
       : []),
   ];
   const runOverflowAction = (key: string) => {

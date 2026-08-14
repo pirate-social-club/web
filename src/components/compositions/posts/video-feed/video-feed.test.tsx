@@ -427,7 +427,7 @@ describe("VideoFeed", () => {
 
     expect(view.getByRole("button", { name: "Sing processing" }).hasAttribute("disabled")).toBe(true);
     expect(view.getByRole("button", { name: "Study unavailable" }).hasAttribute("disabled")).toBe(true);
-    expect(view.queryByText("Boost this song")).toBeNull();
+    expect(view.queryByText("View bounties")).toBeNull();
   });
 
   test("opens a linked song and preserves playback state", () => {

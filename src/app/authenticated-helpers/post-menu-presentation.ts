@@ -68,7 +68,7 @@ export function buildPostMenu(input: {
   const postMenuItems = [
     ...(canBoost ? [{
       key: "boost",
-      label: "Boost",
+      label: "Bounties",
       icon: React.createElement(Megaphone, { className: "size-4" }),
     }] : []),
     ...(canManageRewardSettings ? [{

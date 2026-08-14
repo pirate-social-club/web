@@ -48,6 +48,7 @@ import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin"
 import { toast } from "@/components/primitives/sonner";
 import { rewardCtaAmountLabel } from "@/components/compositions/rewards/reward-surfaces";
 import { BoostCampaignSheet, SongRewardPolicySheet } from "@/components/compositions/rewards/reward-booster-surfaces";
+import { SongBountiesSheet } from "@/components/compositions/rewards/song-bounties-sheet";
 import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
 import { logger } from "@/lib/logger";
 import { normalizeUserId, sameUserId } from "@/app/authenticated-helpers/user-id";
@@ -1094,7 +1095,7 @@ export function PostPage({
     commentCountOverride: commentCount,
     liveRoom: liveRoomOptions,
     onCancelEvent: cancelEvent,
-    onBoost: boostController.openBoost,
+    onBoost: boostController.openBounties,
     onDelete: deletePost,
     onRemove: removePost, onRefreshProcessing: refreshProcessingPost,
     onRewardSettings: boostController.openPolicy,
@@ -1116,7 +1117,7 @@ export function PostPage({
       commentCountOverride: commentCount,
       liveRoom: liveRoomOptions,
       onCancelEvent: cancelEvent,
-      onBoost: boostController.openBoost,
+      onBoost: boostController.openBounties,
       onDelete: deletePost,
       onRemove: removePost, onRefreshProcessing: refreshProcessingPost,
       onRewardSettings: boostController.openPolicy,
@@ -1181,6 +1182,7 @@ export function PostPage({
   );
   const threadBody = (
     <>
+      <SongBountiesSheet {...boostController.bountiesSheetProps} />
       <BoostCampaignSheet {...boostController.sheetProps} />
       <SongRewardPolicySheet {...boostController.policySheetProps} />
       {gateModal}

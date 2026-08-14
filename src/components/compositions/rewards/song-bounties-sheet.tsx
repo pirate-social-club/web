@@ -23,30 +23,32 @@ import { Card } from "@/components/primitives/card";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
-type BountyObjective = "study" | "karaoke";
+export type BountyObjective = "study" | "karaoke";
 
-type SongBountyLifecycleStatus =
+export type SongBountyLifecycleStatus =
   | "empty"
   | "active"
   | "exhausted"
   | "funding_confirming"
   | "operational_hold";
 
-interface SongBountyCapabilities {
+export interface SongBountyCapabilities {
   canCreate: boolean;
   canFund: boolean;
   reason?: string;
 }
 
-interface SongBountySlot {
+export interface SongBountySlot {
   objective: BountyObjective;
   status: SongBountyLifecycleStatus;
   rewardLabel?: string;
   remainingLabel?: string;
   viewerStatusLabel?: string;
+  canCreate?: boolean;
+  canFund?: boolean;
 }
 
-interface LegacyEitherBounty {
+export interface LegacyEitherBounty {
   rewardLabel: string;
   status: Exclude<SongBountyLifecycleStatus, "empty">;
   remainingLabel?: string;
@@ -78,6 +80,7 @@ export interface SongBountiesSheetProps {
   onSlotAction?: (objective: BountyObjective | "either", action: "create" | "fund" | "view") => void;
   onTicketPoolAction?: (action: "create" | "fund" | "view") => void;
   open: boolean;
+  showTicketPool?: boolean;
   slots: readonly SongBountySlot[];
   ticketPool?: SongTicketPool;
 }
@@ -126,10 +129,12 @@ function slotAction(slot: SongBountySlot, capabilities: SongBountyCapabilities):
   label: string;
 } {
   if (slot.status === "empty") {
-    return { action: "create", disabled: !capabilities.canCreate, label: capabilities.canCreate ? "Create" : "Unavailable" };
+    const canCreate = slot.canCreate ?? capabilities.canCreate;
+    return { action: "create", disabled: !canCreate, label: canCreate ? "Create" : "Unavailable" };
   }
   if (slot.status === "active" || slot.status === "exhausted") {
-    return { action: "fund", disabled: !capabilities.canFund, label: capabilities.canFund ? "Fund" : "Unavailable" };
+    const canFund = slot.canFund ?? capabilities.canFund;
+    return { action: "fund", disabled: !canFund, label: canFund ? "Fund" : "Unavailable" };
   }
   if (slot.status === "funding_confirming") {
     return { action: "view", disabled: true, label: "Confirming" };
@@ -374,6 +379,7 @@ export function SongBountiesSheet({
   onSlotAction,
   onTicketPoolAction,
   open,
+  showTicketPool = true,
   slots,
   ticketPool,
 }: SongBountiesSheetProps) {
@@ -405,7 +411,9 @@ export function SongBountiesSheet({
         ) : null}
 
         <div className="mt-5 space-y-3">
-          <TicketPoolCard capabilities={capabilities} onAction={onTicketPoolAction} pool={ticketPool} />
+          {showTicketPool ? (
+            <TicketPoolCard capabilities={capabilities} onAction={onTicketPoolAction} pool={ticketPool} />
+          ) : null}
           {legacyEither ? (
             <LegacyEitherCard bounty={legacyEither} capabilities={capabilities} onAction={onSlotAction} />
           ) : normalizedSlots.map((slot) => (

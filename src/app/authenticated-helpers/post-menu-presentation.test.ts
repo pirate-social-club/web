@@ -79,7 +79,7 @@ describe("buildPostMenu", () => {
     expect(menu.postMenuItems.find((item) => item.key === "view-story")?.icon).toBeTruthy();
   });
 
-  test("shows Boost and owner reward settings only for eligible song actions", () => {
+  test("shows Bounties and owner reward settings only for eligible song actions", () => {
     const menu = buildPostMenu({
       canBoost: true,
       canManageRewardSettings: true,
@@ -91,7 +91,7 @@ describe("buildPostMenu", () => {
     expect(menu.postMenuItems.map((item) => item.key)).toEqual(["boost", "reward-settings"]);
   });
 
-  test("does not put Boost on non-song posts", () => {
+  test("does not put Bounties on non-song posts", () => {
     const menu = buildPostMenu({
       canBoost: true,
       onBoost: () => undefined,

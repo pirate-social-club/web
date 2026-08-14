@@ -29,19 +29,20 @@ export function useSongBountiesController(input: UseSongBountiesControllerInput)
 } {
   const [open, setOpen] = React.useState(false);
   const presentation = deriveSongBountyPresentation(input);
+  const { authenticated, openBoost, requestAuth, setEligibleActivity } = input;
   const openBounties = React.useCallback(() => {
-    if (!input.authenticated) {
-      input.requestAuth();
+    if (!authenticated) {
+      requestAuth();
       return;
     }
     setOpen(true);
-  }, [input.authenticated, input.requestAuth]);
+  }, [authenticated, requestAuth]);
   const onSlotAction = React.useCallback((objective: BountyObjective | "either", action: "create" | "fund" | "view") => {
     if (action === "view") return;
-    if (objective !== "either" && action === "create") input.setEligibleActivity(objective);
+    if (objective !== "either" && action === "create") setEligibleActivity(objective);
     setOpen(false);
-    input.openBoost();
-  }, [input.openBoost, input.setEligibleActivity]);
+    openBoost();
+  }, [openBoost, setEligibleActivity]);
   return {
     bountiesSheetProps: {
       capabilities: presentation.capabilities,

@@ -1,7 +1,7 @@
 # Solid cutover plan
 
 Date: 2026-08-14
-Status: draft — awaiting step 1 signatures
+Status: proposed — awaiting step 1 signatures
 
 This is the source of truth for the React-to-Solid migration. A presentation
 copy exists as an HTML artifact; where the two differ, this file wins.

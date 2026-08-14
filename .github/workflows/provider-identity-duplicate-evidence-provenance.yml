@@ -1,0 +1,153 @@
+name: Provider identity duplicate-evidence provenance
+
+# Migration 0227 fails closed on duplicate accepted nationality evidence, but its
+# error names only the conflicting attestation ids. That is not enough to decide
+# whether a conflict is real user data or leftover staging test data, so the
+# decision stalls on an operator judgement it should not need. This read-only
+# audit reports the provenance of each row in a conflicting group, plus which
+# columns elsewhere reference attestation ids, so the follow-up linkage query can
+# be written against the real schema instead of guessed table names.
+#
+# Read-only by construction: SET TRANSACTION READ ONLY, no execute mode, no
+# repair path. It cannot resolve a conflict; it only makes the conflict legible.
+
+on:
+  workflow_dispatch:
+    inputs:
+      decision_ref:
+        description: Reviewed reference for this read-only audit
+        required: true
+        type: string
+
+concurrency:
+  group: provider-identity-duplicate-evidence-provenance
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Audit duplicate accepted evidence provenance (read-only)
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      # Same pin as provider-identity-invalid-link-audit, which is proven working
+      # against this schema. Do not float it without re-testing the helper import.
+      CORE_SHA: 4f6e68ed0ee5ff0ef33b39b2d3c4f055d704c9b9
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/core
+          ref: ${{ env.CORE_SHA }}
+          path: core
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+
+      - name: Validate reviewed input and Web identity
+        shell: bash
+        env:
+          DECISION_REF: ${{ inputs.decision_ref }}
+          INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
+        run: |
+          set -euo pipefail
+          [[ "$DECISION_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{2,159}$ ]]
+          [[ "$INFISICAL_IDENTITY_ID" =~ ^[0-9a-fA-F-]{36}$ ]]
+
+      # No `environment:` on this job. Declaring one would switch the OIDC subject
+      # to the environment form, which this identity does not trust.
+      - name: Fetch staging control-plane credential through Web OIDC
+        working-directory: core
+        env:
+          INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_ENV: staging
+          INFISICAL_SECRET_PATH: /services/control-plane
+          SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
+        run: scripts/ci/fetch-infisical-secrets.sh
+
+      - name: Run duplicate-evidence provenance audit
+        working-directory: core
+        env:
+          DECISION_REF: ${{ inputs.decision_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CONTROL_PLANE_DATABASE_URL="$CONTROL_PLANE_MIGRATOR_DATABASE_URL"
+          export CONTROL_PLANE_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
+          cat > scripts/control-plane/provider-identity-duplicate-evidence-provenance-once.ts <<'BUN'
+          import { sanitizePostgresUrlForBunSql } from "../lib/postgres-url.ts";
+          const db = new Bun.SQL(sanitizePostgresUrlForBunSql(process.env.CONTROL_PLANE_DATABASE_URL_BUN));
+          try {
+            await db.begin(async (tx) => {
+              await tx`SET TRANSACTION READ ONLY`;
+
+              // Per-row provenance for every accepted nationality group that has
+              // more than one row on the identity tuple migration 0227 dedupes on.
+              // user_id is emitted as a short digest so rows stay correlatable
+              // without putting the raw account id in a CI artifact.
+              const conflicts = await tx`
+                WITH grouped AS (
+                  SELECT a.user_id, a.provider, a.capability_key,
+                         a.source_verification_session_id, a.source_identity_nullifier_id,
+                         COUNT(*)::integer AS group_rows
+                  FROM user_attestations a
+                  WHERE a.status = 'accepted'
+                    AND a.capability_key = 'nationality'
+                  GROUP BY a.user_id, a.provider, a.capability_key,
+                           a.source_verification_session_id, a.source_identity_nullifier_id
+                  HAVING COUNT(*) > 1
+                )
+                SELECT a.attestation_id,
+                       LEFT(ENCODE(SHA256(a.user_id::bytea), 'hex'), 12) AS user_digest,
+                       a.provider, a.capability_key, a.capability_value, a.status,
+                       a.source_verification_session_id, a.source_identity_nullifier_id,
+                       a.created_at, a.updated_at,
+                       g.group_rows
+                FROM user_attestations a
+                JOIN grouped g
+                  ON g.user_id = a.user_id
+                 AND g.provider = a.provider
+                 AND g.capability_key = a.capability_key
+                 AND g.source_verification_session_id IS NOT DISTINCT FROM a.source_verification_session_id
+                 AND g.source_identity_nullifier_id IS NOT DISTINCT FROM a.source_identity_nullifier_id
+                WHERE a.status = 'accepted'
+                ORDER BY a.created_at, a.attestation_id
+              `;
+
+              // Which columns anywhere in the schema reference an attestation id.
+              // Discovering this from information_schema means the follow-up
+              // accounting-linkage query can be written against real table names
+              // instead of guessed ones.
+              const referencing = await tx`
+                SELECT table_name, column_name, data_type
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND column_name LIKE '%attestation%'
+                ORDER BY table_name, column_name
+              `;
+
+              console.log(JSON.stringify({
+                decision_ref: process.env.DECISION_REF,
+                conflicts,
+                attestation_referencing_columns: referencing,
+              }, null, 2));
+            });
+          } finally { await db.end(); }
+          BUN
+          bun scripts/control-plane/provider-identity-duplicate-evidence-provenance-once.ts \
+            | tee "$GITHUB_WORKSPACE/provider-identity-duplicate-evidence-provenance.json"
+
+      - name: Upload provenance audit
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: provider-identity-duplicate-evidence-provenance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: provider-identity-duplicate-evidence-provenance.json
+          if-no-files-found: warn
+          retention-days: 14

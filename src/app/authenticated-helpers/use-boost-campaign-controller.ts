@@ -711,7 +711,9 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       return;
     }
     const targetCampaign = objective ? campaignSlots[objective] : campaign;
+    const targetQuote = targetCampaign && quote?.campaign === targetCampaign.id ? quote : null;
     const targetCampaignAcceptsTopUp = acceptsCampaignTopUp(targetCampaign);
+    if (quote && !targetQuote) setQuote(null);
     if (objective) {
       setEligibleActivity(objective);
       setCampaign(targetCampaign);
@@ -726,8 +728,8 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
     ) {
       dispatchFundingWorkflow({ type: "awaiting-finality", transactionHash });
     }
-    else if (quote && sheetState === "quote") {
-      if (quote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(targetCampaign);
+    else if (targetQuote && sheetState === "quote") {
+      if (targetQuote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(targetCampaign);
       else dispatchFundingWorkflow({ type: "show", status: "quote" });
     }
     else if (targetCampaignAcceptsTopUp) {
@@ -738,10 +740,10 @@ export function useBoostCampaignController(input: BoostCampaignControllerInput) 
       dispatchFundingWorkflow({ type: "show", status: "draft-preview" });
     }
     else if (campaignPayoutTiers(targetCampaign).length > 0 && !quote) void createQuote(targetCampaign);
-    else if (!quote) {
+    else if (!targetQuote) {
       dispatchFundingWorkflow({ type: "restart" });
     }
-    else if (quote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(targetCampaign);
+    else if (targetQuote.expires_at <= Math.floor(Date.now() / 1_000)) void createQuote(targetCampaign);
     else dispatchFundingWorkflow({ type: "show", status: "quote" });
     setSheetOpen(true);
   }, [campaign, campaignSlots, createQuote, input, quote, sheetState, tierFundingEnabled, transactionHash]);

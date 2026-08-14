@@ -535,6 +535,155 @@ Schedule: step 2 start/end, steps 3–4 start/end, engineers allocated.
 - Does the `public-agent` host surface share Slice 1b's HNS path exactly, or does
   it need separate perimeter tests?
 
+## Three-agent execution contract
+
+Nothing in this section is authorized before step 1 signatures. It exists so
+that when lanes do start, they start with disjoint paths.
+
+### Lanes
+
+| Lane | Owner role | Owns |
+| --- | --- | --- |
+| **P** — perimeter and bootstrap | Web Platform DRI | absorption into `solid/`, all shared configuration, `web-platform`, `route-contracts` schema, server perimeter, Cloudflare config, CI |
+| **U** — Solid UI | Design System DRI | `packages/solid-ui/**` and nothing else |
+| **R** — routes and application | unnamed | `solid/src/{app,layouts,routes,features}/**`, route e2e, Slice 0 endpoints |
+
+Lane P is the integration owner. It reviews every change to shared
+configuration and is the only lane that may modify it.
+
+### Path ownership
+
+Exact, and exhaustive for the contended surfaces. A path not listed here is
+lane P's by default.
+
+| Path | Lane |
+| --- | --- |
+| `solid/src/server/**` | P |
+| `solid/src/entry-*.tsx`, `solid/src/Document.tsx` | P |
+| `solid/src/index.css`, Tailwind config | P |
+| `solid/vite.config.ts`, `solid/wrangler.jsonc` | P |
+| `packages/web-platform/**` | P |
+| `packages/route-contracts/**` — schema, types, parity test | P |
+| `packages/route-contracts/**` — per-route `migration` data entries | the lane shipping that route |
+| root `package.json`, `bun.lock`, `tsconfig*.json`, `vite.config.ts`, `knip.jsonc`, `eslint.config.js` | P |
+| `.github/workflows/**` | P |
+| `src/**` (React) | P plus the affected React module owner, in coordinated extraction PRs only |
+| `packages/solid-ui/**` | U |
+| `packages/solid-ui/.storybook/**` | U, but watcher exclusions need P review |
+| `.storybook/**` (existing React catalog) | P |
+| `solid/src/app/**`, `solid/src/layouts/**`, `solid/src/routes/**`, `solid/src/features/**` | R |
+| `solid/e2e/**` route specs | R |
+| `e2e/**` (React) | untouched |
+
+### Bootstrap base
+
+`web@6263f27b` is the plan baseline. Lane P branches from `main` after this
+execution contract is committed. Lanes U and R branch from the P1 merge commit,
+not from the plan baseline. Absorption source material is
+`pirate-web-solid@ab33300`, whose workspace disposition is already recorded as
+`absorb-into-web`.
+
+### Branches and worktrees
+
+Named by work, not by worker, per the workspace agent rules.
+
+| Worktree | Branch |
+| --- | --- |
+| `.worktrees/web/solid-perimeter` | `solid/perimeter` |
+| `.worktrees/web/solid-ui` | `solid/ui` |
+| `.worktrees/web/solid-routes` | `solid/routes` |
+
+The canonical `web/` checkout stays integration-owned. No lane edits it.
+
+**Concurrency limit.** The workspace allows two auxiliary worktrees per
+repository. Three lanes do not fit. The default resolution is phasing: phase A
+runs `solid-perimeter` alone, and that worktree is retired when the skeleton
+merges, freeing a slot for phase B's `solid-ui` and `solid-routes`. If perimeter
+work must continue into phase B, file the documented exception — named owner,
+purpose, expiry — with the workspace steward *before* opening a third worktree.
+
+### Merge order
+
+1. **P1, the skeleton** — one PR to `main`, green, before anything else opens.
+2. **U and R** — independent PRs to `main`, each green, each rebased on `main`.
+3. **P** — continuing perimeter PRs to `main`.
+
+No long-lived integration branch. The Solid tree is inert — not deployed, and
+excluded from the React build and gates — so `main` absorbs partial work safely
+and lanes stay short-lived.
+
+### The skeleton, P1
+
+"Landed" is a CI event, not a judgment call. P1 is done when a clean clone of
+`main` passes a `solid-clean-checkout` job, and:
+
+1. `solid/` exists, absorbed, with the `@` alias collision and the
+   `WEB_SOLID_DESIGN_SYSTEM_ROOT` escape hatch both removed.
+2. `packages/solid-ui` exists with its **public export surface frozen as typed
+   stubs**, so lane R can compile against components lane U has not written yet.
+3. `packages/web-platform` exists with HNS, CSP, and API origin extracted.
+4. `packages/route-contracts` exists with its schema and parity test.
+5. **The Solid tree has its own tsconfig and CI jobs, and the React gates —
+   `types`, `deadcode:audit`, `deps:audit`, `lint:hooks` — do not traverse
+   `solid/` or `packages/solid-ui/`.** Without this every lane PR breaks the
+   React gate.
+6. CI job stubs exist for each lane, invoking `bun run solid-ui:ci` and
+   `bun run solid-routes:ci`, so lanes own the script behind a stable job name
+   and never edit workflow files.
+
+### Interface freeze
+
+From P1 onward:
+
+- **Shared configuration is frozen.** Changes only by lane P, announced to open
+  lanes, with a rebase required before the next lane merge.
+- **`solid-ui` public exports are additive-only** while a slice is open. Renames
+  and removals need lane R sign-off in a coordinated PR.
+- **`web-platform` exports are additive-only.** Signature changes need notice to
+  both consuming lanes.
+- **`route-contracts` schema is frozen.** Data entries move with the route.
+- **Dependencies are a lane P operation.** `bun.lock` has one writer; lanes
+  request additions rather than installing.
+
+### Definition of done
+
+| Lane | Done when |
+| --- | --- |
+| P1 skeleton | `solid-clean-checkout` green on `main`; the six criteria above satisfied |
+| P perimeter | Step 2's thirteen criteria and blockers B1–B13 red-to-green |
+| U | Slice 1a's component spine exported, with Storybook, interaction tests, axe, SSR tests, and the app hydration fixture green as one gate |
+| R | `/privacy` at semantic, status, and header parity; `robots.txt` byte-identical; Slice 1a meeting all eight parity criteria; `route-contracts` entries flipped |
+
+### Cross-lane defects
+
+File, do not fix. A lane that finds a defect outside its paths opens an issue
+referencing the blocker ID and continues. It does not edit another lane's files,
+and it does not work around the defect silently.
+
+### Machine resource contract
+
+Three agents share one machine, and this repository has singletons.
+
+- **One Storybook instance**, foreground, on port 6006. Lane U holds it by
+  default; lane R requests a handoff. Verify the port is free before starting
+  and stop it when verification is complete.
+- **One heavy build or typecheck at a time.** Use `rtk bun run types:safe` for
+  routine verification, never bare `rtk bun test` as a repo-wide gate.
+- **Both Storybook configurations must exclude worktree roots:** the existing
+  `.storybook/main.ts` and lane U's `packages/solid-ui/.storybook/main.ts`.
+  Vite otherwise watched nested checkouts and retained 3–5 GB RSS. Adding
+  worktrees makes this load-bearing, not cosmetic.
+
+### Escalation
+
+Lane P resolves shared-configuration disputes. Anything lane P cannot resolve
+goes to the Web Platform DRI. Ownership questions about paths not listed above
+are resolved by adding them to the table, not by precedent.
+
+### Still unfilled
+
+Named DRIs for all three lanes, and an owner for lane R.
+
 ## Provenance
 
 Verified against `web` and `pirate-web-solid` at their current checkouts.

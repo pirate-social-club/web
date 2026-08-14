@@ -1,11 +1,11 @@
 # SolidStart migration: actual blocker status
 
-Status: **Current execution: parallel Solid app; hard cutover; M1 hydration composition open; M2 API relay root cause open; Storybook pass-with-caveats**  
+Status: **Current execution: parallel Solid app; hard cutover; M1 green; M2 API relay root cause open; Storybook pass-with-caveats**  
 Date: 2026-08-14
 
 ## M0 charter amendment — 2026-08-14
 
-On 2026-08-14, `workspace_owner` waived the comparative React-vs-Solid proof-of-concept gate after the evidence review. The program now executes a parallel Solid application with a hard cutover, and comparative benchmarking is not a migration gate. The surviving functional gates are the Solid 2 hydration seam for M1, the relay runtime diagnosis for M2, and the Storybook renderer verdict; streaming SSR is a precondition of M3 (video-feed Home) and is green in the seam spike.
+On 2026-08-14, `workspace_owner` waived the comparative React-vs-Solid proof-of-concept gate after the evidence review. The program now executes a parallel Solid application with a hard cutover, and comparative benchmarking is not a migration gate. The surviving functional gates are the relay runtime diagnosis for M2 and the Storybook renderer verdict; streaming SSR is a precondition of M3 (video-feed Home) and is green in the seam spike. M1's Solid 2 hydration seam is closed.
 
 This amendment supersedes the pre-pivot decision posture and action list below; those sections remain
 as the historical Phase A record.
@@ -52,17 +52,16 @@ request receives HTTP 200, so the 500 is classified as a framework-neutral Pirat
 M2 remains blocked only on the API fix, not on Privy/Core parity or Solid feasibility. Full sanitized
 request/response captures are in [the differential record](solidstart-phase-a-privy-relay-differential.md).
 
-## M1 Solid 2 hydration diagnostic — 2026-08-14
+## M1 Solid 2 hydration closeout — 2026-08-14
 
 The seam spike's platform checks remain green: Worker adapter, CSP nonce,
 two-Worker binding, HNS routing, 16/16 probe checks, and streamed SSR. The
-hydration click-through is still red, but the bounded diagnostic narrowed it to
-the app composition rather than the platform or the RC: removing CSP still
-left the SSR button at `0`, the authored server/client entry pair is coherent,
-and a pristine pinned start-mode fixture with no middleware hydrated (`0 → 1`).
-The likely seam is the streamed async `Loading` boundary. M1 remains blocked
-until that boundary is isolated and fixed; the Solid 1.9 + SolidStart fallback
-tripwire does not fire.
+hydration click-through is now green after an app-root hydration scope fix.
+The full streamed app's SSR button increments `0 → 1` in the browser, with
+16/16 seam checks and streaming still green. `Document` now wraps the app in
+`#app-root`; the client hydrates that subtree with `{ renderId: "2" }`, matching
+the server's hydration scope after the Document consumes the preceding `0`/`1`
+nodes. The Solid 2 fallback tripwire does not fire; M1 is green.
 
 ## M2 runtime-tail diagnostic — 2026-08-14
 

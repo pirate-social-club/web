@@ -522,6 +522,7 @@ jobs:
         env:
           API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
           COMMUNITY_SCHEMA_POLICY_DIGEST: ${{ needs.schema-gate.outputs.policy_digest }}
+          GENERIC_DIGITAL_GOODS_ENABLED: ${{ vars.GENERIC_DIGITAL_GOODS_ENABLED || 'false' }}
           GENERIC_DIGITAL_GOODS_COMMUNITY_IDS: ${{ vars.GENERIC_DIGITAL_GOODS_COMMUNITY_IDS || '' }}
           LEARNING_DECKS_ENABLED: ${{ vars.LEARNING_DECKS_ENABLED || 'false' }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -1281,6 +1282,7 @@ jobs:
         working-directory: web
         env:
           API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          GENERIC_DIGITAL_GOODS_ENABLED: ${{ vars.GENERIC_DIGITAL_GOODS_ENABLED || 'false' }}
           GENERIC_DIGITAL_GOODS_COMMUNITY_IDS: ${{ vars.GENERIC_DIGITAL_GOODS_COMMUNITY_IDS || '' }}
           LEARNING_DECKS_ENABLED: ${{ vars.LEARNING_DECKS_ENABLED || 'false' }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

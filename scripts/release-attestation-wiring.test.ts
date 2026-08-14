@@ -79,6 +79,7 @@ describe("release attestation wiring", () => {
   });
 
   test("passes the same fail-closed generic-goods flag to the API writer", () => {
+    expect(releaseWorkflow).toContain("GENERIC_DIGITAL_GOODS_ENABLED: ${{ vars.GENERIC_DIGITAL_GOODS_ENABLED || 'false' }}");
     for (const script of [productionDeploy, stagingDeploy]) {
       expect(script).toContain('GENERIC_DIGITAL_GOODS_ENABLED="${GENERIC_DIGITAL_GOODS_ENABLED:-false}"');
       expect(script).toContain('LEARNING_DECKS_ENABLED="${LEARNING_DECKS_ENABLED:-false}"');

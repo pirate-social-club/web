@@ -22,7 +22,7 @@ jobs:
         working-directory: web
         run: |
           echo "api_sha=$(<.github/release-refs/api.sha)" >> "$GITHUB_OUTPUT"
-          echo "core_sha=a82c242e3ef6368974677b0c8fa724e2f7ab777a" >> "$GITHUB_OUTPUT"
+          echo "core_sha=57dfd304c7114b1fb023f4230c8c46e054caafa0" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/api
@@ -47,10 +47,9 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
         run: |
           mkdir -p repair-output
-          bun core/scripts/community/repair-staging-posts-idempotency-body-hash.ts \
+          bun core/scripts/community/repair-staging-1158-source-columns.ts \
             --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
             --migrations-dir core/db/community-template/migrations \
-            --only community-d1-pool-0001-staging,community-d1-pool-0003-staging,community-d1-pool-0004-staging,community-d1-pool-0006-staging,community-d1-pool-0008-staging,community-d1-pool-0009-staging,community-d1-pool-0010-staging,community-d1-pool-0012-staging,cmty-d1-fixture-staging \
             --manifest repair-output/manifest.json \
             --execute --confirm-time-travel
       - name: Upload repair evidence

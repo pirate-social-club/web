@@ -1,6 +1,18 @@
 name: Staging posts idempotency column repair
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: audit or repair
+        required: true
+        default: audit
+        type: choice
+        options: [audit, repair]
+      only:
+        description: Optional comma-separated staging database names
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -22,7 +34,7 @@ jobs:
         working-directory: web
         run: |
           echo "api_sha=$(<.github/release-refs/api.sha)" >> "$GITHUB_OUTPUT"
-          echo "core_sha=57dfd304c7114b1fb023f4230c8c46e054caafa0" >> "$GITHUB_OUTPUT"
+          echo "core_sha=1d136400eaa110e0a9cb6200f9f33d7b9948f865" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/api
@@ -40,18 +52,24 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: 24 }
       - name: Validate confirmation
-        run: test 'REPAIR POSTS IDEMPOTENCY TO STAGING' = 'REPAIR POSTS IDEMPOTENCY TO STAGING'
+        env:
+          MODE: ${{ inputs.mode }}
+        run: test "$MODE" = audit || test "$MODE" = repair
       - name: Apply measured additive repair
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          MODE: ${{ inputs.mode }}
+          ONLY: ${{ inputs.only }}
         run: |
           mkdir -p repair-output
-          bun core/scripts/community/repair-staging-1158-source-columns.ts \
+          args=( \
             --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
             --migrations-dir core/db/community-template/migrations \
-            --manifest repair-output/manifest.json \
-            --execute --confirm-time-travel
+            --manifest repair-output/manifest.json )
+          [[ -n "$ONLY" ]] && args+=(--only "$ONLY")
+          if [[ "$MODE" == repair ]]; then args+=(--execute --confirm-time-travel); fi
+          bun core/scripts/community/repair-staging-1158-source-columns.ts "${args[@]}"
       - name: Upload repair evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

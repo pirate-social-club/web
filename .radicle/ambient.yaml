@@ -12,7 +12,10 @@ plan:
       # The promotion gate is intentionally dependency-free. Hosted CI owns
       # Bun tests, typechecking, builds, and the wider product matrix.
       grep -q '"name": "@pirate-social-club/karaoke-runtime"' "$package/package.json"
-      ! grep -Eq '^[[:space:]]*"dependencies"[[:space:]]*:' "$package/package.json"
+      if grep -Eq '^[[:space:]]*"dependencies"[[:space:]]*:' "$package/package.json"; then
+        echo 'runtime dependencies are not allowed in the shell-only gate' >&2
+        exit 1
+      fi
       grep -q 'KARAOKE_BINARY_PROTOCOL_VERSION' "$package/src/binary-codec.ts"
       grep -q 'round-trips the fixed header' "$package/tests/binary-codec.test.ts"
 

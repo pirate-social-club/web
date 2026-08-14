@@ -49,6 +49,12 @@ describe("duplicate-evidence provenance audit workflow", () => {
     expect(projection).not.toContain("a.user_id,");
   });
 
+  test("groups on the migration's uniqueness tuple, not verification session", () => {
+    const grouped = source.slice(source.indexOf("WITH grouped AS"), source.indexOf("SELECT a.user_attestation_id"));
+    expect(grouped).toContain("a.source_identity_nullifier_id");
+    expect(grouped).not.toContain("source_verification_session_id");
+  });
+
   // Both audits read the same schema through the same helper import. Letting the
   // pins drift means one can silently break while the other keeps passing.
   test("pins the same Core revision as the proven sibling audit", () => {

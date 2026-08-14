@@ -94,13 +94,13 @@ jobs:
               const conflicts = await tx`
                 WITH grouped AS (
                   SELECT a.user_id, a.provider, a.capability_key,
-                         a.source_verification_session_id, a.source_identity_nullifier_id,
+                         a.source_identity_nullifier_id,
                          COUNT(*)::integer AS group_rows
                   FROM user_attestations a
                   WHERE a.status = 'accepted'
                     AND a.capability_key = 'nationality'
                   GROUP BY a.user_id, a.provider, a.capability_key,
-                           a.source_verification_session_id, a.source_identity_nullifier_id
+                           a.source_identity_nullifier_id
                   HAVING COUNT(*) > 1
                 )
                 SELECT a.user_attestation_id,
@@ -114,7 +114,6 @@ jobs:
                   ON g.user_id = a.user_id
                  AND g.provider = a.provider
                  AND g.capability_key = a.capability_key
-                 AND g.source_verification_session_id IS NOT DISTINCT FROM a.source_verification_session_id
                  AND g.source_identity_nullifier_id IS NOT DISTINCT FROM a.source_identity_nullifier_id
                 WHERE a.status = 'accepted'
                 ORDER BY a.created_at, a.user_attestation_id

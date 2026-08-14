@@ -55,6 +55,15 @@ describe("duplicate-evidence provenance audit workflow", () => {
     expect(grouped).not.toContain("source_verification_session_id");
   });
 
+  test("reconciles the rows named by the failed migration guard", () => {
+    expect(source).toContain("att_staging_reward_0511faef470bf08f5bee776b294f99e4");
+    expect(source).toContain("att_staging_reward_conflict_20260806");
+    expect(source).toContain("named_rows: namedRows");
+    expect(source).toContain("related_nationality_rows: relatedNationalityRows");
+    expect(source).toContain("a.status = 'accepted'");
+    expect(source).toContain("a.capability_key = 'nationality'");
+  });
+
   // Both audits read the same schema through the same helper import. Letting the
   // pins drift means one can silently break while the other keeps passing.
   test("pins the same Core revision as the proven sibling audit", () => {

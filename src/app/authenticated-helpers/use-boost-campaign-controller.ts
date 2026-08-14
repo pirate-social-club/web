@@ -104,7 +104,7 @@ function songBountyLifecycleStatus(status: RewardCampaign["status"]): SongBounty
 function campaignRewardLabel(campaign: RewardCampaign): string {
   const amounts = [
     campaign.daily_reward_cents,
-    ...campaign.payout_tiers.map((tier) => tier.amount_cents),
+    ...campaignPayoutTiers(campaign).map((tier) => tier.amount_cents),
   ].filter((amount): amount is number => Number.isFinite(amount) && amount > 0);
   if (amounts.length === 0) return "$0.00 per day";
   const minimum = Math.min(...amounts);

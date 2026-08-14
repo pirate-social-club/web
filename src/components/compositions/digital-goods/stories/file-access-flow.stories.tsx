@@ -1,0 +1,12 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import * as React from "react";
+
+type State = "listing" | "quoted" | "entitled" | "downloaded";
+function FileAccessFlow() {
+  const [state, setState] = React.useState<State>("listing");
+  return <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col gap-5 p-6"><p className="text-sm text-muted-foreground">Buyer flow · simulated Base Sepolia USDC</p><h1 className="text-3xl font-semibold">Quarterly data export.csv</h1><p className="text-sm text-muted-foreground">12.4 KiB · locked generic asset · signed CDR delivery</p><div className="rounded-lg border p-5"><ol className="space-y-3 text-sm">{(["listing", "quoted", "entitled", "downloaded"] as const).map((step) => <li className={state === step ? "font-semibold" : "text-muted-foreground"} key={step}>{state === step ? "●" : "○"} {step === "listing" ? "Listing and quote" : step === "quoted" ? "Quote accepted ($1 WIP)" : step === "entitled" ? "Entitlement confirmed" : "Signed download opened"}</li>)}</ol><div className="mt-5">{state === "listing" ? <button className="rounded-md bg-primary px-4 py-2 text-primary-foreground" onClick={() => setState("quoted")} type="button">Get quote</button> : null}{state === "quoted" ? <button className="rounded-md bg-primary px-4 py-2 text-primary-foreground" onClick={() => setState("entitled")} type="button">Pay simulated $1 WIP</button> : null}{state === "entitled" ? <button className="rounded-md bg-primary px-4 py-2 text-primary-foreground" onClick={() => setState("downloaded")} type="button">Download file</button> : null}{state === "downloaded" ? <div className="space-y-2"><p className="font-medium text-emerald-700">Download authorized</p><p className="text-sm text-muted-foreground">Asset enforcement was checked again immediately before the signed CDR was prepared.</p><button className="rounded-md border px-4 py-2" onClick={() => setState("listing")} type="button">Reset flow</button></div> : null}</div></div><p className="text-xs text-muted-foreground">If enforcement is quarantined or missing, the ordinary response remains “Asset not found.”</p></main>;
+}
+const meta = { title: "Compositions/Digital Goods/File Access", component: FileAccessFlow, parameters: { layout: "fullscreen" } } satisfies Meta<typeof FileAccessFlow>;
+export default meta;
+type Story = StoryObj<typeof meta>;
+export const Flow: Story = { name: "Buyer file access flow" };

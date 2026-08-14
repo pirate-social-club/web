@@ -61,6 +61,7 @@ describe("release attestation wiring", () => {
 
   test("wires the generic-goods flag to both schema gates", () => {
     expect(releaseWorkflow).toContain("GENERIC_DIGITAL_GOODS_ENABLED: ${{ vars.GENERIC_DIGITAL_GOODS_ENABLED || 'false' }}");
+    expect(releaseWorkflow).toContain("LEARNING_DECKS_ENABLED: ${{ vars.LEARNING_DECKS_ENABLED || 'false' }}");
     expect(releaseWorkflow).toContain("--features generic_digital_goods");
 
     const stagingGate = releaseWorkflow.slice(
@@ -80,8 +81,14 @@ describe("release attestation wiring", () => {
   test("passes the same fail-closed generic-goods flag to the API writer", () => {
     for (const script of [productionDeploy, stagingDeploy]) {
       expect(script).toContain('GENERIC_DIGITAL_GOODS_ENABLED="${GENERIC_DIGITAL_GOODS_ENABLED:-false}"');
+      expect(script).toContain('LEARNING_DECKS_ENABLED="${LEARNING_DECKS_ENABLED:-false}"');
       expect(script).toContain("GENERIC_DIGITAL_GOODS_ENABLED must be exactly true or false");
+      expect(script).toContain("LEARNING_DECKS_ENABLED must be exactly true or false");
       expect(script).toContain('--var "GENERIC_DIGITAL_GOODS_ENABLED:$GENERIC_DIGITAL_GOODS_ENABLED"');
+      expect(script).toContain('--var "LEARNING_DECKS_ENABLED:$LEARNING_DECKS_ENABLED"');
+      expect(script).toContain("GENERIC_DIGITAL_GOODS_COMMUNITY_IDS is required when generic digital goods are enabled");
+      expect(script).toContain('--var "CONTENT_BLOB_UPLOADS_ENABLED:$GENERIC_DIGITAL_GOODS_ENABLED"');
+      expect(script).toContain('--var "CONTENT_BLOB_UPLOAD_COMMUNITY_IDS:$GENERIC_DIGITAL_GOODS_COMMUNITY_IDS"');
     }
   });
 });

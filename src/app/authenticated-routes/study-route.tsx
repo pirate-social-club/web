@@ -14,6 +14,7 @@ import {
 } from "@/components/compositions/rewards/reward-surfaces";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
+import { LearningDeckStudySurface } from "@/components/compositions/learning-decks/learning-deck-study-surface";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
@@ -243,7 +244,7 @@ function StudyAuthRequiredMessage({
   );
 }
 
-export function StudyRoutePage({
+function SongStudyRoutePage({
   postId,
   returnPath,
   telegramMiniApp = false,
@@ -1163,4 +1164,45 @@ export function StudyRoutePage({
       state={state.surface}
     />
   );
+}
+
+export function StudyRoutePage(props: {
+  postId: string;
+  returnPath?: string;
+  telegramMiniApp?: boolean;
+}) {
+  const api = useApi();
+  const session = useSession();
+  const [deck, setDeck] = React.useState<{ communityId: string; deckId: string; title: string } | null>(null);
+  const [kind, setKind] = React.useState<"deck" | "song" | "unknown">(session?.accessToken ? "unknown" : "song");
+
+  React.useEffect(() => {
+    let canceled = false;
+    if (!session?.accessToken) {
+      setKind("song");
+      return () => { canceled = true; };
+    }
+    void api.posts.get(props.postId)
+      .then(async (postResponse) => {
+        if (canceled) return;
+        if (postResponse.post.post_type !== "deck" || !postResponse.post.asset) {
+          setKind("song");
+          return;
+        }
+        const draft = await api.communities.getLearningDeckByAsset(postResponse.post.community, postResponse.post.asset);
+        if (canceled) return;
+        setDeck({ communityId: postResponse.post.community, deckId: draft.deck.learning_deck_id, title: draft.deck.title });
+        setKind("deck");
+      })
+      .catch(() => {
+        if (!canceled) setKind("song");
+      });
+    return () => { canceled = true; };
+  }, [api.communities, api.posts, props.postId, session?.accessToken]);
+
+  if (kind === "deck" && deck) {
+    return <LearningDeckStudySurface communityId={deck.communityId} deckId={deck.deckId} returnPath={props.returnPath ?? `/p/${encodeURIComponent(props.postId)}`} title={deck.title} />;
+  }
+  if (kind === "unknown") return <div className="grid min-h-dvh place-items-center"><Spinner /></div>;
+  return <SongStudyRoutePage {...props} />;
 }

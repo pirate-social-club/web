@@ -20,6 +20,7 @@ import {
 import { attachmentActions } from "./post-composer-config";
 import { PostComposerEventSection } from "./post-composer-event-section";
 import { LiveTabContent } from "./post-composer-live-tab";
+import { PostComposerGenericAssetFields } from "./post-composer-generic-asset-fields";
 import type { AttachmentKind, AttachmentState } from "./post-composer.types";
 import { extractVideoPosterFrameDataUrl } from "./video-poster-frame";
 import { useKeyboardBottomOffset } from "./use-keyboard-bottom-offset";
@@ -117,6 +118,12 @@ function attachmentFromController(
   if (tabs.activeTab === "live") {
     return { kind: "live" };
   }
+  if (tabs.activeTab === "file") {
+    return { kind: "file", label: controller.generic.file.upload?.name ?? controller.generic.file.label ?? "Downloadable file" };
+  }
+  if (tabs.activeTab === "deck") {
+    return { kind: "deck", label: "Learning deck" };
+  }
   return null;
 }
 
@@ -145,6 +152,7 @@ const videoExtensions = new Set([
 const audioExtensions = new Set([
   "mp3", "wav", "flac", "aac", "ogg", "m4a", "wma", "aiff", "opus",
 ]);
+const downloadExtensions = new Set(["csv", "tsv", "txt", "json"]);
 
 function extensionFromFileName(name: string): string | null {
   const dotIndex = name.lastIndexOf(".");
@@ -168,6 +176,7 @@ function fileKindFromFile(file: File): AttachmentKind | null {
   if (imageExtensions.has(ext)) return "image";
   if (videoExtensions.has(ext)) return "video";
   if (audioExtensions.has(ext)) return "song";
+  if (downloadExtensions.has(ext)) return "file";
 
   return null;
 }
@@ -176,6 +185,7 @@ function useWriteStepController(controller: PostComposerController) {
   const imageInputRef = React.useRef<HTMLInputElement | null>(null);
   const videoInputRef = React.useRef<HTMLInputElement | null>(null);
   const audioInputRef = React.useRef<HTMLInputElement | null>(null);
+  const downloadInputRef = React.useRef<HTMLInputElement | null>(null);
   const imagePreviewUrl = useObjectUrl(controller.media.activeImageUpload);
   const videoPreviewUrl = useObjectUrl(controller.media.videoState.primaryVideoUpload);
   const detectedVideoAspectRatio = useVideoSourceAspectRatio(videoPreviewUrl);
@@ -217,6 +227,10 @@ function useWriteStepController(controller: PostComposerController) {
       audioInputRef.current?.click();
       return;
     }
+    if (kind === "file") {
+      downloadInputRef.current?.click();
+      return;
+    }
     controller.tabs.onTabChange(kind);
   }
 
@@ -253,6 +267,8 @@ function useWriteStepController(controller: PostComposerController) {
       }));
     } else if (attachment?.kind === "link") {
       controller.fields.onLinkUrlValueChange?.("");
+    } else if (attachment?.kind === "file") {
+      controller.generic.setFile({ upload: null, label: undefined });
     }
     controller.tabs.onTabChange("text");
   }
@@ -302,12 +318,18 @@ function useWriteStepController(controller: PostComposerController) {
       .catch(() => undefined);
   }
 
+  function handleDownloadFile(file: File) {
+    controller.generic.setFile({ upload: file, label: file.name });
+    controller.tabs.onTabChange("file");
+  }
+
   function handleFileInputChange(kind: AttachmentKind, files: FileList | null) {
     const file = files?.[0];
     if (!file) return;
     if (kind === "image") handleImageFile(file);
     else if (kind === "video") handleVideoFile(file);
     else if (kind === "song") handleAudioFile(file);
+    else if (kind === "file") handleDownloadFile(file);
   }
 
   function handleDroppedFile(file: File) {
@@ -316,6 +338,7 @@ function useWriteStepController(controller: PostComposerController) {
     if (kind === "image") handleImageFile(file);
     else if (kind === "video") handleVideoFile(file);
     else if (kind === "song") handleAudioFile(file);
+    else if (kind === "file") handleDownloadFile(file);
   }
 
   function onDragEnter(event: React.DragEvent) {
@@ -380,6 +403,13 @@ function useWriteStepController(controller: PostComposerController) {
         ref={audioInputRef}
         type="file"
       />
+      <input
+        accept=".csv,.tsv,.txt,.json,text/csv,text/tab-separated-values,text/plain,application/json"
+        className="sr-only"
+        onChange={(event) => handleFileInputChange("file", event.target.files)}
+        ref={downloadInputRef}
+        type="file"
+      />
     </>
   );
 
@@ -420,7 +450,7 @@ export function PostComposerWriteStep({
               <UploadSimple className="size-8" weight="bold" />
             </span>
             <Type as="p" variant="body-strong" className="text-primary">
-              Drop image, video, or audio here
+              Drop image, video, audio, or a CSV/TSV/TXT/JSON file here
             </Type>
           </div>
         ) : null}
@@ -437,6 +467,15 @@ export function PostComposerWriteStep({
           onRemove={write.removeAttachment}
           onReplace={write.selectAttachment}
         />
+        {controller.tabs.activeTab === "file" || controller.tabs.activeTab === "deck" ? (
+          <PostComposerGenericAssetFields
+            deck={controller.generic.deck}
+            file={controller.generic.file}
+            mode={controller.tabs.activeTab}
+            onDeckChange={controller.generic.setDeck}
+            onFileChange={controller.generic.setFile}
+          />
+        ) : null}
         <Textarea
           className={cn(
             "min-h-36 resize-none text-xl leading-relaxed",
@@ -488,6 +527,15 @@ export function PostComposerWriteStep({
           onRemove={write.removeAttachment}
           onReplace={write.selectAttachment}
         />
+        {controller.tabs.activeTab === "file" || controller.tabs.activeTab === "deck" ? (
+          <PostComposerGenericAssetFields
+            deck={controller.generic.deck}
+            file={controller.generic.file}
+            mode={controller.tabs.activeTab}
+            onDeckChange={controller.generic.setDeck}
+            onFileChange={controller.generic.setFile}
+          />
+        ) : null}
         <Textarea
           className={cn(
             "min-h-[38dvh] resize-none rounded-none border-0 bg-transparent p-0 text-xl leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0",

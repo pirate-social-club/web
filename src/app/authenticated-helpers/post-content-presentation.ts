@@ -34,7 +34,7 @@ function renderableCrosspostSourcePostType(
 export function toCommunityPostContent(
   postResponse: ApiPost,
   songOptions?: SongPresentationOptions,
-  opts?: Pick<PostPresentationOptions, "canModeratePost" | "onVerifyAge" | "preferOriginalText" | "viewerContentLocale"> & {
+  opts?: Pick<PostPresentationOptions, "canModeratePost" | "onVerifyAge" | "preferOriginalText" | "viewerContentLocale" | "genericAsset"> & {
     embedMode?: "preview" | "official";
     liveRoom?: LiveRoomPresentationOptions;
   },
@@ -69,6 +69,18 @@ export function toCommunityPostContent(
   const primaryMedia = post.media_refs?.[0];
   const imageMedia = primaryMedia as ({ width?: number | null; height?: number | null } & typeof primaryMedia) | undefined;
   const title = opts?.preferOriginalText ? (post.title ?? "Untitled post") : (translated_title ?? post.title ?? "Untitled post");
+
+  if ((post.post_type === "file" || post.post_type === "deck") && post.asset) {
+    return {
+      type: "generic_asset",
+      assetId: post.asset,
+      assetKind: post.post_type === "file" ? "download_file" : "learning_deck",
+      communityId: post.community,
+      title,
+      accessMode: post.access_mode ?? "locked",
+      ...opts?.genericAsset,
+    };
+  }
 
   if (post.anchor_live_room) {
     return toLiveRoomPostContent(postResponse, {

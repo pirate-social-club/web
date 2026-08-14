@@ -543,7 +543,7 @@ export function CommunityPage({
     async (
       listing: ApiCommunityListing,
       titleText: string,
-      assetLabel: "song" | "video" | "ticket" = "song",
+      assetLabel: "song" | "video" | "file" | "deck" | "ticket" = "song",
     ) => {
       await buySong({
         assetLabel,
@@ -844,6 +844,29 @@ export function CommunityPage({
         seat: liveRoomSeat,
       })
       : undefined;
+    const genericListing = post.post.post_type === "file" || post.post.post_type === "deck"
+      ? (assetId ? listingsByAssetId[assetId] : undefined)
+      : undefined;
+    const genericAssetOptions = post.post.post_type === "file" || post.post.post_type === "deck"
+      ? {
+          accessState: genericListing
+            ? (purchasesByAssetId[assetId ?? ""] || post.viewer_is_author) ? "available" as const : "unknown" as const
+            : "purchase_required" as const,
+          hasEntitlement: Boolean((assetId && purchasesByAssetId[assetId]) || post.viewer_is_author),
+          listingMode: genericListing ? "listed" as const : "not_listed" as const,
+          listingStatus: genericListing?.status,
+          onBuy: genericListing
+            ? () => void handleBuySong(
+                genericListing,
+                post.post.title ?? (post.post.post_type === "deck" ? "Learning deck" : "Downloadable file"),
+                post.post.post_type === "deck" ? "deck" : "file",
+              )
+            : undefined,
+          onDownload: () => navigate(`/p/${encodeURIComponent(post.post.id)}`),
+          onStudy: () => navigate(`/p/${encodeURIComponent(post.post.id)}/study`),
+          priceLabel: genericListing?.price_cents === 100 ? "1 WIP" : genericListing?.price_cents != null ? `${genericListing.price_cents}¢ WIP` : undefined,
+        }
+      : undefined;
     const handleVerifyAge = () => {
       void startAgeSelfVerification({
         requestedCapabilities: ["age_over_18"],
@@ -874,6 +897,7 @@ export function CommunityPage({
           }
       : undefined,
       {
+        genericAsset: genericAssetOptions,
         liveRoom: liveRoomId ? {
           access: liveRoomAccess,
           currentUserId: session?.user?.id,

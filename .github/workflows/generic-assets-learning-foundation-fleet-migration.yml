@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           echo "api_sha=$(<.github/release-refs/api.sha)" >> "$GITHUB_OUTPUT"
-          echo "core_sha=1105f1d2630152215af5f2c2f94c43b69fa08d9b" >> "$GITHUB_OUTPUT"
+          echo "core_sha=fcfa6238080452205f58ae6facc9e6b929f2e03c" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -134,6 +134,9 @@ jobs:
           if [[ "$TARGET" != *-audit ]]; then
             args+=(--resume-file migration-output/resume.txt --confirm-time-travel --execute)
           fi
+          if [[ "$TARGET" == staging-* && "$TARGET" != *-audit ]]; then
+            args+=(--eligible-only)
+          fi
           [[ "$TARGET" == production-* ]] && args+=(--prod)
           [[ "$TARGET" == *-canary ]] && args+=(--only "$DATABASE_NAME")
           bun core/scripts/community/apply-generic-assets-learning-foundation-d1-migration.ts "${args[@]}"
@@ -155,6 +158,9 @@ jobs:
             --manifest migration-output/verification-manifest.json
             --concurrency "$MIGRATION_CONCURRENCY"
           )
+          if [[ "$TARGET" == staging-* ]]; then
+            args+=(--eligible-only)
+          fi
           [[ "$TARGET" == production-* ]] && args+=(--prod)
           [[ "$TARGET" == *-canary ]] && args+=(--only "$DATABASE_NAME")
           bun core/scripts/community/apply-generic-assets-learning-foundation-d1-migration.ts "${args[@]}"

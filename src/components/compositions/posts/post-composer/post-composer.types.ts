@@ -227,10 +227,13 @@ export interface LearningDeckCsvPreview {
   headers: string[];
   rows: string[][];
   errors: Array<{ row: number; code: string; message: string }>;
+  row_count: number;
+  error_count: number;
 }
 
 export interface LearningDeckCsvImportState extends LearningDeckCsvPreview {
   contentBlobId: string;
+  importJobId: string;
   filename: string;
   promptColumn: number;
   answerColumn: number;
@@ -357,7 +360,7 @@ interface PostComposerDraftActions {
   onEventChange?: (value: ComposerEventState) => void;
   onFileChange?: (value: DownloadFileComposerState) => void;
   onDeckChange?: (value: LearningDeckComposerState) => void;
-  onDeckCsvPreview?: (file: File) => Promise<LearningDeckCsvPreview & { contentBlobId: string }>;
+  onDeckCsvPreview?: (file: File) => Promise<LearningDeckCsvPreview & { contentBlobId: string; importJobId: string }>;
 }
 
 interface PostComposerSubmitState {

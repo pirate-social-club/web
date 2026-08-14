@@ -35,7 +35,7 @@ import type {
   TelegramStudyVoiceIntent,
   ApiContentBlob,
   ApiLearningDeckDraft,
-  ApiLearningDeckCsvPreview,
+  ApiLearningDeckCsvImportStatus,
   ApiLearningDeckValidation,
   ApiLearningStudySession,
 } from "./client-api-types";
@@ -323,9 +323,11 @@ export function createCommunityContentApi(request: ApiRequest) {
         };
       }
     },
-    previewLearningDeckCsv: (communityId: string, contentBlobId: string): Promise<ApiLearningDeckCsvPreview> =>
-      request<ApiLearningDeckCsvPreview>(`/communities/${encodeURIComponent(communityId)}/learning-decks/imports/preview`, { method: "POST", body: JSON.stringify({ content_blob_id: contentBlobId }) }),
-    commitLearningDeckCsv: (communityId: string, deckId: string, body: { content_blob_id: string; prompt_column: number; answer_column: number; tags_column?: number | null }): Promise<ApiLearningDeckDraft> =>
+    previewLearningDeckCsv: (communityId: string, contentBlobId: string): Promise<ApiLearningDeckCsvImportStatus> =>
+      request<ApiLearningDeckCsvImportStatus>(`/communities/${encodeURIComponent(communityId)}/learning-decks/imports/preview`, { method: "POST", body: JSON.stringify({ content_blob_id: contentBlobId }) }),
+    getLearningDeckCsvImport: (communityId: string, importJobId: string): Promise<ApiLearningDeckCsvImportStatus> =>
+      request<ApiLearningDeckCsvImportStatus>(`/communities/${encodeURIComponent(communityId)}/learning-decks/imports/${encodeURIComponent(importJobId)}`),
+    commitLearningDeckCsv: (communityId: string, deckId: string, body: { content_blob_id: string; import_job_id: string; prompt_column: number; answer_column: number; tags_column?: number | null }): Promise<ApiLearningDeckDraft> =>
       request<ApiLearningDeckDraft>(`/communities/${encodeURIComponent(communityId)}/learning-decks/${encodeURIComponent(deckId)}/imports/commit`, { method: "POST", body: JSON.stringify(body) }),
     createLearningStudySession: (communityId: string, deckId: string, body?: { now_ms?: number; limit?: number }): Promise<ApiLearningStudySession> =>
       request<ApiLearningStudySession>(`/communities/${encodeURIComponent(communityId)}/learning-decks/${encodeURIComponent(deckId)}/study-sessions`, { method: "POST", body: JSON.stringify(body ?? {}) }),

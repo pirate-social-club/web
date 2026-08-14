@@ -162,6 +162,15 @@ export type ApiLearningDeckCsvPreview = {
   headers: string[];
   rows: string[][];
   errors: Array<{ row: number; code: string; message: string }>;
+  row_count: number;
+  error_count: number;
+};
+
+export type ApiLearningDeckCsvImportStatus = {
+  import_job_id: string;
+  status: "queued" | "running" | "succeeded" | "failed";
+  preview: ApiLearningDeckCsvPreview | null;
+  error: string | null;
 };
 
 export type ApiLearningStudySession = {

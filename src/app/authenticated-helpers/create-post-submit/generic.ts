@@ -71,7 +71,7 @@ export async function submitLearningDeckPost(input: {
   baseRequest: BasePostRequestFields;
   createLearningDeck: (communityId: string, body: { title: string; description?: string | null }) => Promise<ApiLearningDeckDraft>;
   getLearningDeck?: (communityId: string, deckId: string) => Promise<ApiLearningDeckDraft>;
-  commitLearningDeckCsv?: (communityId: string, deckId: string, body: { content_blob_id: string; prompt_column: number; answer_column: number; tags_column?: number | null }) => Promise<ApiLearningDeckDraft>;
+  commitLearningDeckCsv?: (communityId: string, deckId: string, body: { content_blob_id: string; import_job_id: string; prompt_column: number; answer_column: number; tags_column?: number | null }) => Promise<ApiLearningDeckDraft>;
   upsertLearningDeckCard: (communityId: string, deckId: string, body: { card_id?: string; card_type: "basic" | "cloze"; prompt: string; answer: string; tags?: string[]; ordinal?: number }) => Promise<ApiLearningDeckDraft>;
   validateLearningDeck: (communityId: string, deckId: string) => Promise<{ issues: Array<{ message: string }>; canonical: unknown }>;
   createPost: CreatePost;
@@ -85,7 +85,7 @@ export async function submitLearningDeckPost(input: {
   if (!input.title.trim()) throw new Error("Add a title for the learning deck.");
   const csvImport = input.deck.csvImport;
   if (!input.deck.cards.length && !csvImport) throw new Error("Add at least one learning card or import a CSV.");
-  if (csvImport && (!csvImport.contentBlobId || csvImport.errors.length || csvImport.rows.length === 0 || csvImport.promptColumn < 0 || csvImport.answerColumn < 0)) {
+  if (csvImport && (!csvImport.contentBlobId || !csvImport.importJobId || csvImport.errors.length || csvImport.rows.length === 0 || csvImport.promptColumn < 0 || csvImport.answerColumn < 0)) {
     throw new Error(csvImport.errors[0]?.message ?? "Choose valid CSV prompt and answer columns.");
   }
   if (!csvImport && input.deck.cards.some((card) => !card.prompt.trim() || !card.answer.trim())) throw new Error("Complete every card prompt and answer.");
@@ -99,6 +99,7 @@ export async function submitLearningDeckPost(input: {
     draft = await input.commitLearningDeckCsv(input.communityId, draft.deck.learning_deck_id, {
       answer_column: csvImport.answerColumn,
       content_blob_id: csvImport.contentBlobId,
+      import_job_id: csvImport.importJobId,
       prompt_column: csvImport.promptColumn,
       tags_column: csvImport.tagsColumn,
     });

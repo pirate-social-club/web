@@ -25,7 +25,7 @@ export function PostComposerGenericAssetFields({
   deck: LearningDeckComposerState;
   file: DownloadFileComposerState;
   mode: "file" | "deck";
-  onCsvPreview?: (file: File) => Promise<LearningDeckCsvPreview & { contentBlobId: string }>;
+  onCsvPreview?: (file: File) => Promise<LearningDeckCsvPreview & { contentBlobId: string; importJobId: string }>;
   onDeckChange: (next: LearningDeckComposerState) => void;
   onFileChange: (next: DownloadFileComposerState) => void;
 }) {
@@ -86,11 +86,14 @@ export function PostComposerGenericAssetFields({
         csvImport: {
           answerColumn: -1,
           contentBlobId: "",
+          importJobId: "",
+          error_count: 1,
           errors: [{ row: 0, code: "preview_failed", message: error instanceof Error ? error.message : "CSV preview failed" }],
           filename: file.name,
           headers: [],
           promptColumn: -1,
           rows: [],
+          row_count: 0,
           tagsColumn: null,
         },
       });

@@ -62,11 +62,14 @@ describe("generic post submission", () => {
         csvImport: {
           answerColumn: 1,
           contentBlobId: "cbl_import",
+          importJobId: "cjb_import",
           errors: [],
+          error_count: 0,
           filename: "cards.csv",
           headers: ["prompt", "answer"],
           promptColumn: 0,
           rows: [["Question", "Answer"]],
+          row_count: 1,
           tagsColumn: null,
         },
       },
@@ -87,7 +90,7 @@ describe("generic post submission", () => {
     });
 
     expect(result.id).toBe("pst_imported");
-    expect(commits).toEqual([{ content_blob_id: "cbl_import", prompt_column: 0, answer_column: 1, tags_column: null }]);
+    expect(commits).toEqual([{ content_blob_id: "cbl_import", import_job_id: "cjb_import", prompt_column: 0, answer_column: 1, tags_column: null }]);
     expect(upsertCalls).toBe(0);
   });
 });

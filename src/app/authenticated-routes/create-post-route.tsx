@@ -175,18 +175,25 @@ function CreatePostComposer({
               "text/csv",
             )
             : contentBlob;
-          let lastError: unknown;
-          for (let attempt = 0; attempt < 8; attempt += 1) {
-            try {
-              const preview = await api.communities.previewLearningDeckCsv(state.community!.id, uploaded.id);
-              return { ...preview, contentBlobId: uploaded.id };
-            } catch (error) {
-              lastError = error;
-              if (attempt === 7) break;
-              await new Promise((resolve) => setTimeout(resolve, 500));
+          let importStatus = await api.communities.previewLearningDeckCsv(state.community!.id, uploaded.id);
+          for (let attempt = 0; attempt < 20; attempt += 1) {
+            if (importStatus.status === "succeeded" && importStatus.preview) {
+              return {
+                ...importStatus.preview,
+                contentBlobId: uploaded.id,
+                importJobId: importStatus.import_job_id,
+              };
             }
+            if (importStatus.status === "failed") {
+              throw new Error(importStatus.error ?? "CSV import failed");
+            }
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            importStatus = await api.communities.getLearningDeckCsvImport(
+              state.community!.id,
+              importStatus.import_job_id,
+            );
           }
-          throw lastError instanceof Error ? lastError : new Error("CSV import is still being scanned");
+          throw new Error("CSV import is still being scanned");
         }}
         onSearchEventPlaces={searchEventPlaces}
         onSelectCommunity={(selectedCommunityId) => {

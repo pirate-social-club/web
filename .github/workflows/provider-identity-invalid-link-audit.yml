@@ -7,14 +7,6 @@ on:
         description: Reviewed reference for this read-only audit
         required: true
         type: string
-      target_environment:
-        description: Control-plane environment to inspect
-        required: true
-        default: staging
-        type: choice
-        options:
-          - staging
-          - production
 
 concurrency:
   group: provider-identity-invalid-link-audit-production
@@ -25,7 +17,6 @@ jobs:
     name: Audit accepted evidence links (read-only)
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 15
-    environment: ${{ inputs.target_environment }}
     permissions:
       contents: read
       id-token: write
@@ -49,18 +40,18 @@ jobs:
         shell: bash
         env:
           DECISION_REF: ${{ inputs.decision_ref }}
-          INFISICAL_IDENTITY_ID: ${{ inputs.target_environment == 'staging' && 'a7b5d0b2-0891-4b63-b0e6-946a8c513458' || vars.INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID }}
+          INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
         run: |
           set -euo pipefail
           [[ "$DECISION_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{2,159}$ ]]
           [[ "$INFISICAL_IDENTITY_ID" =~ ^[0-9a-fA-F-]{36}$ ]]
 
-      - name: Fetch production control-plane credential through Web OIDC
+      - name: Fetch staging control-plane credential through Web OIDC
         working-directory: core
         env:
-          INFISICAL_IDENTITY_ID: ${{ inputs.target_environment == 'staging' && 'a7b5d0b2-0891-4b63-b0e6-946a8c513458' || vars.INFISICAL_WEB_PROD_MIGRATION_IDENTITY_ID }}
+          INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
           INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
-          INFISICAL_ENV: ${{ inputs.target_environment }}
+          INFISICAL_ENV: staging
           INFISICAL_SECRET_PATH: /services/control-plane
           SECRET_NAMES: CONTROL_PLANE_DATABASE_URL
         run: scripts/ci/fetch-infisical-secrets.sh

@@ -92,4 +92,19 @@ describe("release attestation wiring", () => {
       expect(script).toContain('--var "CONTENT_BLOB_UPLOAD_COMMUNITY_IDS:$GENERIC_DIGITAL_GOODS_COMMUNITY_IDS"');
     }
   });
+
+  test("checks the live Story projection before enabling the generic writer", () => {
+    const productionMigrations = releaseWorkflow.indexOf("Apply production control-plane migrations");
+    const productionProjectionCheck = releaseWorkflow.indexOf("Verify production Story projection admits generic asset kinds");
+    const genericFlagGuard = releaseWorkflow.indexOf(
+      "steps.in-lane-freshness-prod.outputs.stale == 'false' && env.GENERIC_DIGITAL_GOODS_ENABLED == 'true'",
+      productionProjectionCheck,
+    );
+    expect(productionMigrations).toBeGreaterThanOrEqual(0);
+    expect(productionProjectionCheck).toBeGreaterThan(productionMigrations);
+    expect(releaseWorkflow.slice(productionProjectionCheck, productionProjectionCheck + 1600)).toContain(
+      "verify-generic-story-asset-kinds.ts",
+    );
+    expect(genericFlagGuard).toBeGreaterThan(productionProjectionCheck);
+  });
 });

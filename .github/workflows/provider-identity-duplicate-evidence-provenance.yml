@@ -103,9 +103,9 @@ jobs:
                            a.source_verification_session_id, a.source_identity_nullifier_id
                   HAVING COUNT(*) > 1
                 )
-                SELECT a.attestation_id,
-                       LEFT(ENCODE(SHA256(a.user_id::bytea), 'hex'), 12) AS user_digest,
-                       a.provider, a.capability_key, a.capability_value, a.status,
+      SELECT a.user_attestation_id,
+             LEFT(ENCODE(SHA256(a.user_id::bytea), 'hex'), 12) AS user_digest,
+             a.provider, a.capability_key, a.value_json::text AS capability_value, a.status,
                        a.source_verification_session_id, a.source_identity_nullifier_id,
                        a.created_at, a.updated_at,
                        g.group_rows

@@ -847,6 +847,11 @@ export function CommunityPage({
     const genericListing = post.post.post_type === "file" || post.post.post_type === "deck"
       ? (assetId ? listingsByAssetId[assetId] : undefined)
       : undefined;
+    const genericListingStatus = genericListing?.status === "active"
+      ? "active" as const
+      : genericListing?.status === "paused"
+        ? "paused" as const
+        : undefined;
     const genericAssetOptions = post.post.post_type === "file" || post.post.post_type === "deck"
       ? {
           accessState: genericListing
@@ -854,7 +859,7 @@ export function CommunityPage({
             : "purchase_required" as const,
           hasEntitlement: Boolean((assetId && purchasesByAssetId[assetId]) || post.viewer_is_author),
           listingMode: genericListing ? "listed" as const : "not_listed" as const,
-          listingStatus: genericListing?.status,
+          listingStatus: genericListingStatus,
           onBuy: genericListing
             ? () => void handleBuySong(
                 genericListing,

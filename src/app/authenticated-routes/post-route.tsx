@@ -502,7 +502,7 @@ export function PostPage({
     listing: ApiCommunityListing,
     titleText: string,
     nextCommunityId: string,
-    assetLabel: "song" | "video" = "song",
+    assetLabel: "song" | "video" | "file" | "deck" = "song",
   ) => {
     await buySong({
       assetLabel,
@@ -1068,7 +1068,11 @@ export function PostPage({
         accessState: threadPurchase || post.viewer_is_author ? "available" as const : threadListing ? "purchase_required" as const : "unknown" as const,
         hasEntitlement: Boolean(threadPurchase || post.viewer_is_author),
         listingMode: threadListing ? "listed" as const : "not_listed" as const,
-        listingStatus: threadListing?.status === "active" ? "active" as const : undefined,
+        listingStatus: threadListing?.status === "active"
+          ? "active" as const
+          : threadListing?.status === "paused"
+            ? "paused" as const
+            : undefined,
         onBuy: threadListing ? () => void handleBuySong(threadListing, post.post.title ?? "digital good", community.id, post.post.post_type === "deck" ? "deck" : "file") : undefined,
         onDownload: post.post.post_type === "file" ? () => void handleDownloadGenericAsset(community.id, threadAssetId, post.post.title ?? "download") : undefined,
         onStudy: post.post.post_type === "deck" ? () => navigate(`/p/${encodeURIComponent(postId)}/study`) : undefined,

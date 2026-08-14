@@ -39,6 +39,33 @@ describe("post composer link URLs", () => {
     })).toBe(false);
   });
 
+  test("requires a file upload before a downloadable file can advance", () => {
+    const shared = {
+      body: "",
+      imageUploadPresent: false,
+      linkUrl: "",
+      songAudioUploadPresent: false,
+      title: "Export",
+      videoUploadPresent: false,
+    };
+    expect(canAdvanceComposerWriteStep({ ...shared, fileUploadPresent: false, mode: "file" })).toBe(false);
+    expect(canAdvanceComposerWriteStep({ ...shared, fileUploadPresent: true, mode: "file" })).toBe(true);
+  });
+
+  test("requires at least one card before a learning deck can advance", () => {
+    const shared = {
+      body: "",
+      deckCardsPresent: false,
+      imageUploadPresent: false,
+      linkUrl: "",
+      songAudioUploadPresent: false,
+      title: "Deck",
+      videoUploadPresent: false,
+    };
+    expect(canAdvanceComposerWriteStep({ ...shared, mode: "deck" })).toBe(false);
+    expect(canAdvanceComposerWriteStep({ ...shared, deckCardsPresent: true, mode: "deck" })).toBe(true);
+  });
+
   test("blocks paid live drafts until the author explicitly selects public visibility", () => {
     const draft = {
       accessMode: "paid" as const,

@@ -1,25 +1,99 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
+import { userEvent } from "storybook/test";
 
-type Card = { prompt: string; answer: string };
+import { PostComposer } from "../../post-composer";
+import type { ComposerStep } from "../../post-composer.types";
 
-function DeckComposerFlow() {
-  const [cards, setCards] = React.useState<Card[]>([{ prompt: "What does CAS protect?", answer: "A single state transition." }]);
-  const [prompt, setPrompt] = React.useState("");
-  const [answer, setAnswer] = React.useState("");
-  const [validated, setValidated] = React.useState(false);
-  const addCard = () => { if (!prompt.trim() || !answer.trim()) return; setCards((current) => [...current, { prompt: prompt.trim(), answer: answer.trim() }]); setPrompt(""); setAnswer(""); setValidated(false); };
-  return <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 p-6">
-    <header><p className="text-sm text-muted-foreground">Create post · Learning deck</p><h1 className="text-3xl font-semibold">Author a deterministic study deck</h1></header>
-    <section className="space-y-4 rounded-lg border p-5"><label className="block space-y-1"><span className="text-sm font-medium">Deck title</span><input className="w-full rounded-md border p-2" defaultValue="Spaced repetition foundations" /></label><p className="text-sm text-muted-foreground">Cards are versioned. The canonical package is normalized and hashed before the deck can publish.</p>
-      <div className="grid gap-2 sm:grid-cols-2"><input aria-label="Prompt" className="rounded-md border p-2" onChange={(event) => setPrompt(event.target.value)} placeholder="Prompt" value={prompt} /><input aria-label="Answer" className="rounded-md border p-2" onChange={(event) => setAnswer(event.target.value)} placeholder="Answer" value={answer} /></div><button className="rounded-md border px-4 py-2" onClick={addCard} type="button">Add card</button>
-    </section>
-    <section className="space-y-3 rounded-lg border p-5"><div className="flex items-center justify-between"><h2 className="font-medium">Cards ({cards.length})</h2><span className="text-sm text-muted-foreground">CSV import supports bounded RFC-4180 text</span></div>{cards.map((card, index) => <div className="rounded-md bg-muted p-3 text-sm" key={`${card.prompt}-${index}`}><span className="font-medium">{index + 1}. {card.prompt}</span><p className="mt-1 text-muted-foreground">Answer hidden in study mode · {card.answer}</p></div>)}<div className="flex gap-2"><button className="rounded-md bg-primary px-4 py-2 text-primary-foreground" onClick={() => setValidated(true)} type="button">Validate canonical package</button>{validated ? <span className="self-center text-sm text-emerald-700">Valid · fsrs_6_v1 · package hash pinned</span> : null}</div></section>
-    <section className="rounded-lg border border-dashed p-5"><h2 className="font-medium">Publish settings</h2><p className="mt-1 text-sm text-muted-foreground">Locked decks retain plaintext for rescanning. Buyers study only after entitlement and active enforcement checks.</p><button className="mt-3 rounded-md bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50" disabled={!validated} type="button">Publish learning deck</button></section>
-  </main>;
+type DeckStoryState = "draft" | "csv_row_error" | "processing" | "published";
+
+const baseProps = {
+  clubName: "c/learning-decks",
+  mode: "deck" as const,
+  availableTabs: ["deck"] as const,
+  textBodyValue: "A deterministic study deck.",
+};
+
+function DeckComposerFlow({
+  initialComposerStep = "write",
+  initialState = "draft",
+}: {
+  initialComposerStep?: ComposerStep;
+  initialState?: DeckStoryState;
+}) {
+  const [composerStep, setComposerStep] = React.useState(initialComposerStep);
+  const [published, setPublished] = React.useState(initialState === "published");
+
+  return (
+    <div className="mx-auto min-h-screen w-full max-w-4xl p-6">
+      <PostComposer
+        {...baseProps}
+        composerStep={composerStep}
+        onComposerStepChange={setComposerStep}
+        submit={{
+          disabled: false,
+          label: "Publish learning deck",
+          onSubmit: () => setPublished(true),
+        }}
+      />
+      {initialState === "csv_row_error" ? <p className="mt-3 rounded-md bg-rose-100 p-3 text-sm text-rose-900">CSV row 3 has an unmatched quote; no card is silently accepted.</p> : null}
+      {initialState === "processing" ? <p className="mt-3 text-sm text-amber-800">Publication processing · scanner, Story, CDR, and listing stages are resumable.</p> : null}
+      {published ? <p className="mt-3 text-sm text-emerald-700">Published immutable version · package hash remains pinned.</p> : null}
+    </div>
+  );
 }
 
-const meta = { title: "Compositions/Posts/PostComposer/Composer/Deck", component: DeckComposerFlow, parameters: { layout: "fullscreen" } } satisfies Meta<typeof DeckComposerFlow>;
+const meta = {
+  title: "Compositions/Posts/PostComposer/Composer/Deck",
+  component: DeckComposerFlow,
+  tags: ["digital-goods"],
+  parameters: { layout: "fullscreen" },
+} satisfies Meta<typeof DeckComposerFlow>;
+
 export default meta;
 type Story = StoryObj<typeof meta>;
+
 export const Flow: Story = { name: "Deck authoring flow" };
+Flow.play = async ({ canvasElement }) => {
+  const title = canvasElement.querySelector<HTMLInputElement>('input[placeholder="Title*"]');
+  const addCard = [...canvasElement.querySelectorAll<HTMLButtonElement>("button")]
+    .find((button) => button.textContent?.trim() === "Add card");
+  if (!title || !addCard) throw new Error("deck composer controls are missing");
+  await userEvent.clear(title);
+  await userEvent.type(title, "Spaced repetition foundations");
+  await userEvent.click(addCard);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const prompt = canvasElement.querySelector<HTMLInputElement>('input[aria-label="Card 1 prompt"]');
+  const answer = canvasElement.querySelector<HTMLTextAreaElement>('textarea[aria-label="Card 1 answer"]');
+  if (!prompt || !answer) throw new Error("deck card fields are missing");
+  await userEvent.type(prompt, "What is deterministic?");
+  await userEvent.type(answer, "The same input produces the same package.");
+  const clickContinue = () => {
+    const button = [...canvasElement.querySelectorAll<HTMLButtonElement>("button")]
+      .find((candidate) => candidate.textContent?.trim() === "Continue");
+    if (!button || button.disabled) throw new Error("deck composer cannot continue");
+    button.click();
+  };
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  clickContinue();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  clickContinue();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const publish = [...canvasElement.querySelectorAll<HTMLButtonElement>("button")]
+    .find((button) => button.textContent?.trim() === "Publish");
+  if (!publish || publish.disabled) throw new Error("deck publish action did not unlock");
+  publish.click();
+};
+
+export const CsvRowError: Story = {
+  name: "CSV import — bounded row error",
+  args: { initialComposerStep: "write", initialState: "csv_row_error" },
+};
+export const Processing: Story = {
+  name: "Processing — publication saga",
+  args: { initialComposerStep: "publish", initialState: "processing" },
+};
+export const Published: Story = {
+  name: "Terminal — immutable published deck",
+  args: { initialComposerStep: "publish", initialState: "published" },
+};

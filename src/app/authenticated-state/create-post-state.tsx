@@ -1151,7 +1151,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           signAgentAuthoredBody,
           title,
           uploadContentBlob: api.communities.uploadContentBlob,
-        });
+        }) as ApiCreatedPost;
       } else if (composerMode === "deck") {
         result = await submitLearningDeckPost({
           altchaPayload: postAltchaPayload,
@@ -1178,7 +1178,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           title,
           upsertLearningDeckCard: api.communities.upsertLearningDeckCard,
           validateLearningDeck: api.communities.validateLearningDeck,
-        });
+        }) as ApiCreatedPost;
       } else {
         reportProgress("publish_post");
         logger.info("[create-post] creating text post");

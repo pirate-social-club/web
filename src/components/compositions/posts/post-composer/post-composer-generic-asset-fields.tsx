@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Plus, Trash } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
@@ -41,8 +40,8 @@ export function PostComposerGenericAssetFields({
           }}
           type="file"
         />
-        {file.upload ? <Type as="p" variant="small" className="text-muted-foreground">{file.upload.name} · {file.upload.size.toLocaleString()} bytes</Type> : null}
-        <Type as="p" variant="small" className="text-muted-foreground">
+        {file.upload ? <Type as="p" variant="caption" className="text-muted-foreground">{file.upload.name} · {file.upload.size.toLocaleString()} bytes</Type> : null}
+        <Type as="p" variant="caption" className="text-muted-foreground">
           Public/free delivery is not enabled yet. This creator flow publishes locked goods on the simulated Base Sepolia USDC rail.
         </Type>
       </section>
@@ -74,7 +73,7 @@ export function PostComposerGenericAssetFields({
         {deck.cards.map((card, index) => (
           <div className="space-y-2 rounded-lg border border-border-soft bg-background p-3" key={card.id}>
             <div className="flex items-center justify-between gap-2">
-              <Type as="p" variant="small">Card {index + 1}</Type>
+              <Type as="p" variant="caption">Card {index + 1}</Type>
               <Button
                 aria-label={`Remove card ${index + 1}`}
                 leadingIcon={<Trash />}
@@ -111,7 +110,7 @@ export function PostComposerGenericAssetFields({
         ))}
       </div>
       <Button leadingIcon={<Plus />} onClick={addCard} size="sm" variant="outline">Add card</Button>
-      <Type as="p" variant="small" className="text-muted-foreground">
+      <Type as="p" variant="caption" className="text-muted-foreground">
         Decks publish as locked goods. Simulated payments only; no real-money availability is implied.
       </Type>
     </section>

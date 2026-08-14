@@ -9,6 +9,18 @@ import { useApi } from "@/lib/api";
 import type { ApiLearningStudySession } from "@/lib/api/client-api-types";
 import { getErrorMessage } from "@/lib/error-utils";
 
+export type LearningDeckStudyAdapter = {
+  createSession: () => Promise<ApiLearningStudySession>;
+  reveal: (sessionId: string, expectedSessionRevision: number) => Promise<ApiLearningStudySession>;
+  rate: (input: {
+    sessionId: string;
+    itemId: string;
+    rating: "again" | "hard" | "good" | "easy";
+    idempotencyKey: string;
+    expectedSessionRevision: number;
+  }) => Promise<ApiLearningStudySession>;
+};
+
 export function LearningDeckStudySurface({
   communityId,
   deckId,
@@ -21,18 +33,47 @@ export function LearningDeckStudySurface({
   title: string;
 }) {
   const api = useApi();
+  const adapter = React.useMemo<LearningDeckStudyAdapter>(() => ({
+    createSession: () => api.communities.createLearningStudySession(communityId, deckId, { now_ms: Date.now() }),
+    reveal: (sessionId, expectedSessionRevision) => api.communities.revealLearningStudyItem(communityId, sessionId, expectedSessionRevision),
+    rate: ({ sessionId, itemId, rating, idempotencyKey, expectedSessionRevision }) => api.communities.rateLearningStudyItem(communityId, sessionId, {
+      item_id: itemId,
+      rating,
+      idempotency_key: idempotencyKey,
+      expected_session_revision: expectedSessionRevision,
+      reviewed_at_ms: Date.now(),
+    }),
+  }), [api.communities, communityId, deckId]);
+  return (
+    <LearningDeckStudyView
+      adapter={adapter}
+      returnPath={returnPath}
+      title={title}
+    />
+  );
+}
+
+export function LearningDeckStudyView({
+  adapter,
+  returnPath,
+  title,
+}: {
+  adapter: LearningDeckStudyAdapter;
+  returnPath: string;
+  title: string;
+}) {
   const [state, setState] = React.useState<{ phase: "loading" | "ready" | "error"; session?: ApiLearningStudySession; message?: string }>({ phase: "loading" });
   const [busy, setBusy] = React.useState(false);
 
   const load = React.useCallback(async () => {
     setState({ phase: "loading" });
     try {
-      const session = await api.communities.createLearningStudySession(communityId, deckId, { now_ms: Date.now() });
+      const session = await adapter.createSession();
       setState({ phase: "ready", session });
     } catch (error) {
       setState({ phase: "error", message: getErrorMessage(error, "Could not open this deck.") });
     }
-  }, [api.communities, communityId, deckId]);
+  }, [adapter]);
 
   React.useEffect(() => { void load(); }, [load]);
 
@@ -41,7 +82,7 @@ export function LearningDeckStudySurface({
     if (!session || !session.current_item) return;
     setBusy(true);
     try {
-      const next = await api.communities.revealLearningStudyItem(communityId, session.session_id, session.session_revision);
+      const next = await adapter.reveal(session.session_id, session.session_revision);
       setState({ phase: "ready", session: next });
     } catch (error) {
       setState({ phase: "error", message: getErrorMessage(error, "Could not reveal this answer.") });
@@ -55,12 +96,12 @@ export function LearningDeckStudySurface({
     if (!session?.current_item || session.current_item.status !== "revealed") return;
     setBusy(true);
     try {
-      const next = await api.communities.rateLearningStudyItem(communityId, session.session_id, {
-        item_id: session.current_item.item_id,
+      const next = await adapter.rate({
+        sessionId: session.session_id,
+        itemId: session.current_item.item_id,
         rating,
-        idempotency_key: `web:${session.session_id}:${session.current_item.item_id}:${session.session_revision}`,
-        expected_session_revision: session.session_revision,
-        reviewed_at_ms: Date.now(),
+        idempotencyKey: `web:${session.session_id}:${session.current_item.item_id}:${session.session_revision}`,
+        expectedSessionRevision: session.session_revision,
       });
       setState({ phase: "ready", session: next });
     } catch (error) {

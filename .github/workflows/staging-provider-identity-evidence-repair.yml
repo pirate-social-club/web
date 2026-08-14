@@ -29,7 +29,7 @@ jobs:
       contents: read
       id-token: write
     env:
-      REPAIR_CORE_SHA: cc398cb1279355eea524eb1830b80a809c0de217
+      REPAIR_CORE_SHA: 470be8d1627805f1aa6fd0c8f90550b8dd8c1493
     steps:
       - name: Require main branch dispatch
         shell: bash

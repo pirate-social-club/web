@@ -16,6 +16,10 @@ The fix is an explicit app-root hydration boundary: the server `Document`
 consumes the first hydration-ID scopes, so the client hydrates `#app-root` with
 `{ renderId: "2" }` rather than attempting to hydrate the whole `Document`.
 
+This closes the **stack/seam decision**, not the application shell. The
+`web-solid/` app repository, shell, and catalog port have not started yet; they
+are the next milestone.
+
 ## Evidence
 
 | Seam | Result | Evidence |
@@ -71,5 +75,9 @@ after the Document's `0`/`1` nodes.
    contract; changing the Document shell requires rechecking the scope.
 2. Preserve the existing 16/16 probe and streaming checks as the seam regression
    gate.
+3. Add a browser regression check to the app repository: SSR the page with CSP
+   enforced, hydrate it in a real browser, click the SSR-rendered control, and
+   assert the state changes. This must fail if a Document edit shifts the
+   hydration-ID scope or drops a nonce from an inline/late stream script.
 
 No shared Cloudflare account was used and no Worker was deployed by this spike.

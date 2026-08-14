@@ -1,0 +1,184 @@
+name: Lyrics language 1143 fleet migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Fleet and rollout scope
+        required: true
+        type: choice
+        options:
+          - staging-audit
+          - staging-canary
+          - staging-fleet
+          - production-audit
+          - production-canary
+          - production-fleet
+      database_name:
+        description: Exact D1 database name for a canary target
+        required: false
+        type: string
+      confirmation:
+        description: Type AUDIT/APPLY 1143 TO STAGING/PRODUCTION as appropriate
+        required: true
+        type: string
+      concurrency:
+        description: Fleet worker concurrency
+        required: true
+        default: "8"
+        type: choice
+        options:
+          - "4"
+          - "8"
+          - "12"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lyrics-language-1143-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: ${{ startsWith(inputs.target, 'production') && 'Production' || 'Staging' }} 1143 ${{ endsWith(inputs.target, '-audit') && 'audit' || endsWith(inputs.target, '-canary') && 'canary' || 'fleet' }}
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 180
+    environment: ${{ startsWith(inputs.target, 'production') && 'production' || 'staging' }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: web
+
+      - name: Resolve pinned API and reviewed Core runner
+        id: refs
+        working-directory: web
+        shell: bash
+        run: |
+          echo "api_sha=$(<.github/release-refs/api.sha)" >> "$GITHUB_OUTPUT"
+          echo "core_sha=$(<.github/release-refs/core.sha)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/api
+          ref: ${{ steps.refs.outputs.api_sha }}
+          path: api
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/core
+          ref: ${{ steps.refs.outputs.core_sha }}
+          path: core
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+
+      - name: Validate target and confirmation
+        shell: bash
+        env:
+          TARGET: ${{ inputs.target }}
+          DATABASE_NAME: ${{ inputs.database_name }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          if [[ "$TARGET" == production-* ]]; then
+            environment_name="PRODUCTION"
+            database_pattern='^community-d1-pool-[0-9]{4}-prod$'
+          else
+            environment_name="STAGING"
+            database_pattern='^community-d1-pool-[0-9]{4}-staging$'
+          fi
+          if [[ "$TARGET" == *-audit ]]; then
+            action="AUDIT"
+          else
+            action="APPLY"
+          fi
+          expected="$action 1143 TO $environment_name"
+          if [[ "$CONFIRMATION" != "$expected" ]]; then
+            echo "::error::Confirmation must be exactly: $expected"
+            exit 1
+          fi
+          if [[ "$TARGET" == *-canary ]]; then
+            if [[ ! "$DATABASE_NAME" =~ $database_pattern ]]; then
+              echo "::error::Canary target requires an exact database name matching $database_pattern"
+              exit 1
+            fi
+          elif [[ -n "$DATABASE_NAME" ]]; then
+            echo "::error::database_name is only valid for canary targets"
+            exit 1
+          fi
+
+      - name: Validate reviewed migration is pinned
+        working-directory: web
+        shell: bash
+        run: |
+          test -f "$GITHUB_WORKSPACE/core/db/community-template/migrations/1143_lyrics_language.sql"
+          test -f "$GITHUB_WORKSPACE/core/scripts/community/apply-lyrics-language-d1-migration.ts"
+
+      - name: Audit or apply migration with resumable fleet runner
+        shell: bash
+        env:
+          TARGET: ${{ inputs.target }}
+          DATABASE_NAME: ${{ inputs.database_name }}
+          MIGRATION_CONCURRENCY: ${{ inputs.concurrency }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          mkdir -p migration-output
+          args=(
+            --wrangler-config api/services/community-d1-shard/wrangler.jsonc
+            --migrations-dir core/db/community-template/migrations
+            --quarantines core/scripts/community/community-shard-quarantines.json
+            --manifest migration-output/manifest.json
+            --concurrency "$MIGRATION_CONCURRENCY"
+          )
+          if [[ "$TARGET" != *-audit ]]; then
+            args+=(--resume-file migration-output/resume.txt --confirm-time-travel --execute)
+          fi
+          if [[ "$TARGET" == production-* ]]; then
+            args+=(--prod)
+          fi
+          if [[ "$TARGET" == *-canary ]]; then
+            args+=(--only "$DATABASE_NAME")
+          fi
+          bun core/scripts/community/apply-lyrics-language-d1-migration.ts "${args[@]}"
+
+      - name: Verify final target state read-only
+        if: ${{ !endsWith(inputs.target, '-audit') }}
+        shell: bash
+        env:
+          TARGET: ${{ inputs.target }}
+          DATABASE_NAME: ${{ inputs.database_name }}
+          MIGRATION_CONCURRENCY: ${{ inputs.concurrency }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          args=(
+            --wrangler-config api/services/community-d1-shard/wrangler.jsonc
+            --migrations-dir core/db/community-template/migrations
+            --quarantines core/scripts/community/community-shard-quarantines.json
+            --manifest migration-output/verification-manifest.json
+            --concurrency "$MIGRATION_CONCURRENCY"
+          )
+          if [[ "$TARGET" == production-* ]]; then
+            args+=(--prod)
+          fi
+          if [[ "$TARGET" == *-canary ]]; then
+            args+=(--only "$DATABASE_NAME")
+          fi
+          bun core/scripts/community/apply-lyrics-language-d1-migration.ts "${args[@]}"
+
+      - name: Upload migration record
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: lyrics-language-1143-${{ inputs.target }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: migration-output
+          if-no-files-found: warn
+          retention-days: 30

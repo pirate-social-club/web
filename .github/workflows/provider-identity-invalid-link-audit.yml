@@ -65,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           export CONTROL_PLANE_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
-          bun <<'BUN'
+          cat > /tmp/provider-identity-invalid-link-audit.ts <<'BUN'
           import { sanitizePostgresUrlForBunSql } from "./scripts/lib/postgres-url.ts";
           const db = new Bun.SQL(sanitizePostgresUrlForBunSql(process.env.CONTROL_PLANE_DATABASE_URL_BUN));
           try {
@@ -95,3 +95,13 @@ jobs:
             });
           } finally { await db.end(); }
           BUN
+          bun /tmp/provider-identity-invalid-link-audit.ts | tee "$GITHUB_WORKSPACE/provider-identity-invalid-link-audit.json"
+
+      - name: Upload aggregate audit
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: provider-identity-invalid-link-audit-${{ github.run_id }}-${{ github.run_attempt }}
+          path: provider-identity-invalid-link-audit.json
+          if-no-files-found: warn
+          retention-days: 14

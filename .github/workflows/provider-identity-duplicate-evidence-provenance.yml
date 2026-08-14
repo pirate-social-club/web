@@ -103,9 +103,9 @@ jobs:
                            a.source_verification_session_id, a.source_identity_nullifier_id
                   HAVING COUNT(*) > 1
                 )
-                SELECT a.attestation_id,
+                SELECT a.user_attestation_id,
                        LEFT(ENCODE(SHA256(a.user_id::bytea), 'hex'), 12) AS user_digest,
-                       a.provider, a.capability_key, a.capability_value, a.status,
+                       a.provider, a.capability_key, a.value_json::text AS capability_value, a.status,
                        a.source_verification_session_id, a.source_identity_nullifier_id,
                        a.created_at, a.updated_at,
                        g.group_rows
@@ -117,7 +117,7 @@ jobs:
                  AND g.source_verification_session_id IS NOT DISTINCT FROM a.source_verification_session_id
                  AND g.source_identity_nullifier_id IS NOT DISTINCT FROM a.source_identity_nullifier_id
                 WHERE a.status = 'accepted'
-                ORDER BY a.created_at, a.attestation_id
+                ORDER BY a.created_at, a.user_attestation_id
               `;
 
               // Which columns anywhere in the schema reference an attestation id.

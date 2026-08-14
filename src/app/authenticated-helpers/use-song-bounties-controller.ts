@@ -13,11 +13,13 @@ import { deriveSongBountyPresentation } from "./song-bounty-presentation";
 interface UseSongBountiesControllerInput {
   authenticated: boolean;
   campaign: RewardCampaign | null;
+  campaigns?: Partial<Record<BountyObjective, RewardCampaign | null>>;
   campaignAcceptsTopUp: boolean;
+  campaignAcceptsTopUpByObjective?: Partial<Record<BountyObjective, boolean>>;
   campaignResolved: boolean;
   canBrowseBounties: boolean;
   capabilities: { eligible_activities: readonly string[] } | null;
-  openBoost: () => void;
+  openBoost: (objective?: BountyObjective) => void;
   requestAuth: () => void;
   setEligibleActivity: React.Dispatch<React.SetStateAction<BoostEligibleActivity>>;
   thirdPartyBlocked: boolean;
@@ -39,9 +41,9 @@ export function useSongBountiesController(input: UseSongBountiesControllerInput)
   }, [authenticated, requestAuth]);
   const onSlotAction = React.useCallback((objective: BountyObjective | "either", action: "create" | "fund" | "view") => {
     if (action === "view") return;
-    if (objective !== "either" && action === "create") setEligibleActivity(objective);
+    if (objective !== "either") setEligibleActivity(objective);
     setOpen(false);
-    openBoost();
+    openBoost(objective === "either" ? undefined : objective);
   }, [openBoost, setEligibleActivity]);
   return {
     bountiesSheetProps: {

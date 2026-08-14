@@ -173,10 +173,25 @@ option entirely (the wrapper adds `role="none"` itself); embedding a
 the spinner gained a `decorative` mode — a rule now: embedded progress
 indicators are decorative, standalone ones carry the status role.
 
-Verification: 90 focused tests pass (19 files, stable across repeated runs),
+Follow-up review of Batch 1 found two IconButton defects, both fixed and
+committed: `disabled` is now omitted from the rest spread so `loading` wins
+over an explicit `disabled={false}` (regression test added, matching
+Button), and the `active` prop now maps to `aria-pressed`, exposing the
+toggle state to assistive technology (pressed and not-pressed tests added).
+
+Verification: 92 focused tests pass (19 files, stable across repeated runs),
 `tsc` clean, static Storybook build succeeds, and the sidebar/foundations
 order, MDX rendering, RTL rendering, and theme decorator were checked in a
 real browser.
+
+## Batch 2 coordination
+
+Batch 2 (feed/media) stays **paused** until ownership of
+`src/patterns/engagement/vertical-feed` in the Solid repo is explicit. A
+concurrent lane is actively writing that pattern in the shared checkout;
+its uncommitted files currently carry the only two `tsc` errors in the
+repository (raw `aria-pressed` booleans on native buttons), which is that
+lane's in-flight work, not a catalog regression.
 
 ## Open items (Batch 2+)
 

@@ -158,6 +158,12 @@ export type ApiLearningDeckValidation = {
   canonical: { schema_version: number; card_count: number; content_hash: string; json: string } | null;
 };
 
+export type ApiLearningDeckCsvPreview = {
+  headers: string[];
+  rows: string[][];
+  errors: Array<{ row: number; code: string; message: string }>;
+};
+
 export type ApiLearningStudySession = {
   session_id: string;
   status: "active" | "completed" | "expired";

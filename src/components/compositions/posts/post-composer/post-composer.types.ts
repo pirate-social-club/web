@@ -223,9 +223,24 @@ export interface LearningDeckCardDraft {
   tags: string[];
 }
 
+export interface LearningDeckCsvPreview {
+  headers: string[];
+  rows: string[][];
+  errors: Array<{ row: number; code: string; message: string }>;
+}
+
+export interface LearningDeckCsvImportState extends LearningDeckCsvPreview {
+  contentBlobId: string;
+  filename: string;
+  promptColumn: number;
+  answerColumn: number;
+  tagsColumn: number | null;
+}
+
 export interface LearningDeckComposerState {
   description: string;
   cards: LearningDeckCardDraft[];
+  csvImport?: LearningDeckCsvImportState;
 }
 
 export interface MonetizationState {
@@ -342,6 +357,7 @@ interface PostComposerDraftActions {
   onEventChange?: (value: ComposerEventState) => void;
   onFileChange?: (value: DownloadFileComposerState) => void;
   onDeckChange?: (value: LearningDeckComposerState) => void;
+  onDeckCsvPreview?: (file: File) => Promise<LearningDeckCsvPreview & { contentBlobId: string }>;
 }
 
 interface PostComposerSubmitState {

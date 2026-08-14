@@ -472,6 +472,7 @@ export function PostComposerWriteStep({
             deck={controller.generic.deck}
             file={controller.generic.file}
             mode={controller.tabs.activeTab}
+            onCsvPreview={controller.generic.previewCsv}
             onDeckChange={controller.generic.setDeck}
             onFileChange={controller.generic.setFile}
           />
@@ -532,6 +533,7 @@ export function PostComposerWriteStep({
             deck={controller.generic.deck}
             file={controller.generic.file}
             mode={controller.tabs.activeTab}
+            onCsvPreview={controller.generic.previewCsv}
             onDeckChange={controller.generic.setDeck}
             onFileChange={controller.generic.setFile}
           />

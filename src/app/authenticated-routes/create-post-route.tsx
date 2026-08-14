@@ -71,13 +71,23 @@ function canAdvanceMobileComposerStep(
   state: CreatePostState,
 ) {
   if (current === "write") {
+    const importedDeck = state.deckState.csvImport;
+    const deckCardsPresent = state.deckState.cards.length > 0
+      && state.deckState.cards.every((card) => card.prompt.trim() && card.answer.trim());
+    const deckImportPresent = Boolean(
+      importedDeck
+      && importedDeck.errors.length === 0
+      && importedDeck.rows.length > 0
+      && importedDeck.promptColumn >= 0
+      && importedDeck.answerColumn >= 0,
+    );
     return canAdvanceComposerWriteStep({
       body: state.body,
       imageUploadPresent: Boolean(state.imageUpload),
       linkUrl: state.linkUrl,
       mode: state.composerMode,
       fileUploadPresent: Boolean(state.fileState.upload),
-      deckCardsPresent: state.deckState.cards.length > 0 && state.deckState.cards.every((card) => card.prompt.trim() && card.answer.trim()),
+      deckCardsPresent: deckCardsPresent || deckImportPresent,
       songAudioUploadPresent: Boolean(state.songState.primaryAudioUpload),
       title: state.title,
       videoUploadPresent: Boolean(state.videoState.primaryVideoUpload),
@@ -149,6 +159,35 @@ function CreatePostComposer({
         communityPickerItems={communityPickerItems}
         composerStep={composerStep}
         onComposerStepChange={onComposerStepChange}
+        onDeckCsvPreview={async (file) => {
+          const contentBlob = await api.communities.createContentBlob(state.community!.id, {
+            declared_filename: file.name,
+            declared_mime_type: "text/csv",
+            declared_size_bytes: file.size,
+            upload_mode: "proxy",
+            validation_profile: "deck_import_csv_v1",
+          });
+          const uploaded = contentBlob.status === "pending_upload"
+            ? await api.communities.uploadContentBlob(
+              state.community!.id,
+              contentBlob.id,
+              await file.arrayBuffer(),
+              "text/csv",
+            )
+            : contentBlob;
+          let lastError: unknown;
+          for (let attempt = 0; attempt < 8; attempt += 1) {
+            try {
+              const preview = await api.communities.previewLearningDeckCsv(state.community!.id, uploaded.id);
+              return { ...preview, contentBlobId: uploaded.id };
+            } catch (error) {
+              lastError = error;
+              if (attempt === 7) break;
+              await new Promise((resolve) => setTimeout(resolve, 500));
+            }
+          }
+          throw lastError instanceof Error ? lastError : new Error("CSV import is still being scanned");
+        }}
         onSearchEventPlaces={searchEventPlaces}
         onSelectCommunity={(selectedCommunityId) => {
           navigate(`/c/${selectedCommunityId}/submit`);

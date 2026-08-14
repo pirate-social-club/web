@@ -71,6 +71,7 @@ export async function submitLearningDeckPost(input: {
   baseRequest: BasePostRequestFields;
   createLearningDeck: (communityId: string, body: { title: string; description?: string | null }) => Promise<ApiLearningDeckDraft>;
   getLearningDeck?: (communityId: string, deckId: string) => Promise<ApiLearningDeckDraft>;
+  commitLearningDeckCsv?: (communityId: string, deckId: string, body: { content_blob_id: string; prompt_column: number; answer_column: number; tags_column?: number | null }) => Promise<ApiLearningDeckDraft>;
   upsertLearningDeckCard: (communityId: string, deckId: string, body: { card_id?: string; card_type: "basic" | "cloze"; prompt: string; answer: string; tags?: string[]; ordinal?: number }) => Promise<ApiLearningDeckDraft>;
   validateLearningDeck: (communityId: string, deckId: string) => Promise<{ issues: Array<{ message: string }>; canonical: unknown }>;
   createPost: CreatePost;
@@ -82,13 +83,26 @@ export async function submitLearningDeckPost(input: {
   altchaPayload?: string | null;
 }): Promise<{ id: string; status?: string; asset?: string | null }> {
   if (!input.title.trim()) throw new Error("Add a title for the learning deck.");
-  if (!input.deck.cards.length) throw new Error("Add at least one learning card.");
-  if (input.deck.cards.some((card) => !card.prompt.trim() || !card.answer.trim())) throw new Error("Complete every card prompt and answer.");
+  const csvImport = input.deck.csvImport;
+  if (!input.deck.cards.length && !csvImport) throw new Error("Add at least one learning card or import a CSV.");
+  if (csvImport && (!csvImport.contentBlobId || csvImport.errors.length || csvImport.rows.length === 0 || csvImport.promptColumn < 0 || csvImport.answerColumn < 0)) {
+    throw new Error(csvImport.errors[0]?.message ?? "Choose valid CSV prompt and answer columns.");
+  }
+  if (!csvImport && input.deck.cards.some((card) => !card.prompt.trim() || !card.answer.trim())) throw new Error("Complete every card prompt and answer.");
   input.reportProgress?.("validating");
   let draft = input.learningDeckId && input.getLearningDeck
     ? await input.getLearningDeck(input.communityId, input.learningDeckId)
     : await input.createLearningDeck(input.communityId, { title: input.title.trim(), description: input.deck.description.trim() || null });
   input.onLearningDeckCreated?.(draft);
+  if (csvImport) {
+    if (!input.commitLearningDeckCsv) throw new Error("CSV import is unavailable.");
+    draft = await input.commitLearningDeckCsv(input.communityId, draft.deck.learning_deck_id, {
+      answer_column: csvImport.answerColumn,
+      content_blob_id: csvImport.contentBlobId,
+      prompt_column: csvImport.promptColumn,
+      tags_column: csvImport.tagsColumn,
+    });
+  }
   for (const [ordinal, card] of input.deck.cards.entries()) {
     // A retry resumes the same server draft. Reuse the durable card ID at the
     // same ordinal when the composer still carries a client-only UUID; this

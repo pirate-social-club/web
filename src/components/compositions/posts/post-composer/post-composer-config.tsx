@@ -125,6 +125,7 @@ export function defaultLearningDeckState(deck?: import("./post-composer.types").
   return {
     description: deck?.description ?? "",
     cards: deck?.cards ?? [],
+    csvImport: deck?.csvImport,
   };
 }
 

@@ -105,11 +105,21 @@ export function PostComposerDesktopFooter({
   }
 
   if (step.isWriteStep) {
+    const importedDeck = controller.generic.deck.csvImport;
+    const deckCardsPresent = controller.generic.deck.cards.length > 0
+      && controller.generic.deck.cards.every((card) => card.prompt.trim() && card.answer.trim());
+    const deckImportPresent = Boolean(
+      importedDeck
+      && importedDeck.errors.length === 0
+      && importedDeck.rows.length > 0
+      && importedDeck.promptColumn >= 0
+      && importedDeck.answerColumn >= 0,
+    );
     const canAdvanceWrite = canAdvanceComposerWriteStep({
       body: fields.textBodyValue,
       imageUploadPresent: Boolean(media.activeImageUpload),
       fileUploadPresent: Boolean(controller.generic.file.upload),
-      deckCardsPresent: controller.generic.deck.cards.length > 0,
+      deckCardsPresent: deckCardsPresent || deckImportPresent,
       linkUrl: fields.linkUrlValue,
       liveState: primary.liveState,
       mode: tabs.activeTab,
@@ -233,11 +243,21 @@ export function PostComposerMobileSubmitBar({
   let bar: React.ReactNode = null;
 
   if (step.isWriteStep) {
+    const importedDeck = controller.generic.deck.csvImport;
+    const deckCardsPresent = controller.generic.deck.cards.length > 0
+      && controller.generic.deck.cards.every((card) => card.prompt.trim() && card.answer.trim());
+    const deckImportPresent = Boolean(
+      importedDeck
+      && importedDeck.errors.length === 0
+      && importedDeck.rows.length > 0
+      && importedDeck.promptColumn >= 0
+      && importedDeck.answerColumn >= 0,
+    );
     const canAdvanceWrite = canAdvanceComposerWriteStep({
       body: fields.textBodyValue,
       imageUploadPresent: Boolean(media.activeImageUpload),
       fileUploadPresent: Boolean(controller.generic.file.upload),
-      deckCardsPresent: controller.generic.deck.cards.length > 0,
+      deckCardsPresent: deckCardsPresent || deckImportPresent,
       linkUrl: fields.linkUrlValue,
       liveState: primary.liveState,
       mode: tabs.activeTab,

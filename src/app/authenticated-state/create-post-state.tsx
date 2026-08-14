@@ -1169,6 +1169,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           createPost: api.communities.createPost,
           deck: deckState,
           getLearningDeck: api.communities.getLearningDeck,
+          commitLearningDeckCsv: api.communities.commitLearningDeckCsv,
           learningDeckId: submissionOperation.learningDeckId,
           onLearningDeckCreated: (draft) => {
             submissionOperation.learningDeckId = draft.deck.learning_deck_id;

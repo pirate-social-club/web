@@ -35,6 +35,7 @@ import type {
   TelegramStudyVoiceIntent,
   ApiContentBlob,
   ApiLearningDeckDraft,
+  ApiLearningDeckCsvPreview,
   ApiLearningDeckValidation,
   ApiLearningStudySession,
 } from "./client-api-types";
@@ -322,9 +323,9 @@ export function createCommunityContentApi(request: ApiRequest) {
         };
       }
     },
-    previewLearningDeckCsv: (communityId: string, csv: string): Promise<unknown> =>
-      request<unknown>(`/communities/${encodeURIComponent(communityId)}/learning-decks/imports/preview`, { method: "POST", body: JSON.stringify({ csv }) }),
-    commitLearningDeckCsv: (communityId: string, deckId: string, body: { csv: string; prompt_column: number; answer_column: number; tags_column?: number | null }): Promise<ApiLearningDeckDraft> =>
+    previewLearningDeckCsv: (communityId: string, contentBlobId: string): Promise<ApiLearningDeckCsvPreview> =>
+      request<ApiLearningDeckCsvPreview>(`/communities/${encodeURIComponent(communityId)}/learning-decks/imports/preview`, { method: "POST", body: JSON.stringify({ content_blob_id: contentBlobId }) }),
+    commitLearningDeckCsv: (communityId: string, deckId: string, body: { content_blob_id: string; prompt_column: number; answer_column: number; tags_column?: number | null }): Promise<ApiLearningDeckDraft> =>
       request<ApiLearningDeckDraft>(`/communities/${encodeURIComponent(communityId)}/learning-decks/${encodeURIComponent(deckId)}/imports/commit`, { method: "POST", body: JSON.stringify(body) }),
     createLearningStudySession: (communityId: string, deckId: string, body?: { now_ms?: number; limit?: number }): Promise<ApiLearningStudySession> =>
       request<ApiLearningStudySession>(`/communities/${encodeURIComponent(communityId)}/learning-decks/${encodeURIComponent(deckId)}/study-sessions`, { method: "POST", body: JSON.stringify(body ?? {}) }),

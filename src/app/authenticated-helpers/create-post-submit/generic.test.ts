@@ -49,4 +49,45 @@ describe("generic post submission", () => {
     expect(result.id).toBe("pst_1");
     expect(calls.map((call) => call.card_id)).toEqual(["lcd_existing"]);
   });
+
+  test("commits an uploaded CSV import without re-adding manual cards", async () => {
+    const commits: Array<{ content_blob_id: string; prompt_column: number; answer_column: number }> = [];
+    let upsertCalls = 0;
+    const result = await submitLearningDeckPost({
+      communityId: "com_1",
+      title: "Imported deck",
+      deck: {
+        description: "Practice",
+        cards: [],
+        csvImport: {
+          answerColumn: 1,
+          contentBlobId: "cbl_import",
+          errors: [],
+          filename: "cards.csv",
+          headers: ["prompt", "answer"],
+          promptColumn: 0,
+          rows: [["Question", "Answer"]],
+          tagsColumn: null,
+        },
+      },
+      baseRequest,
+      learningDeckId: "ldk_1",
+      getLearningDeck: async () => draft([]),
+      createLearningDeck: async () => draft([]),
+      commitLearningDeckCsv: async (_communityId, _deckId, body) => {
+        commits.push(body);
+        return draft([{ cardId: "lcd_imported", ordinal: 0 }]);
+      },
+      upsertLearningDeckCard: async () => {
+        upsertCalls += 1;
+        return draft([]);
+      },
+      validateLearningDeck: async () => ({ issues: [], canonical: null }),
+      createPost: async () => ({ id: "pst_imported" }),
+    });
+
+    expect(result.id).toBe("pst_imported");
+    expect(commits).toEqual([{ content_blob_id: "cbl_import", prompt_column: 0, answer_column: 1, tags_column: null }]);
+    expect(upsertCalls).toBe(0);
+  });
 });

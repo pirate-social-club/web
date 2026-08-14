@@ -123,6 +123,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const onEventChange = actions?.onEventChange ?? props.onEventChange;
   const onFileChange = actions?.onFileChange ?? props.onFileChange;
   const onDeckChange = actions?.onDeckChange ?? props.onDeckChange;
+  const onDeckCsvPreview = actions?.onDeckCsvPreview ?? props.onDeckCsvPreview;
   const onSubmit = submit?.onSubmit ?? props.onSubmit;
   const baseSubmitDisabled = submit?.disabled ?? props.submitDisabled ?? false;
   const baseContinueDisabled = submit?.canContinue === undefined
@@ -707,6 +708,7 @@ export function usePostComposerController(props: PostComposerProps) {
     generic: {
       deck: deckState,
       file: fileState,
+      previewCsv: onDeckCsvPreview,
       setDeck: setDeckStateWithCallback,
       setFile: setFileStateWithCallback,
     },

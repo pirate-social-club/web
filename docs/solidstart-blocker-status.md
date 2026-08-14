@@ -74,6 +74,12 @@ attempt. The active staging hold prohibited deployment. No root cause was
 proven and no speculative code change was made; M2 remains open at the relay
 runtime boundary.
 
+A fresh staging-oriented Core harness attempt also stopped at Privy
+authentication with `Origin not allowed` from the local harness origin, before
+session exchange or relay invocation. The tail captured no relay exception;
+the next attempt needs a Privy-allowed browser origin or another authenticated
+fixture path.
+
 ## Historical Phase A record (pre-pivot)
 
 ## Decision posture

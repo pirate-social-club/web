@@ -108,3 +108,14 @@ hold prohibited deployment, so no Worker state was changed.
 Result: no new exception or failing stage was observed; the 500 remains
 attributed to the wrapper by the existing two-arm differential, but its internal
 failure site is still uninstrumented. No speculative fix was made.
+
+## Fresh staging attempt — 2026-08-14
+
+The held staging Worker was tailed again while the Core JS harness was pointed
+at `https://api-staging.pirate.sc`. Privy's fresh-account authentication stopped
+at `send-code` with `Origin not allowed` from the local harness origin, before
+the API session exchange or relay route. The tail therefore recorded no
+`/api/privy-relay` invocation and no server exception. No deployment or shared
+staging mutation occurred. The next live-tail attempt needs a browser origin
+accepted by the Privy app (or an equivalent authenticated fixture path) before
+it can exercise the relay.

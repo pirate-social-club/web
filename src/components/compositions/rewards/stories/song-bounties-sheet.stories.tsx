@@ -8,6 +8,7 @@ const meta = {
   args: {
     capabilities: { canCreate: true, canFund: true },
     open: true,
+    showTicketPool: true,
     slots: [],
   },
   parameters: { layout: "fullscreen" },
@@ -20,12 +21,16 @@ const action = () => undefined;
 
 const cashSlots = [
   {
+    canCreate: false,
+    canFund: true,
     objective: "study" as const,
     remainingLabel: "$8.20 USDC remaining",
     rewardLabel: "$0.40 USDC",
     status: "active" as const,
   },
   {
+    canCreate: false,
+    canFund: true,
     objective: "karaoke" as const,
     remainingLabel: "$14.00 USDC remaining",
     rewardLabel: "$1.00 USDC",
@@ -54,6 +59,24 @@ export const CashAndCash: Story = {
     onSlotAction: action,
     onTicketPoolAction: action,
     slots: cashSlots,
+  },
+};
+
+export const TieredCashRange: Story = {
+  args: {
+    onSlotAction: action,
+    slots: [
+      {
+        canCreate: false,
+        canFund: true,
+        objective: "study",
+        remainingLabel: "$48.20 USDC remaining",
+        rewardLabel: "$0.40–$5.00 USDC per day",
+        status: "active",
+      },
+      cashSlots[1],
+    ],
+    showTicketPool: false,
   },
 };
 
@@ -88,6 +111,8 @@ export const CommunityTokenCashAndPool: Story = {
     onTicketPoolAction: action,
     slots: [
       {
+        canCreate: false,
+        canFund: true,
         objective: "study",
         remainingLabel: "2,500 $COMMUNITY remaining",
         rewardLabel: "25 $COMMUNITY",
@@ -177,7 +202,7 @@ export const ExhaustedCashSlotPoolStillOpen: Story = {
     onSlotAction: action,
     onTicketPoolAction: action,
     slots: [
-      { objective: "study", rewardLabel: "$0.40 USDC", status: "exhausted" },
+      { canCreate: false, canFund: true, objective: "study", rewardLabel: "$0.40 USDC", status: "exhausted" },
       cashSlots[1],
     ],
     ticketPool: openPool,
@@ -189,10 +214,39 @@ export const OccupiedCashSlots: Story = {
     onSlotAction: action,
     onTicketPoolAction: action,
     slots: [
-      { objective: "study", rewardLabel: "25 $COMMUNITY", status: "funding_confirming" },
-      { objective: "karaoke", rewardLabel: "$1.00 USDC", status: "operational_hold" },
+      { canCreate: false, canFund: false, objective: "study", rewardLabel: "25 $COMMUNITY", status: "funding_confirming" },
+      { canCreate: false, canFund: false, objective: "karaoke", rewardLabel: "$1.00 USDC", status: "operational_hold" },
     ],
     ticketPool: openPool,
+  },
+};
+
+export const PausedCashBounty: Story = {
+  args: {
+    onSlotAction: action,
+    slots: [{
+      canCreate: false,
+      canFund: false,
+      objective: "study",
+      rewardLabel: "$0.40 USDC",
+      status: "paused",
+    }],
+  },
+};
+
+export const ObjectiveUnavailableUntilSlotsShip: Story = {
+  args: {
+    onSlotAction: action,
+    slots: [
+      cashSlots[0],
+      {
+        actionDisabledReason: "A Study bounty already occupies this song. A separate Karaoke bounty is not available yet.",
+        canCreate: false,
+        canFund: false,
+        objective: "karaoke",
+        status: "empty",
+      },
+    ],
   },
 };
 
@@ -248,6 +302,8 @@ export const Mobile: Story = {
     onTicketPoolAction: action,
     slots: [
       {
+        canCreate: false,
+        canFund: true,
         objective: "study",
         remainingLabel: "2,500 $COMMUNITY12 remaining",
         rewardLabel: "25 $COMMUNITY12",

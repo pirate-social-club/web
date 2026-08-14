@@ -23,11 +23,12 @@ import { Card } from "@/components/primitives/card";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
-type BountyObjective = "study" | "karaoke";
+export type BountyObjective = "study" | "karaoke";
 
-type SongBountyLifecycleStatus =
+export type SongBountyLifecycleStatus =
   | "empty"
   | "active"
+  | "paused"
   | "exhausted"
   | "funding_confirming"
   | "operational_hold";
@@ -38,15 +39,18 @@ interface SongBountyCapabilities {
   reason?: string;
 }
 
-interface SongBountySlot {
+export interface SongBountySlot {
   objective: BountyObjective;
   status: SongBountyLifecycleStatus;
   rewardLabel?: string;
   remainingLabel?: string;
   viewerStatusLabel?: string;
+  actionDisabledReason?: string;
+  canCreate: boolean;
+  canFund: boolean;
 }
 
-interface LegacyEitherBounty {
+export interface LegacyEitherBounty {
   rewardLabel: string;
   status: Exclude<SongBountyLifecycleStatus, "empty">;
   remainingLabel?: string;
@@ -78,6 +82,7 @@ export interface SongBountiesSheetProps {
   onSlotAction?: (objective: BountyObjective | "either", action: "create" | "fund" | "view") => void;
   onTicketPoolAction?: (action: "create" | "fund" | "view") => void;
   open: boolean;
+  showTicketPool?: boolean;
   slots: readonly SongBountySlot[];
   ticketPool?: SongTicketPool;
 }
@@ -106,9 +111,11 @@ function assertNever(value: never): never {
 function lifecycleStatusCopy(slot: SongBountySlot): string {
   switch (slot.status) {
     case "empty":
-      return "No bounty yet.";
+      return slot.actionDisabledReason ?? "No bounty yet.";
     case "active":
       return slot.remainingLabel ?? "Open for claims.";
+    case "paused":
+      return "Paused. Funding is unavailable until this bounty resumes.";
     case "exhausted":
       return "Out of funds. Add funding to reopen this slot.";
     case "funding_confirming":
@@ -120,21 +127,23 @@ function lifecycleStatusCopy(slot: SongBountySlot): string {
   }
 }
 
-function slotAction(slot: SongBountySlot, capabilities: SongBountyCapabilities): {
+function slotAction(slot: SongBountySlot): {
   action: "create" | "fund" | "view";
   disabled: boolean;
   label: string;
 } {
   if (slot.status === "empty") {
-    return { action: "create", disabled: !capabilities.canCreate, label: capabilities.canCreate ? "Create" : "Unavailable" };
+    return { action: "create", disabled: !slot.canCreate, label: slot.canCreate ? "Create" : "Unavailable" };
   }
   if (slot.status === "active" || slot.status === "exhausted") {
-    return { action: "fund", disabled: !capabilities.canFund, label: capabilities.canFund ? "Fund" : "Unavailable" };
+    return { action: "fund", disabled: !slot.canFund, label: slot.canFund ? "Fund" : "Unavailable" };
   }
   if (slot.status === "funding_confirming") {
     return { action: "view", disabled: true, label: "Confirming" };
   }
   switch (slot.status) {
+    case "paused":
+      return { action: "view", disabled: true, label: "Paused" };
     case "operational_hold":
       return { action: "view", disabled: true, label: "On hold" };
     default:
@@ -149,6 +158,9 @@ function SlotStateIcon({ slot }: { slot: SongBountySlot }) {
   if (slot.status === "operational_hold") {
     return <ShieldWarning aria-hidden className="size-5 text-warning" weight="duotone" />;
   }
+  if (slot.status === "paused") {
+    return <HourglassMedium aria-hidden className="size-5 text-warning" weight="duotone" />;
+  }
   if (slot.status === "exhausted") {
     return <WarningCircle aria-hidden className="size-5 text-warning" weight="duotone" />;
   }
@@ -156,18 +168,16 @@ function SlotStateIcon({ slot }: { slot: SongBountySlot }) {
 }
 
 function BountySlotCard({
-  capabilities,
   onAction,
   slot,
 }: {
-  capabilities: SongBountyCapabilities;
   onAction?: SongBountiesSheetProps["onSlotAction"];
   slot: SongBountySlot;
 }) {
   const copy = OBJECTIVE_COPY[slot.objective];
   const ObjectiveIcon = copy.icon;
-  const action = slotAction(slot, capabilities);
-  const unavailable = slot.status === "exhausted" || slot.status === "funding_confirming" || slot.status === "operational_hold";
+  const action = slotAction(slot);
+  const unavailable = slot.status === "exhausted" || slot.status === "funding_confirming" || slot.status === "paused" || slot.status === "operational_hold";
 
   return (
     <Card
@@ -232,12 +242,14 @@ function LegacyEitherCard({
   onAction?: SongBountiesSheetProps["onSlotAction"];
 }) {
   const syntheticSlot: SongBountySlot = {
+    canCreate: false,
+    canFund: capabilities.canFund,
     objective: "study",
     remainingLabel: bounty.remainingLabel,
     rewardLabel: bounty.rewardLabel,
     status: bounty.status,
   };
-  const action = slotAction(syntheticSlot, capabilities);
+  const action = slotAction(syntheticSlot);
   const lifecycleCopy = bounty.status === "exhausted"
     ? "Out of funds. Add funding to reopen these slots."
     : lifecycleStatusCopy(syntheticSlot);
@@ -374,11 +386,17 @@ export function SongBountiesSheet({
   onSlotAction,
   onTicketPoolAction,
   open,
+  showTicketPool = false,
   slots,
   ticketPool,
 }: SongBountiesSheetProps) {
   const normalizedSlots = (["study", "karaoke"] as const).map((objective) =>
-    slots.find((slot) => slot.objective === objective) ?? { objective, status: "empty" as const });
+    slots.find((slot) => slot.objective === objective) ?? {
+      canCreate: capabilities.canCreate,
+      canFund: capabilities.canFund,
+      objective,
+      status: "empty" as const,
+    });
 
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
@@ -405,12 +423,13 @@ export function SongBountiesSheet({
         ) : null}
 
         <div className="mt-5 space-y-3">
-          <TicketPoolCard capabilities={capabilities} onAction={onTicketPoolAction} pool={ticketPool} />
+          {showTicketPool ? (
+            <TicketPoolCard capabilities={capabilities} onAction={onTicketPoolAction} pool={ticketPool} />
+          ) : null}
           {legacyEither ? (
             <LegacyEitherCard bounty={legacyEither} capabilities={capabilities} onAction={onSlotAction} />
           ) : normalizedSlots.map((slot) => (
             <BountySlotCard
-              capabilities={capabilities}
               key={slot.objective}
               onAction={onSlotAction}
               slot={slot}

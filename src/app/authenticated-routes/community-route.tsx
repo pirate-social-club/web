@@ -91,6 +91,7 @@ import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
 import { BoostCampaignSheet, SongRewardPolicySheet } from "@/components/compositions/rewards/reward-booster-surfaces";
+import { SongBountiesSheet } from "@/components/compositions/rewards/song-bounties-sheet";
 
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
 
@@ -208,7 +209,7 @@ export function CommunityPage({
   });
   React.useEffect(() => {
     if (pendingBoostAction === "boost" && boostController.canBoost) {
-      boostController.openBoost();
+      boostController.openBounties();
       setPendingBoostAction(null);
     }
     if (pendingBoostAction === "policy" && boostController.canManagePolicy) {
@@ -220,7 +221,7 @@ export function CommunityPage({
   }, [
     boostController.canBoost,
     boostController.canManagePolicy,
-    boostController.openBoost,
+    boostController.openBounties,
     boostController.openPolicy,
     pendingBoostAction,
   ]);
@@ -999,6 +1000,7 @@ export function CommunityPage({
     <>
       {gateModal}
       {purchaseModal}
+      <SongBountiesSheet {...boostController.bountiesSheetProps} />
       <BoostCampaignSheet {...boostController.sheetProps} />
       <SongRewardPolicySheet {...boostController.policySheetProps} />
       <HandleClaimModal

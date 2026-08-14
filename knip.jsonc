@@ -24,6 +24,7 @@
     "core/scripts/community/verify-community-schema-requirements.ts",
     "scripts/control-plane/audit-provider-identity-evidence.ts",
     "scripts/control-plane/provider-identity-invalid-link-audit-once.ts",
+    "scripts/control-plane/provider-identity-duplicate-evidence-provenance-once.ts",
     "web/scripts/song-study-fill-blank-row-counts.ts",
     "scripts/control-plane/inspect-control-plane-migration-ledger.ts",
     "scripts/control-plane/apply-postgres-migrations.ts",

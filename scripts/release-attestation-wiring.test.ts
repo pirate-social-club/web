@@ -58,4 +58,30 @@ describe("release attestation wiring", () => {
     expect(stagingDeploy).not.toContain('WEB_SHA="${WEB_SHA}-non-main-');
     expect(stagingDeploy).not.toContain('API_SHA="${API_SHA}-non-main-');
   });
+
+  test("wires the generic-goods flag to both schema gates", () => {
+    expect(releaseWorkflow).toContain("GENERIC_DIGITAL_GOODS_ENABLED: ${{ vars.GENERIC_DIGITAL_GOODS_ENABLED || 'false' }}");
+    expect(releaseWorkflow).toContain("--features generic_digital_goods");
+
+    const stagingGate = releaseWorkflow.slice(
+      releaseWorkflow.indexOf("Community schema gate (staging fleet)"),
+      releaseWorkflow.indexOf("Export authoritative staging schema-policy digest"),
+    );
+    const productionGate = releaseWorkflow.slice(
+      releaseWorkflow.indexOf("Verify production fleet satisfies pinned API schema requirements"),
+      releaseWorkflow.indexOf("Export authoritative production schema-policy digest"),
+    );
+    for (const gate of [stagingGate, productionGate]) {
+      expect(gate).toContain("schema_feature_args");
+      expect(gate).toContain("${schema_feature_args[@]}");
+    }
+  });
+
+  test("passes the same fail-closed generic-goods flag to the API writer", () => {
+    for (const script of [productionDeploy, stagingDeploy]) {
+      expect(script).toContain('GENERIC_DIGITAL_GOODS_ENABLED="${GENERIC_DIGITAL_GOODS_ENABLED:-false}"');
+      expect(script).toContain("GENERIC_DIGITAL_GOODS_ENABLED must be exactly true or false");
+      expect(script).toContain('--var "GENERIC_DIGITAL_GOODS_ENABLED:$GENERIC_DIGITAL_GOODS_ENABLED"');
+    }
+  });
 });

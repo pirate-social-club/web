@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+GENERIC_DIGITAL_GOODS_ENABLED="${GENERIC_DIGITAL_GOODS_ENABLED:-false}"
+case "$GENERIC_DIGITAL_GOODS_ENABLED" in
+  true|false) ;;
+  *)
+    printf 'GENERIC_DIGITAL_GOODS_ENABLED must be exactly true or false\n' >&2
+    exit 1
+    ;;
+esac
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/scripts/lib/release-source.sh"
 if [[ -d "$ROOT_DIR/web" && -f "$ROOT_DIR/web/package.json" ]]; then
@@ -261,6 +270,7 @@ log "deploy api production"
   --var "BUILD_API_SHA:$API_FULL_SHA" \
   --var "BUILD_CORE_SHA:$CORE_RELEASE_SHA" \
   --var "BUILD_SOURCE_STATE:$API_SOURCE_STATE" \
+  --var "GENERIC_DIGITAL_GOODS_ENABLED:$GENERIC_DIGITAL_GOODS_ENABLED" \
   --var "BUILD_DEPLOY_REASON_SLUG:$API_DEPLOY_REASON_SLUG" \
   --var "BUILD_HOTFIX_REASON_SLUG:$API_HOTFIX_REASON_SLUG" \
   --var "BUILD_PATCH_SHA256:$API_PATCH_SHA256" \

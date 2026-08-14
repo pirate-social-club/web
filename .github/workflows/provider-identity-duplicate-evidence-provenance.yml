@@ -119,6 +119,43 @@ jobs:
                 ORDER BY a.created_at, a.user_attestation_id
               `;
 
+              // Reconcile the two rows named by the failed 0227 guard and
+              // list every remaining accepted nationality row for their user
+              // and provider. Only digests leave the database.
+              const namedAttestationIds = [
+                "att_staging_reward_0511faef470bf08f5bee776b294f99e4",
+                "att_staging_reward_conflict_20260806",
+              ];
+              const namedRows = await tx`
+                SELECT a.user_attestation_id,
+                       LEFT(ENCODE(SHA256(a.user_id::bytea), 'hex'), 12) AS user_digest,
+                       a.provider, a.capability_key, a.value_json::text AS capability_value,
+                       a.status, a.source_verification_session_id,
+                       a.source_identity_nullifier_id, a.created_at, a.updated_at
+                FROM user_attestations a
+                WHERE a.user_attestation_id = ${namedAttestationIds[0]}
+                   OR a.user_attestation_id = ${namedAttestationIds[1]}
+                ORDER BY a.user_attestation_id
+              `;
+              const relatedNationalityRows = await tx`
+                WITH targets AS (
+                  SELECT DISTINCT user_id, provider
+                  FROM user_attestations
+                  WHERE user_attestation_id = ${namedAttestationIds[0]}
+                     OR user_attestation_id = ${namedAttestationIds[1]}
+                )
+                SELECT a.user_attestation_id,
+                       LEFT(ENCODE(SHA256(a.user_id::bytea), 'hex'), 12) AS user_digest,
+                       a.provider, a.capability_key, a.value_json::text AS capability_value,
+                       a.status, a.source_verification_session_id,
+                       a.source_identity_nullifier_id, a.created_at, a.updated_at
+                FROM user_attestations a
+                JOIN targets t ON t.user_id = a.user_id AND t.provider = a.provider
+                WHERE a.status = 'accepted'
+                  AND a.capability_key = 'nationality'
+                ORDER BY a.provider, a.created_at, a.user_attestation_id
+              `;
+
               // Which columns anywhere in the schema reference an attestation id.
               // Discovering this from information_schema means the follow-up
               // accounting-linkage query can be written against real table names
@@ -134,6 +171,9 @@ jobs:
               console.log(JSON.stringify({
                 decision_ref: process.env.DECISION_REF,
                 conflicts,
+                requested_attestation_ids: namedAttestationIds,
+                named_rows: namedRows,
+                related_nationality_rows: relatedNationalityRows,
                 attestation_referencing_columns: referencing,
               }, null, 2));
             });

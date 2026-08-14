@@ -34,7 +34,7 @@ jobs:
         working-directory: web
         run: |
           echo "api_sha=$(<.github/release-refs/api.sha)" >> "$GITHUB_OUTPUT"
-          echo "core_sha=1d136400eaa110e0a9cb6200f9f33d7b9948f865" >> "$GITHUB_OUTPUT"
+          echo "core_sha=67ca9e5de534df2ae1b9d4e1301bcc7dfce6083b" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: pirate-social-club/api

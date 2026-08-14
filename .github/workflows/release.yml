@@ -61,6 +61,13 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # This is the release authority for the API writer flag with the same name.
+  # Keep it false until the first generic writer and its runtime consumer are
+  # deployed together; the schema declaration alone is not sufficient.
+  GENERIC_DIGITAL_GOODS_ENABLED: ${{ vars.GENERIC_DIGITAL_GOODS_ENABLED || 'false' }}
+  # Exact community IDs are required before the generic writer can accept
+  # upload intents; an empty value keeps the lane fail-closed.
+  GENERIC_DIGITAL_GOODS_COMMUNITY_IDS: ${{ vars.GENERIC_DIGITAL_GOODS_COMMUNITY_IDS || '' }}
 
 jobs:
   release-inputs:
@@ -514,6 +521,8 @@ jobs:
         env:
           API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
           COMMUNITY_SCHEMA_POLICY_DIGEST: ${{ needs.schema-gate.outputs.policy_digest }}
+          GENERIC_DIGITAL_GOODS_ENABLED: ${{ vars.GENERIC_DIGITAL_GOODS_ENABLED || 'false' }}
+          GENERIC_DIGITAL_GOODS_COMMUNITY_IDS: ${{ vars.GENERIC_DIGITAL_GOODS_COMMUNITY_IDS || '' }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           VITE_BASE_NETWORK: base-sepolia
@@ -664,11 +673,21 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
         run: |
+          schema_feature_args=()
+          case "$GENERIC_DIGITAL_GOODS_ENABLED" in
+            true) schema_feature_args+=(--features generic_digital_goods) ;;
+            false) ;;
+            *)
+              echo "::error::GENERIC_DIGITAL_GOODS_ENABLED must be exactly true or false"
+              exit 1
+              ;;
+          esac
           set +e
           attempt=1
           while true; do
             log_path="$GITHUB_WORKSPACE/schema-gate-attempt-${attempt}.log"
             bun core/scripts/community/verify-community-schema-requirements.ts \
+              "${schema_feature_args[@]}" \
               --requirements api/services/api/community-schema-requirements.json \
               --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
               --migrations-dir core/db/community-template/migrations \
@@ -1108,8 +1127,18 @@ jobs:
           # token (D1 access is deliberately kept off the deploy token).
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
         run: |
+          schema_feature_args=()
+          case "$GENERIC_DIGITAL_GOODS_ENABLED" in
+            true) schema_feature_args+=(--features generic_digital_goods) ;;
+            false) ;;
+            *)
+              echo "::error::GENERIC_DIGITAL_GOODS_ENABLED must be exactly true or false"
+              exit 1
+              ;;
+          esac
           bun core/scripts/community/verify-community-schema-requirements.ts \
             --prod \
+            "${schema_feature_args[@]}" \
             --requirements api/services/api/community-schema-requirements.json \
             --wrangler-config api/services/community-d1-shard/wrangler.jsonc \
             --migrations-dir core/db/community-template/migrations \
@@ -1185,6 +1214,14 @@ jobs:
             --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN \
             --migrations db/control-plane/migrations \
             --label control-plane
+      - name: Verify production Story projection admits generic asset kinds
+        if: steps.in-lane-freshness-prod.outputs.stale == 'false' && env.GENERIC_DIGITAL_GOODS_ENABLED == 'true'
+        working-directory: core
+        run: |
+          test -n "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}"
+          export CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN="$(node -e "const raw=process.env.CONTROL_PLANE_MIGRATOR_DATABASE_URL;if(!raw)process.exit(2);const url=new URL(raw);url.searchParams.delete('sslrootcert');process.stdout.write(url.toString())")"
+          bun scripts/control-plane/verify-generic-story-asset-kinds.ts \
+            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL_BUN
       - name: Apply production bookings migrations
         if: steps.in-lane-freshness-prod.outputs.stale == 'false'
         working-directory: core
@@ -1243,6 +1280,8 @@ jobs:
         working-directory: web
         env:
           API_RELEASE_SHA: ${{ needs.release-inputs.outputs.api_sha }}
+          GENERIC_DIGITAL_GOODS_ENABLED: ${{ vars.GENERIC_DIGITAL_GOODS_ENABLED || 'false' }}
+          GENERIC_DIGITAL_GOODS_COMMUNITY_IDS: ${{ vars.GENERIC_DIGITAL_GOODS_COMMUNITY_IDS || '' }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           VITE_BASE_NETWORK: ${{ vars.VITE_BASE_NETWORK }}

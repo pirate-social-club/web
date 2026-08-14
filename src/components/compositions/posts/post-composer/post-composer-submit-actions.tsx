@@ -108,6 +108,7 @@ export function PostComposerDesktopFooter({
     const canAdvanceWrite = canAdvanceComposerWriteStep({
       body: fields.textBodyValue,
       imageUploadPresent: Boolean(media.activeImageUpload),
+      fileUploadPresent: Boolean(controller.generic.file.upload),
       linkUrl: fields.linkUrlValue,
       liveState: primary.liveState,
       mode: tabs.activeTab,
@@ -234,6 +235,7 @@ export function PostComposerMobileSubmitBar({
     const canAdvanceWrite = canAdvanceComposerWriteStep({
       body: fields.textBodyValue,
       imageUploadPresent: Boolean(media.activeImageUpload),
+      fileUploadPresent: Boolean(controller.generic.file.upload),
       linkUrl: fields.linkUrlValue,
       liveState: primary.liveState,
       mode: tabs.activeTab,

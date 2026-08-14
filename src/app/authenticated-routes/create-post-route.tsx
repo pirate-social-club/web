@@ -76,6 +76,7 @@ function canAdvanceMobileComposerStep(
       imageUploadPresent: Boolean(state.imageUpload),
       linkUrl: state.linkUrl,
       mode: state.composerMode,
+      fileUploadPresent: Boolean(state.fileState.upload),
       songAudioUploadPresent: Boolean(state.songState.primaryAudioUpload),
       title: state.title,
       videoUploadPresent: Boolean(state.videoState.primaryVideoUpload),
@@ -139,7 +140,7 @@ function CreatePostComposer({
 
   return (
     <PostComposer
-        availableTabs={["text", "image", "video", "link", "song", "live"]}
+        availableTabs={["text", "image", "video", "link", "song", "live", "file"]}
         canCreateSongPost
         clubAvatarSrc={state.community.avatar_ref ?? undefined}
         clubName={`c/${state.community.display_name}`}
@@ -159,6 +160,7 @@ function CreatePostComposer({
           charityPartner: state.charityPartner,
           derivativeStep: state.derivativeStep,
           event: state.event,
+          file: state.fileState,
           identity: {
             authorMode: state.authorMode,
             allowAnonymousIdentity: state.community.allow_anonymous_identity,
@@ -205,6 +207,7 @@ function CreatePostComposer({
           onCharityContributionChange: state.setCharityContribution,
           onDerivativeStepChange: state.setDerivativeStep,
           onEventChange: state.setEvent,
+          onFileChange: state.setFileState,
           onIdentityModeChange: state.setIdentityMode,
           onImageUploadChange: state.setImageUpload,
           onLinkUrlValueChange: state.setLinkUrl,

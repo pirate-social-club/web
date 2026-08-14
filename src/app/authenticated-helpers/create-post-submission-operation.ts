@@ -12,6 +12,7 @@ export type CreatePostSubmissionOperation = {
   liveCoverUpload?: UploadedLiveCoverMedia;
   videoPosterUpload?: PreparedVideoPosterUpload;
   videoUpload?: SongArtifactUpload;
+  contentBlobId?: string;
 };
 
 const submissionFileIdentities = new WeakMap<File, number>();

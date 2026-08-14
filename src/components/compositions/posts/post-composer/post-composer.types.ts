@@ -1,10 +1,10 @@
 import type { AnonymousIdentityScope } from "@/lib/community-access-types";
 import type { PostCardEventPlace } from "@/components/compositions/posts/post-card/post-card.types";
 
-export type ComposerTab = "text" | "image" | "video" | "link" | "song" | "live";
+export type ComposerTab = "text" | "image" | "video" | "link" | "song" | "live" | "file";
 export type ComposerStep = "write" | "details" | "settings" | "publish";
 
-export type AttachmentKind = "link" | "image" | "video" | "song" | "live";
+export type AttachmentKind = "link" | "image" | "video" | "song" | "live" | "file";
 
 export type AttachmentState =
   | { kind: "link"; url: string }
@@ -12,6 +12,7 @@ export type AttachmentState =
   | { aspectRatio?: number; kind: "video"; label: string; posterUrl?: string; previewUrl?: string }
   | { kind: "song"; artworkUrl?: string; label: string; previewUrl?: string }
   | { kind: "live" }
+  | { kind: "file"; label: string }
   | null;
 
 type ComposerUploadValue = { name: string; previewUrl?: string } | null;
@@ -208,6 +209,11 @@ export interface VideoComposerState {
   posterFrameSeconds?: string;
 }
 
+export interface DownloadFileComposerState {
+  upload: File | null;
+  label?: string;
+}
+
 export interface MonetizationState {
   visible: boolean;
   priceLabel?: string;
@@ -291,6 +297,7 @@ interface PostComposerDraftState {
   identity?: ComposerIdentityState;
   live?: LiveComposerState;
   event?: ComposerEventState;
+  file?: DownloadFileComposerState;
   regionalPricingPreview?: RegionalPricingPreview | null;
 }
 
@@ -318,6 +325,7 @@ interface PostComposerDraftActions {
   onSelectedQualifierIdsChange?: (value: string[]) => void;
   onLiveChange?: (value: LiveComposerState) => void;
   onEventChange?: (value: ComposerEventState) => void;
+  onFileChange?: (value: DownloadFileComposerState) => void;
 }
 
 interface PostComposerSubmitState {

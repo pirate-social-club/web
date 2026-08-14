@@ -543,7 +543,7 @@ export function CommunityPage({
     async (
       listing: ApiCommunityListing,
       titleText: string,
-      assetLabel: "song" | "video" | "ticket" = "song",
+      assetLabel: "song" | "video" | "file" | "ticket" = "song",
     ) => {
       await buySong({
         assetLabel,
@@ -844,6 +844,33 @@ export function CommunityPage({
         seat: liveRoomSeat,
       })
       : undefined;
+    const genericListing = post.post.post_type === "file"
+      ? (assetId ? listingsByAssetId[assetId] : undefined)
+      : undefined;
+    const genericListingStatus = genericListing?.status === "active"
+      ? "active" as const
+      : genericListing?.status === "paused"
+        ? "paused" as const
+        : undefined;
+    const genericAssetOptions = post.post.post_type === "file"
+      ? {
+          accessState: genericListing
+            ? (purchasesByAssetId[assetId ?? ""] || post.viewer_is_author) ? "available" as const : "unknown" as const
+            : "purchase_required" as const,
+          hasEntitlement: Boolean((assetId && purchasesByAssetId[assetId]) || post.viewer_is_author),
+          listingMode: genericListing ? "listed" as const : "not_listed" as const,
+          listingStatus: genericListingStatus,
+          onBuy: genericListing
+            ? () => void handleBuySong(
+                genericListing,
+                post.post.title ?? "Downloadable file",
+                "file",
+              )
+            : undefined,
+          onDownload: () => navigate(`/p/${encodeURIComponent(post.post.id)}`),
+          priceLabel: genericListing?.price_cents === 100 ? "1 WIP" : genericListing?.price_cents != null ? `${genericListing.price_cents}¢ WIP` : undefined,
+        }
+      : undefined;
     const handleVerifyAge = () => {
       void startAgeSelfVerification({
         requestedCapabilities: ["age_over_18"],
@@ -874,6 +901,7 @@ export function CommunityPage({
           }
       : undefined,
       {
+        genericAsset: genericAssetOptions,
         liveRoom: liveRoomId ? {
           access: liveRoomAccess,
           currentUserId: session?.user?.id,

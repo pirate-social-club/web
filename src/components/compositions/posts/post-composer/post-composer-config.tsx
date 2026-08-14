@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
   Image as ImageIcon,
+  FileText,
   Link,
   Microphone,
   MusicNotes,
@@ -29,10 +30,11 @@ export const attachmentActions: Array<{
   { kind: "video", label: "Video", icon: <VideoCamera className="size-6" /> },
   { kind: "song", label: "Song", icon: <MusicNotes className="size-6" /> },
   { kind: "live", label: "Live", icon: <Microphone className="size-6" /> },
+  { kind: "file", label: "Downloadable file", icon: <FileText className="size-6" /> },
 ];
 
-export const defaultTabs: ComposerTab[] = ["text", "image", "video", "link", "song", "live"];
-export const anonymousEligibleTabs: ComposerTab[] = ["text", "image", "video", "link", "song", "live"];
+export const defaultTabs: ComposerTab[] = ["text", "image", "video", "link", "song", "live", "file"];
+export const anonymousEligibleTabs: ComposerTab[] = ["text", "image", "video", "link", "song", "live", "file"];
 
 export const noneLanguageValue = "__none__";
 
@@ -107,6 +109,13 @@ export function defaultVideoState(video?: VideoComposerState): VideoComposerStat
     primaryVideoUpload: video?.primaryVideoUpload ?? null,
     primaryVideoLabel: video?.primaryVideoLabel,
     posterFrameSeconds: video?.posterFrameSeconds ?? "0",
+  };
+}
+
+export function defaultDownloadFileState(file?: import("./post-composer.types").DownloadFileComposerState) {
+  return {
+    upload: file?.upload ?? null,
+    label: file?.label,
   };
 }
 

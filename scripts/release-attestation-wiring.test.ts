@@ -58,4 +58,49 @@ describe("release attestation wiring", () => {
     expect(stagingDeploy).not.toContain('WEB_SHA="${WEB_SHA}-non-main-');
     expect(stagingDeploy).not.toContain('API_SHA="${API_SHA}-non-main-');
   });
+
+  test("wires the generic-goods flag to both schema gates", () => {
+    expect(releaseWorkflow).toContain("GENERIC_DIGITAL_GOODS_ENABLED: ${{ vars.GENERIC_DIGITAL_GOODS_ENABLED || 'false' }}");
+    expect(releaseWorkflow).toContain("--features generic_digital_goods");
+
+    const stagingGate = releaseWorkflow.slice(
+      releaseWorkflow.indexOf("Community schema gate (staging fleet)"),
+      releaseWorkflow.indexOf("Export authoritative staging schema-policy digest"),
+    );
+    const productionGate = releaseWorkflow.slice(
+      releaseWorkflow.indexOf("Verify production fleet satisfies pinned API schema requirements"),
+      releaseWorkflow.indexOf("Export authoritative production schema-policy digest"),
+    );
+    for (const gate of [stagingGate, productionGate]) {
+      expect(gate).toContain("schema_feature_args");
+      expect(gate).toContain("${schema_feature_args[@]}");
+    }
+  });
+
+  test("passes the same fail-closed generic-goods flag to the API writer", () => {
+    expect(releaseWorkflow).toContain("GENERIC_DIGITAL_GOODS_ENABLED: ${{ vars.GENERIC_DIGITAL_GOODS_ENABLED || 'false' }}");
+    for (const script of [productionDeploy, stagingDeploy]) {
+      expect(script).toContain('GENERIC_DIGITAL_GOODS_ENABLED="${GENERIC_DIGITAL_GOODS_ENABLED:-false}"');
+      expect(script).toContain("GENERIC_DIGITAL_GOODS_ENABLED must be exactly true or false");
+      expect(script).toContain('--var "GENERIC_DIGITAL_GOODS_ENABLED:$GENERIC_DIGITAL_GOODS_ENABLED"');
+      expect(script).toContain("GENERIC_DIGITAL_GOODS_COMMUNITY_IDS is required when generic digital goods are enabled");
+      expect(script).toContain('--var "CONTENT_BLOB_UPLOADS_ENABLED:$GENERIC_DIGITAL_GOODS_ENABLED"');
+      expect(script).toContain('--var "CONTENT_BLOB_UPLOAD_COMMUNITY_IDS:$GENERIC_DIGITAL_GOODS_COMMUNITY_IDS"');
+    }
+  });
+
+  test("checks the live Story projection before enabling the generic writer", () => {
+    const productionMigrations = releaseWorkflow.indexOf("Apply production control-plane migrations");
+    const productionProjectionCheck = releaseWorkflow.indexOf("Verify production Story projection admits generic asset kinds");
+    const genericFlagGuard = releaseWorkflow.indexOf(
+      "steps.in-lane-freshness-prod.outputs.stale == 'false' && env.GENERIC_DIGITAL_GOODS_ENABLED == 'true'",
+      productionProjectionCheck,
+    );
+    expect(productionMigrations).toBeGreaterThanOrEqual(0);
+    expect(productionProjectionCheck).toBeGreaterThan(productionMigrations);
+    expect(releaseWorkflow.slice(productionProjectionCheck, productionProjectionCheck + 1600)).toContain(
+      "verify-generic-story-asset-kinds.ts",
+    );
+    expect(genericFlagGuard).toBeGreaterThan(productionProjectionCheck);
+  });
 });

@@ -577,9 +577,9 @@ lane P's by default.
 
 ### Bootstrap base
 
-`web@6263f27b` is the plan baseline. Lane P branches from `main` after this
-execution contract is committed. Lanes U and R branch from the P1 merge commit,
-not from the plan baseline. Absorption source material is
+`web@7510f3d7` is the execution-contract baseline. Lane P branches from `main`
+at or after that commit. Lanes U and R branch from the P1 merge commit, not from
+the plan baseline. Absorption source material is
 `pirate-web-solid@ab33300`, whose workspace disposition is already recorded as
 `absorb-into-web`.
 
@@ -601,6 +601,18 @@ runs `solid-perimeter` alone, and that worktree is retired when the skeleton
 merges, freeing a slot for phase B's `solid-ui` and `solid-routes`. If perimeter
 work must continue into phase B, file the documented exception — named owner,
 purpose, expiry — with the workspace steward *before* opening a third worktree.
+
+**Both of Web's slots are currently occupied**, so lane P cannot open until one
+is freed:
+
+| Worktree | Branch | State |
+| --- | --- | --- |
+| `.worktrees/web/dead-code` | `audit/dead-code-current` | clean — the retirement candidate |
+| `.worktrees/web/generic-digital-goods` | `feat/generic-digital-goods-flag-20260814` | 20 modified, 3 untracked — do not disturb |
+
+Freeing the clean slot is a step 1 precondition, alongside the named DRIs. It is
+an integration decision, not a lane decision: `audit/dead-code-current` is
+retired or merged by its owner, never by a migration lane.
 
 ### Merge order
 

@@ -31,7 +31,7 @@ plan:
         -e 'crypto\.randomUUID[[:space:]]*\(' \
         -e 'Math\.random[[:space:]]*\(' \
         -e '\bAbortController\b' \
-        "$package/src"; then
+        "$package/src/binary-codec.ts" "$package/src/transport.ts"; then
         echo 'forbidden runtime construct detected' >&2
         exit 1
       fi

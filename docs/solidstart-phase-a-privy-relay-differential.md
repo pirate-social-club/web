@@ -119,3 +119,14 @@ the API session exchange or relay route. The tail therefore recorded no
 staging mutation occurred. The next live-tail attempt needs a browser origin
 accepted by the Privy app (or an equivalent authenticated fixture path) before
 it can exercise the relay.
+
+## Fresh staging retry on the known allowed origin — 2026-08-14
+
+The harness was retried from the known Privy-allowed `http://localhost:5173`
+origin while the held staging Worker was tailed. Privy authentication and the
+Pirate session exchange completed, but the harness's configured target profile
+returned HTTP 404 (`Profile not found`) before follow preparation. No
+`/api/privy-relay` request was made and the tail showed no relay exception. The
+fixture target must be replaced with an existing disposable profile before the
+relay differential can run against staging. No deployment or shared staging
+mutation occurred.

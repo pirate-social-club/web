@@ -80,6 +80,13 @@ session exchange or relay invocation. The tail captured no relay exception;
 the next attempt needs a Privy-allowed browser origin or another authenticated
 fixture path.
 
+The follow-up retry used the known allowed `http://localhost:5173` origin and
+completed Privy authentication plus Pirate session exchange. It then stopped
+at the configured target profile with HTTP 404 (`Profile not found`), again
+before follow preparation or `/api/privy-relay`; the staging tail showed no
+relay exception. A valid disposable target profile is now the next required
+fixture prerequisite. No deployment or shared staging mutation occurred.
+
 ## Historical Phase A record (pre-pivot)
 
 ## Decision posture

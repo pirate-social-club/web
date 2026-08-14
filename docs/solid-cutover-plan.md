@@ -1,7 +1,7 @@
 # Solid cutover plan
 
 Date: 2026-08-14
-Status: proposed — awaiting step 1 signatures
+Status: proposed — interim lane ownership assigned; production sign-offs pending
 
 This is the source of truth for the React-to-Solid migration. A presentation
 copy exists as an HTML artifact; where the two differ, this file wins.
@@ -205,11 +205,11 @@ on any duplicate implementation left behind.
 | Module | From | Tests |
 | --- | --- | --- |
 | HNS forwarder auth, effective origin, sovereign scope | `src/lib/hns-forwarded-origin.ts` | 16 + regression suite |
-| Security policy construction | `src/lib/security/csp.ts` | 12 |
-| API origin resolution | `src/lib/hns-api-origin-regression.test.ts` subject | yes |
+| Security policy construction | `src/lib/security/csp.ts` | 10 |
+| API origin resolution | `src/lib/hns-forwarded-origin.ts`, `src/lib/api/hns-hostname.ts` | existing unit and regression suites |
 
-**Deferred until a second consumer appears:** `auth-origin.ts`,
-`agent-discovery.ts` (arrives with Slice 1c), `content-locale.ts`,
+**Deferred until a second consumer appears:** `agent-discovery.ts` (arrives with
+Slice 1c), `content-locale.ts`,
 `ui-locale-core.ts`, `report-csp-violations.ts`, and
 `scripts/build-provenance.ts`. The Solid release still stamps a version and
 serves `/__version`; only the *shared package extraction* is deferred.
@@ -230,10 +230,21 @@ to prove.
 
 `tsconfig.json` maps `@/*` to `./src/*`. The Solid app's Vite config aliases
 bare `@` to the design-system `src` (`pirate-web-solid/vite.config.ts:44`).
-These collide on absorption. Resolve during the move: `solid-ui` gets real
-subpath exports, the `@` alias and the `WEB_SOLID_DESIGN_SYSTEM_ROOT` escape
-hatch are both deleted, and `src/design-system.ts`'s deep
+The source currently has no `@/...` imports; the collision is in configuration
+and would become active if the absorbed app inherited Web's root tsconfig.
+Resolve during the move: `solid-ui` gets real subpath exports, the `@` alias and
+the `WEB_SOLID_DESIGN_SYSTEM_ROOT` escape hatch are both deleted, and
+`src/design-system.ts`'s deep
 `pirate-solid-design-system/src/...` imports become package imports.
+
+The source also hard-depends on an unpublished sibling checkout through its
+`package.json` workspace, `bun.lock`, Vite aliases, `src/design-system.ts`, and
+`src/index.css`. P1 removes that hidden input rather than registering it as a
+permanent sibling. `packages/solid-ui` must provide compile-capable runtime and
+type stubs for the frozen `Button`, `Dialog`, and `TextField` surface, plus the
+minimum local token stylesheet needed for a clean build. These are bootstrap
+surfaces, not the lane U implementation. No absorbed dependency may resolve to
+`../solid-storybook-poc` or `pirate-solid-design-system` outside this repository.
 
 ## Strangler mechanics
 
@@ -460,7 +471,7 @@ that must go red to green. A blocker with no test here is not closed.
 | B2 | Unknown hosts default to canonical | Security | 2 | `solid/src/server/security/host-classification.test.ts` |
 | B3 | Upstream fetch before authz and redirect | Correctness | 2 | `solid/src/server/request-pipeline.test.ts` — fetch spy |
 | B4 | Four-second pre-render fetch, unbounded and pre-disposition | Unbounded I/O | 2 | same pipeline test + `solid/src/server/upstream-timeouts.test.ts` |
-| B5 | CSP missing connect, img, media, style, font, form-action, framing | Security | 2 | `packages/web-platform/src/security/csp.test.ts` (12) + `solid/src/server/security/csp-script-model.test.ts` |
+| B5 | CSP missing connect, img, media, style, font, form-action, framing | Security | 2 | `packages/web-platform/src/security/csp.test.ts` (12 planned extraction tests) + `solid/src/server/security/csp-script-model.test.ts` |
 | B6 | Merged CSP unproven against Solid streaming | Hydration/CSP | 2 | `solid/e2e/csp-streaming.spec.ts`, shipped surface only |
 | B7 | Checkout requires an absent sibling repo | Reproducibility | 2 | `web-ci.yml` job `solid-clean-checkout` |
 | B8 | `/seam/*` reachable, untimed, uncaught | Security | 2 | `solid/src/server/seam-gating.test.ts` + `solid/e2e/seam-denied.spec.ts` |
@@ -517,11 +528,17 @@ Estimates in this document are proposals for confirmation, not commitments.
 
 | Role | Name | Date |
 | --- | --- | --- |
-| Web Platform DRI | | |
-| Design System DRI | | |
+| Web Platform DRI | Workspace coordinator (interim; pending user naming) | 2026-08-15 |
+| Design System DRI | Workspace coordinator (interim; pending user naming) | 2026-08-15 |
 | Cloudflare config owner | | |
 | Version-rollback runbook owner | | |
 | React team — freeze policy acceptance | | |
+
+**Interim lane assignment (2026-08-15).** The workspace coordinator in this
+session is also the interim owner for Lane R, pending the user's naming of
+human owners for Web Platform, Design System, and Lane R. This assignment
+authorizes P1 skeleton work only; Cloudflare, rollback, React-freeze, and
+production-exposure sign-offs remain open.
 
 Schedule: step 2 start/end, steps 3–4 start/end, engineers allocated.
 
@@ -561,7 +578,7 @@ lane P's by default.
 | `solid/src/server/**` | P |
 | `solid/src/entry-*.tsx`, `solid/src/Document.tsx` | P |
 | `solid/src/index.css`, Tailwind config | P |
-| `solid/vite.config.ts`, `solid/wrangler.jsonc` | P |
+| `solid/vite.config.ts`, `solid/wrangler.jsonc`, `solid/workers/public/wrangler.jsonc` | P |
 | `packages/web-platform/**` | P |
 | `packages/route-contracts/**` — schema, types, parity test | P |
 | `packages/route-contracts/**` — per-route `migration` data entries | the lane shipping that route |
@@ -583,6 +600,11 @@ the plan baseline. Absorption source material is
 `pirate-web-solid@ab33300`, whose workspace disposition is already recorded as
 `absorb-into-web`.
 
+Before lane edits, the integration owner fetches and prunes `origin`, verifies
+the remote `main` OID directly, and rebases `solid/perimeter` onto the commit
+that merged this plan. The pre-existing local `origin/main` ref is not a valid
+baseline until that reconciliation has happened.
+
 ### Branches and worktrees
 
 Named by work, not by worker, per the workspace agent rules.
@@ -602,17 +624,24 @@ merges, freeing a slot for phase B's `solid-ui` and `solid-routes`. If perimeter
 work must continue into phase B, file the documented exception — named owner,
 purpose, expiry — with the workspace steward *before* opening a third worktree.
 
-**Both of Web's slots are currently occupied**, so lane P cannot open until one
-is freed:
+**Both of Web's slots are currently occupied**, with lane P already holding one
+of them:
 
 | Worktree | Branch | State |
 | --- | --- | --- |
-| `.worktrees/web/dead-code` | `audit/dead-code-current` | clean — the retirement candidate |
+| `.worktrees/web/solid-perimeter` | `solid/perimeter` | clean — reserved for lane P after clearance |
 | `.worktrees/web/generic-digital-goods` | `feat/generic-digital-goods-flag-20260814` | 20 modified, 3 untracked — do not disturb |
 
-Freeing the clean slot is a step 1 precondition, alongside the named DRIs. It is
-an integration decision, not a lane decision: `audit/dead-code-current` is
-retired or merged by its owner, never by a migration lane.
+The former `audit/dead-code-current` worktree has been retired. Capacity no
+longer blocks lane P, but it does block opening lanes U and R concurrently until
+P1 merges and `solid-perimeter` is retired, or until a documented exception is
+approved. As of the 2026-08-15 03:02 audit, the workspace has **nine registered
+auxiliary worktrees against a limit of eight**: API has four, Core two,
+Contracts one, and Web two. API's `reward-asset-descriptor` worktree is a
+named second capacity exception: owner **workspace coordinator**, purpose
+dependency-backed verification and review handoff for the reward-campaign asset
+descriptor, expiry **2026-08-22 or immediately after handoff**. No additional
+worktree may open until an exception expires or a worktree is retired.
 
 ### Merge order
 
@@ -631,17 +660,23 @@ and lanes stay short-lived.
 
 1. `solid/` exists, absorbed, with the `@` alias collision and the
    `WEB_SOLID_DESIGN_SYSTEM_ROOT` escape hatch both removed.
-2. `packages/solid-ui` exists with its **public export surface frozen as typed
-   stubs**, so lane R can compile against components lane U has not written yet.
+2. `packages/solid-ui` exists with its **public export surface frozen as
+   compile-capable runtime and type stubs**, plus the minimum local token CSS
+   required by the absorbed app, so lane R can build against components lane U
+   has not implemented yet. Nothing resolves to an unpublished sibling checkout.
 3. `packages/web-platform` exists with HNS, CSP, and API origin extracted.
 4. `packages/route-contracts` exists with its schema and parity test.
 5. **The Solid tree has its own tsconfig and CI jobs, and the React gates —
    `types`, `deadcode:audit`, `deps:audit`, `lint:hooks` — do not traverse
    `solid/` or `packages/solid-ui/`.** Without this every lane PR breaks the
-   React gate.
-6. CI job stubs exist for each lane, invoking `bun run solid-ui:ci` and
-   `bun run solid-routes:ci`, so lanes own the script behind a stable job name
-   and never edit workflow files.
+   React gate. `types` is already bounded by `tsconfig.app.json` to `src/**/*`;
+   P1 preserves that boundary and adds the needed ESLint and Knip exclusions
+   for the other three gates.
+6. CI job stubs exist in `.github/workflows/web-ci.yml` for each lane, invoking
+   `bun run solid-ui:ci` and `bun run solid-routes:ci`, so lanes own the script
+   behind a stable job name and never edit workflow files. Duplicate-extraction
+   enforcement remains in `.github/workflows/repo-hygiene.yml`; P1 extends that
+   workflow rather than silently folding it into `web-ci.yml`.
 
 ### Interface freeze
 
@@ -694,10 +729,14 @@ are resolved by adding them to the table, not by precedent.
 
 ### Still unfilled
 
-Named DRIs for all three lanes, and an owner for lane R.
+Human names for the three lane DRIs remain pending. The interim assignment
+above is the current coordination record and is not a substitute for the
+production-exposure sign-offs.
 
 ## Provenance
 
 Verified against `web` and `pirate-web-solid` at their current checkouts.
 Counts confirmed by inspection: 50 route kinds, 47 primitives, 201 composition
-implementations, 16 HNS tests, 12 CSP tests.
+implementations, 16 HNS tests, 10 current CSP tests. The 12-test figure in B5
+is the planned `packages/web-platform` extraction target, not the current
+`src/lib/security/csp.test.ts` count.

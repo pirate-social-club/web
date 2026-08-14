@@ -1,0 +1,137 @@
+name: Staging shard schema repair
+
+on:
+  workflow_dispatch:
+    inputs:
+      database_name:
+        description: Exact staging D1 database name to repair
+        required: true
+        type: string
+      confirmation:
+        description: Type REPAIR STAGING SHARD SCHEMA to authorize the canary
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-shard-schema-repair-${{ inputs.database_name }}
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Repair ${{ inputs.database_name }}
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 180
+    environment: staging
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: web
+
+      - name: Validate exact canary target and confirmation
+        shell: bash
+        env:
+          DATABASE_NAME: ${{ inputs.database_name }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          test "$CONFIRMATION" = 'REPAIR STAGING SHARD SCHEMA'
+          [[ "$DATABASE_NAME" =~ ^community-d1-pool-[0-9]{4}-staging$ ]]
+
+      - name: Read pinned API and reviewed Core repair refs
+        id: refs
+        working-directory: web
+        shell: bash
+        run: |
+          echo "api_sha=$(tr -d '[:space:]' < .github/release-refs/api.sha)" >> "$GITHUB_OUTPUT"
+          echo "core_sha=460f0988f6b61f1a08eb6422466d98d832008960" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/api
+          ref: ${{ steps.refs.outputs.api_sha }}
+          path: api
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: pirate-social-club/core
+          ref: ${{ steps.refs.outputs.core_sha }}
+          path: core
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+
+      - name: Verify reviewed repair refs
+        shell: bash
+        run: |
+          test "$(git -C core rev-parse HEAD)" = 460f0988f6b61f1a08eb6422466d98d832008960
+          test -f core/scripts/community/apply-song-study-orchestration-v2-d1-migration.ts
+          test -f core/scripts/community/apply-user-account-merge-receipts-d1-migration.ts
+          test -f core/scripts/community/apply-dance-start-cue-evidence-d1-migration.ts
+          test -f core/scripts/community/apply-commerce-integer-money-d1-migration.ts
+          test -f core/scripts/community/apply-listings-asset-unique-index-d1-migration.ts
+          test -f core/scripts/community/apply-song-study-fill-blank-d1-migration.ts
+          test -f core/scripts/community/apply-community-handle-claim-intents-d1-migration.ts
+
+      - name: Apply exact repair sequence to one shard
+        shell: bash
+        env:
+          DATABASE_NAME: ${{ inputs.database_name }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p repair-output
+          common=(
+            --wrangler-config api/services/community-d1-shard/wrangler.jsonc
+            --migrations-dir core/db/community-template/migrations
+            --quarantines core/scripts/community/community-shard-quarantines.json
+            --only "$DATABASE_NAME"
+            --resume-file repair-output/resume.tsv
+            --confirm-time-travel
+            --execute
+          )
+          bun core/scripts/community/apply-song-study-orchestration-v2-d1-migration.ts "${common[@]}" --manifest repair-output/1151.json --repair-ledger-without-objects
+          bun core/scripts/community/apply-user-account-merge-receipts-d1-migration.ts "${common[@]}" --manifest repair-output/1152.json
+          bun core/scripts/community/apply-dance-start-cue-evidence-d1-migration.ts "${common[@]}" --manifest repair-output/1153.json --repair-ledger-without-objects
+          bun core/scripts/community/apply-commerce-integer-money-d1-migration.ts "${common[@]}" --manifest repair-output/1154.json --repair-ledger-without-objects
+          bun core/scripts/community/apply-listings-asset-unique-index-d1-migration.ts "${common[@]}" --manifest repair-output/1155.json --repair-ledger-without-objects
+          bun core/scripts/community/apply-song-study-fill-blank-d1-migration.ts "${common[@]}" --manifest repair-output/1156.json --repair-ledger-without-objects
+          bun core/scripts/community/apply-community-handle-claim-intents-d1-migration.ts "${common[@]}" --manifest repair-output/1157.json
+
+      - name: Verify repaired state read-only
+        shell: bash
+        env:
+          DATABASE_NAME: ${{ inputs.database_name }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p repair-output/verification
+          common=(
+            --wrangler-config api/services/community-d1-shard/wrangler.jsonc
+            --migrations-dir core/db/community-template/migrations
+            --quarantines core/scripts/community/community-shard-quarantines.json
+            --only "$DATABASE_NAME"
+            --manifest repair-output/verification/manifest.json
+          )
+          bun core/scripts/community/apply-song-study-orchestration-v2-d1-migration.ts "${common[@]}" --repair-ledger-without-objects
+          bun core/scripts/community/apply-user-account-merge-receipts-d1-migration.ts "${common[@]}"
+          bun core/scripts/community/apply-dance-start-cue-evidence-d1-migration.ts "${common[@]}" --repair-ledger-without-objects
+          bun core/scripts/community/apply-commerce-integer-money-d1-migration.ts "${common[@]}" --repair-ledger-without-objects
+          bun core/scripts/community/apply-listings-asset-unique-index-d1-migration.ts "${common[@]}" --repair-ledger-without-objects
+          bun core/scripts/community/apply-song-study-fill-blank-d1-migration.ts "${common[@]}" --repair-ledger-without-objects
+          bun core/scripts/community/apply-community-handle-claim-intents-d1-migration.ts "${common[@]}"
+
+      - name: Upload repair evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: staging-shard-schema-repair-${{ github.run_id }}-${{ github.run_attempt }}
+          path: repair-output
+          if-no-files-found: warn
+          retention-days: 30
